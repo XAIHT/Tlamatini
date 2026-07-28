@@ -1,0 +1,92 @@
+\begin{thebibliography}{13}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Ahuja et~al.(2023)]{ahuja2023mega}
+K.~Ahuja et~al.
+\newblock {MEGA}: Multilingual evaluation of generative {AI}.
+\newblock In \emph{Proceedings of the 2023 Conference on Empirical Methods in
+  Natural Language Processing ({EMNLP})}, pages 4232--4267, 2023.
+
+\bibitem[Ahuja et~al.(2024)]{ahuja2024megaverse}
+S.~Ahuja et~al.
+\newblock {MEGAVERSE}: Benchmarking {LLM}s across languages, modalities, models
+  and tasks.
+\newblock In \emph{Proceedings of the 2024 Conference of the North American
+  Chapter of the Association for Computational Linguistics ({NAACL})}, pages
+  2598--2637, 2024.
+
+\bibitem[Etxaniz et~al.(2024)Etxaniz, Azkune, Soroa, Lopez~de Lacalle, and
+  Artetxe]{etxaniz2024selftranslate}
+J.~Etxaniz, G.~Azkune, A.~Soroa, O.~Lopez~de Lacalle, and M.~Artetxe.
+\newblock Do multilingual language models think better in {English}?
+\newblock In \emph{Proceedings of the 2024 Conference of the North American
+  Chapter of the Association for Computational Linguistics ({NAACL}), Short
+  Papers}, pages 550--564, 2024.
+
+\bibitem[Hada et~al.(2024)]{hada2024}
+R.~Hada et~al.
+\newblock Are {LLM}-based evaluators the solution to scaling up multilingual
+  evaluation?
+\newblock In \emph{Findings of the Association for Computational Linguistics:
+  {EACL} 2024}, pages 1051--1070, 2024.
+
+\bibitem[He et~al.(2025)]{he2025_nondeterminism}
+H.~He et~al.
+\newblock Defeating nondeterminism in {LLM} inference.
+\newblock Thinking Machines Lab, September 2025.
+\newblock URL
+  \url{https://thinkingmachines.ai/blog/defeating-nondeterminism-in-llm-inference/}.
+
+\bibitem[Hofman et~al.(2026)]{hofman2025maps}
+O.~Hofman et~al.
+\newblock {MAPS}: A multilingual benchmark for agent performance and security.
+\newblock In \emph{Findings of the Association for Computational Linguistics:
+  {EACL} 2026}, 2026.
+
+\bibitem[Kang et~al.(2026)Kang, Hwang, Kim, Kim, and Lee]{kang2026whygaps}
+D.~Kang, S.~Hwang, D.~Kim, H.~Kim, and G.~G. Lee.
+\newblock Why do multilingual reasoning gaps emerge in reasoning language
+  models?
+\newblock In \emph{Findings of the Association for Computational Linguistics:
+  {ACL} 2026}, 2026.
+
+\bibitem[Liu et~al.(2025)Liu, Zhang, Zhao, Luu, and
+  Bing]{liu2024translationall}
+C.~Liu, W.~Zhang, Y.~Zhao, A.~T. Luu, and L.~Bing.
+\newblock Is translation all you need?
+\newblock In \emph{Proceedings of the 2025 Conference of the North American
+  Chapter of the Association for Computational Linguistics ({NAACL})}, 2025.
+
+\bibitem[Luo et~al.(2026)Luo, Kutralingam, Okoani, Xu, Wei, and
+  Hu]{luo2026lostinexecution}
+Z.~Luo, T.~P. Kutralingam, O.~N. Okoani, W.~Xu, H.~Wei, and X.~Hu.
+\newblock Lost in execution: On the multilingual robustness of tool calling in
+  {LLM}s.
+\newblock In \emph{Proceedings of the Annual Meeting of the Association for
+  Computational Linguistics ({ACL})}, 2026.
+
+\bibitem[Sales~Almeida et~al.(2025)Sales~Almeida, Alves~Santos, Laitz, and
+  Kerche~Bonás]{almeida2025ticketbench}
+T.~Sales~Almeida, J.~G. Alves~Santos, T.~Laitz, and G.~Kerche~Bonás.
+\newblock {Ticket-Bench}: A kickoff for multilingual and regionalized agent
+  evaluation, 2025.
+
+\bibitem[Thellmann et~al.(2024)]{thellmann2024european}
+K.~Thellmann et~al.
+\newblock Towards multilingual {LLM} evaluation for {European} languages, 2024.
+
+\bibitem[Xuan et~al.(2025)]{xuan2025mmluprox}
+W.~Xuan et~al.
+\newblock {MMLU-ProX}: A multilingual benchmark for advanced {LLM} evaluation,
+  2025.
+
+\bibitem[Zhang and Zhu(2026)]{zhang2026itc}
+Z.~Zhang and Y.~Zhu.
+\newblock Enhancing tool calling in {LLM}s with the {International Tool Calling
+  Dataset}, 2026.
+
+\end{thebibliography}

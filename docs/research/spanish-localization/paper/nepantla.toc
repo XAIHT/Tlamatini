@@ -1,0 +1,65 @@
+\babel@toc {english}{}\relax 
+\contentsline {section}{\numberline {1}Introduction}{5}{section.1}%
+\contentsline {subsection}{\numberline {1.1}The requirement}{5}{subsection.1.1}%
+\contentsline {subsection}{\numberline {1.2}Why this is not a translation problem}{5}{subsection.1.2}%
+\contentsline {subsection}{\numberline {1.3}What ``at least as correct'' must mean}{6}{subsection.1.3}%
+\contentsline {subsection}{\numberline {1.4}Contributions}{6}{subsection.1.4}%
+\contentsline {subsection}{\numberline {1.5}Method}{7}{subsection.1.5}%
+\contentsline {section}{\numberline {2}The Translation Boundary}{7}{section.2}%
+\contentsline {subsection}{\numberline {2.1}Two channels, one rule}{7}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}What becomes Spanish}{7}{subsection.2.2}%
+\contentsline {subsection}{\numberline {2.3}What NEVER becomes Spanish}{8}{subsection.2.3}%
+\contentsline {subsection}{\numberline {2.4}The Naming Invariance Rule}{8}{subsection.2.4}%
+\contentsline {subsection}{\numberline {2.5}Why the boundary is a precondition, not a compromise}{8}{subsection.2.5}%
+\contentsline {section}{\numberline {3}Formal Framework}{10}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Definitions}{10}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}Proposition 1 --- Execution/Presentation Separation}{11}{subsection.3.2}%
+\contentsline {subsection}{\numberline {3.3}Proposition 2 --- Literal Anchoring}{12}{subsection.3.3}%
+\contentsline {subsection}{\numberline {3.4}The Translation Placement Principle}{12}{subsection.3.4}%
+\contentsline {subsection}{\numberline {3.5}The goal, formally}{13}{subsection.3.5}%
+\contentsline {section}{\numberline {4}Why an Upstream Translation Stage Cannot Deliver the Guarantee}{13}{section.4}%
+\contentsline {subsection}{\numberline {4.1}Operator success is conjunctive in the literals}{13}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}Fluency restoration destroys the operator's error-detection channel}{14}{subsection.4.2}%
+\contentsline {subsection}{\numberline {4.3}The multiplier}{14}{subsection.4.3}%
+\contentsline {subsection}{\numberline {4.4}The asymmetry that makes the problem solvable}{14}{subsection.4.4}%
+\contentsline {subsection}{\numberline {4.5}What the evidence supports}{15}{subsection.4.5}%
+\contentsline {section}{\numberline {5}The Substrate: What Actually Breaks, Measured}{15}{section.5}%
+\contentsline {subsection}{\numberline {5.1}The tokenizer destroys Spanish before any logic runs}{16}{subsection.5.1}%
+\contentsline {subsection}{\numberline {5.2}Tool selection collapses, then inverts}{16}{subsection.5.2}%
+\contentsline {subsection}{\numberline {5.3}The planner then fails closed}{17}{subsection.5.3}%
+\contentsline {subsection}{\numberline {5.4}The prompt-shape gate rejects Spanish outright}{17}{subsection.5.4}%
+\contentsline {subsection}{\numberline {5.5}A Spanish conjunction corrupts file paths today}{18}{subsection.5.5}%
+\contentsline {subsection}{\numberline {5.6}A Spanish failure is recorded as a success}{18}{subsection.5.6}%
+\contentsline {subsection}{\numberline {5.7}Two failures with no Spanish prompt involved}{19}{subsection.5.7}%
+\contentsline {subsection}{\numberline {5.8}What already survives --- and why it matters}{19}{subsection.5.8}%
+\contentsline {subsection}{\numberline {5.9}Three neutralization operators, with an identity guarantee}{19}{subsection.5.9}%
+\contentsline {subsection}{\numberline {5.10}Why this section precedes the algorithm}{20}{subsection.5.10}%
+\contentsline {section}{\numberline {6}NEPANTLA}{20}{section.6}%
+\contentsline {subsection}{\numberline {6.1}The idea in one paragraph}{20}{subsection.6.1}%
+\contentsline {subsection}{\numberline {6.2}Architecture}{21}{subsection.6.2}%
+\contentsline {subsection}{\numberline {6.3}Stage 1 --- Native-Token Locking}{21}{subsection.6.3}%
+\contentsline {subsection}{\numberline {6.4}Stage 3 --- The verifier $V$}{21}{subsection.6.4}%
+\contentsline {subsection}{\numberline {6.5}Stage 3 --- The escalation ladder}{23}{subsection.6.5}%
+\contentsline {subsection}{\numberline {6.6}Stage 4 --- The presentation renderer}{25}{subsection.6.6}%
+\contentsline {subsection}{\numberline {6.7}The algorithm}{25}{subsection.6.7}%
+\contentsline {subsection}{\numberline {6.8}Theorem 1 --- Ladder Dominance}{26}{subsection.6.8}%
+\contentsline {subsection}{\numberline {6.9}Corollary 1 --- Probe Safety}{27}{subsection.6.9}%
+\contentsline {subsection}{\numberline {6.10}Corollary 2 --- Naming Necessity}{28}{subsection.6.10}%
+\contentsline {subsection}{\numberline {6.11}Complexity and cost}{28}{subsection.6.11}%
+\contentsline {subsection}{\numberline {6.12}Termination, cancellation and side-effect safety}{29}{subsection.6.12}%
+\contentsline {subsection}{\numberline {6.13}What is new here}{29}{subsection.6.13}%
+\contentsline {section}{\numberline {7}The Model May Not Speak Spanish}{30}{section.7}%
+\contentsline {subsection}{\numberline {7.1}A taxonomy of model deficiency}{30}{subsection.7.1}%
+\contentsline {subsection}{\numberline {7.2}How each class is neutralized}{30}{subsection.7.2}%
+\contentsline {subsection}{\numberline {7.3}The capability profile}{30}{subsection.7.3}%
+\contentsline {subsection}{\numberline {7.4}Three worked traces}{31}{subsection.7.4}%
+\contentsline {subsection}{\numberline {7.5}The guarantee, restated for a hostile model}{33}{subsection.7.5}%
+\contentsline {section}{\numberline {8}Falsifying the Guarantee}{33}{section.8}%
+\contentsline {subsection}{\numberline {8.1}Non-inferiority, pre-registered}{34}{subsection.8.1}%
+\contentsline {subsection}{\numberline {8.2}Assay sensitivity --- the part usually omitted}{34}{subsection.8.2}%
+\contentsline {subsection}{\numberline {8.3}Paired analysis and power}{34}{subsection.8.3}%
+\contentsline {subsection}{\numberline {8.4}Endpoints}{35}{subsection.8.4}%
+\contentsline {subsection}{\numberline {8.5}Instruments and hygiene}{35}{subsection.8.5}%
+\contentsline {subsection}{\numberline {8.6}Corpus}{36}{subsection.8.6}%
+\contentsline {section}{\numberline {9}Threats to Validity}{37}{section.9}%
+\contentsline {section}{\numberline {10}Conclusion}{38}{section.10}%

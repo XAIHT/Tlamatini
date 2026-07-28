@@ -1,0 +1,80 @@
+% ---------------------------------------------------------------------------
+% Section 1 --- Introduction (preceded by the Nepantla epigraph)
+% ---------------------------------------------------------------------------
+
+\begin{keyinsight}
+\textbf{The name.}
+\textbf{Nepantla} is Nahuatl for \emph{``in the middle''} --- the space between two worlds, neither one nor the other, where something new is made. Tlamatini (\emph{``the one who knows''}) is named in the same language. A Spanish-speaking operator commanding an English-built machine lives in nepantla, and this paper is about making that middle place \textbf{safe} rather than lossy.
+\end{keyinsight}
+
+\section{Introduction}
+\label{sec:introduction}
+
+\subsection{The requirement}
+\label{sec:the-requirement}
+
+Tlamatini must become fully usable by a Spanish-speaking operator. Concretely, three things are required simultaneously, and the third is what makes the problem hard.
+
+\begin{enumerate}
+  \item \textbf{The interface must be Spanish.} Every menu, button, dialog, tooltip, placeholder, status message, error, instruction and explanatory sentence the user reads is rendered in Spanish. Not partially. Not ``the important parts''.
+  \item \textbf{The interaction must be Spanish.} The user writes in Spanish, thinks in Spanish, and receives answers in Spanish.
+  \item \textbf{The result must be at least as correct as the English build --- for any backend model the user chooses to bind.}
+\end{enumerate}
+
+Requirement 3 is not a quality aspiration; it is a hard constraint, and it is unusual. Tlamatini lets its operator select the model: a local Ollama build, an Anthropic endpoint, a cloud alias such as \code{glm-5.2:cloud}, a small quantized model on a modest GPU, a vision model. Some of those models are excellent in Spanish. Some are mediocre. Some are effectively English-only. \textbf{The product cannot know in advance, and must not require the user to know.}
+
+A system that says \emph{``Spanish works, as long as you pick a good model''} has not solved the problem. It has moved it onto the user, who by construction is the person least equipped to evaluate a model's Spanish competence --- and who will discover the deficiency only through a silently wrong file deletion.
+
+\subsection{Why this is not a translation problem}
+\label{sec:why-this-is-not-a-translation-problem}
+
+The instinct is to reach for machine translation, and the instinct is wrong here for a reason specific to this class of system.
+
+Tlamatini is not a chat assistant that produces prose. It is an \textbf{operator}. Its output is not a paragraph; it is a \emph{sequence of actions on real state}: create this file at this exact absolute path, flash this firmware to this board over this port at this baud rate, delete these files matching this glob, send this message to this recipient. The correctness of the answer is not ``does the sentence read well'' but \textbf{``did the machine do the right thing''}.
+
+That distinction has a mathematical consequence. Prose quality is \emph{additive} and degrades gracefully --- a translation that damages one word in twenty loses roughly five percent of its value. An action is \emph{conjunctive} and degrades catastrophically --- a tool call that damages one path in twenty \textbf{fails entirely}. There is no partial credit at the filesystem. \S4 makes this precise.
+
+So the design question is not \emph{``how do we translate well?''} but:
+
+\begin{keyinsight}
+\textbf{Where in the pipeline is it safe for a lossy transformation to sit?}
+\end{keyinsight}
+
+The answer, developed in \S3.4, is sharp: a lossy transformation may sit \textbf{downstream of a verified decision} and may never sit \textbf{upstream of one}. This single placement rule dissolves most of the apparent tension in the problem, because it makes translation a \emph{presentation} technique rather than a \emph{comprehension} technique.
+
+\subsection{What ``at least as correct'' must mean}
+\label{sec:what-at-least-as-correct-must-mean}
+
+Informal parity claims are unfalsifiable. We fix the meaning now and hold it throughout.
+
+Let $\mathcal{T}$ be a task drawn from the operational distribution, rendered as an English utterance $u_{en}$ and a semantically equivalent Spanish utterance $u_{es}$ carrying \textbf{byte-identical literals}. Let $\mathrm{succ}(\cdot)$ be a machine-checkable success predicate evaluated against the state of the machine after execution --- file present at the exact path with the exact hash, process exit code, log regex, database row, generated flow compiles.
+
+Write $\theta_{EN} = \Pr[\mathrm{succ}(B(u_{en}))]$ for the English baseline pipeline $B$, and $\theta_{ES} = \Pr[\mathrm{succ}(A(u_{es}))]$ for the Spanish pipeline $A$.
+
+\textbf{The requirement is $\theta_{ES} \ge \theta_{EN}$}, established two ways:
+
+\begin{itemize}
+  \item \textbf{By construction} (\S6.7): an architectural argument that $A$ dominates $B$, from which the inequality follows without measurement.
+  \item \textbf{By experiment} (\S8): a pre-registered non-inferiority test at margin $\delta$, because an architectural argument that has never been measured is a hypothesis wearing a proof's clothing.
+\end{itemize}
+
+Both are required. The first tells us the design cannot be \emph{structurally} inferior; the second tells us the implementation is not.
+
+\subsection{Contributions}
+\label{sec:contributions}
+
+\begin{enumerate}
+  \item \textbf{A translation boundary} (\S2) that partitions every string in the system into \emph{presentation} and \emph{machine} classes, with an explicit, exhaustive, non-negotiable invariant on the machine class --- including the naming rule that agent identities such as \code{Emailer}, \code{Asker}, \code{Apirer} and \code{STM32er} remain byte-identical in every locale, forever.
+  \item \textbf{A formal framework} (\S3) with two propositions --- Execution/Presentation Separation and Literal Anchoring --- and the \textbf{Translation Placement Principle}.
+  \item \textbf{A measured characterization of substrate monolingualism} (\S5): a real 700-file operator codebase whose deterministic control plane collapses under Spanish input, with executed measurements rather than inspection, and three repair operators carrying an identity guarantee on English input.
+  \item \textbf{NEPANTLA} (\S6): the algorithm. Literal freezing, a six-check language-independent verifier including \textbf{argument provenance}, a five-rung escalation ladder, an independent presentation renderer, full pseudocode, the \textbf{Ladder Dominance} theorem and its two corollaries, complexity analysis and failure-mode analysis.
+  \item \textbf{A treatment of the not-Spanish-capable model} (\S7) that makes model competence an \emph{optimization} rather than a \emph{dependency}, with three worked execution traces.
+  \item \textbf{A falsifiable evaluation protocol} (\S8) with assay sensitivity, so the guarantee can be disproved.
+\end{enumerate}
+
+\subsection{Method}
+\label{sec:method}
+
+Every claim about the codebase was produced by fourteen parallel analysis agents reading the repository directly (684 tool invocations), each required to attach \code{file:line} evidence it had actually observed, and every empirical result reported in \S5 was obtained by \emph{executing} the real functions against the real registries rather than by reading them.
+
+Every external scientific claim was then subjected to an independent adversarial verification pass which re-fetched each cited work to confirm title, authors, year and identifier, and re-checked each numeric value against the source table. That pass identified one misattributed reference, which was removed. Two further adversarial agents attempted to refute the architecture; their surviving objections were incorporated into the design rather than rebutted, and are visible in the final shape of \S6 and \S7 --- the read-only guard, the per-path routing, the provenance check and the conversation-level hysteresis all exist because an attack landed.

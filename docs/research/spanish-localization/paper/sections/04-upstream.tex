@@ -1,0 +1,163 @@
+\section{Why an Upstream Translation Stage Cannot Deliver the Guarantee}
+\label{sec:upstream-translation}
+
+This section quantifies the cost of the placement Principle~T forbids. It is not
+an argument against machine translation as a technology; it is an argument about
+\emph{where} it may be installed.
+
+\subsection{Operator success is conjunctive in the literals}
+\label{sec:conjunctive-literals}
+
+Let a request carry $k$ literals that must reach the action byte-exactly, and let
+$p$ be the per-literal probability that one translation hop preserves a literal.
+Because the task succeeds only if all survive,
+
+\begin{equation}
+\Pr[\text{args intact}] = p^{k}
+\label{eq:conjunctive-decay}
+\end{equation}
+
+Tlamatini's real requests are literal-dense. A single ordinary firmware
+instruction --- \foreignlanguage{spanish}{``crea el proyecto en
+\code{C:\textbackslash{}Tlamatini\textbackslash{}Templates\textbackslash{}leg\_ctrl},
+con board \code{bluepill\_f103c8}, compílalo y flashéalo por el ST-LINK a
+115200''} --- carries $k \approx 6$.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Literal decay under an upstream translation stage: the probability that
+\emph{all} $k$ correctness-bearing literals survive one translation hop, at
+per-literal preservation rate $p$. The highlighted cell is the realistic
+operating point for Tlamatini.}
+\label{tab:literal-decay}
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+$p$ & $k=2$ & $k=4$ & $k=6$ & $k=10$ \\
+\midrule
+0.99 & 0.980 & 0.961 & 0.941 & 0.904 \\
+0.98 & 0.960 & 0.922 & \textbf{0.886} & 0.817 \\
+0.95 & 0.903 & 0.815 & 0.735 & 0.599 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+At $k=6$ and a generous $p = 0.98$, an upstream stage injects \textbf{11.4
+absolute percentage points of failure}. For calibration: the model-side Spanish
+deficit that such a stage would be introduced to recover is 1--4 points on
+reasoning \citep{xuan2025mmluprox,thellmann2024european} and approximately zero
+on tool selection --- GPT-5 scores $\text{pass}^{3}$ of 0.93 in Spanish against
+0.92 in English, making Spanish its \emph{best} language of six
+\citep{almeida2025ticketbench}. \textbf{The intervention is roughly an order of
+magnitude more harmful than the deficit it targets.}
+
+Nor is $p$ close to 1 for these particular tokens. Translation systems are
+trained to \emph{translate}, and a Windows path containing Spanish words
+(\code{C:\textbackslash{}Usuarios\textbackslash{}angela\textbackslash{}Documentos\textbackslash{}informe\_año.pdf})
+is precisely the input most likely to be normalized, transliterated or stripped
+of diacritics. The multilingual tool-calling literature independently identifies
+this as the dominant non-English failure mode: models ``select correct tools and
+understand intent but generate parameter values in non-English languages,
+violating the English-only execution interface''
+\citep{luo2026lostinexecution}, corroborated by schema-violation and
+language-matching findings across 29 languages \citep{zhang2026itc}.
+
+\subsection{Fluency restoration destroys the operator's error-detection channel}
+\label{sec:fluency-restoration}
+
+There is a second cost, less obvious and arguably worse, and it is informational
+rather than statistical.
+
+A final translation stage is, by design, a \textbf{fluency-restoring operator}:
+it accepts text of arbitrary correctness and emits grammatical, idiomatic prose.
+Consider the mutual information $I(\text{surface form}; \text{correctness})$
+available to the reader. In direct generation, a model that misunderstood a
+request typically produces text that reads subtly wrong --- an odd paraphrase, a
+mismatched register, an unnecessary hedge. Those artifacts are the channel
+through which a competent operator detects the error before approving a
+destructive action.
+
+A fluency-restoring stage applied to the same wrong content drives that mutual
+information toward zero. The output becomes fluent, confident and wrong.
+
+\begin{keyinsight}
+An upstream translation architecture does not merely add errors; it removes the
+user's ability to notice them.
+\end{keyinsight}
+
+For a system that gates destructive operations behind a permission dialog whose
+text the operator is expected to read and judge, this is a \textbf{safety}
+property, not an aesthetic one. It is also why NEPANTLA's presentation renderer
+(\S6.5) is constrained to operate only on content whose \emph{decisions} have
+already been verified: at that point there is nothing left for fluency to mask.
+
+\subsection{The multiplier}
+\label{sec:multiplier}
+
+Tlamatini's Multi-Turn executor is configured for up to 4{,}096 iterations and
+wraps every model step in a self-healing invoker with an 80-second watchdog. An
+upstream translation stage adds round-trips \textbf{per turn}, not per request. A
+ten-tool operator run pays them twenty times, each one an additional opportunity
+for a literal to be re-transformed, and each one an additional surface for the
+self-healing ladder to absorb. The project's stated performance north star is
+per-request latency; this is directly opposed to it.
+
+\subsection{The asymmetry that makes the problem solvable}
+\label{sec:asymmetry}
+
+Everything above concerns the upstream position. The downstream position has none
+of these properties:
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Upstream versus downstream placement of a lossy language
+transformation. Only the right-hand column is compatible with a hard correctness
+guarantee.}
+\label{tab:upstream-downstream}
+\begin{tabular}{@{}p{0.26\linewidth}p{0.32\linewidth}p{0.34\linewidth}@{}}
+\toprule
+ & \textbf{Upstream} (before the decision) & \textbf{Downstream} (after a verified decision) \\
+\midrule
+Can corrupt a file path & \textbf{Yes} --- $p^{k}$ & No --- the action is already fixed and verified \\
+Can change which tool runs & \textbf{Yes} & No \\
+Can mask an error from the user & \textbf{Yes} & No --- the error, if any, is already in the verified action \\
+Worst case & wrong irreversible state change & an awkward sentence \\
+Protected spans & must survive a semantic transformation & can be \emph{mechanically excluded} from the transformation \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+This asymmetry is the whole reason a fully Spanish interface is compatible with a
+hard guarantee, and it is why \S6 places every language transformation on the
+right-hand side of that table.
+
+\subsection{What the evidence supports}
+\label{sec:evidence-upstream}
+
+The historical case for translating into English before processing is real but
+\textbf{narrowly scoped to low-resource, non-Latin-script languages}: MEGA
+reports gains ``even more substantial'' on IndicXNLI and XStoryCloze and above
+30\% relative improvement for Burmese, Tamil and Telugu, while ``performing
+similarly to monolingual approaches for high-resource languages''
+\citep{ahuja2023mega}. For real user queries in high-resource languages,
+prompting in the original language \emph{wins} --- explicitly for Japanese,
+Chinese and Spanish \citep{liu2024translationall}.
+
+The mechanistic account agrees. A stage-wise attribution study finds that the
+residual multilingual gap is an \emph{understanding-stage} failure, and that for
+Spanish that stage is already nearly saturated: a perfect understanding
+intervention moves Spanish from 93.9\% to 94.7\% ($+0.8$), while it moves Swahili
+from 29.3\% to 88.0\% ($+58.7$) \citep{kang2026whygaps}. There is, quite
+literally, almost nothing for an upstream stage to recover in Spanish.
+
+We report the counter-evidence honestly. Self-translation --- asking the model to
+render its own input into English before solving --- beat direct inference on
+five benchmarks, with gains \emph{larger} for high-resource languages
+\citep{etxaniz2024selftranslate}. Those measurements, however, are on
+XGLM-7.5B, LLaMA-1-30B, BLOOM and PolyLM: 2023-era base models whose Spanish was
+far weaker than anything this system would bind. NEPANTLA nonetheless
+\emph{retains} the technique --- not as a default, but as rung R2 of the ladder
+(\S6.4), reached only when the verifier has already demonstrated that the cheaper
+rungs failed. That is the correct place for a technique whose benefit is
+model-dependent: behind a measurement, not in front of one.

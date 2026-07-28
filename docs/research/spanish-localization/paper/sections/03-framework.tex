@@ -1,0 +1,102 @@
+\section{Formal Framework}
+\label{sec:formal-framework}
+
+\subsection{Definitions}
+\label{sec:definitions}
+
+\begin{definition}[Utterance]
+$u$ is the raw user input, a Unicode string, in language $\ell(u)$.
+\end{definition}
+
+\begin{definition}[Literal set]
+$\Sigma(u) \subset \mathrm{Substr}(u)$ is the set of \textbf{correctness-bearing literals} in $u$: absolute and relative paths, filenames, file extensions, glob and regular-expression patterns, command-line flags, numeric quantities with their units, ports, hostnames, URLs, e-mail addresses, git refs, board identifiers, environment-variable names, and any token matching a known machine identifier (a tool name, an agent display name, a configuration key). $\Sigma$ is computed by a \textbf{lexical, language-independent} extractor: it recognizes shapes, not meanings.
+\end{definition}
+
+\begin{definition}[Action]
+$a = \langle \mathrm{name}, \mathrm{args} \rangle$ where $\mathrm{name} \in \mathcal{N}$, the fixed ASCII tool vocabulary, and $\mathrm{args}$ is a mapping from ASCII argument keys to values.
+\end{definition}
+
+\begin{definition}[Trace]
+$\tau = (a_1, \dots, a_m)$, the ordered sequence of actions actually executed in one request.
+\end{definition}
+
+\begin{definition}[Machine state]
+$s \in \mathcal{S}$: the filesystem, the process table, the database, attached hardware, the network. $\mathrm{exec}: \mathcal{S} \times \tau \to \mathcal{S}$ is the (deterministic, given the environment) state transition.
+\end{definition}
+
+\begin{definition}[Presentation]
+$r$ is the rendered text the operator reads: the answer prose, the Exec Report, the banners.
+\end{definition}
+
+\begin{definition}[Success predicate]
+$\mathrm{succ}: \mathcal{S} \to \{0,1\}$, a machine-checkable predicate authored from the task specification \emph{before} any run and evaluated against $s' = \mathrm{exec}(s_0, \tau)$.
+\end{definition}
+
+\begin{definition}[Verifier]
+$V: (\Sigma, \mathcal{H}, a) \to \{\textsf{accept}, \textsf{reject}(\rho)\}$, a total, language-independent function over a candidate action, the frozen literal set, and the history $\mathcal{H}$ of prior results, returning a machine-readable rejection reason $\rho$.
+\end{definition}
+
+\subsection{Proposition 1 --- Execution/Presentation Separation}
+\label{sec:execution-presentation-separation}
+
+\begin{proposition}[Execution/Presentation Separation]
+\label{prop:separation}
+For an operator system whose action vocabulary $\mathcal{N}$ and argument-key space are language-invariant, the terminal machine state depends on the request only through the trace $\tau$, and is conditionally independent of the presentation $r$ and of the language of the utterance:
+\[
+  s' \indep \big(\ell(u),\, r\big) \;\big|\; \tau
+\]
+\end{proposition}
+
+\begin{proof}
+$s' = \mathrm{exec}(s_0, \tau)$ by Definition 5. The function $\mathrm{exec}$ takes no argument other than $s_0$ and $\tau$; in particular it does not read $r$, and it does not read $\ell(u)$. Every symbol it consumes --- the tool name, the argument keys, the enumerated values, the literal argument values --- is drawn from a language-invariant vocabulary by hypothesis. Hence conditioning on $\tau$ renders $s'$ independent of both.
+\end{proof}
+
+Two consequences do the work of the whole paper.
+
+\textbf{(a)} $\mathrm{succ}$ is a function of $\tau$ alone. Therefore \textbf{correctness can be guaranteed without ever guaranteeing anything about the answer's language}, and conversely the answer's language can be freely chosen without touching correctness.
+
+\textbf{(b)} The hypothesis is \emph{load-bearing}. If any element of the action vocabulary were localized --- a translated agent name, a translated enumerated value, a translated argument key --- then $\mathcal{N}$ would be indexed by locale, $\mathrm{exec}$ would implicitly depend on $\ell(u)$, and the independence fails. This is the formal content of \S2.5, and it is discharged as \textbf{Corollary 2} in \S6.9.
+
+\subsection{Proposition 2 --- Literal Anchoring}
+\label{sec:literal-anchoring}
+
+\begin{proposition}[Literal Anchoring]
+\label{prop:anchoring}
+Let $\Sigma(u)$ be extracted from the raw utterance before any transformation, and let the verifier require that every literal appearing in an emitted action's arguments be an element of $\Sigma(u) \cup \mathcal{R}(\mathcal{H}) \cup \mathcal{D}$, where $\mathcal{R}(\mathcal{H})$ are literals returned by prior verified tool results and $\mathcal{D}$ are declared configuration defaults. Then the probability that an accepted action carries a corrupted user literal is zero, independently of $\ell(u)$ and independently of the model's competence in $\ell(u)$.
+\end{proposition}
+
+\begin{proof}
+Suppose an accepted action contains a literal $\sigma'$ intended to denote a user literal $\sigma \in \Sigma(u)$ with $\sigma' \neq \sigma$. Byte-inequality with every element of $\Sigma(u)$ is decidable and is decided by the verifier. $\sigma' \notin \mathcal{R}(\mathcal{H})$ because $\mathcal{H}$ contains only literals emitted by prior \emph{verified} results, and $\sigma' \notin \mathcal{D}$ because $\mathcal{D}$ is a finite declared set. Hence $V$ rejects, contradicting acceptance.
+\end{proof}
+
+This is the mechanism that turns the $p^{k}$ decay of \S4.1 into $p^{k} = 1$. We name its enforcement \textbf{argument provenance}, and we claim it as the paper's sharpest practical instrument: it is a \emph{correctness certificate that requires no knowledge of either language}, and it catches precisely the failure class that cross-lingual operation introduces --- a path silently normalized, an accent stripped from a filename, a flag ``helpfully'' translated, a number re-formatted from \code{1.5} to \code{1,5}.
+
+A subtlety worth stating, because it is where a naive implementation fails: provenance must be checked with \textbf{NFC normalization only} --- never case-folding, never accent-stripping. \code{informe\_año.pdf} may arrive composed (U+00F1) or decomposed (n + U+0303) depending on the keyboard and operating system that produced it, and those are the same intended path; but a path differing by an accent is a \emph{genuinely different path}, and hiding that difference would destroy the very property being certified.
+
+\subsection{The Translation Placement Principle}
+\label{sec:translation-placement-principle}
+
+Propositions 1 and 2 jointly license a rule that resolves the apparent conflict between ``translation is dangerous'' and ``the user must read Spanish''.
+
+\begin{principle}[T]
+\label{prin:placement}
+A lossy language transformation may occupy a position \textbf{downstream} of a verified decision. It may never occupy a position \textbf{upstream} of one.
+\end{principle}
+
+Upstream placement puts the transformation \emph{inside} the causal path to $\tau$: its errors propagate into the action, are multiplied by the conjunctive structure of \S4.1, and become state changes. Downstream placement puts it strictly \emph{after} $\tau$ has been fixed and verified: by Proposition 1 it cannot alter $s'$, so its errors are bounded to prose.
+
+Principle T is what makes a fully Spanish interface compatible with a hard correctness guarantee. It also yields an immediate corollary about protected spans: since downstream rendering still passes over text that may \emph{quote} machine identifiers --- a path in an explanation, an agent name in a sentence, a code block in an answer --- the renderer must treat those spans as \textbf{opaque and untranslatable}, which is exactly the \S2.3 invariant applied to the presentation channel.
+
+\subsection{The goal, formally}
+\label{sec:goal-formally}
+
+\begin{keyinsight}
+\textbf{Goal (Non-inferiority by construction).} Construct $A$ such that for every task $\mathcal{T}$ in the operational distribution,
+\begin{equation}
+\label{eq:noninferiority-goal}
+\Pr\big[\mathrm{succ}(A(u_{es}))\big] \;\ge\; \Pr\big[\mathrm{succ}(B(u_{en}))\big]
+\end{equation}
+where $u_{es}$ and $u_{en}$ are semantically equivalent renderings of $\mathcal{T}$ with byte-identical literals, and $B$ is the current English pipeline.
+\end{keyinsight}
+
+Note carefully what this does \emph{not} say. It does not say the Spanish pipeline uses a better model, nor that it understands Spanish better, nor that the model is Spanish-capable at all. It is a statement about \emph{pipelines}, and \S6.7 establishes it by making the Spanish pipeline's terminal behaviour coincide with $B$ while giving it earlier, cheaper opportunities to succeed.

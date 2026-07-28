@@ -1,0 +1,58 @@
+\section{Threats to Validity}
+\label{sec:threats-to-validity}
+
+\begin{description}
+
+\item[Construct.] The primary endpoint measures machine outcomes --- right for an
+operator, blind to qualities a user cares about such as tone and clarity. The judge
+covers that residue only after passing the language-bias gate; if the gate fails, that
+part of the construct is unmeasured and must be reported as such rather than replaced
+by a similarity proxy.
+
+\item[The monotonicity caveat.] Theorem~1 guarantees the \emph{ladder} property
+unconditionally but assumes the terminal rung is at least as good as the baseline.
+Additional context is not provably monotone for a language model. This is stated as a
+condition, not smuggled in as a lemma, and \S8 measures it directly.
+
+\item[The undecidable residue.] $V$ cannot adjudicate which of several schema-valid
+tools is wisest. NEPANTLA inherits the baseline there. If a future failure analysis
+shows that Spanish specifically degrades \emph{that} choice, the remedy is a stronger
+planner, not a stronger verifier --- and the ladder would need a new rung.
+
+\item[Extraction coverage.] Proposition~2's guarantee is exactly as good as $\Sigma$. A
+literal the extractor fails to recognize is unprotected. This is why the extractor
+over-extracts by design, and why extraction recall is itself an evaluation target
+rather than an assumption.
+
+\item[External validity.] The operator is in Mexico; most published Spanish benchmarks
+measure Peninsular Spanish, and localization is not translation. ``Spanish'' is not one
+language. The in-country review is a mitigation, not a solution.
+
+\item[Internal validity.] Public multilingual suites carry contamination risk ---
+MEGAVERSE explicitly warns that several evaluated models are likely contaminated with
+multilingual benchmarks \citep{ahuja2024megaverse} --- which is one reason the primary
+endpoint is a private, specification-derived corpus. Translated benchmarks also confound
+translationese with capability: a 13-point HellaSwag EN\textrightarrow{}ES gap sits
+beside a 3-point MMLU gap for the same model in the same evaluation
+\citep{thellmann2024european}, a pattern far better explained by translation artifacts
+than by a commonsense deficit.
+
+\item[Scope of the \S5 measurement.] The 0/12 result characterizes the \emph{scorer}.
+Because Multi-Turn binds the full tool surface when it fits, a Spanish prompt may still
+succeed on the model's own choice. The deterministic damage is confined to the planner's
+graph, the system-prompt summary and the bind ranking under overflow --- which is why
+the claim is \emph{``the correct tool is not reliably selected''} and not \emph{``Spanish
+does not work at all''}.
+
+\item[Security transfer.] Agent-security attack success is measured at 60.2\% in Spanish
+against 53.4\% in English \citep{hofman2025maps}. English-tuned injection defenses
+under-protect Spanish users, which is why Ask-Execs Gating Parity is its own hypothesis
+in \S8 rather than a footnote.
+
+\item[Bibliographic integrity.] Every reference below was independently re-fetched to
+confirm title, authors, year and identifier, and every numeric claim was checked against
+its source table. One reference was removed during that pass for misattribution --- a
+real paper cited for figures it does not contain. We record this because a paper claiming
+rigor should show how its own errors were caught.
+
+\end{description}

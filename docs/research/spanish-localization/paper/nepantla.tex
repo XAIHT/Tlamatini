@@ -1,0 +1,200 @@
+%==============================================================================
+%  NEPANTLA
+%  Guaranteed Non-Inferior Execution for a Spanish-Language LLM Operator
+%  System under Arbitrary Backend-Model Capability
+%
+%  System under study : Tlamatini  (XAIHT)
+%  Creator            : Angela Lopez Mendoza
+%
+%  BUILD (pdfLaTeX + natbib):
+%      pdflatex nepantla
+%      bibtex   nepantla
+%      pdflatex nepantla
+%      pdflatex nepantla
+%
+%  This master file owns the preamble. Every file under sections/ is BODY ONLY.
+%==============================================================================
+\documentclass[11pt,a4paper]{article}
+
+%------------------------------------------------------------------ encoding
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{textcomp}
+
+% Spanish quotations are passed through verbatim so the document builds on any
+% TeX installation. For TRUE Spanish hyphenation of the quoted sentences,
+% replace the two lines below with:
+%     \usepackage[spanish,es-noshorthands,main=english]{babel}
+% (es-noshorthands is required: babel-spanish otherwise makes " and ~ active,
+%  which breaks listings and verbatim material.)
+\usepackage[english]{babel}
+\renewcommand{\foreignlanguage}[2]{#2}
+
+%------------------------------------------------------------------ layout
+\usepackage[a4paper,margin=2.6cm]{geometry}
+\usepackage{microtype}
+\usepackage{setspace}
+\onehalfspacing
+\setlength{\emergencystretch}{3em}   % long paths must not overflow the margin
+
+%------------------------------------------------------------------ maths
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+
+%------------------------------------------------------------------ tables
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{longtable}
+\usepackage[font=small,labelfont=bf]{caption}
+\renewcommand{\arraystretch}{1.15}
+
+%------------------------------------------------------------------ graphics
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{positioning,shapes.geometric,arrows.meta,fit,backgrounds,calc}
+
+%------------------------------------------------------------------ lists
+\usepackage{enumitem}
+\setlist[itemize]{topsep=3pt,itemsep=2pt,parsep=0pt}
+\setlist[enumerate]{topsep=3pt,itemsep=2pt,parsep=0pt}
+\setlist[description]{topsep=4pt,itemsep=3pt,parsep=0pt,style=unboxed}
+
+%------------------------------------------------------------------ code
+\usepackage{listings}
+\definecolor{codebg}{gray}{0.97}
+\definecolor{codekw}{RGB}{20,60,140}
+\definecolor{codecomment}{RGB}{90,110,90}
+\definecolor{codestr}{RGB}{140,60,20}
+\lstset{
+  basicstyle=\ttfamily\footnotesize,
+  keywordstyle=\color{codekw}\bfseries,
+  commentstyle=\color{codecomment}\itshape,
+  stringstyle=\color{codestr},
+  backgroundcolor=\color{codebg},
+  frame=single,
+  rulecolor=\color{gray!40},
+  framesep=5pt,
+  xleftmargin=10pt,
+  xrightmargin=4pt,
+  breaklines=true,
+  breakatwhitespace=false,
+  columns=fullflexible,
+  keepspaces=true,
+  showstringspaces=false,
+  captionpos=b,
+  aboveskip=10pt,
+  belowskip=8pt,
+  extendedchars=true,
+  literate=%
+    {á}{{\'a}}1 {é}{{\'e}}1 {í}{{\'i}}1 {ó}{{\'o}}1 {ú}{{\'u}}1
+    {Á}{{\'A}}1 {É}{{\'E}}1 {Í}{{\'I}}1 {Ó}{{\'O}}1 {Ú}{{\'U}}1
+    {ñ}{{\~n}}1 {Ñ}{{\~N}}1 {ü}{{\"u}}1 {Ü}{{\"U}}1
+    {¿}{{?`}}1 {¡}{{!`}}1
+}
+
+%------------------------------------------------------------------ theorems
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{lemma}[theorem]{Lemma}
+
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\newtheorem{principle}{Principle}
+
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}
+
+%------------------------------------------------------------------ key insight box
+% Dependency-light shaded box (the "framed" package ships with every
+% mainstream TeX distribution and is what pandoc uses by default).
+\usepackage{framed}
+\definecolor{shadecolor}{gray}{0.945}
+\newenvironment{keyinsight}%
+  {\begin{snugshade}\noindent\itshape\small}%
+  {\end{snugshade}\noindent}
+
+%------------------------------------------------------------------ macros
+% Inline machine identifier. Asset names, tool names, flags, paths and
+% sentinels are typeset with this and are NEVER translated or altered.
+\newcommand{\code}[1]{\texttt{\small #1}}
+% Statistical independence
+\newcommand{\indep}{\perp\!\!\!\perp}
+
+%------------------------------------------------------------------ citations
+\usepackage[round,authoryear]{natbib}
+\bibliographystyle{plainnat}
+
+%------------------------------------------------------------------ links (last)
+\usepackage[hyphens]{url}
+\usepackage[
+  colorlinks=true,
+  linkcolor=black!70,
+  citecolor=black!60,
+  urlcolor=blue!55!black,
+  pdftitle={NEPANTLA: Guaranteed Non-Inferior Execution for a Spanish-Language LLM Operator System},
+  pdfauthor={Angela Lopez Mendoza (system); Claude Opus 5 (analysis)},
+  pdfsubject={Localization, LLM operator systems, cross-lingual correctness guarantees},
+  pdfkeywords={NEPANTLA, Tlamatini, localization, non-inferiority, tool calling, verification}
+]{hyperref}
+\usepackage{cleveref}
+
+%==============================================================================
+\begin{document}
+
+\title{\textbf{NEPANTLA}\\[0.35em]
+  \large Guaranteed Non-Inferior Execution for a Spanish-Language\\
+  LLM Operator System under Arbitrary Backend-Model Capability}
+
+\author{%
+  System under study: \textbf{Tlamatini} --- 86 workflow agents, 44 direct tools,\\
+  a Multi-Turn operator loop and a visual flow designer\\[0.4em]
+  Creator of the system: \textbf{Angela L\'opez Mendoza} \; (XAIHT)\\[0.2em]
+  Analysis: Claude Opus 5 --- forensic multi-agent study of the codebase\\
+  at commit \code{3e6d514f} (v1.47.0)%
+}
+
+\date{27 July 2026}
+
+\maketitle
+
+\begin{abstract}
+\input{sections/00-abstract}
+\end{abstract}
+
+\vspace{1em}
+\begin{center}
+\begin{minipage}{0.86\textwidth}
+\footnotesize\itshape
+Status: research paper. No Tlamatini source code was modified in its
+production. Every codebase claim was obtained by executing the real functions
+against the real registries; every external citation was independently
+re-fetched and verified.
+\end{minipage}
+\end{center}
+
+\clearpage
+\tableofcontents
+\clearpage
+
+%------------------------------------------------------------------ body
+\input{sections/01-introduction}
+\input{sections/02-boundary}
+\input{sections/03-framework}
+\input{sections/04-upstream}
+\input{sections/05-substrate}
+\input{sections/06-nepantla}
+\input{sections/07-models}
+\input{sections/08-evaluation}
+\input{sections/09-threats}
+\input{sections/10-conclusion}
+
+%------------------------------------------------------------------ bibliography
+\clearpage
+\bibliography{nepantla}
+
+\end{document}

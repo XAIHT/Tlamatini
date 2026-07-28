@@ -1,0 +1,320 @@
+\section{The Substrate: What Actually Breaks, Measured}
+\label{sec:substrate}
+
+A correctness ladder cannot be built on a foundation that is itself
+language-dependent. Before NEPANTLA can be stated, the deterministic control
+plane must be made language-\emph{neutral} --- and the first step is to
+establish, by measurement rather than assertion, exactly how it currently
+behaves.
+
+Every result in this section was obtained by executing the real functions against
+the real registries.
+
+\subsection{The tokenizer destroys Spanish before any logic runs}
+\label{sec:tokenizer}
+
+The single tokenizer used by every scoring path is
+
+\begin{lstlisting}[language=Python,caption={The single tokenizer shared by every scoring path.},label={lst:token-regex}]
+_TOKEN_RE = re.compile(r"[a-z0-9_]+")     # capability_registry.py:20
+\end{lstlisting}
+
+Applied after lowercasing, every non-ASCII byte is a \textbf{delimiter}, and
+single-character fragments are discarded:
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Executed tokenizer output for accented Spanish input. Every non-ASCII
+byte acts as a delimiter, so the surviving fragments can never equal an English
+hint token.}
+\label{tab:tokenizer-fragments}
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Input} & \textbf{Tokens produced today} \\
+\midrule
+\code{código}        & \code{['digo']} \\
+\code{análisis}      & \code{['lisis']} \\
+\code{ejecución}     & \code{['ejecuci']} \\
+\code{contraseña}    & \code{['contrase']} \\
+\code{años}          & \code{['os']} \\
+\code{envía}         & \code{['env']} \\
+\code{configuración} & \code{['configuraci']} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Three consequences. The token-overlap term of the capability scorer (worth up to
+$+10$) is \textbf{structurally zero} for accented Spanish, because a fragment can
+never equal an English hint token. Behaviour becomes \textbf{non-deterministic
+across keyboards} --- \code{ejecucion} tokenizes to \code{['ejecucion']} but
+\code{ejecución} to \code{['ejecuci']}, so identical intent scores differently
+depending on whether the accent was typed. And the defect propagates: the
+execution planner and the Multi-Turn tool-budget selector both import this
+tokenizer, so one line compromises three independent consumers.
+
+\subsection{Tool selection collapses, then inverts}
+\label{sec:tool-selection}
+
+Running the real scorer over the real 64-specification registry with twelve
+matched prompt pairs:
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{\textbf{The headline measurement.} Top-1 tool selection by the system's
+own capability scorer, executed over its real 64-specification registry with
+twelve matched English/Spanish prompt pairs carrying byte-identical literals.}
+\label{tab:tool-selection-collapse}
+\begin{tabular}{@{}p{0.46\linewidth}cc@{}}
+\toprule
+ & \textbf{English} & \textbf{Spanish} \\
+\midrule
+Top-1 correct tool          & \textbf{10 / 12} & \textbf{0 / 12} \\
+Correct tool scored exactly 0 & 0 / 12         & \textbf{7 / 12} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The English scores are healthy (\code{send\_email} 44, \code{shoter} 34,
+\code{summarize} 32, \code{grepper} 32). The Spanish behaviour is worse than weak
+--- it is \textbf{adversarial}, because phrase matching is unbounded substring
+containment rather than word-boundary matching, and 107 registry alias/hint
+phrases are four characters or shorter.
+
+The canonical demonstration: for
+\foreignlanguage{spanish}{``envía un correo de prueba a soporte''} (``send a test
+email to support''), \code{chat\_agent\_unrealer} scores \textbf{24 and ranks
+first}, because its alias \code{ue} and its hint \code{ue} both match inside
+\textbf{prue}ba ($+12$, $+10$). The semantically correct
+\code{chat\_agent\_send\_email} scores \textbf{0} and does not appear in the
+positive list at all. The substring \code{ue} occurs in \emph{que, puede, fue,
+aunque, muestra, respuesta, nuevo, bueno} --- a large fraction of all Spanish
+sentences --- making Unrealer a permanent phantom top hit; it took top-1 in 4 of
+the 12 Spanish cases.
+
+Other verified collisions: \code{uno}/\code{ino} (Arduiner) inside \emph{uno,
+camino, destino, término}; \code{pio} (ESP32er) inside \emph{limpio, propio,
+principio}; \code{pod} (Kuberneter) inside \emph{poder, podemos}; \code{pid} and
+\code{api} (PSer, Apirer) both inside \emph{rápido}; \code{ls} (Globber) inside
+\emph{falso, pulsar}; \code{git} (Gitter) inside \emph{digital, legítimo};
+\code{spa} (Playwrighter) inside \emph{espacio, España}. And a subtler one: the
+Spanish word \emph{imagen} \textbf{contains} the English \code{image}, a hint for
+both Image-Interpreter and Dockerer; they tie at 10, and because the tie-break is
+\emph{registry index}, \textbf{Dockerer outranks Image-Interpreter on
+\foreignlanguage{spanish}{``interpreta la imagen''}}.
+
+Compounding this, the 37-word stopword list is English-only, so Spanish function
+words survive into the token set. Since \code{chat\_agent\_de\_compresser} splits
+into tokens \code{('chat','agent','de','compresser')}, the Spanish preposition
+\textbf{\code{de} awards $+2$ to De-Compresser on essentially every Spanish
+sentence.}
+
+\subsection{The planner then fails closed}
+\label{sec:planner-fails-closed}
+
+The two consumers of the score disagree on polarity. The standalone selector
+fails \textbf{open} (returns the full tool list when nothing scores). The
+execution planner fails \textbf{closed}: when nothing crosses threshold it emits
+empty tuples plus the note \emph{``No tool or agent capability crossed the
+planner threshold''}, sets \code{execution\_mode='direct\_model'}, and injects the
+summary line \textbf{``Selected tools/agents: none''} into the system prompt.
+
+Verified: the Spanish prompt \foreignlanguage{spanish}{``Borra los archivos
+temporales de esa carpeta''} produces zero positive-scoring capabilities, so the
+planner explicitly informs the model that no tool stage is needed --- \textbf{for
+a destructive file operation.}
+
+A second-order effect follows. When the full tool surface exceeds the context
+budget, bind order is decided by the same scorer; under Spanish input the planner
+set is empty and virtually every score is zero, so the sort key degenerates to
+\code{(0, 0, name)} and the surviving non-core tools are selected
+\textbf{alphabetically}.
+
+\subsection{The prompt-shape gate rejects Spanish outright}
+\label{sec:prompt-gate}
+
+\code{is\_valid\_prompt} admits a prompt if it ends in \code{?}, or begins with
+one of 119 English question-words, or matches one of 36 English multiword
+patterns, or if an \textbf{English} part-of-speech tagger labels the first token
+a verb. Executed live:
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Executed verdicts of the prompt-shape gate on well-formed Spanish
+commands. Seven of eight are refused; both acceptances are accidents.}
+\label{tab:prompt-gate-verdicts}
+\begin{tabular}{@{}p{0.52\linewidth}p{0.40\linewidth}@{}}
+\toprule
+\textbf{Spanish prompt} & \textbf{Verdict} \\
+\midrule
+\code{Toma una captura de pantalla del escritorio} & \textbf{rejected} \\
+\code{Crea un archivo llamado notas.txt}           & \textbf{rejected} \\
+\code{Ejecuta el comando dir}                      & \textbf{rejected} \\
+\code{Envía un correo a soporte}                   & \textbf{rejected} \\
+\code{Muéstrame los archivos del proyecto}         & \textbf{rejected} \\
+\code{Por favor analiza este documento}            & \textbf{rejected} \\
+\code{Necesito que borres los archivos temporales} & \textbf{rejected} \\
+\code{¿Qué hora es?}                               & accepted --- \emph{only because of the} \code{?} \\
+\code{Resume este texto}                           & accepted --- \emph{only because} \code{resume} \emph{is an English homograph} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Seven of eight well-formed Spanish commands are refused, in English. Both
+acceptances are accidents.
+
+\subsection{A Spanish conjunction corrupts file paths today}
+\label{sec:conjunction-corruption}
+
+The wrapped-agent argument parser recognizes exactly two natural-language
+separators:
+
+\begin{lstlisting}[language=Python,caption={The wrapped-agent conjunction rule: two English separators, no others.},label={lst:conjunction-regex}]
+_CONJUNCTION_ASSIGNMENT_RE = re.compile(
+    r'(and|with)\s+[A-Za-z_][A-Za-z0-9_.\-]*\s*=', re.IGNORECASE)   # tools.py:431
+\end{lstlisting}
+
+Executed against the real parser:
+
+\begin{lstlisting}[caption={Executed transcript: a Spanish conjunction silently swallows the remaining arguments into the file path.},label={lst:parser-corruption}]
+Input : Crea un archivo con filepath='C:/Temp/a.txt' y content='hola'
+Parsed: {'requested_key': 'filepath',
+         'value': "C:/Temp/a.txt' y content='hola"}
+\end{lstlisting}
+
+This is not a routing miss; it is \textbf{data corruption}. File-Creator would
+create a file literally named \code{C:/Temp/a.txt' y content='hola}, and every
+subsequent parameter is silently lost. The irony is exact: \code{con} is the
+Spanish translation of the \code{with} the parser already handles.
+
+\subsection{A Spanish failure is recorded as a success}
+\label{sec:failure-as-success}
+
+The failure classifier reads structured JSON status fields correctly, but for
+plain-text results it tests eleven English prefixes (\code{error:},
+\code{unable to}, \code{cannot}, \code{permission denied}, \dots). Spanish and
+OS-localized equivalents --- \emph{No se puede}, \emph{No se pudo}, \emph{Acceso
+denegado}, \emph{Excepción:}, \emph{El sistema no puede encontrar la ruta
+especificada} --- match nothing, so the call is scored \textbf{SUCCESS}.
+
+This single classifier feeds the Exec Report verdict, the corrective-feedback
+loop, the repetition breaker, \textbf{and the Create-Flow button}, which builds a
+downloadable workflow from only the successfully-executed calls. A failed
+Spanish-locale step is therefore silently baked into a saved workflow as a
+working node.
+
+\subsection{Two failures with no Spanish prompt involved}
+\label{sec:os-locale-failures}
+
+Monitor Netstat runs \code{netstat -an} with no codepage forcing and greps for
+\code{LISTENING}; a Spanish Windows prints \textbf{\code{ESCUCHANDO}}. And
+Forker, Raiser and Stopper perform case-sensitive substring matching of
+user-authored patterns against logs with no ``pattern never matched'' warning, so
+a mismatched pattern causes the flow to hang silently in its polling loop. Both
+are \textbf{operating-system locale} bugs, independent of the user's language.
+
+\subsection{What already survives --- and why it matters}
+\label{sec:what-survives}
+
+The safety, audit and deduplication layer is \textbf{language-neutral by
+construction}, verified explicitly: the Ask-Execs permission allowlist, the
+Exec-Report map, shell inference, the deduplication signature and the wrapped-run
+status are all keyed on \emph{tool names}, JSON argument keys and exit codes,
+never on prose. The Parametrizer's \code{INI\_SECTION} grammar is
+ASCII-structural, reads logs as UTF-8 with \code{errors='replace'}, and writes
+YAML with \code{allow\_unicode=True}.
+
+This bounds the blast radius precisely, and it is the most important positive
+finding in the study:
+
+\begin{keyinsight}
+A Spanish operator already keeps the permission gate and the audit trail. What
+they lose is having the correct tool selected in the first place.
+\end{keyinsight}
+
+The failure is one of \emph{routing and parsing}, not of \emph{safety} --- which
+is exactly why a verification-based algorithm can repair it.
+
+\subsection{Three neutralization operators, with an identity guarantee}
+\label{sec:neutralization-operators}
+
+The intuitive repair --- ``add Spanish keywords everywhere'' --- produces a
+\textbf{bilingual} core: roughly 2{,}389 lexical items multiplied by every future
+language, every new agent requiring translated hints, and the tuned English
+behaviour perturbed on every edit. We reject it in favour of a
+\textbf{language-neutral} core built from three operators, each of which is
+provably the identity on ASCII English input.
+
+\begin{description}
+  \item[N1 --- Folding.] NFKD-normalize, drop combining marks, lowercase, then
+  apply the \emph{existing} token rule. \code{código} \textrightarrow{}
+  \code{codigo}, \code{análisis} \textrightarrow{} \code{analisis}. On pure
+  ASCII, NFKD is the identity and ASCII carries no combining marks, so the output
+  is byte-identical to today's. This restores the token-overlap term and
+  eliminates the accent-dependent nondeterminism of \S\ref{sec:tokenizer}.
+
+  \item[N2 --- Boundary-aware phrase matching.] Replace substring containment
+  with boundary-anchored matching, falling back to plain containment when the
+  phrase's own edges are non-alphanumeric (so multi-word and punctuated hints
+  such as \code{--noreload} are unaffected). This eliminates the entire class of
+  \S\ref{sec:tool-selection} collisions. \textbf{It is independently an English
+  fix}: \code{api} inside \emph{rapid} and \code{ls} inside \emph{false} are
+  English collisions that exist today.
+
+  \item[N3 --- Canonical-key expansion.] A data-only lexicon maps non-English
+  intent terms to hint tokens \textbf{that already exist in the registry},
+  enforced by a closure test, and appends them to the scored text. Because no new
+  hint is ever invented, the scorer's tuned English behaviour remains the only
+  behaviour; the Spanish request is simply \emph{lifted into the canonical key
+  space} before scoring.
+\end{description}
+
+\begin{lemma}[Identity Lemma]
+\label{lem:identity}
+For any pure-ASCII input, $\mathrm{N1} \circ \mathrm{N2} \circ \mathrm{N3}$ is
+the identity transformation on the scoring result.
+\end{lemma}
+
+\begin{proof}[Proof sketch]
+$\mathrm{N1}$ is the identity on ASCII by the argument above. $\mathrm{N2}$ can
+only ever \emph{remove} a match --- it never introduces one --- and every English
+hint that matched at a word boundary continues to match; the removals it performs
+on English are exactly the accidental collisions listed above, which must
+therefore be re-baselined explicitly rather than silently. $\mathrm{N3}$
+short-circuits to the identity when $\ell = \textsf{en}$.
+\end{proof}
+
+The lemma is enforced empirically by a golden corpus of \textasciitilde{}200
+English prompts asserting byte-identical scores before and after --- and the N2
+exception is handled honestly: the small number of English scores that
+\emph{change} are the collisions being repaired, and each is reviewed
+individually rather than waved through.
+
+Alongside these, three further repairs belong to the same pass and are all
+\textbf{language-independent bug fixes}: the failure classifier gains a localized
+\emph{positive} branch without altering its ``unknown $\Rightarrow$ success''
+default (\S\ref{sec:failure-as-success}); the argument parser gains a
+quote-masking pre-pass before any conjunction widening
+(\S\ref{sec:conjunction-corruption}); and locale-sensitive child processes are
+spawned with an invariant environment and decoded explicitly
+(\S\ref{sec:os-locale-failures}).
+
+\begin{keyinsight}
+\textbf{Sequencing constraint (non-negotiable).} Emitting Spanish text from pool
+agents while the eleven English failure prefixes still decide success would make
+a Spanish error score SUCCESS and place a failing agent into a saved workflow.
+The classifier fix and any Spanish seeding must land in the \textbf{same commit},
+or neither.
+\end{keyinsight}
+
+\subsection{Why this section precedes the algorithm}
+\label{sec:why-substrate-first}
+
+NEPANTLA's guarantee rests on a verifier and a ladder. Both assume the
+deterministic core is a \emph{function of intent}, not a function of \emph{the
+language intent happens to be expressed in}. \S\ref{sec:substrate} establishes
+that this assumption does not currently hold, and
+\S\ref{sec:neutralization-operators} establishes how to make it hold without
+perturbing English. Only then is the ladder well-defined.

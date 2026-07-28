@@ -1,0 +1,49 @@
+\section{Conclusion}
+\label{sec:conclusion}
+
+The problem looked like a translation problem and was not. For Spanish the model-side
+deficit is 1--4 points on reasoning and approximately zero on tool selection; the real
+obstacle was that the system's own deterministic control plane was monolingual at the
+tokenizer level, and that no amount of model quality could compensate for a user-chosen
+model whose Spanish nobody had measured.
+
+NEPANTLA resolves both by refusing to depend on the answer to the unanswerable question.
+It \textbf{freezes} the user's literals before anything can touch them,
+\textbf{neutralizes} the deterministic core so that intent --- not the language intent
+arrived in --- drives routing, \textbf{proposes and verifies before it executes}, and
+\textbf{escalates} through a ladder whose last rung is the English pipeline itself.
+Because rejected proposals have no side effects, the ladder cannot end below its own
+terminal rung; because the verifier's checks are decidable on exactly the failure classes
+cross-lingual operation introduces, the false-accept rate on those classes is zero; and
+because presentation is causally downstream of the verified action, the operator reads
+Spanish without any of that reaching the machine.
+
+Three consequences deserve to be carried away from this paper.
+
+\textbf{Spanish competence became an optimization rather than a dependency.} A model with
+no Spanish at all still produces correct execution and a Spanish answer; it merely costs
+one or two extra calls. That is the direct answer to ``the user can pick any model''.
+
+\textbf{The naming rule is a theorem, not a preference.} \code{Emailer} stays
+\code{Emailer}, \code{Asker} stays \code{Asker}, \code{Apirer} stays \code{Apirer}, every
+tool name, flag, configuration key, sentinel and identifier stays exactly as it is ---
+because Proposition~1's independence, and therefore the entire guarantee, holds only
+while the action vocabulary is the same set of symbols in every locale. The Spanish build
+translates what the operator reads and nothing the machine reads. That line is drawn in
+\S2.3 and enforced by Corollary~2.
+
+\textbf{And the Spanish build may end up better than today's English one.} Three of the
+required repairs --- boundary-aware phrase matching, the failure-classifier polarity, and
+locale-invariant child processes --- fix defects that damage the English path right now.
+Argument provenance protects an English user's paths exactly as well as a Spanish user's.
+The honest stop at R4 prevents a fabricated deletion in either language.
+
+Localization, done this way, is not a translation project attached to the side of a
+product.
+
+\begin{keyinsight}
+It is a \textbf{correctness project that happened to be discovered by asking the system
+to speak Spanish} --- and the discipline it forces, verify before you act and never let a
+decision rest on a literal nobody said, is worth having regardless of the language anyone
+is speaking.
+\end{keyinsight}

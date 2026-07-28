@@ -1,0 +1,202 @@
+\section{Falsifying the Guarantee}
+\label{sec:falsifying-the-guarantee}
+
+An architectural argument that has never been measured is a hypothesis in a proof's
+clothing. \S6.8 leaves exactly one condition to be established empirically
+($\theta_{R_{m-1}} \ge \theta_{EN}$) and one quantity to be bounded ($\mathrm{FA}$ on
+the undecidable residue). This section specifies how.
+
+\subsection{Non-inferiority, pre-registered}
+\label{sec:non-inferiority-pre-registered}
+
+Parity is a one-sided claim about a margin, not a failure to reject equality:
+
+\begin{equation}
+\label{eq:non-inferiority-hypothesis}
+H_0:\ \Delta \le -\delta
+\qquad\text{vs}\qquad
+H_1:\ \Delta > -\delta,
+\qquad \Delta = \theta_{ES} - \theta_{EN}
+\end{equation}
+
+at one-sided $\alpha = 0.05$, claimed only if the lower bound of the one-sided 95\%
+interval exceeds $-\delta$. The naive alternative --- report $p > 0.05$ and call it
+parity --- is \emph{perversely incentivized}, because a smaller and noisier study is
+more likely to produce it. Under this framing a weak study yields a wide interval and
+correctly \textbf{fails}.
+
+$\delta$ is the minimum of three independently justified bounds: operational relevance
+(at $\theta_{EN}=0.85$, five points raises the failure rate by a third),
+fraction-of-effect retention against a tools-unbound baseline, and the harness's own
+reproducibility floor $\sigma_{\text{run}}$ --- you cannot certify a margin finer than
+your own noise. Primary $\delta = 0.05$ absolute; sensitivity reported at
+$\{0.03, 0.05, 0.10\}$.
+
+\subsection{Assay sensitivity --- the part usually omitted}
+\label{sec:assay-sensitivity}
+
+A non-inferiority design in which the harness \emph{cannot detect a real deficit} is
+unfalsifiable. Three deliberately degraded positive controls are therefore mandatory,
+and \textbf{the parity conclusion is void unless the pipeline rejects non-inferiority
+for all three}:
+
+\begin{enumerate}
+  \item a Spanish arm with the tool-usage rules stripped from the system spine;
+  \item an arm in which 10\% of Spanish prompts have their literal arguments corrupted
+        \emph{after} freezing (so V3 cannot rescue them);
+  \item an arm running a deliberately weaker model.
+\end{enumerate}
+
+\subsection{Paired analysis and power}
+\label{sec:paired-analysis-and-power}
+
+The same task runs in both languages, so outcomes are paired. Note the category error
+to avoid: \textbf{McNemar's test measures equality and cannot test a margin} --- it is
+reported as a companion, never as the decision. The margin test is Tango's
+efficient-score interval for the paired difference.
+
+Sample size is driven by the discordance rate $p_d$, not the base rate:
+$n = 2473\,p_d$ at $\delta = 0.05$.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Required paired sample size as a function of the correlation between arms.}
+\label{tab:power-paired-sample-size}
+\begin{tabular}{@{}rrrr@{}}
+\toprule
+$\rho$ & $p_d$ & $n_{\text{pairs}}$ & expected discordant \\
+\midrule
+0.00 & 0.255 & 631 & 161 \\
+0.60 & 0.102 & 253 & 26 \\
+0.70 & 0.077 & 190 & 15 \\
+0.80 & 0.051 & 127 & 6 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The $\rho = 0$ row reproduces the unpaired 631-per-arm answer, the correct sanity
+check. Plan: a 50-item pilot to estimate $p_d$ and $\sigma_{\text{run}}$, then
+\textbf{250 paired items per model}, with a floor of \textasciitilde{}25 expected
+discordant pairs.
+
+\subsection{Endpoints}
+\label{sec:endpoints}
+
+The primary endpoint is \textbf{programmatic} --- an executable success predicate
+evaluated against the machine in a fresh sandbox. \textbf{The disk does not speak
+Spanish or English}, which is exactly why this endpoint is immune to
+language-similarity confounds. Incomplete, crashed or timed-out runs count as
+failures; dropping them biases toward parity.
+
+\begin{table}[htbp]
+\centering
+\footnotesize
+\caption{Evaluation endpoints, whether an LLM judge is involved, and what each one is for.}
+\label{tab:evaluation-endpoints}
+\begin{tabular}{@{}p{0.38\textwidth}p{0.13\textwidth}p{0.31\textwidth}@{}}
+\toprule
+\textbf{Endpoint} & \textbf{Judge?} & \textbf{Purpose} \\
+\midrule
+\textbf{Task Success Rate} (primary) & No & The claim \\
+\addlinespace
+\textbf{Literal Drift Rate} --- any literal differs between the ES and EN runs of one
+item & No, \textbf{and gold-free} & Direct measurement of the C3 failure class \\
+\addlinespace
+Tool-Selection Accuracy --- exact multiset / sequence match & No & The C2 class \\
+\addlinespace
+Argument Exactness --- byte-identical after \textbf{NFC only} & No & Proposition 2 in
+practice \\
+\addlinespace
+\textbf{Ask-Execs Gating Parity} --- identical gated-tool set in both arms & No &
+\emph{Safety}, not quality \\
+\addlinespace
+Answer-Language Correctness --- LPR/WPR on \textbf{masked} prose & No & The C1 class \\
+\addlinespace
+Plan-Length Parity & No & Efficiency regression \\
+\addlinespace
+Refusal justification, prose adequacy & Yes & Minority of the surface \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{NEPANTLA-specific instrumentation}, which is what makes the theorem auditable
+rather than decorative:
+
+\begin{itemize}
+  \item \textbf{Rung distribution} --- the histogram of terminating rung per model.
+        This \emph{is} the cost model of \S6.11, measured.
+  \item \textbf{Verifier rejection histogram by reason} (V1\ldots V7). A design that
+        never rejects is not verifying; a design that rejects constantly has a broken
+        extractor.
+  \item \textbf{False-accept estimate} --- human adjudication of a stratified sample
+        of \emph{accepted} proposals, giving the $\mathrm{FA}$ that Theorem 1's bound
+        needs.
+  \item \textbf{False-reject rate} --- how often escalation was unnecessary. This is
+        the pure latency tax.
+  \item \textbf{R4 rate} --- how often the system honestly stopped, and whether those
+        stops were justified.
+\end{itemize}
+
+\subsection{Instruments and hygiene}
+\label{sec:instruments-and-hygiene}
+
+\textbf{No new dependency.} Cross-lingual similarity is computed through the
+already-present embedding endpoint; character-level metrics are
+\textasciitilde{}50 lines of standard library; the language identifier is a closed-set
+stopword-plus-trigram classifier. Two traps are avoided explicitly: BLEU across the
+language pair is \emph{inadmissible} (the two answers are supposed to differ in surface
+form, so overlap carries no parity information), and the default embedding model is
+English-only, so an ES$\leftrightarrow$EN cosine computed with it is meaningless noise
+that \emph{looks plausible} --- a multilingual encoder is required for evaluation.
+
+\textbf{The judge is measured before it is trusted.} Language bias is the decisive one
+here: judges score non-English higher and agree with humans less \citep{hada2024}, so a
+biased judge would \emph{manufacture} parity. Protocol: pointwise rubric-anchored
+discrete scores, blinded language labels, an odd panel from different model families,
+no judge scoring its own family --- and a gate on the \emph{differential} bias
+$b_{ES} - b_{EN}$ with a bootstrap interval, measured against a native Mexican-Spanish
+reviewer who is also an operator. Report Cohen's $\kappa$ \textbf{and} Gwet's AC1 per
+language, because at an 85\% base rate skewed marginals collapse $\kappa$ even at high
+raw agreement.
+
+\textbf{Determinism is measured, not configured.} Temperature 0 does not make a model
+deterministic on shared infrastructure --- the forward pass is not batch-invariant, so
+output depends on the batch a request lands in \citep{he2025_nondeterminism}. Set seeds
+where accepted, \emph{document which arms could not be seeded}, run $k=5$ repeats,
+report variance components, and separately prove the scoring harness is
+byte-deterministic with a record-replay fixture. Pin the state hazards before each
+batch: assert identical enabled tool/agent sets across arms (the agent table is rebuilt
+on every server start), freeze the clock, reset the sandbox between items, re-assert the
+toolbar flags at every send, and read all subprocess output as UTF-8 with replacement
+--- a legacy-codepage read corrupts Spanish \emph{before} scoring and manufactures
+failures that are pure harness artifacts.
+
+\subsection{Corpus}
+\label{sec:corpus}
+
+250 paired items over seven risk-weighted strata (pure QA 40 as a \emph{negative
+control}; single-tool 50; multi-tool $\ge$3 calls 45; literal-heavy 40; hardware in
+dry-run 25; messaging with sandbox recipients only 20; flow authoring 30).
+
+The source of truth is a \textbf{language-neutral task specification} --- intent,
+required tools, required literals, executable predicate --- of which the English and
+Spanish prompts are two \emph{renderings} with byte-identical literals enforced by
+automated diff. That construction is what makes Argument Exactness and Literal Drift
+Rate valid measurements rather than translation scores.
+
+Translation follows a professional workflow (translate \textrightarrow{} independent
+revision \textrightarrow{} in-country review by a native Mexican-Spanish operator).
+Machine translation and back-translation QA are rejected: MT errors would be confounded
+with product errors, and MT systematically \emph{simplifies} syntax, which would make
+the Spanish arm artificially easy. Roughly \textbf{half the items are authored
+Spanish-first}, because a set built entirely as translations of English inherits
+English discourse structure and systematically overestimates parity. Around 15\% of
+items carry deliberate locale traps: decimal comma, es-MX date order, accented and ñ
+filenames, 24-hour times, the \emph{billón} false friend, mixed encodings, tú/usted
+register variation, and realistic code-switching
+(\foreignlanguage{spanish}{\emph{``hazle un git push al repo''}}).
+
+One operational warning: the messaging agents are deliberately ungated by the
+permission broker, so a messaging stratum run without sandbox recipients will contact
+real people.

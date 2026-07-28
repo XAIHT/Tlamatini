@@ -1,0 +1,683 @@
+%==============================================================================
+%  Section 6 --- NEPANTLA
+%  BODY ONLY. The preamble lives in ../nepantla.tex
+%
+%  NOTE ON NUMBERING: the master shares one counter across theorem / proposition
+%  / corollary. Sections 3's two propositions consume 1 and 2, so the counter is
+%  reset here twice so that the results print under the names the paper uses
+%  throughout -- "Theorem 1", "Corollary 1", "Corollary 2".
+%==============================================================================
+
+\section{NEPANTLA}
+\label{sec:nepantla}
+
+\noindent\emph{Non-inferior Execution via Progressive Augmentation, Native-Token
+Locking and Arbitration.}
+
+\subsection{The idea in one paragraph}
+\label{sec:nepantla-idea}
+
+Stop asking \emph{``is this model good at Spanish?''} and start asking
+\emph{``is this proposed action correct?''} The first question is unanswerable
+in advance for a model the user chose and we have never seen. The second is
+largely \textbf{decidable}, because an operator system's decisions are
+structured objects --- a tool name from a fixed vocabulary, argument keys from a
+fixed schema, argument values that must trace back to something the user
+actually wrote. NEPANTLA therefore freezes the user's literals before anything
+can touch them, proposes an action at the cheapest rung of an escalation ladder,
+submits that proposal to a language-independent verifier \textbf{before it
+executes}, and climbs the ladder on rejection. The ladder's last rung is
+operationally the English pipeline. Since every earlier rung is \emph{attempted,
+verified and discarded} without side effects, the ladder cannot end below its
+own last rung --- and the answer the user reads is rendered into Spanish
+afterwards, by a channel that Proposition~1 proves cannot touch correctness at
+all.
+
+\subsection{Architecture}
+\label{sec:nepantla-architecture}
+
+\begin{figure}[htbp]
+\centering
+\singlespacing
+\colorlet{npaccent}{blue!55!black}
+\begin{tikzpicture}[
+    font=\scriptsize,
+    node distance=5mm,
+    every node/.style={align=center},
+    box/.style   ={draw=black!55, rounded corners=2pt, fill=black!5,
+                   text width=0.56\textwidth, inner sep=4pt},
+    stage/.style ={box, thick, fill=black!10},
+    io/.style    ={draw=black!55, rounded corners=7pt, fill=black!3,
+                   text width=0.50\textwidth, inner sep=4pt},
+    rung/.style  ={draw=black!55, rounded corners=2pt, fill=white,
+                   text width=0.38\textwidth, inner sep=3pt},
+    term/.style  ={rung, thick, draw=npaccent, fill=npaccent!8},
+    probe/.style ={draw=black!45, dashed, rounded corners=2pt, fill=black!3,
+                   text width=0.19\textwidth, inner sep=3pt},
+    flow/.style  ={-{Stealth[length=2mm]}, thick, draw=black!65},
+    side/.style  ={-{Stealth[length=2mm]}, dashed, draw=black!50},
+    lbl/.style   ={font=\scriptsize, inner sep=1.5pt}
+  ]
+
+  % ------------------------------------------------------------------ input
+  \node[io] (U) {Utterance $u$ (Spanish)};
+
+  % ------------------------------------------------------------- stage 1 + 2
+  \node[stage, below=of U] (FREEZE)
+    {\textbf{STAGE 1 $\cdot$ FREEZE} --- extract literal set $\Sigma(u)$\\
+     lexical, language-independent $\cdot$ NFC-normalised, byte-exact};
+
+  \node[stage, below=of FREEZE] (NEU)
+    {\textbf{STAGE 2 $\cdot$ NEUTRALISE} --- N1 fold $\cdot$ N2 boundary-match
+     $\cdot$ N3 canonical expansion\\
+     \emph{identity on ASCII}};
+
+  \node[box, below=of NEU] (PLAN)
+    {Language-neutral planner \textrightarrow{} expected action class};
+
+  % ------------------------------------------------------------- the ladder
+  \node[font=\scriptsize\bfseries, below=8mm of PLAN] (LADTITLE)
+    {STAGE 3 $\cdot$ PROPOSE \& VERIFY (the ladder)};
+
+  \node[rung, below=2mm of LADTITLE] (R0)
+    {\textbf{R0 $\cdot$ NATIVE}\\ Spanish verbatim + EN spine};
+  \node[rung, below=4.5mm of R0] (R1)
+    {\textbf{R1 $\cdot$ ANCHORED}\\ + explicit $\Sigma$ literal table};
+  \node[rung, below=4.5mm of R1] (R2)
+    {\textbf{R2 $\cdot$ NEPANTLA RUNG}\\ + EN gloss beside the Spanish\\
+     \emph{augmentation, never substitution}};
+  \node[term, below=4.5mm of R2] (R3)
+    {\textbf{R3 $\cdot$ ENGLISH-EQUIVALENT}\\ = the English baseline};
+  \node[rung, below=4.5mm of R3] (R4)
+    {\textbf{R4 $\cdot$ HONEST STOP}\\ refuse in Spanish, name the reason};
+
+  \node[draw=black!50, dashed, rounded corners=3pt, inner sep=5pt,
+        fit=(LADTITLE)(R0)(R1)(R2)(R3)(R4)] (LADDER) {};
+
+  % ------------------------------------------------------------- the verifier
+  \node[draw=npaccent, thick, diamond, aspect=3.6, inner sep=1pt,
+        fill=npaccent!10, text width=3.4cm, below=7mm of LADDER] (V)
+    {\textbf{VERIFIER $V$}\\ 6 language-independent checks\\
+     \emph{runs BEFORE execution}};
+
+  % ------------------------------------------------------- execute and render
+  \node[box, below=6mm of V, text width=0.44\textwidth] (EXEC)
+    {\textbf{EXECUTE} --- $\tau$ \textrightarrow{} machine state};
+
+  \node[stage, below=6mm of EXEC] (RENDER)
+    {\textbf{STAGE 4 $\cdot$ RENDER} --- Spanish presentation, protected spans
+     opaque\\ \emph{downstream of the decision}};
+
+  \node[io, below=of RENDER] (OUT)
+    {Spanish answer + Spanish Exec Report\\
+     English asset names verbatim};
+
+  % --------------------------------------------------------- capability probe
+  \node[probe, right=6mm of R1] (PROBE)
+    {capability profile\\ \emph{chooses the START rung only}};
+  \node[lbl, below=1.5mm of PROBE, text width=0.19\textwidth]
+    {\emph{optimisation,\\ not a gate}};
+
+  % ------------------------------------------------------------------- edges
+  \draw[flow] (U)      -- (FREEZE);
+  \draw[flow] (FREEZE) -- (NEU);
+  \draw[flow] (NEU)    -- (PLAN);
+  \draw[flow] (PLAN)   -- (LADDER);
+
+  \draw[flow] (R0) -- node[lbl, right] {$V$ rejects} (R1);
+  \draw[flow] (R1) -- node[lbl, right] {$V$ rejects} (R2);
+  \draw[flow] (R2) -- node[lbl, right] {$V$ rejects} (R3);
+  \draw[flow] (R3) -- node[lbl, right] {$V$ rejects} (R4);
+
+  \draw[side] (PROBE) -- (R1);
+
+  \draw[flow] (LADDER) -- node[lbl, right] {proposal} (V);
+  \draw[flow] (V)      -- node[lbl, right] {accept}   (EXEC);
+  \draw[flow] (V.west) -- ++(-1.7,0)
+              |- node[lbl, right, pos=0.4] {reject($\rho$)} (LADDER.west);
+
+  \draw[flow] (EXEC)   -- (RENDER);
+  \draw[flow] (RENDER) -- (OUT);
+
+\end{tikzpicture}
+\caption{The NEPANTLA architecture. The literal set is frozen before any
+transformation touches the utterance; the deterministic core is neutralised by
+operators that are the identity on ASCII; every proposed action is verified
+\emph{before} it executes, so escalation up the ladder is side-effect-free; and
+the Spanish presentation is rendered strictly downstream of the verified
+decision. The capability profile only chooses which rung to start at.}
+\label{fig:nepantla-architecture}
+\end{figure}
+
+\subsection{Stage 1 --- Native-Token Locking}
+\label{sec:native-token-locking}
+
+Before the utterance touches a model, a prompt template, a scorer or a
+transformation of any kind, a \textbf{lexical extractor} walks it and produces
+the frozen set $\Sigma(u)$.
+
+The extractor is deliberately \emph{shape-based, not meaning-based} --- it
+recognizes the syntactic silhouette of a literal, never its semantics --- which
+is exactly why it is language-independent:
+
+\begin{table}[htbp]
+\centering
+\footnotesize
+\caption{The literal extractor recognizes shapes, not meanings.}
+\label{tab:literal-extractor}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.14\textwidth}
+                  >{\raggedright\arraybackslash}p{0.31\textwidth}
+                  >{\raggedright\arraybackslash}p{0.37\textwidth}@{}}
+\toprule
+\textbf{Class} & \textbf{Recognizer (sketch)} & \textbf{Example} \\
+\midrule
+Windows path & drive letter, colon, backslash run &
+  \code{C:\textbackslash{}Tlamatini\textbackslash{}Templates\textbackslash{}leg\_ctrl} \\
+POSIX path & $\ge 2$ slash-separated segments & \code{/usr/local/bin/pio} \\
+Filename & stem + known or generic extension & \code{informe\_año.pdf} \\
+Glob / regex & wildcard or metacharacter density &
+  \code{*.log}, \code{\textasciicircum{}ERROR:.*\$} \\
+Flag & leading \code{-} / \code{--} + identifier &
+  \code{--noreload}, \code{-sT} \\
+Quantity & digits with optional unit/separator &
+  \code{115200}, \code{1.5}, \code{8 GB} \\
+Endpoint & host:port, URL, e-mail & \code{127.0.0.1:5000} \\
+Machine identifier & exact match against the termbase &
+  \code{Emailer}, \code{chat\_agent\_apirer}, \code{bluepill\_f103c8} \\
+Quoted span & balanced quotes & \code{'hola'} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Three properties matter.
+
+\begin{enumerate}
+  \item \textbf{It runs first.} Nothing precedes it. Whatever the rest of the
+        pipeline does, $\Sigma$ is already the ground truth.
+  \item \textbf{It over-extracts deliberately.} A false positive costs one
+        unnecessary provenance entry; a false negative removes a literal from
+        protection. The asymmetry dictates the tuning.
+  \item \textbf{NFC only.} Composed and decomposed forms of the same character
+        are unified; case and accents are \emph{never} folded, because a path
+        differing by an accent is a different path (\S3.3).
+\end{enumerate}
+
+$\Sigma$ then travels with the request as immutable metadata, and it is used
+three times: in the anchor table at R1, in the gloss's protected-span mask at
+R2, and in the verifier's provenance check at every rung.
+
+\subsection{Stage 3 --- The verifier \texorpdfstring{$V$}{V}}
+\label{sec:nepantla-verifier}
+
+$V$ is the heart of the guarantee. It inspects a \textbf{proposed} action before
+execution and returns accept or reject-with-reason. It knows nothing about
+Spanish, nothing about English, and nothing about the model.
+
+\begin{table}[htbp]
+\centering
+\footnotesize
+\caption{The verifier's checks. Every one of them is decidable, which is a
+property of \emph{operator} systems rather than an accident of this one.}
+\label{tab:verifier}
+\begin{tabular}{@{}l
+                  >{\raggedright\arraybackslash}p{0.33\textwidth}
+                  >{\raggedright\arraybackslash}p{0.13\textwidth}
+                  >{\raggedright\arraybackslash}p{0.32\textwidth}@{}}
+\toprule
+\textbf{\#} & \textbf{Check} & \textbf{Decidable?} & \textbf{Catches} \\
+\midrule
+\textbf{V1} & \textbf{Tool existence} --- $\mathrm{name} \in \mathcal{N}$, the
+  bound surface, byte-exact ASCII & \textbf{Yes} &
+  Hallucinated tools; a model inventing \code{enviar\_correo} \\
+\addlinespace[2pt]
+\textbf{V2} & \textbf{Schema conformance} --- required keys present, types
+  valid, enums from the declared set & \textbf{Yes} &
+  Missing arguments; a translated enum value \\
+\addlinespace[2pt]
+\textbf{V3} & \textbf{Argument provenance} --- every literal in \code{args}
+  $\in \Sigma(u) \cup \mathcal{R}(\mathcal{H}) \cup \mathcal{D}$ & \textbf{Yes} &
+  \emph{The cross-lingual failure class}: normalized paths, stripped accents,
+  translated flags, re-formatted numbers, invented filenames \\
+\addlinespace[2pt]
+\textbf{V4} & \textbf{Precondition satisfaction} --- the target exists / does
+  not exist as required; the board is attached; the port is open &
+  \textbf{Yes} (via the existing fail-safe preflights) &
+  Actions that cannot succeed \\
+\addlinespace[2pt]
+\textbf{V5} & \textbf{Gating parity} --- the Ask-Execs tier of the chosen tool
+  matches the tier implied by the planner's expected action class &
+  \textbf{Yes} &
+  \emph{Safety regression}: a Spanish request routed to an ungated
+  near-synonym \\
+\addlinespace[2pt]
+\textbf{V6} & \textbf{Sentinel integrity} --- every protocol token emitted is
+  byte-exact & \textbf{Yes} &
+  A mangled \code{INI\_SECTION\_\dots} or \code{VERDICT:} corrupting downstream
+  routing \\
+\addlinespace[2pt]
+\textbf{V7} & \textbf{Action expectancy} --- if the planner expected an action
+  class and the model returned only prose, reject & \textbf{Yes} &
+  The \S5.3 failure: a destructive request answered with advice \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Every check is decidable. That is not an accident of this system; it is a
+property of \emph{operator} systems generally, and it is what makes the
+guarantee reachable here and not in a pure-prose product.
+
+\textbf{V3 deserves its own remark}, because it is the paper's most transferable
+idea. Both the Spanish and English renderings of a task contain the \emph{same
+frozen literals} by construction. Therefore a check of the form \emph{``can this
+emitted value be traced to something the user actually wrote, or to a prior
+verified result, or to a declared default?''} is simultaneously (a) completely
+language-agnostic, (b) cheap, and (c) precisely aimed at the damage
+cross-lingual operation causes. A value with no provenance is either a
+hallucination or a translation artifact --- and in an operator system those are
+the same emergency.
+
+\textbf{What $V$ does not check.} It cannot decide whether the
+\emph{semantically most appropriate} tool was chosen among several valid ones.
+That residue is exactly the part NEPANTLA inherits from the English baseline
+rather than improving on, and \S6.7 is careful to claim only that.
+
+\textbf{Rejection is cheap and side-effect-free} because $V$ runs
+\emph{pre-execution}. A rejected proposal has changed nothing; escalation
+replays planning, never state. This is the property that makes the ladder sound.
+
+\subsection{Stage 3 --- The escalation ladder}
+\label{sec:escalation-ladder}
+
+Each rung differs from the previous only by \textbf{adding information}, never
+by removing or replacing it.
+
+\begin{description}
+
+\item[R0 --- NATIVE.] English system spine (byte-stable,
+prompt-cache-friendly), Spanish user content verbatim, Spanish answer directive,
+low temperature. Cheapest and highest-fidelity: zero transformations, so
+$p^{k} = 1$ trivially.
+
+\emph{Reached first when the capability profile says the model is
+Spanish-competent.}
+
+\item[R1 --- ANCHORED NATIVE.] R0 plus an explicit, machine-readable anchor
+table appended to the prompt:
+
+\begin{lstlisting}[caption={The R1 anchor table, appended verbatim to the prompt.},label={lst:anchor-table}]
+LITERALS --- reproduce these byte-for-byte; never translate, never normalise:
+  L1 = C:\Tlamatini\Templates\leg_ctrl
+  L2 = bluepill_f103c8
+  L3 = 115200
+\end{lstlisting}
+
+This converts an implicit expectation into an explicit one and repairs the most
+common V3 rejection at negligible cost. Empirically this is where most
+Spanish-competent-but-careless models are recovered.
+
+\item[R2 --- THE NEPANTLA RUNG (bilingual augmentation).] R1 plus an
+\textbf{English gloss of the intent placed beside the Spanish original}, never
+instead of it. The gloss is produced with $\Sigma$ masked out and re-injected
+verbatim, so it is structurally incapable of damaging a literal.
+
+The model now sees both renderings simultaneously. A Spanish-competent model
+ignores the gloss as redundant; a Spanish-weak model reads the gloss and
+recovers the intent. This is the rung the system's name refers to: the middle
+place, where both languages are present and neither is authoritative over the
+literals.
+
+\emph{Note the placement.} The gloss is a translation, and it sits
+\textbf{upstream} of a decision --- which Principle~T forbids. The contradiction
+is only apparent: Principle~T forbids upstream translation \emph{on the causal
+path to the literals}. Here the literals bypass the gloss entirely (they are
+masked, then re-injected, then verified by V3), so the only thing the
+translation can influence is \emph{which tool} is chosen --- and that influence
+is additive evidence, subject to the same verifier.
+
+\item[R3 --- ENGLISH-EQUIVALENT EXECUTION.] The execution decision is driven by
+the English rendering under exactly the baseline's system prompt, tool schemas
+and parameters. This rung is, operationally, $B$.
+
+Crucially, \textbf{the user still receives Spanish}, because the answer is
+produced by Stage~4, which by Proposition~1 is causally downstream of $\tau$.
+Reaching R3 is invisible to the operator except as a small latency cost and a
+status note.
+
+\item[R4 --- HONEST STOP.] If even R3's proposal fails verification, NEPANTLA
+does not guess. It refuses, in Spanish, naming the verifier's rejection reason
+and the literal or tool involved, and it suggests the concrete remedy (rephrase,
+supply the missing path, or switch model). No action is executed.
+
+This rung exists because the only thing worse than an English answer to a
+Spanish operator is a \textbf{confident wrong action}. Refusal is a correct
+outcome; fabrication is not.
+
+\end{description}
+
+\subsection{Stage 4 --- The presentation renderer}
+\label{sec:presentation-renderer}
+
+Independent channel, no authority over $\tau$, three ordered strategies:
+
+\begin{enumerate}
+  \item \textbf{Native.} The model already answered in Spanish (the usual case,
+        including at R3 when the model is competent). Nothing to do.
+  \item \textbf{Delegated verbalization.} The decisions and results are fixed
+        and verified; a \emph{separate}, known-Spanish-capable renderer (a small
+        local model, or the static catalog for structured content) turns them
+        into Spanish prose. This is downstream translation, licensed by
+        Principle~T, and it cannot alter a single byte of what was executed.
+  \item \textbf{Structured fallback.} If no verbalizer is available, the answer
+        is composed from the \textbf{Spanish message catalog} plus the verified
+        structured results --- a fully Spanish, slightly terser answer assembled
+        by template rather than generated. The Exec Report already provides most
+        of what the operator needs, and its chrome is catalog-driven.
+\end{enumerate}
+
+In all three, \textbf{protected spans are opaque}: agent names, tool names,
+paths, flags, code blocks, sentinels and the brand pass through byte-identical.
+\S2.4's rendering table is the specification.
+
+A \textbf{read-only guard} runs over the raw model output, before any stripping,
+and reports two things to the log (\code{--- [I18N-GUARD]}) without ever
+mutating the answer: sentinel integrity, and answer-language line-pass-rate over
+\emph{masked prose only}. It is read-only by policy: an answer-rewriting pass
+driven by an uncalibrated language detector is a corruption engine, and because
+the response pipeline persists the answer, a false repair would be replayed on
+every chat reload forever. Repair is unlocked only by a measured false-positive
+rate.
+
+\subsection{The algorithm}
+\label{sec:nepantla-algorithm}
+
+\begin{lstlisting}[language=Python,caption={NEPANTLA --- the complete algorithm. The verification loop sits between proposal and execution.},label={lst:nepantla}]
+def NEPANTLA(u, session, model, profile):
+    # ---- STAGE 1: freeze. Nothing has touched u yet. -----------------------
+    Sigma  = extract_literals(u)                 # lexical, language-independent
+    lang   = resolve_language(u, session)        # conversation-sticky, hysteretic
+    H      = session.verified_results            # provenance from prior turns
+
+    # ---- STAGE 2: neutralise the deterministic core ------------------------
+    key    = N3(N1(u), lang)                     # fold + canonical expansion
+    plan   = planner(key, phrase_match=N2)       # expected action class, tools
+    # identity on ASCII: an English u yields today's exact plan
+
+    # ---- STAGE 3: propose -> verify -> escalate ----------------------------
+    start  = profile.start_rung(model, lang)     # OPTIMISATION ONLY (Cor. 1)
+    trace, notes = [], []
+
+    for rung in LADDER[start:]:                  # R0, R1, R2, R3, R4
+        if rung is R4:
+            return honest_stop(lang, notes, Sigma)      # refuse, in Spanish
+
+        prompt   = build_prompt(rung, u, Sigma, plan, lang, model)
+        proposal = model.propose(prompt)         # actions are NOT executed yet
+
+        verdicts = [V(Sigma, H, a) for a in proposal.actions]
+        if all(v.accepted for v in verdicts):
+            trace = proposal.actions
+            break
+
+        notes.append(rejection_summary(verdicts))
+        # no side effects occurred: escalation replays planning, never state
+
+    # ---- EXECUTE the verified trace ---------------------------------------
+    results = []
+    for a in trace:
+        r = execute(a)                           # existing permission gate applies
+        if failed(r):                            # post-hoc failure (preconditions
+            notes.append(r)                      # can change between check and run)
+            corrective_loop(a, r)                # the system's existing machinery
+        else:
+            H.record(a, r)                       # literals enter provenance
+            results.append(r)
+
+    # ---- STAGE 4: render, downstream of the decision -----------------------
+    answer = render(results, lang, protected=Sigma | TERMBASE, notes=notes)
+    guard_report = inspect_readonly(model.raw_output, lang)   # never mutates
+    log(guard_report)
+    return answer
+\end{lstlisting}
+
+Two lines carry most of the weight. \code{proposal = model.propose(prompt)}
+\textbf{does not execute}, and the verification loop sits between proposal and
+execution. Everything else is bookkeeping around that separation.
+
+\subsection{Theorem 1 --- Ladder Dominance}
+\label{sec:ladder-dominance}
+
+\setcounter{theorem}{0}
+\begin{theorem}[Ladder Dominance]
+\label{thm:dominance}
+Let the ladder be $R_0, \dots, R_{m}$ with terminal executable rung $R_{m-1}$
+and honest stop $R_m$. Let $\mathrm{FA}_i$ be the probability that $V$
+\textbf{falsely accepts} an incorrect proposal at rung $i$. Then
+\begin{align*}
+  \theta_{A} \;&\ge\; \theta_{R_{m-1}} \;-\; \sum_{i<m-1}\mathrm{FA}_i ,\\
+  \intertext{and if additionally $\theta_{R_{m-1}} \ge \theta_{EN}$, then}
+  \theta_{A} \;&\ge\; \theta_{EN} \;-\; \mathrm{FA}_{\text{total}} .
+\end{align*}
+\end{theorem}
+
+\begin{proof}
+Consider any task on which the terminal rung would succeed. NEPANTLA fails on
+that task only if it terminated \emph{before} reaching $R_{m-1}$ with an
+incorrect trace. Termination before $R_{m-1}$ occurs only on acceptance by $V$.
+Therefore the event ``$A$ fails while $R_{m-1}$ would have succeeded'' is
+contained in the union over earlier rungs of ``$V$ falsely accepted an incorrect
+proposal'', whose probability is at most $\sum_{i<m-1}\mathrm{FA}_i$ by a union
+bound. Rejection at an earlier rung is side-effect-free by the pre-execution
+property of \S6.4, so it cannot itself cause failure --- it can only cost
+latency. Hence the first inequality; the second follows by substitution.
+\end{proof}
+
+\textbf{Why $\mathrm{FA}$ is zero on the failure classes that matter.} Checks
+V1, V2, V3, V6 and V7 are \emph{decidable predicates over the proposal}, so
+their false-accept probability is exactly $0$: a nonexistent tool, a schema
+violation, a literal with no provenance, a damaged sentinel and a
+missing-but-expected action are each detected with certainty. By
+Proposition~2, literal corruption in particular has $\mathrm{FA}=0$. The
+residual $\mathrm{FA}$ is confined to V4 (preconditions can change between check
+and execution --- a genuine time-of-check/time-of-use window) and to the
+\emph{undecidable} residue $V$ deliberately does not attempt: choosing the
+semantically best tool among several schema-valid candidates.
+
+That residue is the honest boundary of the claim, and it is worth stating in
+plain language:
+
+\begin{keyinsight}
+\textbf{NEPANTLA is non-inferior to the English pipeline on every failure class
+that operating in Spanish actually introduces. On the residual class --- which
+tool is the wisest choice --- it inherits the English pipeline's behaviour
+rather than improving on it.}
+\end{keyinsight}
+
+\textbf{Discharging the condition $\theta_{R_{m-1}} \ge \theta_{EN}$.} Three
+arguments support it and one caveat bounds it.
+
+\begin{enumerate}[label=(\roman*), leftmargin=*]
+  \item The literals reaching $R_3$ are byte-identical to the user's own, by
+        Proposition~2 --- so on the argument axis $R_3$ equals the baseline
+        exactly.
+  \item $R_3$'s system spine, tool schemas and generation parameters are the
+        baseline's, unmodified.
+  \item $R_3$ presents \emph{both} the English rendering and the Spanish
+        original, so the model's evidence is a superset of what a gloss alone
+        would give.
+\end{enumerate}
+
+\emph{Caveat:} additional context is not provably monotone for a language model
+--- more text can distract as well as inform. The condition is therefore an
+\textbf{empirical} one, and \S8 exists to test precisely it. A paper that
+claimed otherwise would be overselling; the architecture guarantees the
+\emph{ladder} property unconditionally, and measurement establishes the
+\emph{terminal} property.
+
+\textbf{False rejections.} If $V$ wrongly rejects a correct proposal, the cost
+is an unnecessary escalation --- latency --- and in the worst case an honest
+refusal at R4. The failure direction is toward \emph{not acting}, which for a
+system that deletes files and flashes firmware is the correct direction to fail
+in.
+
+\subsection{Corollary 1 --- Probe Safety}
+\label{sec:probe-safety}
+
+\setcounter{theorem}{0}
+\begin{corollary}[Probe Safety]
+\label{cor:probe-safety}
+The model-capability profile affects only the expected number of rungs
+evaluated. It cannot affect the correctness of the terminal outcome.
+\end{corollary}
+
+\begin{proof}
+The profile appears in the algorithm exactly once, as \code{start} --- an index
+into the ladder. Theorem~\ref{thm:dominance}'s bound is over the suffix
+beginning at any start index, since every rung after \code{start} remains
+reachable and the terminal rung is always the same.
+\end{proof}
+
+This has a strong practical consequence, and it is the answer to the obvious
+objection \emph{``what if you mis-measure the model?''}:
+
+\begin{keyinsight}
+\textbf{A miscalibrated capability probe costs latency, never correctness.}
+\end{keyinsight}
+
+The profile is therefore permitted to be a cheap, imperfect heuristic. It is an
+accelerator, not a gate --- which in turn means it does not need the elaborate
+calibration machinery a \emph{gating} probe would demand, and it can never
+silently deny a user their language because a cache file was unreadable.
+
+\subsection{Corollary 2 --- Naming Necessity}
+\label{sec:naming-necessity}
+
+\begin{corollary}[Naming Necessity]
+\label{cor:naming}
+If any element of the action vocabulary $\mathcal{N}$ --- a tool name, an agent
+display name, an argument key, an enumerated value, a protocol sentinel --- is
+localized, then Proposition~1 fails, $V$'s checks V1, V2 and V6 become
+locale-relative, and Theorem~\ref{thm:dominance} no longer applies.
+\end{corollary}
+
+\begin{proof}
+V1 tests $\mathrm{name} \in \mathcal{N}$. If $\mathcal{N}$ is indexed by locale,
+the test is $\mathrm{name} \in \mathcal{N}_\ell$, and the English baseline's
+action space $\mathcal{N}_{en}$ and the Spanish pipeline's $\mathcal{N}_{es}$
+are different sets. The comparison $\theta_{ES} \ge \theta_{EN}$ then ranges
+over incomparable outcome spaces, and $\mathrm{exec}$ acquires a dependence on
+$\ell(u)$, contradicting Proposition~1.
+\end{proof}
+
+In engineering terms, and this is the sentence to remember:
+
+\begin{keyinsight}
+\textbf{\code{Emailer} must stay \code{Emailer} in the Spanish build not because
+translating it would be untidy, but because translating it deletes the proof.}
+\end{keyinsight}
+
+The same holds for \code{Asker}, \code{Apirer}, \code{STM32er},
+\code{Kyber-KeyGen}, \code{File-Creator}, every tool name, every flag, every
+configuration key, every sentinel, and every identifier in the source. The
+\S2.3 table is not a style guide; it is the hypothesis of Proposition~1 written
+out longhand.
+
+\subsection{Complexity and cost}
+\label{sec:complexity-and-cost}
+
+Let $q_i$ be the probability that the proposal at rung $i$ is rejected. Expected
+model calls per request:
+\[
+  \mathbb{E}[\text{calls}] \;=\; 1 + q_{0} + q_{0}q_{1} + q_{0}q_{1}q_{2}
+\]
+bounded above by 4 and, for a Spanish-competent model where $q_0$ is small,
+approximately $1 + q_0$. With the profile starting a competent model at R0 and
+an unknown model at R1, the measured cost target is \textbf{under 1.15 model
+calls per request} --- that is, the Spanish path costs essentially what English
+costs, and pays extra only exactly when it was about to be wrong.
+
+The non-model costs are all $O(n)$ in the utterance length and negligible
+against a model call:
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Non-model cost of the language layer, per request.}
+\label{tab:nepantla-cost}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.24\textwidth}
+                  >{\raggedright\arraybackslash}p{0.42\textwidth}
+                  >{\raggedright\arraybackslash}p{0.18\textwidth}@{}}
+\toprule
+\textbf{Stage} & \textbf{Cost} & \textbf{Budget} \\
+\midrule
+Literal extraction & one linear pass, compiled patterns & $<1$\,ms \\
+N1/N2/N3 & one fold, cached boundary patterns, dict lookups & $<1$\,ms \\
+Verifier per action & set membership + schema walk + preflight &
+  $<2$\,ms (preflight dominates) \\
+Renderer protected-span masking & linear, short-circuits entirely when the
+  answer is already Spanish & $<1$\,ms \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Two design rules keep this true. The English path short-circuits the entire
+language layer at the first comparison, so an English user pays a single branch.
+And the capability profile is computed \textbf{out of band} --- never on the
+request path, one global worker, refusing to run while a generation is in
+flight, because on a single local GPU ``off the call stack'' is not the same as
+``off the resource''.
+
+\subsection{Termination, cancellation and side-effect safety}
+\label{sec:termination-cancellation}
+
+\textbf{Termination} is structural: the ladder is a finite list and each
+iteration advances the index unconditionally. There is no retry-in-place.
+
+\textbf{Cancellation} is checked at every rung boundary and again after every
+model call returns, not merely at entry. The renderer and the guard have a hard
+wall-clock cap; they are polish on an answer the user has already earned, and
+they must never be the reason a cancel does not take effect.
+
+\textbf{Side-effect safety} rests on the pre-execution property: escalation
+happens only over \emph{proposals}. Once execution begins, the ladder is
+finished, and post-execution failures are handled by the system's existing
+corrective-feedback machinery rather than by re-entering the ladder --- which
+prevents the pathological case of an action being executed twice under two
+different rungs.
+
+\textbf{Idempotence at the boundary} deserves an explicit note. V4's
+preconditions are checked before execution, but the world can change in between.
+NEPANTLA does not attempt to close that window (doing so would require
+transactional semantics over the filesystem and attached hardware); it bounds it
+by checking as late as possible and by preserving the existing permission gate,
+which puts a human in the loop for exactly the tier of actions where the window
+matters.
+
+\subsection{What is new here}
+\label{sec:what-is-new}
+
+The individual materials are known. The arrangement is what we claim.
+
+\begin{itemize}
+  \item \textbf{Verification-first cross-lingual operation.} The cross-lingual
+        literature is dominated by \emph{making the model better} at the target
+        language --- translation, scaffolds, fine-tuning, prompt engineering.
+        NEPANTLA instead treats target-language competence as an unreliable
+        input and moves the correctness burden onto a verifier that does not
+        read either language. This reframing is what removes the dependency on a
+        user-chosen model.
+  \item \textbf{Argument provenance as a language-independent correctness
+        certificate.} Checking that every emitted literal traces back to the
+        user's own words is cheap, decidable, and exactly aligned with the
+        damage cross-lingual operation causes.
+  \item \textbf{The ladder-dominance argument.} A structured escalation whose
+        terminal rung is the incumbent baseline converts a hard question
+        (``is Spanish as good?'') into a much easier one (``is the verifier's
+        false-accept rate small on the decidable classes?'').
+  \item \textbf{Probe demotion.} Making capability measurement an accelerator
+        rather than a gate removes an entire class of calibration risk, and is
+        only possible \emph{because} of the ladder.
+  \item \textbf{Naming invariance derived, not asserted.} The rule that assets
+        stay English falls out of Proposition~1 as a necessary condition rather
+        than being imposed as a convention --- which makes it enforceable by
+        test rather than by discipline.
+\end{itemize}

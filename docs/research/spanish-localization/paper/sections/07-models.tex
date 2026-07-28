@@ -1,0 +1,299 @@
+\section{The Model May Not Speak Spanish}
+\label{sec:model-may-not-speak-spanish}
+
+This section answers the question the whole design exists for: \textbf{the operator
+can bind any model, including one with no useful Spanish at all. How is correctness
+still guaranteed?}
+
+\subsection{A taxonomy of model deficiency}
+\label{sec:taxonomy-of-model-deficiency}
+
+``Not Spanish-capable'' is not one condition. It is four, and they fail in different
+places.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Four classes of model deficiency and where each one surfaces.}
+\label{tab:deficiency-taxonomy}
+\begin{tabular}{@{}p{0.16\textwidth}p{0.45\textwidth}p{0.27\textwidth}@{}}
+\toprule
+\textbf{Class} & \textbf{Description} & \textbf{Where it shows up} \\
+\midrule
+\textbf{C1 --- Weak generation} &
+Understands Spanish; writes it awkwardly or drifts into English mid-answer &
+Presentation channel only \\
+\addlinespace
+\textbf{C2 --- Weak comprehension} &
+Misreads the Spanish request; chooses a plausible-but-wrong tool &
+Execution channel --- tool selection \\
+\addlinespace
+\textbf{C3 --- Literal infidelity} &
+Understands the request but ``helpfully'' normalizes a path, strips an accent,
+translates a flag, re-formats a number &
+Execution channel --- arguments \\
+\addlinespace
+\textbf{C4 --- Protocol damage} &
+Emits a malformed sentinel under a non-English instruction (\code{VEREDICTO:}
+instead of \code{VERDICT:}) &
+Downstream routing --- silently \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+C3 and C4 are the dangerous ones precisely because they are \emph{silent}: the action
+looks well-formed and executes successfully against the wrong target.
+
+\subsection{How each class is neutralized}
+\label{sec:how-each-class-is-neutralized}
+
+\begin{table}[htbp]
+\centering
+\footnotesize
+\caption{Detection, recovery and residual risk for each deficiency class.}
+\label{tab:deficiency-neutralization}
+\begin{tabular}{@{}p{0.09\textwidth}p{0.25\textwidth}p{0.31\textwidth}p{0.19\textwidth}@{}}
+\toprule
+\textbf{Class} & \textbf{Caught by} & \textbf{Recovered by} & \textbf{Residual risk} \\
+\midrule
+\textbf{C1} &
+Read-only guard (line-pass-rate on masked prose) &
+Stage 4 renderer --- delegated verbalization or catalog fallback &
+None to correctness; Proposition 1 \\
+\addlinespace
+\textbf{C2} &
+\textbf{V7} (prose where an action was expected) and \textbf{V1/V2} (invalid or
+hallucinated tool) &
+Escalation to R2 --- the English gloss carries the intent; then R3 = baseline &
+Inherited from the baseline \\
+\addlinespace
+\textbf{C3} &
+\textbf{V3 argument provenance} --- the emitted literal is not in $\Sigma$ &
+R1's explicit anchor table; then R2/R3 &
+\textbf{Zero} by Proposition 2 \\
+\addlinespace
+\textbf{C4} &
+\textbf{V6 sentinel integrity} --- byte comparison &
+Escalation; and the operator route is pinned to English for that model &
+Zero on the checked families \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Note what is \emph{not} in the recovery column: nowhere does the system rely on the
+model becoming better at Spanish. \textbf{Spanish competence is an accelerant, not a
+dependency.} A model that has none simply spends more rungs, and the operator notices
+only a slightly slower answer.
+
+\subsection{The capability profile}
+\label{sec:the-capability-profile}
+
+Because Corollary 1 makes the profile safe, it can be cheap. It exists solely to
+answer \emph{``which rung should we start at?''}, and a wrong answer costs one extra
+model call.
+
+\begin{itemize}
+  \item \textbf{Out of band, always.} A single global worker, never on the request
+        path, refusing to run while a generation is in flight, hard wall-clock
+        capped, with a partial result treated as ``start conservatively'' rather than
+        as a verdict.
+  \item \textbf{Cheap and few.} A handful of items exercising the four deficiency
+        classes under the \emph{production} condition (English spine, Spanish answer
+        required) at \emph{production} generation parameters --- because probing at
+        temperature 0 systematically measures the best case.
+  \item \textbf{Per-path, not scalar.} A model may write excellent Spanish prose and
+        still mangle a \code{chat\_agent\_stm32er} argument list, so the profile emits
+        a starting rung for the conversational path and another for the operator path.
+  \item \textbf{Short TTL on the permissive side.} A stale ``competent'' verdict costs
+        escalations that were already going to be caught; a stale ``incompetent''
+        verdict costs only unnecessary English glossing. For cloud aliases and
+        providers that expose no content digest, a daily single-call canary whose
+        response hash acts as a poor-man's fingerprint detects a silent model swap
+        that a version string cannot.
+  \item \textbf{Never a denial.} A missing, unreadable or expired profile means
+        \emph{start at R1}, not \emph{refuse Spanish}. There is no path by which an
+        infrastructure failure removes the user's language.
+\end{itemize}
+
+\subsection{Three worked traces}
+\label{sec:three-worked-traces}
+
+\textbf{Trace A --- a Spanish-competent model.}
+
+\begin{quote}
+$u$ = \foreignlanguage{spanish}{``Crea un archivo en
+\code{C:\textbackslash{}Tlamatini\textbackslash{}Temp\textbackslash{}notas.txt} con el
+texto `hola mundo' y luego muéstrame las últimas 5 líneas del log''}
+\end{quote}
+
+\begin{table}[htbp]
+\centering
+\footnotesize
+\caption{Trace A --- a Spanish-competent model.}
+\label{tab:trace-a-competent-model}
+\begin{tabular}{@{}p{0.14\textwidth}p{0.68\textwidth}@{}}
+\toprule
+\textbf{Step} & \textbf{What happens} \\
+\midrule
+Freeze &
+$\Sigma$ = \{ \code{C:\textbackslash{}Tlamatini\textbackslash{}Temp\textbackslash{}notas.txt},
+\code{hola mundo}, \code{5} \} \\
+\addlinespace
+Profile &
+competent \textrightarrow{} start at \textbf{R0} \\
+\addlinespace
+R0 proposal &
+\code{chat\_agent\_file\_creator(file\_path='C:\textbackslash{}Tlamatini\textbackslash{}Temp\textbackslash{}notas.txt',}
+\code{content='hola mundo')}, then a read of the log tail \\
+\addlinespace
+Verify &
+V1 $\surd$ \quad V2 $\surd$ \quad V3 $\surd$ (both literals trace to $\Sigma$) \quad
+V4 $\surd$ \quad V5 $\surd$ \quad V6 $\surd$ \quad V7 $\surd$ \\
+\addlinespace
+Execute &
+file created at the exact path \\
+\addlinespace
+Render &
+model already answered in Spanish; \textbf{File-Creator} appears verbatim in the Exec
+Report caption \\
+\addlinespace
+\textbf{Cost} &
+\textbf{1 model call --- identical to English} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Trace B --- a Spanish-blind model, and the provenance check earning its place.}
+
+Same utterance, a small English-centric local model.
+
+\begin{table}[htbp]
+\centering
+\footnotesize
+\caption{Trace B --- a Spanish-blind model, and the provenance check earning its place.}
+\label{tab:trace-b-spanish-blind-model}
+\begin{tabular}{@{}p{0.14\textwidth}p{0.68\textwidth}@{}}
+\toprule
+\textbf{Step} & \textbf{What happens} \\
+\midrule
+Freeze &
+$\Sigma$ = \{ \code{C:\textbackslash{}Tlamatini\textbackslash{}Temp\textbackslash{}notas.txt},
+\code{hola mundo}, \code{5} \} \\
+\addlinespace
+Profile &
+unknown/weak \textrightarrow{} start at \textbf{R1} \\
+\addlinespace
+R1 proposal &
+\code{chat\_agent\_file\_creator(file\_path='C:\textbackslash{}Tlamatini\textbackslash{}Temp\textbackslash{}\textbf{notes}.txt',}
+\code{content='hello world')} \\
+\addlinespace
+Verify &
+\textbf{V3 REJECTS.} \code{\ldots\textbackslash{}notes.txt}
+$\notin \Sigma \cup \mathcal{R} \cup \mathcal{D}$, and \code{hello world}
+$\notin \Sigma$. The model translated a \emph{filename} and a \emph{content literal} \\
+\addlinespace
+--- &
+\emph{Without NEPANTLA this executes successfully and creates the wrong file with the
+wrong contents, reporting success.} \\
+\addlinespace
+Escalate &
+\textbf{R2} --- Spanish original + English gloss (literals masked and re-injected) +
+anchor table \\
+\addlinespace
+R2 proposal &
+correct path, correct content \\
+\addlinespace
+Verify &
+all checks pass \\
+\addlinespace
+Execute &
+correct file created \\
+\addlinespace
+Render &
+model cannot write Spanish \textrightarrow{} \textbf{delegated verbalization}; Exec
+Report chrome from the Spanish catalog; \textbf{File-Creator} verbatim \\
+\addlinespace
+\textbf{Cost} &
+\textbf{2 model calls; correct outcome; user reads Spanish} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Trace C --- a destructive request with no path, which today fails silently.}
+
+\begin{quote}
+$u$ = \foreignlanguage{spanish}{``Borra los archivos temporales de esa carpeta''}
+\end{quote}
+
+\begin{table}[htbp]
+\centering
+\footnotesize
+\caption{Trace C --- a destructive request with no path, which today fails silently.}
+\label{tab:trace-c-destructive-no-path}
+\begin{tabular}{@{}p{0.14\textwidth}p{0.68\textwidth}@{}}
+\toprule
+\textbf{Step} & \textbf{What happens} \\
+\midrule
+Freeze &
+$\Sigma = \emptyset$ --- \textbf{there is no path literal};
+\foreignlanguage{spanish}{``esa carpeta''} is anaphoric \\
+\addlinespace
+Neutralize &
+N1/N2/N3 lift the request into canonical keys \textrightarrow{} planner expects a
+\textbf{destructive file operation} \\
+\addlinespace
+--- &
+\emph{Today: the scorer returns zero positives, the planner emits ``Selected
+tools/agents: none'', and the model is told no tool stage is needed --- for a delete.} \\
+\addlinespace
+R1 proposal &
+\code{chat\_agent\_deleter(target\_path='C:\textbackslash{}Tlamatini\textbackslash{}Temp')}
+--- a path the model \textbf{invented} \\
+\addlinespace
+Verify &
+\textbf{V3 REJECTS.} The path has no provenance: not in $\Sigma$, not in $\mathcal{H}$,
+not a declared default \\
+\addlinespace
+Escalate &
+R2, R3 --- each proposal that fabricates a target is rejected for the same reason \\
+\addlinespace
+\textbf{R4} &
+\textbf{Honest stop, in Spanish:}
+\foreignlanguage{spanish}{\emph{``No puedo ejecutar el borrado: no me diste la ruta de
+la carpeta y no hay ninguna en el historial de esta conversación. Dime la ruta exacta
+y lo hago.''}} \\
+\addlinespace
+Execute &
+\textbf{nothing} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Trace~C (Table~\ref{tab:trace-c-destructive-no-path}) is the strongest argument for the
+architecture. The alternative behaviours are all worse: today's system tells the user
+no tool is needed; a naive Spanish port would let a model guess a directory and delete
+it. NEPANTLA refuses, explains, and asks --- because a literal with no provenance is
+treated as an emergency rather than as a detail.
+
+Note also that if the folder \emph{had} been established in a prior turn, it would be
+in $\mathcal{H}$, provenance would pass, and V5 would route the action through the
+Ask-Execs permission prompt --- rendered in Spanish, naming \textbf{Deleter} in English.
+
+\subsection{The guarantee, restated for a hostile model}
+\label{sec:guarantee-restated-hostile-model}
+
+Take the worst admissible case: a model with no Spanish comprehension, no Spanish
+generation, and a tendency to normalize literals. NEPANTLA's behaviour is then:
+
+\begin{itemize}
+  \item Execution: escalates to R3, which \emph{is} the English pipeline, with
+        byte-exact literals. \textbf{$\theta \approx \theta_{EN}$.}
+  \item Arguments: protected absolutely by V3. \textbf{Zero corruption.}
+  \item Protocol: protected by V6; operator route pinned English for that model.
+        \textbf{Zero silent routing damage.}
+  \item Presentation: Spanish via the renderer, or Spanish-by-template as a floor.
+        \textbf{The user never sees English.}
+  \item Cost: 2--4 model calls instead of 1.
+\end{itemize}
+
+The user pays latency. They do not pay correctness, and they do not pay language.

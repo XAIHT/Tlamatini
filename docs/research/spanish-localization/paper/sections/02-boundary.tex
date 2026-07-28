@@ -1,0 +1,161 @@
+\section{The Translation Boundary}
+\label{sec:translation-boundary}
+
+Before any algorithm, the scope must be exact. This section is the contract.
+
+\subsection{Two channels, one rule}
+\label{sec:two-channels-one-rule}
+
+Every string in the system belongs to exactly one of two channels.
+
+\begin{table}[htbp]
+\centering
+\footnotesize
+\caption{The two channels. Every string in the system belongs to exactly one of them.}
+\label{tab:two-channels}
+\begin{tabular}{@{}p{0.13\linewidth}p{0.38\linewidth}p{0.41\linewidth}@{}}
+\toprule
+ & \textbf{Presentation channel} & \textbf{Machine channel} \\
+\midrule
+\textbf{Definition} & Read by a human, never read back by a program & Consumed, compared, routed on, persisted, or parsed by a program \\
+\addlinespace
+\textbf{Audience} & The Spanish-speaking operator & The interpreter, the filesystem, the parser, the model's tool interface \\
+\addlinespace
+\textbf{Language} & \textbf{Spanish} (fully) & \textbf{English, byte-identical, forever} \\
+\addlinespace
+\textbf{On error} & Cosmetic --- a clumsy sentence & Catastrophic --- wrong tool, wrong path, silent corruption \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The rule is one sentence:
+
+\begin{keyinsight}
+\textbf{Translate what the user reads. Never translate what the machine reads.}
+\end{keyinsight}
+
+\subsection{What becomes Spanish}
+\label{sec:what-becomes-spanish}
+
+The entire visible surface. This is not a subset; it is everything a human eye lands on.
+
+\begin{itemize}
+  \item \textbf{Navigation and chrome} --- the navbar menus and every dropdown item, dialog titles, section legends, tab labels, panel headings.
+  \item \textbf{Controls} --- every button caption, checkbox and toggle label, radio label, the toolbar, the Send/Cancel affordance, context menus.
+  \item \textbf{Input affordances} --- placeholders, tooltips, \code{aria-label} accessibility text, helper text, character counters.
+  \item \textbf{Generic verbs and nouns of the interface} --- \foreignlanguage{spanish}{\emph{Guardar, Cancelar, Continuar, Cerrar, Eliminar, Ejecutar, Detener, Validar, Iniciar, Pausar, Reanudar, Buscar, Importar, Exportar, Actualizar, Reintentar}}.
+  \item \textbf{Instructional prose} --- wizard steps, the setup guidance, the ``how to use this'' copy, empty-state explanations, confirmation questions.
+  \item \textbf{Feedback} --- status lines, progress messages, success and failure notices, validation warnings, permission prompts, the interrupted-execution banner.
+  \item \textbf{Report chrome} --- the Exec Report's title, its column headers (\foreignlanguage{spanish}{\emph{Comando}}, \foreignlanguage{spanish}{\emph{Estado}}), its verdict words (\foreignlanguage{spanish}{\emph{ÉXITO}}, \foreignlanguage{spanish}{\emph{FALLO}}), the denial banner's labels.
+  \item \textbf{Catalog content} --- the prompt catalog's category names and card descriptions.
+  \item \textbf{Agent descriptions} --- the tooltip and description text explaining what each agent \emph{does}.
+  \item \textbf{The model's answer prose} --- the sentences Tlamatini writes back.
+  \item \textbf{Documentation and onboarding} intended for the operator.
+\end{itemize}
+
+\subsection{What NEVER becomes Spanish}
+\label{sec:what-never-becomes-spanish}
+
+This list is exhaustive by \emph{class}, and it is absolute. A violation here is not a cosmetic bug; \S6.9 proves it invalidates the correctness guarantee.
+
+\begin{table}[htbp]
+\centering
+\footnotesize
+\caption{The machine channel, enumerated by class. Every entry stays byte-identical in English in every locale, forever.}
+\label{tab:never-translated}
+\begin{tabular}{@{}p{0.26\linewidth}p{0.67\linewidth}@{}}
+\toprule
+\textbf{Class} & \textbf{Examples (illustrative, not exhaustive)} \\
+\midrule
+\textbf{Agent display names} & \code{Emailer}, \code{Asker}, \code{Apirer}, \code{Executer}, \code{Pythonxer}, \code{STM32er}, \code{Kyber-KeyGen}, \code{File-Creator}, \code{De-Compresser}, \code{Monitor-Log}, \code{Node Manager}, \code{TeleTlamatini}, \code{RecMailer}, \code{FlowCreator} \\
+\addlinespace
+\textbf{Tool names} & \code{chat\_agent\_send\_email}, \code{chat\_agent\_apirer}, \code{execute\_command}, \code{acp\_spawn}, \code{invoke\_skill}, \code{ext\_\_\textless server\textgreater\_\_\textless tool\textgreater} \\
+\addlinespace
+\textbf{Agent directory / pool names} & \code{agents/emailer/}, \code{emailer\_1}, \code{apirer\_2} \\
+\addlinespace
+\textbf{Configuration keys} & \code{unified\_agent\_model}, \code{django\_port}, \code{binary\_context\_detection}, \code{pio\_executable} \\
+\addlinespace
+\textbf{Configuration field names inside \code{config.yaml}} & \code{target\_agents}, \code{source\_agents}, \code{pattern\_a}, \code{outcome\_word}, \code{capture\_mode} \\
+\addlinespace
+\textbf{Protocol sentinels} & \code{END-RESPONSE}, \code{BEGIN-CODE\textless\textless\textless\ldots\textgreater\textgreater\textgreater} / \code{END-CODE}, \code{INI\_SECTION\_\textless TYPE\textgreater\textless\textless\textless} / \code{\textgreater\textgreater\textgreater END\_SECTION\_\textless TYPE\textgreater}, \code{TLM\_VERDICT::PASS\_OK}, \code{VERDICT: REQUEST\_CHANGES} \\
+\addlinespace
+\textbf{Machine verdict vocabularies} & \code{APPROVE}, \code{REQUEST\_CHANGES}, \code{COMMENT}, \code{PASS\_OK}, \code{FAIL\_NO\_MOTION}, \code{UNCLEAR}, \code{completed}, \code{failed}, \code{stopped} \\
+\addlinespace
+\textbf{Source code} & Every identifier, function name, class name, module name, comment, docstring \\
+\addlinespace
+\textbf{Internal variable nomenclature} & \code{\_score\_capability}, \code{exec\_report\_entries}, \code{answer\_language}, \code{cancel\_run\_epoch} \\
+\addlinespace
+\textbf{CLI flags and switches} & \code{--noreload}, \code{--self-modify}, \code{-sT}, \code{--collect-all} \\
+\addlinespace
+\textbf{File and directory names} & \code{prompt.pmt}, \code{tlamatini.log}, \code{Temp}, \code{Templates}, \code{config.json}, \code{.flw} \\
+\addlinespace
+\textbf{CSS classes, element ids, \code{data-*} attribute values} & \code{.canvas-item.stm32er-agent}, \code{\#prompts-catalog}, \code{data-content="Emailer"} \\
+\addlinespace
+\textbf{Log-line prefixes} & \code{--- [BINARY-GUARD]}, \code{--- [I18N-GUARD]}, \code{AGENT STARTED} \\
+\addlinespace
+\textbf{Environment variables} & \code{TLAMATINI\_TEMP}, \code{AGENT\_REANIMATED}, \code{PDCP\_API\_KEY} \\
+\addlinespace
+\textbf{\code{.flw} schema keys} & \code{agentName}, \code{configData}, \code{connections}, \code{schemaVersion} \\
+\addlinespace
+\textbf{Brand and authorship} & \code{Tlamatini}, \code{XAIHT}, \code{Angela López Mendoza}, \code{ACPX}, \code{Multi-Turn}, \code{Exec report}, \code{Ask Execs}, \code{System-Metrics}, \code{Files-Search} \\
+\addlinespace
+\textbf{User-supplied literals} & Absolute paths, filenames, hostnames, ports, board identifiers, git refs, regular expressions, glob patterns \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{The Naming Invariance Rule}
+\label{sec:naming-invariance-rule}
+
+Stated as an operational rule an engineer can apply without judgement:
+
+\begin{principle}[RULE N]
+An agent's display name is an \textbf{identifier}, not a label. It is byte-identical in every locale, in every surface, forever --- including its exact capitalization, its hyphens and its spaces. What is translated is the agent's \emph{description}, never its \emph{name}.
+\end{principle}
+
+Applied concretely, in the Spanish build:
+
+\begin{table}[htbp]
+\centering
+\footnotesize
+\caption{Per-surface rendering in the Spanish build. The pattern is uniform: Spanish sentence, English name embedded verbatim.}
+\label{tab:per-surface-rendering}
+\begin{tabular}{@{}p{0.33\linewidth}p{0.60\linewidth}@{}}
+\toprule
+\textbf{Surface} & \textbf{Spanish build renders} \\
+\midrule
+Sidebar item & \textbf{Emailer} \\
+\addlinespace
+Tooltip on that item & \foreignlanguage{spanish}{\emph{``Envía correos electrónicos por SMTP cuando se detecta un patrón en el registro.''}} \\
+\addlinespace
+Canvas node label & \textbf{Emailer} \\
+\addlinespace
+Right-click description dialog title & \textbf{Emailer} \\
+\addlinespace
+Exec Report caption & \foreignlanguage{spanish}{\emph{Lista de operaciones de}} \textbf{Emailer} \\
+\addlinespace
+Exec Report column headers & \foreignlanguage{spanish}{\emph{Comando}} $\cdot$ \foreignlanguage{spanish}{\emph{Estado}} \\
+\addlinespace
+Exec Report verdict cell & \foreignlanguage{spanish}{\emph{ÉXITO}} / \foreignlanguage{spanish}{\emph{FALLO}} \\
+\addlinespace
+Permission prompt & \foreignlanguage{spanish}{\emph{``¿Permitir que se ejecute} \textbf{Apirer} \emph{?''}} \\
+\addlinespace
+Answer prose & \foreignlanguage{spanish}{\emph{``Ya lancé} \textbf{Asker} \emph{y está esperando tu elección.''}} \\
+\addlinespace
+Log line & \code{EMAILER AGENT STARTED} (unchanged) \\
+\addlinespace
+Generated \code{.flw} node & \code{"agentName": "Emailer"} (unchanged) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The pattern is uniform: \textbf{Spanish sentence, English name embedded verbatim.} This is also how Spanish-speaking engineers already write and speak about tooling --- \foreignlanguage{spanish}{\emph{``corre el linter''}}, \foreignlanguage{spanish}{\emph{``revisa el commit''}}, \emph{``el flag \code{--noreload}''} --- so the result reads naturally rather than as an untranslated remnant.
+
+\subsection{Why the boundary is a precondition, not a compromise}
+\label{sec:boundary-precondition}
+
+It would be easy to read \S2.3 as a limitation accepted for expediency. It is the opposite. The naming invariant is what \emph{creates} the guarantee.
+
+The reason is developed formally in \S3.2 and \S6.9, but the intuition is short: the correctness guarantee works by proving that the \emph{execution channel} is unaffected by the user's language. That proof requires the execution vocabulary --- the set of tool names, agent identities, argument keys, enumerated values and sentinels --- to be \textbf{the same set of symbols regardless of locale}. If \code{Emailer} becomes \code{Correero} in Spanish, then the action space itself is locale-dependent, the English baseline and the Spanish pipeline are no longer comparable objects, and there is nothing left to prove non-inferiority \emph{against}.
+
+Additionally, and independently of the proof, the codebase makes this rule load-bearing today: agent display names are simultaneously the sidebar label, the value of \code{data-content} attributes matched by \textbf{56 case-sensitive CSS attribute selectors}, the operand of roughly \textbf{512 lowercased string comparisons} in the canvas connection handlers, the key of the per-agent enable gate \code{agent\_\textless display\textgreater\_status}, and the discriminant in \textbf{138 \code{case} labels} in the flow loader. The project's own engineering notes already record that changing a single hyphen to a space in one of these names \emph{silently stops canvas connections from being persisted, with no error anywhere.} The naming convention is not decoration. It is an ABI.

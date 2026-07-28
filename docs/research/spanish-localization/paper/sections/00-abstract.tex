@@ -1,0 +1,25 @@
+% ---------------------------------------------------------------------------
+% Abstract --- BODY ONLY. The master file supplies the abstract environment.
+% ---------------------------------------------------------------------------
+
+We address a problem that arises whenever a locally-deployed AI \emph{operator} system --- one that selects tools, extracts byte-exact arguments and mutates real machine state --- must serve a user in a language other than the one it was built in, while the user retains the freedom to bind \textbf{any} backend model, including models with weak or absent competence in that language.
+
+The naive formulations both fail. Translating the user's request into English before processing injects a \emph{conjunctive} failure mode: an operator task fails completely if any single file path, flag or identifier is damaged, so fidelity decays as $p^{k}$ in the number of literals and reaches \textasciitilde{}11\% absolute failure at realistic density even at a generous per-literal preservation rate of $p=0.98$. Conversely, simply passing Spanish through and hoping the model copes makes correctness a \emph{function of an unknown, user-chosen model} --- which is precisely the dependency a product cannot accept.
+
+We propose \textbf{NEPANTLA} --- \emph{Non-inferior Execution via Progressive Augmentation, Native-Token Locking and Arbitration} --- an algorithm that removes the dependency entirely. Its central move is to stop treating cross-lingual operation as a language problem and treat it as a \textbf{verification} problem. Three results make this possible.
+
+\textbf{First}, in an operator system the observable outcome factorizes into an \emph{execution outcome} (the state of the machine) and a \emph{presentation outcome} (the text the user reads), and these are conditionally independent given the emitted action trace (\textbf{Proposition 1}). Execution correctness can therefore be guaranteed independently of the answer language --- \emph{provided} the action vocabulary itself is language-invariant.
+
+\textbf{Second}, every correctness-bearing literal can be extracted from the raw utterance before any transformation and re-verified byte-exactly in the emitted action, converting the $p^{k}$ decay to $p^{k}=1$ (\textbf{Proposition 2}). This yields \textbf{argument provenance} --- the requirement that every literal in an emitted action be derivable from the user's own words, a prior tool result, or a declared default --- which is a \emph{language-independent correctness certificate} and the sharpest cross-lingual signal available.
+
+\textbf{Third}, and decisively: if failures are \emph{detected} rather than accepted, an escalation ladder whose terminal rung is operationally identical to the English baseline \textbf{cannot perform worse than that baseline} (\textbf{Theorem 1, Ladder Dominance}). The guarantee therefore reduces entirely to the strength of a verifier --- and in an operator system the verifier can be made strong, because actions are structured objects rather than prose.
+
+Two corollaries follow that materially change the engineering. \textbf{Probe Safety} (\textbf{Corollary 1}): a model-capability probe influences only the \emph{expected number of rungs}, never the terminal correctness, so probe miscalibration costs latency and never correctness. \textbf{Naming Necessity} (\textbf{Corollary 2}): Proposition 1 holds only while the action vocabulary is language-invariant --- therefore keeping every agent name, tool name, flag, configuration key, protocol sentinel and internal identifier \textbf{byte-identical in English across all locales is not a stylistic preference but a precondition of the guarantee.} Translate \code{Emailer} and the proof fails.
+
+We also report a measurement that reframes the engineering priority. Executing the system's real capability scorer over its real 64-agent registry with twelve matched prompt pairs yields \textbf{English top-1 tool selection 10/12 and Spanish 0/12}, with the semantically correct agent scoring \emph{exactly zero} in 7 of 12 Spanish cases --- not because the models are weak in Spanish (for Spanish the model-side gap is 1--4 points on reasoning and approximately zero on tool selection) but because the system's own deterministic control plane is monolingual at the tokenizer level. We give three language-neutralization operators that repair this with a proven identity guarantee on ASCII input, so English behaviour is provably unchanged.
+
+Finally we specify how the claim is to be \emph{falsified} rather than asserted: a pre-registered non-inferiority protocol ($\delta = 0.05$ on programmatic task success, Tango score intervals on paired proportions, 250 paired items, deliberately-degraded positive controls establishing assay sensitivity).
+
+\begin{keyinsight}
+The scope of translation is stated once and held throughout: \textbf{the graphical interface becomes fully Spanish --- menus, verbs, instructions, messages, wording --- and everything the machine consumes stays English.}
+\end{keyinsight}
