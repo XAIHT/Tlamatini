@@ -636,6 +636,36 @@ def _validate_accesses_in_prompt(question: str):
 
 
 def ask_rag(rag_chain, question, chat_history=None, inet_enabled=False):
+    """Public entry point. Guarantees the single-lane chain is ALWAYS released.
+
+    ⚠️ THE ``finally`` IS THE WHOLE POINT — do NOT remove it, and do NOT let a
+    future refactor return from inside it.
+
+    ``rag_chain_ready`` is the busy/free latch for the ONE chat lane. The
+    implementation below lowers it on entry and raises it again on every
+    ordinary exit (answer, cancel, rejection). But its ``except Exception``
+    branch RE-RAISES a non-cancellation error, and that path used to skip the
+    restore — so a single failed ``rag_chain.invoke()`` left the latch DOWN
+    for the entire life of the process, and every later message was rejected
+    with "Agent is not ready".
+
+    A latch acquired in one place and released in five is a bug waiting to
+    happen; releasing it in ``finally`` makes the invariant structural instead
+    of a thing every future return statement has to remember.
+
+    Found and fixed 2026-07-29 (Angela). Companion fixes live in
+    ``rag/factory.py`` (``setup_llm`` / ``setup_llm_with_context``) and
+    ``consumers.py`` (non-destructive rebuild) — see ``test_chain_readiness``.
+    """
+    try:
+        return _ask_rag_impl(rag_chain, question, chat_history, inet_enabled)
+    finally:
+        # Unconditional: success, rejection, cancel, or ANY exception on its
+        # way out. Never gate this on the outcome.
+        global_state.set_state('rag_chain_ready', True)
+
+
+def _ask_rag_impl(rag_chain, question, chat_history=None, inet_enabled=False):
     print(f"\n--- ask_rag: >>>>>>>>>>{question}<<<<<<<<<<")
     global_state.set_state('rag_chain_ready', False)
     # Capture the request's user id up front (before `question` is reshaped below) so the

@@ -313,7 +313,25 @@ def _build_loaded_documents_fallback_context(documents, config):
     return packed_context
 
 def build_prompt_only_chain(config, prompt_template_string, documents=None):
-    """Builds a simple prompt-only chain with the same interface as the retrieval chain."""
+    """Builds a simple prompt-only chain with the same interface as the retrieval chain.
+
+    Returns None on failure, exactly like ``build_retrieval_chain`` — every
+    caller already handles None.
+
+    This is the LAST-RESORT fallback: it is what runs when the retrieval chain
+    could not be built. It was also the only builder with NO exception handling
+    at all, so a raise here escaped into ``setup_llm`` and (before that got its
+    own ``finally``) stranded the chat's readiness latch. The degradation path
+    must be the most defensive code in the file, not the least.
+    """
+    try:
+        return _build_prompt_only_chain_impl(config, prompt_template_string, documents)
+    except Exception as e:
+        print(f"Error building prompt-only chain: {e}")
+        return None
+
+
+def _build_prompt_only_chain_impl(config, prompt_template_string, documents=None):
     token = config.get('ollama_token')
     client_kwargs = {'timeout': 120.0}
     if token:
@@ -716,6 +734,22 @@ class CustomTextLoader(TextLoader):
         super().__init__(file_path, encoding=encoding, autodetect_encoding=autodetect_encoding)
 
 def setup_llm_with_context(path_only, agents=None, mcps=None, tools=None, omissions=None, filename=None):
+    """Build the contextual chain. ALWAYS reopens the lane on the way out.
+
+    ⚠️ THE ``finally`` IS THE FIX — do not remove it. See ``setup_llm`` below
+    for the full incident write-up; this function had the identical defect.
+    """
+    try:
+        return _setup_llm_with_context_impl(
+            path_only, agents, mcps, tools, omissions, filename)
+    finally:
+        # FAIL-OPEN: a build that failed must leave the lane OPEN so the next
+        # message can retry. Bricking the process is strictly worse than
+        # letting the user try again.
+        global_state.set_state('rag_chain_ready', True)
+
+
+def _setup_llm_with_context_impl(path_only, agents=None, mcps=None, tools=None, omissions=None, filename=None):
     global_state.set_state('rag_chain_ready', False)
     
     if agents is not None:
@@ -867,6 +901,37 @@ def setup_llm_with_context(path_only, agents=None, mcps=None, tools=None, omissi
     return retrieval_chain
 
 def setup_llm(agents=None, mcps=None, tools=None, omissions=None):
+    """Build the chat chain. ALWAYS reopens the lane on the way out.
+
+    ⚠️ THE ``finally`` IS THE FIX — do not remove it, and do not gate it.
+
+    THE OUTAGE (found 2026-07-29, Angela). ``rag_chain_ready`` is the
+    process-global busy/free latch for the ONE chat lane. This function lowered
+    it on entry and raised it again ONLY on its success paths — every
+    ``return None`` and every exception escaping the heavy work (config load,
+    DirectoryLoader, embeddings, chain build, the prompt-only fallback) left it
+    DOWN FOREVER.
+
+    Why that was so hard to survive: the latch is PROCESS-GLOBAL but the
+    rebuild lock is PER-CONSUMER, so refreshing the browser made a new consumer
+    that inherited the dead global and never rebuilt. The observed symptom was
+    a server still alive and answering HTTP, Ollama healthy, the GPU idle,
+    nothing computing — and a chat dead forever, every message rejected with
+    "Agent is not ready", curable only by killing the process.
+
+    ``ask_rag`` already had this treatment; the REBUILD path never did, and
+    that asymmetry is the whole incident.
+    """
+    try:
+        return _setup_llm_impl(agents, mcps, tools, omissions)
+    finally:
+        # FAIL-OPEN: a failed build must leave the lane OPEN so the next
+        # message can retry. The consumer decides separately whether a usable
+        # chain actually exists — see setup_rag_chain's finally.
+        global_state.set_state('rag_chain_ready', True)
+
+
+def _setup_llm_impl(agents=None, mcps=None, tools=None, omissions=None):
     global_state.set_state('rag_chain_ready', False)
 
     if agents is not None:

@@ -198,7 +198,20 @@ function appendChatMessage(username, message, addedContent = null, timestampStr 
     copyBtn.classList.add('message-copy-btn');
     copyBtn.innerHTML = '<i class="bi bi-clipboard"></i> Copy';
 
-    if (isBusyMessageRequest(message)) {
+    if (buildingInitial) {
+        // ⚠️ HISTORY REPLAY MUST NOT DRIVE LIVE CONTROL STATE (found 2026-07-29).
+        //
+        // `buildingInitial` was set around the replay loop but NEVER READ (it
+        // even carried an eslint-disable for being unused), so replaying the
+        // saved chat re-ran every branch below against OLD rows. Whichever row
+        // happened to be last decided whether the input was enabled — so a
+        // reload could come up with the chat box permanently readOnly, or let
+        // the user send before the chain existed (producing the very
+        // "Agent is not ready" rejects that made the chat look dead).
+        //
+        // Painting old messages is a RENDER, not an event: fall through to the
+        // rendering code below and touch nothing else.
+    } else if (isBusyMessageRequest(message)) {
         setTitleBusy(true);
         disableControlsDuringOperation();
     } else if (isBusyMessageContext(message)) {

@@ -322,6 +322,13 @@ class AgentConsumer(AsyncWebsocketConsumer):
             await self.skill_establishment(skill['name'], skill['description'], 'true' if skill['enabled'] else 'false')
         print(f"--- Skills established: {len(skills)}")
 
+        # A rebuild must NEVER leave the chat worse than it found it.
+        #
+        # ⚠️ Found 2026-07-29 (Angela): the self-heal used to NULL a perfectly
+        # good chain whenever the rebuild failed or was cancelled — so the
+        # attempt to heal is what finished killing the chat. Keep whatever is
+        # working and only swap in a chain that actually built.
+        _prev_chain = self.rag_chain
         async with self.rag_lock:
             try:
                 # Check for cancellation before starting the heavy operation
@@ -345,7 +352,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 # Check for cancellation after the blocking call completed
                 if global_state.get_state('cancel_generation'):
                     print("--- [CANCEL] Setup cancelled after LLM creation - discarding result ---")
-                    self.rag_chain = None
+                    self.rag_chain = _prev_chain   # keep what already worked
                     return
                 if self.rag_chain is None:
                     print("!!! RAG chain setup failed. Please check the config.json file and Ollama is running.")
@@ -384,7 +391,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     return
             except Exception as e:
                 print(f"!!! ERROR during RAG chain setup: {e}")
-                self.rag_chain = None
+                self.rag_chain = _prev_chain   # do NOT discard a working chain
                 await self.channel_layer.group_send(   # type: ignore
                     self.room_group_name,
                     {'type': 'agent_message', 'message': constants.ERROR_AGENT_NOT_READY, 'username': 'Tlamatini'}
@@ -395,6 +402,21 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     {'type': 'agent_message', 'message': errorDetail, 'username': 'Tlamatini'}
                 )
                 print("--- Bot error message broadcast to room.")
+            finally:
+                # ⚠️ THE SECOND HALF OF THE 2026-07-29 FIX — do not remove.
+                #
+                # Five exits inside this lock (two cancels, the None-chain
+                # bail, the success return, and the except) used to leave the
+                # process-global latch exactly as `setup_llm` left it. Combined
+                # with a nulled chain that meant: chat permanently dead, immune
+                # to a page reload, curable only by killing the process.
+                #
+                # Now the truth is restated on EVERY exit: keep the last
+                # working chain, and let the latch simply mirror "do we have a
+                # usable chain?".
+                if self.rag_chain is None:
+                    self.rag_chain = _prev_chain
+                global_state.set_state('rag_chain_ready', self.rag_chain is not None)
 
     async def setup_contextual_rag_chain(self, path_only, filename=None):
         """Runs the setup_llm_with_context in a separate thread to avoid blocking."""
@@ -447,6 +469,8 @@ class AgentConsumer(AsyncWebsocketConsumer):
             await self.skill_establishment(skill['name'], skill['description'], 'true' if skill['enabled'] else 'false')
         print(f"--- Skills established: {len(skills)}")
 
+        # Same non-destructive contract as setup_rag_chain — see its comment.
+        _prev_chain = self.rag_chain
         async with self.rag_lock:
             try:
                 # Check for cancellation before starting the heavy operation
@@ -502,7 +526,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 # Check for cancellation after the blocking call completed
                 if global_state.get_state('cancel_generation'):
                     print("--- [CANCEL] Contextual setup cancelled after LLM creation - discarding result ---")
-                    self.rag_chain = None
+                    self.rag_chain = _prev_chain   # keep what already worked
                     return
                 
                 if self.rag_chain is None:
@@ -545,7 +569,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     return
             except Exception as e:
                 print(f"!!! ERROR during Contextual RAG chain setup: {e}")
-                self.rag_chain = None
+                self.rag_chain = _prev_chain   # do NOT discard a working chain
                 not_ready_response = "Your agent cannot process your requests. <br> Check that you didn't specify context outside of the root directory. <br> If everything is correct, please check that Ollama is running and the config.json file is correct."
                 await self.channel_layer.group_send(   # type: ignore
                     self.room_group_name,
@@ -557,6 +581,12 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     {'type': 'agent_message', 'message': errorDetail, 'username': 'Tlamatini'}
                 )
                 print("--- Bot error message broadcast to room.")
+            finally:
+                # Same contract as setup_rag_chain: never leave the chat worse
+                # than we found it, and always restate the latch truthfully.
+                if self.rag_chain is None:
+                    self.rag_chain = _prev_chain
+                global_state.set_state('rag_chain_ready', self.rag_chain is not None)
 
     async def heartbeat(self):
         """
