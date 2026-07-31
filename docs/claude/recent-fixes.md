@@ -16,6 +16,29 @@
 
 ---
 
+## 2026-07-31 — Self-modify snapshot was shipping LIVE credentials (`copy_source_assets.py`)
+
+**What was wrong.** `copy_source_assets.py` walks the **WORKING TREE**, not git. So a file that `.gitignore` keeps out of history is still physically on disk — and was being copied straight into `TlamatiniSourceCode/`, from there into `pkg.zip`, and out to **every user** of a `--self-modify` build. Git history stayed spotless while the **build** leaked. Found live by the self-modify inclusion sweep on 2026-07-31, carrying two real secrets:
+
+- **`open_router.key`** (repo root) — a live OpenRouter `sk-or-v1-…` API key.
+- **`.claude/skills/tlamatini-daily-chat-test/harness/.creds.env`** — the chat-test `TLAMATINI_USER` / `TLAMATINI_PASS` login.
+
+Neither was ever committed. The exposure was **build-only**, and nothing had shipped yet (no `pkg.zip`/`dist` existed at the time).
+
+**Why neither guard caught it.** The generator only redacted `config.json`, `external_mcps.json`, `contacts.json` and agent `config.yaml`, and excluded `data.keys` by exact name — there was **no rule for credential files by extension**. And the sweep's secret check only scanned **config-type suffixes** (`.json/.yaml/.env/.ini/.cfg/.toml`) for **machine-token value shapes** — so a `.key` file was never even opened, and a plain human password in `.env` matches no token regex. Both filters were content-shaped; neither asked the simpler question *"should this FILE exist here at all?"*.
+
+**The fix.**
+
+- **`copy_source_assets.py`** — new `SECRET_FILE_EXTENSIONS` (`.key .keys .pem .p12 .pfx .jks .keystore .env .asc .gpg .ppk`) + `SECRET_FILE_GLOBS` (`.env`, `.env.*`, `id_rsa*`, `id_ed25519*`), enforced by `_is_secret_file()` in `_skip_file`'s **first tier — the same NEVER-resurrected tier as `EXCLUDED_FILE_NAMES`, i.e. BEFORE `KEEP_PATH_GLOBS`**, so a KEEP carve-out can never resurrect a secret. A bare `.env` needs the *name* glob because `Path(".env").suffix` is `""` (a leading dot makes the whole name a STEM) — the extension test alone silently misses it.
+- **New `DROP_PATH_GLOBS`** (+ `_is_dropped_by_path()`) — path-anchored always-drop for run artifacts. Currently one entry: the dated chat-test `harness/reports/**` (29 gitignored files, ~1.2 MB). **Path-anchored on purpose** — a bare `reports` in `EXCLUDED_DIR_NAMES` would be far too broad and could drop real source elsewhere.
+- **`sweep_self_modify.py`** — `check_redaction` gained a **STRUCTURAL guard**: a credential-bearing **file present in the snapshot is a FINDING regardless of its bytes**. Value-shape scanning is necessary but provably not sufficient; presence alone is now the test.
+
+**⚠️ DO NOT add `*_secrets.*` to `SECRET_FILE_GLOBS`.** It looks like an obvious catch-all and it silently drops **`regen_secrets.py`** — a `REQUIRED_SNAPSHOT_FILES` build script. That pattern was considered and rejected during this fix; the narrow list above is deliberate.
+
+**Result.** Snapshot went 900 files / 16.31 MB → **869 files / 15.09 MB** (exactly the 2 secrets + 29 report artifacts). Both inclusion sweeps CLEAN; ruff clean. A 17-case control matrix pins both directions — the six must-drop cases drop, and `regen_secrets.py` / `build.py` / `copy_source_assets.py` / `uncommit-keys.bat` / `Tlamatini.ico` / `notification.wav` / agent `config.yaml` / `prompt.pmt` / SKILL.md / the chat-test harness **code** all still survive.
+
+---
+
 ## 2026-07-26 — Binary-content guard on the RAG context loader (`binary_guard.py`)
 
 **What was wrong.** The ONLY filter on the context/embedding chain was the name-based **Context ▸ Set file type omissions** list plus a 4-entry default denylist (`package-lock.json`, `yarn.lock`, …). Anything else — a `.png`, a `.pyc`, a vendored `.so`, a `.faiss` index, a 200 MB `.safetensors`, a `.mp4` — was opened by `CustomTextLoader` with `autodetect_encoding=True`, decoded into mojibake, chunked and **embedded**. That poisoned FAISS/BM25 with noise, burned embedding VRAM and wall-clock, and diluted real retrieval hits. A name-based list structurally cannot fix this: you cannot enumerate every binary extension a user's project will contain.

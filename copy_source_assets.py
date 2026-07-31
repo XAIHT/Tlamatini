@@ -157,6 +157,41 @@ EXCLUDED_FILE_NAMES = {
 # Glob patterns (matched against the file name) skipped everywhere.
 EXCLUDED_FILE_GLOBS = ("*.version.txt", "*_log.txt", "*_log.log")
 
+# ── Credential files — HARD DROP, never resurrectable ────────────────────────
+# This walk reads the WORKING TREE, not git. So a .gitignore'd secret file is
+# still physically on disk and WAS being copied into TlamatiniSourceCode/ — and
+# from there into pkg.zip, and out to every user of a `--self-modify` build.
+# Git history stays clean while the BUILD leaks: exactly the hole found live on
+# 2026-07-31, when the snapshot was carrying `open_router.key` (a real OpenRouter
+# sk-or-v1 key) and `.creds.env` (the chat-test TLAMATINI_USER/PASS login).
+# A rebuild NEVER needs a credential file — build.py reads none of these.
+# Enforced in the SAME tier as EXCLUDED_FILE_NAMES (i.e. BEFORE KEEP_PATH_GLOBS),
+# so a KEEP carve-out can never resurrect a secret.
+SECRET_FILE_EXTENSIONS = {
+    ".key", ".keys", ".pem", ".p12", ".pfx", ".jks", ".keystore",
+    ".env",                      # covers "*.env" (e.g. .creds.env)
+    ".asc", ".gpg", ".ppk",
+}
+
+# Name globs for credential files an extension test cannot see: `Path(".env").suffix`
+# is "" (a leading dot makes the whole name a STEM), so a bare `.env` needs a name
+# rule. Kept deliberately NARROW — a tempting `*_secrets.*` would silently drop
+# `regen_secrets.py`, a REQUIRED build script.
+SECRET_FILE_GLOBS = (
+    ".env", ".env.*",
+    "id_rsa", "id_rsa.*", "id_ed25519", "id_ed25519.*",
+)
+
+# ── DROP carve-outs (path-based) ─────────────────────────────────────────────
+# Snapshot-relative POSIX path globs ALWAYS dropped: run artifacts that are
+# neither source nor a build input, and that a rebuild never reads. Kept narrow
+# and PATH-anchored on purpose — a bare "reports" entry in EXCLUDED_DIR_NAMES
+# would be far too broad and could drop real source elsewhere in the tree.
+DROP_PATH_GLOBS = (
+    # dated chat-test run artifacts (gitignored; ~1.2 MB of HTML/JSONL per sweep)
+    ".claude/skills/tlamatini-daily-chat-test/harness/reports/**",
+)
+
 # ── KEEP carve-outs (path-based) ─────────────────────────────────────────────
 # Snapshot-relative POSIX path globs whose files are KEPT even when
 # EXCLUDED_EXTENSIONS / EXCLUDED_FILE_GLOBS would drop them. Same rationale as
@@ -354,9 +389,26 @@ def _is_kept_by_path(rel_posix: str) -> bool:
     return any(fnmatch.fnmatch(rel_posix, pat) for pat in KEEP_PATH_GLOBS)
 
 
+def _is_secret_file(name: str) -> bool:
+    """True for credential-bearing files (keys / .env / private keys). Checked in
+    the same NEVER-resurrected tier as EXCLUDED_FILE_NAMES — see the comment on
+    SECRET_FILE_EXTENSIONS for why this must beat every KEEP carve-out."""
+    if Path(name).suffix.lower() in SECRET_FILE_EXTENSIONS:
+        return True
+    return any(fnmatch.fnmatch(name, pat) for pat in SECRET_FILE_GLOBS)
+
+
+def _is_dropped_by_path(rel_posix: str) -> bool:
+    """True when a snapshot-relative POSIX path is ALWAYS dropped (DROP_PATH_GLOBS)."""
+    return any(fnmatch.fnmatch(rel_posix, pat) for pat in DROP_PATH_GLOBS)
+
+
 def _skip_file(name: str, rel_posix: str = "") -> bool:
     # Secrets / PII / local state are NEVER resurrected by a KEEP carve-out.
-    if name in EXCLUDED_FILE_NAMES:
+    if name in EXCLUDED_FILE_NAMES or _is_secret_file(name):
+        return True
+    # Path-anchored run artifacts (chat-test reports) are dropped before KEEP too.
+    if rel_posix and _is_dropped_by_path(rel_posix):
         return True
     # A path-based KEEP wins over the extension / name-glob drops, so shipped UI
     # assets (avatar frames) and shipped-doc screenshots (guide_assets) survive.

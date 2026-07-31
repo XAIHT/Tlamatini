@@ -37,6 +37,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import importlib.util
 import re
 import shutil
@@ -227,8 +228,30 @@ def check_redaction(csa, snap: Path) -> None:
                     f"'{hit[:8]}...'")
             leaked += 1
 
+    # STRUCTURAL guard (2026-07-31): a credential-bearing FILE must not exist in the
+    # snapshot AT ALL — regardless of whether its bytes match a token shape. The
+    # value-shape scan above is necessary but NOT sufficient, and it proved it: it
+    # missed a real `open_router.key` (a .key file was never even scanned — the scan
+    # only looks at config-type suffixes) and a `.creds.env` holding a plain human
+    # password (which matches no machine-token regex). Both were .gitignore'd, so git
+    # history stayed clean while the BUILD leaked — copy_source_assets walks the
+    # WORKING TREE. For a credential file, PRESENCE alone is the finding.
+    cred_ext = {".key", ".keys", ".pem", ".p12", ".pfx", ".jks", ".keystore",
+                ".env", ".asc", ".gpg", ".ppk"}
+    cred_globs = (".env", ".env.*", "id_rsa", "id_rsa.*", "id_ed25519", "id_ed25519.*")
+    for f in snap.rglob("*"):
+        if not f.is_file():
+            continue
+        if (f.suffix.lower() in cred_ext
+                or any(fnmatch.fnmatch(f.name, p) for p in cred_globs)):
+            finding(f"credential-bearing FILE shipped in the snapshot: "
+                    f"{f.relative_to(snap).as_posix()} — drop it in copy_source_assets.py "
+                    f"(SECRET_FILE_EXTENSIONS / SECRET_FILE_GLOBS)")
+            leaked += 1
+
     if leaked == 0:
-        ok("no live secret survives in the snapshot (config.json / agent config.yaml / raw scan)")
+        ok("no live secret survives in the snapshot "
+           "(config.json / agent config.yaml / value scan / credential-file presence)")
 
 
 def main(argv: list[str] | None = None) -> int:
