@@ -47,6 +47,14 @@
         </div>
     </nav>
 
+
+    <!-- Aviso de backend caido / backend-down notice. Lo maneja
+         acp-connection-status.js. Mismo id y mismas clases que la barra
+         del chat (agent_page.html) para que se vea IGUAL en las dos
+         paginas y comparta el CSS. -->
+    <div id="connection-status" class="connection-status connection-status-hidden"
+         role="status" aria-live="polite"></div>
+
     <div class="row" id="agents-container">
         <div id="main-agents-container" class="col-3 px-0">
             <div id="agents-header" class="row header-title">
@@ -265,6 +273,7 @@
     <script src="{% static 'agent/js/acp-file-io.js' %}?v={{ STATIC_VERSION }}"></script>
     <script src="{% static 'agent/js/acp-layout.js' %}?v={{ STATIC_VERSION }}"></script>
     <script src="{% static 'agent/js/acp-parametrizer-dialog.js' %}?v={{ STATIC_VERSION }}"></script>
+    <script src="{% static 'agent/js/acp-connection-status.js' %}?v={{ STATIC_VERSION }}"></script>
 </body>
 
 </html>
