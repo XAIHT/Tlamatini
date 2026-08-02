@@ -541,6 +541,19 @@ class _StdioMcpClient:
         self.args = list(args or [])
         self.cwd = cwd or None
         self.env = os.environ.copy()
+        # Tlamatini's frozen process intentionally isolates its carried Python
+        # from per-user packages.  External MCP servers are independent
+        # programs, though, and may legitimately be installed in a system or
+        # user Python (for example ``pip install --user wireshark-mcp``).  Do
+        # not leak the host application's Python isolation into those child
+        # processes.  A server spec can still opt into any of these variables:
+        # its explicit ``env`` mapping is applied immediately afterwards.
+        for inherited_python_var in (
+            "PYTHONHOME",
+            "PYTHONPATH",
+            "PYTHONNOUSERSITE",
+        ):
+            self.env.pop(inherited_python_var, None)
         if env:
             self.env.update({str(k): str(v) for k, v in env.items()})
         self.proc: Optional[subprocess.Popen] = None

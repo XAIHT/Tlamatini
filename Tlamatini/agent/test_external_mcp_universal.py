@@ -325,6 +325,36 @@ class ExternalMcpCatalogTests(SimpleTestCase):
         self.assertIn("Catalog path:", result["body"])
 
 
+class ExternalMcpStdioEnvironmentTests(SimpleTestCase):
+    def test_host_python_isolation_is_not_inherited_by_external_server(self):
+        with patch.dict(os.environ, {
+            "PYTHONHOME": r"C:\Tlamatini\python",
+            "PYTHONPATH": r"C:\Tlamatini\python",
+            "PYTHONNOUSERSITE": "1",
+            "KEEP_FOR_CHILD": "yes",
+        }, clear=True):
+            client = em._StdioMcpClient("sample", "python", ["-m", "sample"])
+
+        self.assertNotIn("PYTHONHOME", client.env)
+        self.assertNotIn("PYTHONPATH", client.env)
+        self.assertNotIn("PYTHONNOUSERSITE", client.env)
+        self.assertEqual(client.env["KEEP_FOR_CHILD"], "yes")
+
+    def test_server_python_environment_explicitly_overrides_sanitization(self):
+        explicit = {
+            "PYTHONHOME": r"C:\MCP\python",
+            "PYTHONPATH": r"C:\MCP\site-packages",
+            "PYTHONNOUSERSITE": "1",
+        }
+        with patch.dict(os.environ, {"PYTHONNOUSERSITE": "1"}, clear=True):
+            client = em._StdioMcpClient(
+                "sample", "python", ["-m", "sample"], env=explicit,
+            )
+
+        for key, value in explicit.items():
+            self.assertEqual(client.env[key], value)
+
+
 class ExternalMcpTransportTests(SimpleTestCase):
     pass
 
