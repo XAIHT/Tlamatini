@@ -3,4 +3,19 @@
 # against the agent's runtime directory.
 output_dir: ""
 
+# Capture the WHOLE DESKTOP, not just the primary monitor. Defaults to TRUE
+# (Ángela, 2026-08-02): Shoter's job is to prove what was on screen, and a
+# primary-monitor-only capture silently loses half of a two-monitor machine — if
+# the window being documented sat on the second screen, the shot comes back
+# empty and it looks like nothing happened.
+# On a single screen both forms return the identical image.
+all_screens: true
+
+# EXACT file name. "" = the usual timestamped name inside the numbered
+# shoter_<n> sub-directory. When given, the image is written STRAIGHT into
+# output_dir — for a caller building a report who needs photo 3 to carry the
+# name of check 3. It is basename'd: a name containing ../ cannot write
+# outside output_dir.
+filename: ""
+
 target_agents: []

@@ -339,10 +339,27 @@ def get_next_shoter_dir(base_output_dir: str) -> str:
         n += 1
 
 
-def capture_screenshot(output_dir: str) -> str:
+def capture_screenshot(output_dir: str, all_screens: bool = True,
+                       filename: str = "") -> str:
     """
-    Capture a screenshot and save it to a numbered subdirectory.
-    Returns the absolute path of the saved image.
+    Capture a screenshot and save it. Returns the absolute path of the image.
+
+    all_screens (default TRUE)
+        Captures the WHOLE DESKTOP, not just the primary monitor. True by
+        default on purpose: Shoter's job is to prove what was on screen, and a
+        bare `ImageGrab.grab()` — which is what this used to be — silently loses
+        half of a two-monitor machine. If the window being documented sat on the
+        second monitor, the shot came back showing an empty desktop and it
+        looked like nothing had happened.
+        On a single screen both forms return the identical image, so defaulting
+        it on costs nobody anything.
+
+    filename
+        EXACT file name. Empty = the usual timestamped name inside the numbered
+        shoter_<n> sub-directory. When given, the image is written STRAIGHT into
+        output_dir — what a caller building a report wants, so photo 3 can carry
+        the name of check 3. It is basename'd, so a name containing ../ cannot
+        write outside output_dir.
     """
     try:
         from PIL import ImageGrab
@@ -354,17 +371,35 @@ def capture_screenshot(output_dir: str) -> str:
     if not os.path.isabs(output_dir):
         output_dir = os.path.join(script_dir, output_dir)
 
-    # Get next numbered subdirectory
-    save_dir = get_next_shoter_dir(output_dir)
+    name = os.path.basename(str(filename or '').strip())
+    if name:
+        # Explicitly requested name: honour it, no numbered sub-directory.
+        if not os.path.splitext(name)[1]:
+            name += ".png"
+        save_dir = output_dir
+    else:
+        # Long-standing behaviour: numbered sub-directory + timestamped name.
+        save_dir = get_next_shoter_dir(output_dir)
+        now = datetime.now()
+        name = (now.strftime("screenshot_%Y%m%d_%H%M%S_")
+                + f"{now.microsecond // 1000:03d}.png")
+
     os.makedirs(save_dir, exist_ok=True)
+    filepath = os.path.join(save_dir, name)
 
-    # Generate unique filename with milliseconds
-    now = datetime.now()
-    filename = now.strftime("screenshot_%Y%m%d_%H%M%S_") + f"{now.microsecond // 1000:03d}.png"
-    filepath = os.path.join(save_dir, filename)
+    # FAIL-OPEN: all_screens only exists on Windows/macOS. On a platform or a
+    # Pillow build without it, fall back to the plain capture instead of
+    # raising — a primary-monitor shot beats no shot at all.
+    screenshot = None
+    if all_screens:
+        try:
+            screenshot = ImageGrab.grab(all_screens=True)
+        except TypeError:
+            logging.warning("⚠️ all_screens is unavailable on this platform; "
+                            "capturing the primary screen only.")
+    if screenshot is None:
+        screenshot = ImageGrab.grab()
 
-    # Capture and save
-    screenshot = ImageGrab.grab()
     screenshot.save(filepath, "PNG")
 
     return os.path.abspath(filepath)
@@ -407,14 +442,23 @@ def main():
     try:
         output_dir = str(config.get('output_dir') or '').strip() or _default_temp_output_dir()
         target_agents = config.get('target_agents', [])
+        # Defaults to TRUE when the key is absent: an older config.yaml keeps
+        # working AND silently gains the fix (it used to crop to the primary).
+        all_screens = config.get('all_screens', True)
+        all_screens = str(all_screens).strip().lower() not in ('false', '0', 'no', '')
+        filename = str(config.get('filename') or '').strip()
 
         logging.info("📸 SHOTER AGENT STARTED")
         logging.info(f"📁 Output directory: {output_dir}")
+        logging.info(f"🖥️ Whole desktop: {all_screens}")
+        if filename:
+            logging.info(f"🏷️ Requested name: {filename}")
         logging.info(f"🎯 Targets: {target_agents}")
 
         # Capture screenshot
         try:
-            saved_path = capture_screenshot(output_dir)
+            saved_path = capture_screenshot(output_dir, all_screens=all_screens,
+                                            filename=filename)
             logging.info(f"✅ Screenshot saved: {saved_path}")
             # Emit a Parametrizer-compatible block so downstream agents
             # (and the Multi-Turn LLM) can read the path verbatim instead
@@ -424,7 +468,8 @@ def main():
                 "INI_SECTION_SHOTER<<<\n"
                 f"output_path: {saved_path}\n"
                 f"output_dir: {os.path.dirname(saved_path)}\n"
-                f"filename: {os.path.basename(saved_path)}\n\n"
+                f"filename: {os.path.basename(saved_path)}\n"
+                f"all_screens: {all_screens}\n\n"
                 f"Screenshot saved to {saved_path}\n"
                 ">>>END_SECTION_SHOTER"
             )

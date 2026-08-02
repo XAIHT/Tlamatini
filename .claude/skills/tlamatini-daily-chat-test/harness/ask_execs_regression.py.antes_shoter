@@ -96,10 +96,10 @@ except Exception as exc:  # pragma: no cover
     print(f"!!! Playwright is required: {exc}")
     sys.exit(2)
 
-# PIL.ImageGrab is FORBIDDEN (Angela, 2026-08-02): screenshots are
-# taken by SHOTER, Tlamatini's own agent. See shoter_shot.py.
-from shoter_shot import take_shot
-
+try:
+    from PIL import ImageGrab
+except Exception:  # pragma: no cover
+    ImageGrab = None
 
 
 # ── The page contract. If the UI changes, fix it HERE and nowhere else. ──────
@@ -153,7 +153,11 @@ def shot(name: str) -> None:
         except Exception:
             pass
     p = OUT / f"{len(SHOTS):02d}_{name}.png"
-    take_shot(os.path.dirname(path), os.path.basename(path))
+    if ImageGrab is not None:
+        try:
+            ImageGrab.grab(all_screens=True).save(p)
+        except Exception as exc:
+            log(f"(screenshot failed: {exc})")
     SHOTS.append(p.name)
 
 

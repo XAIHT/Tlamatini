@@ -58,10 +58,10 @@ except Exception as exc:  # pragma: no cover
     print("!!! Playwright is required: %s" % exc)
     sys.exit(2)
 
-# PIL.ImageGrab is FORBIDDEN (Angela, 2026-08-02): screenshots are
-# taken by SHOTER, Tlamatini's own agent. See shoter_shot.py.
-from shoter_shot import take_shot
-
+try:
+    from PIL import ImageGrab
+except Exception:  # pragma: no cover
+    ImageGrab = None
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = r"C:\Development\Tlamatini"
@@ -102,7 +102,11 @@ def shot(name: str) -> None:
         except Exception:
             pass
     path = os.path.join(OUT, "%02d_%s.png" % (len(SHOTS), name))
-    take_shot(os.path.dirname(path), os.path.basename(path))
+    if ImageGrab is not None:
+        try:
+            ImageGrab.grab(all_screens=True).save(path)
+        except Exception as exc:
+            log("(screenshot failed: %s)" % exc)
     SHOTS.append(os.path.basename(path))
 
 
