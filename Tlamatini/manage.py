@@ -504,7 +504,39 @@ def _apply_pending_db_swap():
         print(f"--- [DB SWAP] Skipped due to error: {exc}")
 
 
+def _guard_live_database():
+    """Check the live db.sqlite3 BEFORE Django opens it. Never blocks startup.
+
+    Added after the live database was found at ZERO BYTES on 2026-08-02: the
+    app started happily on the broken file, the emptiness was noticed hours
+    later by accident, and the broken file itself was gone by the time we went
+    looking — so the cause is still unknown.
+
+    Runs right after ``_apply_pending_db_swap()`` so it inspects the exact
+    file Django will open (including one just restored from ``DB/ToLoad``).
+    On a bad verdict it copies the body to ``DB/Corrupted/`` and SHOUTS; it
+    never restores anything on its own and never stops Tlamatini from
+    starting. Fail-open end to end: see ``agent/db_guard.py``.
+    """
+    try:
+        from agent import db_guard
+        db_root = _resolve_db_folder_root()
+        live = _resolve_live_db_path()
+        db_guard.guard_database(
+            live, db_root,
+            backup_roots=[
+                db_root,
+                os.path.dirname(live),
+                os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                             'Backups'),
+            ],
+        )
+    except Exception as exc:
+        print(f"--- [DB GUARD] Skipped due to error: {exc}")
+
+
 _apply_pending_db_swap()
+_guard_live_database()
 
 
 def _post_update_migrate_flag_path():

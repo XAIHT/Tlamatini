@@ -362,3 +362,10 @@ image copy *.png
 
 # Orphan/experimental Telegram dir (real app api_hash + an old receiver) — never ship
 Tlamatini/agent/telegram/
+
+# Local database health fingerprint written by agent/db_guard.py on each
+# healthy start. Machine-local state, never source: it carries THIS install's
+# own row counts, and shipping it would make every other install compare
+# itself against those numbers and false-alarm on every boot.
+Tlamatini/DB/db_health.json
+DB/db_health.json
