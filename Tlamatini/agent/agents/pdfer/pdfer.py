@@ -624,7 +624,10 @@ def _sniff_mode(config: dict, text: str, file_kind: str, images: list, pdfs: lis
 
 _POLISH_PROMPT = (
     "You are a technical editor. Rewrite the CONTENT below as clean, well-structured "
-    "GitHub-flavored Markdown suitable for a printed PDF report. Rules: keep EVERY fact "
+    "GitHub-flavored Markdown suitable for a printed PDF report. Rules: WRITE THE OUTPUT IN "
+    "THE SAME LANGUAGE AS THE CONTENT — detect the CONTENT's own language and keep it; "
+    "NEVER translate it, not even partially, and leave proper names, identifiers, paths and "
+    "code exactly as they are; keep EVERY fact "
     "and every number exactly as given — never invent, never drop information; add a short "
     "'# ' title line at the top; use '## ' section headings, bullet lists and Markdown "
     "tables where they help; keep code inside fenced blocks. Output ONLY the Markdown, with "
@@ -680,6 +683,30 @@ def _ollama_polish(text: str, config: dict) -> tuple:
 # ========================================
 # HTML DOCUMENT ASSEMBLY (the xhtml2pdf path)
 # ========================================
+
+# -- DOCUMENT LANGUAGE: the only words PDFer itself puts INSIDE the document --
+# The page footer and the fallback <title> are written by PDFer, not by the
+# user, so they must not be nailed to one language. ``document_language``
+# picks them; an empty / unknown / malformed value falls back to this build's
+# default instead of raising (fail-open, like every other knob here).
+#
+# It does NOT touch the user's content, and it deliberately does NOT drive the
+# optional Ollama polish: that prompt always preserves the CONTENT's own
+# language, or a Spanish report could come back silently translated.
+_DEFAULT_DOC_LANGUAGE = "en"
+
+_DOC_LABELS = {
+    "es": {"page": "página", "of": "de", "untitled": "Documento"},
+    "en": {"page": "page", "of": "of", "untitled": "Document"},
+}
+
+
+def _doc_labels(config: dict) -> dict:
+    """Footer / fallback-title words for the configured document language."""
+    lang = str(_cfg(config, "document_language", _DEFAULT_DOC_LANGUAGE)).strip().lower()
+    lang = lang.replace("_", "-").split("-")[0]      # es-MX / es_MX / ES -> es
+    return _DOC_LABELS.get(lang) or _DOC_LABELS[_DEFAULT_DOC_LANGUAGE]
+
 
 def _page_css(config: dict) -> str:
     size = _PAGE_SIZES.get(str(_cfg(config, "page_size", "A4")).strip().lower(), "A4")
@@ -762,11 +789,13 @@ def _figures_html(images: list, config: dict) -> str:
 def _build_html_document(body: str, config: dict, figures: str = "") -> str:
     css_override = str(_cfg(config, "css", "")).strip()
     css_text = css_override if css_override else DEFAULT_CSS
+    labels = _doc_labels(config)
     footer = ""
     if _as_bool(_cfg(config, "page_numbers", True), True):
         footer = ('<div id="tlmFooterContent" class="tlm-footer">'
-                  'page <pdf:pagenumber> of <pdf:pagecount></div>')
-    title = str(_cfg(config, "title", "")).strip() or "Document"
+                  f'{html.escape(labels["page"])} <pdf:pagenumber> '
+                  f'{html.escape(labels["of"])} <pdf:pagecount></div>')
+    title = str(_cfg(config, "title", "")).strip() or labels["untitled"]
     return f"""<!doctype html>
 <html>
   <head>

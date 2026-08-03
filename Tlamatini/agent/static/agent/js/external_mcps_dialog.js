@@ -67,9 +67,22 @@ function OpenExternalMcpsDialog(event) { // eslint-disable-line no-unused-vars
     let isSaving = false;
     const activeCount = () => servers.filter(s => s.active).length;
 
+    // ACTIVE-FIRST ORDERING (Angela, 2026-08-02). With a large catalog it was a
+    // headache to work out WHICH <=5 servers are actually active, so the active ones
+    // are always hoisted to the TOP of the list (alphabetically) and the rest follow
+    // underneath (alphabetically). renderList() re-sorts on every render, so a server
+    // jumps straight into the top block the moment it is activated.
+    function compareServers(a, b) {
+        if (!!a.active !== !!b.active) return a.active ? -1 : 1;
+        const an = (a.display || a.key || '').toLowerCase();
+        const bn = (b.display || b.key || '').toLowerCase();
+        return an.localeCompare(bn, undefined, { numeric: true, sensitivity: 'base' });
+    }
+
     function renderLegend() {
         legend.textContent = 'Select up to ' + maxActive +
-            ' services. Search filters the catalog; inactive services stay catalog-only.';
+            ' services — active ones stay pinned at the top. Search filters the' +
+            ' catalog; inactive services stay catalog-only.';
     }
 
     function statusClass(s) {
@@ -110,6 +123,13 @@ function OpenExternalMcpsDialog(event) { // eslint-disable-line no-unused-vars
         return node;
     }
 
+    function listHeading(text, variant) {
+        const node = document.createElement('div');
+        node.className = 'emx-group emx-group-' + variant;
+        node.textContent = text;
+        return node;
+    }
+
     function renderList() {
         const q = (search.value || '').trim().toLowerCase();
         listEl.innerHTML = '';
@@ -120,9 +140,21 @@ function OpenExternalMcpsDialog(event) { // eslint-disable-line no-unused-vars
             listEl.appendChild(listMessage('No match.'));
             return;
         }
+        // Active first (alphabetical), then the rest (alphabetical). Sorting BEFORE the
+        // slice also guarantees an active server can never be cut by the render limit.
+        shown.sort(compareServers);
         const rendered = shown.slice(0, EXTERNAL_MCPS_RENDER_LIMIT);
+        const showGroups = rendered.some(s => s.active) && rendered.some(s => !s.active);
+        let groupEmitted = '';
         const fragment = document.createDocumentFragment();
         for (const s of rendered) {
+            const group = s.active ? 'active' : 'rest';
+            if (showGroups && group !== groupEmitted) {
+                fragment.appendChild(listHeading(group === 'active'
+                    ? 'Active — sent with your prompt'
+                    : 'Catalog — inactive', group));
+                groupEmitted = group;
+            }
             const row = document.createElement('div');
             row.className = 'emx-row' + (s.active ? ' on' : '');
             row.dataset.key = s.key;
@@ -171,7 +203,7 @@ function OpenExternalMcpsDialog(event) { // eslint-disable-line no-unused-vars
     }
 
     function renderSum() {
-        const active = servers.filter(s => s.active);
+        const active = servers.filter(s => s.active).sort(compareServers);
         sumEl.innerHTML = '';
         if (!active.length) {
             sumEl.innerHTML = '<tr><td class="empty" colspan="4">' +
@@ -214,6 +246,20 @@ function OpenExternalMcpsDialog(event) { // eslint-disable-line no-unused-vars
 
     function renderAll() { renderList(); renderSum(); renderChip(); }
 
+    // A toggled row jumps between the two blocks, so keep it under the user's eye and
+    // re-focus it -- renderList() replaced the DOM node the focus was sitting on.
+    function revealRow(key) {
+        const rows = listEl.querySelectorAll('.emx-row');
+        for (const row of rows) {
+            if (row.dataset.key !== key) continue;
+            if (typeof row.scrollIntoView === 'function') {
+                row.scrollIntoView({ block: 'nearest' });
+            }
+            if (typeof row.focus === 'function') row.focus({ preventScroll: true });
+            return;
+        }
+    }
+
     function toggleServer(key) {
         const s = servers.find(x => x.key === key);
         if (!s) return;
@@ -225,6 +271,7 @@ function OpenExternalMcpsDialog(event) { // eslint-disable-line no-unused-vars
         s.active = !s.active;
         warn.textContent = '';
         renderAll();
+        revealRow(key);
     }
 
     function removeServer(key) {

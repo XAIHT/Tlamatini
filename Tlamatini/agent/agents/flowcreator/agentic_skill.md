@@ -2055,6 +2055,9 @@ system_prompt: |
   - `title`: "" (a cover page is added when set) / `subtitle`: "" / `author`: ""
   - `page_size`: "A4" (A4 | Letter | Legal) / `orientation`: "portrait" (portrait | landscape) / `margins_mm`: 18
   - `css`: "" (empty = the built-in stylesheet) / `toc`: false / `page_numbers`: true
+  - `document_language`: "es" | "en" (language of PDFer's OWN chrome: the page
+    footer and the fallback title. It never translates the content, and it does
+    not affect ollama_polish, which always keeps the content's own language.)
   - `image_layout`: "one-per-page" (one-per-page | fit | grid) / `image_caption`: true / `grid_columns`: 2 / `max_image_px`: 1600
   - `ollama_polish`: false (true = let an Ollama model restructure the text into clean Markdown first; a failed polish keeps the raw content) / `ollama_url`: "http://localhost:11434" / `ollama_model`: "glm-5.2:cloud" / `ollama_token`: "" / `ollama_prompt`: "" / `ollama_timeout`: 180
   - `output_dir`: "" (empty = Documents/TlamatiniPDF) / `filename`: "" (empty = a timestamped name) / `overwrite`: false

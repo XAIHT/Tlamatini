@@ -373,6 +373,25 @@ body.emx-dialog-open {
     text-align: center;
 }
 
+/* Group headings for the ACTIVE-FIRST list order (Angela, 2026-08-02): the active
+   servers are pinned at the top of the catalog, these mark where that block ends. */
+.emx-group {
+    flex: none;
+    margin: 0 2px -4px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: #7fd8c6;
+}
+
+.emx-group-rest {
+    margin-top: 6px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    color: #a8adbc;
+}
+
 .emx-stitle {
     flex: none;
     margin: 0 0 8px;
