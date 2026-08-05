@@ -230,7 +230,7 @@ Tlamatini/                          # Git root
 │   │   ├── templates/agent/        # HTML templates (toolbar has Multi-Turn / Exec-Report / ACPX / Ask-Execs checkboxes)
 │   │   ├── static/agent/
 │   │   │   ├── css/                # agentic_control_panel.css, agent_page.css, tools_dialog.css, etc.
-│   │   │   ├── js/                 # 32 JS modules (9 chat incl. chat_image_paste.js + 13 ACP incl. acp-flow-snapshot.js + 1 ACP entry + 9 shared incl. chat_page_runtime_poller.js, shared-runtime-dialogs.js, canvas_item_dialog.js, contextual_menus.js, tools_dialog.js, skills_dialog.js, external_mcps_dialog.js, contacts_dialog.js, access_keys_wizard.js)
+│   │   │   ├── js/                 # 33 JS modules (9 chat incl. chat_image_paste.js + 13 ACP incl. acp-flow-snapshot.js + 1 ACP entry + 10 shared incl. chat_page_runtime_poller.js, shared-runtime-dialogs.js, canvas_item_dialog.js, contextual_menus.js, tools_dialog.js, skills_dialog.js, external_mcps_dialog.js, contacts_dialog.js, access_keys_wizard.js, checkbox_bulk_toggle.js)
 │   │   │   ├── img/Tlamatini.ico   # App icon (web pages + console window + .exe)
 │   │   │   └── sounds/             # notification.wav, hypervisor_alert.wav
 │   │   └── migrations/             # Django migrations (latest: 0174_unreal_scaffold_build_project_tip; 0173 seeds the Unreal-5.8-scaffold Catalog prompt; 0170/0171/0172 add the Nmapper agent + tool + demo prompts)

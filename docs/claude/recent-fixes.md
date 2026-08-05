@@ -16,6 +16,36 @@
 
 ---
 
+## 2026-08-04 — SPACE-bar bulk check/uncheck of a text-selected block of checkboxes (`checkbox_bulk_toggle.js`)
+
+**What was wrong.** The Configure Mcps / Tools / Agents / Skills dialogs, the External-MCPs catalog and the ACP canvas agent-config dialogs list **dozens** of checkboxes. Clearing 20 of them cost 20 clicks — and there was no way to say "these ones, all at once". Every prior idea for fixing it (a select-all button, per-dialog range-select, shift-click) would have needed **per-dialog wiring**, so each new dialog would silently ship without it.
+
+**The fix (Angela López Mendoza, 2026-08-04).** One self-contained IIFE — `agent/static/agent/js/checkbox_bulk_toggle.js` — with **ZERO per-dialog wiring**. The user drags an **ordinary text selection** across several checkbox labels and presses **SPACE once**: every checkbox the selection overlaps flips.
+
+- **The rule is deliberately asymmetric, so it is predictable**: if **ANY** selected checkbox is checked → **uncheck them ALL**; if **all** are already unchecked → **check them ALL**. So the first SPACE over a checked (or mixed) block always CLEARS it — which is what a human means by "unselect these" — and a second SPACE turns the same block back on.
+- **It is generic by construction**: targets are found by asking which checkboxes the *live selection* overlaps, never by a dialog id or a class list. So **every** checkbox dialog gets the behaviour for free — present **and future**. Do not "improve" this by adding a per-dialog registry; that is precisely the design being avoided.
+- A muted one-line hint is injected into any jQuery-UI dialog showing ≥2 checkboxes (`dialogopen`), purely cosmetic and fail-safe.
+
+**DO NOT weaken these — each prevents a specific, silent failure:**
+
+1. **The listener MUST stay on `document` in the CAPTURE phase** (`document.addEventListener('keydown', onKeyDown, true)`). Bubble phase is a silent **data-corrupting** bug, not a style preference: `external_mcps_dialog.js` already binds Space on `.emx-row` and only calls `preventDefault()`, so it would toggle the focused row **first** and our pass would toggle it **again** — netting that one row back to its original state while all its neighbours flipped. `stopPropagation()` is called **only for a SPACE we actually consumed**, so Escape / Tab / Enter / Ctrl+Z and every other key reach their handlers exactly as before.
+2. **It bails on `input` / `textarea` / `select` / `contenteditable`, testing BOTH `event.target` AND `document.activeElement`.** The `activeElement` half is not redundant: after a mouse-drag the target is usually `<body>`, so a target-only guard would steal SPACE from every search box in the app.
+3. **It toggles with `checkbox.click()` — a REAL click.** Every existing click/change handler still runs (state persistence, the External-MCPs 5-active cap, the ACP canvas dialogs). Setting `.checked` directly would skip them and silently lose the user's change.
+4. **The range-overlap test is STRICT** — a zero-length touch at a boundary does not count — so selecting label A never drags in the first character of label B.
+5. **A row must own EXACTLY ONE checkbox** (`node.querySelectorAll('input[type="checkbox"]').length !== 1` breaks the walk up). Without it a whole list container could be mistaken for a single row, and *any* selection would toggle the entire dialog.
+6. **Self-re-rendering lists are handled by re-resolving each checkbox right before it is clicked** (`makeResolver`, by `id` then `[data-key]` then `isConnected`). The External-MCPs catalog rebuilds every row from its model on each toggle, so a snapshotted element is already detached by the time the loop reaches it; a row that vanished is skipped, never clicked while detached.
+7. **Nothing acts without a non-collapsed selection that overlaps a checkbox** — with no targets it returns **before** `preventDefault()`, so native SPACE (page scroll, focused-checkbox toggle) is untouched. Every step is wrapped in `try/catch`: a failure degrades to "SPACE did nothing", never to a broken page.
+
+**The chat toolbar toggles (`#multi-turn-enabled`, `#acpx-enabled`, `#ask-execs-enabled`, …) are UNREACHABLE by design**, and that is not an accident to be "fixed": `.toolbar-toggle` carries `user-select: none` in `agent_page.css`, so no text selection can ever be made over them and no bulk pass can ever flip a run-shaping flag behind the user's back.
+
+It is an IIFE that declares **NO cross-file globals** (same shape as `chat_image_paste.js`), so it cannot trip the const-poison contract and needs no `eslint.config.mjs` globals entry.
+
+**Wired in**: `agent_page.html` **and** `agentic_control_panel.html` (a `?v={{ STATIC_VERSION }}_bulktoggle` cache-buster on both). A module nobody loads does nothing — both pages must keep the tag, and `staticfiles/` must be re-collected (`python Tlamatini/manage.py collectstatic --noinput`) or the browser downloads a stale copy.
+
+Coverage: `agent/test_checkbox_bulk_toggle.py` (15 tests in three layers — source contract, template wiring, collected-static sync). Module listing: `docs/claude/frontend.md` → *Shared / chat-runtime auxiliary*.
+
+---
+
 ## 2026-07-31 — Self-modify snapshot was shipping LIVE credentials (`copy_source_assets.py`)
 
 **What was wrong.** `copy_source_assets.py` walks the **WORKING TREE**, not git. So a file that `.gitignore` keeps out of history is still physically on disk — and was being copied straight into `TlamatiniSourceCode/`, from there into `pkg.zip`, and out to **every user** of a `--self-modify` build. Git history stayed spotless while the **build** leaked. Found live by the self-modify inclusion sweep on 2026-07-31, carrying two real secrets:
