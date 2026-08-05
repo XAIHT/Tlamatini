@@ -281,6 +281,10 @@ _EXEC_REPORT_TOOLS: Dict[str, Tuple[str, str]] = {
     # would already capture it; this entry exists only so the table gets the native
     # "Crimson Parchment" caption gradient defined in agent_page.css.
     "chat_agent_pdfer":          ("pdfer",          "PDFer"),
+    # LaTeXer is state-changing (it WRITES .tex sources and a PDF). The generic
+    # wrapped-agent fallback would already capture it; this entry exists only so the
+    # table gets the native "Scholar's Vellum" caption gradient defined in agent_page.css.
+    "chat_agent_latexer":        ("latexer",        "LaTeXer"),
     # Zavuerer is state-changing: it SENDS messages (SMS / WhatsApp / Telegram /
     # Email / Voice) through the Zavu unified-messaging REST API. The read-only
     # ``health`` probe shares the same ``zavuerer`` agent_key so a mixed flow renders
@@ -416,6 +420,10 @@ _ASK_EXECS_REQUIRED_TOOLS: frozenset = frozenset({
     "chat_agent_de_compresser", # De-Compresser (unpacks archives over existing paths)
     "unzip_file",               # Unzip         (direct @tool — same risk as above)
     "chat_agent_pdfer",         # PDFer         (writes a PDF to ANY output_dir/filename)
+    # LaTeXer writes .tex sources AND a PDF to a free-form path, edits an existing .tex
+    # in place, `clean` DELETES auxiliary files, and it RUNS A REAL COMMAND (pdflatex,
+    # which with shell_escape can execute anything). Tier A + command-runner, twice over.
+    "chat_agent_latexer",       # LaTeXer       (writes/edits .tex, deletes aux, runs pdflatex)
     # ----- Tier B: MESSAGING — DELIBERATELY *NOT* GATED (Angela, 2026-07-26) --
     # Emailer / Whatsapper / Telegrammer / Zavuerer used to be gated here on the
     # "you cannot unsend it" argument. Angela REVERSED that:

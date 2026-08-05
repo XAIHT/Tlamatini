@@ -17,6 +17,12 @@ for every sidebar/canvas display name.
 **How Angela found it (2026-07-26):** her freshly-built `C:\Tlamatini` showed
 **"Pdfer"** on the canvas even though migration 0188 seeds `PDFer`.
 
+**Every NEW agent hits this same trap.** The most recent is **LaTeXer** (#87,
+2026-08-05): `'latexer'.title()` → `'Latexer'`, so migration 0191 seeding
+`LaTeXer` would be silently overwritten on the next boot without
+`"latexer": "LaTeXer"` in `display_name_from_agent_type`. Add the override in the
+SAME pass as the migration, every time. See [[project-latexer-agent]].
+
 Two defects the old logic (`str.title()` + 5 ad-hoc overrides) shipped:
 
 1. **22 of 86 names mis-cased** — Pdfer, Sqler, Ssher, Pser, Scper, Acpxer,

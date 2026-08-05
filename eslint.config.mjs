@@ -424,6 +424,7 @@ export default [
                 updateDiscovererConnection: "readonly",
                 updateNmapperConnection: "readonly",
                 updatePdferConnection: "readonly",
+                updateLatexerConnection: "readonly",
 
                 // Cross-file globals: acp-canvas-core.js
                 applyAgentTypeClass: "readonly",

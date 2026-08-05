@@ -903,10 +903,35 @@ def _vocoder_available() -> bool:
         return False
 
 
+def _quiet_huggingface_token_nag() -> None:
+    """Silence huggingface_hub's "please set a HF_TOKEN" advisory.
+
+    NO HUGGINGFACE ACCOUNT IS NEEDED TO USE TALKER. The SNAC 24 kHz vocoder
+    (``hubertsiuzdak/snac_24khz``) is a PUBLIC model: it downloads anonymously,
+    once, is cached under ``~/.cache/huggingface``, and every later run only
+    revalidates that cache. A token is purely OPTIONAL — it lifts the anonymous
+    rate limit and speeds up downloads, nothing else — so telling the user to go
+    get one would be wrong. (If HF_TOKEN IS set in the environment,
+    huggingface_hub picks it up on its own and this advisory never fires.)
+
+    It is silenced because it is emitted on stderr on EVERY run, which PowerShell
+    then paints red and wraps in a NativeCommandError — making a perfectly
+    healthy synthesis look like a crash. Fail-open: if huggingface_hub changes
+    its logger name, we simply keep the noise rather than break synthesis.
+    """
+    try:
+        import warnings
+        logging.getLogger("huggingface_hub.utils._http").setLevel(logging.ERROR)
+        warnings.filterwarnings("ignore", message=".*unauthenticated requests.*")
+    except Exception:
+        pass
+
+
 def _get_snac_model():
     """Load (once) and return the shared SNAC 24 kHz decoder."""
     global _SNAC_MODEL
     if _SNAC_MODEL is None:
+        _quiet_huggingface_token_nag()
         from snac import SNAC
         _SNAC_MODEL = SNAC.from_pretrained("hubertsiuzdak/snac_24khz").eval()
     return _SNAC_MODEL

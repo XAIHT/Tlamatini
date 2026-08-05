@@ -1409,7 +1409,9 @@ def main():
         # it, but shipping it empty makes the install layout explicit and avoids
         # a first-write race before the directory is created.
         # ``Templates`` is the DEFAULT parent for the template-projects the
-        # firmware/engine agents (STM32er/ESP32er/Arduiner/Unrealer) scaffold
+        # firmware/engine/document agents (STM32er/ESP32er/Arduiner/Unrealer,
+        # plus LaTeXer, whose scaffolded .tex projects default to
+        # Templates/LaTeXer) scaffold
         # when the user gives no path (exported as TLAMATINI_TEMPLATES; see
         # agent/path_guard.py::enforce_app_templates_dir + prompt.pmt Rule 16).
         # Ship it empty next to the executable so the first create_project lands

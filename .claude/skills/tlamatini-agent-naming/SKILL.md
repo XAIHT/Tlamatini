@@ -23,7 +23,11 @@ description: The authoritative Tlamatini agent NAMING CONVENTION — invoke befo
 > is the real single source of truth.** Add every new/renamed agent there or `str.title()`
 > names it and it ships mangled — this is precisely how PDFer shipped as **"Pdfer"**
 > (plus Sqler / Ssher / Pser / Scper / Acpxer / Esp32Er / Esphomer / Videoplayer /
-> Audioplayer / Flowcreator / Teletlamatini …, 22 of 86 agents).
+> Audioplayer / Flowcreator / Teletlamatini …, 22 of 86 agents). The newest case is
+> **LaTeXer** (agent #87): `str.title()` renders `"Latexer"`, so `agents/latexer` carries an
+> explicit override. Its display name is LaTeX's own capitalisation plus the Tlamatini
+> `-er` suffix — `L` `a` `T` `e` `X` `e` `r` → **`LaTeXer`**, never `Latexer` / `LaTexer` /
+> `LATEXER`. Pinned by `test_agent_display_names.py::test_latexer_is_exactly_LaTeXer`.
 >
 > **HYPHEN vs SPACE IS FUNCTIONAL.** `acp-canvas-core.js` compares
 > `targetAgentName.toLowerCase()` **without collapsing whitespace**, and for eleven agents it

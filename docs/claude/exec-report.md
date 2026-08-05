@@ -68,6 +68,12 @@ _EXEC_REPORT_TOOLS: Dict[str, Tuple[str, str]] = {
     # read-only ``health`` probe shares the ``kalier`` agent_key so a mixed
     # flow renders as one "List of Kalier Operations" table.
     "chat_agent_kalier":       ("kalier",         "Kalier"),
+    # The document family. Both are state-changing and both carry an explicit
+    # entry ONLY so they get a native caption gradient (PDFer "Crimson
+    # Parchment", LaTeXer "Scholar's Vellum") — the generic fallback would
+    # capture them anyway, but would derive the plain default caption.
+    "chat_agent_pdfer":        ("pdfer",          "PDFer"),
+    "chat_agent_latexer":      ("latexer",        "LaTeXer"),
     # ACPX child-process launchers and the Skill harness invoker —
     # spawn / send / send_and_wait / kill / relay all share the ``acpx``
     # agent_key so they merge into one "List of ACPx Operations" table;

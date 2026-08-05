@@ -405,6 +405,9 @@ async function removeConnectionWithoutUndo(sourceId, targetId) {
             if (sourceAgentName.toLowerCase() === 'pdfer') {
                 await updatePdferConnection(sourceId, targetId, 'remove');
             }
+            if (sourceAgentName.toLowerCase() === 'latexer') {
+                await updateLatexerConnection(sourceId, targetId, 'remove');
+            }
             if (sourceAgentName.toLowerCase() === 'kalier') {
                 await updateKalierConnection(sourceId, targetId, 'remove');
             }
@@ -820,6 +823,9 @@ async function recreateConnection(state) {
     }
     if (sourceAgentName === 'pdfer') {
         await updatePdferConnection(sourceId, targetId, 'add');
+    }
+    if (sourceAgentName === 'latexer') {
+        await updateLatexerConnection(sourceId, targetId, 'add');
     }
     if (sourceAgentName === 'kalier') {
         await updateKalierConnection(sourceId, targetId, 'add');

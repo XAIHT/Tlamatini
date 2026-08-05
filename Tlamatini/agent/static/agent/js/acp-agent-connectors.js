@@ -1260,6 +1260,25 @@ async function updatePdferConnection(agentId, targetAgentId, action) {
     }
 }
 
+async function updateLatexerConnection(agentId, targetAgentId, action) {
+    try {
+        const response = await fetch(`/agent/update_latexer_connection/${agentId}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ target_agent: targetAgentId, action: action })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            console.log(`--- LaTeXer ${agentId} config updated:`, result.message);
+        } else {
+            console.error(`--- Failed to update LaTeXer ${agentId}:`, response.statusText);
+        }
+    } catch (error) {
+        console.error(`--- Error updating LaTeXer ${agentId}:`, error);
+    }
+}
+
 async function updateKalierConnection(agentId, targetAgentId, action) {
     try {
         const response = await fetch(`/agent/update_kalier_connection/${agentId}/`, {

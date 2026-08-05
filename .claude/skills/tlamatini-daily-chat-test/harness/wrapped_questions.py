@@ -198,6 +198,17 @@ WRAPPED = [
      "Send the Unreal Engine command to take a viewport screenshot (or get the current level) via the Unreal MCP at 127.0.0.1:55557. If Unreal isn't connected, report the connection result.",
      ["unreal"]),
 
+    # --- typesetting ------------------------------------------------------
+    # `validate` writes NO file and needs no MiKTeX to answer: on a machine WITH a TeX
+    # distribution it reports the engines found, and on one without it reports
+    # distribution=none plus the MiKTeX guidance. Either way the agent answers truthfully,
+    # so this question is safe to run 1000x/day and never depends on the host's setup.
+    ("latexer", "LaTeXer",
+     "Using LaTeXer, run the 'validate' action to report which TeX distribution and LaTeX "
+     "engines are installed on this machine, and tell me whether LaTeXer is ready to "
+     "typeset. If none is installed, say so plainly and name what I need to install.",
+     ["latex"]),
+
     # --- firmware (LAST: may trigger a one-time toolchain bootstrap) ------
     ("stm32er", "STM32er",
      "Using STM32er, run the 'validate' action to check the STM32 toolchain / environment, and report the result.",

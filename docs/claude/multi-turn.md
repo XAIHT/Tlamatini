@@ -101,7 +101,7 @@ The tool executor is synchronous and runs in a worker thread (`sync_to_async(ask
 | | Gated? | Tools |
 |---|---|---|
 | command / script runners | **ASK** | Executer, Pythonxer, SSHer, Kalier, Dockerer, Kuberneter, SQLer, Mongoxer, Gitter, Jenkinser, PSer, J-Decompiler (+ the direct `execute_command` / `execute_file` / `decompile_java`) |
-| **A** — destroys/overwrites data | **ASK** | Deleter, Mover, File-Creator, Editor, De-Compresser, `unzip_file`, PDFer |
+| **A** — destroys/overwrites data | **ASK** | Deleter, Mover, File-Creator, Editor, De-Compresser, `unzip_file`, PDFer, LaTeXer |
 | **B** — messaging / reaches real people | **no-ask (ON PURPOSE, 2026-07-26)** | Emailer, Whatsapper, Telegrammer, Zavuerer, Instant Messaging Doctor |
 | **D** — remote systems / network | **ASK** | SCPer, Apirer, Nmapper, Discoverer, Crawler |
 | **C** — desktop UI + hardware | **no-ask (ON PURPOSE)** | Keyboarder, Mouser, Windower, Playwrighter, STM32er, ESP32er, Arduiner, ESPHomer, Blenderer, Unrealer |
@@ -193,4 +193,4 @@ Registration (3 places):
 
 The generic parser (`_parse_section_content` + `_section_regex`) in `parametrizer.py` handles all agents with ~90 lines. No per-agent parser code needed.
 
-Registered source agents: apirer, gitter, kuberneter, crawler, summarizer, prompter, flowcreator, file_interpreter, image_interpreter, file_extractor, kyber_keygen, kyber_cipher, kyber_decipher, gatewayer, gateway_relayer, de_compresser, googler, acpxer, shoter, camcorder, recorder, audioplayer, videoplayer, talker, whisperer, mouser, windower, unrealer, reviewer, analyzer, playwrighter, kalier, stm32er, esp32er, arduiner, discoverer, mcp_doctor, instant_messaging_doctor, telegrammer, whatsapper, zavuerer, video_analyzer, pdfer.
+Registered source agents: apirer, gitter, kuberneter, crawler, summarizer, prompter, flowcreator, file_interpreter, image_interpreter, file_extractor, kyber_keygen, kyber_cipher, kyber_decipher, gatewayer, gateway_relayer, de_compresser, googler, acpxer, shoter, camcorder, recorder, audioplayer, videoplayer, talker, whisperer, mouser, windower, unrealer, reviewer, analyzer, playwrighter, kalier, stm32er, esp32er, arduiner, discoverer, mcp_doctor, instant_messaging_doctor, telegrammer, whatsapper, zavuerer, video_analyzer, pdfer, latexer.

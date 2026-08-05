@@ -1658,6 +1658,16 @@ body.resizing-vertical {
     color: #ffffff;
 }
 
+/* LaTeXer — ink-navy -> bookbinder-bronze, the dark end of the "Scholar's Vellum"
+   sweep used by .canvas-item.latexer-agent in agentic_control_panel.css.
+   State-changing because it WRITES .tex sources and a PDF at an arbitrary path,
+   EDITS an existing .tex in place, DELETES auxiliary files on `clean`, and RUNS a
+   real compiler — which is why it is also on the Ask-Execs tier-A allowlist. */
+.exec-report-caption-latexer {
+    background: linear-gradient(135deg, #14213D 0%, #7F5539 100%);
+    color: #ffffff;
+}
+
 /* Zavuerer — teal -> rose, mirrors the .canvas-item.zavuerer-agent four-channel
    "signal spectrum" sweep in agentic_control_panel.css. State-changing because
    it SENDS messages (SMS / WhatsApp / Telegram / Email / Voice) through the Zavu
@@ -1775,6 +1785,7 @@ body.resizing-vertical {
 .exec-report-arduiner thead th,
 .exec-report-videoanalyzer thead th,
 .exec-report-pdfer thead th,
+.exec-report-latexer thead th,
 .exec-report-acpx thead th,
 .exec-report-skill thead th {
     color: #f5f5f5;
@@ -1866,6 +1877,7 @@ body.resizing-vertical {
 .exec-report-windower .exec-report-cmd       { border-left: 3px solid #1E6FB8; }
 .exec-report-kalier .exec-report-cmd         { border-left: 3px solid #00C838; }
 .exec-report-pdfer .exec-report-cmd          { border-left: 3px solid #C1272D; }
+.exec-report-latexer .exec-report-cmd        { border-left: 3px solid #C9973F; }
 .exec-report-zavuerer .exec-report-cmd         { border-left: 3px solid #14B8A6; }
 .exec-report-stm32er .exec-report-cmd        { border-left: 3px solid #1E63FF; }
 .exec-report-esp32er .exec-report-cmd        { border-left: 3px solid #E7352C; }

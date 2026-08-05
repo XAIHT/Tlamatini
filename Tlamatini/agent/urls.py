@@ -156,6 +156,7 @@ urlpatterns = [
     path('update_discoverer_connection/<str:agent_name>/', secure_post(views.update_discoverer_connection_view), name='update_discoverer_connection'),
     path('update_nmapper_connection/<str:agent_name>/', secure_post(views.update_nmapper_connection_view), name='update_nmapper_connection'),
     path('update_pdfer_connection/<str:agent_name>/', secure_post(views.update_pdfer_connection_view), name='update_pdfer_connection'),
+    path('update_latexer_connection/<str:agent_name>/', secure_post(views.update_latexer_connection_view), name='update_latexer_connection'),
     path('update_stm32er_connection/<str:agent_name>/', secure_post(views.update_stm32er_connection_view), name='update_stm32er_connection'),
     path('update_esp32er_connection/<str:agent_name>/', secure_post(views.update_esp32er_connection_view), name='update_esp32er_connection'),
     path('update_esphomer_connection/<str:agent_name>/', secure_post(views.update_esphomer_connection_view), name='update_esphomer_connection'),

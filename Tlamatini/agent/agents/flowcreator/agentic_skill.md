@@ -295,6 +295,7 @@ Use this table to quickly decide which agent to use. The **Starts Others** colum
 | Agent | What It Does | Starts Others | Category |
 |-------|-------------|:---:|----------|
 | **pdfer** | Authors a PDF from text / Markdown / HTML / images / other PDFs — the document deliverable at the end of a reporting flow | YES | Action |
+| **latexer** | Typesets LaTeX (.tex) into a PDF — real mathematics, bibliographies, cross-references, an index. Needs MiKTeX installed | YES | Action |
 | **starter** | Entry point — launches the first agent(s) in the flow | YES | Control |
 | **ender** | Terminates all listed agents and optionally launches FlowBacker/Cleaner | KILL+LAUNCH | Control |
 | **stopper** | Stops specific agents without ending the entire flow | NO | Control |
@@ -2064,6 +2065,37 @@ system_prompt: |
   - `preflight`: true (fail-safe: REFUSE rather than write an empty or wrong PDF) / `command_timeout`: 300
   - `source_agents`: [] (upstream agents — canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after the render)
+
+### 87. LaTeXer
+- **Purpose**: TYPESET LaTeX into a PDF. LaTeXer is the TYPESETTING sibling of PDFer — PDFer COMPOSES a PDF from Markdown/HTML/images, LaTeXer TYPESETS one from `.tex` source, with real mathematics, bibliographies, cross-references and an index.
+- **Used for**: Any deliverable where typographic quality or mathematics matters — a paper, a thesis chapter, a beamer deck, a formula-heavy report — and for authoring/inspecting/repairing `.tex` sources. It natively embeds the whole `mcp-latex-server` capability surface (create / template / edit / read / list / validate / structure / compile) with NO MCP server and no extra dependency.
+- **Aimed at**: The LAST hop of a scientific or academic flow. Choose PDFer when the source is Markdown/HTML/images; choose LaTeXer when the source is LaTeX or the output needs real equations, citations or an index. NEVER hand-roll a `pdflatex` invocation through Executer/Pythonxer — LaTeXer already handles the multi-pass convergence, the bibliography and the log parsing.
+- **REQUIRES MiKTeX**: Tlamatini does not bundle a TeX distribution (several GB). The user installs **MiKTeX** once (https://miktex.org/download); after that LaTeXer is fully functional, because MiKTeX installs any missing LaTeX package on demand mid-compile. TeX Live / MacTeX are used if present but cannot self-heal a missing package. With none installed LaTeXer REFUSES cleanly (`status: refused`) — it never crashes.
+- **Application example**: Starter → Summarizer (digest a repo) → Parametrizer (map `{response_body}` into LaTeXer's `input_text`) → LaTeXer (`action: compile`, `title: Weekly Report`) → Parametrizer (map `{output_path}` into Emailer's attachment) → Emailer → Ender. A second common shape is Starter → LaTeXer (`action: compile_project`, `project_dir: <a folder of .tex files>`) → Forker (branch on `{success}`) → Ender.
+- **Pool name pattern**: `latexer_<n>`
+- **Parametrizer source**: emits `INI_SECTION_LATEXER` with fields `action`, `engine`, `distribution`, `tex_path`, `project_dir`, `output_path`, `output_dir`, `filename`, `page_count`, `bytes`, `passes`, `bibliography`, `errors`, `warnings`, `success`, `status`, and body=`response_body`.
+- **Starts other agents**: YES (always — success, failure OR a fail-safe refusal — so a Forker can branch on `{status}` / `{success}` / `{errors}`)
+- **Config parameters**:
+  - `action`: "compile" (compile | compile_project | scaffold_compile | create_file | create_from_template | edit_file | read_file | list_files | validate_tex | structure | clean | validate | install)
+  - `tex_path`: "" (a single .tex file) / `project_dir`: "" (a folder holding a .tex set) / `main_file`: "" (empty = auto-detect the master document)
+  - `input_text`: "" (raw LaTeX — this is the field a Parametrizer usually writes into. A bare FRAGMENT works: with `auto_preamble` it is wrapped in a generated preamble)
+  - `auto_preamble`: true / `recursive`: true
+  - `documentclass`: "article" / `class_options`: "" / `title`: "" / `author`: "" / `date`: "" / `packages`: [] / `geometry`: "margin=2.5cm" / `content`: ""
+  - `template`: "article" (article | report | book | beamer | letter | cv | homework | spanish-article)
+  - `document_language`: "en" (en | es — picks babel for the scaffolds LaTeXer generates; it never translates your content)
+  - `edit_mode`: "replace" (replace | insert_before | insert_after | append | prepend) / `find_text`: "" / `replace_text`: "" / `replace_all`: false
+  - `engine`: "pdflatex" (pdflatex | xelatex | lualatex)
+  - `use_latexmk`: "auto" (auto = use latexmk when it actually RUNS — note it is a Perl script and most Windows boxes have no Perl, in which case LaTeXer's own convergence loop is used automatically)
+  - `auto_install_packages`: true (MiKTeX only — installs a missing .sty on demand mid-compile; THE reason MiKTeX is recommended)
+  - `max_passes`: 5 / `bibliography`: "auto" (auto | biber | bibtex | none) / `build_index`: true / `build_glossaries`: true
+  - `shell_escape`: false (⚠️ LEAVE OFF — it lets a .tex execute arbitrary commands via \write18)
+  - `latex_executable`: "" / `latexmk_executable`: "" / `biber_executable`: "" / `bibtex_executable`: "" / `makeindex_executable`: "" (all empty = auto-resolve, MiKTeX first)
+  - `output_dir`: "" (empty = Documents/TlamatiniLaTeX) / `filename`: "" (empty = a timestamped name) / `overwrite`: false / `keep_aux`: false / `open_pdf`: false
+  - `projects_dir`: "" (empty = <app>/Templates/LaTeXer — where scaffolded projects are created)
+  - `preflight`: true (fail-safe: REFUSE rather than mis-typeset) / `command_timeout`: 600 / `max_log_chars`: 20000
+  - `miktex_install_url`: "https://miktex.org/download/win/basic-miktex-x64.exe" (used by `action: install`)
+  - `source_agents`: [] (upstream agents — canvas connection tracking)
+  - `target_agents`: [] (downstream agents to start after the typesetting run)
 
 ---
 

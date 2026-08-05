@@ -92,6 +92,7 @@ AGENTS = [
     ("File-Creator", ["create", "file", "content"]),
     ("File-Interpreter", ["read", "interpret", "llm"]),
     ("File-Extractor", ["extract", "text", "pdf"]),
+    ("LaTeXer", ["latex", "typeset", "pdf"]),
     ("Image-Interpreter", ["vision", "image", "llm"]),
     ("J-Decompiler", ["jar", "decompile", "java"]),
     ("De-Compresser", ["compress", "archive", "zip"]),

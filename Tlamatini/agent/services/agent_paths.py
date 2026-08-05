@@ -132,6 +132,10 @@ def display_name_from_agent_type(agent_type: str) -> str:
         # convention: the display name is EXACTLY what the DB agentDescription says,
         # and that is "PDFer" (P-D-F-er), never "Pdfer" / "PDFEr" / "PDFER".
         "pdfer": "PDFer",
+        # Without this override .title() renders "Latexer". The display name is exactly
+        # how LaTeX itself is written plus the Tlamatini "-er" agent suffix: "LaTeXer"
+        # (L-a-T-e-X-e-r), never "Latexer" / "LaTexer" / "LATEXER".
+        "latexer": "LaTeXer",
         # --- case-only fixes: .title() lower-cases the second capital ---
         "audioplayer": "AudioPlayer",
         "videoplayer": "VideoPlayer",

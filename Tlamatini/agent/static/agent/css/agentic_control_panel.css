@@ -2299,6 +2299,25 @@ body.resizing-vertical {
     box-shadow: 0 6px 15px rgba(193, 39, 45, 0.5);
 }
 
+/* LaTeXer Agent Styles - LaTeX typesetting (4-color "Scholar's Vellum" gradient:
+   Ink-Navy -> Bookbinder-Bronze -> Gold-Leaf -> Vellum). Chosen to read as a
+   typeset manuscript rather than a printed page, so it is instantly distinguishable
+   from PDFer's warm-red "Crimson Parchment" next to it in the palette: LaTeXer runs
+   cool-navy into leather and gold. Unique in this file - no other agent uses
+   #14213D / #7F5539 / #C9973F / #F0E3C2. The sidebar icon inherits this
+   automatically through applyAgentToolIconStyle(); never re-type the gradient in JS. */
+.canvas-item.latexer-agent {
+    background-color: #14213D;
+    background: linear-gradient(135deg, #14213D 0%, #7F5539 33%, #C9973F 66%, #F0E3C2 100%);
+    color: white;
+    font-size: smaller;
+}
+
+.canvas-item.latexer-agent:hover {
+    background: linear-gradient(135deg, #24365C 0%, #9A6C4A 33%, #DDB05B 66%, #FBF3DF 100%);
+    box-shadow: 0 6px 15px rgba(201, 151, 63, 0.5);
+}
+
 .canvas-item.mcpdoctor-agent {
     background-color: #0F3D3E;
     color: white;

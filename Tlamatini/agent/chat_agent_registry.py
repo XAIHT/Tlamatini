@@ -1795,6 +1795,75 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         poll_window_seconds=20,
     ),
     ChatWrappedAgentSpec(
+        key="latexer",
+        template_dir="latexer",
+        tool_name="chat_agent_latexer",
+        tool_description="Chat-Agent-LaTeXer",
+        display_name="LaTeXer",
+        purpose=(
+            "TYPESET LaTeX into a real PDF. LaTeXer is Tlamatini's LaTeX agent — the "
+            "typesetting sibling of PDFer (PDFer composes a PDF from Markdown/HTML/images; "
+            "LaTeXer TYPESETS one from .tex source, with proper mathematics, "
+            "bibliographies, cross-references and an index). Use it whenever the user "
+            "mentions LaTeX, .tex files, a paper/thesis/article/beamer presentation, "
+            "BibTeX/biber citations, or asks for 'real' mathematical typesetting.\n\n"
+            "THE COMMON CALL is one step: pass the LaTeX in input_text and leave "
+            "action='compile'. A bare fragment works too — '$E = mc^2$' is wrapped in a "
+            "generated preamble automatically (auto_preamble), so you never have to write "
+            "\\documentclass yourself unless you want to.\n\n"
+            "Set action to one capability plus its params:\n"
+            "  - compile              -> input_text='...' OR tex_path='doc.tex' OR project_dir='...'  (DEFAULT)\n"
+            "  - compile_project      -> project_dir='...'  (a SET of .tex files; the master is auto-detected)\n"
+            "  - scaffold_compile     -> template='article', title='...', content='...'  (template -> PDF in ONE call)\n"
+            "  - create_file          -> documentclass/title/author/packages/content -> a new .tex\n"
+            "  - create_from_template -> template='article|report|book|beamer|letter|cv|homework|spanish-article'\n"
+            "  - edit_file            -> tex_path, edit_mode='replace|insert_before|insert_after|append|prepend',\n"
+            "                            find_text, replace_text\n"
+            "  - read_file            -> tex_path            (returns the source)\n"
+            "  - list_files           -> project_dir         (enumerates .tex, marks the master)\n"
+            "  - validate_tex         -> tex_path/input_text (STATIC lint: braces, environments, refs —\n"
+            "                            works even with NO LaTeX installed)\n"
+            "  - structure            -> tex_path/input_text (class, title, packages, section outline)\n"
+            "  - clean                -> project_dir         (deletes .aux/.log/.toc; never a .tex or .pdf)\n"
+            "  - validate             -> report the TeX distribution + engines found (writes nothing)\n"
+            "  - install              -> download + launch the official MiKTeX installer\n"
+            "Common knobs: engine (pdflatex|xelatex|lualatex), title, author, packages, "
+            "document_language (en|es), bibliography (auto|biber|bibtex|none), max_passes, "
+            "output_dir, filename, overwrite, keep_aux, open_pdf.\n\n"
+            "REQUIREMENT — MiKTeX. Tlamatini does not bundle a TeX distribution (they are "
+            "several GB). The user installs **MiKTeX** once (https://miktex.org/download) "
+            "and LaTeXer works forever after, because MiKTeX downloads any missing package "
+            "on demand mid-compile. If no distribution is present, LaTeXer REFUSES cleanly "
+            "with that guidance — run action='validate' to check, or action='install' to "
+            "fetch the official installer. NEVER claim a PDF was produced when status says "
+            "otherwise. RESULT — the wrapped tool's JSON and the INI_SECTION_LATEXER block "
+            "carry action, engine, distribution, tex_path, project_dir, output_path (the "
+            "file to quote back to the user), page_count, bytes, passes, bibliography, "
+            "errors, warnings, success and status (compiled | compiled_with_errors | "
+            "created | edited | read | listed | validated | analyzed | cleaned | refused | "
+            "not_found | not_unique | engine_unavailable | error). status="
+            "'compiled_with_errors' means a PDF EXISTS but LaTeX reported errors — say so, "
+            "and quote the errors instead of calling it a success."
+        ),
+        example_request=(
+            "Run LaTeXer with action='compile', input_text='\\\\section{Results}\\n"
+            "The integral $\\\\int_0^1 x^2\\\\,dx = 1/3$.', title='Results', "
+            "filename='results.pdf'"
+        ),
+        aliases=(
+            "latexer", "latex", "tex", "typeset", "pdflatex", "xelatex", "lualatex",
+            "compile latex", "latex to pdf", "tex to pdf", "beamer", "bibtex", "biber",
+        ),
+        security_hints=(
+            "latexer", "latex", "tex file", ".tex", "typeset", "typesetting", "pdflatex",
+            "xelatex", "lualatex", "latexmk", "miktex", "texlive", "beamer", "bibtex",
+            "biber", "bibliography", "citation", "thesis", "dissertation", "paper",
+            "article", "preamble", "documentclass", "compile latex", "latex to pdf",
+            "math typesetting", "equation", "overleaf",
+        ),
+        poll_window_seconds=120,
+    ),
+    ChatWrappedAgentSpec(
         key="zavuerer",
         template_dir="zavuerer",
         tool_name="chat_agent_zavuerer",

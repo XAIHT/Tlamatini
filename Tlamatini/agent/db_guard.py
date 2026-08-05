@@ -30,8 +30,16 @@ this order of importance:
      counts) so the NEXT start can notice a silent shrink, not just an
      outright corruption.
 
-TWO CONTRACTS THAT MUST NOT BE WEAKENED
----------------------------------------
+THREE CONTRACTS THAT MUST NOT BE WEAKENED
+-----------------------------------------
+**IT MUST NOT CRY WOLF.** (Angela, 2026-08-05.) An alarm that fires on normal
+operation is worse than no alarm, because the next one gets ignored — and the
+next one might be the zero-byte file again. Two rules keep it honest:
+``VOLATILE_TABLES`` are exempt from the row-drop check (a run ledger or a chat
+history emptying is not data loss), and a merely-SUSPICIOUS start RE-BASELINES
+afterwards so the same legitimate change is reported once, not on every start
+forever. A CRITICAL verdict never re-baselines — it must keep shouting.
+
 **FAIL-OPEN.** Every entry point swallows its own errors. A guard that stops
 Tlamatini from starting is worse than the bug it watches for: the user is then
 locked out of the very app that holds their data. Nothing here raises, and
@@ -68,6 +76,40 @@ FULL_CHECK_MAX_BYTES = 64 * 1024 * 1024
 # legitimately cleared their chat history.
 SHRINK_FRACTION = 0.40
 ROW_DROP_FRACTION = 0.50
+
+# Tables whose row count CHURNS BY DESIGN — emptying them is normal operation,
+# not data loss, so they are exempt from the row-drop rule above.
+#
+# WHY (Angela, 2026-08-05). The guard quarantined a PERFECTLY HEALTHY database
+# 11 times in 40 minutes (DB/Corrupted, all `integrity=ok`, 8 of them
+# byte-identical to the live file). The trigger was `agent_chatagentrun`
+# dropping 16 -> 0 — the wrapped-agent run ledger, which is pruned on purpose
+# (`chat_agent_limit_runs`). The size rule was already made lenient for exactly
+# this reason ("the user may have legitimately cleared their chat history"),
+# but the ROW rule still fired on the very tables that reasoning describes.
+#
+# This matters more than the noise it made: a guard that cries wolf 11 times is
+# a guard everyone learns to ignore, and then the REAL zero-byte event goes
+# unnoticed again — which is the whole thing this module exists to prevent.
+#
+# A table VANISHING is still reported even when it is listed here: that is
+# schema damage, not churn. Only the row-count drop is exempted.
+VOLATILE_TABLES = frozenset({
+    "agent_acpsession",        # ACP child-process sessions — per-run
+    "agent_agentmessage",      # chat history — the user clears it deliberately
+    "agent_agentprocess",      # live process rows — emptied when nothing runs
+    "agent_chatagentrun",      # wrapped-run ledger — pruned by chat_agent_limit_runs
+    "agent_contextcache",      # cache, rebuilt on demand
+    "agent_sessionstate",      # per-session scratch
+    "agent_skillinvocation",   # append-only audit trail, prunable
+    "django_admin_log",        # admin action log
+    "django_session",          # login sessions expire routinely
+})
+
+# Keep the newest N pieces of evidence. Unbounded growth was real: 11 copies of
+# an 840 KB database = 9.2 MB of junk, and it would have grown on every start
+# forever. Only files this module itself wrote are ever considered.
+MAX_EVIDENCE_COPIES = 10
 
 SENTINEL_NAME = "db_health.json"
 EVIDENCE_DIRNAME = "Corrupted"
@@ -237,7 +279,13 @@ def compare_with_sentinel(report: dict, sentinel: dict) -> str:
             continue
         actual = tablas_ahora.get(nombre)
         if actual is None:
+            # Structural loss — reported even for a volatile table, because a
+            # table that VANISHED is schema damage, not churn.
             quejas.append("table %s disappeared (had %d rows)" % (nombre, previo))
+        elif nombre in VOLATILE_TABLES:
+            # Churns by design (run ledger, chat history, sessions, caches).
+            # Emptying it is normal operation — see VOLATILE_TABLES.
+            continue
         elif actual < previo * (1 - ROW_DROP_FRACTION):
             quejas.append("table %s dropped from %d to %d rows"
                           % (nombre, previo, actual))
@@ -264,9 +312,46 @@ def preserve_evidence(db_path: str, db_root: str) -> str:
         ruta = os.path.join(destino, nombre)
         # copy2, never move: the live file stays where Django expects it.
         shutil.copy2(db_path, ruta)
+        _prune_evidence(destino, keep=MAX_EVIDENCE_COPIES, protect=ruta)
         return ruta
     except Exception:                            # noqa: BLE001 - fail-open
         return ""
+
+
+def _prune_evidence(evidence_dir: str, keep: int, protect: str = "") -> int:
+    """Keep only the *keep* newest evidence copies. Never raises.
+
+    Evidence is the point of this module, so pruning is deliberately timid:
+    it only ever deletes files matching the ``db.sqlite3.broken_*`` name this
+    module writes itself, it never touches the copy just taken (*protect*),
+    and any failure is swallowed — losing an old copy must never cost a start.
+    """
+    borrados = 0
+    try:
+        if keep <= 0:
+            return 0
+        propios = []
+        for f in os.listdir(evidence_dir):
+            if not f.startswith("db.sqlite3.broken_"):
+                continue                          # not ours — leave it alone
+            ruta = os.path.join(evidence_dir, f)
+            try:
+                if os.path.isfile(ruta):
+                    propios.append((os.path.getmtime(ruta), ruta))
+            except OSError:
+                continue
+        propios.sort(reverse=True)                # newest first
+        for _mtime, ruta in propios[keep:]:
+            if protect and os.path.abspath(ruta) == os.path.abspath(protect):
+                continue
+            try:
+                os.remove(ruta)
+                borrados += 1
+            except OSError:
+                continue
+    except Exception:                            # noqa: BLE001 - fail-open
+        return borrados
+    return borrados
 
 
 def find_newest_backup(search_roots) -> str:
@@ -362,6 +447,29 @@ def guard_database(db_path: str, db_root: str, backup_roots=None,
                                                   os.path.dirname(db_path or ".")]
             echo(format_alarm(report, evidencia, find_newest_backup(raices),
                               db_root))
+
+            # RE-BASELINE a merely-SUSPICIOUS start, so the same legitimate
+            # change is reported ONCE instead of on every start forever.
+            #
+            # WHY (Angela, 2026-08-05). This branch used to return here, before
+            # write_sentinel — so the stale fingerprint was compared again next
+            # start, shouted again, and copied the database aside again. One
+            # ordinary row drop produced 11 alarms and 11 copies in 40 minutes,
+            # and would have kept going for as long as Tlamatini was restarted.
+            #
+            # Two things are deliberately NOT re-baselined:
+            #   * CRITICAL — a damaged database must keep shouting on EVERY
+            #     start until Angela decides what to do. Recording it as the
+            #     new "healthy" shape would silence the real alarm.
+            #   * A report we could not actually inspect (integrity not ok, or
+            #     no table counts) — writing that would overwrite a good
+            #     baseline with a blank one and blind the next start.
+            if (report.get("verdict") == SUSPICIOUS
+                    and report.get("integrity") == "ok"
+                    and report.get("tables")):
+                if write_sentinel(db_root, report):
+                    echo("--- [DB GUARD] baseline updated to this shape — "
+                         "you will not be told about this same change again")
             return report
 
         # Healthy: remember this shape so the next start can spot a silent drop.

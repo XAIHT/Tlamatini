@@ -75,6 +75,34 @@ class PromptCatalogContiguityTests(TestCase):
         # Both step-by-step camera-verified walkthroughs drive Camcorder.
         self.assertTrue(fw.filter(promptContent__contains='chat_agent_camcorder').exists())
 
+    def test_latexer_prompts_sit_after_pdfer_in_the_documents_section(self):
+        """LaTeXer (0193) shares PDFer's section but must rank AFTER every PDFer card.
+
+        Angela's ordering rule for a section is least-complex first. PDFer needs
+        NOTHING installed; LaTeXer needs MiKTeX on the machine. So a reader must
+        meet the zero-setup document tool before the one with a prerequisite.
+        """
+        docs = Prompt.objects.filter(category='documents', hidden=False)
+        tex = docs.filter(idPrompt__in=(114, 115, 116, 117))
+        self.assertEqual(
+            tex.count(), 4,
+            'LaTeXer demo prompts 114-117 are missing — migration 0193 did not run',
+        )
+        for row in tex.values('idPrompt', 'promptContent', 'sort_rank'):
+            self.assertIn(
+                'chat_agent_latexer', row['promptContent'],
+                f"prompt-{row['idPrompt']} must drive chat_agent_latexer",
+            )
+        pdfer_max = max(
+            docs.exclude(idPrompt__in=(114, 115, 116, 117))
+            .values_list('sort_rank', flat=True)
+        )
+        self.assertGreater(
+            min(tex.values_list('sort_rank', flat=True)), pdfer_max,
+            'a LaTeXer card ranks at or before a PDFer card — the section must '
+            'read zero-setup (PDFer) before prerequisite-bearing (LaTeXer/MiKTeX)',
+        )
+
 
 class PromptSortRankTests(TestCase):
     """`sort_rank` display-order contract (migration 0181)."""

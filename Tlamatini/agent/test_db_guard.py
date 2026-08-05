@@ -320,6 +320,176 @@ class SilentShrinkTests(_Caso):
                          "the broken start overwrote the last known-good shape")
 
 
+class CryingWolfTests(_Caso):
+    """It must not alarm on normal operation — measured against a real event.
+
+    On 2026-08-05 the guard quarantined a PERFECTLY HEALTHY database **11
+    times in 40 minutes**. Every copy in ``DB/Corrupted`` reported
+    ``integrity=ok`` with all 211 migrations and all 87 agents, and 8 of the 11
+    were byte-identical to the live file. The trigger was ``agent_chatagentrun``
+    dropping 16 -> 0 — the wrapped-agent run ledger, which is pruned on purpose.
+
+    Two faults, both fixed and both pinned here:
+
+    1. The row-drop rule fired on tables that churn by design, even though the
+       SIZE rule had already been made lenient for that exact reason.
+    2. A SUSPICIOUS start returned BEFORE ``write_sentinel``, so the stale
+       fingerprint was compared again next start — the same ordinary change
+       alarming forever, one copy of the database per start.
+
+    This is not cosmetic. A guard that cries wolf is a guard that gets ignored,
+    and the next alarm might be the zero-byte file again.
+    """
+
+    def _db_con_tablas(self, tablas):
+        """Build the live DB with an exact row count per named table."""
+        if os.path.exists(self.db):
+            os.remove(self.db)
+        con = sqlite3.connect(self.db)
+        for nombre, filas in tablas.items():
+            con.execute('CREATE TABLE "%s" (id INTEGER PRIMARY KEY, t TEXT)'
+                        % nombre)
+            con.executemany('INSERT INTO "%s" (t) VALUES (?)' % nombre,
+                            [("r%d" % i,) for i in range(filas)])
+        con.commit()
+        con.close()
+
+    # ── 1. the exact false positive ────────────────────────────────────
+    def test_the_run_ledger_emptying_is_NOT_an_alarm(self):
+        """agent_chatagentrun 16 -> 0: the real trigger of the 11 quarantines."""
+        self._db_con_tablas({"agent_prompt": 117, "agent_chatagentrun": 16})
+        self.assertEqual(
+            db_guard.guard_database(self.db, self.db_root, echo=self.echo)["verdict"],
+            db_guard.OK)
+
+        self._db_con_tablas({"agent_prompt": 117, "agent_chatagentrun": 0})
+        self.dicho.clear()
+        report = db_guard.guard_database(self.db, self.db_root, echo=self.echo)
+
+        self.assertEqual(report["verdict"], db_guard.OK,
+                         "the run ledger emptying is normal operation, not loss")
+        self.assertNotIn("LOOKS WRONG", self.salida)
+        self.assertFalse(os.path.isdir(os.path.join(self.db_root, "Corrupted")),
+                         "a healthy database was copied aside as evidence")
+
+    def test_clearing_chat_history_and_sessions_is_NOT_an_alarm(self):
+        """The docstring's own example: the user clears their chat history."""
+        self._db_con_tablas({"agent_prompt": 117, "agent_agentmessage": 400,
+                             "django_session": 3})
+        db_guard.guard_database(self.db, self.db_root, echo=self.echo)
+        self._db_con_tablas({"agent_prompt": 117, "agent_agentmessage": 0,
+                             "django_session": 0})
+        self.assertEqual(
+            db_guard.guard_database(self.db, self.db_root, echo=self.echo)["verdict"],
+            db_guard.OK)
+
+    # ── 2. but real loss must STILL be caught ──────────────────────────
+    def test_a_precious_table_gutted_is_STILL_flagged(self):
+        """The exemption must not blunt the guard on data that matters."""
+        self._db_con_tablas({"agent_prompt": 117, "agent_chatagentrun": 16})
+        db_guard.guard_database(self.db, self.db_root, echo=self.echo)
+        self._db_con_tablas({"agent_prompt": 10, "agent_chatagentrun": 16})
+        report = db_guard.guard_database(self.db, self.db_root, echo=self.echo)
+        self.assertEqual(report["verdict"], db_guard.SUSPICIOUS)
+        self.assertIn("agent_prompt", report["reason"])
+
+    def test_a_volatile_table_VANISHING_is_still_flagged(self):
+        """Exempt from the row rule, never from the structural one: a table
+        that disappeared is schema damage, not churn."""
+        self._db_con_tablas({"agent_prompt": 117, "agent_chatagentrun": 16})
+        db_guard.guard_database(self.db, self.db_root, echo=self.echo)
+        con = sqlite3.connect(self.db)
+        con.execute("DROP TABLE agent_chatagentrun")
+        con.commit()
+        con.close()
+        report = db_guard.guard_database(self.db, self.db_root, echo=self.echo)
+        self.assertEqual(report["verdict"], db_guard.SUSPICIOUS)
+        self.assertIn("disappeared", report["reason"])
+
+    # ── 3. re-baseline: report once, not forever ───────────────────────
+    def test_the_same_real_change_is_reported_ONCE_not_every_start(self):
+        """The 11-copies fault: it used to return before write_sentinel."""
+        self._db_con_tablas({"agent_prompt": 117})
+        db_guard.guard_database(self.db, self.db_root, echo=self.echo)
+        self._db_con_tablas({"agent_prompt": 10})          # a real drop, once
+
+        primero = db_guard.guard_database(self.db, self.db_root, echo=self.echo)
+        self.assertEqual(primero["verdict"], db_guard.SUSPICIOUS)
+
+        self.dicho.clear()
+        for _ in range(5):                                  # five more starts
+            siguiente = db_guard.guard_database(self.db, self.db_root,
+                                                echo=self.echo)
+            self.assertEqual(siguiente["verdict"], db_guard.OK,
+                             "it alarmed again on an unchanged database")
+        self.assertNotIn("LOOKS WRONG", self.salida)
+
+        copias = os.listdir(os.path.join(self.db_root, "Corrupted"))
+        self.assertEqual(len(copias), 1,
+                         "one copy per start again — this was 9.2 MB of junk")
+
+    def test_a_CRITICAL_database_never_re_baselines_and_keeps_shouting(self):
+        """A damaged file must alarm on EVERY start until Angela decides.
+
+        Re-baselining here would record a broken database as the new 'healthy'
+        shape and silence the one alarm that actually matters.
+        """
+        _make_healthy_db(self.db, rows=50)
+        db_guard.guard_database(self.db, self.db_root, echo=self.echo)
+        bueno = db_guard.read_sentinel(self.db_root)
+
+        open(self.db, "wb").close()                         # zero bytes
+        for _ in range(3):
+            self.dicho.clear()
+            report = db_guard.guard_database(self.db, self.db_root,
+                                             echo=self.echo)
+            self.assertEqual(report["verdict"], db_guard.CRITICAL)
+            self.assertIn("DATABASE IS DAMAGED", self.salida)
+        self.assertEqual(db_guard.read_sentinel(self.db_root), bueno,
+                         "a broken database was recorded as the healthy shape")
+
+    def test_a_report_we_could_not_inspect_never_becomes_the_baseline(self):
+        """Writing a blank fingerprint would blind the next start."""
+        _make_healthy_db(self.db, rows=50)
+        db_guard.guard_database(self.db, self.db_root, echo=self.echo)
+        bueno = db_guard.read_sentinel(self.db_root)
+
+        ciego = {"verdict": db_guard.SUSPICIOUS, "reason": "could not inspect",
+                 "size": 0, "tables": {}, "integrity": "", "path": self.db}
+        if (ciego.get("verdict") == db_guard.SUSPICIOUS
+                and ciego.get("integrity") == "ok" and ciego.get("tables")):
+            db_guard.write_sentinel(self.db_root, ciego)    # must NOT happen
+        self.assertEqual(db_guard.read_sentinel(self.db_root), bueno)
+
+    # ── 4. evidence cannot grow without bound ──────────────────────────
+    def test_evidence_is_capped_but_only_our_own_files(self):
+        _make_healthy_db(self.db, rows=5)
+        destino = os.path.join(self.db_root, "Corrupted")
+        os.makedirs(destino, exist_ok=True)
+        for i in range(db_guard.MAX_EVIDENCE_COPIES + 8):
+            ruta = os.path.join(destino, "db.sqlite3.broken_2026080%d_0000%02d"
+                                % (i % 9, i))
+            shutil.copy2(self.db, ruta)
+            os.utime(ruta, (1_700_000_000 + i, 1_700_000_000 + i))
+        ajeno = os.path.join(destino, "NOT-OURS-keep-me.sqlite3")
+        with open(ajeno, "wb") as fh:
+            fh.write(b"x")
+
+        nueva = db_guard.preserve_evidence(self.db, self.db_root)
+
+        nuestras = [f for f in os.listdir(destino)
+                    if f.startswith("db.sqlite3.broken_")]
+        self.assertEqual(len(nuestras), db_guard.MAX_EVIDENCE_COPIES)
+        self.assertTrue(os.path.exists(nueva), "the copy just taken was pruned")
+        self.assertTrue(os.path.exists(ajeno),
+                        "a file this module did not write was deleted")
+
+    def test_pruning_never_raises_on_a_missing_directory(self):
+        """Fail-open: losing an old copy must never cost a start."""
+        self.assertEqual(
+            db_guard._prune_evidence(os.path.join(self.tmp, "nope"), keep=3), 0)
+
+
 class WiringTests(unittest.TestCase):
     """manage.py must actually call the guard, and in the right order."""
 

@@ -148,6 +148,7 @@ SECTION_AGENT_TYPES = [
     'telegrammer',
     'whatsapper',
     'pdfer',
+    'latexer',
 ]
 
 

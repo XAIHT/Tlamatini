@@ -3133,6 +3133,54 @@ class AssignmentParserRobustnessTests(TestCase):
         ast.parse(coerced)
         self.assertIn('import os', coerced)
 
+    def test_trailing_commentary_is_dropped_REGRESSION_2026_08_05(self):
+        """A closed single-line value must not swallow the LLM's trailing prose.
+
+        LIVE FAILURE (2026-08-05 08:11, run latexer_001_0b8ad2dc): the LLM wrote
+        commentary after the parameter, and because the closing quote was followed
+        by prose — not EOF / ``,`` / ``;`` / a conjunction — every closer rule said
+        "internal apostrophe" and the value ran to EOF. LaTeXer received the action
+        ``validate' to check whether ...`` and refused it. Any agent with an enum
+        parameter is exposed to this.
+        """
+        request = ("action='validate' to check whether a tex distribution (miktex) "
+                   "is installed and which engines/tools are available.")
+        segments = self._split_segments(request)
+        self.assertEqual(len(segments), 1)
+        key, value = self._split_segment(segments[0])
+        self.assertEqual(key, 'action')
+        self.assertEqual(self._coerce_value(value), 'validate',
+                         'the closing quote must terminate the value and drop the prose')
+
+    def test_internal_apostrophe_survives_when_a_real_closing_quote_follows(self):
+        """The lookahead must NOT truncate a genuine internal apostrophe."""
+        for raw, expected in (
+            ("content='Angela's report is ready'", "Angela's report is ready"),
+            ("content='the students' books are here'", "the students' books are here"),
+        ):
+            segments = self._split_segments(raw)
+            self.assertEqual(len(segments), 1, raw)
+            key, value = self._split_segment(segments[0])
+            self.assertEqual(key, 'content', raw)
+            self.assertEqual(self._coerce_value(value), expected, raw)
+
+    def test_word_internal_apostrophe_is_not_mistaken_for_a_closer(self):
+        """The whitespace guard: an UNTERMINATED value keeps its inner apostrophe.
+
+        ``'Angela's report`` has no closing quote at all. The apostrophe is glued to
+        the next letter, so it must NOT be treated as the closer -- otherwise the
+        value silently truncates to ``Angela``.
+        """
+        self.assertEqual(self._coerce_value("'Angela's report"), "Angela's report")
+
+    def test_conjunction_and_comma_separation_are_unaffected(self):
+        """The pre-existing closers still win before the new last-resort rule."""
+        segments = self._split_segments("action='compile' and filename='a.pdf'")
+        self.assertEqual(len(segments), 2)
+        pairs = dict(self._split_segment(s) for s in segments)
+        self.assertEqual(self._coerce_value(pairs['action']), 'compile')
+        self.assertEqual(self._coerce_value(pairs['filename']), 'a.pdf')
+
     def test_comma_separated_multi_assignment_still_splits(self):
         request = (
             "smtp.host='smtp.gmail.com', "

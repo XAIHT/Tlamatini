@@ -10,6 +10,8 @@ asserting against the backend's own /agent/list_prompts/ payload:
   * the catalog renders EVERY prompt the backend returns (no gaps, no truncation)
   * the header counter matches that number
   * a "Documents & PDF" section exists with the 5 PDFer prompts (#109-#113)
+  * the SAME section also carries LaTeXer's 4 prompts (#114-#117) from 0191-0193,
+    which is the identical "frozen DB never ran the new migrations" failure mode
   * searching "pdf" finds them
   * clicking one really inserts it into the chat box
 
@@ -219,6 +221,11 @@ def main():
             pdf_ids = [i for i in (109, 110, 111, 112, 113) if i in set(rendered['ids'])]
             check("all 5 PDFer prompts (#109-#113) are present",
                   len(pdf_ids) == 5, "found %s" % pdf_ids)
+            tex_ids = [i for i in (114, 115, 116, 117) if i in set(rendered['ids'])]
+            check("all 4 LaTeXer prompts (#114-#117) are present",
+                  len(tex_ids) == 4,
+                  "found %s — a miss here means migrations 0191/0192/0193 never ran"
+                  % tex_ids)
 
             # ── SCROLL THE WHOLE CATALOG, SECTION BY SECTION ─────────────────
             say("")
@@ -253,7 +260,7 @@ def main():
                         const h = document.querySelector(
                             '#tools-body .prompt-category-header[data-category="documents"]');
                         if (h) h.scrollIntoView({block:'start', behavior:'instant'});
-                        [109,110,111,112,113].forEach(n => {
+                        [109,110,111,112,113,114,115,116,117].forEach(n => {
                             const c = document.getElementById('prompt-' + n);
                             if (c) { c.style.outline = '3px solid #EC4899';
                                      c.style.outlineOffset = '2px'; }
@@ -262,15 +269,16 @@ def main():
                 page.wait_for_timeout(2500)
                 shot("documents_and_pdf_SECTION")
                 titles = page.evaluate(
-                    """() => [109,110,111,112,113].map(n => {
+                    """() => [109,110,111,112,113,114,115,116,117].map(n => {
                          const c = document.getElementById('prompt-' + n);
                          return c ? ((c.querySelector('.prompt-card-badge')||{}).textContent + ' '
                               + (c.querySelector('.prompt-card-title')||{}).textContent) : null;
                        })""")
                 for t in titles:
                     say("     %s" % (t or '<<MISSING>>'))
-                check("the 5 PDFer cards render a title", all(titles),
-                      "%d/5 titled" % len([t for t in titles if t]))
+                check("all 9 document cards (5 PDFer + 4 LaTeXer) render a title",
+                      all(titles),
+                      "%d/9 titled" % len([t for t in titles if t]))
 
             # ── search proves they are findable ──────────────────────────────
             say("")
@@ -286,6 +294,22 @@ def main():
                   any(i in hits for i in ('prompt-109', 'prompt-110', 'prompt-111',
                                           'prompt-112', 'prompt-113')),
                   "%d visible hit(s)" % len(hits))
+            page.fill('#prompt-search-input', '')
+            page.wait_for_timeout(900)
+
+            say("")
+            say("Searching the catalog for 'latex' ...")
+            page.fill('#prompt-search-input', 'latex')
+            page.wait_for_timeout(1400)
+            shot("search_latex")
+            tex_hits = page.evaluate(
+                """() => Array.from(document.querySelectorAll('#tools-body .prompt-card'))
+                        .filter(c => !c.classList.contains('prompt-card-hidden'))
+                        .map(c => c.id)""")
+            check("searching 'latex' finds the LaTeXer prompts",
+                  any(i in tex_hits for i in ('prompt-114', 'prompt-115',
+                                              'prompt-116', 'prompt-117')),
+                  "%d visible hit(s)" % len(tex_hits))
             page.fill('#prompt-search-input', '')
             page.wait_for_timeout(900)
 

@@ -77,7 +77,7 @@ SHORT-LIVED agents (should start, do work, and exit quickly):
   File-Interpreter, Image-Interpreter, File-Creator, File-Extractor, J-Decompiler,
   De-Compresser, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Parametrizer, FlowBacker, Barrier,
   ACPXer, MCP Doctor, Instant Messaging Doctor, Unrealer, Blenderer, Reviewer, Analyzer, Playwrighter, Kalier, STM32er, ESP32er, ESPHomer, Arduiner,
-  Camcorder, Recorder, Whisperer, Talker, Editor, Grepper, Globber, Discoverer, Video-Analyzer, Nmapper, PDFer
+  Camcorder, Recorder, Whisperer, Talker, Editor, Grepper, Globber, Discoverer, Video-Analyzer, Nmapper, PDFer, LaTeXer
   (NOTE: STM32er / ESP32er / ESPHomer / Arduiner are short-lived in steady state, but their
    FIRST build/compile/flash can run for MANY minutes while a large toolchain downloads —
    see their SPECIAL NOTES below before flagging a long firmware build as stuck.)
@@ -380,6 +380,41 @@ PDFER SPECIAL NOTES:
   - DO flag a genuine failure: a PDF backend reported as MISSING in a `validate` run
     (`status: engine_unavailable` means the carried Python lost markdown / xhtml2pdf /
     pymupdf / reportlab / pillow / pypdf), or the run exceeded command_timeout.
+
+LATEXER SPECIAL NOTES:
+  - LaTeXer is SHORT-LIVED and ACTIVE: it runs ONE action (typeset a document, author or
+    inspect a .tex, or a read-only meta action) then ALWAYS triggers `target_agents` — on
+    success, on failure, AND on a fail-safe refusal.
+  - Its `INI_SECTION_LATEXER<<<` block is NORMAL routable output (carries `action`,
+    `engine`, `distribution`, `tex_path`, `project_dir`, `output_path`, `page_count`,
+    `bytes`, `passes`, `bibliography`, `errors`, `warnings`, `success`, `status`) — NEVER
+    flag it as an error, even when `status: error`, `success: False` or `errors: 12`; a
+    downstream Forker branches on `{status}` / `{success}`.
+  - ⚠️ MULTIPLE COMPILER PASSES ARE CORRECT, NOT A LOOP. Lines like
+    "🔁 pdflatex (pass 2): resolving cross-references" are LaTeX working exactly as
+    designed: the first pass cannot know a reference's number yet, so LaTeXer re-runs
+    until they stop changing (up to `max_passes`, default 5), with `biber`/`bibtex`/
+    `makeindex`/`makeglossaries` in between. Seeing the SAME engine run 3-5 times in a
+    row is HEALTHY — do NOT flag it as a stuck or repeating agent.
+  - ⚠️ A SLOW FIRST BUILD IS NORMAL. With MiKTeX's on-demand installer enabled (the
+    default), the first compile of a document that uses a new package PAUSES while MiKTeX
+    downloads and installs it. A build taking minutes on its FIRST run — while it keeps
+    logging — is NOT stuck. It only happens once per package.
+  - "latexmk produced NO PDF -> falling back to LaTeXer's built-in convergence loop" is
+    the documented graceful degradation, not an error: latexmk is a Perl script and most
+    Windows machines have no Perl, so LaTeXer simply builds the document itself. The PDF
+    is still produced — do NOT flag it.
+  - A `status: refused` section is LaTeXer working AS DESIGNED (no source given, an
+    unknown action, a missing tex_path, a non-unique `find_text` for an edit, an
+    unwritable output_dir, or NO TeX distribution installed) — it REFUSES rather than
+    mis-typeset. NOT a flow error. The refusal naming MiKTeX is guidance, not a fault.
+  - A `status: validated` / `analyzed` / `listed` / `read` section (the `validate`,
+    `validate_tex`, `structure`, `list_files` and `read_file` actions) writes NO PDF on
+    purpose — do NOT flag "no output produced".
+  - `status: compiled_with_errors` means a PDF EXISTS but LaTeX reported errors. That is
+    a REPORTED, routable outcome, not a crash — do not flag it as a flow failure.
+  - DO flag a genuine failure: the run exceeded `command_timeout` (default 600s) with no
+    output at all, or the output_dir could not be written.
 
 STM32ER SPECIAL NOTES:
   - STM32er is SHORT-LIVED and ACTIVE: it spawns the STM32 Template Project MCP

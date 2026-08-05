@@ -500,9 +500,12 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         or "1.45.3" in subject
         or "1.46.0" in subject
         or "1.47.0" in subject
+        or "1.48.0" in subject
         or "binary file drop" in subject
         or "binary-guard" in subject
         or "pdfer" in subject
+        or "latexer" in subject
+        or "latex" in subject
         or "flowcreator" in subject
         or "flow-creator" in subject
         or "parametrization" in subject
@@ -532,10 +535,10 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     )
     if has_current_release_wave:
         highlights.append(
-            "The published release resolves to `v1.47.0` at tagged commit `c7f7ede3`; the version resolver correctly remains on that latest tag while the generated repository facts report the current aligned local/remote HEAD separately. Git/source inspection extends README.md and BookOfTlamatini.md before the generated inventory tables derive the current agent, tool, skill, asset, and effective-line totals."
+            "The release resolves to `v1.48.0`; the version stays git-tag-derived (`agent/version.py`) and is never hardcoded, so the resolver reports the annotated tag once it is cut, while the generated repository facts report the current aligned local/remote HEAD separately. Git/source inspection extends README.md and BookOfTlamatini.md before the generated inventory tables derive the current agent, tool, skill, asset, and effective-line totals."
         )
         highlights.append(
-            "The current published version is `v1.47.0`, which adds the **binary-content guard** (`agent/rag/binary_guard.py`): every candidate context file is screened by its bytes and binary content is dropped from the embedding chain, with each omission logged as `--- [BINARY-GUARD]` in `tlamatini.log`. The `v1.46.0` PDFer document composer, `v1.45.3` oversized-context recovery, `v1.45.1` FlowCreator Step-by-Step opener, `v1.45.0` wrapped FlowCreator, `v1.44.0` prompt grammar, `v1.43.5` recon free-run, `v1.42.0` STM32er PlatformIO expansion, and `v1.41.4` External-MCP structured output remain carried foundations."
+            "The current version is `v1.48.0`, which adds **LaTeXer** (`agent/agents/latexer/`): the LaTeX-typesetting sibling of PDFer, embedding the whole `mcp-latex-server` tool surface natively with no MCP server and no new dependency, adding whole-project compilation with master-document detection, a real BibTeX/biber and makeindex convergence loop, and readable LaTeX-log diagnostics; it requires MiKTeX and refuses cleanly when no distribution is present. The `v1.47.0` **binary-content guard** (`agent/rag/binary_guard.py`, which screens every candidate context file by its bytes and drops binary content from the embedding chain, logging each omission as `--- [BINARY-GUARD]` in `tlamatini.log`), the `v1.46.0` PDFer document composer, `v1.45.3` oversized-context recovery, `v1.45.1` FlowCreator Step-by-Step opener, `v1.45.0` wrapped FlowCreator, `v1.44.0` prompt grammar, `v1.43.5` recon free-run, `v1.42.0` STM32er PlatformIO expansion, and `v1.41.4` External-MCP structured output remain carried foundations."
         )
     if any("structuredcontent" in subject for subject in subjects):
         highlights.append(
@@ -724,7 +727,7 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         for subject in subjects
     ):
         highlights.append(
-            "The latest dossier pass resolves the product at `v1.47.0`, with the public tag at `c7f7ede3` and the current aligned local/remote HEAD reported separately; it combines README.md and BookOfTlamatini.md with source/Git truth and retains the complete installation, Ollama, architecture, usage, tree, line inventory, and responsibility context."
+            "The latest dossier pass resolves the product at `v1.48.0`, with the current aligned local/remote HEAD reported separately; it combines README.md and BookOfTlamatini.md with source/Git truth and retains the complete installation, Ollama, architecture, usage, tree, line inventory, and responsibility context."
         )
     elif not has_current_release_wave and any(
         "1.26.5" in subject
@@ -983,9 +986,12 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
         or "1.45.3" in subject
         or "1.46.0" in subject
         or "1.47.0" in subject
+        or "1.48.0" in subject
         or "binary file drop" in subject
         or "binary-guard" in subject
         or "pdfer" in subject
+        or "latexer" in subject
+        or "latex" in subject
         or "flowcreator" in subject
         or "flow-creator" in subject
         or "parametrization" in subject
@@ -1007,7 +1013,7 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
     )
     if has_current_release_wave:
         highlights.append(
-            "The published release is `v1.47.0` at tagged commit `c7f7ede3`; the current aligned local/remote HEAD is reported independently, and the git-derived version correctly remains `1.47.0`."
+            "The release is `v1.48.0`; the current aligned local/remote HEAD is reported independently, and the version remains git-derived rather than hardcoded."
         )
         highlights.append(
             "The release delta adds the binary-content guard `agent/rag/binary_guard.py` with its 45-test suite and wires it into all three `DirectoryLoader` call sites in `agent/rag/factory.py`, and carries the v1.46.0 PDFer document composer and the wrapped FlowCreator; existing local configuration-only worktree changes remain private and are neither reproduced nor modified by dossier generation."
@@ -1515,9 +1521,11 @@ def operator_surface_counts_guide(context: dict) -> list[str]:
     ]
 
 CURRENT_RELEASE_GUIDE = [
-    "Git resolves the published product to `v1.47.0` at tagged commit `c7f7ede3`; the current aligned local/remote HEAD is reported separately, while the live source tree remains authoritative for generated counts and capability claims.",
+    "Git resolves the product to `v1.48.0`; the current aligned local/remote HEAD is reported separately, while the live source tree remains authoritative for generated counts and capability claims.",
     "`v1.47.0` adds the binary-content guard: `agent/rag/binary_guard.py` screens every candidate context file by its bytes and drops binary content from the embedding chain through the same mechanism as the user's name-based omissions list - a short-circuiting cascade (extension, BOM, magic signature, NUL byte, control-byte ratio, UTF-8 decodability) costing at most one 8 KiB read per file, fail-open by contract, with every omission logged as `--- [BINARY-GUARD]` in `tlamatini.log`.",
     "Operator controls mirror README.md and BookOfTlamatini.md: `binary_context_detection` toggles the guard, `binary_detection_control_ratio` tunes the threshold, and `binary_detection_force_text_extensions` / `binary_detection_extra_binary_extensions` provide explicit extension overrides.",
+    "`v1.48.0` adds LaTeXer as the LaTeX-typesetting agent and wrapped `chat_agent_latexer` tool - the typesetting sibling of PDFer, where PDFer composes a PDF from Markdown/HTML/images and LaTeXer typesets one from `.tex` source with real mathematics, bibliographies, cross-references and an index. It embeds the entire `mcp-latex-server` tool surface natively as an agent with no MCP server, no sidecar and no new dependency, and extends it with whole-project compilation (master document auto-detected, every `\\input` followed), a real BibTeX/biber plus makeindex convergence loop, and LaTeX-log diagnostics a human can read.",
+    "LaTeXer requires MiKTeX, the one prerequisite: Tlamatini ships no TeX distribution because a full one is several gigabytes and the release must stay under 2 GB, and MiKTeX is preferred because it installs a missing package on demand mid-compile, so any document builds. With no distribution present LaTeXer refuses cleanly rather than crashing, and `action: install` launches the official installer. `shell_escape` stays off by default, and `latexmk` is probed for usability rather than presence because it is a Perl script that most Windows machines cannot run.",
     "`v1.46.0` adds PDFer as the document-composer agent and wrapped `chat_agent_pdfer` tool: it authors styled PDFs from Markdown, HTML, text, images, mixed content, or existing PDFs, with preflight refusal and Ask-Execs coverage for free-form destinations.",
     "`v1.41.4` fixes External-MCP structured-output consumption: stdio and network clients now provide both text `content` blocks and `structuredContent` to the LLM instead of handing it only a short pointer.",
     "The shared formatter unwraps a sole `result` envelope, preserves errors and plain text, safely serializes structured data, caps oversized payloads, and is pinned by seven focused tests.",
@@ -1631,7 +1639,7 @@ NMAPPER_GUIDE = [
 
 STARTUP_PROMPT_POLISH_GUIDE = [
     "`v1.39.4` restored first-run/startup dialog closeability so a fresh launch can no longer be trapped behind an unclosable overlay.",
-    "Commit `a45fe0e0` followed the public `v1.39.4` tag with Catalog-of-Prompts localization cleanup; that historical polish remains carried by current `v1.47.0`.",
+    "Commit `a45fe0e0` followed the public `v1.39.4` tag with Catalog-of-Prompts localization cleanup; that historical polish remains carried by current `v1.48.0`.",
     "The prompt catalog path stays centralized through the secure one-call `/agent/list_prompts/` endpoint ordered by category rank and stable surviving id, while the gap-tolerant probe loop remains only as an offline fallback.",
     "Frontend mutable-state tests and dialog templates continue to guard the chat/startup/overlay surfaces so future cleanup passes do not reintroduce const-poison or close-button regressions.",
 ]
@@ -1680,7 +1688,7 @@ FRONTEND_HOTFIX_GUIDE = [
 ]
 
 V136_RELEASE_GUIDE = [
-    "Release identity: current public tag `v1.47.0` points to `c7f7ede3`, while the generated repository facts report the current aligned local/remote HEAD separately; the binary-content guard, v1.46.0 PDFer, v1.45.0 FlowCreator wrapped chat-agent, v1.44.0 Catalog-of-Prompts parameter standardization, v1.43.5 recon free-run (OOB_shift_reaper), v1.42.0 STM32er PlatformIO, v1.41.4 External-MCP structured output, and earlier waves remain part of this release lineage.",
+    "Release identity: the current version is `v1.48.0`, while the generated repository facts report the current aligned local/remote HEAD separately; v1.48.0 LaTeXer, the v1.47.0 binary-content guard, v1.46.0 PDFer, v1.45.0 FlowCreator wrapped chat-agent, v1.44.0 Catalog-of-Prompts parameter standardization, v1.43.5 recon free-run (OOB_shift_reaper), v1.42.0 STM32er PlatformIO, v1.41.4 External-MCP structured output, and earlier waves remain part of this release lineage.",
     "New agent: Video-Analyzer becomes the current media-verdict workflow agent and wrapped `chat_agent_video_analyzer`, complementing Image-Interpreter with video-specific motion analysis.",
     "Implementation assets: `agent/agents/video_analyzer/`, migrations `0166_add_video_analyzer.py`, `0167_add_chat_agent_video_analyzer_tool.py`, `0168_add_video_analyzer_demo_prompt.py`, `test_video_analyzer_agent.py`, `chat_agent_registry.py`, `mcp_agent.py`, and `services/agent_contracts.py` all move together.",
     "Model strategy: `interpreter_model_1` defaults to `qwen3-vl:235b-cloud`, `interpreter_model_2` defaults to `qwen3.5:cloud`, and `merging_model` defaults to `glm-5.2:cloud`, with independent calls merged only after both interpreters report.",
@@ -1866,7 +1874,7 @@ PROMPT_CATALOG_GUIDE = [
     "Version `1.3.2` tightened the HTML answer contract with a Prime Directive on visual readability: explicit background and text color, no grey-on-dark body text, and safer table-body defaults.",
     "The seeded `Prompts` dropdown was also re-sorted into a learner path: context-only Q&A first, then metrics, files search, shell, code generation, vision, specialized single-tool actions, agent control, Unrealer, and heavier Multi-Turn/ACPX demos last.",
     "The `v1.35.0` prompt-search pass then makes that larger catalog easier to operate: prompt cards support substring, word-start, and fuzzy matching, with mode badges that keep one-shot, Multi-Turn, ACPX, Exec Report, and Step-by-Step demos visually distinct.",
-    "Those readability rules remain in force in the current documentation set; `v1.47.0` carries the binary-content guard on top of v1.46.0 PDFer, the chat-callable FlowCreator, v1.44.0 Catalog-of-Prompts standardization, v1.41.4 External-MCP structured-output delivery, v1.41.3 category grouping, gap-tolerant loading, and ranked fuzzy search while preserving the broader operator context.",
+    "Those readability rules remain in force in the current documentation set; `v1.48.0` carries LaTeXer on top of the v1.47.0 binary-content guard, v1.46.0 PDFer, the chat-callable FlowCreator, v1.44.0 Catalog-of-Prompts standardization, v1.41.4 External-MCP structured-output delivery, v1.41.3 category grouping, gap-tolerant loading, and ranked fuzzy search while preserving the broader operator context.",
 ]
 
 SELF_KNOWLEDGE_GUIDE = [
@@ -3372,7 +3380,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "mt-b", 16)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Ask Execs", "v1.10.0 safety modifier still active in v1.47.0", THEME["amber"])
+    slide, audit = add_slide(prs, "Ask Execs", "v1.10.0 safety modifier still active in v1.48.0", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Operator contract", ASK_EXECS_GUIDE, THEME["amber"], "ask-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Runtime mechanics", ASK_EXECS_PIPELINE_GUIDE, THEME["jade"], "ask-b", 13)
     audit_layout(audit, len(prs.slides))
@@ -3386,7 +3394,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["amber"], "attention-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.11.0 uninstall integration carried into v1.47.0", THEME["copper"])
+    slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.11.0 uninstall integration carried into v1.48.0", THEME["copper"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What changed", WINDOWS_APP_REGISTRATION_GUIDE, THEME["copper"], "arp-a", 12)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Why operators care", [
         "Packaged installs now show up in normal Windows uninstall surfaces instead of only leaving behind shortcuts and a loose `Uninstaller.exe` in the install folder.",
@@ -3395,7 +3403,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "arp-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Current Release Focus", "v1.47.0 - binary-content guard; public tag at c7f7ede3, aligned local/remote HEAD reported separately", THEME["amber"])
+    slide, audit = add_slide(prs, "Current Release Focus", "v1.48.0 - LaTeXer, the LaTeX typesetter; aligned local/remote HEAD reported separately", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Release line", CURRENT_RELEASE_GUIDE[:3], THEME["amber"], "rel-a", 10)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Reliability and flow", CURRENT_RELEASE_GUIDE[3:6], THEME["jade"], "rel-b", 10)
     audit_layout(audit, len(prs.slides))
@@ -3947,9 +3955,10 @@ def build_ppt(context: dict) -> None:
                 add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Data and operator contract", group[split_at:], THEME["amber"], f"since-more-b-{offset}", 10)
             audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Recent Platform Additions", "v1.47.0 release lineage", THEME["jade"])
+    slide, audit = add_slide(prs, "Recent Platform Additions", "v1.48.0 release lineage", THEME["jade"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Recent agents and execution surfaces", [
         "PDFer (v1.46.0): visual and wrapped document composer for Markdown, HTML, text, images, mixed reports, and PDF merging, with safe preflight and real-renderer tests.",
+        "LaTeXer (v1.48.0): visual and wrapped LaTeX typesetter and typesetting sibling of PDFer; embeds the whole mcp-latex-server tool surface natively with no MCP server and no new dependency, adds whole-project compilation with master-document detection, a real BibTeX/biber and makeindex convergence loop, and readable LaTeX-log diagnostics. Requires MiKTeX; refuses cleanly when no distribution is present.",
         "STM32er (v1.42.0): device-aware PlatformIO routing adds Blue Pill/mainstream-family build and safe flash; new stepwise Blue Pill/F407 demos finish with camera evidence.",
         "Prompt catalog (v1.42.0): migration 0179 deliberately regroups and renumbers every row to contiguous 1..N category blocks, backed by four database invariants tests.",
         "Prompt catalog (v1.41.3): 13 categories, 13 duplicate ACPX rows removed, stable surviving ids, gap-tolerant loading, and ranked fuzzy search.",
@@ -3957,7 +3966,7 @@ def build_ppt(context: dict) -> None:
         "Binary-content guard (v1.47.0): candidate context files are screened by bytes, binary content is dropped from the embedding chain, and each omission is logged as --- [BINARY-GUARD]; fail-open by contract.",
     ], THEME["copper"], "monday-a", 10)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Lifecycle, policy, and monitoring", [
-        "Resolved identity: tag v1.47.0 points to `c7f7ede3`; the current aligned local/remote HEAD is reported separately, and local configuration values are not reproduced here.",
+        "Resolved identity: the current version is v1.48.0; the aligned local/remote HEAD is reported separately, and local configuration values are not reproduced here.",
         "The stronger disclaimer says plain-Python transparency enables user control but is not a security warranty; the operator owns authorization, permissions, review, and consequences.",
         "The dossier distinguishes tagged behavior from local configuration-only changes, preserves private-data discipline, and does not stage, commit, or push.",
         "Operator setup: easy-start install, Ollama guidance, Config dialogs, DB menu, and Windows Installed-apps registration stay in the dossier.",

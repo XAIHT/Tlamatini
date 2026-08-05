@@ -881,6 +881,31 @@ def _coerce_assignment_value(raw_value):
             except Exception:
                 return value_text
 
+    # TRAILING-COMMENTARY SALVAGE (2026-08-05) — the value IS properly closed,
+    # but the LLM appended a sentence of prose after it:
+    #     action='validate' to check whether a tex distribution is installed.
+    # The generic salvage below would strip only the LEADING quote and hand the
+    # agent the whole sentence as its value. That is exactly how LaTeXer received
+    # action="validate' to check whether ..." on 2026-08-05 (run
+    # latexer_001_0b8ad2dc) and refused it; ANY agent with an enum parameter is
+    # exposed. Cut at the real closing quote and drop the commentary.
+    #
+    # Three guards keep this from eating a legitimate value:
+    #   * NO newline — a multi-line script body is the generic-salvage case below
+    #     and must never be truncated at an apostrophe inside the code.
+    #   * a closing quote must actually EXIST after the opening one.
+    #   * the char after it must be WHITESPACE (or nothing) — so a word-internal
+    #     apostrophe (``'Angela's report``) is never mistaken for a closer.
+    if (
+        value_text[0] in ('"', "'")
+        and value_text[-1] != value_text[0]
+        and '\n' not in value_text
+    ):
+        closing = value_text.find(value_text[0], 1)
+        if closing > 0 and (closing + 1 >= len(value_text)
+                            or value_text[closing + 1].isspace()):
+            return _unquote_preserving_backslashes(value_text[:closing + 1])
+
     # Salvage the common LLM failure mode: value begins with a stray quote
     # char (e.g. ``script='\nimport os\n...``) but the closing quote was
     # truncated by a premature match inside a multi-line Python literal.
@@ -1402,6 +1427,14 @@ _PROMOTE_SECTION_FIELDS_BY_TEMPLATE_DIR: dict = {
     "pdfer": (
         "output_path", "output_dir", "filename",
         "mode", "source_type", "page_count", "bytes", "images_used", "engine", "status",
+    ),
+    # LaTeXer: the LLM must be able to quote the exact PDF it just typeset back to the
+    # user without re-parsing the INI_SECTION body, and `status` + `errors` are what tell
+    # it a build was REFUSED / produced a PDF that still contains LaTeX errors.
+    "latexer": (
+        "output_path", "output_dir", "filename", "tex_path", "project_dir",
+        "action", "engine", "distribution", "page_count", "bytes", "passes",
+        "bibliography", "errors", "warnings", "success", "status",
     ),
     "camcorder": ("output_path", "output_dir", "filename", "media_type", "resolution"),
     "video_analyzer": ("verdict", "verdict_token", "confidence", "motion_score", "status", "video_path"),
@@ -2437,6 +2470,17 @@ _PRE_LAUNCH_PREVIEW_BY_TEMPLATE = {
                                   'title', 'page_size', 'orientation',
                                   'images', 'input_file', 'input_pdfs',
                                   'ollama_polish')},
+
+    # LaTeXer RUNS a real compiler over source that can itself execute commands
+    # (\write18 when shell_escape is on), writes .tex + PDF to free-form paths, and
+    # `clean` DELETES files — so surface the action, the exact paths and the
+    # shell_escape flag BEFORE the spawn.
+    'latexer':        {'title': 'LATEXER TYPESETTING TO RUN',
+                       'body': ('input_text', 'LaTeX source to typeset'),
+                       'params': ('action', 'tex_path', 'project_dir', 'main_file',
+                                  'engine', 'template', 'edit_mode', 'find_text',
+                                  'output_dir', 'filename', 'overwrite',
+                                  'shell_escape', 'use_latexmk')},
 
     # --- decompilation --------------------------------------------------
     'j_decompiler':   {'title': 'J-DECOMPILER DECOMPILATION TO PERFORM',

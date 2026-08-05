@@ -64,6 +64,11 @@ TIER_A = [
     # only ever write collision-proof names into ONE fixed known-folder) — Angela's
     # tier-A rule applies. (2026-07-26)
     "chat_agent_pdfer",
+    # LaTeXer is tier A TWICE OVER: it writes .tex sources AND a PDF to a free-form
+    # output_dir + filename, EDITS an existing .tex in place, `clean` DELETES auxiliary
+    # files, and on top of all that it RUNS A REAL COMMAND (pdflatex — which with
+    # shell_escape can execute anything a .tex asks for). (2026-08-05)
+    "chat_agent_latexer",
 ]
 
 # ── Tier B — MESSAGING: deliberately NOT gated (Angela reversed it 2026-07-26) ──

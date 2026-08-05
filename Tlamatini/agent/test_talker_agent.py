@@ -164,6 +164,36 @@ _UNSET = object()
 _REAL_VOCODER_SNAPSHOT = {}
 
 
+def _reset_talker_snac_cache():
+    """Drop talker's module-level ``_SNAC_MODEL`` cache.
+
+    ⚠️ DO NOT REMOVE — this is the fix for the 2026-08-05 cross-test poisoning.
+
+    ``talker._get_snac_model()`` caches the decoder in the module global
+    ``_SNAC_MODEL`` and never rebuilds it. Swapping ``sys.modules`` back is
+    therefore NOT enough: the object built from the FAKE snac survives the
+    swap, and it poisons the suite in BOTH directions.
+
+      * fake-first: a fake test caches ``_FakeSNACModel``; the real audible
+        tests then decode through it and get ``_DECODED_WAVE`` -- exactly 6
+        samples ("AssertionError: 6 not greater than 12000").
+      * real-first: the audible tests cache the REAL SNAC; the fake tests then
+        feed it ``_FakeTensor`` objects, synthesize raises, no
+        ``INI_SECTION_TALKER`` is emitted, and their ``next(...)`` lookups die
+        with StopIteration.
+
+    Both sets pass alone and fail together -- the signature of shared state.
+    Clearing the cache on every fake install AND removal makes each test start
+    from a cold decoder, which is what the isolation actually requires.
+    """
+    try:
+        mod = _load_talker_module()
+    except Exception:
+        return
+    if hasattr(mod, '_SNAC_MODEL'):
+        mod._SNAC_MODEL = None
+
+
 def _install_vocoder_fakes():
     """Inject fake ``torch`` and ``snac`` modules into sys.modules (saving reals)."""
     fake_torch = types.ModuleType("torch")
@@ -189,6 +219,9 @@ def _install_vocoder_fakes():
             _REAL_VOCODER_SNAPSHOT[name] = sys.modules.get(name, _UNSET)
         sys.modules[name] = fake
 
+    # Swapping sys.modules is not enough — talker caches the decoder OBJECT.
+    _reset_talker_snac_cache()
+
 
 def _remove_vocoder_fakes():
     # Never disturb a REAL module that is currently loaded — only undo our fakes.
@@ -202,6 +235,10 @@ def _remove_vocoder_fakes():
             sys.modules.pop(name, None)
         else:
             sys.modules[name] = saved
+
+    # The cached decoder OBJECT outlives the sys.modules swap — drop it, or the
+    # next test decodes through the wrong vocoder. See _reset_talker_snac_cache.
+    _reset_talker_snac_cache()
 
 
 # ---------------------------------------------------------------------------
@@ -284,8 +321,30 @@ def _load_talker_module():
 
 
 class _LogCapture:
-    def __init__(self):
+    """Capture every root-logger message emitted inside the block.
+
+    ⚠️ THE LEVEL MUST BE FORCED — do NOT go back to a bare ``addHandler``.
+
+    Python filters a record against the LOGGER's level BEFORE it ever reaches a
+    handler, and the root logger defaults to WARNING. Talker emits its
+    ``INI_SECTION_TALKER<<<`` block with ``logging.info(...)``, so a capture that
+    only adds a handler collects NOTHING: ``records`` stays empty and every
+    ``next(r for r in cap.records if ...)`` dies with a bare ``StopIteration``.
+    That is what broke these 6 tests (2026-08-05) — and it broke them ALWAYS,
+    alone as well as in the suite, so the emission they claim to verify was in
+    fact never being checked at all.
+
+    It works in production only because ``talker.main()`` calls
+    ``logging.basicConfig(level=INFO)`` first; these tests call the emit helpers
+    directly, so nothing ever lowers the level for them.
+
+    ``logging.disable()`` is honoured too — a global disable would silently gag
+    the capture the same way, whoever set it.
+    """
+
+    def __init__(self, level=logging.INFO):
         self.records = []
+        self._level = level
 
     def __enter__(self):
         outer = self
@@ -295,11 +354,25 @@ class _LogCapture:
                 outer.records.append(record.getMessage())
 
         self._handler = _H()
-        logging.getLogger().addHandler(self._handler)
+        self._handler.setLevel(logging.NOTSET)
+
+        root = logging.getLogger()
+        self._saved_level = root.level
+        if root.level == logging.NOTSET or root.level > self._level:
+            root.setLevel(self._level)
+
+        self._saved_disable = logging.root.manager.disable
+        if self._saved_disable >= self._level:
+            logging.disable(logging.NOTSET)
+
+        root.addHandler(self._handler)
         return self
 
     def __exit__(self, *_a):
-        logging.getLogger().removeHandler(self._handler)
+        root = logging.getLogger()
+        root.removeHandler(self._handler)
+        root.setLevel(self._saved_level)
+        logging.disable(self._saved_disable)
         return False
 
 

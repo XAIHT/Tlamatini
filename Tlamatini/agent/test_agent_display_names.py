@@ -75,6 +75,7 @@ class AgentDisplayNameContractTests(SimpleTestCase):
     # regression names the exact agent it broke.
     EXPECTED = {
         'pdfer': 'PDFer',
+        'latexer': 'LaTeXer',
         'sqler': 'SQLer',
         'ssher': 'SSHer',
         'pser': 'PSer',
@@ -112,6 +113,18 @@ class AgentDisplayNameContractTests(SimpleTestCase):
         """The bug Angela hit: the canvas showed 'Pdfer'."""
         self.assertEqual(_canonical_agent_display_name('pdfer', 'Pdfer'), 'PDFer')
         self.assertEqual(display_name_from_agent_type('pdfer'), 'PDFer')
+
+    def test_latexer_is_exactly_LaTeXer(self):
+        """LaTeX is written L-a-T-e-X, so the agent is 'LaTeXer'.
+
+        str.title() renders 'Latexer', which is why agents/latexer MUST carry an
+        explicit override in display_name_from_agent_type. Every other casing is
+        wrong on the canvas, in the sidebar and in the Configure-Agents gate.
+        """
+        self.assertEqual(_canonical_agent_display_name('latexer', 'Latexer'), 'LaTeXer')
+        self.assertEqual(display_name_from_agent_type('latexer'), 'LaTeXer')
+        for wrong in ('Latexer', 'LaTexer', 'LATEXER', 'latexer', 'Latexer '):
+            self.assertNotEqual(display_name_from_agent_type('latexer'), wrong)
 
     def test_known_display_names_are_exact(self):
         for folder, expected in self.EXPECTED.items():
@@ -195,7 +208,7 @@ class AgentDisplayNameContractTests(SimpleTestCase):
                 registry[td.group(1)] = dn.group(1)
         for folder in ('file_creator', 'file_extractor', 'file_interpreter',
                        'image_interpreter', 'monitor_log', 'video_analyzer',
-                       'de_compresser', 'pdfer', 'stm32er', 'esp32er',
+                       'de_compresser', 'pdfer', 'latexer', 'stm32er', 'esp32er',
                        'esphomer', 'audioplayer', 'videoplayer'):
             if folder not in registry:
                 continue

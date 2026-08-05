@@ -1,0 +1,153 @@
+# LaTeXer Agent Configuration
+#
+# LaTeXer is Tlamatini's LaTeX TYPESETTING agent: it authors, inspects, validates and
+# COMPILES .tex sources into real, publication-grade PDF files. It is the typesetting
+# sibling of PDFer (PDFer composes a PDF from Markdown/HTML/images; LaTeXer TYPESETS one
+# from LaTeX source, with maths, bibliographies, cross-references and an index).
+#
+# It embeds — natively, as an AGENT — the complete capability surface of the
+# mcp-latex-server MCP (create / template / edit / read / list / validate / structure /
+# compile) and goes well beyond it: whole-PROJECT compilation of a SET of .tex files,
+# BibTeX/Biber + makeindex + makeglossaries with a real convergence loop, latexmk
+# pass-through, human-readable LaTeX log diagnostics, and a MiKTeX-first distribution
+# resolver. There is NO MCP server, NO sidecar process and NO extra dependency: like
+# Kalier / Nmapper / Discoverer it drives the CLI DIRECTLY, stdlib-only, so it behaves
+# identically in source and frozen builds and NEVER imports agent.*.
+#
+# ── THE ONE PREREQUISITE: MiKTeX ────────────────────────────────────────────────
+# Tlamatini does NOT ship a TeX distribution (a full TeX install is several GB; the
+# release must stay under 2 GB). Install **MiKTeX** once — https://miktex.org/download —
+# and LaTeXer is fully functional the moment Tlamatini starts. MiKTeX is STRONGLY
+# preferred over TeX Live because of `auto_install_packages` below: MiKTeX downloads a
+# missing .sty package ON DEMAND mid-compile, so a document that needs a package you
+# have never installed still builds. TeX Live / MacTeX are detected and used if present,
+# but they cannot self-heal a missing package.
+#   No MiKTeX?  ->  `action: install` downloads + launches the OFFICIAL MiKTeX installer.
+#   Not sure?   ->  `action: validate` reports exactly what was found.
+
+# -- action -- ONE capability per run ------------------------------------------
+#
+#  ENVIRONMENT (never write a document)
+#   validate            : report the TeX distribution + every engine/tool found. Writes nothing.
+#   install             : download + launch the OFFICIAL MiKTeX installer (user consents, UAC).
+#
+#  AUTHORING (the mcp-latex-server surface, native)
+#   create_file         : write a NEW .tex from parameters (documentclass/title/author/packages/content)
+#   create_from_template: scaffold from a bundled template (see `template` below)
+#   edit_file           : replace | insert_before | insert_after | append | prepend on an existing .tex
+#   read_file           : return the full text of a .tex
+#   list_files          : enumerate .tex files under a directory (optionally recursive)
+#   validate_tex        : syntax check — brace balance, environment matching, unresolved refs
+#   structure           : document hierarchy — class, title, author, packages, sections, labels
+#
+#  BUILD (what LaTeXer is for)
+#   compile             : typeset ONE source -> PDF  (tex_path OR project_dir OR raw input_text)
+#   compile_project     : typeset a SET of .tex files (main + \input/\include children) -> ONE PDF
+#   clean               : delete LaTeX auxiliary artifacts (.aux/.log/.toc/.out/...) — never the .tex/.pdf
+#   scaffold_compile    : ONE call: template -> write -> compile -> report (the fast path)
+action: "compile"
+
+# -- Source selection ----------------------------------------------------------
+# `compile` resolves its source in this order, first hit wins:
+#   1. tex_path     — an existing .tex file
+#   2. project_dir  — a folder of .tex files; the MAIN file is auto-detected
+#                     (the one with \documentclass AND \begin{document}; main.tex /
+#                      document.tex / thesis.tex / report.tex win a tie), or name it in main_file
+#   3. input_text   — raw LaTeX, written to its own project folder and compiled
+tex_path: ""           # path to a single .tex file
+project_dir: ""        # folder holding the .tex set (compile_project / list_files / clean)
+main_file: ""          # the master .tex inside project_dir ("" = auto-detect)
+input_text: ""         # raw LaTeX source (a full document, OR a fragment — see auto_preamble)
+recursive: true        # list_files / compile_project: descend into sub-folders
+
+# When input_text has NO \documentclass, wrap it in a sane preamble so a bare fragment
+# like  $E = mc^2$  still produces a real PDF. Set false to demand a complete document.
+auto_preamble: true
+
+# -- Document parameters (create_file / create_from_template / auto_preamble) ---
+documentclass: "article"   # article | report | book | letter | beamer | ...
+class_options: ""          # e.g. "12pt,a4paper"
+title: ""
+author: ""
+date: ""                   # "" = \today
+packages: []               # extra \usepackage names; a comma-separated string is accepted
+geometry: "margin=2.5cm"   # "" = do not load the geometry package
+content: ""                # body text for create_file (between \begin{document}...\end{document})
+
+# Bundled templates for create_from_template / scaffold_compile:
+#   article | report | book | beamer | letter | cv | homework | spanish-article
+template: "article"
+
+# Language of the document scaffolds LaTeXer generates (babel/polyglossia + the
+# quotation and date conventions). es | en. It does NOT translate your own content.
+document_language: "en"
+
+# -- edit_file -----------------------------------------------------------------
+edit_mode: "replace"       # replace | insert_before | insert_after | append | prepend
+find_text: ""              # the anchor (replace / insert_before / insert_after)
+replace_text: ""           # the new text (also the payload for append / prepend)
+replace_all: false         # replace: false = refuse when `find_text` is not unique
+
+# -- Engine --------------------------------------------------------------------
+# pdflatex  : the classic, fastest, widest package support               (DEFAULT)
+# xelatex   : system/OpenType fonts + native Unicode (fontspec)
+# lualatex  : modern Unicode + Lua scripting
+engine: "pdflatex"
+
+# Use latexmk when it is available: it is the reference implementation of the
+# "keep rebuilding until the cross-references settle" algorithm and handles the
+# bibliography/index passes for you.
+#   auto  = use latexmk when resolvable, otherwise LaTeXer's own convergence loop
+#   true  = require latexmk (refuse if missing)   |   false = always use the built-in loop
+use_latexmk: "auto"
+
+# MiKTeX ONLY: install a missing package on demand, mid-compile. This is THE reason
+# MiKTeX is the recommended distribution — a document that needs a .sty you have never
+# installed still builds. Ignored (harmlessly) on TeX Live / MacTeX.
+auto_install_packages: true
+
+max_passes: 5              # convergence limit for the built-in loop (LaTeX rarely needs >4)
+bibliography: "auto"       # auto | biber | bibtex | none  ("auto" reads the source)
+build_index: true          # run makeindex when the document declares \makeindex
+build_glossaries: true     # run makeglossaries when the document declares \makeglossaries
+
+# ⚠️ SHELL ESCAPE — LEAVE THIS OFF. `-shell-escape` lets a .tex file execute ARBITRARY
+# commands on this machine (\write18). It is required only by a few packages (minted,
+# gnuplottex). Enable it ONLY for a document you wrote or fully trust.
+shell_escape: false
+
+# Explicit executable paths — "" = auto-resolve (MiKTeX first, then TeX Live/MacTeX).
+latex_executable: ""       # full path to pdflatex/xelatex/lualatex
+latexmk_executable: ""
+biber_executable: ""
+bibtex_executable: ""
+makeindex_executable: ""
+
+# -- Output --------------------------------------------------------------------
+# The compile itself always runs IN the source's own directory (so \input, \include,
+# \graphicspath and BibTeX resolve exactly as they do for any LaTeX user); the finished
+# PDF is then delivered to output_dir.
+output_dir: ""             # "" = Documents/TlamatiniLaTeX (Windows known-folder aware)
+filename: ""               # "" = latexer_<YYYYmmdd>_<HHMMSS>_<ms>.pdf  (collision-proof)
+overwrite: false           # false = never clobber; a colliding name gets _2, _3, ...
+keep_aux: false            # false = tidy .aux/.out/.toc after a SUCCESSFUL build
+                           # (a FAILED build always keeps them — that is how you debug)
+open_pdf: false            # open the finished PDF in the system viewer
+
+# Where scaffolded LaTeX projects are created when no path is given.
+# "" = <app>/Templates/LaTeXer  (Tlamatini's Templates policy — deliverable project trees)
+projects_dir: ""
+
+# -- Execution controls --------------------------------------------------------
+preflight: true            # fail-safe checks; REFUSE (never crash, never write a wrong PDF)
+command_timeout: 600       # hard cap (seconds) per engine invocation. The FIRST MiKTeX
+                           # build can be slow while it downloads packages — that is normal.
+max_log_chars: 20000       # cap on the diagnostics quoted back into the section body
+
+# The official MiKTeX installer used by `action: install` (never bundled — the user
+# downloads and installs it themselves, exactly like Nmapper does with nmap).
+miktex_install_url: "https://miktex.org/download/win/basic-miktex-x64.exe"
+
+# -- Connection fields ---------------------------------------------------------
+source_agents: []          # upstream agents (canvas connection tracking)
+target_agents: []          # downstream agents to start afterwards (ALWAYS triggered)

@@ -301,8 +301,9 @@ class AgentConfig(AppConfig):
                         # CANONICAL NAME WINS (2026-07-26). Everything above is now
                         # only a fail-open fallback: the display name comes from the
                         # single source of truth, services.agent_paths. Do NOT revert
-                        # to str.title() — it renders "Pdfer"/"Sqler"/"Esp32Er" and
-                        # breaks the hyphenated canvas connection handlers.
+                        # to str.title() — it renders "Pdfer"/"Sqler"/"Esp32Er"/
+                        # "Latexer" and breaks the hyphenated canvas connection
+                        # handlers.
                         display_name = _canonical_agent_display_name(
                             folder_name, display_name)
 
