@@ -71,6 +71,8 @@ import yaml
 import shutil
 import logging
 import subprocess
+import json
+import urllib.request
 
 # -- conhost.exe orphan guard ------------------------------------------
 if os.name == 'nt' and not getattr(subprocess, '_conhost_guard_applied', False):
@@ -1500,8 +1502,18 @@ def _engine_argv(tools: dict, config: dict, tex_name: str) -> list:
     hung process. -file-line-error is what makes the diagnostics readable.
     """
     argv = [tools["latex"], "-interaction=nonstopmode", "-file-line-error"]
-    if tools["distribution"] == "miktex" and _as_bool(_cfg(config, "auto_install_packages", True), True):
-        argv.append("--enable-installer")
+    if tools["distribution"] == "miktex":
+        # ⚠️ BOTH BRANCHES ARE REQUIRED. Omitting the flag does NOT disable the
+        # installer -- it just lets MiKTeX's own global AutoInstall setting
+        # decide, which on a typical install is "yes". So `auto_install_packages:
+        # false` silently did nothing at all, and packages were still fetched
+        # behind the user's back. Passing --disable-installer explicitly is what
+        # makes the option mean what it says (and what makes rung 5 reachable,
+        # since otherwise MiKTeX always wins the race to fix a missing package).
+        if _as_bool(_cfg(config, "auto_install_packages", True), True):
+            argv.append("--enable-installer")
+        else:
+            argv.append("--disable-installer")
     if _as_bool(_cfg(config, "shell_escape", False), False):
         argv.append("-shell-escape")
     argv.append(tex_name)
@@ -1875,9 +1887,28 @@ def _resolve_compile_source(config: dict, outcome: dict) -> tuple:
     return "", "", "no source: set tex_path, project_dir or input_text."
 
 
+def _build(tex_path: str, config: dict, tools: dict, env: dict) -> dict:
+    """The ONE entry point every compiling action goes through.
+
+    With ``repair`` on (the default) this is the eight-rung repair ladder, so a
+    document that would merely have failed is repaired, or -- at worst -- built
+    with the offending block quarantined and named.  Set ``repair: false`` to
+    get the bare single-shot compile back, byte for byte.
+    """
+    if _as_bool(_cfg(config, "repair", True), True):
+        return _compile_with_ladder(tex_path, config, tools, env)
+    return _compile(tex_path, config, tools, env)
+
+
 def _finish_compile(result: dict, config: dict, tools: dict, outcome: dict, notes: list) -> bool:
     """Shared tail for compile / compile_project / scaffold_compile."""
     diag = result["diag"]
+    # ---- Repair-ladder accounting, before anything else is decided ----------
+    # These fields exist on EVERY build (empty when the ladder did not run), so
+    # a downstream Forker can branch on {repairs} / {quarantined} unconditionally.
+    outcome["repairs"] = len([r for r in (result.get("ladder") or []) if r.get("applied")])
+    outcome["quarantined"] = len(result.get("quarantined") or [])
+    outcome["engine"] = result.get("engine_used") or tools.get("engine", "")
     outcome["passes"] = result["passes"]
     outcome["errors"] = len(diag["errors"])
     outcome["warnings"] = len(diag["warnings"])
@@ -1921,6 +1952,23 @@ def _finish_compile(result: dict, config: dict, tools: dict, outcome: dict, note
         notes.append("")
         notes.append(detail)
 
+    # The ladder's audit trail goes into the body whenever it did anything, so
+    # every automatic edit is visible and reviewable rather than invisible magic.
+    if result.get("ladder"):
+        notes.append("")
+        notes.append(_format_ladder_report(result))
+
+    if result.get("degraded") or result.get("quarantined"):
+        # THE THIRD OUTCOME. A PDF exists, but only because content was cut out.
+        # It is not a success and must never be reported as one — but it is also
+        # not a bare failure, because the user has 40 of 41 pages in their hand.
+        outcome["status"] = "degraded"
+        notes.insert(0, "⚠️  DEGRADED BUILD — a PDF WAS produced, but %d block(s) could not be "
+                        "typeset and were REMOVED. Each removal is marked visibly inside the "
+                        "document. See the repair-ladder report below for exactly what was cut."
+                     % len(result.get("quarantined") or []))
+        return False
+
     if result["ok"]:
         outcome["status"] = "compiled"
         return True
@@ -1933,13 +1981,2166 @@ def _finish_compile(result: dict, config: dict, tools: dict, outcome: dict, note
                      % len(diag["errors"]))
         return False
     outcome["status"] = "error"
-    notes.insert(0, "❌ No PDF was produced.")
+    notes.insert(0, "❌ No PDF was produced, and the repair ladder could not rescue it. "
+                    "Everything it tried is listed below.")
     return False
 
 
 # ========================================
 # MAIN
 # ========================================
+
+# =============================================================================
+# GOD-LEVEL ENGINE 1/6 - THE SYMBOL UNIVERSE & PACKAGE INTELLIGENCE
+# =============================================================================
+# Every entry is (command, package, category, description).  ``package`` is the
+# LaTeX package that MUST be loaded for the command to exist; an empty string
+# means the command is built into plain TeX / LaTeX2e and needs nothing.
+#
+# This table is the single source of truth for THREE separate capabilities:
+#   1. ``action=symbols``  - search / browse / cheat-sheet generation.
+#   2. auto-preamble       - scan a document body, discover which commands it
+#                            uses, and synthesise the exact \usepackage lines.
+#   3. the FIXER           - "Undefined control sequence \qty" is repaired by
+#                            looking the command up here and adding its package.
+#
+# Adding a row here therefore upgrades all three at once.  Keep the rows sorted
+# by category so the generated cheat-sheets read sensibly.
+# =============================================================================
+
+SYMBOL_UNIVERSE = [
+    # ---- Greek, lowercase -------------------------------------------------
+    (r"\alpha", "", "greek", "Greek small alpha"),
+    (r"\beta", "", "greek", "Greek small beta"),
+    (r"\gamma", "", "greek", "Greek small gamma"),
+    (r"\delta", "", "greek", "Greek small delta"),
+    (r"\epsilon", "", "greek", "Greek small epsilon (lunate)"),
+    (r"\varepsilon", "", "greek", "Greek small epsilon (script)"),
+    (r"\zeta", "", "greek", "Greek small zeta"),
+    (r"\eta", "", "greek", "Greek small eta"),
+    (r"\theta", "", "greek", "Greek small theta"),
+    (r"\vartheta", "", "greek", "Greek small theta (variant)"),
+    (r"\iota", "", "greek", "Greek small iota"),
+    (r"\kappa", "", "greek", "Greek small kappa"),
+    (r"\varkappa", "amssymb", "greek", "Greek small kappa (variant)"),
+    (r"\lambda", "", "greek", "Greek small lambda"),
+    (r"\mu", "", "greek", "Greek small mu"),
+    (r"\nu", "", "greek", "Greek small nu"),
+    (r"\xi", "", "greek", "Greek small xi"),
+    (r"\pi", "", "greek", "Greek small pi"),
+    (r"\varpi", "", "greek", "Greek small pi (variant)"),
+    (r"\rho", "", "greek", "Greek small rho"),
+    (r"\varrho", "", "greek", "Greek small rho (variant)"),
+    (r"\sigma", "", "greek", "Greek small sigma"),
+    (r"\varsigma", "", "greek", "Greek small final sigma"),
+    (r"\tau", "", "greek", "Greek small tau"),
+    (r"\upsilon", "", "greek", "Greek small upsilon"),
+    (r"\phi", "", "greek", "Greek small phi"),
+    (r"\varphi", "", "greek", "Greek small phi (variant)"),
+    (r"\chi", "", "greek", "Greek small chi"),
+    (r"\psi", "", "greek", "Greek small psi"),
+    (r"\omega", "", "greek", "Greek small omega"),
+    (r"\digamma", "amssymb", "greek", "Greek small digamma"),
+    # ---- Greek, uppercase -------------------------------------------------
+    (r"\Gamma", "", "greek", "Greek capital Gamma"),
+    (r"\Delta", "", "greek", "Greek capital Delta (also Laplacian)"),
+    (r"\Theta", "", "greek", "Greek capital Theta"),
+    (r"\Lambda", "", "greek", "Greek capital Lambda"),
+    (r"\Xi", "", "greek", "Greek capital Xi"),
+    (r"\Pi", "", "greek", "Greek capital Pi (also product)"),
+    (r"\Sigma", "", "greek", "Greek capital Sigma (also sum)"),
+    (r"\Upsilon", "", "greek", "Greek capital Upsilon"),
+    (r"\Phi", "", "greek", "Greek capital Phi"),
+    (r"\Psi", "", "greek", "Greek capital Psi"),
+    (r"\Omega", "", "greek", "Greek capital Omega (also ohm)"),
+    (r"\varGamma", "amsmath", "greek", "Italic capital Gamma"),
+    (r"\varDelta", "amsmath", "greek", "Italic capital Delta"),
+    (r"\varTheta", "amsmath", "greek", "Italic capital Theta"),
+    (r"\varLambda", "amsmath", "greek", "Italic capital Lambda"),
+    (r"\varSigma", "amsmath", "greek", "Italic capital Sigma"),
+    (r"\varPhi", "amsmath", "greek", "Italic capital Phi"),
+    (r"\varPsi", "amsmath", "greek", "Italic capital Psi"),
+    (r"\varOmega", "amsmath", "greek", "Italic capital Omega"),
+    # ---- Binary operators -------------------------------------------------
+    (r"\pm", "", "operators", "Plus-minus"),
+    (r"\mp", "", "operators", "Minus-plus"),
+    (r"\times", "", "operators", "Multiplication cross"),
+    (r"\div", "", "operators", "Division sign"),
+    (r"\cdot", "", "operators", "Centred dot product"),
+    (r"\ast", "", "operators", "Asterisk operator"),
+    (r"\star", "", "operators", "Star operator"),
+    (r"\circ", "", "operators", "Composition ring"),
+    (r"\bullet", "", "operators", "Bullet"),
+    (r"\oplus", "", "operators", "Direct sum"),
+    (r"\ominus", "", "operators", "Circled minus"),
+    (r"\otimes", "", "operators", "Tensor product"),
+    (r"\oslash", "", "operators", "Circled slash"),
+    (r"\odot", "", "operators", "Circled dot (Hadamard)"),
+    (r"\dagger", "", "operators", "Dagger (Hermitian adjoint)"),
+    (r"\ddagger", "", "operators", "Double dagger"),
+    (r"\amalg", "", "operators", "Amalgamation / coproduct"),
+    (r"\wedge", "", "operators", "Logical and / wedge product"),
+    (r"\vee", "", "operators", "Logical or / join"),
+    (r"\cap", "", "operators", "Set intersection"),
+    (r"\cup", "", "operators", "Set union"),
+    (r"\sqcap", "", "operators", "Square intersection (meet)"),
+    (r"\sqcup", "", "operators", "Square union (join)"),
+    (r"\uplus", "", "operators", "Multiset union"),
+    (r"\setminus", "", "operators", "Set difference"),
+    (r"\boxplus", "amssymb", "operators", "Boxed plus"),
+    (r"\boxtimes", "amssymb", "operators", "Boxed times"),
+    (r"\boxdot", "amssymb", "operators", "Boxed dot"),
+    (r"\ltimes", "amssymb", "operators", "Left semidirect product"),
+    (r"\rtimes", "amssymb", "operators", "Right semidirect product"),
+    (r"\divideontimes", "amssymb", "operators", "Divide on times"),
+    (r"\intercal", "amssymb", "operators", "Intercal (transpose)"),
+    (r"\smallsetminus", "amssymb", "operators", "Small set minus"),
+    (r"\curlywedge", "amssymb", "operators", "Curly wedge"),
+    (r"\curlyvee", "amssymb", "operators", "Curly vee"),
+    (r"\circledast", "amssymb", "operators", "Circled asterisk (convolution)"),
+    (r"\circledcirc", "amssymb", "operators", "Circled ring"),
+    (r"\circleddash", "amssymb", "operators", "Circled dash"),
+    (r"\dotplus", "amssymb", "operators", "Dotted plus"),
+    (r"\barwedge", "amssymb", "operators", "Barred wedge (NAND)"),
+    (r"\veebar", "amssymb", "operators", "Vee bar (XOR)"),
+    # ---- Big operators ----------------------------------------------------
+    (r"\sum", "", "bigops", "Summation"),
+    (r"\prod", "", "bigops", "Product"),
+    (r"\coprod", "", "bigops", "Coproduct"),
+    (r"\int", "", "bigops", "Integral"),
+    (r"\iint", "amsmath", "bigops", "Double integral"),
+    (r"\iiint", "amsmath", "bigops", "Triple integral"),
+    (r"\iiiint", "amsmath", "bigops", "Quadruple integral"),
+    (r"\idotsint", "amsmath", "bigops", "Integral with dots"),
+    (r"\oint", "", "bigops", "Contour integral"),
+    (r"\oiint", "esint", "bigops", "Closed surface integral"),
+    (r"\oiiint", "esint", "bigops", "Closed volume integral"),
+    (r"\bigcap", "", "bigops", "Big intersection"),
+    (r"\bigcup", "", "bigops", "Big union"),
+    (r"\bigsqcup", "", "bigops", "Big square union"),
+    (r"\bigvee", "", "bigops", "Big vee"),
+    (r"\bigwedge", "", "bigops", "Big wedge"),
+    (r"\bigoplus", "", "bigops", "Big direct sum"),
+    (r"\bigotimes", "", "bigops", "Big tensor product"),
+    (r"\bigodot", "", "bigops", "Big circled dot"),
+    (r"\biguplus", "", "bigops", "Big multiset union"),
+    # ---- Relations --------------------------------------------------------
+    (r"\leq", "", "relations", "Less than or equal"),
+    (r"\geq", "", "relations", "Greater than or equal"),
+    (r"\ll", "", "relations", "Much less than"),
+    (r"\gg", "", "relations", "Much greater than"),
+    (r"\lll", "amssymb", "relations", "Very much less than"),
+    (r"\ggg", "amssymb", "relations", "Very much greater than"),
+    (r"\leqslant", "amssymb", "relations", "Slanted less-or-equal"),
+    (r"\geqslant", "amssymb", "relations", "Slanted greater-or-equal"),
+    (r"\neq", "", "relations", "Not equal"),
+    (r"\equiv", "", "relations", "Equivalent / congruent mod"),
+    (r"\sim", "", "relations", "Similar / distributed as"),
+    (r"\simeq", "", "relations", "Similar or equal"),
+    (r"\approx", "", "relations", "Approximately equal"),
+    (r"\approxeq", "amssymb", "relations", "Approximately equal to"),
+    (r"\cong", "", "relations", "Congruent / isomorphic"),
+    (r"\propto", "", "relations", "Proportional to"),
+    (r"\asymp", "", "relations", "Asymptotically equal"),
+    (r"\doteq", "", "relations", "Dot equal"),
+    (r"\triangleq", "amssymb", "relations", "Defined as (triangle equal)"),
+    (r"\subset", "", "relations", "Subset"),
+    (r"\supset", "", "relations", "Superset"),
+    (r"\subseteq", "", "relations", "Subset or equal"),
+    (r"\supseteq", "", "relations", "Superset or equal"),
+    (r"\subsetneq", "amssymb", "relations", "Proper subset"),
+    (r"\supsetneq", "amssymb", "relations", "Proper superset"),
+    (r"\sqsubseteq", "", "relations", "Square subset or equal"),
+    (r"\sqsupseteq", "", "relations", "Square superset or equal"),
+    (r"\in", "", "relations", "Element of"),
+    (r"\ni", "", "relations", "Contains as member"),
+    (r"\notin", "", "relations", "Not an element of"),
+    (r"\perp", "", "relations", "Perpendicular / orthogonal"),
+    (r"\parallel", "", "relations", "Parallel"),
+    (r"\mid", "", "relations", "Divides / conditional bar"),
+    (r"\nmid", "amssymb", "relations", "Does not divide"),
+    (r"\vdash", "", "relations", "Proves / turnstile"),
+    (r"\dashv", "", "relations", "Reverse turnstile"),
+    (r"\models", "", "relations", "Models / entails"),
+    (r"\vDash", "amssymb", "relations", "Double turnstile"),
+    (r"\Vdash", "amssymb", "relations", "Forces"),
+    (r"\prec", "", "relations", "Precedes"),
+    (r"\succ", "", "relations", "Succeeds"),
+    (r"\preceq", "", "relations", "Precedes or equal"),
+    (r"\succeq", "", "relations", "Succeeds or equal"),
+    (r"\lesssim", "amssymb", "relations", "Less than or similar"),
+    (r"\gtrsim", "amssymb", "relations", "Greater than or similar"),
+    (r"\bowtie", "", "relations", "Bowtie (natural join)"),
+    (r"\smile", "", "relations", "Smile"),
+    (r"\frown", "", "relations", "Frown"),
+    (r"\between", "amssymb", "relations", "Between"),
+    (r"\pitchfork", "amssymb", "relations", "Pitchfork (transversal)"),
+    (r"\therefore", "amssymb", "relations", "Therefore"),
+    (r"\because", "amssymb", "relations", "Because"),
+    # ---- Negated relations ------------------------------------------------
+    (r"\nless", "amssymb", "negations", "Not less than"),
+    (r"\ngtr", "amssymb", "negations", "Not greater than"),
+    (r"\nleq", "amssymb", "negations", "Not less or equal"),
+    (r"\ngeq", "amssymb", "negations", "Not greater or equal"),
+    (r"\nsim", "amssymb", "negations", "Not similar"),
+    (r"\ncong", "amssymb", "negations", "Not congruent"),
+    (r"\nsubseteq", "amssymb", "negations", "Not a subset"),
+    (r"\nsupseteq", "amssymb", "negations", "Not a superset"),
+    (r"\nparallel", "amssymb", "negations", "Not parallel"),
+    (r"\nvdash", "amssymb", "negations", "Does not prove"),
+    (r"\nvDash", "amssymb", "negations", "Does not entail"),
+    (r"\nrightarrow", "amssymb", "negations", "Does not map to"),
+    (r"\nleftarrow", "amssymb", "negations", "Not left arrow"),
+    (r"\nleftrightarrow", "amssymb", "negations", "Not both ways"),
+    (r"\nRightarrow", "amssymb", "negations", "Does not imply"),
+    (r"\nLeftrightarrow", "amssymb", "negations", "Not equivalent"),
+    # ---- Arrows -----------------------------------------------------------
+    (r"\leftarrow", "", "arrows", "Left arrow"),
+    (r"\rightarrow", "", "arrows", "Right arrow (maps to)"),
+    (r"\to", "", "arrows", "Right arrow (short form)"),
+    (r"\leftrightarrow", "", "arrows", "Left-right arrow"),
+    (r"\Leftarrow", "", "arrows", "Double left arrow (implied by)"),
+    (r"\Rightarrow", "", "arrows", "Double right arrow (implies)"),
+    (r"\Leftrightarrow", "", "arrows", "Double left-right (iff)"),
+    (r"\iff", "", "arrows", "If and only if (spaced)"),
+    (r"\implies", "amsmath", "arrows", "Implies (spaced)"),
+    (r"\impliedby", "amsmath", "arrows", "Implied by (spaced)"),
+    (r"\mapsto", "", "arrows", "Maps to"),
+    (r"\longmapsto", "", "arrows", "Long maps to"),
+    (r"\hookleftarrow", "", "arrows", "Hook left arrow"),
+    (r"\hookrightarrow", "", "arrows", "Hook right arrow (injection)"),
+    (r"\twoheadrightarrow", "amssymb", "arrows", "Two-headed arrow (surjection)"),
+    (r"\rightarrowtail", "amssymb", "arrows", "Arrow with tail (injection)"),
+    (r"\leftharpoonup", "", "arrows", "Left harpoon up"),
+    (r"\rightharpoonup", "", "arrows", "Right harpoon up"),
+    (r"\rightleftharpoons", "", "arrows", "Equilibrium arrows"),
+    (r"\leftrightharpoons", "amssymb", "arrows", "Reverse equilibrium"),
+    (r"\uparrow", "", "arrows", "Up arrow"),
+    (r"\downarrow", "", "arrows", "Down arrow"),
+    (r"\updownarrow", "", "arrows", "Up-down arrow"),
+    (r"\Uparrow", "", "arrows", "Double up arrow"),
+    (r"\Downarrow", "", "arrows", "Double down arrow"),
+    (r"\nearrow", "", "arrows", "North-east arrow"),
+    (r"\searrow", "", "arrows", "South-east arrow"),
+    (r"\swarrow", "", "arrows", "South-west arrow"),
+    (r"\nwarrow", "", "arrows", "North-west arrow"),
+    (r"\rightsquigarrow", "amssymb", "arrows", "Squiggly arrow (rewrites to)"),
+    (r"\leadsto", "amssymb", "arrows", "Leads to"),
+    (r"\circlearrowleft", "amssymb", "arrows", "Anticlockwise circle arrow"),
+    (r"\circlearrowright", "amssymb", "arrows", "Clockwise circle arrow"),
+    (r"\rightrightarrows", "amssymb", "arrows", "Parallel right arrows"),
+    (r"\leftleftarrows", "amssymb", "arrows", "Parallel left arrows"),
+    (r"\rightleftarrows", "amssymb", "arrows", "Opposed arrows"),
+    (r"\xrightarrow", "amsmath", "arrows", "Extensible right arrow with label"),
+    (r"\xleftarrow", "amsmath", "arrows", "Extensible left arrow with label"),
+    (r"\xrightleftharpoons", "mathtools", "arrows", "Extensible equilibrium"),
+    # ---- Set theory & logic ----------------------------------------------
+    (r"\emptyset", "", "logic", "Empty set"),
+    (r"\varnothing", "amssymb", "logic", "Empty set (preferred glyph)"),
+    (r"\forall", "", "logic", "Universal quantifier"),
+    (r"\exists", "", "logic", "Existential quantifier"),
+    (r"\nexists", "amssymb", "logic", "Does not exist"),
+    (r"\neg", "", "logic", "Logical negation"),
+    (r"\lnot", "", "logic", "Logical not (alias)"),
+    (r"\land", "", "logic", "Logical and"),
+    (r"\lor", "", "logic", "Logical or"),
+    (r"\top", "", "logic", "Top / true"),
+    (r"\bot", "", "logic", "Bottom / false / perp"),
+    (r"\aleph", "", "logic", "Aleph (cardinal)"),
+    (r"\beth", "amssymb", "logic", "Beth number"),
+    (r"\gimel", "amssymb", "logic", "Gimel number"),
+    (r"\daleth", "amssymb", "logic", "Daleth number"),
+    (r"\complement", "amssymb", "logic", "Set complement"),
+    (r"\mathbb{N}", "amssymb", "logic", "Natural numbers"),
+    (r"\mathbb{Z}", "amssymb", "logic", "Integers"),
+    (r"\mathbb{Q}", "amssymb", "logic", "Rationals"),
+    (r"\mathbb{R}", "amssymb", "logic", "Reals"),
+    (r"\mathbb{C}", "amssymb", "logic", "Complex numbers"),
+    (r"\mathbb{H}", "amssymb", "logic", "Quaternions"),
+    (r"\mathbb{F}", "amssymb", "logic", "Field"),
+    (r"\mathbb{P}", "amssymb", "logic", "Probability measure"),
+    (r"\mathbb{E}", "amssymb", "logic", "Expectation operator"),
+    # ---- Calculus & analysis ---------------------------------------------
+    (r"\partial", "", "calculus", "Partial derivative"),
+    (r"\nabla", "", "calculus", "Nabla / del / gradient"),
+    (r"\infty", "", "calculus", "Infinity"),
+    (r"\lim", "", "calculus", "Limit operator"),
+    (r"\limsup", "", "calculus", "Limit superior"),
+    (r"\liminf", "", "calculus", "Limit inferior"),
+    (r"\varliminf", "amsmath", "calculus", "Underlined lim (variant)"),
+    (r"\varlimsup", "amsmath", "calculus", "Overlined lim (variant)"),
+    (r"\sup", "", "calculus", "Supremum"),
+    (r"\inf", "", "calculus", "Infimum"),
+    (r"\max", "", "calculus", "Maximum"),
+    (r"\min", "", "calculus", "Minimum"),
+    (r"\arg", "", "calculus", "Argument"),
+    (r"\det", "", "calculus", "Determinant"),
+    (r"\dim", "", "calculus", "Dimension"),
+    (r"\ker", "", "calculus", "Kernel"),
+    (r"\deg", "", "calculus", "Degree"),
+    (r"\gcd", "", "calculus", "Greatest common divisor"),
+    (r"\exp", "", "calculus", "Exponential"),
+    (r"\log", "", "calculus", "Logarithm"),
+    (r"\ln", "", "calculus", "Natural logarithm"),
+    (r"\sin", "", "calculus", "Sine"),
+    (r"\cos", "", "calculus", "Cosine"),
+    (r"\tan", "", "calculus", "Tangent"),
+    (r"\sinh", "", "calculus", "Hyperbolic sine"),
+    (r"\cosh", "", "calculus", "Hyperbolic cosine"),
+    (r"\tanh", "", "calculus", "Hyperbolic tangent"),
+    (r"\operatorname", "amsmath", "calculus", "Declare an upright operator"),
+    (r"\DeclareMathOperator", "amsmath", "calculus", "Define a new operator"),
+    (r"\dd", "physics", "calculus", "Upright differential d"),
+    (r"\dv", "physics", "calculus", "Total derivative d/dx"),
+    (r"\pdv", "physics", "calculus", "Partial derivative"),
+    (r"\grad", "physics", "calculus", "Gradient"),
+    (r"\divergence", "physics", "calculus", "Divergence"),
+    (r"\curl", "physics", "calculus", "Curl"),
+    (r"\laplacian", "physics", "calculus", "Laplacian"),
+    # ---- Quantum mechanics ------------------------------------------------
+    (r"\ket", "braket", "quantum", "Dirac ket |psi>"),
+    (r"\bra", "braket", "quantum", "Dirac bra <psi|"),
+    (r"\braket", "braket", "quantum", "Inner product <a|b>"),
+    (r"\ketbra", "braket", "quantum", "Outer product |a><b|"),
+    (r"\Ket", "braket", "quantum", "Auto-sized ket"),
+    (r"\Bra", "braket", "quantum", "Auto-sized bra"),
+    (r"\Braket", "braket", "quantum", "Auto-sized inner product"),
+    (r"\expval", "physics", "quantum", "Expectation value <A>"),
+    (r"\ev", "physics", "quantum", "Expectation value (short)"),
+    (r"\matrixel", "physics", "quantum", "Matrix element <a|A|b>"),
+    (r"\mel", "physics", "quantum", "Matrix element (short)"),
+    (r"\comm", "physics", "quantum", "Commutator [A,B]"),
+    (r"\acomm", "physics", "quantum", "Anticommutator {A,B}"),
+    (r"\poissonbracket", "physics", "quantum", "Poisson bracket"),
+    (r"\hbar", "", "quantum", "Reduced Planck constant"),
+    (r"\hslash", "amssymb", "quantum", "Reduced Planck (variant)"),
+    (r"\dagger", "", "quantum", "Hermitian conjugate"),
+    (r"\otimes", "", "quantum", "Tensor product of states"),
+    (r"\Tr", "physics", "quantum", "Trace operator"),
+    (r"\tr", "physics", "quantum", "Trace (lowercase)"),
+    # NOTE: \qty is deliberately NOT listed here even though the physics package
+    # defines it.  siunitx v3 also defines \qty, the two genuinely clash, and
+    # \qty{5}{\meter} (siunitx) is overwhelmingly the more common usage -- so the
+    # units section below owns the mapping and PACKAGE_CONFLICTS records the clash.
+    (r"\eval", "physics", "quantum", "Evaluation bar"),
+    (r"\order", "physics", "quantum", "Order-of notation"),
+    (r"\slashed", "slashed", "quantum", "Feynman slash notation"),
+    (r"\qtysingle", "physics", "quantum", "Single quantity"),
+    # ---- Tensors & index notation ----------------------------------------
+    (r"\tensor", "tensor", "tensors", "Tensor with staggered indices"),
+    (r"\indices", "tensor", "tensors", "Index specification"),
+    (r"\prescript", "mathtools", "tensors", "Pre-superscript/subscript"),
+    (r"\overline", "", "tensors", "Overline (conjugate)"),
+    (r"\underline", "", "tensors", "Underline"),
+    (r"\widehat", "", "tensors", "Wide hat (operator)"),
+    (r"\widetilde", "", "tensors", "Wide tilde"),
+    (r"\overrightarrow", "", "tensors", "Vector arrow over"),
+    (r"\vec", "", "tensors", "Vector arrow"),
+    (r"\bm", "bm", "tensors", "Bold math (vectors/tensors)"),
+    (r"\boldsymbol", "amsmath", "tensors", "Bold symbol"),
+    (r"\mathbf", "", "tensors", "Upright bold"),
+    (r"\mathrm", "", "tensors", "Upright roman"),
+    (r"\mathcal", "", "tensors", "Calligraphic"),
+    (r"\mathscr", "mathrsfs", "tensors", "Script (Ralph Smith)"),
+    (r"\mathfrak", "amssymb", "tensors", "Fraktur"),
+    (r"\mathbb", "amssymb", "tensors", "Blackboard bold"),
+    # ---- Category theory --------------------------------------------------
+    (r"\xrightarrow", "amsmath", "category", "Labelled morphism arrow"),
+    (r"\rightrightarrows", "amssymb", "category", "Parallel morphisms"),
+    (r"\hookrightarrow", "", "category", "Monomorphism"),
+    (r"\twoheadrightarrow", "amssymb", "category", "Epimorphism"),
+    (r"\dashrightarrow", "amssymb", "category", "Dashed (unique) arrow"),
+    (r"\Longrightarrow", "", "category", "Long double arrow"),
+    (r"\circ", "", "category", "Composition"),
+    (r"\cong", "", "category", "Natural isomorphism"),
+    (r"\simeq", "", "category", "Equivalence of categories"),
+    # ---- Delimiters -------------------------------------------------------
+    (r"\left", "", "delimiters", "Open auto-sized delimiter"),
+    (r"\right", "", "delimiters", "Close auto-sized delimiter"),
+    (r"\big", "", "delimiters", "Manually enlarged delimiter"),
+    (r"\Big", "", "delimiters", "Larger delimiter"),
+    (r"\bigg", "", "delimiters", "Even larger delimiter"),
+    (r"\Bigg", "", "delimiters", "Largest standard delimiter"),
+    (r"\langle", "", "delimiters", "Left angle bracket"),
+    (r"\rangle", "", "delimiters", "Right angle bracket"),
+    (r"\lceil", "", "delimiters", "Left ceiling"),
+    (r"\rceil", "", "delimiters", "Right ceiling"),
+    (r"\lfloor", "", "delimiters", "Left floor"),
+    (r"\rfloor", "", "delimiters", "Right floor"),
+    (r"\lVert", "amsmath", "delimiters", "Left double bar (norm)"),
+    (r"\rVert", "amsmath", "delimiters", "Right double bar (norm)"),
+    (r"\lvert", "amsmath", "delimiters", "Left single bar"),
+    (r"\rvert", "amsmath", "delimiters", "Right single bar"),
+    (r"\llbracket", "stmaryrd", "delimiters", "Left double square bracket"),
+    (r"\rrbracket", "stmaryrd", "delimiters", "Right double square bracket"),
+    (r"\DeclarePairedDelimiter", "mathtools", "delimiters", "Define a delimiter pair"),
+    # ---- Math structures --------------------------------------------------
+    (r"\frac", "", "structures", "Fraction"),
+    (r"\dfrac", "amsmath", "structures", "Display-style fraction"),
+    (r"\tfrac", "amsmath", "structures", "Text-style fraction"),
+    (r"\cfrac", "amsmath", "structures", "Continued fraction"),
+    (r"\binom", "amsmath", "structures", "Binomial coefficient"),
+    (r"\dbinom", "amsmath", "structures", "Display binomial"),
+    (r"\sqrt", "", "structures", "Square / nth root"),
+    (r"\substack", "amsmath", "structures", "Multi-line subscript"),
+    (r"\overbrace", "", "structures", "Overbrace"),
+    (r"\underbrace", "", "structures", "Underbrace"),
+    (r"\overset", "amsmath", "structures", "Symbol above"),
+    (r"\underset", "amsmath", "structures", "Symbol below"),
+    (r"\stackrel", "", "structures", "Stack relation"),
+    (r"\text", "amsmath", "structures", "Upright text inside math"),
+    (r"\intertext", "amsmath", "structures", "Text between aligned lines"),
+    (r"\shortintertext", "mathtools", "structures", "Tight text between lines"),
+    (r"\tag", "amsmath", "structures", "Manual equation tag"),
+    (r"\notag", "amsmath", "structures", "Suppress equation number"),
+    (r"\numberwithin", "amsmath", "structures", "Number equations per section"),
+    (r"\eqref", "amsmath", "structures", "Reference with parentheses"),
+    (r"\cref", "cleveref", "structures", "Clever reference (auto type)"),
+    (r"\Cref", "cleveref", "structures", "Clever reference capitalised"),
+    (r"\phantom", "", "structures", "Invisible spacing box"),
+    (r"\mathclap", "mathtools", "structures", "Clap a limit horizontally"),
+    (r"\coloneqq", "mathtools", "structures", "Definition := symbol"),
+    (r"\eqqcolon", "mathtools", "structures", "Reverse definition =:"),
+    # ---- Chemistry & units ------------------------------------------------
+    (r"\ce", "mhchem", "chemistry", "Chemical equation / formula"),
+    (r"\chemfig", "chemfig", "chemistry", "Structural molecule diagram"),
+    (r"\SI", "siunitx", "units", "Number with unit (legacy)"),
+    (r"\qty", "siunitx", "units", "Number with unit (siunitx v3)"),
+    (r"\si", "siunitx", "units", "Unit alone (legacy)"),
+    (r"\unit", "siunitx", "units", "Unit alone (siunitx v3)"),
+    (r"\num", "siunitx", "units", "Formatted number"),
+    (r"\numrange", "siunitx", "units", "Formatted number range"),
+    (r"\ang", "siunitx", "units", "Angle in degrees"),
+    (r"\SIrange", "siunitx", "units", "Quantity range (legacy)"),
+    # ---- Typography & layout ---------------------------------------------
+    (r"\textbf", "", "typography", "Bold text"),
+    (r"\textit", "", "typography", "Italic text"),
+    (r"\texttt", "", "typography", "Monospace text"),
+    (r"\textsc", "", "typography", "Small capitals"),
+    (r"\emph", "", "typography", "Emphasis"),
+    (r"\includegraphics", "graphicx", "typography", "Insert an image"),
+    (r"\resizebox", "graphicx", "typography", "Scale a box"),
+    (r"\rotatebox", "graphicx", "typography", "Rotate a box"),
+    (r"\toprule", "booktabs", "typography", "Professional table top rule"),
+    (r"\midrule", "booktabs", "typography", "Professional table mid rule"),
+    (r"\bottomrule", "booktabs", "typography", "Professional table bottom rule"),
+    (r"\cmidrule", "booktabs", "typography", "Partial rule"),
+    (r"\multirow", "multirow", "typography", "Cell spanning rows"),
+    (r"\multicolumn", "", "typography", "Cell spanning columns"),
+    (r"\href", "hyperref", "typography", "Hyperlink with text"),
+    (r"\url", "hyperref", "typography", "Bare URL"),
+    (r"\hyperref", "hyperref", "typography", "Internal hyperlink"),
+    (r"\lstinputlisting", "listings", "typography", "Include source file"),
+    (r"\lstset", "listings", "typography", "Configure code listings"),
+    (r"\mintinline", "minted", "typography", "Inline highlighted code"),
+    (r"\definecolor", "xcolor", "typography", "Define a colour"),
+    (r"\textcolor", "xcolor", "typography", "Coloured text"),
+    (r"\colorbox", "xcolor", "typography", "Coloured background box"),
+    (r"\fcolorbox", "xcolor", "typography", "Framed coloured box"),
+    (r"\geometry", "geometry", "typography", "Page geometry setup"),
+    (r"\setlist", "enumitem", "typography", "Configure list spacing"),
+    (r"\captionsetup", "caption", "typography", "Configure captions"),
+    (r"\subcaptionbox", "subcaption", "typography", "Sub-figure with caption"),
+    (r"\FloatBarrier", "placeins", "typography", "Barrier for floats"),
+    (r"\microtypesetup", "microtype", "typography", "Micro-typography tuning"),
+    (r"\SetWatermarkText", "draftwatermark", "typography", "Draft watermark"),
+    (r"\todo", "todonotes", "typography", "Margin TODO note"),
+    (r"\newtcolorbox", "tcolorbox", "typography", "Define a coloured box"),
+    (r"\qrcode", "qrcode", "typography", "QR code"),
+    # ---- Theorem & proof --------------------------------------------------
+    (r"\newtheorem", "amsthm", "theorems", "Declare a theorem environment"),
+    (r"\theoremstyle", "amsthm", "theorems", "Select theorem style"),
+    (r"\qedhere", "amsthm", "theorems", "Place the QED box inline"),
+    (r"\blacksquare", "amssymb", "theorems", "QED filled square"),
+    (r"\square", "amssymb", "theorems", "Open square"),
+    (r"\declaretheorem", "thmtools", "theorems", "Advanced theorem declaration"),
+    # ---- Bibliography -----------------------------------------------------
+    (r"\cite", "", "bibliography", "Citation"),
+    (r"\citep", "natbib", "bibliography", "Parenthetical citation"),
+    (r"\citet", "natbib", "bibliography", "Textual citation"),
+    (r"\parencite", "biblatex", "bibliography", "Parenthetical citation"),
+    (r"\textcite", "biblatex", "bibliography", "Textual citation"),
+    (r"\autocite", "biblatex", "bibliography", "Automatic citation"),
+    (r"\addbibresource", "biblatex", "bibliography", "Declare a .bib file"),
+    (r"\printbibliography", "biblatex", "bibliography", "Print the bibliography"),
+    (r"\bibliography", "", "bibliography", "BibTeX bibliography"),
+    (r"\bibliographystyle", "", "bibliography", "BibTeX style"),
+    # ---- Diagrams ---------------------------------------------------------
+    (r"\begin{tikzpicture}", "tikz", "diagrams", "TikZ drawing canvas"),
+    (r"\tikz", "tikz", "diagrams", "Inline TikZ"),
+    (r"\node", "tikz", "diagrams", "TikZ node"),
+    (r"\draw", "tikz", "diagrams", "TikZ path"),
+    (r"\usetikzlibrary", "tikz", "diagrams", "Load a TikZ library"),
+    (r"\begin{axis}", "pgfplots", "diagrams", "PGFPlots axis"),
+    (r"\addplot", "pgfplots", "diagrams", "PGFPlots data series"),
+    (r"\addplot3", "pgfplots", "diagrams", "PGFPlots 3D series"),
+    (r"\pgfplotsset", "pgfplots", "diagrams", "PGFPlots configuration"),
+    (r"\begin{circuitikz}", "circuitikz", "diagrams", "Circuit diagram canvas"),
+    (r"\begin{quantikz}", "quantikz", "diagrams", "Quantum circuit canvas"),
+    (r"\lstick", "quantikz", "diagrams", "Quantum wire label (left)"),
+    (r"\rstick", "quantikz", "diagrams", "Quantum wire label (right)"),
+    (r"\gate", "quantikz", "diagrams", "Quantum gate box"),
+    (r"\ctrl", "quantikz", "diagrams", "Control node"),
+    (r"\targ", "quantikz", "diagrams", "CNOT target"),
+    # NOTE: quantikz also defines \meter (the measurement gate), but \meter is
+    # FAR more often siunitx's unit -- \qty{5}{\meter}. Mapping it to quantikz
+    # made LaTeXer add \usepackage{quantikz} to documents about rope lengths.
+    # A name this generic is not safe to own, so quantikz claims only its
+    # unambiguous commands (\gate, \ctrl, \targ, \qw, \lstick, \rstick).
+    (r"\qw", "quantikz", "diagrams", "Quantum wire"),
+    (r"\begin{tikzcd}", "tikz-cd", "diagrams", "Commutative diagram"),
+    (r"\arrow", "tikz-cd", "diagrams", "Commutative diagram arrow"),
+    (r"\feynmandiagram", "tikz-feynman", "diagrams", "Feynman diagram"),
+    (r"\begin{forest}", "forest", "diagrams", "Tree diagram"),
+    (r"\begin{ganttchart}", "pgfgantt", "diagrams", "Gantt chart"),
+    (r"\begin{sequencediagram}", "pgf-umlsd", "diagrams", "UML sequence diagram"),
+    (r"\begin{venndiagram3sets}", "venndiagram", "diagrams", "Venn diagram"),
+    (r"\smartdiagram", "smartdiagram", "diagrams", "Preset smart diagram"),
+]
+
+# --- Derived indices ------------------------------------------------------
+# Built lazily so importing the module stays cheap; every consumer goes through
+# the accessors below rather than touching the raw list.
+_SYMBOL_BY_COMMAND = {}
+_SYMBOLS_BY_CATEGORY = {}
+_COMMAND_TO_PACKAGE = {}
+
+
+def _build_symbol_indices() -> None:
+    """Populate the three derived lookup structures exactly once."""
+    if _SYMBOL_BY_COMMAND:
+        return
+    for command, package, category, description in SYMBOL_UNIVERSE:
+        bare = command.split("{")[0]
+        _SYMBOL_BY_COMMAND.setdefault(bare, (command, package, category, description))
+        _SYMBOLS_BY_CATEGORY.setdefault(category, []).append(
+            (command, package, category, description)
+        )
+        # ⚠️ ENVIRONMENT ROWS MUST NOT ENTER THE COMMAND MAP.
+        # ``\begin{tikzpicture}`` splits on '{' to the bare token ``\begin`` --
+        # so registering it here would make EVERY \begin in EVERY document infer
+        # tikz, and LaTeXer would silently inject \usepackage{tikz} into a plain
+        # letter. Environments are resolved by ENVIRONMENT_TO_PACKAGE instead,
+        # which matches the environment NAME. Caught by the ladder's own trace
+        # printing "added tikz (tikz needed by \begin)" on 11 unrelated cases.
+        if package and not command.startswith("\\begin{"):
+            # First package wins: the table is ordered so the canonical
+            # provider (amsmath before mathtools, siunitx for \qty) is listed
+            # first for any command with several providers.
+            _COMMAND_TO_PACKAGE.setdefault(bare, package)
+
+
+def symbol_categories() -> list:
+    """Sorted list of every category name in the universe."""
+    _build_symbol_indices()
+    return sorted(_SYMBOLS_BY_CATEGORY.keys())
+
+
+def symbol_count() -> int:
+    """Total number of catalogued symbols."""
+    return len(SYMBOL_UNIVERSE)
+
+
+def lookup_symbol(command: str):
+    """Return the universe row for ``command`` (leading backslash optional)."""
+    _build_symbol_indices()
+    name = command.strip()
+    if name and not name.startswith("\\"):
+        name = "\\" + name
+    return _SYMBOL_BY_COMMAND.get(name.split("{")[0])
+
+
+def search_symbols(query: str, category: str = "", limit: int = 60) -> list:
+    """Fuzzy search over command names AND descriptions.
+
+    An empty ``query`` with a ``category`` lists that whole category, which is
+    what powers the generated cheat-sheets.
+    """
+    _build_symbol_indices()
+    needle = (query or "").strip().lower().lstrip("\\")
+    wanted = (category or "").strip().lower()
+    hits = []
+    for row in SYMBOL_UNIVERSE:
+        command, package, cat, description = row
+        if wanted and cat != wanted:
+            continue
+        if not needle:
+            hits.append(row)
+        elif needle in command.lower() or needle in description.lower():
+            hits.append(row)
+        if len(hits) >= max(1, limit):
+            break
+    return hits
+
+
+# --- Package intelligence -------------------------------------------------
+# Environments are matched separately from commands because ``\begin{align}``
+# is the trigger, not a control sequence of its own.
+ENVIRONMENT_TO_PACKAGE = {
+    "align": "amsmath",
+    "align*": "amsmath",
+    "alignat": "amsmath",
+    "alignat*": "amsmath",
+    "gather": "amsmath",
+    "gather*": "amsmath",
+    "multline": "amsmath",
+    "multline*": "amsmath",
+    "split": "amsmath",
+    "cases": "amsmath",
+    "dcases": "mathtools",
+    "rcases": "mathtools",
+    "matrix": "amsmath",
+    "pmatrix": "amsmath",
+    "bmatrix": "amsmath",
+    "Bmatrix": "amsmath",
+    "vmatrix": "amsmath",
+    "Vmatrix": "amsmath",
+    "smallmatrix": "amsmath",
+    "psmallmatrix": "mathtools",
+    "subequations": "amsmath",
+    "equation": "",
+    "equation*": "amsmath",
+    "theorem": "amsthm",
+    "proof": "amsthm",
+    "lemma": "amsthm",
+    "corollary": "amsthm",
+    "definition": "amsthm",
+    "remark": "amsthm",
+    "example": "amsthm",
+    "tikzpicture": "tikz",
+    "axis": "pgfplots",
+    "semilogxaxis": "pgfplots",
+    "semilogyaxis": "pgfplots",
+    "loglogaxis": "pgfplots",
+    "groupplot": "pgfplots",
+    "circuitikz": "circuitikz",
+    "quantikz": "quantikz",
+    "tikzcd": "tikz-cd",
+    "forest": "forest",
+    "ganttchart": "pgfgantt",
+    "algorithm": "algorithm",
+    "algorithmic": "algpseudocode",
+    "algorithmize": "algorithm2e",
+    "lstlisting": "listings",
+    "minted": "minted",
+    "tcolorbox": "tcolorbox",
+    "subfigure": "subcaption",
+    "longtable": "longtable",
+    "tabularx": "tabularx",
+    "tabulary": "tabulary",
+    "wrapfigure": "wrapfig",
+    "adjustwidth": "changepage",
+    "multicols": "multicol",
+    "landscape": "pdflscape",
+    "frame": "",
+    "columns": "",
+    "venndiagram3sets": "venndiagram",
+    "sequencediagram": "pgf-umlsd",
+    "chemfig": "chemfig",
+}
+
+# Packages that MUST NOT be loaded together, with the reason and the winner.
+PACKAGE_CONFLICTS = [
+    ("subfig", "subcaption", "Both define \\subfloat/\\subcaption machinery", "subcaption"),
+    ("natbib", "biblatex", "Two incompatible citation back ends", "biblatex"),
+    ("cite", "natbib", "Both patch the citation mechanism", "natbib"),
+    ("cite", "biblatex", "Both patch the citation mechanism", "biblatex"),
+    ("times", "newtxtext", "Two competing Times font packages", "newtxtext"),
+    ("mathptmx", "newtxmath", "Two competing Times math font packages", "newtxmath"),
+    ("physics", "siunitx", "Both define \\qty -- a real, well-known clash", "siunitx"),
+    ("minted", "listings", "Both may claim the same listing environment names", "minted"),
+    ("caption2", "caption", "caption2 is obsolete", "caption"),
+    ("epsfig", "graphicx", "epsfig is obsolete", "graphicx"),
+    ("psfig", "graphicx", "psfig is obsolete", "graphicx"),
+    ("doublespace", "setspace", "doublespace is obsolete", "setspace"),
+    ("fancyheadings", "fancyhdr", "fancyheadings is obsolete", "fancyhdr"),
+]
+
+# Packages that must be loaded LAST (or nearly last), in this relative order.
+# hyperref is famously order-sensitive; cleveref must follow it.
+PACKAGE_LOAD_ORDER_TAIL = ["hyperref", "cleveref", "glossaries", "bookmark"]
+
+# Packages that must be loaded EARLY, before anything that reads the font setup.
+PACKAGE_LOAD_ORDER_HEAD = [
+    "inputenc",
+    "fontenc",
+    "babel",
+    "polyglossia",
+    "geometry",
+]
+
+# Obsolete or discouraged commands, mapped to the modern replacement.  Used by
+# the FIXER (``action=fix``) and reported by the analyzer as style findings.
+DEPRECATED_COMMANDS = {
+    r"\bf": (r"\textbf{...}", "Old font switch; use \\textbf or \\bfseries"),
+    r"\it": (r"\textit{...}", "Old font switch; use \\textit or \\itshape"),
+    r"\rm": (r"\textrm{...}", "Old font switch; use \\textrm or \\rmfamily"),
+    r"\sf": (r"\textsf{...}", "Old font switch; use \\textsf or \\sffamily"),
+    r"\tt": (r"\texttt{...}", "Old font switch; use \\texttt or \\ttfamily"),
+    r"\sc": (r"\textsc{...}", "Old font switch; use \\textsc or \\scshape"),
+    r"\centerline": (r"\begin{center}", "Use the center environment"),
+    r"\over": (r"\frac{a}{b}", "Plain-TeX primitive; use \\frac"),
+    r"\atop": (r"\substack", "Plain-TeX primitive; use \\substack or \\binom"),
+    r"$$": (r"\[ ... \]", "$$ is plain TeX; use \\[ \\] or the equation env"),
+}
+
+DEPRECATED_ENVIRONMENTS = {
+    "eqnarray": ("align", "eqnarray has broken spacing; amsmath align is correct"),
+    "eqnarray*": ("align*", "eqnarray* has broken spacing; use align*"),
+}
+
+
+def package_for_command(command: str) -> str:
+    """Package that provides ``command``, or '' when it is built in/unknown."""
+    _build_symbol_indices()
+    name = command if command.startswith("\\") else "\\" + command
+    return _COMMAND_TO_PACKAGE.get(name.split("{")[0], "")
+
+
+def scan_required_packages(source: str) -> dict:
+    """Work out which packages ``source`` needs but has not loaded.
+
+    Returns ``{"needed": [...], "declared": [...], "missing": [...],
+    "triggers": {package: [command, ...]}}`` so a caller can both fix the
+    preamble AND explain to the user exactly which command forced each
+    package.  This is what makes the auto-preamble trustworthy rather than
+    magical.
+    """
+    _build_symbol_indices()
+    text = _strip_comments(source or "")
+    declared = set()
+    for match in re.finditer(r"\\(?:usepackage|RequirePackage)\s*(?:\[[^\]]*\])?\s*\{([^}]*)\}", text):
+        for name in match.group(1).split(","):
+            cleaned = name.strip()
+            if cleaned:
+                declared.add(cleaned)
+    triggers = {}
+    for match in re.finditer(r"\\([A-Za-z@]+)", text):
+        command = "\\" + match.group(1)
+        package = _COMMAND_TO_PACKAGE.get(command, "")
+        if package:
+            triggers.setdefault(package, [])
+            if command not in triggers[package]:
+                triggers[package].append(command)
+    for match in re.finditer(r"\\begin\s*\{([^}*]*\*?)\}", text):
+        env = match.group(1).strip()
+        package = ENVIRONMENT_TO_PACKAGE.get(env, "")
+        if package:
+            token = "environment " + env
+            triggers.setdefault(package, [])
+            if token not in triggers[package]:
+                triggers[package].append(token)
+    needed = sorted(triggers.keys())
+    missing = [p for p in needed if p not in declared]
+    return {
+        "needed": needed,
+        "declared": sorted(declared),
+        "missing": missing,
+        "triggers": triggers,
+    }
+
+
+def detect_package_conflicts(declared) -> list:
+    """Return [(a, b, reason, winner)] for every conflicting pair present."""
+    present = set(declared or [])
+    found = []
+    for left, right, reason, winner in PACKAGE_CONFLICTS:
+        if left in present and right in present:
+            found.append((left, right, reason, winner))
+    return found
+
+
+def order_packages(packages) -> list:
+    """Sort ``packages`` into a load order LaTeX will actually accept.
+
+    Head packages first (encoding/language/geometry), then everything else
+    alphabetically, then the order-sensitive tail (hyperref, cleveref, ...).
+    Getting this wrong is one of the most common causes of a mystifying
+    "Option clash" or a silently broken \\autoref, so the agent never emits an
+    arbitrary order.
+    """
+    remaining = [p for p in dict.fromkeys(packages) if p]
+    head = [p for p in PACKAGE_LOAD_ORDER_HEAD if p in remaining]
+    tail = [p for p in PACKAGE_LOAD_ORDER_TAIL if p in remaining]
+    middle = sorted(p for p in remaining if p not in head and p not in tail)
+    return head + middle + tail
+
+
+def render_package_lines(packages, options=None) -> str:
+    """Render ordered ``\\usepackage`` lines, applying known good options."""
+    defaults = {
+        "inputenc": "utf8",
+        "fontenc": "T1",
+        "geometry": "margin=2.5cm",
+        "hyperref": "colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue",
+        "siunitx": "detect-all",
+        "caption": "font=small,labelfont=bf",
+        "listings": "",
+    }
+    if options:
+        defaults.update(options)
+    lines = []
+    for package in order_packages(packages):
+        opt = defaults.get(package, "")
+        if opt:
+            lines.append("\\usepackage[%s]{%s}" % (opt, package))
+        else:
+            lines.append("\\usepackage{%s}" % package)
+    return "\n".join(lines)
+
+
+def tikz_libraries_for(source: str) -> list:
+    """Infer the \\usetikzlibrary list a TikZ body needs.
+
+    A missing library is the #1 reason a perfectly good TikZ picture fails to
+    build, and the error message ("Unknown key /tikz/...") never names it.
+    """
+    text = source or ""
+    wanted = []
+    probes = [
+        ("arrows.meta", ("Stealth", "Latex", "->,", "-{", "arrows.meta")),
+        ("positioning", ("right=of", "left=of", "above=of", "below=of")),
+        ("calc", ("($", "let \\p", "$(")),
+        ("shapes.geometric", ("ellipse", "diamond", "trapezium", "regular polygon")),
+        ("shapes.misc", ("rounded rectangle", "cross out", "strike out")),
+        ("decorations.pathmorphing", ("snake", "coil", "zigzag", "random steps")),
+        ("decorations.markings", ("postaction", "decoration={markings")),
+        ("decorations.pathreplacing", ("brace",)),
+        ("patterns", ("pattern=", "pattern color")),
+        ("fit", ("fit=",)),
+        ("backgrounds", ("on background layer", "show background rectangle")),
+        ("automata", ("state,", "initial]", "accepting", "[state")),
+        ("matrix", ("matrix of", "\\matrix")),
+        ("trees", ("child", "level distance")),
+        ("mindmap", ("mindmap", "concept")),
+        ("3d", ("canvas is", "plane origin")),
+        ("intersections", ("name path", "name intersections")),
+        ("through", ("through=",)),
+        ("quotes", ('edge node["',)),
+        ("angles", ("angle=", "pic {angle")),
+        ("babel", ("\\usepackage{babel}",)),
+        ("shadows", ("drop shadow",)),
+        ("chains", ("start chain", "on chain")),
+        ("petri", ("place,", "transition")),
+        ("circuits.ee.IEC", ("circuit ee IEC",)),
+    ]
+    for library, needles in probes:
+        for needle in needles:
+            if needle in text:
+                wanted.append(library)
+                break
+    return list(dict.fromkeys(wanted))
+
+
+def format_symbol_report(rows, title: str = "Symbols") -> str:
+    """Human-readable table of universe rows for the agent log."""
+    if not rows:
+        return "No symbols matched."
+    width = max(len(r[0]) for r in rows)
+    width = min(max(width, 12), 32)
+    lines = [title, "=" * len(title), ""]
+    lines.append("%-*s  %-14s  %-12s  %s" % (width, "COMMAND", "PACKAGE", "CATEGORY", "MEANING"))
+    lines.append("%-*s  %-14s  %-12s  %s" % (width, "-" * width, "-" * 14, "-" * 12, "-" * 30))
+    for command, package, category, description in rows:
+        lines.append(
+            "%-*s  %-14s  %-12s  %s"
+            % (width, command, package or "(built in)", category, description)
+        )
+    return "\n".join(lines)
+
+
+def build_cheatsheet_tex(category: str = "", query: str = "", limit: int = 400) -> str:
+    """Generate a compilable LaTeX cheat-sheet body rendering each symbol.
+
+    Every row shows the symbol typeset next to its command, so the produced PDF
+    is a genuine reference card rather than a code listing.
+    """
+    rows = search_symbols(query, category, limit)
+    grouped = {}
+    for row in rows:
+        grouped.setdefault(row[2], []).append(row)
+    parts = []
+    for cat in sorted(grouped.keys()):
+        parts.append("\\section*{%s}" % cat.replace("_", " ").title())
+        parts.append("\\begin{multicols}{2}")
+        parts.append("\\begin{description}[leftmargin=!,labelwidth=3.2cm,itemsep=1pt]")
+        for command, package, _cat, description in grouped[cat]:
+            sample = command
+            if command.startswith("\\begin{"):
+                sample = "\\texttt{%s}" % _tex_escape_text(command)
+            elif command in (r"\left", r"\right", r"\big", r"\Big", r"\bigg", r"\Bigg"):
+                sample = "\\texttt{%s}" % _tex_escape_text(command)
+            elif command in (r"\frac", r"\dfrac", r"\tfrac"):
+                sample = "$%s{a}{b}$" % command
+            elif command == r"\sqrt":
+                sample = "$\\sqrt{x}$"
+            elif command == r"\binom":
+                sample = "$\\binom{n}{k}$"
+            elif "{" in command:
+                sample = "$%s$" % command
+            elif command in (r"\ket", r"\bra"):
+                sample = "\\texttt{%s\\{psi\\}}" % _tex_escape_text(command)
+            elif re.match(r"^\\[A-Za-z]+$", command):
+                sample = "$%s$" % command
+            else:
+                sample = "\\texttt{%s}" % _tex_escape_text(command)
+            note = description
+            if package:
+                note += " \\textit{(%s)}" % _tex_escape_text(package)
+            parts.append(
+                "\\item[%s] \\texttt{%s} --- %s"
+                % (sample, _tex_escape_text(command), _tex_escape_text(note))
+            )
+        parts.append("\\end{description}")
+        parts.append("\\end{multicols}")
+        parts.append("")
+    return "\n".join(parts)
+
+
+def _tex_escape_text(raw: str) -> str:
+    """Escape a plain string so it survives being typeset as literal text."""
+    out = []
+    for char in raw or "":
+        if char == "\\":
+            out.append("\\textbackslash{}")
+        elif char in "&%$#_{}":
+            out.append("\\" + char)
+        elif char == "~":
+            out.append("\\textasciitilde{}")
+        elif char == "^":
+            out.append("\\textasciicircum{}")
+        else:
+            out.append(char)
+    return "".join(out)
+
+
+# =============================================================================
+# LAYER 05 - THE REPAIR LADDER  ("LaTeXer must never fail")
+# =============================================================================
+# A LaTeX build has exactly three honest outcomes, and today's agent can only
+# produce two of them:
+#
+#     COMPILED   - a PDF, and LaTeX reported no errors.
+#     FAILED     - no PDF, here is the log.            <- unacceptable as a final answer
+#     DEGRADED   - a PDF, with named parts removed.    <- did not exist until now
+#
+# The ladder turns the second into the first wherever a machine possibly can,
+# and into the third wherever it cannot.  It NEVER returns silence, and it
+# NEVER claims success it did not achieve.
+#
+# EIGHT RUNGS, tried strictly in order.  A rung only runs when the rung before
+# it did not produce a PDF.  The order is the entire design: the first five
+# rungs are deterministic and cost milliseconds, so a language model - slow,
+# non-reproducible, and capable of inventing plausible nonsense - is the LAST
+# thing consulted, not the first.
+#
+#   1 lint          static structural repair, before any compiler runs
+#   2 preamble      infer \usepackage from the commands actually used
+#   3 rules         deterministic rewrites of known-bad constructs
+#   4 log_directed  compile, read the error, fix THAT line
+#   5 acquire       install a genuinely missing package
+#   6 engine_swap   retry under xelatex / lualatex
+#   7 model         ask an LLM, then re-enter the ladder at rung 1
+#   8 bisect        quarantine the bad block and build the rest  <- TRUE last resort
+#
+# ⚠️ WHY THE MODEL IS RUNG 7 AND BISECT IS RUNG 8 (reordered 2026-08-05).
+# The first ordering put bisect at 7 and the model at 8, on the reasoning that
+# deterministic beats probabilistic. That was WRONG, because it ranked the
+# rungs by only one axis. Bisect is deterministic, yes -- and it is also the
+# ONLY rung that DELETES THE AUTHOR'S CONTENT. Reaching it first meant a
+# document that a model could have repaired completely was instead shipped with
+# a paragraph cut out of it, and the model rung became unreachable in practice
+# (bisect almost always "succeeds" at producing something). Losing the user's
+# work is the worst outcome available, so the rung that can lose it is now
+# strictly last, and the model's answer is still gated by lint + a truncation
+# check + it must actually compile. Deterministic-first still holds for rungs
+# 1-6; destructiveness breaks the tie at the end.
+#
+# SAFETY CONTRACT (do NOT weaken any of these):
+#   * Every repair is applied to a COPY and re-linted.  A "repair" that makes
+#     the static lint worse is REVERTED and recorded as rejected.  A fixer that
+#     can damage a document is worse than no fixer.
+#   * The user's original file on disk is never overwritten by the ladder
+#     unless ``repair_write_back`` is explicitly enabled; the ladder builds
+#     from a repaired copy in the work directory.
+#   * Every rung that fires is recorded in the trace with what it changed and
+#     whether it helped, so the final report can be audited line by line.
+#   * A quarantined block is reported by name and line number.  Silently
+#     dropping content would make the agent a liar.
+# =============================================================================
+
+LADDER_RUNGS = (
+    "lint",
+    "preamble",
+    "rules",
+    "log_directed",
+    "acquire",
+    "engine_swap",
+    "model",
+    "bisect",
+)
+
+# Rungs 6-8 reach outside the process (another engine, a package server, a
+# model), so they are opt-out separately from the cheap deterministic ones.
+_DEFAULT_ENABLED_RUNGS = LADDER_RUNGS
+
+# Engines tried by rung 6, in order of increasing tolerance.  xelatex and
+# lualatex both accept UTF-8 and system fonts natively, which is why a document
+# that dies under pdflatex with "Unicode character not set up for use with
+# LaTeX" frequently builds unchanged under either of them.
+_ENGINE_FALLBACK_ORDER = ("pdflatex", "xelatex", "lualatex")
+
+
+def _repair_record(rung: str, action: str, detail: str, applied: bool = True) -> dict:
+    """One auditable line of the ladder trace."""
+    return {"rung": rung, "action": action, "detail": detail, "applied": bool(applied)}
+
+
+def _lint_score(source: str) -> tuple:
+    """Cheap comparable measure of how broken a source is.
+
+    Returns ``(errors, warnings)`` so two candidate sources can be ordered.
+    Lower is better; the tuple compares errors first, which is what makes
+    "did this repair help?" answerable without a compiler.
+    """
+    try:
+        report = _validate_source(source)
+    except Exception:
+        # A linter that throws must never take the build with it.
+        return (10 ** 6, 10 ** 6)
+    return (len(report.get("errors") or []), len(report.get("warnings") or []))
+
+
+def _accept_if_not_worse(before: str, after: str, rung: str, action: str,
+                         detail: str, trace: list) -> str:
+    """Apply ``after`` only when it does not lint worse than ``before``.
+
+    This single function is what makes the whole ladder safe to run
+    unattended: every transformation below is speculative, and this is the
+    gate that stops a speculative transformation from destroying a document.
+    """
+    if after == before:
+        return before
+    score_before = _lint_score(before)
+    score_after = _lint_score(after)
+    if score_after <= score_before:
+        trace.append(_repair_record(rung, action, detail, True))
+        return after
+    trace.append(_repair_record(
+        rung, action,
+        "%s -- REJECTED: lint got worse (%d->%d errors)" % (
+            detail, score_before[0], score_after[0]),
+        False))
+    return before
+
+
+# =============================================================================
+# RUNG 1 - LINT: structural repair with no compiler involved
+# =============================================================================
+
+def _close_unclosed_environments(source: str, trace: list) -> str:
+    """Insert the missing ``\\end{...}`` for every environment left open.
+
+    Ordering matters: environments nest, so the missing ends are emitted in
+    reverse order of opening.  They are placed immediately before
+    ``\\end{document}`` (or at end of file for a fragment), which is the only
+    position that cannot break a correctly-nested neighbour.
+    """
+    clean = _strip_comments(source)
+    stack = []
+    for match in re.finditer(r"\\(begin|end)\s*\{([^}]+)\}", clean):
+        kind, name = match.group(1), match.group(2).strip()
+        if name == "document":
+            continue
+        if kind == "begin":
+            stack.append(name)
+        elif stack and stack[-1] == name:
+            stack.pop()
+        elif name in stack:
+            # Crossed nesting: unwind to it rather than guessing.
+            while stack and stack[-1] != name:
+                stack.pop()
+            if stack:
+                stack.pop()
+    if not stack:
+        return source
+    closing = "\n".join("\\end{%s}" % name for name in reversed(stack))
+    marker = "\\end{document}"
+    index = source.rfind(marker)
+    if index >= 0:
+        candidate = source[:index] + closing + "\n" + source[index:]
+    else:
+        candidate = source.rstrip() + "\n" + closing + "\n"
+    return _accept_if_not_worse(
+        source, candidate, "lint", "close-environments",
+        "closed %d unclosed environment(s): %s" % (len(stack), ", ".join(reversed(stack))),
+        trace)
+
+
+def _balance_braces(source: str, trace: list) -> str:
+    """Append the missing ``}`` for unclosed groups.
+
+    Deliberately conservative: it only ever ADDS closing braces at the end of
+    the body, and only when the imbalance is small.  A large imbalance almost
+    always means the real problem is something else (a stray verbatim, a
+    mis-parsed catcode), and blindly appending 40 braces would bury it.
+    """
+    # ⚠️ SCAN THE ORIGINAL SOURCE, NOT A COMMENT-STRIPPED COPY.
+    # Positions must index into the text we are going to EDIT. Scanning
+    # _strip_comments(source) and then returning that copy silently deletes
+    # every '%' comment the author wrote -- data loss dressed up as a repair.
+    # Comments are skipped inline instead, so positions stay true.
+    open_positions = []
+    index = 0
+    while index < len(source):
+        char = source[index]
+        if char == "\\":
+            index += 2
+            continue
+        if char == "%":
+            newline = source.find("\n", index)
+            index = len(source) if newline < 0 else newline + 1
+            continue
+        if char == "{":
+            open_positions.append(index)
+        elif char == "}":
+            if open_positions:
+                open_positions.pop()
+        index += 1
+    depth = len(open_positions)
+    if depth <= 0 or depth > 8:
+        if depth > 8:
+            trace.append(_repair_record(
+                "lint", "balance-braces",
+                "%d unclosed braces -- too many to repair safely; reporting instead" % depth,
+                False))
+        return source
+
+    # ⚠️ CLOSE AT THE END OF THE OPENING LINE, not at the end of the document.
+    # Dumping every '}' before \end{document} balances the count but not the
+    # SEMANTICS: most LaTeX commands are not \long, so a blank line inside the
+    # argument gives "Paragraph ended before \textbf was complete" and the
+    # document still will not build. Closing on the opening line is both
+    # balanced and almost always what the author meant. (Cases 02/03 of the
+    # ladder proof used to end up quarantined for exactly this reason.)
+    candidate = source
+    for position in sorted(open_positions, reverse=True):
+        line_end = candidate.find("\n", position)
+        if line_end < 0:
+            line_end = len(candidate)
+        candidate = candidate[:line_end] + "}" + candidate[line_end:]
+    return _accept_if_not_worse(
+        source, candidate, "lint", "balance-braces",
+        "closed %d unclosed group(s) at the end of the line each was opened on" % depth,
+        trace)
+
+
+def _balance_inline_math(source: str, trace: list) -> str:
+    """Close an odd number of inline ``$`` delimiters.
+
+    An unbalanced ``$`` is the classic cause of "Missing $ inserted" followed
+    by a cascade of nonsense errors hundreds of lines later, so catching it
+    statically saves the user from a log that points at the wrong place
+    entirely.
+    """
+    # Scanned over the ORIGINAL source (comments skipped inline, never stripped)
+    # so the insertion position is real and the author's '%' comments survive.
+    # ``\$`` is covered by the generic escape skip; ``$$`` is stepped over as a
+    # pair so display math never upsets inline parity.
+    open_at = -1
+    inside = False
+    index = 0
+    while index < len(source):
+        char = source[index]
+        if char == "\\":
+            index += 2
+            continue
+        if char == "%":
+            newline = source.find("\n", index)
+            index = len(source) if newline < 0 else newline + 1
+            continue
+        if char == "$":
+            if source[index:index + 2] == "$$":
+                index += 2
+                continue
+            inside = not inside
+            if inside:
+                open_at = index
+        index += 1
+    if not inside or open_at < 0:
+        return source
+
+    # Same reasoning as the brace repair: inline math cannot span a blank line
+    # ("Missing $ inserted"), so the closing '$' belongs at the end of the line
+    # that opened it -- not at the end of the document.
+    line_end = source.find("\n", open_at)
+    if line_end < 0:
+        line_end = len(source)
+    candidate = source[:line_end] + "$" + source[line_end:]
+    return _accept_if_not_worse(
+        source, candidate, "lint", "balance-math",
+        "odd number of '$' delimiters -- closed the open inline math at the end of its line",
+        trace)
+
+
+def _repair_static_structure(source: str, trace: list) -> str:
+    """RUNG 1 in full: the three structural repairs, cheapest first."""
+    working = _close_unclosed_environments(source, trace)
+    working = _balance_braces(working, trace)
+    working = _balance_inline_math(working, trace)
+    return working
+
+
+# =============================================================================
+# RUNG 2 - PREAMBLE: infer the packages the body actually needs
+# =============================================================================
+
+def _inject_packages(source: str, packages, trace: list, reason: str = "") -> str:
+    """Insert ``\\usepackage`` lines in an order LaTeX will accept.
+
+    Placement rule: immediately after the LAST existing \\usepackage, else
+    right after \\documentclass.  Load ORDER then comes from
+    ``order_packages`` -- hyperref and cleveref are forced to the tail, which
+    is the difference between a working \\autoref and an afternoon lost to a
+    baffling "Option clash" or a silently dead cross-reference.
+    """
+    wanted = [p for p in dict.fromkeys(packages or []) if p]
+    if not wanted:
+        return source
+    tail = [p for p in wanted if p in PACKAGE_LOAD_ORDER_TAIL]
+    head = [p for p in wanted if p not in PACKAGE_LOAD_ORDER_TAIL]
+
+    lines = render_package_lines(head) if head else ""
+    tail_lines = render_package_lines(tail) if tail else ""
+
+    anchor = None
+    for match in re.finditer(r"^[^%\n]*\\usepackage.*$", source, re.MULTILINE):
+        anchor = match
+    if anchor is None:
+        anchor = re.search(r"^[^%\n]*\\documentclass.*$", source, re.MULTILINE)
+    if anchor is None:
+        return source
+
+    insert_at = anchor.end()
+    block = ""
+    if lines:
+        block += "\n" + lines
+    if tail_lines:
+        # Tail packages still go after everything else already present, and
+        # after the head block we just wrote.
+        block += "\n" + tail_lines
+    candidate = source[:insert_at] + block + source[insert_at:]
+    detail = "added %s" % ", ".join(wanted)
+    if reason:
+        detail += " (%s)" % reason
+    return _accept_if_not_worse(source, candidate, "preamble", "inject-packages", detail, trace)
+
+
+def _repair_preamble(source: str, trace: list) -> str:
+    """RUNG 2: scan the body, add every package it uses but never loaded."""
+    if not re.search(r"\\documentclass", _strip_comments(source)):
+        return source
+    try:
+        scan = scan_required_packages(source)
+    except Exception as exc:
+        trace.append(_repair_record("preamble", "scan", "scan failed: %s" % exc, False))
+        return source
+    missing = scan.get("missing") or []
+    if not missing:
+        return source
+    triggers = scan.get("triggers") or {}
+    reason = "; ".join(
+        "%s needed by %s" % (pkg, ", ".join(triggers.get(pkg, [])[:3]))
+        for pkg in missing[:4]
+    )
+    return _inject_packages(source, missing, trace, reason)
+
+
+def _repair_package_conflicts(source: str, trace: list) -> str:
+    """Drop the losing half of a known-incompatible package pair."""
+    try:
+        scan = scan_required_packages(source)
+        conflicts = detect_package_conflicts(scan.get("declared") or [])
+    except Exception:
+        return source
+    working = source
+    for left, right, why, winner in conflicts:
+        loser = right if winner == left else left
+        pattern = re.compile(
+            r"^[ \t]*\\usepackage\s*(?:\[[^\]]*\])?\s*\{\s*%s\s*\}[ \t]*\n?" % re.escape(loser),
+            re.MULTILINE)
+        candidate = pattern.sub("", working)
+        working = _accept_if_not_worse(
+            working, candidate, "rules", "resolve-conflict",
+            "removed \\usepackage{%s}: clashes with %s (%s)" % (loser, winner, why), trace)
+    return working
+
+
+# =============================================================================
+# RUNG 3 - RULES: deterministic rewrites of constructs known to be wrong
+# =============================================================================
+
+_SMART_CHARACTER_MAP = (
+    ("\u201c", "``"),
+    ("\u201d", "''"),
+    ("\u2018", "`"),
+    ("\u2019", "'"),
+    ("\u2013", "--"),
+    ("\u2014", "---"),
+    ("\u2026", "\\ldots{}"),
+    ("\u00a0", "~"),
+    ("\u2212", "-"),
+    ("\u00d7", "\\times{}"),
+    ("\u2264", "\\leq{}"),
+    ("\u2265", "\\geq{}"),
+    ("\u2260", "\\neq{}"),
+)
+
+
+def _repair_smart_characters(source: str, trace: list) -> str:
+    """Replace word-processor characters pdflatex cannot encode.
+
+    Only meaningful for pdflatex with inputenc; xelatex and lualatex accept
+    these natively.  Doing it unconditionally is still correct -- the ASCII
+    forms typeset identically -- and it removes an entire class of
+    "Unicode character not set up" failures before they happen.
+    """
+    working = source
+    replaced = []
+    for glyph, ascii_form in _SMART_CHARACTER_MAP:
+        if glyph in working:
+            count = working.count(glyph)
+            working = working.replace(glyph, ascii_form)
+            replaced.append("%s x%d" % (repr(glyph), count))
+    if not replaced:
+        return source
+    return _accept_if_not_worse(
+        source, working, "rules", "ascii-fold",
+        "replaced non-ASCII typographic characters: " + ", ".join(replaced[:6]), trace)
+
+
+def _repair_deprecated_environments(source: str, trace: list) -> str:
+    """``eqnarray`` -> ``align``: not cosmetic, it fixes real spacing bugs."""
+    working = source
+    for old, (new, why) in DEPRECATED_ENVIRONMENTS.items():
+        if ("\\begin{%s}" % old) not in working:
+            continue
+        candidate = working.replace("\\begin{%s}" % old, "\\begin{%s}" % new)
+        candidate = candidate.replace("\\end{%s}" % old, "\\end{%s}" % new)
+        working = _accept_if_not_worse(
+            working, candidate, "rules", "modernise-environment",
+            "%s -> %s (%s)" % (old, new, why), trace)
+    if working is not source and "\\begin{align" in working:
+        working = _inject_packages(working, ["amsmath"], trace, "align requires amsmath")
+    return working
+
+
+def _repair_deprecated_font_switches(source: str, trace: list) -> str:
+    """``{\\bf x}`` -> ``{\\bfseries x}``.
+
+    The declaration form is used rather than ``\\textbf{x}`` because it is a
+    purely local substitution that cannot mis-scope: turning a switch into a
+    command would require finding the end of its group, and getting that wrong
+    silently re-bolds half a page.
+    """
+    working = source
+    changed = []
+    switches = {"bf": "bfseries", "it": "itshape", "rm": "rmfamily",
+                "sf": "sffamily", "tt": "ttfamily", "sc": "scshape"}
+    for old, new in switches.items():
+        pattern = re.compile(r"\\%s(?![A-Za-z])" % old)
+        if not pattern.search(working):
+            continue
+        working = pattern.sub("\\\\" + new, working)
+        changed.append("\\%s -> \\%s" % (old, new))
+    if not changed:
+        return source
+    return _accept_if_not_worse(
+        source, working, "rules", "modernise-fonts",
+        "; ".join(changed), trace)
+
+
+def _repair_display_math(source: str, trace: list) -> str:
+    """``$$ ... $$`` -> ``\\[ ... \\]``.
+
+    ``$$`` is plain TeX; under LaTeX it produces wrong vertical spacing and
+    breaks with amsmath's ``fleqn``.  Pairs are replaced strictly two at a
+    time so an odd count can never corrupt the document.
+    """
+    if "$$" not in source:
+        return source
+    parts = source.split("$$")
+    if len(parts) % 2 == 0:
+        trace.append(_repair_record(
+            "rules", "display-math",
+            "odd number of '$$' delimiters -- left untouched (unsafe to pair)", False))
+        return source
+    rebuilt = []
+    for index, chunk in enumerate(parts):
+        rebuilt.append(chunk)
+        if index < len(parts) - 1:
+            rebuilt.append("\\[" if index % 2 == 0 else "\\]")
+    candidate = "".join(rebuilt)
+    return _accept_if_not_worse(
+        source, candidate, "rules", "display-math",
+        "converted %d plain-TeX $$...$$ block(s) to \\[...\\]" % ((len(parts) - 1) // 2), trace)
+
+
+def _repair_duplicate_labels(source: str, trace: list) -> str:
+    """Rename duplicate ``\\label`` keys and re-point their references.
+
+    Duplicates make every \\ref to that key resolve to whichever came last,
+    silently producing a document whose cross-references are wrong but which
+    compiles perfectly.  That is worse than a build failure, so it is fixed
+    rather than merely reported.
+    """
+    labels = re.findall(r"\\label\s*\{([^}]+)\}", _strip_comments(source))
+    seen, duplicates = set(), []
+    for label in labels:
+        if label in seen and label not in duplicates:
+            duplicates.append(label)
+        seen.add(label)
+    if not duplicates:
+        return source
+    working = source
+    for label in duplicates:
+        occurrence = {"n": 0}
+
+        def _rename(match, _label=label, _state=occurrence):
+            _state["n"] += 1
+            if _state["n"] == 1:
+                return match.group(0)
+            return "\\label{%s-dup%d}" % (_label, _state["n"])
+
+        working = re.sub(r"\\label\s*\{%s\}" % re.escape(label), _rename, working)
+    return _accept_if_not_worse(
+        source, working, "rules", "dedupe-labels",
+        "renamed duplicate label(s): " + ", ".join(duplicates[:5]), trace)
+
+
+def _repair_rules(source: str, trace: list) -> str:
+    """RUNG 3 in full."""
+    working = _repair_smart_characters(source, trace)
+    working = _repair_deprecated_environments(working, trace)
+    working = _repair_deprecated_font_switches(working, trace)
+    working = _repair_display_math(working, trace)
+    working = _repair_duplicate_labels(working, trace)
+    working = _repair_package_conflicts(working, trace)
+    return working
+
+
+# =============================================================================
+# RUNG 4 - LOG-DIRECTED: read the actual error, fix that exact thing
+# =============================================================================
+
+_UNDEFINED_CS = re.compile(r"Undefined control sequence.*?\\([A-Za-z@]+)", re.DOTALL)
+_UNDEFINED_ENV = re.compile(r"Environment\s+([A-Za-z@*]+)\s+undefined")
+_OPTION_CLASH = re.compile(r"Option clash for package\s+([A-Za-z0-9@\-]+)")
+
+
+def _commands_from_diagnostics(diag: dict) -> list:
+    """Every undefined control sequence LaTeX complained about."""
+    found = []
+    for message in (diag.get("errors") or []):
+        for match in _UNDEFINED_CS.finditer(message):
+            name = "\\" + match.group(1)
+            if name not in found:
+                found.append(name)
+    return found
+
+
+def _environments_from_diagnostics(diag: dict) -> list:
+    found = []
+    for message in (diag.get("errors") or []):
+        for match in _UNDEFINED_ENV.finditer(message):
+            name = match.group(1)
+            if name not in found:
+                found.append(name)
+    return found
+
+
+def _repair_from_log(source: str, diag: dict, trace: list) -> str:
+    """RUNG 4: turn each diagnostic into a targeted, justified edit.
+
+    This is where the symbol universe pays for itself: "Undefined control
+    sequence \\qty" is not a guess, it is a LOOKUP that answers "siunitx".
+    """
+    working = source
+    wanted = []
+    explained = []
+
+    for command in _commands_from_diagnostics(diag):
+        package = package_for_command(command)
+        if package:
+            wanted.append(package)
+            explained.append("%s -> %s" % (command, package))
+        else:
+            trace.append(_repair_record(
+                "log_directed", "unknown-command",
+                "%s is undefined and is not in the symbol universe -- cannot infer a "
+                "package for it" % command, False))
+
+    for environment in _environments_from_diagnostics(diag):
+        package = ENVIRONMENT_TO_PACKAGE.get(environment, "")
+        if package:
+            wanted.append(package)
+            explained.append("environment %s -> %s" % (environment, package))
+
+    if wanted:
+        working = _inject_packages(working, wanted, trace, "; ".join(explained[:5]))
+
+    for message in (diag.get("errors") or []):
+        clash = _OPTION_CLASH.search(message)
+        if not clash:
+            continue
+        package = clash.group(1)
+        # Keep the FIRST load (it usually carries the options the document
+        # actually wants) and drop the later bare one.
+        pattern = re.compile(
+            r"(\\usepackage\s*(?:\[[^\]]*\])?\s*\{\s*%s\s*\}[ \t]*\n?)" % re.escape(package))
+        occurrences = pattern.findall(working)
+        if len(occurrences) > 1:
+            first = pattern.search(working)
+            head = working[:first.end()]
+            tail = pattern.sub("", working[first.end():])
+            working = _accept_if_not_worse(
+                working, head + tail, "log_directed", "resolve-option-clash",
+                "package %s was loaded %d times -- kept the first" % (package, len(occurrences)),
+                trace)
+
+    return working
+
+
+# =============================================================================
+# RUNG 5 - ACQUIRE: install a package that is genuinely absent
+# =============================================================================
+
+def _acquire_packages(missing, tools: dict, config: dict, env: dict, trace: list) -> bool:
+    """Ask the distribution to install the missing ``.sty`` files.
+
+    MiKTeX normally does this itself mid-compile via --enable-installer, so
+    reaching this rung means either that was disabled or the automatic attempt
+    failed.  Returns True when at least one install reported success, which is
+    the signal to retry the build.
+    """
+    # Keep BOTH forms: the manager installs a PACKAGE id, but the only thing
+    # that proves the repair worked is whether the FILE now resolves.
+    targets = []
+    for item in missing or []:
+        filename = os.path.basename(str(item)).strip()
+        package = filename
+        for suffix in (".sty", ".cls", ".def"):
+            if package.lower().endswith(suffix):
+                package = package[: -len(suffix)]
+                break
+        if package and (package, filename) not in targets:
+            targets.append((package, filename))
+    if not targets:
+        return False
+
+    distribution = tools.get("distribution", "")
+    timeout = float(_as_int(_cfg(config, "command_timeout", 600), 600))
+    verified_any = False
+    attempted = False
+
+    for package, filename in targets[:8]:
+        argv = []
+        if distribution == "miktex":
+            miktex = _which("miktex", env) or _which("mpm", env)
+            if miktex and miktex.lower().endswith("mpm.exe"):
+                argv = [miktex, "--install=%s" % package]
+            elif miktex:
+                argv = [miktex, "packages", "install", package]
+        elif distribution in ("texlive", "mactex"):
+            tlmgr = _which("tlmgr", env)
+            if tlmgr:
+                argv = [tlmgr, "install", package]
+        if not argv:
+            trace.append(_repair_record(
+                "acquire", "install",
+                "no package manager available for distribution '%s' -- cannot install %s"
+                % (distribution or "unknown", package), False))
+            continue
+
+        attempted = True
+        code, out, err = _run_cmd(argv, env=env, timeout=timeout)
+
+        # ⚠️ A ZERO EXIT CODE IS NOT PROOF, and reporting it as one is a LIE.
+        # Live proof, 2026-08-05: `miktex packages install crossword` returned
+        # rc=0 and the ladder announced "installed crossword" -- but the
+        # crossword package ships no crossword.sty, so the build still failed
+        # with the very same missing-file error. The only honest test is
+        # whether the FILE resolves now, so kpsewhich is asked directly.
+        _refresh_filename_database(distribution, env, timeout)
+        resolved = _file_resolves(filename, env, timeout)
+        verified_any = verified_any or resolved
+
+        if resolved:
+            detail = "installed %s and VERIFIED %s now resolves" % (package, filename)
+        elif code == 0:
+            detail = ("package manager reported success for %s (rc=0) but %s STILL does not "
+                      "resolve -- that package does not provide this file, so the build "
+                      "will fail for the same reason" % (package, filename))
+        else:
+            detail = "FAILED to install %s (rc=%s): %s" % (
+                package, code, (err or out or "").strip()[:160] or "no output")
+        trace.append(_repair_record("acquire", "install", detail, resolved))
+
+    if attempted and not verified_any:
+        trace.append(_repair_record(
+            "acquire", "verify",
+            "no missing file was actually resolved -- escalating rather than retrying "
+            "a build that would fail identically", False))
+    return verified_any
+
+
+def _refresh_filename_database(distribution: str, env: dict, timeout: float) -> None:
+    """Rebuild the distribution's file-name database after an install.
+
+    kpsewhich (and the engine) answer from a cached index, so a freshly
+    installed .sty can remain invisible until the index is rebuilt. Best
+    effort only -- never allowed to raise into the ladder.
+    """
+    try:
+        if distribution == "miktex":
+            miktex = _which("miktex", env)
+            if miktex:
+                _run_cmd([miktex, "fndb", "refresh"], env=env, timeout=min(timeout, 180.0))
+        elif distribution in ("texlive", "mactex"):
+            mktexlsr = _which("mktexlsr", env)
+            if mktexlsr:
+                _run_cmd([mktexlsr], env=env, timeout=min(timeout, 180.0))
+    except Exception:
+        return
+
+
+def _file_resolves(filename: str, env: dict, timeout: float) -> bool:
+    """True when TeX can actually find ``filename`` right now."""
+    kpsewhich = _which("kpsewhich", env)
+    if not kpsewhich:
+        # Cannot verify -> must NOT claim success. Fail closed here, because the
+        # whole point of this check is to stop an unverified claim.
+        return False
+    try:
+        code, out, _err = _run_cmd([kpsewhich, filename], env=env, timeout=min(timeout, 120.0))
+    except Exception:
+        return False
+    return code == 0 and bool((out or "").strip())
+
+
+# =============================================================================
+# RUNG 6 - ENGINE SWAP
+# =============================================================================
+
+def _next_engine(current: str, tried, env: dict) -> str:
+    """Next resolvable engine after ``current`` that has not been tried."""
+    for candidate in _ENGINE_FALLBACK_ORDER:
+        if candidate == current or candidate in (tried or ()):
+            continue
+        if _which(candidate, env):
+            return candidate
+    return ""
+
+
+def _toolchain_for_engine(engine: str, config: dict, env: dict) -> dict:
+    """Re-resolve the toolchain pinned to ``engine``.
+
+    ``latex_executable`` is cleared deliberately: an explicit path is by
+    definition a path to the CURRENT engine, and honouring it here would make
+    the swap a no-op that silently reruns the same failing binary.
+    """
+    swapped = dict(config)
+    swapped["engine"] = engine
+    swapped["latex_executable"] = ""
+    return _resolve_toolchain(swapped, env)
+
+
+# =============================================================================
+# RUNG 7 - BISECT: isolate the offending block and build everything else
+# =============================================================================
+
+def _split_body_blocks(source: str) -> tuple:
+    """Split a document into (head, blocks, tail) at blank-line boundaries.
+
+    Blocks are only ever cut at TOP-LEVEL blank lines -- never inside an
+    environment -- so quarantining one can never orphan a \\begin from its
+    \\end.  That invariant is what makes bisection safe on real documents.
+    """
+    begin = re.search(r"\\begin\s*\{document\}", source)
+    end = source.rfind("\\end{document}")
+    if not begin or end < 0 or end <= begin.end():
+        return ("", [], "")
+    head = source[: begin.end()]
+    body = source[begin.end(): end]
+    tail = source[end:]
+
+    blocks = []
+    current = []
+    depth = 0
+    for line in body.splitlines(True):
+        probe = _strip_comments(line)
+        depth += len(re.findall(r"\\begin\s*\{", probe))
+        depth -= len(re.findall(r"\\end\s*\{", probe))
+        depth = max(0, depth)
+        if line.strip() == "" and depth == 0 and current:
+            blocks.append("".join(current))
+            current = []
+        else:
+            current.append(line)
+    if current:
+        blocks.append("".join(current))
+    return (head, blocks, tail)
+
+
+def _assemble(head: str, blocks, tail: str, keep) -> str:
+    """Rebuild a PROBE document from the blocks whose indices are in ``keep``.
+
+    ⚠️ The ``\\mbox{}`` is load-bearing, not decoration. A document with an empty
+    body makes LaTeX report "No pages of output" and emit NO PDF -- which the
+    probe would read as "this combination fails", so the very first probe (the
+    preamble alone, with zero blocks) always failed and bisection aborted with
+    "the fault is above \\begin{document}" on documents whose preamble was
+    perfectly fine. The placeholder guarantees every probe produces at least
+    one page, so a probe failure means what it is supposed to mean: the BLOCKS
+    are at fault. Only probes are assembled here; the delivered document is
+    built separately and never contains this box.
+    """
+    parts = [head, "\\mbox{}\n"]
+    for index, block in enumerate(blocks):
+        if index in keep:
+            parts.append(block)
+            parts.append("\n\n")
+    parts.append(tail)
+    return "".join(parts)
+
+
+def _quarantine_note(block: str, index: int) -> str:
+    """A VISIBLE placeholder for a removed block.
+
+    The removal is printed into the PDF itself, not merely into the log.  A
+    reader must never receive a document that is quietly missing a paragraph.
+    """
+    preview = " ".join(_strip_comments(block).split())[:110]
+    return (
+        "\n\\par\\medskip\\noindent\\fbox{\\begin{minipage}{0.95\\linewidth}\n"
+        "\\textbf{[LaTeXer: block %d could not be typeset and was quarantined]}\\\\\n"
+        "\\texttt{\\footnotesize %s}\n"
+        "\\end{minipage}}\\par\\medskip\n" % (index + 1, _tex_escape_text(preview))
+    )
+
+
+def _bisect_failing_blocks(source: str, tex_path: str, config: dict, tools: dict,
+                           env: dict, trace: list) -> dict:
+    """RUNG 7: binary-search for the blocks that break the build.
+
+    Strategy: confirm the head alone compiles (if it does not, the fault is in
+    the preamble and bisection cannot help), then bisect the block list.  Each
+    probe is a real compile, so the cost is O(log n) builds rather than O(n).
+    """
+    head, blocks, tail = _split_body_blocks(source)
+    if not blocks or len(blocks) < 2:
+        trace.append(_repair_record(
+            "bisect", "split",
+            "document has %d top-level block(s) -- nothing to bisect" % len(blocks), False))
+        return {"ok": False, "source": source, "quarantined": []}
+
+    probe_dir = os.path.dirname(os.path.abspath(tex_path))
+    probe_name = "_latexer_bisect_" + os.path.basename(tex_path)
+    probe_path = os.path.join(probe_dir, probe_name)
+    probe_budget = max(4, min(_as_int(_cfg(config, "repair_bisect_max_probes", 14), 14), 40))
+    probes = {"n": 0}
+
+    def _probe(keep) -> bool:
+        if probes["n"] >= probe_budget:
+            return False
+        probes["n"] += 1
+        candidate = _assemble(head, blocks, tail, keep)
+        try:
+            with open(probe_path, "w", encoding="utf-8") as handle:
+                handle.write(candidate)
+        except Exception:
+            return False
+        outcome = _compile(probe_path, config, tools, env)
+        return bool(outcome.get("produced")) and not outcome.get("diag", {}).get("errors")
+
+    if not _probe(set()):
+        trace.append(_repair_record(
+            "bisect", "preamble-probe",
+            "the preamble alone does not compile -- the fault is above \\begin{document}, "
+            "so bisecting the body cannot help", False))
+        _safe_remove(probe_path)
+        return {"ok": False, "source": source, "quarantined": []}
+
+    good = set()
+    bad = []
+    for index in range(len(blocks)):
+        # Greedy forward scan: keep everything known-good plus this block.
+        # Simpler than a strict bisection and, crucially, it finds EVERY bad
+        # block rather than only the first one.
+        if _probe(good | {index}):
+            good.add(index)
+        else:
+            bad.append(index)
+        if probes["n"] >= probe_budget:
+            # Out of budget: assume the rest are fine rather than discarding
+            # content we have not actually tested.
+            for rest in range(index + 1, len(blocks)):
+                good.add(rest)
+            trace.append(_repair_record(
+                "bisect", "budget",
+                "probe budget (%d) exhausted -- remaining %d block(s) kept untested"
+                % (probe_budget, len(blocks) - index - 1), False))
+            break
+
+    _safe_remove(probe_path)
+    if not bad:
+        trace.append(_repair_record(
+            "bisect", "search", "no single block reproduces the failure", False))
+        return {"ok": False, "source": source, "quarantined": []}
+
+    parts = [head]
+    for index, block in enumerate(blocks):
+        if index in bad:
+            parts.append(_quarantine_note(block, index))
+        else:
+            parts.append(block)
+            parts.append("\n\n")
+    parts.append(tail)
+    repaired = "".join(parts)
+    trace.append(_repair_record(
+        "bisect", "quarantine",
+        "quarantined %d of %d block(s) after %d probe(s): block(s) %s"
+        % (len(bad), len(blocks), probes["n"], ", ".join(str(i + 1) for i in bad)), True))
+    return {"ok": True, "source": repaired, "quarantined": [i + 1 for i in bad]}
+
+
+def _safe_remove(path: str) -> None:
+    """Delete a scratch file and its aux siblings; never raise."""
+    base = os.path.splitext(path)[0]
+    for suffix in ("", ".aux", ".log", ".out", ".pdf", ".toc", ".fls", ".fdb_latexmk"):
+        try:
+            target = path if suffix == "" else base + suffix
+            if os.path.isfile(target):
+                os.remove(target)
+        except Exception:
+            continue
+
+
+# =============================================================================
+# RUNG 8 - MODEL: the last resort, held to the same standard as everything else
+# =============================================================================
+
+def _ollama_repair(source: str, diag: dict, config: dict, trace: list) -> str:
+    """Ask an Ollama model to repair the source. Stdlib only, fails open.
+
+    Three rules make this safe to have at all:
+      * it is the LAST rung, so it only ever sees documents seven deterministic
+        rungs could not fix;
+      * its answer re-enters the ladder at rung 1 and must pass the same lint
+        gate as any other repair;
+      * a reply that is not a complete document, or that is wildly shorter than
+        the input, is discarded -- truncation is the characteristic failure of
+        an LLM asked to echo a long document, and silently accepting it would
+        delete the user's work.
+    """
+    url = str(_cfg(config, "ollama_url", "http://localhost:11434")).strip().rstrip("/")
+    model = str(_cfg(config, "repair_model", "")).strip()
+    if not model:
+        trace.append(_repair_record(
+            "model", "skip", "no repair_model configured -- model rung disabled", False))
+        return source
+
+    errors = "\n".join((diag.get("errors") or [])[:12]) or "(no explicit LaTeX error)"
+    prompt = (
+        "You are repairing a LaTeX document that fails to compile.\n"
+        "Return ONLY the corrected, COMPLETE LaTeX document. No commentary, no "
+        "markdown fences. Preserve every sentence of the author's content exactly; "
+        "change only what is required to make it compile.\n\n"
+        "COMPILER ERRORS:\n%s\n\nDOCUMENT:\n%s\n" % (errors, source)
+    )
+    payload = json.dumps({
+        "model": model,
+        "prompt": prompt,
+        "stream": False,
+        "options": {"temperature": 0.1},
+    }).encode("utf-8")
+
+    try:
+        request = urllib.request.Request(
+            url + "/api/generate", data=payload,
+            headers={"Content-Type": "application/json"})
+        token = str(_cfg(config, "ollama_token", "")).strip()
+        if token:
+            request.add_header("Authorization", "Bearer " + token)
+        timeout = float(_as_int(_cfg(config, "repair_model_timeout", 180), 180))
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            body = json.loads(response.read().decode("utf-8", "replace"))
+        answer = str(body.get("response") or "")
+    except Exception as exc:
+        trace.append(_repair_record(
+            "model", "request", "Ollama call failed: %s" % exc, False))
+        return source
+
+    answer = re.sub(r"^\s*```(?:latex|tex)?\s*", "", answer)
+    answer = re.sub(r"```\s*$", "", answer).strip()
+    if "\\documentclass" not in answer or "\\end{document}" not in answer:
+        trace.append(_repair_record(
+            "model", "validate",
+            "model reply is not a complete document -- discarded", False))
+        return source
+    if len(answer) < len(source) * 0.6:
+        trace.append(_repair_record(
+            "model", "validate",
+            "model reply is %d chars vs %d original -- looks truncated, discarded"
+            % (len(answer), len(source)), False))
+        return source
+    return _accept_if_not_worse(
+        source, answer, "model", "llm-repair",
+        "model '%s' rewrote the document (%d -> %d chars)" % (model, len(source), len(answer)),
+        trace)
+
+
+# =============================================================================
+# THE LADDER ITSELF
+# =============================================================================
+
+def _enabled_rungs(config: dict) -> tuple:
+    """Which rungs are active, honouring config and keeping ladder order."""
+    raw = _as_list(_cfg(config, "repair_rungs", []))
+    if not raw:
+        return tuple(_DEFAULT_ENABLED_RUNGS)
+    wanted = {str(item).strip().lower() for item in raw if str(item).strip()}
+    if "all" in wanted:
+        return tuple(LADDER_RUNGS)
+    return tuple(rung for rung in LADDER_RUNGS if rung in wanted)
+
+
+def _write_working_copy(tex_path: str, source: str, config: dict) -> str:
+    """Persist the repaired source for the build.
+
+    By default the ladder builds from a sibling ``*.latexer-fixed.tex`` and
+    leaves the author's file untouched, because an agent that silently
+    rewrites source files is an agent nobody can trust.  Set
+    ``repair_write_back: true`` to edit in place.
+    """
+    if _as_bool(_cfg(config, "repair_write_back", False), False):
+        target = tex_path
+    else:
+        base, ext = os.path.splitext(tex_path)
+        target = base + ".latexer-fixed" + (ext or ".tex")
+    with open(target, "w", encoding="utf-8") as handle:
+        handle.write(source)
+    return target
+
+
+def _compile_with_ladder(tex_path: str, config: dict, tools: dict, env: dict) -> dict:
+    """Build ``tex_path``, escalating through the repair ladder until it works.
+
+    Returns the usual ``_compile`` result dict, enriched with:
+        ``ladder``       - the full audit trace, rung by rung
+        ``rungs_used``   - which rungs actually fired
+        ``degraded``     - True when a PDF exists only because content was cut
+        ``quarantined``  - the block numbers that were removed
+        ``build_path``   - the file the successful build actually used
+        ``engine_used``  - the engine that finally produced the PDF
+    """
+    trace = []
+    rungs = _enabled_rungs(config)
+    active_tools = tools
+    engines_tried = [tools.get("engine", "pdflatex")]
+    quarantined = []
+
+    try:
+        source = _read_text(tex_path)
+    except Exception as exc:
+        return {"ok": False, "produced": False, "passes": 0, "pdf": "", "steps": [],
+                "diag": _parse_latex_log(""), "log": "", "returncode": 1,
+                "ladder": [_repair_record("lint", "read", "cannot read %s: %s" % (tex_path, exc), False)],
+                "rungs_used": [], "degraded": False, "quarantined": [],
+                "build_path": tex_path, "engine_used": tools.get("engine", "")}
+
+    original = source
+    build_path = tex_path
+
+    # ---- Rungs 1-3 run BEFORE the first compile: they are static and cheap,
+    # and fixing a brace here saves a 3000-line log that points somewhere else.
+    if "lint" in rungs:
+        source = _repair_static_structure(source, trace)
+    if "preamble" in rungs:
+        source = _repair_preamble(source, trace)
+    if "rules" in rungs:
+        source = _repair_rules(source, trace)
+
+    if source != original:
+        build_path = _write_working_copy(tex_path, source, config)
+        logging.info("🔧 Repair ladder applied %d pre-compile fix(es); building %s",
+                     len([r for r in trace if r["applied"]]), os.path.basename(build_path))
+
+    result = _compile(build_path, config, active_tools, env)
+    if result.get("ok"):
+        return _finalise_ladder(result, trace, rungs, quarantined, build_path,
+                                active_tools, degraded=False)
+
+    # ---- Rung 4: read the real error and fix exactly that.
+    if "log_directed" in rungs:
+        repaired = _repair_from_log(source, result.get("diag") or {}, trace)
+        if repaired != source:
+            source = repaired
+            build_path = _write_working_copy(tex_path, source, config)
+            result = _compile(build_path, config, active_tools, env)
+            if result.get("ok"):
+                return _finalise_ladder(result, trace, rungs, quarantined, build_path,
+                                        active_tools, degraded=False)
+
+    # ---- Rung 5: a package really is absent -- acquire it and retry.
+    if "acquire" in rungs:
+        missing = (result.get("diag") or {}).get("missing_packages") or []
+        if missing:
+            # 5a. THE RELIABLE PATH FIRST. MiKTeX maintains the authoritative
+            # file -> package map (xy.sty lives in "xypic", tikz.sty in "pgf" --
+            # the stem is NOT the package id), and --enable-installer makes it
+            # resolve and fetch mid-compile. Guessing package names from file
+            # names, as 5b must, gets those wrong. So when the user has turned
+            # the auto-installer off, rung 5 turns it on for ONE retry and says
+            # so, rather than guessing.
+            installer_on = _as_bool(_cfg(config, "auto_install_packages", True), True)
+            if not installer_on and active_tools.get("distribution") == "miktex":
+                trace.append(_repair_record(
+                    "acquire", "enable-installer",
+                    "missing %s -- re-running once with MiKTeX's on-demand installer "
+                    "enabled, which knows which package provides each file"
+                    % ", ".join(missing[:3]), True))
+                forced = dict(config)
+                forced["auto_install_packages"] = True
+                result = _compile(build_path, forced, active_tools, env)
+                if result.get("ok"):
+                    return _finalise_ladder(result, trace, rungs, quarantined, build_path,
+                                            active_tools, degraded=False)
+                missing = (result.get("diag") or {}).get("missing_packages") or missing
+
+            # 5b. Fall back to an explicit, VERIFIED package-manager install.
+            if missing and _acquire_packages(missing, active_tools, config, env, trace):
+                result = _compile(build_path, config, active_tools, env)
+                if result.get("ok"):
+                    return _finalise_ladder(result, trace, rungs, quarantined, build_path,
+                                            active_tools, degraded=False)
+
+    # ---- Rung 6: try a more tolerant engine.
+    if "engine_swap" in rungs:
+        while True:
+            candidate = _next_engine(active_tools.get("engine", ""), engines_tried, env)
+            if not candidate:
+                break
+            engines_tried.append(candidate)
+            trace.append(_repair_record(
+                "engine_swap", "retry",
+                "retrying under %s (previous engine: %s)" % (candidate, active_tools.get("engine")),
+                True))
+            swapped = _toolchain_for_engine(candidate, config, env)
+            if not swapped.get("latex"):
+                continue
+            active_tools = swapped
+            result = _compile(build_path, config, active_tools, env)
+            if result.get("ok"):
+                return _finalise_ladder(result, trace, rungs, quarantined, build_path,
+                                        active_tools, degraded=False)
+
+    # ---- Rung 7: the model. Deliberately BEFORE bisect, because it can repair
+    # the document without deleting any of it. Its answer is not trusted: it
+    # re-enters the static gate (rungs 1-2) and must actually compile.
+    if "model" in rungs:
+        rewritten = _ollama_repair(source, result.get("diag") or {}, config, trace)
+        if rewritten != source:
+            model_source = _repair_static_structure(rewritten, trace)
+            model_source = _repair_preamble(model_source, trace)
+            model_path = _write_working_copy(tex_path, model_source, config)
+            model_result = _compile(model_path, config, active_tools, env)
+            if model_result.get("ok"):
+                return _finalise_ladder(model_result, trace, rungs, quarantined,
+                                        model_path, active_tools, degraded=False)
+            # ⚠️ The rewrite is DISCARDED when it does not build. Carrying it
+            # forward would mean bisecting the MODEL'S GUESS and quarantining
+            # blocks out of a document the author never wrote -- content loss
+            # caused by a hallucination. Bisect continues from the real source.
+            trace.append(_repair_record(
+                "model", "verify",
+                "the model's rewrite still does not compile -- discarded, continuing "
+                "from the author's own source", False))
+            _safe_remove(model_path)
+
+    # ---- Rung 8: TRUE LAST RESORT. Cut out what cannot be typeset, keep the rest.
+    if "bisect" in rungs:
+        outcome = _bisect_failing_blocks(source, build_path, config, active_tools, env, trace)
+        if outcome.get("ok"):
+            source = outcome["source"]
+            quarantined = outcome.get("quarantined") or []
+            build_path = _write_working_copy(tex_path, source, config)
+            result = _compile(build_path, config, active_tools, env)
+            if result.get("produced"):
+                return _finalise_ladder(result, trace, rungs, quarantined, build_path,
+                                        active_tools, degraded=True)
+
+    # Everything was tried.  Report honestly -- including a PDF that exists but
+    # carries errors, which is still more useful to the user than nothing.
+    return _finalise_ladder(result, trace, rungs, quarantined, build_path,
+                            active_tools, degraded=bool(quarantined))
+
+
+def _finalise_ladder(result: dict, trace: list, rungs, quarantined, build_path: str,
+                     tools: dict, degraded: bool) -> dict:
+    """Attach the audit trail to a compile result."""
+    enriched = dict(result)
+    enriched["ladder"] = trace
+    enriched["rungs_used"] = sorted({record["rung"] for record in trace if record["applied"]},
+                                    key=lambda name: LADDER_RUNGS.index(name))
+    enriched["rungs_enabled"] = list(rungs)
+    enriched["quarantined"] = list(quarantined or [])
+    enriched["degraded"] = bool(degraded or quarantined)
+    enriched["build_path"] = build_path
+    enriched["engine_used"] = tools.get("engine", "")
+    if enriched["degraded"]:
+        # A degraded build is NOT a success and must never be reported as one.
+        enriched["ok"] = False
+    return enriched
+
+
+def _format_ladder_report(result: dict) -> str:
+    """Human-readable account of everything the ladder did.
+
+    Printed even on total success (as a single line), because "nothing needed
+    repairing" is itself information the user wants.
+    """
+    trace = result.get("ladder") or []
+    if not trace:
+        return "Repair ladder: not needed -- the document compiled as written."
+
+    lines = ["REPAIR LADDER", "=" * 13, ""]
+    applied = [record for record in trace if record["applied"]]
+    rejected = [record for record in trace if not record["applied"]]
+
+    current = None
+    for record in trace:
+        if record["rung"] != current:
+            current = record["rung"]
+            lines.append("")
+            lines.append("  [%d] %s" % (LADDER_RUNGS.index(current) + 1, current.upper()))
+        mark = "+" if record["applied"] else "-"
+        lines.append("      %s %s: %s" % (mark, record["action"], record["detail"]))
+
+    lines.append("")
+    lines.append("  %d repair(s) applied, %d rejected or skipped."
+                 % (len(applied), len(rejected)))
+    if result.get("quarantined"):
+        lines.append("")
+        lines.append("  DEGRADED BUILD -- block(s) %s could not be typeset and were "
+                     "REMOVED from the PDF." % ", ".join(str(n) for n in result["quarantined"]))
+        lines.append("  Each removal is marked visibly in the document itself.")
+    if result.get("engine_used"):
+        lines.append("  Final engine: %s" % result["engine_used"])
+    if result.get("build_path"):
+        lines.append("  Built from: %s" % result["build_path"])
+    return "\n".join(lines)
+
 
 def main():
     config = load_config()
@@ -2066,7 +4267,7 @@ def main():
                 logging.info("✅ .tex written: %s" % path)
 
                 if action == "scaffold_compile":
-                    result = _compile(path, config, tools, env)
+                    result = _build(path, config, tools, env)
                     outcome["tex_path"] = path
                     ok = _finish_compile(result, config, tools, outcome, notes)
                     outcome["success"] = ok
@@ -2230,7 +4431,7 @@ def main():
                             os.path.basename(tex_path), len(children),
                             ", ".join(os.path.basename(c) for c in children)))
                     logging.info("📐 Typesetting %s with %s" % (tex_path, tools["engine"]))
-                    result = _compile(tex_path, config, tools, env)
+                    result = _build(tex_path, config, tools, env)
                     ok = _finish_compile(result, config, tools, outcome, notes)
                     outcome["success"] = ok
 

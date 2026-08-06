@@ -1521,14 +1521,19 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
         set('output_dir', pairs.output_dir);
         set('filename', pairs.filename);
         set('projects_dir', pairs.projects_dir);
+        set('repair_rungs', pairs.repair_rungs);
+        set('repair_model', pairs.repair_model);
+        set('ollama_url', pairs.ollama_url);
+        set('ollama_token', pairs.ollama_token);
         ['recursive', 'auto_preamble', 'replace_all', 'auto_install_packages',
          'build_index', 'build_glossaries', 'shell_escape', 'overwrite', 'keep_aux',
-         'open_pdf', 'preflight'].forEach(function (k) {
+         'open_pdf', 'preflight', 'repair', 'repair_write_back'].forEach(function (k) {
             if (pairs[k] !== undefined && pairs[k] !== '') {
                 config[k] = (String(pairs[k]).toLowerCase() === 'true');
             }
         });
-        ['max_passes', 'command_timeout', 'max_log_chars'].forEach(function (k) {
+        ['max_passes', 'command_timeout', 'max_log_chars',
+         'repair_bisect_max_probes', 'repair_model_timeout'].forEach(function (k) {
             if (pairs[k] !== undefined && pairs[k] !== '') {
                 const n = parseInt(pairs[k], 10);
                 if (!Number.isNaN(n)) config[k] = n;

@@ -300,20 +300,53 @@ def run_agent_blocking(agent: str, info: Dict[str, Any], overrides: Dict[str, An
     )
     _RUNS[run_id] = {"proc": proc, "dir": run_dir, "agent": agent, "started": time.time()}
 
+    echoed = _redact_bulky(cfg)
     if not wait:
         return {"status": "launched", "run_id": run_id, "agent": agent,
                 "note": "Running in background. Use tlamatini_run_log / "
                         "tlamatini_run_status / tlamatini_run_stop.",
-                "config_used": cfg, "run_dir": run_dir}
+                "config_used": echoed, "run_dir": run_dir}
     try:
         rc = proc.wait(timeout=timeout)
         return {"status": "finished", "run_id": run_id, "agent": agent,
-                "return_code": rc, "config_used": cfg, "log": _read_log(run_dir)}
+                "return_code": rc, "config_used": echoed, "log": _read_log(run_dir)}
     except subprocess.TimeoutExpired:
         return {"status": "running", "run_id": run_id, "agent": agent,
                 "note": f"Still running after {timeout}s — left in background. "
                         f"Poll with tlamatini_run_log('{run_id}').",
-                "config_used": cfg, "log_excerpt": _read_log(run_dir, 4000)}
+                "config_used": echoed, "log_excerpt": _read_log(run_dir, 4000)}
+
+
+_ECHO_VALUE_LIMIT = 600
+
+
+def _redact_bulky(value, _depth: int = 0):
+    """Shrink huge values before they are echoed back as ``config_used``.
+
+    The MCP result echoes the resolved config so the caller can see exactly
+    what the agent ran with.  That is genuinely useful for a 20-character
+    ``pattern`` -- and actively harmful for a 46 KB ``content`` (File-Creator)
+    or a 10 KB ``input_text`` (LaTeXer): the echo alone can blow the caller's
+    response budget and lose the run's real log.  Long strings are therefore
+    replaced by a short, HONEST placeholder that still states the true size,
+    so nothing is silently misrepresented.
+    """
+    if _depth > 6:
+        return "<nested too deeply>"
+    if isinstance(value, str):
+        if len(value) > _ECHO_VALUE_LIMIT:
+            return "%s... <redacted from echo: %d chars total>" % (
+                value[:_ECHO_VALUE_LIMIT], len(value))
+        return value
+    if isinstance(value, dict):
+        return {k: _redact_bulky(v, _depth + 1) for k, v in value.items()}
+    if isinstance(value, list):
+        if len(value) > 200:
+            head = [_redact_bulky(v, _depth + 1) for v in value[:200]]
+            head.append("<redacted from echo: %d items total>" % len(value))
+            return head
+        return [_redact_bulky(v, _depth + 1) for v in value]
+    return value
 
 
 def _kill_tree(proc: subprocess.Popen) -> None:

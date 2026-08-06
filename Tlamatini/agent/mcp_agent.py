@@ -1090,6 +1090,77 @@ class MultiTurnToolAgentExecutor:
     # from the 2nd identical failure - one guided chance before the block.
     _FAIL_BLOCK_LIMIT = 3
 
+    # Bool-ish / count-ish coercion for ``_result_is_failure``.  A pool agent's
+    # INI_SECTION KV header is parsed into STRINGS, so "False" and "0" arrive as
+    # TEXT -- and Python's truthiness reads BOTH of them as True.  These helpers
+    # are what stop a perfect run being stamped FAILURE in the Exec Report (and,
+    # just as important, a genuine failure being stamped SUCCESS).
+    _FALSEY_STRINGS = frozenset({"false", "no", "0", "off", "none", "null"})
+    _TRUEY_STRINGS = frozenset({"true", "yes", "1", "on"})
+
+    # Statuses meaning "the tool RAN TO COMPLETION and is reporting what it
+    # found". Deliberately narrow: only read-only / diagnostic verdicts, where
+    # an adverse finding is the DELIVERABLE rather than a malfunction.
+    #
+    # NOT in this set, on purpose:
+    #   refused  - a fail-safe refusal is correct behaviour, but the work the
+    #              user asked for genuinely did not happen, so red is honest.
+    #   not_found / not_unique / engine_unavailable - the requested change or
+    #              build did not happen either.
+    _DIAGNOSTIC_COMPLETED_STATUSES = frozenset({
+        "validated", "valid", "invalid",
+        "analyzed", "analysed", "structure", "analysis",
+        "listed", "read", "matches", "no_matches", "findings", "clean",
+    })
+
+    @classmethod
+    def _is_falsey(cls, value):
+        """True only when ``value`` EXPLICITLY means no: a bool or a bool-ish str.
+
+        An absent key (``None``) is not a failure signal, so it returns False.
+        """
+        if isinstance(value, bool):
+            return value is False
+        if isinstance(value, str):
+            return value.strip().lower() in cls._FALSEY_STRINGS
+        return False
+
+    @classmethod
+    def _is_truthy(cls, value):
+        """True only when ``value`` EXPLICITLY means yes: a bool or bool-ish str."""
+        if isinstance(value, bool):
+            return value is True
+        if isinstance(value, str):
+            return value.strip().lower() in cls._TRUEY_STRINGS
+        return False
+
+    @staticmethod
+    def _as_count(value):
+        """Coerce ``value`` to an int COUNT, or None when it is not countable.
+
+        ``0`` and ``"0"`` both mean "no errors" -- that is the whole point.  A
+        list/tuple/set/dict counts its members, so ``errors: ["a", "b"]`` is 2.
+        """
+        if isinstance(value, bool):
+            return None
+        if isinstance(value, int):
+            return value
+        if isinstance(value, float):
+            return int(value)
+        if isinstance(value, (list, tuple, set, dict)):
+            return len(value)
+        if isinstance(value, str):
+            text = value.strip()
+            try:
+                return int(text)
+            except ValueError:
+                pass
+            try:
+                return int(float(text))
+            except ValueError:
+                return None
+        return None
+
     @classmethod
     def _result_is_failure(cls, result_str):
         """Return (failed: bool, short_error: str) for ANY tool-result shape.
@@ -1110,13 +1181,39 @@ class MultiTurnToolAgentExecutor:
             status = str(parsed.get("status", "")).lower()
             if status in ("error", "failed", "failure"):
                 return (True, str(parsed.get("message") or parsed.get("reason") or status)[:300])
-            if (parsed.get("ok") is False or parsed.get("success") is False
-                    or parsed.get("isError") is True or parsed.get("is_error") is True):
+            # ⚠️ A DIAGNOSTIC THAT REPORTS A PROBLEM HAS SUCCEEDED.
+            # This column answers "did the tool do its job?", NOT "was the input
+            # clean?". A linter asked to check a deliberately broken document
+            # and correctly finding 2 errors returns status=invalid, success=
+            # False, errors=2 -- and used to be stamped FAILURE for working
+            # perfectly. (Live: LaTeXer wizard STEP 4, 2026-08-05.) The finding
+            # itself is in the agent's own output where it belongs; a red row
+            # here would mean the tool malfunctioned, which it did not.
+            if status in cls._DIAGNOSTIC_COMPLETED_STATUSES:
+                return (False, "")
+            # Boolean-ish flags.  A pool agent's INI_SECTION KV header is parsed
+            # into STRINGS, so a real failure arrives as ``success: "False"`` --
+            # and ``"False" is False`` evaluates False, which used to let a REAL
+            # failure be reported as SUCCESS.  Compare bool-ish VALUES, not ids.
+            if (cls._is_falsey(parsed.get("ok")) or cls._is_falsey(parsed.get("success"))
+                    or cls._is_truthy(parsed.get("isError"))
+                    or cls._is_truthy(parsed.get("is_error"))):
                 return (True, str(parsed.get("message") or parsed.get("reason")
                                   or parsed.get("error") or "tool reported failure")[:300])
-            err = parsed.get("error") or parsed.get("errors")
-            if err:
-                return (True, str(err)[:300])
+            # Error COUNTERS -- the same string problem in the other direction.
+            # LaTeXer reports ``errors: 0`` on a PERFECT build, and because the
+            # value arrives as the string "0" (and ``bool("0") is True``) every
+            # flawless compile used to be stamped FAILURE in the Exec Report.
+            # A numeric value is a COUNT: only a NON-ZERO count is a failure.
+            for key in ("error", "errors"):
+                err = parsed.get(key)
+                if err is None or err == "" or err == [] or err == {}:
+                    continue
+                count = cls._as_count(err)
+                if count is None:
+                    return (True, str(err)[:300])
+                if count > 0:
+                    return (True, f"{count} {key}")
             return (False, "")
         low = s.lower().lstrip(" \t\r\n-*>#\"'[]()")
         for p in cls._FAILURE_TEXT_PREFIXES:
