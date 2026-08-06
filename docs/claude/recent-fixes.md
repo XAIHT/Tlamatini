@@ -16,6 +16,71 @@
 
 ---
 
+## 2026-08-06 — The Exec Report judged every agent by its EXIT CODE, so a tool that worked could be stamped FAILURE (`agent_verdict.py`, `tools.py`, `mcp_agent.py`)
+
+**The demand (Angela).** If the execution really succeeded, the table must say **SUCCESS**. If the execution really errored and did not do the designated task at all, the table must say **FAILED**. Both directions, every agent, no exceptions.
+
+**What was wrong — two different questions were collapsed into one string.**
+
+| | question | answer lives in |
+|---|---|---|
+| PROCESS | "did the child exit 0?" | the exit code — **one bit** |
+| AGENT | "did the agent do the job, and what did it FIND?" | its `INI_SECTION` self-report — **a typed record** |
+
+`tools._launch_wrapped_chat_agent` set `payload["status"]` from the exit code, and `_maybe_promote_section_fields_to_payload` then tried to lift the agent's own `status:` in with **`payload.setdefault(key, value)`** — which, on the one key that mattered most, was a **silent NO-OP**. The agent's truthful self-report was **discarded** and the crude exit-code verdict survived all the way into `_result_is_failure` → `call_success` → the Exec-Report row. Worse, `mcp_agent._DIAGNOSTIC_COMPLETED_STATUSES` had been written to prevent exactly this — but it tested a value that had *already* been overwritten with `"failed"` upstream, so it was **unreachable dead code**.
+
+**The fix — a deterministic verdict engine, `agent/agent_verdict.py`.** A lexer/parser turns the agent's self-report into a typed AST (`SectionNode` → `KVNode` → coerced values), and an ordered production-rule table decides:
+
+| rule | fires on | verdict |
+|---|---|---|
+| R1 | no self-report at all | the exit code |
+| R2 | the agent declares `error` / `failed` | **FAILED** |
+| R3 | `refused` / `not_found` / `not_unique` / `engine_unavailable` … — the work did NOT happen | **FAILED** |
+| R4 | a read-only diagnostic ran to completion (`invalid`, `findings`, `no_matches`, `listed` …) | **SUCCESS** |
+| R5 | an explicit `success:` / `ok:` boolean | that boolean |
+| R6 | a non-zero `errors:` count (`"0"` is **not** a failure) | **FAILED** |
+| R7 | nothing decisive + non-zero exit | **FAILED** |
+| R8 | no failure signal found | **SUCCESS** |
+
+**ORDER IS THE ALGORITHM, and R4 MUST outrank R5 and R6.** A linter that worked perfectly reports `status: invalid` **and** `success: False` **and** `errors: 2` in the same breath — the last two describe the **document**, not the agent. Testing them before R4 is precisely the bug this engine was written to kill.
+
+**Contract (do NOT weaken).**
+
+* The agent's own self-report **OUTRANKS** the process exit code. An exit code is one bit; the self-report is a typed record.
+* A self-report is **NEVER** dropped or overwritten. On a key collision the process view stays under `<key>` and the agent view lands on `agent_<key>` — **both** survive. Never collapse them back into one key.
+* A **read-only diagnostic that reports an adverse finding has SUCCEEDED** — the finding is the DELIVERABLE. A red row must mean *"the tool malfunctioned"*, never *"the tool found something"*.
+* **FAIL-OPEN**: every parse/coercion error resolves to "no opinion" and falls through to the next rule. Nothing in here may raise into a caller — a verdict engine that can break the chat path is worse than the mislabelled row it fixes.
+* **100% DETERMINISTIC** — no model call, no heuristics. A probabilistic verdict engine could not be trusted to say whether something failed, and would cost a round-trip on every tool call. The agents already emit a precise machine-readable self-report; the only thing missing was somebody actually READING it.
+* `mcp_agent._result_is_failure` honours the engine **only when `verdict.source == "agent"`**; every other case falls through to the legacy classifier, so ACPX / External-MCP / plain-text envelopes are untouched (`{"ok": false}` still goes red).
+* Stdlib only, and it imports nothing from `agent.*` — so it can never create an import cycle between `tools.py` and `mcp_agent.py` (both import it), and behaves identically frozen and from source.
+* The status vocabulary has **exactly ONE definition** (`agent_verdict.DIAGNOSTIC_COMPLETED_STATUSES`); `mcp_agent` aliases it. Two copies would drift, and a drifted copy silently mis-colours rows. Do NOT re-inline it.
+
+Pinned by `agent/test_agent_verdict.py` (25 tests: the parser, every rule, rule ORDER, auditable provenance, totality-never-raises, both call sites, the single-vocabulary contract, and the live STEP-4 payload end-to-end). `agent.test_agent_verdict` + `agent.test_latexer_agent` = **125 passing**, ruff clean.
+
+---
+
+## 2026-08-06 — LaTeXer's `validate_tex` reported a red **FAILURE** for a lint that worked perfectly (`agents/latexer/latexer.py`)
+
+**Live symptom (Angela, frozen install at `C:\Tlamatini`, LaTeXer step-by-step wizard, STEP 4).** The wizard deliberately lints a fragment with an unclosed `itemize`. LaTeXer found the bug exactly as designed — correct error, correct line number, correct explanation — and then the **Exec Report printed a red `FAILURE`** over that row. In `tlamatini.log`: `status = failed`, `exit_code: 1`, next to `"errors": "1"`.
+
+**Root cause — the AGENT verdict was tied to the DOCUMENT verdict.** The `validate_tex` branch did:
+
+```python
+ok = report["ok"]                                   # ← the DOCUMENT's cleanliness
+outcome["status"] = "validated" if ok else "invalid"
+outcome["success"] = ok
+```
+
+`ok` then feeds the deliberate `sys.exit(0 if ok else 1)` at the tail of `main()`, the wrapped chat-agent runtime derives `completed` / `failed` from that exit code, and the Exec Report renders that verdict. So **a linter that successfully caught a bug was reported to the user as a failed run.** `validate_tex` was the only outlier: its own read-only siblings `structure` / `read_file` / `list_files` all set `ok = True` unconditionally.
+
+**Fix.** `ok = True` for `validate_tex`; the document verdict stays fully truthful in `status` (`validated` / `invalid`) and in `errors` / `warnings` — which is what a downstream Forker actually branches on. Verified live: the same broken input now returns `return_code: 0` **and** `errors: 1`, `status: invalid`.
+
+**The contract (do NOT re-tie them).** `ok` means *"the AGENT did the job it was asked to do"*, **NOT** *"the user's document is clean"*. A read-only linter finding problems is a **SUCCESS**, exactly like Grepper finding matches or Analyzer reporting `findings`. Only actions that **failed to do the requested work** may exit non-zero — `refused`, `not_found`, `not_unique`, `engine_unavailable`, and a build that produced no PDF or a mis-typeset one (`compiled_with_errors`). Those stay non-zero on purpose; that half of the 2026-08-05 truthful-exit-code fix is unchanged.
+
+Pinned by `agent/test_latexer_agent.py::test_validate_tex_finding_errors_is_a_SUCCESSFUL_run_REGRESSION_2026_08_06` (asserts the source no longer contains `ok = report["ok"]`, that the `validated` / `invalid` distinction survives, and behaviourally that the linter still finds the unclosed environment). The older `test_exit_code_is_truthful_REGRESSION_2026_08_05` still passes — its `sys.exit(0 if ok else 1)` assertion is untouched; only its docstring was narrowed to drop the now-wrong "an `invalid` lint" example.
+
+---
+
 ## 2026-08-05 — Executer's forked window was INVISIBLE; a ShowWindow rescue fixed it (`agents/executer/executer.py`)
 
 **What was wrong.** `execute_forked_window: true` produced **no window Angela could see** when the agent ran under the session MCP host — while the log cheerfully printed `window=visible`. The script really ran (its log was written), so the failure was silent. Proved with Tlamatini's own tools: **Windower scanned the desktop twice and found no such window.**

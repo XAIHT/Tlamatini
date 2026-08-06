@@ -15,6 +15,7 @@ from typing import Dict, Any, Optional, Tuple
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage, ToolMessage
 
+from . import agent_verdict
 from .acpx import ACPX_TOOL_NAMES, filter_acpx_tools
 from .capability_registry import (
     _normalize_text,
@@ -1107,11 +1108,10 @@ class MultiTurnToolAgentExecutor:
     #              user asked for genuinely did not happen, so red is honest.
     #   not_found / not_unique / engine_unavailable - the requested change or
     #              build did not happen either.
-    _DIAGNOSTIC_COMPLETED_STATUSES = frozenset({
-        "validated", "valid", "invalid",
-        "analyzed", "analysed", "structure", "analysis",
-        "listed", "read", "matches", "no_matches", "findings", "clean",
-    })
+    # ONE definition, shared with tools.py — see agent_verdict.py. Two copies
+    # of this vocabulary would drift, and a drifted copy silently mis-colours
+    # Exec-Report rows. Do NOT re-inline it here.
+    _DIAGNOSTIC_COMPLETED_STATUSES = agent_verdict.DIAGNOSTIC_COMPLETED_STATUSES
 
     @classmethod
     def _is_falsey(cls, value):
@@ -1178,6 +1178,21 @@ class MultiTurnToolAgentExecutor:
         except (json.JSONDecodeError, TypeError, ValueError):
             parsed = None
         if isinstance(parsed, dict):
+            # ══ THE AGENT'S OWN VERDICT OUTRANKS THE PROCESS EXIT CODE ══
+            # `tools._launch_wrapped_chat_agent` stamps a deterministic
+            # `verdict` via agent_verdict.py (typed AST over the agent's
+            # INI_SECTION self-report + an ordered rule table). Consult it
+            # FIRST: the `status` key below is the PROCESS view, derived from a
+            # one-bit exit code, and it is routinely WRONG -- a linter that
+            # correctly finds a bug exits non-zero. Testing `status` first is
+            # what made the `_DIAGNOSTIC_COMPLETED_STATUSES` branch below
+            # unreachable dead code. (Angela, LaTeXer STEP 4, 2026-08-06.)
+            verdict = agent_verdict.classify_payload(parsed)
+            if verdict.source == "agent":
+                if verdict.ok:
+                    return (False, "")
+                return (True, f"{verdict.reason} [{verdict.rule}]"[:300])
+
             status = str(parsed.get("status", "")).lower()
             if status in ("error", "failed", "failure"):
                 return (True, str(parsed.get("message") or parsed.get("reason") or status)[:300])

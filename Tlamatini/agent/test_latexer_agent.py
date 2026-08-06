@@ -633,16 +633,52 @@ class TemplateTests(unittest.TestCase):
     def test_exit_code_is_truthful_REGRESSION_2026_08_05(self):
         """LaTeXer must exit NON-ZERO when it did not succeed.
 
-        LIVE FAILURE: latexer.py ended in a bare `sys.exit(0)`, so a `refused`, an
-        `invalid` lint and a `compiled_with_errors` build all exited 0. The wrapped
-        chat-agent runtime reads that code, so the Exec Report reported a failed
-        typeset to the user as SUCCESS.
+        LIVE FAILURE: latexer.py ended in a bare `sys.exit(0)`, so a `refused` and a
+        `compiled_with_errors` build both exited 0. The wrapped chat-agent runtime
+        reads that code, so the Exec Report reported a failed typeset to the user as
+        SUCCESS.
+
+        SCOPE (corrected 2026-08-06): "did not succeed" means the AGENT failed to do
+        the requested work -- NOT that the user's document was found unclean. See
+        `test_validate_tex_finding_errors_is_a_SUCCESSFUL_run_REGRESSION_2026_08_06`.
         """
         src = _read(_LATEXER_DIR, 'latexer.py')
         self.assertIn('sys.exit(0 if ok else 1)', src,
                       'LaTeXer must report its real verdict through its exit code')
         self.assertNotRegex(src, r'\n    sys\.exit\(0\)\s*$',
                             'a bare tail sys.exit(0) makes every run look like SUCCESS')
+
+    def test_validate_tex_finding_errors_is_a_SUCCESSFUL_run_REGRESSION_2026_08_06(self):
+        """A linter that CATCHES a bug has SUCCEEDED. It must never exit non-zero.
+
+        LIVE FAILURE (Angela, 2026-08-06, frozen install at C:\\Tlamatini, LaTeXer
+        step-by-step wizard STEP 4): the wizard deliberately lints a fragment with an
+        unclosed `itemize`. LaTeXer found the bug exactly as designed -- and then the
+        Exec Report printed a red **FAILURE** for it, because `validate_tex` set
+        `ok = report["ok"]`, so `sys.exit(0 if ok else 1)` exited 1 and the wrapped
+        runtime recorded `status = failed`.
+
+        AGENT success ("did the lint run?") must stay separate from the DOCUMENT
+        verdict ("is the source clean?"). The document verdict remains fully truthful
+        in `status` (validated / invalid) and in `errors` / `warnings` -- that is what
+        a downstream Forker branches on. This mirrors Grepper (finding matches is
+        success) and Analyzer (`findings` is not an error), and it matches
+        validate_tex's own read-only siblings `structure` / `read_file` / `list_files`.
+        """
+        src = _read(_LATEXER_DIR, 'latexer.py')
+        self.assertNotIn('ok = report["ok"]', src,
+                         'validate_tex must NOT tie the agent verdict to the document '
+                         'verdict -- a lint that catches a bug is a SUCCESSFUL run')
+        # The document verdict itself must still be reported truthfully.
+        self.assertIn('outcome["status"] = "validated" if report["ok"] else "invalid"', src,
+                      'the DOCUMENT verdict must still distinguish validated vs invalid')
+
+        # Behavioural proof: lint a knowingly-broken source and assert both halves.
+        m = _m()
+        report = m._validate_source(
+            '\\section{List}\n\\begin{itemize}\n\\item Milk\n')   # never closed
+        self.assertFalse(report['ok'], 'the linter must still FIND the unclosed environment')
+        self.assertTrue(report['errors'], 'the error must still be reported to the user')
 
 
 # =====================================================================

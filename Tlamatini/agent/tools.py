@@ -43,6 +43,7 @@ from .chat_agent_runtime import (
     wait_briefly_for_initial_state,
 )
 from .imaging.image_interpreter import opus_analyze_image, qwen_analyze_image
+from . import agent_verdict
 from .global_state import get_request_state, global_state
 from .models import Agent, AgentProcess
 from .path_guard import validate_tool_path
@@ -1524,7 +1525,26 @@ def _maybe_promote_section_fields_to_payload(payload, spec) -> None:
         value = value.strip()
         if not key or key not in promote:
             continue
-        payload.setdefault(key, value)
+        if key in payload:
+            # ⚠️ COLLISION -- and this is THE bug that made a perfect run look
+            # failed (Angela, LaTeXer wizard STEP 4, 2026-08-06).
+            #
+            # ``payload`` ALREADY carries a PROCESS-level value for this key:
+            # ``status`` was set to "completed"/"failed" from the child's exit
+            # code. The old code was ``payload.setdefault(key, value)``, so on
+            # the one key that mattered most the promotion was a silent NO-OP
+            # and the agent's OWN truthful verdict (``status: invalid``) was
+            # THROWN AWAY. Downstream then judged the run by the crude exit
+            # code, and ``mcp_agent._DIAGNOSTIC_COMPLETED_STATUSES`` -- written
+            # to handle exactly this -- became UNREACHABLE dead code.
+            #
+            # TWO QUESTIONS, TWO ANSWERS, BOTH KEPT: the process view stays
+            # under ``<key>``, the agent's self-report lands on ``agent_<key>``.
+            # ``agent_verdict`` gives the agent's view PRECEDENCE. Never
+            # collapse these back into one key.
+            payload.setdefault("agent_" + key, value)
+        else:
+            payload[key] = value
 
 
 def _resolve_template_agent_script_path(template_agent):
@@ -2955,9 +2975,23 @@ def _launch_wrapped_chat_agent(spec, request, *, auto_diagnose=True):
     # the same block to its own log unchanged.
     _maybe_promote_section_fields_to_payload(payload, spec)
 
+    # ── DETERMINISTIC VERDICT (agent_verdict.py) ──
+    # The child's exit code is ONE BIT and it is routinely wrong about what
+    # actually happened: a linter that CORRECTLY finds a bug exits non-zero.
+    # The agent's own INI_SECTION self-report is a typed record, so it WINS.
+    # This parses that self-report into an AST and runs an ordered rule table
+    # over it, stamping `verdict` / `verdict_rule` / `verdict_reason` and --
+    # only for a proven-completed diagnostic -- repairing the `status` that
+    # the exit code had wrongly set to "failed". `process_status` keeps the
+    # process view, so NOTHING is lost. See agent_verdict.py for the contract.
+    agent_verdict.reconcile_payload_verdict(payload)
+
     logger.info("[tools._launch_wrapped_chat_agent] ===== LAUNCH RESULT =====")
     logger.info("[tools._launch_wrapped_chat_agent]   run_id      = %s", run.runId)
     logger.info("[tools._launch_wrapped_chat_agent]   status      = %s", run.status)
+    logger.info("[tools._launch_wrapped_chat_agent]   verdict     = %s (%s: %s)",
+                payload.get("verdict"), payload.get("verdict_rule"),
+                payload.get("verdict_reason"))
     logger.info("[tools._launch_wrapped_chat_agent]   PID         = %s", run.pid)
     logger.info("[tools._launch_wrapped_chat_agent]   runtime_dir = %s", runtime_dir)
     logger.info("[tools._launch_wrapped_chat_agent]   log_path    = %s", log_path)

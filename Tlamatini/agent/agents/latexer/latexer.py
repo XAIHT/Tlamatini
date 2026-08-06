@@ -4368,9 +4368,21 @@ def main():
                         lines.append("✅ No problems found: braces balanced, environments matched, "
                                      "every \\ref has a \\label.")
                     notes.append("\n".join(lines))
-                    ok = report["ok"]
-                    outcome["status"] = "validated" if ok else "invalid"
-                    outcome["success"] = ok
+                    # AGENT success is NOT the DOCUMENT verdict (do NOT re-tie them).
+                    # validate_tex is a READ-ONLY LINTER: finding a problem in the
+                    # user's source IS the tool doing its job -- exactly like Grepper
+                    # finding matches, or Analyzer reporting `findings`. Tying `ok` to
+                    # report["ok"] made a lint that CORRECTLY caught an unclosed
+                    # itemize environment exit 1, so the wrapped runtime marked the run
+                    # `failed` and the Exec Report printed a red FAILURE over a run that
+                    # had worked perfectly (Angela, 2026-08-06 -- LaTeXer wizard STEP 4).
+                    # The document verdict stays FULLY truthful in `status`
+                    # (validated / invalid) and in `errors` / `warnings` -- that is what
+                    # a downstream Forker branches on. Its read-only siblings
+                    # (`structure`, `read_file`, `list_files`) already report this way.
+                    ok = True
+                    outcome["status"] = "validated" if report["ok"] else "invalid"
+                    outcome["success"] = True
                 else:
                     st = _document_structure(source)
                     lines = ["Document structure:", "",
@@ -4462,10 +4474,17 @@ def main():
     # TRUTHFUL EXIT CODE (do NOT revert to a bare sys.exit(0)).
     # The wrapped chat-agent runtime derives its completed/failed verdict from this
     # code, and the Exec Report renders that verdict. Exiting 0 unconditionally made
-    # EVERY run look like SUCCESS -- a `refused`, an `invalid` lint, or a
-    # `compiled_with_errors` build (a PDF that IS mis-typeset) was reported to the
-    # user as a clean typeset. Downstream `target_agents` are already triggered
-    # ABOVE this line, so a non-zero code never breaks the always-trigger contract.
+    # EVERY run look like SUCCESS -- a `refused`, or a `compiled_with_errors` build
+    # (a PDF that IS mis-typeset) was reported to the user as a clean typeset.
+    # Downstream `target_agents` are already triggered ABOVE this line, so a non-zero
+    # code never breaks the always-trigger contract.
+    #
+    # SCOPE CORRECTION (2026-08-06): `ok` means "the AGENT did the job it was asked
+    # to do", NOT "the user's document is clean". An `invalid` verdict from the
+    # READ-ONLY `validate_tex` linter is therefore a SUCCESSFUL run -- see the note
+    # at the validate_tex branch. Only actions that FAILED TO DO THE REQUESTED WORK
+    # (refused / not_found / not_unique / engine_unavailable / a build that produced
+    # no PDF or a mis-typeset one) may exit non-zero.
     sys.exit(0 if ok else 1)
 
 
