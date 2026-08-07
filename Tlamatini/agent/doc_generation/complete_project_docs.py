@@ -501,6 +501,26 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         or "1.46.0" in subject
         or "1.47.0" in subject
         or "1.48.0" in subject
+        or "1.48.1" in subject
+        or "1.48.2" in subject
+        or "execution report" in subject
+        or "agent verdict" in subject
+        or "smoke alarm" in subject
+        or "enabling/disabling" in subject
+        or "desconnection" in subject
+        or "disconnection" in subject
+        or "shoter" in subject
+        or "1.48.1" in subject
+        or "1.48.2" in subject
+        or "execution report" in subject
+        or "agent verdict" in subject
+        or "database" in subject
+        or "smoke alarm" in subject
+        or "multiple mcp" in subject
+        or "enabling/disabling" in subject
+        or "desconnection" in subject
+        or "disconnection" in subject
+        or "shoter" in subject
         or "binary file drop" in subject
         or "binary-guard" in subject
         or "pdfer" in subject
@@ -535,10 +555,10 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     )
     if has_current_release_wave:
         highlights.append(
-            "The release resolves to `v1.48.0`; the version stays git-tag-derived (`agent/version.py`) and is never hardcoded, so the resolver reports the annotated tag once it is cut, while the generated repository facts report the current aligned local/remote HEAD separately. Git/source inspection extends README.md and BookOfTlamatini.md before the generated inventory tables derive the current agent, tool, skill, asset, and effective-line totals."
+            "The latest annotated release is `v1.48.2`; the version stays git-tag-derived (`agent/version.py`) and is never hardcoded. The generated repository facts report the current aligned local/remote HEAD separately because it contains a later execution-verdict reliability commit. Git/source inspection extends README.md and BookOfTlamatini.md before the generated inventory tables derive the current agent, tool, skill, asset, and effective-line totals."
         )
         highlights.append(
-            "The current version is `v1.48.0`, which adds **LaTeXer** (`agent/agents/latexer/`): the LaTeX-typesetting sibling of PDFer, embedding the whole `mcp-latex-server` tool surface natively with no MCP server and no new dependency, adding whole-project compilation with master-document detection, a real BibTeX/biber and makeindex convergence loop, and readable LaTeX-log diagnostics; it requires MiKTeX and refuses cleanly when no distribution is present. The `v1.47.0` **binary-content guard** (`agent/rag/binary_guard.py`, which screens every candidate context file by its bytes and drops binary content from the embedding chain, logging each omission as `--- [BINARY-GUARD]` in `tlamatini.log`), the `v1.46.0` PDFer document composer, `v1.45.3` oversized-context recovery, `v1.45.1` FlowCreator Step-by-Step opener, `v1.45.0` wrapped FlowCreator, `v1.44.0` prompt grammar, `v1.43.5` recon free-run, `v1.42.0` STM32er PlatformIO expansion, and `v1.41.4` External-MCP structured output remain carried foundations."
+            "The `v1.48.0` wave adds **LaTeXer** (`agent/agents/latexer/`), and `v1.48.2` hardens her with an ordered eight-rung repair ladder, safer package inference/acquisition, truthful degraded-build reporting, and broader regression proof. The aligned post-tag HEAD adds deterministic agent self-report reconciliation so a diagnostic that successfully finds a defect is not mislabelled as an execution failure. The `v1.47.0` binary-content guard, `v1.46.0` PDFer, `v1.45.x` FlowCreator and oversized-context work, `v1.44.0` prompt grammar, `v1.43.5` recon free-run, `v1.42.0` STM32er PlatformIO expansion, and `v1.41.4` External-MCP structured output remain carried foundations."
         )
     if any("structuredcontent" in subject for subject in subjects):
         highlights.append(
@@ -727,7 +747,7 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         for subject in subjects
     ):
         highlights.append(
-            "The latest dossier pass resolves the product at `v1.48.0`, with the current aligned local/remote HEAD reported separately; it combines README.md and BookOfTlamatini.md with source/Git truth and retains the complete installation, Ollama, architecture, usage, tree, line inventory, and responsibility context."
+            "The latest dossier pass resolves the product at annotated release `v1.48.2`, with the current aligned local/remote HEAD reported separately; it combines README.md and BookOfTlamatini.md with source/Git truth and retains the complete installation, Ollama, architecture, usage, tree, line inventory, and responsibility context."
         )
     elif not has_current_release_wave and any(
         "1.26.5" in subject
@@ -1013,10 +1033,10 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
     )
     if has_current_release_wave:
         highlights.append(
-            "The release is `v1.48.0`; the current aligned local/remote HEAD is reported independently, and the version remains git-derived rather than hardcoded."
+            "The latest annotated release is `v1.48.2`; the current aligned local/remote HEAD is reported independently, and the version remains git-derived rather than hardcoded."
         )
         highlights.append(
-            "The release delta adds the binary-content guard `agent/rag/binary_guard.py` with its 45-test suite and wires it into all three `DirectoryLoader` call sites in `agent/rag/factory.py`, and carries the v1.46.0 PDFer document composer and the wrapped FlowCreator; existing local configuration-only worktree changes remain private and are neither reproduced nor modified by dossier generation."
+            "The release delta adds and hardens LaTeXer, database startup guarding, bulk MCP/agent checkbox control, ACP backend-disconnection signaling, whole-desktop Shoter capture, language-safe PDFer output, and active-first External-MCP organization. The aligned post-tag commit adds deterministic agent-verdict reconciliation so Exec Report reflects whether work actually ran rather than confusing a successful adverse diagnostic with a process failure."
         )
     if any("structuredcontent" in subject for subject in subjects):
         highlights.append(
@@ -1521,26 +1541,33 @@ def operator_surface_counts_guide(context: dict) -> list[str]:
     ]
 
 CURRENT_RELEASE_GUIDE = [
-    "Git resolves the product to `v1.48.0`; the current aligned local/remote HEAD is reported separately, while the live source tree remains authoritative for generated counts and capability claims.",
-    "`v1.47.0` adds the binary-content guard: `agent/rag/binary_guard.py` screens every candidate context file by its bytes and drops binary content from the embedding chain through the same mechanism as the user's name-based omissions list - a short-circuiting cascade (extension, BOM, magic signature, NUL byte, control-byte ratio, UTF-8 decodability) costing at most one 8 KiB read per file, fail-open by contract, with every omission logged as `--- [BINARY-GUARD]` in `tlamatini.log`.",
-    "Operator controls mirror README.md and BookOfTlamatini.md: `binary_context_detection` toggles the guard, `binary_detection_control_ratio` tunes the threshold, and `binary_detection_force_text_extensions` / `binary_detection_extra_binary_extensions` provide explicit extension overrides.",
-    "`v1.48.0` adds LaTeXer as the LaTeX-typesetting agent and wrapped `chat_agent_latexer` tool - the typesetting sibling of PDFer, where PDFer composes a PDF from Markdown/HTML/images and LaTeXer typesets one from `.tex` source with real mathematics, bibliographies, cross-references and an index. It embeds the entire `mcp-latex-server` tool surface natively as an agent with no MCP server, no sidecar and no new dependency, and extends it with whole-project compilation (master document auto-detected, every `\\input` followed), a real BibTeX/biber plus makeindex convergence loop, and LaTeX-log diagnostics a human can read.",
-    "LaTeXer requires MiKTeX, the one prerequisite: Tlamatini ships no TeX distribution because a full one is several gigabytes and the release must stay under 2 GB, and MiKTeX is preferred because it installs a missing package on demand mid-compile, so any document builds. With no distribution present LaTeXer refuses cleanly rather than crashing, and `action: install` launches the official installer. `shell_escape` stays off by default, and `latexmk` is probed for usability rather than presence because it is a Perl script that most Windows machines cannot run.",
-    "`v1.46.0` adds PDFer as the document-composer agent and wrapped `chat_agent_pdfer` tool: it authors styled PDFs from Markdown, HTML, text, images, mixed content, or existing PDFs, with preflight refusal and Ask-Execs coverage for free-form destinations.",
-    "`v1.41.4` fixes External-MCP structured-output consumption: stdio and network clients now provide both text `content` blocks and `structuredContent` to the LLM instead of handing it only a short pointer.",
-    "The shared formatter unwraps a sole `result` envelope, preserves errors and plain text, safely serializes structured data, caps oversized payloads, and is pinned by seven focused tests.",
-    "`v1.41.3` keeps the Catalog of Prompts grouped into 13 categories with stable surviving ids, physical duplicate removal, gap-tolerant loading, and ranked fuzzy search.",
-    "`v1.41.2` keeps Cancel latched to a per-user run epoch across RAG rebuilds, executor, retry, self-healing, Ask Execs, late answers, and frontend state without poisoning the next request.",
-    "`v1.41.0` keeps screenshot paste/drop path-native: validated images are re-encoded in guarded Temp storage, inserted at the remembered caret, and handed to Image-Interpreter through removable chips.",
-    "That Phase 1 path covers supported PlatformIO `ststm32` boards from Blue Pill/F1 through mainstream F/G/L/H7/U5/WB families, shares zero-config PlatformIO bootstrap with ESP32er, and adds ST-LINK-aware upload safeguards.",
-    "The existing STM32F407 Template-MCP route remains the automatic default for blank/STM32F4 requests, while C0/H5/WBA/N6 stay explicitly unsupported until the planned ST-native CubeCLT backend exists; released migrations add camera-verified stepwise demos and a one-time contiguous catalog renumber.",
-    "README.md and BookOfTlamatini.md now carry a clearer plain-Python agent disclaimer: transparency enables user control but is not a security warranty, and execution remains under the user's jurisdiction and responsibility.",
-    "The README static badge and some Book release prose lag Git, so version identity comes from the live tag/commit graph rather than those historical text surfaces.",
-    "The dirty worktree is counted without reproducing private values, credentials, endpoints, or machine-specific paths; this dossier does not stage, commit, or push it.",
-    "The `v1.40.x` configurable-port and FlowPills work, Unreal 5.8 scaffold, Nmapper, self-healing, Create Flow, robotic loop, firmware/media agents, External MCPs, ACPX skills, and deterministic file tools remain carried product behavior.",
-    "The `v1.45.x` lineage makes FlowCreator chat-callable, adds its guided catalog opener, and hardens oversized Multi-Turn context recovery; live agent/tool totals are derived from the registry and repository rather than inferred from release numbers.",
-    "README.md and BookOfTlamatini.md still supply the complete MIT-licensed project, easy-start installation, Ollama setup, architecture, usage, agent, and responsibility narrative rather than a narrow changelog.",
-    "The regenerated PDF/PPTX treats tagged behavior and local configuration-only changes separately while preserving the full system, history, file tree, and effective-line inventory.",
+    "Git resolves the latest annotated release to `v1.48.2` at `be0bcb8e`; the current local and `origin/main` HEAD is `7e2ec979`, one synchronized post-tag commit later. The live tree remains authoritative for generated counts and the repository-facts pages preserve both identities.",
+    "`v1.48.0` introduced LaTeXer as the LaTeX-typesetting agent and wrapped `chat_agent_latexer` tool: the typesetting sibling of PDFer, with real `.tex` mathematics, bibliographies, cross-references, indexes, whole-project master detection, `\\input` traversal, and a BibTeX/biber/makeindex convergence loop.",
+    "`v1.48.2` hardens LaTeXer with an ordered eight-rung repair ladder: lint repair, inferred preamble packages, deterministic rewrite rules, a minimal probe, package acquisition, engine fallback, an explicitly configured Ollama repair model, and destructive-last bisection/quarantine. Candidate repairs are re-linted and must actually compile; degraded builds never claim clean success.",
+    "MiKTeX is LaTeXer's recommended prerequisite because it can install a missing package on demand during compilation. Tlamatini deliberately bundles no multi-gigabyte TeX distribution; TeX Live and MacTeX are detected when already present, no-distribution runs refuse cleanly, and `action: install` launches the official MiKTeX installer. `shell_escape` remains off by default and `latexmk` must prove usable rather than merely exist.",
+    "The post-tag `7e2ec979` commit adds `agent/agent_verdict.py`, a deterministic lexer/parser and ordered production-rule engine for wrapped-agent `INI_SECTION` self-reports. It fixes Exec Report false positives and false negatives without replacing auditable rules with model guesses.",
+    "Agent truth now outranks a one-bit process exit code: a read-only diagnostic that successfully finds a defect is SUCCESS as an execution even though its finding is adverse, while refusals, missing work, declared malfunctions, explicit false flags, and real nonzero error counts remain FAILURE. Process and agent views survive key collisions as separate values, every verdict carries provenance, and malformed input fails open.",
+    "The startup database guard (`agent/db_guard.py`, wired before Django in `manage.py`) checks SQLite shape/integrity, preserves suspicious evidence under `DB/Corrupted/`, prints an actionable alarm, remembers healthy size/table fingerprints, and detects silent shrink. It never auto-restores, never blocks startup, exempts volatile ledger/session tables from ordinary row-drop alarms, and caps its own evidence copies.",
+    "Bulk checkbox control now works across current and future MCP/agent dialogs: drag-select labels and press Space to apply one coherent action. Capture-phase handling avoids double toggles, text-entry and disabled controls are protected, rerendering rows are re-resolved, and the rule is deterministic - any checked target means uncheck all; otherwise check all.",
+    "The ACP designer now exposes backend health even though it has no WebSocket: a fail-open fetch wrapper reports network-level failures immediately and an eight-second `/agent/version/` heartbeat catches idle outages. A recovery message appears when the backend returns without taking ownership of ACP button state.",
+    "Shoter now captures the whole desktop by default so secondary-monitor evidence is not silently lost, accepts a basename-sanitized exact filename for report workflows, falls back to primary-screen capture when `all_screens` is unsupported, and emits the resolved capture settings in its structured result.",
+    "PDFer now localizes its own footer/fallback-title labels through `document_language` and forces optional Ollama polish to preserve the source language. External-MCP catalog refinements pin active services first, keep them alphabetized, add active/catalog headings, and preserve focus after rerendering.",
+    "`v1.47.0` keeps the binary-content guard: `agent/rag/binary_guard.py` screens candidate context bytes with a short-circuiting extension/BOM/signature/NUL/control-ratio/UTF-8 cascade and logs each omission as `--- [BINARY-GUARD]`. Configuration can disable detection, tune the control ratio, or override text/binary extensions.",
+    "`v1.46.0` PDFer, `v1.45.x` FlowCreator and oversized-context recovery, `v1.44.0` prompt grammar, `v1.43.5` recon free-run, `v1.42.0` STM32er PlatformIO and stepwise camera demos, and `v1.41.4` External-MCP structured-result delivery remain carried behavior.",
+    "The categorized prompt catalog, per-user Hard Cancel epochs, path-native screenshot paste/drop, configurable port, FlowPills discovery, Unreal scaffold, self-healing, robotic loop, firmware/media agents, External MCPs, ACPX skills, and deterministic file tools remain part of the complete product rather than being reduced to a latest-changes summary.",
+    "README.md and BookOfTlamatini.md retain the complete MIT-licensed installation, Ollama setup, architecture, everyday-use, agent, and responsibility narrative. The plain-Python agent disclaimer is explicit: transparency enables user control but is not a security warranty, and authorization, review, permissions, and consequences remain the operator's responsibility.",
+    "README.md and BookOfTlamatini.md still display `v1.48.0` on some release surfaces, so this dossier uses the annotated Git tag/commit graph for release identity while treating those documents as the primary behavioral handbook.",
+    "The inventory is rebuilt from Git-tracked plus Git-unignored files without reproducing credentials, endpoints, private values, or machine-specific configuration. This generation pass does not stage, commit, or push anything.",
+    "The regenerated PDF/PPTX preserve the whole system, architecture, installation/use guidance, recent Git history, complete file tree, effective-line inventory, and validation evidence; tagged behavior and the aligned post-tag commit are described separately.",
+]
+
+RECENT_ASSETS_GUIDE = [
+    "LaTeXer assets include `agent/agents/latexer/{latexer.py,config.yaml}`, migrations `0191`-`0193`, the wrapped-tool/ACPX wiring, `test_latexer_agent.py`, `test_latexer_repair_ladder.py`, the generated suite in `test_latexer_suite.py`, and step-by-step development harnesses.",
+    "Execution-verdict assets include the new `agent/agent_verdict.py`, `test_agent_verdict.py`, expanded `test_exec_report_verdict.py`, and coordinated integration in `tools.py`, `mcp_agent.py`, and LaTeXer's structured self-report path.",
+    "Database-safety assets include `agent/db_guard.py`, `test_db_guard.py`, pre-Django wiring in `manage.py`, and tracked `DB/Corrupted/` evidence samples. The binary inventory recognizes the nonstandard corrupt-database artifact as skipped binary content rather than counting its bytes as source lines.",
+    "Frontend reliability assets include `static/agent/js/checkbox_bulk_toggle.js`, `test_checkbox_bulk_toggle.py`, both page-template load points, `static/agent/js/acp-connection-status.js`, the ACP status bar/CSS, and browser harnesses for bulk selection and backend-outage behavior.",
+    "Operator refinements update Shoter's config/agent/tests and browser harnesses, PDFer's language-preserving document path, and External-MCP catalog ordering/focus behavior. These are implementation changes backed by source and tests, not documentation-only claims.",
+    "No newly tracked standard image, audio, video, PDF, or PPTX asset was added in the audited post-dossier range. The generated tree and language tables still count every current tracked/unignored asset, and the binary/skipped totals explicitly account for non-text evidence files.",
 ]
 
 STRUCTURED_CONTENT_1414_GUIDE = [
@@ -1639,7 +1666,7 @@ NMAPPER_GUIDE = [
 
 STARTUP_PROMPT_POLISH_GUIDE = [
     "`v1.39.4` restored first-run/startup dialog closeability so a fresh launch can no longer be trapped behind an unclosable overlay.",
-    "Commit `a45fe0e0` followed the public `v1.39.4` tag with Catalog-of-Prompts localization cleanup; that historical polish remains carried by current `v1.48.0`.",
+    "Commit `a45fe0e0` followed the public `v1.39.4` tag with Catalog-of-Prompts localization cleanup; that historical polish remains carried by current `v1.48.2`.",
     "The prompt catalog path stays centralized through the secure one-call `/agent/list_prompts/` endpoint ordered by category rank and stable surviving id, while the gap-tolerant probe loop remains only as an offline fallback.",
     "Frontend mutable-state tests and dialog templates continue to guard the chat/startup/overlay surfaces so future cleanup passes do not reintroduce const-poison or close-button regressions.",
 ]
@@ -1688,7 +1715,7 @@ FRONTEND_HOTFIX_GUIDE = [
 ]
 
 V136_RELEASE_GUIDE = [
-    "Release identity: the current version is `v1.48.0`, while the generated repository facts report the current aligned local/remote HEAD separately; v1.48.0 LaTeXer, the v1.47.0 binary-content guard, v1.46.0 PDFer, v1.45.0 FlowCreator wrapped chat-agent, v1.44.0 Catalog-of-Prompts parameter standardization, v1.43.5 recon free-run (OOB_shift_reaper), v1.42.0 STM32er PlatformIO, v1.41.4 External-MCP structured output, and earlier waves remain part of this release lineage.",
+    "Release identity: the latest annotated version is `v1.48.2`, while the generated repository facts report the aligned post-tag local/remote HEAD separately; v1.48.2 LaTeXer hardening, the v1.48.0 LaTeXer introduction, v1.47.0 binary-content guard, v1.46.0 PDFer, v1.45.0 FlowCreator wrapped chat-agent, v1.44.0 Catalog-of-Prompts parameter standardization, v1.43.5 recon free-run (OOB_shift_reaper), v1.42.0 STM32er PlatformIO, v1.41.4 External-MCP structured output, and earlier waves remain part of this release lineage.",
     "New agent: Video-Analyzer becomes the current media-verdict workflow agent and wrapped `chat_agent_video_analyzer`, complementing Image-Interpreter with video-specific motion analysis.",
     "Implementation assets: `agent/agents/video_analyzer/`, migrations `0166_add_video_analyzer.py`, `0167_add_chat_agent_video_analyzer_tool.py`, `0168_add_video_analyzer_demo_prompt.py`, `test_video_analyzer_agent.py`, `chat_agent_registry.py`, `mcp_agent.py`, and `services/agent_contracts.py` all move together.",
     "Model strategy: `interpreter_model_1` defaults to `qwen3-vl:235b-cloud`, `interpreter_model_2` defaults to `qwen3.5:cloud`, and `merging_model` defaults to `glm-5.2:cloud`, with independent calls merged only after both interpreters report.",
@@ -1874,7 +1901,7 @@ PROMPT_CATALOG_GUIDE = [
     "Version `1.3.2` tightened the HTML answer contract with a Prime Directive on visual readability: explicit background and text color, no grey-on-dark body text, and safer table-body defaults.",
     "The seeded `Prompts` dropdown was also re-sorted into a learner path: context-only Q&A first, then metrics, files search, shell, code generation, vision, specialized single-tool actions, agent control, Unrealer, and heavier Multi-Turn/ACPX demos last.",
     "The `v1.35.0` prompt-search pass then makes that larger catalog easier to operate: prompt cards support substring, word-start, and fuzzy matching, with mode badges that keep one-shot, Multi-Turn, ACPX, Exec Report, and Step-by-Step demos visually distinct.",
-    "Those readability rules remain in force in the current documentation set; `v1.48.0` carries LaTeXer on top of the v1.47.0 binary-content guard, v1.46.0 PDFer, the chat-callable FlowCreator, v1.44.0 Catalog-of-Prompts standardization, v1.41.4 External-MCP structured-output delivery, v1.41.3 category grouping, gap-tolerant loading, and ranked fuzzy search while preserving the broader operator context.",
+    "Those readability rules remain in force in the current documentation set; `v1.48.2` hardens the LaTeXer introduced in v1.48.0 on top of the v1.47.0 binary-content guard, v1.46.0 PDFer, the chat-callable FlowCreator, v1.44.0 Catalog-of-Prompts standardization, v1.41.4 External-MCP structured-output delivery, v1.41.3 category grouping, gap-tolerant loading, and ranked fuzzy search while preserving the broader operator context.",
 ]
 
 SELF_KNOWLEDGE_GUIDE = [
@@ -2520,6 +2547,9 @@ def build_pdf(context: dict) -> None:
     story.append(p(f"Current release focus in {context['version_info']['version']}", styles["h2"]))
     for item in CURRENT_RELEASE_GUIDE:
         story.append(bullet(item, styles["bullet"]))
+    story.append(p("Recent implementation assets and inventory impact", styles["h2"]))
+    for item in RECENT_ASSETS_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
     story.append(p("v1.41.4 External-MCP structured output", styles["h2"]))
     for item in STRUCTURED_CONTENT_1414_GUIDE:
         story.append(bullet(item, styles["bullet"]))
@@ -2619,7 +2649,7 @@ def build_pdf(context: dict) -> None:
     story.append(p("API-Keys Wizard", styles["h2"]))
     for item in API_KEYS_WIZARD_GUIDE:
         story.append(bullet(item, styles["bullet"]))
-    story.append(p("New assets in the current release wave", styles["h2"]))
+    story.append(p("Earlier implementation assets retained in the current tree", styles["h2"]))
     for item in NEW_ASSETS_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("File-Creator hardening", styles["h2"]))
@@ -3380,7 +3410,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "mt-b", 16)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Ask Execs", "v1.10.0 safety modifier still active in v1.48.0", THEME["amber"])
+    slide, audit = add_slide(prs, "Ask Execs", "v1.10.0 safety modifier still active in v1.48.2", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Operator contract", ASK_EXECS_GUIDE, THEME["amber"], "ask-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Runtime mechanics", ASK_EXECS_PIPELINE_GUIDE, THEME["jade"], "ask-b", 13)
     audit_layout(audit, len(prs.slides))
@@ -3394,7 +3424,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["amber"], "attention-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.11.0 uninstall integration carried into v1.48.0", THEME["copper"])
+    slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.11.0 uninstall integration carried into v1.48.2", THEME["copper"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What changed", WINDOWS_APP_REGISTRATION_GUIDE, THEME["copper"], "arp-a", 12)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Why operators care", [
         "Packaged installs now show up in normal Windows uninstall surfaces instead of only leaving behind shortcuts and a loose `Uninstaller.exe` in the install folder.",
@@ -3403,19 +3433,29 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "arp-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Current Release Focus", "v1.48.0 - LaTeXer, the LaTeX typesetter; aligned local/remote HEAD reported separately", THEME["amber"])
-    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Release line", CURRENT_RELEASE_GUIDE[:3], THEME["amber"], "rel-a", 10)
-    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Reliability and flow", CURRENT_RELEASE_GUIDE[3:6], THEME["jade"], "rel-b", 10)
+    slide, audit = add_slide(prs, "Current Release Focus", "v1.48.2 tagged release plus one aligned post-tag reliability commit", THEME["amber"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Release line", CURRENT_RELEASE_GUIDE[:2], THEME["amber"], "rel-a", 10)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "LaTeXer hardening and prerequisite", CURRENT_RELEASE_GUIDE[2:4], THEME["jade"], "rel-b", 10)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Current Release Context", "image paths, port recovery, handbook truth, and carried foundations", THEME["jade"])
-    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Flow and recovery", CURRENT_RELEASE_GUIDE[6:10], THEME["jade"], "rel-c", 10)
-    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Security and source control", CURRENT_RELEASE_GUIDE[10:12], THEME["amber"], "rel-d", 11)
+    slide, audit = add_slide(prs, "Execution Truth And Runtime Reliability", "deterministic verdicts, database safety, and interface safeguards", THEME["jade"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Deterministic execution truth", CURRENT_RELEASE_GUIDE[4:6], THEME["jade"], "rel-c", 10)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Data and interface safeguards", CURRENT_RELEASE_GUIDE[6:9], THEME["amber"], "rel-d", 10)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Operator Refinements", "capture, PDF language, and External-MCP catalog behavior", THEME["copper"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Whole-desktop capture", CURRENT_RELEASE_GUIDE[9:10], THEME["copper"], "rel-operator-a", 11)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Document and MCP refinements", CURRENT_RELEASE_GUIDE[10:11], THEME["jade"], "rel-operator-b", 11)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Recent Implementation Assets", "new source, tests, migrations, harnesses, and inventory effects", THEME["amber"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Backend and agent assets", RECENT_ASSETS_GUIDE[:3], THEME["amber"], "recent-assets-a", 10)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Frontend and operator assets", RECENT_ASSETS_GUIDE[3:], THEME["jade"], "recent-assets-b", 10)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Release Continuity", "older waves still carried by the current dossier", THEME["copper"])
-    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Carried product story", CURRENT_RELEASE_GUIDE[12:14], THEME["copper"], "rel-e", 11)
-    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Documentation contract", CURRENT_RELEASE_GUIDE[14:], THEME["jade"], "rel-f", 11)
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Carried product story", CURRENT_RELEASE_GUIDE[11:15], THEME["copper"], "rel-e", 10)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Documentation contract", CURRENT_RELEASE_GUIDE[15:], THEME["jade"], "rel-f", 10)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "External MCP Structured Results", "v1.41.4 - successful server data reaches the model", THEME["jade"])
@@ -3618,17 +3658,17 @@ def build_ppt(context: dict) -> None:
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Autonomous watchdog", COMMAND_WATCHDOG_GUIDE, THEME["jade"], "media-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Newest Assets And Surfaces", "backend, frontend, and build files added or upgraded recently", THEME["jade"])
+    slide, audit = add_slide(prs, "Earlier Asset Waves", "backend, frontend, and build assets retained in the current tree", THEME["jade"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Named assets", NEW_ASSETS_GUIDE[:3], THEME["jade"], "assets-a", 10)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Hardening assets", NEW_ASSETS_GUIDE[3:6], THEME["amber"], "assets-b", 10)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Newest Assets Appendix", "remaining current asset deltas", THEME["amber"])
+    slide, audit = add_slide(prs, "Earlier Assets Appendix", "retained implementation deltas", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Discoverer and frontend", NEW_ASSETS_GUIDE[6:9], THEME["amber"], "assets-c", 10)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Frontend, port, and agent assets", NEW_ASSETS_GUIDE[9:12], THEME["jade"], "assets-d", 10)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Newest Assets Source Trail", "why the inventory and line counts changed", THEME["copper"])
+    slide, audit = add_slide(prs, "Earlier Assets Source Trail", "retained assets behind the current inventory", THEME["copper"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Media and browser setup", NEW_ASSETS_GUIDE[12:15], THEME["copper"], "assets-e", 10)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Inventory meaning", NEW_ASSETS_GUIDE[15:], THEME["jade"], "assets-f", 10)
     audit_layout(audit, len(prs.slides))
@@ -3955,18 +3995,18 @@ def build_ppt(context: dict) -> None:
                 add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Data and operator contract", group[split_at:], THEME["amber"], f"since-more-b-{offset}", 10)
             audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Recent Platform Additions", "v1.48.0 release lineage", THEME["jade"])
+    slide, audit = add_slide(prs, "Recent Platform Additions", "v1.48.2 release lineage and aligned post-tag reliability", THEME["jade"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Recent agents and execution surfaces", [
         "PDFer (v1.46.0): visual and wrapped document composer for Markdown, HTML, text, images, mixed reports, and PDF merging, with safe preflight and real-renderer tests.",
-        "LaTeXer (v1.48.0): visual and wrapped LaTeX typesetter and typesetting sibling of PDFer; embeds the whole mcp-latex-server tool surface natively with no MCP server and no new dependency, adds whole-project compilation with master-document detection, a real BibTeX/biber and makeindex convergence loop, and readable LaTeX-log diagnostics. Requires MiKTeX; refuses cleanly when no distribution is present.",
+        "LaTeXer (v1.48.0/v1.48.2): visual and wrapped LaTeX typesetter with whole-project compilation, bibliography/index convergence, readable diagnostics, and an eight-rung repair ladder. Requires MiKTeX; refuses cleanly when no distribution is present.",
+        "Execution verdict (post-tag HEAD): deterministic self-report parsing separates successful diagnostics from adverse findings, preserves process and agent truth, and fixes Exec Report false positives/false negatives.",
         "STM32er (v1.42.0): device-aware PlatformIO routing adds Blue Pill/mainstream-family build and safe flash; new stepwise Blue Pill/F407 demos finish with camera evidence.",
         "Prompt catalog (v1.42.0): migration 0179 deliberately regroups and renumbers every row to contiguous 1..N category blocks, backed by four database invariants tests.",
-        "Prompt catalog (v1.41.3): 13 categories, 13 duplicate ACPX rows removed, stable surviving ids, gap-tolerant loading, and ranked fuzzy search.",
         "Hard Cancel (v1.41.2): per-user run epochs stop executor/retry/self-healing resurrection while preserving completed tool evidence and the next request.",
         "Binary-content guard (v1.47.0): candidate context files are screened by bytes, binary content is dropped from the embedding chain, and each omission is logged as --- [BINARY-GUARD]; fail-open by contract.",
     ], THEME["copper"], "monday-a", 10)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Lifecycle, policy, and monitoring", [
-        "Resolved identity: the current version is v1.48.0; the aligned local/remote HEAD is reported separately, and local configuration values are not reproduced here.",
+        "Resolved identity: the latest annotated version is v1.48.2; the aligned local/remote HEAD is one post-tag commit later and is reported separately, while local configuration values are not reproduced here.",
         "The stronger disclaimer says plain-Python transparency enables user control but is not a security warranty; the operator owns authorization, permissions, review, and consequences.",
         "The dossier distinguishes tagged behavior from local configuration-only changes, preserves private-data discipline, and does not stage, commit, or push.",
         "Operator setup: easy-start install, Ollama guidance, Config dialogs, DB menu, and Windows Installed-apps registration stay in the dossier.",

@@ -1,6 +1,3 @@
-# PIL.ImageGrab is FORBIDDEN (Angela, 2026-08-02): screenshots are
-# taken by SHOTER, Tlamatini's own agent. See shoter_shot.py.
-from shoter_shot import take_shot
 # -*- coding: utf-8 -*-
 # ═══════════════════════════════════════════════════════════════════
 #   ✦  T L A M A T I N I  ✦   —   "one who knows"
@@ -28,15 +25,3 @@ drives agent_page.html exactly like the daily test does. Each Discoverer test
 is a SAFE, passive CVE-database lookup (tool='cvemap' -> vulnx) — no scanning of
 any third-party host.
 """
-import os
-import sys
-import time
-import json
-import html
-import datetime as _dt
-
-HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, HERE)
-
-import config as C          # noqa: E402
-import run_test as R        # noqa: E402  (Harness, JS constants, heuristics)

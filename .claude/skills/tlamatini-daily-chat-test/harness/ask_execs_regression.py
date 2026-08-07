@@ -153,7 +153,7 @@ def shot(name: str) -> None:
         except Exception:
             pass
     p = OUT / f"{len(SHOTS):02d}_{name}.png"
-    take_shot(os.path.dirname(path), os.path.basename(path))
+    take_shot(os.path.dirname(p), os.path.basename(p))
     SHOTS.append(p.name)
 
 
