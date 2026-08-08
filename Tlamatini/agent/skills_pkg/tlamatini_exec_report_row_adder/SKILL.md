@@ -41,6 +41,24 @@ metadata:
 
 # Exec Report row adder
 
+> **Read this first — capture is ALREADY automatic (2026-06-07).** EVERY wrapped
+> `chat_agent_*` is captured by `_resolve_exec_report_spec` with no code at all,
+> observational/output and read-only agents INCLUDED. This procedure is an
+> **OPTIONAL refinement**: use it only to merge a shared `agent_key` (a direct
+> `@tool` + its wrapped launch), fix the display casing, or give the table a
+> CSS-matched caption gradient. A missing entry does NOT hide an agent.
+>
+> **And it never sets the row's colour.** SUCCESS/FAILED is decided by
+> `agent/agent_verdict.py` (v1.48.2) from the agent's OWN `INI_SECTION`
+> self-report, which **OUTRANKS the process exit code**. If a row is coloured
+> wrong, fix the `status:` the agent emits — a read-only diagnostic reporting a
+> finding (`invalid`, `findings`, `no_matches`, `listed`, …) must be a SUCCESS
+> and must `sys.exit(0)`; only `refused` / `not_found` / `engine_unavailable` /
+> `error` / `failed` are red. **Never** add a special case to `mcp_agent.py`, and
+> **never** re-inline a second copy of `DIAGNOSTIC_COMPLETED_STATUSES` — there is
+> exactly ONE definition, in `agent_verdict.py`, and a drifted copy silently
+> mis-colours rows.
+
 Three-step procedure (matches `docs/claude/exec-report.md`):
 
 1. Add an entry to `_EXEC_REPORT_TOOLS` in `Tlamatini/agent/mcp_agent.py`:
@@ -56,6 +74,7 @@ Three-step procedure (matches `docs/claude/exec-report.md`):
      to the dark-tinted override selector list.
 
 3. Run `python Tlamatini/manage.py test agent.tests.ExecReportCaptureTests`.
-   Report the pass/fail status.
+   Report the pass/fail status. If the verdict/colour logic was touched at all,
+   also run `agent.test_agent_verdict` and `agent.test_exec_report_verdict`.
 
 Return `{ rows_added, tests_pass }`.

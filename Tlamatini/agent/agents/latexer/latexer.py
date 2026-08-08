@@ -3656,7 +3656,9 @@ def _toolchain_for_engine(engine: str, config: dict, env: dict) -> dict:
 
 
 # =============================================================================
-# RUNG 7 - BISECT: isolate the offending block and build everything else
+# RUNG 8 - BISECT: isolate the offending block and build everything else.
+#                  THE TRUE LAST RESORT -- the only rung that deletes the
+#                  author's content, which is why it runs after `model`.
 # =============================================================================
 
 def _split_body_blocks(source: str) -> tuple:
@@ -3827,15 +3829,19 @@ def _safe_remove(path: str) -> None:
 
 
 # =============================================================================
-# RUNG 8 - MODEL: the last resort, held to the same standard as everything else
+# RUNG 7 - MODEL: the last NON-DESTRUCTIVE resort, held to the same standard
+#                 as everything else.  (Defined after bisect in this file only
+#                 for layout; LADDER_RUNGS is the authoritative order and runs
+#                 model BEFORE bisect -- see the 2026-08-05 reorder note.)
 # =============================================================================
 
 def _ollama_repair(source: str, diag: dict, config: dict, trace: list) -> str:
     """Ask an Ollama model to repair the source. Stdlib only, fails open.
 
     Three rules make this safe to have at all:
-      * it is the LAST rung, so it only ever sees documents seven deterministic
-        rungs could not fix;
+      * it is the last NON-DESTRUCTIVE rung, so it only ever sees documents the
+        six deterministic rungs before it could not fix (only `bisect`, which
+        deletes content, comes after it);
       * its answer re-enters the ladder at rung 1 and must pass the same lint
         gate as any other repair;
       * a reply that is not a complete document, or that is wildly shorter than

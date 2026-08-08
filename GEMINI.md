@@ -263,6 +263,33 @@ To prevent task manager pollution (where companion `conhost.exe` processes would
 
 So sister XAIHT apps like **Tlamatini-FlowPills** can find Tlamatini's agent-template catalog at startup WITHOUT importing Python, running Tlamatini, or scanning drives, Tlamatini publishes three read-only, **HKCU-only, fail-open** surfaces: the registry key `HKCU\Software\XAIHT\Tlamatini` (six `REG_SZ` values — `InstallLocation`, `AgentsRoot`, `SourceAgentsRoot`, `AgentManifestPath`, `Version`, `AgentCatalogVersion`; all six written every call, empty when unknown), the `_tlamatini_agents_manifest.json` next to the agents (complete templates only, per-file `sha256`, `utf-8-sig` read), and the `.tlamatini-preserved-agents.json` marker the uninstaller leaves (with `manifest_sha256`; the discovery key is KEPT). Engine `agent/agent_manifest.py` + `agent/windows_app_registration.py`; wired into `apps.py` (scheduled FIRST in `ready()`, import-independent, dedicated idempotency gate), `install.py` (independent of the ARP entry), `uninstall.py`, `build.py`. Filesystem is authoritative; 17 Django-free secret-safe tests in `agent/test_agent_manifest.py`. Contract: `docs/companion-app-discovery.md`; implements `Tlamatini-FlowPills-Lookup.md` §15 + second-sprint hardening.
 
+### 8.3b Truthful Exec-Report Verdicts (`agent_verdict.py`) — v1.48.2, 2026-08-06
+
+The Exec Report's per-row SUCCESS/FAILED verdict is decided by a **deterministic expert system**, not by the child process's exit code.
+
+**The bug it kills.** Two different questions were collapsed into one string: PROCESS (*"did the child exit 0?"* — one bit) and AGENT (*"did the agent do the job, and what did it FIND?"* — a typed record). `tools._launch_wrapped_chat_agent` set `payload["status"]` from the exit code, and the attempt to lift the agent's own `status:` used `payload.setdefault(...)` — a silent NO-OP on exactly that key. Live consequence: LaTeXer's linter, asked to check a deliberately broken document, found the bug exactly as designed and the Exec Report stamped it a red **FAILURE**.
+
+**How it works.** A lexer/parser turns the `INI_SECTION` self-report into a typed AST (`SectionNode` → `KVNode` → coerced values); an **ordered** production-rule table returns a `Verdict` carrying its rule id and the evidence that fired it. No model call, no heuristics.
+
+| rule | fires on | verdict |
+|---|---|---|
+| R1 | no self-report | the exit code |
+| R2 | `error` / `failed` | FAILED |
+| R3 | `refused` / `not_found` / `not_unique` / `engine_unavailable` (work did NOT happen) | FAILED |
+| R4 | read-only diagnostic completed — `invalid`, `findings`, `no_matches`, `listed` … | **SUCCESS** |
+| R5 | explicit `success:` / `ok:` | that boolean |
+| R6 | non-zero `errors:` (`"0"` is not a failure) | FAILED |
+| R7 | nothing decisive + non-zero exit | FAILED |
+| R8 | no failure signal | SUCCESS |
+
+**ORDER IS THE ALGORITHM — R4 must outrank R5 and R6.** A linter that worked perfectly reports `status: invalid` **and** `success: False` **and** `errors: 2` in the same breath; the last two describe the **document**, not the agent.
+
+**Contract (do NOT weaken):** the agent's self-report OUTRANKS the exit code; it is NEVER dropped (on a key collision the process view stays under `<key>` and the agent view lands on `agent_<key>` — both survive); a read-only diagnostic reporting an adverse finding has **SUCCEEDED** (a red row must mean *"the tool malfunctioned"*, never *"the tool found something"*); **fail-open** — every parse error resolves to "no opinion" and nothing may raise into a caller; stdlib-only and imports nothing from `agent.*` (so no `tools.py` ↔ `mcp_agent.py` import cycle, identical frozen and from source); the status vocabulary has exactly ONE definition (`agent_verdict.DIAGNOSTIC_COMPLETED_STATUSES`) — do not re-inline a copy.
+
+**If you author an agent**: its `status:` is load-bearing — READ, not decoration. A read-only diagnostic must exit `0` even when it finds problems; never tie the exit code to how clean the user's input was. Pinned by `agent/test_agent_verdict.py` (25 tests) + `agent/test_exec_report_verdict.py`.
+
+---
+
 ### 8.4 Configurable Web Port (`django_port`) — v1.40.1
 
 Tlamatini's web UI + chat WebSocket port is **no longer hardcoded to 8000** — `8000` is only the *default*. It lives in `config.json` as **`django_port`**. `manage.py::_resolve_django_port()` reads and range-validates it, and `manage.py::_apply_configured_port()` injects it into `sys.argv` for **every** launch path: the frozen double-click, the `.flw` file association, the frozen browser auto-open, source `runserver`, and `startserver`. Both helpers are deliberately **stdlib-only** (they run BEFORE Django is imported — never make them import `agent.*`). Two invariants, pinned by 24 tests in `agent/test_django_port_config.py`: (1) **fail-open** — a missing / unreadable / non-numeric / out-of-range value falls back to 8000 and prints `--- [PORT] …`, so a config typo can never stop startup; (2) **an explicit CLI `[ipaddr:]port` always wins** (`runserver 9100`), and the injector never double-appends onto the frozen `0.0.0.0:<port>` rewrite. Why it exists: where Windows/Hyper-V has RESERVED port 8000, Daphne cannot bind it and the app died with `WinError 10013` — a frozen install had no escape short of a rebuild. Not covered by the key (by design): a direct `daphne`/`uvicorn` launch, the MCP helper listeners `:8765` / `:50051`, and TeleTlamatini's own `tlamatini.base_url`. Contract: `docs/claude/architecture.md` → *Configurable web port*.

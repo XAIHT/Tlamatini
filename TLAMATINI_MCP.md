@@ -42,6 +42,24 @@ The exact Tlamatini "launcher dance" — no shortcuts:
 3. run `python <name>.py` in the copied dir
 4. read `<name>__<runid>.log` (where the agent writes its result) and return it
 
+### `config_used` is echoed back — but BULKY values are truncated (v1.48.2)
+
+Every result echoes the fully-resolved `config_used`, so you can see exactly what the
+agent ran with. That is genuinely useful for a 20-character `pattern` — and actively
+harmful for a 46 KB `content` (File-Creator) or a 10 KB `input_text` (LaTeXer), where
+the echo alone can blow the caller's response budget and push out the run's **real
+log**. So `_redact_bulky()` replaces any string longer than `_ECHO_VALUE_LIMIT`
+(600 chars) with a truncated prefix plus an **honest** marker naming the true size:
+
+```
+"content": "The first 600 characters…... <redacted from echo: 46231 chars total>"
+```
+
+It recurses into dicts and lists (depth-capped at 6) and it affects **only the echo** —
+the agent always receives the complete, unmodified value. Nothing is silently
+misrepresented: the marker always states the real length. This is why long `new_string`
+/ `content` arguments come back visibly shortened in the tool result.
+
 ## Calling agents
 
 Each agent tool's parameters are **auto-derived from its `config.yaml`**, plus
