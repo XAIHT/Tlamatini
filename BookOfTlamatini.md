@@ -2620,7 +2620,7 @@ flash and observe embedded firmware" — but through deliberately different plum
 |---|---|---|
 | Toolchain driver | A separate **MCP server** (the STM32 Template Project MCP), because STM32CubeIDE has no single unified CLI. | The **`pio` CLI directly** — PlatformIO already ships a complete command line, so there is **no MCP server**. |
 | What gets downloaded | The MCP repo (`git clone`/zip) + its Python deps. | PlatformIO Core itself (the official `get-platformio.py` installer), once. |
-| The "template project" | Lives *inside* the MCP repo and is F407VG-specific. | Is **this** independent repository (`ESP32TemplateProject`), board-and-framework agnostic by editing one file. |
+| The "template project" | Lives *inside* the MCP repo and is F407VG-specific. | Is a separate, self-contained project (`ESP32TemplateProject` — not yet published as a repository; ESP32er scaffolds an equivalent), board-and-framework agnostic by editing one file. |
 
 So the ESP32 Template Project is intentionally a **plain PlatformIO project**, not
 a server. ESP32er does not embed it — ESP32er can either point at a checkout of it
@@ -2631,8 +2631,10 @@ produces, kept as a maintained, CI-tested baseline.
 ## 58.2. Where it lives and what's in it
 
 The scaffold ships at **`C:\Development\ESP32TemplateProject`** and is meant to be
-its own GitHub repository (the natural home, mirroring the STM32 one, is
-`https://github.com/XAIHT/ESP32TemplateProject`):
+its own GitHub repository. That home has **not been published yet** — mirroring the
+STM32 one it would be `https://github.com/XAIHT/ESP32TemplateProject`, so treat that
+address as a plan rather than a link. Until it exists, ESP32er scaffolds an equivalent
+project on demand with `action: create_project`:
 
 ```
 ESP32TemplateProject/
@@ -3148,7 +3150,7 @@ The other firmware agents make Tlamatini an *embedded engineer*. ESPHomer makes 
 | **Skill** | Markdown-driven extension package — a directory under `agent/skills_pkg/<name>/` with a `SKILL.md` (YAML frontmatter + body). 27 seed skills ship. |
 | **STM32er** | Tlamatini agent that scaffolds, builds, flashes, and observes STM32F407VG firmware through the STM32 Template Project MCP (`https://github.com/XAIHT/STM32TemplateProjectMCP`), via a self-contained inline MCP stdio JSON-RPC client. Zero-config auto-bootstrap downloads the MCP itself and a safety preflight refuses to build/flash on a bad toolchain or wrong device family. Available both as the wrapped Multi-Turn tool `chat_agent_stm32er` and as a visual canvas node. Joined as the 68th entry in the agent catalog (now 70 with ESP32er #69 and Arduiner #70); the first of the microcontroller-firmware trio (STM32er drives an MCP server; ESP32er and Arduiner drive a CLI directly). |
 | **STM32 Template Project MCP** | FastMCP stdio server (`https://github.com/XAIHT/STM32TemplateProjectMCP`) exposing 23 tools for STM32F407VG firmware scaffolding, build, flash, and serial observation. STM32er is a client of it — it does not embed it — and auto-downloads it on first use. |
-| **ESP32 Template Project** | A standalone PlatformIO project (`https://github.com/XAIHT/ESP32TemplateProject`) that blinks an ESP32's onboard LED and prints the LED state over serial — the ESP32 counterpart of the STM32 Template Project MCP. Unlike the STM32 one it is a plain PlatformIO project, not a server, because ESP32er drives the `pio` CLI directly. ESP32er can build/flash/monitor a checkout of it (`project_dir`) or scaffold an equivalent with `action: create_project`. See bonus chapter §58. |
+| **ESP32 Template Project** | A standalone PlatformIO project (**not yet published**; its intended home is `https://github.com/XAIHT/ESP32TemplateProject`) that blinks an ESP32's onboard LED and prints the LED state over serial — the ESP32 counterpart of the STM32 Template Project MCP. Unlike the STM32 one it is a plain PlatformIO project, not a server, because ESP32er drives the `pio` CLI directly. ESP32er can build/flash/monitor a checkout of it (`project_dir`) or scaffold an equivalent with `action: create_project`. See bonus chapter §58. |
 | **ESPHome** | The Open Home Foundation system (`https://esphome.io`) that turns ESP32 / ESP8266 / RP2040 / BK72xx boards into smart-home devices from a **simple YAML config — no C++**. It ships the `esphome` CLI (validate / compile / upload over USB or OTA / logs / clean) and exposes devices to a hub (e.g. Home Assistant) over a native API for local control. The foundation ESPHomer is built on. |
 | **ESPHomer** | Tlamatini agent that authors, validates, compiles, uploads, and observes ESPHome smart-home device firmware by driving the `esphome` CLI directly — no MCP server. A device is a YAML file, not a program; ESPHomer ships a built-in `new_config` generator (the headless replacement for `esphome wizard`) and a zero-config `pip install esphome` bootstrap, and runs a fail-safe preflight (serial OR OTA host) before any flash. The fourth microcontroller-firmware agent and the direct-CLI sibling of ESP32er / Arduiner. Available both as the wrapped Multi-Turn tool `chat_agent_esphomer` and as a visual canvas node. See bonus chapter §60. |
 | **ESPHomeTemplateProject** | The bundled ESPHome sample (`agent/agents/esphomer/ESPHomeTemplateProject/tlamatini-light.yaml`) — a known-good, phone-controllable on/off light on the onboard LED, with the native API / OTA / WiFi blocks — the ESPHome analog of the ESP32 Template Project and the ArduinoTemplateProject. |
