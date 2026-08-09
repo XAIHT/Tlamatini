@@ -33,6 +33,13 @@ from versioning import (
     resolve_build_version,
 )
 
+# pip's "A new release of pip is available" nag: OFF (pure build-log noise, and
+# NOT fixable by upgrading pip — the build Python's prefix is usually read-only
+# Program Files). See build.py for the full rationale. Every pip command in this
+# file ALSO passes --disable-pip-version-check explicitly.
+# Pinned by Tlamatini/agent/test_build_pip_quiet.py.
+os.environ["PIP_DISABLE_PIP_VERSION_CHECK"] = "1"
+
 
 def run_step(label, func, *args, **kwargs):
     """Execute a build step with consistent logging and error handling."""
@@ -223,7 +230,8 @@ def main():
     except ImportError:
         print("PyInstaller not found — installing...")
         result = subprocess.run(
-            [sys.executable, "-m", "pip", "install", "pyinstaller"],
+            [sys.executable, "-m", "pip", "--disable-pip-version-check",
+             "install", "pyinstaller"],
         )
         if result.returncode != 0:
             print("ERROR: Failed to install PyInstaller. Aborting build.")

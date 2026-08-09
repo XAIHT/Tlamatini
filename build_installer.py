@@ -34,6 +34,13 @@ from versioning import (
     resolve_build_version,
 )
 
+# pip's "A new release of pip is available" nag: OFF (pure build-log noise, and
+# NOT fixable by upgrading pip — the build Python's prefix is usually read-only
+# Program Files). See build.py for the full rationale. Every pip command in this
+# file ALSO passes --disable-pip-version-check explicitly.
+# Pinned by Tlamatini/agent/test_build_pip_quiet.py.
+os.environ["PIP_DISABLE_PIP_VERSION_CHECK"] = "1"
+
 
 # ── Splash image parameters (matches installer colour palette) ────────────────
 _SPLASH_FILE = "splash_installer.png"
@@ -313,7 +320,9 @@ def main():
         print("PyInstaller is available.")
     except ImportError:
         print("PyInstaller not found — installing...")
-        result = subprocess.run([sys.executable, "-m", "pip", "install", "pyinstaller"])
+        result = subprocess.run(
+            [sys.executable, "-m", "pip", "--disable-pip-version-check",
+             "install", "pyinstaller"])
         if result.returncode != 0:
             print("ERROR: Failed to install PyInstaller. Aborting build.")
             sys.exit(1)

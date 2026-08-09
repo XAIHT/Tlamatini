@@ -16,6 +16,72 @@
 
 ---
 
+## 2026-08-09 — pip's "A new release of pip is available" nag on EVERY `build_complete_*` run: suppress the CHECK, do NOT chase the upgrade
+
+**Symptom (Angela).** Every single run of `build_complete_public_release.py` /
+`build_complete_private_release.py` printed, mid-build:
+
+```
+[notice] A new release of pip is available: 25.0.1 -> 26.2
+[notice] To update, run: python.exe -m pip install --upgrade pip
+```
+
+and it **came back after she manually upgraded pip** — which is what made it feel unfixable.
+
+**Root cause — there are TWO pips, and the upgrade went to the wrong one.**
+Measured live on this machine:
+
+| interpreter | pip | prefix |
+|---|---|---|
+| `C:/Program Files/Python312/python.exe` ← **what the build uses** | **25.0.1** | READ-ONLY (Program Files) — `--upgrade pip` needs admin |
+| `<repo>/python` (the carried Python) | **26.2.1** ✅ | writable — this is the one that got upgraded |
+
+So the manual upgrade was real, it just landed on a different interpreter. And even a
+*successful* upgrade of the build pip would only buy silence **until pip's next release** —
+"keep pip current" is a treadmill, not a fix. Note the notice is emitted after an
+already-satisfied `pip install -r requirements.txt` too, which is why it appeared on every
+build regardless of whether anything was installed.
+
+**Fix — disable the CHECK, in two layers (do NOT strip either).**
+
+1. **Environment pin** `PIP_DISABLE_PIP_VERSION_CHECK=1` in all five build scripts, so
+   **every child *and grandchild* pip inherits it** — including pips we do not spawn
+   directly. In `build.py` / `build_installer.py` / `build_uninstaller.py` it is a
+   module-level `os.environ[...]`; in the two `build_complete_*` wrappers it is set inside
+   **`_utf8_env()`**, which is the single env every child process of the wrapper gets.
+2. **Explicit `--disable-pip-version-check`** on all 8 direct pip commands
+   (`build.py` ×6, `build_installer.py` ×1, `build_uninstaller.py` ×1), placed **before the
+   subcommand** (`-m pip --disable-pip-version-check install ...` — verified live that pip
+   accepts it there). Belt-and-braces: the silence survives a refactor that rebuilds `env`
+   from scratch.
+
+**⚠️ E402 trap:** the `os.environ[...]` pin **must sit AFTER the `from versioning import ...`
+block**. Ruff's default rule set includes E4, so a bare statement placed *between* imports
+trips `E402 module level import not at top of file` on the import that follows it.
+(Same class of trap as the pool agents' `TLAMATINI_TEMP` guard, which is written as an
+`if`-block for exactly this reason.)
+
+**Explicitly NOT done:** the build does not run `pip install --upgrade pip`. That needs admin
+on a Program Files prefix, adds a network round-trip to an already ~18-minute build, and
+solves nothing durably. `test_no_pip_upgrade_treadmill_in_the_build` fails if someone adds it.
+
+**Coverage:** `Tlamatini/agent/test_build_pip_quiet.py` (4 tests, AST-based so it cannot be
+fooled by reformatting) pins both layers in both directions and fails if a build script is
+renamed out of the guard's reach. It **skips** when the repo-root build scripts are absent
+(frozen/packaged tree) — fail-open.
+
+**Live proof (2026-08-09, visible window, log `Temp/pip_nag_fix_verify.log`):** control run
+with no fix reproduced the notice verbatim; the same command with **only the CLI flag**, and
+again with **only the env var**, printed **no notice**, exit 0 in all three. Ruff clean,
+`py_compile` clean, guard test 4/4 OK.
+
+**Scope note:** this covers the BUILD pipeline only. The pool agents that pip-install at
+runtime (ESPHomer `pip install esphome`, STM32er `mcp`/`pyserial`, ESP32er's PlatformIO
+bootstrap) can still surface the notice in their own agent logs — deliberately left alone
+rather than touching mission-critical agents for a cosmetic line.
+
+---
+
 ## 2026-08-08 (same day, follow-up) — the self-modify gate was never WIRED: `apply_self_knowledge_blocks` existed, was tested, and was called by nobody (`rag/config.py`)
 
 **Found by running the suite, in BOTH trees.** `agent/test_self_modify_gate.py`

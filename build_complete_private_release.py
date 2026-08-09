@@ -111,6 +111,14 @@ def _utf8_env() -> dict:
     env = dict(os.environ)
     env["PYTHONUTF8"] = "1"
     env["PYTHONIOENCODING"] = "utf-8"
+    # Silence pip's "A new release of pip is available" nag in EVERY child of
+    # this wrapper (build.py / build_uninstaller.py / build_installer.py) and in
+    # every pip THEY spawn. It is pure noise, and upgrading pip does not fix it:
+    # the build Python is normally the SYSTEM one under Program Files, whose pip
+    # sits in a READ-ONLY prefix (upgrading the carried <repo>/python's pip
+    # instead changes nothing there). Full rationale in build.py.
+    # Pinned by Tlamatini/agent/test_build_pip_quiet.py.
+    env["PIP_DISABLE_PIP_VERSION_CHECK"] = "1"
     # PRIVATE / keyed build: ship the REAL contacts book when the gitignored
     # contacts.private.json is present (build.py reads TLAMATINI_BUNDLE_CONTACTS
     # and bundles it as contacts.json). Absent -> build.py ships the empty book.

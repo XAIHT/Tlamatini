@@ -28,6 +28,20 @@ from versioning import (
     resolve_build_version,
 )
 
+# ── pip's "A new release of pip is available" nag: OFF for the whole build ──
+# It is pure noise in a long build log, and it is NOT fixable the obvious way:
+# the build Python is normally the SYSTEM one under Program Files, whose pip
+# lives in a READ-ONLY prefix, so `python -m pip install --upgrade pip` cannot
+# write there without admin — and upgrading a DIFFERENT interpreter's pip (e.g.
+# the carried <repo>/python, which is writable) does nothing for it. Even a
+# successful upgrade only buys silence until pip's next release. So the CHECK
+# itself is disabled: set here in the environment so EVERY child pip inherits
+# it (including nested ones we do not spawn directly), while each pip command
+# below ALSO passes --disable-pip-version-check explicitly — belt-and-braces,
+# so the silence survives a refactor that rebuilds env from scratch.
+# Pinned by Tlamatini/agent/test_build_pip_quiet.py.
+os.environ["PIP_DISABLE_PIP_VERSION_CHECK"] = "1"
+
 
 def find_package_data_paths(pypi_name, import_name):
     """Finds paths for a package's code and metadata."""
@@ -254,7 +268,8 @@ def _purge_numpy_environment(python_exe):
     # loop until pip reports nothing left.
     for _ in range(5):
         result = subprocess.run(
-            [python_exe, "-m", "pip", "uninstall", "-y", "numpy"],
+            [python_exe, "-m", "pip", "--disable-pip-version-check",
+             "uninstall", "-y", "numpy"],
             capture_output=True, text=True,
         )
         combined = (result.stdout or "") + (result.stderr or "")
@@ -600,13 +615,15 @@ def ensure_local_build_python():
     env["PYTHONNOUSERSITE"] = "1"
     print(f"--- Installing agent deps into the source-tree build Python: {local_exe} ---")
     subprocess.run(
-        [str(local_exe), "-m", "pip", "install", "--no-warn-script-location",
+        [str(local_exe), "-m", "pip", "--disable-pip-version-check",
+         "install", "--no-warn-script-location",
          "torch", "--index-url", "https://download.pytorch.org/whl/cpu"],
         env=env, check=False,
     )
     if req_file.exists():
         rc = subprocess.run(
-            [str(local_exe), "-m", "pip", "install", "--no-warn-script-location",
+            [str(local_exe), "-m", "pip", "--disable-pip-version-check",
+             "install", "--no-warn-script-location",
              "-r", str(req_file)],
             env=env, check=False,
         )
@@ -932,7 +949,8 @@ def main():
         # does NOT depend on this Python's prefix being writable or pre-populated.
         print(f"  -> Installing torch (CPU-only) for {target_python} ...")
         torch_cmd = [
-            target_python, "-m", "pip", "install", "--user", "torch",
+            target_python, "-m", "pip", "--disable-pip-version-check",
+            "install", "--user", "torch",
             "--index-url", "https://download.pytorch.org/whl/cpu",
         ]
         torch_result = subprocess.run(torch_cmd)
@@ -941,7 +959,8 @@ def main():
 
         # 1b) Install remaining dependencies from requirements.txt
         if req_file.exists():
-            pip_cmd = [target_python, "-m", "pip", "install", "--user", "-r", str(req_file)]
+            pip_cmd = [target_python, "-m", "pip", "--disable-pip-version-check",
+                       "install", "--user", "-r", str(req_file)]
             pip_result = subprocess.run(pip_cmd)
             if pip_result.returncode != 0:
                 print(f"ERROR: pip install -r requirements.txt failed for {target_python}. Aborting build.")
@@ -1012,7 +1031,9 @@ def main():
         import PyInstaller  # noqa: F401
     except Exception:
         print("\n--- Installing PyInstaller ---")
-        ensure_pyinstaller = subprocess.run([sys.executable, "-m", "pip", "install", "--user", "pyinstaller"])
+        ensure_pyinstaller = subprocess.run(
+            [sys.executable, "-m", "pip", "--disable-pip-version-check",
+             "install", "--user", "pyinstaller"])
         if ensure_pyinstaller.returncode != 0:
             print("ERROR: Failed to install PyInstaller. Aborting build.")
             sys.exit(1)
