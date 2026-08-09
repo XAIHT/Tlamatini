@@ -234,6 +234,15 @@ def load_config_and_prompt(application_path: str) -> Tuple[Dict[str, Any], str, 
     with open(prompt_file_path, 'r', encoding='utf-8') as f:
         prompt_template = f.read()
 
+    # Resolve the sentinel-wrapped self-knowledge XOR *first*: in a
+    # not-self-able-modify build this drops the whole <self_knowledge> section
+    # -- placeholder included -- and keeps the one short honest line instead.
+    # ORDER MATTERS: it has to run BEFORE the placeholder replacement below, or
+    # the file would be injected into a block that is about to be deleted (and
+    # the markers would leak into the prompt the LLM actually reads).
+    prompt_template = apply_self_knowledge_blocks(
+        prompt_template, is_self_able_modify(application_path))
+
     # Inject the live self-knowledge file into the {self_knowledge} placeholder
     # (when present) before the template reaches ChatPromptTemplate. Resolving
     # it here — the single load site for prompt.pmt — covers every chain (basic,

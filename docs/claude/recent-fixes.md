@@ -16,6 +16,43 @@
 
 ---
 
+## 2026-08-08 (same day, follow-up) — the self-modify gate was never WIRED: `apply_self_knowledge_blocks` existed, was tested, and was called by nobody (`rag/config.py`)
+
+**Found by running the suite, in BOTH trees.** `agent/test_self_modify_gate.py`
+shipped 28 tests; **6 of them failed identically in Tlamatini and in
+Tlamatini-Spanish** — `test_no_marker_ever_leaks_into_the_prompt`,
+`test_default_mode_drops_the_entire_self_knowledge_section`,
+`test_self_modify_mode_keeps_her_exactly_as_before`,
+`test_default_mode_prompt_is_smaller`, `test_exactly_one_alternative_survives`,
+`test_real_checkout_is_self_consistent`. The code contradicted its own test
+suite, so this was unfinished wiring, not a design choice.
+
+**What was wrong.** `apply_self_knowledge_blocks(prompt, self_able)` was written,
+documented and covered — but `load_config_and_prompt` never called it. Only the
+*second* layer worked (`_load_self_knowledge_block` returning the short notice),
+which is why the big saving still showed up and hid the hole. Consequences:
+the literal `<!--SELF_KNOWLEDGE_BEGIN-->` sentinels **leaked into the system
+prompt the model actually reads**, and **BOTH alternatives survived** — she was
+told she carries her full self-knowledge *and*, two lines later, that she
+carries none.
+
+**The fix.** Two lines at the single prompt-load site:
+
+```python
+prompt_template = apply_self_knowledge_blocks(
+    prompt_template, is_self_able_modify(application_path))
+```
+
+**⚠️ ORDER MATTERS — do NOT move it below the placeholder replacement.** The
+block resolution must run FIRST: in a not-self-able-modify build it deletes the
+whole `<self_knowledge>` section *including* the `{self_knowledge}` placeholder,
+so the injection below correctly finds nothing. Reversed, the file would be
+injected into a block that is about to be deleted, and the markers would leak
+exactly as before. Both trees now pass: 28/28 English, 61/61 Spanish
+(28 + the Spanish sync guards).
+
+---
+
 ## 2026-08-08 — `--self-modify` only worked HALF way: a not-self-able-modify build still carried her ENTIRE self-description in every prompt (`rag/config.py`, `prompt.pmt`, `build.py`, `build_complete_private_release.py`)
 
 **The demand (Angela).** Verify that without `--self-modify` (a) the source code is not copied into the zip, and (b) the context about herself is not injected into `prompt.pmt` at runtime — *"no matter Tlamatini does not understand too much about her"*. Then: **the goal is to reduce the context size and the token intake in the default mode**, and *"if `--self-modify` is selected then let Tlamatini like it was with all about herself in order to modify herself"*. Plus: **`build_complete_*` must default as if `--no-self-modify` were set.**
