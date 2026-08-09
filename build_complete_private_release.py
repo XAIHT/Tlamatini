@@ -24,7 +24,9 @@ Pipeline
 --------
   0. SAFETY: refuse the carried interpreter (build with the SYSTEM python).
   1. regen_secrets.py --mode keyed   -> real secrets in the config files.
-  2. build.py [--self-modify]        -> freeze app + pkg.zip.
+  2. build.py --no-self-modify      -> freeze app + pkg.zip (DEFAULT: NO source
+     tree and NO Tlamatini.md, so the system prompt stays ~15.7k tokens smaller
+     per request; pass --self-modify to this script to bundle both instead).
   3. build_uninstaller.py            -> Uninstaller.exe.
   4. build_installer.py              -> dist/Tlamatini_Release_v<ver>/.
   5. zip -> dist/Tlamatini_Release_v<ver>_PRIVATE_KEYED_win11x64.zip
@@ -39,6 +41,7 @@ import shutil
 import subprocess
 import sys
 import time
+import zipfile
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent
@@ -47,6 +50,7 @@ REGEN = REPO_ROOT / "regen_secrets.py"
 BUILD = REPO_ROOT / "build.py"
 BUILD_UNINST = REPO_ROOT / "build_uninstaller.py"
 BUILD_INST = REPO_ROOT / "build_installer.py"
+PKG_ZIP = REPO_ROOT / "pkg.zip"            # build.py's real artifact (it deletes dist/)
 # Gitignored PRIVATE contacts book. When present, the keyed build bundles it as
 # contacts.json (build.py reads TLAMATINI_BUNDLE_CONTACTS). Absent -> empty book.
 CONTACTS_PRIVATE = REPO_ROOT / "contacts.private.json"
@@ -56,6 +60,34 @@ def banner(msg: str) -> None:
     print("\n" + "=" * 74, flush=True)
     print(f"== {msg}", flush=True)
     print("=" * 74, flush=True)
+
+
+def assert_self_modify_payload(expect_self_modify: bool) -> None:
+    """PROVE the built package matches the flag — never merely claim it.
+
+    Tlamatini's own source tree (``TlamatiniSourceCode/``) and her self-knowledge
+    file (``Tlamatini.md``) ship TOGETHER, or not at all. A build that silently
+    kept ``Tlamatini.md`` would put her entire self-description back into the
+    system prompt of EVERY request (~63k characters, ~15.7k tokens) — exactly
+    what the default not-self-able-modify mode exists to avoid. So we open the
+    artifact and LOOK, and we fail loud on a mismatch in either direction.
+    """
+    if not PKG_ZIP.is_file():
+        print(f"  NOTE: {PKG_ZIP.name} not found — skipping self-modify payload check.")
+        return
+    with zipfile.ZipFile(PKG_ZIP) as zf:
+        names = [n.replace("\\", "/") for n in zf.namelist()]
+    tree = any("TlamatiniSourceCode/" in n for n in names)
+    self_md = any(n.rsplit("/", 1)[-1] == "Tlamatini.md" for n in names)
+    print(f"  package payload: TlamatiniSourceCode={'PRESENT' if tree else 'absent'}, "
+          f"Tlamatini.md={'PRESENT' if self_md else 'absent'}")
+    if expect_self_modify and not (tree and self_md):
+        sys.exit("ABORT: --self-modify was requested but the package is missing "
+                 "TlamatiniSourceCode/ and/or Tlamatini.md — she could not modify herself.")
+    if not expect_self_modify and (tree or self_md):
+        sys.exit("ABORT: this is a not-self-able-modify build, yet the package still "
+                 "contains TlamatiniSourceCode/ and/or Tlamatini.md — the per-request "
+                 "prompt savings would be silently lost.")
 
 
 def assert_system_python(py: str) -> None:
@@ -110,20 +142,28 @@ def main(argv=None) -> int:
                     help="KEY=VALUE secrets file (default: data.keys next to script).")
     ap.add_argument("--version", default="", help="explicit version (default: git-tag derived)")
     ap.add_argument("--python", default=sys.executable, help="system python to drive the build")
+    # DEFAULT IS OFF (2026-08-08, Angela's directive): a build_complete_* run
+    # behaves as if --no-self-modify were set, so the release ships NEITHER the
+    # TlamatiniSourceCode tree NOR Tlamatini.md (her self-knowledge) — the two
+    # travel together. Opt IN with --self-modify. --no-self-modify is kept as an
+    # accepted no-op so older commands and muscle memory still work.
+    ap.add_argument("--self-modify", action="store_true",
+                    help="bundle the TlamatiniSourceCode self-modify tree AND "
+                         "Tlamatini.md (default: NEITHER is bundled).")
     ap.add_argument("--no-self-modify", action="store_true",
-                    help="do NOT bundle the TlamatiniSourceCode self-modify tree "
-                         "(default: it IS bundled).")
+                    help="explicit form of the DEFAULT (no source tree, no "
+                         "self-knowledge); overrides --self-modify if both given.")
     args = ap.parse_args(argv)
 
     py = args.python
     assert_system_python(py)
-    self_modify = not args.no_self_modify
+    self_modify = args.self_modify and not args.no_self_modify
 
     banner("PRIVATE RELEASE BUILD  (KEYED -- contains your real data; DO NOT publish)")
     print(f"repo        : {REPO_ROOT}")
     print(f"python      : {py}")
     print(f"keys file   : {args.keys_file}")
-    print(f"self-modify : {'YES' if self_modify else 'no'}")
+    print(f"self-modify : {'YES — source tree + Tlamatini.md bundled' if self_modify else 'no (DEFAULT) — no source tree, no self-knowledge, smaller prompt'}")
     print(f"contacts    : {'COMPLETE (contacts.private.json)' if CONTACTS_PRIVATE.is_file() else 'EMPTY (contacts.private.json not found)'}")
 
     banner("STEP 1/5  regen_secrets.py --mode keyed")
@@ -132,12 +172,14 @@ def main(argv=None) -> int:
 
     banner("STEP 2/5  build.py")
     build_cmd = [py, str(BUILD)]
-    if self_modify:
-        build_cmd.append("--self-modify")
+    # Pass the decision EXPLICITLY either way, so the intent is recorded in the
+    # build log and a stray "--self-modify" in the ambient argv cannot flip it.
+    build_cmd.append("--self-modify" if self_modify else "--no-self-modify")
     if args.version:
         build_cmd.append(args.version)
     if run(build_cmd) != 0:
         sys.exit("build.py failed.")
+    assert_self_modify_payload(self_modify)
 
     banner("STEP 3/5  build_uninstaller.py")
     if run([py, str(BUILD_UNINST)] + ([args.version] if args.version else [])) != 0:

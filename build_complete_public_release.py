@@ -30,7 +30,9 @@ Pipeline
   1. BACK UP touched files (restored in `finally`).
   2. regen_secrets.py --mode push-able  -> config secrets become placeholders.
   3. sanitize external_mcps.json (ship an empty catalog) + SCRUB the working tree.
-  4. build.py [--self-modify]            -> freeze app + pkg.zip (build.py deletes dist/).
+  4. build.py --no-self-modify           -> freeze app + pkg.zip (build.py deletes dist/).
+     DEFAULT: NO source tree and NO Tlamatini.md, keeping ~15.7k tokens out of
+     the system prompt per request; pass --self-modify here to bundle both.
   5. VERIFY: extract pkg.zip and run check_private_data.py over it.
        any of YOUR personal data present -> ABORT, tree restored.
   6. build_uninstaller.py + build_installer.py -> dist/Tlamatini_Release_v<ver>/.
@@ -145,6 +147,34 @@ def banner(msg: str) -> None:
     print("\n" + "=" * 74, flush=True)
     print(f"== {msg}", flush=True)
     print("=" * 74, flush=True)
+
+
+def assert_self_modify_payload(expect_self_modify: bool) -> None:
+    """PROVE the built package matches the flag — never merely claim it.
+
+    Tlamatini's own source tree (``TlamatiniSourceCode/``) and her self-knowledge
+    file (``Tlamatini.md``) ship TOGETHER, or not at all. A build that silently
+    kept ``Tlamatini.md`` would put her entire self-description back into the
+    system prompt of EVERY request (~63k characters, ~15.7k tokens) — exactly
+    what the default not-self-able-modify mode exists to avoid. So we open the
+    artifact and LOOK, and we fail loud on a mismatch in either direction.
+    """
+    if not PKG_ZIP.is_file():
+        print(f"  NOTE: {PKG_ZIP.name} not found — skipping self-modify payload check.")
+        return
+    with zipfile.ZipFile(PKG_ZIP) as zf:
+        names = [n.replace("\\", "/") for n in zf.namelist()]
+    tree = any("TlamatiniSourceCode/" in n for n in names)
+    self_md = any(n.rsplit("/", 1)[-1] == "Tlamatini.md" for n in names)
+    print(f"  package payload: TlamatiniSourceCode={'PRESENT' if tree else 'absent'}, "
+          f"Tlamatini.md={'PRESENT' if self_md else 'absent'}")
+    if expect_self_modify and not (tree and self_md):
+        sys.exit("ABORT: --self-modify was requested but the package is missing "
+                 "TlamatiniSourceCode/ and/or Tlamatini.md — she could not modify herself.")
+    if not expect_self_modify and (tree or self_md):
+        sys.exit("ABORT: this is a not-self-able-modify build, yet the package still "
+                 "contains TlamatiniSourceCode/ and/or Tlamatini.md — the per-request "
+                 "prompt savings would be silently lost.")
 
 
 def assert_system_python(py: str) -> None:
@@ -353,13 +383,24 @@ def main(argv=None) -> int:
                     help="extra literal string to scrub (e.g. a leaked apikey); repeatable")
     ap.add_argument("--version", default="", help="explicit version (default: git-tag derived)")
     ap.add_argument("--python", default=sys.executable, help="system python to drive the build")
+    # DEFAULT IS OFF: a public release ships NEITHER the TlamatiniSourceCode
+    # tree NOR Tlamatini.md (her self-knowledge) — the two travel together, and
+    # dropping both keeps ~15.7k tokens out of the system prompt on EVERY
+    # request. --no-self-modify is accepted as the explicit form of the default.
     ap.add_argument("--self-modify", action="store_true",
-                    help="also bundle the (scrubbed) TlamatiniSourceCode tree")
+                    help="also bundle the (scrubbed) TlamatiniSourceCode tree AND "
+                         "Tlamatini.md (default: NEITHER is bundled).")
+    ap.add_argument("--no-self-modify", action="store_true",
+                    help="explicit form of the DEFAULT; overrides --self-modify.")
     ap.add_argument("--verify-llm", action="store_true",
                     help="let the auditor also run its LLM deep-review layer (slower, deeper)")
     ap.add_argument("--keep-scrubbed", action="store_true",
                     help="DANGEROUS: do not restore the working tree afterwards")
     args = ap.parse_args(argv)
+    # --no-self-modify is the explicit form of the DEFAULT and always wins, so a
+    # wrapper (or muscle memory) can force the small-prompt build unambiguously.
+    if args.no_self_modify:
+        args.self_modify = False
 
     py = args.python
     assert_system_python(py)
@@ -384,7 +425,7 @@ def main(argv=None) -> int:
     print(f"repo         : {REPO_ROOT}")
     print(f"python       : {py}")
     print(f"targets      : {len(values)} value(s) to scrub + verify")
-    print(f"self-modify  : {'YES (scrubbed snapshot)' if args.self_modify else 'no'}")
+    print(f"self-modify  : {'YES (scrubbed snapshot) — source tree + Tlamatini.md bundled' if args.self_modify else 'no (DEFAULT) — no source tree, no self-knowledge, smaller prompt'}")
 
     backup = Backup(REPO_ROOT)
     ok = False
@@ -408,12 +449,15 @@ def main(argv=None) -> int:
 
         banner("STEP 3/6  build.py (reads the scrubbed tree)")
         build_cmd = [py, str(BUILD)]
-        if args.self_modify:
-            build_cmd.append("--self-modify")
+        # Pass the decision EXPLICITLY either way, so the intent is recorded in
+        # the build log and a stray "--self-modify" in the ambient argv cannot
+        # flip it. DEFAULT (no flag on this script) = not-self-able-modify.
+        build_cmd.append("--self-modify" if args.self_modify else "--no-self-modify")
         if args.version:
             build_cmd.append(args.version)
         if run(build_cmd) != 0:
             sys.exit("build.py failed.")
+        assert_self_modify_payload(args.self_modify)
 
         # build.py creates pkg.zip then removes dist/, so scan the package
         # (extracted) instead of the deleted dist/manage.

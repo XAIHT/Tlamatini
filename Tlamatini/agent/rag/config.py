@@ -19,6 +19,21 @@ from typing import Tuple, Dict, Any
 SELF_KNOWLEDGE_FILENAME = 'Tlamatini.md'
 SELF_KNOWLEDGE_PLACEHOLDER = '{self_knowledge}'
 
+# Self-knowledge is GATED on the self-modify source tree (2026-08-08). A build
+# invoked WITHOUT `--self-modify` ships neither TlamatiniSourceCode/ nor
+# Tlamatini.md, so the two now travel together: the presence of this directory
+# in the application directory is the single runtime marker of a
+# self-able-modify build (prompt.pmt identity rules), and when it is absent
+# NOTHING about Tlamatini herself is injected into the system prompt.
+SELF_MODIFY_DIRNAME = 'TlamatiniSourceCode'
+NOT_SELF_ABLE_MODIFY_NOTICE = (
+    "(This is a not-self-able-modify build: your own source tree "
+    "'TlamatiniSourceCode/' is not bundled, so no self-knowledge is injected "
+    "here. Do not claim to read, edit or rebuild your own code. Speak about "
+    "yourself only from these prompt rules and, in Multi-Turn, from your tools "
+    "inspecting the running system.)"
+)
+
 # The Tlamatini Temp policy surfaces the ABSOLUTE temporary directory to the LLM
 # so its instruction ("write all temp files under your Temp directory, never
 # outside Tlamatini") is actionable — the LLM can pass this exact path to
@@ -49,6 +64,16 @@ TEMPLATES_DIRECTORY_PLACEHOLDER = '{templates_directory}'
 # regex backtracking over the very large ACPX block).
 ACPX_RULE_MARKERS = ('<!--ACPX_RULES_BEGIN-->', '<!--ACPX_RULES_END-->')
 TEMPLATES_RULE_MARKERS = ('<!--TEMPLATES_RULES_BEGIN-->', '<!--TEMPLATES_RULES_END-->')
+
+# Self-knowledge is the SAME kind of feature-gated block (2026-08-08). The whole
+# <self_knowledge> section — its two long identity bullets AND the injected
+# Tlamatini.md — is sentinel-wrapped so a not-self-able-modify build DROPS it
+# entirely instead of carrying a large block describing something this build
+# does not have. That is the POINT of the default mode: fewer prompt tokens on
+# every single request, with the truth stated in ONE short line instead
+# (NOT_SELF_MODIFY_MARKERS, kept exactly when the other pair is dropped).
+SELF_KNOWLEDGE_MARKERS = ('<!--SELF_KNOWLEDGE_BEGIN-->', '<!--SELF_KNOWLEDGE_END-->')
+NOT_SELF_MODIFY_MARKERS = ('<!--NOT_SELF_MODIFY_BEGIN-->', '<!--NOT_SELF_MODIFY_END-->')
 
 
 def _resolve_rule_block(prompt: str, markers: Tuple[str, str], include: bool) -> str:
@@ -99,6 +124,30 @@ def apply_conditional_rule_blocks(prompt: str, *, include_acpx: bool,
     return prompt
 
 
+def is_self_able_modify(application_path: str) -> bool:
+    """True when this deployment bundles its OWN source tree.
+
+    ``TlamatiniSourceCode/`` beside prompt.pmt is the single runtime marker of a
+    ``build.py --self-modify`` build. Fails CLOSED (False) on any error: the
+    cheap, honest answer is "you do not carry your own source", and guessing the
+    other way would make Tlamatini claim a capability she does not have.
+    """
+    try:
+        return os.path.isdir(os.path.join(application_path, SELF_MODIFY_DIRNAME))
+    except Exception:
+        return False
+
+
+def apply_self_knowledge_blocks(prompt: str, self_able: bool) -> str:
+    """Keep XOR drop the whole <self_knowledge> section (fail-open)."""
+    try:
+        prompt = _resolve_rule_block(prompt, SELF_KNOWLEDGE_MARKERS, self_able)
+        prompt = _resolve_rule_block(prompt, NOT_SELF_MODIFY_MARKERS, not self_able)
+    except Exception:
+        return prompt
+    return prompt
+
+
 def _resolve_temp_directory_for_prompt() -> str:
     """Return the absolute app Temp directory for prompt injection (fail-open)."""
     try:
@@ -139,9 +188,21 @@ def _load_self_knowledge_block(application_path: str) -> str:
     variables ({system_context}, {files_context}, {context}) are untouched
     because they live in prompt.pmt, not inside this injected text.
 
+    Gated on the self-modify source tree: when ``TlamatiniSourceCode/`` is NOT
+    present beside prompt.pmt, this is a not-self-able-modify build and NO
+    self-knowledge is injected — only a short notice saying so. Source and
+    self-description ship together (``build.py --self-modify``) or not at all.
+
     Fails open: a missing, empty, or unreadable file yields a short literal
     notice instead of raising, so it can never break the system prompt.
     """
+    # Gate: no bundled source tree => not-self-able-modify => no self-knowledge.
+    # The placeholder is still REPLACED (with this notice) rather than left raw:
+    # an unreplaced '{self_knowledge}' would become an unexpected f-string input
+    # variable in ChatPromptTemplate and break every chain.
+    if not is_self_able_modify(application_path):
+        return NOT_SELF_ABLE_MODIFY_NOTICE
+
     self_knowledge_path = os.path.join(application_path, SELF_KNOWLEDGE_FILENAME)
     try:
         with open(self_knowledge_path, 'r', encoding='utf-8') as f:

@@ -16,6 +16,34 @@
 
 ---
 
+## 2026-08-08 — `--self-modify` only worked HALF way: a not-self-able-modify build still carried her ENTIRE self-description in every prompt (`rag/config.py`, `prompt.pmt`, `build.py`, `build_complete_private_release.py`)
+
+**The demand (Angela).** Verify that without `--self-modify` (a) the source code is not copied into the zip, and (b) the context about herself is not injected into `prompt.pmt` at runtime — *"no matter Tlamatini does not understand too much about her"*. Then: **the goal is to reduce the context size and the token intake in the default mode**, and *"if `--self-modify` is selected then let Tlamatini like it was with all about herself in order to modify herself"*. Plus: **`build_complete_*` must default as if `--no-self-modify` were set.**
+
+**What was verified as CORRECT.** The source tree really was gated: `build.py` generates `TlamatiniSourceCode/` only inside `if self_modify:`, no `--add-data` carries it, `build_installer.py` never mentions it, PyInstaller runs with `--noconfirm` (so `dist/manage` is wiped each build and a stale tree from an earlier self-modify build cannot survive into `pkg.zip`), and the repo holds no static copy.
+
+**What was BROKEN — the other half.** `Tlamatini.md` shipped **unconditionally**: an `--add-data` bundle entry AND an install-root `optional_file_copies` copy. And `rag/config.py` injected it whenever the `{self_knowledge}` placeholder existed — it checked **nothing** about self-modify. So a "not-self-able-modify" build paid for her full self-description on **every single request**, and `prompt.pmt` even told her to "work from your injected self-knowledge" when the source tree was absent — a sentence that was only true by accident.
+
+**The fix — one XOR, resolved at the single prompt-load site.**
+
+- **Runtime**: the ENTIRE `<self_knowledge>` section — its two long identity bullets AND the injected file — is sentinel-wrapped (`<!--SELF_KNOWLEDGE_BEGIN/END-->`), and a short honest alternative is wrapped in `<!--NOT_SELF_MODIFY_BEGIN/END-->`. `load_config_and_prompt` resolves the XOR through the **pre-existing** `_resolve_rule_block` machinery (the same one that gates the ACPX Rule 12 and Templates Rule 16 blocks) before touching the placeholder. `is_self_able_modify(application_path)` — `TlamatiniSourceCode/` beside `prompt.pmt` — is the single runtime marker, and it **fails CLOSED** (no source ⇒ no claim of self-modification).
+- **Packaging**: `Tlamatini.md` is now bundled and copied ONLY under `--self-modify`, in lockstep with the source tree. `--no-self-modify` became a REAL flag that **wins** over `--self-modify`.
+- **Wrappers**: `build_complete_private_release.py` flipped from opt-OUT to opt-IN (`--self-modify`, default off; `--no-self-modify` kept as an accepted no-op). `build_complete_public_release.py` was already opt-in.
+
+**Measured result** (real loader, real files, printed by the test): the system prompt goes from **138,225 → 75,371 chars — 62,854 chars saved, ≈15,700 tokens off EVERY request**, a ~45 % smaller system prompt in the default mode.
+
+**Contracts that must NOT be weakened:**
+
+- **Source and self-knowledge ship TOGETHER, or not at all.** Re-adding an unconditional `Tlamatini.md` copy silently restores the whole cost.
+- **With `--self-modify` nothing changed.** The kept block is byte-identical to what she always had, so she can still read, modify and rebuild herself. Do not "simplify" the kept branch.
+- **The placeholder must NEVER survive** either branch: a leftover `{self_knowledge}` becomes an unexpected `ChatPromptTemplate` input variable and breaks every chain. A legacy `prompt.pmt` with the placeholder but no sentinels still degrades safely (second layer: `_load_self_knowledge_block` returns `NOT_SELF_ABLE_MODIFY_NOTICE`).
+- **The fallback line stays SHORT.** It exists to be cheap; a test fails if it grows past 800 chars.
+- `is_self_able_modify` fails **closed**, the block resolution fails **open** (a prompt without markers is left untouched).
+
+Coverage: `agent/test_self_modify_gate.py` (25 tests — block XOR, marker leakage, the measured saving, packaging AST gates, wrapper defaults, prompt.pmt structure). Suite run: 129 tests OK, ruff clean.
+
+---
+
 ## 2026-08-06 — The Exec Report judged every agent by its EXIT CODE, so a tool that worked could be stamped FAILURE (`agent_verdict.py`, `tools.py`, `mcp_agent.py`)
 
 **The demand (Angela).** If the execution really succeeded, the table must say **SUCCESS**. If the execution really errored and did not do the designated task at all, the table must say **FAILED**. Both directions, every agent, no exceptions.

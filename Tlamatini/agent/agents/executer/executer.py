@@ -768,20 +768,59 @@ def _execute_in_forked_window(script_path: str) -> bool:
             #   4. Pauses so the window stays open
             #   5. Exits with the original error level
             wrapper_path = os.path.abspath("temp_forked_wrapper.bat")
+
+            # ⚠️ DO NOT go back to `@pause` (fixed 2026-08-08). A pool agent's
+            # stdin is NOT an interactive console, so `pause` sees EOF and returns
+            # INSTANTLY — the window flashed and vanished before Angela could read
+            # a single line, while the log still claimed success. Measured on this
+            # machine: plain `@pause` exited after 0.97s, and `@pause < CON`
+            # (the usual workaround) after 2.32s — both useless. `timeout /t` is
+            # no good either ("ERROR: Input redirection is not supported").
+            # So the window is held open by a BOUNDED PowerShell Start-Sleep (which
+            # needs no stdin) and the script's exit code is handed back through this
+            # sentinel file, so the agent returns as soon as the WORK is done
+            # instead of waiting out the hold.
+            sentinel_path = os.path.abspath("temp_forked_exitcode.txt")
+            # How long the finished window stays readable. Bounded on purpose —
+            # see the wrapper below. Override with FORKED_WINDOW_HOLD_SECONDS.
+            try:
+                _hold = int(os.environ.get("FORKED_WINDOW_HOLD_SECONDS", "900"))
+            except (TypeError, ValueError):
+                _hold = 900
+            _hold = max(5, min(_hold, 86400))
+            try:
+                if os.path.exists(sentinel_path):
+                    os.remove(sentinel_path)
+            except OSError:
+                pass
+
             with open(wrapper_path, "w", encoding="utf-8") as wf:
                 wf.write(f'@call "{script_path}"\n')
                 wf.write('@set EC=%ERRORLEVEL%\n')
                 wf.write('@echo.\n')
                 wf.write('@echo ============================================\n')
                 wf.write('@echo   Script finished  (exit code: %EC%)\n')
+                wf.write(f'@echo   This window stays open for {_hold} seconds - or close it now.\n')
                 wf.write('@echo ============================================\n')
-                wf.write('@pause\n')
+                wf.write(f'@echo %EC%> "{sentinel_path}"\n')
+                # BOUNDED hold, never an unbounded `cmd /k`. Under the session MCP
+                # host the console is created on a window station Angela cannot
+                # see (measured 2026-08-05), so an unbounded hold would leak an
+                # INVISIBLE cmd.exe on every single run — exactly the orphan-process
+                # class the three-tier reaper exists to prevent. Start-Sleep needs
+                # no stdin, so unlike `pause` it actually holds.
+                wf.write(f'@powershell -NoProfile -Command "Start-Sleep -Seconds {_hold}"\n')
                 wf.write('@exit /b %EC%\n')
 
             # Same best-effort rescue as the non-blocking path: snapshot the
             # consoles that exist BEFORE, so we can find and force-show ours.
             consoles_before = _console_window_snapshot()
 
+            # `/c`, NOT `/k`: the wrapper's bounded Start-Sleep is what keeps the
+            # window readable, and it TERMINATES. `/k` holds the console FOREVER,
+            # which under the MCP host (where the window is invisible) silently
+            # leaks one cmd.exe per run. The agent still does not block on this
+            # process — it waits on the sentinel file below instead.
             process = subprocess.Popen(
                 ['cmd.exe', '/c', wrapper_path],
                 cwd=os.getcwd(),
@@ -825,15 +864,48 @@ def _execute_in_forked_window(script_path: str) -> bool:
                 logging.warning("⚠️ No terminal emulator found, falling back to direct execution")
                 process = subprocess.Popen([script_path], cwd=os.getcwd())
 
-        # Wait for the forked window process to finish
-        # (on Windows this waits until the user presses a key in the window)
-        process.wait(timeout=300)
+        # Wait for the SCRIPT to finish — NOT for the user to close the window.
+        # The window is deliberately held open by `cmd /k` (see above), so
+        # process.wait() here would block until the window is closed BY HAND,
+        # hanging the agent. The sentinel file tells us the work is done while the
+        # console stays on screen, readable, for as long as Angela wants it.
+        if sys.platform.startswith('win'):
+            exit_code = None
+            deadline = time.time() + 300
+            while time.time() < deadline:
+                if os.path.exists(sentinel_path):
+                    try:
+                        with open(sentinel_path, 'r', encoding='utf-8',
+                                  errors='replace') as sf:
+                            exit_code = int((sf.read().strip() or '0'))
+                    except (OSError, ValueError):
+                        exit_code = 0
+                    break
+                if process.poll() is not None:
+                    # Console was closed before the script wrote its code.
+                    exit_code = process.returncode
+                    break
+                time.sleep(0.25)
 
-        if process.returncode == 0:
-            logging.info(f"✅ Script execution completed with exit code: {process.returncode}")
+            if exit_code is None:
+                logging.error("❌ Forked window script execution timed out (300s limit)")
+                return False
+
+            try:
+                os.remove(sentinel_path)
+            except OSError:
+                pass
+        else:
+            process.wait(timeout=300)
+            exit_code = process.returncode
+
+        if exit_code == 0:
+            logging.info(f"✅ Script execution completed with exit code: {exit_code}")
+            logging.info("   🪟 The forked window is STILL OPEN — close it when you have read it.")
             return True
         else:
-            logging.error(f"❌ Script execution failed with exit code: {process.returncode}")
+            logging.error(f"❌ Script execution failed with exit code: {exit_code}")
+            logging.info("   🪟 The forked window is STILL OPEN — close it when you have read it.")
             return False
 
     except subprocess.TimeoutExpired:

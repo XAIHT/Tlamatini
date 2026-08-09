@@ -50,11 +50,27 @@ def load_config(*, force_reload: bool = False) -> dict[str, Any]:
     config: dict[str, Any] = {}
     if config_path and os.path.isfile(config_path):
         try:
-            with open(config_path, "r", encoding="utf-8") as file_handle:
+            # ⚠️ utf-8-SIG, not utf-8 (2026-08-08). Notepad, PowerShell's
+            # Set-Content -Encoding UTF8 and several editors write a UTF-8 BOM
+            # (EF BB BF). Plain "utf-8" then raises "Unexpected UTF-8 BOM" and the
+            # except below silently returned an EMPTY config — so Tlamatini booted
+            # with NO models and only said "agent is not ready, try again later",
+            # which is unfixable for a user who has no idea a BOM exists.
+            # utf-8-sig reads BOM and BOM-less files identically.
+            with open(config_path, "r", encoding="utf-8-sig") as file_handle:
                 loaded = json.load(file_handle)
             if isinstance(loaded, dict):
                 config = loaded
-        except Exception:
+            else:
+                print(f"--- [CONFIG] WARNING: {config_path} is not a JSON object "
+                      f"(got {type(loaded).__name__}) - using empty config")
+        except Exception as exc:
+            # NEVER fail silently: an empty config disables every model, and the
+            # user must be told WHICH file is broken and WHY.
+            print(f"--- [CONFIG] ERROR: could not read {config_path}: "
+                  f"{type(exc).__name__}: {exc}")
+            print("--- [CONFIG] Tlamatini is starting with an EMPTY config - the "
+                  "chat agent will report 'not ready' until this file is valid JSON.")
             config = {}
 
     _CONFIG_CACHE = config
@@ -96,7 +112,10 @@ def save_config_updates(updates: dict[str, Any]) -> str:
     if not config_path:
         raise FileNotFoundError("config.json could not be located on disk")
 
-    with open(config_path, "r", encoding="utf-8") as file_handle:
+    # utf-8-sig on the READ side too, so a BOM-prefixed file can still be updated
+    # in place (see the loader above). The WRITE below stays plain utf-8, which
+    # strips the BOM and heals the file.
+    with open(config_path, "r", encoding="utf-8-sig") as file_handle:
         existing = json.load(file_handle)
 
     if not isinstance(existing, dict):

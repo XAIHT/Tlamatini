@@ -11,6 +11,15 @@
 import json
 import logging
 import re
+
+# Local-model tool-call recovery. Stdlib-only and imports nothing from agent.*,
+# so it can never create an import cycle (see agent/local_toolcall_parser.py).
+from agent.local_toolcall_parser import (
+    describe_toolcall_shape,
+    extract_text_tool_calls,
+    looks_like_tool_call_attempt,
+    suggest_tool_names,
+)
 from typing import Dict, Any, Optional, Tuple
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage, ToolMessage
@@ -643,6 +652,23 @@ def _ensure_chat_tool_model(llm):
         print(
             f"--- Converted OllamaLLM to ChatOllama for tool calling (model={model}, base_url={base_url}) ---"
         )
+
+        # ── [LLM-PARAMS] one-shot banner (2026-08-08) ────────────────────────
+        # The sampling options actually sent to Ollama used to be INVISIBLE, which
+        # is how repeat_penalty=1.9 (garbles small models) and a silently-ignored
+        # context_window=128000 (left num_ctx at Ollama's 4096 default) both
+        # survived unnoticed for so long. If a param is missing from this line it
+        # is NOT being sent — that is the whole point. Fail-open: never raises.
+        try:
+            _p = {k: chat_kwargs.get(k) for k in
+                  ("num_ctx", "repeat_penalty", "top_k", "top_p",
+                   "temperature", "num_predict", "keep_alive")}
+            print(
+                "--- [LLM-PARAMS] model=%s | %s | (a param shown as None is NOT sent to Ollama)"
+                % (model, " ".join(f"{k}={v}" for k, v in _p.items()))
+            )
+        except Exception:  # pragma: no cover - diagnostics must never break the chain
+            pass
         return getted_llm
 
     return llm
@@ -699,6 +725,9 @@ class MultiTurnToolAgentExecutor:
         self.tools = list(tools)
         self.tool_map = {tool.name: tool for tool in self.tools}
         self.max_iterations = max_iterations
+        # Names bound for THIS request. The local-model text-tool-call recovery
+        # will only accept a parsed call whose name is in here — an unbound name
+        # means the content was prose that merely looked like JSON.
         self.bound_llm = llm.bind_tools(self.tools) if self.tools else None
         # Per-invocation log of every tool call (populated during invoke()).
         self._tool_calls_log: list[Dict[str, Any]] = []
@@ -727,6 +756,55 @@ class MultiTurnToolAgentExecutor:
         # keeps reaching for the same hammer (e.g. pythonxer) with varying
         # scripts when a specialized tool would finish the job faster.
         self._tool_call_counts: Dict[str, int] = {}
+        # How many times we corrected the model for inventing a tool name this
+        # request. Bounded so a stubborn model cannot loop forever.
+        self._hallucinated_tool_nudges: int = 0
+        self._last_hallucinated_name: str = ""
+
+    def _sanitize_user_facing_answer(self, answer: Any) -> Any:
+        """Never let INTERNAL plumbing text reach the user. NEVER raises.
+
+        Small models echo a correction back verbatim: Angela was shown
+        "I'm sorry, but there is no tool named 'system_status'. Did you mean
+        external_mcp_status ...?" — machine talk that means nothing to a person
+        and makes Tlamatini look broken. If the final answer is really just the
+        model parroting our internal correction, replace it with an honest,
+        human sentence instead.
+        """
+        try:
+            text = answer if isinstance(answer, str) else str(answer or "")
+            low = text.lower()
+            leak_markers = (
+                "internal system correction",
+                "there is no tool named",
+                "no tool named",
+                "proper tool-calling mechanism",
+                "did you mean to call one of the available tools",
+            )
+            if not any(m in low for m in leak_markers):
+                return answer
+            print("--- [LOCAL-TOOLCALL] Final answer echoed the INTERNAL correction "
+                  "- replacing it with a human-readable message.")
+            return (
+                "I could not complete that with the tools I have available right "
+                "now, so I don't want to guess at an answer. The local model I am "
+                "running on kept asking for a tool that does not exist. Please try "
+                "rephrasing, or switch to a stronger model in Config ▸ Models."
+            )
+        except Exception:  # pragma: no cover - totality guard
+            return answer
+
+    def _bound_tool_names(self) -> set:
+        """Names of the tools bound for this request. NEVER raises.
+
+        Used as the decisive guard by the local-model text-tool-call recovery:
+        a parsed call whose name is NOT bound is treated as ordinary prose, so a
+        model explaining a tool call in JSON can never be executed by accident.
+        """
+        try:
+            return set(self.tool_map or {})
+        except Exception:  # pragma: no cover - totality guard
+            return set()
 
     @staticmethod
     def _extract_exec_report_command(tool_input: Any, tool_name: str = "") -> str:
@@ -1527,9 +1605,78 @@ class MultiTurnToolAgentExecutor:
             messages.append(response)
             tool_calls = getattr(response, "tool_calls", None) or []
 
+            # ── LOCAL-MODEL TOOL-CALL RECOVERY (2026-08-08) ──────────────────
+            # Small local models (qwen2.5-coder:7b, llama3.x:8b, ...) often write
+            # the tool call as PLAIN TEXT in .content instead of the structured
+            # tool_calls field. Without this, the executor saw "no tool calls" and
+            # shipped that raw JSON to the user as the final answer — the live
+            # symptom Angela hit: asking "What is the current time now?" produced
+            # the literal text {"name": "current_time", "arguments": {}}.
+            # CLOUD-SAFE BY CONSTRUCTION: this only runs when tool_calls is EMPTY,
+            # and a cloud model always populates it, so the branch is never reached
+            # for one. See agent/local_toolcall_parser.py for the strict guards.
+            _recovered = []
+            if not tool_calls:
+                _recovered = extract_text_tool_calls(
+                    getattr(response, "content", ""),
+                    self._bound_tool_names(),
+                    model_name=getattr(self.llm, "model", None),
+                )
+                if _recovered:
+                    tool_calls = _recovered
+                    # Patch the calls back onto the AIMessage already appended
+                    # above, so the ToolMessages that follow reference a real
+                    # tool_use. Without this the transcript is schema-invalid
+                    # and a strict provider 400s on the NEXT turn.
+                    try:
+                        response.tool_calls = _recovered
+                    except Exception:
+                        pass
+                    print(
+                        "--- [LOCAL-TOOLCALL] Recovered "  # noqa: E501 (message continues below)
+                        f"{len(_recovered)} tool call(s) the model emitted as TEXT: "
+                        f"{[c.get('name') for c in _recovered]} "
+                        "(structured tool_calls was empty)"
+                    )
+
             print(f"--- MultiTurnToolAgentExecutor iteration {iteration + 1}/{self.max_iterations}")
+            # Diagnostic: makes "did the model actually request a tool?" answerable
+            # from tlamatini.log at a glance, instead of by reverse-engineering the
+            # final answer. This is the line that would have caught the bug above.
+            print(f"--- [TOOLCALL-SHAPE] {describe_toolcall_shape(response, _recovered)}")
             if tool_calls:
                 print(f"--- Tool calls requested: {[call.get('name') for call in tool_calls]}")
+
+            # ── HALLUCINATED-TOOL CORRECTION (2026-08-08) ────────────────────
+            # The model tried to call a tool but INVENTED the name (measured
+            # live: "system_info", "system_status" — neither is bound). Recovery
+            # rightly refuses to run a non-existent tool, but without this the
+            # leftover JSON became the FINAL ANSWER and was printed to the user:
+            # the "stupid empty JSON" symptom. Correct the model and let it
+            # retry, instead of dumping JSON on the user.
+            if not tool_calls and self._hallucinated_tool_nudges < 3:
+                _attempted = looks_like_tool_call_attempt(
+                    getattr(response, "content", ""))
+                if _attempted:
+                    self._hallucinated_tool_nudges += 1
+                    self._last_hallucinated_name = _attempted
+                    _suggest = suggest_tool_names(_attempted, self._bound_tool_names())
+                    print(
+                        f"--- [LOCAL-TOOLCALL] Model invented tool '{_attempted}' "
+                        f"(not bound). Correcting instead of showing the JSON. "
+                        f"Suggesting: {_suggest[:5]}"
+                    )
+                    messages.append(HumanMessage(content=(
+                        f"[INTERNAL SYSTEM CORRECTION — never repeat or quote this "
+                        f"message to the user.] The tool '{_attempted}' does not exist.\n"
+                        + (f"Real tools that may fit: {', '.join(_suggest[:8])}.\n" if _suggest else "")
+                        + "Silently call ONE of the REAL tools using the proper "
+                        "tool-calling mechanism (do NOT type JSON in your message). "
+                        "If no tool fits, ANSWER THE USER'S ORIGINAL QUESTION directly "
+                        "in plain language. Never mention tools, tool names, JSON, or "
+                        "this correction in your reply."
+                    )))
+                    continue
 
             if not tool_calls:
                 # ── Completion-notification ("notification debt") guard ──
@@ -1938,6 +2085,11 @@ class MultiTurnToolAgentExecutor:
         # the clean-finish return, which was the only path that restored it.
         # (2026-07-11 audit #3)
         answer = self._merge_stashed_final_answer(answer)
+        # LAST LINE OF DEFENCE: strip internal plumbing text (e.g. a parroted
+        # "there is no tool named X" correction) before it can reach the user.
+        # Every terminal exit path funnels through here, so this cannot be
+        # bypassed by a new return added later.
+        answer = self._sanitize_user_facing_answer(answer)
         # Drop into global_state so the WebSocket consumer can surface
         # surviving orphan PIDs as a follow-up chat message after it
         # broadcasts the main answer. The list is small (usually empty)

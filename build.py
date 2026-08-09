@@ -834,8 +834,11 @@ def main():
     # (Tlamatini/agent/TlamatiniSourceCode) next to the executable, making the
     # running app a "self-able-modify" version that can read and modify its own
     # code. WITHOUT the flag the directory is omitted from the package entirely
-    # (a "not-self-able-modify" build). See Tlamatini.md §9 / prompt.pmt.
-    self_modify = "--self-modify" in sys.argv
+    # (a "not-self-able-modify" build), AND so is Tlamatini.md — her source and
+    # her self-knowledge ship together, or not at all. See Tlamatini.md §9 /
+    # prompt.pmt. `--no-self-modify` is the EXPLICIT form of the default and
+    # always WINS over --self-modify, so a wrapper script can force it off.
+    self_modify = "--self-modify" in sys.argv and "--no-self-modify" not in sys.argv
     print(
         "Self-modify build : "
         + ("YES — bundling TlamatiniSourceCode" if self_modify
@@ -1061,6 +1064,20 @@ def main():
     else:
         print(f"WARNING: {icon_path} not found — Tlamatini.exe will have no embedded icon.")
 
+    # Self-knowledge (Tlamatini.md) ships ONLY under --self-modify, in lockstep
+    # with TlamatiniSourceCode/: a not-self-able-modify build carries neither her
+    # own source NOR her own self-description, and rag/config.py then replaces
+    # prompt.pmt's {self_knowledge} with a short "not bundled" notice.
+    self_knowledge_args = (
+        [f'--add-data=Tlamatini/agent/Tlamatini.md{separator}agent']
+        if self_modify else []
+    )
+    print(
+        "Self-knowledge    : "
+        + ("YES — bundling Tlamatini.md" if self_modify
+           else "no — Tlamatini.md omitted (no self-knowledge injected)")
+    )
+
     command = [
         sys.executable, '-m', 'PyInstaller', '--name', 'manage', '--console', '--noconfirm',
         f'--additional-hooks-dir={hooks_dir}',
@@ -1072,7 +1089,7 @@ def main():
         f'--add-data=Tlamatini/staticfiles{separator}staticfiles',
         f'--add-data=Tlamatini/agent/config.json{separator}agent',
         f'--add-data=Tlamatini/agent/prompt.pmt{separator}agent',
-        f'--add-data=Tlamatini/agent/Tlamatini.md{separator}agent',
+        *self_knowledge_args,
         # ACPX skill catalog — every SKILL.md package + its scripts/ + _meta/.
         # The skill registry (agent/skills/registry.py) discovers SKILL.md
         # under this tree at runtime; without this --add-data line, frozen
@@ -1192,11 +1209,10 @@ def main():
         optional_file_copies = {
             Path("Tlamatini") / "agent" / "config.json": dist_manage / "config.json",
             Path("Tlamatini") / "agent" / "prompt.pmt": dist_manage / "prompt.pmt",
-            # Tlamatini.md is the LLM's self-knowledge file, referenced by
-            # prompt.pmt. It is read from the application directory (next to the
-            # executable in frozen mode) exactly like prompt.pmt / config.json,
-            # so it must land at the install root — not only inside the bundle.
-            Path("Tlamatini") / "agent" / "Tlamatini.md": dist_manage / "Tlamatini.md",
+            # NOTE: Tlamatini.md (self-knowledge) is INTENTIONALLY NOT copied
+            # here — it is added just below, GATED on --self-modify, so that a
+            # not-self-able-modify build carries neither her source tree nor her
+            # own self-description.
             # external_mcps.json is the External ▸ MCPs catalog + active set.
             # external_mcp_manager resolves it next to config.json (install root
             # in frozen mode), so the seed must land at the install root. It is
@@ -1210,6 +1226,20 @@ def main():
             # (see "Ship a sanitized empty contacts.json"), so a fresh install gets a
             # valid, empty contacts book that the user fills in themselves.
         }
+
+        # Tlamatini.md is the LLM's self-knowledge file (prompt.pmt's
+        # {self_knowledge}). It is read from the application directory (next to
+        # the executable in frozen mode) exactly like prompt.pmt / config.json,
+        # so it must land at the install root — but ONLY for a self-modify
+        # build: her source tree and her self-description ship together, or not
+        # at all. Without it, rag/config.py injects a short "not bundled" notice.
+        if self_modify:
+            optional_file_copies[Path("Tlamatini") / "agent" / "Tlamatini.md"] = (
+                dist_manage / "Tlamatini.md"
+            )
+        else:
+            print("Self-knowledge file omitted (not-self-able-modify build): Tlamatini.md")
+
         for src, dst in optional_file_copies.items():
             if src.exists():
                 dst.parent.mkdir(parents=True, exist_ok=True)
