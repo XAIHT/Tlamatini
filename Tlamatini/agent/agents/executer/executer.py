@@ -809,7 +809,7 @@ def _execute_in_forked_window(script_path: str) -> bool:
                 # INVISIBLE cmd.exe on every single run — exactly the orphan-process
                 # class the three-tier reaper exists to prevent. Start-Sleep needs
                 # no stdin, so unlike `pause` it actually holds.
-                wf.write(f'@powershell -NoProfile -Command "Start-Sleep -Seconds {_hold}"\n')
+                wf.write(f'@powershell -NoProfile -Command "$env:TLAMATINI_KEEP_CONSOLE_ALIVE=1; Start-Sleep -Seconds {_hold}"\n')
                 wf.write('@exit /b %EC%\n')
 
             # Same best-effort rescue as the non-blocking path: snapshot the
@@ -822,7 +822,16 @@ def _execute_in_forked_window(script_path: str) -> bool:
             # leaks one cmd.exe per run. The agent still does not block on this
             # process — it waits on the sentinel file below instead.
             process = subprocess.Popen(
-                ['cmd.exe', '/c', wrapper_path],
+                # TLAMATINI_KEEP_CONSOLE_ALIVE es una MARCA, no un argumento
+                # que el wrapper lea: el orphan reaper perdona a toda consola
+                # cuya LINEA DE COMANDOS la lleve (orphan_reaper.py,
+                # INTERACTIVE_CONSOLE_MARKERS; la comparacion es en minusculas).
+                # Sin ella el Start-Sleep acotado de abajo se ve identico a un
+                # shell colgado -- cero CPU, cero I/O -- y en la window station
+                # invisible el reaper tampoco ve la ventana, asi que mataria
+                # justo la ventana que este codigo existe para mantener abierta.
+                ['cmd.exe', '/c', wrapper_path,
+                 'TLAMATINI_KEEP_CONSOLE_ALIVE'],
                 cwd=os.getcwd(),
                 creationflags=subprocess.CREATE_NEW_CONSOLE
             )
