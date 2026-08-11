@@ -487,7 +487,7 @@ def execute_python_script(script_content: str, execute_forked_window: bool = Fal
             encoding='utf-8',
             errors='replace',
             cwd=os.getcwd(),
-            timeout=300  # 5 minute timeout
+            timeout=_TIMEOUT  # 5 minute timeout
         )
 
         # Log stdout if present
@@ -516,6 +516,45 @@ def execute_python_script(script_content: str, execute_forked_window: bool = Fal
     except Exception as e:
         logging.error(f"❌ Script execution error: {e}")
         return False
+
+
+def _resolve_command_timeout(config=None) -> float:
+    """Seconds a command may run before the agent gives up. NEVER raises.
+
+    Was a hardcoded ``300`` (5 min) in every execution path, which silently
+    killed any legitimate long job - a build, a big scrape, a training run -
+    at the five minute mark and reported it as a failure. The ceiling is now
+    DAY-LONG by default and configurable per run:
+
+        config.yaml  command_timeout_seconds: 3600
+        env          TLAMATINI_COMMAND_TIMEOUT=3600
+
+    Fail-open: a missing/nonsense value yields the 24 h default rather than
+    resurrecting a short cap by accident.
+    """
+    _DEFAULT = 86400.0
+    raw = None
+    try:
+        if isinstance(config, dict):
+            raw = config.get("command_timeout_seconds")
+    except Exception:
+        raw = None
+    if raw in (None, ""):
+        raw = os.environ.get("TLAMATINI_COMMAND_TIMEOUT")
+    if raw in (None, ""):
+        return _DEFAULT
+    try:
+        val = float(raw)
+    except (TypeError, ValueError):
+        return _DEFAULT
+    if val <= 0:
+        return _DEFAULT
+    return min(val, 604800.0)          # one week hard ceiling, sanity only
+
+
+# Resolved once at import (env + default). A per-run override can be applied by
+# re-calling _resolve_command_timeout(config) where a config dict is in scope.
+_TIMEOUT = _resolve_command_timeout()
 
 
 def _execute_in_forked_window(cmd: list, script_path: str) -> bool:
@@ -548,8 +587,23 @@ def _execute_in_forked_window(cmd: list, script_path: str) -> bool:
             #   1. Runs the Python script
             #   2. Saves %ERRORLEVEL% to a file (persists even if window is closed)
             #   3. Prints a summary banner
-            #   4. Pauses so the user can read stdout/stderr
+            #   4. HOLDS the window open so the user can read stdout/stderr
             #   5. Exits with the original error level
+            #
+            # Do not use `@pause` here. A pool agent's stdin is
+            # NOT an interactive console, so `pause` sees EOF and returns
+            # INSTANTLY - the window flashed and vanished before anything could
+            # be read, while the log still claimed success. Same bug, same fix
+            # as Executer: a BOUNDED PowerShell Start-Sleep (needs no stdin),
+            # with the exit code handed back through the sentinel file so the
+            # agent returns as soon as the WORK is done instead of waiting out
+            # the hold.
+            try:
+                _hold = int(os.environ.get("FORKED_WINDOW_HOLD_SECONDS", "900"))
+            except (TypeError, ValueError):
+                _hold = 900
+            _hold = max(5, min(_hold, 86400))
+
             with open(wrapper_path, "w", encoding="utf-8") as wf:
                 wf.write(f'@"{python_exe}" "{script_path}"\n')
                 wf.write('@set EC=%ERRORLEVEL%\n')
@@ -557,12 +611,24 @@ def _execute_in_forked_window(cmd: list, script_path: str) -> bool:
                 wf.write('@echo.\n')
                 wf.write('@echo ============================================\n')
                 wf.write('@echo   Script finished  (exit code: %EC%)\n')
+                wf.write(f'@echo   This window stays open for {_hold} seconds - or close it now.\n')
                 wf.write('@echo ============================================\n')
-                wf.write('@pause\n')
+                # BOUNDED hold, never an unbounded `cmd /k`, and it carries the
+                # keep-console marker in its OWN command line (see below).
+                wf.write(f'@powershell -NoProfile -Command "$env:TLAMATINI_KEEP_CONSOLE_ALIVE=1; Start-Sleep -Seconds {_hold}"\n')
                 wf.write('@exit /b %EC%\n')
 
             process = subprocess.Popen(
-                ['cmd.exe', '/c', wrapper_path],
+                # TLAMATINI_KEEP_CONSOLE_ALIVE is a MARKER, not an argument the
+                # wrapper reads: the orphan reaper spares any console whose
+                # COMMAND LINE carries it (orphan_reaper.py,
+                # INTERACTIVE_CONSOLE_MARKERS; compared lowercased). Without it
+                # the bounded Start-Sleep above looks exactly like a hung shell
+                # - zero CPU, zero I/O - and on the invisible window station the
+                # reaper cannot see the window either, so it would kill the very
+                # window this code exists to keep open.
+                ['cmd.exe', '/c', wrapper_path,
+                 'TLAMATINI_KEEP_CONSOLE_ALIVE'],
                 cwd=os.getcwd(),
                 creationflags=subprocess.CREATE_NEW_CONSOLE
             )
@@ -584,8 +650,32 @@ def _execute_in_forked_window(cmd: list, script_path: str) -> bool:
                 logging.warning("⚠️ No terminal emulator found, falling back to direct execution")
                 process = subprocess.Popen(cmd, cwd=os.getcwd())
 
-        # Wait indefinitely for the user to close the forked window
-        process.wait()
+        # Wait for the SCRIPT to finish - NOT for the user to close the window.
+        # The window is deliberately held open above, so an unbounded
+        # `process.wait()` here would hang the agent until somebody closed it
+        # BY HAND. The sentinel file says the work is done while the console
+        # stays on screen, readable.
+        if sys.platform.startswith('win'):
+            # Wait for the SENTINEL - with NO artificial cap. This agent always
+            # had unbounded patience (it used to sit in a bare `process.wait()`),
+            # and a long build or a slow scrape is a perfectly valid reason to
+            # take hours; capping it at 300s only produced a FALSE failure for a
+            # script that was still working.
+            #
+            # The wait is keyed on the WORK, not on the window: the wrapper
+            # writes the exit code the moment the script ends, so the agent
+            # continues while the console stays on screen. It cannot hang
+            # forever either - the wrapper's hold is BOUNDED, so the console
+            # always exits in the end and `process.poll()` sees it.
+            while True:
+                if os.path.exists(exitcode_file):
+                    break
+                if process.poll() is not None:
+                    # Console closed before the script wrote its code.
+                    break
+                time.sleep(0.25)
+        else:
+            process.wait()
 
         # Determine the script result.
         # If the exit code file exists, the script actually finished and

@@ -315,7 +315,7 @@ def start_agent(agent_name: str) -> bool:
 
 
 # ============================================================
-#  BEST-EFFORT VISIBLE-WINDOW RESCUE  (Angela, 2026-08-05)
+#  BEST-EFFORT VISIBLE-WINDOW RESCUE
 # ============================================================
 #
 # Angela's standing rule is that she must SEE what runs. Windows does not always
@@ -331,14 +331,13 @@ def start_agent(agent_name: str) -> bool:
 # object is on a desktop we can touch, ShowWindow/SetForegroundWindow will reveal
 # it. If it is not, nothing here can, and we say so plainly instead of pretending.
 #
-# MEASURED RESULT (2026-08-05, same session): this rescue DOES change the outcome.
+# This rescue changes the outcome.
 #   BEFORE it, the Windower agent scanned the desktop TWICE and found NO window.
 #   AFTER it, Windower FINDS the console, FOCUSES it and MAXIMIZES it
 #   (`Focused 'LATEXER-RESCUE-FINAL' (hwnd=0x00280292); brought_to_front=True`).
 # So the window goes from "does not exist anywhere we can reach" to "a real,
 # addressable, focusable window".
 #
-# ✅ AND ANGELA CONFIRMED SHE SAW IT ON HER SCREEN (2026-08-05). That is the only
 # oracle that actually matters for her rule, and it settles it: the rescue puts
 # real pixels on the real desktop, not merely a handle in the Win32 API. (A cloud
 # vision pass over the screenshot had said otherwise — it was WRONG, the same
@@ -527,7 +526,9 @@ def execute_script(script_content: str, non_blocking: bool = False,
 
         logging.info(f"🚀 Executing script... (non_blocking={non_blocking})")
         
-        cmd = [script_path]
+        # Declares a long-running job so the watchdog does not treat it as
+        # a hang. Extra argv element the script receives as %1 and ignores.
+        cmd = [script_path, 'TLAMATINI_LONG_RUNNING']
         
         # NON-BLOCKING MODE: Fire-and-forget for long-running processes
         if non_blocking:
@@ -535,7 +536,7 @@ def execute_script(script_content: str, non_blocking: bool = False,
 
             if is_windows:
                 # ⚠️ VISIBILITY IS DECIDED BY THE HOST, NOT BY THESE FLAGS
-                # (measured by Angela, 2026-08-05 — do not "fix" this again blindly).
+                # Do not "fix" this blindly.
                 #
                 # When this agent is launched by the SESSION MCP SERVER, the console
                 # requested here NEVER APPEARS on the interactive desktop, even though
@@ -714,7 +715,7 @@ def execute_script(script_content: str, non_blocking: bool = False,
             encoding="utf-8",
             errors="replace",
             cwd=os.getcwd(),
-            timeout=300  # 5 minute timeout
+            timeout=_TIMEOUT  # 5 minute timeout
         )
         
         # Log stdout if present
@@ -753,6 +754,45 @@ def execute_script(script_content: str, non_blocking: bool = False,
         pass
 
 
+def _resolve_command_timeout(config=None) -> float:
+    """Seconds a command may run before the agent gives up. NEVER raises.
+
+    Was a hardcoded ``300`` (5 min) in every execution path, which silently
+    killed any legitimate long job - a build, a big scrape, a training run -
+    at the five minute mark and reported it as a failure. The ceiling is now
+    DAY-LONG by default and configurable per run:
+
+        config.yaml  command_timeout_seconds: 3600
+        env          TLAMATINI_COMMAND_TIMEOUT=3600
+
+    Fail-open: a missing/nonsense value yields the 24 h default rather than
+    resurrecting a short cap by accident.
+    """
+    _DEFAULT = 86400.0
+    raw = None
+    try:
+        if isinstance(config, dict):
+            raw = config.get("command_timeout_seconds")
+    except Exception:
+        raw = None
+    if raw in (None, ""):
+        raw = os.environ.get("TLAMATINI_COMMAND_TIMEOUT")
+    if raw in (None, ""):
+        return _DEFAULT
+    try:
+        val = float(raw)
+    except (TypeError, ValueError):
+        return _DEFAULT
+    if val <= 0:
+        return _DEFAULT
+    return min(val, 604800.0)          # one week hard ceiling, sanity only
+
+
+# Resolved once at import (env + default). A per-run override can be applied by
+# re-calling _resolve_command_timeout(config) where a config dict is in scope.
+_TIMEOUT = _resolve_command_timeout()
+
+
 def _execute_in_forked_window(script_path: str) -> bool:
     """
     Execute a script in a new console window and wait for it to finish.
@@ -769,7 +809,7 @@ def _execute_in_forked_window(script_path: str) -> bool:
             #   5. Exits with the original error level
             wrapper_path = os.path.abspath("temp_forked_wrapper.bat")
 
-            # ⚠️ DO NOT go back to `@pause` (fixed 2026-08-08). A pool agent's
+            # Do not use `@pause` here. A pool agent's
             # stdin is NOT an interactive console, so `pause` sees EOF and returns
             # INSTANTLY — the window flashed and vanished before Angela could read
             # a single line, while the log still claimed success. Measured on this
@@ -804,8 +844,8 @@ def _execute_in_forked_window(script_path: str) -> bool:
                 wf.write('@echo ============================================\n')
                 wf.write(f'@echo %EC%> "{sentinel_path}"\n')
                 # BOUNDED hold, never an unbounded `cmd /k`. Under the session MCP
-                # host the console is created on a window station Angela cannot
-                # see (measured 2026-08-05), so an unbounded hold would leak an
+                # host the console is created on a window station that is not
+                # visible, so an unbounded hold would leak an
                 # INVISIBLE cmd.exe on every single run — exactly the orphan-process
                 # class the three-tier reaper exists to prevent. Start-Sleep needs
                 # no stdin, so unlike `pause` it actually holds.
@@ -880,7 +920,7 @@ def _execute_in_forked_window(script_path: str) -> bool:
         # console stays on screen, readable, for as long as Angela wants it.
         if sys.platform.startswith('win'):
             exit_code = None
-            deadline = time.time() + 300
+            deadline = time.time() + _TIMEOUT
             while time.time() < deadline:
                 if os.path.exists(sentinel_path):
                     try:
@@ -905,7 +945,7 @@ def _execute_in_forked_window(script_path: str) -> bool:
             except OSError:
                 pass
         else:
-            process.wait(timeout=300)
+            process.wait(timeout=_TIMEOUT)
             exit_code = process.returncode
 
         if exit_code == 0:

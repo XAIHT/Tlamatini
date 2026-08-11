@@ -60,6 +60,9 @@ cover/
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
+# SQLite WAL companion files - runtime state, never source.
+db.sqlite3-wal
+db.sqlite3-shm
 
 # Flask stuff:
 instance/
@@ -369,3 +372,15 @@ Tlamatini/agent/telegram/
 # itself against those numbers and false-alarm on every boot.
 Tlamatini/DB/db_health.json
 DB/db_health.json
+
+# Database backups written by backup_db.py - never committed.
+/Backups/
+Tlamatini/Backups/
+db_*.sqlite3
+
+# Local-only runtime state; never part of the repository.
+.backup_status
+/Tlamatini/DB/Corrupted/
+Tlamatini/DB/Corrupted/
+DB/Corrupted/
+private_data_audit_report.json

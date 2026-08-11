@@ -79,6 +79,38 @@ logging.getLogger().addHandler(console_handler)
 
 REANIM_FILE = "reanim.pos"
 
+# Machine-noise directories, pruned unless the caller names one.
+NOISE_DIRS = ('.git', '__pycache__', '.ruff_cache', '.mypy_cache',
+              '.pytest_cache', 'node_modules', 'site-packages')
+
+
+def _drop_noise(paths, pattern):
+    asked = str(pattern).lower()
+    active = [d for d in NOISE_DIRS if d.lower() not in asked]
+    if not active:
+        return paths
+    kept = []
+    for p in paths:
+        try:
+            parts = {seg.lower() for seg in os.path.normpath(p).split(os.sep)}
+        except Exception:
+            kept.append(p)
+            continue
+        if any(d in parts for d in active):
+            continue
+        kept.append(p)
+    return kept
+
+
+def _glob_all(pattern, recursive):
+    """Glob including dot-directories, with machine noise pruned."""
+    try:
+        found = glob.glob(pattern, recursive=recursive, include_hidden=True)
+    except TypeError:                      # Python < 3.11
+        found = glob.glob(pattern, recursive=recursive)
+    return _drop_noise(found, pattern)
+
+
 def load_config(path: str = "config.yaml") -> Dict:
     try:
         with open(path, "r", encoding="utf-8") as f:
@@ -188,7 +220,7 @@ def perform_delete_operations(files_to_delete: List[str], recursive: bool = Fals
                 pattern = os.path.join(parent, '**', filename_part) if parent else os.path.join('**', filename_part)
                 logging.info(f"🔄 Recursive mode: expanded pattern to '{pattern}'")
             # Handle wildcards
-            files_found = glob.glob(pattern, recursive=recursive)
+            files_found = _glob_all(pattern, recursive)
             if not files_found:
                 if pattern == original_pattern:  # report once per original pattern
                     if any(c in original_pattern for c in '*?['):

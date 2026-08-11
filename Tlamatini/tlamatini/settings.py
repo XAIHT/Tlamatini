@@ -171,6 +171,17 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
+        # WAL: crash-safe journalling; many readers alongside one
+        # writer. Persistent once set on the file. Under WAL, back up
+        # with sqlite3's online backup API, never a plain file copy.
+        'OPTIONS': {
+            'init_command': (
+                'PRAGMA journal_mode=WAL;'
+                'PRAGMA synchronous=NORMAL;'
+                'PRAGMA busy_timeout=5000;'
+            ),
+            'transaction_mode': 'IMMEDIATE',
+        },
     }
 }
 

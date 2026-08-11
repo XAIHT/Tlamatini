@@ -288,7 +288,31 @@ def emit_globber_section(pattern, path, matches, truncated, status, body):
     )
 
 
-def main():
+# Machine-noise directories, pruned unless the caller names one.
+NOISE_DIRS = ('.git', '__pycache__', '.ruff_cache', '.mypy_cache',
+              '.pytest_cache', 'node_modules', 'site-packages')
+
+
+def _drop_noise(paths, path, pattern):
+    """Filter machine-noise directories out of a hidden-inclusive result."""
+    asked = ('%s|%s' % (path, pattern)).lower()
+    active = [d for d in NOISE_DIRS if d.lower() not in asked]
+    if not active:
+        return paths
+    kept = []
+    for p in paths:
+        try:
+            parts = {seg.lower() for seg in os.path.normpath(p).split(os.sep)}
+        except Exception:
+            kept.append(p)
+            continue
+        if any(d in parts for d in active):
+            continue
+        kept.append(p)
+    return kept
+
+
+def main():
     import glob as globmod
     config = load_config()
     write_pid_file()
@@ -321,7 +345,14 @@ def main():
             else:
                 recursive = "**" in pattern
                 search = os.path.join(path, pattern)
-                found = globmod.glob(search, recursive=recursive)
+                # include_hidden makes dot-directories visible (Python
+                # 3.11+); fall back when unsupported.
+                try:
+                    found = globmod.glob(search, recursive=recursive,
+                                         include_hidden=True)
+                except TypeError:
+                    found = globmod.glob(search, recursive=recursive)
+                found = _drop_noise(found, path, pattern)
                 files = [f for f in found if os.path.isfile(f)]
                 if sort_by == "mtime":
                     files.sort(key=_safe_mtime, reverse=True)

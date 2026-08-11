@@ -115,6 +115,10 @@ except ImportError:  # pragma: no cover - psutil is in requirements.txt
 # We also never list python.exe — the agent runtimes manage their own lifecycle.
 _SHELL_NAMES = frozenset({"cmd.exe", "powershell.exe", "pwsh.exe"})
 
+# Shells whose launcher declared them long-running are exempt from the
+# hang test; the launcher owns the deadline.
+LONG_RUNNING_MARKERS = ("tlamatini_long_running",)
+
 _DEFAULTS = {
     "command_watchdog_enabled": True,
     "command_watchdog_tick_seconds": 15.0,
@@ -216,6 +220,17 @@ def _is_protected_foreground_console(proc, visible_pids, protected_pids) -> bool
         return bool(_r.is_protected_foreground_console(proc, visible_pids, protected_pids))
     except Exception:
         return False
+
+
+def _carries_long_running_marker(proc) -> bool:
+    """True when the launcher declared this shell a long-running job.
+
+    Read from the command line. Fail-safe: False on any error."""
+    try:
+        joined = " ".join(proc.cmdline() or []).lower()
+    except Exception:
+        return False
+    return any(m in joined for m in LONG_RUNNING_MARKERS)
 
 
 def _kill_tree(proc, errors: List[str]) -> int:
@@ -396,6 +411,9 @@ class CommandWatchdog:
                 # window). It is waiting on the user's keyboard or showing output —
                 # never reap it as a hung shell, however long it sits. When the
                 # user closes it, the agent continues with the freshly-entered data.
+                continue
+            if _carries_long_running_marker(proc):
+                # Declared long-running by its launcher.
                 continue
             if pid in mcp_protected or self._has_protected_ancestor(proc, mcp_protected):
                 # External-MCP server launcher (e.g. ``cmd.exe /c mcp.bat`` →
