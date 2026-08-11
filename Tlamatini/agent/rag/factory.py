@@ -85,6 +85,19 @@ def _resolve_keep_alive():
 _EMBEDDINGS_CACHE = {}
 
 
+def _llm_client_timeout(config):
+    """The same configurable per-call bound the Multi-Turn executor uses.
+
+    Lazily imported so `agent.rag.factory` never takes a module-level dependency
+    on `agent.mcp_agent`. FAIL-OPEN to the historical 120 s.
+    """
+    try:
+        from agent.mcp_agent import resolve_llm_client_timeout
+        return resolve_llm_client_timeout(config)
+    except Exception:
+        return 120.0
+
+
 def _get_cached_embeddings(config, client_kwargs):
     model = config.get('embeding-model')
     base_url = config.get('ollama_base_url')
@@ -333,7 +346,7 @@ def build_prompt_only_chain(config, prompt_template_string, documents=None):
 
 def _build_prompt_only_chain_impl(config, prompt_template_string, documents=None):
     token = config.get('ollama_token')
-    client_kwargs = {'timeout': 120.0}
+    client_kwargs = {'timeout': _llm_client_timeout(config)}
     if token:
         client_kwargs['headers'] = {'Authorization': f'Bearer {token}'}
 
@@ -436,7 +449,7 @@ def build_retrieval_chain(documents, config, prompt_template_string):
 
     try:
         token = config.get('ollama_token')
-        client_kwargs = {'timeout': 120.0}
+        client_kwargs = {'timeout': _llm_client_timeout(config)}
         if token:
             client_kwargs['headers'] = {'Authorization': f'Bearer {token}'}
 

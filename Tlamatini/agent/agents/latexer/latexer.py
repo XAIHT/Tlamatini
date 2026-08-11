@@ -72,6 +72,7 @@ import shutil
 import logging
 import subprocess
 import json
+import base64
 import urllib.request
 
 # -- conhost.exe orphan guard ------------------------------------------
@@ -1971,6 +1972,18 @@ def _finish_compile(result: dict, config: dict, tools: dict, outcome: dict, note
 
     if result["ok"]:
         outcome["status"] = "compiled"
+        # EXPLICIT STOP CONDITION (Angela, 2026-08-11). A clean build IS the end
+        # of the job. Nothing used to say so, so the LLM kept "improving" an
+        # already-finished 27-page, 0-error PDF - re-editing and recompiling for
+        # 50+ Multi-Turn iterations until one of its own edits broke the document
+        # and the ladder had to cut a block out of it. The deliverable EXISTS;
+        # say so in the first line the model reads.
+        notes.insert(0, (
+            "DONE - a CLEAN PDF now exists: %s (%s page(s), 0 errors). "
+            "THE DOCUMENT IS FINISHED. Do NOT recompile it, do NOT 'improve' it, "
+            "do NOT edit the .tex again and do NOT produce a _v2/_v3 variant: "
+            "report this absolute path to the user and STOP."
+        ) % (outcome.get("output_path", ""), outcome.get("page_count", "?")))
         return True
     if result.get("produced"):
         # A PDF exists but LaTeX reported errors: say so plainly. Never call this a
@@ -4075,7 +4088,25 @@ def _compile_with_ladder(tex_path: str, config: dict, tools: dict, env: dict) ->
             _safe_remove(model_path)
 
     # ---- Rung 8: TRUE LAST RESORT. Cut out what cannot be typeset, keep the rest.
-    if "bisect" in rungs:
+    #
+    # ⚠️ NEVER destroy the author's content because the INFRASTRUCTURE hiccuped
+    # (Angela, 2026-08-11). Rung 7 (model) is the last NON-destructive repair.
+    # When its call merely TIMED OUT or the endpoint was unreachable, the ladder
+    # has not actually exhausted its safe options - and cutting a block then
+    # means the author loses a paragraph over a network blip. That is exactly
+    # what happened to Angela's OpenMP guide: `model` timed out, `bisect`
+    # quarantined block 10, and a 27-page CLEAN pdf became a 26-page DEGRADED
+    # one. Losing the user's work is the worst outcome available, so we refuse
+    # to cut and report honestly instead.
+    if "bisect" in rungs and _model_rung_never_answered(trace):
+        trace.append(_repair_record(
+            "bisect", "skipped",
+            "NOT cutting any content: the model rung could not be reached "
+            "(timeout / unreachable), so the non-destructive repairs were never "
+            "really exhausted. Fix the model connection (or raise "
+            "repair_model_timeout) and re-run; the document is left intact.",
+            False))
+    elif "bisect" in rungs:
         outcome = _bisect_failing_blocks(source, build_path, config, active_tools, env, trace)
         if outcome.get("ok"):
             source = outcome["source"]
@@ -4090,6 +4121,31 @@ def _compile_with_ladder(tex_path: str, config: dict, tools: dict, env: dict) ->
     # carries errors, which is still more useful to the user than nothing.
     return _finalise_ladder(result, trace, rungs, quarantined, build_path,
                             active_tools, degraded=bool(quarantined))
+
+
+_MODEL_UNREACHABLE_MARKERS = (
+    "timed out", "timeout", "unreachable", "connection", "refused",
+    "call failed", "not configured", "no response",
+)
+
+
+def _model_rung_never_answered(trace) -> bool:
+    """True when rung 7 got NO answer from the model at all.
+
+    Distinguishes "the model looked at it and could not help" (a real, exhausted
+    repair - bisect may proceed) from "we never reached the model" (an
+    infrastructure failure - bisect must NOT destroy content over it).
+    FAIL-SAFE: on any doubt it returns True, i.e. it protects the document.
+    """
+    try:
+        for record in reversed(trace or []):
+            if (record or {}).get("rung") != "model":
+                continue
+            detail = str((record or {}).get("detail") or "").lower()
+            return any(marker in detail for marker in _MODEL_UNREACHABLE_MARKERS)
+        return False          # rung 7 disabled / never ran -> normal behaviour
+    except Exception:
+        return True           # protect the author's text when unsure
 
 
 def _finalise_ladder(result: dict, trace: list, rungs, quarantined, build_path: str,
@@ -4148,8 +4204,47 @@ def _format_ladder_report(result: dict) -> str:
     return "\n".join(lines)
 
 
+_B64_FIELDS = ("input_text", "content", "find_text", "replace_text")
+
+
+def _decode_b64_fields(config: dict) -> None:
+    """Decode the parser-immune ``<field>_b64`` channels IN PLACE.
+
+    LaTeX is backslash soup and every table row / line break is ``\\``. The chat
+    request parser is tuned for shell/SQL payloads, so it collapsed ``\\`` to a
+    single ``\`` and glued the trailing ``', filename='...'`` into the body —
+    a document that could never compile, and the reason Angela's OpenMP report
+    produced no .tex and no PDF at all (2026-08-10). base64 has no backslash,
+    quote, comma or newline in its alphabet, so a ``*_b64`` value reaches this
+    agent EXACTLY as the caller built it.
+
+    FAIL-OPEN: a malformed or absent b64 value leaves the plain field untouched
+    and is only logged — decoding must never stop a compile.
+    """
+    if not isinstance(config, dict):
+        return
+    for field_name in _B64_FIELDS:
+        raw = config.get("%s_b64" % field_name)
+        if not isinstance(raw, str) or not raw.strip():
+            continue
+        try:
+            decoded = base64.b64decode(raw.strip()).decode("utf-8")
+        except Exception as exc:
+            logging.warning(
+                "%s_b64 could not be decoded (%s) - keeping plain %s",
+                field_name, exc, field_name,
+            )
+            continue
+        config[field_name] = decoded
+        logging.info(
+            "%s taken from %s_b64 (%d chars, byte-exact)",
+            field_name, field_name, len(decoded),
+        )
+
+
 def main():
     config = load_config()
+    _decode_b64_fields(config)
     write_pid_file()
     if _IS_REANIMATED:
         logging.info(f"🔄 {CURRENT_DIR_NAME} REANIMATED (resuming from pause)")

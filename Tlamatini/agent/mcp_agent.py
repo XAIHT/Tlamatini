@@ -203,6 +203,34 @@ def _detect_completion_notification_request(text: str) -> bool:
 # to merge a shared agent_key (a direct @tool + its wrapped launch), fix the
 # display casing, or pin a CSS-matched caption gradient. A new Multi-Turn agent
 # is captured even with NO entry here.
+DEFAULT_LLM_CLIENT_TIMEOUT_SECONDS = 120.0
+
+
+def resolve_llm_client_timeout(config) -> float:
+    """Seconds to wait on ONE Ollama HTTP call. FAIL-OPEN to 120 s.
+
+    Configurable since 2026-08-11 (Angela). This was HARDCODED at 120 s, and a
+    full Multi-Turn request carries the entire system prompt plus every bound
+    tool schema (100+ tools) - which on a cloud model can legitimately need far
+    longer than a bare prompt. Angela's OpenMP LaTeX run ReadTimeout'd at exactly
+    120.0 s on EVERY attempt, so the self-healing ladder retried forever, while a
+    one-line probe of the SAME model answered in 1 second. It is REQUEST SIZE,
+    not a broken model. Raise ``llm_client_timeout_seconds`` in config.json for
+    big-document work.
+
+    A missing / empty / non-numeric / non-positive value keeps the 120 s default:
+    a config typo must never make the chat hang longer than before.
+    """
+    try:
+        raw = (config or {}).get("llm_client_timeout_seconds")
+        if raw is None or raw == "":
+            return DEFAULT_LLM_CLIENT_TIMEOUT_SECONDS
+        value = float(raw)
+        return value if value > 0 else DEFAULT_LLM_CLIENT_TIMEOUT_SECONDS
+    except Exception:
+        return DEFAULT_LLM_CLIENT_TIMEOUT_SECONDS
+
+
 _EXEC_REPORT_TOOLS: Dict[str, Tuple[str, str]] = {
     # direct @tool calls
     "execute_command":           ("executer",       "Executer"),
@@ -595,9 +623,13 @@ def _ensure_chat_tool_model(llm):
             client_kwargs = public_client_kwargs or {}
 
         # Bound the Ollama call so a transient cloud/serving stall fails fast
-        # (<=120s) instead of hanging the whole turn forever. setdefault never
-        # overrides an explicit/inherited timeout.
-        client_kwargs.setdefault("timeout", 120.0)
+        # instead of hanging the whole turn forever. setdefault never overrides
+        # an explicit/inherited timeout. The bound is CONFIGURABLE via
+        # `llm_client_timeout_seconds` - see resolve_llm_client_timeout().
+        _llm_timeout = resolve_llm_client_timeout(config)
+        client_kwargs.setdefault("timeout", _llm_timeout)
+        print("--- [LLM-TIMEOUT] one Ollama call may take up to %.0fs "
+              "(llm_client_timeout_seconds) ---" % _llm_timeout)
 
         # Build kwargs accepted by ChatOllama
         chat_kwargs: Dict[str, Any] = {

@@ -1031,6 +1031,58 @@ def _extract_verbatim_assignment(request_text, target_key):
     return None
 
 
+_SWALLOWED_TAIL_RE = re.compile(
+    r"""(?P<q>['"])\s*[,;]\s*(?=[A-Za-z_][A-Za-z0-9_.]*\s*=)"""
+)
+
+
+def _recover_swallowed_assignments(value_text, runtime_config):
+    """Split a trailing ``', key='value'…`` tail off a VERBATIM value.
+
+    ``_split_assignment_segments`` deliberately keeps a MULTI-LINE quoted value
+    open until EOF or an ``and|with KEY=`` conjunction (so interior apostrophes
+    in scripts survive). The consequence is that the very common comma style::
+
+        input_text='…multi\\nline document…', filename='x.pdf'
+
+    glues the trailing keys INTO the body and loses them — they come back as
+    ``''``. For LaTeX that is a double failure: the literal text
+    ``', filename='x.pdf'`` is typeset into the document (a guaranteed compile
+    error) AND the requested output filename is silently dropped. That is
+    exactly what happened to Angela's OpenMP report (2026-08-10).
+
+    We only cut when EVERY key in the candidate tail already exists in the
+    agent's ``config.yaml``, so a genuine ``…\\end{quote}', foo='`` sequence
+    inside real source text is never mistaken for an assignment list. Returns
+    ``(clean_value, recovered_keys)``; on any doubt the value is returned
+    unchanged. This never raises.
+    """
+    if not isinstance(value_text, str) or not isinstance(runtime_config, dict):
+        return value_text, ()
+    for match in _SWALLOWED_TAIL_RE.finditer(value_text):
+        tail = value_text[match.end():]
+        if not tail.strip():
+            continue
+        pending = []
+        recognised = True
+        for raw_segment in _split_assignment_segments(tail):
+            segment = re.sub(
+                r'^(and|with)\s+', '', raw_segment.strip(), flags=re.IGNORECASE
+            )
+            key, raw_value = _split_assignment_segment(segment)
+            clean_key = (key or '').strip().strip('"').strip("'")
+            if not clean_key or clean_key not in runtime_config:
+                recognised = False
+                break
+            pending.append((clean_key, raw_value))
+        if not recognised or not pending:
+            continue
+        for clean_key, raw_value in pending:
+            runtime_config[clean_key] = _coerce_assignment_value(raw_value)
+        return value_text[:match.start()], tuple(k for k, _ in pending)
+    return value_text, ()
+
+
 def _collect_config_paths(node, prefix=()):
     all_paths = {}
     leaf_paths = {}
@@ -2775,21 +2827,40 @@ def _launch_wrapped_chat_agent(spec, request, *, auto_diagnose=True):
     #      decoding so backslash/quote runs in source code land verbatim.
     # `file_path` keeps the normal coercion (a Windows path DOES want
     # ``C:\\Temp`` -> ``C:\Temp``); only `content` is forced verbatim.
-    if spec.template_dir == "file_creator":
+    # GENERALIZED 2026-08-11 (Angela's OpenMP LaTeX failure). This immunity used
+    # to be hardcoded to ``file_creator``/``content``, so LaTeXer — whose entire
+    # payload is backslash commands, and whose every table row ends in ``\\`` —
+    # received a mangled document and could never produce a PDF. Each spec now
+    # DECLARES its literal fields in ``verbatim_fields``; add a field there when
+    # an agent takes literal source text rather than a shell/SQL payload.
+    for verbatim_field in getattr(spec, "verbatim_fields", ()) or ():
         try:
-            b64_value = runtime_config.get("content_b64")
-            has_b64 = isinstance(b64_value, str) and b64_value.strip() != ""
-            if not has_b64:
-                verbatim_content = _extract_verbatim_assignment(str(request), "content")
-                if verbatim_content is not None and verbatim_content != runtime_config.get("content"):
-                    runtime_config["content"] = verbatim_content
-                    logger.info(
-                        "[tools._launch_wrapped_chat_agent] file_creator content re-extracted "
-                        "VERBATIM (%d chars, no escape decoding)", len(verbatim_content),
-                    )
+            b64_value = runtime_config.get("%s_b64" % verbatim_field)
+            if isinstance(b64_value, str) and b64_value.strip() != "":
+                continue  # the parser-immune channel already carries the bytes
+            verbatim_value = _extract_verbatim_assignment(str(request), verbatim_field)
+            if verbatim_value is None:
+                continue
+            verbatim_value, recovered = _recover_swallowed_assignments(
+                verbatim_value, runtime_config
+            )
+            if verbatim_value != runtime_config.get(verbatim_field):
+                runtime_config[verbatim_field] = verbatim_value
+                logger.info(
+                    "[tools._launch_wrapped_chat_agent] %s.%s re-extracted VERBATIM "
+                    "(%d chars, no escape decoding)",
+                    spec.template_dir, verbatim_field, len(verbatim_value),
+                )
+            if recovered:
+                logger.info(
+                    "[tools._launch_wrapped_chat_agent] %s.%s recovered swallowed "
+                    "assignments: %s",
+                    spec.template_dir, verbatim_field, ", ".join(recovered),
+                )
         except Exception as exc:  # never let the verbatim path break a launch
             logger.warning(
-                "[tools._launch_wrapped_chat_agent] file_creator verbatim re-extract failed: %s", exc
+                "[tools._launch_wrapped_chat_agent] %s verbatim re-extract failed: %s",
+                verbatim_field, exc,
             )
 
     # Pre-flight syntax check for Pythonxer scripts. The agent itself invokes

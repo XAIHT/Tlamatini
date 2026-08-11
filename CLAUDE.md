@@ -355,6 +355,75 @@ Until v1.48.2 the runtime collapsed **two different questions** into one string 
 
 ---
 
+## LaTeX Generation — the four defects that made it impossible (2026-08-11)
+
+**Angela asked for a LaTeX document + PDF and got an EMPTY DIRECTORY.** The Exec
+Report stored in the DB (`agent_agentmessage` id 50) confessed it: **LaTeXer had
+only ever been called with `action='validate'`** — never asked to typeset —
+while Pythonxer failed 4× and a PowerShell here-string failed once. LaTeXer was
+not broken; **the road to it was**. Four independent defects, all now fixed.
+Full line-by-line record: **`TlamatiniImprovementsByClaudeOnLaTeXer.md`** (repo
+root). Pinned by `agent/test_latexer_verbatim_channel.py` (**19 tests**).
+
+**1. The byte-exact channel was hardcoded to ONE agent.** `tools.py` gated its
+verbatim/base64 immunity on `if spec.template_dir == "file_creator":`, so every
+other agent got the generic coercion that collapses `\\` → `\`. **In LaTeX `\\`
+is the ROW/LINE BREAK** — every table, matrix and title block was destroyed in
+transit (measured: row-breaks `2 → 0`). Worse, the multi-line quote rule glued a
+trailing `', filename='x.pdf'` INTO the document body and returned those keys
+EMPTY. → Specs now DECLARE their literal fields in
+**`ChatWrappedAgentSpec.verbatim_fields`** (file_creator `("content",)`; latexer
+`("input_text","content","find_text","replace_text")`); `tools.py` honours
+`<field>_b64` first, else re-extracts raw bytes, then
+`_recover_swallowed_assignments()` splits off a trailing assignment tail **only
+when EVERY key in it exists in that agent's own `config.yaml`** (so real prose is
+never cut). `latexer.py::_decode_b64_fields()` decodes the four `*_b64` keys
+(fail-open), and they exist in its `config.yaml` — **a missing key is silently
+dropped by the assignment applier**. ⚠️ **When you add an agent that takes
+literal source text, add its fields to `verbatim_fields`** — it is NOT automatic.
+
+**2. The LLM client timeout was hardcoded to 120 s.** `mcp_agent.py` did
+`client_kwargs.setdefault("timeout", 120.0)` and `rag/factory.py` had
+`{'timeout': 120.0}` twice. A full Multi-Turn request carries the whole system
+prompt **plus every bound tool schema (100+)**, so it ReadTimeout'd at *exactly*
+120.0 s on every attempt and self-healing retried forever — while a one-line
+probe of the SAME model answered in **1 second**. It is REQUEST SIZE, not a
+broken model; the same ReadTimeout notes appear in Angela's ORIGINAL failed
+answer. → **`llm_client_timeout_seconds`** (new, fail-open to 120) via
+`mcp_agent.resolve_llm_client_timeout()`, used by mcp_agent + both factory sites,
+logged as `--- [LLM-TIMEOUT] one Ollama call may take up to Ns ---`. Config: 600,
+with `unified_agent_llm_step_timeout_seconds` raised to **900** — ⚠️ **the
+watchdog MUST exceed the client bound**, or it abandons the attempt first and
+reproduces the symptom with a different number.
+
+**3. The DESTRUCTIVE `bisect` rung fired on an infrastructure blip.** Rung 7
+(`model`) timed out on a 60 KB `.tex`, so rung 8 quarantined block 10 and a
+27-page CLEAN pdf became a 26-page **DEGRADED** one with Angela's content
+deleted. → `latexer.py::_model_rung_never_answered(trace)` now SKIPS bisect when
+the model was merely **unreachable** (timeout/connection/refused), records the
+skip in the audit trace, and **fail-SAFEs to True (protect the document)** on any
+doubt — the opposite direction from the usual fail-open, deliberately, because
+losing the user's work is the worst outcome available. `repair_model_timeout`
+180 → **600**. ⚠️ Do NOT relax this guard and do NOT move `bisect` off last.
+
+**4. Nothing ever told her the job was DONE.** A clean 27-page/0-error PDF
+existed at 14:55; she kept "improving" it for 50+ iterations (v2, v3, a 57 KB
+`fix_latex.py`) until one of her own edits broke it → `degraded` → *"compile did
+not succeed"* → an unbounded repair loop over an already-good deliverable. →
+A clean build now prepends a hard STOP as `notes.insert(0, …)` (the FIRST line
+the model reads): *"DONE — a CLEAN PDF now exists: `<path>` (N pages, 0 errors).
+THE DOCUMENT IS FINISHED. Do NOT recompile / improve / edit / make a _v2 …
+report this absolute path and STOP."* Attached **only** to the `result["ok"]`
+branch — a degraded build must still read as a problem.
+
+**Proven end-to-end** through the real chat GUI (visible Chrome,
+`.claude/skills/tlamatini-daily-chat-test/harness/latexer_openmp_e2e.py`, verdict
+= filesystem truth not prose): Tlamatini wrote a **61,951-char `.tex`** (log:
+`file_creator.content re-extracted VERBATIM (61951 chars, no escape decoding)`)
+and compiled **`OpenMPCompleteGuide.pdf` — 27 pages, 716,421 bytes, 0 errors**.
+
+---
+
 ## Binary-Content Guard on Context Loading (2026-07-26)
 
 Every file entering the RAG context/embedding chain is screened for **binary content** by `agent/rag/binary_guard.py` before it is read as text. Binary files are dropped through the *same* mechanism as the user's **Context ▸ Set file type omissions** list (a `ValueError` swallowed by `DirectoryLoader(silent_errors=True)`), and **every drop is named in `tlamatini.log`** with the grep-able `--- [BINARY-GUARD]` prefix — in frozen and source mode alike, since `manage.py` tees stdout into the log before Django boots.

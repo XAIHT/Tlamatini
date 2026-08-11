@@ -23,6 +23,17 @@ class ChatWrappedAgentSpec:
     security_hints: tuple[str, ...] = field(default_factory=tuple)
     poll_window_seconds: int = 8
     long_running: bool = False
+    # Fields whose value MUST reach the agent BYTE-FOR-BYTE (Angela 2026-08-11).
+    # The shared request parser is tuned for shell/SQL payloads: it collapses
+    # ``\\`` -> ``\`` and doubled quotes. That is catastrophic for LaTeX (EVERY
+    # row break / line break is ``\\``) and for any verbatim source file. For
+    # each name listed here ``tools._launch_wrapped_chat_agent``
+    #   (a) honours a parser-immune ``<field>_b64`` base64 channel, and
+    #   (b) re-extracts the plain value from the RAW request with NO escape
+    #       decoding, recovering any trailing ``', key='...'`` assignments the
+    #       multi-line quote rule would otherwise swallow into the body.
+    # Add a field here whenever an agent takes literal source text.
+    verbatim_fields: tuple[str, ...] = field(default_factory=tuple)
 
 
 WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
@@ -183,6 +194,7 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
     ChatWrappedAgentSpec(
         key="file_creator",
         template_dir="file_creator",
+        verbatim_fields=("content",),
         tool_name="chat_agent_file_creator",
         tool_description="Chat-Agent-File-Creator",
         display_name="File-Creator",
@@ -1797,6 +1809,11 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
     ChatWrappedAgentSpec(
         key="latexer",
         template_dir="latexer",
+        # LaTeX is backslash soup: EVERY row/line break is ``\\``, and the shared
+        # parser collapsed it to ``\`` — silently destroying every table, matrix
+        # and title block before latexer.py ever saw the document (Angela's
+        # OpenMP report, 2026-08-10). These fields are byte-exact now.
+        verbatim_fields=("input_text", "content", "find_text", "replace_text"),
         tool_name="chat_agent_latexer",
         tool_description="Chat-Agent-LaTeXer",
         display_name="LaTeXer",
@@ -1843,12 +1860,26 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
             "created | edited | read | listed | validated | analyzed | cleaned | refused | "
             "not_found | not_unique | engine_unavailable | error). status="
             "'compiled_with_errors' means a PDF EXISTS but LaTeX reported errors — say so, "
-            "and quote the errors instead of calling it a success."
+            "and quote the errors instead of calling it a success. "
+            "HOW TO DELIVER A REAL DOCUMENT (mandatory, Angela 2026-08-11): for anything "
+            "beyond a one-line fragment — tables, TikZ, a preamble, ANY '\\\\\\\\' row break — "
+            "do NOT paste the document as plain input_text and NEVER assemble a .tex with "
+            "PowerShell here-strings, Add-Content or a generated Python script (that path "
+            "failed five times and produced no file at all). Do this instead: (1) write the "
+            ".tex ONCE with chat_agent_file_creator using content_b64 (base64 = byte-exact), "
+            "then (2) Run LaTeXer with action='compile' and tex_path pointing at it. Or pass "
+            "the source directly as input_text_b64='<base64 of the .tex>'. Both channels are "
+            "parser-immune; plain input_text is only safe for a short single-line fragment."
         ),
         example_request=(
-            "Run LaTeXer with action='compile', input_text='\\\\section{Results}\\n"
-            "The integral $\\\\int_0^1 x^2\\\\,dx = 1/3$.', title='Results', "
-            "filename='results.pdf'"
+            "SHORT FRAGMENT: Run LaTeXer with action='compile', title='Results', "
+            "filename='results.pdf', input_text='\\\\section{Results} The integral "
+            "$\\\\int_0^1 x^2\\\\,dx = 1/3$.'   ||   REAL DOCUMENT (tables/TikZ/preamble): "
+            "first Run File-Creator with file_path='C:\\\\...\\\\doc.tex' and "
+            "content_b64='<base64 of the whole .tex>', then Run LaTeXer with "
+            "action='compile', tex_path='C:\\\\...\\\\doc.tex', output_dir='C:\\\\...', "
+            "filename='doc.pdf'   ||   or in ONE call: Run LaTeXer with action='compile', "
+            "input_text_b64='<base64 of the whole .tex>', filename='doc.pdf'"
         ),
         aliases=(
             "latexer", "latex", "tex", "typeset", "pdflatex", "xelatex", "lualatex",

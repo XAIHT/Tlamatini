@@ -58,6 +58,13 @@ tex_path: ""           # path to a single .tex file
 project_dir: ""        # folder holding the .tex set (compile_project / list_files / clean)
 main_file: ""          # the master .tex inside project_dir ("" = auto-detect)
 input_text: ""         # raw LaTeX source (a full document, OR a fragment — see auto_preamble)
+# PARSER-IMMUNE CHANNEL (Angela 2026-08-11). base64 of the SAME LaTeX source.
+# When set it WINS over input_text. Use it for any real document: base64's
+# alphabet has no backslash, quote, comma or newline, so the source cannot be
+# mangled in transit. Plain input_text lost every ``\\`` row break and had the
+# following ``, filename='...'`` glued into the body — that is why the OpenMP
+# report produced no PDF at all.
+input_text_b64: ""
 recursive: true        # list_files / compile_project: descend into sub-folders
 
 # When input_text has NO \documentclass, wrap it in a sane preamble so a bare fragment
@@ -73,6 +80,7 @@ date: ""                   # "" = \today
 packages: []               # extra \usepackage names; a comma-separated string is accepted
 geometry: "margin=2.5cm"   # "" = do not load the geometry package
 content: ""                # body text for create_file (between \begin{document}...\end{document})
+content_b64: ""            # base64 of `content` — parser-immune, WINS over content
 
 # Bundled templates for create_from_template / scaffold_compile:
 #   article | report | book | beamer | letter | cv | homework | spanish-article
@@ -86,6 +94,8 @@ document_language: "en"
 edit_mode: "replace"       # replace | insert_before | insert_after | append | prepend
 find_text: ""              # the anchor (replace / insert_before / insert_after)
 replace_text: ""           # the new text (also the payload for append / prepend)
+find_text_b64: ""          # base64 of `find_text`    — parser-immune, WINS over find_text
+replace_text_b64: ""       # base64 of `replace_text` — parser-immune, WINS over replace_text
 replace_all: false         # replace: false = refuse when `find_text` is not unique
 
 # -- Engine --------------------------------------------------------------------
@@ -177,7 +187,9 @@ repair_write_back: false   # false = build from <name>.latexer-fixed.tex and NEV
                            #         touch the author's file. true = edit in place.
 repair_bisect_max_probes: 14   # compile budget for rung 8 (each probe is a real build)
 repair_model: "glm-5.2:cloud"  # rung 7 - ENABLED. "" disables the model rung entirely.
-repair_model_timeout: 180
+repair_model_timeout: 600   # was 180 - a 60 KB .tex made the model rung time out,
+                            # which used to hand the job to the DESTRUCTIVE bisect
+                            # rung and cost Angela a block of her OpenMP guide.
 ollama_url: "http://127.0.0.1:11434"
 ollama_token: ""
 
