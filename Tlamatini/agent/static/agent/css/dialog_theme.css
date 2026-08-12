@@ -1,0 +1,441 @@
+/*
+ * ═══════════════════════════════════════════════════════════════════
+ *   ✦  T L A M A T I N I  ✦   —   "one who knows"
+ *
+ *   Created by  Angela López Mendoza   ·   @angelahack1
+ *   Developer · Architect · Creator of Tlamatini
+ *
+ *   Every line of this file was written by Angela López Mendoza.
+ * ═══════════════════════════════════════════════════════════════════
+ *   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
+ */
+
+/* ============================================================
+ * dialog_theme.css — THE ONE Tlamatini dialog identity
+ * ------------------------------------------------------------
+ * Angela, 2026-08-12: every dialog in Tlamatini must look like
+ * the SAME piece of software. Before this file the app shipped
+ * three unrelated dialog skins and the seams were visible:
+ *
+ *   1. the NATIVE modals (External ▸ MCPs `emx-*`, Contacts
+ *      `ctb-*`) — the reference identity, i.e. the look Angela
+ *      pointed at;
+ *   2. the jQuery-UI family (Config, Tools, Skills, Access Keys,
+ *      Validate, Hypervisor, canvas node dialogs) — same two
+ *      greys but 12px corners, no border, a flat shadow, a grey
+ *      title and centred grey buttons;
+ *   3. the VOICE dialog (`.tlm-modal-*`) — a completely foreign
+ *      skin: #1b1e2b surface, gradient titlebar, no footer bar.
+ *
+ * This file defines the identity ONCE as custom properties and
+ * then makes the jQuery-UI family wear it, so the two surfaces
+ * become indistinguishable. `emx-*` / `ctb-*` / `.tlm-modal-*`
+ * consume the SAME tokens from their own stylesheets.
+ *
+ * ⚠️ LOAD ORDER IS LOAD-BEARING: this file must be the LAST
+ * stylesheet in both `agent_page.html` and
+ * `agentic_control_panel.html`. The rules below deliberately use
+ * the same specificity as the legacy `.ui-dialog` blocks they
+ * supersede, so they win on cascade ORDER alone. Move the link
+ * up and the old 12px/greyscale chrome comes straight back.
+ *
+ * ⚠️ WHEN YOU ADD A NEW DIALOG: consume these tokens. Never
+ * hardcode #4a4f5c / #444853 / #55bbaa again — that is exactly
+ * how the three skins drifted apart in the first place.
+ *
+ * Guarded by `agent/test_dialog_theme.py`.
+ * ============================================================ */
+
+:root {
+    /* Surfaces */
+    --tlm-dlg-surface: #4a4f5c;          /* the dialog card itself          */
+    --tlm-dlg-chrome: #444853;           /* header + footer bars            */
+    --tlm-dlg-pane: rgba(27, 30, 44, 0.32); /* inset content panes          */
+    --tlm-dlg-overlay: rgba(11, 14, 22, 0.62);
+
+    /* Frame */
+    --tlm-dlg-radius: 8px;
+    --tlm-dlg-radius-sm: 6px;
+    --tlm-dlg-border: 1px solid rgba(255, 255, 255, 0.12);
+    --tlm-dlg-hairline: 1px solid rgba(255, 255, 255, 0.08);
+    --tlm-dlg-shadow: 0 22px 70px rgba(0, 0, 0, 0.62);
+
+    /* Accent (teal) */
+    --tlm-dlg-accent: #55bbaa;
+    --tlm-dlg-accent-hover: #469f91;
+    --tlm-dlg-accent-ring: 0 0 0 2px rgba(85, 187, 170, 0.25);
+
+    /* Type */
+    --tlm-dlg-font: 'Nunito', sans-serif;
+    --tlm-dlg-title: #ffffff;
+    --tlm-dlg-text: #f0f1f7;
+    --tlm-dlg-body: #c1c5d0;
+    --tlm-dlg-muted: #9ca2ba;
+    --tlm-dlg-kicker: #55bbaa;
+
+    /* Inputs */
+    --tlm-dlg-input-bg: rgba(0, 0, 0, 0.22);
+    --tlm-dlg-input-border: 1px solid rgba(255, 255, 255, 0.18);
+
+    /* Buttons */
+    --tlm-dlg-btn-secondary: rgba(255, 255, 255, 0.08);
+    --tlm-dlg-btn-secondary-hover: rgba(255, 255, 255, 0.14);
+}
+
+/* ------------------------------------------------------------
+ * 1 · The jQuery-UI dialog family wears the native-modal skin
+ * ------------------------------------------------------------
+ * Cosmetic only, on purpose: frame, chrome and buttons are
+ * restyled but padding / text-align / sizing are left exactly
+ * as they were, so not one of the ~30 existing dialogs shifts
+ * its layout. The difference the user sees is that they now
+ * match the External-MCPs dialog.
+ * ---------------------------------------------------------- */
+
+.ui-dialog {
+    background-color: var(--tlm-dlg-surface);
+    border: var(--tlm-dlg-border);
+    border-radius: var(--tlm-dlg-radius);
+    box-shadow: var(--tlm-dlg-shadow);
+    font-family: var(--tlm-dlg-font);
+}
+
+/* jQuery UI paints its own overlay; align it with the native modals. */
+.ui-widget-overlay {
+    background: var(--tlm-dlg-overlay);
+    opacity: 1;
+}
+
+.ui-dialog .ui-dialog-titlebar {
+    background-color: var(--tlm-dlg-chrome);
+    border-bottom: var(--tlm-dlg-hairline);
+    border-top-left-radius: var(--tlm-dlg-radius);
+    border-top-right-radius: var(--tlm-dlg-radius);
+    color: var(--tlm-dlg-title);
+}
+
+/* The title itself: white + bold, like the `<h2>` in the native modals. */
+.ui-dialog .ui-dialog-title {
+    color: var(--tlm-dlg-title);
+    font-family: var(--tlm-dlg-font);
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+/*
+ * Optional eyebrow above a title, mirroring `.emx-kicker`. Use it by
+ * putting `<span class="tlm-dlg-kicker">SECTION</span>` at the top of a
+ * dialog's title string — purely additive, no dialog is required to.
+ */
+.tlm-dlg-kicker {
+    display: block;
+    color: var(--tlm-dlg-kicker);
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1.1;
+    text-transform: uppercase;
+}
+
+/* Close X: same 32px hit-target + hover chip as `.emx-icon-button`. */
+.ui-dialog .ui-dialog-titlebar-close {
+    width: 32px;
+    height: 32px;
+    right: 12px;
+    border: 1px solid transparent;
+    border-radius: var(--tlm-dlg-radius-sm);
+    opacity: 0.75;
+    transition: opacity 0.18s ease-out, background 0.18s ease-out,
+        border-color 0.18s ease-out;
+}
+
+.ui-dialog .ui-dialog-titlebar-close:hover,
+.ui-dialog .ui-dialog-titlebar-close:focus-visible {
+    background-color: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.14);
+    opacity: 1;
+    outline: none;
+}
+
+/*
+ * The button strip becomes a real FOOTER BAR (chrome background + top
+ * hairline + right-aligned actions), which is the single most
+ * recognisable half of the reference dialog.
+ */
+.ui-dialog .ui-dialog-buttonpane {
+    background: var(--tlm-dlg-chrome);
+    border-top: var(--tlm-dlg-hairline);
+    /* The ACP copy used a fake `0 -5px 10px` shadow as a separator; the real
+       hairline above replaces it, so clear it or the two stack up. */
+    box-shadow: none;
+    margin-top: 0;
+    padding: 12px 16px;
+    border-bottom-left-radius: var(--tlm-dlg-radius);
+    border-bottom-right-radius: var(--tlm-dlg-radius);
+}
+
+.ui-dialog .ui-dialog-buttonset {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    float: none;
+}
+
+/*
+ * Buttons default to SECONDARY (translucent). The primary/confirm
+ * button is painted teal by `styleDialogButtons()` in
+ * agent_page_dialogs.js, which mirrors `.emx-button-primary`.
+ */
+.ui-dialog .ui-button {
+    min-width: 98px;
+    padding: 8px 14px;
+    background-color: var(--tlm-dlg-btn-secondary);
+    border: var(--tlm-dlg-border);
+    border-radius: var(--tlm-dlg-radius-sm);
+    color: var(--tlm-dlg-title);
+    font-family: var(--tlm-dlg-font);
+    font-size: 0.88rem;
+    font-weight: 700;
+    line-height: 1.2;
+    cursor: pointer;
+    transition: background-color 0.18s ease-out;
+}
+
+.ui-dialog .ui-button:hover {
+    background-color: var(--tlm-dlg-btn-secondary-hover);
+}
+
+.ui-dialog .ui-button:focus-visible {
+    outline: 2px solid rgba(85, 187, 170, 0.65);
+    outline-offset: 2px;
+}
+
+.ui-dialog .ui-button:disabled {
+    cursor: wait;
+    opacity: 0.7;
+}
+
+/* ------------------------------------------------------------
+ * 2 · Shared primitives for dialog bodies
+ * ------------------------------------------------------------
+ * Opt-in helpers so a new dialog gets the reference look without
+ * re-deriving it. Used by the Voice dialog and available to any
+ * jQuery-UI dialog body.
+ * ---------------------------------------------------------- */
+
+.tlm-dlg-pane {
+    background: var(--tlm-dlg-pane);
+    border: var(--tlm-dlg-hairline);
+    border-radius: var(--tlm-dlg-radius);
+    padding: 12px;
+}
+
+.tlm-dlg-input,
+.tlm-dlg-pane select,
+.tlm-dlg-pane input[type="text"],
+.tlm-dlg-pane input[type="password"],
+.tlm-dlg-pane input[type="number"] {
+    box-sizing: border-box;
+    padding: 8px 11px;
+    background: var(--tlm-dlg-input-bg);
+    border: var(--tlm-dlg-input-border);
+    border-radius: var(--tlm-dlg-radius);
+    color: var(--tlm-dlg-title);
+    font-family: var(--tlm-dlg-font);
+    font-size: 0.9rem;
+}
+
+.tlm-dlg-input:focus,
+.tlm-dlg-pane select:focus,
+.tlm-dlg-pane input[type="text"]:focus,
+.tlm-dlg-pane input[type="password"]:focus,
+.tlm-dlg-pane input[type="number"]:focus {
+    border-color: var(--tlm-dlg-accent);
+    box-shadow: var(--tlm-dlg-accent-ring);
+    outline: none;
+}
+
+/* Range sliders read as part of the palette instead of OS-blue. */
+.tlm-dlg-pane input[type="range"],
+.tlm-dlg-range {
+    accent-color: var(--tlm-dlg-accent);
+}
+
+.tlm-dlg-note {
+    color: var(--tlm-dlg-body);
+    font-size: 0.88rem;
+    line-height: 1.4;
+}
+
+.tlm-dlg-hint {
+    color: var(--tlm-dlg-muted);
+    font-size: 0.78rem;
+    line-height: 1.35;
+}
+
+/* ------------------------------------------------------------
+ * 3 · Ask-Execs permission dialog — dark-theme repair
+ * ------------------------------------------------------------
+ * `.exec-perm-value` used to be a LIGHT card (#f1f5f3 background,
+ * #143b29 text) sitting inside a dark dialog, and the label was
+ * dark green (#2f6f5f) on dark grey — nearly unreadable. It was
+ * the most jarring "this is a different program" moment in the
+ * whole app, and it appears at the exact instant the user is
+ * being asked to authorise something. Repainted with the tokens.
+ * ---------------------------------------------------------- */
+
+.exec-perm-label {
+    color: var(--tlm-dlg-accent);
+}
+
+.exec-perm-value {
+    background-color: var(--tlm-dlg-input-bg);
+    border: var(--tlm-dlg-input-border);
+    border-radius: var(--tlm-dlg-radius-sm);
+    color: var(--tlm-dlg-title);
+}
+
+.exec-perm-textarea {
+    background-color: var(--tlm-dlg-input-bg);
+    border: var(--tlm-dlg-input-border);
+    border-radius: var(--tlm-dlg-radius-sm);
+    color: var(--tlm-dlg-text);
+}
+
+.exec-perm-textarea:focus {
+    border-color: var(--tlm-dlg-accent);
+    box-shadow: var(--tlm-dlg-accent-ring);
+    outline: none;
+}
+
+/*
+ * The red titlebar stays — a permission prompt SHOULD read as a stop
+ * sign — but it now uses the same flat fill + hairline as every other
+ * header instead of a lone gradient.
+ */
+.exec-permission-dialog-wrapper .ui-dialog-titlebar {
+    background: #8e1d1d;
+    border-bottom: var(--tlm-dlg-hairline);
+    color: var(--tlm-dlg-title);
+}
+
+/* ------------------------------------------------------------
+ * 4 · Access Keys wizard — inputs onto the shared palette
+ * ------------------------------------------------------------
+ * They were #40414F / #5c6275, a fourth grey nobody else used.
+ * ---------------------------------------------------------- */
+
+.akw-field-input,
+.akw-command-input {
+    background-color: var(--tlm-dlg-input-bg);
+    border: var(--tlm-dlg-input-border);
+    border-radius: var(--tlm-dlg-radius);
+    color: var(--tlm-dlg-title);
+}
+
+.akw-field-input:focus,
+.akw-command-input:focus {
+    border-color: var(--tlm-dlg-accent);
+    box-shadow: var(--tlm-dlg-accent-ring);
+    outline: none;
+}
+
+/* ------------------------------------------------------------
+ * 5 · Catalog of Prompts — the fourth skin
+ * ------------------------------------------------------------
+ * `.modal-content` (tools_dialog.css) was a THIRD surface again:
+ * an 18px-radius card filled with a 160° three-stop gradient
+ * (#1f2233 → #2a2d44 → #1a1c2c) over a 40%-black overlay. Only
+ * the SHELL is normalised here — the gradient prompt CARDS
+ * inside are left alone on purpose, because the reference
+ * dialog has gradient rows too (see `.emx-row`); they are
+ * content, not chrome.
+ *
+ * ⚠️ Geometry is deliberately untouched: the fixed top/left
+ * anchoring and `max-height: calc(100dvh - 24px)` are the
+ * viewport fix documented in tools_dialog.css — do NOT
+ * reintroduce JS positioning here.
+ * ---------------------------------------------------------- */
+
+.modal {
+    background-color: var(--tlm-dlg-overlay);
+}
+
+.modal-content {
+    background: var(--tlm-dlg-surface);
+    border: var(--tlm-dlg-border);
+    border-radius: var(--tlm-dlg-radius);
+    box-shadow: var(--tlm-dlg-shadow);
+}
+
+.modal-header {
+    border-bottom: var(--tlm-dlg-hairline);
+}
+
+.modal-header p {
+    color: var(--tlm-dlg-body);
+}
+
+.close-button {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    top: 12px;
+    right: 12px;
+    border: 1px solid transparent;
+    border-radius: var(--tlm-dlg-radius-sm);
+    color: #c8ccd8;
+    font-size: 1.7rem;
+    line-height: 1;
+}
+
+.close-button:hover,
+.close-button:focus {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.14);
+    color: #ffffff;
+}
+
+@media (max-width: 520px) {
+    .modal-content {
+        border-radius: var(--tlm-dlg-radius);
+    }
+}
+
+/* ------------------------------------------------------------
+ * 6 · Scrollbars inside dialogs
+ * ------------------------------------------------------------
+ * Matches the violet→blue thumb the native modals already use, so a
+ * scrolling jQuery-UI dialog does not suddenly show OS chrome.
+ * ---------------------------------------------------------- */
+
+.ui-dialog .ui-dialog-content::-webkit-scrollbar {
+    width: 9px;
+    height: 9px;
+}
+
+.ui-dialog .ui-dialog-content::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+}
+
+.ui-dialog .ui-dialog-content::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #6d28d9 0%, #2563eb 100%);
+    border-radius: 4px;
+}
+
+@media (max-width: 640px) {
+    .ui-dialog .ui-dialog-buttonpane {
+        padding: 10px 12px;
+    }
+
+    .ui-dialog .ui-dialog-buttonset {
+        gap: 8px;
+    }
+
+    .ui-dialog .ui-button {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+}

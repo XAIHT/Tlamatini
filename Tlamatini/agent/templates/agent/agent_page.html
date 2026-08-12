@@ -20,6 +20,8 @@
   <link rel="stylesheet" href="{% static 'agent/css/contacts_dialog.css' %}?v={{ STATIC_VERSION }}">
   <link rel="stylesheet" href="{% static 'agent/css/access_keys_wizard.css' %}?v={{ STATIC_VERSION }}">
   <link rel="stylesheet" href="{% static 'agent/css/avatar.css' %}?v={{ STATIC_VERSION }}">
+  {# dialog_theme.css MUST stay LAST: it supersedes the legacy .ui-dialog chrome on cascade ORDER. #}
+  <link rel="stylesheet" href="{% static 'agent/css/dialog_theme.css' %}?v={{ STATIC_VERSION }}_dlg1">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700&display=swap" rel="stylesheet">
@@ -725,19 +727,27 @@
 <div id="tlm-avatar-bubble" aria-live="polite"></div>
 <div id="tlm-voice-overlay" class="tlm-modal-overlay" style="display:none;">
  <div class="tlm-modal" role="dialog" aria-modal="true" aria-label="Voice settings">
-  <div class="tlm-modal-head"><span>Voice</span><button type="button" class="tlm-modal-x" id="tlm-voice-close" aria-label="Close">&times;</button></div>
+  <div class="tlm-modal-head">
+   <div><span class="tlm-modal-kicker">Voice</span><h2>Speech settings</h2></div>
+   <button type="button" class="tlm-modal-x" id="tlm-voice-close" aria-label="Close">&times;</button>
+  </div>
   <div class="tlm-modal-body">
    <p class="tlm-voice-note">Tlamatini's voice is <b>always female</b>, and works the same in Chrome &amp; Edge.</p>
-   <label class="tlm-voice-row">Voice<select id="tlm-voice-select"></select></label>
-   <label class="tlm-voice-row">Volume <span id="tlm-voice-vol-val"></span><input type="range" id="tlm-voice-volume" min="0" max="100" step="1"></label>
-   <label class="tlm-voice-row">Speed <span id="tlm-voice-rate-val"></span><input type="range" id="tlm-voice-rate" min="0.5" max="2" step="0.05"></label>
-   <label class="tlm-voice-row">Pitch <span id="tlm-voice-pitch-val"></span><input type="range" id="tlm-voice-pitch" min="0" max="2" step="0.05"></label>
-   <label class="tlm-voice-row tlm-voice-off">Pan (stereo)<input type="range" id="tlm-voice-pan" min="-100" max="100" step="1" value="0" disabled><small>Mono in the browser - available with the Orpheus voice.</small></label>
+   <div class="tlm-voice-pane">
+    <label class="tlm-voice-row">Voice<select id="tlm-voice-select"></select></label>
+    <label class="tlm-voice-row">Volume <span id="tlm-voice-vol-val"></span><input type="range" id="tlm-voice-volume" min="0" max="100" step="1"></label>
+    <label class="tlm-voice-row">Speed <span id="tlm-voice-rate-val"></span><input type="range" id="tlm-voice-rate" min="0.5" max="2" step="0.05"></label>
+    <label class="tlm-voice-row">Pitch <span id="tlm-voice-pitch-val"></span><input type="range" id="tlm-voice-pitch" min="0" max="2" step="0.05"></label>
+    <label class="tlm-voice-row tlm-voice-off">Pan (stereo)<input type="range" id="tlm-voice-pan" min="-100" max="100" step="1" value="0" disabled><small>Mono in the browser - available with the Orpheus voice.</small></label>
+   </div>
    <fieldset class="tlm-voice-modes"><legend>When an answer arrives</legend>
     <label><input type="radio" name="tlm-voice-mode" value="speak"> Automatically speak answers</label>
     <label><input type="radio" name="tlm-voice-mode" value="notify"> Notify answer complete</label>
     <label><input type="radio" name="tlm-voice-mode" value="silent"> Silent</label>
    </fieldset>
+  </div>
+  <div class="tlm-modal-foot">
+   <span class="tlm-modal-foot-note">Settings are saved in this browser.</span>
    <div class="tlm-voice-actions"><button type="button" id="tlm-voice-test">Test voice</button><button type="button" id="tlm-voice-save">Save</button></div>
   </div>
  </div>

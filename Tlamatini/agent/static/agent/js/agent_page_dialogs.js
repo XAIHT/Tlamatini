@@ -14,12 +14,28 @@
 // agent_page_dialogs.js  –  jQuery UI dialogs & loader helpers
 // ============================================================
 
+/*
+ * The PRIMARY (confirm) dialog button — the inline mirror of
+ * `.emx-button-primary` / `--tlm-dlg-accent` in dialog_theme.css.
+ *
+ * ⚠️ Angela, 2026-08-12 — two deliberate changes, do NOT revert:
+ *  1. `height: '4vh'` was REMOVED. A viewport-relative height made the button
+ *     43px on a 1080p screen and a squashed 26px on a laptop, so dialog
+ *     buttons were the one control that changed size with the window. Height
+ *     now comes from the shared padding in dialog_theme.css.
+ *  2. radius 8px → 6px, matching `--tlm-dlg-radius-sm`.
+ *
+ * ⚠️ ONLY the primary button is painted inline. The SECONDARY (Cancel /
+ * Close) is deliberately left alone so it inherits the translucent outlined
+ * `.ui-dialog .ui-button` style from dialog_theme.css — that teal/outlined
+ * pairing is what the reference dialog looks like. Painting Cancel teal too
+ * (the old behaviour) made both buttons read as "confirm".
+ */
 const DIALOG_BUTTON_CSS = {
     'background-color': '#55BBAA',
     'color': 'white',
-    'border-radius': '8px',
-    'font-size': '1em',
-    'height': '4vh'
+    'border-radius': '6px',
+    'font-size': '0.88rem'
 };
 
 /**
@@ -27,7 +43,6 @@ const DIALOG_BUTTON_CSS = {
  */
 function styleDialogButtons() {
     $('.ui-dialog-buttonpane button:contains("Continue")').css(DIALOG_BUTTON_CSS);
-    $('.ui-dialog-buttonpane button:contains("Cancel")').css(DIALOG_BUTTON_CSS);
 }
 
 /**

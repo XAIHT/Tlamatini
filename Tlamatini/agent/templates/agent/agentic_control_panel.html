@@ -13,6 +13,8 @@
     {% bootstrap_css %}
     {% bootstrap_javascript %}
     <link rel="stylesheet" href="{% static 'agent/css/agentic_control_panel.css' %}?v={{ STATIC_VERSION }}_v2">
+    {# dialog_theme.css MUST stay LAST: it supersedes the legacy .ui-dialog chrome on cascade ORDER. #}
+    <link rel="stylesheet" href="{% static 'agent/css/dialog_theme.css' %}?v={{ STATIC_VERSION }}_dlg1">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700&display=swap" rel="stylesheet">

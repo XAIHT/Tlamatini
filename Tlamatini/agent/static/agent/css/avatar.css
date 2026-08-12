@@ -1,5 +1,16 @@
 /* Tlamatini chat-avatar - talking-head (blink + lip-sync), voice, bubble.
-   Extracted from agent_page.html into a dedicated static file (2026-07-17). */
+   Extracted from agent_page.html into a dedicated static file (2026-07-17).
+
+   ⚠️ VOICE DIALOG (2026-08-12, Angela): the `.tlm-modal-*` block below used to
+   be a THIRD, foreign dialog skin — #1b1e2b surface, 12px corners, a cyan/
+   violet/pink gradient titlebar, no kicker, no footer bar, borderless 7px
+   buttons. Next to the External-MCPs / Contacts modals it read as a different
+   program, which is exactly what made the app feel unprofessional. It now
+   wears the SAME identity, built from the `--tlm-dlg-*` tokens in
+   `dialog_theme.css` (panel #4a4f5c, chrome #444853, 8px radius, teal kicker,
+   right-aligned footer actions). Do NOT reintroduce local colour literals
+   here — that is how the skins drifted apart. */
+
 #tools-chat-form-container{position:relative;min-height:30% !important;}
 #chat-form{position:relative;}
 #tlm-avatar-dock{position:absolute;top:2px;right:0;bottom:78px;width:25%;min-width:86px;
@@ -17,26 +28,98 @@
  box-shadow:0 8px 22px rgba(0,0,0,.7);opacity:0;transform:translateY(6px);
  pointer-events:none;transition:opacity .2s,transform .2s;}
 #tlm-avatar-bubble.tlm-show{opacity:1;transform:translateY(0);}
-.tlm-modal-overlay{position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.55);
- display:none;align-items:center;justify-content:center;}
-.tlm-modal{width:min(460px,92vw);max-height:88vh;overflow:auto;background:#1b1e2b;color:#e9ecf5;
- border:1px solid #3a3f57;border-radius:12px;box-shadow:0 18px 50px rgba(0,0,0,.6);}
-.tlm-modal-head{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;
- border-bottom:1px solid #333a52;font-weight:600;font-size:1.05rem;
- background:linear-gradient(135deg,rgba(34,211,238,.13),rgba(90,31,184,.13),rgba(236,72,153,.13));}
-.tlm-modal-x{background:none;border:none;color:#cbd0e6;font-size:1.4rem;cursor:pointer;line-height:1;}
-.tlm-modal-body{padding:14px 16px;}
-.tlm-voice-note{margin:0 0 12px;font-size:.86rem;color:#b9c0dc;}
-.tlm-voice-row{display:block;margin:0 0 12px;font-size:.86rem;color:#dfe3f2;}
+
+/* ── Voice settings modal — standardized Tlamatini dialog identity ────────── */
+
+.tlm-modal-overlay{position:fixed;inset:0;z-index:99999;
+ background:var(--tlm-dlg-overlay,rgba(11,14,22,.62));
+ display:none;align-items:center;justify-content:center;padding:14px;
+ box-sizing:border-box;font-family:var(--tlm-dlg-font,'Nunito',sans-serif);}
+
+/* Grid rows = header / scrolling body / footer, exactly like `.emx-panel`. */
+.tlm-modal{box-sizing:border-box;display:grid;grid-template-rows:auto minmax(0,1fr) auto;
+ width:min(520px,100%);max-height:min(760px,100%);overflow:hidden;
+ background:var(--tlm-dlg-surface,#4a4f5c);color:var(--tlm-dlg-text,#f0f1f7);
+ border:var(--tlm-dlg-border,1px solid rgba(255,255,255,.12));
+ border-radius:var(--tlm-dlg-radius,8px);
+ box-shadow:var(--tlm-dlg-shadow,0 22px 70px rgba(0,0,0,.62));}
+
+.tlm-modal-head{display:flex;justify-content:space-between;align-items:center;gap:16px;
+ padding:13px 16px;background:var(--tlm-dlg-chrome,#444853);
+ border-bottom:var(--tlm-dlg-hairline,1px solid rgba(255,255,255,.08));}
+.tlm-modal-kicker{display:block;color:var(--tlm-dlg-kicker,#55bbaa);font-size:.72rem;
+ font-weight:700;line-height:1.1;text-transform:uppercase;}
+.tlm-modal-head h2{margin:2px 0 0;color:var(--tlm-dlg-title,#fff);font-size:1rem;
+ font-weight:700;line-height:1.2;}
+
+.tlm-modal-x{display:inline-grid;place-items:center;width:32px;height:32px;flex:none;padding:0;
+ background:transparent;border:1px solid transparent;border-radius:var(--tlm-dlg-radius-sm,6px);
+ color:#c8ccd8;font-size:1.7rem;line-height:1;cursor:pointer;}
+.tlm-modal-x:hover,.tlm-modal-x:focus-visible{color:#fff;background:rgba(255,255,255,.08);
+ border-color:rgba(255,255,255,.14);outline:none;}
+
+.tlm-modal-body{min-height:0;overflow:auto;padding:12px;}
+
+.tlm-voice-note{margin:0 0 10px;font-size:.88rem;line-height:1.4;color:var(--tlm-dlg-body,#c1c5d0);}
+
+/* Inset pane — the reference dialog groups controls instead of floating them. */
+.tlm-voice-pane{background:var(--tlm-dlg-pane,rgba(27,30,44,.32));
+ border:var(--tlm-dlg-hairline,1px solid rgba(255,255,255,.08));
+ border-radius:var(--tlm-dlg-radius,8px);padding:12px;margin-bottom:10px;}
+
+.tlm-voice-row{display:block;margin:0 0 12px;font-size:.78rem;font-weight:700;
+ color:var(--tlm-dlg-body,#c1c5d0);}
+.tlm-voice-row:last-child{margin-bottom:0;}
 .tlm-voice-row select,.tlm-voice-row input[type=range]{display:block;width:100%;margin-top:5px;}
-.tlm-voice-row select{background:#12131c;color:#e9ecf5;border:1px solid #3a3f57;border-radius:7px;padding:6px;}
+.tlm-voice-row select{box-sizing:border-box;padding:8px 11px;
+ background:var(--tlm-dlg-input-bg,rgba(0,0,0,.22));
+ border:var(--tlm-dlg-input-border,1px solid rgba(255,255,255,.18));
+ border-radius:var(--tlm-dlg-radius,8px);color:var(--tlm-dlg-title,#fff);
+ font-family:var(--tlm-dlg-font,'Nunito',sans-serif);font-size:.9rem;}
+.tlm-voice-row select:focus{border-color:var(--tlm-dlg-accent,#55bbaa);
+ box-shadow:var(--tlm-dlg-accent-ring,0 0 0 2px rgba(85,187,170,.25));outline:none;}
+.tlm-voice-row input[type=range]{accent-color:var(--tlm-dlg-accent,#55bbaa);}
 .tlm-voice-off{opacity:.55;}
-.tlm-voice-off small{display:block;color:#8b90ad;margin-top:3px;}
-.tlm-voice-modes{border:1px solid #3a3f57;border-radius:8px;padding:8px 12px;margin:8px 0 14px;}
-.tlm-voice-modes legend{padding:0 6px;font-size:.8rem;color:#9aa0c0;}
-.tlm-voice-modes label{display:block;margin:6px 0;font-size:.9rem;cursor:pointer;}
-.tlm-voice-actions{display:flex;gap:10px;justify-content:flex-end;}
-.tlm-voice-actions button{padding:7px 16px;border:none;border-radius:7px;cursor:pointer;font-size:.9rem;}
-#tlm-voice-test{background:#2b2f45;color:#e9ecf5;}
-#tlm-voice-save{background:#55BBAA;color:#08221d;font-weight:600;}
+.tlm-voice-off small{display:block;color:var(--tlm-dlg-muted,#9ca2ba);margin-top:3px;
+ font-weight:400;}
+
+.tlm-voice-modes{background:var(--tlm-dlg-pane,rgba(27,30,44,.32));
+ border:var(--tlm-dlg-hairline,1px solid rgba(255,255,255,.08));
+ border-radius:var(--tlm-dlg-radius,8px);padding:10px 12px;margin:0;}
+.tlm-voice-modes legend{padding:0 6px;font-size:.72rem;font-weight:700;text-transform:uppercase;
+ color:var(--tlm-dlg-kicker,#55bbaa);}
+.tlm-voice-modes label{display:block;margin:6px 0;font-size:.9rem;cursor:pointer;
+ color:var(--tlm-dlg-text,#f0f1f7);}
+.tlm-voice-modes input[type=radio]{accent-color:var(--tlm-dlg-accent,#55bbaa);margin-right:6px;}
+
+/* Real footer bar: note on the left, actions right-aligned. */
+.tlm-modal-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;
+ padding:12px 14px;background:var(--tlm-dlg-chrome,#444853);
+ border-top:var(--tlm-dlg-hairline,1px solid rgba(255,255,255,.08));}
+.tlm-modal-foot-note{min-width:0;color:#b8bcc8;font-size:.8rem;line-height:1.35;}
+
+.tlm-voice-actions{display:flex;flex:none;gap:10px;justify-content:flex-end;}
+.tlm-voice-actions button{min-width:98px;padding:8px 14px;
+ border:var(--tlm-dlg-border,1px solid rgba(255,255,255,.12));
+ border-radius:var(--tlm-dlg-radius-sm,6px);color:var(--tlm-dlg-title,#fff);
+ font-family:var(--tlm-dlg-font,'Nunito',sans-serif);font-size:.88rem;font-weight:700;
+ line-height:1.2;cursor:pointer;}
+.tlm-voice-actions button:focus-visible{outline:2px solid rgba(85,187,170,.65);outline-offset:2px;}
+#tlm-voice-test{background:var(--tlm-dlg-btn-secondary,rgba(255,255,255,.08));}
+#tlm-voice-test:hover{background:var(--tlm-dlg-btn-secondary-hover,rgba(255,255,255,.14));}
+#tlm-voice-save{background:var(--tlm-dlg-accent,#55bbaa);}
+#tlm-voice-save:hover{background:var(--tlm-dlg-accent-hover,#469f91);}
+
+.tlm-modal-body::-webkit-scrollbar{width:9px;height:9px;}
+.tlm-modal-body::-webkit-scrollbar-track{background:rgba(0,0,0,.2);border-radius:4px;}
+.tlm-modal-body::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#6d28d9 0%,#2563eb 100%);
+ border-radius:4px;}
+
+@media (max-width:760px){
+ .tlm-modal{width:100%;max-height:100%;}
+ .tlm-modal-foot{align-items:stretch;flex-direction:column;}
+ .tlm-voice-actions{width:100%;}
+ .tlm-voice-actions button{flex:1;min-width:0;}
+}
+
 @media (prefers-reduced-motion: reduce){#tlm-face img{transition:none !important;}}

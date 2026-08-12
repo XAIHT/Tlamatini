@@ -321,9 +321,11 @@ async function _akwSave() {
 }
 
 function _akwStyleButtons() {
+    // Only "Save" is the primary action. "Close" is intentionally NOT painted
+    // so it keeps the outlined secondary style from dialog_theme.css — see the
+    // DIALOG_BUTTON_CSS contract in agent_page_dialogs.js.
     const css = typeof DIALOG_BUTTON_CSS === 'object' ? DIALOG_BUTTON_CSS : {};
     $('.ui-dialog-buttonpane button:contains("Save")').css(css);
-    $('.ui-dialog-buttonpane button:contains("Close")').css(css);
 }
 
 function _akwOpenDialog() {
