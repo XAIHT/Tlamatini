@@ -309,6 +309,29 @@ function disableControlsDuringOperation() {
     }
     // Keep agentsMenuButton enabled so "Agentic Control Panel" remains accessible
     // Only disable the "Configure Agents" entry
+    // The "External" and "DB" navbar dropdowns are disabled WHOLE during a long
+    // operation - both functionally (Bootstrap cannot open them without
+    // data-bs-toggle) and visually (same greying "Configure Agents" gets).
+    ['external-menu-button', 'db-menu-button'].forEach(function (menuButtonId) {
+        const menuButton = document.getElementById(menuButtonId);
+        if (menuButton) {
+            menuButton.setAttribute('disabled', 'disabled');
+            menuButton.removeAttribute('data-bs-toggle');
+            menuButton.classList.add('disabled');
+            menuButton.style.pointerEvents = 'none';
+            menuButton.style.opacity = '0.5';
+        }
+    });
+
+    // Only the "Check for updates" ENTRY of the About menu is disabled (the
+    // rest of that dropdown stays usable) - exactly like "Configure Agents".
+    const checkUpdatesItem = document.getElementById('check-updates-button');
+    if (checkUpdatesItem) {
+        checkUpdatesItem.classList.add('disabled');
+        checkUpdatesItem.style.pointerEvents = 'none';
+        checkUpdatesItem.style.opacity = '0.5';
+    }
+
     const configureAgentsItem = document.getElementById('enable-agents');
     if (configureAgentsItem) {
         configureAgentsItem.classList.add('disabled');
@@ -375,6 +398,26 @@ function enableControlsAfterOperation() {
     }
     updateOpenInMenuState();
     // Re-enable the "Configure Agents" entry
+    // Re-arm the "External" and "DB" navbar dropdowns (mirror of the disable
+    // pass above: restore data-bs-toggle AND clear the greying).
+    ['external-menu-button', 'db-menu-button'].forEach(function (menuButtonId) {
+        const menuButton = document.getElementById(menuButtonId);
+        if (menuButton) {
+            menuButton.removeAttribute('disabled');
+            menuButton.setAttribute('data-bs-toggle', 'dropdown');
+            menuButton.classList.remove('disabled');
+            menuButton.style.pointerEvents = '';
+            menuButton.style.opacity = '';
+        }
+    });
+
+    const checkUpdatesItem = document.getElementById('check-updates-button');
+    if (checkUpdatesItem) {
+        checkUpdatesItem.classList.remove('disabled');
+        checkUpdatesItem.style.pointerEvents = '';
+        checkUpdatesItem.style.opacity = '';
+    }
+
     const configureAgentsItem = document.getElementById('enable-agents');
     if (configureAgentsItem) {
         configureAgentsItem.classList.remove('disabled');
