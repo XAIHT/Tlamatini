@@ -703,7 +703,13 @@
       <div class="update-body">
         <p class="update-current">Installed version: <strong>v{{ version }}</strong></p>
         <div id="update-content" class="update-content">Checking for updates…</div>
-        <pre id="update-notes" class="update-notes" style="display: none;"></pre>
+        <!-- RENDERED release notes (2026-08-13). This used to be a <pre> fed by
+             textContent, which showed the GitHub notes as literal markup:
+             "## What's New", a raw <img ... src="…user-attachments…"> tag and
+             [v1.42.0](https://…). It is now a real container whose markdown is
+             rendered - images and videos included - by
+             release_notes_renderer.js (whitelist-sanitised). -->
+        <div id="update-notes" class="update-notes" style="display: none;"></div>
         <div id="update-progress-wrap" class="update-progress-wrap" style="display: none;">
           <div id="update-progress-bar" class="update-progress-bar"></div>
         </div>
@@ -736,6 +742,7 @@
   <script src="{% static 'agent/js/chat_page_runtime_poller.js' %}?v={{ STATIC_VERSION }}"></script>
   <script src="{% static 'agent/js/chat_image_paste.js' %}?v={{ STATIC_VERSION }}"></script>
   <script src="{% static 'agent/js/checkbox_bulk_toggle.js' %}?v={{ STATIC_VERSION }}_bulktoggle"></script>
+  <script src="{% static 'agent/js/release_notes_renderer.js' %}?v={{ STATIC_VERSION }}_relnotes"></script>
 
 <!-- TLM_AVATAR_PHASE1_START -->
 <div id="tlm-avatar-bubble" aria-live="polite"></div>

@@ -842,7 +842,13 @@ def _execute_in_forked_window(script_path: str) -> bool:
                 wf.write('@echo   Script finished  (exit code: %EC%)\n')
                 wf.write(f'@echo   This window stays open for {_hold} seconds - or close it now.\n')
                 wf.write('@echo ============================================\n')
-                wf.write(f'@echo %EC%> "{sentinel_path}"\n')
+                # ⚠️ THE PARENTHESES ARE LOAD-BEARING (2026-08-13, same defect
+                # fixed in pythonxer.py the same day). `@echo %EC%> "file"`
+                # makes cmd.exe read the digit glued to `>` as a REDIRECTION
+                # HANDLE, so the sentinel got the literal "ECHO is on." on
+                # EVERY run and the real exit code was lost. Group the echo so
+                # the digit stays an ARGUMENT. Do NOT "simplify" it back.
+                wf.write(f'@(echo %EC%)> "{sentinel_path}"\n')
                 # BOUNDED hold, never an unbounded `cmd /k`. Under the session MCP
                 # host the console is created on a window station that is not
                 # visible, so an unbounded hold would leak an

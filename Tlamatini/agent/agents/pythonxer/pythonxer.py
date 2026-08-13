@@ -17,6 +17,7 @@ import sys
 # FIX: Disable Intel Fortran runtime Ctrl+C handler
 os.environ['FOR_DISABLE_CONSOLE_CTRL_HANDLER'] = '1'
 
+import re
 import time
 import yaml
 import logging
@@ -607,7 +608,18 @@ def _execute_in_forked_window(cmd: list, script_path: str) -> bool:
             with open(wrapper_path, "w", encoding="utf-8") as wf:
                 wf.write(f'@"{python_exe}" "{script_path}"\n')
                 wf.write('@set EC=%ERRORLEVEL%\n')
-                wf.write(f'@echo %EC%> "{exitcode_file}"\n')
+                # ⚠️ THE PARENTHESES ARE LOAD-BEARING (2026-08-13). Written as
+                # `@echo %EC%> "file"`, cmd.exe reads the digit glued to `>` as
+                # a REDIRECTION HANDLE - `echo 1> file` is "echo, stdout to
+                # file" - so the sentinel received the literal text
+                # "ECHO is on." for EVERY run. int() then raised, the reader
+                # fell back to 0, and a script that CRASHED was reported as
+                # "✅ Script returned True (exit code: 0)". Pythonxer's exit
+                # code drives the canvas LED and the Multi-Turn
+                # fix->re-ruff->retry loop, so that lie silently disabled both.
+                # `(echo %EC%)> "file"` groups the echo first, so the digit is
+                # an ARGUMENT again. Do NOT "simplify" it back.
+                wf.write(f'@(echo %EC%)> "{exitcode_file}"\n')
                 wf.write('@echo.\n')
                 wf.write('@echo ============================================\n')
                 wf.write('@echo   Script finished  (exit code: %EC%)\n')
@@ -684,11 +696,25 @@ def _execute_in_forked_window(cmd: list, script_path: str) -> bool:
         # script completed (or the script never ran) — treat as True.
         script_exitcode = 0  # default: closing the window = success
         if os.path.exists(exitcode_file):
+            raw = ""
             try:
                 with open(exitcode_file, "r") as ef:
-                    script_exitcode = int(ef.read().strip())
-            except (ValueError, OSError):
-                script_exitcode = 0  # unreadable → treat as success
+                    raw = ef.read()
+            except OSError as exc:
+                logging.warning(f"⚠️ Could not read the exit-code sentinel: {exc}")
+            digits = re.search(r'-?\d+', raw or "")
+            if digits:
+                script_exitcode = int(digits.group(0))
+            else:
+                # The sentinel EXISTS, so the script really finished - we just
+                # cannot tell HOW. Claiming success here is exactly the lie the
+                # 2026-08-13 redirection bug produced for months, so report the
+                # failure loudly instead of inventing a green result.
+                logging.error(
+                    "⛔ Exit-code sentinel is unreadable "
+                    f"(content: {raw!r}) - refusing to report success."
+                )
+                script_exitcode = 1
 
         if script_exitcode == 0:
             logging.info(f"✅ Script returned True (exit code: {script_exitcode})")

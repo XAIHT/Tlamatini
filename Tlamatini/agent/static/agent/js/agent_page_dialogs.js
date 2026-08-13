@@ -1217,7 +1217,17 @@ async function _checkForUpdates() {
             return;
         }
         if (data.notes) {
-            notes.textContent = data.notes;
+            // RENDER the release notes, never dump their source (2026-08-13).
+            // GitHub notes are Markdown WITH embedded raw <img>/<video>, so
+            // textContent showed the user "## What's New" and a full <img ...>
+            // tag instead of the heading and the screenshot. The renderer is
+            // whitelist-sanitised and fails open; if the module is somehow
+            // missing we still show the text rather than an empty box.
+            if (window.TlamatiniReleaseNotes && window.TlamatiniReleaseNotes.mount) {
+                window.TlamatiniReleaseNotes.mount(notes, data.notes);
+            } else {
+                notes.textContent = data.notes;
+            }
             notes.style.display = 'block';
         }
         if (!data.update_available) {

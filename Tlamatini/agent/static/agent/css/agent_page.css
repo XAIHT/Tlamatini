@@ -1261,19 +1261,114 @@ body.resizing-vertical {
     opacity: 0.75;
 }
 
+/*
+ * RENDERED release notes (2026-08-13). This pane used to be a <pre> with
+ * `white-space: pre-wrap` holding the raw GitHub markdown, so the user read
+ * "## What's New" and a literal <img ... src="…"> tag. It now holds real
+ * rendered HTML from release_notes_renderer.js, so the styling below is for
+ * headings / lists / links / code / MEDIA, and the max-height is roomy enough
+ * that a release screenshot or video is actually watchable.
+ */
 .update-notes {
     margin: 12px 0 0;
-    max-height: 160px;
+    max-height: 320px;
     overflow: auto;
-    padding: 10px 12px;
+    padding: 10px 14px;
     background: var(--tlm-dlg-pane);
     border: var(--tlm-dlg-hairline);
     border-radius: var(--tlm-dlg-radius-sm);
-    font-size: 12px;
-    line-height: 1.4;
-    white-space: pre-wrap;
+    font-size: 12.5px;
+    line-height: 1.5;
     word-break: break-word;
     color: var(--tlm-dlg-body);
+}
+
+.update-notes p { margin: 0 0 8px; }
+.update-notes > :first-child { margin-top: 0; }
+.update-notes > :last-child { margin-bottom: 0; }
+
+.update-notes h1,
+.update-notes h2,
+.update-notes h3,
+.update-notes h4,
+.update-notes h5,
+.update-notes h6 {
+    margin: 14px 0 6px;
+    font-weight: 700;
+    line-height: 1.25;
+    color: var(--tlm-dlg-title);
+}
+
+.update-notes h1 { font-size: 16px; }
+.update-notes h2 { font-size: 15px; }
+.update-notes h3 { font-size: 14px; }
+.update-notes h4,
+.update-notes h5,
+.update-notes h6 { font-size: 13px; }
+
+.update-notes ul,
+.update-notes ol { margin: 0 0 8px; padding-left: 20px; }
+.update-notes li { margin: 2px 0; }
+
+.update-notes a { color: var(--tlm-dlg-kicker); text-decoration: underline; }
+.update-notes a:hover { filter: brightness(1.25); }
+
+.update-notes blockquote {
+    margin: 8px 0;
+    padding: 2px 0 2px 10px;
+    border-left: 3px solid var(--tlm-dlg-kicker);
+    opacity: 0.9;
+}
+
+.update-notes hr {
+    margin: 12px 0;
+    border: 0;
+    border-top: var(--tlm-dlg-hairline);
+}
+
+.update-notes code {
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.10);
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 12px;
+}
+
+.update-notes pre.rn-code {
+    margin: 8px 0;
+    padding: 8px 10px;
+    overflow: auto;
+    border-radius: var(--tlm-dlg-radius-sm);
+    background: rgba(0, 0, 0, 0.35);
+    white-space: pre-wrap;
+}
+
+.update-notes pre.rn-code code { padding: 0; background: none; }
+
+/* The whole point of the fix: a release screenshot or clip renders INLINE,
+ * scaled to the dialog, never overflowing it. */
+.update-notes .rn-media,
+.update-notes img,
+.update-notes video {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: 8px auto;
+    border-radius: var(--tlm-dlg-radius-sm);
+    background: rgba(0, 0, 0, 0.25);
+}
+
+.update-notes table {
+    width: 100%;
+    margin: 8px 0;
+    border-collapse: collapse;
+}
+
+.update-notes th,
+.update-notes td {
+    padding: 4px 8px;
+    border: var(--tlm-dlg-hairline);
+    text-align: left;
 }
 
 .update-progress-wrap {
