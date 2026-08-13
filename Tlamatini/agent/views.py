@@ -839,6 +839,22 @@ def get_user_python_home() -> str:
 def get_agent_env() -> dict:
     """Build environment for child processes with PYTHON_HOME from USER env vars on PATH."""
     env = os.environ.copy()
+
+    # TLAMATINI_AGENTS_ROOT — so an agent can find its SIBLINGS (2026-08-12).
+    # Playwrighter's `shoter` step needs the Shoter template, and a pool agent
+    # has no reliable way to walk to `agents/` from wherever it was copied.
+    # Same variable the chat-run path exports (chat_agent_runtime._build_child_env),
+    # so an agent behaves identically from the canvas and from chat.
+    # Fail-open: absent variable simply means "search for it yourself".
+    try:
+        from agent.services.agent_paths import get_agents_root
+
+        agents_root = str(get_agents_root())
+        if agents_root and os.path.isdir(agents_root):
+            env['TLAMATINI_AGENTS_ROOT'] = agents_root
+    except Exception:
+        pass
+
     
     # Reset PyInstaller's DLL search path alteration on Windows
     # If we don't do this, child Python processes will WinError 1114 when loading C extensions (like torch)

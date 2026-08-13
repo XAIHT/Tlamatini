@@ -173,7 +173,7 @@ async function openInstancedAgentInApp(canvasItem, appId) {
         }
     } catch (err) {
         console.error(`[OPEN_IN_APP] Error opening ${canvasItem.id} in ${appId}:`, err);
-        alert(`Error opening ${canvasItem.id}: ${err.message}`);
+        acpAlert(`Error opening ${canvasItem.id}: ${err.message}`);
     }
 }
 
@@ -251,11 +251,11 @@ async function restartAgent(canvasItem) {
             console.log(`[RESTART] Successfully started ${agentId}: PID ${result.pid}`);
         } else {
             console.error(`[RESTART] Failed to start ${agentId}: ${result.message}`);
-            alert(`Failed to restart agent: ${result.message}`);
+            acpAlert(`Failed to restart agent: ${result.message}`);
         }
     } catch (err) {
         console.error(`[RESTART] Error restarting ${agentId}:`, err);
-        alert(`Error restarting agent: ${err.message}`);
+        acpAlert(`Error restarting agent: ${err.message}`);
     }
 }
 
@@ -279,6 +279,17 @@ function initDescriptionDialog() {
 
     if (closeBtn) {
         closeBtn.addEventListener('click', () => {
+            hideDescriptionDialog();
+        });
+    }
+
+    // The footer's Close action. The dialog gained a real footer bar in the
+    // 2026-08-12 dialog standardization: the shared identity is a kicker
+    // above the title and a chrome bar with an action at the bottom, and
+    // without one this dialog read as a tooltip that had escaped.
+    const footerCloseBtn = document.getElementById('agent-description-close-action');
+    if (footerCloseBtn) {
+        footerCloseBtn.addEventListener('click', () => {
             hideDescriptionDialog();
         });
     }
@@ -322,7 +333,10 @@ function openDescriptionDialog(canvasItem) {
     }
 
     if (descriptionTitle) {
-        descriptionTitle.textContent = `Description: ${agentName}`;
+        // Just the agent name: the static "Description" kicker above it
+        // already says what this is, so repeating it here only ate the
+        // width the long agent names need.
+        descriptionTitle.textContent = agentName;
     }
 
     if (purpose) {
@@ -556,9 +570,10 @@ async function openLogViewer(canvasItem) {
         return;
     }
 
-    // Set title
+    // Set title. The "Agent log" kicker above it carries the category, so
+    // the title is just the agent - see initDescriptionDialog().
     if (logTitle) {
-        logTitle.textContent = `Log: ${agentName}`;
+        logTitle.textContent = agentName;
     }
 
     // Clear content and show loading

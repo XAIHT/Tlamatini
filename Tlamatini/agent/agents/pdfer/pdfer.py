@@ -507,11 +507,67 @@ def _documents_dir() -> str:
     return os.path.join(os.path.expanduser("~"), "Documents")
 
 
+def _dir_accepts_new_files(path: str) -> bool:
+    """True when a NEW file can actually be CREATED in ``path``.
+
+    "The directory exists" and ``os.access`` both LIE here. On a machine where
+    Documents is a OneDrive known folder, the directory lists its contents
+    perfectly and every single create fails with FileNotFoundError - the sync
+    filter refuses the operation, not the filesystem. The only honest test is
+    to create a file and delete it again.
+    """
+    try:
+        os.makedirs(path, exist_ok=True)
+        probe = os.path.join(path, f".pdfer_write_probe_{os.getpid()}")
+        with open(probe, "w", encoding="utf-8") as fh:
+            fh.write("ok")
+        os.remove(probe)
+        return True
+    except Exception:
+        return False
+
+
+_DEFAULT_DIR_CACHE: list = []
+
+
 def _default_output_dir(config: dict) -> str:
+    """Resolve where the PDF goes.
+
+    An EXPLICIT ``output_dir`` is honoured VERBATIM - the user named that
+    folder, and quietly writing somewhere else would be worse than refusing.
+
+    Only the DEFAULT destination falls back. The documented chain was already
+    "Documents known-folder, fallback ~/Documents", but it only ever triggered
+    when the known-folder API *failed*. The case that actually happens is the
+    opposite: the API succeeds and hands back a folder that refuses new files
+    (OneDrive), which turned "make me a PDF" into a refusal with a perfectly
+    writable disk underneath. Now the fallback answers the failure that is
+    real, and says out loud which folder it chose and why.
+    """
     explicit = str(_cfg(config, "output_dir", "")).strip().strip('"').strip("'")
     if explicit:
         return os.path.abspath(explicit)
-    return os.path.join(_documents_dir(), "TlamatiniPDF")
+    if _DEFAULT_DIR_CACHE:
+        return _DEFAULT_DIR_CACHE[0]
+
+    known = os.path.join(_documents_dir(), "TlamatiniPDF")
+    local = os.path.join(os.path.expanduser("~"), "Documents", "TlamatiniPDF")
+    scratch = os.path.join(_temp_root(), "PDFer")
+    for candidate, why in ((known, "the Documents known-folder"),
+                           (local, "the local profile Documents"),
+                           (scratch, "<app>/Temp")):
+        if _dir_accepts_new_files(candidate):
+            if candidate != known:
+                logging.warning(
+                    f"⚠️ {known} exists but refuses new files (OneDrive or a "
+                    f"folder policy is blocking creates) - writing to {why} "
+                    f"instead: {candidate}")
+            _DEFAULT_DIR_CACHE.append(candidate)
+            return candidate
+    # Nothing accepted a file. Keep the documented destination so preflight
+    # reports the real blocker instead of a surprising substitute path.
+    _DEFAULT_DIR_CACHE.append(known)
+    return known
 
 
 def _temp_root() -> str:
@@ -816,19 +872,126 @@ def _build_html_document(body: str, config: dict, figures: str = "") -> str:
 """
 
 
-def _render_html_to_pdf(html_doc: str, output_path: str) -> tuple:
+def _resolve_asset_uri(raw: str, base_dir: str) -> str:
+    """Turn an ``src``/``href`` from the document into a path xhtml2pdf can open.
+
+    Angela, 2026-08-12: WITHOUT this, a Markdown document that references a
+    local diagram produced a PDF with NO DIAGRAMS AT ALL — xhtml2pdf logged
+    ``Could not get image data from src attribute`` and rendered the page
+    anyway, so the agent reported ``status: created`` and the user opened an
+    illustrated report that had lost every illustration. A silent, plausible,
+    WRONG deliverable: the worst failure mode this agent has.
+
+    xhtml2pdf resolves nothing by itself — it hands every URI to a
+    ``link_callback`` and, when there is none, only understands what happens
+    to be openable as-is. So it choked on all three shapes a human actually
+    writes: a ``file:///C:/...`` URL, a plain Windows absolute path, and a
+    path relative to the Markdown file.
+
+    Returns the ORIGINAL string when it is not a local file (``data:`` /
+    ``http(s)://``, which xhtml2pdf handles natively) or when nothing exists
+    at the resolved location — never raises, so a bad path degrades to the
+    old behaviour instead of killing the render.
+    """
+    from urllib.parse import unquote, urlparse
+
+    text = (raw or "").strip()
+    if not text:
+        return raw
+    low = text.lower()
+    if low.startswith(("data:", "http://", "https://", "ftp://")):
+        return raw
+
+    path = text
+    if low.startswith("file:"):
+        parsed = urlparse(text)
+        path = unquote(parsed.path or "")
+        # file:///C:/x -> /C:/x ; strip the leading slash Windows does not want.
+        if os.name == "nt" and re.match(r"^/[A-Za-z]:", path):
+            path = path[1:]
+        # file://server/share/x -> a UNC path.
+        if parsed.netloc and parsed.netloc.lower() not in ("", "localhost"):
+            path = "//%s%s" % (parsed.netloc, path)
+
+    path = os.path.expandvars(os.path.expanduser(path))
+    if os.name == "nt":
+        path = path.replace("/", os.sep)
+
+    candidate = (path if os.path.isabs(path) or not base_dir
+                 else os.path.join(base_dir, path))
+    try:
+        candidate = os.path.normpath(candidate)
+    except Exception:
+        return raw
+    return candidate if os.path.isfile(candidate) else raw
+
+
+def _count_pdf_images(path: str) -> int:
+    """How many images the FINISHED pdf actually contains.
+
+    The honest number. Counting what we *intended* to place is how the agent
+    used to report ``images_used: 0`` for a document that had four diagrams in
+    it — and would equally have reported success for one that had none. Ground
+    truth is the file on disk. Fail-open: -1 means "could not tell", never an
+    exception into the caller.
+    """
+    try:
+        import fitz
+    except Exception:
+        return -1
+    try:
+        doc = fitz.open(path)
+        try:
+            return sum(len(page.get_images(full=True)) for page in doc)
+        finally:
+            doc.close()
+    except Exception:
+        return -1
+
+
+def _render_html_to_pdf(html_doc: str, output_path: str,
+                        base_dir: str = "") -> tuple:
     """pisa.CreatePDF — the exact call agent/doc_generation already trusts.
 
-    Returns (ok, message). xhtml2pdf reports soft errors via ``pisa_status.err``;
-    a non-zero count with a readable file on disk is still surfaced as a warning
-    rather than thrown away.
+    Returns ``(ok, message, images_in_pdf)``. xhtml2pdf reports soft errors via
+    ``pisa_status.err``; a non-zero count with a readable file on disk is still
+    surfaced as a warning rather than thrown away.
+
+    ``base_dir`` is the directory of the source document (``input_file``), so a
+    Markdown file may reference its figures the way its author wrote them —
+    relatively. See ``_resolve_asset_uri``.
     """
     from xhtml2pdf import pisa
+
+    missing = []
+
+    def link_callback(uri, rel):           # noqa: ARG001 - xhtml2pdf's signature
+        try:
+            resolved = _resolve_asset_uri(uri, base_dir)
+        except Exception:
+            return uri
+        low = str(uri or "").strip().lower()
+        if (resolved == uri and not low.startswith(
+                ("data:", "http://", "https://", "ftp://"))):
+            missing.append(str(uri)[:160])
+        return resolved
+
     with open(output_path, "w+b") as pdf_file:
-        status = pisa.CreatePDF(html_doc, dest=pdf_file, encoding="utf-8")
+        status = pisa.CreatePDF(html_doc, dest=pdf_file, encoding="utf-8",
+                                link_callback=link_callback)
+
+    for item in missing[:8]:
+        logging.warning(f"⚠️ asset not found, left to xhtml2pdf: {item}")
+
+    embedded = _count_pdf_images(output_path)
     if status.err:
-        return False, f"xhtml2pdf reported {status.err} error(s) during conversion"
-    return True, "rendered via xhtml2pdf"
+        return (False,
+                f"xhtml2pdf reported {status.err} error(s) during conversion",
+                embedded)
+    note = "rendered via xhtml2pdf"
+    if missing:
+        note += f" ({len(missing)} asset(s) could not be resolved)"
+    return True, note, embedded
 
 
 # ========================================
@@ -1105,15 +1268,18 @@ def _preflight(mode: str, config: dict, text: str, images: list, pdfs: list,
         fatals.append(f"input_file does not exist: {in_file}")
 
     # ---- destination writability -----------------------------------------
+    # ONE definition of "writable": can a NEW file be created here? A folder
+    # can exist, list its contents, and still refuse every create. Since the
+    # DEFAULT destination now falls back on its own, reaching this blocker
+    # means the user NAMED a folder that cannot take the file - so say what
+    # to do about it instead of just quoting errno 2.
     out_dir = _default_output_dir(config)
-    try:
-        os.makedirs(out_dir, exist_ok=True)
-        probe = os.path.join(out_dir, f".pdfer_write_probe_{os.getpid()}")
-        with open(probe, "w", encoding="utf-8") as f:
-            f.write("ok")
-        os.remove(probe)
-    except Exception as e:
-        fatals.append(f"output_dir is not writable ({out_dir}): {e}")
+    if not _dir_accepts_new_files(out_dir):
+        fatals.append(
+            f"output_dir cannot accept a new file ({out_dir}). A folder can "
+            f"exist and still refuse creates - a paused or erroring OneDrive, "
+            f"or a folder-protection policy, does exactly that. Pass a "
+            f"different output_dir, or fix the sync/permission on that folder.")
 
     if str(_cfg(config, "page_size", "A4")).strip().lower() not in _PAGE_SIZES:
         warnings.append(
@@ -1281,8 +1447,20 @@ def main():
                         outcome["images_used"] = sum(
                             1 for p in images if os.path.isfile(p))
                     html_doc = _build_html_document(html_body, config, figures)
-                    ok, message = _render_html_to_pdf(html_doc, output_path)
+                    # Figures are usually written RELATIVE to the source
+                    # document, so the document's own folder is the base for
+                    # resolving them (see _resolve_asset_uri).
+                    src_file = str(_cfg(config, "input_file", "")).strip().strip('"').strip("'")
+                    base_dir = (os.path.dirname(os.path.abspath(src_file))
+                                if src_file and os.path.isfile(src_file) else "")
+                    ok, message, embedded = _render_html_to_pdf(
+                        html_doc, output_path, base_dir=base_dir)
                     outcome["engine"] = "xhtml2pdf"
+                    # Report what the PDF ACTUALLY contains, not what we meant
+                    # to put in it: `images_used: 0` on a document with four
+                    # diagrams is how a broken render passed for a good one.
+                    if embedded >= 0:
+                        outcome["images_used"] = embedded
                 notes.append(message)
             except ImportError as e:
                 ok = False

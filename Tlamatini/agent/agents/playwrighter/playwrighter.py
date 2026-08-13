@@ -335,6 +335,137 @@ def _coerce_int(value: Any, default: int = 0) -> int:
         return default
 
 
+def _find_shoter_template(explicit: str = "") -> str:
+    """Locate the SHOTER agent template.
+
+    Playwrighter runs from three different places — the template itself, a
+    canvas session pool (``agents/pools/<session>/playwrighter_1/``) and a
+    chat run (``<app>/Temp/mcp_agent_runs/playwrighter__.../``) — so the
+    distance to ``agents/`` is NOT fixed. The chat-run case is why the first
+    version failed: from ``<app>/Temp/mcp_agent_runs/x`` no ancestor
+    directly contains ``shoter/``, only ``agents/shoter/``.
+
+    Order: an explicit path from the step, then ``TLAMATINI_AGENTS_ROOT``,
+    then a walk up testing BOTH ``<dir>/shoter`` and ``<dir>/agents/shoter``.
+    """
+    if explicit:
+        candidate = os.path.join(explicit, "shoter.py")
+        if os.path.isfile(candidate):
+            return explicit
+        nested = os.path.join(explicit, "shoter", "shoter.py")
+        if os.path.isfile(nested):
+            return os.path.dirname(nested)
+
+    env_root = (os.environ.get("TLAMATINI_AGENTS_ROOT") or "").strip()
+    if env_root:
+        candidate = os.path.join(env_root, "shoter", "shoter.py")
+        if os.path.isfile(candidate):
+            return os.path.dirname(candidate)
+
+    here = os.path.dirname(os.path.abspath(__file__))
+    for _ in range(8):
+        for relative in (("shoter", "shoter.py"),
+                         ("agents", "shoter", "shoter.py"),
+                         ("agent", "agents", "shoter", "shoter.py"),
+                         ("Tlamatini", "agent", "agents", "shoter", "shoter.py")):
+            candidate = os.path.join(here, *relative)
+            if os.path.isfile(candidate):
+                return os.path.dirname(candidate)
+        parent = os.path.dirname(here)
+        if parent == here:
+            break
+        here = parent
+    return ""
+
+
+def _run_shoter(target_dir: str, filename: str, all_screens: Any = True,
+                explicit_template: str = "") -> str:
+    """Take a FULL-DESKTOP photo with Tlamatini's Shoter agent.
+
+    Never PIL. `PIL.ImageGrab` is forbidden in this codebase, and the reason
+    is concrete: while tests grabbed their own shots, nobody exercised
+    Shoter, so its missing ``all_screens`` went unnoticed and a two-monitor
+    desktop was silently cropped to one. Using the agent IS the test of the
+    agent.
+
+    Returns the photo path, or "" if Shoter could not run — the caller
+    records the miss rather than failing the browser run over a photo.
+    """
+    import shutil
+    import tempfile
+
+    template = _find_shoter_template(str(explicit_template or ""))
+    if not template:
+        logging.error("shoter step: could not locate the Shoter agent template")
+        return ""
+
+    os.makedirs(target_dir, exist_ok=True)
+    runtime = tempfile.mkdtemp(prefix="pw_shoter_")
+    try:
+        for entry in os.listdir(template):
+            src = os.path.join(template, entry)
+            if os.path.isfile(src):
+                shutil.copy2(src, os.path.join(runtime, entry))
+
+        wanted = str(all_screens).strip().lower() not in ("false", "0", "no", "")
+        # `output_dir` + `filename` + `all_screens` are Shoter's real keys —
+        # the same three the daily-test launcher writes. Forward slashes so a
+        # Windows path never looks like a YAML escape.
+        with open(os.path.join(runtime, "config.yaml"), "w",
+                  encoding="utf-8", newline="\n") as fh:
+            fh.write("output_dir: %s\n" % target_dir.replace("\\", "/"))
+            fh.write("all_screens: %s\n" % ("true" if wanted else "false"))
+            fh.write("filename: %s\n" % filename)
+            fh.write("target_agents: []\n")
+
+        # encoding=utf-8: Shoter prints emoji and the Windows codepage chokes.
+        subprocess.run([sys.executable, "shoter.py"], cwd=runtime, timeout=90,
+                       capture_output=True, text=True, encoding="utf-8",
+                       errors="replace")
+        produced = os.path.join(target_dir, filename)
+        if os.path.isfile(produced):
+            logging.info(f"Shoter photo: {produced}")
+            return produced
+        logging.error("shoter step: Shoter produced no file at %s" % produced)
+        return ""
+    except Exception as exc:
+        logging.error(f"shoter step failed: {exc}")
+        return ""
+    finally:
+        shutil.rmtree(runtime, ignore_errors=True)
+
+
+def _resolve_env_placeholders(step: Dict[str, Any]) -> Dict[str, Any]:
+    """Replace every ``${ENV:NAME}`` in a step's string values.
+
+    Returns a COPY, so whatever is logged, echoed into the INI_SECTION or
+    persisted to config.yaml still shows ``${ENV:TLAMATINI_PASS}`` and never
+    the password itself - a secret that reaches a log is already leaked.
+
+    Deliberately written without ``re``: this module does not import it, and a
+    helper whose only job is to keep a secret out of a file has no business
+    adding an import to do it. Total by construction - an unset variable
+    resolves to "" and any failure returns the step untouched, because a
+    substitution helper must never be able to abort a browser run.
+    """
+    try:
+        resolved = dict(step)
+        for key, value in step.items():
+            if not isinstance(value, str) or "${ENV:" not in value:
+                continue
+            out = value
+            while "${ENV:" in out:
+                head, rest = out.split("${ENV:", 1)
+                if "}" not in rest:
+                    break
+                name, tail = rest.split("}", 1)
+                out = head + os.environ.get(name.strip(), "") + tail
+            resolved[key] = out
+        return resolved
+    except Exception:
+        return step
+
+
 def _run_one_step(page, step: Dict[str, Any], idx: int, default_timeout: int,
                   extracted: Dict[str, str], asserts: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Execute a single declarative step. Returns a per-step result dict.
@@ -342,6 +473,15 @@ def _run_one_step(page, step: Dict[str, Any], idx: int, default_timeout: int,
     Never raises — a failed step is recorded with ``ok=False`` and the caller
     decides whether to keep going (we do, so the section + downstream still
     fire and a Forker can branch on the final status)."""
+    # ${ENV:NAME} substitution (Angela, 2026-08-13). A credential must never be
+    # typed into a config.yaml, a .flw, a chat prompt or a log - all of which
+    # are stored, exported or echoed. A step may write ${ENV:TLAMATINI_PASS}
+    # and the value is resolved HERE, from the environment the agent already
+    # inherits, so the secret exists only in memory for the length of the fill.
+    # Unset variables resolve to "" rather than raising: a login that silently
+    # fails is debuggable, a crashed browser run is not.
+    step = _resolve_env_placeholders(step)
+
     action = str(step.get("action", "")).strip().lower()
     selector = step.get("selector")
     timeout = int(step.get("timeout", 0) or 0) or default_timeout
@@ -363,6 +503,107 @@ def _run_one_step(page, step: Dict[str, Any], idx: int, default_timeout: int,
 
         elif action == "dblclick":
             page.dblclick(selector, timeout=timeout)
+
+        # ── Added 2026-08-12 (Angela) ─────────────────────────────────
+        # Playwrighter could navigate and read TEXT, but it could not open a
+        # context menu, could not drag anything, and could not tell you what
+        # something LOOKS like. So a UI-consistency sweep of the canvas -
+        # right-click an agent, open its dialog, measure the panel - was
+        # impossible to express, and the work fell back to hand-written
+        # Playwright. These three actions close that gap.
+        elif action == "right_click":
+            page.click(selector, button="right", timeout=timeout)
+
+        elif action == "drag_to":
+            target = step.get("target") or step.get("target_selector")
+            if not target:
+                raise ValueError("drag_to step requires a 'target' selector")
+            source_loc = page.locator(selector).first
+            target_loc = page.locator(target).first
+            source_loc.wait_for(state="visible", timeout=timeout)
+            source_loc.scroll_into_view_if_needed(timeout=timeout)
+            # An explicit drop point matters on a canvas: dropping dead-centre
+            # stacks every node on the same coordinates.
+            pos = step.get("target_position")
+            if isinstance(pos, dict) and "x" in pos and "y" in pos:
+                source_loc.drag_to(
+                    target_loc, timeout=timeout,
+                    target_position={"x": float(pos["x"]), "y": float(pos["y"])})
+            else:
+                source_loc.drag_to(target_loc, timeout=timeout)
+            result["target"] = target
+
+        elif action == "evaluate":
+            # Run page JS. Needed for dialogs that only exist during a live
+            # runtime EVENT (a hypervisor alert, a notifier toast, an Asker
+            # blocking a flow): there is no click path to them, so the only
+            # honest way to inspect their chrome is to ask the page to paint
+            # one with its OWN renderer. Also the only way to tear a modal
+            # overlay down deterministically between steps.
+            expression = step.get("expression") or step.get("script")
+            if not expression:
+                raise ValueError("evaluate step requires an 'expression'")
+            value = (page.evaluate(str(expression), step["arg"])
+                     if "arg" in step else page.evaluate(str(expression)))
+            name = step.get("name")
+            if name:
+                extracted[str(name)] = ("" if value is None else str(value))
+                result["name"] = str(name)
+            result["value"] = value
+
+        elif action == "shoter":
+            # FULL-DESKTOP photo taken by Tlamatini's OWN Shoter agent.
+            # Angela's standing rule: PIL.ImageGrab is forbidden, every
+            # screenshot goes through Shoter — and `all_screens` matters,
+            # because without it a two-monitor desktop silently loses half
+            # the picture. Playwright's own `screenshot` only ever sees the
+            # page, so a dialog that escaped the viewport, or the taskbar
+            # clock that proves WHEN the shot was taken, could never appear.
+            shot_dir = str(step.get("dir") or step.get("path") or "").strip()
+            filename = str(step.get("filename") or f"shoter_{idx}.png").strip()
+            if not shot_dir:
+                raise ValueError("shoter step requires a 'dir'")
+            shot_path = _run_shoter(shot_dir, filename,
+                                    all_screens=step.get("all_screens", True),
+                                    explicit_template=step.get("template_dir", ""))
+            result["path"] = shot_path
+            extracted[f"shot_{step.get('name') or idx}"] = shot_path
+            if not shot_path:
+                # A step that took NO photo must not report ok. The first
+                # version returned "" and still logged "ok", i.e. a run with
+                # zero evidence looked identical to a documented one - the
+                # same untruthful-self-report class the Exec-Report verdict
+                # engine exists to kill.
+                raise RuntimeError(
+                    "Shoter produced no photo (template not found or the "
+                    "agent failed) - pass 'template_dir' or set "
+                    "TLAMATINI_AGENTS_ROOT")
+
+        elif action == "computed_style":
+            # The measurement primitive. A screenshot proves a dialog RENDERED;
+            # only the computed style proves it rendered with the right
+            # identity - which is the whole point of a look-and-feel check.
+            props = step.get("properties") or step.get("property") or [
+                "backgroundColor", "color", "borderTopLeftRadius", "fontFamily",
+            ]
+            if isinstance(props, str):
+                props = [p.strip() for p in props.split(",") if p.strip()]
+            values = page.evaluate(
+                """([sel, wanted]) => {
+                    const el = document.querySelector(sel);
+                    if (!el) return null;
+                    const cs = getComputedStyle(el);
+                    const out = {};
+                    for (const p of wanted) out[p] = cs[p];
+                    return out;
+                }""", [selector, list(props)])
+            if values is None:
+                raise ValueError(f"computed_style: no element matched {selector!r}")
+            name = str(step.get("name") or f"style_{idx}")
+            for prop, value in values.items():
+                extracted[f"{name}.{prop}"] = str(value)
+            result["name"] = name
+            result["style"] = values
 
         elif action == "fill":
             page.fill(selector, str(step.get("value", "")), timeout=timeout)
@@ -465,6 +706,7 @@ def _run_one_step(page, step: Dict[str, Any], idx: int, default_timeout: int,
         if action not in _NO_SELECTOR_ACTIONS and action in (
             "click", "dblclick", "fill", "type", "select", "check", "uncheck",
             "wait_for", "extract_attr", "assert_visible", "download",
+            "right_click", "drag_to", "computed_style",
         ) and not selector:
             raise ValueError(f"{action} step requires a 'selector'")
 
@@ -569,7 +811,32 @@ def run_browser_flow(config: Dict) -> Dict[str, Any]:
                     '--no-first-run',
                     '--no-default-browser-check',
                 ]
-            browser = launcher.launch(**launch_args)
+                # ── Added 2026-08-12 (Angela) ─────────────────────────
+                # Prefer the REAL installed Chrome. Playwright's bundled
+                # chromium build has to be downloaded separately
+                # (`playwright install`), and on a machine that never ran
+                # it every Playwrighter run died at launch with
+                # "Executable doesn't exist at ...chromium-1234...". A
+                # visible test the user is meant to WATCH should also run
+                # in the browser she actually uses.
+                #
+                # `channel: ""` opts back into the bundled build, and an
+                # unavailable channel falls back to it automatically - so
+                # this can only ever add a way to start, never remove one.
+                channel = str(config.get("browser_channel", "chrome") or "").strip()
+                if channel:
+                    try:
+                        browser = launcher.launch(channel=channel, **launch_args)
+                        logging.info(f"Launched the installed '{channel}' browser")
+                    except Exception as exc:
+                        logging.warning(
+                            f"Channel '{channel}' unavailable ({str(exc)[:90]}); "
+                            f"falling back to the bundled chromium")
+                        browser = launcher.launch(**launch_args)
+                else:
+                    browser = launcher.launch(**launch_args)
+            else:
+                browser = launcher.launch(**launch_args)
 
             context_args: Dict[str, Any] = {"viewport": {"width": vw, "height": vh}}
             if user_agent:

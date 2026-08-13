@@ -46,21 +46,20 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
                 // Render arrays as comma-separated text input
                 const label = document.createElement('label');
                 label.innerText = key + " (comma-separated): ";
-                label.style.fontWeight = "bold";
-                label.style.fontSize = "0.9em";
+                label.classList.add('tlm-dlg-field-label');
                 label.style.marginBottom = "4px";
-                label.style.color = "#ddd";
 
                 const input = document.createElement('input');
                 input.type = 'text';
                 input.id = 'prop-' + fieldKey;
                 input.value = val.join(', '); // Join array to comma-separated string
-                input.classList.add('form-control');
+                // `tlm-dlg-input` (dialog_theme.css) is what keeps the field
+                // dark. Do NOT paint backgroundColor/color inline again -
+                // inline beats the stylesheet and brings back the white form.
+                input.classList.add('form-control', 'tlm-dlg-input');
                 input.dataset.key = fieldKey;
                 input.dataset.isArray = 'true'; // Mark as array for reconstruction
                 input.style.width = "100%";
-                input.style.backgroundColor = "#fff";
-                input.style.color = "#000";
                 input.placeholder = "Enter values separated by commas";
 
                 listElement.appendChild(label);
@@ -70,16 +69,13 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
             } else if (typeof val === 'object' && val !== null) {
                 // Fieldset for nested objects (but not arrays)
                 const fieldset = document.createElement('fieldset');
-                fieldset.style.border = "1px solid #555"; // Visible border on dark theme
+                fieldset.classList.add('tlm-dlg-fieldset');
                 fieldset.style.padding = "10px";
-                fieldset.style.borderRadius = "5px";
                 fieldset.style.marginBottom = "15px";
-                fieldset.style.backgroundColor = "rgba(0,0,0,0.1)"; // Slight dark bg
 
                 const legend = document.createElement('legend');
                 legend.innerText = key.toUpperCase();
-                legend.style.color = "#fff";
-                legend.style.fontWeight = "bold";
+                legend.classList.add('tlm-dlg-legend');
                 legend.style.fontSize = "0.85em";
                 legend.style.padding = "0 5px";
                 legend.style.width = "auto"; // Fix for some browsers stretching legend
@@ -92,10 +88,8 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
                 // Custom rendering for trigger_mode, operation, direction, crawl_type, movement_type, reading_type - Radio Buttons
                 const label = document.createElement('label');
                 label.innerText = key + ": ";
-                label.style.fontWeight = "bold";
-                label.style.fontSize = "0.9em";
+                label.classList.add('tlm-dlg-field-label');
                 label.style.marginBottom = "8px";
-                label.style.color = "#ddd";
                 label.style.display = "block";
 
                 const radioContainer = document.createElement('div');
@@ -142,7 +136,7 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
                     radioRes.style.cursor = "pointer";
                     radioRes.style.width = "18px";
                     radioRes.style.height = "18px";
-                    radioRes.style.accentColor = "#55BBAA";
+                    radioRes.classList.add('tlm-dlg-check');
 
                     const optLabel = document.createElement('label');
                     optLabel.innerText = opt.charAt(0).toUpperCase() + opt.slice(1);
@@ -151,7 +145,7 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
                     }
                     optLabel.htmlFor = radioRes.id;
                     optLabel.style.cursor = "pointer";
-                    optLabel.style.color = "#fff";
+                    optLabel.style.color = "var(--tlm-dlg-title)";
                     optLabel.style.fontSize = "0.95em";
 
                     wrapper.appendChild(radioRes);
@@ -178,14 +172,14 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
                 input.style.marginRight = "10px";
                 input.style.width = "18px";
                 input.style.height = "18px";
-                input.style.accentColor = "#55BBAA";
+                input.classList.add('tlm-dlg-check');
                 input.style.cursor = "pointer";
 
                 const label = document.createElement('label');
                 label.innerText = key; // Use key as label
                 label.htmlFor = 'prop-' + fieldKey;
                 label.style.cursor = "pointer";
-                label.style.color = "#fff";
+                label.style.color = "var(--tlm-dlg-title)";
 
                 wrapper.appendChild(input);
                 wrapper.appendChild(label);
@@ -195,10 +189,8 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
                 // Scalar value (string, number, boolean)
                 const label = document.createElement('label');
                 label.innerText = key + ": ";
-                label.style.fontWeight = "bold";
-                label.style.fontSize = "0.9em";
+                label.classList.add('tlm-dlg-field-label');
                 label.style.marginBottom = "4px";
-                label.style.color = "#ddd";
 
                 let input;
                 if (typeof val === 'string' && (val.includes('\n') || val.length > 50 || key === 'script' || key === 'prompt' || key === 'system_prompt' || key === 'user_instructions' || key === 'content' || key === 'public_key' || key === 'buffer' || key === 'private_key' || key === 'encapsulation' || key === 'initialization_vector' || key === 'cipher_text')) {
@@ -212,11 +204,10 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
 
                 input.id = 'prop-' + fieldKey; // Not strictly needed for logic but good for debugging
                 input.value = val;
-                input.classList.add('form-control'); // Bootstrap class
+                // See the array branch above: `tlm-dlg-input` owns the colours.
+                input.classList.add('form-control', 'tlm-dlg-input');
                 input.dataset.key = fieldKey;
                 input.style.width = "100%";
-                input.style.backgroundColor = "#fff";
-                input.style.color = "#000"; // Ensure readable text
 
                 listElement.appendChild(label);
                 listElement.appendChild(input);
@@ -234,7 +225,7 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
 
         const description = document.createElement('p');
         description.innerText = "Select agents to be cleaned (logs & pids deleted) before restart.";
-        description.style.color = "#ddd";
+        description.style.color = "var(--tlm-dlg-body)";
         description.style.marginBottom = "10px";
         canvasItemList.appendChild(description);
 
@@ -244,9 +235,8 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
         formGroup.style.gap = '5px';
         formGroup.style.maxHeight = '300px';
         formGroup.style.overflowY = 'auto';
-        formGroup.style.border = '1px solid #444';
+        formGroup.classList.add('tlm-dlg-fieldset');
         formGroup.style.padding = '10px';
-        formGroup.style.borderRadius = '5px';
 
         // Get currently selected agents from config
         const currentSelected = dataObj['agents_to_clean'] || [];
@@ -260,7 +250,7 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
         if (allAgentItems.length === 0) {
             const noAgentsMsg = document.createElement('div');
             noAgentsMsg.innerText = "No other agents found on canvas.";
-            noAgentsMsg.style.color = "#888";
+            noAgentsMsg.style.color = "var(--tlm-dlg-muted)";
             formGroup.appendChild(noAgentsMsg);
         } else {
             allAgentItems.forEach(item => {
@@ -281,12 +271,12 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
                 checkbox.checked = currentSelected.includes(itemId);
                 checkbox.classList.add('cleaner-agent-checkbox'); // Class for saving logic
                 checkbox.style.marginRight = '8px';
-                checkbox.style.accentColor = '#55BBAA';
+                checkbox.classList.add('tlm-dlg-check');
 
                 const label = document.createElement('label');
                 label.htmlFor = `clean-select-${itemId}`;
                 label.innerText = itemLabel;
-                label.style.color = '#fff';
+                label.style.color = 'var(--tlm-dlg-title)';
                 label.style.cursor = 'pointer';
 
                 wrapper.appendChild(checkbox);
@@ -535,33 +525,11 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
         create: function () {
             // Ensure dialog content area is flex/column if needed, or just let custom div handle scroll
             // Fix button styles
-            const buttonPane = $(this).parent().find('.ui-dialog-buttonpane');
-            buttonPane.css({
-                "background": "none",
-                "border": "none",
-                "padding": "10px 20px"
-            });
-
-            buttonPane.find('button:contains("Save"), button:contains("Go!")')
-                .css({
-                    'background-color': '#55BBAA',
-                    'color': 'white',
-                    'border': 'none',
-                    'border-radius': '6px',
-                    'font-size': '1em',
-                    'padding': '8px 20px',
-                    'cursor': 'pointer'
-                });
-            buttonPane.find('button:contains("Cancel")')
-                .css({
-                    'background-color': '#777', // Different color for cancel
-                    'color': 'white',
-                    'border': 'none',
-                    'border-radius': '6px',
-                    'font-size': '1em',
-                    'padding': '8px 20px',
-                    'cursor': 'pointer'
-                });
+            // The footer BAR and the outlined Cancel button both come from
+            // dialog_theme.css now. This used to blank the pane
+            // (`background: none; border: none`), which erased the footer,
+            // and paint Cancel #777 so both buttons read as "confirm".
+            styleAcpDialogButtons($(this).parent().find('.ui-dialog-buttonpane'));
         },
         open: function () {
             // Bind Enter key to trigger Save button (except in textareas)
@@ -705,22 +673,10 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
 }
 
 function renderCanvasItemDialog() {
-    $('.ui-dialog-buttonpane button:contains("Save"), .ui-dialog-buttonpane button:contains("Go!")')
-        .css({
-            'background-color': '#55BBAA',
-            'color': 'white',
-            'border-radius': '8px',
-            'font-size': '1em',
-            'height': '4vh'
-        });
-    $('.ui-dialog-buttonpane button:contains("Cancel")')
-        .css({
-            'background-color': '#55BBAA',
-            'color': 'white',
-            'border-radius': '8px',
-            'font-size': '1em',
-            'height': '4vh'
-        });
+    // `height: 4vh` used to live here - the one control in the app that
+    // resized with the window. Button height now comes from the shared
+    // padding in dialog_theme.css.
+    styleAcpDialogButtons();
     $("#canvas-item-dialog-message").dialog("open");
 }
 
@@ -763,32 +719,14 @@ function showDeploymentResultDialog(success, agentName, pathOrError) {
         draggable: true,
         closeText: "",
         create: function () {
-            const buttonPane = $(this).parent().find('.ui-dialog-buttonpane');
-            buttonPane.css({
-                "background": "none",
-                "border": "none",
-                "padding": "10px 20px",
-                "text-align": "center"
-            });
-            buttonPane.find('button:contains("OK")')
-                .css({
-                    'background-color': success ? '#55BBAA' : '#e74c3c',
-                    'color': 'white',
-                    'border': 'none',
-                    'border-radius': '6px',
-                    'font-size': '1em',
-                    'padding': '8px 30px',
-                    'cursor': 'pointer',
-                    'min-width': '100px'
-                });
+            styleAcpDialogButtons($(this).parent().find('.ui-dialog-buttonpane'));
         },
         open: function () {
-            // Re-style button on open (in case dialog was reused)
-            const buttonPane = $(this).parent().find('.ui-dialog-buttonpane');
-            buttonPane.find('button:contains("OK")')
-                .css({
-                    'background-color': success ? '#55BBAA' : '#e74c3c'
-                });
+            // Re-style on open: this dialog is reused across deployments.
+            // The OK button is no longer painted red on failure - the
+            // outcome is already carried by the icon and the coloured
+            // title, and a red confirm button reads as "destructive".
+            styleAcpDialogButtons($(this).parent().find('.ui-dialog-buttonpane'));
         },
         buttons: [
             {
@@ -1111,13 +1049,15 @@ async function _renderFlowCreatorResult(flowResult, flowCreatorId, flowCreatorIt
 function _showFlowCreatorProgress(message) {
     const overlay = document.createElement('div');
     overlay.id = 'flowcreator-progress-overlay';
-    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:10000;display:flex;align-items:center;justify-content:center;';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:var(--tlm-dlg-overlay);z-index:10000;display:flex;align-items:center;justify-content:center;';
 
     const box = document.createElement('div');
-    box.style.cssText = 'background:#2a2a2a;border:1px solid #4FC3F7;border-radius:10px;padding:30px 40px;text-align:center;min-width:400px;';
+    box.style.cssText = 'background:var(--tlm-dlg-surface);border:1px solid rgba(255,255,255,0.12);'
+        + 'border-radius:8px;box-shadow:0 22px 70px rgba(0,0,0,0.62);'
+        + 'padding:30px 40px;text-align:center;min-width:400px;';
 
     const spinner = document.createElement('div');
-    spinner.style.cssText = 'width:40px;height:40px;border:4px solid #333;border-top:4px solid #4FC3F7;border-radius:50%;animation:fc-spin 1s linear infinite;margin:0 auto 15px;';
+    spinner.style.cssText = 'width:40px;height:40px;border:4px solid rgba(255,255,255,0.12);border-top:4px solid #4FC3F7;border-radius:50%;animation:fc-spin 1s linear infinite;margin:0 auto 15px;';
 
     const style = document.createElement('style');
     style.textContent = '@keyframes fc-spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}';

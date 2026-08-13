@@ -469,13 +469,13 @@ async function createCanvasItem(clientX, clientY, textContent) {
     if (textContent.toLowerCase() === 'flowcreator') {
         const existingFlowCreators = document.querySelectorAll('.flowcreator-agent');
         if (existingFlowCreators.length > 0) {
-            alert('Only one FlowCreator agent is allowed per flow.');
+            acpAlert('Only one FlowCreator agent is allowed per flow.');
             return;
         }
     } else if (textContent.toLowerCase() === 'flowhypervisor') {
         const existingFlowHypervisors = document.querySelectorAll('.flowhypervisor-agent');
         if (existingFlowHypervisors.length > 0) {
-            alert('Only one FlowHypervisor agent is allowed per flow.');
+            acpAlert('Only one FlowHypervisor agent is allowed per flow.');
             return;
         }
     }
@@ -564,11 +564,11 @@ function cloneAndRegister(originalItem) {
     const lowerName = agentName.toLowerCase();
 
     if (lowerName === 'flowcreator') {
-        alert('FlowCreator agents cannot be cloned. Only one allowed per flow.');
+        acpAlert('FlowCreator agents cannot be cloned. Only one allowed per flow.');
         return null; // Return null intentionally to fail the copy
     }
     if (lowerName === 'flowhypervisor') {
-        alert('FlowHypervisor agents cannot be cloned. Only one allowed per flow.');
+        acpAlert('FlowHypervisor agents cannot be cloned. Only one allowed per flow.');
         return null; // Return null intentionally to fail the copy
     }
     const newItem = document.createElement('div');
@@ -1437,20 +1437,20 @@ function initCanvasEvents() {
                     const isTargetFlowBacker = targetAgentName.toLowerCase() === 'flowbacker';
 
                     if (isTargetCleaner && !isSourceEnder && !isSourceFlowBacker) {
-                        alert('Invalid Connection: Cleaner Agent only accepts input from Ender or FlowBacker Agents.');
+                        acpAlert('Invalid Connection: Cleaner Agent only accepts input from Ender or FlowBacker Agents.');
                         ACP.tempPath.group.remove(); ACP.tempPath = null; ACP.isConnecting = false;
                         isBusyProcessing = false; document.body.classList.remove('connecting'); return;
                     }
                     if (isTargetCleaner && (isSourceEnder || isSourceFlowBacker)) {
                         const existingInputs = ACP.connections.filter(c => c.target === targetNode);
                         if (existingInputs.length >= 1) {
-                            alert('Invalid Connection: Cleaner Agent can only accept ONE input connection.');
+                            acpAlert('Invalid Connection: Cleaner Agent can only accept ONE input connection.');
                             ACP.tempPath.group.remove(); ACP.tempPath = null; ACP.isConnecting = false;
                             isBusyProcessing = false; document.body.classList.remove('connecting'); return;
                         }
                     }
                     if (isSourceEnder && !isTargetCleaner && !isTargetFlowBacker) {
-                        alert('Invalid Connection: Ender Agent outputs can ONLY connect to Cleaner or FlowBacker Agents.');
+                        acpAlert('Invalid Connection: Ender Agent outputs can ONLY connect to Cleaner or FlowBacker Agents.');
                         ACP.tempPath.group.remove(); ACP.tempPath = null; ACP.isConnecting = false;
                         isBusyProcessing = false; document.body.classList.remove('connecting'); return;
                     }
@@ -1458,14 +1458,14 @@ function initCanvasEvents() {
                     if (isTargetFlowBacker) {
                         const allowedSources = ['starter', 'ender', 'forker', 'asker'];
                         if (!allowedSources.includes(sourceAgentName.toLowerCase())) {
-                            alert('Invalid Connection: FlowBacker Agent only accepts input from Starter, Ender, Forker, or Asker Agents.');
+                            acpAlert('Invalid Connection: FlowBacker Agent only accepts input from Starter, Ender, Forker, or Asker Agents.');
                             ACP.tempPath.group.remove(); ACP.tempPath = null; ACP.isConnecting = false;
                             isBusyProcessing = false; document.body.classList.remove('connecting'); return;
                         }
                     }
                     // FlowBacker output restriction: can only connect to Cleaner
                     if (isSourceFlowBacker && !isTargetCleaner) {
-                        alert('Invalid Connection: FlowBacker Agent outputs can ONLY connect to Cleaner Agents.');
+                        acpAlert('Invalid Connection: FlowBacker Agent outputs can ONLY connect to Cleaner Agents.');
                         ACP.tempPath.group.remove(); ACP.tempPath = null; ACP.isConnecting = false;
                         isBusyProcessing = false; document.body.classList.remove('connecting'); return;
                     }

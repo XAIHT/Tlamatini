@@ -93,23 +93,23 @@
         let severity = 'success';
         let severityIcon = '✅';
         let severityColor = '#10B981';
-        let severityBgColor = '#D1FAE5';
-        let severityTextColor = '#065F46';
+        let severityBgColor = 'rgba(16, 185, 129, 0.16)';
+        let severityTextColor = '#6EE7B7';
         let dialogTitle = 'Pattern Detected';
 
         if (hasError) {
             severity = 'error';
             severityIcon = '🚨';
             severityColor = '#DC2626';
-            severityBgColor = '#FEE2E2';
-            severityTextColor = '#991B1B';
+            severityBgColor = 'rgba(220, 38, 38, 0.18)';
+            severityTextColor = '#FCA5A5';
             dialogTitle = 'Error Detected';
         } else if (hasWarning) {
             severity = 'warning';
             severityIcon = '⚠️';
             severityColor = '#F59E0B';
-            severityBgColor = '#FEF3C7';
-            severityTextColor = '#92400E';
+            severityBgColor = 'rgba(245, 158, 11, 0.18)';
+            severityTextColor = '#FCD34D';
             dialogTitle = 'Warning Detected';
         }
 
@@ -128,7 +128,7 @@
         dialogDiv.title = `${severityIcon} ${dialogTitle}: ${sourceAgent}`;
         const outcomeDetailHtml = outcomeDetail
             ? `<div style="margin: 10px 0 6px; padding: 8px 12px; background: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02)); border-left: 3px solid ${severityColor}; border-radius: 0 4px 4px 0;">
-                   <p style="margin: 0; font-size: 0.9em; color: #c0c0c0; line-height: 1.4; font-style: italic;">${escapeHtmlShared(outcomeDetail)}</p>
+                   <p style="margin: 0; font-size: 0.9em; color: var(--tlm-dlg-body); line-height: 1.4; font-style: italic;">${escapeHtmlShared(outcomeDetail)}</p>
                </div>`
             : '';
         dialogDiv.innerHTML = `
@@ -138,7 +138,7 @@
             <p><strong>Agent:</strong> ${escapeHtmlShared(sourceAgent)}</p>
             <p><strong>Found:</strong> <span style="background-color: ${severityBgColor}; padding: 2px 5px; border-radius: 3px; color: ${severityTextColor};">${escapeHtmlShared(matches)}</span></p>
             ${outcomeDetailHtml}
-            <p style="font-size: 0.8em; color: #888;">${escapeHtmlShared(timestamp)}</p>
+            <p style="font-size: 0.8em; color: var(--tlm-dlg-muted);">${escapeHtmlShared(timestamp)}</p>
         `;
         document.body.appendChild(dialogDiv);
 
@@ -156,10 +156,13 @@
                 $(this).dialog('destroy');
                 dialogDiv.remove();
             },
-            position: { my: 'right bottom', at: 'right-20 bottom-20', of: window },
-            open: function () {
-                $(this).parent().css('border-left', `4px solid ${severityColor}`);
-            }
+            // No `open` handler: it used to draw a 4px severity bar down the
+            // CARD's left edge, which cut the 8px rounded corners and made
+            // this the only dialog with a coloured frame. The severity is
+            // already unmistakable inside the body - the coloured heading,
+            // the tinted chip around the matched text, and the accent stripe
+            // on the outcome note - so the card itself stays uniform.
+            position: { my: 'right bottom', at: 'right-20 bottom-20', of: window }
         });
     }
 
@@ -212,11 +215,11 @@
             <div style="display: flex; justify-content: space-around; margin-top: 15px; gap: 16px;">
                 <div style="display: flex; flex-direction: column; align-items: center; flex: 1;">
                     <button id="btn-choice-a-${identifier}" class="asker-choice-btn" style="background: #EF4444; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%;">Path A</button>
-                    ${safeA ? `<p style="margin: 8px 0 0; font-size: 0.85em; color: #ccc; text-align: center; word-wrap: break-word;">${safeA}</p>` : ''}
+                    ${safeA ? `<p style="margin: 8px 0 0; font-size: 0.85em; color: var(--tlm-dlg-body); text-align: center; word-wrap: break-word;">${safeA}</p>` : ''}
                 </div>
                 <div style="display: flex; flex-direction: column; align-items: center; flex: 1;">
                     <button id="btn-choice-b-${identifier}" class="asker-choice-btn" style="background: #3B82F6; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%;">Path B</button>
-                    ${safeB ? `<p style="margin: 8px 0 0; font-size: 0.85em; color: #ccc; text-align: center; word-wrap: break-word;">${safeB}</p>` : ''}
+                    ${safeB ? `<p style="margin: 8px 0 0; font-size: 0.85em; color: var(--tlm-dlg-body); text-align: center; word-wrap: break-word;">${safeB}</p>` : ''}
                 </div>
             </div>
         `;
@@ -233,10 +236,13 @@
                 $(this).dialog('destroy');
                 dialogDiv.remove();
             },
-            position: { my: 'center', at: 'center', of: window },
-            open: function () {
-                $(this).parent().css('border-top', '4px solid #8B5CF6');
-            }
+            // No `open` handler on purpose. It used to draw a 4px purple bar
+            // across the top of the card - a straight edge over an 8px
+            // rounded corner, and the only coloured edge in the app, so this
+            // one dialog never matched the rest. The titlebar already reads
+            // "User Input Needed". (This file loads on BOTH pages, so the
+            // handler must never reach for an ACP-only helper either.)
+            position: { my: 'center', at: 'center', of: window }
         });
 
         const btnA = document.getElementById(`btn-choice-a-${identifier}`);

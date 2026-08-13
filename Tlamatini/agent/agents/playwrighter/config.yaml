@@ -26,6 +26,12 @@ hold_open_ms: 0
 # Session reuse (optional). storage_state_in loads cookies/localStorage saved by
 # a previous run so a later flow stays logged in; storage_state_out persists the
 # session after this run for a downstream Playwrighter node to reuse.
+# Which chromium build to launch. "chrome" uses the REAL installed Chrome
+# (preferred: it is the browser the user actually has, and it needs no
+# `playwright install`); "msedge" uses Edge; "" forces Playwright's own
+# bundled chromium. An unavailable channel falls back to the bundled build.
+browser_channel: "chrome"
+
 storage_state_in: ""
 storage_state_out: ""
 
@@ -34,6 +40,13 @@ storage_state_out: ""
 #   goto           {url, wait_until?}
 #   click          {selector, timeout?}
 #   dblclick       {selector, timeout?}
+#   right_click    {selector, timeout?}            opens context menus
+#   drag_to        {selector, target, target_position?}   {x,y} = drop point
+#   computed_style {selector, properties?, name?}  READS THE LOOK: returns
+#                  getComputedStyle values (backgroundColor, borderTopLeftRadius,
+#                  fontFamily, ...) into the extracted map as "<name>.<prop>".
+#                  A screenshot proves a thing rendered; this proves it rendered
+#                  with the right identity.
 #   fill           {selector, value}
 #   type           {selector, text, delay?}
 #   press          {key, selector?}

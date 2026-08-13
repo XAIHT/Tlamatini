@@ -245,11 +245,29 @@
     font-size: 0.9rem;
 }
 
+/*
+ * ⚠️ THE FOCUS RULE MUST RE-STATE THE BACKGROUND AND THE TEXT COLOUR.
+ *
+ * Found live on 2026-08-12 by the visible ACP check, and invisible to
+ * every static test: a field that is dark at rest turned WHITE the
+ * instant it was focused - and jQuery UI AUTOFOCUSES the first field
+ * when a dialog opens, so the canvas Configure dialog came up with a
+ * white box already staring at you.
+ *
+ * Cause: Bootstrap's `.form-control:focus` carries
+ * `background-color: var(--bs-body-bg)` at specificity (0,2,0), while
+ * the resting rule above is only (0,1,0). Being LATER in the cascade
+ * cannot save a weaker selector - so the focus state has to answer at
+ * the same specificity. Do NOT trim these two lines back out because
+ * "the rule above already sets them".
+ */
 .tlm-dlg-input:focus,
 .tlm-dlg-pane select:focus,
 .tlm-dlg-pane input[type="text"]:focus,
 .tlm-dlg-pane input[type="password"]:focus,
 .tlm-dlg-pane input[type="number"]:focus {
+    background: var(--tlm-dlg-input-bg);
+    color: var(--tlm-dlg-title);
     border-color: var(--tlm-dlg-accent);
     box-shadow: var(--tlm-dlg-accent-ring);
     outline: none;
@@ -258,6 +276,45 @@
 /* Range sliders read as part of the palette instead of OS-blue. */
 .tlm-dlg-pane input[type="range"],
 .tlm-dlg-range {
+    accent-color: var(--tlm-dlg-accent);
+}
+
+/*
+ * Form primitives for dialogs whose fields are BUILT IN JAVASCRIPT.
+ *
+ * The ACP canvas "Configure" dialog renders one field per config key at
+ * runtime, and it used to paint each one inline:
+ *
+ *     input.style.backgroundColor = "#fff";
+ *     input.style.color           = "#000";
+ *
+ * i.e. a WHITE form inside the dark card — the same light-in-dark leak as
+ * the Ask-Execs `.exec-perm-value` card, but on the single most-used
+ * dialog of the whole workflow designer. Inline styles beat every
+ * stylesheet, so no amount of correct CSS could fix it; the JS had to
+ * stop painting. These classes are what it uses instead.
+ */
+.tlm-dlg-field-label {
+    color: var(--tlm-dlg-body);
+    font-family: var(--tlm-dlg-font);
+    font-size: 0.9em;
+    font-weight: 700;
+}
+
+.tlm-dlg-fieldset {
+    background: var(--tlm-dlg-pane);
+    border: var(--tlm-dlg-hairline);
+    border-radius: var(--tlm-dlg-radius-sm);
+}
+
+.tlm-dlg-legend {
+    color: var(--tlm-dlg-title);
+    font-family: var(--tlm-dlg-font);
+    font-weight: 700;
+}
+
+/* Checkboxes / radios stop being OS-blue inside a dialog. */
+.tlm-dlg-check {
     accent-color: var(--tlm-dlg-accent);
 }
 

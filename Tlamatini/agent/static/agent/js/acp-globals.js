@@ -229,3 +229,146 @@ window.addEventListener('beforeunload', (e) => {
         e.returnValue = ''; // Chrome requires returnValue to be set
     }
 });
+
+// ============================================================
+// DIALOG BUTTONS — the ACP mirror of agent_page_dialogs.js
+// ------------------------------------------------------------
+// Angela, 2026-08-12. jQuery `.css()` writes INLINE styles, which
+// beat every stylesheet — so while the canvas dialogs painted their
+// own buttons, `dialog_theme.css` was powerless over them and this
+// page kept its old footer no matter how correct the CSS was.
+//
+// Three things were being done inline, and all three are gone:
+//
+//   1. `buttonPane.css({background:'none', border:'none'})` — this
+//      ERASED the footer BAR (chrome fill + top hairline), which is
+//      the single most recognisable half of the reference dialog;
+//   2. Cancel was painted teal (or #777) — in the reference the pair
+//      is teal-primary + outlined-secondary, so painting both made
+//      them both read as "confirm";
+//   3. `height: '4vh'` — a viewport-relative button height, i.e. the
+//      one control in the app that resized with the window (43px on
+//      1080p, 26px on a laptop).
+//
+// So: the PRIMARY button is the only thing still painted inline, it
+// matches `--tlm-dlg-accent`, and everything else is left to the CSS.
+// Keep this object byte-compatible with DIALOG_BUTTON_CSS on the chat
+// page — `agent/test_dialog_theme.py` pins both.
+// ============================================================
+
+// ============================================================
+// NATIVE POPUP REPLACEMENTS — acpAlert / acpConfirm
+// ------------------------------------------------------------
+// Angela, 2026-08-12: the canvas raised ~20 `window.alert()` boxes and one
+// `window.confirm()` — "Only one FlowCreator agent is allowed per flow",
+// "Invalid Connection: ...", "This will permanently delete all deployed
+// agents...". Those are OS-CHROME popups: a grey Windows/Chrome strip with
+// the page's URL in it, in the middle of a dark themed application. No
+// amount of CSS could ever touch them, and they are the loudest possible
+// "this is a different program" moment — louder than any of the eight
+// private skins, because they are not even the same rendering engine.
+//
+// They also BLOCK: a native dialog freezes the page and stalls automation,
+// which is why the Clear button could not be photographed at all.
+//
+// These two render the SAME jQuery-UI dialog every other canvas dialog
+// uses, so they inherit dialog_theme.css for free. Both fail OPEN to the
+// native popup if the markup is missing — a lost warning is worse than an
+// ugly one.
+// ============================================================
+
+function _acpModal(primary, secondary, buttons, title) {
+    const host = document.getElementById('confirmation-dialog-message');
+    const primaryEl = document.getElementById('confirmation-primary-dialog-legend');
+    const secondaryEl = document.getElementById('confirmation-secondary-dialog-legend');
+    if (!host || !primaryEl || !secondaryEl || typeof $ !== 'function') return null;
+
+    primaryEl.textContent = primary || '';
+    primaryEl.style.display = primary ? '' : 'none';
+    secondaryEl.textContent = secondary || '';
+
+    const $host = $(host);
+    if ($host.hasClass('ui-dialog-content')) {
+        $host.dialog('destroy');
+    }
+    $host.dialog({
+        title: title || 'Tlamatini',
+        modal: true,
+        width: 480,
+        resizable: false,
+        draggable: true,
+        closeText: '',
+        buttons: buttons,
+        open: function () {
+            styleAcpDialogButtons($(this).parent().find('.ui-dialog-buttonpane'));
+        }
+    });
+    return $host;
+}
+
+/** Themed replacement for `window.alert`. */
+function acpAlert(message, title) {                // eslint-disable-line no-unused-vars
+    const $host = _acpModal('', String(message == null ? '' : message), [{
+        text: 'OK',
+        click: function () { $(this).dialog('close'); }
+    }], title);
+    if (!$host) {
+        window.alert(message);                     // fail open — never lose a warning
+    }
+}
+
+/**
+ * Themed replacement for `window.confirm`. Returns a Promise<boolean>.
+ * Closing the dialog any other way resolves FALSE: a destructive action is
+ * never taken because a dialog was dismissed.
+ */
+function acpConfirm(primary, secondary, title) {   // eslint-disable-line no-unused-vars
+    return new Promise((resolve) => {
+        let decided = false;
+        const finish = (value) => {
+            if (!decided) { decided = true; resolve(value); }
+        };
+        const $host = _acpModal(primary, secondary, [
+            {
+                text: 'Cancel',
+                click: function () { finish(false); $(this).dialog('close'); }
+            },
+            {
+                text: 'Continue',
+                click: function () { finish(true); $(this).dialog('close'); }
+            }
+        ], title || 'Please confirm');
+        if (!$host) {
+            finish(window.confirm([primary, secondary].filter(Boolean).join('\n\n')));
+            return;
+        }
+        $host.off('dialogclose.acpconfirm')
+            .on('dialogclose.acpconfirm', () => finish(false));
+    });
+}
+
+const ACP_DIALOG_BUTTON_CSS = {
+    'background-color': '#55BBAA',
+    'color': 'white',
+    'border-radius': '6px',
+    'font-size': '0.88rem'
+};
+
+/**
+ * Paint the CONFIRM button of a jQuery-UI dialog teal, and leave every
+ * other button to dialog_theme.css.
+ *
+ * @param {jQuery} [$scope] Optional button-pane (or dialog) to limit the
+ *   search to. Omit it to style the whole page, which is what the
+ *   chat page's styleDialogButtons() does.
+ */
+function styleAcpDialogButtons($scope) {
+    const selector = 'button:contains("Save"), button:contains("Go!"), '
+        + 'button:contains("Continue"), button:contains("OK"), '
+        + 'button:contains("Proceed"), button:contains("Start"), '
+        + 'button:contains("Run")';
+    const $buttons = $scope && $scope.length
+        ? $scope.find(selector)
+        : $('.ui-dialog-buttonpane').find(selector);
+    $buttons.css(ACP_DIALOG_BUTTON_CSS);
+}

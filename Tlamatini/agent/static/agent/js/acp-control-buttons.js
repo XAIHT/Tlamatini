@@ -42,7 +42,7 @@ async function executeStartSequence() {
 
     if (starterAgents.length === 0) {
         console.log('--- No Starter agents found on canvas');
-        alert('No Starter agents found on the canvas. Add a Starter agent and connect it to other agents to begin.');
+        acpAlert('No Starter agents found on the canvas. Add a Starter agent and connect it to other agents to begin.');
         isBusyProcessing = false;
         updateControlButtonStates();
         return;
@@ -82,7 +82,7 @@ async function executeStartSequence() {
             }
         } catch (compileError) {
             console.error('--- [Start Sequence] Flow compile failed:', compileError);
-            alert('Could not compile the current flow before starting: ' + compileError.message);
+            acpAlert('Could not compile the current flow before starting: ' + compileError.message);
             isBusyProcessing = false;
             updateControlButtonStates();
             try { $("#starter-execution-dialog").dialog("close"); } catch (_err) {}
@@ -316,11 +316,7 @@ function showStarterResult(success, failedAgentNames, dialog) {
     dialog.parent().find('.ui-dialog-titlebar-close').show();
 
     const buttonPane = dialog.parent().find('.ui-dialog-buttonpane');
-    buttonPane.find('button:contains("Continue")').css({
-        'background-color': success ? '#10B981' : '#e74c3c',
-        'color': 'white', 'border': 'none', 'border-radius': '6px',
-        'font-size': '1em', 'padding': '8px 30px', 'cursor': 'pointer', 'min-width': '120px'
-    });
+    styleAcpDialogButtons(buttonPane);
 
     if (success) {
         titleEl.innerText = "Startup Complete";
@@ -380,7 +376,7 @@ if (btnStop) {
 
         if (enderAgents.length === 0) {
             console.log('--- No Ender agents found on canvas');
-            alert('No Ender agents found on the canvas. Add an Ender agent and connect it to other agents to enable stop functionality.');
+            acpAlert('No Ender agents found on the canvas. Add an Ender agent and connect it to other agents to enable stop functionality.');
             isBusyProcessing = false;
             updateControlButtonStates();
             return;
@@ -657,11 +653,7 @@ function finalizeStopSequence(dialog) {
     }]);
 
     const buttonPane = dialog.parent().find('.ui-dialog-buttonpane');
-    buttonPane.find('button:contains("Continue")').css({
-        'background-color': '#8B5CF6',
-        'color': 'white', 'border': 'none', 'border-radius': '6px',
-        'font-size': '1em', 'padding': '8px 30px', 'cursor': 'pointer', 'min-width': '120px'
-    });
+    styleAcpDialogButtons(buttonPane);
 }
 
 /**
@@ -818,11 +810,7 @@ function showEnderResult(success, failedAgentNames, dialog) {
     }]);
 
     const buttonPane = dialog.parent().find('.ui-dialog-buttonpane');
-    buttonPane.find('button:contains("Continue")').css({
-        'background-color': success ? '#8B5CF6' : '#e74c3c',
-        'color': 'white', 'border': 'none', 'border-radius': '6px',
-        'font-size': '1em', 'padding': '8px 30px', 'cursor': 'pointer', 'min-width': '120px'
-    });
+    styleAcpDialogButtons(buttonPane);
 }
 
 /**
@@ -877,7 +865,7 @@ function showEnderAlreadyDownDialog(_enderInfo) {
         width: 500,
         resizable: false,
         draggable: false,
-        closeOnEscape: true,
+        closeOnEscape: false,
         closeText: "",
         dialogClass: "ender-execution-dialog-wrapper",
         open: function () {
@@ -894,11 +882,7 @@ function showEnderAlreadyDownDialog(_enderInfo) {
     });
 
     const buttonPane = dialog.parent().find('.ui-dialog-buttonpane');
-    buttonPane.find('button:contains("Continue")').css({
-        'background-color': '#3B82F6',
-        'color': 'white', 'border': 'none', 'border-radius': '6px',
-        'font-size': '1em', 'padding': '8px 30px', 'cursor': 'pointer', 'min-width': '120px'
-    });
+    styleAcpDialogButtons(buttonPane);
 }
 
 // ========================================
@@ -922,7 +906,7 @@ if (btnPause) {
             await pauseExecution();
         } else {
             console.log('--- Cannot pause when system is STOPPED');
-            alert('The system is not running. Start the flow before attempting to pause.');
+            acpAlert('The system is not running. Start the flow before attempting to pause.');
         }
     });
 }
@@ -951,7 +935,7 @@ async function pauseExecution() {
 
         if (!processesResult.success) {
             console.error('--- Failed to get running processes:', processesResult.error);
-            alert('Failed to get running processes: ' + (processesResult.error || 'Unknown error'));
+            acpAlert('Failed to get running processes: ' + (processesResult.error || 'Unknown error'));
             resetPauseButtons();
             return;
         }
@@ -961,7 +945,7 @@ async function pauseExecution() {
 
         if (runningProcesses.length === 0) {
             console.log('--- [Pause] No running processes to pause');
-            alert('No running processes found to pause.');
+            acpAlert('No running processes found to pause.');
             resetPauseButtons();
             return;
         }
@@ -1003,7 +987,7 @@ async function pauseExecution() {
 
     } catch (error) {
         console.error('--- Error during pause:', error);
-        alert('Error during pause operation: ' + error.message);
+        acpAlert('Error during pause operation: ' + error.message);
     } finally {
         resetPauseButtons();
     }
@@ -1080,7 +1064,7 @@ async function resumeFromPause() {
         } else {
             console.warn('--- [Resume] Some agents failed to reanimate:', reanimateResult.failed);
             if (reanimateResult.failed.length > 0) {
-                alert(`Warning: ${reanimateResult.failed.length} agent(s) failed to reanimate.`);
+                acpAlert(`Warning: ${reanimateResult.failed.length} agent(s) failed to reanimate.`);
             }
         }
 
@@ -1101,7 +1085,7 @@ async function resumeFromPause() {
 
     } catch (error) {
         console.error('--- Error during resume:', error);
-        alert('Error during resume operation: ' + error.message);
+        acpAlert('Error during resume operation: ' + error.message);
     } finally {
         resetPauseButtons();
     }
@@ -1123,7 +1107,11 @@ if (btnClear) {
         e.preventDefault();
         console.log('--- Clear button clicked');
 
-        if (!confirm('This will permanently delete all deployed agents in the pool directory and clear the canvas. Continue?')) {
+        const clearApproved = await acpConfirm(
+            'Clear the pool and the canvas?',
+            'This permanently deletes every agent deployed in the pool directory and empties the canvas. This cannot be undone.',
+            'Clear everything');
+        if (!clearApproved) {
             return;
         }
 
@@ -1151,7 +1139,7 @@ if (btnClear) {
             } else {
                 console.error('--- Failed to clear pool directory:', result.message);
                 $cleaningDialog.dialog('close');
-                alert('Failed to clear pool directory: ' + result.message);
+                acpAlert('Failed to clear pool directory: ' + result.message);
                 return;
             }
 
@@ -1166,7 +1154,7 @@ if (btnClear) {
 
         } catch (error) {
             console.error('--- Error during clear operation:', error);
-            alert('Error during clear operation: ' + error.message);
+            acpAlert('Error during clear operation: ' + error.message);
         } finally {
             if ($cleaningDialog.hasClass('ui-dialog-content')) {
                 $cleaningDialog.dialog('close');
@@ -1307,7 +1295,7 @@ function showHypervisorAlertDialog(message) {
         messageDiv.style.textAlign = 'left';
         messageDiv.style.wordBreak = 'break-word';
         messageDiv.style.padding = '10px';
-        messageDiv.style.backgroundColor = '#2c2c2c';
+        messageDiv.style.backgroundColor = 'var(--tlm-dlg-pane)';
         messageDiv.style.borderLeft = '4px solid #F59E0B';
         messageDiv.style.borderRadius = '4px';
 
@@ -1356,15 +1344,14 @@ function showHypervisorAlertDialog(message) {
         ],
         open: function() {
             const buttonPane = $(this).parent().find('.ui-dialog-buttonpane');
+            // "Stop Flow" KEEPS its red: it is genuinely destructive, the
+            // same reason the theme keeps the Ask-Execs titlebar red.
+            // "Dismiss" is left to the outlined secondary style, and the
+            // gap between them comes from the footer's flex `gap`.
             buttonPane.find('button:contains("Stop Flow")').css({
                 'background-color': '#e74c3c',
-                'color': 'white', 'border': 'none', 'border-radius': '6px',
-                'padding': '8px 20px', 'margin-right': '10px'
-            });
-            buttonPane.find('button:contains("Dismiss")').css({
-                'background-color': '#555',
-                'color': 'white', 'border': 'none', 'border-radius': '6px',
-                'padding': '8px 20px'
+                'color': 'white',
+                'border-radius': '6px'
             });
             // Bring to top
             $(this).parent().css('z-index', 9999);

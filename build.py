@@ -1234,12 +1234,19 @@ def main():
             # here — it is added just below, GATED on --self-modify, so that a
             # not-self-able-modify build carries neither her source tree nor her
             # own self-description.
-            # external_mcps.json is the External ▸ MCPs catalog + active set.
-            # external_mcp_manager resolves it next to config.json (install root
-            # in frozen mode), so the seed must land at the install root. It is
-            # also PRESERVED across self-update (apply_update.ps1 $Preserve) so a
-            # user's added servers + active selection survive updates, like config.json.
-            Path("Tlamatini") / "agent" / "external_mcps.json": dist_manage / "external_mcps.json",
+            # NOTE: external_mcps.json is INTENTIONALLY NOT copied here any more
+            # (2026-08-12). It used to be, and the dev tree's copy holds the
+            # maintainer's REAL provider secrets — a GitHub PAT and a Snyk API
+            # key sat in `env` blocks — so every release built from a working
+            # tree shipped those keys inside pkg.zip. Exactly the leak
+            # contacts.json was already excluded for; the MCP catalog simply
+            # never got the same treatment.
+            #
+            # It is also the wrong CONTENT for a user: it carried the build
+            # machine's own servers and its `"active": []`, so a reinstall
+            # replaced the user's catalog with a stranger's and deactivated
+            # everything. A sanitized EMPTY catalog is written below instead
+            # (see "Ship a sanitized empty external_mcps.json").
             # NOTE: contacts.json is INTENTIONALLY NOT copied here. The dev tree's
             # contacts.json holds the maintainer's PRIVATE data (real phone numbers /
             # Telegram handles / emails). Shipping it would leak that PII into every
@@ -1313,6 +1320,37 @@ def main():
             json.dump(contacts_doc, _cf, ensure_ascii=False, indent=2)
         print(f"Wrote contacts.json -> {contacts_dst} "
               f"({len(contacts_doc.get('contacts', []))} contact(s))")
+
+        # ── Ship a sanitized empty external_mcps.json ───────────────────────────
+        # ALWAYS empty. This file is the External ▸ MCPs catalog, and the dev
+        # tree's copy holds REAL provider secrets in its `env` blocks (a GitHub
+        # PAT, a Snyk API key). Copying it — which is what this build did until
+        # 2026-08-12 — shipped those keys inside every pkg.zip AND handed the
+        # user the build machine's own server list with `"active": []`, so a
+        # reinstall wiped their catalog and switched everything off.
+        #
+        # There is deliberately NO opt-in env var here (unlike contacts): an MCP
+        # catalog's whole value is the secrets in it, so there is no version of
+        # "bundle the real one" that is safe to ship.
+        external_mcps_doc = {
+            "_README": (
+                "Tlamatini External MCP catalog. Add servers in the standard "
+                "`mcpServers` shape (the same JSON a Claude Code .mcp.json uses), "
+                "then tick up to 5 of them in External > MCPs to activate. This "
+                "file is USER STATE: it lives next to config.json and is preserved "
+                "across updates AND reinstalls. It holds provider secrets in its "
+                "`env` blocks, so it is never shipped with a release and must "
+                "never be committed to a public repo."
+            ),
+            "mcpServers": {},
+            "active": [],
+        }
+        external_mcps_dst = dist_manage / "external_mcps.json"
+        external_mcps_dst.parent.mkdir(parents=True, exist_ok=True)
+        with open(external_mcps_dst, "w", encoding="utf-8") as _mf:
+            json.dump(external_mcps_doc, _mf, ensure_ascii=False, indent=2)
+        print(f"Wrote external_mcps.json -> {external_mcps_dst} "
+              f"(EMPTY catalog - the dev's servers and secrets are never shipped)")
 
         # Required root-level assets for the installed application.
         # ``agents_descriptions.md`` is the authoritative source for the

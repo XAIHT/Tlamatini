@@ -1,0 +1,27 @@
+{
+  "_README": "THE preserved-user-state set. Angela, 2026-08-12. Everything named here is the USER'S, not the build's: it must survive a self-update AND a reinstall over an existing directory. Three programs act on this list - install.py (skips these when extracting pkg.zip), apply_update.ps1 (its $Preserve array) and uninstall.py - and they used to keep three private copies of it. They drifted: apply_update.ps1 preserved external_mcps.json while install.py preserved NOTHING at all, so a self-update kept the user's MCP servers and a reinstall silently deleted them along with config.json, contacts.json and the chat history. One list, one truth, pinned by agent/test_preserved_user_state.py.",
+  "preserve": [
+    "config.json",
+    "external_mcps.json",
+    "contacts.json",
+    "DB",
+    "application",
+    "applications",
+    "content_generated",
+    "Temp",
+    "context_files",
+    "doc_generated",
+    "documentation",
+    "Templates",
+    "Uninstaller.exe"
+  ],
+  "_notes": {
+    "config.json": "every provider key + every setting the user chose",
+    "external_mcps.json": "the External MCP catalog AND its active set - secrets live in its env blocks",
+    "contacts.json": "the people the messaging agents resolve by name",
+    "DB": "chat history and the enable/disable toggles",
+    "Temp": "scratch, but also pasted screenshots the user may still be referring to",
+    "Templates": "scaffolded project trees - deliverables, not build output",
+    "Uninstaller.exe": "built separately, never inside pkg.zip; without this a reinstall deletes it"
+  }
+}

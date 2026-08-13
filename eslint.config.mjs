@@ -356,6 +356,14 @@ export default [
                 updateFilenameDisplay: "readonly",
                 canvasContent: "readonly",
                 updateCanvasContentSize: "readonly",
+                // Dialog standardization (2026-08-12): the ACP mirror of
+                // agent_page_dialogs.js's DIALOG_BUTTON_CSS/styleDialogButtons.
+                ACP_DIALOG_BUTTON_CSS: "readonly",
+                styleAcpDialogButtons: "readonly",
+                // Themed replacements for window.alert / window.confirm — the
+                // canvas raised ~28 OS-chrome popups no stylesheet could reach.
+                acpAlert: "readonly",
+                acpConfirm: "readonly",
 
                 // Cross-file globals: acp-running-state.js
                 setGlobalRunningState: "readonly",

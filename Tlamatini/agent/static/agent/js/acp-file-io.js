@@ -138,7 +138,7 @@ if (openBtn) {
                     updateFilenameDisplay(file.name);
                 } catch (err) {
                     console.error("Failed to load diagram", err);
-                    alert("Error loading diagram file.");
+                    acpAlert("Error loading diagram file.");
                 }
             };
             reader.readAsText(file);
@@ -156,7 +156,11 @@ if (fileCloseBtn) {
         e.preventDefault();
 
         if (hasUnsavedChanges) {
-            if (!confirm('You have unsaved changes. Are you sure you want to close the current diagram?')) {
+            const closeApproved = await acpConfirm(
+                'Close this diagram?',
+                'You have unsaved changes. Closing now discards them.',
+                'Unsaved changes');
+            if (!closeApproved) {
                 return;
             }
         }
@@ -173,7 +177,7 @@ if (fileCloseBtn) {
                 console.log('--- Pool directory cleared successfully');
             } else {
                 console.error('--- Failed to clear pool directory:', result.message);
-                alert('Failed to clear pool directory: ' + result.message);
+                acpAlert('Failed to clear pool directory: ' + result.message);
                 return;
             }
 
@@ -183,7 +187,7 @@ if (fileCloseBtn) {
 
         } catch (error) {
             console.error('--- Error during close operation:', error);
-            alert('Error during close operation: ' + error.message);
+            acpAlert('Error during close operation: ' + error.message);
         }
     });
 }
@@ -260,14 +264,14 @@ async function loadDiagram(data) {
                 const existing = loadedNodes.find(n => (n.dataset.agentName || '').toLowerCase() === 'flowcreator');
                 if (existing) {
                     console.warn(`[Load] Skipping extra FlowCreator agent: ${nodeData.text}`);
-                    alert('Only one FlowCreator agent is allowed per flow. Extra instances have been removed from the loaded diagram.');
+                    acpAlert('Only one FlowCreator agent is allowed per flow. Extra instances have been removed from the loaded diagram.');
                     continue;
                 }
             } else if (lowerName === 'flowhypervisor') {
                 const existing = loadedNodes.find(n => (n.dataset.agentName || '').toLowerCase() === 'flowhypervisor');
                 if (existing) {
                     console.warn(`[Load] Skipping extra FlowHypervisor agent: ${nodeData.text}`);
-                    alert('Only one FlowHypervisor agent is allowed per flow. Extra instances have been removed from the loaded diagram.');
+                    acpAlert('Only one FlowHypervisor agent is allowed per flow. Extra instances have been removed from the loaded diagram.');
                     continue;
                 }
             }

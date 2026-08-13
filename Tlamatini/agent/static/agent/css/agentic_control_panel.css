@@ -442,13 +442,32 @@ body.resizing-vertical {
     }
 }
 
+/* ============================================================
+ * jQuery-UI dialogs on the canvas — GEOMETRY ONLY
+ * ------------------------------------------------------------
+ * Angela, 2026-08-12: this block used to carry a FULL SECOND
+ * COPY of the dialog chrome — a #4a4f5c card with 12px corners,
+ * no border, a flat `0 10px 30px` shadow, a grey #e0e0e0 title
+ * and centred #626978 buttons. That copy is precisely HOW the
+ * two pages drifted apart: two stylesheets both claimed to own
+ * "what a dialog looks like", so fixing one never fixed both,
+ * and whichever was edited last silently won.
+ *
+ * The LOOK now lives in ONE place — `dialog_theme.css`, loaded
+ * LAST on this page. What stays here is only what is genuinely
+ * specific to the canvas: the sizing envelope, the DRAGGABLE
+ * titlebar, the close-X glyph, and the centred body padding
+ * these dialogs were laid out around.
+ *
+ * ⚠️ Do NOT re-add background-color / border-radius / box-shadow
+ * / title colour / button colours here. Consume the --tlm-dlg-*
+ * tokens instead, or the pages start drifting again.
+ * ---------------------------------------------------------- */
+
 .ui-dialog {
-    background-color: #4a4f5c;
-    border-radius: 12px;
-    border: none;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
     box-sizing: border-box;
     padding: 0;
+    /* Keeps the card's rounded corners clipping their contents. */
     overflow: hidden;
     min-width: min(600px, calc(100vw - 24px));
     max-width: calc(100vw - 24px);
@@ -456,44 +475,40 @@ body.resizing-vertical {
     z-index: 10000;
 }
 
+/* `cursor: move` is functional here: ACP dialogs are draggable. */
 .ui-dialog .ui-dialog-titlebar {
-    background-color: #444853;
-    border: none;
     padding: 12px 20px;
-    border-top-left-radius: 12px;
-    border-top-right-radius: 12px;
-    font-weight: 700;
-    color: #e0e0e0;
     position: relative;
     cursor: move;
 }
 
+/*
+ * The X GLYPH (a background image) is ours; its 32px hit-target,
+ * hover chip and right offset come from the theme. Longhands on
+ * purpose — the `background:` shorthand would reset the
+ * background-color the theme paints on hover.
+ */
 .ui-dialog .ui-dialog-titlebar-close {
-    background: none;
-    border: none;
+    background-color: transparent;
     position: absolute;
     top: 50%;
-    right: 15px;
     transform: translateY(-50%);
-    width: 24px;
-    height: 24px;
     margin: 0;
     padding: 0;
-    opacity: 0.6;
-    transition: opacity 0.2s ease-in-out;
     background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23FFFFFF'%3e%3cpath d='M.293.293a1 1 0 0 1 1.414 0L8 6.586 14.293.293a1 1 0 1 1 1.414 1.414L9.414 8l6.293 6.293a1 1 0 0 1-1.414 1.414L8 9.414l-6.293 6.293a1 1 0 0 1-1.414-1.414L6.586 8 .293 1.707a1 1 0 0 1 0-1.414z'/%3e%3c/svg%3e");
     background-size: 14px 14px;
     background-repeat: no-repeat;
     background-position: center;
 }
 
-.ui-dialog .ui-dialog-titlebar-close:hover {
-    opacity: 1;
-}
-
+/*
+ * `background: none` is load-bearing: the CARD is painted by the
+ * theme, so the content area must stay transparent over it.
+ */
 .ui-dialog .ui-dialog-content {
     background: none;
-    color: #e0e0e0;
+    color: var(--tlm-dlg-text);
+    font-family: var(--tlm-dlg-font);
     text-align: center;
     padding: 30px 50px;
     overflow: auto;
@@ -502,54 +517,62 @@ body.resizing-vertical {
     /* Safety fallback */
 }
 
-#dialog-message h1 {
-    font-size: 24px;
+/*
+ * Body typography for the canvas dialogs.
+ *
+ * These rules used to be `#dialog-message h1` / `#dialog-message p`
+ * — an id that does NOT exist on this page any more (every dialog
+ * here is `#<name>-dialog-message`), so they styled nothing and the
+ * nine dialog bodies each fell back to whatever Bootstrap gave them:
+ * h2/h4/h5 headings at three unrelated sizes and colours. Scoped to
+ * the dialog content and built from the tokens, they now read as one
+ * program.
+ */
+.ui-dialog .ui-dialog-content h1,
+.ui-dialog .ui-dialog-content h2,
+.ui-dialog .ui-dialog-content h3,
+.ui-dialog .ui-dialog-content h4,
+.ui-dialog .ui-dialog-content h5 {
+    color: var(--tlm-dlg-title);
+    font-family: var(--tlm-dlg-font);
     font-weight: 700;
-    color: #ffffff;
+    line-height: 1.25;
     margin: 0 0 10px;
 }
 
-#dialog-message p {
-    font-size: 16px;
+.ui-dialog .ui-dialog-content h1 {
+    font-size: 1.5rem;
+}
+
+.ui-dialog .ui-dialog-content h2 {
+    font-size: 1.25rem;
+}
+
+.ui-dialog .ui-dialog-content h3,
+.ui-dialog .ui-dialog-content h4 {
+    font-size: 1.1rem;
+}
+
+.ui-dialog .ui-dialog-content h5 {
+    font-size: 1rem;
+}
+
+.ui-dialog .ui-dialog-content>p {
+    color: var(--tlm-dlg-body);
+    font-size: 0.95rem;
+    line-height: 1.45;
     margin: 0;
 }
 
-.ui-dialog .ui-dialog-buttonpane {
-    background: #4a4f5c;
-    /* Match dialog background to prevent transparent overlap */
-    border: none;
-    padding: 10px 50px 20px;
-    margin-top: 0;
-    /* Remove margin to sit flush */
-    z-index: 20;
-    position: relative;
-    box-shadow: 0 -5px 10px rgba(0, 0, 0, 0.1);
-    /* Subtle shadow separator */
-}
-
-.ui-dialog .ui-dialog-buttonset {
-    display: flex;
-    justify-content: center;
-    gap: 15px;
-    float: none;
-}
-
-.ui-dialog .ui-button {
-    background-color: #626978;
-    border: none;
-    border-radius: 8px;
-    font-family: 'Nunito', sans-serif;
-    font-size: 16px;
-    font-weight: 700;
-    color: #ffffff;
-    padding: 10px 24px;
-}
+/*
+ * NOTE: `.ui-dialog-buttonpane` / `-buttonset` / `.ui-button` are
+ * deliberately ABSENT. The footer bar, its right-aligned actions and
+ * the secondary button style all come from dialog_theme.css now.
+ * Re-adding them here recreates the centred grey-button footer that
+ * made this page look like a different product.
+ */
 
 @media (max-width: 640px) {
-    .ui-dialog {
-        border-radius: 8px;
-    }
-
     .ui-dialog .ui-dialog-titlebar {
         padding: 10px 42px 10px 14px;
     }
@@ -558,19 +581,8 @@ body.resizing-vertical {
         padding: 18px 16px;
     }
 
-    .ui-dialog .ui-dialog-buttonpane {
-        padding: 10px 16px 18px;
-    }
-
     .ui-dialog .ui-dialog-buttonset {
         flex-wrap: wrap;
-        gap: 10px;
-    }
-
-    .ui-dialog .ui-button {
-        flex: 1 1 120px;
-        min-width: 0;
-        padding: 9px 14px;
     }
 }
 
@@ -1688,17 +1700,28 @@ body.resizing-vertical {
 /* ========================================
    CONTEXT MENU STYLES
    ======================================== */
+/*
+ * The right-click menu is the DOOR to the canvas dialogs — it opens
+ * Configure / Description / See log — so it has to belong to the same
+ * program. It was a #2d2d2d card with a #555 border and #4a5568 hover:
+ * a private palette nothing else on the page used.
+ *
+ * The one value not taken from a token is the shadow: a menu is small,
+ * and the dialog shadow (70px blur) reads as a smear under a 180px
+ * popover. This is the same shape, scaled to the surface.
+ */
 #agent-context-menu {
     display: none;
     position: fixed;
-    background-color: #2d2d2d;
-    border: 1px solid #555;
-    border-radius: 6px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    background-color: var(--tlm-dlg-surface);
+    border: var(--tlm-dlg-border);
+    border-radius: var(--tlm-dlg-radius-sm);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
     min-width: 180px;
     max-width: calc(100vw - 16px);
     z-index: 20000;
     padding: 4px 0;
+    font-family: var(--tlm-dlg-font);
     font-size: 0.9em;
     overflow: hidden;
 }
@@ -1706,19 +1729,20 @@ body.resizing-vertical {
 .context-menu-item {
     padding: 8px 16px;
     cursor: pointer;
-    color: #e0e0e0;
+    color: var(--tlm-dlg-text);
     display: flex;
     align-items: center;
     gap: 10px;
     transition: background-color 0.15s;
 }
 
+/* Same translucent chip the dialog buttons and the close X use. */
 .context-menu-item:hover {
-    background-color: #4a5568;
+    background-color: var(--tlm-dlg-btn-secondary);
 }
 
 .context-menu-item:active {
-    background-color: #5a6577;
+    background-color: var(--tlm-dlg-btn-secondary-hover);
 }
 
 .context-menu-icon {
@@ -1728,13 +1752,13 @@ body.resizing-vertical {
 }
 
 .context-menu-divider {
-    height: 1px;
-    background-color: #555;
+    height: 0;
+    border-top: var(--tlm-dlg-hairline);
     margin: 4px 0;
 }
 
 .context-menu-item-disabled {
-    color: #666 !important;
+    color: var(--tlm-dlg-muted) !important;
     cursor: not-allowed !important;
     opacity: 0.5;
 }
@@ -1746,6 +1770,27 @@ body.resizing-vertical {
 /* ========================================
    LOG VIEWER MODAL STYLES
    ======================================== */
+/* ============================================================
+ * The two NATIVE modals of the canvas — Log Viewer + Agent
+ * Description — rebuilt on the shared tokens (Angela, 2026-08-12)
+ * ------------------------------------------------------------
+ * These two were this page's version of the Voice dialog: a
+ * FIFTH skin nothing else in Tlamatini used — a near-black
+ * #1e1e1e card, a #2d2d2d bar, a #555 border, 10px corners and a
+ * flat `0 10px 30px` shadow. Opened straight off the canvas
+ * right-click menu, they were the fastest way to see that the
+ * app was assembled from parts.
+ *
+ * They keep their own GEOMETRY (they are draggable, sized panels,
+ * and the log is a monospace panel that must scroll), and take
+ * every colour, corner and hairline from `--tlm-dlg-*`.
+ *
+ * ⚠️ Both are driven by `contextual_menus.js`, which sets
+ * `display: flex` to open them — so `display: none` here is the
+ * closed state, NOT a layout choice. Do not change it to
+ * `visibility`.
+ * ---------------------------------------------------------- */
+
 #log-viewer-overlay {
     display: none;
     position: fixed;
@@ -1753,7 +1798,7 @@ body.resizing-vertical {
     left: 0;
     width: 100vw;
     height: 100vh;
-    background-color: rgba(0, 0, 0, 0.6);
+    background-color: var(--tlm-dlg-overlay);
     z-index: 19000;
 }
 
@@ -1765,29 +1810,47 @@ body.resizing-vertical {
     transform: translate(-50%, -50%);
     width: min(900px, calc(100vw - 24px));
     height: min(600px, calc(100dvh - 32px));
-    background-color: #1e1e1e;
-    border: 1px solid #555;
-    border-radius: 10px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    background-color: var(--tlm-dlg-surface);
+    border: var(--tlm-dlg-border);
+    border-radius: var(--tlm-dlg-radius);
+    box-shadow: var(--tlm-dlg-shadow);
+    font-family: var(--tlm-dlg-font);
     z-index: 19500;
     flex-direction: column;
     overflow: hidden;
+}
+
+/*
+ * Shared kicker+title stack for the native modals' headers, mirroring
+ * `.emx-header` in the reference dialog. `min-width: 0` is what lets
+ * the long "Log: <agent>" title ellipsise instead of shoving the close
+ * button off the edge.
+ */
+.tlm-native-head-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
 }
 
 #log-viewer-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 12px;
     padding: 12px 16px;
-    background-color: #2d2d2d;
-    border-bottom: 1px solid #444;
+    background-color: var(--tlm-dlg-chrome);
+    border-bottom: var(--tlm-dlg-hairline);
     flex-shrink: 0;
+    /* The header is the drag handle (contextual_menus.js). */
+    cursor: move;
 }
 
 #log-viewer-title {
-    font-weight: 600;
-    color: #fff;
-    font-size: 1.1em;
+    font-weight: 700;
+    color: var(--tlm-dlg-title);
+    font-size: 1rem;
+    line-height: 1.2;
     margin: 0;
     min-width: 0;
     overflow: hidden;
@@ -1795,26 +1858,42 @@ body.resizing-vertical {
     white-space: nowrap;
 }
 
-#log-viewer-close {
-    width: 28px;
-    height: 28px;
-    background: none;
-    border: none;
-    color: #aaa;
+/* Same 32px hit-target + hover chip as the jQuery-UI close X. */
+#log-viewer-close,
+#agent-description-close {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    background-color: transparent;
+    border: 1px solid transparent;
+    color: var(--tlm-dlg-body);
     font-size: 20px;
+    line-height: 1;
     cursor: pointer;
-    border-radius: 4px;
+    border-radius: var(--tlm-dlg-radius-sm);
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background-color 0.2s, color 0.2s;
+    transition: background-color 0.18s ease-out, border-color 0.18s ease-out,
+        color 0.18s ease-out;
 }
 
-#log-viewer-close:hover {
-    background-color: #444;
-    color: #fff;
+#log-viewer-close:hover,
+#log-viewer-close:focus-visible,
+#agent-description-close:hover,
+#agent-description-close:focus-visible {
+    background-color: var(--tlm-dlg-btn-secondary);
+    border-color: rgba(255, 255, 255, 0.14);
+    color: var(--tlm-dlg-title);
+    outline: none;
 }
 
+/*
+ * The log itself stays a MONOSPACE INSET PANEL — that part was never
+ * the problem, a log should read like a log. It just uses the shared
+ * inset-pane token instead of its own near-black, so it sits inside
+ * the card rather than punching a hole through it.
+ */
 #log-viewer-content {
     flex: 1;
     padding: 12px 16px;
@@ -1823,34 +1902,32 @@ body.resizing-vertical {
     font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
     font-size: 0.85em;
     line-height: 1.5;
-    color: #d4d4d4;
-    background-color: #1e1e1e;
+    color: var(--tlm-dlg-text);
+    background-color: var(--tlm-dlg-pane);
     white-space: pre;
     margin: 0;
 }
 
+/* Same violet→blue thumb the theme gives every scrolling dialog. */
 #log-viewer-content::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 9px;
+    height: 9px;
 }
 
 #log-viewer-content::-webkit-scrollbar-track {
-    background: #2d2d2d;
-}
-
-#log-viewer-content::-webkit-scrollbar-thumb {
-    background: #555;
+    background: rgba(0, 0, 0, 0.2);
     border-radius: 4px;
 }
 
-#log-viewer-content::-webkit-scrollbar-thumb:hover {
-    background: #666;
+#log-viewer-content::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #6d28d9 0%, #2563eb 100%);
+    border-radius: 4px;
 }
 
 #log-viewer-footer {
-    padding: 8px 16px;
-    background-color: #2d2d2d;
-    border-top: 1px solid #444;
+    padding: 10px 16px;
+    background-color: var(--tlm-dlg-chrome);
+    border-top: var(--tlm-dlg-hairline);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -1859,7 +1936,7 @@ body.resizing-vertical {
 }
 
 #log-viewer-status {
-    color: #888;
+    color: var(--tlm-dlg-muted);
     font-size: 0.8em;
 }
 
@@ -1921,7 +1998,7 @@ body.resizing-vertical {
     left: 0;
     width: 100vw;
     height: 100vh;
-    background-color: rgba(0, 0, 0, 0.55);
+    background-color: var(--tlm-dlg-overlay);
     z-index: 19000;
 }
 
@@ -1932,11 +2009,12 @@ body.resizing-vertical {
     left: 50%;
     transform: translate(-50%, -50%);
     width: min(480px, calc(100vw - 32px));
-    max-height: min(360px, calc(100vh - 48px));
-    background-color: #1e1e1e;
-    border: 1px solid #555;
-    border-radius: 10px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    max-height: min(420px, calc(100vh - 48px));
+    background-color: var(--tlm-dlg-surface);
+    border: var(--tlm-dlg-border);
+    border-radius: var(--tlm-dlg-radius);
+    box-shadow: var(--tlm-dlg-shadow);
+    font-family: var(--tlm-dlg-font);
     z-index: 19500;
     flex-direction: column;
     overflow: hidden;
@@ -1946,57 +2024,100 @@ body.resizing-vertical {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 12px;
     padding: 12px 16px;
-    background-color: #2d2d2d;
-    border-bottom: 1px solid #444;
+    background-color: var(--tlm-dlg-chrome);
+    border-bottom: var(--tlm-dlg-hairline);
     flex-shrink: 0;
+    /* The header is the drag handle (contextual_menus.js). */
+    cursor: move;
 }
 
 #agent-description-title {
     margin: 0;
-    color: #fff;
-    font-size: 1.05em;
-    font-weight: 600;
+    color: var(--tlm-dlg-title);
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.2;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-#agent-description-close {
-    width: 28px;
-    height: 28px;
-    background: none;
-    border: none;
-    color: #aaa;
-    font-size: 20px;
-    cursor: pointer;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background-color 0.2s, color 0.2s;
-}
-
-#agent-description-close:hover {
-    background-color: #444;
-    color: #fff;
-}
-
+/*
+ * `flex: 1; min-height: 0` is what makes the body — not the whole card
+ * — do the scrolling now that there is a footer bar below it. Without
+ * `min-height: 0` a flex child refuses to shrink past its content and
+ * the footer gets pushed out of the dialog.
+ */
 #agent-description-content {
+    flex: 1;
+    min-height: 0;
     padding: 16px;
     overflow-y: auto;
-    color: #d4d4d4;
+    color: var(--tlm-dlg-body);
     line-height: 1.55;
     font-size: 0.92em;
     white-space: normal;
 }
 
 #agent-description-content code {
-    background-color: rgba(255, 255, 255, 0.08);
+    background-color: var(--tlm-dlg-input-bg);
+    border: var(--tlm-dlg-input-border);
     border-radius: 4px;
     padding: 1px 4px;
-    color: #f3f4f6;
+    color: var(--tlm-dlg-title);
+}
+
+/*
+ * Footer bar. The Description dialog had NO footer at all, which is
+ * half of why it read as a tooltip that had escaped rather than as a
+ * dialog: the reference identity is kicker-above-title at the top and
+ * a chrome bar with a real action at the bottom.
+ */
+#agent-description-footer,
+.tlm-native-foot {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    background-color: var(--tlm-dlg-chrome);
+    border-top: var(--tlm-dlg-hairline);
+    flex-shrink: 0;
+}
+
+.tlm-native-foot-note {
+    color: var(--tlm-dlg-muted);
+    font-size: 0.78rem;
+    line-height: 1.35;
+    min-width: 0;
+}
+
+/* Mirrors `.ui-button` in the theme, for the native modals' actions. */
+.tlm-native-button {
+    min-width: 98px;
+    padding: 8px 14px;
+    background-color: var(--tlm-dlg-btn-secondary);
+    border: var(--tlm-dlg-border);
+    border-radius: var(--tlm-dlg-radius-sm);
+    color: var(--tlm-dlg-title);
+    font-family: var(--tlm-dlg-font);
+    font-size: 0.88rem;
+    font-weight: 700;
+    line-height: 1.2;
+    cursor: pointer;
+    transition: background-color 0.18s ease-out;
+}
+
+.tlm-native-button:hover {
+    background-color: var(--tlm-dlg-btn-secondary-hover);
+}
+
+.tlm-native-button:focus-visible {
+    outline: 2px solid rgba(85, 187, 170, 0.65);
+    outline-offset: 2px;
 }
 
 /* Shoter Agent Styles - Screenshot capture (Cyan to Magenta gradient) */

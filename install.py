@@ -524,6 +524,57 @@ class FancyInstaller:
         ))
 
     # ─── Main install pipeline (runs in background thread) ────────────
+    # ── User state that must survive a reinstall ──────────────────────────
+    # The list lives in ONE place, `preserved_user_state.json`, which
+    # apply_update.ps1 and uninstall.py answer to as well. Three private
+    # copies is how they drifted: the updater preserved external_mcps.json
+    # while the installer preserved nothing.
+    _PRESERVE_FALLBACK = (
+        "config.json", "external_mcps.json", "contacts.json", "DB",
+        "application", "applications", "content_generated", "Temp",
+        "context_files", "doc_generated", "documentation", "Templates",
+        "Uninstaller.exe",
+    )
+
+    @staticmethod
+    def _preserved_names() -> set:
+        """Read the shared list; fall back to the built-in copy.
+
+        FAIL-SAFE, not fail-open: if the file is missing or unreadable we
+        preserve the built-in set anyway. Erring towards keeping the user's
+        data is the only acceptable direction — the alternative is deleting
+        their API keys because a JSON file did not parse.
+        """
+        here = os.path.dirname(os.path.abspath(__file__))
+        for candidate in (os.path.join(here, "preserved_user_state.json"),
+                          os.path.join(here, "_internal",
+                                       "preserved_user_state.json")):
+            try:
+                with open(candidate, "r", encoding="utf-8-sig") as fh:
+                    doc = json.load(fh)
+                names = doc.get("preserve")
+                if isinstance(names, list) and names:
+                    return {str(n).strip().lower() for n in names if str(n).strip()}
+            except Exception:
+                continue
+        return {n.lower() for n in FancyInstaller._PRESERVE_FALLBACK}
+
+    @staticmethod
+    def _is_preserved_member(member: str, target: str, preserved: set) -> bool:
+        """True when this zip member belongs to EXISTING user state.
+
+        Matching is on the TOP-LEVEL name, so `DB/db.sqlite3` is protected by
+        the entry `DB`. Nothing is skipped unless it is already on disk — a
+        fresh install must still receive its seed files.
+        """
+        normalized = member.replace("\\", "/").strip("/")
+        if not normalized:
+            return False
+        top = normalized.split("/")[0]
+        if top.lower() not in preserved:
+            return False
+        return os.path.exists(os.path.join(target, top))
+
     def _run_install(self, target: str):
         try:
             cumulative = 0.0  # tracks completed-step weight
@@ -538,6 +589,20 @@ class FancyInstaller:
             self._mark_step(step_idx)
 
             # ── Step 1: extract pkg.zip ──────────────────────────────
+            #
+            # PRESERVING USER STATE (Angela, 2026-08-12). This used to extract
+            # EVERY member unconditionally, so installing over an existing
+            # Tlamatini overwrote `config.json` (every provider key and
+            # setting), `external_mcps.json` (the whole External-MCP catalog
+            # AND its active set), `contacts.json` and the DB. That is why
+            # "every time I reinstall, all the external MCPs go fucked" — the
+            # self-updater had a $Preserve list and the installer had none.
+            #
+            # Now the same list guards both. A preserved item is SKIPPED only
+            # when it already exists, so a FRESH install still gets its seed
+            # files; only an upgrade-in-place leaves the user's copy alone.
+            preserved = self._preserved_names()
+            kept: list[str] = []
             step_idx = 1
             self._activate_step(step_idx)
             weight = self.STEPS[step_idx][1]
@@ -545,12 +610,19 @@ class FancyInstaller:
                 members = zf.namelist()
                 total = len(members)
                 for i, member in enumerate(members, 1):
-                    zf.extract(member, target)
+                    if self._is_preserved_member(member, target, preserved):
+                        top = member.replace("\\", "/").split("/")[0]
+                        if top not in kept:
+                            kept.append(top)
+                    else:
+                        zf.extract(member, target)
                     frac = i / total
                     self._set_progress(
                         cumulative + weight * frac,
                         f"Extracting files… ({i}/{total})",
                     )
+            if kept:
+                print(f"[INSTALL] Preserved existing user state: {', '.join(sorted(kept))}")
             cumulative += weight
             self._set_progress(cumulative)
             self._mark_step(step_idx)

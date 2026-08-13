@@ -1085,14 +1085,21 @@ body.resizing-vertical {
     margin: 0;
 }
 
-/* About dialog */
+/* ── About splash + Check-for-updates dialog ─────────────────────────
+ * Angela, 2026-08-12: this pair was the EIGHTH dialog skin — a #1a1a2e
+ * card with 12px corners, no border and its own shadow, plus a bare 24px
+ * "x" with no hit target. "Check for updates" is a REAL dialog (title,
+ * body, progress, actions), so it has to wear the shared identity; the
+ * About splash is a branded video frame and only borrows the frame.
+ * Built from the --tlm-dlg-* tokens like everything else.
+ * ------------------------------------------------------------------ */
 .about-overlay {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.7);
+    background: var(--tlm-dlg-overlay);
     z-index: 20000;
     display: flex;
     align-items: center;
@@ -1103,29 +1110,42 @@ body.resizing-vertical {
     position: relative;
     width: min(800px, calc(100vw - 24px));
     max-height: calc(100dvh - 24px);
-    background: #1a1a2e;
-    border-radius: 12px;
+    background: var(--tlm-dlg-surface);
+    border: var(--tlm-dlg-border);
+    border-radius: var(--tlm-dlg-radius);
     overflow: auto;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    box-shadow: var(--tlm-dlg-shadow);
+    font-family: var(--tlm-dlg-font);
 }
 
+/* Same 32px hit-target + hover chip as every other close X. */
 .about-close-btn {
     position: absolute;
     top: 8px;
-    right: 12px;
-    background: none;
-    border: none;
-    color: #ffffff;
+    right: 8px;
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    background-color: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--tlm-dlg-radius-sm);
+    color: var(--tlm-dlg-title);
     font-size: 24px;
     cursor: pointer;
     z-index: 1;
-    opacity: 0.7;
-    transition: opacity 0.2s;
+    opacity: 0.75;
+    transition: opacity 0.18s ease-out, background-color 0.18s ease-out,
+        border-color 0.18s ease-out;
     line-height: 1;
 }
 
-.about-close-btn:hover {
+.about-close-btn:hover,
+.about-close-btn:focus-visible {
+    background-color: var(--tlm-dlg-btn-secondary);
+    border-color: rgba(255, 255, 255, 0.14);
     opacity: 1;
+    outline: none;
 }
 
 .about-video-container {
@@ -1141,9 +1161,10 @@ body.resizing-vertical {
 }
 
 .about-text {
-    background: #1a1a2e;
+    background: var(--tlm-dlg-chrome);
+    border-top: var(--tlm-dlg-hairline);
     padding: 16px 24px 20px;
-    color: #e0e0e0;
+    color: var(--tlm-dlg-body);
 }
 
 .about-text p {
@@ -1171,22 +1192,62 @@ body.resizing-vertical {
     max-width: 92vw;
 }
 
+/*
+ * A real HEADER BAR. Without it this dialog was a bare body with a
+ * heading floating in it — panel and buttons could match the rest of the
+ * app and it STILL read as a different window, because the chrome strip
+ * at the top is half of what makes a Tlamatini dialog recognisable.
+ */
+.update-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 26px;
+    background: var(--tlm-dlg-chrome);
+    border-bottom: var(--tlm-dlg-hairline);
+    border-top-left-radius: var(--tlm-dlg-radius);
+    border-top-right-radius: var(--tlm-dlg-radius);
+}
+
+/* In the header the X sits in the flex row, not absolutely on the card. */
+.update-header .about-close-btn {
+    position: static;
+    flex-shrink: 0;
+}
+
 .update-body {
-    padding: 22px 26px 24px;
-    color: #e0e0e0;
+    padding: 18px 26px 24px;
+    color: var(--tlm-dlg-body);
 }
 
 .update-title {
-    margin: 0 0 6px;
+    margin: 0;
     font-size: 18px;
     font-weight: 700;
-    color: #ffffff;
+    line-height: 1.2;
+    color: var(--tlm-dlg-title);
+}
+
+/*
+ * The teal eyebrow above the title — the single most recognisable half of
+ * the reference dialog, and the reason this one used to read as a stray
+ * window rather than as part of Tlamatini.
+ */
+.update-kicker {
+    display: block;
+    color: var(--tlm-dlg-kicker);
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1.1;
+    margin-bottom: 2px;
+    text-transform: uppercase;
 }
 
 .update-current {
     margin: 0 0 14px;
     font-size: 13px;
-    opacity: 0.8;
+    color: var(--tlm-dlg-muted);
 }
 
 .update-content {
@@ -1205,13 +1266,14 @@ body.resizing-vertical {
     max-height: 160px;
     overflow: auto;
     padding: 10px 12px;
-    background: rgba(0, 0, 0, 0.35);
-    border-radius: 6px;
+    background: var(--tlm-dlg-pane);
+    border: var(--tlm-dlg-hairline);
+    border-radius: var(--tlm-dlg-radius-sm);
     font-size: 12px;
     line-height: 1.4;
     white-space: pre-wrap;
     word-break: break-word;
-    color: #cfd2e0;
+    color: var(--tlm-dlg-body);
 }
 
 .update-progress-wrap {
@@ -1230,8 +1292,19 @@ body.resizing-vertical {
     transition: width 0.3s ease;
 }
 
+/*
+ * A real FOOTER BAR. The negative margins pull it out to the edges of
+ * `.update-body`'s 26px/24px padding so the chrome fill spans the card,
+ * which is what makes it read as a footer instead of buttons floating on
+ * the page. Keep them in step if that padding ever changes.
+ */
 .update-actions {
-    margin-top: 18px;
+    margin: 18px -26px -24px;
+    padding: 12px 26px;
+    background: var(--tlm-dlg-chrome);
+    border-top: var(--tlm-dlg-hairline);
+    border-bottom-left-radius: var(--tlm-dlg-radius);
+    border-bottom-right-radius: var(--tlm-dlg-radius);
     display: flex;
     align-items: center;
     justify-content: flex-end;
@@ -1240,7 +1313,7 @@ body.resizing-vertical {
 
 .update-link {
     font-size: 13px;
-    color: #8fb7ff;
+    color: var(--tlm-dlg-accent);
     text-decoration: none;
 }
 
@@ -1248,19 +1321,29 @@ body.resizing-vertical {
     text-decoration: underline;
 }
 
+/* The confirm button is teal here too — one primary, everywhere. */
 .update-btn {
-    background: linear-gradient(135deg, #5A1FB8 0%, #EC4899 100%);
-    border: none;
+    min-width: 98px;
+    background-color: var(--tlm-dlg-accent);
+    border: var(--tlm-dlg-border);
     color: #ffffff;
-    font-size: 14px;
-    font-weight: 600;
-    padding: 8px 20px;
-    border-radius: 6px;
+    font-family: var(--tlm-dlg-font);
+    font-size: 0.88rem;
+    font-weight: 700;
+    line-height: 1.2;
+    padding: 8px 14px;
+    border-radius: var(--tlm-dlg-radius-sm);
     cursor: pointer;
+    transition: background-color 0.18s ease-out;
 }
 
 .update-btn:hover {
-    filter: brightness(1.1);
+    background-color: var(--tlm-dlg-accent-hover);
+}
+
+.update-btn:focus-visible {
+    outline: 2px solid rgba(85, 187, 170, 0.65);
+    outline-offset: 2px;
 }
 
 .update-btn:disabled {

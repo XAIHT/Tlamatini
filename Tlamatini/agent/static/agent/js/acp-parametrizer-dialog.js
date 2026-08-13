@@ -56,25 +56,27 @@ function _showParametrizerError(message) {
     overlay.id = 'parametrizer-error-overlay';
     Object.assign(overlay.style, {
         position: 'fixed', top: '0', left: '0', width: '100%', height: '100%',
-        backgroundColor: 'rgba(0,0,0,0.6)', zIndex: '10000',
+        backgroundColor: 'var(--tlm-dlg-overlay)', zIndex: '10000',
         display: 'flex', alignItems: 'center', justifyContent: 'center'
     });
 
     const dialog = document.createElement('div');
     Object.assign(dialog.style, {
-        background: '#2d2d30', color: '#fff', borderRadius: '10px', padding: '30px',
+        background: 'var(--tlm-dlg-surface)', color: 'var(--tlm-dlg-text)',
+        borderRadius: '8px', padding: '30px',
         maxWidth: '500px', width: '90%', textAlign: 'center',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-        border: '2px solid #AA00FF'
+        boxShadow: '0 22px 70px rgba(0,0,0,0.62)',
+        border: '1px solid rgba(255,255,255,0.12)'
     });
 
     dialog.innerHTML = `
         <h3 style="margin-top:0; color:#FF6D00;">Parametrizer Validation Error</h3>
-        <p style="color:#ccc; line-height:1.6;">${_escapeParametrizerHtml(message)}</p>
+        <p style="color:var(--tlm-dlg-body); line-height:1.6;">${_escapeParametrizerHtml(message)}</p>
         <button id="parametrizer-error-ok" style="
-            margin-top:15px; padding:8px 30px; border:none; border-radius:5px;
-            background:linear-gradient(135deg, #311B92, #AA00FF);
-            color:white; cursor:pointer; font-size:14px;
+            margin-top:15px; padding:8px 14px;
+            border:1px solid rgba(255,255,255,0.12); border-radius:6px;
+            background:#55BBAA;
+            color:white; cursor:pointer; font-size:0.88rem; font-weight:bold;
         ">OK</button>
     `;
 
@@ -82,7 +84,8 @@ function _showParametrizerError(message) {
     document.body.appendChild(overlay);
 
     document.getElementById('parametrizer-error-ok').addEventListener('click', () => overlay.remove());
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+    // Outside-click dismissal removed (Angela, 2026-08-13): a dialog closes
+    // ONLY by its X, Cancel or Continue. See static/agent/js/dialog_policy.js.
 }
 
 
@@ -155,37 +158,50 @@ function _renderParametrizerMappingDialog(agentId, data) {
     overlay.id = 'parametrizer-dialog-overlay';
     Object.assign(overlay.style, {
         position: 'fixed', top: '0', left: '0', width: '100%', height: '100%',
-        backgroundColor: 'rgba(0,0,0,0.6)', zIndex: '10000',
+        backgroundColor: 'var(--tlm-dlg-overlay)', zIndex: '10000',
         display: 'flex', alignItems: 'center', justifyContent: 'center'
     });
 
     const dialog = document.createElement('div');
     dialog.id = 'parametrizer-dialog';
     Object.assign(dialog.style, {
-        background: '#1e1e1e', color: '#fff', borderRadius: '12px', padding: '25px',
+        background: 'var(--tlm-dlg-surface)', color: 'var(--tlm-dlg-text)',
+        borderRadius: '8px', padding: '25px',
         maxWidth: '800px', width: '90%', maxHeight: '80vh', overflowY: 'auto',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
-        border: '2px solid #AA00FF', position: 'relative'
+        boxShadow: '0 22px 70px rgba(0,0,0,0.62)',
+        border: '1px solid rgba(255,255,255,0.12)', position: 'relative'
     });
 
     // Header
     const header = document.createElement('div');
-    header.style.marginBottom = '20px';
+    // Angela, 2026-08-12: the title used to be painted with a four-stop
+    // gradient CLIPPED TO THE GLYPHS (-webkit-background-clip: text).
+    // Nothing else in Tlamatini does that, so however correct the card's
+    // surface was, the first thing the eye landed on still announced a
+    // different program. Plain white title, teal kicker, real chrome bar.
+    //
+    // The negative margins pull the bar out to the card's 25px padding so
+    // the fill spans the full width - keep them in step with that padding.
+    header.style.cssText = 'margin:-25px -25px 20px; padding:14px 25px;'
+        + 'background:var(--tlm-dlg-chrome);'
+        + 'border-bottom:1px solid rgba(255,255,255,0.08);'
+        + 'border-top-left-radius:8px; border-top-right-radius:8px;';
     header.innerHTML = `
-        <h3 style="margin:0 0 5px; background: linear-gradient(135deg, #311B92, #AA00FF, #FF6D00, #00E5FF);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            background-clip: text; font-size: 1.3em;">
-            Parametrizer Mapping: ${_escapeParametrizerHtml(agentId)}
+        <span style="display:block; color:var(--tlm-dlg-kicker); font-size:0.72rem;
+            font-weight:700; line-height:1.1; text-transform:uppercase;">Parametrizer</span>
+        <h3 style="margin:2px 0 5px; color:var(--tlm-dlg-title); font-weight:700;
+            font-size:1.15em; line-height:1.2;">
+            ${_escapeParametrizerHtml(agentId)}
         </h3>
-        <p style="margin:0; color:#999; font-size:0.85em;">
+        <p style="margin:0; color:var(--tlm-dlg-muted); font-size:0.85em;">
             Source: <strong style="color:#00E5FF">${_escapeParametrizerHtml(source_agent)}</strong> &rarr;
             Target: <strong style="color:#FF6D00">${_escapeParametrizerHtml(target_agent)}</strong>
         </p>
-        <p style="margin:5px 0 0; color:#777; font-size:0.8em;">
+        <p style="margin:5px 0 0; color:var(--tlm-dlg-muted); font-size:0.8em;">
             Click a source field (left), then click a target parameter (right) to create a mapping.
             Click an existing line to remove it.
         </p>
-        <p style="margin:5px 0 0; color:#777; font-size:0.8em;">
+        <p style="margin:5px 0 0; color:var(--tlm-dlg-muted); font-size:0.8em;">
             If a target value already contains configured markers such as {content}, they appear as indented target slots
             so Parametrizer can replace only that marker instead of overwriting the entire parameter.
         </p>
@@ -306,29 +322,35 @@ function _renderParametrizerMappingDialog(agentId, data) {
 
     // Buttons
     const btnRow = document.createElement('div');
-    btnRow.style.marginTop = '20px';
-    btnRow.style.textAlign = 'right';
+    // A real FOOTER BAR - same trick as the header above.
+    btnRow.style.cssText = 'margin:20px -25px -25px; padding:12px 25px;'
+        + 'background:var(--tlm-dlg-chrome);'
+        + 'border-top:1px solid rgba(255,255,255,0.08);'
+        + 'border-bottom-left-radius:8px; border-bottom-right-radius:8px;'
+        + 'display:flex; align-items:center; justify-content:flex-end; gap:10px;';
 
     const clearBtn = document.createElement('button');
     clearBtn.textContent = 'Clear All';
     Object.assign(clearBtn.style, {
-        padding: '8px 20px', border: '1px solid #666', borderRadius: '5px',
-        background: '#333', color: '#fff', cursor: 'pointer', marginRight: '10px', fontSize: '13px'
+        padding: '8px 14px', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '6px',
+        background: 'rgba(255,255,255,0.08)', color: 'var(--tlm-dlg-title)',
+        cursor: 'pointer', fontSize: '0.88rem', fontWeight: 'bold'
     });
 
     const cancelBtn = document.createElement('button');
     cancelBtn.textContent = 'Cancel';
     Object.assign(cancelBtn.style, {
-        padding: '8px 20px', border: '1px solid #666', borderRadius: '5px',
-        background: '#333', color: '#fff', cursor: 'pointer', marginRight: '10px', fontSize: '13px'
+        padding: '8px 14px', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '6px',
+        background: 'rgba(255,255,255,0.08)', color: 'var(--tlm-dlg-title)',
+        cursor: 'pointer', fontSize: '0.88rem', fontWeight: 'bold'
     });
 
     const saveBtn = document.createElement('button');
     saveBtn.textContent = 'Save Mappings';
     Object.assign(saveBtn.style, {
-        padding: '8px 24px', border: 'none', borderRadius: '5px',
-        background: 'linear-gradient(135deg, #311B92, #AA00FF)',
-        color: '#fff', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold'
+        padding: '8px 14px', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '6px',
+        background: '#55BBAA',
+        color: 'white', cursor: 'pointer', fontSize: '0.88rem', fontWeight: 'bold'
     });
 
     btnRow.appendChild(clearBtn);
@@ -496,7 +518,8 @@ function _renderParametrizerMappingDialog(agentId, data) {
 
     // Cancel
     cancelBtn.addEventListener('click', () => overlay.remove());
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+    // Outside-click dismissal removed (Angela, 2026-08-13): a dialog closes
+    // ONLY by its X, Cancel or Continue. See static/agent/js/dialog_policy.js.
 
     // Save
     saveBtn.addEventListener('click', async () => {

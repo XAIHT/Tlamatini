@@ -329,7 +329,9 @@ function OpenContactsDialog(event) { // eslint-disable-line no-unused-vars
     closeBtn.onclick = closeDialog;
     cancelBtn.onclick = closeDialog;
     saveBtn.onclick = saveAll;
-    dlg.onclick = (e) => { if (e.target === dlg) closeDialog(); };
+    // Backdrop-click dismissal removed (Angela, 2026-08-13): a dialog closes
+    // ONLY by its X, Cancel or Continue. Escape is disarmed centrally for every
+    // native <dialog> in static/agent/js/dialog_policy.js.
 
     // Initial state
     contacts = [];

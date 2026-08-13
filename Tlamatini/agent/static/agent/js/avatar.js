@@ -397,7 +397,8 @@
     function closeDialog(){ if(overlay)overlay.style.display='none'; }
     if(overlay){
       var x=document.getElementById('tlm-voice-close'); if(x)x.addEventListener('click',closeDialog);
-      overlay.addEventListener('click',function(e){ if(e.target===overlay)closeDialog(); });
+      // Outside-click dismissal removed (Angela, 2026-08-13): a dialog closes
+      // ONLY by its X, Cancel or Continue. See static/agent/js/dialog_policy.js.
       var save=document.getElementById('tlm-voice-save'); if(save)save.addEventListener('click',function(){ saveSettings(readDialog()); closeDialog(); });
       var test=document.getElementById('tlm-voice-test'); if(test)test.addEventListener('click',function(){ saveSettings(readDialog()); prime(); speak("Hello "+uname+"! This is my voice."); });
       ['tlm-voice-volume','tlm-voice-rate','tlm-voice-pitch'].forEach(function(id){

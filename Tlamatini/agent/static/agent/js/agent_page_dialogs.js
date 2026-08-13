@@ -1189,6 +1189,15 @@ function OpenCheckUpdatesDialog(event) {
 
 function CloseUpdateDialog(event) {
     if (event) event.preventDefault();
+    // SEALED WHILE UPDATING (Angela, 2026-08-13). Once the swap has started,
+    // the X, Cancel and Escape must all refuse: interrupting a half-applied
+    // update leaves the install directory in a mixed state. The policy layer
+    // alerts the user and returns false. Only an explicit Windows kill, or
+    // closing Tlamatini's own console window, ends it.
+    if (window.TlamatiniDialogPolicy
+            && !window.TlamatiniDialogPolicy.mayClose('update')) {
+        return;
+    }
     const overlay = document.getElementById('update-overlay');
     if (overlay) overlay.style.display = 'none';
     if (_updatePollTimer) { clearInterval(_updatePollTimer); _updatePollTimer = null; }
@@ -1247,6 +1256,18 @@ async function StartTlamatiniUpdate(event) {
     }
     actionBtn.disabled = true;
     actionBtn.style.display = 'none';
+    // From here the dialog is SEALED: no X, no Cancel, no Escape, and leaving
+    // the page raises the browser's own confirmation. (A page cannot veto a tab
+    // close - but the swap runs in an external PowerShell process, so a closed
+    // tab does not abort an update already in flight.)
+    if (window.TlamatiniDialogPolicy) {
+        window.TlamatiniDialogPolicy.seal('update',
+            'Tlamatini is updating itself and CANNOT be interrupted.\n\n'
+            + 'Closing now can leave the installation half-updated. Wait for it '
+            + 'to finish - Tlamatini closes and reopens on the new version by '
+            + 'itself.\n\nOnly an explicit Windows kill, or closing Tlamatini\'s '
+            + 'own console window, stops it.');
+    }
     _setUpdateProgress(0, 'Starting update…');
     try {
         const resp = await fetch('/agent/start_update/', {
@@ -1278,9 +1299,17 @@ async function _pollUpdateStatus() {
         _setUpdateProgress(s.percent, s.message || s.phase);
         if (s.phase === 'error') {
             clearInterval(_updatePollTimer); _updatePollTimer = null;
+            // The update stopped, so the seal must lift - otherwise a failed
+            // update leaves the user with a dialog they can never close.
+            if (window.TlamatiniDialogPolicy) window.TlamatiniDialogPolicy.unseal('update');
             document.getElementById('update-progress-wrap').style.display = 'none';
             content.innerHTML = '⚠️ ' + (s.error || 'Update failed.');
         } else if (s.phase === 'handoff' || s.phase === 'done') {
+            // 'done' = nothing was applied, so unseal. 'handoff' deliberately
+            // stays SEALED: the swapper is live and Tlamatini is closing.
+            if (s.phase === 'done' && window.TlamatiniDialogPolicy) {
+                window.TlamatiniDialogPolicy.unseal('update');
+            }
             clearInterval(_updatePollTimer); _updatePollTimer = null;
             if (s.phase === 'handoff') {
                 content.innerHTML = '🔄 Update staged. <strong>Tlamatini is now closing</strong> and will '

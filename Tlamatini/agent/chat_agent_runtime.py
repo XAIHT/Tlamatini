@@ -145,6 +145,26 @@ def _resolve_python_executable() -> str:
 def _build_child_env() -> dict:
     env = os.environ.copy()
 
+    # TLAMATINI_AGENTS_ROOT — so an agent can find its SIBLINGS.
+    #
+    # Angela, 2026-08-12: Playwrighter grew a `shoter` step (every screenshot
+    # must be taken by Shoter, never PIL) and could not locate the Shoter
+    # template. A wrapped agent runs from `<app>/Temp/mcp_agent_runs/<run>/`,
+    # which has NO ancestor containing `agents/`, so walking up the tree
+    # cannot work — and nothing in the environment said where the agents
+    # live. Every agent that wants to use another agent hit the same wall.
+    #
+    # Fail-open: if the root cannot be resolved the variable is simply
+    # absent and callers fall back to their own search, exactly as before.
+    try:
+        from agent.services.agent_paths import get_agents_root
+
+        agents_root = str(get_agents_root())
+        if agents_root and os.path.isdir(agents_root):
+            env["TLAMATINI_AGENTS_ROOT"] = agents_root
+    except Exception:
+        pass
+
     if sys.platform.startswith("win"):
         try:
             import ctypes

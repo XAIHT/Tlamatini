@@ -21,12 +21,17 @@
   <link rel="stylesheet" href="{% static 'agent/css/access_keys_wizard.css' %}?v={{ STATIC_VERSION }}">
   <link rel="stylesheet" href="{% static 'agent/css/avatar.css' %}?v={{ STATIC_VERSION }}">
   {# dialog_theme.css MUST stay LAST: it supersedes the legacy .ui-dialog chrome on cascade ORDER. #}
-  <link rel="stylesheet" href="{% static 'agent/css/dialog_theme.css' %}?v={{ STATIC_VERSION }}_dlg1">
+  <link rel="stylesheet" href="{% static 'agent/css/dialog_theme.css' %}?v={{ STATIC_VERSION }}_dlg2">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700&display=swap" rel="stylesheet">
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
   <script src="https://code.jquery.com/ui/1.13.3/jquery-ui.min.js"></script>
+  <!-- Dialog dismissal policy: X / Cancel / Continue ONLY - never an outside
+       click, never Escape. Loaded right after jQuery UI (it patches the widget
+       defaults) and before every application dialog module, so dialogs written
+       later inherit the policy with no wiring. -->
+  <script src="{% static 'agent/js/dialog_policy.js' %}?v={{ STATIC_VERSION }}_dlgpolicy"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/java.min.js"></script>
@@ -666,7 +671,8 @@
       </div>
     </div>
   </div>
-  <div id="about-overlay" class="about-overlay" style="display: none;" onclick="CloseAboutDialog(event);">
+  <!-- No onclick on the overlay: an outside click must NEVER dismiss. Use the X. -->
+  <div id="about-overlay" class="about-overlay" style="display: none;">
     <div class="about-window" onclick="event.stopPropagation();">
       <button class="about-close-btn" onclick="CloseAboutDialog(event);">&times;</button>
       <div class="about-video-container">
@@ -682,11 +688,19 @@
       </div>
     </div>
   </div>
-  <div id="update-overlay" class="about-overlay" style="display: none;" onclick="CloseUpdateDialog(event);">
+  <!-- No onclick on the overlay: an outside click must NEVER dismiss, and once
+       an update is RUNNING this dialog is sealed - see CloseUpdateDialog. -->
+  <div id="update-overlay" class="about-overlay" style="display: none;">
     <div class="about-window update-window" onclick="event.stopPropagation();">
-      <button class="about-close-btn" onclick="CloseUpdateDialog(event);">&times;</button>
+      <div class="update-header">
+        <div>
+          <span class="update-kicker">Tlamatini</span>
+          <h3 class="update-title">Check for updates</h3>
+        </div>
+        <button type="button" class="about-close-btn" aria-label="Close"
+          onclick="CloseUpdateDialog(event);">&times;</button>
+      </div>
       <div class="update-body">
-        <h3 class="update-title">Check for updates</h3>
         <p class="update-current">Installed version: <strong>v{{ version }}</strong></p>
         <div id="update-content" class="update-content">Checking for updates…</div>
         <pre id="update-notes" class="update-notes" style="display: none;"></pre>
@@ -718,7 +732,7 @@
   <script src="{% static 'agent/js/external_mcps_dialog.js' %}?v={{ STATIC_VERSION }}"></script>
   <script src="{% static 'agent/js/contacts_dialog.js' %}?v={{ STATIC_VERSION }}"></script>
   <script src="{% static 'agent/js/access_keys_wizard.js' %}?v={{ STATIC_VERSION }}"></script>
-  <script src="{% static 'agent/js/shared-runtime-dialogs.js' %}?v={{ STATIC_VERSION }}"></script>
+  <script src="{% static 'agent/js/shared-runtime-dialogs.js' %}?v={{ STATIC_VERSION }}_dlg3"></script>
   <script src="{% static 'agent/js/chat_page_runtime_poller.js' %}?v={{ STATIC_VERSION }}"></script>
   <script src="{% static 'agent/js/chat_image_paste.js' %}?v={{ STATIC_VERSION }}"></script>
   <script src="{% static 'agent/js/checkbox_bulk_toggle.js' %}?v={{ STATIC_VERSION }}_bulktoggle"></script>

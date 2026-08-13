@@ -448,19 +448,19 @@ function showValidationResultDialog(isValid, errors) {
         contentEl.innerHTML = `
             <div style="font-size: 48px; margin-bottom: 15px;">✅</div>
             <h4 style="color: #10B981; margin-bottom: 10px;">Flow is Valid</h4>
-            <p style="color: #ccc;">All verification checks passed successfully. The flow structure is correct.</p>
+            <p style="color: var(--tlm-dlg-body);">All verification checks passed successfully. The flow structure is correct.</p>
         `;
     } else {
         let errorHtml = '';
         for (const err of errors) {
             if (typeof err === 'string') {
-                errorHtml += `<div style="margin-bottom: 10px; padding: 8px; background: #3a1a1a; border-left: 3px solid #e74c3c; border-radius: 4px;">
+                errorHtml += `<div style="margin-bottom: 10px; padding: 8px; background: rgba(231, 76, 60, 0.14); border-left: 3px solid #e74c3c; border-radius: 4px;">
                     <p style="color: #f87171; margin: 0;">${err}</p>
                 </div>`;
             } else {
-                errorHtml += `<div style="margin-bottom: 10px; padding: 8px; background: #3a1a1a; border-left: 3px solid #e74c3c; border-radius: 4px;">
+                errorHtml += `<div style="margin-bottom: 10px; padding: 8px; background: rgba(231, 76, 60, 0.14); border-left: 3px solid #e74c3c; border-radius: 4px;">
                     <p style="color: #f87171; font-weight: bold; margin: 0 0 5px 0;">⚠️ ${err.message}</p>
-                    <p style="color: #ccc; margin: 0; font-size: 0.9em;">Agents: ${err.agents.join(', ')}</p>
+                    <p style="color: var(--tlm-dlg-body); margin: 0; font-size: 0.9em;">Agents: ${err.agents.join(', ')}</p>
                 </div>`;
             }
         }
@@ -482,7 +482,7 @@ function showValidationResultDialog(isValid, errors) {
         width: 520,
         resizable: false,
         draggable: true,
-        closeOnEscape: true,
+        closeOnEscape: false,
         closeText: "",
         dialogClass: "validation-result-dialog-wrapper",
         open: function () {
@@ -499,11 +499,7 @@ function showValidationResultDialog(isValid, errors) {
 
     // Style the Continue button
     const buttonPane = $dialog.parent().find('.ui-dialog-buttonpane');
-    buttonPane.find('button:contains("Continue")').css({
-        'background-color': isValid ? '#10B981' : '#e74c3c',
-        'color': 'white', 'border': 'none', 'border-radius': '6px',
-        'font-size': '1em', 'padding': '8px 30px', 'cursor': 'pointer', 'min-width': '120px'
-    });
+    styleAcpDialogButtons(buttonPane);
 }
 
 // ========================================
@@ -529,13 +525,13 @@ function showStartValidationCheckDialog(status, proceedCallback) {
         contentEl.innerHTML = `
             <div style="font-size: 48px; margin-bottom: 15px;">⚠️</div>
             <h4 style="color: #F59E0B; margin-bottom: 10px;">Validation Errors Found</h4>
-            <p style="color: #ccc;">Some errors were found during flow validation. Are you sure you want to start running it?</p>
+            <p style="color: var(--tlm-dlg-body);">Some errors were found during flow validation. Are you sure you want to start running it?</p>
         `;
     } else {
         contentEl.innerHTML = `
             <div style="font-size: 48px; margin-bottom: 15px;">ℹ️</div>
             <h4 style="color: #3B82F6; margin-bottom: 10px;">Flow Not Validated</h4>
-            <p style="color: #ccc;">No validation has been executed for the present flow. Would you like to verify it or start running without verification?</p>
+            <p style="color: var(--tlm-dlg-body);">No validation has been executed for the present flow. Would you like to verify it or start running without verification?</p>
         `;
     }
 
@@ -547,7 +543,7 @@ function showStartValidationCheckDialog(status, proceedCallback) {
         width: 500,
         resizable: false,
         draggable: true,
-        closeOnEscape: true,
+        closeOnEscape: false,
         closeText: "",
         dialogClass: "start-validation-check-dialog-wrapper",
         open: function () {
@@ -577,16 +573,9 @@ function showStartValidationCheckDialog(status, proceedCallback) {
 
     // Style the buttons
     const buttonPane = $dialog.parent().find('.ui-dialog-buttonpane');
-    buttonPane.find('button:contains("Run")').css({
-        'background-color': status === VALIDATION_STATE.INVALID ? '#e74c3c' : '#3B82F6',
-        'color': 'white', 'border': 'none', 'border-radius': '6px',
-        'font-size': '1em', 'padding': '8px 30px', 'cursor': 'pointer', 'min-width': '100px'
-    });
-    buttonPane.find('button:contains("Verify")').css({
-        'background-color': '#EAB308',
-        'color': 'white', 'border': 'none', 'border-radius': '6px',
-        'font-size': '1em', 'padding': '8px 30px', 'cursor': 'pointer', 'min-width': '100px'
-    });
+    // Run is the confirm action; Verify is the alternative and inherits
+    // the outlined secondary style from dialog_theme.css.
+    styleAcpDialogButtons(buttonPane);
 }
 
 // ========================================

@@ -365,15 +365,29 @@ def main():
                         except (UnicodeDecodeError, OSError, PermissionError):
                             continue  # skip binary / unreadable
                         files_searched += 1
+                        # max_results caps the OUTPUT UNIT of the requested mode:
+                        # content -> lines, files/count -> FILES. It used to cap
+                        # on the total match count in every mode and abort the
+                        # whole walk, which made `files` silently OMIT matching
+                        # files (one noisy file ate the budget) and left the last
+                        # file's `count` PARTIAL - a wrong number reported as
+                        # fact. A file is always counted to completion before the
+                        # cap is applied, so every number emitted is truthful.
+                        file_hits = 0
                         for i, line in enumerate(lines):
                             if rx.search(line):
                                 matches += 1
-                                file_match_counts[fpath] = file_match_counts.get(fpath, 0) + 1
+                                file_hits += 1
                                 if output_mode == "content":
                                     content_lines.append(f"{fpath}:{i + 1}:{line.rstrip()}")
-                                if matches >= max_results:
-                                    truncated = True
-                                    break
+                                    if len(content_lines) >= max_results:
+                                        truncated = True
+                                        break
+                        if file_hits:
+                            file_match_counts[fpath] = file_hits
+                            if (output_mode in ("files", "count")
+                                    and len(file_match_counts) >= max_results):
+                                truncated = True
                         if truncated:
                             break
                     if output_mode == "files":
@@ -384,7 +398,8 @@ def main():
                         body = "\n".join(content_lines)
                     status = "matches" if matches else "no_matches"
                     if truncated:
-                        body += f"\n... (truncated at max_results={max_results})"
+                        unit = "lines" if output_mode == "content" else "files"
+                        body += f"\n... (truncated at max_results={max_results} {unit})"
                     logging.info(f"✅ {matches} match(es) across {files_searched} file(s); status={status}")
         except Exception as e:
             status = "error"
