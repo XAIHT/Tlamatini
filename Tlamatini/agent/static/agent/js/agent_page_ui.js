@@ -268,6 +268,25 @@ function updateLineNumbers() {
     lineNumbers.value = lines.map((_, i) => i + 1).join('\n');
 }
 
+// Navbar entries disabled WHOLE during a long operation - both functionally
+// (a dropdown cannot open without data-bs-toggle, a link cannot be clicked
+// without pointer-events) and visually (the same greying "External" and "DB"
+// have always had). Plain links (Open / Save / Reconnect) carry no
+// data-bs-toggle, so the disable pass REMEMBERS which buttons had one and the
+// enable pass restores it ONLY for those - otherwise Bootstrap would turn a
+// plain link into a dropdown toggle and swallow its click forever.
+const LONG_OPERATION_DISABLED_MENU_BUTTONS = [
+    'open-button',
+    'save-as-button',
+    'context-menu-button',
+    'mcps-menu-button',
+    'skills-menu-button',
+    'external-menu-button',
+    'config-menu-button',
+    'db-menu-button',
+    're-connect-button'
+];
+
 /**
  * Disable all interactive controls during a long operation.
  */
@@ -296,14 +315,8 @@ function disableControlsDuringOperation() {
     cleanHistoryButton.disabled = true;
     cleanHistoryButton.style.backgroundColor = "#808080";
     cleanHistoryEnabled = false;
-    contextMenuButton.setAttribute('disabled', 'disabled');
-    contextMenuButton.removeAttribute('data-bs-toggle');
-    mcpsMenuButton.setAttribute('disabled', 'disabled');
-    mcpsMenuButton.removeAttribute('data-bs-toggle');
-    if (configMenuButton) {
-        configMenuButton.setAttribute('disabled', 'disabled');
-        configMenuButton.removeAttribute('data-bs-toggle');
-    }
+    // Context / MCPs / Config are disabled by LONG_OPERATION_DISABLED_MENU_BUTTONS
+    // below (single source of truth) - do NOT re-add per-button code here.
     if (openInDropdownItem) {
         openInDropdownItem.style.display = 'none';
     }
@@ -312,11 +325,14 @@ function disableControlsDuringOperation() {
     // The "External" and "DB" navbar dropdowns are disabled WHOLE during a long
     // operation - both functionally (Bootstrap cannot open them without
     // data-bs-toggle) and visually (same greying "Configure Agents" gets).
-    ['external-menu-button', 'db-menu-button'].forEach(function (menuButtonId) {
+    LONG_OPERATION_DISABLED_MENU_BUTTONS.forEach(function (menuButtonId) {
         const menuButton = document.getElementById(menuButtonId);
         if (menuButton) {
+            if (menuButton.hasAttribute('data-bs-toggle')) {
+                menuButton.dataset.longOpBsToggle = menuButton.getAttribute('data-bs-toggle');
+                menuButton.removeAttribute('data-bs-toggle');
+            }
             menuButton.setAttribute('disabled', 'disabled');
-            menuButton.removeAttribute('data-bs-toggle');
             menuButton.classList.add('disabled');
             menuButton.style.pointerEvents = 'none';
             menuButton.style.opacity = '0.5';
@@ -388,23 +404,20 @@ function enableControlsAfterOperation() {
     cleanHistoryButton.disabled = false;
     cleanHistoryButton.style.backgroundColor = "darkgreen";
     cleanHistoryEnabled = true;
-    contextMenuButton.removeAttribute('disabled', 'disabled');
-    contextMenuButton.setAttribute('data-bs-toggle', 'dropdown');
-    mcpsMenuButton.removeAttribute('disabled', 'disabled');
-    mcpsMenuButton.setAttribute('data-bs-toggle', 'dropdown');
-    if (configMenuButton) {
-        configMenuButton.removeAttribute('disabled');
-        configMenuButton.setAttribute('data-bs-toggle', 'dropdown');
-    }
+    // Context / MCPs / Config are re-armed by LONG_OPERATION_DISABLED_MENU_BUTTONS
+    // below (single source of truth) - do NOT re-add per-button code here.
     updateOpenInMenuState();
     // Re-enable the "Configure Agents" entry
     // Re-arm the "External" and "DB" navbar dropdowns (mirror of the disable
     // pass above: restore data-bs-toggle AND clear the greying).
-    ['external-menu-button', 'db-menu-button'].forEach(function (menuButtonId) {
+    LONG_OPERATION_DISABLED_MENU_BUTTONS.forEach(function (menuButtonId) {
         const menuButton = document.getElementById(menuButtonId);
         if (menuButton) {
+            if (menuButton.dataset.longOpBsToggle) {
+                menuButton.setAttribute('data-bs-toggle', menuButton.dataset.longOpBsToggle);
+                delete menuButton.dataset.longOpBsToggle;
+            }
             menuButton.removeAttribute('disabled');
-            menuButton.setAttribute('data-bs-toggle', 'dropdown');
             menuButton.classList.remove('disabled');
             menuButton.style.pointerEvents = '';
             menuButton.style.opacity = '';
