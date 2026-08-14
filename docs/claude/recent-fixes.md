@@ -16,6 +16,63 @@
 
 ---
 
+## 2026-08-13 — `tlamatini.log` could not say WHICH user a line belonged to when two people were connected (`agent/log_identity.py`, `manage.py`, `consumers.py`, `tlamatini/middleware.py`)
+
+**Symptom (Angela).** Tlamatini happily serves two logged-in sessions at once on
+the same machine — `angela` in one browser, `alice` in another. But
+`tlamatini.log` interleaved both users' work into one undifferentiated stream:
+a Multi-Turn burst from alice and a RAG rebuild for angela looked identical, and
+nothing on the line said whose request produced it.
+
+**Why it was not just "add the username to the formatter".** Three reasons.
+(1) Most of Tlamatini's log output is `print()`, not `logging` — a
+`logging.Formatter` would miss the majority of lines, and third-party stdout
+entirely. The only universal choke point is `manage.py`'s `_TeeStream.write`.
+(2) The obvious identity carrier, `threading.local`, is **wrong here**: ONE
+event-loop thread serves EVERY connected user, so a thread-local smears angela's
+identity over alice's coroutine. (3) Angela's two explicit constraints — minimal
+characters in the file, minimal CPU per line — rule out formatting anything
+per line.
+
+**The fix.** `agent/log_identity.py` keeps a `contextvars.ContextVar` holding a
+**pre-rendered, ready-to-write** prefix (`'[a3] '` = user `a`, turn 3). The tee
+does one `ContextVar.get()` and one concatenation; nothing is formatted per
+line, and lines that belong to no user get **no prefix at all**. `bind()` /
+`begin_turn()` are called from `consumers.py` (connect / receive /
+queue_llm_retrieval) and from the new `UserLogTagMiddleware` for HTTP. A
+one-time `--- [WHO] a = angela (user id 1)` legend makes the 5-character tag
+self-describing. `config.json` knobs: `log_user_tags`, `log_user_tag_style`
+(`short` | `name` | `off`), `log_user_tag_thread_inherit`.
+
+**Contracts — do NOT revert these:**
+
+* **The tee must never `import agent.*`.** It runs BEFORE Django exists, and
+  `agent/__init__` pulls protobuf/gRPC. Coupling is inverted on purpose:
+  `manage.py` exposes an empty `_USER_TAG_HOOK = None` slot and
+  `log_identity.install()` fills it in at app boot. A launch without the module
+  writes untagged lines instead of failing.
+* **`data` is never reassigned inside `write()`** — the tagged text goes to
+  `payload`, so the return value stays the number of characters the CALLER
+  passed. A `write()` that claims it wrote more than it was given lies to any
+  caller that loops on partial writes.
+* **`_at_line_start` must survive across calls.** `print()` writes the text and
+  its newline as TWO separate `write()` calls; without that state the second
+  call would emit a second tag on the same line.
+* **The BOM-style ordering trap has an analogue here:** a chunk that is only a
+  newline is left BARE. Tagging blank lines spends characters on nothing.
+* **`ContextVar`, not `threading.local`** (see above), and `install()` wraps
+  `Thread.start` with `contextvars.copy_context()` so raw threads (self-healing
+  watchdog, Tier-2 reaper, agent launchers) inherit the tag — that is what makes
+  the attribution total rather than merely usual.
+* **FAIL-OPEN everywhere**, ASCII-only prefix (the tee also writes to a cp1252
+  console), stdlib-only module.
+
+Coverage: `agent/test_log_identity.py` (27 tests, incl. two users in two
+contexts never seeing each other's tag, and a hook that raises never breaking a
+write).
+
+---
+
 ## 2026-08-09 — pip's "A new release of pip is available" nag on EVERY `build_complete_*` run: suppress the CHECK, do NOT chase the upgrade
 
 **Symptom (Angela).** Every single run of `build_complete_public_release.py` /

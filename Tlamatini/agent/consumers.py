@@ -39,6 +39,10 @@ from .chat_history_loader import DBChatHistoryLoader
 from .global_state import global_state
 from .path_guard import get_runtime_agent_root, resolve_runtime_agent_path, safe_join_under
 from . import constants
+# Per-line USER attribution for tlamatini.log. Importing it is all that is
+# needed: the module installs itself into manage.py's tee hook and makes child
+# threads inherit the tag. See agent/log_identity.py for the full contract.
+from . import log_identity
 
 # Per-frame WebSocket receive tracing (a print + forced stdout flush on EVERY
 # incoming chat/control frame) is too expensive for default runtime. Deep
@@ -128,6 +132,12 @@ class AgentConsumer(AsyncWebsocketConsumer):
         try:
             self.room_name = f'user_{user.id}'
             self.room_group_name = f'chat_{self.room_name}'
+            # Per-line log attribution for THIS connection (Angela, 2026-08-13).
+            # Channels dispatches every frame of a connection from the SAME
+            # asyncio task, so one ContextVar set here already names the user on
+            # every line this consumer writes; receive() re-binds anyway so the
+            # attribution can never depend on that implementation detail.
+            log_identity.bind(user.id, user.username)
             print(f"--- Joining room: {self.room_group_name}")
 
             await self.channel_layer.group_add(  # type: ignore
@@ -698,6 +708,11 @@ class AgentConsumer(AsyncWebsocketConsumer):
         broker = None
         broker_key = conversation_user.id
         status_registered = False
+        # Per-line log attribution (Angela, 2026-08-13). receive() already bound
+        # this task, and the whole synchronous executor inherits it through
+        # sync_to_async -- this re-bind is the safety net for any path that
+        # reaches the LLM run from a context receive() did not open.
+        log_identity.bind(broker_key, getattr(conversation_user, 'username', ''))
         # Mint THIS run's cancellation epoch up front, so the executor, the
         # self-healing invoker and the Ask-Execs broker all share ONE identity that a
         # Cancel can latch dead permanently. (Angela, 2026-07-14)
@@ -1012,6 +1027,20 @@ class AgentConsumer(AsyncWebsocketConsumer):
             else:
                 type = None
             user = self.scope['user']
+
+            # Per-line log attribution (Angela, 2026-08-13). An UNTYPED frame is
+            # a real prompt, so it OPENS a new turn -- that turn number is what
+            # separates two concurrent requests of the same user (two tabs) in
+            # tlamatini.log. A typed frame is a control message (toggles, cancel,
+            # ping) and rides the current turn. Anonymous binds to nothing, which
+            # writes bare, untagged lines.
+            if getattr(user, 'is_authenticated', False):
+                if type is None:
+                    log_identity.begin_turn(user.id, user.username)
+                else:
+                    log_identity.bind(user.id, user.username)
+            else:
+                log_identity.bind(None)
 
             if message == 'ping':
                 print("--- Received heartbeat message from client.")

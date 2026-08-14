@@ -288,6 +288,38 @@ Characteristics:
 - **No rotation / no size cap**: long sessions grow unbounded — copy or rename before restart if you need to preserve the history
 - **Not a Django LOGGING handler**: the tee is stream-level, upstream of Django's logging config, so it picks up print() calls and third-party stdout as well
 
+### Per-line USER attribution — whose line is this? (2026-08-13)
+
+Tlamatini serves **several logged-in users at once** on one machine (open a session as `angela` and another as `alice` and both are served by the same process, the same event loop and the same thread pool). The log used to interleave them with no way to tell whose line was whose. Now every line that belongs to a user carries a tiny prefix:
+
+```
+--- [WHO] a = angela (user id 1)          <- legend, printed once per user per run
+--- [WHO] b = alice (user id 2)
+[a3] --- Message parsed: 'compile the report' **** to be sent to LLM
+[b1] --- [BINARY-GUARD] ENABLED - sampling 8192 bytes/file
+[a3] --- [Tier-1 reaper] killed=0 survivors=0
+```
+
+`[a3]` = user `a` (angela), turn 3. The **turn** is what separates two concurrent requests of the SAME user (two browser tabs), so `[a3]` and `[a4]` never blur. Grep one user's whole session with `findstr "[a"`.
+
+**Engine**: `agent/log_identity.py` (stdlib-only, imports nothing from `agent.*`). **Choke point**: `manage.py`'s `_TeeStream.write` — the one place every `print()`, every Django logger and every third-party stdout already passes through. **Bind points**: `consumers.py` (`connect` / `receive` / `queue_llm_retrieval`) for the chat path and `tlamatini/middleware.py::UserLogTagMiddleware` for the ~100 HTTP endpoints.
+
+| Setting (`config.json`) | Default | Meaning |
+|---|---|---|
+| `log_user_tags` | `true` | master switch |
+| `log_user_tag_style` | `"short"` | `"short"` → `[a3] ` (5 chars) · `"name"` → `[angela#3] ` · `"off"` |
+| `log_user_tag_thread_inherit` | `true` | child threads inherit the spawning user's tag |
+
+**Contract — do NOT weaken:**
+
+1. **Minimal characters.** Five per attributed line, and **none at all** for lines that belong to no user (startup, the MCP servers, the reaper) or for blank lines. That is the whole reason the tag is a one-letter code plus a turn number rather than a verbose `[user=angela thread=Thread-42]` preamble.
+2. **Minimal CPU.** The prefix is rendered ONCE per (user, turn) and stored **ready-to-write** in the ContextVar, so the hot path is one `ContextVar.get()` plus one concatenation — no formatting, no lookup, no lock, per line. With nothing bound the tee pays a single `is not None` test.
+3. **`ContextVar`, never `threading.local`.** ONE event-loop thread serves EVERY connected user, so a thread-local would smear angela's identity over alice's coroutine. `sync_to_async` propagates the context, so the whole synchronous Multi-Turn executor stays attributed for free; `install()` additionally wraps `Thread.start` so raw threads (the self-healing watchdog, the Tier-2 reaper, agent launchers) inherit it too.
+4. **Inverted coupling.** `manage.py` exposes an empty `_USER_TAG_HOOK` slot and `log_identity.install()` fills it in when the Django app boots. The tee must **never** `import agent.*` — it runs before Django exists, and that import would drag protobuf/gRPC into startup. A launch without the module simply writes untagged lines.
+5. **FAIL-OPEN everywhere**, and the prefix stays **ASCII** (the tee also writes to a cp1252 console).
+
+Coverage: `agent/test_log_identity.py` (27 tests — the exact characters that reach the file, two users in two contexts, thread inheritance, blank/partial-line handling, a hook that raises, and the wiring contracts).
+
 When asked to debug an issue, `Tlamatini/tlamatini.log` is the first artifact to consult.
 
 ---

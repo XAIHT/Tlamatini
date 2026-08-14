@@ -65,6 +65,45 @@ _FRIENDLY_ERROR_HTML = """<!DOCTYPE html>
 """
 
 
+class UserLogTagMiddleware:
+    """Attribute every log line of an HTTP request to its logged-in user.
+
+    The WebSocket consumer covers the chat path; this covers the ~100 HTTP
+    endpoints (canvas Start/Validate, flow compile, dialogs, uploads, pickers),
+    so a line written while serving alice's canvas can never read as angela's.
+
+    Registered LAST (see settings.py), which puts it CLOSEST to the view: it
+    binds immediately before the view runs and unbinds immediately after, and
+    it never even executes for a request WhiteNoise already served. It reads
+    ``request.user`` -- which every @login_required view resolves anyway -- so
+    it adds no session/DB hit of its own.
+
+    ``log_identity`` is imported inside the call (a ``sys.modules`` hit after
+    the first request) rather than at module top: this module is imported while
+    Django is still assembling itself, and a mid-file top-level import would
+    also trip ruff E402. Fail-open -- any problem leaves the request untagged.
+    """
+
+    def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]):
+        self.get_response = get_response
+
+    def __call__(self, request: HttpRequest) -> HttpResponse:
+        token = None
+        identity = None
+        try:
+            from agent import log_identity as identity
+            user = getattr(request, 'user', None)
+            if user is not None and getattr(user, 'is_authenticated', False):
+                token = identity.bind(user.id, user.username)
+        except Exception:
+            token = None
+        try:
+            return self.get_response(request)
+        finally:
+            if token is not None and identity is not None:
+                identity.reset(token)
+
+
 class FriendlyErrorMiddleware:
     """Release-mode useful-error contract (speed batch, 2026-07-02).
 

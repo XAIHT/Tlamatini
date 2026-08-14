@@ -142,6 +142,12 @@ MIDDLEWARE.insert(0, 'tlamatini.middleware.FriendlyErrorMiddleware')
 # cached (they cache-bust via the ?v={{ STATIC_VERSION }} query parameter).
 MIDDLEWARE.append('tlamatini.middleware.NoCacheHTMLMiddleware')
 
+# Per-line USER attribution in tlamatini.log (Angela, 2026-08-13). Appended, so
+# it sits CLOSEST to the view: it binds the logged-in user immediately before
+# the view runs and unbinds immediately after, and it never executes for a
+# request WhiteNoise already served. See agent/log_identity.py.
+MIDDLEWARE.append('tlamatini.middleware.UserLogTagMiddleware')
+
 ROOT_URLCONF = 'tlamatini.urls'
 
 TEMPLATES = [

@@ -130,6 +130,15 @@ def _brand_console_window():
 _brand_console_window()
 
 
+# Per-line USER attribution hook. Filled in by agent/log_identity.py::install()
+# once the Django app boots -- see that module for the full contract. It stays a
+# plain slot and NEVER an import, for two reasons: the tee runs BEFORE Django
+# exists, so importing `agent.*` here would drag agent/__init__ (and with it
+# protobuf/gRPC) into startup; and a launch without that module must simply
+# write untagged lines rather than fail. `None` == nothing bound, zero cost.
+_USER_TAG_HOOK = None
+
+
 class _TeeStream:
     """Duplicates writes to the original console stream and a log file.
 
@@ -174,20 +183,62 @@ class _TeeStream:
         self._log_file = log_file
         self._pending_bytes = 0
         self._last_flush = time.monotonic()
+        self._at_line_start = True
+
+    def _tag_lines(self, data, tag):
+        """Prefix every LINE START in ``data`` with the caller's user tag.
+
+        ``print()`` writes the text and its newline as TWO calls, so "am I at
+        the start of a line?" is state, not something one chunk can answer --
+        ``_at_line_start`` carries it across writes. A chunk that is only a
+        newline is left BARE: a blank line belongs to nobody, and tagging it
+        would spend characters on nothing (Angela's minimal-space rule).
+        """
+        ends_newline = data[-1] == '\n'
+        body = data[:-1] if ends_newline else data
+        if not body:
+            self._at_line_start = True
+            return data
+        head = tag if self._at_line_start else ''
+        self._at_line_start = ends_newline
+        if '\n' in body:
+            body = body.replace('\n', '\n' + tag)
+        return head + body + ('\n' if ends_newline else '')
 
     def write(self, data):
+        # --- Per-line USER attribution (Angela, 2026-08-13) --------------
+        # ``_USER_TAG_HOOK`` is installed by agent/log_identity.py when the
+        # Django app boots. Until then this costs ONE ``is not None`` test;
+        # once a user is bound it costs one ContextVar read plus one string
+        # concatenation, because the prefix ('[a3] ') was rendered when the
+        # user was BOUND, not here. Lines belonging to no user stay bare.
+        #
+        # ``data`` is never reassigned: the tagged text goes to ``payload``
+        # so the return value below stays the number of characters the
+        # CALLER asked to write -- a write() that claims it wrote more than
+        # it was given would lie to any caller that loops on partial writes.
+        payload = data
+        if _USER_TAG_HOOK is not None and data:
+            try:
+                tag = _USER_TAG_HOOK()
+                if tag:
+                    payload = self._tag_lines(data, tag)
+                else:
+                    self._at_line_start = data[-1] == '\n'
+            except Exception:
+                payload = data
         try:
-            self._original.write(data)
+            self._original.write(payload)
         except Exception:
             pass
         try:
             with self._LOG_LOCK:
-                self._log_file.write(data)
-                self._pending_bytes += len(data)
+                self._log_file.write(payload)
+                self._pending_bytes += len(payload)
                 if (
                     self._pending_bytes >= self._FLUSH_THRESHOLD_BYTES
                     or (time.monotonic() - self._last_flush) >= self._FLUSH_INTERVAL_SECONDS
-                    or any(marker in data for marker in self._URGENT_MARKERS)
+                    or any(marker in payload for marker in self._URGENT_MARKERS)
                 ):
                     self._log_file.flush()
                     self._pending_bytes = 0
