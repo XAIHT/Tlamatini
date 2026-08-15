@@ -357,6 +357,37 @@ def check_log_for_event(log_path: str, offset: int, event_string: str) -> tuple:
         logging.error(f"Error reading log {log_path}: {e}")
         return False, offset
 
+def resolve_scratch_destination(destination: str) -> str:
+    """Keep an unrooted destination INSIDE Tlamatini (Rule 15).
+
+    An ABSOLUTE path the user named is honoured VERBATIM - they chose that
+    folder, and quietly writing somewhere else would be worse than obeying.
+
+    Everything else - a relative path, an empty value, or one of the historic
+    ``C:/Temp/...`` placeholders this config shipped with - is re-rooted under
+    ``<app>/Temp``. The placeholders were the live defect: calling Mover
+    without a destination CREATED ``C:\\Temp\\MoverDest``, a directory outside
+    the application, which is exactly what the Temp policy forbids.
+
+    Fail-open: with no TLAMATINI_TEMP in the environment the value is returned
+    untouched, because refusing to move a user's files over a path detail
+    would be worse than the tidiness it buys.
+    """
+    text = str(destination or '').strip().strip('"').strip("'")
+    temp_root = (os.environ.get('TLAMATINI_TEMP') or '').strip()
+    if not temp_root:
+        return text
+    # The shipped placeholders are not real destinations - never honour them.
+    placeholder = text.replace('\\', '/').lower().startswith('c:/temp/')
+    if text and os.path.isabs(text) and not placeholder:
+        return text
+    leaf = os.path.basename(text.replace('\\', '/').rstrip('/')) or 'MoverDest'
+    resolved = os.path.join(temp_root, leaf)
+    if text != resolved:
+        logging.info(f"📂 Destination re-rooted inside <app>/Temp: {resolved}")
+    return resolved
+
+
 def main():
     config = load_config()
     
@@ -365,7 +396,7 @@ def main():
     operation = config.get('operation', 'copy') # 'move' or 'copy'
     source_patterns = config.get('source_files', []) # List of file paths/patterns
     source_agents = config.get('source_agents', []) # List of source agents for event triggering
-    destination = config.get('destination_folder', '')
+    destination = resolve_scratch_destination(config.get('destination_folder', ''))
     recursive = config.get('recursive', False)
     filetype_exclusions = config.get('filetype_exclusions', '')
     excl_exts, excl_names = parse_exclusions(filetype_exclusions)

@@ -1,7 +1,8 @@
 trigger_mode: "immediate"  # "immediate" (delete now) or "event" (delete when a source log shows trigger_event_string)
 
 # WHAT TO DELETE. Use EITHER of these (both are honored and merged):
-#   target_path     - a single file, folder, or glob, e.g. "C:/Temp/old.log" or "C:/Temp/*.tmp"
+#   target_path     - a single file, folder, or glob, e.g. "<app>/Temp/old.log" or "<app>/Temp/*.tmp"
+#                     (Rule 15: scratch lives under the app's own Temp, never C:/Temp or %TEMP%)
 #   files_to_delete - a list of files/folders/globs
 # A glob expands; a literal path is deleted directly (file -> removed, folder -> whole tree
 # removed); a path that does NOT exist is reported as "nothing to delete", never an error.

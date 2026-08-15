@@ -790,13 +790,32 @@ body.resizing-vertical {
     }
 }
 
+/* ============================================================
+ * jQuery-UI dialogs on the chat page — GEOMETRY ONLY
+ * ------------------------------------------------------------
+ * Angela, 2026-08-15: this block used to carry a SECOND COPY of
+ * the dialog chrome — the #4a4f5c card, 12px corners, the flat
+ * shadow, the #e0e0e0 title and the centred #626978 buttons —
+ * duplicating what `dialog_theme.css` already owns. The theme
+ * loads LAST so it won on the cascade and the page LOOKED right,
+ * which is exactly what made the duplication dangerous: it was
+ * invisible until someone edited one file and wondered why the
+ * other page did not change. Same defect the canvas stylesheet
+ * carried (fixed 2026-08-12).
+ *
+ * What stays here is only what is genuinely this page's: the
+ * sizing envelope, the DRAGGABLE titlebar, the close-X glyph and
+ * the centred body padding these dialogs were laid out around.
+ *
+ * ⚠️ Do NOT re-add background-color / border-radius / box-shadow
+ * / title colour / button colours here. Consume the --tlm-dlg-*
+ * tokens instead, or the two pages start drifting again.
+ * ---------------------------------------------------------- */
+
 .ui-dialog {
-    background-color: #4a4f5c;
-    border-radius: 12px;
-    border: none;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
     box-sizing: border-box;
     padding: 0;
+    /* Keeps the card's rounded corners clipping their contents. */
     overflow: hidden;
     min-width: min(600px, calc(100vw - 24px));
     max-width: calc(100vw - 24px);
@@ -804,86 +823,99 @@ body.resizing-vertical {
     z-index: 10000;
 }
 
+/* `cursor: move` is functional here: these dialogs are draggable. */
 .ui-dialog .ui-dialog-titlebar {
-    background-color: #444853;
-    border: none;
     padding: 12px 20px;
-    border-top-left-radius: 12px;
-    border-top-right-radius: 12px;
-    font-weight: 700;
-    color: #e0e0e0;
     position: relative;
     cursor: move;
 }
 
+/*
+ * The X GLYPH (a background image) is ours; its hit-target, hover
+ * chip and right offset come from the theme. Longhands on purpose
+ * — the `background:` shorthand would reset the background-color
+ * the theme paints on hover.
+ */
 .ui-dialog .ui-dialog-titlebar-close {
-    background: none;
-    border: none;
+    background-color: transparent;
     position: absolute;
     top: 50%;
-    right: 15px;
     transform: translateY(-50%);
-    width: 24px;
-    height: 24px;
     margin: 0;
     padding: 0;
-    opacity: 0.6;
-    transition: opacity 0.2s ease-in-out;
     background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23FFFFFF'%3e%3cpath d='M.293.293a1 1 0 0 1 1.414 0L8 6.586 14.293.293a1 1 0 1 1 1.414 1.414L9.414 8l6.293 6.293a1 1 0 0 1-1.414 1.414L8 9.414l-6.293 6.293a1 1 0 0 1-1.414-1.414L6.586 8 .293 1.707a1 1 0 0 1 0-1.414z'/%3e%3c/svg%3e");
     background-size: 14px 14px;
     background-repeat: no-repeat;
     background-position: center;
 }
 
-.ui-dialog .ui-dialog-titlebar-close:hover {
-    opacity: 1;
-}
-
+/*
+ * `background: none` is load-bearing: the CARD is painted by the
+ * theme, so the content area must stay transparent over it.
+ */
 .ui-dialog .ui-dialog-content {
     background: none;
-    color: #e0e0e0;
+    color: var(--tlm-dlg-text);
+    font-family: var(--tlm-dlg-font);
     text-align: center;
     padding: 30px 50px;
     max-height: calc(100dvh - 160px);
     overflow: auto;
 }
 
-#dialog-message h1 {
-    font-size: 24px;
+/*
+ * Body typography for the chat-page dialogs.
+ *
+ * These rules used to be `#dialog-message h1` / `#dialog-message p`
+ * — an id that does NOT exist on this page (every dialog here is
+ * `#<name>-dialog-message`: confirmation, exec-permission, mcps,
+ * agents, skills, contacts, config-*, backup-db, set-db …), so they
+ * styled NOTHING and each dialog body fell back to whatever
+ * Bootstrap gave it. Scoped to the dialog content and built from
+ * the tokens, they now read as one program.
+ */
+.ui-dialog .ui-dialog-content h1,
+.ui-dialog .ui-dialog-content h2,
+.ui-dialog .ui-dialog-content h3,
+.ui-dialog .ui-dialog-content h4,
+.ui-dialog .ui-dialog-content h5 {
+    color: var(--tlm-dlg-title);
+    font-family: var(--tlm-dlg-font);
     font-weight: 700;
-    color: #ffffff;
+    line-height: 1.25;
     margin: 0 0 10px;
 }
 
-#dialog-message p {
-    font-size: 16px;
+.ui-dialog .ui-dialog-content h1 {
+    font-size: 1.5rem;
+}
+
+.ui-dialog .ui-dialog-content h2 {
+    font-size: 1.25rem;
+}
+
+.ui-dialog .ui-dialog-content h3,
+.ui-dialog .ui-dialog-content h4 {
+    font-size: 1.1rem;
+}
+
+.ui-dialog .ui-dialog-content h5 {
+    font-size: 1rem;
+}
+
+.ui-dialog .ui-dialog-content>p {
+    color: var(--tlm-dlg-body);
+    font-size: 0.95rem;
+    line-height: 1.45;
     margin: 0;
 }
 
-.ui-dialog .ui-dialog-buttonpane {
-    background: none;
-    border: none;
-    padding: 0 50px 30px;
-    margin-top: 25px;
-}
-
-.ui-dialog .ui-dialog-buttonset {
-    display: flex;
-    justify-content: center;
-    gap: 15px;
-    float: none;
-}
-
-.ui-dialog .ui-button {
-    background-color: #626978;
-    border: none;
-    border-radius: 8px;
-    font-family: 'Nunito', sans-serif;
-    font-size: 16px;
-    font-weight: 700;
-    color: #ffffff;
-    padding: 10px 24px;
-}
+/*
+ * NOTE: `.ui-dialog-buttonpane` / `-buttonset` / `.ui-button` are
+ * deliberately ABSENT. The footer bar, its actions and the button
+ * styles all come from dialog_theme.css now. Re-adding them here
+ * recreates the duplication this block was written to remove.
+ */
 
 .context-ellipsis {
     display: inline-block;
