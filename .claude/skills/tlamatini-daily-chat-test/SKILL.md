@@ -139,6 +139,10 @@ When the touched surface is relevant, include visible cases for: Mover/Deleter e
 
 When External MCP or response rendering changes, visibly verify: the dialog lists inactive `memory` and `sequential-thinking`; the runtime strip reports node/npm/npx/pnpm/uv/uvx without blocking the page; **Install now** has honest success/failure state; activating a default is explicit; deleting it does not resurrect it after reload; and a nested explicit/auto ASCII diagram followed by Markdown `---` renders every diagram once with no `DGRM_*` or NUL leakage. Use an isolated catalog/config path for tests so a maintainer's keyed `external_mcps.json` is never modified.
 
+## v1.48.15 release-target regression set
+
+When search, wrapped-agent reporting, Kubernetes execution, build privacy, or self-update changes, add visible/focused cases for: Grepper searching BOM-marked UTF-8/16/32 and cp1252/Latin-1 while skipping binary data; all five status classes and pairwise-disjoint `KNOWN_STATUSES`; degraded output rendering red; completed diagnostics rendering green; unknown-status compatibility plus guard rejection; Kuberneter emitting numeric `returncode`, boolean `success`, and `status: ok|failed`; public builds excluding a maintainer catalog while the explicit private builder may include one; and update swaps retaining `Uninstaller.exe`. Run `agent.test_grepper_encodings`, `agent.test_status_vocabulary`, `agent.test_agent_verdict`, and `agent.test_preserved_user_state` when those surfaces are touched.
+
 > ⚠️ If the answer-complete logic ever needs adjusting, verify it against a LIVE
 > server with `--count 2` before trusting a full run — a daily test that silently
 > mis-detects completion is worse than no test.

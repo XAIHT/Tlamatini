@@ -45,7 +45,7 @@ That script delegates to `complete_project_docs.py` and rebuilds both the full P
 2. **Reconcile:** build a release-feature matrix mapping every recent behavior to its source implementation, public documentation, maintainer guidance, prompt rule, and relevant skill. Correct active counts from source, but preserve explicitly dated historical counts as history.
 3. **Prove:** rerun searches for old active versions/counts/claims, run `python -m ruff check`, execute focused tests, regenerate artifacts, and verify text extraction, page count, complete-tree parity, and current-release coverage.
 
-For the v1.48.14 release target and later, also verify the private External-MCP runtime, ten supervisor tools, inactive Memory/Sequential-Thinking defaults, edit/tombstone semantics, persistent Memory path, public/private catalog separation, nested-diagram restoration, and the design-only status of the transactional-updater proposal. Carry forward the v1.48.13 Mover/Deleter placement, dialog, long-operation, logging, DB/reaper, updater-note, and `STATIC_VERSION` contracts.
+For the v1.48.15 release target and later, verify Grepper's BOM-first UTF-8/16/32 plus cp1252/Latin-1 search, the guarded five-class Exec Report vocabulary, Kuberneter's `returncode`/`success`/semantic-status shape, `Uninstaller.exe` preservation, and source-derived public/private build tests. Carry forward the v1.48.14 private External-MCP runtime, ten supervisor tools, inactive Memory/Sequential-Thinking defaults, tombstones, persistent Memory path, public/private catalog separation, nested-diagram restoration, and design-only transactional-updater label, plus the v1.48.13 placement/dialog/logging foundations.
 
 ## Inventory Rules
 

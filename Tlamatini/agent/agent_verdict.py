@@ -49,6 +49,18 @@ CONTRACT (do NOT weaken)
 * A READ-ONLY DIAGNOSTIC that reports an adverse finding has SUCCEEDED.  The
   finding is the DELIVERABLE, not a malfunction.  A red row must mean "the tool
   malfunctioned", never "the tool found something".
+* A DEGRADED result is NOT a clean success.  When the deliverable is missing
+  or compromised -- audio tokens with nothing audible, a PDF that only built
+  because content was quarantined -- the row goes RED.  Weigh the two ways of
+  being wrong: a false green makes Angela doubt her speakers, a false red costs
+  her one glance at a row that names the fix.
+* THE VOCABULARY IS CLOSED, and a guard keeps it that way.  Every status token
+  a pool agent can emit must live in exactly one of the five sets below;
+  `agent/test_status_vocabulary.py` statically lifts them out of every agent and
+  fails on any it does not recognise.  Without that guard an invented token was
+  indistinguishable from an approved one -- both fell to R8's default and came
+  out green -- which is how 22 of them accumulated in silence (review,
+  2026-08-16).
 * FAIL-OPEN: every parse/coercion error resolves to "no opinion" and falls
   through to the next rule.  Nothing in here may raise into a caller.
 
@@ -65,8 +77,12 @@ from typing import Optional, Tuple
 
 __all__ = [
     "DIAGNOSTIC_COMPLETED_STATUSES",
+    "WORK_COMPLETED_STATUSES",
+    "WORK_DEGRADED_STATUSES",
     "WORK_NOT_DONE_STATUSES",
     "AGENT_ERROR_STATUSES",
+    "KNOWN_STATUSES",
+    "status_class",
     "KVNode",
     "SectionNode",
     "Verdict",
@@ -97,16 +113,93 @@ DIAGNOSTIC_COMPLETED_STATUSES = frozenset({
     "findings", "clean", "reported",
 })
 
+#: The agent DID THE WORK and the DELIVERABLE IS INTACT.  Green, EXPLICITLY.
+#:
+#: Before 2026-08-16 no such set existed: a completed action fell all the way
+#: through to R8's anonymous default.  That silence WAS the hole.  A status no
+#: rule had ever heard of came out exactly the same colour as a status every
+#: rule approved -- which is how 22 invented tokens entered this codebase
+#: without a single thing failing.  Naming the green set is what lets the guard
+#: (``agent/test_status_vocabulary.py``) tell those two cases apart.
+#:
+#: Membership test: "the user got what they asked for."  A FAULT-TOLERANT path
+#: still belongs here when its OUTPUT survived whole -- Image-Interpreter
+#: merging from the one vision model that answered still hands back a complete
+#: interpretation, which is precisely what that fallback was designed to do.
+WORK_COMPLETED_STATUSES = frozenset({
+    # generic completions
+    "success", "ok", "done", "complete", "completed",
+    # authoring / building
+    "created", "edited", "written", "compiled", "built", "scaffolded",
+    "installed", "cleaned", "saved", "merged",
+    # transport / delivery
+    "sent", "delivered", "forwarded", "accepted", "duplicate",
+    # media capture + output
+    "spoken", "played", "recorded", "captured", "transcribed",
+    # liveness / lifecycle probes
+    "pong", "healthy", "connected", "started", "stopped",
+    # fault-tolerant paths whose DELIVERABLE is still whole
+    "partial_interpreter_1_only", "partial_interpreter_2_only",
+    "merge_fallback_concat",
+})
+
+#: The agent produced SOMETHING, but the DELIVERABLE is COMPROMISED or ABSENT.
+#: NOT a clean success -- and since this engine returns one bit, it goes RED.
+#:
+#: THE DECISION AND ITS REASONING (Angela, 2026-08-16).  Weigh the two ways of
+#: being wrong.  A false GREEN on ``tokens_only`` tells Angela that Tlamatini
+#: SPOKE, when nothing was ever audible -- she is left doubting her speakers
+#: instead of her build.  A false RED costs her one glance at a row that then
+#: names the missing vocoder.  The cheap mistake wins.  LaTeXer already wrote
+#: the same rule in its own words: "a degraded build is NOT a success and must
+#: never be reported as one" (``latexer.py::_attach_ladder_trace``).
+#:
+#: The boundary against WORK_COMPLETED_STATUSES is the DELIVERABLE, never the
+#: path taken to it: fault tolerance that still delivers is green; a PDF missing
+#: the paragraphs the repair ladder quarantined is not.
+WORK_DEGRADED_STATUSES = frozenset({
+    "degraded",               # LaTeXer: a PDF exists ONLY because content was cut
+    "compiled_with_errors",   # LaTeXer: a PDF exists but LaTeX reported errors
+    "tokens_only",            # Talker: tokens saved, NO audible speech at all
+    "operator_required",      # parked pending a human -- the work has not happened
+    "assert_failed",          # Playwrighter: the flow's own assertion did not hold
+    "partial", "partial_success", "incomplete",
+})
+
 #: The agent behaved CORRECTLY but the work the user asked for did NOT happen.
-#: Red is honest here -- the user got no PDF, no edit, no build.
+#: Red is honest here -- the user got no PDF, no edit, no build, no message.
 WORK_NOT_DONE_STATUSES = frozenset({
     "refused", "not_found", "not_unique", "engine_unavailable",
     "unavailable", "skipped", "timeout", "timed_out", "cancelled", "canceled",
     "noop", "blocked", "denied",
+    # -- added 2026-08-16, all four PROVEN to be emitted by a shipping agent:
+    "unreachable",            # Zavuerer: the messaging endpoint could not be reached
+    "forward_failed",         # Gateway-Relayer: the relay leg did not deliver
+    "rejected",               # Gatewayer / Gateway-Relayer: the payload was refused
+    "ignored",                # Gateway-Relayer: the event matched no forwarding rule
 })
 
 #: The agent itself is declaring a malfunction.
 AGENT_ERROR_STATUSES = frozenset({"error", "failed", "failure", "crashed", "exception"})
+
+#: EVERY status token this system understands -- the guard's oracle.
+#:
+#: ``agent/test_status_vocabulary.py`` statically walks every pool agent, lifts
+#: each literal status it can emit, and requires membership here.  THAT is the
+#: guard item 4 of the 2026-08-16 review asked for: an invented token now fails
+#: LOUDLY at test time instead of defaulting to green in silence forever.
+#:
+#: To add a token: put it in the ONE set whose verdict it deserves, above.  The
+#: five sets are kept pairwise DISJOINT (pinned by the guard) so exactly one
+#: rule can ever claim a token, and ``_classify_status``'s order is therefore a
+#: readability choice rather than a tie-break.
+KNOWN_STATUSES = frozenset(
+    DIAGNOSTIC_COMPLETED_STATUSES
+    | WORK_COMPLETED_STATUSES
+    | WORK_DEGRADED_STATUSES
+    | WORK_NOT_DONE_STATUSES
+    | AGENT_ERROR_STATUSES
+)
 
 _FALSEY_STRINGS = frozenset({"false", "no", "0", "off", "none", "null"})
 _TRUEY_STRINGS = frozenset({"true", "yes", "1", "on"})
@@ -136,6 +229,8 @@ KIND_TEXT = "text"
 
 #: Semantic classes a STATUS value resolves to.
 CLASS_DIAGNOSTIC = "diagnostic_completed"
+CLASS_COMPLETED = "work_completed"
+CLASS_DEGRADED = "work_degraded"
 CLASS_WORK_NOT_DONE = "work_not_done"
 CLASS_ERROR = "agent_error"
 CLASS_UNKNOWN = "unknown"
@@ -242,9 +337,27 @@ def _classify_status(text: str) -> str:
         return CLASS_ERROR
     if low in WORK_NOT_DONE_STATUSES:
         return CLASS_WORK_NOT_DONE
+    if low in WORK_DEGRADED_STATUSES:
+        return CLASS_DEGRADED
     if low in DIAGNOSTIC_COMPLETED_STATUSES:
         return CLASS_DIAGNOSTIC
+    if low in WORK_COMPLETED_STATUSES:
+        return CLASS_COMPLETED
     return CLASS_UNKNOWN
+
+
+def status_class(text: str) -> str:
+    """Public, TOTAL classifier for ONE status token.
+
+    The five vocabularies are disjoint, so this is a lookup, not a ranking.  A
+    token nobody declared resolves to :data:`CLASS_UNKNOWN` -- which is exactly
+    the case the guard exists to make impossible in shipped code, and which the
+    engine still survives at runtime (see rule R8).  Never raises.
+    """
+    try:
+        return _classify_status(text)
+    except Exception:                                   # fail-open, always
+        return CLASS_UNKNOWN
 
 
 def _make_node(key: str, raw: str, line_no: int) -> KVNode:
@@ -346,6 +459,20 @@ def evaluate(section: Optional[SectionNode], exit_code: Optional[int] = None) ->
                        f"the agent did not perform the work ({status.value})",
                        str(status), "agent")
 
+    # -- R3b: the agent produced SOMETHING, but DEGRADED -- the deliverable is
+    #         either compromised (content quarantined out of a PDF) or missing
+    #         outright (audio tokens saved, nothing audible).  It MUST outrank
+    #         R4/R5/R6: LaTeXer's degraded build already sets `ok: False` and so
+    #         lands red anyway, but Talker's `tokens_only` carries NO boolean at
+    #         all -- so before this rule it fell all the way to R8 and rendered
+    #         GREEN, telling Angela that Tlamatini had SPOKEN when not one
+    #         sample was ever played. (Found in review, 2026-08-16.)
+    if status is not None and status.status_class == CLASS_DEGRADED:
+        return Verdict(False, "R3b.work_degraded",
+                       f"the agent delivered a DEGRADED result ({status.value}) "
+                       f"-- not a clean success",
+                       str(status), "agent")
+
     # -- R4: THE FIX.  A read-only DIAGNOSTIC ran to completion and is
     #        reporting what it FOUND.  Finding a problem IS the job.
     #        This MUST come before R5/R6 -- see the note above.
@@ -376,6 +503,34 @@ def evaluate(section: Optional[SectionNode], exit_code: Optional[int] = None) ->
         return Verdict(False, "R7.exit_nonzero",
                        "the agent published no decisive verdict and the process "
                        "exited non-zero", f"exit_code={exit_code}", "process")
+
+    # -- R7b: the agent NAMED a completion ("sent" / "created" / "compiled").
+    #         Deliberately placed AFTER R5, R6 and R7 so it can never overrule a
+    #         truthful `success: False`, a non-zero error count, or a non-zero
+    #         exit code: against every verdict this engine could already reach,
+    #         it is a NO-OP.  Its job is to replace R8's anonymous default with
+    #         a NAMED, auditable success -- which is precisely what makes an
+    #         UNKNOWN token (R8b) legible as the anomaly it is, instead of
+    #         hiding it among the legitimate greens.
+    if status is not None and status.status_class == CLASS_COMPLETED:
+        return Verdict(True, "R7b.work_completed",
+                       f"the agent completed the work ({status.value})",
+                       str(status), "agent")
+
+    # -- R8b: a status was reported that NO vocabulary knows.  The verdict is
+    #         deliberately UNCHANGED -- fail-open is the contract, and an
+    #         unrecognised token is not evidence of failure -- and the source
+    #         stays "default" so every downstream consumer keeps the exact
+    #         fall-through it had before.  The ONLY thing this rule adds is a
+    #         NAME: the token is quoted in the reason, so an invented status is
+    #         greppable in tlamatini.log the day it first runs, instead of
+    #         surfacing in a review two years later.  The static guard
+    #         `agent/test_status_vocabulary.py` is what stops it ever shipping.
+    if status is not None and status.raw.strip() and status.status_class == CLASS_UNKNOWN:
+        return Verdict(True, "R8b.unknown_status",
+                       f"unrecognised status token {status.value!r}: no rule "
+                       f"claims it, defaulting to success (fail-open)",
+                       str(status))
 
     # -- R8: nothing argued for failure.
     return Verdict(True, "R8.default", "no failure signal found")

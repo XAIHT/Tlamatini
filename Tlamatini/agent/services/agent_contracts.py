@@ -84,7 +84,10 @@ def _contract(agent_type: str, **kwargs: Any) -> AgentContract:
 _PARAMETRIZER_OUTPUT_FIELDS: dict[str, tuple[str, ...]] = {
     "apirer": ("url", "response_body"),
     "gitter": ("git_command", "response_body"),
-    "kuberneter": ("parameters", "status", "response_body"),
+    # `returncode` / `success` added 2026-08-16: `status` used to carry kubectl's
+    # raw exit code, which no verdict rule could read. The number now has its own
+    # key and `status` carries a real token (see kuberneter.py).
+    "kuberneter": ("parameters", "returncode", "success", "status", "response_body"),
     "crawler": ("label", "model", "url", "crawl_type", "content_mode", "response_body"),
     "summarizer": ("model", "source", "response_body"),
     "file_interpreter": ("file_path", "mode", "response_body"),

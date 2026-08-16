@@ -49,15 +49,15 @@ metadata:
 > CSS-matched caption gradient. A missing entry does NOT hide an agent.
 >
 > **And it never sets the row's colour.** SUCCESS/FAILED is decided by
-> `agent/agent_verdict.py` (v1.48.2) from the agent's OWN `INI_SECTION`
-> self-report, which **OUTRANKS the process exit code**. If a row is coloured
-> wrong, fix the `status:` the agent emits — a read-only diagnostic reporting a
-> finding (`invalid`, `findings`, `no_matches`, `listed`, …) must be a SUCCESS
-> and must `sys.exit(0)`; only `refused` / `not_found` / `engine_unavailable` /
-> `error` / `failed` are red. **Never** add a special case to `mcp_agent.py`, and
-> **never** re-inline a second copy of `DIAGNOSTIC_COMPLETED_STATUSES` — there is
-> exactly ONE definition, in `agent_verdict.py`, and a drifted copy silently
-> mis-colours rows.
+> `agent/agent_verdict.py` from the agent's OWN `INI_SECTION` self-report, which
+> **OUTRANKS the process exit code**. Its CLOSED vocabulary has five disjoint
+> sets: diagnostic-completed and work-completed statuses are green; degraded,
+> work-not-done, and agent-error statuses are red. A completed read-only
+> diagnostic must still `sys.exit(0)`. Never write a numeric return code in
+> `status:`; emit `returncode`, `success`, and a semantic status token. **Never**
+> add a special case to `mcp_agent.py` or re-inline any vocabulary set — there
+> is exactly ONE definition in `agent_verdict.py`, guarded by
+> `agent/test_status_vocabulary.py`.
 
 Three-step procedure (matches `docs/claude/exec-report.md`):
 
@@ -73,7 +73,7 @@ Three-step procedure (matches `docs/claude/exec-report.md`):
    - If the caption is dark, append `.exec-report-${input.agent_key} thead th`
      to the dark-tinted override selector list.
 
-3. Run `python Tlamatini/manage.py test agent.tests.ExecReportCaptureTests`.
+3. Run `python Tlamatini/manage.py test agent.tests.ExecReportCaptureTests agent.test_agent_verdict agent.test_exec_report_verdict agent.test_status_vocabulary`.
    Report the pass/fail status. If the verdict/colour logic was touched at all,
    also run `agent.test_agent_verdict` and `agent.test_exec_report_verdict`.
 

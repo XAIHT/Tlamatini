@@ -370,10 +370,22 @@ def main():
             exit_code = -1
             
         params_str = ", ".join(cmd)
+        # ``status:`` is a VERDICT TOKEN, never a number.  This field used to
+        # carry kubectl's raw exit code, so `agent_verdict.py` -- which decides
+        # the Exec-Report colour by looking the status up in its vocabulary --
+        # matched "1" against nothing at all, fell through to its default and
+        # painted a FAILED kubectl GREEN.  The number is not lost: it moves to
+        # `returncode:` (the key every other CLI-driving agent already uses) and
+        # `success:` states the same fact as an explicit boolean, so the verdict
+        # engine has two independent, agreeing signals.
+        # Guarded by agent/test_status_vocabulary.py.
+        ok = (exit_code == 0)
         logging.info(
             f"INI_SECTION_KUBERNETER<<<\n"
             f"parameters: {params_str}\n"
-            f"status: {exit_code}\n"
+            f"returncode: {exit_code}\n"
+            f"success: {str(ok).lower()}\n"
+            f"status: {'ok' if ok else 'failed'}\n"
             f"\n"
             f"{full_output}\n"
             f">>>END_SECTION_KUBERNETER"

@@ -122,7 +122,7 @@ When the **Ask Execs** toggle is on (a Multi-Turn-only modifier — see `docs/cl
 - The **denied tool never executed**, so it does **not** appear in `exec_report_entries` — only the tools that actually ran (before the denial) are captured, exactly as for any normal run.
 - `services/response_parser._render_exec_denied_banner(exec_report_denied)` renders a big red "Execution interrupted" banner naming the denied Tool/MCP/Agent + its program/shell/parameters. It is appended in `process_llm_response()` **after** the exec-report tables (step c2 above) and **before** `save_message`, so the user sees what *did* run, then the stop. **The banner is independent of `exec_report_enabled`** — it always shows on a denial; only the tables are gated on the toggle. CSS lives in `agent_page.css` under `.exec-denied-*`.
 
-## Success/failure classification — the deterministic verdict engine (`agent_verdict.py`, 2026-08-06, v1.48.2)
+## Success/failure classification — deterministic engine + closed vocabulary (`agent_verdict.py`, 2026-08-16, v1.48.15)
 
 The verdict on each row is still the single `call_success` variable computed at the top of `_invoke_tool()` (so the row, the dedup logic, the repetition detector and the `tool_calls_log` can never disagree) — but **how that boolean is derived changed**. It is no longer plain string-sniffing of the exit code; it is decided by **`agent/agent_verdict.py`**, a deterministic expert system.
 
@@ -146,10 +146,13 @@ A lexer/parser turns the self-report into a typed AST (`SectionNode` → `KVNode
 | R1 | no self-report at all | the exit code |
 | R2 | the agent declares `error` / `failed` (`AGENT_ERROR_STATUSES`) | **FAILED** |
 | R3 | `refused` / `not_found` / `not_unique` / `engine_unavailable` … (`WORK_NOT_DONE_STATUSES`) — the work did NOT happen | **FAILED** |
+| R3b | the output is degraded/compromised — `tokens_only`, `compiled_with_errors`, `operator_required` … (`WORK_DEGRADED_STATUSES`) | **FAILED** |
 | R4 | a read-only diagnostic ran to completion — `invalid`, `findings`, `no_matches`, `listed` … (`DIAGNOSTIC_COMPLETED_STATUSES`) | **SUCCESS** |
 | R5 | an explicit `success:` / `ok:` boolean | that boolean |
 | R6 | a non-zero `errors:` count (`"0"` is **not** a failure) | **FAILED** |
 | R7 | nothing decisive + non-zero exit | **FAILED** |
+| R7b | the agent names an intact completion — `ok`, `completed`, `sent`, `created` … (`WORK_COMPLETED_STATUSES`) | **SUCCESS** |
+| R8b | a non-empty `status:` token belongs to no vocabulary | fail-open **SUCCESS**, with the unknown token named in the rule evidence |
 | R8 | no failure signal found | **SUCCESS** |
 
 **R4 MUST outrank R5 and R6.** A linter that worked perfectly reports `status: invalid` **and** `success: False` **and** `errors: 2` in the same breath — the last two describe the **document**, not the agent. Testing them before R4 is precisely the bug this engine was written to kill.
@@ -158,16 +161,18 @@ A lexer/parser turns the self-report into a typed AST (`SectionNode` → `KVNode
 
 - The agent's own self-report **OUTRANKS** the process exit code. An exit code is one bit; the self-report is a typed record.
 - A self-report is **NEVER** dropped or overwritten. On a key collision the process view stays under `<key>` and the agent view lands on `agent_<key>` — **both** survive (`reconcile_payload_verdict`, called from `tools.py`). Never collapse them back into one key.
-- A **read-only diagnostic that reports an adverse finding has SUCCEEDED** — the finding is the DELIVERABLE. A red row must mean *"the tool malfunctioned"*, never *"the tool found something"*.
+- A **read-only diagnostic that reports an adverse finding has SUCCEEDED** — the finding is the DELIVERABLE. A red row means no clean requested deliverable: the agent malfunctioned, the work did not happen, or the result is degraded. It never means merely *"the diagnostic found something"*.
+- A fault-tolerant path is green only when the deliverable remains whole. `partial_interpreter_1_only` can be a valid completed interpretation; `tokens_only` cannot be successful speech because no audible result exists.
 - **FAIL-OPEN**: every parse/coercion error resolves to "no opinion" and falls through to the next rule. Nothing in here may raise into a caller — a verdict engine that can break the chat path is worse than the mislabelled row it fixes.
 - **100% DETERMINISTIC** — no model call, no heuristics. A probabilistic verdict engine could not be trusted to say whether something failed, and would cost a round-trip on every tool call.
 - `mcp_agent._result_is_failure` honours the engine **only when `verdict.source == "agent"`**; every other case falls through to the legacy classifier, so ACPX / External-MCP / plain-text envelopes are untouched (`{"ok": false}` still goes red).
-- The status vocabulary has **exactly ONE definition** (`agent_verdict.DIAGNOSTIC_COMPLETED_STATUSES`); `mcp_agent._DIAGNOSTIC_COMPLETED_STATUSES` merely aliases it. Two copies would drift, and a drifted copy silently mis-colours rows. Do **NOT** re-inline it.
+- The status vocabulary has **exactly ONE definition**: five pairwise-disjoint sets in `agent_verdict.py`, united as `KNOWN_STATUSES`. `mcp_agent` aliases the shared definitions. Two copies would drift, and a drifted copy silently mis-colours rows. Do **NOT** re-inline it.
+- `agent/test_status_vocabulary.py` statically scans every shipping pool-agent source, extracts literal status tokens, rejects unknown/malformed/duplicated classifications, and rejects numeric exit-code variables interpolated into `status:`. Kuberneter is the canonical corrected shape: `returncode: <number>`, `success: true|false`, `status: ok|failed`.
 - Stdlib only, and it imports nothing from `agent.*` — so it can never create an import cycle between `tools.py` and `mcp_agent.py` (both import it), and behaves identically frozen and from source.
 
-Pinned by `agent/test_agent_verdict.py` (25 tests: the parser, every rule, rule ORDER, auditable provenance, totality-never-raises, both call sites, the single-vocabulary contract, and the live STEP-4 payload end-to-end). Full story: `docs/claude/recent-fixes.md` (2026-08-06).
+Pinned by `agent/test_agent_verdict.py`, `agent/test_exec_report_verdict.py`, and `agent/test_status_vocabulary.py` (vocabulary shape, repository-wide token extraction, degraded results, completed results, unknown-token provenance, rule neutrality, and Kuberneter's numeric-status regression). Full story: `docs/claude/recent-fixes.md` (2026-08-06 origin; 2026-08-16 closed-vocabulary extension).
 
-**Corollary for agent authors**: your agent's `status:` field is now load-bearing — it is read, not decoration. If your agent is a **read-only diagnostic**, exit `0` and report the finding in `status` / `errors`; do **not** tie the process exit code to how clean the user's input was. See the LaTeXer `validate_tex` entry in `recent-fixes.md` (2026-08-06) for the canonical worked example.
+**Corollary for agent authors**: your agent's `status:` field is load-bearing — it is read, not decoration. Reuse a token from `KNOWN_STATUSES`; put numeric process results under `returncode` or `exit_code`, never `status:`. If your agent is a **read-only diagnostic**, exit `0` and report the finding in `status` / `errors`; do **not** tie the process exit code to how clean the user's input was. See LaTeXer's `validate_tex` and Kuberneter's structured result for the canonical diagnostic and CLI examples.
 
 ## Styling contract
 
@@ -189,7 +194,7 @@ Then run `python manage.py test agent.tests.ExecReportCaptureTests` — the set 
 
 ## Files involved
 
-- `agent/agent_verdict.py` — **the deterministic verdict engine** (parser + ordered rule table + the single status vocabulary). Imported by BOTH `tools.py` (`reconcile_payload_verdict`) and `mcp_agent.py` (`classify_payload`, `DIAGNOSTIC_COMPLETED_STATUSES`); stdlib-only, imports nothing from `agent.*`
+- `agent/agent_verdict.py` — **the deterministic verdict engine** (parser + ordered rule table + five disjoint status sets + `KNOWN_STATUSES`). Imported by BOTH `tools.py` (`reconcile_payload_verdict`) and `mcp_agent.py` (`classify_payload`, shared aliases); stdlib-only, imports nothing from `agent.*`
 - `agent/tools.py` — `_launch_wrapped_chat_agent` builds the payload and calls `agent_verdict.reconcile_payload_verdict(payload)` so the agent's self-report survives beside the process view
 - `agent/mcp_agent.py` — `_EXEC_REPORT_TOOLS`, `_extract_exec_report_command`, `_invoke_tool` capture, `_result_is_failure` (honours the engine when `verdict.source == "agent"`), `_build_result_dict` emission
 - `agent/rag/chains/unified.py` — payload whitelist **must** include `exec_report_enabled`; forward `exec_report_entries` on the way back
@@ -200,5 +205,6 @@ Then run `python manage.py test agent.tests.ExecReportCaptureTests` — the set 
 - `agent/static/agent/js/agent_page_state.js`, `agent_page_init.js` — checkbox state + `exec_report_enabled` in WebSocket send
 - `agent/templates/agent/agent_page.html` — **Exec Report** toolbar checkbox
 - `agent/tests.py` — `ExecReportCaptureTests` (6 tests) + regression guards in `LoadedContextFallbackTests`
-- `agent/test_agent_verdict.py` — 25 tests pinning the parser, every rule, **rule ORDER**, provenance, totality, both call sites, and the single-vocabulary contract
+- `agent/test_agent_verdict.py` — pins the parser, original rules, **rule ORDER**, provenance, totality, and both call sites
+- `agent/test_status_vocabulary.py` — repository-wide AST guard for every pool-agent status token, all five vocabularies, degraded/completed/unknown behavior, and the Kuberneter status shape
 - `agent/test_exec_report_verdict.py` — the row-level regression that a completed diagnostic renders green

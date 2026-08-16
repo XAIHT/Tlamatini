@@ -25,9 +25,10 @@ and talker.py::resolve_voice) — so the demo never asks for anything else.
 
 SAFE to run repeatedly (the daily chat test may execute it): TTS is
 observational/output (it plays + saves a WAV), it mutates no persistent state,
-and it is NOT in the Exec Report. Audible sound needs snac+torch + a reachable
-Ollama serving the Orpheus model; without them Talker still runs and reports
-status `tokens_only` (a documented degraded mode, NOT a failure).
+and its wrapped Multi-Turn call is captured in the Exec Report. Audible sound
+needs snac+torch + a reachable Ollama serving the Orpheus model; without them
+Talker reports status `tokens_only`, a degraded red row because no audible
+deliverable exists even though the canvas block remains routable.
 
 Placement (append, no renumber)
 -------------------------------

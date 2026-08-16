@@ -145,6 +145,14 @@ Treat `external_mcps.json` as a special preserved/tracked config: the snapshot a
 build receive a scrubbed/default-only form, never the keyed developer catalog. Verify
 `REQUIRED_SNAPSHOT_FILES`, `_wants_redaction()`, and the generated rebuild instructions agree.
 
+**v1.48.15 source-coherence gate:** the snapshot must carry Grepper's encoding-safe source,
+`agent_verdict.py`, `services/agent_contracts.py`, Kuberneter, and their regression tests,
+including `test_grepper_encodings.py`, `test_status_vocabulary.py`, and
+`test_preserved_user_state.py`. The status vocabulary must remain defined once in
+`agent_verdict.py`; do not copy its sets into a snapshot helper. Confirm the generated
+snapshot preserves `returncode`/`success`/semantic-status fields and the updater's
+`Uninstaller.exe` rule without copying local runtime state or keyed catalogs.
+
 ### Step 3 — fix every finding, re-run Step 0 until clean, eyeball the notes.
 
 ---

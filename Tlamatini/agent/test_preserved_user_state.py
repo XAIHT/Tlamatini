@@ -121,10 +121,16 @@ class SharedPreserveListTests(SimpleTestCase):
 
 
 class ReleaseNeverShipsTheDevCatalogTests(SimpleTestCase):
-    """A release must never carry the maintainer's MCP servers or keys."""
+    """A PUBLIC release must never carry the maintainer's MCP servers or keys."""
 
     def setUp(self):
         self.build = _read(os.path.join(_REPO_ROOT, "build.py"))
+        self.public_builder = _read(
+            os.path.join(_REPO_ROOT, "build_complete_public_release.py")
+        )
+        self.private_builder = _read(
+            os.path.join(_REPO_ROOT, "build_complete_private_release.py")
+        )
 
     def test_dev_catalog_is_not_copied_into_the_package(self):
         copied = re.search(
@@ -137,10 +143,13 @@ class ReleaseNeverShipsTheDevCatalogTests(SimpleTestCase):
             "`env` blocks - shipping it leaks them into every pkg.zip, and "
             "hands the user the build machine's servers with active=[].")
 
-    def test_an_empty_catalog_is_written_instead(self):
+    def test_code_seeded_defaults_have_a_safe_empty_fallback(self):
+        self.assertIn("shipped_catalog_document()", self.build,
+                      "the release must derive its inactive public defaults "
+                      "from external_mcp_defaults.py.")
         self.assertIn("external_mcps_doc", self.build,
-                      "the release must still SHIP a valid empty catalog, "
-                      "so a fresh install has a file to write into.")
+                      "the release must still SHIP a valid catalog, so a "
+                      "fresh install has a file to write into.")
         # ⚠️ Read a fixed WINDOW, never `.split("}", 1)`. The original cut the
         # text at the first `}` — which is the closing brace of the very
         # `{}` being looked for, so `"mcpServers": {}` could never survive
@@ -154,12 +163,23 @@ class ReleaseNeverShipsTheDevCatalogTests(SimpleTestCase):
         self.assertIn('"active": []', block,
                       "nothing may be pre-activated in a fresh install.")
 
-    def test_no_opt_in_to_bundling_a_real_catalog(self):
-        """Unlike contacts, there is no safe version of "ship the real one".
+    def test_public_builder_clears_private_catalog_opt_in(self):
+        """An inherited shell variable must never contaminate a public build."""
+        self.assertIn(
+            'env.pop("TLAMATINI_BUNDLE_EXTERNAL_MCPS", None)',
+            self.public_builder,
+        )
 
-        An MCP catalog's whole value is the secrets inside it.
-        """
-        self.assertNotIn("TLAMATINI_BUNDLE_EXTERNAL_MCPS", self.build)
+    def test_private_catalog_opt_in_is_owned_only_by_private_builder(self):
+        """The keyed catalog is allowed only on the explicit private path."""
+        self.assertIn(
+            'env["TLAMATINI_BUNDLE_EXTERNAL_MCPS"]',
+            self.private_builder,
+        )
+        self.assertIn(
+            'os.environ.get("TLAMATINI_BUNDLE_EXTERNAL_MCPS")',
+            self.build,
+        )
 
 
 class DevCatalogIsNotTrackedTests(SimpleTestCase):

@@ -31,7 +31,7 @@ Enforced by: `test_private_data_guard.py` (automated tests — git-history integ
 
 **Welcome, Kimi!** This is the self-contained onboarding and reference document for working on the **Tlamatini** project. Read it in full before making any change. It is the Kimi sibling of `CLAUDE.md` (Claude Code's manifest + `@docs/claude/*` imports) and `GEMINI.md` (Gemini CLI's knowledge base): same mandatory rules, same architecture contracts, tuned for Kimi. Because Kimi has **no `@`-file auto-import mechanism**, everything an AI maintainer needs day-to-day is inline here; deeper topic files are listed in §25 as consult-on-demand.
 
-Every count in this file was **re-verified against source on 2026-08-15 for the v1.48.14 release target** (not copied from docs, which drift). If a count here disagrees with a hand-written doc elsewhere, re-run the source inventory and fix every active surface together.
+Every count in this file was **re-verified against source on 2026-08-16 for the v1.48.15 release target** (not copied from docs, which drift). If a count here disagrees with a hand-written doc elsewhere, re-run the source inventory and fix every active surface together.
 
 ---
 
@@ -71,7 +71,7 @@ Every count in this file was **re-verified against source on 2026-08-15 for the 
 **Tlamatini** (Nahuatl for *"one who knows"*) is a **local-first AI developer assistant** created by **Angela López Mendoza** (@angelahack1, XAIHT). It is a Django 5.2 + Channels monolith with a LangChain/LangGraph agent core, a RAG system, a visual agentic workflow designer, an external coding-agent runtime (ACPX), a markdown skill system, and a pool of standalone agent scripts it spawns as subprocesses. Windows-only distribution (PyInstaller-frozen, carried Python 3.12.10).
 
 - **Repository**: `https://github.com/XAIHT/Tlamatini.git` · **License**: MIT · **Platform**: Windows 10/11
-- **Version target**: **v1.48.14** on top of annotated `v1.48.13` (SemVer, runtime single source of truth = annotated git tags; see §16)
+- **Version target**: **v1.48.15** on top of annotated `v1.48.14` (SemVer, runtime single source of truth = annotated git tags; see §16)
 - **Python**: 3.12.10 (carried interpreter under `<repo>/python` is build-provisioned — never use it to run builds)
 
 **Verified counts (2026-08-15, counted from source and an isolated live Django tool build):**
@@ -252,7 +252,7 @@ Tlamatini/                          # Git root (C:\Development\Tlamatini)
 ├── test_author_banner.py           # Author-banner presence guard
 ├── requirements.txt                # Python deps (ruff is a REQUIRED runtime gate — never unpin)
 ├── eslint.config.mjs               # ESLint 10 config (501-line cross-file globals whitelist)
-├── package.json                    # release target 1.48.14; npm run lint / lint:fix
+├── package.json                    # release target 1.48.15; npm run lint / lint:fix
 ├── tlamatini_mcp_server.py         # Root stdio MCP server: 85 agent tools + 7 mgmt + 10 ACPX
 ├── tlamatini_acpx.py               # Self-contained stdlib ACPX runtime port for the MCP server
 ├── Tlamatini.ps1                   # Legacy launcher for the frozen exe
@@ -544,7 +544,7 @@ The **Parametrizer** agent is the interconnection engine: it pipes structured ou
 ### 12.6 Exec Report
 A per-agent operations table appended to chat answers when the **Exec Report** checkbox (Multi-Turn-only, mirrors Ask-Execs availability) is on. Capture/render: `_EXEC_REPORT_TOOLS` map in `mcp_agent.py` lists the state-changing tools whose operations become rows; rendering keeps a **strict ordering contract** (rows in execution order; `save_message` persists the answer BEFORE the report is appended — do not reorder). Styling rules live in `agent_page.css`. To add a tool: use the `tlamatini-exec-report-row-adder` skill. **EVERY Multi-Turn agent is captured** — observational/output agents (Shoter, Camcorder, Recorder, Talker, AudioPlayer, VideoPlayer, Whisperer, …) and read-only LLM agents INCLUDED (2026-06-07 completeness contract). Capture is automatic via `_resolve_exec_report_spec`, so `_EXEC_REPORT_TOOLS` is only a styling/merge refinement. 
 
-**Row verdict — `agent/agent_verdict.py` (v1.48.2, 2026-08-06).** SUCCESS/FAILED is decided **deterministically**, not by string-sniffing an exit code. A lexer/parser turns the agent's own `INI_SECTION` self-report into a typed AST and an **ordered** rule table decides: R1 no self-report → exit code; R2 `error`/`failed` → FAILED; R3 `refused`/`not_found`/`not_unique`/`engine_unavailable` (work did NOT happen) → FAILED; **R4 read-only diagnostic that ran to completion (`invalid`, `findings`, `no_matches`, `listed`, …) → SUCCESS**; R5 explicit `success:`/`ok:`; R6 non-zero `errors:` → FAILED; R7 non-zero exit → FAILED; R8 → SUCCESS. **R4 MUST outrank R5/R6** — a linter that worked perfectly reports `status: invalid` *and* `success: False` *and* `errors: 2`, and the last two describe the **document**, not the agent. Contract: the agent's self-report **OUTRANKS** the exit code; it is never dropped (collisions keep both — process view under `<key>`, agent view under `agent_<key>`); an adverse finding from a read-only tool is a **SUCCESS** (a red row means "the tool malfunctioned", never "the tool found something"); fail-open, stdlib-only, imports nothing from `agent.*` (no `tools.py`↔`mcp_agent.py` cycle); ONE definition of the status vocabulary — do **not** re-inline it. `mcp_agent._result_is_failure` honours the engine only when `verdict.source == "agent"`, so ACPX / External-MCP / plain-text envelopes keep the legacy classifier. Pinned by `agent/test_agent_verdict.py` (25 tests) + `agent/test_exec_report_verdict.py`.
+**Row verdict — `agent/agent_verdict.py` (v1.48.15 extension, 2026-08-16).** SUCCESS/FAILED is deterministic, not exit-code string sniffing. A lexer/parser turns the agent's `INI_SECTION` self-report into a typed AST and an ordered rule table decides: R1 no self-report → exit code; R2 agent error → FAILED; R3 work not done → FAILED; **R3b degraded/compromised deliverable → FAILED**; R4 completed diagnostic → SUCCESS; R5 explicit boolean; R6 non-zero `errors:` → FAILED; R7 non-zero exit → FAILED; **R7b named intact completion → SUCCESS**; **R8b unknown status → fail-open SUCCESS with the token named**; R8 no decisive signal → SUCCESS. The single vocabulary is the disjoint union `KNOWN_STATUSES = DIAGNOSTIC_COMPLETED_STATUSES | WORK_COMPLETED_STATUSES | WORK_DEGRADED_STATUSES | WORK_NOT_DONE_STATUSES | AGENT_ERROR_STATUSES`. `agent/test_status_vocabulary.py` statically extracts every pool-agent status literal and fails if a token is unknown, malformed, duplicated across classes, or if an exit-code expression is interpolated into `status:`. Kuberneter therefore emits numeric `returncode`, boolean `success`, and tokenized `status: ok|failed`. A diagnostic finding is green because the finding is the deliverable; a degraded or missing deliverable is red even if something was produced. The self-report outranks the exit code, collisions preserve both views, parsing fails open, and `mcp_agent` aliases the shared sets rather than copying them.
 
 ---
 
@@ -621,7 +621,7 @@ Ground truth: `Tlamatini/agent/agents/` (87 dirs, each `<name>.py` + `config.yam
 | **File-Creator** | Atomic file writer (preferred for all file authorship) |
 | **Shoter** | Screenshot of the primary display (read-only) |
 | **Globber** | Read-only glob file discovery (Glob equivalent) |
-| **Grepper** | Read-only regex content search (Grep equivalent; file:line:match) |
+| **Grepper** | Read-only regex content search with BOM-first UTF-8/16/32 plus cp1252/Latin-1 decoding (Grep equivalent; file:line:match) |
 | **Editor** | Surgical exact-string in-place edit (unique-match guarded, base64 channel) |
 | **Camcorder** | Webcam photo/video via OpenCV |
 | **Recorder** | Microphone → WAV via sounddevice |
@@ -747,7 +747,7 @@ Single source of truth = **annotated git tags `vX.Y.Z`**. No version string is h
 
 ### 16.4 Install / update / uninstall
 - **`install.py`** (Installer.exe): reads version from exe ProductVersion/git tags; extracts `pkg.zip` (sits next to it) to a user-chosen dir; writes `CreateShortcut.json` + runs `CreateShortcut.ps1`; registers the `.flw` association (`register_flw.ps1`); writes the `HKCU\Software\XAIHT\Tlamatini` companion-app registry key.
-- **Self-update**: in-app About ▸ Check for updates → `agent/self_update.py` stages the build → launches external `apply_update.ps1` from `%LOCALAPPDATA%\Tlamatini\updater` → kills Tlamatini's tree (never itself) → renames `agents`→`agents_backup` → replaces everything except the `$Preserve` set (`config.json`, `external_mcps.json`, `contacts.json`, `DB`, `Temp`, `Templates`, `Uninstaller.exe`, generated dirs) → moves new build in → `DB/post_update_migrate.flag` → migrate → relaunch. Keeps user config/database/keys.
+- **Self-update**: in-app About ▸ Check for updates → `agent/self_update.py` stages the build → launches external `apply_update.ps1` from `%LOCALAPPDATA%\Tlamatini\updater` → kills Tlamatini's tree (never itself) → renames `agents`→`agents_backup` → replaces everything except the `$Preserve` set (`config.json`, `external_mcps.json`, `contacts.json`, `DB`, `Temp`, `Templates`, `Uninstaller.exe`, generated dirs) → moves new build in → `DB/post_update_migrate.flag` → migrate → relaunch. `Uninstaller.exe` is explicitly preserved because it is built outside `pkg.zip`; preserve-list comments stay outside the parsed string array so apostrophes cannot manufacture phantom entries. Keeps user config/database/keys.
 - **`uninstall.py`**: removes installed files EXCEPT `agents/` (user agent state preserved); unregisters `.flw`; removes shortcuts.
 
 ---
@@ -819,7 +819,7 @@ Hardcoded assumptions (know before changing these subsystems):
 8. The web port is configurable (`django_port`, §5); still genuinely hardcoded: direct `daphne`/`uvicorn` launches, `:8765`/`:50051` helpers, TeleTlamatini's `tlamatini.base_url`.
 9. Carried-Python media libs: Recorder/Camcorder/AudioPlayer/VideoPlayer/Whisperer run under the CARRIED Python (`<install>/python`), NOT the frozen exe — numpy + cv2 must exist in BOTH Pythons; `build.py` aborts otherwise. A dep pinned in `requirements.txt` but missing from the carried Python crashes the pool agent at runtime.
 10. Frontend `let`-not-`const` for cross-file mutable globals (§15, const-poison).
-11. Count discipline: the v1.48.14 target source inventory is 87 workflow agents, 65 wrapped chat agents, 107 built-in Multi-Turn tools (20 core + 65 wrapped + 12 ACPX/Skill + 10 External-MCP supervisors), 104 root stdio MCP tools, 28 runtime skills, 193 migrations, and 37 JavaScript modules. Dynamic `ext__*` remote tools are reported separately. Historical release notes may retain their dated counts; active guidance must be re-verified from source and updated together.
+11. Count discipline: the v1.48.15 target source inventory is 87 workflow agents, 65 wrapped chat agents, 107 built-in Multi-Turn tools (20 core + 65 wrapped + 12 ACPX/Skill + 10 External-MCP supervisors), 104 root stdio MCP tools, 28 runtime skills, 193 migrations, and 37 JavaScript modules. Dynamic `ext__*` remote tools are reported separately. Historical release notes may retain their dated counts; active guidance must be re-verified from source and updated together.
 
 Common pitfalls (deduplicated; the dated fix contracts live in `docs/claude/recent-fixes.md`):
 
@@ -951,6 +951,6 @@ From the very start of a session, perform the work with **Tlamatini's OWN** agen
 
 ---
 
-*KIMI.md — version-aligned 2026-08-15 against source ground truth for v1.48.14 (87 agent templates / 65 wrapped `chat_agent_*` specs / 107 built-in Multi-Turn tools / 104 root `mcp__tlamatini__*` tools / 28 skills / 193 migrations / 37 JS modules). Sibling files: CLAUDE.md (Claude Code), GEMINI.md (Gemini CLI). Counts verified from disk, manifest, and isolated live tool construction; when they drift again, re-verify from source — never copy from docs.*
+*KIMI.md — version-aligned 2026-08-16 against source ground truth for v1.48.15 (87 agent templates / 65 wrapped `chat_agent_*` specs / 107 built-in Multi-Turn tools / 104 root `mcp__tlamatini__*` tools / 28 skills / 193 migrations / 37 JS modules). Sibling files: CLAUDE.md (Claude Code), GEMINI.md (Gemini CLI). Counts verified from disk, manifest, and isolated live tool construction; when they drift again, re-verify from source — never copy from docs.*
 
 *Tlamatini — "one who knows". Created by Angela López Mendoza · @angelahack1 · XAIHT.*

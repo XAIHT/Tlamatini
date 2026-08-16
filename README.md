@@ -14,7 +14,7 @@
 
 <p align="center">
   <b>The local-first AI developer assistant with a visual workflow designer — and the reach to touch hardware, 3D engines, and any external tool.</b><br/>
-  <i>"one who knows" — it doesn't just edit code. It flashes your board, drives your engine, and orchestrates whole agent workflows on a canvas. On your machine.</i>
+  <i>"one who knows" — she doesn't just edit code. She flashes your board, drives your engine, and orchestrates whole agent workflows on a canvas. On your machine.</i>
 </p>
 
 <p align="center">
@@ -24,7 +24,7 @@
 
 <p align="center">
   <a href="https://discord.gg/WFQsrskgc"><img src="https://img.shields.io/badge/DISCORD-JOIN%20US-5865F2?style=for-the-badge&labelColor=2D2D2D&logo=discord&logoColor=white" alt="Join our Discord"/></a>
-  <a href="https://github.com/XAIHT/Tlamatini/releases/tag/v1.48.14"><img src="https://img.shields.io/badge/VERSION-v1.48.14-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Version"/></a>
+  <a href="https://github.com/XAIHT/Tlamatini/releases"><img src="https://img.shields.io/badge/TARGET-v1.48.15-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Release target v1.48.15"/></a>
   <a href="https://www.python.org/downloads/release/python-31210/"><img src="https://img.shields.io/badge/PYTHON-3.12.10-3776AB?style=for-the-badge&labelColor=2D2D2D&logo=python&logoColor=white" alt="Python"/></a>
   <a href="#installation"><img src="https://img.shields.io/badge/PLATFORM-WIN%2010%20%7C%2011-0078D6?style=for-the-badge&labelColor=2D2D2D&logo=windows&logoColor=white" alt="Platform"/></a>
   <a href="#-the-full-capability-list"><img src="https://img.shields.io/badge/AGENT%20TYPES-87-8A2BE2?style=for-the-badge&labelColor=2D2D2D" alt="87 agent types"/></a>
@@ -45,13 +45,13 @@
 
 ---
 
-## Current release target — v1.48.14
+## Current release target — v1.48.15
 
-`v1.48.14` is the next patch target on top of annotated `v1.48.13`. It adds a private, per-user External-MCP runtime provisioner for Node/npm/npx/pnpm and uv/uvx, so Tlamatini can activate npx- and uvx-based MCP servers without requiring administrator access or changing the system `PATH`. Startup remains non-blocking and fail-open; official downloads are installed atomically under `%LOCALAPPDATA%\Tlamatini\runtimes`, Node checksums are enforced, and an existing configured or system runtime remains usable.
+`v1.48.15` is the next patch target on top of annotated `v1.48.14`. Grepper no longer mistakes non-UTF-8 text for binary: its BOM-first reader recognizes UTF-8/16/32, then falls back through cp1252 and Latin-1 so PowerShell logs and accented Windows/Spanish source remain searchable. BOM detection deliberately precedes the NUL-byte test because valid UTF-16/32 text contains NUL bytes; genuine binary or unreadable files are still skipped. Sixteen focused tests pin the encoding and binary boundaries.
 
-Every installation now also carries two official External-MCP catalog defaults, **Memory** and **Sequential Thinking**, both deliberately **inactive** until the user enables them. Memory persists its knowledge graph under `%LOCALAPPDATA%\Tlamatini\memory\memory.json`; edited defaults are preserved, deleted defaults are tombstoned, and neither server is silently re-enabled. The External MCP dialog reports runtime readiness and offers **Install now**, while Multi-Turn exposes `external_mcp_runtime_status` and `external_mcp_runtime_install`. Public builds emit only these secret-free defaults; private/keyed builds may carry the maintainer catalog, and build-time secret scanning refuses unsafe public output.
+Exec-Report status handling now uses a closed, source-guarded vocabulary with five disjoint classes: completed diagnostics, intact completed work, degraded work, work not done, and agent errors. Degraded deliverables such as inaudible token-only speech or a compromised PDF are red rather than falsely clean; named completions are auditable greens; an unknown token still fails open but is identified by rule `R8b`. The repository-wide guard scans every pool-agent `status:` literal so a newly invented token fails during tests instead of silently defaulting green. Kuberneter now reports numeric `returncode`, explicit `success`, and a real `ok`/`failed` status token, preventing a failed `kubectl` call from being painted green.
 
-The same patch fixes nested ASCII-diagram restoration so a later auto-detected diagram or Markdown thematic break cannot swallow an earlier diagram placeholder or leak `DGRM_*` sentinel text. The source-verified built-in surface is **87 workflow agents**, **65 wrapped chat agents**, **107 Multi-Turn tools** (**20 core + 65 wrapped + 12 ACPX/Skill + 10 External-MCP supervisors**), **37 JavaScript modules**, and **28 runtime skills**. The carried `v1.48.13` Mover/Deleter placement guard, shared dialog language, safe dismissal policy, long-operation menu locks, safe update-note rendering, line-attributed logging, and DB/reaper safeguards remain in force.
+Updater coverage now protects the separately built `Uninstaller.exe` during self-update and keeps the preserve-list parser from being confused by comments. Public release builders forcibly clear any inherited private External-MCP catalog variable; the explicit keyed/private builder remains the only path allowed to bundle that catalog. Drift-proof tests derive External-MCP supervisor counts and the final prompt-rule position from source instead of freezing hand-written numbers. The source-verified built-in surface remains **87 workflow agents**, **65 wrapped chat agents**, **107 Multi-Turn tools** (**20 core + 65 wrapped + 12 ACPX/Skill + 10 External-MCP supervisors**), **37 JavaScript modules**, and **28 runtime skills**. The `v1.48.14` private MCP runtimes, inactive Memory/Sequential-Thinking defaults, public/private catalog separation, and lossless diagram restoration remain carried.
 
 ---
 
@@ -72,7 +72,7 @@ Best for most people. The installer bundles its own **Python 3.12.10** and every
 3. Launch **Tlamatini** from the Start-menu shortcut.
 4. Your browser opens at **`http://127.0.0.1:8000/`** — log in with **user / changeme**. *(`8000` is the default port; if it's taken or Windows has reserved it, set `django_port` in `config.json` — see the port note below.)*
 
-> 🔄 Updating later is one click: **About ▸ Check for updates** inside the app — it keeps your config, database, and keys.
+> 🔄 Updating later is one click: **About ▸ Check for updates** inside the app — it keeps your config, database, keys, templates, external-MCP catalog, and existing `Uninstaller.exe`.
 
 #### 🔵 Option B — From source (for developers)
 
@@ -209,7 +209,7 @@ Everything Tlamatini can do, grouped:
 
 **🧩 Orchestration & design**
 - **Visual Workflow Designer (ACP)** — 87 drag-and-drop agent types wired into runnable flows; save/load `.flw` files; Flow Compiler validates the canvas into `config.yaml`.
-- **Multi-Turn orchestration** — a tool-calling loop with **75 tools** and a global execution planner; **Step-by-Step** mode paces hands-on setup one action at a time; **self-healing model steps** mean a network/model hiccup never freezes her — she retries under a watchdog, finishes gracefully from work already done, and always tells you what happened.
+- **Multi-Turn orchestration** — a tool-calling loop with **107 built-in tools** and a global execution planner; **Step-by-Step** mode paces hands-on setup one action at a time; **self-healing model steps** mean a network/model hiccup never freezes her — she retries under a watchdog, finishes gracefully from work already done, and always tells you what happened.
 - **FlowCreator / FlowHypervisor** — let an LLM design a flow; a watchdog monitors flow health. FlowCreator is now also **callable from chat** (`chat_agent_flowcreator`): describe a flow in plain words and it writes a real, canvas-loadable `.flw` file to disk.
 - **Parametrizer / Gatewayer / Gateway-Relayer / Node Manager** — chain agent outputs into the next agent's config; trigger flows from webhooks, folder-drops, or GitHub/GitLab.
 - **ACPX** — spawn external coding-agent CLIs (Claude Code, Codex, Cursor, Gemini, Qwen, and more) as tools and relay between them.
@@ -235,7 +235,7 @@ Everything Tlamatini can do, grouped:
   > **Why MiKTeX specifically?** Because when a document asks for a LaTeX package you have never installed, **MiKTeX downloads and installs it by itself, in the middle of the build** — so the document still comes out. That single feature is what lets LaTeXer typeset *anything* out of the box. TeX Live and MacTeX are detected and used if you already have one, but neither can do that, so you would have to hunt down missing packages yourself. **MiKTeX is the recommended choice.**
   >
   > No LaTeX installed? LaTeXer tells you so plainly and refuses — it never crashes and never pretends a PDF was made. Ask it to run `action: validate` to see exactly what it found, or `action: install` and it will download and launch the official **MiKTeX** installer for you.
-- **Editor / Grepper / Globber** — surgical find-and-replace, regex content search, filename glob (Claude-Edit/Grep/Glob equivalents).
+- **Editor / Grepper / Globber** — surgical find-and-replace, regex content search, and filename glob (Claude-Edit/Grep/Glob equivalents). Grepper searches UTF-8, BOM-marked UTF-16/32, cp1252, and Latin-1 text without confusing valid Windows text with NUL-bearing binary data.
 - **File-Creator / Mover / Deleter / File-Interpreter / File-Extractor** — create, move, delete, read-and-interpret, extract from PDF/DOCX.
 - **Executer / Pythonxer** — run shell commands and gated Python.
 - **Gitter** — full git control. **Googler** — web search + extract.

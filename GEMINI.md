@@ -53,6 +53,14 @@ When solving a problem that needs Angela to do things on her machine (Rethinking
   3. **WAIT**. Only when she sends that string do you give the next step.
   4. Repeat — one step + one reply-string per turn.
 
+### 1.5 Current Release Target (v1.48.15, 2026-08-16)
+- The latest annotated tag is `v1.48.14`; `v1.48.15` is the next documentation/package target and remains git-tag-derived at runtime.
+- Grepper uses a BOM-first decoder for UTF-8/16/32 and then cp1252/Latin-1, so Windows PowerShell logs and accented Spanish source are searchable while genuine binary files remain skipped.
+- `agent_verdict.py` has five disjoint status classes plus `KNOWN_STATUSES`; `test_status_vocabulary.py` statically guards every pool-agent token. Degraded deliverables are red, named intact completions are green, and unknown tokens fail open but are reported as `R8b.unknown_status`.
+- Kuberneter publishes numeric `returncode`, boolean `success`, and tokenized `status: ok|failed`; never put an exit-code expression in `status:`.
+- Self-update preserves the separately built `Uninstaller.exe`. Public builders clear private External-MCP catalog opt-in; only the explicit keyed/private builder may supply it.
+- Source-verified active surface: 87 workflow agents, 65 wrapped chat agents, 107 built-in Multi-Turn tools, 28 runtime skills, 193 migrations, and 37 JavaScript modules.
+
 ---
 
 ## 2. Strict Casing & Naming Conventions
@@ -266,7 +274,7 @@ To prevent task manager pollution (where companion `conhost.exe` processes would
 
 So sister XAIHT apps like **Tlamatini-FlowPills** can find Tlamatini's agent-template catalog at startup WITHOUT importing Python, running Tlamatini, or scanning drives, Tlamatini publishes three read-only, **HKCU-only, fail-open** surfaces: the registry key `HKCU\Software\XAIHT\Tlamatini` (six `REG_SZ` values — `InstallLocation`, `AgentsRoot`, `SourceAgentsRoot`, `AgentManifestPath`, `Version`, `AgentCatalogVersion`; all six written every call, empty when unknown), the `_tlamatini_agents_manifest.json` next to the agents (complete templates only, per-file `sha256`, `utf-8-sig` read), and the `.tlamatini-preserved-agents.json` marker the uninstaller leaves (with `manifest_sha256`; the discovery key is KEPT). Engine `agent/agent_manifest.py` + `agent/windows_app_registration.py`; wired into `apps.py` (scheduled FIRST in `ready()`, import-independent, dedicated idempotency gate), `install.py` (independent of the ARP entry), `uninstall.py`, `build.py`. Filesystem is authoritative; 17 Django-free secret-safe tests in `agent/test_agent_manifest.py`. Contract: `docs/companion-app-discovery.md`; implements `Tlamatini-FlowPills-Lookup.md` §15 + second-sprint hardening.
 
-### 8.3b Truthful Exec-Report Verdicts (`agent_verdict.py`) — v1.48.2, 2026-08-06
+### 8.3b Truthful Exec-Report Verdicts (`agent_verdict.py`) — closed vocabulary in v1.48.15
 
 The Exec Report's per-row SUCCESS/FAILED verdict is decided by a **deterministic expert system**, not by the child process's exit code.
 
@@ -279,17 +287,20 @@ The Exec Report's per-row SUCCESS/FAILED verdict is decided by a **deterministic
 | R1 | no self-report | the exit code |
 | R2 | `error` / `failed` | FAILED |
 | R3 | `refused` / `not_found` / `not_unique` / `engine_unavailable` (work did NOT happen) | FAILED |
+| R3b | degraded or compromised deliverable (`tokens_only`, `compiled_with_errors`, `operator_required`, …) | FAILED |
 | R4 | read-only diagnostic completed — `invalid`, `findings`, `no_matches`, `listed` … | **SUCCESS** |
 | R5 | explicit `success:` / `ok:` | that boolean |
 | R6 | non-zero `errors:` (`"0"` is not a failure) | FAILED |
 | R7 | nothing decisive + non-zero exit | FAILED |
+| R7b | named intact completion (`ok`, `completed`, `sent`, `created`, …) | SUCCESS |
+| R8b | unknown status token | fail-open SUCCESS, token named in provenance |
 | R8 | no failure signal | SUCCESS |
 
 **ORDER IS THE ALGORITHM — R4 must outrank R5 and R6.** A linter that worked perfectly reports `status: invalid` **and** `success: False` **and** `errors: 2` in the same breath; the last two describe the **document**, not the agent.
 
-**Contract (do NOT weaken):** the agent's self-report OUTRANKS the exit code; it is NEVER dropped (on a key collision the process view stays under `<key>` and the agent view lands on `agent_<key>` — both survive); a read-only diagnostic reporting an adverse finding has **SUCCEEDED** (a red row must mean *"the tool malfunctioned"*, never *"the tool found something"*); **fail-open** — every parse error resolves to "no opinion" and nothing may raise into a caller; stdlib-only and imports nothing from `agent.*` (so no `tools.py` ↔ `mcp_agent.py` import cycle, identical frozen and from source); the status vocabulary has exactly ONE definition (`agent_verdict.DIAGNOSTIC_COMPLETED_STATUSES`) — do not re-inline a copy.
+**Contract (do NOT weaken):** the agent's self-report OUTRANKS the exit code; it is NEVER dropped (on a key collision the process view stays under `<key>` and the agent view lands on `agent_<key>` — both survive); a read-only diagnostic reporting an adverse finding has **SUCCEEDED**, while a degraded or missing deliverable is red; **fail-open** — every parse error resolves to "no opinion" and nothing may raise into a caller; stdlib-only and imports nothing from `agent.*` (so no `tools.py` ↔ `mcp_agent.py` import cycle, identical frozen and from source). The one vocabulary is five disjoint sets in `agent_verdict.py`, united as `KNOWN_STATUSES`; `mcp_agent` aliases them rather than re-inlining a copy.
 
-**If you author an agent**: its `status:` is load-bearing — READ, not decoration. A read-only diagnostic must exit `0` even when it finds problems; never tie the exit code to how clean the user's input was. Pinned by `agent/test_agent_verdict.py` (25 tests) + `agent/test_exec_report_verdict.py`.
+**If you author an agent**: its `status:` is load-bearing — READ, not decoration. Reuse one token from `KNOWN_STATUSES`; numeric results belong under `returncode` or `exit_code`. A read-only diagnostic must exit `0` even when it finds problems; never tie the exit code to how clean the user's input was. Pinned by `agent/test_agent_verdict.py`, `agent/test_exec_report_verdict.py`, and the repository-wide `agent/test_status_vocabulary.py` guard.
 
 ---
 
@@ -385,7 +396,7 @@ Visual agents are designed to run out of process. The backend compiler generates
 75. **blenderer**: Drives a Blender instance through the Blender MCP add-on's TCP socket.
 76. **editor**: Makes surgical find-and-replace edits to a single text file.
 77. **globber**: Discovers files under a directory by glob/filename pattern matching.
-78. **grepper**: Performs read-only regex content searches across a file or directory tree.
+78. **grepper**: Performs read-only regex content searches across a file or directory tree with BOM-first UTF-8/16/32 plus cp1252/Latin-1 decoding.
 79. **instant_messaging_doctor**: Diagnostic/repair tool for Telegrammer and Whatsapper credentials and contacts.
 80. **playwrighter**: Scripted browser automation (navigate, click, type, screenshot) via Playwright.
 81. **talker**: Neural Text-to-Speech synthesizer (strictly female voices only).

@@ -66,7 +66,7 @@ The generator builds the full PPTX and performs an internal geometry audit while
 2. **Reconcile:** map each current release behavior to source plus documentation and update active counts from source. Preserve dated historical material, but never let it drive the cover, facts, architecture, usage, or current-release slides.
 3. **Prove:** repeat stale-version/count searches, lint/test, regenerate, extract slide text, prove complete-tree parity, run geometry checks, and render every slide for visual inspection.
 
-For the v1.48.14 release target and later, include the private External-MCP runtime flow, ten supervisors, inactive Memory/Sequential-Thinking defaults, catalog tombstones, persistent Memory state, secret-separated public/private builds, nested-diagram repair, and an explicit "proposal, not shipped behavior" label for the transactional-updater design. Retain the v1.48.13 Mover/Deleter placement, dialog, long-operation, logging, DB/reaper, safe updater-note, and `STATIC_VERSION` contracts as carried foundations.
+For the v1.48.15 release target and later, include Grepper's multi-encoding search, the guarded five-class Exec Report vocabulary, Kuberneter's canonical result fields, `Uninstaller.exe` preservation, and source-derived public/private build checks. Retain the v1.48.14 private External-MCP runtime flow, ten supervisors, inactive defaults, catalog tombstones, persistent Memory state, secret-separated builds, nested-diagram repair, and explicit "proposal, not shipped behavior" updater label, plus the v1.48.13 placement/dialog/logging foundations.
 
 ## Validation Checklist
 

@@ -16,6 +16,41 @@
 
 ---
 
+## 2026-08-16 — v1.48.15 target: encoding-safe Grepper, closed verdict vocabulary, and updater preservation
+
+This release target closes four quiet drift paths that could otherwise report a
+healthy operation incorrectly or ship an incomplete update:
+
+1. **Grepper is text-encoding aware.** `agent/agents/grepper/grepper.py` detects
+   BOM-marked UTF-8, UTF-16, and UTF-32 before trying cp1252/Latin-1 fallbacks.
+   Genuine binary files are still skipped. Keep the BOM order: UTF-32 markers
+   share prefixes with UTF-16, so testing the shorter marker first corrupts the
+   decode. Coverage lives in `agent/test_grepper_encodings.py`.
+2. **The Exec Report vocabulary is CLOSED.** `agent_verdict.py` owns five
+   pairwise-disjoint sets: `DIAGNOSTIC_COMPLETED_STATUSES`,
+   `WORK_COMPLETED_STATUSES`, `WORK_DEGRADED_STATUSES`,
+   `WORK_NOT_DONE_STATUSES`, and `AGENT_ERROR_STATUSES`; `KNOWN_STATUSES` is
+   their union. Diagnostics and intact work are green. Degraded deliverables,
+   work that did not happen, and agent errors are red. R8b remains fail-open
+   for unknown tokens at runtime, but `agent/test_status_vocabulary.py`
+   statically rejects unknown literals before release. Add a new status to
+   exactly ONE shared set; never create a local vocabulary copy.
+3. **Numeric process results are not statuses.** Kuberneter now emits
+   `returncode: <int>`, `success: <bool>`, and `status: ok|failed`, and its
+   Parametrizer contract exposes all three. Never interpolate a numeric return
+   code into `status:`: an unrecognized `status: 1` reaches the compatibility
+   default instead of expressing failure.
+4. **The updater preserves the uninstaller.** The staged-swap policy retains
+   `Uninstaller.exe` alongside user state, and parser-sensitive PowerShell
+   comments stay on standalone lines. Public release tests now prove the
+   catalog is scrubbed/default-only while only the explicit private builder may
+   opt into the maintainer catalog. Keep these assertions source-derived so a
+   supervisor-name or prompt-rule change cannot make the tests themselves
+   stale.
+
+These behaviors build on, rather than replace, the v1.48.14 private External-MCP
+runtime/default-seeding and public/private catalog boundary below.
+
 ## 2026-08-15 — Runtime Provisioner: Tlamatini ALWAYS has npx/uvx, and two MCPs ship by default
 
 **Angela's directive:** ship `@modelcontextprotocol/server-memory` and
@@ -396,7 +431,7 @@ Coverage: `agent/test_self_modify_gate.py` (25 tests — block XOR, marker leaka
 * **100% DETERMINISTIC** — no model call, no heuristics. A probabilistic verdict engine could not be trusted to say whether something failed, and would cost a round-trip on every tool call. The agents already emit a precise machine-readable self-report; the only thing missing was somebody actually READING it.
 * `mcp_agent._result_is_failure` honours the engine **only when `verdict.source == "agent"`**; every other case falls through to the legacy classifier, so ACPX / External-MCP / plain-text envelopes are untouched (`{"ok": false}` still goes red).
 * Stdlib only, and it imports nothing from `agent.*` — so it can never create an import cycle between `tools.py` and `mcp_agent.py` (both import it), and behaves identically frozen and from source.
-* The status vocabulary has **exactly ONE definition** (`agent_verdict.DIAGNOSTIC_COMPLETED_STATUSES`); `mcp_agent` aliases it. Two copies would drift, and a drifted copy silently mis-colours rows. Do NOT re-inline it.
+* **Historical v1.48.2 form:** the status vocabulary had one diagnostic-completion set. The v1.48.15 contract at the top of this log supersedes that shape with five disjoint sets and `KNOWN_STATUSES`; the invariant that `mcp_agent` aliases rather than copies the shared definitions remains unchanged.
 
 Pinned by `agent/test_agent_verdict.py` (25 tests: the parser, every rule, rule ORDER, auditable provenance, totality-never-raises, both call sites, the single-vocabulary contract, and the live STEP-4 payload end-to-end). `agent.test_agent_verdict` + `agent.test_latexer_agent` = **125 passing**, ruff clean.
 
@@ -1235,7 +1270,7 @@ Three coordinated changes (committed `00b85a2`):
 
 The media-I/O family is now **screen / camera-in / mic-in / speakers-out / screen-out**: Shoter (screen), Camcorder (camera capture), Recorder (mic capture), **AudioPlayer** (audio file → speakers), **VideoPlayer** (video file → a display, with audio). Both new agents ship on the canvas AND as wrapped Multi-Turn tools (`chat_agent_audioplayer` / `chat_agent_videoplayer`). Contracts to keep:
 
-- **Both are observational/output → NOT in the Exec Report**, exactly like Shoter/Camcorder/Recorder. They mutate no persistent state (digital volume gain, per-playback device choice — AudioPlayer does NOT change the OS default audio endpoint, VideoPlayer does NOT change the OS default monitor). `_EXEC_REPORT_TOOLS` must NOT list `chat_agent_audioplayer` / `chat_agent_videoplayer` (a test guards this in each suite).
+- **Historical capture note, superseded 2026-06-07:** both are observational/output and mutate no persistent state, but their wrapped Multi-Turn calls ARE now captured automatically like every `chat_agent_*`. They still need no curated `_EXEC_REPORT_TOOLS` entry because that map is only an optional styling/merge refinement. AudioPlayer does not change the OS default endpoint and VideoPlayer does not change the OS default monitor.
 - **`time_played` truncate/loop is a STREAMING contract, not a prebuilt buffer.** AudioPlayer uses a `sounddevice` `OutputStream` wrap-around callback; VideoPlayer uses a wall-clock `drive_playback` loop that re-seeks the backend on EOF. `0` = whole file once; `N>0` = exactly N s, truncating a longer file or looping a shorter one (whole repeats + a final partial). Do NOT "simplify" either into `np.tile(...)` then play — a large `time_played` over a tiny file would allocate gigabytes.
 - **Sampling rate / backend nuances:** AudioPlayer plays at the FILE's native rate by default (`sample_rate: 0`, read from the file — correct pitch); a non-zero value forces the output rate and pitch-shifts (not resampled). VideoPlayer's audio+video is **`ffpyplayer`** (pip wheel bundles ffmpeg+SDL → no external ffmpeg, no runtime download) with **OpenCV** (`cv2`) for the window; if ffpyplayer is unavailable it degrades to **silent cv2 video** — keep that fallback (it is the reason the core honors "bundles with no problems" even worst-case). `build.py` carries `--collect-all ffpyplayer` AND `ffpyplayer` in `_agent_libs`; do NOT drop either (PyInstaller's module graph alone misses ffpyplayer's bundled DLLs).
 - **Top-level promotion + parametrizer fields.** `tools._PROMOTE_SECTION_FIELDS_BY_TEMPLATE_DIR` promotes `input_path` (and friends) for both so the LLM sees the played path without grepping the log; `agent_contracts._PARAMETRIZER_OUTPUT_FIELDS` + `parametrizer.SECTION_AGENT_TYPES` list `audioplayer` / `videoplayer`. Migrations `0116`/`0117` (AudioPlayer) and `0118`/`0119` (VideoPlayer); deps `soundfile` and `ffpyplayer` in `requirements.txt`. Full per-agent notes live in `docs/claude/agents.md`; coverage = `test_audioplayer_agent.py` (43) + `test_videoplayer_agent.py` (38).

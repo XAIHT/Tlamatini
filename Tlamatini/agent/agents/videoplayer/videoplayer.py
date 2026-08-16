@@ -17,9 +17,9 @@
 #         downstream agents.
 #
 # The on-screen sibling of AudioPlayer: AudioPlayer drives the speakers,
-# VideoPlayer drives a screen window (with sound). Observational/output (mutates
-# no persistent state), so — like Shoter/Recorder/Camcorder/AudioPlayer — it is
-# NOT in the Exec Report.
+# VideoPlayer drives a screen window (with sound). It is observational/output
+# and mutates no persistent state. Its wrapped Multi-Turn tool is captured
+# automatically in Exec Report without a curated styling-map entry.
 #
 # Backend: ffpyplayer (pip wheel bundles ffmpeg + SDL -> audio + video + volume,
 # no external ffmpeg / no runtime download) decodes + plays the audio; OpenCV

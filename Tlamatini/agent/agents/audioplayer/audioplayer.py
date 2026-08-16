@@ -17,8 +17,9 @@
 #
 # The PLAYBACK counterpart of the media-I/O family:
 #   Shoter = screen, Camcorder = camera, Recorder = microphone-IN,
-#   AudioPlayer = speakers-OUT. Observational/output (mutates no persistent
-#   state), so — like Shoter/Recorder/Camcorder — it is NOT in the Exec Report.
+#   AudioPlayer = speakers-OUT. It is observational/output and mutates no
+#   persistent state. Its wrapped Multi-Turn tool is captured automatically in
+#   Exec Report; it needs no curated _EXEC_REPORT_TOOLS styling entry.
 
 import os
 import sys
