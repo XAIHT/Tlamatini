@@ -138,6 +138,13 @@ git diff "$(git describe --tags --abbrev=0)"..HEAD -- requirements.txt
   rebuild `pip install`s it — make sure `requirements.txt` is current (the self-UPDATE skill
   owns the *bundled* side).
 
+**v1.48.14 External-MCP gate:** the snapshot must carry `agent/runtime_provisioner.py`,
+`agent/external_mcp_defaults.py`, and the manager/build/secret-regeneration source, but must
+not copy the downloaded `%LOCALAPPDATA%\Tlamatini\runtimes` tree or persistent Memory graph.
+Treat `external_mcps.json` as a special preserved/tracked config: the snapshot and public
+build receive a scrubbed/default-only form, never the keyed developer catalog. Verify
+`REQUIRED_SNAPSHOT_FILES`, `_wants_redaction()`, and the generated rebuild instructions agree.
+
 ### Step 3 — fix every finding, re-run Step 0 until clean, eyeball the notes.
 
 ---

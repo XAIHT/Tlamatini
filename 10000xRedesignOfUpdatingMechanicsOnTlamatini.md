@@ -9,6 +9,8 @@
 
 # 10,000,000% Redesign of Updating Mechanics on Tlamatini
 
+> **STATUS: ARCHITECTURAL PROPOSAL, NOT SHIPPED BEHAVIOR.** This document audits the current updater and proposes a future transactional replacement. Unless a section explicitly cites implemented source and tests, its shadow swap, rollback, WAL/SHM preservation, registry handoff, and two-phase mechanics must not be described as capabilities of the current application.
+
 ## 📌 Executive Summary & Architectural Overview
 
 This document presents an exhaustive architectural analysis of Tlamatini's in-app self-update system (**About ▸ Check for updates**), audits the existing implementation (`self_update.py`, `apply_update.ps1`, `install.py`, `manage.py`, `preserved_user_state.json`), details five critical architectural vulnerabilities discovered during live testing, and proposes the **Next-Generation Atomic 2-Phase Transactional Updater**.

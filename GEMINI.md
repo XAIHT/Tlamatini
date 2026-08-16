@@ -57,7 +57,7 @@ When solving a problem that needs Angela to do things on her machine (Rethinking
 
 ## 2. Strict Casing & Naming Conventions
 
-The single source of truth for any visual workflow agent is its **`agentDescription`** database field (seeded via Django migrations). It is rendered **verbatim** in the sidebar and canvas. If you mismatch casing, the JavaScript class map or Django views will fail to load the agent.
+The single source of truth for any visual workflow agent display name is `agent/services/agent_paths.py::display_name_from_agent_type`, because startup rebuilds the `Agent` table from the `agents/` directory. The migration row, `chat_agent_registry.display_name`, and JavaScript class map must stay aligned with that canonical resolver. If casing or hyphenation drifts, the canvas connection or Configure-Agents gate can fail silently.
 
 | Context | Case Convention | Example (STM32er) |
 | :--- | :--- | :--- |
@@ -146,7 +146,7 @@ When **Multi-Turn** is checked in the toolbar, Tlamatini shifts from a "text ans
    - **Repetition Breaker**: Detects if the LLM calls the same tool with identical signatures. Polling and management tools (`run_status`, `session_status`, etc.) are explicitly exempt from fingerprinting to avoid tripping this guard during normal wait loops.
 
 ### 4.1 Cost Trimming Measures
-To avoid ballooning LLM token counts with up to 89 tools bound:
+To avoid ballooning LLM token counts with 107 built-in tools plus dynamic External-MCP remotes:
 - **One-line Tool Summaries**: Standard LangChain JSON schemas are fed to the model, but the textual system prompt lists each tool on a single line.
 - **Ollama Keep-Alive**: The `ChatOllama` connection is instantiated with `keep_alive: -1` (or from `OLLAMA_KEEP_ALIVE`) so the model context cache is preserved between turns on the Ollama daemon.
 
@@ -201,15 +201,18 @@ Is Ask Execs Checked? ───(No)───► Execute Tool
 Tlamatini features a universal, config-driven MCP client managed by `agent/external_mcp_manager.py`:
 
 - **Decoupled Lifecycle**: MCP server connections are established in a **background thread, off the main chat path**. A slow, failing, or offline server will never freeze the chat page.
-- **Config file**: Lives at `agent/external_mcps.json` next to `config.json` in the `mcpServers` format.
+- **Config file**: Lives at `agent/external_mcps.json` next to `config.json` in the `mcpServers` format. It is preserved user state and a sanitized tracked build input; never commit a keyed/private copy.
 - **Entitlements**: Allows up to **5 active servers** at a time.
 - **Transports**:
   - `stdio`: Spawns a local executable (e.g. `npx`, `uvx`, `python`, `docker run`).
   - `streamable-http`: Modern HTTP endpoint.
   - `sse`: Legacy server-sent events.
   - `websocket`: Standard WebSockets.
-- **LLM Supervisor Tools**: The LLM manages imports and activations using 8 dedicated tools:
-  - `external_mcp_status`, `external_mcp_reconnect`, `external_mcp_doctor`, `external_mcp_list_tools`, `external_mcp_call`, `external_mcp_import`, `external_mcp_set_active`, and `external_mcp_wait`.
+- **LLM Supervisor Tools**: The LLM manages imports, runtimes, and activations using 10 dedicated tools:
+  - `external_mcp_status`, `external_mcp_reconnect`, `external_mcp_doctor`, `external_mcp_runtime_status`, `external_mcp_runtime_install`, `external_mcp_list_tools`, `external_mcp_call`, `external_mcp_import`, `external_mcp_set_active`, and `external_mcp_wait`.
+- **Private runtime**: `runtime_provisioner.py` can install missing Node/npm/npx/pnpm and uv/uvx under `%LOCALAPPDATA%\Tlamatini\runtimes`, with no administrator rights or system-PATH mutation. Startup and connection paths remain fail-open and non-blocking.
+- **Shipped defaults**: `external_mcp_defaults.py` seeds official `memory` and `sequential-thinking` entries, both inactive. Edits are preserved, deletes are tombstoned, and Memory persists under `%LOCALAPPDATA%\Tlamatini\memory\memory.json`.
+- **Release separation**: Public builds contain only the two secret-free defaults and abort on live-looking credentials; private/keyed builds may contain the maintainer catalog.
 - **MCP Doctor (Agent #78)**: A static triage node that inspects server configurations (validates executable paths, detects missing environment tokens or placeholder secrets) **without establishing a live socket connection**.
 
 ---

@@ -220,6 +220,10 @@ The sweep script flags exactly this.
 
 Because `agent/static` is tree-carried, `dialog_theme.css`, `dialog_policy.js`, and `release_notes_renderer.js` ship automatically only if they remain inside that tree and are referenced by both source templates and collected-static output. Verify template load order, run collection/build tests, and bump `STATIC_VERSION` after any JavaScript/CSS/template change. Confirm the updater still uses the shared renderer/policy and that long-operation locks restore `data-bs-toggle`.
 
+### External-MCP runtime/default carrier gate (v1.48.14 target)
+
+`runtime_provisioner.py` and `external_mcp_defaults.py` are application code and must ship through the normal frozen/source carriers. The downloaded private runtime and persistent Memory graph live under `%LOCALAPPDATA%\Tlamatini`, outside the install swap, so they must **not** be added to installer payloads, `empty_dirs`, or `$Preserve`. `external_mcps.json` is different: it is preserved user state and a sanitized tracked build input. Verify public `build.py` output contains only inactive `memory` + `sequential-thinking`, keyed/private builds take the explicit private path, `regen_secrets.py` handles catalog env secrets, and the public live-secret gate aborts unsafe output.
+
 1. `sweep_self_update.py` exits clean (no `[FINDING]`).
 2. Every new top-level repo path from the since-last-tag diff has a wired carrier.
 3. The two preserve lists are byte-identical and equal `empty_dirs`(top-level) + `config.json`.

@@ -66,7 +66,7 @@ The generator builds the full PPTX and performs an internal geometry audit while
 2. **Reconcile:** map each current release behavior to source plus documentation and update active counts from source. Preserve dated historical material, but never let it drive the cover, facts, architecture, usage, or current-release slides.
 3. **Prove:** repeat stale-version/count searches, lint/test, regenerate, extract slide text, prove complete-tree parity, run geometry checks, and render every slide for visual inspection.
 
-For v1.48.13 and later, include the Mover/Deleter scratch-path guard, uniform dialog theme/policy, long-operation menu locks, safe updater notes, log identity, DB/reaper safeguards, and `STATIC_VERSION` workflow in the current-release section.
+For the v1.48.14 release target and later, include the private External-MCP runtime flow, ten supervisors, inactive Memory/Sequential-Thinking defaults, catalog tombstones, persistent Memory state, secret-separated public/private builds, nested-diagram repair, and an explicit "proposal, not shipped behavior" label for the transactional-updater design. Retain the v1.48.13 Mover/Deleter placement, dialog, long-operation, logging, DB/reaper, safe updater-note, and `STATIC_VERSION` contracts as carried foundations.
 
 ## Validation Checklist
 

@@ -127,7 +127,7 @@ The **MCP Doctor** workflow agent (canvas + wrapped `chat_agent_mcp_doctor`) doe
 
 | Surface | What it is | Wiring |
 |---|---|---|
-| **External MCPs (this)** | Universal client — use ANY external MCP server from a JSON catalog | `external_mcp_manager.py` + `external_mcps.json` + 8 supervisor tools + the `ext__*` wrappers; **no** `factory.py` / `Mcp`-row / `@tool` edits |
+| **External MCPs (this)** | Universal client — use ANY external MCP server from a JSON catalog | `external_mcp_manager.py` + `external_mcp_defaults.py` + `runtime_provisioner.py` + sanitized/preserved `external_mcps.json` + 10 supervisor tools + the `ext__*` wrappers; **no** `factory.py` / `Mcp`-row / `@tool` edits |
 | **The two `Mcp`-model checkboxes** | The built-in context providers `System-Metrics` / `Files-Search` that inject `system_context` / `files_context` **before** the chain answers | `Mcp` rows + hardcoded `factory.py` recognition + the hardcoded two-checkbox UI |
 | **ACPX** | Spawns external **coding-agent CLIs** (claude / codex / gemini / …) as child processes, brokered as the 12 `acp_*` tools | `agent/acpx/*`; gated by the **ACPX** toolbar checkbox |
 | **Per-agent inline MCP clients** (STM32er / Kalier) | A single pool agent drives ONE specific external MCP server via a stdlib-only inline client | inline in `agents/<name>/<name>.py`; no `factory.py` / `Mcp` rows |

@@ -32,7 +32,7 @@ When you enable, configure, modify, chain, or execute an agent, **that agent and
 
 Before any of the deep chapters, here is the whole journey on a single page. It is the first and most important thing you will do with Tlamatini, so it comes first.
 
-There is a quiet economic argument hiding inside this software, and it is worth saying out loud before you install a thing. A frontier subscription — GPT-5.4, Claude Opus, and their kin — asks roughly **$200 every month** to talk to one model. Tlamatini turns that arithmetic on its head. **The app is free** — you never pay us; the single bill is **Ollama Pro, about $200 a *year*** (paid to Ollama), and around that one cloud connection she wraps **87 agent types and 97 Multi-Turn tools** that run on *your* machine. Comparable power, for roughly one-twelfth of the bill. That is why this chapter opens the book.
+There is a quiet economic argument hiding inside this software, and it is worth saying out loud before you install a thing. A frontier subscription — GPT-5.4, Claude Opus, and their kin — asks roughly **$200 every month** to talk to one model. Tlamatini turns that arithmetic on its head. **The app is free** — you never pay us; the single bill is **Ollama Pro, about $200 a *year*** (paid to Ollama), and around that one cloud connection she wraps **87 agent types and 107 built-in Multi-Turn tools** that run on *your* machine. Comparable power, for roughly one-twelfth of the bill. That is why this chapter opens the book.
 
 Five steps take you from a bare machine to a Tlamatini that can flash a board, drive an engine, and run a whole workflow unattended.
 
@@ -305,7 +305,7 @@ When the migrations finish and you have a superuser, run the server (chapter 7).
 
 ### Path B — Pre-built one-click installer (end users)
 
-Download the latest release ZIP — **[Tlamatini v1.48.13](https://github.com/XAIHT/Tlamatini/releases/tag/v1.48.13)** — and unzip it (or use a `Tlamatini_Release/` folder somebody handed you / you built — see Part VIII). Then:
+Download the latest release ZIP — **[Tlamatini v1.48.14](https://github.com/XAIHT/Tlamatini/releases/tag/v1.48.14)** — and unzip it (or use a `Tlamatini_Release/` folder somebody handed you / you built — see Part VIII). Then:
 
 1. Open the unzipped folder.
 2. Double-click **`Installer.exe`**.
@@ -477,7 +477,7 @@ This is the big one. Until you tick **Multi-Turn**, Tlamatini only *describes* t
 Multi-Turn flips Tlamatini from "answerer" to **operator**:
 
 - The chat skips its prompt-shape validator (you no longer have to phrase requests as questions).
-- A request-scoped **planner** picks the relevant tools out of all 63 wrapped chat-agents, the 12 ACPX tools, and the core Python tools.
+- A request-scoped **planner** picks the relevant tools from **107 built-ins**: 20 direct/core tools, 65 wrapped chat-agents, 12 ACPX/Skill tools, and 10 External-MCP supervisors. Healthy active servers can add lazily discovered `ext__<server>__<tool>` remotes on top without inflating every prompt permanently.
 - The unified-agent loop runs **up to 4096 iterations** (`unified_agent_max_iterations`): the LLM calls a tool, sees the result, decides what to call next, and chains its way to the goal.
 - Wrapped sub-agents launch **silently** in the background (no console window pop-ups).
 
@@ -1730,6 +1730,8 @@ When debugging an issue, `tlamatini.log` is the first artifact to consult.
 
 LLM-generated ASCII art / flowcharts / column layouts render in the chat with a fixed-width font and preserved whitespace. The LLM is instructed (rule 13 in `prompt.pmt`) to wrap diagrams in `BEGIN-DIAGRAM` / `END-DIAGRAM` markers. There is also auto-detection: any run of consecutive lines containing box-drawing characters (`│┃|─━┌┐└┘├┤┬┴┼╭╮╯╰`), arrow glyphs (`▲▼►◄→←↑↓`), or ASCII-art runs (`+`, `-`, `=`, `|`) is wrapped automatically. Both pipelines emit `<pre class="ascii-diagram">…</pre>` HTML.
 
+The `v1.48.14` parser hardening makes that two-pass behavior lossless. Explicit diagrams are replaced by NUL-wrapped `DGRM_<n>` sentinels while Markdown is processed; if a later auto-detected diagram temporarily captures an earlier sentinel, restoration expands the nested placeholder to a fixed point. A Markdown thematic break such as `---` after a blank line stays a thematic break rather than becoming a false diagram. Any malformed residual sentinel or NUL byte is removed before HTML reaches the browser, so users never see a bare `DGRM_0` or an empty diagram box.
+
 ---
 
 # Part VII — Configuration Reference
@@ -1839,6 +1841,23 @@ You can still edit `config.json` by hand, but you no longer have to for the comm
   "max_lines_search_files": 1024
 }
 ```
+
+### 43.1. External MCP defaults and private runtimes
+
+The **External ▸ MCPs** dialog is the operator surface for universal MCP connections. Tlamatini speaks stdio, Streamable HTTP, SSE, and WebSocket transports, keeps at most five catalog servers active, and exposes ten built-in supervisor tools for import, activation, diagnostics, calls, waits, and runtime management.
+
+Every installation contains two official catalog entries defined in `agent/external_mcp_defaults.py`:
+
+| Default | Purpose | Initial state |
+|---|---|---|
+| `memory` | Persistent knowledge graph from `@modelcontextprotocol/server-memory`; its data file is `%LOCALAPPDATA%\Tlamatini\memory\memory.json`. | Inactive |
+| `sequential-thinking` | Structured, revisable step-by-step reasoning from `@modelcontextprotocol/server-sequential-thinking`. | Inactive |
+
+Neither default is activated without the user. Existing edits win over shipped defaults, and deleting a default writes its key to `_removed_defaults` so a later launch does not resurrect it. Re-importing that server explicitly clears the tombstone. This seeding happens in code when `load_catalog()` reads the user catalog because `external_mcps.json` is preserved across self-updates.
+
+Most community MCP servers launch through `npx` or `uvx`. `agent/runtime_provisioner.py` can acquire Node/npm/npx/pnpm and uv/uvx once into `%LOCALAPPDATA%\Tlamatini\runtimes`: no administrator rights, no system `PATH` mutation, and no multi-gigabyte runtime bundle in the installer. The operation is fail-open, backgrounded during startup, downloaded from official upstreams, checksum-verified where upstream publishes checksums, and installed through an atomic partial-directory swap. The runtime strip in the dialog reports each tool's location; click **Install now** for an explicit installation, or simply activate an npx/uvx server and let its background connection provision what is missing. Multi-Turn can inspect or initiate the same path through `external_mcp_runtime_status` and `external_mcp_runtime_install`.
+
+Public and private builds deliberately differ. A normal public build generates a secret-free catalog containing only the two inactive defaults and aborts if a live-looking credential reaches a secret-shaped environment field. A keyed/private build may include the maintainer catalog after `regen_secrets.py` has rehydrated it. Never hand-copy a private `external_mcps.json` into a public release.
 
 ## 44. ACPX settings
 
@@ -2026,14 +2045,14 @@ Pre-releases use the standard SemVer suffixes — `2.0.0-alpha.1`, `2.0.0-beta.1
 
 ```powershell
 git status                                          # clean tree, on main
-git tag -a v1.48.13 -m "Release 1.48.13: <one-liner>"   # annotated tag
-git push origin v1.48.13
+git tag -a v1.48.14 -m "Release 1.48.14: <one-liner>"   # annotated tag
+git push origin v1.48.14
 python build.py
 python build_uninstaller.py
 python build_installer.py
 ```
 
-All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.48.13/`, named for the version so the file you hand to a user is unambiguous before they even unzip it.
+All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.48.14/`, named for the version so the file you hand to a user is unambiguous before they even unzip it.
 
 ### Where the version shows up in a running install
 
@@ -2041,8 +2060,8 @@ The build computes the version once and bakes it into four surfaces:
 
 - **`Tlamatini/agent/_version.py`** — generated at build time, gitignored, read at runtime by `agent.version.get_version()`. This is what every in-process surface reads.
 - **Win32 `VERSIONINFO`** — `Tlamatini.exe`, `Installer.exe`, and `Uninstaller.exe` all carry the version in their resource fork. Right-click the file → Properties → Details → ProductVersion.
-- **Release folder name** — `dist/Tlamatini_Release_v1.48.13/`.
-- **Runtime surfaces** — the About dialog renders `Tlamatini v{{ version }}` (Django context processor); the startup banner prints `--- [VERSION] Tlamatini 1.48.13` to both the console and `tlamatini.log`; `GET /agent/version/` returns `{"version":"1.48.13","commit":"abc1234","date":"…","source":"generated"}` as an **open** endpoint suitable for a health-check.
+- **Release folder name** — `dist/Tlamatini_Release_v1.48.14/`.
+- **Runtime surfaces** — the About dialog renders `Tlamatini v{{ version }}` (Django context processor); after the release tag/build, the startup banner prints `--- [VERSION] Tlamatini 1.48.14` to both the console and `tlamatini.log`; `GET /agent/version/` returns `{"version":"1.48.14","commit":"abc1234","date":"…","source":"generated"}` as an **open** endpoint suitable for a health-check.
 
 If the four surfaces ever disagree, your build was run with a stale `$env:TLAMATINI_VERSION` or against an out-of-date `_version.py` — clear them and re-run `build.py`.
 
@@ -3168,7 +3187,9 @@ The other firmware agents make Tlamatini an *embedded engineer*. ESPHomer makes 
 
 ### Recent Updates
 
-- **Release v1.48.13 — Fixing default files placement in Mover and Deleter — 2026-08-15** — Mover now treats empty, relative, and legacy `C:/Temp/...` destinations as application scratch paths and safely re-roots them beneath Tlamatini's own `<app>/Temp` directory. An explicit absolute destination supplied by the user remains authoritative and is never silently redirected. Deleter's defaults and examples follow the same application-owned Temp policy without broadening its deletion scope, so no implicit root-level `C:/Temp` target is introduced. This release is also the documentation baseline for the reliability work accumulated since the previous visual dossier: `dialog_theme.css` gives jQuery UI, Bootstrap, and custom overlays one visual language; `dialog_policy.js` centralizes safe dismissal so outside clicks and Escape cannot accidentally close guarded work; the updater renders release notes through a dedicated safe renderer; long operations disable and restore the exact navigation controls that could corrupt in-flight state; application logs carry user, request, stream, and source-line identity; DB backup/reaper paths are more defensive; and LaTeXer's repair/verdict pipeline remains deterministic and auditable. Source-verified current inventory: **87 workflow agents**, **65 wrapped chat agents**, **97 Multi-Turn tools**, **37 JavaScript modules**, and **28 runtime skills**.
+- **Release target v1.48.14 — Private External-MCP runtimes, safe built-in Memory, and lossless diagrams — 2026-08-15** — `agent/runtime_provisioner.py` gives Tlamatini a no-admin, per-user Node/npm/npx/pnpm and uv/uvx toolchain under `%LOCALAPPDATA%\Tlamatini\runtimes`; it never blocks startup, never changes the system `PATH`, installs atomically from official upstreams, verifies Node checksums, and rewrites Windows `npx.cmd` launches to direct `node.exe` execution without a shell. `agent/external_mcp_defaults.py` ships official `memory` and `sequential-thinking` entries to fresh and upgraded installations, both inactive; edits are preserved, deletes are tombstoned, and Memory survives updates in `%LOCALAPPDATA%\Tlamatini\memory\memory.json`. The External MCP dialog adds a runtime readiness strip and **Install now** action; Multi-Turn adds `external_mcp_runtime_status` / `external_mcp_runtime_install`, bringing the complete built-in surface to **107 tools** (20 core + 65 wrapped + 12 ACPX/Skill + 10 External-MCP supervisors). Public builds now generate only the secret-free default catalog and refuse live-looking credentials, while private/keyed builds retain their separate path. `response_parser.py` also restores nested diagram sentinels to a fixed point and distinguishes Markdown thematic breaks, preventing empty diagrams or leaked `DGRM_*` text. New design/research assets (`DesignOfIncludingMemoryMCPS.txt`, `MCPMemoriesFlowCreation.flw`, `10000xRedesignOfUpdatingMechanicsOnTlamatini.md`, and two PNG references) are catalogued honestly: the first two record the feature's design history, while the updater redesign remains a proposal rather than shipped updater behavior. Coverage includes 44 runtime/default-catalog tests plus the diagram regression suite.
+
+- **Release v1.48.13 — Fixing default files placement in Mover and Deleter — 2026-08-15** — Mover now treats empty, relative, and legacy `C:/Temp/...` destinations as application scratch paths and safely re-roots them beneath Tlamatini's own `<app>/Temp` directory. An explicit absolute destination supplied by the user remains authoritative and is never silently redirected. Deleter's defaults and examples follow the same application-owned Temp policy without broadening its deletion scope, so no implicit root-level `C:/Temp` target is introduced. This release is also the documentation baseline for the reliability work accumulated since the previous visual dossier: `dialog_theme.css` gives jQuery UI, Bootstrap, and custom overlays one visual language; `dialog_policy.js` centralizes safe dismissal so outside clicks and Escape cannot accidentally close guarded work; the updater renders release notes through a dedicated safe renderer; long operations disable and restore the exact navigation controls that could corrupt in-flight state; application logs carry user, request, stream, and source-line identity; DB backup/reaper paths are more defensive; and LaTeXer's repair/verdict pipeline remains deterministic and auditable. Inventory recorded for that release: **87 workflow agents**, **65 wrapped chat agents**, **97 core/wrapped/ACPX tools before the External-MCP supervisor layer was included in the headline count**, **37 JavaScript modules**, and **28 runtime skills**.
 
 - **Release v1.48.2 — A Finding Is Not a Failure: the Execution Report Learns to Read What Each Agent Actually Says — 2026-08-06** — Angela's demand was exactly two sentences long: *if the execution really succeeded, the table must say **SUCCESS**; if it really errored and did not do the designated task at all, it must say **FAILED***. Both directions, every agent, no exceptions. What she had found was the opposite in the wild: LaTeXer's linter, pointed at a deliberately broken document in the wizard's STEP 4, found the bug **exactly as designed** — right error, right line number, right explanation — and the Execution Report printed a red **FAILURE** across that row. The cause was that two completely different questions had been collapsed into a single string. The **process** question — *"did the child exit 0?"* — is worth one bit. The **agent** question — *"did it do the job, and what did it FIND?"* — is a typed record, and every Tlamatini agent already publishes one in its `INI_SECTION` self-report. But `tools._launch_wrapped_chat_agent` set `status` from the exit code, and the code meant to lift the agent's own `status:` back in used `payload.setdefault(...)` — a **silent no-op on precisely the key that mattered**, so the agent's truthful account of its own run was thrown away. Worse, a `_DIAGNOSTIC_COMPLETED_STATUSES` set had already been written in `mcp_agent.py` to prevent this exact mislabelling, and it was **unreachable dead code**, because the value it tested had been overwritten with `"failed"` further upstream. The fix is a small expert system, `agent/agent_verdict.py`: a lexer/parser turns the self-report into a typed syntax tree, and an **ordered** production-rule table walks it — no self-report falls back to the exit code; a declared `error`/`failed` is FAILED; `refused` / `not_found` / `not_unique` / `engine_unavailable` are FAILED because the work genuinely did not happen; **a read-only diagnostic that ran to completion (`invalid`, `findings`, `no_matches`, `listed`, …) is a SUCCESS**; then an explicit `success:`/`ok:`, then a non-zero `errors:` count, then the exit code, then success. **The order IS the algorithm**, and the diagnostic rule must outrank the `success:`/`errors:` rules — a linter that worked perfectly reports `status: invalid` *and* `success: False` *and* `errors: 2` in the same breath, and the last two describe the **document**, not the agent; testing them first is the very bug the engine was written to kill. The contract is deliberately strict: the agent's self-report **outranks** the exit code; it is never dropped or overwritten (on a key collision the process view stays under `<key>` and the agent's under `agent_<key>`, so **both** survive); a red row must mean *"the tool malfunctioned"*, never *"the tool found something"*; everything **fails open**, because a verdict engine that can break the chat path is worse than the mislabelled row it fixes; and it is **100 % deterministic** — a probabilistic judge could not be trusted to say whether something failed, and would cost a round-trip on every tool call. The status vocabulary has exactly one definition, aliased rather than copied, since a drifted second copy would silently mis-colour rows. Stdlib only, importing nothing from `agent.*`, so it cannot create a cycle between `tools.py` and `mcp_agent.py` — both import it — and behaves identically frozen or from source. Pinned by `agent/test_agent_verdict.py` (25 tests covering the parser, every rule, the rule **order**, auditable provenance, totality, both call sites, the single-vocabulary contract, and the live STEP-4 payload end to end) plus `agent/test_exec_report_verdict.py`. Tlamatini herself was taught the same lesson in `prompt.pmt` (new rule 18b): a check that ran and reported a problem **succeeded**, and she must never tell you a tool failed merely because it found something.
 

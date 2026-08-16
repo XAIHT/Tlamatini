@@ -45,7 +45,7 @@ That script delegates to `complete_project_docs.py` and rebuilds both the full P
 2. **Reconcile:** build a release-feature matrix mapping every recent behavior to its source implementation, public documentation, maintainer guidance, prompt rule, and relevant skill. Correct active counts from source, but preserve explicitly dated historical counts as history.
 3. **Prove:** rerun searches for old active versions/counts/claims, run `python -m ruff check`, execute focused tests, regenerate artifacts, and verify text extraction, page count, complete-tree parity, and current-release coverage.
 
-For v1.48.13 and later, explicitly check Mover/Deleter application-owned scratch placement, centralized dialog theme/policy, long-operation menu locks, safe update-note rendering, line-attributed logging, DB/reaper safety, and frontend `STATIC_VERSION` discipline.
+For the v1.48.14 release target and later, also verify the private External-MCP runtime, ten supervisor tools, inactive Memory/Sequential-Thinking defaults, edit/tombstone semantics, persistent Memory path, public/private catalog separation, nested-diagram restoration, and the design-only status of the transactional-updater proposal. Carry forward the v1.48.13 Mover/Deleter placement, dialog, long-operation, logging, DB/reaper, updater-note, and `STATIC_VERSION` contracts.
 
 ## Inventory Rules
 

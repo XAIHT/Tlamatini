@@ -135,6 +135,10 @@ If the chat UI changes, fix `harness/config.py` (selectors + the ready/started J
 
 When the touched surface is relevant, include visible cases for: Mover/Deleter empty, relative, legacy `C:/Temp/...`, and explicit absolute destinations; long-operation menu disable/restore; dialog outside-click/Escape/X/Cancel/Continue behavior; safe update release-note rendering; and per-user/request/stream/line log attribution. A movement test must prove Deleter scope was not widened.
 
+## v1.48.14 release-target regression set
+
+When External MCP or response rendering changes, visibly verify: the dialog lists inactive `memory` and `sequential-thinking`; the runtime strip reports node/npm/npx/pnpm/uv/uvx without blocking the page; **Install now** has honest success/failure state; activating a default is explicit; deleting it does not resurrect it after reload; and a nested explicit/auto ASCII diagram followed by Markdown `---` renders every diagram once with no `DGRM_*` or NUL leakage. Use an isolated catalog/config path for tests so a maintainer's keyed `external_mcps.json` is never modified.
+
 > ⚠️ If the answer-complete logic ever needs adjusting, verify it against a LIVE
 > server with `--count 2` before trusting a full run — a daily test that silently
 > mis-detects completion is worse than no test.

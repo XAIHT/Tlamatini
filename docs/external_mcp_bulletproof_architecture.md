@@ -12,7 +12,8 @@ The design contract for Tlamatini's **universal MCP _client_**: the layer that l
 use the tools of **any** external MCP server declared in a JSON catalog, with **no code
 per server**.
 
-Engine: `agent/external_mcp_manager.py` · Catalog: `agent/external_mcps.json` ·
+Engine: `agent/external_mcp_manager.py` · Defaults: `agent/external_mcp_defaults.py` ·
+Private runtime: `agent/runtime_provisioner.py` · Catalog: `agent/external_mcps.json` ·
 UI: **External ▸ MCPs** navbar dialog (`static/agent/js/external_mcps_dialog.js`).
 
 > **This is NOT one of the other three "MCP" things.** It is not the two `Mcp`-model
@@ -23,7 +24,7 @@ UI: **External ▸ MCPs** navbar dialog (`static/agent/js/external_mcps_dialog.j
 
 ---
 
-## 1. The catalog is USER STATE
+## 1. The catalog is preserved USER STATE and a sanitized build input
 
 `agent/external_mcps.json` holds the standard `mcpServers` shape — byte-identical to a
 Claude Code / Claude Desktop `.mcp.json` — plus an `active` list. A server config copied
@@ -33,6 +34,14 @@ from another tool drops straight in.
   frozen install root > source `agent/`), so it is user state that **survives a
   self-update** exactly like `config.json` and the DB.
 - Read with **`utf-8-sig`** — a BOM (what Notepad writes) must never break the catalog.
+- `load_catalog()` seeds the code-owned `memory` and `sequential-thinking` defaults for
+  fresh and upgraded users. Both are inactive. Existing edits win; deletion writes a
+  key to `_removed_defaults`; explicit re-import clears that tombstone.
+- The file is tracked so public builds have a deterministic input, but a keyed working
+  copy must never be committed. `regen_secrets.py --mode push-able` scrubs secret-shaped
+  `env` values. Public `build.py` output is regenerated from
+  `external_mcp_defaults.shipped_catalog_document()` and aborts if a live-looking secret
+  remains; private/keyed builds use a separate maintainer-catalog path.
 - **`MAX_ACTIVE = 5`.** The catalog may hold hundreds of servers; at most five are
   connected at a time, so the LLM's bound tool surface stays small and affordable.
   `set_active` silently caps and reports `capped: true` rather than failing.
@@ -56,9 +65,9 @@ The normalizer also accepts the aliases `http` / `streamable_http` → `streamab
 `ws` → `websocket`, `socket` / `raw` → `tcp`, `pipe` → `named-pipe`, and infers a
 transport from `url` / `sseUrl` / `wsUrl` / `websocketUrl` when none is declared.
 
-## 3. The LLM surface — eight supervisor tools
+## 3. The LLM surface — ten supervisor tools
 
-`_SUPERVISOR_TOOL_NAMES` binds **eight supervisor tools**; every one returns a JSON
+`_SUPERVISOR_TOOL_NAMES` binds **ten supervisor tools**; every one returns a JSON
 envelope and never raises:
 
 | Tool | Role |
@@ -66,6 +75,8 @@ envelope and never raises:
 | `external_mcp_status` | catalog + active set + per-server connection state |
 | `external_mcp_reconnect` | force a reconnect of one server, or all |
 | `external_mcp_doctor` | per-server triage: transport, runtime, command-on-PATH, placeholder secrets, blockers, next step |
+| `external_mcp_runtime_status` | resolve node/npm/npx/pnpm/uv/uvx and report private-vs-system location |
+| `external_mcp_runtime_install` | install missing package managers in Tlamatini's private per-user runtime |
 | `external_mcp_list_tools` | enumerate the tools a connected server exposes |
 | `external_mcp_call` | call one remote tool directly |
 | `external_mcp_import` | add server(s) from a JSON object **or** a JSON string |
@@ -79,6 +90,17 @@ Each active server's remote tools are then bound lazily as **`ext__<server>__<to
 **Gating:** these tools are gated by **Multi-Turn only**. They are NOT in
 `agent.acpx.ACPX_TOOL_NAMES`, are NOT stripped by `filter_acpx_tools`, and the ACPX
 checkbox has no effect on them.
+
+### 3.1. Private runtime contract
+
+`runtime_provisioner.py` resolves explicit `<tool>_executable` config → an existing
+Tlamatini private runtime → system PATH → known per-user locations. It provisions only
+a missing manager, downloads from official upstreams, enforces Node's published SHA-256,
+installs through `.partial-<pid>` plus atomic replacement, never changes system PATH,
+never requires admin, and never blocks startup. On Windows, `resolve_spawn()` rewrites
+`npx.cmd` into `node.exe <npx-cli.js>` so stdio MCP children launch without a shell.
+Memory data lives separately at `%LOCALAPPDATA%\Tlamatini\memory\memory.json` and therefore
+survives self-update and install-directory replacement.
 
 ## 4. The bulletproof rules (do NOT weaken any of these)
 

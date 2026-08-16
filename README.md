@@ -19,16 +19,16 @@
 
 <p align="center">
   <b>💰 About $200 a YEAR — not $200 a MONTH.</b><br/>
-  Frontier plans like GPT-5.4 or Claude Opus cost about <b>$200 per month</b>. <b>Tlamatini is free and open-source</b> — your only bill is <b>Ollama Pro (~$200 a <i>year</i>, paid to Ollama, not us)</b>, and on top of it she stacks <b>87 agent types and 97 Multi-Turn tools</b>: comparable power for about <b>one twelfth</b> the price, all on your own machine.
+  Frontier plans like GPT-5.4 or Claude Opus cost about <b>$200 per month</b>. <b>Tlamatini is free and open-source</b> — your only bill is <b>Ollama Pro (~$200 a <i>year</i>, paid to Ollama, not us)</b>, and on top of it she stacks <b>87 agent types and 107 built-in Multi-Turn tools</b>: comparable power for about <b>one twelfth</b> the price, all on your own machine.
 </p>
 
 <p align="center">
   <a href="https://discord.gg/WFQsrskgc"><img src="https://img.shields.io/badge/DISCORD-JOIN%20US-5865F2?style=for-the-badge&labelColor=2D2D2D&logo=discord&logoColor=white" alt="Join our Discord"/></a>
-  <a href="https://github.com/XAIHT/Tlamatini/releases/tag/v1.48.13"><img src="https://img.shields.io/badge/VERSION-v1.48.13-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Version"/></a>
+  <a href="https://github.com/XAIHT/Tlamatini/releases/tag/v1.48.14"><img src="https://img.shields.io/badge/VERSION-v1.48.14-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Version"/></a>
   <a href="https://www.python.org/downloads/release/python-31210/"><img src="https://img.shields.io/badge/PYTHON-3.12.10-3776AB?style=for-the-badge&labelColor=2D2D2D&logo=python&logoColor=white" alt="Python"/></a>
   <a href="#installation"><img src="https://img.shields.io/badge/PLATFORM-WIN%2010%20%7C%2011-0078D6?style=for-the-badge&labelColor=2D2D2D&logo=windows&logoColor=white" alt="Platform"/></a>
   <a href="#-the-full-capability-list"><img src="https://img.shields.io/badge/AGENT%20TYPES-87-8A2BE2?style=for-the-badge&labelColor=2D2D2D" alt="87 agent types"/></a>
-  <a href="#-the-full-capability-list"><img src="https://img.shields.io/badge/MULTI--TURN%20TOOLS-97-16A34A?style=for-the-badge&labelColor=2D2D2D" alt="97 Multi-Turn tools"/></a>
+  <a href="#-the-full-capability-list"><img src="https://img.shields.io/badge/MULTI--TURN%20TOOLS-107-16A34A?style=for-the-badge&labelColor=2D2D2D" alt="107 built-in Multi-Turn tools"/></a>
   <a href="https://github.com/XAIHT/Tlamatini/blob/main/LICENSE"><img src="https://img.shields.io/badge/LICENSE-MIT-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="License"/></a>
 </p>
 
@@ -45,17 +45,19 @@
 
 ---
 
-## Current release — v1.48.13
+## Current release target — v1.48.14
 
-The annotated `v1.48.13` release is the current project baseline. It completes the application-owned file-placement guard for **Mover** and **Deleter**: empty, relative, and legacy `C:/Temp/...` scratch destinations are re-rooted beneath Tlamatini's own `<app>/Temp`, while a user-supplied explicit absolute destination remains authoritative and Deleter never widens the requested deletion scope.
+`v1.48.14` is the next patch target on top of annotated `v1.48.13`. It adds a private, per-user External-MCP runtime provisioner for Node/npm/npx/pnpm and uv/uvx, so Tlamatini can activate npx- and uvx-based MCP servers without requiring administrator access or changing the system `PATH`. Startup remains non-blocking and fail-open; official downloads are installed atomically under `%LOCALAPPDATA%\Tlamatini\runtimes`, Node checksums are enforced, and an existing configured or system runtime remains usable.
 
-This release line also carries the recent reliability and uniformity work that now defines the application: one shared visual identity for jQuery UI, Bootstrap, and custom dialogs (`dialog_theme.css`); one fail-open dismissal policy (`dialog_policy.js`); safe release-note rendering for the updater; coherent menu locks during long operations; per-user, request, stream, and source-line application-log attribution; hardened DB/reaper safeguards; and LaTeXer's deterministic repair/verdict protections. The source-verified surface is **87 workflow agents**, **65 wrapped chat agents**, **97 Multi-Turn tools**, **37 JavaScript modules**, and **28 runtime skills**.
+Every installation now also carries two official External-MCP catalog defaults, **Memory** and **Sequential Thinking**, both deliberately **inactive** until the user enables them. Memory persists its knowledge graph under `%LOCALAPPDATA%\Tlamatini\memory\memory.json`; edited defaults are preserved, deleted defaults are tombstoned, and neither server is silently re-enabled. The External MCP dialog reports runtime readiness and offers **Install now**, while Multi-Turn exposes `external_mcp_runtime_status` and `external_mcp_runtime_install`. Public builds emit only these secret-free defaults; private/keyed builds may carry the maintainer catalog, and build-time secret scanning refuses unsafe public output.
+
+The same patch fixes nested ASCII-diagram restoration so a later auto-detected diagram or Markdown thematic break cannot swallow an earlier diagram placeholder or leak `DGRM_*` sentinel text. The source-verified built-in surface is **87 workflow agents**, **65 wrapped chat agents**, **107 Multi-Turn tools** (**20 core + 65 wrapped + 12 ACPX/Skill + 10 External-MCP supervisors**), **37 JavaScript modules**, and **28 runtime skills**. The carried `v1.48.13` Mover/Deleter placement guard, shared dialog language, safe dismissal policy, long-operation menu locks, safe update-note rendering, line-attributed logging, and DB/reaper safeguards remain in force.
 
 ---
 
 ## 🚀 Get started — 5 steps to a cloud-powered Tlamatini
 
-The whole idea in one line: **don't pay $200 a month for a frontier model.** **Tlamatini is free** — your only cost is **Ollama Pro (~$200 a year, paid to Ollama, not us)**; point Tlamatini at it and drive **87 agent types and 97 Multi-Turn tools** from your own machine. Here's the full setup.
+The whole idea in one line: **don't pay $200 a month for a frontier model.** **Tlamatini is free** — your only cost is **Ollama Pro (~$200 a year, paid to Ollama, not us)**; point Tlamatini at it and drive **87 agent types and 107 built-in Multi-Turn tools** from your own machine. Here's the full setup.
 
 ### 1 · Install Tlamatini
 
@@ -248,7 +250,9 @@ Everything Tlamatini can do, grouped:
 - **security-audit / kali-pentest** skills.
 
 **🔌 External integration**
-- **Universal External-MCP client** — connect to any MCP server over 4 transports, up to 5 active, with 8 supervisor tools and an **MCP Doctor** agent that triages a server before you wire it.
+- **Universal External-MCP client** — connect to any MCP server over 4 transports, up to 5 active, with 10 supervisor tools and an **MCP Doctor** agent that triages a server before you wire it.
+- **Memory + Sequential Thinking included, inactive by default** — open **External ▸ MCPs**, select `memory` or `sequential-thinking`, and activate only what you want. Memory stores its graph in `%LOCALAPPDATA%\Tlamatini\memory\memory.json`, outside the install directory so updates preserve it. Removing a shipped default records a tombstone instead of resurrecting it on the next launch.
+- **Private MCP runtime, no admin required** — npx/uvx servers can trigger one-time provisioning of Node/npm/npx/pnpm or uv/uvx into `%LOCALAPPDATA%\Tlamatini\runtimes`. The External MCP dialog's runtime strip shows exactly which managers are ready and whether Tlamatini is using her private copy; **Install now** performs the same operation explicitly. Nothing is added to the system `PATH`, nothing is bundled into the installer, and a failed download never prevents Tlamatini from starting.
 - **Companion-app discovery (Tlamatini-FlowPills)** — sister XAIHT apps locate Tlamatini's agent-template catalog instantly, with **no Python and no drive scan**: at install and on every launch Tlamatini publishes a per-user `HKCU\Software\XAIHT\Tlamatini` registry key + an `_tlamatini_agents_manifest.json` (each agent's `sha256`) next to the agents, and leaves a preserved-agents marker if you uninstall but keep the agents. HKCU-only, no admin, fail-open.
 
 **🖥️ Desktop & browser automation**
