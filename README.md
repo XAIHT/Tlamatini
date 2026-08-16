@@ -24,7 +24,7 @@
 
 <p align="center">
   <a href="https://discord.gg/WFQsrskgc"><img src="https://img.shields.io/badge/DISCORD-JOIN%20US-5865F2?style=for-the-badge&labelColor=2D2D2D&logo=discord&logoColor=white" alt="Join our Discord"/></a>
-  <a href="https://github.com/XAIHT/Tlamatini/releases"><img src="https://img.shields.io/badge/TARGET-v1.48.15-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Release target v1.48.15"/></a>
+  <a href="https://github.com/XAIHT/Tlamatini/releases"><img src="https://img.shields.io/badge/LATEST-v1.48.15-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Latest version v1.48.15"/></a>
   <a href="https://www.python.org/downloads/release/python-31210/"><img src="https://img.shields.io/badge/PYTHON-3.12.10-3776AB?style=for-the-badge&labelColor=2D2D2D&logo=python&logoColor=white" alt="Python"/></a>
   <a href="#installation"><img src="https://img.shields.io/badge/PLATFORM-WIN%2010%20%7C%2011-0078D6?style=for-the-badge&labelColor=2D2D2D&logo=windows&logoColor=white" alt="Platform"/></a>
   <a href="#-the-full-capability-list"><img src="https://img.shields.io/badge/AGENT%20TYPES-87-8A2BE2?style=for-the-badge&labelColor=2D2D2D" alt="87 agent types"/></a>
@@ -45,9 +45,9 @@
 
 ---
 
-## Current release target — v1.48.15
+## Latest version — v1.48.15
 
-`v1.48.15` is the next patch target on top of annotated `v1.48.14`. Grepper no longer mistakes non-UTF-8 text for binary: its BOM-first reader recognizes UTF-8/16/32, then falls back through cp1252 and Latin-1 so PowerShell logs and accented Windows/Spanish source remain searchable. BOM detection deliberately precedes the NUL-byte test because valid UTF-16/32 text contains NUL bytes; genuine binary or unreadable files are still skipped. Sixteen focused tests pin the encoding and binary boundaries.
+`v1.48.15` is the current documentation/package version, built on top of annotated `v1.48.14` while runtime identity remains Git-tag-derived. Grepper no longer mistakes non-UTF-8 text for binary: its BOM-first reader recognizes UTF-8/16/32, then falls back through cp1252 and Latin-1 so PowerShell logs and accented Windows/Spanish source remain searchable. BOM detection deliberately precedes the NUL-byte test because valid UTF-16/32 text contains NUL bytes; genuine binary or unreadable files are still skipped. Sixteen focused tests pin the encoding and binary boundaries.
 
 Exec-Report status handling now uses a closed, source-guarded vocabulary with five disjoint classes: completed diagnostics, intact completed work, degraded work, work not done, and agent errors. Degraded deliverables such as inaudible token-only speech or a compromised PDF are red rather than falsely clean; named completions are auditable greens; an unknown token still fails open but is identified by rule `R8b`. The repository-wide guard scans every pool-agent `status:` literal so a newly invented token fails during tests instead of silently defaulting green. Kuberneter now reports numeric `returncode`, explicit `success`, and a real `ok`/`failed` status token, preventing a failed `kubectl` call from being painted green.
 
