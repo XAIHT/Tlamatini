@@ -347,6 +347,44 @@ class WiringContractTests(unittest.TestCase):
         self.assertIn("external_mcp_defaults", source)
         self.assertIn("shipped_catalog_document", source)
 
+    def test_build_NAMES_the_provisioner_so_it_cannot_be_dropped(self):
+        """Angela's review, 2026-08-16: `runtime_provisioner.py` had NO mention
+        in build.py at all, while its sibling `external_mcp_defaults.py` was
+        explicitly named (the test above).
+
+        It did ship - the module graph followed
+        `external_mcp_manager.py`'s `from . import runtime_provisioner` - but
+        that import is inside a `try/except ImportError` that sets the module to
+        None. So carriage rested entirely on graph analysis, and the failure
+        mode was SILENT: Tlamatini would boot perfectly and simply never
+        provision node/npx/uv/uvx again, leaving every `npx -y <pkg>` MCP server
+        dead with [WinError 2] on exactly the fresh machine the provisioner was
+        written to rescue. Name it explicitly.
+        """
+        source = self._read(_REPO_ROOT / "build.py")
+        self.assertIn("--hidden-import=agent.runtime_provisioner", source,
+                      "build.py must NAME agent.runtime_provisioner, not rely "
+                      "on PyInstaller following a fail-open import")
+
+    def test_build_proves_the_fail_open_modules_landed_in_the_bundle(self):
+        """A --hidden-import is an instruction, not evidence.
+
+        `verify_frozen_agent_modules()` opens the archive the build just
+        produced and asserts each module is really in it, aborting otherwise.
+        Verified against the shipped install: its PYZ holds 15,075 modules and
+        every required agent module is present.
+        """
+        source = self._read(_REPO_ROOT / "build.py")
+        self.assertIn("_FROZEN_REQUIRED_AGENT_MODULES", source)
+        self.assertIn("def verify_frozen_agent_modules(", source)
+        self.assertIn("verify_frozen_agent_modules(Path(\"dist\") / \"manage\")",
+                      source,
+                      "the proof must actually RUN on the successful-build path")
+        # PyInstaller 6 onedir keeps the PYZ INSIDE the exe's CArchive; a reader
+        # that only globs for a loose PYZ-*.pyz can never prove anything.
+        self.assertIn("CArchiveReader", source,
+                      "the verifier must read the PYZ embedded in the exe")
+
     def test_self_update_preserves_the_user_catalog(self):
         source = self._read(_REPO_ROOT / "apply_update.ps1")
         self.assertIn("external_mcps.json", source,

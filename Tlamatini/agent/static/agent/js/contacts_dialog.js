@@ -207,19 +207,26 @@ function OpenContactsDialog(event) { // eslint-disable-line no-unused-vars
         const c = contacts[idx];
         if (!c) return;
         const label = c.name || 'this contact';
-        if (!confirm('Delete “' + label + '” from the contacts book?\n\n' +
-            'It is removed when you press Save.')) {
-            return;
-        }
-        contacts.splice(idx, 1);
-        dirty = true;
-        if (editingIndex === idx) {
-            newContact();
-        } else {
-            if (editingIndex > idx) editingIndex -= 1;
-            renderAll();
-        }
-        flash('Removed “' + label + '” — press Save to persist.');
+        // Themed confirm (dialog_policy.js). Async by nature, so the removal
+        // moved INTO the callback — the old synchronous `confirm()` was the
+        // last native popup this dialog raised.
+        tlmConfirm('Delete “' + label + '” from the contacts book?',
+            'It is removed when you press Save.', 'Delete contact').then((ok) => {
+            if (!ok) return;
+            // Re-resolve: the list may have been re-rendered while the popup
+            // was open, so a stale index must never delete the wrong person.
+            const at = contacts.indexOf(c);
+            if (at < 0) return;
+            contacts.splice(at, 1);
+            dirty = true;
+            if (editingIndex === at) {
+                newContact();
+            } else {
+                if (editingIndex > at) editingIndex -= 1;
+                renderAll();
+            }
+            flash('Removed “' + label + '” — press Save to persist.');
+        });
     }
 
     listEl.onclick = (e) => {
@@ -253,8 +260,7 @@ function OpenContactsDialog(event) { // eslint-disable-line no-unused-vars
         saveBtn.textContent = next ? 'Saving...' : 'Save';
     }
 
-    function closeDialog() {
-        if (dirty && !confirm('Discard unsaved contact changes?')) return;
+    function reallyCloseDialog() {
         if (warnTimer) clearTimeout(warnTimer);
         if (_contactsKeydownHandler) {
             document.removeEventListener('keydown', _contactsKeydownHandler);
@@ -263,6 +269,19 @@ function OpenContactsDialog(event) { // eslint-disable-line no-unused-vars
         dlg.classList.remove('is-open');
         dlg.hidden = true;
         document.body.classList.remove('ctb-dialog-open');
+    }
+
+    function closeDialog() {
+        // Clean → close immediately, exactly as before. Dirty → ask, themed,
+        // and close only on Continue. The themed confirm is a Promise, so the
+        // close moved into the callback; discarding edits is destructive, so
+        // any other dismissal (X, Cancel) keeps the dialog open.
+        if (!dirty) { reallyCloseDialog(); return; }
+        tlmConfirm('Discard unsaved contact changes?',
+            'The contacts you added or edited will not be saved.',
+            'Unsaved changes').then((ok) => {
+            if (ok) reallyCloseDialog();
+        });
     }
 
     function focusableElements() {

@@ -312,6 +312,39 @@ class ZavuererFileWiringTests(SimpleTestCase):
         with open(os.path.join(root, *parts), encoding='utf-8') as f:
             return f.read()
 
+    def _read_as_committed(self, *parts):
+        """The file as it exists in the LAST COMMIT, not in the working tree.
+
+        ⚠️ THIS DISTINCTION IS THE WHOLE POINT (Angela, 2026-08-16). The secret
+        guard below asks "is a REAL credential COMMITTED?" — but it was reading
+        the WORKING TREE, which is a different question with a different right
+        answer. `regen_secrets.py` deliberately toggles this repo between two
+        states: `--mode keyed` writes Angela's real keys in so she can actually
+        run the agents, and `--mode push-able` scrubs them back to
+        `<ZAVU_API_KEY goes here>` before a commit. So the working tree holding
+        `zv_live_...` is the NORMAL, CORRECT development state — and the test
+        went red on it, crying wolf at the one machine where the key is
+        supposed to be present.
+
+        Reading `git show HEAD:<path>` asks the real question. Fail-open: if
+        git is unavailable (a source tarball, a frozen build, no repo) we fall
+        back to the working tree, i.e. exactly the old behaviour, because a
+        weaker leak check is still better than none.
+        """
+        import subprocess
+        root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        rel = "/".join(("Tlamatini", "agent") + parts)
+        try:
+            out = subprocess.run(
+                ["git", "show", f"HEAD:{rel}"],
+                cwd=root, capture_output=True, timeout=30,
+            )
+            if out.returncode == 0 and out.stdout:
+                return out.stdout.decode("utf-8", errors="replace"), True
+        except Exception:  # noqa: BLE001 - any git problem degrades, never fails
+            pass
+        return self._read(*parts), False
+
     def test_js_classmap_connectors_handlers(self):
         core = self._read('static', 'agent', 'js', 'acp-canvas-core.js')
         self.assertIn("'zavuerer': 'zavuerer-agent'", core)
@@ -354,10 +387,19 @@ class ZavuererFileWiringTests(SimpleTestCase):
         # push, which is the ONE state where the file is provably clean. What
         # must never appear is a REAL key -- and that is what this now catches
         # (it caught a live `zv_live_...` key committed here on 2026-07-26).
-        key = str(cfg['zavu_api_key'] or '')
+        # ⚠️ Read what is COMMITTED, not the working tree — see
+        # `_read_as_committed`. A live `zv_live_...` key in the WORKING tree is
+        # the normal keyed dev state that `regen_secrets.py --mode keyed`
+        # creates on purpose; only a key that reached a COMMIT is a leak.
+        committed_src, from_git = self._read_as_committed(
+            'agents', 'zavuerer', 'config.yaml')
+        committed = yaml.safe_load(committed_src) or {}
+        key = str(committed.get('zavu_api_key') or '')
+        where = 'the last commit' if from_git else 'zavuerer/config.yaml (no git — read from disk)'
         self.assertTrue(
             key == '' or (key.startswith('<') and key.endswith('goes here>')),
-            f"zavu_api_key must be empty or a placeholder, got {key[:12]!r}...")
+            f"zavu_api_key in {where} must be empty or a placeholder, "
+            f"got {key[:12]!r}...")
         for secret_prefix in ('zv_live_', 'zv_test_', 'sk-', 'ghp_'):
             self.assertFalse(
                 key.startswith(secret_prefix),

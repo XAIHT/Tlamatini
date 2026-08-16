@@ -253,6 +253,40 @@ class WatchdogRealForegroundWindowTests(unittest.TestCase):
     """Spawn REAL processes so the EnumWindows-based detector is exercised against
     actual windows, not mocks."""
 
+    def _await_visible(self, proc, timeout=20.0):
+        """Block until the spawned console is ACTUALLY recognised as foreground.
+
+        ⚠️ A FIXED SLEEP IS A RACE, NOT A WAIT (Angela, 2026-08-16). These tests
+        used `time.sleep(1.5)` and then asserted the watchdog spares a VISIBLE
+        console. On an idle machine the window is up in well under a second; in
+        the FULL suite — 4350 tests, with Ollama and a headed Chrome running —
+        it sometimes was not, so EnumWindows saw nothing, the process was
+        correctly judged headless, and the watchdog killed it. The subject under
+        test (does the watchdog spare a visible console?) had not even been set
+        up yet, so the red was about scheduling, not about the watchdog:
+        verified by running this module in isolation twice, 28/28 OK both times.
+
+        Waiting for the precondition makes it deterministic AND keeps it honest
+        — if the window never appears we fail with a message that says exactly
+        that, instead of silently testing the wrong thing.
+        """
+        import psutil
+        deadline = time.monotonic() + timeout
+        last = set()
+        while time.monotonic() < deadline:
+            last = orphan_reaper._visible_window_owner_pids()
+            try:
+                if orphan_reaper.is_protected_foreground_console(
+                        psutil.Process(proc.pid), last, {os.getpid()}):
+                    return last
+            except Exception:  # noqa: BLE001 - the process may still be starting
+                pass
+            time.sleep(0.1)
+        self.fail(
+            f"the spawned console never became visible within {timeout}s "
+            f"(pid={proc.pid}, {len(last)} window-owning pids seen) — the "
+            f"precondition for this test was never established")
+
     def _term(self, proc):
         try:
             import psutil
@@ -281,8 +315,7 @@ class WatchdogRealForegroundWindowTests(unittest.TestCase):
             creationflags=subprocess.CREATE_NEW_CONSOLE,
         )
         try:
-            time.sleep(1.5)  # let the console + its conhost come up
-            visible = orphan_reaper._visible_window_owner_pids()
+            visible = self._await_visible(proc)  # wait for it, never assume it
             self.assertTrue(visible, "EnumWindows should see at least one visible window")
             self.assertTrue(
                 orphan_reaper.is_protected_foreground_console(
@@ -318,7 +351,7 @@ class WatchdogRealForegroundWindowTests(unittest.TestCase):
         )
         killed = []
         try:
-            time.sleep(1.5)
+            self._await_visible(proc)  # the precondition, established not assumed
             clock = _Clock()
             wd = command_watchdog.CommandWatchdog(
                 our_pid=os.getpid(),

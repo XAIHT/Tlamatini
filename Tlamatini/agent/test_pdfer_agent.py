@@ -564,6 +564,16 @@ class PdferPreflightTests(SimpleTestCase):
 
     def test_unwritable_output_dir_is_refused(self):
         # A path whose parent is a FILE can never be created as a directory.
+        #
+        # ⚠️ ASSERT THE CONTRACT, NOT THE SENTENCE (Angela, 2026-08-16). This
+        # used to require the literal words 'not writable'. The OneDrive fix
+        # then rewrote the blocker to say what the user can DO about it
+        # ("output_dir cannot accept a new file (...) — a paused or erroring
+        # OneDrive ... does exactly that"), because "the directory exists" and
+        # os.access both LIE and only a real create proves anything. The
+        # message got strictly better and the test went red: a FALSE failure on
+        # a fixed subsystem. What actually matters is that the refusal is
+        # ATTRIBUTED to output_dir, so the user knows which knob to turn.
         with tempfile.TemporaryDirectory() as tmp:
             blocker = os.path.join(tmp, 'blocker')
             with open(blocker, 'w', encoding='utf-8') as f:
@@ -571,7 +581,10 @@ class PdferPreflightTests(SimpleTestCase):
             pf = self._pf('markdown', {'output_dir': os.path.join(blocker, 'sub')},
                           text='# hi')
             self.assertFalse(pf['ok'])
-            self.assertTrue(any('not writable' in f for f in pf['fatals']))
+            self.assertTrue(
+                any('output_dir' in f for f in pf['fatals']),
+                f"the blocker must name output_dir so the user knows what to "
+                f"change; got {pf['fatals']!r}")
 
     def test_missing_paths_and_odd_page_size_are_warnings_not_blockers(self):
         with tempfile.TemporaryDirectory() as tmp:

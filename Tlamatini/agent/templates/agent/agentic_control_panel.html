@@ -14,7 +14,7 @@
     {% bootstrap_javascript %}
     <link rel="stylesheet" href="{% static 'agent/css/agentic_control_panel.css' %}?v={{ STATIC_VERSION }}_v2_dlg2">
     {# dialog_theme.css MUST stay LAST: it supersedes the legacy .ui-dialog chrome on cascade ORDER. #}
-    <link rel="stylesheet" href="{% static 'agent/css/dialog_theme.css' %}?v={{ STATIC_VERSION }}_dlg2">
+    <link rel="stylesheet" href="{% static 'agent/css/dialog_theme.css' %}?v={{ STATIC_VERSION }}_dlg3">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700&display=swap" rel="stylesheet">
@@ -23,7 +23,7 @@
     <!-- Dialog dismissal policy: X / Cancel / Continue ONLY - never an outside
          click, never Escape. Must load after jQuery UI and before every
          application dialog module. -->
-    <script src="{% static 'agent/js/dialog_policy.js' %}?v={{ STATIC_VERSION }}_dlgpolicy"></script>
+    <script src="{% static 'agent/js/dialog_policy.js' %}?v={{ STATIC_VERSION }}_dlgpolicy2"></script>
 </head>
 
 <body>

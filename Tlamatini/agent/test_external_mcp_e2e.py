@@ -342,12 +342,20 @@ class ExternalMcpCapAndSupervisorTests(_PipelineBase):
         self.assertEqual(len(act.get("active", [])), 5)
 
     def test_supervisor_and_doctor_llm_tools_present(self):
+        """Every declared supervisor is actually BUILT as a bindable tool.
+
+        ⚠️ DERIVED, never hand-typed (Angela, 2026-08-16). This assertion used
+        to list eight names literally. When the Runtime Provisioner added
+        `external_mcp_runtime_status` and `external_mcp_runtime_install` the
+        code was right and the TEST went red — a false failure on a healthy
+        subsystem, the same rot that pinned "eight supervisor tools" into the
+        prose. Comparing against `_SUPERVISOR_TOOL_NAMES` still catches the
+        real defects (a declared supervisor that is never built, or a built
+        tool nobody declared) and can never go stale on a count again.
+        """
         names = {t.name for t in em._build_supervisor_tools()}
-        self.assertEqual(names, {
-            "external_mcp_status", "external_mcp_reconnect", "external_mcp_doctor",
-            "external_mcp_list_tools", "external_mcp_call",
-            "external_mcp_import", "external_mcp_set_active", "external_mcp_wait",
-        })
+        self.assertEqual(names, set(em._SUPERVISOR_TOOL_NAMES))
+        self.assertGreaterEqual(len(names), 8, "the supervisor surface vanished")
         # the doctor tool returns valid JSON even with an empty catalog
         doctor = next(t for t in em._build_supervisor_tools() if t.name == "external_mcp_doctor")
         payload = json.loads(doctor.func(server_key=None))

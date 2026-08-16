@@ -367,6 +367,111 @@ _AGENT_RUNTIME_IMPORTS = (
     "faster_whisper", "ctranslate2",        # speech-to-text (Whisperer) — local Whisper (GPU auto / CPU fallback)
 )
 
+# ── FROZEN-BUNDLE CARRIAGE PROOF (Angela review, 2026-08-16) ─────────────────
+# _AGENT_RUNTIME_IMPORTS above covers the CARRIED Python (the pool agents).  It
+# says NOTHING about what landed inside the PyInstaller bundle, and these
+# modules run INSIDE the frozen Django app, not in the pool.
+#
+# WHY A PROOF AND NOT JUST A --hidden-import: every one of these is imported
+# fail-open (`try: from . import runtime_provisioner / except ImportError:
+# runtime_provisioner = None`).  A fail-open import cannot report its own
+# absence — the app boots perfectly and simply loses the capability.  So the
+# review question "confirm the frozen build REALLY ships it" cannot be answered
+# by reading build.py at all; it has to be answered by looking in the archive
+# the build just produced.  That is what verify_frozen_agent_modules() does.
+_FROZEN_REQUIRED_AGENT_MODULES = (
+    "agent.runtime_provisioner",   # private node/npm/npx/pnpm/uv/uvx provisioning
+    "agent.external_mcp_defaults",  # ships + seeds `memory` / `sequential-thinking`
+    "agent.external_mcp_manager",  # the universal External-MCP client
+    "agent.agent_verdict",         # the deterministic Exec-Report verdict engine
+    "agent.path_guard",            # <app>/Temp + <app>/Templates policy
+    "agent.self_update",           # About ▸ Check for updates
+    "agent._version",              # SemVer resolver
+)
+
+
+def _read_pyz_module_names(dist_root):
+    """Return the set of module names inside the build's PYZ archive.
+
+    ⚠️ WHERE THE PYZ ACTUALLY LIVES (measured, not assumed): under PyInstaller
+    6 in onedir mode there is NO loose ``_internal/PYZ-00.pyz``.  The PYZ is an
+    entry named ``PYZ.pyz`` INSIDE the executable's CArchive — verified against
+    the shipped C:/Tlamatini/Tlamatini.exe, whose CArchive holds 21 entries and
+    whose PYZ holds 15,061 modules.  A glob for ``PYZ-*.pyz`` finds nothing and
+    would have reported "cannot verify" forever, i.e. a check that never fails
+    and never proves anything — the same silence this whole item is about.
+
+    Returns None only when the archive genuinely cannot be READ (a future
+    PyInstaller moves its private reader API), so the caller can degrade to a
+    warning instead of failing a build for a reason that is not about Tlamatini.
+    """
+    root = Path(dist_root)
+    names = set()
+
+    # 1) The normal path: the PYZ embedded in the frozen executable.
+    try:
+        from PyInstaller.archive.readers import CArchiveReader  # noqa: PLC0415
+        for exe in sorted(root.glob("*.exe")):
+            try:
+                carchive = CArchiveReader(str(exe))
+            except Exception:
+                continue                      # not a PyInstaller exe (installer stub, ...)
+            toc = getattr(carchive, "toc", None) or {}
+            for entry in toc:
+                if not str(entry).upper().startswith("PYZ"):
+                    continue
+                try:
+                    inner = carchive.open_embedded_archive(entry)
+                except Exception:
+                    continue
+                inner_toc = getattr(inner, "toc", None)
+                if inner_toc:
+                    names.update(
+                        inner_toc.keys() if hasattr(inner_toc, "keys") else inner_toc
+                    )
+    except Exception:
+        pass
+
+    # 2) Legacy / onefile layouts that DO write a loose PYZ next to the app.
+    if not names:
+        try:
+            from PyInstaller.archive.readers import ZlibArchiveReader  # noqa: PLC0415
+            for pyz in sorted(root.rglob("PYZ*.pyz")):
+                toc = getattr(ZlibArchiveReader(str(pyz)), "toc", None)
+                if toc:
+                    names.update(toc.keys() if hasattr(toc, "keys") else toc)
+        except Exception:
+            pass
+
+    return names or None
+
+
+def verify_frozen_agent_modules(dist_root):
+    """Assert every module in _FROZEN_REQUIRED_AGENT_MODULES is IN the bundle.
+
+    Aborts the build when a required module is genuinely absent.  Prints a
+    WARNING (and continues) when the archive could not be inspected at all —
+    an unreadable archive is a PyInstaller-version question, not evidence that
+    Tlamatini is broken, and a build that dies on it would be its own bug.
+    """
+    print("\n--- Post-build: verifying frozen agent modules ---")
+    names = _read_pyz_module_names(dist_root)
+    if names is None:
+        print("  WARNING: could not read the PYZ archive - carriage NOT proven "
+              "(the --hidden-import flags still name every module above).")
+        return True
+    missing = [m for m in _FROZEN_REQUIRED_AGENT_MODULES if m not in names]
+    if missing:
+        print("ERROR: the frozen bundle is MISSING required agent modules: "
+              + ", ".join(missing))
+        print("       These are imported FAIL-OPEN, so the app would boot and "
+              "silently lose the capability. Add a --hidden-import for each and "
+              "rebuild. Aborting build.")
+        sys.exit(1)
+    print(f"  OK - all {len(_FROZEN_REQUIRED_AGENT_MODULES)} required agent "
+          f"module(s) present in the PYZ ({len(names)} modules total).")
+    return True
+
 
 def _probe_carried_python(python_exe):
     """Run *python_exe* and return (version_tuple, prefix, is_venv, import_error).
@@ -1117,6 +1222,22 @@ def main():
         # builds would have an empty skill catalog.
         f'--add-data=Tlamatini/agent/skills_pkg{separator}agent/skills_pkg',
         '--hidden-import=agent._version',
+        # ── The agent.* modules NOTHING ELSE NAMES (Angela review, 2026-08-16) ──
+        # Every one of these is reached only through a FAIL-OPEN import:
+        #   external_mcp_manager.py  `try: from . import runtime_provisioner
+        #                             except ImportError: runtime_provisioner = None`
+        #   apps.py / views.py       lazy `from . import runtime_provisioner`
+        # A fail-open import is exactly what makes a missing module INVISIBLE:
+        # drop runtime_provisioner from the bundle and Tlamatini does not crash,
+        # she simply stops provisioning node/npx/uv/uvx forever, and every
+        # `npx -y <pkg>` MCP server dies with [WinError 2] on a machine that
+        # was supposed to self-heal. Naming them here means the graph can never
+        # quietly decide they are unreachable; `verify_frozen_agent_modules()`
+        # below then PROVES they landed in the PYZ.
+        '--hidden-import=agent.runtime_provisioner',
+        '--hidden-import=agent.external_mcp_defaults',
+        '--hidden-import=agent.external_mcp_manager',
+        '--hidden-import=agent.agent_verdict',
         '--hidden-import=daphne.server', '--hidden-import=channels',
         '--hidden-import=whitenoise.middleware', '--hidden-import=whitenoise.storage',
         '--hidden-import=django_bootstrap5',
@@ -1220,6 +1341,9 @@ def main():
     # ══════════════════════════════════════════════════════════════════
     # Post-build steps (only reached on successful PyInstaller build)
     # ══════════════════════════════════════════════════════════════════
+
+    # ── 5b) PROVE the fail-open agent modules really landed in the bundle ──
+    verify_frozen_agent_modules(Path("dist") / "manage")
 
     # ── 6) Copy application files & create directories ───────────────
     print("\n--- Post-build: copying files and directories ---")

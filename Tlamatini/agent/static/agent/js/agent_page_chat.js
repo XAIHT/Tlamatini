@@ -1501,6 +1501,13 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
         set('project_dir', pairs.project_dir);
         set('main_file', pairs.main_file);
         set('input_text', pairs.input_text);
+        // The BYTE-EXACT channel. LaTeXer declares input_text / content /
+        // find_text / replace_text as verbatim_fields, and each has a `_b64`
+        // twin that WINS over its plain counterpart. Omitting them here meant a
+        // generated .flw silently dropped the only copy of the source that had
+        // survived transport intact — precisely the `\\` row-break loss the
+        // verbatim channel exists to prevent.
+        set('input_text_b64', pairs.input_text_b64);
         set('documentclass', pairs.documentclass);
         set('class_options', pairs.class_options);
         set('title', pairs.title);
@@ -1509,11 +1516,14 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
         set('packages', pairs.packages);
         set('geometry', pairs.geometry);
         set('content', pairs.content);
+        set('content_b64', pairs.content_b64);
         set('template', pairs.template);
         set('document_language', pairs.document_language);
         set('edit_mode', pairs.edit_mode);
         set('find_text', pairs.find_text);
+        set('find_text_b64', pairs.find_text_b64);
         set('replace_text', pairs.replace_text);
+        set('replace_text_b64', pairs.replace_text_b64);
         set('engine', pairs.engine);
         set('use_latexmk', pairs.use_latexmk);
         set('bibliography', pairs.bibliography);

@@ -120,6 +120,109 @@ class PolicyLayerContractTests(SimpleTestCase):
         self.assertIn("aCustomOverlayIsVisible", self.src)
 
 
+#: Modules that have been fully migrated onto the THEMED popups. A native
+#: alert/confirm/prompt in one of these is a regression, not a style opinion.
+#: ADD YOUR NEW DIALOG MODULE HERE once you have migrated it.
+_THEMED_DIALOG_MODULES = ("contacts_dialog.js", "external_mcps_dialog.js")
+
+#: A bare call, and the `window.`-qualified form, with comments already gone.
+_NATIVE_POPUP_RES = (
+    re.compile(r"(?<![.\w$])(alert|confirm|prompt)\s*\("),
+    re.compile(r"window\s*\.\s*(alert|confirm|prompt)\s*\("),
+)
+
+
+def _strip_comments(js: str) -> str:
+    """Drop /* block */ and // line comments.
+
+    Same lesson as `test_dialog_theme._rule_body`: parse the code, not the
+    essay. Every migrated call site keeps a comment SAYING which native popup
+    it replaced ("the old synchronous confirm() was the last native popup this
+    dialog raised"), so a naive scan flags the sentence that documents the fix.
+    """
+    js = re.sub(r"/\*.*?\*/", "", js, flags=re.S)
+    return re.sub(r"(?m)//.*$", "", js)
+
+
+class NoNativePopupSurvivesInThemedDialogsTests(SimpleTestCase):
+    """The last nine native popups (Angela's review, 2026-08-16).
+
+    contacts_dialog.js (2) and external_mcps_dialog.js (7) still raised
+    `alert()` / `confirm()` long after every other dialog wore the theme - the
+    two NEWEST dialogs were the last two showing a grey Windows/Chrome strip
+    with the page URL in it, in the middle of a dark themed application. No CSS
+    can reach those; they are not even the same rendering engine. They also
+    BLOCK the page, which is why they cannot be photographed by the headed
+    Playwright runs that prove everything else.
+    """
+
+    def test_no_native_popup_in_a_themed_dialog_module(self):
+        offenders = []
+        for name in _THEMED_DIALOG_MODULES:
+            code = _strip_comments(_read(os.path.join(_JS, name)))
+            for rx in _NATIVE_POPUP_RES:
+                for m in rx.finditer(code):
+                    line = code[:m.start()].count("\n") + 1
+                    offenders.append(f"{name}:~{line} - {m.group(0)!r}")
+        self.assertEqual(
+            offenders, [],
+            "A native browser popup came back in a themed dialog. Use "
+            "tlmAlert(...) / tlmConfirm(...) from dialog_policy.js instead - "
+            "they render the app's own modal ABOVE the native dialogs "
+            "(z-index 100001) and obey the dismissal policy:\n  "
+            + "\n  ".join(offenders))
+
+    def test_the_themed_popup_helpers_exist_and_are_exported(self):
+        src = _read(os.path.join(_JS, "dialog_policy.js"))
+        for needed in ("function tlmAlert", "function tlmConfirm",
+                       "window.tlmAlert", "window.tlmConfirm"):
+            self.assertIn(needed, src,
+                          f"dialog_policy.js must define/export {needed} - the "
+                          "themed dialogs call it bare.")
+
+    def test_the_themed_popup_fails_open_to_the_native_one(self):
+        """A lost warning is worse than an ugly one.
+
+        If the host cannot be built (no document.body yet, a DOM exception),
+        the native popup MUST still fire. acp-globals.js made the same call for
+        the canvas; both surfaces keep it.
+        """
+        src = _read(os.path.join(_JS, "dialog_policy.js"))
+        self.assertIn("window.alert(text)", src,
+                      "tlmAlert must fall back to the native alert.")
+        self.assertIn("window.confirm(joined)", src,
+                      "tlmConfirm must fall back to the native confirm.")
+
+    def test_the_popup_host_is_escape_swallowed_like_every_other_overlay(self):
+        src = _read(os.path.join(_JS, "dialog_policy.js"))
+        overlays = src.split("CUSTOM_OVERLAYS", 1)[1].split("]", 1)[0]
+        self.assertIn("#tlm-popup-host", overlays,
+                      "The themed popup host must be listed in CUSTOM_OVERLAYS "
+                      "or Escape would dismiss it while every other overlay "
+                      "ignores Escape.")
+
+    def test_the_popup_outranks_the_native_modals_it_is_raised_over(self):
+        """z-index is load-bearing here, not decoration.
+
+        These popups are raised BY native modals at z-index 20000. A confirm
+        rendered underneath the dialog that asked for it is an invisible modal,
+        i.e. a hang - which is also why they are not jQuery-UI dialogs
+        (`.ui-front` is ~100).
+        """
+        css = _read(os.path.join(_HERE, "static", "agent", "css",
+                                 "dialog_theme.css"))
+        block = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
+        self.assertIn(".tlmpop-overlay", block,
+                      "dialog_theme.css must own the themed popup's look.")
+        body = block.split(".tlmpop-overlay", 1)[1].split("}", 1)[0]
+        found = re.search(r"z-index\s*:\s*(\d+)", body)
+        self.assertIsNotNone(found, "The popup overlay must set a z-index.")
+        self.assertGreater(
+            int(found.group(1)), 20000,
+            "The themed popup must sit ABOVE the native modals (.emx-dialog / "
+            ".ctb-dialog are at 20000) that raise it.")
+
+
 class SealedUpdateDialogTests(SimpleTestCase):
     """The updater must be uninterruptible while it is running - and NOT
     afterwards, or a failed update leaves an unclosable dialog."""

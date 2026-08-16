@@ -43,6 +43,13 @@ export default [
                 DOMPurify: "readonly",
                 Sortable: "readonly",
 
+                // Cross-file globals: dialog_policy.js — the THEMED
+                // replacements for window.alert / window.confirm. Declared on
+                // `window` inside that IIFE, so per-file ESLint cannot see
+                // them; every dialog module calls them bare.
+                tlmAlert: "readonly",
+                tlmConfirm: "readonly",
+
                 // Cross-file globals: agent_page_state.js
                 sendChatSocketMessage: "readonly",
                 isChatSocketOpen: "readonly",

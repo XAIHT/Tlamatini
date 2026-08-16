@@ -35,6 +35,32 @@ function _emxCsrf() {
     return m ? decodeURIComponent(m[1]) : '';
 }
 
+/**
+ * POST a dropped `mcpServers` map to the import endpoint and report the
+ * outcome through the THEMED popup. Split out of the drop handler when the
+ * native confirm() became a Promise (Angela's review, 2026-08-16).
+ */
+function _emxImportServers(map) {
+    fetch('/agent/external_mcps/import/', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+            'X-CSRFToken': _emxCsrf(),
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ mcpServers: map })
+    }).then(r => r.json()).then(d => {
+        if (d.ok) {
+            const added = (d.added || []).length;
+            const updated = (d.updated || []).length;
+            tlmAlert('Catalog updated — ' + added + ' added, ' + updated +
+                ' updated.\nOpen External ▸ MCPs to activate them.', 'Import complete');
+        } else {
+            tlmAlert('Import failed: ' + (d.error || 'unknown error'), 'Import failed');
+        }
+    }).catch(err => tlmAlert('Import failed: ' + err, 'Import failed'));
+}
+
 function _emxDestroyLegacyJqueryDialog(dlg) {
     if (!window.jQuery || !window.jQuery.fn || !window.jQuery.fn.dialog) return;
     const $dlg = window.jQuery(dlg);
@@ -358,11 +384,18 @@ function OpenExternalMcpsDialog(event) { // eslint-disable-line no-unused-vars
         const s = servers.find(x => x.key === key);
         if (!s) return;
         const label = s.display || key;
-        if (!confirm('Remove "' + label + '" from the catalog?\n\n' +
+        // Themed confirm (dialog_policy.js) — the native one rendered a grey
+        // OS strip on top of this very dialog. Promise-based, so the delete
+        // request moved into the callback.
+        tlmConfirm('Remove "' + label + '" from the catalog?',
             'This deletes the saved server config. You can add it back any time by ' +
-            'dropping its .json onto the page again.')) {
-            return;
-        }
+            'dropping its .json onto the page again.', 'Remove MCP server').then((ok) => {
+            if (!ok) return;
+            _emxRemoveServer(key, label);
+        });
+    }
+
+    function _emxRemoveServer(key, label) {
         fetch('/agent/external_mcps/remove/', {
             method: 'POST',
             credentials: 'same-origin',
@@ -570,7 +603,7 @@ function OpenExternalMcpsDialog(event) { // eslint-disable-line no-unused-vars
                     const text = String(reader.result || '').replace(/^\uFEFF/, '').trim();
                     parsed = JSON.parse(text);
                 } catch (err) {
-                    alert('Not valid JSON: ' + err);
+                    tlmAlert('Not valid JSON: ' + err, 'Import failed');
                     return;
                 }
                 let map = (parsed && parsed.mcpServers) ? parsed.mcpServers : null;
@@ -593,31 +626,18 @@ function OpenExternalMcpsDialog(event) { // eslint-disable-line no-unused-vars
                 }
                 const names = (map && typeof map === 'object') ? Object.keys(map) : [];
                 if (!names.length) {
-                    alert('No mcpServers found in ' + file.name);
+                    tlmAlert('No mcpServers found in ' + file.name, 'Nothing to import');
                     return;
                 }
-                if (!confirm('Add ' + names.length + ' MCP server(s) to the catalog?\n\n' +
-                    names.join(', '))) {
-                    return;
-                }
-                fetch('/agent/external_mcps/import/', {
-                    method: 'POST',
-                    credentials: 'same-origin',
-                    headers: {
-                        'X-CSRFToken': _emxCsrf(),
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ mcpServers: map })
-                }).then(r => r.json()).then(d => {
-                    if (d.ok) {
-                        const added = (d.added || []).length;
-                        const updated = (d.updated || []).length;
-                        alert('Catalog updated — ' + added + ' added, ' + updated +
-                            ' updated.\nOpen External ▸ MCPs to activate them.');
-                    } else {
-                        alert('Import failed: ' + (d.error || 'unknown error'));
-                    }
-                }).catch(err => alert('Import failed: ' + err));
+                // Themed confirm + result notices (dialog_policy.js). The drop
+                // handler is document-level, so it fires even with the dialog
+                // CLOSED — which is why these stay real popups instead of the
+                // in-dialog `flash()` strip the user might not be looking at.
+                tlmConfirm('Add ' + names.length + ' MCP server(s) to the catalog?',
+                    names.join(', '), 'Import MCP servers').then((ok) => {
+                    if (!ok) return;
+                    _emxImportServers(map);
+                });
             };
             reader.readAsText(file);
         });

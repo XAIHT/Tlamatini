@@ -48,6 +48,93 @@ healthy operation incorrectly or ship an incomplete update:
    supervisor-name or prompt-rule change cannot make the tests themselves
    stale.
 
+5. **`runtime_provisioner.py` is NAMED in `build.py`, and its carriage is
+   PROVEN.** It previously had **no mention in `build.py` at all**, while its
+   sibling `external_mcp_defaults.py` was explicitly loaded there. It *did*
+   ship — PyInstaller's graph followed `external_mcp_manager.py`'s
+   `from . import runtime_provisioner` — but that import lives inside a
+   `try/except ImportError` that sets the module to `None`, so carriage rested
+   entirely on graph analysis **and the failure mode was SILENT**: drop the
+   module and Tlamatini boots perfectly, then simply never provisions
+   node/npm/npx/pnpm/uv/uvx again, leaving every `npx -y <pkg>` server dead
+   with `[WinError 2]` on exactly the fresh machine the provisioner exists to
+   rescue. Two changes: `--hidden-import` now names
+   `agent.runtime_provisioner`, `agent.external_mcp_defaults`,
+   `agent.external_mcp_manager` and `agent.agent_verdict`; and
+   **`verify_frozen_agent_modules()`** runs on the successful-build path,
+   opening the archive the build just produced and ABORTING if any of the seven
+   `_FROZEN_REQUIRED_AGENT_MODULES` is absent. ⚠️ **The PYZ is NOT a loose
+   `_internal/PYZ-00.pyz`** under PyInstaller 6 onedir — it is an entry named
+   `PYZ.pyz` inside the executable's CArchive, so the reader uses
+   `CArchiveReader` on the `.exe`; a glob for `PYZ-*.pyz` finds nothing and
+   would have reported "cannot verify" forever, i.e. a check that never fails
+   and never proves anything. Measured against the shipped install: CArchive =
+   21 entries, PYZ = 15,075 modules, all 7 required modules PRESENT (confirmed
+   independently by a raw byte scan of `Tlamatini.exe`). Guarded by
+   `agent/test_runtime_provisioner.py::WiringContractTests`.
+6. **The last nine native browser pop-ups are gone.** `contacts_dialog.js` (2)
+   and `external_mcps_dialog.js` (7) still called `alert()` / `confirm()` long
+   after every other dialog wore the theme — the two NEWEST dialogs were the
+   last two raising a grey Windows/Chrome strip with the page URL in it, in the
+   middle of a dark themed app. `dialog_policy.js` now exports **`tlmAlert`** /
+   **`tlmConfirm`**, the chat-page counterparts of the canvas's
+   `acpAlert`/`acpConfirm` (2026-08-12), styled from the existing
+   `dialog_theme.css` tokens (`.tlmpop-*`). ⚠️ **They are NOT jQuery-UI
+   dialogs, and the z-index is load-bearing**: these popups are raised BY
+   native modals at `z-index: 20000` (`.emx-dialog` / `.ctb-dialog`), while
+   `.ui-front` sits at ~100 — a confirm rendered *underneath* the dialog that
+   asked for it is an invisible modal, i.e. a hang. The overlay is at
+   **100001**, above every layer the app defines. Both are Promise-based, so
+   each call site moved its action into the callback; `removeContact` also
+   re-resolves the contact by identity because the list may re-render while the
+   popup is open. Policy-compliant by construction (host listed in
+   `CUSTOM_OVERLAYS`, outside click swallowed, X === Cancel === `false`) and
+   **fail-open** to the native popup — a lost warning is worse than an ugly
+   one. Guarded by
+   `agent/test_dialog_dismissal_policy.py::NoNativePopupSurvivesInThemedDialogsTests`;
+   add a newly-migrated module to `_THEMED_DIALOG_MODULES` there.
+
+7. **Five RED tests that were not bugs in the code they guarded.** A full
+   `manage.py test agent` run was `4350 tests, FAILED (failures=5)`, and every
+   one was the TEST being wrong about its own subject. Recorded because each is
+   a distinct, recurring failure MODE:
+   * **A hand-typed count rots.** `test_external_mcp_e2e` listed the eight
+     supervisor tool names literally; the Runtime Provisioner added
+     `external_mcp_runtime_status` / `_runtime_install` and the healthy code
+     went red. Now DERIVED from `em._SUPERVISOR_TOOL_NAMES` — it still catches
+     a declared-but-unbuilt supervisor and can never go stale on a count. Same
+     rot that pinned "eight supervisor tools" into the prose.
+   * **A pinned SENTENCE rots when the message improves.** `test_pdfer_agent`
+     required the words `'not writable'`; the OneDrive fix had rewritten the
+     blocker to *"output_dir cannot accept a new file (…)"* — strictly better,
+     because "the directory exists" and `os.access` both LIE and only a real
+     create proves anything. It now asserts the blocker NAMES `output_dir` (the
+     contract: the user must know which knob to turn), not the prose.
+   * **Testing the wrong ARTIFACT.** `test_zavuerer_agent` asks "is a REAL
+     credential COMMITTED?" but read the WORKING TREE — where
+     `regen_secrets.py --mode keyed` puts Angela's real key ON PURPOSE. It cried
+     wolf on the one machine where the key belongs. Now reads
+     `git show HEAD:<path>` (fail-open to the working tree with no git), so it
+     guards the push, which is the only place a leak can happen.
+   * **A fixed sleep is a race, not a wait.** `test_watchdog_foreground_exemption`
+     slept 1.5 s then asserted the watchdog spares a VISIBLE console. Under the
+     full suite (with Ollama and a headed Chrome running) the window sometimes
+     was not up yet, so EnumWindows saw nothing, the process was CORRECTLY
+     judged headless, and it was reaped — a red about scheduling, not about the
+     watchdog (proved by 28/28 OK twice in isolation). Now `_await_visible()`
+     polls until the precondition actually holds and fails with a message
+     saying so if it never does.
+   * **One REAL defect.** LaTeXer's `_mapToolArgsToAgentConfig` branch never
+     mapped `input_text_b64` / `content_b64` / `find_text_b64` /
+     `replace_text_b64`, so a generated `.flw` silently dropped the only copy of
+     the source that had survived transport intact — exactly the `\\`
+     row-break loss the verbatim channel exists to prevent. Now mapped.
+
+   **The lesson to carry:** when a test goes red, ask FIRST whether it is still
+   testing what it claims to. Derive counts, assert contracts instead of
+   sentences, test the artifact the risk actually lives in, and WAIT for a
+   precondition rather than sleeping and hoping.
+
 These behaviors build on, rather than replace, the v1.48.14 private External-MCP
 runtime/default-seeding and public/private catalog boundary below.
 

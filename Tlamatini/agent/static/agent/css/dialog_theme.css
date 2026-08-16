@@ -496,3 +496,149 @@
         min-width: 0;
     }
 }
+
+/* ------------------------------------------------------------
+ * 9 · tlmAlert / tlmConfirm — the themed native popups
+ * ------------------------------------------------------------
+ * Angela's review, 2026-08-16: nine `alert()` / `confirm()` calls
+ * still survived in contacts_dialog.js and external_mcps_dialog.js
+ * — the two NEWEST dialogs were the last two raising a grey
+ * Windows/Chrome strip with the page URL in it. `dialog_policy.js`
+ * now renders them here instead.
+ *
+ * ⚠️ z-index 100001 is LOAD-BEARING, not a magic number. These
+ * popups are raised BY dialogs that are themselves native modals
+ * at `z-index: 20000` (`.emx-dialog`, `.ctb-dialog`), over a drop
+ * hint at 99999 and an avatar bubble at 100000. A confirm that
+ * renders UNDER the dialog that asked for it is an invisible
+ * modal — i.e. a hang. It must out-rank every layer the app
+ * defines. This is also exactly why these are NOT jQuery-UI
+ * dialogs: `.ui-front` sits at ~100 and would lose to all of them.
+ *
+ * Every colour comes from the tokens at the top of this file —
+ * no new hexes, so the popup can never drift from the dialogs.
+ * ------------------------------------------------------------ */
+.tlmpop-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100001;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: var(--tlm-dlg-overlay);
+}
+
+.tlmpop-card {
+    width: min(440px, 100%);
+    max-height: calc(100vh - 48px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--tlm-dlg-surface);
+    border: var(--tlm-dlg-border);
+    border-radius: var(--tlm-dlg-radius);
+    box-shadow: var(--tlm-dlg-shadow);
+    font-family: var(--tlm-dlg-font);
+}
+
+.tlmpop-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 14px;
+    background: var(--tlm-dlg-chrome);
+    border-bottom: var(--tlm-dlg-hairline);
+}
+
+.tlmpop-title {
+    color: var(--tlm-dlg-title);
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.tlmpop-x {
+    background: none;
+    border: none;
+    color: var(--tlm-dlg-muted);
+    font-size: 1.25rem;
+    line-height: 1;
+    padding: 2px 6px;
+    border-radius: var(--tlm-dlg-radius-sm);
+    cursor: pointer;
+}
+
+.tlmpop-x:hover {
+    color: var(--tlm-dlg-title);
+    background: var(--tlm-dlg-btn-secondary);
+}
+
+.tlmpop-body {
+    padding: 16px 18px;
+    overflow-y: auto;
+}
+
+.tlmpop-msg {
+    margin: 0 0 8px;
+    color: var(--tlm-dlg-text);
+    font-size: 0.95rem;
+    font-weight: 600;
+    /* Messages carry file names, server keys and raw parser errors —
+       let a long unbroken token wrap instead of widening the card. */
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+}
+
+.tlmpop-sub {
+    margin: 0;
+    color: var(--tlm-dlg-body);
+    font-size: 0.88rem;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+}
+
+.tlmpop-msg:last-child,
+.tlmpop-sub:last-child {
+    margin-bottom: 0;
+}
+
+.tlmpop-foot {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 10px 14px;
+    background: var(--tlm-dlg-chrome);
+    border-top: var(--tlm-dlg-hairline);
+}
+
+.tlmpop-btn {
+    padding: 6px 16px;
+    border: none;
+    border-radius: var(--tlm-dlg-radius-sm);
+    background: var(--tlm-dlg-btn-secondary);
+    color: var(--tlm-dlg-text);
+    font-family: var(--tlm-dlg-font);
+    font-size: 0.88rem;
+    cursor: pointer;
+}
+
+.tlmpop-btn:hover {
+    background: var(--tlm-dlg-btn-secondary-hover);
+}
+
+.tlmpop-btn-primary {
+    background: var(--tlm-dlg-accent);
+    color: #ffffff;
+    font-weight: 700;
+}
+
+.tlmpop-btn-primary:hover {
+    background: var(--tlm-dlg-accent-hover);
+}
+
+.tlmpop-btn:focus-visible {
+    outline: none;
+    box-shadow: var(--tlm-dlg-accent-ring);
+}
