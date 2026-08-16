@@ -141,9 +141,18 @@ class ReleaseNeverShipsTheDevCatalogTests(SimpleTestCase):
         self.assertIn("external_mcps_doc", self.build,
                       "the release must still SHIP a valid empty catalog, "
                       "so a fresh install has a file to write into.")
-        block = self.build.split("external_mcps_doc = {", 1)[1].split("}", 1)[0]
-        self.assertIn('"mcpServers": {}', block)
-        self.assertIn('"active": []', block)
+        # ⚠️ Read a fixed WINDOW, never `.split("}", 1)`. The original cut the
+        # text at the first `}` — which is the closing brace of the very
+        # `{}` being looked for, so `"mcpServers": {}` could never survive
+        # into the slice. The assertion was unsatisfiable by construction and
+        # failed against correct code in BOTH editions.
+        start = self.build.index("external_mcps_doc = {")
+        block = self.build[start:start + 600]
+        self.assertIn('"mcpServers": {}', block,
+                      "the shipped catalog must start EMPTY - a release that "
+                      "carries servers is carrying the build machine's.")
+        self.assertIn('"active": []', block,
+                      "nothing may be pre-activated in a fresh install.")
 
     def test_no_opt_in_to_bundling_a_real_catalog(self):
         """Unlike contacts, there is no safe version of "ship the real one".
