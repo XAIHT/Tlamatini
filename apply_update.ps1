@@ -31,12 +31,18 @@ try { $Host.UI.RawUI.WindowTitle = "Tlamatini Updater" } catch {}
 # Top-level names in the install root that must NEVER be deleted or
 # overwritten. 'agents' is intentionally NOT here: it is renamed to
 # 'agents_backup' (step 3) and then replaced by the new version (step 5).
+# Uninstaller.exe is built separately and is NOT carried inside pkg.zip, so the
+# staged build never contains it. Without preserving it, every self-update would
+# delete the uninstaller already on disk. Keep the existing one.
+#
+# The comment sits ABOVE the array on purpose. agent/test_preserved_user_state.py
+# parses this block with a quoted-string regex, so an apostrophe INSIDE it - the
+# old comment read "the user's uninstaller" - opened a phantom string that ate
+# the 'Uninstaller.exe' entry, and the guard reported it missing from a file that
+# was perfectly correct. Keep apostrophes out of this block.
 $Preserve = @(
     'config.json', 'external_mcps.json', 'contacts.json', 'DB', 'application', 'applications', 'content_generated',
     'Temp', 'context_files', 'doc_generated', 'documentation', 'Templates',
-    # Uninstaller.exe is built separately and is NOT carried inside pkg.zip,
-    # so the staged build never contains it. Without preserving it, every
-    # self-update would delete the user's uninstaller. Keep the existing one.
     'Uninstaller.exe'
 )
 
