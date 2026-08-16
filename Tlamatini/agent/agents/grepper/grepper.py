@@ -298,6 +298,66 @@ def _iter_files(path, glob_pat):
                 yield os.path.join(root, name)
 
 
+# --- Text decoding -----------------------------------------------------------
+# BOM table, LONGEST PREFIX FIRST: the UTF-32-LE BOM (ff fe 00 00) STARTS WITH
+# the UTF-16-LE BOM (ff fe), so testing utf-16 first would mis-decode every
+# UTF-32-LE file. Same ordering contract as agent/rag/binary_guard.py.
+_BOM_CODECS = (
+    (b"\x00\x00\xfe\xff", "utf-32"),
+    (b"\xff\xfe\x00\x00", "utf-32"),
+    (b"\xef\xbb\xbf", "utf-8-sig"),
+    (b"\xfe\xff", "utf-16"),
+    (b"\xff\xfe", "utf-16"),
+)
+
+_NUL_SAMPLE_BYTES = 8192
+
+
+def _read_text_lines(fpath):
+    """Return the file's lines, or None when the file is genuinely BINARY.
+
+    THE BUG (Angela, 2026-08-16): this used to be a bare
+    ``open(fpath, "r", encoding="utf-8", errors="strict")`` whose
+    ``UnicodeDecodeError`` was swallowed by ``continue  # skip binary``. So EVERY
+    file that was not valid UTF-8 got silently dropped from the search, and
+    ``files_searched`` stayed 0 - Grepper then reported a confident
+    ``no_matches`` over a file it never actually opened. A search tool that
+    answers "nothing there" about a file it refused to read is WORSE than one
+    that errors. Two real classes of TEXT disappeared that way:
+      * UTF-16 text - what Windows PowerShell writes by default, so every
+        captured test/build log was invisible; and
+      * legacy cp1252 / latin-1 files - i.e. Angela's accented Spanish sources.
+
+    Order below is deliberate and must NOT be swapped: the BOM test comes BEFORE
+    the NUL test, because UTF-16/UTF-32 text is legitimately full of 0x00 bytes
+    and would otherwise be condemned as binary. Decoding never fails - after
+    UTF-8 it falls back to cp1252 then latin-1 (which maps every byte), because
+    losing a real file is far worse than a few mojibake characters on one line.
+    """
+    try:
+        with open(fpath, "rb") as fh:
+            raw = fh.read()
+    except (OSError, PermissionError):
+        return None
+
+    # 1. A BOM proves it is text - decided BEFORE any NUL test.
+    for bom, codec in _BOM_CODECS:
+        if raw.startswith(bom):
+            return raw.decode(codec, errors="replace").splitlines(keepends=True)
+
+    # 2. No BOM and a NUL byte in the head => genuinely binary, skip it.
+    if b"\x00" in raw[:_NUL_SAMPLE_BYTES]:
+        return None
+
+    # 3. Text. UTF-8 first, then the legacy Windows codecs. latin-1 cannot fail.
+    for codec in ("utf-8", "cp1252", "latin-1"):
+        try:
+            return raw.decode(codec).splitlines(keepends=True)
+        except (UnicodeDecodeError, LookupError):
+            continue
+    return raw.decode("latin-1", errors="replace").splitlines(keepends=True)
+
+
 def emit_grepper_section(pattern, path, glob_pat, matches, files_searched, truncated, status, body):
     logging.info(
         "INI_SECTION_GREPPER<<<\n"
@@ -359,11 +419,9 @@ def main():
                     content_lines = []
                     file_match_counts = {}
                     for fpath in _iter_files(path, glob_pat):
-                        try:
-                            with open(fpath, "r", encoding="utf-8", errors="strict") as f:
-                                lines = f.readlines()
-                        except (UnicodeDecodeError, OSError, PermissionError):
-                            continue  # skip binary / unreadable
+                        lines = _read_text_lines(fpath)
+                        if lines is None:
+                            continue  # genuinely binary / unreadable
                         files_searched += 1
                         # max_results caps the OUTPUT UNIT of the requested mode:
                         # content -> lines, files/count -> FILES. It used to cap

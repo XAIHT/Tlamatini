@@ -310,13 +310,37 @@ class StaticContractTests(unittest.TestCase):
     def test_prompt_pmt_has_temp_rule_and_no_c_temp_example(self):
         src = _read(_AGENT_DIR, "prompt.pmt")
         self.assertIn("15) Temporary files location rule", src)
-        # Templates rule inserted at 16; the Talker female-voice rule at 17; the
-        # self-healing narration rule (2026-07-06) at 18 — which pushed Conflict
-        # resolution to 19. Keep this list in step with prompt.pmt's numbering.
+        # Rule numbering DRIFTS as rules are added: Templates at 16, Talker at 17,
+        # self-healing at 18, then the diagnostic-finding rule at 18b and the
+        # External MCP runtime rule at 19 (2026-08-15) — which pushed Conflict
+        # resolution from 19 to 20 and turned this test red.
+        #
+        # A hand-typed trailing number inside a test is a time bomb: it fails for
+        # the WRONG reason and sends the reader to the wrong file. (Angela,
+        # 2026-08-16 — the same drift that pinned "eight supervisor tools" in
+        # test_external_mcp_universal.py after the count became ten.)
+        #
+        # So: pin the NAMED rules, then DERIVE the tail and assert the invariant —
+        # Conflict resolution is always LAST, because it is the tie-breaker for
+        # every rule above it.
         self.assertIn("16) Template / project directory location rule", src)
         self.assertIn("17) Talker voice rule", src)
         self.assertIn("18) Self-healing recovery narration rule", src)
-        self.assertIn("19) Conflict resolution rule", src)
+        self.assertIn("18b) Diagnostic-finding rule", src)
+        self.assertIn("19) External MCP runtime and shipped-default rule", src)
+        headings = re.findall(r"^(\d+)([a-z]?)\)\s*(.+)$", src, re.MULTILINE)
+        self.assertTrue(headings, "no numbered rules found in prompt.pmt")
+        numbers = [int(number) for number, _suffix, _title in headings]
+        self.assertEqual(numbers[0], 1, "prompt.pmt rules must start at 1)")
+        self.assertEqual(
+            numbers, sorted(numbers), f"prompt.pmt rule numbers are out of order: {numbers}"
+        )
+        _last_number, _last_suffix, last_title = headings[-1]
+        self.assertTrue(
+            last_title.startswith("Conflict resolution rule"),
+            "Conflict resolution must stay the LAST rule in prompt.pmt; it now ends "
+            f"with {numbers[-1]}) {last_title!r}",
+        )
         self.assertIn("{temp_directory}", src)
         self.assertIn("{templates_directory}", src)
         # The old harmful example that taught the LLM to use C:\\Temp is gone.

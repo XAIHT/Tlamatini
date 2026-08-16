@@ -218,9 +218,9 @@ STATIC_EXPECTATIONS: list[tuple[str, tuple[str, ...], tuple[str, ...]]] = [
     ("agent/migrations/0143_add_mcp_doctor_demo_prompt.py", ("(81, MCP_DOCTOR_DEMO)", "chat_agent_mcp_doctor", "Multi-Turn"), ()),
     ("agent/agents/flowcreator/agentic_skill.md", ("MCP Doctor", "mcp_doctor_<n>", "External MCP"), ()),
     ("agent/agents/flowhypervisor/monitoring-prompt.pmt", ("MCP Doctor", "INI_SECTION_MCP_DOCTOR", "MCP DOCTOR AGENT STARTED"), ()),
-    ("agents_descriptions.md", ("MCP Doctor", "INI_SECTION_MCP_DOCTOR", "READY-gated"), ()),
-    ("docs/external_mcp_bulletproof_architecture.md", ("eight supervisor tools", "external_mcp_wait", "`streamable-http`: implemented live connector", "`websocket`: implemented live connector"), ("`streamable-http`: detected and diagnosed; adapter still future", "`websocket`: detected and diagnosed; adapter still future")),
-    ("Tlamatini/agent/Tlamatini.md", ("external_mcps.json", "eight always-on tools", "external_mcp_wait"), ("five always-on tools",)),
+    ("agents_descriptions.md", ("MCP Doctor", "INI_SECTION_MCP_DOCTOR", "external_mcps.json"), ()),
+    ("docs/external_mcp_bulletproof_architecture.md", ("ten supervisor tools", "external_mcp_wait", "external_mcp_runtime_status", "external_mcp_runtime_install", "`streamable-http`: implemented live connector", "`websocket`: implemented live connector"), ("eight supervisor tools", "`streamable-http`: detected and diagnosed; adapter still future", "`websocket`: detected and diagnosed; adapter still future")),
+    ("Tlamatini/agent/Tlamatini.md", ("external_mcps.json", "ten always-on tools", "external_mcp_wait", "external_mcp_runtime_status", "external_mcp_runtime_install"), ("five always-on tools", "eight always-on tools")),
 ]
 
 
@@ -520,3 +520,83 @@ class ExternalMcpToolResultFormatTests(SimpleTestCase):
 
     def test_non_dict_result_is_stringified_safely(self):
         self.assertEqual(em._format_mcp_tool_result("raw string"), "raw string")
+
+
+class ExternalMcpSupervisorCountDriftTests(SimpleTestCase):
+    """The supervisor-tool COUNT must be DERIVED from the code, never hand-typed.
+
+    THE BUG (Angela, 2026-08-16): ``STATIC_EXPECTATIONS`` hard-pinned the prose
+    "eight supervisor tools" / "eight always-on tools". When the Runtime
+    Provisioner added ``external_mcp_runtime_status`` + ``external_mcp_runtime_install``
+    the docs were correctly updated to "ten" and the English tree began FAILING ITS
+    OWN TEST with 3 failures - the docs were right and the test was three releases
+    stale. A hand-typed number inside a test is a time bomb: it goes red for the
+    wrong reason and points the reader at the wrong file.
+
+    These tests defuse it by deriving the expected word from
+    ``_SUPERVISOR_TOOL_NAMES`` itself, so an 11th supervisor tool fails LOUDLY and
+    names the exact document to update.
+    """
+
+    _NUMBER_WORDS = {
+        5: "five",
+        6: "six",
+        7: "seven",
+        8: "eight",
+        9: "nine",
+        10: "ten",
+        11: "eleven",
+        12: "twelve",
+    }
+
+    # (repo-relative doc, the sentence template that carries the count)
+    _COUNT_DOCS = (
+        ("docs/external_mcp_bulletproof_architecture.md", "{word} supervisor tools"),
+        ("Tlamatini/agent/Tlamatini.md", "{word} always-on tools"),
+    )
+
+    def _expected_word(self) -> str:
+        count = len(em._SUPERVISOR_TOOL_NAMES)
+        word = self._NUMBER_WORDS.get(count)
+        self.assertIsNotNone(
+            word,
+            f"There are now {count} supervisor tools - add {count} to _NUMBER_WORDS "
+            f"and spell it in every doc listed in _COUNT_DOCS.",
+        )
+        return str(word)
+
+    def test_docs_spell_the_live_supervisor_tool_count(self):
+        word = self._expected_word()
+        for doc, template in self._COUNT_DOCS:
+            phrase = template.format(word=word)
+            self.assertIn(
+                phrase,
+                _read_repo_text(doc),
+                f"{doc} must say {phrase!r} - external_mcp_manager._SUPERVISOR_TOOL_NAMES "
+                f"now holds {len(em._SUPERVISOR_TOOL_NAMES)} tools.",
+            )
+
+    def test_no_doc_still_spells_a_stale_supervisor_tool_count(self):
+        word = self._expected_word()
+        for doc, template in self._COUNT_DOCS:
+            text = _read_repo_text(doc)
+            for stale_word in self._NUMBER_WORDS.values():
+                if stale_word == word:
+                    continue
+                phrase = template.format(word=stale_word)
+                self.assertNotIn(
+                    phrase,
+                    text,
+                    f"{doc} still says {phrase!r} but there are "
+                    f"{len(em._SUPERVISOR_TOOL_NAMES)} supervisor tools.",
+                )
+
+    def test_every_supervisor_tool_is_named_in_both_docs(self):
+        for doc, _template in self._COUNT_DOCS:
+            text = _read_repo_text(doc)
+            for name in sorted(em._SUPERVISOR_TOOL_NAMES):
+                self.assertIn(
+                    name,
+                    text,
+                    f"{name!r} is bound in code but never named in {doc}.",
+                )
