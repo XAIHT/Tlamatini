@@ -1,0 +1,107 @@
+{
+  "mcpServers": {
+    "octocode": {
+      "command": "npx",
+      "args": [
+        "octocode-mcp"
+      ],
+      "env": {
+        "GITHUB_TOKEN": "<OCTOCODE_GITHUB_TOKEN goes here>"
+      },
+      "transport": "stdio"
+    },
+    "redis": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-e",
+        "REDIS_URL=redis://host.docker.internal:6379",
+        "mcp/redis:latest"
+      ],
+      "env": {},
+      "transport": "stdio"
+    },
+    "Roblox_Studio": {
+      "command": "cmd.exe",
+      "args": [
+        "/c",
+        "%LOCALAPPDATA%\\Roblox\\mcp.bat"
+      ],
+      "env": {},
+      "transport": "stdio"
+    },
+    "Snyk Security Scanner": {
+      "command": "snyk",
+      "args": [
+        "mcp",
+        "-t",
+        "stdio",
+        "--experimental"
+      ],
+      "env": {
+        "API_KEY": "<SNYK_API_KEY goes here>"
+      },
+      "transport": "stdio"
+    },
+    "burp_suite_proxy": {
+      "command": "java",
+      "args": [
+        "-jar",
+        "C:\\Development\\mcp-server\\libs\\mcp-proxy-all.jar",
+        "--sse-url",
+        "http://127.0.0.1:9876"
+      ],
+      "env": {},
+      "transport": "stdio"
+    },
+    "torrent-search-mcp": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "C:\\Development\\torrent-search-mcp",
+        "-m",
+        "torrent_search"
+      ],
+      "env": {},
+      "transport": "stdio"
+    },
+    "MayaMCP": {
+      "command": "C:\\Users\\angel\\OneDrive\\Documentos\\maya\\projects\\AngysMayaPrj-1\\.venv\\Scripts\\python.exe",
+      "args": [
+        "C:\\Users\\angel\\OneDrive\\Documentos\\maya\\projects\\AngysMayaPrj-1\\MayaMCP\\src\\maya_mcp_server.py"
+      ],
+      "env": {},
+      "transport": "stdio"
+    },
+    "memory": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-memory"
+      ],
+      "env": {
+        "MEMORY_FILE_PATH": "C:\\Users\\angel\\AppData\\Local\\Tlamatini\\memory\\memory.json"
+      },
+      "transport": "stdio",
+      "description": "Persistent knowledge graph — durable, cross-session memory of entities, relations and observations. Official @modelcontextprotocol reference server. Needs Node (Tlamatini provisions it automatically).",
+      "_tlamatini_default": true
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking"
+      ],
+      "env": {},
+      "transport": "stdio",
+      "description": "Structured step-by-step reasoning with branching and revision. Official @modelcontextprotocol reference server. Needs Node (Tlamatini provisions it automatically).",
+      "_tlamatini_default": true
+    }
+  },
+  "active": [
+    "memory"
+  ]
+}

@@ -39,6 +39,14 @@ python Tlamatini\agent\doc_generation\refresh_project_docs.py
 
 That script delegates to `complete_project_docs.py` and rebuilds both the full PDF and the matching no-overlap PPTX. If only the PDF is needed, it is still acceptable to run the full generator because the shared context prevents PDF/PPT drift.
 
+## Mandatory Three-Pass Consistency Sweep
+
+1. **Discover:** compare the last committed dossier revision with local HEAD, the current annotated version tag, and the worktree; inventory every tracked type with `git ls-files`; read README, BookOfTlamatini, current self-knowledge, prompts, agent catalogs, frontend assets, and recent source commits.
+2. **Reconcile:** build a release-feature matrix mapping every recent behavior to its source implementation, public documentation, maintainer guidance, prompt rule, and relevant skill. Correct active counts from source, but preserve explicitly dated historical counts as history.
+3. **Prove:** rerun searches for old active versions/counts/claims, run `python -m ruff check`, execute focused tests, regenerate artifacts, and verify text extraction, page count, complete-tree parity, and current-release coverage.
+
+For v1.48.13 and later, explicitly check Mover/Deleter application-owned scratch placement, centralized dialog theme/policy, long-operation menu locks, safe update-note rendering, line-attributed logging, DB/reaper safety, and frontend `STATIC_VERSION` discipline.
+
 ## Inventory Rules
 
 - Use `git ls-files` for the complete tracked source tree.
@@ -56,3 +64,4 @@ That script delegates to `complete_project_docs.py` and rebuilds both the full P
 - Include exact dates and commit ids when discussing current state.
 - When generating or modifying Python source code for the dossier workflow, run `python -m ruff check` from the project root and fix reported errors before handing off.
 - Verify by extracting PDF text or checking page count after generation.
+- Confirm the complete tree in the PDF has exact path parity with `git ls-files`, not only the same total count.

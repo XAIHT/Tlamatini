@@ -59,7 +59,7 @@
     var GH_ASSET = /(user-attachments\/assets\/|githubusercontent\.com\/)/i;
 
     var MARK = '\u0000';           // placeholder sentinel — never present in real notes
-    var TOKEN_RE = /\u0000(\d+)\u0000/g;
+    var TOKEN_RE = new RegExp(MARK + '(\\d+)' + MARK, 'g');
 
     function escapeHtml(text) {
         return String(text)

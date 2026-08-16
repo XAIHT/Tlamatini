@@ -46,6 +46,22 @@ from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
+# Tlamatini's private JS/Python toolchain (node/npm/npx/pnpm/uv/uvx) and the
+# servers that ship with every installation. BOTH imports are guarded: if either
+# helper is missing or broken this module must degrade to exactly its
+# pre-2026-08-15 behaviour, never break the tool-binding path.
+try:
+    from . import runtime_provisioner
+except Exception:  # pragma: no cover - defensive
+    runtime_provisioner = None  # type: ignore[assignment]
+try:
+    from . import external_mcp_defaults
+except Exception:  # pragma: no cover - defensive
+    external_mcp_defaults = None  # type: ignore[assignment]
+
+#: Guards the once-per-process write of the seeded default servers.
+_defaults_seeded = False
+
 MAX_ACTIVE = 5
 _MCP_PROTOCOL_VERSION = "2024-11-05"
 _CALL_TIMEOUT = 120.0       # seconds for a single tools/call
@@ -87,6 +103,8 @@ _SUPERVISOR_TOOL_NAMES = frozenset({
     "external_mcp_import",
     "external_mcp_set_active",
     "external_mcp_wait",
+    "external_mcp_runtime_status",
+    "external_mcp_runtime_install",
 })
 
 
@@ -192,7 +210,7 @@ def load_catalog() -> Dict[str, Any]:
         data["mcpServers"] = {}
     if not isinstance(data.get("active"), list):
         data["active"] = []
-    return data
+    return _seed_defaults_once(data)
 
 
 def save_catalog(data: Dict[str, Any]) -> None:
@@ -200,6 +218,40 @@ def save_catalog(data: Dict[str, Any]) -> None:
     with _catalog_lock:
         with open(path, "w", encoding="utf-8") as fh:
             json.dump(data, fh, indent=2, ensure_ascii=False)
+
+
+def _seed_defaults_once(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Merge the shipped default servers into the catalog (at most one write/process).
+
+    Seeding happens HERE — on the read path — rather than only at boot, so it
+    covers every entry point (the dialog, a management command, an LLM tool)
+    and cannot be missed if ``apps.ready()`` never runs.
+
+    Why it must exist at all: ``external_mcps.json`` is USER STATE that
+    ``apply_update.ps1`` PRESERVES, so a default written only into the file
+    ``build.py`` ships would reach fresh installs and nobody else. Seeding from
+    code reaches everyone, on every launch, forever.
+
+    Never activates anything, never overwrites a key the user already has, and
+    never resurrects one they deleted (``external_mcp_defaults`` owns those
+    rules). Fail-open: a seeding error leaves the catalog exactly as read.
+    """
+    global _defaults_seeded
+    if external_mcp_defaults is None:
+        return data
+    try:
+        data, added = external_mcp_defaults.seed_defaults(data)
+        if added and not _defaults_seeded:
+            save_catalog(data)
+            logger.info(
+                "[ExternalMCP] seeded default server(s) into the catalog, INACTIVE: %s",
+                ", ".join(added),
+            )
+    except Exception:
+        logger.exception("[ExternalMCP] default-server seeding failed (ignored)")
+    finally:
+        _defaults_seeded = True
+    return data
 
 
 def _server_transport(spec: Dict[str, Any]) -> str:
@@ -484,6 +536,14 @@ def import_servers(mcp_servers: Dict[str, Any]) -> Dict[str, Any]:
             continue
         (updated if server_key in servers else added).append(server_key)
         servers[server_key] = normalized
+    # An explicit import is an unambiguous "I want this server". If it is a
+    # shipped default the user had previously DELETED, forget the tombstone so
+    # the entry survives the next boot's seeding pass.
+    if external_mcp_defaults is not None:
+        try:
+            external_mcp_defaults.clear_tombstones(data, added + updated)
+        except Exception:
+            pass
     save_catalog(data)
     return {"ok": True, "added": added, "updated": updated}
 
@@ -513,6 +573,14 @@ def remove_servers(keys: List[str]) -> Dict[str, Any]:
         return {"ok": False, "error": "no matching server(s) in catalog",
                 "missing": missing}
     data["active"] = [k for k in data.get("active", []) if k in servers]
+    # Tombstone any SHIPPED DEFAULT the user just deleted, so the boot-time
+    # seeder does not resurrect it on the next launch. A Remove button that
+    # silently undoes itself is a bug, not a convenience.
+    if external_mcp_defaults is not None:
+        try:
+            external_mcp_defaults.record_removal(data, removed)
+        except Exception:
+            pass
     save_catalog(data)
     with _clients_lock:
         for key in removed:
@@ -540,7 +608,17 @@ class _StdioMcpClient:
         self.command = command
         self.args = list(args or [])
         self.cwd = cwd or None
-        self.env = os.environ.copy()
+        # Start from an environment that already carries Tlamatini's PRIVATE
+        # node/npm/npx/pnpm/uv/uvx on PATH. The MCP ecosystem ships almost
+        # entirely as ``npx -y <pkg>`` / ``uvx <pkg>``, so without this a
+        # perfectly valid catalog entry dies with [WinError 2] on any machine
+        # where the user never installed Node or uv. Falls back to a plain
+        # os.environ copy when the provisioner is unavailable.
+        self.env = (
+            runtime_provisioner.augment_env()
+            if runtime_provisioner is not None
+            else os.environ.copy()
+        )
         # Tlamatini's frozen process intentionally isolates its carried Python
         # from per-user packages.  External MCP servers are independent
         # programs, though, and may legitimately be installed in a system or
@@ -590,6 +668,23 @@ class _StdioMcpClient:
         ``.cmd``/``.bat`` through the command processor, the only way a batch
         shim can actually be executed. POSIX behaviour is unchanged.
         """
+        # Tlamatini's runtime provisioner owns this decision now. It resolves
+        # the manager through her PRIVATE runtime first, unwraps a
+        # ``cmd /c npx …`` spec, and — the part that actually kills the bug
+        # class on Windows — rewrites ``npx`` to ``node.exe <npx-cli.js>``, the
+        # real program behind the batch shim, so no shell, no quoting hazard and
+        # no [WinError 193] is ever involved. Any failure falls through to the
+        # original PATH-only logic below, so this can only improve a spawn.
+        if runtime_provisioner is not None:
+            try:
+                argv, note = runtime_provisioner.resolve_spawn(self.command, self.args)
+                if argv:
+                    if note:
+                        logger.info("[ExternalMCP] '%s' spawn: %s", self.key, note)
+                    return argv
+            except Exception:
+                logger.debug("[ExternalMCP] '%s': resolve_spawn failed, using legacy "
+                             "PATH resolution", self.key, exc_info=True)
         exe = os.path.expandvars(self.command)
         rest = [os.path.expandvars(a) for a in self.args]
         if os.name != "nt":
@@ -1259,8 +1354,52 @@ def _make_client(key: str, spec: Dict[str, Any]):
     )
 
 
+def _ensure_runtime_for_spec(key: str, spec: Dict[str, Any]) -> None:
+    """Install the package manager this server needs, if this machine lacks it.
+
+    THIS is the moment that makes the two shipped defaults "just work": the
+    user ticks ``memory``, and on a box with no Node at all Tlamatini downloads
+    her own private copy right here — so the spawn below succeeds instead of
+    dying with ``[WinError 2] The system cannot find the file specified``.
+
+    Runs on the BACKGROUND connect thread (``_warm_connect_one``), never on the
+    chat path, so a first-run download can never stall an answer. Fail-open: if
+    provisioning does not work we still attempt the spawn and the caller
+    reports the real reason.
+    """
+    if runtime_provisioner is None:
+        return
+    try:
+        tool = runtime_provisioner.managed_tool_for(
+            str(spec.get("command") or ""),
+            _normalize_import_args(spec.get("args")),
+        )
+        if not tool or runtime_provisioner.resolve(tool, use_cache=False):
+            return
+        logger.info(
+            "[ExternalMCP] '%s' needs '%s', which this machine does not have — "
+            "provisioning Tlamatini's private runtime now (one time, no admin needed).",
+            key, tool,
+        )
+        outcome = runtime_provisioner.ensure(tool)
+        if outcome.get("ok"):
+            logger.info("[ExternalMCP] '%s': '%s' is ready at %s",
+                        key, tool, outcome.get("path"))
+        else:
+            logger.warning(
+                "[ExternalMCP] '%s': could not provision '%s' (%s) — attempting the "
+                "spawn anyway so the real error is reported.",
+                key, tool, outcome.get("reason"),
+            )
+    except Exception:
+        logger.debug("[ExternalMCP] '%s': runtime pre-check failed (ignored)",
+                     key, exc_info=True)
+
+
 def _connect(key: str, spec: Dict[str, Any]) -> Optional[Any]:
     transport = _server_transport(spec)
+    if transport == "stdio":
+        _ensure_runtime_for_spec(key, spec)
     try:
         client = _make_client(key, spec)
     except Exception as exc:
@@ -1592,8 +1731,39 @@ def _which_executable(command: str) -> Dict[str, Any]:
             "found": os.path.exists(expanded),
             "resolved": expanded if os.path.exists(expanded) else "",
         }
-    resolved = shutil.which(expanded) or ""
-    return {"command": expanded, "found": bool(resolved), "resolved": resolved}
+    # Ask the runtime provisioner FIRST when the command is a manager Tlamatini
+    # owns, so the doctor reports HER private node/npx/uvx instead of declaring
+    # it missing merely because the user's system PATH has none — and so it can
+    # say "provisionable" rather than "blocked" for one she can install.
+    resolved = ""
+    managed = ""
+    if runtime_provisioner is not None:
+        try:
+            base = os.path.splitext(os.path.basename(expanded))[0].lower()
+            if base in runtime_provisioner.MANAGED_TOOLS:
+                managed = base
+                resolved = runtime_provisioner.resolve(base) or ""
+        except Exception:
+            resolved = ""
+    if not resolved:
+        resolved = shutil.which(expanded) or ""
+    payload: Dict[str, Any] = {
+        "command": expanded, "found": bool(resolved), "resolved": resolved,
+    }
+    if managed:
+        payload["managed_runtime"] = managed
+        payload["provisionable"] = True
+        if resolved and runtime_provisioner is not None:
+            try:
+                root = os.path.normcase(os.path.abspath(runtime_provisioner.runtimes_root()))
+                payload["runtime_source"] = (
+                    "tlamatini"
+                    if os.path.normcase(os.path.abspath(resolved)).startswith(root)
+                    else "system"
+                )
+            except Exception:
+                pass
+    return payload
 
 
 def _infer_runtime(command: str, args: List[str]) -> str:
@@ -1689,8 +1859,12 @@ def _diagnose_one_server(key: str, spec: Dict[str, Any], active: List[str]) -> D
     elif transport == "stdio":
         if not command:
             blockers.append("stdio server has no command")
-        elif not command_probe["found"]:
+        elif not command_probe["found"] and not command_probe.get("provisionable"):
             blockers.append(f"command not found on PATH: {command}")
+        # NOTE: a MISSING but PROVISIONABLE manager (npx/uvx/pnpm/node/npm/uv)
+        # is deliberately NOT a blocker. Tlamatini installs it herself the
+        # moment the server is activated, so calling it "blocked" would send
+        # the user off to install Node for no reason at all.
     elif not url:
         blockers.append(f"{transport} server has no url")
     if missing_secret_fields:
@@ -1703,6 +1877,14 @@ def _diagnose_one_server(key: str, spec: Dict[str, Any], active: List[str]) -> D
         )
     elif transport == "stdio" and not command:
         next_step = "Add the server command from the MCP documentation, then import the JSON again."
+    elif transport == "stdio" and not command_probe["found"] and command_probe.get("provisionable"):
+        next_step = (
+            f"`{command}` is not on this machine yet — but Tlamatini provisions it "
+            f"HERSELF. Just activate the server (external_mcp_set_active with '{key}') "
+            f"and her private per-user runtime is installed automatically: no admin "
+            f"rights, no system PATH change, no manual Node/uv install. Use "
+            f"external_mcp_runtime_install first if you would rather do it up front."
+        )
     elif transport == "stdio" and not command_probe["found"]:
         next_step = f"Install or expose `{command}` on PATH, then ask Tlamatini to reconnect this MCP."
     elif transport != "stdio" and not url:
@@ -2128,6 +2310,52 @@ def _build_supervisor_tools() -> List[Any]:
             indent=2,
         )
 
+    RuntimeStatusArgs = create_model("ExternalMcpRuntimeStatusArgs")
+    RuntimeInstallArgs = create_model(
+        "ExternalMcpRuntimeInstallArgs",
+        tools=(Union[List[str], str], Field(default="npx,uvx", description=(
+            "Package managers to install. A LIST like ['npx','uvx'] (preferred) or a "
+            "comma-separated string. Valid: node, npm, npx, pnpm, uv, uvx. Installing "
+            "'npx' also delivers node and npm; 'uvx' also delivers uv."))),
+        force=(bool, Field(default=False, description=(
+            "Reinstall even if the tool already resolves. Normally leave False."))),
+    )
+
+    def _runtime_status() -> str:
+        if runtime_provisioner is None:
+            return json.dumps({"ok": False, "error": "runtime provisioner unavailable"},
+                              ensure_ascii=False)
+        report = runtime_provisioner.status()
+        report["next_step"] = (
+            "Every package manager is available — npx/uvx MCP servers can be activated."
+            if report.get("ok") else
+            "Call external_mcp_runtime_install to download the missing manager(s) into "
+            "Tlamatini's private per-user runtime. No admin rights are needed and the "
+            "system PATH is never modified."
+        )
+        return json.dumps(report, ensure_ascii=False, indent=2)
+
+    def _runtime_install(tools: Any = "npx,uvx", force: bool = False) -> str:
+        if runtime_provisioner is None:
+            return json.dumps({"ok": False, "error": "runtime provisioner unavailable"},
+                              ensure_ascii=False)
+        if isinstance(tools, str):
+            wanted = [t.strip() for t in tools.replace(";", ",").split(",") if t.strip()]
+        elif isinstance(tools, (list, tuple)):
+            wanted = [str(t).strip() for t in tools if str(t).strip()]
+        else:
+            wanted = []
+        result = runtime_provisioner.provision(wanted or None, force=bool(force))
+        result["next_step"] = (
+            "Runtimes are ready — now call external_mcp_set_active for the server that "
+            "needed them, then external_mcp_wait to block until it connects."
+            if result.get("ok") else
+            "One or more runtimes could not be installed (see tools[].reason). A blocked "
+            "network or a proxy is the usual cause; the user can also install Node / uv "
+            "themselves and Tlamatini will simply use theirs."
+        )
+        return json.dumps(result, ensure_ascii=False, indent=2)
+
     return [
         StructuredTool.from_function(
             func=_status,
@@ -2160,6 +2388,33 @@ def _build_supervisor_tools() -> List[Any]:
                 "marketplace before giving installation instructions."
             ),
             args_schema=DoctorArgs,
+        ),
+        StructuredTool.from_function(
+            func=_runtime_status,
+            name="external_mcp_runtime_status",
+            description=(
+                "Report whether node / npm / npx / pnpm / uv / uvx are available to "
+                "Tlamatini, where each one lives, and whether it came from her own "
+                "private per-user runtime or the system PATH. Use this whenever an MCP "
+                "server launched by npx or uvx fails to start, whenever the user asks "
+                "if Node/Python tooling is installed, and BEFORE telling anyone to "
+                "install Node — Tlamatini provisions it herself."
+            ),
+            args_schema=RuntimeStatusArgs,
+        ),
+        StructuredTool.from_function(
+            func=_runtime_install,
+            name="external_mcp_runtime_install",
+            description=(
+                "Download and install the package managers an MCP server needs "
+                "(npx/npm/node, uvx/uv, pnpm) into Tlamatini's PRIVATE per-user runtime "
+                "— no administrator rights, no change to the system PATH, nothing "
+                "installed outside her own folder. Use when external_mcp_runtime_status "
+                "reports a missing manager or an npx/uvx server cannot spawn. Normally "
+                "unnecessary: activating such a server provisions its runtime "
+                "automatically."
+            ),
+            args_schema=RuntimeInstallArgs,
         ),
         StructuredTool.from_function(
             func=_list_tools,

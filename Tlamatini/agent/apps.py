@@ -673,6 +673,30 @@ class AgentConfig(AppConfig):
                                  name="ACPXBoot", daemon=True).start()
             except Exception:
                 logging.exception("Could not import agent.acpx.service")
+
+            # ── JS / Python toolchain pre-warm (node/npm/npx/pnpm/uv/uvx) ───
+            # The External MCP ecosystem ships almost entirely as
+            # `npx -y <pkg>` / `uvx <pkg>`, so Tlamatini keeps her OWN private
+            # copies instead of depending on whatever the user happens to have
+            # installed. This is a pure NO-OP (one resolve, zero network, no
+            # thread started) once they are present, and a one-time background
+            # download otherwise. It never blocks startup and never raises.
+            try:
+                from . import runtime_provisioner
+                runtime_provisioner.provision_async()
+            except Exception:
+                logging.exception("Runtime pre-warm failed (non-fatal)")
+
+            # ── External MCP catalog: seed the shipped default servers ──────
+            # external_mcps.json is USER STATE that a self-update PRESERVES, so
+            # a new default has to be seeded from CODE to reach EXISTING
+            # installs and not just fresh ones. Adds them INACTIVE, never
+            # overwrites a user's own entry, never resurrects one they deleted.
+            try:
+                from . import external_mcp_manager
+                external_mcp_manager.load_catalog()
+            except Exception:
+                logging.exception("External MCP default seeding failed (non-fatal)")
         except Exception:
             # Never block Django startup if MCP fails; just log.
             import logging

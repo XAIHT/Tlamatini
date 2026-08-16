@@ -1,0 +1,1179 @@
+Tlamatini (2026/08/15 16:04:42.921)
+
+I now have all the source code, package.json files, README files, and system package-manager detection results. I have everything I need to produce the complete detailed design. Let me compile it now.
+
+---
+
+# 🧠 Tlamatini Detailed Design: MCP Installation & Package-Manager Abstraction Module
+
+## ⚠️ DESIGN ONLY — NO MODIFICATIONS, NO CREATION, NO IMPLEMENTATION
+
+This document is a pure design specification. Nothing on disk is changed. No files are created. No agents are started. No MCPs are imported or activated. This is architecture, diagrams, and specification only.
+
+---
+
+## 📋 Table of Contents
+
+1. [Deep Dive: @modelcontextprotocol/server-memory](#1)
+2. [Deep Dive: @modelcontextprotocol/server-sequential-thinking](#2)
+3. [System Environment: Detected Package Managers](#3)
+4. [Installation Process Design for Both MCPs](#4)
+5. [Package-Manager Abstraction Module Design (pnpm/npm/uv/npx)](#5)
+6. [Architecture Flow Diagrams](#6)
+7. [Sequence Diagrams](#7)
+8. [State Machine Diagrams](#8)
+9. [Data Model & Config Schema Design](#9)
+10. [Error Handling & Fallback Strategy](#10)
+11. [Integration Points with Tlamatini's Existing MCP Tooling](#11)
+
+---
+
+## 1. Deep Dive: @modelcontextprotocol/server-memory
+
+### 1.1 What It Is
+
+@modelcontextprotocol/server-memory (v0.6.3) is an official Anthropic MCP server that provides a persistent knowledge graph — a structured memory system that survives across sessions. It stores entities, relations between entities, and observations attached to entities, all in a JSON file on disk.
+
+### 1.2 Why It Is Critical for Me (Tlamatini)
+
+I currently have zero persistent memory between conversations. Every time you start a new session, Angela, I start from a blank slate. I don't remember your projects, your preferences, your coding style, the architecture decisions we made last week, or the bugs we fixed yesterday. This MCP would give me:
+
+- Entity memory: "Angela López Mendoza" (person), "Tlamatini" (project), "STM32 firmware" (topic)
+- Relational memory: "Angela → created → Tlamatini", "Tlamatini → depends on → MCP protocol"
+- Observational memory: "Angela prefers Python over JavaScript", "Tlamatini uses Ollama for local LLM inference"
+- Cross-session retrieval: At the start of every conversation, I query the graph and "remember" context
+
+### 1.3 Tool Surface (9 Tools + 1 Resource)
+
+From the source code I fetched (src/memory/index.ts), the server exposes:
+
+
+
+
+Tool	Input	Output	Purpose
+create_entities	entities: [{name, entityType, observations[]}]	created entities (duplicates rejected)	Create new nodes in the knowledge graph
+create_relations	relations: [{from, to, relationType}]	created relations (duplicates rejected)	Connect entities with typed edges
+add_observations	observations: [{entityName, contents[]}]	added observations (duplicates rejected)	Attach facts to existing entities
+delete_entities	entityNames: string[]	success confirmation	Remove entities + cascading relations
+delete_relations	relations: [{from, to, relationType}]	success confirmation	Remove specific edges
+delete_observations	deletions: [{entityName, observations[]}]	success confirmation	Remove specific facts from entities
+read_graph	(none)	{entities[], relations[]} — full graph	Dump the entire knowledge graph
+search_nodes	query: string	{entities[], relations[]} — filtered	Fuzzy search across entity names, types, observations
+open_nodes	names: string[]	{entities[], relations[]} — exact match	Retrieve specific entities by name
+
+
+
+
+Plus 1 subscribable resource: knowledge-graph:// — returns the full graph as JSON, and clients can subscribe to receive notifications/resources/updated when any mutation tool changes the graph.
+
+### 1.4 Data Model
+
+The knowledge graph is stored as a single JSON file on disk:
+
+
+  KnowledgeGraph (JSON file on disk)
+  ├── entities: [
+  │     {
+  │       name: string          ← unique key (e.g. "Angela")
+  │       entityType: string    ← type tag (e.g. "person", "project")
+  │       observations: string[]  ← facts attached to entity
+  │     }
+  │   ]
+  └── relations: [
+        {
+          from: string          ← entity name (source)
+          to: string            ← entity name (target)
+          relationType: string  ← edge label (e.g. "created", "depends_on")
+        }
+      ]
+
+  Example graph:
+  ┌─────────────┐    created    ┌──────────────┐
+  │   Angela    │──────────────▶│   Tlamatini   │
+  │  (person)   │               │  (project)    │
+  │              │               │               │
+  │ obs:         │               │ obs:          │
+  │  "prefers    │               │  "uses        │
+  │   Python"    │               │   Ollama"     │
+  │  "creator"   │               │  "local-first"│
+  └─────────────┘               └──────────────┘
+         │                              │
+         │ works_on                      │ depends_on
+         ▼                              ▼
+  ┌─────────────┐               ┌──────────────┐
+  │  Firmware   │               │  MCP Proto   │
+  │  (topic)    │               │  (protocol)  │
+  └─────────────┘               └──────────────┘
+
+
+### 1.5 Storage & Configuration
+
+- Storage file: A JSON file on disk. The path is determined by the MEMORY_FILE_PATH environment variable. If not set, it defaults to memory.json in the working directory.
+- Transport: stdio (stdin/stdout JSON-RPC)
+- Runtime: Node.js (ESM module, type: "module")
+- Dependencies: @modelcontextprotocol/sdk ^1.30.0 (single runtime dependency)
+- Binary: mcp-server-memory → dist/index.js
+- License: MIT
+
+### 1.6 Installation Commands (All Package Managers)
+
+
+
+
+Package Manager	Install Command	MCP Config (command + args)
+npx	npx -y @modelcontextprotocol/server-memory	cmd /c npx -y @modelcontextprotocol/server-memory
+npm	npm install -g @modelcontextprotocol/server-memory	mcp-server-memory (global bin)
+pnpm	pnpm add -g @modelcontextprotocol/server-memory	mcp-server-memory (global bin)
+uv/uvx	N/A — this is a Node.js package, not Python. uv/uvx cannot install it.	N/A
+
+
+
+
+> Key insight: Both MCPs are Node.js/TypeScript packages. uv/uvx are Python package managers (Astral's Rust-based pip replacement) and cannot install Node.js packages. The design must account for this — uv/uvx would only be relevant for Python-based MCP servers (e.g., if a future MCP server is distributed as a PyPI package). The abstraction module must detect the package ecosystem and route accordingly.
+
+---
+
+## 2. Deep Dive: @modelcontextprotocol/server-sequential-thinking
+
+### 2.1 What It Is
+
+@modelcontextprotocol/server-sequential-thinking (v0.6.2) is an official Anthropic MCP server that provides a structured reasoning framework — a single tool (sequentialthinking) that guides an LLM through step-by-step problem decomposition with support for branching, revision, and dynamic thought-count adjustment.
+
+### 2.2 Why It Is Critical for Me (Tlamatini)
+
+My current reasoning is linear — I think, I answer, done. This MCP would give me:
+
+- Structured decomposition: Break complex problems into numbered thought steps (thought 1/N, 2/N, ... N/N)
+- Revision capability: Go back and revise thought #3 if I realize it was wrong, without losing the chain
+- Branching: Explore alternative approaches by branching from thought #5 into a separate branch
+- Dynamic expansion: Realize at thought 8/10 that I actually need 15 thoughts, and adjust totalThoughts upward
+- Hypothesis verification: Generate a solution hypothesis, then verify it through subsequent thoughts
+
+### 2.3 Tool Surface (1 Tool)
+
+From the source code I fetched (src/sequentialthinking/index.ts):
+
+Tool: sequentialthinking
+
+
+
+
+Parameter	Type	Required	Purpose
+thought	string	YES	Your current thinking step
+nextThoughtNeeded	boolean	YES	Whether another thought step is needed
+thoughtNumber	int (min 1)	YES	Current thought number in sequence
+totalThoughts	int (min 1)	YES	Estimated total thoughts (adjustable up/down)
+isRevision	boolean	—	Whether this thought revises previous thinking
+revisesThought	int (min 1)	—	Which thought number is being reconsidered
+branchFromThought	int (min 1)	—	Branching point thought number
+branchId	string	—	Branch identifier for the current branch
+needsMoreThoughts	boolean	—	If reaching end but realizing more thoughts needed
+
+
+
+
+Output schema: {thoughtNumber, totalThoughts, nextThoughtNeeded, branches[], thoughtHistoryLength}
+
+### 2.4 Reasoning Model — How Branching & Revision Work
+
+
+  LINEAR THINKING (no branching):
+  ┌────────┐   ┌────────┐   ┌────────┐   ┌────────┐
+  │ Think 1│──▶│ Think 2│──▶│ Think 3│──▶│ Think 4│
+  │ 1/4    │   │ 2/4    │   │ 3/4    │   │ 4/4    │
+  └────────┘   └────────┘   └────────┘   └────────┘
+                                           next=false
+                                           DONE ✓
+
+  REVISION (go back and fix):
+  ┌────────┐   ┌────────┐   ┌────────┐   ┌─────────────┐
+  │ Think 1│──▶│ Think 2│──▶│ Think 3│──▶│ Think 4     │
+  │ 1/4    │   │ 2/4    │   │ 3/4    │   │ REVISES #2  │
+  └────────┘   └────────┘   └────────┘   │ isRevision  │
+               ▲                         └─────────────┘
+               │  revisesThought=2          │
+               └────────────────────────────┘
+               "I was wrong about thought 2,
+                here's the corrected version"
+
+  BRANCHING (explore alternatives):
+  ┌────────┐   ┌────────┐   ┌────────┐
+  │ Think 1│──▶│ Think 2│──▶│ Think 3│
+  │ 1/5    │   │ 2/5    │   │ 3/5    │
+  └────────┘   └────────┘   └────────┘
+                    │
+                    │ branchFromThought=2
+                    │ branchId="approach-B"
+                    ▼
+               ┌────────────┐   ┌────────────┐
+               │ Think 2B   │──▶│ Think 3B   │
+               │ branch     │   │ branch     │
+               └────────────┘   └────────────┘
+
+  DYNAMIC EXPANSION:
+  ┌────────┐   ┌────────┐   ┌────────┐   ┌──────────────┐
+  │ Think 1│──▶│ Think 2│──▶│ Think 8│──▶│ Think 9      │
+  │ 1/8    │   │ 2/8    │   │ 8/8    │   │ 9/12         │
+  └────────┘   └────────┘   └────────┘   │needsMore=true│
+                                           │totalThoughts │
+                                           │  8 → 12      │
+                                           └──────────────┘
+
+
+### 2.5 Storage & Configuration
+
+- Storage: None — the server is stateless within a session. Thought history is kept in-memory and lost when the process exits. Each MCP connection gets a fresh thinking session.
+- Transport: stdio (stdin/stdout JSON-RPC)
+- Runtime: Node.js (ESM module)
+- Dependencies: @modelcontextprotocol/sdk ^1.30.0, chalk ^5.3.0, yargs ^17.7.2
+- Binary: mcp-server-sequential-thinking → dist/index.js
+- License: MIT
+
+### 2.6 Installation Commands
+
+Identical pattern to server-memory — both are Node.js packages on npm:
+
+
+
+
+Package Manager	Install Command	MCP Config (command + args)
+npx	npx -y @modelcontextprotocol/server-sequential-thinking	cmd /c npx -y @modelcontextprotocol/server-sequential-thinking
+npm	npm install -g @modelcontextprotocol/server-sequential-thinking	mcp-server-sequential-thinking
+pnpm	pnpm add -g @modelcontextprotocol/server-sequential-thinking	mcp-server-sequential-thinking
+uv/uvx	N/A — Node.js package, not Python	N/A
+
+
+
+
+---
+
+## 3. System Environment: Detected Package Managers
+
+From the live where + --version commands I ran on this machine:
+
+
+
+
+Tool	Version	Path	Ecosystem
+node	v24.14.1	C:\Program Files\nodejs\node.exe	JavaScript runtime
+npm	11.1.1	C:\Program Files\nodejs\npm.cmd	Node.js packages (npm registry)
+npx	11.11.0	C:\Program Files\nodejs\npx.cmd	Node.js one-shot executor
+pnpm	11.1.1	C:\Users\angel\AppData\Roaming\npm\pnpm.cmd	Node.js packages (npm registry, content-addressable store)
+uv	0.11.6	C:\Users\angel\.local\bin\uv.exe	Python packages (PyPI)
+uvx	0.11.6	C:\Users\angel\.local\bin\uvx.exe	Python one-shot executor (PyPI)
+
+
+
+
+All 6 tools are present and resolvable on PATH. This is the baseline the installation module will detect at runtime.
+
+---
+
+## 4. Installation Process Design for Both MCPs
+
+### 4.1 High-Level Installation Flow
+
+The installation of each MCP into Tlamatini follows a 7-phase pipeline:
+
+
+  ┌─────────────────────────────────────────────────────────────────────┐
+  │                     MCP INSTALLATION PIPELINE                       │
+  │                                                                     │
+  │  Phase 1        Phase 2        Phase 3        Phase 4              │
+  │  ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐          │
+  │  │ DETECT  │───▶│ RESOLVE │───▶| INSTALL │───▶│ VERIFY  │          │
+  │  │ pkg     │    │ package │    │ package │    │ binary  │          │
+  │  │ managers│    │ ecosys  │    │ manager │    │ exists  │          │
+  │  └─────────┘    └─────────┘    └─────────┘    └─────────┘          │
+  │                                                                     │
+  │  Phase 5        Phase 6        Phase 7                              │
+  │  ┌─────────┐    ┌─────────┐    ┌─────────┐                          │
+  │  │ IMPORT  │───▶│ ACTIVATE│───▶│ VERIFY  │                          │
+  │  │ catalog │    │ connect │    │ tools   │                          │
+  │  │ entry   │    │ server  │    │ exposed │                          │
+  │  └─────────┘    └─────────┘    └─────────┘                          │
+  └─────────────────────────────────────────────────────────────────────┘
+
+
+### 4.2 Phase Detail
+
+Phase 1 — DETECT package managers: Probe the system for node, npm, npx, pnpm, uv, uvx using where (Windows) or which (Unix). Record version + path for each. Build a capability matrix.
+
+Phase 2 — RESOLVE package ecosystem: Inspect the MCP's package name. If it starts with @ or contains no Python indicators → Node.js ecosystem → route to npm/npx/pnpm. If it's a PyPI package name → Python ecosystem → route to uv/uvx. If it's a Docker image → route to docker.
+
+Phase 3 — INSTALL package: Execute the install command using the preferred package manager. For npx, no install is needed (it downloads on first run). For npm/pnpm global install, run the install command. For uv/uvx, no install is needed (uvx downloads on first run).
+
+Phase 4 — VERIFY binary exists: After install, check that the binary is resolvable on PATH (for global installs) or that npx/uvx can find the package (for one-shot executors).
+
+Phase 5 — IMPORT catalog entry: Call external_mcp_import with the JSON config {mcpServers: {<key>: {command, args, env}}}. This adds the MCP to Tlamatini's catalog without activating it.
+
+Phase 6 — ACTIVATE: Call external_mcp_set_active with the server key. This tells Tlamatini to connect to the MCP server process.
+
+Phase 7 — VERIFY tools exposed: Call external_mcp_wait to block until the server is connected, then external_mcp_status or external_mcp_list_tools to confirm the tools are exposed.
+
+---
+
+## 5. Package-Manager Abstraction Module Design (pnpm/npm/uv/npx)
+
+### 5.1 Module Purpose
+
+The MCP Installer Module is a designed (not yet implemented) abstraction layer that:
+1. Detects which package managers are available on the host
+2. Classifies an MCP server's ecosystem (Node.js vs Python vs Docker)
+3. Selects the best package manager for the job
+4. Generates the correct install command + MCP config JSON
+5. Executes the installation with fallback if the preferred manager fails
+6. Reports status at each phase
+
+### 5.2 Module Architecture
+
+
+  ┌────────────────────────────────────────────────────────────────────────┐
+  │                    MCP INSTALLER MODULE ARCHITECTURE                    │
+  │                                                                        │
+  │  ┌──────────────────────────────────────────────────────────────────┐  │
+  │  │                      Installer Orchestrator                      │  │
+  │  │  (receives MCP spec → coordinates all phases → returns result)  │  │
+  │  └──────────┬──────────────┬──────────────┬──────────────┬─────────┘  │
+  │             │              │              │              │             │
+  │  ┌──────────▼────┐ ┌───────▼─────┐ ┌──────▼──────┐ ┌────▼──────────┐  │
+  │  │  Detector     │ │  Classifier │ │  Resolver   │ │  Executor     │  │
+  │  │               │ │             │ │             │ │               │  │
+  │  │ Probes system │ │ Determines  │ │ Picks best  │ │ Runs install  │  │
+  │  │ for pkg       │ │ ecosystem   │ │ pkg manager │ │ command +     │  │
+  │  │ managers      │ │ (node/py/   │ │ + generates │ │ handles       │  │
+  │  │               │ │  docker)    │ │ config JSON │ │ fallback      │  │
+  │  └───────────────┘ └─────────────┘ └─────────────┘ └───────────────┘  │
+  │                                                                        │
+  │  ┌──────────────────────────────────────────────────────────────────┐  │
+  │  │                      Verifier & Reporter                         │  │
+  │  │  (confirms binary exists, tools exposed, reports status)         │  │
+  │  └──────────────────────────────────────────────────────────────────┘  │
+  └────────────────────────────────────────────────────────────────────────┘
+
+
+### 5.3 Component Specifications
+
+#### 5.3.1 Detector
+
+Input: None (probes the system)
+Output: A capability matrix:
+
+
+  CapabilityMatrix = {
+    nodejs: {
+      available: true,
+      version: "v24.14.1",
+      path: "C:\\Program Files\\nodejs\\node.exe"
+    },
+    npm: {
+      available: true,
+      version: "11.1.1",
+      path: "C:\\Program Files\\nodejs\\npm.cmd",
+      can_global_install: true,
+      can_one_shot: false
+    },
+    npx: {
+      available: true,
+      version: "11.11.0",
+      path: "C:\\Program Files\\nodejs\\npx.cmd",
+      can_global_install: false,
+      can_one_shot: true     ← downloads & runs on first invocation
+    },
+    pnpm: {
+      available: true,
+      version: "11.1.1",
+      path: "C:\\Users\\angel\\AppData\\Roaming\\npm\\pnpm.cmd",
+      can_global_install: true,
+      can_one_shot: false
+    },
+    uv: {
+      available: true,
+      version: "0.11.6",
+      path: "C:\\Users\\angel\\.local\\bin\\uv.exe",
+      can_global_install: true,   ← pip install equivalent
+      can_one_shot: false
+    },
+    uvx: {
+      available: true,
+      version: "0.11.6",
+      path: "C:\\Users\\angel\\.local\\bin\\uvx.exe",
+      can_global_install: false,
+      can_one_shot: true     ← downloads & runs on first invocation
+    },
+    docker: {
+      available: false,       ← not detected (would need to probe)
+      version: null,
+      path: null
+    }
+  }
+
+
+Detection method: Run where <tool> (Windows) or which <tool> (Unix) for each, then <tool> --version to get the version. Cache results.
+
+#### 5.3.2 Classifier
+
+Input: An MCP server specification (package name + optional metadata)
+Output: An ecosystem classification
+
+
+  Classification Rules (evaluated in order):
+
+  1. If package name starts with "@" or contains no "/"
+     and is listed on npm registry
+     → ecosystem = "nodejs"
+     → candidate_managers = [npx, npm, pnpm]
+
+  2. If package name is a PyPI package name (lowercase,
+     hyphens, no scope prefix) and is listed on PyPI
+     → ecosystem = "python"
+     → candidate_managers = [uvx, uv]
+
+  3. If config contains "command": "docker"
+     → ecosystem = "docker"
+     → candidate_managers = [docker]
+
+  4. If config contains "command": "cmd" and args
+     contain "npx"
+     → ecosystem = "nodejs"
+     → candidate_managers = [npx, npm, pnpm]
+
+  5. Fallback → attempt npm first, then uv, then docker
+
+  Example classifications:
+  ┌────────────────────────────────────────┬──────────┬────────────────────┐
+  │ @modelcontextprotocol/server-memory    │ nodejs   │ npx, npm, pnpm     │
+  │ @modelcontextprotocol/server-sequen... │ nodejs   │ npx, npm, pnpm     │
+  │ mcp-server-fetch (Python)              │ python   │ uvx, uv            │
+  │ mcp/memory (Docker image)              │ docker   │ docker             │
+  └────────────────────────────────────────┴──────────┴────────────────────┘
+
+
+#### 5.3.3 Resolver
+
+Input: Ecosystem classification + capability matrix + user preference (optional)
+Output: A resolved installation plan
+
+Priority logic (for Node.js ecosystem):
+
+
+  RESOLVER PRIORITY (Node.js ecosystem):
+
+  Strategy A — "one-shot" (PREFERRED for MCP servers):
+  ┌─────────────────────────────────────────────────────────┐
+  │ Use npx with -y flag                                    │
+  │ No global install needed                                │
+  │ npx downloads package on first run, caches it           │
+  │ MCP config: { command: "cmd", args: ["/c", "npx",      │
+  │              "-y", "<package>"] }                       │
+  │                                                         │
+  │ Pros: zero install, always latest version, no pollution │
+  │ Cons: first-run latency (~5-15s download)               │
+  └─────────────────────────────────────────────────────────┘
+
+  Strategy B — "global install" (FALLBACK):
+  ┌─────────────────────────────────────────────────────────┐
+  │ Use npm install -g or pnpm add -g                       │
+  │ Installs globally, binary on PATH                       │
+  │ MCP config: { command: "<binary-name>" }                │
+  │                                                         │
+  │ Pros: no first-run latency, binary always available     │
+  │ Cons: global pollution, manual updates                  │
+  └─────────────────────────────────────────────────────────┘
+
+  Strategy C — "pnpm global" (ALTERNATIVE FALLBACK):
+  ┌─────────────────────────────────────────────────────────┐
+  │ Use pnpm add -g                                         │
+  │ Same as npm but uses pnpm's content-addressable store   │
+  │ More disk-efficient, faster installs                    │
+  └─────────────────────────────────────────────────────────┘
+
+  FALLBACK CHAIN:
+  npx ──(fail)──▶ npm -g ──(fail)──▶ pnpm -g ──(fail)──▶ ERROR
+
+
+Priority logic (for Python ecosystem):
+
+
+  RESOLVER PRIORITY (Python ecosystem):
+
+  Strategy A — "one-shot" (PREFERRED):
+  ┌─────────────────────────────────────────────────────────┐
+  │ Use uvx                                                 │
+  │ uvx creates isolated env, downloads & runs on first use │
+  │ MCP config: { command: "cmd", args: ["/c", "uvx",      │
+  │              "<package>"] }                             │
+  │                                                         │
+  │ Pros: zero install, isolated, always latest             │
+  │ Cons: first-run latency                                 │
+  └─────────────────────────────────────────────────────────┘
+
+  Strategy B — "pip install" (FALLBACK):
+  ┌─────────────────────────────────────────────────────────┐
+  │ Use uv pip install --system <package>                   │
+  │ Installs into system Python                             │
+  │ MCP config: { command: "<binary-name>" }                │
+  └─────────────────────────────────────────────────────────┘
+
+  FALLBACK CHAIN:
+  uvx ──(fail)──▶ uv pip install ──(fail)──▶ ERROR
+
+
+#### 5.3.4 Executor
+
+Input: Resolved installation plan (command + args + env)
+Output: Execution result (exit code, stdout, stderr)
+
+The executor runs the install command as a subprocess, captures output, and handles timeouts. For one-shot strategies (npx/uvx), the "install" is actually just a dry-run verification that the package can be resolved — the actual download happens when Tlamatini activates the MCP and spawns the process.
+
+#### 5.3.5 Verifier & Reporter
+
+Input: Installation result + MCP server key
+Output: Verification report
+
+Checks:
+1. Binary resolvable on PATH (for global installs) OR package resolvable by npx/uvx
+2. external_mcp_import succeeded (catalog entry created)
+3. external_mcp_set_active succeeded (server marked active)
+4. external_mcp_wait returned connected status
+5. external_mcp_list_tools returned ≥1 tool
+
+---
+
+## 6. Architecture Flow Diagrams
+
+### 6.1 Complete Installation Flow — server-memory
+
+
+  ┌─────────────────────────────────────────────────────────────────────────────┐
+  │           COMPLETE INSTALLATION FLOW: @modelcontextprotocol/server-memory   │
+  │                                                                             │
+  │  User: "Install server-memory MCP"                                         │
+  │     │                                                                       │
+  │     ▼                                                                       │
+  │  ┌──────────────────┐                                                       │
+  │  │ Tlamatini (LLM)  │                                                       │
+  │  │ receives request │                                                       │
+  │  └────────┬─────────┘                                                       │
+  │           │                                                                 │
+  │     ┌─────▼───────┐                                                         │
+  │     │  DETECTOR    │  where npx & where npm & where pnpm & where uv & ...  │
+  │     │  probes sys  │  → CapabilityMatrix {npx:✓, npm:✓, pnpm:✓, uv:✓, ...}│
+  │     └─────┬───────┘                                                         │
+  │           │                                                                 │
+  │     ┌─────▼───────┐                                                         │
+  │     │ CLASSIFIER   │  package = "@modelcontextprotocol/server-memory"      │
+  │     │              │  → ecosystem = "nodejs"                                │
+  │     │              │  → candidates = [npx, npm, pnpm]                      │
+  │     └─────┬───────┘                                                         │
+  │           │                                                                 │
+  │     ┌─────▼───────┐                                                         │
+  │     │  RESOLVER    │  Strategy A (npx one-shot) selected                   │
+  │     │              │  → command: "cmd"                                      │
+  │     │              │  → args: ["/c", "npx", "-y",                          │
+  │     │              │          "@modelcontextprotocol/server-memory"]       │
+  │     │              │  → env: { MEMORY_FILE_PATH:                            │
+  │     │              │           "C:\\Tlamatini\\Data\\memory.json" }        │
+  │     └─────┬───────┘                                                         │
+  │           │                                                                 │
+  │     ┌─────▼───────┐                                                         │
+  │     │  EXECUTOR    │  (for npx: no pre-install needed)                     │
+  │     │  verifies    │  npx --package @modelcontextprotocol/server-memory    │
+  │     │  package     │    --version  (dry-run resolve check)                 │
+  │     │  resolvable  │  → exit 0, package exists on npm registry             │
+  │     └─────┬───────┘                                                         │
+  │           │                                                                 │
+  │     ┌─────▼───────┐                                                         │
+  │     │  IMPORT      │  external_mcp_import({                                │
+  │     │  catalog     │    mcpServers: {                                       │
+  │     │              │      "memory": {                                       │
+  │     │              │        command: "cmd",                                 │
+  │     │              │        args: ["/c","npx","-y",                        │
+  │     │              │          "@modelcontextprotocol/server-memory"],      │
+  │     │              │        env: { MEMORY_FILE_PATH: "..." }               │
+  │     │              │      }                                                 │
+  │     │              │    }                                                   │
+  │     │              │  })                                                    │
+  │     │              │  → catalog entry "memory" created                     │
+  │     └─────┬───────┘                                                         │
+  │           │                                                                 │
+  │     ┌─────▼───────┐                                                         │
+  │     │  ACTIVATE    │  external_mcp_set_active(["memory"])                  │
+  │     │  connect     │  → Tlamatini spawns: cmd /c npx -y @model...memory    │
+  │     │              │  → npx downloads package (~5-15s first run)           │
+  │     │              │  → MCP server starts, listens on stdio                │
+  │     └─────┬───────┘                                                         │
+  │           │                                                                 │
+  │     ┌─────▼───────┐                                                         │
+  │     │  WAIT        │  external_mcp_wait("memory", timeout=120)             │
+  │     │  for ready   │  → blocks until server is connected                   │
+  │     └─────┬───────┘                                                         │
+  │           │                                                                 │
+  │     ┌─────▼───────┐                                                         │
+  │     │  VERIFY      │  external_mcp_list_tools("memory")                    │
+  │     │  tools       │  → [create_entities, create_relations,               │
+  │     │              │     add_observations, delete_entities,                │
+  │     │              │     delete_relations, delete_observations,            │
+  │     │              │     read_graph, search_nodes, open_nodes]             │
+  │     │              │  → 9 tools exposed ✓                                   │
+  │     └─────┬───────┘                                                         │
+  │           │                                                                 │
+  │     ┌─────▼───────┐                                                         │
+  │     │  REPORT      │  "server-memory installed & activated.               │
+  │     │  to user     │   9 tools available: create_entities, ...             │
+  │     │              │   Storage: C:\Tlamatini\Data\memory.json"             │
+  │     └─────────────┘                                                         │
+  └─────────────────────────────────────────────────────────────────────────────┘
+
+
+### 6.2 Complete Installation Flow — server-sequential-thinking
+
+
+  ┌──────────────────────────────────────────────────────────────────────────────────┐
+  │      COMPLETE INSTALLATION FLOW: @modelcontextprotocol/server-sequential-thinking│
+  │                                                                                  │
+  │  User: "Install server-sequential-thinking MCP"                                 │
+  │     │                                                                            │
+  │     ▼                                                                            │
+  │  ┌──────────────────┐                                                            │
+  │  │ Tlamatini (LLM)  │                                                            │
+  │  └────────┬─────────┘                                                            │
+  │           │                                                                      │
+  │     ┌─────▼───────┐  (Detector reuses cached CapabilityMatrix)                  │
+  │     │ CLASSIFIER   │  package = "@modelcontextprotocol/server-sequential-thinking"│
+  │     │              │  → ecosystem = "nodejs"                                     │
+  │     │              │  → candidates = [npx, npm, pnpm]                            │
+  │     └─────┬───────┘                                                              │
+  │           │                                                                      │
+  │     ┌─────▼───────┐  Strategy A (npx one-shot) selected                          │
+  │     │  RESOLVER    │  → command: "cmd"                                           │
+  │     │              │  → args: ["/c", "npx", "-y",                                │
+  │     │              │    "@modelcontextprotocol/server-sequential-thinking"]      │
+  │     │              │  → env: {} (no env vars needed — stateless server)          │
+  │     └─────┬───────┘                                                              │
+  │           │                                                                      │
+  │     ┌─────▼───────┐  npx --package @modelcontextprotocol/server-sequential...   │
+  │     │  EXECUTOR    │    --version  (dry-run resolve check)                      │
+  │     │              │  → exit 0, package exists on npm registry                   │
+  │     └─────┬───────┘                                                              │
+  │           │                                                                      │
+  │     ┌─────▼───────┐  external_mcp_import({                                       │
+  │     │  IMPORT      │    mcpServers: {                                            │
+  │     │  catalog     │      "sequential-thinking": {                               │
+  │     │              │        command: "cmd",                                      │
+  │     │              │        args: ["/c","npx","-y",                              │
+  │     │              │          "@modelcontextprotocol/server-sequential-thinking"]│
+  │     │              │      }                                                      │
+  │     │              │    }                                                        │
+  │     │              │  })                                                         │
+  │     └─────┬───────┘                                                              │
+  │           │                                                                      │
+  │     ┌─────▼───────┐  external_mcp_set_active(["sequential-thinking"])            │
+  │     │  ACTIVATE    │  → npx downloads package (~5-15s first run)                 │
+  │     │              │  → MCP server starts on stdio                               │
+  │     └─────┬───────┘                                                              │
+  │           │                                                                      │
+  │     ┌─────▼───────┐  external_mcp_wait("sequential-thinking", timeout=120)       │
+  │     │  WAIT        │  → connected ✓                                              │
+  │     └─────┬───────┘                                                              │
+  │           │                                                                      │
+  │     ┌─────▼───────┐  external_mcp_list_tools("sequential-thinking")              │
+  │     │  VERIFY      │  → [sequentialthinking]                                     │
+  │     │              │  → 1 tool exposed ✓                                         │
+  │     └─────┬───────┘                                                              │
+  │           │                                                                      │
+  │     ┌─────▼───────┐  "server-sequential-thinking installed & activated.         │
+  │     │  REPORT      │   1 tool available: sequentialthinking                      │
+  │     │              │   No env config needed (stateless)."                        │
+  │     └─────────────┘                                                              │
+  └──────────────────────────────────────────────────────────────────────────────────┘
+
+
+### 6.3 Fallback Chain Diagram
+
+
+DGRM_10
+
+---
+
+
+## 7. Sequence Diagrams
+
+### 7.1 Sequence: Full Installation of server-memory via npx
+
+
+  User      Tlamatini    Detector    Classifier   Resolver    Executor    MCP_Import   MCP_Activate   MCP_Wait    MCP_ListTools
+   │            │            │           │           │           │            │             │            │              │
+   │──"install"▶│            │           │           │           │            │             │            │              │
+   │  memory    │            │           │           │           │            │             │            │              │
+   │            │            │           │           │           │            │             │            │              │
+   │            │──probe────▶│           │           │           │            │             │            │              │
+   │            │            │──where npx/npm/pnpm/uv/uvx───(OS)─▶            │             │            │              │
+   │            │            │◀──paths + versions───────────────              │             │            │              │
+   │            │◀─CapabilityMatrix──────│           │           │            │             │            │              │
+   │            │            │           │           │           │            │             │            │              │
+   │            │──classify──────────────────────────▶│           │            │             │            │              │
+   │            │            │           │──rule: @scope/pkg → nodejs──▶      │             │            │              │
+   │            │◀───────────────────────ecosystem="nodejs"───│              │             │            │              │
+   │            │            │           │           │           │            │             │            │              │
+   │            │──resolve──────────────────────────────────────▶│           │             │            │              │
+   │            │            │           │           │──strategy A: npx──▶   │             │            │              │
+   │            │◀───────────────────────InstallPlan──────────────│           │             │            │              │
+   │            │            │           │           │           │            │             │            │              │
+   │            │──verify pkg resolvable──────────────────────────▶│           │             │            │              │
+   │            │            │           │           │           │──npx --package @mcp/server-memory --version│         │
+   │            │            │           │           │           │◀──exit 0, version 0.6.3──────────────────│         │
+   │            │◀──────────────────────verified────────────────│            │             │            │              │
+   │            │            │           │           │           │            │             │            │              │
+   │            │──import──────────────────────────────────────────────────────▶│           │            │              │
+   │            │            │           │           │           │            │──store JSON config──▶   │            │              │
+   │            │            │           │           │           │            │◀──catalog entry created──            │              │
+   │            │◀───────────────────────────────────────────────imported──────│           │            │              │
+   │            │            │           │           │           │            │             │            │              │
+   │            │──activate──────────────────────────────────────────────────────────────────▶│            │              │
+   │            │            │           │           │           │            │             │──spawn process──▶       │              │
+   │            │            │           │           │           │            │             │  cmd /c npx -y @mcp...   │              │
+   │            │            │           │           │           │            │             │  (npx downloads pkg)     │              │
+   │            │            │           │           │           │            │             │  (MCP server starts)     │              │
+   │            │            │           │           │           │            │             │◀──process alive──────────              │
+   │            │◀──────────────────────────────────────────────────────────────activated───│            │              │
+   │            │            │           │           │           │            │             │            │              │
+   │            │──wait──────────────────────────────────────────────────────────────────────────────────▶│              │
+   │            │            │           │           │           │            │             │            │──poll connection──▶       │
+   │            │            │           │           │           │            │             │            │◀──connected (tools/list ok)│
+   │            │◀──────────────────────────────────────────────────────────────────────────────ready────│              │
+   │            │            │           │           │           │            │             │            │              │
+   │            │──list tools──────────────────────────────────────────────────────────────────────────────────────────────▶│
+   │            │            │           │           │           │            │             │            │              │──tools/list──▶
+   │            │            │           │           │           │            │             │            │              │◀──[create_entities, ...9 tools]│
+   │            │◀─────────────────────────────────────────────────────────────────────────────────────────────────────────│
+   │            │            │           │           │           │            │             │            │              │
+   │◀──"Done! 9 tools available"────────│           │           │           │            │             │            │              │
+   │            │            │           │           │           │            │             │            │              │
+
+
+### 7.2 Sequence: Fallback from npx to npm global install
+
+
+  Tlamatini    Executor    npm_registry    OS_shell
+     │            │            │              │
+     │──resolve──▶│            │              │
+     │  npx      │            │              │
+     │           │──npx --package @mcp/server-memory --version──▶│
+     │           │            │              │
+     │           │            │      ┌───────▼───────┐          │
+     │           │            │      │ npx tries to  │          │
+     │           │            │      │ download pkg  │          │
+     │           │            │      │               │          │
+     │           │            │      │ ERROR:        │          │
+     │           │            │      │ network fail  │          │
+     │           │            │      │ or 404        │          │
+     │           │            │      └───────┬───────┘          │
+     │           │◀──────────────────exit 1 / timeout───────────│
+     │           │            │              │
+     │◀──npx FAILED──────────│            │              │
+     │           │            │              │
+     │──fallback▶│            │              │
+     │  to npm   │            │              │
+     │           │──npm install -g @modelcontextprotocol/server-memory──▶│
+     │           │            │              │
+     │           │            │      ┌───────▼───────┐          │
+     │           │            │      │ npm downloads │          │
+     │           │            │      │ + installs    │          │
+     │           │            │      │ globally      │          │
+     │           │            │      │               │          │
+     │           │            │      │ binary:       │          │
+     │           │            │      │ mcp-server-   │          │
+     │           │            │      │ memory.exe    │          │
+     │           │            │      └───────┬───────┘          │
+     │           │◀──────────────────exit 0──────────────────────│
+     │           │            │              │
+     │◀──npm SUCCESS─────────│            │              │
+     │           │            │              │
+     │  (now MCP config changes to:        │              │
+     │   command: "mcp-server-memory"      │              │
+     │   args: []           )              │              │
+     │           │            │              │
+     │──proceed to IMPORT + ACTIVATE + VERIFY───────────────────│
+
+
+### 7.3 Sequence: Both MCPs Installed in One Session
+
+
+DGRM_13
+
+---
+
+
+## 8. State Machine Diagrams
+
+### 8.1 Installation State Machine
+
+
+  ┌─────────────────────────────────────────────────────────────────┐
+  │              MCP INSTALLATION STATE MACHINE                     │
+  │                                                                 │
+  │  ┌──────────┐                                                   │
+  │  │  IDLE    │                                                   │
+  │  └────┬─────┘                                                   │
+  │       │ user requests install                                   │
+  │       ▼                                                         │
+  │  ┌──────────┐  fail   ┌──────────┐                             │
+  │  │ DETECTING│────────▶│  FAILED  │                             │
+  │  └────┬─────┘         └──────────┘                             │
+  │       │ success                                                 │
+  │       ▼                                                         │
+  │  ┌──────────┐  fail   ┌──────────┐                             │
+  │  │CLASSIFYING│───────▶│  FAILED  │                             │
+  │  └────┬─────┘         └──────────┘                             │
+  │       │ success                                                 │
+  │       ▼                                                         │
+  │  ┌──────────┐  fail   ┌──────────┐                             │
+  │  │ RESOLVING│────────▶│  FAILED  │                             │
+  │  └────┬─────┘         └──────────┘                             │
+  │       │ success                                                 │
+  │       ▼                                                         │
+  │  ┌──────────┐                                                   │
+  │  │EXECUTING │──┬─ success ──▶┌──────────┐                      │
+  │  └──────────┘  │              │IMPORTING │                      │
+  │       │        │              └────┬─────┘                      │
+  │       │ fail   │                   │ success                    │
+  │       ▼        │                   ▼                            │
+  │  ┌──────────┐  │              ┌──────────┐                      │
+  │  │FALLBACK_ │──┘              │ACTIVATING│                      │
+  │  │RETRY     │──fail──────────▶└────┬─────┘                      │
+  │  └────┬─────┘                      │ success                    │
+  │       │ all fallbacks exhausted    ▼                            │
+  │       ▼                      ┌──────────┐                      │
+  │  ┌──────────┐                │ WAITING  │──timeout──▶┌──────┐  │
+  │  │  FAILED  │                └────┬─────┘             │FAILED│  │
+  │  └──────────┘                     │ connected         └──────┘  │
+  │                                   ▼                               │
+  │                              ┌──────────┐                        │
+  │                              │ VERIFYING│──0 tools──▶┌──────┐   │
+  │                              └────┬─────┘            │FAILED│   │
+  │                                   │ ≥1 tools          └──────┘   │
+  │                                   ▼                               │
+  │                              ┌──────────┐                        │
+  │                              │ SUCCESS  │                        │
+  │                              └──────────┘                        │
+  └─────────────────────────────────────────────────────────────────┘
+
+
+### 8.2 Package Manager Selection State Machine
+
+
+DGRM_15
+
+---
+
+
+## 9. Data Model & Config Schema Design
+
+### 9.1 MCP Server Specification Schema
+
+This is the designed data structure that the Installer Module would accept as input:
+
+
+  MCPServerSpec = {
+    # ─── Identity ───
+    key: string                    # unique catalog key (e.g. "memory")
+    package_name: string           # npm/PyPI package name
+    display_name: string           # human-readable name
+    description: string
+
+    # ─── Ecosystem hint (optional, auto-detected if omitted) ───
+    ecosystem: "nodejs" | "python" | "docker"  # optional
+
+    # ─── Installation ───
+    install_strategy: "one-shot" | "global" | "docker"  # optional, auto-resolved
+    preferred_manager: "npx" | "npm" | "pnpm" | "uvx" | "uv" | "docker"  # optional
+
+    # ─── Runtime config ───
+    command: string                # executable to spawn
+    args: string[]                 # command-line arguments
+    env: {                         # environment variables
+      [key: string]: string
+    }
+
+    # ─── Verification ───
+    expected_tools: string[]       # tool names to expect (optional, for verification)
+    expected_tool_count: int       # minimum tool count (optional)
+    connect_timeout_seconds: int   # default 120
+  }
+
+  Example for server-memory:
+  MCPServerSpec = {
+    key: "memory"
+    package_name: "@modelcontextprotocol/server-memory"
+    display_name: "Memory (Knowledge Graph)"
+    description: "Persistent knowledge graph for cross-session memory"
+    ecosystem: "nodejs"
+    install_strategy: "one-shot"
+    preferred_manager: "npx"
+    command: "cmd"
+    args: ["/c", "npx", "-y", "@modelcontextprotocol/server-memory"]
+    env: {
+      MEMORY_FILE_PATH: "C:\\Tlamatini\\Data\\memory.json"
+    }
+    expected_tools: [
+      "create_entities", "create_relations", "add_observations",
+      "delete_entities", "delete_relations", "delete_observations",
+      "read_graph", "search_nodes", "open_nodes"
+    ]
+    expected_tool_count: 9
+    connect_timeout_seconds: 120
+  }
+
+  Example for server-sequential-thinking:
+  MCPServerSpec = {
+    key: "sequential-thinking"
+    package_name: "@modelcontextprotocol/server-sequential-thinking"
+    display_name: "Sequential Thinking"
+    description: "Structured step-by-step reasoning with branching and revision"
+    ecosystem: "nodejs"
+    install_strategy: "one-shot"
+    preferred_manager: "npx"
+    command: "cmd"
+    args: ["/c", "npx", "-y", "@modelcontextprotocol/server-sequential-thinking"]
+    env: {}
+    expected_tools: ["sequentialthinking"]
+    expected_tool_count: 1
+    connect_timeout_seconds: 120
+  }
+
+
+### 9.2 Installation Result Schema
+
+
+  InstallationResult = {
+    # ─── Status ───
+    status: "success" | "failed" | "partial"
+    phase: "detect" | "classify" | "resolve" | "execute" | "import" | "activate" | "verify"
+
+    # ─── What was used ───
+    ecosystem: "nodejs" | "python" | "docker"
+    manager_used: "npx" | "npm" | "pnpm" | "uvx" | "uv" | "docker"
+    strategy_used: "one-shot" | "global" | "docker"
+    fallback_triggered: boolean
+    fallback_chain: string[]       # e.g. ["npx", "npm", "pnpm"]
+
+    # ─── MCP config that was applied ───
+    applied_config: {
+      command: string
+      args: string[]
+      env: { [key: string]: string }
+    }
+
+    # ─── Verification ───
+    tools_exposed: string[]
+    tool_count: int
+    server_connected: boolean
+    connect_time_seconds: float
+
+    # ─── Errors (if any) ───
+    errors: [{
+      phase: string
+      manager: string
+      error_message: string
+      exit_code: int
+    }]
+
+    # ─── Catalog state ───
+    catalog_key: string
+    is_active: boolean
+    active_mcp_count: int          # total active MCPs after this install
+    max_active: int                # 5
+  }
+
+
+### 9.3 MCP Config JSON for external_mcp_import
+
+These are the exact JSON configs that would be passed to external_mcp_import:
+
+server-memory:
+
+  {
+    "mcpServers": {
+      "memory": {
+        "command": "cmd",
+        "args": ["/c", "npx", "-y", "@modelcontextprotocol/server-memory"],
+        "env": {
+          "MEMORY_FILE_PATH": "C:\\Tlamatini\\Data\\memory.json"
+        }
+      }
+    }
+  }
+
+
+server-sequential-thinking:
+
+  {
+    "mcpServers": {
+      "sequential-thinking": {
+        "command": "cmd",
+        "args": ["/c", "npx", "-y", "@modelcontextprotocol/server-sequential-thinking"]
+      }
+    }
+  }
+
+
+Both together (single import call):
+
+DGRM_20
+
+---
+
+
+## 10. Error Handling & Fallback Strategy
+
+### 10.1 Error Categories
+
+
+  ┌─────────────────────────────────────────────────────────────────────┐
+  │                    ERROR CATEGORIES & HANDLING                      │
+  │                                                                     │
+  │  ┌──────────────────┬──────────────────────┬─────────────────────┐  │
+  │  │ Error            │ Cause                │ Recovery Action     │  │
+  │  ├──────────────────┼──────────────────────┼─────────────────────┤  │
+  │  │ MANAGER_NOT_FOUND│ pkg manager not on   │ Try next in chain   │  │
+  │  │                  │ PATH                 │                     │  │
+  │  ├──────────────────┼──────────────────────┼─────────────────────┤  │
+  │  │ PACKAGE_NOT_FOUND│ 404 from registry    │ Try next manager,   │  │
+  │  │                  │                      │ then ERROR          │  │
+  │  ├──────────────────┼──────────────────────┼─────────────────────┤  │
+  │  │ NETWORK_TIMEOUT  │ Registry unreachable │ Retry 2x, then      │  │
+  │  │                  │                      │ fallback            │  │
+  │  ├──────────────────┼──────────────────────┼─────────────────────┤  │
+  │  │ DOWNLOAD_FAILED  │ Package download     │ Retry 1x, then      │  │
+  │  │                  │ interrupted          │ fallback            │  │
+  │  ├──────────────────┼──────────────────────┼─────────────────────┤  │
+  │  │ SPAWN_FAILED     │ MCP server process   │ Check Node.js       │  │
+  │  │                  │ won't start          │ version, retry      │  │
+  │  ├──────────────────┼──────────────────────┼─────────────────────┤  │
+  │  │ CONNECT_TIMEOUT  │ Server started but   │ Kill process,       │  │
+  │  │                  │ no tools/list resp   │ retry with longer   │  │
+  │  │                  │                      │ timeout (180s)      │  │
+  │  ├──────────────────┼──────────────────────┼─────────────────────┤  │
+  │  │ ZERO_TOOLS       │ Connected but no     │ Check server logs,  │  │
+  │  │                  │ tools exposed        │ report as partial   │  │
+  │  ├──────────────────┼──────────────────────┼─────────────────────┤  │
+  │  │ CATALOG_FULL     │ 5 active MCPs        │ Deactivate least    │  │
+  │  │                  │ already active       │ used, or ERROR      │  │
+  │  ├──────────────────┼──────────────────────┼─────────────────────┤  │
+  │  │ WRONG_ECOSYSTEM  │ uv/uvx used for      │ Re-classify, route  │  │
+  │  │                  │ Node.js package      │ to npm/npx          │  │
+  │  └──────────────────┴──────────────────────┴─────────────────────┘  │
+  └─────────────────────────────────────────────────────────────────────┘
+
+
+### 10.2 Retry Policy
+
+
+DGRM_22
+
+---
+
+
+## 11. Integration Points with Tlamatini's Existing MCP Tooling
+
+### 11.1 Tool Mapping
+
+The Installer Module integrates with Tlamatini's existing External MCP tool surface:
+
+
+  ┌─────────────────────────────────────────────────────────────────────┐
+  │        INSTALLER MODULE ↔ TLAMATINI MCP TOOL MAPPING                │
+  │                                                                     │
+  │  Installer Phase    │ Tlamatini Tool                │ Action       │
+  │  ───────────────────┼───────────────────────────────┼─────────────│
+  │  DETECT             │ execute_command               │ where/which  │
+  │  CLASSIFY           │ (internal logic)              │ rule engine  │
+  │  RESOLVE            │ (internal logic)              │ priority     │
+  │  EXECUTE            │ execute_command / chat_agent_ │ run install  │
+  │                     │   executer                    │              │
+  │  IMPORT             │ external_mcp_import           │ add catalog  │
+  │  ACTIVATE           │ external_mcp_set_active       │ connect      │
+  │  WAIT               │ external_mcp_wait             │ block        │
+  │  VERIFY             │ external_mcp_list_tools       │ list tools   │
+  │  STATUS             │ external_mcp_status           │ check health │
+  │  DIAGNOSE           │ external_mcp_doctor           │ diagnose     │
+  │  RECONNECT          │ external_mcp_reconnect        │ force recon  │
+  └─────────────────────────────────────────────────────────────────────┘
+
+
+### 11.2 Active MCP Slot Management
+
+Tlamatini allows max 5 active MCPs. Currently 1 is active (torrent-search-mcp). Installing both MCPs would bring the count to 3/5:
+
+
+  ACTIVE MCP SLOTS (max 5):
+
+  Before installation:
+  ┌──────────────────┬──────────────────┬──────────────────┬──────────────────┬──────────────────┐
+  │  Slot 1          │  Slot 2          │  Slot 3          │  Slot 4          │  Slot 5          │
+  │  torrent-search  │  (empty)         │  (empty)         │  (empty)         │  (empty)         │
+  │  ✓ active        │                  │                  │                  │                  │
+  └──────────────────┴──────────────────┴──────────────────┴──────────────────┴──────────────────┘
+  Active: 1/5
+
+  After installing both MCPs:
+  ┌──────────────────┬──────────────────┬──────────────────┬──────────────────┬──────────────────┐
+  │  Slot 1          │  Slot 2          │  Slot 3          │  Slot 4          │  Slot 5          │
+  │  torrent-search  │  memory          │  sequential-     │  (empty)         │  (empty)         │
+  │  ✓ active        │  ✓ active        │  thinking        │                  │                  │
+  │                  │                  │  ✓ active        │                  │                  │
+  └──────────────────┴──────────────────┴──────────────────┴──────────────────┴──────────────────┘
+  Active: 3/5  (2 slots remaining for GitHub MCP + Brave Search)
+
+
+### 11.3 Post-Installation Usage Flow (How I Would Use These MCPs)
+
+
+DGRM_25
+
+---
+
+
+## Summary: Design at a Glance
+
+
+
+
+Design Summary — What This Document Specifies
+
+
+
+
+This is a pure design document. Nothing was created, modified, or installed. The design covers:
+
+
+
+
+
+
+server-memory (v0.6.3) — 9 tools, persistent JSON knowledge graph, needs MEMORY_FILE_PATH env var, Node.js/npx
+
+
+server-sequential-thinking (v0.6.2) — 1 tool, in-memory stateless, no env config, Node.js/npx
+
+
+Package-Manager Abstraction Module — 5 components (Detector, Classifier, Resolver, Executor, Verifier) with fallback chains: npx → npm → pnpm (Node.js) and uvx → uv (Python)
+
+
+7-phase installation pipeline — Detect → Classify → Resolve → Execute → Import → Activate → Verify
+
+
+System reality — All 6 package managers detected on this machine: node v24.14.1, npm 11.1.1, npx 11.11.0, pnpm 11.1.1, uv 0.11.6, uvx 0.11.6
+
+
+Slot management — Would bring active MCPs from 1/5 to 3/5, leaving 2 slots for GitHub + Brave Search
+
+
+
+
+
+
+---
+
+Angela — this is the complete detailed design. Nothing was modified, nothing was created, nothing was installed. This is pure architecture: flow diagrams, sequence diagrams, state machines, data schemas, error handling, and integration mapping. When you're ready to actually execute the installation, just say the word and I'll run the real external_mcp_import + external_mcp_set_active + external_mcp_wait pipeline.

@@ -42,6 +42,8 @@ Increments `STATIC_VERSION` in `Tlamatini/tlamatini/settings.py` so the
 `?v={{ STATIC_VERSION }}` query string at the end of every static asset
 URL changes, forcing browsers to refetch.
 
+Run this skill after **every** JavaScript, CSS, or template change, including `dialog_theme.css`, `dialog_policy.js`, `release_notes_renderer.js`, and long-operation menu behavior. `STATIC_VERSION` is an asset-cache integer and is separate from the product release resolved from Git tags (currently v1.48.13); never substitute one for the other.
+
 ## Procedure
 
 1. Read `STATIC_VERSION = '<n>'` from settings.py.

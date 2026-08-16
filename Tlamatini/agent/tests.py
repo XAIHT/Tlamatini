@@ -5414,6 +5414,143 @@ class DiagramRenderingTests(TestCase):
         self.assertTrue(_is_diagram_line("a < b and c > d ===="))
 
 
+    # ------------------------------------------------------------------
+    # REGRESSION 2026-08-15 - "the diagrams are NEVER rendered at all".
+    # A BEGIN-DIAGRAM block followed by a markdown `---` separator rendered
+    # as an EMPTY box showing the bare text "DGRM_0" and "---": pass 2
+    # treated the pass-1 placeholder line as diagram-like, bridged the blank
+    # line to the `---`, and re-wrapped BOTH into a NEW placeholder whose
+    # body held the raw <NUL>DGRM_0<NUL> token. _restore_diagram_placeholders
+    # walks 0..N, so by the time it reached index 1 the index-0 token was
+    # buried inside placeholders[1] and never expanded - the whole diagram
+    # was destroyed. The LLM emits `---` section separators constantly, so in
+    # practice EVERY diagram was lost. These pin the fix in both directions.
+    # ------------------------------------------------------------------
+
+    def test_diagram_followed_by_markdown_rule_is_not_swallowed(self):
+        raw = (
+            "BEGIN-DIAGRAM\n"
+            "+-------------------------+\n"
+            "|  MEMORY MCP - LIVE DEMO |\n"
+            "+-------------------------+\n"
+            "END-DIAGRAM\n"
+            "\n"
+            "---\n"
+            "\n"
+            "### Next section\n"
+        )
+        wrapped, placeholders = self._wrap(raw)
+        # Exactly ONE diagram; the `---` stayed prose and did NOT annex it.
+        self.assertEqual(len(placeholders), 1)
+        self.assertIn("MEMORY MCP - LIVE DEMO", placeholders[0])
+        self.assertIn("\x00DGRM_0\x00", wrapped)
+        self.assertIn("---", wrapped)
+
+        from agent.services.response_parser import (
+            _restore_diagram_placeholders,
+        )
+        final = _restore_diagram_placeholders(wrapped, placeholders)
+        self.assertIn("MEMORY MCP - LIVE DEMO", final)
+        self.assertNotIn("DGRM_", final)
+        self.assertNotIn(chr(0), final)
+
+    def test_full_pipeline_two_diagrams_each_followed_by_a_rule_both_render(self):
+        # The exact shape of the reported answer: two BEGIN-DIAGRAM blocks,
+        # each trailed by a `---` separator. BOTH must render with content.
+        raw = (
+            "I exercised **all 9 tools**.\n"
+            "BEGIN-DIAGRAM\n"
+            "Step 1: create_entities --> 5 entities created\n"
+            "Step 2: create_relations --> 5 relations created\n"
+            "END-DIAGRAM\n"
+            "\n"
+            "---\n"
+            "\n"
+            "### The Final Knowledge Graph\n"
+            "BEGIN-DIAGRAM\n"
+            "Angela --created--> Tlamatini\n"
+            "Tlamatini --owns_pet--> Kyber\n"
+            "END-DIAGRAM\n"
+            "\n"
+            "---\n"
+            "END-RESPONSE"
+        )
+        final = self._process(raw)
+        self.assertEqual(final.count('<pre class="ascii-diagram">'), 2)
+        self.assertIn("create_entities", final)
+        self.assertIn("create_relations", final)
+        self.assertIn("owns_pet", final)
+        self.assertIn("Kyber", final)
+        # No sentinel may EVER reach the browser.
+        self.assertNotIn("DGRM_", final)
+        self.assertNotIn(chr(0), final)
+
+    def test_two_explicit_blocks_separated_by_a_blank_stay_two_blocks(self):
+        # A blank line must not merge two finished diagrams into one box.
+        raw = (
+            "BEGIN-DIAGRAM\n"
+            "AAA --> BBB\n"
+            "END-DIAGRAM\n"
+            "\n"
+            "BEGIN-DIAGRAM\n"
+            "XXX --> YYY\n"
+            "END-DIAGRAM\n"
+        )
+        wrapped, placeholders = self._wrap(raw)
+        self.assertIn("\x00DGRM_0\x00", wrapped)
+        self.assertIn("\x00DGRM_1\x00", wrapped)
+        from agent.services.response_parser import (
+            _restore_diagram_placeholders,
+        )
+        final = _restore_diagram_placeholders(wrapped, placeholders)
+        self.assertEqual(final.count('<pre class="ascii-diagram">'), 2)
+        self.assertIn("AAA --&gt; BBB", final)
+        self.assertIn("XXX --&gt; YYY", final)
+
+    def test_absorbed_placeholder_is_expanded_losslessly(self):
+        # Art directly ATTACHED to an explicit block (no blank line) still
+        # merges into one box - but the merge must inline the earlier
+        # placeholder's RAW body, never leave a nested token behind.
+        raw = (
+            "BEGIN-DIAGRAM\n"
+            "+---------+\n"
+            "| inside  |\n"
+            "END-DIAGRAM\n"
+            "| attached |\n"
+            "+----------+\n"
+        )
+        wrapped, placeholders = self._wrap(raw)
+        from agent.services.response_parser import (
+            _restore_diagram_placeholders,
+        )
+        final = _restore_diagram_placeholders(wrapped, placeholders)
+        self.assertEqual(final.count('<pre class="ascii-diagram">'), 1)
+        self.assertIn("| inside  |", final)
+        self.assertIn("| attached |", final)
+        self.assertNotIn("DGRM_", final)
+        self.assertNotIn(chr(0), final)
+
+    def test_dashed_border_attached_to_art_stays_inside_the_diagram(self):
+        # The thematic-break guard must only fire ACROSS a blank line; a
+        # dashed box border touching its art is real diagram content.
+        raw = "-------------\n| cell | col |\n-------------\n"
+        wrapped, placeholders = self._wrap(raw)
+        self.assertEqual(len(placeholders), 1)
+        self.assertIn("| cell | col |", placeholders[0])
+        self.assertIn("-------------", placeholders[0])
+
+    def test_restore_deletes_an_orphan_placeholder_instead_of_leaking_it(self):
+        # Defence in depth: whatever happens upstream, a raw sentinel must
+        # never be shown to the user as the literal text "DGRM_9".
+        from agent.services.response_parser import (
+            _restore_diagram_placeholders,
+        )
+        leaked = "before \x00DGRM_9\x00 after"
+        final = _restore_diagram_placeholders(leaked, [])
+        self.assertEqual(final, "before  after")
+        self.assertNotIn("DGRM_", final)
+        self.assertNotIn(chr(0), final)
+
 class AgentDescriptionsFileTests(TestCase):
     """The shipped ``agents_descriptions.md`` must be present at the repo root
     and parse cleanly. These guard the artefact end users actually consume."""

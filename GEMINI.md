@@ -301,9 +301,9 @@ Tlamatini's web UI + chat WebSocket port is **no longer hardcoded to 8000** — 
 - The browser then splices the returned **absolute path into the chat box at the caret** and renders a thumbnail chip (`#chat-image-chips`). The point is that a *path* — not an attachment — is what **Image-Interpreter** consumes, so the next prompt is immediately actionable. `prompt.pmt` tells the LLM to treat an `image_<timestamp>.jpg` under Temp as *the* image the user means.
 - **Two contracts (do NOT break):** the `paste` listener is on `document` (after Alt+Tab focus sits on `<body>`, so a textarea-scoped listener never fires — the caret is remembered separately), and `agent_page_layout.js::computeFormMinHeight()` **must count the chips row** because it pins `#tools-chat-form-container` to an explicit pixel height (an uncounted row pushes the textarea + Send off-screen). Full contract: `docs/claude/recent-fixes.md` (2026-07-14).
 
-## 9. Complete Visual Agent Catalog (85 Agents)
+## 9. Complete Visual Agent Catalog (87 Agents)
 
-Visual agents are designed to run out of process. The backend compiler generates their config, spawns them, and inspects their logs. Below is the complete catalog of all 85 visual agents:
+Visual agents are designed to run out of process. The backend compiler generates their config, spawns them, and inspects their logs. Below is the complete catalog of all 87 visual agents:
 
 1. **starter**: Flow initiator.
 2. **ender**: Flow terminator; kills targeted processes.
@@ -390,6 +390,8 @@ Visual agents are designed to run out of process. The backend compiler generates
 83. **zavuerer**: Multi-channel Zavu messaging gateway (SMS, WhatsApp, Email, Telegram, Voice).
 84. **video_analyzer**: MOTION-VERDICT video analyzer for loop training.
 85. **nmapper**: Local nmap bridge for network scanning and host discovery (NPSL-compliant).
+86. **pdfer**: Creates, edits, merges, splits, extracts, renders, and validates PDF artifacts.
+87. **latexer**: MiKTeX-backed LaTeX authoring, validation, compilation, and deterministic eight-rung repair.
 
 ---
 

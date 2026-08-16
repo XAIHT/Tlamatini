@@ -88,6 +88,34 @@ EMAILER_YAML = REPO_ROOT / "Tlamatini" / "agent" / "agents" / "emailer" / "confi
 RECMAILER_YAML = REPO_ROOT / "Tlamatini" / "agent" / "agents" / "recmailer" / "config.yaml"
 ZAVUERER_YAML = REPO_ROOT / "Tlamatini" / "agent" / "agents" / "zavuerer" / "config.yaml"
 DISCOVERER_YAML = REPO_ROOT / "Tlamatini" / "agent" / "agents" / "discoverer" / "config.yaml"
+EXTERNAL_MCPS_JSON = REPO_ROOT / "Tlamatini" / "agent" / "external_mcps.json"
+
+#: Catalog secrets with a HAND-PICKED data.keys name (nicer than the derived one).
+#: Everything else secret-ish is handled generically — see ``patch_external_mcps_json``.
+#: (server key, env field, data.keys name)
+EXTERNAL_MCP_SECRET_RULES: List[Tuple[str, str, str]] = [
+    ("octocode", "GITHUB_TOKEN", "OCTOCODE_GITHUB_TOKEN"),
+    ("Snyk Security Scanner", "API_KEY", "SNYK_API_KEY"),
+]
+
+#: A field name containing any of these is treated as a secret.
+#: NOTE "pat" is deliberately ABSENT: it matches "MEMORY_FILE_PATH" (PATH!), which
+#: turned a harmless file path into a fake secret — it got scrubbed to a
+#: placeholder and vaulted, and `keyed` would then stamp the build machine's own
+#: path onto someone else's install. Real GitHub PATs are named *_TOKEN anyway.
+_SECRETISH_FIELD_PARTS = (
+    "token", "key", "secret", "password", "passwd", "auth", "bearer",
+    "credential", "apikey",
+)
+
+#: ...unless the field name also contains one of THESE, which always WINS.
+#: A location is not a credential: `KEY_FILE`, `SECRET_PATH` and `AUTH_URL` name
+#: where something lives, and redacting them breaks a working config while
+#: protecting nothing.
+_NEVER_SECRET_FIELD_PARTS = (
+    "path", "file", "dir", "folder", "url", "uri", "host", "port",
+    "endpoint", "region", "profile", "timeout", "version",
+)
 
 
 def placeholder(name: str) -> str:
@@ -377,6 +405,119 @@ def patch_yaml(path: Path, rules: List[Tuple[List[str], str]],
 # CLI
 # ────────────────────────────────────────────────────────────────────────
 
+# ────────────────────────────────────────────────────────────────────────
+# JSON: external_mcps.json  (the External ▸ MCPs catalog)
+# ────────────────────────────────────────────────────────────────────────
+#
+# The catalog is TRACKED in git (Angela, 2026-08-15) so the repo shows every
+# server Tlamatini knows about — but an MCP catalog's whole value is the
+# secrets in its `env` blocks, so it gets the same placeholder treatment
+# config.json already has.
+#
+# LOSSLESS CONTRACT: `push-able` AUTO-VAULTS any secret it is about to redact
+# into data.keys (which is gitignored) FIRST. That is what makes the round trip
+# safe for a server the rule table has never heard of: scrub → push → `keyed`
+# restores it exactly. A scrub that silently destroyed an unrecognised token
+# would be far worse than the leak it prevents.
+
+def _extmcp_clean(text: str) -> str:
+    return "".join(ch if ch.isalnum() else "_" for ch in str(text)).strip("_").upper()
+
+
+def _extmcp_data_key(server: str, field: str) -> str:
+    """Stable data.keys name for an UNDECLARED catalog secret."""
+    return f"EXTMCP_{_extmcp_clean(server)}_{_extmcp_clean(field)}"
+
+
+def _extmcp_is_secretish(field: str) -> bool:
+    lowered = str(field).lower()
+    if any(part in lowered for part in _NEVER_SECRET_FIELD_PARTS):
+        return False          # a LOCATION is not a credential — denylist wins
+    return any(part in lowered for part in _SECRETISH_FIELD_PARTS)
+
+
+def _extmcp_is_placeholder(value: Any) -> bool:
+    text = str(value or "").strip()
+    return (not text) or (text.startswith("<") and text.endswith(">"))
+
+
+def patch_external_mcps_json(mode: str, keys: Dict[str, str], dry_run: bool,
+                             keys_path: Path) -> List[str]:
+    if not EXTERNAL_MCPS_JSON.exists():
+        return [f"SKIP  {EXTERNAL_MCPS_JSON} (missing)"]
+    try:
+        data: Dict[str, Any] = json.loads(EXTERNAL_MCPS_JSON.read_text(encoding="utf-8-sig"))
+    except Exception as exc:
+        return [f"SKIP  {EXTERNAL_MCPS_JSON} (unreadable: {exc})"]
+
+    servers = data.get("mcpServers")
+    if not isinstance(servers, dict):
+        return [f"SKIP  {EXTERNAL_MCPS_JSON} (no mcpServers map)"]
+
+    # The vault is read regardless of mode: `keyed` restores FROM it, and
+    # `push-able` needs it to know which secrets are already stored.
+    vault: Dict[str, str] = dict(keys)
+    try:
+        vault.update({k: v for k, v in parse_keys_file(keys_path).items() if v})
+    except Exception:
+        pass
+
+    declared = {(s, f): dk for s, f, dk in EXTERNAL_MCP_SECRET_RULES}
+    changes: List[str] = []
+    additions: Dict[str, str] = {}
+    touched = False
+
+    for server_key in sorted(servers.keys()):
+        spec = servers.get(server_key)
+        if not isinstance(spec, dict):
+            continue
+        env = spec.get("env")
+        if not isinstance(env, dict):
+            continue
+        for field in sorted(env.keys()):
+            if not _extmcp_is_secretish(field):
+                continue
+            value = env.get(field)
+            data_key = declared.get((server_key, field)) or _extmcp_data_key(server_key, field)
+
+            if mode == "push-able":
+                if not _extmcp_is_placeholder(value) and vault.get(data_key) != value:
+                    additions[data_key] = str(value)      # vault BEFORE redacting
+                new_val = placeholder(data_key)
+            else:
+                new_val = vault.get(data_key, "")
+                if not new_val:
+                    changes.append(
+                        f"  WARN external_mcps.json[{server_key!r}].env.{field}: no "
+                        f"{data_key} in {keys_path.name} — left as-is"
+                    )
+                    continue
+
+            if env.get(field) != new_val:
+                env[field] = new_val
+                touched = True
+                changes.append(
+                    f"  external_mcps.json[{server_key!r}].env.{field} <- {data_key}"
+                )
+
+    if additions:
+        changes.append(
+            f"  AUTO-VAULTED {len(additions)} catalog secret(s) into {keys_path.name}: "
+            + ", ".join(sorted(additions))
+        )
+        if not dry_run:
+            with open(keys_path, "a", encoding="utf-8") as fh:
+                fh.write("\n# --- auto-vaulted from external_mcps.json by regen_secrets.py ---\n")
+                for name in sorted(additions):
+                    fh.write(f"{name}={additions[name]}\n")
+
+    if touched and not dry_run:
+        atomic_write(EXTERNAL_MCPS_JSON,
+                     json.dumps(data, indent=2, ensure_ascii=False) + "\n")
+
+    return changes or [f"OK    {EXTERNAL_MCPS_JSON.name} (no secret changes needed)"]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Toggle Tlamatini config files between push-able and keyed mode.",
@@ -414,6 +555,7 @@ def main() -> int:
                    force_quote_passwords=True),
         patch_yaml(ZAVUERER_YAML,      ZAVUERER_RULES,      args.mode, keys, args.dry_run),
         patch_yaml(DISCOVERER_YAML,    DISCOVERER_RULES,    args.mode, keys, args.dry_run),
+        patch_external_mcps_json(args.mode, keys, args.dry_run, Path(args.keys_file)),
     ]
     for block in reports:
         for line in block:

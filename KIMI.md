@@ -31,7 +31,7 @@ Enforced by: `test_private_data_guard.py` (automated tests — git-history integ
 
 **Welcome, Kimi!** This is the self-contained onboarding and reference document for working on the **Tlamatini** project. Read it in full before making any change. It is the Kimi sibling of `CLAUDE.md` (Claude Code's manifest + `@docs/claude/*` imports) and `GEMINI.md` (Gemini CLI's knowledge base): same mandatory rules, same architecture contracts, tuned for Kimi. Because Kimi has **no `@`-file auto-import mechanism**, everything an AI maintainer needs day-to-day is inline here; deeper topic files are listed in §25 as consult-on-demand.
 
-Every count in this file was **verified against source on 2026-07-22** (not copied from docs, which drift). If a count here disagrees with a hand-written doc elsewhere, **this file wins** — then fix the stale doc.
+Every count in this file was **re-verified against source on 2026-08-15 at v1.48.13** (not copied from docs, which drift). If a count here disagrees with a hand-written doc elsewhere, re-run the source inventory and fix every active surface together.
 
 ---
 
@@ -49,7 +49,7 @@ Every count in this file was **verified against source on 2026-07-22** (not copi
 10. ACPX System (external coding-agent CLIs)
 11. Skills System (SKILL.md packages)
 12. Visual Workflow Designer (ACP) & Flow Compiler
-13. The 85 Workflow Agent Types (catalog)
+13. The 87 Workflow Agent Types (catalog)
 14. Creating a New Agent / Tool / Skill
 15. Frontend Architecture
 16. Build, Release & Versioning
@@ -71,7 +71,7 @@ Every count in this file was **verified against source on 2026-07-22** (not copi
 **Tlamatini** (Nahuatl for *"one who knows"*) is a **local-first AI developer assistant** created by **Angela López Mendoza** (@angelahack1, XAIHT). It is a Django 5.2 + Channels monolith with a LangChain/LangGraph agent core, a RAG system, a visual agentic workflow designer, an external coding-agent runtime (ACPX), a markdown skill system, and a pool of standalone agent scripts it spawns as subprocesses. Windows-only distribution (PyInstaller-frozen, carried Python 3.12.10).
 
 - **Repository**: `https://github.com/XAIHT/Tlamatini.git` · **License**: MIT · **Platform**: Windows 10/11
-- **Version**: **v1.48.2** (SemVer, single source of truth = annotated git tags; see §16)
+- **Version**: **v1.48.13** (SemVer, single source of truth = annotated git tags; see §16)
 - **Python**: 3.12.10 (carried interpreter under `<repo>/python` is build-provisioned — never use it to run builds)
 
 **Verified counts (2026-07-22, counted from source):**
@@ -253,7 +253,7 @@ Tlamatini/                          # Git root (C:\Development\Tlamatini)
 ├── test_author_banner.py           # Author-banner presence guard
 ├── requirements.txt                # Python deps (ruff is a REQUIRED runtime gate — never unpin)
 ├── eslint.config.mjs               # ESLint 10 config (501-line cross-file globals whitelist)
-├── package.json                    # version 1.48.2; npm run lint / lint:fix
+├── package.json                    # version 1.48.13; npm run lint / lint:fix
 ├── tlamatini_mcp_server.py         # Root stdio MCP server: 85 agent tools + 7 mgmt + 10 ACPX
 ├── tlamatini_acpx.py               # Self-contained stdlib ACPX runtime port for the MCP server
 ├── Tlamatini.ps1                   # Legacy launcher for the frozen exe
@@ -549,9 +549,9 @@ A per-agent operations table appended to chat answers when the **Exec Report** c
 
 ---
 
-## 13. The 85 Workflow Agent Types
+## 13. The 87 Workflow Agent Types
 
-Ground truth: `Tlamatini/agent/agents/` (85 dirs, each `<name>.py` + `config.yaml`), catalog `agents_descriptions.md` (drives sidebar tooltips/Description dialogs), manifest `_tlamatini_agents_manifest.json`. Display casing below is the DB `agentDescription` casing (§14.1). Most agents are both canvas-placeable and Multi-Turn-wrapped (`chat_agent_*`); a few wrapped-tool display names deliberately differ from canvas names (`Send Email`→emailer, `Move File`→mover, `Summarize Text`→summarizer, `Kyber Deciph` (truncated)→kyber_decipher, `SQLer` tool vs `Sqler` canvas).
+Ground truth: `Tlamatini/agent/agents/` (87 dirs, each `<name>.py` + `config.yaml`), catalog `agents_descriptions.md` (drives sidebar tooltips/Description dialogs), manifest `_tlamatini_agents_manifest.json`. Display casing below is the DB `agentDescription` casing (§14.1). Most agents are both canvas-placeable and Multi-Turn-wrapped (`chat_agent_*`); a few wrapped-tool display names deliberately differ from canvas names (`Send Email`→emailer, `Move File`→mover, `Summarize Text`→summarizer, `Kyber Deciph` (truncated)→kyber_decipher, `SQLer` tool vs `Sqler` canvas).
 
 ### Control Agents (6)
 | Agent | Purpose |
@@ -578,7 +578,7 @@ Ground truth: `Tlamatini/agent/agents/` (85 dirs, each `<name>.py` + `config.yam
 | **OR** | First-one-wins two-input OR gate |
 | **Barrier** | N-input fan-in synchronization gate |
 
-### Action Agents (52)
+### Action Agents (54)
 | Agent | Purpose |
 |---|---|
 | **Executer** | Arbitrary shell command runner (`non_blocking`, `execute_forked_window` for a visible console) |
@@ -611,12 +611,14 @@ Ground truth: `Tlamatini/agent/agents/` (85 dirs, each `<name>.py` + `config.yam
 | **Summarizer** | Polling LLM event-detector + one-shot summarizer modes |
 | **File-Interpreter** | Multi-format document reader (DOCX/PPTX/XLSX/PDF/…; fast/complete/summarized) |
 | **File-Extractor** | Raw-text sibling; Read-style line/offset/limit views |
+| **PDFer** | PDF creation, merge/split, extraction, rendering, inspection, and layout validation |
+| **LaTeXer** | MiKTeX-backed LaTeX authoring/validation/compilation with an eight-rung, copy-first repair ladder and deterministic verdicts |
 | **Image-Interpreter** | Triple-model vision analyst (2 parallel interpreters + merger) |
 | **Video-Analyzer** | Motion-verdict video watcher (deterministic motion gate + dual vision models + PASS/FAIL tokens; robotic-loop eye) |
 | **J-Decompiler** | Java decompiler via bundled jd-cli |
 | **De-Compresser** | Deterministic compress/decompress (.gz/.zip/.7z/.tar.gz; env-var password) |
-| **Mover** | Move/copy files with wildcards/exclusions |
-| **Deleter** | Pattern file deletion (immediate or event mode) |
+| **Mover** | Move/copy with wildcard/exclusion support and v1.48.13 app-owned Temp normalization for implicit scratch destinations |
+| **Deleter** | Pattern deletion with app-owned Temp defaults and a strict no-scope-widening normalization guard |
 | **File-Creator** | Atomic file writer (preferred for all file authorship) |
 | **Shoter** | Screenshot of the primary display (read-only) |
 | **Globber** | Read-only glob file discovery (Glob equivalent) |
@@ -711,11 +713,11 @@ Guide: `Tlamatini/.skills/create_new_skill.md`; canonical worked example of an i
 
 **No SPA framework** — server-rendered Django templates (only 4: `agent_page.html`, `agentic_control_panel.html`, `login.html`, `welcome.html`) + vanilla JS with CDN libraries (jQuery 3.7.1 + jQuery-UI 1.13.3 draggable canvas, Bootstrap 5, highlight.js, marked, DOMPurify, Sortable). Cross-file communication is via **script-scope globals** (whitelisted in `eslint.config.mjs`). Cache-busting: `?v={{ STATIC_VERSION }}` on every static URL (bump via the `tlamatini-static-version-bumper` skill after frontend changes). 10 CSS files under `static/agent/css/`.
 
-**35 JS modules** (`static/agent/js/`):
+**37 JS modules** (`static/agent/js/`):
 
 - **Chat page (10)**: `avatar.js` (the clickable talking portrait in the input footer + browser `speechSynthesis` narration — **FEMALE VOICE ONLY**, same rule as the Talker agent; ~170-char chunking, queued utterances and a keep-alive interval work around the Web Speech API's truncation/stall bugs; settings persist in `localStorage.tlm_voice_settings`. Distinct from **Talker**, which synthesizes a WAV server-side via Ollama), `agent_page_init.js` (WebSocket setup, context-dir menu), `agent_page_chat.js` (messages; `exec-permission-request` frames; Cancel-during-self-healing), `agent_page_canvas.js`, `agent_page_context.js`, `agent_page_dialogs.js` (incl. `showExecPermissionDialog`), `agent_page_layout.js`, `agent_page_state.js` (toggle helpers), `agent_page_ui.js`, `chat_image_paste.js` (Ctrl+V / drop screenshot → saved to `<app>/Temp/image_<ts>.jpg`, absolute path spliced into the chat box at the caret; the `paste` listener lives on `document`, chips row must stay counted in `computeFormMinHeight()`).
 - **ACP designer (15)**: `agentic_control_panel.js` (entry), `acp-connection-status.js` ("backend is down" banner for the designer, 2026-08-01 — the chat page had one via its WebSocket `onclose`, the canvas had NOTHING, so a dead server left Validate / Start / Save failing silently on a page that looked healthy; it is HTTP-polled, not socket-driven, so it could not be copied verbatim from `agent_page_state.js`), then strict load order: `acp-globals.js` (#1 — shared state + `updateCanvasContentSize()`), `acp-session.js`, `acp-undo-manager.js`, `acp-agent-connectors.js` (1,698 lines; 50+ connection handlers), `acp-running-state.js`, `acp-control-buttons.js`, `acp-validate.js`, `acp-canvas-core.js`, `acp-flow-snapshot.js` (`buildACPFlowSnapshot()` → `schemaVersion: 2`), `acp-canvas-undo.js` (1024 actions), `acp-file-io.js`, `acp-layout.js`, `acp-parametrizer-dialog.js`, plus `canvas_item_dialog.js`, `contextual_menus.js`.
-- **Shared/chat-runtime (10)**: `tools_dialog.js` (tool toggles + Catalog of Prompts — primary load = ONE `GET /agent/list_prompts/`; the `prompt-1..N` probe loop is a gap-tolerant offline fallback), `skills_dialog.js` (ACPX-Skills dropdown), `external_mcps_dialog.js` (External ▸ MCPs), `access_keys_wizard.js` (Config ▸ Access Keys Wizard — one guided place for every provider secret), `contacts_dialog.js` (contacts book for messaging agents), `chat_page_runtime_poller.js`, `shared-runtime-dialogs.js`, and the remaining shared helpers.
+- **Shared/chat-runtime (12)**: `tools_dialog.js` (tool toggles + Catalog of Prompts — primary load = ONE `GET /agent/list_prompts/`; the `prompt-1..N` probe loop is a gap-tolerant offline fallback), `skills_dialog.js` (ACPX-Skills dropdown), `external_mcps_dialog.js` (External ▸ MCPs), `access_keys_wizard.js` (Config ▸ Access Keys Wizard — one guided place for every provider secret), `contacts_dialog.js` (contacts book for messaging agents), `chat_page_runtime_poller.js`, `shared-runtime-dialogs.js`, `dialog_policy.js` (central dismissal behavior), `release_notes_renderer.js` (safe update-note rendering), and the remaining shared helpers.
 
 **Const-poison contract (v1.38.1)**: module-level state that ANY other JS file reassigns at runtime (`tools`/`agents`/`skills` arrays, chat history, canvas flags) MUST be declared `let`, never `const`. Per-file ESLint cannot see cross-file reassignment — a `let`→`const` "cleanup" lints green then kills the page at load (`TypeError: Assignment to constant variable`). Guarded by `agent/test_frontend_mutable_state.py` over both source and `staticfiles`.
 
@@ -818,7 +820,7 @@ Hardcoded assumptions (know before changing these subsystems):
 8. The web port is configurable (`django_port`, §5); still genuinely hardcoded: direct `daphne`/`uvicorn` launches, `:8765`/`:50051` helpers, TeleTlamatini's `tlamatini.base_url`.
 9. Carried-Python media libs: Recorder/Camcorder/AudioPlayer/VideoPlayer/Whisperer run under the CARRIED Python (`<install>/python`), NOT the frozen exe — numpy + cv2 must exist in BOTH Pythons; `build.py` aborts otherwise. A dep pinned in `requirements.txt` but missing from the carried Python crashes the pool agent at runtime.
 10. Frontend `let`-not-`const` for cross-file mutable globals (§15, const-poison).
-11. Stale counts persist in docs/comments across the repo: README badge `TOOLS-75` (actual ~103), "84 drag-and-drop" (actual 85 on disk), `agents_descriptions.md` intro "83", `tlamatini_mcp_server.py` docstring "82", `TLAMATINI_MCP.md` "57/62 tools" (actual 102), ACPX.md "57 agents/32 wrapped/20 skills", `config.json` comment "7 ACPX tools" (actual 12), `create-new-agent`/`flow-making` skills "83". **The verified numbers live in §1 of this file — fix stale docs when you touch them.**
+11. Count discipline: the current v1.48.13 source inventory is 87 workflow agents, 65 wrapped chat agents, 97 Multi-Turn tools, 104 root MCP tools, 28 runtime skills, 193 migrations, and 37 JavaScript modules. Historical release notes may retain their dated counts; active guidance must be re-verified from source and updated together.
 
 Common pitfalls (deduplicated; the dated fix contracts live in `docs/claude/recent-fixes.md`):
 
@@ -950,6 +952,6 @@ From the very start of a session, perform the work with **Tlamatini's OWN** agen
 
 ---
 
-*KIMI.md — re-verified 2026-08-07 against source ground truth at v1.48.2 (87 agent templates / 65 wrapped `chat_agent_*` specs / 104 `mcp__tlamatini__*` tools / 28 skills / 193 migrations / 35 JS modules). Sibling files: CLAUDE.md (Claude Code), GEMINI.md (Gemini CLI). Counts verified from disk, manifest, and the live MCP server; when they drift again, re-verify from source — never copy from docs.*
+*KIMI.md — version-aligned 2026-08-15 against source ground truth at v1.48.13 (87 agent templates / 65 wrapped `chat_agent_*` specs / 104 `mcp__tlamatini__*` tools / 28 skills / 193 migrations / 37 JS modules). Sibling files: CLAUDE.md (Claude Code), GEMINI.md (Gemini CLI). Counts verified from disk, manifest, and the live MCP server; when they drift again, re-verify from source — never copy from docs.*
 
 *Tlamatini — "one who knows". Created by Angela López Mendoza · @angelahack1 · XAIHT.*

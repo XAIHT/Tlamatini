@@ -216,6 +216,10 @@ The sweep script flags exactly this.
 
 ## Done criteria (all must hold)
 
+### Frontend carrier gate (v1.48.13)
+
+Because `agent/static` is tree-carried, `dialog_theme.css`, `dialog_policy.js`, and `release_notes_renderer.js` ship automatically only if they remain inside that tree and are referenced by both source templates and collected-static output. Verify template load order, run collection/build tests, and bump `STATIC_VERSION` after any JavaScript/CSS/template change. Confirm the updater still uses the shared renderer/policy and that long-operation locks restore `data-bs-toggle`.
+
 1. `sweep_self_update.py` exits clean (no `[FINDING]`).
 2. Every new top-level repo path from the since-last-tag diff has a wired carrier.
 3. The two preserve lists are byte-identical and equal `empty_dirs`(top-level) + `config.json`.

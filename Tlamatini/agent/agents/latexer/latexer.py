@@ -4212,7 +4212,7 @@ def _decode_b64_fields(config: dict) -> None:
 
     LaTeX is backslash soup and every table row / line break is ``\\``. The chat
     request parser is tuned for shell/SQL payloads, so it collapsed ``\\`` to a
-    single ``\`` and glued the trailing ``', filename='...'`` into the body —
+    single ``\\`` and glued the trailing ``', filename='...'`` into the body —
     a document that could never compile, and the reason Angela's OpenMP report
     produced no .tex and no PDF at all (2026-08-10). base64 has no backslash,
     quote, comma or newline in its alphabet, so a ``*_b64`` value reaches this

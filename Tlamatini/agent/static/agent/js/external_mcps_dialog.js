@@ -244,7 +244,87 @@ function OpenExternalMcpsDialog(event) { // eslint-disable-line no-unused-vars
         chip.classList.toggle('full', c >= maxActive);
     }
 
-    function renderAll() { renderList(); renderSum(); renderChip(); }
+    // ── Runtime strip: node / npm / npx / pnpm / uv / uvx ────────────────────
+    // Most of the MCP ecosystem ships as `npx -y <pkg>` or `uvx <pkg>`. Without
+    // this strip, a user on a machine with no Node sees a perfectly valid
+    // catalog row that simply never connects and NOTHING on screen explaining
+    // why. A star on a pill means it came from Tlamatini's own private runtime
+    // rather than the user's system install.
+    let runtimeInfo = null;
+    let runtimeBusy = false;
+
+    function renderRuntime() {
+        let box = document.getElementById('emx-runtime');
+        if (!box) {
+            box = document.createElement('div');
+            box.id = 'emx-runtime';
+            box.className = 'emx-runtime';
+            listEl.parentNode.insertBefore(box, listEl);
+        }
+        if (!runtimeInfo || runtimeInfo.unavailable) { box.style.display = 'none'; return; }
+        box.style.display = '';
+        const missing = runtimeInfo.missing || [];
+        const tools = runtimeInfo.tools || {};
+        box.innerHTML =
+            '<div class="emx-runtime-head"></div>' +
+            '<div class="emx-runtime-pills"></div>' +
+            '<button type="button" class="emx-runtime-btn"></button>';
+        const head = box.querySelector('.emx-runtime-head');
+        head.className = 'emx-runtime-head ' + (missing.length ? 'warn' : 'ok');
+        head.textContent = missing.length
+            ? ('Missing: ' + missing.join(', ') +
+               ' — Tlamatini installs these herself, no admin needed.')
+            : 'Package managers ready — npx / uvx servers can be activated.';
+        const pills = box.querySelector('.emx-runtime-pills');
+        ['node', 'npm', 'npx', 'pnpm', 'uv', 'uvx'].forEach(function (name) {
+            const t = tools[name] || {};
+            const pill = document.createElement('span');
+            pill.className = 'emx-runtime-pill ' + (t.available ? 'on' : 'off');
+            pill.textContent = name + (t.available && t.source === 'tlamatini' ? ' ★' : '');
+            pill.title = t.available
+                ? (t.path + '  (' + (t.source || 'system') + ')')
+                : (name + ' is not installed on this machine');
+            pills.appendChild(pill);
+        });
+        const btn = box.querySelector('.emx-runtime-btn');
+        btn.textContent = runtimeBusy || runtimeInfo.provisioning_in_progress
+            ? 'Installing…'
+            : (missing.length ? 'Install now' : 'Reinstall');
+        btn.disabled = !!(runtimeBusy || runtimeInfo.provisioning_in_progress);
+        btn.onclick = installRuntimes;
+    }
+
+    function installRuntimes() {
+        if (runtimeBusy) return;
+        runtimeBusy = true;
+        renderRuntime();
+        flash('Downloading Node / uv into Tlamatini’s private runtime…');
+        fetch('/agent/external_mcps/runtime_install/', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': _emxCsrf() },
+            body: JSON.stringify({ tools: ['npx', 'uvx'] })
+        })
+            .then(r => r.json())
+            .then(() => fetch('/agent/external_mcps/', { credentials: 'same-origin' }))
+            .then(r => r.json())
+            .then(payload => {
+                runtimeInfo = payload.runtime || null;
+                runtimeBusy = false;
+                renderRuntime();
+                const stillMissing = (runtimeInfo && runtimeInfo.missing) || [];
+                flash(stillMissing.length
+                    ? ('Still missing: ' + stillMissing.join(', ') + ' — check the network.')
+                    : 'Runtimes installed — npx / uvx servers can be activated now.');
+            })
+            .catch(err => {
+                runtimeBusy = false;
+                renderRuntime();
+                flash('Runtime install failed: ' + err);
+            });
+    }
+
+    function renderAll() { renderRuntime(); renderList(); renderSum(); renderChip(); }
 
     // A toggled row jumps between the two blocks, so keep it under the user's eye and
     // re-focus it -- renderList() replaced the DOM node the focus was sitting on.
@@ -403,6 +483,7 @@ function OpenExternalMcpsDialog(event) { // eslint-disable-line no-unused-vars
         .then(payload => {
             maxActive = Number(payload.max_active) || EXTERNAL_MCPS_MAX_ACTIVE;
             servers = (payload.servers || []).map(s => Object.assign({}, s));
+            runtimeInfo = payload.runtime || null;
             renderLegend();
             renderAll();
         })

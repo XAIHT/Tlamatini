@@ -682,3 +682,30 @@ body.emx-dialog-open {
         min-width: 0;
     }
 }
+
+/* --- Runtime strip: node / npm / npx / pnpm / uv / uvx ------------------ */
+/* Shows WHY an npx/uvx server cannot start, and installs the missing       */
+/* manager into Tlamatini's private per-user runtime in one click.          */
+.emx-runtime {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    margin: 0 0 10px 0; padding: 8px 10px; border-radius: 8px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+}
+.emx-runtime-head { flex: 1 1 100%; font-size: 12px; line-height: 1.35; }
+.emx-runtime-head.ok { color: #7fd88f; }
+.emx-runtime-head.warn { color: #ffcf6b; }
+.emx-runtime-pills { display: flex; flex-wrap: wrap; gap: 5px; flex: 1 1 auto; }
+.emx-runtime-pill {
+    font-family: Consolas, "Courier New", monospace; font-size: 11px;
+    padding: 1px 7px; border-radius: 999px; white-space: nowrap;
+    border: 1px solid transparent;
+}
+.emx-runtime-pill.on { background: rgba(46, 160, 67, 0.20); color: #7fd88f; border-color: rgba(46, 160, 67, 0.45); }
+.emx-runtime-pill.off { background: rgba(248, 81, 73, 0.16); color: #ff9b95; border-color: rgba(248, 81, 73, 0.40); }
+.emx-runtime-btn {
+    font-size: 11px; padding: 3px 12px; border-radius: 6px; cursor: pointer;
+    background: #2f6feb; color: #fff; border: 1px solid #2f6feb;
+}
+.emx-runtime-btn:hover:not(:disabled) { background: #4880f0; }
+.emx-runtime-btn:disabled { opacity: 0.55; cursor: default; }

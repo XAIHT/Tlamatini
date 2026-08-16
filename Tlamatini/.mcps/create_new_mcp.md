@@ -780,6 +780,8 @@ Independent of everything above, files entering the **RAG context chain** are sc
 
 ## Final Rule
 
+Before declaring frontend or filesystem work complete, enforce the v1.48.13 cross-cutting contracts: Mover/Deleter implicit scratch paths remain under `TLAMATINI_TEMP`, explicit absolute user destinations remain authoritative, deletion scope never widens, custom dialogs reuse `dialog_theme.css` + `dialog_policy.js`, and every JavaScript/CSS/template edit is followed by a `STATIC_VERSION` cache-bust check.
+
 Answer this question explicitly before coding:
 
 "Am I adding a direct @tool, a wrapped chat-agent tool, an MCP context provider, a Skill (`SKILL.md` package), or more than one of those?"

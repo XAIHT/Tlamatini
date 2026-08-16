@@ -60,6 +60,14 @@ python Tlamatini\agent\doc_generation\refresh_project_docs.py
 
 The generator builds the full PPTX and performs an internal geometry audit while building slides. If it fails, fix layout by adding slides, shortening bullet groups, or reducing line chunks. Do not ignore audit failures.
 
+## Mandatory Three-Pass Consistency Sweep
+
+1. **Discover:** compare the previous deck commit with local HEAD/version tag; inventory tracked files, agents, tools, skills, languages, JavaScript/CSS assets, README, BookOfTlamatini, prompts, and recent implementation commits.
+2. **Reconcile:** map each current release behavior to source plus documentation and update active counts from source. Preserve dated historical material, but never let it drive the cover, facts, architecture, usage, or current-release slides.
+3. **Prove:** repeat stale-version/count searches, lint/test, regenerate, extract slide text, prove complete-tree parity, run geometry checks, and render every slide for visual inspection.
+
+For v1.48.13 and later, include the Mover/Deleter scratch-path guard, uniform dialog theme/policy, long-operation menu locks, safe updater notes, log identity, DB/reaper safeguards, and `STATIC_VERSION` workflow in the current-release section.
+
 ## Validation Checklist
 
 - If Python source code was generated or modified, run `python -m ruff check` from the project root and fix all reported issues.
@@ -68,3 +76,4 @@ The generator builds the full PPTX and performs an internal geometry audit while
 - Confirm the line-inventory slide contains the total effective line count.
 - Confirm the tree appendix count covers the complete tracked file tree.
 - Confirm no audit exceptions were raised during generation.
+- When Microsoft PowerPoint is available, render every slide through native PowerPoint and inspect text bounds, out-of-bounds shapes, and unintended text-to-text intersections.

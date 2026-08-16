@@ -12144,13 +12144,53 @@ def _build_skill_summary_row(reg_skill, enabled: bool) -> dict:
 
 @login_required
 def external_mcps_list_view(request):
-    """Catalog payload for the External ▸ MCPs dialog (one row per server)."""
+    """Catalog payload for the External ▸ MCPs dialog (one row per server).
+
+    Also carries a ``runtime`` block describing whether node / npm / npx / pnpm /
+    uv / uvx are available and where each came from, so the dialog can explain
+    WHY an npx-launched server cannot start — and offer to install the missing
+    manager — instead of leaving the user staring at a perfectly valid catalog
+    entry that silently fails to connect. Fail-open: if the provisioner cannot
+    be imported the dialog simply shows no runtime strip.
+    """
     try:
         from .external_mcp_manager import list_catalog
-        return JsonResponse(list_catalog())
+        payload = list_catalog()
+        try:
+            from . import runtime_provisioner
+            payload["runtime"] = runtime_provisioner.status()
+        except Exception:
+            payload["runtime"] = {"unavailable": True, "ok": True, "tools": {}, "missing": []}
+        return JsonResponse(payload)
     except Exception as e:
         traceback.print_exc()
         return JsonResponse({"error": str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def external_mcps_runtime_install_view(request):
+    """Install the package managers an npx/uvx MCP server needs.
+
+    Downloads Node / uv / pnpm into Tlamatini's PRIVATE per-user runtime — no
+    administrator rights, no system PATH change, nothing installed outside her
+    own folder. Normally UNNECESSARY (activating such a server provisions its
+    runtime automatically); this backs the explicit "Install now" button in the
+    External ▸ MCPs dialog, for a user who would rather do it up front.
+    """
+    try:
+        from . import runtime_provisioner
+        body = json.loads((request.body or b"{}").decode("utf-8") or "{}")
+        tools = body.get("tools")
+        if isinstance(tools, str):
+            tools = [t.strip() for t in tools.replace(";", ",").split(",") if t.strip()]
+        if not isinstance(tools, list) or not tools:
+            tools = None
+        return JsonResponse(runtime_provisioner.provision(
+            tools, force=bool(body.get("force"))))
+    except Exception as e:
+        traceback.print_exc()
+        return JsonResponse({"ok": False, "error": str(e)}, status=500)
 
 
 @login_required

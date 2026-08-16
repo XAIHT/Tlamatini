@@ -65,6 +65,8 @@ description: The authoritative, exhaustive end-to-end runbook for creating a BRA
 6. Decide whether the agent should be **LLM-callable in Multi-Turn** (a wrapped `chat_agent_<lower>` tool) — most new agents should be.
 7. Decide whether the agent is **long-running** (Monitor-style) or **short-lived**.
 8. Decide whether the agent **scaffolds project directories** (firmware/engine style → defaults to `<app>/Templates`) or writes **scratch** (→ `<app>/Temp`).
+8a. If it delegates placement to Mover or cleanup to Deleter, lock the v1.48.13 contract: empty, relative, and legacy `C:/Temp/...` scratch paths re-root under `TLAMATINI_TEMP`; explicit absolute user paths remain authoritative; normalization never broadens deletion scope.
+8b. If it adds UI, reuse `dialog_theme.css` and `dialog_policy.js`; place long-operation navigation controls in `LONG_OPERATION_DISABLED_MENU_BUTTONS`; bump `STATIC_VERSION` after every JavaScript/CSS/template edit.
 9. Decide whether the agent **spawns console child processes** (relevant to the orphan reaper + command watchdog).
 10. Decide whether the agent has a **singleton** constraint (only FlowCreator/FlowHypervisor are; a normal agent is not).
 11. Lock the **`<Display>`** name with EXACT casing — this is `agentDescription` and the single source of truth.

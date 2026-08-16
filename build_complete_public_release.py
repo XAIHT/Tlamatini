@@ -210,6 +210,12 @@ def _utf8_env() -> dict:
     # if the ambient shell exported TLAMATINI_BUNDLE_CONTACTS. build.py ships the
     # empty placeholder whenever this is unset.
     env.pop("TLAMATINI_BUNDLE_CONTACTS", None)
+    # PUBLIC build ALWAYS ships ONLY the External MCP servers Tlamatini herself
+    # implements (memory, sequential-thinking) -- never the maintainer's catalog,
+    # even if the ambient shell exported TLAMATINI_BUNDLE_EXTERNAL_MCPS. build.py
+    # generates that two-server catalog from external_mcp_defaults whenever this
+    # is unset, and hard-ABORTS the build if a live secret ever reaches it.
+    env.pop("TLAMATINI_BUNDLE_EXTERNAL_MCPS", None)
     return env
 
 

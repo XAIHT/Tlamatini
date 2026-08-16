@@ -54,6 +54,12 @@ PKG_ZIP = REPO_ROOT / "pkg.zip"            # build.py's real artifact (it delete
 # Gitignored PRIVATE contacts book. When present, the keyed build bundles it as
 # contacts.json (build.py reads TLAMATINI_BUNDLE_CONTACTS). Absent -> empty book.
 CONTACTS_PRIVATE = REPO_ROOT / "contacts.private.json"
+# The DEV External-MCP catalog. It is TRACKED (with `<... goes here>` placeholders)
+# and `regen_secrets.py --mode keyed` — which this builder runs first — restores the
+# real tokens into it. The keyed build then ships EVERY server in it PLUS the two
+# defaults (memory, sequential-thinking), via build.py's TLAMATINI_BUNDLE_EXTERNAL_MCPS.
+# The PUBLIC builder clears that variable and ships the two defaults only.
+EXTERNAL_MCPS_DEV = REPO_ROOT / "Tlamatini" / "agent" / "external_mcps.json"
 
 
 def banner(msg: str) -> None:
@@ -126,6 +132,14 @@ def _utf8_env() -> dict:
         env["TLAMATINI_BUNDLE_CONTACTS"] = str(CONTACTS_PRIVATE)
     else:
         env.pop("TLAMATINI_BUNDLE_CONTACTS", None)
+    # PRIVATE / keyed build: ship the FULL dev External-MCP catalog (every server
+    # this machine has) PLUS the two defaults, which build.py merges in. This runs
+    # AFTER `regen_secrets.py --mode keyed`, so the catalog on disk already holds
+    # real tokens rather than `<... goes here>` placeholders.
+    if EXTERNAL_MCPS_DEV.is_file():
+        env["TLAMATINI_BUNDLE_EXTERNAL_MCPS"] = str(EXTERNAL_MCPS_DEV)
+    else:
+        env.pop("TLAMATINI_BUNDLE_EXTERNAL_MCPS", None)
     return env
 
 

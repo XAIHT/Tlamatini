@@ -102,6 +102,8 @@ Tlamatini/.mcps/create_new_mcp.md
 - `mcpContent` is stored as **string**, not boolean.
 - Files-Search main path uses `FileSearchRAGChain`; `mcp_files_search_client_uri` from config is unused by the main chain.
 - **Temp files → `<app>/Temp` only (2026-06-02 policy)**: a new `@tool` (or wrapped chat-agent) that writes scratch/intermediate files MUST resolve them through `agent/path_guard.py` (`get_app_temp_root()` / `resolve_temp_path(...)`) — never `tempfile.gettempdir()` / `C:\Temp` / `%TEMP%`. The Django process already pins `tempfile.tempdir` + `TEMP`/`TMP`/`TMPDIR`/`TLAMATINI_TEMP` to `<app>/Temp` (`manage.py` / `settings.py`), so a bare `tempfile.*` already lands correctly — but resolve explicitly for clarity and standalone correctness. (Template/firmware **project** dirs default to `<app>/Templates` instead — `get_app_templates_root`.) Contract: `prompt.pmt` Rule 15/16; `docs/claude/recent-fixes.md` (2026-06-02).
+- **v1.48.13 placement guard:** Mover/Deleter-backed scratch operations must test empty, relative, and legacy `C:/Temp/...` paths under `TLAMATINI_TEMP`, preserve explicit absolute user destinations, and never broaden deletion scope.
+- **Uniform frontend rule:** custom tool/MCP dialogs reuse `dialog_theme.css` and `dialog_policy.js`; every JavaScript/CSS/template edit requires a `STATIC_VERSION` bump.
 
 ## The other "MCP" — what is NOT this skill
 

@@ -73,7 +73,7 @@ All four connectable transports share a single `_NetworkMcpClientBase` (one MCP 
 
 `tcp` / `named-pipe` are **detected and diagnosed** (the doctor explains why) but are **NOT yet connectable** — a clear blocker, not a silent failure. Each remote tool is wrapped as a LangChain tool named **`ext__<server>__<tool>`**.
 
-### The 8 LLM-facing supervisor tools
+### The 10 LLM-facing supervisor tools
 
 Defined in `external_mcp_manager.py::_SUPERVISOR_TOOL_NAMES`. All return a JSON envelope (they never raise):
 
@@ -87,10 +87,14 @@ Defined in `external_mcp_manager.py::_SUPERVISOR_TOOL_NAMES`. All return a JSON 
 | `external_mcp_import` | add server(s) to the catalog from a JSON object **OR** a JSON string |
 | `external_mcp_set_active` | set the active set (a list **OR** a comma-string), capped at ≤5 |
 | `external_mcp_wait` | **BLOCKS** until a slow server is ready (e.g. a first-run Docker image pull) instead of polling-and-giving-up |
+| `external_mcp_runtime_status` | are `node`/`npm`/`npx`/`pnpm`/`uv`/`uvx` available, where does each live, and is it Tlamatini's private copy or the system's? |
+| `external_mcp_runtime_install` | download the missing manager(s) into Tlamatini's PRIVATE per-user runtime (no admin, no system-PATH change) |
+
+**The two runtime tools exist because most MCP servers are `npx -y <pkg>` / `uvx <pkg>` and a fresh machine has neither.** Normally the LLM needs neither: activating such a server provisions its runtime automatically on the background connect thread (`_ensure_runtime_for_spec`). Reach for them when a server will not spawn, or when the user asks whether Node/Python tooling is installed — and **never tell a user to go install Node before checking**, because Tlamatini installs it herself. See `docs/claude/architecture.md` → *External MCPs* and `recent-fixes.md` (2026-08-15).
 
 These are **force-bound and capability-hinted** for MCP-setup intents (`global_execution_planner._external_mcp_force_names`, `capability_registry._EXTRA_HINTS_BY_TOOL_NAME`), so the LLM reliably reaches for them when the user asks to add/activate/troubleshoot an external MCP. The executor refreshes the `ext__*` tool slice per request via `mcp_agent._refresh_external_mcp_tool_surface`.
 
-> **NOT ACPX tools.** The 8 supervisor tools (and the `ext__*` wrappers) are **NOT** in `agent.acpx.ACPX_TOOL_NAMES` and are **NOT** gated by the ACPX toolbar checkbox. They are only gated by Multi-Turn, exactly like any other unified-agent tool.
+> **NOT ACPX tools.** The 10 supervisor tools (and the `ext__*` wrappers) are **NOT** in `agent.acpx.ACPX_TOOL_NAMES` and are **NOT** gated by the ACPX toolbar checkbox. They are only gated by Multi-Turn, exactly like any other unified-agent tool.
 
 ### Frontend — "External ▸ MCPs" navbar dialog
 
@@ -101,6 +105,10 @@ A navbar dialog (`static/agent/js/external_mcps_dialog.js` + `css/external_mcps_
 | `/agent/external_mcps/` | GET | catalog + active set + per-server state |
 | `/agent/external_mcps/activate/` | POST | set the active set (≤5) |
 | `/agent/external_mcps/import/` | POST | import server(s) from posted JSON |
+| `/agent/external_mcps/remove/` | POST | delete server(s) from the catalog (tombstones a shipped default so it is not re-seeded) |
+| `/agent/external_mcps/runtime_install/` | POST | install node/npx/uv/uvx into Tlamatini's private runtime (the "Install now" button) |
+
+The `GET` payload also carries a **`runtime`** block (availability + path + `source` for each of the six managers), which the dialog renders as the `.emx-runtime` strip — so a user on a machine with no Node is told *why* an npx server will not start instead of watching a valid row silently fail.
 
 ### Bulletproof contract (do NOT weaken)
 

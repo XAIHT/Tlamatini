@@ -19,16 +19,16 @@
 
 <p align="center">
   <b>💰 About $200 a YEAR — not $200 a MONTH.</b><br/>
-  Frontier plans like GPT-5.4 or Claude Opus cost about <b>$200 per month</b>. <b>Tlamatini is free and open-source</b> — your only bill is <b>Ollama Pro (~$200 a <i>year</i>, paid to Ollama, not us)</b>, and on top of it she stacks <b>87 agent types and 75+ tools</b>: comparable power for about <b>one twelfth</b> the price, all on your own machine.
+  Frontier plans like GPT-5.4 or Claude Opus cost about <b>$200 per month</b>. <b>Tlamatini is free and open-source</b> — your only bill is <b>Ollama Pro (~$200 a <i>year</i>, paid to Ollama, not us)</b>, and on top of it she stacks <b>87 agent types and 97 Multi-Turn tools</b>: comparable power for about <b>one twelfth</b> the price, all on your own machine.
 </p>
 
 <p align="center">
   <a href="https://discord.gg/WFQsrskgc"><img src="https://img.shields.io/badge/DISCORD-JOIN%20US-5865F2?style=for-the-badge&labelColor=2D2D2D&logo=discord&logoColor=white" alt="Join our Discord"/></a>
-  <a href="https://github.com/XAIHT/Tlamatini/releases/tag/v1.48.2"><img src="https://img.shields.io/badge/VERSION-v1.48.2-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Version"/></a>
+  <a href="https://github.com/XAIHT/Tlamatini/releases/tag/v1.48.13"><img src="https://img.shields.io/badge/VERSION-v1.48.13-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Version"/></a>
   <a href="https://www.python.org/downloads/release/python-31210/"><img src="https://img.shields.io/badge/PYTHON-3.12.10-3776AB?style=for-the-badge&labelColor=2D2D2D&logo=python&logoColor=white" alt="Python"/></a>
   <a href="#installation"><img src="https://img.shields.io/badge/PLATFORM-WIN%2010%20%7C%2011-0078D6?style=for-the-badge&labelColor=2D2D2D&logo=windows&logoColor=white" alt="Platform"/></a>
   <a href="#-the-full-capability-list"><img src="https://img.shields.io/badge/AGENT%20TYPES-87-8A2BE2?style=for-the-badge&labelColor=2D2D2D" alt="87 agent types"/></a>
-  <a href="#-the-full-capability-list"><img src="https://img.shields.io/badge/TOOLS-75-16A34A?style=for-the-badge&labelColor=2D2D2D" alt="75 tools"/></a>
+  <a href="#-the-full-capability-list"><img src="https://img.shields.io/badge/MULTI--TURN%20TOOLS-97-16A34A?style=for-the-badge&labelColor=2D2D2D" alt="97 Multi-Turn tools"/></a>
   <a href="https://github.com/XAIHT/Tlamatini/blob/main/LICENSE"><img src="https://img.shields.io/badge/LICENSE-MIT-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="License"/></a>
 </p>
 
@@ -45,9 +45,17 @@
 
 ---
 
+## Current release — v1.48.13
+
+The annotated `v1.48.13` release is the current project baseline. It completes the application-owned file-placement guard for **Mover** and **Deleter**: empty, relative, and legacy `C:/Temp/...` scratch destinations are re-rooted beneath Tlamatini's own `<app>/Temp`, while a user-supplied explicit absolute destination remains authoritative and Deleter never widens the requested deletion scope.
+
+This release line also carries the recent reliability and uniformity work that now defines the application: one shared visual identity for jQuery UI, Bootstrap, and custom dialogs (`dialog_theme.css`); one fail-open dismissal policy (`dialog_policy.js`); safe release-note rendering for the updater; coherent menu locks during long operations; per-user, request, stream, and source-line application-log attribution; hardened DB/reaper safeguards; and LaTeXer's deterministic repair/verdict protections. The source-verified surface is **87 workflow agents**, **65 wrapped chat agents**, **97 Multi-Turn tools**, **37 JavaScript modules**, and **28 runtime skills**.
+
+---
+
 ## 🚀 Get started — 5 steps to a cloud-powered Tlamatini
 
-The whole idea in one line: **don't pay $200 a month for a frontier model.** **Tlamatini is free** — your only cost is **Ollama Pro (~$200 a year, paid to Ollama, not us)**; point Tlamatini at it and drive **87 agent types and 75+ tools** from your own machine. Here's the full setup.
+The whole idea in one line: **don't pay $200 a month for a frontier model.** **Tlamatini is free** — your only cost is **Ollama Pro (~$200 a year, paid to Ollama, not us)**; point Tlamatini at it and drive **87 agent types and 97 Multi-Turn tools** from your own machine. Here's the full setup.
 
 ### 1 · Install Tlamatini
 

@@ -1,0 +1,434 @@
+{
+  "schemaVersion": 2,
+  "nodes": [
+    {
+      "id": "starter-1",
+      "text": "Starter",
+      "left": "50px",
+      "top": "80px",
+      "agentPurpose": "Entry point, launches first agents",
+      "configData": {
+        "target_agents": [
+          "crawler_1"
+        ]
+      }
+    },
+    {
+      "id": "crawler-1",
+      "text": "Crawler",
+      "left": "270px",
+      "top": "80px",
+      "agentPurpose": "Web crawling with LLM analysis",
+      "configData": {
+        "url": "https://www.npmjs.com/package/@modelcontextprotocol/server-memory",
+        "system_prompt": "Extract ALL details about this package: description, version, installation instructions, dependencies, API surface, tools exposed, configuration options, usage examples, and any architecture details. Be exhaustive.",
+        "content_mode": "text",
+        "target_agents": [
+          "crawler_2"
+        ],
+        "source_agents": [
+          "starter_1"
+        ]
+      }
+    },
+    {
+      "id": "crawler-2",
+      "text": "Crawler",
+      "left": "490px",
+      "top": "80px",
+      "agentPurpose": "Web crawling with LLM analysis",
+      "configData": {
+        "url": "https://www.npmjs.com/package/@modelcontextprotocol/server-sequential-thinking",
+        "system_prompt": "Extract ALL details about this package: description, version, installation instructions, dependencies, API surface, tools exposed, configuration options, usage examples, and any architecture details. Be exhaustive.",
+        "content_mode": "text",
+        "target_agents": [
+          "crawler_3"
+        ],
+        "source_agents": [
+          "crawler_1"
+        ]
+      }
+    },
+    {
+      "id": "crawler-3",
+      "text": "Crawler",
+      "left": "710px",
+      "top": "80px",
+      "agentPurpose": "Web crawling with LLM analysis",
+      "configData": {
+        "url": "https://github.com/modelcontextprotocol/servers/tree/main/src/memory",
+        "system_prompt": "Extract ALL details about the memory MCP server: source code structure, tools exposed (create_entities, create_relations, add_observations, delete_entities, delete_relations, delete_observations, read_graph, search_nodes, open_nodes), data model, how the knowledge graph works, file storage format, and all configuration options. Be completely exhaustive.",
+        "content_mode": "text",
+        "target_agents": [
+          "crawler_4"
+        ],
+        "source_agents": [
+          "crawler_2"
+        ]
+      }
+    },
+    {
+      "id": "crawler-4",
+      "text": "Crawler",
+      "left": "930px",
+      "top": "80px",
+      "agentPurpose": "Web crawling with LLM analysis",
+      "configData": {
+        "url": "https://github.com/modelcontextprotocol/servers/tree/main/src/sequentialthinking",
+        "system_prompt": "Extract ALL details about the sequential thinking MCP server: source code structure, the sequentialthinking tool, input schema (thought, nextThoughtNeeded, thoughtNumber, totalThoughts, isRevision, revisesThought, branchFromThought, branchId, needsMoreThoughts), how branching works, how revision works, and all configuration options. Be completely exhaustive.",
+        "content_mode": "text",
+        "target_agents": [
+          "apirer_1"
+        ],
+        "source_agents": [
+          "crawler_3"
+        ]
+      }
+    },
+    {
+      "id": "apirer-1",
+      "text": "Apirer",
+      "left": "1150px",
+      "top": "80px",
+      "agentPurpose": "HTTP REST API calls",
+      "configData": {
+        "url": "https://raw.githubusercontent.com/modelcontextprotocol/servers/main/src/memory/README.md",
+        "method": "GET",
+        "target_agents": [
+          "apirer_2"
+        ],
+        "source_agents": [
+          "crawler_4"
+        ]
+      }
+    },
+    {
+      "id": "apirer-2",
+      "text": "Apirer",
+      "left": "1370px",
+      "top": "80px",
+      "agentPurpose": "HTTP REST API calls",
+      "configData": {
+        "url": "https://raw.githubusercontent.com/modelcontextprotocol/servers/main/src/sequentialthinking/README.md",
+        "method": "GET",
+        "target_agents": [
+          "apirer_3"
+        ],
+        "source_agents": [
+          "apirer_1"
+        ]
+      }
+    },
+    {
+      "id": "apirer-3",
+      "text": "Apirer",
+      "left": "1370px",
+      "top": "250px",
+      "agentPurpose": "HTTP REST API calls",
+      "configData": {
+        "url": "https://raw.githubusercontent.com/modelcontextprotocol/servers/main/src/memory/index.ts",
+        "method": "GET",
+        "target_agents": [
+          "apirer_4"
+        ],
+        "source_agents": [
+          "apirer_2"
+        ]
+      }
+    },
+    {
+      "id": "apirer-4",
+      "text": "Apirer",
+      "left": "1150px",
+      "top": "250px",
+      "agentPurpose": "HTTP REST API calls",
+      "configData": {
+        "url": "https://raw.githubusercontent.com/modelcontextprotocol/servers/main/src/sequentialthinking/index.ts",
+        "method": "GET",
+        "target_agents": [
+          "apirer_5"
+        ],
+        "source_agents": [
+          "apirer_3"
+        ]
+      }
+    },
+    {
+      "id": "apirer-5",
+      "text": "Apirer",
+      "left": "930px",
+      "top": "250px",
+      "agentPurpose": "HTTP REST API calls",
+      "configData": {
+        "url": "https://raw.githubusercontent.com/modelcontextprotocol/servers/main/src/memory/knowledgeGraphManager.ts",
+        "method": "GET",
+        "target_agents": [
+          "executer_1"
+        ],
+        "source_agents": [
+          "apirer_4"
+        ]
+      }
+    },
+    {
+      "id": "executer-1",
+      "text": "Executer",
+      "left": "710px",
+      "top": "250px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "where npx 2>nul & where npm 2>nul & where pnpm 2>nul & where uv 2>nul & where uvx 2>nul & where node 2>nul & node --version 2>nul & npm --version 2>nul & npx --version 2>nul",
+        "target_agents": [
+          "executer_2"
+        ],
+        "source_agents": [
+          "apirer_5"
+        ]
+      }
+    },
+    {
+      "id": "executer-2",
+      "text": "Executer",
+      "left": "490px",
+      "top": "250px",
+      "agentPurpose": "Shell commands",
+      "configData": {
+        "script": "pnpm --version 2>nul & uv --version 2>nul & uvx --version 2>nul",
+        "target_agents": [
+          "apirer_6"
+        ],
+        "source_agents": [
+          "executer_1"
+        ]
+      }
+    },
+    {
+      "id": "apirer-6",
+      "text": "Apirer",
+      "left": "270px",
+      "top": "250px",
+      "agentPurpose": "HTTP REST API calls",
+      "configData": {
+        "url": "https://raw.githubusercontent.com/modelcontextprotocol/servers/refs/heads/main/src/memory/knowledgeGraphManager.ts",
+        "method": "GET",
+        "target_agents": [
+          "apirer_7"
+        ],
+        "source_agents": [
+          "executer_2"
+        ]
+      }
+    },
+    {
+      "id": "apirer-7",
+      "text": "Apirer",
+      "left": "50px",
+      "top": "250px",
+      "agentPurpose": "HTTP REST API calls",
+      "configData": {
+        "url": "https://api.github.com/repos/modelcontextprotocol/servers/contents/src/memory",
+        "method": "GET",
+        "target_agents": [
+          "apirer_8"
+        ],
+        "source_agents": [
+          "apirer_6"
+        ]
+      }
+    },
+    {
+      "id": "apirer-8",
+      "text": "Apirer",
+      "left": "50px",
+      "top": "420px",
+      "agentPurpose": "HTTP REST API calls",
+      "configData": {
+        "url": "https://raw.githubusercontent.com/modelcontextprotocol/servers/main/src/memory/package.json",
+        "method": "GET",
+        "target_agents": [
+          "apirer_9"
+        ],
+        "source_agents": [
+          "apirer_7"
+        ]
+      }
+    },
+    {
+      "id": "apirer-9",
+      "text": "Apirer",
+      "left": "270px",
+      "top": "420px",
+      "agentPurpose": "HTTP REST API calls",
+      "configData": {
+        "url": "https://raw.githubusercontent.com/modelcontextprotocol/servers/main/src/sequentialthinking/package.json",
+        "method": "GET",
+        "target_agents": [
+          "ender_1"
+        ],
+        "source_agents": [
+          "apirer_8"
+        ]
+      }
+    },
+    {
+      "id": "ender-1",
+      "text": "Ender",
+      "left": "490px",
+      "top": "420px",
+      "agentPurpose": "Terminates all agents, launches Cleaners",
+      "configData": {
+        "target_agents": [
+          "crawler_1",
+          "crawler_2",
+          "crawler_3",
+          "crawler_4",
+          "apirer_1",
+          "apirer_2",
+          "apirer_3",
+          "apirer_4",
+          "apirer_5",
+          "executer_1",
+          "executer_2",
+          "apirer_6",
+          "apirer_7",
+          "apirer_8",
+          "apirer_9"
+        ],
+        "source_agents": [
+          "apirer_9"
+        ]
+      }
+    }
+  ],
+  "connections": [
+    {
+      "sourceIndex": 0,
+      "targetIndex": 1,
+      "sourceId": "starter-1",
+      "targetId": "crawler-1",
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 1,
+      "targetIndex": 2,
+      "sourceId": "crawler-1",
+      "targetId": "crawler-2",
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 2,
+      "targetIndex": 3,
+      "sourceId": "crawler-2",
+      "targetId": "crawler-3",
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 3,
+      "targetIndex": 4,
+      "sourceId": "crawler-3",
+      "targetId": "crawler-4",
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 4,
+      "targetIndex": 5,
+      "sourceId": "crawler-4",
+      "targetId": "apirer-1",
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 5,
+      "targetIndex": 6,
+      "sourceId": "apirer-1",
+      "targetId": "apirer-2",
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 6,
+      "targetIndex": 7,
+      "sourceId": "apirer-2",
+      "targetId": "apirer-3",
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 7,
+      "targetIndex": 8,
+      "sourceId": "apirer-3",
+      "targetId": "apirer-4",
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 8,
+      "targetIndex": 9,
+      "sourceId": "apirer-4",
+      "targetId": "apirer-5",
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 9,
+      "targetIndex": 10,
+      "sourceId": "apirer-5",
+      "targetId": "executer-1",
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 10,
+      "targetIndex": 11,
+      "sourceId": "executer-1",
+      "targetId": "executer-2",
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 11,
+      "targetIndex": 12,
+      "sourceId": "executer-2",
+      "targetId": "apirer-6",
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 12,
+      "targetIndex": 13,
+      "sourceId": "apirer-6",
+      "targetId": "apirer-7",
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 13,
+      "targetIndex": 14,
+      "sourceId": "apirer-7",
+      "targetId": "apirer-8",
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 14,
+      "targetIndex": 15,
+      "sourceId": "apirer-8",
+      "targetId": "apirer-9",
+      "inputSlot": 0,
+      "outputSlot": 0
+    },
+    {
+      "sourceIndex": 15,
+      "targetIndex": 16,
+      "sourceId": "apirer-9",
+      "targetId": "ender-1",
+      "inputSlot": 0,
+      "outputSlot": 0
+    }
+  ],
+  "artifacts": {}
+}

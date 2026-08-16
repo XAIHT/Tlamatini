@@ -131,6 +131,10 @@ not by the skill itself. Two options for the user:
 If the chat UI changes, fix `harness/config.py` (selectors + the ready/started JS in
 `run_test.py`) — everything else keys off that single contract.
 
+## v1.48.13 regression set
+
+When the touched surface is relevant, include visible cases for: Mover/Deleter empty, relative, legacy `C:/Temp/...`, and explicit absolute destinations; long-operation menu disable/restore; dialog outside-click/Escape/X/Cancel/Continue behavior; safe update release-note rendering; and per-user/request/stream/line log attribution. A movement test must prove Deleter scope was not widened.
+
 > ⚠️ If the answer-complete logic ever needs adjusting, verify it against a LIVE
 > server with `--count 2` before trusting a full run — a daily test that silently
 > mis-detects completion is worse than no test.

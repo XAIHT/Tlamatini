@@ -89,6 +89,21 @@ _FLOWCHART_ARROW_RE = re.compile('[▲▼▶◀←-↙]')
 _ASCII_ART_RUN_RE = re.compile(r'[+\-=|]{3,}')
 _PIPED_BOX_LINE_RE = re.compile(r'^\s*\|.*\|\s*$')
 _DIAGRAM_PLACEHOLDER_RE = re.compile(r'\x00DGRM_\d+\x00')
+
+# The placeholder sentinel, built from chr(0) so no source-level escape can
+# be mangled in transit. Tokens are  <NUL>DGRM_<idx><NUL>.
+_NUL = chr(0)
+_PLACEHOLDER_PREFIX = _NUL + "DGRM_"
+# Same token as _DIAGRAM_PLACEHOLDER_RE, but CAPTURING the index so a
+# placeholder that got absorbed into a LATER placeholder can be expanded back
+# to its RAW body instead of leaking into the chat as the literal text
+# "DGRM_<n>" (the 2026-08-15 diagram data-loss bug).
+_DIAGRAM_PLACEHOLDER_CAPTURE_RE = re.compile(_NUL + r"DGRM_(\d+)" + _NUL)
+# A markdown thematic break: a line made of NOTHING but 3+ of - = _ * (plus
+# whitespace). It is prose punctuation, not diagram content - but it also
+# matches _ASCII_ART_RUN_RE, which is exactly how a `---` separator sitting
+# after an END-DIAGRAM block used to swallow the diagram before it.
+_THEMATIC_BREAK_RE = re.compile(r"^\s*[-=_*][-=_*\s]{2,}$")
 # A genuine ASCII / box-drawing diagram is PLAIN TEXT. A line carrying a real
 # HTML tag must NEVER be auto-detected as a diagram row — otherwise
 # _html_escape() turns it into unclickable raw source text. This is the root of
@@ -129,23 +144,61 @@ def _is_diagram_line(line):
     return False
 
 
+def _is_soft_diagram_line(line):
+    """Diagram-ish lines that must never be annexed ACROSS a blank line.
+
+    Two kinds qualify: an already-collapsed placeholder (a COMPLETE block of
+    its own) and a markdown thematic break, which is prose punctuation rather
+    than a box border once an empty line separates it from the art. Letting a
+    blank line bridge to either one is what destroyed the diagram that
+    preceded a `---` separator - see _wrap_diagram_blocks.
+    """
+    if _DIAGRAM_PLACEHOLDER_RE.search(line):
+        return True
+    return bool(_THEMATIC_BREAK_RE.match(line))
+
+
 def _wrap_diagram_blocks(llm_response):
     """Replace explicit BEGIN-DIAGRAM blocks AND auto-detected ASCII-art runs
-    with `\\x00DGRM_<idx>\\x00` placeholders. Returns
-    (transformed_text, placeholder_html_list). Pure text-in / text-out — no
+    with NUL-wrapped DGRM_<idx> placeholders. Returns
+    (transformed_text, placeholder_html_list). Pure text-in / text-out - no
     side effects, so the caller can run later HTML substitutions safely.
     """
     placeholders = []
+    bodies = []  # index-aligned RAW (un-escaped) diagram text
+
+    def _expand_embedded(body):
+        """Inline any placeholder token already inside `body` back to its RAW
+        diagram text.
+
+        CRITICAL - 2026-08-15 data-loss fix. Pass 2 counts a pass-1 placeholder
+        line as diagram-like so adjacent art extends the same block, which
+        means a run can SWALLOW an earlier placeholder into a NEW one. Without
+        this expansion the swallowed token ends up buried inside another
+        placeholder HTML string, where _restore_diagram_placeholders can no
+        longer see it - and the ENTIRE diagram reached the browser as the bare
+        text "DGRM_0" between two invisible NUL bytes. Expanding here keeps a
+        merged block lossless and leaves exactly ONE level of placeholders.
+        """
+        if _PLACEHOLDER_PREFIX not in body:
+            return body
+
+        def _sub(match):
+            idx = int(match.group(1))
+            return bodies[idx] if 0 <= idx < len(bodies) else ""
+
+        return _DIAGRAM_PLACEHOLDER_CAPTURE_RE.sub(_sub, body)
 
     def _make_placeholder(body):
-        body = body.strip("\r\n")
+        body = _expand_embedded(body).strip('\r\n')
         idx = len(placeholders)
+        bodies.append(body)
         placeholders.append(
             f'<pre class="ascii-diagram">{_html_escape(body)}</pre>'
         )
-        return f'\x00DGRM_{idx}\x00'
+        return _PLACEHOLDER_PREFIX + str(idx) + _NUL
 
-    # Pass 1 — explicit BEGIN-DIAGRAM / END-DIAGRAM blocks (the cooperative
+    # Pass 1 - explicit BEGIN-DIAGRAM / END-DIAGRAM blocks (the cooperative
     # path; mirrors the BEGIN-CODE / END-CODE convention).
     llm_response = re.sub(
         constants.REGEX_DIAGRAM_BLOCK,
@@ -154,7 +207,7 @@ def _wrap_diagram_blocks(llm_response):
         flags=re.IGNORECASE,
     )
 
-    # Pass 2 — auto-detect runs of >= 2 consecutive diagram-like lines, with
+    # Pass 2 - auto-detect runs of >= 2 consecutive diagram-like lines, with
     # at most one blank line allowed inside the run. Trims trailing blanks.
     lines = llm_response.split("\n")
     out_lines = []
@@ -166,6 +219,11 @@ def _wrap_diagram_blocks(llm_response):
             saw_blank = False
             while j < n:
                 if _is_diagram_line(lines[j]):
+                    # A blank line may bridge two halves of ONE diagram, but it
+                    # must NOT reach across and annex a separate block - a bare
+                    # `---` separator, or another already-finished diagram.
+                    if saw_blank and _is_soft_diagram_line(lines[j]):
+                        break
                     saw_blank = False
                     j += 1
                 elif not lines[j].strip() and not saw_blank:
@@ -187,10 +245,24 @@ def _wrap_diagram_blocks(llm_response):
 
 
 def _restore_diagram_placeholders(text, placeholders):
-    """Swap each `\\x00DGRM_<idx>\\x00` token back to its
-    <pre class="ascii-diagram">…</pre> HTML."""
-    for idx, html in enumerate(placeholders):
-        text = text.replace(f'\x00DGRM_{idx}\x00', html)
+    """Swap every NUL-wrapped DGRM_<idx> token back to its
+    <pre class="ascii-diagram">...</pre> HTML.
+
+    Substitution repeats to a FIXED POINT so a token that (re)appears inside
+    another placeholder HTML string still expands, and any token that STILL
+    survives is deleted rather than shipped to the browser - a leaked
+    placeholder is how a whole diagram once rendered as the bare text
+    "DGRM_0". The closing NUL sweep guarantees no sentinel byte reaches the
+    chat either.
+    """
+    for _pass in range(len(placeholders) + 1):
+        if _PLACEHOLDER_PREFIX not in text:
+            break
+        for idx, html in enumerate(placeholders):
+            text = text.replace(_PLACEHOLDER_PREFIX + str(idx) + _NUL, html)
+    text = _DIAGRAM_PLACEHOLDER_RE.sub("", text)
+    if _NUL in text:
+        text = text.replace(_NUL, "")
     return text
 
 

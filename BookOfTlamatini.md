@@ -32,7 +32,7 @@ When you enable, configure, modify, chain, or execute an agent, **that agent and
 
 Before any of the deep chapters, here is the whole journey on a single page. It is the first and most important thing you will do with Tlamatini, so it comes first.
 
-There is a quiet economic argument hiding inside this software, and it is worth saying out loud before you install a thing. A frontier subscription — GPT-5.4, Claude Opus, and their kin — asks roughly **$200 every month** to talk to one model. Tlamatini turns that arithmetic on its head. **The app is free** — you never pay us; the single bill is **Ollama Pro, about $200 a *year*** (paid to Ollama), and around that one cloud connection she wraps **87 agent types and 75+ tools** that run on *your* machine. Comparable power, for roughly one-twelfth of the bill. That is why this chapter opens the book.
+There is a quiet economic argument hiding inside this software, and it is worth saying out loud before you install a thing. A frontier subscription — GPT-5.4, Claude Opus, and their kin — asks roughly **$200 every month** to talk to one model. Tlamatini turns that arithmetic on its head. **The app is free** — you never pay us; the single bill is **Ollama Pro, about $200 a *year*** (paid to Ollama), and around that one cloud connection she wraps **87 agent types and 97 Multi-Turn tools** that run on *your* machine. Comparable power, for roughly one-twelfth of the bill. That is why this chapter opens the book.
 
 Five steps take you from a bare machine to a Tlamatini that can flash a board, drive an engine, and run a whole workflow unattended.
 
@@ -305,7 +305,7 @@ When the migrations finish and you have a superuser, run the server (chapter 7).
 
 ### Path B — Pre-built one-click installer (end users)
 
-Download the latest release ZIP — **[Tlamatini v1.48.2](https://github.com/XAIHT/Tlamatini/releases/tag/v1.48.2)** — and unzip it (or use a `Tlamatini_Release/` folder somebody handed you / you built — see Part VIII). Then:
+Download the latest release ZIP — **[Tlamatini v1.48.13](https://github.com/XAIHT/Tlamatini/releases/tag/v1.48.13)** — and unzip it (or use a `Tlamatini_Release/` folder somebody handed you / you built — see Part VIII). Then:
 
 1. Open the unzipped folder.
 2. Double-click **`Installer.exe`**.
@@ -1181,7 +1181,7 @@ Gatewayer logs stable markers (`GATEWAY_EVENT_ACCEPTED`, `GATEWAY_EVENT_QUEUED`,
 
 # Part IV — The Tlamatini Bestiary
 
-A compact reference for all 84 workflow-agent types. Spotlight chapters for **Parametrizer** (§25) and **Gatewayer** (§26) above; **Unrealer** gets a full bonus chapter at §57, **Blenderer** at §59, and **ESPHomer** at §60.
+A compact reference for all 87 workflow-agent types. Spotlight chapters for **Parametrizer** (§25) and **Gatewayer** (§26) above; **Unrealer** gets a full bonus chapter at §57, **Blenderer** at §59, and **ESPHomer** at §60.
 
 > **Naming reminder.** The `agentDescription` (set by each migration) is the single source of truth. CSS classmap key, sidebar visual, and connection-handler name all derive from it.
 
@@ -2026,14 +2026,14 @@ Pre-releases use the standard SemVer suffixes — `2.0.0-alpha.1`, `2.0.0-beta.1
 
 ```powershell
 git status                                          # clean tree, on main
-git tag -a v1.48.2 -m "Release 1.48.2: <one-liner>"   # annotated tag
-git push origin v1.48.2
+git tag -a v1.48.13 -m "Release 1.48.13: <one-liner>"   # annotated tag
+git push origin v1.48.13
 python build.py
 python build_uninstaller.py
 python build_installer.py
 ```
 
-All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.48.2/`, named for the version so the file you hand to a user is unambiguous before they even unzip it.
+All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.48.13/`, named for the version so the file you hand to a user is unambiguous before they even unzip it.
 
 ### Where the version shows up in a running install
 
@@ -2041,8 +2041,8 @@ The build computes the version once and bakes it into four surfaces:
 
 - **`Tlamatini/agent/_version.py`** — generated at build time, gitignored, read at runtime by `agent.version.get_version()`. This is what every in-process surface reads.
 - **Win32 `VERSIONINFO`** — `Tlamatini.exe`, `Installer.exe`, and `Uninstaller.exe` all carry the version in their resource fork. Right-click the file → Properties → Details → ProductVersion.
-- **Release folder name** — `dist/Tlamatini_Release_v1.48.2/`.
-- **Runtime surfaces** — the About dialog renders `Tlamatini v{{ version }}` (Django context processor); the startup banner prints `--- [VERSION] Tlamatini 1.48.2` to both the console and `tlamatini.log`; `GET /agent/version/` returns `{"version":"1.48.2","commit":"abc1234","date":"…","source":"generated"}` as an **open** endpoint suitable for a health-check.
+- **Release folder name** — `dist/Tlamatini_Release_v1.48.13/`.
+- **Runtime surfaces** — the About dialog renders `Tlamatini v{{ version }}` (Django context processor); the startup banner prints `--- [VERSION] Tlamatini 1.48.13` to both the console and `tlamatini.log`; `GET /agent/version/` returns `{"version":"1.48.13","commit":"abc1234","date":"…","source":"generated"}` as an **open** endpoint suitable for a health-check.
 
 If the four surfaces ever disagree, your build was run with a stale `$env:TLAMATINI_VERSION` or against an out-of-date `_version.py` — clear them and re-run `build.py`.
 
@@ -2780,7 +2780,7 @@ Unlike Unreal — where Tlamatini ships its own extended MCP fork — Blender's 
 - **Home / docs:** https://www.blender.org/lab/mcp-server/
 - **Source:** the `blender_mcp` repository on Blender's own Gitea (`projects.blender.org/lab/blender_mcp`). It has three parts: the **add-on** (the TCP socket server that runs *inside* Blender), the **`blmcp` MCP server** (a stdio↔socket bridge for generic MCP clients), and a bundled **`chat_client.py`** (a bare terminal chat).
 
-Here is the key architectural decision Tlamatini makes, and the reason Blenderer is a better experience than the stock setup: **Tlamatini talks to the add-on socket *directly* and ignores the `blmcp` bridge and the bundled chat client entirely.** Blenderer *is* the client. So you install exactly two things — **Blender** and **the add-on** — and skip `uv`, skip running a separate MCP-server process, skip the terminal chat. Everything you already love about Tlamatini (the canvas, Multi-Turn, the Exec Report, Parametrizer pipelines, the other 83 agents) then composes on top of Blender with zero extra plumbing.
+Here is the key architectural decision Tlamatini makes, and the reason Blenderer is a better experience than the stock setup: **Tlamatini talks to the add-on socket *directly* and ignores the `blmcp` bridge and the bundled chat client entirely.** Blenderer *is* the client. So you install exactly two things — **Blender** and **the add-on** — and skip `uv`, skip running a separate MCP-server process, skip the terminal chat. Everything you already love about Tlamatini (the canvas, Multi-Turn, the Exec Report, Parametrizer pipelines, the other 86 agents) then composes on top of Blender with zero extra plumbing.
 
 ## 59.3. Installing and enabling the add-on
 
@@ -3167,6 +3167,8 @@ The other firmware agents make Tlamatini an *embedded engineer*. ESPHomer makes 
 # Appendix C — Changelog
 
 ### Recent Updates
+
+- **Release v1.48.13 — Fixing default files placement in Mover and Deleter — 2026-08-15** — Mover now treats empty, relative, and legacy `C:/Temp/...` destinations as application scratch paths and safely re-roots them beneath Tlamatini's own `<app>/Temp` directory. An explicit absolute destination supplied by the user remains authoritative and is never silently redirected. Deleter's defaults and examples follow the same application-owned Temp policy without broadening its deletion scope, so no implicit root-level `C:/Temp` target is introduced. This release is also the documentation baseline for the reliability work accumulated since the previous visual dossier: `dialog_theme.css` gives jQuery UI, Bootstrap, and custom overlays one visual language; `dialog_policy.js` centralizes safe dismissal so outside clicks and Escape cannot accidentally close guarded work; the updater renders release notes through a dedicated safe renderer; long operations disable and restore the exact navigation controls that could corrupt in-flight state; application logs carry user, request, stream, and source-line identity; DB backup/reaper paths are more defensive; and LaTeXer's repair/verdict pipeline remains deterministic and auditable. Source-verified current inventory: **87 workflow agents**, **65 wrapped chat agents**, **97 Multi-Turn tools**, **37 JavaScript modules**, and **28 runtime skills**.
 
 - **Release v1.48.2 — A Finding Is Not a Failure: the Execution Report Learns to Read What Each Agent Actually Says — 2026-08-06** — Angela's demand was exactly two sentences long: *if the execution really succeeded, the table must say **SUCCESS**; if it really errored and did not do the designated task at all, it must say **FAILED***. Both directions, every agent, no exceptions. What she had found was the opposite in the wild: LaTeXer's linter, pointed at a deliberately broken document in the wizard's STEP 4, found the bug **exactly as designed** — right error, right line number, right explanation — and the Execution Report printed a red **FAILURE** across that row. The cause was that two completely different questions had been collapsed into a single string. The **process** question — *"did the child exit 0?"* — is worth one bit. The **agent** question — *"did it do the job, and what did it FIND?"* — is a typed record, and every Tlamatini agent already publishes one in its `INI_SECTION` self-report. But `tools._launch_wrapped_chat_agent` set `status` from the exit code, and the code meant to lift the agent's own `status:` back in used `payload.setdefault(...)` — a **silent no-op on precisely the key that mattered**, so the agent's truthful account of its own run was thrown away. Worse, a `_DIAGNOSTIC_COMPLETED_STATUSES` set had already been written in `mcp_agent.py` to prevent this exact mislabelling, and it was **unreachable dead code**, because the value it tested had been overwritten with `"failed"` further upstream. The fix is a small expert system, `agent/agent_verdict.py`: a lexer/parser turns the self-report into a typed syntax tree, and an **ordered** production-rule table walks it — no self-report falls back to the exit code; a declared `error`/`failed` is FAILED; `refused` / `not_found` / `not_unique` / `engine_unavailable` are FAILED because the work genuinely did not happen; **a read-only diagnostic that ran to completion (`invalid`, `findings`, `no_matches`, `listed`, …) is a SUCCESS**; then an explicit `success:`/`ok:`, then a non-zero `errors:` count, then the exit code, then success. **The order IS the algorithm**, and the diagnostic rule must outrank the `success:`/`errors:` rules — a linter that worked perfectly reports `status: invalid` *and* `success: False` *and* `errors: 2` in the same breath, and the last two describe the **document**, not the agent; testing them first is the very bug the engine was written to kill. The contract is deliberately strict: the agent's self-report **outranks** the exit code; it is never dropped or overwritten (on a key collision the process view stays under `<key>` and the agent's under `agent_<key>`, so **both** survive); a red row must mean *"the tool malfunctioned"*, never *"the tool found something"*; everything **fails open**, because a verdict engine that can break the chat path is worse than the mislabelled row it fixes; and it is **100 % deterministic** — a probabilistic judge could not be trusted to say whether something failed, and would cost a round-trip on every tool call. The status vocabulary has exactly one definition, aliased rather than copied, since a drifted second copy would silently mis-colour rows. Stdlib only, importing nothing from `agent.*`, so it cannot create a cycle between `tools.py` and `mcp_agent.py` — both import it — and behaves identically frozen or from source. Pinned by `agent/test_agent_verdict.py` (25 tests covering the parser, every rule, the rule **order**, auditable provenance, totality, both call sites, the single-vocabulary contract, and the live STEP-4 payload end to end) plus `agent/test_exec_report_verdict.py`. Tlamatini herself was taught the same lesson in `prompt.pmt` (new rule 18b): a check that ran and reported a problem **succeeded**, and she must never tell you a tool failed merely because it found something.
 

@@ -1321,36 +1321,109 @@ def main():
         print(f"Wrote contacts.json -> {contacts_dst} "
               f"({len(contacts_doc.get('contacts', []))} contact(s))")
 
-        # ── Ship a sanitized empty external_mcps.json ───────────────────────────
-        # ALWAYS empty. This file is the External ▸ MCPs catalog, and the dev
-        # tree's copy holds REAL provider secrets in its `env` blocks (a GitHub
-        # PAT, a Snyk API key). Copying it — which is what this build did until
-        # 2026-08-12 — shipped those keys inside every pkg.zip AND handed the
-        # user the build machine's own server list with `"active": []`, so a
-        # reinstall wiped their catalog and switched everything off.
+        # ── Ship external_mcps.json (the External ▸ MCPs catalog) ───────────────
+        # TWO FLAVOURS, and the difference is deliberate (Angela, 2026-08-15):
         #
-        # There is deliberately NO opt-in env var here (unlike contacts): an MCP
-        # catalog's whole value is the secrets in it, so there is no version of
-        # "bundle the real one" that is safe to ship.
-        external_mcps_doc = {
-            "_README": (
-                "Tlamatini External MCP catalog. Add servers in the standard "
-                "`mcpServers` shape (the same JSON a Claude Code .mcp.json uses), "
-                "then tick up to 5 of them in External > MCPs to activate. This "
-                "file is USER STATE: it lives next to config.json and is preserved "
-                "across updates AND reinstalls. It holds provider secrets in its "
-                "`env` blocks, so it is never shipped with a release and must "
-                "never be committed to a public repo."
-            ),
-            "mcpServers": {},
-            "active": [],
-        }
+        #   PUBLIC  (the default, and what a bare `python build.py` produces):
+        #     ONLY the servers Tlamatini herself implements — `memory` and
+        #     `sequential-thinking` — taken from the SAME module the running app
+        #     seeds from (Tlamatini/agent/external_mcp_defaults.py), so the file
+        #     we ship and the boot-time seeder can never drift. No maintainer
+        #     server, no maintainer secret, ever.
+        #
+        #   PRIVATE / KEYED:
+        #     build_complete_private_release.py sets TLAMATINI_BUNDLE_EXTERNAL_MCPS
+        #     to the dev catalog (Tlamatini/agent/external_mcps.json, with real
+        #     values restored by `regen_secrets.py --mode keyed`). We ship EVERY
+        #     server in it PLUS the two defaults merged in. The public builder
+        #     CLEARS that variable, so a public build cannot pick it up by accident.
+        #
+        # History: until 2026-08-12 the build copied the dev catalog verbatim and
+        # shipped a live GitHub PAT + Snyk key inside every pkg.zip. The seatbelt
+        # at the bottom of this block exists so that can never happen again.
+        external_mcps_doc = None
+        _mcp_defaults_mod = None
+        try:
+            import importlib.util as _ilu
+            _mcp_defaults_src = Path("Tlamatini") / "agent" / "external_mcp_defaults.py"
+            _mcp_spec = _ilu.spec_from_file_location("_tlm_mcp_defaults", _mcp_defaults_src)
+            _mcp_defaults_mod = _ilu.module_from_spec(_mcp_spec)
+            _mcp_spec.loader.exec_module(_mcp_defaults_mod)
+            external_mcps_doc = _mcp_defaults_mod.shipped_catalog_document()
+        except Exception as _mcp_exc:
+            print(f"WARNING: could not load external_mcp_defaults ({_mcp_exc}); shipping an "
+                  f"EMPTY catalog (the app still seeds the defaults on first launch).")
+
+        _mcps_flavor = "PUBLIC"
+        _bundle_mcps = (os.environ.get("TLAMATINI_BUNDLE_EXTERNAL_MCPS") or "").strip()
+        if _bundle_mcps and os.path.isfile(_bundle_mcps) and _mcp_defaults_mod is not None:
+            try:
+                with open(_bundle_mcps, "r", encoding="utf-8-sig") as _xf:
+                    _dev_doc = json.load(_xf)
+                if isinstance(_dev_doc, dict) and isinstance(_dev_doc.get("mcpServers"), dict):
+                    # A private build ships every default too, even one the dev
+                    # deleted locally — so drop the tombstones before merging.
+                    _dev_doc.pop(_mcp_defaults_mod.TOMBSTONE_KEY, None)
+                    _merged, _seeded = _mcp_defaults_mod.seed_defaults(_dev_doc)
+                    if external_mcps_doc:
+                        _merged.setdefault("_README", external_mcps_doc.get("_README", ""))
+                    external_mcps_doc = _merged
+                    _mcps_flavor = "PRIVATE/KEYED"
+                    print(f"Bundling PRIVATE MCP catalog from {_bundle_mcps} "
+                          f"({len(_merged.get('mcpServers', {}))} server(s); defaults merged: "
+                          f"{', '.join(_seeded) or 'already present'}) -- KEYED build.")
+                else:
+                    print(f"WARNING: {_bundle_mcps} is not a valid mcpServers doc; "
+                          f"shipping the PUBLIC default catalog instead.")
+            except Exception as _xe:
+                print(f"WARNING: could not read {_bundle_mcps} ({_xe}); shipping the "
+                      f"PUBLIC default catalog instead.")
+
+        if external_mcps_doc is None:
+            external_mcps_doc = {
+                "_README": (
+                    "Tlamatini External MCP catalog. Add servers in the standard "
+                    "`mcpServers` shape (the same JSON a Claude Code .mcp.json uses), "
+                    "then tick up to 5 of them in External > MCPs to activate. This "
+                    "file is USER STATE: it lives next to config.json and is preserved "
+                    "across updates AND reinstalls."
+                ),
+                "mcpServers": {},
+                "active": [],
+            }
+
+        # ── SEATBELT: a PUBLIC build must never carry a live-looking secret ─────
+        # Structurally impossible today (the public doc is generated from code),
+        # but this is the exact leak that shipped in every pkg.zip before
+        # 2026-08-12, so it gets a hard, build-breaking assertion rather than a
+        # comment. SystemExit is a BaseException, so no `except Exception:`
+        # further up can swallow it.
+        if _mcps_flavor == "PUBLIC":
+            _mcp_leaks = []
+            for _sk, _sv in (external_mcps_doc.get("mcpServers") or {}).items():
+                for _ek, _ev in ((_sv or {}).get("env") or {}).items():
+                    _t = str(_ev or "").strip()
+                    if not _t or (_t.startswith("<") and _t.endswith(">")):
+                        continue
+                    if any(_p in str(_ek).lower() for _p in
+                           ("token", "key", "secret", "password", "auth", "bearer")):
+                        _mcp_leaks.append(f"{_sk}.env.{_ek}")
+            if _mcp_leaks:
+                raise SystemExit(
+                    "ABORT: a PUBLIC build would ship live MCP secret(s): "
+                    + ", ".join(_mcp_leaks)
+                    + "\nRun `python regen_secrets.py --mode push-able` first, or build the "
+                      "private release if these are meant to be bundled."
+                )
+
         external_mcps_dst = dist_manage / "external_mcps.json"
         external_mcps_dst.parent.mkdir(parents=True, exist_ok=True)
         with open(external_mcps_dst, "w", encoding="utf-8") as _mf:
             json.dump(external_mcps_doc, _mf, ensure_ascii=False, indent=2)
         print(f"Wrote external_mcps.json -> {external_mcps_dst} "
-              f"(EMPTY catalog - the dev's servers and secrets are never shipped)")
+              f"[{_mcps_flavor}] servers: "
+              + (", ".join(sorted(external_mcps_doc.get("mcpServers", {}))) or "(none)")
+              + f"  active: {external_mcps_doc.get('active') or '[]'}")
 
         # Required root-level assets for the installed application.
         # ``agents_descriptions.md`` is the authoritative source for the

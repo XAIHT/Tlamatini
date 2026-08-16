@@ -16,6 +16,161 @@
 
 ---
 
+## 2026-08-15 — Runtime Provisioner: Tlamatini ALWAYS has npx/uvx, and two MCPs ship by default
+
+**Angela's directive:** ship `@modelcontextprotocol/server-memory` and
+`@modelcontextprotocol/server-sequential-thinking` in **every** installation,
+both **INACTIVE** — and give Tlamatini a *perfect, always-available*
+npm/pnpm/uv/uvx/npx **without carrying them in the installer** the way Python
+and the JRE are carried.
+
+**The hole this closes.** The External MCP ecosystem is overwhelmingly
+`npx -y <pkg>` or `uvx <pkg>`. A fresh Windows box has NONE of those, so a
+brand-new install that ticked `memory` got a silent
+`[WinError 2] The system cannot find the file specified`: the catalog entry was
+perfect, the runtime simply did not exist. Tlamatini's own design note for these
+two servers even listed "node v24, npm, npx, pnpm, uv, uvx — all detected" as a
+system fact; that was true of the DEV machine and of nobody else.
+
+### New: `agent/runtime_provisioner.py` — a PRIVATE, self-provisioning toolchain
+
+Same pattern Angela already proved three times (Discoverer's private Go,
+ESP32er's PlatformIO, Arduiner's arduino-cli): download once, on demand, from
+the OFFICIAL upstream into **`%LOCALAPPDATA%\Tlamatini\runtimes`** — never the
+install dir (a self-update replaces it wholesale, and Program Files may be
+read-only), never a system location, **no admin, no system PATH change**.
+
+**FIVE CONTRACTS — do NOT weaken any of them:**
+
+1. **FAIL-OPEN, ALWAYS.** Every public function is total. `resolve()` returns
+   `""` and life goes on. A provisioner that can break the chat path is
+   infinitely worse than a missing `npx`.
+2. **NEVER BLOCK STARTUP.** `provision_async()` is a pure no-op (one resolve,
+   zero network, **no thread started**) once the runtimes are present —
+   measured at 0.000 s. Downloads only ever happen on a background thread.
+3. **ATOMIC OR ABSENT.** Download → Temp, verify, unpack to `<dest>.partial-<pid>`,
+   then `os.replace`. A half-extracted tree that merely *looks* installed would
+   poison every later run, so it is structurally impossible.
+4. **VERIFY WHAT UPSTREAM SIGNS.** Node's `SHASUMS256.txt` is fetched and
+   ENFORCED; uv's `.sha256` sidecar likewise. `runtime_require_checksum: true`
+   refuses anything unverifiable.
+5. **SPAWN WITHOUT A SHELL.** ⚠️ On Windows `npx` is a `.cmd` batch shim that
+   `CreateProcess` cannot execute — the single most common cause of broken
+   npx-launched MCP servers. `resolve_spawn()` rewrites `npx` to
+   **`node.exe <npx-cli.js>`**, the real program behind the shim. It also sees
+   through a `cmd /c npx …` wrapper. **Do NOT "simplify" this back to
+   `shutil.which('npx')`.**
+
+**A system install WINS.** Resolution is: explicit `<tool>_executable` config →
+Tlamatini's private runtime → system PATH → well-known per-user locations. We
+only ever FILL A HOLE; we never shadow the user's own toolchain (our runtime
+only exists if we installed it, and we only install what was missing).
+
+### New: `agent/external_mcp_defaults.py` — the two shipped servers
+
+⚠️ **Defaults live in CODE, not only in the shipped JSON — this is load-bearing.**
+`external_mcps.json` is USER STATE that `apply_update.ps1` **preserves**, so a
+default written only into the file `build.py` ships would reach fresh installs
+and **nobody else**. `load_catalog()` seeds from code on the READ path
+(`_seed_defaults_once`, one write per process), which reaches every install on
+every launch, through every entry point.
+
+**TOMBSTONE CONTRACT:** if the user DELETES a default it must STAY deleted —
+`remove_servers` records it in `_removed_defaults` and the seeder skips it. A
+Remove button that silently undoes itself is a bug. An explicit re-import clears
+the tombstone. A default the user EDITED is never overwritten.
+
+Both seed **INACTIVE**: activating spawns a child and burns one of the five
+slots — the user's decision, never ours. `build.py` now writes the shipped
+catalog from `shipped_catalog_document()` (same module → the file and the seeder
+can never drift), and still ships **no** maintainer secrets.
+
+### Wiring
+
+- `_StdioMcpClient.__init__` starts from `runtime_provisioner.augment_env()`
+  (private bins on PATH + quiet npm flags, so a first run can't hang on an
+  update notice or a corepack prompt).
+- `_StdioMcpClient._resolve_argv` delegates to `resolve_spawn`.
+- `_connect` calls `_ensure_runtime_for_spec` for stdio servers — **the moment
+  that makes it "just work"**: tick `memory` on a Node-less box and Node is
+  downloaded right there, on the background connect thread.
+- `_which_executable` + the **MCP Doctor pool agent** are runtime-aware. A
+  missing-but-**provisionable** manager is deliberately **NOT a blocker** and the
+  `next_step` says Tlamatini installs it herself — telling the user to go install
+  Node would be wrong advice. A genuinely missing binary still blocks (no false
+  calm). The doctor mirrors the layout inline because a pool agent cannot import
+  `agent.*`; **keep the mirror in sync with `runtimes_root()`**.
+- Two new LLM tools: `external_mcp_runtime_status` / `external_mcp_runtime_install`
+  (registered in `_SUPERVISOR_TOOL_NAMES` **and** built in `_build_supervisor_tools`).
+- `GET /agent/external_mcps/` carries a `runtime` block; `POST
+  /agent/external_mcps/runtime_install/` backs the dialog's "Install now" button
+  (`.emx-runtime*` strip in `external_mcps_dialog.js`/`.css`).
+- `apps.ready()` pre-warms in the background and seeds the catalog.
+
+Config: `runtime_autoprovision` (default **true**), `runtime_install_dir`,
+`runtime_provision_tools`, `runtime_download_timeout_seconds`,
+`runtime_require_checksum`, `node_version`, and `<tool>_executable` overrides.
+Env: `TLAMATINI_RUNTIMES`, `TLAMATINI_RUNTIME_AUTOPROVISION`.
+
+**Proven end-to-end on a simulated fresh machine** (not mocked): with an empty
+runtime root and the system PATH stripped to bare Windows, Node 24.19.0 and uv
+0.12.5 were downloaded + **sha256-verified** in 7 s, and the real
+`@modelcontextprotocol/server-memory 0.6.3` completed an MCP
+`initialize` + `tools/list` handshake exposing exactly its **9 tools**.
+
+### The catalog is now TRACKED in git — and CANNOT leak
+
+Angela's follow-up call the same day: **`Tlamatini/agent/external_mcps.json` is no
+longer gitignored**, so the repo SHOWS every External MCP server Tlamatini knows
+about. That file held a live GitHub PAT and a live Snyk key, so tracking it
+required the same machinery `config.json` already uses:
+
+- **`regen_secrets.py` now patches the catalog too** (`patch_external_mcps_json`,
+  wired into `main()`). `--mode push-able` replaces every secret `env` value with
+  `<NAME goes here>`; `--mode keyed` restores the real values from `data.keys`.
+  **Run push-able BEFORE ANY PUSH**, exactly as for `config.json`. Both existing
+  keys were vaulted as `OCTOCODE_GITHUB_TOKEN` / `SNYK_API_KEY`.
+- ⚠️ **LOSSLESS CONTRACT — do NOT weaken.** `push-able` **AUTO-VAULTS** anything it
+  is about to redact into `data.keys` *first*, under a derived
+  `EXTMCP_<SERVER>_<FIELD>` name. That is what makes the round trip safe for a
+  server the rule table has never heard of: scrub → push → `keyed` brings it back.
+  A scrub that silently destroyed an unrecognised token would be far worse than
+  the leak it prevents.
+- ⚠️ **A LOCATION IS NOT A CREDENTIAL.** `_NEVER_SECRET_FIELD_PARTS` (path, file,
+  dir, url, host, port, …) **wins over** `_SECRETISH_FIELD_PARTS`, and `"pat"` was
+  REMOVED from the latter. Caught live: `MEMORY_FILE_PATH` contains "PAT", so the
+  memory server's storage path was scrubbed to a placeholder and vaulted — and
+  `keyed` would then have stamped the build machine's own path onto someone
+  else's install. Pinned by `test_a_location_is_never_treated_as_a_secret`.
+
+**Two build flavours** (`build.py`, "Ship external_mcps.json"):
+
+| build | catalog shipped |
+|---|---|
+| **PUBLIC** (bare `build.py`, `build_complete_public_release.py`) | ONLY `memory` + `sequential-thinking`, generated from `external_mcp_defaults.shipped_catalog_document()`. No maintainer server, no secret, ever. |
+| **PRIVATE / KEYED** (`build_complete_private_release.py`) | EVERY dev server **plus** the two defaults merged in, via `TLAMATINI_BUNDLE_EXTERNAL_MCPS` (mirrors `TLAMATINI_BUNDLE_CONTACTS`). Runs after `--mode keyed`, so real tokens are in place. |
+
+The public builder **CLEARS** that env var, and `build.py` carries a hard
+**SystemExit seatbelt**: a PUBLIC build that would ship a live-looking secret
+ABORTS rather than repeating the pre-2026-08-12 leak. Tombstones are dropped in
+the private path so a keyed build ships both defaults even if the dev deleted one.
+
+Verified by a real round trip on the live keys (scrub → nothing survives in the
+file → restore byte-for-byte) plus both build flavours.
+Coverage: `agent/test_runtime_provisioner.py` (**44 tests**).
+
+---
+
+## 2026-08-15 — v1.48.13 release baseline: guarded placement, uniform dialogs, coherent long operations
+
+- **Mover/Deleter placement:** empty, relative, and legacy `C:/Temp/...` scratch destinations resolve under `TLAMATINI_TEMP` / `<app>/Temp`; an explicit absolute user destination remains authoritative; Deleter normalization never broadens pattern, parent, or recursion.
+- **Uniform frontend:** `dialog_theme.css` defines the visual language across jQuery UI, Bootstrap, and custom overlays. `dialog_policy.js` owns fail-open dismissal semantics; outside click and Escape do not close guarded dialogs, titlebar X means Cancel, and sealed updater work may block dismissal.
+- **Long operations:** `agent_page_ui.js::LONG_OPERATION_DISABLED_MENU_BUTTONS` is the one menu-lock list. Disable/enable paths are mirrored and preserve/restore `data-bs-toggle`; only Check for Updates and Configure Agents receive the additional targeted lock.
+- **Updater and auditability:** `release_notes_renderer.js` safely renders release text; `agent/log_identity.py` and its middleware/consumer integrations attribute application output by user, request, stream, and source line.
+- **Do not regress:** JavaScript/CSS/template changes require `STATIC_VERSION`; verify movement guard tests, frontend lint/tests, source/collected-static parity, and release dossier coverage together.
+
+---
+
 ## 2026-08-13 — `tlamatini.log` could not say WHICH user a line belonged to when two people were connected (`agent/log_identity.py`, `manage.py`, `consumers.py`, `tlamatini/middleware.py`)
 
 **Symptom (Angela).** Tlamatini happily serves two logged-in sessions at once on

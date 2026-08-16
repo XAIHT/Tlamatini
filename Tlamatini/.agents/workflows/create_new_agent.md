@@ -24,7 +24,7 @@ Step-by-step guide for a new workflow agent. Follow all 8 steps in order. Replac
 8. **6 JS edit locations** — `acp-canvas-core.js` touches connections in 6 separate places. Missing any one breaks creation, removal, undo, redo, or `.flw` load.
 9. **CSS gradient duplicated in JS** — never type a gradient string inside `populateAgentsList()`. Use `applyAgentToolIconStyle()` so the sidebar icon inherits from CSS.
 10. **Importing `agent.*` from a pool subprocess** — `ModuleNotFoundError` at runtime. Port the needed ~100-200 lines inline instead. See `acpxer.py`.
-11. **Temp / Templates outside Tlamatini** — an agent that writes temp files to `C:\Temp` / `%TEMP%` / a bare `tempfile.gettempdir()`, or scaffolds a project dir to an arbitrary location, violates the 2026-06-02 directory policy. Temp → `<app>/Temp` (`TLAMATINI_TEMP`); scaffolded project/template dirs → `<app>/Templates` (`TLAMATINI_TEMPLATES`) unless the user gives a path. See Step 1b and `agent/path_guard.py` / `prompt.pmt` Rules 15/16.
+11. **Temp / Templates outside Tlamatini** — an agent that writes temp files to `C:\Temp` / `%TEMP%` / a bare `tempfile.gettempdir()`, or scaffolds a project dir to an arbitrary location, violates the directory policy. Temp → `<app>/Temp` (`TLAMATINI_TEMP`); scaffolded project/template dirs → `<app>/Templates` (`TLAMATINI_TEMPLATES`) unless the user gives a path. Since v1.48.13, Mover/Deleter empty, relative, and legacy `C:/Temp/...` scratch paths must re-root under app Temp, explicit absolute user paths remain authoritative, and deletion scope must never widen. See Step 1b and `agent/path_guard.py` / `prompt.pmt` Rules 15/16.
 12. **Generated binary artefacts inside a context-loaded folder** — if your agent writes compiled output, images, archives or model blobs into a directory the user may load as RAG context, that is fine: `agent/rag/binary_guard.py` screens files by content and drops binary ones from the embedding chain automatically, logging each omission with the `--- [BINARY-GUARD]` prefix in `tlamatini.log`. Do NOT write your own binary check into the agent, and do NOT assume a binary artefact will be embedded. If your agent produces a *text* artefact with an unusual extension that you want loadable, tell the user about `binary_detection_force_text_extensions` (it always beats the built-in denylist). See `docs/claude/architecture.md` → *Binary-content guard for context loading*.
 
 ---
@@ -507,7 +507,7 @@ Rules:
 - Dotted nested keys (`smtp.host=...`) → `collectDotted('smtp')`.
 - Never set `config.target_agents` / `config.source_agents` here — `_generateAndDownloadFlow` does that with cardinal-suffixed pool names.
 
-Test by dragging the agent into the ACP once and noting the dialog field names verbatim.
+Test by dragging the agent into the ACP once and noting the dialog field names verbatim. Any new dialog must reuse `dialog_theme.css` and `dialog_policy.js`; any JavaScript/CSS/template change must bump `STATIC_VERSION`.
 
 ---
 
