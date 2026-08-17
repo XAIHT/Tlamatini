@@ -779,7 +779,7 @@ The dropdown has two entries:
 | Amber | `A filename was specified — please specify the directory only.` | You typed a file path instead of a directory; Tlamatini always names the output `db.sqlite3` so it can be loaded back later. |
 | Red | `Directory does not exist.` | Path is missing on disk. |
 
-Click **Backup** and Tlamatini calls `POST /agent/backup_db/`, which resolves the live database path via `settings.DATABASES['default']['NAME']` (so source-mode and frozen-mode work identically) and `shutil.copy2`s the file into `<your-dir>/db.sqlite3`. A success alert confirms the destination path. **The live database stays open and unchanged** — Backup is purely additive.
+Click **Backup** and Tlamatini calls `POST /agent/backup_db/`, which resolves the live database path via `settings.DATABASES['default']['NAME']` (so source-mode and frozen-mode work identically) and writes a consistent SQLite snapshot into `<your-dir>/db.sqlite3`. Because the live database uses WAL, SQLite's online backup API includes committed pages still resident in `db.sqlite3-wal`. The result must pass `PRAGMA quick_check` before the UI reports success. **The live database stays open and unchanged** — Backup is purely additive.
 
 ### 17.2. Set DB — staging a database for the next session
 
@@ -795,7 +795,7 @@ Click **Backup** and Tlamatini calls `POST /agent/backup_db/`, which resolves th
 
 The SQLite header check is a cheap sanity guard — it catches the common "I picked the wrong file" mistake (a `.csv`, an `.flw`, a screenshot, an empty file) before Tlamatini commits to swapping it in.
 
-When you click **Set** and the file passes validation, the page POSTs `POST /agent/set_db/`. The view computes the deployment-specific **staging directory** — `<exe_dir>/DB/ToLoad/` in frozen mode, `<repo>/Tlamatini/DB/ToLoad/` in source mode — creates it if needed, and copies your file there as `DB/ToLoad/db.sqlite3`. **The live database is NOT touched.** SQLite is open in-process while Tlamatini runs; replacing it mid-flight would corrupt the live connection pool, so Set DB *only stages*.
+When you click **Set** and the file passes validation, the page POSTs `POST /agent/set_db/`. The view computes the deployment-specific **staging directory** — `<exe_dir>/DB/ToLoad/` in frozen mode, `<repo>/Tlamatini/DB/ToLoad/` in source mode — creates it if needed, and writes a consistent, self-contained snapshot there as `DB/ToLoad/db.sqlite3`. If the selected database has committed pages in a neighboring WAL, those pages are included. **The live database is NOT touched.** SQLite is open in-process while Tlamatini runs; replacing it mid-flight would corrupt the live connection pool, so Set DB *only stages*.
 
 Immediately after staging succeeds, the dialog is replaced by a second one — a yellow ⚠ warning panel — telling you in two sentences:
 
@@ -809,7 +809,7 @@ Click **OK** and the dialog closes. There is no Cancel — by the time you see t
 The third leg of the DB mechanic — and the only one without a UI surface — is the start-up swap-in itself. It lives at the very top of `Tlamatini/manage.py` and runs in this exact order before *anything Django* is imported:
 
 ```
-_apply_pending_db_swap()           ← runs BEFORE Django
+_apply_pending_db_swap()           ← runs directly BEFORE Django
     ↓
 [ os.path detection: frozen or source? ]
     ↓
@@ -818,22 +818,23 @@ _apply_pending_db_swap()           ← runs BEFORE Django
     ├─ NO  ──► return (no-op, normal start-up continues)
     │
     └─ YES ──► [1] mkdir DB/Older/<YYYY-MM-DD_HHMMSS>/
-               [2] shutil.move(live db.sqlite3 → Older/<timestamp>/db.sqlite3)
-               [3] shutil.move(DB/ToLoad/db.sqlite3 → live db.sqlite3 path)
-               [4] return (Django opens the freshly-swapped file)
+               [2] shutil.move(live db.sqlite3 + sidecars → Older/<timestamp>/)
+               [3] ensure no stale live WAL/SHM remains
+               [4] shutil.move(DB/ToLoad/db.sqlite3 → live db.sqlite3 path)
+               [5] return (Django opens the freshly-swapped file)
 ```
 
 The three guarantees this gives you:
 
 1. **Pre-Django timing.** Because the swap-in runs before the `from django.core.management import execute_from_command_line` line, Django's SQLite connection pool is never holding a stale file descriptor at the moment of the swap. A simple **Reconnect** from the navbar is NOT enough to trigger the swap-in — you must restart the entire process (close the console, launch Tlamatini again).
-2. **Atomic moves, no copies.** Both legs use `shutil.move` (filesystem rename when possible, copy+delete across mounts) so the source files are consumed. A second launch with `DB/ToLoad/` empty is automatically a no-op — there's no "stuck flag" to clear.
+2. **Atomic moves, no stale WAL.** Both legs use `shutil.move` (filesystem rename when possible, copy+delete across mounts) so the source files are consumed. The outgoing SQLite sidecars are archived with their database, and none may remain beside the promoted database. A second launch with `DB/ToLoad/` empty is automatically a no-op — there's no "stuck flag" to clear.
 3. **Mode-correct path resolution.** Frozen mode looks at `<exe_dir>/DB/ToLoad/db.sqlite3` (where you can browse to in Explorer); source mode looks at `<repo>/Tlamatini/DB/ToLoad/db.sqlite3` (where `manage.py` lives). The live `db.sqlite3` path is computed the same way Django does — `_MEIPASS/db.sqlite3` under PyInstaller, `<manage.py dir>/db.sqlite3` in source mode — so the swap-in writes to exactly the location Django will open.
 
 If anything fails inside the swap-in (locked file on Windows, corrupt source, permission error), the function catches the exception, prints `--- [DB SWAP] Skipped due to error: <reason>` to `tlamatini.log`, and lets Tlamatini start normally with the previous database. **A bad ToLoad file must never block start-up** — that would lock you out of your own database.
 
 ### 17.4. The Older audit trail
 
-Every successful swap-in leaves a complete record under `<base>/DB/Older/<YYYY-MM-DD_HHMMSS>/db.sqlite3`. The timestamp is the local time at the moment the swap happened, filesystem-safe on Windows / Linux / macOS:
+Every successful swap-in leaves a complete record under `<base>/DB/Older/<YYYY-MM-DD_HHMMSS>/`. The timestamp is the local time at the moment the swap happened, filesystem-safe on Windows / Linux / macOS. If the outgoing database has WAL/SHM sidecars, they remain beside its `db.sqlite3` in the same archive:
 
 ```
 DB/
@@ -841,7 +842,8 @@ DB/
 │   └─ (empty most of the time; momentary home of the next-session pick)
 └─ Older/
     ├─ 2026-05-14_153022/
-    │   └─ db.sqlite3      ← database that was live before swap #1
+    │   ├─ db.sqlite3      ← database that was live before swap #1
+    │   └─ db.sqlite3-wal  ← committed pages, when present
     ├─ 2026-05-14_164410/
     │   └─ db.sqlite3      ← database that was live before swap #2
     └─ 2026-05-14_172908/

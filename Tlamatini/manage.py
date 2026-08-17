@@ -512,11 +512,25 @@ def _apply_pending_db_swap():
     exists):
 
       1. ``DB/Older/<timestamp>/`` is created.
-      2. The current live ``db.sqlite3`` (if any) is *moved* into that
-         timestamped directory so the user keeps an audit trail.
-      3. ``DB/ToLoad/db.sqlite3`` is *moved* on top of the live path.
+      2. The current live ``db.sqlite3`` **and its ``-wal``/``-shm``/
+         ``-journal`` sidecars** are *moved* into that timestamped directory
+         so the user keeps a COMPLETE, restorable audit trail.
+      3. Any sidecar still sitting next to the live path is DELETED.
+      4. ``DB/ToLoad/db.sqlite3`` is *moved* on top of the live path (its own
+         stale sidecars, if any, are dropped too).
 
-    Both moves use :func:`shutil.move` (rename-where-possible, copy+delete
+    ⚠️ STEP 3 IS LOAD-BEARING — do NOT remove it (Angela, 2026-08-16).
+    The database runs in WAL mode (``settings.py`` -> ``PRAGMA
+    journal_mode=WAL``). Before this, the swap replaced ``db.sqlite3`` and
+    left the PREVIOUS database's ``-wal`` beside it — so on the next open
+    SQLite replayed that stale WAL and its pages OVERRODE the database that
+    had just been loaded. Set DB therefore appeared to do nothing (Angela ran
+    it three times in a row at 22:46/22:48/22:49 against a 3.5 MB stale WAL),
+    and in the worst case it merges two different databases, which is real
+    corruption. The sidecars are archived FIRST and deleted SECOND: a WAL is
+    data, so it is never destroyed, only moved out of the way.
+
+    The moves use :func:`shutil.move` (rename-where-possible, copy+delete
     across filesystems) so the source files are removed once the swap
     completes — a re-launch with the same files in place is a no-op.
 
@@ -532,7 +546,13 @@ def _apply_pending_db_swap():
         older_root = os.path.join(db_root, 'Older')
 
         if not os.path.isfile(to_load_path):
-            return  # nothing to swap; common case
+            return False  # nothing to swap; common case
+
+        # Stdlib-only and bundled with the app. If this import ever fails, the
+        # safe action is to leave the staged DB untouched and abort this swap;
+        # falling back to moving only db.sqlite3 recreates the WAL data-loss
+        # bug this path exists to prevent.
+        from agent import sqlite_copy
 
         live_db_path = _resolve_live_db_path()
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S')
@@ -540,54 +560,31 @@ def _apply_pending_db_swap():
         os.makedirs(archive_dir, exist_ok=True)
 
         if os.path.isfile(live_db_path):
-            archived_target = os.path.join(archive_dir, 'db.sqlite3')
-            shutil.move(live_db_path, archived_target)
-            print(f"--- [DB SWAP] Archived previous db.sqlite3 -> {archived_target}")
+            moved = sqlite_copy.move_with_sidecars(live_db_path, archive_dir)
+            print(f"--- [DB SWAP] Archived previous database ({len(moved)} file(s)) "
+                  f"-> {archive_dir}")
         else:
             print(f"--- [DB SWAP] No previous db.sqlite3 found at {live_db_path}")
+
+        # THE fix: nothing of the OLD database may survive beside the new one.
+        leftovers = sqlite_copy.remove_sidecars(live_db_path, strict=True)
+        if leftovers:
+            print("--- [DB SWAP] Removed stale WAL/SHM left by the previous "
+                  f"database: {', '.join(os.path.basename(p) for p in leftovers)}")
 
         live_parent = os.path.dirname(live_db_path)
         if live_parent:
             os.makedirs(live_parent, exist_ok=True)
         shutil.move(to_load_path, live_db_path)
+        sqlite_copy.remove_sidecars(to_load_path, strict=True)
         print(f"--- [DB SWAP] Loaded DB/ToLoad/db.sqlite3 -> {live_db_path}")
+        return True
     except Exception as exc:
         print(f"--- [DB SWAP] Skipped due to error: {exc}")
-
-
-def _guard_live_database():
-    """Check the live db.sqlite3 BEFORE Django opens it. Never blocks startup.
-
-    Added after the live database was found at ZERO BYTES on 2026-08-02: the
-    app started happily on the broken file, the emptiness was noticed hours
-    later by accident, and the broken file itself was gone by the time we went
-    looking — so the cause is still unknown.
-
-    Runs right after ``_apply_pending_db_swap()`` so it inspects the exact
-    file Django will open (including one just restored from ``DB/ToLoad``).
-    On a bad verdict it copies the body to ``DB/Corrupted/`` and SHOUTS; it
-    never restores anything on its own and never stops Tlamatini from
-    starting. Fail-open end to end: see ``agent/db_guard.py``.
-    """
-    try:
-        from agent import db_guard
-        db_root = _resolve_db_folder_root()
-        live = _resolve_live_db_path()
-        db_guard.guard_database(
-            live, db_root,
-            backup_roots=[
-                db_root,
-                os.path.dirname(live),
-                os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                             'Backups'),
-            ],
-        )
-    except Exception as exc:
-        print(f"--- [DB GUARD] Skipped due to error: {exc}")
+        return False
 
 
 _apply_pending_db_swap()
-_guard_live_database()
 
 
 def _post_update_migrate_flag_path():

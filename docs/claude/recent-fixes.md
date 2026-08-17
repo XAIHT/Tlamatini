@@ -743,36 +743,6 @@ Pinned by `agent/test_latexer_agent.py::test_validate_tex_finding_errors_is_a_SU
 
 ---
 
-## 2026-08-05 — The DB guard was crying wolf: 11 quarantines of a PERFECTLY HEALTHY database (`db_guard.py`)
-
-**What was wrong.** The startup smoke alarm added on 2026-08-03 quarantined the live database **11 times in 40 minutes** (08:32 → 09:12), shouting `DATABASE LOOKS WRONG` and copying an 840 KB file aside each time. **Every single one of those 11 "broken" copies was healthy**: `PRAGMA integrity_check = ok`, all 211 migrations, all 87 agents — and 8 of the 11 were **byte-identical** to the live file (`sha=4d7f3118…`). Nothing was ever wrong with the database.
-
-**Root cause (measured, not guessed).** Replaying `compare_with_sentinel()` against the real sentinel and the real DB produced exactly one complaint: `table agent_chatagentrun dropped from 16 to 0 rows`. That is the **wrapped-agent run ledger**, which is pruned on purpose (`chat_agent_limit_runs`). Two compounding faults:
-
-1. **Churn tables were treated as precious.** The *size* rule had already been made lenient with the explicit reasoning *"the user may have legitimately cleared their chat history"* — but the *row* rule still fired on the very tables that sentence describes (run ledger, chat history, sessions, caches).
-2. **It never re-baselined.** The `CRITICAL/SUSPICIOUS` branch `return`ed **before** `write_sentinel()`, so the stale fingerprint was compared again on the next start, alarmed again, and copied the database aside again — **forever**, one copy per start. That is the whole 9.2 MB of junk.
-
-**Why this mattered more than the noise.** A guard that cries wolf 11 times is a guard everyone learns to ignore — and the next alarm might be the **zero-byte database** this module exists to catch. Fixing the false positive is what keeps the real alarm credible.
-
-**The fix (Angela López Mendoza, 2026-08-05).** Three surgical changes in `agent/db_guard.py`:
-
-- **`VOLATILE_TABLES`** — a frozenset of tables exempt from the row-drop rule (`agent_chatagentrun`, `agent_agentmessage`, `agent_acpsession`, `agent_agentprocess`, `agent_contextcache`, `agent_sessionstate`, `agent_skillinvocation`, `django_session`, `django_admin_log`). A table **VANISHING** is still reported even when listed here — that is schema damage, not churn.
-- **Re-baseline after a SUSPICIOUS start** so the same legitimate change is reported **once**, not on every start forever.
-- **`MAX_EVIDENCE_COPIES = 10`** with `_prune_evidence()` — the evidence directory can no longer grow without bound.
-
-**DO NOT weaken these — each prevents a specific, silent failure:**
-
-- **A `CRITICAL` verdict must NEVER re-baseline.** A damaged database has to keep shouting on every start until Angela decides what to do; recording it as the new "healthy" shape would silence the one alarm that actually matters.
-- **A report that could not be inspected must NEVER become the baseline.** The re-baseline is gated on `integrity == "ok"` **and** non-empty `tables`; writing a blank fingerprint would overwrite a good baseline and blind the next start.
-- **Pruning only ever deletes `db.sqlite3.broken_*` files this module itself wrote**, never the copy just taken, and never a foreign file dropped in that folder. Evidence is the point of the module — the pruning is deliberately timid and fail-open.
-- **Do not "simplify" `VOLATILE_TABLES` away.** Adding a new churn/bookkeeping table to the schema? Add it there too, or the guard starts crying wolf again on the next legitimate prune.
-
-**Unchanged and re-proved:** the zero-byte database still goes `CRITICAL`, still preserves evidence *first*, still shouts; a truncated/non-SQLite/wrecked-page file is still `CRITICAL`; a genuinely gutted precious table (`agent_prompt` 117 → 10) is still `SUSPICIOUS`; the guard still never restores by itself and still never raises.
-
-**Coverage:** `agent/test_db_guard.py::CryingWolfTests` (9 tests pinning the false positive, the still-caught real losses, the re-baseline, the CRITICAL exception, and the evidence cap). Full suite green: **152 tests, exit 0**.
-
----
-
 ## 2026-08-04 — SPACE-bar bulk check/uncheck of a text-selected block of checkboxes (`checkbox_bulk_toggle.js`)
 
 **What was wrong.** The Configure Mcps / Tools / Agents / Skills dialogs, the External-MCPs catalog and the ACP canvas agent-config dialogs list **dozens** of checkboxes. Clearing 20 of them cost 20 clicks — and there was no way to say "these ones, all at once". Every prior idea for fixing it (a select-all button, per-dialog range-select, shift-click) would have needed **per-dialog wiring**, so each new dialog would silently ship without it.

@@ -9856,20 +9856,46 @@ def backup_db_view(request):
 
     destination_path = os.path.join(target_dir, "db.sqlite3")
 
+    if os.path.normcase(os.path.abspath(source_path)) == os.path.normcase(os.path.abspath(destination_path)):
+        return JsonResponse({
+            "success": False,
+            "error": "Source and destination resolve to the same file — choose a different target directory.",
+        }, status=400)
+
+    # ⚠️ Never use a plain filesystem copy here. The database runs in WAL mode
+    # (``settings.py`` -> ``PRAGMA journal_mode=WAL``), so everything
+    # committed since the last checkpoint lives in ``db.sqlite3-wal``, not in
+    # ``db.sqlite3``. A plain file copy therefore backs up an OLDER database
+    # and reports success — measured on the live install: 839,680-byte
+    # db.sqlite3 from 13:39 next to a 3,514,392-byte -wal from 22:49. The
+    # online backup API reads THROUGH the WAL and the copy is verified with
+    # quick_check before this returns success. See agent/sqlite_copy.py.
     try:
-        if os.path.normcase(os.path.abspath(source_path)) == os.path.normcase(os.path.abspath(destination_path)):
-            return JsonResponse({
-                "success": False,
-                "error": "Source and destination resolve to the same file — choose a different target directory.",
-            }, status=400)
-        shutil.copy2(source_path, destination_path)
+        from . import sqlite_copy
+        result = sqlite_copy.consistent_copy(source_path, destination_path)
     except Exception as exc:
         print(f"[BACKUP DB] Copy failed: {exc}")
         traceback.print_exc()
         return JsonResponse({"success": False, "error": str(exc)}, status=500)
 
-    print(f"[BACKUP DB] Copied {source_path} -> {destination_path}")
-    return JsonResponse({"success": True, "path": destination_path, "source": source_path})
+    if not result.get("ok"):
+        print(f"[BACKUP DB] {sqlite_copy.describe(result)}")
+        return JsonResponse({
+            "success": False,
+            "error": (result.get("error")
+                      or "; ".join(result.get("attempts", []))
+                      or "the backup could not be verified"),
+        }, status=500)
+
+    print(f"[BACKUP DB] Backed up {source_path} -> {sqlite_copy.describe(result)}")
+    return JsonResponse({
+        "success": True,
+        "path": destination_path,
+        "source": source_path,
+        "method": result.get("method", ""),
+        "bytes": result.get("bytes", 0),
+        "integrity": result.get("integrity", ""),
+    })
 
 
 def _resolve_db_to_load_directory() -> str:
@@ -9999,14 +10025,38 @@ def set_db_view(request):
 
         # The swap-in expects ``DB/ToLoad/db.sqlite3``; overwrite any
         # previously-staged file so the latest user pick wins.
-        shutil.copy2(source_path, destination_path)
+        #
+        # ⚠️ Not a plain filesystem copy. The file the user picked may itself be a
+        # live/WAL database (a copy taken from another install, or one made
+        # by an older Tlamatini), in which case its newest pages sit in a
+        # ``-wal`` beside it and a byte copy would stage a database MISSING
+        # exactly the data the user wants back. The online backup API pulls
+        # the WAL in and leaves ONE self-contained file for the swap-in.
+        from . import sqlite_copy
+        result = sqlite_copy.consistent_copy(source_path, destination_path)
     except Exception as exc:
         print(f"[SET DB] Could not stage db.sqlite3: {exc}")
         traceback.print_exc()
         return JsonResponse({"success": False, "error": str(exc)}, status=500)
 
-    print(f"[SET DB] Staged {source_path} -> {destination_path}")
-    return JsonResponse({"success": True, "path": destination_path, "source": source_path})
+    if not result.get("ok"):
+        print(f"[SET DB] {sqlite_copy.describe(result)}")
+        return JsonResponse({
+            "success": False,
+            "error": (result.get("error")
+                      or "; ".join(result.get("attempts", []))
+                      or "the database could not be staged"),
+        }, status=500)
+
+    print(f"[SET DB] Staged {source_path} -> {sqlite_copy.describe(result)}")
+    return JsonResponse({
+        "success": True,
+        "path": destination_path,
+        "source": source_path,
+        "method": result.get("method", ""),
+        "bytes": result.get("bytes", 0),
+        "integrity": result.get("integrity", ""),
+    })
 
 
 def _run_native_picker(kind: str, title: str) -> str:

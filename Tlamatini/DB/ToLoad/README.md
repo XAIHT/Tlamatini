@@ -20,8 +20,9 @@ named exactly `db.sqlite3` is present in this directory:
 
 1. A timestamped subdirectory is created under `../Older/`:
    `../Older/YYYY-MM-DD_HHMMSS/`.
-2. The current live `db.sqlite3` is **moved** (not copied) into that
-   subdirectory so it can be recovered later.
+2. The current live `db.sqlite3` and any SQLite WAL/SHM sidecars are
+   **moved** (not copied) into that subdirectory so all committed data can
+   be recovered later.
 3. `ToLoad/db.sqlite3` is **moved** on top of the live database path.
 
 After the swap, Tlamatini continues its normal start-up against the
@@ -33,7 +34,8 @@ second run with no file in `ToLoad/` is a no-op.
 There are two supported ways to place a `db.sqlite3` file here:
 
 1. **From the chat UI**: menu `DB -> Set DB`. The dialog validates the
-   file path (live, server-side) and copies the file here for you.
+   file path (live, server-side) and writes a consistent SQLite snapshot
+   here for you, including committed WAL pages when the selected DB is live.
 2. **Manually**: drop your own `db.sqlite3` here; the filename must be
    exactly `db.sqlite3` (lower-case). Subdirectories and other file
    names are ignored.
