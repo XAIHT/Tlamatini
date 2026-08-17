@@ -32,13 +32,18 @@ When you enable, configure, modify, chain, or execute an agent, **that agent and
 
 Before any of the deep chapters, here is the whole journey on a single page. It is the first and most important thing you will do with Tlamatini, so it comes first.
 
-There is a quiet economic argument hiding inside this software, and it is worth saying out loud before you install a thing. A frontier subscription — GPT-5.4, Claude Opus, and their kin — asks roughly **$200 every month** to talk to one model. Tlamatini turns that arithmetic on its head. **The app is free** — you never pay us; the single bill is **Ollama Pro, about $200 a *year*** (paid to Ollama), and around that one cloud connection she wraps **87 agent types and 107 built-in Multi-Turn tools** that run on *your* machine. Comparable power, for roughly one-twelfth of the bill. That is why this chapter opens the book.
+Tlamatini itself is free and open-source, but the complete system was designed and coded primarily around the larger cloud models exposed through Ollama. **To use Tlamatini with its complete intended functionality, an active Ollama Pro plan — or a higher Ollama plan such as Max — is mandatory.** A free Ollama account or an all-local model configuration may be enough to launch the application and experiment with limited work, but neither is the supported baseline for the full Multi-Turn, long-context, parallel-vision, and agent-orchestration workload described in this book.
+
+> [!IMPORTANT]
+> **Ollama Pro is a Tlamatini system requirement, not a sponsorship.** XAIHT/Tlamatini is not sponsored, endorsed, affiliated with, funded by, or compensated by Ollama. We receive no referral fee or commission. The subscription is purchased directly from Ollama; it is specified here only because Tlamatini's architecture depends on the practical cloud usage and concurrency that Pro-or-higher service provides.
+
+Ollama currently advertises Pro at **$20/month or $200/year**, with substantially more cloud usage and concurrency than a free account. Pricing and limits are controlled by Ollama and can change, so verify the current terms on **[Ollama's official site](https://ollama.com)** before subscribing.
 
 Five steps take you from a bare machine to a Tlamatini that can flash a board, drive an engine, and run a whole workflow unattended.
 
 ### Step one — Install Tlamatini
 
-There are two ways into Tlamatini, and they suit two different readers. The app itself is **free** — you never pay us a cent; the only bill in this whole chapter is Ollama's, three steps from now. Choose **one** road.
+There are two ways into Tlamatini, and they suit two different readers. The app itself is **free** — you never pay us a cent; the required external service cost in this chapter is paid directly to Ollama, three steps from now. Optional third-party APIs and external coding-agent services may have their own independent charges. Choose **one** road.
 
 **🟢 Option A — the release installer (recommended; no Python required).** This is the gentle path, and the right one for most people. Open the **[Releases page](https://github.com/XAIHT/Tlamatini/releases)**, download the latest installer, and run it. It carries its own Python 3.12.10 and every dependency inside, so there is nothing else to install. Launch Tlamatini from its Start-menu shortcut and your browser opens at `http://127.0.0.1:8000/`, behind the default login **user / changeme**. When a new version lands, you update from inside the app — **About ▸ Check for updates** — and it keeps your config, database, and keys intact.
 
@@ -63,9 +68,9 @@ Then open `http://127.0.0.1:8000/` and log in with **user / changeme**.
 
 Tlamatini never talks to a model directly; she speaks through **[Ollama](https://ollama.com/download)**, the engine that serves every model — the small embedding model that lives on your own GPU, and the large chat models that live in the cloud. Install it once.
 
-### Step three — Subscribe to Ollama Pro (~$200 / year)
+### Step three — Activate Ollama Pro or higher (required for complete operation)
 
-This is the step that earns its keep. Sign in at **[ollama.com](https://ollama.com)** and take the **Ollama Pro** plan — roughly **$200 for a year**. Pro is the key that unlocks the **`:cloud` models**: frontier-class minds that run on Ollama's own hardware, billed by the year for about what a single month of a rival plan costs. Then introduce your machine to your account:
+Sign in at **[ollama.com](https://ollama.com)** and activate **at least Ollama Pro**; Max also satisfies the requirement. Ollama may allow limited cloud use on a free account, but Tlamatini does not treat that allowance as a completely functional production configuration: a single Multi-Turn task can make repeated model decisions and may involve several cloud-backed subsystems. Pro is therefore the minimum intended capacity tier. Then introduce your machine to your account:
 
 ```bash
 ollama signin
@@ -79,7 +84,7 @@ Pull the small embedding model onto your own disk, and reach for the cloud chat 
 # Local — small, runs on your own GPU/CPU
 ollama pull nomic-embed-text
 
-# Cloud — served by Ollama Pro (pull, or simply sign in to use)
+# Cloud — use a signed-in Pro-or-higher account for full Tlamatini operation
 ollama pull glm-5.2:cloud
 ollama pull qwen3.5:cloud
 ```
@@ -106,10 +111,10 @@ That is the whole setup. Tick **Multi-Turn** in the chat toolbar and hand Tlamat
 
 ## How to read this book
 
-Tlamatini does a lot. This README is organized so you can stop reading at the depth you need.
+Tlamatini does a lot. This book is organized so you can stop reading at the depth you need.
 
 - **⭐ Start here** (the chapter just above): the entire five-step setup — install, Ollama, Ollama Pro, models, config — on a single page. *If you read nothing else, read this.*
-- **Part I — Getting Tlamatini Running**: prerequisites, Ollama, **Ollama Pro/Max subscription for the default `:cloud` models**, install, first login. *Read this once.*
+- **Part I — Getting Tlamatini Running**: prerequisites, Ollama, the **Pro-or-higher requirement for complete functionality**, cloud models, installation, and first login. *Read this once.*
 - **Part II — Using the Chat**: the five toolbar checkboxes (Multi-Turn, Exec Report, ACPX, Ask Execs, internet) walked through one by one. *This is the dummy-friendly heart of the book.*
 - **Part III — The Visual Workflow Designer**: drag-and-drop flows, FlowCreator, FlowHypervisor, Parametrizer, Gatewayer.
 - **Part IV — The Tlamatini Bestiary**: compact reference covering all 87 workflow agents (82 rows — a few closely-paired agents, e.g. Ssher / Scper, share one row).
@@ -144,7 +149,7 @@ If you only have ten minutes, read Part I §3–§7 (install + first login), the
 
 ## 1. What is Tlamatini?
 
-**Tlamatini** (Nahuatl for "one who knows") is a locally-deployed AI developer assistant. It runs in your browser, talks to a local or cloud LLM, knows your code, and can actually *do* things on your machine — not just describe how to do them.
+**Tlamatini** (Nahuatl for "one who knows") is a local-first AI development and automation environment. It runs in your browser, keeps its control plane on your machine, knows your code, and can actually *do* things — not just describe how to do them. “Local-first” identifies where the application, database, workflows, credentials, agent programs, tools, files, and hardware connections are controlled; it does **not** mean Tlamatini was designed as a local-model-only assistant. Its intended reasoning layer uses Ollama cloud models.
 
 The four things Tlamatini gives you that a plain ChatGPT-style box does not:
 
@@ -153,7 +158,7 @@ The four things Tlamatini gives you that a plain ChatGPT-style box does not:
 3. **ACPX** that lets the LLM delegate sub-tasks to external coding-agent CLIs you already have installed (Claude Code, Cursor, Codex, Gemini CLI, Qwen Code, and more).
 4. **A visual workflow designer** where you drag 82 different agent types onto a canvas (including the microcontroller-firmware trio **STM32er** / **ESP32er** / **Arduiner**, the **Unrealer** for driving Unreal Engine 5 — see bonus chapter §57 — the **Camcorder** for grabbing photos/video off a webcam, the **Recorder** for capturing audio off a microphone, the matching **AudioPlayer** / **VideoPlayer** for playing sound to the speakers and video on a screen, the **Talker** for synthesizing speech from text, and the **Whisperer** for transcribing speech back into text), wire them up, and run the result as an unattended `.flw` workflow. Save, Validate, and Start all funnel the canvas through a backend **Flow Compiler** (`agent/services/flow_compiler.py`) that consults a single Agent Contract registry — so a flow that runs in source mode runs identically in a frozen `.exe` install.
 
-Everything is local. No cloud lock-in (though cloud LLMs are an option). The whole app packages into a standalone Windows `.exe` if you want to ship it.
+The **control plane is local**; the intended reasoning plane is cloud-backed through Ollama. The small retrieval embedding model runs locally, while configured `:cloud` models handle demanding chat, planning, coding, tool selection, long contexts, and vision. Prompts and context sent to those models are processed by Ollama's cloud service. The whole application can still be packaged as a standalone Windows `.exe`, but the executable does not remove the Pro-or-higher service requirement for complete functionality.
 
 ## 2. What you need before installing
 
@@ -161,12 +166,13 @@ Everything is local. No cloud lock-in (though cloud LLMs are an option). The who
 |---|---|---|
 | **Python** | 3.12.10 | **Installer users do NOT need Python** — as of **v1.17.0** the installer carries a self-contained Python 3.12.10 (with all dependencies) into `<install_dir>\python\`, and every pool agent runs on that carried interpreter. Python 3.12.10 is required **only** when running from source (Path A). It is the only version Tlamatini has been fully tested with. |
 | **Operating system** | Windows 11 | The visual designer is cross-platform; some Windows-specific helpers (Mouser, Keyboarder, `.flw` file association) are best on Windows. |
-| **Disk space** | ~10 GB | Most of this is the local LLM models you pull through Ollama. |
+| **Disk space** | ~10 GB | Application dependencies, carried runtimes and browsers, plus the local embedding model; optional local LLMs require additional space. |
 | **RAM** | 16 GB minimum | 32 GB is comfortable for the bigger embedding models. |
-| **A local LLM server** | **Ollama** | The default. You can also point Tlamatini at the Anthropic API for cloud Claude. |
+| **Model runtime** | **Ollama** | The local Ollama daemon exposes one API for the local embedding model and the cloud reasoning models Tlamatini uses. |
+| **Cloud capacity** | **Ollama Pro or higher** | Mandatory for Tlamatini's complete intended functionality. Free/local-only operation is a limited experimental compatibility path, not the supported full-workload baseline. |
 | **An IDE or editor** | Optional | Tlamatini ships with built-in "Open in VS Code / Antigravity / File Explorer" buttons if those are installed. |
 
-You do **not** need administrator rights to install Tlamatini or Ollama if you follow the per-user paths in chapters 3 and 5.
+You do **not** need administrator rights to install Tlamatini or Ollama if you follow the per-user paths in chapters 3 and 6.
 
 ## 3. Installing Ollama (no admin rights needed)
 
@@ -231,29 +237,39 @@ ollama pull glm-5.1:cloud
 
 Some pulls are large and slow. Start them, walk away, come back.
 
-> **Free to substitute.** None of the model tags above are mandatory. If you prefer a different local model, edit the relevant entry in `config.json` (Part VII) or the agent's `config.yaml`. Just match the model name to something `ollama list` actually returns.
+> **Model names are substitutable; the capacity baseline is not.** You may replace a cloud tag with another compatible Ollama cloud model in `config.json` (Part VII) or an agent's `config.yaml`, provided the chosen name appears in `ollama list`. Replacing every cloud tag with local models is possible as an advanced experiment, but it does not represent the complete, supported Tlamatini configuration and does not remove the documented Pro-or-higher requirement for full functionality.
 
 > **High-detail embedding opt-in.** If your retrieval quality on dense, technical corpora is not good enough with `Nomic-Embed-Text:latest`, you can swap it for `qwen3-embedding:8b` from the **Config → Models** menu inside the app (or by editing the `embeding-model` key in `config.json` and reconnecting). **Use with caution**: `qwen3-embedding:8b` is roughly **10× heavier in VRAM** than the default (~6.24 GB resident vs ~600 MB on a Q4_K_M quant) and will trip the embedding-memory pre-flight guard (Part §34) on 8 GB consumer GPUs. Pull it first with `ollama pull qwen3-embedding:8b`.
 
-## 5. Cloud models require an Ollama Pro/Max plan
+## 5. Complete Tlamatini operation requires Ollama Pro or higher
 
-Five of the six default model tags in chapter §4 carry the `:cloud` suffix — `kimi-k2.6:cloud`, `qwen3.5:cloud`, `gpt-oss:120b-cloud`, `qwen3.5:397b-cloud`, and `glm-5.1:cloud` (only `Nomic-Embed-Text:latest` runs locally). Those models are not actually running on your machine. They live on **Ollama Cloud**, and the `ollama pull <tag>:cloud` command only registers a thin stub on the local daemon that proxies inference requests to Ollama's servers. To make those proxied requests actually return something, three things have to be true: you have an Ollama account, you are signed in on the host that runs Tlamatini, and the account is on a subscription tier that allows the workload you are about to run.
+Five of the six default model tags in chapter §4 carry the `:cloud` suffix — `kimi-k2.6:cloud`, `qwen3.5:cloud`, `gpt-oss:120b-cloud`, `qwen3.5:397b-cloud`, and `glm-5.1:cloud` (only `Nomic-Embed-Text:latest` runs locally). Those models are not actually running on your machine. They live on **Ollama Cloud**, and the `ollama pull <tag>:cloud` command registers them with the local daemon, which proxies inference requests to Ollama's service. You must have an Ollama account and be signed in on the host that runs Tlamatini. Ollama documents this local-API/cloud-offload design in its **[official cloud-model documentation](https://docs.ollama.com/cloud)**.
+
+Ollama may make limited cloud use available to free accounts. That does not make Free the operational baseline for this application. **Tlamatini requires an active Ollama Pro plan, or a higher plan such as Max, for its complete intended functionality.** Multi-Turn orchestration, long agent runs, FlowCreator, parallel Image-Interpreter calls, repeated tool decisions, and large project contexts can use cloud quota and concurrency much faster than a single conversational request.
 
 ### 5.1. The three tiers, in plain English
 
-This README deliberately omits dollar amounts because the pricing changes over time. Check the current numbers on **<https://ollama.com/pricing>**. The plan structure (Free, Pro, Max) and what each one lets you do with cloud models is what matters here:
+Pricing and limits can change. At the time of this revision, Ollama advertises Pro at **$20/month or $200/year**, with three concurrent cloud models and substantially more cloud usage than Free; Max provides a higher ceiling. Always verify the current terms on **<https://ollama.com>**. The table below explains the architectural fit rather than promising permanent commercial terms:
 
 ![Ollama plan structure — Free / Pro / Max (prices intentionally not shown — check ollama.com/pricing)](OllamaPricing.png)
 
 | Plan | Cloud-model entitlements | Honest fit for Tlamatini |
 |---|---|---|
-| **Free** | 1 cloud model concurrent, light monthly usage, access to a smaller subset of cloud-only models. Unlimited *local* open-weights models. | OK for kicking the tires with a single cloud-backed chat. **Not enough** to run Tlamatini's stock config, because a normal Multi-Turn session can easily touch two or three cloud models in the same request (chat model, FlowCreator model when Create Flow fires, vision model when an Image-Interpreter step runs). The second concurrent model will simply 429. |
-| **Pro** | 3 concurrent cloud models, ~50× the Free monthly quota, full access to the larger cloud-only models (the `*120b-cloud`, `*397b-cloud` tags Tlamatini ships with), and you can upload / share your own private models. | The realistic minimum to run Tlamatini out of the box with the model tags from chapter §4 *as written*. Comfortable for interactive Multi-Turn + Exec Report use, occasional FlowCreator runs, and a handful of ACPX relays per day. |
-| **Max** | 10 concurrent cloud models, ~5× the Pro quota, intended for sustained heavy agentic workloads. | Recommended if you live in long-running ACPX relays, FlowHypervisor-supervised flows, or Croner-driven unattended runs that chain many cloud calls per hour. Also the right choice when several wrapped chat-agents (Summarizer, File-Interpreter, Image-Interpreter, Prompter…) fan out cloud calls concurrently inside a single Multi-Turn iteration. |
+| **Free** | Limited cloud usage intended for lighter experimentation; exact entitlements are controlled by Ollama. Local open-weight models remain available according to your hardware. | Useful for installation checks and small experiments. **Not a completely functional Tlamatini baseline**: a normal Multi-Turn session can touch several cloud-backed subsystems and exhaust limited usage or concurrency. |
+| **Pro** | Ollama currently advertises 3 concurrent cloud models and about 50× the Free cloud usage. | **The mandatory minimum system tier for complete Tlamatini functionality.** Intended for interactive Multi-Turn, tool-calling, vision, FlowCreator, and ordinary agent orchestration with the documented cloud configuration. |
+| **Max** | Ollama currently advertises 10 concurrent cloud models and about 5× the Pro usage. | Satisfies the requirement and is recommended for sustained ACPX relays, supervised flows, unattended runs, or several wrapped agents fanning out cloud calls concurrently. |
 
-### 5.2. What if I do not want to subscribe?
+### 5.2. Why this requirement is not a sponsorship
 
-Tlamatini does not *require* Ollama Cloud. The cloud tags are convenience defaults — large, capable models you do not need to host yourself. You can run the whole stack on local open-weights models instead. Open `Tlamatini/agent/config.json` and replace every cloud tag with a model you have pulled locally:
+**XAIHT/Tlamatini is independent from Ollama.** The project is not sponsored, endorsed, affiliated with, funded by, or compensated by Ollama. There is no referral link, commission, revenue share, or other commercial relationship. Users subscribe directly with Ollama, and pricing, availability, quotas, model access, service operation, and privacy terms remain Ollama's responsibility.
+
+The book names Pro because Tlamatini was designed and coded around Ollama's cloud-model interface and practical capacity. This is the same kind of technical disclosure as naming a minimum Python version or a required hardware interface: it tells the reader what the system was built and tested to use. It is not an advertisement and it does not imply that Ollama requires every application to purchase Pro.
+
+### 5.3. What if I do not want to subscribe?
+
+Tlamatini can be launched and experimentally reconfigured without Pro, but that is **a limited compatibility path, not the complete supported product configuration**. A free account may permit light cloud testing. An advanced user with sufficiently powerful hardware may replace cloud tags with local open-weight models. Neither path is represented as equivalent to the cloud-backed system on which Tlamatini's full orchestration behavior was designed and tested.
+
+To experiment with an all-local configuration, open `Tlamatini/agent/config.json` and replace every cloud tag with a model you have pulled locally:
 
 | Config key | Default (cloud) | A reasonable local substitute |
 |---|---|---|
@@ -263,13 +279,13 @@ Tlamatini does not *require* Ollama Cloud. The cloud tags are convenience defaul
 | `flow_creator_model` | `qwen3.5:397b-cloud` | `qwen2.5:32b` or any large local model you can fit in VRAM |
 | `image_interpreter_model` | `qwen3.5:cloud` | `llama3.2-vision:11b` (a local vision model — pull it first with `ollama pull llama3.2-vision:11b`) |
 
-Then also walk through `Tlamatini/agent/agents/*/config.yaml` and replace any cloud tag the agent templates name (several workflow agents — Prompter, Summarizer, Monitor-Log, FlowHypervisor, Recmailer, Whatsapper, File-Interpreter — all default to `gpt-oss:120b-cloud`). After the swap, restart Tlamatini. Quality and latency will scale with your hardware, but Multi-Turn and ACPX both work fine on a sufficiently large local model.
+Then also walk through `Tlamatini/agent/agents/*/config.yaml` and replace any cloud tag the agent templates name (several workflow agents — Prompter, Summarizer, Monitor-Log, FlowHypervisor, Recmailer, Whatsapper, File-Interpreter — all default to `gpt-oss:120b-cloud`). After the swap, restart Tlamatini. Quality, latency, context capacity, vision support, tool-calling reliability, and concurrency will depend on the exact local models and hardware. Some individual features may work; **complete behavioral equivalence is neither promised nor the supported baseline**.
 
-### 5.3. This subscription is separate from your coding-agent API keys
+### 5.4. This subscription is separate from your coding-agent API keys
 
 The Ollama plan only governs `*:cloud` Ollama models. If you plan to use **ACPX** (chapter §46) to delegate sub-tasks to external coding-agent CLIs (`claude`, `cursor-agent`, `codex`, `gemini`, `qwen-code`, …), each of those carries its own credentials: the Anthropic API key for `claude`, OpenAI for `codex`, Google for `gemini`, and so on. Those keys are configured in `Tlamatini/agent/config.json` under the top-level fields *and* the per-agent `acpx.agents.<id>.env` blocks, and they are completely independent of your Ollama subscription. The `setup-new-acpx-key` skill (chapter §15) automates that wiring.
 
-### 5.4. Troubleshooting the cloud path
+### 5.5. Troubleshooting the cloud path
 
 | Symptom | Likely cause | What to try |
 |---|---|---|
