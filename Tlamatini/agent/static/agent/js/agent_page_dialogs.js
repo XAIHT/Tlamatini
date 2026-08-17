@@ -229,7 +229,7 @@ function showExecPermissionDialog(detail) { // eslint-disable-line no-unused-var
         width: 580,
         resizable: false,
         draggable: true,
-        closeOnEscape: false,
+        closeOnEscape: true,    // Esc === dismiss === DENY (see close: below)
         closeText: "",
         dialogClass: 'exec-permission-dialog-wrapper',
         open: function () {
@@ -288,7 +288,7 @@ function dismissExecPermissionDialogSilently(reason) {
     // WHY THIS EXISTS (Angela, 2026-07-14): she cancelled a run while the prompt was
     // open. The backend denied + stopped correctly, the chat said "done" — but the
     // MODAL STAYED ON SCREEN and she still had to click "Deny" on a question that had
-    // already been answered. The dialog is modal:true, closeOnEscape:false and its
+    // already been answered. The dialog was modal:true, closeOnEscape:false and its
     // titlebar X is hidden, so a button was her ONLY way out. An orphan modal.
     _execPermDecisionSent = true;
     try {
@@ -1130,7 +1130,10 @@ function CloseAboutDialog(event) {
 }
 
 document.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape') {
+    // `defaultPrevented` => dialog_policy.js's dispatcher already dismissed the
+    // top dialog through its own X. Without this guard a SEALED update would
+    // run CloseUpdateDialog twice and raise the "please wait" notice twice.
+    if (event.key !== 'Escape' || event.defaultPrevented) {
         return;
     }
 
@@ -1177,6 +1180,13 @@ function OpenCheckUpdatesDialog(event) {
     if (event) event.preventDefault();
     const overlay = document.getElementById('update-overlay');
     if (!overlay) return;
+    // Bind this overlay to the 'update' seal the moment it opens, BEFORE
+    // anything can seal it, so dialog_policy.js knows which dialog the seal
+    // protects. A dialog that is sealed but NOT BOUND is still dismissible
+    // by Escape - the seal would only be consulted by CloseUpdateDialog.
+    if (window.TlamatiniDialogPolicy && window.TlamatiniDialogPolicy.bindSeal) {
+        window.TlamatiniDialogPolicy.bindSeal(overlay, 'update');
+    }
     overlay.style.display = 'flex';
     // Reset UI
     document.getElementById('update-content').textContent = 'Checking for updates…';
@@ -1292,12 +1302,20 @@ async function StartTlamatiniUpdate(event) {
         const data = await resp.json();
         if (!data.ok) {
             content.innerHTML = '⚠️ ' + (data.error || 'Could not start the update.');
+            // THE UPDATE NEVER STARTED, so the seal MUST lift. Without this
+            // the dialog stays invulnerable forever and the user is trapped
+            // in it - strictly worse than the interruption the seal exists
+            // to prevent.
+            if (window.TlamatiniDialogPolicy) window.TlamatiniDialogPolicy.unseal('update');
             return;
         }
         if (_updatePollTimer) clearInterval(_updatePollTimer);
         _updatePollTimer = setInterval(_pollUpdateStatus, 1000);
     } catch (err) {
         content.innerHTML = '⚠️ Could not start the update: ' + err;
+        // Same reason as the !data.ok branch: the request itself failed, so
+        // nothing is downloading and the dialog must become closable again.
+        if (window.TlamatiniDialogPolicy) window.TlamatiniDialogPolicy.unseal('update');
     }
 }
 

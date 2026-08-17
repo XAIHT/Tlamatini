@@ -85,7 +85,7 @@ function _showParametrizerError(message) {
 
     document.getElementById('parametrizer-error-ok').addEventListener('click', () => overlay.remove());
     // Outside-click dismissal removed (Angela, 2026-08-13): a dialog closes
-    // ONLY by its X, Cancel or Continue. See static/agent/js/dialog_policy.js.
+    // ONLY by its X, Cancel, Continue or ESCAPE. See js/dialog_policy.js.
 }
 
 
@@ -519,7 +519,7 @@ function _renderParametrizerMappingDialog(agentId, data) {
     // Cancel
     cancelBtn.addEventListener('click', () => overlay.remove());
     // Outside-click dismissal removed (Angela, 2026-08-13): a dialog closes
-    // ONLY by its X, Cancel or Continue. See static/agent/js/dialog_policy.js.
+    // ONLY by its X, Cancel, Continue or ESCAPE. See js/dialog_policy.js.
 
     // Save
     saveBtn.addEventListener('click', async () => {

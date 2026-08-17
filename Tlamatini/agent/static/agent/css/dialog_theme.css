@@ -642,3 +642,41 @@
     outline: none;
     box-shadow: var(--tlm-dlg-accent-ring);
 }
+
+/* ── SEALED DIALOG NUDGE (Angela, 2026-08-16) ─────────────────────────────
+   Escape on a SEALED dialog (an update is downloading) is IGNORED - but not
+   invisibly. dialog_policy.js::nudgeSealed adds this class for 600 ms.
+
+   Deliberately a shake and NOT a modal notice: a notice on every keypress
+   would stack, and each notice becomes the new topmost dialog, so the next
+   Escape would dismiss the notice instead of reaching the sealed dialog. The
+   explanatory notice is kept for a DELIBERATE click on the X (mayClose).
+
+   The animation is applied to the PANEL, never to the full-screen backdrop -
+   translating the dim layer would show a bright sliver down one edge. */
+@keyframes tlm-dlg-sealed-shake {
+    0%, 100% { transform: translateX(0); }
+    15%      { transform: translateX(-9px); }
+    30%      { transform: translateX(8px); }
+    45%      { transform: translateX(-6px); }
+    60%      { transform: translateX(5px); }
+    80%      { transform: translateX(-3px); }
+}
+
+.tlm-dlg-sealed-nudge > .about-window,
+.tlm-dlg-sealed-nudge > .tlm-modal,
+.tlm-dlg-sealed-nudge > .emx-panel,
+.tlm-dlg-sealed-nudge > .ctb-panel,
+.tlm-dlg-sealed-nudge > .tlmpop-card {
+    animation: tlm-dlg-sealed-shake 600ms cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .tlm-dlg-sealed-nudge > .about-window,
+    .tlm-dlg-sealed-nudge > .tlm-modal,
+    .tlm-dlg-sealed-nudge > .emx-panel,
+    .tlm-dlg-sealed-nudge > .ctb-panel,
+    .tlm-dlg-sealed-nudge > .tlmpop-card {
+        animation: none;
+    }
+}

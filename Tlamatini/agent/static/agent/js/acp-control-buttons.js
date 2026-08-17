@@ -218,7 +218,7 @@ function showStarterExecutionDialog(starterInfo, justBeforeStartingTimestamp) {
         width: 500,
         resizable: false,
         draggable: false,
-        closeOnEscape: false,
+        closeOnEscape: true,   // Esc === the titlebar X (dialog_policy.js)
         closeText: "",
         dialogClass: "starter-execution-dialog-wrapper",
         open: function () {
@@ -301,7 +301,7 @@ function showStarterResult(success, failedAgentNames, dialog) {
     resultContainer.style.display = 'block';
 
     // Install the way OUT before anything else can throw.
-    // This dialog opens with its titlebar X hidden, Esc disabled and no buttons, so
+    // This dialog opens with its titlebar X hidden and no buttons, so
     // "Continue!" is the ONLY exit. It used to be added at the END of this function,
     // after setGlobalRunningState() / updateControlButtonStates(). Because we run
     // inside an async poll, a throw in either was swallowed as an unhandled rejection
@@ -492,7 +492,7 @@ function showEnderExecutionDialog() {
         width: 500,
         resizable: false,
         draggable: false,
-        closeOnEscape: false,
+        closeOnEscape: true,   // Esc === the titlebar X (dialog_policy.js)
         closeText: "",
         dialogClass: "ender-execution-dialog-wrapper",
         open: function () {
@@ -865,7 +865,7 @@ function showEnderAlreadyDownDialog(_enderInfo) {
         width: 500,
         resizable: false,
         draggable: false,
-        closeOnEscape: false,
+        closeOnEscape: true,   // Esc === the titlebar X (dialog_policy.js)
         closeText: "",
         dialogClass: "ender-execution-dialog-wrapper",
         open: function () {
@@ -1122,7 +1122,7 @@ if (btnClear) {
             height: 'auto',
             resizable: false,
             draggable: false,
-            closeOnEscape: false,
+            closeOnEscape: true,   // Esc === the titlebar X (dialog_policy.js)
             dialogClass: 'cleaning-progress-dialog-class',
             open: function () {
                 $(this).closest('.ui-dialog').find('.ui-dialog-titlebar-close').hide();

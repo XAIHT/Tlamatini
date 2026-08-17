@@ -16,6 +16,157 @@
 
 ---
 
+## 2026-08-16 — ESCAPE CLOSES EVERY DIALOG (the dismissal policy, inverted)
+
+**Angela, verbatim:** *"Standarize in every ... every dialog and all of the
+dialog without exception that if 'Esc' is pressed then the dialog must be
+closed with the similar action to 'cancel'/'dismiss' (doing nothing) for every
+agent in agentic_control_panel.html for every asset on agent_page.html."*
+
+This REVERSES the 2026-08-13 half of the rule that read *"Escape never closes"*.
+The other half is UNTOUCHED: **an outside click still never dismisses.** The
+rule is now one line:
+
+> A dialog closes by its titlebar X, its Cancel/dismiss button, its Continue/OK
+> button, **or ESCAPE** — and **Escape === X === Cancel**.
+
+**What changed** — `agent/static/agent/js/dialog_policy.js`:
+
+| § | before | after |
+|---|---|---|
+| 1 jQuery UI | `closeOnEscape = false` | `closeOnEscape = true` |
+| 2 native `<dialog>` | a document `cancel` interceptor calling `preventDefault()` | **removed** — `cancel` IS the platform's word for "dismissed" |
+| 3 Bootstrap | `keyboard = false` | `keyboard = true` (`backdrop: 'static'` UNCHANGED) |
+| 4 hand-rolled overlays | a CAPTURE-phase keydown that SWALLOWED Escape | **the Escape dispatcher** (below) |
+
+**⚠️ THE DISPATCHER NEVER HIDES A NODE.** It finds the topmost open dialog and
+**invokes that dialog's own dismiss control** — the click the user would make.
+That is why nothing had to be rewired per dialog: the exec-permission prompt
+still answers **DENY** through its `close:` handler, `acpConfirm` / `tlmConfirm`
+still resolve **false**, every `body.style.overflow` is still restored by the
+dialog's own close, and the **sealed updater still refuses**, because its X runs
+`CloseUpdateDialog` -> `mayClose('update')`. A blind hide would have silently
+skipped all four. (Same reasoning as `checkbox_bulk_toggle.js` clicking a real
+checkbox instead of assigning `.checked`.)
+
+**Contracts that must NOT be reverted:**
+
+1. **BUBBLE phase, not capture.** The Catalog's search box clears the query on
+   Escape and stops the event there, so the FIRST Escape empties the search and
+   only the SECOND closes the catalog. The old capture-phase listener stole both.
+2. **`stopImmediatePropagation()` when it dismisses.** Several dialogs bind their
+   own Escape handler on `document`. Without it, Escape on a `tlmConfirm` raised
+   over the External-MCPs dialog dismisses the confirm AND closes the dialog
+   underneath — two layers for one keystroke. This is also why
+   `dialog_policy.js` must stay the FIRST document keydown handler on both pages
+   (it loads right after jQuery UI, before every dialog module).
+3. **It bails when no dialog is open.** Escape still belongs to the page: the ACP
+   canvas hides its agent tooltip with it, the avatar stops speaking.
+4. **Escape can never press an affirmative button.** The label scan matches only
+   cancel / close / dismiss / cancelar / cerrar / no and the × glyphs. A dialog
+   with exactly ONE button is an acknowledgement (the parametrizer error box's
+   "OK", the starter result's "Continue!") and that button is its way out.
+5. **Backdrops are excluded.** `.ui-widget-overlay` also wears
+   `.starter-execution-overlay`, so the `-overlay` shape matches it; dismissing a
+   backdrop would leave its panel floating over an undimmed page.
+6. **A dialog with no X and no Cancel must expose `el.tlmDismiss`.** The Catalog
+   of prompts is the one such dialog (`tools_dialog.js`); a blind hide there
+   leaves `body.style.overflow: hidden`, i.e. the whole chat page unscrollable
+   with nothing on screen to explain why.
+7. **The sealed updater is NOT an exception to the rule — it IS the rule.**
+   "Escape behaves exactly like X" means that where the X refuses, Escape
+   refuses. Interrupting a half-applied update leaves a mixed install directory.
+
+**Two latent defects found on the way** (both invisible while Escape was
+swallowed):
+
+* `CUSTOM_OVERLAYS` listed `'#prompts-catalog'`, which is the **BUTTON** that
+  opens the Catalog, not an overlay. It is always visible, so
+  `aCustomOverlayIsVisible()` returned `true` unconditionally and Escape was in
+  fact being swallowed across the WHOLE chat page. The same hand-kept list had
+  drifted past six real overlays (`#log-viewer-overlay`,
+  `#agent-description-overlay`, `#parametrizer-dialog-overlay`,
+  `#parametrizer-error-overlay`, `#flowcreator-progress-overlay`,
+  `#chat-img-preview-overlay`). Its replacement is **shape-based**
+  (`[id$="-overlay"]`, `[class*="-overlay"]`, `[role="dialog"]`, `.ui-dialog`,
+  `.modal.show`, ...) so an overlay written tomorrow is covered with no edit.
+* Seven dialogs passed an explicit `closeOnEscape: false` of their own, which
+  beats any prototype default — `acp-control-buttons.js` x4, `acp-validate.js`
+  x2, `agent_page_dialogs.js` x1. All flipped, and `closeOnEscape [:=] false` is
+  now a FORBIDDEN pattern tree-wide.
+
+**Coverage:** `agent/test_dialog_dismissal_policy.py` (23 tests). The forbidden
+pattern flipped from `closeOnEscape: true` to `closeOnEscape: false`, and new
+tests pin bubble phase, `stopImmediatePropagation`, the no-affirmative-button
+rule, backdrop exclusion, the `tlmDismiss` hook, script load ORDER on both
+pages, and the themed popup resolving `dismissValue` on Escape. Behaviour is
+proven live by
+`.claude/skills/tlamatini-daily-chat-test/harness/dialog_policy_visible.py`
+(headed Chrome driven by **Playwrighter**, photos by **Shoter**) — which did not
+exist before this change, even though the old test docstring already cited it.
+
+### The ONE exception: the updater is INVULNERABLE while it downloads
+
+Angela, same day: *"make the only dialog invulnerable to 'Esc' (MUST IGNORE
+EVERY ESCAPE AND CLOSE OF ANY TYPE) ... the Check for updates dialog, while
+there is a download in progress"* - and then *"blind it from Ctrl+F4 too"*.
+
+Not a special case bolted onto the dispatcher: a dialog declares
+**`el.tlmSealKey`**, and while that key is sealed `dismissDialog()` refuses
+before ANY path runs. The updater is simply the first dialog to use it.
+`OpenCheckUpdatesDialog` binds `#update-overlay` to `'update'` the moment it
+opens (before it is even visible), and `seal(key, message, element)` takes an
+optional element so the two can never drift apart.
+
+**Four gaps this closed** - the seal machinery already existed, but:
+
+1. **The seal was checked too late.** `dismissDialog`'s last resort HIDES the
+   node. Checked anywhere but first, a sealed dialog whose X was hidden would
+   have been hidden by the very fallback meant to help. The test asserts the
+   seal check's index is lower than the jQuery close, the click and the hide.
+2. **Escape nagged instead of being ignored.** It clicked the X, `mayClose()`
+   raised a notice, and that notice became the new topmost dialog - so the next
+   Escape dismissed the notice. Now the key is **swallowed** (`preventDefault` +
+   `stopImmediatePropagation` BEFORE anything else) and the dialog gets a 600 ms
+   CSS shake (`.tlm-dlg-sealed-nudge`). The explanatory notice is kept only for
+   a DELIBERATE click on the X.
+3. **A failed start sealed the dialog FOREVER.** `StartTlamatiniUpdate` seals
+   before POSTing `/agent/start_update/`; the `!data.ok` branch and the `catch`
+   both returned WITHOUT unsealing. Nothing was downloading and the user owned a
+   dialog that ignored Escape, ignored its X and never went away - strictly
+   worse than the interruption the seal exists to prevent. Both paths now unseal.
+4. **Only Escape was guarded.** F5 / Ctrl+R destroy the page and the dialog with
+   it, and that is the accident a user is far likelier to have.
+
+**⚠️ THE HONEST SPLIT on keys - do not let anyone claim more than this:**
+
+| we really do win | we can NEVER win in a web page |
+|---|---|
+| F5 · Ctrl+R · Ctrl+Shift+R · Alt+Left/Right · Ctrl+F4 and Ctrl+W *in browsers that deliver them* | Alt+F4 · the window's own X · and in **Chrome** Ctrl+W / Ctrl+Shift+W / Ctrl+F4, which Chrome RESERVES and never delivers to the document |
+
+For the right-hand column the only defence the platform offers is
+`beforeunload` (already wired to `anySealed()`), which raises the browser's own
+"Leave site?" prompt - and the user may still confirm it. **What makes that
+acceptable: the swap runs in an EXTERNAL PowerShell process, so a closed tab
+does not abort an update in flight; it only costs the user the progress bar.**
+The guard is about preventing an ACCIDENT, not imprisoning anyone.
+
+⚠️ The sealed key guard is **CAPTURE**-phase (nothing may act on a keystroke
+aimed at a live update), which is the exact opposite of the Escape dispatcher's
+**bubble** phase - and both are pinned, so neither can be "made consistent"
+with the other by mistake.
+
+**Proven live:** `chat_14_sealed_update_ignores_escape` opens the real dialog,
+seals it, and takes Esc x3 + Ctrl+F4 + Ctrl+W + F5. The dialog is still there
+afterwards, and a `window.__tlmSealCanary` proves the page never reloaded -
+without it, "the dialog is gone" and "F5 worked" look identical. **The harness
+never starts a real update**: `seal('update')` puts the policy in the exact
+state `StartTlamatiniUpdate` puts it in, and a test may not download a release
+onto Angela's machine. Coverage: 12 more tests in
+`agent/test_dialog_dismissal_policy.py` (35 total).
+
+---
+
 ## 2026-08-16 — v1.48.15 target: encoding-safe Grepper, closed verdict vocabulary, and updater preservation
 
 This release target closes four quiet drift paths that could otherwise report a

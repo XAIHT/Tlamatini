@@ -1,12 +1,19 @@
 /* Tlamatini Author Banner - do not remove (releases scrub the name automatically)
  *
- * DIALOG DISMISSAL POLICY  (Angela, 2026-08-13)
- * =============================================
+ * DIALOG DISMISSAL POLICY  (Angela, 2026-08-13; ESCAPE STANDARDISED 2026-08-16)
+ * ============================================================================
  * ONE rule, enforced in ONE place, for EVERY dialog on EVERY page:
  *
  *     A dialog disappears ONLY by its titlebar X, its Cancel/dismiss button,
- *     or its Continue/OK button.  X behaves EXACTLY like Cancel.
- *     Clicking OUTSIDE never closes.  Escape never closes.
+ *     its Continue/OK button, or the ESCAPE KEY.
+ *     X behaves EXACTLY like Cancel, and ESCAPE behaves EXACTLY like X.
+ *     Clicking OUTSIDE still never closes.
+ *
+ * CHANGED 2026-08-16, ON ANGELA'S EXPLICIT INSTRUCTION. Until today the rule
+ * ended "Escape never closes", and this module spent its section 4 SWALLOWING
+ * the key. Escape is now the third, keyboard-shaped spelling of Cancel: it
+ * dismisses, and dismissing does NOTHING ELSE - no save, no submit, no
+ * destructive action, no affirmative button ever pressed on the user's behalf.
  *
  * Why a policy module instead of editing each dialog: there are ~100 dialog
  * sites across 9 modules and two pages. Patching them one by one guarantees
@@ -24,13 +31,19 @@
     'use strict';
 
     // ---- 1. jQuery UI dialogs -------------------------------------------
-    // One assignment disarms Escape for every jQuery UI dialog in the app,
-    // including ones created later. jQuery UI's modal overlay already ignores
-    // clicks, so there is nothing to disarm there.
+    // One assignment ARMS Escape for every jQuery UI dialog in the app,
+    // including ones created later. jQuery UI's own handler calls this.close(),
+    // i.e. byte-for-byte the titlebar-X path, so every beforeClose/close
+    // callback still runs. Its modal overlay already ignores clicks, so
+    // outside-click dismissal stays off.
+    //
+    // This is a DEFAULT, not the enforcement: a module may still pass an
+    // explicit `closeOnEscape: false` in its own options and win. Section 4's
+    // dispatcher is what actually guarantees the rule holds everywhere.
     function applyJqueryUiPolicy() {
         var jq = window.jQuery;
         if (!jq || !jq.ui || !jq.ui.dialog || !jq.ui.dialog.prototype) return false;
-        jq.ui.dialog.prototype.options.closeOnEscape = false;
+        jq.ui.dialog.prototype.options.closeOnEscape = true;
 
         // Every dialog must EXPOSE its X, and X must mean Cancel. Two sites in
         // the app hide the titlebar close button; this runs at document level,
@@ -55,54 +68,316 @@
     }
 
     // ---- 2. Native <dialog> ---------------------------------------------
-    // Escape on a native dialog fires `cancel` and then closes it. Capture
-    // phase on document sees it before the element's own handler, so this
-    // covers present and future native dialogs alike.
-    document.addEventListener('cancel', function (ev) {
-        ev.preventDefault();
-    }, true);
+    // Escape on a native <dialog> fires the `cancel` event and then closes it -
+    // which is exactly the behaviour the policy now wants, so THERE IS NOTHING
+    // TO DO HERE. A document-level `cancel` interceptor used to sit at this
+    // spot calling preventDefault(); it was removed on 2026-08-16 with the rest
+    // of the Escape swallowing. Do not put it back: `cancel` is the platform's
+    // own word for "the user dismissed this without choosing", i.e. Cancel.
 
     // ---- 3. Bootstrap modals --------------------------------------------
     // Data-attribute modals read these defaults too, so this covers markup we
-    // never touch.
+    // never touch. The two knobs are INDEPENDENT and only one of them flipped
+    // on 2026-08-16:
+    //   keyboard: true   -> Escape hides the modal (Bootstrap preventDefault()s
+    //                       the keydown, which is how section 4 knows to keep
+    //                       its hands off).
+    //   backdrop:'static'-> an OUTSIDE CLICK still does not dismiss. Unchanged.
     function applyBootstrapPolicy() {
         var bs = window.bootstrap;
         if (!bs || !bs.Modal || !bs.Modal.Default) return false;
         bs.Modal.Default.backdrop = 'static';
-        bs.Modal.Default.keyboard = false;
+        bs.Modal.Default.keyboard = true;
         return true;
     }
 
-    // ---- 4. Custom div overlays -----------------------------------------
-    // Hand-rolled overlays (#about-overlay, #update-overlay, the voice and
-    // parametrizer overlays, the prompts catalog) are plain divs: they get
-    // neither the jQuery UI option nor the native `cancel` event. Escape is
-    // swallowed ONLY while one of them is actually visible, so Escape keeps
-    // working everywhere else on the page - notably the ACP canvas, where it
-    // cancels an in-progress connection drag.
-    var CUSTOM_OVERLAYS = [
-        '#about-overlay', '#update-overlay', '#tlm-voice-overlay',
-        '#prompts-catalog', '.acp-param-overlay', '.tlm-modal-overlay',
-        '#tlm-popup-host'
+    // ---- 4. THE ESCAPE DISPATCHER ---------------------------------------
+    // Sections 1-3 arm Escape for the three dialog TECHNOLOGIES. This section
+    // is what makes the rule true for the ~100 HAND-ROLLED dialogs that use no
+    // technology at all - #about-overlay, #update-overlay, the voice, log
+    // viewer, agent description, parametrizer and FlowCreator overlays, the
+    // Catalog of prompts, the native emx-/ctb- modals - plus any jQuery UI
+    // dialog that passes an explicit `closeOnEscape: false` of its own.
+    //
+    // ⚠️ IT NEVER "HIDES" A DIALOG ITSELF (except as a last resort, loudly).
+    // It finds the TOPMOST open dialog and invokes THAT DIALOG'S OWN dismissal
+    // - the very click the user would make on its X or Cancel. Everything a
+    // dialog does on dismissal therefore keeps happening, for free, with zero
+    // per-dialog wiring:
+    //     * the exec-permission prompt still answers DENY (its close handler),
+    //     * acpConfirm / tlmConfirm still resolve FALSE,
+    //     * the SEALED updater still REFUSES (CloseUpdateDialog -> mayClose),
+    //     * body.style.overflow is still restored by each dialog's own close.
+    // A dispatcher that hid nodes itself would silently skip all four. Same
+    // reasoning as checkbox_bulk_toggle.js clicking a checkbox instead of
+    // assigning .checked.
+    //
+    // ⚠️ BUBBLE PHASE, NOT CAPTURE - and this is load-bearing. An inner widget
+    // must get first refusal: the Catalog's search box clears the query on
+    // Escape and stops the event there, so the FIRST Escape empties the search
+    // and only the SECOND closes the catalog. The old capture-phase listener
+    // stole both. Being registered before every application module (the pages
+    // load this file right after jQuery UI) also puts us first among the
+    // document-level handlers, so stopImmediatePropagation() below can stop a
+    // second dialog underneath from eating the same keystroke.
+
+    // What can be an open dialog. Deliberately SHAPE-BASED, not a hand-kept
+    // inventory: an overlay named `#foo-overlay` tomorrow is covered with no
+    // edit here. The list this replaces had already drifted - it carried
+    // '#prompts-catalog', which is the BUTTON that opens the catalog and is
+    // therefore always visible, so Escape was in fact being swallowed across
+    // the whole chat page rather than only over an open dialog.
+    var LAYER_SELECTOR = [
+        '.tlmpop-overlay',                        // themed tlmAlert / tlmConfirm
+        '.ui-dialog',                             // jQuery UI
+        '.modal.show', '.modal.in', '#modal',     // Bootstrap-shaped + Catalog
+        'dialog[open]',                           // native <dialog>
+        '[role="dialog"]', '[role="alertdialog"]',
+        '[id$="-overlay"]', '[class*="-overlay"]',
+        '.tlm-modal-overlay', '.emx-modal', '.ctb-modal'
+    ].join(',');
+
+    // A backdrop is NOT a dialog. Dismissing one would leave its panel floating
+    // over an undimmed page - and `.ui-widget-overlay` also wears the
+    // `.starter-execution-overlay` / `.ender-execution-overlay` classes, so it
+    // is matched by the `-overlay` shape above and must be excluded by name.
+    var NOT_A_DIALOG = '.ui-widget-overlay, .modal-backdrop';
+
+    // Dismiss controls, in priority order, X FIRST. Escape must never be able
+    // to land on a button that DOES something (Continue, Update now, Delete).
+    var DISMISS_SELECTORS = [
+        '[data-dialog-dismiss]',
+        '.ui-dialog-titlebar-close',
+        '[data-bs-dismiss="modal"]', '.btn-close',
+        '.tlmpop-x', '.tlm-modal-x', '.about-close-btn',
+        '.emx-icon-button', '.ctb-icon-button',
+        'button[aria-label="Close"]', 'button[title="Close"]'
     ];
 
-    function aCustomOverlayIsVisible() {
-        for (var i = 0; i < CUSTOM_OVERLAYS.length; i++) {
-            var nodes = document.querySelectorAll(CUSTOM_OVERLAYS[i]);
-            for (var j = 0; j < nodes.length; j++) {
-                var el = nodes[j];
-                if (el.offsetParent !== null || el.style.display === 'flex') return true;
+    // Labels that mean "go away and do nothing". NEVER an affirmative word.
+    var DISMISS_WORDS = ['cancel', 'close', 'dismiss', 'cancelar', 'cerrar', 'no'];
+    var X_GLYPHS = ['×', '✕', '✖', '✗', 'x'];
+
+    function isShowing(el) {
+        if (!el || el.nodeType !== 1 || el.hidden) return false;
+        try {
+            return el.getClientRects().length > 0;
+        } catch (err) {
+            return false;
+        }
+    }
+
+    function matches(el, selector) {
+        try {
+            return !!(el.matches && el.matches(selector));
+        } catch (err) {
+            return false;
+        }
+    }
+
+    /** Highest z-index on the element or any ancestor. */
+    function stackRank(el) {
+        var rank = 0;
+        var node = el;
+        while (node && node.nodeType === 1) {
+            var z = parseInt(window.getComputedStyle(node).zIndex, 10);
+            if (!isNaN(z) && z > rank) rank = z;
+            node = node.parentNode;
+        }
+        return rank;
+    }
+
+    /**
+     * Two of the canvas dialogs are a bare backdrop div (`#x-overlay`) with the
+     * actual panel as its SIBLING (`#x-dialog`) - the panel is where the X is.
+     */
+    function panelFor(el) {
+        if (el.id && /-overlay$/.test(el.id)) {
+            var panel = document.getElementById(el.id.replace(/-overlay$/, '-dialog'));
+            if (isShowing(panel)) return panel;
+        }
+        return el;
+    }
+
+    function topmostOpenDialog() {
+        var nodes = document.querySelectorAll(LAYER_SELECTOR);
+        var best = null;
+        var bestRank = -1;
+        // querySelectorAll yields DOCUMENT ORDER, so `>=` makes the later - and
+        // for nested candidates the INNER - element win a tie. That is what we
+        // want twice over: a panel inside its own overlay owns the X, and the
+        // most recently opened sibling dialog is the one on top.
+        for (var i = 0; i < nodes.length; i++) {
+            var el = nodes[i];
+            if (matches(el, NOT_A_DIALOG)) continue;
+            if (!isShowing(el)) continue;
+            var rank = stackRank(el);
+            if (rank >= bestRank) {
+                best = el;
+                bestRank = rank;
             }
         }
-        return false;
+        return best ? panelFor(best) : null;
+    }
+
+    function findDismissControl(root) {
+        var i;
+        for (i = 0; i < DISMISS_SELECTORS.length; i++) {
+            var direct = root.querySelector(DISMISS_SELECTORS[i]);
+            if (direct) return direct;
+        }
+        var buttons = root.querySelectorAll(
+            'button, a[role="button"], .tlm-native-button, .ui-button');
+        var visible = [];
+        for (i = 0; i < buttons.length; i++) {
+            if (isShowing(buttons[i])) visible.push(buttons[i]);
+        }
+        for (i = 0; i < visible.length; i++) {
+            var label = (visible[i].textContent || '').trim().toLowerCase();
+            if (!label) continue;
+            if (X_GLYPHS.indexOf(label) !== -1) return visible[i];
+            if (DISMISS_WORDS.indexOf(label) !== -1) return visible[i];
+        }
+        // A dialog with exactly ONE button is an acknowledgement (the
+        // parametrizer error box has only "OK", the starter result only
+        // "Continue!"); that button IS its way out, so pressing it is the
+        // dismissal. With two or more buttons we never guess - a wrong guess
+        // there could press something destructive.
+        if (visible.length === 1) return visible[0];
+        return null;
+    }
+
+    /**
+     * Dismiss ONE dialog exactly the way its own Cancel/X would.
+     * Returns TRUE when something was dismissed.
+     */
+    function dismissDialog(el) {
+        if (!el) return false;
+
+        // ---- SEALED => INVULNERABLE. Checked FIRST, before every path. ----
+        // Angela, 2026-08-16: *"make the Check for updates dialog invulnerable
+        // to Esc (MUST IGNORE EVERY ESCAPE AND CLOSE OF ANY TYPE) while there
+        // is a download in progress."*
+        //
+        // A dialog declares `el.tlmSealKey`; while that key is sealed NOTHING
+        // here dismisses it - not Escape, not a synthesised click on its X, and
+        // above all not the last-resort hide at the bottom of this function.
+        // That hide is why the test has to be HERE and not inside
+        // CloseUpdateDialog: a dialog whose X went missing would otherwise be
+        // hidden by the fallback with the seal never consulted at all.
+        var sealKey = el.tlmSealKey
+            || (el.dataset ? el.dataset.tlmSealKey : '')
+            || '';
+        if (sealKey && isSealed(sealKey)) return false;
+
+        var jq = window.jQuery;
+
+        // jQuery UI: the widget's own close() IS the titlebar-X path, and it
+        // works even when a module has hidden that X to force a choice.
+        if (jq && jq.fn && jq.fn.dialog && el.classList.contains('ui-dialog')) {
+            var content = el.querySelector('.ui-dialog-content');
+            if (content) {
+                try {
+                    jq(content).dialog('close');
+                    return true;
+                } catch (err) { /* fall through to the generic paths */ }
+            }
+        }
+
+        // Bootstrap: the instance owns the hide AND the backdrop teardown.
+        var bs = window.bootstrap;
+        if (bs && bs.Modal && bs.Modal.getInstance && el.classList.contains('modal')) {
+            var inst = bs.Modal.getInstance(el);
+            if (inst) {
+                inst.hide();
+                return true;
+            }
+        }
+
+        // Native <dialog> that our own code opened.
+        if (el.tagName === 'DIALOG' && typeof el.close === 'function') {
+            el.close();
+            return true;
+        }
+
+        // An explicit hook, for a dialog whose dismissal is a FUNCTION rather
+        // than a button - the Catalog of prompts is the one such case in the
+        // app (it also restores body.style.overflow, which a blind hide would
+        // leave clamped, freezing the page's scroll).
+        if (typeof el.tlmDismiss === 'function') {
+            el.tlmDismiss();
+            return true;
+        }
+
+        var control = findDismissControl(el);
+        if (control) {
+            control.click();      // a REAL click, so the dialog's handler runs
+            return true;
+        }
+
+        // Last resort: a dialog that offers the user no way out at all (the
+        // spinner overlays). Hiding beats trapping them, but say so - a dialog
+        // reaching this line should get an X or an `el.tlmDismiss`.
+        console.warn('dialog policy: no dismiss control on',
+            el.id || el.className || el.tagName,
+            '- hiding it. Give it an X, a Cancel, or an el.tlmDismiss().');
+        el.style.display = 'none';
+        return true;
+    }
+
+    /** Public: dismiss whatever dialog is on top. Returns TRUE if one was. */
+    function dismissTopDialog() {
+        return dismissDialog(topmostOpenDialog());
+    }
+
+    /**
+     * Escape on a SEALED dialog: ignore it, but not INVISIBLY.
+     *
+     * Deliberately NOT a modal. `mayClose()` raises an explanatory notice, which
+     * is right for a DELIBERATE click on the X - but wrong for a keystroke: hold
+     * Escape and you would stack notice on notice, and each notice becomes the
+     * new topmost dialog, so the next Escape dismisses the notice instead. The
+     * dialog would look like it was fighting the user. A 600 ms shake says "not
+     * this one" and costs nothing.
+     */
+    function nudgeSealed(el) {
+        try {
+            el.classList.remove('tlm-dlg-sealed-nudge');
+            // Reading offsetWidth restarts the CSS animation; without it a
+            // second Escape inside the same 600 ms does nothing visible.
+            void el.offsetWidth;
+            el.classList.add('tlm-dlg-sealed-nudge');
+            window.setTimeout(function () {
+                try { el.classList.remove('tlm-dlg-sealed-nudge'); } catch (err) { /* gone */ }
+            }, 600);
+        } catch (err) { /* a nudge must never break a sealed dialog */ }
     }
 
     document.addEventListener('keydown', function (ev) {
         if (ev.key !== 'Escape' && ev.key !== 'Esc') return;
-        if (!aCustomOverlayIsVisible()) return;
+        // Already handled by jQuery UI / Bootstrap / a native <dialog>, all of
+        // which preventDefault() the keydown when they close on Escape.
+        if (ev.defaultPrevented) return;
+        var target = topmostOpenDialog();
+        // No dialog open -> Escape belongs to the page. The ACP canvas hides
+        // its agent tooltip with it and the avatar stops speaking; neither may
+        // be stolen just because this module exists.
+        if (!target) return;
+        var dismissed = dismissDialog(target);
+        // THE KEY IS CONSUMED EITHER WAY. A refusal means the dialog is SEALED,
+        // and letting the event travel on would hand it to that module's own
+        // document-level Escape handler, which would call its close function
+        // again and raise a SECOND "please wait" notice for one keystroke.
         ev.preventDefault();
-        ev.stopPropagation();
-    }, true);
+        // stopIMMEDIATEPropagation, not stopPropagation: several dialogs bind
+        // their own Escape handler on `document` too (External MCPs, Contacts,
+        // About/Update, the image preview). Without this, Escape on a
+        // tlmConfirm raised OVER the External-MCPs dialog would dismiss the
+        // confirm here and then let that module close the whole dialog
+        // underneath it - two layers for one keystroke.
+        ev.stopImmediatePropagation();
+        if (!dismissed) nudgeSealed(target);
+    });
 
     // ---- 5. Sealed dialogs (the updater) --------------------------------
     // A sealed dialog cannot be dismissed at all: no X, no Escape, no outside
@@ -115,12 +390,39 @@
     // PowerShell process, so a closed tab does not abort an update in flight.
     var sealed = Object.create(null);
 
-    function seal(key, message) {
+    //: key -> the dialog element it protects, so a blocked keystroke can shake
+    //: the RIGHT dialog even when it is not the topmost one.
+    var sealedElements = Object.create(null);
+
+    /** Mark `element` as belonging to seal `key`. Safe to call repeatedly. */
+    function bindSeal(element, key) {
+        if (!element || !key) return;
+        try {
+            element.tlmSealKey = key;
+            sealedElements[key] = element;
+        } catch (err) { /* a frozen node must never break sealing */ }
+    }
+
+    /**
+     * Seal a key. While it is sealed `mayClose(key)` refuses, AND any dialog
+     * bound to that key is invulnerable in `dismissDialog` - Escape included.
+     *
+     * The optional `element` binds the dialog to the key at the exact moment
+     * the seal is taken, so the two can never drift apart. A dialog may also
+     * bind itself by setting `el.tlmSealKey` when it opens; doing both is the
+     * belt-and-braces the updater uses, because a dialog that is sealed but
+     * NOT bound would still be dismissible by Escape.
+     */
+    function seal(key, message, element) {
         sealed[key] = message || 'This operation cannot be interrupted.';
+        bindSeal(element, key);
     }
 
     function unseal(key) {
         delete sealed[key];
+        // Drop the element too, or a dialog that was sealed once keeps a stale
+        // reference for the life of the page.
+        delete sealedElements[key];
     }
 
     function isSealed(key) {
@@ -146,6 +448,51 @@
         return false;
     }
 
+    // ---- 5b. SEALED: swallow every close/reload keystroke we are ALLOWED to
+    // Angela, 2026-08-16: *"blind the downloading dialog from Ctrl+F4 too"*.
+    //
+    // ⚠️ HONEST SPLIT, because half of these are NOT ours to block. Anyone
+    // maintaining this must know which half they are looking at:
+    //
+    //   WE REALLY DO WIN (the browser delivers the keydown and honours
+    //   preventDefault):  F5 · Ctrl+R · Ctrl+Shift+R · Ctrl+F5 · Alt+Left ·
+    //   Alt+Right · Ctrl+F4 and Ctrl+W *in the browsers that deliver them*.
+    //   Reload is the important one - it destroys the page and the dialog with
+    //   it, and it is the accident a user is most likely to have.
+    //
+    //   WE CANNOT WIN, EVER, IN ANY WEB PAGE:  Alt+F4, the window's own X, and
+    //   in Chrome specifically Ctrl+W / Ctrl+Shift+W / Ctrl+F4, which Chrome
+    //   RESERVES and never delivers to the document. No API overrides that; a
+    //   page that claims otherwise is lying. For those the only defence the
+    //   platform offers is `beforeunload` below, which raises the browser's own
+    //   "Leave site?" prompt - and the user may still confirm it.
+    //
+    // WHY THAT IS ACCEPTABLE ANYWAY: the update swap runs in an EXTERNAL
+    // PowerShell process. A closed tab does not abort an update in flight; it
+    // only costs the user the progress bar. So this guard is about preventing
+    // an ACCIDENT, not about imprisoning anyone.
+    function isSealedCloseKey(ev) {
+        var key = ev.key || '';
+        var ctrl = ev.ctrlKey || ev.metaKey;
+        if (key === 'F5' || key === 'BrowserRefresh') return true;          // reload
+        if (ctrl && (key === 'r' || key === 'R')) return true;              // reload
+        if (ctrl && (key === 'w' || key === 'W')) return true;              // close tab
+        if (ctrl && key === 'F4') return true;                              // close tab
+        if (ev.altKey && key === 'F4') return true;                         // close window
+        if (ev.altKey && (key === 'ArrowLeft' || key === 'ArrowRight')) return true;
+        if (key === 'BrowserBack' || key === 'BrowserForward') return true;
+        return false;
+    }
+
+    document.addEventListener('keydown', function (ev) {
+        var key = anySealed();
+        if (!key) return;                      // nothing sealed -> not our business
+        if (!isSealedCloseKey(ev)) return;     // an ordinary key -> leave it alone
+        ev.preventDefault();
+        ev.stopImmediatePropagation();
+        nudgeSealed(sealedElements[key] || topmostOpenDialog());
+    }, true);   // CAPTURE: get there before any application shortcut handler.
+
     // ---- 6. Themed popups — tlmAlert / tlmConfirm ------------------------
     // Angela's review, 2026-08-16: nine `alert()` / `confirm()` calls survived
     // in contacts_dialog.js and external_mcps_dialog.js after every other
@@ -161,11 +508,10 @@
     // for it — an invisible modal, i.e. a hang. This host is a native overlay
     // at 100001, above every layer the app defines.
     //
-    // Policy-compliant by construction: no outside-click dismissal, Escape is
-    // swallowed (the host is in CUSTOM_OVERLAYS above), and X === Cancel ===
-    // false — a destructive action is never taken because a dialog was
-    // dismissed. Fails OPEN to the native popup: an ugly warning beats a lost
-    // one, exactly as acp-globals.js decided.
+    // Policy-compliant by construction: no outside-click dismissal, and
+    // Escape === X === Cancel === false — a destructive action is never taken
+    // because a dialog was dismissed. Fails OPEN to the native popup: an ugly
+    // warning beats a lost one, exactly as acp-globals.js decided.
     var POPUP_HOST_ID = 'tlm-popup-host';
 
     function _popupTeardown(host, onDone, value) {
@@ -235,11 +581,15 @@
             if (ev.target === host) { ev.preventDefault(); ev.stopPropagation(); }
         });
 
-        // Keep Tab inside the popup while it owns the screen.
+        // Escape === X === Cancel. It resolves with `dismissValue`, which is
+        // FALSE for tlmConfirm - so a destructive action is never taken because
+        // the user pressed Escape. Handled here rather than left to section 4
+        // because the popup owns the screen and knows its own resolve value.
         host.addEventListener('keydown', function (ev) {
             if (ev.key === 'Escape' || ev.key === 'Esc') {
                 ev.preventDefault();
                 ev.stopPropagation();
+                _popupTeardown(host, onDone, opts.dismissValue);
                 return;
             }
             if (ev.key !== 'Tab') return;
@@ -354,8 +704,14 @@
         seal: seal,
         unseal: unseal,
         isSealed: isSealed,
+        bindSeal: bindSeal,
         mayClose: mayClose,
         alert: tlmAlert,
-        confirm: tlmConfirm
+        confirm: tlmConfirm,
+        // Exported so the HEADED Playwright run can assert the rule directly,
+        // and so any future keyboard surface (a "close all" command) dismisses
+        // through the SAME path Escape uses instead of inventing a second one.
+        topmostOpenDialog: topmostOpenDialog,
+        dismissTopDialog: dismissTopDialog
     };
 })();

@@ -645,6 +645,13 @@ $(function () {
 
     catalogButton.addEventListener('click', openModal);
 
+    // The Catalog is the ONE dialog in the app whose dismissal is a FUNCTION,
+    // not a button: it has no X and no Cancel, only the backdrop click below.
+    // Escape must still dismiss it (dialog_policy.js section 4), and it has to
+    // go through THIS function, because closeModal() also restores
+    // body.style.overflow - a blind hide would leave the page unscrollable.
+    modal.tlmDismiss = closeModal;
+
     if (searchInput) {
         searchInput.addEventListener('input', () => applyPromptSearch(searchInput.value));
         searchInput.addEventListener('keydown', (event) => {

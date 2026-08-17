@@ -482,7 +482,7 @@ function showValidationResultDialog(isValid, errors) {
         width: 520,
         resizable: false,
         draggable: true,
-        closeOnEscape: false,
+        closeOnEscape: true,   // Esc === the titlebar X (dialog_policy.js)
         closeText: "",
         dialogClass: "validation-result-dialog-wrapper",
         open: function () {
@@ -543,7 +543,7 @@ function showStartValidationCheckDialog(status, proceedCallback) {
         width: 500,
         resizable: false,
         draggable: true,
-        closeOnEscape: false,
+        closeOnEscape: true,   // Esc === the titlebar X (dialog_policy.js)
         closeText: "",
         dialogClass: "start-validation-check-dialog-wrapper",
         open: function () {
