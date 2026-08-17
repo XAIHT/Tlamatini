@@ -19,9 +19,10 @@ Angela, 2026-07-14, live on the frozen build:
 
 She cancelled a Multi-Turn run while a Proceed/Deny prompt was open. The backend
 denied it and stopped the run correctly — but the MODAL STAYED ON HER SCREEN and
-she was forced to answer a question that had already been answered. The dialog is
-`modal:true`, `closeOnEscape:false`, and its titlebar X is hidden, so clicking a
-button was her ONLY way out. An ORPHAN MODAL.
+she was forced to answer a question that had already been answered. At that time
+the dialog was `modal:true`, used `closeOnEscape:false`, and hid its titlebar X,
+so clicking a button was her ONLY way out. An ORPHAN MODAL. Since v1.48.17,
+Escape routes through the same Deny/dismiss path as the dialog's own close action.
 
 Fixing that exposed two more:
   * a Cancel was reported (and SAVED to chat history) as "⛔ You denied the Tool…"

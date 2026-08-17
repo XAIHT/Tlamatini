@@ -76,7 +76,7 @@ SHORT-LIVED agents (should start, do work, and exit quickly):
   Googler, Asker, Counter, Summarizer, Mouser, Keyboarder, Windower, Telegrammer, Whatsapper, Instant Messaging Doctor, FlowCreator,
   File-Interpreter, Image-Interpreter, File-Creator, File-Extractor, J-Decompiler,
   De-Compresser, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Parametrizer, FlowBacker, Barrier,
-  ACPXer, MCP Doctor, Instant Messaging Doctor, Unrealer, Blenderer, Reviewer, Analyzer, Playwrighter, Kalier, STM32er, ESP32er, ESPHomer, Arduiner,
+  ACPXer, MCP Doctor, Unrealer, Blenderer, Reviewer, Analyzer, Playwrighter, Kalier, STM32er, ESP32er, ESPHomer, Arduiner,
   Camcorder, Recorder, Whisperer, Talker, Editor, Grepper, Globber, Discoverer, Video-Analyzer, Nmapper, PDFer, LaTeXer
   (NOTE: STM32er / ESP32er / ESPHomer / Arduiner are short-lived in steady state, but their
    FIRST build/compile/flash can run for MANY minutes while a large toolchain downloads —
@@ -288,14 +288,16 @@ TELEGRAMMER / WHATSAPPER SPECIAL NOTES:
     `rx_from_chat_id`) and then finishes. A receive run that simply times out with
     NO message is a VALID result (the downstream Forker branches on it) — do NOT flag
     a "no message received within rx_max_seconds" line as an error.
-  - Whatsapper uses the OFFICIAL Meta WhatsApp Cloud API (Graph API + `access_token`
-    + `phone_number_id`) ONLY — no third-party gateway. In `mode: send` it posts one
-    message (or template) and finishes; in `mode: receive` it runs the official
-    webhook listener up to `rx_max_seconds` (Meta verification + inbound POST) and
-    then finishes. A receive run that times out with NO inbound message is a VALID
-    result — do NOT flag it as an error. Sporadic 4xx HTTPError lines are typically
-    transient Graph-API hiccups or expired tokens — flag only if they recur across
-    ≥3 cycles.
+  - Whatsapper has two explicit outbound identities. `provider: cloud` (the default)
+    uses the OFFICIAL Meta WhatsApp Cloud API (`access_token` + `phone_number_id`);
+    `provider: web` is an UNOFFICIAL Playwright-driven WhatsApp Web session that sends
+    from the operator's own number after a one-time headed QR login. A web run waiting
+    for that first QR scan is user input, not a stuck process; flag only after its
+    configured `login_wait_seconds` expires or the agent reports `login_required` /
+    `invalid_number` / a browser error. `mode: receive` remains Cloud-API-only and runs
+    the official webhook listener up to `rx_max_seconds`. A receive timeout is a VALID
+    result. Sporadic Graph-API 4xx lines are usually token/policy evidence; flag only
+    if they recur across at least three cycles.
   - Both START their `target_agents` after sending/receiving, then die — they are NOT
     terminal never-start agents. A burst of "Started agent ..." lines after a send or
     receive completes is NORMAL.

@@ -22,7 +22,11 @@ This is the operator-mode regression the user wants run **daily**.
 
 ## ⛔ FORBIDDEN: headless tests — ALL TESTS MUST BE VISIBLE (Angela, HARD RULE, 2026-07-07)
 
-**HEADLESS / INVISIBLE AUTOMATED TESTS ARE FORBIDDEN. This test ALWAYS runs in a VISIBLE, HEADED real Chrome on Angela's desktop — she MUST see every step live.** `--headless` is **disabled in `run_test.py`** (it is ignored and forced back to headed). Never try to run this or any test invisibly. Launch it inside a VISIBLE foreground window (`Start-Process powershell -NoExit …`, `dangerouslyDisableSandbox:true`), never `run_in_background`. Verify steps with FULL-SCREEN screenshots (whole desktop, taskbar clock visible) and NEVER record a stale/transient/timed-out answer as a pass. See memory `feedback_forbidden_headless_visible_tests` and the Discoverer visible-runner `harness/discoverer_1000.py`.
+**HEADLESS / INVISIBLE AUTOMATED TESTS ARE FORBIDDEN. This test ALWAYS runs in a VISIBLE, HEADED real Chrome on Angela's desktop — she MUST see every step live.**
+
+`--headless` is **disabled in `run_test.py`** (it is ignored and forced back to headed). Never try to run this or any test invisibly. Launch it inside a VISIBLE foreground window (`Start-Process powershell -NoExit …`, `dangerouslyDisableSandbox:true`), never `run_in_background`. Verify steps with FULL-SCREEN screenshots (whole desktop, taskbar clock visible) and NEVER record a stale/transient/timed-out answer as a pass.
+
+See memory `feedback_forbidden_headless_visible_tests` and the visible runners `harness/discoverer_1000.py` (Discoverer) and **`harness/dialog_policy_visible.py`**. The 2026-08-16 dialog-dismissal proof opens each real dialog in headed Chrome, presses Escape, and confirms it closed with the same meaning as its ✕. It also proves that the **sealed updater refuses** Escape / Ctrl+F4 / F5 while a download is in progress through a `window.__tlmSealCanary`, so "the dialog is gone" and "F5 worked" can never look identical. It never starts a real update: it calls `seal('update')` to reproduce the exact policy state.
 
 ## Pinned run mode (do not change without being told)
 
@@ -133,13 +137,13 @@ If the chat UI changes, fix `harness/config.py` (selectors + the ready/started J
 
 ## v1.48.13 regression set
 
-When the touched surface is relevant, include visible cases for: Mover/Deleter empty, relative, legacy `C:/Temp/...`, and explicit absolute destinations; long-operation menu disable/restore; dialog outside-click/Escape/X/Cancel/Continue behavior; safe update release-note rendering; and per-user/request/stream/line log attribution. A movement test must prove Deleter scope was not widened.
+When the touched surface is relevant, include visible cases for: Mover/Deleter empty, relative, legacy `C:/Temp/...`, and explicit absolute destinations; long-operation menu disable/restore; dialog dismissal (**Escape must close every dialog with the same meaning as its ✕ / Cancel; an outside click must still NOT dismiss; a sealed updater must refuse Escape and Ctrl+F4/F5 while downloading**), ✕/Cancel/Continue behavior, and that no native `alert()`/`confirm()` appears over a themed dialog; safe update release-note rendering; and per-user/request/stream/line log attribution. A movement test must prove Deleter scope was not widened.
 
 ## v1.48.14 release-target regression set
 
 When External MCP or response rendering changes, visibly verify: the dialog lists inactive `memory` and `sequential-thinking`; the runtime strip reports node/npm/npx/pnpm/uv/uvx without blocking the page; **Install now** has honest success/failure state; activating a default is explicit; deleting it does not resurrect it after reload; and a nested explicit/auto ASCII diagram followed by Markdown `---` renders every diagram once with no `DGRM_*` or NUL leakage. Use an isolated catalog/config path for tests so a maintainer's keyed `external_mcps.json` is never modified.
 
-## v1.48.15 release-target regression set
+## v1.48.17 release regression set
 
 When search, wrapped-agent reporting, Kubernetes execution, build privacy, or self-update changes, add visible/focused cases for: Grepper searching BOM-marked UTF-8/16/32 and cp1252/Latin-1 while skipping binary data; all five status classes and pairwise-disjoint `KNOWN_STATUSES`; degraded output rendering red; completed diagnostics rendering green; unknown-status compatibility plus guard rejection; Kuberneter emitting numeric `returncode`, boolean `success`, and `status: ok|failed`; public builds excluding a maintainer catalog while the explicit private builder may include one; and update swaps retaining `Uninstaller.exe`. Run `agent.test_grepper_encodings`, `agent.test_status_vocabulary`, `agent.test_agent_verdict`, and `agent.test_preserved_user_state` when those surfaces are touched.
 

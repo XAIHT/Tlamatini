@@ -347,7 +347,7 @@ Use this table to quickly decide which agent to use. The **Starts Others** colum
 | **recmailer** | Checks received emails (IMAP) | NO | Terminal |
 | **notifier** | Shows desktop notification when keyword found | NO | Terminal |
 | **telegrammer** | Sends OR receives a Telegram message via the official Telegram Bot API | YES | Action |
-| **whatsapper** | Sends OR receives a WhatsApp message via the official Meta WhatsApp Cloud API | YES | Action |
+| **whatsapper** | Sends/receives through Meta Cloud by default; optional explicit `web` sends use the operator's personal WhatsApp account | YES | Action |
 | **instant_messaging_doctor** | Diagnoses Telegrammer/Whatsapper tokens, contacts, templates, webhooks, and failure logs; emits Parametrizer-ready repair actions | YES | Action |
 | **cleaner** | Deletes logs and PIDs for listed agents | NO | Terminal |
 | **flowhypervisor** | LLM-powered flow health monitor (system agent) | NO | Monitoring |
@@ -851,8 +851,8 @@ system_prompt: |
   - `rx_match`: "" (OPTIONAL — only accept incoming messages matching this pattern)
 
 ### 25. Whatsapper
-- **Purpose**: Sends OR receives a WhatsApp message via the official Meta WhatsApp Cloud API, then triggers downstream agents.
-- **Used for**: Two-way WhatsApp messaging in a workflow chain using the Meta WhatsApp Cloud API (Graph API). In `send` mode it delivers a message or template to a recipient and then triggers downstream agents; in `receive` mode it listens on the official webhook for up to `rx_max_seconds` for an incoming message, logs it, and then triggers downstream agents. In either mode it fires once and exits.
+- **Purpose**: Sends OR receives WhatsApp messages, defaulting to Meta's official Cloud API while allowing an explicit unofficial personal-number Web route, then triggers downstream agents.
+- **Used for**: Two-way WhatsApp messaging in a workflow chain. `provider=cloud` (default) sends from the business number through Meta's official Graph API and owns all receive/webhook behavior. `provider=web` sends from the operator's own personal number through a persistent Playwright WhatsApp Web profile after a one-time headed QR login; it is unofficial, ignores templates, and carries account-ban risk. In either mode the agent fires once and exits.
 - **Aimed at**: Reaching operators and stakeholders on the most ubiquitous messaging app on Earth (send) and enabling WhatsApp-driven inbound automation (receive) — ideal for on-call teams, managers, or anyone who needs to be reached via WhatsApp rather than email or desktop notifications.
 - **Application example**: A Whatsapper (mode=`send`) sends a deployment-status message to the project manager's WhatsApp number after a successful deploy; or a Whatsapper (mode=`receive`) listens on its webhook for an incoming approval message and then triggers downstream actions.
 - **Pool name pattern**: `whatsapper_<n>`
@@ -862,6 +862,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after sending/receiving)
   - `mode`: "auto" (options: "auto", "send", "receive")
+  - `provider`: "cloud" (`cloud` = official business Cloud API; `web` / `me` = unofficial personal WhatsApp Web send; never switch silently)
   - `whatsapp.phone_number_id`: "" (REQUIRED — WABA number ID from WhatsApp Manager → API Setup; later configured by the user)
   - `whatsapp.access_token`: "" (REQUIRED — system-user permanent access token; later configured by the user)
   - `whatsapp.graph_base`: "https://graph.facebook.com" (Graph API base URL — rarely changed)
@@ -871,6 +872,10 @@ system_prompt: |
   - `whatsapp.webhook_host`: "0.0.0.0" (receive mode: bind interface for inbound webhook listener)
   - `whatsapp.webhook_port`: 8765 (receive mode: TCP port the listener binds to)
   - `whatsapp.webhook_path`: "/wa-webhook" (receive mode: URL path Meta posts to)
+  - `whatsapp.web.headless`: false (personal Web mode must show the QR/browser when login is needed)
+  - `whatsapp.web.login_wait_seconds`: 120 (maximum first-login QR wait)
+  - `whatsapp.web.settle_seconds`: 2.0 (post-send UI settle time)
+  - `whatsapp.web.profile_dir`: "" (optional persistent profile override; blank uses the private per-install default)
   - `message`: "" (message text for send — formulate based on the flow's objective)
   - `contact_name`: "" (OPTIONAL — a name from contacts.json; resolved to that person's WhatsApp number, OVERRIDES whatsapp.to)
   - `template`: "" (OPTIONAL — name of a pre-approved message template to send instead of free text)
@@ -881,7 +886,7 @@ system_prompt: |
   - `rx_match`: "" (OPTIONAL — only accept incoming messages matching this pattern)
 
 ### 25a. Instant Messaging Doctor
-- **Purpose**: Diagnoses Telegrammer and Whatsapper readiness with official Telegram and Meta WhatsApp Cloud API checks, then triggers downstream agents.
+- **Purpose**: Diagnoses official Telegram and Meta WhatsApp Cloud readiness, contacts, policy, and failures, then triggers downstream agents; it never silently replaces an explicitly selected WhatsApp Web session.
 - **Used for**: Critical messaging preflight, exception branches after failed Telegrammer/Whatsapper sends, contact-book validation, readable Telegram `@username` reachability, Meta token/phone/template/webhook validation, and failure-log diagnosis.
 - **Aimed at**: Making notification flows self-diagnosing so a downstream Parametrizer/Forker can branch on a clear repair summary instead of parsing raw API errors.
 - **Application example**: Starter -> Instant Messaging Doctor (`platform='both'`, `contact_name='Angela'`, `retry_send=false`) -> Parametrizer (extract `{status}` and `{actions_required}`) -> Forker (ready vs operator_required) -> Telegrammer/Whatsapper or Notifier.

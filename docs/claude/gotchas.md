@@ -46,9 +46,27 @@ The frozen build resolves paths via `os.path.dirname(sys.executable)` vs source 
 
 ---
 
+### The build PROVES what it ships — `verify_frozen_agent_modules()` (2026-08-16, v1.48.16)
+
+Several `agent.*` modules reach the frozen app **only through a fail-open import** (`try: from . import runtime_provisioner` / `except ImportError: runtime_provisioner = None`). A fail-open import **cannot report its own absence**: drop the module and Tlamatini boots perfectly, then simply never provisions `node`/`npm`/`npx`/`pnpm`/`uv`/`uvx` again, so every `npx -y <pkg>` External-MCP server dies with `[WinError 2]` on exactly the fresh machine the provisioner exists to rescue. Reading `build.py` therefore cannot answer *"did it really ship?"* — only the produced archive can.
+
+**Two halves, keep both.** (1) `--hidden-import` now NAMES `agent.runtime_provisioner`, `agent.external_mcp_defaults`, `agent.external_mcp_manager` and `agent.agent_verdict`, so the import graph can never quietly decide they are unreachable. (2) **`verify_frozen_agent_modules(dist/manage)`** runs on the successful-build path, opens the archive the build just produced, and **ABORTS the build** if any of the seven `_FROZEN_REQUIRED_AGENT_MODULES` (those four plus `agent.path_guard`, `agent.self_update`, `agent._version`) is absent.
+
+⚠️ **The PYZ is NOT a loose `_internal/PYZ-00.pyz`** under PyInstaller 6 onedir — it is an entry named `PYZ.pyz` **inside the executable's CArchive**, so the reader uses `CArchiveReader` on the `.exe` (with a `ZlibArchiveReader` fallback for legacy/onefile layouts). A glob for `PYZ-*.pyz` finds nothing and would have reported *"cannot verify"* forever: a check that never fails and never proves anything. Measured against the shipped install — CArchive = 21 entries, PYZ = 15,075 modules, all 7 required modules present. An **unreadable** archive warns and continues (that is a PyInstaller-version question, not evidence Tlamatini is broken); a **genuinely missing** module aborts. Guarded by `agent/test_runtime_provisioner.py::WiringContractTests`.
+
+**Corollary for new work:** if your module is imported anywhere behind a `try/except ImportError`, add it to `_FROZEN_REQUIRED_AGENT_MODULES` **and** give it a `--hidden-import`. Silence is the failure mode you are defending against.
+
+---
+
 ### numpy / OpenCV must be embedded in BOTH Pythons (2026-06-15)
 
 The media agents (Recorder / Camcorder / AudioPlayer / VideoPlayer / Whisperer) run under the **carried** Python (`<install>/python`), NOT the frozen exe — so their native libs must be installed THERE. `build.py` asserts `numpy` + `cv2` in `_CARRIED_PYTHON_REQUIRED_IMPORTS` (the carried-Python probe → the build ABORTS if either is missing) and in the frozen-asset `_agent_libs` import-verify list, and adds `--collect-all cv2` so OpenCV is also embedded in the frozen `_internal` (numpy is handled by `pyinstaller_hooks/hook-numpy.py`). A dependency that is pinned in `requirements.txt` but NOT installed in the carried Python crashes the pool agent at runtime even though the source is correct — these guards exist to catch exactly that. See `docs/claude/recent-fixes.md` (2026-06-15).
+
+---
+
+### Never hand-type a count (or a rule number) in a test — DERIVE it (2026-08-16)
+
+Three test failures that day were the **TEST** being stale, not the code. `test_external_mcp_universal.py` pinned the prose *"eight supervisor tools"* after the Runtime Provisioner had legitimately made it **ten**, and `test_temp_dir_policy.py` asserted *"19) Conflict resolution rule"* after two new `prompt.pmt` rules (18b diagnostic-finding, 19 External-MCP runtime) pushed it to 20. A hand-typed number inside a test is a time bomb: **it goes red for the wrong reason and sends the reader to the wrong file.** Both now DERIVE their expectation from source — `len(em._SUPERVISOR_TOOL_NAMES)`, and the invariant *"Conflict resolution is always the LAST rule"* — so an 11th supervisor tool fails loudly and names the exact document to update. Apply the same rule to any new count-pinning test (agent totals, tool totals, migration numbers, JS module counts).
 
 ---
 

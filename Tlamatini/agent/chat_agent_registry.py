@@ -747,7 +747,22 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         tool_name="chat_agent_whatsapper",
         tool_description="Chat-Agent-Whatsapper",
         display_name="Whatsapper",
-        purpose="Send OR receive WhatsApp messages via Meta's OFFICIAL WhatsApp Cloud API ONLY (no Twilio, no TextMeBot, no WhatsApp Web gateway). Set mode='send' to SEND a message (then it starts its downstream target_agents and exits), or mode='receive' to WAIT for an inbound message via the official webhook for rx_max_seconds then start target_agents and exit (mode='auto' picks send when a message/recipient is given, else receive). For a one-shot 'send this now' message, pass `message` and a recipient — the recipient is EITHER contact_name (a person's name resolved from the Contacts book, contacts.json — PREFERRED when the user names someone) OR `to` (a literal number with country code). Credentials (whatsapp.phone_number_id, whatsapp.access_token, whatsapp.graph_base, whatsapp.api_version) are auto-seeded from config.json globals, so you normally DON'T pass them. IMPORTANT WhatsApp rule: a free-form `message` only delivers inside the 24h window after the person last messaged this number; to message someone COLD, pass an APPROVED `template` (+ template_language / template_params) instead. If Meta returns HTTP 401/code 190, the token is expired/revoked/wrong and must be regenerated in Meta Business settings. CHOOSE WHICH NUMBER SENDS via provider: provider='cloud' (default) sends from the BUSINESS number via the official Cloud API (templates / System User / 24h rules apply); provider='web' sends from the user's OWN PERSONAL number by driving WhatsApp Web (UNOFFICIAL, no templates, no System User). Plain English is accepted, so when the user says 'send it as me' / 'from my own WhatsApp' / 'as myself' pass provider='me' (== web), and 'as the business' / 'official' maps to provider='cloud'. The 'web' route needs a ONE-TIME QR login (it runs headed so the user can scan the code with their phone) and is for the user's own messages; templates are ignored in web mode. If the user doesn't specify, omit provider (defaults to cloud).",
+        purpose=(
+            "Send OR receive WhatsApp messages with an explicit provider choice. "
+            "provider='cloud' (default) uses Meta's OFFICIAL WhatsApp Cloud API "
+            "from the BUSINESS number; provider='web' sends from the user's OWN "
+            "PERSONAL number by driving WhatsApp Web and is UNOFFICIAL, with account-ban "
+            "risk. Set mode='send' to send once and start downstream target_agents, "
+            "mode='receive' to wait on the official Cloud-API webhook for "
+            "rx_max_seconds, or mode='auto' to infer the path. Pass `message` plus "
+            "EITHER contact_name (preferred when the user names somebody) OR `to` (a "
+            "literal country-code number). Cloud credentials are auto-seeded; Cloud "
+            "free-form text delivers only inside Meta's 24-hour window, while cold "
+            "messages require an approved template. The Web route needs a one-time "
+            "headed QR login, ignores templates, and must be selected explicitly with "
+            "provider='web'/'me' or language such as 'send it as me'. Never route "
+            "through Twilio or TextMeBot."
+        ),
         example_request="Send WhatsApp with mode='send', provider='me' (from my OWN number via WhatsApp Web) and contact_name='Ana Ricardo Lazcano' and message='Im ok!'  -- or provider='cloud' to send from the business number via the official API; omit provider for the cloud default. (web mode needs a one-time QR scan and ignores templates; cloud cold messages need template='hello_world' + template_language='en_US'; the `to` field takes a raw +E.164 number instead of contact_name; mode='receive' with rx_max_seconds=30 receives instead of sending)",
         aliases=("whatsapper", "whatsapp"),
         security_hints=("whatsapp", "send whatsapp", "chat message"),

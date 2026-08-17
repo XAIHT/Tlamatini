@@ -53,9 +53,12 @@ When solving a problem that needs Angela to do things on her machine (Rethinking
   3. **WAIT**. Only when she sends that string do you give the next step.
   4. Repeat — one step + one reply-string per turn.
 
-### 1.5 Current Release Target (v1.48.15, 2026-08-16)
-- The latest annotated tag is `v1.48.14`; `v1.48.15` is the next documentation/package target and remains git-tag-derived at runtime.
-- Grepper uses a BOM-first decoder for UTF-8/16/32 and then cp1252/Latin-1, so Windows PowerShell logs and accented Spanish source are searchable while genuine binary files remain skipped.
+### 1.5 Current Release (v1.48.17, 2026-08-16)
+- **`v1.48.17` is the current annotated tag** and the documentation/package version; runtime identity stays git-tag-derived. Same-day lineage: `v1.48.15` = encoding-safe Grepper + closed verdict vocabulary, `v1.48.16` = themed popups + frozen-bundle carriage proof, `v1.48.17` = the Escape dismissal standardization and the sealed updater.
+- Grepper uses a BOM-first decoder for UTF-8/16/32 and then cp1252/Latin-1, so Windows PowerShell logs and accented Spanish source are searchable while genuine binary files remain skipped. Keep the BOM test ahead of the NUL test — UTF-16/32 text is legitimately full of `0x00`.
+- **Escape now dismisses EVERY dialog on both pages and means exactly what the titlebar ✕ means; an outside click still never dismisses.** A bubble-phase dispatcher activates each dialog's own dismiss control, so Ask-Execs still answers Deny, confirms resolve `false`, scroll locks release, and a sealed updater still refuses. `closeOnEscape: false` is forbidden tree-wide. The ONE exception is a dialog holding `el.tlmSealKey` (the updater while downloading), whose seal is checked before every other dismissal path.
+- The last native `alert()` / `confirm()` calls became themed **`tlmAlert` / `tlmConfirm`** (Promise-based, `.tlmpop-*`, overlay z-index 100001, fail-open). They are intentionally not jQuery-UI dialogs, because they are raised by native modals at z-index 20000 while `.ui-front` is ~100.
+- **`build.py` proves its own payload.** Modules reached only through fail-open imports cannot report their own absence, so `verify_frozen_agent_modules()` opens the archive PyInstaller just produced and aborts unless all seven `_FROZEN_REQUIRED_AGENT_MODULES` are inside it. The PYZ is an entry inside the executable's CArchive, not a loose `_internal/PYZ-00.pyz`.
 - `agent_verdict.py` has five disjoint status classes plus `KNOWN_STATUSES`; `test_status_vocabulary.py` statically guards every pool-agent token. Degraded deliverables are red, named intact completions are green, and unknown tokens fail open but are reported as `R8b.unknown_status`.
 - Kuberneter publishes numeric `returncode`, boolean `success`, and tokenized `status: ok|failed`; never put an exit-code expression in `status:`.
 - Self-update preserves the separately built `Uninstaller.exe`. Public builders clear private External-MCP catalog opt-in; only the explicit keyed/private builder may supply it.

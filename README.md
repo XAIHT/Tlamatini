@@ -24,7 +24,7 @@
 
 <p align="center">
   <a href="https://discord.gg/WFQsrskgc"><img src="https://img.shields.io/badge/DISCORD-JOIN%20US-5865F2?style=for-the-badge&labelColor=2D2D2D&logo=discord&logoColor=white" alt="Join our Discord"/></a>
-  <a href="https://github.com/XAIHT/Tlamatini/releases"><img src="https://img.shields.io/badge/LATEST-v1.48.15-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Latest version v1.48.15"/></a>
+  <a href="https://github.com/XAIHT/Tlamatini/releases"><img src="https://img.shields.io/badge/LATEST-v1.48.17-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Latest version v1.48.17"/></a>
   <a href="https://www.python.org/downloads/release/python-31210/"><img src="https://img.shields.io/badge/PYTHON-3.12.10-3776AB?style=for-the-badge&labelColor=2D2D2D&logo=python&logoColor=white" alt="Python"/></a>
   <a href="#installation"><img src="https://img.shields.io/badge/PLATFORM-WIN%2010%20%7C%2011-0078D6?style=for-the-badge&labelColor=2D2D2D&logo=windows&logoColor=white" alt="Platform"/></a>
   <a href="#-the-full-capability-list"><img src="https://img.shields.io/badge/AGENT%20TYPES-87-8A2BE2?style=for-the-badge&labelColor=2D2D2D" alt="87 agent types"/></a>
@@ -45,13 +45,17 @@
 
 ---
 
-## Latest version — v1.48.15
+## Latest version — v1.48.17
 
-`v1.48.15` is the current documentation/package version, built on top of annotated `v1.48.14` while runtime identity remains Git-tag-derived. Grepper no longer mistakes non-UTF-8 text for binary: its BOM-first reader recognizes UTF-8/16/32, then falls back through cp1252 and Latin-1 so PowerShell logs and accented Windows/Spanish source remain searchable. BOM detection deliberately precedes the NUL-byte test because valid UTF-16/32 text contains NUL bytes; genuine binary or unreadable files are still skipped. Sixteen focused tests pin the encoding and binary boundaries.
+`v1.48.17` is the current annotated release (2026-08-16); runtime identity remains Git-tag-derived. Three tags landed that same day and are all carried by it: **`v1.48.15`** (encoding-safe Grepper + the closed Exec-Report status vocabulary), **`v1.48.16`** (themed pop-ups + a post-build proof of what the frozen bundle really ships), and **`v1.48.17`** (the Escape dismissal standardization and the sealed updater). Grepper no longer mistakes non-UTF-8 text for binary: its BOM-first reader recognizes UTF-8/16/32, then falls back through cp1252 and Latin-1 so PowerShell logs and accented Windows/Spanish source remain searchable. BOM detection deliberately precedes the NUL-byte test because valid UTF-16/32 text contains NUL bytes; genuine binary or unreadable files are still skipped. Sixteen focused tests pin the encoding and binary boundaries.
 
 Exec-Report status handling now uses a closed, source-guarded vocabulary with five disjoint classes: completed diagnostics, intact completed work, degraded work, work not done, and agent errors. Degraded deliverables such as inaudible token-only speech or a compromised PDF are red rather than falsely clean; named completions are auditable greens; an unknown token still fails open but is identified by rule `R8b`. The repository-wide guard scans every pool-agent `status:` literal so a newly invented token fails during tests instead of silently defaulting green. Kuberneter now reports numeric `returncode`, explicit `success`, and a real `ok`/`failed` status token, preventing a failed `kubectl` call from being painted green.
 
 Updater coverage now protects the separately built `Uninstaller.exe` during self-update and keeps the preserve-list parser from being confused by comments. Public release builders forcibly clear any inherited private External-MCP catalog variable; the explicit keyed/private builder remains the only path allowed to bundle that catalog. Drift-proof tests derive External-MCP supervisor counts and the final prompt-rule position from source instead of freezing hand-written numbers. The source-verified built-in surface remains **87 workflow agents**, **65 wrapped chat agents**, **107 Multi-Turn tools** (**20 core + 65 wrapped + 12 ACPX/Skill + 10 External-MCP supervisors**), **37 JavaScript modules**, and **28 runtime skills**. The `v1.48.14` private MCP runtimes, inactive Memory/Sequential-Thinking defaults, public/private catalog separation, and lossless diagram restoration remain carried.
+
+Dialog behaviour is now uniform on both pages: **Escape dismisses every dialog and means exactly what the titlebar ✕ means**, while an outside click still never dismisses anything — so a guarded prompt cannot be lost to a stray click, and no dialog can trap you either. A single dispatcher finds the topmost dialog and activates *that dialog's own* dismiss control, so an Ask-Execs permission prompt still answers **Deny**, a confirmation still resolves to "no", scroll locks are still released, and a sealed update step still refuses to close. The last native browser pop-ups are gone: `alert()` / `confirm()` inside the contacts book and the External-MCP dialog were replaced by themed `tlmAlert` / `tlmConfirm` panels that match the app instead of showing OS chrome over it.
+
+The build now also proves what it ships. Several modules reach the frozen app only through fail-open imports, which cannot report their own absence — the app would boot perfectly and silently lose the capability. After PyInstaller succeeds, `build.py` opens the archive it just produced and verifies that the runtime provisioner, the External-MCP defaults and client, the verdict engine, the path guard, the self-update module, and the version resolver are all really inside it, aborting the build if any is missing.
 
 ---
 

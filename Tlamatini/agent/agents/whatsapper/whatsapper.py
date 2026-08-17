@@ -9,9 +9,10 @@
 #   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
 # Whatsapper Agent — the ONE WhatsApp send/receive agent.
 #
-# Uses ONLY Meta's OFFICIAL WhatsApp Cloud API (Graph API) over plain HTTPS
-# (stdlib urllib) — NO Twilio, NO TextMeBot, NO WhatsApp Web gateway. Get the
-# Phone number ID + Access token from Meta (see HOW_TO_GET_YOUR_WHATSAPP_ASSETS.md).
+# The default `cloud` route uses Meta's OFFICIAL WhatsApp Cloud API (Graph API)
+# over plain HTTPS (stdlib urllib). The explicit `web` route uses a persistent,
+# headed Playwright profile to send from the operator's own personal account;
+# it is unofficial and carries WhatsApp account-ban risk. No Twilio/TextMeBot.
 #
 # Three run-modes (config `mode`: auto | send | receive):
 #   i)  SEND     — send one message (or template), then start target_agents, die.

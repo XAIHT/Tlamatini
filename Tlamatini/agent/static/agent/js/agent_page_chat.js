@@ -1769,7 +1769,8 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
         if (Object.keys(telegram).length > 0) config.telegram = telegram;
 
     // ── Whatsapper ───────────────────────────────────────────────────
-    // Official Meta WhatsApp Cloud API ONLY. Top-level: message,
+    // Meta Cloud API by default; optional `provider=web` uses the personal account.
+    // Top-level: message,
     // contact_name, to, provider, template(+lang/params), mode,
     // rx_max_seconds. Nested: whatsapp (phone_number_id, access_token,
     // graph_base, api_version, to, verify_token, webhook_*).

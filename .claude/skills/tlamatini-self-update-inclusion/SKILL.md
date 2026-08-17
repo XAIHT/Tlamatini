@@ -224,7 +224,7 @@ Because `agent/static` is tree-carried, `dialog_theme.css`, `dialog_policy.js`, 
 
 `runtime_provisioner.py` and `external_mcp_defaults.py` are application code and must ship through the normal frozen/source carriers. The downloaded private runtime and persistent Memory graph live under `%LOCALAPPDATA%\Tlamatini`, outside the install swap, so they must **not** be added to installer payloads, `empty_dirs`, or `$Preserve`. `external_mcps.json` is different: it is preserved user state and a sanitized tracked build input. Verify public `build.py` output contains only inactive `memory` + `sequential-thinking`, keyed/private builds take the explicit private path, `regen_secrets.py` handles catalog env secrets, and the public live-secret gate aborts unsafe output.
 
-### v1.48.15 updater/parser and public-private build gate
+### v1.48.17 updater/parser and public-private build gate
 
 The staged swap must retain `Uninstaller.exe`; Windows comments that explain this policy stay on standalone PowerShell lines so parser-sensitive continuations remain valid. Verify `agent/test_preserved_user_state.py` source-derives the code-seeded default catalog, proves the public builder clears `TLAMATINI_BUNDLE_EXTERNAL_MCPS`, and proves only the explicit private builder supplies it. Do not reintroduce an assertion that the environment variable is absent from `build.py`: the variable is intentionally read by the shared builder, while release entry points control whether it exists.
 
