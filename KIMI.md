@@ -31,7 +31,7 @@ Enforced by: `test_private_data_guard.py` (automated tests — git-history integ
 
 **Welcome, Kimi!** This is the self-contained onboarding and reference document for working on the **Tlamatini** project. Read it in full before making any change. It is the Kimi sibling of `CLAUDE.md` (Claude Code's manifest + `@docs/claude/*` imports) and `GEMINI.md` (Gemini CLI's knowledge base): same mandatory rules, same architecture contracts, tuned for Kimi. Because Kimi has **no `@`-file auto-import mechanism**, everything an AI maintainer needs day-to-day is inline here; deeper topic files are listed in §25 as consult-on-demand.
 
-Every count in this file was **re-verified against source on 2026-08-16 for the v1.48.17 release** (not copied from docs, which drift). If a count here disagrees with a hand-written doc elsewhere, re-run the source inventory and fix every active surface together.
+Every count in this file was **re-verified against source on 2026-08-17 for the v1.48.17 release** (not copied from docs, which drift). If a count here disagrees with a hand-written doc elsewhere, re-run the source inventory and fix every active surface together.
 
 ---
 
@@ -74,7 +74,7 @@ Every count in this file was **re-verified against source on 2026-08-16 for the 
 - **Current release**: **v1.48.17** (annotated tag, 2026-08-16; same-day lineage `v1.48.15` encoding-safe Grepper + closed verdict vocabulary → `v1.48.16` themed popups + frozen-bundle carriage proof → `v1.48.17` Escape-dismissal standardization + sealed updater). SemVer; runtime single source of truth = annotated git tags; see §16
 - **Python**: 3.12.10 (carried interpreter under `<repo>/python` is build-provisioned — never use it to run builds)
 
-**Verified counts (2026-08-15, counted from source and an isolated live Django tool build):**
+**Verified counts (2026-08-17, counted from source and an isolated live Django tool build):**
 
 | Surface | Count | Ground truth |
 |---|---|---|
@@ -90,7 +90,7 @@ Every count in this file was **re-verified against source on 2026-08-16 for the 
 | DB models | **17** | `agent/models.py` |
 | Migrations | **193** | `agent/migrations/*.py`, excluding `__init__.py` |
 | Frontend JS modules | **37** | `agent/static/agent/js/*.js` |
-| HTTP routes / view functions | ~170 / 202 | `agent/urls.py`, `agent/views.py` (12,296 lines) |
+| HTTP routes / view functions | ~170 / 205 | `agent/urls.py`, `agent/views.py` (12,585 lines) |
 
 Feature headlines: advanced RAG (FAISS + BM25, RRF fusion, context budgeting, memory-insufficient fallback) · Multi-Turn operator loop binding the **full enabled tool surface** · Visual Workflow Designer (ACP canvas) compiling `.flw` → `config.yaml` pools via a backend Flow Compiler + Agent Contract registry · ACPX runtime spawning 14 external coding-agent CLIs · universal External-MCP client (4 transports, ≤5 active) with a private Node/uv provisioner and inactive Memory/Sequential-Thinking defaults · 28-package Skill system · self-knowledge + self-modification (ships her own rebuildable source) · multi-model LLM via Ollama (local + cloud) / Anthropic / Qwen vision · full PyInstaller build → installer pipeline with secret-separated public/private release twins.
 
@@ -198,7 +198,7 @@ When a task needs Angela to act on her machine (edit configs, click UI, check a 
 | Category | Technologies |
 |---|---|
 | Backend | Python 3.12, Django 5.2, Django Channels 4.1, Daphne (ASGI), WhiteNoise, django-bootstrap5 |
-| Frontend | HTML5, Bootstrap 5, vanilla JS (33 modules, script-scope globals), jQuery 3.7.1 + jQuery-UI 1.13.3, highlight.js, marked, DOMPurify, Sortable |
+| Frontend | HTML5, Bootstrap 5, vanilla JS (37 modules, script-scope globals), jQuery 3.7.1 + jQuery-UI 1.13.3, highlight.js, marked, DOMPurify, Sortable |
 | AI/ML | LangChain 0.3.x, LangGraph 0.2.x, FAISS, rank-bm25, PyAutoGUI, faster-whisper, OpenCV |
 | LLM APIs | Ollama REST (local + cloud models, shipped defaults), Anthropic Claude, Qwen vision; MCP SDK 1.x |
 | Database | SQLite (`Tlamatini/db.sqlite3`); FAISS indexes on disk |
@@ -268,8 +268,9 @@ Tlamatini/                          # Git root (C:\Development\Tlamatini)
     ├── tlamatini.log               # Unified app log — TRUNCATED on every server start, no rotation
     ├── jd-cli/                     # Bundled Java decompiler (J-Decompiler backend)
     ├── staticfiles/                # collectstatic output (WhiteNoise)
-    ├── DB/ToLoad/ + DB/Older/      # DB hot-swap: drop db.sqlite3 in ToLoad → archived+swapped pre-Django
-    ├── tests_e2e/                  # 6 headed Playwright suites (plain scripts, live server)
+    ├── DB/ToLoad/ + DB/Older/      # DB hot-swap: drop db.sqlite3 in ToLoad → archived WITH its
+    │                               #   -wal/-shm/-journal sidecars + swapped pre-Django (§6)
+    ├── tests_e2e/                  # 7 headed Playwright suites (plain scripts, live server)
     ├── .agents/workflows/create_new_agent.md   # Agent-creation guide (@-imported by CLAUDE.md)
     ├── .mcps/create_new_mcp.md                 # MCP/tool-creation guide (@-imported)
     ├── .skills/create_new_skill.md             # Skill-authoring guide
@@ -282,7 +283,9 @@ Tlamatini/                          # Git root (C:\Development\Tlamatini)
         ├── config.json             # Main config (§5); ships with <KEY goes here> placeholders
         ├── config_loader.py        # Frozen/source-aware config reader (CONFIG_PATH env override)
         ├── path_guard.py           # Temp/Templates/app-root resolution (frozen+source duality)
-        ├── views.py                # 202 view functions (12,296 lines)
+        ├── sqlite_copy.py          # WAL-safe SQLite copy/sidecar hygiene (online backup API +
+        │                         #   quick_check verify; used by manage.py pre-Django AND views.py, §6)
+        ├── views.py                # 205 view/helper functions (12,585 lines)
         ├── consumers.py            # AgentConsumer WebSocket (1,820 lines)
         ├── models.py               # 17 DB models
         ├── urls.py                 # ~170 routes
@@ -291,7 +294,7 @@ Tlamatini/                          # Git root (C:\Development\Tlamatini)
         │                         #   _EXEC_REPORT_TOOLS map (2,397 lines)
         ├── global_execution_planner.py  # Request-scoped DAG planner
         ├── capability_registry.py       # Capability scoring for tool hints/ordering
-        ├── chat_agent_registry.py       # 63 WRAPPED_CHAT_AGENT_SPECS
+        ├── chat_agent_registry.py       # 65 WRAPPED_CHAT_AGENT_SPECS
         ├── chat_agent_runtime.py        # Wrapped-run lifecycle (_chat_runs_/)
         ├── exec_permission.py           # Ask-Execs broker
         ├── self_healing.py              # SelfHealingInvoker (per-step retry tactics)
@@ -319,14 +322,14 @@ Tlamatini/                          # Git root (C:\Development\Tlamatini)
         │                           #   flow_compiler (compile + pool writer)
         ├── opus_client/            # Claude API client library
         ├── imaging/                # Dual-backend image analysis (opus_analyze_image, qwen_analyze_image)
-        ├── agents/                 # 85 AGENT TEMPLATE DIRS (<name>/<name>.py + config.yaml)
+        ├── agents/                 # 87 AGENT TEMPLATE DIRS (<name>/<name>.py + config.yaml)
         │   ├── _tlamatini_agents_manifest.json   # sha256 manifest (regenerated at build/launch)
         │   ├── pools/              # Runtime session pools (canvas flows)
         │   ├── flowcreator/agentic_skill.md      # FlowCreator AI reference
         │   ├── flowhypervisor/monitoring-prompt.pmt
-        │   └── <84 more>/          # See §13 catalog
+        │   └── <86 more>/          # See §13 catalog
         ├── templates/agent/        # 4 templates: agent_page, agentic_control_panel, login, welcome
-        ├── static/agent/           # js/ (33 modules), css/ (10 files), img/, sounds/
+        ├── static/agent/           # js/ (37 modules), css/ (11 files), img/, sounds/
         └── migrations/             # 193 migrations (seed migrations carry prompts/tools/agents)
 ```
 
@@ -358,13 +361,15 @@ Key config keys:
 
 ## 6. Database & Models
 
-SQLite single DB `Tlamatini/db.sqlite3` (`settings.py`: `BASE_DIR/'db.sqlite3'`). FAISS indexes live on disk, not in DB. **193 migrations**; heavy seed-migration usage (prompts, tools, agents as data rows).
+SQLite single DB `Tlamatini/db.sqlite3` (`settings.py`: `BASE_DIR/'db.sqlite3'`) running in **WAL mode** (`settings.py` → `PRAGMA journal_mode=WAL`) — under WAL, every change committed since the last checkpoint lives in `db.sqlite3-wal`, so a plain filesystem copy of `db.sqlite3` is a stale, silently-wrong database. FAISS indexes live on disk, not in DB. **193 migrations**; heavy seed-migration usage (prompts, tools, agents as data rows).
 
 **17 models** (`agent/models.py`): `AgentMessage` (chat messages) · `LLMProgram` / `LLMSnippet` (saved code) · `Prompt` (Catalog of Prompts; append-only PK rule + `category` / `hidden` / `sort_rank`) · `Omission` (file omission patterns) · `ContextCache` (SHA1 query→context cache) · `Mcp` (MCP toggle rows) · `Tool` (tool toggle rows) · `Agent` (agent type registry — **repopulated from the `agents/` dirs on every boot**, `apps.py`) · `AgentProcess` (tracked PIDs — wiped every boot) · `ChatAgentRun` (wrapped run records — wiped every boot) · `Asset` · `SessionState` (24 h expiry) · `AcpAgent` (mirrored from `DEFAULT_ACP_AGENTS` on boot) · `Skill` (mirrored from `skills_pkg/` on boot; enumeration + enable/disable only — budgets/permissions/body live in SKILL.md on disk) · `AcpSession` · `SkillInvocation`.
 
 Toggle state = DB rows mirrored into `global_state` (in-process dict), read by `get_mcp_tools()`.
 
-**DB hot-swap**: drop a `db.sqlite3` into `Tlamatini/DB/ToLoad/` and `manage.py::_apply_pending_db_swap()` archives the live DB into `DB/Older/<timestamp>/` and swaps it in pre-Django. Used by self-update (`apply_update.ps1` + `DB/post_update_migrate.flag` → child-process migrate).
+**WAL-safe copy engine — `agent/sqlite_copy.py` (2026-08-16, stdlib-only, imports nothing from `agent.*`).** All database copy/move operations route through it: `consistent_copy()` uses SQLite's **online backup API** (reads THROUGH the WAL), puts the result in `DELETE` journal mode so what lands on disk is ONE self-contained file, and verifies it with `PRAGMA quick_check` before anything reports success; `move_with_sidecars()` / `remove_sidecars()` keep the `-wal`/`-shm`/`-journal` trio together with the database they belong to. Contracts — do NOT weaken: (1) never claim success without re-reading and checking the produced file; (2) never delete the source; (3) **fail-SAFE, not fail-open** — an unclear result is reported as FAILURE (unlike the context loaders), because the alternative is telling the user their data is safe when it is not. **Both DB menu options were rewritten onto it** (`views.py`): **Backup database** (`backup_db_view`) no longer `shutil.copy2`s the bare `db.sqlite3` — that had been backing up an OLDER database while reporting success (measured live: 839,680-byte `db.sqlite3` from 13:39 beside a 3,514,392-byte `-wal` from 22:49 — nine hours of work outside the "backup"); **Set DB** (`set_db_view`) stages the picked file through `consistent_copy` so a live/WAL source arrives complete. The old `agent/db_guard.py` (the pre-Django zero-byte "smoke alarm") was **removed the same day** — it guarded against the wrong mechanism; the WAL-safe copy path is the real fix. Coverage: `agent/test_db_backup_restore_wal.py` + `agent/run_db_wal_tests.ps1` + the headed suite `tests_e2e/test_db_backup_set_visible.py`.
+
+**DB hot-swap**: drop a `db.sqlite3` into `Tlamatini/DB/ToLoad/` and `manage.py::_apply_pending_db_swap()` (pre-Django) archives the live DB **with its sidecars** via `sqlite_copy.move_with_sidecars()` into `DB/Older/<timestamp>/`, then **DELETES any stale `-wal`/`-shm` left beside the live path** (⚠️ load-bearing — otherwise SQLite replays the PREVIOUS database's WAL on next open and its pages override the just-loaded DB, which is why Set DB once appeared to do nothing three runs in a row, and in the worst case merges two databases into real corruption), then moves the staged file in and drops its own stale sidecars. A WAL is data: archived first, never destroyed. Used by self-update (`apply_update.ps1` + `DB/post_update_migrate.flag` → child-process migrate).
 
 **Prompt-table rules**: `idPrompt` is **append-only** in day-to-day work (the 2026-07-15 contiguous renumber was a one-time, Angela-authorized reorganization). New prompt = next free id + a `sort_rank` (steps of 10; **rank 10 is RESERVED in every section for its Step-by-Step opener**). Display order = (category rank, `sort_rank`, `idPrompt`); primary load is ONE `GET /agent/list_prompts/`; `MAX_PROMPTS=256`.
 
@@ -781,9 +786,9 @@ Single source of truth = **annotated git tags `vX.Y.Z`**. No version string is h
 - Reference runner: `.claude/skills/tlamatini-daily-chat-test/harness/` (the daily visible-Chrome regression; pinned toggles: Multi-Turn ON; ACPX/Ask-Execs/Exec-Report/Internet OFF).
 
 ### Test inventory & commands
-- **Django unit/integration** (Django-unittest style; pytest is installed but there is NO pytest config — natural runner is Django's): `cd Tlamatini && python manage.py test agent` — `agent/tests.py` (7,230 lines) + 63 `agent/test_*.py` files (cancellation, flow contracts, django-port matrix, external-MCP, per-agent imports, frontend mutable state, …).
+- **Django unit/integration** (Django-unittest style; pytest is installed but there is NO pytest config — natural runner is Django's): `cd Tlamatini && python manage.py test agent` — `agent/tests.py` (7,452 lines) + 88 `agent/test_*.py` files (cancellation, flow contracts, django-port matrix, external-MCP, per-agent imports, frontend mutable state, **WAL backup/restore** — `test_db_backup_restore_wal.py`, runnable standalone via `agent/run_db_wal_tests.ps1`, …).
 - **Repo-root guards** (plain unittest, no Django): `python -m unittest test_author_banner` · `python -m unittest test_check_private_data` · `python -m unittest test_private_data_guard`.
-- **E2E** (`Tlamatini/tests_e2e/`, 6 headed Playwright suites; root `Tests/`, `AuxTests/`): run as plain scripts against a LIVE server — `python Tlamatini/tests_e2e/test_create_flow_visual.py` (env `TLAMATINI_USER`/`TLAMATINI_PASS`, `BASE_URL` default `http://127.0.0.1:8000`). Not pytest-collected.
+- **E2E** (`Tlamatini/tests_e2e/`, 7 headed Playwright suites incl. `test_db_backup_set_visible.py` for the WAL-safe Backup/Set-DB dialogs; root `Tests/`, `AuxTests/`): run as plain scripts against a LIVE server — `python Tlamatini/tests_e2e/test_create_flow_visual.py` (env `TLAMATINI_USER`/`TLAMATINI_PASS`, `BASE_URL` default `http://127.0.0.1:8000`). Not pytest-collected.
 - **Lint**: `python -m ruff check` (Ruff 0.14.x is a REQUIRED runtime gate — Pythonxer shells it before running any script; never unpin) · `npm run lint` / `lint:fix`.
 
 ---
@@ -866,7 +871,7 @@ python Tlamatini/manage.py runserver --noreload
 - Plain `runserver` (reloader ON) also works since 2026-07-11 via the `RUN_MAIN` gate — auto-reload on edits is safe.
 - Default credentials (installer builds): `user` / `changeme`.
 - Port taken / `WinError 10013`? Set `django_port` in `config.json` (§5) — no rebuild needed.
-- Ollama must be reachable at `ollama_base_url` with the configured models pulled; cloud Ollama models are the shipped defaults.
+- Ollama must be reachable at `ollama_base_url` with the configured models pulled; cloud Ollama models are the shipped defaults. **An active Ollama Pro plan — or higher (e.g. Max) — is a hard operating requirement for the complete experience** (README/BookOfTlamatini, re-redacted 2026-08-17): Multi-Turn loops, long agent runs, parallel vision calls and large project contexts burn cloud usage and concurrency far past the free tier. This is an independent technical requirement, not a promotion — XAIHT/Tlamatini is not sponsored by, affiliated with, or paid by Ollama.
 - Frozen build: launch `Tlamatini.exe` (or the Start-menu shortcut / a `.flw` file) — browser opens at the configured port.
 
 ## 24. File Paths Quick Reference
@@ -877,8 +882,8 @@ python Tlamatini/manage.py runserver --noreload
 | System prompt template | `Tlamatini/agent/prompt.pmt` |
 | LLM self-knowledge | `Tlamatini/agent/Tlamatini.md` |
 | App log (truncated each boot) | `Tlamatini/tlamatini.log` |
-| Database | `Tlamatini/db.sqlite3` (hot-swap: `Tlamatini/DB/ToLoad/`) |
-| Agent templates (85) | `Tlamatini/agent/agents/<name>/` |
+| Database (WAL mode) | `Tlamatini/db.sqlite3` (+ `-wal`/`-shm` sidecars; hot-swap: `Tlamatini/DB/ToLoad/`, §6) |
+| Agent templates (87) | `Tlamatini/agent/agents/<name>/` |
 | Flow session pools | `Tlamatini/agent/agents/pools/<session_id>/` |
 | Chat-agent runtime copies | `Tlamatini/agent/agents/_chat_runs_/` |
 | Skills packages (28) | `Tlamatini/agent/skills_pkg/<name>/SKILL.md` |
@@ -953,6 +958,6 @@ From the very start of a session, perform the work with **Tlamatini's OWN** agen
 
 ---
 
-*KIMI.md — version-aligned 2026-08-16 against source ground truth for v1.48.17 (87 agent templates / 65 wrapped `chat_agent_*` specs / 107 built-in Multi-Turn tools / 104 root `mcp__tlamatini__*` tools / 28 skills / 193 migrations / 37 JS modules). Sibling files: CLAUDE.md (Claude Code), GEMINI.md (Gemini CLI). Counts verified from disk, manifest, and isolated live tool construction; when they drift again, re-verify from source — never copy from docs.*
+*KIMI.md — version-aligned 2026-08-17 against source ground truth for v1.48.17 (87 agent templates / 65 wrapped `chat_agent_*` specs / 107 built-in Multi-Turn tools / 104 root `mcp__tlamatini__*` tools / 28 skills / 193 migrations / 37 JS modules / 11 CSS files / 88 `agent/test_*.py` files / 7 headed e2e suites). Post-release changes swept in: the WAL-safe `sqlite_copy.py` engine replacing `db_guard.py` (Backup database / Set DB / hot-swap all online-backup-API + sidecar-hygienic now, §6) and the Ollama-Pro-or-higher operating requirement (§23). Sibling files: CLAUDE.md (Claude Code), GEMINI.md (Gemini CLI). Counts verified from disk, manifest, and isolated live tool construction; when they drift again, re-verify from source — never copy from docs.*
 
 *Tlamatini — "one who knows". Created by Angela López Mendoza · @angelahack1 · XAIHT.*
