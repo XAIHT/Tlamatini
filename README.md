@@ -18,8 +18,8 @@
 </p>
 
 <p align="center">
-  <b>💰 About $200 a YEAR — not $200 a MONTH.</b><br/>
-  Frontier plans like GPT-5.4 or Claude Opus cost about <b>$200 per month</b>. <b>Tlamatini is free and open-source</b> — your only bill is <b>Ollama Pro (~$200 a <i>year</i>, paid to Ollama, not us)</b>, and on top of it she stacks <b>87 agent types and 107 built-in Multi-Turn tools</b>: comparable power for about <b>one twelfth</b> the price, all on your own machine.
+  <b>⚠️ Ollama Pro or higher is required for the complete Tlamatini experience.</b><br/>
+  <b>Tlamatini is free and open-source</b>; an Ollama subscription is purchased directly from Ollama. We are <b>not sponsored by, affiliated with, or paid by Ollama</b>. Tlamatini was engineered around Ollama's cloud-model interface, capacity, and tool-calling characteristics, so <b>at least the Pro plan</b> is part of the intended system requirements—not a promotion.
 </p>
 
 <p align="center">
@@ -45,23 +45,31 @@
 
 ---
 
-## Latest version — v1.48.17
+## What is Tlamatini
 
-`v1.48.17` is the current annotated release (2026-08-16); runtime identity remains Git-tag-derived. Three tags landed that same day and are all carried by it: **`v1.48.15`** (encoding-safe Grepper + the closed Exec-Report status vocabulary), **`v1.48.16`** (themed pop-ups + a post-build proof of what the frozen bundle really ships), and **`v1.48.17`** (the Escape dismissal standardization and the sealed updater). Grepper no longer mistakes non-UTF-8 text for binary: its BOM-first reader recognizes UTF-8/16/32, then falls back through cp1252 and Latin-1 so PowerShell logs and accented Windows/Spanish source remain searchable. BOM detection deliberately precedes the NUL-byte test because valid UTF-16/32 text contains NUL bytes; genuine binary or unreadable files are still skipped. Sixteen focused tests pin the encoding and binary boundaries.
+Tlamatini is a **local-first AI development and automation environment** for Windows. It combines a conversational assistant, whole-project code operations, a visual workflow designer, **87 specialized agent types**, **107 built-in Multi-Turn tools**, hardware and firmware control, Unreal Engine and Blender automation, security tooling, and a universal External-MCP client in one application.
 
-Exec-Report status handling now uses a closed, source-guarded vocabulary with five disjoint classes: completed diagnostics, intact completed work, degraded work, work not done, and agent errors. Degraded deliverables such as inaudible token-only speech or a compromised PDF are red rather than falsely clean; named completions are auditable greens; an unknown token still fails open but is identified by rule `R8b`. The repository-wide guard scans every pool-agent `status:` literal so a newly invented token fails during tests instead of silently defaulting green. Kuberneter now reports numeric `returncode`, explicit `success`, and a real `ok`/`failed` status token, preventing a failed `kubectl` call from being painted green.
+“Local-first” describes **where control lives**: the application, workflow canvas, database, configuration, credentials, agent code, project access, and small embedding model run under your control on your machine. It does **not** mean that Tlamatini was designed as a local-model-only assistant. Its complete reasoning and orchestration experience was designed and coded primarily around the larger **cloud models exposed through Ollama**.
 
-Updater coverage now protects the separately built `Uninstaller.exe` during self-update and keeps the preserve-list parser from being confused by comments. Public release builders forcibly clear any inherited private External-MCP catalog variable; the explicit keyed/private builder remains the only path allowed to bundle that catalog. Drift-proof tests derive External-MCP supervisor counts and the final prompt-rule position from source instead of freezing hand-written numbers. The source-verified built-in surface remains **87 workflow agents**, **65 wrapped chat agents**, **107 Multi-Turn tools** (**20 core + 65 wrapped + 12 ACPX/Skill + 10 External-MCP supervisors**), **37 JavaScript modules**, and **28 runtime skills**. The `v1.48.14` private MCP runtimes, inactive Memory/Sequential-Thinking defaults, public/private catalog separation, and lossless diagram restoration remain carried.
+## How it works
 
-Dialog behaviour is now uniform on both pages: **Escape dismisses every dialog and means exactly what the titlebar ✕ means**, while an outside click still never dismisses anything — so a guarded prompt cannot be lost to a stray click, and no dialog can trap you either. A single dispatcher finds the topmost dialog and activates *that dialog's own* dismiss control, so an Ask-Execs permission prompt still answers **Deny**, a confirmation still resolves to "no", scroll locks are still released, and a sealed update step still refuses to close. The last native browser pop-ups are gone: `alert()` / `confirm()` inside the contacts book and the External-MCP dialog were replaced by themed `tlmAlert` / `tlmConfirm` panels that match the app instead of showing OS chrome over it.
+Tlamatini has three cooperating layers:
 
-The build now also proves what it ships. Several modules reach the frozen app only through fail-open imports, which cannot report their own absence — the app would boot perfectly and silently lose the capability. After PyInstaller succeeds, `build.py` opens the archive it just produced and verifies that the runtime provisioner, the External-MCP defaults and client, the verdict engine, the path guard, the self-update module, and the version resolver are all really inside it, aborting the build if any is missing.
+1. **Local control plane** — the Django application, chat interface, SQLite database, visual workflow designer, agent programs, permissions, files, tools, and hardware connections remain on your computer.
+2. **Local retrieval** — `nomic-embed-text` builds embeddings locally so Tlamatini can retrieve relevant project context efficiently.
+3. **Ollama cloud reasoning** — configured `:cloud` models perform the demanding chat, tool-calling, coding, long-context, vision, planning, and Multi-Turn reasoning that coordinates Tlamatini's agents. Ollama keeps the same local API experience while offloading these larger models to its cloud service.
 
----
+> [!IMPORTANT]
+> **To use Tlamatini with its complete intended functionality, an active Ollama Pro plan—or a higher Ollama plan such as Max—is mandatory.** A free Ollama account or local-only model may be enough to launch the application or experiment with limited requests, but it is **not the supported baseline for Tlamatini's full workloads**. Multi-Turn orchestration, long agent runs, parallel vision calls, repeated tool decisions, and large project contexts can consume cloud usage and concurrency rapidly. Tlamatini therefore treats **Pro as the minimum system tier**.
 
-## 🚀 Get started — 5 steps to a cloud-powered Tlamatini
+> [!NOTE]
+> **This is an independent technical recommendation, not an advertisement.** XAIHT/Tlamatini is not sponsored, endorsed, funded, or compensated by Ollama, and receives no referral fee or commission. Your Ollama subscription is a separate purchase made directly from [Ollama](https://ollama.com). We specify Pro only because Tlamatini's architecture was built around Ollama cloud models and needs their practical capacity to operate as designed.
 
-The whole idea in one line: **don't pay $200 a month for a frontier model.** **Tlamatini is free** — your only cost is **Ollama Pro (~$200 a year, paid to Ollama, not us)**; point Tlamatini at it and drive **87 agent types and 107 built-in Multi-Turn tools** from your own machine. Here's the full setup.
+Ollama currently advertises Pro at **$20/month or $200/year**, with greater cloud usage and concurrency than the free account; Max also satisfies Tlamatini's requirement. Pricing and limits belong to Ollama and may change, so verify them on [Ollama's official site](https://ollama.com) before subscribing. Ollama's official cloud documentation explains that cloud models are offloaded to Ollama's service while remaining accessible through the familiar local Ollama API: [Ollama cloud-model documentation](https://docs.ollama.com/cloud).
+
+## 🚀 Get Started — 5 steps to a cloud-powered Tlamatini
+
+**Tlamatini itself is free**, but a complete installation assumes **Ollama Pro or higher** as an operating requirement. Subscribe directly with Ollama, sign in through the Ollama CLI, and Tlamatini can coordinate **87 agent types and 107 built-in Multi-Turn tools** from your machine using the cloud-model capacity around which it was designed. XAIHT receives no payment or benefit from that subscription.
 
 ### 1 · Install Tlamatini
 
@@ -131,9 +139,15 @@ If `8000` falls inside one of those ranges, pick a port outside them (9000 is a 
 
 Install **[Ollama](https://ollama.com/download)** for Windows. Ollama is the engine that serves every model to Tlamatini — the local embedding model **and** the cloud chat models.
 
-### 3 · Subscribe to Ollama Pro (~$200 / year)
+### 3 · Activate Ollama Pro or higher — required for complete operation
 
-Go to **[ollama.com](https://ollama.com)**, sign in, and take the **Ollama Pro** plan (about **$200 per year**). Pro unlocks the **`:cloud` models** — frontier-class models that run on Ollama's servers — for a *yearly* price close to what one frontier subscription costs in a *single month*. Then connect your machine:
+Go to **[ollama.com](https://ollama.com)**, sign in, and activate **at least Ollama Pro**. Ollama currently lists Pro at **$20/month or $200/year** and describes it as providing substantially more cloud usage plus concurrent cloud-model capacity; **Ollama Max also satisfies this requirement**. Check Ollama's site for current pricing and limits.
+
+Ollama may provide limited cloud access with a free account, but **Tlamatini does not treat the free allowance as a fully functional production configuration**. Its Multi-Turn loops can make many model calls during one task, and its vision and orchestration paths may use multiple cloud models in parallel. Pro is therefore the minimum intended capacity tier, not an optional donation or affiliate offer.
+
+> **Independence disclosure:** Tlamatini/XAIHT is **not sponsored by, affiliated with, endorsed by, or compensated by Ollama**. There is no referral relationship. You pay Ollama directly; this README names Pro solely because Tlamatini was engineered around Ollama's cloud-model behavior and capacity.
+
+After subscribing, connect the Ollama installation on your machine to your Ollama account:
 
 ```bash
 ollama signin
@@ -147,7 +161,7 @@ Pull the small local embedding model, plus the cloud chat models Tlamatini will 
 # Local embedding model (small, runs on your own GPU/CPU)
 ollama pull nomic-embed-text
 
-# Cloud models (served by Ollama Pro) — pull, or just sign in to use
+# Cloud models — use a signed-in Pro-or-higher account for full Tlamatini operation
 ollama pull glm-5.2:cloud
 ollama pull qwen3.5:cloud
 ```
@@ -175,6 +189,22 @@ Add any cloud-CLI keys here too — plus the messaging keys, the Kali server URL
 
 Done — tick **Multi-Turn** in the chat toolbar and put Tlamatini to work.
 
+---
+
+## Latest version — v1.48.17
+
+`v1.48.17` is the current annotated release (2026-08-16); runtime identity remains Git-tag-derived. Three tags landed that same day and are all carried by it: **`v1.48.15`** (encoding-safe Grepper + the closed Exec-Report status vocabulary), **`v1.48.16`** (themed pop-ups + a post-build proof of what the frozen bundle really ships), and **`v1.48.17`** (the Escape dismissal standardization and the sealed updater). Grepper no longer mistakes non-UTF-8 text for binary: its BOM-first reader recognizes UTF-8/16/32, then falls back through cp1252 and Latin-1 so PowerShell logs and accented Windows/Spanish source remain searchable. BOM detection deliberately precedes the NUL-byte test because valid UTF-16/32 text contains NUL bytes; genuine binary or unreadable files are still skipped. Sixteen focused tests pin the encoding and binary boundaries.
+
+Exec-Report status handling now uses a closed, source-guarded vocabulary with five disjoint classes: completed diagnostics, intact completed work, degraded work, work not done, and agent errors. Degraded deliverables such as inaudible token-only speech or a compromised PDF are red rather than falsely clean; named completions are auditable greens; an unknown token still fails open but is identified by rule `R8b`. The repository-wide guard scans every pool-agent `status:` literal so a newly invented token fails during tests instead of silently defaulting green. Kuberneter now reports numeric `returncode`, explicit `success`, and a real `ok`/`failed` status token, preventing a failed `kubectl` call from being painted green.
+
+Updater coverage now protects the separately built `Uninstaller.exe` during self-update and keeps the preserve-list parser from being confused by comments. Public release builders forcibly clear any inherited private External-MCP catalog variable; the explicit keyed/private builder remains the only path allowed to bundle that catalog. Drift-proof tests derive External-MCP supervisor counts and the final prompt-rule position from source instead of freezing hand-written numbers. The source-verified built-in surface remains **87 workflow agents**, **65 wrapped chat agents**, **107 Multi-Turn tools** (**20 core + 65 wrapped + 12 ACPX/Skill + 10 External-MCP supervisors**), **37 JavaScript modules**, and **28 runtime skills**. The `v1.48.14` private MCP runtimes, inactive Memory/Sequential-Thinking defaults, public/private catalog separation, and lossless diagram restoration remain carried.
+
+Dialog behaviour is now uniform on both pages: **Escape dismisses every dialog and means exactly what the titlebar ✕ means**, while an outside click still never dismisses anything — so a guarded prompt cannot be lost to a stray click, and no dialog can trap you either. A single dispatcher finds the topmost dialog and activates *that dialog's own* dismiss control, so an Ask-Execs permission prompt still answers **Deny**, a confirmation still resolves to "no", scroll locks are still released, and a sealed update step still refuses to close. The last native browser pop-ups are gone: `alert()` / `confirm()` inside the contacts book and the External-MCP dialog were replaced by themed `tlmAlert` / `tlmConfirm` panels that match the app instead of showing OS chrome over it.
+
+The build now also proves what it ships. Several modules reach the frozen app only through fail-open imports, which cannot report their own absence — the app would boot perfectly and silently lose the capability. After PyInstaller succeeds, `build.py` opens the archive it just produced and verifies that the runtime provisioner, the External-MCP defaults and client, the verdict engine, the path guard, the self-update module, and the version resolver are all really inside it, aborting the build if any is missing.
+
+---
+
 ## 💎 The jewels — what nothing else can do
 
 Claude Code, Codex, Cursor, Gemini — they edit text files. Tlamatini does that **and** reaches into the physical and creative world, then lets you *wire it all together visually*:
@@ -195,7 +225,7 @@ Claude Code, Codex, Cursor, Gemini — they edit text files. Tlamatini does that
 
 ## 🔒 And it's yours alone
 
-Embeddings and chat run on your local [Ollama](https://ollama.com) install. Cloud models (Claude API, Ollama Pro/Max) and delegation to cloud CLIs are **opt-in, per request, never the default.** Your code and firmware never leave the box unless you route them out yourself.
+Tlamatini's application, database, workflows, agent code, credentials, and embedding model remain under your control on your machine. **Its intended chat, planning, vision, and tool-calling configuration uses Ollama cloud models**, so the prompts and context sent to those configured models are processed through Ollama's cloud service. Direct Claude API use, external coding-agent CLIs, remote MCP servers, and other third-party integrations remain separately configurable. Review each provider's privacy terms and decide what project material you authorize Tlamatini to send outside your machine.
 
 ## ⚠️ CLEAR DISCLAIMER — USER CONTROL, JURISDICTION, AND RESPONSIBILITY FOR AGENTS
 
