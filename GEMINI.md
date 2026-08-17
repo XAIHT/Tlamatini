@@ -62,7 +62,7 @@ When solving a problem that needs Angela to do things on her machine (Rethinking
 - `agent_verdict.py` has five disjoint status classes plus `KNOWN_STATUSES`; `test_status_vocabulary.py` statically guards every pool-agent token. Degraded deliverables are red, named intact completions are green, and unknown tokens fail open but are reported as `R8b.unknown_status`.
 - Kuberneter publishes numeric `returncode`, boolean `success`, and tokenized `status: ok|failed`; never put an exit-code expression in `status:`.
 - Self-update preserves the separately built `Uninstaller.exe`. Public builders clear private External-MCP catalog opt-in; only the explicit keyed/private builder may supply it.
-- Source-verified active surface: 87 workflow agents, 65 wrapped chat agents, 107 built-in Multi-Turn tools, 28 runtime skills, 193 migrations, and 37 JavaScript modules.
+- Source-verified active surface: 87 workflow agents, 65 wrapped chat agents, 107 built-in Multi-Turn tools, 28 runtime skills, 194 migrations, and 37 JavaScript modules.
 
 ---
 

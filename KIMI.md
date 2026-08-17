@@ -88,7 +88,7 @@ Every count in this file was **re-verified against source on 2026-08-17 for the 
 | SKILL.md packages | **28** | `agent/skills_pkg/` (confirmed live via `tlamatini_list_skills`) |
 | ACPX external CLI agent_ids | **14** | `agent/acpx/agent_registry.py` `DEFAULT_ACP_AGENTS` |
 | DB models | **17** | `agent/models.py` |
-| Migrations | **193** | `agent/migrations/*.py`, excluding `__init__.py` |
+| Migrations | **194** | `agent/migrations/*.py`, excluding `__init__.py` |
 | Frontend JS modules | **37** | `agent/static/agent/js/*.js` |
 | HTTP routes / view functions | ~170 / 205 | `agent/urls.py`, `agent/views.py` (12,585 lines) |
 
@@ -330,7 +330,7 @@ Tlamatini/                          # Git root (C:\Development\Tlamatini)
         │   └── <86 more>/          # See §13 catalog
         ├── templates/agent/        # 4 templates: agent_page, agentic_control_panel, login, welcome
         ├── static/agent/           # js/ (37 modules), css/ (11 files), img/, sounds/
-        └── migrations/             # 193 migrations (seed migrations carry prompts/tools/agents)
+        └── migrations/             # 194 migrations (seed migrations carry prompts/tools/agents)
 ```
 
 ---
@@ -361,7 +361,7 @@ Key config keys:
 
 ## 6. Database & Models
 
-SQLite single DB `Tlamatini/db.sqlite3` (`settings.py`: `BASE_DIR/'db.sqlite3'`) running in **WAL mode** (`settings.py` → `PRAGMA journal_mode=WAL`) — under WAL, every change committed since the last checkpoint lives in `db.sqlite3-wal`, so a plain filesystem copy of `db.sqlite3` is a stale, silently-wrong database. FAISS indexes live on disk, not in DB. **193 migrations**; heavy seed-migration usage (prompts, tools, agents as data rows).
+SQLite single DB `Tlamatini/db.sqlite3` (`settings.py`: `BASE_DIR/'db.sqlite3'`) running in **WAL mode** (`settings.py` → `PRAGMA journal_mode=WAL`) — under WAL, every change committed since the last checkpoint lives in `db.sqlite3-wal`, so a plain filesystem copy of `db.sqlite3` is a stale, silently-wrong database. FAISS indexes live on disk, not in DB. **194 migrations**; heavy seed-migration usage (prompts, tools, agents as data rows).
 
 **17 models** (`agent/models.py`): `AgentMessage` (chat messages) · `LLMProgram` / `LLMSnippet` (saved code) · `Prompt` (Catalog of Prompts; append-only PK rule + `category` / `hidden` / `sort_rank`) · `Omission` (file omission patterns) · `ContextCache` (SHA1 query→context cache) · `Mcp` (MCP toggle rows) · `Tool` (tool toggle rows) · `Agent` (agent type registry — **repopulated from the `agents/` dirs on every boot**, `apps.py`) · `AgentProcess` (tracked PIDs — wiped every boot) · `ChatAgentRun` (wrapped run records — wiped every boot) · `Asset` · `SessionState` (24 h expiry) · `AcpAgent` (mirrored from `DEFAULT_ACP_AGENTS` on boot) · `Skill` (mirrored from `skills_pkg/` on boot; enumeration + enable/disable only — budgets/permissions/body live in SKILL.md on disk) · `AcpSession` · `SkillInvocation`.
 
@@ -786,7 +786,7 @@ Single source of truth = **annotated git tags `vX.Y.Z`**. No version string is h
 - Reference runner: `.claude/skills/tlamatini-daily-chat-test/harness/` (the daily visible-Chrome regression; pinned toggles: Multi-Turn ON; ACPX/Ask-Execs/Exec-Report/Internet OFF).
 
 ### Test inventory & commands
-- **Django unit/integration** (Django-unittest style; pytest is installed but there is NO pytest config — natural runner is Django's): `cd Tlamatini && python manage.py test agent` — `agent/tests.py` (7,452 lines) + 88 `agent/test_*.py` files (cancellation, flow contracts, django-port matrix, external-MCP, per-agent imports, frontend mutable state, **WAL backup/restore** — `test_db_backup_restore_wal.py`, runnable standalone via `agent/run_db_wal_tests.ps1`, …).
+- **Django unit/integration** (Django-unittest style; pytest is installed but there is NO pytest config — natural runner is Django's): `cd Tlamatini && python manage.py test agent` — `agent/tests.py` (7,452 lines) + 89 `agent/test_*.py` files (cancellation, flow contracts, django-port matrix, external-MCP, per-agent imports, frontend mutable state, **WAL backup/restore** — `test_db_backup_restore_wal.py`, runnable standalone via `agent/run_db_wal_tests.ps1`, …).
 - **Repo-root guards** (plain unittest, no Django): `python -m unittest test_author_banner` · `python -m unittest test_check_private_data` · `python -m unittest test_private_data_guard`.
 - **E2E** (`Tlamatini/tests_e2e/`, 7 headed Playwright suites incl. `test_db_backup_set_visible.py` for the WAL-safe Backup/Set-DB dialogs; root `Tests/`, `AuxTests/`): run as plain scripts against a LIVE server — `python Tlamatini/tests_e2e/test_create_flow_visual.py` (env `TLAMATINI_USER`/`TLAMATINI_PASS`, `BASE_URL` default `http://127.0.0.1:8000`). Not pytest-collected.
 - **Lint**: `python -m ruff check` (Ruff 0.14.x is a REQUIRED runtime gate — Pythonxer shells it before running any script; never unpin) · `npm run lint` / `lint:fix`.
@@ -826,7 +826,7 @@ Hardcoded assumptions (know before changing these subsystems):
 8. The web port is configurable (`django_port`, §5); still genuinely hardcoded: direct `daphne`/`uvicorn` launches, `:8765`/`:50051` helpers, TeleTlamatini's `tlamatini.base_url`.
 9. Carried-Python media libs: Recorder/Camcorder/AudioPlayer/VideoPlayer/Whisperer run under the CARRIED Python (`<install>/python`), NOT the frozen exe — numpy + cv2 must exist in BOTH Pythons; `build.py` aborts otherwise. A dep pinned in `requirements.txt` but missing from the carried Python crashes the pool agent at runtime.
 10. Frontend `let`-not-`const` for cross-file mutable globals (§15, const-poison).
-11. Count discipline: the v1.48.17 source inventory is 87 workflow agents, 65 wrapped chat agents, 107 built-in Multi-Turn tools (20 core + 65 wrapped + 12 ACPX/Skill + 10 External-MCP supervisors), 104 root stdio MCP tools, 28 runtime skills, 193 migrations, and 37 JavaScript modules. Dynamic `ext__*` remote tools are reported separately. Historical release notes may retain their dated counts; active guidance must be re-verified from source and updated together.
+11. Count discipline: the v1.48.17 source inventory is 87 workflow agents, 65 wrapped chat agents, 107 built-in Multi-Turn tools (20 core + 65 wrapped + 12 ACPX/Skill + 10 External-MCP supervisors), 104 root stdio MCP tools, 28 runtime skills, 194 migrations, and 37 JavaScript modules. Dynamic `ext__*` remote tools are reported separately. Historical release notes may retain their dated counts; active guidance must be re-verified from source and updated together.
 
 Common pitfalls (deduplicated; the dated fix contracts live in `docs/claude/recent-fixes.md`):
 
@@ -958,6 +958,6 @@ From the very start of a session, perform the work with **Tlamatini's OWN** agen
 
 ---
 
-*KIMI.md — version-aligned 2026-08-17 against source ground truth for v1.48.17 (87 agent templates / 65 wrapped `chat_agent_*` specs / 107 built-in Multi-Turn tools / 104 root `mcp__tlamatini__*` tools / 28 skills / 193 migrations / 37 JS modules / 11 CSS files / 88 `agent/test_*.py` files / 7 headed e2e suites). Post-release changes swept in: the WAL-safe `sqlite_copy.py` engine replacing `db_guard.py` (Backup database / Set DB / hot-swap all online-backup-API + sidecar-hygienic now, §6) and the Ollama-Pro-or-higher operating requirement (§23). Sibling files: CLAUDE.md (Claude Code), GEMINI.md (Gemini CLI). Counts verified from disk, manifest, and isolated live tool construction; when they drift again, re-verify from source — never copy from docs.*
+*KIMI.md — version-aligned 2026-08-17 against source ground truth for v1.48.17 (87 agent templates / 65 wrapped `chat_agent_*` specs / 107 built-in Multi-Turn tools / 104 root `mcp__tlamatini__*` tools / 28 skills / 194 migrations / 37 JS modules / 11 CSS files / 88 `agent/test_*.py` files / 7 headed e2e suites). Post-release changes swept in: the WAL-safe `sqlite_copy.py` engine replacing `db_guard.py` (Backup database / Set DB / hot-swap all online-backup-API + sidecar-hygienic now, §6) and the Ollama-Pro-or-higher operating requirement (§23). Sibling files: CLAUDE.md (Claude Code), GEMINI.md (Gemini CLI). Counts verified from disk, manifest, and isolated live tool construction; when they drift again, re-verify from source — never copy from docs.*
 
 *Tlamatini — "one who knows". Created by Angela López Mendoza · @angelahack1 · XAIHT.*
