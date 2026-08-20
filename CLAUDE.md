@@ -27,6 +27,64 @@ Enforced by: `test_private_data_guard.py` (automated tests) + a global CAPS Sess
 
 ---
 
+# ⛔ DO NOT TOUCH THE DB MECHANICS. EVER. (Angela, 2026-08-17, REAFFIRMED 2026-08-19) ⛔
+
+**THE DATABASE BACKUP / SET-DB CODE IS OFF LIMITS. DO NOT MODIFY IT, DO NOT "PROTECT" IT, DO NOT ADD A CHECK TO IT.**
+
+Angela's words, verbatim: *"DON'T EVEN TRY TO TOUCH THE CODE ESPECIALLY ON THE DB MECHANICS."*
+
+**WHAT HAPPENED.** Claude added `agent/db_guard.py` — a "startup smoke alarm for the database"
+(commit `906b5906`, 2026-08-03) — because DB data *appeared* to vanish or revert. **It never
+did.** The database was **not erasing, not lost, not corrupted; it was manipulated correctly.**
+The guard was built on a **false premise born of ignorance of Tlamatini's own mechanism**, it
+quarantined a perfectly healthy live database **11 times in 40 minutes**, it **overrode the
+existing Backup/Set-DB functionality**, and it **hid the real bug for two weeks**. Codex deleted
+the whole thing in commit **`a506373e` (2026-08-16)** — *"Getting rid of the stupid db guard tha
+was just Claude ignorance of our mechanism"*: `db_guard.py` (−486) and `test_db_guard.py` (−527)
+**erased**, along with its `recent-fixes.md` entry.
+
+**THE ACTUAL ROOT CAUSE — `PRAGMA journal_mode=WAL`.** `tlamatini/settings.py` puts SQLite in
+**WAL mode** and says so in a comment right there: *"Under WAL, back up with sqlite3's online
+backup API, never a plain file copy."* Both DB menu options were written **before** WAL was
+switched on and were never updated, so both did `shutil.copy2(db.sqlite3)` — wrong in **both**
+directions:
+
+- **Backup database** copied ONLY `db.sqlite3`. Everything committed since the last checkpoint
+  lives in **`db.sqlite3-wal`**, so the "backup" was an OLDER database while the dialog reported
+  success. Measured live: `db.sqlite3` 839,680 B @ 13:39 vs `db.sqlite3-wal` **3,514,392 B @
+  22:49** — nine hours of work outside the "backup".
+- **Set DB** dropped the chosen file over `db.sqlite3` but left the **OLD `-wal`/`-shm`** beside
+  it; SQLite replays that stale WAL on the next open, so its pages **override the database just
+  loaded** — old data returns, or two databases mix (real corruption). That is why Set DB
+  "did nothing" three times in a row.
+
+**THE CORRECT MECHANISM — `Tlamatini/agent/sqlite_copy.py` (Codex, 2026-08-16). Read it; never
+replace it.** `consistent_copy` uses SQLite's **online backup API** (reads through the WAL) then
+writes the copy in `DELETE` journal mode so ONE self-contained file lands on disk; `PRAGMA
+quick_check` **verifies** before success is reported; `move_with_sidecars` / `remove_sidecars`
+keep the `-wal`/`-shm`/`-journal` trio with their own database. Contracts: never claim success
+without checking · never delete the source · **fail-SAFE, not fail-open** (unclear ⇒ FAILURE,
+because the alternative is telling the user their data is safe when it is not) · stdlib-only,
+imports nothing from `agent.*` (used by `manage.py` pre-Django **and** `views.py` inside Django).
+Coverage: `agent/test_db_backup_restore_wal.py`, `agent/run_db_wal_tests.ps1`, and the visible
+end-to-end `tests_e2e/test_db_backup_set_visible.py`.
+
+**STANDING RULES:**
+1. **NEVER re-add a DB guard / smoke alarm / integrity-quarantine / health fingerprint.** Not as
+   a helper, not as a test, not "just a check".
+2. **Do not edit** `agent/sqlite_copy.py`, `agent/test_db_backup_restore_wal.py`,
+   `agent/run_db_wal_tests.ps1`, `tests_e2e/test_db_backup_set_visible.py`, or the DB blocks of
+   `agent/views.py` / `manage.py` — unless Angela asks in that same turn, in her own words.
+3. **If DB data ever looks lost again: suspect WAL, never Tlamatini — then STOP and ask Angela.**
+4. General lesson: before adding any protective layer, **read the mechanism that already exists,
+   and the comment sitting next to it.** The existing design is the authority; a reading of it
+   is not.
+
+*(Leftovers deliberately untouched: `.gitignore:377` still carries a dead `db_guard.py` comment
+and `KIMI.md` still names it. Harmless — Angela decides if they go.)*
+
+---
+
 # Tlamatini - CLAUDE.md
 
 This is the authoritative onboarding document for any AI assistant (Claude Code, Cursor, Gemini CLI, Antigravity IDE, etc.) working on the Tlamatini project. Read this file in full before making any changes, then follow the `@docs/claude/*.md` imports below — each specialized file is automatically included in your context.
@@ -44,7 +102,7 @@ This is the authoritative onboarding document for any AI assistant (Claude Code,
 - **ACPX runtime** (Agent Communication Protocol eXtension) — spawns external coding-agent CLIs (Claude Code, Codex, Cursor, Gemini, Qwen, Kiro/Kimi/iFlow/Kilocode/OpenCode/Pi/Droid/Copilot, and a Tlamatini self-host) as out-of-process children, brokered to the LLM as 12 `acp_*` tools and to the canvas as the visual **ACPXer** agent. Toolbar checkbox **ACPX** filters the entire ACPX/Skills tool surface in or out per-request
 - **External MCPs** (2026-06) — a config-driven UNIVERSAL MCP **client**: connect to and use the tools of **any** external MCP server declared in a JSON file (the `mcpServers` shape, like a Claude-Code `.mcp.json`), over **four transports** — `stdio` (a local command, e.g. a Docker `mcp/*` image / npx / uvx / python) plus `streamable-http`, legacy `sse`, and `websocket` for already-running servers — with up to 5 active at once. Engine `agent/external_mcp_manager.py` + catalog `agent/external_mcps.json` (preserved user state and sanitized tracked build input, resolved next to `config.json`); each remote tool is bound for the LLM as `ext__<server>__<tool>`; managed by 10 LLM supervisor tools (`external_mcp_status` / `reconnect` / `doctor` / `runtime_status` / `runtime_install` / `list_tools` / `call` / `import` / `set_active` / `wait`) and the **External ▸ MCPs** navbar dialog (searchable catalog, runtime strip, tick ≤5 active, drag a `.json` to import) over `/agent/external_mcps/` `…/activate/` `…/import/` `…/runtime_install/`. It is DISTINCT from the two built-in `Mcp`-model context providers (System-Metrics / Files-Search), from ACPX (which spawns coding-agent CLIs), and from the per-agent inline MCP clients (STM32er / Kalier). Companion **MCP Doctor** agent (#78, canvas + `chat_agent_mcp_doctor`) statically triages a catalogued MCP before you wire it. Full design contract: `docs/external_mcp_bulletproof_architecture.md`; how-to: `docs/claude/mcp-tools.md`
 - **Runtime Provisioner + two DEFAULT MCP servers** (2026-08-15) — the External MCP ecosystem ships almost entirely as `npx -y <pkg>` / `uvx <pkg>`, and a fresh Windows box has neither, so a perfect catalog entry used to die with `[WinError 2]`. `agent/runtime_provisioner.py` gives Tlamatini her **OWN private, self-provisioning** `node` / `npm` / `npx` / `pnpm` / `uv` / `uvx`: downloaded once on demand from the OFFICIAL upstreams into `%LOCALAPPDATA%\Tlamatini\runtimes` — **no admin, no system-PATH change, and NOT carried in the installer** the way Python/the JRE are (the release must stay under 2 GiB). Same pattern as Discoverer's private Go toolchain. Resolution is explicit config → existing Tlamatini private runtime → system PATH → known per-user locations; provisioning runs only for a missing manager, so it does not replace an already usable system tool. Five contracts, none to be weakened: *fail-open always*; *never block startup* (a pre-warm with everything present is a 0.000 s no-op that starts no thread); *atomic or absent* (`.partial-<pid>` → `os.replace`); *verify what upstream signs* (Node's `SHASUMS256.txt` is ENFORCED); and **spawn without a shell** — ⚠️ on Windows `npx` is a `.cmd` shim `CreateProcess` cannot execute, so `resolve_spawn()` rewrites it to `node.exe <npx-cli.js>` (and sees through a `cmd /c npx …` wrapper). Alongside it, `agent/external_mcp_defaults.py` ships **`memory`** (knowledge-graph, 9 tools) and **`sequential-thinking`** in EVERY installation, **both INACTIVE**. ⚠️ Those defaults live in **CODE**, not only in the JSON `build.py` writes: `external_mcps.json` is USER STATE that `apply_update.ps1` PRESERVES, so a JSON-only default would reach fresh installs and *nobody else* — `load_catalog()` seeds on the read path instead. A default the user DELETES is **tombstoned** and never resurrected; one they EDIT is never overwritten. LLM surface: `external_mcp_runtime_status` / `external_mcp_runtime_install`. Proven on a simulated fresh machine (stripped PATH): Node + uv downloaded and sha256-verified in 7 s, then real `server-memory 0.6.3` handshook and exposed its 9 tools. Contract: `docs/claude/recent-fixes.md` (2026-08-15); coverage `agent/test_runtime_provisioner.py`
-- **Skills system** — markdown-defined `SKILL.md` packages run by `SkillHarness`. The LLM invokes them through `list_skills` / `invoke_skill`. Built-in skills include `acp-router`, `summarize`, `setup-new-acpx-key`, `skill-creator`, `flow-making` (turn a plain objective into a canvas-loadable `.flw` by wrapping the FlowCreator engine — ships `scripts/make_flow.py` + `scripts/result_to_flw.py`; supersedes the legacy `tlamatini-flow-from-objective`), `code-review`, `security-audit`, `kali-pentest` (authorized Kali Linux / MCP-Kali-Server assessment runbook driving the Kalier agent), `tlamatini_*` (audit / lint / refactor helpers), and integration stubs (gmail, slack, github, jira, notion, todoist, trello, weather). Administered through the **ACPX-Skills navbar dropdown** (Browse / Configure / Diagnostics / Reload — 2026-05-17): Browse and Diagnostics are HTTP-backed read-only inspection; Configure mirrors the existing Mcps/Agents/Tools WebSocket toggle pattern (`set-skills` → `Skill.enabled`); Reload re-runs `boot_skills()` so disk edits show up without a server restart. The DB stays at "enumeration + enable/disable" only — permissions/budgets/body live in SKILL.md on disk
+- **Skills system** — markdown-defined `SKILL.md` packages run by `SkillHarness`. The LLM invokes them through `list_skills` / `invoke_skill`. Built-in skills include `acp-router`, `summarize`, `setup-new-acpx-key`, `skill-creator`, **`adding-external-mcp`** (the authoritative runbook for adding a NEW external MCP server — read it before `external_mcp_import`, before editing `external_mcps.json`, and before activating a server; see *HARD-STONED SKILLS* below), `flow-making` (turn a plain objective into a canvas-loadable `.flw` by wrapping the FlowCreator engine — ships `scripts/make_flow.py` + `scripts/result_to_flw.py`; supersedes the legacy `tlamatini-flow-from-objective`), `code-review`, `security-audit`, `kali-pentest` (authorized Kali Linux / MCP-Kali-Server assessment runbook driving the Kalier agent), `tlamatini_*` (audit / lint / refactor helpers), and integration stubs (gmail, slack, github, jira, notion, todoist, trello, weather). Administered through the **ACPX-Skills navbar dropdown** (Browse / Configure / Diagnostics / Reload — 2026-05-17): Browse and Diagnostics are HTTP-backed read-only inspection; Configure mirrors the existing Mcps/Agents/Tools WebSocket toggle pattern (`set-skills` → `Skill.enabled`); Reload re-runs `boot_skills()` so disk edits show up without a server restart. The DB stays at "enumeration + enable/disable" only — permissions/budgets/body live in SKILL.md on disk
 - **Self-Knowledge & Self-Modification** (2026-05-25) — the LLM carries a first-person self-reference file, `agent/Tlamatini.md`, injected into `prompt.pmt`'s `<self_knowledge>` block at prompt-build time by `agent/rag/config.py` (covers every chain; brace-escaped; fails open) — **but ONLY in a `--self-modify` build (2026-08-08)**: the whole `<self_knowledge>` section is sentinel-wrapped and DROPPED when `TlamatiniSourceCode/` is absent, replaced by one short honest line, cutting **≈15.7k tokens from EVERY request** (138,225 → 75,371 chars). Her source and her self-description ship together or not at all; `build.py` bundles `Tlamatini.md` only under the flag, and both `build_complete_*` wrappers default to OFF. An OPTIONAL `TlamatiniSourceCode/` directory at the install root — generated fresh by `copy_source_assets.py` (repo root) when `build.py --self-modify` is passed — holds her own complete, rebuildable source snapshot (all .py/.js/.css/.ps1/build scripts; media + secrets omitted/redacted; ships `_REBUILD_INSTRUCTIONS.md`) so she can read/modify/rebuild herself: present = a "self-able-modify" build, absent = "not-self-able-modify". See `docs/claude/architecture.md`
 - **Multi-model LLM support** (Ollama local, Anthropic Claude cloud, Qwen vision)
 - A full **PyInstaller packaging pipeline** (build.py -> installer -> standalone .exe; `--self-modify` ships the self-source tree)
@@ -82,6 +140,66 @@ This is the authoritative onboarding document for any AI assistant (Claude Code,
 ## ⚠️ Use ONLY Tlamatini's Agents When Asked (MANDATORY)
 
 When the user asks to **"use Tlamatini's agents"** — or names any pool agent (**Executer, Pythonxer, Playwrighter, Shoter, Mouser, Keyboarder, Kalier, STM32er**, … any of the 83) — you **MUST** perform the work with **only Tlamatini's pool agents**, never Claude Code's own built-in tools. Your shell is **only the launcher**: copy the agent to an isolated runtime dir, write a tailored `config.yaml`, run `python <agent>.py`; the agent does the work and writes its result to `<agent_dir_basename>.log`. For **visible / desktop** agents (a headed Playwrighter browser, an Executer/Pythonxer `execute_forked_window` console, Shoter/Mouser/Keyboarder) launch in the **foreground with `dangerouslyDisableSandbox: true`** so the window renders on the user's real desktop — the Bash sandbox otherwise hides the GUI in an isolated window station (it reports `WinSta0` but isn't visible), and `run_in_background` detaches it entirely. Do **NOT** substitute your own Bash / Read / Write / Playwright for the agents' job. This rule is re-injected at **every session start** by `.claude/hooks/announce_skills.py` (the SessionStart hook wired in `.claude/settings.json`). Full mechanics: memory `feedback_run_tlamatini_agents_visible`.
+
+---
+
+## 🪨 HARD-STONED SKILLS — BOTH SKILL SETS ARE TRACKED, PERMANENT, AND NEVER DROPPED (Angela, 2026-08-19)
+
+**This codebase carries TWO skill sets. Both are STONE. Every single one MUST be tracked in git.**
+
+A skill that *runs* but is **untracked is a skill that disappears** — on the next clone, on a fresh
+build, on a self-update, on any machine but this one. `adding-external-mcp` was exactly that: live
+and auto-loading since it was written, invisible to git until 2026-08-19. **That must never happen
+again.**
+
+### Set 1 — Tlamatini's own `SKILL.md` packages (`Tlamatini/agent/skills_pkg/`, **29**)
+
+Loaded at app start by `agent/acpx/service.py::boot_skills()`; invoked by the LLM through
+`list_skills` / `invoke_skill`; mirrored into the `Skill` DB table (enable/disable only) and
+administered from the **ACPX-Skills** navbar dropdown.
+
+`acp_router` · **`adding_external_mcp`** · `code_review` · `create_new_agent` · `create_new_mcp` ·
+`flow_making` · `github` · `gmail` · `hello_world` · `jira` · `kali_pentest` · `notion` ·
+`roblox_studio` · `security_audit` · `setup_new_acpx_key` · `skill_creator` · `slack` · `summarize` ·
+`tlamatini_allowed_hosts_tighten` · `tlamatini_csrf_exempt_audit` · `tlamatini_exec_report_row_adder` ·
+`tlamatini_flow_from_objective` · `tlamatini_flw_doctor` · `tlamatini_new_acp_agent` ·
+`tlamatini_planner_trace_replay` · `tlamatini_static_version_bumper` · `todoist` · `trello` · `weather`
+
+### Set 2 — Claude Code's skills for this repo (`.claude/skills/`, **5**)
+
+Discovered at session start; they encode how an assistant must work ON Tlamatini.
+
+`tlamatini-agent-creation` · `tlamatini-agent-naming` · `tlamatini-daily-chat-test` ·
+`tlamatini-self-modify-inclusion` · `tlamatini-self-update-inclusion`
+
+### The newest stone — `adding-external-mcp` (tracked 2026-08-19)
+
+The authoritative runbook for adding a **new external MCP server** to Tlamatini's universal MCP
+client. `runtime: in-process`; budget 15 iterations / 300 s / 32k tokens; `network: allow`, `db: deny`;
+reads `external_mcps.json` + `external_mcp_manager.py` + `external_mcp_defaults.py` +
+`runtime_provisioner.py` and writes only `external_mcps.json`. It requires the **11** tools
+`external_mcp_import` / `set_active` / `status` / `doctor` / `wait` / `list_tools` / `call` /
+`reconnect` / `runtime_status` / `runtime_install` + `chat_agent_mcp_doctor`. Inputs `server_key`,
+`server_config`, `activate`, `verify`; outputs `import_status`, `activation_status`, `doctor_report`,
+`tools_discovered`. Covers the whole lifecycle — catalog import → transport selection → activation →
+runtime provisioning → diagnosis → verification → troubleshooting. **Read it BEFORE calling
+`external_mcp_import`, BEFORE editing `external_mcps.json`, and BEFORE activating a server.**
+639 lines / 28,218 bytes across `SKILL.md` (225) + `references/external_mcp_catalog_format.md` (99),
+`transport_guide.md` (110), `troubleshooting.md` (118), `llm_reflection_research.md` (87).
+Companion docs: `docs/claude/mcp-tools.md` → *External MCPs*, `docs/external_mcp_bulletproof_architecture.md`.
+
+### Standing rules (do NOT weaken)
+
+1. **A new skill in either set is COMMITTED in the same pass it is written.** Finish by running
+   `git status` and confirming **no `??` under `agent/skills_pkg/` or `.claude/skills/`**.
+2. **Never delete, rename, or disable a shipped skill** unless Angela asks in that same turn.
+   Renaming breaks `Skill.name` rows, the `requires_tools` cross-check in Diagnostics, and every
+   prompt that invokes it by name.
+3. `skills_pkg/` ships to users through `build.py`; `.claude/skills/` is tracked and pushed
+   **public** — never put a secret in either.
+4. Authoring guide: `Tlamatini/.skills/create_new_skill.md`; validate with
+   `skills_pkg/skill_creator/scripts/quick_validate.py`; a skill that fails to parse is silently
+   **skipped** at boot, so validate before assuming it registered.
 
 ---
 
@@ -235,7 +353,7 @@ Tlamatini/                          # Git root
 │   │   │   ├── js/                 # 37 JS modules (10 chat + 14 ACP + 1 ACP entry + 12 shared, incl. dialog_policy.js and release_notes_renderer.js)
 │   │   │   ├── img/Tlamatini.ico   # App icon (web pages + console window + .exe)
 │   │   │   └── sounds/             # notification.wav, hypervisor_alert.wav
-│   │   └── migrations/             # Django migrations — 193 total (latest: 0193_add_latexer_demo_prompts; 0191/0192/0193 add the LaTeXer agent + Chat-Agent-LaTeXer tool row + demo prompts; 0188/0189/0190 add PDFer; 0186/0187 the wrapped FlowCreator + its Step-by-Step opener)
+│   │   └── migrations/             # Django migrations — 194 total (latest: 0194_add_deep_research_demo_prompt — seeds the Deep-Research demo prompt `idPrompt=118`, `category='getting_started'`, `sort_rank=100`, guarded by `agent/test_deep_research_prompt.py`; 0193_add_latexer_demo_prompts; 0191/0192/0193 add the LaTeXer agent + Chat-Agent-LaTeXer tool row + demo prompts; 0188/0189/0190 add PDFer; 0186/0187 the wrapped FlowCreator + its Step-by-Step opener)
 │   │
 │   ├── manage.py                   # Django entrypoint; tees stdout/stderr into tlamatini.log; sets console window title + icon
 │   ├── tlamatini.log               # Unified application log (console + Django loggers)

@@ -31,7 +31,7 @@ Enforced by: `test_private_data_guard.py` (automated tests — git-history integ
 
 **Welcome, Kimi!** This is the self-contained onboarding and reference document for working on the **Tlamatini** project. Read it in full before making any change. It is the Kimi sibling of `CLAUDE.md` (Claude Code's manifest + `@docs/claude/*` imports) and `GEMINI.md` (Gemini CLI's knowledge base): same mandatory rules, same architecture contracts, tuned for Kimi. Because Kimi has **no `@`-file auto-import mechanism**, everything an AI maintainer needs day-to-day is inline here; deeper topic files are listed in §25 as consult-on-demand.
 
-Every count in this file was **re-verified against source on 2026-08-17 for the v1.48.17 release** (not copied from docs, which drift). If a count here disagrees with a hand-written doc elsewhere, re-run the source inventory and fix every active surface together.
+Every count in this file was **re-verified against source on 2026-08-19 for the v1.48.17 release** (not copied from docs, which drift). If a count here disagrees with a hand-written doc elsewhere, re-run the source inventory and fix every active surface together.
 
 ---
 
@@ -74,7 +74,7 @@ Every count in this file was **re-verified against source on 2026-08-17 for the 
 - **Current release**: **v1.48.17** (annotated tag, 2026-08-16; same-day lineage `v1.48.15` encoding-safe Grepper + closed verdict vocabulary → `v1.48.16` themed popups + frozen-bundle carriage proof → `v1.48.17` Escape-dismissal standardization + sealed updater). SemVer; runtime single source of truth = annotated git tags; see §16
 - **Python**: 3.12.10 (carried interpreter under `<repo>/python` is build-provisioned — never use it to run builds)
 
-**Verified counts (2026-08-17, counted from source and an isolated live Django tool build):**
+**Verified counts (2026-08-19, counted from source and an isolated live Django tool build; skill list confirmed live via `tlamatini_list_skills`):**
 
 | Surface | Count | Ground truth |
 |---|---|---|
@@ -85,14 +85,14 @@ Every count in this file was **re-verified against source on 2026-08-17 for the 
 | External-MCP supervisor tools | **10** (+ dynamic `ext__*`) | `_SUPERVISOR_TOOL_NAMES` in `agent/external_mcp_manager.py` |
 | **Built-in Multi-Turn tool surface** | **107** (+ dynamic) | 20 + 65 + 12 + 10 from isolated `get_mcp_tools()` |
 | Root stdio MCP server tools | **104** | 87 agent launchers + 7 management + 10 ACPX (`tlamatini_mcp_server.py`) |
-| SKILL.md packages | **28** | `agent/skills_pkg/` (confirmed live via `tlamatini_list_skills`) |
+| SKILL.md packages | **29** | `agent/skills_pkg/` (confirmed live via `tlamatini_list_skills`) |
 | ACPX external CLI agent_ids | **14** | `agent/acpx/agent_registry.py` `DEFAULT_ACP_AGENTS` |
 | DB models | **17** | `agent/models.py` |
 | Migrations | **194** | `agent/migrations/*.py`, excluding `__init__.py` |
 | Frontend JS modules | **37** | `agent/static/agent/js/*.js` |
 | HTTP routes / view functions | ~170 / 205 | `agent/urls.py`, `agent/views.py` (12,585 lines) |
 
-Feature headlines: advanced RAG (FAISS + BM25, RRF fusion, context budgeting, memory-insufficient fallback) · Multi-Turn operator loop binding the **full enabled tool surface** · Visual Workflow Designer (ACP canvas) compiling `.flw` → `config.yaml` pools via a backend Flow Compiler + Agent Contract registry · ACPX runtime spawning 14 external coding-agent CLIs · universal External-MCP client (4 transports, ≤5 active) with a private Node/uv provisioner and inactive Memory/Sequential-Thinking defaults · 28-package Skill system · self-knowledge + self-modification (ships her own rebuildable source) · multi-model LLM via Ollama (local + cloud) / Anthropic / Qwen vision · full PyInstaller build → installer pipeline with secret-separated public/private release twins.
+Feature headlines: advanced RAG (FAISS + BM25, RRF fusion, context budgeting, memory-insufficient fallback) · Multi-Turn operator loop binding the **full enabled tool surface** · Visual Workflow Designer (ACP canvas) compiling `.flw` → `config.yaml` pools via a backend Flow Compiler + Agent Contract registry · ACPX runtime spawning 14 external coding-agent CLIs · universal External-MCP client (4 transports, ≤5 active) with a private Node/uv provisioner and inactive Memory/Sequential-Thinking defaults · 29-package Skill system · self-knowledge + self-modification (ships her own rebuildable source) · multi-model LLM via Ollama (local + cloud) / Anthropic / Qwen vision · full PyInstaller build → installer pipeline with secret-separated public/private release twins.
 
 ---
 
@@ -312,7 +312,7 @@ Tlamatini/                          # Git root (C:\Development\Tlamatini)
         │                           #   session_store (NDJSON), windows_spawn, permissions, service
         ├── skills/                 # Skill runtime: registry (30 s staleness), harness (budgets,
         │                           #   permissions, NDJSON audit), frontmatter, io_contract
-        ├── skills_pkg/             # 28 SKILL.md packages (+ _meta/ schema+lint)
+        ├── skills_pkg/             # 29 SKILL.md packages (+ _meta/ schema+lint)
         ├── rag/                    # RAG: factory, interface, retrieval, splitters, loaders,
         │                           #   prompts, utils, interaction + chains/{basic,history_aware,unified}
         ├── rag_enhancements.py     # Metadata extraction (code structure, file roles, deps)
@@ -470,13 +470,14 @@ Distinct from all four: the per-agent inline MCP clients (STM32er's template MCP
 
 ## 11. Skills System
 
-Markdown-defined `SKILL.md` packages run by `SkillHarness`. Disk is the source of truth: `agent/skills/registry.py` discovers packages from `agent/skills_pkg/` (30 s staleness reload), `boot_skills()` mirrors them into the `Skill` DB table (enumeration + enable/disable only). Frontmatter contract: `metadata.tlamatini` carries runtime / permissions / budget / inputs / outputs / triggers; body ≤ 8 KiB. Runtimes: **`in-process`** (safe envelope through the unified agent's existing tools, with budget caps on iterations/seconds/tokens) or **`acpx`** (body rendered as a task to an ACP child). Every invocation writes an NDJSON audit record under `~/.tlamatini/skill-audit/`. LLM entry points: `list_skills` / `invoke_skill`. Admin surface: the **ACPX-Skills navbar dropdown** (Configure writes only `Skill.enabled`; Reload re-runs `boot_skills()`).
+Markdown-defined `SKILL.md` packages run by `SkillHarness`. Disk is the source of truth: `agent/skills/registry.py` discovers packages from `agent/skills_pkg/` (30 s staleness reload), `boot_skills()` mirrors them into the `Skill` DB table (enumeration + enable/disable only). Frontmatter contract: `metadata.tlamatini` carries runtime / permissions / budget / inputs / outputs / triggers; body ≤ 8 KiB. Runtimes: **`in-process`** (safe envelope through the unified agent's existing tools, with budget caps on iterations/seconds/tokens) or **`acpx`** (body rendered as a task to an ACP child). Every invocation writes an NDJSON audit record under `~/.tlamatini/skill-audit/`. LLM entry points: `list_skills` / `invoke_skill`. Admin surface: the **ACPX-Skills navbar dropdown** (Configure writes only `Skill.enabled`; Reload re-runs `boot_skills()`). **Runtime usage (verified live 2026-08-19): all 29 shipped packages run `in-process`; the `acpx` runtime is fully supported but no shipped skill uses it yet** — `skill-creator` scaffolds either, and an `acpx`-runtime skill MUST set `acpx_agent` to a registered agent_id (§10).
 
-**The 28 packages** (verified live via `tlamatini_list_skills`, 2026-07-22):
+**The 29 packages** (verified live via `tlamatini_list_skills`, 2026-08-19):
 
 | Skill | Purpose |
 |---|---|
 | `acp-router` | Pick the right ACPX agent_id from plain-language intent and `acp_spawn` it |
+| `adding-external-mcp` | **Canonical 8-step lifecycle for adding a NEW External-MCP server** (2026-08-19): classify transport (stdio / streamable-http / sse / websocket) → build the `mcpServers`-shape config → `external_mcp_import` (idempotent upsert) → `external_mcp_doctor` static triage → `external_mcp_set_active` (MAX_ACTIVE=5 cap) → `external_mcp_wait` (blocks through cold npx/uvx/Docker pulls) → `external_mcp_status` + `external_mcp_list_tools` verify → `external_mcp_call` test. READ BEFORE calling `external_mcp_import`, editing `external_mcps.json`, or activating any server. Ships 4 reference docs (`references/`: catalog format, transport guide, troubleshooting, LLM-reflection research notes) |
 | `code-review` | Senior-engineer git-diff review → verdict + line-anchored findings |
 | `create-new-agent` | Authoritative 8-step contract for scaffolding a new workflow agent |
 | `create-new-mcp` | Authoritative reference for adding a tool / MCP context provider / both |
@@ -826,7 +827,7 @@ Hardcoded assumptions (know before changing these subsystems):
 8. The web port is configurable (`django_port`, §5); still genuinely hardcoded: direct `daphne`/`uvicorn` launches, `:8765`/`:50051` helpers, TeleTlamatini's `tlamatini.base_url`.
 9. Carried-Python media libs: Recorder/Camcorder/AudioPlayer/VideoPlayer/Whisperer run under the CARRIED Python (`<install>/python`), NOT the frozen exe — numpy + cv2 must exist in BOTH Pythons; `build.py` aborts otherwise. A dep pinned in `requirements.txt` but missing from the carried Python crashes the pool agent at runtime.
 10. Frontend `let`-not-`const` for cross-file mutable globals (§15, const-poison).
-11. Count discipline: the v1.48.17 source inventory is 87 workflow agents, 65 wrapped chat agents, 107 built-in Multi-Turn tools (20 core + 65 wrapped + 12 ACPX/Skill + 10 External-MCP supervisors), 104 root stdio MCP tools, 28 runtime skills, 194 migrations, and 37 JavaScript modules. Dynamic `ext__*` remote tools are reported separately. Historical release notes may retain their dated counts; active guidance must be re-verified from source and updated together.
+11. Count discipline: the v1.48.17 source inventory is 87 workflow agents, 65 wrapped chat agents, 107 built-in Multi-Turn tools (20 core + 65 wrapped + 12 ACPX/Skill + 10 External-MCP supervisors), 104 root stdio MCP tools, 29 runtime skills, 194 migrations, and 37 JavaScript modules. Dynamic `ext__*` remote tools are reported separately. Historical release notes may retain their dated counts; active guidance must be re-verified from source and updated together.
 
 Common pitfalls (deduplicated; the dated fix contracts live in `docs/claude/recent-fixes.md`):
 
@@ -886,7 +887,7 @@ python Tlamatini/manage.py runserver --noreload
 | Agent templates (87) | `Tlamatini/agent/agents/<name>/` |
 | Flow session pools | `Tlamatini/agent/agents/pools/<session_id>/` |
 | Chat-agent runtime copies | `Tlamatini/agent/agents/_chat_runs_/` |
-| Skills packages (28) | `Tlamatini/agent/skills_pkg/<name>/SKILL.md` |
+| Skills packages (29) | `Tlamatini/agent/skills_pkg/<name>/SKILL.md` |
 | Skill audit log | `~/.tlamatini/skill-audit/` |
 | ACPX transcripts | `agent/acpx/session_store.py` FileSessionStore (NDJSON) |
 | Transient scratch | `<app-root>/Temp/` (`TLAMATINI_TEMP`) |
@@ -958,6 +959,6 @@ From the very start of a session, perform the work with **Tlamatini's OWN** agen
 
 ---
 
-*KIMI.md — version-aligned 2026-08-17 against source ground truth for v1.48.17 (87 agent templates / 65 wrapped `chat_agent_*` specs / 107 built-in Multi-Turn tools / 104 root `mcp__tlamatini__*` tools / 28 skills / 194 migrations / 37 JS modules / 11 CSS files / 89 `agent/test_*.py` files / 7 headed e2e suites). Post-release changes swept in: the WAL-safe `sqlite_copy.py` engine replacing `db_guard.py` (Backup database / Set DB / hot-swap all online-backup-API + sidecar-hygienic now, §6) and the Ollama-Pro-or-higher operating requirement (§23). Sibling files: CLAUDE.md (Claude Code), GEMINI.md (Gemini CLI). Counts verified from disk, manifest, and isolated live tool construction; file line counts and JS sub-group counts re-verified against source again on 2026-08-18 (no functional drift since v1.48.17); when they drift again, re-verify from source — never copy from docs.*
+*KIMI.md — version-aligned 2026-08-19 against source ground truth for v1.48.17 (87 agent templates / 65 wrapped `chat_agent_*` specs / 107 built-in Multi-Turn tools / 104 root `mcp__tlamatini__*` tools / 29 skills / 194 migrations / 37 JS modules / 11 CSS files / 89 `agent/test_*.py` files / 7 headed e2e suites). Post-release changes swept in: the WAL-safe `sqlite_copy.py` engine replacing `db_guard.py` (Backup database / Set DB / hot-swap all online-backup-API + sidecar-hygienic now, §6), the Ollama-Pro-or-higher operating requirement (§23), migration 0194's Deep-Internet-Research Getting-Started catalog prompt, and the 29th skill `adding-external-mcp` (§11). Sibling files: CLAUDE.md (Claude Code), GEMINI.md (Gemini CLI). Counts verified from disk, manifest, and isolated live tool construction; file line counts and JS sub-group counts re-verified against source again on 2026-08-18 (no functional drift since v1.48.17); when they drift again, re-verify from source — never copy from docs.*
 
 *Tlamatini — "one who knows". Created by Angela López Mendoza · @angelahack1 · XAIHT.*

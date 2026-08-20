@@ -118,6 +118,7 @@ The `GET` payload also carries a **`runtime`** block (availability + path + `sou
 - **BOM-tolerant** catalog read (`utf-8-sig`).
 - The **command watchdog exempts the live external-MCP child PIDs** (`external_mcp_root_pids`) so its idle-child reaper never kills a healthy MCP server.
 - Full design contract: `docs/external_mcp_bulletproof_architecture.md` (consult-on-demand, not auto-imported).
+- **⛏️ READ THE SKILL FIRST — `adding-external-mcp`** (`agent/skills_pkg/adding_external_mcp/`; a **HARD-STONED** skill, tracked 2026-08-19 — see CLAUDE.md → *HARD-STONED SKILLS*). It is the authoritative step-by-step runbook for this whole subsystem: catalog import → transport selection → activation (≤5) → runtime provisioning → diagnosis → verification → troubleshooting, with four reference files covering the catalog format, the transports, the failure modes, and the LLM-reflection research behind it. **Read it BEFORE calling `external_mcp_import`, BEFORE editing `external_mcps.json`, and BEFORE activating a server.** It declares `runtime: in-process`, `network: allow`, `db: deny`, writes only `external_mcps.json`, and requires the 10 supervisor tools plus `chat_agent_mcp_doctor`.
 
 ### Static triage from chat: the MCP Doctor agent (#78)
 
