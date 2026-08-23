@@ -110,7 +110,7 @@
         "server.py"
       ],
       "env": {
-        "GOOGLE_API_KEY": "AIzaSyBsHeUvyicTy3HHQg7fpChbPheHWbpIvCg"
+        "GOOGLE_API_KEY": "<EXTMCP_YOUTUBE_GOOGLE_API_KEY goes here>"
       },
       "transport": "stdio"
     },
