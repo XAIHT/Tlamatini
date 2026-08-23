@@ -135,3 +135,4 @@
 - [Unreal 5.8 scaffold + VS-Tools fix](project_unreal_scaffold_vstools_fix.md) — XaihtUnrealEngineMCP scaffolder UE5.8+VS2026; bundle pre-fixed VisualStudioTools plugin. Not pushed.
 - [ImageCreator dropped](sadstoryaboutimagecreator.md) — Ollama image-gen macOS-only; torch-cpu blocker. Don't attempt.
 - [Exec-safety DISCARDED](project_external_exec_safety_layer.md) — ⚠️ DISCARDED 2026-05-29, history only ([fork-bomb](project_pythonxer_forkbomb_fix.md)).
+- [NetSpeed-Calculator #88 DONE](project_netspeed_calculator_agent.md) — fully wired (262+65+10 tests, 12-pass audit 91/91); 4 endpoint bugs + the never-ship-a-silent-zero rule + the spaced-impostor Agent row lesson.

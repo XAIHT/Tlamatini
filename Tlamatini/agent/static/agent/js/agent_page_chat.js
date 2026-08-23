@@ -1227,6 +1227,45 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
     // Template fields: video_pathfilenames, expected_motion, num_frames,
     //                  frame_sampling, motion_gate, motion_threshold, roi,
     //                  interpreter_model_1/2, merging_model, llm.host/token
+    // ── NetSpeed-Calculator ──────────────────────────────────────────
+    // Template fields: action, providers, min_successful_providers,
+    //                  parallel_streams, test_duration_seconds, warmup_seconds,
+    //                  sample_interval_seconds, max_bytes_per_stream,
+    //                  upload_payload_mb, request_timeout, latency_samples,
+    //                  measure_bufferbloat, outlier_rejection, trim_percent,
+    //                  confidence_level, aggregation, heterogeneity_i2_threshold,
+    //                  preflight, command_timeout, output_dir, save_json
+    } else if (lower === 'netspeed-calculator' || lower === 'netspeed_calculator') {
+        set('action', pairs.action);
+        set('providers', pairs.providers);
+        set('outlier_rejection', pairs.outlier_rejection);
+        set('aggregation', pairs.aggregation);
+        set('output_dir', pairs.output_dir);
+        // Counts stay integers; anything that can sensibly be fractional is parsed
+        // as a float, because parseInt('0.25') is 0 and would silently turn the
+        // sampling interval into a busy-loop.
+        for (const k of ['min_successful_providers', 'parallel_streams',
+            'test_duration_seconds', 'max_bytes_per_stream', 'upload_payload_mb',
+            'request_timeout', 'latency_samples', 'heterogeneity_i2_threshold',
+            'command_timeout']) {
+            if (pairs[k] !== undefined && pairs[k] !== '') {
+                const n = parseInt(pairs[k], 10);
+                if (!Number.isNaN(n)) config[k] = n;
+            }
+        }
+        for (const k of ['warmup_seconds', 'sample_interval_seconds',
+            'trim_percent', 'confidence_level']) {
+            if (pairs[k] !== undefined && pairs[k] !== '') {
+                const n = parseFloat(pairs[k]);
+                if (!Number.isNaN(n)) config[k] = n;
+            }
+        }
+        for (const k of ['measure_bufferbloat', 'preflight', 'save_json']) {
+            if (pairs[k] !== undefined && pairs[k] !== '') {
+                config[k] = (String(pairs[k]).toLowerCase() === 'true' || pairs[k] === true);
+            }
+        }
+
     } else if (lower === 'video-analyzer' || lower === 'video_analyzer') {
         set('video_pathfilenames', pairs.video_pathfilenames || pairs.video_path || pairs.video);
         set('expected_motion', pairs.expected_motion);
@@ -2055,6 +2094,7 @@ function _agentPurpose(canonicalName) {
         'Starter': 'Entry point, launches first agents',
         'Ender': 'Terminates all agents, launches Cleaners',
         'Executer': 'Shell commands',
+        'NetSpeed-Calculator': 'Measures real Internet throughput, latency, jitter and bufferbloat across several keyless providers (RFC 6349)',
         'Pythonxer': 'Inline Python execution',
         'Crawler': 'Web crawling with LLM analysis',
         'Googler': 'Google search and text extraction',

@@ -100,6 +100,20 @@ _PARAMETRIZER_OUTPUT_FIELDS: dict[str, tuple[str, ...]] = {
         "frames_analyzed", "interpreter_model_1", "interpreter_model_2",
         "merging_model", "status", "response_body",
     ),
+    # NetSpeed-Calculator publishes the WHOLE measurement, not just the headline:
+    # a downstream Forker branches on `success` / `bufferbloat_grade`, an Apirer
+    # posts `download_mbps` to a dashboard, and `json_path` hands the full
+    # artifact (per-provider detail + raw samples) to a File-Interpreter.
+    "netspeed_calculator": (
+        "action", "status", "success",
+        "providers_attempted", "providers_ok", "providers_failed",
+        "download_mbps", "upload_mbps", "download_ci95", "upload_ci95",
+        "latency_ms", "jitter_ms", "packet_loss_pct",
+        "bufferbloat_ms", "bufferbloat_grade",
+        "aggregation", "heterogeneity_i2", "samples",
+        "isp", "client_ip", "server_location", "json_path", "stage",
+        "response_body",
+    ),
     "file_extractor": ("file_path", "response_body"),
     "prompter": ("model", "response_body"),
     "flowcreator": ("model", "status", "flw_path", "flow_filename", "agent_count", "connection_count", "response_body"),

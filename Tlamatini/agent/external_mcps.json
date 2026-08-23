@@ -99,9 +99,37 @@
       "transport": "stdio",
       "description": "Structured step-by-step reasoning with branching and revision. Official @modelcontextprotocol reference server. Needs Node (Tlamatini provisions it automatically).",
       "_tlamatini_default": true
+    },
+    "youtube": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "E:\\Development\\Youtube-MCP",
+        "python",
+        "server.py"
+      ],
+      "env": {
+        "GOOGLE_API_KEY": "AIzaSyBsHeUvyicTy3HHQg7fpChbPheHWbpIvCg"
+      },
+      "transport": "stdio"
+    },
+    "IDM_MCP_Core": {
+      "command": "C:\\Development\\IDM\\artifacts\\local\\IdmMcp.McpHost.exe",
+      "args": [
+        "--transport",
+        "stdio",
+        "--role",
+        "core"
+      ],
+      "env": {},
+      "transport": "stdio"
     }
   },
   "active": [
-    "memory"
+    "IDM_MCP_Core",
+    "memory",
+    "sequential-thinking",
+    "youtube"
   ]
 }

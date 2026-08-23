@@ -2,35 +2,148 @@
 #
 # Freeform query — Google dork operators work here verbatim, e.g.:
 #   query: 'intitle:"index of" site:example.com'
-query: "example search topic"
+#
+# ⚠️ DEFAULTS TO EMPTY ON PURPOSE (2026-08-23). It used to default to the
+# placeholder "example search topic", and because the wrapped-agent launcher
+# omits empty values to protect template defaults, that placeholder could NOT be
+# cleared from a structured search — it was silently APPENDED to every dork
+# built from `exact`/`filetypes`/`sites`, turning a precise file hunt into a
+# search for a phrase that appears nowhere. Set EITHER this or the structured
+# fields below; the agent refuses politely if both end up empty.
+query: ""
 
-# --- Structured Google-dork builder (all OPTIONAL) ---------------------------
-# These are APPENDED to `query` (which is preserved as-is), so you can mix a
-# freeform query with structured operators. Leave empty to ignore.
-site: ""            # -> site:example.com   (restrict to one host)
-filetype: ""        # -> filetype:pdf       (accepts "pdf", "filetype:pdf" or "ext:pdf")
-intitle: ""         # -> intitle:...        (multi-word values are auto-quoted)
+# ═══════════════════════════════════════════════════════════════════════════
+# GOOGLE DORK BUILDER  (every field OPTIONAL; all are APPENDED to `query`,
+# which is preserved verbatim, so freeform + structured operators mix freely)
+#
+# The builder enforces Google's syntax rules for you, because breaking any one
+# of them silently turns a filter into an ordinary keyword search:
+#   · NO space after the colon  (`filetype: pdf` filters NOTHING)
+#   · exact titles in "double quotes"
+#   · OR in UPPERCASE, alternatives in (parentheses)
+#   · unwanted terms prefixed with -  (no space after the hyphen)
+# ═══════════════════════════════════════════════════════════════════════════
+
+# --- PRESET: one-shot intent. Fills only the fields you leave EMPTY, so any
+#     field you set explicitly still wins.
+#       book        -> (filetype:epub OR filetype:pdf), minus review/summary
+#                      noise and the paywalled aggregators
+#       book_public -> the same formats, restricted to libraries that lawfully
+#                      host COMPLETE works (Gutenberg, Standard Ebooks,
+#                      Archive.org, Open Library, Wikisource, DOAB)
+#       paper       -> filetype:pdf on .edu/.gov/arXiv/PubMed/DOAJ/CORE/Zenodo
+#       manual      -> filetype:pdf inurl:manual
+#       docs        -> doc/docx/pdf      slides -> ppt/pptx
+#       sheets      -> xls/xlsx/csv      directory -> intitle:"index of"
+preset: ""
+
+# --- THE FILE GRABBER -------------------------------------------------------
+# `filetypes` accepts ONE or MANY. Several become a parenthesised OR-group —
+# (filetype:epub OR filetype:pdf) — so a single query catches the work in
+# whichever format actually exists. Class aliases expand automatically:
+#   ebook -> epub,pdf,mobi,azw3   book -> epub,pdf   docs -> doc,docx,pdf
+#   slides -> ppt,pptx   sheets -> xls,xlsx,csv   text -> txt,rtf
+#   code -> py,js,java,c,cpp,go,rs   data -> csv,json,xml,sql
+# Bare (`pdf`), prefixed (`filetype:pdf`) and `ext:pdf` are all accepted.
+filetypes: []       # e.g. [epub, pdf]  or  "ebook"  or  "pdf"
+filetype: ""        # back-compat single value (merged with `filetypes`)
+
+# --- WHERE TO LOOK ----------------------------------------------------------
+sites: []           # -> (site:a OR site:b)   e.g. [gutenberg.org, archive.org]
+                    #    a bare TLD works too: [.edu, .gov]
+site: ""            # back-compat single value (merged with `sites`)
+exclude_sites: []   # -> -site:x   kill paywalled stubs, e.g. [scribd.com]
+
+# --- WHAT TO MATCH ----------------------------------------------------------
+exact: ""           # -> "exact phrase"      (the book/report title goes here)
+author: ""          # -> "author name"       (quoted phrase, not an operator)
+intitle: ""         # -> intitle:...         (multi-word values auto-quoted)
+allintitle: ""      # -> allintitle:...      (applies to EVERY following word)
 inurl: ""           # -> inurl:...
-intext: ""          # -> intext:...         (multi-word values are auto-quoted)
-exact: ""           # -> "exact phrase"
+allinurl: ""        # -> allinurl:...
+intext: ""          # -> intext:...          (multi-word values auto-quoted)
+allintext: ""       # -> allintext:...
+inanchor: ""        # -> inanchor:...        (text of links POINTING at a page)
+allinanchor: ""     # -> allinanchor:...
+
+# --- ALTERNATIVES, PROXIMITY, RANGES ---------------------------------------
+or_terms: []        # -> (a OR b OR c)       any-of alternatives
+around_terms: []    # -> x AROUND(n) y       exactly two terms
+around_distance: 5  #    max words BETWEEN them
+numeric_range: ""   # -> 2020..2026          years, prices, model numbers
+
+# --- TIME -------------------------------------------------------------------
 before: ""          # -> before:YYYY-MM-DD
 after: ""           # -> after:YYYY-MM-DD
+
+# --- DISCOVERY OPERATORS ----------------------------------------------------
+related: ""         # -> related:example.com   sites similar to this one
+cache: ""           # -> cache:example.com/page  Google's stored copy
+define: ""          # -> define:word
+source: ""          # -> source:publisher       (Google News)
+
+# --- NOISE REMOVAL ----------------------------------------------------------
 exclude: []         # -> -term for each (list, or comma/space-separated string)
 
 # When true, de-duplicate results by full URL instead of by domain, so a
 # single-site dork can return many URLs from the same host. Auto-enabled when
-# the effective query contains a `site:` operator.
+# the effective query contains a `site:` operator (including an OR-group).
 allow_same_domain: false
 
 number_of_results: 5
+
+# ═══════════════════════════════════════════════════════════════════════════
+# SEARCH RESILIENCE  (redesigned 2026-08-23 after a measured total failure)
+#
+# What was measured that day: the old path returned ZERO results for EVERY
+# query — including a plain keyword control with no operators at all. Google
+# timed out waiting for its result container, and the single DuckDuckGo
+# fallback answered "Unexpected error. Please try again." The SAME dork run
+# through a HEADED real-Chrome window returned 10 real EPUB URLs immediately.
+#
+# Three changes came out of that, and none of them is a trick:
+#   1. TIER 0 uses plain urllib against four server-rendered routes BEFORE
+#      Playwright is imported: DuckDuckGo HTML, Bing, DuckDuckGo Lite, Mojeek.
+#      A links_only success therefore launches no browser at all.
+#   2. TIER 1 uses HEADED real Chrome by default (bundled Chromium fallback)
+#      across seven direct-result browser routes with bounded jittered retries.
+#   3. An explicit `engines` list pins Tier 1 and skips Tier 0; every result is
+#      attributed to the route that actually answered.
+#
+# The engine that actually answered is always named in the log, so a report can
+# never imply Google answered when Mojeek did.
+# ═══════════════════════════════════════════════════════════════════════════
+
+# Applies only when Tier 1 or text/raw result fetching needs a browser.
+# false = a VISIBLE real-Chrome window (default, and what actually works).
+# true  = headless: faster and unattended, but MEASURABLY more refusal-prone.
+headless: false
+
+# Browser-engine order. Empty = Tier 0 first, then the built-in Tier-1 chain:
+#   duckduckgo-html, duckduckgo-lite, mojeek, bing, google, brave, startpage
+# An explicit list skips Tier 0. Pin [google] for the FULL dork vocabulary —
+# `before:`/`after:`/`AROUND()`/numeric ranges are Google-only; `site:` and
+# `filetype:` work everywhere.
+engines: []
+
+# Tries per engine before falling through, with jittered backoff between them.
+attempts_per_engine: 2
 
 # text | raw | links_only
 #   text        : fetch each result page, extract visible text
 #   raw         : fetch each result page, return raw HTML
 #   links_only  : DON'T fetch pages — just return the SERP hit list (url + title).
-#                 Fast; ideal for dork enumeration / recon feeding a downstream agent.
+#                 Fast; ideal for dork enumeration / file hunting, and the RIGHT
+#                 mode when the hits are PDFs/EPUBs (there is no page text to
+#                 extract from a binary — you want the download URLs).
 content_mode: text
 
 output_file: "googler_results.txt"
 target_agents: []
 source_agents: []
+
+# ── RESPONSIBLE USE ────────────────────────────────────────────────────────
+# These operators only locate PUBLIC URLs that Google has already indexed; they
+# do not bypass any access control. Whether a located file may be downloaded or
+# used is a separate question of copyright and licence — which is why the
+# `book_public` preset points at public-domain and openly-licensed libraries.

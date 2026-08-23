@@ -94,6 +94,9 @@ TIER_D = [
     "chat_agent_nmapper",
     "chat_agent_discoverer",
     "chat_agent_crawler",
+    # Reaches remote hosts like Crawler, and additionally SATURATES the link
+    # with ~100-200 MB of real traffic per full run (metered-data cost).
+    "chat_agent_netspeed_calculator",
 ]
 
 # ── The original command/script runners (unchanged) ─────────────────────────

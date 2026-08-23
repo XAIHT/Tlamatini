@@ -7,8 +7,8 @@
 #   Every line of this file was written by Angela López Mendoza.
 # ═══════════════════════════════════════════════════════════════════
 #   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
-# Googler Agent - Google search agent with content extraction
-# Action: Triggered by upstream -> Search Google for query -> Fetch top N results ->
+# Googler Agent - resilient indexed-web search agent with content extraction
+# Action: Triggered by upstream -> Search the engine chain -> Fetch top N results ->
 #         Extract readable text -> Save results to file -> Trigger downstream
 
 import os
@@ -20,8 +20,11 @@ os.environ['FOR_DISABLE_CONSOLE_CTRL_HANDLER'] = '1'
 import re
 import time
 import yaml
+import random
 import logging
 import subprocess
+import urllib.parse
+import urllib.request
 # -- conhost.exe orphan guard ------------------------------------------
 # When Tlamatini's runtime launches us with DETACHED_PROCESS we have no
 # console attached. Any child we Popen WITHOUT CREATE_NO_WINDOW makes
@@ -577,69 +580,468 @@ def _fetch_page_text(page, url: str) -> Dict:
     }
 
 
-def _search_google_playwright(page, query: str, number_of_results: int,
-                              allow_same_domain: bool = False) -> List[Dict]:
-    """Perform a Google search using Playwright and return result dicts ({url, title})."""
-    page.goto("https://www.google.com", wait_until="domcontentloaded", timeout=30000)
-    _dismiss_google_consent(page)
+##############################################################################
+# THE SEARCH-ENGINE CHAIN
+#
+# WHY THIS EXISTS (measured 2026-08-23): the old two-engine path returned ZERO
+# results for EVERY query — including a plain keyword control with no operators
+# at all. Google timed out waiting for its result container and DuckDuckGo's
+# JS app answered "Unexpected error. Please try again." The SAME dork run
+# through a HEADED real-Chrome window returned 10 real EPUB URLs immediately.
+#
+# So the two failure modes were: (a) a headless JS app being refused, and
+# (b) having only ONE fallback, which happened to be down.
+#
+# The redesign attacks both:
+#   1. JS-FREE HTML ENDPOINTS COME FIRST. `html.duckduckgo.com/html/`,
+#      `lite.duckduckgo.com/lite/` and Mojeek render plain server-side HTML with
+#      no JavaScript app to fail, no consent dialog and no result-container race.
+#      They are the most reliable thing in this whole file, so they are tried
+#      before the heavyweight JS engines rather than as a last resort.
+#   2. SEVEN ENGINE ROUTES, not two. Google, Bing, DuckDuckGo, Startpage,
+#      Brave and Mojeek do not fail at the same moment, and Mojeek runs its OWN
+#      index rather than reselling someone else's.
+#   3. Every engine is reached by DIRECT RESULT URL, never by typing into a box
+#      and pressing Enter — one navigation instead of a form interaction that
+#      can race, and no dependence on the search box's markup.
+#
+# NOTE ON OPERATOR SUPPORT: `site:` and `filetype:` work on all of these.
+# Google alone honours the full set — `before:`/`after:`/`AROUND()`/numeric
+# ranges are Google-only, so a dork that falls through to another engine may
+# return broader results. The engine that actually answered is always logged.
+##############################################################################
 
-    search_box = page.wait_for_selector(
-        'textarea[name="q"], input[name="q"]', timeout=10000
-    )
-    search_box.fill(query)
-    search_box.press("Enter")
+_SEARCH_ENGINES = [
+    {
+        'name': 'duckduckgo-html',
+        'url': 'https://html.duckduckgo.com/html/?q={q}',
+        'wait': 'div.result, div.web-result, a.result__a',
+        'selectors': ['a.result__a', 'h2.result__title a', 'div.result a[href^="http"]'],
+        'skip': {'duckduckgo.com'},
+        'js_free': True,
+    },
+    {
+        'name': 'duckduckgo-lite',
+        'url': 'https://lite.duckduckgo.com/lite/?q={q}',
+        'wait': 'table, a.result-link',
+        'selectors': ['a.result-link', 'a[href^="http"]'],
+        'skip': {'duckduckgo.com'},
+        'js_free': True,
+    },
+    {
+        'name': 'mojeek',
+        'url': 'https://www.mojeek.com/search?q={q}',
+        'wait': 'ul.results-standard, a.title, li',
+        'selectors': ['a.title', 'ul.results-standard a[href^="http"]'],
+        'skip': {'mojeek.com'},
+        'js_free': True,
+    },
+    {
+        'name': 'bing',
+        'url': 'https://www.bing.com/search?q={q}&count=30&setlang=en',
+        'wait': '#b_results, li.b_algo',
+        'selectors': ['li.b_algo h2 a', '#b_results a[href^="http"]'],
+        'skip': {'bing.com', 'microsoft.com', 'msn.com'},
+        'js_free': False,
+    },
+    {
+        'name': 'google',
+        'url': 'https://www.google.com/search?q={q}&num=30&hl=en',
+        'wait': '#rso, #search, div.g, #main',
+        'selectors': _GOOGLE_RESULT_SELECTORS,
+        'skip': None,
+        'js_free': False,
+    },
+    {
+        'name': 'brave',
+        'url': 'https://search.brave.com/search?q={q}',
+        'wait': '#results, .snippet',
+        'selectors': ['#results a[href^="http"]', '.snippet a[href^="http"]'],
+        'skip': {'brave.com'},
+        'js_free': False,
+    },
+    {
+        'name': 'startpage',
+        'url': 'https://www.startpage.com/sp/search?query={q}',
+        'wait': '.w-gl__result, .result',
+        'selectors': ['.w-gl__result a[href^="http"]', '.result a[href^="http"]'],
+        'skip': {'startpage.com'},
+        'js_free': False,
+    },
+]
 
+
+##############################################################################
+# TIER 0 — PLAIN-HTTP ENGINES (no browser at all)
+#
+# MEASURED 2026-08-23, and it changed the design. A bare `urllib` request with
+# ordinary browser headers got:
+#     html.duckduckgo.com  -> 200, real results, 3 gutenberg.org URLs
+#     www.bing.com         -> 200, real results, 23 gutenberg.org URLs
+# while the SAME endpoints returned nothing through Playwright, because the
+# CSS selectors had gone stale (DuckDuckGo now renders `web-result` /
+# `result__title`, not `a.result__a`).
+#
+# The lesson is the useful one: for a server-rendered results page a browser is
+# not an advantage, it is the liability. There is no automation flag to leak, no
+# `navigator.webdriver`, no headless fingerprint, no consent dialog and no
+# selector to go stale — just HTML and a regex. So these run FIRST and the
+# browser tier is the fallback, which is the exact inverse of the old design.
+##############################################################################
+
+_HTTP_ENGINES = [
+    {'name': 'duckduckgo-html', 'url': 'https://html.duckduckgo.com/html/?q={q}',
+     'skip': ('duckduckgo.com',)},
+    {'name': 'bing-http', 'url': 'https://www.bing.com/search?q={q}&count=30&setlang=en',
+     'skip': ('bing.com', 'microsoft.com', 'msn.com', 'go.microsoft')},
+    {'name': 'duckduckgo-lite', 'url': 'https://lite.duckduckgo.com/lite/?q={q}',
+     'skip': ('duckduckgo.com',)},
+    {'name': 'mojeek-http', 'url': 'https://www.mojeek.com/search?q={q}',
+     'skip': ('mojeek.com',)},
+]
+
+_HTTP_HEADERS = {
+    'User-Agent': _USER_AGENT,
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Accept-Encoding': 'identity',
+    'Connection': 'close',
+}
+
+_HREF_RE = re.compile(r'href=["\'](.*?)["\']', re.IGNORECASE)
+_TAG_RE = re.compile(r'<[^>]+>')
+
+
+def _http_search(engine: Dict, query: str, number_of_results: int,
+                 skip_domains=None, allow_same_domain: bool = False,
+                 timeout: float = 20.0) -> List[Dict]:
+    """Fetch one server-rendered results page and harvest its outbound links.
+
+    Deliberately regex-based rather than DOM-based: a results page's CLASS NAMES
+    change (that is exactly what silently broke the browser path), but an
+    `href` to an off-site URL is the one thing a search result cannot stop
+    being."""
+    url = engine['url'].format(q=urllib.parse.quote_plus(query))
+    request = urllib.request.Request(url, headers=dict(_HTTP_HEADERS))
     try:
-        page.wait_for_selector('#rso, #search, div.g', timeout=15000)
-    except Exception:
-        logging.warning("Timed out waiting for Google result container; proceeding anyway.")
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            body = response.read(1_500_000).decode('utf-8', 'replace')
+    except Exception as exc:
+        logging.debug("   (%s) http fetch failed: %s", engine['name'], exc)
+        return []
 
-    page.wait_for_timeout(2000)
+    own = tuple(engine.get('skip') or ())
+    links: List[Dict] = []
+    for href in _HREF_RE.findall(body):
+        target = _unwrap_redirect(href)
+        if not target.startswith('http'):
+            continue
+        low = target.lower()
+        if any(bad in low for bad in own):
+            continue
+        if any(bad in low for bad in ('google.com/', 'gstatic.com', 'w3.org',
+                                      'schema.org', 'javascript:')):
+            continue
+        links.append({'url': target, 'title': ''})
 
-    hits = _extract_links_with_selectors(
-        page, _GOOGLE_RESULT_SELECTORS, allow_same_domain=allow_same_domain
-    )
+    hits = _dedup_links(links, skip_domains=skip_domains,
+                        allow_same_domain=allow_same_domain)
     return hits[:number_of_results]
 
 
-def _search_ddg_playwright(page, query: str, number_of_results: int,
-                           allow_same_domain: bool = False) -> List[Dict]:
-    """Fallback: perform a DuckDuckGo search using Playwright and return result dicts.
+def _unwrap_redirect(url: str) -> str:
+    """Return the real destination behind a search engine's redirector.
 
-    NOTE: DuckDuckGo honors only a SUBSET of Google dork operators (site:, filetype:,
-    intitle:, inurl:); operators like before:/after:/numrange: are ignored there, so a
-    dork that falls back to DDG may return broader results than the same Google dork."""
-    logging.info("Falling back to DuckDuckGo search...")
-    page.goto(f"https://duckduckgo.com/?q={query.replace(' ', '+')}&t=h_&ia=web",
-              wait_until="domcontentloaded", timeout=30000)
+    DuckDuckGo's HTML endpoint hands back ``//duckduckgo.com/l/?uddg=<encoded>``
+    and Google sometimes uses ``/url?q=<encoded>``. Left unwrapped these are
+    useless as file URLs — the whole point of a `filetype:` hunt is the direct
+    link — and they all collapse to one domain, which the de-duplicator would
+    then throw away as repeats of a single host."""
+    raw = str(url or '')
+    if not raw:
+        return raw
+    try:
+        parsed = urllib.parse.urlsplit(raw if '//' not in raw[:2] else 'https:' + raw)
+        params = urllib.parse.parse_qs(parsed.query or '')
+        for key in ('uddg', 'q', 'u', 'url'):
+            candidate = (params.get(key) or [''])[0]
+            if candidate.startswith('http'):
+                return urllib.parse.unquote(candidate)
+    except Exception:
+        pass
+    return raw
+
+
+def _search_http_tier(query: str, number_of_results: int,
+                      allow_same_domain: bool = False) -> List[Dict]:
+    """TIER 0 — try every plain-HTTP engine before any browser is launched.
+
+    Deliberately SEPARATE from `_search_with_fallback`, which stays pure
+    browser-chain logic: one function, one job. The practical payoff is that a
+    successful HTTP answer means no browser is started at all — faster, lighter,
+    and with no automation surface to detect in the first place."""
+    for engine in _HTTP_ENGINES:
+        try:
+            hits = _http_search(engine, query, number_of_results,
+                                allow_same_domain=allow_same_domain)
+        except Exception as exc:
+            logging.debug("   (%s) http tier error: %s", engine['name'], exc)
+            continue
+        if hits:
+            logging.info("🔎 ENGINE '%s' answered with %d result(s) "
+                         "(plain HTTP; browser not used for search)",
+                         engine['name'], len(hits))
+            return hits
+    logging.info("   no plain-HTTP engine answered; falling back to the browser")
+    return []
+
+
+def _search_one_engine(page, engine: Dict, query: str, number_of_results: int,
+                       allow_same_domain: bool = False) -> List[Dict]:
+    """Run ONE engine by navigating straight to its result URL."""
+    url = engine['url'].format(q=urllib.parse.quote_plus(query))
+    page.goto(url, wait_until='domcontentloaded', timeout=30000)
+
+    if not engine.get('js_free'):
+        _dismiss_google_consent(page)
 
     try:
-        page.wait_for_selector('article[data-testid="result"], a.result__a, h2 a', timeout=15000)
+        page.wait_for_selector(engine['wait'], timeout=12000)
     except Exception:
-        logging.warning("Timed out waiting for DuckDuckGo results; proceeding anyway.")
+        logging.debug("   (%s) result container did not appear; reading anyway",
+                      engine['name'])
 
-    page.wait_for_timeout(2000)
+    # A JS-free page is already complete; a JS app needs a beat to render.
+    page.wait_for_timeout(400 if engine.get('js_free') else 1500)
 
     hits = _extract_links_with_selectors(
-        page, _DDG_RESULT_SELECTORS, skip_domains={'duckduckgo.com'},
+        page, engine['selectors'], skip_domains=engine.get('skip'),
         allow_same_domain=allow_same_domain,
     )
+    for hit in hits:
+        hit['url'] = _unwrap_redirect(hit.get('url', ''))
+    hits = [h for h in hits if str(h.get('url', '')).startswith('http')]
     return hits[:number_of_results]
+
+
+def _search_with_fallback(page, query: str, number_of_results: int,
+                          allow_same_domain: bool = False,
+                          engine_order=None, attempts_per_engine: int = 2) -> List[Dict]:
+    """Walk the browser-engine chain until one answers.
+
+    Contract: this returns the first NON-EMPTY result set and logs which engine
+    produced it, so a report can never imply Google answered when Mojeek did.
+    Returning nothing means every engine was tried and every one came back
+    empty — which is a real 'the network/engines refused us' signal, not a
+    silent shrug."""
+    names = [n.strip().lower() for n in (engine_order or []) if str(n).strip()]
+    chain = ([e for n in names for e in _SEARCH_ENGINES if e['name'] == n]
+             or list(_SEARCH_ENGINES))
+
+    tried = []
+    for engine in chain:
+        for attempt in range(1, max(1, attempts_per_engine) + 1):
+            try:
+                hits = _search_one_engine(page, engine, query, number_of_results,
+                                          allow_same_domain)
+                if hits:
+                    logging.info("🔎 ENGINE '%s' answered with %d result(s)%s",
+                                 engine['name'], len(hits),
+                                 '' if engine is chain[0] else ' (after fallback)')
+                    return hits
+                tried.append(f"{engine['name']}#{attempt}:empty")
+            except Exception as exc:
+                tried.append(f"{engine['name']}#{attempt}:{type(exc).__name__}")
+            # polite, jittered backoff — hammering a refusing engine gets you
+            # refused harder, and a moment's pause often clears a transient error
+            time.sleep(min(4.0, 0.8 * attempt) + random.uniform(0.2, 0.9))
+        logging.warning("   engine '%s' produced nothing; trying the next one",
+                        engine['name'])
+
+    logging.warning("⚠️ every engine returned empty: %s", ', '.join(tried) or 'none tried')
+    return []
 
 
 # ============================================================
 # Core Googler Logic
 # ============================================================
 
+##############################################################################
+# GOOGLE DORK VOCABULARY
+#
+# Google's documented search operators, in the form the builder emits them.
+# Reference: https://support.google.com/websearch/answer/2466433 and
+# https://developers.google.com/search/docs/crawling-indexing/indexable-file-types
+#
+# The SYNTAX RULES below are enforced mechanically by the builder rather than
+# left to the caller, because every one of them silently degrades a query into
+# an ordinary keyword search when broken:
+#   * NO space after an operator colon  (`filetype: pdf` searches for the WORD
+#     "filetype" and the word "pdf" -- it does not filter anything at all)
+#   * exact titles go in DOUBLE QUOTES
+#   * `OR` must be UPPERCASE (lowercase `or` is treated as a stop word)
+#   * alternatives must be PARENTHESISED to bind correctly
+#   * unwanted terms are prefixed with `-` and take NO space after the hyphen
+##############################################################################
+
+#: Convenience aliases so a caller can ask for a CLASS of file rather than
+#: enumerating extensions. Google indexes all of these natively.
+_FILETYPE_ALIASES = {
+    'ebook':  ('epub', 'pdf', 'mobi', 'azw3'),
+    'book':   ('epub', 'pdf'),
+    'doc':    ('doc', 'docx'),
+    'docs':   ('doc', 'docx', 'pdf'),
+    'slides': ('ppt', 'pptx'),
+    'sheet':  ('xls', 'xlsx', 'csv'),
+    'sheets': ('xls', 'xlsx', 'csv'),
+    'text':   ('txt', 'rtf'),
+    'code':   ('py', 'js', 'java', 'c', 'cpp', 'go', 'rs'),
+    'data':   ('csv', 'json', 'xml', 'sql'),
+}
+
+#: Libraries that publish PUBLIC-DOMAIN or openly-licensed full works. These are
+#: the right default when someone wants a whole book: the work is lawfully
+#: downloadable there, which a random file-locker result is not.
+_TRUSTED_BOOK_SITES = ('gutenberg.org', 'standardebooks.org', 'archive.org',
+                       'openlibrary.org', 'wikisource.org', 'doabooks.org',
+                       'manybooks.net')
+
+#: Open-access / institutional sources for papers and reports.
+_TRUSTED_PAPER_SITES = ('.edu', '.gov', 'arxiv.org', 'ncbi.nlm.nih.gov',
+                        'doaj.org', 'core.ac.uk', 'zenodo.org')
+
+#: Terms that mark a page ABOUT a work rather than the work itself.
+_NOISE_TERMS = ('review', 'summary', 'preview', 'excerpt', 'quotes')
+
+#: Aggregators that answer almost every book query with a paywalled stub.
+_NOISE_SITES = ('scribd.com', 'pinterest.com', 'slideshare.net', 'coursehero.com')
+
+#: One-shot intents. Each expands into the operator fields below, and anything
+#: the caller sets EXPLICITLY still wins (the preset only fills what is empty).
+_PRESETS = {
+    # the canonical "find me this actual book" query
+    'book':        {'filetypes': ('epub', 'pdf'),
+                    'exclude': _NOISE_TERMS,
+                    'exclude_sites': _NOISE_SITES},
+    # same, restricted to libraries that lawfully host complete works
+    'book_public': {'filetypes': ('epub', 'pdf'),
+                    'sites': _TRUSTED_BOOK_SITES},
+    'paper':       {'filetypes': ('pdf',),
+                    'sites': _TRUSTED_PAPER_SITES,
+                    'exclude': ('slides', 'syllabus', 'worksheet')},
+    'manual':      {'filetypes': ('pdf',), 'inurl': 'manual'},
+    'docs':        {'filetypes': ('doc', 'docx', 'pdf')},
+    'slides':      {'filetypes': ('ppt', 'pptx')},
+    'sheets':      {'filetypes': ('xls', 'xlsx', 'csv')},
+    # classic open-directory listing
+    'directory':   {'intitle': 'index of'},
+}
+
+
+def _as_bool(value, default: bool = False) -> bool:
+    """Tolerant truthiness for a YAML/wrapped-parser value.
+
+    A wrapped chat-agent can hand a boolean through as the STRING "false", which
+    is truthy in Python — so a naive bool() would silently turn `headless: false`
+    into a headless run and re-create the exact blindness this file just fixed."""
+    if isinstance(value, bool):
+        return value
+    text = str(value if value is not None else '').strip().lower()
+    if text in ('true', 'yes', '1', 'on'):
+        return True
+    if text in ('false', 'no', '0', 'off'):
+        return False
+    return default
+
+
+def _as_terms(value) -> List[str]:
+    """Accept a list/tuple OR a comma/space-separated string -> list of terms."""
+    if value is None:
+        return []
+    if isinstance(value, (list, tuple, set)):
+        items = list(value)
+    else:
+        items = re.split(r'[,\s]+', str(value))
+    return [str(t).strip() for t in items if str(t).strip()]
+
+
+def _strip_operator_prefix(value: str, *prefixes: str) -> str:
+    """``filetype:pdf`` / ``ext:pdf`` / ``pdf`` all normalize to ``pdf`` so the
+    prefix is never doubled when the caller already typed it."""
+    v = str(value or '').strip()
+    low = v.lower()
+    for prefix in prefixes:
+        if low.startswith(prefix.lower()):
+            return v[len(prefix):].strip()
+    return v
+
+
+def _or_group(operator: str, values, *strip_prefixes: str) -> str:
+    """Build ``(op:a OR op:b)`` — parenthesised, with OR UPPERCASE.
+
+    A single value needs no group (``op:a``); an empty list contributes nothing.
+    Without the parentheses Google binds the OR to only the adjacent term, which
+    is the difference between "epub or pdf" and "epub, or anything at all"."""
+    terms = []
+    for raw in _as_terms(values):
+        v = _strip_operator_prefix(raw, *(strip_prefixes or (operator + ':',)))
+        if v and v not in terms:
+            terms.append(v)
+    if not terms:
+        return ''
+    if len(terms) == 1:
+        return f'{operator}:{terms[0]}'
+    return '(' + ' OR '.join(f'{operator}:{t}' for t in terms) + ')'
+
+
+def _expand_filetypes(values) -> List[str]:
+    """Resolve class aliases (``ebook`` -> epub/pdf/mobi/azw3) and bare/prefixed
+    extensions into a de-duplicated extension list."""
+    out: List[str] = []
+    for raw in _as_terms(values):
+        ext = _strip_operator_prefix(raw, 'filetype:', 'ext:').lstrip('.').lower()
+        for resolved in _FILETYPE_ALIASES.get(ext, (ext,)):
+            if resolved and resolved not in out:
+                out.append(resolved)
+    return out
+
+
+def _apply_preset(config: Dict) -> Dict:
+    """Merge a named preset UNDER the caller's own fields.
+
+    Explicit configuration always wins: the preset only fills a field the caller
+    left empty, so `preset: book` + `filetypes: epub` searches epub only."""
+    name = str(config.get('preset', '') or '').strip().lower()
+    if not name or name in ('none', 'off'):
+        return dict(config)
+    preset = _PRESETS.get(name)
+    if preset is None:
+        logging.warning("⚠️ unknown preset '%s' — ignoring it (known: %s)",
+                        name, ', '.join(sorted(_PRESETS)))
+        return dict(config)
+    merged = dict(config)
+    for key, value in preset.items():
+        existing = merged.get(key)
+        if existing in (None, '', [], (), {}):
+            merged[key] = list(value) if isinstance(value, (list, tuple)) else value
+    logging.info("🔎 preset '%s' applied", name)
+    return merged
+
+
 def _query_has_site_operator(query: str) -> bool:
-    """True if the query already contains a ``site:`` operator (case-insensitive)."""
-    return bool(re.search(r'(?:^|\s)site:\S', query or '', re.IGNORECASE))
+    """True if the query already contains a ``site:`` operator (case-insensitive).
+
+    NOTE the leading ``(`` in the character class: an OR-group is emitted as
+    ``(site:a OR site:b)``, and without it a multi-site dork would NOT be
+    recognised as site-restricted, so same-domain de-dup would silently throw
+    away every hit but the first from each host."""
+    return bool(re.search(r'(?:^|\s|\()site:\S', query or '', re.IGNORECASE))
 
 
 def _resolve_allow_same_domain(config: Dict, effective_query: str) -> bool:
     """Same-domain de-dup is ON when explicitly configured (``allow_same_domain: true``)
     OR when the effective query carries a ``site:`` operator (single-site dork)."""
-    return bool(config.get('allow_same_domain', False)) or \
+    return _as_bool(config.get('allow_same_domain', False), False) or \
         _query_has_site_operator(effective_query)
 
 
@@ -661,15 +1063,24 @@ def build_dork_query(config: Dict) -> str:
     An operator value already carrying its own prefix (e.g. ``site:example.com``) is
     normalized so the prefix is never doubled.
     """
+    config = _apply_preset(config)
     parts: List[str] = []
 
+    # 1) the exact phrase leads, because Google weights leading terms most
     exact = str(config.get('exact', '') or '').strip().strip('"')
     if exact:
         parts.append(f'"{exact}"')
 
+    # 2) the caller's freeform query is preserved VERBATIM — an existing dork
+    #    typed by hand keeps working unchanged
     raw = str(config.get('query', '') or '').strip()
     if raw:
         parts.append(raw)
+
+    # 3) author is a convenience for book hunts: a quoted phrase, not an operator
+    author = str(config.get('author', '') or '').strip().strip('"')
+    if author:
+        parts.append(f'"{author}"')
 
     def _operator(value, operator: str, quote_if_spaces: bool = False):
         v = str(value or '').strip()
@@ -683,11 +1094,21 @@ def build_dork_query(config: Dict) -> str:
             v = '"{}"'.format(v.strip('"'))
         return f'{operator}:{v}'
 
+    # 4) single-value operators. `all*` variants apply to EVERY following word,
+    #    so they are emitted once and never quoted.
     for field_name, operator, quote in (
         ('intitle', 'intitle', True),
+        ('allintitle', 'allintitle', False),
         ('inurl', 'inurl', False),
+        ('allinurl', 'allinurl', False),
         ('intext', 'intext', True),
-        ('site', 'site', False),
+        ('allintext', 'allintext', False),
+        ('inanchor', 'inanchor', True),
+        ('allinanchor', 'allinanchor', False),
+        ('related', 'related', False),
+        ('cache', 'cache', False),
+        ('define', 'define', False),
+        ('source', 'source', False),
         ('before', 'before', False),
         ('after', 'after', False),
     ):
@@ -695,39 +1116,77 @@ def build_dork_query(config: Dict) -> str:
         if built:
             parts.append(built)
 
-    # filetype accepts bare ``pdf``, ``filetype:pdf`` or ``ext:pdf``
-    filetype = str(config.get('filetype', '') or '').strip()
-    if filetype:
-        low = filetype.lower()
-        for prefix in ('filetype:', 'ext:'):
-            if low.startswith(prefix):
-                filetype = filetype[len(prefix):].strip()
-                break
-        if filetype:
-            parts.append(f'filetype:{filetype}')
+    # 5) SITES — `sites` (plural) becomes an OR-group; `site` (singular) is kept
+    #    for back-compat and merged in, so both spellings work together.
+    site_values = _as_terms(config.get('sites')) + _as_terms(config.get('site'))
+    site_clause = _or_group('site', site_values)
+    if site_clause:
+        parts.append(site_clause)
 
-    # exclusions: list OR comma/space-separated string -> each becomes -term
-    exclude = config.get('exclude', [])
-    if isinstance(exclude, str):
-        exclude = [t for t in re.split(r'[,\s]+', exclude) if t]
-    if isinstance(exclude, (list, tuple)):
-        for term in exclude:
-            t = str(term or '').strip()
-            if not t:
-                continue
-            parts.append(t if t.startswith('-') else f'-{t}')
+    # 6) FILETYPES — the headline capability. Aliases expand (`ebook` ->
+    #    epub/pdf/mobi/azw3) and several types become a parenthesised OR-group,
+    #    which is what makes ONE query catch a work in whichever format exists.
+    filetype_values = _expand_filetypes(
+        _as_terms(config.get('filetypes')) + _as_terms(config.get('filetype')))
+    filetype_clause = _or_group('filetype', filetype_values)
+    if filetype_clause:
+        parts.append(filetype_clause)
 
-    return ' '.join(parts).strip()
+    # 7) alternatives: (a OR b OR c)
+    or_terms = _as_terms(config.get('or_terms'))
+    if len(or_terms) == 1:
+        parts.append(or_terms[0])
+    elif or_terms:
+        parts.append('(' + ' OR '.join(or_terms) + ')')
+
+    # 8) proximity: x AROUND(n) y  — n is the max words BETWEEN the two terms
+    around = _as_terms(config.get('around_terms'))
+    if len(around) >= 2:
+        try:
+            distance = int(str(config.get('around_distance', 5)).strip() or 5)
+        except (TypeError, ValueError):
+            distance = 5
+        parts.append(f'{around[0]} AROUND({max(1, distance)}) {around[1]}')
+
+    # 9) numeric range: 2020..2026  (prices, years, model numbers)
+    numeric_range = str(config.get('numeric_range', '') or '').strip()
+    if numeric_range:
+        parts.append(numeric_range if '..' in numeric_range
+                     else numeric_range.replace('-', '..', 1))
+
+    # 10) EXCLUSIONS — `-term`, no space after the hyphen or Google ignores it
+    for term in _as_terms(config.get('exclude')):
+        parts.append(term if term.startswith('-') else f'-{term}')
+
+    # 11) excluded sites — `-site:x`, the fastest way to kill paywalled stubs
+    for host in _as_terms(config.get('exclude_sites')):
+        host = _strip_operator_prefix(host.lstrip('-'), 'site:')
+        if host:
+            parts.append(f'-site:{host}')
+
+    final = ' '.join(p for p in parts if p).strip()
+    final = re.sub(r'\s{2,}', ' ', final)
+    if final != raw:
+        logging.info("🔍 DORK: %s", final)
+    return final
 
 
 def googler_search(query: str, number_of_results: int = 5,
                    content_mode: str = "text",
-                   allow_same_domain: bool = False) -> List[Dict]:
+                   allow_same_domain: bool = False,
+                   headless: bool = False,
+                   engines=None,
+                   attempts_per_engine: int = 2) -> List[Dict]:
     """
-    Search Google for the query, then either (a) list the result links, or (b) fetch the
-    top N result pages with Playwright (JS-rendered) and extract their content.
+    Search the resilient two-tier route chain, then either (a) list result links,
+    or (b) fetch the top N result pages with Playwright and extract their content.
 
-    Falls back to DuckDuckGo if Google returns no results.
+    With no explicit engine pin, Tier 0 tries four server-rendered routes through
+    plain HTTP before Playwright is imported or a browser is launched. If all are
+    empty, Tier 1 walks seven browser routes with bounded retries. A `links_only`
+    Tier-0 success returns without launching a browser; text/raw mode may still use
+    one to fetch result bodies. Full advanced-operator semantics are Google-specific;
+    fallback routes may return broader results and are named in logs.
     Automatically skips binary content (PDFs, images, etc.) in the fetch modes.
 
     content_mode:
@@ -735,8 +1194,8 @@ def googler_search(query: str, number_of_results: int = 5,
       - "raw":         Return raw page HTML from each result page
       - "links_only":  Do NOT fetch result pages — return just the SERP hit list
                        (url + title). Ideal for dork enumeration / recon and far faster;
-                       the URLs flow straight into a downstream Crawler / Kalier via the
-                       Parametrizer.
+                       the URLs can flow through Parametrizer into Apirer for an
+                       authorized download, then File-Extractor/File-Interpreter.
 
     allow_same_domain:
       When True (auto-enabled by main() when the query contains a ``site:`` operator),
@@ -745,12 +1204,6 @@ def googler_search(query: str, number_of_results: int = 5,
 
     Returns a list of result dicts.
     """
-    try:
-        from playwright.sync_api import sync_playwright
-    except ImportError:
-        logging.error("Playwright is not installed. Install with: pip install playwright && playwright install chromium")
-        return []
-
     # links_only is cheap (no page fetch) so it may enumerate more hits per run.
     max_cap = 50 if content_mode == "links_only" else 10
     if number_of_results > max_cap:
@@ -759,28 +1212,81 @@ def googler_search(query: str, number_of_results: int = 5,
         number_of_results = 1
 
     results: List[Dict] = []
+    requested_engines = [
+        str(name).strip().lower()
+        for name in (engines or [])
+        if str(name).strip()
+    ]
+
+    # Tier 0 must run before Playwright is even imported. Besides making the
+    # ordering real rather than aspirational, this lets a links-only search
+    # succeed on a machine whose browser runtime is temporarily unavailable.
+    hits = []
+    if not requested_engines:
+        hits = _search_http_tier(query, number_of_results, allow_same_domain)
+
+    if hits and content_mode == "links_only":
+        for i, hit in enumerate(hits, 1):
+            results.append({
+                "index": i,
+                "url": hit.get("url", ""),
+                "title": hit.get("title", ""),
+                "status_code": "listed",
+                "content_length": 0,
+            })
+        return results
+
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError:
+        logging.error("Playwright is not installed. Install with: pip install playwright && playwright install chromium")
+        return []
 
     try:
         with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True, args=_BROWSER_ARGS)
+            # REAL CHROME FIRST. A measured 2026-08-23 comparison: the bundled
+            # headless Chromium got ZERO results for every query while a real
+            # headed Chrome answered immediately. `channel="chrome"` uses the
+            # browser actually installed on the machine — same engine version,
+            # same fonts, same TLS profile as the user's own browsing — and
+            # falls back to bundled Chromium when Chrome is absent.
+            launch_kwargs = {'headless': headless, 'args': _BROWSER_ARGS}
+            try:
+                browser = p.chromium.launch(channel='chrome', **launch_kwargs)
+                logging.info("🌐 browser: real Chrome (%s)",
+                             'headless' if headless else 'HEADED/visible')
+            except Exception:
+                browser = p.chromium.launch(**launch_kwargs)
+                logging.info("🌐 browser: bundled Chromium (%s) — Chrome not installed",
+                             'headless' if headless else 'HEADED/visible')
+
             context = browser.new_context(
                 user_agent=_USER_AGENT,
                 viewport={'width': 1920, 'height': 1080},
                 locale='en-US',
+                timezone_id='America/Mexico_City',
+                java_script_enabled=True,
+                extra_http_headers={
+                    # A browser that asks for HTML but sends no Accept-Language
+                    # or Accept header reads as a script to every CDN in front of
+                    # a search engine. These are simply what Chrome itself sends.
+                    'Accept-Language': 'en-US,en;q=0.9,es;q=0.8',
+                    'Accept': ('text/html,application/xhtml+xml,application/xml;q=0.9,'
+                               'image/avif,image/webp,*/*;q=0.8'),
+                    'Upgrade-Insecure-Requests': '1',
+                },
             )
             context.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
             page = context.new_page()
 
             try:
-                # --- Search phase ---
-                hits = _search_google_playwright(
-                    page, query, number_of_results, allow_same_domain
-                )
-
+                # Tier 0 may already have supplied hits. Otherwise walk the
+                # browser chain; explicit engine pins arrive here directly.
                 if not hits:
-                    logging.warning(f"Google returned 0 results for '{query}'; trying DuckDuckGo.")
-                    hits = _search_ddg_playwright(
-                        page, query, number_of_results, allow_same_domain
+                    hits = _search_with_fallback(
+                        page, query, number_of_results, allow_same_domain,
+                        engine_order=requested_engines,
+                        attempts_per_engine=attempts_per_engine,
                     )
 
                 if not hits:
@@ -908,6 +1414,20 @@ def main():
         # A ``site:`` dork needs same-domain de-dup OFF (keep many URLs per host).
         allow_same_domain = _resolve_allow_same_domain(config, effective_query)
 
+        # HEADED BY DEFAULT (2026-08-23). Measured that day: bundled headless
+        # Chromium returned ZERO results for every query — including a plain
+        # keyword control with no operators — while a headed real Chrome
+        # answered immediately. Headless is therefore opt-in and documented as
+        # the degraded path, not the default.
+        headless = _as_bool(config.get('headless', False), False)
+        engines = config.get('engines') or []
+        if isinstance(engines, str):
+            engines = [e for e in re.split(r'[,\s]+', engines) if e]
+        try:
+            attempts_per_engine = max(1, int(config.get('attempts_per_engine', 2)))
+        except (TypeError, ValueError):
+            attempts_per_engine = 2
+
         logging.info("GOOGLER AGENT STARTED")
         logging.info(f"Raw query: {raw_query}")
         logging.info(f"Effective query (with dork operators): {effective_query}")
@@ -926,7 +1446,9 @@ def main():
         else:
             # Perform Google search (+ optional content fetch)
             results = googler_search(effective_query, number_of_results,
-                                     content_mode, allow_same_domain)
+                                     content_mode, allow_same_domain,
+                                     headless=headless, engines=engines,
+                                     attempts_per_engine=attempts_per_engine)
 
             if results:
                 saved_path = save_results(results, output_file, effective_query)

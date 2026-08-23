@@ -167,6 +167,7 @@ urlpatterns = [
     path('update_file_interpreter_connection/<str:agent_name>/', secure_post(views.update_file_interpreter_connection_view), name='update_file_interpreter_connection'),
     path('update_image_interpreter_connection/<str:agent_name>/', secure_post(views.update_image_interpreter_connection_view), name='update_image_interpreter_connection'),
     path('update_video_analyzer_connection/<str:agent_name>/', secure_post(views.update_video_analyzer_connection_view), name='update_video_analyzer_connection'),
+    path('update_netspeed_calculator_connection/<str:agent_name>/', secure_post(views.update_netspeed_calculator_connection_view), name='update_netspeed_calculator_connection'),
     path('update_gatewayer_connection/<str:agent_name>/', secure_post(views.update_gatewayer_connection_view), name='update_gatewayer_connection'),
     path('update_gateway_relayer_connection/<str:agent_name>/', secure_post(views.update_gateway_relayer_connection_view), name='update_gateway_relayer_connection'),
     path('update_node_manager_connection/<str:agent_name>/', secure_post(views.update_node_manager_connection_view), name='update_node_manager_connection'),

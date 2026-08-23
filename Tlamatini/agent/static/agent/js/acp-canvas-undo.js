@@ -13,7 +13,7 @@
 // Agentic Control Panel - Canvas Undo/Redo Helpers & Keyboard Handler
 // LOAD ORDER: #8 - Depends on: acp-globals.js, acp-session.js, acp-undo-manager.js,
 //                              acp-agent-connectors.js, acp-canvas-core.js
-/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateDeCompresserConnection, updateKeyboarderConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateAcpxerConnection, updatePlaywrighterConnection, updateWindowerConnection, updateKalierConnection, updateZavuererConnection, updateStm32erConnection, updateEsp32erConnection, updateEsphomerConnection, updateArduinerConnection, updateMcpDoctorConnection, updateInstantMessagingDoctorConnection, updateCamcorderConnection, updateVideoAnalyzerConnection, updateEditorConnection, updateGrepperConnection, updateGlobberConnection, updateRecorderConnection, updateWhispererConnection, updateAudioPlayerConnection, updateVideoPlayerConnection, updateTalkerConnection, updateWhatsapperConnection, getAgentPurposeForName, setCanvasItemMetadata */
+/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateDeCompresserConnection, updateKeyboarderConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateAcpxerConnection, updatePlaywrighterConnection, updateWindowerConnection, updateKalierConnection, updateZavuererConnection, updateStm32erConnection, updateEsp32erConnection, updateEsphomerConnection, updateArduinerConnection, updateMcpDoctorConnection, updateInstantMessagingDoctorConnection, updateCamcorderConnection, updateVideoAnalyzerConnection, updateEditorConnection, updateGrepperConnection, updateGlobberConnection, updateRecorderConnection, updateWhispererConnection, updateAudioPlayerConnection, updateVideoPlayerConnection, updateTalkerConnection, updateWhatsapperConnection, getAgentPurposeForName, setCanvasItemMetadata, updateNetSpeedCalculatorConnection */
 
 // ========================================
 // CAPTURE HELPERS (read-only snapshots)
@@ -444,6 +444,12 @@ async function removeConnectionWithoutUndo(sourceId, targetId) {
             if (sourceAgentName.toLowerCase() === 'video-analyzer') {
                 await updateVideoAnalyzerConnection(sourceId, targetId, 'remove', 'target');
             }
+            if (targetAgentName.toLowerCase() === 'netspeed-calculator') {
+                await updateNetSpeedCalculatorConnection(targetId, sourceId, 'remove', 'source');
+            }
+            if (sourceAgentName.toLowerCase() === 'netspeed-calculator') {
+                await updateNetSpeedCalculatorConnection(sourceId, targetId, 'remove', 'target');
+            }
             if (targetAgentName.toLowerCase() === 'gatewayer') {
                 await updateGatewayerConnection(targetId, sourceId, 'remove', 'source');
             }
@@ -862,6 +868,12 @@ async function recreateConnection(state) {
     }
     if (sourceAgentName === 'video-analyzer') {
         await updateVideoAnalyzerConnection(sourceId, targetId, 'add', 'target');
+    }
+    if (targetAgentName === 'netspeed-calculator') {
+        await updateNetSpeedCalculatorConnection(targetId, sourceId, 'add', 'source');
+    }
+    if (sourceAgentName === 'netspeed-calculator') {
+        await updateNetSpeedCalculatorConnection(sourceId, targetId, 'add', 'target');
     }
     if (targetAgentName === 'gatewayer') {
         await updateGatewayerConnection(targetId, sourceId, 'add', 'source');

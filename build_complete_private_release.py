@@ -36,11 +36,13 @@ from __future__ import annotations
 
 import argparse
 import glob
+import json
 import os
 import shutil
 import subprocess
 import sys
 import time
+import unicodedata
 import zipfile
 from pathlib import Path
 
@@ -54,6 +56,18 @@ PKG_ZIP = REPO_ROOT / "pkg.zip"            # build.py's real artifact (it delete
 # Gitignored PRIVATE contacts book. When present, the keyed build bundles it as
 # contacts.json (build.py reads TLAMATINI_BUNDLE_CONTACTS). Absent -> empty book.
 CONTACTS_PRIVATE = REPO_ROOT / "contacts.private.json"
+# Dev-tree contacts.json (what Angela edits through the UI in source/dev mode).
+# This is the PRIMARY sync source — contacts.private.json is auto-synced from it
+# (and from the running frozen install, if on the same machine) before every build
+# so the private release always ships the LATEST contacts, never a stale snapshot.
+CONTACTS_DEV_TREE = REPO_ROOT / "Tlamatini" / "agent" / "contacts.json"
+# Running frozen Tlamatini contacts.json (secondary sync source, same-machine install).
+# Tried via env var TLAMATINI_INSTALL, then common install roots.
+_CONTACTS_RUNNING_CANDIDATES = [
+    Path(os.environ.get("TLAMATINI_INSTALL", "")) / "contacts.json",
+    Path(os.path.expandvars(r"%LOCALAPPDATA%")) / "Tlamatini" / "contacts.json",
+    Path(r"C:\Tlamatini") / "contacts.json",
+]
 # The DEV External-MCP catalog. It is TRACKED (with `<... goes here>` placeholders)
 # and `regen_secrets.py --mode keyed` — which this builder runs first — restores the
 # real tokens into it. The keyed build then ships EVERY server in it PLUS the two
@@ -111,6 +125,126 @@ def assert_system_python(py: str) -> None:
         f"Build with the SYSTEM python, e.g.:\n"
         f'  & "C:/Program Files/Python312/python.exe" .\\build_complete_private_release.py'
     )
+
+
+def _normalize_name(name: str) -> str:
+    """Case- and accent-insensitive name key (matches contacts.py resolver)."""
+    return unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode().lower().strip()
+
+
+def _load_contacts_from_file(path: Path) -> list[dict]:
+    """Load contacts from a JSON file, handling BOTH formats:
+    - Object: {"_README": "...", "contacts": [...]}
+    - Bare array: [{...}, {...}]
+    Returns [] on any error or if the file is missing.
+    """
+    if not path.is_file():
+        return []
+    try:
+        with open(path, "r", encoding="utf-8-sig") as fh:
+            data = json.load(fh)
+        if isinstance(data, list):
+            return [c for c in data if isinstance(c, dict) and c.get("name")]
+        if isinstance(data, dict) and isinstance(data.get("contacts"), list):
+            return [c for c in data["contacts"] if isinstance(c, dict) and c.get("name")]
+    except Exception as exc:
+        print(f"  WARNING: could not read {path} ({exc})")
+    return []
+
+
+def _merge_contact(existing: dict, incoming: dict) -> dict:
+    """Merge two contact dicts — union aliases, keep non-empty field values."""
+    merged = dict(existing)
+    for key in ("name", "telegram", "whatsapp", "email", "note"):
+        if not merged.get(key) and incoming.get(key):
+            merged[key] = incoming[key]
+    existing_aliases = set(merged.get("aliases") or [])
+    incoming_aliases = set(incoming.get("aliases") or [])
+    union_aliases = sorted(existing_aliases | incoming_aliases, key=str.lower)
+    if union_aliases:
+        merged["aliases"] = union_aliases
+    return merged
+
+
+def sync_contacts_private() -> None:
+    """Auto-sync contacts.private.json from the dev tree and running install.
+
+    Ensures the gitignored contacts.private.json — the file build.py bundles as
+    contacts.json into every private/keyed release — always reflects the LATEST
+    contacts Angela configured, never a stale snapshot.  Sources checked in order:
+      1. The dev-tree contacts.json  (Tlamatini/agent/contacts.json — what the UI
+         writes in source/dev mode).
+      2. The running frozen Tlamatini contacts.json  (same-machine install, probed
+         via TLAMATINI_INSTALL env, %LOCALAPPDATA%, and C:/Tlamatini).
+    Contacts are merged by normalized name (case/accent-insensitive); aliases are
+    unioned and non-empty field values are preserved.  The _README is kept.
+    """
+    # Collect the current contacts.private.json as the baseline.
+    private_contacts = _load_contacts_from_file(CONTACTS_PRIVATE)
+    merged: dict[str, dict] = {}
+    for contact in private_contacts:
+        merged[_normalize_name(contact["name"])] = dict(contact)
+
+    sources_checked: list[str] = []
+    new_count = 0
+
+    # Source 1: dev-tree contacts.json.
+    if CONTACTS_DEV_TREE.is_file():
+        sources_checked.append(str(CONTACTS_DEV_TREE))
+        for contact in _load_contacts_from_file(CONTACTS_DEV_TREE):
+            key = _normalize_name(contact["name"])
+            if key not in merged:
+                merged[key] = dict(contact)
+                new_count += 1
+                print(f"  + {contact['name']}  (from dev tree)")
+            else:
+                merged[key] = _merge_contact(merged[key], contact)
+
+    # Source 2: running frozen Tlamatini contacts.json (same-machine install).
+    for candidate in _CONTACTS_RUNNING_CANDIDATES:
+        if candidate.is_file() and str(candidate) not in sources_checked:
+            sources_checked.append(str(candidate))
+            for contact in _load_contacts_from_file(candidate):
+                key = _normalize_name(contact["name"])
+                if key not in merged:
+                    merged[key] = dict(contact)
+                    new_count += 1
+                    print(f"  + {contact['name']}  (from running install)")
+                else:
+                    merged[key] = _merge_contact(merged[key], contact)
+            break  # use the first matching candidate only
+
+    # If nothing changed, do not rewrite the file.
+    current_names = {_normalize_name(c["name"]) for c in private_contacts}
+    merged_names = set(merged.keys())
+    if merged_names == current_names and new_count == 0:
+        print(f"  contacts.private.json already up-to-date ({len(merged)} contact(s)).")
+        return
+
+    # Build the output document, preserving the _README from the existing file.
+    doc: dict = {}
+    if CONTACTS_PRIVATE.is_file():
+        try:
+            with open(CONTACTS_PRIVATE, "r", encoding="utf-8-sig") as fh:
+                raw = json.load(fh)
+            if isinstance(raw, dict) and raw.get("_README"):
+                doc["_README"] = raw["_README"]
+        except Exception:
+            pass
+    if "_README" not in doc:
+        doc["_README"] = (
+            "PRIVATE contacts book. GITIGNORED. Shipped ONLY by "
+            "build_complete_private_release.py. Auto-synced from dev tree and "
+            "running install before every private build."
+        )
+    doc["contacts"] = list(merged.values())
+
+    tmp = str(CONTACTS_PRIVATE) + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        json.dump(doc, fh, ensure_ascii=False, indent=2)
+    os.replace(tmp, str(CONTACTS_PRIVATE))
+    print(f"  contacts.private.json synced: {len(merged)} contact(s) "
+          f"({new_count} new from {len(sources_checked)} source(s)).")
 
 
 def _utf8_env() -> dict:
@@ -187,6 +321,12 @@ def main(argv=None) -> int:
     print(f"keys file   : {args.keys_file}")
     print(f"self-modify : {'YES — source tree + Tlamatini.md bundled' if self_modify else 'no (DEFAULT) — no source tree, no self-knowledge, smaller prompt'}")
     print(f"contacts    : {'COMPLETE (contacts.private.json)' if CONTACTS_PRIVATE.is_file() else 'EMPTY (contacts.private.json not found)'}")
+
+    banner("STEP 0/5  sync contacts.private.json from live sources")
+    sync_contacts_private()
+    # Re-report the contacts status AFTER the sync so the count is accurate.
+    _synced_contacts = _load_contacts_from_file(CONTACTS_PRIVATE)
+    print(f"contacts    : {len(_synced_contacts)} contact(s) ready for bundling")
 
     banner("STEP 1/5  regen_secrets.py --mode keyed")
     if run([py, str(REGEN), "--mode", "keyed", "--keys-file", args.keys_file]) != 0:

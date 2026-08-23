@@ -209,6 +209,17 @@ WRAPPED = [
      "typeset. If none is installed, say so plainly and name what I need to install.",
      ["latex"]),
 
+    # --- network measurement ----------------------------------------------
+    # DELIBERATELY action='latency': it exercises the whole launch -> preflight ->
+    # provider discovery -> RTT/jitter/loss -> INI_SECTION -> report path, but moves
+    # almost no data. A 'full' run would pull 100-200 MB of REAL, possibly METERED
+    # bandwidth, and this bank may run 1000x a day.
+    ("netspeed_calculator", "NetSpeed-Calculator",
+     "Measure the latency of my Internet connection with NetSpeed-Calculator using "
+     "action='latency' and providers='cloudflare', and tell me the minimum RTT, the "
+     "jitter and the packet loss. Do NOT run a full speed test - latency only.",
+     ["latency", "ms"]),
+
     # --- firmware (LAST: may trigger a one-time toolchain bootstrap) ------
     ("stm32er", "STM32er",
      "Using STM32er, run the 'validate' action to check the STM32 toolchain / environment, and report the result.",

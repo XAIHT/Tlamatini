@@ -93,6 +93,7 @@ class AgentDisplayNameContractTests(SimpleTestCase):
         'recmailer': 'RecMailer',
         'mcp_doctor': 'MCP Doctor',
         'video_analyzer': 'Video-Analyzer',
+        'netspeed_calculator': 'NetSpeed-Calculator',
         'de_compresser': 'De-Compresser',
         'j_decompiler': 'J-Decompiler',
         'kyber_keygen': 'Kyber-KeyGen',
@@ -209,7 +210,8 @@ class AgentDisplayNameContractTests(SimpleTestCase):
         for folder in ('file_creator', 'file_extractor', 'file_interpreter',
                        'image_interpreter', 'monitor_log', 'video_analyzer',
                        'de_compresser', 'pdfer', 'latexer', 'stm32er', 'esp32er',
-                       'esphomer', 'audioplayer', 'videoplayer'):
+                       'esphomer', 'audioplayer', 'videoplayer',
+                       'netspeed_calculator'):
             if folder not in registry:
                 continue
             with self.subTest(folder=folder):

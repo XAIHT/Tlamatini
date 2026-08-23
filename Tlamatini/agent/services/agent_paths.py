@@ -149,6 +149,12 @@ def display_name_from_agent_type(agent_type: str) -> str:
         # therefore matches NOTHING and the connection is silently never persisted.
         "video_analyzer": "Video-Analyzer",
         "de_compresser": "De-Compresser",
+        # NetSpeed-Calculator is deliberately HYPHENATED for the same reason, and
+        # the choice is structural rather than cosmetic: with a hyphen the canvas
+        # form ("netspeed-calculator") and the CSS classMap key are the SAME
+        # string, so the space-vs-hyphen mismatch that silently drops a saved
+        # connection cannot occur for this agent at all.
+        "netspeed_calculator": "NetSpeed-Calculator",
         # These five ALSO carry hyphen-only canvas handlers. Fixed together
         # with chat_agent_registry.display_name on 2026-07-26 so the DB row,
         # the canvas handler and the agent_<display>_status enable gate all

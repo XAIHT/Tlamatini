@@ -255,9 +255,9 @@ description: The authoritative, exhaustive end-to-end runbook for creating a BRA
 
 155. Open `Tlamatini/agent/agents/parametrizer/parametrizer.py`.
 156. Add `'<lower>'` to the `SECTION_AGENT_TYPES` list (the generic parser handles the rest — no per-agent parser code).
-157. Open `Tlamatini/agent/views.py` and add the field list to `PARAMETRIZER_SOURCE_OUTPUT_FIELDS['<lower>']` = the KV header fields + `response_body` (if present).
+157. **⚠️ CORRECTED 2026-08-23 — do NOT hand-edit `views.py` for this.** `views.PARAMETRIZER_SOURCE_OUTPUT_FIELDS` is **DERIVED** (`= get_parametrizer_source_fields()`), not a hand-maintained dict, so editing it is either a no-op or a fresh source of drift. Register the fields in ONE place — `agent_contracts.py`, the next step.
 158. Open `Tlamatini/agent/services/agent_contracts.py` and add `'<lower>': (...)` to `_PARAMETRIZER_OUTPUT_FIELDS` with the same field tuple (this is the registry the Flow-Compiler reads).
-159. Keep the three field lists IDENTICAL across `parametrizer.py` (membership), `views.py` (`PARAMETRIZER_SOURCE_OUTPUT_FIELDS`), and `agent_contracts.py` (`_PARAMETRIZER_OUTPUT_FIELDS`).
+159. Keep the **TWO** lists coherent: `parametrizer.py::SECTION_AGENT_TYPES` (membership) and `agent_contracts.py::_PARAMETRIZER_OUTPUT_FIELDS` (the field tuple). There is no third list to sync — `views.py` derives its copy from the second one.
 160. Add the agent to the **Supported Source Agents** table in `README.md` (Phase 20 sweep, but note the field list now).
 161. If the agent is NOT a Parametrizer source (no INI_SECTION), SKIP 155–160 entirely.
 162. Confirm `get_agent_contract('<lower>')` will resolve (alias-normalized) — if the agent has an alias spelling, add it to the contract's `aliases` (override in `agent_contracts.py` builtin overrides if needed).
@@ -395,6 +395,7 @@ description: The authoritative, exhaustive end-to-end runbook for creating a BRA
 264. In that migration, set the Tool's description to `Chat-Agent-<Display>` consistently with the spec.
 265. Confirm the wrapped agent's `config.yaml` keys exactly match the `example_request` field names (mismatch = silent default fallback).
 266. Add `<lower>` to `tools.py::_PROMOTE_SECTION_FIELDS_BY_TEMPLATE_DIR` if you want a section field (e.g. `output_path`) surfaced at the top level of the wrapped tool's JSON result (Camcorder/Recorder do this).
+266b. **(REQUIRED — added 2026-08-23) Declare the agent in EXACTLY ONE pre-launch preview set in `tools.py`:** `_PRE_LAUNCH_PREVIEW_BY_TEMPLATE` (a dict entry with a `title` and the `params`/`body` worth showing the user BEFORE the spawn) **or** `_PRE_LAUNCH_PREVIEW_OBSERVATIONAL_TEMPLATES` (a frozenset, for read-only / trivial agents with no destructive intent worth surfacing). **A contract test in `tests.py` asserts every wrapped chat-agent is in exactly one of the two**, so omitting this fails the build later, not now. The question is not "does it write?" but "is there a COST worth showing first?" — NetSpeed-Calculator mutates nothing yet gets a preview, because a run moves 100-200 MB of possibly metered bandwidth.
 267. Understand the **payload whitelist gotcha**: `acpx_enabled`, `exec_report_enabled`, `ask_execs_enabled`, `conversation_user_id`, `multi_turn_enabled` must stay in `UnifiedAgentChain.invoke`'s payload-rebuild whitelist — you are NOT adding a new payload flag, so just don't disturb it.
 268. Understand **Ask Execs is automatic**: if the wrapped tool is state-changing, the Multi-Turn executor prompts Proceed/Deny before it runs — no wiring needed.
 269. If the wrapped tool is READ-ONLY/polling and should NOT be prompted, add its name to `_MANAGEMENT_TOOLS` and/or `_TOOL_QUOTA_EXEMPT` in `mcp_agent.py` (and it is likely already absent from `_EXEC_REPORT_TOOLS`).
@@ -538,6 +539,7 @@ description: The authoritative, exhaustive end-to-end runbook for creating a BRA
 373. Update any `BookOfTlamatini.md` "Recent Updates" narrative entry if Angela maintains it for releases.
 374. Confirm `agents_descriptions.md` is shipped by `build.py` next to the exe (it is — just don't break it) so tooltips work in frozen mode.
 375. Re-grep the repo for the OLD agent count to catch any stray count you missed.
+375b. **⚠️ A COUNT BUMP IS NOT A CATALOG ENTRY (learned the hard way 2026-08-23).** Bumping every "N → N+1" still leaves the per-agent TABLES stale, because they sit BESIDE the counts rather than in them. Grep for a **SIBLING AGENT'S NAME** (e.g. `Video-Analyzer`), not for the old number, and check every hit: the Ask-Execs tier table in `docs/claude/multi-turn.md`; the `_EXEC_REPORT_TOOLS` map quoted in `docs/claude/exec-report.md`; FlowCreator's **Quick-Reference capability table** AND its **Agent Selection Priority Rules** (both in `agentic_skill.md`, both separate from the numbered entry you already added); the self-knowledge bullet + counts in `agent/Tlamatini.md` (injected into `prompt.pmt` under `--self-modify`); `KIMI.md`'s §13 catalog row; and `BookOfTlamatini.md`'s **Bestiary AND Glossary** tables. Leave DATED release notes alone — rewriting shipped history is a lie.
 376. Confirm every doc uses the EXACT `<Display>` casing (run the naming-skill quick-check grep).
 
 ---
@@ -627,6 +629,7 @@ description: The authoritative, exhaustive end-to-end runbook for creating a BRA
 
 442. Run `python -m ruff check` over the repo and fix ALL issues (E402 from a top-level def above imports is the classic one).
 443. Run `npm run lint` and fix ERRORS (warnings can stay) — the missing `/* global */` or `eslint.config.mjs` global is the classic JS lint failure.
+443b. **(REQUIRED — added 2026-08-23) Run `python Tlamatini/manage.py collectstatic --noinput`, then HASH-VERIFY** each edited file in `agent/static/` against its copy in `staticfiles/`, then RESTART the server. WhiteNoise serves the COLLECTED copies, so until you do this every CSS gradient and every one of the 6 canvas wiring sites exists on disk but is INVISIBLE in the browser — the node renders with no connector and no one can tell you why. `test_checkbox_bulk_toggle.py` and `test_dialog_dismissal_policy.py` assert collected-static sync; see also `feedback_never_hotswap_static_into_running_app` (a half-swapped file is served TRUNCATED and throws a phantom `ReferenceError`).
 444. Run `python Tlamatini/manage.py makemigrations --check --dry-run` — must be clean (all rows seeded via your RunPython migrations, no model drift).
 445. Run `python Tlamatini/manage.py migrate` and confirm the Agent row + Tool row + demo-prompt rows apply.
 446. Run the new test module green: `python Tlamatini/manage.py test agent.test_<lower>_agent`.
@@ -680,7 +683,7 @@ description: The authoritative, exhaustive end-to-end runbook for creating a BRA
 484. ☐ `views.py::update_<lower>_connection_view` + `urls.py` route.
 485. ☐ Migration `<NNNN>_add_<lower>.py` (Agent row, exact `<Display>` casing).
 486. ☐ Migration `<NNNN+1>_add_chat_agent_<lower>_tool.py` (Tool row) — if Multi-Turn.
-487. ☐ `parametrizer.py::SECTION_AGENT_TYPES` + `views.py::PARAMETRIZER_SOURCE_OUTPUT_FIELDS` + `agent_contracts.py::_PARAMETRIZER_OUTPUT_FIELDS` (identical field lists) — if a source.
+487. ☐ `parametrizer.py::SECTION_AGENT_TYPES` + `agent_contracts.py::_PARAMETRIZER_OUTPUT_FIELDS` — if a source. (`views.PARAMETRIZER_SOURCE_OUTPUT_FIELDS` is DERIVED; never hand-edit it.)
 488. ☐ `agentic_control_panel.css` unique gradient (normal + hover).
 489. ☐ `acp-agent-connectors.js` connector `update<Pascal>Connection`.
 490. ☐ `acp-canvas-core.js` × 6 (classMap HYPHEN, NEVER_START HYPHEN, populateAgentsList shared helper, removeConnection/removeConnectionsFor/mouseup SPACED).

@@ -378,6 +378,45 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         poll_window_seconds=8,
     ),
     ChatWrappedAgentSpec(
+        key="netspeed_calculator",
+        template_dir="netspeed_calculator",
+        tool_name="chat_agent_netspeed_calculator",
+        tool_description="Chat-Agent-NetSpeed-Calculator",
+        display_name="NetSpeed-Calculator",
+        purpose=(
+            "MEASURE THIS MACHINE'S REAL INTERNET CONNECTION and return a defensible number — "
+            "download, upload, latency, jitter, packet loss and BUFFERBLOAT — using RFC 6349 "
+            "methodology against SEVERAL keyless public providers at once (Cloudflare, Ookla, "
+            "Fast.com/Netflix, LibreSpeed, Hetzner, CacheFly; no API key, no login, no account). "
+            "It runs N parallel TCP streams per provider, DISCARDS the slow-start ramp, samples "
+            "d(bytes)/dt rather than total/elapsed, rejects outliers (Tukey), and FUSES the "
+            "providers with a DerSimonian-Laird random-effects meta-analysis that reports a 95% "
+            "confidence interval and an I-squared heterogeneity figure — so the answer comes with "
+            "its own error bar instead of a single flattering number from one CDN. Use it for "
+            "'how fast is my internet', 'test my connection', 'why are my calls choppy' "
+            "(bufferbloat is the usual culprit, and it is graded A+ to F). Actions: full (default) "
+            "| download | upload | latency | providers (list the catalogue, measures nothing). "
+            "The wrapped result surfaces download_mbps, upload_mbps, latency_ms, bufferbloat_grade "
+            "and json_path at the top level, so you do NOT need to parse the log. NOTE: this "
+            "consumes real, possibly METERED bandwidth — roughly 100-200 MB for a default full run."
+        ),
+        example_request=(
+            "Run NetSpeed-Calculator with action='full', providers='cloudflare,ookla,fast', "
+            "test_duration_seconds=10, parallel_streams=6 and measure_bufferbloat=true"
+        ),
+        aliases=(
+            "netspeed_calculator", "netspeed-calculator", "netspeed calculator",
+            "net speed calculator", "netspeed", "speedtest", "speed test",
+            "internet speed", "bandwidth test",
+        ),
+        security_hints=(
+            "internet speed", "speed test", "speedtest", "bandwidth", "throughput",
+            "how fast is my internet", "download speed", "upload speed", "mbps",
+            "bufferbloat", "latency", "jitter", "packet loss", "connection quality",
+            "test my connection", "network speed",
+        ),
+    ),
+    ChatWrappedAgentSpec(
         key="video_analyzer",
         template_dir="video_analyzer",
         tool_name="chat_agent_video_analyzer",

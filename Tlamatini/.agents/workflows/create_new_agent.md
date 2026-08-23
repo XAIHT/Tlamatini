@@ -156,7 +156,7 @@ logging.info(
 
 **Register in 3 places:**
 1. `parametrizer.py` → add base name to `SECTION_AGENT_TYPES` (the unified parser handles the rest).
-2. `views.py` → add field list to `PARAMETRIZER_SOURCE_OUTPUT_FIELDS` (KV header fields + `response_body` if present).
+2. `agent_contracts.py` → add the field tuple to `_PARAMETRIZER_OUTPUT_FIELDS` (KV header fields + `response_body` if present). **⚠️ 2026-08-23: do NOT hand-edit `views.PARAMETRIZER_SOURCE_OUTPUT_FIELDS` — it is DERIVED from that registry (`= get_parametrizer_source_fields()`).**
 3. `README.md` → add a row to the **Supported Source Agents** table.
 
 ---
@@ -615,7 +615,9 @@ the updater preserve lists stay coherent, and new migrations reach users. Full r
     [ ] If polls source logs: reanim offset save/load
     [ ] If feeds Parametrizer: INI_SECTION_<TYPE><<<...>>>END_SECTION_<TYPE>
         with a SINGLE atomic logging.info() call per section, registered in
-        SECTION_AGENT_TYPES (parametrizer.py) + PARAMETRIZER_SOURCE_OUTPUT_FIELDS (views.py) + README table
+        SECTION_AGENT_TYPES (parametrizer.py) + _PARAMETRIZER_OUTPUT_FIELDS
+        (agent_contracts.py; views.PARAMETRIZER_SOURCE_OUTPUT_FIELDS is DERIVED,
+        never hand-edit it) + README table
     [ ] TRUTHFUL semantic `status:` from exactly one of agent_verdict.py's five sets;
         it OUTRANKS the exit code and decides the Exec-Report colour. Diagnostic or
         intact completion => green; degraded/not-done/error => red. Never place a

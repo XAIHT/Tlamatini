@@ -12,7 +12,8 @@
 
 Exposes EVERY Tlamatini pool agent (Executer, Pythonxer, Croner, ACPXer,
 STM32er, ESP32er, Arduiner, Shoter, Playwrighter, Kalier, Blenderer,
-Talker, Whisperer, Discoverer, MCP-Doctor, … all 82) as an MCP tool so an
+Talker, Whisperer, Discoverer, MCP-Doctor, NetSpeed-Calculator, and every
+other complete live agent directory) as an MCP tool so an
 MCP client (Claude Code, etc.) can drive them directly.
 
 Agent discovery is fully DYNAMIC: every directory under

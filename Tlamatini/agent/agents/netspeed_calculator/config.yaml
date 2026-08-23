@@ -1,0 +1,83 @@
+# NetSpeed-Calculator Agent Configuration
+#
+# NetSpeed-Calculator measures the REAL download and upload throughput of the machine
+# Tlamatini is running on, against SEVERAL independent public speed-test endpoints, and
+# fuses the per-provider results into ONE statistically defensible figure.
+#
+# NO API KEYS. NO LOGINS. NO ACCOUNTS. Every provider below is a public, keyless HTTP
+# endpoint. Self-contained (stdlib only: urllib + http.client + socket + ssl + math +
+# threading + xml.etree) so it behaves identically in source and frozen builds and never
+# imports from agent.*.
+#
+# ── THE METHOD (RFC 6349 "Framework for TCP Throughput Testing") ──────────────
+#   1. PATH CHARACTERIZATION FIRST. Baseline RTT (min, not mean) per provider, then the
+#      Bandwidth-Delay Product BDP = BW x RTT. A single TCP flow cannot exceed
+#      Window/RTT, so on a high-BDP path one stream structurally under-reports.
+#   2. MULTI-STREAM. `parallel_streams` concurrent flows are aggregated. This is why
+#      Ookla/Netflix use 4-16 streams: the Mathis bound BW <= MSS/(RTT*sqrt(loss))
+#      caps ONE loss-based flow far below link capacity.
+#   3. SLOW-START EXCLUSION. RFC 6349 requires discarding the TCP ramp; the first
+#      `warmup_seconds` of samples are DROPPED and only the steady state is measured.
+#   4. DERIVATIVE, NOT TOTAL. Throughput is sampled as d(bytes)/dt over fixed slices,
+#      never total/elapsed - so a constant socket-buffer offset cancels out instead of
+#      biasing the result.
+#   5. ROBUST CENTRAL TENDENCY. Per-slice samples are cleaned with Tukey IQR fences
+#      (k=1.5) or the Iglewicz-Hoaglin modified z-score (MAD, 3.5), then reduced with a
+#      symmetric trimmed mean. Median and P95 are reported alongside. A Student-t
+#      confidence interval is used (NOT the normal z) because n is small.
+#   6. CROSS-PROVIDER FUSION. Providers are NOT naively averaged - they have different
+#      precision. Results are pooled by INVERSE-VARIANCE weighting (the MLE for
+#      independent estimates), with Cochran's Q and I^2 reported; when I^2 exceeds
+#      `heterogeneity_i2_threshold` the estimator switches to DerSimonian-Laird
+#      RANDOM-EFFECTS, which is the corroborated treatment for heterogeneous sources.
+#   7. THE FULL CALCULATION COMPLETES BEFORE ANY DOWNSTREAM AGENT IS RAISED.
+
+# -- action -- one capability per run ----------------------------------------
+#   full       : latency + download + upload + bufferbloat + full fusion (DEFAULT)
+#   download   : latency + download only
+#   upload     : latency + upload only
+#   latency    : RTT / jitter / loss only (no bulk transfer, no bandwidth used)
+#   validate   : reachability probe of every provider - measures NOTHING (read-only)
+#   providers  : print the provider catalogue and exit (read-only)
+action: "full"
+
+# -- Providers (ALL keyless / no login) --------------------------------------
+#   cloudflare : speed.cloudflare.com  __down / __up      (anycast; down + UP)
+#   ookla      : speedtest.net server mesh                (down + UP; geo+RTT picked)
+#   fast       : fast.com / Netflix Open Connect CDN      (down)
+#   librespeed : librespeed.org backend garbage/empty     (down + UP)
+#   hetzner    : speed.hetzner.de                         (down)
+#   cachefly   : cachefly.cachefly.net                    (down)
+# At least THREE are attempted by default; unreachable ones are skipped, never fatal.
+providers: "cloudflare,ookla,fast,librespeed,hetzner"
+min_successful_providers: 2   # below this the run is honestly reported as degraded
+
+# -- Measurement shape (RFC 6349) --------------------------------------------
+parallel_streams: 6           # concurrent TCP flows per provider (fills a high-BDP path)
+test_duration_seconds: 10     # steady-state measuring window per direction per provider
+warmup_seconds: 2             # slow-start ramp DISCARDED before measuring (RFC 6349)
+sample_interval_seconds: 0.25 # throughput slice cadence (d(bytes)/dt)
+max_bytes_per_stream: 100000000   # 100 MB cap per request before re-requesting
+upload_payload_mb: 8          # incompressible random body pushed per upload request
+request_timeout: 30           # per-request socket timeout (seconds)
+
+# -- Latency / jitter / bufferbloat ------------------------------------------
+latency_samples: 12           # TCP-connect RTT probes per provider (no raw sockets/admin)
+measure_bufferbloat: true     # RTT under load vs idle -> Waveform/DSLReports A+..F grade
+
+# -- Statistics --------------------------------------------------------------
+outlier_rejection: "tukey"        # tukey (IQR k=1.5) | mad (modified z 3.5) | none
+trim_percent: 10                  # symmetric trimmed mean, % per tail
+confidence_level: 0.95            # Student-t two-sided CI
+aggregation: "inverse_variance"   # inverse_variance | trimmed_mean | median
+heterogeneity_i2_threshold: 50    # I^2 % above which DerSimonian-Laird random-effects wins
+
+# -- Execution controls ------------------------------------------------------
+preflight: true          # fail-safe checks; REFUSE (never crash) rather than mis-measure
+command_timeout: 300     # hard wall-clock cap for the whole run (seconds)
+output_dir: ""           # results dir; empty = <app>/Temp/NetSpeedCalculator
+save_json: true          # write the full machine-readable result next to the report
+
+# -- Connection fields -------------------------------------------------------
+source_agents: []        # upstream agents (canvas connection tracking)
+target_agents: []        # downstream agents, started ONLY after the COMPLETE calculation

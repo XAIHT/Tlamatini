@@ -103,7 +103,7 @@ The tool executor is synchronous and runs in a worker thread (`sync_to_async(ask
 | command / script runners | **ASK** | Executer, Pythonxer, SSHer, Kalier, Dockerer, Kuberneter, SQLer, Mongoxer, Gitter, Jenkinser, PSer, J-Decompiler (+ the direct `execute_command` / `execute_file` / `decompile_java`) |
 | **A** — destroys/overwrites data | **ASK** | Deleter, Mover, File-Creator, Editor, De-Compresser, `unzip_file`, PDFer, LaTeXer |
 | **B** — messaging / reaches real people | **no-ask (ON PURPOSE, 2026-07-26)** | Emailer, Whatsapper, Telegrammer, Zavuerer, Instant Messaging Doctor |
-| **D** — remote systems / network | **ASK** | SCPer, Apirer, Nmapper, Discoverer, Crawler |
+| **D** — remote systems / network | **ASK** | SCPer, Apirer, Nmapper, Discoverer, Crawler, NetSpeed-Calculator (reaches remote hosts AND deliberately saturates the link with ~100-200 MB of metered traffic per full run) |
 | **C** — desktop UI + hardware | **no-ask (ON PURPOSE)** | Keyboarder, Mouser, Windower, Playwrighter, STM32er, ESP32er, Arduiner, ESPHomer, Blenderer, Unrealer |
 | read-only / observational / management-polling / crypto / `invoke_skill` / ACPX | no-ask | Globber, Grepper, the interpreters, the media agents, `chat_agent_run_*`, … |
 
@@ -186,11 +186,16 @@ Rules:
 - Each section MUST be emitted in a **single `logging.info()` call** (atomic)
 - One section per output unit (N results = N sections)
 
-Registration (3 places):
-1. `parametrizer.py` → `SECTION_AGENT_TYPES` list
-2. `views.py` → `PARAMETRIZER_SOURCE_OUTPUT_FIELDS` dict
-3. `README.md` → Supported Source Agents table
+Registration (**2 places** — corrected 2026-08-23):
+1. `parametrizer.py` → `SECTION_AGENT_TYPES` list (membership)
+2. `services/agent_contracts.py` → `_PARAMETRIZER_OUTPUT_FIELDS` (the field tuple)
+
+⚠️ **`views.PARAMETRIZER_SOURCE_OUTPUT_FIELDS` is DERIVED** — it is literally
+`= get_parametrizer_source_fields()`, so hand-editing it is a no-op at best and
+fresh drift at worst. The old "3 places" instruction also named a **Supported
+Source Agents** table in `README.md` that no longer exists; the live list is the
+one below.
 
 The generic parser (`_parse_section_content` + `_section_regex`) in `parametrizer.py` handles all agents with ~90 lines. No per-agent parser code needed.
 
-Registered source agents: apirer, gitter, kuberneter, crawler, summarizer, prompter, flowcreator, file_interpreter, image_interpreter, file_extractor, kyber_keygen, kyber_cipher, kyber_decipher, gatewayer, gateway_relayer, de_compresser, googler, acpxer, shoter, camcorder, recorder, audioplayer, videoplayer, talker, whisperer, mouser, windower, unrealer, reviewer, analyzer, playwrighter, kalier, stm32er, esp32er, arduiner, discoverer, mcp_doctor, instant_messaging_doctor, telegrammer, whatsapper, zavuerer, video_analyzer, pdfer, latexer.
+Registered source agents: apirer, gitter, kuberneter, crawler, summarizer, prompter, flowcreator, file_interpreter, image_interpreter, file_extractor, kyber_keygen, kyber_cipher, kyber_decipher, gatewayer, gateway_relayer, de_compresser, googler, acpxer, shoter, camcorder, recorder, audioplayer, videoplayer, talker, whisperer, mouser, windower, unrealer, reviewer, analyzer, playwrighter, kalier, stm32er, esp32er, arduiner, discoverer, mcp_doctor, instant_messaging_doctor, telegrammer, whatsapper, zavuerer, video_analyzer, pdfer, latexer, netspeed_calculator.

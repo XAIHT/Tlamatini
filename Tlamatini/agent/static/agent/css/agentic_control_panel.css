@@ -2601,6 +2601,20 @@ body.resizing-vertical {
     box-shadow: 0 6px 15px rgba(123, 47, 247, 0.5);
 }
 
+/* NetSpeed-Calculator Agent — "Fiber Pulse": abyss navy -> signal blue ->
+   aqua -> amber, reading left-to-right like a link lighting up under load. */
+.canvas-item.netspeed-calculator-agent {
+    background-color: #041E2B;
+    background: linear-gradient(135deg, #041E2B 0%, #0E6BA8 33%, #21D4B4 66%, #F9C80E 100%);
+    color: white;
+    font-size: smaller;
+}
+
+.canvas-item.netspeed-calculator-agent:hover {
+    background: linear-gradient(135deg, #0A3448 0%, #2E8FD0 33%, #4FEAD0 66%, #FFE04A 100%);
+    box-shadow: 0 6px 15px rgba(33, 212, 180, 0.5);
+}
+
 /* Gatewayer Agent */
 .canvas-item.gatewayer-agent {
     background-color: #FF006E;

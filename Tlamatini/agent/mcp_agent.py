@@ -273,6 +273,10 @@ _EXEC_REPORT_TOOLS: Dict[str, Tuple[str, str]] = {
     # verdict — it mutates no state), but EVERY Multi-Turn agent must appear in the
     # Exec Report, so it gets its own row + caption gradient (agent_key videoanalyzer).
     "chat_agent_video_analyzer": ("videoanalyzer",  "Video-Analyzer"),
+    # NetSpeed-Calculator measures rather than mutates, but the completeness
+    # contract is absolute: EVERY Multi-Turn agent gets an Exec-Report row.
+    # agent_key drops the dash to match .exec-report-caption-netspeedcalculator.
+    "chat_agent_netspeed_calculator": ("netspeedcalculator", "NetSpeed-Calculator"),
     # Playwrighter drives a real browser through a scripted flow: it submits
     # forms, clicks, logs into sites, downloads files, and otherwise changes
     # remote/web state. Read-only steps (extract_text / screenshot) share the
@@ -481,6 +485,12 @@ _ASK_EXECS_REQUIRED_TOOLS: frozenset = frozenset({
     "chat_agent_nmapper",       # Nmapper       (local nmap scans — offensive recon)
     "chat_agent_discoverer",    # Discoverer    (ProjectDiscovery active recon)
     "chat_agent_crawler",       # Crawler       (fetches arbitrary URLs)
+    # NetSpeed-Calculator sits in tier D for the SAME reason Crawler does — it
+    # reaches out to remote hosts — but with one extra edge: it deliberately
+    # SATURATES the link, moving ~100-200 MB of real traffic per full run. On a
+    # metered or capped connection that costs money, and it will briefly slow
+    # everything else on the network, so Angela gets to say when.
+    "chat_agent_netspeed_calculator",  # NetSpeed-Calculator (saturates the link)
 })
 
 

@@ -57,7 +57,7 @@ When agents are deployed on the canvas, each instance gets a **cardinal number**
 
 ### Agent Categories
 
-**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Counter, Ssher, Scper, Telegrammer, Whatsapper, Instant Messaging Doctor, Sqler, Mongoxer, Prompter, Gitter, Dockerer, MCP Doctor, Pser, Kuberneter, Jenkinser, Apirer, Crawler, Googler, Summarizer, Mouser, File-Interpreter, Image-Interpreter, Gatewayer, GatewayRelayer, NodeManager, File-Creator, File-Extractor, J-Decompiler, De-Compresser, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, FlowBacker, Barrier, Keyboarder, TeleTlamatini, ACPXer, Unrealer.
+**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Counter, Ssher, Scper, Telegrammer, Whatsapper, Instant Messaging Doctor, Sqler, Mongoxer, Prompter, Gitter, Dockerer, MCP Doctor, Pser, Kuberneter, Jenkinser, Apirer, Crawler, Googler, Summarizer, Mouser, File-Interpreter, Image-Interpreter, Gatewayer, GatewayRelayer, NodeManager, File-Creator, File-Extractor, J-Decompiler, De-Compresser, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, FlowBacker, Barrier, Keyboarder, TeleTlamatini, ACPXer, Unrealer, NetSpeed-Calculator.
 
 **Terminal/Monitoring agents** (do NOT start downstream, even if they have a `target_agents` config field): Cleaner, Emailer, Monitor-Log, Monitor Netstat, Recmailer, Stopper, Notifier, FlowHypervisor. For these agents, `target_agents` (or `output_agents` for Stopper) is used only for canvas wiring metadata and should be left as `[]`.
 
@@ -110,10 +110,11 @@ When multiple agents COULD accomplish a task, you MUST follow these priority rul
 | Summarize text with LLM | **Summarizer** | Prompter or Pythonxer | Summarizer continuously polls source logs and triggers on LLM-detected events. |
 | Git operations | **Gitter** | Executer with `git` commands | Gitter provides structured output, exit-code gating, and Parametrizer compatibility. |
 | Docker operations | **Dockerer** | Executer with `docker` commands | Dockerer has fallback mechanisms, compose support, and structured logging. |
+| Measure Internet speed / latency / bufferbloat | **NetSpeed-Calculator** | Pythonxer timing a download, or Executer running a speedtest CLI | A naive total÷elapsed over one connection measures the slow-start ramp and one CDN's mood, not the link. NetSpeed-Calculator discards the ramp, samples the derivative, rejects outliers, cross-checks SEVERAL providers and publishes a confidence interval — plus bufferbloat, which a hand-rolled script never measures at all. |
 | Create a file | **File-Creator** | Pythonxer writing to disk | File-Creator is purpose-built for single-file creation with configurable path and content. |
 | Take a screenshot | **Shoter** | Pythonxer with pyautogui | Shoter is a one-config agent with directory output and canvas integration. |
 | Focus/move/resize/min/max/close/tile a WINDOW, or list open windows | **Windower** | Mouser, or Pythonxer with pygetwindow | Windower acts on the window itself via the Win32 API (reliable cross-process focus, geometry, tiling). Mouser only CLICKS controls inside a window; it cannot move/resize/close/enumerate windows. |
-| Google search | **Googler** | Crawler or Pythonxer | Googler uses Playwright to automate Google search and extract top N results. |
+| Search / indexed-file discovery | **Googler** | Crawler or Pythonxer | Googler tries four plain-HTTP server-rendered routes first, then visible Chrome/bundled Chromium across seven browser routes for top-N extraction or `links_only` URLs; its structured dork builder normalizes presets, aliases, operators, and grouped site/filetype alternatives. |
 
 **When IS Pythonxer the right choice?**
 - Custom data transformation or computation that no specialized agent covers
@@ -296,6 +297,7 @@ Use this table to quickly decide which agent to use. The **Starts Others** colum
 |-------|-------------|:---:|----------|
 | **pdfer** | Authors a PDF from text / Markdown / HTML / images / other PDFs — the document deliverable at the end of a reporting flow | YES | Action |
 | **latexer** | Typesets LaTeX (.tex) into a PDF — real mathematics, bibliographies, cross-references, an index. Needs MiKTeX installed | YES | Action |
+| **netspeed_calculator** | Measures this machine's Internet connection WITH an error bar — download/upload/latency/jitter/loss/bufferbloat across several keyless providers, fused by a random-effects meta-analysis | YES | Action |
 | **starter** | Entry point — launches the first agent(s) in the flow | YES | Control |
 | **ender** | Terminates all listed agents and optionally launches FlowBacker/Cleaner | KILL+LAUNCH | Control |
 | **stopper** | Stops specific agents without ending the entire flow | NO | Control |
@@ -313,7 +315,7 @@ Use this table to quickly decide which agent to use. The **Starts Others** colum
 | **prompter** | Sends a prompt to an LLM and logs the response | YES | Action |
 | **summarizer** | Summarizes text/logs with an LLM (can start next agents) | YES | Action |
 | **crawler** | Crawls URLs and captures content with optional LLM analysis | YES | Action |
-| **googler** | Searches Google, fetches top N results, extracts text | YES | Action |
+| **googler** | Two-tier indexed-web search (plain HTTP first, then a real browser) with a structured Google-dork builder — finds FILES (PDF/EPUB/DOCX) as well as pages | YES | Action |
 | **apirer** | Calls HTTP REST APIs | YES | Action |
 | **gitter** | Runs git operations | YES | Action |
 | **ssher** | Runs commands on remote hosts via SSH | YES | Action |
@@ -1479,28 +1481,38 @@ system_prompt: |
 
 
 ### 57. Googler
-- **Purpose**: Searches Google for a configured query using Playwright browser automation, fetches the top N result pages, extracts readable text content from each, and saves the combined results to an output file.
-- **Used for**: Automated internet research, gathering information from top search results, feeding web content into downstream analysis agents.
-- **Aimed at**: Enabling web-search-driven workflows where real-time Google results feed into further processing or analysis.
-- **Application example**: Googler searches for "latest Python security vulnerabilities 2026", extracts text from the top 5 results, saves them to a file, then triggers a Summarizer agent to produce a condensed report.
+- **Purpose**: Performs resilient indexed-web search, then either extracts readable text/raw HTML from the top N pages or returns the SERP URL/title list without fetching result bodies. Its structured dork builder compiles high-level fields into mechanically valid Google syntax. Tier 0 uses plain `urllib` against four server-rendered routes; Tier 1 falls back to visible installed Chrome/bundled Chromium across seven direct-URL browser routes.
+- **Used for**: Automated internet research, public indexed-file discovery, lawful/open-book and paper discovery, targeted site/date/title searches, and URL handoff to downstream download/extraction agents.
+- **Aimed at**: Enabling search-driven workflows without relying on fragile operator spacing/capitalization: no space after operator colons, uppercase `OR`, parenthesized alternatives, double-quoted exact phrases, and no-space `-term` exclusions are enforced.
+- **Application example**: Googler uses `preset: paper`, an exact topic, and `content_mode: links_only` to return open/institutional PDF URLs; Parametrizer maps each URL to Apirer for download, File-Extractor reads the file, and Summarizer produces the report.
 - **Pool name pattern**: `googler_<n>`
 - **Starts other agents**: YES
 - **Config parameters**:
-  - `query`: "" (the search query to enter in Google; Google dork operators work here verbatim, e.g. `intitle:"index of" site:example.com`)
-  - Structured Google-dork builder (all OPTIONAL — APPENDED to `query`, which is preserved):
-    - `site`: "" (→ `site:example.com` — restrict to one host)
-    - `filetype`: "" (→ `filetype:pdf`; accepts `pdf`, `filetype:pdf`, or `ext:pdf`)
-    - `intitle`: "" / `inurl`: "" / `intext`: "" (multi-word `intitle`/`intext` values are auto-quoted)
-    - `exact`: "" (→ `"exact phrase"`)
-    - `before`: "" / `after`: "" (→ `before:YYYY-MM-DD` / `after:YYYY-MM-DD`)
-    - `exclude`: [] (each term becomes `-term`; accepts a list or a comma/space-separated string)
-  - `allow_same_domain`: false (de-dup results by full URL instead of by domain so a single-site dork returns many URLs per host; auto-enabled when the query contains a `site:` operator)
+  - `query`: "" (freeform query preserved verbatim; hand-written operators still work, e.g. `intitle:"index of" site:example.com`)
+  - `preset`: "" (fills only otherwise-empty fields; `book`, `book_public`, `paper`, `manual`, `docs`, `slides`, `sheets`, or `directory`. `book_public` uses public-domain/open libraries; `paper` uses open/institutional sources)
+  - `filetypes`: [] / `filetype`: "" (one or many; several become `(filetype:epub OR filetype:pdf)`. Aliases: `ebook` -> epub/pdf/mobi/azw3; `book`; `docs`; `slides`; `sheets`; `text`; `code`; `data`. Bare, `filetype:`, and `ext:` forms normalize)
+  - `sites`: [] / `site`: "" / `exclude_sites`: [] (several positive sites become `(site:a OR site:b)`; excluded sites become `-site:x`; `.edu`/`.gov` are valid)
+  - `exact`: "" / `author`: "" (quoted phrases)
+  - `intitle`: "" / `allintitle`: "" / `inurl`: "" / `allinurl`: "" / `intext`: "" / `allintext`: "" / `inanchor`: "" / `allinanchor`: ""
+  - `or_terms`: [] (parenthesized uppercase-`OR` alternatives)
+  - `around_terms`: [] / `around_distance`: 5 (two terms compiled as `x AROUND(n) y`)
+  - `numeric_range`: "" (e.g. `2020..2026`; a single hyphen is normalized to `..`)
+  - `before`: "" / `after`: "" (Google date operators)
+  - `related`: "" / `cache`: "" / `define`: "" / `source`: "" (discovery/news operators)
+  - `exclude`: [] (each term becomes `-term`; list or comma/space-separated string)
+  - `allow_same_domain`: false (de-dup by full URL instead of domain; auto-enabled for a single `site:` operator or a parenthesized site-`OR` group)
   - `number_of_results`: 5 (top results; max 10 in `text`/`raw` mode, max 50 in `links_only`)
-  - `content_mode`: "text" ("text" = readable text per page, "raw" = full HTML per page, "links_only" = just the SERP hit list `url`+`title` WITHOUT fetching the pages — fast; ideal for dork enumeration/recon feeding a downstream Crawler/Kalier via Parametrizer)
+  - `headless`: false (applies to the Tier-1 browser fallback: visible installed Chrome is the measured default; bundled Chromium is the browser fallback. `true` is unattended but more refusal-prone)
+  - `engines`: [] (empty = Tier 0 plain HTTP first, then Tier 1 `duckduckgo-html`, `duckduckgo-lite`, `mojeek`, `bing`, `google`, `brave`, `startpage`; an explicit list skips Tier 0; pin `[google]` when advanced Google-only date/proximity/range semantics must remain exact)
+  - `attempts_per_engine`: 2 (bounded retries with jittered backoff before falling through; the answering engine is named in the log)
+  - `content_mode`: "text" (`text` = readable page text; `raw` = HTML; `links_only` = SERP `url`+`title` without fetching pages. `links_only` is the correct mode for PDF/EPUB/file hunts; route URLs to Apirer, then File-Extractor/File-Interpreter)
   - `output_file`: "googler_results.txt" (file path to save search results)
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after search completes)
 - **Output fields** (Parametrizer-addressable): `url`, `title`, `status`, `content_length`, `response_body`
+- **Responsible-use boundary**: Googler locates only publicly indexed URLs and does not bypass access controls. Indexing is not a license; copyright, authorization, download, and use remain the operator's responsibility.
+- **Direct-tool distinction**: the direct Multi-Turn `googler` tool accepts manual operators in its `query`; the structured fields above belong to this visual/pool-agent surface.
+- **Fallback semantics**: Tier 0 uses DuckDuckGo HTML, Bing, DuckDuckGo Lite, and Mojeek without launching a browser; first non-empty results win. Tier 1 runs only if Tier 0 is empty or an explicit `engines` list pins browser routes. `site:` and `filetype:` carry broadly, while `before:`/`after:`/`AROUND()`/numeric ranges are Google-specific. A non-Google fallback may return broader candidates; do not claim the answer came from Google when the log names another route.
 
 ### 58. TeleTlamatini
 - **Purpose**: Long-running pure-bot agent that exposes the full Tlamatini chat (same Multi-Turn + Exec Report behavior as `agent_page.html`) over Telegram. It stays alive holding ONE persistent Tlamatini WebSocket (one HTTP login at startup, reused for every Telegram message — no per-message re-login overhead), password-gates each chat on first contact, and forwards every subsequent message straight into the local Tlamatini chat with `multi_turn_enabled=true` and `exec_report_enabled=true`. The user sees an editable "🔄 Working on it…" message that gets replaced in place by the assembled answer. After every completed request cycle, starts the configured `target_agents`. **Bot mode only** — the Telegrammer agent covers direct Telegram send/receive; do not give TeleTlamatini a `listen_chat` field.
@@ -2101,6 +2113,29 @@ system_prompt: |
   - `miktex_install_url`: "https://miktex.org/download/win/basic-miktex-x64.exe" (used by `action: install`)
   - `source_agents`: [] (upstream agents — canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after the typesetting run)
+
+### 88. NetSpeed-Calculator
+- **Purpose**: MEASURE THIS MACHINE'S REAL INTERNET CONNECTION and report the answer WITH its error bar — download, upload, latency, jitter, packet loss and BUFFERBLOAT — using RFC 6349 methodology against SEVERAL keyless public providers at once (Cloudflare, Ookla, Fast.com/Netflix, LibreSpeed, Hetzner, CacheFly; no API key, no login, no account).
+- **Used for**: Answering "how fast is my internet", "why are my video calls choppy" (bufferbloat is the usual culprit and it is graded A+ to F), and any scheduled link-quality audit. It runs N parallel TCP streams per provider, DISCARDS the slow-start ramp, samples d(bytes)/dt rather than total/elapsed, rejects outliers with Tukey fences, and FUSES the providers with a DerSimonian-Laird random-effects meta-analysis that publishes a 95% confidence interval and an I² heterogeneity figure.
+- **Aimed at**: Defensible measurement rather than a flattering number. One CDN can be fast for reasons that have nothing to do with the link; several INDEPENDENT providers agreeing is evidence, and several disagreeing (high I²) is a peering story the report tells you about instead of hiding. NEVER hand-roll a speed test through Executer/Pythonxer — the ramp discard, the derivative sampling and the fusion are the whole point.
+- **Application example**: Starter → Croner (03:00 daily) → NetSpeed-Calculator (`action: latency`, low-bandwidth health check) → Forker (pattern_a `success: True` → Parametrizer → Emailer with the report; pattern_b `success: False` → Notifier "the link is down") → Ender. Use `action: full` only in a separately authorized low-frequency flow because each run commonly transfers 100-200 MB and a canvas flow has no interactive Ask-Execs prompt.
+- **Pool name pattern**: `netspeed_calculator_<n>`
+- **Parametrizer source**: emits `INI_SECTION_NETSPEED_CALCULATOR` with fields `action`, `status`, `success`, `providers_attempted/ok/failed`, `download_mbps`, `upload_mbps`, `download_ci95`, `upload_ci95`, `latency_ms`, `jitter_ms`, `packet_loss_pct`, `bufferbloat_ms`, `bufferbloat_grade`, `aggregation`, `heterogeneity_i2`, `samples`, `isp`, `client_ip`, `server_location`, `json_path`, `stage`, and body=`response_body`.
+- **Starts other agents**: YES (always, success or failure — so a Forker can branch on `{success}` / `{bufferbloat_grade}`)
+- **⚠️ CONSUMES REAL BANDWIDTH**: a default full run moves roughly 100-200 MB. On a metered or capped link that costs money, and it will briefly slow everything else on the network. Do NOT schedule it more often than the user asked for, and do not re-run it to "double-check".
+- **Config parameters**:
+  - `action`: "full" (full | download | upload | latency | validate | providers — `validate` probes provider reachability and `providers` only lists the catalog; neither runs throughput transfers)
+  - `providers`: "cloudflare,ookla,fast,librespeed,hetzner" (comma-separated; `cachefly` is also available. Upload-capable: cloudflare, ookla, librespeed)
+  - `min_successful_providers`: 2 (below this the run reports a partial result honestly rather than a confident one)
+  - `parallel_streams`: 6 (concurrent TCP flows per provider per direction) / `test_duration_seconds`: 10 (steady-state window) / `warmup_seconds`: 2 (slow-start ramp, DISCARDED)
+  - `sample_interval_seconds`: 0.25 (d(bytes)/dt slice size) / `max_bytes_per_stream`: 100000000 / `upload_payload_mb`: 8 / `request_timeout`: 30
+  - `latency_samples`: 12 / `measure_bufferbloat`: true (RTT under load → the A+..F grade)
+  - `outlier_rejection`: "tukey" / `trim_percent`: 10 / `confidence_level`: 0.95
+  - `aggregation`: "inverse_variance" (upgraded to DerSimonian-Laird random-effects automatically when providers disagree) / `heterogeneity_i2_threshold`: 50
+  - `preflight`: true (fail-safe: REFUSE rather than mis-measure) / `command_timeout`: 300
+  - `output_dir`: "" (empty = <app>/Temp/NetSpeedCalculator) / `save_json`: true (the full artifact: per-provider detail + raw samples)
+  - `source_agents`: [] (upstream agents — e.g. a Croner deciding WHEN to measure)
+  - `target_agents`: [] (downstream agents to start after the measurement — e.g. a Forker)
 
 ---
 

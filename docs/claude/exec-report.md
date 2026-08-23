@@ -74,6 +74,10 @@ _EXEC_REPORT_TOOLS: Dict[str, Tuple[str, str]] = {
     # capture them anyway, but would derive the plain default caption.
     "chat_agent_pdfer":        ("pdfer",          "PDFer"),
     "chat_agent_latexer":      ("latexer",        "LaTeXer"),
+    # NetSpeed-Calculator measures rather than mutates, but the completeness
+    # contract is absolute: EVERY Multi-Turn agent gets a row. agent_key drops
+    # the dash to match .exec-report-caption-netspeedcalculator.
+    "chat_agent_netspeed_calculator": ("netspeedcalculator", "NetSpeed-Calculator"),
     # ACPX child-process launchers and the Skill harness invoker —
     # spawn / send / send_and_wait / kill / relay all share the ``acpx``
     # agent_key so they merge into one "List of ACPx Operations" table;

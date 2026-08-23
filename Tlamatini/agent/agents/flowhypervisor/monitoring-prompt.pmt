@@ -77,7 +77,8 @@ SHORT-LIVED agents (should start, do work, and exit quickly):
   File-Interpreter, Image-Interpreter, File-Creator, File-Extractor, J-Decompiler,
   De-Compresser, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Parametrizer, FlowBacker, Barrier,
   ACPXer, MCP Doctor, Unrealer, Blenderer, Reviewer, Analyzer, Playwrighter, Kalier, STM32er, ESP32er, ESPHomer, Arduiner,
-  Camcorder, Recorder, Whisperer, Talker, Editor, Grepper, Globber, Discoverer, Video-Analyzer, Nmapper, PDFer, LaTeXer
+  Camcorder, Recorder, Whisperer, Talker, Editor, Grepper, Globber, Discoverer, Video-Analyzer, Nmapper, PDFer, LaTeXer,
+  NetSpeed-Calculator
   (NOTE: STM32er / ESP32er / ESPHomer / Arduiner are short-lived in steady state, but their
    FIRST build/compile/flash can run for MANY minutes while a large toolchain downloads —
    see their SPECIAL NOTES below before flagging a long firmware build as stuck.)
@@ -656,6 +657,46 @@ VIDEO_ANALYZER SPECIAL NOTES (triple-model video-verdict pipeline):
     content, NOT a flow crash. Only "Could not connect" on EVERY model together
     indicates a real problem (the Ollama host is down).
 
+NETSPEED_CALCULATOR SPECIAL NOTES (multi-provider RFC 6349 throughput measurement):
+  - NetSpeed-Calculator measures THIS machine's Internet connection against
+    several public providers in sequence. It is SHORT-LIVED and ACTIVE (it always
+    triggers target_agents, success or failure, so a Forker can branch on the
+    result). It mutates no state, but as a Multi-Turn agent it DOES appear in the
+    Exec Report.
+  - It is SLOW BY DESIGN and mostly SILENT while working. Each provider costs a
+    latency probe plus a warm-up-plus-steady-state window in EACH direction, so a
+    five-provider full run routinely takes 2-5 MINUTES, and a single transfer
+    window prints NOTHING for tens of seconds while six TCP streams saturate the
+    link. Do NOT flag that silence — expect the sequence "── provider: <name> ──",
+    then "RTT min=…", then "⬇ download … Mbps", then "⬆ upload … Mbps", per
+    provider. Only flag if there is no new provider line for well over 5 minutes.
+    The `latency` action is much shorter and low-bandwidth; `validate` only probes
+    provider reachability; `providers` only prints the catalog. Do not apply the
+    full-run silence/timing expectation to those three actions.
+  - "⬆ upload   not supported by this provider — skipped" is NORMAL: fast,
+    hetzner and cachefly are download-only by design. It is not an error.
+  - A provider that fails is EXPECTED and HANDLED: the run continues with the
+    others and reports "providers_ok / providers_failed" honestly. Lines like
+    "⚠️ <name>: discovery failed (…) — skipping, not fatal", "unreachable (no TCP
+    handshake)", and the block "⚠ <name> download produced ZERO bytes — cause:"
+    followed by named reasons are the agent's DIAGNOSTIC OUTPUT working exactly as
+    designed — a public endpoint moved or went down. NEVER flag those as a flow
+    error. A partial measurement clearly labelled as partial is the CORRECT
+    outcome, not a failure.
+  - It ALWAYS emits an INI_SECTION_NETSPEED_CALCULATOR<<< block (action, status,
+    success, providers_*, download_mbps, upload_mbps, the CI95 fields, latency,
+    jitter, packet loss, bufferbloat_ms + grade, aggregation, heterogeneity_i2,
+    isp, client_ip, server_location, json_path, stage; body = the full report).
+    NEVER flag that block as an error. "⚠ I² > 50%: providers genuinely DISAGREE"
+    is a documented statistical NOTE, not a fault — it means the meta-analysis
+    widened its interval on purpose.
+  - status: refused with stage: preflight is the fail-safe REFUSING to publish a
+    number it cannot trust (no network, an unknown action, an unwritable
+    output_dir). That is the agent working as DESIGNED, not a crash.
+  - Only a run where EVERY provider failed (providers_ok: 0) together with
+    "unreachable" on all of them indicates a real problem — this machine has no
+    Internet.
+
 ASK-EXECS — NOT A FLOW CONCEPT (never appears in agent-pool logs):
   "Ask Execs" is a chat-side, interactive Multi-Turn toggle that asks the human
   Proceed/Deny before each LLM tool call. It has NO canvas node and NO agent-pool
@@ -670,7 +711,7 @@ TYPICAL TIMING:
   - Starter: < 10 seconds
   - Executer/Ssher/Scper: seconds to minutes (flag if > 10 min with no output)
   - Crawler: can take minutes (web requests + LLM analysis per page)
-  - Googler: seconds to a minute (Playwright-driven Google search + text extraction; flag if > 5 min)
+  - Googler: seconds to several minutes (four plain-HTTP server-rendered routes first; if empty, visible installed Chrome/bundled Chromium across up to seven browser routes with bounded retries/backoff, then text/raw extraction or `links_only` URL delivery. An explicit `engines` list skips the HTTP tier. A fallback engine may broaden Google-only operators; structured dork syntax/presets do not make a URL-only file hunt an extraction failure; flag only after the configured chain exceeds its plausible retry budget, normally > 10 min)
   - Playwrighter: drives a real multi-step browser (goto / click / fill / wait_for / extract / screenshot / download); seconds for a simple page up to a few minutes for a multi-step or authenticated flow, PLUS any `hold_open_seconds` it deliberately lingers before closing (a visible browser left open on purpose is NORMAL). Don't flag a Playwrighter that is still emitting step logs, or that is inside its hold-open window, before ~5 min.
   - Asker: waits up to 5 minutes for user input
   - Sleeper: runs for exactly its configured duration

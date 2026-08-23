@@ -258,7 +258,7 @@ Contract (do NOT weaken): HKCU only, never admin, every writer fail-open, read-o
 - Defined in `tools.py` as synchronous `@tool` functions
 - Returned by `get_mcp_tools()` (misnamed - returns LangChain tools, NOT MCP services)
 - Only active when unified-agent chain is selected
-- Includes 20 direct/core tools, 65 wrapped chat-agent launchers (see `chat_agent_registry.WRAPPED_CHAT_AGENT_SPECS`), 12 ACPX/Skill tools, and 10 External-MCP supervisors for **107 built-ins** before dynamic `ext__*` remotes. The wrapped set includes `chat_agent_flowcreator`, PDFer, LaTeXer, and the media playback pair.
+- Includes 20 direct/core tools, 66 wrapped chat-agent launchers (see `chat_agent_registry.WRAPPED_CHAT_AGENT_SPECS`), 12 ACPX/Skill tools, and 10 External-MCP supervisors for **108 built-ins** before dynamic `ext__*` remotes. The wrapped set includes `chat_agent_flowcreator`, PDFer, LaTeXer, and the media playback pair.
 - Googler tool must run Playwright inside a `ThreadPoolExecutor` — `sync_playwright()` is incompatible with Django Channels' running event loop
 
 ---

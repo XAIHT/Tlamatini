@@ -13,7 +13,7 @@
 **Status:** Implementation landed locally, NOT committed. The user reviews and decides whether to commit.
 **Companion docs:** `CLAUDE.md`, `docs/claude/architecture.md`, `docs/claude/agents.md`, `docs/claude/multi-turn.md`, `TlamatiniVsOpenClaw.md`.
 
-> **Current-state banner (Tlamatini v1.48.17, 2026-08-16).** This file is the original ACPX/Skills design walkthrough; its per-section numbers are an intentional **historical Phase-1 snapshot** (5 ACPX `@tool`s, 20 seed skills, 14 agent_ids, 57 visual agents). The authoritative current counts are **87 visual agent types**, **107 built-in Multi-Turn tools** (20 core + 65 wrapped `chat_agent_*` + 12 ACPX/Skill + 10 External-MCP supervisors), **28 skills**, and a **12-tool LLM-facing ACPX/Skill surface** (`acp_doctor`, `list_acp_agents`, `acp_spawn`, `acp_send`, `acp_send_and_wait`, `acp_kill`, `acp_transcript`, `acp_session_status`, `acp_list_sessions`, `acp_relay`, `list_skills`, `invoke_skill`). Dynamic `ext__*` remotes are counted separately. The `DEFAULT_ACP_AGENTS` registry remains **14** entries (§3.5). For the live surface read `CLAUDE.md` and `docs/claude/acpx.md`, not the historical numbers below.
+> **Current-state banner (Tlamatini v1.48.18 worktree target, 2026-08-23; newest annotated tag `v1.48.17`).** This file is the original ACPX/Skills design walkthrough; its per-section numbers are an intentional **historical Phase-1 snapshot** (5 ACPX `@tool`s, 20 seed skills, 14 agent_ids, 57 visual agents). The authoritative current counts are **88 visual agent types**, **108 built-in Multi-Turn tools** (20 core + 66 wrapped `chat_agent_*` + 12 ACPX/Skill + 10 External-MCP supervisors), **29 skills**, and a **12-tool LLM-facing ACPX/Skill surface** (`acp_doctor`, `list_acp_agents`, `acp_spawn`, `acp_send`, `acp_send_and_wait`, `acp_kill`, `acp_transcript`, `acp_session_status`, `acp_list_sessions`, `acp_relay`, `list_skills`, `invoke_skill`). Dynamic `ext__*` remotes are counted separately. The `DEFAULT_ACP_AGENTS` registry remains **14** entries (§3.5). For the live surface read `CLAUDE.md` and `docs/claude/acpx.md`, not the historical numbers below.
 
 ---
 
@@ -671,7 +671,7 @@ In `config.json`:
 
 ### 10.5 "I want to add a skill that needs a tool that doesn't exist yet"
 
-The Tlamatini contract is: skills can only `requires_tools` a tool registered in the live `get_mcp_tools()` surface. The current built-in set is 20 core tools + 65 wrapped chat-agents + 12 ACPX/Skill tools + 10 External-MCP supervisors; dynamic `ext__*` tools exist only while their server is active and healthy, so a portable skill should depend on the stable supervisor/dispatcher rather than a transient wrapper. If a skill needs a new native tool, add the `@tool` first through `Tlamatini/.mcps/create_new_mcp.md`, then write the skill.
+The Tlamatini contract is: skills can only `requires_tools` a tool registered in the live `get_mcp_tools()` surface. The current built-in set is 20 core tools + 66 wrapped chat-agents + 12 ACPX/Skill tools + 10 External-MCP supervisors; dynamic `ext__*` tools exist only while their server is active and healthy, so a portable skill should depend on the stable supervisor/dispatcher rather than a transient wrapper. If a skill needs a new native tool, add the `@tool` first through `Tlamatini/.mcps/create_new_mcp.md`, then write the skill.
 
 ---
 

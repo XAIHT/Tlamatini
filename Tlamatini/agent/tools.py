@@ -1491,6 +1491,12 @@ _PROMOTE_SECTION_FIELDS_BY_TEMPLATE_DIR: dict = {
     ),
     "camcorder": ("output_path", "output_dir", "filename", "media_type", "resolution"),
     "video_analyzer": ("verdict", "verdict_token", "confidence", "motion_score", "status", "video_path"),
+    # Surface the headline measurement so the LLM can answer "how fast is my
+    # internet" straight from the tool result instead of re-reading the log.
+    "netspeed_calculator": (
+        "download_mbps", "upload_mbps", "latency_ms", "jitter_ms",
+        "bufferbloat_grade", "packet_loss_pct", "providers_ok", "status", "json_path",
+    ),
     "recorder": (
         "output_path", "output_dir", "filename",
         "device_index", "device_name", "sample_rate", "channels",
@@ -2564,6 +2570,15 @@ _PRE_LAUNCH_PREVIEW_BY_TEMPLATE = {
     # about to ask (and confirm the wording matches the intent).
     'asker':          {'title': 'ASKER USER CHOICE TO PROMPT',
                        'params': ('legend_path_a', 'legend_path_b')},
+
+    # --- network measurement ---------------------------------------------
+    # NetSpeed-Calculator mutates nothing, but it is NOT free: a default full
+    # run pulls and pushes roughly 100-200 MB of real, possibly METERED
+    # bandwidth. That cost is exactly what is worth showing before the spawn,
+    # so it gets a preview rather than a place in the observational set.
+    'netspeed_calculator': {'title': 'NETSPEED-CALCULATOR MEASUREMENT TO RUN',
+                            'params': ('action', 'providers', 'test_duration_seconds',
+                                       'parallel_streams')},
 }
 
 # Wrapped chat-agents deliberately NOT in _PRE_LAUNCH_PREVIEW_BY_TEMPLATE.
@@ -4272,11 +4287,25 @@ def _googler_is_binary(url: str, content_type: str = '') -> bool:
     return False
 
 
+def _googler_url_extension(url: str) -> str:
+    """Best-effort file extension from a URL, ignoring the query string."""
+    tail = str(url or '').split('?', 1)[0].split('#', 1)[0].rstrip('/')
+    return tail.rsplit('.', 1)[-1].lower() if '.' in tail.rsplit('/', 1)[-1] else ''
+
+
 def _googler_fetch_page_text(page, url: str) -> dict:
     """Navigate Playwright page to URL and extract rendered visible text.
-    Skips binary content (PDFs, images, etc.)."""
+
+    A BINARY hit is NOT an error — it is the answer. When the search was a
+    ``filetype:`` hunt every result is a PDF/EPUB/DOCX by construction, and the
+    thing the caller wants is the DOWNLOAD URL, not page text that does not
+    exist. So a binary result is returned as a first-class ``kind: "file"``
+    record; reporting it as "skipped" made a perfectly successful file hunt look
+    like N consecutive failures."""
     if _googler_is_binary(url):
-        return {"url": url, "error": "Binary file detected from URL extension, skipped"}
+        return {"url": url, "kind": "file",
+                "filetype": _googler_url_extension(url),
+                "note": "downloadable file located (not fetched as text)"}
 
     try:
         response = page.goto(url, wait_until="domcontentloaded", timeout=30000)
@@ -4289,8 +4318,11 @@ def _googler_fetch_page_text(page, url: str) -> dict:
     status = response.status
     content_type = response.headers.get('content-type', '')
     if _googler_is_binary('', content_type):
-        return {"url": url, "status_code": status,
-                "error": f"Binary content-type ({content_type}), skipped"}
+        return {"url": url, "kind": "file", "status_code": status,
+                "content_type": content_type,
+                "content_length": response.headers.get('content-length', ''),
+                "filetype": _googler_url_extension(url),
+                "note": "downloadable file located (not fetched as text)"}
 
     try:
         page.wait_for_load_state("networkidle", timeout=10000)
@@ -4326,23 +4358,113 @@ def _googler_fetch_page_text(page, url: str) -> dict:
 @tool
 def googler(query: str, number_of_results: int = 5) -> str:
     """
-    Search Google for a topic and return the top results with their readable text content.
-    Falls back to DuckDuckGo if Google returns no results.
-    Automatically skips binary content (PDFs, images, etc.).
+    Search Google (falling back to DuckDuckGo) and return the top results. Text pages
+    come back as readable text; a PDF/EPUB/DOCX hit comes back as **FILE FOUND** with
+    its direct download URL — so this tool FINDS FILES AND WHOLE DOCUMENTS, not just
+    articles.
 
-    Use this tool when the user asks to search the internet, Google something,
-    look up information online, or needs current real-time information.
+    `query` accepts the FULL Google search-operator ("dork") language. Composing a
+    precise dork instead of plain keywords is the single biggest quality lever you
+    have: it is the difference between ten pages ABOUT a book and the book itself.
+
+    ══ THE FIVE SYNTAX RULES (breaking any one silently disables the filter) ══
+      1. NO space after the colon.  filetype:pdf  ✔     filetype: pdf  ✘ (filters nothing)
+      2. Exact phrases in "double quotes".
+      3. OR must be UPPERCASE. Lowercase "or" is ignored as a stop word.
+      4. Parenthesise alternatives: (filetype:epub OR filetype:pdf)
+      5. Exclude with a hyphen and NO space: -review    ✘ - review
+
+    ══ FINDING FILES, BOOKS AND DOCUMENTS (start here) ══
+    Google indexes PDF and EPUB natively, so `filetype:` is the highest-signal filter.
+      "exact title" filetype:epub
+      "exact title" filetype:pdf
+      "exact title" "author name" filetype:epub
+      intitle:"exact title" filetype:pdf
+      "exact title" (filetype:epub OR filetype:pdf)      ← catches either format
+      "filename.pdf"                                     ← hunt an exact filename
+    Other types: docx, pptx, xlsx, txt, rtf, csv, json, xml, mobi, azw3, ps, rtf.
+
+    PREFER SOURCES THAT LAWFULLY PUBLISH COMPLETE WORKS. For books that means the
+    public-domain / open-licence libraries — and for papers, the open-access ones:
+      "title" filetype:epub site:gutenberg.org
+      "title" filetype:epub site:standardebooks.org
+      "title" (filetype:epub OR filetype:pdf) site:archive.org
+      "topic" filetype:pdf site:arxiv.org
+      "quantum computing" filetype:pdf site:.edu
+      "climate report" filetype:pdf site:.gov
+    If the user wants a specific in-copyright book, say plainly that you can locate
+    legitimate sources (publisher, retailer, library lending, or an open edition) and
+    search those, rather than hunting pirated copies.
+
+    ══ NARROWING BY PLACE ══
+      site:example.com            one host, or a whole TLD: site:.edu / site:.gov
+      -site:scribd.com            drop an aggregator that answers everything
+      related:example.com         sites similar to this one
+      cache:example.com/page      Google's stored copy
+
+    ══ NARROWING BY WHERE THE WORDS APPEAR ══
+      intitle:"user manual"       one word/phrase in the title
+      allintitle:annual report    EVERY following word in the title
+      inurl:manual                in the URL
+      allinurl:docs api
+      intext:"exact sentence"     in the body
+      allintext:installation guide
+      inanchor:download           in the TEXT OF LINKS pointing at the page
+      allinanchor:free ebook
+      intitle:"index of"          an open directory listing
+
+    ══ NARROWING BY TIME AND NUMBERS ══
+      after:2025-01-01            published after a date
+      before:2020-01-01
+      after:2023-01-01 before:2026-01-01
+      2020..2026                  a numeric range (years, prices, model numbers)
+
+    ══ SHAPING THE TERMS ══
+      "a" OR "b"                  alternatives (UPPERCASE OR)
+      (epub OR mobi OR azw3)
+      solar * panel               * is a single-word wildcard
+      tesla AROUND(3) battery     the two terms within N words of each other
+      -template -sample -slides   remove noise
+      define:entropy              a definition
+      source:reuters              a publisher (Google News)
+
+    ══ WORKED COMBINATIONS ══
+      "machine learning" filetype:pdf -slides -syllabus -worksheet
+      intitle:"user manual" filetype:pdf "device model"
+      "annual report" filetype:pdf site:.gov after:2025-01-01
+      "book title" (filetype:epub OR filetype:pdf) -review -summary -preview
+      "research topic" filetype:pdf site:.edu after:2023-01-01 before:2026-01-01
+
+    ══ HOW TO WORK ══
+      · Put the exact title/phrase FIRST — Google weights leading terms most.
+      · Start SPECIFIC; if a dork returns nothing, drop ONE operator at a time
+        (usually site: first, then filetype:) rather than falling back to keywords.
+      · A file hunt should ask for MORE results (number_of_results=10): many hits
+        will be dead links or the wrong edition.
+      · The result URLs are the deliverable. To actually download one, hand the URL
+        to the Apirer agent; to read a downloaded PDF, use File-Extractor or
+        File-Interpreter.
+      · The canvas/pool Googler agent additionally exposes these operators as
+        STRUCTURED config fields (filetypes, sites, exclude_sites, preset: book /
+        book_public / paper / manual / docs / slides / sheets, around_terms,
+        numeric_range …) which build the query for you and cannot get the syntax
+        wrong. Use `chat_agent_*` flows or the canvas for that; here, write the
+        operators directly into `query`.
+
+    These operators only surface PUBLIC pages Google has already indexed — they do not
+    bypass any login, paywall or access control. Whether a located file may be
+    downloaded or redistributed is a separate question of copyright and licence.
 
     Examples of what to pass:
-    - User says "Google Python asyncio tutorial" → pass query="Python asyncio tutorial"
-    - User says "Search the internet for Django 5.2 release notes" → pass query="Django 5.2 release notes"
-    - User says "Look up the latest CVE vulnerabilities" → pass query="latest CVE vulnerabilities 2026"
-    - User says "Find online info about Kubernetes ingress" → pass query="Kubernetes ingress controllers"
-    - User says "Google nginx reverse proxy, top 3" → pass query="nginx reverse proxy", number_of_results=3
+    - "Google Python asyncio tutorial" → query="Python asyncio tutorial"
+    - "Find the EPUB of Moby Dick"     → query='"Moby Dick" filetype:epub site:gutenberg.org'
+    - "Get me PDFs on transformers"    → query='"transformer architecture" filetype:pdf site:arxiv.org', number_of_results=10
+    - "Find the manual for a WF-1000XM5" → query='intitle:"user manual" filetype:pdf "WF-1000XM5"'
+    - "Government climate reports 2025" → query='"climate report" filetype:pdf site:.gov after:2025-01-01'
 
     Input:
-    - query: The search query or phrase to look up on Google.
-    - number_of_results: Number of top sites to fetch (default 5, max 10).
+    - query: The search query — plain words, or any combination of the operators above.
+    - number_of_results: Number of top hits to process (default 5, max 10).
     """
     try:
         from playwright.sync_api import sync_playwright
@@ -4466,7 +4588,18 @@ def googler(query: str, number_of_results: int = 5) -> str:
     for i, outcome in enumerate(outcomes, 1):
         output_parts.append(f"=== Result {i} ===")
         output_parts.append(f"URL: {outcome.get('url', 'unknown')}")
-        if "error" in outcome:
+        if outcome.get("kind") == "file":
+            # A located file is a SUCCESS, not a fetch failure — the URL above is
+            # the deliverable of a `filetype:` hunt.
+            bits = [b for b in (
+                (outcome.get("filetype") or "").upper() or None,
+                outcome.get("content_type") or None,
+                (f"{outcome['content_length']} bytes"
+                 if outcome.get("content_length") else None),
+            ) if b]
+            output_parts.append("FILE FOUND" + (f" [{' · '.join(bits)}]" if bits else ""))
+            output_parts.append("Download it with the Apirer agent, or open the URL directly.")
+        elif "error" in outcome:
             output_parts.append(f"Fetch error: {outcome['error']}")
         else:
             output_parts.append(f"HTTP status: {outcome.get('status_code', 'unknown')}")

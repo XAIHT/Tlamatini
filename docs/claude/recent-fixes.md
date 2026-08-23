@@ -16,6 +16,304 @@
 
 ---
 
+## 2026-08-23 — Googler structured dork builder: syntax is a compiled contract
+
+The visual/pool Googler now compiles structured fields rather than trusting every flow author
+to remember Google's spacing and binding rules. `agent/agents/googler/googler.py` owns aliases,
+presets, field normalization, and `build_dork_query`; `config.yaml` is the user-facing schema;
+`agent/test_googler_dorks.py` pins the contract.
+
+**Do not weaken these invariants:** no space after an operator colon; exact phrases in double
+quotes; uppercase `OR`; alternatives in parentheses; exclusions as `-term`; several sites or
+file types as one grouped clause; explicit fields overriding preset defaults; and a site-`OR`
+group enabling same-domain URL de-duplication. Keep `book_public` and `paper` pointed at
+lawful/open or institutional sources rather than access-control workarounds.
+
+For PDF/EPUB and other binary-file hunts, `content_mode: links_only` is a successful URL-list
+deliverable. The downstream path is Parametrizer -> Apirer -> File-Extractor/File-Interpreter,
+not an attempt to scrape binary bytes as page text. The direct Multi-Turn `googler` tool remains
+a manual-query surface: put operators in `query`; do not advertise pool-only structured fields
+as direct-tool parameters. Public indexing never grants download/use permission, and Googler
+must never be described as bypassing access controls.
+
+The same live proof exposed a second failure: bundled headless Chromium returned zero results
+for a plain control query and every dork, while the old single DuckDuckGo fallback returned an
+error page; the same query in headed installed Chrome returned real EPUB URLs. The pool agent
+now has two tiers. Tier 0 uses plain `urllib` against four server-rendered routes (DuckDuckGo
+HTML, Bing, DuckDuckGo Lite, Mojeek), avoiding browser fingerprints, consent/JS failures, and
+CSS-selector dependence. Only when all four are empty does Tier 1 default to visible installed
+Chrome, fall back to bundled Chromium, and walk seven direct-result browser routes. Each route
+receives bounded jittered retries, and the log names the route that answered. An explicit
+`engines` list skips Tier 0. **Do not collapse this back to a browser-only, two-engine, or
+headless-only path.** `site:` and `filetype:` carry broadly, but advanced date/proximity/range
+operators are Google-specific; fallback results may be broader, so pin `engines: [google]`
+where exact semantics are required. Keep the tolerant boolean parser: wrapped string `"false"`
+must remain false for both headless and same-domain settings. The 73-test deterministic suite
+and optional headed `harness/googler_dork_hunt.py` proof protect this behavior.
+
+---
+
+## 2026-08-23 — Googler: the FULL dork vocabulary, and a search layer that stopped returning zero
+
+**Angela:** *"add to Googler the capability to use dorks: all of them! … the internet
+is not gonna be navigated by humans but AI crawlers."*
+
+### Part 1 — the complete operator surface
+
+`build_dork_query` went from 9 operators to the documented Google set, and the
+builder now ENFORCES the syntax mechanically rather than trusting the caller,
+because each of these silently degrades a filter into an ordinary keyword search
+and returns plausible rubbish instead of an error:
+
+| rule | broken form | what actually happens |
+|---|---|---|
+| no space after the colon | `filetype: pdf` | searches for the WORDS "filetype" and "pdf"; filters nothing |
+| `OR` uppercase | `epub or pdf` | `or` is a stop word |
+| parenthesise alternatives | `filetype:epub OR filetype:pdf` | the OR binds to one adjacent term |
+| no space after `-` | `- review` | the exclusion is ignored |
+
+New surface: **`filetypes`** (plural → `(filetype:epub OR filetype:pdf)`, with class
+aliases `ebook`/`book`/`docs`/`slides`/`sheets`/`text`/`code`/`data`), **`sites`**,
+**`exclude_sites`** (`-site:`), `author`, `allintitle`, `allinurl`, `allintext`,
+`inanchor`, `allinanchor`, `related`, `cache`, `define`, `source`, `or_terms`,
+`around_terms` + `around_distance` (`AROUND(n)`), `numeric_range` (`2020..2026`),
+and **`preset`** — `book` / `book_public` / `paper` / `manual` / `docs` / `slides` /
+`sheets` / `directory`. A preset fills ONLY what the caller left empty, so an
+explicit field always wins. Singular `site`/`filetype` still work.
+
+The `googler` **@tool docstring is now the operator manual** — Angela's explicit
+requirement was that the LLM learn the vocabulary from the tool description, so
+the rules, the file/book patterns, every operator and the workflow live there.
+
+### Part 2 — ⛔ a located FILE is a RESULT, not an error
+
+`_googler_fetch_page_text` returned `"Binary file detected … skipped"` for any
+PDF/EPUB hit. For a `filetype:` hunt EVERY hit is binary by construction, so a
+perfectly successful file hunt read as N consecutive failures and the download
+URLs — the actual deliverable — were framed as errors. A binary hit is now a
+first-class `kind: "file"` record rendered as **FILE FOUND** with its extension,
+content-type and byte size. **Do not turn this back into an error.**
+
+### Part 3 — the search layer returned ZERO for EVERYTHING
+
+Measured while proving the dorks live: the pool agent returned **0 results for
+every query**, including a plain-keyword control with no operators at all.
+Google timed out waiting for its result container; the single DuckDuckGo
+fallback answered **"Unexpected error. Please try again."** (confirmed by reading
+the agent's own debug screenshot with Image-Interpreter). The SAME dork through a
+**headed real-Chrome** window returned 10 real EPUB URLs immediately.
+
+Two root causes: a headless JS app being refused, and having exactly ONE fallback
+which happened to be down. The redesign:
+
+1. **TIER 0 IS PLAIN HTTP, NO BROWSER** — `urllib` requests four server-rendered
+   routes: DuckDuckGo HTML, Bing, DuckDuckGo Lite, and Mojeek. This removes browser
+   fingerprint, consent, JavaScript-app, and stale-selector failure classes.
+
+   ⚠️ **A first draft of this entry justified Tier 0 by calling the JS-free
+   endpoints "the most reliable thing in the file" — which was wrong as written,
+   and the measurement is the useful part.** Those same endpoints returned
+   NOTHING through Playwright, because their class names had gone stale
+   (DuckDuckGo renders `web-result` / `result__title` now, not `a.result__a`).
+   Bare `urllib` with ordinary browser headers, same urls, same minute:
+
+   | endpoint | plain HTTP | via Playwright |
+   |---|---|---|
+   | `html.duckduckgo.com` | **200**, 3 gutenberg.org URLs | 0 (stale selectors) |
+   | `www.bing.com` | **200**, 23 gutenberg.org URLs | 0 (stale selectors) |
+   | `mojeek.com` | 403 Forbidden | 0 |
+   | `search.brave.com` | connection reset | **answered** |
+
+   So the claim that survives evidence is narrower: **for a server-rendered
+   results page the browser is the LIABILITY, not the asset** — and the failure
+   it removes is not mainly fingerprinting but **selector rot**, since
+   `_http_search` harvests `href`s with a regex and a result's class names may
+   change while its outbound link cannot. Brave is the counter-example that
+   earns the browser tier its place: it refuses raw HTTP and answers only
+   through a real browser, which is why Tier 1 was kept rather than deleted.
+2. **TIER 1 HAS SEVEN BROWSER ROUTES** (ddg-html, ddg-lite, mojeek, bing, google,
+   brave, startpage) — only after Tier 0 is empty. An explicit `engines` list pins
+   Tier 1 and deliberately skips Tier 0.
+3. **Direct result URLs**, never typing into a search box and pressing Enter.
+4. **Jittered retry/backoff** per route before falling through.
+5. **Real Chrome (`channel="chrome"`), HEADED BY DEFAULT FOR TIER 1** —
+   `headless: false` is the default and headless is the documented degraded path.
+6. `_unwrap_redirect` resolves `duckduckgo.com/l/?uddg=` and `/url?q=` wrappers —
+   left wrapped they are useless as file URLs and all collapse to one domain,
+   which the de-duplicator would then discard as repeats of a single host.
+
+**The engine that actually answered is ALWAYS logged**, so a report can never
+imply Google answered when Mojeek did. Only Google honours the full vocabulary —
+`before:`/`after:`/`AROUND()`/numeric ranges are Google-only, while `site:` and
+`filetype:` work everywhere — so pin `engines: [google]` when a dork needs them.
+
+**Honest limit:** this is robustness, not an evasion arms race. There is no
+CAPTCHA solving and no proxy/IP rotation, and "invulnerable" is not a property
+any scraper can claim. The durable answer is FETCHING server-rendered pages over
+plain HTTP and parsing them by `href` rather than by class name — plus, where a
+key exists, an official search API. Note this is the opposite of the usual
+instinct: the fix was to use LESS browser, not a better-disguised one.
+
+### Two traps found while proving it
+
+* **The placeholder default poisoned every structured search.** `config.yaml`
+  shipped `query: "example search topic"`, and because the wrapped-agent launcher
+  OMITS empty values to protect template defaults, that placeholder could not be
+  cleared — it was appended to every dork built from `exact`/`filetypes`/`sites`,
+  turning a precise hunt into a search for a phrase that appears nowhere. Now
+  `query: ""`.
+* **Extensionless file URLs.** arXiv serves every paper as `arxiv.org/pdf/1706.03762`
+  with no `.pdf`, so extension-only detection reported "10 hits, 0 files" for a
+  search whose every hit WAS a PDF. The direct @tool is safe (it reads
+  Content-Type), but any URL-only classifier needs the path-marker fallback.
+
+**Named, re-runnable proof:** `.claude/skills/tlamatini-daily-chat-test/harness/googler_dork_hunt.py`
+— builds each dork with the SHIPPED `build_dork_query`, drives a VISIBLE Chrome,
+and reports FILE FOUND URLs. `--list`, `--hunt <name>`, `--title "..."`.
+Coverage: `agent/test_googler_dorks.py` (**73 tests** — the syntax rules, every
+operator, aliases, presets, tolerant booleans, four-route HTTP-before-browser order,
+seven-route browser order, pinned-engine Tier-0 bypass, retry/first-answer behavior,
+redirect unwrapping, and Angela's own example queries reproduced verbatim).
+
+---
+
+## 2026-08-23 — NetSpeed-Calculator (agent #88): four dead endpoints, and the rule that a ZERO must always name its cause
+
+**Angela's instruction:** *"Continue!!!"* — the previous session had written the
+agent, proven the framework live, found that **download returned 0 bytes**,
+characterized the endpoints, announced *"Now fixing the four real bugs"*, and hit
+its usage limit on that exact line. This entry is what those bugs were, what the
+fix contract is, and the three traps found while wiring the agent across ~30
+surfaces.
+
+### The measurement engine
+
+`agent/agents/netspeed_calculator/netspeed_calculator.py` measures the machine's
+Internet connection and publishes the answer **with its error bar**: RFC 6349 TCP
+throughput + RFC 3550 §6.4.1 jitter, N parallel streams per provider per
+direction, the slow-start ramp DISCARDED, throughput sampled as **d(bytes)/dt**
+rather than total÷elapsed, Tukey-IQR outlier rejection, a trimmed mean and a
+Student-t interval — then a **DerSimonian-Laird random-effects meta-analysis**
+across providers publishing a 95% CI and the I² heterogeneity figure. Bufferbloat
+is the RTT increase UNDER load, graded A+..F. Stdlib-only (+ `yaml`), never
+imports `agent.*`.
+
+### ⛔ THE LOAD-BEARING CONTRACT: a transfer that moved ZERO bytes MUST name its cause
+
+`_download_worker` / `_upload_worker` used to swallow **every** exception, so a
+dead endpoint produced a confident `0.00 Mbps` **with no reason printed**. That is
+the single most expensive defect this agent can ship: a silent zero is
+indistinguishable from a slow link, so it sends the user hunting a fault in their
+own house. It is also why bugs 1 and 4 below each cost a full debugging session
+to find.
+
+- `_record_error(errors, exc)` — keeps the first **5 DISTINCT** failures (bounded
+  because six streams retrying for eight seconds would otherwise bury the log;
+  bounded is NOT the same as hidden).
+- `_report_dead_transfer(key, direction, raw, red)` — when `total_bytes == 0` it
+  prints every reason AND stores them in `red["why"]`, so the saved artifact
+  carries the explanation too. A transfer with bytes is a no-op.
+- `_run_transfer` threads a shared `errors` list into every worker and returns it.
+
+**DO NOT reintroduce a silent zero.** If you add a direction, a provider or a
+transport, it must funnel its failures through `_record_error`.
+
+### The four bugs — every one MEASURED, none guessed
+
+| # | Bug | Evidence (measured 2026-08-22) | Fix |
+|---|---|---|---|
+| 1 | Cloudflare rejects an oversized object | `bytes=100000000` → **HTTP 403**; `bytes=25000000` → 200 | `_CF_MAX_DOWN_BYTES = 25_000_000` clamp in `_discover_cloudflare` |
+| 2 | LibreSpeed's hardcoded backend is gone | `librespeed.org/backend/garbage.php` AND `empty.php` → **404** | discover from the project's **public server list** (`/backend-servers/servers.php`), pick by measured RTT |
+| 3 | Hetzner's host no longer resolves | `speed.hetzner.de` → **getaddrinfo failed (NXDOMAIN)** | the `.com` datacentre mirror mesh (`hil/ash/nbg1/fsn1/hel1/sin-speed.hetzner.com`, all 200) + `_pick_by_rtt` |
+| 4 | **The cache-buster was killing the provider** | `https://ash-speed.hetzner.com/100MB.bin` → **200**; the SAME url with `?nocache=…` → **RemoteDisconnected** | per-provider `"cache_bust": False` in `_discover_hetzner` **plus** a runtime self-heal in `_download_worker` |
+
+**Bug 4 is the subtle one and the reason for the self-heal.** `_bust()` exists to
+stop a CDN edge serving the same cached object to every stream — i.e. to PROTECT
+the measurement. On a static mirror that rejects unknown query strings it
+DESTROYED it instead: all six streams reset instantly, forever, silently. The
+worker now drops the buster after a failure with `local == 0` and lets the next
+iteration prove the plain URL. **The trade is deliberate and one-sided: a cached
+object can only make a result look TOO GOOD, while a connection reset makes a
+working link look like no Internet at all.**
+
+`_pick_by_rtt` had been written for exactly this and was **wired to nothing** —
+mirror lists are published by geography, and geography is only a proxy for network
+distance (measured from Mexico City: Hetzner US ~265 ms, German ~391 ms,
+Singapore ~453 ms). Its docstring previously quoted numbers that no longer held;
+it now quotes the measured ones.
+
+**Proven live, before and after:** cloudflare 0 → **91.96 Mbps**; librespeed
+404 → **93.56 down / 47.65 up** (the RTT picker chose Denver at 57 ms over
+Amsterdam at 144 ms, and the near server drains an upload the far one timed out
+on); hetzner 0 → **92.31**; cachefly **93.38**. Aggregate **92.82 Mbps ±0.74**,
+4/4 providers, 0 failed.
+
+### ⚠️ TRAP 1 — the SPACED impostor Agent row (found by re-checking, not by testing)
+
+The DB held **two** rows: `Netspeed Calculator` (spaced) and
+`NetSpeed-Calculator`. The spaced one was seeded by a server boot that happened
+while the agent DIRECTORY existed but the `display_name_from_agent_type` override
+did **not** — so `apps.py` derived it with `.title()`. A spaced name matches
+nothing in `acp-canvas-core.js` (it lowercases WITHOUT collapsing whitespace), so
+every canvas connection would have been silently dropped.
+
+`apps.ready()` self-heals it (it deletes all rows and rebuilds via
+`_canonical_agent_display_name`), **verified live**: `Repopulating 88 agents` →
+exactly one row, `id=55 NetSpeed-Calculator`.
+
+**Rule: after creating an agent directory, RESTART the server once and re-check
+the row before believing any naming work is done.** This is also why the display
+name is HYPHENATED on purpose — with a hyphen the canvas literal and the CSS
+classMap key are the SAME string, so the space-vs-hyphen trap cannot occur for
+this agent at all.
+
+### ⚠️ TRAP 2 — `collectstatic` is part of "wiring the frontend"
+
+All six JS/CSS wiring edits existed in `agent/static/` but **not** in the
+`staticfiles/` copies WhiteNoise actually serves, so in a browser the node would
+have had no connector at all. **After ANY js/css/template change: run
+`collectstatic`, hash-verify source vs collected, then restart** (see also
+`feedback_never_hotswap_static_into_running_app`). `test_checkbox_bulk_toggle.py`
+and `test_dialog_dismissal_policy.py` assert collected-static sync — they are the
+guards that catch this.
+
+### ⚠️ TRAP 3 — a count bump is NOT a catalog entry
+
+Updating every "87 → 88" left **eleven** per-agent TABLES stale, because they sit
+beside the counts rather than in them: the Ask-Execs tier-D table
+(`multi-turn.md`), the `_EXEC_REPORT_TOOLS` map (`exec-report.md`), FlowCreator's
+**Quick-Reference table** AND **Agent Selection Priority Rules**, `Tlamatini.md`'s
+self-knowledge bullet, KIMI's §13 catalog row, and the Book's **Bestiary AND
+Glossary** tables. **When adding an agent, grep for a SIBLING agent's name — not
+for the old number.**
+
+### Three surfaces the runbook gets wrong (corrected in the skill + workflow guide)
+
+1. `views.PARAMETRIZER_SOURCE_OUTPUT_FIELDS` is **derived** (`= get_parametrizer_source_fields()`), not hand-maintained — only `agent_contracts._PARAMETRIZER_OUTPUT_FIELDS` needs the entry.
+2. `urls.py` wraps connection views in **`secure_post(...)`**.
+3. `tools.py` has a `_PRE_LAUNCH_PREVIEW_BY_TEMPLATE` / `_PRE_LAUNCH_PREVIEW_OBSERVATIONAL_TEMPLATES` pair, and a contract test requires every wrapped agent to be in **exactly one** of them.
+
+### Policy decisions (do not "helpfully" reverse)
+
+- **Ask-Execs tier D (GATED)** — it reaches remote hosts like Crawler AND
+  deliberately saturates the link with ~100-200 MB of real, possibly METERED
+  traffic per full run. Pinned by `test_ask_execs_allowlist.py::TIER_D`.
+- The daily-chat harness question uses **`action='latency'`**, never `full` — that
+  bank may run 1000×/day and a full run costs real bandwidth every time.
+- A **read-only diagnostic that reports an adverse finding has SUCCEEDED**: the
+  preflight REFUSES (`status: refused`) rather than publish a number it cannot
+  trust, and a partial measurement clearly labelled partial is the CORRECT
+  outcome, not a failure.
+
+**Coverage:** `agent/test_netspeed_calculator_agent.py` (**262 tests** — statistics,
+outlier rejection, the meta-analysis, bufferbloat bands, the cache-buster
+self-heal, error surfacing, all four endpoint regressions, registry integration,
+and static JS/CSS/doc contracts), plus a re-runnable 12-pass / 91-check wiring
+audit. Migrations **0195/0196/0197**; catalog prompt **119**
+(`run_execute`, `sort_rank=70`).
+
+---
+
 ## 2026-08-16 — ESCAPE CLOSES EVERY DIALOG (the dismissal policy, inverted)
 
 > **Release lineage for this day (three annotated tags):** `v1.48.15` = `9531b43f`

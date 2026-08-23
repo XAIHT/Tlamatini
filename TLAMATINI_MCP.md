@@ -8,10 +8,13 @@
 -->
 # Tlamatini Agents — MCP connector
 
-Exposes **every wrapped Tlamatini pool agent (all 57)** as MCP tools so an MCP
-client (Claude Code, etc.) can drive them directly — Executer, Pythonxer, Croner,
-ACPXer, STM32er, ESP32er, Arduiner, Shoter, Playwrighter, Kalier, MCP Doctor, …
-plus 5 run-management tools (**62 tools** total).
+Exposes **every complete live Tlamatini agent directory (88 in the v1.48.18
+worktree target)** as MCP tools so an MCP client (Claude Code, etc.) can drive
+them directly — Executer, Pythonxer, Croner, ACPXer, STM32er, ESP32er,
+Arduiner, Shoter, Playwrighter, Kalier, MCP Doctor, NetSpeed-Calculator, and
+the rest of the live catalog. It also exposes 7 management/skill tools and 10
+ACPX tools: **105 root stdio MCP tools total**. The server discovers agents
+dynamically; these counts are a verified snapshot, not a hardcoded limit.
 
 ## Files
 
@@ -86,14 +89,21 @@ three universal options:
 | `arduiner` | `{ "action": "boards" }` (FQBN picks the MCU) |
 | `acpxer` | `{ "agent_id": "claude", "task": "summarize README" }` |
 | `croner` | `{ "trigger_time": "14:30" }` → returns a `run_id` (background) |
+| `netspeed_calculator` | `{ "action": "validate" }` for reachability, or one approved `full` run (about 100-200 MB) |
 
-### Run-management tools
+### Management and skill tools
 
 - `tlamatini_list_agents()` — every agent + its parameters.
 - `tlamatini_run_log(run_id, max_chars?)` — read a run's log.
 - `tlamatini_run_status(run_id)` — alive / finished + return code.
 - `tlamatini_run_stop(run_id)` — terminate a background run (process tree).
 - `tlamatini_list_runs()` — all runs this session.
+- `tlamatini_list_skills()` — list current runtime skills.
+- `tlamatini_read_skill(name)` — read one skill's instructions.
+
+The 10 ACPX tools are `acp_doctor`, `list_acp_agents`, `acp_spawn`, `acp_send`,
+`acp_send_and_wait`, `acp_relay`, `acp_transcript`, `acp_session_status`,
+`acp_list_sessions`, and `acp_kill`.
 
 Typical long-running pattern: call the agent (gets `run_id`) →
 `tlamatini_run_log(run_id)` to watch → `tlamatini_run_stop(run_id)` to end it.
@@ -111,3 +121,7 @@ Typical long-running pattern: call the agent (gets `run_id`) →
 - This connector is **separate** from Tlamatini's own running app — it drives
   the agent templates straight from disk and needs neither the Django server
   nor a browser.
+- Agent execution is under the caller/user's jurisdiction. The plain-Python
+  templates are auditable and editable, but the caller remains responsible
+  for permissions, credentials, authorized targets, metered traffic, hardware,
+  and downstream effects.

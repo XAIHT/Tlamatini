@@ -97,7 +97,7 @@ This is the authoritative onboarding document for any AI assistant (Claude Code,
 
 - An advanced **RAG system** (FAISS + BM25, metadata extraction, context budgeting, fallback mode) — with a **binary-content guard** (`agent/rag/binary_guard.py`) that screens every candidate file by its bytes and drops binary content from the embedding chain, logging each omission as `--- [BINARY-GUARD]` in `tlamatini.log`
 - A request-scoped **Multi-Turn orchestration layer** with dynamic tool binding and global execution planning — when Multi-Turn is on it binds the **FULL enabled tool surface** (every tool/agent/skill, ACPX still filtered by its checkbox), never a narrowed planner subset, so the operator loop is never starved of a needed tool; a **Step-by-Step** toolbar mode paces hands-on setup one concrete action at a time (it waits for the user's READY/output before the next)
-- A **Visual Agentic Workflow Designer** (ACP) with 87 drag-and-drop agent types
+- A **Visual Agentic Workflow Designer** (ACP) with 88 drag-and-drop agent types
 - A **backend Flow Compiler + Agent Contract registry** (`agent/services/flow_compiler.py`, `agent/services/agent_contracts.py`) that turns the live ACP canvas snapshot OR a Chat-generated Create-Flow draft into validated, redacted, source-and-frozen-portable `config.yaml` files in the session pool — exposed over `/agent/compile_flow/`, `/agent/flow_from_tool_calls/`, and `/agent/agent_contracts/`
 - **ACPX runtime** (Agent Communication Protocol eXtension) — spawns external coding-agent CLIs (Claude Code, Codex, Cursor, Gemini, Qwen, Kiro/Kimi/iFlow/Kilocode/OpenCode/Pi/Droid/Copilot, and a Tlamatini self-host) as out-of-process children, brokered to the LLM as 12 `acp_*` tools and to the canvas as the visual **ACPXer** agent. Toolbar checkbox **ACPX** filters the entire ACPX/Skills tool surface in or out per-request
 - **External MCPs** (2026-06) — a config-driven UNIVERSAL MCP **client**: connect to and use the tools of **any** external MCP server declared in a JSON file (the `mcpServers` shape, like a Claude-Code `.mcp.json`), over **four transports** — `stdio` (a local command, e.g. a Docker `mcp/*` image / npx / uvx / python) plus `streamable-http`, legacy `sse`, and `websocket` for already-running servers — with up to 5 active at once. Engine `agent/external_mcp_manager.py` + catalog `agent/external_mcps.json` (preserved user state and sanitized tracked build input, resolved next to `config.json`); each remote tool is bound for the LLM as `ext__<server>__<tool>`; managed by 10 LLM supervisor tools (`external_mcp_status` / `reconnect` / `doctor` / `runtime_status` / `runtime_install` / `list_tools` / `call` / `import` / `set_active` / `wait`) and the **External ▸ MCPs** navbar dialog (searchable catalog, runtime strip, tick ≤5 active, drag a `.json` to import) over `/agent/external_mcps/` `…/activate/` `…/import/` `…/runtime_install/`. It is DISTINCT from the two built-in `Mcp`-model context providers (System-Metrics / Files-Search), from ACPX (which spawns coding-agent CLIs), and from the per-agent inline MCP clients (STM32er / Kalier). Companion **MCP Doctor** agent (#78, canvas + `chat_agent_mcp_doctor`) statically triages a catalogued MCP before you wire it. Full design contract: `docs/external_mcp_bulletproof_architecture.md`; how-to: `docs/claude/mcp-tools.md`
@@ -303,7 +303,7 @@ Tlamatini/                          # Git root
 │   │   │   ├── chains/             # basic.py, history_aware.py, unified.py
 │   │   │   └── ...
 │   │   │
-│   │   ├── agents/                 # 87 workflow agent templates
+│   │   ├── agents/                 # 88 workflow agent templates
 │   │   │   ├── flowcreator/
 │   │   │   │   └── agentic_skill.md  # ** SKILL: FlowCreator AI reference **
 │   │   │   ├── flowhypervisor/
@@ -335,7 +335,8 @@ Tlamatini/                          # Git root
 │   │   │   ├── blenderer/          # Blender bridge — official Blender MCP add-on socket (localhost:9876, code-execution protocol); rich action catalog (execute_code + scene/object/render verbs); direct socket, no blmcp bridge (canvas + chat_agent_blenderer)
 │   │   │   ├── video_analyzer/       # Video-Analyzer — "eye" of Robotic-Loop-Training: watches a recorded video and rules PASS_OK / FAIL_NO_MOTION / FAIL_WRONG_MOTION / UNCLEAR via a deterministic OpenCV motion gate + triple-model Ollama CLOUD vision (qwen3-vl:235b-cloud ∥ qwen3.5:cloud → glm-5.2:cloud merge; PASS only if both agree); emits INI_SECTION_VIDEO_ANALYZER + a substring-safe TLM_VERDICT:: line a Forker branches on (canvas + chat_agent_video_analyzer)
 │   │   │   ├── nmapper/             # Nmapper — LOCAL use-only nmap bridge for pentesters/CTF: runs a real nmap the user installed (NEVER bundles/redistributes nmap — NPSL); resolves PATH→Program Files→%LOCALAPPDATA%\Tlamatini\nmap; absent → refuses gracefully + `action=install` fetches the OFFICIAL free nmap installer (admin/UAC; brings Npcap). Default = unprivileged TCP connect scan (-sT, no Npcap/admin); SYN/-O/UDP auto-downgrade on Windows w/o Npcap. INI_SECTION_NMAPPER; distinct from Kalier (remote Kali) + Discoverer (ProjectDiscovery); AUTHORIZED TARGETS ONLY (canvas + chat_agent_nmapper)
-│   │   │   └── ... (87 total agent directories)
+│   │   │   ├── netspeed_calculator/ # NetSpeed-Calculator — measures THIS machine's Internet connection and reports it WITH its error bar (download/upload/latency/jitter/loss/BUFFERBLOAT) per RFC 6349 + RFC 3550, against SEVERAL keyless providers at once (cloudflare/ookla/fast/librespeed/hetzner/cachefly — no key, no login). N parallel TCP streams per provider per direction, slow-start ramp DISCARDED, throughput sampled as d(bytes)/dt (never total÷elapsed), Tukey outlier rejection + trimmed mean + Student-t interval, then DerSimonian-Laird random-effects fusion publishing a 95% CI and the I² heterogeneity figure. Bufferbloat = RTT increase UNDER LOAD, graded A+..F. Endpoint discovery is live + self-healing (measured 2026-08-22): Ookla/LibreSpeed picked by MEASURED RTT; Cloudflare clamped below the size it 403s; librespeed.org/backend 404 → its public server list; speed.hetzner.de NXDOMAIN → the .com mirror mesh; Hetzner RESETS on a query string → per-provider `cache_bust` off + a runtime self-heal. ⚠️ A zero-byte transfer MUST name its cause (`_record_error`/`_report_dead_transfer`) — a silent 0.00 Mbps is indistinguishable from a slow link. Network/measurement stack is stdlib-only, existing PyYAML reads config, never imports agent.*; actions full/download/upload/latency/validate/providers; artifact to <app>/Temp/NetSpeedCalculator; fail-safe preflight REFUSES rather than publish an untrustworthy number; INI_SECTION_NETSPEED_CALCULATOR; Ask-Execs tier D (saturates the link, ~100-200 MB metered) (canvas + chat_agent_netspeed_calculator)
+│   │   │   └── ... (88 total agent directories)
 │   │   │
 │   │   ├── opus_client/            # Claude API client library
 │   │   │   └── claude_opus_client.py
@@ -353,7 +354,7 @@ Tlamatini/                          # Git root
 │   │   │   ├── js/                 # 37 JS modules (10 chat + 14 ACP + 1 ACP entry + 12 shared, incl. dialog_policy.js and release_notes_renderer.js)
 │   │   │   ├── img/Tlamatini.ico   # App icon (web pages + console window + .exe)
 │   │   │   └── sounds/             # notification.wav, hypervisor_alert.wav
-│   │   └── migrations/             # Django migrations — 194 total (latest: 0194_add_deep_research_demo_prompt — seeds the Deep-Research demo prompt `idPrompt=118`, `category='getting_started'`, `sort_rank=100`, guarded by `agent/test_deep_research_prompt.py`; 0193_add_latexer_demo_prompts; 0191/0192/0193 add the LaTeXer agent + Chat-Agent-LaTeXer tool row + demo prompts; 0188/0189/0190 add PDFer; 0186/0187 the wrapped FlowCreator + its Step-by-Step opener)
+│   │   └── migrations/             # Django migrations — 197 total (0195/0196/0197 add NetSpeed-Calculator agent + wrapped tool + demo prompt; 0194 adds Deep Internet Research prompt 118; earlier rows remain append-only)
 │   │
 │   ├── manage.py                   # Django entrypoint; tees stdout/stderr into tlamatini.log; sets console window title + icon
 │   ├── tlamatini.log               # Unified application log (console + Django loggers)
@@ -556,6 +557,12 @@ Detection is a short-circuiting cascade, cheapest test first, with **at most ONE
 **Two contracts that must NOT be weakened:** (a) **FAIL-OPEN** — any error, any uncertainty, any malformed config value resolves to "load it as text", because a guard that wrongly drops a file silently deletes the user's real context; (b) **the BOM stage must stay ahead of the NUL stage**, or every UTF-16 document (legitimately full of `0x00`) silently vanishes. Toggle with `binary_context_detection` in `config.json`. Coverage: `agent/test_binary_guard.py` (45 tests). Full contract: `docs/claude/architecture.md` and `docs/claude/recent-fixes.md` (2026-07-26).
 
 
+## Current Worktree Target — v1.48.18 (2026-08-23, untagged)
+
+The newest annotated tag remains `v1.48.17`; `1.48.18` is the package/documentation target until Angela deliberately tags it. Source truth is **88 workflow agents**, **66 wrapped chat-agent launchers**, **108 built-in Multi-Turn tools** (20 core + 66 wrapped + 12 ACPX/Skill + 10 External-MCP supervisors), **105 root stdio MCP tools**, **29 skills**, and **197 migrations**.
+
+The target adds **NetSpeed-Calculator** (multi-provider RFC-6349-style throughput, Student-t confidence intervals, random-effects fusion, I², bufferbloat, named zero-byte failures, and Ask-Execs tier-D bandwidth gating); **WAL-safe SQLite data movement** (`sqlite_copy.py` online backup API + DELETE-journal destination + `quick_check` + sidecar hygiene for Backup DB, Set DB, and pre-Django swap); Googler's **structured Google-dork builder** plus a two-tier resilience path (four plain-HTTP server-rendered routes first, then visible installed Chrome/bundled Chromium across seven direct-results routes, bounded retries, answer-route logging, lawful-source/`links_only` workflows, and explicit Google-only operator semantics); the **External MCP Adder** skill's classify/import/doctor/activate/wait/list/call lifecycle; migration 0194's append-only **Deep Internet Research** starter; Ollama Pro-or-higher complete-operation guidance; and private-build contact synchronization into gitignored `contacts.private.json` while public builds/snapshots remain contact-empty.
+
 ## ⌨️ Uniform Dialog Dismissal — ESCAPE CLOSES EVERY DIALOG (2026-08-16, v1.48.17)
 
 **Angela REVERSED the previous rule.** Until 2026-08-13 `dialog_policy.js` deliberately SWALLOWED Escape. The policy is now one line, on **both** pages, for **every** dialog:
@@ -595,7 +602,7 @@ The rest of the onboarding material is split into topic files under `docs/claude
 - **Architecture & core systems** — config, system prompt & identity, the Five Layers, application log, doc generation, database models: @docs/claude/architecture.md
 - **Multi-Turn, Create Flow, Parametrizer** — Multi-Turn mode, short follow-up scoring, Create-Flow pipeline, `INI_SECTION_*` format: @docs/claude/multi-turn.md
 - **Exec Report** — per-agent execution tables, capture/render pipeline, strict ordering contract, styling, adding new agents: @docs/claude/exec-report.md
-- **Agents** — creating a new agent (8-step), naming conventions, lifecycle, all 87 agent types, FlowCreator, FlowHypervisor: @docs/claude/agents.md
+- **Agents** — creating a new agent (8-step), naming conventions, lifecycle, all 88 agent types, FlowCreator, FlowHypervisor: @docs/claude/agents.md
 - **ACPX** — definition, agent registry, 12 LLM-facing tools, transport profiles, canonical flows, runtime mechanics, ACPX toolbar toggle, "when the user says ACPX" decision matrix: @docs/claude/acpx.md
 - **MCPs & Tools** — tool-only vs MCP context provider workflows, Skills system (SKILL.md packages), key warnings: @docs/claude/mcp-tools.md
 - **Frontend** — chat modules, ACP modules, ACP Canvas DOM Contract: @docs/claude/frontend.md
@@ -649,7 +656,7 @@ The Tlamatini tools are exposed over MCP as `mcp__tlamatini__<name>` (their sche
 | move / copy a file | `mcp__tlamatini__mover` (Mover) | glob-capable |
 | delete a file | `mcp__tlamatini__deleter` (Deleter) | glob-capable |
 | git commands | `mcp__tlamatini__gitter` (Gitter) | use `command='custom'` to pass a raw git subcommand |
-| web search | `mcp__tlamatini__googler` (Googler) | Google search + extract |
+| web search | `mcp__tlamatini__googler` (Googler) | Manual Google operators go in `query`; the visual/pool agent adds structured presets, grouped site/filetype filters, and `links_only` file-hunt output |
 | audio / video / camera / mic, TTS / STT, firmware, 3D | the matching agent — `talker`, `whisperer`, `recorder`, `camcorder`, `audioplayer`, `videoplayer`, `stm32er`, `esp32er`, `arduiner`, `blenderer`, `kalier`, `windower`, `mouser`, `keyboarder`, `shoter`, … | **no Claude equivalent exists — always the agent** |
 
 **Reading files:** there is no raw-`cat` Tlamatini agent (File-Interpreter / File-Extractor read-and-interpret via the LLM or extract from PDF/DOCX; Grepper / Globber are for search). So prefer Grepper/Globber to locate code and File-Interpreter to summarize a file; Claude's **Read** is the narrow last-resort exception **only** when you need the exact bytes of a region to author an Editor `old_string` and no Tlamatini tool yields them.

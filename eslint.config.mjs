@@ -398,6 +398,7 @@ export default [
                 updateShoterConnection: "readonly",
                 updateCamcorderConnection: "readonly",
                 updateVideoAnalyzerConnection: "readonly",
+                updateNetSpeedCalculatorConnection: "readonly",
                 updateGlobberConnection: "readonly",
                 updateGrepperConnection: "readonly",
                 updateEditorConnection: "readonly",
