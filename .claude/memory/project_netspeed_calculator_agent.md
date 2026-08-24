@@ -73,7 +73,7 @@ auto-exposes the agent; and the agent is **stdlib + yaml only**, so `requirement
 
 **DOCUMENTATION REFACTOR (2026-08-23).** `docs/claude/recent-fixes.md` carries the full
 dated contract entry (the four bugs with their measured evidence, the never-a-silent-zero
-rule, the three traps). The Book gained a v1.48.18 narrative entry. **The RUNBOOK ITSELF
+rule, the three traps). The Book gained the v1.49.1 release narrative. **The RUNBOOK ITSELF
 was wrong in three places and is now corrected** in BOTH `.claude/skills/tlamatini-agent-creation/SKILL.md`
 and `Tlamatini/.agents/workflows/create_new_agent.md`: (1) `views.PARAMETRIZER_SOURCE_OUTPUT_FIELDS`
 is DERIVED — never hand-edit it, register only in `agent_contracts._PARAMETRIZER_OUTPUT_FIELDS`;
@@ -82,5 +82,5 @@ is DERIVED — never hand-edit it, register only in `agent_contracts._PARAMETRIZ
 step. `docs/claude/multi-turn.md` said "Registration (3 places)" and named a README table
 that no longer exists — now "2 places", with the derived-field warning.
 
-Version bumped to **1.48.18**. NOT committed (Angela owns git writes); the frozen
-`C:\Tlamatini` install needs `python build.py` + reinstall to see it.
+Released as annotated **v1.49.1** at `6adf3623`; aligned local/remote `HEAD` is one
+commit later. The frozen `C:\Tlamatini` install needs `python build.py` + reinstall to see it.

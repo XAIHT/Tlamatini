@@ -1,81 +1,6 @@
 {
+  "_README": "Tlamatini External MCP catalog. Add servers in the standard `mcpServers` shape (the same JSON a Claude Code .mcp.json uses), then tick up to 5 of them in External > MCPs to activate. The two servers below ship with every installation and start INACTIVE — tick one to switch it on. Tlamatini provisions Node/npx (and uv/uvx) automatically the first time one is needed, so no manual install is required. This file is USER STATE: it lives next to config.json and is preserved across updates AND reinstalls. It holds provider secrets in its `env` blocks, so it is never shipped with a maintainer's servers in it and must never be committed to a public repo.",
   "mcpServers": {
-    "octocode": {
-      "command": "npx",
-      "args": [
-        "octocode-mcp"
-      ],
-      "env": {
-        "GITHUB_TOKEN": "<OCTOCODE_GITHUB_TOKEN goes here>"
-      },
-      "transport": "stdio"
-    },
-    "redis": {
-      "command": "docker",
-      "args": [
-        "run",
-        "-i",
-        "--rm",
-        "-e",
-        "REDIS_URL=redis://host.docker.internal:6379",
-        "mcp/redis:latest"
-      ],
-      "env": {},
-      "transport": "stdio"
-    },
-    "Roblox_Studio": {
-      "command": "cmd.exe",
-      "args": [
-        "/c",
-        "%LOCALAPPDATA%\\Roblox\\mcp.bat"
-      ],
-      "env": {},
-      "transport": "stdio"
-    },
-    "Snyk Security Scanner": {
-      "command": "snyk",
-      "args": [
-        "mcp",
-        "-t",
-        "stdio",
-        "--experimental"
-      ],
-      "env": {
-        "API_KEY": "<SNYK_API_KEY goes here>"
-      },
-      "transport": "stdio"
-    },
-    "burp_suite_proxy": {
-      "command": "java",
-      "args": [
-        "-jar",
-        "C:\\Development\\mcp-server\\libs\\mcp-proxy-all.jar",
-        "--sse-url",
-        "http://127.0.0.1:9876"
-      ],
-      "env": {},
-      "transport": "stdio"
-    },
-    "torrent-search-mcp": {
-      "command": "uv",
-      "args": [
-        "run",
-        "--directory",
-        "C:\\Development\\torrent-search-mcp",
-        "-m",
-        "torrent_search"
-      ],
-      "env": {},
-      "transport": "stdio"
-    },
-    "MayaMCP": {
-      "command": "C:\\Users\\angel\\OneDrive\\Documentos\\maya\\projects\\AngysMayaPrj-1\\.venv\\Scripts\\python.exe",
-      "args": [
-        "C:\\Users\\angel\\OneDrive\\Documentos\\maya\\projects\\AngysMayaPrj-1\\MayaMCP\\src\\maya_mcp_server.py"
-      ],
-      "env": {},
-      "transport": "stdio"
-    },
     "memory": {
       "command": "npx",
       "args": [
@@ -83,7 +8,7 @@
         "@modelcontextprotocol/server-memory"
       ],
       "env": {
-        "MEMORY_FILE_PATH": "C:\\Users\\angel\\AppData\\Local\\Tlamatini\\memory\\memory.json"
+        "MEMORY_FILE_PATH": "%LOCALAPPDATA%\\Tlamatini\\memory\\memory.json"
       },
       "transport": "stdio",
       "description": "Persistent knowledge graph — durable, cross-session memory of entities, relations and observations. Official @modelcontextprotocol reference server. Needs Node (Tlamatini provisions it automatically).",
@@ -99,37 +24,7 @@
       "transport": "stdio",
       "description": "Structured step-by-step reasoning with branching and revision. Official @modelcontextprotocol reference server. Needs Node (Tlamatini provisions it automatically).",
       "_tlamatini_default": true
-    },
-    "youtube": {
-      "command": "uv",
-      "args": [
-        "run",
-        "--directory",
-        "E:\\Development\\Youtube-MCP",
-        "python",
-        "server.py"
-      ],
-      "env": {
-        "GOOGLE_API_KEY": "<EXTMCP_YOUTUBE_GOOGLE_API_KEY goes here>"
-      },
-      "transport": "stdio"
-    },
-    "IDM_MCP_Core": {
-      "command": "C:\\Development\\IDM\\artifacts\\local\\IdmMcp.McpHost.exe",
-      "args": [
-        "--transport",
-        "stdio",
-        "--role",
-        "core"
-      ],
-      "env": {},
-      "transport": "stdio"
     }
   },
-  "active": [
-    "IDM_MCP_Core",
-    "memory",
-    "sequential-thinking",
-    "youtube"
-  ]
+  "active": []
 }

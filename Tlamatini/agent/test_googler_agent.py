@@ -398,8 +398,19 @@ class SaveResultsTests(unittest.TestCase):
 
 class GooglerSearchIntegrationTests(unittest.TestCase):
     def _run(self, page, query, n, mode, allow_same_domain):
-        with patch.dict(sys.modules, _install_fake_playwright(page)):
-            return G.googler_search(query, n, mode, allow_same_domain)
+        # These tests exercise the browser tier specifically. Keep the newer
+        # plain-HTTP Tier 0 from reaching the network before fake Playwright is
+        # imported; Tier 0 has its own isolated unit coverage.
+        with patch.object(G, '_search_http_tier', return_value=[]), \
+                patch.dict(sys.modules, _install_fake_playwright(page)):
+            return G.googler_search(
+                query,
+                n,
+                mode,
+                allow_same_domain,
+                engines=['google'],
+                attempts_per_engine=1,
+            )
 
     def test_links_only_blocker1_keeps_all_same_domain_urls(self):
         page = _FakePage([
@@ -432,8 +443,11 @@ class GooglerSearchIntegrationTests(unittest.TestCase):
             _FakeElement('https://target.com/b.pdf', 'B'),
         ])
         self._run(page, 'site:target.com', 10, 'links_only', True)
-        # Only the SERP page (google.com) is fetched — never the result URLs.
-        self.assertEqual(page.goto_calls, ['https://www.google.com'])
+        # Only the direct SERP URL is fetched - never the result URLs.
+        self.assertEqual(
+            page.goto_calls,
+            ['https://www.google.com/search?q=site%3Atarget.com&num=30&hl=en'],
+        )
 
     def test_links_only_honors_number_of_results_slice(self):
         page = _FakePage([
@@ -452,9 +466,15 @@ class GooglerSearchIntegrationTests(unittest.TestCase):
         ], body_text='VISIBLE BODY TEXT')
         results = self._run(page, 'foo', 5, 'text', False)
         self.assertEqual(len(results), 2)
-        # google.com + the 2 result pages were fetched.
-        self.assertEqual(page.goto_calls,
-                         ['https://www.google.com', 'https://a.com/page1', 'https://b.com/page2'])
+        # The direct Google SERP + the 2 result pages were fetched.
+        self.assertEqual(
+            page.goto_calls,
+            [
+                'https://www.google.com/search?q=foo&num=30&hl=en',
+                'https://a.com/page1',
+                'https://b.com/page2',
+            ],
+        )
         self.assertEqual(results[0]['content'], 'VISIBLE BODY TEXT')
         self.assertEqual(results[0]['title'], 'P1')
         self.assertGreater(results[0]['content_length'], 0)

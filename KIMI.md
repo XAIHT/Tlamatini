@@ -31,7 +31,7 @@ Enforced by: `test_private_data_guard.py` (automated tests — git-history integ
 
 **Welcome, Kimi!** This is the self-contained onboarding and reference document for working on the **Tlamatini** project. Read it in full before making any change. It is the Kimi sibling of `CLAUDE.md` (Claude Code's manifest + `@docs/claude/*` imports) and `GEMINI.md` (Gemini CLI's knowledge base): same mandatory rules, same architecture contracts, tuned for Kimi. Because Kimi has **no `@`-file auto-import mechanism**, everything an AI maintainer needs day-to-day is inline here; deeper topic files are listed in §25 as consult-on-demand.
 
-Every current count in this file was **re-verified against source on 2026-08-23 for the untagged v1.48.18 release target** (not copied from docs, which drift). If a count here disagrees with a hand-written doc elsewhere, re-run the source inventory and fix every active surface together.
+Every current count in this file was **re-verified against source on 2026-08-23 for the annotated v1.49.1 release** (not copied from docs, which drift). If a count here disagrees with a hand-written doc elsewhere, re-run the source inventory and fix every active surface together.
 
 ---
 
@@ -71,7 +71,7 @@ Every current count in this file was **re-verified against source on 2026-08-23 
 **Tlamatini** (Nahuatl for *"one who knows"*) is a **local-first AI developer assistant** created by **Angela López Mendoza** (@angelahack1, XAIHT). It is a Django 5.2 + Channels monolith with a LangChain/LangGraph agent core, a RAG system, a visual agentic workflow designer, an external coding-agent runtime (ACPX), a markdown skill system, and a pool of standalone agent scripts it spawns as subprocesses. Windows-only distribution (PyInstaller-frozen, carried Python 3.12.10).
 
 - **Repository**: `https://github.com/XAIHT/Tlamatini.git` · **License**: MIT · **Platform**: Windows 10/11
-- **Current worktree target**: **v1.48.18** (untagged; newest annotated tag is `v1.48.17`). It adds NetSpeed-Calculator, WAL-safe database copy/swap, Googler's structured dork builder/lawful-source presets plus a two-tier search path (four plain-HTTP server-rendered routes first, seven visible-browser routes second), the External MCP Adder skill, the Deep Internet Research starter, Ollama Pro-or-higher full-operation guidance, and private contact synchronization. Runtime single source of truth remains annotated Git/build metadata; see §16.
+- **Current release**: **v1.49.1** (annotated at `6adf3623`; aligned local/remote `HEAD` is one commit later at `abc7899a`). It adds NetSpeed-Calculator, WAL-safe database copy/swap, Googler's structured dork builder/lawful-source presets plus a two-tier search path (four plain-HTTP server-rendered routes first, seven visible-browser routes second), the External MCP Adder skill, the Deep Internet Research starter, Ollama Pro-or-higher full-operation guidance, and private contact synchronization. Runtime single source of truth remains annotated Git/build metadata; see §16.
 - **Python**: 3.12.10 (carried interpreter under `<repo>/python` is build-provisioned — never use it to run builds)
 
 **Verified counts (2026-08-23, counted from source and an isolated live Django tool build; skill list confirmed live via `tlamatini_list_skills`):**
@@ -252,7 +252,7 @@ Tlamatini/                          # Git root (C:\Development\Tlamatini)
 ├── test_author_banner.py           # Author-banner presence guard
 ├── requirements.txt                # Python deps (ruff is a REQUIRED runtime gate — never unpin)
 ├── eslint.config.mjs               # ESLint 10 config (501-line cross-file globals whitelist)
-├── package.json                    # worktree target 1.48.18; npm run lint / lint:fix
+├── package.json                    # release metadata 1.49.1; npm run lint / lint:fix
 ├── tlamatini_mcp_server.py         # Root stdio MCP server: 88 agent tools + 7 mgmt + 10 ACPX
 ├── tlamatini_acpx.py               # Self-contained stdlib ACPX runtime port for the MCP server
 ├── Tlamatini.ps1                   # Legacy launcher for the frozen exe
@@ -828,7 +828,7 @@ Hardcoded assumptions (know before changing these subsystems):
 8. The web port is configurable (`django_port`, §5); still genuinely hardcoded: direct `daphne`/`uvicorn` launches, `:8765`/`:50051` helpers, TeleTlamatini's `tlamatini.base_url`.
 9. Carried-Python media libs: Recorder/Camcorder/AudioPlayer/VideoPlayer/Whisperer run under the CARRIED Python (`<install>/python`), NOT the frozen exe — numpy + cv2 must exist in BOTH Pythons; `build.py` aborts otherwise. A dep pinned in `requirements.txt` but missing from the carried Python crashes the pool agent at runtime.
 10. Frontend `let`-not-`const` for cross-file mutable globals (§15, const-poison).
-11. Count discipline: the v1.48.18 worktree-target inventory is 88 workflow agents, 66 wrapped chat agents, 108 built-in Multi-Turn tools (20 core + 66 wrapped + 12 ACPX/Skill + 10 External-MCP supervisors), 105 root stdio MCP tools, 29 runtime skills, 197 migrations, and 37 JavaScript modules. Dynamic `ext__*` remote tools are reported separately. Historical release notes may retain their dated counts; active guidance must be re-verified from source and updated together.
+11. Count discipline: the v1.49.1 release inventory is 88 workflow agents, 66 wrapped chat agents, 108 built-in Multi-Turn tools (20 core + 66 wrapped + 12 ACPX/Skill + 10 External-MCP supervisors), 105 root stdio MCP tools, 29 runtime skills, 197 migrations, and 37 JavaScript modules. Dynamic `ext__*` remote tools are reported separately. Historical release notes may retain their dated counts; active guidance must be re-verified from source and updated together.
 
 Common pitfalls (deduplicated; the dated fix contracts live in `docs/claude/recent-fixes.md`):
 
@@ -960,6 +960,6 @@ From the very start of a session, perform the work with **Tlamatini's OWN** agen
 
 ---
 
-*KIMI.md — version-aligned 2026-08-23 against source ground truth for the untagged v1.48.18 target (88 agent templates / 66 wrapped `chat_agent_*` specs / 108 built-in Multi-Turn tools / 105 root `mcp__tlamatini__*` tools / 29 skills / 197 migrations / 37 JS modules / 11 CSS files). Current changes swept in: NetSpeed-Calculator, Googler's structured dork builder, plain-HTTP-first/two-tier resilience path, live harness, and tests, the WAL-safe `sqlite_copy.py` engine replacing `db_guard.py`, the Ollama-Pro-or-higher operating requirement, migration 0194's Deep-Internet-Research starter, the `adding-external-mcp` skill, and private contact synchronization. Sibling files: CLAUDE.md (Claude Code), GEMINI.md (Gemini CLI). Counts were verified from disk, manifest, and isolated live tool construction; when they drift again, re-verify from source — never copy from docs.*
+*KIMI.md — version-aligned 2026-08-23 against source ground truth for the annotated v1.49.1 release (88 agent templates / 66 wrapped `chat_agent_*` specs / 108 built-in Multi-Turn tools / 105 root `mcp__tlamatini__*` tools / 29 skills / 197 migrations / 37 JS modules / 11 CSS files). Current changes swept in: NetSpeed-Calculator, Googler's structured dork builder, plain-HTTP-first/two-tier resilience path, live harness, and tests, the WAL-safe `sqlite_copy.py` engine replacing `db_guard.py`, the Ollama-Pro-or-higher operating requirement, migration 0194's Deep-Internet-Research starter, the `adding-external-mcp` skill, and private contact synchronization. Sibling files: CLAUDE.md (Claude Code), GEMINI.md (Gemini CLI). Counts were verified from disk, manifest, and isolated live tool construction; when they drift again, re-verify from source — never copy from docs.*
 
 *Tlamatini — "one who knows". Created by Angela López Mendoza · @angelahack1 · XAIHT.*

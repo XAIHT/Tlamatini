@@ -24,7 +24,7 @@
 
 <p align="center">
   <a href="https://discord.gg/WFQsrskgc"><img src="https://img.shields.io/badge/DISCORD-JOIN%20US-5865F2?style=for-the-badge&labelColor=2D2D2D&logo=discord&logoColor=white" alt="Join our Discord"/></a>
-  <a href="https://github.com/XAIHT/Tlamatini/releases"><img src="https://img.shields.io/badge/TARGET-v1.48.18-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Release target v1.48.18"/></a>
+  <a href="https://github.com/XAIHT/Tlamatini/releases"><img src="https://img.shields.io/badge/RELEASE-v1.49.1-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Release v1.49.1"/></a>
   <a href="https://www.python.org/downloads/release/python-31210/"><img src="https://img.shields.io/badge/PYTHON-3.12.10-3776AB?style=for-the-badge&labelColor=2D2D2D&logo=python&logoColor=white" alt="Python"/></a>
   <a href="#installation"><img src="https://img.shields.io/badge/PLATFORM-WIN%2010%20%7C%2011-0078D6?style=for-the-badge&labelColor=2D2D2D&logo=windows&logoColor=white" alt="Platform"/></a>
   <a href="#-the-full-capability-list"><img src="https://img.shields.io/badge/AGENT%20TYPES-88-8A2BE2?style=for-the-badge&labelColor=2D2D2D" alt="88 agent types"/></a>
@@ -191,9 +191,9 @@ Done — tick **Multi-Turn** in the chat toolbar and put Tlamatini to work.
 
 ---
 
-## Current worktree target — v1.48.18
+## Current release — v1.49.1
 
-`v1.48.18` is the current documentation/package target. It is intentionally described as a **target**, not an annotated release: the newest reachable tag remains `v1.48.17`, and runtime identity continues to come from Git/build metadata. This worktree adds **NetSpeed-Calculator**, the 88th workflow agent and 66th wrapped launcher; WAL-aware database backup, staged replacement, and pre-Django hot-swap through SQLite's online backup API; Googler's structured Google-dork builder and lawful-source presets; an External MCP Adder skill with a diagnose-before-activate lifecycle; the append-only Deep Internet Research starter prompt; Ollama Pro-or-higher guidance for complete operation; and private-release contact synchronization that keeps public builds empty of contact PII.
+`v1.49.1` is the newest annotated release and the current documentation/package version. The tag resolves to commit `6adf3623`; the aligned local/remote `HEAD` is one commit later at `abc7899a`, and runtime identity still comes from Git/build metadata rather than this prose. The release adds **NetSpeed-Calculator**, the 88th workflow agent and 66th wrapped launcher; WAL-aware database backup, staged replacement, and pre-Django hot-swap through SQLite's online backup API; Googler's structured Google-dork builder and lawful-source presets; an External MCP Adder skill with a diagnose-before-activate lifecycle; the append-only Deep Internet Research starter prompt; Ollama Pro-or-higher guidance for complete operation; and private-release contact synchronization that keeps public builds empty of contact PII.
 
 NetSpeed-Calculator measures download, upload, latency, jitter, packet loss, and bufferbloat against several keyless providers. It discards TCP slow start, samples throughput as `d(bytes)/dt`, rejects outliers, publishes Student-t confidence intervals, and fuses providers with fixed- or random-effects meta-analysis plus Cochran's Q/I². Its `full`, `download`, and `upload` actions consume real bandwidth; `validate` only checks provider reachability, while `providers` lists the catalog. A full run commonly transfers about 100-200 MB, so the wrapped tool is in Ask-Execs tier D and must not be repeated casually.
 

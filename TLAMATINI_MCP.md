@@ -8,8 +8,8 @@
 -->
 # Tlamatini Agents — MCP connector
 
-Exposes **every complete live Tlamatini agent directory (88 in the v1.48.18
-worktree target)** as MCP tools so an MCP client (Claude Code, etc.) can drive
+Exposes **every complete live Tlamatini agent directory (88 in the v1.49.1
+release)** as MCP tools so an MCP client (Claude Code, etc.) can drive
 them directly — Executer, Pythonxer, Croner, ACPXer, STM32er, ESP32er,
 Arduiner, Shoter, Playwrighter, Kalier, MCP Doctor, NetSpeed-Calculator, and
 the rest of the live catalog. It also exposes 7 management/skill tools and 10

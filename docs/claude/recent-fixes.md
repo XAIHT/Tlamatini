@@ -320,9 +320,9 @@ audit. Migrations **0195/0196/0197**; catalog prompt **119**
 > (encoding-safe Grepper + the closed verdict vocabulary + updater preservation),
 > `v1.48.16` = `6ee630ca` (themed `tlmAlert`/`tlmConfirm` pop-ups + the
 > frozen-bundle carriage proof in `build.py`), **`v1.48.17` = `f948be7b` — the
-> CURRENT release**, carrying everything below. Docs that name "the latest
-> version" say **1.48.17**; entries that say a change "landed in v1.48.15" are
-> historical statements and remain as written.
+> newest release on that day**, carrying everything below. The current release
+> is now `v1.49.1`; entries that say a change "landed in v1.48.15" or
+> `v1.48.17` are historical statements and remain as written.
 
 **Angela, verbatim:** *"Standarize in every ... every dialog and all of the
 dialog without exception that if 'Esc' is pressed then the dialog must be

@@ -153,7 +153,7 @@ including `test_grepper_encodings.py`, `test_status_vocabulary.py`, and
 snapshot preserves `returncode`/`success`/semantic-status fields and the updater's
 `Uninstaller.exe` rule without copying local runtime state or keyed catalogs.
 
-**v1.48.18 worktree-target source-coherence gate:** the snapshot must carry the complete
+**v1.49.1 release source-coherence gate:** the snapshot must carry the complete
 NetSpeed-Calculator source/config/wiring/tests and migrations 0195-0197, `sqlite_copy.py`
 plus its WAL backup/swap tests, Googler's structured-dork and two-tier plain-HTTP-first resilience
 source/config, `test_googler_dorks.py`, and the optional visible dork-hunt harness,
