@@ -75,7 +75,7 @@ TEXT_OTHER_LANGUAGE = "Se perdió la conexión con el backend"
 
 SEL = {
     "user": "#id_username",
-    "password": "#id_password",
+    "password": "<REDACTED>",
     "submit": "form button[type=submit]",
     "banner": "#connection-status",
     "canvas": "#agents-container",

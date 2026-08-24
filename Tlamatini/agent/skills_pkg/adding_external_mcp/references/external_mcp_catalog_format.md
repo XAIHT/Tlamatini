@@ -21,7 +21,7 @@ it trivially portable between systems.
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-memory"],
       "env": {
-        "API_KEY": "<KEY goes here>"
+        "API_KEY": "<REDACTED>"
       },
       "transport": "stdio",
       "description": "Persistent knowledge graph"

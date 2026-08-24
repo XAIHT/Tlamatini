@@ -228,6 +228,7 @@ Claude Code, Codex, Cursor, Gemini — they edit text files. Tlamatini does that
 | 🔌 | **Universal External-MCP handling** | Connect to **any** external MCP server (stdio · streamable-http · sse · websocket), up to 5 at once, and use its tools instantly. One client for the whole MCP ecosystem. |
 | 🛠️ | **Modify entire software projects** | Read, grep, refactor, edit, and rebuild whole codebases — not just single files — with hybrid RAG grounding. |
 | 🛡️ | **Security assessments** | Authorized Kali Linux / pentest runbooks + code security-audit skills, driven from chat. |
+| 🦠 | **Windows Defender hardening** | Two path-independent scripts that auto-detect any install directory, grant Tlamatini 10 monitoring privileges while keeping all protections active, then scan 7 attack surfaces for hacker activity. No other AI assistant ships its own Defender integration. |
 | 📟 | **STM32 · ESP32 · Arduino firmware** | Scaffold → build → **flash a real connected board** → read serial, with a safety preflight that refuses mis-targeted firmware. |
 | 🧩 | **A VISUAL WORKFLOW DESIGNER** | **88 drag-and-drop agent types** on a canvas you wire into runnable, savable `.flw` flows. *No other coding agent — Claude Code, Codex, none of them — gives you this.* This is the crown jewel. |
 
@@ -294,6 +295,7 @@ Everything Tlamatini can do, grouped:
 - **Nmapper** — LOCAL, **use-only** nmap bridge for pentesters / CTF: runs a real `nmap` the user installed themselves (Nmapper **NEVER bundles or redistributes nmap** — nmap's NPSL forbids embedding it in a product without a paid OEM licence), resolving it from PATH → `C:\Program Files\Nmap` → a `%LOCALAPPDATA%\Tlamatini\nmap` copy; if it's absent it refuses gracefully and `action='install'` fetches the OFFICIAL free nmap installer (admin/UAC; also brings Npcap). The default is an UNPRIVILEGED TCP connect scan (`-sT`, no Npcap, no admin) so a fresh install scans immediately; SYN / `-O` / UDP auto-downgrade to a connect scan on Windows without Npcap. Actions: `quick` / `full` / `top_ports` / `version` / `scripts` (NSE) / `host_discovery` / `udp` / `custom` / `validate` / `install`; emits `INI_SECTION_NMAPPER`. Distinct from **Kalier** (a remote Kali box) and **Discoverer** (ProjectDiscovery). **Authorized targets only.**
 - **NetSpeed-Calculator** — measures **your** Internet connection and gives you the answer *with its error bar*: download, upload, latency, jitter, packet loss and **bufferbloat**. It does not trust a single speed-test site — it measures against **several keyless public providers at once** (Cloudflare, Ookla, Fast.com, LibreSpeed, Hetzner, CacheFly; no account, no API key) and then fuses them with a real random-effects meta-analysis, so you get a 95% confidence interval and a plain statement of whether the providers actually *agreed*. It follows RFC 6349: several parallel TCP streams, the slow-start ramp thrown away, throughput sampled as a derivative instead of the naive total÷elapsed, outliers rejected. **Bufferbloat is the one most people are missing** — it is graded A+ to F and it is usually the real reason a "fast" connection has choppy video calls. Dead or moved endpoints are skipped **with a named reason**, never as a silent `0.00 Mbps`. ⚠️ It consumes real, possibly **metered** bandwidth (~100-200 MB per full run), so it asks before running.
 - **Zavuerer** — **Zavu** unified messaging: SMS / WhatsApp / Telegram / Email / Voice from ONE API key (`channel: auto` smart-routes to the best channel with auto-fallback). Set the key once in **Config ▸ Access Keys Wizard ▸ "Unified Messaging (Zavu)"**; direct HTTP, fail-safe preflight, refuses safely when no key is set. **Zavu pricing:** sign-up is free (no card), but sending is pay-as-you-go — Zavu charges per message.
+- **Security Hardening scripts** — two path-independent v2 scripts (`enable_tlamatini_v2.bat` + `run_defender.bat`) that auto-detect any install directory and grant Tlamatini 10 monitoring privileges (Defender exclusions, CFA whitelist, ASR audit, firewall, Security log, WMI, Task Scheduler, Registry, SCM, auditing) while keeping all protections active, then scan 7 attack surfaces (logons, network, processes, tasks, services, registry, critical dirs) for hacker activity. Zero hardcoded paths — works from any drive/folder.
 - **security-audit / kali-pentest** skills.
 
 **🔌 External integration**
@@ -349,6 +351,37 @@ Turn it off with `"binary_context_detection": false` in `config.json`; tune it w
 ## See it work
 
 - ▶️ **[One-minute teaser](https://www.youtube.com/watch?v=4MyRXBahHuU&t=41s)** · 🎬 more demos on **[xaiht.org](https://xaiht.org)**.
+
+---
+
+## 🛡️ Security Hardening — Windows Defender Whitelist & Active Defender
+
+Tlamatini ships with **two path-independent security scripts** that grant her the monitoring privileges she needs (whitelist) and actively scan your system for hacker activity (defender). Both scripts **auto-detect** their installation directory — they work from **any drive, any folder, any install path** with zero configuration.
+
+### What they do
+
+| Script | Purpose | Requires Admin |
+|---|---|---|
+| **`enable_tlamatini_v2.bat`** | Grants Tlamatini 10 monitoring privileges: Defender exclusions, CFA whitelist, ASR audit mode, PowerShell RemoteSigned, firewall rules, Security log access, WMI/Task Scheduler/Registry/SCM access, plus Security auditing policies. **All protections remain active** — Tlamatini gets a pass, hackers stay blocked. | ✅ UAC elevation |
+| **`run_defender.bat`** | Scans 7 attack surfaces: logons (failed/success), network connections, suspicious processes, scheduled tasks, services, registry Run keys, and critical directories. Auto-blocks malicious IPs and kills malware processes. Logs everything to `security_logs/`. | ✅ UAC elevation |
+
+### How to use them
+
+1. **Right-click** `enable_tlamatini_v2.bat` → **Run as administrator** (a UAC prompt appears; click **Yes**).
+2. Wait for the 10 privileges to be granted. Restart Tlamatini for full effect.
+3. **Right-click** `run_defender.bat` → **Run as administrator** to scan for hacker activity.
+4. Check `security_logs\alerts.log` for any `CRITICAL` or `ALERT` entries — those are your hackers.
+
+### Path-independent auto-detection (v2)
+
+The v2 scripts contain **zero hardcoded paths**. They use:
+
+- **Batch files** — `%~dp0` (the directory where the `.bat` file lives) to locate their companion `.ps1` scripts.
+- **PowerShell scripts** — `$PSScriptRoot` (the directory where the `.ps1` file lives) → `Split-Path -Parent` to find the Tlamatini root → `Join-Path` to build paths to `Tlamatini.exe`, `python\python.exe`, and `security_logs\`.
+
+This means you can install Tlamatini in `C:\Tlamatini\`, `F:\AI\PowerDefenderFramework\GodessOfGods\TlamatiniX-1\`, or any other directory — the scripts auto-detect their own location and work correctly. No modifications needed.
+
+> **Created by Angela López Mendoza (@angelahack1)** — Tlamatini, the one who knows.
 
 ---
 

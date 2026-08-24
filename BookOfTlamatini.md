@@ -126,6 +126,7 @@ Tlamatini does a lot. This book is organized so you can stop reading at the dept
 - **Part X — Survival Guide**: troubleshooting, `tlamatini.log`, common issues.
 - **Bonus chapter §57** — Driving Unreal Engine 5 from Tlamatini (the Unrealer agent + Unreal MCP plugin). Read this if you build games or simulations in UE5 and want a chat / canvas surface for the editor.
 - **Bonus chapter §59** — Sculpting in Blender from Tlamatini (the Blenderer agent + the official Blender MCP add-on). Read this if you make 3D art / assets in Blender and want a chat / canvas surface for the editor — and to see why Blender's *code-execution* protocol differs from Unreal's verbs.
+- **🛡️ Security Hardening** — Windows Defender Whitelist & Active Defender scripts (path-independent v2, auto-detecting any install directory).
 - **Appendix A** — Keyboarder key reference.
 - **Appendix B** — Glossary.
 - **Appendix C** — Full changelog (preserved verbatim).
@@ -142,6 +143,81 @@ If you only have ten minutes, read Part I §3–§7 (install + first login), the
 - [Installing OpenCV end-to-end in Multi-Turn](https://www.youtube.com/watch?v=bBlqbZVK-Wk)
 - [Uninstalling Poco — Exec Report and matching flow](https://www.youtube.com/watch?v=E5vi0q5FxXQ)
 - [Designing a flow with FlowCreator's help](https://www.youtube.com/watch?v=Tgoa7Tmoo0o)
+
+---
+
+## 🛡️ Security Hardening — Windows Defender Whitelist & Active Defender
+
+Tlamatini ships with **two path-independent security scripts** (v2) that grant her the monitoring privileges she needs (whitelist) and actively scan your system for hacker activity (defender). Both scripts **auto-detect** their installation directory — they work from **any drive, any folder, any install path** with zero configuration.
+
+The scripts live in the `security/` subdirectory of your Tlamatini installation:
+
+```
+<install-root>/
+├── Tlamatini.exe              ← auto-detected by the scripts
+├── python/
+│   ├── python.exe              ← auto-detected
+│   └── Scripts/
+├── security/                   ← scripts live here
+│   ├── enable_tlamatini_v2.bat ← right-click → Run as admin
+│   ├── run_defender.bat        ← right-click → Run as admin
+│   ├── tlamatini_whitelist_v2.ps1
+│   ├── tlamatini_defender.ps1
+│   └── security_logs/          ← created on first defender run
+│       ├── alerts.log          ← review for CRITICAL/ALERT entries
+│       └── monitor.log         ← full monitoring log
+```
+
+### What the whitelist script does
+
+`enable_tlamatini_v2.bat` launches `tlamatini_whitelist_v2.ps1` with UAC elevation and grants **10 monitoring privileges**:
+
+1. **Defender exclusions** — the Tlamatini install folder + `Tlamatini.exe` + `python.exe` are excluded from scanning, so Tlamatini's own files are not flagged.
+2. **Controlled Folder Access whitelist** — `Tlamatini.exe` is allowed to write to protected folders.
+3. **ASR rules set to Audit mode** — Attack Surface Reduction rules log but do not block, so Tlamatini's subprocesses run without interference.
+4. **PowerShell ExecutionPolicy set to RemoteSigned** — local scripts run without signing requirements.
+5. **Firewall outbound rules** — `Tlamatini.exe` and `python.exe` are allowed outbound network access.
+6. **Security event log read access** — Tlamatini can read the Windows Security log to see hacker logons.
+7. **WMI namespace access** — Tlamatini can enumerate processes, services, and users.
+8. **Task Scheduler access** — Tlamatini can audit scheduled tasks for persistence mechanisms.
+9. **Registry Run keys read access** — Tlamatini can read autostart entries to find malware.
+10. **Service Control Manager access** — Tlamatini can enumerate services to find malicious ones.
+
+**Bonus:** Security auditing policies are enabled (Logon success/failure, Process creation, Account logon, Sensitive privilege use) so the events Tlamatini monitors are actually generated.
+
+**All security protections remain active.** Tlamatini gets a pass — hackers still get blocked.
+
+### What the defender script does
+
+`run_defender.bat` launches `tlamatini_defender.ps1` with UAC elevation and scans **7 attack surfaces**:
+
+1. **Logon monitoring** — checks the Security log for failed logons (brute-force), successful logons outside normal hours, and logons from suspicious accounts.
+2. **Network monitoring** — enumerates active TCP/UDP connections, flags connections to known-bad ports, and detects suspicious outbound traffic.
+3. **Process monitoring** — enumerates running processes, flags processes running from temp directories, processes with no company name, and processes with suspicious names.
+4. **Scheduled task monitoring** — enumerates all scheduled tasks, flags tasks that run from temp directories or have suspicious names/triggers.
+5. **Service monitoring** — enumerates services, flags services with no description, services running from temp directories, and services with suspicious paths.
+6. **Registry persistence monitoring** — reads all Run keys (HKLM and HKCU), flags entries pointing to temp directories or suspicious executables.
+7. **Critical directory monitoring** — scans `C:\Windows\System32`, `C:\Program Files`, `C:\ProgramData`, and the user's Startup folder for recently modified executables, DLLs, scripts, and batch files.
+
+**Auto-response:** The defender script can auto-block malicious IPs via Windows Firewall and kill suspicious processes. All findings are logged to `security_logs/alerts.log` with severity levels (INFO, WARNING, ALERT, CRITICAL).
+
+### How to use them
+
+1. **Right-click** `security\enable_tlamatini_v2.bat` → **Run as administrator** (a UAC prompt appears; click **Yes**).
+2. Wait for the 10 privileges to be granted. Restart Tlamatini for full effect.
+3. **Right-click** `security\run_defender.bat` → **Run as administrator** to scan for hacker activity.
+4. Check `security\security_logs\alerts.log` for any `CRITICAL` or `ALERT` entries — those are your hackers.
+
+### Path-independent auto-detection (v2)
+
+The v2 scripts contain **zero hardcoded paths**. They use:
+
+- **Batch files** — `%~dp0` (the directory where the `.bat` file lives) to locate their companion `.ps1` scripts.
+- **PowerShell scripts** — `$PSScriptRoot` (the directory where the `.ps1` file lives) → `Split-Path -Parent` to find the Tlamatini root → `Join-Path` to build paths to `Tlamatini.exe`, `python\python.exe`, and `security_logs\`.
+
+This means you can install Tlamatini in `C:\Tlamatini\`, `F:\AI\PowerDefenderFramework\GodessOfGods\TlamatiniX-1\`, or any other directory — the scripts auto-detect their own location and work correctly. No modifications needed.
+
+> **Created by Angela López Mendoza (@angelahack1)** — Tlamatini, the one who knows.
 
 ---
 

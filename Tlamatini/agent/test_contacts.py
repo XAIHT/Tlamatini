@@ -25,7 +25,7 @@ from agent import contacts
 
 _SAMPLE = {
     "contacts": [
-        {"name": "Ana Ricardo Lazcano", "aliases": ["Ana", "Ana Lazcano"],
+        {"name": "<REDACTED>", "aliases": ["Ana", "<REDACTED>"],
          "telegram": "@ana_lazcano", "whatsapp": "+5215555555555"},
         {"name": "Bob Stone", "telegram": "@bobstone", "whatsapp": "+15551230000"},
     ]
@@ -59,19 +59,19 @@ class _TempContacts:
 class ContactsResolverTests(unittest.TestCase):
     def test_exact_full_name(self):
         with _TempContacts(_SAMPLE):
-            self.assertEqual(contacts.resolve_contact("Ana Ricardo Lazcano", "telegram"), "@ana_lazcano")
-            self.assertEqual(contacts.resolve_contact("Ana Ricardo Lazcano", "whatsapp"), "+5215555555555")
+            self.assertEqual(contacts.resolve_contact("<REDACTED>", "telegram"), "@ana_lazcano")
+            self.assertEqual(contacts.resolve_contact("<REDACTED>", "whatsapp"), "+5215555555555")
 
     def test_alias(self):
         with _TempContacts(_SAMPLE):
-            self.assertEqual(contacts.resolve_contact("Ana Lazcano", "telegram"), "@ana_lazcano")
+            self.assertEqual(contacts.resolve_contact("<REDACTED>", "telegram"), "@ana_lazcano")
 
     def test_case_insensitive(self):
         with _TempContacts(_SAMPLE):
             self.assertEqual(contacts.resolve_contact("ANA RICARDO LAZCANO", "whatsapp"), "+5215555555555")
 
     def test_subset_tokens_match(self):
-        # "ana lazcano" (a subset of the tokens) finds "Ana Ricardo Lazcano".
+        # "ana lazcano" (a subset of the tokens) finds "<REDACTED>".
         with _TempContacts(_SAMPLE):
             self.assertEqual(contacts.resolve_contact("ana lazcano", "telegram"), "@ana_lazcano")
 
@@ -96,7 +96,7 @@ class ContactsResolverTests(unittest.TestCase):
     def test_list_contacts(self):
         with _TempContacts(_SAMPLE):
             names = [c["name"] for c in contacts.list_contacts()]
-            self.assertIn("Ana Ricardo Lazcano", names)
+            self.assertIn("<REDACTED>", names)
             self.assertIn("Bob Stone", names)
 
     def test_missing_file_fails_open(self):
@@ -112,7 +112,7 @@ class ShippedContactsFileTests(unittest.TestCase):
     ⚠️ DATA-INDEPENDENT ON PURPOSE (Angela, 2026-07-26). This file is her LIVE
     contacts book, not a shipped sample: it holds real people's real handles and
     phone numbers, and it changes whenever she adds a contact. The test used to
-    assert `resolve_contact("Ana Ricardo Lazcano", "telegram") == "@ana_lazcano"`,
+    assert `resolve_contact("<REDACTED>", "telegram") == "@ana_lazcano"`,
     which (a) failed the moment the real entry differed and (b) hardcoded a
     person's identifier into the test suite. Assert the CONTRACT against
     whatever the file actually contains instead — never a specific person.

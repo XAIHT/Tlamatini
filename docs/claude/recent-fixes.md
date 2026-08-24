@@ -1126,7 +1126,7 @@ The suite ran **3462 tests → 26 failures + 2 errors**. Almost none were produc
 
 ### A. The secret scrubber silently broke its own tests
 
-`regen_secrets.py` (and the public-release scrubber) rewrite `"password": "..."`-shaped literals. They had rewritten **the test fixtures** to `<REDACTED>` while leaving the assertions expecting the old values — 8 failures in `test_password_quoting.py` plus `test_secret_008_env_secret_real_value`. Two second-order bites:
+`regen_secrets.py` (and the public-release scrubber) rewrite `"password": "<REDACTED>"`-shaped literals. They had rewritten **the test fixtures** to `<REDACTED>` while leaving the assertions expecting the old values — 8 failures in `test_password_quoting.py` plus `test_secret_008_env_secret_real_value`. Two second-order bites:
 
 - `<REDACTED>` has **no spaces**, and the entire point of `test_password_quoting` is proving a *space-bearing* password stays double-quoted in YAML. The scrub did not just break the test, it made it meaningless. Fixtures now use the obviously-fake, space-bearing `fake app pass 0000`.
 - `<REDACTED>` contains `<` and `>`, which **are** markers in `_looks_like_placeholder`. The "a REAL value must NOT be flagged" case therefore asserted the exact opposite of its intent. (My first replacement failed too — it contained the word "placeholder". The value must be opaque gibberish.)

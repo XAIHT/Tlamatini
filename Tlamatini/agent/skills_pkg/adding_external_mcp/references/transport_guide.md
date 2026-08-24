@@ -21,7 +21,7 @@ Spawns a local child process, communicates via stdin/stdout JSON-RPC.
 {
   "command": "npx",
   "args": ["-y", "@modelcontextprotocol/server-memory"],
-  "env": { "API_KEY": "your-key" },
+  "env": { "API_KEY": "<REDACTED>" },
   "transport": "stdio"
 }
 ```

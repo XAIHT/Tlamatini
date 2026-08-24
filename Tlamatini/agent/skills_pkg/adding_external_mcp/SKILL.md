@@ -139,7 +139,7 @@ The server config is a JSON object with these fields:
 {
   "command": "npx",
   "args": ["-y", "@some/mcp-server"],
-  "env": { "API_KEY": "your-key-here" },
+  "env": { "API_KEY": "<REDACTED>" },
   "transport": "stdio",
   "description": "Optional human-readable description"
 }

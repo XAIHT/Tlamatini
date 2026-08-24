@@ -1,30 +1,4 @@
 {
-  "_README": "Tlamatini External MCP catalog. Add servers in the standard `mcpServers` shape (the same JSON a Claude Code .mcp.json uses), then tick up to 5 of them in External > MCPs to activate. The two servers below ship with every installation and start INACTIVE — tick one to switch it on. Tlamatini provisions Node/npx (and uv/uvx) automatically the first time one is needed, so no manual install is required. This file is USER STATE: it lives next to config.json and is preserved across updates AND reinstalls. It holds provider secrets in its `env` blocks, so it is never shipped with a maintainer's servers in it and must never be committed to a public repo.",
-  "mcpServers": {
-    "memory": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-memory"
-      ],
-      "env": {
-        "MEMORY_FILE_PATH": "%LOCALAPPDATA%\\Tlamatini\\memory\\memory.json"
-      },
-      "transport": "stdio",
-      "description": "Persistent knowledge graph — durable, cross-session memory of entities, relations and observations. Official @modelcontextprotocol reference server. Needs Node (Tlamatini provisions it automatically).",
-      "_tlamatini_default": true
-    },
-    "sequential-thinking": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-sequential-thinking"
-      ],
-      "env": {},
-      "transport": "stdio",
-      "description": "Structured step-by-step reasoning with branching and revision. Official @modelcontextprotocol reference server. Needs Node (Tlamatini provisions it automatically).",
-      "_tlamatini_default": true
-    }
-  },
+  "mcpServers": {},
   "active": []
 }

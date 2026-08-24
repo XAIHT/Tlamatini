@@ -104,7 +104,7 @@ def _is_kept_name(value: str) -> bool:
         return True
     # Kept only when EVERY token is one of her name tokens, so "Angela",
     # "Angela Lopez Mendoza" and "Ángela López Mendoza" are all kept, but
-    # "Ana Lazcano" or "angela@xaiht.org" (a token that isn't a bare name) are not.
+    # "<REDACTED>" or "<REDACTED>" (a token that isn't a bare name) are not.
     tokens = [t for t in re.split(r"[\s.]+", norm) if t]
     return bool(tokens) and all(t in KEEP_NAME_TOKENS for t in tokens)
 

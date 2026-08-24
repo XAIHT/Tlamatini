@@ -1,6 +1,6 @@
 <!-- THE USER IS ANGELA, A WOMAN — always address her by name. -->
 <!-- Unless noted, work is UNCOMMITTED in source; frozen needs build.py. Detail in topic files. -->
-- [User profile](user_profile.md) — **Angela**, primary Tlamatini dev (angela@xaiht.org). Always "Angela".
+- [User profile](user_profile.md) — **Angela**, primary Tlamatini dev (<REDACTED>). Always "Angela".
 - [ALWAYS ENGLISH to Angela (MANDATORY)](feedback_always_english_to_angela.md) — talk to her ONLY in English; Spanish only for her users' content.
 - [Fixed messages VERBATIM](feedback_speak_fixed_messages_verbatim.md) — never paraphrase a pre-established message; speak/show it exactly (strip only markup/timestamp).
 - [Plain, short answers](feedback_plain_short_answers.md) — one bolded fact, few points, everyday words, end with ONE question.
