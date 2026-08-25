@@ -397,7 +397,7 @@ When the migrations finish and you have a superuser, run the server (chapter 7).
 
 ### Path B — Pre-built one-click installer (end users)
 
-Download the newest published release ZIP from **[Tlamatini Releases](https://github.com/XAIHT/Tlamatini/releases)** and unzip it (or use a `Tlamatini_Release/` folder somebody handed you / you built — see Part VIII). This book currently documents the annotated **v1.49.1 release**. The tag resolves to commit `6adf3623`; local and remote `HEAD` are aligned one commit later at `abc7899a`, while runtime identity remains Git/build-derived. Then:
+Download the newest published release ZIP from **[Tlamatini Releases](https://github.com/XAIHT/Tlamatini/releases)** and unzip it (or use a `Tlamatini_Release/` folder somebody handed you / you built — see Part VIII). This book currently documents the annotated **v1.50.0 release**. The tag resolves to commit `ae6fec4c`; local and remote `HEAD` are aligned one commit later at `834eaa16`, while runtime identity remains Git/build-derived. Then:
 
 1. Open the unzipped folder.
 2. Double-click **`Installer.exe`**.
@@ -2154,14 +2154,14 @@ Pre-releases use the standard SemVer suffixes — `2.0.0-alpha.1`, `2.0.0-beta.1
 
 ```powershell
 git status                                          # clean tree, on main
-git tag -a v1.49.1 -m "Release 1.49.1: <one-liner>"   # annotated tag
-git push origin v1.49.1
+git tag -a v1.50.0 -m "Release 1.50.0: <one-liner>"   # annotated tag
+git push origin v1.50.0
 python build.py
 python build_uninstaller.py
 python build_installer.py
 ```
 
-All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.49.1/`, named for the version so the file you hand to a user is unambiguous before they even unzip it. The current `v1.49.1` tag remains reachable from `HEAD`, so the bare runtime version stays `1.49.1` even though the worktree is one commit beyond the tagged commit.
+All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.50.0/`, named for the version so the file you hand to a user is unambiguous before they even unzip it. The current `v1.50.0` tag remains reachable from `HEAD`, so the bare runtime version stays `1.50.0` even though the worktree is one commit beyond the tagged commit.
 
 ### Where the version shows up in a running install
 
@@ -2169,8 +2169,8 @@ The build computes the version once and bakes it into four surfaces:
 
 - **`Tlamatini/agent/_version.py`** — generated at build time, gitignored, read at runtime by `agent.version.get_version()`. This is what every in-process surface reads.
 - **Win32 `VERSIONINFO`** — `Tlamatini.exe`, `Installer.exe`, and `Uninstaller.exe` all carry the version in their resource fork. Right-click the file → Properties → Details → ProductVersion.
-- **Release folder name** — `dist/Tlamatini_Release_v1.49.1/`.
-- **Runtime surfaces** — the About dialog renders `Tlamatini v{{ version }}` (Django context processor); after the release tag/build, the startup banner prints `--- [VERSION] Tlamatini 1.49.1` to both the console and `tlamatini.log`; `GET /agent/version/` returns `{"version":"1.49.1","commit":"abc1234","date":"…","source":"generated"}` as an **open** endpoint suitable for a health-check.
+- **Release folder name** — `dist/Tlamatini_Release_v1.50.0/`.
+- **Runtime surfaces** — the About dialog renders `Tlamatini v{{ version }}` (Django context processor); after the release tag/build, the startup banner prints `--- [VERSION] Tlamatini 1.50.0` to both the console and `tlamatini.log`; `GET /agent/version/` returns `{"version":"1.50.0","commit":"abc1234","date":"…","source":"generated"}` as an **open** endpoint suitable for a health-check.
 
 If the four surfaces ever disagree, your build was run with a stale `$env:TLAMATINI_VERSION` or against an out-of-date `_version.py` — clear them and re-run `build.py`.
 
