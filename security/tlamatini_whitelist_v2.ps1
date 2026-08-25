@@ -1,5 +1,5 @@
 # =============================================================================
-# TLAMATINI SECURITY WHITELIST SCRIPT v2 - EXPANDED PRIVILEGES
+# TLAMATINI SECURITY WHITELIST SCRIPT v2.1 - EXPANDED PRIVILEGES
 # =============================================================================
 # Purpose: Adds Tlamatini to Windows security exclusions AND grants it
 #          additional monitoring privileges so it can detect hackers.
@@ -10,34 +10,43 @@
 #   - Create backdoors or bypass UAC
 #
 # What it DOES grant:
-#   1. Defender exclusions for the Tlamatini install folder (auto-detected, so I am not scanned)
+#   1. Defender exclusions for the Tlamatini install folder (auto-detected)
 #   2. Controlled Folder Access whitelist (so I can traverse protected folders)
 #   3. ASR audit mode (so my subprocesses are not blocked)
 #   4. PowerShell RemoteSigned policy (so my scripts run)
 #   5. Firewall outbound rules (so I can reach models/APIs)
 #   6. Security log read access (so I can see hacker logons)
-#   7. WMI namespace permissions (so I can query system state)
+#   7. WMI namespace verification (so I can query system state)
 #   8. Task Scheduler read access (so I can audit persistence)
 #   9. Registry read access to Run keys (so I can check autostart)
 #  10. Service Control Manager query access (so I can enumerate services)
+#
+# BONUS auditing so the defender actually has events to read:
+#   - Logon / process-creation / account-logon / privilege-use auditing
+#   - Command line included in 4688 events (catches 'vssadmin delete shadows')
+#   - PowerShell script-block logging (records attacker scripts)
+#
+# v2.1 changes:
+#   - STEP 7 rewritten: real WMI verification via Get-CimInstance (removed the
+#     dead/broken MOF block that referenced an undefined $OCTUALLY placeholder).
+#   - BONUS: enable ProcessCreationIncludeCmdLine + ScriptBlockLogging.
 #
 # REQUIREMENTS:
 #   - Run as Administrator
 #   - Windows 10/11
 #
-# Author: Tlamatini (created by Angela Lopez Mendoza)
+# Author: Tlamatini (created by Angela Lopez Mendoza, @angelahack1)
 # =============================================================================
 
 #Requires -RunAsAdministrator
 
 $ErrorActionPreference = "Continue"
-# --- AUTO-DETECT installation path (path-independent v2) ---
-# $PSScriptRoot = the folder where this .ps1 lives (e.g. ...\TlamatiniX-1\security or ...\Tlamatini\Temp)
-# Tlamatini root = parent of that folder (e.g. ...\TlamatiniX-1 or ...\Tlamatini)
-# Works regardless of install drive or directory name — no hardcoded paths.
+# --- AUTO-DETECT installation path (path-independent) ---
+# $PSScriptRoot = the folder where this .ps1 lives (e.g. ...\Tlamatini\security)
+# Tlamatini root = parent of that folder. Works on any drive / directory name.
 $TlamatiniPath = Split-Path -Parent $PSScriptRoot
 $TlamatiniExe = Join-Path $TlamatiniPath "Tlamatini.exe"
-$ScriptVersion = "2.0"
+$ScriptVersion = "2.1"
 
 Write-Host ""
 Write-Host "================================================" -ForegroundColor Cyan
@@ -243,38 +252,21 @@ try {
 }
 
 # -----------------------------------------------------------------------------
-# STEP 7: WMI namespace permissions
+# STEP 7: WMI namespace verification (v2.1 - real query, no dead MOF)
 # -----------------------------------------------------------------------------
 Write-Host ""
-Write-Host "[STEP 7/10] Granting WMI namespace access..." -ForegroundColor Yellow
+Write-Host "[STEP 7/10] Verifying WMI namespace access..." -ForegroundColor Yellow
 
 try {
-    # Grant the current user Remote Enable on root\cimv2 (read WMI queries)
-    $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent().Name
-    $sid = ([Security.Principal.WindowsIdentity]::GetCurrent()).User.Value
-
-    # Use mofcomp to set WMI namespace security
-    $mofContent = @"
-#pragma namespace("\\\\root\\cimv2")
-instance of __SystemSecurity as $SystemSecurity
-{
-    Descriptor = $OCTUALLY;
-};
-"@
-
-    # Alternative: use PowerShell to grant WMI access via SDDL
-    # The root\cimv2 namespace should already be readable by users,
-    # but we ensure the current user has Remote Enable permission
-    $wmiSddl = (Get-Item "HKLM:\SOFTWARE\Microsoft\Ole").GetValue("DefaultAccessPermission") 2>$null
-
-    # Grant via subinacl if available, otherwise via .NET
-    try {
-        $sd = New-Object System.Management.ManagementClass("root\cimv2", "__SystemSecurity", $null)
-        $sd | Out-Null
-        Write-Host "  [OK] WMI root\cimv2 accessible." -ForegroundColor Green
-    } catch {
-        Write-Host "  [WARN] WMI namespace access may be limited." -ForegroundColor Yellow
+    # root\cimv2 is readable by Administrators by default. Prove it with a query.
+    $os = Get-CimInstance -ClassName Win32_OperatingSystem -ErrorAction Stop
+    if ($null -ne $os) {
+        Write-Host "  [OK] WMI root\cimv2 query succeeded ($($os.Caption))." -ForegroundColor Green
     }
+    # Confirm the enumerations the defender relies on actually work.
+    $procCount = (Get-CimInstance -ClassName Win32_Process -ErrorAction SilentlyContinue | Measure-Object).Count
+    $svcCount  = (Get-CimInstance -ClassName Win32_Service -ErrorAction SilentlyContinue | Measure-Object).Count
+    Write-Host "  [OK] WMI enumeration OK (processes=$procCount, services=$svcCount)." -ForegroundColor Green
 } catch {
     Write-Host "  [WARN] WMI: $($_.Exception.Message)" -ForegroundColor Yellow
 }
@@ -334,29 +326,49 @@ try {
 }
 
 # -----------------------------------------------------------------------------
-# BONUS: Enable Security event log auditing (so events are actually generated)
+# BONUS: Enable Security auditing so events are actually generated
 # -----------------------------------------------------------------------------
 Write-Host ""
 Write-Host "[BONUS] Enabling Security auditing policies..." -ForegroundColor Yellow
 
 try {
-    # Enable logon auditing
     auditpol /set /subcategory:"Logon" /success:enable /failure:enable 2>$null | Out-Null
     Write-Host "  [OK] Logon auditing enabled." -ForegroundColor Green
 
-    # Enable process creation auditing (catches malware launching)
     auditpol /set /subcategory:"Process Creation" /success:enable 2>$null | Out-Null
     Write-Host "  [OK] Process creation auditing enabled." -ForegroundColor Green
 
-    # Enable account logon auditing
     auditpol /set /subcategory:"Account Logon" /success:enable /failure:enable 2>$null | Out-Null
     Write-Host "  [OK] Account logon auditing enabled." -ForegroundColor Green
 
-    # Enable privilege use auditing
     auditpol /set /subcategory:"Sensitive Privilege Use" /success:enable /failure:enable 2>$null | Out-Null
     Write-Host "  [OK] Sensitive privilege use auditing enabled." -ForegroundColor Green
+
+    auditpol /set /subcategory:"User Account Management" /success:enable /failure:enable 2>$null | Out-Null
+    Write-Host "  [OK] Account management auditing enabled (new-admin detection)." -ForegroundColor Green
 } catch {
     Write-Host "  [WARN] Audit policy: $($_.Exception.Message)" -ForegroundColor Yellow
+}
+
+# Include the full command line in process-creation (4688) events so the
+# defender can spot 'vssadmin delete shadows', 'wbadmin delete', 'bcdedit ...'.
+try {
+    $auditKey = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\Audit"
+    if (-not (Test-Path $auditKey)) { New-Item -Path $auditKey -Force | Out-Null }
+    Set-ItemProperty -Path $auditKey -Name "ProcessCreationIncludeCmdLine_Enabled" -Value 1 -Type DWord -ErrorAction Stop
+    Write-Host "  [OK] Command line included in process-creation events." -ForegroundColor Green
+} catch {
+    Write-Host "  [WARN] Cmdline-in-4688: $($_.Exception.Message)" -ForegroundColor Yellow
+}
+
+# Enable PowerShell Script Block Logging so attacker scripts are recorded.
+try {
+    $sbl = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging"
+    if (-not (Test-Path $sbl)) { New-Item -Path $sbl -Force | Out-Null }
+    Set-ItemProperty -Path $sbl -Name "EnableScriptBlockLogging" -Value 1 -Type DWord -ErrorAction Stop
+    Write-Host "  [OK] PowerShell script-block logging enabled." -ForegroundColor Green
+} catch {
+    Write-Host "  [WARN] ScriptBlockLogging: $($_.Exception.Message)" -ForegroundColor Yellow
 }
 
 # -----------------------------------------------------------------------------
@@ -364,25 +376,22 @@ try {
 # -----------------------------------------------------------------------------
 Write-Host ""
 Write-Host "================================================" -ForegroundColor Cyan
-Write-Host "  WHITELIST v2 COMPLETE - SUMMARY" -ForegroundColor Cyan
+Write-Host "  WHITELIST v2.1 COMPLETE - SUMMARY" -ForegroundColor Cyan
 Write-Host "================================================" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "  [1]  Defender exclusions:     $TlamatiniPath\ + processes" -ForegroundColor Green
+Write-Host "  [1]  Defender exclusions:      $TlamatiniPath\ + processes" -ForegroundColor Green
 Write-Host "  [2]  Controlled Folder Access: Tlamatini.exe whitelisted" -ForegroundColor Green
-Write-Host "  [3]  ASR rules:               Audit mode (log, not block)" -ForegroundColor Green
-Write-Host "  [4]  PowerShell policy:       RemoteSigned" -ForegroundColor Green
-Write-Host "  [5]  Firewall:                Outbound rules for Tlamatini" -ForegroundColor Green
-Write-Host "  [6]  Security log:            Read access granted" -ForegroundColor Green
-Write-Host "  [7]  WMI namespace:           Accessible" -ForegroundColor Green
-Write-Host "  [8]  Task Scheduler:          Accessible" -ForegroundColor Green
-Write-Host "  [9]  Registry Run keys:       Readable" -ForegroundColor Green
+Write-Host "  [3]  ASR rules:                Audit mode (log, not block)" -ForegroundColor Green
+Write-Host "  [4]  PowerShell policy:        RemoteSigned" -ForegroundColor Green
+Write-Host "  [5]  Firewall:                 Outbound rules for Tlamatini" -ForegroundColor Green
+Write-Host "  [6]  Security log:             Read access granted" -ForegroundColor Green
+Write-Host "  [7]  WMI namespace:            Verified" -ForegroundColor Green
+Write-Host "  [8]  Task Scheduler:           Accessible" -ForegroundColor Green
+Write-Host "  [9]  Registry Run keys:        Readable" -ForegroundColor Green
 Write-Host "  [10] Service Control Manager:  Accessible" -ForegroundColor Green
 Write-Host ""
-Write-Host "  BONUS: Security auditing policies ENABLED so events are generated." -ForegroundColor Green
-Write-Host "         - Logon success/failure" -ForegroundColor Green
-Write-Host "         - Process creation" -ForegroundColor Green
-Write-Host "         - Account logon" -ForegroundColor Green
-Write-Host "         - Sensitive privilege use" -ForegroundColor Green
+Write-Host "  BONUS: Security auditing ENABLED (logon, process-creation w/ cmdline," -ForegroundColor Green
+Write-Host "         account logon, privilege use, account management, script-block)." -ForegroundColor Green
 Write-Host ""
 Write-Host "  SECURITY STATUS: ALL PROTECTIONS REMAIN ACTIVE." -ForegroundColor Green
 Write-Host "  Tlamatini can now:" -ForegroundColor Green
@@ -391,6 +400,7 @@ Write-Host "    - Query WMI (enumerate processes, services, users)" -ForegroundC
 Write-Host "    - Audit scheduled tasks (find persistence)" -ForegroundColor Green
 Write-Host "    - Read Run keys (find autostart malware)" -ForegroundColor Green
 Write-Host "    - Enumerate services (find malicious services)" -ForegroundColor Green
+Write-Host "    - See destructive command lines (ransomware shadow-copy deletion)" -ForegroundColor Green
 Write-Host "    - Run subprocesses without ASR blocking" -ForegroundColor Green
 Write-Host "    - Make network calls to models and APIs" -ForegroundColor Green
 Write-Host ""

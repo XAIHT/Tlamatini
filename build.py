@@ -1584,6 +1584,25 @@ def main():
             else:
                 print(f"WARNING: Source directory not found: {src_dir}")
 
+        # ---- Security assets - Angela's hacker-combat arsenal ----------------
+        # Ship <install>/security/ (defender + whitelist v2 + UAC launchers +
+        # the persistent automated test) next to the executable, so every
+        # install can harden itself and detect/fight intrusions - for a CTF or a
+        # real ransomware / attacker scenario. Runtime alert logs are NOT shipped.
+        _sec_src = Path("security")
+        _sec_dst = dist_manage / "security"
+        if _sec_src.exists():
+            if _sec_dst.exists():
+                shutil.rmtree(_sec_dst)
+            shutil.copytree(
+                _sec_src,
+                _sec_dst,
+                ignore=shutil.ignore_patterns("security_logs", "*.log", "__pycache__"),
+            )
+            print(f"Copied security assets: {_sec_src} -> {_sec_dst}")
+        else:
+            print("WARNING: security/ not found; skipping security assets copy.")
+
         # ── Companion-app agents manifest (Tlamatini-FlowPills PROP-002) ──────
         # Ship <install>/agents/_tlamatini_agents_manifest.json so a companion app
         # (Tlamatini-FlowPills) can validate the agent catalog immediately after

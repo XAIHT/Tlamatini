@@ -392,3 +392,6 @@ db_*.sqlite3
 Tlamatini/DB/Corrupted/
 DB/Corrupted/
 private_data_audit_report.json
+
+# Tlamatini security arsenal - runtime alert logs + asset-test artifacts (never tracked)
+/security/security_logs/
