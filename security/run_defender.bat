@@ -16,9 +16,10 @@ echo   TLAMATINI ACTIVE DEFENDER LAUNCHER
 echo   Created by Angela Lopez Mendoza (@angelahack1)
 echo ================================================================
 echo.
-echo This script will scan your system for hacker activity.
-echo It monitors logons, network, processes, tasks, services,
-echo registry, and critical directories for threats.
+echo This launcher runs one ARMED heuristic security sweep.
+echo It checks ten monitor families and may block repeated-logon IPs
+echo or stop selected process-name matches outside Tlamatini roots.
+echo Use the PowerShell script with -DetectOnly for a safe baseline.
 echo.
 echo A UAC prompt will appear. Click YES to allow.
 echo.
@@ -29,7 +30,8 @@ if %errorlevel% neq 0 (
     echo Requesting Administrator privileges...
     echo.
     REM Self-elevate: relaunch this script with admin rights
-    powershell -Command "Start-Process cmd -ArgumentList '/c %~dp0run_defender.bat' -Verb RunAs"
+    set "TLAMATINI_LAUNCHER=%~f0"
+    powershell -NoProfile -Command "Start-Process -FilePath $env:TLAMATINI_LAUNCHER -Verb RunAs"
     exit /b
 )
 
@@ -40,12 +42,14 @@ echo Running Tlamatini Active Defender...
 echo.
 
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0tlamatini_defender.ps1"
+set "TLAMATINI_EXIT=%errorlevel%"
 
 echo.
 echo ================================================================
 echo   DEFENDER SCAN COMPLETE
 echo   Check %~dp0security_logs\alerts.log
-echo   for any CRITICAL or ALERT entries - those are your hackers.
+echo   and investigate CRITICAL or ALERT entries before acting.
 echo ================================================================
 echo.
 pause
+exit /b %TLAMATINI_EXIT%

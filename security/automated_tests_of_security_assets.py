@@ -240,6 +240,11 @@ def static_checks():
     for token in ("-Watch", "-DetectOnly", "-Aggressive", "Test-IsSelf",
                   "Monitor-Ransomware", "Monitor-DefenderHealth", "Monitor-AccountThreats"):
         record(f"defender has {token}", token in dtxt)
+    record("defender bounds the watch interval",
+           "[ValidateRange(5, 86400)]" in dtxt)
+    certainty_phrase = "Those are your " + "hackers"
+    record("defender does not present alerts as confirmed attackers",
+           certainty_phrase not in dtxt)
 
     # The old fatal bug: unquoted wildcard entries in the pattern array.
     record("defender has no unquoted-wildcard bug", ", *metasploit*" not in dtxt,
@@ -258,9 +263,43 @@ def static_checks():
     record("whitelist enables script-block logging",
            "EnableScriptBlockLogging" in wtxt)
 
+    official_asr_guids = (
+        "d4f940ab-401b-4efc-aadc-ad5f3c50688a",
+        "9e6c4e1f-7d60-472f-ba1a-a39ef669e4b2",
+        "e6db77e5-3df2-4cf1-b95a-636979351e5b",
+        "be9ba2d9-53ea-4cdc-84e5-9b1eeee46550",
+        "b2b3f03d-6a65-4f7b-a9c7-1c7ef74a9ba4",
+        "d1e49aac-8f56-4280-b9ba-993a6d77406c",
+    )
+    for guid in official_asr_guids:
+        record(f"whitelist has official ASR GUID {guid}", guid in wtxt)
+    record("whitelist verifies effective ASR actions",
+           "AttackSurfaceReductionRules_Actions" in wtxt and
+           "verified in Audit mode" in wtxt)
+
+    audit_policy_guids = (
+        "{0CCE9215-69AE-11D9-BED3-505054503030}",
+        "{0CCE922B-69AE-11D9-BED3-505054503030}",
+        "{0CCE923F-69AE-11D9-BED3-505054503030}",
+        "{0CCE9228-69AE-11D9-BED3-505054503030}",
+        "{0CCE9235-69AE-11D9-BED3-505054503030}",
+    )
+    record("whitelist uses locale-neutral audit subcategory GUIDs",
+           all(guid in wtxt for guid in audit_policy_guids))
+    record("whitelist checks auditpol exit status", "$LASTEXITCODE" in wtxt)
+
     # Launchers point at the right scripts.
     record("run_defender.bat -> defender.ps1", "tlamatini_defender.ps1" in rbat)
     record("enable_tlamatini_v2.bat -> whitelist", "tlamatini_whitelist_v2.ps1" in ebat)
+    for name, text in (("run_defender.bat", rbat), ("enable_tlamatini_v2.bat", ebat)):
+        direct_elevation = (
+            'set "TLAMATINI_LAUNCHER=%~f0"' in text
+            and "Start-Process -FilePath $env:TLAMATINI_LAUNCHER" in text
+        )
+        record(f"{name} safely self-elevates paths with spaces", direct_elevation)
+        record(f"{name} propagates PowerShell failures",
+               'set "TLAMATINI_EXIT=%errorlevel%"' in text and
+               "exit /b %TLAMATINI_EXIT%" in text)
 
 
 def evaluate_harness(data):

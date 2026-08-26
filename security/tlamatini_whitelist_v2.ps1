@@ -5,9 +5,12 @@
 #          additional monitoring privileges so it can detect hackers.
 #
 # This script does NOT:
-#   - Disable Windows Defender, firewall, ASR, or any security feature
+#   - Stop Windows Defender, Controlled Folder Access, or the firewall services
 #   - Grant unrestricted filesystem access or wipe capability
 #   - Create backdoors or bypass UAC
+#
+# IMPORTANT: The exclusions, allow rules, and selected ASR Audit settings below
+# reduce enforcement around Tlamatini. Record the previous state before use.
 #
 # What it DOES grant:
 #   1. Defender exclusions for the Tlamatini install folder (auto-detected)
@@ -54,9 +57,9 @@ Write-Host "  TLAMATINI SECURITY WHITELIST SCRIPT v$ScriptVersion" -ForegroundCo
 Write-Host "  Created by Angela Lopez Mendoza (@angelahack1)" -ForegroundColor Cyan
 Write-Host "================================================" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "This script grants Tlamatini monitoring privileges." -ForegroundColor Green
-Write-Host "All security protections remain ACTIVE." -ForegroundColor Green
-Write-Host "Tlamatini gets a pass - hackers still get blocked." -ForegroundColor Green
+Write-Host "This script grants Tlamatini monitoring visibility and exceptions." -ForegroundColor Green
+Write-Host "It keeps core security services running, but reduces enforcement" -ForegroundColor Yellow
+Write-Host "around explicitly excluded paths, processes, and ASR behaviors." -ForegroundColor Yellow
 Write-Host ""
 
 # -----------------------------------------------------------------------------
@@ -141,24 +144,53 @@ Write-Host ""
 Write-Host "[STEP 3/10] Setting ASR rules to Audit mode..." -ForegroundColor Yellow
 
 $asrRules = @(
-    "d4f94011-2633-42f9-add3-463255b830a0",  # Block child process creation
-    "9e6c4e1f-7d60-472f-ba1a-05c0f61bc4f1",  # Block credential stealing
-    "e6db77e5-3df2-4dd1-9df5-9a3e0e1c4c1e",  # Block WMI event subscription
-    "be9ba2d9-53ea-4cdc-84e5-9b1c1b0e8e5e",  # Block executable code from email
-    "b2b3f03d-6a65-4f7b-a9c7-1c98e8e9c1d4",  # Block unsigned USB processes
-    "75668c1f-73b5-4cf0-bb93-6dc8c6c8a3e1"   # Block Office child process
+    [pscustomobject]@{ Id = "d4f940ab-401b-4efc-aadc-ad5f3c50688a"; Name = "Office child processes" },
+    [pscustomobject]@{ Id = "9e6c4e1f-7d60-472f-ba1a-a39ef669e4b2"; Name = "LSASS credential stealing" },
+    [pscustomobject]@{ Id = "e6db77e5-3df2-4cf1-b95a-636979351e5b"; Name = "WMI event persistence" },
+    [pscustomobject]@{ Id = "be9ba2d9-53ea-4cdc-84e5-9b1eeee46550"; Name = "Email and webmail executables" },
+    [pscustomobject]@{ Id = "b2b3f03d-6a65-4f7b-a9c7-1c7ef74a9ba4"; Name = "Untrusted USB processes" },
+    [pscustomobject]@{ Id = "d1e49aac-8f56-4280-b9ba-993a6d77406c"; Name = "PSExec and WMI child processes" }
 )
 
 $auditCount = 0
-foreach ($ruleGuid in $asrRules) {
+foreach ($rule in $asrRules) {
     try {
-        Add-MpPreference -AttackSurfaceReductionRules_Ids $ruleGuid -AttackSurfaceReductionRules_Actions 6 -ErrorAction SilentlyContinue
-        $auditCount++
-    } catch {}
+        Add-MpPreference -AttackSurfaceReductionRules_Ids $rule.Id -AttackSurfaceReductionRules_Actions 6 -ErrorAction Stop
+
+        # Do not report success until Defender confirms this exact rule/action pair.
+        $preference = Get-MpPreference -ErrorAction Stop
+        $ids = @($preference.AttackSurfaceReductionRules_Ids)
+        $actions = @($preference.AttackSurfaceReductionRules_Actions)
+        $verified = $false
+        for ($i = 0; $i -lt $ids.Count -and $i -lt $actions.Count; $i++) {
+            $sameRule = [string]::Equals(
+                [string]$ids[$i],
+                $rule.Id,
+                [System.StringComparison]::OrdinalIgnoreCase
+            )
+            if ($sameRule -and [int]$actions[$i] -eq 6) {
+                $verified = $true
+                break
+            }
+        }
+
+        if ($verified) {
+            $auditCount++
+            Write-Host "  [OK] $($rule.Name): verified in Audit mode." -ForegroundColor Green
+        } else {
+            Write-Host "  [WARN] $($rule.Name): Defender did not report Audit mode." -ForegroundColor Yellow
+        }
+    } catch {
+        Write-Host "  [WARN] $($rule.Name): $($_.Exception.Message)" -ForegroundColor Yellow
+    }
 }
-Write-Host "  [OK] $auditCount ASR rules set to Audit mode." -ForegroundColor Green
-Write-Host "       They LOG my activity - they do not BLOCK it." -ForegroundColor DarkGray
-Write-Host "       They still BLOCK real malware." -ForegroundColor DarkGray
+if ($auditCount -eq $asrRules.Count) {
+    Write-Host "  [OK] $auditCount/$($asrRules.Count) ASR rules verified in Audit mode." -ForegroundColor Green
+} else {
+    Write-Host "  [WARN] Only $auditCount/$($asrRules.Count) ASR rules were verified in Audit mode." -ForegroundColor Yellow
+}
+Write-Host "       Audit mode logs matching behavior; it does not block it." -ForegroundColor DarkGray
+Write-Host "       ASR rules not listed here retain their configured actions." -ForegroundColor DarkGray
 
 # -----------------------------------------------------------------------------
 # STEP 4: PowerShell execution policy
@@ -331,23 +363,23 @@ try {
 Write-Host ""
 Write-Host "[BONUS] Enabling Security auditing policies..." -ForegroundColor Yellow
 
-try {
-    auditpol /set /subcategory:"Logon" /success:enable /failure:enable 2>$null | Out-Null
-    Write-Host "  [OK] Logon auditing enabled." -ForegroundColor Green
-
-    auditpol /set /subcategory:"Process Creation" /success:enable 2>$null | Out-Null
-    Write-Host "  [OK] Process creation auditing enabled." -ForegroundColor Green
-
-    auditpol /set /subcategory:"Account Logon" /success:enable /failure:enable 2>$null | Out-Null
-    Write-Host "  [OK] Account logon auditing enabled." -ForegroundColor Green
-
-    auditpol /set /subcategory:"Sensitive Privilege Use" /success:enable /failure:enable 2>$null | Out-Null
-    Write-Host "  [OK] Sensitive privilege use auditing enabled." -ForegroundColor Green
-
-    auditpol /set /subcategory:"User Account Management" /success:enable /failure:enable 2>$null | Out-Null
-    Write-Host "  [OK] Account management auditing enabled (new-admin detection)." -ForegroundColor Green
-} catch {
-    Write-Host "  [WARN] Audit policy: $($_.Exception.Message)" -ForegroundColor Yellow
+$auditPolicies = @(
+    [pscustomobject]@{ Name = "Logon"; Id = "{0CCE9215-69AE-11D9-BED3-505054503030}"; Failure = $true },
+    [pscustomobject]@{ Name = "Process creation"; Id = "{0CCE922B-69AE-11D9-BED3-505054503030}"; Failure = $false },
+    [pscustomobject]@{ Name = "Credential validation"; Id = "{0CCE923F-69AE-11D9-BED3-505054503030}"; Failure = $true },
+    [pscustomobject]@{ Name = "Sensitive privilege use"; Id = "{0CCE9228-69AE-11D9-BED3-505054503030}"; Failure = $true },
+    [pscustomobject]@{ Name = "User account management"; Id = "{0CCE9235-69AE-11D9-BED3-505054503030}"; Failure = $true }
+)
+foreach ($policy in $auditPolicies) {
+    $arguments = @("/set", "/subcategory:$($policy.Id)", "/success:enable")
+    if ($policy.Failure) { $arguments += "/failure:enable" }
+    $auditOutput = & auditpol @arguments 2>&1
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "  [OK] $($policy.Name) auditing enabled." -ForegroundColor Green
+    } else {
+        $detail = ($auditOutput | Out-String).Trim()
+        Write-Host "  [WARN] $($policy.Name) audit policy failed: $detail" -ForegroundColor Yellow
+    }
 }
 
 # Include the full command line in process-creation (4688) events so the
@@ -393,7 +425,7 @@ Write-Host ""
 Write-Host "  BONUS: Security auditing ENABLED (logon, process-creation w/ cmdline," -ForegroundColor Green
 Write-Host "         account logon, privilege use, account management, script-block)." -ForegroundColor Green
 Write-Host ""
-Write-Host "  SECURITY STATUS: ALL PROTECTIONS REMAIN ACTIVE." -ForegroundColor Green
+Write-Host "  SECURITY STATUS: CORE SERVICES REMAIN ENABLED; EXCEPTIONS WERE ADDED." -ForegroundColor Yellow
 Write-Host "  Tlamatini can now:" -ForegroundColor Green
 Write-Host "    - Read Security log (see hacker logons)" -ForegroundColor Green
 Write-Host "    - Query WMI (enumerate processes, services, users)" -ForegroundColor Green
@@ -404,7 +436,8 @@ Write-Host "    - See destructive command lines (ransomware shadow-copy deletion
 Write-Host "    - Run subprocesses without ASR blocking" -ForegroundColor Green
 Write-Host "    - Make network calls to models and APIs" -ForegroundColor Green
 Write-Host ""
-Write-Host "  Real hackers are STILL blocked by Defender, CFA, ASR, firewall." -ForegroundColor Green
+Write-Host "  Review the exclusions, Audit rules, and outbound allowances as" -ForegroundColor Yellow
+Write-Host "  privileged trust decisions; no script can certify a clean host." -ForegroundColor Yellow
 Write-Host ""
 Write-Host "  NOTE: Restart Tlamatini for changes to take full effect." -ForegroundColor Yellow
 Write-Host "  Then run: run_defender.bat to scan for hacker activity." -ForegroundColor Yellow

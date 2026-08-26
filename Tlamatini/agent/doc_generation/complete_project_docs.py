@@ -566,10 +566,14 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     )
     if has_current_release_wave:
         highlights.append(
-            "The current annotated release is `v1.50.0` at `ae6fec4c`; aligned local/remote HEAD is one commit later at `834eaa16`. Runtime versions remain Git/build-derived through `agent/version.py`, while generated inventories derive agent, tool, skill, asset, migration, and effective-line totals from live source."
+            "The current annotated release is `v1.50.0` at `ae6fec4c`; aligned local/remote HEAD is two commits later at `d161098e`. Runtime versions remain Git/build-derived through `agent/version.py`, while generated inventories derive agent, tool, skill, asset, migration, and effective-line totals from live source."
         )
         highlights.append(
             "The release adds NetSpeed-Calculator, WAL-safe SQLite backup/set/hot-swap, Googler's structured dork builder plus a two-tier plain-HTTP-first/browser-fallback resilience path, the External MCP Adder skill, Deep Internet Research prompt 118, Ollama Pro-or-higher full-operation guidance, and private contact synchronization. It carries the v1.48.15-v1.48.17 encoding, verdict, popup, bundle-proof, and dialog-policy lineage plus the v1.48.14 private External-MCP/runtime foundation."
+        )
+    if any("security harness" in subject or "security harnessing" in subject for subject in subjects):
+        highlights.append(
+            "The post-tag Blue-hat security wave adds the administrator-operated `security/` toolkit: persistent Windows visibility/exceptions, ten monitor families, detect-only/armed/watch/aggressive modes, bounded automatic IP/process response, and a visible non-destructive regression harness. The current audited worktree corrects all six ASR identifiers, verifies effective Audit state, uses locale-neutral audit-policy GUIDs, and reports heuristic findings as investigation leads rather than confirmed attackers."
         )
     if any("structuredcontent" in subject for subject in subjects):
         highlights.append(
@@ -758,7 +762,7 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         for subject in subjects
     ):
         highlights.append(
-            "The latest dossier pass resolves the product at annotated release `v1.50.0` (`ae6fec4c`), separately reports aligned local/remote HEAD `834eaa16`, and combines README.md and BookOfTlamatini.md with source/Git truth while retaining complete installation, Ollama, architecture, usage, tree, line inventory, and responsibility context."
+            "The latest dossier pass resolves the product at annotated release `v1.50.0` (`ae6fec4c`), separately reports aligned local/remote HEAD `d161098e`, and combines README.md and BookOfTlamatini.md with source/Git truth while retaining complete installation, Ollama, architecture, usage, tree, line inventory, and responsibility context."
         )
     elif not has_current_release_wave and any(
         "1.26.5" in subject
@@ -1050,10 +1054,14 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
     )
     if has_current_release_wave:
         highlights.append(
-            "The current annotated release is `v1.50.0` at `ae6fec4c`; aligned local/remote HEAD is one commit later at `834eaa16`, so release and worktree identities are reported separately."
+            "The current annotated release is `v1.50.0` at `ae6fec4c`; aligned local/remote HEAD is two commits later at `d161098e`, so release and worktree identities are reported separately."
         )
         highlights.append(
             "Since the previous dossier, source adds NetSpeed-Calculator, WAL-safe SQLite data movement, Googler's structured dork builder plus a two-tier plain-HTTP-first/browser-fallback resilience path, the External MCP Adder skill, Deep Internet Research prompt 118, Ollama Pro-or-higher complete-operation guidance, and private contact synchronization, while carrying the v1.48.14-v1.48.17 runtime/privacy/verdict/dialog safeguards."
+        )
+    if any("security harness" in subject or "security harnessing" in subject for subject in subjects):
+        highlights.append(
+            "The new `security/` subtree is a host-side Blue-hat toolkit rather than a workflow Agent row. It ships self-elevating launchers, a persistent whitelist/visibility script, a ten-family defender, a visible Shoter/Chrome test, explicit detect-only baselining, and documented rollback/privacy limits; the audited worktree also repairs invalid ASR/audit identifiers and silent-success reporting."
         )
     if any("structuredcontent" in subject for subject in subjects):
         highlights.append(
@@ -1474,6 +1482,22 @@ AGENT_DIRECTORY_DISCLAIMER = [
     "Tlamatini's orchestration, documentation, examples, and guardrails do not authorize third-party access and cannot replace the user's security review, permission controls, monitoring, or legal compliance.",
 ]
 
+BLUE_HAT_SECURITY_GUIDE = [
+    "The `security/` directory is an administrator-operated Windows defensive toolkit, not a new chat tool or database-backed workflow Agent row. Tlamatini helps collect and respond to signals only on systems the operator owns or is explicitly authorized to defend.",
+    "The six shipped assets are `README.md`, `enable_tlamatini_v2.bat`, `tlamatini_whitelist_v2.ps1`, `run_defender.bat`, `tlamatini_defender.ps1`, and `automated_tests_of_security_assets.py`; runtime evidence is written under git-ignored `security_logs/`.",
+    "Use the safe sequence validate -> record a Windows baseline -> enable -> restart -> run detect-only -> investigate -> arm only when justified. There is no bundled rollback script, so Defender, ASR, CFA, firewall, execution-policy, audit-policy, and Security-log state must be recorded before elevation.",
+    "The visible non-destructive harness parses both PowerShell files, exercises the self-safe classifier, validates official ASR/audit GUIDs, watch timing, UAC path handling, launcher failure propagation, Shoter capture, and headed-browser proof. The audited run passed 40/40 checks, but it does not apply Windows policy or execute an armed sweep.",
+    "Enablement keeps core Defender/firewall services running but deliberately adds the Tlamatini root and selected executables to Defender exclusions, allows `Tlamatini.exe` through Controlled Folder Access, moves six selected ASR rules to action 6 (Audit), sets current-user PowerShell to RemoteSigned, and creates broad outbound application rules.",
+    "The ASR rules cover Office child processes, LSASS credential stealing, WMI event-subscription persistence, email/webmail executables, untrusted or unsigned USB processes, and PSExec/WMI child processes. The script uses Microsoft's published IDs and reads Defender's effective ID/action arrays back before reporting success.",
+    "Audit setup uses stable subcategory GUIDs for Logon, Credential Validation, Process Creation, Sensitive Privilege Use, and User Account Management, and checks every `auditpol` exit code. Command-line event 4688 and PowerShell Script Block Logging improve evidence but can record sensitive arguments.",
+    "The ten monitor families are Defender health, logons, established TCP/listeners, processes, scheduled tasks, services, registry persistence, recently changed critical files, ransomware/recovery tampering, and account/administrator-group events.",
+    "Detect-only logs `WOULD BLOCK` and `WOULD KILL`. Default armed mode may add persistent inbound/outbound firewall blocks after repeated non-local failed logons and may force-stop known attacker-tool process-name matches; most other findings alert only.",
+    "Dual-use names alert unless `-Aggressive` is supplied. Recognized Tlamatini paths are protected from auto-kill, but that is only a path-prefix check, not signature or provenance proof; malicious content inside an excluded/self path can inherit a blind spot.",
+    "Watch mode is a foreground loop with `-IntervalSeconds` constrained to 5..86400. It is not a service or scheduled task, and `run_defender.bat` deliberately selects one default armed sweep, so baseline runs should invoke the PowerShell script directly with `-DetectOnly`.",
+    "`alerts.log` and `monitor.log` append sensitive usernames, IP addresses, paths, command lines, task/registry details, and response records without built-in rotation, deduplication, automatic unblock, or SIEM forwarding. Treat every severity as triage priority, not certainty.",
+    "The batch launchers preserve paths containing spaces through UAC and propagate PowerShell failures. `build.py` ships the security source while excluding logs; self-modify snapshots likewise prune `security_logs/` so screenshots and host telemetry are not published.",
+]
+
 WHAT_IT_DOES = [
     "Answers codebase questions with loaded file or directory context.",
     "Uses hybrid retrieval to extract metadata, split content, rank source chunks, and respect context budgets.",
@@ -1495,6 +1519,7 @@ WHAT_IT_DOES = [
     "Carries a first-person self-knowledge map so she can answer more accurately about her own architecture, ports, runtime modes, pages, and capabilities.",
     "Can command Kali Linux offensive-security tooling through MCP-Kali-Server for authorized recon, enumeration, web scanning, and assessment workflows.",
     "Can run local authorized nmap reconnaissance through Nmapper, a use-only bridge that resolves a user-installed nmap, defaults to unprivileged TCP connect scanning, refuses unsafe/missing prerequisites gracefully, and never bundles or redistributes nmap.",
+    "Can support operator-controlled Windows Blue-hat monitoring through the host-side `security/` toolkit, with persistent enablement tradeoffs, detect-only baselining, ten signal families, bounded armed response, and explicit evidence/privacy limits.",
     "Can diagnose an external MCP before the first live connection through the MCP Doctor agent and wrapped `chat_agent_mcp_doctor` tool, checking transport, runtime requirements, PATH availability, placeholder secrets, and the next operator step.",
     "Can scaffold, author, build, flash, reset, and observe STM32 firmware through STM32er: the template-MCP path remains for STM32F407, while released `v1.42.0` adds a PlatformIO path for supported boards from Blue Pill/F1 through mainstream F/G/L/H7/U5/WB families, with fail-safe preflight before hardware mutation.",
     "Can scaffold, author, build, upload, and monitor ESP32-class firmware through ESP32er and PlatformIO Core, with zero-config bootstrap and a serial-aware preflight before hardware mutation.",
@@ -1614,7 +1639,7 @@ def operator_surface_counts_guide(context: dict) -> list[str]:
     ]
 
 CURRENT_RELEASE_GUIDE = [
-    "`v1.50.0` is the current annotated release at `ae6fec4c`; local and `origin/main` HEAD are aligned one commit later at `834eaa16`. Runtime identity stays Git/build-derived, and this generator creates no tag, commit, or push.",
+    "`v1.50.0` is the current annotated release at `ae6fec4c`; local and `origin/main` HEAD are aligned two commits later at `d161098e`. The post-tag commits add and document the Blue-hat security toolkit without inventing a new release identity. Runtime identity stays Git/build-derived, and this generator creates no tag, commit, or push.",
     "NetSpeed-Calculator is workflow agent 88 and wrapped launcher 66. It measures download, upload, latency, jitter, loss, and bufferbloat across keyless providers, discards slow start, samples d(bytes)/dt, rejects outliers, publishes Student-t confidence intervals, and uses fixed/random-effects fusion with Cochran Q and I-squared. Full runs commonly transfer 100-200 MB and are Ask-Execs tier D.",
     "Googler's structured dork compiler enforces no-space operators, exact quoting, uppercase parenthesized OR groups, exclusions, presets/aliases, and `links_only` file discovery; its pool runtime tries four plain-HTTP server-rendered routes first, then visible installed Chrome/bundled Chromium across seven browser routes with bounded retries. The 29th skill, `adding-external-mcp`, enforces classify transport -> import secret-separated config -> doctor -> activate on intent -> wait -> status/list -> call; migration 0194 appends Deep Internet Research prompt 118.",
     "Complete operation now documents Ollama Pro or higher as the intended minimum service tier for the shipped cloud-model workload. The private builder synchronizes same-machine contact sources into gitignored `contacts.private.json`, while public builds and self-modify snapshots remain contact-empty.",
@@ -1630,7 +1655,7 @@ CURRENT_RELEASE_GUIDE = [
     "The private External-MCP runtime, inactive Memory/Sequential-Thinking defaults, tombstones, persistent Memory state, secret-separated catalogs, nested-diagram restoration, Mover/Deleter placement guard, and updater preservation remain carried from the v1.48.14-v1.48.17 lineage.",
     "The categorized prompt catalog, per-user Hard Cancel epochs, path-native screenshot paste/drop, configurable port, FlowPills discovery, Unreal scaffold, self-healing, robotic loop, firmware/media agents, External MCPs, ACPX skills, and deterministic file tools remain part of the complete product rather than being reduced to a latest-changes summary.",
     "README.md and BookOfTlamatini.md retain the complete MIT-licensed installation, Ollama setup, architecture, everyday-use, agent, and responsibility narrative. The plain-Python agent disclaimer is explicit: transparency enables user control but is not a security warranty, and authorization, review, permissions, and consequences remain the operator's responsibility.",
-    "README.md and BookOfTlamatini.md display annotated release `v1.50.0` at `ae6fec4c` and separately report aligned local/remote HEAD `834eaa16`. The generated facts are source-derived: 88 agents, 66 wrapped launchers, 108 built-in Multi-Turn tools, 29 skills, and 197 migrations before documentation edits change line totals.",
+    "README.md and BookOfTlamatini.md display annotated release `v1.50.0` at `ae6fec4c` and separately report aligned local/remote HEAD `d161098e`. The generated facts are source-derived: 88 agents, 66 wrapped launchers, 108 built-in Multi-Turn tools, 29 skills, and 197 migrations before documentation edits change line totals.",
     "The inventory is rebuilt from Git-tracked plus Git-unignored files without reproducing credentials, endpoints, private values, or machine-specific configuration. This generation pass does not stage, commit, or push anything.",
     "The regenerated PDF/PPTX preserve the whole system, architecture, installation/use guidance, recent Git history, complete file tree, effective-line inventory, and validation evidence; target behavior and tagged historical predecessors are described separately.",
 ]
@@ -1641,6 +1666,7 @@ RECENT_ASSETS_GUIDE = [
     "External-MCP onboarding assets include `skills_pkg/adding_external_mcp/SKILL.md` plus its transport, configuration, doctor, and activation references; migration 0194 and `test_deep_research_prompt.py` cover the new starter prompt.",
     "Private-release evidence includes `build_complete_private_release.py::sync_contacts_private`, the public empty-contact contract, and source-snapshot contact exclusion. Generated docs never reproduce contact values or live External-MCP credentials.",
     "The carried search/verdict/build assets remain represented by Grepper encoding tests, `agent_verdict.py`, Kuberneter contracts, `Uninstaller.exe` preservation, and the frozen-archive carriage proof.",
+    "Blue-hat assets include the six tracked files under `security/`, build/source-snapshot log exclusions, official ASR and audit-policy GUID contracts, path-safe UAC launchers, the bounded defender watch loop, and the expanded visible harness that passed 40/40 non-destructive checks.",
     "The inventory also includes new Gemini skill mirrors and `image.png` as a binary worktree asset; line totals count only text and exclude comments, blanks, and Python docstrings according to the documented method.",
 ]
 
@@ -1839,7 +1865,7 @@ FRONTEND_HOTFIX_GUIDE = [
 ]
 
 V136_RELEASE_GUIDE = [
-    "Release identity: `v1.50.0` is the current annotated release at `ae6fec4c`; aligned local/remote HEAD is one commit later at `834eaa16`. The release adds NetSpeed-Calculator, WAL-safe SQLite data movement, Googler's structured dork builder and resilient two-tier plain-HTTP-first search path, External-MCP onboarding, Deep Internet Research, Ollama Pro-or-higher guidance, and private contact synchronization while carrying the entire v1.48.14-v1.48.17 safety lineage and earlier platform waves.",
+    "Release identity: `v1.50.0` is the current annotated release at `ae6fec4c`; aligned local/remote HEAD is two commits later at `d161098e`. The release adds NetSpeed-Calculator, WAL-safe SQLite data movement, Googler's structured dork builder and resilient two-tier plain-HTTP-first search path, External-MCP onboarding, Deep Internet Research, Ollama Pro-or-higher guidance, and private contact synchronization while carrying the entire v1.48.14-v1.48.17 safety lineage and earlier platform waves.",
     "New agent: Video-Analyzer becomes the current media-verdict workflow agent and wrapped `chat_agent_video_analyzer`, complementing Image-Interpreter with video-specific motion analysis.",
     "Implementation assets: `agent/agents/video_analyzer/`, migrations `0166_add_video_analyzer.py`, `0167_add_chat_agent_video_analyzer_tool.py`, `0168_add_video_analyzer_demo_prompt.py`, `test_video_analyzer_agent.py`, `chat_agent_registry.py`, `mcp_agent.py`, and `services/agent_contracts.py` all move together.",
     "Model strategy: `interpreter_model_1` defaults to `qwen3-vl:235b-cloud`, `interpreter_model_2` defaults to `qwen3.5:cloud`, and `merging_model` defaults to `glm-5.2:cloud`, with independent calls merged only after both interpreters report.",
@@ -2630,6 +2656,9 @@ def build_pdf(context: dict) -> None:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Agent-directory disclaimer: user jurisdiction and responsibility", styles["h2"]))
     for item in AGENT_DIRECTORY_DISCLAIMER:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("Enable Tlamatini as a Blue-hat agent", styles["h2"]))
+    for item in BLUE_HAT_SECURITY_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("What the system does", styles["h2"]))
     for item in WHAT_IT_DOES:
@@ -3514,6 +3543,60 @@ def build_ppt(context: dict) -> None:
     )
     audit_layout(audit, len(prs.slides))
 
+    slide, audit = add_slide(
+        prs,
+        "Blue-hat Security Toolkit",
+        "operator-controlled Windows defense, not an autonomous Agent row",
+        THEME["jade"],
+    )
+    add_panel(
+        slide, audit, 0.78, 1.6, 5.9, 4.95,
+        "Purpose and assets", BLUE_HAT_SECURITY_GUIDE[:2],
+        THEME["jade"], "bluehat-a", 11,
+    )
+    add_panel(
+        slide, audit, 6.95, 1.6, 5.55, 4.95,
+        "Safe enablement path", BLUE_HAT_SECURITY_GUIDE[2:4],
+        THEME["amber"], "bluehat-b", 11,
+    )
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(
+        prs,
+        "Blue-hat Controls And Monitoring",
+        "persistent host changes plus ten evidence families",
+        THEME["copper"],
+    )
+    add_panel(
+        slide, audit, 0.78, 1.6, 5.9, 4.95,
+        "Enablement and audit controls", BLUE_HAT_SECURITY_GUIDE[4:7],
+        THEME["copper"], "bluehat-controls-a", 10,
+    )
+    add_panel(
+        slide, audit, 6.95, 1.6, 5.55, 4.95,
+        "What the defender examines", BLUE_HAT_SECURITY_GUIDE[7:8],
+        THEME["jade"], "bluehat-controls-b", 12,
+    )
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(
+        prs,
+        "Blue-hat Response Boundaries",
+        "detect first; investigate before containment or attribution",
+        THEME["amber"],
+    )
+    add_panel(
+        slide, audit, 0.78, 1.6, 5.9, 4.95,
+        "Armed behavior and self protection", BLUE_HAT_SECURITY_GUIDE[8:11],
+        THEME["amber"], "bluehat-response-a", 10,
+    )
+    add_panel(
+        slide, audit, 6.95, 1.6, 5.55, 4.95,
+        "Evidence, privacy, and packaging", BLUE_HAT_SECURITY_GUIDE[11:],
+        THEME["jade"], "bluehat-response-b", 10,
+    )
+    audit_layout(audit, len(prs.slides))
+
     add_themed_column_slides(prs, "What The System Does", "capability map", THEME["copper"], [
         ("Knowledge", THEME["jade"], WHAT_IT_DOES[:6]),
         ("Action", THEME["copper"], WHAT_IT_DOES[6:12]),
@@ -3588,7 +3671,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "arp-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Current Release Focus", "v1.50.0 - measured networking, structured discovery, WAL-safe data, and honest versioning", THEME["amber"])
+    slide, audit = add_slide(prs, "Current Release Focus", "v1.50.0 plus two aligned post-tag security/documentation commits", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Release line", CURRENT_RELEASE_GUIDE[:2], THEME["amber"], "rel-a", 10)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "MCP, research, service, and privacy", CURRENT_RELEASE_GUIDE[2:4], THEME["jade"], "rel-b", 10)
     audit_layout(audit, len(prs.slides))
@@ -4195,7 +4278,7 @@ def build_ppt(context: dict) -> None:
         "Deep Internet Research: append-only prompt 118 requests a long, link-rich Multi-Turn + Exec Report research run without hiding tool prerequisites.",
     ], THEME["copper"], "monday-a", 10)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Lifecycle, policy, and monitoring", [
-        "Resolved identity: v1.50.0 is annotated at ae6fec4c; aligned local/origin HEAD is one commit later at 834eaa16.",
+        "Resolved identity: v1.50.0 is annotated at ae6fec4c; aligned local/origin HEAD is two commits later at d161098e.",
         "Complete cloud-model operation requires Ollama Pro or higher; this is an operating requirement, not sponsorship, and current plan details belong to Ollama's official site.",
         "Private contact synchronization merges same-machine sources only for the explicit keyed build; public output and source snapshots remain free of contact PII.",
         "The stronger disclaimer says plain-Python transparency enables user control but is not a security warranty; the operator owns authorization, permissions, review, and consequences.",

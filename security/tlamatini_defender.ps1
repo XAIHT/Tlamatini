@@ -41,6 +41,7 @@
 [CmdletBinding()]
 param(
     [switch]$Watch,
+    [ValidateRange(5, 86400)]
     [int]$IntervalSeconds = 60,
     [switch]$DetectOnly,
     [switch]$Aggressive
@@ -687,8 +688,8 @@ if ($Watch) {
     Write-Host "  Alerts log:  $AlertLog" -ForegroundColor Green
     Write-Host "  Full log:    $MonitorLog" -ForegroundColor Green
     Write-Host ""
-    Write-Host "  Review the alerts log for any CRITICAL or ALERT entries." -ForegroundColor Yellow
-    Write-Host "  Those are your hackers." -ForegroundColor Yellow
+    Write-Host "  Review CRITICAL and ALERT entries as investigation leads." -ForegroundColor Yellow
+    Write-Host "  Corroborate the evidence before containment or attribution." -ForegroundColor Yellow
     Write-Host ""
     Write-Host "================================================" -ForegroundColor Cyan
     Write-Host "  Created by Angela Lopez Mendoza (@angelahack1)" -ForegroundColor Cyan
