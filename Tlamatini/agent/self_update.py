@@ -43,6 +43,17 @@ folder and drops ``DB/post_update_migrate.flag``; on the next launch
 chat history and custom Tool/Mcp/Agent toggles are KEPT while new migrations
 (new agents, ``chat_agent_*`` tools, demo prompts) are applied to their data.
 
+The BLUE-HAT SECURITY EVIDENCE is handled the same way, and for the same reason.
+``security/`` is application code (a new release MUST be able to replace a broken
+``tlamatini_defender.ps1``), so it is deliberately NOT in the preserve list -- but
+``security/security_logs/`` (``alerts.log``, ``monitor.log`` and the visible
+asset-test proof) is the operator's own incident evidence and lives INSIDE that
+replaced directory. So ``apply_update.ps1`` stashes it under the preserved
+``Temp/_security_logs_carryover`` before the delete (step 3c) and moves it back
+into the new ``security/`` afterwards (step 5b). Both halves fail open: an update
+is never blocked by log preservation, and a failed restore LEAVES the stash in
+``Temp`` rather than deleting it, so the evidence can still be recovered by hand.
+
 The download runs on a background thread; the browser polls
 :func:`get_status` for progress. The module is import-safe (no Django
 dependency at import time) and never raises into its callers — every public

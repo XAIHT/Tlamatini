@@ -177,6 +177,38 @@ try {
         Write-Log "No existing database at _internal\db.sqlite3 (fresh install?) -- skipping DB preserve." "Yellow"
     }
 
+    # 3c) Preserve the Blue-hat toolkit's EVIDENCE across the update.
+    #     security\ is application code: the new release MUST replace the
+    #     defender/whitelist scripts. But security\security_logs\ is the
+    #     operator's own evidence -- alerts.log, monitor.log and the visible
+    #     asset-test proof -- and it lives INSIDE security\, so like the
+    #     database it cannot be protected by the top-level $Preserve set.
+    #     A blind delete-and-replace destroys incident history at exactly the
+    #     moment it matters. Stash it under the preserved Temp\ (same volume,
+    #     so this is a rename, not a copy) and restore it in step 5b.
+    #     FAIL-OPEN: losing the logs is bad, but blocking the update is worse.
+    $securityLogs = Join-Path $InstallDir "security\security_logs"
+    $logsCarryover = Join-Path $InstallDir "Temp\_security_logs_carryover"
+    try {
+        if (Test-Path -LiteralPath $securityLogs) {
+            if (Test-Path -LiteralPath $logsCarryover) {
+                Remove-Item -LiteralPath $logsCarryover -Recurse -Force -ErrorAction SilentlyContinue
+            }
+            $carryParent = Split-Path -Parent $logsCarryover
+            if (-not (Test-Path -LiteralPath $carryParent)) {
+                New-Item -ItemType Directory -Path $carryParent -Force | Out-Null
+            }
+            Invoke-WithRetry { Move-Item -LiteralPath $securityLogs -Destination $logsCarryover -Force }
+            Write-Log "Preserved your security evidence -> Temp\_security_logs_carryover." "Green"
+        }
+        else {
+            Write-Log "No security\security_logs to preserve (toolkit never run?)." "Yellow"
+        }
+    }
+    catch {
+        Write-Log "WARN: could not stash security\security_logs -- continuing: $($_.Exception.Message)" "Yellow"
+    }
+
     # 4) Delete the old install -- everything except the preserved set and
     #    the agents_backup we just created.
     Write-Log "Removing old application files (keeping your data)..."
@@ -202,6 +234,29 @@ try {
         }
         Write-Log "  install $name"
         Invoke-WithRetry { Move-Item -LiteralPath $src -Destination $dest -Force }
+    }
+
+    # 5b) Put the Blue-hat evidence back inside the NEW security\ tree.
+    #     The new release ships security\ without security_logs\ (build.py
+    #     ignores it on purpose), so this simply moves the operator's history
+    #     back where the defender expects to append to it. FAIL-OPEN: on any
+    #     error the stash is LEFT in Temp\_security_logs_carryover rather than
+    #     deleted, so the evidence still exists and can be recovered by hand.
+    try {
+        if (Test-Path -LiteralPath $logsCarryover) {
+            $securityDir = Join-Path $InstallDir "security"
+            if (-not (Test-Path -LiteralPath $securityDir)) {
+                New-Item -ItemType Directory -Path $securityDir -Force | Out-Null
+            }
+            if (Test-Path -LiteralPath $securityLogs) {
+                Remove-Item -LiteralPath $securityLogs -Recurse -Force -ErrorAction SilentlyContinue
+            }
+            Invoke-WithRetry { Move-Item -LiteralPath $logsCarryover -Destination $securityLogs -Force }
+            Write-Log "Restored your security evidence -> security\security_logs." "Green"
+        }
+    }
+    catch {
+        Write-Log "WARN: security evidence kept in Temp\_security_logs_carryover -- move it back by hand: $($_.Exception.Message)" "Yellow"
     }
 
     # 6) Clean up the staging area (best effort).

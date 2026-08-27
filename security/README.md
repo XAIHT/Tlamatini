@@ -159,6 +159,10 @@ redact before sharing.
 `security_logs/` is git-ignored, excluded from public builds, and pruned from
 self-modify snapshots. `build.py` ships the remaining `security/` assets beside the
 executable; `copy_source_assets.py` carries their source into rebuildable snapshots.
+A self-update replaces the `security/` scripts as application code but PRESERVES this
+evidence: `apply_update.ps1` stashes `security_logs/` to `Temp/_security_logs_carryover`
+before the swap (step 3c) and restores it into the new `security/` afterward (step 5b),
+failing open so the evidence is never silently lost.
 
 For the complete threat model, baseline commands, monitor/action matrix, packaging
 behavior, and deployment checklist, read **"Enable Tlamatini as a Blue-hat agent"**

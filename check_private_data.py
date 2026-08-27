@@ -543,7 +543,14 @@ SKIP_DIRS = {".git", "node_modules", "__pycache__", "venv", ".venv", "dist",
              # Regenerable runtime scratch (gitignored): per-request agent pool
              # copies (hundreds of _chat_runs_ clones) and MCP agent run dirs.
              # Never published, and scanning them was the bulk of the scan time.
-             "pools", "mcp_agent_runs"}
+             "pools", "mcp_agent_runs",
+             # Blue-hat toolkit runtime EVIDENCE (gitignored): alerts.log,
+             # monitor.log and the visible asset-test artifacts. Full of the
+             # operator's own usernames / IPs / command lines BY DESIGN, and it
+             # never ships (build.py ignores it), so it cannot leak. Scanning it
+             # is thousands of false matches in the one report that must stay
+             # trustworthy. Mirrors build_complete_public_release.py.
+             "security_logs"}
 TEXT_REVIEW_EXT = {".py", ".js", ".ts", ".json", ".yaml", ".yml", ".md", ".txt",
                    ".env", ".cfg", ".ini", ".toml", ".html", ".css", ".csv",
                    ".pem", ".key", ".crt", ".keys"}

@@ -126,7 +126,12 @@ SKIP_DIRS = {".git", "node_modules", "__pycache__", "venv", ".venv", "dist",
              # PermissionError), and it plus the pool scratch is huge. Mirrors the
              # SKIP_DIRS in check_private_data.py.
              "Go", "go-build", "Templates", "TlamatiniSourceCode",
-             "pools", "mcp_agent_runs"}
+             "pools", "mcp_agent_runs",
+             # Blue-hat toolkit runtime EVIDENCE (gitignored): alerts.log,
+             # monitor.log and the visible asset-test artifacts. Never published
+             # (build.py ignores it), so a release build must never rewrite it.
+             # Mirrors the SKIP_DIRS in check_private_data.py.
+             "security_logs"}
 TEXT_EXT = {".py", ".js", ".ts", ".json", ".yaml", ".yml", ".md", ".txt", ".env",
             ".cfg", ".ini", ".toml", ".html", ".css", ".csv", ".pmt", ".keys"}
 # NEVER scrub the sources of truth: the keys vault and the targets file. Scrubbing
