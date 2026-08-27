@@ -610,23 +610,30 @@ def play_audio(config: Dict) -> Dict:
         if state["emitted"] >= target_frames:
             raise sd.CallbackStop()
 
-    stream = sd.OutputStream(
-        samplerate=play_sample_rate,
-        channels=channels,
-        dtype='float32',
-        device=device_arg,
-        callback=_callback,
-        finished_callback=done.set,
-    )
-    # Fail-safe wait bound: the playback length plus a margin. If the device
-    # wedges, we stop rather than hang the agent (and its downstream) forever.
-    wait_timeout = played_seconds + 10.0
-    with stream:
-        if not done.wait(timeout=wait_timeout):
-            logging.warning(
-                f"⚠️ Playback did not finish within {wait_timeout:g}s — stopping the "
-                f"stream (emitted {state['emitted']}/{target_frames} frames)."
-            )
+    # A test run must never make a sound on the developer's desktop. This is the
+    # single point where audio leaves the machine, so one check here cannot be
+    # bypassed by a new caller. Everything above (decode, resolve, metadata) still
+    # runs, so the result dict is unchanged; only the speakers stay silent.
+    if (os.environ.get('TLAMATINI_NO_AUDIO') or '').strip():
+        logging.warning("🔇 Audio suppressed (TLAMATINI_NO_AUDIO): not streaming audio to the speakers during tests.")
+    else:
+        stream = sd.OutputStream(
+            samplerate=play_sample_rate,
+            channels=channels,
+            dtype='float32',
+            device=device_arg,
+            callback=_callback,
+            finished_callback=done.set,
+        )
+        # Fail-safe wait bound: the playback length plus a margin. If the device
+        # wedges, we stop rather than hang the agent (and its downstream) forever.
+        wait_timeout = played_seconds + 10.0
+        with stream:
+            if not done.wait(timeout=wait_timeout):
+                logging.warning(
+                    f"⚠️ Playback did not finish within {wait_timeout:g}s — stopping the "
+                    f"stream (emitted {state['emitted']}/{target_frames} frames)."
+                )
 
     return {
         "input_path": audio_path,

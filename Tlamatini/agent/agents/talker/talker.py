@@ -1020,6 +1020,14 @@ def play_pcm(pcm, sample_rate: int, config: Dict) -> Tuple[int, str, int]:
     Play a mono float32 buffer through the resolved OUTPUT device, after a
     software-volume gain. Returns (device_index, device_name, clipped_samples).
     """
+    # A test run must never make a sound on the developer's desktop. This is the
+    # single point where synthesised speech leaves the machine, so one check here
+    # cannot be bypassed by a new caller. Return the same shape a real playback
+    # returns so nothing downstream has to special-case it.
+    if (os.environ.get('TLAMATINI_NO_AUDIO') or '').strip():
+        logging.warning("🔇 Audio suppressed (TLAMATINI_NO_AUDIO): synthesised speech not played during tests.")
+        return -1, 'no-audio(test)', 0
+
     import numpy as np
     import sounddevice as sd
 

@@ -444,6 +444,22 @@ def _isolate_carried_python():
         print(f"--- [PYTHON] Could not pin carried-Python isolation (non-fatal): {exc}")
 
 
+def _silence_the_tests():
+    """A test run must NEVER make a sound on the developer's desktop.
+
+    Set the flag before anything else initialises, so every spawned pool agent
+    inherits it via get_agent_env()'s os.environ.copy(). The audio agents
+    (Talker / AudioPlayer / VideoPlayer) check TLAMATINI_NO_AUDIO at the single
+    point where sound leaves the machine and skip playback under it.
+    """
+    try:
+        if len(sys.argv) > 1 and sys.argv[1] == 'test':
+            os.environ['TLAMATINI_NO_AUDIO'] = '1'
+    except Exception:
+        pass
+
+
+_silence_the_tests()
 _enforce_app_temp_dir()
 _pin_playwright_browsers()
 _pin_bundled_tools()

@@ -689,6 +689,35 @@ def play_video(config: Dict) -> Dict:
         logging.warning(f"⚠️ volume_percent {volume_percent:g} capped at 100% (file's full level).")
     volume_factor = min(1.0, volume_percent / 100.0)
 
+    # A test run must never make a sound OR pop a video window on the developer's
+    # desktop. open_backend() below constructs an ffpyplayer MediaPlayer that begins
+    # decoding + PLAYING AUDIO immediately, so this guard must sit BEFORE it. It
+    # returns the same dict shape a real run does, with suppressed/zero fields.
+    if (os.environ.get('TLAMATINI_NO_AUDIO') or '').strip():
+        logging.warning("🔇 Playback suppressed (TLAMATINI_NO_AUDIO): no audio or video window during tests.")
+        _tp = _coerce_float(config.get('time_played', 0), 0)
+        return {
+            "input_path": video_path,
+            "display_index": -1,
+            "display_geometry": "suppressed",
+            "video_width": 0,
+            "video_height": 0,
+            "window_width": 0,
+            "window_height": 0,
+            "fullscreen": False,
+            "volume_percent": volume_percent,
+            "backend": "suppressed(no-audio)",
+            "has_audio": False,
+            "file_duration_seconds": 0.0,
+            "time_played_requested": _tp,
+            "played_seconds": 0.0,
+            "play_mode": classify_play_mode(_tp, 0.0),
+            "loops": 0,
+            "partial_segment": False,
+            "stopped_by_user": False,
+            "format": os.path.splitext(video_path)[1].lstrip('.').lower() or "unknown",
+        }
+
     backend = open_backend(video_path, volume_factor)
     try:
         video_w = int(getattr(backend, 'width', 0) or 0)

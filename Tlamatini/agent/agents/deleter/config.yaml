@@ -1,14 +1,25 @@
 trigger_mode: "immediate"  # "immediate" (delete now) or "event" (delete when a source log shows trigger_event_string)
 
-# WHAT TO DELETE. Use EITHER of these (both are honored and merged):
-#   target_path     - a single file, folder, or glob, e.g. "<app>/Temp/old.log" or "<app>/Temp/*.tmp"
+# WHAT TO DELETE.
+#   files_to_delete - the list of files / folders / globs to delete. THIS holds the targets.
+#   target_path     - the WORKING DIRECTORY to resolve relative targets against.
+#                     e.g. target_path: "<app>/Temp"  +  files_to_delete: ["*.tmp"]
+#                     deletes <app>/Temp/*.tmp and NEVER the Temp folder itself.
+#                     It is NOT a delete target. If you give ONLY target_path (no
+#                     files_to_delete) it is acted on directly for backward
+#                     compatibility, but a directory is still refused unless
+#                     allow_directory_delete is true.
 #                     (Rule 15: scratch lives under the app's own Temp, never C:/Temp or %TEMP%)
-#   files_to_delete - a list of files/folders/globs
-# A glob expands; a literal path is deleted directly (file -> removed, folder -> whole tree
-# removed); a path that does NOT exist is reported as "nothing to delete", never an error.
+# A glob expands; a literal file is removed; a path that does NOT exist is reported as
+# "nothing to delete", never an error. Protected app/user-state directories, the working
+# directory, git roots and drive roots are ALWAYS refused (with a reason in the log).
 # Default is EMPTY so the Deleter only ever deletes exactly what it is told.
 target_path: ""
 files_to_delete: []
+
+# Delete a whole DIRECTORY tree ONLY when this is true (default false). Deleting a
+# folder is a deliberate, stated act -- never a side effect of naming one.
+allow_directory_delete: false
 
 recursive: false  # When true, glob patterns also scan subdirectories (injects **/)
 filetype_exclusions: ""  # Comma-separated extensions/filenames to spare (e.g. "exe, msi, .profile")

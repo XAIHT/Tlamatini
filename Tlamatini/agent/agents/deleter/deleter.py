@@ -196,13 +196,79 @@ def is_excluded(file_path: str, excluded_extensions: set, excluded_filenames: se
     return ext in excluded_extensions or basename in excluded_filenames
 
 
-def perform_delete_operations(files_to_delete: List[str], recursive: bool = False, excluded_extensions: set = None, excluded_filenames: set = None):
+# Directory basenames that must NEVER be deleted as a whole tree, no matter what.
+# (Checked case-insensitively, and only when the path is an existing directory.)
+_UNTOUCHABLE_DIRECTORIES = {
+    'agent', 'agents', 'tlamatini', 'migrations', 'skills_pkg', 'static',
+    'staticfiles', 'templates', 'security', 'security_logs', 'db', 'backups',
+    'acpx', 'services', 'rag', 'windows', 'system32', 'users', 'python',
+}
+
+
+def refusal_reason(path: str, base_dir: str = '') -> str:
+    """Return WHY ``path`` must NOT be deleted, or ``''`` when deletion is allowed.
+
+    A reason STRING (not a bool) so the log can say *why* it refused.
+
+    FAILS TOWARD SAFETY: when in doubt, REFUSE. Losing the user's work is worse
+    than sparing something genuinely disposable -- the second is fixed by asking
+    again; the first sometimes is not fixable at all. This guard exists because
+    ``target_path=<a directory>`` once meant "delete that directory" and erased a
+    whole agent/ tree (764 files).
+    """
+    try:
+        real = os.path.realpath(path)
+    except Exception:
+        return 'the path could not be resolved'
+
+    # 1. A drive root, or one level below it (C:\, C:\Windows, C:\Users, ...).
+    _drive, rest = os.path.splitdrive(real)
+    parts = [p for p in rest.replace('\\', '/').split('/') if p]
+    if len(parts) < 2:
+        return 'it is at (or one level below) the drive root'
+
+    # 2. The working directory (target_path) itself, or an ANCESTOR of it.
+    if base_dir:
+        try:
+            base_real = os.path.realpath(base_dir)
+            if real == base_real:
+                return 'it is the working directory (target_path), not a target'
+            if base_real.lower().startswith(real.lower() + os.sep):
+                return 'it is an ancestor of the working directory'
+        except Exception:
+            return 'it could not be compared against the working directory'
+
+    # 3. An ancestor of this agent's own code: deleting it kills the Deleter.
+    try:
+        me = os.path.realpath(os.path.dirname(os.path.abspath(__file__)))
+        if me == real or me.lower().startswith(real.lower() + os.sep):
+            return 'it contains the Deleter itself'
+    except Exception:
+        pass
+
+    # 4. The root of a git repository.
+    if os.path.isdir(os.path.join(real, '.git')):
+        return 'it is the root of a git repository'
+
+    # 5. A protected application / user-state directory, by name.
+    if os.path.isdir(real) and os.path.basename(real).lower() in _UNTOUCHABLE_DIRECTORIES:
+        return 'it is a protected application directory (%s)' % os.path.basename(real)
+
+    return ''
+
+
+def perform_delete_operations(files_to_delete: List[str], recursive: bool = False, excluded_extensions: set = None, excluded_filenames: set = None, base_dir: str = '', allow_directory_delete: bool = False):
     """
     Executes the delete operation for the given list of file patterns.
     When recursive=True, injects **/ to scan subdirectories.
+
+    SAFETY: every candidate path is judged by ``refusal_reason()`` first, and a
+    whole DIRECTORY tree is deleted only when ``allow_directory_delete`` is True.
+    Refusals are counted and logged with their reason (a silent refusal is a bug).
     """
     total_success = 0
     total_failed = 0
+    total_refused = 0
 
     for original_pattern in files_to_delete:
         patterns_to_check = [original_pattern]
@@ -240,8 +306,24 @@ def perform_delete_operations(files_to_delete: List[str], recursive: bool = Fals
 
                 filename = os.path.basename(file_path)
 
+                # SAFETY GATE: never delete a protected / ancestor / working
+                # directory. A silent refusal is its own bug, so the reason is logged.
+                _why = refusal_reason(file_path, base_dir)
+                if _why:
+                    logging.warning(f"🛡️ REFUSED to delete {file_path}: {_why}")
+                    total_refused += 1
+                    continue
+
                 try:
                     if os.path.isdir(file_path):
+                        if not allow_directory_delete:
+                            logging.warning(
+                                f"🛡️ REFUSED to delete directory {file_path}: "
+                                "allow_directory_delete is false "
+                                "(set it true to delete a whole tree on purpose)"
+                            )
+                            total_refused += 1
+                            continue
                         # Directory Deletion - force remove entire tree
                         shutil.rmtree(file_path)
                         logging.info(f"🗑️ Deleted Folder: {file_path}")
@@ -257,7 +339,7 @@ def perform_delete_operations(files_to_delete: List[str], recursive: bool = Fals
                     logging.error(f"❌ Failed to delete {filename}: {e}")
                     total_failed += 1
 
-    logging.info(f"✅ Deletion Completed. Success: {total_success}, Failed: {total_failed}")
+    logging.info(f"✅ Deletion Completed. Success: {total_success}, Failed: {total_failed}, Refused: {total_refused}")
 
 
 def check_log_for_event(log_path: str, offset: int, event_string: str) -> tuple:
@@ -299,7 +381,13 @@ def main():
     if isinstance(files_to_delete, str):
         files_to_delete = [files_to_delete]
     files_to_delete = [str(p).strip() for p in files_to_delete if str(p).strip()]
-    for _alias in ('target_path', 'path', 'file', 'file_path', 'target', 'pattern', 'paths'):
+    # ⚠️ target_path is the WORKING DIRECTORY, not a delete target. Every other
+    #    alias below names a THING to delete; target_path names WHERE to work.
+    #    Lumping it in with the others once erased a whole agent/ tree (764 files)
+    #    because target_path=<dir> silently meant "delete <dir>". It is now the
+    #    base a relative target is resolved against -- never itself a target.
+    base_dir = str(config.get('target_path') or '').strip()
+    for _alias in ('path', 'file', 'file_path', 'target', 'pattern', 'paths'):   # target_path REMOVED
         _val = config.get(_alias)
         if isinstance(_val, str) and _val.strip():
             files_to_delete.append(_val.strip())
@@ -307,6 +395,21 @@ def main():
             files_to_delete.extend([str(v).strip() for v in _val if str(v).strip()])
     _seen = set()
     files_to_delete = [p for p in files_to_delete if not (p in _seen or _seen.add(p))]
+    if files_to_delete and base_dir:
+        # Explicit targets + a working directory: resolve relative targets against
+        # it, leave absolute paths alone. "delete these files inside that folder"
+        # now does exactly that -- and never deletes the folder itself.
+        files_to_delete = [p if os.path.isabs(p) else os.path.join(base_dir, p)
+                           for p in files_to_delete]
+    elif not files_to_delete and base_dir:
+        # Only target_path was given: act on it directly (backward compatible),
+        # but do NOT also treat it as the working directory, so refusal_reason
+        # judges it on its own (a lone target_path=<dir> is still refused unless
+        # allow_directory_delete, and a lone target_path=<file/glob> still works).
+        files_to_delete = [base_dir]
+        base_dir = ''
+    # Deleting a whole DIRECTORY tree must be a deliberate, stated act.
+    allow_directory_delete = str(config.get('allow_directory_delete', False)).strip().lower() in ('true', '1', 'yes', 'on')
 
     source_agents = config.get('source_agents', []) # List of source agents for event triggering
     recursive = config.get('recursive', False)
@@ -326,6 +429,7 @@ def main():
     if filetype_exclusions:
         logging.info(f"🚫 Exclusions: {filetype_exclusions}")
     logging.info(f"📂 Files to delete: {files_to_delete}")
+    logging.info(f"🛡️ Working dir (target_path): {base_dir or '(none)'} | allow_directory_delete: {allow_directory_delete}")
     logging.info(f"🎯 Targets: {target_agents}")
 
     # PID Management
@@ -352,7 +456,7 @@ def main():
             logging.info("🚀 Executing immediate deletion...")
 
             try:
-                perform_delete_operations(files_to_delete, recursive=recursive, excluded_extensions=excl_exts, excluded_filenames=excl_names)
+                perform_delete_operations(files_to_delete, recursive=recursive, excluded_extensions=excl_exts, excluded_filenames=excl_names, base_dir=base_dir, allow_directory_delete=allow_directory_delete)
             except Exception as e:
                 logging.error(f"❌ Operation terminated with error: {e}")
                 logging.warning("⚠️ Proceeding to downstream agents despite errors...")
@@ -411,7 +515,7 @@ def main():
 
                 if any_event_triggered:
                     logging.info("🚀 Executing deletion...")
-                    perform_delete_operations(files_to_delete, recursive=recursive, excluded_extensions=excl_exts, excluded_filenames=excl_names)
+                    perform_delete_operations(files_to_delete, recursive=recursive, excluded_extensions=excl_exts, excluded_filenames=excl_names, base_dir=base_dir, allow_directory_delete=allow_directory_delete)
                     
                     # Trigger downstream agents
                     if target_agents:
