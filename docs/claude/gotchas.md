@@ -76,9 +76,13 @@ Three test failures that day were the **TEST** being stale, not the code. `test_
 # Python
 python -m ruff check
 
-# JavaScript/CSS
+# JavaScript/CSS  (ESLint + a node --check parse gate)
 npm run lint
 ```
+
+`npm run lint` runs **two** JS gates: ESLint (with **`no-undef` as an ERROR** — an undeclared identifier in a `window.Tlamatini*` export literal throws `ReferenceError` at load and silently loses that feature) **then** `node scripts/check_js_parse.mjs`, which runs `node --check` on every `agent/static/agent/js/*.js` (a file that does not parse is a dead page with no visible error). Both are pinned by `agent/test_js_gates.py`. Check the lint EXIT CODE — never grep its output for "error" (the compact formatter was removed from ESLint core, so a filtered failure reads as a pass).
+
+> **Tests are silent by design.** `manage.py::_silence_the_tests()` sets `TLAMATINI_NO_AUDIO=1` for any `test` run, and Talker / AudioPlayer / VideoPlayer skip playback under it (pinned by `agent/test_no_audio_in_tests.py`). A test must never make a sound on the developer's desktop.
 
 ---
 

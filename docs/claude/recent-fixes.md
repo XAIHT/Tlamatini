@@ -16,6 +16,26 @@
 
 ---
 
+## 2026-08-27 — Deleter directory-wipe fix, silent test audio, JS parse gate (Tlamatini-Spanish cross-tree glitch report, round 2)
+
+Three fixes ported from findings in the Spanish tree (each verified against THIS English tree first). **Do NOT revert any of them.**
+
+**The Deleter no longer deletes the directory it was told to work IN.** `agent/agents/deleter/deleter.py`: `target_path` is now the WORKING DIRECTORY, removed from the delete-alias tuple — relative `files_to_delete` JOIN onto it, so `target_path=<folder>` + `files_to_delete=[a,b,c]` deletes the three files and NEVER the folder (a lone `target_path` still acts on itself for back-compat, but a directory is refused unless opted in). New `refusal_reason(path, base_dir)` runs before EVERY delete and refuses — with a logged reason and a `total_refused` count — protected app dirs by name (`agent`, `agents`, `tlamatini`, `migrations`, `security`, `windows`, `system32`, `users`, `python`, …), the working dir or an ancestor, the Deleter's own tree, git-repo roots, and drive roots; fail-toward-safety. New config `allow_directory_delete` (default **false**) is required to delete a whole tree. The identical bug erased a 764-file `agent/` tree in the Spanish tree. Pinned by `agent/test_deleter_safety.py` (9 tests). Ask-Execs is NOT the mitigation (canvas / `.flw` / Croner / TeleTlamatini run unattended) — the guard lives IN the agent.
+
+**A test run never makes a sound.** `manage.py::_silence_the_tests()` sets `TLAMATINI_NO_AUDIO=1` when `sys.argv[1] == 'test'`, called BEFORE `_enforce_app_temp_dir()` so every spawned pool agent inherits it via `get_agent_env()`'s `os.environ.copy()`. The audio agents check it at the SINGLE point where sound leaves the machine: Talker's `play_pcm` (returns the real `(device_index, device_name, clipped)` shape), AudioPlayer's `sd.OutputStream` block, and VideoPlayer's `open_backend` (guarded BEFORE it, because the ffpyplayer `MediaPlayer` starts audio on construction). Pinned by `agent/test_no_audio_in_tests.py` (which asserts the flag is live during its own run). **Judge the ENV flag, not a config field** — and do NOT port the Spanish English-voice-kill guard.
+
+**Two JS process gates.** `no-undef` is enforced as an ERROR in `eslint.config.mjs` (a module that exports an identifier it never declared throws `ReferenceError` at load and silently loses `window.Tlamatini*`). NEW `scripts/check_js_parse.mjs` runs `node --check` on every `agent/static/agent/js/*.js` (a pasted-broken file is a dead page with no visible error) and is wired into `npm run lint` (`eslint … && node scripts/check_js_parse.mjs`), plus a standalone `check-js-parse` script. Pinned by `agent/test_js_gates.py`. Check the lint EXIT CODE, never grep its output for "error" (the compact formatter was removed from ESLint core).
+
+## 2026-08-26 — Blue-hat security toolkit: self-update evidence carryover + guards (G1-G7, Tlamatini-Spanish cross-tree report, round 1)
+
+The `security/` toolkit (defender + whitelist v2.1) shipped in v1.50.0; these harden it. **Do NOT revert.**
+
+**G1 (data loss) — a self-update no longer destroys the operator's evidence.** `security/` is application code and MUST be replaced (a fixed defender has to reach a user who installed a broken one), so `'security'` stays OUT of `apply_update.ps1`'s `$Preserve`. But `security/security_logs/` (alerts.log, monitor.log, the visible asset-test proof) is the operator's evidence living INSIDE that replaced dir — the same situation as `db.sqlite3`. So step 3c STASHES it to `Temp/_security_logs_carryover` before the delete, and step 5b RESTORES it into the new `security/` after the move-in; both fail-open (a failed restore LEAVES the stash rather than deleting it). `self_update.py`'s docstring mirrors it. Proven with a scratch delete-and-replace simulation.
+
+**G2** — `"security_logs"` added to `SKIP_DIRS` in BOTH `build_complete_public_release.py` and `check_private_data.py` (kept mirrored): the release scrubber must not rewrite forensic artifacts, and the private-data scanner must not drown in the operator's own usernames / IPs / command lines (it never ships, so it cannot leak).
+
+**G3-G7 guards** — `agent/test_security_assets_carriage.py` pins the whole carriage + carryover contract; `agent/test_version_guard.py` pins `semver_to_win32_tuple` + `is_newer` (the English tree is plain SemVer — do NOT port the Spanish `strip_edition_suffix`); `agent/test_self_knowledge_is_current.py` DERIVES the agent/wrapped/skill/tool counts from source so `agent/Tlamatini.md` cannot drift (it fixed a stale "(87 of them)" → 88 and checks the Multi-Turn tool total adds up). `Tlamatini.md` §1 gained a Blue-hat bullet: she knows the toolkit exists AND that she CANNOT invoke it (operator-launched only). The docs (BookOfTlamatini / README / security-README) were rewritten from the misleading "runtime logs are not shipped" to the real carryover.
+
 ## 2026-08-23 — Googler structured dork builder: syntax is a compiled contract
 
 The visual/pool Googler now compiles structured fields rather than trusting every flow author
