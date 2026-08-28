@@ -25,6 +25,8 @@ import logging
 import subprocess
 import urllib.parse
 import urllib.request
+import base64
+import html
 # -- conhost.exe orphan guard ------------------------------------------
 # When Tlamatini's runtime launches us with DETACHED_PROCESS we have no
 # console attached. Any child we Popen WITHOUT CREATE_NO_WINDOW makes
@@ -697,7 +699,7 @@ _HTTP_ENGINES = [
     {'name': 'duckduckgo-lite', 'url': 'https://lite.duckduckgo.com/lite/?q={q}',
      'skip': ('duckduckgo.com',)},
     {'name': 'mojeek-http', 'url': 'https://www.mojeek.com/search?q={q}',
-     'skip': ('mojeek.com',)},
+     'skip': ('mojeek.com', 'mastodon.social/@mojeek', 'buttondown.email/mojeek')},
 ]
 
 _HTTP_HEADERS = {
@@ -757,12 +759,30 @@ def _unwrap_redirect(url: str) -> str:
     useless as file URLs — the whole point of a `filetype:` hunt is the direct
     link — and they all collapse to one domain, which the de-duplicator would
     then throw away as repeats of a single host."""
-    raw = str(url or '')
+    raw = html.unescape(str(url or ''))
     if not raw:
         return raw
+    low = raw.lower()
     try:
         parsed = urllib.parse.urlsplit(raw if '//' not in raw[:2] else 'https:' + raw)
         params = urllib.parse.parse_qs(parsed.query or '')
+        # Bing wraps every organic result in bing.com/ck/a?...&u=a1<base64url>
+        # (its ampersands HTML-escaped as &amp;, which is why raw is html.unescape'd
+        # above). Left unwrapped the link stays on bing.com and is then dropped by
+        # the engine's own-domain skip, so every real Bing result silently vanished
+        # and the HTTP tier fell through to whatever junk the next engine returned.
+        if 'bing.com/ck/a' in low:
+            token = (params.get('u') or [''])[0]
+            if token[:2].lower() in ('a1', 'a2'):
+                token = token[2:]
+            if token:
+                try:
+                    decoded = base64.urlsafe_b64decode(
+                        token + '=' * (-len(token) % 4)).decode('utf-8', 'replace')
+                    if decoded.startswith('http'):
+                        return decoded
+                except Exception:
+                    pass
         for key in ('uddg', 'q', 'u', 'url'):
             candidate = (params.get(key) or [''])[0]
             if candidate.startswith('http'):
