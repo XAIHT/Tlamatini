@@ -552,9 +552,7 @@ def bundle_carried_python(dist_manage, frozen_python, build_python):
 
     # ── SIZE LOCK: prune ML libs the POOL AGENTS never load ──────────────
     # The carried interpreter exists ONLY for the pool agents (executer,
-    # gitter, stm32er, playwrighter, camcorder, ...). Heavy ML stacks like
-    # torch/transformers/mxnet are used by the DJANGO RAG process, which runs
-    # from the FROZEN _internal — NOT from here. A developer's PYTHON_HOME
+    # gitter, stm32er, playwrighter, camcorder, ...). A developer's PYTHON_HOME
     # accumulates the *CUDA* build of torch (~4 GB on its own), and the old
     # wholesale copytree dragged all of it in, ballooning the release to ~4 GB.
     # The Talker pool agent (agent/agents/talker/talker.py) DOES import torch +
@@ -1269,6 +1267,32 @@ def main():
         # frozen-process code imports unstructured eagerly, so excluding `magic`
         # is safe AND also prevents the same hang at runtime.
         '--exclude-module=magic',
+        # transformers drags the ENTIRE torch stack into the frozen Django
+        # process for NOTHING Tlamatini uses. Measured on 2026-08-29 by booting
+        # the real app with an import tracer:
+        #     agent/mcp_agent.py -> langchain_ollama -> langchain_core
+        #     .language_models.base:44 -> `from transformers import
+        #     GPT2TokenizerFast` -> transformers/modeling_gguf_pytorch_utils.py
+        #     -> `import torch`
+        # …which loaded 248 transformers + 663 torch submodules and cost 9.47 s
+        # of import time. langchain_core wraps that import in try/except
+        # ImportError and simply sets _HAS_TRANSFORMERS = False (it is only a
+        # GPT-2 token-counter FALLBACK; every Tlamatini model is an Ollama /
+        # Anthropic model that counts its own tokens). Nothing in agent/**
+        # imports transformers, sentence_transformers or HuggingFace embeddings
+        # — and the CARRIED Python has pruned `transformers` since the size-lock
+        # (see _PRUNE_PKG_STEMS) while Talker keeps working, which is live proof
+        # the dependency is unused. Excluding it here measured 0 transformers +
+        # 0 torch submodules and 3.62 s import time (2.6x faster boot), and it
+        # is what STOPS the twelve frozen-only warnings Angela reported:
+        #   "Unable to retrieve source for @torch.jit._overload function: …"
+        # (PyInstaller keeps torch's .py sources — 40.7 MB — inside the PYZ, so
+        # inspect.getsource() cannot find them and torch warns once per
+        # overload). Root cause removed, nothing muted.
+        # NOTE: torch itself is NOT excluded here — the Talker pool agent
+        # imports torch + snac under the CARRIED Python, which is a different
+        # interpreter and is unaffected by this flag.
+        '--exclude-module=transformers',
         '--collect-all', 'django_bootstrap5',
         '--collect-all', 'autobahn',
         '--collect-all', 'filesearch_pb2',

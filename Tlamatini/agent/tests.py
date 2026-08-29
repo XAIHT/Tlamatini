@@ -819,7 +819,7 @@ class ExecReportCaptureTests(TestCase):
         )
 
     def test_direct_executer_and_pythonxer_are_captured_with_correct_agent_keys(self):
-        from langchain.tools import tool
+        from langchain_core.tools import tool
 
         @tool
         def execute_command(command: str) -> str:
@@ -853,7 +853,7 @@ class ExecReportCaptureTests(TestCase):
         """Simulate a real multi-turn that fans out across Dockerer, SSHer,
         and SQLer wrapped launches. All three must land in
         exec_report_entries tagged with the right agent_key."""
-        from langchain.tools import Tool
+        from langchain_core.tools import Tool
 
         def _make_stub(tool_name):
             def runner(request: str) -> str:
@@ -893,7 +893,7 @@ class ExecReportCaptureTests(TestCase):
         Multi-Turn must appear in the Exec report. Management/polling helpers
         (``chat_agent_run_status``) and direct read-only @tools (``googler``)
         are still NEVER captured."""
-        from langchain.tools import Tool
+        from langchain_core.tools import Tool
 
         def _make_stub(name):
             def runner(request: str) -> str:
@@ -968,7 +968,7 @@ class ExecReportCaptureTests(TestCase):
         """Executer returning an ``Error:`` string must mark the entry as
         failed; the existing ``call_success`` heuristic covers both the
         JSON-status path and the plain-text path."""
-        from langchain.tools import tool
+        from langchain_core.tools import tool
 
         @tool
         def execute_command(command: str) -> str:
@@ -999,7 +999,7 @@ class ExecReportCaptureTests(TestCase):
         formatter so the report shows meaningful intent (which CLI was
         spawned, which skill was invoked, which session was killed)
         instead of a raw dict dump."""
-        from langchain.tools import StructuredTool
+        from langchain_core.tools import StructuredTool
 
         def _stub(name, fields):
             # StructuredTool lets the executor pass a multi-key dict
@@ -1077,7 +1077,7 @@ class ExecReportCaptureTests(TestCase):
         ACPX / Skill calls must still produce exec_report_entries with
         ``success=False``. Tests both the JSON ``status: 'error'`` path
         and the JSON ``ok: false`` path that ACPX tools actually emit."""
-        from langchain.tools import StructuredTool
+        from langchain_core.tools import StructuredTool
 
         def _spawn_fail(agent_id: str = '', task: str = '', mode: str = '') -> str:
             # Mirrors the ``acpx.tools._err`` envelope shape.
@@ -1158,7 +1158,7 @@ class ExecReportCaptureTests(TestCase):
     def test_exec_report_entries_are_emitted_even_when_flag_off(self):
         """The flag gates RENDERING, not CAPTURE. Capturing unconditionally
         means a future payload-whitelist bug cannot silently hide the data."""
-        from langchain.tools import tool
+        from langchain_core.tools import tool
 
         @tool
         def execute_command(command: str) -> str:
@@ -1232,7 +1232,7 @@ class NotificationDebtGuardTests(TestCase):
 
     # ---- guard behavior ----
     def _telegram_tool(self):
-        from langchain.tools import Tool
+        from langchain_core.tools import Tool
 
         def runner(request: str) -> str:
             return json.dumps({'status': 'ok', 'tool': 'chat_agent_telegrammer'})
@@ -6799,7 +6799,7 @@ class AskExecsExecutorGateTests(TestCase):
         unregister_broker(user_id)
 
     def _executer_tool(self):
-        from langchain.tools import tool
+        from langchain_core.tools import tool
 
         @tool
         def execute_command(command: str) -> str:
@@ -6809,7 +6809,7 @@ class AskExecsExecutorGateTests(TestCase):
         return execute_command
 
     def _pythonxer_tool(self):
-        from langchain.tools import tool
+        from langchain_core.tools import tool
 
         @tool
         def execute_file(command: str) -> str:

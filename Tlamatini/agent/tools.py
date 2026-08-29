@@ -12,7 +12,7 @@ from datetime import datetime
 import difflib
 import json
 import logging
-from langchain.tools import Tool, tool
+from langchain_core.tools import Tool, tool
 import os
 import re
 import sys

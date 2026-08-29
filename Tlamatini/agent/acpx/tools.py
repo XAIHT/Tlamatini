@@ -24,7 +24,7 @@ import logging
 import traceback
 from typing import Any, Dict, Union
 
-from langchain.tools import tool
+from langchain_core.tools import tool
 
 from .runtime import (
     AcpRuntimeError,

@@ -11,7 +11,7 @@ import os
 import json
 import sys
 import requests
-from langchain.tools import tool
+from langchain_core.tools import tool
 from .converter import convert_image_to_base64
 from typing import Dict
 

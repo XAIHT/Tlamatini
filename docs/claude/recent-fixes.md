@@ -16,6 +16,57 @@
 
 ---
 
+## 2026-08-29 — The frozen console's torch warning storm: ROOT-FIXED by keeping `transformers` out of the web process (and NOT by muting)
+
+**Angela's report, from a frozen launch of `C:\Tlamatini` (v1.50.3).** The startup console opened with a wall of third-party import-time warnings that say nothing about Tlamatini's health, so **every boot read as "something is wrong"** and the lines that DO matter were buried:
+
+- **TWELVE** identical `torch\_jit_internal.py:999: UserWarning: Unable to retrieve source for @torch.jit._overload function: <function upsample at 0x…>.` — one per overload of `upsample` / `interpolate` / `upsample_nearest` / `upsample_bilinear`.
+- `inspect.py:775: LangChainDeprecationWarning: Importing tools from langchain is deprecated…`
+- `django\db\backends\utils.py:98: RuntimeWarning: Accessing the database during app initialization is discouraged.`
+
+**⚠️ THE FIRST ATTEMPT AT THIS WAS WRONG AND WAS REVERTED.** It installed `warnings.filterwarnings` filters in `manage.py` / `tlamatini/settings.py` and called it done. Angela rejected it outright: *"Muting?? why not root-fixing!!"* She was right — muting hid the symptom and left **911 useless modules loading on every single boot**. The filters are gone; `agent/test_web_process_stays_lean.py::NoWarningMutingTests` now FAILS the build if `filterwarnings` / `simplefilter` reappears in either startup file.
+
+**THE ACTUAL ROOT CAUSE — found by booting the real app with an import tracer, not by reasoning.** The torch stack is not "just there"; something drags it in:
+
+```
+agent/mcp_agent.py:578          import langchain_ollama
+  langchain_ollama/chat_models.py:26
+    langchain_core/language_models/base.py:44   from transformers import GPT2TokenizerFast
+      transformers/models/gpt2/tokenization_gpt2.py:19
+        transformers/modeling_gguf_pytorch_utils.py:34   import torch
+```
+
+`langchain_core` imports `transformers` **only** to provide a GPT-2 token-counter FALLBACK — and it wraps that import in `try/except ImportError`, setting `_HAS_TRANSFORMERS = False` when it is absent. Every Tlamatini model is an Ollama / Anthropic model that counts its own tokens, and **nothing in `agent/**` imports `transformers`, `sentence_transformers` or a HuggingFace embedding** (the RAG embeds through Ollama). So the entire ML stack was being loaded for a code path Tlamatini never executes. The 12 warnings were just the visible tip: PyInstaller keeps torch's `.py` sources (**40.7 MB**, measured — *not* the "~1 GB" the first attempt asserted without measuring) inside the PYZ, so `inspect.getsource()` fails and torch warns once per `@torch.jit._overload`.
+
+**THE FIX — one line in `build.py`: `'--exclude-module=transformers'`** (placed beside the existing `--exclude-module=magic`, which is the same proven "upstream guards the import, so excluding is safe" pattern). Measured on the real app, both arms:
+
+| | before | after |
+|---|---|---|
+| `langchain_core._HAS_TRANSFORMERS` | True | False (graceful) |
+| transformers submodules loaded | 248 | **0** |
+| torch submodules loaded | **663** | **0** |
+| chain import time | 9.47 s | **3.62 s** (2.6× faster) |
+
+The 12 warnings disappear because torch is never imported — **cause removed, nothing suppressed** — and the web process boots markedly faster and lighter.
+
+**⚠️ INTERPRETER BOUNDARY (Angela, 2026-08-29: *"the carried Python, the carried everything… may not exist for certain users"*).** Tlamatini ships TWO interpreters and they are NOT interchangeable. `--exclude-module=transformers` applies **only to the FROZEN `_internal`** (the Django/RAG process, which needs no user Python at all). The **CARRIED** Python (`<install>/python`) runs the pool agents, and **Talker imports `torch` + `snac` there** — so torch MUST stay in the carried tree and is deliberately NOT excluded. Confirming evidence: `build.py`'s size-lock has pruned `transformers` from the carried Python since it was written **and Talker still works**, which is live proof the dependency is dead weight. A user with no Python of their own is unaffected either way.
+
+**The second warning was OUR OWN CODE.** `inspect.py:775: LangChainDeprecationWarning: Importing tools from langchain is deprecated` came from **13 imports of the deprecated `langchain.tools` shim** — `agent/tools.py:15`, `agent/acpx/tools.py:27`, `agent/imaging/image_interpreter.py:14` and 10 in `agent/tests.py`. All switched to the canonical **`langchain_core.tools`** (which exports `Tool`, `tool`, `StructuredTool`). Root-fixed, not muted.
+
+**The third warning is NOT a defect and was deliberately left visible.** `django/db/backends/utils.py:98: RuntimeWarning: Accessing the database during app initialization is discouraged` is Django accurately reporting `AgentConfig.ready()`'s **deliberate** agent-table rebuild (`apps.py:226/232/266/312` — the documented "Agent table is wiped and re-seeded from the `agents/` folder on every boot" design). Silencing it would be muting again; eliminating it means restructuring boot ordering, which is a separate architectural decision — **do not do it casually, the agent registry depends on those rows existing before the first request.**
+
+**Contract — do NOT weaken:**
+
+1. **Never re-add startup warning muting.** Fix the cause. Pinned by `NoWarningMutingTests`.
+2. **`--exclude-module=transformers` stays**, and **`torch` is never excluded** (Talker needs it under the carried Python).
+3. **Never add `transformers` to `requirements.txt`** — it re-imports torch into the web process.
+4. **The exclusion is safe ONLY because langchain_core guards that import.** `UpstreamContractTests::test_langchain_core_still_guards_its_transformers_import` AST-checks the installed `langchain_core` for the `try/except ImportError`; if a future upgrade makes it a hard import, that test FAILS LOUDLY here rather than crashing a user's frozen app in the field.
+5. **Measure before asserting a size or a cost.** The first attempt justified itself with a "~1 GB" figure that was off by 25×.
+
+Coverage: `agent/test_web_process_stays_lean.py`. **Note:** the exclusion's effect on the shipped `_internal` (currently **4.9 GB** on disk) is verified by a real `build.py` run — not yet performed at the time of writing.
+
+---
+
 ## 2026-08-27 — Deleter directory-wipe fix, silent test audio, JS parse gate (Tlamatini-Spanish cross-tree glitch report, round 2)
 
 Three fixes ported from findings in the Spanish tree (each verified against THIS English tree first). **Do NOT revert any of them.**
