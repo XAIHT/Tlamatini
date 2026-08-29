@@ -39,7 +39,7 @@ sweep makes that class of bug impossible to ship silently.
 
 ---
 
-## How the release is assembled — the 6 carrier mechanisms in `build.py`
+## How the release is assembled — the 7 carrier mechanisms in `build.py`
 
 Every asset reaches users through **exactly one** of these. When you add an asset, ask
 "which carrier moves it?" If the answer is "none", it will NOT ship.
@@ -52,11 +52,20 @@ Every asset reaches users through **exactly one** of these. When you add an asse
 | 4 | **`optional_file_copies` / `required_file_copies` → install root** | `config.json`, `prompt.pmt`, `Tlamatini.md`; `README.md`, `agents_descriptions.md` | ❌ a **new** root-level required file must be added by hand |
 | 5 | **`support_files` → install root** | the `.ps1` helpers (`Tlamatini.ps1`, `register_flw`/`unregister_flw`, `CreateShortcut`/`RemoveShortcut`, **`apply_update.ps1`**), `Tlamatini.ico`, `CreateShortcut.json`, `cat_art.py` | ❌ a **new** root-level support file must be added by hand |
 | 6 | **bundled runtimes + deps** | carried Python, `jre`, `git`, `ms-playwright`; PyInstaller **hidden imports**, **`--collect-all`** (e.g. `ffpyplayer`); **`requirements.txt`** | ❌ a **new** runtime / hidden import / collect-all / pip dep must be added by hand |
+| 7 | **bespoke `shutil.copytree` block → install root** | **`security/`** (Angela's Blue-hat operator toolkit: `tlamatini_defender.ps1`, `tlamatini_whitelist_v2.ps1`, the `.bat` UAC launchers, `README.md`, and `automated_tests_of_security_assets.py`), copied near the end of the build with `ignore_patterns("security_logs", "*.log", "__pycache__")` | ✅ new files *inside* `security/`; ❌ a **new** bespoke tree needs its own block |
 | — | **DB delivery** | `build.py` step 8a runs `migrate`, so the shipped `db.sqlite3` carries every migration's seeded rows (new agent row, `chat_agent_*` tool row, demo prompts) | ✅ rows ship; ⚠️ see the DB special case |
 
-**The forgettable carriers are 2 (new top-level tree), 4, 5, and 6** — anything that lives at
-the repo root or needs an explicit PyInstaller flag. Mechanisms 1 and 3 are automatic, which
-is exactly why a new *agent* needs no build edit but a new *root-level script* does.
+**The forgettable carriers are 2 (new top-level tree), 4, 5, 6, and 7** — anything that lives at
+the repo root or needs an explicit PyInstaller flag or its own copy block. Mechanisms 1 and 3 are
+automatic, which is exactly why a new *agent* needs no build edit but a new *root-level script* does.
+
+> ⚠️ **Mechanism 7 is the newest and the least discoverable.** `security/` is NOT reached by any
+> generic list — it is a hand-written `copytree` block (`build.py`, ~line 1611) that prints
+> `Copied security assets:` on success and a **`WARNING: security/ not found`** on failure, i.e.
+> it fails OPEN and the build still succeeds. If you add another operator-facing toolkit tree at
+> the repo root, either give it its own block or, better, fold it into `optional_dir_copies`
+> (mechanism 3) so it is carried by a list a human can read. Carriage is pinned by
+> `agent/test_security_assets_carriage.py` — the census in Step 0 check [8] is the generic net.
 
 ---
 
@@ -187,6 +196,8 @@ check needs a `python build.py` run."
 | New **pip dependency** | mech 6 `requirements.txt` (+ hidden-import / `--collect-all` if dynamic) — **manual** | n/a |
 | New **bundled runtime** (CLI the agent shells out to) | mech 6 bundler (mirror `bundle_git`/`bundle_java_runtime`) — **manual** | No (replaced) |
 | New **runtime-writable dir** (app writes user data here) | mech `empty_dirs` (ship empty) — **manual** | **YES — add to BOTH preserve lists** |
+| New **operator-facing toolkit tree** at the repo root (e.g. `security/`) | mech 3 `optional_dir_copies` (preferred) or mech 7 a bespoke `copytree` — **manual** | **No — it is APP CODE.** A fixed defender must reach a user who installed a broken one. Preserve only the *evidence* inside it (see below) |
+| New **evidence/log dir INSIDE a replaced app tree** (e.g. `security/security_logs/`) | ignored by the carrier (never shipped) | **Not via `$Preserve`** — it would pin the whole parent. Stash-and-restore around the swap instead |
 | New **config key with a secret** | already in `config.json` (preserved) | Yes (config.json preserved) |
 
 The single most dangerous omission is the last-but-one row: a **new runtime-state dir** added to
@@ -227,6 +238,28 @@ Because `agent/static` is tree-carried, `dialog_theme.css`, `dialog_policy.js`, 
 ### v1.48.17 updater/parser and public-private build gate
 
 The staged swap must retain `Uninstaller.exe`; Windows comments that explain this policy stay on standalone PowerShell lines so parser-sensitive continuations remain valid. Verify `agent/test_preserved_user_state.py` source-derives the code-seeded default catalog, proves the public builder clears `TLAMATINI_BUNDLE_EXTERNAL_MCPS`, and proves only the explicit private builder supplies it. Do not reintroduce an assertion that the environment variable is absent from `build.py`: the variable is intentionally read by the shared builder, while release entry points control whether it exists.
+
+### v1.50.0 security-toolkit carrier + evidence-carryover gate
+
+**`security/` is the first asset to use carrier mechanism 7** (a bespoke `copytree`, not a list),
+and the first to need a **third bucket** beyond preserve/replace. Verify all three halves:
+
+1. **CARRIED** — `build.py`'s security block copies `security/` to the install root, skipping
+   `security_logs` / `*.log` / `__pycache__`. It fails OPEN (a `WARNING:` and a successful build),
+   so absence is silent: rely on `agent/test_security_assets_carriage.py` and the Step-0 census.
+2. **REPLACED, deliberately** — `'security'` is **NOT** in `apply_update.ps1` `$Preserve` and must
+   stay out. It is application code: a corrected defender has to be able to reach a user running a
+   broken one. Do **not** "protect" it by preserving it — that would freeze the toolkit forever.
+3. **EVIDENCE CARRIED OVER** — `security/security_logs/` (alerts.log, monitor.log, the visible
+   asset-test proof) is the operator's forensic evidence living *inside* that replaced tree, the
+   same shape of problem as `db.sqlite3`. `apply_update.ps1` step **3c stashes** it to
+   `Temp/_security_logs_carryover` before the delete and step **5b restores** it after the move-in;
+   both fail open, and a failed restore LEAVES the stash rather than deleting it. `self_update.py`'s
+   docstring mirrors this. Never "fix" a failed restore by dropping the stash.
+
+Also verify `security_logs` remains in `SKIP_DIRS` in **both** `build_complete_public_release.py`
+and `check_private_data.py` (kept mirrored): the release scrubber must not rewrite forensic
+artifacts, and the private-data scanner must not drown in the operator's own usernames / IPs.
 
 ### v1.50.0 release carrier gate
 

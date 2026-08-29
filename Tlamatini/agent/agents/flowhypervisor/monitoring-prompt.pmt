@@ -577,6 +577,36 @@ CAMCORDER / RECORDER SPECIAL NOTES (observational capture agents):
     block body — that is routable content for a downstream Forker, not a flow
     crash.
 
+AUDIOPLAYER / VIDEOPLAYER SPECIAL NOTES (playback agents — SILENCE IS THE JOB):
+  - AudioPlayer (audio file → speakers) and VideoPlayer (video file → a chosen
+    display, WITH audio) are the PLAYBACK counterparts of the capture family:
+    Recorder records sound, AudioPlayer plays it; Camcorder records picture,
+    VideoPlayer plays it. Both are observational/output — they mutate no
+    persistent state and save nothing. Canvas runs are monitored here; their
+    wrapped Multi-Turn counterparts ARE captured in the Exec Report like every
+    other wrapped `chat_agent_*`.
+  - ⚠️ THE MOST IMPORTANT RULE FOR THESE TWO: a playing agent is SILENT BY
+    DESIGN for the WHOLE playback. It logs that it started, then streams audio /
+    paints frames for the entire duration WITHOUT writing another log line, then
+    emits its section and exits. A 10-minute video means ~10 minutes of total log
+    silence from a perfectly healthy agent. Do NOT flag that as stuck. The
+    expected duration is knowable from the config: `time_played` = 0 means the
+    WHOLE file plays once (so the file's own length governs, and it can be
+    hours); `time_played` = N means exactly N seconds — a longer file is
+    TRUNCATED and a shorter one is LOOPED to fill the time. Flag only when the
+    agent has been silent well BEYOND its own configured/at-hand duration and
+    there is no "AudioPlayer agent finished" / "VideoPlayer agent finished" line.
+  - They ALWAYS emit their `INI_SECTION_AUDIOPLAYER<<<` / `INI_SECTION_VIDEOPLAYER<<<`
+    block (input path, device/display, volume, `played_seconds`, `play_mode`,
+    `loops`, status) and ALWAYS trigger `target_agents` — even on the error path.
+    NEVER flag those blocks as errors.
+  - Documented degradations that are NOT flow errors: VideoPlayer falling back to
+    the SILENT OpenCV-only path when `ffpyplayer` is unavailable (it logs the
+    fallback and `volume_percent` becomes a no-op — the video still plays); a
+    requested output device / display index that does not exist surfacing as a
+    device error in the block body; and a `status: error` body generally. All of
+    it is routable content for a downstream Forker, not a flow crash.
+
 TALKER SPECIAL NOTES (text-to-speech via Ollama):
   - Talker SYNTHESISES speech: it sends `input_text` to an OLLAMA neural TTS
     model (default Orpheus-3b-FT), decodes the returned audio tokens to a WAV
@@ -721,6 +751,7 @@ TYPICAL TIMING:
   - Recorder: records for ~its configured `record_seconds` (default 5 s), then writes the WAV and exits — observational/read-only in the canvas; the wrapped Multi-Turn tool is captured in Exec Report. The audio sibling of Shoter/Camcorder. Flag only if it runs well beyond `record_seconds` with no "Recorder agent finished" completion.
   - Camcorder: `photo` mode is < 5 s (one webcam shot); `video` mode runs for ~its `video_duration_seconds` then writes the `.mp4` and exits — observational/read-only in the canvas; the wrapped Multi-Turn tool is captured in Exec Report. The camera sibling of Shoter/Recorder. Flag only if it runs well beyond `video_duration_seconds` with no "Camcorder agent finished" completion.
   - Talker: text-to-speech via an Ollama model — the synthesis can run from seconds to a few MINUTES, then it plays the audio and exits. It is observational/output in the canvas; the wrapped Multi-Turn tool is captured in Exec Report, where `tokens_only` is a red degraded result rather than clean success. Don't flag a Talker still waiting on its Ollama response before ~5 min; flag only if it is silent well beyond that with no "Talker agent finished" completion.
+  - AudioPlayer / VideoPlayer: SILENT FOR THE WHOLE PLAYBACK by design — they log the start, then stream audio / paint frames with NO further log lines until the end. The expected duration comes from `time_played`: 0 = the whole file plays once (the file's own length governs — it can be minutes or hours), N = exactly N seconds (a longer file is TRUNCATED, a shorter one is LOOPED). This is the single biggest false-alarm risk in the media family: a healthy 10-minute video is 10 minutes of total silence. Do NOT flag a playing agent as stuck; flag only when it is silent well BEYOND its own configured/at-hand duration with no "AudioPlayer agent finished" / "VideoPlayer agent finished" completion. Both are observational/output in the canvas; the wrapped Multi-Turn tools are captured in Exec Report. VideoPlayer falling back to the SILENT OpenCV-only path (no `ffpyplayer`) is a documented degradation, not an error. See AUDIOPLAYER / VIDEOPLAYER SPECIAL NOTES.
   - Whisperer: speech-to-text — records the mic (~`record_seconds`, default 5 s) or reads an audio file, then runs the neural recognizer. The FIRST run can take a few MINUTES while it downloads model weights, and CPU transcription can be slow. It is observational/read-only in the canvas; the wrapped Multi-Turn tool is captured in Exec Report. Don't flag it while downloading/transcribing before ~5 min; flag only if silent well beyond that with no completion. A `status: engine_unavailable` block is routable content, NOT a flow crash, while its wrapped row truthfully reports that the requested work did not happen.
   - Image-Interpreter: THREE LLM calls per image — two parallel vision interpretations (CONNECTION-A / CONNECTION-B, each on its own Ollama connection) + one merge (CONNECTION-MERGE) after the barrier; tens of seconds to a few minutes PER IMAGE with cloud models, multiplied by the number of matched images. Don't flag while the 🔀 interpreter / 🧱 barrier / 🔗 merge log lines keep appearing; flag only if silent > 5 min per image with no "Image-Interpreter agent finished" completion. See IMAGE_INTERPRETER SPECIAL NOTES.
   - Video-Analyzer: a DETERMINISTIC OpenCV motion gate (sub-second) then, if motion is present, THREE cloud LLM calls — two parallel vision interpretations (CONNECTION-A / CONNECTION-B) + one merge (CONNECTION-MERGE) over ~8-12 frames; tens of seconds to a few minutes total. A no-motion clip short-circuits to FAIL_NO_MOTION in seconds with no model call. Don't flag while the 🔀 interpreter / 🧱 barrier / 🔗 merge lines keep appearing; flag only if silent > 5 min with no "Video-Analyzer agent finished" completion. See VIDEO_ANALYZER SPECIAL NOTES.

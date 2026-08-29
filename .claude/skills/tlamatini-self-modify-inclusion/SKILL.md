@@ -181,6 +181,8 @@ counts from the generated snapshot rather than copying prose counts.
 | New **config file with secrets** | ✅ shipped — ⚠️ maybe UNREDACTED | extend `_wants_redaction()` or exclude by name |
 | New **runtime-state / generated dir** | should be ❌ | add its name to `EXCLUDED_DIR_NAMES` |
 | New **flagship capability file** (e.g. `self_update.py`, `Tlamatini.md`) | ✅ auto | add to `REQUIRED_SNAPSHOT_FILES` so it's guaranteed |
+| New **operator toolkit tree** at the repo root (e.g. `security/` — the Blue-hat defender/whitelist `.ps1`, the `.bat` UAC launchers, `README.md`, its asset test) | ✅ auto (the generic walk carries `.py`/`.ps1`/`.bat`/`.md`) | nothing to add — but you MUST confirm its **runtime output** dir is excluded (next row) |
+| New **runtime / evidence dir INSIDE a shipped tree** (e.g. `security/security_logs/`) | ❌ must be **EXCLUDED** | add the dir name to `EXCLUDED_DIRS` in `copy_source_assets.py`. It is state, not source — and here it is the operator's forensic evidence, which can contain their own usernames, IPs and command lines. It must never travel in a snapshot |
 
 The single most dangerous omissions: a **source file hidden by an over-broad exclusion**
 (Step 0 flags it as a source-drop FINDING) and a **new secret-bearing config that

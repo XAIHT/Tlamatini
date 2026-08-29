@@ -67,6 +67,18 @@ Coverage: `agent/test_web_process_stays_lean.py`. **Note:** the exclusion's effe
 
 ---
 
+## 2026-08-28 — Googler phase 1: EVERY Bing result was silently thrown away (`agents/googler/googler.py`)
+
+Googler's Tier-0 plain-HTTP path has a per-engine **own-domain skip**: a result that still points at the search engine's own host is not a result, so it is dropped. Bing, however, does not hand out the destination URL — it wraps **every organic result** in its own click-tracker, `https://www.bing.com/ck/a?...&u=a1<base64url>`. `_unwrap_redirect` only knew the plain `uddg` / `q` / `u` / `url` query-parameter forms, so a Bing link **stayed on `bing.com`** and was then eaten by that very skip. The visible symptom was not an error: Bing returned a full page, Googler reported no usable links, and the tier **fell through to whatever the next engine happened to return** — so a search looked like it had "worked" while silently answering from a weaker source. **Do NOT revert.**
+
+**Two things had to be fixed together, and the ordering is the whole trick.** Bing serves that URL with its ampersands HTML-escaped (`&amp;u=a1…`), so `urlsplit` + `parse_qs` never saw a `u` parameter at all — the unwrapper would have failed even once it knew to look. `_unwrap_redirect` therefore now `html.unescape()`s the raw value **first**, before parsing; only then does the `bing.com/ck/a` branch read `u`, strip the leading `a1` / `a2` marker Bing prefixes to the payload, restore the base64 padding (`token + '=' * (-len(token) % 4)`), `urlsafe_b64decode` it, and accept the result **only when it decodes to something starting with `http`**.
+
+**It is fail-open by construction**, and deliberately so: every step sits inside `try/except`, and any failure — an unparseable URL, a marker Bing changes, a payload that is not valid base64, a decode that yields junk — simply falls through to the pre-existing `uddg` / `q` / `u` / `url` loop and then to the raw URL. A tracker format that drifts costs one engine's results, never an exception in the search path.
+
+Also in the same pass: the `mojeek-http` engine's skip list widened from `('mojeek.com',)` to also cover `mastodon.social/@mojeek` and `buttondown.email/mojeek` — the engine's own social and newsletter properties were surviving the own-domain skip and being served back as if they were findings.
+
+**The lesson is the NetSpeed-Calculator lesson again** (2026-08-23, *"a ZERO must always name its cause"*): the failure here was not that Bing broke, it is that **a silent drop is indistinguishable from an empty internet**. When a result-producing path discards candidates, the discard needs a reason a human can read — otherwise the layer degrades quietly and the fallback hides it.
+
 ## 2026-08-27 — Deleter directory-wipe fix, silent test audio, JS parse gate (Tlamatini-Spanish cross-tree glitch report, round 2)
 
 Three fixes ported from findings in the Spanish tree (each verified against THIS English tree first). **Do NOT revert any of them.**

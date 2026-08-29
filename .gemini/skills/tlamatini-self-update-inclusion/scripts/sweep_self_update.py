@@ -15,7 +15,7 @@ Backs the `tlamatini-self-update-inclusion` skill. Parses the three files that o
 the pipeline and checks the four invariants so no asset is silently dropped from a
 release or wrongly wiped/kept by the update swap:
 
-  build.py                       -- assembles the release (the 6 carrier mechanisms)
+  build.py                       -- assembles the release (the 7 carrier mechanisms)
   Tlamatini/agent/self_update.py -- in-app updater (docstring preserve list)
   apply_update.ps1               -- the executed file-swapper ($Preserve array)
 
@@ -27,6 +27,11 @@ Checks (each prints [PASS] or [FINDING]):
   5. UPDATER SHIPPED    apply_update.ps1 is in build.py support_files
   6. SWAP SANITY        apply_update.ps1 validates Tlamatini.exe + does the agents swap
   7. DB DELIVERY        report migrations since last tag + flag preserve/migrate coherence
+  8. TOP-LEVEL CENSUS   every git-tracked top-level tree is named in build.py, or is
+                        explicitly declared dev-only in _DEV_ONLY_TOPLEVEL (with a reason).
+                        This is the GENERIC net: checks 4/5 only see list-parsed entries,
+                        so a tree carried by a bespoke copytree (mechanism 7, e.g.
+                        `security/`) -- or by nothing at all -- is invisible to them.
 
 Pure stdlib, fail-soft (a parse miss is reported, never crashed). Exit code is the
 number of findings (0 == clean), so it can gate a release.
@@ -330,6 +335,38 @@ def main(argv: list[str] | None = None) -> int:
         note("db.sqlite3 is REPLACED on update (current design): new rows arrive, but the user's "
              "chat history + custom toggles reset each update. Keep the self_update.py docstring honest.")
 
+    # ── Check 8: top-level asset census ──────────────────────────────────────
+    # The generic net for "a whole new tree was added and nobody wired a carrier".
+    # This is the check that would have caught `security/` on the day it landed:
+    # it ships through a bespoke copytree (carrier mechanism 7), which no list-
+    # parsing check can see, and its build block fails OPEN with a WARNING.
+    print("\n[8] TOP-LEVEL ASSET CENSUS -- every tracked top-level tree is carried or declared dev-only")
+    tops = _tracked_top_level_dirs(root)
+    if tops is None:
+        note("could not enumerate tracked top-level directories (no git) -- census skipped")
+    else:
+        unclaimed = []
+        for d in tops:
+            if d in _DEV_ONLY_TOPLEVEL:
+                continue
+            # Substring match on purpose: a carrier may name the tree in a list,
+            # an --add-data string, or a bespoke copy block. This census only has
+            # to catch the tree NOTHING in build.py mentions at all.
+            if re.search(r"['\"]%s['\"/\\]" % re.escape(d), build_txt) or f'"{d}"' in build_txt \
+                    or f"'{d}'" in build_txt or f"Path(\"{d}\")" in build_txt:
+                ok(f"'{d}/' is named in build.py (a carrier moves it)")
+            elif d in _UNSHIPPED_BY_DECISION:
+                note(f"'{d}/' is tracked but deliberately NOT shipped -- {_UNSHIPPED_BY_DECISION[d]}")
+            else:
+                unclaimed.append(d)
+        for d in unclaimed:
+            finding(f"top-level '{d}/' is TRACKED in git but is never named in build.py -> it will "
+                    f"NOT be in the release, so a self-update can never deliver it. Wire a carrier "
+                    f"(optional_dir_copies / --add-data / a copy block), or add it to "
+                    f"_DEV_ONLY_TOPLEVEL in this script WITH a reason if it is deliberately dev-only.")
+        if not unclaimed:
+            ok("no unclaimed top-level tree -- every shipped directory has a carrier")
+
     # ── Summary ──────────────────────────────────────────────────────────────
     print("\n" + "=" * 70)
     if _FINDINGS:
@@ -409,6 +446,62 @@ def _migrations_since_last_tag(root: Path, mig_dir: Path) -> list[str] | None:
             Path(p).name for p in paths
             if p.endswith(".py") and "__init__" not in p
         )
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
+# Top-level trees that are DELIBERATELY not shipped. Each entry needs a reason:
+# adding a name here silences the census for it forever, so it must be a real
+# decision, not a way to make a finding go away.
+_DEV_ONLY_TOPLEVEL = {
+    ".claude",      # assistant skills/hooks/memory -- tooling for working ON Tlamatini
+    ".codex",       # ditto (Codex)
+    ".gemini",      # ditto (Gemini)
+    ".github",      # CI config
+    ".vscode",      # editor config
+    ".idea",        # editor config
+    "docs",         # developer onboarding docs (the app never reads them)
+    "scripts",      # repo-side lint/check helpers (e.g. check_js_parse.mjs)
+    "tests_e2e",    # developer end-to-end harness
+    "Tests",        # Angela's visible test harnesses (about-window, perf) -- dev-only
+    "AuxTests",     # auxiliary scratch test scripts -- dev-only
+    ".scanning",    # finding-policy.json for the code scanner -- CI/dev tooling
+    "node_modules", "venv", ".venv", "dist", "build",  # build/dev artifacts
+}
+
+# Tracked top-level trees that are NOT shipped where that is a PRODUCT decision
+# rather than a dev-tooling fact. Reported as a NOTE -- visible on every run,
+# never silently buried -- so the decision stays reviewable. Moving a name here
+# is not the same as declaring it dev-only: it says "we chose not to ship this".
+_UNSHIPPED_BY_DECISION = {
+    "demo_flows": (
+        "3 sample .flw canvas workflows (~9 KB). NOT shipped today, so a fresh "
+        "install has no example flow to open even though Tlamatini registers the "
+        ".flw file association. They drive Zavuerer, which needs a paid API key -- "
+        "ship them (optional_dir_copies) only if a key-requiring demo is acceptable."
+    ),
+}
+
+
+def _tracked_top_level_dirs(root: Path) -> list[str] | None:
+    """Every top-level DIRECTORY that git tracks at least one file inside.
+
+    Uses git (not a filesystem walk) on purpose: gitignored build output,
+    downloaded runtimes and user state must not be mistaken for shipped assets.
+    """
+    try:
+        r = subprocess.run(
+            ["git", "ls-files"], cwd=root,
+            capture_output=True, text=True, timeout=60,
+        )
+        if r.returncode != 0:
+            return None
+        tops = set()
+        for line in r.stdout.splitlines():
+            head, sep, _ = line.partition("/")
+            if sep:
+                tops.add(head)
+        return sorted(tops)
     except (OSError, subprocess.SubprocessError):
         return None
 
