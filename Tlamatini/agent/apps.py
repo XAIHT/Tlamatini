@@ -470,7 +470,6 @@ class AgentConfig(AppConfig):
                     import os
                     import shutil
                     import sys
-                    from concurrent.futures import ThreadPoolExecutor
                     
                     # 1. Kill tracked processes from DB (run in thread to avoid async context issues)
                     def kill_tracked_processes():
@@ -485,10 +484,27 @@ class AgentConfig(AppConfig):
                             print(f"--- Warning: Failed to kill tracked processes: {e}")
                     
                     try:
-                        # Execute DB operations in a separate thread to avoid async context issues
-                        with ThreadPoolExecutor(max_workers=1) as executor:
-                            future = executor.submit(kill_tracked_processes)
-                            future.result(timeout=5)  # Wait max 5 seconds
+                        # Execute DB operations off this thread to avoid async
+                        # context issues.
+                        #
+                        # ⚠️ DO NOT restore ``with ThreadPoolExecutor(...)`` here
+                        # (Angela, 2026-08-29). Its ``__exit__`` calls
+                        # ``shutdown(wait=True)`` — an UNBOUNDED join that
+                        # silently defeated the ``timeout=5`` right next to it,
+                        # so a slow DB call hung shutdown forever. Its workers
+                        # are also NON-daemon, so ``concurrent.futures``' own
+                        # atexit hook would join them a SECOND time on a normal
+                        # exit. A plain DAEMON thread has neither problem: the
+                        # join below has a real deadline, and the interpreter
+                        # never waits on it at exit.
+                        killer = _threading.Thread(
+                            target=kill_tracked_processes,
+                            name="TlamatiniKillTracked", daemon=True)
+                        killer.start()
+                        killer.join(5)
+                        if killer.is_alive():
+                            print("--- Warning: tracked-process cleanup still busy "
+                                  "after 5s - moving on without it.")
                     except Exception as e:
                         print(f"--- Warning: Thread-based cleanup failed: {e}")
 
@@ -588,16 +604,98 @@ class AgentConfig(AppConfig):
             if not global_state.get_state('shutdown_handler_registered'):
                 atexit.register(cleanup_pool_on_shutdown)
                 
-                # Windows signal handling for Ctrl+C and console close
-                def signal_handler(signum, frame):
-                    print(f"\n--- Received signal {signum}, cleaning up...")
+                # ── Ctrl+C MUST ALWAYS QUIT (Angela, 2026-08-29) ──────────────
+                # ⛔ DO NOT put the cleanup work back inside the signal handler,
+                # and DO NOT let a second signal re-enter it.
+                #
+                # WHAT WENT WRONG — proven with a live py-spy dump of the hung
+                # C:\Tlamatini install, not guessed. The old handler called
+                # ``cleanup_pool_on_shutdown()`` DIRECTLY. A Python signal
+                # handler runs ON THE MAIN THREAD, interrupting whatever that
+                # thread was doing, and the very first thing this cleanup does is
+                # ``psutil.process_iter(['cmdline'])`` — which opens and reads the
+                # PEB of EVERY process on the machine, i.e. seconds of work. So
+                # Ctrl+C looked dead and the user pressed it again... and each new
+                # signal RE-ENTERED the handler on top of the previous one, part
+                # way through NON-REENTRANT ``threading``/``psutil`` internals.
+                # Eleven presses built an eleven-deep tower of
+                # ``signal_handler → cleanup_pool_on_shutdown`` frames whose top
+                # was parked forever in ``Thread.start() → self._started.wait()``:
+                # the outer, interrupted ``Thread.start()`` still held threading's
+                # global ``_active_limbo_lock`` (a plain, NON-reentrant Lock), so
+                # the new worker could never finish booting and the main thread
+                # could never release it. Self-deadlock, on the ONE thread that
+                # had to survive. ``os._exit(0)`` sat at the END of the handler
+                # and was never reached.
+                #
+                # THE CONTRACT NOW, in priority order:
+                #   1. Ctrl+C ALWAYS terminates the process. Cleanup is
+                #      best-effort; QUITTING IS NOT.
+                #   2. A SECOND Ctrl+C exits IMMEDIATELY and unconditionally —
+                #      the user saying "I am done waiting" is an order, and it is
+                #      answered with a raw ``os.write`` + ``os._exit`` that touch
+                #      no lock the rest of the process could be holding.
+                #   3. The handler does the MINIMUM that is safe from a signal
+                #      context: set an Event. The real cleanup runs on threads
+                #      created HERE, at boot, in a normal context — a signal
+                #      handler must NEVER start a thread (that is the deadlock).
+                #   4. A watchdog exits anyway if cleanup overruns the grace
+                #      period, so no cleanup step can hold the process hostage.
+                #
+                # Guarded by agent/test_ctrl_c_shutdown.py.
+                _shutdown_event = _threading.Event()
+                _SHUTDOWN_GRACE_SECONDS = 12.0
+
+                def _shutdown_worker():
+                    """Run the real cleanup OFF the signal handler, then exit."""
+                    import os as _os
+                    _shutdown_event.wait()
                     try:
                         cleanup_pool_on_shutdown()
                     except Exception as e:
                         print(f"--- Warning: Cleanup error (ignored): {e}")
-                    # Use os._exit to avoid triggering atexit callbacks again
+                    # os._exit so the atexit copy of this same cleanup does not
+                    # run every kill a second time on the way out.
+                    _os._exit(0)
+
+                def _shutdown_watchdog():
+                    """Cleanup gets a deadline, never a blank cheque."""
+                    import os as _os
+                    import time as _time
+                    _shutdown_event.wait()
+                    _time.sleep(_SHUTDOWN_GRACE_SECONDS)
+                    print(
+                        f"\n--- [SHUTDOWN] Cleanup exceeded {_SHUTDOWN_GRACE_SECONDS:.0f}s"
+                        " - exiting anyway. Any pool process listed above as a"
+                        " survivor may still need ending from Task Manager."
+                    )
+                    _os._exit(3)
+
+                _threading.Thread(target=_shutdown_worker,
+                                  name="TlamatiniShutdown", daemon=True).start()
+                _threading.Thread(target=_shutdown_watchdog,
+                                  name="TlamatiniShutdownWatchdog", daemon=True).start()
+
+                # Windows signal handling for Ctrl+C and console close
+                def signal_handler(signum, frame):
                     import os as os_module
-                    os_module._exit(0)
+                    # SECOND press: the user is done waiting. Obey instantly,
+                    # through nothing that can block — os.write bypasses the
+                    # buffered log tee and its cross-thread lock entirely.
+                    if _shutdown_event.is_set():
+                        try:
+                            os_module.write(2, b"\n--- Ctrl+C again: exiting NOW.\n")
+                        except Exception:
+                            pass
+                        os_module._exit(1)
+                    # Release the worker FIRST, announce afterwards: if the print
+                    # below ever blocked on the log lock, shutdown is already
+                    # under way on a thread that does not care.
+                    _shutdown_event.set()
+                    print(f"\n--- Received signal {signum}, cleaning up "
+                          f"(press Ctrl+C again to quit immediately)...")
+                    # Return. The worker thread owns the rest — a signal handler
+                    # that does real work is exactly the bug this replaced.
                 
                 # Register signal handlers
                 try:

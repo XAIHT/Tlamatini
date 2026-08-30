@@ -16,6 +16,76 @@
 
 ---
 
+## 2026-08-29 — Ctrl+C hung Tlamatini FOREVER: the signal handler did the work, and re-entered itself
+
+**Angela's report, on the live frozen `C:\Tlamatini`: pressing Ctrl+C never quit.** She pressed it
+**eleven times**; `tlamatini.log` recorded every one:
+
+```
+--- Received signal 2, cleaning up...
+--- [SHUTDOWN] Initiating aggressive cleanup protocols...
+--- Scanning for survivors in C:\Tlamatini\agents\pools...
+   (×11 — and then nothing, ever)
+```
+
+**Diagnosed on the wedged process itself, not by reading code.** PID 27308 was still alive with
+**80 threads, ALL in `Wait`, zero progress**. A `py-spy dump` of it showed the MainThread carrying an
+**eleven-deep tower** of `signal_handler → cleanup_pool_on_shutdown` frames — exactly one per press —
+whose top was parked forever in:
+
+```
+submit (thread.py:180) → _adjust_thread_count (thread.py:203)
+  → start (agent\log_identity.py:333) → start (threading.py:999)
+    → wait (threading.py:655) → wait (threading.py:355)    *** FOREVER ***
+```
+
+**Root cause — two independent defects, both in `agent/apps.py`:**
+
+1. **`signal_handler` called `cleanup_pool_on_shutdown()` DIRECTLY, with no re-entrancy guard.** A
+   Python signal handler runs **on the MAIN thread**, interrupting whatever it was doing — and the
+   first thing that cleanup does is `psutil.process_iter(['cmdline'])`, which opens and reads the PEB
+   of **every process on the machine**. So Ctrl+C genuinely *looked* dead for seconds; Angela pressed
+   again; and each new signal **re-entered the handler on top of the previous one**, part-way through
+   **non-reentrant** `threading`/`psutil` internals. The interrupted `Thread.start()` still held
+   threading's global **`_active_limbo_lock`** (a plain, NON-reentrant `Lock`), so the nested
+   `Thread.start()` could never finish and the main thread could never release it. **Self-deadlock on
+   the one thread that had to survive.** `os._exit(0)` sat at the END of the handler, unreachable.
+   ⚠️ Pressing Ctrl+C *more* is what made it *permanent* — the opposite of what a user expects.
+2. **`with ThreadPoolExecutor(max_workers=1) as executor:` wrapped a `future.result(timeout=5)`.**
+   The context manager's `__exit__` calls **`shutdown(wait=True)` — an UNBOUNDED join** that silently
+   defeats the very timeout written beside it. Its workers are also NON-daemon, so
+   `concurrent.futures`' own atexit hook would join them a second time on a normal exit.
+
+**The fix — CONTRACT, do NOT weaken:**
+
+1. **Ctrl+C ALWAYS terminates the process. Cleanup is best-effort; QUITTING IS NOT.**
+2. **A SECOND Ctrl+C exits immediately and unconditionally** — answered with a raw `os.write(2, …)` +
+   `os._exit(1)` that touch **no lock** the rest of the process could be holding. (A `print()` there
+   would go through the buffered log tee and its cross-thread lock.)
+3. **The handler does the MINIMUM safe from a signal context: it sets an `Event`. Nothing else.** The
+   real cleanup runs on a `TlamatiniShutdown` daemon thread **created at boot, in normal context** —
+   ⚠️ **a signal handler must NEVER start a thread**; that creation *is* the deadlock.
+4. **`_shutdown_event.set()` comes BEFORE the announcement print**, so a blocked log write can never
+   delay the shutdown itself.
+5. **A `TlamatiniShutdownWatchdog` daemon hard-exits (`os._exit(3)`) after `_SHUTDOWN_GRACE_SECONDS`
+   (12 s)**, so no cleanup step can ever hold the process hostage.
+6. The tracked-process killer is a plain **daemon `threading.Thread` with `join(5)`** — never
+   `ThreadPoolExecutor`. **`with ThreadPoolExecutor(...)` is now a forbidden pattern in `apps.py`.**
+7. The `atexit.register(cleanup_pool_on_shutdown)` normal-shutdown path is unchanged.
+
+**Proven, not assumed.** `tests_e2e/test_ctrl_c_quits_visible.py` boots the real Django/Daphne stack
+on port 8043, raises a **genuine console `CTRL_C_EVENT`**, and times the exit:
+**PASS — quit 5.5 s after Ctrl+C, exit code 0.** ⚠️ The sender runs in a **throwaway helper process**
+on purpose: `AttachConsole()` requires `FreeConsole()` first, which **detaches the caller from its own
+console** — doing it inline killed the test's stdout and the verdict Angela was watching for never
+appeared. A visible test whose verdict is invisible is not a visible test.
+
+Coverage: `agent/test_ctrl_c_shutdown.py` (11 tests — the handler calls no cleanup, starts no thread,
+guards re-entry, sets before printing; no context-managed executor; the watchdog and the boot-time
+threads exist) + the visible E2E above.
+
+---
+
 ## 2026-08-29 — The frozen console's torch warning storm: ROOT-FIXED by keeping `transformers` out of the web process (and NOT by muting)
 
 **Angela's report, from a frozen launch of `C:\Tlamatini` (v1.50.3).** The startup console opened with a wall of third-party import-time warnings that say nothing about Tlamatini's health, so **every boot read as "something is wrong"** and the lines that DO matter were buried:
