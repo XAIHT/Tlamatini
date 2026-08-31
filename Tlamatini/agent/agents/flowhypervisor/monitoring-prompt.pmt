@@ -727,6 +727,44 @@ NETSPEED_CALCULATOR SPECIAL NOTES (multi-provider RFC 6349 throughput measuremen
     "unreachable" on all of them indicates a real problem — this machine has no
     Internet.
 
+DELETER SPECIAL NOTES (destructive agent with a fail-toward-safety guard):
+  - Deleter is SHORT-LIVED in "immediate" mode (it deletes, then starts its
+    target_agents and exits) and LONG-RUNNING in "event" mode (it polls
+    source_agents until trigger_event_string appears). BOTH are NORMAL.
+  - `target_path` is Deleter's WORKING DIRECTORY, not a delete target: relative
+    entries in `files_to_delete` are resolved against it. A line reporting that
+    the folder itself was NOT removed is CORRECT behaviour, not a failure.
+  - Deleting a whole directory tree requires `allow_directory_delete: true`. A
+    refusal for a directory while that flag is false is the guard working as
+    DESIGNED — do NOT flag it.
+  - REFUSED lines naming a protected location (agent / agents / tlamatini /
+    migrations / security / windows / system32 / users / python, the working
+    directory or one of its ancestors, Deleter's own tree, a git root or a drive
+    root), together with a `total_refused` count, are the safety guard doing its
+    job. They are NEVER a flow error.
+  - A run that deletes ZERO files because nothing matched the glob is a
+    legitimate outcome, not a failure.
+  - DO flag only a genuine fault: Deleter never started, it crashed with a
+    traceback, or it finished without starting its `target_agents`.
+
+EDITOR / GREPPER / GLOBBER SPECIAL NOTES (read-only + surgical file agents):
+  - All three are SHORT-LIVED, finish in sub-second to a few seconds, ALWAYS
+    emit their INI_SECTION_EDITOR / INI_SECTION_GREPPER / INI_SECTION_GLOBBER
+    block, and ALWAYS start their `target_agents`. A quick run that then ends is
+    NORMAL, not "stuck".
+  - A NEGATIVE FINDING IS A SUCCESSFUL RESULT — the finding IS the deliverable.
+    Grepper `status: no_matches`, Globber with zero matches, and Editor
+    `status: not_found` / `not_unique` / `noop` all mean the agent RAN CORRECTLY
+    and is reporting what it found. NEVER flag them as errors; a downstream
+    Forker is normally branching on exactly those values.
+  - Editor refusing a non-unique `old_string` (when `replace_all` is false) is
+    the safety contract working: it will not guess which occurrence was meant.
+  - Grepper skipping a file it judges genuinely binary is normal. It reads
+    BOM-marked UTF-8/16/32 first, then cp1252/Latin-1, so a non-UTF-8 source is
+    searched rather than silently reported as having no matches.
+  - DO flag only: the agent never started, it crashed, or it finished without
+    starting its `target_agents`.
+
 ASK-EXECS — NOT A FLOW CONCEPT (never appears in agent-pool logs):
   "Ask Execs" is a chat-side, interactive Multi-Turn toggle that asks the human
   Proceed/Deny before each LLM tool call. It has NO canvas node and NO agent-pool
@@ -902,6 +940,8 @@ DO NOT report these as problems:
   - Long-running agents (Raiser, Monitor_Log, Gatewayer, etc.) running for a long time with no completion → they are designed to run indefinitely
   - "WAITING FOR AGENTS TO STOP" in a looping flow → normal concurrency guard
   - "No files found for pattern" → Deleter/Mover found nothing to process
+  - Deleter REFUSED lines (a protected directory, a directory without `allow_directory_delete: true`, the working directory or an ancestor, a git root or a drive root) plus a `total_refused` count → the fail-toward-safety guard working as DESIGNED, never a flow error
+  - Editor INI_SECTION_EDITOR blocks with `status: not_found` / `not_unique` / `noop`, Grepper INI_SECTION_GREPPER blocks with `status: no_matches`, and Globber INI_SECTION_GLOBBER blocks with zero matches → a NEGATIVE FINDING IS A SUCCESSFUL RESULT; it is the deliverable a downstream Forker branches on, not a failure
   - "No files found matching the patterns — nothing to decompile." → J-Decompiler found no matching Java artifacts
   - De-Compresser logging "📦 DE-COMPRESSER AGENT STARTED" / "✅ Decompressed ..." / "✅ Compressed ..."
   - De-Compresser logging "⚠️ Password supplied for .gz but ... gzip module" — informational warning when no 7z CLI is on PATH

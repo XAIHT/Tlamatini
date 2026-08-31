@@ -24,7 +24,7 @@
 
 <p align="center">
   <a href="https://discord.gg/WFQsrskgc"><img src="https://img.shields.io/badge/DISCORD-JOIN%20US-5865F2?style=for-the-badge&labelColor=2D2D2D&logo=discord&logoColor=white" alt="Join our Discord"/></a>
-  <a href="https://github.com/XAIHT/Tlamatini/releases"><img src="https://img.shields.io/badge/RELEASE-v1.50.0-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Release v1.50.0"/></a>
+  <a href="https://github.com/XAIHT/Tlamatini/releases"><img src="https://img.shields.io/badge/RELEASE-v1.50.6-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Release v1.50.6"/></a>
   <a href="https://www.python.org/downloads/release/python-31210/"><img src="https://img.shields.io/badge/PYTHON-3.12.10-3776AB?style=for-the-badge&labelColor=2D2D2D&logo=python&logoColor=white" alt="Python"/></a>
   <a href="#installation"><img src="https://img.shields.io/badge/PLATFORM-WIN%2010%20%7C%2011-0078D6?style=for-the-badge&labelColor=2D2D2D&logo=windows&logoColor=white" alt="Platform"/></a>
   <a href="#-the-full-capability-list"><img src="https://img.shields.io/badge/AGENT%20TYPES-88-8A2BE2?style=for-the-badge&labelColor=2D2D2D" alt="88 agent types"/></a>
@@ -50,7 +50,7 @@
 1. [What is Tlamatini](#what-is-tlamatini)
 2. [How it works](#how-it-works)
 3. [Get started in five steps](#-get-started--5-steps-to-a-cloud-powered-tlamatini)
-4. [Current release](#current-release--v1500)
+4. [Current release](#current-release--v1506)
 5. [The full capability list](#-the-full-capability-list)
 6. [Enable Tlamatini as a Blue-hat agent](#enable-tlamatini-as-a-blue-hat-agent)
 7. [Installation](#installation)
@@ -206,9 +206,13 @@ Done — tick **Multi-Turn** in the chat toolbar and put Tlamatini to work.
 
 ---
 
-## Current release — v1.50.0
+## Current release — v1.50.6
 
-`v1.50.0` is the newest annotated release and the current documentation/package version. The tag resolves to commit `ae6fec4c`; aligned local/remote `HEAD` is two commits later at `d161098e`, and runtime identity still comes from Git/build metadata rather than this prose. v1.50.0 adds Tlamatini's **security-harnessing arsenal** (`security/`): a Windows Blue-hat toolkit with ten host-monitor families, detect-only/armed/watch/aggressive modes, a path-aware process guard, explicit IP/process response boundaries, a persistent privilege/policy enablement script, and a non-destructive VISIBLE asset test. Default mode refuses recognised Tlamatini paths and alerts rather than kills dual-use tool names; `-Aggressive` deliberately changes that boundary. It carries the v1.49.1 line, which added **NetSpeed-Calculator**, the 88th workflow agent and 66th wrapped launcher; WAL-aware database backup, staged replacement, and pre-Django hot-swap through SQLite's online backup API; Googler's structured Google-dork builder and lawful-source presets; an External MCP Adder skill with a diagnose-before-activate lifecycle; the append-only Deep Internet Research starter prompt; Ollama Pro-or-higher guidance for complete operation; and private-release contact synchronization that keeps public builds empty of contact PII.
+`v1.50.6` is the newest annotated release. The tag, local `HEAD`, and `origin/main` all resolve to commit `6e4ffa73`; runtime identity still comes from Git/build metadata rather than this prose. The newest public-release path no longer requires a machine-local `.private_targets.json` on a pristine clone: a target-independent privacy preflight distinguishes a genuinely clean tree from a maintainer tree that still contains private evidence, fails toward refusal when probes are unreadable or private material is detected, keeps the tracked `private_targets.example.json` template inert, and never introduces a runtime dependency on either targets-file spelling. The 26-test `agent.test_public_release_targets` suite pins fresh-clone builds, runtime independence, structural-only verification, secret restoration, and PII-safe refusal behavior.
+
+`v1.50.5` fixes the Windows Ctrl+C shutdown deadlock. The signal handler now performs only a re-entry-guarded Event set; a boot-created daemon worker performs best-effort cleanup, a watchdog guarantees exit after the grace period, and a second Ctrl+C hard-exits immediately. Source-contract tests and a visible end-to-end console test prove that the real Django/Daphne process terminates instead of stacking nested signal handlers. The same release adds `PromptDesigner.jpg` as a tracked design-reference capture; it is repository artwork, not a claim that a separate Prompt Designer runtime is already wired into Tlamatini.
+
+The carried `v1.50.4` runtime fix keeps optional Transformers and its transitively imported Torch stack out of the frozen Django process while preserving Torch in the carried Python used by Talker. `v1.50.3` corrects Bing redirect decoding and Mojeek self-result filtering in Googler. The `v1.50.0` security-harnessing arsenal remains fully carried: the administrator-operated `security/` toolkit supplies ten host-monitor families, detect-only/armed/watch/aggressive modes, path-aware process protection, bounded IP/process response, persistent enablement, and a non-destructive visible regression harness. The v1.49.1 foundation remains the active surface: **NetSpeed-Calculator** as workflow agent 88 and wrapped launcher 66; WAL-safe database copy/hot-swap; structured and resilient Googler discovery; guarded External-MCP onboarding; Deep Internet Research prompt 118; Ollama Pro-or-higher guidance; and private-contact synchronization that keeps public builds empty of contact PII.
 
 NetSpeed-Calculator measures download, upload, latency, jitter, packet loss, and bufferbloat against several keyless providers. It discards TCP slow start, samples throughput as `d(bytes)/dt`, rejects outliers, publishes Student-t confidence intervals, and fuses providers with fixed- or random-effects meta-analysis plus Cochran's Q/I². Its `full`, `download`, and `upload` actions consume real bandwidth; `validate` only checks provider reachability, while `providers` lists the catalog. A full run commonly transfers about 100-200 MB, so the wrapped tool is in Ask-Execs tier D and must not be repeated casually.
 

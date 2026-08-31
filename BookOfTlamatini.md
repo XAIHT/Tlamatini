@@ -527,7 +527,7 @@ When the migrations finish and you have a superuser, run the server (chapter 7).
 
 ### Path B — Pre-built one-click installer (end users)
 
-Download the newest published release ZIP from **[Tlamatini Releases](https://github.com/XAIHT/Tlamatini/releases)** and unzip it (or use a `Tlamatini_Release/` folder somebody handed you / you built — see Part VIII). This book currently documents the annotated **v1.50.0 release**. The tag resolves to commit `ae6fec4c`; local and remote `HEAD` are aligned two commits later at `d161098e`, while runtime identity remains Git/build-derived. Then:
+Download the newest published release ZIP from **[Tlamatini Releases](https://github.com/XAIHT/Tlamatini/releases)** and unzip it (or use a `Tlamatini_Release/` folder somebody handed you / you built — see Part VIII). This book currently documents the annotated **v1.50.6 release**. The tag, local `HEAD`, and `origin/main` all resolve to commit `6e4ffa73`, while runtime identity remains Git/build-derived. Then:
 
 1. Open the unzipped folder.
 2. Double-click **`Installer.exe`**.
@@ -2284,14 +2284,14 @@ Pre-releases use the standard SemVer suffixes — `2.0.0-alpha.1`, `2.0.0-beta.1
 
 ```powershell
 git status                                          # clean tree, on main
-git tag -a v1.50.0 -m "Release 1.50.0: <one-liner>"   # annotated tag
-git push origin v1.50.0
+git tag -a v1.50.6 -m "Release 1.50.6: <one-liner>"   # annotated tag
+git push origin v1.50.6
 python build.py
 python build_uninstaller.py
 python build_installer.py
 ```
 
-All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.50.0/`, named for the version so the file you hand to a user is unambiguous before they even unzip it. The current `v1.50.0` tag remains reachable from `HEAD`, so the bare runtime version stays `1.50.0` even though the worktree is one commit beyond the tagged commit.
+All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.50.6/`, named for the version so the file you hand to a user is unambiguous before they even unzip it. The current `v1.50.6` tag is at `HEAD`, so the bare runtime version resolves to `1.50.6`.
 
 ### Where the version shows up in a running install
 
@@ -2299,8 +2299,8 @@ The build computes the version once and bakes it into four surfaces:
 
 - **`Tlamatini/agent/_version.py`** — generated at build time, gitignored, read at runtime by `agent.version.get_version()`. This is what every in-process surface reads.
 - **Win32 `VERSIONINFO`** — `Tlamatini.exe`, `Installer.exe`, and `Uninstaller.exe` all carry the version in their resource fork. Right-click the file → Properties → Details → ProductVersion.
-- **Release folder name** — `dist/Tlamatini_Release_v1.50.0/`.
-- **Runtime surfaces** — the About dialog renders `Tlamatini v{{ version }}` (Django context processor); after the release tag/build, the startup banner prints `--- [VERSION] Tlamatini 1.50.0` to both the console and `tlamatini.log`; `GET /agent/version/` returns `{"version":"1.50.0","commit":"abc1234","date":"…","source":"generated"}` as an **open** endpoint suitable for a health-check.
+- **Release folder name** — `dist/Tlamatini_Release_v1.50.6/`.
+- **Runtime surfaces** — the About dialog renders `Tlamatini v{{ version }}` (Django context processor); after the release tag/build, the startup banner prints `--- [VERSION] Tlamatini 1.50.6` to both the console and `tlamatini.log`; `GET /agent/version/` returns `{"version":"1.50.6","commit":"abc1234","date":"…","source":"generated"}` as an **open** endpoint suitable for a health-check.
 
 If the four surfaces ever disagree, your build was run with a stale `$env:TLAMATINI_VERSION` or against an out-of-date `_version.py` — clear them and re-run `build.py`.
 
@@ -3426,6 +3426,10 @@ The other firmware agents make Tlamatini an *embedded engineer*. ESPHomer makes 
 # Appendix C — Changelog
 
 ### Recent Updates
+
+- **Release v1.50.6 — Public builds work from a pristine clone without weakening the privacy gate — 2026-08-30** — The annotated release, local `HEAD`, and `origin/main` all resolve to `6e4ffa73`. `build_complete_public_release.py` no longer requires the gitignored `.private_targets.json` on a fresh clone or CI machine. A new target-independent `privacy_preflight()` inspects the tree itself: a clean committed tree enters explicitly labelled structural-only mode and still runs every target-independent scrub/verification layer; private evidence, a malformed probe, or an unreadable file fails toward refusal and names how to recover. The tracked `private_targets.example.json` is shape-only documentation and is deliberately inert, while both real targets-file spellings are ignored, excluded from self-modify snapshots, and build-time only. The same audit found and fixed a restoration hole: the backup list for configs touched by `regen_secrets.py` is now derived from source, so Zavuerer, Discoverer, and future managed configs cannot be scrubbed without a recoverable copy. Coverage is `agent.test_public_release_targets` (26 tests), including reconstructed committed configs from a real fresh-clone state. The active source inventory remains **88 workflow agents**, **66 wrapped chat agents**, **108 built-in Multi-Turn tools**, **29 skills**, and **197 migrations**.
+
+- **Release v1.50.5 — Ctrl+C always quits, and the Prompt Designer reference asset is tracked — 2026-08-29** — A frozen Windows process could deadlock permanently because the signal handler ran process-wide cleanup directly on the interrupted main thread and allowed repeated Ctrl+C signals to re-enter non-reentrant `threading`/`psutil` internals. The fix makes the handler minimal: it sets a shutdown Event before logging, a daemon worker created at boot performs cleanup, a watchdog hard-exits after the bounded grace period, and a second Ctrl+C exits immediately without touching buffered logging locks. `agent.test_ctrl_c_shutdown` pins the source contract, and `tests_e2e/test_ctrl_c_quits_visible.py` sends a genuine Windows `CTRL_C_EVENT` to the real server and proves termination. `PromptDesigner.jpg` is also added as a tracked visual design reference showing the Prompt Designer shell; because no runtime source currently references it, this book records it as artwork/evidence rather than advertising a shipped Prompt Designer feature. The carried `v1.50.4` wave keeps optional Transformers/Torch out of the frozen web process while retaining Torch in carried Python for Talker, and `v1.50.3` fixes Bing tracker decoding plus Mojeek self-result filtering in Googler.
 
 - **Release v1.49.1 — Measured networking, WAL-safe data movement, resilient structured web discovery, guided MCP onboarding, and synchronized private contacts — 2026-08-23** — The annotated release tag resolves to `6adf3623`; local and remote `HEAD` are aligned one commit later at `abc7899a`, with the same reachable bare release identity. NetSpeed-Calculator becomes workflow agent 88 and wrapped launcher 66, measuring download/upload/latency/jitter/loss/bufferbloat across keyless providers with slow-start exclusion, derivative sampling, outlier rejection, confidence intervals, random-effects fusion, I² heterogeneity reporting, named zero-byte failures, and an Ask-Execs tier-D bandwidth warning. `agent/sqlite_copy.py` moves Backup DB, Set DB, and pre-Django hot-swap onto SQLite's online backup API, self-contained DELETE-journal destinations, `quick_check`, and WAL/SHM/journal sidecar hygiene. Googler gains a structured Google-dork compiler with syntax normalization, aliases, presets for ordinary and lawful/open-source discovery, grouped site/filetype alternatives, and URL-only file-hunt output. Its execution path now runs four server-rendered routes through plain `urllib` first, then falls back to visible installed Chrome/bundled Chromium across seven direct-results routes with bounded retries and answer-route logging; advanced Google-only operators may broaden on fallback engines. Its dedicated 73-test suite pins query correctness, HTTP-before-browser behavior, browser/config defaults, chain order, retry/fallback stopping, redirect unwrapping, and the direct-tool/canvas contract. The 29th runtime skill adds the guarded External-MCP classify/import/doctor/activate/wait/list/call lifecycle; migration 0194 adds the append-only Deep Internet Research starter; migrations 0195-0197 add NetSpeed's agent/tool/prompt rows. The private builder synchronizes same-machine contacts into gitignored `contacts.private.json`, while public builds and self-modify snapshots remain contact-empty. The source-verified release surface is **88 workflow agents**, **66 wrapped chat agents**, **108 built-in Multi-Turn tools**, **29 skills**, and **197 migrations**.
 

@@ -640,13 +640,16 @@ system_prompt: |
 ### 11. Deleter
 - **Purpose**: Deletes files matching a pattern, then triggers downstream agents.
 - **Used for**: Removing files and directories that match glob patterns as part of a cleanup or preparation step. It supports recursive scanning, file type exclusions, and both immediate and event-triggered execution modes.
+- **⚠️ SAFETY CONTRACT (fail-toward-safety — do NOT design around it)**: put the things to delete in `files_to_delete`, and use `target_path` ONLY as the working directory they resolve against. Wiping a whole tree requires `allow_directory_delete: true`. Deleter REFUSES (logging the reason and a `total_refused` count) for protected application directories by name (agent / agents / tlamatini / migrations / security / windows / system32 / users / python / …), for the working directory or any ancestor of it, for its own tree, and for git roots and drive roots. A refusal is the guard working as designed, NOT a flow error — it still starts `target_agents`, so branch on it with a Forker instead of trying to defeat it.
 - **Aimed at**: Automating housekeeping tasks such as cleaning old log files, removing stale build artifacts, purging temporary data, or clearing deployment directories before a fresh install — all within a controlled, sequential workflow.
 - **Application example**: In a deployment flow, a chain of five Deleter agents sequentially removes old server logs, application log directories, deployed application folders, autodeploy WAR files, and autodeploy status files — preparing a clean state before the new application is deployed.
 - **Pool name pattern**: `deleter_<n>`
 - **Starts other agents**: YES
 - **Config parameters**:
   - `trigger_mode`: "immediate" (options: "immediate", "event")
-  - `files_to_delete`: ["C:/Temp/*.tmp"] (list of file glob patterns — formulate based on the flow's objective)
+  - `target_path`: "" (the WORKING DIRECTORY relative `files_to_delete` entries are resolved against — it is **NOT** a delete target. `target_path: "<app>/Temp"` + `files_to_delete: ["*.tmp"]` deletes `<app>/Temp/*.tmp` and NEVER the `Temp` folder itself)
+  - `files_to_delete`: ["*.tmp"] (list of files / folders / glob patterns — **this** holds the targets; formulate based on the flow's objective. Obey the Temp policy: scratch lives under the application's own `Temp` directory, never `C:/Temp` or `%TEMP%`)
+  - `allow_directory_delete`: false (must be **true** to delete a whole directory tree; while false, a directory target is refused)
   - `recursive`: false (when true, scans subdirectories recursively for matching files)
   - `filetype_exclusions`: "" (comma-separated extensions and/or filenames to exclude, e.g. "exe, msi, .profile")
   - `source_agents`: [] (upstream agents — for canvas connection tracking and event monitoring)
