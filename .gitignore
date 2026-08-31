@@ -359,6 +359,11 @@ contacts.json
 personal_info_audit_report.md
 private_data_audit_report.json
 .private_targets.json
+# The DOTLESS spelling is auto-discovered by build_complete_public_release.py
+# too (DEFAULT_TARGETS_FILES), so a leading-dot typo must not make the file
+# committable. `private_targets.example.json` is a different name: it is the
+# TRACKED, placeholder-only template and stays tracked.
+private_targets.json
 contacts.private.json
 public_release_verify_report.json
 

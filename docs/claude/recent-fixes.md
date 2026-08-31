@@ -16,6 +16,79 @@
 
 ---
 
+## 2026-08-30 — the PUBLIC release needed `.private_targets.json`, a file no clone can have
+
+**Angela: "improve the build of the public release to not be necessary the file
+`.private_targets.json` … and analyze that it should be no runtime problem if in the first run
+Tlamatini can't run 'cause the file may be missing."**
+
+`build_complete_public_release.py` **REFUSED to run at all** without a leak-targets list. The file
+is **gitignored**, so a fresh clone, a new machine or CI could *never* build a public release —
+only the one machine that already had it. But the refusal was not simply wrong: with no list, the
+same absence means two **opposite** things, and only one of them is safe to build.
+
+| no targets list, because… | right answer |
+|---|---|
+| a PRISTINE clone — there is nothing private in the tree | **build**; the refusal was pure friction |
+| Angela's OWN tree, file deleted/renamed/typo'd | **refuse**; proceeding publishes her phone number |
+
+**The fix is a target-INDEPENDENT `privacy_preflight()`** that asks the *tree* which case it is —
+`data.keys`, a keyed `config.json` / agent `config.yaml`, a contacts book, a keyed External-MCP
+catalog, root `*.key` files. Evidence → refuse, **naming the evidence** and the four ways to fix it
+(plus an explicit, loudly-logged `--assume-clean-tree`). No evidence → **CLEAN-TREE mode**, which
+still runs every target-independent defence (`regen --mode push-able`, the `SECRET_KEY_RE` scrub,
+an empty contacts book, the code-seeded MCP catalog, build.py's live-MCP-secret abort).
+
+**DO NOT REVERT / DO NOT WEAKEN:**
+
+1. **The pre-flight FAILS TOWARD REFUSAL.** Any unreadable/malformed probe counts *as* evidence —
+   the deliberate inverse of the usual fail-open rule, for the same reason LaTeXer's bisect rung
+   fails safe: publishing Angela's data is worse than a build that stops.
+2. **The template is INERT.** `private_targets.example.json` is tracked documentation and is
+   **NEVER** in `DEFAULT_TARGETS_FILES`. If it were auto-loaded — or if its `<placeholder>` values
+   counted as targets — an unfilled copy would make the list non-empty, **silence the refusal**,
+   and print `VERIFIED CLEAN` having scrubbed nothing real. Strictly worse than the refusal.
+   `_is_placeholder()` strips those values and `_`-prefixed JSON keys are documentation, because
+   `cpd.load_targets` otherwise turns a `_README` string into a "private value".
+3. **CLEAN-TREE mode never claims a check it did not run.** `check_private_data.py` exits 2 with no
+   targets, so `STRUCTURAL_ONLY_SENTINEL` keeps every structural layer running and the banner,
+   audit line and summary all say *structural-only, no personal-data matching was performed*.
+4. **`_looks_like_pii` / `_is_live_secret` must stay shape-tight.** The first version passed every
+   hand-written case and **still refused a fresh clone** on SEVEN committed defaults:
+   `host: 127.0.0.1`, `webhook_host: 0.0.0.0`, `max_body_bytes: 1048576`, `max_bytes_per_stream:
+   100000000`, `verify_token: "tlamatini"`, `password: "YourStrongPassword"`. Dotted-numeric and
+   plain integers are inert; a phone needs a `+`/separator and 7-15 digits; placeholder prefixes
+   match **glued** (`YourStrongPassword`, `YOUR_EMAIL_HERE` — a `\b` misses both), and `my` is
+   deliberately absent from that list so real names like "Myriam" are never dropped from the scrub.
+   *Testing the maintainer's keyed tree proves nothing about a clone* — the test reconstructs the
+   **committed** blobs of all 89 tracked configs and runs the real pre-flight over them.
+
+**Two real bugs found and fixed on the way:**
+
+- **`REGEN_TOUCHED` backed up 5 of the 7** agent `config.yaml` files `regen_secrets.py` rewrites —
+  **`zavuerer` and `discoverer` were missing**. On a machine without `data.keys` the `finally`
+  re-key is skipped, so those two were scrubbed to placeholders **with no backup to restore from**:
+  silent loss of the operator's own keys. Now **derived** from `regen_secrets` itself (9 paths), so
+  the next managed config is covered the day it is added.
+- **`private_targets.json` (dotless) was auto-discovered but NOT gitignored** — a leading-dot typo
+  would have committed a file full of real PII. Both spellings are now ignored; the `.example.`
+  template stays tracked.
+
+`regen_secrets.py --mode push-able` was already automatic inside this builder (STEP 1) and remains
+so — it is now stated in the banner, and it still runs strictly **before** `build.py` reads the tree.
+
+**RUNTIME: there is none, and that is now enforced.** `.private_targets.json` is **build-time
+only** — no module under `Tlamatini/agent/` opens it, and neither `build.py` nor `install.py`
+ships or references it, so a missing file can never affect a first run or any later one. That was
+already true; it is now *pinned*, so nobody can quietly wire it into runtime and break first launch
+for every user (its absence is the normal state on every machine but Angela's).
+
+Coverage: **`Tlamatini/agent/test_public_release_targets.py` (26 tests)** — runtime independence,
+the fresh-clone contract over the committed blobs, the seven false positives by value, template
+inertness, the surviving refusal, fail-toward-refusal, and the derived regen backup list.
+
+---
+
 ## 2026-08-29 — Ctrl+C hung Tlamatini FOREVER: the signal handler did the work, and re-entered itself
 
 **Angela's report, on the live frozen `C:\Tlamatini`: pressing Ctrl+C never quit.** She pressed it

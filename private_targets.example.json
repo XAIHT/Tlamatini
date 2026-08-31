@@ -1,0 +1,43 @@
+{
+  "_README": [
+    "TEMPLATE ONLY -- this tracked file contains NO real data and is NEVER read by",
+    "a build. To use it: copy it to `.private_targets.json` (note the LEADING DOT)",
+    "in this same folder and replace every <placeholder> with your own real value.",
+    "That dotted filename is gitignored, so it never leaves your machine.",
+    "",
+    "WHAT IT IS FOR: build_complete_public_release.py and check_private_data.py",
+    "scrub and then audit a release for YOUR private data. That data is NEVER",
+    "hardcoded anywhere in this repository -- which is exactly why the list has to",
+    "come from you.",
+    "",
+    "YOU DO NOT NEED THIS FILE TO BUILD A PUBLIC RELEASE. A fresh clone holds no",
+    "private data, so the builder's PRIVACY PRE-FLIGHT sees a pristine tree and",
+    "builds in CLEAN-TREE mode. It only INSISTS on a list when it finds evidence",
+    "that this particular tree can leak (a data.keys vault, keyed config files, a",
+    "contacts book, root *.key files) -- i.e. when skipping the scrub would",
+    "actually publish something.",
+    "",
+    "TWO RULES THAT KEEP THIS FILE HARMLESS:",
+    "  1. Keys starting with `_` are documentation and are ignored as targets.",
+    "  2. <angle-bracket> values are recognised as placeholders and dropped, so an",
+    "     unfilled copy behaves like 'no list given' instead of quietly passing a",
+    "     build that scrubbed nothing real.",
+    "",
+    "A plain newline-separated list of values works too, if you prefer that to JSON.",
+    "Angela's display name and her @angelahack1 handle are ALWAYS kept in every",
+    "build and must never be listed here."
+  ],
+  "names": [
+    "<a legal-name variant of yours that should not ship, e.g. a middle name>"
+  ],
+  "emails": [
+    "<your.address@example.com>",
+    "<any older address of yours that may still be in the tree>"
+  ],
+  "phones": [
+    "<+00 000 000 0000>"
+  ],
+  "handles": [
+    "<a messaging handle of yours that is not @angelahack1>"
+  ]
+}
