@@ -151,10 +151,12 @@ class NoMlStackInTheWebProcessTests(unittest.TestCase):
         self.assertNotIn('"torch",', prune_block)
         self.assertNotIn("'torch',", prune_block)
 
-    def test_torch_is_never_excluded_from_the_build(self):
-        self.assertNotIn(
+    def test_build_excludes_torch_from_the_frozen_process(self):
+        self.assertIn(
             "'--exclude-module=torch'", _read(_BUILD_PY),
-            "excluding torch outright would break the Talker pool agent",
+            "the frozen Django process never imports torch; without this explicit "
+            "exclusion, a build user's CUDA wheel can add multiple gigabytes to "
+            "_internal. Talker remains supported by carried <install>/python",
         )
 
 

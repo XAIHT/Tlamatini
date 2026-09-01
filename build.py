@@ -340,6 +340,10 @@ def clean_directory(path):
 # The ONLY Python version Tlamatini ships to run its pool agents. The carried
 # interpreter MUST match this exactly — see _probe_carried_python below.
 CARRIED_PYTHON_VERSION = (3, 12, 10)
+# Public release contract: pkg.zip itself must stay at or below 2.8 decimal GB.
+# Use decimal bytes because release hosts and Windows file properties report the
+# user-facing "GB" size in decimal units.  The guard runs before build cleanup.
+MAX_PKG_ZIP_BYTES = 2_800_000_000
 # A few representative third-party deps the pool agents import. The carried
 # interpreter must be able to import all of them, or the agents would fail at
 # runtime on a clean machine — exactly the bug this whole feature fixes.
@@ -471,6 +475,71 @@ def verify_frozen_agent_modules(dist_root):
     print(f"  OK - all {len(_FROZEN_REQUIRED_AGENT_MODULES)} required agent "
           f"module(s) present in the PYZ ({len(names)} modules total).")
     return True
+
+
+def verify_frozen_torch_absent(dist_root):
+    """Fail the build if PyInstaller emitted Torch into the frozen web app.
+
+    Pool agents run under ``<install>/python`` and Talker legitimately needs the
+    CPU-only Torch carried there.  The frozen Django process has no Torch import
+    and must not inherit a build user's multi-gigabyte CUDA installation.
+    """
+    internal_dir = Path(dist_root) / "_internal"
+    torch_dir = internal_dir / "torch"
+    cuda_dll_prefixes = (
+        "torch", "c10", "cudart", "cudnn", "cublas", "cufft", "cusparse",
+        "cusolver", "curand", "nvjitlink", "nvrtc",
+    )
+    orphaned_dlls = []
+    if internal_dir.exists():
+        orphaned_dlls = [
+            path for path in internal_dir.rglob("*.dll")
+            if path.name.lower().startswith(cuda_dll_prefixes)
+        ]
+    print("\n--- Post-build: verifying frozen Torch is absent ---")
+    if torch_dir.exists() or orphaned_dlls:
+        offending_files = {
+            path for path in orphaned_dlls if path.is_file()
+        }
+        if torch_dir.exists():
+            offending_files.update(
+                path for path in torch_dir.rglob("*") if path.is_file()
+            )
+        size_bytes = sum(path.stat().st_size for path in offending_files)
+        samples = "\n".join(f"         - {path}" for path in sorted(offending_files)[:8])
+        print(
+            "ERROR: PyInstaller bundled Torch/CUDA binaries into the frozen Django process:\n"
+            f"       Size: {size_bytes / 1_000_000_000:.3f} GB\n"
+            f"       Files:\n{samples}\n"
+            "       Torch belongs only in <install>/python for the Talker pool agent.\n"
+            "       Keep the no-op pyinstaller_hooks/hook-torch.py and frozen ML\n"
+            "       exclusions enabled. Aborting build."
+        )
+        sys.exit(1)
+    print("  OK - frozen Torch/CUDA binaries are absent; carried CPU Torch remains separate.")
+    return True
+
+
+def enforce_pkg_zip_size(pkg_zip_path, max_bytes=MAX_PKG_ZIP_BYTES):
+    """Fail when ``pkg.zip`` exceeds the public-release size budget."""
+    path = Path(pkg_zip_path)
+    actual_bytes = path.stat().st_size
+    if actual_bytes > max_bytes:
+        print(
+            "ERROR: pkg.zip exceeds the release-size budget:\n"
+            f"       File: {path}\n"
+            f"       Actual: {actual_bytes / 1_000_000_000:.3f} GB "
+            f"({actual_bytes:,} bytes)\n"
+            f"       Limit : {max_bytes / 1_000_000_000:.3f} GB "
+            f"({max_bytes:,} bytes)\n"
+            "       The build output is being retained for inspection. Aborting build."
+        )
+        sys.exit(1)
+    print(
+        f"  Size guard passed: {actual_bytes / 1_000_000_000:.3f} GB "
+        f"<= {max_bytes / 1_000_000_000:.3f} GB."
+    )
+    return actual_bytes
 
 
 def _probe_carried_python(python_exe):
@@ -641,6 +710,13 @@ def bundle_carried_python(dist_manage, frozen_python, build_python):
         "        importlib.import_module(_m)",
         "    except Exception as _e:",
         "        miss.append(_m + ' (' + type(_e).__name__ + ': ' + str(_e)[:90] + ')')",
+        "try:",
+        "    import torch as _torch",
+        "    _cuda = getattr(getattr(_torch, 'version', None), 'cuda', None)",
+        "    if _cuda is not None:",
+        "        miss.append('torch (expected CPU-only build, found CUDA ' + str(_cuda) + ')')",
+        "except Exception:",
+        "    pass",  # the import loop above already records a broken/missing torch
         "print('MISSING: ' + '; '.join(miss) if miss else 'CARRIED_LIBS_OK')",
         "raise SystemExit(3 if miss else 0)",
     ])
@@ -663,6 +739,30 @@ def bundle_carried_python(dist_manage, frozen_python, build_python):
             "<repo>/python to force a clean re-provision, correct requirements.txt if needed, "
             "then rebuild. Aborting build."
         )
+
+
+def _probe_cpu_torch(python_exe):
+    """Return ``(is_cpu_only, detail)`` for an isolated interpreter."""
+    code = (
+        "import torch\n"
+        "cuda = getattr(torch.version, 'cuda', None)\n"
+        "print(str(torch.__version__) + '|cuda=' + str(cuda))\n"
+        "raise SystemExit(0 if cuda is None else 3)\n"
+    )
+    env = dict(os.environ)
+    env["PYTHONNOUSERSITE"] = "1"
+    try:
+        result = subprocess.run(
+            [str(python_exe), "-I", "-c", code],
+            capture_output=True,
+            text=True,
+            timeout=120,
+            env=env,
+        )
+    except Exception as exc:
+        return False, str(exc)
+    detail = ((result.stdout or "") + (result.stderr or "")).strip()
+    return result.returncode == 0, detail
 
 
 def ensure_local_build_python():
@@ -711,18 +811,25 @@ def ensure_local_build_python():
 
     # 2) Install the agent deps into <repo>/python's OWN prefix (it is writable).
     #    PYTHONNOUSERSITE=1 → pip ignores the build user's user-site and targets THIS
-    #    prefix, so the tree is self-contained. requirements.txt pins torch but none of
-    #    the heavy unused ML libs, so a fresh install is lean by construction.
+    #    prefix, so the tree is self-contained.  Force a CPU wheel whenever this
+    #    isolated tree is missing Torch or contains CUDA Torch; a plain `pip install
+    #    torch` incorrectly treats an existing +cu build as already satisfied.
     req_file = Path(__file__).with_name("requirements.txt")
     env = dict(os.environ)
     env["PYTHONNOUSERSITE"] = "1"
     print(f"--- Installing agent deps into the source-tree build Python: {local_exe} ---")
-    subprocess.run(
-        [str(local_exe), "-m", "pip", "--disable-pip-version-check",
-         "install", "--no-warn-script-location",
-         "torch", "--index-url", "https://download.pytorch.org/whl/cpu"],
-        env=env, check=False,
-    )
+    cpu_torch_ok, cpu_torch_detail = _probe_cpu_torch(local_exe)
+    if not cpu_torch_ok:
+        print(f"  -> Replacing missing/CUDA Torch with CPU-only Torch ({cpu_torch_detail or 'not importable'}) ...")
+        torch_result = subprocess.run(
+            [str(local_exe), "-m", "pip", "--disable-pip-version-check",
+             "install", "--no-warn-script-location", "--upgrade", "--force-reinstall",
+             "--no-deps", "torch", "--index-url", "https://download.pytorch.org/whl/cpu"],
+            env=env, check=False,
+        )
+        if torch_result.returncode != 0:
+            raise RuntimeError(
+                f"Failed to install CPU-only Torch into carried Python ({local_exe}).")
     if req_file.exists():
         rc = subprocess.run(
             [str(local_exe), "-m", "pip", "--disable-pip-version-check",
@@ -734,6 +841,13 @@ def ensure_local_build_python():
             raise RuntimeError(
                 f"Failed to install requirements into the source-tree build Python "
                 f"({local_exe}). Delete <repo>/python and rebuild. Aborting build.")
+    cpu_torch_ok, cpu_torch_detail = _probe_cpu_torch(local_exe)
+    if not cpu_torch_ok:
+        raise RuntimeError(
+            "Carried Python must contain CPU-only Torch for Talker, but the isolated "
+            f"post-install probe failed: {cpu_torch_detail or 'unknown error'}"
+        )
+    print(f"  -> Verified carried CPU-only Torch: {cpu_torch_detail}")
     return str(local_exe)
 
 
@@ -1289,10 +1403,26 @@ def main():
         # (PyInstaller keeps torch's .py sources — 40.7 MB — inside the PYZ, so
         # inspect.getsource() cannot find them and torch warns once per
         # overload). Root cause removed, nothing muted.
-        # NOTE: torch itself is NOT excluded here — the Talker pool agent
+        # Torch is excluded from the frozen process separately below. Talker
         # imports torch + snac under the CARRIED Python, which is a different
-        # interpreter and is unaffected by this flag.
+        # interpreter and is unaffected by either frozen-process exclusion.
         '--exclude-module=transformers',
+        # Torch is required only by Talker, which runs as a pool subprocess under
+        # the separate carried <install>/python interpreter.  No frozen web-process
+        # module imports Torch (pinned by test_web_process_stays_lean.py).  Exclude
+        # it explicitly so a build user's CUDA-enabled user-site can never add
+        # multiple gigabytes of NVIDIA DLLs to _internal again.
+        '--exclude-module=torch',
+        # Optional-import chains (notably datasets/torchvision) can cause
+        # PyInstaller to execute their hooks even when torch itself is excluded.
+        # None of this ML family is used by the frozen web process; all Talker /
+        # Whisperer execution happens under carried <install>/python.
+        '--exclude-module=torchvision',
+        '--exclude-module=torchaudio',
+        '--exclude-module=torchtext',
+        '--exclude-module=torchao',
+        '--exclude-module=snac',
+        '--exclude-module=whisper',
         '--collect-all', 'django_bootstrap5',
         '--collect-all', 'autobahn',
         '--collect-all', 'filesearch_pb2',
@@ -1366,8 +1496,9 @@ def main():
     # Post-build steps (only reached on successful PyInstaller build)
     # ══════════════════════════════════════════════════════════════════
 
-    # ── 5b) PROVE the fail-open agent modules really landed in the bundle ──
-    verify_frozen_agent_modules(Path("dist") / "manage")
+    # ── 5b) PROVE the frozen/carried interpreter boundary ─────────────
+    verify_frozen_torch_absent(dist_manage)
+    verify_frozen_agent_modules(dist_manage)
 
     # ── 6) Copy application files & create directories ───────────────
     print("\n--- Post-build: copying files and directories ---")
@@ -1867,6 +1998,7 @@ def main():
                             zf.write(full_path, arcname)
                             file_count += 1
                     print(f"Added {file_count} files to {pkg_zip_path}")
+                enforce_pkg_zip_size(pkg_zip_path)
                 size_mb = pkg_zip_path.stat().st_size / (1024 * 1024)
                 print(f"pkg.zip created successfully ({size_mb:.1f} MB)")
 

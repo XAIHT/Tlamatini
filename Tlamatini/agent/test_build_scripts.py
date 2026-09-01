@@ -30,8 +30,10 @@ If a future change drops an agent, an asset, or a dependency from the frozen
 spec, one of these tests fails — which is the whole point.
 """
 import ast
+import importlib.util
 import re
 import sys
+import tempfile
 import unittest
 from functools import lru_cache
 from pathlib import Path
@@ -45,11 +47,28 @@ REQUIREMENTS = REPO_ROOT / "requirements.txt"
 BUILD_PY = REPO_ROOT / "build.py"
 BUILD_INSTALLER = REPO_ROOT / "build_installer.py"
 BUILD_UNINSTALLER = REPO_ROOT / "build_uninstaller.py"
+TORCH_HOOK = REPO_ROOT / "pyinstaller_hooks" / "hook-torch.py"
 
 
 @lru_cache(maxsize=8)
 def _read(path: Path) -> str:
     return path.read_text(encoding="utf-8", errors="replace")
+
+
+@lru_cache(maxsize=1)
+def _load_build_module():
+    """Load build.py without running main(), for behavioral guard tests."""
+    spec = importlib.util.spec_from_file_location("tlamatini_build_script_tests", BUILD_PY)
+    module = importlib.util.module_from_spec(spec)
+    sys.path.insert(0, str(REPO_ROOT))
+    try:
+        spec.loader.exec_module(module)
+    finally:
+        try:
+            sys.path.remove(str(REPO_ROOT))
+        except ValueError:
+            pass
+    return module
 
 
 @lru_cache(maxsize=1)
@@ -231,6 +250,84 @@ class BuildPyAssetBundlingTests(SimpleTestCase):
     def test_tkinter_excluded_from_server(self):
         # The server uses Win32 ctypes dialogs, never tkinter.
         self.assertIn("--exclude-module=tkinter", self.src)
+
+    def test_torch_excluded_from_frozen_server(self):
+        # Talker uses CPU Torch in carried <install>/python, not frozen _internal.
+        self.assertIn("--exclude-module=torch", self.src)
+        for module in ("torchvision", "torchaudio", "torchtext", "torchao", "snac", "whisper"):
+            self.assertIn(f"--exclude-module={module}", self.src)
+
+    def test_custom_torch_hook_blocks_upstream_binary_collection(self):
+        self.assertTrue(TORCH_HOOK.is_file())
+        hook = _read(TORCH_HOOK)
+        self.assertIn("$PyInstaller-Hook-Priority: 2", hook)
+        self.assertIn("binaries = []", hook)
+        self.assertIn("datas = []", hook)
+        hook_tree = ast.parse(hook)
+        collection_calls = [
+            node for node in ast.walk(hook_tree)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id in {"collect_dynamic_libs", "collect_data_files"}
+        ]
+        self.assertEqual(collection_calls, [])
+
+
+class ReleaseSizeAndTorchBoundaryTests(SimpleTestCase):
+    """Behavioral fail-loud guards for the two-interpreter release boundary."""
+
+    def test_frozen_torch_guard_accepts_absent_and_rejects_present(self):
+        build_script = _load_build_module()
+        with tempfile.TemporaryDirectory() as tmp:
+            dist_root = Path(tmp) / "manage"
+            (dist_root / "_internal").mkdir(parents=True)
+            self.assertTrue(build_script.verify_frozen_torch_absent(dist_root))
+
+            torch_dir = dist_root / "_internal" / "torch"
+            torch_dir.mkdir()
+            (torch_dir / "torch_cuda.dll").write_bytes(b"cuda")
+            with self.assertRaises(SystemExit) as raised:
+                build_script.verify_frozen_torch_absent(dist_root)
+            self.assertEqual(raised.exception.code, 1)
+
+    def test_frozen_torch_guard_rejects_orphaned_cuda_dll(self):
+        build_script = _load_build_module()
+        with tempfile.TemporaryDirectory() as tmp:
+            internal = Path(tmp) / "manage" / "_internal"
+            internal.mkdir(parents=True)
+            (internal / "cublas64_12.dll").write_bytes(b"cuda")
+            with self.assertRaises(SystemExit) as raised:
+                build_script.verify_frozen_torch_absent(internal.parent)
+            self.assertEqual(raised.exception.code, 1)
+
+    def test_pkg_zip_size_guard_is_inclusive_and_fails_over_limit(self):
+        build_script = _load_build_module()
+        with tempfile.TemporaryDirectory() as tmp:
+            pkg = Path(tmp) / "pkg.zip"
+            pkg.write_bytes(b"12345")
+            self.assertEqual(build_script.enforce_pkg_zip_size(pkg, max_bytes=5), 5)
+            with self.assertRaises(SystemExit) as raised:
+                build_script.enforce_pkg_zip_size(pkg, max_bytes=4)
+            self.assertEqual(raised.exception.code, 1)
+
+    def test_release_budget_is_2_8_decimal_gb_and_runs_before_cleanup(self):
+        src = _read(BUILD_PY)
+        self.assertIn("MAX_PKG_ZIP_BYTES = 2_800_000_000", src)
+        zip_block = src.split("# ── 9) Generate pkg.zip", 1)[1]
+        self.assertLess(
+            zip_block.index("enforce_pkg_zip_size(pkg_zip_path)"),
+            zip_block.index('for cleanup_dir in ("build", "dist")'),
+        )
+
+    def test_carried_python_cpu_torch_is_probed_before_return(self):
+        src = _read(BUILD_PY)
+        ensure_block = src.split("def ensure_local_build_python", 1)[1].split(
+            "def _active_playwright_revisions", 1
+        )[0]
+        self.assertIn("--force-reinstall", ensure_block)
+        self.assertIn("https://download.pytorch.org/whl/cpu", ensure_block)
+        self.assertIn("_probe_cpu_torch(local_exe)", ensure_block)
+        self.assertIn("Carried Python must contain CPU-only Torch", ensure_block)
 
 
 # ---------------------------------------------------------------------------
