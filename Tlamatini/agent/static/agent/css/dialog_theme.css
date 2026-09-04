@@ -98,6 +98,15 @@
     border-radius: var(--tlm-dlg-radius);
     box-shadow: var(--tlm-dlg-shadow);
     font-family: var(--tlm-dlg-font);
+    /* Sizing envelope. `overflow: hidden` is what makes the rounded
+       corners above actually clip the titlebar and the footer bar. */
+    box-sizing: border-box;
+    padding: 0;
+    overflow: hidden;
+    min-width: min(600px, calc(100vw - 24px));
+    max-width: calc(100vw - 24px);
+    max-height: calc(100dvh - 24px);
+    z-index: 10000;
 }
 
 /* jQuery UI paints its own overlay; align it with the native modals. */
@@ -112,6 +121,13 @@
     border-top-left-radius: var(--tlm-dlg-radius);
     border-top-right-radius: var(--tlm-dlg-radius);
     color: var(--tlm-dlg-title);
+    padding: 12px 20px;
+    /* LOAD-BEARING, not cosmetic: this is the containing block the
+       close X below is offset from. Without it `right: 12px` resolves
+       against the page and the button falls into normal flow. */
+    position: relative;
+    /* Functional — every one of these dialogs is draggable. */
+    cursor: move;
 }
 
 /* The title itself: white + bold, like the `<h2>` in the native modals. */
@@ -137,11 +153,36 @@
     text-transform: uppercase;
 }
 
-/* Close X: same 32px hit-target + hover chip as `.emx-icon-button`. */
+/*
+ * Close X: same 32px hit-target + hover chip as `.emx-icon-button`.
+ *
+ * ⚠️ THE GLYPH AND THE PLACEMENT BELONG HERE (Angela, 2026-09-02).
+ * They used to live, duplicated, in `agent_page.css` AND
+ * `agentic_control_panel.css` — one copy per page. jQuery-UI's own
+ * stylesheet is deliberately never loaded in Tlamatini, so this
+ * button ships with NO glyph and NO position of its own; whatever
+ * this file does not give it, it does not have. When the Prompt
+ * Designer arrived it loaded the theme and nothing else, so its
+ * close button rendered as a bare 32x32 `ButtonFace` GREY SQUARE
+ * with no X — the "ugly lightgray square" Angela photographed.
+ *
+ * Longhand backgrounds on purpose: the `background:` shorthand would
+ * reset the background-color the hover chip below paints.
+ */
 .ui-dialog .ui-dialog-titlebar-close {
     width: 32px;
     height: 32px;
+    position: absolute;
+    top: 50%;
     right: 12px;
+    transform: translateY(-50%);
+    margin: 0;
+    padding: 0;
+    background-color: transparent;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23FFFFFF'%3e%3cpath d='M.293.293a1 1 0 0 1 1.414 0L8 6.586 14.293.293a1 1 0 1 1 1.414 1.414L9.414 8l6.293 6.293a1 1 0 0 1-1.414 1.414L8 9.414l-6.293 6.293a1 1 0 0 1-1.414-1.414L6.586 8 .293 1.707a1 1 0 0 1 0-1.414z'/%3e%3c/svg%3e");
+    background-size: 14px 14px;
+    background-repeat: no-repeat;
+    background-position: center;
     border: 1px solid transparent;
     border-radius: var(--tlm-dlg-radius-sm);
     opacity: 0.75;
@@ -155,6 +196,78 @@
     border-color: rgba(255, 255, 255, 0.14);
     opacity: 1;
     outline: none;
+}
+
+/*
+ * The dialog BODY.
+ *
+ * Same story as the close X: duplicated per page until the Designer
+ * showed up with neither copy. `background: none` is load-bearing —
+ * the CARD is painted by `.ui-dialog`, so the content must stay
+ * transparent over it — and so is `color`: inherited, the body
+ * follows Bootstrap's near-black and reads dark-on-dark inside the
+ * dark card.
+ */
+.ui-dialog .ui-dialog-content {
+    background: none;
+    color: var(--tlm-dlg-text);
+    font-family: var(--tlm-dlg-font);
+    text-align: center;
+    padding: 30px 50px;
+    overflow: auto;
+}
+
+/*
+ * The scroll envelope, deliberately ONE class LESS SPECIFIC than the
+ * rule above (0,1,0 vs 0,2,0). `max-height` is the single declaration
+ * the pages genuinely disagree on — the ACP canvas caps its dialogs
+ * at 70vh — so a page that states its own still wins on SPECIFICITY,
+ * whatever the load order is. Folding this into the rule above
+ * silently retunes every dialog on the two older pages.
+ */
+.ui-dialog-content {
+    max-height: calc(100dvh - 160px);
+}
+
+/*
+ * Body typography. Without it a dialog body falls back to whatever
+ * Bootstrap gives it — h2/h4/h5 at three unrelated sizes and colours
+ * — and the ~30 dialog bodies stop reading as one program.
+ */
+.ui-dialog .ui-dialog-content h1,
+.ui-dialog .ui-dialog-content h2,
+.ui-dialog .ui-dialog-content h3,
+.ui-dialog .ui-dialog-content h4,
+.ui-dialog .ui-dialog-content h5 {
+    color: var(--tlm-dlg-title);
+    font-family: var(--tlm-dlg-font);
+    font-weight: 700;
+    line-height: 1.25;
+    margin: 0 0 10px;
+}
+
+.ui-dialog .ui-dialog-content h1 {
+    font-size: 1.5rem;
+}
+
+.ui-dialog .ui-dialog-content h2 {
+    font-size: 1.25rem;
+}
+
+.ui-dialog .ui-dialog-content h3,
+.ui-dialog .ui-dialog-content h4 {
+    font-size: 1.1rem;
+}
+
+.ui-dialog .ui-dialog-content h5 {
+    font-size: 1rem;
+}
+
+.ui-dialog .ui-dialog-content>p {
+    color: var(--tlm-dlg-body);
+    font-size: 0.95rem;
+    line-height: 1.45;
+    margin: 0;
 }
 
 /*
@@ -483,6 +596,14 @@
 }
 
 @media (max-width: 640px) {
+    .ui-dialog .ui-dialog-titlebar {
+        padding: 10px 42px 10px 14px;
+    }
+
+    .ui-dialog .ui-dialog-content {
+        padding: 18px 16px;
+    }
+
     .ui-dialog .ui-dialog-buttonpane {
         padding: 10px 12px;
     }

@@ -16,6 +16,182 @@
 
 ---
 
+## 2026-08-30 — A public release could not be built without `.private_targets.json` (and a bare `build.py` could freeze live keys)
+
+**Two independent build-time defects, one root cause: the pipeline trusted the operator's
+memory instead of proving anything.**
+
+### 1. The public build dead-ended on a file it is forbidden to ship
+
+`build_complete_public_release.py` loaded its leak targets from `.private_targets.json`, and with
+no targets it did:
+
+```python
+sys.exit("REFUSING: no leak targets supplied. Create .private_targets.json at the repo root ...")
+```
+
+That file is **gitignored**, so it exists only on a machine where somebody already declared private
+data. Everyone else hit the wall:
+
+| who | had the file? | outcome before |
+|---|---|---|
+| Angela, her dev machine | yes | worked |
+| Angela, a fresh clone / new laptop | no | **REFUSED** — schema only discoverable from the error text |
+| a public contributor who cloned the repo | no | **REFUSED** — could not build at all |
+| **Tlamatini rebuilding herself** from `TlamatiniSourceCode/` | no — `copy_source_assets.py` deliberately DROPS it (it is her leak-target list) | **REFUSED** — a `--self-modify` build could not reproduce a public release |
+
+The last row is the sharp one: the snapshot is *correct* to exclude the real list, so the self-modify
+capability was structurally unable to run its own public builder.
+
+### 2. A bare `python build.py` froze whatever the tree happened to be
+
+`build.py` never touched `regen_secrets.py`. After any `--mode keyed` pass — which
+`build_complete_private_release.py` runs, and which the public builder **restores in its
+`finally:`** — `config.json` holds REAL keys. The next bare `python build.py` baked them straight
+into `pkg.zip`. The only defence was remembering to run `regen_secrets.py --mode push-able` first,
+and a comment saying so. *Remembering is not a safeguard.*
+
+### The fix — a TEMPLATE **and** a fallback, because neither alone covers the tree
+
+Both were needed; picking one would have left a hole.
+
+**`.private_targets.template.json`** is TRACKED, always present, always EMPTY. It documents the
+schema (`names` / `phones` / `handles` / `emails`) and resolves to **zero** targets. It ships in the
+self-modify snapshot (added to `REQUIRED_SNAPSHOT_FILES`, so a future exclusion fails loudly), while
+the real `.private_targets.json` stays excluded.
+
+**Zero targets is now a decision, not a dead end** — `decide_targets_mode()`:
+
+| targets | private-data markers in the tree | result |
+|---|---|---|
+| present | any | normal mode — **unchanged** |
+| none | none | **NO-TARGETS MODE** — build proceeds |
+| none | present | **REFUSE**, naming the evidence, the template, and 4 ways to fix it |
+| none | present + `--no-private-data` | proceed, printing every marker it overrode |
+
+`private_data_risk_markers()` distinguishes the two causes of "no targets" — the whole point, since
+they need opposite answers. It reads no private VALUE, only asks whether the private-data
+CONTAINERS exist: `data.keys`, `contacts.private.json`, a non-empty `Tlamatini/agent/contacts.json`
+(**unparseable ⇒ assumed non-empty**, fail-toward-safety). A maintainer whose targets file vanished
+gets a loud refusal instead of a silently unscrubbed release — the failure this interlock exists for,
+because an empty target set makes every scrub a **no-op** and leaves the verifier nothing to report.
+
+**NO-TARGETS MODE is a narrower gate, never an absent one.** The full auditor returns rc=2 with zero
+targets (and its structural layer is informational by design, so it could never block), so STEP 4
+switches to `verify_shipped_config_surface()`: a deterministic, **blocking** audit of the config
+Tlamatini herself ships (`config.json`, `contacts.json`, `external_mcps.json`, agent `config.yaml`) for
+live-looking secrets, e-mail addresses, phone-shaped values in the contacts book, and a `data.keys`
+inside the package at all. Still enforced either way: push-able secrets, `SECRET_KEY_RE`, the empty
+contacts book, the defaults-only MCP catalog, and `build.py`'s live-MCP-secret seatbelt.
+
+**`build.py` now forces push-able itself, then PROVES it.** `ensure_pushable_secrets()` runs
+`regen_secrets.py --mode push-able` (idempotent, needs no `data.keys`, auto-vaults what it redacts)
+**and then re-reads `config.json` and ABORTS on any surviving live-looking secret** — which also
+covers a stripped tree where `regen_secrets.py` is missing and step 1 silently does nothing. The
+check is **generic by key name** (top level plus every `acpx.agents.*.env` block), so a secret added
+tomorrow is covered without editing a list. `TLAMATINI_KEYED_BUILD=1` opts out; the private builder
+sets it, and the public builder **pops** it so an ambient value left in the same shell cannot
+silently disable the guarantee.
+
+### Two smaller things found on the way
+
+* **`_README` would have become a scrub target.** `check_private_data.load_targets` treated every
+  dict key as a category, so the template's own prose would have been scrubbed tree-wide and the
+  verifier would then have "found" it in every file it had just rewritten (the 737-false-positive
+  bug, again). `_`-prefixed keys are now skipped — the same comment-key convention `config.json`
+  (`_section_*`) and `external_mcps.json` (`_README`) already use.
+* **`REGEN_TOUCHED` was missing two files.** Zavuerer and Discoverer joined `regen_secrets.py`'s
+  rule set later and were never mirrored into the public builder's backup list, so it rewrote them
+  with no byte-for-byte backup. The `finally:` re-key papered over it only because `data.keys`
+  happened to exist.
+
+### Runtime answer (Angela asked explicitly)
+
+**A missing `.private_targets.json` can NEVER stop an installed Tlamatini from starting.** Nothing
+under `Tlamatini/` reads it — it is build/audit-time only, and `test_no_runtime_dependency_on_the_targets_file`
+sweeps the whole app tree to keep that true (only the guard itself is exempt, so any other reference
+fails the build).
+
+### Contract (do NOT weaken)
+
+1. The template stays **TRACKED and EMPTY**. A value in it is published private data.
+2. Keep the **marker interlock**. Removing it turns a lost targets file into a silent leak, which is
+   strictly worse than the dead end it replaced.
+3. NO-TARGETS MODE must keep a **blocking** verification. A mode that audits nothing is a mode that
+   proves nothing.
+4. `build.py` must keep **proving** push-able rather than trusting the regen exit code — the abort is
+   what covers the missing-`regen_secrets.py` case.
+5. `--no-private-data` is an explicit human assertion. Never make it the default, and never infer it.
+
+Coverage: `Tlamatini/agent/test_public_release_targets_optional.py` (37 tests — template contract,
+loader comment-keys, discovery fallback, all six marker cases, all four decision cells, six
+config-surface audits, the runtime-independence sweep, the push-able enforcement branches, builder
+wiring, and snapshot carriage). Live-proven on 2026-08-30 in a visible window: a fresh-clone skeleton
+entered NO-TARGETS MODE and reached STEP 1; the same skeleton plus `data.keys` refused with the full
+remedy text; `--no-private-data` proceeded while listing the marker; a keyed throwaway tree lost its
+live key to the forced push-able pass, a `TLAMATINI_KEYED_BUILD=1` tree kept it, and a tree with no
+`regen_secrets.py` aborted rather than shipping it.
+
+---
+
+## 2026-08-30 — Executer's forked window blamed the SCRIPT for a dead CONSOLE (exit 3221225786)
+
+**Angela ran `npm run lint` through the Executer with `execute_forked_window: true`.** It came back
+after ~2 s with one line and nothing else:
+
+```
+❌ Script execution failed with exit code: 3221225786
+```
+
+That number is **0xC000013A — `STATUS_CONTROL_C_EXIT`**: the status Windows gives a process whose
+**console** received Ctrl+C or was closed. The lint command was fine. But the log said *"Script
+execution failed"*, so the reader went hunting for a defect in npm/eslint that never existed and
+lost a debugging session to a false premise. (`pd_lint.txt` had the tell — a literal `^C` before
+pnpm's `[ELIFECYCLE] Command failed with exit code 3221225786` — but the agent's own verdict pointed
+the other way.)
+
+**The interruption itself did NOT reproduce.** The byte-identical command, plus a plain 11-second
+`ping`, `node`, `npx eslint` and a full `npm run lint`, all passed in forked windows afterwards.
+Nothing in Tlamatini sends `CTRL_C_EVENT` (`GenerateConsoleCtrlEvent` appears nowhere; the
+`_force_show_new_consoles` rescue only calls `ShowWindow` / `BringWindowToTop` /
+`SetForegroundWindow`). **So no "fix" was invented for the phantom** — that is precisely the
+`db_guard` mistake, where a guard built on a misread symptom quarantined a healthy database 11 times.
+What WAS reproducibly broken is the report, and that is what was fixed. Two real defects:
+
+1. **An NTSTATUS was printed as a bare decimal.** Nobody decodes `3221225786` by hand.
+   `agents/executer/executer.py::_describe_exit_code()` now names it, using
+   `_WINDOWS_STATUS_NAMES` (Ctrl+C, access violation, stack overflow, heap corruption, DLL init
+   failure, stack-buffer overrun, …), and prints **both decimal forms** —
+   `-1073741510 / 3221225786 (0xC000013A STATUS_CONTROL_C_EXIT — …)`. ⚠️ Both forms are load-bearing:
+   cmd.exe reported it **signed** live while npm and the incident report showed it **unsigned**, so a
+   single form means a grep for the number the user actually saw finds nothing.
+2. **Two different outcomes were collapsed into one sentence.** The exit code can come from the
+   **sentinel file** (written by the wrapper *after* the script ran → it is the SCRIPT's own verdict)
+   or from **`process.poll()`** (the console died FIRST → the script never reported and its result is
+   **UNKNOWN**). Both used to print *"Script execution failed"*, which blames a command for a window
+   somebody closed. A `code_source` variable now keeps them apart and each gets its own honest line;
+   a Ctrl+C status additionally says *"INTERRUPTED, not rejected … re-run it before changing
+   anything."*
+
+**FAIL-SAFE IS UNCHANGED — do NOT weaken it:** every non-zero code is still a **FAILURE** and still
+returns `False`. Being clearer about *which* failure must never become "and therefore it is fine";
+`test_every_non_zero_code_still_fails` pins that the non-zero branch contains no `return True`.
+
+Also corrected in the same pass: a comment claiming the window is *"held open by `cmd /k`"* sitting
+directly above code that spawns `cmd /c` plus a bounded PowerShell `Start-Sleep` — a comment that
+contradicts its own code is how the next reader gets misled. The non-forked path routes through the
+same describer.
+
+Proven live, all three shapes: `exit /b 0` → success · `exit /b 1` → `exit code: 1` (unchanged) ·
+`exit /b 3221225786` → the named, both-forms, "INTERRUPTED, not rejected" report.
+Coverage: `agent/test_executer_forked_exit_codes.py` (**17 tests** — the describer, the totality
+guarantee that it never raises, interruption recognition, the `code_source` wiring, the
+no-bare-f-string sweep, the stale-comment guard, and the fail-safe). The helpers are **AST-lifted**,
+never imported — a pool agent is a standalone script that truncates its log and monkey-patches
+`subprocess.Popen` at import.
+
+---
+
 ## 2026-08-29 — Ctrl+C hung Tlamatini FOREVER: the signal handler did the work, and re-entered itself
 
 **Angela's report, on the live frozen `C:\Tlamatini`: pressing Ctrl+C never quit.** She pressed it

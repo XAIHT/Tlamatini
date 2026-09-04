@@ -929,6 +929,113 @@ def bundle_git(dist_manage):
     print(f"  Git bundled ({size_mb:.0f} MB). Runtime: <install_dir>/git/cmd on PATH.")
 
 
+# ── Push-able secrets: enforced BY THE BUILD, not by the operator's memory ────
+# Angela, 2026-08-30. A bare `python build.py` used to freeze WHATEVER state the
+# working tree happened to be in. After any `regen_secrets.py --mode keyed` (which
+# build_complete_private_release.py runs, and which the public builder restores in
+# its `finally:`), config.json holds REAL keys -- so the next bare build silently
+# baked live credentials into pkg.zip. "Remember to run regen_secrets first" is not
+# a safeguard; it is a hope. So the build does it itself.
+#
+# TLAMATINI_KEYED_BUILD=1 opts out -- that is the KEYED private release, whose whole
+# purpose is to carry real values. build_complete_private_release.py sets it.
+_SECRET_KEY_NAME_RE = re.compile(
+    r"(?i)(api[_-]?key|api[_-]?secret|access[_-]?token|auth[_-]?token|bot[_-]?token|"
+    r"client[_-]?secret|session[_-]?string|api[_-]?hash|phone[_-]?number[_-]?id|"
+    r"^token$|^secret$|^password$|_token$|_secret$|_key$)")
+_KEYED_BUILD_ENV = "TLAMATINI_KEYED_BUILD"
+
+
+def _is_placeholder_secret(value) -> bool:
+    """True when a value is clearly NOT a live secret."""
+    if value is None:
+        return True
+    text = str(value).strip()
+    if not text:
+        return True
+    if text.startswith("<") and text.endswith(">"):
+        return True          # "<ANTHROPIC_API_KEY goes here>"
+    if text.startswith("{{") and text.endswith("}}"):
+        return True          # runtime-substituted
+    return text.lower() in {"null", "none", "changeme", "user", "0", "false", "true"}
+
+
+def _config_secret_offenders(config_path: Path) -> list[str]:
+    """Every config.json field that still looks like a LIVE secret.
+
+    Generic on purpose: it walks the top level plus every acpx.agents.*.env block
+    and judges by KEY NAME, so a secret added to config.json tomorrow is covered
+    without editing this list -- the failure mode of a hand-maintained catalog.
+    """
+    try:
+        data = json.loads(config_path.read_text(encoding="utf-8-sig"))
+    except Exception as exc:
+        print(f"WARNING: could not read {config_path} for the secrets check ({exc}).")
+        return []
+    offenders = []
+    for key, value in (data.items() if isinstance(data, dict) else []):
+        if isinstance(value, (str, int)) and _SECRET_KEY_NAME_RE.search(str(key)):
+            if not _is_placeholder_secret(value):
+                offenders.append(key)
+    agents = (((data.get("acpx") or {}).get("agents")) or {}) if isinstance(data, dict) else {}
+    if isinstance(agents, dict):
+        for agent_id, agent in agents.items():
+            env = (agent or {}).get("env") if isinstance(agent, dict) else None
+            if not isinstance(env, dict):
+                continue
+            for env_key, env_val in env.items():
+                if _SECRET_KEY_NAME_RE.search(str(env_key)) and not _is_placeholder_secret(env_val):
+                    offenders.append(f"acpx.agents.{agent_id}.env.{env_key}")
+    return offenders
+
+
+def ensure_pushable_secrets():
+    """Force push-able (placeholder) secrets, then PROVE it. Never merely claim it.
+
+    Two halves, and the second is the one that actually guarantees anything:
+      1. run `regen_secrets.py --mode push-able` (idempotent; needs no data.keys,
+         and auto-vaults anything it redacts, so nothing is ever lost);
+      2. re-read config.json and ABORT if a live-looking secret survived -- which
+         also covers the case where regen_secrets.py is missing entirely (a
+         stripped tree, a partial snapshot), where step 1 silently does nothing.
+    """
+    repo_root = Path(__file__).resolve().parent
+    config_path = repo_root / "Tlamatini" / "agent" / "config.json"
+
+    if (os.environ.get(_KEYED_BUILD_ENV) or "").strip().lower() in {"1", "true", "yes", "on"}:
+        print(f"Secrets mode      : KEYED ({_KEYED_BUILD_ENV} set) -- real values kept "
+              f"on purpose. DO NOT PUBLISH THIS ARTIFACT.")
+        return
+
+    regen = repo_root / "regen_secrets.py"
+    if regen.is_file():
+        print("Secrets mode      : PUSH-ABLE -- running regen_secrets.py --mode push-able")
+        result = subprocess.run([sys.executable, str(regen), "--mode", "push-able"],
+                                cwd=str(repo_root))
+        if result.returncode != 0:
+            raise SystemExit(
+                "ABORT: regen_secrets.py --mode push-able failed. Refusing to freeze a "
+                "build whose secrets were not verified as placeholders.\n"
+                f"       (Set {_KEYED_BUILD_ENV}=1 only for a deliberate KEYED build.)")
+    else:
+        print(f"Secrets mode      : PUSH-ABLE -- regen_secrets.py not found at {regen}; "
+              f"verifying config.json directly.")
+
+    if not config_path.is_file():
+        print(f"Secrets mode      : {config_path} missing -- nothing to verify.")
+        return
+
+    offenders = _config_secret_offenders(config_path)
+    if offenders:
+        raise SystemExit(
+            "ABORT: config.json still holds live-looking secret(s) after the push-able "
+            "pass: " + ", ".join(sorted(offenders)) + "\n"
+            "       This build would have shipped them. Fix with:\n"
+            "           python regen_secrets.py --mode push-able\n"
+            f"       (or set {_KEYED_BUILD_ENV}=1 for a deliberate KEYED private build).")
+    print("Secrets mode      : VERIFIED -- every config.json secret is a placeholder.")
+
+
 def main():
     """Runs the PyInstaller command with correctly resolved paths."""
     build_start = time.time()
@@ -964,6 +1071,11 @@ def main():
         + ("YES — bundling TlamatiniSourceCode" if self_modify
            else "no — source tree omitted")
     )
+
+    # ── Secrets: force push-able placeholders BEFORE anything is frozen ──
+    # Must run before the config.json --add-data copy, and before dist/ is
+    # populated, so the artifact can only ever contain what we verified.
+    ensure_pushable_secrets()
 
     separator = ';'
     dist_manage = Path("dist") / "manage"

@@ -351,7 +351,7 @@ Tlamatini/                          # Git root
 │   │   ├── templates/agent/        # HTML templates (toolbar has Multi-Turn / Exec-Report / ACPX / Ask-Execs checkboxes)
 │   │   ├── static/agent/
 │   │   │   ├── css/                # agentic_control_panel.css, agent_page.css, tools_dialog.css, etc.
-│   │   │   ├── js/                 # 37 JS modules (10 chat + 14 ACP + 1 ACP entry + 12 shared, incl. dialog_policy.js and release_notes_renderer.js)
+│   │   │   ├── js/                 # 44 JS modules (10 chat + 14 ACP + 1 ACP entry + 7 Prompt Designer + 12 shared, incl. dialog_policy.js and release_notes_renderer.js)
 │   │   │   ├── img/Tlamatini.ico   # App icon (web pages + console window + .exe)
 │   │   │   └── sounds/             # notification.wav, hypervisor_alert.wav
 │   │   └── migrations/             # Django migrations — 197 total (0195/0196/0197 add NetSpeed-Calculator agent + wrapped tool + demo prompt; 0194 adds Deep Internet Research prompt 118; earlier rows remain append-only)

@@ -735,7 +735,8 @@ def execute_script(script_content: str, non_blocking: bool = False,
             logging.info(f"✅ Script execution completed with exit code: {result.returncode}")
             return True
         else:
-            logging.error(f"❌ Script execution failed with exit code: {result.returncode}")
+            logging.error("❌ Script execution failed with exit code: %s"
+                          % _describe_exit_code(result.returncode))
             return False
             
     except subprocess.TimeoutExpired:
@@ -791,6 +792,76 @@ def _resolve_command_timeout(config=None) -> float:
 # Resolved once at import (env + default). A per-run override can be applied by
 # re-calling _resolve_command_timeout(config) where a config dict is in scope.
 _TIMEOUT = _resolve_command_timeout()
+
+
+# ── Windows NTSTATUS exit codes a console child commonly dies with ──────────
+#
+# ⚠️ WHY THIS TABLE EXISTS (2026-08-30). A forked window whose console is
+# interrupted returns 3221225786, and this agent used to report exactly that:
+# a bare ten-digit decimal, under the words "Script execution failed". That
+# number is 0xC000013A — the status Windows gives a process whose CONSOLE
+# received Ctrl+C or was closed. It is NOT evidence that the command was
+# wrong, yet the log said "failed" and nothing else, which sent a whole
+# debugging session off from the wrong premise (the reader went hunting for a
+# bug in npm/eslint that was never there). NEVER make the reader decode an
+# NTSTATUS by hand: an unreadable failure is a failure that gets misdiagnosed.
+_WINDOWS_STATUS_NAMES = {
+    0xC000013A: ("STATUS_CONTROL_C_EXIT",
+                 "the console received Ctrl+C or the window was closed"),
+    0xC0000005: ("STATUS_ACCESS_VIOLATION",
+                 "the program crashed with an access violation"),
+    0xC0000017: ("STATUS_NO_MEMORY", "the program ran out of memory"),
+    0xC000001D: ("STATUS_ILLEGAL_INSTRUCTION", "illegal instruction"),
+    0xC0000094: ("STATUS_INTEGER_DIVIDE_BY_ZERO", "integer divide by zero"),
+    0xC00000FD: ("STATUS_STACK_OVERFLOW", "stack overflow"),
+    0xC0000142: ("STATUS_DLL_INIT_FAILED", "a DLL failed to initialize"),
+    0xC0000374: ("STATUS_HEAP_CORRUPTION", "heap corruption"),
+    0xC0000409: ("STATUS_STACK_BUFFER_OVERRUN",
+                 "stack buffer overrun / fail-fast"),
+    0xC000041D: ("STATUS_FATAL_USER_CALLBACK_EXCEPTION",
+                 "an unhandled exception inside a callback"),
+}
+
+# The one status that means "the CONSOLE died", not "the command was wrong".
+_STATUS_CONTROL_C_EXIT = 0xC000013A
+
+
+def _describe_exit_code(code) -> str:
+    """Render a process exit code as something a human can act on.
+
+    FAIL-OPEN: anything unexpected degrades to str(code). This helper is only
+    ever used to build a log line and must never be able to raise into the
+    result path it is describing.
+    """
+    try:
+        value = int(code)
+    except (TypeError, ValueError):
+        return str(code)
+    if value == 0:
+        return "0 (success)"
+    unsigned = value & 0xFFFFFFFF
+    # ⚠️ SHOW BOTH DECIMAL FORMS. Windows hands the same status back signed
+    # (-1073741510) or unsigned (3221225786) depending on who reports it —
+    # cmd.exe, npm and Python do not agree. Printing only one form means the
+    # number the user actually saw somewhere else does not match the number in
+    # this log, and a grep for it finds nothing. That is the same searchability
+    # failure this whole helper exists to end.
+    shown = str(value) if value == unsigned else "%d / %d" % (value, unsigned)
+    known = _WINDOWS_STATUS_NAMES.get(unsigned)
+    if known:
+        name, meaning = known
+        return "%s (0x%08X %s — %s)" % (shown, unsigned, name, meaning)
+    if unsigned >= 0xC0000000:
+        return "%s (0x%08X — a Windows NTSTATUS failure)" % (shown, unsigned)
+    return str(value)
+
+
+def _is_console_interruption(code) -> bool:
+    """True when the exit code means the CONSOLE was interrupted or closed."""
+    try:
+        return (int(code) & 0xFFFFFFFF) == _STATUS_CONTROL_C_EXIT
+    except (TypeError, ValueError):
+        return False
 
 
 def _execute_in_forked_window(script_path: str) -> bool:
@@ -920,10 +991,19 @@ def _execute_in_forked_window(script_path: str) -> bool:
                 process = subprocess.Popen([script_path], cwd=os.getcwd())
 
         # Wait for the SCRIPT to finish — NOT for the user to close the window.
-        # The window is deliberately held open by `cmd /k` (see above), so
-        # process.wait() here would block until the window is closed BY HAND,
-        # hanging the agent. The sentinel file tells us the work is done while the
-        # console stays on screen, readable, for as long as Angela wants it.
+        # The window is deliberately held open by the wrapper's BOUNDED
+        # PowerShell Start-Sleep (see above; it is `cmd /c`, never `/k`), so
+        # process.wait() here would block for the whole hold, hanging the agent.
+        # The sentinel file tells us the work is done while the console stays on
+        # screen, readable, for as long as Angela wants it.
+        #
+        # ⚠️ WHERE the code came from is part of the ANSWER, not a detail. The
+        # sentinel is written by the wrapper AFTER the script ran, so a code read
+        # from it is the SCRIPT's own verdict. A code taken from process.poll()
+        # means the console died FIRST — the script never got to report, and its
+        # real result is UNKNOWN. Collapsing those two into one "script failed"
+        # line is how a closed window gets misread as a broken command.
+        code_source = ""
         if sys.platform.startswith('win'):
             exit_code = None
             deadline = time.time() + _TIMEOUT
@@ -935,10 +1015,12 @@ def _execute_in_forked_window(script_path: str) -> bool:
                             exit_code = int((sf.read().strip() or '0'))
                     except (OSError, ValueError):
                         exit_code = 0
+                    code_source = "script"
                     break
                 if process.poll() is not None:
                     # Console was closed before the script wrote its code.
                     exit_code = process.returncode
+                    code_source = "console"
                     break
                 time.sleep(0.25)
 
@@ -953,15 +1035,34 @@ def _execute_in_forked_window(script_path: str) -> bool:
         else:
             process.wait(timeout=_TIMEOUT)
             exit_code = process.returncode
+            code_source = "script"
 
         if exit_code == 0:
             logging.info(f"✅ Script execution completed with exit code: {exit_code}")
             logging.info("   🪟 The forked window is STILL OPEN — close it when you have read it.")
             return True
+
+        # Non-zero. STILL a failure (fail-safe — never quietly green), but say
+        # WHICH failure it is, because "your command is broken" and "your window
+        # was closed" call for completely different next steps.
+        described = _describe_exit_code(exit_code)
+        if code_source == "console":
+            logging.error("❌ The forked WINDOW ended before the script reported "
+                          "a result — window exit code: %s" % described)
+            logging.error("   ⚠️ That is the CONSOLE's outcome, NOT the script's: "
+                          "the script's own result is UNKNOWN. Re-run it before "
+                          "concluding the command itself failed.")
+        elif _is_console_interruption(exit_code):
+            logging.error("❌ The script was INTERRUPTED, not rejected — exit "
+                          "code: %s" % described)
+            logging.error("   ⚠️ A command inside the forked window was killed by "
+                          "a console Ctrl+C (or the window was closed). This is "
+                          "NOT evidence that the command is wrong — re-run it "
+                          "before changing anything.")
         else:
-            logging.error(f"❌ Script execution failed with exit code: {exit_code}")
-            logging.info("   🪟 The forked window is STILL OPEN — close it when you have read it.")
-            return False
+            logging.error("❌ Script execution failed with exit code: %s" % described)
+        logging.info("   🪟 The forked window is STILL OPEN — close it when you have read it.")
+        return False
 
     except subprocess.TimeoutExpired:
         logging.error("❌ Forked window script execution timed out (300s limit)")

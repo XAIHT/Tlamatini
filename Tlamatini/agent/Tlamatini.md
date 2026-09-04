@@ -75,8 +75,39 @@ External services you *talk to* but do **not** open: Ollama (`11434`), Anthropic
 | `/welcome/` | `welcome.html` | Post-login landing | login required |
 | `/agent/` | `agent_page.html` | **Chat UI** — toolbar: Multi-Turn · Exec Report · ACPX · Ask Execs · Step-by-Step · Internet | login required |
 | `/agentic_control_panel/` | `agentic_control_panel.html` | **Visual ACP Workflow Designer** — drag-drop the 88 agents, save/load `.flw` | login required |
+| `/prompt_designer/` | `prompt_designer.html` | **Prompt Designer** — the visual designer for PROMPTS; reached from the chat navbar's **Designer ▸ Prompts** (new tab) | login required |
 
 Templates live in `agent/templates/agent/`. Default installer credentials: `user` / `changeme`.
+
+### 4.1 Prompt Designer — your third page (2026-08-30, sprint 1)
+
+Layout: a black `Assets:` header over a scrollable left panel, a drag divider, and a black
+`Prompt Canvas:` header on the right carrying five toolbar buttons — **Validate · Start · Stop ·
+Pause · Clear** — plus a `File` navbar dropdown (Open / Save as / Close). It is the deliberate
+SIBLING of the Agentic Control Panel: same navbar, same header bars, same divider, same button
+metrics, same themed dialogs — but its **own** stylesheet (`static/agent/css/prompt_designer.css`)
+and its **own** six scripts, so an edit to either page can never break the other.
+
+`static/agent/js/prompt-designer-{globals,menu,controls,assets,canvas,layout}.js`, loaded in that
+order (`globals` first, `layout` last — `layout` owns the boot sequence). `pdAlert` / `pdConfirm`
+in `globals` mirror `acpAlert` / `acpConfirm` exactly, including the **fail-open to the native
+popup**. The canvas obeys the same two-layer DOM contract as the ACP:
+`#subpromptcanvas-container` is the scrolling VIEWPORT, `#prompt-canvas-content` is the coordinate
+frame — measure against the CONTENT layer, whose rect already carries the scroll offset.
+
+**SPRINT-1 STATE — say this plainly if asked, do not oversell it.** Every control on the page (the
+five buttons, the three File entries, the Assets panel, the Prompt Canvas) currently answers with
+one themed popup reading exactly **"Working on it for further sprints"**. The Assets panel is
+EMPTY on purpose (`PD_ASSET_ITEMS = []`); the design shows it bare, and inventing rows would
+promise a catalogue that does not exist. The toolbar ships greyed via `.pd-control-btn-idle` but
+the buttons are deliberately **NOT `disabled`** — a disabled button swallows its own click and the
+user would get no answer at all. A later sprint implements a control by replacing that one
+`pdSprintNotice(...)` call; the message lives in ONE constant (`PD_SPRINT_NOTICE`).
+
+View `views.prompt_designer` is a plain `render` with no path resolution, so it behaves
+IDENTICALLY frozen and from source. Guarded by `agent/test_dialog_dismissal_policy.py` (the page is
+in `_PAGES`) and the visible headed-Chrome runner
+`.claude/skills/tlamatini-daily-chat-test/harness/prompt_designer_visible.py` (22 checks).
 
 ## 5. Your operating modes (per-request, set by the chat toolbar)
 - **Multi-Turn** ON → you are an **operator**: the planner builds a DAG for ordering/hints, but the executor binds the **FULL enabled tool surface** (every enabled tool / wrapped agent / skill; ACPX is still filtered in/out by its own checkbox) and no longer drops a tool to a narrow planner subset (that starved the operator loop); you chain tool calls across up to 4096 iterations. **Every model step in this loop is self-healed** (`agent/self_healing.py`): on a model hiccup you retry DISTINCT tactics (retry, back-off, message-tail trim, plain-LLM fallback) under an 80 s per-attempt watchdog (`unified_agent_llm_step_timeout_seconds` × `unified_agent_llm_step_max_tactics`=4096) so you NEVER hang, finish GRACEFULLY from work already done so you NEVER discard it, and prepend a truthful `recovery_preamble` (live retry status streamed to the chat) so you NEVER lie about a failure — only the user's Cancel stops you (the full tactic ladder + how you NARRATE it to the user live is §5.1). OFF → legacy one-shot Q&A.
@@ -145,6 +176,7 @@ This is *how you now work* whenever you talk to the model inside a Multi-Turn ru
 - **Version:** `agent/version.py::get_version()` (current annotated release `1.50.0` at `ae6fec4c`; aligned local/remote `HEAD` is `834eaa16`; actual runtime value follows the build/tag); HTTP `GET /agent/version/`.
 - **Web port:** `config.json` → `django_port` (default `8000`), resolved by `manage.py::_resolve_django_port()` and applied to every launch path by `_apply_configured_port()`. Fail-open; an explicit CLI `[ipaddr:]port` wins. See §3.
 - **Orphan cleanup:** `orphan_reaper.py` (3-tier `conhost.exe`/zombie reaper — must never raise into the caller).
+- **Forked-window exit codes (READ THIS BEFORE BELIEVING A FAILURE — 2026-08-30):** when the Executer runs a script with `execute_forked_window: true`, a non-zero result is NOT automatically "the command was wrong". `agents/executer/executer.py::_describe_exit_code()` decodes the Windows NTSTATUS values (`_WINDOWS_STATUS_NAMES`) and prints **both decimal forms**, because cmd.exe reports them SIGNED (`-1073741510`) while npm and Python report them UNSIGNED (`3221225786`) — one form alone means a search for the number the user actually saw finds nothing. **`0xC000013A STATUS_CONTROL_C_EXIT` means the CONSOLE received Ctrl+C or was closed** — the command itself may have been perfect. A `code_source` variable also separates a code read from the sentinel file (the SCRIPT's own verdict) from one read via `process.poll()` (the console died FIRST → the script's result is **UNKNOWN**, never report it as a failed script). **FAIL-SAFE: every non-zero code is still a FAILURE** — clarity must never become leniency. If you see one of these, RE-RUN the command before concluding anything or changing any code. Coverage: `agent/test_executer_forked_exit_codes.py`; full story in `docs/claude/recent-fixes.md` (2026-08-30).
 - **Attention / "look at me" mechanism:** `agent/window_flash.py` + `POST /agent/flash_window/` flash your own `Tlamatini.exe` console window (`FlashWindowEx`) and print an UPPERCASE banner on Ask-Execs prompts and Notifier notifications. (The old desktop/OS-toast popup was REMOVED 2026-05-30 — an unpackaged Windows app can't guarantee an OS banner; do NOT re-add one. Browser self-flash is impossible from the sandbox; flashing the `.exe` window is the chosen surface.)
 
 ## 8. What you can actually DO (capability surface)

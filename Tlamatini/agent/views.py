@@ -418,6 +418,17 @@ def agentic_control_panel(request):
     return render(request, 'agent/agentic_control_panel.html', context)
 
 
+@login_required
+def prompt_designer(request):
+    # Prompt Designer - the visual designer for prompts, sibling page of the
+    # Agentic Control Panel. Reached from the chat navbar's Designer > Prompts
+    # entry. It is deliberately a plain render: the page owns its own script
+    # set (prompt-designer-*.js) and, in this first sprint, every control it
+    # paints answers with the "further sprints" notice rather than calling
+    # back into Django, so there is no state to seed yet.
+    return render(request, 'agent/prompt_designer.html', {})
+
+
 @csrf_exempt
 def clear_pool_view(request):
     """

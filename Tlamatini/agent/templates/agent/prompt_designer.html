@@ -1,0 +1,158 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" class="html-general">
+
+<head>
+    <title>Tlamatini (Prompt Designer)</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" type="image/x-icon" href="{% static 'agent/img/Tlamatini.ico' %}?v={{ STATIC_VERSION }}">
+    <link rel="shortcut icon" type="image/x-icon" href="{% static 'agent/img/Tlamatini.ico' %}?v={{ STATIC_VERSION }}">
+    <link rel="apple-touch-icon" href="{% static 'agent/img/Tlamatini.ico' %}?v={{ STATIC_VERSION }}">
+    {% load django_bootstrap5 %}
+    {% bootstrap_css %}
+    {% bootstrap_javascript %}
+    <link rel="stylesheet" href="{% static 'agent/css/prompt_designer.css' %}?v={{ STATIC_VERSION }}">
+    {# dialog_theme.css MUST stay LAST: it supersedes the legacy .ui-dialog chrome on cascade ORDER. #}
+    <link rel="stylesheet" href="{% static 'agent/css/dialog_theme.css' %}?v={{ STATIC_VERSION }}_dlg3">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.13.3/jquery-ui.min.js"></script>
+    <!-- Dialog dismissal policy: X / Cancel / Continue / ESCAPE - never an
+         outside click. Must load after jQuery UI and before every
+         application dialog module. -->
+    <script src="{% static 'agent/js/dialog_policy.js' %}?v={{ STATIC_VERSION }}_dlgpolicy3_esc"></script>
+</head>
+
+<body>
+    <nav id="navbar-container" class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div id="navbar-content" class="container-fluid align-items-center">
+            <a class="navbar-brand navbar-margin" href="#">Tlamatini (Prompt Designer)</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMenu"
+                aria-controls="navbarMenu" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse justify-content-end" id="navbarMenu">
+                <ul class="navbar-nav align-items-lg-center" id="menu-editor">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="pd-file-dropdown" role="button"
+                            data-bs-toggle="dropdown" aria-expanded="false">File</a>
+                        <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="pd-file-dropdown">
+                            <li><a class="dropdown-item" href="#" id="pd-file-open-button">Open</a></li>
+                            <li><a class="dropdown-item" href="#" id="pd-file-save-as-button">Save as</a></li>
+                            <li>
+                                <hr class="dropdown-divider">
+                            </li>
+                            <li><a class="dropdown-item" href="#" id="pd-file-close-button">Close</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Backend-down notice. Driven by prompt-designer-connection-status.js.
+         SAME id and SAME classes as the chat (agent_page.html) and the ACP
+         designer (agentic_control_panel.html) so the bar looks IDENTICAL on all
+         three pages; the four .connection-status* rules are duplicated into
+         each page's own stylesheet, matching how the other two do it. -->
+    <div id="connection-status" class="connection-status connection-status-hidden"
+         role="status" aria-live="polite"></div>
+
+    <div class="row" id="designer-container">
+        <div id="main-assets-container" class="col-3 px-0">
+            <div id="assets-header" class="row header-title">
+                <span id="assets-header-title">Assets:</span>
+            </div>
+            <div id="subassets-container">
+                <div id="assets-list"></div>
+            </div>
+        </div>
+
+        <div id="designer-drag-divider" tabindex="0"></div>
+
+        <div class="col-9 px-0" id="promptcanvas-container">
+            <div id="promptcanvas-header" class="header-title">
+                <div id="promptcanvas-header-left">
+                    <span id="promptcanvas-header-title">Prompt Canvas:</span>
+                    <span id="promptcanvas-filename"></span>
+                </div>
+                <div id="promptcanvas-controls" style="display: flex !important; gap: 4px; padding-right: 8px;">
+                    <button type="button" id="pd-btn-validate" class="pd-control-btn pd-control-btn-idle"
+                        title="Validate">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor"
+                            viewBox="0 0 16 16">
+                            <path
+                                d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z" />
+                        </svg>
+                        Validate
+                    </button>
+                    <button type="button" id="pd-btn-start" class="pd-control-btn pd-control-btn-idle" title="Start">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor"
+                            viewBox="0 0 16 16">
+                            <path
+                                d="M10.804 8 5 4.633v6.734L10.804 8zm.792-.696a.802.802 0 0 1 0 1.392l-6.363 3.692C4.713 12.69 4 12.345 4 11.692V4.308c0-.653.713-.998 1.233-.696l6.363 3.692z" />
+                        </svg>
+                        Start
+                    </button>
+                    <button type="button" id="pd-btn-stop" class="pd-control-btn pd-control-btn-idle" title="Stop">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor"
+                            viewBox="0 0 16 16">
+                            <path
+                                d="M5 3.5h6A1.5 1.5 0 0 1 12.5 5v6a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 11V5A1.5 1.5 0 0 1 5 3.5z" />
+                        </svg>
+                        Stop
+                    </button>
+                    <button type="button" id="pd-btn-pause" class="pd-control-btn pd-control-btn-idle" title="Pause">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor"
+                            viewBox="0 0 16 16">
+                            <path
+                                d="M5.5 3.5A1.5 1.5 0 0 1 7 5v6a1.5 1.5 0 0 1-3 0V5a1.5 1.5 0 0 1 1.5-1.5zm5 0A1.5 1.5 0 0 1 12 5v6a1.5 1.5 0 0 1-3 0V5a1.5 1.5 0 0 1 1.5-1.5z" />
+                        </svg>
+                        Pause
+                    </button>
+                    <button type="button" id="pd-btn-clear" class="pd-control-btn pd-control-btn-idle" title="Clear">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor"
+                            viewBox="0 0 16 16">
+                            <path
+                                d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z" />
+                            <path fill-rule="evenodd"
+                                d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z" />
+                        </svg>
+                        Clear
+                    </button>
+                </div>
+            </div>
+            <div id="subpromptcanvas-container">
+                <div id="prompt-canvas-content">
+                    <svg id="prompt-connections-layer"></svg>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Host node for the themed pdAlert / pdConfirm popups. Same shape as the
+         Agentic Control Panel's, so dialog_theme.css and dialog_policy.js
+         recognise it with no extra wiring. -->
+    <div id="confirmation-dialog-message" title="" style="display: none;">
+        <h2 id="confirmation-primary-dialog-legend"></h2>
+        <p id="confirmation-secondary-dialog-legend"></p>
+    </div>
+
+    <form id="csrf-bootstrap-form" style="display: none;">
+        {% csrf_token %}
+    </form>
+
+    <!-- Prompt Designer split files: load order matters -->
+    <script src="{% static 'agent/js/prompt-designer-globals.js' %}?v={{ STATIC_VERSION }}"></script>
+    <script src="{% static 'agent/js/prompt-designer-menu.js' %}?v={{ STATIC_VERSION }}"></script>
+    <script src="{% static 'agent/js/prompt-designer-controls.js' %}?v={{ STATIC_VERSION }}"></script>
+    <script src="{% static 'agent/js/prompt-designer-assets.js' %}?v={{ STATIC_VERSION }}"></script>
+    <script src="{% static 'agent/js/prompt-designer-canvas.js' %}?v={{ STATIC_VERSION }}"></script>
+    <script src="{% static 'agent/js/prompt-designer-layout.js' %}?v={{ STATIC_VERSION }}"></script>
+    <script src="{% static 'agent/js/prompt-designer-connection-status.js' %}?v={{ STATIC_VERSION }}"></script>
+</body>
+
+</html>

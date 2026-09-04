@@ -39,7 +39,7 @@ from django.test import SimpleTestCase
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _JS = os.path.join(_HERE, "static", "agent", "js")
 _TPL = os.path.join(_HERE, "templates", "agent")
-_PAGES = ("agent_page.html", "agentic_control_panel.html")
+_PAGES = ("agent_page.html", "agentic_control_panel.html", "prompt_designer.html")
 
 
 def _read(path: str) -> str:

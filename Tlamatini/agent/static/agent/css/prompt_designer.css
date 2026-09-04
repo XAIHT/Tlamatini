@@ -1,0 +1,442 @@
+/*
+ * ═══════════════════════════════════════════════════════════════════
+ *   ✦  T L A M A T I N I  ✦   —   "one who knows"
+ *
+ *   Created by  Angela López Mendoza   ·   @angelahack1
+ *   Developer · Architect · Creator of Tlamatini
+ *
+ *   Every line of this file was written by Angela López Mendoza.
+ * ═══════════════════════════════════════════════════════════════════
+ *   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
+ */
+
+/* Prompt Designer - page chrome.
+ *
+ * Deliberately mirrors agentic_control_panel.css rule for rule: the two pages
+ * are siblings and must feel like ONE application. The ids are namespaced
+ * (assets- / promptcanvas- / pd-) so the Designer owns its own layout and can
+ * never be broken by an edit to the Agentic Control Panel, and vice versa.
+ */
+
+.html-general {
+    max-height: -webkit-fill-available;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: #343541;
+    color: #ececf1;
+    overflow: hidden;
+    /* Prevent global scroll */
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    width: 100vw;
+}
+
+body.resizing {
+    user-select: none !important;
+    cursor: col-resize !important;
+}
+
+/* ========================================
+   NAVBAR
+   ======================================== */
+
+#navbar-container {
+    height: 5vh;
+    min-height: 40px;
+    width: 100%;
+    min-width: 0;
+    padding-top: 0px;
+    padding-bottom: 0px;
+    padding-left: 0px;
+    padding-right: 2rem;
+    outline: none;
+    top: 0;
+    z-index: 1030;
+}
+
+#navbar-content {
+    padding: 0px;
+    margin-right: 3rem;
+    min-width: 0;
+    gap: .25rem;
+}
+
+#navbarMenu {
+    background-color: rgba(var(--bs-dark-rgb), var(--bs-bg-opacity)) !important;
+}
+
+.navbar-margin {
+    margin-left: 1rem;
+    margin-right: 3rem;
+    font-style: italic;
+    font-weight: 700;
+    min-width: 0;
+}
+
+.dropdown-entry {
+    background-color: #343541;
+    color: #35353b;
+    outline-style: auto;
+}
+
+#menu-editor {
+    flex-wrap: nowrap;
+}
+
+#menu-editor .nav-link {
+    padding-left: .5rem;
+    padding-right: .5rem;
+}
+
+/* ========================================
+   PAGE SPLIT  (Assets | Prompt Canvas)
+   ======================================== */
+
+#designer-container {
+    position: relative;
+    --bs-gutter-x: 0;
+    --bs-gutter-y: 0;
+    overflow: hidden;
+    display: flex;
+    flex-grow: 1;
+    height: 95vh;
+    justify-items: end;
+    margin: 0px;
+    border: 0px;
+    outline: 0px;
+    padding-top: 0px !important;
+    padding-bottom: 0px !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+}
+
+#main-assets-container {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    outline-offset: -2px;
+    outline: 2px solid #FFFFFF !important;
+    height: 100%;
+    padding: 0px;
+    border: 0px;
+    margin: 0px;
+    min-height: 360px;
+    background-color: #2d2d2d;
+    overflow-y: scroll !important;
+}
+
+#assets-header {
+    margin-right: 5px !important;
+    padding-left: 0px;
+    padding-right: 0px;
+    margin-left: 0px;
+    height: 25px !important;
+    flex-shrink: 0;
+    background-color: black;
+    color: white;
+    text-align: center;
+}
+
+#promptcanvas-header {
+    margin-right: 5px !important;
+    padding-left: 8px;
+    padding-right: 0px;
+    margin-left: 0px;
+    height: 28px !important;
+    min-height: 28px;
+    flex-shrink: 0;
+    background-color: black;
+    color: white;
+    text-align: center;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    width: 100%;
+    overflow: visible;
+}
+
+.header-title {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: white;
+    text-align: start;
+}
+
+#assets-header-title {
+    text-align: start;
+}
+
+#promptcanvas-header-title {
+    text-align: start;
+}
+
+#promptcanvas-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    overflow: hidden;
+}
+
+#promptcanvas-filename {
+    color: #10B981;
+    font-weight: 600;
+    font-style: italic;
+    font-size: 0.9em;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ========================================
+   TOOLBAR BUTTONS
+   ======================================== */
+
+#promptcanvas-controls {
+    display: flex;
+    gap: 4px;
+    padding-right: 8px;
+}
+
+.pd-control-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    height: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: antiquewhite;
+    background-color: #6f6f6f;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.pd-control-btn:hover {
+    background-color: #8a8a8a;
+}
+
+.pd-control-btn:active {
+    background-color: #5c5c5c;
+}
+
+.pd-control-btn svg {
+    flex-shrink: 0;
+}
+
+/* The Designer's toolbar ships in the SLEEPING look of the mockup: every
+ * button is greyed like a control that has nothing wired behind it yet.
+ * They are deliberately NOT `disabled` — a disabled button swallows the
+ * click, and every control on this page has to answer the user with the
+ * "further sprints" notice. Grey says "not implemented"; clickable says
+ * "and Tlamatini will tell you so". */
+.pd-control-btn-idle {
+    background-color: #808080;
+    color: antiquewhite;
+    opacity: 0.6;
+}
+
+.pd-control-btn-idle:hover {
+    background-color: #8f8f8f;
+    opacity: 0.75;
+}
+
+/* ========================================
+   PROMPT CANVAS
+   ======================================== */
+
+#promptcanvas-container {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    outline-offset: -2px;
+    outline: 2px solid #FFFFFF !important;
+    height: 100%;
+    padding: 0px;
+    border: 0px;
+    margin: 0px;
+    min-height: 360px;
+    background-color: #2d2d2d;
+    border: ridge;
+}
+
+/* Scrollable viewport over the prompt-canvas content layer. */
+#subpromptcanvas-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background-color: #1e1e1e;
+    overflow: auto;
+}
+
+/* Content layer - absolute-positioned prompt blocks will live here.
+   Auto-grows beyond the viewport; min 100% keeps drop targets usable
+   while the canvas is still empty. */
+#prompt-canvas-content {
+    position: relative;
+    min-width: 100%;
+    min-height: 100%;
+    width: 100%;
+    height: 100%;
+}
+
+#prompt-connections-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    overflow: visible;
+}
+
+/* Dark, unobtrusive scrollbars matching the ACP theme (WebKit/Chromium/Edge). */
+#subpromptcanvas-container::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+}
+
+#subpromptcanvas-container::-webkit-scrollbar-track {
+    background: #1a1a1a;
+    border: 1px solid #2b2b2b;
+}
+
+#subpromptcanvas-container::-webkit-scrollbar-thumb {
+    background: #4a4a55;
+    border: 2px solid #1a1a1a;
+    border-radius: 6px;
+}
+
+#subpromptcanvas-container::-webkit-scrollbar-thumb:hover {
+    background: #6a6a7a;
+}
+
+#subpromptcanvas-container::-webkit-scrollbar-corner {
+    background: #1a1a1a;
+}
+
+/* Firefox scrollbar styling. */
+#subpromptcanvas-container {
+    scrollbar-color: #4a4a55 #1a1a1a;
+    scrollbar-width: thin;
+}
+
+/* ========================================
+   DRAG DIVIDER
+   ======================================== */
+
+#designer-drag-divider {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 8px;
+    cursor: col-resize;
+    z-index: 10;
+    background: transparent;
+}
+
+#designer-drag-divider::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 3px;
+    width: 2px;
+    background: #8a8c98;
+    opacity: 0.8;
+}
+
+/* ========================================
+   ASSETS LIST  (left panel)
+   ======================================== */
+
+#assets-list {
+    display: flex;
+    flex-direction: column;
+    padding: 6px 8px;
+    gap: 4px;
+}
+
+.asset-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 4px;
+    background-color: #3a3a3a;
+    color: #ececf1;
+    font-size: 0.85rem;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.15s;
+}
+
+.asset-item:hover {
+    background-color: #4a4a4a;
+}
+
+.asset-item:active {
+    background-color: #555555;
+}
+
+.asset-item-icon {
+    width: 22px;
+    height: 22px;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+/* ========================================
+   RESPONSIVE
+   ======================================== */
+
+@media (max-width: 1199.98px) {
+    #navbar-content {
+        margin-right: 0;
+    }
+
+    .navbar-margin {
+        margin-right: 1rem;
+    }
+}
+
+@media (max-width: 700px) {
+    #designer-container {
+        flex-direction: column;
+        height: auto;
+        overflow: auto;
+    }
+
+    #main-assets-container,
+    #promptcanvas-container {
+        width: 100% !important;
+        min-height: 240px;
+    }
+
+    #designer-drag-divider {
+        display: none;
+    }
+}
+
+/* ========================================
+   BACKEND-DOWN BANNER
+   ========================================
+   Byte-identical to the four rules in agent_page.css and
+   agentic_control_panel.css, so the bar looks THE SAME on all three pages.
+   They are duplicated per stylesheet on purpose: the Prompt Designer owns a
+   separate stylesheet precisely so an edit on either designer can never reach
+   across and restyle the other. Driven by prompt-designer-connection-status.js.
+   The bar sits between the navbar and #designer-container, which is a flex
+   child with flex-grow:1 — so when the banner appears the canvas simply
+   reflows, exactly as it does on the ACP page. */
+.connection-status { min-height: 2.5rem; padding: .55rem 1rem; font-size: .95rem; font-weight: 600; border-bottom: 1px solid rgba(255,255,255,0.08); }
+.connection-status-hidden { display: none; }
+.connection-status-warning { display: block; background-color: #5c2b29; color: #ffe0de; }
+.connection-status-ok { display: block; background-color: #21413d; color: #d8fffa; }

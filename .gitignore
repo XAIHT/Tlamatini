@@ -355,7 +355,13 @@ Tlamatini/agent/contacts.json
 /Tlamatini/agent/contacts.json
 contacts.json
 
-# Private-data audit artifacts — may contain personal data; never commit
+# Private-data audit artifacts — may contain personal data; never commit.
+# NOTE the PAIR: `.private_targets.json` (real values) is ignored, while
+# `.private_targets.template.json` (schema only, always EMPTY) is TRACKED on
+# purpose — it is what lets a fresh clone, a public contributor, and Tlamatini
+# rebuilding herself run build_complete_public_release.py in NO-TARGETS MODE
+# instead of dead-ending on a file they were never given. Never ignore it, and
+# never put a real value in it.
 personal_info_audit_report.md
 private_data_audit_report.json
 .private_targets.json

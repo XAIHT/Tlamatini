@@ -119,6 +119,15 @@ def load_targets(args) -> list[dict]:
             return
         if isinstance(data, dict):
             for cat, vals in data.items():
+                # `_`-prefixed keys are COMMENT keys, never targets. Tlamatini
+                # already uses this convention in config.json ("_section_*") and
+                # external_mcps.json ("_README"), and .private_targets.template.json
+                # carries a "_README" explaining the schema. Without this guard every
+                # README line would become a scrub target -- the tree-wide scrubber
+                # would then replace that prose everywhere and the verifier would
+                # "find" it in every file it had just rewritten.
+                if str(cat).startswith("_"):
+                    continue
                 if isinstance(vals, (list, tuple)):
                     for v in vals:
                         raw.append((str(cat), str(v)))

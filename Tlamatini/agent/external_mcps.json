@@ -23,7 +23,25 @@
       "transport": "stdio",
       "description": "Structured step-by-step reasoning with branching and revision. Official @modelcontextprotocol reference server. Needs Node (Tlamatini provisions it automatically).",
       "_tlamatini_default": true
+    },
+    "lumen-book-reader": {
+      "command": "C:\\Lumen-Book-Reader\\.venv\\Scripts\\python.exe",
+      "args": [
+        "-m",
+        "lumen_reader.mcp_server",
+        "serve",
+        "--stdio"
+      ],
+      "env": {
+        "PYTHONUNBUFFERED": "1",
+        "PYTHONIOENCODING": "utf-8"
+      },
+      "transport": "stdio"
     }
   },
-  "active": []
+  "active": [
+    "lumen-book-reader",
+    "memory",
+    "sequential-thinking"
+  ]
 }

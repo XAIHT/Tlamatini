@@ -259,6 +259,12 @@ def _utf8_env() -> dict:
     # instead changes nothing there). Full rationale in build.py.
     # Pinned by Tlamatini/agent/test_build_pip_quiet.py.
     env["PIP_DISABLE_PIP_VERSION_CHECK"] = "1"
+    # PRIVATE / keyed build: tell build.py NOT to force push-able secrets.
+    # Since 2026-08-30 build.py runs `regen_secrets.py --mode push-able` itself and
+    # then PROVES config.json holds only placeholders, so a bare `python build.py`
+    # can never bake live keys into a package again. This build is the one
+    # deliberate exception: keyed values are its entire purpose.
+    env["TLAMATINI_KEYED_BUILD"] = "1"
     # PRIVATE / keyed build: ship the REAL contacts book when the gitignored
     # contacts.private.json is present (build.py reads TLAMATINI_BUNDLE_CONTACTS
     # and bundles it as contacts.json). Absent -> build.py ships the empty book.

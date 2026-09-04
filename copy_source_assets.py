@@ -147,6 +147,10 @@ EXCLUDED_FILE_NAMES = {
     # contacts.json via TLAMATINI_BUNDLE_CONTACTS — it is user data, not source);
     # .private_targets.json is her leak-target list (names/phones/emails); a live
     # contacts.json is user state a rebuild never needs (build.py regenerates it).
+    # NOTE the TEMPLATE (.private_targets.template.json) is deliberately NOT here:
+    # it is tracked, always empty, carries no PII, and is what lets a snapshot
+    # rebuild run build_complete_public_release.py in NO-TARGETS MODE instead of
+    # dead-ending on a file the snapshot is forbidden to contain.
     "contacts.private.json", "contacts.json",
     ".private_targets.json", "private_targets.json",
     # Leak-audit artifacts (gitignored) — carry found-secret SAMPLES by design,
@@ -225,6 +229,10 @@ REQUIRED_SNAPSHOT_FILES = (
     "versioning.py",
     "requirements.txt",
     "copy_source_assets.py",
+    # The EMPTY leak-target schema template. Without it a snapshot rebuild has no
+    # way to learn the shape of .private_targets.json (which is correctly dropped),
+    # and the public release builder has nothing to fall back to.
+    ".private_targets.template.json",
     # Self-update capability (in-app checker + external file-swap script)
     "apply_update.ps1",
     "Tlamatini/agent/self_update.py",

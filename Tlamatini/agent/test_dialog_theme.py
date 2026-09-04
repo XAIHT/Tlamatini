@@ -175,7 +175,11 @@ class DialogThemeTokenTests(SimpleTestCase):
 class DialogThemeWiringTests(SimpleTestCase):
     """Load order is load-bearing; both pages must carry the theme LAST."""
 
-    PAGES = ("agent_page.html", "agentic_control_panel.html")
+    # The Prompt Designer is the page that PROVED this list has to grow: it
+    # loads the theme and NOTHING else, so anything the theme does not own is
+    # simply absent there (Angela, 2026-09-02 - the bare grey close button).
+    PAGES = ("agent_page.html", "agentic_control_panel.html",
+             "prompt_designer.html")
 
     def test_both_pages_load_the_theme(self):
         for page in self.PAGES:
@@ -200,6 +204,86 @@ class DialogThemeWiringTests(SimpleTestCase):
                 "In %s, dialog_theme.css must be the LAST stylesheet (found "
                 "%r after it). It wins by cascade order, not specificity."
                 % (page, sheets[-1]))
+
+
+class DialogShellIsOwnedByTheThemeTests(SimpleTestCase):
+    """
+    The "ugly lightgray square" (Angela, 2026-09-02, prompt_designer.html).
+
+    jQuery-UI's OWN stylesheet is deliberately never loaded in Tlamatini, so
+    `.ui-dialog-titlebar-close` arrives with no glyph and no position. The
+    theme sizes it 32x32 and offers `right: 12px`, but an offset needs a
+    positioned ancestor: without `position: relative` on the titlebar AND
+    `position: absolute` on the button, the button sat in normal flow wearing
+    the browser's default `ButtonFace` grey - a 32x32 light-grey square with
+    no X in it, at the top of every Prompt Designer dialog.
+
+    Both halves used to live, duplicated, in `agent_page.css` AND
+    `agentic_control_panel.css`. A third page therefore got neither. They are
+    not page-specific in any way, so the THEME must own them - that is what
+    makes the next page somebody adds correct by default.
+    """
+
+    def setUp(self):
+        self.css = _read(os.path.join(_CSS, THEME))
+
+    def test_the_close_button_carries_an_x_glyph(self):
+        block = _rule_body(self.css, ".ui-dialog .ui-dialog-titlebar-close {")
+        self.assertIn(
+            "background-image", block,
+            "The close X GLYPH is gone from dialog_theme.css. Without it the "
+            "button is an EMPTY light-grey square - exactly the defect Angela "
+            "photographed on the Prompt Designer.")
+        self.assertIn(
+            "svg+xml", block,
+            "The X must be the inline SVG data-URI: no jQuery-UI icon sprite "
+            "and no icon font is loaded anywhere in Tlamatini.")
+        self.assertIn(
+            "background-color: transparent", block,
+            "Without an explicit transparent background the button falls back "
+            "to the browser's default ButtonFace grey.")
+        self.assertIn(
+            "position: absolute", block,
+            "The theme offsets this button with `right: 12px`. Static "
+            "positioning discards that offset and drops the button into "
+            "normal flow next to the title.")
+
+    def test_the_titlebar_is_the_positioning_context(self):
+        block = _rule_body(self.css, ".ui-dialog .ui-dialog-titlebar {")
+        self.assertIn(
+            "position: relative", block,
+            "`position: relative` here is LOAD-BEARING, not cosmetic: it is "
+            "the containing block the absolutely-positioned close X is "
+            "offset from. Remove it and the X flies to the page corner.")
+
+    def test_the_body_states_its_own_colour(self):
+        block = _rule_body(self.css, ".ui-dialog .ui-dialog-content {")
+        self.assertIn(
+            "--tlm-dlg-text", block,
+            "The dialog body must state its colour. Inherited, it follows "
+            "Bootstrap's near-black and reads dark-on-dark in the dark card.")
+        self.assertIn(
+            "background: none", block,
+            "The CARD is painted by `.ui-dialog`; the content area must stay "
+            "transparent over it.")
+
+    def test_the_scroll_cap_stays_overridable_by_a_page(self):
+        """
+        `max-height` is the ONE declaration the pages genuinely disagree on
+        (the ACP canvas caps at 70vh). It therefore lives on a selector one
+        class LESS specific, so a page still wins whatever the load order is.
+        Folding it into `.ui-dialog .ui-dialog-content` silently retunes every
+        existing dialog on both older pages.
+        """
+        shell = _rule_body(self.css, ".ui-dialog .ui-dialog-content {")
+        self.assertNotIn(
+            "max-height", shell,
+            "`max-height` moved into the more specific rule and now beats the "
+            "per-page caps it was written to let through.")
+        fallback = _rule_body(self.css, "\n.ui-dialog-content {")
+        self.assertIn("max-height", fallback,
+                      "the low-specificity scroll envelope is gone, so a page "
+                      "that sets no cap has dialogs that never scroll.")
 
 
 class DialogThemeCollectedCopyTests(SimpleTestCase):

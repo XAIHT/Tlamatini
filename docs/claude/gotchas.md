@@ -44,6 +44,34 @@ The frozen build resolves paths via `os.path.dirname(sys.executable)` vs source 
 
 **`build.py --self-modify` (2026-05-25; snapshot generation 2026-06-12)** — when this flag is passed, the build bundles Tlamatini's own source tree `TlamatiniSourceCode/` next to the executable (it then flows into `pkg.zip`), producing a **self-able-modify** build the running app can read, rewrite, and REBUILD. Since 2026-06-12 the tree is **generated fresh** by `copy_source_assets.py` (repo root) from the live repo — full source surface (.py/.js/.css/.html/.ps1/.pmt/.yaml/build scripts + build-required .ico/.wav/.svg), with media (.pdf/.pptx/images/videos), jd-cli.jar, secrets (redacted to `<KEY goes here>`), and regenerable state omitted; the snapshot carries `_REBUILD_INSTRUCTIONS.md` + `_SOURCE_SNAPSHOT_MANIFEST.json` telling the runtime how to restore the omitted binaries from the install root and rebuild. A generation failure falls back to the legacy static copy of `Tlamatini/agent/TlamatiniSourceCode/`. Without the flag the directory is omitted entirely — a **not-self-able-modify** build. The build prints `Self-modify build : YES — bundling TlamatiniSourceCode` / `… no — source tree omitted`. **Since 2026-08-08 `agent/Tlamatini.md` (the LLM self-knowledge file) is gated on the SAME flag** — it is bundled via `--add-data` and copied to the install root **only** under `--self-modify`, so her source and her self-description ship together or not at all. `--no-self-modify` is a real flag that WINS over `--self-modify`, and both `build_complete_*` wrappers default to OFF, pass the decision explicitly, and then open `pkg.zip` to PROVE the payload matches. At runtime the whole `<self_knowledge>` section of `prompt.pmt` is dropped in a not-self-able-modify build (**≈15.7k tokens saved per request**); with `--self-modify` nothing changes and she keeps everything about herself. See `docs/claude/recent-fixes.md` (2026-08-08). See `docs/claude/architecture.md` → *Self-Knowledge & Self-Modification*.
 
+### The build FORCES push-able secrets, and `.private_targets.json` is OPTIONAL (2026-08-30)
+
+Two build-pipeline guarantees that used to depend on the operator remembering something:
+
+**`python build.py` now runs `regen_secrets.py --mode push-able` itself, then PROVES it.**
+`ensure_pushable_secrets()` runs the regen (idempotent, needs no `data.keys`), then **re-reads
+`config.json` and ABORTS** if any live-looking secret survived — which also covers a stripped tree
+where `regen_secrets.py` is missing and the regen silently did nothing. The check is generic by key
+name (top level plus every `acpx.agents.*.env` block), so a secret added tomorrow is covered without
+editing a list. Before this, any bare build after a `--mode keyed` pass baked REAL keys into
+`pkg.zip`. **`TLAMATINI_KEYED_BUILD=1` opts out** — set by `build_complete_private_release.py`
+(keyed values are its purpose) and explicitly **popped** by the public builder so an ambient value in
+the same shell cannot disable the guarantee.
+
+**`build_complete_public_release.py` no longer dead-ends without `.private_targets.json`.** That file
+is gitignored, so a fresh clone, a public contributor, and Tlamatini rebuilding herself from
+`TlamatiniSourceCode/` (which correctly DROPS it) all lacked it and were hard-refused. Now the
+tracked, always-EMPTY `.private_targets.template.json` documents the schema and resolves to zero
+targets, and zero targets is a *decision*: with no private-data markers in the tree it enters
+**NO-TARGETS MODE** (still forcing push-able secrets, `SECRET_KEY_RE`, an empty contacts book, the
+defaults-only MCP catalog, and a blocking `verify_shipped_config_surface()` audit of the config
+Tlamatini ships); with markers present (`data.keys`, `contacts.private.json`, a non-empty
+`contacts.json`) it **REFUSES**, because "no targets" there means the file went MISSING and every
+scrub would be a silent no-op. `--no-private-data` is the explicit human override. **Nothing at
+runtime reads the targets file**, so its absence can never stop an installed Tlamatini from starting.
+Contract + coverage: `docs/claude/recent-fixes.md` (2026-08-30),
+`Tlamatini/agent/test_public_release_targets_optional.py` (37 tests).
+
 ---
 
 ### The build PROVES what it ships — `verify_frozen_agent_modules()` (2026-08-16, v1.48.16)

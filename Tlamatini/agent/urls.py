@@ -42,6 +42,7 @@ urlpatterns = [
     path('list_all_agent_descriptions/', secure_get(views.list_all_agent_descriptions_view), name='list_all_agent_descriptions'),
     path('load_agent_config/<str:agent_name>/', secure_get(views.load_agent_config_view), name='load_agent_config'),
     path('agentic_control_panel/', secure_get(views.agentic_control_panel), name='agentic_control_panel'),
+    path('prompt_designer/', secure_get(views.prompt_designer), name='prompt_designer'),
     path('save_agent_config/<str:agent_name>/', secure_post(views.save_agent_config_view), name='save_agent_config'),
     path('clear_pool/', secure_post(views.clear_pool_view), name='clear_pool'),
     path('cleanup_session/', secure_post(views.cleanup_session_view), name='cleanup_session'),
