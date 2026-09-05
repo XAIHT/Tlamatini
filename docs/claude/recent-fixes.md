@@ -51,34 +51,59 @@ capability was structurally unable to run its own public builder.
 into `pkg.zip`. The only defence was remembering to run `regen_secrets.py --mode push-able` first,
 and a comment saying so. *Remembering is not a safeguard.*
 
-### The fix — a TEMPLATE **and** a fallback, because neither alone covers the tree
+### The fix — an EVIDENCE-BASED pre-flight, and an INERT template
 
-Both were needed; picking one would have left a hole.
+⚠️ **Superseded 2026-09-05 (the `designer` port).** This fix was written twice, independently, on
+`main` and on `designer`. `main`'s design won and is what ships; the `designer` variant
+(`.private_targets.template.json` auto-discovered as a last resort, `decide_targets_mode()`,
+`private_data_risk_markers()`) is **gone**. The reason is detection breadth — see the table below.
 
-**`.private_targets.template.json`** is TRACKED, always present, always EMPTY. It documents the
-schema (`names` / `phones` / `handles` / `emails`) and resolves to **zero** targets. It ships in the
-self-modify snapshot (added to `REQUIRED_SNAPSHOT_FILES`, so a future exclusion fails loudly), while
-the real `.private_targets.json` stays excluded.
+**Zero targets is a decision, not a dead end** — `privacy_preflight()` returns EVIDENCE lines, and an
+empty list means "pristine":
 
-**Zero targets is now a decision, not a dead end** — `decide_targets_mode()`:
-
-| targets | private-data markers in the tree | result |
+| targets | evidence that THIS tree can leak | result |
 |---|---|---|
 | present | any | normal mode — **unchanged** |
-| none | none | **NO-TARGETS MODE** — build proceeds |
-| none | present | **REFUSE**, naming the evidence, the template, and 4 ways to fix it |
-| none | present + `--no-private-data` | proceed, printing every marker it overrode |
+| none | none | **CLEAN-TREE MODE** — build proceeds |
+| none | present | **REFUSE**, naming the exact evidence and the four ways to fix it |
+| none | present + `--assume-clean-tree` | proceed, printing every item it overrode |
 
-`private_data_risk_markers()` distinguishes the two causes of "no targets" — the whole point, since
-they need opposite answers. It reads no private VALUE, only asks whether the private-data
-CONTAINERS exist: `data.keys`, `contacts.private.json`, a non-empty `Tlamatini/agent/contacts.json`
-(**unparseable ⇒ assumed non-empty**, fail-toward-safety). A maintainer whose targets file vanished
-gets a loud refusal instead of a silently unscrubbed release — the failure this interlock exists for,
-because an empty target set makes every scrub a **no-op** and leaves the verifier nothing to report.
+It probes for the *containers and the values*, not just the containers, and **any probe that raises
+counts AS evidence** — the deliberate opposite of Tlamatini's usual fail-open rule, for the same
+reason LaTeXer's bisect guard fails safe: publishing Angela's private data is far worse than a build
+that stops and asks.
 
-**NO-TARGETS MODE is a narrower gate, never an absent one.** The full auditor returns rc=2 with zero
-targets (and its structural layer is informational by design, so it could never block), so STEP 4
-switches to `verify_shipped_config_surface()`: a deterministic, **blocking** audit of the config
+| probe | covered |
+|---|---|
+| `data.keys` (with a key count) | ✅ |
+| `contacts.json` / `contacts.private.json`, 4 locations, parsed and counted | ✅ |
+| live secrets at **any depth** in `config.json` | ✅ |
+| live secrets at any depth in `external_mcps.json` | ✅ |
+| live secrets **and** e-mail/phone shapes in **every** `agents/*/config.yaml` | ✅ |
+| root `*.key` files | ✅ |
+| an unreadable probe ⇒ evidence | ✅ |
+
+The rejected variant probed only the first two rows, and only asked whether the container *existed*.
+Concretely: a tree with a live `ANTHROPIC_API_KEY` in `config.json` and a real phone in
+`whatsapper/config.yaml`, but no `data.keys` and no contacts book, **passed straight into no-targets
+mode**. The shipped pre-flight refuses it and names the key.
+
+**`private_targets.example.json`** is TRACKED, shape-only (`names` / `phones` / `handles` /
+`emails`), and holds nothing but `<placeholder>` values. It is **deliberately NOT in
+`DEFAULT_TARGETS_FILES`** and its values are stripped by `_is_placeholder()`. That is the load-bearing
+difference from the rejected design: a template that can make the target set merely *non-empty* would
+**SILENCE the refusal above** and produce a build that prints "VERIFIED CLEAN" having scrubbed
+nothing real — strictly worse than the dead end it replaced. It ships in the self-modify snapshot
+(`REQUIRED_SNAPSHOT_FILES`, so a future exclusion fails loudly) while the real `.private_targets.json`
+stays excluded. Both spellings — dotted **and dotless** — are gitignored, because
+`DEFAULT_TARGETS_FILES` auto-discovers both and a leading-dot typo must never make the file
+committable.
+
+**CLEAN-TREE MODE is a narrower gate, never an absent one.** With no PII list the auditor matches
+nothing BY CONSTRUCTION — `0 findings` is true without inspecting anything, and the pass line says so
+out loud rather than implying a verification that never happened. So STEP 4 *additionally* runs
+`verify_shipped_config_surface()` (ported from the `designer` variant, which got this half right and
+is the one thing `main` lacked): a deterministic, **blocking** audit of the config
 Tlamatini herself ships (`config.json`, `contacts.json`, `external_mcps.json`, agent `config.yaml`) for
 live-looking secrets, e-mail addresses, phone-shaped values in the contacts book, and a `data.keys`
 inside the package at all. Still enforced either way: push-able secrets, `SECRET_KEY_RE`, the empty
@@ -100,36 +125,54 @@ silently disable the guarantee.
   verifier would then have "found" it in every file it had just rewritten (the 737-false-positive
   bug, again). `_`-prefixed keys are now skipped — the same comment-key convention `config.json`
   (`_section_*`) and `external_mcps.json` (`_README`) already use.
-* **`REGEN_TOUCHED` was missing two files.** Zavuerer and Discoverer joined `regen_secrets.py`'s
-  rule set later and were never mirrored into the public builder's backup list, so it rewrote them
-  with no byte-for-byte backup. The `finally:` re-key papered over it only because `data.keys`
-  happened to exist.
+* **`REGEN_TOUCHED` was missing THREE files, and is now DERIVED.** Zavuerer, Discoverer and
+  `external_mcps.json` joined `regen_secrets.py`'s rule set later and were never mirrored into the
+  public builder's hand-typed backup list, so it rewrote them with no byte-for-byte backup — silent
+  loss of the operator's own credentials on a machine without `data.keys`, where the `finally:`
+  re-key is skipped. `_regen_touched_files()` now reads the managed paths **out of
+  `regen_secrets.py` itself**, so the NEXT managed file is covered the day it is added there. It
+  fails toward **backing up MORE**: if the import yields fewer paths than the explicit fallback (a
+  renamed constant, a syntax error), the fallback wins. Backing up a file we did not need costs a
+  file copy; missing one costs the operator their keys.
 
 ### Runtime answer (Angela asked explicitly)
 
 **A missing `.private_targets.json` can NEVER stop an installed Tlamatini from starting.** Nothing
-under `Tlamatini/` reads it — it is build/audit-time only, and `test_no_runtime_dependency_on_the_targets_file`
-sweeps the whole app tree to keep that true (only the guard itself is exempt, so any other reference
-fails the build).
+under `Tlamatini/` reads it — it is build/audit-time only, and
+`test_no_runtime_module_reads_the_targets_file` sweeps the whole app tree to keep that true (tests and
+the build scripts are exempt; they are not the app). It caught a real one during the port: a line of
+generated-dossier prose in `doc_generation/complete_project_docs.py` still named the file.
 
 ### Contract (do NOT weaken)
 
-1. The template stays **TRACKED and EMPTY**. A value in it is published private data.
-2. Keep the **marker interlock**. Removing it turns a lost targets file into a silent leak, which is
-   strictly worse than the dead end it replaced.
-3. NO-TARGETS MODE must keep a **blocking** verification. A mode that audits nothing is a mode that
-   proves nothing.
+1. The tracked template stays **INERT and never auto-discovered**. A real value in it is published
+   private data; auto-loading it at all would silence the refusal in rule 2 and yield a build that
+   reports "verified" having scrubbed nothing.
+2. Keep the **evidence pre-flight**, and keep it **fail-toward-REFUSAL**. Removing it turns a lost
+   targets file into a silent leak, which is strictly worse than the dead end it replaced. Do not
+   narrow it back to "does the container exist" — the values are where the evidence is.
+3. CLEAN-TREE MODE must keep a **blocking** verification. A mode that audits nothing is a mode that
+   proves nothing — and the pass line must keep admitting that personal-VALUE matching did not run.
 4. `build.py` must keep **proving** push-able rather than trusting the regen exit code — the abort is
-   what covers the missing-`regen_secrets.py` case.
-5. `--no-private-data` is an explicit human assertion. Never make it the default, and never infer it.
+   what covers the missing-`regen_secrets.py` case — and the public builder must keep **popping**
+   `TLAMATINI_KEYED_BUILD` so an ambient value cannot disable it.
+5. `--assume-clean-tree` is an explicit human assertion. Never make it the default, never infer it.
+6. The regen backup list stays **DERIVED**. A hand-typed list has been wrong three times already.
+7. `_SHIPPED_SECRET_NAME_RE` must never be renamed to `_SECRET_NAME_RE`: the package audit's pattern
+   is broader than the pre-flight's on purpose, and rebinding the name would silently widen what the
+   pre-flight calls a credential and start refusing pristine clones.
 
-Coverage: `Tlamatini/agent/test_public_release_targets_optional.py` (37 tests — template contract,
-loader comment-keys, discovery fallback, all six marker cases, all four decision cells, six
-config-surface audits, the runtime-independence sweep, the push-able enforcement branches, builder
-wiring, and snapshot carriage). Live-proven on 2026-08-30 in a visible window: a fresh-clone skeleton
-entered NO-TARGETS MODE and reached STEP 1; the same skeleton plus `data.keys` refused with the full
-remedy text; `--no-private-data` proceeded while listing the marker; a keyed throwaway tree lost its
-live key to the forced push-able pass, a `TLAMATINI_KEYED_BUILD=1` tree kept it, and a tree with no
+Coverage: `Tlamatini/agent/test_public_release_targets.py` (**26 tests** — build-time-only contract,
+both gitignored spellings, fresh-clone buildability, committed defaults that once broke it, template
+inertness, all five evidence classes plus the unreadable-probe case, the derived backup list matching
+`regen_secrets` exactly, and the "never claims a PII verification" honesty check) +
+`Tlamatini/agent/test_public_release_build_guards.py` (**24 tests** — the forced push-able pass and
+its `TLAMATINI_KEYED_BUILD` opt-out on both builders, the derived list covering `external_mcps.json`,
+six config-surface audits, the STEP-4 wiring including run-before-delete and abort-before-zip, the
+regex-collision guard, and snapshot carriage). Live-proven on 2026-08-30 in a visible window: a
+fresh-clone skeleton reached STEP 1; the same skeleton plus `data.keys` refused with the full remedy
+text; the override proceeded while listing the evidence; a keyed throwaway tree lost its live key to
+the forced push-able pass, a `TLAMATINI_KEYED_BUILD=1` tree kept it, and a tree with no
 `regen_secrets.py` aborted rather than shipping it.
 
 ---

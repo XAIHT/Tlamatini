@@ -121,7 +121,7 @@ def load_targets(args) -> list[dict]:
             for cat, vals in data.items():
                 # `_`-prefixed keys are COMMENT keys, never targets. Tlamatini
                 # already uses this convention in config.json ("_section_*") and
-                # external_mcps.json ("_README"), and .private_targets.template.json
+                # external_mcps.json ("_README"), and private_targets.example.json
                 # carries a "_README" explaining the schema. Without this guard every
                 # README line would become a scrub target -- the tree-wide scrubber
                 # would then replace that prose everywhere and the verifier would

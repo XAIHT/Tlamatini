@@ -563,14 +563,24 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         or "unrealer" in subject
         or "scaffold" in subject
         or "smoothness" in subject
+        or "ctrl+c" in subject
+        or "prompt designer" in subject
         for subject in subjects
     )
     if has_current_release_wave:
         highlights.append(
-            "The current annotated release and aligned local/remote HEAD both resolve to `v1.50.4` at `64b29725`. Runtime versions remain Git/build-derived through `agent/version.py`, while generated inventories derive agent, tool, skill, asset, migration, and effective-line totals from live source."
+            "The checked-out `designer` branch resolves public version `1.50.5` from its reachable annotated tag at `fbcd118d`; untagged HEAD `baa1a1f6` carries the Prompt Designer implementation. Fetched `origin/main` is a separate line whose newest reachable annotated tag is `v1.50.6` at `6e4ffa73`, so the dossier reports the divergence instead of relabeling local code as the remote release."
         )
         highlights.append(
             "The release root-fixes installed-runtime startup noise and latency: frozen Django builds exclude optional `transformers` so its guarded token-counter fallback cannot import the unused Torch stack, while carried Python keeps Torch for Talker. Runtime and tests now import tools from `langchain_core.tools`, and source-derived guards prohibit warning muting, accidental ML imports, or an unsafe upstream contract change."
+        )
+    if any("ctrl+c" in subject for subject in subjects):
+        highlights.append(
+            "The v1.50.5 shutdown fix keeps Python signal handling minimal and re-entry-safe: the handler sets an Event, a boot-created daemon worker performs best-effort cleanup, a watchdog guarantees bounded exit, and a second Ctrl+C hard-exits immediately. Source-contract tests plus a visible real-console E2E test prove the Django/Daphne process terminates."
+        )
+    if any("prompt designer" in subject for subject in subjects):
+        highlights.append(
+            "The local Prompt Designer adds a third operator page beside chat and the Agentic Control Panel: a dedicated template, stylesheet, seven isolated JavaScript modules, menu routing, themed dialogs, a heartbeat-backed connection banner, and a visible Playwright/Shoter proof harness. Its current controls expose the staged designer contract without leaking ACP state across pages."
         )
     if any("security harness" in subject or "security harnessing" in subject for subject in subjects):
         highlights.append(
@@ -763,7 +773,7 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         for subject in subjects
     ):
         highlights.append(
-            "The latest dossier pass resolves the product at annotated release `v1.50.4` (`64b29725`), confirms aligned local/remote HEAD at the same commit, and combines README.md and BookOfTlamatini.md with source/Git truth while retaining complete installation, Ollama, architecture, usage, tree, line inventory, and responsibility context."
+            "The latest dossier pass resolves the checked-out product at public version `1.50.5` from tag `v1.50.5` (`fbcd118d`) and reports untagged `designer` HEAD `baa1a1f6` separately from fetched `origin/main` and its reachable `v1.50.6` tag. README.md and BookOfTlamatini.md remain content baselines while source and Git supply current counts and branch truth."
         )
     elif not has_current_release_wave and any(
         "1.26.5" in subject
@@ -968,7 +978,7 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
         "tlamatini-spanish piring" in subject for subject in subjects
     ):
         return [
-            "The current annotated release and aligned local/remote HEAD both resolve to `v1.50.4` at `64b29725`, so release and worktree identities are reported without inventing a post-tag build.",
+            "The checked-out `designer` branch resolves public version `1.50.5` from annotated tag `v1.50.5` at `fbcd118d`; untagged HEAD `baa1a1f6` and fetched `origin/main` are reported separately so no post-tag build is presented as a release.",
             "The tagged `v1.50.4` delta keeps optional Transformers and its transitively imported Torch stack out of the frozen Django process, migrates deprecated tool imports to `langchain_core.tools`, and adds source-derived lean-process guards; the v1.50.3 Googler and earlier safety work remain carried.",
             "The post-tag safety commit makes Deleter treat `target_path` as a working directory, refuses protected or accidental directory deletion by default, suppresses audio/video output during tests, adds JavaScript parse gates, and carries focused regression tests for each boundary.",
         ]
@@ -1060,14 +1070,24 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
         or "scaffold" in subject
         or "smoothness" in subject
         or "googler" in subject
+        or "ctrl+c" in subject
+        or "prompt designer" in subject
         for subject in subjects
     )
     if has_current_release_wave:
         highlights.append(
-            "The current annotated release and aligned local/remote HEAD both resolve to `v1.50.4` at `64b29725`, so release and worktree identities are reported without inventing a post-tag build."
+            "The current checkout resolves public version `1.50.5` from annotated tag `v1.50.5` at `fbcd118d`; untagged `designer` HEAD `baa1a1f6` and fetched `origin/main` are reported separately so release and worktree identities remain honest."
         )
         highlights.append(
-            "The current release root-fixes frozen startup by excluding optional Transformers from the web-process bundle, preserving Torch only in carried Python for Talker, replacing deprecated `langchain.tools` imports, and adding a dedicated lean-process regression suite. v1.50.3 Googler resilience and the earlier runtime/privacy/verdict/dialog safeguards remain carried."
+            "The carried v1.50.4 runtime fix excludes optional Transformers from the frozen web-process bundle, preserves Torch only in carried Python for Talker, replaces deprecated `langchain.tools` imports, and adds a dedicated lean-process regression suite. v1.50.5 then fixes repeated Ctrl+C termination, and local HEAD adds Prompt Designer plus stronger forked-process and release-target diagnostics."
+        )
+    if any("ctrl+c" in subject for subject in subjects):
+        highlights.append(
+            "Ctrl+C shutdown now delegates cleanup to a daemon worker, bounds termination with a watchdog, and reserves the signal handler for an Event plus immediate second-press escape. Unit contracts and a visible console E2E runner cover the real Django/Daphne path."
+        )
+    if any("prompt designer" in subject for subject in subjects):
+        highlights.append(
+            "Prompt Designer contributes `prompt_designer.html`, `prompt_designer.css`, seven isolated `prompt-designer-*.js` modules, navbar routing, a matching backend-down banner, themed-dialog coverage, `PromptDesigner.jpg`, and a 22-check visible Playwright/Shoter harness."
         )
     if any("security harness" in subject or "security harnessing" in subject for subject in subjects):
         highlights.append(
@@ -1432,6 +1452,9 @@ def collect_context() -> dict:
     visual_baseline = last_visual_doc_commit()
     visual_commits = commits_since_visual_docs(visual_baseline)
     version_info = resolve_version_info()
+    ahead_text, behind_text = git(
+        "rev-list", "--left-right", "--count", "HEAD...origin/main"
+    ).split()
 
     context = {
         "generated_at": local_stamp(),
@@ -1439,6 +1462,15 @@ def collect_context() -> dict:
         "head_full": git("rev-parse", "HEAD"),
         "head_subject": git("show", "-s", "--format=%s", "HEAD"),
         "head_date": git("show", "-s", "--format=%cI", "HEAD"),
+        "current_branch": git("branch", "--show-current") or "detached HEAD",
+        "origin_main_short": git("rev-parse", "--short", "origin/main"),
+        "origin_main_subject": git("show", "-s", "--format=%s", "origin/main"),
+        "origin_main_tag": git(
+            "describe", "--tags", "--abbrev=0", "--match", "v[0-9]*", "origin/main"
+        ),
+        "ahead_origin_main": int(ahead_text),
+        "behind_origin_main": int(behind_text),
+        "worktree_dirty": bool(git("status", "--porcelain")),
         "inventory_files": len(paths),
         "tracked_files": len(tracked),
         "untracked_files": len(untracked),
@@ -1649,8 +1681,8 @@ def operator_surface_counts_guide(context: dict) -> list[str]:
     ]
 
 CURRENT_RELEASE_GUIDE = [
-    "`v1.50.4` is the current annotated release, and the tag plus aligned local/`origin/main` HEAD all resolve to `64b29725`. It root-fixes installed-runtime startup by excluding optional Transformers from the frozen Django process, preventing its guarded token-counter fallback from loading 248 Transformers and 663 Torch submodules; carried Python still keeps Torch for Talker. Runtime identity stays Git/build-derived, and this generator creates no tag, commit, or push.",
-    "NetSpeed-Calculator is workflow agent 88 and wrapped launcher 66. It measures download, upload, latency, jitter, loss, and bufferbloat across keyless providers, discards slow start, samples d(bytes)/dt, rejects outliers, publishes Student-t confidence intervals, and uses fixed/random-effects fusion with Cochran Q and I-squared. Full runs commonly transfer 100-200 MB and are Ask-Execs tier D.",
+    "The checked-out `designer` branch resolves public version `1.50.5` from annotated tag `v1.50.5` at `fbcd118d`; HEAD `baa1a1f6` is one untagged local commit later. v1.50.5 fixes repeated Ctrl+C by keeping the signal handler minimal, moving cleanup to a daemon worker, adding a bounded watchdog, and making a second Ctrl+C exit immediately. Runtime identity stays Git/build-derived, and this generator creates no tag, commit, merge, or push.",
+    "The local Prompt Designer adds a third operator page beside chat and ACP: `prompt_designer.html`, a dedicated stylesheet, seven isolated JavaScript modules, menu/view/URL wiring, themed dialogs, keyboard-accessible layout controls, and a backend-down banner driven by rejected fetches plus an eight-second `/agent/version/` heartbeat. Sprint-one controls remain staged and honest, while a visible Playwright/Shoter harness checks the page without sharing ACP state.",
     "Googler's structured dork compiler enforces no-space operators, exact quoting, uppercase parenthesized OR groups, exclusions, presets/aliases, and `links_only` file discovery; its pool runtime tries four plain-HTTP routes first, then seven browser routes with bounded retries. v1.50.3 unescapes HTML entities, decodes Bing `ck/a` Base64URL targets, and filters Mojeek self-promotional links. External MCP onboarding and Deep Internet Research prompt 118 remain carried.",
     "Complete operation now documents Ollama Pro or higher as the intended minimum service tier for the shipped cloud-model workload. The private builder synchronizes same-machine contact sources into gitignored `contacts.private.json`, while public builds and self-modify snapshots remain contact-empty.",
     "`agent/agent_verdict.py` now owns the CLOSED `KNOWN_STATUSES` union of five disjoint sets: `DIAGNOSTIC_COMPLETED_STATUSES`, `WORK_COMPLETED_STATUSES`, `WORK_DEGRADED_STATUSES`, `WORK_NOT_DONE_STATUSES`, and `AGENT_ERROR_STATUSES`. The first two are green; the last three are red. R8b remains fail-open for unknown runtime input, while `agent/test_status_vocabulary.py` rejects unknown literals before release.",
@@ -1665,19 +1697,33 @@ CURRENT_RELEASE_GUIDE = [
     "The private External-MCP runtime, inactive Memory/Sequential-Thinking defaults, tombstones, persistent Memory state, secret-separated catalogs, nested-diagram restoration, Mover/Deleter placement guard, and updater preservation remain carried from the v1.48.14-v1.48.17 lineage.",
     "The categorized prompt catalog, per-user Hard Cancel epochs, path-native screenshot paste/drop, configurable port, FlowPills discovery, Unreal scaffold, self-healing, robotic loop, firmware/media agents, External MCPs, ACPX skills, and deterministic file tools remain part of the complete product rather than being reduced to a latest-changes summary.",
     "README.md and BookOfTlamatini.md retain the complete MIT-licensed installation, Ollama setup, architecture, everyday-use, agent, and responsibility narrative. The plain-Python agent disclaimer is explicit: transparency enables user control but is not a security warranty, and authorization, review, permissions, and consequences remain the operator's responsibility.",
-    "README.md and BookOfTlamatini.md remain the complete content baselines, while Git is the version source of truth: annotated release `v1.50.4` and aligned local/remote HEAD all resolve to `64b29725`. The generated facts are source-derived: 88 agents, 66 wrapped launchers, 108 built-in Multi-Turn tools, 29 skills, and 197 migrations before documentation edits change line totals.",
+    "README.md and BookOfTlamatini.md remain the complete content baselines, while Git is the version source of truth. The current `designer` checkout is one commit beyond `v1.50.5`; fetched `origin/main` is three commits ahead on a separate line and reaches annotated `v1.50.6` at `6e4ffa73`, followed by documentation/Parametrizer and build fixes. Those remote-only commits are reported as remote context, not as code merged into this worktree. Generated facts remain source-derived: 88 agents, 66 wrapped launchers, 108 built-in Multi-Turn tools, 29 skills, and 197 migrations before documentation edits change line totals.",
     "The inventory is rebuilt from Git-tracked plus Git-unignored files without reproducing credentials, endpoints, private values, or machine-specific configuration. This generation pass does not stage, commit, or push anything.",
     "The regenerated PDF/PPTX preserve the whole system, architecture, installation/use guidance, recent Git history, complete file tree, effective-line inventory, and validation evidence; target behavior and tagged historical predecessors are described separately.",
 ]
 
 RECENT_ASSETS_GUIDE = [
-    "v1.50.4 assets include `test_web_process_stays_lean.py`, the `build.py` frozen-process exclusion, canonical `langchain_core.tools` imports in runtime/tests, and `docs/claude/recent-fixes.md`. The regression suite guards against warning muting, direct ML-stack imports, accidental Torch exclusion from carried Python, and loss of the upstream guarded import contract.",
-    "WAL-safe database assets include `agent/sqlite_copy.py`, the pre-Django `manage.py` swap, DB-menu views, `test_db_backup_restore_wal.py`, `run_db_wal_tests.ps1`, and the headed `test_db_backup_set_visible.py` suite.",
-    "External-MCP onboarding assets include `skills_pkg/adding_external_mcp/SKILL.md` plus its transport, configuration, doctor, and activation references; migration 0194 and `test_deep_research_prompt.py` cover the new starter prompt.",
-    "Private-release evidence includes `build_complete_private_release.py::sync_contacts_private`, the public empty-contact contract, and source-snapshot contact exclusion. Generated docs never reproduce contact values or live External-MCP credentials.",
-    "The carried search/verdict/build assets remain represented by Grepper encoding tests, `agent_verdict.py`, Kuberneter contracts, `Uninstaller.exe` preservation, and the frozen-archive carriage proof.",
-    "Blue-hat assets include the six tracked files under `security/`, build/source-snapshot log exclusions, official ASR and audit-policy GUID contracts, path-safe UAC launchers, the bounded defender watch loop, the expanded visible harness that passed 40/40 non-destructive checks, and fail-open self-update carryover for operator-owned `security_logs/` evidence.",
-    "The inventory includes `image copy.png` as binary diagnostic evidence of the pre-fix startup console; its image contents and machine-specific paths are not reproduced in the dossiers. Line totals count text only and exclude comments, blanks, and Python docstrings according to the documented method.",
+    "The current local wave adds the Prompt Designer template, stylesheet, seven page-specific JavaScript modules, view/URL/menu wiring, a matching connection-status monitor, `PromptDesigner.jpg`, dialog-policy tests, and the 22-check visible harness under `.claude/skills/tlamatini-daily-chat-test/harness/`.",
+    "v1.50.5 assets add the re-entry-safe shutdown worker/watchdog in `agent/apps.py`, 215 lines of source-contract tests, and a visible end-to-end Ctrl+C runner. The local follow-up also makes forked Windows exit codes readable and distinguishes console interruption from script failure.",
+    "Private/public release safeguards now include a target-independent privacy preflight, a tracked placeholder-only leak-target template that is documentation rather than an input, source-derived restoration lists, a clean-tree audit of the shipped configuration surface, and forced pushable-secret checks. Generated dossiers inventory these assets without reproducing credentials, endpoints, contact values, or private target data.",
+    "The carried v1.50.4 assets include `test_web_process_stays_lean.py`, the frozen-process exclusion in `build.py`, canonical `langchain_core.tools` imports, and the warning/ML-stack regression contract documented in `docs/claude/recent-fixes.md`.",
+    "WAL-safe database, External-MCP onboarding, Deep Internet Research, Grepper encoding, verdict vocabulary, Kuberneter result fields, `Uninstaller.exe` preservation, and frozen-archive carriage assets remain represented in the complete inventory.",
+    "Blue-hat assets include the six tracked files under `security/`, build/source-snapshot log exclusions, official ASR and audit-policy GUID contracts, path-safe UAC launchers, the bounded defender watch loop, and the non-destructive visible harness.",
+    "The current tree removes the two earlier diagnostic PNGs and adds `PromptDesigner.jpg` as the active design-reference asset. Line totals count text only and exclude comments, blanks, and Python docstrings according to the documented method.",
+]
+
+PROMPT_DESIGNER_GUIDE = [
+    "Open Prompt Designer from `Designer > Prompts` in the chat navbar. Django routes the new tab through `views.prompt_designer` and the named `prompt_designer` URL.",
+    "The page follows the approved split workspace: Assets on the left, a draggable keyboard-accessible divider, and Prompt Canvas on the right with Validate, Start, Stop, Pause, and Clear controls plus File/Open, Save as, and Close.",
+    "Its frontend stays isolated from ACP through `prompt_designer.css` and seven page-specific modules for globals/dialogs, menu, controls, assets, canvas, layout, and connection status.",
+    "The canvas preserves the ACP two-layer geometry rule: `subpromptcanvas-container` is the scrolling viewport and `prompt-canvas-content` is the coordinate frame used for future positioned blocks.",
+]
+
+PROMPT_DESIGNER_BOUNDARY_GUIDE = [
+    "Sprint one is intentionally a visible shell. Every page control responds with the themed `Working on it for further sprints` notice instead of silently implying that prompt persistence or execution already ships.",
+    "The Assets list is empty on purpose, but its renderer already accepts named gradient items. The idle-looking toolbar buttons remain clickable so the staged-feature notice is reachable.",
+    "A fail-open connection monitor wraps fetch rejections and polls the public `/agent/version/` endpoint every eight seconds. It shows the same red backend-down banner as chat and ACP without disabling controls or sharing ACP state.",
+    "Regression coverage includes tree-wide dialog-policy tests and a visible headed-Chrome harness where Playwright drives the page and Shoter records evidence across 22 checks.",
 ]
 
 NETSPEED_GUIDE = [
@@ -1826,7 +1872,7 @@ NMAPPER_GUIDE = [
 
 STARTUP_PROMPT_POLISH_GUIDE = [
     "`v1.39.4` restored first-run/startup dialog closeability so a fresh launch can no longer be trapped behind an unclosable overlay.",
-    "Commit `a45fe0e0` followed the public `v1.39.4` tag with Catalog-of-Prompts localization cleanup; that historical polish remains carried by the `v1.50.4` release.",
+    "Commit `a45fe0e0` followed the public `v1.39.4` tag with Catalog-of-Prompts localization cleanup; that historical polish remains carried by the current `v1.50.5`-based checkout.",
     "The prompt catalog path stays centralized through the secure one-call `/agent/list_prompts/` endpoint ordered by category rank and stable surviving id, while the gap-tolerant probe loop remains only as an offline fallback.",
     "Frontend mutable-state tests and dialog templates continue to guard the chat/startup/overlay surfaces so future cleanup passes do not reintroduce const-poison or close-button regressions.",
 ]
@@ -1875,7 +1921,7 @@ FRONTEND_HOTFIX_GUIDE = [
 ]
 
 V136_RELEASE_GUIDE = [
-    "Release identity: `v1.50.4` is the current annotated release, and aligned local/remote HEAD resolves to the same `64b29725` commit. The release keeps optional Transformers/Torch out of the frozen web process, migrates runtime tool imports to `langchain_core.tools`, and adds lean-startup regression guards while carrying v1.50.3 Googler resilience, NetSpeed-Calculator, WAL-safe SQLite movement, External-MCP onboarding, Deep Internet Research, private contact synchronization, and the earlier safety/platform waves.",
+    "Release identity: the checked-out `designer` branch resolves public version `1.50.5` from annotated tag `v1.50.5` at `fbcd118d`, while untagged HEAD `baa1a1f6` adds Prompt Designer. Fetched `origin/main` separately reaches `v1.50.6` at `6e4ffa73`; the dossier does not claim those remote-only commits are merged. The checkout carries the v1.50.4 lean-startup fix, v1.50.3 Googler resilience, NetSpeed-Calculator, WAL-safe SQLite movement, External-MCP onboarding, Deep Internet Research, private contact synchronization, and the earlier safety/platform waves.",
     "New agent: Video-Analyzer becomes the current media-verdict workflow agent and wrapped `chat_agent_video_analyzer`, complementing Image-Interpreter with video-specific motion analysis.",
     "Implementation assets: `agent/agents/video_analyzer/`, migrations `0166_add_video_analyzer.py`, `0167_add_chat_agent_video_analyzer_tool.py`, `0168_add_video_analyzer_demo_prompt.py`, `test_video_analyzer_agent.py`, `chat_agent_registry.py`, `mcp_agent.py`, and `services/agent_contracts.py` all move together.",
     "Model strategy: `interpreter_model_1` defaults to `qwen3-vl:235b-cloud`, `interpreter_model_2` defaults to `qwen3.5:cloud`, and `merging_model` defaults to `glm-5.2:cloud`, with independent calls merged only after both interpreters report.",
@@ -2061,7 +2107,7 @@ PROMPT_CATALOG_GUIDE = [
     "Version `1.3.2` tightened the HTML answer contract with a Prime Directive on visual readability: explicit background and text color, no grey-on-dark body text, and safer table-body defaults.",
     "The seeded `Prompts` dropdown was also re-sorted into a learner path: context-only Q&A first, then metrics, files search, shell, code generation, vision, specialized single-tool actions, agent control, Unrealer, and heavier Multi-Turn/ACPX demos last.",
     "The `v1.35.0` prompt-search pass then makes that larger catalog easier to operate: prompt cards support substring, word-start, and fuzzy matching, with mode badges that keep one-shot, Multi-Turn, ACPX, Exec Report, and Step-by-Step demos visually distinct.",
-    "Those readability rules remain in force in the `v1.50.4` release documentation set; it carries measured networking, WAL-safe database movement, structured and resilient Googler discovery, guided MCP onboarding, and current counts while retaining encoding-safe search, guarded execution truth, private MCP runtime/defaults, diagram hardening, LaTeXer, the binary guard, PDFer, FlowCreator, prompt standardization, category grouping, and ranked fuzzy search.",
+    "Those readability rules remain in force in the current `v1.50.5`-based documentation set; it carries measured networking, WAL-safe database movement, structured and resilient Googler discovery, guided MCP onboarding, and current counts while retaining encoding-safe search, guarded execution truth, private MCP runtime/defaults, diagram hardening, LaTeXer, the binary guard, PDFer, FlowCreator, prompt standardization, category grouping, and ranked fuzzy search.",
 ]
 
 SELF_KNOWLEDGE_GUIDE = [
@@ -2297,7 +2343,7 @@ DB_SWAP_GUIDE = [
 VERSIONING_GUIDE = [
     "Tlamatini now follows Semantic Versioning 2.0.0 with git tags as the single source of truth: you tag, then you build, instead of hand-editing version strings across files.",
     "The build path resolves a version once and propagates it into generated runtime metadata, Win32 VERSIONINFO resources, and the release-folder naming convention.",
-    "Git resolves the current release as `TLAMATINI_VERSION=1.50.4`, matching the newest annotated `v1.50.4` tag at aligned local/remote HEAD rather than inventing a separate build identity.",
+    "Git resolves this checkout's public version as `TLAMATINI_VERSION=1.50.5` from its newest reachable annotated tag. Untagged `designer` HEAD and fetched `origin/main` are shown separately rather than inventing a release identity or borrowing remote `v1.50.6` for local code.",
 ]
 
 VERSION_SURFACES_GUIDE = [
@@ -2646,6 +2692,12 @@ def build_pdf(context: dict) -> None:
                 ["Generated", context["generated_at"]],
                 ["Current HEAD", f"{context['head_short']} - {context['head_subject']}"],
                 ["Resolved version", f"{context['version_info']['version']} ({context['version_info']['source']})"],
+                [
+                    "Git position",
+                    f"{context['current_branch']} vs origin/main {context['origin_main_short']} "
+                    f"({context['origin_main_tag']}): {context['ahead_origin_main']} local-only / "
+                    f"{context['behind_origin_main']} remote-only commits",
+                ],
                 ["Repository inventory files", str(context["inventory_files"])],
                 ["Tracked files", str(context["tracked_files"])],
                 ["Git-unignored working-tree additions", str(context["untracked_files"])],
@@ -2712,6 +2764,9 @@ def build_pdf(context: dict) -> None:
         story.append(bullet(item, styles["bullet"]))
     story.append(p(f"Current release focus in {context['version_info']['version']}", styles["h2"]))
     for item in CURRENT_RELEASE_GUIDE:
+        story.append(bullet(item, styles["bullet"]))
+    story.append(p("Prompt Designer", styles["h2"]))
+    for item in PROMPT_DESIGNER_GUIDE + PROMPT_DESIGNER_BOUNDARY_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("NetSpeed-Calculator measurement and safety contract", styles["h2"]))
     for item in NETSPEED_GUIDE:
@@ -3087,6 +3142,16 @@ def build_pdf(context: dict) -> None:
         ["Binary/asset inventory files skipped from line count", f"{context['binary_count']}"],
         ["Resolved version", f"{context['version_info']['version']}"],
         ["Version source", f"{context['version_info']['source']}"],
+        ["Current branch", f"{context['current_branch']} at {context['head_short']}"],
+        [
+            "Fetched origin/main",
+            f"{context['origin_main_short']} ({context['origin_main_tag']}) - {context['origin_main_subject']}",
+        ],
+        [
+            "HEAD vs origin/main",
+            f"{context['ahead_origin_main']} local-only / {context['behind_origin_main']} remote-only commits",
+        ],
+        ["Working tree", "modified" if context["worktree_dirty"] else "clean"],
     ]
     story.append(table(repo_rows, widths=[3.0 * inch, 3.7 * inch], font_size=8))
     story.append(p("Latest commits", styles["h2"]))
@@ -3658,7 +3723,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "mt-b", 16)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Ask Execs", "v1.10.0 safety modifier carried into the v1.50.4 release", THEME["amber"])
+    slide, audit = add_slide(prs, "Ask Execs", "v1.10.0 safety modifier carried into the v1.50.5-based checkout", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Operator contract", ASK_EXECS_GUIDE, THEME["amber"], "ask-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Runtime mechanics", ASK_EXECS_PIPELINE_GUIDE, THEME["jade"], "ask-b", 13)
     audit_layout(audit, len(prs.slides))
@@ -3672,7 +3737,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["amber"], "attention-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.11.0 uninstall integration carried into the v1.50.4 release", THEME["copper"])
+    slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.11.0 uninstall integration carried into the v1.50.5-based checkout", THEME["copper"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What changed", WINDOWS_APP_REGISTRATION_GUIDE, THEME["copper"], "arp-a", 12)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Why operators care", [
         "Packaged installs now show up in normal Windows uninstall surfaces instead of only leaving behind shortcuts and a loose `Uninstaller.exe` in the install folder.",
@@ -3681,9 +3746,14 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "arp-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Current Release Focus", "v1.50.4 - installed-runtime startup root fix", THEME["amber"])
+    slide, audit = add_slide(prs, "Current Checkout Focus", "v1.50.5 base - Ctrl+C repair and local Prompt Designer", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Release line", CURRENT_RELEASE_GUIDE[:2], THEME["amber"], "rel-a", 10)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "MCP, research, service, and privacy", CURRENT_RELEASE_GUIDE[2:4], THEME["jade"], "rel-b", 10)
+    audit_layout(audit, len(prs.slides))
+
+    slide, audit = add_slide(prs, "Prompt Designer", "local designer branch - isolated staged prompt workspace", THEME["jade"])
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Operator surface", PROMPT_DESIGNER_GUIDE, THEME["jade"], "prompt-designer-a", 12)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Honest staging and resilience", PROMPT_DESIGNER_BOUNDARY_GUIDE, THEME["amber"], "prompt-designer-b", 12)
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "NetSpeed-Calculator", "agent 88 - measured throughput with uncertainty, not a single flattering number", THEME["jade"])
@@ -3716,7 +3786,7 @@ def build_ppt(context: dict) -> None:
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Database startup safeguard", CURRENT_RELEASE_GUIDE[6:7], THEME["amber"], "rel-d", 11)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Dialog And Bundle Proof", "v1.48.16 - v1.48.17 safety lineage carried by v1.50.4", THEME["copper"])
+    slide, audit = add_slide(prs, "Dialog And Bundle Proof", "v1.48.16 - v1.48.17 safety lineage carried by the v1.50.5-based checkout", THEME["copper"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Uniform dismissal and themed pop-ups", [
         CURRENT_RELEASE_GUIDE[7],
         "The bubble-phase dispatcher closes only the topmost layer through its own dismiss control; no affirmative action is selected and one Escape cannot close two stacked dialogs.",
@@ -4242,12 +4312,13 @@ def build_ppt(context: dict) -> None:
     add_panel(slide, audit, 1.05, 3.1, 10.85, 3.35, "Current HEAD", [
         f"{context['head_short']} - {context['head_subject']}",
         f"Resolved version: {context['version_info']['version']} ({context['version_info']['source']})",
+        f"Branch: {context['current_branch']}; origin/main: {context['origin_main_short']} ({context['origin_main_tag']}); divergence: {context['ahead_origin_main']} local-only / {context['behind_origin_main']} remote-only",
         f"Generated on {context['generated_at']}",
         f"Inventory scope: {context['inventory_files']} files = {context['tracked_files']} tracked + {context['untracked_files']} git-unignored working-tree additions",
         f"Multi-Turn tools: {context['total_multi_turn_tools']}; wrapped chat-agent tools: {context['wrapped_chat_agent_count']}; skills: {context['skills_count']}",
         f"Python requirements: {context['requirements_count']}; authoritative agent-description rows: {context['agent_description_rows']}",
         f"Binary or asset inventory files skipped from line count: {context['binary_count']}",
-    ], THEME["amber"], "repo-head", 15)
+    ], THEME["amber"], "repo-head", 14)
     audit_layout(audit, len(prs.slides))
 
     baseline = context["visual_doc_baseline"]
@@ -4279,7 +4350,7 @@ def build_ppt(context: dict) -> None:
                 add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Data and operator contract", group[split_at:], THEME["amber"], f"since-more-b-{offset}", 10)
             audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Recent Platform Additions", "v1.50.4 release plus the carried v1.48.15-v1.48.17 lineage", THEME["jade"])
+    slide, audit = add_slide(prs, "Recent Platform Additions", "v1.50.5-based checkout plus the carried v1.48.15-v1.48.17 lineage", THEME["jade"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Recent agents and execution surfaces", [
         "NetSpeed-Calculator: agent 88 / wrapped launcher 66, with multi-provider confidence intervals, I-squared heterogeneity, bufferbloat, named endpoint failures, and tier-D metered-bandwidth gating.",
         "Googler: four plain-HTTP server-rendered routes first, then visible Chrome/bundled Chromium across seven browser routes, with bounded retries, answer attribution, structured dork presets/aliases, URL-only file hunts, and a lawful-use boundary.",
@@ -4288,7 +4359,7 @@ def build_ppt(context: dict) -> None:
         "Deep Internet Research: append-only prompt 118 requests a long, link-rich Multi-Turn + Exec Report research run without hiding tool prerequisites.",
     ], THEME["copper"], "monday-a", 10)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Lifecycle, policy, and monitoring", [
-        "Resolved identity: v1.50.4 is annotated at 64b29725 and aligned local/origin HEAD resolves to that same commit; its frozen web process excludes optional Transformers/Torch while carried Python retains Torch for Talker.",
+        "Resolved identity: local `designer` is based on annotated v1.50.5 at fbcd118d and has untagged Prompt Designer work at baa1a1f6; fetched origin/main separately reaches annotated v1.50.6 at 6e4ffa73. The carried frozen web process excludes optional Transformers/Torch while carried Python retains Torch for Talker.",
         "Complete cloud-model operation requires Ollama Pro or higher; this is an operating requirement, not sponsorship, and current plan details belong to Ollama's official site.",
         "Private contact synchronization merges same-machine sources only for the explicit keyed build; public output and source snapshots remain free of contact PII.",
         "The stronger disclaimer says plain-Python transparency enables user control but is not a security warranty; the operator owns authorization, permissions, review, and consequences.",
@@ -4382,6 +4453,13 @@ def serialize_context(context: dict) -> dict:
         "head_full": context["head_full"],
         "head_subject": context["head_subject"],
         "head_date": context["head_date"],
+        "current_branch": context["current_branch"],
+        "origin_main_short": context["origin_main_short"],
+        "origin_main_subject": context["origin_main_subject"],
+        "origin_main_tag": context["origin_main_tag"],
+        "ahead_origin_main": context["ahead_origin_main"],
+        "behind_origin_main": context["behind_origin_main"],
+        "worktree_dirty": context["worktree_dirty"],
         "inventory_files": context["inventory_files"],
         "tracked_files": context["tracked_files"],
         "untracked_files": context["untracked_files"],

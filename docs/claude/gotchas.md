@@ -60,17 +60,31 @@ the same shell cannot disable the guarantee.
 
 **`build_complete_public_release.py` no longer dead-ends without `.private_targets.json`.** That file
 is gitignored, so a fresh clone, a public contributor, and Tlamatini rebuilding herself from
-`TlamatiniSourceCode/` (which correctly DROPS it) all lacked it and were hard-refused. Now the
-tracked, always-EMPTY `.private_targets.template.json` documents the schema and resolves to zero
-targets, and zero targets is a *decision*: with no private-data markers in the tree it enters
-**NO-TARGETS MODE** (still forcing push-able secrets, `SECRET_KEY_RE`, an empty contacts book, the
-defaults-only MCP catalog, and a blocking `verify_shipped_config_surface()` audit of the config
-Tlamatini ships); with markers present (`data.keys`, `contacts.private.json`, a non-empty
-`contacts.json`) it **REFUSES**, because "no targets" there means the file went MISSING and every
-scrub would be a silent no-op. `--no-private-data` is the explicit human override. **Nothing at
-runtime reads the targets file**, so its absence can never stop an installed Tlamatini from starting.
-Contract + coverage: `docs/claude/recent-fixes.md` (2026-08-30),
-`Tlamatini/agent/test_public_release_targets_optional.py` (37 tests).
+`TlamatiniSourceCode/` (which correctly DROPS it) all lacked it and were hard-refused. Zero targets
+is now a *decision*, taken by a **target-INDEPENDENT `privacy_preflight()`** that looks for EVIDENCE
+this tree can actually leak — `data.keys`, live secrets at any depth in `config.json` **or**
+`external_mcps.json`, live secrets **or** email/phone shapes in **every** `agents/*/config.yaml`, a
+contacts book, root `*.key` files — and **every probe exception counts AS evidence**. No evidence →
+**CLEAN-TREE MODE**; evidence → **REFUSE**, naming it. `--assume-clean-tree` is the explicit human
+override. The tracked `private_targets.example.json` is shape-only documentation and is deliberately
+**never auto-discovered**: a template that could make the target set merely non-empty would SILENCE
+that refusal and produce a build reporting "verified" having scrubbed nothing real.
+
+CLEAN-TREE mode is not "unverified". Every target-independent defence still runs (forced push-able
+secrets, the `SECRET_KEY_RE` tree scrub, an empty contacts book, the code-seeded MCP catalog,
+`build.py`'s live-MCP-secret abort) — and because `check_private_data.py` with no targets matches
+nothing BY CONSTRUCTION, **`verify_shipped_config_surface()` audits the CONFIGURATION the package
+would ship** instead: a live-looking secret, a real e-mail, a phone-shaped value in the contacts
+book, or `data.keys` inside the package each ABORT the build. The pass line still says out loud that
+personal-VALUE matching did not happen, so a `0` is never dressed up as an inspection.
+
+The regen backup list is **DERIVED from `regen_secrets.py` itself**, not hand-typed: the hand-written
+list carried 5 of the 9 managed files, so `zavuerer`, `discoverer` and `external_mcps.json` were
+scrubbed to placeholders with NO backup — on a machine without `data.keys` the `finally` re-key is
+skipped, so that is silent loss of the operator's own keys. **Nothing at runtime reads the targets
+file**, so its absence can never stop an installed Tlamatini from starting. Contract + coverage:
+`docs/claude/recent-fixes.md` (2026-08-30), `Tlamatini/agent/test_public_release_targets.py`
+(26 tests) + `Tlamatini/agent/test_public_release_build_guards.py` (24 tests).
 
 ---
 

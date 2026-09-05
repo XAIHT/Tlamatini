@@ -37,11 +37,47 @@
         "PYTHONIOENCODING": "utf-8"
       },
       "transport": "stdio"
+    },
+    "deepwebresearch": {
+      "command": "node",
+      "args": [
+        "C:\\Users\\angel\\AppData\\Local\\pnpm\\global\\v11\\7170-1a06544767b\\node_modules\\mcp-deepwebresearch\\dist\\index.js"
+      ],
+      "env": {},
+      "transport": "stdio"
+    },
+    "torrent-search-mcp": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "C:\\Development\\MCPS\\torrent-search-mcp",
+        "run",
+        "torrent-search-mcp"
+      ],
+      "env": {},
+      "transport": "stdio",
+      "description": "Torrent Search MCP Server — search for torrents across multiple providers, scrape results using crawl4ai, and cache results with aiocache. Provides a FastAPI server and MCP server interface. Author: philogicae. GitHub: https://github.com/philogicae/torrent-search-mcp"
+    },
+    "youtube": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "C:\\Development\\MCPS\\Youtube-MCP",
+        "run",
+        "python",
+        "server.py"
+      ],
+      "env": {
+        "GOOGLE_API_KEY": "YOUR_GOOGLE_API_KEY_HERE"
+      },
+      "transport": "stdio",
+      "description": "YouTube MCP Server — search YouTube videos without the official API, retrieve transcripts, store video info in a vector database, and perform semantic search over transcripts. Requires a Google API key for embeddings. GitHub: https://github.com/blazzmocompany/Youtube-MCP"
     }
   },
   "active": [
     "lumen-book-reader",
     "memory",
-    "sequential-thinking"
+    "torrent-search-mcp",
+    "youtube"
   ]
 }
