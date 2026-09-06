@@ -68,7 +68,7 @@
         "server.py"
       ],
       "env": {
-        "GOOGLE_API_KEY": "YOUR_GOOGLE_API_KEY_HERE"
+        "GOOGLE_API_KEY": "<EXTMCP_YOUTUBE_GOOGLE_API_KEY goes here>"
       },
       "transport": "stdio",
       "description": "YouTube MCP Server — search YouTube videos without the official API, retrieve transcripts, store video info in a vector database, and perform semantic search over transcripts. Requires a Google API key for embeddings. GitHub: https://github.com/blazzmocompany/Youtube-MCP"
