@@ -2079,6 +2079,45 @@ def _seed_global_agent_defaults(template_dir, runtime_config):
                     field, cfg_key, configured.strip(),
                 )
 
+    if template_dir == "pdfer":
+        # PDFer's OPTIONAL design consultation and its optional content polish
+        # both talk to Ollama. Angela's brief was explicit: it should call
+        # "the default model of Tlamatini (according to her configuration)" —
+        # so the endpoint and model come from config.json rather than from the
+        # agent's own defaults, and a chat prompt never has to name them.
+        #
+        # Only NON-EMPTY configured values are seeded, so an explicit per-call
+        # ollama_model= still wins, and a build with no Ollama configured
+        # keeps the agent's own fallbacks.
+        for cfg_key, field in (
+            ("ollama_base_url", "ollama_url"),
+            ("unified_agent_model", "ollama_model"),
+            ("ollama_token", "ollama_token"),
+        ):
+            try:
+                configured = get_config_value(cfg_key, "")
+            except Exception as exc:  # pragma: no cover - config read is best-effort
+                logger.warning("[tools._seed_global_agent_defaults] could not read %s: %s", cfg_key, exc)
+                continue
+            if not isinstance(configured, str) or not configured.strip():
+                continue
+            value = configured.strip()
+            # A placeholder token is worse than no token: it turns a working
+            # anonymous call into an authenticated rejection.
+            if field == "ollama_token" and value.startswith("<"):
+                continue
+            runtime_config[field] = value
+            if field == "ollama_token":
+                logger.info(
+                    "[tools._seed_global_agent_defaults] PDFer ollama_token seeded from config (length=%d)",
+                    len(value),
+                )
+            else:
+                logger.info(
+                    "[tools._seed_global_agent_defaults] PDFer %s seeded from config %s: %s",
+                    field, cfg_key, value,
+                )
+
     if template_dir == "zavuerer":
         # Zavuerer is the "embedded client" for the Zavu unified-messaging API:
         # the secret zavu_api_key lives once in config.json (Config -> Access Keys

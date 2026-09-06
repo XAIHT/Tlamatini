@@ -1809,6 +1809,20 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
     ChatWrappedAgentSpec(
         key="pdfer",
         template_dir="pdfer",
+        # ⚠️ PDFer TAKES LITERAL SOURCE TEXT, exactly like LaTeXer and
+        # File-Creator, and needs the same byte-exact channel.
+        #
+        # The generic argument parser collapses ``\\`` to ``\``. In Markdown
+        # that silently corrupts every Windows path the document is ABOUT
+        # (``C:\Users\angel\...`` becomes ``C:Usersangel...``), every escaped
+        # character, and every inline maths fragment — in a document whose
+        # whole purpose is to reproduce that text faithfully. LaTeXer learned
+        # this in 2026-08 when ``\\`` row breaks were destroyed in transit and
+        # every table in Angela's OpenMP report was flattened.
+        #
+        # Declaring the fields here makes ``tools.py`` honour ``<field>_b64``
+        # first and otherwise re-extract the raw bytes.
+        verbatim_fields=("input_text", "content", "css", "footer_note"),
         tool_name="chat_agent_pdfer",
         tool_description="Chat-Agent-PDFer",
         display_name="PDFer",
@@ -1831,25 +1845,52 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
             "  - merge    -> input_pdfs='one.pdf, two.pdf'  (append into a single PDF)\n"
             "  - info     -> input_file='report.pdf'    (READ-ONLY: pages / size / metadata)\n"
             "  - validate -> report which PDF backends are importable (writes nothing)\n"
-            "Common knobs: title, subtitle, author, page_size (A4|Letter|Legal), orientation "
-            "(portrait|landscape), margins_mm, toc, page_numbers, css, image_layout "
-            "(one-per-page|fit|grid), grid_columns, image_caption, max_image_px, output_dir, "
-            "filename, overwrite. Set ollama_polish=true ONLY when the user asks you to tidy / "
-            "restructure the content first — it costs an extra model round-trip and the "
-            "default (false) renders the text verbatim.\n\n"
+            "Common knobs: title, subtitle, author, page_size (A4|Letter|Legal|A3|A5), "
+            "orientation (portrait|landscape), margins_mm, toc, cover, page_numbers, "
+            "image_layout (one-per-page|fit|grid), grid_columns, image_caption, "
+            "max_image_px, output_dir, filename, overwrite. Set ollama_polish=true ONLY when "
+            "the user asks you to tidy / restructure the content first — it costs an extra "
+            "model round-trip and the default (false) renders the text verbatim.\n\n"
+            "APPEARANCE — PDFer reads the content FIRST and dresses it accordingly, so you "
+            "normally pass NOTHING here and get a document that suits its subject. A science "
+            "or technology piece comes out on a near-black page with white type and cyan "
+            "gradients; a paper with an abstract comes out white, black and justified in the "
+            "style of a typeset journal; a contract comes out plain with no ornament at all. "
+            "Two knobs override it when the user states a preference:\n"
+            "  - nuance='...'  -> force the treatment. science | paper | manual | spec | "
+            "business | financial | legal | medical | security | data | editorial | fiction | "
+            "marketing | course | government | history | recipe | letter | presentation | "
+            "minimal (Spanish aliases work too: ciencia, legal, receta, ...). Pass this when "
+            "the user says 'make it look like a scientific paper', 'make it a brochure', "
+            "'keep it formal'.\n"
+            "  - predominant_color='#RRGGBB' or a colour name -> THE colour of the document. "
+            "PDFer derives the whole palette from it (headings, rules, table headers, callout "
+            "bars, the cover gradient, the footer) while the nuance still decides how loud to "
+            "be. Pass this when the user names a colour or a brand.\n"
+            "Finer control if asked: accent_color, text_color, background_color, "
+            "heading_color, background_mode (dark|light), font_pairing, font_size, "
+            "scale_ratio, justify, decorations (none|restrained|moderate|rich — this can only "
+            "LOWER the safety ceiling PDFer computes, never raise it), ornament, engine "
+            "(auto|atelier|legacy).\n\n"
             "It needs NO installation: markdown + xhtml2pdf + PyMuPDF + reportlab + Pillow + "
             "pypdf all ship with Tlamatini. PDFs are saved to Documents/TlamatiniPDF unless "
             "output_dir says otherwise, with a collision-proof timestamped name. RESULT — the "
             "wrapped tool's JSON and the INI_SECTION_PDFER block carry mode, source_type, "
             "output_path (the file you should quote back to the user), output_dir, filename, "
-            "page_count, bytes, images_used, engine and status "
+            "page_count, bytes, images_used, engine, nuance, nuance_confidence, "
+            "nuance_source, palette, predominant_color, background_mode, font_pairing, "
+            "decorations, overlaps, layout_clean, repairs and status "
             "(created | refused | inspected | validated | engine_unavailable | error). "
+            "After rendering, PDFer RE-OPENS the PDF and measures it — overlapping text, "
+            "content off the sheet, blank pages, real contrast — and reports layout_clean, so "
+            "you can tell the user the layout was verified rather than assumed. "
             "A fail-safe preflight REFUSES (status='refused') rather than write an empty or "
             "wrong document — report the blocker instead of pretending a PDF was made."
         ),
         example_request=(
             "Run PDFer with mode='markdown', input_text='# Weekly Report\\n\\nAll systems "
-            "nominal.', title='Weekly Report', page_size='A4'"
+            "nominal.', title='Weekly Report', page_size='A4', nuance='business', "
+            "predominant_color='#173A5E'"
         ),
         aliases=(
             "pdfer", "pdf", "make a pdf", "create a pdf", "export to pdf", "save as pdf",
