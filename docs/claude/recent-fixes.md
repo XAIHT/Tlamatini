@@ -16,6 +16,148 @@
 
 ---
 
+## 2026-09-06 — PDFer: the overlap bug, the one brown scheme, the one font (v1.51.0)
+
+**Angela's report, verbatim:** *"actually is way too flaky, way too mediocre … this
+version always overlaps the cell's contents into another cells, it only uses an ugly
+brown scheme of color, the same stupid font."* All three were real; all three are fixed;
+and the first one was **worse than reported**.
+
+### 1. THE OVERLAP — and why `err=0` must never again be treated as evidence
+
+Measured against the shipping `DEFAULT_CSS` on three ordinary tables:
+
+| case | `pisa_status.err` | what the PDF actually contained |
+|---|---|---|
+| long paths / URLs | **0** | a Windows path printed **54pt off the right edge of the A4 sheet** |
+| 8-column agent matrix | **0** | `netspeed_calculator` printed **on top of** `streamable-http` (15.1pt) |
+| 5-column config table | **0** | `unified_agent_llm_step_…` over `agent.self_healing.…` (15.1pt) |
+
+**xhtml2pdf reported SUCCESS on all three.** That is the same "silent, plausible, WRONG
+deliverable" class as the 2026-08 missing-images bug, and it is why `_resolve_asset_uri`
+and `_count_pdf_images` exist. Two independent causes:
+
+1. **The width estimate was wrong.** A half-em-per-character guess is **+116 % wrong** on
+   `lllllllllll` and **−43 % wrong** on `WWWWWWWWWWW` (measured with
+   `pdfmetrics.stringWidth`). A 43 % under-estimate reserves 58pt for a word needing
+   102pt, and the extra 44pt is drawn into the next column.
+2. **A token with no spaces cannot break at all** — `C:\Users\…`, `https://…`.
+
+**THE FIX IS STRUCTURAL, NOT A TOLERANCE.** `pdfer_tables.TableSolver` measures every
+column's true `min` (widest unbreakable atom) and `nat` (single-line want) with the real
+registered face at the real size, then water-fills the frame width subject to those
+floors. Platypus `Paragraph` cells are then handed **exactly** those widths — and a
+Paragraph given a width *cannot draw outside it*. There is no "usually" here; the
+geometry forbids it. **Measured after: 0 overlaps, 0 off-sheet, across 22 documents /
+92 pages, including a 24-column table.**
+
+⚠️ **Do NOT weaken these:** `solve_widths` must always clamp so the widths sum ≤ the
+frame (`TableLayout.validate` re-checks); the repair ladder's only destructive rung
+(`split_columns`) stays **LAST**, exactly like LaTeXer's `bisect`; and long tokens get
+`wordWrap='CJK'` — **never** injected spaces or hyphens, because a path with a space in
+it is *wrong data* and a document that corrupts the path it documents is worse than one
+that wraps it awkwardly.
+
+### 2. NUANCE — the look is computed from the CONTENT, before rendering
+
+`pdfer_nuance.classify()` reads the document and picks one of **20 treatments** from three
+weighted evidence families — **structure** (~3×: an abstract, IMRaD headings, citations, a
+DOI, numbered clauses, an ingredients list), **lexicon** (log-damped so breadth beats
+repetition), and **register** (sentence length, person, exclamations) as tie-breaker.
+`pdfer_theme` turns that into a complete design system: 38 colour roles, three type
+families, a modular scale, spacing and an ornament programme. Angela's two named cases are
+implemented literally — `scientific_dark` is `#07090F` ground / `#F2F6FF` text / cyan→violet
+gradients; `academic_paper` is `#FFFFFF` / `#101010` / Palatino / **justified** / one
+hairline rule.
+
+⚠️ **A CORROBORATION RULE, added after a measured miss.** A tokamak article scored
+`engineering_spec` 9.4 vs `scientific_dark` 7.2 — on SI units alone, with **zero**
+engineering vocabulary — and would have been dressed as a parts list. Ambiguous structural
+signals are now damped when the domain has no lexical support: **structure establishes the
+SHAPE, vocabulary establishes the FIELD.** The root cause was also fixed: the
+`scientific_dark` lexicon had been quantum-mechanics-only, so plasma physics, materials,
+optics, astronomy and aerospace matched nothing. Accuracy 15/15 after.
+
+### 3. COLOUR AND TYPE — and the contrast floor that is not negotiable
+
+`pdfer_color` is real colour science: sRGB ⇄ linear ⇄ **OKLab/OKLCh**, so every gradient
+and tint is perceptually even (blue→yellow midpoints stay at `#6CABC7` instead of collapsing
+to dead grey `#808080`). `predominant_color` derives a whole 38-role palette from ONE seed,
+with the nuance still choosing the register. **`Palette.validated()` runs last, always** —
+324/324 hue×lightness×ground combinations reach WCAG AA. `pdfer_typography` registers **31
+TrueType families** off the host and resolves 11 named *pairings*, degrading to the base-14
+rather than failing.
+
+⚠️ `CONTRAST_SAFETY = 1.04` is **not a fudge factor**. `ensure_contrast` used to stop the
+instant it TOUCHED the floor, so a role landed at exactly 4.50:1 — and the rendered-page
+auditor, rasterising the glyph, measured 4.48:1 and reported a failure for a colour the
+palette had certified. Sitting exactly on a threshold is a bug on either side of it.
+
+⚠️ **Captions and footers take the FULL body floor (4.5), not the large-text one.** They
+are the SMALLEST type in the document. Real folios were measuring 2.78:1 before this.
+
+### 4. IMAGES — generated, on-palette, and only when it is SAFE
+
+`pdfer_ornament` draws 14 motifs with Pillow, in the document's own palette, seeded from the
+content hash so a re-render is byte-identical. **No image files, no downloads, nothing in
+the installer.** The judgement matters more than the drawing: `DesignSystem.may_decorate()`
+gates every surface behind the nuance verdict's **decoration budget**, which config can only
+ever LOWER. `legal_instrument`, `medical_clinical` and `financial_ledger` get **nothing** —
+a decorated contract looks forged and a decorated dosage chart is dangerous — and low
+classifier confidence holds ornament back too.
+
+### 5. THE AUDITOR — and three bugs of its own that it exposed
+
+`pdfer_audit` re-opens the finished PDF and measures the real glyph boxes. It found three
+genuine defects in the new renderer during development, which is the whole argument for it:
+
+* **cover text at 2.53:1** — the cover title used the `text_inverse` role, which on a DARK
+  theme is near-black, on DARK cover art. Cover ink is now *solved* against the gradient
+  midpoint (`Atelier._cover_ink`), giving 16:1.
+* **body text on cover art** — ReportLab does **not** advance through the template list on
+  its own, so every page kept the COVER template. Fixed with `NextPageTemplate("body")`.
+* **its own false alarms** — the first version compared every span to the *page* background,
+  flagging white table-header text on its dark header band. It now rasterises the span and
+  reads the ground it really sits on, and takes the ink from the PDF's own content stream
+  (deriving both from pixels fails on gradients, comparing two background tones).
+
+⚠️ `bleeds` (off the SHEET) and `frame_intrusions` (outside the text frame, on the sheet)
+are **separate severities**, and only the former fails `clean`. Conflating them reported
+every correctly-placed page folio as a defect — and a check that fires on correct documents
+is a check that gets switched off.
+
+### Files, and the contracts that hold it together
+
+`agent/agents/pdfer/` gains eight sibling modules — `pdfer_color`, `pdfer_typography`,
+`pdfer_nuance`, `pdfer_theme`, `pdfer_ornament`, `pdfer_docmodel`, `pdfer_tables`,
+`pdfer_atelier`, `pdfer_audit`, `pdfer_consult`. **Flat siblings, not a package**, for the
+same reason FlowCreator vendors `result_to_flw.py`: the agent is copied to a runtime dir and
+run as `python pdfer.py`, so `sys.path[0]` is that directory. The group import is
+**fail-open** — a partial copy drops to the legacy xhtml2pdf engine rather than failing.
+
+* `engine: auto` picks the atelier **unless the user supplied `css`**, which is written in
+  the xhtml2pdf dialect; silently ignoring somebody's stylesheet would be the same class of
+  bug this whole entry is about.
+* The `INI_SECTION_PDFER` KV header **appended** its design fields and renamed none, so
+  every existing flow keeps resolving. Kept in step with
+  `agent_contracts._PARAMETRIZER_OUTPUT_FIELDS['pdfer']` by an AST test that reads BOTH
+  sides — never a typed count.
+* `verbatim_fields=("input_text", …)` was added: PDFer takes literal source text and had the
+  **same `\\`→`\` exposure that flattened every table in Angela's OpenMP report** in 2026-08.
+* `tools._seed_global_agent_defaults` seeds `ollama_url`/`ollama_model` from
+  `ollama_base_url`/`unified_agent_model`, so the optional design consultation uses
+  Tlamatini's own configured model.
+* `ollama_design` is **OFF by default and must stay off**: the deterministic path is already
+  complete, validated and audited, so the model is an upgrade, not a dependency — and a
+  document that looks different every render is one nobody trusts.
+
+Coverage: **`agent/test_pdfer_nuance_layout.py` (37 tests)** — the three real broken tables
+solved AND rendered AND audited, both named nuances, every theme's contrast, seeded palettes,
+the decoration safety gate in both directions, ornament determinism, and the contract
+coherence checks.
+
+---
+
 ## 2026-08-30 — the PUBLIC release needed `.private_targets.json`, a file no clone can have
 
 **Angela: "improve the build of the public release to not be necessary the file

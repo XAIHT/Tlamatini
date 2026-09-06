@@ -38,12 +38,106 @@ input_pdfs: []         # existing PDFs to append (mode=merge); comma-separated s
 title: ""              # cover / document title ("" = no cover page)
 subtitle: ""           # optional line under the title on the cover
 author: ""             # PDF metadata author ("" = Tlamatini)
-page_size: "A4"        # A4 | Letter | Legal
+page_size: "A4"        # A4 | Letter | Legal | A3 | A5 | Tabloid
 orientation: "portrait"  # portrait | landscape
 margins_mm: 18         # page margin in millimetres
-css: ""                # "" = the built-in DEFAULT_CSS (ported from mardown_to_pdf.py)
-toc: false             # prepend a generated table of contents (markdown mode)
+css: ""                # "" = let the design system style it. Supplying your
+                       # own CSS switches PDFer to the LEGACY xhtml2pdf engine,
+                       # because that is the dialect a hand-written stylesheet
+                       # is written in — silently ignoring it would be worse.
+toc: false             # prepend a generated table of contents
 page_numbers: true     # render "page N of M" in the footer
+cover: true            # render a cover page when a title is available
+footer_note: ""        # optional short text on the left of every footer
+
+# ╔══════════════════════════════════════════════════════════════════════╗
+# ║  NUANCE — the look is CALCULATED FROM THE CONTENT, before rendering  ║
+# ╚══════════════════════════════════════════════════════════════════════╝
+#
+# PDFer reads the document first and decides what KIND of document it is,
+# then dresses it accordingly: colours, background, fonts, type scale,
+# spacing and how much decoration is SAFE. A physics article and a contract
+# no longer come out looking identical.
+#
+#   ""  / "auto"  -> DETECT from the content (default)
+#   an explicit value -> that treatment WINS over detection
+#
+# The catalog (any alias works — "science", "ciencia", "tech" all land on
+# scientific_dark):
+#   scientific_dark ...... science & technology: near-black page, white type,
+#                          cyan/violet gradients, condensed technical display
+#   academic_paper ....... abstract + citations: pure white, black Palatino,
+#                          justified, one hairline rule — LaTeX-style
+#   software_manual ...... API/dev docs: white page, DARK code panels, teal
+#   engineering_spec ..... tolerances and part numbers: blueprint blue, tight
+#   business_report ...... navy + teal, restrained, boardroom-legible
+#   financial_ledger ..... ledger green, condensed, NO ornament at all
+#   legal_instrument ..... black on white, Times, justified, NO ornament
+#   medical_clinical ..... calm teal, generous leading, NO ornament
+#   security_briefing .... console black with amber/red severity accents
+#   data_analysis ........ indigo + teal, chart-friendly
+#   editorial_feature .... warm paper, terracotta, Georgia, drop cap
+#   creative_literary .... cream paper, umber ink, wide leading
+#   marketing_brochure ... violet→magenta, heavy display, diagonal colour
+#   educational_course ... warm paper, forest green, amber callouts
+#   government_policy .... neutral civic grey-blue, numbered
+#   historical_archive ... aged paper, sepia ink
+#   culinary_recipe ...... terracotta and olive on cream
+#   personal_letter ...... writing paper, sage and umber
+#   presentation_deck .... stage black, violet and gold, very large type
+#   minimal_note ......... quiet and unopinionated (the honest fallback)
+nuance: ""
+
+# THE most important colour of the document. Give ONE colour and PDFer
+# derives the whole palette from it — headings, rules, table headers, callout
+# bars, code panels, the cover gradient, the footer — in OKLab, so every tint
+# and every gradient agrees with it. The NUANCE still decides the register,
+# so the same colour is restrained on a contract and loud on a brochure.
+# Accepts "#RRGGBB", "rgb(...)", "hsl(...)", "oklch(...)" or a colour name
+# ("teal", "midnightblue", "obsidian"). "" = the nuance's own palette.
+predominant_color: ""
+
+# Per-role overrides. Each one wins over both the nuance and the seed.
+accent_color: ""       # callout bars, links, ornament highlights
+text_color: ""         # body copy
+background_color: ""   # the page ground (also decides dark vs light)
+heading_color: ""      # H1/H2 (H3 is derived from it)
+link_color: ""
+table_header_color: ""  # the table header BAND
+rule_color: ""
+
+background_mode: "auto"  # auto | dark | light — flip the ground, keep the hue
+font_pairing: ""       # "" = the nuance's own. scholarly | technical |
+                       # technical_mono | corporate | editorial | literary |
+                       # legal | promotional | dense | friendly | neutral
+font_size: 0           # 0 = the nuance's own base size (points)
+scale_ratio: 0         # 0 = the nuance's own. 1.2 calm · 1.25 clear ·
+                       # 1.333 confident · 1.414 dramatic
+justify: null          # null = the nuance decides (papers/contracts justify)
+
+# How much generated artwork is allowed. This is a SAFETY setting, not a
+# taste one: PDFer computes a ceiling from the content (a contract, a dosage
+# chart or a financial statement gets NOTHING), and this knob can only ever
+# LOWER that ceiling, never raise it.
+#   auto (default) | none | restrained | moderate | rich
+decorations: "auto"
+ornament: ""           # "" = the nuance's own programme. constellation |
+                       # circuitry | waveform | scholarly_rule |
+                       # corporate_band | editorial_flourish | botanical |
+                       # bold_geometry | alert_grid | none
+
+# -- Rendering engine --------------------------------------------------------
+#   auto    : the atelier, unless you supplied `css` (DEFAULT)
+#   atelier : ReportLab Platypus — real gradients, real fonts, and column
+#             widths solved from font metrics so cells CANNOT overlap
+#   legacy  : the original xhtml2pdf path (honours your `css`)
+engine: "auto"
+
+# After rendering, re-open the PDF and MEASURE it: overlapping glyph boxes,
+# text off the sheet, blank pages, real contrast. The old engine reported
+# err=0 while printing one cell on top of another, so a renderer's own
+# opinion is not accepted as evidence here.
+layout_audit: true
 
 # Language of the words PDFer itself writes INSIDE the document — the page
 # footer and the fallback title used when `title` is empty. es | en; an
@@ -64,6 +158,28 @@ max_image_px: 1600     # downscale the longest edge to this before embedding (0 
 # stdlib urllib (the Talker / Whisperer / Reviewer pattern — no agent.* import).
 # A failed polish NEVER loses the document: it falls back to the raw content.
 ollama_polish: false
+
+# -- Optional Ollama DESIGN CONSULTATION (OFF by default) ---------------------
+# Ask Tlamatini's own configured model to art-direct the document: which
+# nuance it really is, and which colour to use for each part (title,
+# headings, rules, table headers, footer), which font pairing, how much
+# ornament.
+#
+# OFF by default ON PURPOSE. The deterministic path already produces a
+# complete, contrast-validated, layout-audited design for every document, so
+# the model is an UPGRADE, not a dependency: with it off PDFer is fast,
+# offline and gives byte-identical output every run; with it on it gains
+# taste. A failed or unreachable consultation NEVER blocks the render — the
+# deterministic design simply stands, and the log says why.
+#
+# Every field the model returns is validated before it can touch the page:
+# colours must parse, the nuance must be in the catalog, the font pairing
+# must be installed ON THIS MACHINE, the palette is re-checked for contrast,
+# and the model can only LOWER the decoration safety ceiling, never raise it.
+# The url/model/token default to Tlamatini's own configuration
+# (ollama_base_url + unified_agent_model), seeded by tools.py.
+ollama_design: false
+
 ollama_url: "http://localhost:11434"
 ollama_model: "glm-5.2:cloud"
 ollama_token: ""

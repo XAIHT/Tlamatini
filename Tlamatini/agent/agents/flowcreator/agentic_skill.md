@@ -2065,8 +2065,21 @@ system_prompt: |
 - **Aimed at**: The LAST hop of a reporting flow — the agent that produces the human-readable deliverable. Prefer it over File-Creator whenever the output should be a real document rather than a text file, and NEVER hand-roll a PDF through Executer/Pythonxer.
 - **Application example**: Starter → File-Interpreter (read a repo) → Parametrizer (map `{response_body}` into PDFer's `input_text`) → PDFer (`mode: markdown`, `title: Project Review`) → Parametrizer (map `{output_path}` into Emailer's attachment) → Emailer → Ender. A second common shape is Starter → Shoter → Parametrizer (map `{output_path}` into PDFer's `images`) → PDFer (`mode: mixed`) → Ender.
 - **Pool name pattern**: `pdfer_<n>`
-- **Parametrizer source**: emits `INI_SECTION_PDFER` with fields `mode`, `source_type`, `output_path`, `output_dir`, `filename`, `page_count`, `bytes`, `images_used`, `engine`, `status`, and body=`response_body`.
-- **Starts other agents**: YES (always — success, failure OR a fail-safe refusal — so a Forker can branch on `{status}` / `{page_count}`)
+- **Parametrizer source**: emits `INI_SECTION_PDFER` with fields `mode`, `source_type`, `output_path`, `output_dir`, `filename`, `page_count`, `bytes`, `images_used`, `engine`, `nuance`, `nuance_confidence`, `nuance_source`, `palette`, `predominant_color`, `background_mode`, `font_pairing`, `decorations`, `overlaps`, `layout_clean`, `repairs`, `status`, and body=`response_body`.
+- **Starts other agents**: YES (always — success, failure OR a fail-safe refusal — so a Forker can branch on `{status}` / `{page_count}` / `{layout_clean}`)
+- **THE LOOK IS COMPUTED FROM THE CONTENT (2026-09-06)**: PDFer classifies the document
+  before rendering and dresses it accordingly, so in most flows you set NOTHING here and
+  still get a document that suits its subject. A science/technology piece renders near-black
+  with white type and gradients; a paper with an abstract renders white, black and justified
+  like a typeset journal; a contract renders plain with no ornament. Two overrides matter
+  when you are designing a flow deliberately:
+  - `nuance` — force the treatment when the flow's purpose is known in advance (a compliance
+    flow should pass `nuance: legal`, a sales flow `nuance: marketing`).
+  - `predominant_color` — pass a brand colour ONCE, and consider carrying it between
+    documents: `PDFer → Parametrizer (map {predominant_color} into the next PDFer) → PDFer`
+    keeps a multi-part report visually consistent instead of each part choosing its own.
+  Also note `{layout_clean}` — a Forker can route a document whose layout audit was not clean
+  to a review step instead of straight to Emailer.
 - **Config parameters**:
   - `mode`: "auto" (auto | markdown | html | text | images | mixed | merge | info | validate). `auto` sniffs the content: HTML-looking text → html, images only → images, text+images → mixed, otherwise markdown.
   - `input_text`: "" (the Markdown / HTML / plain text to render — this is the field a Parametrizer usually writes into)
@@ -2074,13 +2087,40 @@ system_prompt: |
   - `images`: [] (image paths for `images` / `mixed`; a comma-separated string is accepted)
   - `input_pdfs`: [] (existing PDFs to append when `mode: merge`)
   - `title`: "" (a cover page is added when set) / `subtitle`: "" / `author`: ""
-  - `page_size`: "A4" (A4 | Letter | Legal) / `orientation`: "portrait" (portrait | landscape) / `margins_mm`: 18
-  - `css`: "" (empty = the built-in stylesheet) / `toc`: false / `page_numbers`: true
+  - `page_size`: "A4" (A4 | Letter | Legal | A3 | A5 | Tabloid) / `orientation`: "portrait" (portrait | landscape) / `margins_mm`: 18
+  - `toc`: false / `cover`: true / `page_numbers`: true / `footer_note`: ""
+  - `nuance`: "" (empty = DETECT from the content. scientific_dark | academic_paper |
+    software_manual | engineering_spec | business_report | financial_ledger |
+    legal_instrument | medical_clinical | security_briefing | data_analysis |
+    editorial_feature | creative_literary | marketing_brochure | educational_course |
+    government_policy | historical_archive | culinary_recipe | personal_letter |
+    presentation_deck | minimal_note. Short aliases work: science, paper, manual, spec,
+    business, financial, legal, medical, security, data, editorial, fiction, marketing,
+    course, government, history, recipe, letter, presentation, minimal — and their Spanish
+    equivalents. An explicit value WINS over detection.)
+  - `predominant_color`: "" (ONE colour — "#RRGGBB", "rgb(...)", "hsl(...)", "oklch(...)" or
+    a name like "teal"/"midnightblue"/"obsidian" — from which the WHOLE palette is derived)
+  - `accent_color` / `text_color` / `background_color` / `heading_color` / `link_color` /
+    `table_header_color` / `rule_color`: "" (per-role overrides; each wins over the nuance
+    and over `predominant_color`)
+  - `background_mode`: "auto" (auto | dark | light) / `font_pairing`: "" (scholarly |
+    technical | technical_mono | corporate | editorial | literary | legal | promotional |
+    dense | friendly | neutral) / `font_size`: 0 (0 = the nuance's own) / `scale_ratio`: 0
+    (0 = the nuance's own; 1.2 calm · 1.25 clear · 1.333 confident · 1.414 dramatic) /
+    `justify`: null (null = the nuance decides)
+  - `decorations`: "auto" (auto | none | restrained | moderate | rich — SAFETY, not taste:
+    it can only LOWER the ceiling PDFer computed from the content, never raise it) /
+    `ornament`: "" (constellation | circuitry | waveform | scholarly_rule | corporate_band |
+    editorial_flourish | botanical | bold_geometry | alert_grid | none)
+  - `engine`: "auto" (auto | atelier | legacy — `auto` uses the atelier unless `css` is set) /
+    `layout_audit`: true (re-open the finished PDF and MEASURE it) / `css`: "" (supplying
+    your own stylesheet switches to the legacy xhtml2pdf engine, which is the dialect it is
+    written in)
   - `document_language`: "es" | "en" (language of PDFer's OWN chrome: the page
     footer and the fallback title. It never translates the content, and it does
     not affect ollama_polish, which always keeps the content's own language.)
   - `image_layout`: "one-per-page" (one-per-page | fit | grid) / `image_caption`: true / `grid_columns`: 2 / `max_image_px`: 1600
-  - `ollama_polish`: false (true = let an Ollama model restructure the text into clean Markdown first; a failed polish keeps the raw content) / `ollama_url`: "http://localhost:11434" / `ollama_model`: "glm-5.2:cloud" / `ollama_token`: "" / `ollama_prompt`: "" / `ollama_timeout`: 180
+  - `ollama_polish`: false (true = let an Ollama model restructure the text into clean Markdown first; a failed polish keeps the raw content) / `ollama_design`: false (true = ask Tlamatini's own configured model to art-direct the colours; every field it returns is validated, and a failure leaves the deterministic design standing) / `ollama_url` / `ollama_model` / `ollama_token` / `ollama_prompt` / `ollama_timeout`: 180
   - `output_dir`: "" (empty = Documents/TlamatiniPDF) / `filename`: "" (empty = a timestamped name) / `overwrite`: false
   - `preflight`: true (fail-safe: REFUSE rather than write an empty or wrong PDF) / `command_timeout`: 300
   - `source_agents`: [] (upstream agents — canvas connection tracking)

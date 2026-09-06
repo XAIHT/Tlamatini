@@ -477,6 +477,76 @@ Until v1.48.2 the runtime collapsed **two different questions** into one string 
 
 ---
 
+## PDFer — nuance detection, real typography, and tables that cannot overlap (2026-09-06, v1.51.0)
+
+**Angela's report, verbatim:** *"actually is way too flaky, way too mediocre … this version
+always overlaps the cell's contents into another cells, it only uses an ugly brown scheme of
+color, the same stupid font."* All three were true. Full record + the do-NOT-revert
+contracts: **`docs/claude/recent-fixes.md` (2026-09-06)**. Coverage:
+**`agent/test_pdfer_nuance_layout.py` (37 tests)**.
+
+**THE OVERLAP WAS WORSE THAN REPORTED.** Three ordinary tables produced **8 cell-on-cell
+overlaps** and a Windows path **54pt off the A4 sheet** — and `pisa_status.err` was **`0`
+every single time**. That is the same *silent, plausible, WRONG deliverable* class as the
+2026-08 missing-images bug. A renderer's own success flag is not evidence; only the file is.
+
+**WHY IT HAPPENED.** xhtml2pdf divides width from a character-count guess and never asks
+whether the text fits. A half-em-per-character estimate is **+116 % wrong** on `lllllllllll`
+and **−43 % wrong** on `WWWWWWWWWWW` (measured with `pdfmetrics.stringWidth`), and a token
+with no spaces has no break opportunity at all.
+
+**THE FIX IS GEOMETRIC, NOT A TOLERANCE.** `pdfer_tables.TableSolver` measures each column's
+true minimum (widest unbreakable atom) and natural width with the real registered face at
+the real size, water-fills the frame subject to those floors, and hands Platypus
+`Paragraph` cells **exactly** those widths — **a Paragraph given a width cannot draw outside
+it**. Measured after: **0 overlaps, 0 off-sheet, across 22 documents / 92 pages**, including
+a 24-column table.
+
+**TEN FLAT SIBLING MODULES** in `agent/agents/pdfer/` — `pdfer_color` (sRGB⇄OKLab/OKLCh, WCAG
+contrast, palette derivation), `pdfer_typography` (31 host TrueType families, 11 pairings,
+modular scale), `pdfer_nuance` (20-treatment classifier), `pdfer_theme` (38 colour roles →
+design system), `pdfer_ornament` (14 Pillow-drawn motifs), `pdfer_docmodel`, `pdfer_tables`,
+`pdfer_atelier` (the ReportLab Platypus renderer), `pdfer_audit`, `pdfer_consult`.
+⚠️ **Siblings, NOT a package** — the agent is copied to a runtime dir and run as
+`python pdfer.py`, so `sys.path[0]` is that directory (the FlowCreator `result_to_flw.py`
+precedent). The group import is **fail-open**: a partial copy drops to the legacy engine.
+
+**TWO NEW PARAMETERS.** **`nuance`** (`""`=detect from the content; or one of 20 with
+English + Spanish aliases — an explicit value WINS) and **`predominant_color`** (ONE colour
+→ the whole palette, derived in OKLab, with the nuance still choosing the register).
+Angela's two named cases are literal: `scientific_dark` = `#07090F` ground / `#F2F6FF` text /
+cyan→violet gradients; `academic_paper` = `#FFFFFF` / `#101010` / Palatino / **justified** /
+one hairline rule.
+
+**CONTRACTS (do NOT weaken):**
+1. **`solve_widths` always clamps** so widths sum ≤ the frame, and the only destructive
+   repair rung (`split_columns`) stays **LAST** — exactly like LaTeXer's `bisect`.
+2. **The user's text is never mutated.** Long tokens get `wordWrap='CJK'`; injecting a space
+   into a path is *wrong data*.
+3. **`Palette.validated()` runs LAST, always.** A theme author picks hues; legibility is not
+   negotiable. Captions and footers take the FULL 4.5 body floor — they are the smallest
+   type in the document. `CONTRAST_SAFETY = 1.04` exists because landing exactly ON a
+   threshold measures as a failure once the glyph is rasterised.
+4. **`decorations` can only LOWER the content-safety ceiling, never raise it.**
+   `legal_instrument` / `medical_clinical` / `financial_ledger` get **NO** ornament — a
+   decorated contract looks forged and a decorated dosage chart is dangerous — and low
+   classifier confidence holds ornament back too.
+5. **The layout audit is not optional decoration.** `pdfer_audit` re-opens the PDF and
+   measures real glyph boxes; it found three genuine bugs in the new renderer during
+   development (cover ink at 2.53:1, body text on cover art from a missing
+   `NextPageTemplate`, and two false-alarm modes of its own). `bleeds` (off the SHEET) and
+   `frame_intrusions` (outside the frame, on the sheet) are **separate severities** — a page
+   folio lives in the margin legitimately.
+6. **`ollama_design` stays OFF by default.** The deterministic path is already complete,
+   validated and audited, so the model is an upgrade, not a dependency — and a document that
+   renders differently every time is one nobody trusts.
+7. `engine: auto` picks the atelier **unless `css` was supplied** (that dialect is
+   xhtml2pdf's; silently ignoring somebody's stylesheet is the same bug class).
+8. The `INI_SECTION_PDFER` design fields were **APPENDED, never renamed** — kept in step with
+   `agent_contracts._PARAMETRIZER_OUTPUT_FIELDS['pdfer']` by an AST test reading BOTH sides.
+
+---
+
 ## LaTeX Generation — the four defects that made it impossible (2026-08-11)
 
 **Angela asked for a LaTeX document + PDF and got an EMPTY DIRECTORY.** The Exec
@@ -616,7 +686,7 @@ The rest of the onboarding material is split into topic files under `docs/claude
 - **Creating a new Skill (SKILL.md package)** — `Tlamatini/.skills/create_new_skill.md`. The dedicated authoring guide for a `SKILL.md` (the two runtimes — `in-process` vs `acpx`; the frontmatter contract + schema ranges; discovery / 30 s staleness cache; lint + `quick_validate`; ACPX-surface gotchas). NOT auto-imported — read it when adding or editing a skill. The `flow-making` skill (`agent/skills_pkg/flow_making/`) is the canonical worked example of an in-process skill that shells out to a shipped `scripts/*.py`.
 - **Companion-app discovery** — `docs/companion-app-discovery.md`. How Tlamatini lets XAIHT companion apps (**Tlamatini-FlowPills**) find the agents catalog without Python/scans: the `HKCU\Software\XAIHT\Tlamatini` registry key + `<agents_root>\_tlamatini_agents_manifest.json` + the `.tlamatini-preserved-agents.json` preserved marker. Engine `agent/agent_manifest.py` + `agent/windows_app_registration.py`, wired in `apps.py` / `install.py` / `uninstall.py` / `build.py`; HKCU-only, no-admin, fail-open. Implements `Tlamatini-FlowPills-Lookup.md` §15.
 
-│   │   │   ├── pdfer/              # PDFer — DOCUMENT COMPOSER, the WRITE side of the document family (File-Extractor/File-Interpreter READ, PDFer AUTHORS). Tlamatini's answer / Markdown / HTML / text / images / existing PDFs → ONE styled PDF. ZERO new deps (markdown+xhtml2pdf+pymupdf+reportlab+pillow+pypdf already ship; md→pdf pipeline ported INLINE from doc_generation/mardown_to_pdf.py). mode: auto|markdown|html|text|images|mixed|merge|info|validate; optional Ollama polish (default OFF, never loses the doc); saves to Documents/TlamatiniPDF, collision-proof; fail-safe preflight REFUSES rather than write an empty PDF; INI_SECTION_PDFER; Exec Report + Ask-Execs tier A (canvas + chat_agent_pdfer)
+│   │   │   ├── pdfer/              # PDFer — DOCUMENT COMPOSER, the WRITE side of the document family (File-Extractor/File-Interpreter READ, PDFer AUTHORS). Tlamatini's answer / Markdown / HTML / text / images / existing PDFs → ONE styled PDF. ZERO new deps. mode: auto|markdown|html|text|images|mixed|merge|info|validate. ⚠️ **NUANCE/TYPOGRAPHY/LAYOUT OVERHAUL 2026-09-06 (v1.51.0)** — 10 flat sibling modules (pdfer_color/typography/nuance/theme/ornament/docmodel/tables/atelier/audit/consult; siblings NOT a package, because the agent runs as `python pdfer.py` from a copied runtime dir; the group import is fail-open to the legacy engine). Reads the content FIRST and picks 1 of 20 treatments (`nuance`), derives a whole 38-role palette from ONE `predominant_color` in OKLab, registers 31 host TrueType families, SOLVES table column widths from real font metrics so cells CANNOT overlap, DRAWS its own on-palette artwork with Pillow (only where the content makes it safe), then RE-OPENS the finished PDF and measures it. See the "PDFer" section below and docs/claude/recent-fixes.md (2026-09-06) (canvas + chat_agent_pdfer)
 │   │   │   ├── latexer/            # LaTeXer — LaTeX TYPESETTING, the typesetting sibling of PDFer (PDFer COMPOSES from Markdown/HTML/images; LaTeXer TYPESETS from .tex: real maths, bibliographies, cross-refs, index). Embeds the WHOLE mcp-latex-server surface NATIVELY (create/template/edit/read/list/validate/structure/compile) — NO MCP server, NO sidecar, NO new dependency (stdlib only: subprocess+shutil+glob+re+urllib) — PLUS whole-PROJECT compile of a .tex SET (master auto-detected, \input followed), a real BibTeX/Biber + makeindex + makeglossaries convergence loop, latexmk pass-through, and LaTeX-log diagnostics a human can read. **REQUIRES MiKTeX** (https://miktex.org/download) — Tlamatini bundles NO TeX distribution (several GB; the release must stay <2 GB); MiKTeX is preferred because `--enable-installer` installs a missing .sty ON DEMAND mid-compile, so any document builds. ⚠️ latexmk is probed for USABILITY not presence (it ships with MiKTeX but is a PERL script; most Windows boxes have no Perl → auto-fallback to the built-in loop). action: compile|compile_project|scaffold_compile|create_file|create_from_template|edit_file|read_file|list_files|validate_tex|structure|clean|validate|install; auto_preamble wraps a bare fragment; shell_escape OFF by default (\write18 = RCE); saves to Documents/TlamatiniLaTeX, projects to <app>/Templates/LaTeXer; fail-safe preflight REFUSES rather than mis-typeset; **EIGHT-RUNG REPAIR LADDER (v1.48.2) so a failed build self-heals — lint → preamble → rules → log_directed → acquire → engine_swap → model → bisect, each repair applied to a COPY and re-linted (a repair that worsens the lint is REVERTED), the author's file untouched unless `repair_write_back`, every rung audit-traced, quarantined blocks named; ⚠️ the DESTRUCTIVE `bisect` rung is strictly LAST (reordered 2026-08-05) — do NOT swap it back ahead of `model`**; a DEGRADED build never claims clean success; INI_SECTION_LATEXER; Exec Report + Ask-Execs tier A (canvas + chat_agent_latexer)
 │   │   │   ├── editor/             # Surgical in-place find-and-replace on ONE text file (Claude-Edit equivalent; byte-exact, refuses a non-unique match unless replace_all, base64 channel; emits INI_SECTION_EDITOR) (canvas + chat_agent_editor)
 │   │   │   ├── grepper/            # Read-only regex CONTENT search across a file/dir tree (Claude-Grep equivalent; file:line:match, glob filter, prunes noise dirs; emits INI_SECTION_GREPPER). ⚠️ ENCODING-AWARE since 2026-08-16 (`_read_text_lines`): BOM tested BEFORE the NUL byte (UTF-16/32 text is legitimately full of 0x00 — same ordering contract as rag/binary_guard.py; _BOM_CODECS longest-prefix-first), then UTF-8 → cp1252 → latin-1. It used to open() strict-UTF-8 and swallow the UnicodeDecodeError as "binary", so it answered a confident `no_matches` about files it never opened (PowerShell's UTF-16 logs, accented Spanish sources). Pinned by test_grepper_encodings.py (canvas + chat_agent_grepper)

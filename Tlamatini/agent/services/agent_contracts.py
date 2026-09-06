@@ -154,7 +154,13 @@ _PARAMETRIZER_OUTPUT_FIELDS: dict[str, tuple[str, ...]] = {
     "telegrammer": ("mode", "direction", "chat_id", "status", "message_id", "response_body"),
     "whatsapper": ("mode", "direction", "recipient", "status", "message_id", "response_body"),
     "zavuerer": ("action", "channel", "to", "status", "message_id", "success", "base_url", "response_body"),
-    "pdfer": ("mode", "source_type", "output_path", "output_dir", "filename", "page_count", "bytes", "images_used", "engine", "status", "response_body"),
+    # PDFer, 2026-09-06: the design fields are APPENDED, never renamed, so a
+    # flow built against the pre-overhaul shape keeps resolving every field it
+    # already mapped. A downstream Forker can now branch on {nuance},
+    # {layout_clean} or {overlaps}; a downstream Parametrizer can carry
+    # {predominant_color} into a second PDFer so a multi-document report comes
+    # out visually consistent instead of each part choosing its own palette.
+    "pdfer": ("mode", "source_type", "output_path", "output_dir", "filename", "page_count", "bytes", "images_used", "engine", "nuance", "nuance_confidence", "nuance_source", "palette", "predominant_color", "background_mode", "font_pairing", "decorations", "overlaps", "layout_clean", "repairs", "status", "response_body"),
     "latexer": ("action", "engine", "distribution", "tex_path", "project_dir", "output_path", "output_dir", "filename", "page_count", "bytes", "passes", "bibliography", "errors", "warnings", "success", "status", "response_body"),
 }
 

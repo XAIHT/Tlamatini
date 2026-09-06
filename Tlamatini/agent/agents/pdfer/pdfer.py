@@ -449,6 +449,48 @@ _ALL_MODES = _RENDER_MODES + _META_MODES
 _IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tif", ".tiff", ".webp")
 
 
+# ═══════════════════════════════════════════════════════════════════════
+#  THE ATELIER STACK  (2026-09-06 — the nuance/typography/layout overhaul)
+#
+#  Seven sibling modules, imported here as a group. They are siblings rather
+#  than a package for the same reason FlowCreator vendors ``result_to_flw.py``
+#  next to itself: a pool agent is COPIED into a runtime directory and run as
+#  ``python pdfer.py``, so ``sys.path[0]`` is that directory and a flat
+#  neighbour is the one import shape guaranteed to work in source, frozen and
+#  self-modify builds alike.
+#
+#  ⚠️ THE IMPORT IS FAIL-OPEN, AND THAT IS LOAD-BEARING. If any of the seven
+#  is missing — a partial copy, a stripped build, a user who deleted one —
+#  ``_ATELIER_OK`` goes False and PDFer falls back to the legacy xhtml2pdf
+#  path. A missing design module must cost a document its beauty, never its
+#  existence.
+# ═══════════════════════════════════════════════════════════════════════
+_ATELIER_OK = True
+_ATELIER_ERROR = ""
+try:
+    import pdfer_atelier
+    import pdfer_audit
+    import pdfer_color
+    import pdfer_consult
+    import pdfer_docmodel
+    import pdfer_nuance
+    import pdfer_ornament
+    import pdfer_theme
+    import pdfer_typography
+except Exception as _atelier_exc:      # pragma: no cover - degraded install
+    _ATELIER_OK = False
+    _ATELIER_ERROR = "%s: %s" % (type(_atelier_exc).__name__, _atelier_exc)
+    pdfer_atelier = pdfer_audit = pdfer_color = pdfer_consult = None
+    pdfer_docmodel = pdfer_nuance = pdfer_ornament = None
+    pdfer_theme = pdfer_typography = None
+
+#: Which renderer to use. ``atelier`` is the ReportLab Platypus engine that
+#: fixed the overlap bug; ``legacy`` is the original xhtml2pdf path, kept
+#: because a user-supplied ``css`` block is written for it and because it is
+#: the honest fallback when the stack above did not import.
+_ENGINES = ("auto", "atelier", "legacy")
+
+
 # ========================================
 # BACKEND PROBES (every import is lazy + guarded)
 # ========================================
@@ -1204,6 +1246,181 @@ def _pdf_info(path: str) -> tuple:
 # FAIL-SAFE PREFLIGHT — REFUSE rather than write a wrong/empty document
 # ========================================
 
+# ═══════════════════════════════════════════════════════════════════════
+#  THE ATELIER PIPELINE
+#
+#  content → nuance → (optional model consultation) → design system → parsed
+#  document → rendered PDF → audited PDF.
+#
+#  Every stage is fail-open to the stage before it, so the worst outcome of a
+#  broken stage is a plainer document rather than no document.
+# ═══════════════════════════════════════════════════════════════════════
+
+def _resolve_engine(config: dict) -> str:
+    """Which renderer to use, honouring the user and the environment.
+
+    ``auto`` picks the atelier unless the user supplied their own ``css``,
+    which is written in the xhtml2pdf dialect and would be silently ignored by
+    a Platypus renderer. Quietly discarding a stylesheet somebody wrote is
+    exactly the kind of "it succeeded and it was wrong" behaviour this whole
+    overhaul exists to remove — so a hand-written ``css`` keeps its engine.
+    """
+    requested = str(_cfg(config, "engine", "auto")).strip().lower()
+    if requested not in _ENGINES:
+        requested = "auto"
+    if not _ATELIER_OK:
+        return "legacy"
+    if requested == "auto":
+        return "legacy" if str(_cfg(config, "css", "")).strip() else "atelier"
+    return requested
+
+
+def _design_for(text: str, config: dict, images: list, book, log) -> tuple:
+    """Classify the content and assemble its design system.
+
+    Returns ``(verdict, design, consult_report)``. Never raises: a failure at
+    any stage yields the plain treatment, which is always safe.
+    """
+    verdict = pdfer_nuance.classify(
+        text, hint=str(_cfg(config, "nuance", "")),
+        images=len(images or ()), title=str(_cfg(config, "title", "")))
+    log("🔎 " + verdict.explain().replace("\n", "\n   "))
+
+    overrides = dict(config)
+    consult_report = {"attempted": False}
+    if _as_bool(_cfg(config, "ollama_design", False), False):
+        proposed, consult_report = pdfer_consult.consult_design(
+            text, verdict, book, config, logger=log)
+        if proposed:
+            # The model's answer is merged UNDER the user's explicit config:
+            # anything Angela named by hand outranks anything a model
+            # suggested. An art director advises; the client decides.
+            for key, value in proposed.items():
+                if not str(_cfg(config, key, "")).strip():
+                    overrides[key] = value
+            if overrides.get("nuance") and not str(
+                    _cfg(config, "nuance", "")).strip():
+                verdict = pdfer_nuance.classify(
+                    text, hint=overrides["nuance"], images=len(images or ()),
+                    title=str(_cfg(config, "title", "")))
+                verdict.source = "llm"
+        elif consult_report.get("error"):
+            log("⚠️ design consultation: %s" % consult_report["error"])
+
+    design = pdfer_theme.build_design_system(verdict, overrides,
+                                             font_book=book, logger=log)
+    log("🎨 " + design.describe().replace("\n", "\n   "))
+    return verdict, design, consult_report
+
+
+def _render_atelier(text: str, config: dict, images: list, output_path: str,
+                    source_kind: str, base_dir: str, log) -> tuple:
+    """Render through the Platypus atelier. Returns ``(ok, result)``.
+
+    ``result`` carries everything the INI_SECTION block reports: the design
+    decisions, the layout repairs, and the audit of the finished file.
+    """
+    result = {"engine": "atelier", "notes": [], "repairs": [],
+              "audit": None, "design": None, "verdict": None,
+              "consult": None, "artefacts": []}
+
+    book = pdfer_typography.FontBook(logger=log)
+    verdict, design, consult_report = _design_for(text, config, images, book, log)
+    result["verdict"] = verdict
+    result["design"] = design
+    result["consult"] = consult_report
+
+    document = pdfer_docmodel.parse(text, source_kind,
+                                    title=str(_cfg(config, "title", "")))
+    for note in document.notes:
+        result["notes"].append("[parse] " + note)
+    log("📐 document model: %s" % document.stats())
+
+    # Figures supplied via `images` are appended as their own blocks so the
+    # mixed mode keeps working through the new renderer.
+    for path in images or ():
+        if os.path.isfile(path):
+            document.blocks.append(
+                pdfer_docmodel.ImageBlock(
+                    path, caption=(os.path.basename(path)
+                                   if _as_bool(_cfg(config, "image_caption",
+                                                    True), True) else "")))
+
+    factory = pdfer_ornament.OrnamentFactory(
+        design, seed_text=(text or "")[:4000], logger=log)
+    labels = _doc_labels(config)
+    labels = {"page": labels["page"], "of": labels["of"],
+              "contents": ("Índice" if labels["page"] == "página"
+                           else "Contents")}
+
+    atelier = pdfer_atelier.Atelier(design, book, ornament=factory,
+                                    logger=log, labels=labels)
+    report = atelier.build(
+        document, output_path,
+        title=str(_cfg(config, "title", "")) or document.infer_title(),
+        subtitle=str(_cfg(config, "subtitle", "")),
+        author=str(_cfg(config, "author", "")) or "Tlamatini",
+        cover=_as_bool(_cfg(config, "cover", True), True),
+        toc=_as_bool(_cfg(config, "toc", False), False),
+        base_dir=base_dir,
+        page_numbers=_as_bool(_cfg(config, "page_numbers", True), True),
+        footer_note=str(_cfg(config, "footer_note", "")))
+
+    result["notes"].extend(report.get("notes", []))
+    result["repairs"] = report.get("repairs", [])
+    result["pages"] = report.get("pages", 0)
+    result["artefacts"] = factory.artefacts()
+
+    # ── PROVE IT ON THE FILE ────────────────────────────────────────────
+    # The renderer's own opinion is not evidence. xhtml2pdf reported err=0
+    # while printing cells on top of each other; this agent will not repeat
+    # that mistake with a different library.
+    if _as_bool(_cfg(config, "layout_audit", True), True):
+        audit = pdfer_audit.audit_pdf(
+            output_path, margin_mm=design.page["margin_mm"],
+            page_background=design.palette.background.hex)
+        result["audit"] = audit
+        log("🔍 " + audit.summary())
+        if not audit.clean:
+            for line in audit.detail(8).split("\n")[1:]:
+                log("   " + line.strip())
+    return True, result
+
+
+def _atelier_summary(result: dict, config: dict) -> str:
+    """The human-readable body of the INI_SECTION block."""
+    design = result.get("design")
+    verdict = result.get("verdict")
+    audit = result.get("audit")
+    lines = []
+    if verdict:
+        lines.append(verdict.explain())
+        lines.append("")
+    if design:
+        lines.append(design.describe())
+        lines.append("")
+    consult = result.get("consult") or {}
+    if consult.get("attempted"):
+        if consult.get("ok"):
+            lines.append("Design consultation (%s): accepted %s"
+                         % (consult.get("model", "?"),
+                            ", ".join(consult.get("accepted", [])) or "nothing"))
+            if consult.get("rejected"):
+                lines.append("  rejected: " + "; ".join(consult["rejected"]))
+        else:
+            lines.append("Design consultation did not apply: %s"
+                         % consult.get("error", "unknown"))
+        lines.append("")
+    if result.get("repairs"):
+        lines.append("Layout repairs applied: %s"
+                     % ", ".join(sorted(set(result["repairs"]))))
+    if audit is not None:
+        lines.append(audit.detail(8))
+    for note in result.get("notes", [])[:12]:
+        lines.append("  · %s" % note)
+    return "\n".join(line for line in lines if line is not None)
+
+
 def _preflight(mode: str, config: dict, text: str, images: list, pdfs: list,
                backends: dict) -> dict:
     """Validate BEFORE writing anything. Returns {ok, fatals, warnings}.
@@ -1352,6 +1569,13 @@ def main():
         elif source_type == "none" and pdfs:
             source_type = "pdfs"
 
+        # ⚠️ THE KV HEADER IS A CONTRACT. These field names are read by
+        # Parametrizer and MUST stay byte-identical to
+        # ``agent_contracts._PARAMETRIZER_OUTPUT_FIELDS['pdfer']`` (from which
+        # ``views.PARAMETRIZER_SOURCE_OUTPUT_FIELDS`` is DERIVED — never
+        # hand-edit that one). The 2026-09 overhaul APPENDED the design fields
+        # rather than renaming any existing one, so every flow built against
+        # the old shape keeps working.
         outcome = {
             "mode": mode,
             "source_type": source_type,
@@ -1362,6 +1586,19 @@ def main():
             "bytes": 0,
             "images_used": 0,
             "engine": "",
+            # ── new in 2026-09: the design decisions, reported so a
+            #    downstream agent (or a human) can see WHY it looks like this
+            "nuance": "",
+            "nuance_confidence": "",
+            "nuance_source": "",
+            "palette": "",
+            "predominant_color": "",
+            "background_mode": "",
+            "font_pairing": "",
+            "decorations": "",
+            "overlaps": 0,
+            "layout_clean": "",
+            "repairs": "",
             "status": "error",
         }
         body = ""
@@ -1434,33 +1671,90 @@ def main():
                     outcome["engine"] = "pymupdf"
                     outcome["images_used"] = used
                 else:
-                    if mode == "html":
-                        html_body = text
-                    elif mode == "text":
-                        html_body = _text_to_html_body(text)
-                    else:  # markdown | mixed
-                        html_body = (_markdown_to_html_body(
-                            text, _as_bool(_cfg(config, "toc", False), False))
-                            if text.strip() else "")
-                    figures = _figures_html(images, config) if mode == "mixed" else ""
-                    if mode == "mixed":
-                        outcome["images_used"] = sum(
-                            1 for p in images if os.path.isfile(p))
-                    html_doc = _build_html_document(html_body, config, figures)
                     # Figures are usually written RELATIVE to the source
                     # document, so the document's own folder is the base for
                     # resolving them (see _resolve_asset_uri).
                     src_file = str(_cfg(config, "input_file", "")).strip().strip('"').strip("'")
                     base_dir = (os.path.dirname(os.path.abspath(src_file))
                                 if src_file and os.path.isfile(src_file) else "")
-                    ok, message, embedded = _render_html_to_pdf(
-                        html_doc, output_path, base_dir=base_dir)
-                    outcome["engine"] = "xhtml2pdf"
-                    # Report what the PDF ACTUALLY contains, not what we meant
-                    # to put in it: `images_used: 0` on a document with four
-                    # diagrams is how a broken render passed for a good one.
-                    if embedded >= 0:
-                        outcome["images_used"] = embedded
+                    engine = _resolve_engine(config)
+                    if engine == "legacy" and _ATELIER_OK:
+                        notes.append(
+                            "engine=legacy (xhtml2pdf): a hand-written `css` "
+                            "was supplied, or it was asked for explicitly")
+                    elif not _ATELIER_OK:
+                        notes.append(
+                            "the design stack did not import (%s) — rendering "
+                            "through the legacy engine" % _ATELIER_ERROR)
+
+                    if engine == "atelier":
+                        source_kind = ("html" if mode == "html" else
+                                       "text" if mode == "text" else "markdown")
+                        ok, atelier_result = _render_atelier(
+                            text, config, images if mode == "mixed" else [],
+                            output_path, source_kind, base_dir, logging.info)
+                        outcome["engine"] = "atelier"
+                        notes.extend(atelier_result.get("notes", []))
+                        body_extra = _atelier_summary(atelier_result, config)
+
+                        design = atelier_result.get("design")
+                        verdict = atelier_result.get("verdict")
+                        audit = atelier_result.get("audit")
+                        if design is not None:
+                            outcome["nuance"] = design.nuance
+                            outcome["palette"] = design.meta.get("label", "")
+                            outcome["predominant_color"] = (
+                                design.meta.get("seed", "")
+                                or design.palette.primary.hex)
+                            outcome["background_mode"] = (
+                                "dark" if design.dark else "light")
+                            outcome["font_pairing"] = design.fonts.get(
+                                "requested", "")
+                            outcome["decorations"] = design.decoration
+                        if verdict is not None:
+                            outcome["nuance_confidence"] = "%.2f" % verdict.confidence
+                            outcome["nuance_source"] = verdict.source
+                        if audit is not None and audit.available:
+                            outcome["overlaps"] = audit.overlap_count
+                            outcome["layout_clean"] = ("true" if audit.clean
+                                                       else "false")
+                        if atelier_result.get("repairs"):
+                            outcome["repairs"] = "|".join(
+                                sorted(set(atelier_result["repairs"])))
+                        message = ("rendered via the Platypus atelier "
+                                   "(%s, %s)" % (
+                                       design.nuance if design else "?",
+                                       design.meta.get("label", "")
+                                       if design else "?"))
+                    else:
+                        if mode == "html":
+                            html_body = text
+                        elif mode == "text":
+                            html_body = _text_to_html_body(text)
+                        else:  # markdown | mixed
+                            html_body = (_markdown_to_html_body(
+                                text,
+                                _as_bool(_cfg(config, "toc", False), False))
+                                if text.strip() else "")
+                        figures = (_figures_html(images, config)
+                                   if mode == "mixed" else "")
+                        if mode == "mixed":
+                            outcome["images_used"] = sum(
+                                1 for p in images if os.path.isfile(p))
+                        html_doc = _build_html_document(html_body, config,
+                                                        figures)
+                        ok, message, embedded = _render_html_to_pdf(
+                            html_doc, output_path, base_dir=base_dir)
+                        outcome["engine"] = "xhtml2pdf"
+                        body_extra = ""
+                        # Report what the PDF ACTUALLY contains, not what we
+                        # meant to put in it: `images_used: 0` on a document
+                        # with four diagrams is how a broken render passed for
+                        # a good one.
+                        if embedded >= 0:
+                            outcome["images_used"] = embedded
+                    if body_extra:
+                        notes.append(body_extra)
                 notes.append(message)
             except ImportError as e:
                 ok = False
@@ -1474,6 +1768,11 @@ def main():
 
             if ok and os.path.isfile(output_path):
                 _stamp_metadata(output_path, config)
+                # Ground truth again: count what the FILE contains, never what
+                # we intended to place in it (the 2026-08 images_used lesson).
+                embedded_now = _count_pdf_images(output_path)
+                if embedded_now >= 0:
+                    outcome["images_used"] = embedded_now
                 outcome.update({
                     "output_path": output_path,
                     "output_dir": os.path.dirname(output_path),

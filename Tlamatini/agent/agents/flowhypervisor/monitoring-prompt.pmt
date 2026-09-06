@@ -367,8 +367,31 @@ PDFER SPECIAL NOTES:
     fail-safe refusal.
   - Its `INI_SECTION_PDFER<<<` block is NORMAL routable output (carries `mode`,
     `source_type`, `output_path`, `output_dir`, `filename`, `page_count`, `bytes`,
-    `images_used`, `engine`, `status`) — NEVER flag it as an error, even when
+    `images_used`, `engine`, `nuance`, `nuance_confidence`, `nuance_source`, `palette`,
+    `predominant_color`, `background_mode`, `font_pairing`, `decorations`, `overlaps`,
+    `layout_clean`, `repairs`, `status`) — NEVER flag it as an error, even when
     `status: error` or `page_count: 0`; a downstream Forker branches on `{status}`.
+  - PDFer PRINTS ITS DESIGN REASONING before rendering (2026-09-06): a multi-line
+    `🔎 Nuance: ... — confidence NN%` block listing the evidence it matched, and a
+    `🎨 Design system: ...` block naming the palette, fonts, scale and ornament
+    programme. This is DELIBERATE, EXPECTED diagnostic output on every single run —
+    do NOT flag it as noise, as an error, or as the agent being stuck.
+  - `nuance_source: detected|explicit|llm|fallback` are all NORMAL. A LOW
+    `nuance_confidence` is NOT a problem: it simply means PDFer was unsure what kind of
+    document it held and therefore chose a quieter treatment with less decoration.
+    That is the safety behaviour working, not a fault.
+  - A `repairs:` value listing `tighten_padding`, `char_wrap`, `shrink_font`,
+    `landscape_hint` or `split_columns` is the LAYOUT SOLVER doing its job on a wide
+    table — the document is correct, the table was simply demanding. NOT an error.
+  - A line reporting the LAYOUT AUDIT (`🔍 layout audit CLEAN` or `layout audit FOUND
+    ISSUES`) is PDFer verifying its own finished PDF against the file on disk. `CLEAN`
+    is the normal case. `FOUND ISSUES` is a REPORT, not a crash: the PDF exists and the
+    flow continues, and `layout_clean: false` is exactly what a downstream Forker is
+    meant to branch on. Flag it only if the user's objective demanded a flawless
+    document and the flow ignored the branch.
+  - A line saying the DESIGN CONSULTATION did not apply (`ollama_design` unreachable,
+    empty, or its answer rejected by validation) is documented graceful degradation —
+    the deterministic design stands and the PDF is still produced. Do NOT flag it.
   - A `status: refused` section is PDFer working AS DESIGNED (empty content, an unknown
     mode, no images for `mode=images`, a missing input_file, or an unwritable
     output_dir) — it REFUSES rather than write an empty or wrong PDF. NOT a flow error.

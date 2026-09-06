@@ -723,7 +723,7 @@ description: The authoritative, exhaustive end-to-end runbook for creating a BRA
 519. **Importing `agent.*` from a pool subprocess** — `ModuleNotFoundError` at runtime; port inline.
 520. **Temp/Templates outside Tlamatini** — scratch → `<app>/Temp`, scaffold → `<app>/Templates`; never `C:\Temp`/`%TEMP%`/bare `tempfile`.
 521. **Payload whitelist** — don't disturb `UnifiedAgentChain.invoke`'s rebuild whitelist (`acpx_enabled`/`exec_report_enabled`/`ask_execs_enabled`/`conversation_user_id`/`multi_turn_enabled`).
-522. **Parametrizer field-list drift** — the three lists (parametrizer.py, views.py, agent_contracts.py) must be identical.
+522. **Parametrizer field-list drift** — it is **TWO** places, not three: `parametrizer.SECTION_AGENT_TYPES` (membership) and `agent_contracts._PARAMETRIZER_OUTPUT_FIELDS` (the field tuple). ⚠️ **`views.PARAMETRIZER_SOURCE_OUTPUT_FIELDS` is DERIVED** — literally `= get_parametrizer_source_fields()` — so hand-editing it is a no-op at best and fresh drift at worst. (This entry said "three lists" until 2026-09-06; it was wrong, and following it would have sent you to edit a computed value.) Pin the coupling with a test that reads BOTH sides — lift the agent's `outcome` dict by AST and compare it to the registry tuple — never with a typed count. See `agent/test_pdfer_nuance_layout.py::ContractCoherenceTests`.
 523. **Catalog contiguity** — a gap in `idPrompt` breaks the prompts dropdown at the first missing slot.
 524. **FlowHypervisor false positives** — a long-running/observational/structured-output agent without its SPECIAL NOTES gets wrongly flagged as stuck or errored.
 525. **Watchdog** — keep child processes making progress and fed EOF on stdin; never block with zero CPU+IO.
@@ -732,6 +732,58 @@ description: The authoritative, exhaustive end-to-end runbook for creating a BRA
 528. **Test softness** — make tests HARD (real code, real incident, error+clean+overflow); soft happy-path tests miss real bugs.
 529. **Test toggles** — automated chat tests set AND verify Multi-Turn ON / Exec-Report per intent / Ask-Execs OFF, and clear history first.
 530. **Secret leak** — run `regen_secrets.py` before any commit; config carries live keys in dev.
+
+### Learned from the PDFer overhaul (2026-09-06) — apply these to any agent that RENDERS or MEASURES
+
+531. **A library's own success flag is NOT evidence.** `xhtml2pdf` returned `err = 0` while
+     printing one table cell on top of another and running a Windows path 54pt off the sheet.
+     If your agent produces an artefact, **re-open the artefact and measure it** — the 2026-08
+     `_count_pdf_images` lesson generalised. An agent that reports what it *intended* to do is
+     an agent that will eventually report a success it did not achieve.
+532. **Never size a layout from a character count.** A half-em-per-character estimate is
+     **+116 % wrong** on `lllllllllll` and **−43 % wrong** on `WWWWWWWWWWW`. If you are
+     placing text, measure it with the real metrics (`pdfmetrics.stringWidth`) against the
+     real face at the real size. The 43 % under-estimate is exactly how content escapes its
+     container.
+533. **Prefer a structural guarantee to a tolerance.** "Add padding and hope" is not a fix.
+     Solve the geometry so the failure is *impossible* — a Platypus `Paragraph` handed an
+     explicit width cannot draw outside it — and then assert the invariant at the boundary.
+534. **Never mutate the user's content to make it fit.** Change fonts, sizes and WRAP MODES;
+     do not inject spaces or hyphens. A filesystem path with a space in it is *wrong data*,
+     and an agent that corrupts the thing it is documenting is worse than one that wraps it
+     awkwardly.
+535. **A destructive repair rung goes LAST, always.** PDFer's `split_columns` sits behind four
+     non-destructive rungs for the same reason LaTeXer's `bisect` sits behind seven: a rung
+     that almost always "succeeds" at producing *something* makes every gentler rung
+     unreachable, and losing the user's work is the worst outcome available.
+536. **A check that fires on correct documents gets switched off.** PDFer's first contrast
+     audit compared every text span to the *page* background, so it flagged white
+     table-header text on its own dark header band. Its first bleed check flagged every
+     correctly-placed page folio. Separate severities (off-the-sheet vs outside-the-frame),
+     and measure the ground the ink *actually* lands on.
+537. **Never sit exactly ON a threshold.** A colour certified at precisely 4.50:1 measures
+     4.48:1 once the glyph is antialiased. Overshoot deliberately (`CONTRAST_SAFETY`) — this
+     is a measurement margin, not a fudge factor.
+538. **An ambiguous signal needs corroboration.** SI units are equally consistent with a
+     physics article and a parts list; only the vocabulary separates them. If your agent
+     classifies anything, damp a structural signal whose domain has no independent support —
+     and check your lexicons actually cover the domain (PDFer's "science" list was
+     quantum-mechanics-only, so plasma physics matched nothing).
+539. **An uncertain classifier must ACT uncertain.** Low confidence should reduce what the
+     agent does — PDFer decorates less when it is unsure what it is holding — because a
+     confidently wrong treatment looks deliberate, and a hedged one merely looks plain.
+540. **Sibling modules, not a package.** A pool agent is copied into a runtime directory and
+     run as `python <agent>.py`, so `sys.path[0]` is that directory: flat
+     `<agent>_<part>.py` neighbours import reliably in source, frozen and self-modify builds
+     (the FlowCreator `result_to_flw.py` precedent). Import the group **fail-open** so a
+     partial copy degrades instead of dying.
+541. **Declare `verbatim_fields` for ANY field that carries literal source text.** The shared
+     parser collapses `\\` → `\`, which silently corrupts Windows paths, escapes and maths.
+     It is NOT automatic — LaTeXer learned it in 2026-08, PDFer had the identical exposure
+     for a month afterwards.
+542. **Append output fields, never rename them.** Every flow already mapping the old KV header
+     must keep resolving. Pin the header ↔ registry coupling with an AST test that reads both
+     sides, so an added field passes and a *divergent* one fails.
 
 ---
 
