@@ -9,6 +9,7 @@
 #   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
 import os
 import re
+import uuid
 from asgiref.sync import sync_to_async
 from django.contrib.auth.models import User
 from ..models import LLMProgram, LLMSnippet, AgentMessage
@@ -31,13 +32,74 @@ _LOG_FULL_ANSWERS = (
 def save_message(user, message, conversation_user=None):
     AgentMessage.objects.create(user=user, conversation_user=conversation_user, message=message)
 
+# ── NAME-COLLISION GUARD (Angela, 2026-09-06) ────────────────────────────────
+# Program / snippet names are built as `<UTC timestamp to the SECOND>_<name>`
+# (services/filesystem.get_time_stamp), so TWO code blocks in the SAME answer
+# get the SAME name - while EVERY reader in the codebase looks a file up by
+# NAME with `.get()`. The result was a permanently BROKEN pair of files:
+# clicking "Load in canvas" raised MultipleObjectsReturned (an unhandled 500 -
+# the `except LLMProgram.DoesNotExist` does NOT catch it), and "save files from
+# DB" logged `!!! ERROR while saving file: get() returned more than one
+# LLMProgram`. The user's code was never lost, only unreachable by its own name.
+#
+# The fix is at BOTH ends and neither half may be dropped:
+#   (1) the name is made UNIQUE here, at save time, so a second block gets its
+#       own row AND its own working canvas link, and
+#   (2) every reader was made collision-proof (filter(...).first()) so a
+#       database that ALREADY carries duplicates loads instead of erroring.
+_NAME_COLLISION_SUFFIX_LIMIT = 999
+
+
+def _uniquify_name(model, field, name):
+    """Return `name`, or the first free `name_2` / `name_3` / ... variant.
+
+    FAIL-OPEN: any database error resolves to the ORIGINAL name, because a
+    failure to uniquify must never stop the user's code from being saved.
+    """
+    try:
+        if not model.objects.filter(**{field: name}).exists():
+            return name
+        for n in range(2, _NAME_COLLISION_SUFFIX_LIMIT + 1):
+            candidate = f"{name}_{n}"
+            if not model.objects.filter(**{field: candidate}).exists():
+                return candidate
+        return f"{name}_{uuid.uuid4().hex[:8]}"
+    except Exception as exc:
+        print(f"--- [NAME-GUARD] could not uniquify '{name}': {exc}")
+        return name
+
+
+def _resolved_name(requested, returned):
+    """Use the name the DB actually stored, falling back to the requested one.
+
+    Defensive on purpose: `save_program` / `save_snippet` are patched in tests,
+    and a mock returns a non-string that must never be spliced into a link.
+    """
+    return returned if isinstance(returned, str) and returned else requested
+
+
 @sync_to_async
 def save_program(programName, programLanguage, programContent):
-    LLMProgram.objects.create(programName=programName, programLanguage=programLanguage, programContent=programContent)
+    """Save a program row and RETURN the name it was actually stored under.
+
+    The caller MUST use the returned name for the canvas link and for
+    `setLastProgramName` - otherwise a second block written in the same second
+    would link back to the FIRST block's row.
+    """
+    finalName = _uniquify_name(LLMProgram, 'programName', programName)
+    if finalName != programName:
+        print(f"--- [NAME-GUARD] program '{programName}' already exists - saved as '{finalName}'")
+    LLMProgram.objects.create(programName=finalName, programLanguage=programLanguage, programContent=programContent)
+    return finalName
 
 @sync_to_async
 def save_snippet(snippetName, snippetLanguage, snippetContent):
-    LLMSnippet.objects.create(snippetName=snippetName, snippetLanguage=snippetLanguage, snippetContent=snippetContent)
+    """Save a snippet row and RETURN the name it was actually stored under."""
+    finalName = _uniquify_name(LLMSnippet, 'snippetName', snippetName)
+    if finalName != snippetName:
+        print(f"--- [NAME-GUARD] snippet '{snippetName}' already exists - saved as '{finalName}'")
+    LLMSnippet.objects.create(snippetName=finalName, snippetLanguage=snippetLanguage, snippetContent=snippetContent)
+    return finalName
 
 @sync_to_async
 def get_or_create_bot_user():
@@ -404,7 +466,7 @@ async def process_llm_response(llm_response, rag_chain, channel_layer, room_grou
         snippetContent = snippet[1]
         extension = constants.EXTENSION_MAP.get(snippetLanguage, '.txt')
         snippetName = get_time_stamp() + "_" + snippetLanguage + extension
-        await save_snippet(snippetName, snippetLanguage, snippetContent)
+        snippetName = _resolved_name(snippetName, await save_snippet(snippetName, snippetLanguage, snippetContent))
         print("\n--- Saved snippet: "+snippetName)
 
         # ALWAYS escape HTML entities for display to prevent browser rendering of tags
@@ -453,7 +515,7 @@ async def process_llm_response(llm_response, rag_chain, channel_layer, room_grou
             programName = re.sub(r'[\s]+', '(space)', programName)
             finalProgramName = get_time_stamp() + "_" + programName
             
-            await save_program(finalProgramName, lang, program2Save)
+            finalProgramName = _resolved_name(finalProgramName, await save_program(finalProgramName, lang, program2Save))
             if rag_chain:
                 rag_chain.setLastProgramName(finalProgramName)
             print("\n--- Saved program: "+finalProgramName)
@@ -467,7 +529,7 @@ async def process_llm_response(llm_response, rag_chain, channel_layer, room_grou
             programName = re.sub(r'[\s]+', '(space)', programName)
             finalProgramName = get_time_stamp() + "_" + programName
             
-            await save_program(finalProgramName, 'by-extension', program2Save)
+            finalProgramName = _resolved_name(finalProgramName, await save_program(finalProgramName, 'by-extension', program2Save))
             if rag_chain:
                 rag_chain.setLastProgramName(finalProgramName)
             print("\n--- Saved program: "+finalProgramName)
@@ -494,14 +556,14 @@ async def process_llm_response(llm_response, rag_chain, channel_layer, room_grou
         if programCodeInAposLang:
             contentInner = programCodeInAposLang.group(2)
             program2Save = contentInner.replace('```', '')
-            await save_program(programName, programCodeInAposLang.group(1), program2Save)
+            programName = _resolved_name(programName, await save_program(programName, programCodeInAposLang.group(1), program2Save))
             if rag_chain:
                 rag_chain.setLastProgramName(programName)
             print("\n--- Saved program: "+programName)
             llm_response = llm_response.replace(m.group(0), "<a href='#' style='font-weight: 600; color: white !important;' onclick='loadCanvas(" + '"' + programName + '"' + ");'>---Load in canvas: "+programName+"---</a><br>")
         else:
             program2Save = programContent.replace('```', '')
-            await save_program(programName, 'by-extension', program2Save)
+            programName = _resolved_name(programName, await save_program(programName, 'by-extension', program2Save))
             if rag_chain:
                 rag_chain.setLastProgramName(programName)
             print("\n--- Saved program: "+programName)

@@ -16,6 +16,79 @@
 
 ---
 
+## 2026-09-06 — Two code blocks in one answer destroyed each other's file (`MultipleObjectsReturned`)
+
+**Angela's report** — the tail of `tlamatini.log` on the installed build in `C:\Tlamatini`:
+
+```
+agent.models.LLMProgram.MultipleObjectsReturned: get() returned more than one LLMProgram -- it returned 2!
+  ... agent\views.py, line 222, in load_canvas_view
+[django.channels.server] ERROR HTTP GET /agent/load_canvas/20260907030945_Without_Name/ 500
+--- Received save-files-from-db message from client.
+Saving file: 20260907030945_Without_Name...
+!!! ERROR while saving file: get() returned more than one LLMProgram -- it returned 2!
+Saving file: 20260907030945_Without_Name...
+!!! ERROR while saving file: get() returned more than one LLMProgram -- it returned 2!
+```
+
+**ROOT CAUSE — a file name that carries only a one-SECOND timestamp.**
+`services/filesystem.get_time_stamp()` is `strftime("%Y%m%d%H%M%S")`, and
+`response_parser` built every name as `get_time_stamp() + "_" + <name>` (unnamed
+blocks: `+ "_Without_Name"`). **Two code blocks in the SAME answer are parsed in
+the same second, so both rows were `LLMProgram.objects.create(...)`d under the
+IDENTICAL name.** Verified in her live database: `idProgram` 3 and 4, both
+`20260907030945_Without_Name`, 489 and 506 bytes of DIFFERENT content. The
+`_seen_unnamed_blocks` dedupe does not help — it only suppresses blocks with
+identical CONTENT, and these were two genuinely different files.
+
+**WHY IT WAS TOTAL, NOT PARTIAL.** Every reader looked the file up by NAME with
+`.get()`, and `MultipleObjectsReturned` is **NOT caught by
+`except LLMProgram.DoesNotExist`** — so it escaped as an unhandled 500 and BOTH
+twins became permanently unreachable: "Load in canvas" 500'd and *"save files
+from DB"* refused both. The user's code was never lost — only unopenable under
+its own name — which is exactly the *silent, plausible, WRONG* failure class:
+the chat still showed two cheerful `---Load in canvas: …---` links, and both
+were dead, and both pointed at the same name.
+
+**THE FIX HAS TWO HALVES — do NOT drop either one.**
+
+1. **WRITE side** (`services/response_parser.py`): `_uniquify_name(model, field,
+   name)` returns the first free `name_2` / `name_3` … variant, and
+   `save_program` / `save_snippet` now **RETURN the name they actually stored**.
+   ⚠️ The five call sites MUST use that return value
+   (`finalProgramName = _resolved_name(finalProgramName, await save_program(...))`) —
+   otherwise the second block's canvas link still points at the FIRST block's
+   row, which looks fixed and is not. `_uniquify_name` is **FAIL-OPEN**: any DB
+   error resolves to the original name, because failing to uniquify must never
+   stop the user's code being saved. `_resolved_name` ignores a non-string
+   return so the existing `mock.AsyncMock` patches of `save_program` keep working.
+2. **READ side** — every name lookup became `filter(...).first()` (newest row
+   wins), in **all four** places: `views.load_canvas_view` (programs AND
+   snippets), `services/filesystem.save_files_from_db::get_program`,
+   `consumers.get_program_by_name`, `rag/interface.get_program_by_name`. This is
+   what lets a database written by an OLDER build open its files instead of
+   erroring. A genuinely absent name still raises `DoesNotExist` / returns
+   `None` / 404s, exactly as before.
+
+**REPAIR for databases that already hold duplicates** — migration
+`0199_dedupe_llm_program_snippet_names.py`. **NON-DESTRUCTIVE**: nothing is ever
+deleted; the lowest-id row keeps the original name and each later twin is
+RENAMED to `<name>_2` / `<name>_3`, so both files become loadable and savable
+again under distinct names. Idempotent, and **FAIL-OPEN** — it swallows any
+error rather than aborting the post-update `migrate`, because a migrate that
+stops leaves the user without her new agents/tools/prompts, which is far worse
+than one unrepaired duplicate.
+
+**Corollary for future work:** `LLMProgram.programName` / `LLMSnippet.snippetName`
+are **not unique in the schema** (plain `CharField`), so `.get()` on them is
+always a latent 500. Coverage: `agent/test_program_name_collisions.py`
+(13 tests — the uniquifier, the fail-open path, the returned-name contract, the
+two-unnamed-blocks end-to-end regression, an old duplicate-carrying database
+loading through the view, and a **source contract** that fails on any
+re-introduced `objects.get(programName=…)` / `.get(snippetName=…)`).
+
+---
+
 ## 2026-09-06 — PDFer: the overlap bug, the one brown scheme, the one font (v1.51.0)
 
 **Angela's report, verbatim:** *"actually is way too flaky, way too mediocre … this

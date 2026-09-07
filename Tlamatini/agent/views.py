@@ -218,19 +218,23 @@ def agent_page(request):
     })
 
 def load_canvas_view(request, filename):
-    try:
-        program = LLMProgram.objects.get(programName=filename)
-        content = program.programContent
-        return HttpResponse(content, content_type="text/plain")
-    except LLMProgram.DoesNotExist:
-        pass  # Try LLMSnippet if not found in LLMProgram
+    # COLLISION-PROOF LOOKUP (Angela, 2026-09-06). `.get()` used to raise
+    # MultipleObjectsReturned here - an UNHANDLED 500, because the old
+    # `except LLMProgram.DoesNotExist` does not catch it - whenever two code
+    # blocks of the SAME answer landed on the same `<timestamp>_<name>` key
+    # (get_time_stamp has one-SECOND resolution). New saves are uniquified in
+    # services/response_parser._uniquify_name, but a database written by an
+    # OLDER build can still carry duplicates, so read the NEWEST matching row
+    # rather than refusing to open the file at all. Do NOT revert to .get().
+    program = LLMProgram.objects.filter(programName=filename).order_by('-idProgram').first()
+    if program is not None:
+        return HttpResponse(program.programContent, content_type="text/plain")
 
-    try:
-        snippet = LLMSnippet.objects.get(snippetName=filename)
-        content = snippet.snippetContent
-        return HttpResponse(content, content_type="text/plain")
-    except LLMSnippet.DoesNotExist:
-        return HttpResponse("File not found in database", status=404)
+    snippet = LLMSnippet.objects.filter(snippetName=filename).order_by('-idSnippet').first()
+    if snippet is not None:
+        return HttpResponse(snippet.snippetContent, content_type="text/plain")
+
+    return HttpResponse("File not found in database", status=404)
     
 def load_prompt_view(request, prompt_name):
     try:
