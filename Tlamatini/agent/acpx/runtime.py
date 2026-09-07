@@ -49,6 +49,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterator, List, Optional
 
 from .agent_registry import AcpAgentSpec, build_agent_registry
+from .child_health import classify_child_output, summarize_for_doctor
 from .config import AcpxConfig, load_acpx_config, load_tlamatini_config_json
 from .permissions import PermissionGate
 from .session_store import (
@@ -681,6 +682,18 @@ class AcpSession:
             # so extract_last_assistant_text picks it up verbatim and
             # so trim_event_payload can cap it for the LLM payload.
             answer = stdout_text.strip()
+
+            # ══ DID THIS CHILD ACTUALLY DELIVER? ══════════════════════
+            # An exit code is ONE BIT and it lies here routinely: measured
+            # 2026-09-07, `claude -p` answered "the web search was blocked --
+            # permission wasn't granted" and exited **0**, so ACPX reported
+            # SUCCESS, the Exec Report went green, and the orchestrating LLM
+            # believed it had research in hand. Same silent-wrong-deliverable
+            # class as the PDFer and LaTeXer verdict bugs. child_health reads
+            # what the child actually SAID; the verdict rides on the done
+            # event so tools.py can refuse to call a refusal a success.
+            verdict = classify_child_output(stdout_text, stderr_text, exit_code)
+
             yield {
                 "event": "assistant_message",
                 "role": "assistant",
@@ -694,16 +707,15 @@ class AcpSession:
                     "channel": "stderr",
                     "text": stderr_text.strip(),
                 }
-            if timed_out:
-                yield {"done": True, "_synthetic": "timeout",
-                       "exit_code": exit_code,
-                       "elapsed_seconds": round(elapsed, 3),
-                       "transport": "oneshot-prompt"}
-            else:
-                yield {"done": True, "_synthetic": "child_exited",
-                       "exit_code": exit_code,
-                       "elapsed_seconds": round(elapsed, 3),
-                       "transport": "oneshot-prompt"}
+            done_event = {
+                "done": True,
+                "_synthetic": "timeout" if timed_out else "child_exited",
+                "exit_code": exit_code,
+                "elapsed_seconds": round(elapsed, 3),
+                "transport": "oneshot-prompt",
+            }
+            done_event.update(verdict.as_dict())
+            yield done_event
 
     def to_record(self) -> AcpSessionRecord:
         return self.record
@@ -719,6 +731,7 @@ class AcpxRuntime:
         self.session_store = FileSessionStore(self.config.state_dir)
         self.agent_registry = build_agent_registry(
             self.config.agents, self.config.agents_env,
+            getattr(self.config, "agents_spec", None),
         )
         self.permission_gate = PermissionGate(
             self.config.permission_mode, self.config.non_interactive
@@ -730,6 +743,10 @@ class AcpxRuntime:
         # Per-spec.command -> (cli_version_string, captured_at_epoch). Keeps
         # acp_doctor's per-agent enumeration cheap on repeat calls.
         self._cli_version_cache: Dict[str, tuple[str, float]] = {}
+        # Per-agent_id -> (readiness_dict, captured_at_epoch). A readiness
+        # probe sends a REAL prompt and therefore costs the user real quota,
+        # so its result is cached and never re-run casually.
+        self._readiness_cache: Dict[str, tuple[Dict[str, Any], float]] = {}
 
     # ── Health ────────────────────────────────────────────────────────
     def probe_availability(self) -> None:
@@ -842,7 +859,96 @@ class AcpxRuntime:
         self._cli_version_cache[spec.command] = (version, now)
         return version
 
-    def doctor(self) -> Dict[str, Any]:
+    # The smallest prompt that still proves the whole chain works: the CLI
+    # started, authenticated, reached its model and printed an answer.
+    READINESS_PROMPT = "Reply with exactly this and nothing else: ACPX_READY"
+    READINESS_CACHE_TTL_SECONDS = 600.0
+
+    def readiness_probe(self, agent_id: str,
+                        timeout_seconds: float = 60.0,
+                        use_cache: bool = True) -> Dict[str, Any]:
+        """Actually ASK the agent something and report whether it answered.
+
+        ``--version`` is not health. Measured on 2026-09-07, all eight CLIs
+        installed on Angela's machine answered ``--version`` with exit 0 while
+        FOUR of them were dead: gemini could not authenticate, codex refused
+        its own config.toml, claude had no credit, copilot printed nothing.
+        ``acp_doctor`` gave the orchestrating LLM a green light on all of them
+        and the whole research run collapsed. This probe sends a real prompt
+        down the agent's real transport and classifies what comes back with
+        ``child_health``, so a failure is NAMED (``AUTH_FAILED``,
+        ``CONFIG_INVALID``, ``NO_CREDIT``, ``NO_OUTPUT``, ...) instead of
+        hiding behind a healthy-looking version string.
+
+        Deliberately NOT run by default: a real prompt costs the user real
+        quota, so ``acp_doctor`` only calls this when asked for ``deep``.
+        Results are cached for READINESS_CACHE_TTL_SECONDS so repeat calls in
+        one session stay free.
+        """
+        spec = self.agent_registry.get(agent_id)
+        if spec is None:
+            return {"ready": False, "code": "UNKNOWN_AGENT",
+                    "reason": f"no agent_id '{agent_id}' in the registry",
+                    "evidence": "", "probed": False}
+        if not is_executable_resolvable(spec.command):
+            return {"ready": False, "code": "AGENT_NOT_FOUND",
+                    "reason": f"command '{spec.command}' is not on PATH",
+                    "evidence": "", "probed": False}
+        if spec.transport != "oneshot-prompt":
+            # A tui-repl / json-acp child needs a live session to answer, and
+            # spawning one here would leak a process out of doctor(). Say so
+            # plainly rather than inventing a verdict.
+            return {"ready": None, "code": "NOT_PROBEABLE",
+                    "reason": (f"transport '{spec.transport}' cannot be probed "
+                               "without opening a session; use acp_spawn"),
+                    "evidence": "", "probed": False}
+
+        cached = self._readiness_cache.get(agent_id)
+        now = time.time()
+        if use_cache and cached and (now - cached[1]) < self.READINESS_CACHE_TTL_SECONDS:
+            out = dict(cached[0])
+            out["cached"] = True
+            return out
+
+        try:
+            resolved = resolve_command(spec.command)
+            argv: List[str] = [resolved.executable, *resolved.extra_args,
+                               *spec.args, *spec.prompt_subcommand_args]
+            flag = (spec.prompt_arg_flag or "").strip()
+            if flag:
+                argv.append(flag)
+            argv.append(self.READINESS_PROMPT)
+            res = subprocess.run(
+                argv,
+                cwd=self.config.cwd or None,
+                env={**os.environ, **spec.env},
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                timeout=max(5.0, float(timeout_seconds)),
+                shell=resolved.use_shell,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                creationflags=_windows_creationflags(),
+            )
+            verdict = classify_child_output(res.stdout, res.stderr, res.returncode)
+            out = summarize_for_doctor(verdict)
+            out["exit_code"] = res.returncode
+        except subprocess.TimeoutExpired:
+            out = {"ready": False, "code": "PROBE_TIMEOUT",
+                   "reason": f"no answer within {timeout_seconds:.0f}s",
+                   "evidence": ""}
+        except Exception as e:                              # pragma: no cover
+            out = {"ready": False, "code": "PROBE_FAILED",
+                   "reason": f"probe raised: {e}", "evidence": ""}
+        out["probed"] = True
+        out["cached"] = False
+        self._readiness_cache[agent_id] = (dict(out), time.time())
+        return out
+
+    def doctor(self, deep: bool = False,
+               deep_timeout_seconds: float = 60.0) -> Dict[str, Any]:
         """Return a structured health report.
 
         Shape::
@@ -871,13 +977,21 @@ class AcpxRuntime:
         per_agent: List[Dict[str, Any]] = []
         for agent_id, spec in self.agent_registry.items():
             resolvable = is_executable_resolvable(spec.command)
-            per_agent.append({
+            row = {
                 "agent_id": agent_id,
                 "command": spec.command,
                 "description": spec.description,
+                "transport": spec.transport,
                 "resolvable": resolvable,
                 "cli_version": self._capture_cli_version(spec) if resolvable else "",
-            })
+            }
+            if deep:
+                # `resolvable` only says a file exists. `ready` says the agent
+                # answered a real prompt. They disagree constantly -- that
+                # disagreement IS the diagnosis.
+                row["readiness"] = self.readiness_probe(
+                    agent_id, timeout_seconds=deep_timeout_seconds)
+            per_agent.append(row)
         return {
             "ok": bool(base.get("ok")),
             "message": base.get("message", ""),

@@ -49,6 +49,48 @@ def _err(reason: str, code: str = "ERROR", **extra: Any) -> str:
     return json.dumps(payload, ensure_ascii=False)
 
 
+def _delivery_verdict(events: Any) -> Dict[str, Any]:
+    """Pull the child-delivery verdict off the trailing synthetic done event.
+
+    ``runtime._oneshot_send_turn`` stamps ``delivered`` / ``failure_reason`` /
+    ``failure_evidence`` onto the ``done`` event via ``child_health``. Older
+    transports emit no such key; those return ``{}`` and are left alone.
+    """
+    if isinstance(events, list):
+        for event in reversed(events):
+            if isinstance(event, dict) and event.get("done") and "delivered" in event:
+                return event
+    return {}
+
+
+def _ok_unless_blocked(payload: Dict[str, Any], events: Any) -> str:
+    """Success envelope UNLESS the child demonstrably did none of the work.
+
+    ⚠️ DO NOT soften this back into an unconditional ``_ok``. Measured
+    2026-09-07: ``claude -p`` replied "the web search was blocked -- permission
+    wasn't granted" and exited **0**, so this tool returned ``ok: true``, the
+    Exec Report row went GREEN, and the orchestrating LLM spent the next six
+    tool calls building on research that did not exist. A refusal reported as
+    a success is worse than a crash, because nothing downstream can see it.
+
+    The full payload (session_id, transcript_path, events) is preserved on the
+    failure envelope on purpose: the LLM still needs to read the transcript and
+    kill the session even when the turn produced nothing.
+    """
+    verdict = _delivery_verdict(events)
+    if verdict.get("delivered") is False:
+        out: Dict[str, Any] = dict(payload)
+        out["ok"] = False
+        out["reason"] = (verdict.get("failure_reason")
+                         or "the agent produced no usable answer")
+        out["code"] = verdict.get("code") or "NOT_DELIVERED"
+        evidence = verdict.get("failure_evidence")
+        if evidence:
+            out["evidence"] = evidence
+        return json.dumps(out, ensure_ascii=False)
+    return _ok(payload)
+
+
 def _coerce_positive_float(v: Any, default: float) -> float:
     """LangChain serializes args through JSON; numeric kwargs may arrive as
     strings. Treat any non-positive value as "use default" to keep the
@@ -165,7 +207,7 @@ def acp_spawn(agent_id: str, task: str, cwd: str = "",
             startup_grace_seconds=_coerce_positive_float(startup_grace_seconds, 12.0),
         )
         trimmed = trim_events(events[-32:], max_event_chars=cap)
-        return _ok({
+        return _ok_unless_blocked({
             "session_id": sess.record.session_id,
             "agent_id": sess.record.agent_id,
             "transport": sess.spec.transport,
@@ -173,7 +215,7 @@ def acp_spawn(agent_id: str, task: str, cwd: str = "",
             "events": trimmed,
             "events_total": len(events),
             "spawned_immediately": False,
-        })
+        }, events)
     except AcpRuntimeError as e:
         return _err(e.message, code=e.code)
     except Exception as e:
@@ -220,7 +262,8 @@ def acp_send(session_id: str, text: str, timeout_seconds: float = 0.0,
         )
         cap = int(max_event_chars) if max_event_chars and int(max_event_chars) > 0 else DEFAULT_MAX_EVENT_CHARS
         trimmed = trim_events(events[-64:], max_event_chars=cap)
-        return _ok({"events": trimmed, "events_total": len(events)})
+        return _ok_unless_blocked(
+            {"events": trimmed, "events_total": len(events)}, events)
     except AcpRuntimeError as e:
         return _err(e.message, code=e.code)
     except Exception as e:
@@ -273,11 +316,11 @@ def acp_send_and_wait(session_id: str, text: str,
             settled = events[-1].get("_synthetic") in ("idle", "child_exited")
         cap = int(max_event_chars) if max_event_chars and int(max_event_chars) > 0 else DEFAULT_MAX_EVENT_CHARS
         trimmed = trim_events(events[-64:], max_event_chars=cap)
-        return _ok({
+        return _ok_unless_blocked({
             "events": trimmed,
             "events_total": len(events),
             "settled": settled,
-        })
+        }, events)
     except AcpRuntimeError as e:
         return _err(e.message, code=e.code)
     except Exception as e:
@@ -326,24 +369,52 @@ def acp_kill(session_id: str) -> str:
 
 
 @tool
-def acp_doctor() -> str:
+def acp_doctor(deep: bool = False, deep_timeout_seconds: float = 60.0) -> str:
     """
     Run a health probe of the ACPX runtime AND enumerate every registered
-    ACP agent with its on-PATH resolvability and CLI version.
+    ACP agent with its on-PATH resolvability, transport and CLI version.
+
+    ⚠️ ``resolvable`` ONLY means the binary exists. It does NOT mean the agent
+    works: a CLI with a dead API key, an invalid config file, an expired auth
+    token or an empty credit balance still prints its ``--version`` happily and
+    exits 0. Pass ``deep=True`` to send each ``oneshot-prompt`` agent a real
+    one-line prompt and find out which ones can actually answer.
+
+    Args:
+        deep: when True, additionally send every oneshot-prompt agent a tiny
+            real prompt and report a per-agent ``readiness`` block. This COSTS
+            the user real model quota, so it is off by default and the result
+            is cached for 10 minutes. Use it when a spawn failed unexpectedly,
+            when the user asks which agents actually work, or BEFORE committing
+            a long multi-agent relay to a particular leg.
+        deep_timeout_seconds: per-agent budget for the deep probe (default 60).
 
     Returns: JSON {"ok": <bool>, "message": "...",
                    "details": [{"agent_id","command","description",
-                                "resolvable","cli_version"}, ...],
+                                "transport","resolvable","cli_version",
+                                "readiness": {"ready": true|false|null,
+                                              "code","reason","evidence"}},
+                               ...],
                    "probe": {"agent_id","stdout","stderr"}}.
 
-    Note: ``ok`` reflects the probe outcome; ``details`` is now the
-    per-agent enumeration so downstream "pick first non-X resolvable
-    agent" logic can work off a single tool call.
+    ``readiness`` is present only when ``deep=True``. ``ready: null`` means the
+    agent's transport cannot be probed without opening a session (tui-repl /
+    json-acp) — not that it is broken. A false ``ready`` always carries a NAMED
+    ``code``: AUTH_FAILED, CONFIG_INVALID, NO_CREDIT, USAGE_LIMIT,
+    PERMISSION_BLOCKED, WORKSPACE_NOT_TRUSTED, NO_OUTPUT, CHILD_ERROR,
+    AGENT_NOT_FOUND, PROBE_TIMEOUT.
+
+    Note: ``ok`` reflects the probe outcome; ``details`` is the per-agent
+    enumeration so downstream "pick the first agent that actually works"
+    logic can run off a single tool call.
     """
     try:
         runtime = get_acpx_runtime()
         runtime.probe_availability()
-        report = runtime.doctor()
+        report = runtime.doctor(
+            deep=bool(deep),
+            deep_timeout_seconds=_coerce_positive_float(deep_timeout_seconds, 60.0),
+        )
         return json.dumps({
             "ok": bool(report.get("ok")),
             "message": report.get("message", ""),

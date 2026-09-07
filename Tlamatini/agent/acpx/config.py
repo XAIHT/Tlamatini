@@ -103,6 +103,15 @@ class AcpxConfig:
     mcp_servers: Dict[str, McpServerConfig] = field(default_factory=dict)
     agents: Dict[str, str] = field(default_factory=dict)
     agents_env: Dict[str, Dict[str, str]] = field(default_factory=dict)
+    # Per-agent overrides for the REST of AcpAgentSpec (args, transport,
+    # prompt_arg_flag, prompt_subcommand_args, the three drain budgets and
+    # spawn_returns_immediately). Before this existed, config.json could only
+    # move an agent's `command` and inject `env`, so a wrong transport or a
+    # missing CLI flag could ONLY be fixed by editing agent_registry.py and
+    # REBUILDING the app -- which is why five installed peers stayed broken on
+    # Angela's machine while their fixes were one flag away. See
+    # agent_registry.build_agent_registry(spec_overrides=...).
+    agents_spec: Dict[str, Dict[str, Any]] = field(default_factory=dict)
 
 
 def _coerce_perm_mode(value: Any) -> str:
@@ -170,6 +179,67 @@ def _coerce_agents_env(raw: Any) -> Dict[str, Dict[str, str]]:
     return out
 
 
+# Everything in AcpAgentSpec that a user may retune from config.json, mapped
+# to the coercion applied to it. `command` and `env` are handled by the two
+# functions above and are deliberately NOT repeated here.
+_SPEC_STR_FIELDS = ("transport", "description")
+_SPEC_LIST_FIELDS = ("args", "prompt_subcommand_args")
+_SPEC_FLOAT_FIELDS = ("default_idle_seconds", "default_startup_grace_seconds",
+                      "default_timeout_seconds")
+_SPEC_BOOL_FIELDS = ("spawn_returns_immediately",)
+
+
+def _coerce_agents_spec(raw: Any) -> Dict[str, Dict[str, Any]]:
+    """Pluck per-agent AcpAgentSpec overrides out of the `acpx.agents` block.
+
+    Returns agent_id -> {field: coerced_value} carrying ONLY the keys the user
+    actually supplied, so ``build_agent_registry`` can apply them on top of the
+    built-in spec without flattening the fields they left alone.
+
+    Every field is coerced defensively and a value of the wrong shape is simply
+    dropped: a typo in config.json must degrade to "use the built-in default",
+    never to a crash at startup or a half-built spec. ``prompt_arg_flag`` is
+    special-cased because ``null`` is a MEANINGFUL value for it (codex passes
+    its prompt positionally behind ``exec``, with no flag at all).
+    """
+    out: Dict[str, Dict[str, Any]] = {}
+    if not isinstance(raw, dict):
+        return out
+    for agent_id, spec in raw.items():
+        if not isinstance(spec, dict):
+            continue
+        fields: Dict[str, Any] = {}
+        for key in _SPEC_STR_FIELDS:
+            value = spec.get(key)
+            if isinstance(value, str) and value.strip():
+                fields[key] = value.strip()
+        for key in _SPEC_LIST_FIELDS:
+            value = spec.get(key)
+            if isinstance(value, list):
+                fields[key] = [str(item) for item in value]
+        for key in _SPEC_FLOAT_FIELDS:
+            value = spec.get(key)
+            if isinstance(value, bool):
+                continue
+            if isinstance(value, (int, float)) and float(value) > 0:
+                fields[key] = float(value)
+        for key in _SPEC_BOOL_FIELDS:
+            value = spec.get(key)
+            if isinstance(value, bool):
+                fields[key] = value
+        # `null` means "this CLI takes the prompt positionally" and must be
+        # distinguishable from "the user said nothing about it".
+        if "prompt_arg_flag" in spec:
+            value = spec.get("prompt_arg_flag")
+            if value is None:
+                fields["prompt_arg_flag"] = None
+            elif isinstance(value, str):
+                fields["prompt_arg_flag"] = value.strip()
+        if fields:
+            out[str(agent_id)] = fields
+    return out
+
+
 def _app_base_dir() -> Path:
     """Return the application base directory (where config.json lives).
 
@@ -232,6 +302,7 @@ def load_acpx_config(config_dict: Optional[Dict[str, Any]] = None) -> AcpxConfig
         mcp_servers=_coerce_mcp_servers(raw.get("mcpServers")),
         agents=_coerce_agents(raw.get("agents")),
         agents_env=_coerce_agents_env(raw.get("agents")),
+        agents_spec=_coerce_agents_spec(raw.get("agents")),
     )
 
 
@@ -344,10 +415,20 @@ DEFAULT_ACPX_CONFIG_BLOCK: Dict[str, Any] = {
     ),
     "mcpServers": {},
     "_acpx_agents_comment": (
-        "Per-agent_id command overrides. Empty = use the built-in registry "
+        "Per-agent_id overrides. Empty = use the built-in registry "
         "(claude/cursor/codex/copilot/gemini/qwen/pi/droid/iflow/"
-        "kilocode/kimi/kiro/opencode/tlamatini). Override when the binary "
-        "lives outside PATH."
+        "kilocode/kimi/kiro/opencode/tlamatini). Each entry may set: "
+        "'command' (when the binary lives outside PATH), 'env' (injected at "
+        "spawn time), 'args' (extra argv BEFORE the prompt -- this is how you "
+        "grant a child its tools, e.g. copilot '--allow-all-tools' or kimi "
+        "'--print'), 'transport' (oneshot-prompt | tui-repl | json-acp | "
+        "one-shot), 'prompt_arg_flag' (the flag that introduces the prompt, "
+        "e.g. '-p'; null = the CLI takes it positionally), "
+        "'prompt_subcommand_args' (e.g. ['exec'] for codex, ['run'] for "
+        "opencode), 'default_idle_seconds', 'default_startup_grace_seconds', "
+        "'default_timeout_seconds' and 'spawn_returns_immediately'. Anything "
+        "omitted or malformed falls back to the built-in default, so a typo "
+        "here can never stop the runtime from starting."
     ),
     "agents": {},
 }

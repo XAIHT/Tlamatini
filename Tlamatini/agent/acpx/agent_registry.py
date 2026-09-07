@@ -31,7 +31,7 @@ from __future__ import annotations
 
 import sys
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
@@ -236,8 +236,93 @@ DEFAULT_ACP_AGENTS: Dict[str, AcpAgentSpec] = {
 }
 
 
+# Every AcpAgentSpec field a config.json entry may retune, beyond `command`
+# and `env`. Kept in step with config._coerce_agents_spec by
+# tests.py::AgentRegistrySpecOverrideTests.
+OVERRIDABLE_SPEC_FIELDS = frozenset({
+    "args", "transport", "description",
+    "default_idle_seconds", "default_startup_grace_seconds",
+    "default_timeout_seconds", "spawn_returns_immediately",
+    "prompt_arg_flag", "prompt_subcommand_args",
+})
+
+# A transport the runtime does not implement would silently hang every spawn,
+# so an unknown value is discarded rather than honoured.
+VALID_TRANSPORTS = frozenset({
+    "json-acp", "tui-repl", "one-shot", "oneshot-prompt",
+})
+
+
+def _respec(spec: AcpAgentSpec, *,
+            command: Optional[str] = None,
+            env: Optional[Dict[str, str]] = None,
+            fields: Optional[Dict[str, Any]] = None) -> AcpAgentSpec:
+    """Return a copy of ``spec`` with the supplied overrides applied.
+
+    FAIL-OPEN by contract: an override of the wrong type, an unknown key, or
+    a transport the runtime does not implement is DROPPED and the built-in
+    value survives. A typo in config.json must never yield a spec that cannot
+    spawn -- the whole point of this path is to make ACPX MORE repairable
+    without a rebuild, not to add a new way to brick it.
+    """
+    picked = {k: v for k, v in (fields or {}).items()
+              if k in OVERRIDABLE_SPEC_FIELDS}
+
+    transport = picked.get("transport", spec.transport)
+    if transport not in VALID_TRANSPORTS:
+        transport = spec.transport
+
+    def _as_list(key: str, fallback: List[str]) -> List[str]:
+        value = picked.get(key)
+        if isinstance(value, list):
+            return [str(item) for item in value]
+        return list(fallback)
+
+    def _as_positive(key: str, fallback: Optional[float]) -> Optional[float]:
+        value = picked.get(key)
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            return fallback
+        return float(value) if float(value) > 0 else fallback
+
+    # `None` is MEANINGFUL for prompt_arg_flag (codex passes its prompt
+    # positionally behind `exec`), so absence and null must stay distinct.
+    prompt_flag = spec.prompt_arg_flag
+    if "prompt_arg_flag" in picked:
+        candidate = picked["prompt_arg_flag"]
+        if candidate is None or isinstance(candidate, str):
+            prompt_flag = candidate
+
+    description = picked.get("description")
+    spawn_now = picked.get("spawn_returns_immediately")
+
+    return AcpAgentSpec(
+        agent_id=spec.agent_id,
+        command=(command.strip()
+                 if isinstance(command, str) and command.strip()
+                 else spec.command),
+        args=_as_list("args", spec.args),
+        env=dict(spec.env if env is None else env),
+        description=(description
+                     if isinstance(description, str) and description.strip()
+                     else spec.description),
+        transport=transport,
+        default_idle_seconds=_as_positive(
+            "default_idle_seconds", spec.default_idle_seconds),
+        default_startup_grace_seconds=_as_positive(
+            "default_startup_grace_seconds", spec.default_startup_grace_seconds),
+        default_timeout_seconds=_as_positive(
+            "default_timeout_seconds", spec.default_timeout_seconds),
+        spawn_returns_immediately=(spawn_now if isinstance(spawn_now, bool)
+                                   else spec.spawn_returns_immediately),
+        prompt_arg_flag=prompt_flag,
+        prompt_subcommand_args=_as_list(
+            "prompt_subcommand_args", spec.prompt_subcommand_args),
+    )
+
+
 def build_agent_registry(overrides: Optional[Dict[str, str]] = None,
                          env_overrides: Optional[Dict[str, Dict[str, str]]] = None,
+                         spec_overrides: Optional[Dict[str, Dict[str, Any]]] = None,
                          ) -> Dict[str, AcpAgentSpec]:
     """
     Merge user overrides with DEFAULT_ACP_AGENTS.
@@ -254,6 +339,17 @@ def build_agent_registry(overrides: Optional[Dict[str, str]] = None,
         conflict) and used at spawn time, where it is layered on top of
         `os.environ`. This is how the demo flow gets `GEMINI_API_KEY` into
         the gemini child without touching the parent Django process env.
+    spec_overrides : dict[str, dict[str, Any]] | None
+        Per-agent overrides for the REST of AcpAgentSpec -- `args`,
+        `transport`, `prompt_arg_flag`, `prompt_subcommand_args`, the three
+        drain budgets and `spawn_returns_immediately` (see
+        OVERRIDABLE_SPEC_FIELDS). This is what lets an operator fix a wrong
+        transport, or grant a child CLI the flag it needs to work unattended,
+        from config.json ALONE. Before it existed, both of those fixes meant
+        editing this file and REBUILDING the application -- which is exactly
+        why five installed peers (copilot, kimi, opencode, kilocode, qwen)
+        sat broken on a machine where every one of them was one flag from
+        working. Wrong-typed values and unknown keys are dropped by _respec.
 
     Returns
     -------
@@ -263,56 +359,35 @@ def build_agent_registry(overrides: Optional[Dict[str, str]] = None,
     """
     overrides = overrides or {}
     env_overrides = env_overrides or {}
+    spec_overrides = spec_overrides or {}
     registry: Dict[str, AcpAgentSpec] = {}
     for agent_id, spec in DEFAULT_ACP_AGENTS.items():
         merged_env = {**spec.env, **(env_overrides.get(agent_id) or {})}
-        if agent_id in overrides:
-            registry[agent_id] = AcpAgentSpec(
-                agent_id=spec.agent_id,
-                command=overrides[agent_id],
-                args=list(spec.args),
-                env=merged_env,
-                description=spec.description,
-                transport=spec.transport,
-                default_idle_seconds=spec.default_idle_seconds,
-                default_startup_grace_seconds=spec.default_startup_grace_seconds,
-                default_timeout_seconds=spec.default_timeout_seconds,
-                spawn_returns_immediately=spec.spawn_returns_immediately,
-                prompt_arg_flag=spec.prompt_arg_flag,
-                prompt_subcommand_args=list(spec.prompt_subcommand_args),
-            )
-        elif merged_env != spec.env:
-            registry[agent_id] = AcpAgentSpec(
-                agent_id=spec.agent_id,
-                command=spec.command,
-                args=list(spec.args),
-                env=merged_env,
-                description=spec.description,
-                transport=spec.transport,
-                default_idle_seconds=spec.default_idle_seconds,
-                default_startup_grace_seconds=spec.default_startup_grace_seconds,
-                default_timeout_seconds=spec.default_timeout_seconds,
-                spawn_returns_immediately=spec.spawn_returns_immediately,
-                prompt_arg_flag=spec.prompt_arg_flag,
-                prompt_subcommand_args=list(spec.prompt_subcommand_args),
-            )
-        else:
+        fields = spec_overrides.get(agent_id) or {}
+        command = overrides.get(agent_id)
+        if command is None and merged_env == spec.env and not fields:
+            # Nothing was overridden -- share the built-in spec object.
             registry[agent_id] = spec
+            continue
+        registry[agent_id] = _respec(
+            spec, command=command, env=merged_env, fields=fields)
     for agent_id, command in overrides.items():
-        if agent_id not in registry:
-            # Unknown user-defined agent: assume tui-repl with TUI defaults
-            # so they get the fast-path drain by default. Users can extend
-            # the spec via config.json.acpx.agents.<id> later.
-            registry[agent_id] = AcpAgentSpec(
-                agent_id=agent_id,
-                command=command,
-                args=[],
-                env=dict(env_overrides.get(agent_id) or {}),
-                description="(user-defined)",
-                transport="tui-repl",
-                default_idle_seconds=2.0,
-                default_startup_grace_seconds=3.0,
-                default_timeout_seconds=8.0,
-                spawn_returns_immediately=True,
-            )
+        if agent_id in registry:
+            continue
+        # Unknown user-defined agent: assume tui-repl with TUI defaults so it
+        # gets the fast-path drain, then apply whatever the user declared.
+        base = AcpAgentSpec(
+            agent_id=agent_id,
+            command=command,
+            args=[],
+            env=dict(env_overrides.get(agent_id) or {}),
+            description="(user-defined)",
+            transport="tui-repl",
+            default_idle_seconds=2.0,
+            default_startup_grace_seconds=3.0,
+            default_timeout_seconds=8.0,
+            spawn_returns_immediately=True,
+        )
+        registry[agent_id] = _respec(
+            base, fields=spec_overrides.get(agent_id) or {})
     return registry
