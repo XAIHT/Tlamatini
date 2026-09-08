@@ -58,20 +58,35 @@ Defined in `agent/acpx/agent_registry.py::DEFAULT_ACP_AGENTS`. Each agent has a 
 - **`tui-repl`** — Long-lived interactive REPL over stdin/stdout with the transport-aware idle rule. Used for CLIs whose one-shot flag is unknown to us yet — override per-agent in `config.json.acpx.agents.<id>` (set `transport: oneshot-prompt`, `prompt_arg_flag: "-p"`) once you confirm one.
 - **`one-shot`** — Single-task-per-process via stdin (`python script.py < task`). Stdin closes after the first write; runtime waits for child exit.
 
-User overrides go in `config.json`:
+User overrides go in `config.json`, and since v1.51.2 they can retune **the whole spec**, not just the command:
 
 ```json
 {
   "acpx": {
     "agents": {
-      "claude": { "command": "C:/Users/me/AppData/Roaming/npm/claude.cmd" },
-      "cursor": { "command": "/usr/local/bin/cursor-agent" }
+      "claude":  { "command": "C:/Users/me/AppData/Roaming/npm/claude.cmd" },
+      "cursor":  { "command": "/usr/local/bin/cursor-agent" },
+
+      "copilot": { "transport": "oneshot-prompt",
+                   "prompt_arg_flag": "-p",
+                   "args": ["--allow-all-tools"],
+                   "spawn_returns_immediately": false },
+
+      "opencode": { "transport": "oneshot-prompt",
+                    "prompt_subcommand_args": ["run"],
+                    "prompt_arg_flag": null },
+
+      "qwen":    { "command": "qwen", "args": ["--yolo"] }
     }
   }
 }
 ```
 
-Custom `agent_id`s declared via overrides default to `tui-repl` with the fast-path defaults.
+Overridable per agent: **`command`**, **`env`**, **`args`** (extra argv BEFORE the prompt — this is how you grant a child its tools), **`transport`**, **`prompt_arg_flag`** (`null` = the CLI takes the prompt positionally), **`prompt_subcommand_args`**, **`default_idle_seconds`**, **`default_startup_grace_seconds`**, **`default_timeout_seconds`**, **`spawn_returns_immediately`**, **`description`** — the set is `agent_registry.OVERRIDABLE_SPEC_FIELDS`, kept in step with `config._coerce_agents_spec` by a drift test.
+
+**Why this matters:** before v1.51.2 only `command` and `env` were overridable, so a wrong transport or a missing CLI flag could ONLY be fixed by editing `agent_registry.py` and **rebuilding the app**. Five installed peers sat broken on Angela's machine while every one of them was one flag away from working. Now that repair is a text edit. Resolution is **fail-open**: a malformed value, an unknown key, or a `transport` the runtime does not implement is dropped and the built-in default survives — a typo can never stop the runtime from starting, and can never produce a spec that hangs every spawn.
+
+Custom `agent_id`s declared via overrides default to `tui-repl` with the fast-path defaults, then any spec fields you declared are applied on top.
 
 ---
 
@@ -80,9 +95,11 @@ Custom `agent_id`s declared via overrides default to `tui-repl` with the fast-pa
 All tools return a JSON envelope. The LLM never raises — every error is `{"ok": false, "reason": "...", "code": "..."}`.
 
 ### Health & enumeration
-- `acp_doctor()` — health probe + per-agent enumeration.
-  - Returns `{ok, message, details:[{agent_id, command, description, resolvable, cli_version}], probe:{agent_id, stdout, stderr}}`.
+- `acp_doctor(deep=False, deep_timeout_seconds=60.0)` — health probe + per-agent enumeration.
+  - Returns `{ok, message, details:[{agent_id, command, description, transport, resolvable, cli_version, readiness?}], probe:{agent_id, stdout, stderr}}`.
   - **Always call first** when an ACPX flow starts so the LLM knows which `agent_id`s are resolvable on this host.
+  - ⚠️ **`resolvable` is NOT health — it only means the binary exists.** On 2026-09-07 all eight installed CLIs answered `--version` with exit 0 while FOUR were dead (gemini could not authenticate, codex refused its own `config.toml`, claude had no credit, copilot printed nothing), and the doctor greenlit every one of them.
+  - **`deep=True` sends each `oneshot-prompt` agent a real one-line prompt** and adds a per-agent `readiness` block: `{ready: true|false|null, code, reason, evidence}`. `ready: null` means the transport cannot be probed without opening a session (tui-repl / json-acp) — an honest "unknown", not a failure. A false `ready` always carries a NAMED `code` (see *The delivery verdict* below). It **costs real model quota**, so it is off by default and cached for 10 minutes — use it when a spawn failed unexpectedly, when the user asks which agents actually work, or before committing a long relay to a particular leg.
 - `list_acp_agents()` — same enumeration without the version probe (cheaper).
 
 ### Session lifecycle
@@ -160,7 +177,8 @@ list_skills
 
 ## Required behavior (contract the LLM honors)
 
-1. **Always call `acp_doctor` first** on an ACPX flow so the LLM knows which `agent_id`s are resolvable. Branch on `details[].resolvable`.
+1. **Always call `acp_doctor` first** on an ACPX flow so the LLM knows which `agent_id`s are resolvable. Branch on `details[].resolvable` — but remember that `resolvable` only proves the binary exists. When the flow matters (a long relay, a research leg you will build on), call `acp_doctor(deep=True)` and branch on `details[].readiness.ready` instead.
+1b. **Never treat `ok: true` as the only success check, and never ignore `ok: false` from `acp_spawn`/`acp_send`.** A child that refused, could not authenticate or printed nothing now returns `ok: false` with a named `code` — see *The delivery verdict* below. Read the `reason`, tell the user which leg died and why, and either repair it or route around it. Do NOT build later tool calls on a leg that did not deliver.
 2. **Capture `session_id` on every `acp_spawn`** — every follow-up tool call needs it.
 3. **Always call `acp_kill` at the end of each session you spawned.** Sessions left alive count against the runtime's session cap.
 4. **Use the dedicated ACPX tool, never an `execute_command` workaround.** Reading a transcript via `type` / `cat` is wrong — use `acp_transcript`.
@@ -209,6 +227,61 @@ list_skills
 
 ---
 
+> ⚠️ **TWO ACPX IMPLEMENTATIONS EXIST.** Everything in this file describes `Tlamatini/agent/acpx/`, which powers the Django chat. **`tlamatini_acpx.py`** (repo ROOT) is a deliberately separate, Django-free implementation backing the root stdio MCP server (`tlamatini_mcp_server.py`) for external MCP clients such as Claude Code or Kimi. It has its own registry, its own drain and its own `AcpxManager`. **A fix in one does NOT reach the other — check both.**
+>
+> As of v1.51.2 all three repairs below are ported to BOTH surfaces, and they deliberately **share one definition**: `tlamatini_acpx.py` loads `agent/acpx/child_health.py` **by file path** (it is stdlib-only and imports nothing from `agent.*`, so it loads outside Django) rather than keeping a second copy, because a duplicated verdict vocabulary drifts and a drifted copy mis-classifies silently. That load is fail-open — if it ever fails, classification degrades to the old "everything delivered" behaviour and `doctor()` **says so in its message** instead of hiding it. The stdio surface also reads the SAME `acpx.agents` block from `config.json`, so one config edit repairs a peer on both. > ### ⚠️ NEVER SPAWN AN ACP CHILD THROUGH THE SHELL — cmd.exe truncates the prompt
+>
+> Measured 2026-09-07 while closing a `.cmd` gap on the stdio side: **cmd.exe stops reading its command line at the first newline.** A 2,205-character multi-line research prompt reached the child as **40 characters**, cut at the first line break, silently — and the child answered the fragment as if it were the whole task. Re-measured on a real npm-shaped shim: 40 of 2,647 bytes. `shell=True` and an explicit `cmd.exe /d /s /c` fail identically; the limit is cmd.exe, not Python's quoting. ACPX prompts are long and multi-line by nature, so **the shell is not an acceptable channel for them**.
+>
+> The stdio surface therefore **de-shims** instead: `tlamatini_acpx._deshim()` parses the npm/pnpm wrapper (`"%_prog%" "%dp0%\node_modules\<pkg>\bin\<tool>.js" %*`) and spawns `node.exe <script.js>` directly with `shell=False` — the same trick `runtime_provisioner.resolve_spawn()` already uses for `npx`. Verified byte-exact: 2,647 of 2,647 characters. It also prefers a real `.exe` over a shim. When a shim cannot be rewritten the shell is a last resort, and a multi-line prompt on that path emits a loud `acpx` log event rather than being silently cut.
+>
+> **BOTH surfaces carry `_deshim`.** On the Django side it lives in `agent/acpx/windows_spawn.py` and the rewritten argv is returned in **`ResolvedSpawn.extra_args`** — the slot every caller already splats as `[executable, *extra_args, *spec.args, …]`, so bypassing the shim required **no change at any call site**. ⚠️ Keep `*resolved.extra_args` in the two `--version` probes (`probe_availability`, `_capture_cli_version`); dropping it probes a bare `node --version` and learns nothing about the agent (pinned by a source test). Both npm (`"%dp0%\…"`) and pnpm (`"%~dp0\…"`) wrappers are recognised. Measured across the nine installed peers: **7 spawn with no shell**; `kilocode` and `opencode` use a shim shape `_deshim` does not recognise and take the fail-open shell path, where a multi-line prompt raises the loud warning. Coverage: `tests.py::WindowsShimDeShimTests`.
+
+## The delivery verdict — an exit code is ONE BIT, and it lies (v1.51.2)
+
+`agent/acpx/child_health.py` is the ONE definition of *"did this child actually deliver the work?"*, consumed by both `runtime._oneshot_send_turn` (which stamps the verdict onto the `done` event) and `runtime.readiness_probe` (which powers `acp_doctor(deep=True)`). It is stdlib-only and imports nothing from `agent.*` — the same discipline as `agent_verdict.py`.
+
+**Why it exists.** Measured 2026-09-07 on the installed build:
+
+```
+$ claude -p "Use WebSearch to find ..."
+Angela, the web search was blocked — permission wasn't granted, so I
+can't look up the current Python version.
+$ echo $?
+0
+```
+
+ACPX returned `ok: true`, the Exec Report row went **GREEN**, and the orchestrating LLM spent six further tool calls building on research that did not exist. Same silent-plausible-WRONG class as the PDFer missing-images bug and the LaTeXer linter verdict.
+
+**The closed vocabulary of non-delivery** — every code means *the requested work did NOT happen*:
+
+| code | what it means |
+|---|---|
+| `PERMISSION_BLOCKED` | the child stopped at its own permission prompt |
+| `WORKSPACE_NOT_TRUSTED` | its cwd is untrusted, so its permission file was ignored |
+| `NO_CREDIT` | the account behind the CLI has no credit |
+| `USAGE_LIMIT` | a plan / session / rate limit was hit |
+| `AUTH_FAILED` | the CLI could not authenticate |
+| `CONFIG_INVALID` | the CLI refused its own config file |
+| `UPSTREAM_ERROR` | the model provider returned a server-side error |
+| `NO_OUTPUT` | nothing legible came back (a silent TUI, or pure chrome) |
+| `CHILD_ERROR` | exited non-zero with no usable answer |
+| `DELIVERED` | real work |
+
+`tools._ok_unless_blocked()` turns a non-delivery into `{"ok": false, "code": ..., "reason": ..., "evidence": ...}` on `acp_spawn` / `acp_send` / `acp_send_and_wait`. **The full payload is preserved on the failure envelope** (session_id, transcript_path, events) because the LLM still has to read the transcript and kill the session.
+
+### CONTRACTS — do NOT weaken
+
+1. **A long, real answer is NEVER reclassified as a failure.** Only short, empty or letter-less output is scanned for refusal markers, and markers are read from the HEAD of the output only. A 3 KB briefing that merely *mentions* "rate limit" stays a success.
+2. **SHORT IS NOT EMPTY.** The first draft tested the letter count alone and flagged a perfectly good 7-character `PEER_OK` as `NO_OUTPUT` — the exact false-failure class this module exists to prevent. "Chrome" requires BOTH `len >= DECORATIVE_MIN_CHARS` **and** `alnum < MIN_ALNUM_CHARS`.
+3. **FAIL-OPEN.** Anything unrecognised is DELIVERED. `classify_child_output` never raises.
+4. **`acp_doctor(deep=True)` stays opt-in.** A readiness probe sends a real prompt and spends the user's money; the result is cached 10 minutes. `ready: null` is an honest "this transport cannot be probed without a session", never an invented verdict.
+5. Do NOT soften `_ok_unless_blocked` back into an unconditional `_ok`.
+
+Coverage: `agent/acpx/tests.py::ChildHealthClassifierTests` — every string in it was copied verbatim from the transcripts of the run that failed.
+
+---
+
 ## Permission model
 
 `agent/acpx/permissions.py::PermissionGate` enforces three modes (matching OpenClaw's vocabulary verbatim):
@@ -243,14 +316,15 @@ The 12 tools above are the **LLM-facing** ACPX surface. **ACPXer** is the **canv
 
 ## Files involved
 
-- `agent/acpx/agent_registry.py` — `DEFAULT_ACP_AGENTS`, `AcpAgentSpec` (transport, defaults, `spawn_returns_immediately`), `build_agent_registry`.
-- `agent/acpx/runtime.py` — `AcpxRuntime`, `AcpSession`, daemon reader thread, transport-aware idle rule, doctor, list_sessions, session_status, read_transcript, kill (returns record), event trimming, last-assistant extraction.
-- `agent/acpx/tools.py` — the 12 LangChain `@tool` functions.
+- `agent/acpx/agent_registry.py` — `DEFAULT_ACP_AGENTS`, `AcpAgentSpec` (transport, defaults, `spawn_returns_immediately`), `build_agent_registry(overrides, env_overrides, spec_overrides)`, `OVERRIDABLE_SPEC_FIELDS`, `VALID_TRANSPORTS`, `_respec` (fail-open override application).
+- **`agent/acpx/child_health.py`** — the ONE definition of "did the child deliver?": `classify_child_output` + the closed non-delivery vocabulary + `summarize_for_doctor`. Stdlib-only, imports nothing from `agent.*`. See *The delivery verdict* above.
+- `agent/acpx/runtime.py` — `AcpxRuntime`, `AcpSession`, daemon reader thread, transport-aware idle rule, doctor (`deep=` readiness), `readiness_probe`, list_sessions, session_status, read_transcript, kill (returns record), event trimming, last-assistant extraction. `_oneshot_send_turn` stamps the delivery verdict onto the `done` event.
+- `agent/acpx/tools.py` — the 12 LangChain `@tool` functions, plus `_delivery_verdict` / `_ok_unless_blocked` so a refusal is never reported as a success.
 - `agent/acpx/session_store.py` — `FileSessionStore`, reset-aware semantics.
 - `agent/acpx/permissions.py` — permission gate.
 - `agent/acpx/config.py` — config schema mirror of OpenClaw's plugin.json.
 - `agent/acpx/windows_spawn.py` — Windows-aware command resolution.
-- `agent/acpx/tests.py` — 60 unit tests covering every tool + the redesigned drain.
+- `agent/acpx/tests.py` — **92** unit tests covering every tool, the redesigned drain, the child-health classifier (pinned against the real 2026-09-07 failure output), the config-driven spec overrides, and the blocked-child-is-not-a-success envelope.
 - `agent/capability_registry.py` — `_EXTRA_HINTS_BY_TOOL_NAME` ACPX entries, `_ACPX_SIGNAL_TOKENS` boost, `ACPX_CO_SELECTION_RULES` (sibling auto-injection).
 - `agent/global_execution_planner.py` — applies `ACPX_CO_SELECTION_RULES` so e.g. selecting `acp_spawn` auto-co-selects `acp_doctor` + `acp_kill`.
 - `agent/mcp_agent.py` — `_EXEC_REPORT_TOOLS` registers ACPX rows under `agent_key="acpx"` so spawn / send / send_and_wait / kill / relay merge into one Exec Report table.

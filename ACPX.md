@@ -13,6 +13,8 @@
 **Status:** Implementation landed locally, NOT committed. The user reviews and decides whether to commit.
 **Companion docs:** `CLAUDE.md`, `docs/claude/architecture.md`, `docs/claude/agents.md`, `docs/claude/multi-turn.md`, `TlamatiniVsOpenClaw.md`.
 
+> **⚠️ v1.51.2 (2026-09-07) — ACPX now tells the truth about its peers.** `acp_doctor` gained a `deep=True` readiness probe (a real prompt down the real transport, because `--version` answers fine on a CLI that is dead everywhere else); a child that refuses or produces nothing now yields `ok: false` with a NAMED code instead of a green `ok: true`; and `config.json` can retune an agent's `args` / `transport` / `prompt_arg_flag` / `prompt_subcommand_args` / drain budgets, so repairing a peer no longer needs a rebuild. Contract: `docs/claude/acpx.md` → *The delivery verdict*; forensics: `docs/claude/recent-fixes.md` (2026-09-07).
+>
 > **Current-state banner (Tlamatini v1.50.0 annotated release, 2026-08-25; tag `ae6fec4c`, aligned local/remote `HEAD` `834eaa16`).** This file is the original ACPX/Skills design walkthrough; its per-section numbers are an intentional **historical Phase-1 snapshot** (5 ACPX `@tool`s, 20 seed skills, 14 agent_ids, 57 visual agents). The authoritative current counts are **88 visual agent types**, **108 built-in Multi-Turn tools** (20 core + 66 wrapped `chat_agent_*` + 12 ACPX/Skill + 10 External-MCP supervisors), **29 skills**, and a **12-tool LLM-facing ACPX/Skill surface** (`acp_doctor`, `list_acp_agents`, `acp_spawn`, `acp_send`, `acp_send_and_wait`, `acp_kill`, `acp_transcript`, `acp_session_status`, `acp_list_sessions`, `acp_relay`, `list_skills`, `invoke_skill`). Dynamic `ext__*` remotes are counted separately. The `DEFAULT_ACP_AGENTS` registry remains **14** entries (§3.5). For the live surface read `CLAUDE.md` and `docs/claude/acpx.md`, not the historical numbers below.
 
 ---
@@ -722,7 +724,7 @@ from agent.skills import skill_registry, Skill, SkillHarness, SkillRuntimeError,
 | `acp_spawn` | agent_id, task, cwd?, mode?, session_label? | session_id, agent_id, transcript_path, events |
 | `acp_send` | session_id, text, timeout_seconds? | events |
 | `acp_kill` | session_id | killed |
-| `acp_doctor` | (none) | message, details |
+| `acp_doctor` | deep=False, deep_timeout_seconds=60 | message, details (per-agent `transport`/`resolvable`/`cli_version`, plus `readiness` when `deep`) |
 | `list_acp_agents` | (none) | agents [{agent_id, command, description, resolvable}] |
 | `invoke_skill` | skill_name, args_json | skill, runtime, output, iterations_used, tokens_used, elapsed_seconds, audit_id |
 | `list_skills` | filter_keywords? | skills [{name, description, runtime, acpx_agent}] |

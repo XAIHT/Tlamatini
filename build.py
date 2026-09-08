@@ -388,6 +388,7 @@ _FROZEN_REQUIRED_AGENT_MODULES = (
     "agent.external_mcp_defaults",  # ships + seeds `memory` / `sequential-thinking`
     "agent.external_mcp_manager",  # the universal External-MCP client
     "agent.agent_verdict",         # the deterministic Exec-Report verdict engine
+    "agent.win_shim",              # Windows .cmd/.exe resolution (fail-open import)
     "agent.path_guard",            # <app>/Temp + <app>/Templates policy
     "agent.self_update",           # About ▸ Check for updates
     "agent._version",              # SemVer resolver
@@ -1350,6 +1351,7 @@ def main():
         '--hidden-import=agent.external_mcp_defaults',
         '--hidden-import=agent.external_mcp_manager',
         '--hidden-import=agent.agent_verdict',
+        '--hidden-import=agent.win_shim',
         '--hidden-import=daphne.server', '--hidden-import=channels',
         '--hidden-import=whitenoise.middleware', '--hidden-import=whitenoise.storage',
         '--hidden-import=django_bootstrap5',

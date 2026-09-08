@@ -527,7 +527,7 @@ When the migrations finish and you have a superuser, run the server (chapter 7).
 
 ### Path B — Pre-built one-click installer (end users)
 
-Download the newest published release ZIP from **[Tlamatini Releases](https://github.com/XAIHT/Tlamatini/releases)** and unzip it (or use a `Tlamatini_Release/` folder somebody handed you / you built — see Part VIII). This book currently documents the annotated **v1.50.6 release**. The tag, local `HEAD`, and `origin/main` all resolve to commit `6e4ffa73`, while runtime identity remains Git/build-derived. Then:
+Download the newest published release ZIP from **[Tlamatini Releases](https://github.com/XAIHT/Tlamatini/releases)** and unzip it (or use a `Tlamatini_Release/` folder somebody handed you / you built — see Part VIII). This book currently documents the **v1.51.2 release** (tag at commit `3148ace`), while runtime identity remains Git/build-derived. Then:
 
 1. Open the unzipped folder.
 2. Double-click **`Installer.exe`**.
@@ -2284,14 +2284,14 @@ Pre-releases use the standard SemVer suffixes — `2.0.0-alpha.1`, `2.0.0-beta.1
 
 ```powershell
 git status                                          # clean tree, on main
-git tag -a v1.50.6 -m "Release 1.50.6: <one-liner>"   # annotated tag
-git push origin v1.50.6
+git tag -a v1.51.2 -m "Release 1.51.2: <one-liner>"   # annotated tag
+git push origin v1.51.2
 python build.py
 python build_uninstaller.py
 python build_installer.py
 ```
 
-All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.50.6/`, named for the version so the file you hand to a user is unambiguous before they even unzip it. The current `v1.50.6` tag is at `HEAD`, so the bare runtime version resolves to `1.50.6`.
+All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.51.2/`, named for the version so the file you hand to a user is unambiguous before they even unzip it. The current `v1.51.2` tag is at `HEAD`, so the bare runtime version resolves to `1.51.2`.
 
 ### Where the version shows up in a running install
 
@@ -2299,8 +2299,8 @@ The build computes the version once and bakes it into four surfaces:
 
 - **`Tlamatini/agent/_version.py`** — generated at build time, gitignored, read at runtime by `agent.version.get_version()`. This is what every in-process surface reads.
 - **Win32 `VERSIONINFO`** — `Tlamatini.exe`, `Installer.exe`, and `Uninstaller.exe` all carry the version in their resource fork. Right-click the file → Properties → Details → ProductVersion.
-- **Release folder name** — `dist/Tlamatini_Release_v1.50.6/`.
-- **Runtime surfaces** — the About dialog renders `Tlamatini v{{ version }}` (Django context processor); after the release tag/build, the startup banner prints `--- [VERSION] Tlamatini 1.50.6` to both the console and `tlamatini.log`; `GET /agent/version/` returns `{"version":"1.50.6","commit":"abc1234","date":"…","source":"generated"}` as an **open** endpoint suitable for a health-check.
+- **Release folder name** — `dist/Tlamatini_Release_v1.51.2/`.
+- **Runtime surfaces** — the About dialog renders `Tlamatini v{{ version }}` (Django context processor); after the release tag/build, the startup banner prints `--- [VERSION] Tlamatini 1.51.2` to both the console and `tlamatini.log`; `GET /agent/version/` returns `{"version":"1.51.2","commit":"abc1234","date":"…","source":"generated"}` as an **open** endpoint suitable for a health-check.
 
 If the four surfaces ever disagree, your build was run with a stale `$env:TLAMATINI_VERSION` or against an out-of-date `_version.py` — clear them and re-run `build.py`.
 
@@ -3426,6 +3426,10 @@ The other firmware agents make Tlamatini an *embedded engineer*. ESPHomer makes 
 # Appendix C — Changelog
 
 ### Recent Updates
+
+- **Release v1.51.2 — ACPX stops lying: `--version` is not health, and exit 0 is not success — 2026-09-07** — A five-peer ACPX research relay collapsed while every diagnostic said the system was fine. The transcripts on disk told the real story: gemini could not authenticate (`IneligibleTierError`), codex refused its own `config.toml`, claude had no credit balance, kimi and copilot produced no drainable output, and claude's first leg answered *"the web search was blocked — permission wasn't granted"* **while exiting 0** — so `acp_spawn` returned `ok: true`, the Exec Report row rendered green, and the orchestrating model built six further tool calls on research that had never happened. Two lies, one bug class: `acp_doctor` probed presence rather than readiness (all eight installed CLIs answered `--version` with exit 0 while four were dead), and a one-bit exit code was trusted to describe what a coding agent did. The repair introduces `agent/acpx/child_health.py`, a stdlib-only module holding the single definition of "did this child deliver?" with a closed non-delivery vocabulary — `PERMISSION_BLOCKED`, `WORKSPACE_NOT_TRUSTED`, `NO_CREDIT`, `USAGE_LIMIT`, `AUTH_FAILED`, `CONFIG_INVALID`, `UPSTREAM_ERROR`, `NO_OUTPUT`, `CHILD_ERROR` — consumed by both the turn runtime and a new `acp_doctor(deep=True)` that sends a real one-line prompt down each agent's real transport and names the cause. The deep probe is deliberately opt-in and cached for ten minutes because it spends the user's model quota, and it reports `ready: null` for transports that cannot be probed without opening a session rather than inventing a verdict. `acp_spawn` / `acp_send` / `acp_send_and_wait` now return `ok: false` with the named code when a child produced nothing usable, preserving the session id and transcript path so the caller can still investigate and clean up. Two guards define the discipline: a long, real answer is never re-read for refusal markers, and a short correct answer — the first draft flagged a valid seven-character reply as silence — is never mistaken for chrome. The same release makes `config.json` able to retune an agent's `args`, `transport`, `prompt_arg_flag`, `prompt_subcommand_args`, drain budgets and `spawn_returns_immediately`, not merely `command` and `env`, so repairing a misconfigured peer becomes a text edit instead of a rebuild — five installed peers had each sat one flag away from working. `agent/acpx/tests.py` grows from 65 to **92 tests**, every failure string copied verbatim from the transcripts of the run that broke. The active source inventory is **88 workflow agents**, **66 wrapped chat agents**, **108 built-in Multi-Turn tools**, **29 skills**, and **199 migrations**.
+
+- **Release v1.51.0 — PDFer learns nuance, real typography, and tables that cannot overlap — 2026-09-06** — Ten flat sibling modules read the content before rendering it, pick one of twenty design treatments, derive a full 38-role palette from a single colour in OKLab, register the host's TrueType families, solve table column widths from real font metrics so cells cannot collide, draw their own on-palette artwork with Pillow, and then re-open the finished PDF to measure it — because a renderer reporting `err=0` over eight overlapping cells is not evidence.
 
 - **Release v1.50.6 — Public builds work from a pristine clone without weakening the privacy gate — 2026-08-30** — The annotated release, local `HEAD`, and `origin/main` all resolve to `6e4ffa73`. `build_complete_public_release.py` no longer requires the gitignored `.private_targets.json` on a fresh clone or CI machine. A new target-independent `privacy_preflight()` inspects the tree itself: a clean committed tree enters explicitly labelled structural-only mode and still runs every target-independent scrub/verification layer; private evidence, a malformed probe, or an unreadable file fails toward refusal and names how to recover. The tracked `private_targets.example.json` is shape-only documentation and is deliberately inert, while both real targets-file spellings are ignored, excluded from self-modify snapshots, and build-time only. The same audit found and fixed a restoration hole: the backup list for configs touched by `regen_secrets.py` is now derived from source, so Zavuerer, Discoverer, and future managed configs cannot be scrubbed without a recoverable copy. Coverage is `agent.test_public_release_targets` (26 tests), including reconstructed committed configs from a real fresh-clone state. The active source inventory remains **88 workflow agents**, **66 wrapped chat agents**, **108 built-in Multi-Turn tools**, **29 skills**, and **197 migrations**.
 

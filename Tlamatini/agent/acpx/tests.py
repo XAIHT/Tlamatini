@@ -18,6 +18,7 @@ docs/claude/acpx.md and ACPX.md.
 from __future__ import annotations
 
 import json
+import os
 import sys
 import tempfile
 import time
@@ -1546,3 +1547,94 @@ class BlockedChildIsNotASuccessTests(TestCase):
         env = json.loads(
             acpx_tools._ok_unless_blocked({"session_id": "s1"}, events))
         self.assertTrue(env["ok"])
+
+
+class WindowsShimDeShimTests(TestCase):
+    """A .cmd shim must be BYPASSED, never invoked -- cmd.exe truncates prompts.
+
+    Measured 2026-09-07: a 2,205-character multi-line ACPX prompt reached the
+    child as 40 characters through the shell, cut at the first newline, silently.
+    """
+
+    def _npm_shim(self, root, script_name="tool.js", write_script=True):
+        """Write a realistic npm .cmd shim plus the .js it wraps."""
+        pct = chr(37)
+        if write_script:
+            with open(os.path.join(root, script_name), "w", encoding="utf-8") as fh:
+                fh.write("// tool\n")
+        body = (
+            "@ECHO off\r\nGOTO start\r\n:find_dp0\r\nSET dp0=@@~dp0\r\nEXIT /b\r\n"
+            ":start\r\nSETLOCAL\r\nCALL :find_dp0\r\n\r\n"
+            'IF EXIST "@@dp0@@\\node.exe" (\r\n'
+            '  SET "_prog=@@dp0@@\\node.exe"\r\n'
+            ") ELSE (\r\n"
+            '  SET "_prog=node"\r\n'
+            ")\r\n\r\n"
+            'endLocal & goto #_undefined_# 2>NUL || title @@COMSPEC@@ & "@@_prog@@"  '
+            '"@@dp0@@\\' + script_name + '" @@*\r\n'
+        ).replace("@@", pct)
+        shim = os.path.join(root, "faketool.cmd")
+        with open(shim, "w", encoding="utf-8") as fh:
+            fh.write(body)
+        # A node.exe next to the shim keeps the test independent of the host.
+        node = os.path.join(root, "node.exe")
+        with open(node, "wb") as fh:
+            fh.write(b"MZ")
+        return shim, node, os.path.join(root, script_name)
+
+    def test_npm_shim_is_rewritten_to_a_direct_node_argv(self) -> None:
+        from agent.acpx.windows_spawn import resolve_command
+        with tempfile.TemporaryDirectory() as root:
+            shim, node, script = self._npm_shim(root)
+            r = resolve_command(shim)
+            self.assertFalse(r.use_shell, "a de-shimmed command must NOT use the shell")
+            self.assertEqual(os.path.normcase(r.executable), os.path.normcase(node))
+            self.assertEqual([os.path.normcase(a) for a in r.extra_args],
+                             [os.path.normcase(script)])
+
+    def test_deshimmed_argv_lands_in_extra_args_so_call_sites_need_no_change(self) -> None:
+        """Every caller builds [executable, *extra_args, *spec.args, ...]."""
+        from agent.acpx.windows_spawn import resolve_command
+        with tempfile.TemporaryDirectory() as root:
+            shim, node, script = self._npm_shim(root)
+            r = resolve_command(shim)
+            argv = [r.executable, *r.extra_args, "-p", "task"]
+            self.assertEqual(len(argv), 4)
+            self.assertTrue(argv[1].endswith("tool.js"))
+
+    def test_unparseable_shim_falls_back_to_the_shell(self) -> None:
+        """Fail-open: an unknown shim shape still runs, it just needs the shell."""
+        from agent.acpx.windows_spawn import resolve_command
+        with tempfile.TemporaryDirectory() as root:
+            shim = os.path.join(root, "weird.cmd")
+            with open(shim, "w", encoding="utf-8") as fh:
+                fh.write("@echo off\r\necho nothing recognisable\r\n")
+            r = resolve_command(shim)
+            self.assertTrue(r.use_shell)
+            self.assertEqual(r.extra_args, [])
+
+    def test_shim_whose_script_is_missing_is_not_rewritten(self) -> None:
+        from agent.acpx.windows_spawn import resolve_command
+        with tempfile.TemporaryDirectory() as root:
+            shim, _node, _script = self._npm_shim(root, write_script=False)
+            r = resolve_command(shim)
+            self.assertTrue(r.use_shell, "never point at a script that is not there")
+
+    def test_a_real_exe_is_never_sent_through_the_shell(self) -> None:
+        from agent.acpx.windows_spawn import resolve_command
+        with tempfile.TemporaryDirectory() as root:
+            exe = os.path.join(root, "real.exe")
+            with open(exe, "wb") as fh:
+                fh.write(b"MZ")
+            r = resolve_command(exe)
+            self.assertFalse(r.use_shell)
+            self.assertEqual(r.extra_args, [])
+
+    def test_version_probes_keep_extra_args(self) -> None:
+        """A probe that drops extra_args runs a bare `node --version`."""
+        import inspect
+        from agent.acpx import runtime as acpx_runtime
+        src = inspect.getsource(acpx_runtime)
+        self.assertNotIn('[resolved.executable, "--version"]', src,
+                         "a --version probe must include *resolved.extra_args")
+        self.assertIn('[resolved.executable, *resolved.extra_args, "--version"]', src)

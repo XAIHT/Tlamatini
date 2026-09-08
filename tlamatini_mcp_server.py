@@ -468,8 +468,17 @@ async def list_tools() -> List[types.Tool]:
             description="ACPX health probe: list external coding-agent CLIs (claude / codex / "
                         "cursor / gemini / qwen / tlamatini / kiro / kimi / iflow / kilocode / "
                         "opencode / pi / droid / copilot) and whether each is resolvable on PATH. "
-                        "Call this FIRST in any ACPX flow.",
-            inputSchema={"type": "object", "properties": {"agent_id": {"type": "string"}}},
+                        "Call this FIRST in any ACPX flow. WARNING: resolvable only means the "
+                        "binary EXISTS -- a CLI with a dead API key, an invalid config file or no "
+                        "credit still resolves and still answers --version. Pass deep=true to send "
+                        "each oneshot-prompt agent a REAL one-line prompt and get a per-agent "
+                        "readiness block naming the actual failure (AUTH_FAILED / CONFIG_INVALID / "
+                        "NO_CREDIT / USAGE_LIMIT / PERMISSION_BLOCKED / NO_OUTPUT / ...). deep "
+                        "costs real model quota, so use it deliberately; results are cached 10 min.",
+            inputSchema={"type": "object",
+                         "properties": {"agent_id": {"type": "string"},
+                                        "deep": {"type": "boolean"},
+                                        "deep_timeout_seconds": {"type": "number"}}},
         ),
         types.Tool(
             name="list_acp_agents",
@@ -652,7 +661,11 @@ async def call_tool(name: str, arguments: Optional[Dict[str, Any]]) -> List[type
                             "reason": f"ACPX runtime failed to load: {_ACPX_IMPORT_ERROR}"})
         try:
             if name == "acp_doctor":
-                return _result(_ACPX.doctor(arguments.get("agent_id", "")))
+                return _result(_ACPX.doctor(
+                    arguments.get("agent_id", ""),
+                    deep=bool(arguments.get("deep", False)),
+                    deep_timeout_seconds=float(
+                        arguments.get("deep_timeout_seconds") or 60.0)))
             if name == "list_acp_agents":
                 return _result(_ACPX.list_agents())
             if name == "acp_spawn":

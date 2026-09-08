@@ -24,7 +24,7 @@
 
 <p align="center">
   <a href="https://discord.gg/WFQsrskgc"><img src="https://img.shields.io/badge/DISCORD-JOIN%20US-5865F2?style=for-the-badge&labelColor=2D2D2D&logo=discord&logoColor=white" alt="Join our Discord"/></a>
-  <a href="https://github.com/XAIHT/Tlamatini/releases"><img src="https://img.shields.io/badge/RELEASE-v1.50.6-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Release v1.50.6"/></a>
+  <a href="https://github.com/XAIHT/Tlamatini/releases"><img src="https://img.shields.io/badge/RELEASE-v1.51.2-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Release v1.51.2"/></a>
   <a href="https://www.python.org/downloads/release/python-31210/"><img src="https://img.shields.io/badge/PYTHON-3.12.10-3776AB?style=for-the-badge&labelColor=2D2D2D&logo=python&logoColor=white" alt="Python"/></a>
   <a href="#installation"><img src="https://img.shields.io/badge/PLATFORM-WIN%2010%20%7C%2011-0078D6?style=for-the-badge&labelColor=2D2D2D&logo=windows&logoColor=white" alt="Platform"/></a>
   <a href="#-the-full-capability-list"><img src="https://img.shields.io/badge/AGENT%20TYPES-88-8A2BE2?style=for-the-badge&labelColor=2D2D2D" alt="88 agent types"/></a>
@@ -206,7 +206,13 @@ Done — tick **Multi-Turn** in the chat toolbar and put Tlamatini to work.
 
 ---
 
-## Current release — v1.50.6
+## Current release — v1.51.2
+
+`v1.51.2` makes **ACPX tell the truth about its peers**. A multi-CLI research relay had collapsed while `acp_doctor` reported every external agent healthy — because the doctor only ran `<cmd> --version`, and a CLI with a dead API key, an invalid config file or an empty credit balance still prints its version and exits 0. Worse, a child that answered *"the web search was blocked — permission wasn't granted"* also exited 0, so the tool returned `ok: true` and the Exec Report row went green over work that never happened. Three repairs: a new stdlib-only `agent/acpx/child_health.py` holds the single definition of "did this child deliver?" with a closed non-delivery vocabulary (`PERMISSION_BLOCKED`, `AUTH_FAILED`, `CONFIG_INVALID`, `NO_CREDIT`, `USAGE_LIMIT`, `UPSTREAM_ERROR`, `NO_OUTPUT`, `WORKSPACE_NOT_TRUSTED`, `CHILD_ERROR`); `acp_doctor(deep=True)` sends a real one-line prompt down each agent's real transport and names the failure (opt-in, because it spends model quota, and cached for ten minutes); and `acp_spawn` / `acp_send` now return `ok: false` with that named code when a child produced nothing usable, while preserving the session id and transcript path so the caller can still investigate and clean up. A long, real answer is never reclassified as a failure, and a short correct answer is never mistaken for silence. Alongside them, `config.json` gained the ability to retune an agent's `args`, `transport`, `prompt_arg_flag`, `prompt_subcommand_args`, drain budgets and `spawn_returns_immediately` — not just `command` and `env` — so repairing a misconfigured peer is now a text edit instead of a rebuild. `agent/acpx/tests.py` grew from 65 to **92 tests**, with every failure string copied verbatim from the transcripts of the run that broke.
+
+`v1.51.0` delivered the **PDFer nuance / typography / layout overhaul**: ten flat sibling modules that read the content first and pick one of twenty design treatments, derive a full 38-role palette from a single colour in OKLab, register the host's TrueType families, solve table column widths from real font metrics so cells cannot overlap, draw their own on-palette artwork, and then re-open the finished PDF to measure it.
+
+## Superseded release — v1.50.6
 
 `v1.50.6` is the newest annotated release. The tag, local `HEAD`, and `origin/main` all resolve to commit `6e4ffa73`; runtime identity still comes from Git/build metadata rather than this prose. The newest public-release path no longer requires a machine-local `.private_targets.json` on a pristine clone: a target-independent privacy preflight distinguishes a genuinely clean tree from a maintainer tree that still contains private evidence, fails toward refusal when probes are unreadable or private material is detected, keeps the tracked `private_targets.example.json` template inert, and never introduces a runtime dependency on either targets-file spelling. The 26-test `agent.test_public_release_targets` suite pins fresh-clone builds, runtime independence, structural-only verification, secret restoration, and PII-safe refusal behavior.
 

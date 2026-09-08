@@ -34,7 +34,7 @@ import os
 import shutil
 import sys
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional
 
 WIN_EXTS = (".exe", ".cmd", ".bat", ".com")
 
@@ -63,6 +63,50 @@ def _has_path_separator(s: str) -> bool:
 def _looks_executable_with_ext(path: str) -> bool:
     p = path.lower()
     return any(p.endswith(ext) for ext in WIN_EXTS)
+
+
+# Windows command resolution has ONE definition: agent/win_shim.py. It is
+# stdlib-only and imports nothing from agent.*, so it is safe to use from this
+# module, from runtime_provisioner, and from the Django-free stdio MCP server
+# alike. A duplicated copy would drift, and a drifted copy would silently
+# spawn the wrong thing -- the exact failure class this all exists to end.
+try:
+    from .. import win_shim as _win_shim
+except Exception:                                           # noqa: BLE001
+    _win_shim = None                                        # type: ignore[assignment]
+
+
+def _deshim(shim_path: str) -> Optional[List[str]]:
+    """Rewrite an npm/pnpm ``.cmd`` shim into the direct argv it wraps.
+
+    Thin delegation to ``agent.win_shim.deshim`` -- see that module for WHY
+    this exists (short version: cmd.exe truncates its command line at the
+    first newline, so a multi-line ACPX prompt sent through a shim arrives
+    cut off, silently). FAIL-OPEN: no shared module means no rewrite, and the
+    caller falls back to the shell exactly as it did before.
+    """
+    if _win_shim is None:
+        return None
+    try:
+        return _win_shim.deshim(shim_path)
+    except Exception:                                       # noqa: BLE001
+        return None
+
+
+def _spawn_for(path: str) -> ResolvedSpawn:
+    """Build a ResolvedSpawn for a real on-disk command, de-shimming if needed.
+
+    ``extra_args`` is exactly the right slot for the de-shimmed script: every
+    caller already builds argv as ``[executable, *extra_args, *spec.args, ...]``,
+    so bypassing the shim needs NO change at any call site.
+    """
+    is_shim = path.lower().endswith((".cmd", ".bat"))
+    if is_shim:
+        direct = _deshim(path)
+        if direct:
+            return ResolvedSpawn(executable=direct[0], extra_args=direct[1:],
+                                 use_shell=False)
+    return ResolvedSpawn(executable=path, extra_args=[], use_shell=is_shim)
 
 
 def resolve_command(command: str) -> ResolvedSpawn:
@@ -95,12 +139,14 @@ def resolve_command(command: str) -> ResolvedSpawn:
 
     # Case 1/2: explicit path
     if _has_path_separator(cmd):
-        exists = os.path.exists(cmd)
-        use_shell = _looks_executable_with_ext(cmd) and cmd.lower().endswith((".cmd", ".bat"))
+        if os.path.exists(cmd):
+            return _spawn_for(cmd)
+        # Missing file: hand it back unchanged so the spawn raises a clean
+        # FileNotFoundError, which the caller turns into AGENT_NOT_FOUND.
         return ResolvedSpawn(
-            executable=cmd if exists else cmd,
+            executable=cmd,
             extra_args=[],
-            use_shell=use_shell,
+            use_shell=cmd.lower().endswith((".cmd", ".bat")),
         )
 
     # Case 3: PATH search across Windows extensions
@@ -113,8 +159,7 @@ def resolve_command(command: str) -> ResolvedSpawn:
     for cand in candidates:
         hit = shutil.which(cand)
         if hit:
-            use_shell = hit.lower().endswith((".cmd", ".bat"))
-            return ResolvedSpawn(executable=hit, extra_args=[], use_shell=use_shell)
+            return _spawn_for(hit)
 
     # Unresolved — return original; caller will get a clean error.
     return ResolvedSpawn(executable=cmd, extra_args=[], use_shell=False)

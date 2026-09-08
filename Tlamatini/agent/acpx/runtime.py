@@ -694,6 +694,22 @@ class AcpSession:
             # event so tools.py can refuse to call a refusal a success.
             verdict = classify_child_output(stdout_text, stderr_text, exit_code)
 
+            if resolved.use_shell and "\n" in text:
+                # This command could not be de-shimmed, so the prompt had to
+                # cross cmd.exe -- which stops at the first newline. Say so
+                # LOUDLY: a silently truncated prompt produces a confident
+                # answer to the wrong question. (windows_spawn._deshim)
+                yield {
+                    "event": "log",
+                    "channel": "acpx",
+                    "text": ("WARNING: %s is a shell shim that could not be "
+                             "rewritten to a direct command, and this prompt is "
+                             "multi-line. cmd.exe truncates the command line at "
+                             "the first newline, so the child may only have "
+                             "received the first line."
+                             % resolved.executable),
+                }
+
             yield {
                 "event": "assistant_message",
                 "role": "assistant",
@@ -776,7 +792,9 @@ class AcpxRuntime:
         try:
             resolved = resolve_command(spec.command)
             res = subprocess.run(
-                [resolved.executable, "--version"],
+                # extra_args carries the de-shimmed script (node.exe <tool>.js);
+                # dropping it would probe a bare `node --version` instead.
+                [resolved.executable, *resolved.extra_args, "--version"],
                 cwd=self.config.cwd or None,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -838,7 +856,7 @@ class AcpxRuntime:
         try:
             resolved = resolve_command(spec.command)
             res = subprocess.run(
-                [resolved.executable, "--version"],
+                [resolved.executable, *resolved.extra_args, "--version"],
                 cwd=self.config.cwd or None,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,

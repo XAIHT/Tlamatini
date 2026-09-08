@@ -102,6 +102,14 @@ from typing import Any, Dict, List, Optional, Tuple
 LOG_PREFIX = "--- [RUNTIME]"
 
 #: Tools this module can resolve and provision.
+# Windows command resolution lives in ONE place. Imported defensively so this
+# module keeps its "never break a spawn" contract even if the file is absent
+# from a partial deployment.
+try:
+    from . import win_shim as _win_shim
+except Exception:                                         # noqa: BLE001
+    _win_shim = None                                      # type: ignore[assignment]
+
 MANAGED_TOOLS: Tuple[str, ...] = ("node", "npm", "npx", "pnpm", "uv", "uvx")
 
 #: Which runtime package owns each tool.
@@ -570,10 +578,34 @@ def resolve_spawn(command: str, args: Optional[List[str]] = None) -> Tuple[List[
         tool = os.path.splitext(os.path.basename(raw))[0].lower()
         note = "unwrapped cmd /c; " if unwrapped else ""
 
-        if tool not in MANAGED_TOOLS:
-            return [raw, *[os.path.expandvars(str(a)) for a in args]], ""
-
         expanded = [os.path.expandvars(str(a)) for a in args]
+
+        if tool not in MANAGED_TOOLS:
+            # ⚠️ THIS BRANCH WAS A BARE PASS-THROUGH, AND THAT WAS THE BUG.
+            # Returning a NON-EMPTY argv here made the caller stop --
+            # `external_mcp_manager._resolve_argv` does `if argv: return argv`
+            # -- so its own correct `.cmd`->COMSPEC fallback below it became
+            # UNREACHABLE DEAD CODE. Every npm/pnpm-installed MCP server with a
+            # bare command name therefore died with
+            #   [WinError 2] The system cannot find the file specified
+            # because CreateProcess cannot execute a .cmd. Measured live on
+            # 2026-09-07 with `deepwebresearch`.
+            #
+            # Being outside MANAGED_TOOLS means "we do not PROVISION this",
+            # NOT "we cannot RESOLVE this". Resolve it like any other Windows
+            # command: prefer a real .exe, de-shim a batch wrapper to the
+            # program it actually launches, and only fall back to the shell
+            # when neither is possible.
+            if os.name != "nt" or _win_shim is None:
+                return [raw, *expanded], ""
+            prefix, needs_shell, why = _win_shim.resolve_argv_prefix(raw)
+            if needs_shell:
+                comspec = os.environ.get("COMSPEC", "cmd.exe")
+                return ([comspec, "/c", *prefix, *expanded],
+                        f"{note}{tool} via {prefix[0]} (batch shim)")
+            if prefix and prefix != [raw]:
+                return [*prefix, *expanded], f"{note}{tool}: {why}" if why else note
+            return [raw, *expanded], ""
 
         # npm / npx → run the REAL js entry point under our node.exe.
         if tool in ("npm", "npx"):
@@ -593,9 +625,16 @@ def resolve_spawn(command: str, args: Optional[List[str]] = None) -> Tuple[List[
             where = "Tlamatini's private runtime" if _is_ours(resolved) else "the system PATH"
             return [resolved, *expanded], f"{note}{tool} via {where}"
 
-        # A batch shim (a system npm/npx we did not install): CreateProcess
-        # cannot execute it, so route through the command processor — the only
-        # way a .cmd can run at all.
+        # A batch shim (a system npm/npx we did not install). Try to rewrite it
+        # to the program it really launches FIRST -- cmd.exe truncates its
+        # command line at the first newline, so the shell is a last resort,
+        # never a preference (see win_shim).
+        if _win_shim is not None:
+            direct = _win_shim.deshim(resolved)
+            if direct:
+                return ([*direct, *expanded],
+                        f"{note}{tool} via {os.path.basename(direct[0])} "
+                        f"(de-shimmed, no shell)")
         comspec = os.environ.get("COMSPEC", "cmd.exe")
         return [comspec, "/c", resolved, *expanded], f"{note}{tool} via {resolved} (batch shim)"
     except Exception:

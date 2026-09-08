@@ -136,10 +136,29 @@ class SpawnRewriteTests(_PrivateRuntimeFixture):
         self.assertEqual(argv[2:], ["-y", "pkg"])
         self.assertIn("unwrapped", note)
 
-    def test_unmanaged_command_passes_through_untouched(self):
+    def test_unmanaged_command_is_RESOLVED_not_passed_through_blind(self):
+        """SUPERSEDES "passes through untouched" (2026-09-07).
+
+        A bare pass-through here is exactly what killed every npm/pnpm MCP
+        server on Windows: `external_mcp_manager._resolve_argv` does
+        ``if argv: return argv``, so returning a non-empty argv made its OWN
+        correct `.cmd`->COMSPEC fallback unreachable dead code, and
+        `deepwebresearch` died with [WinError 2] because CreateProcess cannot
+        execute a .cmd. Being outside MANAGED_TOOLS means "we do not
+        PROVISION this", never "we cannot RESOLVE this".
+
+        What must NOT change, and is still asserted here: the ARGUMENTS are
+        untouched, and a command that resolves to nothing is handed back
+        verbatim (see test_missing_tool_returns_original_... below).
+        """
         argv, note = rp.resolve_spawn("docker", ["run", "-i", "--rm", "mcp/redis"])
-        self.assertEqual(argv, ["docker", "run", "-i", "--rm", "mcp/redis"])
-        self.assertEqual(note, "")
+        self.assertEqual(argv[1:], ["run", "-i", "--rm", "mcp/redis"],
+                         "arguments must never be rewritten")
+        self.assertTrue(
+            argv[0] == "docker"
+            or os.path.basename(argv[0]).lower().startswith("docker"),
+            "argv[0] must still be docker -- resolved, not replaced")
+        self.assertIsInstance(note, str)
 
     def test_missing_tool_returns_original_so_the_real_error_surfaces(self):
         """A silent swap would hide the truth. When nothing resolves we hand
@@ -377,7 +396,8 @@ class WiringContractTests(unittest.TestCase):
         source = self._read(_REPO_ROOT / "build.py")
         self.assertIn("_FROZEN_REQUIRED_AGENT_MODULES", source)
         self.assertIn("def verify_frozen_agent_modules(", source)
-        self.assertIn("verify_frozen_agent_modules(Path(\"dist\") / \"manage\")",
+        # build.py calls it with the `dist_manage` variable, not a literal.
+        self.assertIn("verify_frozen_agent_modules(dist_manage)",
                       source,
                       "the proof must actually RUN on the successful-build path")
         # PyInstaller 6 onedir keeps the PYZ INSIDE the exe's CArchive; a reader

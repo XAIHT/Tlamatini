@@ -477,6 +477,97 @@ Until v1.48.2 the runtime collapsed **two different questions** into one string 
 
 ---
 
+## ACPX must tell the truth — `--version` is not health, and exit 0 is not success (2026-09-07, v1.51.2)
+
+**Angela's report:** a Multi-Turn ACPX research relay *"had a way to lot of huge problems"*.
+Forensics from the installed build's own transcripts (`C:\Tlamatini\.tlamatini\acpx-state\`)
+showed **five of six sessions failed** while the system reported health and success. Full
+record + every measured string: `docs/claude/recent-fixes.md` (2026-09-07). Contract:
+`docs/claude/acpx.md` → *The delivery verdict*. Coverage: `agent/acpx/tests.py` (65 → **92**).
+
+**THE TWO LIES.** (1) `acp_doctor` ran `<cmd> --version` and nothing else — **all eight**
+installed CLIs answered it with exit 0 while four were dead (gemini `IneligibleTierError`,
+codex `unknown variant 'default'` in its own `config.toml`, claude *"Credit balance is too
+low"*, copilot silent). (2) `claude -p` replied *"the web search was blocked — permission
+wasn't granted"* and **exited 0**, so `acp_spawn` returned `ok: true`, the Exec Report row
+went GREEN, and the LLM built six further calls on research that never existed. Same
+silent-plausible-WRONG class as the PDFer missing-images and LaTeXer linter bugs.
+
+**THE FIX IS ONE SHARED DEFINITION.** `agent/acpx/child_health.py` (stdlib-only, imports
+nothing from `agent.*` — the `agent_verdict.py` discipline) answers *"did this child
+deliver?"* for BOTH `runtime._oneshot_send_turn` (stamps the verdict on the `done` event) and
+`runtime.readiness_probe` (powers `acp_doctor(deep=True)`). `tools._ok_unless_blocked` turns a
+non-delivery into `ok: false` with a NAMED code, **keeping the full payload** so the LLM can
+still read the transcript and kill the session.
+
+**CONTRACTS (do NOT weaken):**
+1. **A long, real answer is NEVER reclassified as a failure.** Only short/empty/letter-less
+   output is scanned, and only its HEAD. A 3 KB briefing that mentions "rate limit" is a
+   success.
+2. **SHORT IS NOT EMPTY.** The first draft flagged a valid 7-char `PEER_OK` as `NO_OUTPUT` —
+   exactly the false-failure class this exists to prevent. Chrome needs BOTH "long enough"
+   AND "almost no letters".
+3. **FAIL-OPEN everywhere** — unrecognised output is DELIVERED; a malformed `config.json`
+   override is dropped; an unknown `transport` is discarded (honouring one hangs every spawn).
+   Neither module may raise into a caller.
+4. **`deep` stays OFF by default** — a readiness probe spends the user's money. `ready: null`
+   means "this transport can't be probed without a session", never an invented verdict.
+5. Do NOT soften `_ok_unless_blocked` back into an unconditional `_ok`.
+
+**⚠️ THERE ARE TWO ACPX IMPLEMENTATIONS — CHECK BOTH.** `Tlamatini/agent/acpx/` powers the
+Django chat; **`tlamatini_acpx.py`** (repo ROOT) is a separate Django-free implementation
+backing the root stdio MCP server for external clients (Claude Code, Kimi). All three repairs
+are in both, sharing ONE definition: `tlamatini_acpx.py` loads `child_health.py` **by file
+path** (stdlib-only, so it loads outside Django) instead of keeping a copy that would drift.
+The same pass gave that surface **env injection**, which it had never had — a key in
+`acpx.agents.<id>.env` had never reached a child there.
+
+**⚠️ NEVER SPAWN AN ACP CHILD THROUGH THE SHELL.** Measured 2026-09-07: **cmd.exe truncates
+its command line at the first newline** — a 2,205-char multi-line prompt reached the child as
+**40 chars**, silently, and the child answered the fragment. `shell=True` and `cmd.exe /d /s
+/c` fail identically.
+
+**⚠️ `agent/win_shim.py` IS THE ONE DEFINITION OF WINDOWS SPAWNING — do not grow a second.**
+Stdlib-only, imports nothing from `agent.*`. It prefers a real `.exe`, rewrites an npm
+(`"%dp0%\…"`) or pnpm (`"%~dp0\…"`) shim to `node.exe <script.js>` — byte-exact, 2,647/2,647 —
+and asks for the shell only when neither is possible. **THREE subsystems delegate to it**,
+because this same bug bit all three wearing different masks:
+
+| subsystem | how it failed |
+|---|---|
+| **ACPX** (`acpx/windows_spawn.py`) | ran a `.cmd` with `shell=True` → prompt cut at the first newline |
+| **the stdio MCP server** (`tlamatini_acpx.py`) | spawned it bare → hung to its timeout |
+| **External MCPs** (`runtime_provisioner.resolve_spawn`) | `[WinError 2]` on every npm/pnpm server (see below) |
+
+On the ACPX side the rewritten argv lands in **`ResolvedSpawn.extra_args`**, the slot every
+caller already splats, so it needed **no change at any call site**; the two `--version` probes
+keep `extra_args` (dropping it probes a bare `node --version`). Measured across Angela's nine
+installed peers: **7 spawn with no shell at all**; kilocode and opencode use a shim shape
+`win_shim` does not recognise, so they take the fail-open shell path and emit a LOUD warning
+on a multi-line prompt. **Never "simplify" that warning away, and never widen the shell back.**
+
+**⚠️ `resolve_spawn` MUST NOT PASS AN UNMANAGED COMMAND THROUGH BLIND.** It used to do
+`if tool not in MANAGED_TOOLS: return [raw, *args], ""`, and because
+`external_mcp_manager._resolve_argv` does `if argv: return argv`, that non-empty pass-through
+made its OWN correct `.cmd`→COMSPEC fallback **unreachable dead code** — so every
+npm/pnpm-installed MCP server with a bare command name died with `[WinError 2]`
+(`deepwebresearch`, 2026-09-07). Outside `MANAGED_TOOLS` means *"we do not PROVISION this"*,
+never *"we cannot RESOLVE this"*. `agent.win_shim` is imported fail-open in two places, so it
+is in `build._FROZEN_REQUIRED_AGENT_MODULES` **and** has a `--hidden-import` — a fail-open
+import cannot report its own absence. Coverage: **`agent/test_win_shim.py` (27 tests)**,
+including a source guard that only `win_shim` may parse a shim path.
+
+**⚠️ `config.json` CAN NOW REPAIR A PEER WITHOUT A REBUILD.** `build_agent_registry` honours
+`spec_overrides`, so `acpx.agents.<id>` accepts **`args`, `transport`, `prompt_arg_flag`,
+`prompt_subcommand_args`, the three drain budgets and `spawn_returns_immediately`** on top of
+`command` / `env`. Five installed peers sat broken while each was one flag away and the only
+way to pass it was to edit `agent_registry.py` and rebuild. When you add a peer or find one
+misbehaving, **fix it in config first** — reach for `agent_registry.py` only to change a
+shipped default for everyone. `OVERRIDABLE_SPEC_FIELDS` and `config._coerce_agents_spec` are
+kept in step by a drift test.
+
+---
+
 ## PDFer — nuance detection, real typography, and tables that cannot overlap (2026-09-06, v1.51.0)
 
 **Angela's report, verbatim:** *"actually is way too flaky, way too mediocre … this version
@@ -627,9 +718,13 @@ Detection is a short-circuiting cascade, cheapest test first, with **at most ONE
 **Two contracts that must NOT be weakened:** (a) **FAIL-OPEN** — any error, any uncertainty, any malformed config value resolves to "load it as text", because a guard that wrongly drops a file silently deletes the user's real context; (b) **the BOM stage must stay ahead of the NUL stage**, or every UTF-16 document (legitimately full of `0x00`) silently vanishes. Toggle with `binary_context_detection` in `config.json`. Coverage: `agent/test_binary_guard.py` (45 tests). Full contract: `docs/claude/architecture.md` and `docs/claude/recent-fixes.md` (2026-07-26).
 
 
-## Current Release — v1.50.0 (2026-08-25, annotated)
+## Current Release — v1.51.2 (2026-09-07)
 
-The newest annotated tag is `v1.50.0` at `ae6fec4c`. Local and remote `HEAD` are aligned one commit later at `834eaa16`; runtime still resolves the reachable bare release tag through Git/build metadata. Source truth is **88 workflow agents**, **66 wrapped chat-agent launchers**, **108 built-in Multi-Turn tools** (20 core + 66 wrapped + 12 ACPX/Skill + 10 External-MCP supervisors), **105 root stdio MCP tools**, **29 skills**, and **197 migrations**.
+The newest tag is `v1.51.2` at `3148ace` ("Upgrading ACPX mechanisms"). Source truth is **88 workflow agents**, **66 wrapped chat-agent launchers**, **108 built-in Multi-Turn tools** (20 core + 66 wrapped + 12 ACPX/Skill + 10 External-MCP supervisors), **105 root stdio MCP tools**, **29 skills**, and **199 migrations**.
+
+**v1.51.2 makes ACPX tell the truth.** A five-peer research relay collapsed while `acp_doctor` reported every peer healthy, and a child that answered *"the web search was blocked — permission wasn't granted"* **exited 0**, so the Exec Report row went green and the orchestrating LLM built six more tool calls on research that did not exist. Three repairs: a new stdlib-only **`agent/acpx/child_health.py`** — the ONE definition of "did this child deliver?", with a closed non-delivery vocabulary (`PERMISSION_BLOCKED`, `AUTH_FAILED`, `CONFIG_INVALID`, `NO_CREDIT`, `USAGE_LIMIT`, `UPSTREAM_ERROR`, `NO_OUTPUT`, `WORKSPACE_NOT_TRUSTED`, `CHILD_ERROR`); **`acp_doctor(deep=True)`**, which sends a real one-line prompt down each `oneshot-prompt` agent's real transport and NAMES the failure instead of trusting `--version` (all eight installed CLIs answered `--version` with exit 0 while four were dead); and **`ok: false` on a blocked child**, so a refusal can never again be reported as a success. Alongside them, `config.json` can now retune an agent's **`args` / `transport` / `prompt_arg_flag` / `prompt_subcommand_args` / drain budgets**, not just `command` and `env` — which turns "repair a broken peer" from a rebuild into a text edit. `agent/acpx/tests.py` grew 65 → **92 tests**, every failure string copied verbatim from the transcripts of the run that broke. Contract + the full forensic record: `docs/claude/acpx.md` → *The delivery verdict* and `docs/claude/recent-fixes.md` (2026-09-07).
+
+v1.51.0 delivered the **PDFer nuance / typography / layout overhaul** (see the PDFer section below).
 
 v1.50.0 folds in Tlamatini's **security-harnessing arsenal** (`security/`): a self-safe Active Defender (ransomware / credential-theft / persistence / Defender-tamper detection with auto-isolation that never kills Tlamatini's own dual-use tools), a privilege-visibility whitelist, and a persistent VISIBLE asset test. It carries the v1.49.1 line, which added **NetSpeed-Calculator** (multi-provider RFC-6349-style throughput, Student-t confidence intervals, random-effects fusion, I², bufferbloat, named zero-byte failures, and Ask-Execs tier-D bandwidth gating); **WAL-safe SQLite data movement** (`sqlite_copy.py` online backup API + DELETE-journal destination + `quick_check` + sidecar hygiene for Backup DB, Set DB, and pre-Django swap); Googler's **structured Google-dork builder** plus a two-tier resilience path (four plain-HTTP server-rendered routes first, then visible installed Chrome/bundled Chromium across seven direct-results routes, bounded retries, answer-route logging, lawful-source/`links_only` workflows, and explicit Google-only operator semantics); the **External MCP Adder** skill's classify/import/doctor/activate/wait/list/call lifecycle; migration 0194's append-only **Deep Internet Research** starter; Ollama Pro-or-higher complete-operation guidance; and private-build contact synchronization into gitignored `contacts.private.json` while public builds/snapshots remain contact-empty.
 

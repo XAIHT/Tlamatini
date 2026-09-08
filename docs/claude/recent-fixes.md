@@ -16,6 +16,244 @@
 
 ---
 
+## 2026-09-07 — ACPX reported four DEAD peers as healthy, and a refusal as a SUCCESS (v1.51.2)
+
+**Angela's report, verbatim:** *"in the very last chain invocation of multi-turn, she had a
+way to lot of huge problems, in the end she could give me an answer, but was terrific for
+her."* A five-peer ACPX research relay collapsed; Tlamatini self-healed to an answer, but
+four of five legs had failed and **nothing in the system said so out loud**.
+
+Ground truth came from the installed build's own transcripts —
+`C:\Tlamatini\.tlamatini\acpx-state\*.transcript.ndjson` — not from the log, which never
+records ACPX tool results. Six sessions, five broken:
+
+| session | agent | what actually happened |
+|---|---|---|
+| `46a800c8` | claude | *"both `WebSearch` and `WebFetch` are awaiting your permission"* — **exit 0** |
+| `de8be8e9` | gemini | `Error authenticating: IneligibleTierError` |
+| `e762f911` | codex | `Error loading config.toml: unknown variant 'default', expected 'fast' or 'flex'` |
+| `d005f3bb` | kimi | box-drawing chrome, no words |
+| `585ccbb3` | copilot | no output at all |
+| `7c3cf41e` | claude | worked — only after being told to use NO tools |
+
+### Three root causes, all verified live
+
+**1. ACPX never passes an auto-approve flag to any child.** `runtime.py` builds
+`[exe, *args, *prompt_subcommand_args, prompt_arg_flag, task]` and there is **no** flag
+anywhere in `agent/acpx/` that grants a child its tools. So `claude -p "<task needing
+WebSearch>"` sits at its own permission prompt with stdin closed. Reproduced exactly, then
+fixed and re-proved: `claude --allowedTools "WebSearch,WebFetch" -p "…"` returned the real
+answer with sources. ⚠️ The flag is **variadic** — `--allowedTools A B -p "task"` swallows
+the prompt; use a comma list BEFORE `-p`.
+
+**2. `acp_doctor` tested presence, not readiness.** It runs `<cmd> --version` and nothing
+else. Measured: **all eight** installed CLIs answered `--version` with exit 0 while four were
+dead. The doctor handed the orchestrating LLM a green light on every one of them.
+
+**3. An exit code is one bit, and it lied.** The claude permission refusal exited **0**, so
+`_ok()` returned `ok: true`, the Exec Report row went GREEN, and the LLM built six further
+tool calls on research that did not exist. Same silent-plausible-WRONG class as the PDFer
+missing-images bug and the LaTeXer linter verdict.
+
+### The fixes
+
+- **NEW `agent/acpx/child_health.py`** (stdlib-only, imports nothing from `agent.*`) — the
+  ONE definition of "did this child deliver?", used by both the runtime and the doctor.
+  Closed vocabulary: `PERMISSION_BLOCKED`, `WORKSPACE_NOT_TRUSTED`, `NO_CREDIT`,
+  `USAGE_LIMIT`, `AUTH_FAILED`, `CONFIG_INVALID`, `UPSTREAM_ERROR`, `NO_OUTPUT`,
+  `CHILD_ERROR`, `DELIVERED`.
+- **`runtime.AcpxRuntime.readiness_probe()` + `doctor(deep=True)`** — sends a real one-line
+  prompt down the agent's real transport and NAMES the failure. OFF by default (it costs the
+  user real quota), cached 10 minutes, and `ready: null` for transports that cannot be probed
+  without opening a session — an honest "unknown", never an invented verdict.
+- **`tools._ok_unless_blocked()`** — `acp_spawn` / `acp_send` / `acp_send_and_wait` now
+  return `ok: false` with a named `code` when the child demonstrably did no work. The full
+  payload (session_id, transcript_path, events) is preserved on the failure envelope, because
+  the LLM still has to read the transcript and kill the session.
+- **`build_agent_registry(spec_overrides=…)` + `config._coerce_agents_spec()`** — `config.json`
+  can now retune `args`, `transport`, `prompt_arg_flag`, `prompt_subcommand_args`, the three
+  drain budgets and `spawn_returns_immediately`, not just `command` and `env`. This is the
+  leverage fix: **repairing a peer no longer requires a rebuild.** Five installed peers
+  (copilot, kimi, opencode, kilocode, qwen) each sat one flag away from working while the
+  only way to pass that flag was to edit `agent_registry.py` and rebuild.
+
+### CONTRACTS — do NOT weaken
+
+1. **A long, real answer is NEVER reclassified as a failure.** Only short, empty or
+   letter-less output is even scanned for refusal markers, and markers are read from the HEAD
+   of the output only. A 3 KB briefing that merely *mentions* "rate limit" stays a success.
+2. **SHORT IS NOT EMPTY.** The first draft of `child_health` tested the letter count alone
+   and flagged a perfectly good 7-character `PEER_OK` as `NO_OUTPUT` — the exact
+   false-failure class this module exists to prevent. "Chrome" now requires BOTH
+   `len >= DECORATIVE_MIN_CHARS` AND `alnum < MIN_ALNUM_CHARS`.
+3. **FAIL-OPEN everywhere.** Unrecognised output is DELIVERED; a malformed `config.json`
+   override is dropped and the built-in default survives; an unknown `transport` is discarded
+   (honouring one would silently hang every spawn). Neither module may raise into a caller.
+4. **`deep` stays OFF by default.** A readiness probe spends the user's money.
+5. `child_health` is stdlib-only and imports nothing from `agent.*` — same discipline as
+   `agent_verdict.py`, so it can never create an import cycle and behaves identically frozen
+   and from source.
+
+### Also found (environment, not code — these are Angela's to fix)
+
+- **`acpx.agents.claude.env.ANTHROPIC_API_KEY` was actively harmful**: it forced claude off
+  her claude.ai subscription onto an API account whose *"Credit balance is too low"*. Disabled
+  in the installed `config.json` (renamed, not deleted) so claude uses her login. ⚠️ The Pro
+  **session limit is a hard stop for the CLI** — measured: it refused at 100 % and the
+  claude.ai *usage credits* pool did **not** absorb it.
+- **codex**: the installed npm shim was `0.128.0` while the Codex desktop app had written a
+  `config.toml` for **0.153.4**. Repointed `acpx.agents.codex.command` at the newer binary.
+- **`codex exec` requires a git repo**; `trust_level = "trusted"` alone does NOT satisfy it,
+  and ACPX cannot pass `--skip-git-repo-check`. Resolved by pointing `acpx.cwd` at a
+  dedicated empty git workspace, `C:\Tlamatini\Temp\acpx-workspace`, which also carries the
+  child's `.claude/settings.json` permission grant.
+- **gemini is unrecoverable from code**: OAuth tier retired (`IneligibleTierError`) AND the
+  API key's project returns `403 "Lightning dunning decision is deny"` — a Google billing
+  matter.
+- **ACPX looks for `qwen-code`; the installed binary is `qwen`.**
+- ⚠️ **THERE ARE TWO ACPX IMPLEMENTATIONS — both were repaired, and they now SHARE one
+  definition.** `Tlamatini/agent/acpx/` powers the Django chat; **`tlamatini_acpx.py`** (repo
+  ROOT) is a deliberately separate Django-free implementation backing
+  `tlamatini_mcp_server.py` for external MCP clients (Claude Code, Kimi). Its `doctor()`
+  reported **resolvability only** — not even a `--version` probe — and it **injected no `env`
+  at all**, so an API key configured in `acpx.agents.<id>.env` had never reached a child on
+  that surface. All three fixes are ported, and `tlamatini_acpx.py` loads
+  `agent/acpx/child_health.py` **by file path** instead of keeping a second copy: a duplicated
+  verdict vocabulary drifts, and a drifted copy mis-classifies silently. That load is
+  fail-open, and `doctor()` prints the degradation in its own message rather than hiding it.
+  Both surfaces read the same `acpx.agents` block, so one config edit repairs a peer on both.
+
+### The `.cmd` shim gap — and the MUCH worse bug found while closing it
+
+`tlamatini_acpx.resolve_command` split the command string itself with **no `.cmd` / `.bat`
+handling**, so spawning codex through the npm `codex.cmd` shim produced **no output at all**
+and hung for its full 180 s timeout. The obvious fix was the Django side's answer —
+`windows_spawn.resolve_command` sets `use_shell=True` for a shim — so that was implemented
+first, and then **measured**. It is wrong:
+
+> **cmd.exe TRUNCATES the command line at the first newline.** A 2,205-character multi-line
+> research prompt arrived at the child as **40 characters**, cut exactly at the first line
+> break — silently, with the child then answering the fragment as if it were the whole task.
+> Re-measured on a real npm-shaped shim: 40 of 2,647 bytes.
+
+ACPX prompts are long and multi-line by nature, so **the shell is not an acceptable channel
+for them at all**. Both `shell=True` and an explicit `cmd.exe /d /s /c` fail the same way; the
+limit is cmd.exe itself, not Python's quoting.
+
+**The fix is to bypass the shim, not to invoke it.** `_deshim()` parses the npm/pnpm wrapper —
+they all end in `"%_prog%" "%dp0%\node_modules\<pkg>\bin\<tool>.js" %*` — and rewrites the
+command to `node.exe <script.js>`, spawned with `shell=False`. Verified against the real
+`codex.cmd`: `node.exe codex.js --version` → `codex-cli 0.128.0`, exit 0. Verified for
+byte-exactness on an npm-shaped shim: **2,647 of 2,647 characters, exact**, where the shell
+control still delivered 40. This is the same trick `runtime_provisioner.resolve_spawn()`
+already uses for `npx` (CLAUDE.md → *spawn without a shell*); the ACPX surfaces simply never
+adopted it. Resolution also now prefers a real `.exe` over a shim (`_WIN_EXTS` puts `.exe`
+first — the old `_which` tried `.cmd` before `.exe`, so `claude` was driven through the shell
+even though `claude.exe` sits right next to it).
+
+When a shim cannot be rewritten, the shell is still used as a last resort — but a multi-line
+prompt on that path now emits a **loud `acpx` log event** saying the child may have received
+only the first line. A silently truncated prompt yields a confident answer to the wrong
+question, which is the whole failure class this work exists to end.
+
+**Both surfaces carry the fix.** `_deshim` is in `agent/acpx/windows_spawn.py` as well —
+the Django side had the identical latent bug (`resolve_command` returned `use_shell=True`
+for a `.cmd` and `runtime._oneshot_send_turn` passed it straight to `Popen`), dormant only
+because Angela's live `config.json` had been repointed off `codex.cmd` onto the real
+`codex.exe` earlier the same day. There it lands in **`ResolvedSpawn.extra_args`**, which is
+exactly the right slot: every caller already builds
+`[executable, *extra_args, *spec.args, …]`, so bypassing the shim needed **no change at any
+call site**. Two `--version` probes (`probe_availability`, `_capture_cli_version`) were
+updated to keep `extra_args` — dropping it would have probed a bare `node --version` and
+learned nothing about the agent.
+
+Both npm (`"%dp0%\…"`) and pnpm (`"%~dp0\…"`) wrappers are recognised. Measured on Angela's
+nine installed peers: **7 now spawn with no shell at all** — claude and kimi as real `.exe`s,
+and codex / gemini / qwen / copilot / cursor rewritten to `node.exe <tool>.js` (verified live:
+`node.exe gemini.js --version` → `0.55.1`, exit 0). **kilocode and opencode still need the
+shell** — their shims are a shape `_deshim` does not recognise — so they take the fail-open
+path and emit the loud multi-line warning. That residual is visible by design, not silent.
+
+Coverage: `agent/acpx/tests.py::WindowsShimDeShimTests` (6 tests — de-shim, the `extra_args`
+call-site contract, fail-open on an unparseable shim, refusing a shim whose script is
+missing, a real `.exe` never going through the shell, and a source guard that the `--version`
+probes keep `extra_args`). Suite: 92 → **98**.
+
+### The SAME bug, third subsystem: External MCPs died with `[WinError 2]`
+
+Hours later Angela hit it again, from a completely different direction:
+
+```
+[agent.external_mcp_manager] WARNING [ExternalMCP] 'deepwebresearch' failed to
+connect: [WinError 2] The system cannot find the file specified
+```
+
+`external_mcp_manager._resolve_argv` **already had the correct repair** — resolve through
+PATHEXT, route a `.cmd` through COMSPEC — sitting right there at lines 692-695. It was
+**unreachable dead code**, because it runs only after:
+
+```python
+argv, note = runtime_provisioner.resolve_spawn(self.command, self.args)
+if argv:
+    return argv                     # <- always taken
+```
+
+and `resolve_spawn` did this for every command outside its six `MANAGED_TOOLS`:
+
+```python
+if tool not in MANAGED_TOOLS:
+    return [raw, *args], ""         # <- a NON-EMPTY bare pass-through
+```
+
+So **any** npm/pnpm-installed MCP server with a bare command name (`mcp-deepwebresearch`,
+and every server like it) was spawned as a name `CreateProcess` cannot execute. Tlamatini
+diagnosed this herself from the live install and worked around it by re-pointing the catalog
+entry at `node` + the real `index.js` — which is exactly what `_deshim` does automatically.
+
+**ROOT FIX — one definition for the whole tree.** `agent/win_shim.py` (new, stdlib-only,
+imports nothing from `agent.*`) is now the single place that answers *"how do we spawn this
+on Windows?"*: prefer a real `.exe`, rewrite an npm (`"%dp0%\…"`) or pnpm (`"%~dp0\…"`) shim
+to `node.exe <script.js>`, and ask for the shell only when neither is possible. All three
+subsystems delegate to it — `runtime_provisioner.resolve_spawn`,
+`agent/acpx/windows_spawn.py`, and the Django-free `tlamatini_acpx.py` (which loads it by
+path, like `child_health.py`). The duplicated copies were deleted, not left to drift.
+
+In `resolve_spawn`, "outside `MANAGED_TOOLS`" now means **"we do not PROVISION this"**, never
+**"we cannot RESOLVE this"**. The managed batch-shim branch also de-shims before falling back
+to COMSPEC.
+
+**Measured end to end** with a fake npm-installed MCP server: spawning the bare name still
+raises `[WinError 2]`; `resolve_spawn` returns `['node.EXE', 'index.js', '--stdio']` with the
+note *"de-shimmed to node.EXE"*, and the server runs and answers.
+
+⚠️ **`agent.win_shim` is imported behind `try/except ImportError` in two places, so it is in
+`build._FROZEN_REQUIRED_AGENT_MODULES` and has a `--hidden-import`.** A fail-open import
+cannot report its own absence: without those, a frozen build could silently drop it and every
+`.cmd`-backed MCP server would break again with no error naming the cause. This is the same
+contract that already protects `runtime_provisioner` and `agent_verdict`.
+
+**Two tests were CORRECTED, not deleted** (`agent/test_runtime_provisioner.py`):
+`test_unmanaged_command_passes_through_untouched` asserted the very pass-through that caused
+the bug — it now asserts the fixed contract (argv[0] RESOLVED, **arguments untouched**, an
+unresolvable command still returned verbatim) and is renamed
+`test_unmanaged_command_is_RESOLVED_not_passed_through_blind`. The second failure was stale
+and unrelated: it looked for the literal `verify_frozen_agent_modules(Path("dist") /
+"manage")` while `build.py` calls it with the `dist_manage` variable.
+
+Coverage: **`agent/test_win_shim.py` (27 tests)** — resolution order (`.exe` beats a
+same-named shim), both shim dialects, `.mjs`/`.cjs` payloads, node-beside-the-shim, every
+refusal path (missing payload, unknown shape, missing file, absent command), explicit paths,
+the exact `deepwebresearch` regression through `resolve_spawn`, argument order preservation,
+never-raises, and four source-level contracts including *"only `win_shim` may parse a shim
+path"* so a copy can never reappear.
+
+**Coverage:** `agent/acpx/tests.py` grew 65 → **92 tests** — `ChildHealthClassifierTests`
+(every string copied verbatim from the failed run, plus the three false-positive guards),
+`AgentRegistrySpecOverrideTests` (including a drift check that the coercer and the registry
+agree on the field list), and `BlockedChildIsNotASuccessTests`.
+
+---
+
 ## 2026-09-06 — Two code blocks in one answer destroyed each other's file (`MultipleObjectsReturned`)
 
 **Angela's report** — the tail of `tlamatini.log` on the installed build in `C:\Tlamatini`:
