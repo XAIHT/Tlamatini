@@ -9,6 +9,7 @@
 # ═══════════════════════════════════════════════════════════════════
 #   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
 """Django's command-line utility for administrative tasks."""
+import collections
 import os
 import sys
 import threading
@@ -16,7 +17,7 @@ import time
 
 # FIX: Disable Intel Fortran runtime Ctrl+C handler to prevent "forrtl: error (200)"
 # This must be set BEFORE importing any packages that use MKL (NumPy, SciPy, etc.)
-# (threading/time above are pure stdlib — they never touch MKL.)
+# (collections/threading/time above are pure stdlib — they never touch MKL.)
 os.environ['FOR_DISABLE_CONSOLE_CTRL_HANDLER'] = '1'
 
 
@@ -139,6 +140,183 @@ _brand_console_window()
 _USER_TAG_HOOK = None
 
 
+class _ConsoleWriter:
+    """THE CONSOLE SHIELD — the core never writes to the console window itself.
+
+    THE BUG THIS EXISTS TO KILL (Angela, 2026-09-10). Windows consoles ship with
+    **QuickEdit Mode ON**. The moment a user clicks or drags inside the window —
+    to copy a line of the log, or merely to make it the active window — Windows
+    puts the console into SELECTION mode and ``WriteConsoleW`` **stops
+    returning**. It does not fail; it BLOCKS, for as long as the selection is
+    held. ⚠️ A ``try/except`` cannot save you here: **a block is not an
+    exception.**
+
+    Before this class, ``_TeeStream.write`` wrote to the CONSOLE FIRST and to
+    ``tlamatini.log`` SECOND, so one click froze three things at once:
+
+      1. the calling thread, parked inside ``WriteConsoleW``;
+      2. ``tlamatini.log`` itself — the durable record held hostage by the
+         cosmetic one, which is why the log ALSO stopped growing and made the
+         freeze look total;
+      3. every other thread, one by one, as each reached the same line.
+
+    Django, Channels, the Multi-Turn executor and every pool agent log, so the
+    whole application appeared to hang. Users — reasonably — called it a crash.
+
+    THE FIX is to make the console a sink that CANNOT apply backpressure.
+    Chunks are handed to a bounded in-memory queue and drained by ONE daemon
+    thread; if the console blocks, only that thread blocks. Selecting text now
+    pauses the console DISPLAY and nothing else — the core runs at full speed
+    and the log file keeps growing the whole time.
+
+    ⚠️ THIS SHIELD IS THE SECOND LINE OF DEFENCE, NOT THE FIRST. Tlamatini SHIPS
+    ``console_quick_edit: false`` (see ``_apply_console_quick_edit_policy``), so
+    in a frozen build a click cannot start a selection at all and the window
+    never pauses. The shield exists for everything that flag cannot reach: a
+    source run (where the knob is announced-and-ignored, because the console is
+    the developer's own terminal and outlives us), Windows Terminal and other
+    hosts that ignore the flag, a piped stdout whose reader stalls, and anyone
+    who deliberately sets the knob back to ``true`` to keep mouse-copy. THIS
+    shield is therefore NOT mode-gated: the freeze is identical in dev, where
+    log text gets selected most, so both modes get it.
+
+    CONTRACTS (do NOT weaken):
+
+      * ``submit`` **NEVER blocks and NEVER raises.** It sits on the hot path of
+        every ``print()`` in the process.
+      * The queue is **BOUNDED** and drops the **OLDEST** chunk. A selection
+        held for ten minutes must not grow memory without limit.
+      * **A DROP IS NEVER SILENT.** The count is reported to the console the
+        instant it unblocks AND written into ``tlamatini.log``, pointing at the
+        log for the complete record.
+      * **CONSOLE chunks may be dropped; LOG LINES NEVER ARE.** The file is
+        written on the caller's own thread, before anything is queued.
+      * ``close`` is **BOUNDED**. A user still holding a selection at exit must
+        not be able to hang the process.
+      * ⚠️ Nothing here may take ``_TeeStream._LOG_LOCK`` while holding
+        ``_cond``, or vice versa. Callers take the log lock, release it, then
+        ``submit``; the drain thread releases ``_cond`` before it notes a drop
+        in the log. Nest them and you trade a console freeze for a deadlock.
+    """
+
+    _MAX_QUEUED_CHUNKS = 10000
+    _MAX_BATCH_CHUNKS = 512
+    _CLOSE_TIMEOUT_SECONDS = 2.0
+    _DROP_NOTICE = (
+        "\n--- [CONSOLE-SHIELD] {count} console chunk(s) dropped while this window "
+        "was paused (text selected, or output held). Tlamatini kept running the "
+        "whole time — the COMPLETE record is in tlamatini.log.\n"
+    )
+
+    # Sentinel meaning "flush this stream", never "write this text".
+    _FLUSH = object()
+
+    def __init__(self, note_sink=None):
+        self._chunks = collections.deque()
+        self._cond = threading.Condition()
+        self._dropped = 0
+        self._closed = False
+        self._thread = None
+        self._note_sink = note_sink
+
+    def start(self):
+        if self._thread is not None:
+            return
+        self._thread = threading.Thread(
+            target=self._run, name='tlamatini-console-writer', daemon=True
+        )
+        self._thread.start()
+
+    def submit(self, stream, payload):
+        """Queue one chunk for the console. NEVER blocks, NEVER raises."""
+        try:
+            with self._cond:
+                if self._closed:
+                    return
+                if len(self._chunks) >= self._MAX_QUEUED_CHUNKS:
+                    self._chunks.popleft()
+                    self._dropped += 1
+                self._chunks.append((stream, payload))
+                self._cond.notify()
+        except Exception:
+            pass
+
+    def request_flush(self, stream):
+        """Ask for a console flush WITHOUT flushing on the caller's thread.
+
+        ``print(..., flush=True)`` lands in ``_TeeStream.flush``; flushing the
+        console there would re-open the exact hole this class closes, because a
+        flush on a selected console blocks just like a write to one does.
+        """
+        self.submit(stream, self._FLUSH)
+
+    def _take_batch(self):
+        """Block until there is work, then take a bounded slice of it."""
+        with self._cond:
+            while not self._chunks and not self._closed:
+                self._cond.wait()
+            batch = []
+            while self._chunks and len(batch) < self._MAX_BATCH_CHUNKS:
+                batch.append(self._chunks.popleft())
+            dropped, self._dropped = self._dropped, 0
+            return batch, dropped, self._closed
+
+    def _run(self):
+        while True:
+            batch, dropped, closed = self._take_batch()
+            if dropped:
+                notice = self._DROP_NOTICE.format(count=dropped)
+                if batch:
+                    self._emit(batch[0][0], notice)
+                if self._note_sink is not None:
+                    try:
+                        self._note_sink(notice)
+                    except Exception:
+                        pass
+            touched = []
+            for stream, payload in batch:
+                if payload is self._FLUSH:
+                    self._flush(stream)
+                    continue
+                self._emit(stream, payload)
+                if stream not in touched:
+                    touched.append(stream)
+            for stream in touched:
+                self._flush(stream)
+            if closed and not batch:
+                return
+
+    def _emit(self, stream, text):
+        try:
+            stream.write(text)
+        except Exception:
+            pass
+
+    def _flush(self, stream):
+        try:
+            stream.flush()
+        except Exception:
+            pass
+
+    def close(self, timeout=None):
+        """Stop draining, waiting AT MOST ``timeout`` seconds for the tail.
+
+        Bounded on purpose: a user who is still holding a mouse selection when
+        Tlamatini exits must never be able to keep the process alive.
+        """
+        try:
+            with self._cond:
+                self._closed = True
+                self._cond.notify_all()
+            thread = self._thread
+            if thread is not None and thread.is_alive():
+                thread.join(
+                    self._CLOSE_TIMEOUT_SECONDS if timeout is None else timeout
+                )
+        except Exception:
+            pass
+
+
 class _TeeStream:
     """Duplicates writes to the original console stream and a log file.
 
@@ -177,6 +355,14 @@ class _TeeStream:
         'FATAL', 'Fatal', '!!!', '❌', '⛔',
     )
     _LOG_LOCK = threading.RLock()
+
+    # The shared console drain thread, installed by ``_setup_log_tee``. Class
+    # level so BOTH tees (stdout and stderr) hand their chunks to the SAME
+    # queue: they target the same window, so one queue keeps their relative
+    # order intact. ``None`` means "no shield" — a tee built directly (unit
+    # tests, or a launch where the shield could not start) then writes to its
+    # console inline, exactly as it did before 2026-09-10.
+    _CONSOLE_WRITER = None
 
     def __init__(self, original, log_file):
         self._original = original
@@ -227,10 +413,13 @@ class _TeeStream:
                     self._at_line_start = data[-1] == '\n'
             except Exception:
                 payload = data
-        try:
-            self._original.write(payload)
-        except Exception:
-            pass
+        # --- DURABLE SINK FIRST (console shield, Angela, 2026-09-10) ---------
+        # ⚠️ This order is load-bearing and was REVERSED on purpose. The console
+        # used to be written FIRST, so a user selecting text in the window
+        # blocked the caller inside WriteConsoleW and ``tlamatini.log`` stopped
+        # growing too — the durable record held hostage by the cosmetic one.
+        # A file write can never block on a human, so the file goes first and
+        # always wins. Do NOT put the console back above this block.
         try:
             with self._LOG_LOCK:
                 self._log_file.write(payload)
@@ -245,13 +434,31 @@ class _TeeStream:
                     self._last_flush = time.monotonic()
         except Exception:
             pass
+
+        # --- CONSOLE SINK SECOND, and never on THIS thread --------------------
+        # ``submit`` hands the chunk to the drain thread and returns at once, so
+        # a console held open by a mouse selection can no longer stall the
+        # caller. ⚠️ It is called OUTSIDE the ``_LOG_LOCK`` block above — see the
+        # lock-ordering contract in ``_ConsoleWriter``. The inline write is kept
+        # as the fallback for a tee built without a shield, so this class stays
+        # correct on its own.
+        writer = self._CONSOLE_WRITER
+        if writer is not None:
+            writer.submit(self._original, payload)
+        else:
+            try:
+                self._original.write(payload)
+            except Exception:
+                pass
         return len(data) if isinstance(data, str) else None
 
-    def flush(self):
-        try:
-            self._original.flush()
-        except Exception:
-            pass
+    def flush_log_only(self):
+        """Flush the DURABLE sink alone — used by the idle-tail flusher.
+
+        The console needs no sentinel every second: the drain thread already
+        flushes it after each batch. Keeping the idle flusher off the queue
+        means a paused console cannot slowly fill it with flush markers.
+        """
         try:
             with self._LOG_LOCK:
                 self._log_file.flush()
@@ -259,6 +466,21 @@ class _TeeStream:
                 self._last_flush = time.monotonic()
         except Exception:
             pass
+
+    def flush(self):
+        # File first and SYNCHRONOUSLY: an explicit flush() must leave the
+        # durable record complete before it returns. The console flush is
+        # DELEGATED, because flushing a console a user has selected blocks
+        # exactly like writing to one does.
+        self.flush_log_only()
+        writer = self._CONSOLE_WRITER
+        if writer is not None:
+            writer.request_flush(self._original)
+        else:
+            try:
+                self._original.flush()
+            except Exception:
+                pass
 
     def fileno(self):
         return self._original.fileno()
@@ -283,8 +505,30 @@ def _setup_log_tee():
     except OSError:
         return
 
+    # --- Install the console shield BEFORE the tees go live ------------------
+    # One drain thread owns every write to the console window from here on, so
+    # a user who selects text in it (QuickEdit Mode) can no longer block the
+    # core. Full contract — and the bug it exists to kill — in _ConsoleWriter.
+    # ``_note_in_log`` lets the drain thread record a drop in tlamatini.log as
+    # well as on screen; it takes ``_LOG_LOCK`` only, never ``_cond``, so the
+    # lock ordering stays one-way.
+    def _note_in_log(text):
+        try:
+            with _TeeStream._LOG_LOCK:
+                log_file.write(text)
+                log_file.flush()
+        except Exception:
+            pass
+
+    console_writer = _ConsoleWriter(note_sink=_note_in_log)
+    console_writer.start()
+    _TeeStream._CONSOLE_WRITER = console_writer
+
     tees = (_TeeStream(sys.stdout, log_file), _TeeStream(sys.stderr, log_file))
     sys.stdout, sys.stderr = tees
+
+    print("--- [CONSOLE-SHIELD] Console writes are queued on a drain thread — "
+          "selecting text in this window can no longer block Tlamatini.")
 
     def _flush_tees():
         for tee in tees:
@@ -293,10 +537,19 @@ def _setup_log_tee():
             except Exception:
                 pass
 
-    # Exit flush: the buffered tee may hold up to ~1 s / 8 KB of tail — make
-    # sure it reaches tlamatini.log on interpreter shutdown.
+    def _shutdown_console_shield():
+        """Exit path: durable record first, then a BOUNDED console drain.
+
+        The buffered tee may hold up to ~1 s / 8 KB of tail, so it must reach
+        tlamatini.log on interpreter shutdown. The console tail is drained
+        afterwards with a hard timeout — a user still holding a mouse selection
+        when Tlamatini exits must never be able to keep the process alive.
+        """
+        _flush_tees()
+        console_writer.close()
+
     import atexit
-    atexit.register(_flush_tees)
+    atexit.register(_shutdown_console_shield)
 
     # Idle-tail flusher: the flush-on-write policy only runs when the NEXT
     # write arrives, so a burst followed by silence would leave its tail
@@ -307,7 +560,12 @@ def _setup_log_tee():
         while True:
             try:
                 time.sleep(_TeeStream._FLUSH_INTERVAL_SECONDS)
-                _flush_tees()
+                # LOG FILE ONLY (console shield, 2026-09-10). The console is
+                # already flushed by the drain thread after every batch, so
+                # asking for one here would just post a sentinel per second
+                # into a queue that a paused console cannot empty.
+                for tee in tees:
+                    tee.flush_log_only()
             except Exception:
                 pass
 
@@ -672,6 +930,138 @@ def _resolve_config_path():
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), 'agent', 'config.json')
 
 
+def _apply_console_quick_edit_policy():
+    """Honour config.json's ``console_quick_edit``. **Tlamatini SHIPS it FALSE.**
+
+    QuickEdit Mode is what lets a user select text in the console window with
+    the mouse — and, because Windows freezes console output while a selection
+    is held, it is what used to hang Tlamatini (see ``_ConsoleWriter``).
+
+    ⚠️ SHIPPED VALUE ``false``; CODE FALLBACK ``true``. Those are two different
+    things and both are deliberate. The shipped `config.json` says ``false`` so
+    a click can never start a selection; a **missing or malformed** key still
+    falls back to ``true`` so a broken config can never stop startup.
+
+    ⚠️ IT SHIPPED ``true`` FOR ONE DAY AND THAT WAS WRONG (Angela, 2026-09-10).
+    The reasoning was that the queue shield already keeps the core and the log
+    file alive under a selection, so taking mouse-copy away would be removing a
+    feature people legitimately use. What that reasoning missed is that a user
+    cannot SEE the core: Angela clicked the window, the lines stopped, and
+    Tlamatini looked hung until she pressed Enter and the backlog flooded in.
+    Her ruling, verbatim: *"LOG MUST BE STILL INCREMENTING, I DONT CARE IF THE
+    STUPID USER CANT COPY CONTENT FROM THE CONSOLE WINDOW"*. A visibly-live
+    console beats drag-to-select. Copy with right-click ▸ Mark instead.
+
+    ⚠️ ``ENABLE_EXTENDED_FLAGS`` MUST be OR-ed in. Without it Windows ignores a
+    change to the QuickEdit/Insert bits entirely and the call silently does
+    nothing.
+
+    ⚠️ FROZEN BUILDS ONLY (Angela, 2026-09-10). Console mode belongs to the
+    CONSOLE, not to the process that changes it. In a frozen build Tlamatini
+    OWNS its window and the window dies with the process, so the change is
+    contained. From SOURCE, Tlamatini is a GUEST inside the developer's own
+    terminal, which OUTLIVES it — disabling QuickEdit there would leave that
+    terminal unable to select text after the server exits, with nothing on
+    screen to explain why. Save-and-restore was considered and rejected: a hard
+    kill (``taskkill``, the updater's process-tree kill) skips ``atexit``, so it
+    would still leak, just less often. The queue shield itself is deliberately
+    NOT gated — the freeze is identical in dev, where log text gets selected
+    most, so gating it would leave the developer holding the bug.
+
+    Honest limit: this is a **conhost** setting. Windows Terminal does not
+    honour it the same way, and selecting text there can still stall output —
+    which is precisely why the queue shield, not this knob, is the actual fix.
+    This only ever touches the STDIN handle's mode; the console window's title
+    and Tlamatini icon (``_brand_console_window``) live on the HWND and are
+    completely untouched by it. Fail-open throughout.
+    """
+    if os.name != 'nt':
+        return
+    try:
+        import json
+        enabled = True
+        try:
+            with open(_resolve_config_path(), 'r', encoding='utf-8-sig') as fh:
+                raw = json.load(fh).get('console_quick_edit', True)
+            if isinstance(raw, bool):
+                enabled = raw
+            elif isinstance(raw, str):
+                enabled = raw.strip().lower() not in ('false', '0', 'no', 'off')
+        except FileNotFoundError:
+            pass
+        if enabled:
+            return  # Windows default — the shield makes selecting safe already.
+
+        # Frozen-only gate. Announced rather than silent: the user explicitly
+        # asked for something, so they are told exactly why it did not happen.
+        if not getattr(sys, 'frozen', False):
+            print("--- [CONSOLE-SHIELD] console_quick_edit=false IGNORED in source mode: "
+                  "this is your terminal, not Tlamatini's window, and the setting would "
+                  "outlive the server. It applies to frozen builds only. The queue shield "
+                  "protects you here either way.")
+            return
+
+        import ctypes
+        from ctypes import wintypes
+
+        STD_INPUT_HANDLE = -10
+        ENABLE_PROCESSED_INPUT = 0x0001   # ⚠️ THIS BIT IS CTRL+C. Never clear it.
+        ENABLE_QUICK_EDIT_INPUT = 0x0040
+        ENABLE_EXTENDED_FLAGS = 0x0080
+
+        kernel32 = ctypes.windll.kernel32
+        kernel32.GetStdHandle.restype = wintypes.HANDLE
+        handle = kernel32.GetStdHandle(STD_INPUT_HANDLE)
+        if not handle or handle == wintypes.HANDLE(-1).value:
+            return
+        mode = wintypes.DWORD()
+        if not kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
+            print("--- [CONSOLE-SHIELD] console_quick_edit=false, but this host "
+                  "has no console input mode to change (ignored).")
+            return
+        # ⚠️⚠️ CTRL+C PROTECTION (Angela, 2026-09-10) — DO NOT WEAKEN. ⚠️⚠️
+        #
+        # Ctrl+C is ``ENABLE_PROCESSED_INPUT`` (0x0001). It is a DIFFERENT bit from
+        # QuickEdit, but it lives in the SAME DWORD, so a careless SetConsoleMode is
+        # precisely how a program silently loses Ctrl+C. In Tlamatini that would not
+        # merely be an annoyance: SIGINT is what runs ``apps.py``'s Tier-3 orphan
+        # reaper and the pool-directory cleanup, so a lost Ctrl+C means a build-up of
+        # orphaned agent processes and a session that can only be killed from Task
+        # Manager. Two rules, both belt-and-braces:
+        #
+        #   1. FORCE the bit ON rather than merely preserving it, so Tlamatini can
+        #      never ship — or inherit — a console whose Ctrl+C is off.
+        #   2. READ THE MODE BACK, and if Ctrl+C did not survive, ROLL THE WHOLE
+        #      CHANGE BACK to the exact mode we found and give up on QuickEdit.
+        #
+        # FAIL TOWARD CTRL+C, ALWAYS. Keeping QuickEdit on costs a paused console
+        # window; losing Ctrl+C costs the user control of their own machine. When
+        # the two conflict, Ctrl+C wins — no exceptions, no "it probably works".
+        new_mode = ((mode.value | ENABLE_EXTENDED_FLAGS | ENABLE_PROCESSED_INPUT)
+                    & ~ENABLE_QUICK_EDIT_INPUT)
+        ok = bool(kernel32.SetConsoleMode(handle, new_mode))
+        if ok:
+            check = wintypes.DWORD()
+            if (kernel32.GetConsoleMode(handle, ctypes.byref(check))
+                    and not (check.value & ENABLE_PROCESSED_INPUT)):
+                kernel32.SetConsoleMode(handle, mode.value)  # ROLL BACK, exactly.
+                print("--- [CONSOLE-SHIELD] QuickEdit change ROLLED BACK: this host "
+                      "dropped ENABLE_PROCESSED_INPUT, which would have broken Ctrl+C. "
+                      "Ctrl+C is more important than mouse selection, so the console "
+                      "mode was restored untouched. The queue shield still protects "
+                      "Tlamatini.")
+                return
+        if ok:
+            print("--- [CONSOLE-SHIELD] QuickEdit DISABLED (console_quick_edit=false): "
+                  "mouse selection is off; copy with right-click ▸ Mark. Under Windows "
+                  "Terminal this flag may be ignored — the queue shield still protects you.")
+        else:
+            print("--- [CONSOLE-SHIELD] Could not disable QuickEdit (host refused); "
+                  "the queue shield still protects Tlamatini.")
+    except Exception as exc:  # noqa: BLE001 - a console knob must never stop startup
+        print(f"--- [CONSOLE-SHIELD] QuickEdit policy skipped (non-fatal): {exc}")
+
+
 def _resolve_django_port(default_port: int = 8000) -> int:
     """Django/Daphne listen port, read from config.json's ``django_port``.
 
@@ -752,6 +1142,12 @@ def _schedule_browser_open(url: str, delay_seconds: float = 10.0) -> None:
 def main():
     """Run administrative tasks."""
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'tlamatini.settings')
+
+    # Console QuickEdit policy (Angela, 2026-09-10). A no-op unless the user
+    # explicitly set ``console_quick_edit: false``. Skipped for ``test`` so a
+    # developer's own terminal is never reconfigured by a test run.
+    if not (len(sys.argv) >= 2 and sys.argv[1] == 'test'):
+        _apply_console_quick_edit_policy()
 
     # --- .FLW File Association Support ---
     # When running as a frozen executable (PyInstaller) and the sole argument

@@ -16,6 +16,105 @@
 
 ---
 
+## 2026-09-10 — Clicking the console froze the whole app: the CONSOLE SHIELD
+
+**Angela's report:** *"sometimes users when click the screen to copy a segment of the log
+file or just click it to make sure the window be the active window the core of Tlamatini
+stop working! getting blocked and the user … thinks that Tlamatini simply hanged."*
+
+**ROOT CAUSE — Windows QuickEdit Mode.** Consoles ship with it ON, so a click or drag inside
+the window puts the console into SELECTION mode and **`WriteConsoleW` stops returning**. It
+does not fail; it BLOCKS for as long as the selection is held. ⚠️ **A block is not an
+exception**, so the `try/except` around the console write could never have caught it —
+which is exactly why the symptom read as a hang rather than an error. `SetConsoleMode`
+appeared NOWHERE in the tree before this change.
+
+**THE DEFECT WAS WIDER THAN REPORTED.** `_TeeStream.write` wrote the **console FIRST** and
+`tlamatini.log` SECOND, so one click froze **three** things: (1) the calling thread, parked
+in `WriteConsoleW`; (2) **`tlamatini.log` itself** — the durable record held hostage by the
+cosmetic one, which is why the log also stopped growing and made the freeze look total; and
+(3) every other thread, one by one, as each reached the same line. Django, Channels, the
+Multi-Turn executor and every pool agent log, so the whole app stopped.
+
+**THE FIX — the console became a sink that cannot apply backpressure.** New
+`manage.py::_ConsoleWriter` (L143-310): a bounded queue drained by ONE daemon thread.
+`_TeeStream.write` now writes the **log file first** on the caller's thread (L409-429) and
+then `submit()`s to the queue (L431-446), which returns instantly. `flush()` (L463-476)
+delegates the console flush too — flushing a selected console blocks exactly like writing to
+one, so `print(..., flush=True)` was the same hole. Holding a selection now pauses the
+console DISPLAY and nothing else: the core runs at full speed and the log keeps growing.
+
+**⚠️ CORRECTION, SAME DAY — QuickEdit now SHIPS OFF. It shipped ON for one day and that was
+wrong.** The original call was that copying a log line is a legitimate thing to want, so the
+shield should make selecting HARMLESS rather than FORBIDDEN. **What that missed is that a user
+cannot SEE the core.** Angela clicked the console, the lines stopped, and Tlamatini *looked*
+hung — she pressed Enter and the whole backlog flooded in at once. The shield was working
+perfectly underneath and it did not matter, because the only evidence she had was a dead
+window. Her ruling, verbatim: *"LOG MUST BE STILL INCREMENTING, I DONT CARE IF THE STUPID USER
+CANT COPY CONTENT FROM THE CONSOLE WINDOW"*. `config.json` → **`console_quick_edit` now ships
+`false`**, so `ENABLE_QUICK_EDIT_INPUT` is cleared and a click can never start a selection —
+display, log file and processing all keep going. Copy with right-click ▸ Mark. A **missing or
+malformed** key still falls back to `true` (fail-open must never stop startup), and the queue
+shield remains the second line of defence for hosts that ignore the flag (Windows Terminal).
+Lesson worth keeping: *invisible correctness is indistinguishable from a hang.*
+
+**⚠️⚠️ CTRL+C IS `ENABLE_PROCESSED_INPUT` (0x0001) — GUARDED, DO NOT WEAKEN.** It is a
+different bit from QuickEdit but lives in the **same DWORD**, which is exactly how a program
+silently loses Ctrl+C — and in Tlamatini that would also lose the SIGINT that runs `apps.py`'s
+Tier-3 orphan reaper and the pool cleanup. So `_apply_console_quick_edit_policy` (a) **forces**
+the bit ON rather than merely preserving it, and (b) **reads the mode back** and, if Ctrl+C did
+not survive, **restores the original mode verbatim** and gives up on QuickEdit. **Fail toward
+Ctrl+C, always**: a paused window is an annoyance, a console you cannot interrupt takes the
+machine away from the user. Only QuickEdit may ever be cleared — pinned by three tests
+(`test_CTRL_C_bit_is_FORCED_ON_never_merely_preserved`, `test_CTRL_C_bit_is_NEVER_cleared`,
+`test_the_change_is_ROLLED_BACK_if_CTRL_C_did_not_survive`), the second of which regex-scans the
+function and fails if any bit other than QuickEdit is cleared.
+
+**⚠️ THE TWO HALVES ARE DELIBERATELY MODE-OPPOSITE — do NOT "make them consistent."**
+Disabling QuickEdit is **FROZEN-ONLY** (gate at L982-988); the **queue shield is NOT gated**
+and runs in both modes. Reason: console mode belongs to the CONSOLE, not the process. A
+frozen build OWNS its window and takes it down on exit, so the change is contained; from
+SOURCE Tlamatini is a GUEST in the developer's terminal, which **OUTLIVES it** — clearing
+QuickEdit there would leave that shell unable to select text after the server quits, with
+nothing on screen explaining why. Save-and-restore was considered and REJECTED: a hard kill
+(`taskkill`, the updater's process-tree kill) skips `atexit`, so it would still leak, just
+less often. The gate sits AFTER the config read (a default config stays silent) and BEFORE
+any `ctypes` call, and it ANNOUNCES itself rather than ignoring the user quietly. The shield
+stays ungated because the freeze is a **conhost** property, not a PyInstaller one — it is
+identical in dev, where log text gets selected most, so gating it would leave the developer
+holding the bug. Pinned by `test_disabling_quick_edit_is_FROZEN_ONLY`,
+`test_the_frozen_gate_stays_quiet_on_a_default_config`, and
+`test_the_QUEUE_SHIELD_itself_is_NOT_frozen_gated`.
+
+**CONTRACTS (do NOT weaken):** the log file is written BEFORE the console is queued (reverse
+it and the bug returns in full) · `submit` never blocks and never raises · the queue is
+BOUNDED and drops the OLDEST · **a drop is NEVER silent** (counted to the console AND into
+`tlamatini.log`) · console chunks may drop, **log lines never do** · `close()` is bounded at
+2 s so a held selection cannot hang exit · ⚠️ **lock ordering is one-way** — never take
+`_LOG_LOCK` while holding `_cond` or vice versa, or you trade a freeze for a deadlock · ⚠️
+**user tags stay on the CALLER's thread** (`_USER_TAG_HOOK` reads a **ContextVar**; tagging
+on the drain thread would stamp every line with the drain thread's identity) · ⚠️
+`ENABLE_EXTENDED_FLAGS` MUST be OR-ed in or Windows ignores the QuickEdit change silently ·
+fail-open throughout.
+
+**UNTOUCHED:** `_brand_console_window` (L48-127) — not one line. The **Tlamatini icon** lives
+on the console **HWND** via `WM_SETICON`; the shield only touches `sys.stdout`/`sys.stderr`
+and, optionally, the **STDIN** handle's mode. Also unchanged: the window title, the 8 KB/1 s
+buffered flush, the urgent-marker immediate flush, the `[a3]` per-user attribution,
+`fileno()`/`isatty()`/`__getattr__` passthrough, and `write()`'s `len(data)` return.
+
+**Honest limit:** a subprocess handed the console directly still writes to it itself and can
+block; the spawn sites' `CREATE_NO_WINDOW` + `DEVNULL` nearly close this, but not fully. And
+`console_quick_edit: false` is a **conhost** setting Windows Terminal may ignore — which is
+precisely why the queue, not the knob, is the fix.
+
+Coverage: **`agent/test_console_shield.py` (28 tests)** — including the blocked-console
+regression, drop accounting, bounded shutdown, caller-thread tagging, the frozen-only gate,
+and source guards on the sink order, the lock ordering and the branding block. Full audit record with every line
+number: **`TlamatiniConsoleShieldByClaude.md`** (repo root).
+
+---
+
 ## 2026-09-07 — ACPX reported four DEAD peers as healthy, and a refusal as a SUCCESS (v1.51.2)
 
 **Angela's report, verbatim:** *"in the very last chain invocation of multi-turn, she had a
