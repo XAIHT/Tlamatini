@@ -351,7 +351,7 @@ Tlamatini/                          # Git root
 │   │   ├── templates/agent/        # HTML templates (toolbar has Multi-Turn / Exec-Report / ACPX / Ask-Execs checkboxes)
 │   │   ├── static/agent/
 │   │   │   ├── css/                # agentic_control_panel.css, agent_page.css, tools_dialog.css, etc.
-│   │   │   ├── js/                 # 37 JS modules (10 chat + 14 ACP + 1 ACP entry + 12 shared, incl. dialog_policy.js and release_notes_renderer.js)
+│   │   │   ├── js/                 # 38 JS modules (10 chat + 14 ACP + 1 ACP entry + 12 shared + 1 welcome, incl. dialog_policy.js, release_notes_renderer.js and welcome_enter_default.js)
 │   │   │   ├── img/Tlamatini.ico   # App icon (web pages + console window + .exe)
 │   │   │   └── sounds/             # notification.wav, hypervisor_alert.wav
 │   │   └── migrations/             # Django migrations — 197 total (0195/0196/0197 add NetSpeed-Calculator agent + wrapped tool + demo prompt; 0194 adds Deep Internet Research prompt 118; earlier rows remain append-only)
@@ -717,6 +717,48 @@ Detection is a short-circuiting cascade, cheapest test first, with **at most ONE
 
 **Two contracts that must NOT be weakened:** (a) **FAIL-OPEN** — any error, any uncertainty, any malformed config value resolves to "load it as text", because a guard that wrongly drops a file silently deletes the user's real context; (b) **the BOM stage must stay ahead of the NUL stage**, or every UTF-16 document (legitimately full of `0x00`) silently vanishes. Toggle with `binary_context_detection` in `config.json`. Coverage: `agent/test_binary_guard.py` (45 tests). Full contract: `docs/claude/architecture.md` and `docs/claude/recent-fixes.md` (2026-07-26).
 
+
+## 🛡️ The CONSOLE SHIELD — clicking the console must NEVER freeze Tlamatini (2026-09-10)
+
+**Angela's report:** *"sometimes users when click the screen to copy a segment of the log file or just click it to make sure the window be the active window the core of Tlamatini stop working! … thinks that Tlamatini simply hanged."*
+
+**ROOT CAUSE.** Windows consoles ship with **QuickEdit Mode ON**: a click or drag inside the window puts the console into SELECTION mode and **`WriteConsoleW` stops returning**. It does not fail — it **BLOCKS** for as long as the selection is held. ⚠️ **A block is not an exception**, so the `try/except` around the console write could never catch it, which is exactly why the symptom read as a *hang*. `SetConsoleMode` appeared **nowhere** in the tree before this change.
+
+**IT WAS WORSE THAN "the console pauses."** `_TeeStream.write()` wrote the **console FIRST** and `tlamatini.log` **SECOND**, so one mouse click froze the calling thread, **the log file itself** (the durable record held hostage by the cosmetic one — which is why the log *also* stopped growing and made the freeze look total), and then every other thread as each reached the same line. Django, Channels, the Multi-Turn executor and every pool agent log — so the whole app stopped.
+
+**TWO LAYERED DEFENCES, deliberately opposite in scope:**
+
+| | Mechanism | Scope |
+|---|---|---|
+| **1** | **`console_quick_edit: false`** (`manage.py::_apply_console_quick_edit_policy`) clears `ENABLE_QUICK_EDIT_INPUT`, so a click cannot start a selection at all | **FROZEN builds ONLY** |
+| **2** | **`manage.py::_ConsoleWriter`** — the console becomes a sink that cannot apply backpressure: chunks go to a **bounded queue** drained by **ONE daemon thread** | **BOTH modes, never gated** |
+
+Defence 1 is what the user *sees*; defence 2 is what guarantees correctness and covers everything the flag cannot reach — a source run, **Windows Terminal** (which ignores the flag), a stalled pipe, and anyone who sets the knob back to `true` to keep mouse-copy.
+
+**CONTRACTS — do NOT weaken:**
+1. **The log file is written BEFORE the console is queued.** Reversing the sink order restores the original bug in full.
+2. **`submit()` never blocks and never raises** — it is on the hot path of every `print()`.
+3. The queue is **BOUNDED** (10,000 chunks), drops the **OLDEST**, and **a drop is NEVER silent** (screen *and* `tlamatini.log`). **Console chunks may be dropped; LOG LINES NEVER ARE.**
+4. ⚠️ **Lock ordering is one-way** — never nest `_TeeStream._LOG_LOCK` and `_ConsoleWriter._cond`, or you trade a console freeze for a **deadlock**.
+5. ⚠️ **User tags stay on the CALLER's thread** — `_USER_TAG_HOOK` reads a **ContextVar**, so tagging on the drain thread would turn every `[a3]` into the drain thread's identity.
+6. ⚠️⚠️ **CTRL+C (`ENABLE_PROCESSED_INPUT`, 0x0001) is FORCED ON, VERIFIED, and ROLLED BACK on doubt.** Different bit, **same DWORD** — which is how programs silently lose it. Losing it here also loses the SIGINT that runs the **Tier-3 orphan reaper** and the pool cleanup. QuickEdit is the **ONLY** bit that function may ever clear. **Fail toward Ctrl+C, always.**
+7. ⚠️ **Disabling QuickEdit is FROZEN-ONLY and the SHIELD is NOT — do not "make them consistent."** Console mode belongs to the **console**: from source it is the developer's own terminal and **outlives** Tlamatini, so the flag would leave their shell unable to select text after exit (save-and-restore was rejected — a hard kill skips `atexit`). The shield is ungated because the freeze is **identical** in dev.
+8. **`console_quick_edit` SHIPS `false`; the CODE FALLBACK is `true`.** Two different defaults, both deliberate — and it shipped `true` for one day and produced the exact hang-looking symptom this exists to remove: *"LOG MUST BE STILL INCREMENTING, I DONT CARE IF THE STUPID USER CANT COPY CONTENT FROM THE CONSOLE WINDOW"*. **Invisible correctness is indistinguishable from a hang.** Copy with **right-click ▸ Mark**.
+9. **Fail-open everywhere** — nothing here may raise into a caller.
+
+Coverage: `agent/test_console_shield.py` (**28 tests**). Contract: `docs/claude/architecture.md` → *The CONSOLE SHIELD*; full audit record: `TlamatiniConsoleShieldByClaude.md`; dated entry: `docs/claude/recent-fixes.md` (2026-09-10).
+
+---
+
+## ⏎ ENTER is the default action on the welcome page (2026-09-10)
+
+After login, `welcome.html` offers exactly two things — **Go to Chat** and **Logout** — and everyone who lands there is going to the chat. Now **pressing Enter takes you straight in**, with nothing clicked, tabbed or focused first. NEW `agent/static/agent/js/welcome_enter_default.js` (self-contained IIFE, **no cross-file globals**) plus two template lines: `id="go-to-chat"` on the existing link and the `<script>` with the usual `?v={{ STATIC_VERSION }}`. No backend, no view, no config key, no dependency.
+
+**TWO LAYERS:** the link is **focused** on ready so the **browser itself** activates it on Enter (its focus ring shows the user where the key will go), and a **document-level `keydown` fallback** catches Enter when focus was never granted.
+
+**⚠️ The fallback DEFERS to `document.activeElement` — that deferral is the whole point.** It does nothing whenever something activatable already holds focus (`a, button, input, textarea, select, [contenteditable]`), because firing Enter blindly would send a user who Tabbed to **Logout** to the **chat** instead. **Enter belongs to the browser whenever the browser already has a target for it.** It also ignores Alt/Ctrl/Meta/Shift chords, a mid-IME composition (`event.isComposing`), and an event another handler already claimed (`defaultPrevented`). **FAIL-OPEN**: every step is guarded and both buttons always still work by mouse — a broken shortcut must never cost the user the page itself. Contract: `docs/claude/frontend.md` → *Welcome page*.
+
+---
 
 ## Current Release — v1.51.2 (2026-09-07)
 

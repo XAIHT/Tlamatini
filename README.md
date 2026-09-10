@@ -50,13 +50,14 @@
 1. [What is Tlamatini](#what-is-tlamatini)
 2. [How it works](#how-it-works)
 3. [Get started in five steps](#-get-started--5-steps-to-a-cloud-powered-tlamatini)
-4. [Current release](#current-release--v1513)
-5. [The full capability list](#-the-full-capability-list)
-6. [Enable Tlamatini as a Blue-hat agent](#enable-tlamatini-as-a-blue-hat-agent)
-7. [Installation](#installation)
-8. [Tech stack](#tech-stack)
-9. [Contributing](#contributing)
-10. [License](#license)
+4. [Newest changes](#newest-changes--after-the-v1513-tag)
+5. [Current release](#current-release--v1513)
+6. [The full capability list](#-the-full-capability-list)
+7. [Enable Tlamatini as a Blue-hat agent](#enable-tlamatini-as-a-blue-hat-agent)
+8. [Installation](#installation)
+9. [Tech stack](#tech-stack)
+10. [Contributing](#contributing)
+11. [License](#license)
 
 ---
 
@@ -203,6 +204,16 @@ Add any cloud-CLI keys here too — plus the messaging keys, the Kali server URL
 <p align="center"><img src="Tlamatini/agent/images/ACPXKeysConfigureWizard.jpg" alt="Access Keys Wizard" width="640"/></p>
 
 Done — tick **Multi-Turn** in the chat toolbar and put Tlamatini to work.
+
+---
+
+## Newest changes — after the v1.51.3 tag
+
+**Clicking the console no longer freezes Tlamatini.** Windows consoles ship with **QuickEdit Mode ON**, so clicking or dragging inside the window — to copy a line of the log, or just to bring the window to the front — put the console into selection mode and **froze every write to it**. Because Tlamatini wrote the console *before* `tlamatini.log`, that one click also stopped the log file growing and, thread by thread, stopped the whole application. It looked exactly like a crash, and people reported it as one.
+
+Two fixes ship together. The console is now written on its **own background thread** through a bounded queue, so a paused window can no longer slow the core down — the log file is written **first**, on the caller's own thread, and keeps growing throughout. And a frozen build now starts with **QuickEdit disabled**, so a click cannot start a selection at all and the window simply keeps scrolling. To copy text from the console, use **right-click ▸ Mark**; if you would rather have drag-to-select back, set `"console_quick_edit": true` in `config.json` — the background-thread shield still protects you either way. **Ctrl+C is untouched and explicitly protected:** it lives in the same Windows setting as QuickEdit, so Tlamatini forces it on, reads the setting back, and rolls the whole change back rather than risk a console you cannot interrupt.
+
+**Enter is now the default on the welcome page.** After logging in you land on a page with two buttons — *Go to Chat* and *Logout*. Everybody is going to the chat, so **just press Enter** and you are there; nothing has to be clicked or tabbed first. If you Tab to *Logout* and press Enter you still log out — the shortcut steps aside whenever the browser already has a button in focus.
 
 ---
 

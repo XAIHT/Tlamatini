@@ -16,6 +16,43 @@
 
 ---
 
+## 2026-09-10 — ENTER is the default action on the welcome page
+
+**What changed.** After login, `welcome.html` offers exactly two things: **Go to Chat** and
+**Logout**. Everyone who lands there is going to the chat, yet the keyboard had no way to say
+so — you had to reach for the mouse, or Tab into the link first. Now **pressing Enter takes
+you straight to the chat**, with nothing clicked, tabbed or focused first.
+
+**Files:** NEW `agent/static/agent/js/welcome_enter_default.js` (self-contained IIFE, **no
+cross-file globals**) + two lines in `agent/templates/agent/welcome.html` — an `id="go-to-chat"`
+on the existing link and the `<script>` tag with the usual `?v={{ STATIC_VERSION }}` cache-bust.
+No backend, no view, no URL, no config key, no dependency.
+
+**TWO LAYERS, DELIBERATELY.** (1) The link is **focused** as soon as the page is ready, so the
+**browser itself** activates it on Enter — and its focus ring shows the user exactly where the
+key will go (`welcome.css` sets no `outline: none`, so Bootstrap's own ring stays visible).
+(2) A **document-level `keydown` fallback** catches Enter when focus was never granted — a stray
+click on the card body, or a browser that refuses the programmatic focus. Layer 1 normally wins
+and layer 2 stands down.
+
+**⚠️ THE DEFERRAL IS THE WHOLE POINT — do NOT simplify it away.** The fallback inspects
+`document.activeElement` and **does nothing whenever something activatable already holds focus**
+(`a, button, input, textarea, select, [contenteditable="true"]`). Fire Enter blindly and a user
+who Tabs to **Logout** and presses Enter would be sent to the **chat** instead — the exact
+opposite of what they asked for. **Enter belongs to the browser whenever the browser already has
+a target for it.** For the same reason the handler ignores a keypress carrying Alt/Ctrl/Meta/Shift,
+one mid-IME-composition (`event.isComposing` — Enter commits the candidate, it does not mean "go"),
+and one another handler already claimed (`event.defaultPrevented`).
+
+**FAIL-OPEN throughout.** A missing link returns early; `focus({preventScroll: true})` falls back
+to a bare `focus()` on older browsers and then to nothing at all. Every path leaves both buttons
+working by mouse — **a broken shortcut must never cost the user the page itself.** `preventScroll`
+is there so a short page cannot jump under the user at load.
+
+Contract: `docs/claude/frontend.md` → *Welcome page*.
+
+---
+
 ## 2026-09-10 — Clicking the console froze the whole app: the CONSOLE SHIELD
 
 **Angela's report:** *"sometimes users when click the screen to copy a segment of the log
