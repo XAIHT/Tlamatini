@@ -1,0 +1,337 @@
+{
+  "scope": "Every published file under output/, excluding this manifest itself; hashes are byte-exact and output/** has Git text conversion disabled.",
+  "files": 61,
+  "total_bytes": 44052091,
+  "privacy": "The fixture contains the ordinary generic user only; session table empty. Runtime sessions and private original test-session backup are outside output/ under ignored Temp/avatar_flash_fix/.",
+  "assets": [
+    {
+      "path": "output/avatar_flash_fix/__pycache__/dev_settings.cpython-312.pyc",
+      "bytes": 1041,
+      "sha256": "a39119a33a703e58a730106b3d25dc05a33239b5d73e77ca931b0e684890147f"
+    },
+    {
+      "path": "output/avatar_flash_fix/after-test/ec-mc.png",
+      "bytes": 112997,
+      "sha256": "541b3d83a9ce9f79dcc451984cdc79f5d9293c290822c5cda649cf5517e80a69"
+    },
+    {
+      "path": "output/avatar_flash_fix/after-test/ec-mo.png",
+      "bytes": 113803,
+      "sha256": "0d010b8af2c5e7527ff38211a8e126b18d5fa10cbc3618643da2c639e805b835"
+    },
+    {
+      "path": "output/avatar_flash_fix/after-test/eo-mc.png",
+      "bytes": 114271,
+      "sha256": "fe23158b5c700124dc4e549f19be7678b83bb231eb5e29d5fa1d335165ac9451"
+    },
+    {
+      "path": "output/avatar_flash_fix/after-test/eo-mo.png",
+      "bytes": 114471,
+      "sha256": "9c13201836ce935706df45f7e2924a82506d4a90edcf5a33483030ad9b617227"
+    },
+    {
+      "path": "output/avatar_flash_fix/after-test/idle.png",
+      "bytes": 127567,
+      "sha256": "be3196c666a82e922468d28f7ebc0b6813b39555769de24d41e070d9ad28ac63"
+    },
+    {
+      "path": "output/avatar_flash_fix/after-test/narrow.png",
+      "bytes": 124369,
+      "sha256": "63ba1d45e68f3fa8f3cb509c4854fea884e782560b7ede4e9f111b73b3acf7c5"
+    },
+    {
+      "path": "output/avatar_flash_fix/after-test/results.json",
+      "bytes": 907,
+      "sha256": "6891f13e4221715ba2bf3267c6b8b3fb840dde31785b5cf5e5c06fa827b92c43",
+      "physical_lines": 51
+    },
+    {
+      "path": "output/avatar_flash_fix/after-test/speaking.png",
+      "bytes": 127567,
+      "sha256": "be3196c666a82e922468d28f7ebc0b6813b39555769de24d41e070d9ad28ac63"
+    },
+    {
+      "path": "output/avatar_flash_fix/before/agent_page.html",
+      "bytes": 47535,
+      "sha256": "223752665a5d9d9c8d840fc83244de989bbe9c16e427400c821aa493cc6d96ab",
+      "physical_lines": 780
+    },
+    {
+      "path": "output/avatar_flash_fix/before/avatar.css",
+      "bytes": 7422,
+      "sha256": "fa0b411033edbeaa699bf2f06524b38ffb4795d79270f570f542a118dad21a7d",
+      "physical_lines": 125
+    },
+    {
+      "path": "output/avatar_flash_fix/before/avatar.js",
+      "bytes": 24658,
+      "sha256": "9b64128b38b1fd1c91f35cda73eb6f7fd8d2bd49e81d9bb22938791fb4885833",
+      "physical_lines": 414
+    },
+    {
+      "path": "output/avatar_flash_fix/before-test/idle.png",
+      "bytes": 127646,
+      "sha256": "19ca1ebe25da3e48ca0dbe8c7e23a2fc3a8857dcf2b883c1bc3ef7a790cca0a2"
+    },
+    {
+      "path": "output/avatar_flash_fix/before-test/observed-flash.png",
+      "bytes": 118636,
+      "sha256": "b518f8edbf6412585e4144b61ff938fe1cd566b5f25219a0c39ee3c2ee3cf93b"
+    },
+    {
+      "path": "output/avatar_flash_fix/before-test/results.json",
+      "bytes": 207,
+      "sha256": "41bcfdac04969ddd31028b76602e093ee8344919736b756a41b7f87d2eb1d27b",
+      "physical_lines": 12
+    },
+    {
+      "path": "output/avatar_flash_fix/collectstatic-results.json",
+      "bytes": 1360,
+      "sha256": "5ecfe9bc72711fbcb3f4e3e700ecad34f0851b85a9face026ab6a38971bb2f32",
+      "physical_lines": 42
+    },
+    {
+      "path": "output/avatar_flash_fix/deployment-backups/collected-source/avatar.css",
+      "bytes": 7422,
+      "sha256": "fa0b411033edbeaa699bf2f06524b38ffb4795d79270f570f542a118dad21a7d",
+      "physical_lines": 125
+    },
+    {
+      "path": "output/avatar_flash_fix/deployment-backups/collected-source/avatar.js",
+      "bytes": 24658,
+      "sha256": "9b64128b38b1fd1c91f35cda73eb6f7fd8d2bd49e81d9bb22938791fb4885833",
+      "physical_lines": 414
+    },
+    {
+      "path": "output/avatar_flash_fix/deployment-backups/installed-agent/avatar.css",
+      "bytes": 7422,
+      "sha256": "fa0b411033edbeaa699bf2f06524b38ffb4795d79270f570f542a118dad21a7d",
+      "physical_lines": 125
+    },
+    {
+      "path": "output/avatar_flash_fix/deployment-backups/installed-agent/avatar.js",
+      "bytes": 24658,
+      "sha256": "9b64128b38b1fd1c91f35cda73eb6f7fd8d2bd49e81d9bb22938791fb4885833",
+      "physical_lines": 414
+    },
+    {
+      "path": "output/avatar_flash_fix/deployment-backups/installed-collected/avatar.css",
+      "bytes": 7422,
+      "sha256": "fa0b411033edbeaa699bf2f06524b38ffb4795d79270f570f542a118dad21a7d",
+      "physical_lines": 125
+    },
+    {
+      "path": "output/avatar_flash_fix/deployment-backups/installed-collected/avatar.js",
+      "bytes": 24658,
+      "sha256": "9b64128b38b1fd1c91f35cda73eb6f7fd8d2bd49e81d9bb22938791fb4885833",
+      "physical_lines": 414
+    },
+    {
+      "path": "output/avatar_flash_fix/deployment-backups/installed-source/avatar.css",
+      "bytes": 7422,
+      "sha256": "fa0b411033edbeaa699bf2f06524b38ffb4795d79270f570f542a118dad21a7d",
+      "physical_lines": 125
+    },
+    {
+      "path": "output/avatar_flash_fix/deployment-backups/installed-source/avatar.js",
+      "bytes": 24658,
+      "sha256": "9b64128b38b1fd1c91f35cda73eb6f7fd8d2bd49e81d9bb22938791fb4885833",
+      "physical_lines": 414
+    },
+    {
+      "path": "output/avatar_flash_fix/dev_settings.py",
+      "bytes": 670,
+      "sha256": "01d7a2a0f5469699ee49e659c71e5bf6fabba55555312cbc426a94fd18fba5ed",
+      "physical_lines": 18
+    },
+    {
+      "path": "output/avatar_flash_fix/development-test.sqlite3",
+      "bytes": 634880,
+      "sha256": "ac8c6f347fdf407ca299bb8a86a6599234dddfd4826709203d670d17cf1fcb0e"
+    },
+    {
+      "path": "output/avatar_flash_fix/development_test.py",
+      "bytes": 1908,
+      "sha256": "962f4145f2418a86362e65394859975fd9135600b1fe3e0e328686d0c43415fa",
+      "physical_lines": 44
+    },
+    {
+      "path": "output/avatar_flash_fix/README.md",
+      "bytes": 5764,
+      "sha256": "a97a887a1ba0cf128418d46e35266b1b0fd9722cbb992fc1d6a3a6ce09668698",
+      "physical_lines": 61
+    },
+    {
+      "path": "output/avatar_flash_fix/visible-first-pass/results.json",
+      "bytes": 47123,
+      "sha256": "46d56f1c090759f99d4ab5e62e960b62c88d26de55aaf1df5c0d5864d4b52835",
+      "physical_lines": 2257
+    },
+    {
+      "path": "output/avatar_flash_fix/visible-first-pass/selection-issue.png",
+      "bytes": 82843,
+      "sha256": "8b02bb463f48083ce2f3291046ebed390602aac2aa1dcdae7987669543d1df99"
+    },
+    {
+      "path": "output/avatar_flash_fix/visible-test/01-real-django-page.png",
+      "bytes": 84344,
+      "sha256": "b5ffe3d83b62c81b938a6de47ff93ed8d4effe92f7bd0a7211384cffa18aaf27"
+    },
+    {
+      "path": "output/avatar_flash_fix/visible-test/checkpoint-100.png",
+      "bytes": 84599,
+      "sha256": "a3f306c1f26db334a5c748fba15f67ab2435df63adfeb50f89190e9ad77a4f50"
+    },
+    {
+      "path": "output/avatar_flash_fix/visible-test/checkpoint-150.png",
+      "bytes": 63683,
+      "sha256": "8f6c363be642a7b9e92181076e4d7e4c20029771147b2a24974ccc20ba1beb02"
+    },
+    {
+      "path": "output/avatar_flash_fix/visible-test/checkpoint-200.png",
+      "bytes": 63613,
+      "sha256": "6b1cb8e833d41f55bfc40392f92f13115d2eeb24b5c6e5c6a2c2fadd2b1d3b05"
+    },
+    {
+      "path": "output/avatar_flash_fix/visible-test/checkpoint-250.png",
+      "bytes": 103071,
+      "sha256": "4536a949edfb1b464d8dbc5cafd18292ea23edc30f899c476d949d24ab428cc9"
+    },
+    {
+      "path": "output/avatar_flash_fix/visible-test/checkpoint-300.png",
+      "bytes": 103006,
+      "sha256": "d4e2c399a30f5c0c9c96c0ebd0803d9aa420687a97c3466b7a1beff94768d67d"
+    },
+    {
+      "path": "output/avatar_flash_fix/visible-test/checkpoint-50.png",
+      "bytes": 84497,
+      "sha256": "f1f92cfcb889e0bc8754777d45836398189e4ed26bf3eeac0612e704e7c9f0de"
+    },
+    {
+      "path": "output/avatar_flash_fix/visible-test/final-passed.png",
+      "bytes": 107404,
+      "sha256": "66d161f4fea7c637e1ca604fa5b356c180cd48bec2e9024081837cec92716288"
+    },
+    {
+      "path": "output/avatar_flash_fix/visible-test/results.json",
+      "bytes": 47324,
+      "sha256": "4823d0b7b3c9d0c030865337daa2e89d814a9cf67ca113ed374d6c4203f83c47",
+      "physical_lines": 2266
+    },
+    {
+      "path": "output/Gemini_girl_animation/01_eyes_open_smiling.png",
+      "bytes": 1497467,
+      "sha256": "d3e4177df125ec5f5879c078e9a55505278dc19e7c31904fb3cb52b085b0676d"
+    },
+    {
+      "path": "output/Gemini_girl_animation/02_eyes_open_neutral.png",
+      "bytes": 1487497,
+      "sha256": "b00f05a94500ae8a309fea6e9897b54d15ad09aecb58652abdff2567695b4b21"
+    },
+    {
+      "path": "output/Gemini_girl_animation/03_eyes_closed_smiling.png",
+      "bytes": 1516548,
+      "sha256": "db6697a8355939f91f850c48154b0133e1e2435058ab5479976334c020c3428d"
+    },
+    {
+      "path": "output/Gemini_girl_animation/04_eyes_closed_neutral.png",
+      "bytes": 1510306,
+      "sha256": "4af52f3730f11923505695500b398490a22f0abf9971a502e09f64254d28c06d"
+    },
+    {
+      "path": "output/Gemini_girl_animation/alignment.json",
+      "bytes": 4113,
+      "sha256": "49d19ad1851be6a57b1d9c4679619c0cb5bd33ecac956712c21215ee3a4090cd",
+      "physical_lines": 153
+    },
+    {
+      "path": "output/Gemini_girl_animation/build_frames.py",
+      "bytes": 5652,
+      "sha256": "36d905d6a1ee6a207ec8d5a270487d933db1f7d30bf8db44dc0b50043d9fd910",
+      "physical_lines": 124
+    },
+    {
+      "path": "output/Gemini_girl_animation/contact_sheet.jpg",
+      "bytes": 195691,
+      "sha256": "883665368c5bca3f22cdd84200f2cbdba38c4e47f8d53c98f407b0d2f019df85"
+    },
+    {
+      "path": "output/Gemini_girl_animation/exact_crops/01_eyes_open_smiling.png",
+      "bytes": 1452110,
+      "sha256": "3739da26bfc3ece7ebce4600b7dafdc90e0c71a4e929aa8d13a20f1aab5f40e3"
+    },
+    {
+      "path": "output/Gemini_girl_animation/exact_crops/02_eyes_open_neutral.png",
+      "bytes": 1440350,
+      "sha256": "4f4d9e64717920f3f8c5b4a4859a7f4d186934f9bde9fc3375ba7062fc01b1ab"
+    },
+    {
+      "path": "output/Gemini_girl_animation/exact_crops/03_eyes_closed_smiling.png",
+      "bytes": 1469060,
+      "sha256": "4d5f605929273eed0d1bb667e82e7bf21b154798226f156a9f4ae203b73e1660"
+    },
+    {
+      "path": "output/Gemini_girl_animation/exact_crops/04_eyes_closed_neutral.png",
+      "bytes": 1458667,
+      "sha256": "c2ea2c84a8296656428651721ce6e4f492197f569b3db06ec66f8bd0a03fb175"
+    },
+    {
+      "path": "output/Gemini_girl_animation/girl_frames_jpg.zip",
+      "bytes": 2207101,
+      "sha256": "a50a4959c96906cca96b4de26e32e4ed4d47df801bae662d1c18ab1042afadd2"
+    },
+    {
+      "path": "output/Gemini_girl_animation/jpg/01_eyes_open_smiling.jpg",
+      "bytes": 550040,
+      "sha256": "339664fb3bf488fc299f88f6d448a2ea6ea1d530a284e0529f0ef8fea5effdf3"
+    },
+    {
+      "path": "output/Gemini_girl_animation/jpg/02_eyes_open_neutral.jpg",
+      "bytes": 546560,
+      "sha256": "3ef16fffacd226d356e6a238dbb0b3a22ea079682a51fa6094b6474c14f81768"
+    },
+    {
+      "path": "output/Gemini_girl_animation/jpg/03_eyes_closed_smiling.jpg",
+      "bytes": 556352,
+      "sha256": "1422f8dbd71d6394a4f44520bacfce77810bfe954c626f8a83f6897925ee27c5"
+    },
+    {
+      "path": "output/Gemini_girl_animation/jpg/04_eyes_closed_neutral.jpg",
+      "bytes": 553458,
+      "sha256": "a4ee30a94284dce3347c0b2d92a5cf8ee1a6caa88c9a2a1a7e92edff7f3e0e0a"
+    },
+    {
+      "path": "output/Gemini_girl_animation/preview.html",
+      "bytes": 5043,
+      "sha256": "55b74f42777be390ea84388c701fa28309e0125cae64c8f2ed13269db8c17f3e",
+      "physical_lines": 103
+    },
+    {
+      "path": "output/Gemini_girl_animation/preview_screenshot.png",
+      "bytes": 745569,
+      "sha256": "6766121572ce5579f773aef4e9e9b82e4354e5337f424cd40a41aa55829359c3"
+    },
+    {
+      "path": "output/Gemini_girl_animation/README.md",
+      "bytes": 2547,
+      "sha256": "2cabc8248c67b1a2fbd20365abef1e7d8c7e929efbe521cfc62fa80d525b8da9",
+      "physical_lines": 26
+    },
+    {
+      "path": "output/Gemini_girl_animation/sprite_2x2.png",
+      "bytes": 6002667,
+      "sha256": "e5ea5b503b763c657a536ce7fbd61c7b922e0d30df7e0b6d55f97d49800f3f15"
+    },
+    {
+      "path": "output/Gemini_girl_animation.zip",
+      "bytes": 18035209,
+      "sha256": "9cd1cf5fab04c83dd03cbe39d483982b2ab39c68350afe02e5cb66982db7df17"
+    },
+    {
+      "path": "output/README.md",
+      "bytes": 2578,
+      "sha256": "94e06e68b3c9e92063780b7742d619a22d3e2288da35f7d32660ac87cb2ecd1c",
+      "physical_lines": 26
+    }
+  ]
+}

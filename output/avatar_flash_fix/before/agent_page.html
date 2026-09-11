@@ -1,0 +1,780 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" class="html-general">
+
+<head>
+  <title>Tlamatini</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/x-icon" href="{% static 'agent/img/Tlamatini.ico' %}?v={{ STATIC_VERSION }}">
+  <link rel="shortcut icon" type="image/x-icon" href="{% static 'agent/img/Tlamatini.ico' %}?v={{ STATIC_VERSION }}">
+  <link rel="apple-touch-icon" href="{% static 'agent/img/Tlamatini.ico' %}?v={{ STATIC_VERSION }}">
+  {% load django_bootstrap5 %}
+  {% bootstrap_css %}
+  {% bootstrap_javascript %}
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+  <link rel="stylesheet" href="{% static 'agent/css/agent_page.css' %}?v={{ STATIC_VERSION }}">
+  <link rel="stylesheet" href="{% static 'agent/css/tools_dialog.css' %}?v={{ STATIC_VERSION }}">
+  <link rel="stylesheet" href="{% static 'agent/css/skills_dialog.css' %}?v={{ STATIC_VERSION }}">
+  <link rel="stylesheet" href="{% static 'agent/css/external_mcps_dialog.css' %}?v={{ STATIC_VERSION }}">
+  <link rel="stylesheet" href="{% static 'agent/css/contacts_dialog.css' %}?v={{ STATIC_VERSION }}">
+  <link rel="stylesheet" href="{% static 'agent/css/access_keys_wizard.css' %}?v={{ STATIC_VERSION }}">
+  <link rel="stylesheet" href="{% static 'agent/css/avatar.css' %}?v={{ STATIC_VERSION }}">
+  {# dialog_theme.css MUST stay LAST: it supersedes the legacy .ui-dialog chrome on cascade ORDER. #}
+  <link rel="stylesheet" href="{% static 'agent/css/dialog_theme.css' %}?v={{ STATIC_VERSION }}_dlg3">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://code.jquery.com/ui/1.13.3/jquery-ui.min.js"></script>
+  <!-- Dialog dismissal policy: X / Cancel / Continue ONLY - never an outside
+       click, never Escape. Loaded right after jQuery UI (it patches the widget
+       defaults) and before every application dialog module, so dialogs written
+       later inherit the policy with no wiring. -->
+  <script src="{% static 'agent/js/dialog_policy.js' %}?v={{ STATIC_VERSION }}_dlgpolicy3_esc"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/java.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/c.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/cpp.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/css.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/sql.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/xml.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/yaml.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/typescript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/kotlin.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/rust.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/ini.min.js"></script>
+</head>
+
+<body>
+  <nav id="navbar-container" class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div id="navbar-content" class="container-fluid align-items-center">
+      <a class="navbar-brand navbar-margin" href="#">Tlamatini</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMenu"
+        aria-controls="navbarMenu" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div id="contextInfo" class="d-none d-lg-flex align-items-center flex-grow-1 mx-2 context-info-invisible">
+        <span class="me-2">Context:</span>
+        <span id="contextData" class="context-ellipsis" title=""></span>
+        <div class="dropdown" id="open-in-dropdown-item" style="display: none;">
+          <button class="open-in-btn" type="button" id="open-in-menu-button" data-bs-toggle="dropdown"
+            aria-expanded="false">
+            <svg class="open-in-icon" viewBox="0 0 16 16" fill="currentColor" width="12" height="12">
+              <path
+                d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5z" />
+              <path
+                d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0v-5z" />
+            </svg>
+            Open in...
+            <svg class="open-in-caret" viewBox="0 0 16 16" fill="currentColor" width="10" height="10">
+              <path d="M3.204 5h9.592L8 10.481 3.204 5z" />
+            </svg>
+          </button>
+          <ul class="dropdown-menu dropdown-entry" aria-labelledby="open-in-menu-button" id="open-in-menu-list">
+          </ul>
+        </div>
+      </div>
+      <div class="collapse navbar-collapse justify-content-end" id="navbarMenu">
+        <ul class="navbar-nav align-items-lg-center" id="menu-editor">
+          <li class="nav-item"><a class="nav-link" href="#" id="open-button">Open</a></li>
+          <li class="nav-item"><a class="nav-link" href="#" id="save-as-button">Save</a></li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="context-menu-button" role="button"
+              data-bs-toggle="dropdown" aria-expanded="false">Context</a>
+            <ul class="dropdown-menu dropdown-entry" aria-labelledby="context-menu-button">
+              <li><a class="dropdown-item menu-entry" href="#" id="set-dir-context">Set directory as context</a></li>
+              <li><a class="dropdown-item menu-entry" href="#" id="set-file-context">Set file as context</a></li>
+              <li><a class="dropdown-item menu-entry" href="#" id="view-context-dir-in-canvas">View context directory in
+                  canvas</a></li>
+              <li><a class="dropdown-item menu-entry" href="#" id="clear-context">Clear context</a></li>
+              <li><a class="dropdown-item menu-entry" href="#" id="set-omissions"
+                  onclick="OpenOmissionsDialog(event);">Set file type omissions</a></li>
+            </ul>
+          </li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="mcps-menu-button" role="button" data-bs-toggle="dropdown"
+              aria-expanded="false">MCPs</a>
+            <ul class="dropdown-menu dropdown-entry" aria-labelledby="mcps-menu-button">
+              <li><a class="dropdown-item menu-entry" href="#" id="enable-mcps" onclick="OpenMcpsDialog(event);">
+                  Configure MCPs</a></li>
+            </ul>
+          </li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="agents-menu-button" role="button" data-bs-toggle="dropdown"
+              aria-expanded="false">Agents</a>
+            <ul class="dropdown-menu dropdown-entry" aria-labelledby="agents-menu-button">
+              <li><a class="dropdown-item menu-entry" href="#" id="enable-agents" onclick="OpenAgentsDialog(event);">
+                  Configure Agents</a></li>
+              <li><a class="dropdown-item menu-entry" href="{% url 'agentic_control_panel' %}"
+                  id="agentic-control-panel" target="_blank" rel="noopener">Agentic Control Panel</a></li>
+            </ul>
+          </li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="skills-menu-button" role="button" data-bs-toggle="dropdown"
+              aria-expanded="false">ACPX-Skills</a>
+            <ul class="dropdown-menu dropdown-entry" aria-labelledby="skills-menu-button">
+              <li><a class="dropdown-item menu-entry" href="#" id="browse-skills"
+                  onclick="OpenSkillsBrowseDialog(event);">Browse Skills</a></li>
+              <li><a class="dropdown-item menu-entry" href="#" id="configure-skills"
+                  onclick="OpenSkillsConfigureDialog(event);">Configure Skills</a></li>
+              <li><a class="dropdown-item menu-entry" href="#" id="skills-diagnostics"
+                  onclick="OpenSkillsDiagnosticsDialog(event);">Diagnostics</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item menu-entry" href="#" id="reload-skill-registry"
+                  onclick="ReloadSkillRegistry(event);">Reload Registry</a></li>
+            </ul>
+          </li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="external-menu-button" role="button" data-bs-toggle="dropdown"
+              aria-expanded="false">External</a>
+            <ul class="dropdown-menu dropdown-entry" aria-labelledby="external-menu-button">
+              <li><a class="dropdown-item menu-entry" href="#" id="external-mcps"
+                  onclick="OpenExternalMcpsDialog(event);">MCPs</a></li>
+            </ul>
+          </li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="config-menu-button" role="button" data-bs-toggle="dropdown"
+              aria-expanded="false">Config</a>
+            <ul class="dropdown-menu dropdown-entry" aria-labelledby="config-menu-button">
+              <li><a class="dropdown-item menu-entry" href="#" id="config-models"
+                  onclick="OpenConfigModelsDialog(event);">Models</a></li>
+              <li><a class="dropdown-item menu-entry" href="#" id="config-urls"
+                  onclick="OpenConfigUrlsDialog(event);">URLs</a></li>
+              <li><a class="dropdown-item menu-entry" href="#" id="config-contacts"
+                  onclick="OpenContactsDialog(event);">Contacts</a></li>
+              <li><a class="dropdown-item menu-entry" href="#" id="access-keys-wizard"
+                  onclick="OpenAccessKeysWizard(event);">Access Keys Wizard</a></li>
+              <li><a class="dropdown-item menu-entry" href="#" id="config-voice" onclick="OpenVoiceDialog(event);">Voice</a></li>
+            </ul>
+          </li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="db-menu-button" role="button" data-bs-toggle="dropdown"
+              aria-expanded="false">DB</a>
+            <ul class="dropdown-menu dropdown-entry" aria-labelledby="db-menu-button">
+              <li><a class="dropdown-item menu-entry" href="#" id="backup-database"
+                  onclick="OpenBackupDbDialog(event);">Backup database</a></li>
+              <li><a class="dropdown-item menu-entry" href="#" id="set-database"
+                  onclick="OpenSetDbDialog(event);">Set DB</a></li>
+            </ul>
+          </li>
+          {% if request.user.is_staff %}
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="admin-menu-button" role="button" data-bs-toggle="dropdown"
+              aria-expanded="false">Admin</a>
+            <ul class="dropdown-menu dropdown-entry" aria-labelledby="admin-menu-button">
+              <li><a class="dropdown-item menu-entry" href="{% url 'admin:index' %}" id="open-admin" target="_blank"
+                  rel="noopener">Open Admin page</a></li>
+            </ul>
+          </li>
+          {% endif %}
+          <li class="nav-item"><a class="nav-link" href="#" id="re-connect-button"
+              onclick="Reconnect(event);">Reconnect</a></li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="about-menu-button" role="button"
+              data-bs-toggle="dropdown" aria-expanded="false">About</a>
+            <ul class="dropdown-menu dropdown-entry" aria-labelledby="about-menu-button">
+              <li><a class="dropdown-item menu-entry" href="#" id="about-button"
+                  onclick="OpenAboutDialog(event);">About</a></li>
+              <li><a class="dropdown-item menu-entry" href="#" id="check-updates-button"
+                  onclick="OpenCheckUpdatesDialog(event);">Check for updates</a></li>
+            </ul>
+          </li>
+          <li class="nav-item"><a id="logout-button" class="nav-link" href="#" param="{% url 'logout' %}"
+              onclick="CancelAllAndLogout(event);">Logout</a></li>
+          <li class="nav-item d-lg-none">
+            <a class="nav-link small text-truncate" href="#" id="contextMobile" data-bs-toggle="tooltip"
+              data-bs-placement="bottom" title="">Context</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <div id="connection-status" class="connection-status connection-status-hidden" role="status" aria-live="polite"></div>
+
+  <div class="row" id="chat-container">
+    <div id="main-chat-container" class="col-4 px-0">
+      <div id="subchat-container">
+        <div id="chat-log"></div>
+        <div id="vertical-drag-divider" tabindex="0"></div>
+        <div id="tools-chat-form-container">
+          <div id="tools-div">
+            <div id="tools-left">
+              <button type="button" id="prompts-catalog">Catalog of prompts</button>
+              <button type="button" id="clean-history">Clear history</button>
+              <label id="multi-turn-toggle" class="toolbar-toggle" for="multi-turn-enabled">
+                <input id="multi-turn-enabled" type="checkbox" />
+                <span>Multi-Turn</span>
+              </label>
+              <label id="exec-report-toggle" class="toolbar-toggle toolbar-toggle-disabled" for="exec-report-enabled"
+                title="Append per-agent execution tables to the answer. Enabled only when Multi-Turn is on.">
+                <input id="exec-report-enabled" type="checkbox" disabled />
+                <span>Exec report</span>
+              </label>
+              <label id="acpx-toggle" class="toolbar-toggle" for="acpx-enabled">
+                <input id="acpx-enabled" type="checkbox" />
+                <span>ACPX</span>
+              </label>
+              <label id="ask-execs-toggle" class="toolbar-toggle toolbar-toggle-disabled" for="ask-execs-enabled"
+                title="Ask permission before each Multi-Turn tool/agent execution. Enabled only when Multi-Turn is on.">
+                <input id="ask-execs-enabled" type="checkbox" disabled />
+                <span>Ask Execs</span>
+              </label>
+              <label id="step-by-step-toggle" class="toolbar-toggle" for="step-by-step-enabled"
+                title="Guide setup and troubleshooting one user-confirmed step at a time.">
+                <input id="step-by-step-enabled" type="checkbox" />
+                <span>Step-by-Step</span>
+              </label>
+              <label id="internet-toggle" class="toolbar-toggle" for="internetEnabled">
+                <input id="internetEnabled" type="checkbox" />
+                <span>Add internet context</span>
+              </label>
+            </div>
+          </div>
+          <div id="chat-image-chips" aria-live="polite"></div>
+          <form id="chat-form">
+            {% csrf_token %}
+            <textarea id="chat-message-input" autocomplete="off" placeholder="Send a message..."
+              spellcheck="false"></textarea>
+            <button type="submit" id="chat-message-submit">Send</button>
+<div id="tlm-avatar-dock" title="Click me - I will tell you how it is going" role="button" tabindex="0" aria-label="Tlamatini avatar - click to hear a status update"><div id="tlm-face-outer"><div id="tlm-face"><img id="tlm-s-eo-mc" class="tlm-on" src="{% static 'agent/img/avatar/eo_mc.jpg' %}?v={{ STATIC_VERSION }}" alt="Tlamatini" draggable="false"><img id="tlm-s-ec-mc" src="{% static 'agent/img/avatar/ec_mc.jpg' %}?v={{ STATIC_VERSION }}" alt="" draggable="false"><img id="tlm-s-eo-mo" src="{% static 'agent/img/avatar/eo_mo.jpg' %}?v={{ STATIC_VERSION }}" alt="" draggable="false"><img id="tlm-s-ec-mo" src="{% static 'agent/img/avatar/ec_mo.jpg' %}?v={{ STATIC_VERSION }}" alt="" draggable="false"></div></div></div>
+
+
+          </form>
+
+        </div>
+      </div>
+      <div id="chat-drop-overlay">
+        <div id="chat-drop-overlay-inner">
+          <span class="chat-drop-icon">🖼️</span>
+          <span class="chat-drop-text">Drop an image — Tlamatini saves it to Temp and puts the path in your message</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="drag-divider" tabindex="0"></div>
+
+    <div class="col-8 px-0" id="canvas-container">
+      <div id="filename-div" class="row">
+        <div class="col-6" id="filename-div-left">
+          <span id="filename">&lt;&lt;...&gt;&gt;</span>
+        </div>
+
+        <div class="col-6" id="filename-div-right">
+          <button id="copy-canvas-button">Copy</button>
+          <button id="reopen-canvas-button">Reopen</button>
+          <button id="clean-canvas-button">Clear canvas</button>
+          <button id="context-button">Use as context</button>
+        </div>
+      </div>
+      <div id="editor-container">
+        <textarea id="line-numbers" placeholder="...."></textarea>
+        <div id="text-editor">
+          <pre><code></code></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="confirmation-dialog-message" title="" style="display: none;">
+    <h2 id="confirmation-primary-dialog-legend"></h2>
+    <p id="confirmation-secondary-dialog-legend"></p>
+  </div>
+  <div id="exec-permission-dialog-message" title="Execution permission required" style="display: none;">
+    <p id="exec-perm-intro">Tlamatini wants to run the following before continuing the Multi-Turn chain.
+      Review what is about to execute and choose <strong>Proceed</strong> or <strong>Deny</strong>.</p>
+    <div class="exec-perm-row">
+      <span class="exec-perm-label">Tlamatini Tool / MCP / Agent</span>
+      <div id="exec-perm-agent" class="exec-perm-value"></div>
+    </div>
+    <div class="exec-perm-row">
+      <span class="exec-perm-label">Underlying tool</span>
+      <div id="exec-perm-toolname" class="exec-perm-value"></div>
+    </div>
+    <div class="exec-perm-row">
+      <span class="exec-perm-label">Parameters of execution</span>
+      <textarea id="exec-perm-params" class="exec-perm-textarea" readonly spellcheck="false" rows="5"></textarea>
+    </div>
+    <div class="exec-perm-row">
+      <span class="exec-perm-label">Program to be executed</span>
+      <textarea id="exec-perm-program" class="exec-perm-textarea" readonly spellcheck="false" rows="4"></textarea>
+    </div>
+    <div class="exec-perm-row">
+      <span class="exec-perm-label">Shell to be executed</span>
+      <textarea id="exec-perm-shell" class="exec-perm-textarea" readonly spellcheck="false" rows="2"></textarea>
+    </div>
+  </div>
+  <div id="omissions-dialog-message" title="" style="display: none;">
+    <h5 id="omissions-primary-dialog-legend"></h5>
+    <p id="omissions-secondary-dialog-legend"></p>
+    <input id="fileTypeOmissions" type="text" value="" placeholder="File extensions separated by commas (,)"
+      spellcheck="false" size="57">
+  </div>
+  <div id="mcps-dialog-message" title="" style="display: none;">
+    <h5 id="mcps-primary-dialog-legend"></h5>
+    <p id="mcps-secondary-dialog-legend"></p>
+    <div>
+      <ul id="rag-mcps-list">
+        <li><input id="mcp-1" type="checkbox">
+          <label id="label-mcp-1" for="mcp-1">System-Metrics</label>
+        </li>
+        <li><input id="mcp-2" type="checkbox">
+          <label id="label-mcp-2" for="mcp-2">Files-Search</label>
+        </li>
+      </ul>
+    </div>
+    <br>
+    <p id="mcps-thirdtiary-dialog-legend"></p>
+    <div>
+      <ul id="tool-mcps-list"></ul>
+    </div>
+  </div>
+  <div id="agents-dialog-message" title="" style="display: none;">
+    <h5 id="agents-primary-dialog-legend"></h5>
+    <p id="agents-secondary-dialog-legend"></p>
+    <div>
+      <ul id="agents-list"></ul>
+    </div>
+  </div>
+  <div id="skills-configure-dialog-message" title="" style="display: none;">
+    <h5 id="skills-configure-primary-dialog-legend"></h5>
+    <p id="skills-configure-secondary-dialog-legend"></p>
+    <div>
+      <ul id="skills-configure-list"></ul>
+    </div>
+  </div>
+  <div id="external-mcps-dialog-message" class="emx-modal" role="dialog" aria-modal="true"
+    aria-labelledby="external-mcps-title" aria-describedby="external-mcps-legend" hidden>
+    <section class="emx-panel">
+      <header class="emx-header">
+        <div>
+          <div class="emx-kicker">External MCPs</div>
+          <h2 id="external-mcps-title">Activate MCPs</h2>
+        </div>
+        <button id="external-mcps-close" class="emx-icon-button" type="button" aria-label="Close">&times;</button>
+      </header>
+      <div class="emx-body">
+        <section class="emx-catalog-pane" aria-label="MCP catalog">
+          <p id="external-mcps-legend"></p>
+          <div class="emx-search-row">
+            <input id="external-mcps-search" type="search" placeholder="Search services..." autocomplete="off">
+            <span id="external-mcps-chip" class="emx-chip"></span>
+          </div>
+          <div id="external-mcps-list" class="emx-list" tabindex="0"></div>
+          <div id="external-mcps-warn" class="emx-warn" aria-live="polite"></div>
+        </section>
+        <section class="emx-active-pane" aria-label="Active MCP services">
+          <div class="emx-stitle">Active - sent with your prompt</div>
+          <div class="emx-summary-wrap">
+            <table class="emx-sum">
+              <thead><tr><th>Service</th><th>Tools</th><th>Transport</th><th>Status</th></tr></thead>
+              <tbody id="external-mcps-sum"></tbody>
+            </table>
+          </div>
+          <p class="emx-drop-hint">Drop an MCP <code>.json</code> anywhere on the page to add it.</p>
+        </section>
+      </div>
+      <footer class="emx-footer">
+        <span class="emx-footer-note">Only active services connect; inactive ones stay in the catalog.</span>
+        <div class="emx-actions">
+          <button id="external-mcps-cancel" class="emx-button emx-button-secondary" type="button">Cancel</button>
+          <button id="external-mcps-continue" class="emx-button emx-button-primary" type="button">Continue</button>
+        </div>
+      </footer>
+    </section>
+  </div>
+  <div id="contacts-dialog-message" class="ctb-modal" role="dialog" aria-modal="true"
+    aria-labelledby="contacts-title" aria-describedby="contacts-legend" hidden>
+    <section class="ctb-panel">
+      <header class="ctb-header">
+        <div>
+          <div class="ctb-kicker">Config</div>
+          <h2 id="contacts-title">Contacts book</h2>
+        </div>
+        <button id="contacts-close" class="ctb-icon-button" type="button" aria-label="Close">&times;</button>
+      </header>
+      <div class="ctb-body">
+        <section class="ctb-list-pane" aria-label="Contacts list">
+          <p id="contacts-legend"></p>
+          <div class="ctb-search-row">
+            <input id="contacts-search" type="search" placeholder="Search contacts..." autocomplete="off">
+            <button id="contacts-add" class="ctb-button ctb-button-primary ctb-add-btn" type="button">+ New</button>
+          </div>
+          <div id="contacts-list" class="ctb-list" tabindex="0"></div>
+          <div id="contacts-warn" class="ctb-warn" aria-live="polite"></div>
+        </section>
+        <section class="ctb-edit-pane" aria-label="Contact editor">
+          <div id="contacts-edit-title" class="ctb-stitle">Pick a contact, or press “New”</div>
+          <form id="contacts-form" class="ctb-form" autocomplete="off" onsubmit="return false;">
+            <label class="ctb-field">
+              <span class="ctb-flabel">Name <em>*</em></span>
+              <input id="contacts-f-name" class="ctb-input" type="text" spellcheck="false" placeholder="Full name">
+            </label>
+            <label class="ctb-field">
+              <span class="ctb-flabel">Aliases</span>
+              <input id="contacts-f-aliases" class="ctb-input" type="text" spellcheck="false"
+                placeholder="Comma-separated, e.g. Ana, <REDACTED>">
+            </label>
+            <label class="ctb-field">
+              <span class="ctb-flabel">Telegram</span>
+              <input id="contacts-f-telegram" class="ctb-input" type="text" spellcheck="false" placeholder="@username">
+            </label>
+            <label class="ctb-field">
+              <span class="ctb-flabel">WhatsApp</span>
+              <input id="contacts-f-whatsapp" class="ctb-input" type="text" spellcheck="false"
+                placeholder="+5215555555555">
+            </label>
+            <label class="ctb-field">
+              <span class="ctb-flabel">Email</span>
+              <input id="contacts-f-email" class="ctb-input" type="text" spellcheck="false"
+                placeholder="name@example.com">
+            </label>
+            <label class="ctb-field">
+              <span class="ctb-flabel">Note</span>
+              <textarea id="contacts-f-note" class="ctb-input ctb-textarea" spellcheck="false" rows="2"
+                placeholder="Optional note"></textarea>
+            </label>
+            <div class="ctb-form-actions">
+              <button id="contacts-apply" class="ctb-button ctb-button-primary" type="button">Apply</button>
+              <button id="contacts-revert" class="ctb-button ctb-button-secondary" type="button">Clear</button>
+            </div>
+            <p class="ctb-form-hint">Edits stay local until you press <strong>Save</strong> below.</p>
+          </form>
+        </section>
+      </div>
+      <footer class="ctb-footer">
+        <span class="ctb-footer-note">Stored in <code>contacts.json</code> next to config — preserved across updates.</span>
+        <div class="ctb-actions">
+          <button id="contacts-cancel" class="ctb-button ctb-button-secondary" type="button">Close</button>
+          <button id="contacts-save" class="ctb-button ctb-button-primary" type="button">Save</button>
+        </div>
+      </footer>
+    </section>
+  </div>
+  <div id="skills-browse-dialog-message" title="" style="display: none;">
+    <div id="skills-browse-toolbar">
+      <input id="skills-browse-search" type="search" placeholder="Search by name or description..." autocomplete="off">
+      <span id="skills-browse-count" class="skills-browse-count"></span>
+    </div>
+    <div id="skills-browse-layout">
+      <div id="skills-browse-list-pane">
+        <ul id="skills-browse-list"></ul>
+      </div>
+      <div id="skills-browse-detail-pane">
+        <div id="skills-browse-detail-empty">Select a skill from the list to see its details.</div>
+        <div id="skills-browse-detail-content" style="display:none;"></div>
+      </div>
+    </div>
+  </div>
+  <div id="skills-diagnostics-dialog-message" title="" style="display: none;">
+    <div id="skills-diagnostics-summary"></div>
+    <div id="skills-diagnostics-sections"></div>
+  </div>
+  <div id="config-models-dialog-message" title="" style="display: none;">
+    <h5 id="config-models-primary-dialog-legend"></h5>
+    <p id="config-models-secondary-dialog-legend"></p>
+    <form id="config-models-form" class="config-form" autocomplete="off"
+      onsubmit="event.preventDefault(); return false;">
+      <div class="config-form-row">
+        <label class="config-form-label" for="config-models-embeding-model">Embedding</label>
+        <input class="config-form-input" id="config-models-embeding-model" type="text" spellcheck="false"
+          data-config-key="embeding-model">
+      </div>
+      <div class="config-form-row">
+        <label class="config-form-label" for="config-models-chained-model">Chained</label>
+        <input class="config-form-input" id="config-models-chained-model" type="text" spellcheck="false"
+          data-config-key="chained-model">
+      </div>
+      <div class="config-form-row">
+        <label class="config-form-label" for="config-models-access-aimed-prompt-model">Access aimed</label>
+        <input class="config-form-input" id="config-models-access-aimed-prompt-model" type="text" spellcheck="false"
+          data-config-key="access_aimed_prompt_model">
+      </div>
+      <div class="config-form-row">
+        <label class="config-form-label" for="config-models-unified-agent-model">Unified</label>
+        <input class="config-form-input" id="config-models-unified-agent-model" type="text" spellcheck="false"
+          data-config-key="unified_agent_model">
+      </div>
+      <div class="config-form-row">
+        <label class="config-form-label" for="config-models-image-interpreter-model">Image interpreter 1</label>
+        <input class="config-form-input" id="config-models-image-interpreter-model" type="text" spellcheck="false"
+          data-config-key="image_interpreter_model">
+      </div>
+      <div class="config-form-row">
+        <label class="config-form-label" for="config-models-image-interpreter-model-2">Image interpreter 2</label>
+        <input class="config-form-input" id="config-models-image-interpreter-model-2" type="text" spellcheck="false"
+          data-config-key="image_interpreter_model_2">
+      </div>
+      <div class="config-form-row">
+        <label class="config-form-label" for="config-models-image-merging-model">Image merger</label>
+        <input class="config-form-input" id="config-models-image-merging-model" type="text" spellcheck="false"
+          data-config-key="image_merging_model">
+      </div>
+      <div class="config-form-row">
+        <label class="config-form-label" for="config-models-mcp-files-search-model">MCP Files search</label>
+        <input class="config-form-input" id="config-models-mcp-files-search-model" type="text" spellcheck="false"
+          data-config-key="mcp_files_search_model">
+      </div>
+      <div class="config-form-row">
+        <label class="config-form-label" for="config-models-internet-classifier-model">Internet classifier</label>
+        <input class="config-form-input" id="config-models-internet-classifier-model" type="text" spellcheck="false"
+          data-config-key="internet_classifier_model">
+      </div>
+      <div class="config-form-row">
+        <label class="config-form-label" for="config-models-web-summarizer-model">Summarizer</label>
+        <input class="config-form-input" id="config-models-web-summarizer-model" type="text" spellcheck="false"
+          data-config-key="web_summarizer_model">
+      </div>
+    </form>
+  </div>
+  <div id="config-urls-dialog-message" title="" style="display: none;">
+    <h5 id="config-urls-primary-dialog-legend"></h5>
+    <p id="config-urls-secondary-dialog-legend"></p>
+    <form id="config-urls-form" class="config-form" autocomplete="off"
+      onsubmit="event.preventDefault(); return false;">
+      <div class="config-form-row">
+        <label class="config-form-label" for="config-urls-ollama-base-url">Ollama base</label>
+        <input class="config-form-input" id="config-urls-ollama-base-url" type="text" spellcheck="false"
+          data-config-key="ollama_base_url" data-config-type="url">
+      </div>
+      <div class="config-form-row">
+        <label class="config-form-label" for="config-urls-unified-agent-base-url">Unified base</label>
+        <input class="config-form-input" id="config-urls-unified-agent-base-url" type="text" spellcheck="false"
+          data-config-key="unified_agent_base_url" data-config-type="url">
+      </div>
+      <div class="config-form-row">
+        <label class="config-form-label" for="config-urls-image-interpreter-base-url">Image interpreter base</label>
+        <input class="config-form-input" id="config-urls-image-interpreter-base-url" type="text" spellcheck="false"
+          data-config-key="image_interpreter_base_url" data-config-type="url">
+      </div>
+      <div class="config-form-row">
+        <label class="config-form-label" for="config-urls-mcp-system-server-host">MCP System server IP</label>
+        <input class="config-form-input" id="config-urls-mcp-system-server-host" type="text" spellcheck="false"
+          data-config-key="mcp_system_server_host" data-config-type="host">
+      </div>
+      <div class="config-form-row">
+        <label class="config-form-label" for="config-urls-mcp-system-server-port">MCP System Server port</label>
+        <input class="config-form-input" id="config-urls-mcp-system-server-port" type="number" min="1" max="65535"
+          spellcheck="false" data-config-key="mcp_system_server_port" data-config-type="port">
+      </div>
+      <div class="config-form-row">
+        <label class="config-form-label" for="config-urls-mcp-system-client-uri">MCP System Client Uri</label>
+        <input class="config-form-input" id="config-urls-mcp-system-client-uri" type="text" spellcheck="false"
+          data-config-key="mcp_system_client_uri" data-config-type="url">
+      </div>
+      <div class="config-form-row">
+        <label class="config-form-label" for="config-urls-mcp-files-search-server-host">MCP Files Server IP</label>
+        <input class="config-form-input" id="config-urls-mcp-files-search-server-host" type="text" spellcheck="false"
+          data-config-key="mcp_files_search_server_host" data-config-type="host">
+      </div>
+      <div class="config-form-row">
+        <label class="config-form-label" for="config-urls-mcp-files-search-server-port">MCP Files Server Port</label>
+        <input class="config-form-input" id="config-urls-mcp-files-search-server-port" type="number" min="1" max="65535"
+          spellcheck="false" data-config-key="mcp_files_search_server_port" data-config-type="port">
+      </div>
+      <div class="config-form-row">
+        <label class="config-form-label" for="config-urls-mcp-files-search-client-uri">MCP Files Client Uri</label>
+        <input class="config-form-input" id="config-urls-mcp-files-search-client-uri" type="text" spellcheck="false"
+          data-config-key="mcp_files_search_client_uri" data-config-type="url">
+      </div>
+      <div class="config-form-row">
+        <label class="config-form-label" for="config-urls-kali-server-url" title="Base URL of the MCP-Kali-Server (server.py) running on your Kali box. The Kalier pentest tool targets this automatically. e.g. http://172.17.48.44:5000">Kali server (Kalier)</label>
+        <input class="config-form-input" id="config-urls-kali-server-url" type="text" spellcheck="false"
+          placeholder="http://127.0.0.1:5000"
+          data-config-key="kali_server_url" data-config-type="url">
+      </div>
+    </form>
+  </div>
+  <div id="config-reconnect-required-dialog-message" title="" style="display: none;">
+    <h5 id="config-reconnect-required-primary-dialog-legend"></h5>
+    <p id="config-reconnect-required-secondary-dialog-legend"></p>
+  </div>
+  <div id="access-keys-wizard-dialog-message" title="Access Keys Wizard" style="display: none;">
+    <div id="access-keys-wizard-shell">
+      <aside id="access-keys-wizard-nav" aria-label="Access keys wizard sections"></aside>
+      <section id="access-keys-wizard-main">
+        <div id="access-keys-wizard-header">
+          <div>
+            <h5 id="access-keys-wizard-title">Access Keys Wizard</h5>
+            <p id="access-keys-wizard-subtitle">Configure provider keys, bridge passwords, and ACPX commands in one place.</p>
+          </div>
+          <div id="access-keys-wizard-summary" aria-live="polite"></div>
+        </div>
+        <div id="access-keys-wizard-notice" aria-live="polite"></div>
+        <div id="access-keys-wizard-content"></div>
+      </section>
+    </div>
+  </div>
+  <div id="backup-db-dialog-message" title="" style="display: none;">
+    <h5 id="backup-db-primary-dialog-legend"></h5>
+    <p id="backup-db-secondary-dialog-legend"></p>
+    <form id="backup-db-form" class="config-form" autocomplete="off"
+      onsubmit="event.preventDefault(); return false;">
+      <div class="config-form-row">
+        <label class="config-form-label" for="backup-db-target-dir">Target directory:</label>
+        <div class="config-form-input-with-browse">
+          <input class="config-form-input" id="backup-db-target-dir" type="text" spellcheck="false"
+            placeholder="e.g. C:\Backups\Tlamatini">
+          <button type="button" id="backup-db-browse-btn" class="config-form-browse-btn"
+            onclick="_browseBackupDbDirectory();" title="Browse for a folder">Browse</button>
+        </div>
+      </div>
+    </form>
+    <p id="backup-db-status" class="backup-db-status" aria-live="polite"></p>
+  </div>
+  <div id="set-db-dialog-message" title="" style="display: none;">
+    <h5 id="set-db-primary-dialog-legend"></h5>
+    <p id="set-db-secondary-dialog-legend"></p>
+    <form id="set-db-form" class="config-form" autocomplete="off"
+      onsubmit="event.preventDefault(); return false;">
+      <div class="config-form-row">
+        <label class="config-form-label" for="set-db-source-path">db.sqlite3 file:</label>
+        <div class="config-form-input-with-browse">
+          <input class="config-form-input" id="set-db-source-path" type="text" spellcheck="false"
+            placeholder="e.g. C:\Backups\Tlamatini\db.sqlite3">
+          <button type="button" id="set-db-browse-btn" class="config-form-browse-btn"
+            onclick="_browseSetDbFile();" title="Browse for a db.sqlite3 file">Browse</button>
+        </div>
+      </div>
+    </form>
+    <p id="set-db-status" class="set-db-status" aria-live="polite"></p>
+  </div>
+  <div id="set-db-warning-dialog-message" title="" style="display: none;">
+    <div class="set-db-warning-body">
+      <span class="set-db-warning-icon" aria-hidden="true">&#9888;</span>
+      <div class="set-db-warning-text">
+        <h5 id="set-db-warning-primary-dialog-legend"></h5>
+        <p id="set-db-warning-secondary-dialog-legend"></p>
+      </div>
+    </div>
+  </div>
+  <div id="modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h4 id="modal-header-title">Pre-established prompts...</h4>
+      </div>
+      <div id="prompt-search-bar" class="prompt-search-bar">
+        <span class="prompt-search-icon" aria-hidden="true"></span>
+        <input type="text" id="prompt-search-input" class="prompt-search-input"
+               placeholder="Search prompts by words, initials (imd) or a #number..."
+               autocomplete="off" autocorrect="off" spellcheck="false"
+               aria-label="Search the catalog of prompts">
+        <button type="button" id="prompt-search-clear" class="prompt-search-clear"
+                title="Clear search" aria-label="Clear search">&times;</button>
+        <span id="prompt-search-count" class="prompt-search-count"></span>
+      </div>
+      <div id="tools-body" class="modal-body"></div>
+      <div class="modal-footer">
+      </div>
+    </div>
+  </div>
+  <!-- No onclick on the overlay: an outside click must NEVER dismiss. Use the X. -->
+  <div id="about-overlay" class="about-overlay" style="display: none;">
+    <div class="about-window" onclick="event.stopPropagation();">
+      <button class="about-close-btn" onclick="CloseAboutDialog(event);">&times;</button>
+      <div class="about-video-container">
+        <video id="about-video" autoplay loop muted playsinline>
+          <source src="{% static 'agent/video/XAIHT-Tlamatini.mp4' %}" type="video/mp4">
+        </video>
+      </div>
+      <div class="about-text">
+        <p class="about-company-name">XAIHT: eXtended Artificial Intelligence Humanly Tempered (a Mexican company)</p>
+        <p class="about-version">Tlamatini v{{ version }}</p>
+        <p class="about-owner">A&amp;A's company.</p>
+        <p class="about-creator" style="font-weight:700; letter-spacing:0.5px; text-transform:uppercase;">CREATED BY ANGELA LÓPEZ MENDOZA</p>
+      </div>
+    </div>
+  </div>
+  <!-- No onclick on the overlay: an outside click must NEVER dismiss, and once
+       an update is RUNNING this dialog is sealed - see CloseUpdateDialog. -->
+  <div id="update-overlay" class="about-overlay" style="display: none;">
+    <div class="about-window update-window" onclick="event.stopPropagation();">
+      <div class="update-header">
+        <div>
+          <span class="update-kicker">Tlamatini</span>
+          <h3 class="update-title">Check for updates</h3>
+        </div>
+        <button type="button" class="about-close-btn" aria-label="Close"
+          onclick="CloseUpdateDialog(event);">&times;</button>
+      </div>
+      <div class="update-body">
+        <p class="update-current">Installed version: <strong>v{{ version }}</strong></p>
+        <div id="update-content" class="update-content">Checking for updates…</div>
+        <!-- RENDERED release notes (2026-08-13). This used to be a <pre> fed by
+             textContent, which showed the GitHub notes as literal markup:
+             "## What's New", a raw <img ... src="…user-attachments…"> tag and
+             [v1.42.0](https://…). It is now a real container whose markdown is
+             rendered - images and videos included - by
+             release_notes_renderer.js (whitelist-sanitised). -->
+        <div id="update-notes" class="update-notes" style="display: none;"></div>
+        <div id="update-progress-wrap" class="update-progress-wrap" style="display: none;">
+          <div id="update-progress-bar" class="update-progress-bar"></div>
+        </div>
+        <div class="update-actions">
+          <a id="update-releases-link" class="update-link" href="https://github.com/XAIHT/Tlamatini/releases"
+            target="_blank" rel="noopener" style="display: none;">View releases on GitHub</a>
+          <button id="update-action-btn" class="update-btn" type="button" style="display: none;"
+            onclick="StartTlamatiniUpdate(event);">Update now</button>
+        </div>
+      </div>
+    </div>
+  </div>
+    {{ request.user.username|json_script:"user_username" }}
+  {{ initial_messages|json_script:"initial_messages" }}
+  {{ ollama_base_url|json_script:"ollama_config" }}
+  <script src="{% static 'agent/js/agent_page_state.js' %}?v={{ STATIC_VERSION }}_statefix_constfix"></script>
+  <script src="{% static 'agent/js/agent_page_ui.js' %}?v={{ STATIC_VERSION }}"></script>
+  <script src="{% static 'agent/js/agent_page_canvas.js' %}?v={{ STATIC_VERSION }}"></script>
+  <script src="{% static 'agent/js/agent_page_dialogs.js' %}?v={{ STATIC_VERSION }}_dialogfix"></script>
+  <script src="{% static 'agent/js/agent_page_context.js' %}?v={{ STATIC_VERSION }}"></script>
+  <script src="{% static 'agent/js/agent_page_chat.js' %}?v={{ STATIC_VERSION }}_b64fix"></script>
+  <script src="{% static 'agent/js/agent_page_layout.js' %}?v={{ STATIC_VERSION }}"></script>
+  <script src="{% static 'agent/js/agent_page_init.js' %}?v={{ STATIC_VERSION }}"></script>
+  <script src="{% static 'agent/js/tools_dialog.js' %}?v={{ STATIC_VERSION }}_promptfix"></script>
+  <script src="{% static 'agent/js/skills_dialog.js' %}?v={{ STATIC_VERSION }}"></script>
+  <script src="{% static 'agent/js/external_mcps_dialog.js' %}?v={{ STATIC_VERSION }}_popupfix"></script>
+  <script src="{% static 'agent/js/contacts_dialog.js' %}?v={{ STATIC_VERSION }}_popupfix"></script>
+  <script src="{% static 'agent/js/access_keys_wizard.js' %}?v={{ STATIC_VERSION }}"></script>
+  <script src="{% static 'agent/js/shared-runtime-dialogs.js' %}?v={{ STATIC_VERSION }}_dlg3"></script>
+  <script src="{% static 'agent/js/chat_page_runtime_poller.js' %}?v={{ STATIC_VERSION }}"></script>
+  <script src="{% static 'agent/js/chat_image_paste.js' %}?v={{ STATIC_VERSION }}"></script>
+  <script src="{% static 'agent/js/checkbox_bulk_toggle.js' %}?v={{ STATIC_VERSION }}_bulktoggle"></script>
+  <script src="{% static 'agent/js/release_notes_renderer.js' %}?v={{ STATIC_VERSION }}_relnotes"></script>
+
+<!-- TLM_AVATAR_PHASE1_START -->
+<div id="tlm-avatar-bubble" aria-live="polite"></div>
+<div id="tlm-voice-overlay" class="tlm-modal-overlay" style="display:none;">
+ <div class="tlm-modal" role="dialog" aria-modal="true" aria-label="Voice settings">
+  <div class="tlm-modal-head">
+   <div><span class="tlm-modal-kicker">Voice</span><h2>Speech settings</h2></div>
+   <button type="button" class="tlm-modal-x" id="tlm-voice-close" aria-label="Close">&times;</button>
+  </div>
+  <div class="tlm-modal-body">
+   <p class="tlm-voice-note">Tlamatini's voice is <b>always female</b>, and works the same in Chrome &amp; Edge.</p>
+   <div class="tlm-voice-pane">
+    <label class="tlm-voice-row">Voice<select id="tlm-voice-select"></select></label>
+    <label class="tlm-voice-row">Volume <span id="tlm-voice-vol-val"></span><input type="range" id="tlm-voice-volume" min="0" max="100" step="1"></label>
+    <label class="tlm-voice-row">Speed <span id="tlm-voice-rate-val"></span><input type="range" id="tlm-voice-rate" min="0.5" max="2" step="0.05"></label>
+    <label class="tlm-voice-row">Pitch <span id="tlm-voice-pitch-val"></span><input type="range" id="tlm-voice-pitch" min="0" max="2" step="0.05"></label>
+    <label class="tlm-voice-row tlm-voice-off">Pan (stereo)<input type="range" id="tlm-voice-pan" min="-100" max="100" step="1" value="0" disabled><small>Mono in the browser - available with the Orpheus voice.</small></label>
+   </div>
+   <fieldset class="tlm-voice-modes"><legend>When an answer arrives</legend>
+    <label><input type="radio" name="tlm-voice-mode" value="speak"> Automatically speak answers</label>
+    <label><input type="radio" name="tlm-voice-mode" value="notify"> Notify answer complete</label>
+    <label><input type="radio" name="tlm-voice-mode" value="silent"> Silent</label>
+   </fieldset>
+  </div>
+  <div class="tlm-modal-foot">
+   <span class="tlm-modal-foot-note">Settings are saved in this browser.</span>
+   <div class="tlm-voice-actions"><button type="button" id="tlm-voice-test">Test voice</button><button type="button" id="tlm-voice-save">Save</button></div>
+  </div>
+ </div>
+</div>
+<script src="{% static 'agent/js/avatar.js' %}?v={{ STATIC_VERSION }}_av6"></script>
+<!-- TLM_AVATAR_PHASE1_END -->
+</body>
+
+</html>

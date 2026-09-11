@@ -1,0 +1,12 @@
+{
+  "speechAndBlink": {
+    "paints": 85,
+    "minCoverage": 0.752999424289,
+    "partialOpacityPaints": 44,
+    "activeStates": [
+      "tlm-s-eo-mc",
+      "tlm-s-eo-mo"
+    ],
+    "distinctBoxes": 1
+  }
+}

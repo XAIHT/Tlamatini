@@ -16,13 +16,18 @@
 #tlm-avatar-dock{position:absolute;top:2px;right:0;bottom:78px;width:25%;min-width:86px;
  border-radius:10px;cursor:pointer;overflow:hidden;z-index:5;background:#0b1020;
  border:2px solid #5A1FB8;box-shadow:0 0 12px rgba(90,31,184,.35);padding:5px;
- display:flex;align-items:center;justify-content:center;}
+ display:flex;align-items:center;justify-content:center;user-select:none;-webkit-user-select:none;}
 #tlm-avatar-dock:hover{border-color:#22D3EE;}
 #tlm-face-outer{position:absolute;overflow:hidden;border-radius:7px;pointer-events:none;}
 #tlm-face{position:absolute;inset:0;}
 #tlm-face img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;
- opacity:0;transition:opacity 90ms linear;will-change:opacity;}
-#tlm-face img.tlm-on{opacity:1;}
+ visibility:hidden;opacity:1;transition:none;}
+/* These are complete opaque portraits, not translucent expression overlays.
+   Cross-fading two opacity=.5 layers exposes 25% of the dark background and
+   flashes on every blink/speech tick. Swap fully decoded frames atomically.
+   Keep the neutral portrait underneath as a permanent loading/error fallback. */
+#tlm-face #tlm-s-eo-mc{visibility:visible;z-index:0;}
+#tlm-face img.tlm-on{visibility:visible;z-index:1;}
 #tlm-avatar-bubble{position:fixed;z-index:100000;max-width:200px;padding:8px 12px;border-radius:12px;
  background:#14161f;color:#eef;font-size:.82rem;line-height:1.35;border:1px solid #4a4f70;
  box-shadow:0 8px 22px rgba(0,0,0,.7);opacity:0;transform:translateY(6px);

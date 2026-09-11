@@ -567,7 +567,7 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     )
     if has_current_release_wave:
         highlights.append(
-            "The newest annotated `v1.51.3` tag resolves to `3148ace`, the same commit as `v1.51.2`; aligned local/remote HEAD is now `d8f21f3`, five commits later. The feature work is the `00ecdc9` launcher shim and the `c8cf369` console shield plus welcome-page keyboard default, with documentation reconciled at `5f96a2f`, `0d2c09c`, and `d8f21f3`. Runtime versions remain Git/build-derived through `agent/version.py`, while generated inventories derive agent, tool, skill, asset, migration, and effective-line totals from live source."
+            "The newest annotated `v1.51.5` tag resolves to `4a7f1cb`, which is also aligned local/remote HEAD, so there is no post-tag boundary. It carries the `00ecdc9` launcher shim and the `c8cf369` console shield plus welcome-page keyboard default, with documentation reconciled at `5f96a2f`, `0d2c09c`, and `d8f21f3`. Runtime versions remain Git/build-derived through `agent/version.py`, while generated inventories derive agent, tool, skill, asset, migration, and effective-line totals from live source."
         )
         highlights.append(
             "The current release window adds a non-blocking console sink with frozen-build QuickEdit policy, Enter-to-chat welcome navigation, and the Windows launcher shim, while carrying PDFer's measured layout system, stable program/snippet persistence, and ACPX live-readiness and delivery verdicts."
@@ -787,7 +787,7 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         for subject in subjects
     ):
         highlights.append(
-            "The latest dossier pass resolves the newest annotated release as `v1.51.3` at `3148ace`, distinguishes aligned local/remote HEAD `d8f21f3` as five post-tag commits later, and combines README.md and BookOfTlamatini.md with source/Git truth while retaining complete installation, Ollama, architecture, usage, tree, line inventory, and responsibility context."
+            "The latest dossier pass resolves the newest annotated release as `v1.51.5` at `4a7f1cb`, which is also aligned local/remote HEAD so release and worktree identity coincide, and combines README.md and BookOfTlamatini.md with source/Git truth while retaining complete installation, Ollama, architecture, usage, tree, line inventory, and responsibility context."
         )
     elif not has_current_release_wave and any(
         "1.26.5" in subject
@@ -992,7 +992,7 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
         "tlamatini-spanish piring" in subject for subject in subjects
     ):
         return [
-            "The newest annotated `v1.51.3` tag resolves to `3148ace`, while aligned local/remote HEAD is `d8f21f3`, five post-tag commits later, so release and worktree identities are reported separately.",
+            "The newest annotated `v1.51.5` tag resolves to `4a7f1cb`, which is also aligned local/remote HEAD, so release and worktree identities coincide and no post-tag boundary is reported.",
             "The v1.50.6 public builder supports pristine clones without a private targets file while retaining fail-toward-refusal privacy probing, inert example configuration, structural-only honesty, runtime independence, and source-derived secret restoration.",
             "The v1.50.5 shutdown repair moves cleanup out of the signal handler, guards re-entry, adds bounded daemon cleanup and watchdog exit, and proves real Ctrl+C termination; `PromptDesigner.jpg` is inventoried as an unreferenced design asset rather than a shipped runtime feature.",
             "The carried v1.50.4 delta keeps optional Transformers and its transitively imported Torch stack out of the frozen Django process, migrates deprecated tool imports to `langchain_core.tools`, and adds source-derived lean-process guards; the v1.50.3 Googler and earlier safety work remain carried.",
@@ -1090,7 +1090,7 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
     )
     if has_current_release_wave:
         highlights.append(
-            "The newest annotated `v1.51.3` tag resolves to `3148ace`, the same commit as `v1.51.2`; aligned local/remote HEAD is now `d8f21f3`, five post-tag commits later, so tag and worktree identities remain explicit."
+            "The newest annotated `v1.51.5` tag resolves to `4a7f1cb`, which is also aligned local/remote HEAD, so tag and worktree identities coincide and remain explicit."
         )
         highlights.append(
             "The current dossier window adds the queue-backed console shield, frozen-build QuickEdit policy, and Enter-to-chat welcome shortcut. It carries PDFer's measured design engine, stable program/snippet persistence, ACPX readiness and delivery verdicts, and the Windows direct-or-shell launcher shim."
@@ -1699,7 +1699,7 @@ def operator_surface_counts_guide(context: dict) -> list[str]:
     ]
 
 CURRENT_RELEASE_GUIDE = [
-    "The newest annotated `v1.51.3` tag resolves to `3148ace`, the same commit as `v1.51.2`. Five commits follow it: feature work at `00ecdc9` and `c8cf369`, plus documentation at `5f96a2f`, `0d2c09c`, and `d8f21f3`. Fetched local `main`, `origin/main`, and `origin/HEAD` align at `d8f21f3`; runtime identity stays Git/build-derived, and this generator creates no tag, commit, or push.",
+    "The newest annotated `v1.51.5` tag resolves to `4a7f1cb`. It now carries what previously trailed `v1.51.3`: feature work at `00ecdc9` and `c8cf369`, plus documentation at `5f96a2f`, `0d2c09c`, and `d8f21f3`. Fetched local `main`, `origin/main`, and `origin/HEAD` all align at `4a7f1cb`, the tag commit itself; runtime identity stays Git/build-derived, and this generator creates no tag, commit, or push.",
     "Commit `c8cf369` makes console output non-blocking. `manage.py::_ConsoleWriter` drains a bounded 10,000-chunk queue on one daemon thread, while `_TeeStream` writes `tlamatini.log` first on the caller thread. Frozen builds ship `console_quick_edit: false`; source runs leave the developer's terminal mode untouched. Ctrl+C is forced on, verified after the mode change, and the original mode is restored if that bit does not survive. The 600-line `agent/test_console_shield.py` contains 28 focused tests.",
     "The same commit adds the 92-line `welcome_enter_default.js`: the existing Go to Chat link receives focus after login, while a guarded document fallback handles plain Enter only when no button, link, input, or editable element already owns it. Modifier chords, IME composition, claimed events, missing links, and failed focus all fail open. The earlier `00ecdc9` shim still centralizes correct `.exe`, Python, `.cmd`, and `.bat` startup across ACPX and runtime provisioning.",
     "The shared v1.51.2/v1.51.3 tag commit adds `agent/acpx/child_health.py`, live readiness probes, named non-delivery verdicts, and transport overrides. PDFer's upgrade and v1.51.1 program/snippet collision repair remain carried. The live surface is 88 workflow agents, 66 wrapped launchers, 108 built-in Multi-Turn tools, 29 skills, 38 JavaScript modules, and 199 migrations.",
@@ -1715,7 +1715,7 @@ CURRENT_RELEASE_GUIDE = [
     "The private External-MCP runtime, inactive Memory/Sequential-Thinking defaults, tombstones, persistent Memory state, secret-separated catalogs, nested-diagram restoration, Mover/Deleter placement guard, and updater preservation remain carried from the v1.48.14-v1.48.17 lineage.",
     "The categorized prompt catalog, per-user Hard Cancel epochs, path-native screenshot paste/drop, configurable port, FlowPills discovery, Unreal scaffold, self-healing, robotic loop, firmware/media agents, External MCPs, ACPX skills, and deterministic file tools remain part of the complete product rather than being reduced to a latest-changes summary.",
     "README.md and BookOfTlamatini.md retain the complete MIT-licensed installation, Ollama setup, architecture, everyday-use, agent, and responsibility narrative. The plain-Python agent disclaimer is explicit: transparency enables user control but is not a security warranty, and authorization, review, permissions, and consequences remain the operator's responsibility.",
-    "README.md and BookOfTlamatini.md remain the complete content baselines, while Git is the version source of truth: `v1.51.3` peels to `3148ace` and aligned local/remote HEAD resolves to `d8f21f3`. Generated counts remain source-derived, including 88 agents, 66 wrapped launchers, 108 built-in Multi-Turn tools, 29 skills, and 199 migrations.",
+    "README.md and BookOfTlamatini.md remain the complete content baselines, while Git is the version source of truth: `v1.51.5` peels to `4a7f1cb`, which is also where aligned local/remote HEAD resolves. Generated counts remain source-derived, including 88 agents, 66 wrapped launchers, 108 built-in Multi-Turn tools, 29 skills, and 199 migrations.",
     "The inventory is rebuilt from Git-tracked plus Git-unignored files without reproducing credentials, endpoints, private values, or machine-specific configuration. This generation pass does not stage, commit, or push anything.",
     "The regenerated PDF/PPTX preserve the whole system, architecture, installation/use guidance, recent Git history, complete file tree, effective-line inventory, and validation evidence; target behavior and tagged historical predecessors are described separately.",
 ]
@@ -1876,7 +1876,7 @@ NMAPPER_GUIDE = [
 
 STARTUP_PROMPT_POLISH_GUIDE = [
     "`v1.39.4` restored first-run/startup dialog closeability so a fresh launch can no longer be trapped behind an unclosable overlay.",
-    "Commit `a45fe0e0` followed the public `v1.39.4` tag with Catalog-of-Prompts localization cleanup; that historical polish remains carried by the `v1.51.3` release line.",
+    "Commit `a45fe0e0` followed the public `v1.39.4` tag with Catalog-of-Prompts localization cleanup; that historical polish remains carried by the `v1.51.5` release line.",
     "The prompt catalog path stays centralized through the secure one-call `/agent/list_prompts/` endpoint ordered by category rank and stable surviving id, while the gap-tolerant probe loop remains only as an offline fallback.",
     "Frontend mutable-state tests and dialog templates continue to guard the chat/startup/overlay surfaces so future cleanup passes do not reintroduce const-poison or close-button regressions.",
 ]
@@ -1925,7 +1925,7 @@ FRONTEND_HOTFIX_GUIDE = [
 ]
 
 V136_RELEASE_GUIDE = [
-    "Release identity: `v1.51.3` is the newest annotated tag at `3148ace`, while aligned local/remote HEAD is `d8f21f3`, five post-tag commits later. This line adds the console shield and welcome-page keyboard default while carrying the launcher shim, ACPX readiness and delivery truth, PDFer's measured layout engine, stable program persistence, the clean-clone privacy preflight, bounded Ctrl+C shutdown, and the earlier safety/platform waves.",
+    "Release identity: `v1.51.5` is the newest annotated tag at `4a7f1cb`, which is also aligned local/remote HEAD, so there is no post-tag boundary. This line adds the console shield and welcome-page keyboard default while carrying the launcher shim, ACPX readiness and delivery truth, PDFer's measured layout engine, stable program persistence, the clean-clone privacy preflight, bounded Ctrl+C shutdown, and the earlier safety/platform waves.",
     "New agent: Video-Analyzer becomes the current media-verdict workflow agent and wrapped `chat_agent_video_analyzer`, complementing Image-Interpreter with video-specific motion analysis.",
     "Implementation assets: `agent/agents/video_analyzer/`, migrations `0166_add_video_analyzer.py`, `0167_add_chat_agent_video_analyzer_tool.py`, `0168_add_video_analyzer_demo_prompt.py`, `test_video_analyzer_agent.py`, `chat_agent_registry.py`, `mcp_agent.py`, and `services/agent_contracts.py` all move together.",
     "Model strategy: `interpreter_model_1` defaults to `qwen3-vl:235b-cloud`, `interpreter_model_2` defaults to `qwen3.5:cloud`, and `merging_model` defaults to `glm-5.2:cloud`, with independent calls merged only after both interpreters report.",
@@ -2111,7 +2111,7 @@ PROMPT_CATALOG_GUIDE = [
     "Version `1.3.2` tightened the HTML answer contract with a Prime Directive on visual readability: explicit background and text color, no grey-on-dark body text, and safer table-body defaults.",
     "The seeded `Prompts` dropdown was also re-sorted into a learner path: context-only Q&A first, then metrics, files search, shell, code generation, vision, specialized single-tool actions, agent control, Unrealer, and heavier Multi-Turn/ACPX demos last.",
     "The `v1.35.0` prompt-search pass then makes that larger catalog easier to operate: prompt cards support substring, word-start, and fuzzy matching, with mode badges that keep one-shot, Multi-Turn, ACPX, Exec Report, and Step-by-Step demos visually distinct.",
-    "Those readability rules remain in force in the `v1.51.3` release documentation set; it carries measured networking, WAL-safe database movement, structured and resilient Googler discovery, guided MCP onboarding, and current counts while retaining encoding-safe search, guarded execution truth, private MCP runtime/defaults, diagram hardening, LaTeXer, the binary guard, PDFer, FlowCreator, prompt standardization, category grouping, and ranked fuzzy search.",
+    "Those readability rules remain in force in the `v1.51.5` release documentation set; it carries measured networking, WAL-safe database movement, structured and resilient Googler discovery, guided MCP onboarding, and current counts while retaining encoding-safe search, guarded execution truth, private MCP runtime/defaults, diagram hardening, LaTeXer, the binary guard, PDFer, FlowCreator, prompt standardization, category grouping, and ranked fuzzy search.",
 ]
 
 SELF_KNOWLEDGE_GUIDE = [
@@ -2347,7 +2347,7 @@ DB_SWAP_GUIDE = [
 VERSIONING_GUIDE = [
     "Tlamatini now follows Semantic Versioning 2.0.0 with git tags as the single source of truth: you tag, then you build, instead of hand-editing version strings across files.",
     "The build path resolves a version once and propagates it into generated runtime metadata, Win32 VERSIONINFO resources, and the release-folder naming convention.",
-    "Git resolves the current source-mode release as `TLAMATINI_VERSION=1.51.3`, matching the newest reachable annotated tag; the dossier separately records that the tag peels to `3148ace` while aligned local/remote HEAD is five commits later at `d8f21f3`.",
+    "Git resolves the current source-mode release as `TLAMATINI_VERSION=1.51.5`, matching the newest reachable annotated tag; the dossier separately records that the tag peels to `4a7f1cb`, which is aligned local/remote HEAD itself, so no post-tag distance is reported.",
 ]
 
 VERSION_SURFACES_GUIDE = [
@@ -3714,7 +3714,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "mt-b", 16)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Ask Execs", "v1.10.0 safety modifier carried into the v1.51.3 release line", THEME["amber"])
+    slide, audit = add_slide(prs, "Ask Execs", "v1.10.0 safety modifier carried into the v1.51.5 release line", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Operator contract", ASK_EXECS_GUIDE, THEME["amber"], "ask-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Runtime mechanics", ASK_EXECS_PIPELINE_GUIDE, THEME["jade"], "ask-b", 13)
     audit_layout(audit, len(prs.slides))
@@ -3728,7 +3728,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["amber"], "attention-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.11.0 uninstall integration carried into the v1.51.3 release line", THEME["copper"])
+    slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.11.0 uninstall integration carried into the v1.51.5 release line", THEME["copper"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What changed", WINDOWS_APP_REGISTRATION_GUIDE, THEME["copper"], "arp-a", 12)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Why operators care", [
         "Packaged installs now show up in normal Windows uninstall surfaces instead of only leaving behind shortcuts and a loose `Uninstaller.exe` in the install folder.",
@@ -3737,7 +3737,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "arp-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Current Release Focus", "v1.51.3 tag, console shield, welcome keyboard default, and carried runtime repairs", THEME["amber"])
+    slide, audit = add_slide(prs, "Current Release Focus", "v1.51.5 tag, console shield, welcome keyboard default, and carried runtime repairs", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Release line", CURRENT_RELEASE_GUIDE[:2], THEME["amber"], "rel-a", 10)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "MCP, research, service, and privacy", CURRENT_RELEASE_GUIDE[2:4], THEME["jade"], "rel-b", 10)
     audit_layout(audit, len(prs.slides))
@@ -3772,7 +3772,7 @@ def build_ppt(context: dict) -> None:
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Database startup safeguard", CURRENT_RELEASE_GUIDE[6:7], THEME["amber"], "rel-d", 11)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Dialog And Bundle Proof", "v1.48.16 - v1.48.17 safety lineage carried by v1.51.3", THEME["copper"])
+    slide, audit = add_slide(prs, "Dialog And Bundle Proof", "v1.48.16 - v1.48.17 safety lineage carried by v1.51.5", THEME["copper"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Uniform dismissal and themed pop-ups", [
         CURRENT_RELEASE_GUIDE[7],
         "The bubble-phase dispatcher closes only the topmost layer through its own dismiss control; no affirmative action is selected and one Escape cannot close two stacked dialogs.",
@@ -4335,7 +4335,7 @@ def build_ppt(context: dict) -> None:
                 add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Data and operator contract", group[split_at:], THEME["amber"], f"since-more-b-{offset}", 10)
             audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Recent Platform Additions", "v1.51.3 release line through aligned HEAD d8f21f3", THEME["jade"])
+    slide, audit = add_slide(prs, "Recent Platform Additions", "v1.51.5 release line, tagged on aligned HEAD 4a7f1cb", THEME["jade"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Recent agents and execution surfaces", [
         "NetSpeed-Calculator: agent 88 / wrapped launcher 66, with multi-provider confidence intervals, I-squared heterogeneity, bufferbloat, named endpoint failures, and tier-D metered-bandwidth gating.",
         "Googler: four plain-HTTP server-rendered routes first, then visible Chrome/bundled Chromium across seven browser routes, with bounded retries, answer attribution, structured dork presets/aliases, URL-only file hunts, and a lawful-use boundary.",
@@ -4344,7 +4344,7 @@ def build_ppt(context: dict) -> None:
         "Deep Internet Research: append-only prompt 118 requests a long, link-rich Multi-Turn + Exec Report research run without hiding tool prerequisites.",
     ], THEME["copper"], "monday-a", 10)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Lifecycle, policy, and monitoring", [
-        "Resolved identity: v1.51.3 is annotated at 3148ace and aligned local/origin HEAD is d8f21f3, five post-tag commits later; the release line adds the console shield and welcome Enter default while carrying the launcher shim, ACPX delivery truth, PDFer layout intelligence, stable program persistence, clean-clone privacy, and bounded Ctrl+C shutdown.",
+        "Resolved identity: v1.51.5 is annotated at 4a7f1cb, which is also aligned local/origin HEAD, so release and worktree coincide; the release line adds the console shield and welcome Enter default while carrying the launcher shim, ACPX delivery truth, PDFer layout intelligence, stable program persistence, clean-clone privacy, and bounded Ctrl+C shutdown.",
         "Complete cloud-model operation requires Ollama Pro or higher; this is an operating requirement, not sponsorship, and current plan details belong to Ollama's official site.",
         "Private contact synchronization merges same-machine sources only for the explicit keyed build; public output and source snapshots remain free of contact PII.",
         "The stronger disclaimer says plain-Python transparency enables user control but is not a security warranty; the operator owns authorization, permissions, review, and consequences.",

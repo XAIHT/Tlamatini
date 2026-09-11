@@ -1,0 +1,153 @@
+{
+  "source": "C:\\Users\\angel\\OneDrive\\Pictures\\Gemini_Generated_Image_2_be_splitted.jpg",
+  "source_sha256": "7e686e74ad84e3609aa3c7d54ad8d865d83f288020eeb9b68facfb8a46ac4554",
+  "frame_size": [
+    1024,
+    1024
+  ],
+  "reference_frame": "01_eyes_open_smiling.png",
+  "common_inset_px_each_edge": 6,
+  "common_enlargement": 1.0118577075098814,
+  "method": "Translation-only ECC registration on hair/armor, shared inset, one Lanczos sample; no generative edits, facial warp, or expression compositing.",
+  "source_artwork_note": "Small non-rigid and lighting differences in the source illustrations remain. Registration removes global offset, not all source differences.",
+  "frames": [
+    {
+      "file": "01_eyes_open_smiling.png",
+      "width": 1024,
+      "height": 1024,
+      "source_crop_box_xyxy": [
+        0,
+        0,
+        1024,
+        1024
+      ],
+      "source_offset_from_reference_px": [
+        0.0,
+        0.0
+      ],
+      "applied_translation_before_common_scale_px": [
+        -0.0,
+        -0.0
+      ],
+      "stable_region_correlation": 1.0,
+      "output_to_source_sampling_matrix": [
+        [
+          0.98828125,
+          0.0,
+          5.994140625
+        ],
+        [
+          0.0,
+          0.98828125,
+          5.994140625
+        ]
+      ],
+      "sha256": "d3e4177df125ec5f5879c078e9a55505278dc19e7c31904fb3cb52b085b0676d"
+    },
+    {
+      "file": "02_eyes_open_neutral.png",
+      "width": 1024,
+      "height": 1024,
+      "source_crop_box_xyxy": [
+        1024,
+        0,
+        2048,
+        1024
+      ],
+      "source_offset_from_reference_px": [
+        -2.041537046432495,
+        -0.05772971361875534
+      ],
+      "applied_translation_before_common_scale_px": [
+        2.041537046432495,
+        0.05772971361875534
+      ],
+      "stable_region_correlation": 0.9964980173203424,
+      "output_to_source_sampling_matrix": [
+        [
+          0.98828125,
+          0.0,
+          3.952603578567505
+        ],
+        [
+          0.0,
+          0.98828125,
+          5.936410903930664
+        ]
+      ],
+      "sha256": "b00f05a94500ae8a309fea6e9897b54d15ad09aecb58652abdff2567695b4b21"
+    },
+    {
+      "file": "03_eyes_closed_smiling.png",
+      "width": 1024,
+      "height": 1024,
+      "source_crop_box_xyxy": [
+        0,
+        1024,
+        1024,
+        2048
+      ],
+      "source_offset_from_reference_px": [
+        0.5313054323196411,
+        0.10712125152349472
+      ],
+      "applied_translation_before_common_scale_px": [
+        -0.5313054323196411,
+        -0.10712125152349472
+      ],
+      "stable_region_correlation": 0.9936078102350112,
+      "output_to_source_sampling_matrix": [
+        [
+          0.98828125,
+          0.0,
+          6.525445938110352
+        ],
+        [
+          0.0,
+          0.98828125,
+          6.101262092590332
+        ]
+      ],
+      "sha256": "db6697a8355939f91f850c48154b0133e1e2435058ab5479976334c020c3428d"
+    },
+    {
+      "file": "04_eyes_closed_neutral.png",
+      "width": 1024,
+      "height": 1024,
+      "source_crop_box_xyxy": [
+        1024,
+        1024,
+        2048,
+        2048
+      ],
+      "source_offset_from_reference_px": [
+        0.24013441801071167,
+        0.23079445958137512
+      ],
+      "applied_translation_before_common_scale_px": [
+        -0.24013441801071167,
+        -0.23079445958137512
+      ],
+      "stable_region_correlation": 0.9928765617690386,
+      "output_to_source_sampling_matrix": [
+        [
+          0.98828125,
+          0.0,
+          6.234274864196777
+        ],
+        [
+          0.0,
+          0.98828125,
+          6.224935054779053
+        ]
+      ],
+      "sha256": "4af52f3730f11923505695500b398490a22f0abf9971a502e09f64254d28c06d"
+    }
+  ],
+  "validation": {
+    "all_frames_same_dimensions": true,
+    "all_exact_crops_pixel_identical_to_decoded_source": true,
+    "sprite_tiles_pixel_identical_to_registered_frames": true,
+    "source_unchanged": true
+  }
+}

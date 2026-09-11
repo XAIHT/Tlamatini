@@ -1,0 +1,2266 @@
+{
+  "transitions": [
+    {
+      "index": 1,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 2,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 3,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 4,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 5,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 6,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 7,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 8,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 9,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 10,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 11,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 12,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 13,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 14,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 15,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 16,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 17,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 18,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 19,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 20,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 21,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 22,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 23,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 24,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 25,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 26,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 27,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 28,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 29,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 30,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 31,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 32,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 33,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 34,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 35,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 36,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 37,
+      "frame": "tlm-s-ec-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 38,
+      "frame": "tlm-s-ec-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 39,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 40,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 41,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 42,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 43,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 44,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 45,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 46,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 47,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 48,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 49,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 50,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 51,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 52,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 53,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 54,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 55,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 56,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 57,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 58,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 59,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 60,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 61,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 62,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 63,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 64,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 65,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 66,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 67,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 68,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 69,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 70,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 71,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 72,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 73,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 74,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 75,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 76,
+      "frame": "tlm-s-ec-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 77,
+      "frame": "tlm-s-ec-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 78,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 79,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 80,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 81,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 82,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 83,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 84,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 85,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 86,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 87,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 88,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 89,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 90,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 91,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 92,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 93,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 94,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 95,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 96,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 97,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 98,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 99,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 100,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1440x900"
+    },
+    {
+      "index": 101,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 102,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 103,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 104,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 105,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 106,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 107,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 108,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 109,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 110,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 111,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 112,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 113,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 114,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 115,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 116,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 117,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 118,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 119,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 120,
+      "frame": "tlm-s-ec-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 121,
+      "frame": "tlm-s-ec-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 122,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 123,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 124,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 125,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 126,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 127,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 128,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 129,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 130,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 131,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 132,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 133,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 134,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 135,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 136,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 137,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 138,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 139,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 140,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 141,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 142,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 143,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 144,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 145,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 146,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 147,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 148,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 149,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 150,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 151,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 152,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 153,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 154,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 155,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 156,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 157,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 158,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 159,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 160,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 161,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 162,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 163,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 164,
+      "frame": "tlm-s-ec-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 165,
+      "frame": "tlm-s-ec-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 166,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 167,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 168,
+      "frame": "tlm-s-ec-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 169,
+      "frame": "tlm-s-ec-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 170,
+      "frame": "tlm-s-ec-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 171,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 172,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 173,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 174,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 175,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 176,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 177,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 178,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 179,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 180,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 181,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 182,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 183,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 184,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 185,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 186,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 187,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 188,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 189,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 190,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 191,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 192,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 193,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 194,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 195,
+      "frame": "tlm-s-ec-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 196,
+      "frame": "tlm-s-ec-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 197,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 198,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 199,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 200,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1100x780"
+    },
+    {
+      "index": 201,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 202,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 203,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 204,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 205,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 206,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 207,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 208,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 209,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 210,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 211,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 212,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 213,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 214,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 215,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 216,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 217,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 218,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 219,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 220,
+      "frame": "tlm-s-ec-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 221,
+      "frame": "tlm-s-ec-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 222,
+      "frame": "tlm-s-ec-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 223,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 224,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 225,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 226,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 227,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 228,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 229,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 230,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 231,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 232,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 233,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 234,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 235,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 236,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 237,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 238,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 239,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 240,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 241,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 242,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 243,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 244,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 245,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 246,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 247,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 248,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 249,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 250,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 251,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 252,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 253,
+      "frame": "tlm-s-ec-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 254,
+      "frame": "tlm-s-ec-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 255,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 256,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 257,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 258,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 259,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 260,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 261,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 262,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 263,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 264,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 265,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 266,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 267,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 268,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 269,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 270,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 271,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 272,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 273,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 274,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 275,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 276,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 277,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 278,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 279,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 280,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 281,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 282,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 283,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 284,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 285,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 286,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 287,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 288,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 289,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 290,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 291,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 292,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 293,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 294,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 295,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 296,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 297,
+      "frame": "tlm-s-ec-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 298,
+      "frame": "tlm-s-ec-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 299,
+      "frame": "tlm-s-eo-mc",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 300,
+      "frame": "tlm-s-eo-mo",
+      "phase": "native speech",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 301,
+      "frame": "tlm-s-ec-mo",
+      "phase": "pause/resume",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 302,
+      "frame": "tlm-s-ec-mc",
+      "phase": "pause/resume",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 303,
+      "frame": "tlm-s-eo-mc",
+      "phase": "pause/resume",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 304,
+      "frame": "tlm-s-eo-mo",
+      "phase": "pause/resume",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 305,
+      "frame": "tlm-s-eo-mc",
+      "phase": "pause/resume",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 306,
+      "frame": "tlm-s-eo-mo",
+      "phase": "pause/resume",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 307,
+      "frame": "tlm-s-eo-mc",
+      "phase": "pause/resume",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 308,
+      "frame": "tlm-s-eo-mo",
+      "phase": "click greet/stop",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 309,
+      "frame": "tlm-s-eo-mc",
+      "phase": "click greet/stop",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 310,
+      "frame": "tlm-s-eo-mo",
+      "phase": "click greet/stop",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 311,
+      "frame": "tlm-s-eo-mc",
+      "phase": "click greet/stop",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 312,
+      "frame": "tlm-s-eo-mo",
+      "phase": "click greet/stop",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    },
+    {
+      "index": 313,
+      "frame": "tlm-s-eo-mc",
+      "phase": "click greet/stop",
+      "coverage": 1,
+      "viewport": "1600x1000"
+    }
+  ],
+  "paints": 10609,
+  "minCoverage": 1,
+  "failures": [],
+  "states": [
+    "tlm-s-eo-mc",
+    "tlm-s-eo-mo",
+    "tlm-s-ec-mo",
+    "tlm-s-ec-mc"
+  ],
+  "phase": "click greet/stop",
+  "lastKey": "tlm-s-eo-mc",
+  "resizeAt": 28847.79999999702,
+  "rectangles": {
+    "1440x900": "731.56,658.4,149,149",
+    "1100x780": "548.8,574.4,114,114",
+    "1600x1000": "807.91,730.4,177,177"
+  },
+  "voice": {
+    "name": "Microsoft Zira - English (United States)",
+    "localService": true
+  },
+  "finished": true,
+  "headless": false,
+  "url": "http://127.0.0.1:8001/agent/agent/",
+  "controls": {
+    "pauseResume": "PASS",
+    "escape": "PASS",
+    "clickGreetStop": "PASS",
+    "doubleClickMute": "PASS",
+    "noSelectionHighlight": "PASS",
+    "keyboardUnmute": "PASS"
+  },
+  "assetChecks": [
+    {
+      "path": "agent/css/avatar.css",
+      "status": 200,
+      "bytes": 7833,
+      "sha256": "e3a191164ccc8cab29f30da8c0322faefea7adf04142e5812d92864ed5ae640f"
+    },
+    {
+      "path": "agent/img/avatar/eo_mc.jpg",
+      "status": 200,
+      "bytes": 546560,
+      "sha256": "3ef16fffacd226d356e6a238dbb0b3a22ea079682a51fa6094b6474c14f81768"
+    },
+    {
+      "path": "agent/img/avatar/ec_mc.jpg",
+      "status": 200,
+      "bytes": 553458,
+      "sha256": "a4ee30a94284dce3347c0b2d92a5cf8ee1a6caa88c9a2a1a7e92edff7f3e0e0a"
+    },
+    {
+      "path": "agent/img/avatar/eo_mo.jpg",
+      "status": 200,
+      "bytes": 550040,
+      "sha256": "339664fb3bf488fc299f88f6d448a2ea6ea1d530a284e0529f0ef8fea5effdf3"
+    },
+    {
+      "path": "agent/img/avatar/ec_mo.jpg",
+      "status": 200,
+      "bytes": 556352,
+      "sha256": "1422f8dbd71d6394a4f44520bacfce77810bfe954c626f8a83f6897925ee27c5"
+    },
+    {
+      "path": "agent/js/avatar.js",
+      "status": 200,
+      "bytes": 26090,
+      "sha256": "5c36c67c6d11e1b70e6f0281ded38d12ae4e0af3ec6b527dbbc4b62f801d8141"
+    }
+  ],
+  "pageErrors": []
+}

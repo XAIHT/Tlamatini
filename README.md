@@ -24,7 +24,7 @@
 
 <p align="center">
   <a href="https://discord.gg/WFQsrskgc"><img src="https://img.shields.io/badge/DISCORD-JOIN%20US-5865F2?style=for-the-badge&labelColor=2D2D2D&logo=discord&logoColor=white" alt="Join our Discord"/></a>
-  <a href="https://github.com/XAIHT/Tlamatini/releases"><img src="https://img.shields.io/badge/RELEASE-v1.51.3-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Release v1.51.3"/></a>
+  <a href="https://github.com/XAIHT/Tlamatini/releases"><img src="https://img.shields.io/badge/RELEASE-v1.51.5-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Release v1.51.5"/></a>
   <a href="https://www.python.org/downloads/release/python-31210/"><img src="https://img.shields.io/badge/PYTHON-3.12.10-3776AB?style=for-the-badge&labelColor=2D2D2D&logo=python&logoColor=white" alt="Python"/></a>
   <a href="#installation"><img src="https://img.shields.io/badge/PLATFORM-WIN%2010%20%7C%2011-0078D6?style=for-the-badge&labelColor=2D2D2D&logo=windows&logoColor=white" alt="Platform"/></a>
   <a href="#-the-full-capability-list"><img src="https://img.shields.io/badge/AGENT%20TYPES-88-8A2BE2?style=for-the-badge&labelColor=2D2D2D" alt="88 agent types"/></a>
@@ -50,14 +50,15 @@
 1. [What is Tlamatini](#what-is-tlamatini)
 2. [How it works](#how-it-works)
 3. [Get started in five steps](#-get-started--5-steps-to-a-cloud-powered-tlamatini)
-4. [Newest changes](#newest-changes--after-the-v1513-tag)
-5. [Current release](#current-release--v1513)
+4. [Newest changes](#newest-changes--carried-by-the-v1515-tag)
+5. [Current release](#current-release--v1515)
 6. [The full capability list](#-the-full-capability-list)
 7. [Enable Tlamatini as a Blue-hat agent](#enable-tlamatini-as-a-blue-hat-agent)
 8. [Installation](#installation)
 9. [Tech stack](#tech-stack)
-10. [Contributing](#contributing)
-11. [License](#license)
+10. [Avatar animation, assets, and visible tests](#avatar-animation-assets-and-visible-tests)
+11. [Contributing](#contributing)
+12. [License](#license)
 
 ---
 
@@ -207,7 +208,7 @@ Done — tick **Multi-Turn** in the chat toolbar and put Tlamatini to work.
 
 ---
 
-## Newest changes — after the v1.51.3 tag
+## Newest changes — carried by the v1.51.5 tag
 
 **Clicking the console no longer freezes Tlamatini.** Windows consoles ship with **QuickEdit Mode ON**, so clicking or dragging inside the window — to copy a line of the log, or just to bring the window to the front — put the console into selection mode and **froze every write to it**. Because Tlamatini wrote the console *before* `tlamatini.log`, that one click also stopped the log file growing and, thread by thread, stopped the whole application. It looked exactly like a crash, and people reported it as one.
 
@@ -217,11 +218,11 @@ Two fixes ship together. The console is now written on its **own background thre
 
 ---
 
-## Current release — v1.51.3
+## Current release — v1.51.5
 
-The newest annotated tag is **`v1.51.3`**, created on 2026-09-07 and resolving to commit **`3148ace`**; `v1.51.2` resolves to that same commit. Five commits now follow that tag: the Windows launcher repair at **`00ecdc9`**, the visual/non-visual documentation refresh at **`5f96a2f`**, the console-shield plus welcome-page keyboard work at **`c8cf369`**, and two documentation reconciliations at **`0d2c09c`** and **`d8f21f3`**. After fetching every remote and tag, local `main`, `origin/main`, and `origin/HEAD` all resolve to `d8f21f3`. Source-mode version resolution still reports the newest reachable bare tag, `1.51.3`, while the Git facts remain explicit about the post-tag work.
+The newest annotated tag is **`v1.51.5`**, created on 2026-09-10 and resolving to commit **`4a7f1cb`** — which is also local `main`, `origin/main`, and `origin/HEAD`, so there is **no post-tag boundary**: source-mode version resolution reports the bare `1.51.5` and the tree it describes are the same thing. The tag closes out the work that the earlier `v1.51.3` line had left trailing behind it — the Windows launcher repair at `00ecdc9`, the documentation refresh at `5f96a2f`, the console shield plus welcome-page keyboard default at `c8cf369`, and the documentation reconciliations at `0d2c09c` and `d8f21f3` — all of which are now carried by a tag rather than sitting after one. Runtime identity still comes from Git/build metadata (`agent/version.py::get_version()`, `GET /agent/version/`), never from this prose.
 
-That post-tag repair centralizes Windows process startup in `agent/win_shim.py`. Frozen `.exe` launchers, `.cmd`/`.bat` wrappers, Python entry points, and ordinary executables now receive the correct direct-or-shell invocation, quoting, hidden-window flags, and environment handling across ACPX and runtime provisioning. The same commit carries 404 focused shim tests in `agent/test_win_shim.py`, extends ACPX coverage from 92 to **126 tests**, and keeps the standalone `tlamatini_acpx.py` and MCP server behavior aligned with the in-app runtime.
+The launcher repair now carried by this tag centralizes Windows process startup in `agent/win_shim.py`. Frozen `.exe` launchers, `.cmd`/`.bat` wrappers, Python entry points, and ordinary executables now receive the correct direct-or-shell invocation, quoting, hidden-window flags, and environment handling across ACPX and runtime provisioning. The same commit carries 404 focused shim tests in `agent/test_win_shim.py`, extends ACPX coverage from 92 to **126 tests**, and keeps the standalone `tlamatini_acpx.py` and MCP server behavior aligned with the in-app runtime.
 
 The shared `v1.51.2`/`v1.51.3` tag commit makes **ACPX tell the truth about its peers**. A multi-CLI research relay had collapsed while `acp_doctor` reported every external agent healthy — because the doctor only ran `<cmd> --version`, and a CLI with a dead API key, an invalid config file or an empty credit balance still prints its version and exits 0. Worse, a child that answered *"the web search was blocked — permission wasn't granted"* also exited 0, so the tool returned `ok: true` and the Exec Report row went green over work that never happened. Three repairs: a new stdlib-only `agent/acpx/child_health.py` holds the single definition of "did this child deliver?" with a closed non-delivery vocabulary (`PERMISSION_BLOCKED`, `AUTH_FAILED`, `CONFIG_INVALID`, `NO_CREDIT`, `USAGE_LIMIT`, `UPSTREAM_ERROR`, `NO_OUTPUT`, `WORKSPACE_NOT_TRUSTED`, `CHILD_ERROR`); `acp_doctor(deep=True)` sends a real one-line prompt down each agent's real transport and names the failure (opt-in, because it spends model quota, and cached for ten minutes); and `acp_spawn` / `acp_send` now return `ok: false` with that named code when a child produced nothing usable, while preserving the session id and transcript path so the caller can still investigate and clean up. A long, real answer is never reclassified as a failure, and a short correct answer is never mistaken for silence. Alongside them, `config.json` gained the ability to retune an agent's `args`, `transport`, `prompt_arg_flag`, `prompt_subcommand_args`, drain budgets and `spawn_returns_immediately` — not just `command` and `env` — so repairing a misconfigured peer is now a text edit instead of a rebuild. `agent/acpx/tests.py` grew from 65 to 92 tests in that commit.
 
@@ -476,6 +477,40 @@ See **[the full docs](https://github.com/XAIHT/Tlamatini/blob/main/BookOfTlamati
 Python 3.12 · Django 5.2.4 · Django Channels (Daphne ASGI) · LangChain / LangGraph · FAISS + rank-bm25 · Ollama / Anthropic Claude / Qwen vision · SQLite · PyInstaller. **Platform: Windows 10/11.**
 
 ---
+
+## Avatar animation, assets, and visible tests
+
+The chat avatar uses four **1024 × 1024 JPG expression frames**: open/closed eyes combined with open/closed mouth. The flashing fix is in [avatar.css](Tlamatini/agent/static/agent/css/avatar.css), [avatar.js](Tlamatini/agent/static/agent/js/avatar.js), and the cache-busted asset references in [agent_page.html](Tlamatini/agent/templates/agent/agent_page.html).
+
+The previous 90 ms opacity cross-fade made two full portraits translucent at once, exposing approximately 25% of the dark background midway through a change. Frames now switch immediately at full opacity, only after image decoding completes. A neutral portrait stays underneath as a fallback; failed or slow frames cannot blank the avatar. Paused speech and reduced-motion settings are respected, and double-click mute no longer selects/tints the portrait blue. The JPGs were verified byte-for-byte through source, `collectstatic`, installed copies, and HTTP delivery; Django was not modifying them.
+
+### Run the visible tests yourself
+
+From the repository root on Windows:
+
+```powershell
+.\python\python.exe Tests\run_avatar_tests.py
+```
+
+Or use `python Tests/run_avatar_tests.py` from a Python environment with the project dependencies. The [Python launcher](Tests/run_avatar_tests.py) prepares an isolated database, applies migrations, creates the ordinary test account **user / changeme**, runs the real project `collectstatic`, starts Django on **127.0.0.1:8001**, and opens a **visible, non-headless browser**. It checks at least **300 actual expression transitions** with native Windows speech, three viewport sizes, and pause/resume/stop/mute controls. Close the test browser when finished; the launcher then stops its own test server. It does not stop the frozen application on port 8000 or use your normal database.
+
+```powershell
+# Dependency check only
+.\python\python.exe Tests\run_avatar_tests.py --check
+# Run visibly, then close the browser/server automatically after passing
+.\python\python.exe Tests\run_avatar_tests.py --auto-close
+```
+
+Node.js, Playwright for Node.js, and its Chromium browser must be installed. The launcher detects project/PATH or existing Codex-bundled runtimes. If missing, install with `npm install --no-save playwright` and `npx playwright install chromium`; it never silently installs software. These are avatar/voice tests: the real Django authentication, page, assets, and native speech are exercised, while the LLM WebSocket is isolated to avoid model jobs.
+
+### Published deliverables
+
+- [All avatar verification evidence and test setup](output/avatar_flash_fix/), including screenshots, JSON results, before/fix comparisons, code backups, and a **session-free test database fixture**. Live test sessions/logs are created separately in ignored `Temp/avatar_flash_fix/`.
+- [Original frame-splitting deliverables](output/Gemini_girl_animation/): equal-sized PNGs, untouched quadrant crops, alignment transforms, four JPG conversions, sprite sheet, HTML/JavaScript preview, and reproduction script.
+- [Complete image package](output/Gemini_girl_animation.zip) and [four-JPG package](output/Gemini_girl_animation/girl_frames_jpg.zip). Download/extract the image package and open `preview.html` locally to play it; GitHub's HTML source view is not the animation player.
+- [Detailed verification report](output/avatar_flash_fix/README.md) and [full technical walkthrough](BookOfTlamatini.md#avatar-animation-repair-and-reproducible-visible-tests). The recorded final repair run passed **311 transitions and 10,813 browser paints**, with zero coverage/layout failures and no JavaScript errors; later reproducible runs update the JSON evidence.
+
+The `output/` deliverables are intentionally version-controlled. Binary Git attributes preserve PNG/JPG/PDF/PPTX/ZIP/SQLite bytes without line-ending conversion. No production login sessions or private user database are included. The existing release/line-count inventory above describes its recorded snapshot; the avatar evidence added here is a subsequent source change, not a new release tag.
 
 ## Contributing
 

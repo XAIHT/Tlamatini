@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Girl expression animation — aligned 1024 × 1024 frames</title>
+<style>
+  :root { color-scheme: dark; font-family: system-ui, sans-serif; background: #10121c; color: #f4f5ff; }
+  body { margin: 0; padding: 24px; display: grid; justify-items: center; gap: 16px; }
+  h1 { margin: 0; font-size: clamp(20px, 4vw, 30px); }
+  p { margin: 0; color: #b7bed8; max-width: 680px; text-align: center; }
+  canvas { width: min(76vh, 90vw, 680px); height: auto; aspect-ratio: 1; border-radius: 16px; }
+  .controls { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; max-width: 800px; }
+  button { padding: 10px 14px; border: 1px solid #586082; border-radius: 8px; background: #252943; color: white; cursor: pointer; font: inherit; }
+  button:hover, button[aria-pressed="true"] { background: #444577; border-color: #adb4ff; }
+  button:disabled { opacity: .45; cursor: wait; }
+  output { min-height: 1.5em; color: #9ce8ef; }
+  small { color: #b7bed8; max-width: 700px; text-align: center; }
+</style>
+<h1>Four expressions. One fixed canvas.</h1>
+<p>Aligned PNG frames · 1024 × 1024 each · no layout shifts or cross-fades</p>
+<canvas id="portrait" width="1024" height="1024" role="img" aria-label="Animated girl portrait"></canvas>
+<div class="controls">
+  <button id="play" disabled>Play animation</button>
+  <button data-frame="0" disabled>Open eyes · smile</button>
+  <button data-frame="1" disabled>Open eyes · neutral</button>
+  <button data-frame="2" disabled>Closed eyes · smile</button>
+  <button data-frame="3" disabled>Closed eyes · neutral</button>
+</div>
+<div class="controls"><button id="source" disabled>Compare: untouched crops</button></div>
+<output id="status">Preloading all frames…</output>
+<small>Global position is stabilized using the hair and armor. Small differences drawn into the original images remain. The original sheet is unchanged.</small>
+<script>
+  const names = [
+    "01_eyes_open_smiling.png", "02_eyes_open_neutral.png",
+    "03_eyes_closed_smiling.png", "04_eyes_closed_neutral.png"
+  ];
+  const descriptions = ["Open eyes, smiling", "Open eyes, neutral", "Closed eyes, smiling", "Closed eyes, neutral"];
+  const canvas = document.querySelector("canvas");
+  const ctx = canvas.getContext("2d", { alpha: false });
+  const status = document.querySelector("output");
+  const play = document.querySelector("#play");
+  const source = document.querySelector("#source");
+  const buttons = [...document.querySelectorAll("[data-frame]")];
+  const sequence = [
+    [1, 1600], [3, 110], [1, 850], [0, 1600],
+    [2, 110], [0, 800], [1, 260], [0, 450], [1, 1000]
+  ];
+  let aligned, exact, original = false, running = false, index = 1, timer;
+  function load(url) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => img.naturalWidth === 1024 && img.naturalHeight === 1024
+        ? resolve(img) : reject(new Error("Unexpected frame dimensions: " + url));
+      img.onerror = () => reject(new Error("Cannot load " + url));
+      img.src = url;
+    });
+  }
+  function show(frame) {
+    index = frame;
+    // All images are decoded before animation; draw at identical coordinates.
+    ctx.drawImage((original ? exact : aligned)[frame], 0, 0, 1024, 1024);
+    status.textContent = `${original ? "Untouched crop" : "Aligned frame"} ${frame + 1} — ${descriptions[frame]}`;
+    canvas.setAttribute("aria-label", descriptions[frame] + "; girl portrait");
+    buttons.forEach(b => b.setAttribute("aria-pressed", Number(b.dataset.frame) === frame));
+  }
+  function stop() {
+    clearTimeout(timer);
+    running = false;
+    play.textContent = "Play animation";
+    play.setAttribute("aria-pressed", "false");
+  }
+  function tick(step = 0) {
+    if (!running) return;
+    const [frame, duration] = sequence[step];
+    show(frame);
+    timer = setTimeout(() => tick((step + 1) % sequence.length), duration);
+  }
+  play.onclick = () => {
+    if (running) return stop();
+    running = true;
+    play.textContent = "Pause animation";
+    play.setAttribute("aria-pressed", "true");
+    tick();
+  };
+  buttons.forEach(button => button.onclick = () => { stop(); show(Number(button.dataset.frame)); });
+  source.onclick = () => {
+    original = !original;
+    source.textContent = original ? "Return to aligned frames" : "Compare: untouched crops";
+    source.setAttribute("aria-pressed", String(original));
+    show(index);
+  };
+  document.addEventListener("visibilitychange", () => { if (document.hidden) stop(); });
+  Promise.all([
+    Promise.all(names.map(name => load(name))),
+    Promise.all(names.map(name => load("exact_crops/" + name)))
+  ]).then(async sets => {
+    [aligned, exact] = sets;
+    await Promise.all([...aligned, ...exact].map(img => img.decode()));
+    document.querySelectorAll("button").forEach(b => b.disabled = false);
+    show(1);
+  }).catch(error => { status.textContent = error.message; });
+</script>
+</html>

@@ -127,6 +127,7 @@ Tlamatini does a lot. This book is organized so you can stop reading at the dept
 - **Bonus chapter §57** — Driving Unreal Engine 5 from Tlamatini (the Unrealer agent + Unreal MCP plugin). Read this if you build games or simulations in UE5 and want a chat / canvas surface for the editor.
 - **Bonus chapter §59** — Sculpting in Blender from Tlamatini (the Blenderer agent + the official Blender MCP add-on). Read this if you make 3D art / assets in Blender and want a chat / canvas surface for the editor — and to see why Blender's *code-execution* protocol differs from Unreal's verbs.
 - **[Enable Tlamatini as a Blue-hat agent](#enable-tlamatini-as-a-blue-hat-agent)** — the complete Windows defensive-toolkit runbook: asset validation, persistent host changes, detect-only baselining, armed/watch modes, evidence review, false positives, response rollback, and operator responsibility.
+- **[Avatar animation repair and reproducible visible tests](#avatar-animation-repair-and-reproducible-visible-tests)** — frame assets, the transparency-flash diagnosis, the source fix, real Django/Windows-voice validation, and the Python test launcher.
 - **Appendix A** — Keyboarder key reference.
 - **Appendix B** — Glossary.
 - **Appendix C** — Full changelog (preserved verbatim).
@@ -135,6 +136,69 @@ Tlamatini does a lot. This book is organized so you can stop reading at the dept
 If you only have ten minutes, read Part I §3–§7 (install + first login), then Part II §12 (Multi-Turn).
 
 ---
+
+## Avatar animation repair and reproducible visible tests
+
+### Four expression assets and their animation coordinates
+
+The avatar combines independent eye and mouth states. Each source asset is an opaque **1024 × 1024 RGB JPG**, rendered in the same square viewport without per-state layout changes:
+
+| Application asset | Expression | Converted image deliverable |
+| --- | --- | --- |
+| `Tlamatini/agent/static/agent/img/avatar/eo_mc.jpg` | Eyes open, mouth closed | `02_eyes_open_neutral.jpg` |
+| `Tlamatini/agent/static/agent/img/avatar/ec_mc.jpg` | Eyes closed, mouth closed | `04_eyes_closed_neutral.jpg` |
+| `Tlamatini/agent/static/agent/img/avatar/eo_mo.jpg` | Eyes open, mouth open/smiling | `01_eyes_open_smiling.jpg` |
+| `Tlamatini/agent/static/agent/img/avatar/ec_mo.jpg` | Eyes closed, mouth open/smiling | `03_eyes_closed_smiling.jpg` |
+
+The [image deliverables](output/Gemini_girl_animation/) also preserve the original four 1024-square quadrant crops from the 2048-square source sheet. The animation-oriented PNGs correct small source offsets using translation registration on stable hair/armor, a shared six-pixel inset, and one common Lanczos resampling operation. The image files are not distorted independently or regenerated. `alignment.json` records crop boxes, shifts, dimensions, and hashes. Small non-rigid differences already drawn into the source remain; this is expression switching, not generated video or phoneme-level lip synthesis.
+
+`sprite_2x2.png` contains the aligned frames in original row-major order. `preview.html` preloads/decodes the PNGs and draws them at identical canvas coordinates. The later JPG conversion retained the supplied frames' dimensions and positions, using JPEG quality 98 with no chroma subsampling. Both the [complete image ZIP](output/Gemini_girl_animation.zip) and [JPG ZIP](output/Gemini_girl_animation/girl_frames_jpg.zip) are committed deliverables.
+
+### Why the entire portrait flashed
+
+The old CSS applied `transition: opacity 90ms linear` to all four full portraits. During a switch, two overlapping frames were each partly transparent. At the midpoint, the combined coverage is `1 - (1 - 0.5) * (1 - 0.5) = 0.75`: **25% of the dark background leaks through**. A real Chromium reproduction measured minimum coverage approximately **0.753**, so the dimming was a rendering problem, not a bad JPG or a `collectstatic` conversion.
+
+Source JPGs, development collected JPGs, frozen installed static/collected/source copies, and the initially served frozen HTTP responses were SHA-256 identical. The real Django collector was independently checked for exact byte copies, then the full project's `collectstatic` was run after migrations. Image dimensions and content did not change.
+
+### The source repair
+
+1. [avatar.css](Tlamatini/agent/static/agent/css/avatar.css) switches visibility with opacity fixed at one and no transition. The neutral frame remains underneath as a fallback. The dock disables selection, preventing a blue highlight when double-clicking to mute.
+2. [avatar.js](Tlamatini/agent/static/agent/js/avatar.js) decodes each frame before selecting it. Slow, failed, or pending-decode frames leave the last valid portrait visible; class changes occur together in one JavaScript task. Mouth changes stop when speech is paused, the document is hidden, or reduced motion is requested.
+3. [agent_page.html](Tlamatini/agent/templates/agent/agent_page.html) adds a matching avatar cache-busting suffix to CSS and JS. The existing startup-generated `STATIC_VERSION` mechanism remains intact.
+
+Normal behavior is preserved: automatic blinking, mouth movement while native speech runs, click-to-greet or stop, Escape-to-stop, double-click mute, and Ctrl+Shift+M to toggle mute. These repairs do not add a remote video service or change the user's four source JPGs.
+
+### One Python command to run the visible test
+
+From the repository root:
+
+```powershell
+.\python\python.exe Tests\run_avatar_tests.py
+```
+
+For a different Python environment with the project requirements, use `python Tests/run_avatar_tests.py`. The launcher:
+
+1. Checks Django, Node.js, Playwright, and Chromium. It detects existing project/PATH/Codex-bundled dependencies; it does not silently install packages.
+2. Checks that port 8001 is free, without stopping any existing application.
+3. Prepares `Temp/avatar_flash_fix/development-test.sqlite3`, using the published session-free fixture when available; applies migrations; and creates/updates only the ordinary test account **user / changeme**.
+4. Runs the project's `collectstatic` against the source assets.
+5. Starts the real Django development page on **127.0.0.1:8001**, with distinct test cookies so it does not collide with the frozen app's session.
+6. Opens a **visible browser**, signs in, runs native Windows speech, checks at least 300 frame changes across three viewports, and exercises pause/resume/stop/mute controls.
+7. Saves screenshots and JSON proof under `output/avatar_flash_fix/visible-test/`. Closing the browser stops the server launched by this command. `--auto-close` performs that cleanup after a successful run; `--check` only validates dependencies, and `--prepare-only` stops after database preparation and `collectstatic`.
+
+If dependencies are missing, install Node.js and run `npm install --no-save playwright` followed by `npx playwright install chromium`. `TLAMATINI_TEST_NODE` can select a Node executable; `PLAYWRIGHT_MODULE` can select an installed Playwright package. The test account is deliberately generic and must not be treated as a production credential.
+
+### What was tested, and what was not
+
+The final visible repair run checked **311 transitions and 10,813 browser paints** using **Microsoft Zira — English (United States)**, with all four states exercised, zero transparency/coverage failures, zero within-viewport layout jumps, and no JavaScript errors. Native speech pause/resume, Escape, click-to-greet/stop, double-click mute without blue selection, and keyboard unmute all passed. Earlier focused browser checks also covered delayed image downloads, missing images, held decode promises, and reduced-motion mode. A preceding visible run exposed the selection highlight; it was fixed and the visible test was repeated.
+
+The tests use real Django login, templates, middleware, static HTTP responses, and native speech synthesis. The browser's LLM WebSocket is isolated so these frontend tests do not launch model jobs or modify the frozen session. **LLM answer generation is not claimed as covered.** The developer's normal database and frozen installation were not replaced or restarted during the repair. Frozen-mode rebuild/reinstall remains a separate validation step.
+
+### Repository assets and publication safety
+
+The complete deliverables are now tracked under [output/](output/), rather than hidden by the old blanket `/output/` ignore rule. They include PNG/JPG frames, crops, sprite sheets, ZIPs, preview HTML, scripts, image-alignment metadata, screenshots, visual-test JSON, original code snapshots, and deployment-code backups. The [verification report](output/avatar_flash_fix/README.md) explains each evidence file. The test suites are [test_avatar_animation.cjs](Tests/test_avatar_animation.cjs), [test_avatar_collectstatic.py](Tests/test_avatar_collectstatic.py), and [test_avatar_visible.cjs](Tests/test_avatar_visible.cjs), with [run_avatar_tests.py](Tests/run_avatar_tests.py) as the Python entry point.
+
+The committed `output/avatar_flash_fix/development-test.sqlite3` is a **sanitized fixture containing seeded project data and the generic test user**, not a personal/production database. Live login sessions were removed before publication; runtime sessions and server logs are kept under ignored `Temp/avatar_flash_fix/`. Binary attributes prevent Git from changing line endings inside PDFs, PPTX files, image files, ZIP archives, or SQLite fixtures. The original release/file-count snapshots elsewhere in this book retain their stated measurement scope; the newly published avatar assets are documented separately here.
 
 ## Demo videos
 
@@ -527,7 +591,7 @@ When the migrations finish and you have a superuser, run the server (chapter 7).
 
 ### Path B — Pre-built one-click installer (end users)
 
-Download the newest published release ZIP from **[Tlamatini Releases](https://github.com/XAIHT/Tlamatini/releases)** and unzip it (or use a `Tlamatini_Release/` folder somebody handed you / you built — see Part VIII). This book currently documents **v1.51.3** plus five following commits: the `v1.51.3` annotated tag resolves to `3148ace`, the launcher repair is `00ecdc9`, the prior dossier refresh is `5f96a2f`, the console-shield and welcome-keyboard implementation is `c8cf369`, and aligned local/remote `HEAD` is the second documentation reconciliation at `d8f21f3`. Runtime identity remains Git/build-derived. Then:
+Download the newest published release ZIP from **[Tlamatini Releases](https://github.com/XAIHT/Tlamatini/releases)** and unzip it (or use a `Tlamatini_Release/` folder somebody handed you / you built — see Part VIII). This book currently documents **v1.51.5**: the annotated `v1.51.5` tag resolves to `4a7f1cb`, which is also local `main`, `origin/main` and `origin/HEAD` — so the tag now carries the work that previously trailed behind `v1.51.3` (the launcher repair `00ecdc9`, the dossier refresh `5f96a2f`, the console-shield and welcome-keyboard implementation `c8cf369`, and the documentation reconciliations `0d2c09c` and `d8f21f3`). Runtime identity remains Git/build-derived. Then:
 
 1. Open the unzipped folder.
 2. Double-click **`Installer.exe`**.
@@ -2284,14 +2348,14 @@ Pre-releases use the standard SemVer suffixes — `2.0.0-alpha.1`, `2.0.0-beta.1
 
 ```powershell
 git status                                          # clean tree, on main
-git tag -a v1.51.3 -m "Release 1.51.3: <one-liner>"   # annotated tag
-git push origin v1.51.3
+git tag -a v1.51.5 -m "Release 1.51.5: <one-liner>"   # annotated tag
+git push origin v1.51.5
 python build.py
 python build_uninstaller.py
 python build_installer.py
 ```
 
-All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.51.3/`, named for the version so the file you hand to a user is unambiguous before they even unzip it. The newest reachable tag is `v1.51.3`, so the bare runtime version resolves to `1.51.3`; the tag peels to `3148ace`, while current `HEAD` is five commits later at `d8f21f3` (`git describe --tags --always` reports `v1.51.3-5-gd8f21f3`).
+All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.51.5/`, named for the version so the file you hand to a user is unambiguous before they even unzip it. The newest reachable tag is `v1.51.5`, so the bare runtime version resolves to `1.51.5`; the tag peels to `4a7f1cb`, which is `HEAD` itself, so `git describe --tags --always` reports a clean `v1.51.5` with no distance suffix.
 
 ### Where the version shows up in a running install
 
@@ -2299,8 +2363,8 @@ The build computes the version once and bakes it into four surfaces:
 
 - **`Tlamatini/agent/_version.py`** — generated at build time, gitignored, read at runtime by `agent.version.get_version()`. This is what every in-process surface reads.
 - **Win32 `VERSIONINFO`** — `Tlamatini.exe`, `Installer.exe`, and `Uninstaller.exe` all carry the version in their resource fork. Right-click the file → Properties → Details → ProductVersion.
-- **Release folder name** — `dist/Tlamatini_Release_v1.51.3/`.
-- **Runtime surfaces** — the About dialog renders `Tlamatini v{{ version }}` (Django context processor); after the release tag/build, the startup banner prints `--- [VERSION] Tlamatini 1.51.3` to both the console and `tlamatini.log`; `GET /agent/version/` returns `{"version":"1.51.3","commit":"abc1234","date":"…","source":"generated"}` as an **open** endpoint suitable for a health-check.
+- **Release folder name** — `dist/Tlamatini_Release_v1.51.5/`.
+- **Runtime surfaces** — the About dialog renders `Tlamatini v{{ version }}` (Django context processor); after the release tag/build, the startup banner prints `--- [VERSION] Tlamatini 1.51.5` to both the console and `tlamatini.log`; `GET /agent/version/` returns `{"version":"1.51.5","commit":"abc1234","date":"…","source":"generated"}` as an **open** endpoint suitable for a health-check.
 
 If the four surfaces ever disagree, your build was run with a stale `$env:TLAMATINI_VERSION` or against an out-of-date `_version.py` — clear them and re-run `build.py`.
 
@@ -3430,6 +3494,8 @@ The other firmware agents make Tlamatini an *embedded engineer*. ESPHomer makes 
 - **The Console Shield: a mouse click could freeze the whole application — 2026-09-10** — Angela reported that users who clicked Tlamatini's console window, whether to copy a line of the log or merely to bring the window forward, watched the core stop responding and concluded the program had hung. They were describing the symptom accurately. Windows consoles ship with **QuickEdit Mode enabled**, and a click or drag inside one puts the console into selection mode, at which point `WriteConsoleW` **stops returning** — it does not raise, it blocks, for as long as the selection is held. That distinction is why the existing `try/except` around the console write had never caught anything: a block is not an exception. The damage was wider than a paused window, because `_TeeStream.write()` wrote the console *first* and `tlamatini.log` *second*. One click therefore parked the calling thread inside `WriteConsoleW`, held the durable log file hostage to the cosmetic one so the log stopped growing too, and then took every other thread in turn as each reached the same line — Django, Channels, the Multi-Turn executor, and every pool agent that logs. The repair is two independent defences that deliberately differ in scope. `manage.py::_ConsoleWriter` makes the console **a sink that cannot apply backpressure**: chunks are handed to a bounded ten-thousand-entry queue and drained by a single daemon thread, while the log file is written first on the caller's own thread, so a held selection now costs only the console *display*. That shield runs in **both frozen and source builds**, because the freeze is a conhost property rather than a PyInstaller one and dev is where log text gets selected most. The second defence, `console_quick_edit: false`, clears `ENABLE_QUICK_EDIT_INPUT` so a click cannot begin a selection at all, and it is **frozen-only** — console mode belongs to the console, and a source-mode terminal outlives Tlamatini, so clearing the flag there would leave the developer's own shell unable to select text after the server exited. That knob shipped `true` for a single day and Angela hit precisely the failure it existed to prevent: the shield was working, the log file was growing and the chat was answering, but the window sat still and a still window reads as a hang. Her ruling settled it — *"LOG MUST BE STILL INCREMENTING, I DONT CARE IF THE STUPID USER CANT COPY CONTENT FROM THE CONSOLE WINDOW"* — and the lesson generalises: **invisible correctness is indistinguishable from a hang**. Copying is now done with right-click ▸ Mark. Ctrl+C received its own guard, because `ENABLE_PROCESSED_INPUT` is a different bit living in the same DWORD as QuickEdit, which is exactly how programs lose it silently; losing it here would also lose the SIGINT that runs the Tier-3 orphan reaper and the pool-directory cleanup, so the bit is forced on rather than merely preserved, the mode is read back after the write, and any host that drops it gets the original mode restored verbatim while QuickEdit is abandoned. Coverage is `agent/test_console_shield.py` with **28 tests**, including the regression that `write()` returns while the console is blocked, that the log keeps growing throughout, that a dropped console chunk is never silent, and that the only bit the policy may ever clear is QuickEdit itself. The full audit record lives at `TlamatiniConsoleShieldByClaude.md`.
 
 - **Enter is the default action on the welcome page — 2026-09-10** — The post-login page offers exactly two things, *Go to Chat* and *Logout*, and everyone who lands there is going to the chat; the keyboard simply had no way to say so without reaching for the mouse or tabbing into the link first. A new self-contained module, `agent/static/agent/js/welcome_enter_default.js`, makes **Enter** take you straight into the chat, and the template gained only two lines: an `id="go-to-chat"` on the existing link and the script tag with the usual cache-busting query. There is no backend, no view, no configuration key and no new dependency. It works in two layers on purpose. The link is focused as soon as the page is ready, so the **browser itself** activates it on Enter and its focus ring shows the user exactly where the key will go; a document-level `keydown` fallback then covers the cases where focus was never granted, such as a stray click on the card body. The fallback inspects `document.activeElement` and stands down whenever anything activatable already holds focus, which is the whole point of its existence: firing Enter blindly would send a user who had deliberately tabbed to *Logout* into the chat instead, the exact opposite of what they asked for. Enter belongs to the browser whenever the browser already has a target for it. For the same reason the handler ignores modifier chords, a mid-IME composition where Enter commits a candidate rather than meaning "go", and any event another handler has already claimed. Every step is guarded, so a missing link or a refused `focus()` leaves the page exactly as it was and both buttons still work by mouse — a broken shortcut must never cost the user the page itself.
+
+- **Release v1.51.5 — the console shield, Enter on the welcome page, and a tag that finally sits on its own tree — 2026-09-10** — The annotated `v1.51.5` tag resolves to `4a7f1cb`, which is simultaneously local `main`, `origin/main` and `origin/HEAD`, so for the first time in this line there is **no post-tag boundary**: `git describe --tags` reports a clean `v1.51.5` and everything the `v1.51.3` entry below had to describe as "trailing work" is now carried by a release. The headline repair is the **console shield**. Windows consoles ship with QuickEdit Mode ON, so a click or a drag inside the window — to copy a line of the log, or merely to make the window active — put the console into selection mode and **`WriteConsoleW` stopped returning**. It did not fail; it *blocked*, for as long as the selection was held, and because a block is not an exception the `try/except` wrapped around the write could never catch it. That is precisely why the symptom read as a hang rather than an error. The damage was wider than a paused console, because `_TeeStream.write()` wrote the console **first** and `tlamatini.log` **second**: one mouse click froze the calling thread, then the durable log file itself — the permanent record held hostage by the cosmetic one — and then every other thread in turn as each reached the same line, which is how Django, Channels, the Multi-Turn executor and every pool agent stopped together. Two deliberately layered defences answer it. `console_quick_edit: false` clears `ENABLE_QUICK_EDIT_INPUT` so a click cannot begin a selection at all, and it is **frozen-only** on purpose, because console mode belongs to the console rather than the process and a source-mode terminal outlives Tlamatini — clearing the flag there would leave a developer's own shell unable to select text after the server exits. `_ConsoleWriter` then makes the console a sink that cannot apply backpressure, queueing every chunk onto one bounded daemon-drained queue in **both** modes, since the freeze is identical in development and this is the only defence that also covers Windows Terminal (which ignores the flag) and a stalled pipe. The log is written before the console is queued, dropped console chunks are never silent, log lines are never dropped at all, and Ctrl+C is forced on, read back and rolled back on doubt because it shares its DWORD with QuickEdit and losing it would also lose the SIGINT that runs the Tier-3 orphan reaper. Alongside it, `welcome_enter_default.js` makes **Enter** the default action on the post-login page in two layers, deferring to `document.activeElement` so that a user who deliberately tabbed to *Logout* is never sent to the chat instead. Coverage: `agent/test_console_shield.py` (28 tests); full record in `TlamatiniConsoleShieldByClaude.md`.
 
 - **Release v1.51.3 tag and post-tag work — 2026-09-07 onward** — The annotated `v1.51.3` tag resolves to `3148ace`, the same commit as `v1.51.2`; the launcher implementation named by the tag message landed immediately afterward at `00ecdc9`, followed by the dossier refresh at `5f96a2f`, the console shield and welcome keyboard default at `c8cf369`, and documentation reconciliations at `0d2c09c` and `d8f21f3`. Local `main`, `origin/main`, and `origin/HEAD` now resolve to `d8f21f3`. Source-mode version resolution reports the newest reachable bare tag, `1.51.3`, without concealing the five-commit boundary. The launcher repair adds `agent/win_shim.py` as the common decision point for direct executables, frozen `.exe` launchers, Python entry points, and `.cmd`/`.bat` wrappers, with Windows-correct quoting, shell selection, hidden-window flags, and environment propagation shared by ACPX and runtime provisioning. `agent/test_win_shim.py` adds 404 focused tests, ACPX coverage grows from 92 to 126 tests, and the standalone ACPX plus MCP-server surfaces carry the same delivery-verdict behavior. The refreshed repository snapshot contains **1,069 tracked files**, **339,750 physical text lines**, **237,527 effective lines**, **64 binary/media assets**, **88 workflow agents**, **66 wrapped chat agents**, **108 built-in Multi-Turn tools**, **29 skills**, **38 JavaScript modules**, and **199 migrations**.
 

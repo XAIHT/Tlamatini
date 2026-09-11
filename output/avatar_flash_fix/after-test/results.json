@@ -1,0 +1,51 @@
+{
+  "speechAndBlink": {
+    "paints": 610,
+    "minCoverage": 1,
+    "partialOpacityPaints": 0,
+    "activeStates": [
+      "tlm-s-eo-mc",
+      "tlm-s-eo-mo",
+      "tlm-s-ec-mo",
+      "tlm-s-ec-mc"
+    ],
+    "distinctBoxes": 1
+  },
+  "stop": "PASS",
+  "slow": {
+    "paints": 55,
+    "minCoverage": 1,
+    "partialOpacityPaints": 0,
+    "activeStates": [
+      "tlm-s-eo-mc"
+    ],
+    "distinctBoxes": 1
+  },
+  "missing": {
+    "paints": 55,
+    "minCoverage": 1,
+    "partialOpacityPaints": 0,
+    "activeStates": [
+      "tlm-s-eo-mc"
+    ],
+    "distinctBoxes": 1
+  },
+  "holdDecode": {
+    "paints": 54,
+    "minCoverage": 1,
+    "partialOpacityPaints": 0,
+    "activeStates": [
+      "tlm-s-eo-mc"
+    ],
+    "distinctBoxes": 1
+  },
+  "reduced": {
+    "paints": 307,
+    "minCoverage": 1,
+    "partialOpacityPaints": 0,
+    "activeStates": [
+      "tlm-s-eo-mc"
+    ],
+    "distinctBoxes": 1
+  }
+}

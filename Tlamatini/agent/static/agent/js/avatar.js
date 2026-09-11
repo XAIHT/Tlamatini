@@ -253,11 +253,39 @@
       var IMGS={ eo_mc:document.getElementById('tlm-s-eo-mc'), ec_mc:document.getElementById('tlm-s-ec-mc'),
                  eo_mo:document.getElementById('tlm-s-eo-mo'), ec_mo:document.getElementById('tlm-s-ec-mo') };
       var stt={eyesOpen:true, mouthOpen:false};
+      var decodedFrames=Object.create(null), activeFrame=null;
       function render(){
         var key=(stt.eyesOpen?'eo':'ec')+'_'+(stt.mouthOpen?'mo':'mc');
+        // Leave the last good portrait on screen until the requested frame is
+        // decoded. Neither an empty HTTP response nor a pending JPEG decode
+        // may hide the current frame. All class changes paint in one JS task.
+        if(!decodedFrames[key] || activeFrame===key)return;
         for(var k in IMGS){ if(IMGS[k]) IMGS[k].classList.toggle('tlm-on', k===key); }
+        activeFrame=key;
       }
-      render();
+      Object.keys(IMGS).forEach(function(key){
+        var img=IMGS[key]; if(!img)return;
+        var loading=false, failed=false;
+        function unavailable(){
+          if(failed)return; failed=true;
+          // Preserve the last ready frame; do not replace it with a broken image.
+          try{console.warn('Tlamatini avatar frame unavailable:',key);}catch(e){}
+        }
+        function loaded(){
+          if(loading || failed || !img.complete || !img.naturalWidth)return;
+          loading=true;
+          var decoded;
+          try{decoded=typeof img.decode==='function'?img.decode():Promise.resolve();}
+          catch(e){unavailable();return;}
+          Promise.resolve(decoded).then(function(){
+            decodedFrames[key]=true;
+            render();
+          },unavailable);
+        }
+        img.addEventListener('load',loaded,{once:true});
+        img.addEventListener('error',unavailable,{once:true});
+        if(img.complete){if(img.naturalWidth)loaded();else unavailable();}
+      });
       function layoutFace(){
         if(!faceOuter)return;
         var pad=5, pw=dock.clientWidth-2*pad, ph=dock.clientHeight-2*pad;
@@ -280,7 +308,8 @@
       }
       scheduleBlink();
       setInterval(function(){
-        var sp=false; try{ sp=window.speechSynthesis&&window.speechSynthesis.speaking; }catch(e){}
+        var sp=false;
+        try{ sp=!reduce&&!document.hidden&&window.speechSynthesis&&window.speechSynthesis.speaking&&!window.speechSynthesis.paused; }catch(e){}
         if(sp){ stt.mouthOpen=!stt.mouthOpen; render(); }
         else if(stt.mouthOpen){ stt.mouthOpen=false; render(); }
       }, 150);

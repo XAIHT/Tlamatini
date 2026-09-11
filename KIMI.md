@@ -71,7 +71,7 @@ Every current count in this file was **re-verified against source on 2026-08-23 
 **Tlamatini** (Nahuatl for *"one who knows"*) is a **local-first AI developer assistant** created by **Angela López Mendoza** (@angelahack1, XAIHT). It is a Django 5.2 + Channels monolith with a LangChain/LangGraph agent core, a RAG system, a visual agentic workflow designer, an external coding-agent runtime (ACPX), a markdown skill system, and a pool of standalone agent scripts it spawns as subprocesses. Windows-only distribution (PyInstaller-frozen, carried Python 3.12.10).
 
 - **Repository**: `https://github.com/XAIHT/Tlamatini.git` · **License**: MIT · **Platform**: Windows 10/11
-- **Current release**: **v1.50.0** (annotated at `ae6fec4c`; aligned local/remote `HEAD` is one commit later at `834eaa16`). It adds NetSpeed-Calculator, WAL-safe database copy/swap, Googler's structured dork builder/lawful-source presets plus a two-tier search path (four plain-HTTP server-rendered routes first, seven visible-browser routes second), the External MCP Adder skill, the Deep Internet Research starter, Ollama Pro-or-higher full-operation guidance, and private contact synchronization. Runtime single source of truth remains annotated Git/build metadata; see §16.
+- **Current release**: **v1.51.5** (annotated at `4a7f1cb`, which is also aligned local/remote `HEAD` — the tag sits on the tree it describes). It carries the console shield (a click in the Windows console can no longer freeze the core, because the log is written before the console is queued onto a bounded drain thread), Enter as the welcome page's default action, the `agent/win_shim.py` single definition of Windows spawning, and the ACPX delivery verdict that stops a refused child being reported as a success. Earlier in the same line, `v1.50.0` added NetSpeed-Calculator, WAL-safe database copy/swap, Googler's structured dork builder/lawful-source presets plus a two-tier search path (four plain-HTTP server-rendered routes first, seven visible-browser routes second), the External MCP Adder skill, the Deep Internet Research starter, Ollama Pro-or-higher full-operation guidance, and private contact synchronization. Runtime single source of truth remains annotated Git/build metadata; see §16.
 - **Python**: 3.12.10 (carried interpreter under `<repo>/python` is build-provisioned — never use it to run builds)
 
 **Verified counts (2026-08-23, counted from source and an isolated live Django tool build; skill list confirmed live via `tlamatini_list_skills`):**
@@ -252,7 +252,7 @@ Tlamatini/                          # Git root (C:\Development\Tlamatini)
 ├── test_author_banner.py           # Author-banner presence guard
 ├── requirements.txt                # Python deps (ruff is a REQUIRED runtime gate — never unpin)
 ├── eslint.config.mjs               # ESLint 10 config (501-line cross-file globals whitelist)
-├── package.json                    # release metadata 1.50.0; npm run lint / lint:fix
+├── package.json                    # release metadata 1.51.5; npm run lint / lint:fix
 ├── tlamatini_mcp_server.py         # Root stdio MCP server: 88 agent tools + 7 mgmt + 10 ACPX
 ├── tlamatini_acpx.py               # Self-contained stdlib ACPX runtime port for the MCP server
 ├── Tlamatini.ps1                   # Legacy launcher for the frozen exe

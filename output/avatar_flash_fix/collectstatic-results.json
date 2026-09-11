@@ -1,0 +1,42 @@
+{
+  "django": "5.2.15",
+  "storage": "django.contrib.staticfiles.storage.StaticFilesStorage",
+  "assets": [
+    {
+      "asset": "agent/css/avatar.css",
+      "bytes": 7791,
+      "sha256": "df1464102bb550af332c349fc019de7a6d50da9256fff1505e2b40984b52d633",
+      "collectstatic_exact_copy": true
+    },
+    {
+      "asset": "agent/js/avatar.js",
+      "bytes": 26090,
+      "sha256": "5c36c67c6d11e1b70e6f0281ded38d12ae4e0af3ec6b527dbbc4b62f801d8141",
+      "collectstatic_exact_copy": true
+    },
+    {
+      "asset": "agent/img/avatar/eo_mc.jpg",
+      "bytes": 546560,
+      "sha256": "3ef16fffacd226d356e6a238dbb0b3a22ea079682a51fa6094b6474c14f81768",
+      "collectstatic_exact_copy": true
+    },
+    {
+      "asset": "agent/img/avatar/ec_mc.jpg",
+      "bytes": 553458,
+      "sha256": "a4ee30a94284dce3347c0b2d92a5cf8ee1a6caa88c9a2a1a7e92edff7f3e0e0a",
+      "collectstatic_exact_copy": true
+    },
+    {
+      "asset": "agent/img/avatar/eo_mo.jpg",
+      "bytes": 550040,
+      "sha256": "339664fb3bf488fc299f88f6d448a2ea6ea1d530a284e0529f0ef8fea5effdf3",
+      "collectstatic_exact_copy": true
+    },
+    {
+      "asset": "agent/img/avatar/ec_mo.jpg",
+      "bytes": 556352,
+      "sha256": "1422f8dbd71d6394a4f44520bacfce77810bfe954c626f8a83f6897925ee27c5",
+      "collectstatic_exact_copy": true
+    }
+  ]
+}

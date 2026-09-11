@@ -1,0 +1,11 @@
+# Preserve generated artifacts byte-for-byte; never apply CRLF conversion.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.pdf binary
+*.pptx binary
+*.zip binary
+*.sqlite3 binary
+*.pyc binary
+# Evidence, original snapshots, and manifests must retain their recorded bytes.
+output/** -text

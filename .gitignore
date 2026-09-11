@@ -369,7 +369,13 @@ public_release_verify_report.json
 
 # Transient build / run / scratch artifacts — stop them cluttering git status
 *.out
-/output/
+# User-requested deliverables and avatar test evidence under output/ are tracked.
+# Live test state stays separate from the published, session-free DB fixture.
+/Temp/avatar_flash_fix/
+!output/*.zip
+!output/**/*.zip
+!output/avatar_flash_fix/__pycache__/
+!output/avatar_flash_fix/__pycache__/*.pyc
 done-*.flag
 
 # Clipboard screenshot paste-duplicates (the originally committed image.png,
