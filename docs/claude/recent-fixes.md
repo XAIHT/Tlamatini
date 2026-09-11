@@ -16,6 +16,30 @@
 
 ---
 
+## 2026-09-11 - Gitter mangled EVERY Windows path in `custom_command`
+
+**Files: `agent/agents/gitter/gitter.py` (`build_git_command` + the new `_strip_wrapping_quotes` helper), NEW `agent/test_gitter_custom_command.py` (23 tests).**
+
+`build_git_command` tokenized `custom_command` with `shlex.split(..., posix=True)`. In POSIX mode a backslash is an ESCAPE character, so
+
+```
+commit -F C:\Development\XAIHT\Tlamatini\Temp\commit_msg.txt
+```
+
+reached git as `C:DevelopmentXAIHTTlamatiniTempcommit_msg.txt`, and git answered `fatal: could not read log file ... No such file or directory`. Measured live on 2026-09-11 while committing the glm-5.3 switch. **EVERY Windows path handed to Gitter was silently mangled** - and because the mangled string still looks like a path, the failure surfaces far from its cause.
+
+**Why the fix is not simply `posix=False`.** `posix=False` leaves backslashes literal but KEEPS the surrounding quote characters inside the token - which would break the exact thing `posix=True` was chosen for: a quoted multi-word argument (`-m "Release notes with spaces"`) collapsing into ONE token instead of git reporting `fatal: too many arguments`. So Windows now tokenizes with `posix=False` **and** strips one matching outer quote pair via `_strip_wrapping_quotes`. POSIX hosts stay on `posix=True`, where a backslash really IS an escape character.
+
+**Contracts (do NOT weaken):**
+
+- The platform split is DELIBERATE. Do not `make it consistent` by putting both platforms on one mode - either choice breaks one of the two requirements.
+- The quote-stripping must stay PAIRED with `posix=False`. Drop it and every quoted argument keeps literal `"` characters in the token.
+- Malformed (unbalanced-quote) input still falls back to a plain `.split()`, so tokenization never hard-fails.
+
+**Proven, not assumed.** `agent/test_gitter_custom_command.py` AST-lifts the two functions out of the pool agent rather than importing it (which would set env vars, configure logging and write a PID file) - the same trick `test_django_port_config.py` uses on `manage.py`. It asserts BOTH directions: the Windows path survives, AND quoted multi-word arguments still collapse to one token. An A/B run against the pre-fix tokenizer gave **2 cases FIXED, 4 UNCHANGED, 0 regressions**, and `test_windows_path_keeps_every_backslash` **FAILS against the old code** - i.e. the test genuinely catches the bug instead of merely agreeing with the new behaviour. End-to-end, the real agent then ran `git log -1 --oneline -- C:\Development\XAIHT\Tlamatini\README.md` with the path intact.
+
+---
+
 ## 2026-09-11 - Default cloud model switched: glm-5.2:cloud -> glm-5.3:cloud
 
 **Files: `Tlamatini/agent/config.json` (all 7 model keys), 18 pool-agent `config.yaml` files, the runtime `.py` defaults (`image_interpreter.py`, `video_analyzer.py`, `pdfer.py`, `instant_messaging_doctor.py`, `views.py`, `check_private_data.py`), the tool descriptions in `chat_agent_registry.py` / `mcp_agent.py` / `local_toolcall_parser.py`, the tests and demo-prompt migrations that assert them, `flowhypervisor/monitoring-prompt.pmt`, and every `.md` that states the default - `README.md` + `BookOfTlamatini.md` (the `ollama pull` install lines), `CLAUDE.md`, `GEMINI.md`, `agents_descriptions.md`, `docs/claude/agents.md`, `agent/Tlamatini.md`, `flowcreator/agentic_skill.md`, `TlamatiniJudgementDay.md`, `.claude/memory/MEMORY.md`.** Angela's call: `glm-5.3:cloud` is now the shipped default everywhere `glm-5.2:cloud` was - the chat chain, the unified agent, the files-search / internet-classifier / web-summarizer slots, the Image-Interpreter and Video-Analyzer `merging_model`, LaTeXer's `repair_model` (ladder rung 7), PDFer's `ollama_model`, and the private-data reviewer's primary model.

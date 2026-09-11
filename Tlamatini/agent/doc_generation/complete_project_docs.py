@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import ast
+import hashlib
 import io
 import importlib.util
 import json
@@ -21,6 +22,8 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 from zipfile import ZipFile
+
+from PIL import Image as PillowImage
 
 from pptx import Presentation
 from pptx.dml.color import RGBColor
@@ -34,6 +37,8 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.lib.utils import ImageReader
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import (
     Image,
     PageBreak,
@@ -72,6 +77,7 @@ BINARY_EXTENSIONS = {
     ".png",
     ".pptx",
     ".pyc",
+    ".sqlite3",
     ".wav",
     ".zip",
 }
@@ -82,6 +88,7 @@ LANGUAGE_BY_EXTENSION = {
     ".flw": ("Tlamatini Flow", "Flow"),
     ".html": ("HTML", "HTML"),
     ".js": ("JavaScript", "JS"),
+    ".cjs": ("JavaScript", "JS"),
     ".json": ("JSON", "JSON"),
     ".md": ("Markdown", "MD"),
     ".mjs": ("JavaScript module", "MJS"),
@@ -166,6 +173,21 @@ def git(*args: str) -> str:
 
 def local_stamp() -> str:
     return datetime.now().astimezone().strftime("%B %d, %Y %I:%M %p UTC%z")
+
+
+def release_identity() -> str:
+    """Keep tagged release identity separate from the inspected checkout."""
+    tag = git("describe", "--tags", "--abbrev=0", "HEAD")
+    tag_commit = git("rev-parse", "--short", f"{tag}^{{commit}}")
+    head = git("rev-parse", "--short", "HEAD")
+    distance = git("rev-list", "--count", f"{tag}..HEAD")
+    remote = git("rev-parse", "--short", "origin/main")
+    return (
+        f"The reachable release tag {tag} resolves to {tag_commit}. "
+        f"Current source HEAD is {head}, {distance} commits beyond that tag. "
+        f"Fetched origin/main resolves to {remote}. Runtime version resolution remains "
+        "Git/build-derived. A source revision beyond the tag is not a new tagged release."
+    )
 
 
 def iso_date(iso_value: str) -> str:
@@ -314,7 +336,7 @@ def count_python_effective(text: str) -> int:
 
 
 def remove_block_comments(text: str, suffix: str) -> str:
-    if suffix in {".js", ".mjs", ".css", ".proto"}:
+    if suffix in {".js", ".cjs", ".mjs", ".css", ".proto"}:
         return re.sub(r"/\*.*?\*/", "", text, flags=re.DOTALL)
     if suffix == ".html" or suffix == ".md":
         return re.sub(r"<!--.*?-->", "", text, flags=re.DOTALL)
@@ -327,7 +349,7 @@ def strip_inline_comment(line: str, suffix: str) -> str:
     stripped = line.strip()
     if suffix in {".yaml", ".yml", ".ps1"}:
         return "" if stripped.startswith("#") else line
-    if suffix in {".js", ".mjs", ".css", ".proto"}:
+    if suffix in {".js", ".cjs", ".mjs", ".css", ".proto"}:
         return "" if stripped.startswith("//") else line
     if suffix == ".bat":
         lowered = stripped.lower()
@@ -567,7 +589,7 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     )
     if has_current_release_wave:
         highlights.append(
-            "The newest annotated `v1.51.5` tag resolves to `4a7f1cb`, which is also aligned local/remote HEAD, so there is no post-tag boundary. It carries the `00ecdc9` launcher shim and the `c8cf369` console shield plus welcome-page keyboard default, with documentation reconciled at `5f96a2f`, `0d2c09c`, and `d8f21f3`. Runtime versions remain Git/build-derived through `agent/version.py`, while generated inventories derive agent, tool, skill, asset, migration, and effective-line totals from live source."
+            release_identity()
         )
         highlights.append(
             "The current release window adds a non-blocking console sink with frozen-build QuickEdit policy, Enter-to-chat welcome navigation, and the Windows launcher shim, while carrying PDFer's measured layout system, stable program/snippet persistence, and ACPX live-readiness and delivery verdicts."
@@ -787,7 +809,7 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         for subject in subjects
     ):
         highlights.append(
-            "The latest dossier pass resolves the newest annotated release as `v1.51.5` at `4a7f1cb`, which is also aligned local/remote HEAD so release and worktree identity coincide, and combines README.md and BookOfTlamatini.md with source/Git truth while retaining complete installation, Ollama, architecture, usage, tree, line inventory, and responsibility context."
+            release_identity()
         )
     elif not has_current_release_wave and any(
         "1.26.5" in subject
@@ -992,7 +1014,7 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
         "tlamatini-spanish piring" in subject for subject in subjects
     ):
         return [
-            "The newest annotated `v1.51.5` tag resolves to `4a7f1cb`, which is also aligned local/remote HEAD, so release and worktree identities coincide and no post-tag boundary is reported.",
+            release_identity(),
             "The v1.50.6 public builder supports pristine clones without a private targets file while retaining fail-toward-refusal privacy probing, inert example configuration, structural-only honesty, runtime independence, and source-derived secret restoration.",
             "The v1.50.5 shutdown repair moves cleanup out of the signal handler, guards re-entry, adds bounded daemon cleanup and watchdog exit, and proves real Ctrl+C termination; `PromptDesigner.jpg` is inventoried as an unreferenced design asset rather than a shipped runtime feature.",
             "The carried v1.50.4 delta keeps optional Transformers and its transitively imported Torch stack out of the frozen Django process, migrates deprecated tool imports to `langchain_core.tools`, and adds source-derived lean-process guards; the v1.50.3 Googler and earlier safety work remain carried.",
@@ -1090,7 +1112,7 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
     )
     if has_current_release_wave:
         highlights.append(
-            "The newest annotated `v1.51.5` tag resolves to `4a7f1cb`, which is also aligned local/remote HEAD, so tag and worktree identities coincide and remain explicit."
+            release_identity()
         )
         highlights.append(
             "The current dossier window adds the queue-backed console shield, frozen-build QuickEdit policy, and Enter-to-chat welcome shortcut. It carries PDFer's measured design engine, stable program/snippet persistence, ACPX readiness and delivery verdicts, and the Windows direct-or-shell launcher shim."
@@ -1525,7 +1547,135 @@ def collect_context() -> dict:
         "reference_media": reference_media,
         "version_info": version_info,
     }
+    context.update(collect_publication_context(context))
     return context
+
+
+def collect_publication_context(context: dict) -> dict:
+    """Inventory published evidence without loading private configuration values."""
+    tag = git("describe", "--tags", "--abbrev=0", "HEAD")
+    added = sorted(set(git("diff", "--name-only", "--diff-filter=A", f"{tag}..HEAD").splitlines())
+                   | set(context["untracked_paths"]))
+    stats = {row.path: row for row in context["file_rows"]}
+    manifest_path = REPO_ROOT / "output" / "ASSET_MANIFEST.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    for asset in manifest["assets"]:
+        path = REPO_ROOT / asset["path"]
+        data = path.read_bytes()
+        if len(data) != asset["bytes"] or hashlib.sha256(data).hexdigest() != asset["sha256"]:
+            raise RuntimeError(f"Published asset manifest mismatch: {asset['path']}")
+    published = [path for path in context["tracked_paths"] if path.startswith("output/")]
+    expected = {row["path"] for row in manifest["assets"]} | {"output/ASSET_MANIFEST.json"}
+    if set(published) != expected:
+        raise RuntimeError("Published output manifest path parity failed")
+    evidence = json.loads((REPO_ROOT / "output/avatar_flash_fix/visible-test/results.json").read_text(encoding="utf-8"))
+    if not evidence["finished"] or evidence["failures"] or evidence["pageErrors"]:
+        raise RuntimeError("Recorded visible avatar evidence contains failures")
+    rows = []
+    for path in added:
+        absolute = REPO_ROOT / path
+        row = stats.get(path)
+        kind = "text" if row else "binary"
+        if absolute.suffix.lower() in {".png", ".jpg", ".jpeg"}:
+            with PillowImage.open(absolute) as img:
+                kind = f"{img.width}x{img.height} {img.mode}"
+        rows.append({
+            "path": path, "bytes": absolute.stat().st_size, "kind": kind,
+            "physical": row.total_lines if row else None,
+            "effective": row.effective_lines if row else None,
+        })
+    return {
+        "release_identity": release_identity(), "release_tag": tag,
+        "remote_head": git("rev-parse", "origin/main"),
+        "git_describe": git("describe", "--tags", "--long", "HEAD"),
+        "worktree_status": git("status", "--short"),
+        "new_assets": rows, "published_files": len(published),
+        "published_bytes": sum((REPO_ROOT / path).stat().st_size for path in published),
+        "manifest_verified_files": len(manifest["assets"]),
+        "avatar_evidence": {
+            "transitions": len(evidence["transitions"]), "paints": evidence["paints"],
+            "min_coverage": evidence["minCoverage"], "states": len(evidence["states"]),
+            "viewports": len(evidence["rectangles"]), "controls": evidence["controls"],
+            "voice": evidence["voice"]["name"],
+        },
+    }
+
+
+def publication_guide(context: dict) -> list[str]:
+    evidence = context["avatar_evidence"]
+    return [
+        f"Since tag {context['release_tag']}, the inspected checkout adds {len(context['new_assets'])} files "
+        f"including {context['untracked_files']} untracked working additions. "
+        f"The output directory contains {context['published_files']} tracked deliverables "
+        f"({context['published_bytes']:,} bytes including its manifest). All "
+        f"{context['manifest_verified_files']} manifest-listed payloads pass SHA-256 and size checks.",
+        "Published assets include exact quadrant crops, aligned PNG frames, JPG conversions, "
+        "a sprite sheet, HTML preview, ZIP packages, screenshots, code snapshots, test results, "
+        "and a sanitized development database fixture. Binary files have no source-line count.",
+        f"Current inventory: {context['tracked_files']:,} tracked files, "
+        f"{context['total_lines']:,} physical text lines, {context['total_effective_lines']:,} "
+        f"effective lines, and {context['binary_count']} binary assets. Published backup/test "
+        "text counts toward repository totals but does not add runtime agents or frontend modules.",
+        "Commit 46a18c8 repairs avatar opacity flashing and publishes the runnable test suite. "
+        "Commit 2ea219a changes the configured cloud baseline to glm-5.3:cloud and corrects "
+        "the handbook's model pull list. These are source changes after v1.51.5.",
+        f"Recorded visible evidence: {evidence['transitions']} transitions, {evidence['paints']:,} "
+        f"browser paints, {evidence['states']} expression states, {evidence['viewports']} viewports, "
+        f"minimum coverage {evidence['min_coverage']:.0%}, zero reported layout/coverage failures "
+        "and no JavaScript errors. This refresh checks the recorded evidence, not a new browser run.",
+        "README and Book retain a pre-avatar 1,069-file inventory and an obsolete tag-equals-HEAD "
+        "sentence. Their 311-transition repair-run description is historical. This dossier "
+        "uses current Git counts and the later 313-transition JSON evidence instead.",
+    ]
+
+
+AVATAR_GUIDE = [
+    "Four opaque 1024x1024 RGB JPGs combine open/closed eyes with neutral/smiling mouth. "
+    "They share one square viewport. Existing non-rigid expression differences remain.",
+    "The former 90 ms full-image opacity transition exposed the dark background. "
+    "At two half-opaque frames, combined coverage is 75%. The recorded reproduction "
+    "measured approximately 75.3%. Django collectstatic copied the JPG bytes correctly.",
+    "The renderer now swaps visibility with opacity fixed at one, waits for image.decode(), "
+    "and retains the neutral/last valid image when another frame is slow or unavailable. "
+    "A shared cache-busting suffix serves the changed CSS and JavaScript.",
+    "Speech pause, hidden-page and reduced-motion behavior stop mouth animation. "
+    "Click greeting/stop, Escape, double-click mute and Ctrl+Shift+M remain available. "
+    "Disabling image selection removes the blue double-click highlight.",
+    "This is expression switching driven by native speech, not streamed video or "
+    "phoneme-level lip synthesis. Tests isolate the LLM WebSocket. Frozen rebuild/reinstall "
+    "and end-to-end model answer generation remain separate validation work.",
+]
+
+
+AVATAR_TEST_GUIDE = [
+    r"From the repository root: .\python\python.exe Tests\run_avatar_tests.py",
+    "Use --check for dependency validation, --prepare-only for database/static preparation, "
+    "or --auto-close to close the visible browser and its server after passing.",
+    "The launcher prepares the isolated Temp/avatar_flash_fix database, applies migrations, "
+    "creates the ordinary user/changeme test account, runs collectstatic, and starts real "
+    "Django on 127.0.0.1:8001. It leaves the frozen app and normal database untouched.",
+    "The visible, non-headless browser checks at least 300 expression transitions with native "
+    "Windows speech, three viewport sizes and playback/mute controls. Closing it stops "
+    "the test server. Node.js, Playwright and Chromium are prerequisites.",
+    "Screenshots and JSON proof land in output/avatar_flash_fix/visible-test. The committed "
+    "SQLite fixture has no login sessions. Runtime sessions/logs stay in ignored Temp. "
+    "The generic test credential must not become a production password.",
+]
+
+
+GITTER_WORKTREE_GUIDE = [
+    "The inspected working tree repairs Gitter custom_command tokenization on Windows. "
+    "POSIX shlex treated backslashes as escapes and turned C:\\Dev\\msg.txt into C:Devmsg.txt.",
+    "Windows now uses shlex.split(..., posix=False) plus one matching outer-quote removal. "
+    "Backslashes survive and quoted multi-word arguments remain single tokens. "
+    "POSIX hosts retain posix=True. Malformed quotes retain the existing split fallback.",
+    "agent/test_gitter_custom_command.py adds 23 tests. The tests AST-load only the two "
+    "helpers so they do not start a pool agent or write PID/log state. They cover Windows "
+    "paths, quoted arguments, malformed input, POSIX behavior and source contracts.",
+    "Source: agent/agents/gitter/gitter.py. Maintainer record: docs/claude/recent-fixes.md, "
+    "2026-09-11 entry. The public handbooks describe Gitter generally but do not yet "
+    "explain this tokenizer repair. This change is uncommitted at the audit snapshot.",
+]
 
 
 SYSTEM_OVERVIEW = [
@@ -1699,7 +1849,7 @@ def operator_surface_counts_guide(context: dict) -> list[str]:
     ]
 
 CURRENT_RELEASE_GUIDE = [
-    "The newest annotated `v1.51.5` tag resolves to `4a7f1cb`. It now carries what previously trailed `v1.51.3`: feature work at `00ecdc9` and `c8cf369`, plus documentation at `5f96a2f`, `0d2c09c`, and `d8f21f3`. Fetched local `main`, `origin/main`, and `origin/HEAD` all align at `4a7f1cb`, the tag commit itself; runtime identity stays Git/build-derived, and this generator creates no tag, commit, or push.",
+    release_identity(),
     "Commit `c8cf369` makes console output non-blocking. `manage.py::_ConsoleWriter` drains a bounded 10,000-chunk queue on one daemon thread, while `_TeeStream` writes `tlamatini.log` first on the caller thread. Frozen builds ship `console_quick_edit: false`; source runs leave the developer's terminal mode untouched. Ctrl+C is forced on, verified after the mode change, and the original mode is restored if that bit does not survive. The 600-line `agent/test_console_shield.py` contains 28 focused tests.",
     "The same commit adds the 92-line `welcome_enter_default.js`: the existing Go to Chat link receives focus after login, while a guarded document fallback handles plain Enter only when no button, link, input, or editable element already owns it. Modifier chords, IME composition, claimed events, missing links, and failed focus all fail open. The earlier `00ecdc9` shim still centralizes correct `.exe`, Python, `.cmd`, and `.bat` startup across ACPX and runtime provisioning.",
     "The shared v1.51.2/v1.51.3 tag commit adds `agent/acpx/child_health.py`, live readiness probes, named non-delivery verdicts, and transport overrides. PDFer's upgrade and v1.51.1 program/snippet collision repair remain carried. The live surface is 88 workflow agents, 66 wrapped launchers, 108 built-in Multi-Turn tools, 29 skills, 38 JavaScript modules, and 199 migrations.",
@@ -1715,20 +1865,11 @@ CURRENT_RELEASE_GUIDE = [
     "The private External-MCP runtime, inactive Memory/Sequential-Thinking defaults, tombstones, persistent Memory state, secret-separated catalogs, nested-diagram restoration, Mover/Deleter placement guard, and updater preservation remain carried from the v1.48.14-v1.48.17 lineage.",
     "The categorized prompt catalog, per-user Hard Cancel epochs, path-native screenshot paste/drop, configurable port, FlowPills discovery, Unreal scaffold, self-healing, robotic loop, firmware/media agents, External MCPs, ACPX skills, and deterministic file tools remain part of the complete product rather than being reduced to a latest-changes summary.",
     "README.md and BookOfTlamatini.md retain the complete MIT-licensed installation, Ollama setup, architecture, everyday-use, agent, and responsibility narrative. The plain-Python agent disclaimer is explicit: transparency enables user control but is not a security warranty, and authorization, review, permissions, and consequences remain the operator's responsibility.",
-    "README.md and BookOfTlamatini.md remain the complete content baselines, while Git is the version source of truth: `v1.51.5` peels to `4a7f1cb`, which is also where aligned local/remote HEAD resolves. Generated counts remain source-derived, including 88 agents, 66 wrapped launchers, 108 built-in Multi-Turn tools, 29 skills, and 199 migrations.",
+    release_identity(),
     "The inventory is rebuilt from Git-tracked plus Git-unignored files without reproducing credentials, endpoints, private values, or machine-specific configuration. This generation pass does not stage, commit, or push anything.",
     "The regenerated PDF/PPTX preserve the whole system, architecture, installation/use guidance, recent Git history, complete file tree, effective-line inventory, and validation evidence; target behavior and tagged historical predecessors are described separately.",
 ]
 
-RECENT_ASSETS_GUIDE = [
-    "Since the last committed visual dossier at `5f96a2f`, Git adds three tracked text assets totaling 994 physical and 634 effective lines. No binary asset was added or removed, so the binary/media inventory remains 64.",
-    "`agent/test_console_shield.py` contributes 600 physical / 386 effective lines and 28 focused tests for non-blocking submission, durable-log-first ordering, bounded drop reporting, shutdown bounds, caller-thread identity tags, QuickEdit policy, and Ctrl+C preservation.",
-    "`TlamatiniConsoleShieldByClaude.md` contributes 302 physical / 208 effective lines as the full design and audit record for the console backpressure failure, two-layer defence, source/frozen split, invariants, known limits, and reproduction steps.",
-    "`agent/static/agent/js/welcome_enter_default.js` contributes 92 physical / 40 effective lines. `welcome.html` adds the stable link id and cache-busted module reference, raising the JavaScript-module inventory from 37 to 38.",
-    "Modified assets include `manage.py` at 1,226 physical / 599 effective lines, `config.json` at 250 / 250, `welcome.html` at 37 / 37, and `docs/claude/recent-fixes.md` at 2,773 / 2,074 in the reconciled working tree.",
-    "The live inventory now contains 1,069 tracked files, 339,750 physical text lines, 237,527 effective lines, 64 binary/media assets, 88 workflow agents, 66 wrapped launchers, 108 built-in Multi-Turn tools, 29 skills, and 199 migrations.",
-    "Line totals count text only and exclude comments, blank lines, and Python module/class/function docstrings according to the documented method. Complete tree pages come from the current Git inventory and are checked path-for-path against `git ls-files`.",
-]
 
 NETSPEED_GUIDE = [
     "Actions are `full`, `download`, `upload`, `latency`, `validate`, and `providers`. `validate` checks reachability and `providers` lists the catalog; neither runs a throughput transfer.",
@@ -1925,7 +2066,7 @@ FRONTEND_HOTFIX_GUIDE = [
 ]
 
 V136_RELEASE_GUIDE = [
-    "Release identity: `v1.51.5` is the newest annotated tag at `4a7f1cb`, which is also aligned local/remote HEAD, so there is no post-tag boundary. This line adds the console shield and welcome-page keyboard default while carrying the launcher shim, ACPX readiness and delivery truth, PDFer's measured layout engine, stable program persistence, the clean-clone privacy preflight, bounded Ctrl+C shutdown, and the earlier safety/platform waves.",
+    release_identity(),
     "New agent: Video-Analyzer becomes the current media-verdict workflow agent and wrapped `chat_agent_video_analyzer`, complementing Image-Interpreter with video-specific motion analysis.",
     "Implementation assets: `agent/agents/video_analyzer/`, migrations `0166_add_video_analyzer.py`, `0167_add_chat_agent_video_analyzer_tool.py`, `0168_add_video_analyzer_demo_prompt.py`, `test_video_analyzer_agent.py`, `chat_agent_registry.py`, `mcp_agent.py`, and `services/agent_contracts.py` all move together.",
     "Model strategy: `interpreter_model_1` defaults to `qwen3-vl:235b-cloud`, `interpreter_model_2` defaults to `qwen3.5:cloud`, and `merging_model` defaults to `glm-5.3:cloud`, with independent calls merged only after both interpreters report.",
@@ -2347,7 +2488,7 @@ DB_SWAP_GUIDE = [
 VERSIONING_GUIDE = [
     "Tlamatini now follows Semantic Versioning 2.0.0 with git tags as the single source of truth: you tag, then you build, instead of hand-editing version strings across files.",
     "The build path resolves a version once and propagates it into generated runtime metadata, Win32 VERSIONINFO resources, and the release-folder naming convention.",
-    "Git resolves the current source-mode release as `TLAMATINI_VERSION=1.51.5`, matching the newest reachable annotated tag; the dossier separately records that the tag peels to `4a7f1cb`, which is aligned local/remote HEAD itself, so no post-tag distance is reported.",
+    release_identity(),
 ]
 
 VERSION_SURFACES_GUIDE = [
@@ -2454,9 +2595,8 @@ OLLAMA_COMMANDS = "\n".join(
         "ollama pull Nomic-Embed-Text:latest",
         "ollama pull glm-5.3:cloud",
         "ollama pull qwen3.5:cloud",
-        "ollama pull gpt-oss:120b-cloud",
-        "ollama pull qwen3.5:397b-cloud",
-        "ollama pull glm-5.1:cloud",
+        "ollama pull gemma4:cloud",
+        "ollama pull qwen3-vl:235b-cloud",
     ]
 )
 
@@ -2491,13 +2631,20 @@ AGENT_CATEGORIES = [
 
 
 def pdf_styles() -> dict[str, ParagraphStyle]:
+    # Embed Unicode fonts so names and punctuation survive rendering/extraction.
+    fonts = Path(os.environ.get("WINDIR", "C:/Windows")) / "Fonts"
+    for name, filename in (("DossierSans", "arial.ttf"),
+                           ("DossierSans-Bold", "arialbd.ttf"),
+                           ("DossierMono", "consola.ttf")):
+        if name not in pdfmetrics.getRegisteredFontNames():
+            pdfmetrics.registerFont(TTFont(name, str(fonts / filename)))
     base = getSampleStyleSheet()
     return {
         "title": ParagraphStyle(
             "TlamatiniTitle",
             parent=base["Title"],
             alignment=TA_CENTER,
-            fontName="Helvetica-Bold",
+            fontName="DossierSans-Bold",
             fontSize=28,
             leading=34,
             textColor=colors.HexColor("#17342d"),
@@ -2507,7 +2654,7 @@ def pdf_styles() -> dict[str, ParagraphStyle]:
             "TlamatiniSubtitle",
             parent=base["Normal"],
             alignment=TA_CENTER,
-            fontName="Helvetica",
+            fontName="DossierSans",
             fontSize=12,
             leading=16,
             textColor=colors.HexColor("#6b4a34"),
@@ -2516,7 +2663,7 @@ def pdf_styles() -> dict[str, ParagraphStyle]:
         "h1": ParagraphStyle(
             "TlamatiniH1",
             parent=base["Heading1"],
-            fontName="Helvetica-Bold",
+            fontName="DossierSans-Bold",
             fontSize=18,
             leading=22,
             textColor=colors.HexColor("#0f3b31"),
@@ -2526,7 +2673,7 @@ def pdf_styles() -> dict[str, ParagraphStyle]:
         "h2": ParagraphStyle(
             "TlamatiniH2",
             parent=base["Heading2"],
-            fontName="Helvetica-Bold",
+            fontName="DossierSans-Bold",
             fontSize=13,
             leading=16,
             textColor=colors.HexColor("#8f5c35"),
@@ -2536,7 +2683,7 @@ def pdf_styles() -> dict[str, ParagraphStyle]:
         "body": ParagraphStyle(
             "TlamatiniBody",
             parent=base["BodyText"],
-            fontName="Helvetica",
+            fontName="DossierSans",
             fontSize=9.5,
             leading=12.5,
             textColor=colors.HexColor("#1f2933"),
@@ -2545,7 +2692,7 @@ def pdf_styles() -> dict[str, ParagraphStyle]:
         "bullet": ParagraphStyle(
             "TlamatiniBullet",
             parent=base["BodyText"],
-            fontName="Helvetica",
+            fontName="DossierSans",
             fontSize=9.2,
             leading=12.2,
             leftIndent=13,
@@ -2556,7 +2703,7 @@ def pdf_styles() -> dict[str, ParagraphStyle]:
         "mono": ParagraphStyle(
             "TlamatiniMono",
             parent=base["Code"],
-            fontName="Courier",
+            fontName="DossierMono",
             fontSize=6.7,
             leading=7.7,
             textColor=colors.HexColor("#17231f"),
@@ -2565,7 +2712,8 @@ def pdf_styles() -> dict[str, ParagraphStyle]:
 
 
 def p(text: str, style: ParagraphStyle) -> Paragraph:
-    return Paragraph(text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"), style)
+    safe = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    return Paragraph(safe.replace("&lt;br/&gt;", "<br/>"), style)
 
 
 def bullet(text: str, style: ParagraphStyle) -> Paragraph:
@@ -2579,7 +2727,7 @@ def _table_cell(text: str, font_size: float, *, header: bool) -> Paragraph:
     Paragraph's default splitLongWords behavior."""
     style = ParagraphStyle(
         "TableHeaderCell" if header else "TableBodyCell",
-        fontName="Helvetica-Bold" if header else "Helvetica",
+        fontName="DossierSans-Bold" if header else "DossierSans",
         fontSize=font_size,
         leading=font_size + 2,
         textColor=colors.white if header else colors.HexColor("#1f2933"),
@@ -2605,8 +2753,8 @@ def table(data: list[list], widths: list[float] | None = None, font_size: int = 
             [
                 ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#17342d")),
                 ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
+                ("FONTNAME", (0, 0), (-1, 0), "DossierSans-Bold"),
+                ("FONTNAME", (0, 1), (-1, -1), "DossierSans"),
                 ("FONTSIZE", (0, 0), (-1, -1), font_size),
                 ("LEADING", (0, 0), (-1, -1), font_size + 2),
                 ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#a8b1aa")),
@@ -2637,7 +2785,7 @@ def pdf_page_footer(canvas, doc) -> None:
     canvas.setLineWidth(0.4)
     canvas.line(doc.leftMargin, 0.48 * inch, A4[0] - doc.rightMargin, 0.48 * inch)
     canvas.setFillColor(colors.HexColor("#17342d"))
-    canvas.setFont("Helvetica", 7)
+    canvas.setFont("DossierSans", 7)
     canvas.drawString(doc.leftMargin, 0.32 * inch, "Tlamatini complete project dossier")
     canvas.drawRightString(A4[0] - doc.rightMargin, 0.32 * inch, f"Page {doc.page}")
     canvas.restoreState()
@@ -2779,8 +2927,14 @@ def build_pdf(context: dict) -> None:
     for item in MCP_RESEARCH_PRIVACY_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Recent implementation assets and inventory impact", styles["h2"]))
-    for item in RECENT_ASSETS_GUIDE:
+    for item in publication_guide(context):
         story.append(bullet(item, styles["bullet"]))
+    for title, guide in (("Avatar animation repair", AVATAR_GUIDE),
+                         ("Reproducible visible avatar tests", AVATAR_TEST_GUIDE),
+                         ("Gitter Windows-path repair in the working tree", GITTER_WORKTREE_GUIDE)):
+        story.append(p(title, styles["h2"]))
+        for item in guide:
+            story.append(bullet(item, styles["bullet"]))
     story.append(p("v1.41.4 External-MCP structured output", styles["h2"]))
     for item in STRUCTURED_CONTENT_1414_GUIDE:
         story.append(bullet(item, styles["bullet"]))
@@ -3222,6 +3376,16 @@ def build_pdf(context: dict) -> None:
         story.append(Preformatted(chunk, styles["mono"]))
         if index != len(tree_chunks):
             story.append(PageBreak())
+
+    story.append(PageBreak())
+    story.append(p("11. New Asset Inventory Since the Release Tag", styles["h1"]))
+    story.append(p("Includes current git-unignored additions. A dash means binary, so source-line counts do not apply. Image dimensions describe the stored asset. Historical backups are evidence, not extra runtime modules.", styles["body"]))
+    asset_rows = [["Path", "Bytes", "Physical", "Effective", "Type / pixels"]]
+    for row in context["new_assets"]:
+        asset_rows.append([row["path"], f"{row['bytes']:,}",
+                           "-" if row["physical"] is None else str(row["physical"]),
+                           "-" if row["effective"] is None else str(row["effective"]), row["kind"]])
+    story.append(table(asset_rows, widths=[3.25 * inch, 0.8 * inch, 0.65 * inch, 0.65 * inch, 1.3 * inch], font_size=7))
 
     doc.build(story, onFirstPage=pdf_page_footer, onLaterPages=pdf_page_footer)
 
@@ -3789,9 +3953,16 @@ def build_ppt(context: dict) -> None:
     audit_layout(audit, len(prs.slides))
 
     slide, audit = add_slide(prs, "Recent Implementation Assets", "new source, tests, migrations, harnesses, and inventory effects", THEME["amber"])
-    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Backend and agent assets", RECENT_ASSETS_GUIDE[:3], THEME["amber"], "recent-assets-a", 10)
-    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Frontend and operator assets", RECENT_ASSETS_GUIDE[3:], THEME["jade"], "recent-assets-b", 10)
+    add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Published inventory", publication_guide(context)[:3], THEME["amber"], "recent-assets-a", 12)
+    add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Source and evidence", publication_guide(context)[3:], THEME["jade"], "recent-assets-b", 12)
     audit_layout(audit, len(prs.slides))
+
+    for title, guide in (("Avatar Animation Repair", AVATAR_GUIDE),
+                         ("Visible Avatar Test Runner", AVATAR_TEST_GUIDE),
+                         ("Gitter Windows Paths", GITTER_WORKTREE_GUIDE)):
+        add_themed_column_slides(prs, title, "current source and verification evidence",
+                                 THEME["jade"], [("Behavior", THEME["jade"], guide[:3]),
+                                 ("Operation and scope", THEME["copper"], guide[3:])], size=16)
 
     slide, audit = add_slide(prs, "Release Continuity", "older waves still carried by the current dossier", THEME["copper"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Carried product story", CURRENT_RELEASE_GUIDE[12:16], THEME["copper"], "rel-e", 10)
@@ -4231,9 +4402,8 @@ def build_ppt(context: dict) -> None:
         "Nomic-Embed-Text:latest",
         "glm-5.3:cloud",
         "qwen3.5:cloud",
-        "gpt-oss:120b-cloud",
-        "qwen3.5:397b-cloud",
-        "glm-5.1:cloud",
+        "gemma4:cloud",
+        "qwen3-vl:235b-cloud",
     ], THEME["copper"], "ollama-b", 15)
     audit_layout(audit, len(prs.slides))
 
@@ -4335,7 +4505,7 @@ def build_ppt(context: dict) -> None:
                 add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Data and operator contract", group[split_at:], THEME["amber"], f"since-more-b-{offset}", 10)
             audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Recent Platform Additions", "v1.51.5 release line, tagged on aligned HEAD 4a7f1cb", THEME["jade"])
+    slide, audit = add_slide(prs, "Recent Platform Additions", "tagged foundation and subsequent source changes", THEME["jade"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Recent agents and execution surfaces", [
         "NetSpeed-Calculator: agent 88 / wrapped launcher 66, with multi-provider confidence intervals, I-squared heterogeneity, bufferbloat, named endpoint failures, and tier-D metered-bandwidth gating.",
         "Googler: four plain-HTTP server-rendered routes first, then visible Chrome/bundled Chromium across seven browser routes, with bounded retries, answer attribution, structured dork presets/aliases, URL-only file hunts, and a lawful-use boundary.",
@@ -4344,7 +4514,7 @@ def build_ppt(context: dict) -> None:
         "Deep Internet Research: append-only prompt 118 requests a long, link-rich Multi-Turn + Exec Report research run without hiding tool prerequisites.",
     ], THEME["copper"], "monday-a", 10)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Lifecycle, policy, and monitoring", [
-        "Resolved identity: v1.51.5 is annotated at 4a7f1cb, which is also aligned local/origin HEAD, so release and worktree coincide; the release line adds the console shield and welcome Enter default while carrying the launcher shim, ACPX delivery truth, PDFer layout intelligence, stable program persistence, clean-clone privacy, and bounded Ctrl+C shutdown.",
+        release_identity(),
         "Complete cloud-model operation requires Ollama Pro or higher; this is an operating requirement, not sponsorship, and current plan details belong to Ollama's official site.",
         "Private contact synchronization merges same-machine sources only for the explicit keyed build; public output and source snapshots remain free of contact PII.",
         "The stronger disclaimer says plain-Python transparency enables user control but is not a security warranty; the operator owns authorization, permissions, review, and consequences.",
@@ -4420,6 +4590,21 @@ def build_ppt(context: dict) -> None:
         add_text(slide, audit, 0.72, 1.56, 11.95, 5.42, chunk, 7, THEME["white"], False, name=f"tree-{idx}", font="Cascadia Mono")
         audit_layout(audit, len(prs.slides))
 
+    for idx, chunk in enumerate(split_items(context["new_assets"], 10), 1):
+        slide, audit = add_slide(prs, f"New Asset Inventory - {idx}",
+                                 "since release tag, including untracked working additions", THEME["jade"])
+        y = 1.65
+        for row in chunk:
+            metrics = (f"{row['bytes']:,} bytes; {row['kind']}; "
+                       + ("binary: no lines" if row["physical"] is None else
+                          f"{row['physical']} physical / {row['effective']} effective lines"))
+            add_text(slide, audit, 0.8, y, 11.7, 0.22, row["path"], 9, THEME["white"],
+                     name=f"asset-path-{y}", font="Cascadia Mono")
+            add_text(slide, audit, 0.8, y + 0.22, 11.7, 0.2, metrics, 9, THEME["muted"],
+                     name=f"asset-metrics-{y}")
+            y += 0.52
+        audit_layout(audit, len(prs.slides))
+
     slide, audit = add_slide(prs, "How To Keep Docs Excellent", "future refresh discipline", THEME["copper"])
     add_panel(slide, audit, 0.85, 1.75, 11.55, 4.6, "Recommended practice", [
         "Regenerate the PDF and deck whenever README, architecture, agent catalog, line inventory, or packaging behavior changes.",
@@ -4463,6 +4648,12 @@ def serialize_context(context: dict) -> dict:
         "version_info": context["version_info"],
         "language_rows": [row.__dict__ for row in context["language_rows"]],
         "largest_files": [row.__dict__ for row in context["file_rows"][:50]],
+        "all_text_files": [row.__dict__ for row in context["file_rows"]],
+        "inventory_paths": context["inventory_paths"],
+        "new_assets": context["new_assets"],
+        "publication": {key: context[key] for key in (
+            "release_identity", "remote_head", "git_describe", "worktree_status",
+            "published_files", "published_bytes", "manifest_verified_files", "avatar_evidence")},
         "recent_commits": [row.__dict__ for row in context["recent_commits"]],
         "weekly_commits": [row.__dict__ for row in context["weekly_commits"]],
         "weekly_highlights": context["weekly_highlights"],

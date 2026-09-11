@@ -325,6 +325,19 @@ def remove_pid_file():
             return
 
 
+def _strip_wrapping_quotes(token: str) -> str:
+    """Remove ONE matching pair of surrounding quotes from a token.
+
+    ``shlex.split(..., posix=False)`` keeps the quote characters inside
+    the token - that is the price of leaving backslashes alone - so strip
+    them back off here. A token that is not quoted, or whose quotes do not
+    match, is returned untouched.
+    """
+    if len(token) >= 2 and token[0] == token[-1] and token[0] in ('"', "'"):
+        return token[1:-1]
+    return token
+
+
 def build_git_command(config: Dict) -> list:
     """Build the git command list based on config."""
     command = config.get('command', 'status').strip().lower()
@@ -364,12 +377,24 @@ def build_git_command(config: Dict) -> list:
         # Tokenize honoring quotes so a quoted multi-word argument (e.g.
         # `tag -a v1.0 -m "Release notes with spaces"`) stays ONE argument
         # instead of being naively split on every space — the latter made
-        # git report "fatal: too many arguments". posix=True strips the
-        # surrounding quotes; fall back to a plain split on malformed
-        # (unbalanced-quote) input so tokenization never hard-fails.
+        # git report "fatal: too many arguments".
+        #
+        # WINDOWS PATHS: posix=True treats a backslash as an ESCAPE
+        # character, so `commit -F C:\Dev\Tlamatini\Temp\msg.txt` reached
+        # git as `C:DevTlamatiniTempmsg.txt` and died with "No such file or
+        # directory" (measured 2026-09-11). On Windows we therefore tokenize
+        # with posix=False, which leaves backslashes literal, and strip the
+        # surrounding quotes ourselves because posix=False keeps them.
+        # POSIX hosts stay on posix=True, where a backslash really IS an
+        # escape character. Malformed (unbalanced-quote) input still falls
+        # back to a plain split so tokenization never hard-fails.
         import shlex
         try:
-            _parts = shlex.split(custom_command, posix=True)
+            if os.name == 'nt':
+                _parts = [_strip_wrapping_quotes(p)
+                          for p in shlex.split(custom_command, posix=False)]
+            else:
+                _parts = shlex.split(custom_command, posix=True)
         except ValueError:
             _parts = custom_command.split()
         if _parts and _parts[0] == 'git':
