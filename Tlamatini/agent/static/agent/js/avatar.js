@@ -249,7 +249,12 @@
 
     if(dock){
       var faceOuter=document.getElementById('tlm-face-outer');
-      var reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      // ⚠️ `prefers-reduced-motion` IS DELIBERATELY NOT CONSULTED ANY MORE.
+      // Angela, 2026-09-11, verbatim: "Make the avatar to be animated even if
+      // the accessibility setting for animation were disabled, 'cause this is
+      // not an accessibility feature this is a normal broad behavior!"
+      // She blinks, breathes and speaks on every machine. A talking head that
+      // does not move is not a talking head. Do not restore the gate.
       var IMGS={ eo_mc:document.getElementById('tlm-s-eo-mc'), ec_mc:document.getElementById('tlm-s-ec-mc'),
                  eo_mo:document.getElementById('tlm-s-eo-mo'), ec_mo:document.getElementById('tlm-s-ec-mo') };
       var stt={eyesOpen:true, mouthOpen:false};
@@ -294,22 +299,65 @@
         if(pw/ph>ar){ih=ph;iw=ph*ar;}else{iw=pw;ih=pw/ar;}
         faceOuter.style.left=(pad+(pw-iw)/2)+'px';faceOuter.style.top=(pad+(ph-ih)/2)+'px';
         faceOuter.style.width=iw+'px';faceOuter.style.height=ih+'px';
+        // The presence engine pre-scales her portraits to the display size, so
+        // every geometry change has to tell it to re-scale. Skipping this is
+        // how a resized avatar ends up soft or letterboxed.
+        try{ if(window.TlamatiniPresence&&window.TlamatiniPresence.isReady())window.TlamatiniPresence.resize(); }catch(e){}
       }
       layoutFace();
       if(window.ResizeObserver){try{new ResizeObserver(layoutFace).observe(dock);}catch(e){}}
       window.addEventListener('resize',layoutFace);
       function blink(done){ stt.eyesOpen=false; render(); setTimeout(function(){ stt.eyesOpen=true; render(); if(done)done(); }, 190); }
       function scheduleBlink(){
-        if(reduce)return;
+        if(_presenceLive())return;   // the canvas engine owns the blink now
         setTimeout(function(){
           if(document.hidden){scheduleBlink();return;}
           blink(function(){ if(Math.random()<0.12){ setTimeout(function(){blink(scheduleBlink);},170); } else scheduleBlink(); });
         },2800+Math.random()*3800);
       }
+      // ── THE FACE IS DRIVEN BY THE PRESENCE ENGINE ─────────────────────────
+      // What used to run the face here was two booleans and a metronome:
+      //     setInterval(function(){ if(speaking) mouthOpen=!mouthOpen; },150);
+      // Six-and-two-thirds flaps a second, never once listening to the speech.
+      // `avatar_presence.js` replaces it with a 2D-canvas compositor: the eyes
+      // and the mouth become CONTINUOUS values, every frame is a convex blend
+      // of the same four portraits (NO new artwork — her face never changes),
+      // and the mouth follows the speech engine's own `boundary` events
+      // through the sentence instead of a timer.
+      //
+      // The <img> stack and the blink/metronome below stay ON PURPOSE: they
+      // are the FALLBACK. `_presenceLive()` is checked live on every tick, so
+      // the moment the canvas takes over they stand down by themselves, and if
+      // the canvas never starts the user still sees a blinking, talking face.
+      function _presenceLive(){
+        try{ return !!(window.TlamatiniPresence&&window.TlamatiniPresence.isReady()); }
+        catch(e){ return false; }
+      }
+      function _startPresence(){
+        try{
+          if(!window.TlamatiniPresence)return false;
+          var ok=window.TlamatiniPresence.start({
+            onTierChange:function(fps,why,ms){
+              try{console.info('Tlamatini presence: '+why+' to '+fps+' fps (median frame '+
+                Number(ms).toFixed(2)+' ms)');}catch(e){}
+            }
+          });
+          if(ok){ layoutFace(); }
+          return ok;
+        }catch(e){ return false; }
+      }
+      // The engine pre-scales her portraits, so it needs all four DECODED
+      // before it can start. Poll briefly rather than race a cold cache.
+      (function waitForPortraits(tries){
+        if(_presenceLive())return;
+        if(_startPresence())return;
+        if(tries>0){ setTimeout(function(){ waitForPortraits(tries-1); },200); }
+        else { try{console.warn('Tlamatini presence engine unavailable - legacy face in use.');}catch(e){} }
+      })(40);
       scheduleBlink();
       setInterval(function(){
         var sp=false;
-        try{ sp=!reduce&&!document.hidden&&window.speechSynthesis&&window.speechSynthesis.speaking&&!window.speechSynthesis.paused; }catch(e){}
+        try{ sp=!_presenceLive()&&!document.hidden&&window.speechSynthesis&&window.speechSynthesis.speaking&&!window.speechSynthesis.paused; }catch(e){}
         if(sp){ stt.mouthOpen=!stt.mouthOpen; render(); }
         else if(stt.mouthOpen){ stt.mouthOpen=false; render(); }
       }, 150);

@@ -53,10 +53,17 @@ def main():
     parser.add_argument("--check", action="store_true", help="Check dependencies without starting the app.")
     parser.add_argument("--prepare-only", action="store_true", help="Migrate the isolated DB, create user/changeme, collectstatic, then exit.")
     parser.add_argument("--auto-close", action="store_true", help="Close the visible browser and test server automatically after the tests pass.")
+    parser.add_argument("--presence", action="store_true", help="Also run the avatar PRESENCE regression (canvas, lip sync, blinking, sizing, no-GPU, CPU throttle).")
+    parser.add_argument("--presence-only", action="store_true", help="Run ONLY the avatar presence regression. Needs no Node.js.")
     args = parser.parse_args()
     if not importlib.util.find_spec("django"):
         raise RuntimeError("Django is missing from this Python. Run with the project's python/python.exe or install the project requirements.")
-    node, env = node_runtime()
+    # The presence regression is pure Python + Playwright-for-Python, so it must
+    # not be held hostage by the Node.js toolchain the .cjs suite needs.
+    if args.presence_only:
+        node, env = None, os.environ.copy()
+    else:
+        node, env = node_runtime()
     print("Dependencies OK. Tests always run visibly, never headless.", flush=True)
     if args.check:
         return 0
@@ -85,8 +92,22 @@ def main():
             if args.auto_close:
                 env["AVATAR_TEST_AUTOCLOSE"] = "1"
             print("Opening the visible browser. Login: user / changeme. Leave it visible during the 300-transition voice test.", flush=True)
-            result = subprocess.run([node, str(ROOT / "Tests/test_avatar_visible.cjs")], cwd=ROOT, env=env)
-            return result.returncode
+            rc = 0
+            if not args.presence_only:
+                result = subprocess.run([node, str(ROOT / "Tests/test_avatar_visible.cjs")], cwd=ROOT, env=env)
+                rc = result.returncode
+            if args.presence or args.presence_only:
+                # The presence regression drives the SAME isolated server, so it
+                # never touches the real database or the port 8000 app.
+                penv = dict(env)
+                penv["TLAMATINI_BASE_URL"] = "http://127.0.0.1:8001"
+                penv.setdefault("TLAMATINI_USER", "user")
+                penv.setdefault("TLAMATINI_PASS", "changeme")
+                print("Running the avatar PRESENCE regression (visible, GPU disabled).", flush=True)
+                pres = subprocess.run([sys.executable, str(ROOT / "Tests/test_avatar_presence_visible.py")],
+                                      cwd=ROOT, env=penv)
+                rc = rc or pres.returncode
+            return rc
         finally:
             if server.poll() is None:
                 server.terminate()

@@ -127,4 +127,44 @@
  .tlm-voice-actions button{flex:1;min-width:0;}
 }
 
+/* This only removes a CSS transition on the fallback <img> stack. It does NOT
+   stop the avatar animating: the presence engine paints on a canvas from a
+   requestAnimationFrame loop that no media query can reach, which is exactly
+   what Angela asked for on 2026-09-11 — "this is not an accessibility feature
+   this is a normal broad behavior". Do not add a motion gate here. */
 @media (prefers-reduced-motion: reduce){#tlm-face img{transition:none !important;}}
+
+/* ═══ PRESENCE CANVAS ═══════════════════════════════════════════════════════
+   `avatar_presence.js` composites her four portraits here — continuous eyes,
+   continuous mouth, breath and sway — on a 2D context, with no GPU. */
+#tlm-canvas{position:absolute;inset:0;display:block;width:100%;height:100%;
+ border-radius:7px;}
+/* Once the canvas is live it IS the face. The <img> stack stays in the DOM on
+   purpose (it is both the fallback face AND the decode source the engine
+   pre-scales from), but it must not paint underneath — two faces at slightly
+   different transforms reads as a ghost behind her. */
+#tlm-face.tlm-canvas-live img{visibility:hidden !important;}
+
+/* ═══ RESIZE HANDLE ═════════════════════════════════════════════════════════
+   Top-left, because she is anchored bottom-right when floating, so that is the
+   corner that moves when she grows. Hidden until the dock is hovered or the
+   handle is focused — she is a portrait, not a widget covered in chrome. */
+#tlm-avatar-resize{position:absolute;top:0;left:0;width:22px;height:22px;z-index:7;
+ cursor:nwse-resize;border-radius:7px 0 7px 0;opacity:0;transition:opacity .15s;
+ background:linear-gradient(135deg,rgba(34,211,238,.92) 0%,rgba(90,31,184,.92) 100%);
+ box-shadow:0 0 0 1px rgba(0,0,0,.35),0 2px 6px rgba(0,0,0,.45);}
+#tlm-avatar-dock:hover #tlm-avatar-resize{opacity:1;}
+#tlm-avatar-resize:focus-visible{opacity:1;outline:2px solid #22D3EE;outline-offset:2px;}
+#tlm-avatar-resize::after{content:'';position:absolute;left:5px;top:5px;width:9px;height:9px;
+ border-left:2px solid rgba(255,255,255,.92);border-top:2px solid rgba(255,255,255,.92);
+ border-radius:2px 0 0 0;}
+
+/* ═══ FLOATING / PRESENTATION MODE ══════════════════════════════════════════
+   The moment she is resized she leaves the chat-form box and floats over the
+   page, anchored bottom-right, so she can reach demonstration size without
+   fighting the chat for room. Untouched, she stays exactly where she was. */
+#tlm-avatar-dock.tlm-floating{position:fixed;top:auto;left:auto;right:18px;bottom:18px;
+ z-index:99990;box-shadow:0 18px 60px rgba(0,0,0,.65),0 0 14px rgba(90,31,184,.45);}
+body.tlm-resizing{cursor:nwse-resize;user-select:none;-webkit-user-select:none;}
+body.tlm-resizing *{pointer-events:none;}
+body.tlm-resizing #tlm-avatar-resize{pointer-events:auto;}

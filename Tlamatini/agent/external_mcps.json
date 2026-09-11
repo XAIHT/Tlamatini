@@ -1,4 +1,29 @@
 {
-  "mcpServers": {},
+  "mcpServers": {
+    "memory": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-memory"
+      ],
+      "env": {
+        "MEMORY_FILE_PATH": "C:\\Users\\angel\\AppData\\Local\\Tlamatini\\memory\\memory.json"
+      },
+      "transport": "stdio",
+      "description": "Persistent knowledge graph — durable, cross-session memory of entities, relations and observations. Official @modelcontextprotocol reference server. Needs Node (Tlamatini provisions it automatically).",
+      "_tlamatini_default": true
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking"
+      ],
+      "env": {},
+      "transport": "stdio",
+      "description": "Structured step-by-step reasoning with branching and revision. Official @modelcontextprotocol reference server. Needs Node (Tlamatini provisions it automatically).",
+      "_tlamatini_default": true
+    }
+  },
   "active": []
 }
