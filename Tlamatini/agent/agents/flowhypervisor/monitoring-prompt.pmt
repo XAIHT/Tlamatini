@@ -661,7 +661,7 @@ IMAGE_INTERPRETER SPECIAL NOTES (triple-model vision pipeline):
   - Image-Interpreter runs THREE LLM calls per image: interpreter_model_1
     (default qwen3.5:cloud) and interpreter_model_2 (default gemma4:cloud)
     run IN PARALLEL on two dedicated Ollama connections, a BARRIER waits for
-    BOTH interpretations, then merging_model (default glm-5.2:cloud) fuses
+    BOTH interpretations, then merging_model (default glm-5.3:cloud) fuses
     them into one report. Expect "🔀 [CONNECTION-A/B] Interpreter N
     STARTED/FINISHED", "🧱 BARRIER: waiting for BOTH interpretations..." and
     "🧱 BARRIER RELEASED" log lines — ALL of these are NORMAL pipeline
@@ -692,7 +692,7 @@ VIDEO_ANALYZER SPECIAL NOTES (triple-model video-verdict pipeline):
     NOT an error). If motion IS present it runs interpreter_model_1 (default
     qwen3-vl:235b-cloud) and interpreter_model_2 (default qwen3.5:cloud) IN
     PARALLEL on two dedicated Ollama connections, a BARRIER waits for BOTH, then
-    merging_model (default glm-5.2:cloud) fuses them. Expect the SAME
+    merging_model (default glm-5.3:cloud) fuses them. Expect the SAME
     "🔀 [CONNECTION-A/B] Interpreter N STARTED/FINISHED", "🧱 BARRIER" and
     "🔗 [CONNECTION-MERGE]" lines as Image-Interpreter — ALL NORMAL, never errors.
   - It is SHORT-LIVED and ACTIVE but each run can take tens of seconds to a few

@@ -32,7 +32,7 @@ VIDEO_ANALYZER_DEMO_PROMPT = (
     "visibly moves across the frame' and num_frames=10 — it runs a DETERMINISTIC OpenCV motion "
     "gate first (no motion -> FAIL_NO_MOTION with no model call), then interpreter_model_1 "
     "(qwen3-vl:235b-cloud) and interpreter_model_2 (qwen3.5:cloud) IN PARALLEL on two dedicated "
-    "Ollama connections, then fuses them with merging_model (glm-5.2:cloud). STEP 3: report the "
+    "Ollama connections, then fuses them with merging_model (glm-5.3:cloud). STEP 3: report the "
     "verdict (PASS_OK / FAIL_NO_MOTION / FAIL_WRONG_MOTION / UNCLEAR), the confidence and the "
     "deterministic motion_score, then explain in ONE line how this exact loop verifies an "
     "STM32-driven servo (STM32er flashes firmware -> Camcorder records the board -> Video-Analyzer "

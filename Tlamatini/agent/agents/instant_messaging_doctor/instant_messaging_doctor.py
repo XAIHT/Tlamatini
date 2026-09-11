@@ -490,7 +490,7 @@ def _ollama_summary(config: Dict[str, Any], report: Dict[str, Any]) -> str:
         return ""
     ollama = config.get("ollama") if isinstance(config.get("ollama"), dict) else {}
     url = _clean(ollama.get("url") or config.get("ollama_url") or os.environ.get("OLLAMA_URL")) or "http://localhost:11434"
-    model = _clean(ollama.get("model") or config.get("model")) or "glm-5.2:cloud"
+    model = _clean(ollama.get("model") or config.get("model")) or "glm-5.3:cloud"
     timeout = int(ollama.get("timeout_seconds") or 45)
     prompt = (
         "You are Tlamatini's Instant Messaging Doctor. Summarize this JSON diagnosis "

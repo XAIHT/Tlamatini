@@ -1,6 +1,6 @@
 llm:
   base_url: http://localhost:11434
-  model: glm-5.2:cloud
+  model: glm-5.3:cloud
   temperature: 0.1
 target:
   mode: ''

@@ -171,7 +171,7 @@ class DualPipelineSafetyTests(unittest.TestCase):
         return {
             'host': 'http://localhost:11434', 'token': '',
             'model_1': 'qwen3-vl:235b-cloud', 'model_2': 'qwen3.5:cloud',
-            'merging_model': 'glm-5.2:cloud',
+            'merging_model': 'glm-5.3:cloud',
             'prompt_1': 'p1', 'prompt_2': 'p2', 'prompt_merge': 'pm', 'prompt_user': 'pu',
             'expected_motion': 'the servo sweeps and returns', 'filename': 'servo.mp4',
         }
@@ -260,7 +260,7 @@ class EmitVerdictTests(unittest.TestCase):
                 video_path="C:/clips/servo.mp4", verdict=va.VERDICT_PASS,
                 confidence=0.9, status="analyzed", motion_score=7.5, frames_analyzed=12,
                 pipeline={'model_1': 'qwen3-vl:235b-cloud', 'model_2': 'qwen3.5:cloud',
-                          'merging_model': 'glm-5.2:cloud'},
+                          'merging_model': 'glm-5.3:cloud'},
                 report="Servo swept 0->90->180 and returned. TLM_VERDICT::PASS_OK mentioned by model.",
             )
         finally:
@@ -335,7 +335,7 @@ class RegistryIntegrationTests(SimpleTestCase):
                     'merging_model', 'source_agents', 'target_agents'):
             self.assertIn(key, cfg)
         self.assertEqual(cfg['interpreter_model_1'], 'qwen3-vl:235b-cloud')
-        self.assertEqual(cfg['merging_model'], 'glm-5.2:cloud')
+        self.assertEqual(cfg['merging_model'], 'glm-5.3:cloud')
 
     def test_css_class_present_and_unique(self):
         css_path = os.path.join(_HERE, 'static', 'agent', 'css', 'agentic_control_panel.css')

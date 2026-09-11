@@ -37,7 +37,7 @@ max_retries: 1
 use_llm: true
 ollama:
   url: ""
-  model: "glm-5.2:cloud"
+  model: "glm-5.3:cloud"
   timeout_seconds: 45
 
 # Config discovery overrides. Empty means auto-detect app root/config/contacts.

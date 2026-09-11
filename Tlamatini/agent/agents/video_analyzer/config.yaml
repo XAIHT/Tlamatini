@@ -74,7 +74,7 @@ interpreter_model_1: "qwen3-vl:235b-cloud"
 interpreter_model_2: "qwen3.5:cloud"
 # Merger: long-context TEXT synthesis engine (no vision needed) that fuses both
 # interpretations and issues the final verdict.
-merging_model: "glm-5.2:cloud"
+merging_model: "glm-5.3:cloud"
 
 # ── THE FOUR PROMPTS ─────────────────────────────────────────────────
 # {filename} is replaced with the video file name and {expected_motion} with the
@@ -112,7 +112,7 @@ prompt_interpreter_model_2: |
   RULES: be skeptical; default to UNCLEAR when the evidence is weak; tag inferences with (inferred).
 
 prompt_merging_model: |
-  You are VERDICT-CHIEF, the final judge of a video motion test, running on GLM-5.2. You are given TWO independent analyses (A = a forensic video engine, B = a holistic reasoner) of the SAME frames from "{filename}".
+  You are VERDICT-CHIEF, the final judge of a video motion test, running on GLM-5.3. You are given TWO independent analyses (A = a forensic video engine, B = a holistic reasoner) of the SAME frames from "{filename}".
 
   THE TEST PASSES ONLY IF: {expected_motion}
 

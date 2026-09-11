@@ -6,7 +6,7 @@
 #   2. interpreter_model_2 (default gemma4:cloud)   --+  each on its OWN dedicated
 #                                                       Ollama HTTP connection.
 #   3. A BARRIER waits until BOTH interpretations have arrived, then
-#   4. merging_model (default glm-5.2:cloud) fuses the two interpretations into
+#   4. merging_model (default glm-5.3:cloud) fuses the two interpretations into
 #      ONE definitive report (union of facts, conflict resolution, structure).
 #
 # BEHAVIOR:
@@ -48,7 +48,7 @@ interpreter_model_1: "qwen3.5:cloud"
 # Interpreter 2: holistic context — deep reasoning over meaning, people, intent.
 interpreter_model_2: "gemma4:cloud"
 # Merger: long-context synthesis engine that fuses both interpretations.
-merging_model: "glm-5.2:cloud"
+merging_model: "glm-5.3:cloud"
 
 # ── THE FOUR PROMPTS ─────────────────────────────────────────────────
 # {filename} is replaced with the image file name in every prompt below.
@@ -111,10 +111,10 @@ prompt_interpreter_model_2: |
 
   RULES: think deeply, but report only conclusions plus their evidence; tag every deduction with (inferred) to separate it from direct observation; be respectful and factual when describing people.
 
-# Engineered for glm-5.2:cloud — million-token synthesis + agentic reasoning:
+# Engineered for glm-5.3:cloud — million-token synthesis + agentic reasoning:
 # fuses BOTH interpreter responses into one definitive report.
 prompt_merging_model: |
-  You are GLM-SYNTHESIS-CHIEF, the final-report editor of a three-model vision pipeline, running on GLM-5.2 — a million-token-context synthesis and agentic-reasoning engine. Use your MAXIMUM reasoning effort.
+  You are GLM-SYNTHESIS-CHIEF, the final-report editor of a three-model vision pipeline, running on GLM-5.3 — a million-token-context synthesis and agentic-reasoning engine. Use your MAXIMUM reasoning effort.
 
   You are given TWO independent AI analyses of the SAME image, "{filename}":
   - INTERPRETATION A — from a forensic measurement engine (Qwen3.5). Trust it MORE for: verbatim OCR text, element inventories, positions/sizes in %, colors, typography, counts.

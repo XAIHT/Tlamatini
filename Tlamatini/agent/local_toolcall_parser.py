@@ -2,7 +2,7 @@
 
 WHY THIS EXISTS
 ---------------
-Cloud models (``glm-5.2:cloud`` and friends) return tool calls in the structured
+Cloud models (``glm-5.3:cloud`` and friends) return tool calls in the structured
 ``tool_calls`` field, which LangChain/Ollama hand to the executor directly. Many
 SMALL LOCAL models (qwen2.5-coder:7b, llama3.x:8b, mistral:7b ...) instead write
 the call as ORDINARY TEXT in the message content::

@@ -186,7 +186,7 @@ repair_rungs: []           # [] = all eight. Or e.g. ["lint","preamble","rules"]
 repair_write_back: false   # false = build from <name>.latexer-fixed.tex and NEVER
                            #         touch the author's file. true = edit in place.
 repair_bisect_max_probes: 14   # compile budget for rung 8 (each probe is a real build)
-repair_model: "glm-5.2:cloud"  # rung 7 - ENABLED. "" disables the model rung entirely.
+repair_model: "glm-5.3:cloud"  # rung 7 - ENABLED. "" disables the model rung entirely.
 repair_model_timeout: 600   # was 180 - a 60 KB .tex made the model rung time out,
                             # which used to hand the job to the DESTRUCTIVE bisect
                             # rung and cost Angela a block of her OpenMP guide.

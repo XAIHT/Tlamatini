@@ -89,7 +89,7 @@ class InstantMessagingDoctorTests(SimpleTestCase):
             config = yaml.safe_load(handle)
 
         self.assertEqual(config["platform"], "both")
-        self.assertEqual(config["ollama"]["model"], "glm-5.2:cloud")
+        self.assertEqual(config["ollama"]["model"], "glm-5.3:cloud")
         self.assertIn(config["telegram"]["provider"], {"auto", "bot", "user"})
         self.assertEqual(config["whatsapp"]["graph_base"], "https://graph.facebook.com")
 

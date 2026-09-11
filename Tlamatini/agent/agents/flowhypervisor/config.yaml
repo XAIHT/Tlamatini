@@ -4,7 +4,7 @@
 # LLM connection settings
 llm:
   host: "http://127.0.0.1:11434"
-  model: "glm-5.2:cloud"
+  model: "glm-5.3:cloud"
   temperature: 0.0
 
 # Monitoring poll interval (seconds)

@@ -12,7 +12,7 @@
 The agent runs interpreter_model_1 (default qwen3.5:cloud) and
 interpreter_model_2 (default gemma4:cloud) IN PARALLEL — each on its OWN
 dedicated Ollama HTTP connection — then a BARRIER waits until BOTH
-interpretations have arrived before merging_model (default glm-5.2:cloud)
+interpretations have arrived before merging_model (default glm-5.3:cloud)
 fuses them into one definitive report.
 
 Covered here against REAL code (no mocking of the thing under test):
@@ -219,7 +219,7 @@ class ConfigContractTests(unittest.TestCase):
     def test_three_models_have_the_mandated_defaults(self):
         self.assertEqual(self.cfg['interpreter_model_1'], 'qwen3.5:cloud')
         self.assertEqual(self.cfg['interpreter_model_2'], 'gemma4:cloud')
-        self.assertEqual(self.cfg['merging_model'], 'glm-5.2:cloud')
+        self.assertEqual(self.cfg['merging_model'], 'glm-5.3:cloud')
 
     def test_all_four_prompts_are_complete_and_not_empty(self):
         for key in PIPELINE_PROMPT_KEYS:
@@ -357,7 +357,7 @@ class IniSectionRoundTripTests(unittest.TestCase):
     def test_section_round_trip_matches_contract_fields(self):
         pipeline = {
             'model_1': 'qwen3.5:cloud', 'model_2': 'gemma4:cloud',
-            'merging_model': 'glm-5.2:cloud',
+            'merging_model': 'glm-5.3:cloud',
         }
         section = (
             f"INI_SECTION_IMAGE_INTERPRETER<<<\n"

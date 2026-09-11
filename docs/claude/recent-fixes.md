@@ -16,6 +16,19 @@
 
 ---
 
+## 2026-09-11 - Default cloud model switched: glm-5.2:cloud -> glm-5.3:cloud
+
+**Files: `Tlamatini/agent/config.json` (all 7 model keys), 18 pool-agent `config.yaml` files, the runtime `.py` defaults (`image_interpreter.py`, `video_analyzer.py`, `pdfer.py`, `instant_messaging_doctor.py`, `views.py`, `check_private_data.py`), the tool descriptions in `chat_agent_registry.py` / `mcp_agent.py` / `local_toolcall_parser.py`, the tests and demo-prompt migrations that assert them, `flowhypervisor/monitoring-prompt.pmt`, and every `.md` that states the default - `README.md` + `BookOfTlamatini.md` (the `ollama pull` install lines), `CLAUDE.md`, `GEMINI.md`, `agents_descriptions.md`, `docs/claude/agents.md`, `agent/Tlamatini.md`, `flowcreator/agentic_skill.md`, `TlamatiniJudgementDay.md`, `.claude/memory/MEMORY.md`.** Angela's call: `glm-5.3:cloud` is now the shipped default everywhere `glm-5.2:cloud` was - the chat chain, the unified agent, the files-search / internet-classifier / web-summarizer slots, the Image-Interpreter and Video-Analyzer `merging_model`, LaTeXer's `repair_model` (ladder rung 7), PDFer's `ollama_model`, and the private-data reviewer's primary model.
+
+**Two deliberate exceptions - do NOT undo them:**
+
+- **This log keeps its own history.** The dated `2026-07-02` entry below still reads `kimi-k2.7-code:cloud -> glm-5.2:cloud`, because that is what actually happened on that date. Rewriting a dated entry to name a model that did not exist yet would make the fix log lie, and this log is only worth reading while it is true. The move to 5.3 is recorded HERE, dated today, instead.
+- **`complete_project_docs.py` must keep matching BOTH tags.** Its two commit-subject detectors (around lines 960 and 1322) now test `(glm-5.2:cloud in subject or glm-5.3:cloud in subject)`. They match the SUBJECTS OF PAST COMMITS; narrowing them to 5.3 alone would silently stop the generated handbook from recognising the 2026-07 model-baseline commits.
+
+`check_private_data.py` keeps its fallback at **`glm-5.1:cloud`** - the 2026-07-02 contract below still holds: `build_models` dedupes an identical primary/fallback pair (`test_build_models_dedupe`), so the fallback must never equal the primary. Primary is now 5.3, fallback stays 5.1, so the safety net survives.
+
+---
+
 ## 2026-09-10 — ENTER is the default action on the welcome page
 
 **What changed.** After login, `welcome.html` offers exactly two things: **Go to Chat** and

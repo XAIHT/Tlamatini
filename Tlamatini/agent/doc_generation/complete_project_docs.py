@@ -681,7 +681,7 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         )
     if any("image-interpreter" in subject or "image interpreter" in subject or "image_interpreter" in subject for subject in subjects):
         highlights.append(
-            "The latest handbook/source delta upgrades Image-Interpreter into a triple-model vision pipeline: `qwen3.5:cloud` and `gemma4:cloud` interpret each image in parallel on dedicated Ollama connections, then `glm-5.2:cloud` merges both reports into one structured `INI_SECTION_IMAGE_INTERPRETER` result."
+            "The latest handbook/source delta upgrades Image-Interpreter into a triple-model vision pipeline: `qwen3.5:cloud` and `gemma4:cloud` interpret each image in parallel on dedicated Ollama connections, then `glm-5.3:cloud` merges both reports into one structured `INI_SECTION_IMAGE_INTERPRETER` result."
         )
     if any("config dialog" in subject or "config -> models" in subject or "config models" in subject for subject in subjects):
         highlights.append(
@@ -957,9 +957,9 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
         highlights.append(
             "Multi-Turn behavior kept evolving across the period through quota tuning, execution-table persistence, autonomous-action improvements, and broader tool enablement."
         )
-    if any("glm-5.2:cloud" in subject or "default in config.json" in subject for subject in subjects):
+    if any(("glm-5.2:cloud" in subject or "glm-5.3:cloud" in subject) or "default in config.json" in subject for subject in subjects):
         highlights.append(
-            "The checked-in runtime defaults also moved: the shared config now points at `glm-5.2:cloud`, so the handbook and dossier need to describe the shipped cloud-first baseline honestly instead of assuming only the older local model defaults."
+            "The checked-in runtime defaults also moved: the shared config now points at `glm-5.3:cloud`, so the handbook and dossier need to describe the shipped cloud-first baseline honestly instead of assuming only the older local model defaults."
         )
     if any("attention" in subject or "flash" in subject or "notifications" in subject or "notifier" in subject for subject in subjects):
         highlights.append(
@@ -1319,9 +1319,9 @@ def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
         highlights.append(
             "Kalier also matured during the same span: `v1.7.1` made Tlamatini the embedded MCP-Kali-Server client for chat-side runs, so operators configure the Kali box once in `Config -> URLs` instead of repeating it in every prompt."
         )
-    if any("glm-5.2:cloud" in subject or "default in config.json" in subject or "pythonxer" in subject or "forked windows execution" in subject or "project skills" in subject or "reporting on the log file" in subject for subject in subjects):
+    if any(("glm-5.2:cloud" in subject or "glm-5.3:cloud" in subject) or "default in config.json" in subject or "pythonxer" in subject or "forked windows execution" in subject or "project skills" in subject or "reporting on the log file" in subject for subject in subjects):
         highlights.append(
-            "The same span also refined the shipped operating baseline: handbook simplification, a `glm-5.2:cloud` checked-in default, stronger execution logging, Pythonxer downstream fixes, Windows forked-process polish, and cleaner project-skill loading."
+            "The same span also refined the shipped operating baseline: handbook simplification, a `glm-5.3:cloud` checked-in default, stronger execution logging, Pythonxer downstream fixes, Windows forked-process polish, and cleaner project-skill loading."
         )
     if any("attention" in subject or "flash" in subject or "notifications" in subject or "notifier" in subject for subject in subjects):
         highlights.append(
@@ -1928,7 +1928,7 @@ V136_RELEASE_GUIDE = [
     "Release identity: `v1.51.5` is the newest annotated tag at `4a7f1cb`, which is also aligned local/remote HEAD, so there is no post-tag boundary. This line adds the console shield and welcome-page keyboard default while carrying the launcher shim, ACPX readiness and delivery truth, PDFer's measured layout engine, stable program persistence, the clean-clone privacy preflight, bounded Ctrl+C shutdown, and the earlier safety/platform waves.",
     "New agent: Video-Analyzer becomes the current media-verdict workflow agent and wrapped `chat_agent_video_analyzer`, complementing Image-Interpreter with video-specific motion analysis.",
     "Implementation assets: `agent/agents/video_analyzer/`, migrations `0166_add_video_analyzer.py`, `0167_add_chat_agent_video_analyzer_tool.py`, `0168_add_video_analyzer_demo_prompt.py`, `test_video_analyzer_agent.py`, `chat_agent_registry.py`, `mcp_agent.py`, and `services/agent_contracts.py` all move together.",
-    "Model strategy: `interpreter_model_1` defaults to `qwen3-vl:235b-cloud`, `interpreter_model_2` defaults to `qwen3.5:cloud`, and `merging_model` defaults to `glm-5.2:cloud`, with independent calls merged only after both interpreters report.",
+    "Model strategy: `interpreter_model_1` defaults to `qwen3-vl:235b-cloud`, `interpreter_model_2` defaults to `qwen3.5:cloud`, and `merging_model` defaults to `glm-5.3:cloud`, with independent calls merged only after both interpreters report.",
     "Routing contract: every run emits `INI_SECTION_VIDEO_ANALYZER` plus `TLM_VERDICT::<TOKEN>` markers such as `PASS_OK`, `FAIL_NO_MOTION`, `FAIL_WRONG_MOTION`, `UNCLEAR`, and `ANALYSIS_ERROR` for Forker and Parametrizer.",
     "Adjacent UI work: prompt search moved from exact-title hunting to substring, word-start, and fuzzy matching, and generated `.flw` files now use a serpentine layout to reduce visual congestion.",
 ]
@@ -1998,7 +1998,7 @@ V1332_RELEASE_GUIDE = [
     "New agent: Zavuerer becomes the 83rd workflow-agent type and the 60th wrapped chat-agent, adding `chat_agent_zavuerer` for Zavu unified messaging across SMS, WhatsApp, Telegram, Email, and Voice.",
     "Configuration: Config -> Access Keys Wizard now includes `Unified Messaging (Zavu)` and persists `zavu_api_key`, which the wrapped runtime seeds into Zavuerer without exposing the secret in prompts.",
     "Canvas/runtime support: `agent_contracts.py`, `views.py`, `capability_registry.py`, `chat_agent_registry.py`, `tools.py`, frontend ACP JS/CSS, and migrations `0159`-`0164` all move together to make Zavuerer usable from both surfaces.",
-    "Follow-up defaults: `config.json` now favors `glm-5.2:cloud` across the primary chat/model slots, and the latest commits also adjust runtime parsing/middleware/settings surfaces around the release.",
+    "Follow-up defaults: `config.json` now favors `glm-5.3:cloud` across the primary chat/model slots, and the latest commits also adjust runtime parsing/middleware/settings surfaces around the release.",
     "Cost and safety wording: sign-up for Zavu is free, but sends are pay-as-you-go per message; the docs keep the authorized, opted-in recipient boundary explicit for A2P, WhatsApp-window, consent, and GDPR-style rules.",
 ]
 
@@ -2006,7 +2006,7 @@ IMAGE_INTERPRETER_GUIDE = [
     "Image-Interpreter is now a triple-model vision analyst, not a single generic image describer: each image goes through two parallel interpreter calls and one merger pass.",
     "`interpreter_model_1` defaults to `qwen3.5:cloud` and is tuned for forensic OCR, mockup/GUI element inventories, percent-based positions/sizes, colors, fonts, and verbatim text.",
     "`interpreter_model_2` defaults to `gemma4:cloud` and reads the image holistically: design intent, visual hierarchy, scene meaning, people, and reasoned identity hypotheses.",
-    "`merging_model` defaults to `glm-5.2:cloud`; it waits behind a barrier until both interpretations arrive, then emits one definitive report with union-of-facts, conflict notes, and discrepancy handling.",
+    "`merging_model` defaults to `glm-5.3:cloud`; it waits behind a barrier until both interpretations arrive, then emits one definitive report with union-of-facts, conflict notes, and discrepancy handling.",
     "All four prompt surfaces (`prompt_user`, `prompt_interpreter_model_1`, `prompt_interpreter_model_2`, and `prompt_merging_model`) receive the image file name as an identity clue, because a file named after a person often depicts that person.",
     "Fail-safe behavior is explicit: one failed interpreter still lets the merger work from the survivor; a failed merger returns both raw interpretations concatenated instead of losing the analysis.",
     "The structured output is now `INI_SECTION_IMAGE_INTERPRETER` with `file_path`, `interpreter_model_1`, `interpreter_model_2`, `merging_model`, `status`, and the merged report body for Parametrizer/Forker routing.",
@@ -2294,7 +2294,7 @@ INSTALLATION_GUIDE = [
 CONFIGURATION_GUIDE = [
     "Source mode resolves `Tlamatini/agent/config.json`; frozen builds resolve `config.json` next to the executable; `CONFIG_PATH` overrides both.",
     "Core keys include `embeding-model`, `chained-model`, `ollama_base_url`, `ollama_token`, `enable_unified_agent`, `unified_agent_model`, and `unified_agent_max_iterations`.",
-    "The checked-in default model baseline moved again in the recent Git window: the shared config now favors `glm-5.2:cloud`, so source or frozen installs that keep the shipped config should be documented as cloud-first unless the operator intentionally swaps models.",
+    "The checked-in default model baseline moved again in the recent Git window: the shared config now favors `glm-5.3:cloud`, so source or frozen installs that keep the shipped config should be documented as cloud-first unless the operator intentionally swaps models.",
     "URL configuration now also includes `kali_server_url`, the STM32er bootstrap fields `stm32_mcp_server_script`, `stm32_mcp_python`, `stm32_template_dir`, `stm32_ide_root`, `stm32_mcp_repo_url`, and `stm32_mcp_install_dir`, plus ESP32er’s `pio_executable` and `pio_core_dir`, all edited from `Config -> URLs` and inherited automatically by the chat-side wrapped tools.",
     "Credential configuration is no longer hand-edit-only: Config -> Access Keys Wizard provides a browser-side path for ACPX, provider secrets, unified messaging, and Security Recon (ProjectDiscovery) keys such as `pdcp_api_key` while preserving masked status in the UI.",
     "The chat-side Config -> Models and Config -> URLs dialogs are now first-class configuration surfaces, and they can explicitly ask the operator to reconnect when saved values change live-session assumptions.",
@@ -2452,7 +2452,7 @@ OLLAMA_COMMANDS = "\n".join(
         "ollama serve",
         "Invoke-WebRequest http://127.0.0.1:11434/api/tags -UseBasicParsing",
         "ollama pull Nomic-Embed-Text:latest",
-        "ollama pull glm-5.2:cloud",
+        "ollama pull glm-5.3:cloud",
         "ollama pull qwen3.5:cloud",
         "ollama pull gpt-oss:120b-cloud",
         "ollama pull qwen3.5:397b-cloud",
@@ -3949,7 +3949,7 @@ def build_ppt(context: dict) -> None:
         "`agent/agents/zavuerer/` carries the stdlib-only Zavu REST client and config template.",
         "`0159`-`0164` seed the Agent, Tool, prompts, and setup-wizard dedupe.",
         "`access_key_wizard.py`, `tools.py`, and `config.json` wire the Zavu key path.",
-        "`config.json` now favors `glm-5.2:cloud` for the shipped cloud model baseline.",
+        "`config.json` now favors `glm-5.3:cloud` for the shipped cloud model baseline.",
         "`views.py`, ACP JS/CSS, and `agent_contracts.py` make canvas wiring and redaction work.",
     ], THEME["jade"], "v1332-b", 11)
     audit_layout(audit, len(prs.slides))
@@ -4229,7 +4229,7 @@ def build_ppt(context: dict) -> None:
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Service and API", OLLAMA_GUIDE[2:], THEME["jade"], "ollama-a", 15)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Default pull set", [
         "Nomic-Embed-Text:latest",
-        "glm-5.2:cloud",
+        "glm-5.3:cloud",
         "qwen3.5:cloud",
         "gpt-oss:120b-cloud",
         "qwen3.5:397b-cloud",

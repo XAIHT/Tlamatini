@@ -26,7 +26,7 @@ every layer it can reach:
                          display, inode/device, git author/committer/date)
   * process forensics   (this process's memory maps, parent-process chain,
                          logged-in account)
-  * LLM deep review     (an Ollama model, default glm-5.2:cloud, fallback
+  * LLM deep review     (an Ollama model, default glm-5.3:cloud, fallback
                          glm-5.1:cloud, reads each candidate file and
                          reports obfuscated / steganographic leaks regex misses)
 
@@ -88,7 +88,7 @@ try:
 except Exception:  # pragma: no cover
     np = None
 
-DEFAULT_MODEL = "glm-5.2:cloud"
+DEFAULT_MODEL = "glm-5.3:cloud"
 DEFAULT_FALLBACK_MODEL = "glm-5.1:cloud"
 
 

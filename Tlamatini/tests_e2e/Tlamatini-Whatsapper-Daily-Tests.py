@@ -569,7 +569,7 @@ def main():
     parser.add_argument("--preflight-only", action="store_true")
     parser.add_argument("--timeout", type=int, default=300, help="seconds per answer")
     parser.add_argument("--slowmo", type=int, default=0)
-    parser.add_argument("--judge-model", default="glm-5.2:cloud")
+    parser.add_argument("--judge-model", default="glm-5.3:cloud")
     parser.add_argument("--not-ready-retries", type=int, default=3)
     parser.add_argument("--not-ready-backoff", type=float, default=20.0)
     parser.add_argument("--headless", action="store_true",

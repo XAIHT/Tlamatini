@@ -10,7 +10,7 @@
 """One Catalog-of-Prompts example for the upgraded TRIPLE-MODEL Image-Interpreter
 (2026-07-04): interpreter_model_1 (qwen3.5:cloud) + interpreter_model_2
 (gemma4:cloud) run IN PARALLEL on two dedicated Ollama connections, a BARRIER
-waits for BOTH interpretations, then merging_model (glm-5.2:cloud) fuses them
+waits for BOTH interpretations, then merging_model (glm-5.3:cloud) fuses them
 into one definitive report.
 
 Appended at MAX+1 (contiguity contract: the #prompts-catalog dropdown
@@ -34,7 +34,7 @@ TRIPLE_MODEL_DEMO_PROMPT = (
     "who they may be, using the file name as a clue.' — the agent will run interpreter_model_1 "
     "(qwen3.5:cloud) and interpreter_model_2 (gemma4:cloud) IN PARALLEL on two dedicated Ollama "
     "connections, wait on the BARRIER until BOTH interpretations arrive, then fuse them with "
-    "merging_model (glm-5.2:cloud). STEP 3: report the 5 most interesting findings from the "
+    "merging_model (glm-5.3:cloud). STEP 3: report the 5 most interesting findings from the "
     "merged report and say which `status` the INI_SECTION_IMAGE_INTERPRETER block carried "
     "(merged / partial_interpreter_1_only / partial_interpreter_2_only / merge_fallback_concat). "
     "Use ONLY chat_agent_shoter and chat_agent_image_interpreter. End with END-RESPONSE."

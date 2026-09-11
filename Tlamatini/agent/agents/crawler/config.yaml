@@ -25,6 +25,6 @@ extract_recon: false
 
 llm:
   host: http://localhost:11434
-  model: glm-5.2:cloud
+  model: glm-5.3:cloud
 target_agents: []
 source_agents: []

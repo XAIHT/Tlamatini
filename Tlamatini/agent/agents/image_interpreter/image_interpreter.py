@@ -99,7 +99,7 @@ IMAGE_EXTENSIONS = {
 # the triple-model upgrade, so the pipeline still works end-to-end.
 DEFAULT_INTERPRETER_MODEL_1 = "qwen3.5:cloud"
 DEFAULT_INTERPRETER_MODEL_2 = "gemma4:cloud"
-DEFAULT_MERGING_MODEL = "glm-5.2:cloud"
+DEFAULT_MERGING_MODEL = "glm-5.3:cloud"
 DEFAULT_PROMPT_INTERPRETER_1 = (
     'You are a forensic visual measurement engine. Produce a complete, measured inventory of the '
     'image "{filename}": every element of a mockup/GUI with position and size in % of the image, '

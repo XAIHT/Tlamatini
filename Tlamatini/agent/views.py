@@ -9491,7 +9491,7 @@ CONFIG_MODEL_KEYS: tuple[str, ...] = (
 # defaults instead of an empty required field.
 CONFIG_MODEL_KEY_DEFAULTS: dict[str, str] = {
     "image_interpreter_model_2": "gemma4:cloud",
-    "image_merging_model": "glm-5.2:cloud",
+    "image_merging_model": "glm-5.3:cloud",
 }
 
 CONFIG_URL_KEYS: tuple[str, ...] = (

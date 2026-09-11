@@ -636,7 +636,7 @@ class TestLLM(unittest.TestCase):
         self.assertEqual(r["verdict"], "LEAK: yes")
 
     def test_primary_fail_fallback_success(self):
-        r = cpd.llm_review("text", ["glm-5.2:cloud", "glm-5.1:cloud"],
+        r = cpd.llm_review("text", ["glm-5.3:cloud", "glm-5.1:cloud"],
                            "http://x", self.ts,
                            opener=opener_model_aware("glm-5.1:cloud", "CLEAN"))
         self.assertEqual(r["model"], "glm-5.1:cloud")
@@ -662,7 +662,7 @@ class TestLLM(unittest.TestCase):
 
     def test_default_models(self):
         self.assertEqual(cpd.build_models(cpd.DEFAULT_MODEL, cpd.DEFAULT_FALLBACK_MODEL),
-                         ["glm-5.2:cloud", "glm-5.1:cloud"])
+                         ["glm-5.3:cloud", "glm-5.1:cloud"])
 
     def test_build_models_dedupe(self):
         self.assertEqual(cpd.build_models("same", "same"), ["same"])
@@ -803,20 +803,20 @@ class TestScanRepoDetection(unittest.TestCase):
     def test_llm_flags_file_via_mock(self):
         # monkeypatch llm_review to force a LEAK verdict
         orig = cpd.llm_review
-        cpd.llm_review = lambda *a, **k: {"model": "glm-5.2:cloud", "verdict": "LEAK: hidden"}
+        cpd.llm_review = lambda *a, **k: {"model": "glm-5.3:cloud", "verdict": "LEAK: hidden"}
         try:
             with tempfile.TemporaryDirectory() as d:
                 write(os.path.join(d, "a.txt"), b"nothing regex would catch")
                 ts = tlist(("absent-xyz", "generic"))
                 res = cpd.scan_repo(d, ts, compiled_for(ts), mkargs(no_llm=False))
             self.assertEqual(len(res["findings"]), 1)
-            self.assertEqual(res["findings"][0]["llm_model"], "glm-5.2:cloud")
+            self.assertEqual(res["findings"][0]["llm_model"], "glm-5.3:cloud")
         finally:
             cpd.llm_review = orig
 
     def test_llm_clean_no_finding(self):
         orig = cpd.llm_review
-        cpd.llm_review = lambda *a, **k: {"model": "glm-5.2:cloud", "verdict": "CLEAN"}
+        cpd.llm_review = lambda *a, **k: {"model": "glm-5.3:cloud", "verdict": "CLEAN"}
         try:
             with tempfile.TemporaryDirectory() as d:
                 write(os.path.join(d, "a.txt"), b"nothing")
@@ -896,7 +896,7 @@ class TestMain(unittest.TestCase):
                 cpd.main(["--local", "--repo", d, "--target", "x", "--output", out])
                 with open(out, encoding="utf-8") as fh:
                     report = json.load(fh)
-            self.assertEqual(report["llm_models"], ["glm-5.2:cloud", "glm-5.1:cloud"])
+            self.assertEqual(report["llm_models"], ["glm-5.3:cloud", "glm-5.1:cloud"])
         finally:
             cpd.llm_review = orig
 
@@ -1010,7 +1010,7 @@ class TestRemote(unittest.TestCase):
 class TestParserMisc(unittest.TestCase):
     def test_parser_defaults(self):
         args = cpd.build_parser().parse_args([])
-        self.assertEqual(args.model, "glm-5.2:cloud")
+        self.assertEqual(args.model, "glm-5.3:cloud")
         self.assertEqual(args.fallback_model, "glm-5.1:cloud")
 
     def test_parser_scope_flags(self):

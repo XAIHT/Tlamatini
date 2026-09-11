@@ -153,7 +153,7 @@ class ResolveDjangoPortTests(_PortHelperCase):
         self.assertEqual(self._resolve(), 9200)
 
     def test_missing_key_falls_back_to_8000(self):
-        self._write_config(chained_model='glm-5.2:cloud')
+        self._write_config(chained_model='glm-5.3:cloud')
         self.assertEqual(self._resolve(), _DEFAULT_PORT)
 
     def test_missing_file_falls_back_to_8000(self):

@@ -911,7 +911,7 @@ system_prompt: |
   - `template_language`: "en_US"
   - `template_params`: [] (ordered WhatsApp template parameter values)
   - `retry_send`: false (keep false for diagnosis-only flows; true only when an official API retry is allowed)
-  - `ollama.model`: "glm-5.2:cloud" (LLM summary model)
+  - `ollama.model`: "glm-5.3:cloud" (LLM summary model)
 
 ### 27. Recmailer
 - **Purpose**: Monitors an email inbox (IMAP) for keywords using LLM analysis. Long-running. Does NOT start downstream agents.
@@ -1195,7 +1195,7 @@ system_prompt: |
   - `llm.model`: "gpt-oss:120b-cloud" (LLM model, used only in summarized mode)
 
 ### 42. Image-Interpreter
-- **Purpose**: Non-deterministic agent that analyzes and interprets images through a TRIPLE-MODEL pipeline: `interpreter_model_1` (default qwen3.5:cloud — forensic OCR/measurement) and `interpreter_model_2` (default gemma4:cloud — holistic context/people) analyze each image IN PARALLEL, each on its OWN dedicated Ollama connection; a BARRIER waits until BOTH interpretations have arrived; then `merging_model` (default glm-5.2:cloud) fuses them into ONE definitive report. Accepts wildcards, directory paths, or the pool name of a File-Interpreter agent as input. Converts each image to base64 and logs the merged report in structured INI_SECTION_IMAGE_INTERPRETER blocks (`file_path`, `interpreter_model_1/2`, `merging_model`, `status`, body = report). Can be strongly coupled with File-Interpreter.
+- **Purpose**: Non-deterministic agent that analyzes and interprets images through a TRIPLE-MODEL pipeline: `interpreter_model_1` (default qwen3.5:cloud — forensic OCR/measurement) and `interpreter_model_2` (default gemma4:cloud — holistic context/people) analyze each image IN PARALLEL, each on its OWN dedicated Ollama connection; a BARRIER waits until BOTH interpretations have arrived; then `merging_model` (default glm-5.3:cloud) fuses them into ONE definitive report. Accepts wildcards, directory paths, or the pool name of a File-Interpreter agent as input. Converts each image to base64 and logs the merged report in structured INI_SECTION_IMAGE_INTERPRETER blocks (`file_path`, `interpreter_model_1/2`, `merging_model`, `status`, body = report). Can be strongly coupled with File-Interpreter.
 - **Used for**: Deep image analysis — complete mockup/GUI element inventories (position % / size % / colors / fonts / verbatim text), full OCR, exhaustive people description with identity hypotheses, chart/diagram reading. It supports 12+ image formats and injects the image FILE NAME into ALL FOUR prompts as an identity clue (a file named after a person hints WHO appears in it). It can read images extracted by a File-Interpreter from documents (via pool name reference).
 - **Aimed at**: Enabling visual intelligence in workflows — such as analyzing screenshots for UI verification, rebuilding mockups from a single image, interpreting charts and diagrams from reports, classifying product images, identifying people in photos, or verifying visual conditions on screen captures taken by Shoter.
 - **Application example**: After a Shoter captures a screenshot of a dashboard, an Image-Interpreter analyzes it with prompt_user "Identify any error indicators, red alerts, or anomalous graphs in this monitoring dashboard". A Forker watches the output for "ANOMALY DETECTED" to decide whether to trigger an alert chain.
@@ -1208,7 +1208,7 @@ system_prompt: |
   - `filetype_exclusions`: "" (comma-separated extensions and/or filenames to exclude, e.g. "svg, ico, thumbnail.png")
   - `interpreter_model_1`: "qwen3.5:cloud" (parallel interpreter #1 — forensic OCR/measurement vision model)
   - `interpreter_model_2`: "gemma4:cloud" (parallel interpreter #2 — holistic context/people vision model)
-  - `merging_model`: "glm-5.2:cloud" (fuses both interpretations once the barrier releases)
+  - `merging_model`: "glm-5.3:cloud" (fuses both interpretations once the barrier releases)
   - `prompt_interpreter_model_1`: engineered forensic-measurement prompt (FULL default ships in config.yaml; `{filename}` is replaced with the image file name)
   - `prompt_interpreter_model_2`: engineered holistic-context prompt (FULL default ships in config.yaml; `{filename}` supported)
   - `prompt_merging_model`: engineered merge/synthesis prompt (FULL default ships in config.yaml; `{filename}` supported)
@@ -2024,7 +2024,7 @@ system_prompt: |
   - `target_agents`: [] (downstream agents to start after the send)
 
 ### 84. Video-Analyzer
-- **Purpose**: The "eye" of a **Robotic-Loop-Training** loop — it WATCHES A RECORDED VIDEO and returns a VERDICT on whether a physical system performed a motion. It extracts frames with OpenCV, runs a DETERMINISTIC motion gate (no motion → `FAIL_NO_MOTION`, no LLM call), then two Ollama CLOUD vision models judge the frames IN PARALLEL (`interpreter_model_1` = qwen3-vl:235b-cloud, `interpreter_model_2` = qwen3.5:cloud), a BARRIER waits for BOTH, and `merging_model` (glm-5.2:cloud) fuses them into ONE verdict (PASS_OK only when both agree — never a false pass). Emits `INI_SECTION_VIDEO_ANALYZER` AND a substring-safe `TLM_VERDICT::<TOKEN>` line a Forker branches on.
+- **Purpose**: The "eye" of a **Robotic-Loop-Training** loop — it WATCHES A RECORDED VIDEO and returns a VERDICT on whether a physical system performed a motion. It extracts frames with OpenCV, runs a DETERMINISTIC motion gate (no motion → `FAIL_NO_MOTION`, no LLM call), then two Ollama CLOUD vision models judge the frames IN PARALLEL (`interpreter_model_1` = qwen3-vl:235b-cloud, `interpreter_model_2` = qwen3.5:cloud), a BARRIER waits for BOTH, and `merging_model` (glm-5.3:cloud) fuses them into ONE verdict (PASS_OK only when both agree — never a false pass). Emits `INI_SECTION_VIDEO_ANALYZER` AND a substring-safe `TLM_VERDICT::<TOKEN>` line a Forker branches on.
 - **Used for**: Closing a hardware-in-the-loop training loop: STM32er flashes firmware → Camcorder records the board + servo → Video-Analyzer judges the motion → a Forker loops back to reprogram (on FAIL) or finishes (on PASS). Also any "did the physical thing move as asked?" check. Distinct from **Image-Interpreter**, which judges ONE still image; Video-Analyzer judges MOTION across a whole clip.
 - **Aimed at**: Visual verification pipelines with a feedback loop. `video_pathfilenames` accepts a file, a wildcard, a folder (newest video), or a **Camcorder pool name** (reads that Camcorder's last recording) — so a Parametrizer copies `{output_path}` from Camcorder straight into Video-Analyzer. `expected_motion` is the checkable motion contract.
 - **Application example**: Starter → STM32er (write_source + build_and_flash a servo program) → Camcorder (`capture_mode: video`, `video_duration_seconds: 15`) → Parametrizer (map Camcorder `{output_path}` into Video-Analyzer `video_pathfilenames`) → Video-Analyzer (`expected_motion: "servo sweeps 0→90→180 and back"`) → Forker (pattern_a `TLM_VERDICT::PASS_OK` → Notifier → Ender; pattern_b `TLM_VERDICT::FAIL` → Counter → back to STM32er) → Ender.
@@ -2036,7 +2036,7 @@ system_prompt: |
   - `expected_motion`: "..." (plain-language description of the motion the hardware should perform)
   - `num_frames`: 12 (frames to sample and send to the vision models)
   - `frame_sampling`: "uniform" / `motion_gate`: true / `motion_threshold`: 2.0 / `roi`: "" (optional "x,y,w,h" percent ROI for the motion gate)
-  - `interpreter_model_1`: "qwen3-vl:235b-cloud" (the video/temporal specialist) / `interpreter_model_2`: "qwen3.5:cloud" / `merging_model`: "glm-5.2:cloud"
+  - `interpreter_model_1`: "qwen3-vl:235b-cloud" (the video/temporal specialist) / `interpreter_model_2`: "qwen3.5:cloud" / `merging_model`: "glm-5.3:cloud"
   - `llm.host`: "http://localhost:11434" / `llm.token`: ""
   - `source_agents`: [] (upstream agents — e.g. the Camcorder feeding the video)
   - `target_agents`: [] (downstream agents to start after the verdict — e.g. a Forker)

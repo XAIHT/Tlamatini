@@ -31,7 +31,7 @@
 - [LIVE app = FROZEN install](project_live_app_is_frozen_install.md) — :8000 is C:\Tlamatini\Tlamatini.exe; MCP tools are SOURCE. Repo-only frontend fix is INVISIBLE: copy into _internal/staticfiles + _internal/agent/static + TlamatiniSourceCode → relaunch → prove over HTTP → Ctrl+F5.
 - [.claude assets tracked](project_claude_assets_tracked.md) — .claude/ pushed PUBLIC; memories mirrored STATIC (re-copy first); settings.local/data.keys ignored.
 - [Cloud-default, NOT fully local](project_cloud_default_not_fully_local.md) — LLMs are CLOUD; never say "fully local". GitHub About limit = UTF-8 bytes.
-- [GLM-5.2 default](project_glm52_default_model.md) — glm-5.2:cloud (1M) everywhere; fallback glm-5.1; unified.py "transient network" notice untruthfulness FIXED → [[project_oversized_context_400_fix]].
+- [GLM-5.3 default](project_glm52_default_model.md) — glm-5.3:cloud (1M) everywhere; fallback glm-5.1; unified.py "transient network" notice untruthfulness FIXED → [[project_oversized_context_400_fix]].
 - [Oversized-context 400 fix](project_oversized_context_400_fix.md) — big multi-step job → "request body too large (400)" → false "transient network error" + tool-less refusal. Fixed 3 ways: cap tool output + recover-by-trimming + truthful fallback. 15/15 + 12/12 + 10/10 verified. DEV-only; needs rebuild.
 - [Ghost dist-info / dep audit](project_ghost_distinfo_dependency_audit.md) — ~30 DUPLICATE dist-infos made pip's conflicts phantom (torch/starlette/packaging); pyhackrf benign (Linux-only, numpy-2-safe) NEVER uninstall; numpy floor >=2.0 added; audit_dependencies.py. Sweep bug: never leave a package with 0 metadata.
 - [Build carried-python guard](project_build_carried_python_guard.md) — build with SYSTEM python, not carried .\python.
@@ -112,7 +112,7 @@
 - [OOB_shift_reaper + NAMU](project_oob_shift_reaper_namu.md) — 3 recon GODS (Kalier/Nmapper/Discoverer) run FREE up to OOB_shift_reaper=3600s; hang→banner inside/kill past window; NAMU=shutdown tree-kill. 21/21 unit + VISIBLE browser PASS (real 168s nmap). DEV-only; needs rebuild.
 - [Robotic-Loop-Training](project_robotic_loop_training_proposal.md) — STM32er→Camcorder→Video-Analyzer(#84) closed loop; verdict-token/timing design.
 - [Video-Analyzer #84](project_video_analyzer_agent.md) — OpenCV motion gate + triple cloud vision + TLM_VERDICT:: tokens.
-- [Image-Interpreter triple-model](project_image_interpreter_triple_model.md) — qwen3.5∥gemma4→glm-5.2 merge; filename clue.
+- [Image-Interpreter triple-model](project_image_interpreter_triple_model.md) — qwen3.5∥gemma4→glm-5.3 merge; filename clue.
 - [Reviewer+Analyzer #63/#64](project_reviewer_analyzer_agents.md) — + code-review/security-audit skills; commit-state precise ([false-pos](project_reviewer_committed_secrets_falsepos.md)).
 - [Playwrighter #65](project_playwrighter_agent.md) — scripted browser automation; [hold-open](project_playwrighter_hold_open.md) linger before close.
 - [Windower](project_windower_agent.md) — Win32 window manager (12 actions).

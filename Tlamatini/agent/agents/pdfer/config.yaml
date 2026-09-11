@@ -181,7 +181,7 @@ ollama_polish: false
 ollama_design: false
 
 ollama_url: "http://localhost:11434"
-ollama_model: "glm-5.2:cloud"
+ollama_model: "glm-5.3:cloud"
 ollama_token: ""
 ollama_prompt: ""      # "" = the built-in "structure this into clean Markdown" prompt
 ollama_timeout: 180
