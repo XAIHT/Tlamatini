@@ -43,6 +43,7 @@ if (os.environ.get('TLAMATINI_TEMP') or '').strip():
 
 import re
 import json
+import math
 import time
 import threading
 import wave
@@ -492,6 +493,142 @@ def resolve_input_device(config: Dict):
     return None, default_idx, str(info.get('name', '')), info
 
 
+# -- Sound-activated capture (the SILENCE GATE) -------------------------------
+# Defaults for the gate that lets Whisperer keep recording while you are still
+# talking and stop on its own once you have finished. Tuned for speech on a
+# consumer microphone; every one is overridable from config.yaml.
+GATE_SILENCE_TIMEOUT_SECONDS = 10.0    # silence that ends the recording
+GATE_MAX_RECORD_SECONDS = 300.0        # hard ceiling -- a gate that never fires
+GATE_MARGIN_DB = 9.0                   # speech sits this far above the room
+GATE_ABSOLUTE_FLOOR_DB = -50.0         # the highest threshold we start from
+GATE_RELEASE_DB = 3.0                  # hysteresis: silence starts this far down
+GATE_ATTACK_BLOCKS = 2                 # consecutive loud blocks == a real voice
+GATE_FLOOR_RISE_DB_PER_SECOND = 0.5    # how fast the room estimate may climb
+GATE_SILENCE_DB = -140.0               # what we call digital silence
+GATE_STUCK_VOICE_SECONDS = 15.0        # unbroken "voice" this long == not a person
+
+
+class SilenceGate:
+    """Decides, block by block, whether the speaker has finished.
+
+    One call per ~20 ms audio block, from inside the PortAudio callback, so it
+    is deliberately nothing but float arithmetic: no allocation, no lock, no
+    logging, no disk. A callback that blocks drops samples, and dropped samples
+    are a wrong transcript.
+
+    HOW IT HEARS YOU. The room is tracked as a running noise floor that falls
+    INSTANTLY to any quieter block and may only creep upward (at
+    ``GATE_FLOOR_RISE_DB_PER_SECOND``) while we already believe we are hearing
+    the room rather than the speaker. Speech is anything
+    ``GATE_MARGIN_DB`` above that floor.
+
+    TWO DESIGN DECISIONS WORTH KEEPING:
+
+    * The floor STARTS pessimistically low, so the very first threshold is the
+      absolute ``-50 dBFS`` floor and somebody who begins talking on sample one
+      is heard immediately. A gate that has to "listen to the room first" would
+      mistake that speaker's own voice for the room and then gate them out --
+      the single worst failure available here, because it cuts a person off
+      mid-sentence and looks like a crash.
+    * The floor is never updated from a block we think is speech. Otherwise a
+      long uninterrupted sentence slowly raises the floor over its own voice.
+
+    HYSTERESIS. Voice needs ``GATE_ATTACK_BLOCKS`` consecutive blocks above the
+    threshold (a single chair creak is not a word); silence only starts accruing
+    ``GATE_RELEASE_DB`` BELOW it. Between the two the previous verdict is held,
+    which is what stops the indicator flickering on the quiet tail of a word.
+
+    Fail-safe: ``feed`` cannot raise, and an unusable threshold degrades to the
+    absolute floor rather than to "everything is silence".
+    """
+
+    def __init__(self, block_seconds: float, timeout_seconds: float,
+                 threshold_db: float = 0.0):
+        self._block_seconds = max(1e-4, float(block_seconds or 0.02))
+        self._timeout = max(0.2, float(timeout_seconds or GATE_SILENCE_TIMEOUT_SECONDS))
+        # A configured threshold must be a real dBFS value (negative). 0 == auto.
+        self._forced_db = float(threshold_db) if float(threshold_db or 0) < 0 else None
+        self.noise_floor_db = GATE_ABSOLUTE_FLOOR_DB - GATE_MARGIN_DB
+        self.silence_seconds = 0.0
+        self.speech_seconds = 0.0
+        self.blocks_seen = 0
+        self.rebaselines = 0
+        self.voice = False
+        self._above = 0
+        self._voice_run = 0.0
+        self._voice_min_db = float('inf')
+
+    @staticmethod
+    def block_db(rms: float) -> float:
+        """Block RMS -> dBFS, with a floor so digital silence cannot be -inf."""
+        try:
+            return 20.0 * math.log10(rms) if rms > 1e-7 else GATE_SILENCE_DB
+        except Exception:
+            return GATE_SILENCE_DB
+
+    @property
+    def threshold_db(self) -> float:
+        if self._forced_db is not None:
+            return self._forced_db
+        return max(self.noise_floor_db + GATE_MARGIN_DB, GATE_ABSOLUTE_FLOOR_DB)
+
+    @property
+    def timeout_seconds(self) -> float:
+        return self._timeout
+
+    def feed(self, block_db: float) -> bool:
+        """Consume one block's level. Returns True when recording should STOP."""
+        blk = self._block_seconds
+        thr = self.threshold_db
+
+        if self._forced_db is None:
+            if block_db < self.noise_floor_db:
+                self.noise_floor_db = block_db          # fall instantly
+            elif block_db < thr:                        # believed to be the room
+                self.noise_floor_db = min(
+                    self.noise_floor_db + GATE_FLOOR_RISE_DB_PER_SECOND * blk,
+                    block_db,
+                )
+
+        if block_db >= thr:
+            self._above += 1
+        else:
+            self._above = 0
+
+        if self._above >= GATE_ATTACK_BLOCKS:
+            self.voice = True
+        elif block_db < thr - GATE_RELEASE_DB:
+            self.voice = False
+
+        if self.voice:
+            self.speech_seconds += blk
+            self.silence_seconds = 0.0
+            # SELF-HEAL for a room too loud to start from. The absolute floor
+            # keeps us sensitive from sample one, but it also means a steady
+            # -45 dBFS fan reads as an endless voice and the gate would never
+            # fire. Unbroken "voice" for this long is not a person -- people
+            # breathe -- so re-baseline the room to the QUIETEST block of that
+            # stretch, which for a steady noise IS the noise. Safe in the other
+            # direction too: the minimum of a stretch of real speech is a gap
+            # or a soft syllable, so the threshold still lands below a speaker.
+            self._voice_run += blk
+            if block_db < self._voice_min_db:
+                self._voice_min_db = block_db
+            if (self._forced_db is None
+                    and self._voice_run >= GATE_STUCK_VOICE_SECONDS):
+                self.noise_floor_db = self._voice_min_db
+                self._voice_run = 0.0
+                self._voice_min_db = float('inf')
+                self.rebaselines += 1
+        else:
+            self.silence_seconds += blk
+            self._voice_run = 0.0
+            self._voice_min_db = float('inf')
+
+        self.blocks_seen += 1
+        return self.silence_seconds >= self._timeout
+
+
 class MicRecIndicator:
     """Zero-latency, ALWAYS-VISIBLE console REC light driven by the LIVE mic.
 
@@ -518,9 +655,12 @@ class MicRecIndicator:
     """
 
     _BAR_W = 22
+    _BAR_W_GATED = 14          # narrower VU so the silence bar fits 80 columns
+    _HOLD_W = 10               # cells in the silence-countdown bar
     _LINGER_SECONDS = 1.4
 
-    def __init__(self, total_seconds: float):
+    def __init__(self, total_seconds: float, gated: bool = False,
+                 silence_timeout: float = 0.0):
         self._out = sys.stderr
         self._total = max(0.001, float(total_seconds))
         self._color = False
@@ -531,6 +671,13 @@ class MicRecIndicator:
         self._lock = threading.Lock()
         self._stop = threading.Event()
         self._thread = None
+        # Silence-gate read-outs. In FIXED mode the painted line is byte-for-byte
+        # what it has always been; only a gated run grows the second bar.
+        self._gated = bool(gated)
+        self._silence_timeout = max(
+            0.001, float(silence_timeout or GATE_SILENCE_TIMEOUT_SECONDS))
+        self._silence = 0.0
+        self._voice = False
 
     # -- console acquisition / release -----------------------------------
     def _acquire_console(self):
@@ -556,7 +703,10 @@ class MicRecIndicator:
                 except Exception:
                     pass
             try:
-                k32.SetConsoleTitleW("\U0001f399  Tlamatini Whisperer  --  RECORDING")
+                title = "\U0001f399  Tlamatini Whisperer  --  RECORDING"
+                if self._gated:
+                    title += f" (stops after {self._silence_timeout:.0f}s of silence)"
+                k32.SetConsoleTitleW(title)
             except Exception:
                 pass
             # Paint straight to the console buffer (not the DEVNULL stdio).
@@ -609,7 +759,21 @@ class MicRecIndicator:
         except Exception:
             pass
 
-    def off(self, captured_seconds: float = 0.0):
+    def gate(self, silence_seconds: float, voice: bool):
+        """Feed the silence gate's live state to the bar.
+
+        Called from the AUDIO callback, so it is two plain assignments and
+        nothing else -- no lock (a torn read costs one frame of a blinking
+        bar), no formatting, no I/O. The painting thread renders whatever it
+        finds here on its next 0.45 s tick.
+        """
+        try:
+            self._silence = float(silence_seconds)
+            self._voice = bool(voice)
+        except Exception:
+            pass
+
+    def off(self, captured_seconds: float = 0.0, reason: str = ''):
         try:
             with self._lock:
                 if not self._active:
@@ -618,7 +782,7 @@ class MicRecIndicator:
             self._stop.set()
             if self._thread is not None:
                 self._thread.join(timeout=0.25)
-            self._paint_stopped(captured_seconds)      # synchronous OFF edge
+            self._paint_stopped(captured_seconds, reason)  # synchronous OFF edge
             if self._allocated:
                 # Let the user actually SEE the stopped state before the window
                 # we created closes (a pre-existing console is left as-is).
@@ -637,18 +801,34 @@ class MicRecIndicator:
     def _elapsed(self) -> float:
         return max(0.0, time.perf_counter() - self._t0)
 
-    def _vu_bar(self) -> str:
-        filled = int(round(self._peak * self._BAR_W))
+    def _vu_bar(self, width: int = 0) -> str:
+        w = int(width) if width else self._BAR_W
+        filled = int(round(self._peak * w))
         if not self._color:
-            return '[' + '#' * filled + '-' * (self._BAR_W - filled) + ']'
+            return '[' + '#' * filled + '-' * (w - filled) + ']'
         cells = []
-        for i in range(self._BAR_W):
+        for i in range(w):
             if i < filled:
-                frac = i / max(1, self._BAR_W - 1)
+                frac = i / max(1, w - 1)
                 col = '\x1b[92m' if frac < 0.6 else ('\x1b[93m' if frac < 0.85 else '\x1b[91m')
                 cells.append(col + '█')
             else:
                 cells.append('\x1b[90m─')
+        return '[' + ''.join(cells) + '\x1b[0m]'
+
+    def _hold_bar(self) -> str:
+        """The silence countdown: fills as the room stays quiet, empties the
+        instant a voice returns. Green -> amber past halfway -> red past 80%,
+        so the user can SEE it about to fire and keep talking if they want it.
+        """
+        frac = self._silence / self._silence_timeout
+        frac = 0.0 if frac < 0 else (1.0 if frac > 1 else frac)
+        filled = int(round(frac * self._HOLD_W))
+        if not self._color:
+            return '[' + '#' * filled + '-' * (self._HOLD_W - filled) + ']'
+        col = '\x1b[91m' if frac > 0.8 else ('\x1b[93m' if frac > 0.5 else '\x1b[92m')
+        cells = [(col + '█') if i < filled else '\x1b[90m─'
+                 for i in range(self._HOLD_W)]
         return '[' + ''.join(cells) + '\x1b[0m]'
 
     def _paint(self, blink_on: bool):
@@ -660,19 +840,40 @@ class MicRecIndicator:
             else:
                 dot = '(*)' if blink_on else '( )'
                 label = ' REC '
-            line = f"\r\x1b[2K {dot}{label}{self._vu_bar()} {el:5.1f}s / {self._total:.0f}s "
+            if self._gated:
+                # Both state words are 9 visible characters, so the bars that
+                # follow them never shift sideways as the state flips.
+                if self._voice:
+                    state = '\x1b[92m● VOICE  \x1b[0m' if self._color else '* VOICE  '
+                else:
+                    state = '\x1b[93m○ silence\x1b[0m' if self._color else 'o silence'
+                line = (
+                    f"\r\x1b[2K {dot}{label}{self._vu_bar(self._BAR_W_GATED)} "
+                    f"{el:5.1f}s   {state} {self._hold_bar()} "
+                    f"{self._silence:4.1f}s/{self._silence_timeout:.0f}s "
+                )
+            else:
+                line = f"\r\x1b[2K {dot}{label}{self._vu_bar()} {el:5.1f}s / {self._total:.0f}s "
             self._out.write(line)
             self._out.flush()
         except Exception:
             pass
 
-    def _paint_stopped(self, captured_seconds: float):
+    def _paint_stopped(self, captured_seconds: float, reason: str = ''):
         try:
             if self._color:
                 tag = '\x1b[1;92m■ REC STOPPED ✓\x1b[0m'
             else:
                 tag = '[#] REC STOPPED OK'
-            self._out.write(f"\r\x1b[2K {tag}  captured {captured_seconds:.1f}s\n")
+            # Say WHY it stopped. A recording that ends on its own and does not
+            # explain itself reads as a crash.
+            if reason == 'silence':
+                why = f"  silence {self._silence_timeout:.1f}s"
+            elif reason == 'max_duration':
+                why = f"  reached the {self._total:.0f}s ceiling"
+            else:
+                why = ''
+            self._out.write(f"\r\x1b[2K {tag}{why}  captured {captured_seconds:.1f}s\n")
             self._out.flush()
         except Exception:
             pass
@@ -694,9 +895,40 @@ def record_from_microphone(config: Dict):
 
     device_arg, device_index, device_name, info = resolve_input_device(config)
 
-    record_seconds = _coerce_float(config.get('record_seconds', 30), 30)
-    if record_seconds <= 0:
-        record_seconds = 30.0
+    # -- Fixed duration, or listen until the speaker stops? ------------------
+    # record_seconds is THE SWITCH. 0 (the default) means "no duration was
+    # given -- keep recording while I am still talking", exactly the way
+    # sample_rate: 0 means "the native rate" a few lines above it in
+    # config.yaml. Any number the user actually names is honoured to the
+    # sample and the gate steps aside.
+    requested_seconds = _coerce_float(config.get('record_seconds', 0), 0)
+    silence_timeout = _coerce_float(
+        config.get('silence_timeout_seconds', GATE_SILENCE_TIMEOUT_SECONDS),
+        GATE_SILENCE_TIMEOUT_SECONDS)
+    if silence_timeout <= 0:
+        silence_timeout = GATE_SILENCE_TIMEOUT_SECONDS
+    max_seconds = _coerce_float(
+        config.get('max_record_seconds', GATE_MAX_RECORD_SECONDS),
+        GATE_MAX_RECORD_SECONDS)
+    if max_seconds <= 0:
+        max_seconds = GATE_MAX_RECORD_SECONDS
+    threshold_db = _coerce_float(config.get('silence_threshold_db', 0), 0)
+
+    gate_mode = str(config.get('silence_gate', 'auto') or 'auto').strip().lower()
+    if gate_mode == 'on':
+        gated = True
+    elif gate_mode == 'off':
+        gated = False
+    else:                                  # 'auto' -- derive it from the ask
+        gated = requested_seconds <= 0
+
+    if gated:
+        # There is no fixed length to record any more, so the ceiling is what
+        # we size the buffer against. A gate with nothing to stop it never
+        # stops -- a radio left playing is never silent.
+        record_seconds = max_seconds
+    else:
+        record_seconds = requested_seconds if requested_seconds > 0 else 30.0
 
     # Capture rate: 0 == capture directly at the engine rate (16 kHz). A non-zero
     # value records at that rate and we resample to 16 kHz afterwards.
@@ -720,8 +952,10 @@ def record_from_microphone(config: Dict):
         gain_percent = 0.0
 
     device_tag = str(device_index) if device_index >= 0 else "default"
+    how = (f"listening until {silence_timeout:g}s of silence (ceiling {max_seconds:g}s)"
+           if gated else f"recording {record_seconds:g}s")
     logging.info(
-        f"🎙️ Opening mic [{device_tag}] '{device_name}': recording {record_seconds:g}s "
+        f"🎙️ Opening mic [{device_tag}] '{device_name}': {how} "
         f"@ {capture_rate} Hz, {channels}ch (max_in={max_in}), gain {gain_percent:g}%..."
     )
 
@@ -732,12 +966,20 @@ def record_from_microphone(config: Dict):
     # tracks the actual mic edge to within one block (~20 ms), not a log line.
     # ~20 ms blocks keep both the first-callback latency and the VU refresh snappy.
     blocksize = max(1, int(round(capture_rate * 0.02)))
-    indicator = MicRecIndicator(record_seconds)
+    indicator = MicRecIndicator(record_seconds, gated=gated,
+                                silence_timeout=silence_timeout)
+    gate = SilenceGate(blocksize / float(capture_rate), silence_timeout,
+                       threshold_db=threshold_db) if gated else None
     chunks: List = []
     collected = {"n": 0}
+    outcome = {"reason": "duration"}
     done = threading.Event()
 
     def _on_audio(indata, n_frames, time_info, status):  # noqa: ARG001 (sd contract)
+        # PortAudio CONTRACT: this runs on the audio thread. Plain float maths
+        # only -- no logging, no lock, no disk, no allocation beyond the block
+        # copy we already make. A callback that blocks drops samples, and
+        # dropped samples are a wrong transcript.
         if not indicator._active:
             indicator.on()                 # ON edge == first samples in hand
         block = np.array(indata, dtype=np.float32, copy=True)
@@ -747,7 +989,19 @@ def record_from_microphone(config: Dict):
             indicator.level(float(np.max(np.abs(block))) if block.size else 0.0)
         except Exception:
             pass
+        if gate is not None and block.size:
+            try:
+                rms = float(np.sqrt(np.mean(block * block, dtype=np.float64)))
+                finished = gate.feed(SilenceGate.block_db(rms))
+                indicator.gate(gate.silence_seconds, gate.voice)
+            except Exception:
+                finished = False           # fail-open: never stop on a maths slip
+            if finished:
+                outcome["reason"] = "silence"
+                done.set()
+                raise sd.CallbackStop
         if collected["n"] >= frames:
+            outcome["reason"] = "max_duration" if gated else "duration"
             done.set()
             raise sd.CallbackStop
 
@@ -764,7 +1018,7 @@ def record_from_microphone(config: Dict):
         ):
             done.wait(timeout=record_seconds + 5.0)
         captured = collected["n"] / float(capture_rate) if capture_rate else 0.0
-        indicator.off(captured)            # OFF edge == stream torn down
+        indicator.off(captured, outcome["reason"])   # OFF edge == stream torn down
         if chunks:
             recording = np.concatenate(chunks, axis=0)[:frames]
     except Exception as stream_err:
@@ -772,15 +1026,34 @@ def record_from_microphone(config: Dict):
         # unsupported on this host/driver -- recording must still succeed
         # (the live light just won't be available in that degraded mode).
         indicator.off(collected["n"] / float(capture_rate) if capture_rate else 0.0)
-        logging.warning(f"⚠️ Live-stream capture unavailable ({stream_err}); using blocking capture.")
+        fallback_seconds = requested_seconds if requested_seconds > 0 else 30.0
+        if gated:
+            # The gate LIVES in the audio callback, so a driver that refuses
+            # the callback stream cannot be gated at all. SAY SO. Quietly
+            # recording a fixed length and still calling it gated would be
+            # exactly the kind of plausible lie this agent must never tell.
+            logging.warning(
+                f"⚠️ The sound gate needs the live callback stream, which this driver "
+                f"refused ({stream_err}). Recording a FIXED {fallback_seconds:g}s instead."
+            )
+            gated = False
+            outcome["reason"] = "fixed_fallback"
+        else:
+            logging.warning(f"⚠️ Live-stream capture unavailable ({stream_err}); using blocking capture.")
         recording = sd.rec(
-            frames, samplerate=capture_rate, channels=channels,
+            int(round(capture_rate * fallback_seconds)),
+            samplerate=capture_rate, channels=channels,
             dtype='float32', device=device_arg,
         )
         sd.wait()
 
     if recording is None or len(recording) == 0:
         raise RuntimeError("Microphone opened but returned no samples.")
+
+    # The TRUE length of the audio in hand. Under the gate this is the only
+    # honest duration there is: what was ASKED FOR and what was CAPTURED are
+    # different numbers by design, and only one of them is a fact.
+    captured_seconds = len(recording) / float(capture_rate) if capture_rate else 0.0
 
     # Downmix to mono (Whisper needs mono).
     audio = np.asarray(recording, dtype=np.float32)
@@ -804,8 +1077,21 @@ def record_from_microphone(config: Dict):
         "capture_sample_rate": capture_rate,
         "channels": channels,
         "gain_percent": gain_percent,
-        "duration_seconds": record_seconds,
+        # ACTUAL, not requested (see captured_seconds above).
+        "duration_seconds": round(captured_seconds, 3),
+        "requested_seconds": requested_seconds,
+        "capture_mode": "gated" if gated else "fixed",
+        "stop_reason": outcome["reason"],
+        "silence_timeout_seconds": silence_timeout if gated else 0.0,
+        "speech_seconds": (round(gate.speech_seconds, 3)
+                           if (gate is not None and gated) else 0.0),
     }
+    if gated and gate is not None:
+        logging.info(
+            f"🔇 Sound gate: stopped on {outcome['reason']} after {captured_seconds:.1f}s "
+            f"({meta['speech_seconds']:.1f}s of speech; threshold "
+            f"{gate.threshold_db:.1f} dBFS, room {gate.noise_floor_db:.1f} dBFS)."
+        )
     return audio.astype(np.float32), meta
 
 
@@ -1092,6 +1378,12 @@ def emit_parametrizer_section(result: Dict):
         f"segments: {result.get('segments', 0)}\n"
         f"word_count: {result.get('word_count', 0)}\n"
         f"status: {result.get('status', '')}\n"
+        # Appended 2026-09-11 with the silence gate -- NEVER renamed, and kept
+        # in step with agent_contracts._PARAMETRIZER_OUTPUT_FIELDS['whisperer'].
+        f"capture_mode: {result.get('capture_mode', '')}\n"
+        f"stop_reason: {result.get('stop_reason', '')}\n"
+        f"silence_timeout_seconds: {result.get('silence_timeout_seconds', 0) or 0:g}\n"
+        f"speech_seconds: {result.get('speech_seconds', 0) or 0:g}\n"
         "\n"
         f"{result.get('text', '')}\n"
         ">>>END_SECTION_WHISPERER"
@@ -1129,6 +1421,12 @@ def run_whisperer(config: Dict, output_dir: str) -> Dict:
         "segments": 0,
         "word_count": 0,
         "status": "error",
+        # Silence-gate read-outs. A FILE was never captured at all, so it
+        # honestly reports "file" rather than pretending to a capture mode.
+        "capture_mode": "file" if use_file else "",
+        "stop_reason": "",
+        "silence_timeout_seconds": 0.0,
+        "speech_seconds": 0.0,
     }
 
     # --- 1. Acquire audio --------------------------------------------------
@@ -1142,6 +1440,10 @@ def run_whisperer(config: Dict, output_dir: str) -> Dict:
         audio_array, meta = record_from_microphone(config)
         result["device"] = str(meta.get("device_index"))
         result["duration_seconds"] = float(meta.get("duration_seconds", 0) or 0)
+        result["capture_mode"] = str(meta.get("capture_mode", "") or "")
+        result["stop_reason"] = str(meta.get("stop_reason", "") or "")
+        result["silence_timeout_seconds"] = float(meta.get("silence_timeout_seconds", 0) or 0)
+        result["speech_seconds"] = float(meta.get("speech_seconds", 0) or 0)
         if save_source:
             try:
                 result["audio_path"] = save_capture_wav(audio_array, temp_dir)

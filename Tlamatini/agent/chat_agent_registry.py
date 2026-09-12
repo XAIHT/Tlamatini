@@ -462,8 +462,15 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
             "for 'transcribe this', 'what did I say', 'listen to the mic and write it down', "
             "'recognize my speech', 'convert <file>.mp3 to text', 'take dictation'. Whisperer is "
             "100% SELF-SUFFICIENT for the microphone: it OPENS, CONFIGURES and RECORDS the mic ITSELF "
-            "(it does NOT use the Recorder agent). By DEFAULT (input_source='mic') it records "
-            "record_seconds (default 30) of the default microphone; pass device_index=N or "
+            "(it does NOT use the Recorder agent). By DEFAULT (input_source='mic') it LISTENS rather "
+            "than recording a fixed block: it keeps recording while the speaker is still talking and "
+            "stops on its own after 10 seconds of silence. "
+            "⚠️ DO NOT PASS record_seconds UNLESS THE USER NAMED A DURATION. record_seconds is the "
+            "switch that TURNS THE SOUND GATE OFF: omit it entirely for 'take dictation' / 'listen to "
+            "the mic' / 'what did I say' / 'transcribe what I am about to say', and pass "
+            "record_seconds=N ONLY when the user actually said a length ('record 45 seconds'). Pass "
+            "silence_timeout_seconds=N to widen or shorten the silence window (default 10), and "
+            "device_index=N or "
             "device_name='USB' to pick another mic. To transcribe an existing audio FILE instead, "
             "pass audio_file='C:\\\\path\\\\clip.mp3' (input_source auto-switches to 'file'). "
             "Transcription uses faster-whisper LOCALLY by default (engine='faster-whisper'): it "
@@ -478,8 +485,10 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
             "status='engine_unavailable' (install with: pip install faster-whisper)."
         ),
         example_request=(
-            "Transcribe 5 seconds from the default microphone with engine='faster-whisper' and "
-            "model='base', OR transcribe with input_source='file' and "
+            "Take dictation from the default microphone with engine='faster-whisper' and "
+            "model='base' and NO record_seconds at all (so it listens until 10s of silence), OR "
+            "record exactly 45 seconds with record_seconds=45 when the user asked for that length, "
+            "OR transcribe with input_source='file' and "
             "audio_file='C:\\\\Audio\\\\meeting.mp3' and model='large-v3-turbo' and language='en'"
         ),
         aliases=(

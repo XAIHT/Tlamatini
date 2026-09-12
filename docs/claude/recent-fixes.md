@@ -16,6 +16,76 @@
 
 ---
 
+## 2026-09-11 - Whisperer LISTENS: the silence gate becomes the default
+
+**Files: `agent/agents/whisperer/whisperer.py` (NEW `SilenceGate`, the gate wiring in
+`record_from_microphone`, the silence bar in `MicRecIndicator`), its `config.yaml`,
+`chat_agent_registry.py` (the Whisperer `purpose` + `example_request`),
+`services/agent_contracts.py` (4 appended parametrizer fields),
+`agent/test_whisperer_agent.py` (41 -> **69 tests**).**
+
+Angela's ask: *"By default operate while recording based on a sound detection gate ... when a
+silence of more than 10 seconds (configurable) is detected then stop recording"*, with the
+countdown visible in the console bar that already appears. Whisperer used to record a flat
+`record_seconds: 30`, which cuts a sentence in half or leaves you listening to an empty room.
+
+**THE ONE REAL OBSTACLE was telling "no duration given" from "you asked for 30 seconds"** —
+`record_seconds` always held a number. Solved with the idiom already sitting one line above it
+in the same config: `sample_rate: 0` = the native rate, so **`record_seconds: 0` = listen until
+the speaker stops**. `silence_gate` (auto/on/off) overrides the inference; `max_record_seconds`
+(300) is the ceiling; `silence_threshold_db` (0 = auto) retunes a noisy room.
+
+**THE GATE.** `SilenceGate.feed()` takes one RMS per ~20 ms block from **inside the PortAudio
+callback** — plain float arithmetic, no lock, no logging, no allocation, because a callback that
+blocks drops samples and dropped samples are a wrong transcript. The room is an asymmetric noise
+floor: it falls INSTANTLY to any quieter block and may only climb while we already believe we are
+hearing the room, never while the speaker is talking (otherwise a long sentence raises the floor
+over its own voice). Hysteresis: 2 consecutive blocks above threshold to attack (a chair creak is
+not a word), 3 dB below to release (which is what stops the bar flickering on the quiet tail of a
+word).
+
+**CONTRACTS (do NOT weaken):**
+
+1. **The floor STARTS pessimistically low**, so the first threshold is the absolute −50 dBFS
+   floor and somebody who begins talking on sample one is heard immediately. A gate that
+   "listens to the room first" mistakes that speaker's own voice for the room and then gates
+   them out — **the worst failure available here**, because it cuts a person off mid-sentence
+   and reads as a crash.
+2. **Unbroken "voice" for 15 s re-baselines the room** to the quietest block of that stretch.
+   A steady −45 dBFS fan sits ABOVE the −50 starting threshold, so without this the gate would
+   never fire at all. People breathe; a fan does not. Safe in the other direction too: the
+   minimum of a stretch of real speech is a gap or a soft syllable, so the threshold still lands
+   below the speaker.
+3. **The `sd.rec` fallback CANNOT gate** (no callback) — it records a fixed length and **SAYS
+   SO**, in the log and as `stop_reason: fixed_fallback`. Silently recording 30 s and still
+   calling it gated is precisely the plausible-but-wrong deliverable this agent must never
+   produce.
+4. **`duration_seconds` is now the length ACTUALLY captured**, not the length requested. It used
+   to echo `record_seconds`; with a gate those are different numbers by design and only one of
+   them is a fact.
+5. **The 4 new `INI_SECTION_WHISPERER` fields were APPENDED, never renamed** (`capture_mode`,
+   `stop_reason`, `silence_timeout_seconds`, `speech_seconds`), kept in step with
+   `agent_contracts._PARAMETRIZER_OUTPUT_FIELDS['whisperer']`.
+6. **In fixed mode the painted console line is byte-for-byte what it always was.** Only a gated
+   run grows the second bar.
+
+**THE HIGHEST RISK IS NOT THE CODE — IT IS THE MODEL'S HABIT.** The tool description used to say
+*"records record_seconds (default 30)"* and its worked example opened with *"Transcribe 5
+seconds…"*. If Tlamatini keeps volunteering a duration the gate never fires and the whole feature
+is invisible **while looking like it worked**. The description now says **DO NOT PASS
+record_seconds UNLESS THE USER NAMED A DURATION**, and
+`test_tool_description_tells_the_model_not_to_volunteer_a_duration` pins that sentence so it
+cannot drift back.
+
+**A test-harness fragility fixed on the way:** `_LogCapture` now forces the root level to INFO
+and restores it. Whether an `INI_SECTION` block was seen previously depended on whether
+whisperer.py's module-level `basicConfig(level=INFO)` happened to run before Django configured
+logging — i.e. **on test order**. Adding a test to `WhispererRegistryTests` (a `SimpleTestCase`,
+which Django runs first) moved the first module load and broke three unrelated tests that had
+passed for months.
+
+---
+
 ## 2026-09-11 - Gitter mangled EVERY Windows path in `custom_command`
 
 **Files: `agent/agents/gitter/gitter.py` (`build_git_command` + the new `_strip_wrapping_quotes` helper), NEW `agent/test_gitter_custom_command.py` (23 tests).**

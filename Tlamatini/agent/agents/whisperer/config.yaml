@@ -33,8 +33,41 @@ input_source: "mic"
 audio_file: ""
 
 # ── Microphone capture (used when recording the mic) ─────────────────────────
-# How many seconds to record from the mic.
-record_seconds: 30
+# How many seconds to record from the mic — AND the switch that chooses HOW the
+# recording ends:
+#   0  -> THE DEFAULT. No duration was given, so Whisperer LISTENS: it keeps
+#         recording while you are still talking and stops on its own after
+#         `silence_timeout_seconds` of silence. (Same idiom as sample_rate: 0
+#         below = "the native rate".)
+#   N  -> record EXACTLY N seconds and ignore the sound gate entirely.
+# So "take dictation" records until you finish; "record 45 seconds" records 45.
+record_seconds: 0
+
+# ── The SOUND GATE (how a 0-duration recording ends) ─────────────────────────
+# Seconds of continuous SILENCE that end the recording. The clock starts the
+# moment recording opens, so if nobody ever speaks it still stops here.
+silence_timeout_seconds: 10
+
+# Override the automatic mode choice above:
+#   "auto" -> THE DEFAULT: gate ON when record_seconds is 0, OFF when a
+#             duration was named.
+#   "on"   -> force the gate ON even when record_seconds names a duration
+#             (that duration then acts only as the ceiling).
+#   "off"  -> force a fixed-length recording (30 s if none was named).
+silence_gate: "auto"
+
+# Hard ceiling for a gated recording, in seconds. A gate with nothing to stop
+# it never stops — a radio left playing is never silent — so the recording ends
+# here regardless and reports stop_reason: max_duration.
+max_record_seconds: 300
+
+# Loudness that counts as speech, in dBFS (a NEGATIVE number, e.g. -45).
+#   0 -> THE DEFAULT: measure the room continuously and put the threshold
+#        9 dB above it (never higher than -50 dBFS, so a speaker who starts
+#        talking immediately is always heard).
+# Set an explicit value only to force a gate that is mis-tuned for your room:
+# LOWER (e.g. -60) hears more, HIGHER (e.g. -35) needs a louder voice.
+silence_threshold_db: 0
 
 # Which microphone / input device to use:
 #   -1  -> the SYSTEM DEFAULT input device (THE DEFAULT — recommended).
