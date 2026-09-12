@@ -634,6 +634,18 @@ WHISPERER SPECIAL NOTES (speech-to-text — THE RECORDING LENGTH IS NOT FIXED):
     `status: engine_unavailable` block means faster-whisper is not installed and
     no cloud key is set — routable content here, while the wrapped Exec Report
     row truthfully reports that the requested work did not happen.
+  - ⚠️ VOICE-COMMAND CHAINS ARE THE LONGEST CASE OF ALL (2026-09-12). Whisperer
+    is now also used as a FRONT END: its transcript becomes the instruction that
+    the agents WIRED AFTER IT then carry out (catalog cards #121/#122, VOICE
+    COMMANDS). In such a flow the silence you see is TWO waits back to back —
+    first up to `max_record_seconds` for the human to finish speaking, and only
+    THEN the downstream work, whose length nobody could know in advance because
+    nobody knew what the human was going to say. Judge the Whisperer node by the
+    rule above (silent beyond `max_record_seconds` + transcription, with no
+    "Whisperer agent finished"), and judge each downstream node by ITS OWN
+    SPECIAL NOTES — never by "the flow has been quiet for a while". A
+    Parametrizer copying a Whisperer `response_body` into the next node's
+    instruction field is the normal shape of this chain, not an anomaly.
 
 AUDIOPLAYER / VIDEOPLAYER SPECIAL NOTES (playback agents — SILENCE IS THE JOB):
   - AudioPlayer (audio file → speakers) and VideoPlayer (video file → a chosen

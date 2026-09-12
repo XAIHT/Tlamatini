@@ -208,6 +208,16 @@ Done — tick **Multi-Turn** in the chat toolbar and put Tlamatini to work.
 
 ---
 
+## Newest change — landed after the v1.51.7 tag
+
+**Speak, and she does it — the catalog now opens with VOICE COMMANDS.** The Catalog of Prompts has a new first section, **VOICE COMMANDS**, sitting ahead of *Getting Started* because speaking is the shortest way there is to use Tlamatini: you talk, she does it. The microphone becomes the keyboard — Whisperer writes down what you said, and **the words you spoke become the prompt she then carries out**.
+
+Two cards. **#121 YOUR FIRST VOICE COMMAND** is a guided rehearsal that goes one step at a time and waits for you between steps: it checks that the machine can actually hear you, shows you the transcript, and lets you try a harmless spoken instruction before anything real happens. **#122 SPEAK YOUR PROMPT** is the real thing, and it is Angela's own sentence — *"Tlamatini, using Whisperer record my voice till I finish to tell you a prompt, then use the text extracted as a prompt and invoke it, go!."* Click it and Tlamatini arms **Multi-Turn, Exec report and ACPX** for you, because nobody can know in advance what you are about to ask for; her whole tool surface has to be in her hands by the time the transcript arrives.
+
+This is only possible because of the sound gate below. Before it, a spoken prompt was chopped off at a fixed thirty seconds. Two promises come with it: she **reads the transcript back to you before she acts on it**, and if she did not hear you she **says so and stops** rather than inventing a plausible instruction. A spoken instruction is enough to start work; anything irreversible — deleting, messaging a real person, spending money — she still asks you to confirm in writing.
+
+---
+
 ## Newest changes — carried by the v1.51.7 tag
 
 **Whisperer now listens instead of counting seconds.** Ask Tlamatini to take dictation and she used to record a flat thirty seconds — cutting you off in the middle of a sentence, or leaving you listening to an empty room after you had finished. Now she simply **waits for you to stop talking**: the recording stays open while you are speaking and ends on its own after **ten seconds of silence**. Say a length and she still honours it exactly — *"record 45 seconds"* records 45 — the gate only steps in when you did not name one.
@@ -365,6 +375,7 @@ Everything Tlamatini can do, grouped:
 
 **🎙️ Audio, video, vision & speech**
 - **Talker (TTS)** — text-to-speech via Ollama. **Whisperer (STT)** — speech-to-text (faster-whisper local + cloud fallback); by default a **sound gate** keeps recording while you talk and stops after 10 s of silence, and naming a duration turns it off.
+- **Voice commands** — the catalog's **first** section. Speak your instruction instead of typing it: Whisperer listens until you stop, and the transcript becomes the prompt Tlamatini executes. She reads it back before acting, and if she did not hear you she says so instead of guessing.
 - **Recorder / Camcorder** — microphone and webcam capture.
 - **AudioPlayer / VideoPlayer** — audio and video playback with volume/loop control.
 - **Image-Interpreter** — triple-model vision analysis: qwen3.5:cloud + gemma4:cloud interpret each image **in parallel** on two dedicated Ollama connections, then glm-5.3:cloud merges both interpretations into one definitive report (mockup/GUI inventories in % coordinates, full OCR, people described exhaustively with identity clues taken from the image file name).

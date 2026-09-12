@@ -150,6 +150,7 @@ class PromptSortRankTests(TestCase):
         # Angela's rule, section by section. Four wizards already existed and were
         # promoted by 0181; the other nine were authored by 0182.
         expected_first = {
+            'voice_commands': 121,   # YOUR FIRST VOICE COMMAND          (0201)
             'getting_started': 1,    # create a new Tlamatini user      (pre-existing)
             'firmware_iot': 70,      # STM32F407 blink, on-board ST-Link (pre-existing)
             'security_recon': 97,    # Kali back-end setup               (pre-existing)

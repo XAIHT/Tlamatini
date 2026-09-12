@@ -16,6 +16,99 @@
 
 ---
 
+## 2026-09-12 - VOICE COMMANDS: the catalog's new FIRST section, and the transcript becomes the prompt
+
+**Files: `agent/views.py` (`PROMPT_CATEGORY_ORDER` gains `voice_commands` at index 0),
+NEW `agent/migrations/0201_add_voice_commands_section.py` (prompts **121** + **122**),
+`agent/prompt.pmt` (NEW rule **18e**), `agent/Tlamatini.md`,
+`agent/agents/flowhypervisor/monitoring-prompt.pmt` (WHISPERER SPECIAL NOTES),
+`agent/agents/flowcreator/agentic_skill.md` (#75), `agents_descriptions.md`,
+`agent/test_prompt_catalog_contiguous.py` (`expected_first`),
+NEW `agent/test_voice_commands_catalog.py` (**23 tests**), NEW visible runner
+`.claude/skills/tlamatini-daily-chat-test/harness/voice_commands_visible.py`.**
+
+Angela's ask, verbatim: a prompt sample *"Tlamatini, using Whisperer record my voice till I
+finish to tell you a prompt, then use the text extracted as a prompt and invoke it, go!."*
+with the natures **Multi-turn / Exec-report / ACPX**, in a NEW section named
+**VOICE COMMANDS** at the **very beginning of the catalog**.
+
+**WHY IT IS A SECTION AND NOT A CARD IN *MEDIA & VOICE*.** Those two things are not the same
+capability. *Media & Voice* is about PRODUCING or CONSUMING media — record a WAV, play a file,
+speak a sentence, transcribe a clip. A **voice command** is about DRIVING Tlamatini BY
+speaking: the microphone replaces the keyboard and the transcript becomes the prompt she then
+executes. Nothing else in the request path changes, which is exactly why it deserves its own
+name rather than being filed under the agent that happens to implement its first step.
+
+**WHY IT COULD NOT SHIP BEFORE v1.51.7.** A spoken prompt has no length anybody can know in
+advance. Under the old fixed `record_seconds: 30` a long instruction was cut in half and a
+short one left the user talking to an empty room — so the transcript was not what they said,
+and executing it would have meant executing a half-sentence. **The sound gate is the
+enabling change**, and that dependency is the one rule both cards hammer: **never pass
+`record_seconds` here**, because any number disarms the gate and truncates the speaker *while
+still looking like it worked*.
+
+**TWO CARDS, AND THE SECOND ONE IS NOT OPTIONAL PADDING.** Angela asked for one prompt; the
+section ships two, because her own standing rule is that **every section opens with a
+Step-by-Step wizard** and `test_prompt_catalog_contiguous.py` enforces it from two directions
+(`test_known_section_openers` fails for any live section absent from its map, and
+`test_every_section_opens_with_a_genuine_step_by_step_wizard` reads the opener's CONTENT for
+the Step-by-Step checkbox and a promise to WAIT). A new section with only card #122 would have
+gone RED on both. So **#121 YOUR FIRST VOICE COMMAND** (`sort_rank` 10, the reserved opener
+slot) rehearses the flow read-only, and **#122 SPEAK YOUR PROMPT** (`sort_rank` 20) carries
+Angela's sentence verbatim.
+
+**⚠️ THE MODE BADGES ARE DERIVED FROM THE TEXT — THERE IS NO FLAG TO SET.**
+`tools_dialog.js::classifyPromptModes` reads the prompt and decides; `applyPromptModesToToggles`
+then ticks exactly those boxes. So getting Angela's three natures right meant WRITING them:
+
+  * #122 names `invoke_skill` / `acp_spawn` / `acp_send_and_wait` in a **non-forbidding**
+    sentence ⇒ `['multiturn', 'acpx', 'execreport']`. ⚠️ The classifier **scrubs
+    `do not use …` clauses BEFORE scanning**, so an ACPX token parked inside such a sentence
+    would be deleted and the badge would silently vanish —
+    `test_the_acpx_tokens_survive_the_forbidden_tool_scrub` pins that it does not.
+  * #122 contains **no hyphenated `step-by-step` token anywhere**, so it is never mis-badged
+    as a wizard (the regex needs the hyphenated form; "Step 1 / Step 2" is safe).
+  * #121 says "Step-by-Step mode" and names the checkbox after "Tick", and carries **no**
+    `acp_*` token ⇒ `['multiturn', 'stepbystep', 'execreport']`, the shape every other opener
+    has.
+
+**THE ACPX TICK IS LOAD-BEARING, NOT DECORATION.** Neither the user nor the model knows in
+advance what the spoken instruction will turn out to need. With ACPX unchecked,
+`agent.acpx.filter_acpx_tools` strips the whole ACPX/Skills surface *before the planner runs*,
+so a spoken *"ask Codex about this"* would arrive with nothing bound to serve it. The card
+ticks ACPX because the card genuinely needs it.
+
+**TWO HONESTY CONTRACTS baked into #122 (do NOT soften them).** It must **read the transcript
+back verbatim before acting**, and on `status: empty` / `engine_unavailable` it must **say so
+and stop** — *inventing a plausible prompt because she could not hear the user* is the one
+failure this feature must never produce, and it is the same silent-plausible-WRONG class as the
+PDFer missing-images bug and the ACPX blocked-child-reported-green bug. A third line draws the
+authority boundary: **a spoken instruction is enough to START work; typed confirmation is what
+authorises the irreversible kind.**
+
+**Contract compliance:** ids APPENDED after 120 (never renumbered); ranks 10/20 unique inside
+the section; v1.44.0 parameter grammar (`[[ … — OPTIONAL, default: X ]]` at the top + the
+unfilled guard, `< >` for report slots only); no hardcoded scratch path (Rules 15/16).
+`views.PROMPT_CATEGORY_ORDER` is the only code change — the catalog modal is fully
+data-driven, so **no JS, CSS or template edit was needed and `STATIC_VERSION` is untouched**.
+Migration `0179`'s frozen `_CATEGORY_ORDER` mirror is deliberately NOT updated (same precedent
+as `0190` adding `documents`): it is history, and nothing cross-checks it.
+
+**Coverage.** `agent/test_voice_commands_catalog.py` (23 tests) pins the placement, the
+verbatim sentence, the no-`record_seconds` rule, the honesty gate, and the badges — the last of
+those via a **faithful Python port of `classifyPromptModes`**, plus a `ClassifierPortFidelity`
+class that re-reads the real JS so the port cannot silently drift from it. The end-to-end proof
+is the VISIBLE headed-Chrome runner `voice_commands_visible.py` (Playwrighter drives, **Shoter**
+photographs the full desktop): 23/23 green against the source server — VOICE COMMANDS renders
+first and in capitals, both cards sit in rank order, clicking #122 really ticks
+Multi-Turn + Exec report + ACPX and leaves Step-by-Step off, and clicking #121 flips it back the
+other way (which is what proves the toggles follow the CARD, not the previous click).
+⚠️ **It deliberately does NOT speak into a microphone and says so on screen and in its
+SUMMARY.html** — a voice command needs a human voice, and faking it would fake the very thing
+under test.
+
+---
+
 ## 2026-09-11 - Whisperer LISTENS: the silence gate becomes the default
 
 **Files: `agent/agents/whisperer/whisperer.py` (NEW `SilenceGate`, the gate wiring in

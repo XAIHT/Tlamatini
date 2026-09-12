@@ -127,6 +127,7 @@ Tlamatini does a lot. This book is organized so you can stop reading at the dept
 - **Bonus chapter §57** — Driving Unreal Engine 5 from Tlamatini (the Unrealer agent + Unreal MCP plugin). Read this if you build games or simulations in UE5 and want a chat / canvas surface for the editor.
 - **Bonus chapter §59** — Sculpting in Blender from Tlamatini (the Blenderer agent + the official Blender MCP add-on). Read this if you make 3D art / assets in Blender and want a chat / canvas surface for the editor — and to see why Blender's *code-execution* protocol differs from Unreal's verbs.
 - **[Enable Tlamatini as a Blue-hat agent](#enable-tlamatini-as-a-blue-hat-agent)** — the complete Windows defensive-toolkit runbook: asset validation, persistent host changes, detect-only baselining, armed/watch modes, evidence review, false positives, response rollback, and operator responsibility.
+- **[Voice commands: your words become the prompt](#voice-commands-your-words-become-the-prompt)** — the catalog's new first section: speak your instruction instead of typing it, why it needed the silence gate to exist, and the two promises (she reads it back; if she did not hear you she says so).
 - **[Whisperer listens: the silence gate](#whisperer-listens-the-silence-gate)** — why a fixed recording length was the wrong question, how the gate hears you, the countdown in the console bar, and the one thing that would have made the whole feature invisible.
 - **[Avatar animation repair and reproducible visible tests](#avatar-animation-repair-and-reproducible-visible-tests)** — frame assets, the transparency-flash diagnosis, the source fix, real Django/Windows-voice validation, and the Python test launcher.
 - **Appendix A** — Keyboarder key reference.
@@ -135,6 +136,42 @@ Tlamatini does a lot. This book is organized so you can stop reading at the dept
 - **Appendix D** — Acknowledgments / Contributing / License.
 
 If you only have ten minutes, read Part I §3–§7 (install + first login), then Part II §12 (Multi-Turn).
+
+---
+
+## Voice commands: your words become the prompt
+
+### The microphone is the keyboard
+
+There is a difference between *recording your voice* and *being driven by it*, and until now Tlamatini only did the first. Whisperer could write down what you said; turning those words into an instruction she then carried out was something you did yourself, by reading the transcript and typing it back in.
+
+The **VOICE COMMANDS** section — the new first section of the Catalog of Prompts, sitting ahead of *Getting Started* — closes that gap. You speak, Whisperer writes it down, and **the words you spoke become the prompt Tlamatini executes.** Nothing else about the system changes: the same planner runs, the same tools are bound, the same Exec Report is produced. Only the input device is different.
+
+It is the first section on purpose. Speaking is the shortest path there is to using Tlamatini at all — you talk, she does it — so it is the first thing a new user meets.
+
+### Why it could not exist before v1.51.7
+
+A spoken prompt has no length you can know in advance. Under the old fixed `record_seconds: 30`, a long instruction was cut in half and a short one left you talking to an empty room; either way the transcript was not what you said, so treating it as a prompt would have meant treating a half-sentence as a command. The silence gate described in the next chapter is what makes this trustworthy: the recording stays open while you are talking and closes itself once you stop.
+
+That dependency is also the one rule the card insists on. **Tlamatini must not pass `record_seconds` here.** Passing any number turns the gate off and cuts you off mid-sentence — and it does so while appearing to work, which is the worst kind of defect. The card says it, the tool description says it, and a test pins the sentence so it cannot quietly drift back.
+
+### Two cards, and why there are two
+
+**#121 — YOUR FIRST VOICE COMMAND** is a rehearsal. It runs Step-by-Step: one action, then it stops and waits for you. It checks the machine can hear you at all, shows you the transcript and asks whether that is really what you said, tells you the two things that fix it when it is not (a different microphone, or a larger model), and only then lets you try a spoken instruction — restricted to read-only work, because a rehearsal should not be able to delete anything.
+
+**#122 — SPEAK YOUR PROMPT** is the real thing, and it is Angela's own sentence, kept word for word:
+
+> *"Tlamatini, using Whisperer record my voice till I finish to tell you a prompt, then use the text extracted as a prompt and invoke it, go!."*
+
+Clicking it arms **Multi-Turn, Exec report and ACPX**. The ACPX tick is not decoration: nobody — not you, not her — knows in advance what you are about to ask for, so her whole tool surface, skills and external coding agents included, has to already be in her hands by the time the transcript arrives. With ACPX off those tools are filtered out before the request is even planned, and a spoken *"ask Codex about this"* would die with nothing to serve it.
+
+### Two promises, because a misheard command is worse than no command
+
+**She reads the transcript back before she acts on it** — verbatim, no tidying, no guessing at words she did not catch. You cannot see what she heard, so she shows you.
+
+**If she did not hear you, she says so and stops.** An empty recording (`status: empty`) means the gate correctly closed a recording nobody spoke into — that is the gate working, not a failure. A missing recogniser (`status: engine_unavailable`, fixed by `pip install faster-whisper`) means there was nothing to transcribe with. In neither case may she invent a plausible instruction and run it. That is the single specific failure this feature must never produce.
+
+And one boundary worth stating plainly: **your voice is enough to start work; your typing is what authorises the irreversible kind.** If what you said would delete or overwrite something, message a real person, spend money, or reach a machine that is not yours, she does the safe part and asks you to confirm the rest in writing.
 
 ---
 
