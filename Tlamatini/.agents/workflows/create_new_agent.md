@@ -25,7 +25,11 @@ Step-by-step guide for a new workflow agent. Follow all 8 steps in order. Replac
 9. **CSS gradient duplicated in JS** — never type a gradient string inside `populateAgentsList()`. Use `applyAgentToolIconStyle()` so the sidebar icon inherits from CSS.
 10. **Importing `agent.*` from a pool subprocess** — `ModuleNotFoundError` at runtime. Port the needed ~100-200 lines inline instead. See `acpxer.py`.
 11. **Temp / Templates outside Tlamatini** — an agent that writes temp files to `C:\Temp` / `%TEMP%` / a bare `tempfile.gettempdir()`, or scaffolds a project dir to an arbitrary location, violates the directory policy. Temp → `<app>/Temp` (`TLAMATINI_TEMP`); scaffolded project/template dirs → `<app>/Templates` (`TLAMATINI_TEMPLATES`) unless the user gives a path. Since v1.48.13, Mover/Deleter empty, relative, and legacy `C:/Temp/...` scratch paths must re-root under app Temp, explicit absolute user paths remain authoritative, and deletion scope must never widen. See Step 1b and `agent/path_guard.py` / `prompt.pmt` Rules 15/16.
-12. **Generated binary artefacts inside a context-loaded folder** — if your agent writes compiled output, images, archives or model blobs into a directory the user may load as RAG context, that is fine: `agent/rag/binary_guard.py` screens files by content and drops binary ones from the embedding chain automatically, logging each omission with the `--- [BINARY-GUARD]` prefix in `tlamatini.log`. Do NOT write your own binary check into the agent, and do NOT assume a binary artefact will be embedded. If your agent produces a *text* artefact with an unusual extension that you want loadable, tell the user about `binary_detection_force_text_extensions` (it always beats the built-in denylist). See `docs/claude/architecture.md` → *Binary-content guard for context loading*.
+12. **A DEFAULT THAT IS REALLY A MODE SWITCH — use the sentinel already in the file, do not add a second flag (learned on Whisperer's sound gate, 2026-09-11).** When an agent must tell *"the user said nothing about this"* from *"the user asked for exactly this value"*, a plain default cannot: `record_seconds: 30` and a user who said "thirty seconds" are indistinguishable. Reach for the **`0` = auto** sentinel the config already uses elsewhere (`sample_rate: 0` = the native rate) rather than inventing a parallel boolean, which gives you two knobs that can contradict each other. Then keep an explicit override (`silence_gate: auto|on|off`) for the operator who wants to force either mode.
+13. **⚠️ CHANGING A DEFAULT IS NOT DONE UNTIL THE LLM-FACING TEXT CHANGES TOO — this is the single easiest way to ship an invisible feature.** `chat_agent_registry`'s `purpose` / `example_request` is what Tlamatini actually reads. Whisperer's said *"records record_seconds (default 30)"* and its example opened with *"Transcribe 5 seconds…"*; had those stayed, the model would have kept volunteering a duration out of habit, the new gate would never have fired once, and the whole change would have been **invisible while looking like it worked**. Rewrite that text in the SAME pass, say plainly what the model must NOT pass, and **pin the sentence with a test** so it cannot drift back (`test_tool_description_tells_the_model_not_to_volunteer_a_duration`).
+14. **Report what HAPPENED, not what was REQUESTED.** Whisperer's `duration_seconds` echoed the requested `record_seconds`; the moment the length became condition-driven that field was a lie. If a result field can differ from its input, compute it from the artefact (the captured array, the file on disk), and add `stop_reason` / `capture_mode`-style fields so a downstream Forker can branch on WHY it ended. New `INI_SECTION` fields are **APPENDED, never renamed** (keep `agent_contracts._PARAMETRIZER_OUTPUT_FIELDS` in step in the same commit).
+15. **A test that fails for a reason unrelated to your change is usually TEST ORDER.** Adding one test to a `SimpleTestCase` class (which Django runs FIRST) moved the first import of the Whisperer module and broke three tests that had passed for months — their visibility depended on whether the agent's module-level `logging.basicConfig(level=INFO)` happened to run before Django configured logging. Fix the harness (force + restore the level in the capture helper), never the assertion.
+16. **Generated binary artefacts inside a context-loaded folder** — if your agent writes compiled output, images, archives or model blobs into a directory the user may load as RAG context, that is fine: `agent/rag/binary_guard.py` screens files by content and drops binary ones from the embedding chain automatically, logging each omission with the `--- [BINARY-GUARD]` prefix in `tlamatini.log`. Do NOT write your own binary check into the agent, and do NOT assume a binary artefact will be embedded. If your agent produces a *text* artefact with an unusual extension that you want loadable, tell the user about `binary_detection_force_text_extensions` (it always beats the built-in denylist). See `docs/claude/architecture.md` → *Binary-content guard for context loading*.
 
 ---
 
@@ -407,6 +411,20 @@ Also touch: **Connection Rules**, **Agent Categories** (Active/Terminal-Monitori
 
 ---
 
+## Step 6b · Documentation: FlowHypervisor `monitoring-prompt.pmt` (do NOT skip)
+
+Edit `agent/agents/flowhypervisor/monitoring-prompt.pmt`. The FlowHypervisor is the LLM watchdog that reads a running flow's logs and emits `OK` or `ATTENTION NEEDED { … }`. **An agent it does not know about is an agent it will eventually flag as stuck** — a false alarm that teaches the user to ignore the watchdog, which is worse than having no watchdog.
+
+Three places, all required:
+
+1. **The TYPICAL TIMING list** — one line giving the agent's expected runtime and what "too long" actually means for it. Say where the number COMES FROM (a config key, the size of the input, an external download), never a bare guess.
+2. **A `<CAPS> SPECIAL NOTES:` block** (ALL-CAPS header — protocol convention) if the agent has any nuance: a long first run that downloads a toolchain, an intentionally silent period, a structured-output-on-failure that must not be read as an error, an external window, a transport/REPL timing rule.
+3. **The "THINGS THAT ARE NORMAL (DO NOT FLAG)" list** — every documented degradation and every routable `status:` your agent can emit.
+
+**⚠️ THE TRAP: an agent whose RUNTIME IS NOT KNOWABLE IN ADVANCE.** If your agent can be legitimately silent for a length nobody can predict from the config alone, the watchdog CANNOT infer that and will flag it. Say so explicitly, with the bound. Worked example — Whisperer's sound gate (2026-09-11): the recording used to be exactly `record_seconds`, and became "however long the speaker keeps talking, up to `max_record_seconds`". A healthy gated Whisperer is now silent for **up to five minutes** waiting for a human being to speak, so `WHISPERER SPECIAL NOTES` states the bound, names the log line that reveals which mode is running, and lists every `stop_reason` as normal. **If you ever change an agent from a fixed duration to a condition-driven one, this file is not optional.**
+
+---
+
 ## Step 7 · Documentation: `README.md`
 
 7a. **Agent count** — increment in 3 places: Overview (~L65), Key Features > Visual Workflow Designer (~L157), Workflow Agents header (~L963).
@@ -645,6 +663,11 @@ the updater preserve lists stay coherent, and new migrations reach users. Full r
     [ ] 5d acp-file-io.js BOTH switches SPACED
     [ ] 5e /* global */ updated in all 3 files
 [ ] 6. agentic_skill.md entry
+[ ] 6b. flowhypervisor/monitoring-prompt.pmt: TYPICAL TIMING line + <CAPS> SPECIAL
+       NOTES + the DO-NOT-FLAG list. MANDATORY when the agent's runtime is not
+       knowable from its config alone (a condition-driven stop, a long first-run
+       download, an intentionally silent stretch) — the watchdog cannot infer it
+       and WILL raise a false alarm.
 [ ] 7. README.md: count, structure, classification, Workflow table (Purpose = ACP
        Description menu + sidebar tooltip text), Glossary, Changelog, API endpoint
 [ ] 7.5 (OPTIONAL) ChatWrappedAgentSpec in chat_agent_registry.py

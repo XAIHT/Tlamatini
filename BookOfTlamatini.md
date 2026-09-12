@@ -127,6 +127,7 @@ Tlamatini does a lot. This book is organized so you can stop reading at the dept
 - **Bonus chapter §57** — Driving Unreal Engine 5 from Tlamatini (the Unrealer agent + Unreal MCP plugin). Read this if you build games or simulations in UE5 and want a chat / canvas surface for the editor.
 - **Bonus chapter §59** — Sculpting in Blender from Tlamatini (the Blenderer agent + the official Blender MCP add-on). Read this if you make 3D art / assets in Blender and want a chat / canvas surface for the editor — and to see why Blender's *code-execution* protocol differs from Unreal's verbs.
 - **[Enable Tlamatini as a Blue-hat agent](#enable-tlamatini-as-a-blue-hat-agent)** — the complete Windows defensive-toolkit runbook: asset validation, persistent host changes, detect-only baselining, armed/watch modes, evidence review, false positives, response rollback, and operator responsibility.
+- **[Whisperer listens: the silence gate](#whisperer-listens-the-silence-gate)** — why a fixed recording length was the wrong question, how the gate hears you, the countdown in the console bar, and the one thing that would have made the whole feature invisible.
 - **[Avatar animation repair and reproducible visible tests](#avatar-animation-repair-and-reproducible-visible-tests)** — frame assets, the transparency-flash diagnosis, the source fix, real Django/Windows-voice validation, and the Python test launcher.
 - **Appendix A** — Keyboarder key reference.
 - **Appendix B** — Glossary.
@@ -134,6 +135,63 @@ Tlamatini does a lot. This book is organized so you can stop reading at the dept
 - **Appendix D** — Acknowledgments / Contributing / License.
 
 If you only have ten minutes, read Part I §3–§7 (install + first login), then Part II §12 (Multi-Turn).
+
+---
+
+## Whisperer listens: the silence gate
+
+### The wrong question
+
+For most of Whisperer's life, asking her to take dictation meant answering a question nobody can actually answer: *how many seconds are you going to speak for?* The agent recorded `record_seconds: 30` and stopped, whether you were mid-sentence or had finished twenty seconds ago. Both failures are bad, and the second one is worse than it looks — a recording full of silence is a recording the speech recogniser has to wade through, and the model will cheerfully hallucinate words into it.
+
+The fix is not a better guess. It is to stop guessing: **keep recording while somebody is talking, and stop once they have finished.** That is the sound gate, and since v1.51.7 it is the default.
+
+### Telling "no duration" from "thirty seconds"
+
+The only genuinely hard part was a small one. `record_seconds` always held a number, so the agent could not tell a user who said nothing about length from a user who deliberately asked for thirty seconds. Inventing a second flag would have meant two knobs that can contradict each other.
+
+The answer was already in the file. A few lines above, `sample_rate: 0` has long meant *"use the microphone's native rate"* — zero as a word, not a quantity. So `record_seconds: 0` now means **"no duration was given: listen until I stop talking"**, and any number you name turns the gate off and is honoured to the sample. *"Record 45 seconds"* still records exactly 45. An old saved flow that stored `30` asked for thirty and still gets thirty; nothing you already built changes behaviour behind your back.
+
+### How it hears you
+
+Whisperer already opened the microphone through a callback that measures every twenty-millisecond block to drive the VU meter, so the gate costs one extra measurement on audio she is holding anyway — no new library, nothing to install, and it works exactly the same with the cloud recognisers.
+
+The rule is deliberately simple. Whisperer tracks the room's own noise, and counts anything about nine decibels above it as a voice. Speech must last two blocks before it counts, so a chair creak is not a word; silence only begins accruing a little below the speech threshold, which is what stops the countdown flickering on the quiet tail of a sentence. Any voice at all resets the clock to zero.
+
+Two decisions inside that are worth knowing, because both protect *you* rather than the machine:
+
+- **She starts sensitive, not cautious.** A gate that listens to the room first, then decides, will take the voice of somebody who begins talking immediately for the room itself — and then gate that person out, cutting them off mid-sentence. So the threshold begins at a fixed, generous floor and is tightened only by evidence.
+- **Fifteen seconds of unbroken "voice" re-measures the room.** People breathe; a fan does not. A steady mechanical hum sits above the starting threshold and would otherwise read as somebody talking forever, so a stretch with no gaps at all is treated as a machine and the room is re-baselined around it.
+
+### The countdown you can watch
+
+The console window Whisperer opens while recording already showed a blinking REC light and a live VU meter. It now carries a second bar beside them:
+
+```
+ ● REC [████████──────] 12.3s   ● VOICE    [──────────] 0.0s/10s
+ ● REC [──────────────] 19.8s   ○ silence  [██████────] 6.4s/10s
+ ■ REC STOPPED ✓  silence 10.0s   captured 20.7s
+```
+
+The silence bar fills as the room stays quiet and empties the instant you speak, turning amber past halfway and red past eighty percent — so you can see it about to fire and keep talking if you want it. The final line says *why* it stopped, which matters: a recording that ends on its own and does not explain itself reads as a crash.
+
+### The thing that would have made it invisible
+
+The largest risk in this change was never the audio code. It was habit. Whisperer's own tool description used to tell Tlamatini that she *"records record_seconds (default 30)"*, and its worked example opened with *"Transcribe 5 seconds…"*. Had that stayed, Tlamatini would have kept volunteering a duration out of politeness, the gate would never have fired once, and the whole feature would have been invisible — while looking, from the outside, exactly like it worked.
+
+So the description now says plainly: **do not pass `record_seconds` unless the user named a duration**, and a test fails if that sentence ever drifts back out.
+
+Two smaller honesty repairs travelled with it. The reported recording length used to echo what was *requested*; it now reports what was actually *captured*, which under a gate are different numbers by design. And because the gate lives inside the audio callback, a sound driver that refuses that callback cannot be gated at all — in that case Whisperer records a fixed length and **says so**, rather than quietly recording thirty seconds and still calling it listening.
+
+### Knobs
+
+| Setting | Default | What it does |
+| --- | --- | --- |
+| `record_seconds` | `0` | **The switch.** 0 = listen until the speaker stops; N = record exactly N seconds, gate off. |
+| `silence_timeout_seconds` | `10` | Silence that ends the recording. The clock starts when the microphone opens, so an empty room still stops. |
+| `silence_gate` | `auto` | `auto` follows `record_seconds`; `on` forces the gate (the duration becomes a ceiling); `off` forces a fixed recording. |
+| `max_record_seconds` | `300` | Ceiling for a gate that never fires — a radio left playing is never silent. |
+| `silence_threshold_db` | `0` | 0 measures the room automatically. A negative value forces a fixed threshold for an unusual room. |
 
 ---
 

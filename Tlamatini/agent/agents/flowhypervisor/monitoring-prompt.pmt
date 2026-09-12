@@ -600,6 +600,41 @@ CAMCORDER / RECORDER SPECIAL NOTES (observational capture agents):
     block body — that is routable content for a downstream Forker, not a flow
     crash.
 
+WHISPERER SPECIAL NOTES (speech-to-text — THE RECORDING LENGTH IS NOT FIXED):
+  - Whisperer is the speech-to-text sibling of Talker. It OPENS and RECORDS the
+    microphone itself (it does NOT use Recorder), or reads a given audio file,
+    then runs a neural recognizer (faster-whisper locally by default, or a cloud
+    Whisper API). Read-only / observational in the canvas; the wrapped Multi-Turn
+    counterpart IS captured in the Exec Report like every other `chat_agent_*`.
+  - ⚠️ THE MOST IMPORTANT RULE (changed 2026-09-11): the recording no longer has
+    a length known in advance. `record_seconds: 0` — THE DEFAULT — turns on a
+    SOUND GATE: Whisperer keeps recording while somebody is still talking and
+    stops on its own only after `silence_timeout_seconds` (default 10 s) of
+    continuous silence, bounded by `max_record_seconds` (default 300 s). So a
+    HEALTHY Whisperer can sit silent for up to FIVE MINUTES waiting for a human
+    being to speak. Do NOT flag that as a stuck agent. Only a NON-ZERO
+    `record_seconds` means a fixed-length clip you can time.
+  - How to tell which mode is running, from the log: the opening line says either
+    "listening until Ns of silence (ceiling Ms)" (GATED) or "recording Ns"
+    (FIXED). A gated run ends with a "🔇 Sound gate: stopped on <reason>" line
+    naming why it stopped and how much of the audio was actually speech.
+  - The whole recording is followed by the transcription, which on a FIRST run
+    also downloads model weights (a few MINUTES) and can be slow on CPU. Flag
+    only when the agent is silent well BEYOND `max_record_seconds` plus a
+    generous transcription allowance, with no "Whisperer agent finished" line.
+  - NORMAL, never an error: `stop_reason: silence` (the gate did its job);
+    `stop_reason: max_duration` (the ceiling caught a room that is never quiet);
+    `stop_reason: fixed_fallback` with a warning that "the sound gate needs the
+    live callback stream" (a driver refused the callback stream, so Whisperer
+    honestly recorded a fixed length and SAID so); and `status: empty` (nobody
+    spoke — the gate stopped a recording with no speech in it). All of it is
+    routable content for a downstream Forker, not a flow crash.
+  - It ALWAYS emits its `INI_SECTION_WHISPERER<<<` block and ALWAYS triggers
+    `target_agents`, even on error. NEVER flag that block as an error. A
+    `status: engine_unavailable` block means faster-whisper is not installed and
+    no cloud key is set — routable content here, while the wrapped Exec Report
+    row truthfully reports that the requested work did not happen.
+
 AUDIOPLAYER / VIDEOPLAYER SPECIAL NOTES (playback agents — SILENCE IS THE JOB):
   - AudioPlayer (audio file → speakers) and VideoPlayer (video file → a chosen
     display, WITH audio) are the PLAYBACK counterparts of the capture family:
@@ -813,7 +848,7 @@ TYPICAL TIMING:
   - Camcorder: `photo` mode is < 5 s (one webcam shot); `video` mode runs for ~its `video_duration_seconds` then writes the `.mp4` and exits — observational/read-only in the canvas; the wrapped Multi-Turn tool is captured in Exec Report. The camera sibling of Shoter/Recorder. Flag only if it runs well beyond `video_duration_seconds` with no "Camcorder agent finished" completion.
   - Talker: text-to-speech via an Ollama model — the synthesis can run from seconds to a few MINUTES, then it plays the audio and exits. It is observational/output in the canvas; the wrapped Multi-Turn tool is captured in Exec Report, where `tokens_only` is a red degraded result rather than clean success. Don't flag a Talker still waiting on its Ollama response before ~5 min; flag only if it is silent well beyond that with no "Talker agent finished" completion.
   - AudioPlayer / VideoPlayer: SILENT FOR THE WHOLE PLAYBACK by design — they log the start, then stream audio / paint frames with NO further log lines until the end. The expected duration comes from `time_played`: 0 = the whole file plays once (the file's own length governs — it can be minutes or hours), N = exactly N seconds (a longer file is TRUNCATED, a shorter one is LOOPED). This is the single biggest false-alarm risk in the media family: a healthy 10-minute video is 10 minutes of total silence. Do NOT flag a playing agent as stuck; flag only when it is silent well BEYOND its own configured/at-hand duration with no "AudioPlayer agent finished" / "VideoPlayer agent finished" completion. Both are observational/output in the canvas; the wrapped Multi-Turn tools are captured in Exec Report. VideoPlayer falling back to the SILENT OpenCV-only path (no `ffpyplayer`) is a documented degradation, not an error. See AUDIOPLAYER / VIDEOPLAYER SPECIAL NOTES.
-  - Whisperer: speech-to-text — records the mic (~`record_seconds`, default 5 s) or reads an audio file, then runs the neural recognizer. The FIRST run can take a few MINUTES while it downloads model weights, and CPU transcription can be slow. It is observational/read-only in the canvas; the wrapped Multi-Turn tool is captured in Exec Report. Don't flag it while downloading/transcribing before ~5 min; flag only if silent well beyond that with no completion. A `status: engine_unavailable` block is routable content, NOT a flow crash, while its wrapped row truthfully reports that the requested work did not happen.
+  - Whisperer: speech-to-text — records the mic, then runs the neural recognizer. ⚠️ SINCE 2026-09-11 THE RECORDING LENGTH IS NOT FIXED: with `record_seconds: 0` (the DEFAULT) a SOUND GATE keeps recording while somebody is talking and stops only after `silence_timeout_seconds` (default 10 s) of silence, bounded by `max_record_seconds` (default 300 s). A Whisperer waiting for a person to speak is SILENT AND HEALTHY for up to that ceiling — do NOT flag it. Only a non-zero `record_seconds` means a fixed-length clip. The FIRST run can additionally take a few MINUTES while it downloads model weights, and CPU transcription can be slow. It is observational/read-only in the canvas; the wrapped Multi-Turn tool is captured in Exec Report. Flag only when it is silent well beyond `max_record_seconds` + transcription time with no completion. A `status: engine_unavailable` block is routable content, NOT a flow crash, while its wrapped row truthfully reports that the requested work did not happen. See WHISPERER SPECIAL NOTES.
   - Image-Interpreter: THREE LLM calls per image — two parallel vision interpretations (CONNECTION-A / CONNECTION-B, each on its own Ollama connection) + one merge (CONNECTION-MERGE) after the barrier; tens of seconds to a few minutes PER IMAGE with cloud models, multiplied by the number of matched images. Don't flag while the 🔀 interpreter / 🧱 barrier / 🔗 merge log lines keep appearing; flag only if silent > 5 min per image with no "Image-Interpreter agent finished" completion. See IMAGE_INTERPRETER SPECIAL NOTES.
   - Video-Analyzer: a DETERMINISTIC OpenCV motion gate (sub-second) then, if motion is present, THREE cloud LLM calls — two parallel vision interpretations (CONNECTION-A / CONNECTION-B) + one merge (CONNECTION-MERGE) over ~8-12 frames; tens of seconds to a few minutes total. A no-motion clip short-circuits to FAIL_NO_MOTION in seconds with no model call. Don't flag while the 🔀 interpreter / 🧱 barrier / 🔗 merge lines keep appearing; flag only if silent > 5 min with no "Video-Analyzer agent finished" completion. See VIDEO_ANALYZER SPECIAL NOTES.
   - Keyboarder/Mouser/Windower/Shoter: < 5 seconds per invocation (desktop UI primitives). Windower
@@ -983,6 +1018,7 @@ DO NOT report these as problems:
   - Whisperer INI_SECTION_WHISPERER blocks with any status — including no-speech, `engine_unavailable`, or `error` outcomes — are routable canvas content and not themselves a flow crash. The wrapped Multi-Turn counterpart IS captured in Exec Report, where not-done/error statuses render red. Do NOT flag a Whisperer merely downloading a model on first run or doing slow CPU transcription.
   - Talker INI_SECTION_TALKER blocks with any `status` — including `tokens_only` or `error` — are routable canvas content and not themselves a flow crash. The wrapped Multi-Turn counterpart IS captured in Exec Report, where `tokens_only` is deliberately red because no audible deliverable exists. Do NOT flag Talker merely waiting on slow Ollama generation.
   - Image-Interpreter INI_SECTION_IMAGE_INTERPRETER blocks with any `status` — including the documented fail-safe degradations `partial_interpreter_1_only` / `partial_interpreter_2_only` (one of the two parallel interpreters failed; the merge proceeded from the survivor) and `merge_fallback_concat` (the merging model failed; both raw interpretations were delivered concatenated). The block is routable content for a downstream Forker, never a flow error; its 🔀 interpreter / 🧱 barrier / 🔗 merge lines are normal pipeline mechanics (see IMAGE_INTERPRETER SPECIAL NOTES).
+  - A Whisperer sitting SILENT while its sound gate waits for a human to speak — since 2026-09-11 a default (`record_seconds: 0`) recording has NO fixed length: it ends after `silence_timeout_seconds` of silence, bounded by `max_record_seconds` (default 300 s). Minutes of silence from a gated Whisperer is the feature working, not a stuck agent. Its `stop_reason` values (`silence` / `max_duration` / `fixed_fallback`) and a `status: empty` (nobody spoke) are all routable content (see WHISPERER SPECIAL NOTES).
   - Long FIRST firmware build/flash on STM32er / ESP32er / ESPHomer / Arduiner while Downloading/Installing/Unpacking progress keeps appearing — the first run pulls a large toolchain (hundreds of MB); this is NORMAL (see their SPECIAL NOTES). Only the total-silence > 10 min rule or an explicit install/error line is a problem.
   - "No process matching..." → Pser found no matching process
   - Agents with no log file that haven't been reached in the chain yet

@@ -466,6 +466,14 @@ _DEV_ONLY_TOPLEVEL = {
     "Tests",        # Angela's visible test harnesses (about-window, perf) -- dev-only
     "AuxTests",     # auxiliary scratch test scripts -- dev-only
     ".scanning",    # finding-policy.json for the code scanner -- CI/dev tooling
+    # Avatar SOURCE art + its derivation tooling (Gemini_girl_animation PNG
+    # originals, contact sheet, alignment.json, build_frames.py, the zip and
+    # ASSET_MANIFEST.json). The four images the app actually renders are the
+    # DERIVED jpgs in Tlamatini/agent/static/agent/img/avatar/, which ship via
+    # the Tlamatini/ carrier. Verified 2026-09-12: nothing under output/ is
+    # referenced by any Python, JS, template or build carrier, so shipping it
+    # would add megabytes of source art no installed build can use.
+    "output",
     "node_modules", "venv", ".venv", "dist", "build",  # build/dev artifacts
 }
 

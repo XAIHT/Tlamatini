@@ -55,6 +55,27 @@ description: The authoritative, exhaustive end-to-end runbook for creating a BRA
 
 ---
 
+> ### ⚠️ MODIFYING an existing agent rather than creating one?
+>
+> Most phases below still apply, but four of them are the ones that get skipped
+> and cause silent damage. Run at least these:
+>
+> - **Phase 14 (257b/257c)** — if behaviour or a default changed, the wrapped
+>   spec's `purpose` / `example_request` is the ONLY place the model learns it.
+>   Leave it stale and you ship a feature that never fires while appearing to work.
+> - **Phase 18 (325b)** — if the agent's runtime stopped being predictable from
+>   its config, the FlowHypervisor will start raising false alarms about it.
+> - **Phase 17** — FlowCreator's `agentic_skill.md` entry carries the config
+>   defaults verbatim; a changed default makes that entry a lie, and it is what
+>   the flow designer reads when it builds a `.flw`.
+> - **Phase 20** — the doc sweep. Grep a SIBLING AGENT'S NAME, not the old value.
+>
+> And two habits worth keeping: report what HAPPENED rather than what was
+> REQUESTED (a field that can differ from its input must be computed from the
+> artefact), and APPEND new `INI_SECTION` fields — never rename or reorder the
+> existing ones — keeping `agent_contracts._PARAMETRIZER_OUTPUT_FIELDS` in step
+> in the same commit.
+
 # PHASE 0 — Preflight, scoping & naming (lock these before any code)
 
 1. Confirm with Angela the agent's **purpose** in one sentence (what task it performs).
@@ -386,6 +407,8 @@ description: The authoritative, exhaustive end-to-end runbook for creating a BRA
 255. Set `display_name="<Display>"` (MUST equal the DB `agentDescription`).
 256. Set `purpose="..."` — a crisp sentence telling the LLM WHEN to use it.
 257. Set `example_request="Run <Display> with param1='...', param2='...'"` using the EXACT `config.yaml` key names (the wrapped parser maps `key=value` → config overrides).
+257b. **⚠️ THIS PROSE IS THE CONTRACT THE MODEL OBEYS — a behaviour change that is not reflected here ships an INVISIBLE FEATURE (learned on Whisperer's sound gate, 2026-09-11).** Tlamatini reads `purpose` / `example_request`, not `config.yaml`. Whisperer's said *"records record_seconds (default 30)"* and its example opened with *"Transcribe 5 seconds…"*; when the capture became silence-gated, leaving that text alone would have meant the model kept volunteering a duration out of habit, the gate never fired once, and the whole feature was invisible **while looking like it worked**.
+257c. If a parameter carries a **SENTINEL** (`0` = auto / native / "decide for me"), say so explicitly in `purpose` AND lead `example_request` with the sentinel case. Then state the prohibition in capitals — e.g. *"DO NOT PASS record_seconds UNLESS THE USER NAMED A DURATION"* — and **pin that sentence with a test** so a later doc pass cannot soften it away.
 258. Set `aliases=("<lower>", "<space>", ...)` for natural-language matching.
 259. Set `security_hints=(...)` with keywords that help capability scoring select it.
 260. Set `poll_window_seconds=N` only if the default 8 is wrong (short agents can lower it).
@@ -477,6 +500,7 @@ description: The authoritative, exhaustive end-to-end runbook for creating a BRA
 323. Add `<Display>` to the **SHORT-LIVED** list (Section 3) if it starts/does-work/exits quickly.
 324. OR add it to the **LONG-RUNNING** list if it runs for the whole flow (Monitor-style).
 325. If the agent has nuanced behavior (zero-config bootstrap, long first run, observational capture, structured-output-on-failure, external window, REPL/transport timing), add a dedicated `<CAPS> SPECIAL NOTES:` block modeled on the STM32er/Kalier/Camcorder notes.
+325b. **⚠️ A RUNTIME THAT IS NOT KNOWABLE FROM THE CONFIG MAKES THIS PHASE MANDATORY, NOT OPTIONAL.** The watchdog infers "stuck" from elapsed silence against an expected duration. If your agent stops on a CONDITION rather than a clock — it waits for a person, for a file to appear, for a remote job — it can be legitimately silent for far longer than any number in its config, and the FlowHypervisor **will** raise a false alarm. A false alarm is worse than no watchdog, because it teaches the user to ignore it. State the BOUND explicitly, name the log line that reveals which mode is running, and list every terminal reason as normal. Worked example: `WHISPERER SPECIAL NOTES` (2026-09-11) — a gated Whisperer waiting for a human is silent and healthy for up to `max_record_seconds` (300 s), its opening line says either *"listening until Ns of silence"* or *"recording Ns"*, and every `stop_reason` (`silence` / `max_duration` / `fixed_fallback`) plus `status: empty` is routable content.
 326. In the SPECIAL NOTES, state whether it is SHORT-LIVED/LONG-RUNNING and ACTIVE/terminal.
 327. State the typical duration and the threshold beyond which silence = stuck (e.g. "do NOT flag before ~5 min" for an LLM/build agent).
 328. State that its `INI_SECTION_<CAPS><<<` block is NORMAL — never flag it as an error even when the body looks like a tool error (it is routable content for a downstream Forker).

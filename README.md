@@ -24,7 +24,7 @@
 
 <p align="center">
   <a href="https://discord.gg/WFQsrskgc"><img src="https://img.shields.io/badge/DISCORD-JOIN%20US-5865F2?style=for-the-badge&labelColor=2D2D2D&logo=discord&logoColor=white" alt="Join our Discord"/></a>
-  <a href="https://github.com/XAIHT/Tlamatini/releases"><img src="https://img.shields.io/badge/RELEASE-v1.51.5-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Release v1.51.5"/></a>
+  <a href="https://github.com/XAIHT/Tlamatini/releases"><img src="https://img.shields.io/badge/RELEASE-v1.51.7-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Release v1.51.7"/></a>
   <a href="https://www.python.org/downloads/release/python-31210/"><img src="https://img.shields.io/badge/PYTHON-3.12.10-3776AB?style=for-the-badge&labelColor=2D2D2D&logo=python&logoColor=white" alt="Python"/></a>
   <a href="#installation"><img src="https://img.shields.io/badge/PLATFORM-WIN%2010%20%7C%2011-0078D6?style=for-the-badge&labelColor=2D2D2D&logo=windows&logoColor=white" alt="Platform"/></a>
   <a href="#-the-full-capability-list"><img src="https://img.shields.io/badge/AGENT%20TYPES-88-8A2BE2?style=for-the-badge&labelColor=2D2D2D" alt="88 agent types"/></a>
@@ -208,7 +208,13 @@ Done — tick **Multi-Turn** in the chat toolbar and put Tlamatini to work.
 
 ---
 
-## Newest changes — carried by the v1.51.5 tag
+## Newest changes — carried by the v1.51.7 tag
+
+**Whisperer now listens instead of counting seconds.** Ask Tlamatini to take dictation and she used to record a flat thirty seconds — cutting you off in the middle of a sentence, or leaving you listening to an empty room after you had finished. Now she simply **waits for you to stop talking**: the recording stays open while you are speaking and ends on its own after **ten seconds of silence**. Say a length and she still honours it exactly — *"record 45 seconds"* records 45 — the gate only steps in when you did not name one.
+
+The console window she opens while recording shows what is happening: the familiar REC meter gains a second bar that fills up as the room stays quiet and empties the instant you speak again, turning amber and then red just before it stops, and the final line tells you why it stopped and how much it captured. Everything is adjustable in `config.yaml` — the silence window (`silence_timeout_seconds`, default 10), a ceiling so a noisy room cannot record forever (`max_record_seconds`, default 300), and a manual loudness threshold if your room needs one. One honesty note: if a sound driver refuses the live audio stream the gate cannot run at all, so Whisperer records a fixed length and **says so** rather than pretending it listened.
+
+**Tlamatini's avatar has a real mouth.** Her portrait used to change on a fixed 150-millisecond timer whether she was speaking or not. Now the picture is blended live from her four portraits and her mouth follows the actual words as they are spoken, so her face moves with the sentence instead of flapping through it. It runs on plain 2-D canvas — no graphics card and no extra model.
 
 **Clicking the console no longer freezes Tlamatini.** Windows consoles ship with **QuickEdit Mode ON**, so clicking or dragging inside the window — to copy a line of the log, or just to bring the window to the front — put the console into selection mode and **froze every write to it**. Because Tlamatini wrote the console *before* `tlamatini.log`, that one click also stopped the log file growing and, thread by thread, stopped the whole application. It looked exactly like a crash, and people reported it as one.
 
@@ -218,9 +224,13 @@ Two fixes ship together. The console is now written on its **own background thre
 
 ---
 
-## Current release — v1.51.5
+## Current release — v1.51.7
 
-The newest annotated tag is **`v1.51.5`**, created on 2026-09-10 and resolving to commit **`4a7f1cb`** — which is also local `main`, `origin/main`, and `origin/HEAD`, so there is **no post-tag boundary**: source-mode version resolution reports the bare `1.51.5` and the tree it describes are the same thing. The tag closes out the work that the earlier `v1.51.3` line had left trailing behind it — the Windows launcher repair at `00ecdc9`, the documentation refresh at `5f96a2f`, the console shield plus welcome-page keyboard default at `c8cf369`, and the documentation reconciliations at `0d2c09c` and `d8f21f3` — all of which are now carried by a tag rather than sitting after one. Runtime identity still comes from Git/build metadata (`agent/version.py::get_version()`, `GET /agent/version/`), never from this prose.
+The newest annotated tag is **`v1.51.7`**, created on 2026-09-11 and resolving to commit **`96fdbde`** ("Release v1.51.7 Sound-gate improved Whisperer agent, and avatar.") — which is also local `main` and `HEAD`, so there is **no post-tag boundary**: source-mode version resolution reports the bare `1.51.7` and the tree it describes are the same thing. Runtime identity still comes from Git/build metadata (`agent/version.py::get_version()`, `GET /agent/version/`), never from this prose.
+
+This tag carries Whisperer's sound gate and the avatar's talking mouth, both described above. Under the gate, `record_seconds` became the mode switch — `0`, the new default, means *"no duration was given, so listen until the speaker stops"*, the same idiom `sample_rate: 0` already used for the native sample rate — and the recording's reported length is now what was actually captured rather than what was requested. The gate itself measures one audio block every twenty milliseconds from inside the sound callback, tracking the room continuously so that somebody who starts talking immediately is still heard; coverage for the agent grew from 41 to **69 tests**.
+
+The earlier `v1.51.5` tag closed out the work that the `v1.51.3` line had left trailing behind it — the Windows launcher repair at `00ecdc9`, the documentation refresh at `5f96a2f`, the console shield plus welcome-page keyboard default at `c8cf369`, and the documentation reconciliations at `0d2c09c` and `d8f21f3` — all of which are now carried by a tag rather than sitting after one. Runtime identity still comes from Git/build metadata (`agent/version.py::get_version()`, `GET /agent/version/`), never from this prose.
 
 The launcher repair now carried by this tag centralizes Windows process startup in `agent/win_shim.py`. Frozen `.exe` launchers, `.cmd`/`.bat` wrappers, Python entry points, and ordinary executables now receive the correct direct-or-shell invocation, quoting, hidden-window flags, and environment handling across ACPX and runtime provisioning. The same commit carries 404 focused shim tests in `agent/test_win_shim.py`, extends ACPX coverage from 92 to **126 tests**, and keeps the standalone `tlamatini_acpx.py` and MCP server behavior aligned with the in-app runtime.
 
@@ -354,7 +364,7 @@ Everything Tlamatini can do, grouped:
 - **Shoter / Mouser / Keyboarder** — screenshots, mouse, keyboard.
 
 **🎙️ Audio, video, vision & speech**
-- **Talker (TTS)** — text-to-speech via Ollama. **Whisperer (STT)** — speech-to-text (faster-whisper local + cloud fallback).
+- **Talker (TTS)** — text-to-speech via Ollama. **Whisperer (STT)** — speech-to-text (faster-whisper local + cloud fallback); by default a **sound gate** keeps recording while you talk and stops after 10 s of silence, and naming a duration turns it off.
 - **Recorder / Camcorder** — microphone and webcam capture.
 - **AudioPlayer / VideoPlayer** — audio and video playback with volume/loop control.
 - **Image-Interpreter** — triple-model vision analysis: qwen3.5:cloud + gemma4:cloud interpret each image **in parallel** on two dedicated Ollama connections, then glm-5.3:cloud merges both interpretations into one definitive report (mockup/GUI inventories in % coordinates, full OCR, people described exhaustively with identity clues taken from the image file name).
