@@ -313,6 +313,7 @@ def python_docstring_lines(text: str) -> set[int]:
 
 def count_python_effective(text: str) -> int:
     doc_lines = python_docstring_lines(text)
+    source_lines = text.splitlines()
     effective_lines: set[int] = set()
     try:
         tokens = tokenize.generate_tokens(io.StringIO(text).readline)
@@ -327,9 +328,13 @@ def count_python_effective(text: str) -> int:
                 tokenize.DEDENT,
             }:
                 continue
-            line_number = token.start[0]
-            if line_number not in doc_lines:
-                effective_lines.add(line_number)
+            # Executable multiline strings (SQL, prompts, JS) occupy multiple
+            # physical source lines. Counting only the opening token line
+            # silently discarded their authored continuation lines.
+            for line_number in range(token.start[0], token.end[0] + 1):
+                if (line_number not in doc_lines and line_number <= len(source_lines)
+                        and source_lines[line_number - 1].strip()):
+                    effective_lines.add(line_number)
     except tokenize.TokenError:
         return count_generic_effective(text, ".py")
     return len(effective_lines)
@@ -592,7 +597,7 @@ def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
             release_identity()
         )
         highlights.append(
-            "The current release window adds a non-blocking console sink with frozen-build QuickEdit policy, Enter-to-chat welcome navigation, and the Windows launcher shim, while carrying PDFer's measured layout system, stable program/snippet persistence, and ACPX live-readiness and delivery verdicts."
+            "The current release window adds canvas avatar presence, Whisperer's silence gate and the Voice Commands catalog. It retains the non-blocking console sink, Enter-to-chat navigation, Windows launcher shim, PDFer's measured layout, stable program/snippet persistence and ACPX readiness verdicts."
         )
     if any("pdfer complete" in subject for subject in subjects):
         highlights.append(
@@ -1554,7 +1559,9 @@ def collect_context() -> dict:
 def collect_publication_context(context: dict) -> dict:
     """Inventory published evidence without loading private configuration values."""
     tag = git("describe", "--tags", "--abbrev=0", "HEAD")
-    added = sorted(set(git("diff", "--name-only", "--diff-filter=A", f"{tag}..HEAD").splitlines())
+    baseline = context["visual_doc_baseline"]
+    baseline_ref = baseline.short_hash if baseline else tag
+    added = sorted(set(git("diff", "--name-only", "--diff-filter=A", f"{baseline_ref}..HEAD").splitlines())
                    | set(context["untracked_paths"]))
     stats = {row.path: row for row in context["file_rows"]}
     manifest_path = REPO_ROOT / "output" / "ASSET_MANIFEST.json"
@@ -1604,7 +1611,7 @@ def collect_publication_context(context: dict) -> dict:
 def publication_guide(context: dict) -> list[str]:
     evidence = context["avatar_evidence"]
     return [
-        f"Since tag {context['release_tag']}, the inspected checkout adds {len(context['new_assets'])} files "
+        f"Since the last committed dossier revision, the inspected checkout adds {len(context['new_assets'])} files "
         f"including {context['untracked_files']} untracked working additions. "
         f"The output directory contains {context['published_files']} tracked deliverables "
         f"({context['published_bytes']:,} bytes including its manifest). All "
@@ -1616,16 +1623,21 @@ def publication_guide(context: dict) -> list[str]:
         f"{context['total_lines']:,} physical text lines, {context['total_effective_lines']:,} "
         f"effective lines, and {context['binary_count']} binary assets. Published backup/test "
         "text counts toward repository totals but does not add runtime agents or frontend modules.",
-        "Commit 46a18c8 repairs avatar opacity flashing and publishes the runnable test suite. "
-        "Commit 2ea219a changes the configured cloud baseline to glm-5.3:cloud and corrects "
-        "the handbook's model pull list. These are source changes after v1.51.5.",
-        f"Recorded visible evidence: {evidence['transitions']} transitions, {evidence['paints']:,} "
+        "Since dossier commit 590cb8b: avatar presence uses canvas blending (7e48e63), "
+        "Whisperer gains a sound gate (96fdbde), its prompt/watchdog contracts follow "
+        "(e403d5c), and Voice Commands opens the catalog (a867567). The cloud model "
+        "baseline remains glm-5.3:cloud. Output source art is development-only, while "
+        "the runtime JPGs ship through Tlamatini/agent/static/.",
+        f"Historical atomic-renderer evidence: {evidence['transitions']} transitions, {evidence['paints']:,} "
         f"browser paints, {evidence['states']} expression states, {evidence['viewports']} viewports, "
         f"minimum coverage {evidence['min_coverage']:.0%}, zero reported layout/coverage failures "
-        "and no JavaScript errors. This refresh checks the recorded evidence, not a new browser run.",
+        "and no JavaScript errors. This older report is not proof of the new canvas renderer. "
+        "Run the separate presence suite for current canvas behavior.",
         "README and Book retain a pre-avatar 1,069-file inventory and an obsolete tag-equals-HEAD "
         "sentence. Their 311-transition repair-run description is historical. This dossier "
-        "uses current Git counts and the later 313-transition JSON evidence instead.",
+        "uses current source counts. Their older atomic/reduced-motion avatar section "
+        "is superseded by the canvas behavior below. README's Django 5.2.4 stack entry "
+        "also lags the requirements pin of 5.2.15. Historical prose is not release metadata.",
     ]
 
 
@@ -1635,36 +1647,48 @@ AVATAR_GUIDE = [
     "The former 90 ms full-image opacity transition exposed the dark background. "
     "At two half-opaque frames, combined coverage is 75%. The recorded reproduction "
     "measured approximately 75.3%. Django collectstatic copied the JPG bytes correctly.",
-    "The renderer now swaps visibility with opacity fixed at one, waits for image.decode(), "
-    "and retains the neutral/last valid image when another frame is slow or unavailable. "
-    "A shared cache-busting suffix serves the changed CSS and JavaScript.",
-    "Speech pause, hidden-page and reduced-motion behavior stop mouth animation. "
-    "Click greeting/stop, Escape, double-click mute and Ctrl+Shift+M remain available. "
-    "Disabling image selection removes the blue double-click highlight.",
-    "This is expression switching driven by native speech, not streamed video or "
-    "phoneme-level lip synthesis. Tests isolate the LLM WebSocket. Frozen rebuild/reinstall "
-    "and end-to-end model answer generation remain separate validation work.",
+    "avatar_presence.js now draws four decoded portraits on one 2D canvas. Eye/mouth "
+    "weights form a convex blend with full coverage. Each corner is pre-scaled on resize. "
+    "The old opaque image stack remains a fail-open fallback if canvas startup fails.",
+    "Native speechSynthesis boundary events anchor a text-derived mouth track. Vowels "
+    "open it, m/b/p close it, and punctuation introduces rests. Timing falls back to "
+    "an estimated speaking rate when the voice exposes no word boundaries. There is "
+    "no audio-amplitude analyzer, video stream, neural lip model or dedicated-GPU requirement.",
+    "Blink timing uses 55 ms closing, 25 ms hold and 130 ms opening, with randomized "
+    "intervals. Adaptive 12/20/30/60 FPS tiers respond to drawing cost. Portrait translation "
+    "was removed, so the head/body coordinate system remains fixed.",
+    "The current presence renderer intentionally keeps animating when the system requests "
+    "reduced motion. This differs from the earlier atomic renderer. Resize by dragging "
+    "the corner handle, arrow keys, or double-click presets. The chosen size persists in "
+    "localStorage. Handle clicks do not trigger the greeting/stop control.",
 ]
 
 
 AVATAR_TEST_GUIDE = [
-    r"From the repository root: .\python\python.exe Tests\run_avatar_tests.py",
+    r"Current canvas regression: .\python\python.exe Tests\run_avatar_tests.py --presence-only --auto-close",
     "Use --check for dependency validation, --prepare-only for database/static preparation, "
     "or --auto-close to close the visible browser and its server after passing.",
     "The launcher prepares the isolated Temp/avatar_flash_fix database, applies migrations, "
     "creates the ordinary user/changeme test account, runs collectstatic, and starts real "
     "Django on 127.0.0.1:8001. It leaves the frozen app and normal database untouched.",
-    "The visible, non-headless browser checks at least 300 expression transitions with native "
-    "Windows speech, three viewport sizes and playback/mute controls. Closing it stops "
-    "the test server. Node.js, Playwright and Chromium are prerequisites.",
-    "Screenshots and JSON proof land in output/avatar_flash_fix/visible-test. The committed "
-    "SQLite fixture has no login sessions. Runtime sessions/logs stay in ignored Temp. "
+    "The presence suite uses Python Playwright, headed Chrome/Edge/Chromium and disabled "
+    "GPU acceleration. It checks real canvas pixels, mouth-track correlation, native "
+    "speech instrumentation, reduced-motion behavior, resizing and a 6x CPU throttle. No Node.js "
+    "is needed for --presence-only. Simulated speech proves rendering, not microphone ASR.",
+    "Current reports and whole-desktop Shoter photographs land in Temp/avatar_presence. "
+    "Tests/run_presence_tests.ps1 is an alternative launcher. The older default suite "
+    "uses Node.js and writes output/avatar_flash_fix/visible-test. Its atomic-state "
+    "assumptions are historical. Use the presence-only command for the current renderer. "
     "The generic test credential must not become a production password.",
+    "Fresh verification on 2026-09-12: all 74 presence checks passed in a visible "
+    "browser. The separate Django run passed 110 Whisperer, voice-catalog and Gitter "
+    "tests. These tests do not prove real microphone transcription, audible voice "
+    "synchronization on every host, or a rebuilt frozen installation.",
 ]
 
 
 GITTER_WORKTREE_GUIDE = [
-    "The inspected working tree repairs Gitter custom_command tokenization on Windows. "
+    "Commit 590cb8b repairs Gitter custom_command tokenization on Windows. "
     "POSIX shlex treated backslashes as escapes and turned C:\\Dev\\msg.txt into C:Devmsg.txt.",
     "Windows now uses shlex.split(..., posix=False) plus one matching outer-quote removal. "
     "Backslashes survive and quoted multi-word arguments remain single tokens. "
@@ -1674,7 +1698,50 @@ GITTER_WORKTREE_GUIDE = [
     "paths, quoted arguments, malformed input, POSIX behavior and source contracts.",
     "Source: agent/agents/gitter/gitter.py. Maintainer record: docs/claude/recent-fixes.md, "
     "2026-09-11 entry. The public handbooks describe Gitter generally but do not yet "
-    "explain this tokenizer repair. This change is uncommitted at the audit snapshot.",
+    "explain this tokenizer repair. It is committed in the current release ancestry.",
+]
+
+
+WHISPERER_GATE_GUIDE = [
+    "Whisperer captures microphone audio itself or accepts an audio file. Local "
+    "faster-whisper uses GPU when available and falls back to CPU. Cloud Whisper is "
+    "an alternative engine. Ollama is optional transcript cleanup, never audio ASR.",
+    "record_seconds=0 now selects the silence gate. Default trailing silence is 10 s "
+    "and the hard ceiling is 300 s. A positive record_seconds selects fixed duration "
+    "in auto mode. Explicit silence_gate=on forces gating, while off uses fixed capture.",
+    "A 20 ms RMS callback tracks noise with a 9 dB margin, two-block attack and "
+    "3 dB hysteresis. The floor starts at -50 dBFS to retain immediate speech. "
+    "A 15 s sustained sound rebase handles steady noise. A negative threshold overrides "
+    "automatic calibration. The console VU includes a silence countdown and stop reason.",
+    "The result reports actual duration_seconds and appends capture_mode, stop_reason, "
+    "silence_timeout_seconds and speech_seconds. A device backend without InputStream "
+    "uses explicitly labeled fixed_fallback. Parametrizer's generic KV parser accepts "
+    "the appended fields without a special parser rewrite.",
+    "Migration 0200 updates prompt 74, TLAMATINI LISTENS, without changing its identity "
+    "or ordering. Registry instructions omit duration unless the user requests one. "
+    "FlowHypervisor tolerates the bounded gate wait and no longer calls it stuck. "
+    "Existing workflows with positive durations deliberately keep fixed recording.",
+]
+
+
+VOICE_COMMAND_GUIDE = [
+    "Migration 0201 appends prompts 121 and 122. views.PROMPT_CATEGORY_ORDER places "
+    "voice_commands first. This is an explicit record-and-transcribe command, not an "
+    "always-listening assistant or wake-word service.",
+    "YOUR FIRST VOICE COMMAND (121) is a read-only rehearsal with Multi-Turn, Step-by-Step "
+    "and Exec Report, without ACPX. SPEAK YOUR PROMPT (122) enables Multi-Turn, Exec Report "
+    "and ACPX, with Step-by-Step off. The existing JS classifier derives these modes "
+    "from prompt text. No frontend asset bump was required for this catalog change.",
+    "The second card preserves the author's requested sentence verbatim. Whisperer "
+    "records until the silence gate closes, then the transcript becomes the next prompt "
+    "through the existing planner and tools. Omit duration unless the user specifies it.",
+    "Display or read back the transcript verbatim before execution. Stop on empty or "
+    "engine_unavailable results rather than inventing instructions. Irreversible or "
+    "external actions require typed confirmation under the voice-command contract.",
+    "Coverage spans prompt rule 18e, self-knowledge, FlowCreator, FlowHypervisor and "
+    "agent-creation guidance. test_voice_commands_catalog.py checks ordering, sentence "
+    "fidelity and classifier parity. The headed catalog harness checks browser cards "
+    "and toggles, but does not prove real microphone recognition or spoken task execution.",
 ]
 
 
@@ -1852,7 +1919,7 @@ CURRENT_RELEASE_GUIDE = [
     release_identity(),
     "Commit `c8cf369` makes console output non-blocking. `manage.py::_ConsoleWriter` drains a bounded 10,000-chunk queue on one daemon thread, while `_TeeStream` writes `tlamatini.log` first on the caller thread. Frozen builds ship `console_quick_edit: false`; source runs leave the developer's terminal mode untouched. Ctrl+C is forced on, verified after the mode change, and the original mode is restored if that bit does not survive. The 600-line `agent/test_console_shield.py` contains 28 focused tests.",
     "The same commit adds the 92-line `welcome_enter_default.js`: the existing Go to Chat link receives focus after login, while a guarded document fallback handles plain Enter only when no button, link, input, or editable element already owns it. Modifier chords, IME composition, claimed events, missing links, and failed focus all fail open. The earlier `00ecdc9` shim still centralizes correct `.exe`, Python, `.cmd`, and `.bat` startup across ACPX and runtime provisioning.",
-    "The shared v1.51.2/v1.51.3 tag commit adds `agent/acpx/child_health.py`, live readiness probes, named non-delivery verdicts, and transport overrides. PDFer's upgrade and v1.51.1 program/snippet collision repair remain carried. The live surface is 88 workflow agents, 66 wrapped launchers, 108 built-in Multi-Turn tools, 29 skills, 38 JavaScript modules, and 199 migrations.",
+    "The shared v1.51.2/v1.51.3 tag commit adds `agent/acpx/child_health.py`, live readiness probes, named non-delivery verdicts, and transport overrides. PDFer's upgrade and v1.51.1 program/snippet collision repair remain carried. The repository facts section derives current agent, tool, frontend and migration counts directly from source.",
     "`agent/agent_verdict.py` now owns the CLOSED `KNOWN_STATUSES` union of five disjoint sets: `DIAGNOSTIC_COMPLETED_STATUSES`, `WORK_COMPLETED_STATUSES`, `WORK_DEGRADED_STATUSES`, `WORK_NOT_DONE_STATUSES`, and `AGENT_ERROR_STATUSES`. The first two are green; the last three are red. R8b remains fail-open for unknown runtime input, while `agent/test_status_vocabulary.py` rejects unknown literals before release.",
     "Grepper detects BOM-marked UTF-8/16/32 before cp1252/Latin-1 fallbacks and before the NUL-byte binary test. The self-report outranks process exit code; Kuberneter emits `returncode`, `success`, and semantic `status: ok|failed`. Source-derived tests stop status, supervisor, prompt, and catalog drift.",
     "`agent/sqlite_copy.py` routes Backup DB, Set DB, and pre-Django hot-swap through SQLite's online backup API. Destinations become self-contained DELETE-journal files, must pass `PRAGMA quick_check`, and keep or clear WAL/SHM/journal sidecars in the correct order before promotion.",
@@ -2274,7 +2341,7 @@ MULTITURN_4096_GUIDE = [
 ]
 
 ASK_EXECS_GUIDE = [
-    "Introduced in `v1.10.0` and still part of the current `v1.26.0` surface, `Ask Execs` is the Multi-Turn-only safety modifier that makes Tlamatini ask before each state-changing Tool, MCP, wrapped agent, or skill-backed execution instead of running it immediately.",
+    "Introduced in `v1.10.0` and still part of the current release, `Ask Execs` is the Multi-Turn-only safety modifier that makes Tlamatini ask before each state-changing Tool, MCP, wrapped agent, or skill-backed execution instead of running it immediately.",
     "The permission dialog is explicit and auditable: it names the Tool or Agent family, the underlying raw tool name, the full parameters, the program or command to be executed, and the shell or execution surface involved.",
     "Proceed runs that one step and then prompts again at the next state-changing step; Deny halts the entire chain immediately and appends a red `Execution interrupted` banner even when Exec Report itself is off.",
 ]
@@ -2292,7 +2359,7 @@ WINDOWS_ATTENTION_GUIDE = [
 ]
 
 WINDOWS_APP_REGISTRATION_GUIDE = [
-    "Introduced in `v1.11.0` and still carried by the current `v1.26.0` release, the frozen install now behaves like a real Windows application: `install.py` writes a per-user HKCU Add/Remove Programs entry so Tlamatini appears in Settings -> Apps -> Installed apps and in the legacy Programs and Features list.",
+    "Introduced in `v1.11.0` and still carried by the current release, the frozen install behaves like a Windows application: `install.py` writes a per-user HKCU Add/Remove Programs entry so Tlamatini appears in Settings -> Apps -> Installed apps and in the legacy Programs and Features list.",
     "The entry carries `DisplayName`, `DisplayVersion`, `InstallLocation`, `DisplayIcon`, `UninstallString`, `QuietUninstallString`, `NoModify`, `NoRepair`, and best-effort `EstimatedSize`, all pointing at the bundled `Uninstaller.exe` without requiring administrator rights.",
     "The matching runtime self-heal in `agent/apps.py` calls `windows_app_registration.self_heal_for_frozen()` on every frozen launch, so installs created before this feature existed can appear in Windows' uninstall UI after the next normal app start.",
 ]
@@ -2663,6 +2730,7 @@ def pdf_styles() -> dict[str, ParagraphStyle]:
         "h1": ParagraphStyle(
             "TlamatiniH1",
             parent=base["Heading1"],
+            keepWithNext=True,
             fontName="DossierSans-Bold",
             fontSize=18,
             leading=22,
@@ -2673,6 +2741,7 @@ def pdf_styles() -> dict[str, ParagraphStyle]:
         "h2": ParagraphStyle(
             "TlamatiniH2",
             parent=base["Heading2"],
+            keepWithNext=True,
             fontName="DossierSans-Bold",
             fontSize=13,
             leading=16,
@@ -2929,9 +2998,11 @@ def build_pdf(context: dict) -> None:
     story.append(p("Recent implementation assets and inventory impact", styles["h2"]))
     for item in publication_guide(context):
         story.append(bullet(item, styles["bullet"]))
-    for title, guide in (("Avatar animation repair", AVATAR_GUIDE),
+    for title, guide in (("Canvas avatar presence", AVATAR_GUIDE),
                          ("Reproducible visible avatar tests", AVATAR_TEST_GUIDE),
-                         ("Gitter Windows-path repair in the working tree", GITTER_WORKTREE_GUIDE)):
+                         ("Whisperer silence gate", WHISPERER_GATE_GUIDE),
+                         ("Voice Commands catalog and execution", VOICE_COMMAND_GUIDE),
+                         ("Committed Gitter Windows-path repair", GITTER_WORKTREE_GUIDE)):
         story.append(p(title, styles["h2"]))
         for item in guide:
             story.append(bullet(item, styles["bullet"]))
@@ -3341,7 +3412,7 @@ def build_pdf(context: dict) -> None:
     story.append(p("8. Effective Line Inventory by Language", styles["h1"]))
     story.append(
         p(
-            "Methodology: git-tracked text files plus git-unignored working-tree additions. Blank lines and comment-only lines are excluded. Python counts also remove module, class, and function docstrings detected through AST parsing.",
+            "Methodology: git-tracked text files plus git-unignored working-tree additions. Blank lines and comment-only lines are excluded. Python counts remove module, class, and function docstrings through AST parsing. Executable multiline strings count every nonblank occupied line. This corrects the former token-start-only undercount, so effective totals are not directly comparable with older dossiers. Other text uses language-specific comment stripping. Binary/media assets have no line count.",
             styles["body"],
         )
     )
@@ -3378,7 +3449,7 @@ def build_pdf(context: dict) -> None:
             story.append(PageBreak())
 
     story.append(PageBreak())
-    story.append(p("11. New Asset Inventory Since the Release Tag", styles["h1"]))
+    story.append(p("11. New Assets Since the Last Committed Dossier", styles["h1"]))
     story.append(p("Includes current git-unignored additions. A dash means binary, so source-line counts do not apply. Image dimensions describe the stored asset. Historical backups are evidence, not extra runtime modules.", styles["body"]))
     asset_rows = [["Path", "Bytes", "Physical", "Effective", "Type / pixels"]]
     for row in context["new_assets"]:
@@ -3460,7 +3531,7 @@ def add_text(
     # fits geometrically report a small native-render overflow. Pin them so the
     # generated deck has the same conservative text bounds everywhere.
     frame.margin_left = Pt(1)
-    frame.margin_right = Pt(1)
+    frame.margin_right = Pt(6)
     frame.margin_top = Pt(1)
     frame.margin_bottom = Pt(1)
     p0 = frame.paragraphs[0]
@@ -3522,7 +3593,7 @@ def add_bullets(
     # computed below is the primary guarantee against overflow.
     frame.auto_size = MSO_AUTO_SIZE.TEXT_TO_FIT_SHAPE
     frame.margin_left = Pt(1)
-    frame.margin_right = Pt(1)
+    frame.margin_right = Pt(6)
     frame.margin_top = Pt(2)
     frame.margin_bottom = Pt(2)
     space_after_pt = 4.0
@@ -3660,17 +3731,19 @@ def add_themed_column_slides(
     needed so no column ever holds more than ``per_column`` bullets — the
     "split into more slides" rule that keeps dense content from overflowing its
     cards. Each ``columns`` entry is ``(header, accent, items)``; a column's
-    items beyond ``per_column`` continue, in the same lane, on the next page."""
+    items beyond ``per_column`` continue on the next page. Finished columns
+    disappear and remaining content uses the available width."""
     margin, gap = 0.72, 0.3
-    n = len(columns)
-    col_w = (SLIDE_W - 2 * margin - (n - 1) * gap) / n
     max_items = max((len(items) for _, _, items in columns), default=0)
     pages = max(1, -(-max_items // per_column))  # ceil
     for page in range(pages):
         page_title = title if pages == 1 else f"{title} ({page + 1}/{pages})"
         slide, audit = add_slide(prs, page_title, kicker, accent)
-        for ci, (header, col_accent, items) in enumerate(columns):
-            seg = items[page * per_column:(page + 1) * per_column]
+        active = [(header, color, items[page * per_column:(page + 1) * per_column])
+                  for header, color, items in columns if len(items) > page * per_column]
+        n = max(1, len(active))
+        col_w = (SLIDE_W - 2 * margin - (n - 1) * gap) / n
+        for ci, (header, col_accent, seg) in enumerate(active):
             x = margin + ci * (col_w + gap)
             add_panel(slide, audit, x, top, col_w, height, header, seg, col_accent, f"col-{page}-{ci}", size)
         audit_layout(audit, len(prs.slides))
@@ -3878,7 +3951,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "mt-b", 16)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Ask Execs", "v1.10.0 safety modifier carried into the v1.51.5 release line", THEME["amber"])
+    slide, audit = add_slide(prs, "Ask Execs", "v1.10.0 safety modifier retained in the current release", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Operator contract", ASK_EXECS_GUIDE, THEME["amber"], "ask-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Runtime mechanics", ASK_EXECS_PIPELINE_GUIDE, THEME["jade"], "ask-b", 13)
     audit_layout(audit, len(prs.slides))
@@ -3892,7 +3965,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["amber"], "attention-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.11.0 uninstall integration carried into the v1.51.5 release line", THEME["copper"])
+    slide, audit = add_slide(prs, "Windows Installed-App Registration", "v1.11.0 uninstall integration retained in the current release", THEME["copper"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What changed", WINDOWS_APP_REGISTRATION_GUIDE, THEME["copper"], "arp-a", 12)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Why operators care", [
         "Packaged installs now show up in normal Windows uninstall surfaces instead of only leaving behind shortcuts and a loose `Uninstaller.exe` in the install folder.",
@@ -3901,7 +3974,7 @@ def build_ppt(context: dict) -> None:
     ], THEME["jade"], "arp-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Current Release Focus", "v1.51.5 tag, console shield, welcome keyboard default, and carried runtime repairs", THEME["amber"])
+    slide, audit = add_slide(prs, "Release Identity and Runtime Foundations", context["git_describe"], THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Release line", CURRENT_RELEASE_GUIDE[:2], THEME["amber"], "rel-a", 10)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "MCP, research, service, and privacy", CURRENT_RELEASE_GUIDE[2:4], THEME["jade"], "rel-b", 10)
     audit_layout(audit, len(prs.slides))
@@ -3936,7 +4009,7 @@ def build_ppt(context: dict) -> None:
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Database startup safeguard", CURRENT_RELEASE_GUIDE[6:7], THEME["amber"], "rel-d", 11)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Dialog And Bundle Proof", "v1.48.16 - v1.48.17 safety lineage carried by v1.51.5", THEME["copper"])
+    slide, audit = add_slide(prs, "Dialog And Bundle Proof", "v1.48.16 - v1.48.17 safety lineage retained in the current release", THEME["copper"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Uniform dismissal and themed pop-ups", [
         CURRENT_RELEASE_GUIDE[7],
         "The bubble-phase dispatcher closes only the topmost layer through its own dismiss control; no affirmative action is selected and one Escape cannot close two stacked dialogs.",
@@ -3957,8 +4030,10 @@ def build_ppt(context: dict) -> None:
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Source and evidence", publication_guide(context)[3:], THEME["jade"], "recent-assets-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    for title, guide in (("Avatar Animation Repair", AVATAR_GUIDE),
+    for title, guide in (("Canvas Avatar Presence", AVATAR_GUIDE),
                          ("Visible Avatar Test Runner", AVATAR_TEST_GUIDE),
+                         ("Whisperer Silence Gate", WHISPERER_GATE_GUIDE),
+                         ("Voice Commands", VOICE_COMMAND_GUIDE),
                          ("Gitter Windows Paths", GITTER_WORKTREE_GUIDE)):
         add_themed_column_slides(prs, title, "current source and verification evidence",
                                  THEME["jade"], [("Behavior", THEME["jade"], guide[:3]),
@@ -4533,6 +4608,16 @@ def build_ppt(context: dict) -> None:
     add_text(slide, audit, 0.85, 1.72, 11.7, 4.85, file_table_text(context["file_rows"]), 8, THEME["white"], False, name="largest-table", font="Cascadia Mono")
     audit_layout(audit, len(prs.slides))
 
+    slide, audit = add_slide(prs, "Line Inventory Method", "reproducible source measurements", THEME["copper"])
+    add_panel(slide, audit, 0.82, 1.65, 11.55, 4.9, "Counting boundary", [
+        "The primary inventory uses git ls-files. Nonignored untracked additions, when present, are labeled separately. Ignored build output, caches and environments are excluded.",
+        "Physical lines include blanks and comments in text files. Effective lines exclude blank and comment-only lines. Python also excludes module, class and function docstrings identified by AST parsing.",
+        "Executable Python multiline strings count every nonblank occupied line. This refresh corrects the previous token-start-only undercount. Effective totals therefore cannot be compared directly with older dossiers without recounting them.",
+        "Other languages use comment stripping rather than semantic execution analysis. Markdown counts authored nonblank documentation. Binary and media assets have no source-line count. Published historical source snapshots contribute text lines but do not increase runtime module or agent totals.",
+        "The generated context JSON retains per-file physical/effective counts, per-language totals and all inventory paths. Both dossiers contain the complete repository tree and a separate new-asset appendix.",
+    ], THEME["copper"], "line-method", 17)
+    audit_layout(audit, len(prs.slides))
+
     recent_highlight_chunks = split_items(context["weekly_highlights"], 5)
     for idx, chunk in enumerate(recent_highlight_chunks, 1):
         slide_title = (
@@ -4592,7 +4677,7 @@ def build_ppt(context: dict) -> None:
 
     for idx, chunk in enumerate(split_items(context["new_assets"], 10), 1):
         slide, audit = add_slide(prs, f"New Asset Inventory - {idx}",
-                                 "since release tag, including untracked working additions", THEME["jade"])
+                                 "since last committed dossier, including untracked working additions", THEME["jade"])
         y = 1.65
         for row in chunk:
             metrics = (f"{row['bytes']:,} bytes; {row['kind']}; "
