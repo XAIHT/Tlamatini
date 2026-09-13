@@ -463,908 +463,69 @@ def commits_since_visual_docs(baseline: CommitBaseline | None) -> list[CommitInf
 
 
 def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
-    subjects = [commit.subject.lower() for commit in commits]
-    highlights: list[str] = []
-    has_current_release_wave = any(
-        "1.36.0" in subject
-        or "1.35.0" in subject
-        or "1.33.2" in subject
-        or "1.33.0" in subject
-        or "1.32.0" in subject
-        or "video-analizer" in subject
-        or "video-analyzer" in subject
-        or "video analyzer" in subject
-        or "video_analyzer" in subject
-        or "search of prompts" in subject
-        or "prompt search" in subject
-        or "flw generation" in subject
-        or ".flw generation" in subject
-        or "retrying behaviour" in subject
-        or "self-healing" in subject
-        or "self healing" in subject
-        or "failure" in subject
-        or "failures" in subject
-        or "answer classifier" in subject
-        or "answer_success" in subject
-        or "create flow" in subject
-        or "pdcp" in subject
-        or "projectdiscovery" in subject
-        or "vulnx" in subject
-        or "go-deny" in subject
-        or "go deny" in subject
-        or "zavuerer" in subject
-        or "zavu" in subject
-        or "annouces skill" in subject
-        or "announce skill" in subject
-        or "angela" in subject
-        or "creator" in subject
-        or "author" in subject
-        or "private data" in subject
-        or "private-data" in subject
-        or "public build" in subject
-        or "public verify" in subject
-        or "3x" in subject
-        or "performance" in subject
-        or "image-interpreter" in subject
-        or "image interpreter" in subject
-        or "image_interpreter" in subject
-        or "config dialog" in subject
-        or "1.39.2" in subject
-        or "1.39.3" in subject
-        or "1.39.4" in subject
-        or "1.39.5" in subject
-        or "1.40.0" in subject
-        or "1.40.1" in subject
-        or "1.41.0" in subject
-        or "1.41.2" in subject
-        or "1.41.3" in subject
-        or "1.41.4" in subject
-        or "1.42.0" in subject
-        or "1.43.5" in subject
-        or "1.44.0" in subject
-        or "1.45.0" in subject
-        or "1.45.1" in subject
-        or "1.45.3" in subject
-        or "1.46.0" in subject
-        or "1.47.0" in subject
-        or "1.48.0" in subject
-        or "1.48.1" in subject
-        or "1.48.2" in subject
-        or "1.48.13" in subject
-        or re.search(r"\b1\.50\.\d+\b", subject)
-        or "netspeed" in subject
-        or "dork" in subject
-        or "external mcp" in subject
-        or "ollama pro" in subject
-        or "getting started" in subject
-        or "runtime provision" in subject
-        or "memory mcp" in subject
-        or "diagram" in subject
-        or "execution report" in subject
-        or "agent verdict" in subject
-        or "smoke alarm" in subject
-        or "enabling/disabling" in subject
-        or "desconnection" in subject
-        or "disconnection" in subject
-        or "shoter" in subject
-        or "1.48.1" in subject
-        or "1.48.2" in subject
-        or "1.48.13" in subject
-        or "execution report" in subject
-        or "agent verdict" in subject
-        or "database" in subject
-        or "smoke alarm" in subject
-        or "multiple mcp" in subject
-        or "enabling/disabling" in subject
-        or "desconnection" in subject
-        or "disconnection" in subject
-        or "shoter" in subject
-        or "binary file drop" in subject
-        or "binary-guard" in subject
-        or "pdfer" in subject
-        or "latexer" in subject
-        or "latex" in subject
-        or "flowcreator" in subject
-        or "flow-creator" in subject
-        or "parametrization" in subject
-        or "sort_rank" in subject
-        or "oob_shift" in subject
-        or "stm32er" in subject
-        or "structuredcontent" in subject
-        or "configurable" in subject
-        or "django_port" in subject
-        or "port of tlamatini" in subject
-        or "hard-cancel" in subject
-        or "drag and drop image" in subject
-        or "catalog of prompts" in subject
-        or "nmapper" in subject
-        or "nmap" in subject
-        or "pentesting" in subject
-        or "pentest" in subject
-        or "cyber-sec" in subject
-        or "cyber sec" in subject
-        or "googler" in subject
-        or "startup dialog" in subject
-        or "catalog of prompts" in subject
-        or "flowpills" in subject
-        or "unrealer" in subject
-        or "scaffold" in subject
-        or "smoothness" in subject or "console window" in subject or "welcom page" in subject
-        for subject in subjects
-    )
-    if has_current_release_wave:
-        highlights.append(
-            release_identity()
-        )
-        highlights.append(
-            "The current release window adds canvas avatar presence, Whisperer's silence gate and the Voice Commands catalog. It retains the non-blocking console sink, Enter-to-chat navigation, Windows launcher shim, PDFer's measured layout, stable program/snippet persistence and ACPX readiness verdicts."
-        )
-    if any("pdfer complete" in subject for subject in subjects):
-        highlights.append(
-            "PDFer now reads content before composition, selects among twenty design treatments, derives a 38-role OKLab palette, registers host TrueType fonts, solves tables from measured glyph widths, generates on-palette ornament art, and reopens the result for geometric audit."
-        )
-    if any("persistence file" in subject for subject in subjects):
-        highlights.append(
-            "Migration 0199 and the canvas/parser/storage path repair duplicate program and snippet names so `load_x_in_canvas` preserves stable identity instead of selecting or overwriting the wrong row."
-        )
-    if any("acpx mechanisms" in subject for subject in subjects):
-        highlights.append(
-            "ACPX now distinguishes PATH presence from live readiness, classifies non-delivery with a closed reason vocabulary, returns `ok: false` for unusable child output, and accepts transport/argument/drain overrides from configuration."
-        )
-    if any("process starters" in subject for subject in subjects):
-        highlights.append(
-            "The post-tag `00ecdc9` repair centralizes Windows child startup in `agent/win_shim.py`, aligning quoting, shell choice, hidden-window flags, and environment propagation across in-app ACPX, standalone ACPX, the MCP server, and runtime provisioning."
-        )
-    if any("ctrl+c" in subject for subject in subjects):
-        highlights.append(
-            "The v1.50.5 shutdown fix keeps Python signal handling minimal and re-entry-safe: the handler sets an Event, a boot-created daemon worker performs best-effort cleanup, a watchdog guarantees bounded exit, and a second Ctrl+C hard-exits immediately. Source-contract tests plus a visible real-console E2E test prove the Django/Daphne process actually terminates."
-        )
-    if any("public build" in subject for subject in subjects):
-        highlights.append(
-            "The v1.50.6 public builder no longer depends on a gitignored targets file for pristine clones. A target-independent privacy preflight distinguishes a clean committed tree from private evidence, fails toward refusal on unreadable probes, keeps the tracked example inert, restores every managed secret file from a source-derived backup list, and remains build-time-only by contract."
-        )
-    if any("security harness" in subject or "security harnessing" in subject for subject in subjects):
-        highlights.append(
-            "The post-tag Blue-hat security wave adds the administrator-operated `security/` toolkit: persistent Windows visibility/exceptions, ten monitor families, detect-only/armed/watch/aggressive modes, bounded automatic IP/process response, and a visible non-destructive regression harness. The current audited worktree corrects all six ASR identifiers, verifies effective Audit state, uses locale-neutral audit-policy GUIDs, and reports heuristic findings as investigation leads rather than confirmed attackers."
-        )
-    if any("structuredcontent" in subject for subject in subjects):
-        highlights.append(
-            "External MCP stdio and network calls now deliver both human-readable content blocks and machine-readable `structuredContent` to the LLM, preventing valid structured-output servers from looking empty and triggering repeat-call cancellation."
-        )
-    if any("drag and drop image" in subject or "accept drag" in subject for subject in subjects):
-        highlights.append(
-            "The screenshot-to-chat path accepts clipboard bitmaps or dropped image files, re-encodes them safely into Tlamatini's Temp directory, inserts each absolute path at the remembered caret, and exposes removable thumbnail chips so Image-Interpreter can consume the same local path immediately."
-        )
-    if any("hard-cancel" in subject or "hard cancel" in subject for subject in subjects):
-        highlights.append(
-            "Hard Cancel now mints a monotonically increasing run epoch per user and permanently latches only the cancelled epoch; executor, retry, self-healing, Ask-Execs, status-emitter, and frontend guards stop the old run without poisoning the next request or another user's concurrent work."
-        )
-    if any("catalog of prompts" in subject or "prompt catalog" in subject for subject in subjects):
-        highlights.append(
-            "Catalog-of-Prompts migrations classify 106 historical rows into 13 operator categories and physically remove 13 duplicate ACPX demos without renumbering survivors; the primary endpoint is gap-tolerant, the fallback skips gaps, and the UI adds grouped sections plus ranked fuzzy search."
-        )
-    if any(
-        "1.40.1" in subject
-        or "django_port" in subject
-        or "port of tlamatini" in subject
-        or "configurable" in subject
-        for subject in subjects
-    ):
-        highlights.append(
-            "The `v1.40.1` configurable-web-port contract retires the hardcoded 8000: `config.json`'s `django_port` is resolved by `manage.py::_resolve_django_port()` and injected into every launch path by `_apply_configured_port()` (frozen double-click, `.flw` association, browser auto-open, source `runserver`, and `startserver`), so a machine where Windows has RESERVED port 8000 — the `WinError 10013` startup death that a frozen install previously could not escape without a rebuild — is fixed by editing one line. Resolution is fail-open to 8000 and an explicit command-line port always wins, both pinned by 24 tests in `agent/test_django_port_config.py`."
-        )
-    if any("flowpills" in subject or "companion" in subject for subject in subjects):
-        highlights.append(
-            "The `v1.40.0` companion-app contract adds `agent_manifest.py`, a six-value `HKCU\\Software\\XAIHT\\Tlamatini` discovery key, `_tlamatini_agents_manifest.json` with per-file SHA-256 values, preserved-agent uninstall metadata, launch/install/build integration, and 17 focused tests so FlowPills can locate valid agent templates without importing Tlamatini or scanning drives."
-        )
-    if any("unrealer" in subject or "scaffold" in subject for subject in subjects):
-        highlights.append(
-            "The Unrealer wave adds a two-field Catalog-of-Prompts route to a ready-to-build Unreal Engine 5.8 C++ project, including plugin wiring and Visual Studio 2026 guidance, while normalizing `/Content` paths to `/Game` and sending `assign_material` through the plugin's real `slot_index` wire key."
-        )
-    if any("smoothness" in subject for subject in subjects):
-        highlights.append(
-            "The `v1.39.5` smoothness pass bounds previously open-ended I/O, preserves partial Nmapper results, makes subprocess decoding UTF-8-safe, hardens background External MCP supervision, keeps deferred deliverables and request-scoped orphan evidence, and improves `.flw` secret redaction without weakening runtime behavior."
-        )
-    if any(
-        "retrying behaviour" in subject
-        or "self-healing" in subject
-        or "self healing" in subject
-        or "failure" in subject
-        or "failures" in subject
-        for subject in subjects
-    ):
-        highlights.append(
-            "The newest committed reliability wave adds `agent/self_healing.py`: every Multi-Turn model step now runs under a watchdog, switches recovery tactics on transient failures, broadcasts live recovery status, and preserves already-executed agent work instead of discarding it."
-        )
-    if any("answer classifier" in subject or "answer_success" in subject or "create flow" in subject for subject in subjects):
-        highlights.append(
-            "Create Flow is no longer gated by the removed whole-answer SUCCESS/FAILURE classifier: the button appears when Multi-Turn has at least one successful agent call, and the generated `.flw` keeps only successful executions."
-        )
-    if any("pdcp" in subject or "projectdiscovery" in subject or "vulnx" in subject or "go-deny" in subject or "go deny" in subject for subject in subjects):
-        highlights.append(
-            "The newest committed Discoverer wave strengthens ProjectDiscovery operation: PDCP key setup is documented and auto-injected, legacy `cvemap` CVE searches now run through `vulnx`, and Go-toolchain source-control guardrails keep the private compiler/cache out of the repository."
-        )
-    if any(
-        "video-analizer" in subject
-        or "video-analyzer" in subject
-        or "video analyzer" in subject
-        or "video_analyzer" in subject
-        for subject in subjects
-    ):
-        highlights.append(
-            "The newest agent feature is Video-Analyzer: she reads recorded videos, gates obvious no-motion failures deterministically, runs two Ollama vision models in parallel, merges their reports, emits `INI_SECTION_VIDEO_ANALYZER`, and exposes substring-safe `TLM_VERDICT::<TOKEN>` values for Forker-driven robotic loops."
-        )
-    if any("search of prompts" in subject or "prompt search" in subject for subject in subjects):
-        highlights.append(
-            "Prompt discovery was upgraded too: the Tools dialog now supports substring, word-start, and fuzzy matching with mode badges, making the growing seeded prompt catalog easier to browse without memorizing exact titles."
-        )
-    if any("flw generation" in subject or ".flw generation" in subject for subject in subjects):
-        highlights.append(
-            "Generated `.flw` files now use a serpentine/boustrophedon canvas layout so long Multi-Turn chains stay on screen with continuous wiring instead of collapsing into unreadable off-canvas rows."
-        )
-    if any("zavuerer" in subject or "zavu" in subject for subject in subjects):
-        highlights.append(
-            "The newest working-tree feature is Zavuerer, the 83rd workflow-agent type: she sends authorized, opted-in messages through Zavu's unified API for SMS, WhatsApp, Telegram, Email, and Voice, with a wrapped `chat_agent_zavuerer`, Access Keys Wizard support, Parametrizer output fields, canvas connection handling, and demo/catalog migrations."
-        )
-    if any("image-interpreter" in subject or "image interpreter" in subject or "image_interpreter" in subject for subject in subjects):
-        highlights.append(
-            "The latest handbook/source delta upgrades Image-Interpreter into a triple-model vision pipeline: `qwen3.5:cloud` and `gemma4:cloud` interpret each image in parallel on dedicated Ollama connections, then `glm-5.3:cloud` merges both reports into one structured `INI_SECTION_IMAGE_INTERPRETER` result."
-        )
-    if any("config dialog" in subject or "config -> models" in subject or "config models" in subject for subject in subjects):
-        highlights.append(
-            "The current Config -> Models dialog now mirrors that triple-model reality with three Image-Interpreter fields: interpreter 1, interpreter 2, and image merger, plus safe defaults so older preserved configs are not stranded with empty required values."
-        )
-    if not has_current_release_wave and any(
-        "1.26.5" in subject
-        or "mit license" in subject
-        or "mcp-doctor" in subject
-        or "mcp doctor" in subject
-        or "external mcp income" in subject
-        or "unrealer parametrization" in subject
-        or "game creation prompt" in subject
-        or "drift of number of agents" in subject
-        for subject in subjects
-    ):
-        highlights.append(
-            "The live Git window now lands on `v1.26.5`: README, BookOfTlamatini, and the version surfaces identify the project as 1.26.5, with the license moved to MIT, the public Discord invite added, the live catalog corrected to 82 workflow agents, and the External MCP/MCP Doctor/Unrealer maintenance wave folded into the documentation."
-        )
-        highlights.append(
-            "The `v1.26.5` code changes are maintenance-heavy but operator-visible: External MCP input handling and catalog cleanup were improved, MCP Doctor now enumerates all active external MCPs instead of stopping at the first, Unrealer parameterization was fixed, and a new Unreal game-creation prompt was seeded for guided demos."
-        )
-    if not has_current_release_wave and any("1.26.0" in subject or "external mcp" in subject or "esphomer" in subject for subject in subjects):
-        highlights.append(
-            "The current Git window still carries the `v1.26.0` External MCP baseline forward: a config-driven universal client connects to external MCP servers over stdio, streamable HTTP, SSE, or WebSocket, with MCP Doctor diagnostics, full-surface Multi-Turn tool binding, and Step-by-Step setup layered on top of the earlier ESPHomer firmware lane."
-        )
-    if any("installation/use steps" in subject or "getting start" in subject or "config images" in subject or "ollama token" in subject for subject in subjects):
-        highlights.append(
-            "The latest handbook pass on June 19, 2026 shifts the emphasis from release bragging to operator onboarding: BookOfTlamatini now opens with an easy-follow five-step setup path (install Tlamatini, install/sign in to Ollama, pull models, configure the app, start using Multi-Turn only when needed), and it adds first-run configuration screenshots plus a clearer local-vs-remote Ollama-token rule."
-        )
-    if any("disclaimer" in subject and "agent" in subject for subject in subjects):
-        highlights.append(
-            "The documentation now carries a clear Agent-directory disclaimer: workflow agents under `Tlamatini/agent/agents/` are plain-Python user-jurisdiction code, so the user who enables, edits, configures, chains, or runs them is responsible for their security boundary, credentials, targets, and downstream effects."
-        )
-    if has_esphomer_assets():
-        highlights.append(
-            "The tagged `v1.26.0` release now includes ESPHomer as a fourth firmware lane, bridging Tlamatini to ESPHome so she can author YAML device configs, validate, compile, upload, and observe smart-home firmware from chat or canvas."
-        )
-    if any("image about" in subject or "video" in subject or "kyber" in subject for subject in subjects):
-        highlights.append(
-            "The same window refreshes the visible about/presentation media too: `TlamatiniAbout.png` replaces the old JPEG asset, and `TlamatiniAndKyber.mp4` joins the repository as a new shipped visual asset that the dossier inventory now counts."
-        )
-    if any("v1.23.0" in subject or "data-preserving self-update" in subject or "migrate users' db on self-update" in subject for subject in subjects):
-        highlights.append(
-            "The current Git window includes the `v1.23.0` release from June 15, 2026: the in-app updater now preserves the user's database and migrates it back into the new build on first launch, so chat history and custom Tool/Mcp/Agent toggles survive a packaged update."
-        )
-    if any("numpy/opencv" in subject or ("embed" in subject and ("numpy" in subject or "opencv" in subject)) for subject in subjects):
-        highlights.append(
-            "The same `v1.23.0` wave hardens frozen builds for the media family: numpy and OpenCV are now embedded in both the carried Python and the frozen `_internal`, and `build.py` fails loudly if either import is missing instead of shipping a broken Recorder / Camcorder / AudioPlayer / VideoPlayer / Whisperer path."
-        )
-    if any("file-reading" in subject or "file-modification" in subject or "tool-order rule" in subject or "quoted args" in subject for subject in subjects):
-        highlights.append(
-            "The file-navigation and file-editing operator surface now includes encoding-safe Grepper search: BOM-marked UTF-8/16/32 is decoded before cp1252/Latin-1 fallbacks, genuine binary files are skipped, and Globber/Editor still provide deterministic discovery and surgical replacement without a shell fallback."
-        )
-    if any("blenderer" in subject or "blender" in subject for subject in subjects):
-        highlights.append(
-            "The same recent release span still includes the Blenderer foundation: Tlamatini reaches a live Blender session through the official Blender MCP add-on socket (`localhost:9876`), both as the wrapped `chat_agent_blenderer` tool and as a visual workflow node."
-        )
-    if any("self-update" in subject or "check for updates" in subject or "apply_update.ps1" in subject or "start_update" in subject for subject in subjects):
-        highlights.append(
-            "The in-app self-update path itself is now mature across the current Git window: packaged installs can check GitHub releases, stage a download, hand the locked-file replacement to `apply_update.ps1`, and preserve both operator state and one `agents_backup` generation."
-        )
-    if has_current_release_wave or any(
-        "1.36.0" in subject
-        or "1.35.0" in subject
-        or "1.33.2" in subject
-        or "1.33.0" in subject
-        or "1.32.0" in subject
-        or "video-analizer" in subject
-        or "video-analyzer" in subject
-        or "video analyzer" in subject
-        or "video_analyzer" in subject
-        or "search of prompts" in subject
-        or "prompt search" in subject
-        or "flw generation" in subject
-        or ".flw generation" in subject
-        or "retrying behaviour" in subject
-        or "self-healing" in subject
-        or "self healing" in subject
-        or "failure" in subject
-        or "failures" in subject
-        or "answer classifier" in subject
-        or "answer_success" in subject
-        or "create flow" in subject
-        or "pdcp" in subject
-        or "projectdiscovery" in subject
-        or "vulnx" in subject
-        or "go-deny" in subject
-        or "go deny" in subject
-        or "zavuerer" in subject
-        or "zavu" in subject
-        or "annouces skill" in subject
-        or "announce skill" in subject
-        or "angela" in subject
-        or "creator" in subject
-        or "private data" in subject
-        or "public build" in subject
-        or "public verify" in subject
-        or "3x" in subject
-        or "documentation" in subject
-        or "docs" in subject
-        or "disclaimer" in subject
-        for subject in subjects
-    ):
-        highlights.append(
-            release_identity()
-        )
-    elif not has_current_release_wave and any(
-        "1.26.5" in subject
-        or "mit license" in subject
-        or "discord" in subject
-        or "mcp-doctor" in subject
-        or "mcp doctor" in subject
-        or "drift of number of agents" in subject
-        or "documentation" in subject
-        or "docs" in subject
-        or "disclaimer" in subject
-        for subject in subjects
-    ):
-        highlights.append(
-            "The latest documentation pass aligns the handbook and source with the `v1.26.5` line, which matters here because the dossier must reflect the live MIT license, Discord community link, 82-agent / 89-tool inventory, and the Agent-directory responsibility boundary instead of older public badges or stale prose."
-        )
-    elif any(
-        "1.26.1" in subject
-        or "disclaimer" in subject
-        or ("documentation" in subject and ("1.26.1" in subject or "external mcp" in subject))
-        for subject in subjects
-    ):
-        highlights.append(
-            "The latest documentation pass aligns the handbook and source with the `v1.26.5` line, which matters here because some older badges or prose lines still lag behind the live 82-agent / 89-tool inventory and the new Agent-directory responsibility boundary."
-        )
-    if any("filecreator" in subject or "file creator" in subject or ("truncate" in subject and "file" in subject) for subject in subjects):
-        highlights.append(
-            "The `v1.19.5` File-Creator hardening pass now writes content byte-for-byte: plain `content` is re-extracted verbatim, and heavy escape/binary payloads can travel through `content_b64`, eliminating the wrong-symbol corruption that broke backslash-dense Java, JSON, and regex files."
-        )
-    if any("source code as the codebase" in subject or "self modify" in subject or "copy_source_assets" in subject or "source snapshot" in subject for subject in subjects):
-        highlights.append(
-            "The same release completes the self-modify story: `build.py --self-modify` now generates a rebuildable `TlamatiniSourceCode/` snapshot through `copy_source_assets.py`, so a self-able-modify build carries her own source tree, rebuild instructions, and redacted secrets in one honest package."
-        )
-    if any("api-keys wizard" in subject or "api keys wizard" in subject or ("api" in subject and "wizard" in subject) for subject in subjects):
-        highlights.append(
-            "Operator ergonomics improved too: the Config menu now includes an API-Keys Wizard dialog, giving the user a browser-side way to enter and persist provider credentials without hand-editing `config.json`."
-        )
-    if any("talker" in subject or "whisperer" in subject or "recorder" in subject or "camcorder" in subject or "audio" in subject for subject in subjects):
-        highlights.append(
-            "The recent media-and-voice wave is still visible in Git: Talker and Whisperer extend Tlamatini from text-only operation into female-voice text-to-speech plus speech-to-text, while Recorder/Camcorder/Shoter/AudioPlayer/VideoPlayer complete the broader media I/O family."
-        )
-    if any("watchdog" in subject or "hung command" in subject or "hanged" in subject for subject in subjects):
-        highlights.append(
-            "Runtime resilience advanced as well: the autonomous command watchdog can now detect shell wrappers that are alive but making no CPU or I/O progress, then reap only the wedged console-interpreter subtree without touching healthy long-running work."
-        )
-    if any("audioplayer" in subject or "videoplayer" in subject or ("playback" in subject and ("audio" in subject or "video" in subject)) for subject in subjects):
-        highlights.append(
-            "New media-playback pair completes the media-I/O family: AudioPlayer plays an audio file to the speakers (soundfile + sounddevice, volume and a truncate/loop time budget) and VideoPlayer plays a video file with audio on a chosen display (ffpyplayer — its wheel bundles ffmpeg + SDL — plus an OpenCV window, with display/volume/time-budget/window/fullscreen). Both are observational/output, on the canvas and as wrapped chat_agent_audioplayer / chat_agent_videoplayer tools."
-        )
-    if any("camcorder" in subject or "recorder" in subject for subject in subjects):
-        highlights.append(
-            "New observational capture pair: Camcorder (webcam photo/video via OpenCV) and Recorder (microphone WAV via sounddevice) — read-only siblings of Shoter, on the canvas and as wrapped chat_agent_camcorder / chat_agent_recorder tools."
-        )
-    if any("arduiner" in subject or "arduino" in subject for subject in subjects):
-        highlights.append(
-            "Arduiner added as the third microcontroller agent: a direct arduino-cli bridge that builds and uploads firmware for any fqbn-selected board, with zero-config bootstrap, auto board-core install, and a serial-port safety preflight."
-        )
-    if any("flow-making" in subject or "flow making" in subject or "flw" in subject for subject in subjects):
-        highlights.append(
-            "The new in-process flow-making skill turns a plain objective into a canvas-loadable .flw by driving the FlowCreator engine, so operators build runnable flows straight from chat."
-        )
-    if any("temp/template" in subject or "template generation" in subject for subject in subjects):
-        highlights.append(
-            "Directory policy: every transient file now stays under <app>/Temp and every scaffolded firmware/engine project tree under <app>/Templates (never C:/Temp or %TEMP%), pinned before Django starts."
-        )
-    if any("esp32er" in subject or "es32er" in subject or "platformio" in subject for subject in subjects):
-        highlights.append(
-            "The embedded-firmware surface remains broad in the current tree: ESP32er keeps the direct PlatformIO Core path for scaffold/build/upload/monitor work, STM32er and Arduiner cover the other hardware lanes, and the live working tree now adds ESPHomer as the ESPHome smart-home device bridge."
-        )
-    if any("asking on the chain of multi-turn" in subject or "ask exec" in subject or "execution interrupted" in subject for subject in subjects):
-        highlights.append(
-            "Human approval remains part of the modern safety story too: Ask Execs can still stop Multi-Turn before the next state-changing step, wait for a Proceed or Deny decision, and surface denial through the explicit red interruption banner."
-        )
-    if any("stm32" in subject or "stmer" in subject or "firmware" in subject and "hardware" in subject for subject in subjects):
-        highlights.append(
-            "The firmware-control branch remains active in the current codebase: STM32er still bridges the STM32 Template Project MCP for scaffold/build/flash/observe/reset flows, guarded by a fail-safe hardware preflight before unsafe mutations."
-        )
-    if any("herself" in subject or "self" in subject and "modify" in subject or "self knowledge" in subject for subject in subjects):
-        highlights.append(
-            "Self-awareness is now part of the steady baseline rather than a one-off milestone: Tlamatini carries a first-person self-knowledge map and, in self-modify builds, can inspect the bundled source snapshot that describes how she actually works."
-        )
-    if any("4096" in subject or "degrees of liberty" in subject or "turn" in subject and "freedom" in subject for subject in subjects):
-        highlights.append(
-            "Multi-Turn autonomy expanded too: the default iteration ceiling now reaches 4096 turns, giving long operator chains far more room before they hit the loop cap."
-        )
-    if any("unrealer" in subject or "unreal mcp" in subject or "xaiht" in subject for subject in subjects):
-        highlights.append(
-            "Unrealer kept growing across the same window: the docs now point at the public `XAIHT/XaihtUnrealEngineMCP` fork and the full 53-command, nine-category Unreal MCP surface it exposes to chat and canvas."
-        )
-    if any("kalier" in subject or "kali" in subject or "pentest" in subject for subject in subjects):
-        highlights.append(
-            "A still-relevant platform branch remains the Kali Linux bridge: Kalier behaves as the embedded MCP-Kali-Server client, so the Kali box URL is configured once in `Config -> URLs` and auto-injected into `chat_agent_kalier` runs."
-        )
-    if any("windower" in subject or "window manager" in subject or "window" in subject and "multi-turn" in subject for subject in subjects):
-        highlights.append(
-            "Another still-visible platform branch is Windower: a deterministic Win32 window-manager surface for focusing, tiling, resizing, listing, and closing windows from both Multi-Turn chat and the visual canvas."
-        )
-    if any("playwrighter" in subject or "playwright" in subject for subject in subjects):
-        highlights.append(
-            "Playwrighter remains part of the broader platform story too: a real-browser automation surface for scripted Playwright flows from both Multi-Turn chat and the visual canvas."
-        )
-    if any("tkinter" in subject or "unstable" in subject or "native dialog" in subject for subject in subjects):
-        highlights.append(
-            "The immediately previous stability pass is still visible in Git too: Tkinter was removed from the unstable runtime-facing dialog path in favor of native Windows dialog helpers, reducing UI instability around file and folder picking while keeping the browser/operator flow intact."
-        )
-    if any("reporting tables" in subject or "widths" in subject for subject in subjects):
-        highlights.append(
-            "Reporting-table layout was also tightened during the same window, improving readability of generated execution/reporting surfaces without changing the underlying operational data."
-        )
-    if any(("reviewer" in subject and "state" in subject) or ("reviewer" in subject and "handling" in subject) for subject in subjects):
-        highlights.append(
-            "A still-relevant reviewer follow-up is the behavioral-accuracy patch: the review prompt distinguishes uncommitted working-tree diffs from committed history and teaches the model Tlamatini’s managed-secret scrub convention, reducing false positives around local credentials in config files."
-        )
-    if any("reviewer" in subject or "analyzer" in subject or "security audit" in subject or "code review" in subject for subject in subjects):
-        highlights.append(
-            "A still-visible platform branch is Reviewer and Analyzer: code review plus deterministic security scanning are available from both the canvas and the skill layer."
-        )
-    if any("number and descriptions of agents" in subject or "markdowns" in subject or "agentic_skill" in subject for subject in subjects):
-        highlights.append(
-            "Agent-catalog consistency work also remains visible: the live count, the markdown bestiaries, the flow-creator skill catalog, and the sidebar-description source were brought back into alignment around one shared workflow-agent inventory."
-        )
-    if any("unreal" in subject or "unreal-engine mcp" in subject or "unreal engine enabled" in subject for subject in subjects):
-        highlights.append(
-            "Unreal MCP support remains part of the broader platform story: the Unrealer agent, its chat-wrapped tool, canvas wiring, seeded prompts, and the direct TCP bridge into a live Unreal Engine 5 editor."
-        )
-    if any("orphan" in subject or "cleanup" in subject or "sec/perf" in subject for subject in subjects):
-        highlights.append(
-            "Windows process hygiene also remains visible in recent history: a three-tier reaper, hardened detached spawn sites, ACPX process-tree termination, and user-visible survivor reporting when anything truly refuses to die."
-        )
-    if any("de-compresser" in subject or "de compresser" in subject for subject in subjects):
-        highlights.append(
-            "The archive-automation branch remains visible too: De-Compresser adds deterministic archive compression/decompression, Multi-Turn exposure, ACP canvas wiring, and the `py7zr` fallback path."
-        )
-    if any("version" in subject or "worldwide system" in subject for subject in subjects):
-        highlights.append(
-            "Release-identity work also remains relevant: the SemVer policy, git-tag sourcing, runtime version surfaces, and build-time embedding across the Windows artefacts now define how Tlamatini reports her version."
-        )
-    if any("menu db" in subject or "database" in subject or "browse buttons" in subject for subject in subjects):
-        highlights.append(
-            "Another still-relevant operator-facing branch is the DB dropdown: backup, Set DB staging for the next start-up, startup swap-in/rollback mechanics, and native Browse buttons on both dialogs."
-        )
-    if any("gpu" in subject or "autoload" in subject or "spining" in subject for subject in subjects):
-        highlights.append(
-            f"GPU-host behavior changed during the {RECENT_GIT_WINDOW_LABEL}: performance hooks, model-pinning startup behavior, and autoload-at-restart reliability were all touched."
-        )
-    if any("reconnection" in subject or ("config" in subject and "dialog" in subject) for subject in subjects):
-        highlights.append(
-            "The config-plane UI grew another safety layer: when model/URL dialog saves materially change live runtime inputs, the chat now prompts the operator to reconnect before trusting the current session state."
-        )
-    if any("acpx" in subject for subject in subjects):
-        highlights.append(
-            f"ACPX-related work remained visible during the {RECENT_GIT_WINDOW_LABEL}: runtime, documentation, or operator-surface changes were still part of the active maintenance stream."
-        )
-    if any("shortcut" in subject or "restrictive" in subject or "policy" in subject for subject in subjects):
-        highlights.append(
-            "Windows deployment hardening continued with CreateShortcut fixes and improved behavior on restricted-policy machines."
-        )
-    if any("teletlamatini" in subject for subject in subjects):
-        highlights.append(
-            "TeleTlamatini grew throughout the window, including agent/runtime updates, config movement, FlowCreator/ACPX integration, and related documentation changes."
-        )
-    if any("compiler" in subject or "contract" in subject for subject in subjects):
-        highlights.append(
-            "The current Git window still shows the flow compiler / agent-contract direction influencing how chat-created and ACP-created workflows converge."
-        )
-    if any("multi-turn" in subject or "multi turn" in subject or "tool quota" in subject for subject in subjects):
-        highlights.append(
-            "Multi-Turn behavior kept evolving across the period through quota tuning, execution-table persistence, autonomous-action improvements, and broader tool enablement."
-        )
-    if any(("glm-5.2:cloud" in subject or "glm-5.3:cloud" in subject) or "default in config.json" in subject for subject in subjects):
-        highlights.append(
-            "The checked-in runtime defaults also moved: the shared config now points at `glm-5.3:cloud`, so the handbook and dossier need to describe the shipped cloud-first baseline honestly instead of assuming only the older local model defaults."
-        )
-    if any("attention" in subject or "flash" in subject or "notifications" in subject or "notifier" in subject for subject in subjects):
-        highlights.append(
-            "Operator attention routing also changed: when Ask Execs or a Notifier event needs the user, Tlamatini can now flash her own Windows taskbar presence and write an uppercase attention banner into `tlamatini.log`."
-        )
-    if any("pythonxer" in subject or "forked windows execution" in subject or "reporting on the log file" in subject or "project skills" in subject for subject in subjects):
-        highlights.append(
-            "Follow-up implementation work in the same post-STM32 window tightened Pythonxer downstream execution, Windows forked-command launching, execution-log detail, and project-skill loading, so the release story is not only a UI toggle but also a reliability pass around the operator chain."
-        )
-    if any("scroll" in subject or "icon" in subject or "web page" in subject or "scheme" in subject for subject in subjects):
-        highlights.append(
-            "The operator surface evolved too: ACP/ACPX visual mechanics, canvas scrolling, icons, and page framing all received polish."
-        )
-    if any("persistent" in subject or "execution table" in subject or "summarizer" in subject for subject in subjects):
-        highlights.append(
-            "Execution observability improved through persistent execution tables, summarizer work, and the broader reportability push around agent runs."
-        )
-    if any("document" in subject or "docs" in subject or "framing" in subject for subject in subjects):
-        highlights.append(
-            "Documentation itself changed during the recent window, so the regenerated dossier is part of the tracked operator surface rather than an external afterthought."
-        )
-    if highlights:
-        return highlights
-    return [f"Git history shows focused maintenance across the operator surface, release mechanics, and runtime behavior during {RECENT_GIT_WINDOW_LABEL}."]
+    """Use commit-specific evidence, never broad keyword guesses or disk presence."""
+    notes = {
+        "36c0139": (
+            "Adds standalone ollama_credits.py for signed Ollama account-usage requests "
+            "and console/JSON output. The card's $300 denominator and default reset "
+            "day are script assumptions, not account-verified billing facts."
+        ),
+        "ac72b6c": (
+            "Repairs chat_agent_run_wait by reconciling the real child process on "
+            "every poll and using RUNNING_STATUSES. Five regression cases accompany "
+            "the fix. They were not executed for the 2026-09-13 dossier refresh."
+        ),
+        "efe2ca1": (
+            "Updates the PDF/PPTX for canvas presence, Whisperer's sound gate and "
+            "Voice Commands. Corrects Python multiline-string effective-line counting."
+        ),
+        "a867567": (
+            "Adds Voice Commands as the first prompt-catalog category, with guided "
+            "rehearsal 121 and spoken-prompt execution 122. The transcript is shown "
+            "before execution and irreversible/external actions need typed confirmation."
+        ),
+        "e403d5c": (
+            "Reconciles the Whisperer sound-gate documentation, prompt 74 and runtime "
+            "contracts. FlowHypervisor allows the bounded capture wait."
+        ),
+        "96fdbde": (
+            "Adds Whisperer's default silence gate, actual captured duration and "
+            "explicit fixed-fallback reporting. This is the v1.51.7 tag commit."
+        ),
+        "7e48e63": (
+            "Adds word-timed canvas avatar presence, asymmetric blinks and adaptive "
+            "frame rates, with CPU-only rendering and an opaque fallback."
+        ),
+        "7ae8d86": (
+            "Introduces blended avatar rendering, followed by the presence renderer "
+            "in 7e48e63. The four portrait JPGs remain the expression sources."
+        ),
+        "590cb8b": (
+            "Repairs Gitter Windows-path tokenization and refreshes project dossiers. "
+            "The commit carries the earlier avatar assets and verification evidence."
+        ),
+        "2ea219a": "Changes the default cloud model from glm-5.2:cloud to glm-5.3:cloud.",
+        "46a18c8": (
+            "Repairs full-portrait transparency flashing and publishes image packages, "
+            "visible-test evidence and the Python launcher. This is historical atomic-renderer evidence."
+        ),
+        "4a7f1cb": "Refreshes visual documentation for console shielding and welcome-page navigation.",
+        "d8f21f3": "Continues handbook reconciliation for console shielding and welcome-page navigation.",
+        "0d2c09c": "Documents console shielding and the welcome-page keyboard default.",
+        "c8cf369": (
+            "Adds a queued console sink with file-first logging, frozen QuickEdit "
+            "protection and an Enter-to-chat shortcut on the welcome page."
+        ),
+    }
+    return [
+        f"Commit {row.short_hash}: {notes.get(row.short_hash, row.subject)}"
+        for row in commits
+    ] or ["No commits fall in this Git window."]
 
 
 def visual_doc_highlights(commits: list[CommitInfo]) -> list[str]:
-    subjects = [commit.subject.lower() for commit in commits]
-    if any("fixing glitches found on tlamatini" in subject for subject in subjects) and any(
-        "tlamatini-spanish piring" in subject for subject in subjects
-    ):
-        return [
-            release_identity(),
-            "The v1.50.6 public builder supports pristine clones without a private targets file while retaining fail-toward-refusal privacy probing, inert example configuration, structural-only honesty, runtime independence, and source-derived secret restoration.",
-            "The v1.50.5 shutdown repair moves cleanup out of the signal handler, guards re-entry, adds bounded daemon cleanup and watchdog exit, and proves real Ctrl+C termination; `PromptDesigner.jpg` is inventoried as an unreferenced design asset rather than a shipped runtime feature.",
-            "The carried v1.50.4 delta keeps optional Transformers and its transitively imported Torch stack out of the frozen Django process, migrates deprecated tool imports to `langchain_core.tools`, and adds source-derived lean-process guards; the v1.50.3 Googler and earlier safety work remain carried.",
-            "The post-tag safety commit makes Deleter treat `target_path` as a working directory, refuses protected or accidental directory deletion by default, suppresses audio/video output during tests, adds JavaScript parse gates, and carries focused regression tests for each boundary.",
-        ]
-    highlights: list[str] = []
-    has_current_release_wave = any(
-        "1.36.0" in subject
-        or "1.35.0" in subject
-        or "1.33.2" in subject
-        or "1.33.0" in subject
-        or "1.32.0" in subject
-        or "video-analizer" in subject
-        or "video-analyzer" in subject
-        or "video analyzer" in subject
-        or "video_analyzer" in subject
-        or "search of prompts" in subject
-        or "prompt search" in subject
-        or "flw generation" in subject
-        or ".flw generation" in subject
-        or "retrying behaviour" in subject
-        or "self-healing" in subject
-        or "self healing" in subject
-        or "failure" in subject
-        or "failures" in subject
-        or "answer classifier" in subject
-        or "answer_success" in subject
-        or "create flow" in subject
-        or "pdcp" in subject
-        or "projectdiscovery" in subject
-        or "vulnx" in subject
-        or "go-deny" in subject
-        or "go deny" in subject
-        or "zavuerer" in subject
-        or "zavu" in subject
-        or "annouces skill" in subject
-        or "announce skill" in subject
-        or "angela" in subject
-        or "creator" in subject
-        or "author" in subject
-        or "private data" in subject
-        or "public build" in subject
-        or "public verify" in subject
-        or "3x" in subject
-        or "image-interpreter" in subject
-        or "image interpreter" in subject
-        or "image_interpreter" in subject
-        or "config dialog" in subject
-        or "1.39.5" in subject
-        or "1.40.0" in subject
-        or "1.40.1" in subject
-        or "1.41.0" in subject
-        or "1.41.2" in subject
-        or "1.41.3" in subject
-        or "1.41.4" in subject
-        or "1.42.0" in subject
-        or "1.43.5" in subject
-        or "1.44.0" in subject
-        or "1.45.0" in subject
-        or "1.45.1" in subject
-        or "1.45.3" in subject
-        or "1.46.0" in subject
-        or "1.47.0" in subject
-        or "1.48.0" in subject
-        or "external mcp" in subject
-        or "ollama pro" in subject
-        or "getting started" in subject
-        or "binary file drop" in subject
-        or "binary-guard" in subject
-        or "pdfer" in subject
-        or "latexer" in subject
-        or "latex" in subject
-        or "flowcreator" in subject
-        or "flow-creator" in subject
-        or "parametrization" in subject
-        or "sort_rank" in subject
-        or "oob_shift" in subject
-        or "stm32er" in subject
-        or "structuredcontent" in subject
-        or "runtime provision" in subject
-        or "memory mcp" in subject
-        or "diagram" in subject
-        or "django_port" in subject
-        or "port of tlamatini" in subject
-        or "configurable" in subject
-        or "hard-cancel" in subject
-        or "drag and drop image" in subject
-        or "catalog of prompts" in subject
-        or "flowpills" in subject
-        or "unrealer" in subject
-        or "scaffold" in subject
-        or "smoothness" in subject or "console window" in subject or "welcom page" in subject
-        or "googler" in subject
-        for subject in subjects
-    )
-    if has_current_release_wave:
-        highlights.append(
-            release_identity()
-        )
-        highlights.append(
-            "The current dossier window adds the queue-backed console shield, frozen-build QuickEdit policy, and Enter-to-chat welcome shortcut. It carries PDFer's measured design engine, stable program/snippet persistence, ACPX readiness and delivery verdicts, and the Windows direct-or-shell launcher shim."
-        )
-    if any("pdfer complete" in subject for subject in subjects):
-        highlights.append(
-            "PDFer's ten new sibling modules cover content consultation, document modelling, nuance, colour, themes, typography, tables, ornament generation, atelier orchestration, and post-render audit. The added text assets contribute 10,512 physical and 7,053 effective lines before this dossier refresh."
-        )
-    if any("persistence file" in subject for subject in subjects):
-        highlights.append(
-            "The v1.51.1 persistence repair adds migration 0199 and collision tests so program/snippet names remain unique and canvas loading preserves the intended stored program."
-        )
-    if any("acpx mechanisms" in subject for subject in subjects):
-        highlights.append(
-            "The shared v1.51.2/v1.51.3 tag commit adds `child_health.py`, an opt-in cached live readiness probe, named non-delivery codes, configurable transport arguments, and 92 ACPX contract tests."
-        )
-    if any("process starters" in subject for subject in subjects):
-        highlights.append(
-            "Post-tag commit `00ecdc9` adds `win_shim.py`, 404 focused shim tests, and another 34 ACPX tests, then carries the same launch and verdict behavior into the standalone ACPX and MCP-server surfaces."
-        )
-    if any("ctrl+c" in subject for subject in subjects):
-        highlights.append(
-            "The Ctrl+C repair is structural rather than cosmetic: only an Event is touched in signal context, cleanup happens on pre-created daemon workers, a second signal hard-exits, and a watchdog bounds the first shutdown."
-        )
-    if any("public build" in subject for subject in subjects):
-        highlights.append(
-            "The public-release privacy pipeline now permits a provably clean fresh clone with no targets file, but refuses private evidence or unreadable probes; its example file is inert and its targets files are never runtime inputs or shipped assets."
-        )
-    if any("security harness" in subject or "security harnessing" in subject for subject in subjects):
-        highlights.append(
-            "The new `security/` subtree is a host-side Blue-hat toolkit rather than a workflow Agent row. It ships self-elevating launchers, a persistent whitelist/visibility script, a ten-family defender, a visible Shoter/Chrome test, explicit detect-only baselining, and documented rollback/privacy limits; the audited worktree also repairs invalid ASR/audit identifiers and silent-success reporting."
-        )
-    if any("structuredcontent" in subject for subject in subjects):
-        highlights.append(
-            "The MCP formatter preserves plain text and error behavior, unwraps a sole `{result: ...}` envelope, serializes structured payloads safely, and caps oversized structured content at a configurable character budget."
-        )
-    if any("drag and drop image" in subject or "accept drag" in subject for subject in subjects):
-        highlights.append(
-            "Image ingestion is path-native rather than attachment-native: Pillow flattens/re-encodes images under a 25 MB ceiling, the Temp path is inserted at the caret, chips can remove both preview and text, and layout observers account for the new row so the textarea and Send control remain visible."
-        )
-    if any("hard-cancel" in subject or "hard cancel" in subject for subject in subjects):
-        highlights.append(
-            "The cancellation delta closes every resurrection path: the per-user epoch survives legacy-flag clearing, propagates through payload rebuilds, stops executor/retry/self-healing loops, denies blocked Ask-Execs prompts, revokes late tactic emitters, and prevents stale frontend frames from putting the UI back into Cancel state."
-        )
-    if any("catalog of prompts" in subject or "prompt catalog" in subject for subject in subjects):
-        highlights.append(
-            "Prompt-catalog migrations group the historical catalog into 13 categories and delete 13 redundant ACPX variants while keeping surviving ids stable; the UI renders category sections, supports numeric/acronym/subsequence search, highlights matches, and restores grouped order when the query clears."
-        )
-    if any(
-        "retrying behaviour" in subject
-        or "self-healing" in subject
-        or "self healing" in subject
-        or "failure" in subject
-        or "failures" in subject
-        for subject in subjects
-    ):
-        highlights.append(
-            "The newest committed reliability wave adds `agent/self_healing.py`, routes Multi-Turn model calls through `SelfHealingInvoker`, broadcasts live recovery status, trims or retries context when model calls fail, and preserves already-executed tool evidence for a degraded but truthful final answer."
-        )
-    if any("answer classifier" in subject or "answer_success" in subject or "create flow" in subject for subject in subjects):
-        highlights.append(
-            "The old whole-answer `answer_success` classifier was removed: Create Flow now appears when Multi-Turn produced at least one successful agent call, generated `.flw` files keep only successful executions, and Exec Report remains tool-evidence rather than a global verdict."
-        )
-    if any("pdcp" in subject or "projectdiscovery" in subject or "vulnx" in subject or "go-deny" in subject or "go deny" in subject for subject in subjects):
-        highlights.append(
-            "The latest committed visual-doc delta now includes Discoverer hardening too: PDCP key retrieval/setup, `cvemap` routed to ProjectDiscovery `vulnx`, the latest-CVE demo prompt, the `git_deny_go.py` guard, and the no-Go-toolchain-in-source-control rule."
-        )
-    if any(
-        "video-analizer" in subject
-        or "video-analyzer" in subject
-        or "video analyzer" in subject
-        or "video_analyzer" in subject
-        for subject in subjects
-    ):
-        highlights.append(
-            "Video-Analyzer adds a motion-verdict surface for hardware-in-the-loop demos: Camcorder can record a board, Video-Analyzer can judge the motion with deterministic and model-backed checks, and Forker can branch on `TLM_VERDICT::PASS_OK`, `FAIL_NO_MOTION`, `FAIL_WRONG_MOTION`, `UNCLEAR`, or `ANALYSIS_ERROR`."
-        )
-    if any("search of prompts" in subject or "prompt search" in subject for subject in subjects):
-        highlights.append(
-            "Prompt sorting/search work now makes the seeded prompt catalog easier to operate from the Tools dialog: substring, word-start, fuzzy scoring, and mode badges reduce hunting in a large prompt list."
-        )
-    if any("flw generation" in subject or ".flw generation" in subject for subject in subjects):
-        highlights.append(
-            "The latest `.flw` generator work changes layout, not just metadata: large generated flows use alternating row direction and row capacity rules so visual workflows avoid unreadable overlap and off-screen chains."
-        )
-    if any("zavuerer" in subject or "zavu" in subject for subject in subjects):
-        highlights.append(
-            "The fresh `v1.33.2` artifact delta centers on Zavuerer and cleanup: README.md, BookOfTlamatini.md, `agents_descriptions.md`, `agent/agents/zavuerer/`, migrations `0159`-`0164`, Access Keys Wizard wiring, capability hints, model/config defaults, and frontend/runtime cleanup all describe the same unified-messaging release family."
-        )
-    if any("image-interpreter" in subject or "image interpreter" in subject or "image_interpreter" in subject for subject in subjects):
-        highlights.append(
-            "Since the last committed PDF/PPTX refresh, Image-Interpreter was rebuilt into a fail-safe triple-model analyzer: two dedicated Ollama vision interpreters run in parallel, a barrier waits for both, and a merger model fuses the reports while preserving raw-output fallbacks when any leg fails."
-        )
-    if any("config dialog" in subject or "config -> models" in subject or "config models" in subject for subject in subjects):
-        highlights.append(
-            "The post-refresh UI/backend delta also updates Config -> Models so the browser exposes all three Image-Interpreter model slots and `tools.py` seeds the matching wrapped-tool defaults before per-call overrides."
-        )
-    if not has_current_release_wave and any(
-        "1.26.5" in subject
-        or "mit license" in subject
-        or "mcp-doctor" in subject
-        or "mcp doctor" in subject
-        or "external mcp income" in subject
-        or "unrealer parametrization" in subject
-        or "game creation prompt" in subject
-        or "drift of number of agents" in subject
-        for subject in subjects
-    ):
-        highlights.append(
-            "Since the last committed PDF/PPTX refresh, the repository advanced to `v1.26.5`: the handbook and README now carry the MIT license identity, Discord invite, corrected 82-agent catalog, and the updated External MCP/MCP Doctor/Unrealer maintenance story."
-        )
-        highlights.append(
-            "The post-baseline implementation delta includes improved External MCP input/catalog handling, MCP Doctor enumeration across all active external MCPs, Unrealer parameterization fixes, seeded Unreal game-demo prompts, Create Superuser wizard prompt migrations, FlowCreation backslash behavior fixes, Step-by-Step polish, and context-bloat/chat-history windowing work."
-        )
-    if not has_current_release_wave and any("1.26.0" in subject or "external mcp" in subject or "esphomer" in subject for subject in subjects):
-        highlights.append(
-            "The broader `v1.26.x` line still centers on the External MCPs universal client: four transports, the MCP Doctor agent, full-surface Multi-Turn tool binding, and Step-by-Step setup layered on top of the ESPHomer firmware lane."
-        )
-    if any("installation/use steps" in subject or "getting start" in subject or "config images" in subject or "ollama token" in subject for subject in subjects):
-        highlights.append(
-            "The newest post-tag documentation wave is about usability rather than another runtime feature: BookOfTlamatini now begins with a five-step getting-started path, clarifies installer-vs-source choices, adds configuration screenshots, and explains that a localhost Ollama usually needs no token while a remote Ollama may."
-        )
-    if any("disclaimer" in subject and "agent" in subject for subject in subjects):
-        highlights.append(
-            "The latest Markdown source now explicitly warns that the plain-Python workflow agents are under user jurisdiction: Tlamatini offers orchestration and guardrails, but user-run agents can touch files, shells, APIs, credentials, external MCPs, hardware, and networks selected by the operator, so resulting breaches or unsafe actions remain the operator's responsibility."
-        )
-    if any("esphomer" in subject or "esphome" in subject for subject in subjects):
-        highlights.append(
-            "Since the last dossier baseline, ESPHomer changed across its ESPHome firmware agent, wrapped `chat_agent_esphomer` tool, sample YAML project, migrations, tests, and handbook coverage for smart-home device provisioning."
-        )
-    if any("image about" in subject or "video" in subject or "kyber" in subject for subject in subjects):
-        highlights.append(
-            "The same span also refreshes the shipped visual media: the old `TlamatiniAbout.jpg` gives way to `TlamatiniAbout.png`, and `TlamatiniAndKyber.mp4` is now part of the repository asset tree and line/inventory context."
-        )
-    if any("v1.23.0" in subject or "data-preserving self-update" in subject or "migrate users' db on self-update" in subject for subject in subjects):
-        highlights.append(
-            "Since the last committed PDF/PPTX refresh, `v1.23.0` made packaged self-update data-preserving: the user's database is staged through `DB/ToLoad/`, restored into the new build, and migrated on next launch so chat history and custom toggles survive the upgrade."
-        )
-    if any("numpy/opencv" in subject or ("embed" in subject and ("numpy" in subject or "opencv" in subject)) for subject in subjects):
-        highlights.append(
-            "The same window also embedded numpy and OpenCV into both shipped Python runtimes, closing the frozen-build dependency gap for Recorder, Camcorder, AudioPlayer, VideoPlayer, and Whisperer."
-        )
-    if any("file-reading" in subject or "file-modification" in subject or "tool-order rule" in subject or "quoted args" in subject for subject in subjects):
-        highlights.append(
-            "The operator surface also expanded with the file-navigation/file-edit trio: Globber, Grepper, and Editor now exist as workflow agents and wrapped chat tools, giving Tlamatini deterministic file discovery, regex search, and surgical in-place edit steps."
-        )
-    if any("blenderer" in subject or "blender" in subject for subject in subjects):
-        highlights.append(
-            "Since the last committed PDF/PPTX refresh, Blenderer entered the platform: a live Blender bridge over the official MCP add-on socket, available both on the canvas and as `chat_agent_blenderer`."
-        )
-    if any("self-update" in subject or "check for updates" in subject or "apply_update.ps1" in subject or "start_update" in subject for subject in subjects):
-        highlights.append(
-            "The same refresh window also delivered the in-app self-update path: `self_update.py`, new update endpoints, staged release downloads, and the external `apply_update.ps1` swap helper that preserves operator state during upgrade."
-        )
-    if not has_current_release_wave and any(
-        "1.26.1" in subject
-        or "disclaimer" in subject
-        or "external mcp" in subject
-        or ("documentation" in subject and "1.26.1" in subject)
-        for subject in subjects
-    ):
-        highlights.append(
-            "The latest versioning/documentation commits move the source-of-truth product story to the `v1.26.5` line: the External MCPs universal client remains the headline runtime capability, and the new Agent-directory disclaimer now makes the user-jurisdiction boundary explicit beside the current 82-agent / 89-tool runtime surface."
-        )
-    if any("filecreator" in subject or "file creator" in subject or ("truncate" in subject and "file" in subject) for subject in subjects):
-        highlights.append(
-            "Since the last committed PDF/PPTX refresh, `v1.19.5` hardened File-Creator with a byte-exact write path: verbatim `content` plus a `content_b64` channel now preserve backslash-heavy and binary payloads without wrong-symbol corruption."
-        )
-    if any("source code as the codebase" in subject or "self modify" in subject or "copy_source_assets" in subject or "source snapshot" in subject for subject in subjects):
-        highlights.append(
-            "The same release also completes the self-modify packaging story: `build.py --self-modify` now uses `copy_source_assets.py` to generate a rebuildable `TlamatiniSourceCode/` snapshot with redacted secrets, omitted heavy media, and rebuild instructions carried beside the application."
-        )
-    if any("api-keys wizard" in subject or "api keys wizard" in subject or ("api" in subject and "wizard" in subject) for subject in subjects):
-        highlights.append(
-            "A new operator-facing convenience layer landed too: Config now exposes an API-Keys Wizard dialog so cloud-provider credentials can be entered and updated from the browser instead of by manually editing `config.json`."
-        )
-    if any("watchdog" in subject or "hung command" in subject or "hanged" in subject for subject in subjects):
-        highlights.append(
-            "Recent runtime hardening added the autonomous command watchdog: a boot-time daemon thread that samples CPU and I/O progress across shell-interpreter subtrees and reaps only the genuinely wedged ones, closing the gap left by timeouts and post-return orphan cleanup."
-        )
-    if any("audioplayer" in subject or "videoplayer" in subject or ("playback" in subject and ("audio" in subject or "video" in subject)) for subject in subjects):
-        highlights.append(
-            "Since the last committed PDF/PPTX refresh, the media-PLAYBACK pair landed and completed the media-I/O family: AudioPlayer plays an audio file to the speakers (soundfile + sounddevice — volume in percent and a time-played budget that truncates a longer file or loops a shorter one), and VideoPlayer plays a video file with audio on a chosen display (ffpyplayer, whose wheel bundles ffmpeg + SDL, plus an OpenCV window — display, volume, the same time budget, window size, and fullscreen). Both are observational/output and ship on the canvas and as wrapped chat_agent_audioplayer / chat_agent_videoplayer tools."
-        )
-    if any("camcorder" in subject or "recorder" in subject for subject in subjects):
-        highlights.append(
-            "New observational capture pair: Camcorder (webcam photo/video via OpenCV) and Recorder (microphone WAV via sounddevice) — read-only siblings of Shoter, on the canvas and as wrapped chat_agent_camcorder / chat_agent_recorder tools."
-        )
-    if any("arduiner" in subject or "arduino" in subject for subject in subjects):
-        highlights.append(
-            "Arduiner added as the third microcontroller agent: a direct arduino-cli bridge that builds and uploads firmware for any fqbn-selected board, with zero-config bootstrap, auto board-core install, and a serial-port safety preflight."
-        )
-    if any("flow-making" in subject or "flow making" in subject or "flw" in subject for subject in subjects):
-        highlights.append(
-            "The new in-process flow-making skill turns a plain objective into a canvas-loadable .flw by driving the FlowCreator engine, so operators build runnable flows straight from chat."
-        )
-    if any("temp/template" in subject or "template generation" in subject for subject in subjects):
-        highlights.append(
-            "Directory policy: every transient file now stays under <app>/Temp and every scaffolded firmware/engine project tree under <app>/Templates (never C:/Temp or %TEMP%), pinned before Django starts."
-        )
-    if any("esp32er" in subject or "es32er" in subject or "platformio" in subject for subject in subjects):
-        highlights.append(
-            "The embedded-firmware branch remains part of the current product story too: ESP32er keeps the PlatformIO path for scaffold/build/upload/monitor work, while the broader handbook now needs to present the firmware stack as STM32er + ESP32er + Arduiner + ESPHomer rather than a smaller trio."
-        )
-    if any("asking on the chain of multi-turn" in subject or "ask exec" in subject or "execution interrupted" in subject for subject in subjects):
-        highlights.append(
-            "The human-in-the-loop gate remains current: Ask Execs can still pause before each state-changing Multi-Turn step, wait for Proceed or Deny through `ExecPermissionBroker`, and halt the chain safely with the explicit red interruption banner."
-        )
-    if any("stm32" in subject or "stmer" in subject or "firmware" in subject and "hardware" in subject for subject in subjects):
-        highlights.append(
-            "The STM32 branch is still active in the same modern operator surface: STM32er remains the bridge into the STM32 Template Project MCP for scaffold/build/flash/observe/reset workflows guarded by a critical preflight."
-        )
-    if any("self" in subject and ("herself" in subject or "modify" in subject or "source code" in subject) for subject in subjects):
-        highlights.append(
-            "The self-knowledge and optional self-modification surface has matured into the current baseline: she can describe her runtime honestly and, when `TlamatiniSourceCode/` is present, inspect the bundled rebuildable source tree that explains how she works."
-        )
-    if any("4096" in subject or "degrees of liberty" in subject or "turn" in subject and "freedom" in subject for subject in subjects):
-        highlights.append(
-            "The same window raised the default Multi-Turn iteration ceiling from 256 to 4096, making long autonomous operator chains practical without an early loop-cap failure."
-        )
-    if any("unrealer" in subject or "unreal mcp" in subject or "xaiht" in subject for subject in subjects):
-        highlights.append(
-            "Unrealer advanced substantially too: the docs now point at the public `XAIHT/XaihtUnrealEngineMCP` fork and the full 53-command Unreal MCP surface, with new demos and better parameter-path guidance."
-        )
-    if any("kalier" in subject or "kali" in subject for subject in subjects):
-        highlights.append(
-            "Kalier also matured during the same span: `v1.7.1` made Tlamatini the embedded MCP-Kali-Server client for chat-side runs, so operators configure the Kali box once in `Config -> URLs` instead of repeating it in every prompt."
-        )
-    if any(("glm-5.2:cloud" in subject or "glm-5.3:cloud" in subject) or "default in config.json" in subject or "pythonxer" in subject or "forked windows execution" in subject or "project skills" in subject or "reporting on the log file" in subject for subject in subjects):
-        highlights.append(
-            "The same span also refined the shipped operating baseline: handbook simplification, a `glm-5.3:cloud` checked-in default, stronger execution logging, Pythonxer downstream fixes, Windows forked-process polish, and cleaner project-skill loading."
-        )
-    if any("attention" in subject or "flash" in subject or "notifications" in subject or "notifier" in subject for subject in subjects):
-        highlights.append(
-            "Since the last committed PDF/PPTX refresh, operator attention handling moved to a concrete Windows path: browser-side Ask Execs and Notifier events can call `/agent/flash_window/`, which lets Tlamatini flash her own taskbar button and persist an uppercase attention banner in `tlamatini.log`."
-        )
-    if any("esp32 template project" in subject or "template project" in subject and "esp32" in subject for subject in subjects):
-        highlights.append(
-            "The same span also documented the `ESP32TemplateProject` reference repository: a plain PlatformIO project that gives ESP32er a known-good, GitHub-ready firmware baseline for build, upload, and serial-monitor verification."
-        )
-    if any("doc" in subject or "markdown" in subject or "graphical" in subject for subject in subjects):
-        highlights.append(
-            "The markdown handbooks themselves were revised during that span, so this dossier refresh is carrying forward not only code/runtime changes but also the corrected operator-language and release-story wording."
-        )
-    if highlights:
-        return highlights
-    return ["Since the last committed PDF/PPTX refresh, Git shows focused platform evolution across autonomy, operator ergonomics, runtime self-knowledge, and documentation fidelity."]
+    """Describe exactly the selected baseline-to-HEAD commits."""
+    return weekly_highlights(commits)
 
 
 def _load_module_from_path(module_name: str, path: Path):
@@ -1610,6 +771,8 @@ def collect_publication_context(context: dict) -> dict:
 
 def publication_guide(context: dict) -> list[str]:
     evidence = context["avatar_evidence"]
+    baseline = context["visual_doc_baseline"]
+    baseline_ref = baseline.short_hash if baseline else context["release_tag"]
     return [
         f"Since the last committed dossier revision, the inspected checkout adds {len(context['new_assets'])} files "
         f"including {context['untracked_files']} untracked working additions. "
@@ -1623,21 +786,23 @@ def publication_guide(context: dict) -> list[str]:
         f"{context['total_lines']:,} physical text lines, {context['total_effective_lines']:,} "
         f"effective lines, and {context['binary_count']} binary assets. Published backup/test "
         "text counts toward repository totals but does not add runtime agents or frontend modules.",
-        "Since dossier commit 590cb8b: avatar presence uses canvas blending (7e48e63), "
-        "Whisperer gains a sound gate (96fdbde), its prompt/watchdog contracts follow "
-        "(e403d5c), and Voice Commands opens the catalog (a867567). The cloud model "
-        "baseline remains glm-5.3:cloud. Output source art is development-only, while "
-        "the runtime JPGs ship through Tlamatini/agent/static/.",
+        f"Changes after dossier commit {baseline_ref} are listed in the Git appendix. "
+        "This refresh covers the process-aware wait fix (ac72b6c) and standalone "
+        "Ollama usage utility (36c0139). Canvas avatar presence, Whisperer's sound gate "
+        "and Voice Commands remain carried. Runtime JPGs ship through "
+        "Tlamatini/agent/static/; output source art remains development evidence.",
         f"Historical atomic-renderer evidence: {evidence['transitions']} transitions, {evidence['paints']:,} "
         f"browser paints, {evidence['states']} expression states, {evidence['viewports']} viewports, "
         f"minimum coverage {evidence['min_coverage']:.0%}, zero reported layout/coverage failures "
         "and no JavaScript errors. This older report is not proof of the new canvas renderer. "
-        "Run the separate presence suite for current canvas behavior.",
+        "The separate presence suite targets current canvas behavior. No automated "
+        "tests were executed for this refresh, as requested.",
         "README and Book retain a pre-avatar 1,069-file inventory and an obsolete tag-equals-HEAD "
         "sentence. Their 311-transition repair-run description is historical. This dossier "
         "uses current source counts. Their older atomic/reduced-motion avatar section "
         "is superseded by the canvas behavior below. README's Django 5.2.4 stack entry "
-        "also lags the requirements pin of 5.2.15. Historical prose is not release metadata.",
+        "also lags the requirements pin of 5.2.15. Neither handbook yet explains the "
+        "latest wait repair or credits utility. Historical prose is not release metadata.",
     ]
 
 
@@ -1680,9 +845,10 @@ AVATAR_TEST_GUIDE = [
     "uses Node.js and writes output/avatar_flash_fix/visible-test. Its atomic-state "
     "assumptions are historical. Use the presence-only command for the current renderer. "
     "The generic test credential must not become a production password.",
-    "Fresh verification on 2026-09-12: all 74 presence checks passed in a visible "
+    "Recorded verification from 2026-09-12: all 74 presence checks passed in a visible "
     "browser. The separate Django run passed 110 Whisperer, voice-catalog and Gitter "
-    "tests. These tests do not prove real microphone transcription, audible voice "
+    "tests. These historical runs were not repeated for this refresh. They do not "
+    "prove real microphone transcription, audible voice "
     "synchronization on every host, or a rebuilt frozen installation.",
 ]
 
@@ -1742,6 +908,52 @@ VOICE_COMMAND_GUIDE = [
     "agent-creation guidance. test_voice_commands_catalog.py checks ordering, sentence "
     "fidelity and classifier parity. The headed catalog harness checks browser cards "
     "and toggles, but does not prove real microphone recognition or spoken task execution.",
+]
+
+
+WRAPPED_WAIT_GUIDE = [
+    "Commit ac72b6c fixes chat_agent_run_wait in agent/tools.py. The previous loop "
+    "reread the ChatAgentRun row, but no writer kept that row current during the "
+    "child's execution. A finished child could therefore consume the full wait budget.",
+    "Each poll now calls reconcile_chat_agent_run. That runtime helper checks process "
+    "liveness, consults the process handle when available, persists the resulting "
+    "status and stamps finishedAt when it first observes completion.",
+    "The loop breaks only outside RUNNING_STATUSES, which includes created and "
+    "running. It no longer treats a created status alone as completion. This applies "
+    "to wrapped agents generally, including Whisperer after transcription.",
+    "max_seconds defaults to 120 and is clamped to 1-600. Poll cadence defaults to "
+    "2 seconds with a 1-second minimum. Expiry returns a status envelope and log "
+    "excerpt without stopping the child. The caller may wait again or request stop.",
+    "waited_seconds counts scheduled sleeps rather than exact wall-clock time. "
+    "A full final poll sleep can exceed the nominal budget, plus reconciliation "
+    "overhead. finishedAt remains an observation timestamp, not the OS exit instant.",
+    "agent/test_chat_agent_run_wait.py adds five cases covering stale-row avoidance, "
+    "process reconciliation, unfinished states, early return and timeout behavior. "
+    "Source reviewed only in this refresh; the cases were not executed.",
+]
+
+
+OLLAMA_USAGE_GUIDE = [
+    "ollama_credits.py is a standalone account-usage utility added by commit 36c0139. "
+    "It does not add a workflow agent, a wrapped tool, a migration or a chat UI. "
+    "The source uses only Python's standard library.",
+    "It reads the operator's local .ollama/id_ed25519 OpenSSH key and constructs "
+    "timestamped Ed25519 signatures. The key parser accepts an unencrypted "
+    "ssh-ed25519 key. Keep the key private and review the utility before running it.",
+    "The implemented account requests are GET /api/usage and POST /api/me at "
+    "ollama.com, each with a 20-second timeout. This describes the checked-in "
+    "implementation; endpoint availability and account responses were not exercised.",
+    r"Manual use from the repository root: .\python\python.exe ollama_credits.py. "
+    "Add --json for the returned account and usage payloads. The console report "
+    "shows monthly use, model request counts and four-week activity. It pauses "
+    "for Enter on an interactive terminal.",
+    "The card hardcodes a $300 monthly denominator and infers reset day 3 by "
+    "default. These assumptions may not match the account. --reset-day 0 hides "
+    "the caption, and --json avoids the derived dollar card. Colored model "
+    "segments reflect request shares, not measured per-model cost shares.",
+    "This documentation refresh did not execute the utility or read account keys. "
+    "Account email and usage can appear in its output. Redact reports before "
+    "sharing. The script queries usage; it does not buy, grant or reset credits.",
 ]
 
 
@@ -3002,6 +2214,8 @@ def build_pdf(context: dict) -> None:
                          ("Reproducible visible avatar tests", AVATAR_TEST_GUIDE),
                          ("Whisperer silence gate", WHISPERER_GATE_GUIDE),
                          ("Voice Commands catalog and execution", VOICE_COMMAND_GUIDE),
+                         ("Wrapped-agent wait and completion", WRAPPED_WAIT_GUIDE),
+                         ("Standalone Ollama account-usage utility", OLLAMA_USAGE_GUIDE),
                          ("Committed Gitter Windows-path repair", GITTER_WORKTREE_GUIDE)):
         story.append(p(title, styles["h2"]))
         for item in guide:
@@ -3412,7 +2626,7 @@ def build_pdf(context: dict) -> None:
     story.append(p("8. Effective Line Inventory by Language", styles["h1"]))
     story.append(
         p(
-            "Methodology: git-tracked text files plus git-unignored working-tree additions. Blank lines and comment-only lines are excluded. Python counts remove module, class, and function docstrings through AST parsing. Executable multiline strings count every nonblank occupied line. This corrects the former token-start-only undercount, so effective totals are not directly comparable with older dossiers. Other text uses language-specific comment stripping. Binary/media assets have no line count.",
+            "Methodology: git-tracked text files plus git-unignored working-tree additions. Blank lines and comment-only lines are excluded. Python counts remove module, class, and function docstrings through AST parsing. Executable multiline strings count every nonblank occupied line. The 2026-09-12 correction replaced the former token-start-only undercount, so comparisons with earlier dossiers require a recount. Other text uses language-specific comment stripping. Binary/media assets have no line count.",
             styles["body"],
         )
     )
@@ -4034,6 +3248,8 @@ def build_ppt(context: dict) -> None:
                          ("Visible Avatar Test Runner", AVATAR_TEST_GUIDE),
                          ("Whisperer Silence Gate", WHISPERER_GATE_GUIDE),
                          ("Voice Commands", VOICE_COMMAND_GUIDE),
+                         ("Wrapped-Agent Wait Completion", WRAPPED_WAIT_GUIDE),
+                         ("Ollama Account-Usage Utility", OLLAMA_USAGE_GUIDE),
                          ("Gitter Windows Paths", GITTER_WORKTREE_GUIDE)):
         add_themed_column_slides(prs, title, "current source and verification evidence",
                                  THEME["jade"], [("Behavior", THEME["jade"], guide[:3]),
@@ -4612,7 +3828,7 @@ def build_ppt(context: dict) -> None:
     add_panel(slide, audit, 0.82, 1.65, 11.55, 4.9, "Counting boundary", [
         "The primary inventory uses git ls-files. Nonignored untracked additions, when present, are labeled separately. Ignored build output, caches and environments are excluded.",
         "Physical lines include blanks and comments in text files. Effective lines exclude blank and comment-only lines. Python also excludes module, class and function docstrings identified by AST parsing.",
-        "Executable Python multiline strings count every nonblank occupied line. This refresh corrects the previous token-start-only undercount. Effective totals therefore cannot be compared directly with older dossiers without recounting them.",
+        "Executable Python multiline strings count every nonblank occupied line. The 2026-09-12 correction replaced the token-start-only undercount. Comparisons with earlier dossiers require recounting them.",
         "Other languages use comment stripping rather than semantic execution analysis. Markdown counts authored nonblank documentation. Binary and media assets have no source-line count. Published historical source snapshots contribute text lines but do not increase runtime module or agent totals.",
         "The generated context JSON retains per-file physical/effective counts, per-language totals and all inventory paths. Both dossiers contain the complete repository tree and a separate new-asset appendix.",
     ], THEME["copper"], "line-method", 17)
