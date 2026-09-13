@@ -31,9 +31,11 @@ from .chat_agent_registry import (
 )
 from .config_loader import get_config_value
 from .chat_agent_runtime import (
+    RUNNING_STATUSES,
     create_isolated_runtime_copy,
     get_chat_agent_run,
     list_chat_agent_runs,
+    reconcile_chat_agent_run,
     register_chat_agent_run,
     resolve_runtime_script_path,
     serialize_chat_agent_run,
@@ -4754,8 +4756,20 @@ def chat_agent_run_wait(run_id: str, max_seconds: int = 120, poll_interval_secon
     elapsed = 0
     import time as _time
     while elapsed < max_s:
-        run.refresh_from_db()
-        if str(run.status or "").lower() != "running":
+        # Ask the OPERATING SYSTEM whether the child is alive -- do NOT merely
+        # re-read the DB row. Nothing writes ChatAgentRun.status while a child
+        # runs; only reconcile_chat_agent_run() ever polls the process and
+        # updates it. The old `run.refresh_from_db()` therefore re-read a stale
+        # "running" on every tick, so this tool could NEVER return early and
+        # ALWAYS burned the full max_seconds. Measured live 2026-09-12:
+        # Whisperer produced its transcript in 13 s and Tlamatini still sat
+        # blocked here for the full 300 s, then stamped finishedAt at the
+        # moment the wait gave up -- making the delay invisible in the record.
+        # Break on NOT-IN RUNNING_STATUSES ({"created", "running"}), not on
+        # != "running": a run still in "created" has not finished either, and
+        # the old comparison reported it as done the instant it was polled.
+        run = reconcile_chat_agent_run(run)
+        if str(run.status or "").lower() not in RUNNING_STATUSES:
             break
         _time.sleep(poll_s)
         elapsed += poll_s
