@@ -108,6 +108,240 @@ def resolve_version() -> str:
     return ""
 
 
+# ─── Is Tlamatini still running? ─────────────────────────────────────────────
+# Uninstalling while Tlamatini is still up leaves half an installation behind:
+# Windows refuses to delete a running .exe, a loaded .dll, or a file one of the
+# pool agents still holds open — so the user ends up with a broken directory and
+# nothing on screen explaining why.  The uninstaller therefore REFUSES to start
+# while any process is running out of the very directory it is about to erase,
+# and asks the user to close Tlamatini first (Ctrl+C in its console is the clean
+# way, because that is what lets the Tier-3 reaper and the pool cleanup run).
+#
+# ⚠ FAIL-OPEN CONTRACT (do NOT weaken).  The gate blocks ONLY on positive,
+# evidence-backed detection.  If the detector itself cannot run — an OS call
+# fails, a future Windows, a non-Windows host — it reports "nothing found" and
+# the uninstallation proceeds.  A detector that cannot run must never lock a
+# user out of removing her own software, and the dialog deliberately offers no
+# "continue anyway" button, so a false positive would be a dead end.
+
+TH32CS_SNAPPROCESS = 0x00000002
+PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+_MAX_PATH_W = 260
+
+
+class _PROCESSENTRY32W(ctypes.Structure):
+    """Windows ``PROCESSENTRY32W`` — one entry of a Toolhelp process snapshot."""
+
+    _fields_ = [
+        ("dwSize",              wintypes.DWORD),
+        ("cntUsage",            wintypes.DWORD),
+        ("th32ProcessID",       wintypes.DWORD),
+        ("th32DefaultHeapID",   ctypes.POINTER(ctypes.c_ulong)),
+        ("th32ModuleID",        wintypes.DWORD),
+        ("cntThreads",          wintypes.DWORD),
+        ("th32ParentProcessID", wintypes.DWORD),
+        ("pcPriClassBase",      ctypes.c_long),
+        ("dwFlags",             wintypes.DWORD),
+        ("szExeFile",           ctypes.c_wchar * _MAX_PATH_W),
+    ]
+
+
+def _kernel32():
+    """Return kernel32 with the snapshot prototypes declared, or None."""
+    try:
+        k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        k32.CreateToolhelp32Snapshot.argtypes = [wintypes.DWORD, wintypes.DWORD]
+        k32.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
+        k32.Process32FirstW.argtypes = [wintypes.HANDLE,
+                                        ctypes.POINTER(_PROCESSENTRY32W)]
+        k32.Process32FirstW.restype = wintypes.BOOL
+        k32.Process32NextW.argtypes = [wintypes.HANDLE,
+                                       ctypes.POINTER(_PROCESSENTRY32W)]
+        k32.Process32NextW.restype = wintypes.BOOL
+        k32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+        k32.OpenProcess.restype = wintypes.HANDLE
+        k32.QueryFullProcessImageNameW.argtypes = [
+            wintypes.HANDLE, wintypes.DWORD, wintypes.LPWSTR,
+            ctypes.POINTER(wintypes.DWORD),
+        ]
+        k32.QueryFullProcessImageNameW.restype = wintypes.BOOL
+        k32.CloseHandle.argtypes = [wintypes.HANDLE]
+        k32.CloseHandle.restype = wintypes.BOOL
+        return k32
+    except Exception:
+        return None
+
+
+def _process_image_path(k32, pid: int) -> str:
+    """Full path of *pid*'s executable, or "" when Windows will not say."""
+    try:
+        handle = k32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+    except Exception:
+        return ""
+    if not handle:
+        return ""
+    try:
+        size = wintypes.DWORD(_MAX_PATH_W * 4)
+        buf = ctypes.create_unicode_buffer(size.value)
+        if k32.QueryFullProcessImageNameW(handle, 0, buf, ctypes.byref(size)):
+            return buf.value
+        return ""
+    except Exception:
+        return ""
+    finally:
+        try:
+            k32.CloseHandle(handle)
+        except Exception:
+            pass
+
+
+def iter_processes():
+    """Yield ``(pid, image_name, image_path)`` for every process we can see.
+
+    ``image_path`` is "" when Windows refuses to disclose it.  Never raises —
+    an unavailable snapshot simply yields nothing (see the fail-open contract).
+    """
+    if sys.platform != "win32":
+        return
+    k32 = _kernel32()
+    if k32 is None:
+        return
+    invalid = ctypes.c_void_p(-1).value
+    try:
+        snapshot = k32.CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0)
+    except Exception:
+        return
+    if not snapshot or snapshot == invalid:
+        return
+    try:
+        entry = _PROCESSENTRY32W()
+        entry.dwSize = ctypes.sizeof(_PROCESSENTRY32W)
+        ok = k32.Process32FirstW(snapshot, ctypes.byref(entry))
+        while ok:
+            pid = int(entry.th32ProcessID)
+            yield pid, str(entry.szExeFile), _process_image_path(k32, pid)
+            ok = k32.Process32NextW(snapshot, ctypes.byref(entry))
+    finally:
+        try:
+            k32.CloseHandle(snapshot)
+        except Exception:
+            pass
+
+
+def _is_inside(path: str, directory: str) -> bool:
+    """True when *path* lives inside *directory*, at any depth."""
+    try:
+        p = os.path.normcase(os.path.abspath(path))
+        d = os.path.normcase(os.path.abspath(directory))
+    except Exception:
+        return False
+    if not p or not d:
+        return False
+    return p == d or p.startswith(os.path.join(d, ""))
+
+
+def own_image_path() -> str:
+    """Normalised path of the image THIS uninstaller is running from."""
+    try:
+        raw = sys.executable if getattr(sys, "frozen", False) else (sys.argv[0] or "")
+        return os.path.normcase(os.path.abspath(raw)) if raw else ""
+    except Exception:
+        return ""
+
+
+def find_running_tlamatini(install_dir: str) -> list[dict]:
+    """Every process running OUT OF *install_dir* — one record each.
+
+    A record is ``{"pid": int, "name": str, "path": str, "evidence": str}``.
+
+    The uninstaller's OWN process is never reported: ``Uninstaller.exe`` lives
+    INSIDE the installation it removes, so without that exclusion the gate would
+    detect itself and nobody could ever uninstall anything.  Returns an empty
+    list both when nothing is running AND when detection is impossible.
+    """
+    if not install_dir or not os.path.isdir(install_dir):
+        return []
+
+    own_pid = os.getpid()
+    own_path = own_image_path()
+
+    # Top-level .exe names of the installation — used ONLY as a fallback for a
+    # process whose image path Windows will not disclose.
+    fallback_names = set()
+    try:
+        for entry in os.listdir(install_dir):
+            if entry.lower().endswith(".exe"):
+                fallback_names.add(entry.lower())
+    except Exception:
+        pass
+    fallback_names.discard(os.path.basename(own_path))
+
+    found: list[dict] = []
+    try:
+        for pid, name, path in iter_processes():
+            if pid == own_pid or pid == 0:
+                continue
+            if path:
+                if own_path and os.path.normcase(os.path.abspath(path)) == own_path:
+                    continue  # a twin uninstaller is not a running Tlamatini
+                if _is_inside(path, install_dir):
+                    found.append({
+                        "pid": pid, "name": name, "path": path,
+                        "evidence": "running from the installation directory",
+                    })
+            elif name and name.lower() in fallback_names:
+                found.append({
+                    "pid": pid, "name": name, "path": "",
+                    "evidence": "image path unreadable - matched by name",
+                })
+    except Exception:
+        return []  # fail open: an unusable detector never blocks the user
+    return found
+
+
+# ─── Directories that survive the uninstallation ─────────────────────────────
+# ``agents/`` is ALWAYS preserved (a companion app such as Tlamatini-FlowPills
+# keeps reading it after the uninstall).  These five hold the user's OWN
+# material — the projects loaded as context, whatever Tlamatini generated, and
+# the scratch directory — so they are preserved TOO, but only when they actually
+# hold something.  An empty one is installer scaffolding: it goes.
+PRESERVED_WHEN_NOT_EMPTY = (
+    "application",
+    "applications",
+    "content_generated",
+    "context_files",
+    "Temp",
+)
+
+_PRESERVED_WHEN_NOT_EMPTY_LOWER = frozenset(
+    name.lower() for name in PRESERVED_WHEN_NOT_EMPTY
+)
+
+
+def directory_has_content(path: str) -> bool:
+    """True when *path* holds at least one FILE, at any depth.
+
+    ⚠ FAIL-SAFE — deliberately the OPPOSITE of the process gate above.  A
+    directory we cannot read counts as "has content", because wrongly deleting
+    the user's own material is the worst outcome available here, while wrongly
+    keeping an empty folder costs nothing.  ``os.walk`` swallows permission
+    errors silently, so they are captured through ``onerror`` rather than being
+    mistaken for emptiness.
+    """
+    if not path or not os.path.isdir(path):
+        return False
+    unreadable = []
+    try:
+        for _root, _dirs, files in os.walk(
+            path, onerror=lambda _err: unreadable.append(1),
+        ):
+            if files:
+                return True
+    except Exception:
+        return True
+    return bool(unreadable)
+
+
 # ─── Color Palette (matches Installer) ──────────────────────────────────────
 BG_DARK       = "#0f0f1a"
 BG_PANEL      = "#1a1a2e"
@@ -164,6 +398,12 @@ class FancyUninstaller:
         self.install_path = tk.StringVar(value=self._detect_install_path())
         self._progress_value = 0.0
         self._uninstalling = False
+        # Directories left untouched because they held the user's own content.
+        # Written by the worker thread, read by the completion dialog — the
+        # hand-off happens through root.after(), after the thread is done.
+        self.preserved_dirs: list[str] = []
+        # How many times the user pressed Retry on the still-running gate.
+        self._gate_attempts = 0
 
         self._build_ui()
 
@@ -247,34 +487,6 @@ class FancyUninstaller:
         # header still reads as a coherent danger-themed unit.
         self._build_version_badge(hdr_inner)
 
-    def _build_version_badge(self, parent: tk.Frame):
-        """Render the version pill in the header, or nothing if unresolved."""
-        if not self.version:
-            return
-
-        # Outer 1-px frame = pill border (red, matches the danger accent).
-        badge_outer = tk.Frame(
-            parent, bg=ERROR,
-            highlightthickness=0, bd=0,
-        )
-        badge_outer.pack(side="right", padx=(0, 22), pady=(20, 0))
-
-        # Inner dark fill with 1-px reveal forms the border.
-        badge_inner = tk.Frame(badge_outer, bg=BG_INPUT)
-        badge_inner.pack(padx=1, pady=1)
-
-        tk.Label(
-            badge_inner, text="VERSION",
-            font=(FONT_FAMILY, 7, "bold"),
-            bg=BG_INPUT, fg=FG_SECONDARY,
-        ).pack(padx=14, pady=(5, 0))
-
-        tk.Label(
-            badge_inner, text=f"v{self.version}",
-            font=(FONT_FAMILY, 12, "bold"),
-            bg=BG_INPUT, fg=ERROR,
-        ).pack(padx=14, pady=(0, 5))
-
         # ── Body card ────────────────────────────────────────────────
         body = tk.Frame(self.root, bg=BG_DARK)
         body.pack(fill="both", expand=True, padx=30, pady=20)
@@ -317,8 +529,9 @@ class FancyUninstaller:
         # ── Warning label ────────────────────────────────────────────
         tk.Label(
             inner,
-            text="⚠  The agents/ directory will be preserved.\n"
-                 "     All other application files will be removed.",
+            text="⚠  agents/ is always preserved.  application/, applications/,\n"
+                 "     content_generated/, context_files/ and Temp/ are preserved\n"
+                 "     too when they hold content.  Everything else is removed.",
             font=(FONT_FAMILY, 9), bg=BG_PANEL, fg=WARNING, anchor="w",
             justify="left",
         ).pack(fill="x", pady=(4, 10))
@@ -391,6 +604,45 @@ class FancyUninstaller:
         self.path_entry.bind("<Return>", self._on_enter_key)
         self.root.bind("<Return>", self._on_enter_key)
 
+    def _build_version_badge(self, parent: tk.Frame):
+        """Render the version pill in the header, or nothing if unresolved.
+
+        ⚠ THIS METHOD BUILDS THE BADGE AND NOTHING ELSE.  It used to carry the
+        whole body of the window — the path field, the warning, the progress
+        section and both buttons — BELOW its own ``if not self.version: return``,
+        so an uninstaller whose version could not be resolved would have painted
+        a header over an empty card: no path box, no Uninstall, no Cancel, no way
+        to do anything at all.  It never fired only because the version always
+        resolves (frozen reads the EXE's VERSIONINFO, source reads the git tag) —
+        a latent trap, not a safe design.  The window's contents belong to
+        ``_build_ui``; keep them there.
+        """
+        if not self.version:
+            return
+
+        # Outer 1-px frame = pill border (red, matches the danger accent).
+        badge_outer = tk.Frame(
+            parent, bg=ERROR,
+            highlightthickness=0, bd=0,
+        )
+        badge_outer.pack(side="right", padx=(0, 22), pady=(20, 0))
+
+        # Inner dark fill with 1-px reveal forms the border.
+        badge_inner = tk.Frame(badge_outer, bg=BG_INPUT)
+        badge_inner.pack(padx=1, pady=1)
+
+        tk.Label(
+            badge_inner, text="VERSION",
+            font=(FONT_FAMILY, 7, "bold"),
+            bg=BG_INPUT, fg=FG_SECONDARY,
+        ).pack(padx=14, pady=(5, 0))
+
+        tk.Label(
+            badge_inner, text=f"v{self.version}",
+            font=(FONT_FAMILY, 12, "bold"),
+            bg=BG_INPUT, fg=ERROR,
+        ).pack(padx=14, pady=(0, 5))
+
     # ─── Button factory with hover effects ───────────────────────────
     def _make_button(self, parent, text, command, width=14, small=False,
                      cancel=False, danger=False):
@@ -423,7 +675,12 @@ class FancyUninstaller:
 
     # ─── Validation ──────────────────────────────────────────────────
     def _validate_path(self) -> str | None:
-        """Return the validated install dir path or None on failure."""
+        """Return the validated install dir path or None on failure.
+
+        Existence + "does this look like a Tlamatini installation" only.  The
+        still-running gate and the final confirmation run afterwards, in
+        ``_start_uninstall``, in that order.
+        """
         raw = self.install_path.get().strip()
         if not raw:
             messagebox.showwarning("No path selected",
@@ -452,18 +709,23 @@ class FancyUninstaller:
             if not ans:
                 return None
 
-        # Final confirmation
-        ans = messagebox.askyesno(
+        return raw
+
+    def _confirm_removal(self, raw: str) -> bool:
+        """Last chance to back out.
+
+        Asked AFTER the still-running gate, so the user is never made to confirm
+        an uninstallation the uninstaller is about to refuse anyway.
+        """
+        return bool(messagebox.askyesno(
             "Confirm Uninstallation",
             f"This will remove Tlamatini from:\n{raw}\n\n"
-            "The agents/ directory will be preserved.\n"
+            "The agents/ directory is preserved — and so are application/, "
+            "applications/, content_generated/, context_files/ and Temp/ "
+            "whenever they hold content.\n"
             "All other files will be permanently deleted.\n\n"
             "Do you want to continue?",
-        )
-        if not ans:
-            return None
-
-        return raw
+        ))
 
     # ─── Uninstallation thread ───────────────────────────────────────
     def _on_enter_key(self, _event=None):
@@ -473,6 +735,158 @@ class FancyUninstaller:
         self._start_uninstall()
         return "break"
 
+    # ─── Still-running gate (modal — Retry / Exit, nothing else) ─────
+    def _ensure_tlamatini_not_running(self, target: str) -> bool:
+        """Refuse to uninstall while Tlamatini is still running.
+
+        Returns True when nothing is running out of *target*, so the
+        uninstallation may proceed.  Returns False otherwise — the user chose
+        Exit (or closed the dialog, which counts as Exit) and the whole
+        uninstaller has already been shut down.
+        """
+        running = find_running_tlamatini(target)
+        if not running:
+            return True
+        if self._show_running_gate(target, running):
+            return True
+        self._shutdown()
+        return False
+
+    def _show_running_gate(self, target: str, running: list[dict]) -> bool:
+        """The modal dialog.  True = clear to proceed, False = Exit.
+
+        Retry re-runs the detection IN PLACE: still running keeps the same
+        dialog open and re-states what was found; clear closes it and the
+        uninstallation continues.  There is deliberately no third button — a
+        "continue anyway" would walk the user straight into the broken,
+        half-deleted installation this gate exists to prevent.
+        """
+        self._gate_attempts = 0
+        outcome = {"proceed": False}
+
+        dlg = tk.Toplevel(self.root)
+        dlg.title("Tlamatini is still running")
+        dlg.configure(bg=BG_DARK)
+        dlg.resizable(False, False)
+        dlg.transient(self.root)
+
+        w, h = 620, 420
+        sx = (dlg.winfo_screenwidth() - w) // 2
+        sy = (dlg.winfo_screenheight() - h) // 2
+        dlg.geometry(f"{w}x{h}+{sx}+{sy}")
+
+        hdr = tk.Frame(dlg, bg=BG_CARD)
+        hdr.pack(fill="x")
+        tk.Frame(hdr, bg=ERROR, height=3).pack(fill="x")
+        tk.Label(
+            hdr, text="⛔  Close Tlamatini before uninstalling",
+            font=(FONT_FAMILY, 13, "bold"), bg=BG_CARD, fg=ERROR, anchor="w",
+        ).pack(fill="x", padx=20, pady=12)
+
+        body = tk.Frame(dlg, bg=BG_PANEL, highlightbackground=BORDER_COLOR,
+                        highlightthickness=1)
+        body.pack(fill="both", expand=True, padx=16, pady=14)
+
+        headline = tk.StringVar()
+        detail = tk.StringVar()
+
+        self.gate_headline_var = headline
+        self.gate_detail_var = detail
+
+        tk.Label(
+            body, textvariable=headline, font=(FONT_FAMILY, 10, "bold"),
+            bg=BG_PANEL, fg=FG_PRIMARY, anchor="w", justify="left",
+            wraplength=w - 80,
+        ).pack(fill="x", padx=18, pady=(16, 6))
+
+        tk.Label(
+            body,
+            text=("Please close it first — preferably with Ctrl+C in the "
+                  "Tlamatini console window, which is what lets it shut its "
+                  "agents down cleanly.\n\nThen press Retry."),
+            font=(FONT_FAMILY, 9), bg=BG_PANEL, fg=FG_SECONDARY,
+            anchor="w", justify="left", wraplength=w - 80,
+        ).pack(fill="x", padx=18, pady=(0, 10))
+
+        tk.Label(
+            body, text="DETECTED", font=(FONT_FAMILY, 8, "bold"),
+            bg=BG_PANEL, fg=FG_DIM, anchor="w",
+        ).pack(fill="x", padx=18)
+
+        detail_lbl = tk.Label(
+            body, textvariable=detail, font=("Consolas", 9),
+            bg=BG_INPUT, fg=WARNING, anchor="nw", justify="left",
+            wraplength=w - 90,
+        )
+        detail_lbl.pack(fill="both", expand=True, padx=18, pady=(4, 12))
+
+        btn_row = tk.Frame(body, bg=BG_PANEL)
+        btn_row.pack(fill="x", padx=18, pady=(0, 14))
+
+        def _render(found: list[dict]):
+            if self._gate_attempts:
+                headline.set(
+                    f"STILL RUNNING — retry #{self._gate_attempts} detected "
+                    f"{len(found)} Tlamatini process(es) in:\n{target}"
+                )
+            else:
+                headline.set(
+                    f"{len(found)} Tlamatini process(es) are running in:\n{target}"
+                )
+            detail.set("\n".join(
+                f"  {rec['name']}   (PID {rec['pid']})   {rec['evidence']}"
+                for rec in found
+            ))
+            detail_lbl.config(fg=ERROR if self._gate_attempts else WARNING)
+
+        def _retry():
+            self._gate_attempts += 1
+            still = find_running_tlamatini(target)
+            if not still:
+                outcome["proceed"] = True
+                dlg.destroy()
+                return
+            _render(still)
+            try:
+                dlg.bell()
+            except Exception:
+                pass
+
+        def _exit():
+            outcome["proceed"] = False
+            dlg.destroy()
+
+        self.gate_exit_btn = self._make_button(btn_row, "Exit", _exit,
+                                               cancel=True)
+        self.gate_exit_btn.pack(side="right", padx=(8, 0))
+        self.gate_retry_btn = self._make_button(btn_row, "⟳  Retry", _retry,
+                                                danger=True)
+        self.gate_retry_btn.pack(side="right")
+
+        _render(running)
+
+        dlg.protocol("WM_DELETE_WINDOW", _exit)   # the titlebar X is Exit
+        dlg.bind("<Return>", lambda _e: _retry())
+        dlg.bind("<Escape>", lambda _e: _exit())
+        self.gate_retry_btn.focus_set()
+
+        dlg.update_idletasks()
+        try:
+            dlg.grab_set()      # modal: nothing else in the app answers
+            dlg.lift()
+            dlg.focus_force()
+        except tk.TclError:
+            pass
+        self.root.wait_window(dlg)
+        return bool(outcome["proceed"])
+
+    def _shutdown(self):
+        """Shut the uninstaller down completely (the gate's Exit button)."""
+        try:
+            self.root.destroy()
+        except Exception:
+            pass
+
     def _start_uninstall(self):
         if self._uninstalling:
             return
@@ -481,6 +895,16 @@ class FancyUninstaller:
         if target is None:
             return
 
+        # Nothing may be running out of the directory we are about to erase.
+        # Exit inside the gate closes the uninstaller, so there is nothing to
+        # clean up here — just stop.
+        if not self._ensure_tlamatini_not_running(target):
+            return
+
+        if not self._confirm_removal(target):
+            return
+
+        self.preserved_dirs = []
         self._uninstalling = True
         self.uninstall_btn.config(state="disabled")
         self.browse_btn.config(state="disabled")
@@ -609,7 +1033,13 @@ class FancyUninstaller:
             pass
 
     def _remove_files(self, target: str, cumulative: float, weight: float):
-        """Remove all files and directories in *target* except agents/."""
+        """Remove everything in *target* except what has to survive.
+
+        ALWAYS kept: ``agents/``.  Kept WHENEVER IT HOLDS CONTENT: every name in
+        ``PRESERVED_WHEN_NOT_EMPTY``.  Each directory kept for its content is
+        recorded in ``self.preserved_dirs`` so the completion dialog can name it
+        — the directory names only, never the files inside them.
+        """
         if not os.path.isdir(target):
             return
 
@@ -618,14 +1048,14 @@ class FancyUninstaller:
         processed = 0
 
         for item in items:
-            # ── PRESERVE the agents directory ────────────────────────
+            item_path = os.path.join(target, item)
+
+            # ── PRESERVE the agents directory (always) ───────────────
             if item.lower() == "agents":
                 # Leave a companion-app marker + re-stamp the manifest so
                 # Tlamatini-FlowPills can find these PRESERVED agents (PROP-003).
                 try:
-                    self._write_preserved_agents_marker(
-                        os.path.join(target, item), target
-                    )
+                    self._write_preserved_agents_marker(item_path, target)
                 except Exception:
                     pass
                 processed += 1
@@ -636,7 +1066,22 @@ class FancyUninstaller:
                 )
                 continue
 
-            item_path = os.path.join(target, item)
+            # ── PRESERVE a user-content directory that is NOT empty ──
+            # The user's own material outranks a tidy uninstall: an empty one is
+            # installer scaffolding and goes, one holding a single file stays
+            # whole — exactly the way agents/ does.
+            if (item.lower() in _PRESERVED_WHEN_NOT_EMPTY_LOWER
+                    and os.path.isdir(item_path)
+                    and directory_has_content(item_path)):
+                self.preserved_dirs.append(item)
+                processed += 1
+                frac = processed / total if total else 1.0
+                self._set_progress(
+                    cumulative + weight * frac,
+                    f"Skipping {item}/ (your content is preserved)…",
+                )
+                continue
+
             try:
                 if os.path.isdir(item_path):
                     shutil.rmtree(item_path, onerror=self._on_rmtree_error)
@@ -818,6 +1263,26 @@ class FancyUninstaller:
             retries -= 1
 
     # ─── Completion dialogs ──────────────────────────────────────────
+    def _preserved_content_note(self) -> str:
+        """The legend naming the directories kept because they held content.
+
+        Empty string when there were none — the completion dialog must never
+        print a static list of every candidate directory, only the ones actually
+        found with something inside.  Directory NAMES only: what the user keeps
+        in them is hers, and the uninstaller does not enumerate it.
+        """
+        names = list(dict.fromkeys(self.preserved_dirs))
+        if not names:
+            return ""
+        head = (
+            "\n\nContent was detected in the directory below, so it was "
+            "left untouched:"
+            if len(names) == 1 else
+            "\n\nContent was detected in the directories below, so they were "
+            "left untouched:"
+        )
+        return head + "\n" + "\n".join(f"    •  {name}" for name in names)
+
     def _show_success(self, target: str):
         self.step_label.config(text="✓  Uninstallation complete!", fg=SUCCESS)
 
@@ -832,7 +1297,8 @@ class FancyUninstaller:
             "Uninstallation Complete",
             f"Tlamatini has been successfully uninstalled.\n\n"
             f"Location: {target}"
-            f"{agents_note}\n\n"
+            f"{agents_note}"
+            f"{self._preserved_content_note()}\n\n"
             "The .flw file association has been removed\n"
             "and shortcuts have been deleted.",
         )
