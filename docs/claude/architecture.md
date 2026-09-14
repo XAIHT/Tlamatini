@@ -22,12 +22,88 @@ Key settings:
 - `enable_unified_agent`: Enable tool-calling agent
 - `unified_agent_max_iterations`: Max tool-call turns (default 4096)
 - `unified_agent_llm_step_max_tactics` / `unified_agent_llm_step_timeout_seconds`: Self-healing model-step invoker budgets (default **4096** distinct recovery tactics / **80 s** per-attempt watchdog). Govern `agent/self_healing.py::SelfHealingInvoker`, which wraps every model `.invoke()` in the Multi-Turn executor so a transient model failure never hangs, never discards work already done, and never produces a silent/untruthful answer. See `docs/claude/multi-turn.md` → *Self-healing model steps*.
+- `ollama_repeat_penalty` / `ollama_repeat_last_n` / `ollama_num_ctx`: **The Ollama sampler triple** (defaults **1.2** / **256** / **1048576**). Applied by BOTH chains in `rag/factory.py` and forwarded to `ChatOllama` by `mcp_agent.py`'s parameter passthrough. See *Ollama sampler settings* below — these are measured values with a real failure behind them, not taste.
 - `chat_agent_limit_runs`: Wrapped-run listing limit
 - `binary_context_detection`: **Master switch for the binary-content guard on the context loader** (default `true`). See *Binary-content guard* below.
 - `binary_detection_sample_bytes` / `binary_detection_control_ratio` / `binary_detection_log_each_file` / `binary_detection_extra_binary_extensions` / `binary_detection_force_text_extensions`: Binary-guard tuning knobs (8192 / 0.30 / true / [] / []).
 - `stm32_mcp_server_script` / `stm32_mcp_repo_url` / `stm32_mcp_install_dir`: STM32er template-MCP globals (seeded by `tools._seed_global_agent_defaults`). `stm32_mcp_server_script` now defaults to `""` — empty means the STM32er agent **self-provisions** the STM32 Template Project MCP on first use (zero-config auto-bootstrap: shallow `git clone`, GitHub-zip fallback when git is absent, into `%LOCALAPPDATA%/Tlamatini/STM32TemplateProjectMCP`), so the user installs only STM32CubeIDE + Tlamatini. **Since Phase 1, STM32er is DUAL-backend (Blue Pill → F7/G/L/H7/U5/WB): `stm32_backend`=`auto` also routes to a PlatformIO `ststm32` backend that SHARES ESP32er's `pio_executable` / `pio_core_dir` globals (one PlatformIO install for both firmware agents).** See `docs/claude/agents.md` (STM32er entry).
 
 Frozen builds resolve config from the install directory next to the executable. Source mode resolves from `Tlamatini/agent/config.json`. `CONFIG_PATH` env var overrides both.
+
+---
+
+## Ollama sampler settings — measured, not taste (2026-09-13)
+
+Three keys govern how the chat model samples. All three are read in **both**
+chains of `rag/factory.py` and forwarded to `ChatOllama` by `mcp_agent.py`'s
+parameter passthrough loop.
+
+| key | ships | what it does |
+|---|---|---|
+| `ollama_repeat_penalty` | **1.2** | how hard a already-used token is penalised |
+| `ollama_repeat_last_n` | **256** | how far back that penalty looks (Ollama's own default is 64) |
+| `ollama_num_ctx` | **1048576** | requested context window |
+
+### Why these values
+
+`repeat_penalty` shipped at **1.9** for months and was emptying answers. These
+are REASONING models: they emit `thinking` separately from `content`, and when
+the sampler cannot converge they spend the whole turn thinking and return empty
+content — measured at **196,003** and once **3,101,216** characters of thinking
+with nothing to show for it. 1.9 was roughly double any documented ceiling (the
+llama.cpp/Ollama guide caps the repetition remedy at *"start with 1.05, max
+1.15-1.2"*; vLLM's default is 1.0, Ollama's is 1.1) and `glm-5.3:cloud` itself
+declares **no** parameters at all. Full story, with the trial tables:
+`docs/claude/recent-fixes.md` (2026-09-13).
+
+### Contracts (do NOT weaken)
+
+1. **⚠️ THIS FAILURE IS HEAVY-TAILED — NEVER TUNE IT FROM ONE RUN.** A 6-trial
+   run scored `1.9/64` at **0/6**; eight trials of the same cell scored **7/8**.
+   `temperature` is 0.0 and it still varies, because cloud MoE routing changes
+   between calls. Any single fast result here is noise.
+2. **`repeat_last_n` is PER-MODEL; `repeat_penalty` is not.** 1.2 won on every
+   model tested. 256 makes glm-5.3 **6× faster** at the median (154 s → 26 s)
+   and **hurts** kimi-k3 (0/8 → 1/8, 50 s → 98 s). It ships at 256 because
+   glm-5.3 is what users overwhelmingly run. **If the shipped model changes,
+   re-measure this key — it does not carry over.**
+3. **Set a new sampler key in BOTH chains.** They had already drifted twice —
+   `num_ctx` was 128000 in one and 8192 in the other, `repeat_penalty` 1.9 vs
+   1.1 — so a missing config key silently gave the retrieval chain an 8k window.
+4. **Add any new key to the `[LLM-PARAMS]` banner too.** That banner exists so
+   an unsent parameter cannot hide; `repeat_last_n` was unwired for months and
+   setting it in `config.json` did nothing at all.
+5. **⚠️ `frequency_penalty` / `presence_penalty` do NOT exist in
+   `langchain-ollama` 0.2.1.** Ollama accepts them; our wrapper does not expose
+   them, so they would be dropped silently. Do not add them without upgrading.
+
+### ⚠️ `num_ctx` is a NO-OP for a `:cloud` model — proved
+
+A **263,159-token** prompt sent with `num_ctx=8192` recalled a needle planted
+near its start. The cloud server enforces its own limit instead, and does it
+cleanly:
+
+| prompt sent | result |
+|---|---|
+| 167,587 / 334,847 / 660,717 tokens | needle recalled, 100% |
+| 1,297,992 tokens | **HTTP 400** *"prompt is too long: 1297992, model maximum context length: 1048576"* |
+
+So 1,048,576 (which matches `glm_dsa_moe.context_length` reported by Ollama and
+docs.z.ai) is a **real** capability, not a spec number, and oversize fails loudly
+rather than truncating in silence. The old 63,536 described nothing — real
+requests were already running at **78,288** prompt tokens, 23% above it.
+
+**But `num_ctx` IS meaningful for a LOCAL model**, where it sizes the KV cache at
+load time. Tlamatini is cloud-first, so 1,048,576 is the right default here; a
+local-model user on a small GPU will feel it — loudly, at load, not as a wrong
+answer.
+
+### Known blind spot
+
+`langchain-ollama` **0.2.1** (our pin) **drops the `thinking` field entirely**,
+so a model that burns its whole turn reasoning surfaces to the user only as
+*"The tool-calling model returned an empty final response."* 1.1.0 is current.
+Upgrading is separate work and is NOT done.
 
 ---
 

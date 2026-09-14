@@ -109,6 +109,22 @@ That is the whole setup. Tick **Multi-Turn** in the chat toolbar and hand Tlamat
 
 ---
 
+## A note on the settings you will never touch
+
+Underneath Config ▸ Models sit a handful of numbers nobody normally sees, and one of them was quietly breaking Tlamatini until September 2026. It is worth one page, because the story explains why you should trust the values that ship and leave them alone.
+
+The symptom was an answer that said nothing: *"The tool-calling model returned an empty final response."* It arrived after about six minutes of silence, which felt like a crash but was not one. The cause was `ollama_repeat_penalty` — the dial that tells a model how strongly to avoid reusing words it has already used. It shipped at **1.9**, and nothing anywhere recommended that. Ollama's own default is 1.1, the reference implementations use 1.0, and the tuning guide everyone cites says to raise it gradually and stop at about 1.2.
+
+Why did a too-high dial produce *silence* rather than strange prose? Because the models Tlamatini talks to now are **reasoning** models. They think privately first, in a stream you never see, and only then write an answer. Push the dial too hard and the thinking can never settle — every word that would round off a thought is the very word being penalised. So the model thinks, and thinks. One measured run produced **196,003 characters** of private reasoning in 287 seconds and then stopped with nothing written. A later one produced **3.1 million characters over fifty-one minutes**. From the outside: a long pause, then an empty reply.
+
+Finding it took longer than it should have, for a reason worth remembering. The failure is **intermittent**. Six test runs of the bad setting came back perfectly clean; eight runs of the identical setting failed seven times. Nothing had changed between them. These are enormous models served from the cloud, and which machines answer your request varies from call to call. Four different theories were tested and discarded — the size of the tool list, the difficulty of the question, the context window, even the penalty itself measured the wrong way — each of which looked proven on a single run and each of which was wrong. **One run proves nothing here.**
+
+The penalty now ships at **1.2**, and on the flagship model that took failures from seven in eight down to one in eight. Two neighbours were corrected at the same time: `ollama_repeat_last_n`, which decides how far back the penalty reaches, was never actually reaching Ollama at all — it is now wired, and set to a value that made the same model six times faster — and `ollama_num_ctx`, which now reads **1,048,576** instead of a smaller number that described nothing real. That last one is honesty rather than power. On a cloud model the server enforces its own limit regardless of what Tlamatini asks for, and it enforces it *well*: exceed it and you get a clear error naming both your size and the maximum, never a conversation quietly trimmed behind your back. While checking, Tlamatini was asked to find one buried fact inside a prompt of **660,000 tokens**. She found it every time.
+
+The lesson generalises past these three numbers. A default with no reason recorded beside it is a bug waiting for someone to inherit it — so every one of these values now carries its measurement in the project's history, and the one remaining gap is written down too: the library Tlamatini uses to reach Ollama throws away the model's private reasoning, which is exactly why a runaway looks like an empty answer instead of an honest *"still thinking"*.
+
+---
+
 ## How to read this book
 
 Tlamatini does a lot. This book is organized so you can stop reading at the depth you need.

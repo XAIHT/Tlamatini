@@ -16,6 +16,101 @@
 
 ---
 
+## 2026-09-13 - The sampler was emptying her answers: repeat_penalty 1.9, an unwired repeat_last_n, and a num_ctx that describes nothing
+
+**Files: `agent/config.json` (`ollama_repeat_penalty` 1.9 → **1.2**, NEW
+`ollama_repeat_last_n` = **256**, `ollama_num_ctx` 63536 → **1048576**),
+`agent/rag/factory.py` (both chains: same three values, `repeat_last_n` newly
+passed), `agent/mcp_agent.py` (`repeat_last_n` added to the parameter
+passthrough AND to the `[LLM-PARAMS]` banner).**
+
+**THE SYMPTOM.** Angela's chat answered *"The tool-calling model returned an
+empty final response."* Twice in one session, each after ~362 s of silence.
+
+**WHAT IT ACTUALLY WAS.** `glm-5.3` and `kimi-k3` are REASONING models: they
+emit `thinking` separately from `content`. When the sampler cannot converge they
+spend the entire turn thinking and return **empty content**. Measured live at
+full load: **196,003 characters of thinking over 287 s**, and in a later trial
+**3,101,216 characters over 51 minutes**, both with `content` empty and zero
+tool calls. ⚠️ **`langchain-ollama` 0.2.1 (our pin) drops the `thinking` field
+entirely**, so none of that is visible — the operator sees only the canned
+"empty final response" line. That blindness is NOT fixed here; 1.1.0 is current
+and the upgrade is separate work.
+
+**FOUR HYPOTHESES DIED FIRST — record them so nobody re-tests them.** The
+43.7k-token tool payload answered in **3.0 s**. The huge open-ended task itself
+answered in **31 s with 47 tool calls**. A 92,415-token prompt against
+`num_ctx=63536` answered in **2.7 s**. `repeat_penalty 1.9` non-streaming
+answered in **14.5 s**. Each looked decisive at n=1 and each was wrong.
+
+**⚠️ THE REAL LESSON IS METHODOLOGICAL: THIS FAILURE IS HEAVY-TAILED, SO SMALL
+SAMPLES LIE.** A 6-trial run scored `1.9/64` at **0/6** — clean. Eight trials of
+the same cell scored **7/8**. `temperature` is 0.0 and it still varies, because
+these are cloud MoE models whose routing and batching change between calls.
+**Never conclude anything here from one run, and treat any single fast result as
+noise.**
+
+**MEASURED (8 trials/cell, 78k-token system prompt + 117 bound tools, streaming,
+failure = empty answer / stall / thinking runaway / 180 s abort):**
+
+| model | 1.9 / last_n 64 | 1.2 / last_n 256 |
+|---|---|---|
+| glm-5.3 | **7/8 failed**, worst 3055 s, worst think 3,101,216 | **1/8**, worst 213 s, worst think 79,048 |
+| kimi-k3 | **4/8 failed**, worst 3600 s, worst think 1,179,576 | **2/8**, worst 399 s, worst think 90,827 |
+
+Isolating the lookback with `repeat_penalty` pinned at 1.2:
+
+| model | last_n 64 | last_n 256 |
+|---|---|---|
+| glm-5.3 | 5/8 failed, median 154.0 s | **2/8, median 26.3 s** |
+| kimi-k3 | **0/8, median 50.5 s** | 1/8, median 97.5 s |
+
+**⚠️ `repeat_last_n` IS GENUINELY PER-MODEL — `repeat_penalty` IS NOT.** 1.2 won
+on every model tested; 256 helps glm-5.3 (6× faster median) and HURTS kimi-k3.
+256 ships because glm-5.3 is what users will overwhelmingly run (kimi-k3 is the
+expensive one), and because 128-512 is the lookback band the llama.cpp/Ollama
+guide recommends for code and structured output. **If the shipped model ever
+changes, re-measure this one — do not assume it carries over.**
+
+**WHERE 1.9 CAME FROM: nowhere.** `glm-5.3:cloud` declares **zero** parameters
+(`/api/show` returns an empty parameter set), Z.ai publishes no
+`repetition_penalty` guidance, vLLM's reference default is 1.0 and Ollama's is
+1.1, and the llama.cpp/Ollama tuning guide caps the repetition remedy at *"start
+with 1.05, max 1.15-1.2"*. 1.9 was roughly double any documented ceiling.
+`mcp_agent.py` had even named it in a comment — *"repeat_penalty=1.9 (garbles
+small models)"* — for months.
+
+**⚠️ `repeat_last_n` COULD NOT REACH OLLAMA BEFORE THIS.** Neither `factory.py`
+nor `mcp_agent.py`'s passthrough list forwarded it, so setting it in
+`config.json` was a **silent no-op**. It is now in both, and in the
+`[LLM-PARAMS]` banner — that banner exists precisely so an unsent parameter
+cannot hide, which is how `repeat_penalty=1.9` survived unnoticed. Verified on
+the wire: `ChatOllama`'s options dict shows `repeat_last_n=256`.
+⚠️ **`frequency_penalty` and `presence_penalty` are NOT exposed by
+`langchain-ollama` 0.2.1** — do not add them, they would be dropped silently.
+
+**⚠️ `num_ctx` IS A NO-OP FOR A `:cloud` MODEL. PROVED.** A **263,159-token**
+prompt sent with `num_ctx=8192` recalled a needle planted near its start. The
+server enforces its own limit instead, cleanly — needle recall was 100% at
+167,587 / 334,847 / 660,717 tokens, and 1,297,992 tokens returned
+**HTTP 400 `"prompt is too long: 1297992, model maximum context length:
+1048576"`**. So the 1M window is a real capability, not a spec number, and
+oversize fails loudly rather than truncating in silence. The old `63536`
+described nothing: real requests were already running at **78,288** prompt
+tokens, 23% above it, with no consequence.
+⚠️ **But `num_ctx` IS meaningful for a LOCAL model**, where it sizes the KV
+cache at load. Tlamatini is cloud-first so 1,048,576 is right here, but a
+local-model user on a small GPU will feel it — loudly, at load, not as a wrong
+answer.
+
+**Also fixed: default drift.** The two chains disagreed on `num_ctx` (**128000**
+vs **8192**), so a missing config key silently gave the retrieval chain an 8k
+window; `repeat_penalty` likewise split **1.9** vs **1.1**. Both chains now
+agree on all three knobs. Same class as the `repeat_penalty` split itself — when
+you add a sampler key, set it in **both** chains or it drifts.
+
+---
+
 ## 2026-09-12 - VOICE COMMANDS: the catalog's new FIRST section, and the transcript becomes the prompt
 
 **Files: `agent/views.py` (`PROMPT_CATEGORY_ORDER` gains `voice_commands` at index 0),

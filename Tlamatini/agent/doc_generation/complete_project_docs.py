@@ -465,6 +465,22 @@ def commits_since_visual_docs(baseline: CommitBaseline | None) -> list[CommitInf
 def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     """Use commit-specific evidence, never broad keyword guesses or disk presence."""
     notes = {
+        "cb30edf": (
+            "Forwards repeat_last_n through both Ollama chains and ChatOllama, adds "
+            "it to the parameter banner, and aligns defaults at 256 / 1,048,576 "
+            "for repeat_last_n / num_ctx. Commit measurements are historical and model-specific."
+        ),
+        "f6404a3": (
+            "Aligns both Ollama repeat_penalty fallbacks and the shipped setting at "
+            "1.2. The commit reports fewer empty answers in its eight-trial workload. "
+            "Those experiments were not rerun for this dossier."
+        ),
+        "a2287c9": "Commits the previous dossier refresh and simplifies commit-specific recent-change summaries.",
+        "b07f9d5": (
+            "Adds the uninstaller's Retry/Exit running-process gate and preserves "
+            "five named content directories when populated or unreadable. Includes "
+            "mechanics and visible-harness sources, inspected without execution."
+        ),
         "36c0139": (
             "Adds standalone ollama_credits.py for signed Ollama account-usage requests "
             "and console/JSON output. The card's $300 denominator and default reset "
@@ -787,8 +803,9 @@ def publication_guide(context: dict) -> list[str]:
         f"effective lines, and {context['binary_count']} binary assets. Published backup/test "
         "text counts toward repository totals but does not add runtime agents or frontend modules.",
         f"Changes after dossier commit {baseline_ref} are listed in the Git appendix. "
-        "This refresh covers the process-aware wait fix (ac72b6c) and standalone "
-        "Ollama usage utility (36c0139). Canvas avatar presence, Whisperer's sound gate "
+        "This refresh covers Ollama sampler forwarding/defaults and the uninstaller's "
+        "process gate/content preservation. The wait fix and credits utility remain documented. "
+        "Canvas avatar presence, Whisperer's sound gate "
         "and Voice Commands remain carried. Runtime JPGs ship through "
         "Tlamatini/agent/static/; output source art remains development evidence.",
         f"Historical atomic-renderer evidence: {evidence['transitions']} transitions, {evidence['paints']:,} "
@@ -802,7 +819,9 @@ def publication_guide(context: dict) -> list[str]:
         "uses current source counts. Their older atomic/reduced-motion avatar section "
         "is superseded by the canvas behavior below. README's Django 5.2.4 stack entry "
         "also lags the requirements pin of 5.2.15. Neither handbook yet explains the "
-        "latest wait repair or credits utility. Historical prose is not release metadata.",
+        "latest wait repair or credits utility. Their new sampler prose is carried with "
+        "commit-attributed measurements. Book section 50 still omits the new content "
+        "preservation and process gate. Historical prose is not release metadata.",
     ]
 
 
@@ -908,6 +927,55 @@ VOICE_COMMAND_GUIDE = [
     "agent-creation guidance. test_voice_commands_catalog.py checks ordering, sentence "
     "fidelity and classifier parity. The headed catalog harness checks browser cards "
     "and toggles, but does not prove real microphone recognition or spoken task execution.",
+]
+
+
+OLLAMA_SAMPLER_GUIDE = [
+    "Commits f6404a3 and cb30edf align prompt-only and retrieval defaults: "
+    "ollama_repeat_penalty=1.2, ollama_repeat_last_n=256 and ollama_num_ctx=1048576. "
+    "Explicit configuration overrides these factory fallbacks.",
+    "Both chains in rag/factory.py pass all three values. mcp_agent.py forwards "
+    "repeat_last_n when adapting to ChatOllama and includes it in the LLM-PARAMS "
+    "banner. Previously, setting that config key could not reach this adapter.",
+    "Commit f6404a3 reports eight trials per setting on a roughly 78k-token, "
+    "117-bound-tool workload. For glm-5.3:cloud, failures fell from 7/8 at penalty "
+    "1.9 to 1/8 at 1.2. This workload's bound-tool count differs from the 108 built-ins.",
+    "Commit cb30edf isolates lookback with penalty 1.2: glm failures were 5/8 at "
+    "64 versus 2/8 at 256, with reported medians 154.0s and 26.3s. Kimi-k3 moved "
+    "from 0/8 to 1/8 failures and 50.5s to 97.5s. The tradeoff is model-specific.",
+    "The commit reports cloud requests exceeding a smaller num_ctx and a server "
+    "rejection above 1,048,576 tokens for its tested model. This is recorded "
+    "evidence, not a universal cloud limit. Local models use num_ctx for context "
+    "allocation, so a 1M setting can demand substantial memory.",
+    "README and Book now describe these changes. Performance and context results "
+    "are attributed to the September 13 commit records, not new validation. "
+    "No model requests or automated tests ran for this refresh. Lower failure "
+    "counts do not guarantee every request completes.",
+]
+
+
+UNINSTALLER_SAFETY_GUIDE = [
+    "Commit b07f9d5 adds a gate before confirmation or deletion. The Windows "
+    "process scan checks executable paths inside the selected installation, "
+    "with top-level executable-name fallback when an image path is unreadable.",
+    "Detected processes appear with PID and evidence in a modal Retry/Exit "
+    "dialog. Retry rescans and stays blocked while matches remain. Exit and the "
+    "window close button leave the uninstaller. There is no continue-anyway button.",
+    "The detector excludes this uninstaller and the same executable image. "
+    "Detection errors allow progress by design, so this is best-effort protection. "
+    "Close Tlamatini cleanly with Ctrl+C in its console before retrying.",
+    "Top-level agents/ always survives. application/, applications/, "
+    "content_generated/, context_files/ and Temp/ survive when they contain a "
+    "file at any depth. Unreadable directories count as having content. Empty "
+    "scaffolding may be removed; arbitrary folders outside this list are not protected.",
+    "The final dialog names only the content directories actually preserved. "
+    "Companion-agent discovery markers remain supported. The window body now "
+    "builds independently of version-badge resolution, avoiding an empty card "
+    "when the version is unavailable.",
+    "Source assets: agent/test_uninstaller_mechanics.py and the Claude-skill "
+    "harness uninstaller_visible.py. The commit records 49 mechanics cases and "
+    "19/19 disk checks from a visible run with registry/Explorer actions stubbed. "
+    "These are historical results. Neither runner nor the uninstaller ran here.",
 ]
 
 
@@ -1714,6 +1782,7 @@ INSTALLATION_GUIDE = [
 CONFIGURATION_GUIDE = [
     "Source mode resolves `Tlamatini/agent/config.json`; frozen builds resolve `config.json` next to the executable; `CONFIG_PATH` overrides both.",
     "Core keys include `embeding-model`, `chained-model`, `ollama_base_url`, `ollama_token`, `enable_unified_agent`, `unified_agent_model`, and `unified_agent_max_iterations`.",
+    "Ollama defaults are `ollama_repeat_penalty=1.2`, `ollama_repeat_last_n=256` and `ollama_num_ctx=1048576`. Both factory chains and the ChatOllama adapter carry them. The dedicated sampler section separates source behavior from the September 13 commit measurements and explains the local-model memory caveat. Keep new sampler keys aligned across both chains, adapter forwarding and the `[LLM-PARAMS]` banner.",
     "The checked-in default model baseline moved again in the recent Git window: the shared config now favors `glm-5.3:cloud`, so source or frozen installs that keep the shipped config should be documented as cloud-first unless the operator intentionally swaps models.",
     "URL configuration now also includes `kali_server_url`, the STM32er bootstrap fields `stm32_mcp_server_script`, `stm32_mcp_python`, `stm32_template_dir`, `stm32_ide_root`, `stm32_mcp_repo_url`, and `stm32_mcp_install_dir`, plus ESP32er’s `pio_executable` and `pio_core_dir`, all edited from `Config -> URLs` and inherited automatically by the chat-side wrapped tools.",
     "Credential configuration is no longer hand-edit-only: Config -> Access Keys Wizard provides a browser-side path for ACPX, provider secrets, unified messaging, and Security Recon (ProjectDiscovery) keys such as `pdcp_api_key` while preserving masked status in the UI.",
@@ -2214,6 +2283,8 @@ def build_pdf(context: dict) -> None:
                          ("Reproducible visible avatar tests", AVATAR_TEST_GUIDE),
                          ("Whisperer silence gate", WHISPERER_GATE_GUIDE),
                          ("Voice Commands catalog and execution", VOICE_COMMAND_GUIDE),
+                         ("Ollama sampler defaults and recorded measurements", OLLAMA_SAMPLER_GUIDE),
+                         ("Uninstaller process gate and content preservation", UNINSTALLER_SAFETY_GUIDE),
                          ("Wrapped-agent wait and completion", WRAPPED_WAIT_GUIDE),
                          ("Standalone Ollama account-usage utility", OLLAMA_USAGE_GUIDE),
                          ("Committed Gitter Windows-path repair", GITTER_WORKTREE_GUIDE)):
@@ -2670,7 +2741,10 @@ def build_pdf(context: dict) -> None:
         asset_rows.append([row["path"], f"{row['bytes']:,}",
                            "-" if row["physical"] is None else str(row["physical"]),
                            "-" if row["effective"] is None else str(row["effective"]), row["kind"]])
-    story.append(table(asset_rows, widths=[3.25 * inch, 0.8 * inch, 0.65 * inch, 0.65 * inch, 1.3 * inch], font_size=7))
+    if context["new_assets"]:
+        story.append(table(asset_rows, widths=[3.25 * inch, 0.8 * inch, 0.65 * inch, 0.65 * inch, 1.3 * inch], font_size=7))
+    else:
+        story.append(p("No new file paths were added after the last committed dossier. The recent uninstaller harness and mechanics files landed before that baseline and are included in the complete tree. Existing-file changes, including sampler wiring, are described in the Git and implementation sections.", styles["body"]))
 
     doc.build(story, onFirstPage=pdf_page_footer, onLaterPages=pdf_page_footer)
 
@@ -3248,6 +3322,8 @@ def build_ppt(context: dict) -> None:
                          ("Visible Avatar Test Runner", AVATAR_TEST_GUIDE),
                          ("Whisperer Silence Gate", WHISPERER_GATE_GUIDE),
                          ("Voice Commands", VOICE_COMMAND_GUIDE),
+                         ("Ollama Sampler Defaults", OLLAMA_SAMPLER_GUIDE),
+                         ("Uninstaller Safety", UNINSTALLER_SAFETY_GUIDE),
                          ("Wrapped-Agent Wait Completion", WRAPPED_WAIT_GUIDE),
                          ("Ollama Account-Usage Utility", OLLAMA_USAGE_GUIDE),
                          ("Gitter Windows Paths", GITTER_WORKTREE_GUIDE)):

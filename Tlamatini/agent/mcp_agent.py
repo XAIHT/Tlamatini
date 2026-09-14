@@ -701,6 +701,15 @@ def _ensure_chat_tool_model(llm):
         # context_window=128000 (left num_ctx at Ollama's 4096 default) both
         # survived unnoticed for so long. If a param is missing from this line it
         # is NOT being sent — that is the whole point. Fail-open: never raises.
+        #
+        # 2026-09-13: that 1.9 was finally measured and is now 1.2 — at 1.9 a
+        # reasoning model spent whole turns emitting `thinking` and returned
+        # EMPTY content (7/8 runs, once 3.1M thinking chars over 51 minutes).
+        # repeat_last_n was added to this banner in the same pass because it was
+        # NOT in the passthrough above, so setting it in config.json had been a
+        # silent no-op — exactly the failure this banner exists to expose.
+        # ⚠️ ADD EVERY NEW SAMPLER KEY HERE AS WELL AS TO THE LOOP ABOVE.
+        # See docs/claude/architecture.md → Ollama sampler settings.
         try:
             _p = {k: chat_kwargs.get(k) for k in
                   ("num_ctx", "repeat_penalty", "repeat_last_n", "top_k", "top_p",
