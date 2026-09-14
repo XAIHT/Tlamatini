@@ -24,7 +24,7 @@
 
 <p align="center">
   <a href="https://discord.gg/WFQsrskgc"><img src="https://img.shields.io/badge/DISCORD-JOIN%20US-5865F2?style=for-the-badge&labelColor=2D2D2D&logo=discord&logoColor=white" alt="Join our Discord"/></a>
-  <a href="https://github.com/XAIHT/Tlamatini/releases"><img src="https://img.shields.io/badge/RELEASE-v1.51.7-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Release v1.51.7"/></a>
+  <a href="https://github.com/XAIHT/Tlamatini/releases"><img src="https://img.shields.io/badge/RELEASE-v1.51.9-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Release v1.51.9"/></a>
   <a href="https://www.python.org/downloads/release/python-31210/"><img src="https://img.shields.io/badge/PYTHON-3.12.10-3776AB?style=for-the-badge&labelColor=2D2D2D&logo=python&logoColor=white" alt="Python"/></a>
   <a href="#installation"><img src="https://img.shields.io/badge/PLATFORM-WIN%2010%20%7C%2011-0078D6?style=for-the-badge&labelColor=2D2D2D&logo=windows&logoColor=white" alt="Platform"/></a>
   <a href="#-the-full-capability-list"><img src="https://img.shields.io/badge/AGENT%20TYPES-88-8A2BE2?style=for-the-badge&labelColor=2D2D2D" alt="88 agent types"/></a>
@@ -51,7 +51,7 @@
 2. [How it works](#how-it-works)
 3. [Get started in five steps](#-get-started--5-steps-to-a-cloud-powered-tlamatini)
 4. [Newest changes](#newest-changes--carried-by-the-v1515-tag)
-5. [Current release](#current-release--v1515)
+5. [Current release](#current-release--v1519)
 6. [The full capability list](#-the-full-capability-list)
 7. [Enable Tlamatini as a Blue-hat agent](#enable-tlamatini-as-a-blue-hat-agent)
 8. [Installation](#installation)
@@ -208,7 +208,7 @@ Done — tick **Multi-Turn** in the chat toolbar and put Tlamatini to work.
 
 ---
 
-## Newest change — landed after the v1.51.7 tag
+## Newest changes — carried by the v1.51.9 tag
 
 **One number was emptying her answers.** If Tlamatini ever replied *"The tool-calling model returned an empty final response"* after a long silence, this was why. The setting that controls how strongly the model avoids repeating itself — `ollama_repeat_penalty` — shipped at **1.9**, roughly double the highest value any documentation endorses. Today's models are *reasoning* models: they think privately before they answer. Pushed that hard, they never stop thinking. Measured on a real request: **196,003 characters of internal reasoning over 287 seconds**, and in one case **3.1 million characters over 51 minutes** — every time producing a completely empty answer. The penalty now ships at **1.2**, the strongest value the documentation actually supports, and in testing that took failures on the flagship model from **seven runs in eight down to one**.
 
@@ -224,7 +224,7 @@ This is only possible because of the sound gate below. Before it, a spoken promp
 
 ---
 
-## Newest changes — carried by the v1.51.7 tag
+## Previous release — carried by the v1.51.7 tag
 
 **Whisperer now listens instead of counting seconds.** Ask Tlamatini to take dictation and she used to record a flat thirty seconds — cutting you off in the middle of a sentence, or leaving you listening to an empty room after you had finished. Now she simply **waits for you to stop talking**: the recording stays open while you are speaking and ends on its own after **ten seconds of silence**. Say a length and she still honours it exactly — *"record 45 seconds"* records 45 — the gate only steps in when you did not name one.
 
@@ -240,11 +240,13 @@ Two fixes ship together. The console is now written on its **own background thre
 
 ---
 
-## Current release — v1.51.7
+## Current release — v1.51.9
 
-The newest annotated tag is **`v1.51.7`**, created on 2026-09-11 and resolving to commit **`96fdbde`** ("Release v1.51.7 Sound-gate improved Whisperer agent, and avatar.") — which is also local `main` and `HEAD`, so there is **no post-tag boundary**: source-mode version resolution reports the bare `1.51.7` and the tree it describes are the same thing. Runtime identity still comes from Git/build metadata (`agent/version.py::get_version()`, `GET /agent/version/`), never from this prose.
+The newest annotated tag is **`v1.51.9`**, created on 2026-09-14 and resolving to commit **`cb30edf`** ("Release v1.51.9 Improved the Flow-chain parameters, some general fixes, and avoiding deletion of user-elements.") — local `main` and `HEAD` sit **one commit past** it, which is normal rather than a discrepancy: Tlamatini deliberately emits the bare base tag with no distance or dirty suffix, so source-mode version resolution reports plain `1.51.9`. Runtime identity still comes from Git/build metadata (`agent/version.py::get_version()`, `GET /agent/version/`), never from this prose.
 
-This tag carries Whisperer's sound gate and the avatar's talking mouth, both described above. Under the gate, `record_seconds` became the mode switch — `0`, the new default, means *"no duration was given, so listen until the speaker stops"*, the same idiom `sample_rate: 0` already used for the native sample rate — and the recording's reported length is now what was actually captured rather than what was requested. The gate itself measures one audio block every twenty milliseconds from inside the sound callback, tracking the room continuously so that somebody who starts talking immediately is still heard; coverage for the agent grew from 41 to **69 tests**.
+This tag carries the sampler repair and the VOICE COMMANDS catalog section, both described above, alongside an uninstaller that now refuses to run while Tlamatini is still up and never deletes your own content, and a fix for `chat_agent_run_wait`, which used to burn its entire timeout instead of returning the moment the run finished.
+
+The previous **`v1.51.7`** tag carried Whisperer's sound gate and the avatar's talking mouth. Under the gate, `record_seconds` became the mode switch — `0`, the new default, means *"no duration was given, so listen until the speaker stops"*, the same idiom `sample_rate: 0` already used for the native sample rate — and the recording's reported length is now what was actually captured rather than what was requested. The gate itself measures one audio block every twenty milliseconds from inside the sound callback, tracking the room continuously so that somebody who starts talking immediately is still heard; coverage for the agent grew from 41 to **69 tests**.
 
 The earlier `v1.51.5` tag closed out the work that the `v1.51.3` line had left trailing behind it — the Windows launcher repair at `00ecdc9`, the documentation refresh at `5f96a2f`, the console shield plus welcome-page keyboard default at `c8cf369`, and the documentation reconciliations at `0d2c09c` and `d8f21f3` — all of which are now carried by a tag rather than sitting after one. Runtime identity still comes from Git/build metadata (`agent/version.py::get_version()`, `GET /agent/version/`), never from this prose.
 
