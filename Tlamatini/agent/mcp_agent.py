@@ -650,7 +650,7 @@ def _ensure_chat_tool_model(llm):
         }
 
         # Propagate optional Ollama parameters if they exist
-        for attr in ["top_k", "top_p", "repeat_penalty", "num_ctx", "num_predict"]:
+        for attr in ["top_k", "top_p", "repeat_penalty", "repeat_last_n", "num_ctx", "num_predict"]:
             if hasattr(llm, attr):
                 val = getattr(llm, attr)
                 if val is not None:
@@ -703,7 +703,7 @@ def _ensure_chat_tool_model(llm):
         # is NOT being sent — that is the whole point. Fail-open: never raises.
         try:
             _p = {k: chat_kwargs.get(k) for k in
-                  ("num_ctx", "repeat_penalty", "top_k", "top_p",
+                  ("num_ctx", "repeat_penalty", "repeat_last_n", "top_k", "top_p",
                    "temperature", "num_predict", "keep_alive")}
             print(
                 "--- [LLM-PARAMS] model=%s | %s | (a param shown as None is NOT sent to Ollama)"
