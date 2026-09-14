@@ -245,6 +245,6 @@
   },
   "_section_acpx_skills": "Skills are loaded from agent/skills_pkg/<dir>/SKILL.md. The catalog is self-discovering; nothing in config.json controls it. Run `python manage.py acpx_lint` to validate the catalog.",
   "_section_acpx_tools": "ACPX exposes 7 LangChain @tools to the unified agent (acp_spawn / acp_send / acp_kill / acp_doctor / list_acp_agents / invoke_skill / list_skills). Each is a row in the Tool table seeded by migration 0071_acpx_skills and is independently toggleable through the existing tools dialog UI.",
-  "ollama_repeat_penalty": 1.9,
+  "ollama_repeat_penalty": 1.2,
   "ollama_num_ctx": 63536
 }
