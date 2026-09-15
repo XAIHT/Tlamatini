@@ -1503,6 +1503,37 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
                 if (!Number.isNaN(n)) config[k] = n;
             }
         });
+    // ── PPTXer ──
+    // Field names must match config.yaml EXACTLY; set() refuses empty strings so
+    // a missing arg leaves the template default intact rather than blanking it.
+    } else if (lower === 'pptxer') {
+        set('action', pairs.action);
+        set('input_text', pairs.input_text);
+        set('input_file', pairs.input_file);
+        set('input_format', pairs.input_format);
+        set('pptx_path', pairs.pptx_path);
+        set('title', pairs.title);
+        set('subtitle', pairs.subtitle);
+        set('author', pairs.author);
+        set('kicker', pairs.kicker);
+        set('slide_size', pairs.slide_size);
+        set('nuance', pairs.nuance);
+        set('predominant_color', pairs.predominant_color);
+        set('accent_color', pairs.accent_color);
+        set('text_color', pairs.text_color);
+        set('background_color', pairs.background_color);
+        set('background_mode', pairs.background_mode);
+        set('font_pairing', pairs.font_pairing);
+        set('density', pairs.density);
+        set('decorations', pairs.decorations);
+        set('ornament', pairs.ornament);
+        set('images', pairs.images);
+        set('video', pairs.video);
+        set('audio', pairs.audio);
+        set('render', pairs.render);
+        set('footer_note', pairs.footer_note);
+        set('output_dir', pairs.output_dir);
+        set('filename', pairs.filename);
     } else if (lower === 'pdfer') {
         set('mode', pairs.mode);
         set('input_text', pairs.input_text);

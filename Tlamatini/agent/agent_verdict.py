@@ -160,6 +160,13 @@ WORK_COMPLETED_STATUSES = frozenset({
 WORK_DEGRADED_STATUSES = frozenset({
     "degraded",               # LaTeXer: a PDF exists ONLY because content was cut
     "compiled_with_errors",   # LaTeXer: a PDF exists but LaTeX reported errors
+    # PPTXer: a .pptx exists, but re-opening it and MEASURING the slides found
+    # real defects — overlapping shapes, text outside its frame, or text below
+    # the projected-legibility floor. The file opens, which is exactly why this
+    # must be RED: a deck that looks finished and is quietly broken is worse
+    # than one that obviously failed, because it gets presented. Same reasoning
+    # as compiled_with_errors directly above.
+    "created_with_findings",  # PPTXer: a deck exists but the audit found defects
     "tokens_only",            # Talker: tokens saved, NO audible speech at all
     "operator_required",      # parked pending a human -- the work has not happened
     "assert_failed",          # Playwrighter: the flow's own assertion did not hold

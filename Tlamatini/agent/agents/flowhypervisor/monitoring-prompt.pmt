@@ -78,7 +78,7 @@ SHORT-LIVED agents (should start, do work, and exit quickly):
   De-Compresser, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Parametrizer, FlowBacker, Barrier,
   ACPXer, MCP Doctor, Unrealer, Blenderer, Reviewer, Analyzer, Playwrighter, Kalier, STM32er, ESP32er, ESPHomer, Arduiner,
   Camcorder, Recorder, Whisperer, Talker, Editor, Grepper, Globber, Discoverer, Video-Analyzer, Nmapper, PDFer, LaTeXer,
-  NetSpeed-Calculator
+  PPTXer, NetSpeed-Calculator
   (NOTE: STM32er / ESP32er / ESPHomer / Arduiner are short-lived in steady state, but their
    FIRST build/compile/flash can run for MANY minutes while a large toolchain downloads —
    see their SPECIAL NOTES below before flagging a long firmware build as stuck.)
@@ -360,6 +360,48 @@ NMAPPER SPECIAL NOTES:
     making progress, a run up to command_timeout (default 900s) is NOT stuck.
   - DO flag a genuine failure: nmap could not be downloaded from nmap.org, or the run
     exceeded command_timeout with no output.
+
+PPTXER SPECIAL NOTES:
+  - PPTXer is SHORT-LIVED and ACTIVE: it builds ONE presentation (or runs a read-only
+    meta action) then ALWAYS triggers `target_agents` — on success, on failure, AND on
+    a fail-safe refusal.
+  - ⚠️ THE SILENCE IS THE THING TO KNOW ABOUT. After "🏗️ building N slides" PPTXer
+    hands the finished deck to the INSTALLED POWERPOINT to render every slide, and
+    PowerPoint's FIRST launch costs roughly 20-25 SECONDS during which the log says
+    NOTHING. That is a cold start, not a hang. Measured 2026-09-14 on this machine:
+    23.2 s for the first export in a session, then ~0.6 s per deck afterwards. Do NOT
+    flag PPTXer as stuck before `render_timeout` (default 240 s) has actually elapsed.
+  - Its `INI_SECTION_PPTXER<<<` block is NORMAL routable output (carries `action`,
+    `status`, `success`, `output_path`, `slide_count`, `shape_count`,
+    `images_embedded`, `videos_embedded`, `tables`, `charts`, `diagrams`,
+    `generated_art`, `nuance`, `nuance_confidence`, `palette`, `predominant_color`,
+    `font_display`, `font_body`, `render_tier`, `slides_rendered`, `ground_truth`,
+    `layout_clean`, `overlaps`, `text_overflows`, `bytes`, `stage`) — NEVER flag it as
+    an error, even when `status: error` or `slide_count: 0`; a downstream Forker
+    branches on `{status}` / `{layout_clean}`.
+  - PPTXer PRINTS ITS DESIGN REASONING before building: a `🎨 treatment: ...` line with
+    its confidence and the evidence it matched, then a block naming the palette, the
+    fonts and the ornament programme, then `🔤 N font families available`. This is
+    DELIBERATE, EXPECTED diagnostic output on every run — not noise and not a fault.
+  - `Contrast fix : ...` lines are the theme FORCING a colour over the projected-slide
+    legibility floor and explaining why. That is the guarantee working. NOT an error.
+  - `👁️ rendered N slides via powerpoint_com (ground truth: True)` is the agent LOOKING
+    AT ITS OWN SLIDES. A line saying a renderer was UNAVAILABLE (`powerpoint_com:
+    available=False`, `libreoffice: soffice not found`) is honest degradation — PPTXer
+    falls through to the next tier and the geometry audit still runs. Do NOT flag it.
+  - `LAYOUT CLEAN` is the normal case. `LAYOUT DEFECTS: N` is a REPORT, not a crash:
+    the .pptx exists and the flow continues, and `layout_clean: false` with
+    `status: created_with_findings` is exactly what a downstream Forker is meant to
+    branch on. Flag it only if the objective demanded a flawless deck and the flow
+    ignored the branch.
+  - A `Media that could not be used:` list is PPTXer refusing a dead URL, an HTML page
+    served as an image, or a video container PowerPoint cannot embed. The deck is still
+    built without that asset and the reason is named. NOT a flow error.
+  - A `status: refused` section is PPTXer working AS DESIGNED (no content, an unknown
+    action, a missing pptx_path, an unwritable output_dir) — it REFUSES rather than
+    write an empty or wrong presentation. NOT a flow error.
+  - A `status: listed` / `validated` section (the `outline`, `info`, `fonts` and
+    `validate` meta actions) writes NO file on purpose — do NOT flag "no output".
 
 PDFER SPECIAL NOTES:
   - PDFer is SHORT-LIVED and ACTIVE: it renders ONE document (or runs a read-only meta

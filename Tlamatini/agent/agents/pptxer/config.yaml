@@ -1,0 +1,178 @@
+# ══════════════════════════════════════════════════════════════════════════════
+#   ✦  T L A M A T I N I  ✦   —   "one who knows"
+#   Created by  Angela López Mendoza   ·   @angelahack1
+#   Tlamatini Author Banner — do not remove
+# ══════════════════════════════════════════════════════════════════════════════
+# PPTXer Agent Configuration — the PRESENTATION COMPOSER.
+#
+# PPTXer is to PowerPoint what PDFer is to PDF: it AUTHORS. It reads your
+# content, decides what kind of deck it is, designs a whole visual system for
+# it, places every shape with measured geometry so nothing can overlap, embeds
+# images / video / audio (local OR straight off the internet), draws its own
+# on-palette artwork, and then RE-OPENS THE FINISHED FILE AND LOOKS AT IT to
+# prove the slides really came out right.
+
+# -- What to turn into a deck --------------------------------------------------
+# Content may be Markdown, plain text, an outline, HTML-ish text, or an explicit
+# JSON deck spec. `input_format: auto` sniffs which. Markdown is the sweet spot:
+#   #   the deck title        ##  a new slide        ###  a sub-heading
+#   -   a bullet             > a quote             | a | table |
+#   ``` a code slide          --- force a slide break
+input_text: ""
+input_file: ""          # .md / .txt / .json / .html — used when input_text is empty
+input_format: "auto"    # auto | markdown | text | outline | json
+
+# -- What it is called ---------------------------------------------------------
+title: ""               # "" = taken from the content's first heading
+subtitle: ""
+author: ""
+kicker: ""              # the small line above the title on the cover
+
+# -- ACTION --------------------------------------------------------------------
+#   create   : content -> a full presentation (DEFAULT)
+#   outline  : content -> the slide PLAN only, no file written (cheap preview)
+#   render   : re-render an EXISTING .pptx to PNGs and audit it
+#   audit    : measure an existing .pptx WITHOUT rendering (geometry + text fit)
+#   info     : read-only report on an existing .pptx (slides, shapes, media)
+#   fonts    : list the typefaces installed on THIS machine, by category
+#   validate : probe every backend and renderer, write nothing
+action: "create"
+pptx_path: ""           # the existing deck, for render / audit / info
+
+# -- Slide geometry ------------------------------------------------------------
+#   16:9 (default) · 16:10 · 4:3 · a4_land · a4_port · letter ·
+#   square (social) · vertical (stories/reels/TikTok) · cinema (2.35:1) · ultrawide
+slide_size: "16:9"
+margin_pt: 48           # the SAFE AREA inset. Nothing readable goes outside it,
+                        # because a projector loses the outer edge of the screen.
+
+# -- THE LOOK ------------------------------------------------------------------
+# `nuance` is the treatment. "" = PPTXer reads the content and decides.
+# An explicit value ALWAYS wins. English and Spanish aliases both work
+# ("gamer" -> game_design_doc, "lanzamiento" -> product_launch).
+#
+#  GAMING      esports_tournament · game_design_doc · game_trailer_beat ·
+#              cyberpunk_tech · fantasy_lore · retro_arcade ·
+#              military_tactical · streamer_kit
+#  MARKETING   product_launch · brand_story · campaign_report · startup_pitch ·
+#              sales_enablement · luxury_brand · social_media_kit · event_keynote
+#  CORPORATE   corporate_update · technical_architecture · research_findings ·
+#              training_course · project_status
+#  NEVER DECORATED  financial_disclosure · legal_compliance · safety_briefing
+nuance: ""
+
+# THE most important colour of the deck. Give ONE colour and PPTXer derives the
+# entire palette from it in OKLab — ground, surfaces, accents, chart series,
+# table bands, gradients — so every slide agrees with itself instead of each one
+# approximating "our brand blue". The NUANCE still chooses the register, so the
+# same colour is restrained on a compliance deck and electric on a game reveal.
+# Accepts "#RRGGBB", "rgb(...)", "hsl(...)", "oklch(...)" or a name
+# ("cyberpunk", "esports", "neon", "obsidian", "gold").
+predominant_color: ""
+
+# Per-role overrides. Each wins over both the nuance and the seed — but EVERY
+# text role is still forced over its contrast floor afterwards (see below).
+accent_color: ""
+text_color: ""
+background_color: ""    # also decides dark vs light
+heading_color: ""
+link_color: ""
+table_header_color: ""
+rule_color: ""
+background_mode: "auto"  # auto | dark | light
+
+# Typography. "" = the nuance's own pairing. PPTXer measures every line with the
+# REAL font file, so a face that is not installed is substituted by CATEGORY and
+# WIDTH CLASS and the substitution is REPORTED, never silent.
+#   esports · cyberpunk · arcade · fantasy_rpg · military_tactical ·
+#   brand_bold · startup_pitch · luxury · editorial · friendly_consumer ·
+#   corporate · technical · scientific · minimal · brutalist
+font_pairing: ""
+font_size: 0            # 0 = the density's own base size, in points
+scale_ratio: 0          # 0 = the nuance's own. 1.25 calm · 1.333 confident ·
+                        # 1.414 dramatic · 1.5 keynote-scale
+density: ""             # "" = the nuance's own. minimal | low | medium | high
+                        # Decides how much a single slide is allowed to say.
+
+# -- Generated artwork ---------------------------------------------------------
+# PPTXer PAINTS its own backgrounds in the deck's palette — nothing is bundled
+# and nothing is downloaded. `decorations` is a SAFETY setting, not a taste one:
+# the content analysis computes a ceiling (a compliance deck gets NOTHING, and
+# low classifier confidence holds ornament back), and this knob can only ever
+# LOWER that ceiling, never raise it.
+decorations: "auto"     # auto | none | restrained | moderate | rich
+ornament: ""            # "" = the nuance's own programme.
+                        #   hex_grid · circuitry · glitch_scan · pixel_grid ·
+                        #   runic_border · tactical_grid · particle_burst ·
+                        #   gradient_mesh · corporate_band · thin_rule ·
+                        #   blob_shapes · soft_shapes · spotlight ·
+                        #   constellation · wave_field · none
+generate_art: true      # false = flat colour grounds, no generated imagery
+
+# -- MEDIA: local paths OR http/https URLs -------------------------------------
+# Images, video and audio are IDENTIFIED BY THEIR BYTES, never by the server's
+# Content-Type header — so an HTML error page served as "image/jpeg" is refused
+# instead of being embedded as a broken frame.
+images: []              # extra images for the deck (markdown ![](...) also works)
+video: ""               # ONE hero video. PowerPoint embeds .mp4/.m4v/.mov/.wmv/.avi
+audio: ""               # .mp3/.wav/.m4a/.wma
+max_image_px: 1920      # downscale the longest edge before embedding (0 = off)
+fetch_timeout: 25
+max_media_bytes: 67108864       # 64 MiB per asset, enforced WHILE streaming
+allow_private_hosts: false      # ⚠️ leave FALSE. Private/loopback/link-local
+                                # addresses are refused so a model-suggested URL
+                                # cannot be used to probe your own network.
+
+# -- SEEING ITS OWN SLIDES -----------------------------------------------------
+# PPTXer re-opens the finished deck and MEASURES it, because a library's own
+# "saved OK" is not evidence — python-pptx does no layout at all, so it cannot
+# report a layout problem even in principle.
+#
+#   auto (default) : PowerPoint COM -> LibreOffice -> geometric preview
+#   powerpoint     : force PowerPoint (ground truth: its own renderer)
+#   libreoffice    : force LibreOffice
+#   preview        : force PPTXer's own Pillow preview (always available)
+#   none           : do not rasterise (geometry + text-fit audit still run)
+render: "auto"
+render_width: 1600      # px on the long edge of each exported slide
+render_timeout: 240     # PowerPoint's FIRST export pays a ~20 s cold start
+layout_audit: true      # overlaps, off-slide ink, text overflow, real contrast
+save_slide_images: true # keep the PNGs beside the deck so you can look at them
+
+# -- Speaker notes & furniture -------------------------------------------------
+slide_numbers: true
+footer_note: ""
+notes: ""               # deck-level speaker notes for the opening slide
+
+# -- OPTIONAL Ollama art direction (OFF by default) ----------------------------
+# Asks Tlamatini's own configured model to art-direct the deck: which treatment
+# it really is, which colour for each part, which pairing, how much ornament.
+#
+# OFF ON PURPOSE. The deterministic path already produces a complete,
+# contrast-validated, layout-audited design for every deck, so the model is an
+# UPGRADE rather than a dependency — and a deck that renders differently every
+# run is one nobody trusts. Every field the model returns is VALIDATED before it
+# can touch a slide: colours must parse, the nuance must exist, the pairing must
+# be installed ON THIS MACHINE, the palette is re-contrast-checked, and the model
+# can only LOWER the decoration ceiling, never raise it.
+ollama_design: false
+ollama_outline: false   # let the model restructure raw content into slides first
+ollama_url: "http://localhost:11434"
+ollama_model: "glm-5.3:cloud"
+ollama_token: ""
+ollama_timeout: 180
+
+# -- Output --------------------------------------------------------------------
+output_dir: ""          # "" = Documents/TlamatiniPPTX (Windows known-folder aware)
+filename: ""            # "" = pptxer_<YYYYmmdd>_<HHMMSS>_<ms>.pptx
+overwrite: false        # false = never clobber; a collision becomes _2, _3, ...
+
+# -- Execution controls --------------------------------------------------------
+preflight: true         # fail-safe checks: REFUSE rather than write a wrong deck
+command_timeout: 600
+
+# -- Connection fields ---------------------------------------------------------
+source_agents: []       # upstream agents (canvas connection tracking)
+target_agents: []       # downstream agents, ALWAYS triggered — success, failure
+                        # OR fail-safe refusal — so a Forker can branch on
+                        # {status} / {slide_count} / {layout_clean}

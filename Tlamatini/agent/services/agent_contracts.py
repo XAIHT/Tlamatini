@@ -164,6 +164,12 @@ _PARAMETRIZER_OUTPUT_FIELDS: dict[str, tuple[str, ...]] = {
     # out visually consistent instead of each part choosing its own palette.
     "pdfer": ("mode", "source_type", "output_path", "output_dir", "filename", "page_count", "bytes", "images_used", "engine", "nuance", "nuance_confidence", "nuance_source", "palette", "predominant_color", "background_mode", "font_pairing", "decorations", "overlaps", "layout_clean", "repairs", "status", "response_body"),
     "latexer": ("action", "engine", "distribution", "tex_path", "project_dir", "output_path", "output_dir", "filename", "page_count", "bytes", "passes", "bibliography", "errors", "warnings", "success", "status", "response_body"),
+    # PPTXer — the PRESENTATION composer. `layout_clean` + `ground_truth` are the
+    # load-bearing pair: a downstream Forker branches on whether the deck was
+    # verified against PowerPoint's own rendering, not merely written. Carrying
+    # {predominant_color} into a second PPTXer keeps a multi-part deck visually
+    # consistent instead of each part choosing its own palette.
+    "pptxer": ("action", "status", "success", "output_path", "output_dir", "filename", "slide_count", "shape_count", "images_embedded", "videos_embedded", "tables", "charts", "diagrams", "generated_art", "nuance", "nuance_confidence", "palette", "predominant_color", "font_display", "font_body", "font_families", "shapes_measured", "render_tier", "slides_rendered", "ground_truth", "layout_clean", "overlaps", "text_overflows", "bytes", "elapsed_seconds", "stage", "response_body"),
 }
 
 

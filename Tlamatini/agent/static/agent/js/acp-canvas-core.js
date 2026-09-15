@@ -13,7 +13,7 @@
 // Agentic Control Panel - Canvas Core: Items, Connections, Selection, Drag & Drop
 // LOAD ORDER: #7 - Depends on: acp-globals.js, acp-session.js, acp-undo-manager.js,
 //                              acp-agent-connectors.js
-/* global updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, openParametrizerDialog, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateDeCompresserConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateTelegrammerConnection, updateWhatsapperConnection, updateAcpxerConnection, updatePlaywrighterConnection, updateWindowerConnection, updateKalierConnection, updateZavuererConnection, updateStm32erConnection, updateEsp32erConnection, updateEsphomerConnection, updateArduinerConnection, updateMcpDoctorConnection, updateInstantMessagingDoctorConnection, updateCamcorderConnection, updateVideoAnalyzerConnection, updateEditorConnection, updateGrepperConnection, updateGlobberConnection, updateRecorderConnection, updateWhispererConnection, updateAudioPlayerConnection, updateVideoPlayerConnection, updateTalkerConnection, updateNetSpeedCalculatorConnection */
+/* global updatePptxerConnection, updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, openParametrizerDialog, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateDeCompresserConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateTelegrammerConnection, updateWhatsapperConnection, updateAcpxerConnection, updatePlaywrighterConnection, updateWindowerConnection, updateKalierConnection, updateZavuererConnection, updateStm32erConnection, updateEsp32erConnection, updateEsphomerConnection, updateArduinerConnection, updateMcpDoctorConnection, updateInstantMessagingDoctorConnection, updateCamcorderConnection, updateVideoAnalyzerConnection, updateEditorConnection, updateGrepperConnection, updateGlobberConnection, updateRecorderConnection, updateWhispererConnection, updateAudioPlayerConnection, updateVideoPlayerConnection, updateTalkerConnection, updateNetSpeedCalculatorConnection */
 
 // ========================================
 // ITEM COUNTER / REGISTRATION
@@ -235,6 +235,7 @@ const AGENT_TYPE_CLASS_MAP = {
     'gitter': 'gitter-agent',
     'discoverer': 'discoverer-agent',
     'nmapper': 'nmapper-agent',
+    'pptxer': 'pptxer-agent',
     'pdfer': 'pdfer-agent',
     'latexer': 'latexer-agent',
     'dockerer': 'dockerer-agent',
@@ -976,6 +977,7 @@ function removeConnection(conn) {
         if (sourceAgentName.toLowerCase() === 'windower') updateWindowerConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'discoverer') updateDiscovererConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'nmapper') updateNmapperConnection(sourceId, targetId, 'remove');
+        if (sourceAgentName.toLowerCase() === 'pptxer') updatePptxerConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'pdfer') updatePdferConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'latexer') updateLatexerConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'kalier') updateKalierConnection(sourceId, targetId, 'remove');
@@ -1124,6 +1126,7 @@ function removeConnectionsFor(node, deletingNodes = null) { // eslint-disable-li
         if (sourceAgentName.toLowerCase() === 'windower' && !sourceBeingDeleted) updateWindowerConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'discoverer' && !sourceBeingDeleted) updateDiscovererConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'nmapper' && !sourceBeingDeleted) updateNmapperConnection(sourceId, targetId, 'remove');
+        if (sourceAgentName.toLowerCase() === 'pptxer' && !sourceBeingDeleted) updatePptxerConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'pdfer' && !sourceBeingDeleted) updatePdferConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'latexer' && !sourceBeingDeleted) updateLatexerConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'kalier' && !sourceBeingDeleted) updateKalierConnection(sourceId, targetId, 'remove');
@@ -1628,6 +1631,7 @@ function initCanvasEvents() {
                     if (sourceAgentName.toLowerCase() === 'windower') updateWindowerConnection(sourceId, targetId, 'add');
                     if (sourceAgentName.toLowerCase() === 'discoverer') updateDiscovererConnection(sourceId, targetId, 'add');
                     if (sourceAgentName.toLowerCase() === 'nmapper') updateNmapperConnection(sourceId, targetId, 'add');
+                    if (sourceAgentName.toLowerCase() === 'pptxer') updatePptxerConnection(sourceId, targetId, 'add');
                     if (sourceAgentName.toLowerCase() === 'pdfer') updatePdferConnection(sourceId, targetId, 'add');
                     if (sourceAgentName.toLowerCase() === 'latexer') updateLatexerConnection(sourceId, targetId, 'add');
                     if (sourceAgentName.toLowerCase() === 'kalier') updateKalierConnection(sourceId, targetId, 'add');

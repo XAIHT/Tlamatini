@@ -150,6 +150,7 @@ SECTION_AGENT_TYPES = [
     'whatsapper',
     'pdfer',
     'latexer',
+    'pptxer',
 ]
 
 

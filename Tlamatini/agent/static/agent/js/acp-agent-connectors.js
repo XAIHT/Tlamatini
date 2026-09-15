@@ -1241,6 +1241,25 @@ async function updateNmapperConnection(agentId, targetAgentId, action) {
     }
 }
 
+async function updatePptxerConnection(agentId, targetAgentId, action) {
+    try {
+        const response = await fetch(`/agent/update_pptxer_connection/${agentId}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ target_agent: targetAgentId, action: action })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            console.log(`--- PPTXer ${agentId} config updated:`, result.message);
+        } else {
+            console.error(`--- Failed to update PPTXer ${agentId}:`, response.statusText);
+        }
+    } catch (error) {
+        console.error(`--- Error updating PPTXer ${agentId}:`, error);
+    }
+}
+
 async function updatePdferConnection(agentId, targetAgentId, action) {
     try {
         const response = await fetch(`/agent/update_pdfer_connection/${agentId}/`, {

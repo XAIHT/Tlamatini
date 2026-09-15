@@ -327,6 +327,10 @@ _EXEC_REPORT_TOOLS: Dict[str, Tuple[str, str]] = {
     # wrapped-agent fallback would already capture it; this entry exists only so the
     # table gets the native "Scholar's Vellum" caption gradient defined in agent_page.css.
     "chat_agent_latexer":        ("latexer",        "LaTeXer"),
+    # PPTXer is state-changing (it WRITES a .pptx and fetches media). The generic
+    # wrapped-agent fallback would already capture it; this entry exists only so the
+    # table gets the native "Aurora Stage" caption gradient defined in agent_page.css.
+    "chat_agent_pptxer":         ("pptxer",         "PPTXer"),
     # Zavuerer is state-changing: it SENDS messages (SMS / WhatsApp / Telegram /
     # Email / Voice) through the Zavu unified-messaging REST API. The read-only
     # ``health`` probe shares the same ``zavuerer`` agent_key so a mixed flow renders
@@ -466,6 +470,11 @@ _ASK_EXECS_REQUIRED_TOOLS: frozenset = frozenset({
     # in place, `clean` DELETES auxiliary files, and it RUNS A REAL COMMAND (pdflatex,
     # which with shell_escape can execute anything). Tier A + command-runner, twice over.
     "chat_agent_latexer",       # LaTeXer       (writes/edits .tex, deletes aux, runs pdflatex)
+    # PPTXer writes a .pptx (and a folder of rendered slide PNGs) to a free-form
+    # output_dir/filename exactly like PDFer — tier A — AND it REACHES REMOTE HOSTS
+    # to fetch images, video and audio the deck references — tier D. It qualifies
+    # twice over, so it is gated once here.
+    "chat_agent_pptxer",        # PPTXer        (writes a .pptx to ANY path; fetches media)
     # ----- Tier B: MESSAGING — DELIBERATELY *NOT* GATED (Angela, 2026-07-26) --
     # Emailer / Whatsapper / Telegrammer / Zavuerer used to be gated here on the
     # "you cannot unsend it" argument. Angela REVERSED that:

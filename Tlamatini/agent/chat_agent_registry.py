@@ -1929,6 +1929,88 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         poll_window_seconds=20,
     ),
     ChatWrappedAgentSpec(
+        key="pptxer",
+        template_dir="pptxer",
+        # ⚠️ PPTXer TAKES LITERAL SOURCE TEXT, exactly like PDFer, LaTeXer and
+        # File-Creator, and needs the same byte-exact channel.
+        #
+        # The generic argument parser collapses ``\\`` to ``\``. A deck is very
+        # often ABOUT file paths, code and commands — a slide reading
+        # ``C:\Users\angel\Aether\build`` would arrive as ``C:Usersangel...``
+        # and nothing downstream would notice. Declaring the fields here makes
+        # tools.py honour ``<field>_b64`` first and otherwise re-extract raw bytes.
+        verbatim_fields=("input_text", "content", "notes", "footer_note"),
+        tool_name="chat_agent_pptxer",
+        tool_description="Chat-Agent-PPTXer",
+        display_name="PPTXer",
+        purpose=(
+            "AUTHOR a PowerPoint presentation. PPTXer is Tlamatini's PRESENTATION "
+            "COMPOSER — the PowerPoint sibling of PDFer (which composes PDFs) and "
+            "LaTeXer (which typesets .tex). Use it whenever the user asks to 'make a "
+            "presentation', 'build a deck', 'turn this into slides', 'create a PPTX', "
+            "'a pitch deck', 'a keynote', or names a marketing or gaming deck.\n\n"
+            "The single most common call is turning YOUR OWN ANSWER into slides: pass "
+            "the answer as input_text and leave everything else alone. PPTXer reads the "
+            "content, decides which of 24 treatments it is, designs the whole visual "
+            "system, places every shape with MEASURED geometry so nothing can overlap, "
+            "then RE-OPENS THE FINISHED DECK AND LOOKS AT IT with the installed "
+            "PowerPoint to prove the slides came out right.\n\n"
+            "Markdown is the sweet spot for input_text: '# ' is the deck title, '## ' "
+            "starts a slide, '- ' is a bullet, '> ' a quote, a '|' table becomes a real "
+            "table, ``` a code slide. Four parallel 'NUMBER Label' bullets "
+            "(e.g. '3.4M Registered players') become big stat tiles automatically.\n\n"
+            "Actions: create (DEFAULT) | outline (the slide PLAN only, writes nothing) | "
+            "render (re-render an existing pptx_path and audit it) | audit (measure "
+            "without rendering) | info | fonts (what typefaces this machine has) | "
+            "validate (probe every backend, write nothing).\n\n"
+            "⚠️ DO NOT PASS `nuance` UNLESS THE USER NAMED A STYLE. Left empty, PPTXer "
+            "detects the treatment from the content, which is almost always right. "
+            "Naming one overrides that detection. Gaming: esports_tournament, "
+            "game_design_doc, game_trailer_beat, cyberpunk_tech, fantasy_lore, "
+            "retro_arcade, military_tactical, streamer_kit. Marketing: product_launch, "
+            "brand_story, campaign_report, startup_pitch, sales_enablement, "
+            "luxury_brand, social_media_kit, event_keynote. Corporate: "
+            "corporate_update, technical_architecture, research_findings, "
+            "training_course, project_status. Never-decorated: financial_disclosure, "
+            "legal_compliance, safety_briefing.\n\n"
+            "`predominant_color` is the highest-leverage single knob: give ONE colour "
+            "(hex, rgb(), oklch(), or a name like 'cyberpunk' / 'esports' / 'gold') and "
+            "the ENTIRE palette is derived from it in OKLab, so every slide agrees. "
+            "Other knobs: slide_size (16:9 | square | vertical for stories | cinema), "
+            "font_pairing, density, decorations, images (local paths OR http/https URLs "
+            "— PPTXer downloads and verifies them), video (.mp4), audio (.mp3), "
+            "output_dir, filename, footer_note.\n\n"
+            "The result carries `layout_clean` and `ground_truth`: report them. "
+            "layout_clean=True with ground_truth=True means the deck was VERIFIED "
+            "against PowerPoint's own rendering — say so. status='created_with_findings' "
+            "means defects were measured and named; read them out rather than claiming "
+            "a clean deck."
+        ),
+        example_request=(
+            "Run PPTXer with input_text='# Nexus Protocol\\n\\n## The Arena Has "
+            "Changed\\n- Twelve new maps\\n- Ranked ladder rebuilt\\n\\n## By The "
+            "Numbers\\n- 3.4M Registered players\\n- 47% Retention at day 30', "
+            "predominant_color='#12E2A3', filename='nexus.pptx'"
+        ),
+        aliases=(
+            "pptxer", "pptx", "powerpoint", "power point", "presentation", "deck",
+            "slides", "slide deck", "make a presentation", "build a deck",
+            "pitch deck", "keynote", "presentacion", "diapositivas",
+        ),
+        security_hints=(
+            "pptxer", "pptx", "powerpoint", "power point", "presentation", "deck",
+            "slides", "slide deck", "slideshow", "make a presentation",
+            "create a presentation", "build a deck", "pitch deck", "keynote",
+            "marketing deck", "gaming deck", "esports deck", "investor deck",
+            "turn this into slides", "export to powerpoint", "presentacion",
+            "diapositivas", "hacer una presentacion",
+        ),
+        # A deck with media fetches, generated artwork and a PowerPoint render
+        # legitimately takes 20-60s; a short poll window would report it as
+        # still-running when it had finished.
+        poll_window_seconds=25,
+    ),
+    ChatWrappedAgentSpec(
         key="latexer",
         template_dir="latexer",
         # LaTeX is backslash soup: EVERY row/line break is ``\\``, and the shared

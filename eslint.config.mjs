@@ -439,7 +439,8 @@ export default [
                 updateZavuererConnection: "readonly",
                 updateDiscovererConnection: "readonly",
                 updateNmapperConnection: "readonly",
-                updatePdferConnection: "readonly",
+                updatePptxerConnection: "readonly",
+        updatePdferConnection: "readonly",
                 updateLatexerConnection: "readonly",
 
                 // Cross-file globals: acp-canvas-core.js

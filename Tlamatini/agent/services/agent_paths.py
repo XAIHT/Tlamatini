@@ -136,6 +136,10 @@ def display_name_from_agent_type(agent_type: str) -> str:
         # how LaTeX itself is written plus the Tlamatini "-er" agent suffix: "LaTeXer"
         # (L-a-T-e-X-e-r), never "Latexer" / "LaTexer" / "LATEXER".
         "latexer": "LaTeXer",
+        # Without this override .title() renders "Pptxer". The display name is the
+        # file format in capitals plus the Tlamatini "-er" agent suffix: "PPTXer"
+        # (P-P-T-X-e-r), never "Pptxer" / "PptxEr" / "PPTXER".
+        "pptxer": "PPTXer",
         # --- case-only fixes: .title() lower-cases the second capital ---
         "audioplayer": "AudioPlayer",
         "videoplayer": "VideoPlayer",

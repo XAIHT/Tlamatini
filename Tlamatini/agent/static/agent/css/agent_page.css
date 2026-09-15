@@ -1863,6 +1863,17 @@ body.resizing-vertical {
    used by .canvas-item.pdfer-agent in agentic_control_panel.css. State-changing
    because it WRITES a PDF file to disk (at an arbitrary output_dir + filename,
    which is exactly why it is also on the Ask-Execs tier-A allowlist). */
+/* PPTXer — mirrors the canvas "Stage Light" gradient so the Exec Report table
+   feels native to the node that produced it. */
+.exec-report-caption-pptxer {
+    background: linear-gradient(135deg, #1A0B2E 0%, #6D28D9 100%);
+    color: #ffffff;
+}
+
+.exec-report-pptxer .exec-report-cmd {
+    border-left: 3px solid #6D28D9;
+}
+
 .exec-report-caption-pdfer {
     background: linear-gradient(135deg, #2B0A0A 0%, #C1272D 100%);
     color: #ffffff;

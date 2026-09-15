@@ -2408,6 +2408,23 @@ body.resizing-vertical {
    warm parchment cream of the paper itself. Unique in this file - no other agent
    uses #C1272D / #E8A33D / #FDF6E3. The sidebar icon inherits this automatically
    through applyAgentToolIconStyle(); never re-type the gradient in JS. */
+/* PPTXer Agent — "Stage Light": deep aubergine → violet → presentation orange
+   → spotlight gold. Deliberately distinct from PDFer's "Crimson Parchment"
+   (which ends warm-cream) and from ACPXer's "Aurora Conduit" (which ends cyan):
+   PPTXer is the only agent whose ramp finishes in gold, so the three
+   document/relay agents are told apart at a glance on a crowded canvas. */
+.canvas-item.pptxer-agent {
+    background-color: #1A0B2E;
+    background: linear-gradient(135deg, #1A0B2E 0%, #6D28D9 33%, #FF6B35 66%, #FFD93D 100%);
+    color: white;
+    font-size: smaller;
+}
+
+.canvas-item.pptxer-agent:hover {
+    background: linear-gradient(135deg, #2D1650 0%, #8B47F0 33%, #FF8A5E 66%, #FFE785 100%);
+    box-shadow: 0 6px 15px rgba(109, 40, 217, 0.5);
+}
+
 .canvas-item.pdfer-agent {
     background-color: #2B0A0A;
     background: linear-gradient(135deg, #2B0A0A 0%, #C1272D 33%, #E8A33D 66%, #FDF6E3 100%);

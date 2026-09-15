@@ -1491,6 +1491,18 @@ _PROMOTE_SECTION_FIELDS_BY_TEMPLATE_DIR: dict = {
         "action", "engine", "distribution", "page_count", "bytes", "passes",
         "bibliography", "errors", "warnings", "success", "status",
     ),
+    # PPTXer: the LLM must be able to quote the exact deck it just wrote, and
+    # `layout_clean` + `ground_truth` are what tell it whether the slides were
+    # actually VERIFIED against PowerPoint's rendering or merely written — the
+    # difference between "here is your deck" and "here is your deck, and I
+    # checked it". `status` distinguishes a clean build from one with findings
+    # and from a fail-safe refusal.
+    "pptxer": (
+        "output_path", "output_dir", "filename", "slide_count",
+        "layout_clean", "ground_truth", "render_tier", "slides_rendered",
+        "overlaps", "text_overflows", "nuance", "font_display", "bytes",
+        "status",
+    ),
     "camcorder": ("output_path", "output_dir", "filename", "media_type", "resolution"),
     "video_analyzer": ("verdict", "verdict_token", "confidence", "motion_score", "status", "video_path"),
     # Surface the headline measurement so the LLM can answer "how fast is my
@@ -2353,6 +2365,18 @@ _PRE_LAUNCH_PREVIEW_SECRET_LEAF_PATTERNS = (
 )
 
 _PRE_LAUNCH_PREVIEW_BY_TEMPLATE = {
+    # --- document / presentation authoring ------------------------------
+    # PPTXer gets a preview because a run has a real COST worth showing first:
+    # it writes a .pptx plus a folder of rendered PNGs to a free-form path, and
+    # it FETCHES MEDIA from the internet. Showing the deck's opening content and
+    # its destination before the spawn is the difference between "it made a
+    # file somewhere" and an informed Proceed.
+    'pptxer':         {'title': 'PPTXER PRESENTATION TO BUILD',
+                       'body': ('input_text', 'deck content'),
+                       'params': ('action', 'nuance', 'predominant_color',
+                                  'slide_size', 'images', 'video',
+                                  'output_dir', 'filename')},
+
     # --- direct execution -----------------------------------------------
     'executer':       {'title': 'EXECUTER COMMAND TO RUN',
                        'body': ('script', 'command')},

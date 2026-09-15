@@ -69,6 +69,13 @@ TIER_A = [
     # files, and on top of all that it RUNS A REAL COMMAND (pdflatex — which with
     # shell_escape can execute anything a .tex asks for). (2026-08-05)
     "chat_agent_latexer",
+    # PPTXer qualifies TWICE, under two different tiers. Tier A: it writes a
+    # .pptx AND a folder of rendered slide PNGs to a free-form output_dir +
+    # filename, so it can clobber an existing file exactly like PDFer. Tier D:
+    # it REACHES REMOTE HOSTS, downloading the images, video and audio a deck
+    # references. Either alone would gate it; both together make it
+    # unambiguous. (2026-09-14)
+    "chat_agent_pptxer",
 ]
 
 # ── Tier B — MESSAGING: deliberately NOT gated (Angela reversed it 2026-07-26) ──

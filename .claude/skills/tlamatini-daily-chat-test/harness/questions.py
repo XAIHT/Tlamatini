@@ -93,6 +93,7 @@ AGENTS = [
     ("File-Interpreter", ["read", "interpret", "llm"]),
     ("File-Extractor", ["extract", "text", "pdf"]),
     ("LaTeXer", ["latex", "typeset", "pdf"]),
+    ("PPTXer", ["powerpoint", "slide", "deck"]),
     ("NetSpeed-Calculator", ["speed", "internet", "bufferbloat"]),
     ("Image-Interpreter", ["vision", "image", "llm"]),
     ("J-Decompiler", ["jar", "decompile", "java"]),

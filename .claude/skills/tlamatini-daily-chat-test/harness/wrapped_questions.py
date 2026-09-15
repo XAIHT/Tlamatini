@@ -209,6 +209,20 @@ WRAPPED = [
      "typeset. If none is installed, say so plainly and name what I need to install.",
      ["latex"]),
 
+    # --- presentations ----------------------------------------------------
+    # `validate` writes NO deck and needs no PowerPoint to answer: it probes
+    # every backend and renderer and reports what it actually found. On a
+    # machine WITH PowerPoint it names powerpoint_com and says the render can
+    # be ground truth; on one without, it says so and names the fallback. Either
+    # way the agent answers truthfully and writes nothing, so this question is
+    # safe to run 1000x/day and never depends on the host's setup.
+    ("pptxer", "PPTXer",
+     "Using PPTXer, run the 'validate' action to report which presentation "
+     "backends and slide renderers are available on this machine, and tell me "
+     "whether PPTXer can check its own slides against PowerPoint's own rendering. "
+     "If it cannot, say so plainly and name what is missing.",
+     ["pptx"]),
+
     # --- network measurement ----------------------------------------------
     # DELIBERATELY action='latency': it exercises the whole launch -> preflight ->
     # provider discovery -> RTT/jitter/loss -> INI_SECTION -> report path, but moves
