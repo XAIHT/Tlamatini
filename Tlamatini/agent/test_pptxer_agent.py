@@ -412,7 +412,8 @@ class TextFitTests(SimpleTestCase):
                                  L.Box(0, 0, 700000, 300000, name="tiny"),
                                  font, start_pt=40)
         self.assertTrue(result["overflow"])
-        self.assertIn("unbreakable", result["reason"])
+        self.assertIn("lines need", result["reason"])
+        self.assertEqual("".join(result["lines"]), "Supercalifragilisticexpialidocious" * 3)
 
     def test_a_comfortable_box_does_not_report_overflow(self):
         canvas = L.SlideCanvas("16:9")

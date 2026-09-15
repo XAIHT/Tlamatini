@@ -445,9 +445,13 @@ class TableSolver:
                              if total_chars else 1.0 / ncols)
             # Padding is part of the floor: a column exactly as wide as its
             # widest word, with 6pt of padding on each side, still overflows.
-            demand.min_soft += self.padding * 2
-            demand.min_hard += self.padding * 2
-            demand.natural += self.padding * 2
+            # Reserve a fraction of a point beyond the exact glyph sum.
+            # Floating-point width normalization can otherwise put an ordinary
+            # word a few ulps below its measured width; Paragraph then breaks
+            # "Typography" into "Typograph / y" despite ample page space.
+            demand.min_soft += self.padding * 2 + 0.75
+            demand.min_hard += self.padding * 2 + 0.75
+            demand.natural += self.padding * 2 + 0.75
         return demands
 
     # ── the ladder ──────────────────────────────────────────────────────

@@ -174,6 +174,7 @@ class Theme:
         self.background_mode = background_mode
         self.meta = meta or {}
         self._validation = []
+        self._role_fonts = {}
 
     # -- accessors ------------------------------------------------------------
 
@@ -192,7 +193,17 @@ class Theme:
 
     def font_for(self, role):
         face = TYPE_ROLES.get(role, {}).get("face", "body")
-        return self.fonts.get(face) or self.fonts.get("body")
+        base = self.fonts.get(face) or self.fonts.get("body")
+        if base is None:
+            return None
+        key = (role, base.family, base.path, self.is_bold(role), self.letter_spacing(role))
+        if key not in self._role_fonts:
+            from copy import copy
+            resolved = copy(get_inventory().resolve(base.family, base.category,
+                                                    bold=self.is_bold(role), italic=base.italic))
+            resolved.tracking_em = self.letter_spacing(role)
+            self._role_fonts[key] = resolved
+        return self._role_fonts[key]
 
     def is_bold(self, role) -> bool:
         return bool(TYPE_ROLES.get(role, {}).get("bold", False))
@@ -288,6 +299,9 @@ class Theme:
              DISPLAY_CONTRAST_FLOOR, "table headers"),
             ("rule", ground, NON_TEXT_CONTRAST_FLOOR, "rules"),
             ("link", ground, BODY_CONTRAST_FLOOR, "links"),
+            ("kicker", ground, BODY_CONTRAST_FLOOR, "kickers"),
+            ("accent_text", ground, BODY_CONTRAST_FLOOR, "accent labels"),
+            ("accent_text", surface, BODY_CONTRAST_FLOOR, "accent labels on panels"),
         )
 
         for role, bg, floor, label in checks:
@@ -378,6 +392,10 @@ def build_theme(verdict, config=None, inventory=None) -> Theme:
     if mode not in ("dark", "light"):
         mode = spec.get("background_mode", "light")
     explicit_bg = parse_color(cfg.get("background_color"))
+    # A new seed or background mode keeps the user's palette in control.
+    use_style_palette = not cfg.get("predominant_color") and mode == spec.get("background_mode")
+    if explicit_bg is None and use_style_palette:
+        explicit_bg = parse_color(spec.get("background_color"))
     if explicit_bg is not None:
         mode = "dark" if is_dark(explicit_bg) else "light"
     dark = (mode == "dark")
@@ -386,6 +404,16 @@ def build_theme(verdict, config=None, inventory=None) -> Theme:
     seed = parse_color(cfg.get("predominant_color")) or parse_color(
         spec.get("palette_seed", "#2F5D8C"))
     palette = derive_palette_from_seed(seed, dark_ground=dark)
+    if use_style_palette:
+        for role, value in spec.get("palette_roles", {}).items():
+            color = parse_color(value)
+            if color is not None:
+                palette[role] = color
+        if spec.get("visual_style") and not dark:
+            # New light styles use white labels on accent-filled table headers
+            # and diagram nodes. Reserve the small-text floor plus render headroom.
+            palette["accent"] = ensure_contrast(palette["accent"], Color(1, 1, 1), 8.0)
+            palette["on_accent"] = Color(1, 1, 1)
 
     if explicit_bg is not None:
         palette["ground"] = explicit_bg
@@ -406,6 +434,7 @@ def build_theme(verdict, config=None, inventory=None) -> Theme:
     palette.setdefault("footer", palette["text_muted"])
     palette.setdefault("link", palette["accent"])
     palette.setdefault("kicker", palette["accent"])
+    palette.setdefault("accent_text", palette["accent"])
     palette.setdefault("quote", palette["text"])
     palette.setdefault("stat_value", palette["accent"])
     palette.setdefault("stat_label", palette["text_muted"])
@@ -448,6 +477,7 @@ def build_theme(verdict, config=None, inventory=None) -> Theme:
             if role == "accent":
                 palette["title"] = override
                 palette["kicker"] = override
+                palette["accent_text"] = override
                 palette["stat_value"] = override
                 palette["bullet_marker"] = override
                 palette["on_accent"] = ensure_contrast(
@@ -500,6 +530,9 @@ def build_theme(verdict, config=None, inventory=None) -> Theme:
         "panel_pad": int((unit * 0.95) * EMU_PER_POINT),
         "header_gap": int((unit * 1.0) * EMU_PER_POINT),
     }
+    for name, factor in spec.get("spacing_factors", {}).items():
+        if name in spacing:
+            spacing[name] = int(unit * factor * EMU_PER_POINT)
 
     # ---- 8. shape language -------------------------------------------------
     sharp = nuance_key in ("cyberpunk_tech", "military_tactical", "retro_arcade",
@@ -523,6 +556,11 @@ def build_theme(verdict, config=None, inventory=None) -> Theme:
             "retro_arcade", "brand_bold", "event_keynote", "game_trailer_beat",
         ),
     }
+    for name, value in spec.get("shape_defaults", {}).items():
+        if name in ("radius", "rule", "stroke", "stroke_heavy", "rule_hair"):
+            shape[name] = int(value * EMU_PER_POINT)
+        elif name in ("uppercase_titles", "shadow", "glow"):
+            shape[name] = bool(value)
 
     # ---- 9. decoration ceiling (can only be LOWERED) ----------------------
     decoration = decoration_ceiling_for(verdict, str(cfg.get("decorations") or "auto"))

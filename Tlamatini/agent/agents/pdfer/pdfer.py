@@ -443,7 +443,7 @@ _PAGE_SIZES = {"a4": "A4", "letter": "letter", "legal": "legal"}
 
 # The three source shapes PDFer accepts, and every mode it can run.
 _RENDER_MODES = ("markdown", "html", "text", "images", "mixed", "merge")
-_META_MODES = ("auto", "info", "validate")
+_META_MODES = ("auto", "info", "validate", "styles")
 _ALL_MODES = _RENDER_MODES + _META_MODES
 
 _IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tif", ".tiff", ".webp")
@@ -1435,7 +1435,7 @@ def _preflight(mode: str, config: dict, text: str, images: list, pdfs: list,
         fatals.append(f"Unknown mode {mode!r}. Valid: {', '.join(sorted(_ALL_MODES))}.")
         return {"ok": False, "fatals": fatals, "warnings": warnings}
 
-    if mode == "validate":
+    if mode in ("validate", "styles"):
         return {"ok": True, "fatals": [], "warnings": warnings}
 
     if mode == "info":
@@ -1589,6 +1589,8 @@ def main():
             # ── new in 2026-09: the design decisions, reported so a
             #    downstream agent (or a human) can see WHY it looks like this
             "nuance": "",
+            "style": "",
+            "style_family": "",
             "nuance_confidence": "",
             "nuance_source": "",
             "palette": "",
@@ -1613,6 +1615,16 @@ def main():
             body = "PREFLIGHT REFUSED (fail-safe):\n\n" + _format_preflight_report(pf)
             outcome["status"] = "refused"
             logging.error(f"❌ Preflight refused mode={mode}: {pf['fatals']}")
+
+        elif mode == "styles":
+            import pdfer_styles
+            catalog = pdfer_styles.style_catalog()
+            body = "PDFer visual styles (set style='<id>'; no file written):\n\n" + "\n".join(
+                "  {id:<24} {label} [{family}] — {aliases}".format(
+                    **dict(row, aliases=", ".join(row["aliases"]))) for row in catalog)
+            body += "\n\nstyle=auto keeps the semantic theme. Ornament respects the document's decoration budget."
+            outcome["status"] = "inspected"
+            ok = True
 
         elif mode == "validate":
             lines = ["PDFer backend report (no file written):", ""]
@@ -1702,6 +1714,8 @@ def main():
                         audit = atelier_result.get("audit")
                         if design is not None:
                             outcome["nuance"] = design.nuance
+                            outcome["style"] = design.meta.get("style", "auto")
+                            outcome["style_family"] = design.meta.get("family", "semantic")
                             outcome["palette"] = design.meta.get("label", "")
                             outcome["predominant_color"] = (
                                 design.meta.get("seed", "")

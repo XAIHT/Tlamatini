@@ -78,6 +78,7 @@ import re
 
 import pdfer_docmodel as dm
 import pdfer_tables as ptab
+import pdfer_artwork
 
 __all__ = ["Atelier", "PAGE_SIZES", "render_document"]
 
@@ -123,6 +124,9 @@ class Atelier:
         self.page_size = _page_size(design.page.get("size"),
                                     design.page.get("orientation"))
         self.margin = float(design.page.get("margin_mm", 18)) * MM
+        # Keep the frame usable on A5 and landscape pages even when a flow
+        # supplies the maximum 60 mm margin.
+        self.margin = min(self.margin, min(self.page_size) * 0.22)
         self.frame_width = self.page_size[0] - 2 * self.margin
         self.frame_height = self.page_size[1] - 2 * self.margin
 
@@ -142,27 +146,10 @@ class Atelier:
         return self.palette.get(role).hex
 
     def _cover_ink(self):
-        """A text colour that is legible on THIS cover's artwork.
-
-        The cover is the one place where text does not sit on a palette role —
-        it sits on a generated gradient. So the ground is computed (the
-        midpoint of ``cover_from → cover_to``, which is what the title band
-        actually crosses), the more promising of the two text colours is
-        chosen, and `ensure_contrast` guarantees the rest.
-
-        When no cover art is drawn the title sits on the plain page, so the
-        ordinary heading colour is correct and is used instead.
-        """
+        """Cover copy always sits on an opaque, palette-matched reading area."""
         import pdfer_color as pc
-
-        if not self.design.may_decorate("cover"):
-            return self.palette.heading_1
-        ground = pc.mix(self.palette.cover_from, self.palette.cover_to, 0.5)
-        candidates = (self.palette.text, self.palette.text_inverse,
-                      pc.Color(1, 1, 1), pc.Color(0, 0, 0))
-        best = max(candidates, key=lambda c: c.contrast(ground))
-        return pc.ensure_contrast(best, ground, pc.WCAG_AA_LARGE,
-                                  preserve_hue=False)
+        return pc.ensure_contrast(self.palette.heading_1, self.palette.background,
+                                  pc.WCAG_AA_NORMAL)
 
     # ─────────────────────────────────────────────────────────────────
     #  STYLESHEET — derived entirely from the design system
@@ -242,32 +229,22 @@ class Atelier:
         styles["cell_num"] = ParagraphStyle(
             "tlm_cell_num", parent=styles["cell"], alignment=2)   # TA_RIGHT
 
-        # ⚠️ COVER TEXT IS COLOURED AGAINST THE ART, NOT BY A FIXED ROLE.
-        #
-        # The first version used ``text_inverse`` whenever a cover was drawn.
-        # On a DARK theme ``text_inverse`` is near-black (it is the inverse of
-        # the light body text) — and the cover art is also dark, so the title
-        # came out at **2.53:1** on ``scientific_dark``. The layout auditor
-        # caught it against the rendered file, which is exactly why that
-        # auditor exists.
-        #
-        # The ground here is artwork, not a palette role, so the colour has to
-        # be solved: take the midpoint of the cover gradient (the tone the
-        # title actually sits on), pick whichever of the two text colours
-        # starts closer, and let `ensure_contrast` finish the job.
+        # Cover art and text occupy separate regions. A single opaque ground
+        # makes contrast provable even on multicolour or very bright artwork.
         cover_ink = self._cover_ink()
         styles["cover_title"] = ParagraphStyle(
             "tlm_cover_title", parent=base, fontName=f["display_bold"],
             fontSize=s["cover_title"],
             leading=self.design.scale.leading(s["cover_title"]),
             textColor=cover_ink.as_reportlab(),
-            alignment=TA_LEFT, spaceAfter=6)
+            alignment=TA_CENTER if self.design.meta.get("centered") else TA_LEFT,
+            spaceAfter=6)
         styles["cover_subtitle"] = ParagraphStyle(
-            "tlm_cover_subtitle", parent=base, fontName=f["display"],
+            "tlm_cover_subtitle", parent=base, fontName=f["body"],
             fontSize=s["cover_subtitle"],
             leading=self.design.scale.leading(s["cover_subtitle"]),
-            textColor=cover_ink.with_alpha(0.86).as_reportlab(),
-            alignment=TA_LEFT)
+            textColor=self._c("text_muted"),
+            alignment=styles["cover_title"].alignment)
 
         styles["toc1"] = ParagraphStyle(
             "tlm_toc1", parent=base, fontName=f["body_bold"],
@@ -702,8 +679,8 @@ class Atelier:
             if path:
                 try:
                     return [KeepTogether([paragraph, Spacer(1, 2),
-                                          RLImage(path, width=width,
-                                                  height=3)])]
+                                          RLImage(path, width=width, height=3),
+                                          Spacer(1, max(6, self.spacing["rule_gap"] * 1.4))])]
                 except Exception:
                     pass
         elif block.level == 1 and self.design.may_decorate("title_rule"):
@@ -797,22 +774,48 @@ class Atelier:
         # It looked harmless on short light documents (which is how it
         # survived the first test round); the layout auditor found it by
         # measuring the ink against the ground it really landed on.
-        out = [NextPageTemplate("body"), Spacer(1, self.frame_height * 0.30)]
-        out.append(Paragraph(dm.escape_inline(title), styles["cover_title"]))
-        if self.design.may_decorate("title_rule") or True:
-            out.append(Spacer(1, 6))
-            out.append(HRFlowable(
-                width="46%", thickness=2.2,
-                color=self.palette.accent.as_reportlab(),
-                hAlign="LEFT", spaceBefore=0, spaceAfter=8))
-        if subtitle:
-            out.append(Paragraph(dm.escape_inline(subtitle),
-                                 styles["cover_subtitle"]))
         tail = " · ".join(x for x in (author, meta_line) if x)
-        if tail:
-            out.append(Spacer(1, 14))
-            out.append(Paragraph(dm.escape_inline(tail),
-                                 styles["cover_subtitle"]))
+        title_style = styles["cover_title"].clone("tlm_cover_fitted")
+        sub_style = styles["cover_subtitle"].clone("tlm_cover_sub_fitted")
+        title_style.fontSize = min(title_style.fontSize, 54, self.frame_width * .115)
+        # Fit ordinary words as words before resorting to character wrapping
+        # for genuinely unbreakable identifiers. Avoid "possibili / ties".
+        ordinary_words = [word for word in str(title).split() if len(word) <= 40]
+        widest = max((self.book.text_width(word, title_style.fontName, title_style.fontSize)
+                      for word in ordinary_words), default=0)
+        if widest > self.frame_width:
+            title_style.fontSize = max(18, title_style.fontSize * self.frame_width / widest * .98)
+        title_style.leading = title_style.fontSize * 1.18
+        title_style.keepWithNext = 0
+        # Measure ALL cover copy before reserving artwork space. Reduce display
+        # type only to a readable floor; very long copy is allowed to continue.
+        for _ in range(32):
+            title_p = self._safe_paragraph(dm.escape_inline(title), title_style)
+            subtitle_p = self._safe_paragraph(dm.escape_inline(subtitle), sub_style) if subtitle else None
+            tail_p = self._safe_paragraph(dm.escape_inline(tail), sub_style) if tail else None
+            required = sum(p.wrap(self.frame_width, self.frame_height)[1]
+                           + p.getSpaceAfter() for p in (title_p, subtitle_p, tail_p) if p) + 54
+            if required <= self.frame_height * .64 or title_style.fontSize <= 18:
+                break
+            title_style.fontSize = max(18, title_style.fontSize * .94)
+            title_style.leading = title_style.fontSize * 1.18
+            sub_style.fontSize = max(10, sub_style.fontSize * .97)
+            sub_style.leading = sub_style.fontSize * 1.4
+        start = max(0, min(self.frame_height * .41, self.frame_height - required - 12))
+        self._cover_panel_top = self.page_size[1] - self.margin - start + 22
+        self._cover_seed = title
+        if title_style.fontSize < styles["cover_title"].fontSize:
+            self.repairs.append("cover typography fitted to measured text")
+        out = [NextPageTemplate("body"), Spacer(1, start), title_p, Spacer(1, 10)]
+        if self.design.decoration != "none":
+            out.append(HRFlowable(width="24%", thickness=2.2,
+                                 color=self._c("primary"),
+                                 hAlign="CENTER" if self.design.meta.get("centered") else "LEFT",
+                                 spaceBefore=0, spaceAfter=12))
+        if subtitle_p:
+            out.append(subtitle_p)
+        if tail_p:
+            out.extend([Spacer(1, 14), tail_p])
         out.append(PageBreak())
         return out
 
@@ -850,12 +853,22 @@ class Atelier:
             canvas.setFillColor(self._c("background"))
             canvas.rect(0, 0, width, height, stroke=0, fill=1)
 
-            if cover and self.ornament and self.design.may_decorate("cover"):
-                art = self.ornament.cover_art(int(width), int(height),
-                                              salt="cover")
-                if art:
-                    canvas.drawImage(art, 0, 0, width=width, height=height,
-                                     mask="auto")
+            if cover and self.design.may_decorate("cover"):
+                panel_top = min(height, getattr(self, "_cover_panel_top", height * .6))
+                if self.design.meta.get("motif") and self.design.ornament == "signature":
+                    pdfer_artwork.paint_signature(canvas, self.design, 0, panel_top,
+                                                  width, height - panel_top,
+                                                  seed=getattr(self, "_cover_seed", ""))
+                elif self.ornament:
+                    art = self.ornament.cover_art(int(width), int(height), salt="cover")
+                    if art:
+                        canvas.drawImage(art, 0, 0, width=width, height=height, mask="auto")
+                # Protect every cover line, not just the gradient's midpoint.
+                canvas.setFillColor(self._c("background"))
+                canvas.rect(0, 0, width, panel_top, stroke=0, fill=1)
+                canvas.setStrokeColor(self._c("border"))
+                canvas.setLineWidth(.65)
+                canvas.line(self.margin, panel_top, width - self.margin, panel_top)
             elif self.ornament and self.design.may_decorate("page_edge"):
                 band = self.ornament.header_band(int(width), 8, salt="edge")
                 if band:
@@ -884,11 +897,26 @@ class Atelier:
             total = getattr(self, "_total_pages", 0)
             if total:
                 label += " %s %d" % (self.labels.get("of", "of"), total)
-            canvas.drawCentredString(width / 2.0, y, label)
-
             if self.footer_note:
-                canvas.setFont(self.fonts["body"], self.sizes["footer"])
-                canvas.drawString(self.margin, y, self.footer_note[:90])
+                # Reserve the folio's measured width; 90 characters was not a
+                # width bound and long notes used to collide with the number.
+                from reportlab.pdfbase.pdfmetrics import stringWidth
+                font, size = self.fonts["body"], self.sizes["footer"]
+                available = max(0, self.frame_width - stringWidth(label, font, size) - 24)
+                note = re.sub(r"\s+", " ", self.footer_note).strip()
+                if stringWidth(note, font, size) > available:
+                    lo, hi = 0, len(note)
+                    while lo < hi:
+                        mid = (lo + hi + 1) // 2
+                        if stringWidth(note[:mid] + "...", font, size) <= available:
+                            lo = mid
+                        else:
+                            hi = mid - 1
+                    note = note[:lo].rstrip() + "..." if lo else ""
+                canvas.drawString(self.margin, y, note)
+                canvas.drawRightString(width - self.margin, y, label)
+            else:
+                canvas.drawCentredString(width / 2.0, y, label)
             # A hairline above the footer, in the rule colour.
             canvas.setStrokeColor(self._c("border_soft"))
             canvas.setLineWidth(0.4)

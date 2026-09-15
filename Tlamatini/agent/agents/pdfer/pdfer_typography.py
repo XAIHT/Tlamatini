@@ -199,7 +199,7 @@ FONT_CANDIDATES = {
 
     # ── Display / headline — covers, marketing, section marks ───────────
     "FranklinGothic": {
-        "files": ("framd.ttf", "framdit.ttf", "FRAMDCN.TTF"),
+        "files": ("framd.ttf", "framd.ttf", "framdit.ttf", "framdit.ttf"),
         "class": "display", "voice": "assertive", "weight_feel": "heavy",
     },
     "Bahnschrift": {
@@ -211,11 +211,11 @@ FONT_CANDIDATES = {
         "class": "display", "voice": "loud", "weight_feel": "heavy",
     },
     "SegoeUIBlack": {
-        "files": ("seguibl.ttf", "seguibli.ttf"),
+        "files": ("seguibl.ttf", "seguibl.ttf", "seguibli.ttf", "seguibli.ttf"),
         "class": "display", "voice": "modern", "weight_feel": "heavy",
     },
     "SegoeUILight": {
-        "files": ("segoeuil.ttf", "seguili.ttf"),
+        "files": ("segoeuil.ttf", "segoeuil.ttf", "seguili.ttf", "seguili.ttf"),
         "class": "display", "voice": "modern", "weight_feel": "airy",
     },
 

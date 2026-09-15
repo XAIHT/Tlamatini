@@ -43,11 +43,12 @@
 
 import os
 
-from pptxer_draw import compose_background, draw_glow_orb, draw_scrim, make_seed
+from pptxer_draw import compose_background, draw_scrim, make_seed
 from pptxer_layout import (
     EMU_PER_POINT,
     Box,
     GridSolver,
+    PlacementError,
     SlideCanvas,
     fit_image_box,
     solve_columns,
@@ -138,7 +139,14 @@ def build_deck(deck, theme, output_path, config=None, media_index=None,
 
     seed_base = make_seed(deck.title, theme.nuance, len(deck.slides))
 
-    for index, slide_model in enumerate(deck.slides, start=1):
+    try:
+        slides, adjustments = _paginate(deck.slides, theme, cfg, media, inventory)
+        result.warnings.extend(adjustments)
+    except PlacementError as exc:
+        result.error = f"No readable layout could be produced: {exc}"
+        return result
+
+    for index, slide_model in enumerate(slides, start=1):
         canvas = SlideCanvas(size_name, margin_pt=margin_pt,
                              gutter_pt=theme.space("gutter") / EMU_PER_POINT,
                              inventory=inventory)
@@ -147,12 +155,11 @@ def build_deck(deck, theme, output_path, config=None, media_index=None,
 
         try:
             _build_one(pslide, slide_model, theme, canvas, spec, result,
-                       media, cfg, seed_base + index, index, len(deck.slides))
+                       media, cfg, seed_base + index, index, len(slides))
         except Exception as exc:                                  # noqa: BLE001
             # One broken slide must never cost the deck. Report it, keep going.
-            result.warnings.append(
-                f"slide {index} ({slide_model.kind}) could not be fully built: "
-                f"{exc}; it was left partially composed")
+            result.error = f"slide {index} ({slide_model.kind}) could not be built: {exc}"
+            return result
 
         audit = canvas.audit()
         for diag in audit.get("diagnostics", []):
@@ -177,16 +184,24 @@ def build_deck(deck, theme, output_path, config=None, media_index=None,
     except Exception:                                             # noqa: BLE001
         pass
 
+    staging = None
     try:
         parent = os.path.dirname(output_path)
         if parent:
             os.makedirs(parent, exist_ok=True)
-        prs.save(output_path)
+        import tempfile
+        with tempfile.NamedTemporaryFile(dir=parent or ".", suffix=".pptx", delete=False) as file:
+            staging = file.name
+        prs.save(staging)
+        os.replace(staging, output_path)
         result.path = output_path
         result.ok = True
     except Exception as exc:                                      # noqa: BLE001
         result.error = f"the presentation could not be saved: {exc}"
         result.ok = False
+    finally:
+        if staging and os.path.isfile(staging):
+            os.remove(staging)
 
     return result
 
@@ -195,9 +210,215 @@ def build_deck(deck, theme, output_path, config=None, media_index=None,
 # Per-slide composition
 # ─────────────────────────────────────────────────────────────────────────────
 
+def _paginate(models, theme, cfg, media, inventory):
+    """Trial-compose against real fonts and actual boxes before writing a deck.
+
+    Split the content model when its layout cannot hold it. No failed trial
+    leaks into the output, and the caller's model is never mutated.
+    """
+    from collections import deque
+    from copy import deepcopy
+    from pptx import Presentation
+    from pptxer_audit import audit_shape_tree, audit_text_fit
+
+    pending = deque((deepcopy(m), 0) for m in models)
+    accepted, notes = [], []
+    trial_cfg = dict(cfg, generate_art=False)
+    while pending:
+        model, depth = pending.popleft()
+        if model.body and model.bullets and model.kind in ("bullets", "agenda", "image_left", "image_right"):
+            model.bullets.insert(0, model.body)
+            model.body = ""
+        if depth > 20 or len(accepted) + len(pending) > 1000:
+            raise PlacementError("content exceeds the pagination limit")
+        probe = SlideCanvas(cfg.get("slide_size", "16:9"),
+                            margin_pt=float(cfg.get("margin_pt") or 48),
+                            gutter_pt=theme.space("gutter") / EMU_PER_POINT,
+                            inventory=inventory)
+        if model.chart and not model.meta.get("keyed_chart"):
+            from pptxer_docmodel import Slide
+            from pptxer_fonts import measure_text
+            key_lines = []
+            categories = list(model.chart.get("categories", []))
+            allowance = max(30.0, probe.safe.width_pt / max(1, len(categories)) - 12)
+            for i, value in enumerate(categories):
+                if measure_text(str(value), theme.font_for("caption"), theme.size("caption"), inventory)[0] > allowance:
+                    categories[i] = f"C{i + 1}"
+                    key_lines.append(f"C{i + 1}: {value}")
+            model.chart["categories"] = categories
+            for i, series in enumerate(model.chart.get("series", [])):
+                value = series.get("name", "")
+                if measure_text(str(value), theme.font_for("caption"), theme.size("caption"), inventory)[0] > probe.safe.width_pt * 0.4:
+                    series["name"] = f"Series {i + 1}"
+                    key_lines.append(f"Series {i + 1}: {value}")
+            model.meta["keyed_chart"] = True
+            if key_lines:
+                pending.appendleft((Slide(kind="bullets", title="Chart labels", bullets=key_lines,
+                                          meta={"reading_layout": True}), depth))
+                notes.append(f"Placed long labels for {model.title!r} in a numbered chart key")
+        prs = Presentation()
+        prs.slide_width, prs.slide_height = probe.width, probe.height
+        slide = prs.slides.add_slide(prs.slide_layouts[6])
+        spec = {"index": 1, "background": None, "shapes": []}
+        trial = BuildResult()
+        reason = _capacity_reason(model)
+        if not reason:
+            try:
+                _build_one(slide, model, theme, probe, spec, trial, media,
+                           trial_cfg, 0, 1, 999)
+                geometry = audit_shape_tree(prs, margin_pt=float(cfg.get("margin_pt") or 48))
+                fit = audit_text_fit(prs, inventory=inventory)
+                errors = (geometry["overlaps"] + geometry["off_slide"]
+                          + [e for e in geometry["safe_escapes"] if not e.get("decorative")]
+                          + fit["overflows"])
+                reason = geometry.get("error") or fit.get("error") or (str(errors[0]) if errors else "")
+                if trial.warnings:
+                    reason = reason or trial.warnings[0]
+            except Exception as exc:
+                reason = str(exc)
+        if not reason:
+            accepted.append(model)
+            continue
+        parts = _split_content(model)
+        if not parts:
+            raise PlacementError(f"{model.kind} {model.title[:60]!r}: {reason}")
+        notes.append(f"Reflowed {model.kind} {model.title[:40]!r}: {reason}")
+        pending.extendleft((part, depth + 1) for part in reversed(parts))
+    return accepted, notes
+
+
+def _capacity_reason(model):
+    if len(model.stats) > 6 or len(model.timeline) > 6 or len(model.columns) > 3:
+        return "items need continuation slides"
+    if model.diagram:
+        kind = model.diagram.get("kind", "flow")
+        cap = {"venn": 3, "matrix": 4, "pyramid": 5}.get(kind, 6)
+        if len(model.diagram.get("nodes", [])) > cap:
+            return "diagram nodes need continuation slides"
+    if model.kind == "gallery" and len(model.images) > 6:
+        return "images need continuation slides"
+    return ""
+
+
+def _split_string(text):
+    """Cut at a word boundary when possible, retaining every character."""
+    text = str(text)
+    if len(text) < 2:
+        return []
+    middle = len(text) // 2
+    boundary = text.rfind(" ", max(1, middle // 2), middle + 1)
+    cut = boundary + 1 if boundary >= 0 else middle
+    return [text[:cut], text[cut:]]
+
+
+def _split_content(model):
+    from copy import deepcopy
+    from pptxer_docmodel import Slide
+
+    def chunks(field, values):
+        middle = (len(values) + 1) // 2
+        parts = [deepcopy(model), deepcopy(model)]
+        for part, values_part in zip(parts, (values[:middle], values[middle:])):
+            setattr(part, field, values_part)
+        parts[1].meta["continuation"] = True
+        return parts
+
+    if model.diagram and not model.meta.get("node_keys"):
+        nodes = model.diagram.get("nodes", [])
+        if any(len(str(node)) > 60 for node in nodes) and not _capacity_reason(model):
+            diagram = deepcopy(model)
+            diagram.diagram["nodes"] = [str(i + 1) for i in range(len(nodes))]
+            diagram.meta["node_keys"] = True
+            details = Slide(kind="bullets", title="Diagram labels",
+                            bullets=[f"{i + 1}: {text}" for i, text in enumerate(nodes)],
+                            meta={"reading_layout": True})
+            return [diagram, details]
+
+    for field in ("stats", "timeline", "bullets"):
+        values = getattr(model, field)
+        if len(values) > 1:
+            return chunks(field, values)
+    if model.kind == "gallery" and len(model.images) > 1:
+        return chunks("images", model.images)
+    if len(model.columns) > 1:
+        return chunks("columns", model.columns)
+    if model.diagram and len(model.diagram.get("nodes", [])) > 1:
+        nodes = model.diagram["nodes"]
+        parts = [deepcopy(model), deepcopy(model)]
+        middle = (len(nodes) + 1) // 2
+        parts[0].diagram["nodes"], parts[1].diagram["nodes"] = nodes[:middle], nodes[middle:]
+        parts[1].meta["continuation"] = True
+        return parts
+    if model.table and len(model.table.get("rows", [])) > 1:
+        rows = model.table["rows"]
+        parts = [deepcopy(model), deepcopy(model)]
+        middle = (len(rows) + 1) // 2
+        parts[0].table["rows"], parts[1].table["rows"] = rows[:middle], rows[middle:]
+        parts[1].meta["continuation"] = True
+        return parts
+    # A single dense card, row, or unusually long heading needs a reading
+    # layout. Keep the original fields visible, including labels and values.
+    if not model.meta.get("reading_layout"):
+        texts = [model.title, model.subtitle, model.kicker, model.body, model.quote, model.attribution]
+        texts.extend(model.bullets)
+        for stat in model.stats:
+            texts.append(f"{stat.get('value', '')}: {stat.get('label', '')}")
+        for col in model.columns:
+            texts.extend([col.get("title", ""), *col.get("bullets", [])])
+        for item in model.timeline:
+            texts.append(f"{item.get('when', '')}: {item.get('what', '')}")
+        if model.diagram:
+            texts.extend(model.diagram.get("nodes", []))
+        if model.table:
+            headers = model.table.get("headers", [])
+            for row in model.table.get("rows", []):
+                texts.extend(f"{headers[c] if c < len(headers) else c + 1}: {value}"
+                             for c, value in enumerate(row))
+            if not model.table.get("rows"):
+                texts.extend(headers)
+        if model.chart:
+            texts.extend(str(c) for c in model.chart.get("categories", []))
+            for series in model.chart.get("series", []):
+                texts.append(str(series))
+        if model.code:
+            # Code keeps its indentation and monospace face across pages.
+            part = deepcopy(model)
+            part.title = "Code (continued)" if model.meta.get("continuation") else "Code"
+            part.subtitle = part.kicker = ""
+            part.meta["reading_layout"] = True
+            return [Slide(kind="bullets", title="Code context", bullets=[t for t in texts if t],
+                          meta={"reading_layout": True}), part]
+        parts = [Slide(kind="bullets", title="Details (continued)" if model.meta.get("continuation") else "Details",
+                      bullets=[str(t) for t in texts if str(t).strip()],
+                      notes=model.notes, meta={"reading_layout": True})]
+        if model.images:
+            parts.append(Slide(kind="gallery", title="Images", images=model.images))
+        if model.video:
+            parts.append(Slide(kind="media", video=model.video))
+        return parts
+    field = "code" if model.code else ("body" if model.body else "bullets")
+    value = model.bullets[0] if field == "bullets" and model.bullets else getattr(model, field)
+    if not isinstance(value, str):
+        return []
+    strings = _split_string(value)
+    parts = []
+    for text in strings:
+        part = deepcopy(model)
+        setattr(part, field, [text] if field == "bullets" else text)
+        if parts:
+            part.meta["continuation"] = True
+        parts.append(part)
+    return parts
+
+
 def _build_one(pslide, model, theme, canvas, spec, result, media, cfg,
                seed, index, total):
     kind = model.kind
+    canvas.footer_height = _emu_pt(theme.size("footnote") * 1.6)
+    if cfg.get("footer_note"):
+        canvas.footer_height = max(canvas.footer_height, canvas.text_block_height(
+            f"{cfg['footer_note']} · Continued · {total} / {total}", canvas.safe.width,
+            theme.font_for("footnote"), 10.0))
 
     _paint_background(pslide, model, theme, canvas, spec, result, cfg, seed)
 
@@ -227,8 +448,11 @@ def _build_one(pslide, model, theme, canvas, spec, result, media, cfg,
     builder(pslide, model, theme, canvas, spec, result, media, cfg, seed)
 
     if cfg.get("slide_numbers", True) and kind not in ("title_slide",):
+        note = str(cfg.get("footer_note") or "")
+        if model.meta.get("continuation"):
+            note = f"{note} · Continued" if note else "Continued"
         _add_footer(pslide, theme, canvas, spec, result, index, total,
-                    str(cfg.get("footer_note") or ""))
+                    note)
 
     if model.notes:
         try:
@@ -285,6 +509,8 @@ def _add_rect(pslide, box, fill_hex=None, line_hex=None, name="pptxer:panel",
         shape = pslide.shapes.add_shape(form, Emu(box.left), Emu(box.top),
                                         Emu(box.width), Emu(box.height))
         shape.name = name
+        if radius and shape.adjustments:
+            shape.adjustments[0] = min(0.5, radius / max(1, min(box.width, box.height)))
         if fill_hex:
             shape.fill.solid()
             shape.fill.fore_color.rgb = RGBColor.from_string(fill_hex)
@@ -332,55 +558,19 @@ def _cased(text, uppercase):
 def _add_text(pslide, box, fitted, color_hex, name="pptxer:text", spec=None,
               theme=None, role="body", result=None, uppercase=False):
     """Emit a text frame at an EXPLICIT solved size. Autofit stays OFF."""
+    if fitted.get("overflow"):
+        raise PlacementError(f"{name}: {fitted['reason']}")
     try:
-        from pptx.dml.color import RGBColor
-        from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
-        from pptx.util import Emu, Pt
+        from pptx.util import Emu
 
         tb = pslide.shapes.add_textbox(Emu(box.left), Emu(box.top),
                                        Emu(box.width), Emu(box.height))
         tb.name = name
-        frame = tb.text_frame
-        frame.word_wrap = True
-        try:
-            from pptx.enum.text import MSO_AUTO_SIZE
-            frame.auto_size = MSO_AUTO_SIZE.NONE
-        except Exception:                                         # noqa: BLE001
-            pass
-        frame.margin_left = Emu(int(2 * EMU_PER_POINT))
-        frame.margin_right = Emu(int(2 * EMU_PER_POINT))
-        frame.margin_top = Emu(int(1 * EMU_PER_POINT))
-        frame.margin_bottom = Emu(int(1 * EMU_PER_POINT))
-        try:
-            frame.vertical_anchor = MSO_ANCHOR.TOP
-        except Exception:                                         # noqa: BLE001
-            pass
-
-        align = {"center": PP_ALIGN.CENTER, "right": PP_ALIGN.RIGHT,
-                 "justify": PP_ALIGN.JUSTIFY}.get(fitted.get("align", "left"),
-                                                  PP_ALIGN.LEFT)
         font = fitted.get("font")
         size_pt = float(fitted.get("size_pt", 18))
         lines = fitted.get("lines") or []
-        bold = theme.is_bold(role) if theme else False
-        spacing = theme.letter_spacing(role) if theme else 0.0
-
-        for i, line in enumerate(lines):
-            para = frame.paragraphs[0] if i == 0 else frame.add_paragraph()
-            para.alignment = align
-            try:
-                para.line_spacing = float(fitted.get("line_spacing", 1.18))
-            except Exception:                                     # noqa: BLE001
-                pass
-            run = para.add_run()
-            run.text = line.upper() if uppercase else line
-            run.font.size = Pt(size_pt)
-            run.font.bold = bold
-            if font is not None and font.family:
-                run.font.name = font.family
-            run.font.color.rgb = RGBColor.from_string(color_hex)
-            if spacing:
-                _set_letter_spacing(run, spacing * size_pt)
+        _write_fitted_frame(tb.text_frame, fitted, color_hex,
+                            uppercase=uppercase)
 
         if spec is not None:
             spec["shapes"].append({
@@ -391,6 +581,9 @@ def _add_text(pslide, box, fitted, color_hex, name="pptxer:text", spec=None,
                 "color": f"#{color_hex}",
                 "align": fitted.get("align", "left"),
                 "line_spacing": float(fitted.get("line_spacing", 1.18)),
+                "line_height_pt": fitted.get("line_height_pt"),
+                "tracking_em": getattr(font, "tracking_em", 0.0),
+                "inset_pt": 2.0,
             })
         if result is not None:
             result.text_boxes.append({
@@ -400,8 +593,45 @@ def _add_text(pslide, box, fitted, color_hex, name="pptxer:text", spec=None,
                                          "stat_value") else 7.0,
             })
         return tb
-    except Exception:                                             # noqa: BLE001
-        return None
+    except Exception as exc:                                      # noqa: BLE001
+        raise PlacementError(f"could not emit {name}: {exc}") from exc
+
+
+def _write_fitted_frame(frame, fitted, color_hex, uppercase=False,
+                         margins=(2, 2, 2, 2), middle=False):
+    """Write exactly the measured font, tracking, line breaks and spacing."""
+    from pptx.dml.color import RGBColor
+    from pptx.enum.text import MSO_AUTO_SIZE, MSO_ANCHOR, PP_ALIGN
+    from pptx.util import Pt
+    if fitted.get("overflow"):
+        raise PlacementError(fitted["reason"])
+    frame.clear()
+    frame.auto_size = MSO_AUTO_SIZE.NONE
+    frame.word_wrap = False  # the solver has already placed every line
+    frame.vertical_anchor = MSO_ANCHOR.MIDDLE if middle else MSO_ANCHOR.TOP
+    frame.margin_left, frame.margin_top, frame.margin_right, frame.margin_bottom = [Pt(v) for v in margins]
+    font = fitted.get("font")
+    size = fitted["size_pt"]
+    para = frame.paragraphs[0]
+    for i, line in enumerate(fitted.get("lines") or [""]):
+        if i:
+            para.add_line_break()
+        para.alignment = {"center": PP_ALIGN.CENTER, "right": PP_ALIGN.RIGHT,
+                          "justify": PP_ALIGN.JUSTIFY}.get(fitted.get("align"), PP_ALIGN.LEFT)
+        para.line_spacing = Pt(fitted.get("line_height_pt", size * fitted.get("line_spacing", 1.18)))
+        para.space_before = para.space_after = Pt(0)
+        para.font.size = Pt(size)
+        if font:
+            para.font.name = font.family
+        run = para.add_run()
+        run.text = line.upper() if uppercase else line
+        run.font.size = Pt(size)
+        run.font.bold = bool(font and font.bold)
+        run.font.italic = bool(font and font.italic)
+        if font:
+            run.font.name = font.family
+            _set_letter_spacing(run, font.tracking_em * size)
+        run.font.color.rgb = RGBColor.from_string(color_hex)
 
 
 def _set_letter_spacing(run, points):
@@ -417,15 +647,23 @@ def _set_letter_spacing(run, points):
         pass
 
 
-def _add_picture(pslide, path, box, name="pptxer:image", spec=None, result=None):
+def _add_picture(pslide, path, box, name="pptxer:image", spec=None, result=None, crop=False):
     try:
         from pptx.util import Emu
         pic = pslide.shapes.add_picture(str(path), Emu(box.left), Emu(box.top),
                                         Emu(box.width), Emu(box.height))
         pic.name = name
+        if crop:
+            image_w, image_h = pic.image.size
+            ratio = image_w / image_h
+            target = box.width / box.height
+            if ratio > target:
+                pic.crop_left = pic.crop_right = (1 - target / ratio) / 2
+            else:
+                pic.crop_top = pic.crop_bottom = (1 - ratio / target) / 2
         if spec is not None:
             spec["shapes"].append({"kind": "image", "box": box.as_dict(),
-                                   "path": str(path)})
+                                   "path": str(path), "crop": crop})
         if result is not None:
             result.images_embedded += 1
             result.shape_count += 1
@@ -452,7 +690,7 @@ def _header(pslide, model, theme, canvas, spec, result, grid):
     upper = theme.shape.get("uppercase_titles", False)
 
     if model.kicker:
-        kbox = Box(safe.left, y, safe.width, _emu_pt(theme.size("kicker") * 1.7),
+        kbox = Box(safe.left, y, safe.width, max(_emu_pt(theme.size("kicker") * 1.7), int(safe.height * 0.14)),
                    "kicker", "text")
         fit = canvas.fit_text(_cased(model.kicker, True), kbox,
                               theme.font_for("kicker"),
@@ -477,8 +715,8 @@ def _header(pslide, model, theme, canvas, spec, result, grid):
         tbox = Box(safe.left, y, safe.width, max_h, "title", "text")
         fit = canvas.fit_text(_cased(model.title, upper), tbox,
                               theme.font_for("heading"),
-                              theme.size("heading"),
-                              min_pt=theme.size("subheading"), align="left")
+                              min(48.0, theme.size("heading")),
+                              min_pt=18.0, align="left")
         used = _emu_pt(fit["text_height_pt"]) + _emu_pt(6)
         tbox = tbox.resized(height=min(max_h, max(used, _emu_pt(24))))
         canvas.place(tbox, strict=False)
@@ -510,7 +748,7 @@ def _header(pslide, model, theme, canvas, spec, result, grid):
     # non-title slide gets, so the content region must never have been offered
     # that strip in the first place. Preventing the collision beats detecting
     # it, which is this module's whole premise.
-    footer_band = _emu_pt(theme.size("footnote") * 1.6) + theme.space("paragraph")
+    footer_band = canvas.footer_height + theme.space("paragraph")
     bottom = max(y, safe.bottom - footer_band)
 
     return Box(safe.left, y, safe.width, max(0, bottom - y),
@@ -519,11 +757,11 @@ def _header(pslide, model, theme, canvas, spec, result, grid):
 
 def _add_footer(pslide, theme, canvas, spec, result, index, total, note):
     safe = canvas.safe
-    h = _emu_pt(theme.size("footnote") * 1.6)
+    h = canvas.footer_height
     box = Box(safe.left, safe.bottom - h, safe.width, h, "footer", "text")
     text = f"{note}  ·  {index} / {total}" if note else f"{index} / {total}"
     fit = canvas.fit_text(text, box, theme.font_for("footnote"),
-                          theme.size("footnote"), min_pt=8.0, align="right")
+                          theme.size("footnote"), min_pt=10.0, align="right")
     canvas.place(box, strict=False)
     _add_text(pslide, box, fit, theme.hex("footer"), "pptxer:footer", spec,
               theme, "footnote", result)
@@ -535,62 +773,41 @@ def _add_footer(pslide, theme, canvas, spec, result, index, total, note):
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _slide_title(pslide, model, theme, canvas, spec, result, media, cfg, seed):
-    # The title slide composes against the safe area directly rather than the
-    # 12-column grid: a cover is one hero block, and snapping it to columns
-    # makes it look like a content slide with the content missing.
     safe = canvas.safe
+    if model.kind != "title_slide" and cfg.get("slide_numbers", True):
+        safe = safe.resized(height=safe.height - canvas.footer_height - theme.space("paragraph"))
     upper = theme.shape.get("uppercase_titles", False)
-
-    if theme.shape.get("glow") and theme.decorations_allowed:
-        orb = draw_glow_orb(720, theme.color("glow"), 0.55)
-        if orb:
-            gbox = Box(int(canvas.width * 0.52), int(-canvas.height * 0.22),
-                       int(canvas.width * 0.72), int(canvas.width * 0.72),
-                       "glow", "decor")
-            _add_picture(pslide, orb, gbox, R_GLOW, spec, result)
-            result.generated_art += 1
-
-    block_h = int(safe.height * 0.62)
-    y = safe.top + int(safe.height * 0.16)
-
+    content = []
     if model.kicker:
-        kbox = Box(safe.left, y, safe.width, _emu_pt(theme.size("kicker") * 1.9),
-                   "kicker", "text")
-        fit = canvas.fit_text(_cased(model.kicker, True), kbox,
-                              theme.font_for("kicker"),
-                              theme.size("kicker"), min_pt=10.0)
-        canvas.place(kbox, strict=False)
-        _add_text(pslide, kbox, fit, theme.hex("kicker"), "pptxer:kicker",
-                  spec, theme, "kicker", result, uppercase=True)
-        y = kbox.bottom + theme.space("paragraph")
-
-    title = model.title or ""
-    if title:
-        tbox = Box(safe.left, y, safe.width, int(block_h * 0.58), "title", "text")
-        fit = canvas.fit_text(_cased(title, upper), tbox, theme.font_for("mega"),
-                              theme.size("mega"), min_pt=theme.size("title") * 0.6)
-        tbox = tbox.resized(height=_emu_pt(fit["text_height_pt"]) + _emu_pt(8))
-        canvas.place(tbox, strict=False)
-        _add_text(pslide, tbox, fit, theme.hex("title"), "pptxer:megatitle",
-                  spec, theme, "mega", result, uppercase=upper)
-        y = tbox.bottom + theme.space("section")
-
-        rule = Box(safe.left, y, int(safe.width * 0.22), theme.shape["rule"] * 2,
-                   "hero-rule", "rule")
-        canvas.place(rule, strict=False)
-        _add_rule(pslide, rule, theme.hex("accent"), spec)
-        result.shape_count += 1
-        y = rule.bottom + theme.space("section")
-
+        content.append((_cased(model.kicker, True), "kicker", 11.0, safe.width))
+    if model.title:
+        content.append((_cased(model.title, upper), "mega", 24.0, safe.width))
     if model.subtitle:
-        sbox = Box(safe.left, y, int(safe.width * 0.72),
-                   _emu_pt(theme.size("subtitle") * 3.4), "subtitle", "text")
-        fit = canvas.fit_text(model.subtitle, sbox, theme.font_for("subtitle"),
-                              theme.size("subtitle"), min_pt=14.0)
-        sbox = sbox.resized(height=_emu_pt(fit["text_height_pt"]) + _emu_pt(6))
-        canvas.place(sbox, strict=False)
-        _add_text(pslide, sbox, fit, theme.hex("subtitle"), "pptxer:subtitle",
-                  spec, theme, "subtitle", result)
+        content.append((model.subtitle, "subtitle", 16.0, int(safe.width * 0.9)))
+    gap = theme.space("paragraph")
+    usable = safe.height - gap * max(0, len(content) - 1)
+    fits = []
+    for step in range(41):
+        fits = []
+        factor = 1.0 - step / 40.0
+        for text, role, floor, width in content:
+            start = max(floor, theme.size(role) * factor)
+            fit = canvas.fit_text(text, Box(0, 0, width, usable), theme.font_for(role), start, min_pt=floor)
+            fits.append((fit, _emu_pt(fit["text_height_pt"]) + _emu_pt(6)))
+        if sum(height for _, height in fits) <= usable and not any(f["overflow"] for f, _ in fits):
+            break
+    else:
+        raise PlacementError("cover text needs a continuation slide")
+    total = sum(height for _, height in fits) + gap * max(0, len(fits) - 1)
+    y = safe.top + max(0, (safe.height - total) // 2)
+    for (_, role, _, width), (fit, height) in zip(content, fits):
+        box = Box(safe.left, y, width, height, role, "text")
+        canvas.place(box, strict=False)
+        name = "pptxer:megatitle" if role == "mega" else f"pptxer:{role}"
+        color = "title" if role == "mega" else role
+        _add_text(pslide, box, fit, theme.hex(color), name, spec, theme, role, result)
+        result.shape_count += 1
+        y = box.bottom + gap
 
 
 def _slide_section(pslide, model, theme, canvas, spec, result, media, cfg, seed):
@@ -609,7 +826,7 @@ def _slide_section(pslide, model, theme, canvas, spec, result, media, cfg, seed)
                band_h, "section-title", "text")
     fit = canvas.fit_text(_cased(model.title or model.body, upper), tbox,
                           theme.font_for("title"), theme.size("title"),
-                          min_pt=theme.size("heading") * 0.7)
+                          min_pt=18.0)
     tbox = tbox.resized(height=_emu_pt(fit["text_height_pt"]) + _emu_pt(8))
     canvas.place(tbox, strict=False)
     _add_text(pslide, tbox, fit, theme.hex("title"), "pptxer:sectiontitle",
@@ -634,21 +851,29 @@ def _slide_statement(pslide, model, theme, canvas, spec, result, media, cfg, see
 
 def _slide_quote(pslide, model, theme, canvas, spec, result, media, cfg, seed):
     safe = canvas.safe
+    if cfg.get("slide_numbers", True):
+        safe = safe.resized(height=safe.height - canvas.footer_height - theme.space("paragraph"))
     quote = model.quote or model.body
+    width = int(safe.width * 0.84)
+    attribution_height = _emu_pt(theme.size("caption") * 2.2) if model.attribution else 0
+    gap = theme.space("section") if model.attribution else 0
     inner = Box(safe.left + int(safe.width * 0.08), safe.top,
-                int(safe.width * 0.84), int(safe.height * 0.62), "quote", "text")
+                width, safe.height - attribution_height - gap, "quote", "text")
     fit = canvas.fit_text(f"“{quote}”", inner, theme.font_for("quote"),
                           theme.size("quote"), min_pt=16.0, align="center")
     used = _emu_pt(fit["text_height_pt"]) + _emu_pt(10)
-    inner = Box(inner.left, safe.top + max(0, (safe.height - used) // 3),
+    total = used + attribution_height + gap
+    if total > safe.height:
+        raise PlacementError("quote and attribution need a continuation slide")
+    inner = Box(inner.left, safe.top + max(0, (safe.height - total) // 2),
                 inner.width, used, "quote", "text")
     canvas.place(inner, strict=False)
     _add_text(pslide, inner, fit, theme.hex("quote"), "pptxer:quote", spec,
               theme, "quote", result)
 
     if model.attribution:
-        abox = Box(inner.left, inner.bottom + theme.space("section"), inner.width,
-                   _emu_pt(theme.size("caption") * 2.2), "attribution", "text")
+        abox = Box(inner.left, inner.bottom + gap, inner.width,
+                   attribution_height, "attribution", "text")
         afit = canvas.fit_text(f"— {model.attribution}", abox,
                                theme.font_for("caption"), theme.size("caption"),
                                min_pt=10.0, align="center")
@@ -679,10 +904,7 @@ def _slide_bullets(pslide, model, theme, canvas, spec, result, media, cfg, seed)
     y = region.top
     for text in items:
         if y >= region.bottom:
-            result.warnings.append(
-                f"slide {spec.get('index')}: a bullet was dropped because the "
-                f"region filled — the document model should have split this slide")
-            break
+            raise PlacementError("bullets need another slide")
         avail = min(per, region.bottom - y)
         dot = Box(region.left, y + _emu_pt(theme.size("bullet") * 0.42),
                   _emu_pt(theme.size("bullet") * 0.30),
@@ -727,7 +949,7 @@ def _slide_two_column(pslide, model, theme, canvas, spec, result, media, cfg, se
         cols = [{"title": "", "bullets": model.bullets[:half]},
                 {"title": "", "bullets": model.bullets[half:]}]
 
-    boxes = canvas.columns(region, max(2, min(3, len(cols))))
+    boxes = canvas.columns(region, max(1, min(3, len(cols))))
     for cbox, col in zip(boxes, cols):
         panel = cbox
         if theme.decoration in ("moderate", "rich"):
@@ -747,7 +969,7 @@ def _slide_two_column(pslide, model, theme, canvas, spec, result, media, cfg, se
             fit = canvas.fit_text(col["title"], tb, theme.font_for("subheading"),
                                   theme.size("subheading"), min_pt=13.0)
             tb = tb.resized(height=_emu_pt(fit["text_height_pt"]) + _emu_pt(4))
-            _add_text(pslide, tb, fit, theme.hex("accent"), "pptxer:coltitle",
+            _add_text(pslide, tb, fit, theme.hex("accent_text"), "pptxer:coltitle",
                       spec, theme, "subheading", result)
             result.shape_count += 1
             y = tb.bottom + theme.space("paragraph")
@@ -755,12 +977,12 @@ def _slide_two_column(pslide, model, theme, canvas, spec, result, media, cfg, se
         gap = theme.space("bullet_gap")
         for text in col.get("bullets", []):
             if y >= inner.bottom:
-                break
+                raise PlacementError("column content needs another slide")
             tb = Box(inner.left, y, inner.width, inner.bottom - y, "col-bullet",
                      "text")
             fit = canvas.fit_text(text, tb, theme.font_for("body"),
                                   theme.size("body"), min_pt=12.0)
-            used = _emu_pt(fit["text_height_pt"]) + _emu_pt(3)
+            used = _emu_pt(fit["text_height_pt"]) + _emu_pt(4)
             tb = tb.resized(height=min(inner.bottom - y, used))
             _add_text(pslide, tb, fit, theme.hex("text"), "pptxer:colbullet",
                       spec, theme, "body", result)
@@ -775,9 +997,14 @@ def _slide_stats(pslide, model, theme, canvas, spec, result, media, cfg, seed):
     if not stats or region.height <= 0:
         return
 
-    count = min(len(stats), 6)
+    count = len(stats)
+    if count > 6:
+        raise PlacementError("stat cards need another slide")
     cols = count if count <= 3 else (count + 1) // 2
     rows = 1 if count <= 3 else 2
+    if canvas.height > canvas.width:
+        cols = min(2, cols)
+        rows = (count + cols - 1) // cols
     cells = canvas.grid(region, cols, rows)
 
     for cell, stat in zip(cells, stats[:count]):
@@ -790,47 +1017,32 @@ def _slide_stats(pslide, model, theme, canvas, spec, result, media, cfg, seed):
             result.shape_count += 1
         inner = panel.inset(theme.space("panel_pad"))
 
-        # ⚠️ THE FLOOR MUST FIT THE BOX. Measured 2026-09-14: a fixed
-        # min_pt=24 against a tile only 17pt tall produced four real
-        # "needs 28pt in a 17pt frame" overflows once the footer band was
-        # reserved and the tiles got shorter. A minimum size that the frame
-        # cannot hold is not a minimum, it is a guaranteed overflow — so the
-        # floor is derived from the box, and never exceeds it.
-        # ⚠️ SOLVE THE TWO SIZES TOGETHER, FROM THE HEIGHT THAT EXISTS.
-        #
-        # Measured 2026-09-14, twice. First a fixed 24pt floor overflowed a
-        # 17pt tile; then a floor of "1.8x the label" overflowed again. Two
-        # independent floors fighting over one box will always produce either
-        # an overflow or an inverted hierarchy — the tile cannot satisfy both
-        # by accident.
-        #
-        # So both sizes are DERIVED from the height actually available, with
-        # the hierarchy ratio preserved by construction: the value takes the
-        # larger share, the label is pinned to a fraction of whatever the value
-        # ended up being. The number is therefore always bigger than its
-        # caption AND always inside the tile, at any tile size.
-        value_h = int(inner.height * 0.62)
-        label_h = max(_emu_pt(12), inner.height - value_h)
+        # Reserve the complete label at a readable size before offering the
+        # number any space. A decorative number must not crowd out evidence.
+        min_label_h = canvas.text_block_height(_cased(stat.get("label", ""), True),
+                                               inner.width, theme.font_for("stat_label"), 11.0)
+        value_h = min(int(inner.height * 0.44), inner.height - min_label_h - _emu_pt(8))
+        if value_h < _emu_pt(36):
+            raise PlacementError("stat label and value need a larger card")
 
         vbox = Box(inner.left, inner.top, inner.width, value_h,
                    "stat-value", "text")
-        value_cap = min(theme.size("stat_value"),
+        value_cap = min(72.0, theme.size("stat_value"),
                         (value_h / EMU_PER_POINT) * 0.86)
         vfit = canvas.fit_text(str(stat.get("value", "")), vbox,
                                theme.font_for("stat_value"),
-                               value_cap, min_pt=10.0, align="center")
-        # ⚠️ GIVE THE LABEL BACK WHAT THE NUMBER DID NOT USE.
-        # `value_h` is an ALLOWANCE (62% of the tile), not a measurement. A
-        # short value like "144fps" at its capped size routinely needs far
-        # less, and holding the number's box open at the full allowance
-        # strands that space directly above a label that is wrapping to five
-        # lines underneath it. Measured 2026-09-14 (torture deck, slide 3):
-        # a 39-character label needed 41pt in the 39pt frame the fixed split
-        # left it, while the value above it used 34 of its 63pt.
-        #
-        # The hierarchy is untouched — the label is still capped at 45% of
-        # the SOLVED value size, so the number stays visibly the bigger of
-        # the two; it simply stops hoarding empty height.
+                               value_cap, min_pt=26.0, align="center")
+        value = str(stat.get("value", ""))
+        if len(value) <= 16 and "\n" not in value and vfit["line_count"] > 1:
+            from pptxer_fonts import measure_text
+            font = theme.font_for("stat_value")
+            measured = measure_text(value, font, value_cap)[0]
+            single_line_cap = value_cap * max(1, inner.width_pt - 4) / max(1, measured) * 0.98
+            vfit = canvas.fit_text(value, vbox, font, max(26, single_line_cap),
+                                   min_pt=26.0, align="center")
+            if vfit["line_count"] > 1:
+                raise PlacementError("short stat values need a wider card to stay on one line")
+        # Return unused value height to the label while preserving the gap.
         value_used = _emu_pt(vfit["text_height_pt"]) + _emu_pt(4)
         vbox = vbox.resized(height=max(_emu_pt(14), min(value_h, value_used)))
         label_h = max(_emu_pt(12), inner.bottom - vbox.bottom)
@@ -842,12 +1054,14 @@ def _slide_stats(pslide, model, theme, canvas, spec, result, media, cfg, seed):
                    "stat-label", "text")
         # The label is at most 45% of the SOLVED value size, so the hierarchy
         # survives even when the tile forced the value down.
-        label_cap = min(theme.size("stat_label"),
+        label_cap = min(18.0, theme.size("stat_label"),
                         vfit["size_pt"] * 0.45,
                         (label_h / EMU_PER_POINT) * 0.80)
+        if label_cap < 11.0:
+            raise PlacementError("stat card needs more room to preserve a readable label and value hierarchy")
         lfit = canvas.fit_text(_cased(stat.get("label", ""), True), lbox,
                                theme.font_for("stat_label"),
-                               max(7.0, label_cap), min_pt=7.0,
+                               max(11.0, label_cap), min_pt=11.0,
                                align="center")
         _add_text(pslide, lbox, lfit, theme.hex("stat_label"),
                   "pptxer:statlabel", spec, theme, "stat_label", result,
@@ -867,86 +1081,78 @@ def _slide_table(pslide, model, theme, canvas, spec, result, media, cfg, seed):
     all_rows = ([headers] if headers else []) + rows
     body_font = theme.font_for("table")
     head_font = theme.font_for("table_head")
-    size = theme.size("table")
+    size = min(16.0, theme.size("table"))
 
-    # THE PDFer LESSON: solve widths from real metrics, never from a guess.
+    from pptxer_fonts import font_for_text, line_height_pt, wrap_text_to_width
+    from pptx.util import Emu
+    from pptx.dml.color import RGBColor
+
     solved = solve_columns(all_rows, body_font, size, region.width,
                            padding_pt=8.0, min_col_pt=42.0,
                            inventory=canvas._inventory, header_font=head_font)
-    if solved.get("min_violated"):
-        result.warnings.append(
-            f"slide {spec.get('index')}: {solved.get('reason', '')}")
-
-    try:
-        from pptx.util import Emu, Pt
-        from pptx.dml.color import RGBColor
-
-        nrows = len(all_rows)
-        ncols = solved["columns"]
-        row_h = max(_emu_pt(size * 1.9),
-                    min(_emu_pt(size * 3.0), region.height // max(1, nrows)))
-        total_h = min(region.height, row_h * nrows)
-
-        tbox = Box(region.left, region.top, region.width, total_h, "table",
-                   "table")
-        canvas.place(tbox, strict=False)
-
-        gfx = pslide.shapes.add_table(nrows, ncols, Emu(tbox.left), Emu(tbox.top),
-                                      Emu(tbox.width), Emu(total_h))
-        gfx.name = "pptxer:table"
-        tbl = gfx.table
-
-        for c, width in enumerate(solved["widths"]):
-            if c < len(tbl.columns):
-                tbl.columns[c].width = Emu(int(width))
-        for r in range(nrows):
-            tbl.rows[r].height = Emu(int(total_h // max(1, nrows)))
-
-        try:
-            tbl.first_row = bool(headers)
-            tbl.horz_banding = True
-        except Exception:                                         # noqa: BLE001
-            pass
-
-        for r, row in enumerate(all_rows):
+    widths = solved["widths"]
+    ncols = len(widths)
+    # Native tables auto-grow to accommodate text. Solve every row BEFORE
+    # creating the table, so Office never has to grow it past the content area.
+    fitted_rows, heights = [], []
+    for r, row in enumerate(all_rows):
+        font = head_font if headers and r == 0 else body_font
+        cells = []
+        for c, width in enumerate(widths):
+            text = str(row[c]) if c < len(row) and row[c] is not None else ""
+            cell_font = font_for_text(font, text, canvas._inventory)
+            lines = wrap_text_to_width(text, cell_font, size,
+                                       max(1, width / EMU_PER_POINT - 16),
+                                       canvas._inventory, break_long_words=True)
+            cells.append({"lines": lines, "size_pt": size, "font": cell_font,
+                          "line_spacing": 1.18, "line_height_pt": line_height_pt(cell_font, size, inventory=canvas._inventory), "align": "left"})
+        height = _emu_pt(max((max(1, len(c["lines"])) * c["line_height_pt"] for c in cells), default=0) + 10)
+        fitted_rows.append(cells)
+        heights.append(height)
+    if sum(heights) > region.height or not ncols:
+        raise PlacementError("table rows need another slide at their readable font size")
+    tbox = region.resized(height=sum(heights))
+    canvas.place(tbox, strict=False)
+    gfx = pslide.shapes.add_table(len(all_rows), ncols, Emu(tbox.left), Emu(tbox.top),
+                                  Emu(tbox.width), Emu(tbox.height))
+    gfx.name = "pptxer:table"
+    tbl = gfx.table
+    tbl.first_row = bool(headers)
+    tbl.horz_banding = True
+    for c, width in enumerate(widths):
+        tbl.columns[c].width = Emu(int(width))
+    y = tbox.top
+    for r, (fits, height) in enumerate(zip(fitted_rows, heights)):
+        tbl.rows[r].height = Emu(height)
+        x = tbox.left
+        for c, fit in enumerate(fits):
+            cell = tbl.cell(r, c)
             is_head = bool(headers) and r == 0
-            for c in range(ncols):
-                cell = tbl.cell(r, c)
-                cell.text = str(row[c]) if c < len(row) and row[c] is not None else ""
-                cell.margin_left = Emu(_emu_pt(6))
-                cell.margin_right = Emu(_emu_pt(6))
-                cell.margin_top = Emu(_emu_pt(3))
-                cell.margin_bottom = Emu(_emu_pt(3))
-                cell.fill.solid()
-                cell.fill.fore_color.rgb = RGBColor.from_string(
-                    theme.hex("table_head_bg") if is_head
-                    else (theme.hex("table_row_alt") if r % 2 == 0
-                          else theme.hex("surface")))
-                for para in cell.text_frame.paragraphs:
-                    for run in para.runs:
-                        run.font.size = Pt(size)
-                        run.font.bold = is_head
-                        fnt = head_font if is_head else body_font
-                        if fnt is not None and fnt.family:
-                            run.font.name = fnt.family
-                        run.font.color.rgb = RGBColor.from_string(
-                            theme.hex("table_head_text") if is_head
-                            else theme.hex("table_text"))
-
-        result.tables += 1
-        result.shape_count += 1
-        spec["shapes"].append({"kind": "rect", "box": tbox.as_dict(),
-                               "fill": f"#{theme.hex('surface')}",
-                               "line": f"#{theme.hex('table_border')}"})
-    except Exception as exc:                                      # noqa: BLE001
-        result.warnings.append(f"the table could not be built: {exc}")
+            bg = theme.hex("table_head_bg") if is_head else theme.hex("table_row_alt" if r % 2 == 0 else "surface")
+            fg = theme.hex("table_head_text" if is_head else "table_text")
+            cell.fill.solid()
+            cell.fill.fore_color.rgb = RGBColor.from_string(bg)
+            _write_fitted_frame(cell.text_frame, fit, fg, margins=(6, 3, 6, 3))
+            box = Box(x, y, widths[c], height)
+            spec["shapes"].append({"kind": "rect", "box": box.as_dict(), "fill": f"#{bg}"})
+            spec["shapes"].append({"kind": "text", "box": box.inset(_emu_pt(4)).as_dict(),
+                                   "lines": fit["lines"], "size_pt": size,
+                                   "font_path": fit["font"].path, "color": f"#{fg}",
+                                   "line_spacing": 1.18, "line_height_pt": fit["line_height_pt"],
+                                   "tracking_em": fit["font"].tracking_em})
+            result.text_boxes.append({"slide": spec["index"], "name": f"pptxer:table[{r + 1},{c + 1}]",
+                                      "box": box.as_dict(), "color": f"#{fg}", "floor": 7.0})
+            x += widths[c]
+        y += height
+    result.tables += 1
+    result.shape_count += 1
 
 
 def _slide_image_full(pslide, model, theme, canvas, spec, result, media, cfg, seed):
     asset = _first_ok_image(model, media)
     bleed = canvas.bleed
     if asset:
-        box = fit_image_box(bleed, asset.width, asset.height, "cover")
+        box = bleed
         _add_picture(pslide, asset.path, box, R_BLEED + ".photo", spec, result)
         canvas.reserve_bleed(box)
 
@@ -997,15 +1203,15 @@ def _slide_image_side(pslide, model, theme, canvas, spec, result, media, cfg, se
 
     asset = _first_ok_image(model, media)
     if asset:
-        box = fit_image_box(img_region, asset.width, asset.height, "cover")
+        box = img_region
         canvas.place(box, strict=False)
-        _add_picture(pslide, asset.path, box, "pptxer:image", spec, result)
+        _add_picture(pslide, asset.path, box, "pptxer:image", spec, result, crop=True)
 
     y = txt_region.top
     gap = theme.space("bullet_gap")
     for text in (model.bullets or ([model.body] if model.body else [])):
         if y >= txt_region.bottom:
-            break
+            raise PlacementError("image-side content needs another slide")
         tb = Box(txt_region.left, y, txt_region.width, txt_region.bottom - y,
                  "bullet", "text")
         fit = canvas.fit_text(text, tb, theme.font_for("body"),
@@ -1033,9 +1239,9 @@ def _slide_gallery(pslide, model, theme, canvas, spec, result, media, cfg, seed)
     cells = canvas.grid(region, cols, rows)
 
     for cell, asset in zip(cells, assets[:n]):
-        box = fit_image_box(cell, asset.width, asset.height, "cover")
+        box = cell
         canvas.place(box, strict=False)
-        _add_picture(pslide, asset.path, box, "pptxer:image", spec, result)
+        _add_picture(pslide, asset.path, box, "pptxer:image", spec, result, crop=True)
 
 
 def _slide_media(pslide, model, theme, canvas, spec, result, media, cfg, seed):
@@ -1125,7 +1331,7 @@ def _slide_timeline(pslide, model, theme, canvas, spec, result, media, cfg, seed
                                theme.font_for("label"), theme.size("label"),
                                min_pt=9.0, align="center")
         canvas.place(wbox, strict=False)
-        _add_text(pslide, wbox, wfit, theme.hex("accent"), "pptxer:tlwhen",
+        _add_text(pslide, wbox, wfit, theme.hex("accent_text"), "pptxer:tlwhen",
                   spec, theme, "label", result, uppercase=True)
 
         tbox = Box(cell.left, wbox.bottom + _emu_pt(4), cell.width,
@@ -1207,7 +1413,7 @@ def _slide_chart(pslide, model, theme, canvas, spec, result, media, cfg, seed):
         obj = gfx.chart
 
         obj.has_title = False
-        if len(series) > 1:
+        if len(series) > 1 or kind in ("pie", "doughnut"):
             obj.has_legend = True
             obj.legend.position = XL_LEGEND_POSITION.BOTTOM
             obj.legend.include_in_layout = False
@@ -1226,14 +1432,33 @@ def _slide_chart(pslide, model, theme, canvas, spec, result, media, cfg, seed):
                 plot_series.format.fill.solid()
                 plot_series.format.fill.fore_color.rgb = RGBColor.from_string(
                     theme.hex(f"series_{(i % 8) + 1}"))
+                if kind in ("line", "scatter", "radar"):
+                    color = RGBColor.from_string(theme.hex(f"series_{(i % 8) + 1}"))
+                    plot_series.format.line.color.rgb = color
+                    plot_series.format.line.width = Pt(2.5)
+                    plot_series.marker.format.fill.solid()
+                    plot_series.marker.format.fill.fore_color.rgb = color
+                    plot_series.marker.format.line.color.rgb = color
             except Exception:                                     # noqa: BLE001
                 pass
 
-        for axis in (getattr(obj, "category_axis", None),
-                     getattr(obj, "value_axis", None)):
-            if axis is None:
-                continue
+        if kind in ("pie", "doughnut"):
+            from pptxer_color import contrast_ratio
+            plot = obj.plots[0]
+            plot.has_data_labels = True
+            plot.data_labels.show_value = True
+            for i, point in enumerate(obj.series[0].points):
+                color = theme.hex(f"series_{(i % 8) + 1}")
+                point.format.fill.solid()
+                point.format.fill.fore_color.rgb = RGBColor.from_string(color)
+                point.data_label.font.size = Pt(theme.size("caption"))
+                point.data_label.font.name = theme.font_for("caption").family
+                ink = "FFFFFF" if contrast_ratio("#" + color, "#FFFFFF") >= contrast_ratio("#" + color, "#000000") else "000000"
+                point.data_label.font.color.rgb = RGBColor.from_string(ink)
+
+        for axis_name in ("category_axis", "value_axis"):
             try:
+                axis = getattr(obj, axis_name)
                 axis.tick_labels.font.size = Pt(theme.size("caption"))
                 axis.tick_labels.font.color.rgb = RGBColor.from_string(
                     theme.hex("chart_axis"))

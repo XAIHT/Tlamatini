@@ -51,6 +51,11 @@ import glob
 import os
 import sys
 import threading
+from functools import lru_cache
+
+# Office can place the first/last glyph slightly beyond a font's nominal
+# ascent/descent. Keep this allowance separate from the frame's padding.
+TEXT_RENDER_GUARD_PT = 2.0
 
 __all__ = [
     "FontInventory",
@@ -212,7 +217,7 @@ class ResolvedFont:
     """A font NAME paired with the real file that will be measured for it."""
 
     __slots__ = ("requested", "family", "path", "substituted", "category",
-                 "reason", "bold", "italic")
+                 "reason", "bold", "italic", "tracking_em")
 
     def __init__(self, requested, family, path, substituted=False,
                  category="sans_body", reason="", bold=False, italic=False):
@@ -224,6 +229,7 @@ class ResolvedFont:
         self.reason = reason
         self.bold = bool(bold)
         self.italic = bool(italic)
+        self.tracking_em = 0.0
 
     @property
     def measurable(self) -> bool:
@@ -464,8 +470,8 @@ class FontInventory:
         """A PIL font object at a REAL pixel size for the given point size.
 
         Points are a physical unit; PIL wants pixels. 1pt = 1/72 inch, so at
-        `dpi` the pixel size is pt * dpi / 72. Measuring at 96 DPI and scaling
-        the result keeps the maths exact without re-opening the file per size.
+        `dpi` the pixel size is pt * dpi / 72. Higher sampling density reduces
+        the accumulated advance rounding in long lines of text.
         """
         if not resolved or not resolved.measurable:
             return None
@@ -488,6 +494,9 @@ class FontInventory:
 # Most specific first — "semicondensed" contains "condensed", so a plain
 # left-to-right scan must meet the longer token before the shorter one.
 _WIDTH_TOKENS = (
+    ("postercompressed", "Poster Compressed"),
+    ("ultracompressed", "Ultra Compressed"),
+    ("extracompressed", "Extra Compressed"),
     ("ultracondensed", "Ultra Condensed"),
     ("extracondensed", "Extra Condensed"),
     ("semicondensed", "Semi Condensed"),
@@ -495,6 +504,7 @@ _WIDTH_TOKENS = (
     ("extraexpanded", "Extra Expanded"),
     ("semiexpanded", "Semi Expanded"),
     ("condensed", "Condensed"),
+    ("compressed", "Compressed"),
     ("narrow", "Narrow"),
     ("expanded", "Expanded"),
     ("extended", "Extended"),
@@ -611,15 +621,20 @@ def measure_text(text: str, resolved: ResolvedFont, size_pt: float,
         return (0.0, float(size_pt) * 1.2)
 
     inv = inventory or get_inventory()
-    font = inv.pil_font(resolved, size_pt) if resolved else None
+    # A quarter-point grid can accumulate several points of advance error
+    # across a long line (Courier New at 16pt underestimated 87 glyphs by
+    # 10.875pt). A sixteenth-point grid matches Office much more closely.
+    dpi = 1152
+    font = inv.pil_font(resolved, size_pt, dpi=dpi) if resolved else None
+    tracking = max(0, len(text) - 1) * float(size_pt) * getattr(resolved, "tracking_em", 0.0)
 
     if font is not None:
         try:
             bbox = font.getbbox(text)
-            width_px = float(bbox[2] - bbox[0])
+            width_px = max(float(bbox[2] - min(0, bbox[0])), float(font.getlength(text)))
             height_px = float(bbox[3] - bbox[1])
-            # Convert pixels back to points (measured at 96 DPI).
-            return (width_px * 72.0 / 96.0, max(height_px * 72.0 / 96.0,
+            # Convert the sampled pixels back to physical points.
+            return (max(0.0, width_px * 72.0 / dpi + tracking), max(height_px * 72.0 / dpi,
                                                 float(size_pt) * 1.15))
         except Exception:                                         # noqa: BLE001
             pass
@@ -633,11 +648,46 @@ def measure_text(text: str, resolved: ResolvedFont, size_pt: float,
         avg = 0.50
     elif resolved is not None and resolved.category == "display_impact":
         avg = 0.56
-    return (len(text) * float(size_pt) * avg, float(size_pt) * 1.2)
+    return (len(text) * float(size_pt) * avg + max(0.0, tracking), float(size_pt) * 1.2)
+
+
+@lru_cache(maxsize=128)
+def _font_coverage(path):
+    try:
+        from fontTools.ttLib import TTFont
+        with TTFont(path, fontNumber=0, lazy=True) as font:
+            return frozenset((font.getBestCmap() or {}).keys())
+    except Exception:
+        return None
+
+
+def font_for_text(resolved, text, inventory=None):
+    """Resolve unsupported Unicode before measuring Office's substitute."""
+    if not resolved or not resolved.path or str(text).isascii():
+        return resolved
+    required = {ord(c) for c in str(text) if not c.isspace() and ord(c) >= 32}
+    coverage = _font_coverage(resolved.path)
+    if coverage is None or required <= coverage:
+        return resolved
+    from copy import copy
+    inv = inventory or get_inventory()
+    for family in ("Segoe UI", "Arial", "Microsoft YaHei", "Yu Gothic",
+                   "Microsoft JhengHei", "Noto Sans CJK SC", "Noto Sans", "DejaVu Sans", "Segoe UI Emoji"):
+        if not inv.has(family):
+            continue
+        candidate = inv.resolve(family, "sans_body", bold=resolved.bold, italic=resolved.italic)
+        if required <= (_font_coverage(candidate.path) or frozenset()):
+            candidate = copy(candidate)
+            candidate.tracking_em = resolved.tracking_em
+            candidate.substituted = True
+            candidate.reason = f"{resolved.family} lacks characters required by this text"
+            return candidate
+    return resolved
 
 
 def wrap_text_to_width(text: str, resolved: ResolvedFont, size_pt: float,
-                       max_width_pt: float, inventory: FontInventory = None) -> list:
+                       max_width_pt: float, inventory: FontInventory = None,
+                       break_long_words: bool = False) -> list:
     """Break `text` into lines that each MEASURE within `max_width_pt`.
 
     Returns the list of lines. A single word longer than the box is NOT broken
@@ -651,6 +701,41 @@ def wrap_text_to_width(text: str, resolved: ResolvedFont, size_pt: float,
         return []
     inv = inventory or get_inventory()
     limit = max(1.0, float(max_width_pt))
+
+    if break_long_words:
+        # Preserve spaces and indentation. Soft breaks do not insert hyphens
+        # into identifiers, URLs, code, or scripts without word separators.
+        import re
+        import unicodedata
+        lines = []
+        for paragraph in str(text).replace("\v", "\n").split("\n"):
+            if not paragraph:
+                lines.append("")
+                continue
+            current = ""
+            for token in re.findall(r"\S+\s*|\s+", paragraph):
+                if current and measure_text(current + token, resolved, size_pt, inv)[0] > limit:
+                    lines.append(current)
+                    current = ""
+                if measure_text(token, resolved, size_pt, inv)[0] <= limit:
+                    current += token
+                    continue
+                # Keep combining marks, variation selectors and joiner
+                # sequences attached to their base character.
+                clusters = []
+                for char in token:
+                    if clusters and (unicodedata.combining(char) or char in "\ufe0e\ufe0f\u200d" or clusters[-1].endswith("\u200d")):
+                        clusters[-1] += char
+                    else:
+                        clusters.append(char)
+                for cluster in clusters:
+                    if current and measure_text(current + cluster, resolved, size_pt, inv)[0] > limit:
+                        lines.append(current)
+                        current = ""
+                    current += cluster
+            if current:
+                lines.append(current)
+        return lines
 
     lines = []
     for paragraph in str(text).split("\n"):
@@ -672,13 +757,31 @@ def wrap_text_to_width(text: str, resolved: ResolvedFont, size_pt: float,
     return lines
 
 
+def line_height_pt(resolved, size_pt, line_spacing=1.18, inventory=None):
+    """Reserve the font's ascent and descent, not only its nominal em size."""
+    import math
+    inv = inventory or get_inventory()
+    font = inv.pil_font(resolved, size_pt, dpi=288) if resolved else None
+    natural = float(size_pt) * 1.25
+    if font is not None:
+        try:
+            ascent, descent = font.getmetrics()
+            natural = (ascent + descent) * 72.0 / 288.0
+        except Exception:
+            pass
+    # Office quantizes some display-font leading to whole points. Rounding
+    # upward here prevents that sub-point difference accumulating over lines.
+    return float(math.ceil(max(float(size_pt) * float(line_spacing), natural)))
+
+
 def fit_point_size(text: str, resolved: ResolvedFont, max_width_pt: float,
                    max_height_pt: float, start_pt: float, min_pt: float = 8.0,
                    line_spacing: float = 1.18,
-                   inventory: FontInventory = None) -> tuple:
+                   inventory: FontInventory = None,
+                   break_long_words: bool = False) -> tuple:
     """Largest point size at which `text` fits the box. → (size_pt, lines).
 
-    Walks DOWN from `start_pt` in 0.5pt steps. This is the honest way to make
+    Searches the half-point grid from `min_pt` to `start_pt`. This is the honest way to make
     "autofit" deterministic: PowerPoint's own autofit is applied at render time
     by the viewer and cannot be measured from the file, so a deck that relies on
     it looks different everywhere. PPTXer solves the size itself and writes an
@@ -689,24 +792,39 @@ def fit_point_size(text: str, resolved: ResolvedFont, max_width_pt: float,
     Silently returning a size that does not fit is the failure mode this whole
     module exists to prevent.
     """
+    import math
     inv = inventory or get_inventory()
-    size = float(start_pt)
     floor = max(1.0, float(min_pt))
-    best_lines = []
+    start = max(floor, float(start_pt))
+    # Search the same half-point grid, with the exact fractional floor as an
+    # additional candidate. Dense cards previously measured every word at
+    # hundreds of sizes per trial, making adaptive pagination needlessly slow.
+    sizes = sorted(set([floor] + [start - 0.5 * i
+                                  for i in range(int(math.floor((start - floor) / 0.5)) + 1)]))
 
-    while size >= floor:
-        lines = wrap_text_to_width(text, resolved, size, max_width_pt, inv)
-        best_lines = lines
-        total_h = len(lines) * size * float(line_spacing)
-        widest = 0.0
-        for line in lines:
-            w, _ = measure_text(line, resolved, size, inv)
-            widest = max(widest, w)
-        if total_h <= float(max_height_pt) and widest <= float(max_width_pt):
-            return (size, lines)
-        size -= 0.5
+    def measured(size):
+        lines = wrap_text_to_width(text, resolved, size, max_width_pt, inv,
+                                   break_long_words=break_long_words)
+        height = len(lines) * line_height_pt(resolved, size, line_spacing, inv)
+        if lines:
+            height += TEXT_RENDER_GUARD_PT
+        widest = max((measure_text(line, resolved, size, inv)[0] for line in lines), default=0)
+        return height <= float(max_height_pt) and widest <= float(max_width_pt), lines
 
-    return (floor, best_lines)
+    fits, best_lines = measured(floor)
+    if not fits:
+        return floor, best_lines
+    best = floor
+    lo, hi = 1, len(sizes) - 1
+    while lo <= hi:
+        middle = (lo + hi) // 2
+        fits, lines = measured(sizes[middle])
+        if fits:
+            best, best_lines = sizes[middle], lines
+            lo = middle + 1
+        else:
+            hi = middle - 1
+    return best, best_lines
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -719,6 +837,18 @@ def fit_point_size(text: str, resolved: ResolvedFont, max_width_pt: float,
 # ─────────────────────────────────────────────────────────────────────────────
 
 PAIRINGS = {
+    "swiss": {
+        "display": ("Helvetica Neue", "Arial", "Liberation Sans"),
+        "body": ("Helvetica Neue", "Arial", "Liberation Sans"),
+        "mono": ("Consolas", "Courier New"),
+        "note": "Neutral Swiss sans serif with a compact, consistent hierarchy.",
+    },
+    "blueprint": {
+        "display": ("Consolas", "Cascadia Mono", "Courier New"),
+        "body": ("Segoe UI", "Arial", "Liberation Sans"),
+        "mono": ("Consolas", "Cascadia Mono", "Courier New"),
+        "note": "Measured monospaced headings with a readable engineering body.",
+    },
     # ---- gaming / esports ---------------------------------------------------
     "esports": {
         "display": ("Nasalization", "Good Times", "Orbitron", "Michroma",
@@ -867,6 +997,8 @@ def resolve_pairing(name: str, inventory: FontInventory = None) -> dict:
 
 
 def _display_category(pairing_key: str) -> str:
+    if pairing_key == "blueprint":
+        return "mono"
     if pairing_key in ("esports", "cyberpunk", "military_tactical"):
         return "display_tech"
     if pairing_key in ("brand_bold", "arcade", "brutalist"):

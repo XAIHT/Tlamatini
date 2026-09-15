@@ -152,14 +152,16 @@ class OrnamentFactory:
                 pass
 
     def _rng(self, salt: str = "") -> "random.Random":
-        return random.Random(self.seed ^ (hash(salt) & 0xFFFFFFFF))
+        digest = hashlib.sha256(str(salt).encode("utf-8")).digest()
+        return random.Random(self.seed ^ int.from_bytes(digest[:8], "big"))
 
     def _path(self, motif: str, width: int, height: int, salt: str = "") -> str:
         key = "%s_%dx%d_%s_%s" % (motif, width, height,
                                   self.palette.primary.hex.lstrip("#"),
                                   hashlib.md5(
-                                      ("%s|%s|%s" % (self.token, salt,
-                                                     self.palette.background.hex))
+                                      ("v2|%s|%s|%s|%s" % (self.token, salt,
+                                          self.scale, ",".join(self.palette.get(role).hex
+                                                              for role in self.palette.ROLES)))
                                       .encode()).hexdigest()[:8])
         return os.path.join(self.root, "orn_%s.png" % key)
 

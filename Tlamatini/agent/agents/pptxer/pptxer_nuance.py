@@ -16,7 +16,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # THE JOB
 # ─────────────────────────────────────────────────────────────────────────────
-# Read the CONTENT before rendering anything and decide which of 24 deck
+# Read the CONTENT before rendering anything and decide which deck
 # treatments it really is — an esports tournament recap is not a Series-A
 # pitch, and neither is a safety briefing. The treatment then drives the
 # palette, the type pairing, the layout rhythm, the artwork programme and the
@@ -56,6 +56,7 @@ import re
 __all__ = [
     "NUANCES",
     "NUANCE_ALIASES",
+    "STYLE_PRESETS",
     "classify",
     "resolve_nuance",
     "NuanceVerdict",
@@ -63,7 +64,7 @@ __all__ = [
 ]
 
 # ─────────────────────────────────────────────────────────────────────────────
-# The 24 treatments.
+# Content treatments and explicitly selected visual styles.
 #
 # `register` is the emotional pitch, `decoration_ceiling` is the MAXIMUM
 # artwork level the content can safely carry, and `pairing`/`palette_seed`/
@@ -271,6 +272,91 @@ NUANCES = {
         "note": "Ornament near a dosage or a hazard step is dangerous.",
     },
 }
+
+def _visual_style(label, pairing, seed, ground, *, dark=False, ornament="none",
+                  radius=0, rule=1, density="medium", uppercase=False,
+                  margin=2.6, panel_pad=0.95, colors=None, note=""):
+    """Style defaults use the same measured, validated theme pipeline."""
+    return {
+        "label": label, "register": note, "pairing": pairing,
+        "palette_seed": seed, "scheme": "curated",
+        "background_mode": "dark" if dark else "light",
+        "background_color": ground, "palette_roles": colors or {},
+        "decoration_ceiling": "restrained", "density": density,
+        "ornament": ornament, "note": note,
+        "shape_defaults": {"radius": radius, "rule": rule,
+                           "uppercase_titles": uppercase},
+        "spacing_factors": {"margin": margin, "panel_pad": panel_pad},
+        "visual_style": True,
+    }
+
+
+# These are opt-in visual directions, not guesses about a document's subject.
+# Keeping them out of the lexical classifier preserves existing auto-detection.
+STYLE_PRESETS = {
+    "swiss_editorial": _visual_style(
+        "Swiss Editorial", "swiss", "#B52B32", "#FAFAF7", rule=3,
+        uppercase=True, density="high", margin=2.8,
+        colors={"title": "#181B1E", "heading": "#181B1E"},
+        note="Crisp sans serif, red rules, square cards, and a strict white grid."),
+    "warm_editorial": _visual_style(
+        "Warm Editorial", "editorial", "#844C36", "#FBF5E9", rule=0.75,
+        margin=2.9, panel_pad=1.1,
+        colors={"title": "#3D3028", "heading": "#3D3028"},
+        note="Magazine serifs, warm paper, fine rules, and generous margins."),
+    "midnight_luxe": _visual_style(
+        "Midnight Luxe", "luxury", "#D6B875", "#111A2B", dark=True,
+        rule=0.75, margin=3.0, panel_pad=1.1,
+        note="Gold didone headings over midnight blue with quiet hairline details."),
+    "botanical": _visual_style(
+        "Botanical", "editorial", "#356548", "#F1F5EC", radius=18,
+        ornament="soft_shapes", panel_pad=1.05,
+        note="Leaf green, soft sage panels, rounded cards, and organic serif type."),
+    "oceanic": _visual_style(
+        "Oceanic", "technical", "#61DAE5", "#092B3B", dark=True,
+        ornament="wave_field", radius=8, rule=2, density="high",
+        note="Deep ocean blue, bright aqua, technical headings, and restrained waves."),
+    "blueprint": _visual_style(
+        "Blueprint", "blueprint", "#96DAF2", "#102D56", dark=True,
+        ornament="tactical_grid", rule=0.75, uppercase=True, density="high",
+        note="Drafting blue, monospaced headings, square geometry, and fine grid marks."),
+    "terracotta": _visual_style(
+        "Terracotta", "luxury", "#A3472C", "#FAEDE0", radius=8,
+        ornament="soft_shapes", rule=2.5, panel_pad=1.05,
+        note="Clay accents, sand paper, sculptural serif headings, and warm panels."),
+    "nordic_frost": _visual_style(
+        "Nordic Frost", "minimal", "#3E6179", "#F3F7FA", radius=8,
+        rule=0.75, margin=3.0, panel_pad=1.1,
+        note="Cool white, slate blue, quiet sans serif, and open spacing."),
+    "bauhaus": _visual_style(
+        "Bauhaus", "brutalist", "#B6242F", "#FFF9E9", rule=4,
+        uppercase=True, density="high", ornament="corporate_band",
+        colors={"title": "#17191C", "heading": "#17191C",
+                "accent_2": "#2455A4", "accent_3": "#E8AF22",
+                "series_1": "#B6242F", "series_2": "#2455A4", "series_3": "#B07900"},
+        note="Heavy black type, primary red and blue, cream ground, and bold rules."),
+    "lavender_studio": _visual_style(
+        "Lavender Studio", "friendly_consumer", "#735099", "#F5EFFA",
+        radius=18, ornament="soft_shapes", rule=1.5, panel_pad=1.1,
+        note="Plum headings, pale lavender, friendly rounded type, and soft cards."),
+    "monochrome_ink": _visual_style(
+        "Monochrome Ink", "brutalist", "#242424", "#FFFFFF", rule=3,
+        uppercase=True, density="high", ornament="none",
+        colors={"title": "#111111", "heading": "#111111",
+                "text": "#171717", "text_muted": "#444444", "on_surface": "#171717",
+                "accent": "#222222", "rule": "#222222",
+                "accent_2": "#555555", "accent_3": "#999999",
+                "series_1": "#222222", "series_2": "#555555", "series_3": "#888888",
+                "series_4": "#333333", "series_5": "#666666", "series_6": "#777777",
+                "series_7": "#444444", "series_8": "#111111"},
+        note="Black and white, bold grotesque type, square panels, and strong rules."),
+    "sunset_coral": _visual_style(
+        "Sunset Coral", "startup_pitch", "#FFAE8F", "#352038", dark=True,
+        ornament="gradient_mesh", radius=18, rule=2.5,
+        colors={"subtitle": "#EDD9D2"},
+        note="Apricot highlights, aubergine ground, geometric type, and rounded panels."),
+}
+NUANCES.update(STYLE_PRESETS)
 
 # Nuances where generated artwork is FORBIDDEN regardless of confidence,
 # user request or model suggestion. This set is checked by the theme layer and
@@ -655,6 +741,9 @@ def resolve_nuance(requested: str):
         return key
     if key in NUANCE_ALIASES:
         return NUANCE_ALIASES[key]
+    for style in STYLE_PRESETS:
+        if key in (f"{style}_style", f"{style}_deck", f"{style}_presentation"):
+            return style
     # De-accented Spanish (campaña → campana) is already handled by the alias
     # table; try a last loose contains-match so "gaming_deck" finds "gaming".
     for alias, target in NUANCE_ALIASES.items():

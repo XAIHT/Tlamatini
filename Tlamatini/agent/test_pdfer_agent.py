@@ -654,13 +654,16 @@ class PdferMainTests(SimpleTestCase):
                 'mode': 'markdown',
                 'input_text': '# Report\n\n| a | b |\n|---|---|\n| 1 | 2 |\n',
                 'title': 'T', 'output_dir': tmp, 'filename': 'r.pdf',
+                'style': 'tlamatini',
                 'target_agents': [],
             }, tmp)
             # NOTE: assert INSIDE the with — the temp dir (and the PDF) is gone after it.
             self.assertEqual(code, 0)
             fields = _parse_section(next(r for r in records if 'INI_SECTION_PDFER<<<' in r))
             self.assertEqual(fields['status'], 'created')
-            self.assertEqual(fields['engine'], 'xhtml2pdf')
+            self.assertEqual(fields['engine'], 'atelier')
+            self.assertEqual(fields['style'], 'tlamatini_celestial')
+            self.assertEqual(fields['style_family'], 'tlamatini')
             self.assertEqual(fields['source_type'], 'text')
             self.assertTrue(os.path.isfile(fields['output_path']))
             self.assertGreater(int(fields['page_count']), 0)
@@ -687,6 +690,19 @@ class PdferMainTests(SimpleTestCase):
         fields = _parse_section(next(r for r in records if 'INI_SECTION_PDFER<<<' in r))
         self.assertEqual(fields['status'], 'validated')
         self.assertIn('xhtml2pdf', fields['response_body'])
+
+    def test_main_styles_lists_every_identity_without_writing_a_pdf(self):
+        m = _pdfer()
+        import pdfer_styles
+        with tempfile.TemporaryDirectory() as tmp:
+            records, code = _run_main(m, {'mode': 'styles', 'output_dir': tmp,
+                                          'target_agents': []}, tmp)
+            self.assertFalse([f for f in os.listdir(tmp) if f.endswith('.pdf')])
+        self.assertEqual(code, 0)
+        fields = _parse_section(next(r for r in records if 'INI_SECTION_PDFER<<<' in r))
+        self.assertEqual(fields['status'], 'inspected')
+        for key in pdfer_styles.STYLES:
+            self.assertIn(key, fields['response_body'])
 
     def test_main_refuses_empty_content_and_still_emits_a_routable_section(self):
         m = _pdfer()

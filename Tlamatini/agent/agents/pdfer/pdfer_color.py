@@ -703,11 +703,11 @@ class Palette:
         bg, surf = self.background, self.surface
         fixed = {
             "text": ensure_contrast(self.text, bg, body_floor, preserve_hue=False),
-            "text_muted": ensure_contrast(self.text_muted, bg, large_floor),
+            "text_muted": ensure_contrast(self.text_muted, bg, body_floor),
             "heading_1": ensure_contrast(self.heading_1, bg, large_floor),
             "heading_2": ensure_contrast(self.heading_2, bg, large_floor),
-            "heading_3": ensure_contrast(self.heading_3, bg, large_floor),
-            "heading_4": ensure_contrast(self.heading_4, bg, large_floor),
+            "heading_3": ensure_contrast(self.heading_3, bg, body_floor),
+            "heading_4": ensure_contrast(self.heading_4, bg, body_floor),
             "link": ensure_contrast(self.link, bg, body_floor),
             # ⚠️ CAPTIONS AND FOOTERS ARE **SMALL** TEXT — they take the FULL
             # body floor, not the large-text one.
@@ -727,14 +727,22 @@ class Palette:
             "table_header_fg": ensure_contrast(
                 self.table_header_fg, self.table_header_bg, body_floor,
                 preserve_hue=False),
-            "quote_fg": ensure_contrast(self.quote_fg, self.quote_bg, large_floor),
+            "quote_fg": ensure_contrast(self.quote_fg, self.quote_bg, body_floor),
             "text_inverse": ensure_contrast(self.text_inverse, self.primary,
                                             large_floor, preserve_hue=False),
         }
         # Alternating table rows must not swallow the body text either.
-        fixed["table_row_alt"] = (self.table_row_alt
-                                  if self.text.contrast(self.table_row_alt) >= large_floor
-                                  else mix(surf, bg, 0.5))
+        # Validate against the REPAIRED ink. A user override can change both
+        # ground and text, and the old pre-repair check could leave striped
+        # rows unreadable even while the page text passed.
+        row = self.table_row_alt
+        for step in range(21):
+            candidate = mix(row, bg, step / 20.0)
+            if fixed["text"].contrast(candidate) >= body_floor:
+                fixed["table_row_alt"] = candidate
+                break
+        else:
+            fixed["table_row_alt"] = bg
         return self.copy_with(**fixed)
 
     def contrast_report(self) -> list:
@@ -742,15 +750,19 @@ class Palette:
         questionable theme is *visible*, not merely survived."""
         checks = (
             ("text on background", self.text, self.background, WCAG_AA_NORMAL),
-            ("muted on background", self.text_muted, self.background, WCAG_AA_LARGE),
+            ("muted on background", self.text_muted, self.background, WCAG_AA_NORMAL),
             ("h1 on background", self.heading_1, self.background, WCAG_AA_LARGE),
             ("h2 on background", self.heading_2, self.background, WCAG_AA_LARGE),
+            ("h3 on background", self.heading_3, self.background, WCAG_AA_NORMAL),
+            ("h4 on background", self.heading_4, self.background, WCAG_AA_NORMAL),
+            ("caption on background", self.caption, self.background, WCAG_AA_NORMAL),
+            ("footer on background", self.footer, self.background, WCAG_AA_NORMAL),
             ("code fg on code bg", self.code_fg, self.code_bg, WCAG_AA_NORMAL),
             ("th fg on th bg", self.table_header_fg, self.table_header_bg,
              WCAG_AA_NORMAL),
             ("link on background", self.link, self.background, WCAG_AA_NORMAL),
-            ("quote on quote bg", self.quote_fg, self.quote_bg, WCAG_AA_LARGE),
-            ("text on row-alt", self.text, self.table_row_alt, WCAG_AA_LARGE),
+            ("quote on quote bg", self.quote_fg, self.quote_bg, WCAG_AA_NORMAL),
+            ("text on row-alt", self.text, self.table_row_alt, WCAG_AA_NORMAL),
         )
         rows = []
         for label, fg, bg, floor in checks:

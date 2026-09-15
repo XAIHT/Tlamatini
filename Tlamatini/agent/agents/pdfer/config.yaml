@@ -26,6 +26,7 @@
 #   merge    : merge `input_pdfs` (and any rendered content) into ONE PDF
 #   info     : read an existing PDF (input_file) and report pages/size/metadata
 #   validate : report which PDF backends are importable (no file written)
+#   styles   : list visual styles and aliases (no file written)
 mode: "auto"
 
 # -- Content sources ---------------------------------------------------------
@@ -87,6 +88,21 @@ footer_note: ""        # optional short text on the left of every footer
 #   presentation_deck .... stage black, violet and gold, very large type
 #   minimal_note ......... quiet and unopinionated (the honest fallback)
 nuance: ""
+
+# Visual identity, independent of the content's nuance. Blank/auto preserves
+# the existing automatic theme. Exact names and aliases ("cute", "baby",
+# "astronomy", "electronics", "tlamatini", "alien") are accepted.
+#  playful: kawaii_cloud, baby_dream, baby_peach, candy_pop,
+#           storybook_garden, pastel_sorbet
+#  cyberpunk: cyberpunk, neon_noir, holographic, synthwave
+#  cosmic: cosmic_nebula, astral_atlas, lunar_minimal, solar_flare, aurora
+#  electronics: circuit_board, blueprint, quantum_chip, oscilloscope
+#  tlamatini: aztec_obsidian, quetzal_jade, tlamatini_celestial,
+#             xeno_codex, alien_biolume
+# Colors/type apply to all documents. Artwork respects the nuance's existing
+# decoration ceiling (rich permits cover art; marketing/science have rich).
+# Examples and a complete catalogue: STYLES.md beside this file.
+style: "auto"
 
 # THE most important colour of the document. Give ONE colour and PDFer
 # derives the whole palette from it — headings, rules, table headers, callout

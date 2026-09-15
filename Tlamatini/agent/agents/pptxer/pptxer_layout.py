@@ -62,7 +62,7 @@
 
 import math
 
-from pptxer_fonts import fit_point_size, get_inventory, measure_text, wrap_text_to_width
+from pptxer_fonts import TEXT_RENDER_GUARD_PT, fit_point_size, font_for_text, get_inventory, line_height_pt, measure_text, wrap_text_to_width
 
 __all__ = [
     "EMU_PER_INCH", "EMU_PER_POINT", "EMU_PER_CM",
@@ -471,19 +471,22 @@ class SlideCanvas:
         PowerPoint's renderer disagrees with PIL by a fraction of a point.
         """
         inner = box.inset(TEXT_SAFETY_INSET)
+        resolved_font = font_for_text(resolved_font, text, self._inventory)
         max_w_pt = max(1.0, inner.width_pt)
         max_h_pt = max(1.0, inner.height_pt)
 
         size, lines = fit_point_size(
             str(text or ""), resolved_font, max_w_pt, max_h_pt,
             float(start_pt), float(min_pt), float(line_spacing), self._inventory,
+            break_long_words=True,
         )
 
         widest = 0.0
         for line in lines:
             w, _ = measure_text(line, resolved_font, size, self._inventory)
             widest = max(widest, w)
-        total_h = len(lines) * size * float(line_spacing)
+        line_h = line_height_pt(resolved_font, size, line_spacing, self._inventory)
+        total_h = len(lines) * line_h + (TEXT_RENDER_GUARD_PT if lines else 0)
 
         overflow = False
         reason = ""
@@ -513,6 +516,7 @@ class SlideCanvas:
             "align": align,
             "font": resolved_font,
             "line_spacing": float(line_spacing),
+            "line_height_pt": line_h,
         }
 
     def text_block_height(self, text, box_width_emu, resolved_font, size_pt,
@@ -523,9 +527,10 @@ class SlideCanvas:
         BOX must grow instead — the opposite direction from fit_text.
         """
         inner_w_pt = max(1.0, (box_width_emu - 2 * TEXT_SAFETY_INSET) / EMU_PER_POINT)
+        resolved_font = font_for_text(resolved_font, text, self._inventory)
         lines = wrap_text_to_width(str(text or ""), resolved_font, float(size_pt),
-                                   inner_w_pt, self._inventory)
-        h_pt = max(1, len(lines)) * float(size_pt) * float(line_spacing)
+                                   inner_w_pt, self._inventory, break_long_words=True)
+        h_pt = max(1, len(lines)) * line_height_pt(resolved_font, size_pt, line_spacing, self._inventory) + TEXT_RENDER_GUARD_PT
         return int(round(h_pt * EMU_PER_POINT)) + 2 * TEXT_SAFETY_INSET
 
     # -- reporting ------------------------------------------------------------

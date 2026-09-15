@@ -406,3 +406,11 @@ private_data_audit_report.json
 
 # Tlamatini security arsenal - runtime alert logs + asset-test artifacts (never tracked)
 /security/security_logs/
+
+# Reproducible PDFer style previews and validation gallery.
+/artifacts/pdfer-styles/
+/output/pdf/pdfer-style-atlas.pdf
+
+# Regenerable PPTXer verification decks, renders, galleries, and reports.
+/artifacts/pptxer-visibility/
+/artifacts/pptxer-styles/

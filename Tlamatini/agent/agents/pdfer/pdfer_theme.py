@@ -70,13 +70,21 @@ from __future__ import annotations
 import pdfer_color as pc
 import pdfer_nuance as pn
 import pdfer_typography as ptypo
+import pdfer_styles as ps
 
 __all__ = [
     "THEMES",
     "DesignSystem",
     "build_design_system",
     "ORNAMENT_PROGRAMMES",
+    "STYLES",
+    "normalise_style",
+    "style_catalog",
 ]
+
+STYLES = ps.STYLES
+normalise_style = ps.normalise_style
+style_catalog = ps.style_catalog
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -88,6 +96,11 @@ __all__ = [
 #  decoration budget from the nuance verdict can veto any of it.
 # ─────────────────────────────────────────────────────────────────────────
 ORNAMENT_PROGRAMMES = {
+    "signature": {
+        "motifs": (),  # Vector artwork uses the selected style's motif.
+        "surfaces": ("cover", "section_rule", "page_edge"),
+        "note": "Original vector artwork in a dedicated cover area.",
+    },
     "constellation": {
         "motifs": ("particle_field", "orbital_arcs", "grid_mesh"),
         "surfaces": ("cover", "section_rule", "page_edge"),
@@ -920,6 +933,9 @@ class DesignSystem:
         """A block the agent prints so the design is auditable, not magic."""
         lines = [
             "Design system: %s (%s)" % (self.meta.get("label", "?"), self.nuance),
+            "  style      : %s%s" % (
+                self.meta.get("style") or "auto",
+                " — " + self.meta["style_warning"] if self.meta.get("style_warning") else ""),
             "  ground     : %s %s   text %s"
             % ("DARK" if self.dark else "light",
                self.palette.background.hex, self.palette.text.hex),
@@ -960,6 +976,9 @@ class DesignSystem:
     def as_dict(self) -> dict:
         return {
             "nuance": self.nuance,
+            "style": self.meta.get("style", "auto"),
+            "style_family": self.meta.get("family", "semantic"),
+            "style_warning": self.meta.get("style_warning", ""),
             "label": self.meta.get("label", ""),
             "dark": self.dark,
             "palette": self.palette.as_dict(),
@@ -1069,8 +1088,24 @@ def _build_inner(verdict, config, font_book, logger):
     book = font_book or ptypo.FontBook(logger=logger)
     nuance = verdict.nuance if verdict else "minimal_note"
     theme = THEMES.get(nuance) or THEMES["minimal_note"]
+    requested_style = str(_cfg(config, "style", "")).strip()
+    # Accept visual names in the old nuance field too. Document detection
+    # still owns semantics and its decoration ceiling; style never raises it.
+    style_name = ps.normalise_style(requested_style)
+    if requested_style.casefold() in ("", "auto"):
+        nuance_hint = _cfg(config, "nuance", "")
+        if not pn.normalise_nuance(nuance_hint):
+            style_name = ps.normalise_style(nuance_hint)
+    if style_name:
+        theme = ps.theme_for(style_name)
     meta = {"label": theme.get("label", nuance), "source": "theme",
-            "note": theme.get("note", ""), "seed": ""}
+            "note": theme.get("note", ""), "seed": "",
+            "style": style_name or "auto", "family": theme.get("family", "semantic"),
+            "motif": theme.get("motif", ""), "centered": theme.get("centered", False)}
+    if requested_style.casefold() not in ("", "auto") and not style_name:
+        meta["style_warning"] = "Unknown style %r; using the document theme" % requested_style
+        if logger:
+            logger(meta["style_warning"])
 
     # ── 1. dark/light ───────────────────────────────────────────────────
     dark = bool(theme.get("dark", False))
@@ -1121,7 +1156,7 @@ def _build_inner(verdict, config, font_book, logger):
             palette = pc.palette_from_seed(base.get("primary", "#2C4A6E"),
                                            dark=dark, name="%s+flip" % nuance)
         else:
-            palette = pc.Palette(name=nuance, dark=dark, **base)
+            palette = pc.Palette(name=style_name or nuance, dark=dark, **base)
 
     # ── 3. explicit per-role overrides ──────────────────────────────────
     overrides = {}
@@ -1204,6 +1239,7 @@ def _build_inner(verdict, config, font_book, logger):
     airy = {"legal_instrument": 1.05, "creative_literary": 1.15,
             "editorial_feature": 1.10, "financial_ledger": 0.80,
             "engineering_spec": 0.85, "presentation_deck": 1.20}.get(nuance, 1.0)
+    airy = theme.get("airy", airy)
 
     return DesignSystem(
         nuance=nuance,

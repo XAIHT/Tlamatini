@@ -23,7 +23,118 @@
       "transport": "stdio",
       "description": "Structured step-by-step reasoning with branching and revision. Official @modelcontextprotocol reference server. Needs Node (Tlamatini provisions it automatically).",
       "_tlamatini_default": true
+    },
+    "lumen-book-reader": {
+      "command": "C:\\Lumen-Book-Reader\\.venv\\Scripts\\python.exe",
+      "args": [
+        "-m",
+        "lumen_reader.mcp_server",
+        "serve",
+        "--stdio"
+      ],
+      "env": {
+        "PYTHONUNBUFFERED": "1",
+        "PYTHONIOENCODING": "utf-8"
+      },
+      "transport": "stdio"
+    },
+    "IDM_MCP_Core": {
+      "command": "C:\\Development\\IDM\\artifacts\\local\\IdmMcp.McpHost.exe",
+      "args": [
+        "--transport",
+        "stdio",
+        "--role",
+        "core"
+      ],
+      "env": {},
+      "transport": "stdio"
+    },
+    "exploit-db": {
+      "command": "node",
+      "args": [
+        "C:\\Development\\MCPS\\exploitdb-mcp-server\\build\\index.js"
+      ],
+      "transport": "stdio",
+      "description": "ExploitDB MCP Server — search 46,000+ exploits from the Exploit Database (Exploit-DB) by text, platform, type, CVE, or ID. Maintained by Cyreslab.ai.",
+      "env": {
+        "DATA_DIR": "C:\\Development\\MCPS\\exploitdb-mcp-server\\data",
+        "DB_PATH": "C:\\Development\\MCPS\\exploitdb-mcp-server\\data\\exploitdb.sqlite",
+        "UPDATE_INTERVAL": "24",
+        "MAX_RESULTS": "10",
+        "CLONE_REPOSITORY": "false",
+        "CSV_URL": "https://gitlab.com/exploit-database/exploitdb/-/raw/main/files_exploits.csv"
+      }
+    },
+    "deepwebresearch": {
+      "command": "mcp-deepwebresearch",
+      "args": [],
+      "env": {},
+      "transport": "stdio"
+    },
+    "octocode": {
+      "command": "npx",
+      "type": "stdio",
+      "args": [
+        "octocode-mcp@latest"
+      ],
+      "env": {},
+      "transport": "stdio"
+    },
+    "onion-search-mcp": {
+      "command": "C:\\Development\\MCPS\\Onion-Search-MCP\\.venv\\Scripts\\python.exe",
+      "args": [
+        "C:\\Development\\MCPS\\Onion-Search-MCP\\server.py"
+      ],
+      "env": {},
+      "transport": "stdio",
+      "description": "Onion Search MCP Server — anonymous web search through the Tor network using DuckDuckGo. Provides tools: get_sources (search DuckDuckGo via Tor), fetch_pages (fetch full page content), fetch_specific_page (fetch a specific URL). Requires Tor installed. Author: maximilianromer. GitHub: https://github.com/maximilianromer/Onion-Search-MCP"
+    },
+    "torrent-search-mcp": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "C:\\Development\\MCPS\\torrent-search-mcp",
+        "run",
+        "torrent-search-mcp"
+      ],
+      "env": {},
+      "transport": "stdio",
+      "description": "Torrent Search MCP Server — search for torrents across multiple providers, scrape results using crawl4ai, and cache results with aiocache. Provides a FastAPI server and MCP server interface. Author: philogicae. GitHub: https://github.com/philogicae/torrent-search-mcp"
+    },
+    "wireshark-mcp": {
+      "command": "C:\\Users\\angel\\.local\\bin\\uv.exe",
+      "args": [
+        "--directory",
+        "C:\\Development\\MCPS\\Wireshark-MCP",
+        "run",
+        "--no-dev",
+        "wireshark-mcp"
+      ],
+      "env": {},
+      "transport": "stdio",
+      "description": "MCP server for Wireshark/tshark packet analysis. Provides tools for capturing, analyzing, and inspecting network packets via tshark. Requires Wireshark/tshark installed. Author: bx33661. GitHub: https://github.com/bx33661/Wireshark-MCP"
+    },
+    "youtube": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "C:\\Development\\MCPS\\Youtube-MCP",
+        "run",
+        "python",
+        "server.py"
+      ],
+      "env": {
+        "GOOGLE_API_KEY": "<EXTMCP_YOUTUBE_GOOGLE_API_KEY goes here>"
+      },
+      "transport": "stdio",
+      "description": "YouTube MCP Server — search YouTube videos without the official API, retrieve transcripts, store video info in a vector database, and perform semantic search over transcripts. Requires a Google API key for embeddings. GitHub: https://github.com/blazzmocompany/Youtube-MCP"
     }
   },
-  "active": []
+  "active": [
+    "deepwebresearch",
+    "lumen-book-reader",
+    "memory",
+    "sequential-thinking",
+    "torrent-search-mcp"
+  ]
 }

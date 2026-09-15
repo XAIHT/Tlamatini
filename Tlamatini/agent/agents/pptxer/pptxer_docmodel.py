@@ -632,6 +632,7 @@ _STAT_RE = re.compile(
 
 def _refine(deck: Deck, max_bullets=6) -> Deck:
     """Promote slide types and SPLIT overfull slides. Never drops content."""
+    from copy import deepcopy
     out = []
     for slide in deck.slides:
 
@@ -673,18 +674,13 @@ def _refine(deck: Deck, max_bullets=6) -> Deck:
             chunks = [slide.bullets[i:i + cap]
                       for i in range(0, len(slide.bullets), cap)]
             for n, chunk in enumerate(chunks):
-                clone = Slide(
-                    kind=slide.kind,
-                    # "(cont.)" is deliberate and visible: a reader must be able
-                    # to tell a continuation from a repeated heading.
-                    title=slide.title if n == 0 else f"{slide.title} (cont.)",
-                    subtitle=slide.subtitle if n == 0 else "",
-                    kicker=slide.kicker if n == 0 else "",
-                    bullets=chunk,
-                    body=slide.body if n == 0 else "",
-                    images=slide.images if n == 0 else [],
-                    notes=slide.notes if n == 0 else "",
-                )
+                clone = deepcopy(slide)
+                clone.bullets = chunk
+                if n:
+                    clone.title = f"{slide.title} (cont.)"
+                    clone.subtitle = clone.kicker = clone.body = ""
+                    clone.images = []
+                    clone.meta["continuation"] = True
                 out.append(clone)
             continue
 
@@ -705,13 +701,14 @@ def _refine(deck: Deck, max_bullets=6) -> Deck:
                 if acc:
                     groups.append(acc)
                 for n, group in enumerate(groups):
-                    out.append(Slide(
-                        kind=slide.kind,
-                        title=slide.title if n == 0 else f"{slide.title} (cont.)",
-                        subtitle=slide.subtitle if n == 0 else "",
-                        body="\n\n".join(group),
-                        images=slide.images if n == 0 else [],
-                    ))
+                    clone = deepcopy(slide)
+                    clone.body = "\n\n".join(group)
+                    if n:
+                        clone.title = f"{slide.title} (cont.)"
+                        clone.subtitle = clone.kicker = ""
+                        clone.images = []
+                        clone.meta["continuation"] = True
+                    out.append(clone)
                 continue
 
         # ---- SPLIT a very long table ---------------------------------------
@@ -719,11 +716,13 @@ def _refine(deck: Deck, max_bullets=6) -> Deck:
             headers = slide.table.get("headers") or []
             rows = slide.table.get("rows") or []
             for n in range(0, len(rows), 12):
-                out.append(Slide(
-                    kind="table",
-                    title=slide.title if n == 0 else f"{slide.title} (cont.)",
-                    table={"headers": headers, "rows": rows[n:n + 12]},
-                ))
+                clone = deepcopy(slide)
+                clone.kind = "table"
+                clone.table = dict(clone.table, headers=headers, rows=rows[n:n + 12])
+                if n:
+                    clone.title = f"{slide.title} (cont.)"
+                    clone.meta["continuation"] = True
+                out.append(clone)
             continue
 
         out.append(slide)

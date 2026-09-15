@@ -87,10 +87,10 @@ class RenderResult:
     """The outcome of a render attempt — including 'it could not run'."""
 
     __slots__ = ("tier", "images", "ok", "error", "seconds", "available",
-                 "note", "width", "height")
+                 "note", "width", "height", "text_bounds")
 
     def __init__(self, tier="", images=None, ok=False, error="", seconds=0.0,
-                 available=None, note="", width=0, height=0):
+                 available=None, note="", width=0, height=0, text_bounds=None):
         self.tier = tier
         self.images = list(images or [])
         self.ok = bool(ok)
@@ -101,6 +101,7 @@ class RenderResult:
         self.note = note
         self.width = int(width)
         self.height = int(height)
+        self.text_bounds = text_bounds
 
     @property
     def count(self) -> int:
@@ -117,6 +118,7 @@ class RenderResult:
             "error": self.error, "seconds": round(self.seconds, 2),
             "available": self.available, "note": self.note,
             "width": self.width, "height": self.height,
+            "text_bounds": self.text_bounds,
         }
 
     def __repr__(self) -> str:
@@ -174,12 +176,12 @@ def _powerpoint_available() -> tuple:
     return (False, "PowerPoint does not appear to be installed")
 
 
-def _powerpoint_pids() -> set:
-    """PIDs of every running POWERPNT.EXE. Empty set when psutil is absent."""
+def _powerpoint_pids():
+    """Running POWERPNT.EXE PIDs; None when ownership cannot be established."""
     try:
         import psutil
     except Exception:                                             # noqa: BLE001
-        return set()
+        return None
     found = set()
     try:
         for proc in psutil.process_iter(["pid", "name"]):
@@ -187,11 +189,11 @@ def _powerpoint_pids() -> set:
             if name == "POWERPNT.EXE":
                 found.add(int(proc.info["pid"]))
     except Exception:                                             # noqa: BLE001
-        return set()
+        return None
     return found
 
 
-def _reap_orphan_powerpoint(pre_existing, grace=6.0) -> list:
+def _reap_orphan_powerpoint(pre_existing, grace=6.0, owned_pids=None) -> list:
     """Terminate ONLY the PowerPoint this render started, and only if it hung.
 
     ⚠️ THE SAFETY RULE THAT MAKES THIS ACCEPTABLE: a PID present BEFORE the
@@ -205,6 +207,8 @@ def _reap_orphan_powerpoint(pre_existing, grace=6.0) -> list:
     """
     if not sys.platform.startswith("win"):
         return []
+    if pre_existing is None or not owned_pids:
+        return []
     try:
         import psutil
     except Exception:                                             # noqa: BLE001
@@ -217,12 +221,17 @@ def _reap_orphan_powerpoint(pre_existing, grace=6.0) -> list:
     # Give PowerPoint a fair chance to exit on its own first. It usually does,
     # a second or two after the last COM reference is released.
     while time.time() < deadline:
-        strays = _powerpoint_pids() - before
+        strays = (_powerpoint_pids() or set()) - before
+        if owned_pids is not None:
+            strays &= set(owned_pids)
         if not strays:
             return []
         time.sleep(0.4)
 
-    for pid in (_powerpoint_pids() - before):
+    strays = (_powerpoint_pids() or set()) - before
+    if owned_pids is not None:
+        strays &= set(owned_pids)
+    for pid in strays:
         try:
             proc = psutil.Process(pid)
             proc.terminate()
@@ -293,8 +302,146 @@ def probe_renderers() -> dict:
 # TIER 1 — PowerPoint COM
 # ─────────────────────────────────────────────────────────────────────────────
 
+def _powerpoint_text_bounds(slide, slide_index, tolerance_pt=1.0):
+    """Measure Office's laid-out glyph bounds, including every table cell.
+
+    This is independent of the Pillow fit estimate. Export alone says nothing
+    about text visibility: PowerPoint happily exports overflowing text.
+    """
+    result = {"frames": [], "overflows": [], "errors": []}
+
+    def visit(shape, name, is_cell=False):
+        try:
+            if not is_cell and shape.Type == 6:  # msoGroup
+                for i in range(1, shape.GroupItems.Count + 1):
+                    child = shape.GroupItems.Item(i)
+                    visit(child, f"{name}/{child.Name}")
+            if shape.HasTable:
+                table = shape.Table
+                for r in range(1, table.Rows.Count + 1):
+                    for c in range(1, table.Columns.Count + 1):
+                        visit(table.Cell(r, c).Shape, f"{name}[{r},{c}]", is_cell=True)
+                return
+            if not shape.HasTextFrame or not shape.TextFrame.HasText:
+                return
+            frame = shape.TextFrame
+            text_range = frame.TextRange
+            text = str(text_range.Text)
+            if not text.strip():
+                return
+            x, y = float(shape.Left), float(shape.Top)
+            w, h = float(shape.Width), float(shape.Height)
+            # The whole range includes Office's invisible paragraph mark.
+            # Measure selected visible characters of each line instead: the
+            # implicit mark can add 5pt to a perfectly right-aligned footer.
+            import re
+            bounds = []
+            start = 1
+            for segment in re.split(r"([\r\n\v])", text):
+                visible = segment.rstrip()
+                if visible:
+                    selected = text_range.Characters(start, len(visible.encode("utf-16-le")) // 2)
+                    bounds.append((float(selected.BoundLeft), float(selected.BoundTop),
+                                   float(selected.BoundWidth), float(selected.BoundHeight)))
+                start += len(segment.encode("utf-16-le")) // 2
+            left = min(b[0] for b in bounds)
+            top = min(b[1] for b in bounds)
+            width = max(b[0] + b[2] for b in bounds) - left
+            height = max(b[1] + b[3] for b in bounds) - top
+            if is_cell:
+                # Cell.Shape exposes a cell-local range with an origin at
+                # (marginLeft, 0), even though Shape.Left/Top are slide-local.
+                # Compare its measured extents to the cell's content area.
+                left, top = x + frame.MarginLeft, y + frame.MarginTop
+            box = {"left": x, "top": y, "width": w, "height": h}
+            excess = max(x + frame.MarginLeft - left,
+                         y + frame.MarginTop - top,
+                         left + width - (x + w - frame.MarginRight),
+                         top + height - (y + h - frame.MarginBottom))
+            entry = {"slide": slide_index, "name": name, "text": text,
+                     "measurement": "cell-local extents" if is_cell else "slide-local character bounds",
+                     "box_pt": box, "ink_pt": {"left": left, "top": top, "width": width, "height": height},
+                     "overflow_pt": max(0.0, excess)}
+            result["frames"].append(entry)
+            if excess > tolerance_pt:
+                result["overflows"].append(entry)
+        except Exception as exc:
+            result["errors"].append(f"slide {slide_index}, {name}: {exc}")
+
+    for i in range(1, slide.Shapes.Count + 1):
+        shape = slide.Shapes.Item(i)
+        visit(shape, str(shape.Name))
+    return result
+
+
 def render_with_powerpoint(pptx_path, out_dir=None, width=1600,
                            timeout=180) -> RenderResult:
+    """Run Office in a disposable worker with a real wall-clock timeout.
+
+    COM calls can hang before the per-slide deadline is checked, and Office
+    can disconnect a proxy while it is being released. Neither belongs in
+    the application process. Paths and results cross the boundary as JSON.
+    """
+    available, detail = _powerpoint_available()
+    if not available:
+        return RenderResult(tier=TIER_POWERPOINT, available=False, error=detail)
+    import json
+    import tempfile
+    started = time.time()
+    dest = os.path.abspath(out_dir or _temp_dir("shots"))
+    with tempfile.TemporaryDirectory(prefix="office_worker_", dir=_temp_dir("work")) as work:
+        request = os.path.join(work, "request.json")
+        response = os.path.join(work, "response.json")
+        ownership = os.path.join(work, "ownership.json")
+        with open(request, "w", encoding="utf-8") as file:
+            json.dump({"path": os.path.abspath(pptx_path), "dest": dest,
+                       "width": width, "timeout": timeout, "response": response,
+                       "ownership": ownership}, file)
+        worker = (
+            "import json,sys; from pptxer_render import _render_with_powerpoint_in_process; "
+            "a=json.load(open(sys.argv[1],encoding='utf-8')); "
+            "r=_render_with_powerpoint_in_process(a['path'],a['dest'],a['width'],a['timeout'],a['ownership']); "
+            "d=r.as_dict(); d['image_paths']=r.images; "
+            "json.dump(d,open(a['response'],'w',encoding='utf-8'))"
+        )
+        try:
+            process = subprocess.run(
+                [sys.executable, "-c", worker, request],
+                cwd=os.path.dirname(os.path.abspath(__file__)),
+                capture_output=True, text=True, encoding="utf-8", errors="replace",
+                timeout=max(1.0, float(timeout)),
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )
+            if process.returncode or not os.path.isfile(response):
+                raise RuntimeError(f"Office worker exited {process.returncode}: {process.stderr[-1200:]}")
+            with open(response, encoding="utf-8") as file:
+                data = json.load(file)
+            return RenderResult(
+                tier=TIER_POWERPOINT, images=data["image_paths"], ok=data["ok"],
+                available=data["available"], error=data["error"], note=data["note"],
+                width=data["width"], height=data["height"],
+                seconds=time.time() - started, text_bounds=data.get("text_bounds"))
+        except Exception as exc:
+            # Only the HWND-identified Office process belongs to this worker.
+            # A concurrently opened presentation is never a cleanup candidate.
+            try:
+                with open(ownership, encoding="utf-8") as file:
+                    owned = json.load(file)
+                import psutil
+                for entry in owned:
+                    proc = psutil.Process(entry["pid"])
+                    if (proc.name().upper() == "POWERPNT.EXE"
+                            and abs(proc.create_time() - entry["created"]) < 0.1):
+                        proc.terminate()
+            except Exception:
+                pass
+            return RenderResult(tier=TIER_POWERPOINT, available=True,
+                                error=f"PowerPoint worker failed or timed out: {exc}",
+                                seconds=time.time() - started)
+
+
+def _render_with_powerpoint_in_process(pptx_path, out_dir=None, width=1600,
+                                       timeout=180, ownership_path=None) -> RenderResult:
     """Export every slide as a PNG using the installed PowerPoint.
 
     This is the only tier that answers "what will the audience actually see?",
@@ -330,31 +477,48 @@ def render_with_powerpoint(pptx_path, out_dir=None, width=1600,
     presentation = None
     images = []
     error = ""
+    text_bounds = {"frames": [], "overflows": [], "errors": []}
     # ⚠️ Record the PowerPoint processes that existed BEFORE we start, so the
     # teardown can tell OUR child from a presentation Angela has open herself.
     # Killing by name would close her unsaved work — never acceptable.
     pre_existing = _powerpoint_pids()
+    owned_pids = set()
     try:
         import pythoncom
         import win32com.client
 
         pythoncom.CoInitialize()
         app = win32com.client.DispatchEx("PowerPoint.Application")
-
-        # PowerPoint refuses WindowState changes while hidden on some builds,
-        # and setting Visible=False outright raises on others. Try to stay
-        # invisible, but never let the attempt kill the render.
         try:
-            app.Visible = False
-        except Exception:                                         # noqa: BLE001
+            import win32process
+            pid = win32process.GetWindowThreadProcessId(int(app.HWND))[1]
+            if pre_existing is not None and pid not in pre_existing:
+                owned_pids.add(pid)
+                if ownership_path:
+                    import json
+                    import psutil
+                    with open(ownership_path, "w", encoding="utf-8") as file:
+                        json.dump([{"pid": pid, "created": psutil.Process(pid).create_time()}], file)
+        except Exception:
+            # PowerPoint can reuse a user's existing process even for
+            # DispatchEx. Never quit or reap an instance we cannot identify.
+            pass
+
+        # Application properties affect every open presentation. Only change
+        # them when this worker owns the instance; WithWindow=False below
+        # keeps our copy hidden even if Office reuses the user's instance.
+        if owned_pids:
             try:
-                app.WindowState = 2       # ppWindowMinimized
+                app.Visible = False
+            except Exception:                                     # noqa: BLE001
+                try:
+                    app.WindowState = 2       # ppWindowMinimized
+                except Exception:                                 # noqa: BLE001
+                    pass
+            try:
+                app.DisplayAlerts = 0         # ppAlertsNone
             except Exception:                                     # noqa: BLE001
                 pass
-        try:
-            app.DisplayAlerts = 0         # ppAlertsNone
-        except Exception:                                         # noqa: BLE001
-            pass
 
         presentation = app.Presentations.Open(
             work, ReadOnly=True, Untitled=False, WithWindow=False)
@@ -376,6 +540,9 @@ def render_with_powerpoint(pptx_path, out_dir=None, width=1600,
                 presentation.Slides(i).Export(target, "PNG", px_w, px_h)
                 if os.path.isfile(target):
                     images.append(target)
+                measured = _powerpoint_text_bounds(presentation.Slides(i), i)
+                for key in text_bounds:
+                    text_bounds[key].extend(measured[key])
             except Exception as exc:                              # noqa: BLE001
                 error = f"slide {i} failed to export: {exc}"
                 break
@@ -384,6 +551,7 @@ def render_with_powerpoint(pptx_path, out_dir=None, width=1600,
             tier=TIER_POWERPOINT, images=images, ok=bool(images) and not error,
             error=error, seconds=time.time() - started, available=True,
             width=px_w, height=px_h,
+            text_bounds=text_bounds,
             note=(f"exported {len(images)} of {count} slides with the installed "
                   f"PowerPoint at {px_w}x{px_h}px"),
         )
@@ -406,7 +574,7 @@ def render_with_powerpoint(pptx_path, out_dir=None, width=1600,
         except Exception:                                         # noqa: BLE001
             pass
         try:
-            if app is not None:
+            if app is not None and owned_pids:
                 app.Quit()
         except Exception:                                         # noqa: BLE001
             pass
@@ -428,7 +596,7 @@ def render_with_powerpoint(pptx_path, out_dir=None, width=1600,
         except Exception:                                         # noqa: BLE001
             pass
 
-        _reap_orphan_powerpoint(pre_existing)
+        _reap_orphan_powerpoint(pre_existing, owned_pids=owned_pids)
 
         try:
             if os.path.isfile(work):
@@ -623,8 +791,12 @@ def render_preview(slide_specs, out_dir=None, width=1600,
                     if src and os.path.isfile(src):
                         try:
                             pic = Image.open(src).convert("RGBA")
-                            pic = pic.resize((max(1, x1 - x0), max(1, y1 - y0)),
-                                             Image.LANCZOS)
+                            target_size = (max(1, x1 - x0), max(1, y1 - y0))
+                            if shape.get("crop"):
+                                from PIL import ImageOps
+                                pic = ImageOps.fit(pic, target_size, method=Image.LANCZOS)
+                            else:
+                                pic = pic.resize(target_size, Image.LANCZOS)
                             img.paste(pic, (x0, y0), pic)
                             continue
                         except Exception:                         # noqa: BLE001
@@ -651,21 +823,26 @@ def render_preview(slide_specs, out_dir=None, width=1600,
                     continue
 
                 if kind == "text":
+                    inset = float(shape.get("inset_pt", 0)) * scale * 12700
+                    x0, y0, x1, y1 = x0 + inset, y0 + inset, x1 - inset, y1 - inset
                     lines = shape.get("lines") or [shape.get("text", "")]
                     size_pt = float(shape.get("size_pt", 18))
                     fnt = _font(shape.get("font_path"), size_pt)
                     colour = _col(shape.get("color"), (245, 245, 245, 255))
                     spacing = float(shape.get("line_spacing", 1.18))
-                    lh = size_pt * spacing * scale * 12700
+                    lh = (shape.get("line_height_pt") or size_pt * spacing) * scale * 12700
+                    tracking = float(shape.get("tracking_em", 0)) * size_pt * scale * 12700
                     align = (shape.get("align") or "left").lower()
                     ty = y0
+                    if shape.get("vertical_align") == "middle":
+                        ty += max(0, ((y1 - y0) - len(lines) * lh) / 2)
                     for line in lines:
                         if not line:
                             ty += lh
                             continue
                         try:
                             bbox = draw.textbbox((0, 0), line, font=fnt)
-                            tw = bbox[2] - bbox[0]
+                            tw = max(bbox[2] - bbox[0], draw.textlength(line, font=fnt)) + max(0, len(line) - 1) * tracking
                         except Exception:                         # noqa: BLE001
                             tw = 0
                         if align == "center":
@@ -674,7 +851,12 @@ def render_preview(slide_specs, out_dir=None, width=1600,
                             tx = x1 - tw
                         else:
                             tx = x0
-                        draw.text((tx, ty), line, font=fnt, fill=colour)
+                        if tracking:
+                            for i, char in enumerate(line):
+                                offset = draw.textlength(line[:i], font=fnt) + i * tracking
+                                draw.text((tx + offset, ty), char, font=fnt, fill=colour)
+                        else:
+                            draw.text((tx, ty), line, font=fnt, fill=colour)
                         ty += lh
                     continue
 
@@ -751,6 +933,7 @@ def render_slides(pptx_path, out_dir=None, width=1600, prefer="auto",
                 # is an informed second opinion, and the audit must know which
                 # it is holding.
                 "ground_truth": res.is_ground_truth,
+                "text_bounds": res.text_bounds,
             }
 
     return {

@@ -87,7 +87,6 @@ def _node(pslide, box, text, theme, canvas, spec, result, fill_role="surface",
     try:
         from pptx.dml.color import RGBColor
         from pptx.enum.shapes import MSO_SHAPE
-        from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
         from pptx.util import Emu, Pt
 
         form = shape_type or (MSO_SHAPE.ROUNDED_RECTANGLE
@@ -105,36 +104,12 @@ def _node(pslide, box, text, theme, canvas, spec, result, fill_role="surface",
             pass
 
         font = theme.font_for(size_role)
-        fit = canvas.fit_text(text, box, font, theme.size(size_role),
-                              min_pt=9.0, align="center")
-        if fit["overflow"]:
-            result.warnings.append(
-                f"diagram node {text[:28]!r} does not fit its box: "
-                f"{fit['reason']}")
-
-        frame = shp.text_frame
-        frame.word_wrap = True
-        try:
-            from pptx.enum.text import MSO_AUTO_SIZE
-            frame.auto_size = MSO_AUTO_SIZE.NONE
-            frame.vertical_anchor = MSO_ANCHOR.MIDDLE
-        except Exception:                                         # noqa: BLE001
-            pass
-        frame.margin_left = Emu(_emu_pt(5))
-        frame.margin_right = Emu(_emu_pt(5))
-        frame.margin_top = Emu(_emu_pt(3))
-        frame.margin_bottom = Emu(_emu_pt(3))
-
-        for i, line in enumerate(fit["lines"] or [text]):
-            para = frame.paragraphs[0] if i == 0 else frame.add_paragraph()
-            para.alignment = PP_ALIGN.CENTER
-            run = para.add_run()
-            run.text = line
-            run.font.size = Pt(fit["size_pt"])
-            run.font.bold = theme.is_bold(size_role)
-            if font is not None and font.family:
-                run.font.name = font.family
-            run.font.color.rgb = RGBColor.from_string(theme.hex(text_role))
+        fit = canvas.fit_text(text, box.inset(_emu_pt(8)), font, theme.size(size_role),
+                              min_pt=11.0, align="center")
+        font = fit["font"]
+        from pptxer_build import _write_fitted_frame
+        _write_fitted_frame(shp.text_frame, fit, theme.hex(text_role),
+                            margins=(10, 10, 10, 10), middle=True)
 
         spec["shapes"].append({
             "kind": "rect", "box": box.as_dict(),
@@ -146,6 +121,8 @@ def _node(pslide, box, text, theme, canvas, spec, result, fill_role="surface",
             "lines": fit["lines"] or [text], "size_pt": fit["size_pt"],
             "font_path": getattr(font, "path", "") or "",
             "color": f"#{theme.hex(text_role)}", "align": "center",
+            "inset_pt": 10.0, "vertical_align": "middle",
+            "line_height_pt": fit["line_height_pt"], "tracking_em": font.tracking_em,
         })
         result.text_boxes.append({
             "slide": spec.get("index", 0), "name": name,
@@ -264,6 +241,16 @@ def _pyramid(pslide, diagram, nodes, theme, canvas, region, spec, result) -> int
     return count
 
 
+def _edge_toward(box, other):
+    """Intersect the centre-to-centre ray with this node's perimeter."""
+    dx, dy = other.center_x - box.center_x, other.center_y - box.center_y
+    if not dx and not dy:
+        return box.center_x, box.center_y
+    scale = min(box.width / (2 * abs(dx)) if dx else float("inf"),
+                box.height / (2 * abs(dy)) if dy else float("inf"))
+    return int(box.center_x + dx * scale), int(box.center_y + dy * scale)
+
+
 def _cycle(pslide, diagram, nodes, theme, canvas, region, spec, result) -> int:
     """Nodes around a circle with arrows — a repeating loop.
 
@@ -293,8 +280,8 @@ def _cycle(pslide, diagram, nodes, theme, canvas, region, spec, result) -> int:
     for i in range(n):
         a = centres[i]
         b = centres[(i + 1) % n]
-        count += _arrow(pslide, (a.center_x, a.center_y),
-                        (b.center_x, b.center_y), theme, spec, result)
+        count += _arrow(pslide, _edge_toward(a, b),
+                        _edge_toward(b, a), theme, spec, result)
     return count
 
 
@@ -344,8 +331,8 @@ def _hub(pslide, diagram, nodes, theme, canvas, region, spec, result) -> int:
         placed.append(box)
 
     for box in placed:
-        count += _arrow(pslide, (centre.center_x, centre.center_y),
-                        (box.center_x, box.center_y), theme, spec, result)
+        count += _arrow(pslide, _edge_toward(centre, box),
+                        _edge_toward(box, centre), theme, spec, result)
 
     canvas.place(centre, strict=False)
     count += _node(pslide, centre, centre_label, theme, canvas, spec, result,
@@ -436,20 +423,9 @@ def _venn(pslide, diagram, nodes, theme, canvas, region, spec, result) -> int:
             fit = canvas.fit_text(label, lab_box, theme.font_for("caption"),
                                   theme.size("caption"), min_pt=9.0,
                                   align="center")
-            from pptx.util import Pt
-            from pptx.enum.text import PP_ALIGN
-            tb = pslide.shapes.add_textbox(Emu(lab_box.left), Emu(lab_box.top),
-                                           Emu(lab_box.width), Emu(lab_box.height))
-            tb.name = "pptxer:vennlabel"
-            for i, line in enumerate(fit["lines"] or [label]):
-                para = tb.text_frame.paragraphs[0] if i == 0 else tb.text_frame.add_paragraph()
-                para.alignment = PP_ALIGN.CENTER
-                run = para.add_run()
-                run.text = line
-                run.font.size = Pt(fit["size_pt"])
-                run.font.color.rgb = RGBColor.from_string(theme.hex("text"))
-                if theme.font_for("caption") and theme.font_for("caption").family:
-                    run.font.name = theme.font_for("caption").family
+            from pptxer_build import _add_text
+            _add_text(pslide, lab_box, fit, theme.hex("text"),
+                      "pptxer:vennlabel", spec, theme, "caption", result)
             count += 1
         return count
     except Exception as exc:                                      # noqa: BLE001
