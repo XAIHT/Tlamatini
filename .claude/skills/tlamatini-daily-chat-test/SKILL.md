@@ -151,6 +151,20 @@ When External MCP or response rendering changes, visibly verify: the dialog list
 
 When search, wrapped-agent reporting, Kubernetes execution, build privacy, or self-update changes, add visible/focused cases for: Grepper searching BOM-marked UTF-8/16/32 and cp1252/Latin-1 while skipping binary data; all five status classes and pairwise-disjoint `KNOWN_STATUSES`; degraded output rendering red; completed diagnostics rendering green; unknown-status compatibility plus guard rejection; Kuberneter emitting numeric `returncode`, boolean `success`, and `status: ok|failed`; public builds excluding a maintainer catalog while the explicit private builder may include one; and update swaps retaining `Uninstaller.exe`. Run `agent.test_grepper_encodings`, `agent.test_status_vocabulary`, `agent.test_agent_verdict`, and `agent.test_preserved_user_state` when those surfaces are touched.
 
+
+## Grepper verbatim-read proof (`harness/grepper_lines_visible.py`)
+
+VISIBLE end-to-end proof that Grepper's `output_mode: lines` works in the LIVE app and that the three existing search modes still do. Headed Chrome drives the real chat with Multi-Turn + Exec report on, makes Tlamatini run `chat_agent_grepper` twice (a `content` search, then a `lines` verbatim read), and judges on **DOM truth** — a Grepper table in the Exec Report plus a planted marker coming back — never on prose. Shoter photographs the whole desktop.
+
+```bash
+set "TLAMATINI_USER=user" && set "TLAMATINI_PASS=changeme"
+python harness/grepper_lines_visible.py --base http://127.0.0.1:8000 --user user
+```
+
+⚠️ **Two traps this runner already pays for you.** In a batch file `set VAR=value && …` stores the TRAILING SPACE, so the browser types `"changeme "` and the login silently fails — always use the quoted `set "VAR=value"` form. And the chat page posts a GREETING bot message on connect, so counting messages before it lands makes the greeting look like the answer and the run ends in seconds with a false FAIL; wait for the submit button to go back from **Cancel** to **Send**.
+
+Companion: `harness/grepper_login_probe.py` prints URL/title/selector presence at each step when a login or selector question needs settling with evidence instead of guesses.
+
 ## v1.50.0 release regression set
 
 When the current release is touched, verify NetSpeed-Calculator with `action='latency'` or `validate` by default, never a repeated `full` run; assert the full/download/upload bandwidth warning and tier-D Ask-Execs classification. Run WAL-mode Backup DB/Set DB/hot-swap tests through `sqlite_copy.py` and prove `quick_check` plus sidecar hygiene. Run `agent.test_googler_dorks` and pin preset-under-explicit-field precedence, aliases, no-space operator syntax, uppercase parenthesized `OR`, site-group same-domain handling, `links_only` file-hunt guidance, and the direct-tool versus visual/pool structured-field boundary. Also pin the two-tier order (four plain-HTTP server-rendered routes before any browser), explicit engine pins skipping Tier 0, `headless: false` for Tier 1, the seven-route browser order, tolerant string booleans, bounded retries, first-answer stopping, pinned-engine behavior, redirect unwrapping, and explicit Google-only advanced-operator semantics. The optional visible proof is `harness/googler_dork_hunt.py`: it uses the shipped builder, opens headed Chrome, targets public-domain/open-access sources, and stores JSON evidence under Tlamatini `Temp`; search-engine refusal is a failed proof run, not proof that the compiled query is wrong. Validate migration 0194's Deep Internet Research card and 0195-0197's NetSpeed rows, the `adding-external-mcp` classify/import/doctor/activate/wait/list/call lifecycle, the 88/66/108/29/197 source counts, and the private contact-sync/public-empty boundary. Verify `v1.50.0` as the annotated release and report a later `HEAD` separately rather than calling the release untagged.

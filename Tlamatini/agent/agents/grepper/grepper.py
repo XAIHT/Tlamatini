@@ -358,7 +358,78 @@ def _read_text_lines(fpath):
     return raw.decode("latin-1", errors="replace").splitlines(keepends=True)
 
 
-def emit_grepper_section(pattern, path, glob_pat, matches, files_searched, truncated, status, body):
+def _read_lines_mode(path, start_line, end_line, line_numbers, max_results):
+    """Return a VERBATIM slice of ONE text file (output_mode: "lines").
+
+    This is the raw-read capability the agent pool did not have. Every other
+    reader either interprets the file through an LLM (File-Interpreter),
+    extracts from a binary container (File-Extractor), or needs a regex
+    (Grepper's own search modes). Authoring an Editor ``old_string`` needs the
+    EXACT bytes of a region, so without this the only way to get them was a
+    shell ``type``/``sed`` - i.e. falling back to a non-Tlamatini tool.
+
+    Reuses ``_read_text_lines`` deliberately, so a UTF-16 / cp1252 / latin-1
+    file reads correctly here exactly as it does in the search modes (its BOM
+    stage runs BEFORE the NUL stage - do NOT reorder it).
+
+    With ``line_numbers`` False the slice is BYTE-EXACT: original line endings
+    are preserved and nothing is stripped, so the result can be pasted
+    straight into an Editor ``old_string``. With it True each line is
+    prefixed ``N: `` for navigation, which is NOT byte-exact by design.
+    """
+    if not path or not os.path.exists(path):
+        return "not_found", f"Path not found: {path}", 0, 0, False, 0, 0, ""
+    if os.path.isdir(path):
+        return ("refused",
+                f"output_mode 'lines' reads ONE file; {path} is a directory. "
+                "Use Globber to choose a file first.", 0, 0, False, 0, 0, "")
+    lines = _read_text_lines(path)
+    if lines is None:
+        return "refused", f"Not a readable text file (binary): {path}", 0, 0, False, 0, 0, ""
+
+    total = len(lines)
+    if total == 0:
+        return "listed", "", 0, 1, False, 0, 0, ""
+
+    start = start_line if start_line > 0 else 1
+    end = end_line if end_line > 0 else total
+    start = max(1, min(start, total))
+    end = max(start, min(end, total))
+
+    sliced = lines[start - 1:end]
+    truncated = False
+    if len(sliced) > max_results:
+        sliced = sliced[:max_results]
+        truncated = True
+
+    exact = "".join(sliced)
+    content_b64 = ""
+    if line_numbers:
+        body = "\n".join(
+            f"{start + i}: {ln.rstrip(chr(13) + chr(10))}" for i, ln in enumerate(sliced)
+        )
+    else:
+        # ⚠️ THE LOG IS NOT A BYTE-EXACT CHANNEL. logging's FileHandler opens the
+        # file in text mode, so on Windows every "\n" it writes becomes "\r\n" -
+        # which turns a CRLF source line into CR-CR-LF. Measured: a source of
+        # b"alpha\r\nbeta\r\n" came back as b"alpha\r\r\nbeta\r\r\n". An Editor
+        # ``old_string`` built from that would carry a stray \r per line and fail
+        # to match - silent, plausible and WRONG.
+        # So the readable body stays readable, and the EXACT bytes ride the
+        # base64 side-channel (`content_b64`), the same *_b64 verbatim channel
+        # Editor and LaTeXer already use. Base64 is pure ASCII, so nothing in
+        # the logging path can alter it. Decode it to build an Editor old_string.
+        import base64
+        body = exact
+        content_b64 = base64.b64encode(exact.encode("utf-8")).decode("ascii")
+    if truncated:
+        body += f"\n... (truncated at max_results={max_results} lines)"
+    return "listed", body, len(sliced), 1, truncated, len(sliced), total, content_b64
+
+
+def emit_grepper_section(pattern, path, glob_pat, matches, files_searched, truncated, status, body,
+                         start_line=0, end_line=0, lines_returned=0, total_lines=0,
+                         content_b64=""):
     logging.info(
         "INI_SECTION_GREPPER<<<\n"
         f"pattern: {pattern}\n"
@@ -367,6 +438,11 @@ def emit_grepper_section(pattern, path, glob_pat, matches, files_searched, trunc
         f"matches: {matches}\n"
         f"files_searched: {files_searched}\n"
         f"truncated: {truncated}\n"
+        f"start_line: {start_line}\n"
+        f"end_line: {end_line}\n"
+        f"lines_returned: {lines_returned}\n"
+        f"total_lines: {total_lines}\n"
+        f"content_b64: {content_b64}\n"
         f"status: {status}\n"
         "\n"
         f"{body}\n"
@@ -389,6 +465,13 @@ def main():
         case_insensitive = _coerce_bool(config.get('case_insensitive', False))
         output_mode = str(config.get('output_mode', 'content') or 'content').strip().lower()
         max_results = _coerce_int(config.get('max_results', 200), 200)
+        # output_mode "lines" only - a VERBATIM read of one file.
+        start_line = _coerce_int(config.get('start_line', 0), 0)
+        end_line = _coerce_int(config.get('end_line', 0), 0)
+        line_numbers = _coerce_bool(config.get('line_numbers', True), True)
+        lines_returned = 0
+        total_lines = 0
+        content_b64 = ""
         target_agents = config.get('target_agents', []) or []
 
         logging.info("\U0001f50d GREPPER AGENT STARTED")
@@ -401,7 +484,19 @@ def main():
         truncated = False
         body = ""
         try:
-            if not pattern:
+            if output_mode == "lines":
+                # VERBATIM read - no pattern required, and none is used.
+                (status, body, matches, files_searched, truncated,
+                 lines_returned, total_lines, content_b64) = _read_lines_mode(
+                    path, start_line, end_line, line_numbers, max_results)
+                if status == "listed":
+                    logging.info(
+                        f"📖 read {lines_returned} line(s) of {total_lines} from {path}"
+                        f" (line_numbers={line_numbers})"
+                    )
+                else:
+                    logging.error(f"❌ {body}")
+            elif not pattern:
                 body = "No pattern configured."
                 logging.error(f"❌ {body}")
             elif not path or not os.path.exists(path):
@@ -464,7 +559,8 @@ def main():
             body = f"Search failed: {e}"
             logging.error(f"❌ {body}")
 
-        emit_grepper_section(pattern, path, glob_pat, matches, files_searched, truncated, status, body)
+        emit_grepper_section(pattern, path, glob_pat, matches, files_searched, truncated, status, body,
+                             start_line, end_line, lines_returned, total_lines, content_b64)
 
         total_triggered = 0
         if target_agents:

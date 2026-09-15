@@ -248,66 +248,24 @@ Tlamatini/                          # Git root
 │   ├── manage.py
 │   ├── db.sqlite3
 │   ├── .agents/workflows/
-│   │   └── create_new_agent.md     # ** SKILL: Step-by-step agent creation guide **
 │   ├── .mcps/
-│   │   └── create_new_mcp.md       # ** SKILL: MCP/tool creation guide **
-│   │
 │   ├── tlamatini/                  # Django project config (settings, urls, asgi, middleware)
-│   │
 │   ├── agent/                      # Core Django app (ALL business logic lives here)
-│   │   ├── prompt.pmt              # System prompt template for the chat LLM (has the {self_knowledge} placeholder)
 │   │   ├── Tlamatini.md            # ** LLM SELF-KNOWLEDGE ** — injected into prompt.pmt's <self_knowledge> block at prompt-build time (rag/config.py); resolved beside prompt.pmt in both modes
 │   │   ├── TlamatiniSourceCode/    # ** OPTIONAL self-modify source tree ** — bundled only by `build.py --self-modify`; present = self-able-modify build, absent = not-self-able-modify
-│   │   ├── config.json             # LLM and RAG configuration (acpx.agents.<id>.env injects child env)
-│   │   ├── config_loader.py        # Frozen/source-aware config reader
-│   │   ├── views.py                # 100+ HTTP endpoints
-│   │   ├── consumers.py            # WebSocket consumer (async chat handler)
-│   │   ├── models.py               # 13 database models
-│   │   ├── urls.py                 # URL routing
-│   │   ├── tools.py                # LangChain @tool definitions and wrapped chat-agent launchers
-│   │   ├── mcp_agent.py            # MCP unified agent builder and multi-turn executor; _EXEC_REPORT_TOOLS map
-│   │   ├── global_execution_planner.py  # Request-scoped DAG planner (ACPX co-selection rules)
-│   │   ├── capability_registry.py  # Request-scoped capability scoring (ACPX signal tokens)
-│   │   ├── chat_agent_registry.py  # Wrapped chat-agent tool registry (chat_agent_summarize_text, ...)
-│   │   ├── chat_agent_runtime.py   # Wrapped-runtime lifecycle helpers
 │   │   ├── agent_verdict.py        # ** DETERMINISTIC EXEC-REPORT VERDICT ENGINE ** (v1.48.2) — parses an agent's INI_SECTION self-report into a typed AST and runs an ORDERED rule table to decide SUCCESS/FAILED; the agent's self-report OUTRANKS the exit code. Stdlib-only, imports nothing from `agent.*` (both tools.py and mcp_agent.py import it)
 │   │   ├── exec_permission.py      # Ask-Execs permission broker (sync executor ↔ async consumer bridge; blocking Proceed/Deny)
-│   │   ├── global_state.py         # Thread-safe singleton (Singleton pattern)
-│   │   │
 │   │   ├── acpx/                   # ACPX runtime — agent_registry, runtime, tools, session_store, permissions
-│   │   │   ├── agent_registry.py   # DEFAULT_ACP_AGENTS (claude/codex/cursor/gemini/qwen/tlamatini/...) + transports
-│   │   │   ├── runtime.py          # AcpxRuntime, AcpSession, transport-aware drain, oneshot-prompt path
-│   │   │   ├── tools.py            # 12 LangChain @tool functions (acp_spawn / acp_send / acp_relay / ...)
-│   │   │   ├── session_store.py    # FileSessionStore (NDJSON transcripts)
-│   │   │   ├── windows_spawn.py    # Windows-aware command resolution
-│   │   │   └── tests.py            # 60+ unit tests
-│   │   │
 │   │   ├── skills/                 # Skill harness, registry, frontmatter parser, IO contract
-│   │   │   ├── registry.py         # Discovers SKILL.md packages from skills_pkg/
-│   │   │   ├── harness.py          # Sandboxed runner for invoke_skill(...)
-│   │   │   └── io_contract.py      # Skill input/output contract validators
-│   │   │
 │   │   ├── skills_pkg/             # SKILL.md packages (acp_router, summarize, setup_new_acpx_key, ...)
 │   │   │   ├── _meta/              # JSON schema + lint helpers
-│   │   │   ├── acp_router/SKILL.md
-│   │   │   ├── summarize/SKILL.md
-│   │   │   ├── setup_new_acpx_key/SKILL.md
-│   │   │   ├── skill_creator/SKILL.md
 │   │   │   ├── flow_making/SKILL.md  # objective → .flw (wraps FlowCreator); ships scripts/{make_flow,result_to_flw}.py + references/flw_schema.md
 │   │   │   ├── tlamatini_*/SKILL.md  # Audit / lint / refactor helpers (planner trace replay, csrf audit, flow_from_objective → delegates to flow-making, ...)
-│   │   │   └── github|gmail|slack|jira|notion|todoist|trello|weather/SKILL.md
-│   │   │
 │   │   ├── rag/                    # RAG system package
-│   │   │   ├── factory.py          # Chain builders, MCP context patching
-│   │   │   ├── interface.py        # Public API (ask_rag); persists last_exec_report_*, last_acpx_enabled
 │   │   │   ├── chains/             # basic.py, history_aware.py, unified.py
-│   │   │   └── ...
-│   │   │
 │   │   ├── agents/                 # 88 workflow agent templates
 │   │   │   ├── flowcreator/
-│   │   │   │   └── agentic_skill.md  # ** SKILL: FlowCreator AI reference **
 │   │   │   ├── flowhypervisor/
-│   │   │   │   └── monitoring-prompt.pmt  # Flow health monitor prompt
 │   │   │   ├── parametrizer/       # Interconnection engine
 │   │   │   ├── gatewayer/          # HTTP webhook / folder-drop ingress
 │   │   │   ├── gateway_relayer/    # GitHub/GitLab webhook relay
@@ -336,11 +294,7 @@ Tlamatini/                          # Git root
 │   │   │   ├── video_analyzer/       # Video-Analyzer — "eye" of Robotic-Loop-Training: watches a recorded video and rules PASS_OK / FAIL_NO_MOTION / FAIL_WRONG_MOTION / UNCLEAR via a deterministic OpenCV motion gate + triple-model Ollama CLOUD vision (qwen3-vl:235b-cloud ∥ qwen3.5:cloud → glm-5.3:cloud merge; PASS only if both agree); emits INI_SECTION_VIDEO_ANALYZER + a substring-safe TLM_VERDICT:: line a Forker branches on (canvas + chat_agent_video_analyzer)
 │   │   │   ├── nmapper/             # Nmapper — LOCAL use-only nmap bridge for pentesters/CTF: runs a real nmap the user installed (NEVER bundles/redistributes nmap — NPSL); resolves PATH→Program Files→%LOCALAPPDATA%\Tlamatini\nmap; absent → refuses gracefully + `action=install` fetches the OFFICIAL free nmap installer (admin/UAC; brings Npcap). Default = unprivileged TCP connect scan (-sT, no Npcap/admin); SYN/-O/UDP auto-downgrade on Windows w/o Npcap. INI_SECTION_NMAPPER; distinct from Kalier (remote Kali) + Discoverer (ProjectDiscovery); AUTHORIZED TARGETS ONLY (canvas + chat_agent_nmapper)
 │   │   │   ├── netspeed_calculator/ # NetSpeed-Calculator — measures THIS machine's Internet connection and reports it WITH its error bar (download/upload/latency/jitter/loss/BUFFERBLOAT) per RFC 6349 + RFC 3550, against SEVERAL keyless providers at once (cloudflare/ookla/fast/librespeed/hetzner/cachefly — no key, no login). N parallel TCP streams per provider per direction, slow-start ramp DISCARDED, throughput sampled as d(bytes)/dt (never total÷elapsed), Tukey outlier rejection + trimmed mean + Student-t interval, then DerSimonian-Laird random-effects fusion publishing a 95% CI and the I² heterogeneity figure. Bufferbloat = RTT increase UNDER LOAD, graded A+..F. Endpoint discovery is live + self-healing (measured 2026-08-22): Ookla/LibreSpeed picked by MEASURED RTT; Cloudflare clamped below the size it 403s; librespeed.org/backend 404 → its public server list; speed.hetzner.de NXDOMAIN → the .com mirror mesh; Hetzner RESETS on a query string → per-provider `cache_bust` off + a runtime self-heal. ⚠️ A zero-byte transfer MUST name its cause (`_record_error`/`_report_dead_transfer`) — a silent 0.00 Mbps is indistinguishable from a slow link. Network/measurement stack is stdlib-only, existing PyYAML reads config, never imports agent.*; actions full/download/upload/latency/validate/providers; artifact to <app>/Temp/NetSpeedCalculator; fail-safe preflight REFUSES rather than publish an untrustworthy number; INI_SECTION_NETSPEED_CALCULATOR; Ask-Execs tier D (saturates the link, ~100-200 MB metered) (canvas + chat_agent_netspeed_calculator)
-│   │   │   └── ... (88 total agent directories)
-│   │   │
 │   │   ├── opus_client/            # Claude API client library
-│   │   │   └── claude_opus_client.py
-│   │   │
 │   │   ├── imaging/                # Dual-backend image analysis (Claude + Qwen)
 │   │   ├── services/               # filesystem.py, response_parser.py, agent_contracts.py, agent_paths.py, flow_spec.py, flow_compiler.py
 │   │   │   ├── agent_contracts.py  # AgentContract registry — per-agent connection-field shape, parametrizer source-fields, secret_paths, never_starts_targets, exclude_from_validation; lru_cached, alias-normalized, disk-discovered + builtin overrides
@@ -352,10 +306,8 @@ Tlamatini/                          # Git root
 │   │   ├── static/agent/
 │   │   │   ├── css/                # agentic_control_panel.css, agent_page.css, tools_dialog.css, etc.
 │   │   │   ├── js/                 # 38 JS modules (10 chat + 14 ACP + 1 ACP entry + 12 shared + 1 welcome, incl. dialog_policy.js, release_notes_renderer.js and welcome_enter_default.js)
-│   │   │   ├── img/Tlamatini.ico   # App icon (web pages + console window + .exe)
 │   │   │   └── sounds/             # notification.wav, hypervisor_alert.wav
 │   │   └── migrations/             # Django migrations — 197 total (0195/0196/0197 add NetSpeed-Calculator agent + wrapped tool + demo prompt; 0194 adds Deep Internet Research prompt 118; earlier rows remain append-only)
-│   │
 │   ├── manage.py                   # Django entrypoint; tees stdout/stderr into tlamatini.log; sets console window title + icon
 │   ├── tlamatini.log               # Unified application log (console + Django loggers)
 │   ├── jd-cli/                     # Bundled Java decompiler
@@ -394,20 +346,6 @@ LLM Backends: Ollama (local) | Anthropic Claude (cloud) | Qwen (vision)
 9b. **Per-tool verdict (v1.48.15 vocabulary guard)**: after each wrapped agent returns, `agent/agent_verdict.py` decides SUCCESS/FAILED **deterministically** — it parses the agent's own `INI_SECTION` self-report into a typed AST and runs an ORDERED rule table over it, and **the agent's self-report OUTRANKS the process exit code**. A read-only diagnostic that reports an adverse finding (`invalid`, `findings`, `no_matches`, …) is a **SUCCESS** because the finding is the deliverable; degraded work (`tokens_only`, `compiled_with_errors`, `operator_required`, …), work not done, and agent errors stay red. Intact named completions are explicit greens, and unknown tokens fail open but are identified under `R8b`. The self-report is never dropped: on a key collision the process view stays under `<key>` and the agent view lands on `agent_<key>`. `agent/test_status_vocabulary.py` statically sweeps every pool agent so undeclared tokens and numeric `status:` interpolations cannot ship. See `docs/claude/exec-report.md` → *Success/failure classification* and `docs/claude/recent-fixes.md` (2026-08-16)
 10. Streaming response via WebSocket; whenever Multi-Turn ran with **≥1 successfully-executed agent**, the chat header renders a **Create Flow** button that converts **only the successfully-executed** tool calls into a downloadable `.flw` (the browser POSTs the successful-only draft to `/agent/flow_from_tool_calls/`, which normalizes it through `FlowSpec` and redacts known secret fields before download). There is no whole-answer SUCCESS/FAILURE classifier (removed 2026-07-06)
 11. Start sequence (canvas Start button) compiles the live snapshot through `/agent/compile_flow/` (mode=`write`) before it executes any agent — so a flow that was edited or loaded since the last write goes through the **same** Agent Contract validation as a `.flw` saved fresh, and Validate uses mode=`dry_run` to preview the same agent/config shape without touching disk
-
----
-
-## Technology Stack
-
-| Category | Technologies |
-|----------|-------------|
-| Backend | Python 3.12+, Django 5.2.4, Django Channels 4.1, Daphne (ASGI) |
-| Frontend | HTML5, Bootstrap 5, JavaScript (modular), jQuery, jQuery UI |
-| AI/ML | LangChain 0.3.27, LangGraph 0.2.74, FAISS, rank-bm25, PyAutoGUI |
-| LLM APIs | Anthropic Claude (anthropic 0.74.1), Ollama REST API, MCP 1.25.0 |
-| Database | SQLite |
-| Communication | WebSockets, gRPC (grpcio 1.76.0) |
-| Packaging | PyInstaller, NSIS installer |
 
 ---
 
@@ -853,7 +791,7 @@ The rest of the onboarding material is split into topic files under `docs/claude
 │   │   │   ├── pdfer/              # PDFer — DOCUMENT COMPOSER, the WRITE side of the document family (File-Extractor/File-Interpreter READ, PDFer AUTHORS). Tlamatini's answer / Markdown / HTML / text / images / existing PDFs → ONE styled PDF. ZERO new deps. mode: auto|markdown|html|text|images|mixed|merge|info|validate. ⚠️ **NUANCE/TYPOGRAPHY/LAYOUT OVERHAUL 2026-09-06 (v1.51.0)** — 10 flat sibling modules (pdfer_color/typography/nuance/theme/ornament/docmodel/tables/atelier/audit/consult; siblings NOT a package, because the agent runs as `python pdfer.py` from a copied runtime dir; the group import is fail-open to the legacy engine). Reads the content FIRST and picks 1 of 20 treatments (`nuance`), derives a whole 38-role palette from ONE `predominant_color` in OKLab, registers 31 host TrueType families, SOLVES table column widths from real font metrics so cells CANNOT overlap, DRAWS its own on-palette artwork with Pillow (only where the content makes it safe), then RE-OPENS the finished PDF and measures it. See the "PDFer" section below and docs/claude/recent-fixes.md (2026-09-06) (canvas + chat_agent_pdfer)
 │   │   │   ├── latexer/            # LaTeXer — LaTeX TYPESETTING, the typesetting sibling of PDFer (PDFer COMPOSES from Markdown/HTML/images; LaTeXer TYPESETS from .tex: real maths, bibliographies, cross-refs, index). Embeds the WHOLE mcp-latex-server surface NATIVELY (create/template/edit/read/list/validate/structure/compile) — NO MCP server, NO sidecar, NO new dependency (stdlib only: subprocess+shutil+glob+re+urllib) — PLUS whole-PROJECT compile of a .tex SET (master auto-detected, \input followed), a real BibTeX/Biber + makeindex + makeglossaries convergence loop, latexmk pass-through, and LaTeX-log diagnostics a human can read. **REQUIRES MiKTeX** (https://miktex.org/download) — Tlamatini bundles NO TeX distribution (several GB; the release must stay <2 GB); MiKTeX is preferred because `--enable-installer` installs a missing .sty ON DEMAND mid-compile, so any document builds. ⚠️ latexmk is probed for USABILITY not presence (it ships with MiKTeX but is a PERL script; most Windows boxes have no Perl → auto-fallback to the built-in loop). action: compile|compile_project|scaffold_compile|create_file|create_from_template|edit_file|read_file|list_files|validate_tex|structure|clean|validate|install; auto_preamble wraps a bare fragment; shell_escape OFF by default (\write18 = RCE); saves to Documents/TlamatiniLaTeX, projects to <app>/Templates/LaTeXer; fail-safe preflight REFUSES rather than mis-typeset; **EIGHT-RUNG REPAIR LADDER (v1.48.2) so a failed build self-heals — lint → preamble → rules → log_directed → acquire → engine_swap → model → bisect, each repair applied to a COPY and re-linted (a repair that worsens the lint is REVERTED), the author's file untouched unless `repair_write_back`, every rung audit-traced, quarantined blocks named; ⚠️ the DESTRUCTIVE `bisect` rung is strictly LAST (reordered 2026-08-05) — do NOT swap it back ahead of `model`**; a DEGRADED build never claims clean success; INI_SECTION_LATEXER; Exec Report + Ask-Execs tier A (canvas + chat_agent_latexer)
 │   │   │   ├── editor/             # Surgical in-place find-and-replace on ONE text file (Claude-Edit equivalent; byte-exact, refuses a non-unique match unless replace_all, base64 channel; emits INI_SECTION_EDITOR) (canvas + chat_agent_editor)
-│   │   │   ├── grepper/            # Read-only regex CONTENT search across a file/dir tree (Claude-Grep equivalent; file:line:match, glob filter, prunes noise dirs; emits INI_SECTION_GREPPER). ⚠️ ENCODING-AWARE since 2026-08-16 (`_read_text_lines`): BOM tested BEFORE the NUL byte (UTF-16/32 text is legitimately full of 0x00 — same ordering contract as rag/binary_guard.py; _BOM_CODECS longest-prefix-first), then UTF-8 → cp1252 → latin-1. It used to open() strict-UTF-8 and swallow the UnicodeDecodeError as "binary", so it answered a confident `no_matches` about files it never opened (PowerShell's UTF-16 logs, accented Spanish sources). Pinned by test_grepper_encodings.py (canvas + chat_agent_grepper)
+│   │   │   ├── grepper/            # Read-only regex CONTENT search across a file/dir tree (Claude-Grep equivalent; file:line:match, glob filter, prunes noise dirs; emits INI_SECTION_GREPPER). ⚠️ ENCODING-AWARE since 2026-08-16 (`_read_text_lines`): BOM tested BEFORE the NUL byte (UTF-16/32 text is legitimately full of 0x00 — same ordering contract as rag/binary_guard.py; _BOM_CODECS longest-prefix-first), then UTF-8 → cp1252 → latin-1. It used to open() strict-UTF-8 and swallow the UnicodeDecodeError as "binary", so it answered a confident `no_matches` about files it never opened (PowerShell's UTF-16 logs, accented Spanish sources). Pinned by test_grepper_encodings.py. ⚠️ **GAINED `output_mode: lines` on 2026-09-14** — a VERBATIM read of ONE file, no pattern, `start_line`/`end_line` 1-based inclusive, `line_numbers: false` also emits `content_b64` (decode it — the log rewrites newlines) for a byte-exact Editor `old_string`. This is the raw-read capability the pool lacked, and it RETIRES the "Claude's Read is the last-resort exception" carve-out (canvas + chat_agent_grepper)
 │   │   │   ├── globber/            # Read-only filename glob search (Claude-Glob equivalent; find files by pattern, newest-first, ** recursive; emits INI_SECTION_GLOBBER) (canvas + chat_agent_globber)
 ---
 
@@ -883,6 +821,7 @@ The Tlamatini tools are exposed over MCP as `mcp__tlamatini__<name>` (their sche
 | **Write** (create a file) | `mcp__tlamatini__file_creator` (File-Creator) | `file_path`, `content` (or `content_b64` for binary); creates parent dirs |
 | **Edit** (find/replace) | `mcp__tlamatini__editor` (Editor) | exact-unique `old_string`→`new_string`; `replace_all`; `old_string_b64`/`new_string_b64` for byte-exact edits |
 | **Grep** (content search) | `mcp__tlamatini__grepper` (Grepper) | `pattern` (regex), `path`, `glob`, `case_insensitive`, `output_mode` |
+| **Read** (exact bytes of a region) | `mcp__tlamatini__grepper` (Grepper) | `output_mode='lines'` + `start_line`/`end_line`; `line_numbers=false` also emits **`content_b64`** — DECODE it for a byte-exact Editor `old_string`. **No pattern needed.** Replaces `Read`/`cat`/`sed -n` |
 | **Glob** (find files) | `mcp__tlamatini__globber` (Globber) | `pattern`, `path`, `sort_by`, `max_results` |
 | **Bash** (shell command) | `mcp__tlamatini__executer` (Executer) | `script`; `non_blocking:true` to detach a long-running server; `execute_forked_window:true` for a visible console window |
 | **Bash** (run Python) | `mcp__tlamatini__pythonxer` (Pythonxer) | inline Python behind a compile()/ruff gate |
@@ -893,7 +832,11 @@ The Tlamatini tools are exposed over MCP as `mcp__tlamatini__<name>` (their sche
 | web search | `mcp__tlamatini__googler` (Googler) | Manual Google operators go in `query`; the visual/pool agent adds structured presets, grouped site/filetype filters, and `links_only` file-hunt output |
 | audio / video / camera / mic, TTS / STT, firmware, 3D | the matching agent — `talker`, `whisperer`, `recorder`, `camcorder`, `audioplayer`, `videoplayer`, `stm32er`, `esp32er`, `arduiner`, `blenderer`, `kalier`, `windower`, `mouser`, `keyboarder`, `shoter`, … | **no Claude equivalent exists — always the agent** |
 
-**Reading files:** there is no raw-`cat` Tlamatini agent (File-Interpreter / File-Extractor read-and-interpret via the LLM or extract from PDF/DOCX; Grepper / Globber are for search). So prefer Grepper/Globber to locate code and File-Interpreter to summarize a file; Claude's **Read** is the narrow last-resort exception **only** when you need the exact bytes of a region to author an Editor `old_string` and no Tlamatini tool yields them.
+**Reading files — THE `Read` EXCEPTION IS GONE (2026-09-14).** There IS now a raw-read Tlamatini agent: **`mcp__tlamatini__grepper` with `output_mode='lines'`** returns a verbatim slice of one file — `start_line` / `end_line` (1-based, inclusive; `0` = start/end) and `line_numbers=false` returns the exact text AND emits **`content_b64`** — decode that for a truly byte-exact Editor `old_string`, because the log channel rewrites newlines on Windows (a CRLF file would otherwise come back CR-CR-LF). It takes NO pattern and reuses the same encoding-aware reader as the search modes, so UTF-16 and cp1252 files read correctly.
+
+So the whole loop stays inside Tlamatini: **Globber** to find the file → **Grepper (`content`)** to locate the line → **Grepper (`lines`, `line_numbers=false`)** to lift the exact bytes → **Editor** to change them. File-Interpreter still *interprets* a file through the LLM and File-Extractor still unpacks PDF/DOCX; those are different jobs, not substitutes.
+
+⚠️ **Claude's `Read`, `cat`, `type` and `sed -n` are NO LONGER an acceptable fallback for reading a region** — that carve-out existed only because this capability was missing, and it is not missing any more. If you catch yourself reaching for a shell to read a file, use `output_mode='lines'` instead.
 
 **Transient-outage fallback (allowed, must be stated):** if a `mcp__tlamatini__*` tool is briefly blocked (e.g. the safety classifier is temporarily unavailable) and you have already retried, you MAY fall back to the matching Claude built-in to avoid stalling — but say so explicitly in your reply and treat it as an outage workaround, not a substitution. The instant the Tlamatini tool is reachable again, switch back.
 

@@ -6,8 +6,22 @@ path: ""
 glob: ""
 case_insensitive: false
 # content = file:line:match lines | files = matching paths only | count = per-file match counts
+# lines   = READ one file VERBATIM (no pattern needed) - the raw-read capability
+#           the pool lacked; File-Interpreter interprets, File-Extractor extracts
+#           from binaries, and the search modes need a regex.
 output_mode: "content"
 max_results: 200
+# --- output_mode: "lines" only -----------------------------------------------
+# 1-based INCLUSIVE line range. 0 = from the first line / to the last line.
+start_line: 0
+end_line: 0
+# true  -> each line prefixed "N: " for navigation (NOT byte-exact).
+# false -> the body is the exact text AND a `content_b64` field is emitted
+#          holding base64 of the exact bytes. DECODE content_b64 to build an
+#          Editor old_string: the agent log is written in text mode, so on
+#          Windows it rewrites \n as \r\n and the plain body's line endings
+#          cannot be trusted character-for-character.
+line_numbers: true
 
 # Connection fields
 source_agents: []

@@ -1935,7 +1935,7 @@ system_prompt: |
 
 
 ### 79. Grepper
-- **Purpose**: Read-only regex CONTENT search across a single file or a whole directory tree (the Claude-Grep equivalent). Returns matching lines as `file:line:match`. Pass `pattern` (a Python regex), `path` (file or dir), optionally `glob` (a basename filter like `*.py`), `case_insensitive`, `output_mode` (`content`/`files`/`count`), and `max_results`. Prunes noise dirs (.git, node_modules, venv, __pycache__, dist, build) and skips binary/unreadable files. Emits an `INI_SECTION_GREPPER` block (pattern, path, glob, matches, files_searched, truncated, status matches/no_matches/not_found/error) and ALWAYS triggers `target_agents`.
+- **Purpose**: Read-only regex CONTENT search across a single file or a whole directory tree (the Claude-Grep equivalent). Returns matching lines as `file:line:match`. Pass `pattern` (a Python regex), `path` (file or dir), optionally `glob` (a basename filter like `*.py`), `case_insensitive`, `output_mode` (`content`/`files`/`count`/`lines`), and `max_results`. Prunes noise dirs (.git, node_modules, venv, __pycache__, dist, build) and skips binary/unreadable files. **`output_mode: 'lines'` is a second, distinct job: a VERBATIM READ of ONE file with NO pattern** - set `start_line`/`end_line` (1-based, inclusive; 0 = first/last) and `line_numbers` (false = also emit `content_b64`, a base64 copy of the exact bytes for a downstream Editor; true = each line prefixed `N: `). Use it to carry an exact region of a file into a downstream Editor. Emits an `INI_SECTION_GREPPER` block (pattern, path, glob, matches, files_searched, truncated, start_line, end_line, lines_returned, total_lines, content_b64, status matches/no_matches/listed/refused/not_found/error) and ALWAYS triggers `target_agents`.
 - **Used for**: Locating where a symbol / string / pattern appears in a codebase or text tree before reading or editing it - the discovery step ahead of an Editor or File-Interpreter.
 - **Aimed at**: Fast, dependency-free content discovery inside an unattended flow. Read-only, so safe to chain anywhere; prefer it over an Executer findstr/grep node.
 - **Application example**: A Starter triggers a Grepper (`pattern='TODO'`, `path='C:/proj'`, `glob='*.py'`); a Parametrizer copies a matched file path into an Editor or File-Interpreter for follow-up.
@@ -1946,8 +1946,11 @@ system_prompt: |
   - `path`: "" (file or directory to search)
   - `glob`: "" (optional basename filter, e.g. *.py)
   - `case_insensitive`: false
-  - `output_mode`: "content" (content = file:line:match | files = paths only | count = per-file counts)
-  - `max_results`: 200 (cap on total matches)
+  - `output_mode`: "content" (content = file:line:match | files = paths only | count = per-file counts | lines = VERBATIM read of one file, no pattern)
+  - `max_results`: 200 (cap on total matches, or on lines returned in `lines` mode)
+  - `start_line`: 0 (`lines` mode only - 1-based inclusive start; 0 = first line)
+  - `end_line`: 0 (`lines` mode only - 1-based inclusive end; 0 = last line)
+  - `line_numbers`: true (`lines` mode only - true prefixes each line "N: "; false ALSO emits content_b64, a base64 copy of the exact bytes, which is what a downstream Editor old_string must be built from)
   - `source_agents`: [] (upstream agents - for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after execution)
 

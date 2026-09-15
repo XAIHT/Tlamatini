@@ -632,7 +632,7 @@ Ground truth: `Tlamatini/agent/agents/` (88 dirs, each `<name>.py` + `config.yam
 | **File-Creator** | Atomic file writer (preferred for all file authorship) |
 | **Shoter** | Screenshot of the primary display (read-only) |
 | **Globber** | Read-only glob file discovery (Glob equivalent) |
-| **Grepper** | Read-only regex content search with BOM-first UTF-8/16/32 plus cp1252/Latin-1 decoding (Grep equivalent; file:line:match) |
+| **Grepper** | Read-only regex content search with BOM-first UTF-8/16/32 plus cp1252/Latin-1 decoding (Grep equivalent; file:line:match) — **and, since 2026-09-14, `output_mode: lines`: a VERBATIM read of one file (no pattern) with `start_line`/`end_line` and `line_numbers: false` adding a `content_b64` side-channel carrying the exact bytes, which is the pool's raw-read capability** |
 | **Editor** | Surgical exact-string in-place edit (unique-match guarded, base64 channel) |
 | **Camcorder** | Webcam photo/video via OpenCV |
 | **Recorder** | Microphone → WAV via sounddevice |
@@ -971,6 +971,7 @@ From the very start of a session, perform the work with **Tlamatini's OWN** agen
 | **Write** (create a file) | `file_creator` (File-Creator) | `file_path`, `content` (or `content_b64`); creates parent dirs |
 | **Edit** (find/replace) | `editor` (Editor) | exact-unique `old_string`→`new_string`; `replace_all`; `*_b64` byte-exact channel |
 | **Grep** (content search) | `grepper` (Grepper) | `pattern` (regex), `path`, `glob`, `case_insensitive`, `output_mode` |
+| **Read** (exact bytes of a region) | `grepper` (Grepper) | `output_mode='lines'` + `start_line`/`end_line`; `line_numbers=false` also emits **`content_b64`** — DECODE it for a byte-exact Editor `old_string`. **No pattern needed.** Replaces `Read`/`cat`/`sed -n` |
 | **Glob** (find files) | `globber` (Globber) | `pattern`, `path`, `sort_by`, `max_results` |
 | **Bash** (shell command) | `executer` (Executer) | `script`; `non_blocking:true` to detach; `execute_forked_window:true` for a visible console |
 | **Bash** (run Python) | `pythonxer` (Pythonxer) | inline Python behind the compile()+Ruff gate |
@@ -981,7 +982,7 @@ From the very start of a session, perform the work with **Tlamatini's OWN** agen
 | web search | `googler` (Googler) | Manual operators in `query`; structured presets/fields and `links_only` file hunts on the visual/pool agent |
 | audio/video/camera/mic, TTS/STT, firmware, 3D | the matching agent — `talker`, `whisperer`, `recorder`, `camcorder`, `audioplayer`, `videoplayer`, `stm32er`, `esp32er`, `arduiner`, `esphomer`, `blenderer`, `unrealer`, `kalier`, `windower`, `mouser`, `keyboarder`, `shoter`, … | no built-in equivalent exists — always the agent |
 
-**Reading files**: there is no raw-`cat` Tlamatini agent (File-Interpreter/File-Extractor interpret; Grepper/Globber search). Prefer Grepper/Globber to locate code and File-Interpreter to summarize; Kimi's **Read** is the narrow last-resort exception when you need exact bytes to author an Editor `old_string`.
+**Reading files — the `Read` exception is GONE (2026-09-14)**: there IS now a raw-read Tlamatini agent. Use **`grepper` with `output_mode='lines'`** — a verbatim slice of one file, NO pattern required, `start_line`/`end_line` 1-based inclusive (`0` = start/end), and `line_numbers=false` returns the exact text AND emits **`content_b64`** — decode that for a truly byte-exact Editor `old_string`, because the log channel rewrites newlines on Windows. The whole loop stays inside Tlamatini: Globber → Grepper(`content`) → Grepper(`lines`) → Editor. File-Interpreter/File-Extractor still interpret and unpack — different jobs. Kimi's **Read**, and any shell `cat`/`type`/`sed -n`, is no longer an acceptable fallback for reading a region.
 
 **Transient-outage fallback (allowed, must be stated)**: if a `mcp__tlamatini__*` tool is briefly blocked and you already retried, you MAY fall back to the matching Kimi built-in to avoid stalling — but say so explicitly in your reply as an outage workaround, and switch back the instant the Tlamatini tool is reachable.
 

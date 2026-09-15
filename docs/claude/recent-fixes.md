@@ -16,6 +16,76 @@
 
 ---
 
+## 2026-09-14 - Grepper learned to READ: output_mode 'lines', and why the log is not a byte-exact channel
+
+**Files: `agent/agents/grepper/grepper.py` (NEW `_read_lines_mode`), its `config.yaml`
+(NEW `start_line` / `end_line` / `line_numbers`), `services/agent_contracts.py`
+(5 fields APPENDED), `chat_agent_registry.py` (the LLM-facing description),
+`agent/Tlamatini.md`, NEW `agent/test_grepper_lines_mode.py` (22 tests).**
+
+**THE HOLE.** Nothing in the agent pool returned the exact text of a file region.
+File-Interpreter interprets through an LLM, File-Extractor unpacks binary containers, and
+all three Grepper search modes require a regex - so the one step "show me the exact bytes
+so I can author an Editor `old_string`" had to leave Tlamatini for a shell `type`/`sed`.
+`CLAUDE.md` even documented the gap ("there is no raw-`cat` Tlamatini agent"). Grepper
+already owned the right primitive - the encoding-aware `_read_text_lines()` - it simply
+never exposed it.
+
+**THE FIX.** `output_mode: "lines"` reads ONE file verbatim with NO pattern. `start_line` /
+`end_line` are 1-based INCLUSIVE (`0` = first / last); a directory is REFUSED ("use Globber
+first") and a binary file is refused rather than mangled; `status: listed` on success.
+
+**THE TRAP, AND WHY `content_b64` EXISTS.** The first version claimed `line_numbers: false`
+returned a BYTE-EXACT slice. **It did not, and the claim was caught before it shipped.**
+`logging`'s FileHandler opens its file in TEXT mode, so on Windows every `\n` it writes
+becomes `\r\n` - which turns a CRLF source line into **CR-CR-LF**. Measured: a source of
+`b"alpha\r\nbeta  \r\ngamma\r\n"` came back as `b"alpha\r\r\nbeta  \r\r\ngamma\r\r\n"`, and read
+back in text mode it surfaces as spurious BLANK LINES between every line. An Editor
+`old_string` built from that carries a stray `\r` per line and **silently fails to match** -
+the same silent/plausible/WRONG class as the PDFer missing-images and LaTeXer linter bugs.
+
+So the exact bytes ride a **base64 side-channel**: `line_numbers: false` also emits
+**`content_b64`**, the same `*_b64` verbatim idiom Editor and LaTeXer already use. Base64 is
+pure ASCII, so nothing in the logging path can alter it. Round-trip verified byte-identical
+on CRLF, LF, accented UTF-8, a file with no trailing newline, and UTF-16 (5/5).
+
+**CONTRACTS (do NOT weaken):**
+1. **The plain body is for HUMANS; `content_b64` is for MACHINES.** Never rebuild an Editor
+   `old_string` from the body - decode `content_b64`. If a future change makes the log a
+   byte-exact channel, prove it with a CRLF round-trip before dropping the side-channel.
+2. **`_read_lines_mode` reuses `_read_text_lines()` and must NOT grow a second decoder.**
+   The BOM-before-NUL ordering is a standing contract (UTF-16 text is legitimately full of
+   `0x00`); a private `open()` in the read path would silently lose UTF-16 files again.
+   Pinned by `test_read_lines_mode_reuses_the_encoding_aware_reader`.
+3. **The five new KV fields were APPENDED, never renamed** (`start_line`, `end_line`,
+   `lines_returned`, `total_lines`, `content_b64`), and
+   `agent_contracts._PARAMETRIZER_OUTPUT_FIELDS['grepper']` was updated in the SAME pass.
+4. **The LLM-facing description in `chat_agent_registry.py` is load-bearing.** It is the only
+   text the model reads; left stale, the feature ships INVISIBLE while appearing to work
+   (the Whisperer sound-gate lesson). It now tells the model to use `lines` INSTEAD of a
+   shell `type`/`cat`/`sed`, and to DECODE `content_b64` for an Editor `old_string`.
+   Pinned by `test_the_model_is_told_to_decode_content_b64`.
+5. **`status` stays inside the closed vocabulary** (`listed` / `refused` / `not_found`), so
+   the Exec Report colours the row correctly.
+
+**PROOF IT BROKE NOTHING.** Old-vs-new on identical inputs across all three search modes
+plus glob / case-insensitive / no-match / empty-pattern / invalid-regex / truncation /
+single-file: **0 regressions** - nothing lost, only the 5 new header fields added (all `0`
+or empty in search modes). Test suite **502 OK**. And VISIBLY, in the live app: headed
+Chrome drove the real chat with Multi-Turn + Exec report on, and Tlamatini ran Grepper twice
+- an old-mode search that found the planted marker, and a `lines` read that returned exactly
+the two requested lines with `total_lines: 4`. Verdict was taken from the DOM (a Grepper row
+in the Exec Report + the marker text back), never from prose. Runner:
+`.claude/skills/tlamatini-daily-chat-test/harness/grepper_lines_visible.py`.
+
+⚠️ **Two harness traps that cost two false failures, recorded so nobody pays them again:**
+batch `set VAR=value && ...` stores the **trailing space** (Chrome typed `"changeme "` and
+the login failed), and the chat page posts a **greeting** bot message on connect, so counting
+messages before it lands makes the greeting look like the answer. Wait for the submit button
+to go back from **Cancel** to **Send**.
+
+---
+
 ## 2026-09-13 - The sampler was emptying her answers: repeat_penalty 1.9, an unwired repeat_last_n, and a num_ctx that describes nothing
 
 **Files: `agent/config.json` (`ollama_repeat_penalty` 1.9 → **1.2**, NEW
