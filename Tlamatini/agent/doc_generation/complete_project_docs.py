@@ -465,6 +465,14 @@ def commits_since_visual_docs(baseline: CommitBaseline | None) -> list[CommitInf
 def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     """Use commit-specific evidence, never broad keyword guesses or disk presence."""
     notes = {
+        "7764353": "Restores CRLF endings in eleven files changed by the Grepper feature commit, without changing their behavior.",
+        "4ae6da6": (
+            "Adds Grepper's single-file lines mode, inclusive ranges and content_b64 "
+            "transport. Updates wrapped-tool and Parametrizer contracts, self-knowledge "
+            "and handbooks. Adds three regression/visible-harness sources, not run here."
+        ),
+        "1dcd805": "Updates release-facing documentation and package metadata to v1.51.9. The annotated tag resolves to cb30edf, before the Grepper change.",
+        "7800610": "Commits the previous dossiers and expands sampler/uninstaller maintainer guidance. The mcp_agent.py change adds explanatory comments, not a new sampler path.",
         "cb30edf": (
             "Forwards repeat_last_n through both Ollama chains and ChatOllama, adds "
             "it to the parameter banner, and aligns defaults at 256 / 1,048,576 "
@@ -803,8 +811,8 @@ def publication_guide(context: dict) -> list[str]:
         f"effective lines, and {context['binary_count']} binary assets. Published backup/test "
         "text counts toward repository totals but does not add runtime agents or frontend modules.",
         f"Changes after dossier commit {baseline_ref} are listed in the Git appendix. "
-        "This refresh covers Ollama sampler forwarding/defaults and the uninstaller's "
-        "process gate/content preservation. The wait fix and credits utility remain documented. "
+        "This refresh adds Grepper's line-reading contract and the v1.51.9 release boundary. "
+        "Sampler defaults, uninstaller protection, the wait fix and credits utility remain documented. "
         "Canvas avatar presence, Whisperer's sound gate "
         "and Voice Commands remain carried. Runtime JPGs ship through "
         "Tlamatini/agent/static/; output source art remains development evidence.",
@@ -814,14 +822,13 @@ def publication_guide(context: dict) -> list[str]:
         "and no JavaScript errors. This older report is not proof of the new canvas renderer. "
         "The separate presence suite targets current canvas behavior. No automated "
         "tests were executed for this refresh, as requested.",
-        "README and Book retain a pre-avatar 1,069-file inventory and an obsolete tag-equals-HEAD "
-        "sentence. Their 311-transition repair-run description is historical. This dossier "
-        "uses current source counts. Their older atomic/reduced-motion avatar section "
-        "is superseded by the canvas behavior below. README's Django 5.2.4 stack entry "
-        "also lags the requirements pin of 5.2.15. Neither handbook yet explains the "
-        "latest wait repair or credits utility. Their new sampler prose is carried with "
-        "commit-attributed measurements. Book section 50 still omits the new content "
-        "preservation and process gate. Historical prose is not release metadata.",
+        "Handbook audit: older 1,069-file counts and 311-transition evidence are historical. "
+        "README's one-commit tag distance is stale. Book's installation section still names "
+        "v1.51.5 as current. Atomic/reduced-motion avatar prose predates the canvas renderer. "
+        "README lists Django 5.2.4 versus requirements 5.2.15 and mentions the wait fix only "
+        "briefly. Book section 50 omits the new uninstall guards. Neither explains the "
+        "credits utility. Grepper's base64 channel carries UTF-8 decoded text, not arbitrary "
+        "original-encoding bytes. This dossier uses the source-derived facts below.",
     ]
 
 
@@ -927,6 +934,33 @@ VOICE_COMMAND_GUIDE = [
     "agent-creation guidance. test_voice_commands_catalog.py checks ordering, sentence "
     "fidelity and classifier parity. The headed catalog harness checks browser cards "
     "and toggles, but does not prove real microphone recognition or spoken task execution.",
+]
+
+
+GREPPER_LINES_GUIDE = [
+    "After the v1.51.9 tag, commit 4ae6da6 adds output_mode=lines to Grepper. "
+    "It reads one text file without a regex. Existing content/files/count search "
+    "modes remain available. Globber can select the file before the read.",
+    "start_line/end_line are 1-based inclusive. Zero means first/last. The "
+    "implementation clamps endpoints into the file and caps the slice at "
+    "max_results (default 200). lines_returned, total_lines and truncated "
+    "describe the returned slice. Directories and binary files are refused.",
+    "line_numbers=true prefixes each displayed line with N:. With false, "
+    "content_b64 carries base64 of the decoded slice encoded as UTF-8, retaining "
+    "its line endings. Windows text-mode logging can rewrite the readable body. "
+    "Use the encoded channel when constructing an Editor old_string.",
+    "The shared reader checks UTF-8/16/32 BOMs before the NUL-byte binary rule, "
+    "then uses UTF-8, cp1252 or Latin-1. content_b64 is not a byte-for-byte copy "
+    "of a UTF-16/cp1252 source file. Editor itself reads/writes UTF-8, so this "
+    "read capability does not make editing every supported source encoding safe.",
+    "The wrapped chat_agent_grepper description and Parametrizer field map "
+    "include the new contract. Success is listed, while missing paths give "
+    "not_found. Self-knowledge and FlowCreator describe the read step. "
+    "TLAMATINI_VERSION: 1.51.9 is now an offline fallback behind live metadata.",
+    "Three new assets: test_grepper_lines_mode.py, grepper_lines_visible.py "
+    "and grepper_login_probe.py. The commit reports 505 passing cases and a "
+    "headed chat search/read demonstration. Those are historical claims, not "
+    "results from this refresh. No test, browser harness or app was executed.",
 ]
 
 
@@ -1139,7 +1173,7 @@ HOW_TO_USE = [
     "Run from source: create a virtual environment, install requirements, migrate, create a superuser, collect static files, and start Django.",
     "Open `/agent/` for chat. Load a file or directory context before asking codebase-specific questions.",
     "Keep Multi-Turn unchecked for direct Q&A; enable Multi-Turn for tasks that need tools, wrapped agents, monitoring, or workflow seeding.",
-    "Use `chat_agent_globber` to find files by pattern, `chat_agent_grepper` to locate matching content, and `chat_agent_editor` when you need an exact in-place change instead of rewriting a whole file or shelling out to grep/findstr/sed.",
+    "Use `chat_agent_globber` to find files, `chat_agent_grepper` to search or read a range with output_mode=lines, and `chat_agent_editor` for an exact in-place change. Use content_b64 for line-ending-safe text transport and observe Editor's UTF-8 scope.",
     "To use the External MCP capability, open `External -> MCPs`, register or import a server into `external_mcps.json`, choose the transport/runtime fields, and let the dialog connect it before expecting its `ext__<server>__<tool>` tools to appear in Multi-Turn.",
     "When you are onboarding or debugging an external MCP, call `chat_agent_mcp_doctor` first or use the MCP Doctor workflow node; it can tell you whether the issue is transport selection, a missing runtime on PATH, placeholder secrets, or a bad endpoint before you spend time on a live connect attempt.",
     "If you want a guided external-MCP onboarding flow, use the Step-by-Step mode in the External MCP dialog so each required field is introduced progressively instead of dumping the whole connection contract at once.",
@@ -2283,6 +2317,7 @@ def build_pdf(context: dict) -> None:
                          ("Reproducible visible avatar tests", AVATAR_TEST_GUIDE),
                          ("Whisperer silence gate", WHISPERER_GATE_GUIDE),
                          ("Voice Commands catalog and execution", VOICE_COMMAND_GUIDE),
+                         ("Grepper line reading and encoded text transport", GREPPER_LINES_GUIDE),
                          ("Ollama sampler defaults and recorded measurements", OLLAMA_SAMPLER_GUIDE),
                          ("Uninstaller process gate and content preservation", UNINSTALLER_SAFETY_GUIDE),
                          ("Wrapped-agent wait and completion", WRAPPED_WAIT_GUIDE),
@@ -3322,6 +3357,7 @@ def build_ppt(context: dict) -> None:
                          ("Visible Avatar Test Runner", AVATAR_TEST_GUIDE),
                          ("Whisperer Silence Gate", WHISPERER_GATE_GUIDE),
                          ("Voice Commands", VOICE_COMMAND_GUIDE),
+                         ("Grepper Line Reading", GREPPER_LINES_GUIDE),
                          ("Ollama Sampler Defaults", OLLAMA_SAMPLER_GUIDE),
                          ("Uninstaller Safety", UNINSTALLER_SAFETY_GUIDE),
                          ("Wrapped-Agent Wait Completion", WRAPPED_WAIT_GUIDE),
