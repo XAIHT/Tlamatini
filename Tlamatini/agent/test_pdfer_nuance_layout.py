@@ -587,12 +587,8 @@ class ContractCoherenceTests(unittest.TestCase):
             % sorted(stale))
 
     def test_pdfer_is_a_registered_parametrizer_source(self):
-        path = os.path.join(_AGENT_DIR, "..", "parametrizer",
-                            "parametrizer.py")
-        with open(os.path.abspath(path), "r", encoding="utf-8") as handle:
-            body = handle.read()
-        self.assertIn("'pdfer'", body,
-                      "parametrizer.SECTION_AGENT_TYPES must contain 'pdfer'")
+        from agent.agents.flowcreator.flow_knowledge import load_catalog
+        self.assertTrue(load_catalog()['pdfer']["output_fields"])
 
     def test_pdfer_declares_its_verbatim_fields(self):
         """``input_text`` is literal source text and must not be de-escaped.

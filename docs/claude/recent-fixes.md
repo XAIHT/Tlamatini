@@ -16,6 +16,178 @@
 
 ---
 
+## 2026-09-15 — Post-change sweep: two guards that had gone quiet, and one unpinned dependency
+
+A full-repo sweep after the desktop-input / flow-knowledge / PPTXer-LaTeXer-PDFer style work
+found **two RED guards and one silent dependency hole**. All three came from the same day's
+commits, and all three are the "looks fine, reports nothing" class.
+
+**1. Two agent statuses no verdict rule knew (`input_sent`, `observed`).**
+`agent/test_status_vocabulary.py` went red: Mouser and Keyboarder now emit `status: input_sent`,
+and Mouser's new `movement_type: inspect` emits `status: observed`. Neither was in any of
+`agent_verdict.py`'s five sets, so both fell through to R8b's fail-open default and **coloured
+their Exec Report row GREEN by accident** — indistinguishable from a status every rule had
+approved, which is exactly the hole the closed vocabulary exists to close. Now explicit:
+
+- `input_sent` → **`WORK_COMPLETED_STATUSES`** (transport/delivery). Delivering the input IS the
+  agent's deliverable, so it is green — but it is **delivery evidence only**, never proof the
+  application accepted, saved or acted on it. Confirming the app's reaction is a separate
+  observation (Shoter + Image-Interpreter), not a claim this status ever makes.
+- `observed` → **`DIAGNOSTIC_COMPLETED_STATUSES`** (inspectors). `inspect` reports cursor and
+  monitor geometry and deliberately sends NO input: a read-only look that ran to completion,
+  where the reading is the deliverable.
+
+**2. `test_build_scripts` flagged 27 flat siblings as unpinned PyPI packages.**
+`_NOT_THIRD_PARTY` is a HAND-MAINTAINED set. The day's three new siblings (`flow_knowledge`,
+`mouser_coordinates`, `keyboarder_input`) were added to it, but every `pdfer_*`, `pptxer_*` and
+`latexer_*` helper never was — so the guard had been red since those agent families landed.
+**Fixed by DERIVING instead of listing**: an import is local when a file of that name sits in
+the SAME directory as the importing file, which is precisely the flat-sibling contract (helpers
+ship beside the agent and travel with the pool copy, because a pool subprocess cannot import
+`agent.*`). ⚠️ **Do NOT go back to extending the hand-maintained set** — it silently went stale
+for three whole agent families at once; the derived check stays correct the moment a new
+sibling lands.
+
+**3. `fontTools` was imported but never pinned.**
+`agents/pptxer/pptxer_fonts.py::_font_coverage` reads a TTF's character map to detect a glyph
+the chosen face does NOT have, so the measurer can fall back to Office's real substitute. It
+arrived **transitively via matplotlib** and was absent from `requirements.txt`, so a dependency
+bump could drop it — and because the import is fail-open (`except Exception: return None`),
+nothing would have reported the loss: the coverage check would simply stop running and a deck
+could ship tofu boxes. Now pinned `fonttools==4.63.0`.
+
+**Verified**: 186 tests OK (`test_flow_knowledge`, `test_desktop_input_agents`,
+`test_agent_display_names`, `test_build_scripts`, `test_status_vocabulary`, `test_agent_verdict`);
+both inclusion sweeps CLEAN; `update_flow_catalog.py --check` verified coverage for 89 agent
+types; `design_prompt` builds with all 89 selected (89/89 `###` sections in `agentic_skill.md`);
+all 29 `SKILL.md` packages validate clean.
+
+**Documentation counts corrected in the same pass.** The standing rule is that dated records
+keep their figures while ACTIVE guidance is re-derived from source. `Tlamatini.md` claimed **88**
+agents in three places while saying 89 in two others — and it is her INJECTED self-knowledge, so
+she would have told users the wrong number; PPTXer was also missing entirely from her
+visual-agent list. README said 88/108 in three spots, `skills_pkg/create_new_agent/SKILL.md`
+still said **83**, and both agent-naming skills said "23 of 88". All now derived: **89 agents,
+67 wrapped, 109 built-in tools, 29 skills, 204 migrations**, with 33 display-name overrides
+differing from `str.title()`.
+
+---
+
+## 2026-09-15 — PDFer: 24 signature styles and measured reading areas
+
+PDFer adds **24 explicit visual identities in five families** alongside its **20 semantic treatments**: six playful/nursery, four cyberpunk, five cosmic, four electronics and five Tlamatini styles. `style` chooses appearance, while `nuance` retains document purpose and decoration limits. Blank/auto style preserves automatic design. `mode: styles` lists the catalog with `status: inspected` and no PDF. `style` and `style_family` are appended to the output contract without renaming previous fields.
+
+**Failures addressed and contracts to preserve:**
+
+- Cover text now uses an opaque reading area, with title/subtitle/author measured before placement and vector artwork clipped to a text-free region. Long title/subtitle content continues onto later pages rather than being truncated.
+- Footer notes reserve the measured folio width and ellipsize only the repeated note. Small pages retain a usable content frame.
+- Muted text, H3/H4, quotes, captions, footers and alternating table rows use the normal-text contrast floor. Cover contrast is checked against the actual opaque reading background.
+- Sparse Franklin Gothic and Segoe UI face tuples no longer choose an italic file for bold display text.
+- Table soft/hard/natural width measurements add 0.75 points after padding to avoid ordinary-word splits from rounding differences. Unbroken source tokens still wrap without injected characters.
+- New `pdfer_styles.py` and `pdfer_artwork.py` are flat siblings in the pool template. Vector art requires no new dependency, external image service or downloaded fonts. Original Aztec-inspired geometry is not a transcription of historical glyphs.
+- Legacy raster artwork uses stable SHA-256 seeds and cache keys covering every palette role plus raster scale.
+- Explicit styles never increase the semantic decoration ceiling. Legal, clinical and financial treatments remain undecorated. Existing semantic aliases keep priority over the compatibility fallback for visual names in `nuance`.
+- Signature styles apply to atelier. Custom CSS under `engine: auto` retains legacy behavior; image-only layouts and existing merged PDFs keep their designs. A created PDF is not automatically an audit pass: inspect `layout_clean`, repairs and the response body.
+
+**Evidence recorded during implementation (2026-09-15):** `agent.test_pdfer_agent`, `agent.test_pdfer_nuance_layout` and `agent.test_pdfer_styles` passed **130 tests**. All **24 two-page samples (48 pages)** had clean layout audits: no overlaps, bleeds, blank pages or contrast findings. Regression cases include A4 portrait/A5 landscape, 256-character titles, long unbroken table tokens, long footers, palette overrides, alias fallback, complete long title/subtitle continuation and deterministic artwork. Contact sheets and representative full pages were visually inspected. This is fixture/environment evidence, not a guarantee for all documents or proof of the installed app's version.
+
+The gallery, PNGs, sample PDFs, atlas and task logs were removed after inspection. `scripts/verify_pdfer_styles.py` reproduces ignored `artifacts/pdfer-styles/` and `output/pdf/pdfer-style-atlas.pdf`; keep source, tests, generator and the [style guide](../../Tlamatini/agent/agents/pdfer/STYLES.md). Poppler is required by that preview verifier, not by the new runtime style renderer.
+
+---
+
+## 2026-09-15 — PPTXer: complete text, 12 visual styles, and native layout checks
+
+PPTXer now offers 36 named treatments (24 automatic content treatments + 12 explicit styles via `nuance`) and 17 font pairings. Empty `nuance` retains automatic classification; explicit color, background, font, and density overrides keep priority. The twelve styles and reproduction commands live in [the canonical guide](../../Tlamatini/agent/agents/pptxer/STYLES.md).
+
+**Keep these contracts:** measure the actual font face, bold/italic, tracking, line spacing, and insets; trial-compose before placing dense content; paginate complete cards, columns, tables, timelines, and bullets. Preserve long identifiers, indentation, Unicode, complete diagram/chart labels, footer/attribution space, and portrait statistic values. Deterministic font discovery separates Arial Narrow and Bodoni MT Poster Compressed from regular-width families. The 1152-dpi width measurement prevents accumulated Courier New rounding errors. Apply configured corner radii and chart series colors, and sample contrast against the actual rendered background.
+
+Re-open the saved deck to audit geometry, table/group text, and native bounds. Measurement errors must not pass as clean, and confidence must distinguish native PowerPoint, independent rendering, and approximate preview. Keep atomic saves and the bounded Office worker; cleanup may terminate only proven-owned Office processes. `created_with_findings` is a written deck requiring review.
+
+**Recorded validation:** 126 regressions passed; long-card coverage spans 12 styles × 3 formats (36 cases). The final native new-style run covers 12 decorative 16:9 decks, 151 slides, 700 text frames, and 252 complete 256-character payload checks with zero findings. The earlier corporate/cyberpunk three-format run covered 424 slides and 870 long-text checks at that revision. The 256-character length is a test input, not a maximum or a universal layout guarantee. The guide records tolerances and rendering scope. Generated decks/renders/galleries were removed; both PPTXer artifact directories are ignored. Retain source, tests, and the three reproduction/gallery scripts. This documentation update does not assign a release tag.
+
+## 2026-09-15 — LaTeXer: 30 signature styles and portable source generation
+
+LaTeXer now separates document structure (`template`, eight options) from visual identity (`style`, 30 explicit options across editorial, playful, cyberpunk, cosmic, electronics and Tlamatini families). `list_styles` returns the catalogue without probing a compiler. Six settings control identity, subtitle, screen/print mode, decoration, cover and a six-digit color seed. Empty styles preserve legacy output; existing complete sources/projects reject explicit styles instead of rewriting their preamble.
+
+**Keep these contracts:** the three flat sibling modules (`latexer_styles.py`, `latexer_artwork.py`, `latexer_design.py`) travel with pool copies. TikZ artwork stays clipped inside a normal-flow cover region; body pages use coordinated readable inks. Palette text contrast is corrected after color overrides and print conversion. Beamer has its own recipe and does not load document-only heading/header packages. Styled sources retain standard title/author declarations for `structure`. Spanish babel punctuation is disabled for TikZ compatibility. Every table header cell needs `\TLcellhead`; shaded paragraph-column cells use `\textcolor{TLSurfaceInk}{...}` to preserve their first baseline.
+
+Chat descriptions, canvas mapping, Parametrizer and result promotion carry the settings and four metadata fields: `style`, `style_family`, `style_mode`, `style_count`. `listed` means successful discovery; design metadata does not prove compilation or layout. The existing repair ladder, base64 source channels and verdict vocabulary remain in force.
+
+**Evidence captured on 2026-09-15:** 483 automated tests passed. The developer matrix produced **132 fresh real builds**, with repair disabled: 90 screen builds (30 styles × pdfLaTeX/XeLaTeX/LuaLaTeX), 30 print builds, eight template cases and four stress cases. All passed PDF text-bounds and overfull-box checks. All 60 atlas pages were rendered independently with Poppler and visually reviewed, alongside special layouts. This is a measured test set, not a guarantee for arbitrary user LaTeX; the verifier is not run automatically on every normal agent call. Copied-pool tests covered engine-free discovery and styled base64 input through the default repair pipeline.
+
+Reproduce with the [style guide](../../Tlamatini/agent/agents/latexer/STYLES.md) and `scripts/verify_latexer_styles.py --matrix`. Local outputs are ignored by Git: `artifacts/latexer-styles/index.html`, `report.json`, and `output/pdf/latexer-style-atlas.pdf`. No release tag is assigned by this note. Related Markdown was updated with fresh reads and narrow edits while another session owned desktop/flow documentation; its work was preserved.
+
+## 2026-09-15 - ESP32er's scaffold did not compile, and ESPHomer's template was never read
+
+**Files: NEW `agent/agents/esp32er/ESP32TemplateProject/` (6 files), `agent/agents/esp32er/esp32er.py`
+(`_create_project` rewritten, NEW `_template_source_dir` / `_ensure_ini_key` / `_stamp_platformio_ini`
+/ `_MINIMAL_MAIN_CPP`), `agent/agents/esphomer/esphomer.py` (NEW `scaffold_template` action,
+`_scaffold_template`, `_write_secrets_file`, `use_secrets`), `agent/agents/esphomer/ESPHomeTemplateProject/`
+(expanded 2 -> 6 files), both `config.yaml`s, `agent/test_esp32er_agent.py` + `agent/test_esphomer_agent.py`
+(+17 tests; the shared log-capture helper FIXED). Standalone publishable repos at
+`C:\Development\ESP32TemplateProject` and `C:\Development\ESPHomeTemplateProject`.**
+
+**DEFECT 1 - ESP32er scaffolded a project that could not be built.** `_create_project` ran a
+bare `pio project init -d <dir> -b <board>`. That produces a `platformio.ini` plus **EMPTY**
+`src/` `include/` `lib/` `test/` directories - there is no `main.cpp` anywhere. Under the
+Arduino framework the very next `build` therefore fails to link (`undefined reference to
+'setup'` / `'loop'`), so `create_project` -> `build` was broken out of the box and the
+one-call `scaffold_build_upload` composite died at its build stage unless the caller happened
+to pass `content`. **A scaffold whose output does not build is not a scaffold.** Fixed the way
+Arduiner already worked: a bundled `ESP32TemplateProject/` sits beside `esp32er.py`,
+`create_project` copies it, then `_stamp_platformio_ini` re-points `board` / `framework` at
+whatever the caller asked for, so ONE template serves every ESP32 variant. ⚠️ The
+`_MINIMAL_MAIN_CPP` fallback is not decoration: if the template is ever missing, the
+`pio project init` path still writes a compilable source. **This function must NEVER hand back
+a project that cannot compile.** Verified for real, not assumed: `pio run` on the shipped
+template with PlatformIO Core 6.1.19 / espressif32 7.0.1 -> `[SUCCESS] Took 15.08 seconds`,
+`firmware.bin` 269,728 B + `firmware.elf` 6,071,200 B, RAM 6.6%, Flash 20.6%.
+
+**DEFECT 2 - ESPHomer's template project was unreachable code.** `ESPHomeTemplateProject/`
+shipped in the agent's directory and was tracked in git, but **no code path ever read it** -
+`new_config` generates from the inline `_DEVICE_YAML_TEMPLATE` instead. A template nothing can
+reach is documentation at best and silent drift at worst: the shipped sample and the generated
+output were free to diverge with nothing to catch it. NEW `action: scaffold_template` copies
+it, so what ships is what a user gets. The template also grew from 2 files to 6 - a second
+device showing `packages:` + `!secret`, a shared `common/base.yaml`, `secrets.yaml.example`
+and a `.gitignore`.
+
+**⚠️ `use_secrets` DEFAULTS TO FALSE AND MUST STAY THAT WAY.** It makes `new_config` emit
+`!secret wifi_ssid` and write the real credentials to a sibling `secrets.yaml` - ESPHome's own
+convention, and strictly better than baking a WiFi password into a file somebody may publish.
+But `!secret` is a **custom YAML tag**, so a config using it can no longer be read by a plain
+`yaml.safe_load` - every downstream parser, including this repo's own tests, would break. Opt
+in, never default in. The same reason `tlamatini-light.yaml` stays self-contained (no
+`!include`, no `!secret`) while `tlamatini-sensor.yaml` demonstrates the grown-up shape.
+`_write_secrets_file` **NEVER overwrites an existing secrets.yaml** - a second device scaffolded
+into the same folder must not clobber the first one's real password.
+
+**⚠️ THE TEST SUITE WAS ALREADY RED AND NOBODY KNEW.** `test_esp32er_agent` had **4 hard
+failures at HEAD** before any of this work (`AssertionError: 0 != 1` on `len(sections)`),
+verified by restoring the pristine file and re-running. Cause: the `_LogCapture` helper adds a
+handler to the root logger but never forces its **level**, and a record below the root level is
+dropped before any handler sees it. The agent's module-level `logging.basicConfig(level=INFO)`
+only takes effect if it runs BEFORE Django configures logging, so the capture was purely
+**test-order dependent**. Fixed in the helper (force + restore level, and lift any global
+`logging.disable`), never in the assertions - the remedy `create_new_agent.md` pitfall #15
+already prescribes. ⚠️ **Four more test files carry the identical fragile helper**
+(`test_arduiner_agent.py:112`, `test_audioplayer_agent.py:229`, `test_camcorder_agent.py:165`,
+`test_recorder_agent.py:165`, `test_videoplayer_agent.py:95`) and will drift red the same way.
+
+**Standalone repos.** Both templates also exist at `C:\Development\<Name>TemplateProject` as
+publishable GitHub repositories - the same files plus MIT `LICENSE`, `CHANGELOG.md`, a CI
+workflow that compiles/validates on every push (so the word "known-good" stays true rather than
+aspirational), and `scripts/create_github_repo.ps1` / `.sh` one-shot publish helpers. This
+restores what `BookOfTlamatini.md` §58 has promised since 2026-05-31: that chapter documented
+an `ESP32TemplateProject` at that exact path as "verified to build clean", but **the folder was
+not on disk and had never been in git**. It is now in both places - bundled in the repo so it
+ships to users, and standalone so it can be published.
+
+Coverage: `agent/test_esp32er_agent.py` 35 -> 41, `agent/test_esphomer_agent.py` 31 -> 42
+(83 total, all green; ruff clean).
+
+---
+
 ## 2026-09-14 - Grepper learned to READ: output_mode 'lines', and why the log is not a byte-exact channel
 
 **Files: `agent/agents/grepper/grepper.py` (NEW `_read_lines_mode`), its `config.yaml`
@@ -3136,3 +3308,7 @@ The `.flw` the converter (`scripts/result_to_flw.py`) emits must stay the `schem
 - **Whatsapper vs WhatsTlamatini are different agents — keep them straight** — At the 2026-06-22 consolidation, `Whatsapper` became the short-lived official Meta Cloud action/notification agent and `WhatsTlamatini` was retired. **Current behavior supersedes the old "Cloud only" wording:** Whatsapper still defaults to the official business Cloud API, but an explicitly selected `provider=web` / `me` now sends from the operator's own personal account through unofficial WhatsApp Web automation with a one-time QR login and account-ban risk. TeleTlamatini remains the only remote full-chat bridge. TextMeBot/Twilio remain absent, providers must never be switched silently, and older "no WhatsApp Web" prose is historical rather than current guidance.
 
 - **ACPX-Skills navbar dropdown (2026-05-17) — DB stays at "enumeration + enable/disable", disk is source of truth** — A new **ACPX-Skills** dropdown lives between **Agents** and **Config** in the chat navbar (`agent/templates/agent/agent_page.html`). Four entries: **Browse Skills** (`GET /agent/skills/` + `/agent/skills/<name>/`), **Configure Skills** (WebSocket `set-skills`, mirrors `set-mcps` / `set-agents`), **Diagnostics** (`GET /agent/skills/_/diagnostics/`), **Reload Registry** (`POST /agent/skills/_/reload/`). The `Skill` DB model already existed from migration `0071_acpx_skills.py` and is auto-seeded by `boot_skills()` on a background thread from `apps.AgentConfig.ready()` — only the UI + HTTP endpoints + WebSocket wiring + tool-surface gating in `agent/acpx/tools.py` were missing. **Key constraint**: `save_skill(name, enabled)` only touches `Skill.enabled`; the cached fields (`description`, `runtime`, `acpx_agent`, `frontmatter_json`, `body_sha256`) are owned by `boot_skills()` and are intentionally NOT user-configurable. Browse / Diagnostics read fresh from `agent.skills.registry.skill_registry` — SKILL.md on disk is the only source of truth for permissions, budgets, body. **Tool-surface gating** is via `_disabled_skill_names()` in `agent/acpx/tools.py`: when `Skill.enabled = False`, `list_skills` filters the row out and `invoke_skill` returns `{"ok":false,"code":"SKILL_DISABLED"}`. Fails OPEN on DB exception so a broken admin layer never silently hides skills. **WebSocket parity** with Mcps/Tools/Agents: `consumers.skill_establishment()` sends `type:'skill'` system messages on connect; frontend pushes them into the module-level `skills = []` array (`agent_page_state.js`); Configure dialog reads from there and sends `set-skills` on Continue with the `name=description=true/false,...` shape. **Skill names key directly** (no `skill-N` prefix unlike `mcp-N` / `tool-N`) because `Skill.name` is the SKILL.md frontmatter `name` and is already unique. Coverage: 14 tests in 3 classes (`SkillsAdminEndpointTests`, `SkillsToolSurfaceGatingTests`, `SkillsNavbarTemplateContractTests`). **Do NOT** add granular skill config (permission overrides, budget overrides, per-user toggles) to the DB — the user-stated constraint is "DB only for enumeration and enable/disable like MCPs/Agents". If those features are ever needed, put them in `config.json` or a separate sidecar table.
+
+## 2026-09-15 — Desktop input and complete flow knowledge
+
+Mouser/Keyboarder/Shoter received the coordinate, target-binding and receipt changes documented in [desktop input and flow contracts](../desktop-input-and-flow-contracts.md). Parametrizer preserves CRLF/empty fields, converts typed targets, refuses partial mappings and blocks replay of interrupted desktop input. FlowCreator now selects from all 89 agents, validates schemas/references/slots/mappings, repairs within configured limits, preserves canonical labels and never emits success after a failed .flw write. Early failures exit nonzero. Hypervisor uses contract-based execution edges and durable desktop receipt context. Credential-only contract overrides no longer erase passive Emailer/Recmailer lifecycle behavior. [Generated coverage](../agent-coverage.md) is checked against installed templates; GUI-Manager remains a design.

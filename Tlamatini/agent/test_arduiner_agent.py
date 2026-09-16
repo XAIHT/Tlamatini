@@ -583,9 +583,8 @@ class ArduinerIntegrationTests(SimpleTestCase):
         self.assertEqual(display_name_from_agent_type("arduiner"), "Arduiner")
 
     def test_parametrizer_section_type(self):
-        path = os.path.join(os.path.dirname(__file__), "agents", "parametrizer", "parametrizer.py")
-        with open(path, encoding="utf-8") as f:
-            self.assertIn("'arduiner'", f.read())
+        from agent.agents.flowcreator.flow_knowledge import load_catalog
+        self.assertTrue(load_catalog()['arduiner']["output_fields"])
 
     def test_config_json_globals(self):
         path = os.path.join(os.path.dirname(__file__), "config.json")

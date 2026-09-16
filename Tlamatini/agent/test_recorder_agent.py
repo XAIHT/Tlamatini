@@ -549,10 +549,8 @@ class RecorderRegistryTests(SimpleTestCase):
         self.assertEqual(spec[1], 'Recorder')
 
     def test_parametrizer_section_type_registered(self):
-        param_path = os.path.join(_REPO_AGENT_DIR, 'agents', 'parametrizer', 'parametrizer.py')
-        with open(param_path, 'r', encoding='utf-8') as handle:
-            text = handle.read()
-        self.assertIn("'recorder'", text)
+        from agent.agents.flowcreator.flow_knowledge import load_catalog
+        self.assertTrue(load_catalog()['recorder']["output_fields"])
 
     def test_url_route_and_view_present(self):
         with open(os.path.join(_REPO_AGENT_DIR, 'urls.py'), 'r', encoding='utf-8') as handle:

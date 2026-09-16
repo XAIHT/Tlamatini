@@ -45,7 +45,7 @@ metadata:
 Produce a canvas-loadable `.flw` for the user's stated objective.
 
 > **Superseded by the `flow-making` skill.** Prefer `flow-making`: it drives the
-> FlowCreator engine (full 83-agent catalog + connection contracts) and emits a
+> FlowCreator engine (full 89-agent catalog + connection contracts) and emits a
 > validated, schemaVersion-2 `.flw`. This skill is kept as an alias/entry point —
 > do NOT hand-author the `.flw` JSON, because you do not carry the agent catalog
 > in context and a hand-written flow hallucinates agent types and will not load.
@@ -89,3 +89,11 @@ connections:[{from,to,kind}]}` shape (that is obsolete and will not load):
 ```
 
 See `agent/skills_pkg/flow_making/references/flw_schema.md` for the full contract.
+
+## Current installed-agent contract — 2026-09-15
+
+Use `agent/agents/flowcreator/flow_catalog.json` for canonical names, current config schemas, output/input slots, lifecycle flags and structured fields for all 89 installed types. GUI-Manager is design only. After changing a template/contract/reference, run `python scripts/update_flow_catalog.py` and its `--check` mode in the repository. Deployment refreshes runtime snapshots.
+
+FlowCreator selects capabilities before detailed design, validates the generated plan, and uses bounded repair. Declare Ender input connections explicitly; Ender `target_agents` is a kill list. Counter uses L/G slots; source dependencies do not choose a conditional output branch. Generated Parametrizers require valid `_parametrizer_mappings`, one source and one target. Do not maintain a separate hardcoded Parametrizer producer list.
+
+For desktop flows, use explicit physical/screenshot geometry and verified target windows. `input_sent` is input delivery only; errors may be partial and must not be blindly replayed. Read `docs/desktop-input-and-flow-contracts.md` and `docs/agent-coverage.md` for the full contract and verification scope.

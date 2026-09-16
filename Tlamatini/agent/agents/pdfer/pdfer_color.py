@@ -700,7 +700,11 @@ class Palette:
         this the renderer may place any role on its stated ground and know it
         is readable — which is the whole promise.
         """
-        bg, surf = self.background, self.surface
+        # NOTE: only ``background`` is unpacked here. Every other role below is
+        # validated against its OWN ground (code_bg, table_header_bg, quote_bg,
+        # primary, and the repaired row-alt mix), so ``surface`` has no role to
+        # gate -- an earlier draft unpacked it and never used it.
+        bg = self.background
         fixed = {
             "text": ensure_contrast(self.text, bg, body_floor, preserve_hue=False),
             "text_muted": ensure_contrast(self.text_muted, bg, body_floor),

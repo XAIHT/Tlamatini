@@ -135,6 +135,28 @@ Palette names are
 `TLBackground`, `TLInk`, `TLPrimary`, `TLSecondary`, `TLMuted`, `TLSurface`,
 `TLSurfaceInk`, `TLSurfaceAccent`, `TLOnPrimary`, and `TLRule`.
 
+## Result fields and flow routing
+
+`INI_SECTION_LATEXER` exposes 21 contract fields including `response_body`:
+
+```text
+action, engine, distribution, tex_path, project_dir, output_path, output_dir,
+filename, page_count, bytes, passes, bibliography, errors, warnings, success,
+status, style, style_family, style_mode, style_count, response_body
+```
+
+`list_styles` reports `status: listed`, `success: true`, `style_count: 30`,
+`distribution: not_probed`, and the JSON catalogue in `response_body`. It creates
+no PDF. Applied styles report their canonical ID, family and mode. Inspect
+`status`/`success` before forwarding `output_path`; `compiled_with_errors` and
+degraded repairs are not clean builds. Design metadata does not establish layout
+quality, and the normal agent result has no `layout_clean` field. The developer
+verifier below performs the rendered bounds checks separately.
+
+The root MCP connector exposes `latexer`; Multi-Turn uses `chat_agent_latexer`.
+Both run the same native agent. [Connector examples](../../../../TLAMATINI_MCP.md#latexer-discover-and-apply-styles)
+and [FlowCreator routing](../flowcreator/agentic_skill.md#87-latexer) explain those surfaces.
+
 ## Workflow integration and validation
 
 The chat agent description, generated canvas-flow parameter mapping, Parametrizer
@@ -154,6 +176,36 @@ with Poppler. The matrix includes all identities on all three engines, all print
 variants, all eight templates, Spanish, long metadata, multi-page content,
 compact titles, restrained decoration and a deliberately low-contrast seed.
 It fails if an engine is missing or a build does not meet the checks.
+Run these commands from the repository root. The matrix requires pdfLaTeX,
+XeLaTeX and LuaLaTeX, plus the developer dependencies listed below. For iterative
+development, `--reuse` re-audits previously successful PDFs only when emitted
+source is unchanged; that is reuse of prior evidence, not a fresh compilation.
+Omit it for a fresh matrix.
+
+### Verified snapshot — 2026-09-15
+
+- **483 automated tests passed** across the agent, suite, repair ladder, verbatim
+  channel and style tests.
+- **132 fresh real-engine builds passed**: 30 styles × three engines in screen
+  mode (90), 30 pdfLaTeX print builds, eight template cases with Spanish content,
+  and four stress cases covering long/multipage content, compact titles with a
+  white seed, restrained artwork, and a Beamer body with math/table/code.
+- No overfull boxes or out-of-bounds PDF text were measured in that matrix.
+  All 60 atlas pages were rendered with Poppler and visually reviewed, alongside
+  special layouts. This verifies the tested examples, not arbitrary user content.
+- Copied-pool subprocess checks covered engine-free `list_styles` and styled
+  base64 input through the default repair pipeline.
+
+The aggregate regression command below runs from `Tlamatini/` (the directory
+containing `manage.py`) after installing the application's development dependencies:
+
+```powershell
+$env:DJANGO_SETTINGS_MODULE = 'tlamatini.settings'
+python -c "import django, unittest, sys; django.setup(); names=['agent.test_latexer_agent','agent.test_latexer_suite','agent.test_latexer_repair_ladder','agent.test_latexer_verbatim_channel','agent.test_latexer_styles']; result=unittest.TextTestRunner(verbosity=1).run(unittest.defaultTestLoader.loadTestsFromNames(names)); sys.exit(not result.wasSuccessful())"
+```
+
+These counts record the implementation verification on that date. Rerun the
+checks after code changes before claiming the same result for a later revision.
 
 Reproducible local outputs (excluded from Git):
 

@@ -294,6 +294,8 @@ def create_isolated_runtime_copy(template_dir: str, runtime_prefix: str) -> tupl
 
     try:
         shutil.copytree(template_dir, runtime_dir, ignore=_copytree_ignore)
+        from .services.flow_knowledge import write_runtime_knowledge
+        write_runtime_knowledge(runtime_dir, os.path.basename(os.path.normpath(template_dir)))
         logger.info("[ChatRuntime.create_isolated_runtime_copy] shutil.copytree SUCCESS -> runtime_dir exists? %s", os.path.isdir(runtime_dir))
     except Exception as exc:
         logger.error("[ChatRuntime.create_isolated_runtime_copy] shutil.copytree FAILED: template=%s -> runtime=%s, error: %s", template_dir, runtime_dir, exc)

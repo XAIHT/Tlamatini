@@ -418,3 +418,14 @@ private_data_audit_report.json
 # Reproducible LaTeXer style PDFs, rendered previews and QA report.
 /artifacts/latexer-styles/
 /output/pdf/latexer-style-atlas.pdf
+
+# ⚠️ ESP32TemplateProject ships a `lib/README.md` documenting PlatformIO's
+# private-library convention, and the generic Python-packaging rule `lib/` near
+# the top of this file would silently swallow it — the template would reach every
+# clone, every build and every user MISSING a directory its own README describes.
+# These negations are deliberately narrow: they re-include ONLY that one template
+# path, leaving the blanket `lib/` rule intact everywhere else. Git cannot
+# re-include a file inside an excluded DIRECTORY, so the directory is un-ignored
+# first and its contents second — both lines are required.
+!Tlamatini/agent/agents/esp32er/ESP32TemplateProject/lib/
+!Tlamatini/agent/agents/esp32er/ESP32TemplateProject/lib/**

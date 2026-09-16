@@ -759,7 +759,7 @@ class Atelier:
     # ─────────────────────────────────────────────────────────────────
     def cover_flowables(self, title, subtitle="", author="", meta_line=""):
         from reportlab.platypus import (HRFlowable, NextPageTemplate,
-                                        PageBreak, Paragraph, Spacer)
+                                        PageBreak, Spacer)
 
         styles = self.stylesheet()
         # ⚠️ SWITCH TEMPLATES BEFORE THE FIRST PAGE ENDS.

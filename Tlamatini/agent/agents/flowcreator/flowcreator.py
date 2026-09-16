@@ -124,13 +124,14 @@ def load_agentic_skill() -> str:
         return f.read()
 
 
-def query_ollama(host: str, model: str, prompt: str) -> str:
+def query_ollama(host: str, model: str, prompt: str, num_ctx: int = 65536) -> str:
     """Send a prompt to an Ollama LLM and return the full response text."""
     url = f"{host.rstrip('/')}/api/generate"
     payload = json.dumps({
         "model": model,
         "prompt": prompt,
-        "stream": False
+        "stream": False,
+        "options": {"num_ctx": num_ctx, "temperature": 0}
     }).encode("utf-8")
 
     req = urllib.request.Request(
@@ -202,183 +203,9 @@ def parse_flow_script(raw_text: str) -> List[Dict[str, Any]]:
 
 
 def build_flow_result(agents: List[Dict[str, Any]]) -> Dict[str, Any]:
-    """
-    Build the flow_result.json structure from the parsed agent list.
-
-    Returns a structure compatible with the loadDiagram() frontend function:
-    {
-      "nodes": [
-        {"text": "starter", "left": "50px", "top": "50px", "configData": {...}},
-        ...
-      ],
-      "connections": [
-        {"sourceIndex": 0, "targetIndex": 1, "inputSlot": 0, "outputSlot": 0},
-        ...
-      ]
-    }
-    """
-    nodes: List[Dict[str, Any]] = []
-    connections: List[Dict[str, int]] = []
-
-    # Build a map from agent cardinal names to their index in the nodes list
-    # Agent names follow the pattern: agent_type_<n> where <n> is 1-based index
-    agent_name_to_index: Dict[str, int] = {}
-
-    # Assign cardinal numbers and positions
-    # Layout: grid pattern, left to right, top to bottom
-    col_width = 160
-    row_height = 100
-    start_x = 50
-    start_y = 50
-    cols_per_row = 5
-
-    # First pass: count instances of each type for cardinal assignment
-    type_counters: Dict[str, int] = {}
-
-    for i, agent_def in enumerate(agents):
-        agent_type = agent_def.get("agent_type", "unknown").lower().strip()
-        config_data = agent_def.get("config", {})
-
-        # Assign cardinal
-        type_counters[agent_type] = type_counters.get(agent_type, 0) + 1
-        cardinal = type_counters[agent_type]
-
-        # Build the pool folder name (e.g., "starter_1", "monitor_log_2")
-        pool_name = f"{agent_type}_{cardinal}"
-        agent_name_to_index[pool_name] = i
-
-        # Calculate grid position
-        row = i // cols_per_row
-        col = i % cols_per_row
-        x = start_x + col * col_width
-        y = start_y + row * row_height
-
-        nodes.append({
-            "text": agent_type.replace('_', '-') if '_' in agent_type else agent_type,
-            "left": f"{x}px",
-            "top": f"{y}px",
-            "configData": config_data
-        })
-
-    # Identify Ender and Cleaner indices for special handling
-    ender_indices: set[int] = set()
-    cleaner_indices: set[int] = set()
-    for i, agent_def in enumerate(agents):
-        agent_type = agent_def.get("agent_type", "").lower().strip()
-        if agent_type == "ender":
-            ender_indices.add(i)
-        elif agent_type == "cleaner":
-            cleaner_indices.add(i)
-
-    # Second pass: fix target_agents/source_agents references to use proper pool names
-    # and build connections from target_agents lists
-    for i, agent_def in enumerate(agents):
-        config_data = agent_def.get("config", {})
-        agent_type = agent_def.get("agent_type", "").lower().strip()
-
-        # Handle target_agents connections
-        # For Ender: SKIP — Ender's target_agents are kill targets, NOT flow connections.
-        # Visual connections to the Ender are built separately below (leaf agents → Ender).
-        if agent_type != "ender":
-            target_agents = config_data.get("target_agents", [])
-            if isinstance(target_agents, list):
-                for target_name in target_agents:
-                    target_name = str(target_name).strip()
-                    target_idx = agent_name_to_index.get(target_name)
-                    if target_idx is not None:
-                        connections.append({
-                            "sourceIndex": i,
-                            "targetIndex": target_idx,
-                            "inputSlot": 0,
-                            "outputSlot": 0
-                        })
-
-        # Handle output_agents (Ender → Cleaner, Stopper → canvas tracking)
-        output_agents = config_data.get("output_agents", [])
-        if isinstance(output_agents, list):
-            for out_name in output_agents:
-                out_name = str(out_name).strip()
-                out_idx = agent_name_to_index.get(out_name)
-                if out_idx is not None:
-                    connections.append({
-                        "sourceIndex": i,
-                        "targetIndex": out_idx,
-                        "inputSlot": 0,
-                        "outputSlot": 0
-                    })
-
-        # Handle Asker/Forker special outputs
-        target_agents_a = config_data.get("target_agents_a", [])
-        if isinstance(target_agents_a, list):
-            for target_name in target_agents_a:
-                target_name = str(target_name).strip()
-                target_idx = agent_name_to_index.get(target_name)
-                if target_idx is not None:
-                    connections.append({
-                        "sourceIndex": i,
-                        "targetIndex": target_idx,
-                        "inputSlot": 0,
-                        "outputSlot": 1
-                    })
-
-        target_agents_b = config_data.get("target_agents_b", [])
-        if isinstance(target_agents_b, list):
-            for target_name in target_agents_b:
-                target_name = str(target_name).strip()
-                target_idx = agent_name_to_index.get(target_name)
-                if target_idx is not None:
-                    connections.append({
-                        "sourceIndex": i,
-                        "targetIndex": target_idx,
-                        "inputSlot": 0,
-                        "outputSlot": 2
-                    })
-
-        # Handle OR/AND dual inputs
-        source_agent_1 = config_data.get("source_agent_1", "")
-        if source_agent_1:
-            src_idx = agent_name_to_index.get(str(source_agent_1).strip())
-            if src_idx is not None:
-                connections.append({
-                    "sourceIndex": src_idx,
-                    "targetIndex": i,
-                    "inputSlot": 1,
-                    "outputSlot": 0
-                })
-
-        source_agent_2 = config_data.get("source_agent_2", "")
-        if source_agent_2:
-            src_idx = agent_name_to_index.get(str(source_agent_2).strip())
-            if src_idx is not None:
-                connections.append({
-                    "sourceIndex": src_idx,
-                    "targetIndex": i,
-                    "inputSlot": 2,
-                    "outputSlot": 0
-                })
-
-    # Connect leaf agents to Ender(s).
-    # Leaf agents = agents that have no outgoing connections (they are the terminal
-    # nodes of each execution chain). Visually, arrows go FROM leaf agents TO the
-    # Ender's input, mirroring how a user manually connects agents to the Ender.
-    # The Ender's config has ALL agents in target_agents (the kill list);
-    # source_agents are only graphical connections. The frontend auto-populates
-    # target_agents via upstream traversal when it receives input connections.
-    if ender_indices:
-        agents_with_outgoing = {conn["sourceIndex"] for conn in connections}
-        for ender_idx in ender_indices:
-            for i in range(len(agents)):
-                if i in ender_indices or i in cleaner_indices:
-                    continue
-                if i not in agents_with_outgoing:
-                    connections.append({
-                        "sourceIndex": i,
-                        "targetIndex": ender_idx,
-                        "inputSlot": 0,
-                        "outputSlot": 0
-                    })
-
-    return {"nodes": nodes, "connections": connections}
+    """Validate against installed contracts before creating canvas connections."""
+    from flow_knowledge import build_flow, load_catalog
+    return build_flow(agents, load_catalog())
 
 
 def improve_layout(flow_result: Dict[str, Any]) -> Dict[str, Any]:
@@ -518,7 +345,7 @@ def main() -> None:
     try:
         logging.debug("Loading config from config.yaml...")
         config = load_config()
-        logging.debug(f"Loaded config: {config}")
+        logging.debug("Loaded FlowCreator configuration")
 
         # Write PID file immediately
         logging.debug("Writing PID file...")
@@ -556,6 +383,19 @@ def main() -> None:
             _write_error_result("agentic_skill.md not found or empty.")
             return
 
+        from flow_knowledge import load_catalog, roster_prompt, select_types, design_prompt
+        catalog = load_catalog()
+        num_ctx = int(llm_config.get('num_ctx', 65536))
+        max_prompt_chars = int(llm_config.get('max_prompt_chars', 180000))
+        if num_ctx < 8192 or max_prompt_chars < 1000:
+            raise ValueError("Invalid FlowCreator context limits")
+        selection_prompt = roster_prompt(catalog) + "\nUSER OBJECTIVE:\n" + prompt_text
+        if len(selection_prompt) > max_prompt_chars:
+            raise ValueError("Agent selection exceeds max_prompt_chars; raise the configured context budget")
+        selected = select_types(query_ollama(host, model, selection_prompt, num_ctx), catalog)
+        logging.info("Selected agent capabilities: %s", ", ".join(selected))
+        skill_content = design_prompt(skill_content, catalog, selected)
+
         # Build the full prompt for the LLM
         full_prompt = (
             f"{skill_content}\n\n"
@@ -567,11 +407,13 @@ def main() -> None:
             f"Do not include any explanation or text outside the JSON array."
         )
 
+        if len(full_prompt) > max_prompt_chars:
+            raise ValueError("Selected agent reference exceeds max_prompt_chars; split the objective or raise the context budget")
         logging.info(f"Sending prompt ({len(full_prompt)} chars) to {model}...")
 
         # Query LLM
         try:
-            response_text = query_ollama(host, model, full_prompt)
+            response_text = query_ollama(host, model, full_prompt, num_ctx)
         except RuntimeError as e:
             logging.error(f"LLM query failed: {e}")
             _write_error_result(f"LLM query failed: {e}")
@@ -599,8 +441,30 @@ def main() -> None:
 
         logging.info(f"Parsed {len(agents)} agents from LLM response")
 
-        # Build the flow result
-        flow_result = build_flow_result(agents)
+        from flow_knowledge import resolve
+        repair_attempts = int(llm_config.get('repair_attempts', 2))
+        if not 0 <= repair_attempts <= 3:
+            raise ValueError("repair_attempts must be between 0 and 3")
+        for attempt in range(repair_attempts + 1):
+            try:
+                used = {resolve(agent.get("agent_type", ""), catalog) for agent in agents if isinstance(agent, dict)}
+                if not used.issubset(selected):
+                    raise ValueError("Flow used unselected capabilities; use the selected catalog only")
+                flow_result = build_flow_result(agents)
+                break
+            except ValueError as error:
+                if attempt == repair_attempts:
+                    raise
+                repair_prompt = (full_prompt + "\nThe previous plan failed validation: " + str(error)
+                                 + "\nRepair it and return only the complete JSON array. Previous plan:\n"
+                                 + json.dumps(agents, ensure_ascii=False))
+                if len(repair_prompt) > max_prompt_chars:
+                    raise ValueError("Repair prompt exceeds max_prompt_chars") from error
+                logging.warning("Plan validation failed; bounded repair %s: %s", attempt + 1, error)
+                response_text = query_ollama(host, model, repair_prompt, num_ctx)
+                agents = parse_flow_script(response_text)
+                with open(script_path, 'w', encoding='utf-8') as f:
+                    f.write(response_text)
 
         # Improve layout with topological ordering
         flow_result = improve_layout(flow_result)
@@ -610,17 +474,16 @@ def main() -> None:
         flow_result["flow_filename"] = flow_filename
         flow_result["agent_count"] = len(agents)
 
+        # Do not publish a successful canvas result until the .flw is written.
+        flw_path = _write_flw_file(flow_result, flow_filename, config)
+        if not flw_path:
+            raise RuntimeError("Could not write the generated .flw")
+
         # Write flow_result.json
         result_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "flow_result.json")
         with open(result_path, "w", encoding="utf-8") as f:
             json.dump(flow_result, f, indent=2, ensure_ascii=False)
         logging.info(f"Written flow_result.json with {len(flow_result['nodes'])} nodes and {len(flow_result['connections'])} connections")
-
-        # ---- Write the actual .flw file (prompt in -> .flw out) ----------------
-        # The canvas path only needs flow_result.json, but a CHAT caller
-        # (chat_agent_flowcreator) needs a real, canvas-loadable .flw on disk.
-        # This is additive: the canvas ignores it.
-        flw_path = _write_flw_file(flow_result, flow_filename, config)
 
         # Emit the section AFTER the .flw exists so the KV header can carry its
         # path (Parametrizer + the chat LLM read this).
@@ -646,6 +509,8 @@ def main() -> None:
     finally:
         time.sleep(0.4)
         remove_pid_file()
+        if _FAILED:
+            raise SystemExit(1)
 
     # Exit code MUST reflect reality: the wrapped chat-agent runtime maps
     # exit 0 -> "completed", so exiting 0 after a failure would report a flow

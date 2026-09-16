@@ -213,3 +213,31 @@ Then run `python manage.py test agent.tests.ExecReportCaptureTests` — the set 
 - `agent/test_agent_verdict.py` — pins the parser, original rules, **rule ORDER**, provenance, totality, and both call sites
 - `agent/test_status_vocabulary.py` — repository-wide AST guard for every pool-agent status token, all five vocabularies, degraded/completed/unknown behavior, and the Kuberneter status shape
 - `agent/test_exec_report_verdict.py` — the row-level regression that a completed diagnostic renders green
+
+## Desktop control and flow contracts — 2026-09-15
+
+Mouser now resolves explicit physical, window and screenshot coordinates; Keyboarder binds Unicode/key delivery to a verified window; Shoter publishes capture geometry. `input_sent` is delivery evidence, not application success, and a failed or interrupted input segment must be observed before replay.
+
+Parametrizer derives its parser registry from current contracts and validates complete typed mappings. FlowCreator selects from all 89 installed agents and validates the generated graph before publishing; FlowHypervisor separates execution, kill and observation relationships and uses current desktop receipts/timing. GUI-Manager remains design only.
+
+See [configuration, examples and limitations](../desktop-input-and-flow-contracts.md), the [complete generated coverage inventory](../agent-coverage.md), and the [GUI-Manager design](../GUI-Manager-design.md).
+
+## PDFer catalog, styles and audit results — 2026-09-15
+
+`chat_agent_pdfer` retains the existing verdict vocabulary. `mode: styles` reports `status: inspected` and returns the 24-style catalog in the response body; it leaves PDF paths empty and page count zero. Present this as catalog discovery, not a created document.
+
+Atelier renders include `style` and `style_family` in `INI_SECTION_PDFER` alongside semantic `nuance`, palette, repairs and operation fields. These fields identify the chosen design; they are not a layout verdict. `style: auto`/`style_family: semantic` identifies the automatic theme path. An unknown explicit style produces a diagnostic and retains that path.
+
+A PDF can have `status: created` while its audit reports findings. Use the actual `layout_clean` value and diagnostic body, including overlap, off-sheet, blank-page and contrast findings. An empty audit field means no audit result was supplied. `repairs` names adjustments applied during layout, not an assurance that every issue was fixed. The existing **Crimson Parchment** Exec Report row gradient is UI styling, separate from document style IDs. [Full PDFer contract](../../Tlamatini/agent/agents/pdfer/STYLES.md).
+
+## LaTeXer catalogue and design metadata — 2026-09-15
+
+`chat_agent_latexer` still uses the existing deterministic verdict vocabulary. The new `list_styles` action reports `status: listed`, `success: true`, `style_count: 30` and `distribution: not_probed`: the catalogue was returned, with no PDF or compiler probe. Display that as a successful catalogue operation, not a successful compilation.
+
+`style`, `style_family`, `style_mode` and `style_count` are structured design metadata. They do not establish compilation or layout success. Continue using the agent's `status`/`success` and diagnostics; `compiled_with_errors` and degraded repairs must not be presented as clean builds. The existing **Scholar's Vellum** Exec Report row theme is separate from the 30 document styles and is not a `style` ID. The normal agent result does not gain a PDFer-style `layout_clean` field: rendered bounds checks belong to the developer verifier. [LaTeXer guide](../../Tlamatini/agent/agents/latexer/STYLES.md).
+
+## PPTXer layout evidence — 2026-09-15
+
+PPTXer continues to emit `INI_SECTION_PPTXER`. A `created_with_findings` result means the presentation was written but its audit found defects or measurement errors; retain that qualification in the Exec Report. A `created` status alone does not prove that the layout was audited: read `layout_clean`, `ground_truth`, `render_tier`, `slides_rendered`, and the report's confidence/skipped levels together.
+
+Native rendering and frame measurements are distinct from the geometric preview. Incomplete rendered coverage or native measurement errors prevent a clean native verification claim. Palette/style names and successful file creation are metadata, not visual evidence. The [PPTXer guide](../../Tlamatini/agent/agents/pptxer/STYLES.md) documents the 36 treatments and the dated test scope without changing the verdict vocabulary.

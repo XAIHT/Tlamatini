@@ -23,6 +23,11 @@
 #     validate         : full environment preflight report (no compile/upload)
 #     version          : esphome version
 #   Device config lifecycle:
+#     scaffold_template: COPY the bundled ESPHomeTemplateProject (two worked devices,
+#                        a shared common/base.yaml package, secrets.yaml.example and a
+#                        .gitignore) into `project_dir` ('' = <Templates>/ESPHomeTemplateProject).
+#                        Use this when you want the surrounding STRUCTURE to build on;
+#                        use new_config when you already know the one device you want.
 #     new_config       : GENERATE a minimal valid device YAML (headless wizard) from
 #                        name / platform / board / wifi_ssid / wifi_password / led_pin
 #     write_config     : write/overwrite a device YAML  (config_path, content)
@@ -68,6 +73,8 @@ preflight: true
 # ── Device config / build params ──────────────────────────────────────────
 config_path: ""        # path to the ESPHome device .yaml (e.g. "<Templates>/light/tlamatini-light.yaml")
 content: ""            # write_config: full device YAML contents
+project_dir: ""        # scaffold_template: destination folder for the bundled template
+                       #   project ('' = <Templates>/ESPHomeTemplateProject)
 
 # new_config (headless wizard) parameters:
 name: "tlamatini-light"  # ESPHome node name (lowercased to a-z0-9- automatically)
@@ -76,6 +83,13 @@ board: ""              # board id ('' = the platform default: esp32dev / d1_mini
 led_pin: ""            # GPIO for the generated light ('' = the platform default, e.g. GPIO2 on ESP32)
 wifi_ssid: ""          # WiFi SSID baked into the generated YAML ('' = a YOUR_WIFI_SSID placeholder)
 wifi_password: ""      # WiFi password ('' = a YOUR_WIFI_PASSWORD placeholder)
+use_secrets: false     # new_config: true = emit `!secret wifi_ssid` / `!secret wifi_password`
+                       #   and write the real values to a sibling secrets.yaml (ESPHome's own
+                       #   convention, so the device YAML stays safe to publish or paste).
+                       #   An EXISTING secrets.yaml is never overwritten. Defaults FALSE on
+                       #   purpose: `!secret` is a custom YAML tag, so a config using it can
+                       #   no longer be read by a plain yaml.safe_load. Turn it on when the
+                       #   device is headed for a git repository.
 
 command_timeout: 1200  # seconds for a single `esphome` run (the FIRST compile downloads
                        #   the platform + toolchain via PlatformIO — that build can be slow)

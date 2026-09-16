@@ -14,6 +14,11 @@ This document is the **authoritative reference** for how Tlamatini is versioned.
 
 ## TL;DR
 
+For releases that change agent templates or contracts, run `python scripts/update_flow_catalog.py --check`
+and the flow-knowledge regression suite before building. Regenerate the shipped catalog and
+`docs/agent-coverage.md` when needed. The desktop-input/flow integration update described in
+[the implementation guide](docs/desktop-input-and-flow-contracts.md) does not itself assign a version tag.
+
 1. **Standard**: [Semantic Versioning 2.0.0](https://semver.org/) — `MAJOR.MINOR.PATCH[-prerelease][+build]`.
 2. **Single source of truth**: a **git tag** of the form `v1.51.9`.
 3. **No code edits**: you never hand-edit a version string in source files. You tag, then build.
@@ -185,6 +190,8 @@ VERSIONINFO file  : C:\Development\Tlamatini\Tlamatini.version.txt
 The final artefact is **`dist/Tlamatini_Release_v1.51.9/`** — zip and distribute.
 
 ### Step 6 — Verify
+
+**LaTeXer style releases (added 2026-09-15):** include `latexer.py`, `latexer_styles.py`, `latexer_artwork.py` and `latexer_design.py` together in the template and copied runtime. Check `list_styles` in a copied pool with no TeX on PATH, then run the LaTeXer regression suite and `python scripts/verify_latexer_styles.py --matrix` on a development machine with pdfLaTeX, XeLaTeX, LuaLaTeX and the verifier dependencies. The matrix creates local gallery/report/atlas artifacts; it does not package a TeX distribution. Review failures before releasing, and do not reuse the 2026-09-15 validation snapshot as evidence for later code. The [style guide](Tlamatini/agent/agents/latexer/STYLES.md) describes checks and prerequisites. This feature note does not change the git-tag version contract.
 
 After install, the user (or you) should see:
 

@@ -1,0 +1,70 @@
+# Tlamatini ESPHome sample device #2 — a sensor node, the "grown-up" shape.
+#
+# Where tlamatini-light.yaml is deliberately SELF-CONTAINED (one file you can
+# copy anywhere), this one shows the structure a real multi-device project uses:
+#
+#   * `packages:`  pulls the shared logger/api/ota/wifi blocks out of
+#                  common/base.yaml, so adding a tenth device is three lines.
+#   * `!secret`    keeps credentials in secrets.yaml (gitignored) instead of
+#                  baked into a file you might publish.
+#
+# ⚠️ Because of those two, this file CANNOT be read by a plain `yaml.safe_load`
+# — `!include` and `!secret` are custom ESPHome tags. That is expected; ESPHome's
+# own loader understands them. Use `esphome config <file>` to see it resolved.
+#
+# EVERY SENSOR BELOW NEEDS NO EXTRA HARDWARE — they report on the board itself,
+# so this compiles and runs on a bare dev board straight out of the box. The
+# DHT block at the end is commented out; uncomment it when you wire a real
+# temperature/humidity sensor.
+
+esphome:
+  name: tlamatini-sensor
+  friendly_name: Tlamatini Sensor
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+packages:
+  base: !include common/base.yaml
+
+sensor:
+  # How long since the last reboot — the single most useful diagnostic on a
+  # device you cannot see. A number that keeps resetting means it is crashing.
+  - platform: uptime
+    name: "Uptime"
+
+  # WiFi signal strength in dBm. Roughly: > -60 excellent, -70 workable,
+  # < -80 expect dropouts. The first thing to check when a device is flaky.
+  - platform: wifi_signal
+    name: "WiFi Signal"
+    update_interval: 60s
+
+  # The ESP32's own die temperature. Not room temperature — it reads well above
+  # ambient because it is measuring the chip. Useful for spotting a device
+  # cooking inside a sealed enclosure.
+  - platform: internal_temperature
+    name: "Internal Temperature"
+
+  # ── Real temperature/humidity — uncomment when a DHT22 is wired to GPIO4 ──
+  # - platform: dht
+  #   pin: GPIO4
+  #   model: DHT22
+  #   temperature:
+  #     name: "Temperature"
+  #   humidity:
+  #     name: "Humidity"
+  #   update_interval: 60s
+
+text_sensor:
+  # Surfaces the IP address in the hub — which is exactly what you need to pass
+  # to ESPHomer as `port` for an over-the-air update.
+  - platform: wifi_info
+    ip_address:
+      name: "IP Address"
+
+binary_sensor:
+  # Shows up in the hub as a simple online/offline indicator.
+  - platform: status
+    name: "Status"

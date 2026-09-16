@@ -370,8 +370,8 @@ class ZavuererFileWiringTests(SimpleTestCase):
         self.assertIn('.exec-report-zavuerer .exec-report-cmd', page)
 
     def test_parametrizer_section_types(self):
-        para = self._read('agents', 'parametrizer', 'parametrizer.py')
-        self.assertIn("'zavuerer'", para)
+        from agent.agents.flowcreator.flow_knowledge import load_catalog
+        self.assertTrue(load_catalog()['zavuerer']["output_fields"])
 
     def test_config_yaml_defaults(self):
         cfg = yaml.safe_load(self._read('agents', 'zavuerer', 'config.yaml'))

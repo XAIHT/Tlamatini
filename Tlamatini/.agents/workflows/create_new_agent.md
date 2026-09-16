@@ -693,3 +693,9 @@ the updater preserve lists stay coherent, and new migrations reach users. Full r
        if PyInstaller can't see it). VERIFY both inclusion sweeps exit CLEAN:
        sweep_self_modify.py + sweep_self_update.py
 ```
+
+## Extending an existing agent: LaTeXer's style contract (2026-09-15)
+
+LaTeXer's 30-style collection is an extension of an existing agent, not 30 new agents or eight replacement templates. Its `list_styles` action discovers IDs without TeX; compilation still needs an installed engine. When extending an agent this way, update config inputs, the wrapped description, canvas argument mapping, structured output contract, promoted result fields and FlowCreator's reference together. Keep scalar types such as `style_cover: false` intact.
+
+LaTeXer's `latexer_styles.py`, `latexer_artwork.py` and `latexer_design.py` are flat siblings copied with the template. Test from a copied pool without an importable Django package, not only from the source tree. Preserve legacy defaults and existing complete source documents. The [LaTeXer style guide](../../agent/agents/latexer/STYLES.md) provides the catalogue, integration fields and reproducible checks.

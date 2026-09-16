@@ -71,6 +71,22 @@ _DISPLAY_OVERRIDES = {
 # Agents that may exist only once on the canvas — their node id has no cardinal.
 _SINGLETONS = {"flowcreator", "flowhypervisor"}
 
+_CATALOG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "flow_catalog.json")
+if not os.path.isfile(_CATALOG_PATH):
+    # The packaged flow-making skill lives outside the agent template directory.
+    from pathlib import Path
+    for _parent in Path(__file__).resolve().parents:
+        _candidate = _parent / "agents" / "flowcreator" / "flow_catalog.json"
+        if _candidate.is_file():
+            _CATALOG_PATH = str(_candidate)
+            break
+if os.path.isfile(_CATALOG_PATH):
+    with open(_CATALOG_PATH, encoding="utf-8") as _catalog_file:
+        _CATALOG = json.load(_catalog_file)["agents"]
+    _SINGLETONS = {name for name, spec in _CATALOG.items() if spec["singleton"]}
+else:
+    _CATALOG = {}  # compatibility for independently copied legacy converter scripts
+
 
 def _agent_type(text: str) -> str:
     """Normalize a node label to its canonical underscore agent type."""
@@ -83,6 +99,8 @@ def _agent_type(text: str) -> str:
 
 
 def _display_name(agent_type: str) -> str:
+    if agent_type in _CATALOG:
+        return _CATALOG[agent_type]["display_name"]
     if agent_type in _DISPLAY_OVERRIDES:
         return _DISPLAY_OVERRIDES[agent_type]
     # Hyphen-preserving Title-Case: monitor_log -> Monitor-Log

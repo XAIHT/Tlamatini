@@ -1475,7 +1475,9 @@ def _find_missing_required_config_paths(config, config_path, agent_script_path):
 # Multi-Turn LLM see e.g. ``output_path`` as a first-class field instead
 # of having to grep the log_excerpt for a saved-file path.
 _PROMOTE_SECTION_FIELDS_BY_TEMPLATE_DIR: dict = {
-    "shoter": ("output_path", "output_dir", "filename"),
+    "shoter": ("output_path", "output_dir", "filename", "all_screens", "coordinate_space",
+               "capture_left", "capture_top", "capture_width", "capture_height",
+               "image_width", "image_height", "captured_at", "monitors_json"),
     # PDFer: the LLM must be able to quote the exact file it just wrote back to the
     # user without re-parsing the INI_SECTION body, and `status` is what tells it a
     # fail-safe preflight REFUSED instead of a document being produced.
@@ -1544,6 +1546,13 @@ _PROMOTE_SECTION_FIELDS_BY_TEMPLATE_DIR: dict = {
     "mouser": (
         "movement_type", "end_posx", "end_posy",
         "button_click", "clicked", "located_via",
+        "action_status", "coordinate_space", "requested_posx", "requested_posy",
+        "desktop_left", "desktop_top", "desktop_width", "desktop_height",
+        "monitors_json", "window_handle",
+    ),
+    "keyboarder": (
+        "action_status", "characters_sent", "commands_sent", "commands_total",
+        "window_handle", "window_pid", "backend", "verification",
     ),
     "mcp_doctor": (
         "server_key", "servers_diagnosed", "active_servers", "summary",
@@ -2466,12 +2475,16 @@ _PRE_LAUNCH_PREVIEW_BY_TEMPLATE = {
     # --- desktop ui -----------------------------------------------------
     'keyboarder':     {'title': 'KEYBOARDER KEYSTROKES TO TYPE',
                        'body': ('input_sequence', 'key sequence'),
-                       'params': ('stride_delay',)},
+                       'params': ('stride_delay', 'typing_interval_ms', 'input_mode', 'text',
+                                  'window_title', 'window_handle', 'window_match_index')},
     'mouser':         {'title': 'MOUSER POINTER ACTION TO PERFORM',
                        'params': ('movement_type', 'actual_position',
                                   'ini_posx', 'ini_posy', 'end_posx', 'end_posy',
                                   'button_click', 'total_time',
-                                  'window_title', 'window_anchor',
+                                   'window_title', 'window_anchor',
+                                   'window_handle', 'window_match_index', 'window_area',
+                                   'coordinate_space', 'capture_left', 'capture_top',
+                                   'capture_width', 'capture_height', 'image_width', 'image_height',
                                   'locate_image_path', 'locate_confidence',
                                   'scroll_amount')},
     'windower':       {'title': 'WINDOWER WINDOW OPERATION TO PERFORM',
@@ -3165,6 +3178,17 @@ def _launch_wrapped_chat_agent(spec, request, *, auto_diagnose=True):
         )
     elif run.status == "completed":
         payload["message"] = f"{spec.display_name} completed in the isolated runtime copy."
+    elif run.status == "failed" and spec.template_dir in {"mouser", "keyboarder"}:
+        # A failed input run may already have clicked or typed a prefix. Replaying
+        # it as if it were a failed script can duplicate a non-idempotent action.
+        payload["message"] = (
+            f"{spec.display_name} stopped (exit_code={run.exitCode}). "
+            "Read action_status, input counters and log_excerpt. Input may have been partially "
+            "delivered. Observe the target window and its current state before constructing a "
+            "new action; do not automatically replay this input sequence."
+        )
+        payload["retryable"] = False
+        payload["needs_observation"] = True
     elif run.status == "failed":
         payload["message"] = (
             f"{spec.display_name} FAILED with a non-zero exit (exit_code={run.exitCode}). "

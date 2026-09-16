@@ -740,3 +740,9 @@ description: The authoritative, exhaustive end-to-end runbook for creating a BRA
 # Quick mental model (the one-paragraph version)
 
 531. A new Tlamatini agent is a **self-contained Python pool subprocess** (`agent/agents/<lower>/<lower>.py` + `config.yaml`) that the canvas can drag, wire, configure, start, and monitor; that the Multi-Turn LLM can launch as `chat_agent_<lower>`; that Parametrizer can read as a source; that FlowCreator can design into a `.flw`; that FlowHypervisor watches; that the watchdog/reaper keep clean; and that is surfaced in CSS (gradient), the connection views, a migration (Agent + Tool rows), demo prompts, docs, packaging, a hard Python test module, and a Playwright harness question. Decide the name and shape ONCE (Phase 0), then propagate the SAME identity across all ~30 surfaces without drift. When in doubt, copy the most recent fully-wired sibling (Camcorder / Recorder) verbatim and change only the identity tokens.
+
+## Extending an existing agent: LaTeXer's style contract (2026-09-15)
+
+LaTeXer's 30-style collection is an extension of an existing agent, not 30 new agents or eight replacement templates. Its `list_styles` action discovers IDs without TeX; compilation still needs an installed engine. When extending an agent this way, update config inputs, the wrapped description, canvas argument mapping, structured output contract, promoted result fields and FlowCreator's reference together. Keep scalar types such as `style_cover: false` intact.
+
+LaTeXer's `latexer_styles.py`, `latexer_artwork.py` and `latexer_design.py` are flat siblings copied with the template. Test from a copied pool without an importable Django package, not only from the source tree. Preserve legacy defaults and existing complete source documents. The [LaTeXer style guide](../../../Tlamatini/agent/agents/latexer/STYLES.md) provides the catalogue, integration fields and reproducible checks.

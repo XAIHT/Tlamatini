@@ -438,9 +438,8 @@ class DiscovererIntegrationTests(SimpleTestCase):
         self.assertEqual(display_name_from_agent_type("discoverer"), "Discoverer")
 
     def test_parametrizer_section_type(self):
-        path = os.path.join(os.path.dirname(__file__), "agents", "parametrizer", "parametrizer.py")
-        with open(path, encoding="utf-8") as f:
-            self.assertIn("'discoverer'", f.read())
+        from agent.agents.flowcreator.flow_knowledge import load_catalog
+        self.assertTrue(load_catalog()['discoverer']["output_fields"])
 
     def test_config_yaml_defaults(self):
         path = os.path.join(os.path.dirname(__file__), "agents", "discoverer", "config.yaml")

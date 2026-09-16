@@ -19,6 +19,12 @@ import time
 import yaml
 import logging
 import subprocess
+import math
+
+from keyboarder_input import (
+    bind_target, ensure_modifiers_released, send_character, send_keys,
+    validate_keys, verify_target,
+)
 # -- conhost.exe orphan guard ------------------------------------------
 # When Tlamatini's runtime launches us with DETACHED_PROCESS we have no
 # console attached. Any child we Popen WITHOUT CREATE_NO_WINDOW makes
@@ -45,9 +51,9 @@ if os.name == 'nt' and not getattr(subprocess, '_conhost_guard_applied', False):
 
 try:
     import pyautogui
-    pyautogui.FAILSAFE = False
+    pyautogui.FAILSAFE = True
 except ImportError:
-    pass
+    pyautogui = None
 
 # Set working directory to script location
 try:
@@ -323,6 +329,11 @@ def split_sequence(seq_str):
             i += 1
             continue
         if char == "'" and not in_double:
+            if not in_single and ''.join(current).strip():
+                # An apostrophe inside unquoted prose is literal, not an opener.
+                current.append(char)
+                i += 1
+                continue
             # SQL-style ``''`` doubling collapses to one literal apostrophe
             # WITHOUT toggling the quote state.
             if in_single and i + 1 < n and seq_str[i + 1] == "'":
@@ -341,6 +352,10 @@ def split_sequence(seq_str):
             i += 1
             continue
         if char == '"' and not in_single:
+            if not in_double and ''.join(current).strip():
+                current.append(char)
+                i += 1
+                continue
             if in_double and i + 1 < n and seq_str[i + 1] == '"':
                 current.append('"')
                 current.append('"')
@@ -361,6 +376,8 @@ def split_sequence(seq_str):
             continue
         current.append(char)
         i += 1
+    if in_single or in_double:
+        raise ValueError('Unterminated quoted literal in input_sequence')
     if current:
         raw_tokens.append("".join(current).strip())
 
@@ -462,63 +479,92 @@ def get_pyautogui_key(key):
         'windows': 'win',
         'window': 'win',
         'altgr': 'altright',
+        'return': 'enter', 'spacebar': 'space', 'del': 'delete',
+        'pgup': 'pageup', 'pgdn': 'pagedown', 'ins': 'insert',
     }
     return key_map.get(key, key)
+
+def execute_sequence(config, outcome):
+    """Preflight the whole sequence, pin the window, and stop on any failure."""
+    if pyautogui is None:
+        raise RuntimeError('PyAutoGUI is unavailable (required for the emergency stop)')
+    if os.name != 'nt':
+        raise RuntimeError('Verified Keyboarder input requires Windows')
+    mode = str(config.get('input_mode', 'sequence')).lower()
+    if mode == 'text':
+        commands = [('string', str(config.get('text', '')))]
+    elif mode == 'sequence':
+        commands = split_sequence(str(config.get('input_sequence', '')))
+    else:
+        raise ValueError('input_mode must be sequence or text')
+    if not commands or all(kind == 'string' and not value for kind, value in commands):
+        raise ValueError('No keyboard input was supplied')
+    normalized = []
+    for kind, value in commands:
+        if kind == 'keys':
+            value = [get_pyautogui_key(k) for k in value]
+            validate_keys(value)
+        else:
+            value.encode('utf-16-le')  # Refuse malformed Unicode before typing anything.
+            value = value.replace('\r\n', '\n')
+        normalized.append((kind, value))
+    delay = float(config.get('stride_delay', 50)) / 1000
+    interval = float(config.get('typing_interval_ms', 10)) / 1000
+    if not all(math.isfinite(v) and 0 <= v <= 60 for v in (delay, interval)):
+        raise ValueError('Input delays must be between 0 and 60000 milliseconds')
+    target = bind_target(config)
+    outcome.update(window_handle=target[0], window_pid=target[1],
+                   commands_total=len(normalized), backend='SendInput')
+
+    def guard():
+        pyautogui.failSafeCheck()
+        verify_target(target)
+
+    for kind, value in normalized:
+        guard()
+        ensure_modifiers_released()
+        if kind == 'string':
+            for char in value:
+                send_character(char, guard)
+                outcome['characters_sent'] += 1
+                if interval:
+                    time.sleep(interval)
+        else:
+            send_keys(value, guard)
+        outcome['commands_sent'] += 1
+        if delay:
+            time.sleep(delay)
+    outcome['status'] = 'input_sent'
+
 
 def main():
     config = load_config()
     write_pid_file()
-    
-    if _IS_REANIMATED:
-        logging.info(f"🔄 {CURRENT_DIR_NAME} REANIMATED (resuming from pause)")
-        logging.info("=" * 60)
-
+    logging.info('KEYBOARDER AGENT %s', 'REANIMATED' if _IS_REANIMATED else 'STARTED')
+    outcome = {'status': 'error', 'characters_sent': 0, 'commands_sent': 0,
+               'verification': 'input_delivery_only'}
+    exit_code = 0
     try:
-        target_agents = config.get('target_agents', [])
-        input_sequence = config.get('input_sequence', "")
-        stride_delay = config.get('stride_delay', 50)
-        
-        logging.info("⌨️ KEYBOARDER AGENT STARTED")
-        logging.info(f"⚡ Input Sequence: {input_sequence}")
-        
-        if 'pyautogui' not in sys.modules:
-            logging.error("❌ pyautogui module not found. Please 'pip install pyautogui'")
-        else:
-            parsed_cmds = split_sequence(input_sequence)
-            delay_sec = stride_delay / 1000.0
-            for type_val, value in parsed_cmds:
-                if type_val == 'string':
-                    logging.info(f"   Typing literal string: '{value}'")
-                    pyautogui.write(value, interval=0.01)
-                elif type_val == 'keys':
-                    norm_keys = [get_pyautogui_key(k) for k in value]
-                    logging.info(f"   Executing keys: {norm_keys}")
-                    try:
-                        if len(norm_keys) == 1:
-                            pyautogui.press(norm_keys[0])
-                        else:
-                            pyautogui.hotkey(*norm_keys)
-                    except Exception as e:
-                        logging.error(f"❌ Error pressing keys {norm_keys}: {e}")
-                time.sleep(delay_sec)
-                
-            logging.info("✅ Key Sequence completed.")
-        
-        # Trigger downstream agents
-        total_triggered = 0
-        if target_agents:
-            wait_for_agents_to_stop(target_agents)
-            logging.info(f"🚀 Triggering {len(target_agents)} downstream agents...")
-            for target in target_agents:
-                if start_agent(target):
-                    total_triggered += 1
-
-        logging.info(f"🏁 Keyboarder agent finished. Triggered {total_triggered}/{len(target_agents)} agents.")
+        try:
+            execute_sequence(config, outcome)
+            body = 'Input inserted for the bound window; application content has not been verified.'
+        except Exception as exc:
+            exit_code = 1
+            body = str(exc).replace('\n', ' ')
+            logging.error('Keyboarder stopped: %s', body)
+        outcome['action_status'] = outcome['status']
+        header = '\n'.join(f'{key}: {value}' for key, value in outcome.items())
+        logging.info('INI_SECTION_KEYBOARDER<<<\n' + header + '\n\n' + body +
+                     '\n>>>END_SECTION_KEYBOARDER')
+        targets = config.get('target_agents', []) or []
+        if targets:
+            wait_for_agents_to_stop(targets)
+            for target in targets:
+                start_agent(target)
     finally:
         time.sleep(0.4)
         remove_pid_file()
-
-    sys.exit(0)
+    sys.exit(exit_code)
 
 if __name__ == "__main__":
     main()

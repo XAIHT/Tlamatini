@@ -2,6 +2,18 @@
 
 # Default configuration parameters
 stride_delay: 100
+typing_interval_ms: 10
+
+# Pin one window for the entire sequence; stop if foreground ownership changes.
+# With neither title nor handle, bind the foreground window at the start.
+window_title: ""
+window_handle: 0
+window_match_index: -1
+
+# sequence = legacy comma/chord grammar; text = literal Unicode without parsing.
+# Windows SendInput preserves accents, non-Latin text, and surrogate-pair emoji.
+input_mode: "sequence"
+text: ""
 
 # String and key sequences, described as normal strings.
 # Special keys should be typed normally, sequence separated by commas.

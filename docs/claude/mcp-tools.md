@@ -180,3 +180,21 @@ Implemented via `_disabled_skill_names()` in `agent/acpx/tools.py` — fails ope
 | `agent/static/agent/js/agent_page_state.js` | `let skills = []` global |
 | `agent/static/agent/css/skills_dialog.css` | Styling |
 | `agent/tests.py` (`SkillsAdminEndpointTests`, `SkillsToolSurfaceGatingTests`, `SkillsNavbarTemplateContractTests`) | 14 regression tests |
+
+## Desktop control and flow contracts — 2026-09-15
+
+Mouser now resolves explicit physical, window and screenshot coordinates; Keyboarder binds Unicode/key delivery to a verified window; Shoter publishes capture geometry. `input_sent` is delivery evidence, not application success, and a failed or interrupted input segment must be observed before replay.
+
+Parametrizer derives its parser registry from current contracts and validates complete typed mappings. FlowCreator selects from all 89 installed agents and validates the generated graph before publishing; FlowHypervisor separates execution, kill and observation relationships and uses current desktop receipts/timing. GUI-Manager remains design only.
+
+See [configuration, examples and limitations](../desktop-input-and-flow-contracts.md), the [complete generated coverage inventory](../agent-coverage.md), and the [GUI-Manager design](../GUI-Manager-design.md).
+
+## Native LaTeXer styles — 2026-09-15
+
+The 30-style LaTeXer extension belongs to the existing native workflow agent and wrapped `chat_agent_latexer` tool. The root stdio connector discovers it as `latexer` from the same template. Do not add an external MCP catalogue entry or server to expose styles. `list_styles` is a new action, not a new tool or agent; it returns the catalogue without TeX. Compilation continues through installed engines.
+
+When changing this surface, keep `config.yaml`, the wrapped description, frontend config mapping, structured contract and promoted result keys aligned. The added result fields are `style`, `style_family`, `style_mode`, `style_count`. Keep all three design helper modules beside `latexer.py` in copied pools. [Parameters and examples](../../Tlamatini/agent/agents/latexer/STYLES.md); [connector usage](../../TLAMATINI_MCP.md#latexer-discover-and-apply-styles).
+
+## PPTXer visual presets through existing tools — 2026-09-15
+
+PPTXer uses its existing wrapped `chat_agent_pptxer` and configuration-derived external `pptxer` tool. Set `nuance` to one of the 12 added styles; 36 named treatments are available overall, with 17 font pairings. Empty `nuance` retains automatic content classification. Preserve the existing action/configuration schema and output fields when binding tools. `created_with_findings`, `layout_clean`, `ground_truth`, and audit confidence determine how to describe a generated deck. [Usage and verification](../../Tlamatini/agent/agents/pptxer/STYLES.md); [external connector example](../../TLAMATINI_MCP.md#pptxer-create-and-verify-styled-slides).

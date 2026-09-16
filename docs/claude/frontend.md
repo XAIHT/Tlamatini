@@ -107,3 +107,23 @@ Two browser surfaces produce flows; both compile through the **same** backend Ag
 2. **Chat Create-Flow → `/agent/flow_from_tool_calls/`** — The button appears whenever Multi-Turn ran with **≥1 successfully-executed agent** (no whole-answer classifier — removed 2026-07-06). When it fires, `_normalizeChatFlowBeforeDownload()` in `agent_page_chat.js` POSTs the draft (built from **only the successfully-executed** entries of `tool_calls_log`) to the backend, which runs it through `normalize_flow_payload()` → `flow_spec_to_legacy_json(redact=True)` and returns a `.flw` JSON whose secrets are redacted and whose canonical agent / pool names match the registry. The browser then downloads that normalized blob (with a graceful fallback to the legacy un-normalized draft if the backend is unreachable, so an offline frozen install still produces a usable `.flw`).
 
 Both surfaces share `agent/services/flow_spec.py` (the in-memory `FlowSpec` representation), `agent/services/agent_contracts.py` (per-agent connection-field shape and `parametrizer_fields`), and `agent/services/flow_compiler.py` (the compile + write pipeline). The `_parametrizer_mappings` array on a Parametrizer node's config and the `artifacts.parametrizerMappings` object on the snapshot are **two valid persistence shapes for the same data** — `getSavedParametrizerMappings()` in `acp-file-io.js` accepts either when a `.flw` is loaded, so older files keep working.
+
+## Desktop control and flow contracts — 2026-09-15
+
+`canvas_item_dialog.js` now exposes Mouser's `inspect` mode and enables coordinate/click fields according to all eight movement modes, including drag and image/window clicks. Fractional coordinates are accepted for normalized spaces. Deployment refreshes the local helper files required by the updated agent scripts.
+
+Mouser now resolves explicit physical, window and screenshot coordinates; Keyboarder binds Unicode/key delivery to a verified window; Shoter publishes capture geometry. `input_sent` is delivery evidence, not application success, and a failed or interrupted input segment must be observed before replay.
+
+Parametrizer derives its parser registry from current contracts and validates complete typed mappings. FlowCreator selects from all 89 installed agents and validates the generated graph before publishing; FlowHypervisor separates execution, kill and observation relationships and uses current desktop receipts/timing. GUI-Manager remains design only.
+
+See [configuration, examples and limitations](../desktop-input-and-flow-contracts.md), the [complete generated coverage inventory](../agent-coverage.md), and the [GUI-Manager design](../GUI-Manager-design.md).
+
+## LaTeXer settings in Create Flow — 2026-09-15
+
+`agent_page_chat.js::_mapToolArgsToAgentConfig` preserves LaTeXer's six design settings: `style`, `subtitle`, `style_mode`, `style_decoration`, `style_cover` and `predominant_color`. Keep `style_cover` as a boolean, including an explicit false; do not drop it as an empty value. These settings belong in the generated agent config along with `template` and the existing source/base64 channels. The visual style is independent of the document structure.
+
+Use `action: list_styles` for the current 30-style catalogue, and preserve canonical design fields in results without treating them as build success. No separate canvas agent type or additional frontend style catalogue is needed. [Supported controls and routes](../../Tlamatini/agent/agents/latexer/STYLES.md).
+
+## PPTXer style configuration — 2026-09-15
+
+PPTXer's 12 added visual styles use the existing `nuance` setting; 36 named treatments and 17 font pairings are available. Preserve an explicit `nuance` such as `blueprint` through chat-to-flow configuration and retain empty `nuance` for automatic classification. Existing color, background, font, and density controls still apply. Surface `created_with_findings` and the layout/native-evidence fields honestly when presenting results. See [style keys, output semantics, and test scope](../../Tlamatini/agent/agents/pptxer/STYLES.md).

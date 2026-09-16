@@ -1,6 +1,6 @@
 ---
 name: project-latexer-agent
-description: "LaTeXer (#87) — LaTeX typesetting agent embedding mcp-latex-server natively; needs MiKTeX; latexmk-needs-Perl trap."
+description: "LaTeXer (#87) — native typesetting, 30 optional styles, engine-free catalogue, MiKTeX-backed compilation and portable pool helpers."
 metadata: 
   node_type: memory
   type: project
@@ -17,11 +17,11 @@ FastMCP/pydantic/uv, no stdio child, no catalog entry. Stdlib-only pool script
 (`subprocess`+`shutil`+`glob`+`re`+`urllib`), **zero new dependencies**, so the <2 GB
 release budget is untouched and both inclusion sweeps were CLEAN with no manual work.
 
-**THE ONE PREREQUISITE IS MiKTeX** (https://miktex.org/download). Tlamatini bundles no TeX
+**PDF COMPILATION NEEDS A TeX distribution; MiKTeX is recommended** (https://miktex.org/download). Tlamatini bundles no TeX
 distribution (several GB). MiKTeX specifically, because `--enable-installer`
 (`auto_install_packages`, default true) makes it **install a missing `.sty` on demand
 mid-compile** — that is what makes LaTeXer work out of the box. TeX Live/MacTeX are used
-if present but cannot self-heal. No LaTeX → `status: refused` naming MiKTeX;
+if present but cannot self-heal. No LaTeX → compilation returns `status: refused` naming MiKTeX;
 `action: install` fetches the official installer (Nmapper's "use, not redistribution").
 
 ## Three real bugs found by testing it live — do NOT reintroduce
@@ -59,7 +59,15 @@ Spanish babel): master auto-detected, 3 passes, 0 errors, 2 pages. One-call frag
 PDF. `scaffold_compile` beamer → 2-page deck. **96/96 agent tests**, 209 cross-cutting
 tests OK, ruff+eslint clean, both inclusion sweeps CLEAN.
 
-**Not committed / not pushed. The FROZEN `C:\Tlamatini` install needs `python build.py`
-+ reinstall; the source instance needs a restart for `mcp__tlamatini__latexer` to appear.**
+**Historical deployment note from 2026-08-05 (not current git state):** the FROZEN `C:\Tlamatini` install needs `python build.py`
++ reinstall; the source instance needs a restart for `mcp__tlamatini__latexer` to appear.
 Catalog prompts 114-117 (`documents`, ranks 60-90). Migrations 0191/0192/0193.
 Agent count 86 → 87.
+
+## Current style system — 2026-09-15
+
+30 explicit identities in six families (editorial, playful, cyberpunk, cosmic, electronics, Tlamatini), independent of the eight templates. `list_styles` returns JSON in `response_body`, `listed`, `success: true`, `style_count: 30`, `distribution: not_probed` without probing an engine. Empty/none/plain/default preserves legacy output. Styles apply to generated sources and auto-preamble fragments; complete sources/projects refuse an explicit style.
+
+Controls: `style`, `subtitle`, `style_mode: screen|print`, `style_decoration: none|restrained|rich`, `style_cover: true`, six-digit `predominant_color`. The three sibling helpers `latexer_styles.py`, `latexer_artwork.py`, `latexer_design.py` must travel with `latexer.py`; they use stdlib-only Python and generate original TikZ/Latin Modern source. Beamer has a separate renderer. Metadata remains LaTeX; prefer base64 source channels for complex bodies. Results add `style`, `style_family`, `style_mode`, `style_count` (21 contract fields including body), wired through chat, canvas and Parametrizer.
+
+Verification on this date: 483 automated tests; 132 fresh real builds across three engines, print variants, all eight template cases and stress cases; 60 atlas pages rendered and reviewed. Normal agent runs do not perform the developer verifier's PDF geometry checks. Source implementation is committed at `14647ab`; frozen deployment must still be checked separately. [Canonical guide](../../Tlamatini/agent/agents/latexer/STYLES.md).

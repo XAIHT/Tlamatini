@@ -905,7 +905,7 @@ TYPICAL TIMING:
   - Whisperer: speech-to-text — records the mic, then runs the neural recognizer. ⚠️ SINCE 2026-09-11 THE RECORDING LENGTH IS NOT FIXED: with `record_seconds: 0` (the DEFAULT) a SOUND GATE keeps recording while somebody is talking and stops only after `silence_timeout_seconds` (default 10 s) of silence, bounded by `max_record_seconds` (default 300 s). A Whisperer waiting for a person to speak is SILENT AND HEALTHY for up to that ceiling — do NOT flag it. Only a non-zero `record_seconds` means a fixed-length clip. The FIRST run can additionally take a few MINUTES while it downloads model weights, and CPU transcription can be slow. It is observational/read-only in the canvas; the wrapped Multi-Turn tool is captured in Exec Report. Flag only when it is silent well beyond `max_record_seconds` + transcription time with no completion. A `status: engine_unavailable` block is routable content, NOT a flow crash, while its wrapped row truthfully reports that the requested work did not happen. See WHISPERER SPECIAL NOTES.
   - Image-Interpreter: THREE LLM calls per image — two parallel vision interpretations (CONNECTION-A / CONNECTION-B, each on its own Ollama connection) + one merge (CONNECTION-MERGE) after the barrier; tens of seconds to a few minutes PER IMAGE with cloud models, multiplied by the number of matched images. Don't flag while the 🔀 interpreter / 🧱 barrier / 🔗 merge log lines keep appearing; flag only if silent > 5 min per image with no "Image-Interpreter agent finished" completion. See IMAGE_INTERPRETER SPECIAL NOTES.
   - Video-Analyzer: a DETERMINISTIC OpenCV motion gate (sub-second) then, if motion is present, THREE cloud LLM calls — two parallel vision interpretations (CONNECTION-A / CONNECTION-B) + one merge (CONNECTION-MERGE) over ~8-12 frames; tens of seconds to a few minutes total. A no-motion clip short-circuits to FAIL_NO_MOTION in seconds with no model call. Don't flag while the 🔀 interpreter / 🧱 barrier / 🔗 merge lines keep appearing; flag only if silent > 5 min with no "Video-Analyzer agent finished" completion. See VIDEO_ANALYZER SPECIAL NOTES.
-  - Keyboarder/Mouser/Windower/Shoter: < 5 seconds per invocation (desktop UI primitives). Windower
+  - Keyboarder/Mouser: duration depends on text/key count and configured pacing, or Mouser total_time in random mode. Use current contract facts, not a fixed five-second cutoff. Shoter/Windower are generally short operations. Windower
     `matched: false` / `state: no_match` is NOT a flow error — it is routable content (the window was not
     open yet); only flag `state: win32_unavailable` (a real platform/environment problem) or a Windower
     that never exits.
@@ -967,7 +967,7 @@ STRUCTURED OUTPUT SECTION markers (NORMAL — agents emitting data for Parametri
   These appear in source agent logs (Apirer, Crawler, Googler, Summarizer, Prompter,
   FlowCreator, File-Interpreter, Image-Interpreter, File-Extractor, Gitter, Kuberneter,
   Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Gatewayer, Gateway-Relayer, ACPXer,
-  Shoter, Camcorder, Recorder, Talker, Mouser, Windower, Playwrighter, De-Compresser, Unrealer, Blenderer,
+  Shoter, Camcorder, Recorder, Talker, Mouser, Keyboarder, Windower, Playwrighter, De-Compresser, Unrealer, Blenderer,
   Reviewer, Analyzer, Kalier, STM32er, ESP32er, ESPHomer, Arduiner, Editor, Grepper, Globber).
   They are NOT errors — they are structured data blocks consumed by Parametrizer.
   A single agent log may contain many such sections (one per result/response).
@@ -1118,3 +1118,9 @@ EXAMPLES:
   ATTENTION NEEDED { raiser_1 logged "Failed to start agent 'emailer_1'" — downstream chain is broken. }
 
   ATTENTION NEEDED { ender_1 started 45s ago but no TERMINATION COMPLETE was logged — Ender appears stuck. }
+
+
+CURRENT DESKTOP AND GRAPH CONTRACT (2026-09-15; overrides older heuristics)
+The execution matrix uses current installed contract slots, including Counter L/G and Parametrizer's singular target. Ender target_agents are kill targets, not launches. Source log/data dependencies and passive output links do not imply downstream starts. Agent absence from the process list is not proof of success.
+Mouser/Keyboarder action_status=input_sent means input delivery only; observed means inspection. error may follow partial changes and requires fresh observation before retry. Keyboarder counts describe delivered characters/commands, not saved document content. Shoter coordinate_space=unknown makes screenshot coordinates unusable. Do not infer UI success or recommend automatic input replay from process exit or downstream activity.
+Current configs are reloaded each cycle; use total_time and keyboard pacing rather than a universal five-second timeout. Latest desktop receipts are retained through bounded current-log tail reads even when incremental output is empty. This watchdog remains advisory and does not implement GUI-Manager or UI Automation verification.

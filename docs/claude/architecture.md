@@ -484,3 +484,35 @@ Key models:
 - `SkillInvocation` - Append-only audit row for each `SkillHarness.invoke()` call
 - `ChatHistory` - Chat message history
 - Plus session, context, and configuration models
+
+## Desktop control and flow contracts — 2026-09-15
+
+Mouser now resolves explicit physical, window and screenshot coordinates; Keyboarder binds Unicode/key delivery to a verified window; Shoter publishes capture geometry. `input_sent` is delivery evidence, not application success, and a failed or interrupted input segment must be observed before replay.
+
+Parametrizer derives its parser registry from current contracts and validates complete typed mappings. FlowCreator selects from all 89 installed agents and validates the generated graph before publishing; FlowHypervisor separates execution, kill and observation relationships and uses current desktop receipts/timing. GUI-Manager remains design only.
+
+See [configuration, examples and limitations](../desktop-input-and-flow-contracts.md), the [complete generated coverage inventory](../agent-coverage.md), and the [GUI-Manager design](../GUI-Manager-design.md).
+
+## PDFer design pipeline — 2026-09-15
+
+PDFer remains a standalone pool agent. Its twelve flat helper siblings include `pdfer_styles.py` (24 explicit identities, normalized aliases, palette/type defaults) and `pdfer_artwork.py` (original ReportLab vector art). `pdfer_nuance.py` still classifies 20 content treatments; `pdfer_theme.py` resolves the semantic theme, optional visual style, seed color and overrides before final palette validation. `pdfer_atelier.py` measures and renders the document, and `pdfer_audit.py` reopens the finished PDF when `layout_audit` is enabled.
+
+Style selection does not reclassify content or increase its decoration budget. Cover art is deterministic and clipped away from opaque cover text. Title/subtitle continuation, measured footer fitting, small-text contrast and a table-width rounding allowance address specific rendering failures. Existing raster ornament seeds use SHA-256, with all palette roles and raster scale in cache keys. Host fonts remain local and may differ between machines.
+
+`mode: styles` returns a catalog with `status: inspected`, without writing a PDF. The integration contract spans the template config, `chat_agent_registry.py`, `pdfer.py`'s `INI_SECTION_PDFER`, `services/agent_contracts.py`, and FlowCreator's PDFer reference. `style` and `style_family` join existing operation/design fields. Copy the complete template directory to pools; no Django imports or new runtime packages are required for the style extension.
+
+Signature styling belongs to atelier composition. Custom CSS with `engine: auto` selects legacy xhtml2pdf; image-only pages and existing merged PDFs retain their layouts. The [style guide](../../Tlamatini/agent/agents/pdfer/STYLES.md) documents the full catalog, output semantics and validation commands. Generated gallery PDFs/PNGs, reports and atlas are ignored, reproducible development outputs.
+
+## LaTeXer design pipeline — 2026-09-15
+
+The native LaTeXer template now carries three flat sibling modules: `latexer_styles.py` owns the 30-style catalogue, aliases and contrast-corrected palette; `latexer_artwork.py` emits original deterministic TikZ geometry; `latexer_design.py` emits document and separate Beamer layouts. `latexer.py` integrates them with existing authoring, preflight and compilation. Copy the entire template directory to a pool; importing these siblings must work without a Django package context.
+
+Style resolution is explicit and opt-in. Empty styles keep legacy rendering. Generated scaffolds and bare fragments may use a style; complete input documents/projects retain their own preamble and reject an explicit style. `list_styles` bypasses toolchain resolution, so discovery works on a machine without TeX. PDF generation still uses installed engines and the existing convergence/repair pipeline.
+
+The end-to-end contract spans `config.yaml` and `chat_agent_registry.py` (inputs), `agent_page_chat.js` (canvas argument mapping), `services/agent_contracts.py` (21 output fields including the body), and `tools.py` (promotion of `style`, `style_family`, `style_mode`, `style_count`). Screen/print palettes, vector cover art and content stay deterministic without model calls. [Design guide and verification](../../Tlamatini/agent/agents/latexer/STYLES.md).
+
+## PPTXer composition and verification — 2026-09-15
+
+PPTXer's flat sibling modules form a deterministic pipeline: document model → `nuance` selection → theme/font resolution → measured trial composition and pagination → atomic PPTX save → render → audit. Keep these modules beside `pptxer.py` in isolated pool copies. The 36 named treatments comprise 24 original automatic content treatments and 12 explicit visual styles; the font catalogue has 17 pairings. Explicit colors, background, fonts, and density override preset defaults.
+
+Font measurement includes face variants, tracking, line spacing, insets, and 1152-dpi width sampling. Dense content continues across slides. Audit the saved shape tree, grouped text/table cells, native glyph bounds, and sampled rendered contrast. Report measurement errors and skipped checks; the approximate preview has separate confidence from native PowerPoint. The bounded Office worker may clean up only attributable child Office processes; atomic saves preserve previous output on failure. [Canonical contracts, evidence, and reproduction](../../Tlamatini/agent/agents/pptxer/STYLES.md).

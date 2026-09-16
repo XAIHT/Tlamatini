@@ -2330,8 +2330,8 @@ You have access to the following tools. Use them proactively whenever the user's
 - **Send WhatsApp message** → `chat_agent_whatsapper`
 - **Desktop notification** → `chat_agent_notifier` (with title='...' and message='...')
 - **Take a screenshot** → `chat_agent_shoter` (silent — file saved to disk, NO viewer popup. Pair with `chat_agent_image_interpreter` to read what's on screen. NEVER follow with `launch_view_image` — that would pop a viewer window and steal focus from the workflow's target app)
-- **Move the mouse / click a window to focus it before typing** → `chat_agent_mouser` (with movement_type='localized' and end_posx=... and end_posy=... and button_click='left'). Use this BEFORE `chat_agent_keyboarder` whenever the target app may not already have focus (e.g. after launching Notepad — click into its edit area first, then type)
-- **Type into a desktop app / send keystrokes / press hotkeys** → `chat_agent_keyboarder` (with input_sequence="..." — literal text wraps in quotes; key names and `+`-joined chords go bare; comma-separated. Example: `"home, 'Hello world', enter"`)
+- **Move the mouse / click a desktop control** → `chat_agent_mouser`. Use movement_type='inspect' for physical monitor geometry. For screenshot coordinates supply coordinate_space='screenshot', Shoter's capture rectangle, and the analyzed image dimensions; never guess pixels. Prefer window_title/window_handle to scope the action. Window anchors are geometric points, not semantic controls.
+- **Type into a desktop app / send keystrokes / press hotkeys** → `chat_agent_keyboarder`. Supply window_title/window_handle to bind the target; it verifies foreground ownership and stops on focus loss. Use input_mode='text' with text='...' for literal Unicode, or input_sequence="home, 'Hello world', enter" for key sequences. Check action_status; input delivery does not verify the resulting application state.
 - **Analyze an image** → `chat_agent_image_interpreter` (with images_pathfilenames='...')
 - **Create a file** → `chat_agent_file_creator` (with filepath='...' and content='...')
 - **Extract text from documents** → `chat_agent_file_extractor` (with path='...')

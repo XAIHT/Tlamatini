@@ -107,6 +107,10 @@ DIAGNOSTIC_COMPLETED_STATUSES = frozenset({
     "validated", "valid", "invalid",
     # analysers / inspectors
     "analyzed", "analysed", "analysis", "structure", "inspected", "triaged",
+    # Mouser's ``movement_type: inspect``: it reports cursor position and
+    # monitor geometry and deliberately sends NO input at all.  A read-only
+    # look that ran to completion -- the reading IS the deliverable.
+    "observed",
     # searches and listings
     "listed", "read", "matches", "no_matches", "found", "not_matched",
     # scanners
@@ -134,6 +138,13 @@ WORK_COMPLETED_STATUSES = frozenset({
     "installed", "cleaned", "saved", "merged",
     # transport / delivery
     "sent", "delivered", "forwarded", "accepted", "duplicate",
+    # Mouser / Keyboarder: the clicks or keystrokes WERE delivered to the
+    # window they were bound to.  That delivery is the whole deliverable, so
+    # it is green -- but it is DELIVERY EVIDENCE ONLY, never proof that the
+    # application accepted, saved or acted on the input.  Both agents say so
+    # themselves; confirming the app's reaction is a separate observation
+    # (Shoter + Image-Interpreter), not a claim this status ever makes.
+    "input_sent",
     # media capture + output
     "spoken", "played", "recorded", "captured", "transcribed",
     # liveness / lifecycle probes

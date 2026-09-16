@@ -111,6 +111,7 @@ _NOT_THIRD_PARTY = {
     # can't import agent.*, so the flow_result.json -> .flw converter ships next
     # to flowcreator.py). Not a pip package — do not require it in requirements.txt.
     "result_to_flw",
+    "flow_knowledge", "mouser_coordinates", "keyboarder_input",
 }
 
 
@@ -137,6 +138,15 @@ def _agent_third_party_imports() -> dict:
                     mods.add(node.module.split(".")[0])
         for m in mods:
             if m in std or m in _NOT_THIRD_PARTY:
+                continue
+            # FLAT SIBLING -- DERIVED, never hand-listed. A pool agent cannot
+            # import agent.*, so its helpers ship as plain modules BESIDE it and
+            # are imported bare (`import pdfer_styles`). A file of that name in
+            # the SAME directory is local source that travels with the pool copy
+            # -- never a PyPI package. Deriving it keeps this guard correct the
+            # moment a new sibling lands; the hand-maintained set above had gone
+            # stale for every pdfer_* / pptxer_* / latexer_* helper at once.
+            if (py.parent / f"{m}.py").is_file():
                 continue
             found.setdefault(m, []).append(py.name)
     return found

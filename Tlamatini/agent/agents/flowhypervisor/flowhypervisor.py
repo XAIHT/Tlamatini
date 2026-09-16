@@ -27,6 +27,21 @@ import urllib.error
 import psutil
 from typing import Dict, List
 
+# Runtime deployment copies a fresh catalog and this standalone helper locally.
+try:
+    from flow_knowledge import load_catalog
+except ModuleNotFoundError:
+    from pathlib import Path
+    candidates = [Path(os.environ.get('TLAMATINI_AGENTS_ROOT', '.')) / 'flowcreator']
+    candidates.extend(parent / 'flowcreator' for parent in Path(__file__).resolve().parents)
+    helper_dir = next((path for path in candidates if (path / 'flow_knowledge.py').is_file()), None)
+    if helper_dir is None:
+        raise RuntimeError('Missing installed flow knowledge helper; redeploy this agent')
+    sys.path.insert(0, str(helper_dir))
+    from flow_knowledge import load_catalog
+
+from flow_knowledge import execution_matrix, monitoring_contract_context, desktop_outcomes
+
 # Set working directory to script location
 try:
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -143,6 +158,10 @@ def discover_agents(pool_path: str) -> List[str]:
         base_type = get_agent_base_type(item)
         if base_type.lower() in EXCLUDED_AGENT_TYPES:
             continue
+        if not os.path.isfile(os.path.join(item_path, 'config.yaml')):
+            continue
+        if not os.path.isfile(os.path.join(item_path, base_type + '.py')):
+            continue
         agents.append(item)
 
     return agents
@@ -161,6 +180,9 @@ def load_all_configs(pool_path: str, agents: List[str]) -> Dict[str, Dict]:
             try:
                 with open(config_path, "r", encoding="utf-8") as f:
                     configs[agent_name] = yaml.safe_load(f) or {}
+                if not isinstance(configs[agent_name], dict):
+                    logging.warning("Invalid config mapping for %s", agent_name)
+                    configs[agent_name] = {}
             except Exception as e:
                 logging.warning(f"⚠️ Could not load config for {agent_name}: {e}")
                 configs[agent_name] = {}
@@ -174,41 +196,8 @@ def load_all_configs(pool_path: str, agents: List[str]) -> Dict[str, Dict]:
 # ============================================================
 
 def build_connection_matrix(agents: List[str], configs: Dict[str, Dict]) -> List[List[int]]:
-    """Build an NxN connection matrix. matrix[row][col] = 1 means agent[row] outputs to agent[col].
-    Rows represent agent outputs; columns represent agent inputs.
-    """
-    n = len(agents)
-    matrix = [[0] * n for _ in range(n)]
-    agent_index = {name: i for i, name in enumerate(agents)}
-
-    for agent_name, config in configs.items():
-        row = agent_index.get(agent_name)
-        if row is None:
-            continue
-
-        # Collect all outgoing connections from this agent's config
-        targets = set()
-
-        # target_agents — most agents
-        for t in config.get('target_agents', []):
-            targets.add(t)
-
-        # output_agents — Ender, Stopper, Cleaner
-        for t in config.get('output_agents', []):
-            targets.add(t)
-
-        # target_agents_a / target_agents_b — Asker, Forker
-        for t in config.get('target_agents_a', []):
-            targets.add(t)
-        for t in config.get('target_agents_b', []):
-            targets.add(t)
-
-        for target_name in targets:
-            col = agent_index.get(target_name)
-            if col is not None:
-                matrix[row][col] = 1
-
-    return matrix
+    """Execution relationships; kill lists and passive observation links are separate."""
+    return execution_matrix(agents, configs, load_catalog())
 
 
 def format_matrix(agents: List[str], matrix: List[List[int]]) -> str:
@@ -469,7 +458,8 @@ def build_monitoring_context(
     per_agent_info: Dict[str, str],
     flow_start_time: float = 0.0,
     agent_first_seen: Dict[str, float] = None,
-    last_alert_explanation: str = ""
+    last_alert_explanation: str = "",
+    configs: Dict[str, Dict] = None
 ) -> str:
     """Build the full context string to send to the LLM."""
     sections = []
@@ -507,8 +497,11 @@ def build_monitoring_context(
 
     # 2. Connection matrix
     sections.append("")
-    sections.append("CONNECTION MATRIX:")
+    sections.append("EXECUTION CONNECTION MATRIX (not kill/observation relationships):")
     sections.append(format_matrix(agents, matrix))
+
+    sections.append(monitoring_contract_context(agents, configs or {}, load_catalog()))
+    sections.append(desktop_outcomes(pool_path, agents))
 
     # 3. Previous alert (so LLM doesn't forget issues between cycles)
     if last_alert_explanation:
@@ -709,10 +702,14 @@ def main():
             else:
                 consecutive_no_running = 0
 
+            # Parametrizer can update configs between cycles; monitor current contracts.
+            configs = load_all_configs(pool_path, agents)
+            matrix = build_connection_matrix(agents, configs)
+
             # Step H: Build context and query LLM
             context = build_monitoring_context(
                 agents, pool_path, matrix, new_logs, per_agent_info,
-                flow_start_time, agent_first_seen, last_alert_explanation
+                flow_start_time, agent_first_seen, last_alert_explanation, configs
             )
 
             logging.info("   🤖 Querying LLM for analysis...")

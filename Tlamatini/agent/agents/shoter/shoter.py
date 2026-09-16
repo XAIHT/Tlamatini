@@ -20,6 +20,8 @@ import time
 import yaml
 import logging
 import subprocess
+import ctypes
+import json
 
 # -- conhost.exe orphan guard ------------------------------------------
 # When Tlamatini's runtime launches us with DETACHED_PROCESS we have no
@@ -340,7 +342,7 @@ def get_next_shoter_dir(base_output_dir: str) -> str:
 
 
 def capture_screenshot(output_dir: str, all_screens: bool = True,
-                       filename: str = "") -> str:
+                       filename: str = "", metadata=None) -> str:
     """
     Capture a screenshot and save it. Returns the absolute path of the image.
 
@@ -391,14 +393,49 @@ def capture_screenshot(output_dir: str, all_screens: bool = True,
     # Pillow build without it, fall back to the plain capture instead of
     # raising — a primary-monitor shot beats no shot at all.
     screenshot = None
-    if all_screens:
+    previous_dpi = None
+    dpi_setter = None
+    physical = False
+    monitors = []
+    if os.name == 'nt':
         try:
-            screenshot = ImageGrab.grab(all_screens=True)
-        except TypeError:
-            logging.warning("⚠️ all_screens is unavailable on this platform; "
-                            "capturing the primary screen only.")
-    if screenshot is None:
-        screenshot = ImageGrab.grab()
+            dpi_setter = ctypes.WinDLL('user32').SetThreadDpiAwarenessContext
+            dpi_setter.argtypes = [ctypes.c_void_p]
+            dpi_setter.restype = ctypes.c_void_p
+            previous_dpi = dpi_setter(ctypes.c_void_p(-4))
+            physical = bool(previous_dpi)
+        except (OSError, AttributeError):
+            pass
+    try:
+        if physical:
+            import win32api
+            monitors = [tuple(rect) for _, _, rect in win32api.EnumDisplayMonitors()]
+        if all_screens:
+            try:
+                screenshot = ImageGrab.grab(all_screens=True)
+            except TypeError:
+                logging.warning('all_screens unavailable; capturing primary screen only')
+                all_screens = False
+        if screenshot is None:
+            screenshot = ImageGrab.grab()
+        if metadata is not None:
+            metadata.update(image_width=screenshot.width, image_height=screenshot.height,
+                            all_screens=all_screens, captured_at=time.time(),
+                            coordinate_space='unknown')
+            if physical and monitors:
+                left = min(r[0] for r in monitors) if all_screens else 0
+                top = min(r[1] for r in monitors) if all_screens else 0
+                width = (max(r[2] for r in monitors) - left if all_screens
+                         else win32api.GetSystemMetrics(0))
+                height = (max(r[3] for r in monitors) - top if all_screens
+                          else win32api.GetSystemMetrics(1))
+                if screenshot.size == (width, height):
+                    metadata.update(coordinate_space='physical_screen', capture_left=left,
+                                    capture_top=top, capture_width=width, capture_height=height,
+                                    monitors_json=json.dumps(monitors))
+    finally:
+        if previous_dpi:
+            dpi_setter(previous_dpi)
 
     screenshot.save(filepath, "PNG")
 
@@ -457,8 +494,9 @@ def main():
 
         # Capture screenshot
         try:
+            metadata = {}
             saved_path = capture_screenshot(output_dir, all_screens=all_screens,
-                                            filename=filename)
+                                            filename=filename, metadata=metadata)
             logging.info(f"✅ Screenshot saved: {saved_path}")
             # Emit a Parametrizer-compatible block so downstream agents
             # (and the Multi-Turn LLM) can read the path verbatim instead
@@ -469,8 +507,8 @@ def main():
                 f"output_path: {saved_path}\n"
                 f"output_dir: {os.path.dirname(saved_path)}\n"
                 f"filename: {os.path.basename(saved_path)}\n"
-                f"all_screens: {all_screens}\n\n"
-                f"Screenshot saved to {saved_path}\n"
+                + ''.join(f'{key}: {value}\n' for key, value in metadata.items()) + '\n'
+                + f"Screenshot saved to {saved_path}\n"
                 ">>>END_SECTION_SHOTER"
             )
         except Exception as e:

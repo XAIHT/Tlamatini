@@ -790,3 +790,7 @@ Answer this question explicitly before coding:
 "Am I adding a direct @tool, a wrapped chat-agent tool, an MCP context provider, a Skill (`SKILL.md` package), or more than one of those?"
 
 If that answer is not written down first, the implementation will usually end up in the wrong files.
+
+## Existing native-agent example: LaTeXer styles (2026-09-15)
+
+The LaTeXer extension adds 30 visual styles and `list_styles` to the existing native workflow agent, `chat_agent_latexer` wrapper and root connector's `latexer` tool. It requires no new MCP server or external catalogue entry. Keep config, chat description, canvas mapping, Parametrizer contract and result promotion synchronized: the added result fields are `style`, `style_family`, `style_mode`, `style_count`. Discovery bypasses engine probing; actual PDF compilation uses the installed TeX distribution. See the [style guide](../agent/agents/latexer/STYLES.md) and [connector examples](../../TLAMATINI_MCP.md#latexer-discover-and-apply-styles).

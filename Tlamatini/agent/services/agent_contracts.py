@@ -125,7 +125,9 @@ _PARAMETRIZER_OUTPUT_FIELDS: dict[str, tuple[str, ...]] = {
     "de_compresser": ("operation", "extension", "input", "output", "passwordless", "success", "response_body"),
     "googler": ("url", "title", "status", "content_length", "response_body"),
     "acpxer": ("agent_id", "session_id", "transport", "settle", "transcript_path", "response_body"),
-    "shoter": ("output_path", "output_dir", "filename", "all_screens", "response_body"),
+    "shoter": ("output_path", "output_dir", "filename", "all_screens", "coordinate_space",
+               "capture_left", "capture_top", "capture_width", "capture_height",
+               "image_width", "image_height", "captured_at", "monitors_json", "response_body"),
     "camcorder": ("output_path", "output_dir", "filename", "media_type", "camera_index", "duration_seconds", "resolution", "fps", "response_body"),
     "globber": ("pattern", "path", "matches", "truncated", "status", "response_body"),
     "grepper": ("pattern", "path", "glob", "matches", "files_searched", "truncated",
@@ -137,7 +139,12 @@ _PARAMETRIZER_OUTPUT_FIELDS: dict[str, tuple[str, ...]] = {
     "audioplayer": ("input_path", "input_dir", "filename", "device_index", "device_name", "file_sample_rate", "play_sample_rate", "channels", "volume_percent", "clipped_samples", "file_duration_seconds", "time_played_requested", "played_seconds", "play_mode", "loops", "partial_segment", "format", "status", "response_body"),
     "videoplayer": ("input_path", "input_dir", "filename", "display_index", "display_geometry", "video_width", "video_height", "window_width", "window_height", "fullscreen", "volume_percent", "backend", "has_audio", "file_duration_seconds", "time_played_requested", "played_seconds", "play_mode", "loops", "partial_segment", "format", "status", "response_body"),
     "talker": ("output_path", "output_dir", "filename", "model", "language", "voice", "gender", "emotion", "sample_rate", "audio_seconds", "char_count", "played", "status", "response_body"),
-    "mouser": ("movement_type", "end_posx", "end_posy", "button_click", "clicked", "located_via", "response_body"),
+    "mouser": ("movement_type", "end_posx", "end_posy", "requested_posx", "requested_posy",
+               "button_click", "clicked", "located_via", "status", "action_status", "coordinate_space",
+               "desktop_left", "desktop_top", "desktop_width", "desktop_height",
+               "monitors_json", "window_handle", "response_body"),
+    "keyboarder": ("status", "action_status", "characters_sent", "commands_sent", "commands_total",
+                   "window_handle", "window_pid", "backend", "verification", "response_body"),
     "windower": ("action", "window_title", "matched", "match_count", "state", "left", "top", "width", "height", "response_body"),
     "unrealer": ("host", "port", "command", "status", "error", "response_body"),
     "blenderer": ("host", "port", "command", "status", "error", "response_body"),
@@ -304,6 +311,8 @@ def _discover_contracts_from_disk() -> dict[str, AgentContract]:
         if not item.is_dir() or item.name.lower() in {"pools", "__pycache__"}:
             continue
         agent_type = normalize_agent_type(item.name)
+        if not (item / f"{agent_type}.py").is_file() or not (item / "config.yaml").is_file():
+            continue
         config = _read_template_config(agent_type)
         output_fields = {0: "target_agents"}
         input_fields = {0: "source_agents"}
@@ -328,6 +337,9 @@ def get_agent_contracts() -> dict[str, AgentContract]:
         parametrizer_fields = _PARAMETRIZER_OUTPUT_FIELDS.get(agent_type, contract.parametrizer_fields)
         password_paths = _PASSWORD_PATHS_BY_AGENT.get(agent_type, contract.password_paths)
         overrides: dict[str, Any] = {}
+        # Credential-only builtins must not erase discovered lifecycle behavior.
+        if agent_type in _NEVER_START_TARGETS and not contract.never_starts_targets:
+            overrides["never_starts_targets"] = True
         if parametrizer_fields != contract.parametrizer_fields:
             overrides["parametrizer_fields"] = parametrizer_fields
         if password_paths != contract.password_paths:

@@ -620,8 +620,10 @@ Ground truth: `Tlamatini/agent/agents/` (88 dirs, each `<name>.py` + `config.yam
 | **Summarizer** | Polling LLM event-detector + one-shot summarizer modes |
 | **File-Interpreter** | Multi-format document reader (DOCX/PPTX/XLSX/PDF/…; fast/complete/summarized) |
 | **File-Extractor** | Raw-text sibling; Read-style line/offset/limit views |
-| **PDFer** | PDF creation, merge/split, extraction, rendering, inspection, and layout validation |
-| **LaTeXer** | MiKTeX-backed LaTeX authoring/validation/compilation with an eight-rung, copy-first repair ladder and deterministic verdicts |
+| **PDFer** | PDF composition from text/Markdown/HTML/images, merging and inspection. 24 explicit visual styles across five families alongside 20 semantic themes; `style: auto` preserves automatic design. `mode: styles` lists the catalog without a PDF. Measured atelier layouts, vector artwork, contrast checks and `layout_clean` audit results; `style`/`style_family` are flow outputs. [Style guide](Tlamatini/agent/agents/pdfer/STYLES.md). |
+| **PPTXer** | Editable deck creation with 36 treatments (24 automatic + 12 explicit via `nuance`), 17 font pairings, measured pagination, and saved/native layout audits. [Style guide](Tlamatini/agent/agents/pptxer/STYLES.md). |
+
+| **LaTeXer** | LaTeX authoring/validation/compilation with 30 optional styles, eight independent templates, engine-free `list_styles`, and the existing copy-first repair ladder and deterministic verdicts. [Style guide](Tlamatini/agent/agents/latexer/STYLES.md). |
 | **Image-Interpreter** | Triple-model vision analyst (2 parallel interpreters + merger) |
 | **Video-Analyzer** | Motion-verdict video watcher (deterministic motion gate + dual vision models + PASS/FAIL tokens; robotic-loop eye) |
 | **NetSpeed-Calculator** | RFC 6349 multi-provider Internet measurement — download/upload/latency/jitter/loss/bufferbloat fused by a DerSimonian-Laird random-effects meta-analysis (95% CI + I²); keyless providers, RTT-selected mirrors, never a silent 0.00 Mbps |
@@ -996,3 +998,25 @@ From the very start of a session, perform the work with **Tlamatini's OWN** agen
 *KIMI.md — version-aligned 2026-08-23 against source ground truth for the annotated v1.50.0 release (88 agent templates / 66 wrapped `chat_agent_*` specs / 108 built-in Multi-Turn tools / 105 root `mcp__tlamatini__*` tools / 29 skills / 197 migrations / 38 JS modules / 11 CSS files). Current changes swept in: NetSpeed-Calculator, Googler's structured dork builder, plain-HTTP-first/two-tier resilience path, live harness, and tests, the WAL-safe `sqlite_copy.py` engine replacing `db_guard.py`, the Ollama-Pro-or-higher operating requirement, migration 0194's Deep-Internet-Research starter, the `adding-external-mcp` skill, and private contact synchronization. Sibling files: CLAUDE.md (Claude Code), GEMINI.md (Gemini CLI). Counts were verified from disk, manifest, and isolated live tool construction; when they drift again, re-verify from source — never copy from docs.*
 
 *Tlamatini — "one who knows". Created by Angela López Mendoza · @angelahack1 · XAIHT.*
+
+## Desktop control and flow contracts — 2026-09-15
+
+Mouser now resolves explicit physical, window and screenshot coordinates; Keyboarder binds Unicode/key delivery to a verified window; Shoter publishes capture geometry. `input_sent` is delivery evidence, not application success, and a failed or interrupted input segment must be observed before replay.
+
+Parametrizer derives its parser registry from current contracts and validates complete typed mappings. FlowCreator selects from all 89 installed agents and validates the generated graph before publishing; FlowHypervisor separates execution, kill and observation relationships and uses current desktop receipts/timing. GUI-Manager remains design only.
+
+See [configuration, examples and limitations](docs/desktop-input-and-flow-contracts.md), the [complete generated coverage inventory](docs/agent-coverage.md), and the [GUI-Manager design](docs/GUI-Manager-design.md).
+
+## LaTeXer signature styles — 2026-09-15
+
+LaTeXer has **30 opt-in styles across six families**, independent of its eight `template` structures. Discover them with `action: list_styles` (JSON catalogue in `response_body`, `status: listed`, `style_count: 30`; no TeX probe). Choose `style` explicitly; body prose never selects it. Examples include `baby_blush`, `cyberpunk`, `cosmic_nebula`, `circuit_board` and `quetzal_supernova`.
+
+Use `scaffold_compile` for a styled PDF, or `create_file` / `create_from_template` for source. Fragment `compile` also accepts styles with `auto_preamble: true`; complete sources/projects retain their own preamble and refuse an explicit style. Empty/none/plain/default keeps legacy rendering. Controls are `subtitle`, `style_mode: screen|print`, `style_decoration: none|restrained|rich`, `style_cover` (boolean, default true), and six-digit `predominant_color`. Prefer `content_b64` / `input_text_b64` for complex LaTeX; metadata still needs LaTeX escaping.
+
+`latexer_styles.py`, `latexer_artwork.py` and `latexer_design.py` are flat siblings of `latexer.py` and must travel with pool copies. Beamer uses a separate recipe. Structured results add `style`, `style_family`, `style_mode`, `style_count`; these describe design, while `status`/`success` describe the operation. Keep the existing repair/verdict contracts and shell-escape default. The [canonical guide](Tlamatini/agent/agents/latexer/STYLES.md) documents all IDs, helpers and verification: 483 automated tests and 132 fresh real builds passed on 2026-09-15.
+
+## PPTXer styles and visibility — 2026-09-15
+
+PPTXer has 36 named treatments: 24 automatic content treatments plus 12 explicit styles selected through `nuance` (for example, `blueprint`, `botanical`, or `swiss_editorial`). Empty `nuance` preserves automatic classification. Its 17 font pairings resolve against installed fonts; existing color, background, font, and density overrides remain available.
+
+Measured fitting and continuation slides preserve complete long content, including the 256-character stress fields. Review `created_with_findings`; interpret `layout_clean` together with `ground_truth` and the audit confidence/measurement errors. Keep flat sibling modules with pool copies. Generated decks, renders, and galleries are ignored and regenerable; keep source, tests, and verifier scripts. The [canonical guide](Tlamatini/agent/agents/pptxer/STYLES.md) records the 126-test snapshot and the precise 151-slide native new-style verification scope.

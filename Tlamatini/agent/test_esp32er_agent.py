@@ -48,6 +48,7 @@ import importlib.util
 import json
 import logging
 import os
+import subprocess
 import sys
 import tempfile
 import textwrap
@@ -103,11 +104,31 @@ class _LogCapture:
                 outer.records.append(record.getMessage())
 
         self._handler = _H()
-        logging.getLogger().addHandler(self._handler)
+        self._handler.setLevel(logging.NOTSET)
+        root = logging.getLogger()
+        # ⚠️ FORCE the root level (and lift any global logging.disable) for the
+        # duration of the capture, then restore both. Adding a handler is NOT
+        # enough: a record below the root logger's level is dropped before any
+        # handler sees it. The agent module's own module-level
+        # logging.basicConfig(level=INFO) only takes effect if it happens to run
+        # BEFORE Django configures logging, so without this the capture is
+        # silently TEST-ORDER DEPENDENT — whichever test imports the agent first
+        # decides whether every later assertion on a captured INI_SECTION block
+        # passes. That is exactly how these tests drifted red while the agent
+        # itself was fine. See create_new_agent.md pitfall #15: fix the harness,
+        # never the assertion.
+        self._prev_level = root.level
+        self._prev_disable = logging.root.manager.disable
+        logging.disable(logging.NOTSET)
+        root.setLevel(logging.INFO)
+        root.addHandler(self._handler)
         return self
 
     def __exit__(self, *_a):
-        logging.getLogger().removeHandler(self._handler)
+        root = logging.getLogger()
+        root.removeHandler(self._handler)
+        root.setLevel(self._prev_level)
+        logging.disable(self._prev_disable)
         return False
 
 
@@ -564,10 +585,8 @@ class Esp32erIntegrationTests(SimpleTestCase):
         self.assertEqual(display_name_from_agent_type("esp32er"), "ESP32er")
 
     def test_parametrizer_section_type(self):
-        # SECTION_AGENT_TYPES lives in the parametrizer pool agent; assert by file.
-        path = os.path.join(os.path.dirname(__file__), "agents", "parametrizer", "parametrizer.py")
-        with open(path, encoding="utf-8") as f:
-            self.assertIn("'esp32er'", f.read())
+        from agent.agents.flowcreator.flow_knowledge import load_catalog
+        self.assertTrue(load_catalog()['esp32er']["output_fields"])
 
     def test_config_json_globals(self):
         path = os.path.join(os.path.dirname(__file__), "config.json")
@@ -601,6 +620,147 @@ class Esp32erIntegrationTests(SimpleTestCase):
         mig_dir = os.path.join(os.path.dirname(__file__), "migrations")
         self.assertTrue(os.path.exists(os.path.join(mig_dir, "0105_add_esp32er.py")))
         self.assertTrue(os.path.exists(os.path.join(mig_dir, "0106_add_chat_agent_esp32er_tool.py")))
+
+
+class Esp32erTemplateProjectTests(unittest.TestCase):
+    """The bundled ESP32TemplateProject and the create_project scaffold.
+
+    ⚠️ THE REGRESSION THESE PIN: `create_project` used to run a bare
+    `pio project init`, which produces a platformio.ini plus EMPTY src/ include/
+    lib/ test/ directories — no main.cpp anywhere. Under the Arduino framework
+    the very next `build` then failed to link (`undefined reference to 'setup'`
+    / `'loop'`), so the scaffold handed back a project that could not compile,
+    and the one-call `scaffold_build_upload` composite died at its build stage
+    unless the caller happened to supply `content`. A scaffold whose output does
+    not build is not a scaffold.
+    """
+
+    def setUp(self):
+        self.mod = _load_esp32er_module()
+
+    # ── the shipped template ────────────────────────────────────────────
+
+    def test_bundled_template_ships_a_compilable_project(self):
+        template = self.mod._template_source_dir()
+        self.assertTrue(os.path.isdir(template), f"missing template dir: {template}")
+        self.assertTrue(os.path.exists(os.path.join(template, "platformio.ini")))
+        main_cpp = os.path.join(template, "src", "main.cpp")
+        self.assertTrue(os.path.exists(main_cpp),
+                        "the template MUST carry a source file — that is its whole point")
+        with open(main_cpp, encoding="utf-8") as f:
+            src = f.read()
+        # setup()/loop() are exactly the symbols whose absence broke the link.
+        self.assertIn("void setup()", src)
+        self.assertIn("void loop()", src)
+
+    def test_bundled_template_sits_beside_the_agent_script(self):
+        """It must live NEXT TO esp32er.py so build.py's `agents/` copytree carries
+        it into a frozen build — the same way ArduinoTemplateProject ships."""
+        self.assertEqual(
+            os.path.dirname(self.mod._template_source_dir()),
+            os.path.dirname(os.path.abspath(self.mod.__file__)),
+        )
+
+    # ── create_project ──────────────────────────────────────────────────
+
+    def test_create_project_produces_a_source_file(self):
+        """THE regression test: a scaffolded project must contain a source file."""
+        with tempfile.TemporaryDirectory() as d:
+            proj = os.path.join(d, "MyBlink")
+            res = self.mod._create_project(
+                {"project_dir": proj, "board": "esp32dev", "framework": ""},
+                ["pio-never-invoked"], os.environ.copy(), 30.0)
+            self.assertTrue(res["ok"], res)
+            self.assertTrue(os.path.exists(os.path.join(proj, "platformio.ini")))
+            self.assertTrue(
+                os.path.exists(os.path.join(proj, "src", "main.cpp")),
+                "create_project MUST leave a compilable source behind")
+
+    def test_create_project_stamps_board_and_framework(self):
+        """One template serves every ESP32 variant — the caller's board wins."""
+        with tempfile.TemporaryDirectory() as d:
+            proj = os.path.join(d, "S3")
+            res = self.mod._create_project(
+                {"project_dir": proj, "board": "esp32-s3-devkitc-1", "framework": "espidf"},
+                ["pio-never-invoked"], os.environ.copy(), 30.0)
+            self.assertTrue(res["ok"], res)
+            with open(os.path.join(proj, "platformio.ini"), encoding="utf-8") as f:
+                ini = f.read()
+            self.assertIn("board = esp32-s3-devkitc-1", ini)
+            self.assertIn("framework = espidf", ini)
+            self.assertNotIn("board = esp32dev", ini)
+
+    def test_create_project_leaves_an_existing_project_untouched(self):
+        """Scaffolding over somebody's work would destroy it — refuse to."""
+        with tempfile.TemporaryDirectory() as d:
+            proj = os.path.join(d, "Existing")
+            os.makedirs(proj)
+            with open(os.path.join(proj, "platformio.ini"), "w", encoding="utf-8") as f:
+                f.write("[env:mine]\nboard = whatever\n")
+            res = self.mod._create_project(
+                {"project_dir": proj, "board": "esp32dev", "framework": ""},
+                ["pio-never-invoked"], os.environ.copy(), 30.0)
+            self.assertTrue(res["ok"], res)
+            with open(os.path.join(proj, "platformio.ini"), encoding="utf-8") as f:
+                self.assertIn("board = whatever", f.read())
+
+    def test_create_project_requires_project_dir_and_board(self):
+        res = self.mod._create_project({"project_dir": "", "board": "esp32dev"},
+                                       ["pio"], os.environ.copy(), 5.0)
+        self.assertFalse(res["ok"])
+
+    def test_no_template_file_is_hidden_from_git(self):
+        """⚠️ EVERY bundled template file must be visible to git.
+
+        `.gitignore` carries a generic Python-packaging rule `lib/`, which
+        silently swallowed this template's `lib/README.md`: the file existed on
+        disk and worked locally, while being invisible to `git status` — so it
+        would have reached no clone, no build and no user, and the template would
+        have shipped missing a directory its own README documents. That is the
+        same failure mode as the untracked-skill incident in CLAUDE.md:
+        **a file that is not tracked is a file that disappears.**
+
+        A file must be either tracked or untracked-but-not-ignored. In neither
+        set means ignored, means gone.
+        """
+        # …/<repo>/Tlamatini/agent/test_esp32er_agent.py -> …/<repo>
+        repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        rel_dir = "Tlamatini/agent/agents/esp32er/ESP32TemplateProject"
+        template = self.mod._template_source_dir()
+
+        def _git(*args):
+            try:
+                out = subprocess.run(["git", *args], cwd=repo_root, capture_output=True,
+                                     text=True, timeout=30)
+            except (OSError, subprocess.SubprocessError):
+                self.skipTest("git is not available")
+            if out.returncode != 0:
+                self.skipTest(f"git {' '.join(args)} failed: {out.stderr.strip()}")
+            return {line.strip().replace("\\", "/") for line in out.stdout.splitlines() if line.strip()}
+
+        visible = _git("ls-files", rel_dir) | _git("ls-files", "--others",
+                                                   "--exclude-standard", rel_dir)
+        on_disk = set()
+        for dirpath, _dirs, files in os.walk(template):
+            for name in files:
+                full = os.path.join(dirpath, name)
+                rel = os.path.relpath(full, repo_root).replace("\\", "/")
+                on_disk.add(rel)
+
+        hidden = sorted(on_disk - visible)
+        self.assertEqual(
+            hidden, [],
+            "these bundled template files are IGNORED by .gitignore and would never "
+            f"reach a user: {hidden}")
+
+    def test_ensure_ini_key_inserts_when_absent(self):
+        with tempfile.TemporaryDirectory() as d:
+            ini = os.path.join(d, "platformio.ini")
+            with open(ini, "w", encoding="utf-8") as f:
+                f.write("[env:x]\nplatform = espressif32\n")
+            self.mod._ensure_ini_key(ini, "board", "esp32dev")
+            with open(ini, encoding="utf-8") as f:
+                self.assertIn("board = esp32dev", f.read())
 
 
 if __name__ == "__main__":

@@ -39,6 +39,7 @@ from .services.agent_contracts import (
     redact_flow_snapshot,
 )
 from .services.agent_paths import pool_name_to_agent_type
+from .services.flow_knowledge import write_runtime_knowledge
 from .services.flow_compiler import (
     compile_flow_payload,
     dump_agent_config_yaml,
@@ -1003,6 +1004,7 @@ def deploy_agent_template_view(request, agent_name):
         
         print(f"[DEPLOY] Copying {source_dir} -> {pool_dir}")
         shutil.copytree(source_dir, pool_dir)
+        write_runtime_knowledge(pool_dir, base_folder_name)
         print(f"[DEPLOY] SUCCESS: Copied to {pool_dir}")
         
         # For monitor_log agents, update the logfile_path in config.yaml
@@ -1097,6 +1099,7 @@ def ensure_agent_exists_view(request, agent_name):
             except Exception as e:
                 print(f"[ENSURE] Warning: Failed to update script for {pool_folder_name}: {e}")
 
+            write_runtime_knowledge(pool_dir, base_folder_name)
             print(f"[ENSURE] Agent {pool_folder_name} already exists (script updated)")
             return HttpResponse(json.dumps({
                 "success": True, 
@@ -1116,6 +1119,7 @@ def ensure_agent_exists_view(request, agent_name):
         
         print(f"[ENSURE] Deploying {base_folder_name} -> {pool_dir}")
         shutil.copytree(source_dir, pool_dir)
+        write_runtime_knowledge(pool_dir, base_folder_name)
         
         # For monitor_log agents, update the logfile_path in config.yaml
         if base_folder_name == "monitor_log":
@@ -1214,6 +1218,7 @@ def save_agent_config_view(request, agent_name):
                 return HttpResponse(f"Source agent not found: {base_folder_name}", status=404)
             # Copy template to pool
             shutil.copytree(source_dir, pool_dir)
+            write_runtime_knowledge(pool_dir, base_folder_name)
             print(f"[SAVE] Created new pool directory from template: {pool_dir}")
         else:
             print(f"[SAVE] Pool directory already exists, preserving files: {pool_dir}")
@@ -4365,6 +4370,7 @@ def update_croner_connection_view(request, agent_name):
                     if os.path.exists(agent_dir):
                         shutil.rmtree(agent_dir)
                     shutil.copytree(source_dir, agent_dir)
+                    write_runtime_knowledge(agent_dir, base_folder_name)
                     print(f"[AUTO-DEPLOY] Deployed {agent_name} during connection update")
                 else:
                     return HttpResponse(json.dumps({
@@ -7238,6 +7244,8 @@ def execute_flowcreator_view(request, agent_name):
         if not os.path.exists(script_path):
             return HttpResponse(json.dumps({"success": False, "message": f"Agent script not found: {base_folder_name}.py"}),
                                 content_type='application/json', status=404)
+
+        write_runtime_knowledge(agent_dir, base_folder_name)
 
         # Remove old flow_result.json before starting
         result_file = os.path.join(agent_dir, "flow_result.json")

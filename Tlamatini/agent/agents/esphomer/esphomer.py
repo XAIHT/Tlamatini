@@ -69,6 +69,7 @@ import json
 import time
 import yaml
 import logging
+import shutil
 import threading
 import subprocess
 
@@ -408,7 +409,8 @@ def _as_bool(raw, default: bool) -> bool:
 _META_ACTIONS = {"bootstrap", "validate", "version"}
 
 # Pure-stdlib config-file ops (no `esphome` invocation, no board).
-_FILE_ACTIONS = {"write_config", "read_config", "new_config", "list_artifacts"}
+_FILE_ACTIONS = {"write_config", "read_config", "new_config", "list_artifacts",
+                 "scaffold_template"}
 
 # Build-class actions: need `esphome` + a device YAML, but NO hardware.
 # ``scaffold_compile_upload`` is the one-call lifecycle COMPOSITE (new/write ->
@@ -785,9 +787,7 @@ api:
 ota:
   - platform: esphome
 
-wifi:
-  ssid: "{wifi_ssid}"
-  password: "{wifi_password}"
+{wifi_block}
 
 # A switchable light on {led_pin}. Toggle it from your phone via the hub.
 output:
@@ -864,10 +864,27 @@ def _new_config(config: dict) -> dict:
     wifi_password = str(_cfg(config, "wifi_password")).strip() or "YOUR_WIFI_PASSWORD"
     friendly = name.replace("-", " ").title()
 
+    # use_secrets: emit ESPHome's `!secret` references and keep the real
+    # credentials in a sibling secrets.yaml, which is ESPHome's own documented
+    # convention and the reason `secrets.yaml` is in every ESPHome .gitignore.
+    # It defaults to FALSE deliberately: `!secret` is a CUSTOM YAML TAG, so a
+    # config that uses it can no longer be read by a plain `yaml.safe_load` —
+    # anything downstream that parses the generated file (including this repo's
+    # own tests) would break. Opt in when the device is headed for a git repo.
+    use_secrets = _as_bool(_cfg(config, "use_secrets", False), False)
+    if use_secrets:
+        wifi_block = ("wifi:\n"
+                      "  ssid: !secret wifi_ssid\n"
+                      "  password: !secret wifi_password")
+    else:
+        wifi_block = (f'wifi:\n'
+                      f'  ssid: "{wifi_ssid}"\n'
+                      f'  password: "{wifi_password}"')
+
     platform_block = _PLATFORM_BLOCKS[platform].format(board=board)
     body = _DEVICE_YAML_TEMPLATE.format(
-        name=name, platform_block=platform_block, wifi_ssid=wifi_ssid,
-        wifi_password=wifi_password, led_pin=led_pin, friendly=friendly,
+        name=name, platform_block=platform_block, wifi_block=wifi_block,
+        led_pin=led_pin, friendly=friendly,
     )
 
     if not config_path:
@@ -879,10 +896,79 @@ def _new_config(config: dict) -> dict:
         os.makedirs(os.path.dirname(os.path.abspath(config_path)), exist_ok=True)
         with open(config_path, "w", encoding="utf-8") as f:
             f.write(body)
+        note = f"Generated ESPHome device YAML ({platform}/{board}) at {config_path}"
+        if use_secrets:
+            note += "\n" + _write_secrets_file(config_path, wifi_ssid, wifi_password)
         return {"ok": True, "returncode": 0, "config_path": config_path, "name": name,
-                "stdout": f"Generated ESPHome device YAML ({platform}/{board}) at {config_path}\n\n{body}"}
+                "stdout": f"{note}\n\n{body}"}
     except Exception as e:
         return {"ok": False, "error": str(e), "config_path": config_path}
+
+
+def _write_secrets_file(config_path: str, wifi_ssid: str, wifi_password: str) -> str:
+    """Write a sibling secrets.yaml holding the real credentials.
+
+    NEVER clobbers an existing secrets.yaml — that file is the user's real
+    network password and a second device scaffolded into the same folder must
+    not overwrite the first one's credentials. Best-effort: a failure here is
+    reported in the note but never fails the device generation.
+    """
+    secrets_path = os.path.join(os.path.dirname(os.path.abspath(config_path)), "secrets.yaml")
+    if os.path.exists(secrets_path):
+        return f"secrets.yaml already present at {secrets_path} — left untouched."
+    try:
+        with open(secrets_path, "w", encoding="utf-8") as f:
+            f.write("# ESPHome secrets — referenced from device YAML as `!secret <key>`.\n"
+                    "# KEEP THIS OUT OF GIT: add `secrets.yaml` to your .gitignore.\n"
+                    f'wifi_ssid: "{wifi_ssid}"\n'
+                    f'wifi_password: "{wifi_password}"\n')
+        return f"Wrote credentials to {secrets_path} (keep it out of git)."
+    except Exception as e:
+        return f"⚠️ could not write secrets.yaml: {e}"
+
+
+_TEMPLATE_DIR_NAME = "ESPHomeTemplateProject"
+
+
+def _template_source_dir() -> str:
+    """The bundled ESPHomeTemplateProject directory (beside this script)."""
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), _TEMPLATE_DIR_NAME)
+
+
+def _scaffold_template(config: dict) -> dict:
+    """Copy the bundled ESPHomeTemplateProject into a destination folder.
+
+    ⚠️ WHY THIS ACTION EXISTS: the template project shipped in this agent's own
+    directory, and was tracked in git, but NO CODE PATH EVER READ IT — `new_config`
+    generates from the inline `_DEVICE_YAML_TEMPLATE` instead. A template nothing
+    can reach is documentation at best and silent drift at worst: the shipped
+    sample and the generated output were free to diverge with nothing to catch it.
+    This action makes the bundled project reachable, so what ships is what a user
+    actually gets.
+
+    `new_config` (one generated device) and `scaffold_template` (the whole worked
+    project — secrets, .gitignore, a second device, a shared package) are
+    complements, not rivals: generate when you know the device you want, scaffold
+    when you want the surrounding structure to copy from.
+    """
+    dest = str(_cfg(config, "project_dir")).strip()
+    if not dest:
+        dest = os.path.join(_templates_root(), _TEMPLATE_DIR_NAME)
+    template = _template_source_dir()
+    if not os.path.isdir(template):
+        return {"ok": False, "error": f"bundled {_TEMPLATE_DIR_NAME} not found at {template}."}
+    try:
+        shutil.copytree(template, dest, dirs_exist_ok=True)
+        copied = []
+        for dirpath, _dirs, files in os.walk(dest):
+            for name in files:
+                rel = os.path.relpath(os.path.join(dirpath, name), dest)
+                copied.append(rel.replace(os.sep, "/"))
+        return {"ok": True, "returncode": 0, "config_path": dest, "project_dir": dest,
+                "stdout": f"Scaffolded {_TEMPLATE_DIR_NAME} into {dest}\n\n"
+                          + "\n".join(sorted(copied))}
+    except Exception as e:
+        return {"ok": False, "error": str(e), "project_dir": dest}
 
 
 def _write_config(config: dict) -> dict:
@@ -1103,6 +1189,8 @@ def _run_action(action: str, config: dict, esphome_cmd: list, env: dict, timeout
     # ── stdlib-only config file ops ──
     if action == "new_config":
         return _wrap("new_config", _new_config(config))
+    if action == "scaffold_template":
+        return _wrap("scaffold_template", _scaffold_template(config))
     if action == "write_config":
         return _wrap("write_config", _write_config(config))
     if action == "read_config":

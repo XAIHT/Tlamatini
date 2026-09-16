@@ -26,6 +26,7 @@ import shutil
 import time
 import yaml
 import logging
+import math
 import subprocess
 
 # -- conhost.exe orphan guard ------------------------------------------
@@ -109,49 +110,20 @@ logging.getLogger().addHandler(console_handler)
 #    so that concurrent log writes cannot corrupt the block.
 
 # All supported section-generating agent base names.
-SECTION_AGENT_TYPES = [
-    'apirer', 'gitter', 'kuberneter',
-    'crawler', 'summarizer', 'prompter', 'flowcreator',
-    'file_interpreter', 'image_interpreter', 'video_analyzer', 'file_extractor',
-    'netspeed_calculator',
-    'kyber_keygen', 'kyber_cipher', 'kyber_decipher',
-    'gatewayer', 'gateway_relayer',
-    'de_compresser',
-    'googler',
-    'acpxer',
-    'shoter',
-    'camcorder',
-    'globber',
-    'grepper',
-    'editor',
-    'recorder',
-    'whisperer',
-    'audioplayer',
-    'videoplayer',
-    'talker',
-    'mouser',
-    'windower',
-    'unrealer',
-    'blenderer',
-    'reviewer',
-    'analyzer',
-    'playwrighter',
-    'kalier',
-    'stm32er',
-    'esp32er',
-    'esphomer',
-    'arduiner',
-    'mcp_doctor',
-    'instant_messaging_doctor',
-    'discoverer',
-    'nmapper',
-    'zavuerer',
-    'telegrammer',
-    'whatsapper',
-    'pdfer',
-    'latexer',
-    'pptxer',
-]
+# Runtime deployment copies a fresh catalog and this standalone helper locally.
+try:
+    from flow_knowledge import load_catalog
+except ModuleNotFoundError:
+    from pathlib import Path
+    candidates = [Path(os.environ.get('TLAMATINI_AGENTS_ROOT', '.')) / 'flowcreator']
+    candidates.extend(parent / 'flowcreator' for parent in Path(__file__).resolve().parents)
+    helper_dir = next((path for path in candidates if (path / 'flow_knowledge.py').is_file()), None)
+    if helper_dir is None:
+        raise RuntimeError('Missing installed flow knowledge helper; redeploy this agent')
+    sys.path.insert(0, str(helper_dir))
+    from flow_knowledge import load_catalog
+
+SECTION_AGENT_TYPES = [name for name, spec in load_catalog().items() if spec["output_fields"]]
 
 
 def _parse_section_content(raw_content):
@@ -161,21 +133,18 @@ def _parse_section_content(raw_content):
     ``': '`` into key / value pairs.  Content after the first blank line
     is stored under the key ``'response_body'``.
     """
-    parts = raw_content.split('\n\n', 1)
+    raw_content = raw_content.replace('\r\n', '\n').replace('\r', '\n')
+    parts = re.split(r'\n[ \t]*\n', raw_content, maxsplit=1)
     header_text = parts[0]
     body_text = parts[1].strip() if len(parts) > 1 else ''
 
     fields = {}
     for line in header_text.split('\n'):
-        line = line.strip()
-        if not line:
-            continue
-        sep_idx = line.find(': ')
-        if sep_idx != -1:
-            fields[line[:sep_idx]] = line[sep_idx + 2:]
+        match = re.match(r'^\s*([A-Za-z_][A-Za-z0-9_]*):(?:[ \t](.*)|$)', line)
+        if match:
+            fields[match[1]] = match[2] or ''
 
-    if body_text:
-        fields['response_body'] = body_text
+    fields.setdefault('response_body', body_text)
 
     return fields
 
@@ -829,13 +798,30 @@ def _coerce_value_for_target(existing_value, value):
 
     To make the mapping correct for every list field, when the target's current
     value is a list and the incoming value is NOT already a list, wrap it in a
-    single-element list. An incoming list is passed through unchanged. Non-list
-    targets are unaffected.
+    single-element list. An incoming list is passed through unchanged. Existing
+    Boolean/integer/float fields require valid typed scalar conversions; strings
+    and nullable fields retain their existing mapping behavior.
     """
     if isinstance(existing_value, list) and not isinstance(value, (list, tuple)):
         return [value]
     if isinstance(value, tuple):
         return list(value)
+    if isinstance(existing_value, bool):
+        if isinstance(value, bool):
+            return value
+        text = str(value).strip().lower()
+        if text not in ('true', 'false'):
+            raise ValueError('Boolean mapping requires true or false')
+        return text == 'true'
+    if isinstance(existing_value, int):
+        if not re.fullmatch(r'[+-]?\d+', str(value).strip()):
+            raise ValueError('Integer mapping requires an integer')
+        return int(value)
+    if isinstance(existing_value, float):
+        number = float(value)
+        if not math.isfinite(number):
+            raise ValueError('Numeric mapping must be finite')
+        return number
     return value
 
 
@@ -927,7 +913,11 @@ def apply_mappings_to_config(target_agent_name, mappings, output_block, base_con
                     )
             else:
                 existing_value = _get_config_value(config, target_param)
-                coerced = _coerce_value_for_target(existing_value, value)
+                try:
+                    coerced = _coerce_value_for_target(existing_value, value)
+                except (ValueError, TypeError):
+                    logging.error("Invalid mapped value for target field '%s'; target config unchanged", target_param)
+                    return False
                 _set_config_value(config, target_param, coerced)
                 applied = True
                 shape = 'list' if isinstance(coerced, list) else 'scalar'
@@ -941,6 +931,9 @@ def apply_mappings_to_config(target_agent_name, mappings, output_block, base_con
         else:
             logging.warning(f"   Source field '{source_field}' not found in output block")
 
+    if applied_count != len(mappings):
+        logging.error('Incomplete mapping; target config was not written and target will not start')
+        return False
     if not write_target_config(target_agent_name, config):
         return False
 
@@ -991,6 +984,13 @@ def reconcile_reanimation_state(source_agent, target_agent, progress_state):
         finalize_completed_target_segment(source_agent, target_agent, progress_state)
         logging.info("Recovered a completed target run; source cursor advanced to the next unread segment.")
         return progress_state
+
+    if (re.sub(r'_\d+$', '', target_agent.lower()) in {'mouser', 'keyboarder'}
+            and stage in {STATE_STAGE_CONFIG_APPLIED, STATE_STAGE_WAITING_TARGET}):
+        raise RuntimeError(
+            'Interrupted desktop input may have partially executed. Inspect the application and '
+            'resolve the saved Parametrizer segment before resuming; automatic replay is blocked.'
+        )
 
     if backup_exists:
         restore_target_config_from_backup(target_agent)
@@ -1160,8 +1160,13 @@ def main():
             else:
                 logging.info(f"   {m['source_field']} -> {m['target_param']}")
         progress_state = default_progress_state()
-        if _IS_REANIMATED:
-            progress_state = load_progress_state(source_agent)
+        saved_progress = load_progress_state(source_agent)
+        desktop_inflight = (
+            re.sub(r'_\d+$', '', target_agent.lower()) in {'mouser', 'keyboarder'}
+            and saved_progress.get('stage') in {STATE_STAGE_CONFIG_APPLIED, STATE_STAGE_WAITING_TARGET}
+        )
+        if _IS_REANIMATED or desktop_inflight:
+            progress_state = saved_progress
         else:
             clear_progress_state(source_agent)
             if os.path.exists(get_target_backup_path(target_agent)):

@@ -8,13 +8,29 @@
 #   - "scroll"          : roll the wheel `scroll_amount` clicks at the current pointer position
 #                         (positive = scroll up, negative = scroll down)
 #   - "click_at_window" : look up the window matching `window_title`, compute the anchor
-#                         (`window_anchor`), move there and fire `button_click`. Bullet-proof
-#                         "focus this window before typing into it".
+#                         (`window_anchor`), verify foreground ownership, then click.
 #   - "locate_image"    : find `locate_image_path` on the current screen via template match
-#                         (pyautogui.locateCenterOnScreen, confidence=`locate_confidence`),
+#                         (whole-desktop capture, confidence=`locate_confidence`),
 #                         move to that center and fire `button_click`. Use when a reference
 #                         image of the target button/icon is available on disk.
 movement_type: "random"
+
+# "inspect" returns cursor position and physical monitor geometry without input.
+# Coordinates default to physical Windows screen pixels (negative values allowed).
+# desktop: offsets from virtual desktop origin; normalized: [0,1] across desktop.
+# window: pixels from window_area origin; window_normalized: [0,1] in that area.
+# screenshot: pixels in the image actually analyzed, mapped using the capture rect.
+coordinate_space: "screen"
+
+# Required only for screenshot coordinates. Copy capture_* from Shoter; image_*
+# must be the dimensions of the image seen by the model, after any resize/crop.
+# Crops require their own physical capture rectangle. Never guess these values.
+capture_left: null
+capture_top: null
+capture_width: null
+capture_height: null
+image_width: 0
+image_height: 0
 
 # Whether to use current mouse position as starting point (only for "localized" / "drag")
 actual_position: true
@@ -40,21 +56,27 @@ total_time: 30
 # Title (or substring) of the window to focus. Matches via pyautogui.getWindowsWithTitle.
 # Example: "Notepad", "Untitled - Notepad", "Save As".
 window_title: ""
+window_handle: 0
+# -1 requires a unique title match. Prefer a handle when several windows match.
+window_match_index: -1
+# Client coordinates exclude title bar/borders. "window" includes the full frame.
+window_area: "client"
 
 # Where inside the matched window to land:
 #   center | topleft | topright | bottomleft | bottomright | titlebar
-# "titlebar" lands on the middle of the title bar (good for raising the window
-# without triggering controls); "center" lands on the editing area for typical apps.
+# "titlebar" uses measured standard chrome. Custom title bars may be unsupported.
+# Anchors are geometric locations, not semantic button locators.
 window_anchor: "center"
 
 # --- locate_image mode --------------------------------------------------------
 # Absolute path to a reference image (PNG/BMP) of the target button/icon. The agent
-# runs pyautogui.locateCenterOnScreen on the live desktop and clicks at the center
-# of the first match. Requires opencv-python (already a transitive dep) for confidence.
+# captures all monitors, maps the unique match to physical pixels, then clicks.
+# Multiple distinct matches are rejected. Supply window_title/handle to scope it.
+# Requires opencv-python for confidence. Templates must match the displayed scale.
 locate_image_path: ""
 
 # Match confidence in [0.5, 1.0]. Lower = more permissive (handles antialiasing /
-# DPI scaling); higher = stricter. Default 0.8 works for most antialiased UI assets.
+# small pixel differences); higher = stricter. This does not rescale templates.
 locate_confidence: 0.8
 
 # --- scroll mode --------------------------------------------------------------

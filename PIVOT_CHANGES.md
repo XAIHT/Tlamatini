@@ -403,3 +403,17 @@ plain `if _suppress_visible_console_launches():`), and restore `execute_file(com
 - tools.py: delete the two inserted `elif char == '\n': quote_multiline = True` branches (+ comments).
 - chat_agent_registry.py: revert `OR with window_width` → `OR window_width`.
 - tests.py: delete the new test method.
+
+## 2026-09-15 — LaTeXer Markdown documentation synchronization
+
+**Verbatim user request:** "Now update all related documentation!!! \*.md all!!!!!, but be careful to don't crash with other of your sessions making changes on the documentation!!!"
+
+Updated current LaTeXer references for 30 styles, six families, eight independent templates, engine-free discovery, design controls, portable helpers, structured results and the dated verification evidence. Corrected compiler-only prerequisite wording and linked the canonical [style guide](Tlamatini/agent/agents/latexer/STYLES.md). Historical release records remain dated; this documentation pass assigns no tag.
+
+Edits were coordinated with the active desktop/flow task and applied to freshly read files under brief Windows handles denying concurrent writes. Each edit preserves unaffected lines and their original newline bytes. Exact before/after bytes and SHA-256 hashes for each touched Markdown file are retained locally in `Temp/latexer-docs-2026-09-15/` (one JSON record per file; `files.json` inventories them). That ignored local record includes the other session's work as the baseline. For a later rollback, reverse only the recorded LaTeXer hunks against the then-current document; never restore an entire old file over newer edits. The dated implementation details and verification are also recorded in `docs/claude/recent-fixes.md`.
+
+## 2026-09-15 — PPTXer Markdown documentation synchronization
+
+Updated PPTXer documentation for complete-text measurement and pagination, 12 added visual styles (36 named treatments overall), 17 font pairings, native audit interpretation, safe Office-worker cleanup, and atomic saves. Style selection uses the existing `nuance` field; the original automatic classifier and caller overrides retain their behavior. The [canonical guide](Tlamatini/agent/agents/pptxer/STYLES.md) records the completed 126-test run, 36 long-card style/format cases, 151-slide native new-style corpus, and earlier 424-slide visibility run with their exact scope. Generated evidence was removed from the working tree; implementation, tests, scripts, and dated summaries remain. This pass assigns no release tag.
+
+Edits are limited to PPTXer sections, rows, and links. Each file is read and updated under a brief Windows handle denying concurrent writes, preserving other tasks' current content and existing newline bytes. Local before/after receipts and SHA-256 hashes are stored in ignored `Temp/pptxer-docs-2026-09-15/receipts/`. If reversing this documentation change later, reverse only its PPTXer hunks against the then-current file; never restore an entire old document over other sessions' work. The generated agent catalogue is refreshed from current documentation/contracts; its coverage inventory changes only if the underlying schema changes.

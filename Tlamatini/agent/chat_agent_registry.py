@@ -302,7 +302,7 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         tool_name="chat_agent_shoter",
         tool_description="Chat-Agent-Shoter",
         display_name="Shoter",
-        purpose="Take a silent screenshot of the current screen and save it to disk — the file is NEVER opened in a viewer (no popup, no focus stolen). The wrapped result includes a top-level 'output_path' field with the absolute path of the saved PNG, so you do NOT need to parse the log to find it. Use when the user asks for a screenshot, screen capture, or visual snapshot of what's on screen, OR as a final verification step at the end of a desktop-UI workflow (after closing the target window) to confirm the desktop is back to its baseline state. DO NOT use it as an 'is the window open?' gate between launching an app and the first Keyboarder/Mouser action — `chat_agent_executer` returning exit_code=0 already proves the launch succeeded; for an explicit yes/no window check, use `chat_agent_window_present` (it's <100 ms) instead of pairing Shoter with the 20–30 s `chat_agent_image_interpreter` vision call. Reserve `chat_agent_image_interpreter` for genuine vision tasks (reading content, OCR, describing a chart) — never for binary 'is X visible?' checks. NEVER follow chat_agent_shoter with launch_view_image — that would pop a viewer window and steal focus from the workflow's target app (e.g. Notepad), breaking subsequent chat_agent_keyboarder / chat_agent_mouser steps.",
+        purpose="Take a silent screenshot of the current screen and save it to disk — the file is NEVER opened in a viewer (no popup, no focus stolen). The wrapped result includes a top-level 'output_path' field with the absolute path of the saved PNG, so you do NOT need to parse the log to find it. It also returns coordinate_space, capture_left/top/width/height, image_width/height, captured_at and monitors_json when physical Windows geometry is available. Pass these to Mouser coordinate_space=screenshot; if an analyzer resizes or crops the image, adjust the mapping explicitly. Do not use coordinate_space=unknown for mouse input. Use when the user asks for a screenshot, screen capture, or visual snapshot of what's on screen, OR as a final verification step at the end of a desktop-UI workflow (after closing the target window) to confirm the desktop is back to its baseline state. DO NOT use it as an 'is the window open?' gate between launching an app and the first Keyboarder/Mouser action — a process exit code alone does not prove the target window is ready; for an explicit yes/no window check, use `chat_agent_window_present` (it's <100 ms) instead of pairing Shoter with the 20–30 s `chat_agent_image_interpreter` vision call. Reserve `chat_agent_image_interpreter` for genuine vision tasks (reading content, OCR, describing a chart) — never for binary 'is X visible?' checks. NEVER follow chat_agent_shoter with launch_view_image — that would pop a viewer window and steal focus from the workflow's target app (e.g. Notepad), breaking subsequent chat_agent_keyboarder / chat_agent_mouser steps.",
         example_request="Take screenshot with output_dir='E:\\Screenshots'",
         aliases=("shoter", "screenshot", "screen capture"),
         security_hints=(
@@ -629,51 +629,31 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         tool_description="Chat-Agent-Mouser",
         display_name="Mouser",
         purpose=(
-            "Move the mouse pointer and click anywhere on the desktop — the canonical "
-            "primitive for focusing a window, clicking a button, dragging a selection, or "
-            "scrolling. **DO NOT use this tool as part of a code-authoring or script-creation "
-            "flow (e.g., clicking through an IDE menu to insert/save code) — `chat_agent_file_creator` "
-            "writes the file directly, `chat_agent_executer` runs the command, and `chat_agent_pythonxer` "
-            "runs inline Python; none of those need pointer events.** Mouser is reserved for genuine "
-            "desktop-UI automation and may be used ONLY when (a) the user EXPLICITLY asks for mouse / "
-            "pointer / click automation, (b) the user EXPLICITLY asks for a desktop-UI demo, or (c) "
-            "there is genuinely no programmatic alternative. Seven movement_type modes (pick the one "
-            "that matches the task, do NOT default to 'localized' when a smarter mode exists):\n"
-            "  • 'click_at_window' (PREFERRED for focus-the-window-then-type) — set "
-            "    window_title='Notepad' (or any substring of the title) and window_anchor "
-            "    ∈ {center|topleft|topright|bottomleft|bottomright|titlebar} (default "
-            "    'center'); the agent looks the window up via pyautogui.getWindowsWithTitle, "
-            "    moves to the anchor and fires button_click. Bullet-proof and locale-independent "
-            "    — NO screenshot / vision LLM needed.\n"
-            "  • 'locate_image' — set locate_image_path='C:\\path\\to\\button.png' (and "
-            "    optionally locate_confidence ∈ [0.5, 1.0], default 0.8); the agent runs "
-            "    pyautogui.locateCenterOnScreen on the live desktop and clicks the center of "
-            "    the first match. Use when you have a reference image of the exact button/icon.\n"
-            "  • 'localized' — pre-computed (end_posx, end_posy); set actual_position=false "
-            "    plus ini_posx/ini_posy to start from a fixed point instead of the current "
-            "    cursor. Use when you already have pixel coordinates (e.g. parsed out of an "
-            "    Image-Interpreter answer).\n"
-            "  • 'click' — click at the CURRENT pointer position (no move). Useful as the "
-            "    second step of a chain after another tool moved the cursor.\n"
-            "  • 'drag' — drag from (ini_posx, ini_posy) to (end_posx, end_posy) holding "
-            "    button_click (defaults to left for 'none'). Use for selections, sliders, "
-            "    drag-and-drop.\n"
-            "  • 'scroll' — roll the wheel scroll_amount clicks at the current pointer "
-            "    position (positive = up, negative = down).\n"
-            "  • 'random' — wander randomly for total_time seconds (no click).\n"
-            "button_click ∈ {none|left|right|middle|double-left|double-right|double-middle} "
-            "for any mode that fires a click.\n\n"
-            "RESULT FIELDS (promoted to top-level keys on the wrapped tool's JSON return): "
-            "movement_type, end_posx, end_posy, button_click, clicked (true/false), "
-            "located_via ∈ {manual|window_title|locate_image|current_position|random|no_match|"
-            "platform_unsupported|no_image_file|no_window_title}. When located_via='no_match' "
-            "the target wasn't found — adjust the title/image/confidence and retry once.\n\n"
-            "Pair with chat_agent_executer (launch app), chat_agent_keyboarder (type after "
-            "clicking), and — only when no window title is known and no reference image exists "
-            "— chat_agent_shoter + chat_agent_image_interpreter to extract (x, y) coordinates. "
-            "For CLOSING a window, prefer chat_agent_keyboarder('alt+f4') over hunting the X "
-            "button by pixel; only use Mouser on 'Don't Save'/'Cancel' if alt-letter shortcuts "
-            "(alt+n/alt+s/alt+c) are unavailable."
+            "Control the mouse using physical Windows desktop pixels. Use only for requested "
+            "desktop UI tasks; use File-Creator, Executer or Pythonxer for file/code work. "
+            "movement_type: inspect (read-only cursor and monitor geometry), localized (move and "
+            "optional click), click (current position, or end_posx/end_posy when actual_position=false), "
+            "drag, scroll, random, click_at_window, or locate_image. "
+            "coordinate_space defaults to screen (physical pixels; negative monitor coordinates are valid). "
+            "desktop uses offsets from the virtual desktop origin. normalized uses [0,1] across that desktop. "
+            "window and window_normalized use a resolved window's client area (window_area=window includes "
+            "the frame). Set window_title or window_handle; ambiguous titles are refused unless an explicit "
+            "window_match_index is provided. Focus and point ownership are checked for targeted actions. "
+            "screenshot maps end_posx/end_posy from the analyzed image using image_width/image_height "
+            "and the physical capture_left/capture_top/capture_width/capture_height reported by Shoter. "
+            "If the image was resized, supply the dimensions actually seen by the vision model; if cropped, "
+            "also adjust the capture rectangle. Never guess coordinates or infer the capture origin from "
+            "the primary display. inspect reports desktop_left/top/width/height and monitors_json. "
+            "click_at_window uses geometric window_anchor=center|topleft|topright|bottomleft|bottomright|titlebar; "
+            "an anchor does not identify an application control. locate_image searches all monitors for one "
+            "distinct template match, optionally scoped to a target window, with locate_image_path and "
+            "locate_confidence [0.5,1]. Templates must match the displayed scale. Multiple matches are refused. "
+            "button_click=none|left|right|middle|double-left|double-right|double-middle. "
+            "Use action_status, clicked, end_posx/end_posy (observed physical cursor), and located_via from "
+            "the result. input_sent means input delivery only, not application success. On error, inspect "
+            "before retrying. Use Windower to close a specific window; Keyboarder for targeted typing. "
+            "For arbitrary visual controls use Shoter and Image-Interpreter to identify a point in a fresh "
+            "image, preserve its coordinate mapping, then verify the application outcome separately."
         ),
         example_request="Click Notepad's editing area with movement_type='click_at_window' and window_title='Notepad' and window_anchor='center' and button_click='left'",
         aliases=("mouser", "mouse", "move mouse", "click", "pointer", "drag", "scroll", "click into window", "click the control"),
@@ -763,7 +743,26 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         tool_name="chat_agent_keyboarder",
         tool_description="Chat-Agent-Keyboarder",
         display_name="Keyboarder",
-        purpose="Simulate keyboard input against the active foreground window — type literal text and/or fire key sequences (modifiers, hotkeys, navigation keys). **DO NOT use this tool to author source code, scripts, configuration files, or any file content by typing into Notepad / VS Code / an IDE / a terminal — use `chat_agent_file_creator` (write the file atomically), `chat_agent_executer` (run a command), or `chat_agent_pythonxer` (run inline Python) instead.** Keyboarder is reserved for genuine desktop-UI automation and may be used ONLY when one of these is true: (a) the user EXPLICITLY names Keyboarder / asks for keyboard typing / a Notepad demo / a GUI replay; (b) the user EXPLICITLY asks for a desktop-UI demonstration (hotkey to a third-party app, screencast-style replay, focus-and-type drill); or (c) there is genuinely NO programmatic alternative on this host. Absent that explicit instruction, prefer the file-creator / executer / pythonxer path. Pair with chat_agent_executer (to launch the target app). INPUT_SEQUENCE FORMAT (READ CAREFULLY): comma-separated tokens; literal text MUST be wrapped in single quotes ('like this'); key names go bare (enter, esc, tab); chord keys join with + (ctrl+s, alt+f4). To embed an apostrophe inside single-quoted literal text, double it SQL-style ('I''m' types I'm) OR backslash-escape it ('I\\'m' types I'm). DO NOT double the OUTER quotes (''text'' is wrong). Correct examples: 'Hi, I''m Tlamatini', enter — types `Hi, I'm Tlamatini` then presses Enter. 'Hello world', tab, ctrl+s — types `Hello world` then Tab then saves. If you forget the quotes around text, the agent falls back to typing the entire input literally — but quoting is the canonical form. WINDOW CLEANUP — every desktop-UI workflow you start MUST end by closing the window you opened: send 'alt+f4' to close the active window; if the app raises a 'Save changes?' confirmation (Notepad, Word, most editors) the standard English buttons are 'Save' (alt+s), 'Don't Save' (alt+n), 'Cancel' (alt+c or escape) — when the workflow only typed demo text and the file does NOT need to be kept, send 'alt+n' to discard. If alt-letter shortcuts are unavailable (non-English UI, custom dialog), navigate with 'tab' until the desired button is focused, then 'enter'.",
+        purpose=(
+            "Send checked Windows keyboard input to one bound window. Use only for requested desktop UI "
+            "automation; use File-Creator, Executer or Pythonxer for authoring/running files or code. "
+            "Set window_title or window_handle to target an application. Ambiguous titles are refused; "
+            "window_match_index can select a listed match. Without a selector, the current foreground "
+            "window is bound once. Input stops if that window loses focus or its PID changes. "
+            "For arbitrary literal Unicode text, set input_mode=text and text to the exact string; this "
+            "avoids quote/chord parsing and preserves accents, non-Latin characters and emoji. "
+            "Otherwise input_mode=sequence uses input_sequence: comma-separated quoted literals, bare "
+            "keys (enter, tab), and chords (ctrl+s, ctrl+shift+t). Double an internal apostrophe: "
+            "'Hi, I''m Tlamatini', enter. Repeated arrows such as shift+left+left are individual taps with "
+            "Shift held. stride_delay separates commands; typing_interval_ms separates characters. "
+            "Windows SendInput is checked, the clipboard is untouched, held modifiers are released on "
+            "failure, and the PyAutoGUI corner emergency stop remains enabled. "
+            "Results expose action_status, commands_sent, characters_sent, window_handle/window_pid and "
+            "verification=input_delivery_only. Delivery does not prove the intended field received text. "
+            "After commands that open dialogs or change focus, observe the new window and issue a "
+            "separate targeted request. Use Windower to close a known window. Never assume localized "
+            "Save/Discard keyboard accelerators or discard unsaved work without the user's instruction."
+        ),
         example_request="Type with input_sequence=\"'Hi!, I''m Tlamatini', enter\" and stride_delay=80",
         aliases=("keyboarder", "keyboard", "type", "press keys", "send keys", "hotkey"),
         security_hints=(
@@ -1692,7 +1691,9 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         purpose=(
             "Turn a plain-language OBJECTIVE into a real, canvas-loadable .flw WORKFLOW FILE. "
             "Pass prompt='<what the flow should do>' and flow_filename='<name>.flw'. An LLM designs "
-            "the flow from the full agent catalog (which agents, their config, how they are wired), "
+            "the flow by selecting from all installed agents, then using the selected detailed guide "
+            "and current schemas/contracts. Generated references, branches and Parametrizer mappings "
+            "are validated with bounded repair; GUI-Manager is design only and cannot be selected. "
             "and the agent writes the .flw to disk - by default into the application's own Temp "
             "directory, or set output_dir='<folder>' to choose where. "
             "USE THIS whenever the user asks to CREATE / DESIGN / BUILD a FLOW or a .flw from a "

@@ -91,6 +91,32 @@ three universal options:
 | `croner` | `{ "trigger_time": "14:30" }` → returns a `run_id` (background) |
 | `netspeed_calculator` | `{ "action": "validate" }` for reachability, or one approved `full` run (about 100-200 MB) |
 
+### PPTXer: create and verify styled slides
+
+The existing `pptxer` agent is exposed by the connector (typically `mcp__tlamatini__pptxer`) and by `chat_agent_pptxer` in chat. Parameters continue to come from `config.yaml`. Select any of the 12 new visual styles through `nuance`; there are 36 named treatments overall. Empty `nuance` uses the original automatic classifier.
+
+```json
+{"action": "create", "nuance": "blueprint", "slide_size": "16:9", "input_text": "# Architecture review\n\n## Delivery plan\n- Explain the system and its next milestone."}
+```
+
+Brand color, background, font pairing, and density overrides remain available. Long text can continue across slides. The connector returns the agent log: inspect `INI_SECTION_PPTXER` fields `status`, `output_path`, `layout_clean`, `ground_truth`, `render_tier`, `overlaps`, and `text_overflows`. `created_with_findings` needs review; a saved deck alone does not establish native visual verification. Actions remain `create`, `outline`, `render`, `audit`, `info`, `fonts`, and `validate`. [Style catalogue and verification guide](Tlamatini/agent/agents/pptxer/STYLES.md).
+
+### LaTeXer: discover and apply styles
+
+The connector exposes the existing `latexer` agent (typically `mcp__tlamatini__latexer`); the running chat app calls the same agent as `chat_agent_latexer`. Its 30-style system is native to the agent and needs no external MCP registration. Parameters are derived from `config.yaml` as usual.
+
+```json
+{"action": "list_styles"}
+```
+
+This returns a JSON catalogue inside the agent's `response_body`, `status: listed`, `success: true`, `style_count: 30` and `distribution: not_probed`. The connector returns the agent log; no PDF is created and no TeX installation is needed for this action.
+
+```json
+{"action": "scaffold_compile", "template": "article", "style": "circuit_board", "title": "Signal notebook", "content": "A precise measurement begins with a clear question.", "style_mode": "print", "style_cover": false}
+```
+
+PDF compilation needs an installed engine (MiKTeX recommended). Other controls are `subtitle`, `style_decoration` and six-digit `predominant_color`. Send complex LaTeX as `content_b64` / `input_text_b64`; a valid base64 field takes precedence over its plain counterpart. Styles apply to generated source and bare fragments, not existing complete sources/projects. Canonical design fields are `style`, `style_family`, `style_mode`, `style_count`; operation success still comes from `status`/`success`. See the [style guide](Tlamatini/agent/agents/latexer/STYLES.md).
+
 ### Management and skill tools
 
 - `tlamatini_list_agents()` — every agent + its parameters.
@@ -125,3 +151,11 @@ Typical long-running pattern: call the agent (gets `run_id`) →
   templates are auditable and editable, but the caller remains responsible
   for permissions, credentials, authorized targets, metered traffic, hardware,
   and downstream effects.
+
+## Desktop control and flow contracts — 2026-09-15
+
+Mouser now resolves explicit physical, window and screenshot coordinates; Keyboarder binds Unicode/key delivery to a verified window; Shoter publishes capture geometry. `input_sent` is delivery evidence, not application success, and a failed or interrupted input segment must be observed before replay.
+
+Parametrizer derives its parser registry from current contracts and validates complete typed mappings. FlowCreator selects from all 89 installed agents and validates the generated graph before publishing; FlowHypervisor separates execution, kill and observation relationships and uses current desktop receipts/timing. GUI-Manager remains design only.
+
+See [configuration, examples and limitations](docs/desktop-input-and-flow-contracts.md), the [complete generated coverage inventory](docs/agent-coverage.md), and the [GUI-Manager design](docs/GUI-Manager-design.md).

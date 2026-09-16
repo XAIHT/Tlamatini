@@ -313,11 +313,13 @@ def _ensure_pool_agent(node: FlowNode, pool_path: Path) -> Path:
     pool_dir = pool_path / node.pool_name
     if not pool_dir.exists():
         shutil.copytree(source_dir, pool_dir)
-        return pool_dir
 
     source_script = source_dir / f"{node.agent_type}.py"
     if source_script.exists():
         shutil.copy2(source_script, pool_dir / source_script.name)
+
+    from .flow_knowledge import write_runtime_knowledge
+    write_runtime_knowledge(pool_dir, node.agent_type)
 
     return pool_dir
 

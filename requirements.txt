@@ -12,6 +12,14 @@ chardet==5.2.0
 faiss-cpu==1.9.0.post1
 fastapi==0.140.0
 flask==3.1.2
+# PPTXer's font engine (agents/pptxer/pptxer_fonts.py::_font_coverage) reads a
+# TTF's character map to detect a glyph the chosen face does NOT have, so the
+# measurer can fall back to Office's real substitute instead of measuring the
+# wrong font. It arrived transitively via matplotlib and was never PINNED, so a
+# dependency bump could drop it silently: the import is fail-open, meaning the
+# coverage check would simply stop running and a deck could ship tofu boxes
+# that nothing reported. Pin it explicitly.
+fonttools==4.63.0
 grpcio==1.76.0
 grpcio-tools==1.76.0
 httpx==0.28.1

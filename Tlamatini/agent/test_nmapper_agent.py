@@ -240,12 +240,8 @@ class NmapperRegistrationTests(SimpleTestCase):
         self.assertTrue(callable(getattr(views, "update_nmapper_connection_view", None)))
 
     def test_section_agent_type_registered(self):
-        # static text check: parametrizer.py is a pool script (importing it has side
-        # effects), so assert membership by reading the source, like the JS contract tests.
-        pmod = os.path.join(_AGENT_DIR, "..", "parametrizer", "parametrizer.py")
-        with open(os.path.abspath(pmod), "r", encoding="utf-8") as f:
-            src = f.read()
-        self.assertIn("'nmapper',", src)
+        from agent.agents.flowcreator.flow_knowledge import load_catalog
+        self.assertTrue(load_catalog()['nmapper']["output_fields"])
 
     def test_css_gradient_present_and_unique(self):
         css = os.path.join(os.path.dirname(_AGENT_DIR), "..", "static", "agent", "css", "agentic_control_panel.css")

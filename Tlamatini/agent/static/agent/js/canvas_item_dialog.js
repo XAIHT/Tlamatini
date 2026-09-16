@@ -107,7 +107,7 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
                 } else if (key === 'crawl_type') {
                     options = ['small-range', 'medium-range', 'large-range'];
                 } else if (key === 'movement_type') {
-                    options = ['random', 'localized', 'click', 'drag', 'scroll', 'click_at_window', 'locate_image'];
+                    options = ['inspect', 'random', 'localized', 'click', 'drag', 'scroll', 'click_at_window', 'locate_image'];
                 } else if (key === 'reading_type') {
                     options = ['fast', 'complete', 'summarized'];
                 } else if (key === 'kyber_variant') {
@@ -347,7 +347,7 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
         canvasItemList.innerHTML = '';
 
         const mouserLegend = document.createElement('p');
-        mouserLegend.innerHTML = '<strong>&#128433; Mouser</strong> — Move the mouse pointer randomly or to a specific screen position. <b>Random</b>: moves randomly for a duration. <b>Localized</b>: moves from one position to another and can optionally issue a configured click after the destination is reached.';
+        mouserLegend.innerHTML = '<strong>&#128433; Mouser</strong> — Inspect desktop geometry or move, click, drag and scroll. Choose the coordinate space explicitly; screenshot points need capture geometry and the actual image dimensions. Window anchors are geometric positions, not button names. A delivery receipt still needs application verification.';
         mouserLegend.style.color = '#7C4DFF';
         mouserLegend.style.marginBottom = '12px';
         mouserLegend.style.padding = '8px';
@@ -360,8 +360,7 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
 
         // Wire up conditional enable/disable logic after fields are rendered
         setTimeout(() => {
-            const radioRandom = document.getElementById('prop-movement_type-random');
-            const radioLocalized = document.getElementById('prop-movement_type-localized');
+            const movementInputs = Array.from(document.querySelectorAll('input[name="prop-movement_type"]'));
             const checkActualPos = document.getElementById('prop-actual_position');
             const inputIniX = document.getElementById('prop-ini_posx');
             const inputIniY = document.getElementById('prop-ini_posy');
@@ -371,34 +370,34 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
             const inputTotalTime = document.getElementById('prop-total_time');
 
             function applyMouserState() {
-                const isLocalized = radioLocalized && radioLocalized.checked;
+                const mode = (movementInputs.find(input => input.checked) || {}).value || 'inspect';
+                const usesCoordinates = mode === 'localized' || mode === 'drag';
+                const usesButton = ['localized', 'click', 'drag', 'click_at_window', 'locate_image'].includes(mode);
                 const isActualPos = checkActualPos && checkActualPos.checked;
 
-                // total_time: disabled when localized is selected
+                // Only random movement uses total_time.
                 if (inputTotalTime) {
-                    inputTotalTime.disabled = isLocalized;
-                    inputTotalTime.style.opacity = isLocalized ? '0.4' : '1';
+                    inputTotalTime.disabled = mode !== 'random';
+                    inputTotalTime.style.opacity = mode === 'random' ? '1' : '0.4';
                 }
 
-                // Initial/Final position fields: enabled only when localized
-                if (inputEndX) { inputEndX.disabled = !isLocalized; inputEndX.style.opacity = isLocalized ? '1' : '0.4'; }
-                if (inputEndY) { inputEndY.disabled = !isLocalized; inputEndY.style.opacity = isLocalized ? '1' : '0.4'; }
-                if (checkActualPos) { checkActualPos.disabled = !isLocalized; checkActualPos.style.opacity = isLocalized ? '1' : '0.4'; }
+                // Localized movement and dragging both accept explicit endpoints.
+                if (inputEndX) { inputEndX.disabled = !usesCoordinates; inputEndX.style.opacity = usesCoordinates ? '1' : '0.4'; inputEndX.step = 'any'; }
+                if (inputEndY) { inputEndY.disabled = !usesCoordinates; inputEndY.style.opacity = usesCoordinates ? '1' : '0.4'; inputEndY.step = 'any'; }
+                if (checkActualPos) { checkActualPos.disabled = !usesCoordinates; checkActualPos.style.opacity = usesCoordinates ? '1' : '0.4'; }
                 buttonClickInputs.forEach((input) => {
-                    input.disabled = !isLocalized;
+                    input.disabled = !usesButton;
                     if (input.parentElement) {
-                        input.parentElement.style.opacity = isLocalized ? '1' : '0.4';
+                        input.parentElement.style.opacity = usesButton ? '1' : '0.4';
                     }
                 });
 
-                // ini_posx/ini_posy: disabled when NOT localized OR when actual_position is checked
-                const disableIni = !isLocalized || isActualPos;
-                if (inputIniX) { inputIniX.disabled = disableIni; inputIniX.style.opacity = disableIni ? '0.4' : '1'; }
-                if (inputIniY) { inputIniY.disabled = disableIni; inputIniY.style.opacity = disableIni ? '0.4' : '1'; }
+                const disableIni = !usesCoordinates || isActualPos;
+                if (inputIniX) { inputIniX.disabled = disableIni; inputIniX.style.opacity = disableIni ? '0.4' : '1'; inputIniX.step = 'any'; }
+                if (inputIniY) { inputIniY.disabled = disableIni; inputIniY.style.opacity = disableIni ? '0.4' : '1'; inputIniY.step = 'any'; }
             }
 
-            if (radioRandom) radioRandom.addEventListener('change', applyMouserState);
-            if (radioLocalized) radioLocalized.addEventListener('change', applyMouserState);
+            movementInputs.forEach(input => input.addEventListener('change', applyMouserState));
             if (checkActualPos) checkActualPos.addEventListener('change', applyMouserState);
 
             // Apply initial state

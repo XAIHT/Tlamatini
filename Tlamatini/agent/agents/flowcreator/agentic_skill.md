@@ -48,7 +48,7 @@ When agents are deployed on the canvas, each instance gets a **cardinal number**
 
 ### Connection Rules
 - A **Starter** agent has NO inputs and one or more outputs. It is the entry point of a flow.
-- An **Ender** agent has one or more inputs and does NOT start regular downstream work agents. It only launches post-termination agents via `output_agents` (typically FlowBackers and/or Cleaners). **Important**: The Ender's `target_agents` are agents it will KILL. The Ender's `source_agents` are graphical input connections only — they are never killed and never started. The Ender's `output_agents` are agents to LAUNCH after killing. After Ender resolves a target (terminated or already stopped), it also clears that target's `reanim*` restart-state files. No other agent should list `ender_<n>` in its own `target_agents`. If an Ender launches a FlowBacker, do NOT also connect that same Ender directly to a Cleaner. Use `Ender -> FlowBacker -> Cleaner` so logs are backed up before Cleaner deletes them.
+- An **Ender** agent has one or more inputs and does NOT start regular downstream work agents. It only launches post-termination agents via `output_agents` (typically FlowBackers and/or Cleaners). **Important**: The Ender's `target_agents` are agents it will KILL. The Ender's `source_agents` are graphical input connections only — they are never killed and never started. The Ender's `output_agents` are agents to LAUNCH after killing. After Ender resolves a target (terminated or already stopped), it also clears that target's `reanim*` restart-state files. Declare each intended Ender input explicitly in the predecessor output field or Ender source_agents; do not infer all leaf connections. If an Ender launches a FlowBacker, do NOT also connect that same Ender directly to a Cleaner. Use `Ender -> FlowBacker -> Cleaner` so logs are backed up before Cleaner deletes them.
 - **OR/AND** agents have exactly TWO inputs (source_agent_1, source_agent_2) and one output.
 - **Asker/Forker** agents have one input and TWO outputs (target_agents_a, target_agents_b).
 - **Counter** agent has one input and TWO outputs (target_agents_l, target_agents_g). Routes based on counter vs threshold.
@@ -295,8 +295,8 @@ Use this table to quickly decide which agent to use. The **Starts Others** colum
 
 | Agent | What It Does | Starts Others | Category |
 |-------|-------------|:---:|----------|
-| **pptxer** | Authors a PowerPoint deck from text / Markdown / an outline — embedded images (including ones fetched from the INTERNET), video, audio, native editable diagrams, tables and generated artwork. It then RENDERS the finished deck through the installed PowerPoint and MEASURES those pixels, so overlapping or overflowing text is caught instead of shipped. Built above all for MARKETING and GAMING | YES | Action |
-| **pdfer** | Authors a PDF from text / Markdown / HTML / images / other PDFs — the document deliverable at the end of a reporting flow | YES | Action |
+| **pptxer** | Authors editable PowerPoint decks with media, charts, diagrams, and tables; 36 treatments (24 automatic + 12 explicit via `nuance`), 17 font pairings, measured full-text pagination, and saved/native layout audits. | YES | Action |
+| **pdfer** | Composes a PDF from text/Markdown/HTML/images/PDFs; 24 explicit styles + 20 semantic themes, audited atelier layouts; mode=styles discovers the catalog without a PDF | YES | Action |
 | **latexer** | Typesets LaTeX (.tex) into a PDF — real mathematics, bibliographies, cross-references, an index. Needs MiKTeX installed | YES | Action |
 | **netspeed_calculator** | Measures this machine's Internet connection WITH an error bar — download/upload/latency/jitter/loss/bufferbloat across several keyless providers, fused by a random-effects meta-analysis | YES | Action |
 | **starter** | Entry point — launches the first agent(s) in the flow | YES | Control |
@@ -329,9 +329,9 @@ Use this table to quickly decide which agent to use. The **Starts Others** colum
 | **mongoxer** | Runs MongoDB operations (opens external window) | YES | Action |
 | **mover** | Moves/renames files | YES | Action |
 | **deleter** | Deletes files | YES | Action |
-| **shoter** | Takes screenshots | YES | Action |
-| **mouser** | Simulates mouse/keyboard input | YES | Action |
-| **keyboarder** | Sends keyboard shortcuts | YES | Action |
+| **shoter** | Whole-desktop screenshot (`all_screens: true` by default); also publishes the physical capture origin, image dimensions and monitor geometry so Mouser can map image pixels back to real screen pixels | YES | Action |
+| **mouser** | Mouse only (never keyboard) — move/click/drag/scroll with an explicit `coordinate_space` (physical, desktop, window/client, normalized, screenshot-to-screen), window anchors and reference-image matching; `movement_type: inspect` reports cursor + monitor geometry without sending input | YES | Action |
+| **keyboarder** | Keyboard only — literal Unicode text (`input_mode: text`, accents + emoji) or the quoted-text/key/chord sequence syntax, bound to one verified window and stopped on focus loss | YES | Action |
 | **file_creator** | Creates files with specified content | YES | Action |
 | **file_interpreter** | Reads and interprets file contents with an LLM | YES | Action |
 | **file_extractor** | Extracts raw text from documents (PDF, DOCX, etc.) | YES | Action |
@@ -434,7 +434,7 @@ Below is the complete list of agents you can use. For each agent, the **config p
 - **Application example**: In a deployment pipeline, after the Notifier confirms a successful deploy and the Telegrammer sends the notification, the Ender terminates all agents in the flow and launches a Cleaner to remove logs, leaving the system ready for the next deployment cycle.
 - **Pool name pattern**: `ender_<n>`
 - **Starts other agents**: NO (terminates agents; then launches output_agents like Cleaners)
-- **Visual connections**: Arrows point FROM other agents TO the Ender (input connections). The Ender's only outgoing connections go to Cleaner agents via `output_agents`. No agent should list `ender_<n>` in its own `target_agents`.
+- **Visual connections**: Arrows point FROM other agents TO the Ender (input connections). The Ender's only outgoing connections go to Cleaner agents via `output_agents`. Declare the intended predecessors explicitly; an Ender kill list never creates execution edges.
 - **Config parameters**:
   - `target_agents`: [] (agents to KILL — list ALL agents in the flow except the Ender itself and any Cleaner. The Ender is the only agent allowed to have a Starter in its target_agents.)
   - `source_agents`: [] (graphical input connections only — these agents are visually connected to Ender's input on the canvas but are NEVER killed or started by the Ender.)
@@ -659,16 +659,12 @@ system_prompt: |
   - `poll_interval`: 5
 
 ### 12. Shoter
-- **Purpose**: Takes a screenshot and saves it to the output directory, then triggers downstream agents.
-- **Used for**: Capturing the current screen state as an image file and saving it to a configurable directory. It is useful for documenting visual states, capturing error dialogs, or providing evidence of system conditions during automated workflows.
-- **Aimed at**: Enabling visual auditing and documentation within automation pipelines. When paired with an Image-Interpreter agent downstream, the captured screenshot can be analyzed by an LLM vision model for intelligent visual inspection.
-- **Application example**: In a UI testing flow, a Mouser agent simulates user interactions, then a Shoter captures the resulting screen. An Image-Interpreter downstream analyzes the screenshot to verify that the expected dialog or result appeared on screen.
-- **Pool name pattern**: `shoter_<n>`
-- **Starts other agents**: YES
-- **Config parameters**:
-  - `output_dir`: "screenshots"
-  - `target_agents`: [] (downstream agents to start after screenshot)
-  - `source_agents`: [] (upstream agents — for canvas connection tracking)
+- **Purpose**: Capture the desktop as image evidence, with explicit physical capture geometry for downstream coordinate transforms.
+- **Pool name pattern**: `shoter_<n>`; starts `target_agents` after the attempt.
+- **Config**: `output_dir` (empty uses application Temp), `filename` (optional exact basename), `all_screens` (true by default), `target_agents`.
+- **Output**: `INI_SECTION_SHOTER` includes `output_path`, `output_dir`, `filename`, `all_screens`, `coordinate_space`, `capture_left`, `capture_top`, `capture_width`, `capture_height`, `image_width`, `image_height`, `captured_at`, `monitors_json`, and `response_body`.
+- Use `coordinate_space: screen` metadata only when capture geometry is proven. `unknown` is not usable for mouse mapping. Preserve the physical rectangle; after resize, supply the dimensions actually analyzed; after crop, adjust the physical rectangle. A screenshot can become stale before an action.
+- Pair with Image-Interpreter for visual evidence. A screenshot alone neither locates a named control nor proves input succeeded.
 
 ### 13. Notifier
 - **Purpose**: LLM-powered notification agent. Monitors source logs for patterns and shows desktop notifications. Can play sounds. Does NOT start downstream agents.
@@ -1147,6 +1143,7 @@ system_prompt: |
   - `target_agents`: [] (downstream agents to start when an event is triggered or the one-shot summary is non-empty)
 
 ### 39. FlowHypervisor
+- **Current contract**: use installed output-slot/lifecycle metadata for execution edges, including Counter branches and Parametrizer singular targets. Ender kill lists and passive/data dependencies are separate. Reload current configs, retain latest desktop receipts across log polls, and interpret `input_sent` as delivery only. Random movement and long typing follow configured duration/pacing, not a universal five-second deadline.
 - **Purpose**: System-managed LLM-powered flow monitoring agent. Watches all running agents' processes and log files, uses an LLM to detect anomalies, and notifies the user with an "ATTENTION NEEDED" dialog. Automatically started and stopped by the system. Users can provide custom `user_instructions` to fine-tune supervision (e.g. dismiss known false positives, adjust sensitivity, add domain rules).
 - **Used for**: Providing autonomous, LLM-powered supervision of an entire running flow. It reads all agents' processes and logs, builds an NxN connection matrix, and uses an LLM to detect anomalies such as stuck agents, unexpected crashes, infinite loops, or error cascades. It features dual-layer auto-stop (system polling + self-stop after idle cycles).
 - **Aimed at**: Ensuring flow health and reliability without requiring the operator to manually watch every agent. It acts as an intelligent watchdog that understands the flow's behavior at a semantic level and alerts the user only when something genuinely needs attention.
@@ -1161,22 +1158,16 @@ system_prompt: |
   - `user_instructions`: "" (custom directives appended to the monitoring prompt)
 
 ### 40. Mouser
-- **Purpose**: Moves the mouse pointer either randomly for a specified duration or from one screen position to another. In localized mode it can also issue a configured click only after the destination has been effectively reached.
-- **Used for**: Simulating mouse movement on the local system, either randomly across the screen for a set duration or in a directed path between two coordinates. In localized mode it can optionally perform a single or double click after arrival. This can prevent screen locks, session timeouts, or support basic UI automation.
-- **Aimed at**: Keeping remote desktop sessions or VPN connections alive during long-running automated processes, or simulating basic user activity as part of UI automation workflows when combined with Pser (to verify an application is running), Keyboarder, and Shoter (to capture the result).
-- **Application example**: In a UI automation flow, a Starter launches Mouser in localized mode to move to a button and issue a `left` click only after the destination is reached, then Keyboarder types into the focused application and Shoter captures the final screen state.
-- **Pool name pattern**: `mouser_<n>`
-- **Starts other agents**: YES
-- **Config parameters**:
-  - `movement_type`: "random" (either "random" or "localized")
-  - `actual_position`: true (use current mouse position as start for localized mode)
-  - `ini_posx`: 0 (initial X position, used when actual_position is false)
-  - `ini_posy`: 0 (initial Y position, used when actual_position is false)
-  - `end_posx`: 500 (final X position for localized mode)
-  - `end_posy`: 500 (final Y position for localized mode)
-  - `button_click`: "none" (optional click issued only after the localized final position is effectively reached. Supported values: `none`, `left`, `right`, `middle`, `double-left`, `double-right`, `double-middle`)
-  - `total_time`: 30 (duration in seconds for random movement)
-  - `target_agents`: [] (downstream agents to start after execution)
+- **Purpose**: Send grounded mouse input using physical desktop geometry. `inspect` observes cursor/monitors without input.
+- **Pool name pattern**: `mouser_<n>`; always notifies `target_agents`, including after a failed attempt.
+- **Modes**: `inspect`, `random`, `localized`, `click`, `drag`, `scroll`, `click_at_window`, `locate_image`.
+- **Coordinate fields**: `coordinate_space` = `screen` (default physical virtual-desktop pixels), `desktop` (offset from virtual origin), `normalized` ([0,1] desktop fractions), `window` (window-area pixels), `window_normalized`, or `screenshot`. Negative screen coordinates are valid on secondary monitors; monitor gaps and invalid points are refused.
+- **Screenshot mapping**: supply `capture_left`, `capture_top`, `capture_width`, `capture_height`, `image_width`, `image_height`. Use Shoter's physical rectangle and the dimensions of the image actually analyzed. `screen_x = capture_left + x * capture_width / image_width`; likewise Y. Set Mouser's coordinate space to `screenshot`, not Shoter's metadata value `screen`. Cropping requires an adjusted physical rectangle; padded/stale images must not be guessed.
+- **Movement/click fields**: `actual_position`, `ini_posx`, `ini_posy`, `end_posx`, `end_posy`, `button_click` (`none`, `left/right/middle`, `double-left/right/middle`), `total_time` for random movement, `scroll_amount`.
+- **Window fields**: `window_title`, `window_handle`, `window_match_index` (-1 requires uniqueness), `window_area` (`client` default or `window`), `window_anchor` (`center`, corners, `titlebar`). Focus and ownership are checked. An anchor is a geometric point, not a semantic button locator.
+- **Template fields**: `locate_image_path`, `locate_confidence`. Searches all monitors; rejects multiple distinct matches; optionally scope to a window. Templates must match the displayed scale.
+- **Output**: actual `end_posx/end_posy`, `requested_posx/requested_posy`, `clicked`, `located_via`, `action_status`/`status`, coordinate space, desktop bounds, monitor JSON and HWND. `input_sent` is input delivery only; `observed` is inspection; `error` can mean partial changes. Failed actions exit nonzero. Observe before retrying.
+- **Planning rule**: verify a target from current evidence before clicking and verify the requested application effect afterward. Do not invent a GUI-Manager node: it is design only. Serialize desktop actions in one session.
 
 ### 41. File-Interpreter
 - **Purpose**: Reads and interprets document files (DOCX, PPTX, XLSX, PDF, TXT, TeX, CSV, HTML, RTF, JSON, YAML, XML, ODT, EPUB, and more), extracting text and optionally images, then logs structured output. In summarized mode, uses an LLM to produce a summary.
@@ -1374,6 +1365,7 @@ system_prompt: |
   - `target_agents`: [] (downstream agents to start after decryption)
 
 ### 51. Parametrizer
+- **Current contract**: parser membership comes from the installed catalog (53 structured-output producers including Keyboarder). LF/CRLF and empty values are preserved. Numeric/Boolean mappings use the existing target type; all mappings must succeed before write/start. Generated plans must include `_parametrizer_mappings` with valid `source_field` and `target_param` names. Interrupted Mouser/Keyboarder input is not automatically replayed; inspect application state before resolving that saved segment.
 - **Purpose**: Short-running active utility interconnection agent that reads structured output segments from one source agent's log file and injects them into one target agent's `config.yaml` using `interconnection-scheme.csv`. It is a strict sequential queue processor: for each complete source segment it backs up the target config, applies the mappings, starts the target, waits for the target to finish, archives the target log into `<target_agent>_segment_<n>.log`, restores the original config, commits the source cursor, and only then moves to the next segment. Does NOT use any LLM.
 - **Used for**: Safely passing data from one structured-output agent to another agent's configuration at runtime without race conditions. Parametrizer is the standard way to turn source log segments into repeated target executions while preserving both the target's original `config.yaml` and each target run's resulting log output.
 - **Aimed at**: Building deterministic data-driven pipelines where one upstream agent emits multiple items and each item must drive one isolated target-agent run. Typical uses include processing each extracted file separately, encrypting multiple records one-by-one, or feeding each API response into a downstream agent without manual edits.
@@ -1386,7 +1378,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking, max 1)
   - `target_agents`: [] (downstream agents — for canvas connection tracking, max 1)
 - **Special behavior**:
-  - Only accepts input from agents that produce structured output (any agent that emits an `INI_SECTION_<TYPE>` block). The current full set (52) is: ACPXer, Analyzer, APIrer, Arduiner, AudioPlayer, Blenderer, Camcorder, Crawler, De-Compresser, Discoverer, Editor, ESP32er, ESPHomer, File-Extractor, File-Interpreter, FlowCreator, Gateway-Relayer, Gatewayer, Gitter, Globber, Googler, Grepper, Image-Interpreter, Instant Messaging Doctor, Kalier, Kuberneter, Kyber-Cipher, Kyber-DeCipher, Kyber-KeyGen, LaTeXer, MCP Doctor, Mouser, NetSpeed-Calculator, Nmapper, PDFer, Playwrighter, PPTXer, Prompter, Recorder, Reviewer, Shoter, STM32er, Summarizer, Talker, Telegrammer, Unrealer, Video-Analyzer, VideoPlayer, Whatsapper, Whisperer, Windower, Zavuerer
+  - Only accepts input from agents that produce structured output (any agent that emits an `INI_SECTION_<TYPE>` block). The current full set (53) is: ACPXer, Analyzer, APIrer, Arduiner, AudioPlayer, Blenderer, Camcorder, Crawler, De-Compresser, Discoverer, Editor, ESP32er, ESPHomer, File-Extractor, File-Interpreter, FlowCreator, Gateway-Relayer, Gatewayer, Gitter, Globber, Googler, Grepper, Image-Interpreter, Instant Messaging Doctor, Kalier, Keyboarder, Kuberneter, Kyber-Cipher, Kyber-DeCipher, Kyber-KeyGen, LaTeXer, MCP Doctor, Mouser, NetSpeed-Calculator, Nmapper, PDFer, Playwrighter, PPTXer, Prompter, Recorder, Reviewer, Shoter, STM32er, Summarizer, Talker, Telegrammer, Unrealer, Video-Analyzer, VideoPlayer, Whatsapper, Whisperer, Windower, Zavuerer
   - Exactly one source and one target agent must be connected
   - The source log is treated as a queue of structured segments; Parametrizer reads only the next complete unread segment
   - The interconnection-scheme.csv file is created via a visual mapping dialog in the UI and can map whole fields or optional `{marker}` placeholders inside target strings
@@ -1471,18 +1463,13 @@ system_prompt: |
   - Emits a Parametrizer-compatible `INI_SECTION_DE_COMPRESSER` block with `operation`, `extension`, `input`, `output`, `passwordless`, and `success` fields so downstream Parametrizer nodes can feed the outcome into the next agent's `config.yaml`
 
 ### 56. Keyboarder
-- **Purpose**: Issues a sequence of keys to emulate human typing on the keyboard.
-- **Used for**: Driving GUI applications or injecting text where standard programmatic interfaces are unavailable. Supports typing full literal strings, single keys, and simultaneous key sequences such as `CTRL+C`.
-- **Aimed at**: Enabling UI automation and emulation of user input within workflows.
-- **Application example**: After opening an application via Executer, Keyboarder types a password and presses Enter to automate login.
-- **Pool name pattern**: `keyboarder_<n>`
-- **Starts other agents**: YES
-- **Config parameters**:
-  - `input_sequence`: "" (strings and key sequences to be pressed, comma-separated. Special keys are written by name, simultaneous pressings use `+`, and literal text should be quoted, e.g. `ESCAPE, 'hello', CTRL+V`)
-  - `stride_delay`: 50 (Time in milliseconds to wait between hits of keys)
-  - `source_agents`: [] (upstream agents — for canvas connection tracking)
-  - `target_agents`: [] (downstream agents to start after execution)
-
+- **Purpose**: Send Unicode text and key/chord sequences to a bound Windows window, checking foreground ownership during delivery.
+- **Pool name pattern**: `keyboarder_<n>`; always notifies `target_agents`, including on failure.
+- **Config**: `input_mode` = `sequence` (default) or `text`; `input_sequence` uses comma-separated keys/chords and quoted literal text; `text` is literal Unicode in text mode. `typing_interval_ms` paces text; `stride_delay` paces commands. `window_title`, `window_handle`, `window_match_index` (-1 requires uniqueness), `source_agents`, `target_agents`.
+- Pin a verified HWND or unique title. If neither is supplied the initial foreground window is bound. The agent stops on focus theft and refuses initially held modifiers. It does not prove which child edit control is focused.
+- Windows SendInput supports UTF-16 including surrogate pairs; held modifiers are released on failure. Key events do not establish application success.
+- **Output**: `INI_SECTION_KEYBOARDER` includes `status`, `action_status`, `characters_sent`, `commands_sent`, `commands_total`, `window_handle`, `window_pid`, `backend`, `verification: input_delivery_only`, and body `response_body`. `input_sent` is delivery; `error` can follow partial input. Failure exits nonzero. Never automatically replay a failed/paused segment without observing its effect.
+- **Example**: establish the desired window and edit field, use `input_mode: text` with the user's literal text, then inspect the resulting content. Handle save/close dialogs based on observed state and the user's intent; do not assume a particular localized accelerator or discard unsaved work by default.
 
 ### 57. Googler
 - **Purpose**: Performs resilient indexed-web search, then either extracts readable text/raw HTML from the top N pages or returns the SERP URL/title list without fetching result bodies. Its structured dork builder compiles high-level fields into mechanically valid Google syntax. Tier 0 uses plain `urllib` against four server-rendered routes; Tier 1 falls back to visible installed Chrome/bundled Chromium across seven direct-URL browser routes.
@@ -1762,7 +1749,7 @@ system_prompt: |
   - `target_agents`: [] (downstream agents to start after the run)
 
 ### 70. Camcorder
-- **Purpose**: Captures from a SYSTEM CAMERA (webcam) using OpenCV. On trigger it opens the configured camera and either takes ONE photo (the default) or records a video segment of `video_duration_seconds`, saves the file with a timestamped collision-proof name, emits an `INI_SECTION_CAMCORDER` block (`output_path`, `output_dir`, `filename`, `media_type`, `camera_index`, `duration_seconds`, `resolution`, `fps`, plus a `response_body`), and always triggers `target_agents`. It is read-only/observational (like Shoter) — it does NOT appear in the Exec Report.
+- **Purpose**: Captures from a SYSTEM CAMERA (webcam) using OpenCV. On trigger it opens the configured camera and either takes ONE photo (the default) or records a video segment of `video_duration_seconds`, saves the file with a timestamped collision-proof name, emits an `INI_SECTION_CAMCORDER` block (`output_path`, `output_dir`, `filename`, `media_type`, `camera_index`, `duration_seconds`, `resolution`, `fps`, plus a `response_body`), and always triggers `target_agents`. It is read-only/observational (like Shoter) — it appears in the Exec Report.
 - **Used for**: Grabbing a webcam still or recording a short clip as an unattended flow step — visual proof-of-presence, time-lapse stills, "what does the camera see", or a recorded segment for a downstream Image-Interpreter / File-Creator. Distinct from **Shoter**, which captures the SCREEN; Camcorder captures the physical CAMERA. Files default to the user's Pictures folder under `TlamatiniCamcorder`.
 - **Aimed at**: Visual capture pipelines from real cameras. Pair `capture_mode: photo` → Parametrizer (carry `{output_path}`) → Image-Interpreter to analyze the shot, or schedule with a Croner for periodic snapshots. The default mode is a single photo; switch `capture_mode` to `video` with a `video_duration_seconds` to record. **Resolution is optional**: leave `resolution_width`/`resolution_height` at 0 to use the camera's native resolution (recommended — a webcam only supports a discrete set of modes), or request a specific one (the applied value is read back into the log + INI block). Pick a non-default camera on multi-camera machines with `camera_index`.
 - **Application example**: Starter → Camcorder (`capture_mode: photo`, `camera_index: 0`) → Parametrizer (map `{output_path}` into the next node's `image_path`) → Image-Interpreter ("Describe who/what is in front of the camera") → Forker (branch on the description) → Ender. Or a recording flow: Starter → Camcorder (`capture_mode: video`, `video_duration_seconds: 15`) → File-Creator (log the saved clip path) → Ender.
@@ -1779,7 +1766,7 @@ system_prompt: |
   - `target_agents`: [] (downstream agents to start after the capture)
 
 ### 71. Recorder
-- **Purpose**: Records AUDIO from a system input device (MICROPHONE) using `sounddevice` and saves a WAV (written with the stdlib `wave` module). On trigger it resolves the input device, records `record_seconds` of audio, saves the file with a timestamped collision-proof name, emits an `INI_SECTION_RECORDER` block (`output_path`, `output_dir`, `filename`, `device_index`, `device_name`, `sample_rate`, `channels`, `duration_seconds`, `format`, plus a `response_body`), and always triggers `target_agents`. The audio sibling of Camcorder (camera) and Shoter (screen); read-only/observational, so it does NOT appear in the Exec Report.
+- **Purpose**: Records AUDIO from a system input device (MICROPHONE) using `sounddevice` and saves a WAV (written with the stdlib `wave` module). On trigger it resolves the input device, records `record_seconds` of audio, saves the file with a timestamped collision-proof name, emits an `INI_SECTION_RECORDER` block (`output_path`, `output_dir`, `filename`, `device_index`, `device_name`, `sample_rate`, `channels`, `duration_seconds`, `format`, plus a `response_body`), and always triggers `target_agents`. The audio sibling of Camcorder (camera) and Shoter (screen); read-only/observational, so it appears in the Exec Report.
 - **Used for**: Capturing sound as an unattended flow step — a voice memo, an ambient-noise sample, a microphone test, or an audio clip for a downstream File-Creator / transcription step. Distinct from Camcorder (camera) and Shoter (screen); Recorder captures the MICROPHONE. Files default to the user's Music folder under `TlamatiniRecords`.
 - **Aimed at**: Audio-capture pipelines from a real microphone. By default it records from the SYSTEM DEFAULT input device — pick another mic on a multi-microphone machine with `device_index` (the agent logs the numbered device list at startup) or by name with `device_name`. **Sampling rate is optional**: leave `sample_rate` at 0 to use the device's native default rate (recommended — the device always supports it), or force one (`44100`/`48000`/`16000`). `channels` defaults to mono (1) and is clamped to the device's max. Pair with a Croner for periodic recordings, or Parametrizer to carry `{output_path}` to a downstream node.
 - **Application example**: Starter → Recorder (`record_seconds: 10`, `device_index: -1`) → Parametrizer (map `{output_path}` into the next node's `file_path`) → File-Creator (log the saved clip path) → Ender. Or a scheduled capture: Croner → Recorder (`sample_rate: 16000`) → Sleeper → Croner (loop).
@@ -1796,7 +1783,7 @@ system_prompt: |
   - `target_agents`: [] (downstream agents to start after the recording)
 
 ### 72. AudioPlayer
-- **Purpose**: PLAYS an audio file through a system audio OUTPUT device (speakers / audio out) using `soundfile` + `sounddevice`. On trigger it reads `audio_file`, resolves the output device, applies a software volume, plays for `time_played` seconds (whole file once when 0, truncating a longer file, looping a shorter one with a streaming callback), emits an `INI_SECTION_AUDIOPLAYER` block (`input_path`, `input_dir`, `filename`, `device_index`, `device_name`, `file_sample_rate`, `play_sample_rate`, `channels`, `volume_percent`, `clipped_samples`, `file_duration_seconds`, `time_played_requested`, `played_seconds`, `play_mode`, `loops`, `partial_segment`, `format`, `status`, plus a `response_body`), and ALWAYS triggers `target_agents` (success or failure). The playback counterpart of Recorder (microphone-IN) — AudioPlayer is speakers-OUT; observational/output, so it does NOT appear in the Exec Report.
+- **Purpose**: PLAYS an audio file through a system audio OUTPUT device (speakers / audio out) using `soundfile` + `sounddevice`. On trigger it reads `audio_file`, resolves the output device, applies a software volume, plays for `time_played` seconds (whole file once when 0, truncating a longer file, looping a shorter one with a streaming callback), emits an `INI_SECTION_AUDIOPLAYER` block (`input_path`, `input_dir`, `filename`, `device_index`, `device_name`, `file_sample_rate`, `play_sample_rate`, `channels`, `volume_percent`, `clipped_samples`, `file_duration_seconds`, `time_played_requested`, `played_seconds`, `play_mode`, `loops`, `partial_segment`, `format`, `status`, plus a `response_body`), and ALWAYS triggers `target_agents` (success or failure). The playback counterpart of Recorder (microphone-IN) — AudioPlayer is speakers-OUT; observational/output, so it appears in the Exec Report.
 - **Used for**: Playing a sound as an unattended flow step — an audible alert/chime on an event, a voice prompt, playing back a clip a Recorder just captured, or a fixed-length audio cue. Distinct from Recorder (records the mic) and Notifier (in-browser popup); AudioPlayer drives the SPEAKERS.
 - **Aimed at**: Audio-playback steps. By default it plays to the SYSTEM DEFAULT output device — pick another with `device_index` (the agent logs the numbered output-device list at startup) or by name with `device_name`. `volume_percent` is a software gain (100 = unity; NOT the OS volume slider). `time_played` shapes the length: 0 = whole file once, N>0 = exactly N seconds (truncate a longer file / loop a shorter one). **Sampling rate is optional**: leave `sample_rate` at 0 to play at the file's own native rate (recommended, correct pitch), or force one (alters pitch — the audio is not resampled). Pair with Parametrizer to carry a `{output_path}` from a Recorder/Camcorder into AudioPlayer's `audio_file`, or with a Forker to branch on `{status}`.
 - **Application example**: Starter → Recorder (`record_seconds: 5`) → Parametrizer (map Recorder's `{output_path}` into AudioPlayer's `audio_file`) → AudioPlayer (`time_played: 0`) → Ender (record a clip then play it straight back). Or an audible alert: Starter → Monitor-Log → Raiser (on `FATAL`) → AudioPlayer (`audio_file: alert.wav`, `time_played: 10`) → Ender.
@@ -1812,7 +1799,7 @@ system_prompt: |
   - `target_agents`: [] (downstream agents to start after playback)
 
 ### 73. VideoPlayer
-- **Purpose**: PLAYS a video file (WITH audio) on a chosen DISPLAY (screen) using `ffpyplayer` (decode + synchronized audio + volume; its pip wheel bundles ffmpeg+SDL so nothing external is needed) and OpenCV for the window. On trigger it reads `video_file`, resolves the target monitor, opens a sized/fullscreen window on it, sets the volume, plays for `time_played` seconds (whole video once when 0, truncating a longer file, looping a shorter one), emits an `INI_SECTION_VIDEOPLAYER` block (`input_path`, `input_dir`, `filename`, `display_index`, `display_geometry`, `video_width`, `video_height`, `window_width`, `window_height`, `fullscreen`, `volume_percent`, `backend`, `has_audio`, `file_duration_seconds`, `time_played_requested`, `played_seconds`, `play_mode`, `loops`, `partial_segment`, `format`, `status`, plus a `response_body`), and ALWAYS triggers `target_agents`. The on-screen sibling of AudioPlayer (speakers); observational/output, so it does NOT appear in the Exec Report. If ffpyplayer is unavailable it plays SILENTLY via OpenCV (volume no-op).
+- **Purpose**: PLAYS a video file (WITH audio) on a chosen DISPLAY (screen) using `ffpyplayer` (decode + synchronized audio + volume; its pip wheel bundles ffmpeg+SDL so nothing external is needed) and OpenCV for the window. On trigger it reads `video_file`, resolves the target monitor, opens a sized/fullscreen window on it, sets the volume, plays for `time_played` seconds (whole video once when 0, truncating a longer file, looping a shorter one), emits an `INI_SECTION_VIDEOPLAYER` block (`input_path`, `input_dir`, `filename`, `display_index`, `display_geometry`, `video_width`, `video_height`, `window_width`, `window_height`, `fullscreen`, `volume_percent`, `backend`, `has_audio`, `file_duration_seconds`, `time_played_requested`, `played_seconds`, `play_mode`, `loops`, `partial_segment`, `format`, `status`, plus a `response_body`), and ALWAYS triggers `target_agents`. The on-screen sibling of AudioPlayer (speakers); observational/output, so it appears in the Exec Report. If ffpyplayer is unavailable it plays SILENTLY via OpenCV (volume no-op).
 - **Used for**: Showing a video as an unattended flow step — a demo/intro clip on a kiosk screen, an alert video on an event, playing back a captured clip, or a fixed-length looping signage segment. Distinct from AudioPlayer (sound only) and Shoter (still screenshot); VideoPlayer drives a SCREEN window with motion + sound.
 - **Aimed at**: Video-playback steps. By default it plays on the PRIMARY display — pick another with `display_index` (the agent logs the numbered display list at startup). `volume_percent` is the audio level (100 = full). `time_played` shapes the length: 0 = whole video once, N>0 = exactly N seconds (truncate a longer file / loop a shorter one). `window_width`/`window_height` size the window (0 = native); `fullscreen: true` fills the display; `keep_aspect: true` letterboxes. Pair with Parametrizer to carry a `{output_path}` from a Camcorder/another source into VideoPlayer's `video_file`, or a Forker to branch on `{status}`.
 - **Application example**: Starter → VideoPlayer (`video_file: intro.mp4`, `fullscreen: true`, `display_index: 1`) → Ender (play a fullscreen intro on the second monitor). Or a looping signage clip: Croner → VideoPlayer (`time_played: 300`, `window_width: 1280`, `window_height: 720`) → Sleeper → Croner (loop).
@@ -1830,7 +1817,7 @@ system_prompt: |
   - `target_agents`: [] (downstream agents to start after playback)
 
 ### 74. Talker
-- **Purpose**: TEXT-TO-SPEECH (TTS): SPEAKS `input_text` aloud through a system audio OUTPUT device (speakers) by driving an OLLAMA connection that runs a neural TTS model (default `Orpheus-3b-FT`). On trigger it builds an Orpheus prompt (`<voice>: <text>`, with an optional emotive tag and language hint), streams the model's audio TOKENS over the Ollama HTTP API, decodes them to a 24 kHz waveform with the SNAC neural codec, saves a WAV, plays it, emits an `INI_SECTION_TALKER` block (`output_path`, `output_dir`, `filename`, `model`, `language`, `voice`, `gender`, `emotion`, `sample_rate`, `audio_seconds`, `char_count`, `played`, `status`, plus a `response_body`), and ALWAYS triggers `target_agents`. The voice-synthesis sibling of the media family — AudioPlayer plays an existing FILE, Talker GENERATES speech from text; observational/output, so it does NOT appear in the Exec Report. NOTE: hearing audio needs `snac` + `torch` installed; without them Talker saves the audio tokens and reports `status: tokens_only`.
+- **Purpose**: TEXT-TO-SPEECH (TTS): SPEAKS `input_text` aloud through a system audio OUTPUT device (speakers) by driving an OLLAMA connection that runs a neural TTS model (default `Orpheus-3b-FT`). On trigger it builds an Orpheus prompt (`<voice>: <text>`, with an optional emotive tag and language hint), streams the model's audio TOKENS over the Ollama HTTP API, decodes them to a 24 kHz waveform with the SNAC neural codec, saves a WAV, plays it, emits an `INI_SECTION_TALKER` block (`output_path`, `output_dir`, `filename`, `model`, `language`, `voice`, `gender`, `emotion`, `sample_rate`, `audio_seconds`, `char_count`, `played`, `status`, plus a `response_body`), and ALWAYS triggers `target_agents`. The voice-synthesis sibling of the media family — AudioPlayer plays an existing FILE, Talker GENERATES speech from text; observational/output, so it appears in the Exec Report. NOTE: hearing audio needs `snac` + `torch` installed; without them Talker saves the audio tokens and reports `status: tokens_only`.
 - **Used for**: Speaking a generated/known string as an unattended flow step — an audible spoken alert, a voice prompt or announcement, reading back an LLM-generated message (from Prompter/Summarizer via Parametrizer), or pronouncing a word/phrase. Distinct from AudioPlayer (plays an existing file) and Notifier (in-browser popup); Talker SYNTHESISES speech.
 - **Aimed at**: TTS steps. **FEMALE VOICE ONLY (Tlamatini is female — a male voice is FORBIDDEN BY DESIGN).** `voice` selects one of the permitted FEMALE Orpheus voices: tara [default], leah, jess, mia, zoe (the only accepted `gender` is `female`). NEVER set `voice` to a male voice (leo/dan/zac) or `gender: male` — the agent refuses such a request by closing its execution entirely ("male voice is forbidden by design — NOW CLOSING.. BYE"), so the flow step produces no audio. `language` passes a hint to the model (base model is English-only; a multilingual fine-tune speaks others). `emotion` weaves a paralinguistic tag (laugh/chuckle/sigh/cough/sniffle/groan/yawn/gasp) into the speech. `model`/`ollama_url`/`ollama_token` configure the Ollama connection; generation knobs are `temperature`/`top_p`/`top_k`/`min_p`/`repetition_penalty`/`max_tokens`/`seed`. Playback uses `device_index`/`device_name`/`volume_percent`/`sample_rate`; the WAV is always saved to `output_dir`. Pair with Parametrizer to carry a `{response_body}` from a Prompter/Summarizer into Talker's `input_text`, or a Forker to branch on `{status}`.
 - **Application example**: Starter → Prompter (ask the LLM for a one-line greeting) → Parametrizer (map Prompter's `{response_body}` into Talker's `input_text`) → Talker (`voice: leah`, `emotion: chuckle`) → Ender (have the LLM write a line and speak it aloud). Or a spoken alert: Starter → Monitor-Log → Raiser (on `FATAL`) → Talker (`input_text: "A fatal error was detected"`, `voice: tara`) → Ender. (Always a female voice — leah/tara above.)
@@ -1890,13 +1877,13 @@ system_prompt: |
   - `target_agents`: [] (downstream agents to start after transcription)
 
 ### 76. FlowCreator
-- **Purpose**: The meta-agent that READS this skill file and emits a `.flw` JSON describing a new flow. FlowCreator is itself the LLM-powered flow designer responding to user objectives — it is the agent currently consuming `agentic_skill.md`. Listed here for catalog completeness only.
-- **Used for**: Generating new flows from natural-language objectives. Invoked through the `/agent/execute_flowcreator/` endpoint (the FlowCreator sidebar icon) OR, since 2026-07-22, from Multi-Turn chat via the wrapped `chat_agent_flowcreator` tool (`prompt=` + `flow_filename=` → a real `.flw` file on disk); it is not a placeable canvas node either way.
-- **Aimed at**: Letting users describe a workflow in plain text and receive a runnable `.flw` in return — bootstrapping rather than execution.
-- **Application example**: A user types "monitor `app.log` for `FATAL`; on detection, email me and stop the flow" into the FlowCreator dialog. FlowCreator (this agent) reads the user objective, consults this skill, and emits a `.flw` containing Starter → Monitor-Log → Raiser → Emailer → Ender.
-- **Pool name pattern**: `flowcreator` (singleton — never receives a cardinal number)
-- **Starts other agents**: NO (system agent; emits a `.flw` artifact rather than launching agents directly)
-- **DO NOT include FlowCreator in the output JSON array.** This entry exists so the catalog count matches the on-disk agent count. When designing a flow for a user, treat FlowCreator as out of scope — your output array must contain only the building-block agents that will actually run on the canvas.
+- **Purpose**: Generate a canvas-loadable `.flw` from a natural-language objective using current installed-agent contracts.
+- **Pool name**: `flowcreator` (singleton, no inputs or outputs); also available through `chat_agent_flowcreator`.
+- **Config**: `prompt`, `flow_filename`, `output_dir`, `llm.host`, `llm.model`, `llm.num_ctx` (65536 requested context), `llm.max_prompt_chars` (180000 character guard), `llm.repair_attempts` (2, range 0–3).
+- Select capabilities from the full installed catalog, then design with global rules plus selected detailed references and schemas. The shipped catalog covers all 89 current agents. Deployment refreshes it from canonical contracts and config schemas without copying local configuration values or credentials. GUI-Manager is not installed.
+- Validate all generated types/fields/references, Counter/Asker/Forker slots, AND/OR inputs, singleton/system wiring and Parametrizer mappings. Invalid plans receive bounded repair; final failures are reported rather than silently dropping edges. Explicitly wire Ender inputs; never auto-connect every leaf to every Ender.
+- **Outputs**: `flow_creation_script.txt`, `flow_result.json`, `.flw`, and `INI_SECTION_FLOWCREATOR` with `model`, `status`, `flw_path`, `flow_filename`, `agent_count`, `connection_count`, `response_body`. Only publish success after the file was written; errors exit nonzero.
+- Coverage guarantees catalog/reference/config-field availability, not successful execution of every external integration. Context limits depend on the configured provider; the character guard is not an exact tokenizer.
 
 ### 77. Blenderer
 - **Purpose**: Drives a Blender instance via the OFFICIAL Blender MCP add-on's TCP socket (default localhost:9876 — the add-on must already be running inside Blender with "Online access" enabled and the server started). Unlike Unreal's verb dispatch, the Blender MCP wire format is a CODE-EXECUTION protocol — each run sends `{"type":"execute","code":<python>,"strict_json":<bool>}` and Blender runs that Python (which assigns a `result` dict). To avoid forcing hand-written Python for every task, Blenderer exposes a RICH ACTION CATALOG via its `command` field and captures the full Blender response into an `INI_SECTION_BLENDERER` block. Triggers `target_agents` on success OR error so the flow can branch on the section's `status` / `error`.
@@ -2069,78 +2056,43 @@ system_prompt: |
   - `target_agents`: [] (downstream agents to start after the scan)
 
 ### 86. PDFer
-- **Purpose**: AUTHOR a PDF document. PDFer is the DOCUMENT COMPOSER — the WRITE side of the document family (File-Extractor / File-Interpreter READ documents; PDFer CREATES them).
-- **Used for**: Turning text a previous agent produced — a Summarizer digest, a File-Interpreter reading, a Crawler result, Tlamatini's own answer — plus optional images into ONE styled, shareable PDF. It needs NO installation: markdown + xhtml2pdf + PyMuPDF + reportlab + Pillow + pypdf already ship with Tlamatini.
-- **Aimed at**: The LAST hop of a reporting flow — the agent that produces the human-readable deliverable. Prefer it over File-Creator whenever the output should be a real document rather than a text file, and NEVER hand-roll a PDF through Executer/Pythonxer.
-- **Application example**: Starter → File-Interpreter (read a repo) → Parametrizer (map `{response_body}` into PDFer's `input_text`) → PDFer (`mode: markdown`, `title: Project Review`) → Parametrizer (map `{output_path}` into Emailer's attachment) → Emailer → Ender. A second common shape is Starter → Shoter → Parametrizer (map `{output_path}` into PDFer's `images`) → PDFer (`mode: mixed`) → Ender.
-- **Pool name pattern**: `pdfer_<n>`
-- **Parametrizer source**: emits `INI_SECTION_PDFER` with fields `mode`, `source_type`, `output_path`, `output_dir`, `filename`, `page_count`, `bytes`, `images_used`, `engine`, `nuance`, `nuance_confidence`, `nuance_source`, `palette`, `predominant_color`, `background_mode`, `font_pairing`, `decorations`, `overlaps`, `layout_clean`, `repairs`, `status`, and body=`response_body`.
-- **Starts other agents**: YES (always — success, failure OR a fail-safe refusal — so a Forker can branch on `{status}` / `{page_count}` / `{layout_clean}`)
-- **THE LOOK IS COMPUTED FROM THE CONTENT (2026-09-06)**: PDFer classifies the document
-  before rendering and dresses it accordingly, so in most flows you set NOTHING here and
-  still get a document that suits its subject. A science/technology piece renders near-black
-  with white type and gradients; a paper with an abstract renders white, black and justified
-  like a typeset journal; a contract renders plain with no ornament. Two overrides matter
-  when you are designing a flow deliberately:
-  - `nuance` — force the treatment when the flow's purpose is known in advance (a compliance
-    flow should pass `nuance: legal`, a sales flow `nuance: marketing`).
-  - `predominant_color` — pass a brand colour ONCE, and consider carrying it between
-    documents: `PDFer → Parametrizer (map {predominant_color} into the next PDFer) → PDFer`
-    keeps a multi-part report visually consistent instead of each part choosing its own.
-  Also note `{layout_clean}` — a Forker can route a document whose layout audit was not clean
-  to a review step instead of straight to Emailer.
+
+- **Purpose**: Author a PDF from an answer, Markdown, HTML, plain text, images or existing PDFs. PDFer composes documents; File-Extractor/File-Interpreter read them.
+- **Used for**: The document deliverable at the end of a reporting flow. Uses the already bundled Markdown, xhtml2pdf, PyMuPDF, ReportLab, Pillow and pypdf libraries and installed fonts.
+- **Application example**: Starter → File-Interpreter → Parametrizer (map `{response_body}` to `input_text`) → PDFer (`mode: markdown`, `nuance: science`, `style: cosmic_nebula`) → Ender. For images, map Shoter's `{output_path}` into `images` and use `mode: mixed`.
+- **Pool name pattern**: `pdfer_<n>`.
+- **Parametrizer source**: Emits `INI_SECTION_PDFER` with `mode`, `source_type`, `output_path`, `output_dir`, `filename`, `page_count`, `bytes`, `images_used`, `engine`, `nuance`, `nuance_confidence`, `nuance_source`, `style`, `style_family`, `palette`, `predominant_color`, `background_mode`, `font_pairing`, `decorations`, `overlaps`, `layout_clean`, `repairs`, `status`, plus body=`response_body`. Carry `{style}` and `{predominant_color}` into another PDFer to keep reports visually consistent.
+- **Starts other agents**: YES, on success, failure and refusal. Forker can branch on `{status}`, `{page_count}` or `{layout_clean}`. A blank audit field is not a pass.
+- **Choose purpose and appearance separately**: `nuance` has 20 semantic treatments; `style` has 24 explicit identities across playful/nursery, cyberpunk, cosmic, electronics and Tlamatini families. `style: auto` retains automatic design. Use `style: kawaii_cloud`, `baby_dream`, `cyberpunk`, `astral_atlas`, `circuit_board` or `tlamatini_celestial`, or discover all IDs and aliases with `mode: styles`. Names are normalized exact matches, not inferred from prose. An unknown style retains the semantic theme with a diagnostic.
+- **Catalog operation**: `mode: styles` needs no content and writes no PDF; its `status: inspected` means the catalog was returned. Do not wire its empty `output_path` as a document attachment. `mode: validate` probes backends; `mode: info` inspects a PDF.
+- **Decoration and layout**: A selected style never raises the semantic decoration ceiling. Legal, clinical and financial treatments have no ornament; `decorations` can only lower the ceiling. Rich styles can use original vector cover artwork. Atelier measures cover/table text, keeps artwork away from opaque cover text, wraps unbroken tokens without changing their characters, and continues long title/subtitle content onto later pages. Repeated footer notes may ellipsize. Read audit findings before claiming a clean layout; creation status alone is insufficient.
 - **Config parameters**:
-  - `mode`: "auto" (auto | markdown | html | text | images | mixed | merge | info | validate). `auto` sniffs the content: HTML-looking text → html, images only → images, text+images → mixed, otherwise markdown.
-  - `input_text`: "" (the Markdown / HTML / plain text to render — this is the field a Parametrizer usually writes into)
-  - `input_file`: "" (OR a path to a .md / .txt / .html file; a .pdf when `mode: info`)
-  - `images`: [] (image paths for `images` / `mixed`; a comma-separated string is accepted)
-  - `input_pdfs`: [] (existing PDFs to append when `mode: merge`)
-  - `title`: "" (a cover page is added when set) / `subtitle`: "" / `author`: ""
-  - `page_size`: "A4" (A4 | Letter | Legal | A3 | A5 | Tabloid) / `orientation`: "portrait" (portrait | landscape) / `margins_mm`: 18
-  - `toc`: false / `cover`: true / `page_numbers`: true / `footer_note`: ""
-  - `nuance`: "" (empty = DETECT from the content. scientific_dark | academic_paper |
-    software_manual | engineering_spec | business_report | financial_ledger |
-    legal_instrument | medical_clinical | security_briefing | data_analysis |
-    editorial_feature | creative_literary | marketing_brochure | educational_course |
-    government_policy | historical_archive | culinary_recipe | personal_letter |
-    presentation_deck | minimal_note. Short aliases work: science, paper, manual, spec,
-    business, financial, legal, medical, security, data, editorial, fiction, marketing,
-    course, government, history, recipe, letter, presentation, minimal — and their Spanish
-    equivalents. An explicit value WINS over detection.)
-  - `predominant_color`: "" (ONE colour — "#RRGGBB", "rgb(...)", "hsl(...)", "oklch(...)" or
-    a name like "teal"/"midnightblue"/"obsidian" — from which the WHOLE palette is derived)
-  - `accent_color` / `text_color` / `background_color` / `heading_color` / `link_color` /
-    `table_header_color` / `rule_color`: "" (per-role overrides; each wins over the nuance
-    and over `predominant_color`)
-  - `background_mode`: "auto" (auto | dark | light) / `font_pairing`: "" (scholarly |
-    technical | technical_mono | corporate | editorial | literary | legal | promotional |
-    dense | friendly | neutral) / `font_size`: 0 (0 = the nuance's own) / `scale_ratio`: 0
-    (0 = the nuance's own; 1.2 calm · 1.25 clear · 1.333 confident · 1.414 dramatic) /
-    `justify`: null (null = the nuance decides)
-  - `decorations`: "auto" (auto | none | restrained | moderate | rich — SAFETY, not taste:
-    it can only LOWER the ceiling PDFer computed from the content, never raise it) /
-    `ornament`: "" (constellation | circuitry | waveform | scholarly_rule | corporate_band |
-    editorial_flourish | botanical | bold_geometry | alert_grid | none)
-  - `engine`: "auto" (auto | atelier | legacy — `auto` uses the atelier unless `css` is set) /
-    `layout_audit`: true (re-open the finished PDF and MEASURE it) / `css`: "" (supplying
-    your own stylesheet switches to the legacy xhtml2pdf engine, which is the dialect it is
-    written in)
-  - `document_language`: "es" | "en" (language of PDFer's OWN chrome: the page
-    footer and the fallback title. It never translates the content, and it does
-    not affect ollama_polish, which always keeps the content's own language.)
-  - `image_layout`: "one-per-page" (one-per-page | fit | grid) / `image_caption`: true / `grid_columns`: 2 / `max_image_px`: 1600
-  - `ollama_polish`: false (true = let an Ollama model restructure the text into clean Markdown first; a failed polish keeps the raw content) / `ollama_design`: false (true = ask Tlamatini's own configured model to art-direct the colours; every field it returns is validated, and a failure leaves the deterministic design standing) / `ollama_url` / `ollama_model` / `ollama_token` / `ollama_prompt` / `ollama_timeout`: 180
-  - `output_dir`: "" (empty = Documents/TlamatiniPDF) / `filename`: "" (empty = a timestamped name) / `overwrite`: false
-  - `preflight`: true (fail-safe: REFUSE rather than write an empty or wrong PDF) / `command_timeout`: 300
-  - `source_agents`: [] (upstream agents — canvas connection tracking)
-  - `target_agents`: [] (downstream agents to start after the render)
+  - `mode`: `auto` (default), `markdown`, `html`, `text`, `images`, `mixed`, `merge`, `info`, `validate`, `styles`. Auto detects HTML-looking text, images-only, text with images, or Markdown.
+  - `input_text`: literal Markdown/HTML/plain text; `input_file`: an alternative .md/.txt/.html source or a PDF for info; `images`: image paths; `input_pdfs`: PDFs to append in merge mode.
+  - `title`, `subtitle`, `author`: cover/metadata; `page_size`: A4, Letter, Legal, A3, A5 or Tabloid; `orientation`: portrait/landscape; `margins_mm`: 18 by default.
+  - `toc: false`, `cover: true`, `page_numbers: true`, `footer_note: ""`.
+  - `nuance: ""`: detect purpose, or explicitly select `scientific_dark`, `academic_paper`, `software_manual`, `engineering_spec`, `business_report`, `financial_ledger`, `legal_instrument`, `medical_clinical`, `security_briefing`, `data_analysis`, `editorial_feature`, `creative_literary`, `marketing_brochure`, `educational_course`, `government_policy`, `historical_archive`, `culinary_recipe`, `personal_letter`, `presentation_deck` or `minimal_note`. English/Spanish aliases such as science, paper, legal and receta work.
+  - `style: auto`: semantic design by default, or a signature ID/alias. Prefer this field for a requested visual look; keep `nuance` for document purpose. Existing semantic aliases retain their meaning: `nuance: astronomy` is scientific_dark, while `style: astronomy` is astral_atlas.
+  - `predominant_color: ""`: derive the palette from one named/hex/rgb/hsl/oklch color while keeping the style's motif and type. Per-role `accent_color`, `text_color`, `background_color`, `heading_color`, `link_color`, `table_header_color` and `rule_color` override the style/seed before final contrast repair.
+  - `background_mode: auto` (auto/dark/light); `font_pairing: ""` (scholarly, technical, technical_mono, corporate, editorial, literary, legal, promotional, dense, friendly, neutral); `font_size: 0` and `scale_ratio: 0` retain design defaults; `justify: null` retains the resolved design's justification.
+  - `decorations: auto` (auto/none/restrained/moderate/rich); `ornament: ""` retains the design's program, or selects an existing ornament program.
+  - `engine: auto` (auto/atelier/legacy); `css: ""`. Custom CSS with auto selects legacy xhtml2pdf. Signature styles apply to atelier text/HTML/mixed composition; image-only layouts and existing merged pages retain their design.
+  - `layout_audit: true`: reopens the finished atelier PDF and reports actual overlap, off-sheet, blank-page and contrast findings.
+  - `document_language`: en/es, localizing only PDFer's labels and fallback title; never translates the source.
+  - `image_layout: one-per-page` (one-per-page/fit/grid); `image_caption: true`; `grid_columns: 2`; `max_image_px: 1600`.
+  - `ollama_polish: false` and `ollama_design: false`; optional `ollama_url`, `ollama_model`, `ollama_token`, `ollama_prompt`, `ollama_timeout: 180`. Failed optional consultation preserves the existing content/design.
+  - `output_dir: ""`: Documents known-folder/TlamatiniPDF; `filename: ""`: timestamped; `overwrite: false`: suffix collisions.
+  - `preflight: true`; `command_timeout: 300`; `source_agents: []`; `target_agents: []`.
+- **Reference**: [Full style catalog, examples, result contract and dated verification](../pdfer/STYLES.md). The developer gallery/atlas are regenerable ignored outputs, not runtime assets.
 
 ### 87. LaTeXer
 - **Purpose**: TYPESET LaTeX into a PDF. LaTeXer is the TYPESETTING sibling of PDFer — PDFer COMPOSES a PDF from Markdown/HTML/images, LaTeXer TYPESETS one from `.tex` source, with real mathematics, bibliographies, cross-references and an index.
 - **Used for**: Any deliverable where typographic quality or mathematics matters — a paper, a thesis chapter, a beamer deck, a formula-heavy report — and for authoring/inspecting/repairing `.tex` sources. It natively embeds the whole `mcp-latex-server` capability surface (create / template / edit / read / list / validate / structure / compile) with NO MCP server and no extra dependency.
 - **Aimed at**: The LAST hop of a scientific or academic flow. Choose PDFer when the source is Markdown/HTML/images; choose LaTeXer when the source is LaTeX or the output needs real equations, citations or an index. NEVER hand-roll a `pdflatex` invocation through Executer/Pythonxer — LaTeXer already handles the multi-pass convergence, the bibliography and the log parsing.
-- **REQUIRES MiKTeX**: Tlamatini does not bundle a TeX distribution (several GB). The user installs **MiKTeX** once (https://miktex.org/download); after that LaTeXer is fully functional, because MiKTeX installs any missing LaTeX package on demand mid-compile. TeX Live / MacTeX are used if present but cannot self-heal a missing package. With none installed LaTeXer REFUSES cleanly (`status: refused`) — it never crashes.
+- **Compiler requirement**: PDF compilation needs an installed TeX distribution; MiKTeX is recommended (https://miktex.org/download) for on-demand package installation. TeX Live / MacTeX are detected too, with required packages installed separately. Missing engines produce a structured compilation refusal. `list_styles` works without probing TeX; source authoring also does not require a compiler.
 - **Application example**: Starter → Summarizer (digest a repo) → Parametrizer (map `{response_body}` into LaTeXer's `input_text`) → LaTeXer (`action: compile`, `title: Weekly Report`) → Parametrizer (map `{output_path}` into Emailer's attachment) → Emailer → Ender. A second common shape is Starter → LaTeXer (`action: compile_project`, `project_dir: <a folder of .tex files>`) → Forker (branch on `{success}`) → Ender.
+- **Styled flow example**: Starter → LaTeXer (`action: scaffold_compile`, `template: report`, `style: quetzal_supernova`, `style_mode: print`, LaTeX `content`) → Forker (inspect `status`/`success`) → Ender. Keep `style_cover: false` as a boolean. `template` controls structure; `style` controls appearance. Unknown styles refuse, and selection is never inferred from body prose.
+- **Catalogue results**: `list_styles` emits `status: listed`, `success: true`, `style_count: 30`, `distribution: not_probed`, with JSON in `response_body`; it does not create a PDF. Design metadata is not compilation evidence. For compiled output, use `output_path` only after checking the operation result. [Complete style guide](../latexer/STYLES.md).
 - **Pool name pattern**: `latexer_<n>`
 - **Parametrizer source**: emits `INI_SECTION_LATEXER` with fields `action`, `engine`, `distribution`, `tex_path`, `project_dir`, `output_path`, `output_dir`, `filename`, `page_count`, `bytes`, `passes`, `bibliography`, `errors`, `warnings`, `success`, `status`, `style`, `style_family`, `style_mode`, `style_count`, and body=`response_body`.
 - **Starts other agents**: YES (always — success, failure OR a fail-safe refusal — so a Forker can branch on `{status}` / `{success}` / `{errors}`)
@@ -2199,20 +2151,20 @@ system_prompt: |
 - **Pool name pattern**: `pptxer_<n>`
 - **Parametrizer source**: emits `INI_SECTION_PPTXER` with fields `action`, `status`, `success`, `output_path`, `output_dir`, `filename`, `slide_count`, `shape_count`, `images_embedded`, `videos_embedded`, `tables`, `charts`, `diagrams`, `generated_art`, `nuance`, `nuance_confidence`, `palette`, `predominant_color`, `font_display`, `font_body`, `font_families`, `shapes_measured`, `render_tier`, `slides_rendered`, `ground_truth`, `layout_clean`, `overlaps`, `text_overflows`, `bytes`, `elapsed_seconds`, `stage`, and body=`response_body`.
 - **Starts other agents**: YES (always — success, failure OR a fail-safe refusal — so a Forker can branch on `{status}` / `{layout_clean}` / `{ground_truth}`)
-- **IT LOOKS AT THE SLIDES IT WROTE**: python-pptx performs NO layout at all, so "it saved without an error" says NOTHING about whether the text fits inside its box. PPTXer places every element from REAL font metrics — so overlap is prevented by construction, not detected afterwards — then RENDERS the finished deck, through the INSTALLED POWERPOINT when there is one, and MEASURES those pixels. `{ground_truth}` is True only when the pixels came from PowerPoint's own renderer (the same ones an audience sees); `{layout_clean}` is the measured verdict. Route a deck whose layout was NOT clean to a review step instead of straight to Emailer. ⚠️ PowerPoint's FIRST export pays a ~20-25 s cold start, during which the agent is silent and perfectly healthy.
+- **IT LOOKS AT THE SLIDES IT WROTE**: PPTXer measures the installed font face, tracking, line spacing, and insets, trial-composes dense content, and uses continuation slides to retain complete text. It audits the saved geometry, grouped text/table cells, native PowerPoint bounds when available, and contrast against rendered backgrounds. Check `{layout_clean}`, `{ground_truth}`, and report confidence together; route `created_with_findings` to review. Approximate previews are identified separately. Native rendering uses a bounded worker, and cleanup may terminate only Office processes attributable to that worker.
 - **THE LOOK IS COMPUTED FROM THE CONTENT**: PPTXer classifies the deck before building it, so in most flows you set NOTHING and still get a treatment that suits the subject — a tournament deck comes out loud and neon, an investor pitch confident and clean, a safety briefing plain with no ornament at all. Two overrides matter when you are designing a flow deliberately:
-  - `nuance` — force the treatment when the flow's purpose is known in advance (a launch flow should pass `nuance: product_launch`, a tournament flow `nuance: esports_tournament`).
+  - `nuance` — force an original content treatment (`product_launch`, `esports_tournament`) or an explicit visual style (`blueprint`, `botanical`, `swiss_editorial`). Empty retains automatic classification.
   - `predominant_color` — pass a brand colour ONCE, and consider carrying it between decks: `PPTXer → Parametrizer (map {predominant_color} into the next PPTXer) → PPTXer` keeps a multi-part deck visually consistent instead of each part choosing its own palette.
 - **Config parameters**:
   - `input_text`: "" (the Markdown / outline / JSON the deck is built from — this is the field a Parametrizer usually writes into)
   - `input_file`: "" (OR a path to a .md / .txt / .json / .html file) / `input_format`: "auto" (auto | markdown | text | outline | json)
   - `action`: "create" (create | outline — the slide PLAN only, nothing written | render | audit | info | fonts | validate) / `pptx_path`: "" (the existing deck, for render / audit / info)
   - `title` / `subtitle` / `author` / `kicker`: "" (cover text; empty = taken from the content's first heading)
-  - `slide_size`: "16:9" (16:9 | 16:10 | 4:3 | a4_land | a4_port | letter | square | vertical | cinema | ultrawide) / `margin_pt`: 48 (the SAFE AREA — nothing readable is ever placed outside it)
-  - `nuance`: "" (empty = DETECT from the content. 24 treatments, EIGHT built for GAMING and EIGHT for MARKETING: esports_tournament | game_design_doc | game_trailer_beat | cyberpunk_tech | fantasy_lore | retro_arcade | military_tactical | streamer_kit | product_launch | brand_story | campaign_report | startup_pitch | sales_enablement | luxury_brand | social_media_kit | event_keynote | corporate_update | technical_architecture | research_findings | training_course | project_status | financial_disclosure | legal_compliance | safety_briefing. English and Spanish aliases work. An explicit value WINS over detection.)
+  - `slide_size`: "16:9" (16:9 | 16:10 | 4:3 | a4_land | a4_port | letter | square | vertical | cinema | ultrawide) / `margin_pt`: 48 (safe area used during placement and checked by the saved-geometry audit)
+  - `nuance`: "" (empty = DETECT from the content using the original 24 treatments, EIGHT built for GAMING and EIGHT for MARKETING: esports_tournament | game_design_doc | game_trailer_beat | cyberpunk_tech | fantasy_lore | retro_arcade | military_tactical | streamer_kit | product_launch | brand_story | campaign_report | startup_pitch | sales_enablement | luxury_brand | social_media_kit | event_keynote | corporate_update | technical_architecture | research_findings | training_course | project_status | financial_disclosure | legal_compliance | safety_briefing. English and Spanish aliases work. There are 36 named treatments overall: the original 24 plus 12 explicit styles. New keys: swiss_editorial, warm_editorial, midnight_luxe, botanical, oceanic, blueprint, terracotta, nordic_frost, bauhaus, lavender_studio, monochrome_ink, sunset_coral. Display names work too. An explicit value WINS over detection.)
   - `predominant_color`: "" (ONE colour — "#RRGGBB", "rgb(...)", "hsl(...)", "oklch(...)" or a name like "cyberpunk" / "neon" / "obsidian" / "teal" — from which the WHOLE palette is derived in OKLab, with the nuance still choosing the register)
   - `accent_color` / `text_color` / `background_color` / `heading_color` / `link_color` / `table_header_color` / `rule_color`: "" (per-role overrides; each wins over the nuance and over `predominant_color`) / `background_mode`: "auto" (auto | dark | light)
-  - `font_pairing`: "" (esports | cyberpunk | arcade | fantasy_rpg | military_tactical | brand_bold | startup_pitch | luxury | editorial | friendly_consumer | corporate | technical | scientific | minimal | brutalist — resolved against the typefaces actually INSTALLED on this machine, so Terminator, Nasalization, Verdana, Times New Roman, Courier New and every other PowerPoint/Word face is used when present and degraded sanely when not) / `font_size`: 0 (0 = the density's own) / `scale_ratio`: 0 / `density`: "" (minimal | low | medium | high)
+  - `font_pairing`: "" (17 pairings: swiss | blueprint | esports | cyberpunk | arcade | fantasy_rpg | military_tactical | brand_bold | startup_pitch | luxury | editorial | friendly_consumer | corporate | technical | scientific | minimal | brutalist — resolved against the typefaces actually INSTALLED on this machine, so Terminator, Nasalization, Verdana, Times New Roman, Courier New and every other PowerPoint/Word face is used when present and degraded sanely when not) / `font_size`: 0 (0 = the density's own) / `scale_ratio`: 0 / `density`: "" (minimal | low | medium | high)
   - `decorations`: "auto" (auto | none | restrained | moderate | rich — SAFETY, not taste: it can only LOWER the ceiling PPTXer computed from the content, never raise it, and a financial_disclosure / legal_compliance / safety_briefing deck gets none regardless) / `ornament`: "" (hex_grid | circuitry | glitch_scan | pixel_grid | runic_border | tactical_grid | particle_burst | gradient_mesh | corporate_band | thin_rule | blob_shapes | soft_shapes | spotlight | constellation | wave_field | none) / `generate_art`: true
   - `images`: [] (local paths OR http(s) URLs — PPTXer FETCHES them and embeds the bytes; markdown `![](...)` works too) / `video`: "" (ONE hero video: .mp4/.m4v/.mov/.wmv/.avi) / `audio`: "" (.mp3/.wav/.m4a/.wma) / `max_image_px`: 1920 / `fetch_timeout`: 25 / `max_media_bytes`: 67108864 / `allow_private_hosts`: false (⚠️ LEAVE FALSE — private, loopback and link-local addresses are refused and every redirect hop is re-validated)
   - `render`: "auto" (auto | powerpoint — ground truth, its own renderer | libreoffice | preview — PPTXer's own Pillow preview, always available | none) / `render_width`: 1600 / `render_timeout`: 240 / `layout_audit`: true (re-open the SAVED deck and MEASURE it) / `save_slide_images`: true
@@ -2222,6 +2174,8 @@ system_prompt: |
   - `preflight`: true (fail-safe: REFUSE rather than write an empty or wrong deck) / `command_timeout`: 600
   - `source_agents`: [] (upstream agents — canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after the deck is built)
+- **Full-text verification and cleanup:** 256 characters is a stress-test field length, not a content cap. Long cards, tables, columns, timelines, and bullets may continue across slides. The recorded 126-test run includes all 12 styles in three-format long-card cases; the native new-style corpus covers 151 slides in 16:9. Read [the style and visibility guide](../pptxer/STYLES.md) for exact scope, tolerances, commands, and the disposable generated-output policy.
+
 
 ---
 
@@ -2249,7 +2203,7 @@ You MUST respond with ONLY a JSON array. Each element represents one agent to cr
 4. Every flow MUST start with a `starter` agent.
 5. Every flow SHOULD end with an `ender` agent (to allow stopping the flow). The Ender's `target_agents` should list ALL other agents in the flow except itself and Cleaners (so it can terminate them all). The Ender's `source_agents` are graphical connections only (never killed, never started). When Ender stops the flow, it also resets each resolved target's `reanim*` restart-state files.
 6. Connections are implicit: if agent A has `target_agents: ["raiser_1"]`, it means A connects to Raiser instance 1. The Ender is special: it uses `target_agents` for agents to KILL, `source_agents` for graphical input connections (never killed/started), and `output_agents` for Cleaners to launch. Agents that need persistent restart state should store it in files named `reanim*` so Ender can reset them during shutdown.
-7. No agent should list `ender_<n>` in its own `target_agents` or `source_agents`. The Ender receives connections visually from leaf agents (agents with no further downstream targets).
+7. Declare Ender input connections explicitly: active predecessors may target `ender_<n>` and/or Ender may name the intended predecessors in `source_agents`. Ender `target_agents` is its kill list, never an outgoing execution edge. No implicit all-leaves-to-all-Enders wiring is added.
 8. For agents that monitor logs (Raiser, Emailer, Forker, Stopper), set the `source_agents` to the agents whose logs they should watch.
 9. For OR/AND agents, use `source_agent_1` and `source_agent_2` (not source_agents list).
 10. For Asker/Forker agents, use `target_agents_a` and `target_agents_b` (not target_agents). For Counter agents, use `target_agents_l` and `target_agents_g`.

@@ -13,6 +13,12 @@ import sys
 from pptxer_visibility_gallery import write_gallery
 
 ROOT = Path(__file__).resolve().parents[1]
+# ruff: noqa: E402
+# The flat-sibling helpers imported below live in the agent's OWN directory and
+# can only be resolved AFTER the line beneath puts that directory on sys.path,
+# so they structurally cannot sit at the top of the file.  Suppressed here with
+# a reason rather than left red: a lint gate that always fails is a lint gate
+# everyone learns to ignore.
 sys.path.insert(0, str(ROOT / "Tlamatini/agent/agents/pptxer"))
 import pptxer_audit as audit
 import pptxer_build as build

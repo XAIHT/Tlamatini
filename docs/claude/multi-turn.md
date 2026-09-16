@@ -169,7 +169,7 @@ Files involved:
 
 ## Unified Section Format (Parametrizer)
 
-All 16+ section-generating agents use a single output format:
+All declared section-generating agents (53 currently) use a single output format:
 
 ```
 INI_SECTION_<AGENT_TYPE><<<
@@ -186,9 +186,7 @@ Rules:
 - Each section MUST be emitted in a **single `logging.info()` call** (atomic)
 - One section per output unit (N results = N sections)
 
-Registration (**2 places** — corrected 2026-08-23):
-1. `parametrizer.py` → `SECTION_AGENT_TYPES` list (membership)
-2. `services/agent_contracts.py` → `_PARAMETRIZER_OUTPUT_FIELDS` (the field tuple)
+Registration: declare output fields in `services/agent_contracts.py`, then regenerate `flow_catalog.json` with `python scripts/update_flow_catalog.py`. Parametrizer derives parser membership from that catalog; deployment refreshes it. Update wrapper promotion separately where needed.
 
 ⚠️ **`views.PARAMETRIZER_SOURCE_OUTPUT_FIELDS` is DERIVED** — it is literally
 `= get_parametrizer_source_fields()`, so hand-editing it is a no-op at best and
@@ -198,4 +196,36 @@ one below.
 
 The generic parser (`_parse_section_content` + `_section_regex`) in `parametrizer.py` handles all agents with ~90 lines. No per-agent parser code needed.
 
-Registered source agents: apirer, gitter, kuberneter, crawler, summarizer, prompter, flowcreator, file_interpreter, image_interpreter, file_extractor, kyber_keygen, kyber_cipher, kyber_decipher, gatewayer, gateway_relayer, de_compresser, googler, acpxer, shoter, camcorder, recorder, audioplayer, videoplayer, talker, whisperer, mouser, windower, unrealer, reviewer, analyzer, playwrighter, kalier, stm32er, esp32er, arduiner, esphomer, discoverer, nmapper, mcp_doctor, instant_messaging_doctor, telegrammer, whatsapper, zavuerer, video_analyzer, blenderer, editor, grepper, globber, pdfer, latexer, netspeed_calculator.
+Registered source agents (generated catalog, 53): acpxer, analyzer, apirer, arduiner, audioplayer, blenderer, camcorder, crawler, de_compresser, discoverer, editor, esp32er, esphomer, file_extractor, file_interpreter, flowcreator, gateway_relayer, gatewayer, gitter, globber, googler, grepper, image_interpreter, instant_messaging_doctor, kalier, keyboarder, kuberneter, kyber_cipher, kyber_decipher, kyber_keygen, latexer, mcp_doctor, mouser, netspeed_calculator, nmapper, pdfer, playwrighter, pptxer, prompter, recorder, reviewer, shoter, stm32er, summarizer, talker, telegrammer, unrealer, video_analyzer, videoplayer, whatsapper, whisperer, windower, zavuerer.
+
+## Desktop control and flow contracts — 2026-09-15
+
+Mouser now resolves explicit physical, window and screenshot coordinates; Keyboarder binds Unicode/key delivery to a verified window; Shoter publishes capture geometry. `input_sent` is delivery evidence, not application success, and a failed or interrupted input segment must be observed before replay.
+
+Parametrizer derives its parser registry from current contracts and validates complete typed mappings. FlowCreator selects from all 89 installed agents and validates the generated graph before publishing; FlowHypervisor separates execution, kill and observation relationships and uses current desktop receipts/timing. GUI-Manager remains design only.
+
+See [configuration, examples and limitations](../desktop-input-and-flow-contracts.md), the [complete generated coverage inventory](../agent-coverage.md), and the [GUI-Manager design](../GUI-Manager-design.md).
+
+## PDFer style requests in Multi-Turn — 2026-09-15
+
+Use `chat_agent_pdfer` for a PDF composed from an answer, Markdown, HTML, plain text or images. Discover the collection with `mode: styles`: 24 explicit IDs across playful/nursery, cyberpunk, cosmic, electronics and Tlamatini families. The result is `status: inspected`, with the catalog in the response body and no PDF output.
+
+Keep document purpose in `nuance` and visual appearance in `style`. For example, `mode: markdown`, `nuance: science`, `style: cosmic_nebula`, a title and literal `input_text` create a science document with a cosmic identity. Empty/auto style keeps the existing 20-theme automatic design. Exact aliases are supported; unknown styles fall back with a diagnostic. A style never raises the semantic decoration ceiling.
+
+Carry `style` and any `predominant_color` through Create Flow. `style` and `style_family` are structured PDFer outputs available to Parametrizer alongside existing fields; no previous field is renamed. Preserve literal `input_text` and explicitly selected page/font/color controls. Custom CSS selects legacy rendering under `engine: auto`; styles apply to atelier composition, not to existing merged pages or image-only layouts.
+
+For a document result, inspect `status`, `output_path`, `layout_clean` and the audit/repair details. `created` establishes file creation, not a clean audit; blank audit fields provide no layout verdict. Catalog discovery has no attachment to deliver. The existing Ask-Execs gate is unchanged. [Catalog, examples and complete result fields](../../Tlamatini/agent/agents/pdfer/STYLES.md).
+
+## LaTeXer style requests in Multi-Turn — 2026-09-15
+
+Use the existing `chat_agent_latexer` tool. `action: list_styles` returns 30 identities without probing TeX; `action: scaffold_compile` combines a `template` structure, explicit `style`, title and LaTeX body into a PDF. For example, `template: report` with `style: cosmic_nebula` chooses a report with cosmic styling. Style names are not inferred from prose.
+
+Carry `style`, `subtitle`, `style_mode`, `style_decoration`, `style_cover` and `predominant_color` through Create Flow. Preserve `style_cover: false` as a boolean. Use `content_b64` for template bodies and `input_text_b64` for fragments when chat escaping would damage source. Complete source documents/projects keep their own preamble, so omit style for those calls.
+
+The four design result fields (`style`, `style_family`, `style_mode`, `style_count`) are available alongside normal operation fields. `listed` with `style_count: 30` means catalogue discovery, not a created PDF. Check `status`/`success` and `output_path` before claiming a build. The existing Ask-Execs tool gate is unchanged. [Full controls and examples](../../Tlamatini/agent/agents/latexer/STYLES.md).
+
+## PPTXer style requests in Multi-Turn — 2026-09-15
+
+Use `chat_agent_pptxer` with `action: create`, `input_text`, and an explicit `nuance`, such as `blueprint` or `botanical`. There are 36 named treatments, including 12 added visual presets, and 17 font pairings. Empty `nuance` keeps automatic content classification. Carry `nuance`, `predominant_color`, `background_mode`, `font_pairing`, `density`, and the other existing options into Create Flow using their configuration names.
+
+Complete long text may produce continuation slides. Inspect `status`, `output_path`, `layout_clean`, `ground_truth`, and audit confidence. `created_with_findings` means a deck exists and requires review; a successful save or approximate preview is insufficient evidence of native visibility. The existing actions and Ask-Execs gate remain unchanged. [All styles and verification scope](../../Tlamatini/agent/agents/pptxer/STYLES.md).

@@ -4,8 +4,8 @@
 # BEHAVIOR:
 # When the user clicks Save in the configuration dialog, this agent will:
 # 1. Clean the canvas and pool directory (except itself)
-# 2. Send the prompt + agentic_skill.md to the configured LLM
-# 3. Parse the LLM response into a flow creation script
+# 2. Select capabilities from all installed agents, then send relevant guide/schema
+# 3. Validate the generated plan against current contracts before publishing it
 # 4. Write flow_creation_script.txt with the intermediate plan
 # 5. Write flow_result.json for the frontend to render on the canvas
 # 6. The frontend automatically deploys and connects all agents
@@ -30,3 +30,10 @@ output_dir: ""
 llm:
   host: "http://localhost:11434"
   model: "glm-5.3:cloud"
+  # Requested model context; actual support depends on the configured provider.
+  num_ctx: 65536
+  # Reject an oversized prompt rather than knowingly sending the whole guide.
+  # This is a character guard, not an exact model tokenizer/context guarantee.
+  max_prompt_chars: 180000
+  # Bounded repair after deterministic validation; 0 disables repair, maximum 3.
+  repair_attempts: 2

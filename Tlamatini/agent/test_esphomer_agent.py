@@ -86,11 +86,26 @@ class _LogCapture:
                 outer.records.append(record.getMessage())
 
         self._handler = _H()
-        logging.getLogger().addHandler(self._handler)
+        self._handler.setLevel(logging.NOTSET)
+        root = logging.getLogger()
+        # ⚠️ FORCE the root level (and lift any global logging.disable) for the
+        # duration of the capture, then restore both. Adding a handler is NOT
+        # enough: a record below the root logger's level is dropped before any
+        # handler sees it, so without this the capture is silently TEST-ORDER
+        # DEPENDENT. See the twin helper in test_esp32er_agent.py and
+        # create_new_agent.md pitfall #15: fix the harness, never the assertion.
+        self._prev_level = root.level
+        self._prev_disable = logging.root.manager.disable
+        logging.disable(logging.NOTSET)
+        root.setLevel(logging.INFO)
+        root.addHandler(self._handler)
         return self
 
     def __exit__(self, *_a):
-        logging.getLogger().removeHandler(self._handler)
+        root = logging.getLogger()
+        root.removeHandler(self._handler)
+        root.setLevel(self._prev_level)
+        logging.disable(self._prev_disable)
         return False
 
 
@@ -424,6 +439,115 @@ class RegistrationTests(unittest.TestCase):
         self.assertEqual(cfg['action'], 'validate')
         self.assertTrue(cfg['auto_bootstrap'])
         self.assertIn('target_agents', cfg)
+
+
+class TemplateProjectTests(unittest.TestCase):
+    """The bundled ESPHomeTemplateProject and the scaffold_template action.
+
+    ⚠️ WHAT THESE PIN: the template project shipped inside this agent's directory
+    and was tracked in git, but NO CODE PATH EVER READ IT — `new_config` generates
+    from the inline `_DEVICE_YAML_TEMPLATE` instead. A template nothing can reach
+    is documentation at best and silent drift at worst. `scaffold_template` makes
+    it reachable; these tests make sure it stays reachable and stays complete.
+    """
+
+    def test_scaffold_template_is_a_registered_action(self):
+        self.assertIn('scaffold_template', ESP._ALL_ACTIONS)
+        # It is stdlib-only file work: no `esphome`, no board, no compile.
+        self.assertIn('scaffold_template', ESP._FILE_ACTIONS)
+        self.assertNotIn('scaffold_template', ESP._HARDWARE_ACTIONS)
+
+    def test_bundled_template_sits_beside_the_agent_script(self):
+        """It must live NEXT TO esphomer.py so build.py's `agents/` copytree
+        carries it into a frozen build."""
+        self.assertEqual(
+            os.path.dirname(ESP._template_source_dir()),
+            os.path.dirname(os.path.abspath(ESP.__file__)),
+        )
+
+    def test_bundled_template_ships_what_its_readme_promises(self):
+        template = ESP._template_source_dir()
+        self.assertTrue(os.path.isdir(template), f"missing template dir: {template}")
+        for rel in ('README.md', 'tlamatini-light.yaml', 'tlamatini-sensor.yaml',
+                    '.gitignore', 'secrets.yaml.example',
+                    os.path.join('common', 'base.yaml')):
+            self.assertTrue(os.path.exists(os.path.join(template, rel)), rel)
+
+    def test_template_never_ships_a_real_secrets_file(self):
+        """secrets.yaml holds a real WiFi password. Shipping one — or letting a
+        scaffold write one into git — is exactly what .gitignore exists to stop."""
+        template = ESP._template_source_dir()
+        self.assertFalse(os.path.exists(os.path.join(template, 'secrets.yaml')))
+        with open(os.path.join(template, '.gitignore'), encoding='utf-8') as f:
+            self.assertIn('secrets.yaml', f.read())
+
+    def test_self_contained_device_stays_safe_loadable(self):
+        """tlamatini-light.yaml is the BEGINNER device: one file, no !include and
+        no !secret, so it can be copied anywhere and parsed by anything."""
+        path = os.path.join(ESP._template_source_dir(), 'tlamatini-light.yaml')
+        doc = yaml.safe_load(open(path, encoding='utf-8'))
+        self.assertEqual(doc['esphome']['name'], 'tlamatini-light')
+        self.assertIn('wifi', doc)
+        self.assertEqual(doc['light'][0]['platform'], 'binary')
+
+    def test_scaffold_template_copies_the_whole_project(self):
+        with tempfile.TemporaryDirectory() as d:
+            dest = os.path.join(d, 'MyHome')
+            res = ESP._scaffold_template({'project_dir': dest})
+            self.assertTrue(res['ok'], res)
+            self.assertTrue(os.path.exists(os.path.join(dest, 'tlamatini-light.yaml')))
+            self.assertTrue(os.path.exists(os.path.join(dest, 'common', 'base.yaml')))
+            self.assertTrue(os.path.exists(os.path.join(dest, 'secrets.yaml.example')))
+
+    def test_scaffold_template_defaults_under_templates_root(self):
+        with tempfile.TemporaryDirectory() as d:
+            with patch.dict(os.environ, {'TLAMATINI_TEMPLATES': d}):
+                res = ESP._scaffold_template({'project_dir': ''})
+            self.assertTrue(res['ok'], res)
+            self.assertTrue(res['project_dir'].startswith(d))
+
+    # ── new_config + use_secrets ────────────────────────────────────────
+
+    def test_new_config_without_secrets_stays_safe_loadable(self):
+        """The DEFAULT must remain plain YAML: `!secret` is a custom tag, so
+        turning it on by default would break every downstream safe_load."""
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, 'plain.yaml')
+            res = ESP._new_config({'config_path': path, 'name': 'plain',
+                                   'platform': 'esp32', 'wifi_ssid': 'MyNet'})
+            self.assertTrue(res['ok'], res)
+            doc = yaml.safe_load(open(path, encoding='utf-8'))
+            self.assertEqual(doc['wifi']['ssid'], 'MyNet')
+            self.assertFalse(os.path.exists(os.path.join(d, 'secrets.yaml')))
+
+    def test_new_config_use_secrets_splits_credentials_out(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, 'secure.yaml')
+            res = ESP._new_config({'config_path': path, 'name': 'secure',
+                                   'platform': 'esp32', 'wifi_ssid': 'MyNet',
+                                   'wifi_password': 'hunter2', 'use_secrets': True})
+            self.assertTrue(res['ok'], res)
+            body = open(path, encoding='utf-8').read()
+            self.assertIn('!secret wifi_ssid', body)
+            self.assertIn('!secret wifi_password', body)
+            # The real password must NOT be in the device file any more.
+            self.assertNotIn('hunter2', body)
+            secrets = os.path.join(d, 'secrets.yaml')
+            self.assertTrue(os.path.exists(secrets))
+            self.assertIn('hunter2', open(secrets, encoding='utf-8').read())
+
+    def test_new_config_never_overwrites_an_existing_secrets_file(self):
+        """A second device scaffolded into the same folder must not clobber the
+        first one's real credentials."""
+        with tempfile.TemporaryDirectory() as d:
+            secrets = os.path.join(d, 'secrets.yaml')
+            with open(secrets, 'w', encoding='utf-8') as f:
+                f.write('wifi_ssid: "ALREADY_MINE"\n')
+            res = ESP._new_config({'config_path': os.path.join(d, 'second.yaml'),
+                                   'name': 'second', 'platform': 'esp32',
+                                   'wifi_ssid': 'Other', 'use_secrets': True})
+            self.assertTrue(res['ok'], res)
+            self.assertIn('ALREADY_MINE', open(secrets, encoding='utf-8').read())
 
 
 if __name__ == '__main__':

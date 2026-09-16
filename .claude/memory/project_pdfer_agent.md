@@ -1,12 +1,26 @@
 ---
 name: project_pdfer_agent
-description: "PDFer (agent #86) — the document composer; zero new deps, Ask-Execs tier A, new \"Documents & PDF\" prompts section"
+description: "PDFer document composer — 24 visual styles, 20 semantic themes, measured layouts, catalog mode and flow outputs"
 metadata: 
   node_type: memory
   type: project
   originSessionId: 4403893e-b0ec-4196-b259-1acb8b155a39
-  modified: 2026-07-26T21:45:11.901Z
+  modified: 2026-09-16T02:08:43.000Z
 ---
+
+## Current source behavior — 2026-09-15
+
+PDFer composes PDFs from text/Markdown/HTML/images and merges or inspects PDFs. Its **24 explicit styles** span playful/nursery, cyberpunk, cosmic, electronics and Tlamatini families, independently of the **20 semantic `nuance` themes**. `style: auto` keeps automatic design; `mode: styles` returns the catalog with `status: inspected` and no PDF. Exact normalized aliases are supported; unknown styles retain the semantic theme with a diagnostic.
+
+`pdfer_styles.py` and `pdfer_artwork.py` join ten existing flat helper siblings. Atelier uses measured cover/table layouts, an opaque cover reading area, title/subtitle continuation, fitted footer notes, contrast-checked small text and original deterministic vector artwork. Styles never raise the content's decoration ceiling. Legal, clinical and financial themes keep no ornament. Custom CSS with `engine: auto` selects legacy rendering; image-only layouts and existing merged PDFs keep their own appearance.
+
+`style` and `style_family` join existing `INI_SECTION_PDFER` fields for Parametrizer. Check `layout_clean` and the diagnostic body before claiming an audit pass: `created` alone and blank audit fields do not establish one. No new runtime dependencies; optional model polish/design remain off. Output still defaults to the Documents known-folder/TlamatiniPDF, with collision-safe naming and Ask-Execs tier A.
+
+Implementation validation on 2026-09-15: **130 PDFer tests passed**, and **24 two-page style samples (48 pages)** had clean audits. Generated previews/atlas and task logs were then removed. The gallery and atlas paths are ignored and reproducible with `scripts/verify_pdfer_styles.py`; no sample assets are runtime requirements. [Canonical guide, controls and commands](../../Tlamatini/agent/agents/pdfer/STYLES.md).
+
+The dated record below describes the original 2026-07-26 implementation and that session's deployment state. Its 74-test count, commit/worktree status, prompt totals, installation paths and policy question are historical, not current checks. The current style extension has not established the state of a separate frozen installation.
+
+## Historical implementation notes — 2026-07-26
 
 **PDFer = agent #86, Tlamatini's DOCUMENT COMPOSER** — the WRITE side of the document family
 (File-Extractor / File-Interpreter READ documents; PDFer AUTHORS them). Built 2026-07-26.

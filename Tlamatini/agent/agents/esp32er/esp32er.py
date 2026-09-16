@@ -62,6 +62,7 @@ import json
 import time
 import yaml
 import logging
+import shutil
 import threading
 import subprocess
 
@@ -925,25 +926,143 @@ def _list_sources(config: dict) -> dict:
     return {"ok": True, "returncode": 0, "stdout": "\n".join(found) or "(no source files found)"}
 
 
+_TEMPLATE_DIR_NAME = "ESP32TemplateProject"
+
+# Last-resort firmware, written ONLY when the bundled template is missing AND
+# `pio project init` produced no source. See _create_project for why an empty
+# project is not an acceptable outcome.
+_MINIMAL_MAIN_CPP = """\
+#include <Arduino.h>
+
+#ifndef BLINK_LED_PIN
+#define BLINK_LED_PIN 2
+#endif
+
+void setup() {
+    pinMode(BLINK_LED_PIN, OUTPUT);
+    Serial.begin(115200);
+    delay(300);
+    Serial.println("ESP32TemplateProject :: blink starting");
+}
+
+void loop() {
+    digitalWrite(BLINK_LED_PIN, HIGH);
+    Serial.println("LED ON");
+    delay(500);
+    digitalWrite(BLINK_LED_PIN, LOW);
+    Serial.println("LED OFF");
+    delay(500);
+}
+"""
+
+
+def _template_source_dir() -> str:
+    """The bundled ESP32TemplateProject directory (beside this script)."""
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), _TEMPLATE_DIR_NAME)
+
+
+def _ensure_ini_key(ini_path: str, key: str, value: str) -> None:
+    """Set/insert `<key> = <value>` under each [env:...] section of platformio.ini."""
+    if not os.path.exists(ini_path):
+        return
+    with open(ini_path, "r", encoding="utf-8", errors="replace") as f:
+        lines = f.readlines()
+    out, in_env, wrote = [], False, False
+    for line in lines:
+        if re.match(r"\s*\[env:", line):
+            if in_env and not wrote:
+                out.append(f"{key} = {value}\n")
+            in_env, wrote = True, False
+            out.append(line)
+            continue
+        if in_env and re.match(rf"\s*{re.escape(key)}\s*=", line):
+            out.append(f"{key} = {value}\n")
+            wrote = True
+            continue
+        out.append(line)
+    if in_env and not wrote:
+        out.append(f"{key} = {value}\n")
+    with open(ini_path, "w", encoding="utf-8") as f:
+        f.writelines(out)
+
+
+def _stamp_platformio_ini(ini_path: str, board: str, framework: str) -> None:
+    """Stamp the requested board / framework onto a scaffolded platformio.ini.
+
+    The bundled template targets `esp32dev` + `arduino`; this re-points it at
+    whatever the caller actually asked for, so one template serves every ESP32
+    variant. Best-effort — a failure here leaves a still-valid project.
+    """
+    if board:
+        _ensure_ini_key(ini_path, "board", board)
+    if framework:
+        _ensure_ini_key(ini_path, "framework", framework)
+
+
 def _create_project(config: dict, pio_cmd: list, env: dict, timeout: float) -> dict:
+    """Scaffold a PlatformIO project from the bundled ESP32TemplateProject (the
+    uniform template-project scheme shared with Arduiner), falling back to a bare
+    `pio project init` when the template is unavailable.
+
+    ⚠️ WHY THE TEMPLATE IS NOT DECORATION: `pio project init` on its own produces
+    a platformio.ini plus EMPTY src/ include/ lib/ test/ directories — there is no
+    main.cpp anywhere. Under the Arduino framework the very next `build` therefore
+    fails to link (`undefined reference to 'setup'` / `'loop'`), so a freshly
+    scaffolded project did not compile and the one-call `scaffold_build_upload`
+    composite died at its build stage unless the caller had supplied `content`.
+    Copying the template makes create_project → build succeed with no further
+    input, which is the whole point of a scaffold. The `_MINIMAL_MAIN_CPP`
+    fallback below keeps that guarantee even on a damaged install: this function
+    must NEVER hand back a project that cannot compile.
+    """
     project_dir = str(_cfg(config, "project_dir")).strip()
     board = str(_cfg(config, "board")).strip()
     framework = str(_cfg(config, "framework")).strip()
     if not project_dir or not board:
         return {"ok": False, "error": "create_project needs project_dir and board (e.g. board='esp32dev')."}
+
+    ini_path = _platformio_ini(project_dir)
+    if os.path.exists(ini_path):
+        return {"ok": True, "returncode": 0, "project_dir": project_dir,
+                "stdout": f"PlatformIO project already exists at {project_dir} (left untouched)."}
+
+    template = _template_source_dir()
+    if os.path.isdir(template):
+        try:
+            shutil.copytree(template, project_dir, dirs_exist_ok=True)
+            _stamp_platformio_ini(ini_path, board, framework)
+            note = (f"Scaffolded '{os.path.basename(os.path.normpath(project_dir))}' from "
+                    f"{_TEMPLATE_DIR_NAME} at {project_dir} (board={board}"
+                    + (f", framework={framework})" if framework else ")"))
+            return {"ok": True, "returncode": 0, "project_dir": project_dir, "stdout": note}
+        except Exception as e:
+            logging.warning(f"⚠️ template copy failed ({e}) — falling back to `pio project init`")
+
+    # Fallback: PlatformIO's own bare scaffold, then guarantee a compilable source.
     os.makedirs(project_dir, exist_ok=True)
     args = list(pio_cmd) + ["project", "init", "-d", project_dir, "-b", board]
     rc, out, err = _run_cmd(args, env=env, timeout=timeout)
     result = {"ok": rc == 0, "returncode": rc, "project_dir": project_dir,
-              "stdout": out, "stderr": err}
-    # Apply a non-default framework by patching platformio.ini (pio project init
-    # uses the board's default framework; ESP-IDF / a specific framework is set here).
+              "stdout": out + f"\n[esp32er] ({_TEMPLATE_DIR_NAME} not found — used `pio project init`)",
+              "stderr": err}
     if rc == 0 and framework:
         try:
-            _ensure_framework(_platformio_ini(project_dir), framework)
-            result["stdout"] = (out + f"\n[esp32er] framework set to '{framework}' in platformio.ini").strip()
+            _ensure_framework(ini_path, framework)
+            result["stdout"] += f"\n[esp32er] framework set to '{framework}' in platformio.ini"
         except Exception as e:
             result["stderr"] = (err + f"\n[esp32er] could not set framework: {e}").strip()
+    if rc == 0:
+        # `pio project init` leaves src/ EMPTY, which does not link. Never return a
+        # project that cannot be built — write the minimal blink instead.
+        try:
+            src_dir = os.path.join(project_dir, "src")
+            os.makedirs(src_dir, exist_ok=True)
+            if not any(n.endswith((".c", ".cpp", ".ino")) for n in os.listdir(src_dir)):
+                with open(os.path.join(src_dir, "main.cpp"), "w", encoding="utf-8") as f:
+                    f.write(_MINIMAL_MAIN_CPP)
+                result["stdout"] += "\n[esp32er] wrote a minimal src/main.cpp so the project compiles"
+        except Exception as e:
+            logging.warning(f"⚠️ could not write fallback src/main.cpp: {e}")
     return result
 
 

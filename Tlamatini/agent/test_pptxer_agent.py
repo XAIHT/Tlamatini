@@ -1167,11 +1167,8 @@ class RegistryIntegrationTests(SimpleTestCase):
         self.assertTrue(reverse("update_pptxer_connection", args=["pptxer-1"]))
 
     def test_the_agent_is_a_registered_section_producer(self):
-        parametrizer = os.path.join(AGENT_DIR, "..", "parametrizer",
-                                    "parametrizer.py")
-        source = open(os.path.abspath(parametrizer), encoding="utf-8").read()
-        self.assertIn("'pptxer'", source,
-                      "pptxer missing from SECTION_AGENT_TYPES")
+        from agent.agents.flowcreator.flow_knowledge import load_catalog
+        self.assertTrue(load_catalog()['pptxer']["output_fields"])
 
 
 class FrontendWiringTests(SimpleTestCase):

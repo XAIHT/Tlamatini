@@ -24,7 +24,13 @@
 #     system_info      : pio system info
 #     boards           : pio boards <boards_query|board> --json-output  (board search)
 #   Project lifecycle:
-#     create_project   : pio project init -d <project_dir> -b <board>  (+ optional framework)
+#     create_project   : scaffold a COMPLETE, COMPILABLE project into <project_dir> by
+#                        copying the bundled ESP32TemplateProject (platformio.ini +
+#                        src/main.cpp blink-and-print + include/lib/test), then stamping
+#                        `board` and `framework` into platformio.ini. Falls back to
+#                        `pio project init` + a minimal main.cpp if the template is absent.
+#                        (It used to run a BARE `pio project init`, which leaves src/ EMPTY
+#                        — under the Arduino framework the next `build` then failed to link.)
 #     write_source     : write/overwrite a file under the project  (rel_path, content)
 #     read_source      : read a file back from the project  (rel_path)
 #     list_sources     : list source files under the project

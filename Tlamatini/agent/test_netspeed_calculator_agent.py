@@ -1263,9 +1263,8 @@ class RegistryIntegrationTests(SimpleTestCase):
                 self.assertIn(key, fields)
 
     def test_section_agent_type_is_registered_with_parametrizer(self):
-        path = os.path.join(_HERE, 'agents', 'parametrizer', 'parametrizer.py')
-        with open(path, 'r', encoding='utf-8') as fh:
-            self.assertIn("'%s'" % self.KEY, fh.read())
+        from agent.agents.flowcreator.flow_knowledge import load_catalog
+        self.assertTrue(load_catalog()[self.KEY]["output_fields"])
 
     def test_exec_report_captures_the_agent(self):
         from agent.mcp_agent import _EXEC_REPORT_TOOLS

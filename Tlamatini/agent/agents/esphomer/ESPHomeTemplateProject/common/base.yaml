@@ -1,0 +1,32 @@
+# Shared building blocks every device in this project pulls in with:
+#
+#     packages:
+#       base: !include common/base.yaml
+#
+# Putting the connectivity blocks in ONE file means adding a third or tenth
+# device is three lines, and changing your WiFi is one edit instead of ten.
+
+logger:
+
+# Native API — how a smart-home hub (Home Assistant) discovers and controls
+# this device locally, with no cloud and no MQTT broker in between.
+api:
+
+# Over-the-air updates. The FIRST flash must be over USB; after that ESPHomer
+# can push new firmware by passing the device's IP as `port`.
+ota:
+  - platform: esphome
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # If the WiFi is unreachable, the device raises its own access point so it is
+  # never permanently unreachable — the difference between "reconfigure it from
+  # your phone" and "fetch a USB cable and a ladder".
+  ap:
+    ssid: "Tlamatini Fallback"
+    password: !secret fallback_password
+
+# Serves the configuration portal on that fallback access point.
+captive_portal:

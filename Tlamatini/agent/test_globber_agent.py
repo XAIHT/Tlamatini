@@ -147,9 +147,8 @@ class GlobberWiringTests(SimpleTestCase):
         self.assertIn("update_globber_connection/globber-1/", url)
 
     def test_parametrizer_section_type_registered(self):
-        param = os.path.join(_THIS_DIR, "agents", "parametrizer", "parametrizer.py")
-        with open(param, encoding="utf-8") as f:
-            self.assertIn("'globber'", f.read())
+        from agent.agents.flowcreator.flow_knowledge import load_catalog
+        self.assertTrue(load_catalog()['globber']["output_fields"])
 
     def test_canvas_css_class_present_and_unique(self):
         css = os.path.join(_THIS_DIR, "static", "agent", "css", "agentic_control_panel.css")

@@ -1,6 +1,6 @@
 ---
 name: create-new-agent
-description: The authoritative 8-step contract for scaffolding a NEW Tlamatini workflow agent end-to-end (backend script + config.yaml, connection-update view + URL, migration seeding the Agent row, CSS gradient, four JS files, agentic_skill.md, README.md, lint). READ THIS BEFORE adding or renaming any of the 83 visual agents, before touching `agent/agents/<name>/`, before writing a `00NN_add_<name>.py` migration, before adding a `.canvas-item.<x>-agent` rule, or before extending the `acp-*.js` classMap / connectors. Companion to the `tlamatini-new-acp-agent` skill (which drives the procedure) and to `tlamatini-agent-naming` (the naming-convention guard).
+description: The authoritative 8-step contract for scaffolding a NEW Tlamatini workflow agent end-to-end (backend script + config.yaml, connection-update view + URL, migration seeding the Agent row, CSS gradient, four JS files, agentic_skill.md, README.md, lint). READ THIS BEFORE adding or renaming any of the 89 visual agents, before touching `agent/agents/<name>/`, before writing a `00NN_add_<name>.py` migration, before adding a `.canvas-item.<x>-agent` rule, or before extending the `acp-*.js` classMap / connectors. Companion to the `tlamatini-new-acp-agent` skill (which drives the procedure) and to `tlamatini-agent-naming` (the naming-convention guard).
 metadata:
   openclaw:
     emoji: "📘"
@@ -99,3 +99,11 @@ Return:
 ```
 
 (That is the absolute pointer the caller should `Read` next.)
+
+## Current installed-agent contract — 2026-09-15
+
+Use `agent/agents/flowcreator/flow_catalog.json` for canonical names, current config schemas, output/input slots, lifecycle flags and structured fields for all 89 installed types. GUI-Manager is design only. After changing a template/contract/reference, run `python scripts/update_flow_catalog.py` and its `--check` mode in the repository. Deployment refreshes runtime snapshots.
+
+FlowCreator selects capabilities before detailed design, validates the generated plan, and uses bounded repair. Declare Ender input connections explicitly; Ender `target_agents` is a kill list. Counter uses L/G slots; source dependencies do not choose a conditional output branch. Generated Parametrizers require valid `_parametrizer_mappings`, one source and one target. Do not maintain a separate hardcoded Parametrizer producer list.
+
+For desktop flows, use explicit physical/screenshot geometry and verified target windows. `input_sent` is input delivery only; errors may be partial and must not be blindly replayed. Read `docs/desktop-input-and-flow-contracts.md` and `docs/agent-coverage.md` for the full contract and verification scope.

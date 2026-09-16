@@ -23,4 +23,18 @@ One-line descriptions:
 - **recent-fixes.md** — *(NOT auto-imported; consult-on-demand)* The chronological "Recent Fixes / Gotchas" log: dated "do NOT revert this / keep these surfaces aligned" contracts for ACPX, the Flow Compiler, the planner, the Exec Report pipeline, the ACP canvas, wrapped chat-agent parsing, the desktop-UI agents, `prompt.pmt`, `regen_secrets.py`, the logging filters, and more. It was split off `gotchas.md` (and removed from the `@`-import set) so every session's auto-loaded context stays lean. **Read it before modifying or reverting code in any of those subsystems**, and prepend new fix entries there.
 - **`docs/external_mcp_bulletproof_architecture.md`** — *(NOT in this directory; NOT auto-imported; consult-on-demand)* The original design contract for the **External MCPs** universal client: 4 transports, lazy background connect, negative cache, and "never crash / never hang the chat build" invariants. Read it with `mcp-tools.md` and the 2026-08-15 section of `recent-fixes.md`, which extend the design to 10 supervisors, private runtimes, default seeding/tombstones, and public/private catalog separation.
 
+- **[PPTXer styles and visibility](../../Tlamatini/agent/agents/pptxer/STYLES.md)** — Canonical guide for 36 named treatments, the 12 explicit styles, 17 font pairings, complete-text pagination, native audit interpretation, dated verification scope, reproduction commands, and disposable output cleanup.
+
+- **[PDFer signature collection](../../Tlamatini/agent/agents/pdfer/STYLES.md)** — Canonical guide to 24 explicit styles in five families, the separate 20-theme semantic classifier, catalog mode, configuration precedence, vector artwork, output/audit fields, long-text handling and reproducible validation. Preview assets are optional ignored outputs. Integration details: `agents.md`, `architecture.md`, `multi-turn.md`, `exec-report.md`; dated evidence: `recent-fixes.md`.
+
+- **[LaTeXer signature collection](../../Tlamatini/agent/agents/latexer/STYLES.md)** — Canonical guide for all 30 styles, six families, eight independent structures, engine-free discovery, screen/print and cover controls, LaTeX body helpers, output contract and real-engine verification. Integration details are in `agents.md`, `architecture.md`, `multi-turn.md`, `frontend.md` and `exec-report.md`; the 2026-09-15 entry in `recent-fixes.md` records the validation snapshot.
+
 Read order when joining the project cold: root `CLAUDE.md` → `architecture.md` → `multi-turn.md` → `exec-report.md` → `agents.md` → `acpx.md` → `mcp-tools.md` → `frontend.md` → `gotchas.md`. Then consult `recent-fixes.md` on demand whenever you touch one of the subsystems it covers.
+
+## Desktop control and flow contracts — 2026-09-15
+
+Mouser now resolves explicit physical, window and screenshot coordinates; Keyboarder binds Unicode/key delivery to a verified window; Shoter publishes capture geometry. `input_sent` is delivery evidence, not application success, and a failed or interrupted input segment must be observed before replay.
+
+Parametrizer derives its parser registry from current contracts and validates complete typed mappings. FlowCreator selects from all 89 installed agents and validates the generated graph before publishing; FlowHypervisor separates execution, kill and observation relationships and uses current desktop receipts/timing. GUI-Manager remains design only.
+
+See [configuration, examples and limitations](../desktop-input-and-flow-contracts.md), the [complete generated coverage inventory](../agent-coverage.md), and the [GUI-Manager design](../GUI-Manager-design.md).
