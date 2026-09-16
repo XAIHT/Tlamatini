@@ -45,6 +45,35 @@
 
 ---
 
+## Unreleased packaging hardening — 2026-09-16
+
+The current working tree removes frontend CDN dependencies. Bootstrap, jQuery,
+jQuery UI, syntax highlighting, Nunito fonts, PDF.js, avatar frames and the
+application's JavaScript/CSS are served from local static assets. This does not
+make configured cloud models, External MCPs or Internet agents offline services.
+
+`build.py` now checks source-to-collected and source-to-frozen asset integrity,
+rejects missing runtime dependencies, and writes `runtime-assets.json` into the
+payload. Every ZIP member is checked against its SHA-256 receipt before publishing
+`pkg.zip`; `build_installer.py` verifies it again. Both complete-release wrappers
+enforce a **1,990,000,000-byte (1.99 decimal GB) final ZIP ceiling**, including the
+installer and uninstaller. Required assets are not silently removed to meet it.
+
+The pinned frontend can be reproduced with `python scripts/vendor_frontend.py`;
+PDF.js uses `python scripts/vendor_pdfjs.py`. Normal builds use the locally vendored
+assets without CDN downloads. Commit the newly unignored PDF.js API/worker and
+the frontend vendor tree together with these build changes. See
+[runtime asset carriage](docs/self-management-carriage.md#local-frontend-and-release-completeness-gate).
+These changes require a fresh release build; no automated tests or build were run
+during this source/documentation refresh.
+
+The self-management follow-up also carries the integrity checker into the frozen
+app and installer, verifies updates before shutdown, and enforces snapshot/flag
+coherence. Both inclusion skills' file-only sweeps pass: 740 runtime inputs are
+accounted for in a sanitized snapshot, including 15 previously omitted PDFer
+ornaments. Database/WAL and security-evidence preservation are tightened. See the
+[audit evidence and remaining release checks](docs/self-management-carriage.md#self-management-follow-up-inclusion-skills-and-executed-file-audits).
+
 ## Table of contents
 
 1. [What is Tlamatini](#what-is-tlamatini)
@@ -525,7 +554,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\tlamatini_defender.ps1 -De
 - Inspect created block rules with `Get-NetFirewallRule -DisplayName "Tlamatini Block *"`. Remove a specific inbound/outbound pair only after validating the incident and the IP; keep an audit record of that decision.
 - Logs append under `security/security_logs/`, are intentionally git-ignored, are excluded from public builds/source snapshots, and can contain usernames, process paths, command lines, IP addresses, administrator-group membership, and other sensitive host telemetry. Protect and retain them according to your policy.
 
-The batch launchers resolve their own full path with `%~f0`, pass it to the UAC relaunch through an environment variable so directories with spaces remain intact, and locate companion scripts with `%~dp0`. They also return the companion PowerShell process's failure code. The PowerShell scripts use `$PSScriptRoot` and `Split-Path -Parent`. This keeps the toolkit path-independent across source checkouts and installed builds. `build.py` ships the complete `security/` directory but omits runtime logs, while `copy_source_assets.py` carries its source into self-modify snapshots and excludes `security_logs/`. On self-update, `security/` is replaced as application code, but your `security_logs/` evidence is preserved rather than deleted: `apply_update.ps1` stashes it to `Temp/_security_logs_carryover` before the swap and restores it into the new `security/` afterward, failing open (on any error the evidence is left in the carryover directory instead of being removed).
+The batch launchers resolve their own full path with `%~f0`, pass it to the UAC relaunch through an environment variable so directories with spaces remain intact, and locate companion scripts with `%~dp0`. They also return the companion PowerShell process's failure code. The PowerShell scripts use `$PSScriptRoot` and `Split-Path -Parent`. This keeps the toolkit path-independent across source checkouts and installed builds. `build.py` ships the complete `security/` directory but omits runtime logs, while `copy_source_assets.py` carries its source into self-modify snapshots and excludes `security_logs/`. On self-update, `security/` is replaced as application code, but your `security_logs/` evidence is preserved rather than deleted: `apply_update.ps1` stashes it to `Temp/_security_logs_carryover_<unique-id>` before the swap and restores it into the new `security/` afterward. A failed stash stops application deletion; a failed restore retains the uniquely named stash without overwriting other evidence.
 
 > **Authorisation boundary:** use these assets only on systems you own or are explicitly authorised to defend. Tlamatini's Blue-hat toolkit helps collect and react to signals; the human operator remains responsible for scope, policy changes, false positives, containment decisions, evidence preservation, and recovery.
 

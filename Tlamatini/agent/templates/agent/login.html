@@ -8,10 +8,9 @@
     <link rel="icon" type="image/x-icon" href="{% static 'agent/img/Tlamatini.ico' %}?v={{ STATIC_VERSION }}">
     <link rel="shortcut icon" type="image/x-icon" href="{% static 'agent/img/Tlamatini.ico' %}?v={{ STATIC_VERSION }}">
     <link rel="apple-touch-icon" href="{% static 'agent/img/Tlamatini.ico' %}?v={{ STATIC_VERSION }}">
-    {% load django_bootstrap5 %}
-    {% bootstrap_css %}
-    {% bootstrap_javascript %}
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <link rel="stylesheet" href="{% static 'agent/vendor/frontend/bootstrap/dist/css/bootstrap.min.css' %}?v={{ STATIC_VERSION }}_offline1">
+    <script src="{% static 'agent/vendor/frontend/bootstrap/dist/js/bootstrap.bundle.min.js' %}?v={{ STATIC_VERSION }}_offline1"></script>
+    <link rel="stylesheet" href="{% static 'agent/vendor/frontend/highlightjs/styles/atom-one-dark.min.css' %}?v={{ STATIC_VERSION }}_offline1">
     <link rel="stylesheet" href="{% static 'agent/css/login.css' %}?v={{ STATIC_VERSION }}">
 </head>
 <body>
@@ -52,6 +51,5 @@
             </div>
         </div>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

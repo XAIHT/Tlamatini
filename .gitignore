@@ -9,8 +9,17 @@ __pycache__/
 # Distribution / packaging
 .Python
 build/
+# PDF.js API/worker are vendored runtime source, not generated build output.
+!Tlamatini/agent/static/agent/vendor/pdfjs/build/
+!Tlamatini/agent/static/agent/vendor/pdfjs/build/pdf.mjs
+!Tlamatini/agent/static/agent/vendor/pdfjs/build/pdf.worker.mjs
 develop-eggs/
 dist/
+# Upstream distribution folders contain the frontend files used at runtime.
+!Tlamatini/agent/static/agent/vendor/frontend/bootstrap/dist/
+!Tlamatini/agent/static/agent/vendor/frontend/bootstrap/dist/**
+!Tlamatini/agent/static/agent/vendor/frontend/jquery/dist/
+!Tlamatini/agent/static/agent/vendor/frontend/jquery/dist/**
 downloads/
 eggs/
 .eggs/
@@ -244,6 +253,7 @@ node_modules/
 
 # Zip files
 *.zip
+/pkg.zip.part
 
 # External applications
 applications/

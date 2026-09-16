@@ -27,8 +27,8 @@ It actually GENERATES a snapshot into <root>/Temp and verifies, rather than gues
   5. EXCLUSION SANITY  no "source-like" extension is in the EXCLUDED set (a dropped code type)
   6. BUILD SCRIPTS     the whole build pipeline + requirements ship in the snapshot
 
-Pure stdlib, fail-soft. Exit code = number of findings (0 == clean), so it can gate a
-self-modify build.
+File-only inspection; snapshot YAML redaction requires the declared PyYAML build
+dependency. No Django, application tests or build scripts are executed.
 
 Usage:
     python .claude/skills/tlamatini-self-modify-inclusion/scripts/sweep_self_modify.py
@@ -42,6 +42,7 @@ import importlib.util
 import re
 import shutil
 import sys
+import tempfile
 from pathlib import Path
 
 _FINDINGS: list[str] = []
@@ -57,6 +58,8 @@ BUILD_SCRIPTS = (
     "build.py", "build_installer.py", "build_uninstaller.py", "versioning.py",
     "install.py", "uninstall.py", "copy_source_assets.py", "regen_secrets.py",
     "requirements.txt",
+    "build_runtime_assets.py", "build_complete_public_release.py",
+    "build_complete_private_release.py",
 )
 
 # Extensions that are "source/code/build-input" and must NEVER be excluded.
@@ -196,18 +199,24 @@ def check_redaction(csa, snap: Path) -> None:
                     for it in o:
                         walk(it)
             walk(data)
-        except Exception as exc:
-            note(f"could not parse snapshot config.json for redaction check: {exc}")
+        except Exception:
+            finding("could not parse snapshot config.json for redaction check")
 
     for yml in snap.glob("Tlamatini/agent/agents/*/config.yaml"):
         try:
-            for line in yml.read_text(encoding="utf-8", errors="replace").splitlines():
-                m = csa._YAML_KV_RE.match(line)
-                if m and csa._is_secret_key(m.group(2)) and csa._value_needs_redaction(m.group(4)):
-                    finding(f"unredacted secret in {yml.relative_to(snap).as_posix()}: key '{m.group(2)}'")
-                    leaked += 1
-        except OSError:
-            continue
+            _, remaining = csa._redact_yaml_text(yml.read_text(encoding="utf-8"))
+            if remaining:
+                finding(f"unredacted secret in {yml.relative_to(snap).as_posix()}")
+                leaked += 1
+        except Exception:
+            finding(f"could not safely parse {yml.relative_to(snap).as_posix()}")
+            leaked += 1
+
+    catalog = snap / "Tlamatini/agent/external_mcps.json"
+    if catalog.is_file():
+        if _json.loads(catalog.read_text(encoding="utf-8")) != {"mcpServers": {}, "active": []}:
+            finding("snapshot external MCP catalog is not a credential-free reset document")
+            leaked += 1
 
     # Raw value-shape scan over CONFIG-type files only. copy_source_assets redacts
     # config.json + agent config.yaml by design (not code), so scanning .py/.txt just
@@ -224,8 +233,7 @@ def check_redaction(csa, snap: Path) -> None:
         for hit in SECRET_VALUE_RE.findall(text):
             if hit in known_examples:
                 continue
-            finding(f"live-looking secret value in snapshot {f.relative_to(snap).as_posix()}: "
-                    f"'{hit[:8]}...'")
+            finding(f"live-looking secret value in snapshot {f.relative_to(snap).as_posix()} (value withheld)")
             leaked += 1
 
     # STRUCTURAL guard (2026-07-31): a credential-bearing FILE must not exist in the
@@ -250,11 +258,13 @@ def check_redaction(csa, snap: Path) -> None:
             leaked += 1
 
     if leaked == 0:
-        ok("no live secret survives in the snapshot "
+        ok("no secrets detected by the snapshot redaction guards "
            "(config.json / agent config.yaml / value scan / credential-file presence)")
 
 
 def main(argv: list[str] | None = None) -> int:
+    _FINDINGS.clear()
+    _NOTES.clear()
     parser = argparse.ArgumentParser(description="Audit Tlamatini's self-modify source snapshot.")
     parser.add_argument("--repo-root", default=None)
     parser.add_argument("--keep", action="store_true", help="Keep the generated snapshot for inspection.")
@@ -272,6 +282,7 @@ def main(argv: list[str] | None = None) -> int:
         root = here.parents[4] if len(here.parents) >= 5 else Path.cwd()
 
     print(f"Repo root: {root}\n")
+    sys.path.insert(0, str(root))  # import only the repo's filesystem-only helpers
 
     csa = _load_csa(root)
     if csa is None:
@@ -287,17 +298,24 @@ def main(argv: list[str] | None = None) -> int:
 
     # ── Check 1: generate the snapshot ───────────────────────────────────────
     print("[1] GENERATE -- copy_source_assets produces a complete, error-free snapshot")
-    snap = root / "Temp" / "_self_modify_sweep"
+    scratch = root / "Temp"
+    scratch.mkdir(exist_ok=True)
+    if scratch.resolve() != scratch or scratch.is_symlink():
+        finding("Temp must be a real repository directory, not a redirected path")
+        return len(_FINDINGS)
+    snap = Path(tempfile.mkdtemp(prefix="_self_modify_sweep_", dir=scratch))
     stats = None
     try:
         stats = csa.copy_source_assets(root, snap, redact=True)
         errs = stats.get("errors") or []
         ok(f"generated {stats['files_copied']} files, {stats['megabytes_copied']} MB, "
            f"{stats['files_redacted']} redacted, {len(errs)} errors")
+        ok(f"{stats['runtime_inputs_verified']} runtime source inputs carried or restore-mapped byte-for-byte")
         for e in errs:
             finding(f"copy error during generation: {e}")
     except Exception as exc:
         finding(f"snapshot generation FAILED: {exc}")
+        note(f"partial diagnostic snapshot retained at {snap}; do not ship it")
         print("\nAborting: cannot verify a snapshot that won't generate.")
         return len(_FINDINGS)
 
@@ -406,7 +424,7 @@ def main(argv: list[str] | None = None) -> int:
         for f in _FINDINGS:
             print(f"  - {f}")
     else:
-        print("RESULT: CLEAN -- the self-modify snapshot carries everything a rebuild needs.")
+        print("RESULT: CLEAN -- source-carriage guards passed; a real rebuild was NOT executed.")
     if _NOTES:
         print(f"\n({len(_NOTES)} advisory note(s) above -- review, not blocking.)")
     print("=" * 70)

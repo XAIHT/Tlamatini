@@ -21,6 +21,16 @@ import importlib.util
 import shutil
 import zipfile
 
+from build_runtime_assets import (
+    MAX_RELEASE_ZIP_BYTES,
+    capture_source_payload,
+    ignore_runtime_state,
+    validate_source_assets,
+    verify_collected_static,
+    verify_package,
+    write_runtime_manifest,
+)
+
 # Versioning: SemVer 2.0.0 with git-tag-derived version.  See VERSIONING.md.
 from versioning import (
     emit_build_artifacts,
@@ -340,10 +350,10 @@ def clean_directory(path):
 # The ONLY Python version Tlamatini ships to run its pool agents. The carried
 # interpreter MUST match this exactly — see _probe_carried_python below.
 CARRIED_PYTHON_VERSION = (3, 12, 10)
-# Public release contract: pkg.zip itself must stay at or below 2.8 decimal GB.
+# Release contract: pkg.zip and the final installer archive stay below 1.99 GB.
 # Use decimal bytes because release hosts and Windows file properties report the
 # user-facing "GB" size in decimal units.  The guard runs before build cleanup.
-MAX_PKG_ZIP_BYTES = 2_800_000_000
+MAX_PKG_ZIP_BYTES = MAX_RELEASE_ZIP_BYTES
 # A few representative third-party deps the pool agents import. The carried
 # interpreter must be able to import all of them, or the agents would fail at
 # runtime on a clean machine — exactly the bug this whole feature fixes.
@@ -395,6 +405,7 @@ _FROZEN_PDF_MODULES = (
 )
 
 _FROZEN_REQUIRED_AGENT_MODULES = (
+    "build_runtime_assets",        # updater's frozen integrity checker (stdlib only)
     "agent.runtime_provisioner",   # private node/npm/npx/pnpm/uv/uvx provisioning
     "agent.external_mcp_defaults",  # ships + seeds `memory` / `sequential-thinking`
     "agent.external_mcp_manager",  # the universal External-MCP client
@@ -419,9 +430,8 @@ def _read_pyz_module_names(dist_root):
     would have reported "cannot verify" forever, i.e. a check that never fails
     and never proves anything — the same silence this whole item is about.
 
-    Returns None only when the archive genuinely cannot be READ (a future
-    PyInstaller moves its private reader API), so the caller can degrade to a
-    warning instead of failing a build for a reason that is not about Tlamatini.
+    Returns None when the archive cannot be read. The release gate then stops:
+    an uninspectable payload is not proof that required modules were packaged.
     """
     root = Path(dist_root)
     names = set()
@@ -467,17 +477,13 @@ def _read_pyz_module_names(dist_root):
 def verify_frozen_agent_modules(dist_root):
     """Assert every module in _FROZEN_REQUIRED_AGENT_MODULES is IN the bundle.
 
-    Aborts the build when a required module is genuinely absent.  Prints a
-    WARNING (and continues) when the archive could not be inspected at all —
-    an unreadable archive is a PyInstaller-version question, not evidence that
-    Tlamatini is broken, and a build that dies on it would be its own bug.
+    Aborts for both absent modules and an unreadable archive. Update the reader
+    for incompatible PyInstaller versions instead of publishing unproven output.
     """
     print("\n--- Post-build: verifying frozen agent modules ---")
     names = _read_pyz_module_names(dist_root)
     if names is None:
-        print("  WARNING: could not read the PYZ archive - carriage NOT proven "
-              "(the --hidden-import flags still name every module above).")
-        return True
+        raise RuntimeError("Cannot inspect the frozen PYZ archive; runtime carriage is not proven")
     missing = [m for m in _FROZEN_REQUIRED_AGENT_MODULES if m not in names]
     if missing:
         print("ERROR: the frozen bundle is MISSING required runtime modules: "
@@ -874,8 +880,8 @@ def _active_playwright_revisions():
     sitting next to the ``chromium-1169`` the current Playwright pins). Copying
     them verbatim bloats the release by ~0.7 GB and pushed the zip past GitHub's
     2 GiB asset limit. Returns a set like
-    ``{'chromium-1169', 'chromium_headless_shell-1169', 'ffmpeg-1011'}``; an
-    EMPTY set on ANY failure so the caller fails OPEN (keeps all chromium)."""
+    ``{'chromium-1169', 'chromium_headless_shell-1169', 'ffmpeg-1011'}``; a
+    failure aborts packaging rather than accepting arbitrary cached revisions."""
     keep: set[str] = set()
     try:
         import json as _json
@@ -894,8 +900,10 @@ def _active_playwright_revisions():
                 keep.add(f"chromium_headless_shell-{rev}")  # cache dir uses underscores
             elif name == "ffmpeg":
                 keep.add(f"ffmpeg-{rev}")
-    except Exception as exc:  # pragma: no cover - fail-open to keep-all
-        print(f"  (could not read active Playwright revisions, keeping all chromium: {exc})")
+    except Exception as exc:
+        raise RuntimeError("Cannot resolve the required Playwright browser revisions") from exc
+    if not any(name.startswith("chromium-") for name in keep):
+        raise RuntimeError("Playwright browser manifest contains no default Chromium revision")
     return keep
 
 
@@ -911,8 +919,8 @@ def bundle_playwright_browsers(dist_manage):
     in-process Googler (embedded exe Python) AND the Playwrighter pool agent
     (carried Python) find these browsers.
 
-    Non-fatal: a missing browser cache only disables Playwrighter/Googler, not
-    the rest of the install, so this WARNS rather than aborting the build.
+    Mandatory: missing browser binaries abort the release instead of disabling
+    Playwrighter/Googler on the user's clean computer.
 
     DETERMINISTIC PAYLOAD (size lock): Playwrighter and the Googler tool only
     ever drive **Chromium**, but a developer who runs the bare ``playwright
@@ -929,12 +937,10 @@ def bundle_playwright_browsers(dist_manage):
     src = os.path.join(os.environ.get("LOCALAPPDATA", ""), "ms-playwright")
     dst = Path(dist_manage) / "ms-playwright"
     if not os.path.isdir(src):
-        print(
-            f"WARNING: Playwright browsers not found at '{src}'. Playwrighter / "
-            "Googler will NOT work on the target until browsers are provisioned. "
+        raise RuntimeError(
+            f"Playwright browsers not found at '{src}'. "
             "Run `python -m playwright install chromium` and rebuild."
         )
-        return
     if dst.exists():
         shutil.rmtree(dst)
 
@@ -946,8 +952,11 @@ def bundle_playwright_browsers(dist_manage):
 
     # Keep ONLY the chromium / headless-shell revisions the installed Playwright
     # pins (see _active_playwright_revisions); every stale revision left in the
-    # cache by an earlier upgrade is skipped. Empty set (unreadable) → keep all.
-    active_revs = set() if bundle_all else _active_playwright_revisions()
+    # cache by an earlier upgrade is skipped. Even --all requires active builds.
+    active_revs = _active_playwright_revisions()
+    for revision in active_revs:
+        if not (Path(src) / revision).is_dir():
+            raise RuntimeError(f"Missing required Playwright browser revision: {revision}")
     if active_revs:
         print(f"  Size lock: keeping only active Playwright revisions "
               f"{', '.join(sorted(active_revs))} (stale chromium builds skipped).")
@@ -1010,15 +1019,14 @@ def bundle_java_runtime(dist_manage):
     depends on a system JDK — which a clean machine will not have. At runtime
     manage.py sets ``JAVA_HOME=<install_dir>/jre`` and prepends ``jre/bin`` to
     PATH (inherited by every agent), and ``jd-cli.bat`` also resolves the
-    bundled JRE relative to itself. WARNS (non-fatal) if no Java is found.
+    bundled JRE relative to itself. Missing Java aborts packaging.
     """
     src = _java_home_for_bundle()
     dst = Path(dist_manage) / "jre"
     if src is None or not src.exists():
-        print("WARNING: No Java (JAVA_HOME / `java` on PATH) found on the build "
+        raise RuntimeError("No Java (JAVA_HOME / `java` on PATH) found on the build "
               "machine — J-Decompiler will NOT work on the target. Install a JDK "
               "and rebuild to carry it.")
-        return
     if dst.exists():
         shutil.rmtree(dst)
     print(f"\n--- Bundling Java runtime: {src} -> {dst} ---")
@@ -1039,16 +1047,15 @@ def bundle_git(dist_manage):
 
     Gitter shells out to a bare ``git`` and the STM32er zero-config bootstrap
     does a ``git clone``. At runtime manage.py prepends ``git/cmd`` (+ the
-    mingw64/usr bin dirs) to PATH, inherited by every agent. WARNS (non-fatal)
-    if no Git is found on the build machine.
+    mingw64/usr bin dirs) to PATH, inherited by every agent. Missing Git aborts
+    packaging instead of disabling the agents on a clean target machine.
     """
     src = _git_install_root_for_bundle()
     dst = Path(dist_manage) / "git"
     if src is None or not src.exists():
-        print("WARNING: No Git found on the build machine — Gitter and the STM32er "
+        raise RuntimeError("No Git found on the build machine — Gitter and the STM32er "
               "MCP git-clone bootstrap will NOT work on the target. Install "
               "Git for Windows and rebuild to carry it.")
-        return
     if dst.exists():
         shutil.rmtree(dst)
     print(f"\n--- Bundling Git: {src} -> {dst} ---")
@@ -1063,6 +1070,11 @@ def main():
     print("=" * 60)
     print("  Tlamatini Build Script")
     print("=" * 60)
+
+    # Resolve inputs relative to this script even when invoked from elsewhere.
+    repo_root = Path(__file__).resolve().parent
+    os.chdir(repo_root)
+    run_step("Checking required runtime source assets", validate_source_assets, repo_root)
 
     # ── Resolve and emit version artefacts FIRST ─────────────────────
     # Precedence: --version CLI flag > $TLAMATINI_VERSION > git describe.
@@ -1197,7 +1209,7 @@ def main():
                 print(f"ERROR: pip install -r requirements.txt failed for {target_python}. Aborting build.")
                 sys.exit(1)
         else:
-            print("WARNING: requirements.txt not found next to build.py. Skipping pip install.")
+            raise FileNotFoundError("requirements.txt is required for a complete frozen release")
 
         # 1b-post) VERIFY the agent / MCP-server third-party libs actually IMPORT in
         # this target Python — fail the build loudly if any is missing.
@@ -1255,7 +1267,7 @@ def main():
         print(f"  -> Installing Playwright browsers for {target_python} ...")
         pw_result = subprocess.run([target_python, "-m", "playwright", "install"])
         if pw_result.returncode != 0:
-            print(f"WARNING: playwright install failed for {target_python}. Continuing anyway.")
+            raise RuntimeError(f"Playwright browser installation failed for {target_python}")
 
     # Ensure PyInstaller is available
     try:
@@ -1283,12 +1295,15 @@ def main():
 
     # ── 3) Collect static files before packaging ─────────────────────
     print("\n--- Running collectstatic ---")
-    collectstatic_result = subprocess.run([sys.executable, 'Tlamatini/manage.py', 'collectstatic', '--noinput'])
+    collectstatic_result = subprocess.run([sys.executable, 'Tlamatini/manage.py', 'collectstatic', '--noinput', '--clear'])
     if collectstatic_result.returncode != 0:
         print("ERROR: collectstatic failed. Aborting build.")
         sys.exit(1)
 
     # ── 4) Build PyInstaller command ─────────────────────────────────
+    verify_collected_static(repo_root)
+    expected_runtime_assets = capture_source_payload(repo_root, self_modify=self_modify)
+
     dll_args = run_step("Collecting Python DLL binaries",
                         collect_python_dll_binaries)
 
@@ -1348,6 +1363,8 @@ def main():
         # builds would have an empty skill catalog.
         f'--add-data=Tlamatini/agent/skills_pkg{separator}agent/skills_pkg',
         '--hidden-import=agent._version',
+        f'--paths={repo_root}',
+        '--hidden-import=build_runtime_assets',
         # These execute inside the frozen web process. Copying agents/ and
         # bundling the separate carried Python does not make them importable here.
         *(f'--hidden-import={module}' for module in _FROZEN_PDF_MODULES),
@@ -1525,7 +1542,8 @@ def main():
     try:
         dist_manage.mkdir(parents=True, exist_ok=True)
 
-        # Optional files copied to the installed application root
+        # Required runtime files copied to the installed application root.
+        # Keep the historical variable name for existing build tooling.
         optional_file_copies = {
             Path("Tlamatini") / "agent" / "config.json": dist_manage / "config.json",
             Path("Tlamatini") / "agent" / "prompt.pmt": dist_manage / "prompt.pmt",
@@ -1573,7 +1591,7 @@ def main():
                 shutil.copy2(src, dst)
                 print(f"Copied {src} -> {dst}")
             else:
-                print(f"WARNING: {src} not found; skipping copy.")
+                raise FileNotFoundError(f"Required runtime file not found: {src}")
 
         # ── Ship contacts.json ──────────────────────────────────────────────────
         # DEFAULT: a sanitized EMPTY book (never the dev's private data). A PRIVATE /
@@ -1730,6 +1748,7 @@ def main():
         # — it must ship next to the executable so ``agent.views`` can
         # resolve it in frozen mode just like in source mode.
         required_file_copies = {
+            Path("build_runtime_assets.py"): dist_manage / "build_runtime_assets.py",
             Path("README.md"): dist_manage / "README.md",
             Path("agents_descriptions.md"): dist_manage / "agents_descriptions.md",
             # The update handoff and shared preservation contract must survive
@@ -1747,7 +1766,7 @@ def main():
             shutil.copy2(src, dst)
             print(f"Copied required file: {src} -> {dst}")
 
-        # Optional directory trees
+        # Runtime directory trees. Only the decorative images gallery is optional.
         optional_dir_copies = {
             Path("Tlamatini") / "agent" / "images": dist_manage / "images",
             Path("Tlamatini") / "agent" / "agents": dist_manage / "agents",
@@ -1761,10 +1780,12 @@ def main():
             if src_dir.exists():
                 if dst_dir.exists():
                     shutil.rmtree(dst_dir)
-                shutil.copytree(src_dir, dst_dir)
+                shutil.copytree(src_dir, dst_dir, ignore=ignore_runtime_state)
                 print(f"Copied directory: {src_dir} -> {dst_dir}")
             else:
-                print(f"WARNING: Source directory not found: {src_dir}")
+                if src_dir.name != "images":
+                    raise FileNotFoundError(f"Required runtime directory not found: {src_dir}")
+                print(f"Optional images gallery not found: {src_dir}")
 
         # ---- Security assets - Angela's hacker-combat arsenal ----------------
         # Ship <install>/security/ (defender + whitelist v2 + UAC launchers +
@@ -1783,7 +1804,7 @@ def main():
             )
             print(f"Copied security assets: {_sec_src} -> {_sec_dst}")
         else:
-            print("WARNING: security/ not found; skipping security assets copy.")
+            raise FileNotFoundError("Required security/ toolkit is missing")
 
         # ── Companion-app agents manifest (Tlamatini-FlowPills PROP-002) ──────
         # Ship <install>/agents/_tlamatini_agents_manifest.json so a companion app
@@ -1925,7 +1946,7 @@ def main():
         print("\n--- Running post-build Django setup (dist/manage/manage.exe) ---")
         manage_exe = dist_manage / ("manage.exe" if os.name == "nt" else "manage")
         if not manage_exe.exists():
-            print(f"WARNING: {manage_exe} not found; skipping Django setup.")
+            raise FileNotFoundError(f"Frozen executable not found: {manage_exe}")
         else:
             def run_cmd(args, **kwargs):
                 cmd_display = " ".join(args)
@@ -1935,7 +1956,7 @@ def main():
             # 8a) migrate
             res = run_cmd(["migrate"])
             if res.returncode != 0:
-                print("WARNING: 'migrate' failed.")
+                raise RuntimeError("Frozen Django migrate failed; refusing to package an incomplete DB")
 
             # 8b) createsuperuser (non-interactive)
             env = os.environ.copy()
@@ -1944,12 +1965,12 @@ def main():
             env.setdefault('DJANGO_SUPERUSER_PASSWORD', 'changeme')
             res = run_cmd(["createsuperuser", "--noinput"], env=env)
             if res.returncode != 0:
-                print("WARNING: 'createsuperuser' failed or user may already exist.")
+                raise RuntimeError("Frozen default-user creation failed; refusing to publish the release")
 
             # 8c) collectstatic
-            res = run_cmd(["collectstatic", "--noinput"])
+            res = run_cmd(["collectstatic", "--noinput", "--clear"])
             if res.returncode != 0:
-                print("WARNING: 'collectstatic' (post-build) failed.")
+                raise RuntimeError("Frozen collectstatic failed; refusing to package missing frontend assets")
 
             # 8d) Rename executable manage -> Tlamatini
             try:
@@ -1959,7 +1980,7 @@ def main():
                 manage_exe.rename(target_name)
                 print(f"Renamed {manage_exe.name} -> {target_name.name}")
             except Exception as e:
-                print(f"WARNING: Could not rename executable: {e}")
+                raise RuntimeError(f"Could not rename frozen executable: {e}") from e
 
             # 8e) Copy support scripts, samples and icon
             support_files = [
@@ -1987,21 +2008,21 @@ def main():
                         shutil.copy2(src, dst)
                         print(f"Copied {src} -> {dst}")
                     else:
-                        print(f"WARNING: {src} not found; skipping copy.")
+                        raise FileNotFoundError(f"Required support file not found: {src}")
                 except Exception as e:
-                    print(f"WARNING: Could not copy {fname}: {e}")
+                    raise RuntimeError(f"Could not copy required support file {fname}: {e}") from e
 
             # ── 9) Generate pkg.zip from dist/manage ─────────────────
             try:
                 pkg_zip_path = Path("pkg.zip")
-
-                # Remove old pkg.zip if it exists
-                if pkg_zip_path.exists():
-                    pkg_zip_path.unlink()
-                    print(f"Removed old {pkg_zip_path}")
+                pending_zip = pkg_zip_path.with_suffix(".zip.part")
+                write_runtime_manifest(
+                    dist_manage, expected_runtime_assets,
+                    version=tlamatini_version, self_modify=self_modify,
+                )
 
                 print(f"\n--- Creating {pkg_zip_path} from {dist_manage} ---")
-                with zipfile.ZipFile(pkg_zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
+                with zipfile.ZipFile(pending_zip, 'w', zipfile.ZIP_DEFLATED) as zf:
                     file_count = 0
                     for root, dirs, files in os.walk(dist_manage):
                         # Add empty directories as explicit entries so they survive extraction
@@ -2014,7 +2035,10 @@ def main():
                             zf.write(full_path, arcname)
                             file_count += 1
                     print(f"Added {file_count} files to {pkg_zip_path}")
-                enforce_pkg_zip_size(pkg_zip_path)
+                enforce_pkg_zip_size(pending_zip)
+                verify_package(pending_zip, expected_version=tlamatini_version)
+                # Publish only after every archived byte matches the receipt.
+                os.replace(pending_zip, pkg_zip_path)
                 size_mb = pkg_zip_path.stat().st_size / (1024 * 1024)
                 print(f"pkg.zip created successfully ({size_mb:.1f} MB)")
 
@@ -2023,9 +2047,9 @@ def main():
                     clean_directory(cleanup_dir)
 
             except Exception as e:
-                print(f"WARNING: Could not create pkg.zip: {e}")
+                raise RuntimeError(f"Could not create a verified pkg.zip: {e}") from e
     except Exception as e:
-        print(f"WARNING: Post-build Django setup encountered an error: {e}")
+        raise SystemExit(f"ERROR: release assembly failed: {e}") from e
 
     # Clean up the transient VERSIONINFO .txt file once PyInstaller has
     # finished embedding it.  Keep ``Tlamatini/agent/_version.py`` so the

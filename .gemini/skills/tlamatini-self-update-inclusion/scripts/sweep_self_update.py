@@ -21,10 +21,10 @@ release or wrongly wiped/kept by the update swap:
 
 Checks (each prints [PASS] or [FINDING]):
   1. PRESERVE PARITY    apply_update.ps1 $Preserve  ==  self_update.py docstring list
-  2. PRESERVE CORRECT   $Preserve  ==  build.py empty_dirs(top-level) + {config.json}
+  2. PRESERVE CORRECT   shared JSON == swapper == installer fallback == updater docs
   3. APP-DIR REPLACED   no known app-code dir is in $Preserve
-  4. ROOT .ps1 CENSUS   every repo-root *.ps1 is in build.py support_files
-  5. UPDATER SHIPPED    apply_update.ps1 is in build.py support_files
+  4. ROOT .ps1 CENSUS   every repo-root *.ps1 has a support/required-file carrier
+  5. UPDATER SHIPPED    swapper, SQLite and integrity helpers are required root assets
   6. SWAP SANITY        apply_update.ps1 validates Tlamatini.exe + does the agents swap
   7. DB DELIVERY        report migrations since last tag + flag preserve/migrate coherence
   8. TOP-LEVEL CENSUS   every git-tracked top-level tree is named in build.py, or is
@@ -43,6 +43,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import ast
 import re
 import subprocess
 import sys
@@ -54,6 +55,8 @@ from pathlib import Path
 APP_CODE_TOPLEVEL = {
     "agents", "python", "jre", "git", "ms-playwright", "staticfiles",
     "images", "skills_pkg", "Tlamatini.exe", "cat_art.py",
+    "_internal", "agent", "security", "TlamatiniSourceCode", "Tlamatini.md",
+    "build_runtime_assets.py", "apply_update.ps1", "runtime-assets.json",
 }
 
 # Findings accumulator.
@@ -183,9 +186,28 @@ def top_level(names: set[str]) -> set[str]:
     return {n.split("/")[0].split("\\")[0] for n in names}
 
 
+def required_file_sources(text: str) -> set[str]:
+    """Read literal Path(...) / 'part' keys without executing build.py."""
+    def path_value(node):
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            return node.value
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "Path":
+            return path_value(node.args[0])
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Div):
+            return path_value(node.left) + "/" + path_value(node.right)
+        raise ValueError("nonliteral required_file_copies source")
+    for node in ast.walk(ast.parse(text)):
+        if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and
+                                               t.id == "required_file_copies" for t in node.targets):
+            return {path_value(key) for key in node.value.keys}
+    return set()
+
+
 # ── Main sweep ───────────────────────────────────────────────────────────────
 
 def main(argv: list[str] | None = None) -> int:
+    _FINDINGS.clear()
+    _NOTES.clear()
     parser = argparse.ArgumentParser(description="Audit Tlamatini's self-update inclusion pipeline.")
     parser.add_argument("--repo-root", default=None,
                         help="Repo root (default: auto-detect from this script's location).")
@@ -223,6 +245,14 @@ def main(argv: list[str] | None = None) -> int:
     su_preserve = parse_self_update_preserve(su_txt)
     empty_dirs = parse_build_list(build_txt, "empty_dirs")
     support_files = parse_build_list(build_txt, "support_files")
+    try:
+        required_files = required_file_sources(build_txt)
+    except (ValueError, SyntaxError, AttributeError):
+        required_files = set()
+        finding("could not parse required_file_copies from build.py")
+    shipped = {Path(s).name for s in (support_files or set()) | required_files}
+    sys.path.insert(0, str(root))
+    from build_runtime_assets import validate_preservation_contract, validate_source_assets
 
     # ── Check 1: preserve parity ─────────────────────────────────────────────
     print("\n[1] PRESERVE PARITY -- apply_update.ps1 $Preserve == self_update.py docstring")
@@ -242,11 +272,17 @@ def main(argv: list[str] | None = None) -> int:
                 finding(f"documented in self_update.py but NOT in apply_update.ps1 $Preserve: {sorted(only_su)}")
 
     # ── Check 2: preserve correctness vs build.py empty_dirs ──────────────────
-    print("\n[2] PRESERVE CORRECTNESS -- $Preserve == empty_dirs(top-level) + {config.json}")
+    print("\n[2] PRESERVE CORRECTNESS -- shared JSON, installer, swapper, docs and runtime-state dirs")
+    try:
+        contract = set(validate_preservation_contract(root))
+        ok(f"shared preservation contract matches all consumers ({len(contract)} names)")
+    except Exception as exc:
+        contract = set()
+        finding(f"preservation contract failed: {exc}")
     if ps1_preserve is None or empty_dirs is None:
         finding("cannot compare (failed to parse $Preserve or build.py empty_dirs)")
     else:
-        expected = top_level(empty_dirs) | {"config.json"}
+        expected = contract | top_level(empty_dirs) | {"config.json"}
         wiped = expected - ps1_preserve          # state dir that will be DELETED on update
         extra = ps1_preserve - expected          # preserved but not a known state dir
         if not wiped:
@@ -275,28 +311,32 @@ def main(argv: list[str] | None = None) -> int:
                     f"'{b}' forever. Remove it ('agents' is replaced via the agents_backup swap).")
 
     # ── Check 4: root .ps1 census ────────────────────────────────────────────
-    print("\n[4] ROOT .ps1 CENSUS -- every repo-root *.ps1 is shipped by build.py support_files")
+    print("\n[4] ROOT .ps1 CENSUS -- support_files + required_file_copies")
     root_ps1 = sorted(p.name for p in root.glob("*.ps1"))
     if support_files is None:
         finding("could not parse support_files from build.py")
     elif not root_ps1:
         note("no *.ps1 at repo root")
     else:
-        shipped = {Path(s).name for s in support_files}
         for name in root_ps1:
             if name in shipped:
-                ok(f"{name} is in support_files")
+                ok(f"{name} has an explicit root-file carrier")
             else:
-                finding(f"repo-root '{name}' is NOT in build.py support_files "
+                finding(f"repo-root '{name}' has no root-file carrier "
                         f"-> it will NOT ship next to the exe. Add it.")
 
     # ── Check 5: the updater itself ships ────────────────────────────────────
     print("\n[5] UPDATER SHIPPED -- apply_update.ps1 is carried into the release")
-    if support_files and any(Path(s).name == "apply_update.ps1" for s in support_files):
-        ok("apply_update.ps1 is in build.py support_files (self-hosting updater)")
-    else:
-        finding("apply_update.ps1 is NOT in build.py support_files -> a self-updated install "
-                "would lose its updater and could never update again.")
+    for helper in ("apply_update.ps1", "sqlite_copy.py", "preserved_user_state.json", "build_runtime_assets.py"):
+        if helper in {Path(s).name for s in required_files}:
+            ok(f"{helper} is a required root asset")
+        else:
+            finding(f"{helper} is missing from required_file_copies")
+    try:
+        validate_source_assets(root)
+        ok("mandatory source trees/files, preservation and local vendor receipt passed")
+    except Exception as exc:
+        finding(f"runtime source carriage failed: {exc}")
 
     # ── Check 6: swap sanity ─────────────────────────────────────────────────
     print("\n[6] SWAP SANITY -- apply_update.ps1 validates the exe and swaps agents")
@@ -308,6 +348,13 @@ def main(argv: list[str] | None = None) -> int:
         ok("apply_update.ps1 performs the agents -> agents_backup swap")
     else:
         finding("apply_update.ps1 has no agents_backup swap -> new agents may not replace old ones")
+    # Source wiring checks only; do not claim a destructive update was rehearsed.
+    for needle, label in (("verify_package(pkg_zip", "downloaded package verification"),
+                          ("verify_staged_payload(staging", "extracted staging verification")):
+        (ok if needle in su_txt else finding)(label + " is wired in self_update.py")
+    verify_at = ps1_txt.find("& $backupPython -I -B -S $integrityHelper --verify-tree")
+    close_at = ps1_txt.find('Write-Log "Closing Tlamatini')
+    (ok if 0 <= verify_at < close_at else finding)("swapper integrity gate precedes shutdown")
 
     # ── Check 7: DB delivery coherence ───────────────────────────────────────
     print("\n[7] DB DELIVERY -- migrations reach users; preserve/migrate coherence")
@@ -374,7 +421,7 @@ def main(argv: list[str] | None = None) -> int:
         for f in _FINDINGS:
             print(f"  - {f}")
     else:
-        print("RESULT: CLEAN -- self-update inclusion invariants hold.")
+        print("RESULT: CLEAN -- source-carriage guards passed; no install/update was executed.")
     if _NOTES:
         print(f"\n({len(_NOTES)} advisory note(s) above -- review, not blocking.)")
     print("=" * 70)
@@ -466,6 +513,14 @@ _DEV_ONLY_TOPLEVEL = {
     "Tests",        # Angela's visible test harnesses (about-window, perf) -- dev-only
     "AuxTests",     # auxiliary scratch test scripts -- dev-only
     ".scanning",    # finding-policy.json for the code scanner -- CI/dev tooling
+    # Avatar SOURCE art + its derivation tooling (Gemini_girl_animation PNG
+    # originals, contact sheet, alignment.json, build_frames.py, the zip and
+    # ASSET_MANIFEST.json). The four images the app actually renders are the
+    # DERIVED jpgs in Tlamatini/agent/static/agent/img/avatar/, which ship via
+    # the Tlamatini/ carrier. Verified 2026-09-12: nothing under output/ is
+    # referenced by any Python, JS, template or build carrier, so shipping it
+    # would add megabytes of source art no installed build can use.
+    "output",
     "node_modules", "venv", ".venv", "dist", "build",  # build/dev artifacts
 }
 

@@ -18,6 +18,8 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 import zipfile
 
+from build_runtime_assets import verify_package
+
 
 # ─── Version resolution ───────────────────────────────────────────────────────
 # Read the version from the running .exe's Win32 ProductVersion (frozen mode)
@@ -570,6 +572,12 @@ class FancyInstaller:
         normalized = member.replace("\\", "/").strip("/")
         if not normalized:
             return False
+        # The live DB is nested in application code, not the top-level DB/
+        # export/import directory. Never replace it (or its WAL companions)
+        # with the release's seeded database during an in-place reinstall.
+        if normalized.lower() in {"_internal/db.sqlite3", "_internal/db.sqlite3-wal",
+                                  "_internal/db.sqlite3-shm", "_internal/db.sqlite3-journal"}:
+            return os.path.isfile(os.path.join(target, "_internal", "db.sqlite3"))
         top = normalized.split("/")[0]
         if top.lower() not in preserved:
             return False
@@ -577,6 +585,16 @@ class FancyInstaller:
 
     def _run_install(self, target: str):
         try:
+            self._set_progress(0.0, "Verifying release integrity before installation…")
+            verify_package(self.zip_path)
+            existing_db = os.path.join(target, "_internal", "db.sqlite3")
+            if os.path.isfile(existing_db):
+                # Keep the DB/WAL in place; next startup applies new migrations.
+                # Set before extraction so even an interrupted reinstall retries.
+                state_dir = os.path.join(target, "DB")
+                os.makedirs(state_dir, exist_ok=True)
+                with open(os.path.join(state_dir, "post_update_migrate.flag"), "w", encoding="utf-8") as flag:
+                    flag.write("in-place reinstall: retained existing database and WAL\n")
             cumulative = 0.0  # tracks completed-step weight
 
             # ── Step 0: create directory ─────────────────────────────
@@ -602,6 +620,9 @@ class FancyInstaller:
             # when it already exists, so a FRESH install still gets its seed
             # files; only an upgrade-in-place leaves the user's copy alone.
             preserved = self._preserved_names()
+            # Capture existence ONCE. Otherwise extracting the first seed file
+            # makes its new directory look pre-existing and skips sibling seeds.
+            preserved = {name for name in preserved if os.path.exists(os.path.join(target, name))}
             kept: list[str] = []
             step_idx = 1
             self._activate_step(step_idx)

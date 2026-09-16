@@ -8,6 +8,52 @@
 -->
 # Tlamatini
 
+## Unreleased local-frontend and packaging update — 2026-09-16
+
+The working tree now serves all application UI JavaScript, CSS and fonts locally:
+Bootstrap 5.3.3 (matching the previous Django integration), jQuery 3.7.1, jQuery UI
+1.13.3, highlight.js 11.9.0 and Nunito join the existing local PDF.js/avatar assets.
+The redundant Bootstrap 5.3.0 script on login/welcome pages is removed. Vendoring
+retains upstream licenses, verifies pinned npm SHA-512 archives and records file
+SHA-256 hashes. `scripts/vendor_frontend.py` is an explicit maintainer operation,
+not an application-startup or normal-build download. Source and frozen templates
+use the same local URLs, with cache-busting query strings.
+
+`build_runtime_assets.py` is the shared packaging gate: it inventories all static
+files, templates, agent/skill resources, required root helpers and collected
+Django assets, then checks their final carried bytes. Source and frozen
+`collectstatic --clear` failures abort; missing Java/Git/Playwright payloads,
+unreadable frozen module archives and required-copy failures no longer quietly
+produce a successful release. A per-file `runtime-assets.json` receipt covers the
+entire assembled payload; both ZIP publication and installer assembly verify it.
+The receipt is an integrity/completeness record, not a publisher signature.
+
+The self-management follow-up also embeds the checker in the frozen application
+and installer and carries its standalone source for the swapper. Downloaded
+payloads and extracted staging are verified before shutdown. Both inclusion
+skills now share the 13-name preservation contract and account for 740 runtime
+source inputs in a generated sanitized snapshot, including PDFer ornaments.
+Reinstall retains the live database/WAL and requests migration; security-log
+stash failure stops deletion. Detailed file-only sweep evidence and limitations
+are recorded in [the carriage review](docs/self-management-carriage.md#self-management-follow-up-inclusion-skills-and-executed-file-audits).
+
+Use a complete-release wrapper to produce the final distributable. Both
+`build_complete_public_release.py` and `build_complete_private_release.py` enforce
+**1,990,000,000 bytes (1.99 decimal GB)** on the outer ZIP, while `build.py` applies
+the same ceiling to the inner `pkg.zip`. Oversized final output stays under a
+`.pending.zip` name for inspection, and the command fails. No required runtime is
+automatically deleted to shrink the archive. `build_all.cmd` still assembles the
+installer directory; it does not create an outer ZIP.
+
+The existing v1.62.0 package was inspected read-only: its 354 application static
+files matched source in both frozen static locations and all four templates were
+present. That package still contains the old CDN-referencing templates and
+predates this hardening. Its final ZIP is 1,905,278,037 bytes; this is a baseline,
+not a measurement of a newly rebuilt release. All new code needs a fresh build
+and runtime validation. No automated tests or builds were executed in this
+refresh. Cloud models, online agents and configured external services still
+require their own network connections.
+
 ![Project Logo](Tlamatini.jpg)
 
 > **The Book of Tlamatini** — a step-by-step guide to running, using, and mastering a locally-deployed AI developer assistant with RAG, Multi-Turn tool orchestration, ACPX external-CLI delegation, an Unreal MCP client for driving Unreal Engine 5 from chat or canvas, a visual workflow designer, 89 drag-and-drop agent types, and a backend Flow Compiler that turns the live canvas — or a chat-generated tool-call log — into a registry-validated, secret-redacted, source-and-frozen-portable workflow.
@@ -593,7 +639,7 @@ The logs may contain usernames, administrator-group membership, IP addresses, ex
 
 ### Packaging, updates, and self-modification
 
-`build.py` copies the entire repository `security/` tree beside the installed executable and excludes `security_logs`, `*.log`, and `__pycache__`. On self-update, `security/` is treated as **application code**: a new release replaces the scripts, which is what you want — a fixed defender has to be able to reach a user who already installed a broken one. But `security/security_logs/` is the **operator's evidence** and lives inside that replaced directory, so like the database it needs separate handling: `apply_update.ps1` moves it to `Temp/_security_logs_carryover` before the delete (step 3c) and moves it back into the new `security/` afterwards (step 5b). Both halves fail open — on any error the update still completes and the evidence is *left* in the carryover directory rather than removed. `copy_source_assets.py` includes the `.ps1`, `.bat`, `.py`, and Markdown source in self-modify snapshots while pruning every directory named `security_logs`. `.gitignore` likewise excludes `/security/security_logs/`.
+`build.py` copies the entire repository `security/` tree beside the installed executable and excludes `security_logs`, `*.log`, and `__pycache__`. On self-update, `security/` is treated as **application code**: a new release replaces the scripts, which is what you want — a fixed defender has to be able to reach a user who already installed a broken one. But `security/security_logs/` is the **operator's evidence** and lives inside that replaced directory, so like the database it needs separate handling: `apply_update.ps1` moves it to `Temp/_security_logs_carryover_<unique-id>` before the delete (step 3c) and moves it back into the new `security/` afterwards (step 5b). A failed stash aborts before application deletion. A failed restore leaves the unique stash intact without overwriting other evidence. `copy_source_assets.py` includes the `.ps1`, `.bat`, `.py`, and Markdown source in self-modify snapshots while pruning every directory named `security_logs`. `.gitignore` likewise excludes `/security/security_logs/`.
 
 These rules keep test screenshots and host telemetry out of Git, the public installer, and self-modify source snapshots. They do not encrypt the logs on the local machine; that remains an operator responsibility.
 

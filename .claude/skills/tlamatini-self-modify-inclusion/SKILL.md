@@ -33,13 +33,13 @@ the *same* `build.py` — so **every input `build.py` consumes must survive the 
 
 ## The file this skill owns
 
-**`copy_source_assets.py`** (repo root) — generates the snapshot. Six knobs decide what
+**`copy_source_assets.py`** (repo root) — generates the snapshot. The following rules decide what
 ships:
 
 | Knob | Controls |
 |---|---|
 | `EXCLUDED_DIR_NAMES` | directory names pruned everywhere (`.git`, `node_modules`, `build`, `dist`, `pools`, `staticfiles`, `Temp`, `Templates`, `agents_backup`, `updater`, `TlamatiniSourceCode`, …) |
-| `KEEP_DIR_PATHS` | exact source-directory exceptions, including PDF.js's shipped `vendor/pdfjs/build/` API and worker; other build outputs stay excluded |
+| `KEEP_DIR_PATHS` | exact source-directory exceptions, including PDF.js's `build/` API/worker and Bootstrap/jQuery vendor `dist/`; other build outputs stay excluded |
 | `EXCLUDED_EXTENSIONS` | file types dropped (`.pdf/.pptx/.png/.mp4/...`, binaries, generated state). **`.ico`/`.wav`/`.svg` are deliberately KEPT** (build-required) |
 | `EXCLUDED_FILE_NAMES` | exact files dropped (`db.sqlite3`, `data.keys`, `settings.local.json`, `_version.py`, …) |
 | `EXCLUDED_FILE_GLOBS` | patterns dropped (`*.version.txt`, `*_log.*`) |
@@ -65,7 +65,8 @@ Every file `build.py` reads to build (the build scripts, `requirements.txt`, all
 that fails or degrades.
 
 ### Invariant 2 — OMIT-LEAN, but RESTORE what the build needs
-Heavy media, dev trees, regenerable state, and secrets stay out (keep it ~10 MB, leak-free).
+Heavy media, dev trees, regenerable state and secrets stay out. Measure the actual
+snapshot; do not impose an obsolete ~10 MB target or drop required vendor assets.
 But **anything omitted that the build genuinely consumes must be in `RESTORE_FROM_INSTALL`**
 (restored from the install) or covered by a regeneration step in `_REBUILD_INSTRUCTIONS.md`
 (e.g. `collectstatic` for `staticfiles`). Optional inputs (the `images` gallery) may
@@ -93,7 +94,7 @@ the restore steps name real omitted binaries with correct install-relative sourc
 
 ```bash
 python .claude/skills/tlamatini-self-modify-inclusion/scripts/sweep_self_modify.py
-# add --keep to leave the generated snapshot under Temp/_self_modify_sweep for inspection
+# add --keep to retain the unique Temp/_self_modify_sweep_<id> printed by the checker
 ```
 
 It **actually generates** a snapshot into `Temp/` and verifies: it builds error-free with
@@ -122,7 +123,7 @@ config file**, or a new **always-present** file that belongs in `REQUIRED_SNAPSH
 
 ```bash
 # (a) New binary build inputs the build reads (icons/fonts/wav/jar/etc.) that EXCLUDED_EXTENSIONS would drop
-grep -nE "--add-data=|--icon|optional_dir_copies|required_file_copies|support_files" build.py | grep -iE "\.(ico|wav|svg|png|jpg|ttf|otf|jar|dll|bin|dat)" 
+grep -nE "--add-data=|--icon|optional_dir_copies|required_file_copies|support_files" build.py | grep -iE "\.(ico|wav|svg|png|jpg|ttf|otf|jar|dll|bin|dat)"
 # (b) New config files that may carry secrets but AREN'T covered by _wants_redaction()
 grep -rilE "api[_-]?key|token|secret|password|client_secret" Tlamatini --include=*.json --include=*.yaml --include=*.yml \
   | grep -viE "/agents/.*/config.yaml$|agent/config.json$"
@@ -142,8 +143,9 @@ git diff "$(git describe --tags --abbrev=0)"..HEAD -- requirements.txt
 **v1.48.14 External-MCP gate:** the snapshot must carry `agent/runtime_provisioner.py`,
 `agent/external_mcp_defaults.py`, and the manager/build/secret-regeneration source, but must
 not copy the downloaded `%LOCALAPPDATA%\Tlamatini\runtimes` tree or persistent Memory graph.
-Treat `external_mcps.json` as a special preserved/tracked config: the snapshot and public
-build receive a scrubbed/default-only form, never the keyed developer catalog. Verify
+Treat `external_mcps.json` as gitignored user state: the snapshot resets it to an empty
+`mcpServers`/`active` document; startup seeds defaults. The public build receives inactive
+maintained defaults, never the keyed developer catalog. Verify
 `REQUIRED_SNAPSHOT_FILES`, `_wants_redaction()`, and the generated rebuild instructions agree.
 
 **v1.48.17 source-coherence gate:** the snapshot must carry Grepper's encoding-safe source,
@@ -161,8 +163,8 @@ source/config, `test_googler_dorks.py`, and the optional visible dork-hunt harne
 migration 0194's Deep Internet Research prompt, and the
 `adding_external_mcp` skill tree. It must also carry the private-builder source that performs
 contact synchronization, but it must never copy `contacts.json`, `contacts.private.json`, a
-frozen-install contact book, or live External-MCP secrets. Verify current 88/66/108/29/197
-counts from the generated snapshot rather than copying prose counts.
+frozen-install contact book, or live External-MCP secrets. Derive current agent/tool/migration counts
+from the generated snapshot rather than copying historical prose counts.
 
 ### PDF and update-helper carriage gate (2026-09-16)
 
@@ -225,7 +227,7 @@ shapes, but a novel config path needs the redaction rule extended).
 
 1. `sweep_self_modify.py` exits clean (no `[FINDING]`); every `[note]` is reviewed + intended.
 2. Every new top-level repo path from the since-last-tag diff is classified and handled.
-3. The generated snapshot builds error-free and contains every `REQUIRED_SNAPSHOT_FILES` entry.
+3. Snapshot generation completes error-free with every `REQUIRED_SNAPSHOT_FILES` entry; separately state whether an actual rebuild was run.
 4. Every `build.py` SOURCE input is in the snapshot or in `RESTORE_FROM_INSTALL`.
 5. Zero live secrets in the snapshot (redaction check + value scan pass).
 6. The manifest + `_REBUILD_INSTRUCTIONS.md` are accurate; restore targets are real.
@@ -235,10 +237,35 @@ shapes, but a novel config path needs the redaction rule extended).
 
 ---
 
+
+### Complete carrier/redaction gate (2026-09-16)
+
+- `validate_snapshot_carriage()` checks EVERY source file in the shared runtime
+  `SOURCE_TREES` and `ROOT_SOURCES`, not just representative canaries. Each must
+  match source bytes (except intentionally sanitized configuration), or have an
+  explicit `RESTORE_FROM_INSTALL` mapping. Collected static is regenerated.
+- Keep all tracked PDFer `agents/pdfer/_art/**` ornaments; they are small rendering
+  inputs, unlike the optional `agent/images/` gallery. Keep all local frontend
+  vendor files/fonts/licenses and exact vendor build/dist directory exceptions.
+- Require installer/uninstaller, public/private wrappers, integrity helper,
+  External MCP defaults/provisioner, and both inclusion skills/checkers.
+  Keep the `.claude` and `.gemini` copies synchronized.
+- Malformed JSON/YAML or unavailable PyYAML must abort redaction, not return raw
+  content. Parse YAML structures so block scalars/flow mappings/aliases cannot
+  bypass a line-based scrubber. Exceptions and audit reports must not print keys'
+  values, including token prefixes. Unknown new secret-bearing configs still
+  require human classification; shape scans do not prove universal secrecy.
+- Custom destinations must be dedicated repository descendants. An existing
+  nonempty destination requires a snapshot manifest before replacement. Reject
+  linked source inputs. The emitted manifest omits developer absolute paths.
+- The file-only checker creates a fresh unique scratch directory. A CLEAN result
+  proves its stated source guards, NOT a successful frozen rebuild. Honor any
+  no-tests/no-build restriction and do not silently expand this sweep.
+
 ## Companion references
 - `tlamatini-self-update-inclusion` — the sibling skill guarding the **runnable release**
   (`build.py` carriers + the update swap). Run BOTH after any feature: one proves users can
   *receive* the feature, this one proves Tlamatini can *rebuild herself with* it.
 - `docs/claude/architecture.md` → *Self-Knowledge & Self-Modification* and
   `docs/claude/gotchas.md` → *Building & Packaging* for the `--self-modify` flag mechanics.
-- `VERSIONING.md` — the rebuild produces the next version from the git tag.
+- `VERSIONING.md` — use Git tags in the repository; a Git-free snapshot requires an explicit `TLAMATINI_VERSION`.

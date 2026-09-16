@@ -1,0 +1,237 @@
+{
+  "schema": 1,
+  "packages": [
+    {
+      "name": "bootstrap",
+      "version": "5.3.3",
+      "url": "https://registry.npmjs.org/bootstrap/-/bootstrap-5.3.3.tgz",
+      "integrity": "sha512-8HLCdWgyoMguSO9o+aH+iuZ+aht+mzW0u3HIMzVu7Srrpv7EBBxTnrFlSCskwdY1+EOFQSm7uMJhNQHkdPcmjg=="
+    },
+    {
+      "name": "jquery",
+      "version": "3.7.1",
+      "url": "https://registry.npmjs.org/jquery/-/jquery-3.7.1.tgz",
+      "integrity": "sha512-m4avr8yL8kmFN8psrbFFFmB/If14iN5o9nw/NgnnM+kybDJpRsAynV2BsfpTYrTRysYUdADVD7CkUUizgkpLfg=="
+    },
+    {
+      "name": "jquery-ui",
+      "version": "1.13.3",
+      "url": "https://registry.npmjs.org/jquery-ui-dist/-/jquery-ui-dist-1.13.3.tgz",
+      "integrity": "sha512-qeTR3SOSQ0jgxaNXSFU6+JtxdzNUSJKgp8LCzVrVKntM25+2YBJW1Ea8B2AwjmmSHfPLy2dSlZxJQN06OfVFhg=="
+    },
+    {
+      "name": "highlightjs",
+      "version": "11.9.0",
+      "url": "https://registry.npmjs.org/@highlightjs/cdn-assets/-/cdn-assets-11.9.0.tgz",
+      "integrity": "sha512-F1vJKVAkLwj2Uz2ik1PDc+mDbkrecLI6gcBlAxSRUjyDpMPJjeDBanT9Y2B+xpNe1MT6zSG204Ohm/+nUMCApQ=="
+    },
+    {
+      "name": "nunito",
+      "version": "5.2.6",
+      "url": "https://registry.npmjs.org/@fontsource/nunito/-/nunito-5.2.6.tgz",
+      "integrity": "sha512-FjSPmzBFZ3za4w2USmCWrxDaZ1fTWowSpV9DXfs7Ll/150BI48epE6E69MtOx8GqOPimHNkVUkES22lqDw+bug=="
+    }
+  ],
+  "files": {
+    "bootstrap/dist/css/bootstrap.min.css": {
+      "bytes": 232803,
+      "sha256": "3c8f27e6009ccfd710a905e6dcf12d0ee3c6f2ac7da05b0572d3e0d12e736fc8"
+    },
+    "bootstrap/dist/css/bootstrap.min.css.map": {
+      "bytes": 589892,
+      "sha256": "f12338536350a422c64d02d6e43ff1dea493c3156ad823fe19761cdd5d56c05b"
+    },
+    "bootstrap/dist/js/bootstrap.bundle.min.js": {
+      "bytes": 80721,
+      "sha256": "0833b2e9c3a26c258476c46266e6877fc75218625162e0460be9a3a098a61c6c"
+    },
+    "bootstrap/dist/js/bootstrap.bundle.min.js.map": {
+      "bytes": 332090,
+      "sha256": "5e3e0763164143baaa1ca0706b6100ba0452f911d6ce9713b48e3dbe07b35125"
+    },
+    "bootstrap/LICENSE": {
+      "bytes": 1093,
+      "sha256": "8c14611ae41ac6fd543c13349f22188eb12c69b3e59105c5eca3925a8e4eca3e"
+    },
+    "highlightjs/highlight.min.js": {
+      "bytes": 121727,
+      "sha256": "837a6fa5b0c736b52bbde2b2b6190f305da3fc9ed41681db5321507057b5c846"
+    },
+    "highlightjs/languages/bash.min.js": {
+      "bytes": 3103,
+      "sha256": "fd9edcf3c6b2223b8987115f7799b1d1eec3000d045599cf4877c0f938ad8744"
+    },
+    "highlightjs/languages/c.min.js": {
+      "bytes": 3902,
+      "sha256": "147c335b43c4cf3ff38028782ae0e13ad98ace8141286b319fc7ac6560052e70"
+    },
+    "highlightjs/languages/cpp.min.js": {
+      "bytes": 5709,
+      "sha256": "f808197aec8d601554f820eef02c3c50b4baee9bf48ec65208de75b168b783ea"
+    },
+    "highlightjs/languages/css.min.js": {
+      "bytes": 9954,
+      "sha256": "90b54d3bef2a9cc8c02f3a8d512fd317ab61fd3c4d9e80081a94c3021d2403e7"
+    },
+    "highlightjs/languages/ini.min.js": {
+      "bytes": 1044,
+      "sha256": "b98e2071ea87c331e64c25116c3dde60b413a2d71c20d63bc438bbcf0fd5461b"
+    },
+    "highlightjs/languages/java.min.js": {
+      "bytes": 2739,
+      "sha256": "309eaa0f9c6e0ce930fb14c00c746c11058d489eb4c6f4045cde145d33eff23b"
+    },
+    "highlightjs/languages/javascript.min.js": {
+      "bytes": 6542,
+      "sha256": "8f675eb100c79498bd35f422f9b5d7c36a4b89c729d7e47715506190792bf9f0"
+    },
+    "highlightjs/languages/kotlin.min.js": {
+      "bytes": 3462,
+      "sha256": "c62e217e66028578d6b1d0562c80e9f021eddec4909799d0a487c9a274c6443b"
+    },
+    "highlightjs/languages/python.min.js": {
+      "bytes": 3529,
+      "sha256": "d49d8b48c93478ccd989b41da48f5fec4b0d1ebd986b5b764d18f0508e51ff6e"
+    },
+    "highlightjs/languages/rust.min.js": {
+      "bytes": 2946,
+      "sha256": "c771307f1d8f6c8a25cfdb32ee69d25eb8667a8760ad7d137ac8c8249676a11e"
+    },
+    "highlightjs/languages/sql.min.js": {
+      "bytes": 6544,
+      "sha256": "1d1e2b97b190a7e38232ece7b86be06729d0c3d80b877ad6a609b0cf8c9f936c"
+    },
+    "highlightjs/languages/typescript.min.js": {
+      "bytes": 7635,
+      "sha256": "4de6a71f23f646641254c8563986ade9289d1df26043ff58c84938e71ea23387"
+    },
+    "highlightjs/languages/xml.min.js": {
+      "bytes": 2024,
+      "sha256": "e6fb27c375179ecea98c78d374aaded766b431c07d5aa0657918879bb658eef3"
+    },
+    "highlightjs/languages/yaml.min.js": {
+      "bytes": 1810,
+      "sha256": "7f836768f920dc70690285eaa721db74eb96037735706046b67a358e97db578d"
+    },
+    "highlightjs/LICENSE": {
+      "bytes": 1514,
+      "sha256": "6c081431591d9df696c82dc598fe1423765b8a299b200ed00b281afd0f64c490"
+    },
+    "highlightjs/styles/atom-one-dark.min.css": {
+      "bytes": 856,
+      "sha256": "4237ffca7ce6aadb438c457e0a675b125c534bbdda5b87f41f3a1495603bcc9b"
+    },
+    "jquery/dist/jquery.min.js": {
+      "bytes": 87533,
+      "sha256": "fc9a93dd241f6b045cbff0481cf4e1901becd0e12fb45166a8f17f95823f0b1a"
+    },
+    "jquery/dist/jquery.min.map": {
+      "bytes": 134755,
+      "sha256": "cf74d51c62d299189989130ebb423b30453532fdc8988d8e2b71b1b9165a80b8"
+    },
+    "jquery/LICENSE.txt": {
+      "bytes": 1097,
+      "sha256": "d4db9ebe6f29f5168eac45ad713f055623ac5d0dcd5ba92da23d650ae012020d"
+    },
+    "jquery-ui/jquery-ui.min.js": {
+      "bytes": 254963,
+      "sha256": "b30d2234d5e63896d085816e0bd385da43a50f929029ed72e657c19f80bd4a38"
+    },
+    "jquery-ui/LICENSE.txt": {
+      "bytes": 1818,
+      "sha256": "f649025cf65c8dcd8588b0937883ba7a52bdb6d35129464a36a1602eb00250f1"
+    },
+    "nunito/400.css": {
+      "bytes": 2035,
+      "sha256": "ed1166f80d34d225b0cbfaedb1bb82e5e5f9a76d1f1908a1bbffdc2124752066"
+    },
+    "nunito/700.css": {
+      "bytes": 2035,
+      "sha256": "3cebf87bf9aaeb6100f5818b896f9892c35a45defde42ef67eec990a232df991"
+    },
+    "nunito/files/nunito-cyrillic-400-normal.woff": {
+      "bytes": 10452,
+      "sha256": "5e091dd0af2d814828132f7c4e5ebb9aa76ee1202d5c43a82de444db42a2b3e2"
+    },
+    "nunito/files/nunito-cyrillic-400-normal.woff2": {
+      "bytes": 8344,
+      "sha256": "928bf0af9d26fca409278a832cfd8463fb88c7b9e25adb3c42a8ac515a043bb1"
+    },
+    "nunito/files/nunito-cyrillic-700-normal.woff": {
+      "bytes": 10384,
+      "sha256": "b3d65cddf26bdf95e137069b3595ad73a61b6e6780fd361324e3b1dc3c97de40"
+    },
+    "nunito/files/nunito-cyrillic-700-normal.woff2": {
+      "bytes": 8432,
+      "sha256": "3d0c8099f1935eb5060d513e4c2f47235120400aa253fe0ff7c8873e3bd91ddf"
+    },
+    "nunito/files/nunito-cyrillic-ext-400-normal.woff": {
+      "bytes": 14108,
+      "sha256": "d48c37c9ca04450b592bd36ad0b1c6579604ba7c403f3d0d35366016ee260623"
+    },
+    "nunito/files/nunito-cyrillic-ext-400-normal.woff2": {
+      "bytes": 11164,
+      "sha256": "20d73ae7142f8a495f3dbc7a6aee9d9f0e87fd9c8d78536d5cf5a861489dd026"
+    },
+    "nunito/files/nunito-cyrillic-ext-700-normal.woff": {
+      "bytes": 13872,
+      "sha256": "c8c0277512e996a5f48e7bd32b6c1ccd46cce321e60c794f2e58523f263c6c6b"
+    },
+    "nunito/files/nunito-cyrillic-ext-700-normal.woff2": {
+      "bytes": 10988,
+      "sha256": "5936f6acf42c4960710f02d591310082e720d13916de8fc1e31cf4bef2942811"
+    },
+    "nunito/files/nunito-latin-400-normal.woff": {
+      "bytes": 20312,
+      "sha256": "53342c3e6201fadbe64e202384381f000ecd5fc0fbfff0936ec4fe2e53cc98d0"
+    },
+    "nunito/files/nunito-latin-400-normal.woff2": {
+      "bytes": 16336,
+      "sha256": "7fcef0e8c04670071ce83256577b01215900bce537ba92bf6829c8a5f405f40f"
+    },
+    "nunito/files/nunito-latin-700-normal.woff": {
+      "bytes": 19992,
+      "sha256": "699d3fec69b062ed078a553d88b8e1e5f7538949b80b5d65a1f19a933b3aa803"
+    },
+    "nunito/files/nunito-latin-700-normal.woff2": {
+      "bytes": 16224,
+      "sha256": "648834d5bb4c5f69a5ebd58ba6df0ade9678ea6ab0cad3f2cd027c00216e5f66"
+    },
+    "nunito/files/nunito-latin-ext-400-normal.woff": {
+      "bytes": 21308,
+      "sha256": "8e585e0eb9af0bef22d014ed239eeed2ee86d45d6cb30877531d129e1c9563df"
+    },
+    "nunito/files/nunito-latin-ext-400-normal.woff2": {
+      "bytes": 15904,
+      "sha256": "835e960ca89a390184ef9d6b92833ecf4d1f31f0d286c87937927e328413f0cb"
+    },
+    "nunito/files/nunito-latin-ext-700-normal.woff": {
+      "bytes": 21032,
+      "sha256": "b02a9e990322f7ea2d16e1f46456dee18870856e2711da7881dda110b7d4a183"
+    },
+    "nunito/files/nunito-latin-ext-700-normal.woff2": {
+      "bytes": 15876,
+      "sha256": "a2f506904822295b98f0042a3be29631c7ff5148b1b24db834d3cdb3781e037a"
+    },
+    "nunito/files/nunito-vietnamese-400-normal.woff": {
+      "bytes": 8248,
+      "sha256": "9c01ea9fc8b58aa40a7f7ec53481951a8c4ba1f26b94108d6c385332a016fb12"
+    },
+    "nunito/files/nunito-vietnamese-400-normal.woff2": {
+      "bytes": 6120,
+      "sha256": "2a755616268a9285541121f14f690f92bea32e19227ab20c9db3aebc630a57af"
+    },
+    "nunito/files/nunito-vietnamese-700-normal.woff": {
+      "bytes": 8072,
+      "sha256": "7793b75eb8259788d80fedc26e108897cd22bfc101dcc55163865a7f6e794dc6"
+    },
+    "nunito/files/nunito-vietnamese-700-normal.woff2": {
+      "bytes": 5960,
+      "sha256": "0e29c28c9a442387fe5e98ca62a66dfe2bfb7b1c873ee9d081b42f0565af8858"
+    },
+    "nunito/LICENSE": {
+      "bytes": 4314,
+      "sha256": "18aabf190848725e2576eefb5c29ba06aac1029d02132252a7f312eac2e50cf3"
+    }
+  }
+}

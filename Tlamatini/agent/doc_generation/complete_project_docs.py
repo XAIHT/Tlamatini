@@ -64,6 +64,14 @@ CONTEXT_OUTPUT = BUILD_DIR / "complete_project_dossier_context.json"
 TREE_OUTPUT = BUILD_DIR / "complete_tracked_file_tree.txt"
 
 BINARY_EXTENSIONS = {
+    ".bcmap",
+    ".gif",
+    ".icc",
+    ".pfb",
+    ".ttf",
+    ".wasm",
+    ".woff",
+    ".woff2",
     ".7z",
     ".dll",
     ".exe",
@@ -98,6 +106,7 @@ LANGUAGE_BY_EXTENSION = {
     ".proto": ("Protocol Buffers", "Proto"),
     ".ps1": ("PowerShell", "PowerShell"),
     ".py": ("Python", "Python"),
+    ".svg": ("SVG", "SVG"),
     ".txt": ("Text", "Text"),
     ".yaml": ("YAML", "YAML"),
     ".yml": ("YAML", "YAML"),
@@ -345,7 +354,7 @@ def count_python_effective(text: str) -> int:
 def remove_block_comments(text: str, suffix: str) -> str:
     if suffix in {".js", ".cjs", ".mjs", ".css", ".proto", ".cpp"}:
         return re.sub(r"/\*.*?\*/", "", text, flags=re.DOTALL)
-    if suffix == ".html" or suffix == ".md":
+    if suffix in {".html", ".md", ".svg"}:
         return re.sub(r"<!--.*?-->", "", text, flags=re.DOTALL)
     if suffix == ".ps1":
         return re.sub(r"<#.*?#>", "", text, flags=re.DOTALL)
@@ -384,6 +393,9 @@ def line_stats_for_paths(paths: list[str]) -> tuple[list[LineStats], list[FileSt
 
     for rel_path in paths:
         absolute = REPO_ROOT / rel_path
+        if not absolute.is_file():
+            skipped_count += 1
+            continue
         text = read_text(absolute)
         if text is None:
             if absolute.suffix.lower() in BINARY_EXTENSIONS:
@@ -469,6 +481,11 @@ def commits_since_visual_docs(baseline: CommitBaseline | None) -> list[CommitInf
 def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     """Use commit-specific evidence, never broad keyword guesses or disk presence."""
     notes = {
+        "cae78c3": "Repairs five order-dependent log-capture harnesses. AudioPlayer suppresses real audio under TLAMATINI_NO_AUDIO while explicitly marked fake sounddevice modules can exercise streaming math. No tests ran in this dossier refresh.",
+        "6dd2b7e": "Updates README, Book, self-knowledge and document-agent contracts. Clarifies audit confidence, partial LaTeX results and repair boundaries instead of equating creation with verification.",
+        "63afbf9": "Adds explicit frozen PDF/PyMuPDF collection, a LAN-safe UUID fallback, strict source-snapshot carriage and WAL-aware update backup. These changes were source-reviewed without a full frozen-build run.",
+        "814cd9a": "Introduces the PDF canvas with local range reads, whole-document context, optional Image-Interpreter analysis and cancellable progress. Adds pinned PDF.js assets and removes six gallery videos. The v1.62.0 tag resolves here.",
+        "f3138d4": "Commits the preceding 73-page PDF and 197-slide deck, covering v1.60.0, visual styles, desktop contracts and the 1,148-file inventory.",
         "c4daacc": "Updates release-facing handbooks, self-knowledge and package metadata to v1.60.0. The tag remains at cef3995, one commit before this documentation commit.",
         "cef3995": (
             "Tightens Mouser/Keyboarder/Shoter input receipts, Parametrizer mappings, "
@@ -720,6 +737,7 @@ def collect_context() -> dict:
         "untracked_files": len(untracked),
         "tracked_paths": tracked,
         "untracked_paths": untracked,
+        "missing_paths": [path for path in paths if not (REPO_ROOT / path).is_file()],
         "inventory_paths": paths,
         "tree_text": tree_text,
         "language_rows": language_rows,
@@ -752,6 +770,24 @@ def collect_context() -> dict:
         "version_info": version_info,
     }
     context.update(collect_publication_context(context))
+    vendor_prefix = "Tlamatini/agent/static/agent/vendor/pdfjs/"
+    vendor_rows = [row for row in file_rows if row.path.startswith(vendor_prefix) and row.path in tracked]
+    context["pdfjs_inventory"] = {
+        "tracked_files": sum(path.startswith(vendor_prefix) for path in tracked),
+        "physical": sum(row.total_lines for row in vendor_rows),
+        "effective": sum(row.effective_lines for row in vendor_rows),
+        "local_only": [],
+    }
+    for name in ("build/pdf.mjs", "build/pdf.worker.mjs"):
+        relative = vendor_prefix + name
+        path = REPO_ROOT / relative
+        if relative not in tracked and path.is_file():
+            text = path.read_text(encoding="utf-8")
+            context["pdfjs_inventory"]["local_only"].append({
+                "path": relative, "bytes": path.stat().st_size,
+                "physical": len(text.splitlines()),
+                "effective": count_generic_effective(text, ".mjs"),
+            })
     return context
 
 
@@ -762,7 +798,8 @@ def collect_publication_context(context: dict) -> dict:
     baseline_ref = baseline.short_hash if baseline else tag
     added = sorted(set(git("diff", "--name-only", "--diff-filter=A", f"{baseline_ref}..HEAD").splitlines())
                    | set(context["untracked_paths"]))
-    removed = git("diff", "--name-only", "--diff-filter=D", f"{baseline_ref}..HEAD").splitlines()
+    removed = sorted(set(git("diff", "--name-only", "--diff-filter=D", f"{baseline_ref}..HEAD").splitlines())
+                     | set(git("diff", "--name-only", "--diff-filter=D", "HEAD").splitlines()))
     stats = {row.path: row for row in context["file_rows"]}
     published = [path for path in context["tracked_paths"] if path.startswith("output/")]
     # A local leftover is not evidence that Git still publishes it. The style
@@ -830,28 +867,217 @@ def publication_guide(context: dict) -> list[str]:
     return [
         f"Since the last committed dossier revision, the inspected checkout adds {len(context['new_assets'])} files "
         f"including {context['untracked_files']} untracked working additions. "
-        f"The delta removes {len(context['removed_assets'])} paths, including "
+        f"The delta removes {len(context['removed_assets'])} paths (including pending deletions), with "
         f"{context['removed_output_files']} under output/. The current tracked output inventory "
         f"has {context['published_files']} files. Local leftovers never establish publication.",
-        "New assets include PPTXer's implementation and three migrations, style guides/helpers, "
-        "desktop input helpers, flow schemas, firmware templates and reusable verifier sources. "
-        "image.png is a small terminal screenshot, not runtime artwork. Binary files have no line count.",
-        f"Current inventory: {context['tracked_files']:,} tracked files, "
+        "New assets include PDF context services, three application JS modules, two CSS files, "
+        "the viewer HTML, vendored PDF.js resources, a PyMuPDF hook, two contract guides "
+        "and reproducible test/vendoring sources. Pending additions include the no-CDN "
+        "frontend and runtime-release gates. Six gallery MP4s were removed upstream. "
+        "Binary fonts, character maps, decoders and media have no line count.",
+        f"Current inventory: {context['tracked_files']:,} tracked plus {context['untracked_files']} pending files, "
         f"{context['total_lines']:,} physical text lines, {context['total_effective_lines']:,} "
         f"effective lines, and {context['binary_count']} binary assets. Counts include source "
-        "and authored documentation. Ignored galleries, caches and local runtime state are excluded.",
+        "and documentation plus vendored third-party code. Ignored galleries, caches and "
+        f"runtime state are excluded. {len(context['missing_paths'])} index paths are absent "
+        "from disk and excluded from line/binary totals. Config values are never reproduced.",
         f"Changes after dossier commit {baseline_ref} are listed in the Git appendix. "
-        "PPTXer and document styles join the whole-system coverage. Desktop and flow contracts "
-        "now distinguish input delivery from application success. Runtime avatar JPGs remain "
-        "under Tlamatini/agent/static/ despite the removal of the old output corpus.",
+        "PDF reading/context and revised build/update carriage join the whole-system coverage. "
+        "The tag and later source commits are distinguished. Runtime avatar JPGs remain "
+        "tracked despite the earlier removal of the old output corpus.",
         historical + " No automated tests were executed for this refresh, as requested. "
         "Document rendering and layout inspection are the only new visual evidence.",
         "Handbook reconciliation: active 108-tool/66-wrapper labels lag the 109/67 source counts. "
-        "README's clean-tag wording, old totals and output links are stale. It lists Django "
-        "5.2.4 versus requirements 5.2.15. Avatar/reduced-motion prose predates the canvas "
-        "renderer. Book section 50 omits uninstall guards and its ESP32 chapter contradicts "
-        "the bundled template. This dossier follows inspected source and Git history.",
+        "Old totals/output links, Django 5.2.4 versus pinned 5.2.15, and atomic-avatar prose "
+        "remain stale. Book retains 1.60.0 runtime examples, an incomplete uninstall section "
+        "and contradictory ESP32 embedding prose. Its new PDF search claim has no dedicated "
+        "find controller/UI in the current viewer. Source and Git determine this dossier.",
     ]
+
+
+PDF_CANVAS_GUIDE = [
+    "Open or Reopen accepts PDF beside ordinary text files. The isolated PDF.js frame "
+    "supports selectable text, page navigation, fit width/page, zoom, rotation and "
+    "continuous/single-page scrolling. Password entry stays in the viewer.",
+    "Copy extracts selectable text from every page and reports image-only scans. "
+    "Save As returns the original PDF bytes. Clear, text selection or generated text "
+    "removes the frame and worker. Generation checks reject stale asynchronous reads.",
+    "Opening uses File.slice range requests of 256 KiB with streaming and auto-fetch "
+    "disabled. It uploads no document and invokes no model. There is no application "
+    "size/page cutoff, but memory, disk and document complexity still limit capacity.",
+    "Visible/nearby pages render within an 8-megapixel canvas budget and 16,384-pixel "
+    "dimension limit. Above 10,000 pages PDF.js selects single-page scrolling. Copying "
+    "all text still allocates that text in memory. These are policies, not unlimited capacity.",
+    "Divider pointer capture survives movement across the PDF frame. Release, cancelled "
+    "touch, lost capture and focus loss end resizing. Keyboard resizing remains. The "
+    "frame bridge checks source window, same origin and a fixed channel.",
+    "Source: agent_page_pdf.js, pdf_canvas_viewer.js and pdf/canvas.html. PDF scripting "
+    "is disabled. The custom toolbar has no find/search control or PDFFindController "
+    "wiring, despite search wording in the handbooks. This refresh does not add one.",
+]
+
+PDF_CONTEXT_GUIDE = [
+    "Use as context first opens an options dialog. Process images starts unchecked "
+    "every time. Continue is required before upload or preparation. Earlier Cancel, "
+    "Escape or close leaves the existing context unchanged.",
+    "Text-only extracts every page with PyMuPDF and skips rendering, image extraction "
+    "and vision calls. A scan without selectable text refuses with an image-mode hint. "
+    "Mixed documents mark pages without text. Each mode keeps a separate cache.",
+    "Image mode renders every page preview and extracts unique embedded images. "
+    "The saved Image-Interpreter configuration drives two parallel vision calls and "
+    "a merger for each artifact. PDF-specific instructions request OCR, chart/table "
+    "interpretation and explicit uncertainty. Configured model services may be remote.",
+    "Continue uploads to the configured Tlamatini server, which can be reached over LAN. "
+    "A serial background queue prepares source.pdf, document.txt and optional images/reports "
+    "under context_files/pdf_canvas/<user-id>/<document-id>/. Login, CSRF, method guards "
+    "and user-bound signed tokens protect prepare/status/cancel and RAG handoff.",
+    "All extracted text and complete image reports remain in the index. Normal RAG "
+    "retrieval and model context limits still govern each answer. Reading the full index "
+    "does not mean sending every page to the model on every turn. Text-only preparation "
+    "needs no vision service, but later RAG/chat uses the configured services.",
+    "Successful packages persist for session restoration. Failed/cancelled preparation "
+    "removes its own incomplete package and upload staging. Passwords stay in parsing "
+    "memory, outside storage/context/logs. Job status is process-local, with completed "
+    "entries pruned after one hour during later activity. Restarted jobs require retry.",
+]
+
+PDF_PROGRESS_GUIDE = [
+    "Four progress rows separate upload bytes, extracted pages, analyzed images and "
+    "context loading. Text-only marks images Skipped. The elapsed timer starts at "
+    "Continue and RAG stays indeterminate until the consumer acknowledges completion.",
+    "Cancel aborts browser requests and signals a user-scoped UUID, including uploads "
+    "whose job response has not arrived. Workers check between chunks, pages and image "
+    "calls. An in-flight model request may finish before cancellation takes effect.",
+    "After RAG loading starts, Close dismisses the dialog without cancelling that phase. "
+    "Success closes automatically. Failure remains visible and allows retry. Incomplete "
+    "image analyses remain in saved reports and the viewer warning, not a false clean result.",
+    "PDF and chat own separate busy indicators. Reopen prepares a replacement before "
+    "rebuilding active context. Preparation cancellation keeps prior backend context. "
+    "A UUID fallback uses crypto.getRandomValues when randomUUID is unavailable on HTTP LAN.",
+    "docs/pdf-canvas.md records earlier September 16 results: 12 browser/static tests "
+    "and 32 Django/image/JS-gate tests, plus a 256 MB sparse fixture and page 10,001. "
+    "Later frozen-carriage changes explicitly have source-review evidence only.",
+    "This refresh ran no automated tests, app server, model calls, collectstatic or "
+    "frozen build. Existing test sources remain available for separate execution. "
+    "Document rendering establishes dossier layout evidence only, not runtime behavior.",
+]
+
+
+def pdf_distribution_guide(context: dict) -> list[str]:
+    vendor = context["pdfjs_inventory"]
+    local = vendor["local_only"]
+    local_summary = "; ".join(
+        f"{Path(row['path']).name}: {row['bytes']:,} bytes, "
+        f"{row['physical']:,} physical / {row['effective']:,} effective lines"
+        for row in local
+    )
+    return [
+        "Mozilla PDF.js 6.3.289 supplies the viewer, fonts, CMaps, annotation artwork, "
+        "ICC profile and WASM decoders. scripts/vendor_pdfjs.py checks a pinned npm "
+        "archive's SHA-512 before extracting an explicit subset. Runtime rendering "
+        "needs neither npm nor a CDN when all assets are present.",
+        f"Tracked PDF.js contribution: {vendor['tracked_files']} files, "
+        f"{vendor['physical']:,} physical and {vendor['effective']:,} effective text lines. "
+        "These third-party lines are included in repository totals and should not be "
+        "mistaken for new Tlamatini-authored logic. Binary resources count as files only.",
+        ("Git publication pending: build/pdf.mjs and build/pdf.worker.mjs were hidden "
+         "by the global build/ ignore rule. A narrow exception now exposes them as "
+         "working-tree additions. Commit these files with the packaging changes; "
+         "remote clones remain incomplete until publication or explicit vendoring."
+         if local else "Both required PDF.js build modules are present in the tracked inventory."),
+        ("Untracked modules, included in combined working-tree totals but not tracked totals: " + local_summary + "."
+         if local else "No local-only PDF.js build modules were found in this checkout."),
+        "PyMuPDF 1.26.5 already existed in requirements. Frozen web imports now "
+        "explicitly include four PDF services, the reusable Image-Interpreter and "
+        "PyMuPDF. hook-pymupdf.py collects native MuPDF libraries. Carried pool Python "
+        "cannot supply imports inside Tlamatini.exe.",
+        "Django and WhiteNoise override .mjs and .wasm MIME types on Windows. "
+        "The existing v1.62.0 ZIP contains all 354 pre-change static files, exact in "
+        "both frozen locations, and native MuPDF extensions/DLL. The new source adds "
+        "local frontend libraries and stricter build gates; those changes have not "
+        "been built or runtime-tested during this refresh.",
+    ]
+
+
+LOCAL_RELEASE_GUIDE = [
+    "The working tree removes CDN resource tags from all four application templates. "
+    "Bootstrap 5.3.3, jQuery 3.7.1, jQuery UI 1.13.3, highlight.js 11.9.0 and Nunito "
+    "400/700 are local. The duplicate Bootstrap 5.3.0 load is removed; UI ordering "
+    "is retained and new URLs use the startup cache stamp plus an offline suffix.",
+    "scripts/vendor_frontend.py reproduces 50 files plus a vendor manifest: 2.18 MB "
+    "before ZIP compression. Pinned npm archives are SHA-512 checked; licenses, "
+    "font subsets and SHA-256 receipts ship locally. Builds do not invoke this "
+    "download script. Model/API and Internet-agent traffic still needs networking.",
+    "build_runtime_assets.py inventories source static, collected Django assets, "
+    "templates, agents, skills and required helpers. Byte checks detect missing or "
+    "stale source-to-collected/frozen copies. Literal static tags and CSS resources "
+    "must resolve; reintroduced template CDN loads stop packaging.",
+    "Missing Java/Git/active Playwright revisions, required copies or unreadable "
+    "frozen module archives now fail closed. Frozen migration, default-user setup, "
+    "collectstatic and executable rename must succeed. Session/pool/cache files "
+    "are not shipped as agent templates. Snapshot rules carry the new helper/assets.",
+    "A runtime-assets.json receipt hashes every assembled payload file. ZIP "
+    "membership and streamed SHA-256/CRC are checked before pkg.zip.part is "
+    "published; installer assembly verifies the receipt and version again. Both "
+    "complete-release wrappers cap the final outer ZIP at 1,990,000,000 bytes.",
+    "The existing final v1.62.0 ZIP is 1,905,278,037 bytes: 84,721,963 bytes below "
+    "the new ceiling. This is baseline headroom, not a new build result. Oversized "
+    "final output stays .pending.zip and fails; required files are not removed. "
+    "New guards were source-reviewed only; no automated tests or builds ran.",
+]
+
+
+SELF_CARRIAGE_GUIDE = [
+    "A --self-modify build generates a fresh sanitized TlamatiniSourceCode tree and "
+    "self-knowledge file. Default builds omit both. --no-self-modify wins if both "
+    "flags appear. Missing required inputs, generation errors and copy failures now "
+    "abort packaging instead of falling back to a stale tree.",
+    "The exact PDF.js vendor/build directory bypasses the generic build-directory "
+    "snapshot exclusion. Fonts, CMaps, decoders and licenses travel with that source "
+    "snapshot. Secret/state exclusions retain priority. This is independent of Git's ignore rules.",
+    "Snapshots omit .git and generated version modules. Rebuild instructions therefore "
+    "require an intentional TLAMATINI_VERSION for all three build scripts. Restore "
+    "omitted required binaries using the manifest, install dependencies and regenerate "
+    "static files before a separate authorized rebuild.",
+    "apply_update.ps1, preserved_user_state.json and the standalone sqlite_copy.py "
+    "are mandatory install-root assets. The updater prefers the incoming release's "
+    "swap script, falling back for older payloads, then copies it outside the install tree.",
+    "Backup prerequisites are checked before shutdown. Carried Python runs the "
+    "helper with -I. Verified SQLite online backup includes committed WAL pages and "
+    "atomically stages one standalone DB in DB/ToLoad. Failure stops before agents "
+    "rename or file replacement. Only success creates the migration marker.",
+    "The shared preservation set retains configuration, contacts, DB, context packages, "
+    "generated content, Temp, Templates and Uninstaller.exe. App code is replaced, "
+    "agents keep one backup, and security logs use stash/restore. The reviewed changes "
+    "require a fresh build; no updater or rebuild ran in this refresh.",
+]
+
+DOCUMENT_CONTRACT_GUIDE = [
+    "PDFer creation confirms a file exists. layout_audit=true on the atelier route "
+    "supplies layout_clean and detailed findings. Blank audit evidence is unverified. "
+    "Zero overlaps does not exclude contrast, blank-page or off-sheet problems. "
+    "Legacy CSS, image-only and merged pages retain their own layouts.",
+    "PPTXer reports status/success alongside layout_clean, ground_truth, render_tier "
+    "and slides_rendered. Native rendering does not itself prove full measurement "
+    "coverage. created_with_findings may still have success=true. Required missing "
+    "media and skipped audit measurements must remain explicit.",
+    "PPTXer's auto rendering tries PowerPoint, LibreOffice, then an approximate Pillow "
+    "preview. None skips slide images while geometry may still be measured. Styles "
+    "use nuance, with no separate style parameter. Native applications remain optional "
+    "for creation; 256 characters is a stress case, not a content limit.",
+    "LaTeXer compiled_with_errors and degraded mean an existing but incomplete/errored "
+    "PDF with success=false. Clean compiled output is the stopping point unless a "
+    "remaining requirement warrants edits. Compilation does not certify visual layout. "
+    "Catalog/source actions work without a TeX engine.",
+    "LaTeXer repair_write_back=false preserves source through a fixed copy. Model "
+    "failure/timeout blocks destructive bisect; decoded base64 edit fields take "
+    "precedence. Beamer scaffolds expect frame bodies. A full explicit frame sequence "
+    "belongs in complete source without a style override.",
+    "The current commit also detaches/restores global logging handlers in five "
+    "regression harnesses. TLAMATINI_NO_AUDIO suppresses real AudioPlayer output, "
+    "while a marked fake sounddevice can exercise callback frame math. These source "
+    "changes are recorded without executing the tests.",
+]
 
 
 PPTXER_GUIDE = [
@@ -1083,7 +1309,7 @@ GREPPER_LINES_GUIDE = [
     "The wrapped chat_agent_grepper description and Parametrizer field map "
     "include the new contract. Success is listed, while missing paths give "
     "not_found. Self-knowledge and FlowCreator describe the read step. "
-    "TLAMATINI_VERSION: 1.60.0 is now an offline fallback behind live metadata.",
+    "TLAMATINI_VERSION in self-knowledge is an offline fallback behind live metadata.",
     "Three new assets: test_grepper_lines_mode.py, grepper_lines_visible.py "
     "and grepper_login_probe.py. The commit reports 505 passing cases and a "
     "headed chat search/read demonstration. Those are historical claims, not "
@@ -1217,7 +1443,7 @@ BLUE_HAT_SECURITY_GUIDE = [
 ]
 
 WHAT_IT_DOES = [
-    "Answers codebase questions with loaded file or directory context.",
+    "Answers codebase questions with file/directory context and reads PDFs in the canvas. Use as context indexes the whole PDF, with optional Image-Interpreter analysis.",
     "Uses hybrid retrieval to extract metadata, split content, rank source chunks, and respect context budgets.",
     "Can discover files by glob pattern, search their contents by regex through Grepper's BOM-first UTF-8/16/32 and cp1252/Latin-1 decoder while skipping genuine binary data, and make surgical in-place replacements through Editor.",
     "Can connect to external MCP servers declared in `external_mcps.json`, expose their remote tools to Multi-Turn under the `ext__<server>__<tool>` naming convention, and supervise those connections through ten status / reconnect / doctor / runtime / import / list / call / activate / wait helpers.",
@@ -1260,7 +1486,7 @@ WHAT_IT_DOES = [
 
 HOW_IT_WORKS = [
     "Browser UI sends chat and workflow requests through Django views and Channels WebSockets.",
-    "RAG chains load selected file/directory context, retrieve relevant chunks, and build answer prompts.",
+    "RAG chains load selected file/directory context, retrieve relevant chunks, and build answer prompts. PDF preparation supplies a complete private text/image index through a user-bound signed token; normal retrieval and model limits still apply.",
     "DB-menu actions validate directories or SQLite files in the browser, then call Django views that use `sqlite_copy.consistent_copy()` to read through WAL, create a self-contained checked destination, and either back it up or stage it under `DB/ToLoad/db.sqlite3`.",
     "Config -> Access Keys Wizard reads masked provider-key status from the backend and persists only the edited secrets, keeping the browser flow honest without dumping live values back to the page.",
     "The file-navigation and file-edit trio sits above raw shell execution: Globber enumerates matching files, Grepper decodes BOM-marked UTF-8/16/32 before cp1252/Latin-1 fallbacks while pruning genuine binary/noisy trees, and Editor performs byte-exact in-place replacements without rewriting an entire file.",
@@ -1298,7 +1524,7 @@ HOW_IT_WORKS = [
 
 HOW_TO_USE = [
     "Run from source: create a virtual environment, install requirements, migrate, create a superuser, collect static files, and start Django.",
-    "Open `/agent/` for chat. Load a file or directory context before asking codebase-specific questions.",
+    "Open `/agent/` for chat. Load file/directory context for code questions. For PDFs, use Open in the canvas, then Use as context and Continue. Process images is off by default and adds configured vision calls only when selected.",
     "Keep Multi-Turn unchecked for direct Q&A; enable Multi-Turn for tasks that need tools, wrapped agents, monitoring, or workflow seeding.",
     "Use `chat_agent_globber` to find files, `chat_agent_grepper` to search or read a range with output_mode=lines, and `chat_agent_editor` for an exact in-place change. Use content_b64 for line-ending-safe text transport and observe Editor's UTF-8 scope.",
     "To use the External MCP capability, open `External -> MCPs`, register or import a server into `external_mcps.json`, choose the transport/runtime fields, and let the dialog connect it before expecting its `ext__<server>__<tool>` tools to appear in Multi-Turn.",
@@ -1527,7 +1753,7 @@ NMAPPER_GUIDE = [
 
 STARTUP_PROMPT_POLISH_GUIDE = [
     "`v1.39.4` restored first-run/startup dialog closeability so a fresh launch can no longer be trapped behind an unclosable overlay.",
-    "Commit `a45fe0e0` followed the public `v1.39.4` tag with Catalog-of-Prompts localization cleanup; that historical polish remains carried by the `v1.60.0` release line.",
+    "Commit `a45fe0e0` followed the public `v1.39.4` tag with Catalog-of-Prompts localization cleanup; that historical polish remains carried by the current release line.",
     "The prompt catalog path stays centralized through the secure one-call `/agent/list_prompts/` endpoint ordered by category rank and stable surviving id, while the gap-tolerant probe loop remains only as an offline fallback.",
     "Frontend mutable-state tests and dialog templates continue to guard the chat/startup/overlay surfaces so future cleanup passes do not reintroduce const-poison or close-button regressions.",
 ]
@@ -1762,7 +1988,7 @@ PROMPT_CATALOG_GUIDE = [
     "Version `1.3.2` tightened the HTML answer contract with a Prime Directive on visual readability: explicit background and text color, no grey-on-dark body text, and safer table-body defaults.",
     "The seeded `Prompts` dropdown was also re-sorted into a learner path: context-only Q&A first, then metrics, files search, shell, code generation, vision, specialized single-tool actions, agent control, Unrealer, and heavier Multi-Turn/ACPX demos last.",
     "The `v1.35.0` prompt-search pass then makes that larger catalog easier to operate: prompt cards support substring, word-start, and fuzzy matching, with mode badges that keep one-shot, Multi-Turn, ACPX, Exec Report, and Step-by-Step demos visually distinct.",
-    "Those readability rules remain in force in the `v1.60.0` release documentation set; it carries measured networking, WAL-safe database movement, structured and resilient Googler discovery, guided MCP onboarding, and current counts while retaining encoding-safe search, guarded execution truth, private MCP runtime/defaults, diagram hardening, LaTeXer, the binary guard, PDFer, FlowCreator, prompt standardization, category grouping, and ranked fuzzy search.",
+    "Those readability rules remain in force in the current release documentation set. PDF canvas/context and stricter build/update carriage join measured networking, WAL-safe database movement, resilient Googler discovery and guided MCP onboarding. Encoding-safe search, guarded execution truth, private MCP runtimes, document agents and ranked prompt search remain carried.",
 ]
 
 SELF_KNOWLEDGE_GUIDE = [
@@ -2442,7 +2668,14 @@ def build_pdf(context: dict) -> None:
     story.append(p("Recent implementation assets and inventory impact", styles["h2"]))
     for item in publication_guide(context):
         story.append(bullet(item, styles["bullet"]))
-    for title, guide in (("PPTXer editable presentations", PPTXER_GUIDE),
+    for title, guide in (("PDF canvas reading and file lifecycle", PDF_CANVAS_GUIDE),
+                         ("Whole-document PDF context", PDF_CONTEXT_GUIDE),
+                         ("PDF progress, cancellation and evidence", PDF_PROGRESS_GUIDE),
+                         ("PDF distribution and pending Git assets", pdf_distribution_guide(context)),
+                         ("Local frontend and 1.99 GB release gate", LOCAL_RELEASE_GUIDE),
+                         ("Self-modify and self-update carriage", SELF_CARRIAGE_GUIDE),
+                         ("Document-agent result and repair contracts", DOCUMENT_CONTRACT_GUIDE),
+                         ("PPTXer editable presentations", PPTXER_GUIDE),
                          ("PDFer signature styles", PDFER_STYLES_GUIDE),
                          ("LaTeXer signature styles", LATEXER_STYLES_GUIDE),
                          ("Desktop input and capture contracts", DESKTOP_INPUT_GUIDE),
@@ -2803,6 +3036,7 @@ def build_pdf(context: dict) -> None:
         ["Repository inventory files", f"{context['inventory_files']}"],
         ["Tracked files in git", f"{context['tracked_files']}"],
         ["Git-unignored working-tree additions", f"{context['untracked_files']}"],
+        ["Index paths absent locally (pending deletions)", str(len(context["missing_paths"]))],
         ["Workflow agents", f"{context['workflow_agent_count']}"],
         ["Multi-Turn tools", f"{context['total_multi_turn_tools']}"],
         ["Wrapped chat-agent tools", f"{context['wrapped_chat_agent_count']}"],
@@ -2818,6 +3052,13 @@ def build_pdf(context: dict) -> None:
         ["Version source", f"{context['version_info']['source']}"],
     ]
     story.append(table(repo_rows, widths=[3.0 * inch, 3.7 * inch], font_size=8))
+    if context["missing_paths"]:
+        story.append(p("Pending working-tree deletions", styles["h2"]))
+        story.append(p("The Git-index tree retains these paths until a deletion commit. "
+                       "They are absent locally and have no current line/byte inventory. "
+                       "Unrelated user deletions were preserved during this refresh.", styles["body"]))
+        for missing in context["missing_paths"]:
+            story.append(p(missing, styles["body"]))
     story.append(p("Latest commits", styles["h2"]))
     commit_rows = [["Date", "Commit", "Subject"]]
     for commit in context["recent_commits"]:
@@ -3487,7 +3728,14 @@ def build_ppt(context: dict) -> None:
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Source and evidence", publication_guide(context)[3:], THEME["jade"], "recent-assets-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    for title, guide in (("PPTXer Presentations", PPTXER_GUIDE),
+    for title, guide in (("PDF Canvas Reading", PDF_CANVAS_GUIDE),
+                         ("Whole-Document PDF Context", PDF_CONTEXT_GUIDE),
+                         ("PDF Progress and Cancellation", PDF_PROGRESS_GUIDE),
+                         ("PDF Distribution and Pending Assets", pdf_distribution_guide(context)),
+                         ("Local Frontend and Release Budget", LOCAL_RELEASE_GUIDE),
+                         ("Self-Modify and Update Carriage", SELF_CARRIAGE_GUIDE),
+                         ("Document-Agent Result Contracts", DOCUMENT_CONTRACT_GUIDE),
+                         ("PPTXer Presentations", PPTXER_GUIDE),
                          ("PDFer Signature Styles", PDFER_STYLES_GUIDE),
                          ("LaTeXer Signature Styles", LATEXER_STYLES_GUIDE),
                          ("Desktop Input Contracts", DESKTOP_INPUT_GUIDE),
@@ -4014,7 +4262,7 @@ def build_ppt(context: dict) -> None:
         f"Inventory scope: {context['inventory_files']} files = {context['tracked_files']} tracked + {context['untracked_files']} git-unignored working-tree additions",
         f"Multi-Turn tools: {context['total_multi_turn_tools']}; wrapped chat-agent tools: {context['wrapped_chat_agent_count']}; skills: {context['skills_count']}",
         f"Python requirements: {context['requirements_count']}; authoritative agent-description rows: {context['agent_description_rows']}",
-        f"Binary or asset inventory files skipped from line count: {context['binary_count']}",
+        f"Binary assets: {context['binary_count']}; index paths absent locally: {len(context['missing_paths'])} (not counted as bytes/lines)",
     ], THEME["amber"], "repo-head", 15)
     audit_layout(audit, len(prs.slides))
 
@@ -4078,12 +4326,19 @@ def build_ppt(context: dict) -> None:
     slide, audit = add_slide(prs, "Line Inventory Method", "reproducible source measurements", THEME["copper"])
     add_panel(slide, audit, 0.82, 1.65, 11.55, 4.9, "Counting boundary", [
         "The primary inventory uses git ls-files. Nonignored untracked additions, when present, are labeled separately. Ignored build output, caches and environments are excluded.",
+        f"{len(context['missing_paths'])} index paths are absent locally (pending deletions): retained in the index tree, excluded from line and binary totals.",
         "Physical lines include blanks and comments in text files. Effective lines exclude blank and comment-only lines. Python also excludes module, class and function docstrings identified by AST parsing.",
         "Executable Python multiline strings count every nonblank occupied line. The 2026-09-12 correction replaced the token-start-only undercount. Comparisons with earlier dossiers require recounting them.",
         "Other languages use comment stripping rather than semantic execution analysis. Markdown counts authored nonblank documentation. Binary and media assets have no source-line count. Published historical source snapshots contribute text lines but do not increase runtime module or agent totals.",
         "The generated context JSON retains per-file physical/effective counts, per-language totals and all inventory paths. Both dossiers contain the complete repository tree and a separate new-asset appendix.",
     ], THEME["copper"], "line-method", 17)
     audit_layout(audit, len(prs.slides))
+
+    if context["missing_paths"]:
+        slide, audit = add_slide(prs, "Pending Working-Tree Deletions", "Git-index entries absent locally; unrelated user changes preserved", THEME["amber"])
+        add_text(slide, audit, 0.85, 1.72, 11.7, 4.85, "\n".join(context["missing_paths"]), 11,
+                 THEME["white"], False, name="missing-paths", font="Cascadia Mono")
+        audit_layout(audit, len(prs.slides))
 
     recent_highlight_chunks = split_items(context["weekly_highlights"], 5)
     for idx, chunk in enumerate(recent_highlight_chunks, 1):
@@ -4195,6 +4450,7 @@ def serialize_context(context: dict) -> dict:
         "migrations": context["migrations"],
         "binary_count": context["binary_count"],
         "skipped_count": context["skipped_count"],
+        "missing_paths": context["missing_paths"],
         "version": context["version_info"]["version"],
         "version_source": context["version_info"]["source"],
         "version_info": context["version_info"],
@@ -4203,6 +4459,7 @@ def serialize_context(context: dict) -> dict:
         "all_text_files": [row.__dict__ for row in context["file_rows"]],
         "inventory_paths": context["inventory_paths"],
         "new_assets": context["new_assets"],
+        "pdfjs_inventory": context["pdfjs_inventory"],
         "removed_assets": context["removed_assets"],
         "publication": {key: context[key] for key in (
             "release_identity", "remote_head", "git_describe", "worktree_status",

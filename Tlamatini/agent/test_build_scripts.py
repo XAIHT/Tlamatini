@@ -320,14 +320,18 @@ class ReleaseSizeAndTorchBoundaryTests(SimpleTestCase):
                 build_script.enforce_pkg_zip_size(pkg, max_bytes=4)
             self.assertEqual(raised.exception.code, 1)
 
-    def test_release_budget_is_2_8_decimal_gb_and_runs_before_cleanup(self):
+    def test_release_budget_is_1_99_decimal_gb_and_runs_before_cleanup(self):
         src = _read(BUILD_PY)
-        self.assertIn("MAX_PKG_ZIP_BYTES = 2_800_000_000", src)
+        self.assertIn("MAX_PKG_ZIP_BYTES = MAX_RELEASE_ZIP_BYTES", src)
+        self.assertIn("MAX_RELEASE_ZIP_BYTES = 1_990_000_000",
+                      _read(REPO_ROOT / "build_runtime_assets.py"))
         zip_block = src.split("# ── 9) Generate pkg.zip", 1)[1]
         self.assertLess(
-            zip_block.index("enforce_pkg_zip_size(pkg_zip_path)"),
+            zip_block.index("enforce_pkg_zip_size(pending_zip)"),
             zip_block.index('for cleanup_dir in ("build", "dist")'),
         )
+        self.assertLess(zip_block.index("verify_package(pending_zip"),
+                        zip_block.index("os.replace(pending_zip, pkg_zip_path)"))
 
     def test_carried_python_cpu_torch_is_probed_before_return(self):
         src = _read(BUILD_PY)

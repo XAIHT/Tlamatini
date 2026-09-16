@@ -14,6 +14,11 @@ install) downloads it, stages the new build, and hands control to the
 external PowerShell updater (``apply_update.ps1``) which does a full file
 swap and relaunches the app.
 
+Release ZIP paths, complete membership and SHA-256 receipts are checked before
+extraction/handoff. The external swapper rechecks extracted bytes before
+shutdown. Releases without runtime-assets.json must be rebuilt. These receipts
+detect corruption/omissions; they are not publisher signatures.
+
 Why an external script does the swap
 ------------------------------------
 A running Windows application cannot replace its own files — ``Tlamatini.exe``,
@@ -52,10 +57,10 @@ The BLUE-HAT SECURITY EVIDENCE is handled the same way, and for the same reason.
 ``security/security_logs/`` (``alerts.log``, ``monitor.log`` and the visible
 asset-test proof) is the operator's own incident evidence and lives INSIDE that
 replaced directory. So ``apply_update.ps1`` stashes it under the preserved
-``Temp/_security_logs_carryover`` before the delete (step 3c) and moves it back
-into the new ``security/`` afterwards (step 5b). Both halves fail open: an update
-is never blocked by log preservation, and a failed restore LEAVES the stash in
-``Temp`` rather than deleting it, so the evidence can still be recovered by hand.
+``Temp/_security_logs_carryover_<unique-id>`` before the delete (step 3c) and
+moves it back into the new ``security/`` afterwards (step 5b). A failed stash
+ABORTS before application deletion. A failed restore LEAVES the unique stash
+in ``Temp`` without overwriting other evidence, so it can be recovered by hand.
 
 The download runs on a background thread; the browser polls
 :func:`get_status` for progress. The module is import-safe (no Django
@@ -73,6 +78,7 @@ import threading
 import time
 import urllib.request
 import zipfile
+from pathlib import Path
 from typing import Optional
 
 # ── Constants ───────────────────────────────────────────────────────────────
@@ -282,6 +288,8 @@ def start_update() -> dict:
 
 def _run_update() -> None:
     try:
+        # Frozen into this application, not imported from downloaded code.
+        from build_runtime_assets import validate_archive_members, verify_package, verify_staged_payload
         info = check_for_update()
         if not info.get("ok"):
             raise RuntimeError(info.get("error") or "Update check failed.")
@@ -299,7 +307,7 @@ def _run_update() -> None:
         _free_space_warning(root)
 
         # 1) Download the release bundle zip.
-        bundle = os.path.join(root, info.get("asset_name") or "release.zip")
+        bundle = os.path.join(root, "release.zip")
         _set_state(phase="downloading", percent=0, message=f"Downloading {info.get('latest')}…",
                    total=int(info.get("asset_size") or 0))
         _download(asset_url, bundle)
@@ -309,11 +317,14 @@ def _run_update() -> None:
         bundle_dir = os.path.join(root, "bundle")
         _reset_dir(bundle_dir)
         with zipfile.ZipFile(bundle) as zf:
+            validate_archive_members(zf)
             zf.extractall(bundle_dir)
 
         pkg_zip = _locate_pkg_zip(bundle_dir)
         if not pkg_zip:
             raise RuntimeError("Release bundle did not contain pkg.zip (the install payload).")
+        _set_state(phase="staging", percent=0, message="Verifying the new release's file integrity…")
+        verify_package(pkg_zip, expected_version=info["latest"])
 
         # 3) Extract pkg.zip into the staging dir — this IS the new install tree.
         _set_state(phase="staging", percent=0, message="Preparing the new version…")
@@ -322,6 +333,7 @@ def _run_update() -> None:
         with zipfile.ZipFile(pkg_zip) as zf:
             zf.extractall(staging)
         staging = _flatten_to_exe(staging)
+        verify_staged_payload(staging, expected_version=info["latest"])
 
         # Reclaim the ~1.35 GB download + bundle now that staging exists, so
         # peak disk use during the swap stays as low as possible.
@@ -452,8 +464,22 @@ def _flatten_to_exe(folder: str) -> str:
 
 
 def _reset_dir(path: str) -> None:
-    shutil.rmtree(path, ignore_errors=True)
-    os.makedirs(path, exist_ok=True)
+    # Only the three owned scratch locations may ever be recursively cleared.
+    # Resolve BEFORE deleting so a redirected Temp/_update cannot escape the
+    # installation. A failed cleanup must not mix an old release into staging.
+    install = Path(install_dir()).absolute()
+    base = install / "Temp" / "_update"
+    target = Path(path).absolute()
+    if target not in {base, base / "bundle", base / "staging"}:
+        raise RuntimeError("Refusing to clear a path outside the owned update scratch area")
+    for entry in (target, *target.parents):
+        if entry.is_symlink() or (hasattr(entry, "is_junction") and entry.is_junction()):
+            raise RuntimeError("Update scratch path traverses a filesystem link")
+    if not target.resolve().is_relative_to(install.resolve()):
+        raise RuntimeError("Update scratch path escapes the installation")
+    if target.exists():
+        shutil.rmtree(target)
+    target.mkdir(parents=True, exist_ok=False)
 
 
 def _free_space_warning(path: str) -> None:

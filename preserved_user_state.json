@@ -1,5 +1,5 @@
 {
-  "_README": "THE preserved-user-state set. Angela, 2026-08-12. Everything named here is the USER'S, not the build's: it must survive a self-update AND a reinstall over an existing directory. Three programs act on this list - install.py (skips these when extracting pkg.zip), apply_update.ps1 (its $Preserve array) and uninstall.py - and they used to keep three private copies of it. They drifted: apply_update.ps1 preserved external_mcps.json while install.py preserved NOTHING at all, so a self-update kept the user's MCP servers and a reinstall silently deleted them along with config.json, contacts.json and the chat history. One list, one truth, pinned by agent/test_preserved_user_state.py.",
+  "_README": "THE preserved-user-state set for self-update and reinstall. install.py reads this list and keeps a matching fallback; apply_update.ps1 carries the same Preserve array. build_runtime_assets.py checks both against this document and the updater documentation before building. Preserve existing user state, but install defaults when it does not yet exist. Application code must never enter this list. The live database inside _internal needs separate preservation. uninstall.py has a separate intentional removal/retention policy and is NOT a consumer of this contract.",
   "preserve": [
     "config.json",
     "external_mcps.json",

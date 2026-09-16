@@ -9,10 +9,9 @@
   <link rel="icon" type="image/x-icon" href="{% static 'agent/img/Tlamatini.ico' %}?v={{ STATIC_VERSION }}">
   <link rel="shortcut icon" type="image/x-icon" href="{% static 'agent/img/Tlamatini.ico' %}?v={{ STATIC_VERSION }}">
   <link rel="apple-touch-icon" href="{% static 'agent/img/Tlamatini.ico' %}?v={{ STATIC_VERSION }}">
-  {% load django_bootstrap5 %}
-  {% bootstrap_css %}
-  {% bootstrap_javascript %}
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+  <link rel="stylesheet" href="{% static 'agent/vendor/frontend/bootstrap/dist/css/bootstrap.min.css' %}?v={{ STATIC_VERSION }}_offline1">
+  <script src="{% static 'agent/vendor/frontend/bootstrap/dist/js/bootstrap.bundle.min.js' %}?v={{ STATIC_VERSION }}_offline1"></script>
+  <link rel="stylesheet" href="{% static 'agent/vendor/frontend/highlightjs/styles/atom-one-dark.min.css' %}?v={{ STATIC_VERSION }}_offline1">
   <link rel="stylesheet" href="{% static 'agent/css/agent_page.css' %}?v={{ STATIC_VERSION }}">
   <link rel="stylesheet" href="{% static 'agent/css/pdf_context_progress.css' %}?v={{ STATIC_VERSION }}">
   <link rel="stylesheet" href="{% static 'agent/css/tools_dialog.css' %}?v={{ STATIC_VERSION }}">
@@ -23,31 +22,30 @@
   <link rel="stylesheet" href="{% static 'agent/css/avatar.css' %}?v={{ STATIC_VERSION }}_avatar_atomic1">
   {# dialog_theme.css MUST stay LAST: it supersedes the legacy .ui-dialog chrome on cascade ORDER. #}
   <link rel="stylesheet" href="{% static 'agent/css/dialog_theme.css' %}?v={{ STATIC_VERSION }}_dlg3">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700&display=swap" rel="stylesheet">
-  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-  <script src="https://code.jquery.com/ui/1.13.3/jquery-ui.min.js"></script>
+  <link rel="stylesheet" href="{% static 'agent/vendor/frontend/nunito/400.css' %}?v={{ STATIC_VERSION }}_offline1">
+  <link rel="stylesheet" href="{% static 'agent/vendor/frontend/nunito/700.css' %}?v={{ STATIC_VERSION }}_offline1">
+  <script src="{% static 'agent/vendor/frontend/jquery/dist/jquery.min.js' %}?v={{ STATIC_VERSION }}_offline1"></script>
+  <script src="{% static 'agent/vendor/frontend/jquery-ui/jquery-ui.min.js' %}?v={{ STATIC_VERSION }}_offline1"></script>
   <!-- Dialog dismissal policy: X / Cancel / Continue ONLY - never an outside
        click, never Escape. Loaded right after jQuery UI (it patches the widget
        defaults) and before every application dialog module, so dialogs written
        later inherit the policy with no wiring. -->
   <script src="{% static 'agent/js/dialog_policy.js' %}?v={{ STATIC_VERSION }}_dlgpolicy3_esc"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/java.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/javascript.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/c.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/cpp.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/css.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/sql.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/xml.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/yaml.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/typescript.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/kotlin.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/rust.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/ini.min.js"></script>
+  <script src="{% static 'agent/vendor/frontend/highlightjs/highlight.min.js' %}?v={{ STATIC_VERSION }}_offline1"></script>
+  <script src="{% static 'agent/vendor/frontend/highlightjs/languages/python.min.js' %}?v={{ STATIC_VERSION }}_offline1"></script>
+  <script src="{% static 'agent/vendor/frontend/highlightjs/languages/java.min.js' %}?v={{ STATIC_VERSION }}_offline1"></script>
+  <script src="{% static 'agent/vendor/frontend/highlightjs/languages/javascript.min.js' %}?v={{ STATIC_VERSION }}_offline1"></script>
+  <script src="{% static 'agent/vendor/frontend/highlightjs/languages/c.min.js' %}?v={{ STATIC_VERSION }}_offline1"></script>
+  <script src="{% static 'agent/vendor/frontend/highlightjs/languages/cpp.min.js' %}?v={{ STATIC_VERSION }}_offline1"></script>
+  <script src="{% static 'agent/vendor/frontend/highlightjs/languages/css.min.js' %}?v={{ STATIC_VERSION }}_offline1"></script>
+  <script src="{% static 'agent/vendor/frontend/highlightjs/languages/sql.min.js' %}?v={{ STATIC_VERSION }}_offline1"></script>
+  <script src="{% static 'agent/vendor/frontend/highlightjs/languages/xml.min.js' %}?v={{ STATIC_VERSION }}_offline1"></script>
+  <script src="{% static 'agent/vendor/frontend/highlightjs/languages/yaml.min.js' %}?v={{ STATIC_VERSION }}_offline1"></script>
+  <script src="{% static 'agent/vendor/frontend/highlightjs/languages/bash.min.js' %}?v={{ STATIC_VERSION }}_offline1"></script>
+  <script src="{% static 'agent/vendor/frontend/highlightjs/languages/typescript.min.js' %}?v={{ STATIC_VERSION }}_offline1"></script>
+  <script src="{% static 'agent/vendor/frontend/highlightjs/languages/kotlin.min.js' %}?v={{ STATIC_VERSION }}_offline1"></script>
+  <script src="{% static 'agent/vendor/frontend/highlightjs/languages/rust.min.js' %}?v={{ STATIC_VERSION }}_offline1"></script>
+  <script src="{% static 'agent/vendor/frontend/highlightjs/languages/ini.min.js' %}?v={{ STATIC_VERSION }}_offline1"></script>
 </head>
 
 <body>

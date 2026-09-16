@@ -1,8 +1,10 @@
 # Self-modify and self-update carriage review
 
 Reviewed on 2026-09-16 by reading source files, dependency code and packaging
-rules only. No tests, sweep scripts, builds, application launches or update
-operations were run. Changes below are source-reviewed, not runtime-verified.
+rules. The follow-up ran the two requested file-only inclusion sweeps, generated
+sanitized diagnostic snapshots and parsed Python/PowerShell syntax. No automated
+application tests, builds, application launches, installs or updates were run.
+These are source/snapshot checks, not a frozen-runtime certification.
 
 ## Build and rebuild
 
@@ -44,11 +46,149 @@ operations were run. Changes below are source-reviewed, not runtime-verified.
   context packages, generated content, Temp, Templates and Uninstaller.exe stay.
   Application code, PDF viewer assets, bundled runtimes, helpers and the source
   snapshot are replaced. Agents keep their existing one-generation backup;
-  security logs keep the existing stash/restore path.
+  security logs use a unique stash/restore path (see the follow-up below).
 
 ## Delivery limit
 
 These changes require a fresh build and reinstall/release. An artifact assembled
 while this review was in progress does not prove inclusion of the final edits.
-Physical payload inspection and execution of the updated mechanisms remain
-unperformed under the requested no-process/no-tests constraint.
+The earlier v1.62.0 `dist/Tlamatini_Release_v1.62.0/pkg.zip` was subsequently
+inspected read-only: all 354 application static files were byte-identical in
+both `_internal/agent/static` and `_internal/staticfiles`, and all four
+application templates matched. MuPDF's two native extensions and DLL were
+present. This does not validate the new build gates or newly localized templates.
+No automated tests, builds or application launches were performed.
+
+## Local frontend and release completeness gate
+
+The September 16 follow-up adds `build_runtime_assets.py` and removes all CDN
+script/style/font loads from the four application templates. The new
+`static/agent/vendor/frontend/` tree carries 50 upstream files plus its manifest:
+Bootstrap 5.3.3, jQuery 3.7.1, jQuery UI 1.13.3, highlight.js 11.9.0 and Nunito
+400/700 with all supplied language subsets. Licenses travel with the files.
+`scripts/vendor_frontend.py` reproduces them from SHA-512-pinned npm archives;
+normal builds never invoke that network operation. Fonts and CSS references stay
+local. The previous duplicate Bootstrap 5.3.0 load is removed.
+
+The narrowly scoped `.gitignore` exception makes PDF.js `build/pdf.mjs` and
+`build/pdf.worker.mjs` visible to Git. Until these new files are committed with
+the rest of the change, existing remote clones still lack them. Snapshot KEEP
+rules alone do not change Git publication. The snapshot now also requires the
+new build helper and frontend vendoring recipe/manifest and keeps vendor fonts.
+Both Git and source-snapshot exclusions also exempt the exact upstream
+Bootstrap/jQuery `dist/` directories. Vendored bytes are marked `-text` in
+`.gitattributes`, preventing Windows checkout newline conversion from breaking
+the integrity receipts.
+
+Build gates (source-input checks exercised by the follow-up sweep; build-time
+and fresh-package checks still require a build):
+
+- Check mandatory source inputs and the frontend vendor receipt before expensive
+  build steps. Reject missing tracked runtime assets when Git metadata exists.
+- Fresh source `collectstatic --clear`; match every application static file by
+  bytes/hash, resolve literal static tags and local CSS URLs, and reject template
+  CDN resource tags. Freeze the complete source-to-payload inventory.
+- Require agent/skill trees, helpers, security toolkit, Java, Git and the active
+  Playwright revisions. Pool sessions/logs/caches are not template resources.
+  Preserve the public/private secret-handling and user-state policies.
+- Fail on unreadable required frozen-module archives, frozen migrations/default
+  user creation/collectstatic, required support copies, or executable rename.
+- Compare all inventoried source resources with the assembled release; require
+  native MuPDF extensions/DLL and browser executables. Write a SHA-256 receipt
+  for every payload file, including bundled runtimes, before creating the ZIP.
+- Verify exact ZIP membership, duplicate/unsafe paths and every streamed hash/CRC
+  before promoting `pkg.zip.part` to `pkg.zip`. Installer assembly independently
+  requires the receipt and the matching product version.
+- Keep both inner and final outer ZIPs at or below **1,990,000,000 bytes**.
+  Complete public/private wrappers write `.pending.zip`, measure the actual
+  final archive, and only publish it under its final name if within budget.
+  This is not achieved by dropping required files. Oversized pending output is
+  retained for inspection; no successful release is reported.
+
+The existing final v1.62.0 ZIP is 1,905,278,037 bytes, leaving 84,721,963 bytes
+against the new ceiling. New vendored frontend files total about 2.18 MB before
+ZIP compression. These are baseline/input sizes, not a new release measurement.
+External model/API/network-agent traffic is deliberately outside the no-CDN UI
+contract. The modified release-size regression expectation was updated but not run.
+
+## Self-management follow-up: inclusion skills and executed file audits
+
+The `.claude` and `.gemini` copies of both inclusion skills and their scripts
+are synchronized. Their instructions now distinguish source evidence from a
+real build, accept both support and required-file carriers, and use the shared
+13-name preservation contract rather than the obsolete `empty_dirs + config`
+formula. No application tests are needed to run these file-only sweeps:
+
+```powershell
+python -B .claude/skills/tlamatini-self-update-inclusion/scripts/sweep_self_update.py
+python -B .claude/skills/tlamatini-self-modify-inclusion/scripts/sweep_self_modify.py --keep
+```
+
+The snapshot checker needs the project's declared PyYAML dependency. It writes
+only a fresh diagnostic directory beneath repository `Temp/`; `--keep` prints
+its location. It does not start Django or invoke a build.
+
+### Gaps corrected
+
+- **Snapshot completeness:** every file in the shared runtime source trees and
+  root-file inventory must survive byte-for-byte (except sanitized config) or
+  have an explicit restore mapping matching a real runtime carrier. The first
+  sweep exposed 15 tracked PDFer `_art` PNGs (80,854 bytes) previously dropped
+  by the broad image exclusion. A narrow KEEP rule includes them. Optional
+  gallery artwork remains omitted; the user's deleted images remain deleted.
+- **Rebuild pipeline:** explicit snapshot requirements now cover the complete
+  public/private wrappers, installer/uninstaller, integrity checker, MCP runtime
+  provisioner/defaults, and inclusion skills. Wrappers abort on missing `pkg.zip`
+  and require its verified `self_modify` receipt to match the requested flag.
+- **Redaction:** JSON/YAML parse or decoding failures abort generation; YAML is
+  parsed structurally, including multiline and flow values. Serialization drops
+  comments/shadowed duplicate keys. The local external MCP catalog is reset to
+  empty `mcpServers`/`active` state, never carried with credentials in arbitrary
+  headers, environment keys, arguments or URLs. Audit messages withhold values.
+  Unknown secret-bearing formats still require review; pattern scans alone
+  cannot prove absence of every possible secret.
+- **Snapshot state/paths:** local `artifacts/` previews, generated agent discovery
+  metadata and `.tlamatini` state are excluded. Custom destinations must be
+  repository descendants and nonempty replacements must carry a snapshot
+  manifest. Linked source paths are rejected; emitted manifests omit developer
+  absolute paths. These rules do not remove the original local artifacts.
+- **Runtime integrity:** `build_runtime_assets.py` ships as a required root
+  script and a required frozen module. The installer verifies the entire ZIP
+  before extraction. The in-app updater validates outer ZIP paths, then verifies
+  inner package membership/version/hash/CRC and extracted staging bytes.
+  The external swapper repeats staging verification before shutdown, using
+  isolated carried Python (`-I -B -S`, no bytecode writes or site startup hooks).
+  Legacy packages without receipts must be rebuilt.
+  A receipt detects omissions/corruption; it is not a publisher signature.
+- **Swap boundaries/data:** scratch cleanup is limited to owned install-local
+  update paths, rejects link redirection and aborts failed cleanup. The swapper
+  requires the exact `Temp/_update/staging` location and rejects reparse
+  ancestors. It no longer falls back to a process-tree kill that kills itself.
+  Preserved state is skipped only when it exists; absent entries get defaults.
+  Security evidence receives a unique stash: failed stashing stops deletion,
+  failed restoration retains both copies. WAL-aware DB backup remains mandatory.
+- **Reinstall:** retain `_internal/db.sqlite3` and its existing WAL companions,
+  and flag first-launch migration instead of overwriting with a seeded DB.
+  Capture pre-existing preserved directories before extraction, so newly created
+  seed directories do not cause sibling files to be skipped. Uninstall retains
+  its separate intentional removal policy; it does not consume this contract.
+
+### Evidence and limits
+
+- Self-update source sweep: **0 findings**, shared **13-entry** state contract,
+  all seven root PowerShell helpers and four mandatory update helpers carried.
+- Self-modify sweep: **0 findings**, **1,470 copied source files**, approximately
+  **31.6 MiB**, **740 runtime source inputs** accounted for, **5 configs** with
+  value redactions; generated manifest/runbook are additional files. Two heavy
+  inputs remain explicitly restored from the install: `jd-cli.jar` and the demo
+  video. Optional gallery omission is an intentional advisory, not a failure.
+- Python AST parsing, PowerShell parser inspection and `git diff --check` are
+  syntax/patch checks, not executed application tests. They do not prove a
+  destructive swap, installer, PyInstaller build or first-start migration works.
+- The existing v1.62.0 package predates these gates. A fresh public/private build
+  and controlled install/update exercise are still needed before release. The
+  final ZIP remains capped at 1,990,000,000 bytes; no fresh size is claimed here.
+- This update mechanism is not a full transactional rollback system. A failure
+  after old application deletion can still require reinstalling; the DB,
+  preserved state, agents backup and uniquely stashed evidence are separate
+  recovery safeguards, not a rollback guarantee.

@@ -101,6 +101,8 @@ import zipfile
 from pathlib import Path
 from types import SimpleNamespace
 
+from build_runtime_assets import create_release_archive, verify_package
+
 REPO_ROOT = Path(__file__).resolve().parent
 DIST = REPO_ROOT / "dist"
 DIST_MANAGE = DIST / "manage"
@@ -257,12 +259,13 @@ def assert_self_modify_payload(expect_self_modify: bool) -> None:
     artifact and LOOK, and we fail loud on a mismatch in either direction.
     """
     if not PKG_ZIP.is_file():
-        print(f"  NOTE: {PKG_ZIP.name} not found — skipping self-modify payload check.")
-        return
-    with zipfile.ZipFile(PKG_ZIP) as zf:
-        names = [n.replace("\\", "/") for n in zf.namelist()]
-    tree = any("TlamatiniSourceCode/" in n for n in names)
-    self_md = any(n.rsplit("/", 1)[-1] == "Tlamatini.md" for n in names)
+        sys.exit(f"ABORT: required payload is missing: {PKG_ZIP.name}")
+    receipt = verify_package(PKG_ZIP)
+    if receipt["self_modify"] is not expect_self_modify:
+        sys.exit("ABORT: package self_modify receipt differs from the requested build mode.")
+    names = receipt["files"]
+    tree = any(n.startswith("TlamatiniSourceCode/") for n in names)
+    self_md = "Tlamatini.md" in names and "_internal/agent/Tlamatini.md" in names
     print(f"  package payload: TlamatiniSourceCode={'PRESENT' if tree else 'absent'}, "
           f"Tlamatini.md={'PRESENT' if self_md else 'absent'}")
     if expect_self_modify and not (tree and self_md):
@@ -913,7 +916,7 @@ def main(argv=None) -> int:
         banner("STEP 6/6  packaging PUBLIC CLEAN zip")
         ts = time.strftime("%Y%m%d_%H%M%S")
         out_base = DIST / f"{rel.name}_PUBLIC_CLEAN_win11x64_{ts}"
-        archive = shutil.make_archive(str(out_base), "zip", root_dir=str(DIST), base_dir=rel.name)
+        archive = create_release_archive(out_base, root_dir=DIST, base_dir=rel.name)
 
         ok = True
         banner("PUBLIC RELEASE COMPLETE -- "

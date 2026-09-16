@@ -27,6 +27,8 @@ import time
 from pathlib import Path
 import shutil
 
+from build_runtime_assets import verify_package
+
 # Versioning: SemVer 2.0.0 with git-tag-derived version.  See VERSIONING.md.
 from versioning import (
     extract_cli_version,
@@ -282,6 +284,10 @@ def main():
         sys.exit(1)
     size_mb = pkg_zip.stat().st_size / (1024 * 1024)
     print(f"Found pkg.zip ({size_mb:.1f} MB)")
+    # Shared with build.py. A stale/incomplete ZIP cannot become an installer,
+    # including when this script is invoked without either release wrapper.
+    run_step("Verifying runtime package completeness", verify_package, pkg_zip,
+             expected_version=tlamatini_version)
 
     install_script = root / "install.py"
     if not install_script.exists():

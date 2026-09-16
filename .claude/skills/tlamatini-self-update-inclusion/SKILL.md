@@ -25,11 +25,11 @@ sweep makes that class of bug impossible to ship silently.
 
 ---
 
-## The three files this skill owns
+## Pipeline files this skill owns
 
 | File | Role in the pipeline |
 |---|---|
-| **`build.py`** (repo root) | Assembles the release tree (`dist/manage` → `pkg.zip`). If an asset isn't carried by one of its 6 mechanisms (below), it is **not in the download**, so a self-update can never deliver it. |
+| **`build.py`** (repo root) | Assembles the release tree (`dist/manage` → `pkg.zip`). If an asset isn't carried by one of its 7 mechanisms (below), it is **not in the download**, so a self-update can never deliver it. |
 | **`Tlamatini/agent/self_update.py`** | In-app updater: checks GitHub, downloads + unzips + stages the new build, hands off to the PowerShell swapper. Its **docstring preserve list** documents what survives. |
 | **`apply_update.ps1`** (repo root) | The external file-swapper. Its **`$Preserve` array** is the *authoritative, executed* contract for what is kept vs replaced. Renames `agents → agents_backup`, then full-replaces everything not preserved. |
 
@@ -41,7 +41,7 @@ sweep makes that class of bug impossible to ship silently.
 
 ## How the release is assembled — the 7 carrier mechanisms in `build.py`
 
-Every asset reaches users through **exactly one** of these. When you add an asset, ask
+Every runtime asset needs at least one of these carriers (some deliberately have two destinations). When you add an asset, ask
 "which carrier moves it?" If the answer is "none", it will NOT ship.
 
 | # | Mechanism (`build.py`) | Carries | Auto-includes new files? |
@@ -59,13 +59,10 @@ Every asset reaches users through **exactly one** of these. When you add an asse
 the repo root or needs an explicit PyInstaller flag or its own copy block. Mechanisms 1 and 3 are
 automatic, which is exactly why a new *agent* needs no build edit but a new *root-level script* does.
 
-> ⚠️ **Mechanism 7 is the newest and the least discoverable.** `security/` is NOT reached by any
-> generic list — it is a hand-written `copytree` block (`build.py`, ~line 1611) that prints
-> `Copied security assets:` on success and a **`WARNING: security/ not found`** on failure, i.e.
-> it fails OPEN and the build still succeeds. If you add another operator-facing toolkit tree at
-> the repo root, either give it its own block or, better, fold it into `optional_dir_copies`
-> (mechanism 3) so it is carried by a list a human can read. Carriage is pinned by
-> `agent/test_security_assets_carriage.py` — the census in Step 0 check [8] is the generic net.
+> `security/` is mandatory. Missing source/copy failures abort the build, and
+> `build_runtime_assets.py` inventories the tree (excluding evidence/logs) and checks
+> every carried file. Register new runtime trees in `SOURCE_TREES` as well as their
+> actual copy/add-data carrier; optional copying is unsuitable for required code.
 
 ---
 
@@ -78,7 +75,7 @@ except `$Preserve` → **move in** new build except `$Preserve` → relaunch and
 So every top-level entry is in one of three buckets:
 
 - **PRESERVED** (`$Preserve`) — user data / runtime state. Kept across updates. Must equal the
-  set of runtime-writable dirs.
+  shared `preserved_user_state.json` contract, including runtime-writable dirs.
 - **SWAP-BACKED** — `agents` only (renamed to `agents_backup`, then replaced). One backup kept.
 - **REPLACED** — everything else (the exe, `python`/`jre`/`git`, `.ps1`/`.ico`, `prompt.pmt`,
   `Tlamatini.md`, `README.md`, `agents_descriptions.md`, `images`, `skills_pkg`, **`db.sqlite3`**).
@@ -98,10 +95,11 @@ top-level tree** (→ `--add-data` or `optional_dir_copies`), a **new dependency
 the swap" list (documented). A drift here means the docs lie about what survives.
 
 ### Invariant 3 — PRESERVE CORRECTNESS: state preserved, code replaced
-`$Preserve` **==** `build.py` `empty_dirs` (reduced to top-level names; `DB/ToLoad`+`DB/Older`
-→ `DB`) **+ `config.json`**. Rationale: `empty_dirs` *is* the canonical list of runtime-writable
-dirs the app creates. A **new runtime-state dir** added to `empty_dirs` that is NOT added to
-both preserve lists will be **wiped on every update** (silent user-data loss). Conversely an
+`$Preserve` **==** the names in `preserved_user_state.json` **==** the installer fallback
+**==** the updater docstring list (case-insensitive sets). The top-level names from
+`build.py::empty_dirs` must be a subset; catalogs, contacts and the separately built
+uninstaller are also legitimate preserved entries. Add new state to all consumers.
+`uninstall.py` intentionally has a different removal policy. Conversely an
 **app-code** top-level entry (anything under `optional_dir_copies` like `images`/`skills_pkg`,
 or `python`/`jre`/`git`) must **NOT** be preserved, or users get stuck on stale code forever.
 
@@ -196,7 +194,7 @@ check needs a `python build.py` run."
 | New **static/template/skill** file (inside existing tree) | mech 2 / 3 — **automatic** | No |
 | New **pip dependency** | mech 6 `requirements.txt` (+ hidden-import / `--collect-all` if dynamic) — **manual** | n/a |
 | New **bundled runtime** (CLI the agent shells out to) | mech 6 bundler (mirror `bundle_git`/`bundle_java_runtime`) — **manual** | No (replaced) |
-| New **runtime-writable dir** (app writes user data here) | mech `empty_dirs` (ship empty) — **manual** | **YES — add to BOTH preserve lists** |
+| New **runtime-writable dir** (app writes user data here) | mech `empty_dirs` (ship empty) — **manual** | **YES — update shared JSON, installer fallback, swapper and updater docs** |
 | New **operator-facing toolkit tree** at the repo root (e.g. `security/`) | mech 3 `optional_dir_copies` (preferred) or mech 7 a bespoke `copytree` — **manual** | **No — it is APP CODE.** A fixed defender must reach a user who installed a broken one. Preserve only the *evidence* inside it (see below) |
 | New **evidence/log dir INSIDE a replaced app tree** (e.g. `security/security_logs/`) | ignored by the carrier (never shipped) | **Not via `$Preserve`** — it would pin the whole parent. Stash-and-restore around the swap instead |
 | New **config key with a secret** | already in `config.json` (preserved) | Yes (config.json preserved) |
@@ -217,7 +215,7 @@ The sweep script flags exactly this.
   `--collect-all`; if a pool agent imports it, confirm the **carried Python** has it
   (`_agent_libs`).
 - **Preserve a new state dir** → add the top-level name to `apply_update.ps1` `$Preserve`
-  **and** the `self_update.py` docstring list (keep them identical), and ship it empty via
+  **and** shared JSON, installer fallback and `self_update.py` docs (keep them identical), and ship it empty via
   `build.py` `empty_dirs`.
 - **Stop preserving stale app code** → remove it from `$Preserve` (+ docstring).
 - **DB** → preserve committed data with verified SQLite online backup into `DB/ToLoad`, then restore it and run first-launch `migrate`. Keep `db.sqlite3` out of the top-level preserve set because it lives inside replaced `_internal/`.
@@ -245,11 +243,11 @@ self-modify snapshot and `agent.sqlite_copy` in the frozen archive too.
 
 ### Frontend carrier gate (v1.48.13)
 
-Because `agent/static` is tree-carried, `dialog_theme.css`, `dialog_policy.js`, and `release_notes_renderer.js` ship automatically only if they remain inside that tree and are referenced by both source templates and collected-static output. Verify template load order, run collection/build tests, and bump `STATIC_VERSION` after any JavaScript/CSS/template change. Confirm the updater still uses the shared renderer/policy and that long-operation locks restore `data-bs-toggle`.
+Because `agent/static` is tree-carried, `dialog_theme.css`, `dialog_policy.js`, and `release_notes_renderer.js` ship automatically only if they remain inside that tree and are referenced by both source templates and collected-static output. Verify template load order and the startup-derived static cache stamp after JavaScript/CSS/template changes. Run tests only when the user's instructions permit them. Confirm the updater still uses the shared renderer/policy and that long-operation locks restore `data-bs-toggle`.
 
 ### External-MCP runtime/default carrier gate (v1.48.14 target)
 
-`runtime_provisioner.py` and `external_mcp_defaults.py` are application code and must ship through the normal frozen/source carriers. The downloaded private runtime and persistent Memory graph live under `%LOCALAPPDATA%\Tlamatini`, outside the install swap, so they must **not** be added to installer payloads, `empty_dirs`, or `$Preserve`. `external_mcps.json` is different: it is preserved user state and a sanitized tracked build input. Verify public `build.py` output contains only inactive `memory` + `sequential-thinking`, keyed/private builds take the explicit private path, `regen_secrets.py` handles catalog env secrets, and the public live-secret gate aborts unsafe output.
+`runtime_provisioner.py` and `external_mcp_defaults.py` are application code and must ship through the normal frozen/source carriers. The downloaded private runtime and persistent Memory graph live under `%LOCALAPPDATA%\Tlamatini`, outside the install swap, so they must **not** be added to installer payloads, `empty_dirs`, or `$Preserve`. `external_mcps.json` is different: it is preserved user state and a gitignored local catalog, replaced with maintained inactive defaults for public builds. Verify public `build.py` output contains only inactive `memory` + `sequential-thinking`, keyed/private builds take the explicit private path, `regen_secrets.py` handles catalog env secrets, and the public live-secret gate aborts unsafe output.
 
 ### v1.48.17 updater/parser and public-private build gate
 
@@ -261,16 +259,17 @@ The staged swap must retain `Uninstaller.exe`; Windows comments that explain thi
 and the first to need a **third bucket** beyond preserve/replace. Verify all three halves:
 
 1. **CARRIED** — `build.py`'s security block copies `security/` to the install root, skipping
-   `security_logs` / `*.log` / `__pycache__`. It fails OPEN (a `WARNING:` and a successful build),
-   so absence is silent: rely on `agent/test_security_assets_carriage.py` and the Step-0 census.
+   `security_logs` / `*.log` / `__pycache__`. It fails CLOSED, with per-file receipt
+   validation as well as the Step-0 source census.
 2. **REPLACED, deliberately** — `'security'` is **NOT** in `apply_update.ps1` `$Preserve` and must
    stay out. It is application code: a corrected defender has to be able to reach a user running a
    broken one. Do **not** "protect" it by preserving it — that would freeze the toolkit forever.
 3. **EVIDENCE CARRIED OVER** — `security/security_logs/` (alerts.log, monitor.log, the visible
    asset-test proof) is the operator's forensic evidence living *inside* that replaced tree, the
    same shape of problem as `db.sqlite3`. `apply_update.ps1` step **3c stashes** it to
-   `Temp/_security_logs_carryover` before the delete and step **5b restores** it after the move-in;
-   both fail open, and a failed restore LEAVES the stash rather than deleting it. `self_update.py`'s
+   a unique `Temp/_security_logs_carryover_<id>` before deletion and step **5b restores** it.
+   A failed stash ABORTS before deletion; failed restore LEAVES the stash, never
+   overwriting other evidence. `self_update.py`'s
    docstring mirrors this. Never "fix" a failed restore by dropping the stash.
 
 Also verify `security_logs` remains in `SKIP_DIRS` in **both** `build_complete_public_release.py`
@@ -279,11 +278,11 @@ artifacts, and the private-data scanner must not drown in the operator's own use
 
 ### v1.50.0 release carrier gate
 
-Verify `agent/agents/netspeed_calculator/`, migrations 0195-0197, its wrapped-tool wiring, prompt harness, and CSS/JS connector assets ship through the normal agents/static/migrations carriers. Verify `agent/sqlite_copy.py` is present in the frozen application and both DB menu views plus pre-Django swap import it. Verify Googler's updated `googler.py`, `config.yaml`, `test_googler_dorks.py`, and optional visible dork-hunt harness are carried together so neither the structured builder nor the two-tier plain-HTTP-first/browser-fallback resilience path can ship without its syntax/preset/retry/fallback contract. Verify the four HTTP routes, seven browser routes, explicit-engine Tier-0 bypass, tolerant booleans, and answer-route attribution together. Verify `skills_pkg/adding_external_mcp/` and all references ship with the skill tree. Private contact synchronization may create gitignored `contacts.private.json` for an explicit keyed build, but public output and `TlamatiniSourceCode/` must remain contact-empty; preserved runtime user state remains `contacts.json`, not the private build staging file. Verify `v1.50.0` as the annotated release and report any later `HEAD` independently.
+Verify `agent/agents/netspeed_calculator/`, migrations 0195-0197, its wrapped-tool wiring, prompt harness, and CSS/JS connector assets ship through the normal agents/static/migrations carriers. Verify `agent/sqlite_copy.py` is present in the frozen application and both DB menu views plus pre-Django swap import it. Verify Googler's updated `googler.py`, `config.yaml`, `test_googler_dorks.py`, and optional visible dork-hunt harness are carried together so neither the structured builder nor the two-tier plain-HTTP-first/browser-fallback resilience path can ship without its syntax/preset/retry/fallback contract. Verify the four HTTP routes, seven browser routes, explicit-engine Tier-0 bypass, tolerant booleans, and answer-route attribution together. Verify `skills_pkg/adding_external_mcp/` and all references ship with the skill tree. Private contact synchronization may create gitignored `contacts.private.json` for an explicit keyed build, but public output and `TlamatiniSourceCode/` must remain contact-empty; preserved runtime user state remains `contacts.json`, not the private build staging file. Resolve the current annotated release and `HEAD` using Git; do not reuse historical version/count claims.
 
 1. `sweep_self_update.py` exits clean (no `[FINDING]`).
 2. Every new top-level repo path from the since-last-tag diff has a wired carrier.
-3. The two preserve lists are byte-identical and equal `empty_dirs`(top-level) + `config.json`.
+3. Shared JSON, swapper, installer fallback and updater docs agree; all `empty_dirs` top-level names are covered.
 4. No app-code dir is preserved; no runtime-state dir is left unpreserved.
 5. New deps are in `requirements.txt` and importable by the carried Python.
 6. The DB story is coherent (replaced + honest docs, OR preserved + first-run migrate).
@@ -292,6 +291,33 @@ Verify `agent/agents/netspeed_calculator/`, migrations 0195-0197, its wrapped-to
 8. `python -m ruff check` clean on any edited `.py`; `apply_update.ps1` still parses.
 
 ---
+
+
+### Integrity and release-mode gate (2026-09-16)
+
+- Read `build_runtime_assets.py`, `preserved_user_state.json`, `install.py` and
+  both complete-release wrappers as well as the three primary pipeline files.
+- The checker parses `required_file_copies` with AST and `support_files`; a helper
+  moved from one to the other is not a missing-carrier finding.
+- Carry `build_runtime_assets.py` at the install root AND in the frozen module
+  archive. The installer imports the same checker. `runtime-assets.json` records
+  every file's size/hash, exact membership, version and boolean self-modify mode.
+- Validate ZIP paths, membership and streamed hashes before publication,
+  installer extraction and updater staging. Recheck staged bytes before shutdown.
+  Reject legacy packages without receipts; rebuild them. A receipt is NOT a
+  signature and cannot establish publisher authenticity.
+- `--self-modify` requires both identity locations and the complete snapshot;
+  default/`--no-self-modify` requires neither. Missing `pkg.zip` aborts wrappers.
+- The PowerShell swapper requires the exact install-local `Temp/_update/staging`
+  boundary, rejects reparse ancestors, and never falls back to a self-killing
+  `taskkill /T`. Existing user state wins; absent state receives new defaults.
+- Reinstallation retains the live `_internal/db.sqlite3` and WAL companions and
+  requests first-launch migration; preserving only top-level `DB/` is insufficient.
+- Retain the 1,990,000,000-byte final outer ZIP ceiling. Never prune required
+  assets to meet it. Local frontend and PDF.js bytes stay pinned and CDN-free.
+- Respect a no-tests request: these sweeps inspect/copy files only. Do not launch
+  Django, rebuild, migrate, install, swap, or execute application test suites.
+  Report source/snapshot evidence separately from a freshly built runtime.
 
 ## Companion references
 - `copy_source_assets.py` (repo root) — the **self-modify** snapshot generator; its
