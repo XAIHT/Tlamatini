@@ -614,7 +614,18 @@ def play_audio(config: Dict) -> Dict:
     # single point where audio leaves the machine, so one check here cannot be
     # bypassed by a new caller. Everything above (decode, resolve, metadata) still
     # runs, so the result dict is unchanged; only the speakers stay silent.
-    if (os.environ.get('TLAMATINI_NO_AUDIO') or '').strip():
+    #
+    # ⚠️ The flag suppresses REAL audio, not the streaming LOGIC. A test that
+    # swaps in a fake `sounddevice` marks that module `__tlamatini_fake_audio__`;
+    # such a module reaches no hardware, so the callback is allowed to run and the
+    # truncate / loop / downmix frame math stays under test. Skipping the block
+    # outright instead left AudioPlayerPlaybackTests asserting on a stream that was
+    # never created. The marker is read off the module we ACTUALLY imported, so the
+    # real sounddevice package can never carry it: silence stays the DEFAULT and
+    # only an explicit test double opts out.
+    silent_run = bool((os.environ.get('TLAMATINI_NO_AUDIO') or '').strip())
+    fake_device = bool(getattr(sd, '__tlamatini_fake_audio__', False))
+    if silent_run and not fake_device:
         logging.warning("🔇 Audio suppressed (TLAMATINI_NO_AUDIO): not streaming audio to the speakers during tests.")
     else:
         stream = sd.OutputStream(

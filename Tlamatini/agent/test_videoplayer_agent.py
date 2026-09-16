@@ -92,11 +92,31 @@ class _LogCapture:
                 outer.records.append(record.getMessage())
 
         self._handler = _H()
-        logging.getLogger().addHandler(self._handler)
+        self._handler.setLevel(logging.NOTSET)
+        root = logging.getLogger()
+        # ⚠️ FORCE the root level (and lift any global logging.disable) for the
+        # duration of the capture, then restore both. Adding a handler is NOT
+        # enough: a record below the root logger's level is dropped before any
+        # handler sees it. The agent module's own module-level
+        # logging.basicConfig(level=INFO) only takes effect if it happens to run
+        # BEFORE Django configures logging, so without this the capture is
+        # silently TEST-ORDER DEPENDENT — whichever test imports the agent first
+        # decides whether every later assertion on a captured INI_SECTION block
+        # passes. That is exactly how these tests drifted red while the agent
+        # itself was fine. See create_new_agent.md pitfall #15: fix the harness,
+        # never the assertion.
+        self._prev_level = root.level
+        self._prev_disable = logging.root.manager.disable
+        logging.disable(logging.NOTSET)
+        root.setLevel(logging.INFO)
+        root.addHandler(self._handler)
         return self
 
     def __exit__(self, *_a):
-        logging.getLogger().removeHandler(self._handler)
+        root = logging.getLogger()
+        root.removeHandler(self._handler)
+        root.setLevel(self._prev_level)
+        logging.disable(self._prev_disable)
         return False
 
 

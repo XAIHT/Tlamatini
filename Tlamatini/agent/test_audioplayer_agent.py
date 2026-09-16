@@ -133,6 +133,12 @@ class _FakeDefault:
 class _FakeSounddevice:
     """Mimics the subset of the sounddevice OUTPUT API that audioplayer.py touches."""
 
+    # Tells audioplayer.py that this "sounddevice" is a test double which reaches
+    # no hardware, so TLAMATINI_NO_AUDIO may let the streaming callback run and the
+    # frame math below stays under test. Nothing here can make a sound:
+    # _FakeOutputStream only ever fills numpy buffers.
+    __tlamatini_fake_audio__ = True
+
     CallbackStop = _FakeCallbackStop
 
     _DEVICES = [
@@ -226,11 +232,31 @@ class _LogCapture:
                 outer.records.append(record.getMessage())
 
         self._handler = _H()
-        logging.getLogger().addHandler(self._handler)
+        self._handler.setLevel(logging.NOTSET)
+        root = logging.getLogger()
+        # ⚠️ FORCE the root level (and lift any global logging.disable) for the
+        # duration of the capture, then restore both. Adding a handler is NOT
+        # enough: a record below the root logger's level is dropped before any
+        # handler sees it. The agent module's own module-level
+        # logging.basicConfig(level=INFO) only takes effect if it happens to run
+        # BEFORE Django configures logging, so without this the capture is
+        # silently TEST-ORDER DEPENDENT — whichever test imports the agent first
+        # decides whether every later assertion on a captured INI_SECTION block
+        # passes. That is exactly how these tests drifted red while the agent
+        # itself was fine. See create_new_agent.md pitfall #15: fix the harness,
+        # never the assertion.
+        self._prev_level = root.level
+        self._prev_disable = logging.root.manager.disable
+        logging.disable(logging.NOTSET)
+        root.setLevel(logging.INFO)
+        root.addHandler(self._handler)
         return self
 
     def __exit__(self, *_a):
-        logging.getLogger().removeHandler(self._handler)
+        root = logging.getLogger()
+        root.removeHandler(self._handler)
+        root.setLevel(self._prev_level)
+        logging.disable(self._prev_disable)
         return False
 
 
@@ -445,6 +471,28 @@ class AudioPlayerPlaybackTests(unittest.TestCase):
         cfg.setdefault('audio_file', self.path)
         result = self.mod.play_audio(cfg)
         return result, fake_sd.last_stream
+
+    def test_no_audio_still_suppresses_an_unmarked_sounddevice(self):
+        """The silence guard's default must stay DENY.
+
+        Only a module declaring ``__tlamatini_fake_audio__`` may stream under
+        TLAMATINI_NO_AUDIO. Anything without that marker - i.e. the REAL
+        sounddevice package - must never reach OutputStream during a test run.
+        """
+        fake_sf, fake_sd = _install_fakes(data=_ramp(4800, channels=1), samplerate=48000)
+        self.addCleanup(_remove_fakes)
+        fake_sd.__tlamatini_fake_audio__ = False        # pretend it is the real package
+        prev = os.environ.get('TLAMATINI_NO_AUDIO')
+        os.environ['TLAMATINI_NO_AUDIO'] = '1'
+        try:
+            result = self.mod.play_audio({'audio_file': self.path, 'time_played': 0})
+        finally:
+            if prev is None:
+                os.environ.pop('TLAMATINI_NO_AUDIO', None)
+            else:
+                os.environ['TLAMATINI_NO_AUDIO'] = prev
+        self.assertIsNone(fake_sd.last_stream)      # no stream was ever opened
+        self.assertEqual(result['play_mode'], 'full')   # metadata still computed
 
     def test_full_plays_whole_file_once(self):
         src = _ramp(48000, channels=1)
