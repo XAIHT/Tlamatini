@@ -41,6 +41,11 @@ SKIP_FILES = {"_version.py"}
 def _iter_source_files():
     for dirpath, dirnames, filenames in os.walk(ROOT):
         dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS]
+        # Preserve Mozilla's upstream license/authorship in reproducibly vendored
+        # PDF.js assets; those files are not authored by the Tlamatini creator.
+        if Path(dirpath) == ROOT / "Tlamatini/agent/static/agent/vendor/pdfjs":
+            dirnames[:] = []
+            continue
         for name in filenames:
             if name in SKIP_FILES:
                 continue

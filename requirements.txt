@@ -122,6 +122,10 @@ psutil==7.2.2
 pydantic==2.13.4
 pyinstaller==6.18.0
 pymongo==4.16.0
+# PDF extraction/generation and PDF-canvas "Use as context" backend (all selectable
+# text; embedded images and page previews when enabled). The canvas renders locally
+# with vendored PDF.js (static/agent/vendor/pdfjs); it needs no additional Python
+# package or runtime download. See scripts/vendor_pdfjs.py for its pinned source.
 pymupdf==1.26.5
 pyodbc==5.3.0
 pyserial==3.5  # STM32er: STM32 MCP server serial_* tools (ST-LINK VCP / UART)

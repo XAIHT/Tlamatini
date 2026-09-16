@@ -2305,6 +2305,20 @@ chatSocket.onmessage = function (e) {
         return;
     }
     // Handle context-path-set: Server confirms full context path after set operation
+    if (data.type === 'pdf-canvas-context-error') {
+        unsetContextButton();
+        enableControlsAfterOperation();
+        window.TlamatiniPdfProgress?.fail(data.message);
+        return;
+    }
+    if (data.type === 'pdf-canvas-context-finished') {
+        window.TlamatiniPdfProgress?.finish(data.context_token, data.success);
+        if (!data.success) {
+            unsetContextButton();
+            enableControlsAfterOperation();
+        }
+        return;
+    }
     if (data.type === 'context-path-set') {
         console.log('--- Context path set by server:', data.context_path, 'type:', data.context_type);
         if (data.context_path) {

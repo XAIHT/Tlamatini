@@ -14,6 +14,7 @@
   {% bootstrap_javascript %}
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
   <link rel="stylesheet" href="{% static 'agent/css/agent_page.css' %}?v={{ STATIC_VERSION }}">
+  <link rel="stylesheet" href="{% static 'agent/css/pdf_context_progress.css' %}?v={{ STATIC_VERSION }}">
   <link rel="stylesheet" href="{% static 'agent/css/tools_dialog.css' %}?v={{ STATIC_VERSION }}">
   <link rel="stylesheet" href="{% static 'agent/css/skills_dialog.css' %}?v={{ STATIC_VERSION }}">
   <link rel="stylesheet" href="{% static 'agent/css/external_mcps_dialog.css' %}?v={{ STATIC_VERSION }}">
@@ -277,8 +278,27 @@
           <pre><code></code></pre>
         </div>
       </div>
+      <div id="pdf-canvas-host" data-viewer-url="{% static 'agent/pdf/canvas.html' %}?v={{ STATIC_VERSION }}" hidden></div>
     </div>
   </div>
+  <dialog id="pdf-context-progress" aria-labelledby="pdf-context-progress-title">
+    <h2 id="pdf-context-progress-title">Preparing PDF context</h2>
+    <strong id="pdf-context-progress-file"></strong>
+    <div class="pdf-progress-meta"><span id="pdf-context-progress-size"></span><span>Elapsed <output id="pdf-context-progress-elapsed">0:00</output></span></div>
+    <div class="pdf-context-options">
+      <label><input id="pdf-context-process-images" type="checkbox" aria-describedby="pdf-context-images-help"> Process images</label>
+      <p id="pdf-context-images-help">Leave unchecked to extract selectable text only. Enable for scanned pages, charts and image analysis; this takes longer.</p>
+    </div>
+    <p>Large PDFs and image analysis can take a while. Tlamatini will load the context after processing finishes.</p>
+    <ol>
+      <li data-pdf-stage="upload"><span>1. Upload PDF</span><output>Pending</output><progress aria-label="PDF upload" max="1" value="0"></progress></li>
+      <li data-pdf-stage="extract"><span id="pdf-context-extract-label">2. Read document text</span><output>Pending</output><progress aria-label="PDF extraction" max="1" value="0"></progress></li>
+      <li data-pdf-stage="analyze"><span>3. Analyze images with Image-Interpreter</span><output>Pending</output><progress aria-label="Image analysis" max="1" value="0"></progress></li>
+      <li data-pdf-stage="rag"><span>4. Load Tlamatini context</span><output>Pending</output><progress aria-label="Context loading" max="1" value="0"></progress></li>
+    </ol>
+    <p id="pdf-context-progress-message" role="status" aria-live="polite"></p>
+    <footer><button id="pdf-context-progress-action" type="button">Cancel</button><button id="pdf-context-continue" type="button">Continue</button></footer>
+  </dialog>
   <div id="confirmation-dialog-message" title="" style="display: none;">
     <h2 id="confirmation-primary-dialog-legend"></h2>
     <p id="confirmation-secondary-dialog-legend"></p>
@@ -727,6 +747,8 @@
   {{ ollama_base_url|json_script:"ollama_config" }}
   <script src="{% static 'agent/js/agent_page_state.js' %}?v={{ STATIC_VERSION }}_statefix_constfix"></script>
   <script src="{% static 'agent/js/agent_page_ui.js' %}?v={{ STATIC_VERSION }}"></script>
+  <script src="{% static 'agent/js/pdf_context_progress.js' %}?v={{ STATIC_VERSION }}"></script>
+  <script src="{% static 'agent/js/agent_page_pdf.js' %}?v={{ STATIC_VERSION }}"></script>
   <script src="{% static 'agent/js/agent_page_canvas.js' %}?v={{ STATIC_VERSION }}"></script>
   <script src="{% static 'agent/js/agent_page_dialogs.js' %}?v={{ STATIC_VERSION }}_dialogfix"></script>
   <script src="{% static 'agent/js/agent_page_context.js' %}?v={{ STATIC_VERSION }}"></script>

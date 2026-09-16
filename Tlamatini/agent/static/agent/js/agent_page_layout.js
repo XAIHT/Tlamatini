@@ -14,6 +14,38 @@
 // agent_page_layout.js  –  Drag dividers, resize & title rotation
 // ============================================================
 
+// Keep a drag in the parent document even when it crosses an embedded viewer.
+// Both dividers share mouse/pen/touch capture and the same interruption cleanup.
+function bindDividerPointerDrag(divider, resizingClass, onMove) {
+    let pointerId = null;
+    const stop = () => {
+        if (pointerId === null) return;
+        const releasedPointer = pointerId;
+        pointerId = null;
+        document.body.classList.remove(resizingClass);
+        if (divider.hasPointerCapture(releasedPointer)) divider.releasePointerCapture(releasedPointer);
+    };
+    divider.addEventListener('pointerdown', event => {
+        if (pointerId !== null || !event.isPrimary || event.button !== 0) return;
+        divider.setPointerCapture(event.pointerId);
+        pointerId = event.pointerId;
+        document.body.classList.add(resizingClass);
+        event.preventDefault();
+    });
+    divider.addEventListener('pointermove', event => {
+        if (event.pointerId !== pointerId) return;
+        // Recover if a mouse release outside the window was not delivered.
+        if (event.pointerType === 'mouse' && !(event.buttons & 1)) { stop(); return; }
+        onMove(event);
+    });
+    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(type => {
+        divider.addEventListener(type, event => { if (event.pointerId === pointerId) stop(); });
+    });
+    window.addEventListener('blur', stop);
+    window.addEventListener('pagehide', stop);
+    document.addEventListener('visibilitychange', () => { if (document.hidden) stop(); });
+}
+
 // --- Horizontal drag divider (chat <-> canvas) ---
 (function () {
     const container = document.getElementById('chat-container');
@@ -22,8 +54,8 @@
     const divider = document.getElementById('drag-divider');
     if (!container || !canvas || !chat || !divider) return;
 
-    let isDragging = false;
     let seamPct;
+    let userResized = false;
 
     const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
     const rect = () => container.getBoundingClientRect();
@@ -109,6 +141,8 @@
     // divider). Once the user drags the divider manually, apply()'s
     // standard clamp re-engages.
     const ensureToolbarFitsOneRow = () => {
+        // Font loading and the delayed initial fit must not undo a user's drag.
+        if (userResized) return;
         const naturalPx = measureNaturalToolbarWidth();
         const containerPx = container.clientWidth;
         if (!containerPx) return;
@@ -161,39 +195,14 @@
         setTimeout(() => ensureToolbarFitsOneRow(), 500);
     })();
 
-    divider.addEventListener('mousedown', (e) => {
-        isDragging = true;
-        document.body.classList.add('resizing');
-        e.preventDefault();
-    });
-    window.addEventListener('mousemove', (e) => {
-        if (!isDragging) return;
-        apply(pctFromXToSeam(e.clientX));
-    });
-    window.addEventListener('mouseup', () => {
-        if (!isDragging) return;
-        isDragging = false;
-        document.body.classList.remove('resizing');
-    });
-
-    divider.addEventListener('touchstart', () => {
-        isDragging = true;
-        document.body.classList.add('resizing');
-    }, { passive: true });
-    window.addEventListener('touchmove', (e) => {
-        if (!isDragging) return;
-        const t = e.touches && e.touches[0];
-        if (t) apply(pctFromXToSeam(t.clientX));
-    }, { passive: true });
-    window.addEventListener('touchend', () => {
-        if (!isDragging) return;
-        isDragging = false;
-        document.body.classList.remove('resizing');
+    bindDividerPointerDrag(divider, 'resizing', event => {
+        userResized = true;
+        apply(pctFromXToSeam(event.clientX));
     });
 
     divider.addEventListener('keydown', (e) => {
-        if (e.key === 'ArrowLeft') { apply(seamPct - 1); e.preventDefault(); }
-        if (e.key === 'ArrowRight') { apply(seamPct + 1); e.preventDefault(); }
+        if (e.key === 'ArrowLeft') { userResized = true; apply(seamPct - 1); e.preventDefault(); }
+        if (e.key === 'ArrowRight') { userResized = true; apply(seamPct + 1); e.preventDefault(); }
     });
 
     window.addEventListener('resize', () => apply(seamPct));
@@ -208,7 +217,6 @@
 
     if (!subchatContainer || !chatLogEl || !toolsContainer || !verticalDivider) return;
 
-    let isDraggingVertical = false;
     let dividerPct = 90; // last user-requested chat-log share, in percent
 
     const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
@@ -272,39 +280,7 @@
         });
     }
 
-    verticalDivider.addEventListener('mousedown', (e) => {
-        isDraggingVertical = true;
-        document.body.classList.add('resizing-vertical');
-        e.preventDefault();
-    });
-
-    window.addEventListener('mousemove', (e) => {
-        if (!isDraggingVertical) return;
-        applyVertical(pctFromYToDivider(e.clientY));
-    });
-
-    window.addEventListener('mouseup', () => {
-        if (!isDraggingVertical) return;
-        isDraggingVertical = false;
-        document.body.classList.remove('resizing-vertical');
-    });
-
-    verticalDivider.addEventListener('touchstart', () => {
-        isDraggingVertical = true;
-        document.body.classList.add('resizing-vertical');
-    }, { passive: true });
-
-    window.addEventListener('touchmove', (e) => {
-        if (!isDraggingVertical) return;
-        const t = e.touches && e.touches[0];
-        if (t) applyVertical(pctFromYToDivider(t.clientY));
-    }, { passive: true });
-
-    window.addEventListener('touchend', () => {
-        if (!isDraggingVertical) return;
-        isDraggingVertical = false;
-        document.body.classList.remove('resizing-vertical');
-    });
+    bindDividerPointerDrag(verticalDivider, 'resizing-vertical', event => applyVertical(pctFromYToDivider(event.clientY)));
 
     verticalDivider.addEventListener('keydown', (e) => {
         if (e.key === 'ArrowUp') {

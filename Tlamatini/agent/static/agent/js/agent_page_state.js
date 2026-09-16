@@ -92,6 +92,7 @@ function clearConnectionStatus() {
 }
 
 function applyDisconnectedSocketUi(message) {
+    window.TlamatiniPdfProgress?.connectionLost();
     if (typeof setTitleBusy === 'function') {
         setTitleBusy(false);
     }

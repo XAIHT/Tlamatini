@@ -79,7 +79,7 @@ function ClearContext(e) {
 }
 
 // --- Context button click handler (toggle set/unset) ---
-contextButton.addEventListener('click', (event) => {
+contextButton.addEventListener('click', async (event) => {
     if (contextEnabled === false) {
         event.preventDefault();
         return;
@@ -90,7 +90,20 @@ contextButton.addEventListener('click', (event) => {
     if (!contextButtonClicked) {
         const codeRegex = /<<< (.+?) >>>/s;
         const result = filenameSpan.textContent.match(codeRegex);
-        const content = textEditorCode.textContent;
+        const generation = getCanvasGeneration();
+        let payload;
+        try {
+            payload = await getCanvasContextPayload();
+        } catch (error) {
+            if (error.name === 'AbortError') return;
+            if (generation === getCanvasGeneration()) {
+                if (window.TlamatiniPdfCanvas?.active && window.TlamatiniPdfProgress) window.TlamatiniPdfProgress.fail(error.message);
+                else alert(error.message);
+            }
+            return;
+        }
+        if (generation !== getCanvasGeneration() || !contextEnabled) return;
+        const content = payload.content || '';
         const tokensNumber = genericTokenCounting(content);
         console.log("--- The number of tokens in file is: " + tokensNumber);
         if (tokensNumber > maximalTheoricTokens) {
@@ -102,14 +115,11 @@ contextButton.addEventListener('click', (event) => {
             return;
         }
 
-        const filename = result[1];
-        const sent = sendChatSocketMessage({
-            'type': 'set-canvas-as-context',
-            'message': filename,
-            'content': content
-        });
+        const filename = payload.message;
+        const sent = sendChatSocketMessage(payload);
         if (!sent) {
             unsetContextButton();
+            if (payload.context_token) window.TlamatiniPdfProgress?.fail('The live connection is unavailable. Reconnect and try again.');
             return;
         }
 
@@ -122,13 +132,13 @@ contextButton.addEventListener('click', (event) => {
         return;
     }
 
-    const codeRegex = /<<< ([\w.-]+) >>>/s;
+    const codeRegex = /<<< (.+?) >>>/s;
     const result = filenameSpan.textContent.match(codeRegex);
     if (!result) {
         return;
     }
 
-    const filename = result[1];
+    const filename = getCanvasContextFilename();
     const sent = sendChatSocketMessage({
         'type': 'unset-canvas-as-context',
         'message': filename

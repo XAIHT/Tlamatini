@@ -23,6 +23,7 @@ from pathlib import Path
 import sys
 import os
 import time
+import mimetypes
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -228,6 +229,13 @@ USE_TZ = True
 
 # Use an absolute URL path for static files
 STATIC_URL = '/static/'
+
+# Windows registry associations can label .mjs as text/plain. Browsers reject
+# ES modules with that MIME type, including the locally bundled PDF.js worker.
+# Django's development static view uses mimetypes; WhiteNoise has its own map.
+mimetypes.add_type('text/javascript', '.mjs')
+mimetypes.add_type('application/wasm', '.wasm')
+WHITENOISE_MIMETYPES = {'.mjs': 'text/javascript', '.wasm': 'application/wasm'}
 
 # Default location where collectstatic will place files during development
 STATIC_ROOT = BASE_DIR / "staticfiles"

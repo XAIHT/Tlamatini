@@ -14,6 +14,7 @@ from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_POST
 
 from . import views
+from .pdf_context_views import prepare_pdf_context_view, pdf_context_status_view, cancel_pdf_context_view
 
 
 def secure_get(view_func):
@@ -32,6 +33,9 @@ urlpatterns = [
     path('welcome/', secure_get(views.welcome_view), name='welcome'),
     path('logout/', views.logout_view, name='logout'),
     path('load_canvas/<str:filename>/', secure_get(views.load_canvas_view), name='load_canvas'),
+    path('prepare_pdf_context/', secure_post(prepare_pdf_context_view), name='prepare_pdf_context'),
+    path('pdf_context_status/', secure_get(pdf_context_status_view), name='pdf_context_status'),
+    path('cancel_pdf_context/', secure_post(cancel_pdf_context_view), name='cancel_pdf_context'),
     path('load_prompt/<str:prompt_name>/', secure_get(views.load_prompt_view), name='load_prompt'),
     path('list_prompts/', secure_get(views.list_prompts_view), name='list_prompts'),
     path('load_omissions/<str:omission_name>/', secure_get(views.load_omissions_view), name='load_omissions'),

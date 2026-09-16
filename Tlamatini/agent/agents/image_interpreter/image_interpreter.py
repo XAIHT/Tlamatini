@@ -20,9 +20,6 @@
 import os
 import sys
 
-# FIX: Disable Intel Fortran runtime Ctrl+C handler
-os.environ['FOR_DISABLE_CONSOLE_CTRL_HANDLER'] = '1'
-
 import base64
 import glob
 import json
@@ -40,52 +37,49 @@ import subprocess
 # exit before the child detaches. Default every Popen to
 # CREATE_NO_WINDOW unless the caller explicitly asked for a console
 # (CREATE_NEW_CONSOLE) or detached the child themselves.
-if os.name == 'nt' and not getattr(subprocess, '_conhost_guard_applied', False):
-    _CHG_NO_WINDOW = subprocess.CREATE_NO_WINDOW
-    _CHG_RESPECT = (
-        _CHG_NO_WINDOW
-        | getattr(subprocess, 'CREATE_NEW_CONSOLE', 0)
-        | getattr(subprocess, 'DETACHED_PROCESS', 0)
-    )
-    _chg_orig_init = subprocess.Popen.__init__
-    def _chg_guarded_init(self, *args, **kwargs):
-        cf = kwargs.get('creationflags', 0) or 0
-        if not (cf & _CHG_RESPECT):
-            kwargs['creationflags'] = cf | _CHG_NO_WINDOW
-        return _chg_orig_init(self, *args, **kwargs)
-    subprocess.Popen.__init__ = _chg_guarded_init
-    subprocess._conhost_guard_applied = True
 import urllib.request
 import urllib.error
 from typing import Dict
 
-# Set working directory to script location
-try:
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    os.chdir(script_dir)
-except Exception as e:
-    sys.stderr.write(f"Critical Error: Failed to set working directory: {e}\n")
-
-# Use directory name for log file
-CURRENT_DIR_NAME = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
+script_dir = os.path.dirname(os.path.abspath(__file__))
+CURRENT_DIR_NAME = os.path.basename(script_dir)
 LOG_FILE_PATH = f"{CURRENT_DIR_NAME}.log"
-
-# Reanimation detection: AGENT_REANIMATED=1 means resume from pause
 _IS_REANIMATED = os.environ.get('AGENT_REANIMATED') == '1'
-if not _IS_REANIMATED:
-    open(LOG_FILE_PATH, 'w').close()
-logging.basicConfig(
-    filename=LOG_FILE_PATH,
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    encoding='utf-8'
-)
 
-# Also log to console
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.INFO)
-console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
-logging.getLogger().addHandler(console_handler)
+def _configure_agent_runtime():
+    """Keep cwd/log/Popen changes out of imports by the PDF context service."""
+    os.environ['FOR_DISABLE_CONSOLE_CTRL_HANDLER'] = '1'
+    os.chdir(script_dir)
+    if os.name == 'nt' and not getattr(subprocess, '_conhost_guard_applied', False):
+        _CHG_NO_WINDOW = subprocess.CREATE_NO_WINDOW
+        _CHG_RESPECT = (
+            _CHG_NO_WINDOW
+            | getattr(subprocess, 'CREATE_NEW_CONSOLE', 0)
+            | getattr(subprocess, 'DETACHED_PROCESS', 0)
+        )
+        _chg_orig_init = subprocess.Popen.__init__
+        def _chg_guarded_init(self, *args, **kwargs):
+            cf = kwargs.get('creationflags', 0) or 0
+            if not (cf & _CHG_RESPECT):
+                kwargs['creationflags'] = cf | _CHG_NO_WINDOW
+            return _chg_orig_init(self, *args, **kwargs)
+        subprocess.Popen.__init__ = _chg_guarded_init
+        subprocess._conhost_guard_applied = True
+    if not _IS_REANIMATED:
+        open(LOG_FILE_PATH, 'w').close()
+    logging.basicConfig(
+        filename=LOG_FILE_PATH,
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        encoding='utf-8'
+    )
+
+    # Also log to console
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+    logging.getLogger().addHandler(console_handler)
+
 
 # Supported image extensions
 IMAGE_EXTENSIONS = {
@@ -761,7 +755,32 @@ def remove_pid_file():
             return
 
 
+def build_pipeline(config):
+    """Resolve the same configured vision models/prompts for agent and PDF use."""
+    llm_config = config.get('llm', {}) or {}
+
+    # Triple-model pipeline configuration. Template defaults act as the
+    # fallback for stale pool configs. A llm.prompt is ALWAYS an explicit
+    # legacy override (the template no longer ships it — only an old .flw
+    # or an old-style chat call can set it), so it wins over prompt_user.
+    legacy_prompt = str(llm_config.get('prompt') or '').strip()
+    pipeline = {
+        'host': str(llm_config.get('host') or 'http://localhost:11434'),
+        'token': llm_config.get('token', ''),
+        'model_1': str(config.get('interpreter_model_1') or '').strip() or DEFAULT_INTERPRETER_MODEL_1,
+        'model_2': str(config.get('interpreter_model_2') or '').strip() or DEFAULT_INTERPRETER_MODEL_2,
+        'merging_model': str(config.get('merging_model') or '').strip() or DEFAULT_MERGING_MODEL,
+        'prompt_1': str(config.get('prompt_interpreter_model_1') or '').strip() or DEFAULT_PROMPT_INTERPRETER_1,
+        'prompt_2': str(config.get('prompt_interpreter_model_2') or '').strip() or DEFAULT_PROMPT_INTERPRETER_2,
+        'prompt_merge': str(config.get('prompt_merging_model') or '').strip() or DEFAULT_PROMPT_MERGING,
+        'prompt_user': str(config.get('prompt_user') or '').strip() or legacy_prompt or DEFAULT_PROMPT_USER,
+    }
+
+    return pipeline
+
+
 def main():
+    _configure_agent_runtime()
     config = load_config()
 
     # Write PID file immediately
@@ -775,24 +794,7 @@ def main():
         recursive = config.get('recursive', False)
         filetype_exclusions = config.get('filetype_exclusions', '')
         target_agents = config.get('target_agents', [])
-        llm_config = config.get('llm', {}) or {}
-
-        # Triple-model pipeline configuration. Template defaults act as the
-        # fallback for stale pool configs. A llm.prompt is ALWAYS an explicit
-        # legacy override (the template no longer ships it — only an old .flw
-        # or an old-style chat call can set it), so it wins over prompt_user.
-        legacy_prompt = str(llm_config.get('prompt') or '').strip()
-        pipeline = {
-            'host': str(llm_config.get('host') or 'http://localhost:11434'),
-            'token': llm_config.get('token', ''),
-            'model_1': str(config.get('interpreter_model_1') or '').strip() or DEFAULT_INTERPRETER_MODEL_1,
-            'model_2': str(config.get('interpreter_model_2') or '').strip() or DEFAULT_INTERPRETER_MODEL_2,
-            'merging_model': str(config.get('merging_model') or '').strip() or DEFAULT_MERGING_MODEL,
-            'prompt_1': str(config.get('prompt_interpreter_model_1') or '').strip() or DEFAULT_PROMPT_INTERPRETER_1,
-            'prompt_2': str(config.get('prompt_interpreter_model_2') or '').strip() or DEFAULT_PROMPT_INTERPRETER_2,
-            'prompt_merge': str(config.get('prompt_merging_model') or '').strip() or DEFAULT_PROMPT_MERGING,
-            'prompt_user': str(config.get('prompt_user') or '').strip() or legacy_prompt or DEFAULT_PROMPT_USER,
-        }
+        pipeline = build_pipeline(config)
 
         logging.info("🖼️ IMAGE-INTERPRETER AGENT STARTED")
         logging.info(f"📁 images_pathfilenames: {images_pathfilenames}")

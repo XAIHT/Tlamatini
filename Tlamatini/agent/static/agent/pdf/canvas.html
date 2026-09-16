@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PDF canvas</title>
+  <link rel="stylesheet" href="../vendor/pdfjs/web/pdf_viewer.css">
+  <link rel="stylesheet" href="../css/pdf_canvas.css">
+  <script src="../js/pdf_canvas_viewer.js" defer></script>
+</head>
+<body>
+  <nav id="pdf-toolbar" aria-label="PDF controls">
+    <button id="pdf-previous" type="button" disabled aria-label="Previous page">Previous</button>
+    <label>Page <input id="pdf-page" type="number" min="1" value="1" disabled></label>
+    <span id="pdf-page-count">of …</span>
+    <button id="pdf-next" type="button" disabled aria-label="Next page">Next</button>
+    <label>Zoom
+      <select id="pdf-zoom" disabled>
+        <option value="page-width">Fit width</option>
+        <option value="page-fit">Fit page</option>
+        <option value="0.5">50%</option>
+        <option value="1">100%</option>
+        <option value="1.5">150%</option>
+        <option value="2">200%</option>
+        <option value="3">300%</option>
+      </select>
+    </label>
+    <button id="pdf-rotate" type="button" disabled>Rotate</button>
+    <label>View
+      <select id="pdf-scroll-mode" disabled>
+        <option value="0">Continuous</option>
+        <option value="3">Single page</option>
+      </select>
+    </label>
+  </nav>
+  <p id="pdf-status" role="status" aria-live="polite">Opening PDF…</p>
+  <form id="pdf-password-form" hidden>
+    <label id="pdf-password-label" for="pdf-password">Password for this PDF</label>
+    <input id="pdf-password" type="password" autocomplete="off" required>
+    <button type="submit">Unlock</button>
+    <button id="pdf-password-cancel" type="button">Cancel</button>
+  </form>
+  <main id="pdf-content">
+    <div id="pdf-viewer-container" tabindex="0" aria-label="PDF document">
+      <div id="pdf-viewer" class="pdfViewer"></div>
+    </div>
+  </main>
+</body>
+</html>

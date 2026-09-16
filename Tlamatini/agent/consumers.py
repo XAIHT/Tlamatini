@@ -576,7 +576,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                                 {'type': 'agent_message', 'message': detected_oversized_docs_warning, 'username': 'Tlamatini'}
                             )
                     print("--- Bot ready message broadcast to room.")
-                    return
+                    return not isinstance(self.rag_chain, BasicPromptOnlyChain)
             except Exception as e:
                 print(f"!!! ERROR during Contextual RAG chain setup: {e}")
                 self.rag_chain = _prev_chain   # do NOT discard a working chain
@@ -1088,6 +1088,40 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     f"--- set-ask-execs-runtime: enabled={desired} "
                     f"auto_proceed={not desired} applied={applied}"
                 )
+                return
+
+            if type == 'set-pdf-canvas-as-context':
+                from .pdf_context import PdfContextError, resolve_pdf_context
+                try:
+                    directory, context_filename = await asyncio.to_thread(
+                        resolve_pdf_context, text_data_json.get('context_token'), user.pk,
+                    )
+                except PdfContextError as error:
+                    await self.send(text_data=json.dumps({
+                        'type': 'pdf-canvas-context-error', 'message': str(error),
+                    }))
+                    return
+                global_state.set_state('chat_hist_summarizer_counter', 0)
+                await self.save_session_state(user, str(directory), 'file', context_filename)
+                await self.send(text_data=json.dumps({
+                    'type': 'context-path-set',
+                    'context_path': str(directory / context_filename),
+                    'context_type': 'file', 'context_filename': context_filename,
+                }))
+                context_token = text_data_json.get('context_token')
+                async def load_pdf_context():
+                    success = False
+                    try:
+                        success = await self.setup_contextual_rag_chain(str(directory), context_filename)
+                    except Exception as error:
+                        # Setup also reads configuration before its internal
+                        # error handler. Always complete the progress dialog.
+                        print(f'!!! PDF context setup failed: {error}')
+                    await self.send(text_data=json.dumps({
+                        'type': 'pdf-canvas-context-finished', 'context_token': context_token,
+                        'success': success is True,
+                    }))
+                asyncio.create_task(load_pdf_context())
                 return
 
             if type == 'set-canvas-as-context':

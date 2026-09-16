@@ -383,6 +383,17 @@ _AGENT_RUNTIME_IMPORTS = (
 # review question "confirm the frozen build REALLY ships it" cannot be answered
 # by reading build.py at all; it has to be answered by looking in the archive
 # the build just produced.  That is what verify_frozen_agent_modules() does.
+# PDF context runs in the frozen web process, independently of the carried
+# Python used by pool agents. Keep collection and archive checks in sync.
+_FROZEN_PDF_MODULES = (
+    "agent.pdf_context",
+    "agent.pdf_context_jobs",
+    "agent.pdf_context_views",
+    "agent.pdf_image_analysis",
+    "agent.agents.image_interpreter.image_interpreter",
+    "pymupdf",
+)
+
 _FROZEN_REQUIRED_AGENT_MODULES = (
     "agent.runtime_provisioner",   # private node/npm/npx/pnpm/uv/uvx provisioning
     "agent.external_mcp_defaults",  # ships + seeds `memory` / `sequential-thinking`
@@ -392,6 +403,7 @@ _FROZEN_REQUIRED_AGENT_MODULES = (
     "agent.path_guard",            # <app>/Temp + <app>/Templates policy
     "agent.self_update",           # About ▸ Check for updates
     "agent._version",              # SemVer resolver
+    *_FROZEN_PDF_MODULES,          # PDF extraction + optional Image-Interpreter
 )
 
 
@@ -467,13 +479,13 @@ def verify_frozen_agent_modules(dist_root):
         return True
     missing = [m for m in _FROZEN_REQUIRED_AGENT_MODULES if m not in names]
     if missing:
-        print("ERROR: the frozen bundle is MISSING required agent modules: "
+        print("ERROR: the frozen bundle is MISSING required runtime modules: "
               + ", ".join(missing))
-        print("       These are imported FAIL-OPEN, so the app would boot and "
-              "silently lose the capability. Add a --hidden-import for each and "
-              "rebuild. Aborting build.")
+        print("       Missing modules can break startup or disable a runtime capability. "
+              "Check dependency installation and hidden imports, then rebuild. "
+              "Aborting build.")
         sys.exit(1)
-    print(f"  OK - all {len(_FROZEN_REQUIRED_AGENT_MODULES)} required agent "
+    print(f"  OK - all {len(_FROZEN_REQUIRED_AGENT_MODULES)} required runtime "
           f"module(s) present in the PYZ ({len(names)} modules total).")
     return True
 
@@ -1335,6 +1347,9 @@ def main():
         # builds would have an empty skill catalog.
         f'--add-data=Tlamatini/agent/skills_pkg{separator}agent/skills_pkg',
         '--hidden-import=agent._version',
+        # These execute inside the frozen web process. Copying agents/ and
+        # bundling the separate carried Python does not make them importable here.
+        *(f'--hidden-import={module}' for module in _FROZEN_PDF_MODULES),
         # ── The agent.* modules NOTHING ELSE NAMES (Angela review, 2026-08-16) ──
         # Every one of these is reached only through a FAIL-OPEN import:
         #   external_mcp_manager.py  `try: from . import runtime_provisioner
@@ -1714,6 +1729,10 @@ def main():
         required_file_copies = {
             Path("README.md"): dist_manage / "README.md",
             Path("agents_descriptions.md"): dist_manage / "agents_descriptions.md",
+            # The update handoff and shared preservation contract must survive
+            # every release; missing helpers must abort packaging.
+            Path("apply_update.ps1"): dist_manage / "apply_update.ps1",
+            Path("preserved_user_state.json"): dist_manage / "preserved_user_state.json",
         }
         for src, dst in required_file_copies.items():
             if not src.exists():
@@ -1797,6 +1816,8 @@ def main():
                 import copy_source_assets
                 stats = copy_source_assets.copy_source_assets(
                     Path(__file__).resolve().parent, self_dst)
+                if stats['errors']:
+                    raise RuntimeError('Source snapshot copy errors:\n' + '\n'.join(stats['errors']))
                 print(
                     f"Generated self-modify source tree: {self_dst} "
                     f"({stats['files_copied']} files, "
@@ -1804,18 +1825,9 @@ def main():
                     f"{stats['files_redacted']} secret-redacted files)"
                 )
             except Exception as exc:
-                # Fallback: legacy behavior — copy a pre-existing static tree.
-                print(f"WARNING: copy_source_assets failed ({exc}); "
-                      f"falling back to the static source tree.")
-                self_src = Path("Tlamatini") / "agent" / "TlamatiniSourceCode"
-                if self_src.exists():
-                    if self_dst.exists():
-                        shutil.rmtree(self_dst, onerror=_on_rmtree_error)
-                    shutil.copytree(self_src, self_dst)
-                    file_total = sum(1 for p in self_dst.rglob("*") if p.is_file())
-                    print(f"Copied self-modify source tree: {self_src} -> {self_dst} ({file_total} files)")
-                else:
-                    print(f"WARNING: --self-modify set but source tree not found: {self_src}; skipping.")
+                # Never substitute a stale/unredacted tree or silently omit
+                # self-modification after the user explicitly requested it.
+                raise RuntimeError(f'Cannot package a complete self-modify snapshot: {exc}') from exc
         else:
             print("Self-modify source tree omitted (not-self-able-modify build).")
 
@@ -1952,10 +1964,6 @@ def main():
                 "CreateShortcut.ps1",
                 "RemoveShortcut.ps1",
                 "CreateShortcut.json",
-                # External self-updater (About ▸ Check for updates). Must ship
-                # next to Tlamatini.exe so agent/self_update.py can copy it out
-                # to %LOCALAPPDATA%\\Tlamatini\\updater and run the file swap.
-                "apply_update.ps1",
                 # Port-unblock helper. When Windows/Hyper-V has RESERVED the
                 # configured web port, Daphne dies with WinError 10013 and the
                 # app never starts — so this recovery tool must sit next to

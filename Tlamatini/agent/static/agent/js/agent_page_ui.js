@@ -191,8 +191,12 @@ function openDirectoryInApp(appId) {
         });
 }
 
-function setTitleBusy(isBusy) {
-    titleBusyPrefix = isBusy ? "⏳ " : "";
+// Independent work must not clear another operation's title indicator.
+const titleBusySources = new Set();
+function setTitleBusy(isBusy, source = 'chat') {
+    if (isBusy) titleBusySources.add(source);
+    else titleBusySources.delete(source);
+    titleBusyPrefix = titleBusySources.size ? "⏳ " : "";
 }
 
 function isBusyMessageRequest(message) {
@@ -459,6 +463,7 @@ function enableControlsAfterOperation() {
     chatSubmitButton.textContent = 'Send';
     inLongOperation = false;
     lapseLoadingContext = false;
+    window.TlamatiniPdfCanvas?.syncButtons();
 }
 
 /**
@@ -473,6 +478,7 @@ function enableCanvasButtons() {
     copyCanvasButton.disabled = false;
     contextButton.style.backgroundColor = "darkgreen";
     contextButton.disabled = false;
+    window.TlamatiniPdfCanvas?.syncButtons();
 }
 
 /**

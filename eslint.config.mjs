@@ -194,6 +194,10 @@ export default [
                 isSelfHealingStatusMessage: "readonly",
                 enableCanvasButtons: "readonly",
                 disableCanvasButtons: "readonly",
+                getCanvasText: "readonly",
+                getCanvasGeneration: "readonly",
+                getCanvasContextFilename: "readonly",
+                getCanvasContextPayload: "readonly",
 
                 // Cross-file globals: agent_page_canvas.js
                 getLanguageClass: "readonly",
@@ -250,6 +254,7 @@ export default [
                 // Cross-file globals: agent_page_context.js
                 setContextButton: "readonly",
                 unsetContextButton: "readonly",
+                showPendingContextSelection: "readonly",
                 ClearContext: "readonly",
 
                 // Cross-file globals: agent_page_chat.js

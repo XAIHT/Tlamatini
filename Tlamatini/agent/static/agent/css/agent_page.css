@@ -26,6 +26,17 @@ body.resizing {
     cursor: col-resize !important;
 }
 
+/* Embedded PDFs must not swallow drag/release events from either divider. */
+body.resizing iframe,
+body.resizing-vertical iframe {
+    pointer-events: none !important;
+}
+
+#drag-divider,
+#vertical-drag-divider {
+    touch-action: none;
+}
+
 #navbar-container {
     height: 5vh;
     min-height: 40px;
@@ -1868,6 +1879,23 @@ body.resizing-vertical {
 .exec-report-caption-pptxer {
     background: linear-gradient(135deg, #1A0B2E 0%, #6D28D9 100%);
     color: #ffffff;
+}
+
+#editor-container[hidden], #pdf-canvas-host[hidden] {
+    display: none !important;
+}
+
+#pdf-canvas-host {
+    flex: 1 1 0;
+    min-height: 0;
+    width: 100%;
+}
+
+#pdf-canvas-host iframe {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 0;
 }
 
 .exec-report-pptxer .exec-report-cmd {

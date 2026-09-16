@@ -14,10 +14,8 @@
 // agent_page_canvas.js  –  Canvas / code-editor operations
 // ============================================================
 
-// Wide "source code / text" file filter shared by the canvas file pickers.
-// Lists text-based formats only (programming languages, markup, config, docs,
-// Tlamatini .flw/.pmt) and deliberately OMITS binaries (.exe/.dll/.png/.jpg/
-// .mp4/.zip/.pdf/...), since the canvas reads every file as text. The trailing
+// Shared filter for source/text files and the canvas's dedicated PDF renderer.
+// Other binary formats are not supported. The trailing
 // `text/*` also lets the dialog accept extensionless text files (Makefile,
 // Dockerfile, LICENSE, README). The native dialog still offers "All Files" so
 // nothing is permanently hidden — this just defaults the view to source code.
@@ -41,9 +39,36 @@ const SOURCE_CODE_ACCEPT = [
     '.gitignore', '.gitattributes', '.dockerignore',
     '.jinja', '.jinja2', '.j2', '.twig', '.erb', '.ejs', '.hbs', '.handlebars', '.mustache',
     '.pug', '.haml', '.liquid',
-    '.flw', '.pmt',
+    '.flw', '.pmt', '.pdf', 'application/pdf',
     'text/*',
 ].join(',');
+
+// Every replacement invalidates pending reads, PDF loads and text extractions.
+let canvasLoadGeneration = 0;
+function getCanvasGeneration() { return canvasLoadGeneration; } // eslint-disable-line no-unused-vars
+function getCanvasText() {
+    return window.TlamatiniPdfCanvas?.active
+        ? window.TlamatiniPdfCanvas.getText()
+        : Promise.resolve(textEditorCode.textContent);
+}
+
+function getCanvasContextFilename() {
+    const filename = filenameSpan.textContent.match(/<<< (.+?) >>>/s)?.[1];
+    // The context endpoint writes UTF-8 text to disk. Never label extracted PDF
+    // text as .pdf: the RAG file loader would attempt to parse it as PDF bytes.
+    return window.TlamatiniPdfCanvas?.active
+        ? (window.TlamatiniPdfCanvas.contextFilename || `${filename}.txt`) : filename;
+}
+
+async function getCanvasContextPayload() {
+    if (window.TlamatiniPdfCanvas?.active) {
+        const filename = window.TlamatiniPdfCanvas.file.name;
+        const prepared = await window.TlamatiniPdfCanvas.prepareContext();
+        window.TlamatiniPdfProgress?.loadingContext(prepared.token, prepared.analysis_warnings);
+        return { type: 'set-pdf-canvas-as-context', message: filename, context_token: prepared.token };
+    }
+    return { type: 'set-canvas-as-context', message: getCanvasContextFilename(), content: textEditorCode.textContent };
+}
 
 /**
  * Map a file extension to a highlight.js language class.
@@ -78,11 +103,14 @@ function extractExtension(filename) {
  * Replace the code element in the editor with new content.
  */
 function replaceCodeElement(langClass, content) {
+    canvasLoadGeneration++;
+    window.TlamatiniPdfCanvas?.close();
     const newTextEditorCode = document.createElement('code');
     newTextEditorCode.classList.add(langClass);
     newTextEditorCode.textContent = content;
     textEditorCode.parentNode.replaceChild(newTextEditorCode, textEditorCode);
     textEditorCode = newTextEditorCode;
+    textEditorCode.addEventListener('input', updateLineNumbers);
     hljs.highlightElement(textEditorCode);
     updateLineNumbers();
 }
@@ -108,9 +136,11 @@ function loadCanvas(filename) { // eslint-disable-line no-unused-vars
         console.log("...Rebuild rag action sent.");
     }
 
-    fetch(`/agent/load_canvas/${filename}/`)
+    const generation = ++canvasLoadGeneration;
+    fetch(`/agent/load_canvas/${encodeURIComponent(filename)}/`)
         .then(response => response.text())
         .then(content => {
+            if (generation !== canvasLoadGeneration) return;
             const extension = extractExtension(filename);
             replaceCodeElement(getLanguageClass(extension), content);
             filenameSpan.textContent = `<<< ${filename} >>>`;
@@ -137,7 +167,7 @@ async function loadCanvasFromFileInContentGenerated(filename) { // eslint-disabl
         input.accept = SOURCE_CODE_ACCEPT;
         input.style.display = 'none';
 
-        input.onchange = (e) => {
+        input.onchange = async (e) => {
             const file = e.target.files[0];
             if (!file) {
                 console.error("No file selected");
@@ -145,23 +175,10 @@ async function loadCanvasFromFileInContentGenerated(filename) { // eslint-disabl
                 return false;
             }
 
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const content = event.target.result;
-                const actualFilename = file.name;
-                const extension = extractExtension(actualFilename);
-                replaceCodeElement(getLanguageClass(extension), content);
-                filenameSpan.textContent = `<<< ${actualFilename} >>>`;
-                canvasLoaded = true;
-                enableCanvasButtons();
-                canvasSettedAsContext = false;
-                contextButtonClicked = false;
-                contextButton.textContent = "Use as context";
-                console.log("Successfully loaded file from content_generated: " + actualFilename);
-                document.body.removeChild(input);
-            };
-            reader.readAsText(file);
+            await loadSelectedCanvasFile(file);
+            input.remove();
         };
+        input.addEventListener('cancel', () => input.remove(), { once: true });
         document.body.appendChild(input);
         input.click();
     } catch (error) {
@@ -195,11 +212,13 @@ function openCanvas() {
 function reopenCanvas() {
     console.log("Reopening canvas with file...");
 
-    const callback2Rag = () => {
-        const type = "set-canvas-as-context";
+    const callback2Rag = async () => {
         const codeRegex = /<<< (.+?) >>>/s;
         const result = filenameSpan.textContent.match(codeRegex);
-        const content = textEditorCode.textContent;
+        const generation = canvasLoadGeneration;
+        const payload = await getCanvasContextPayload();
+        const content = payload.content || '';
+        if (generation !== canvasLoadGeneration || !contextEnabled) return;
         const tokensNumber = genericTokenCounting(content);
         console.log("--- The number of tokens in file is: " + tokensNumber);
         if (tokensNumber > maximalTheoricTokens) {
@@ -208,12 +227,19 @@ function reopenCanvas() {
         }
         console.log("--- The content is: " + content);
         if (result) {
-            const filename = result[1];
-            sendChatSocketMessage(JSON.stringify({
-                'type': type,
-                'message': filename,
-                'content': content
-            }));
+            const sent = sendChatSocketMessage(payload);
+            if (sent) {
+                canvasSettedAsContext = true;
+                contextButtonClicked = true;
+                contextButton.textContent = 'Used as context';
+                contextButton.style.backgroundColor = 'gray';
+                contextButton.disabled = true;
+                openEnabled = false;
+                contextEnabled = false;
+                showPendingContextSelection(payload.message);
+            } else if (payload.context_token) {
+                window.TlamatiniPdfProgress?.fail('The live connection is unavailable. Reconnect and try again.');
+            }
         }
         console.log("...Rebuild rag action sent.");
     };
@@ -221,18 +247,19 @@ function reopenCanvas() {
     console.log("Canvas reopened.");
 }
 
-function cleanCanvas() {
+function cleanCanvas(preserveContext = false) {
     const codeRegex = /<<<\s*(.+?)\s*>>>/s;
     const result1 = filenameSpan.textContent.match(codeRegex);
     const spanContextString = contextDataSpan.innerText;
     const result2 = spanContextString.match(codeRegex);
-    if (canvasSettedAsContext === true && result1 && result2 && result1[1] === result2[1]) {
+    const contextFilename = result2?.[1].split(/[\\/]/).pop();
+    if (!preserveContext && canvasSettedAsContext === true && result1 && contextFilename === getCanvasContextFilename()) {
         console.log("Detected context was active, so send the message to clean the context and rebuild the RAG...");
         const innerCodeRegex = /<<< (.+?) >>>/s;
         const result = filenameSpan.textContent.match(innerCodeRegex);
         const type = "unset-canvas-as-context";
         if (result && result[1] && result[1].length > 0 && result[1].includes('...') === false) {
-            const filename = result[1];
+            const filename = getCanvasContextFilename();
             sendChatSocketMessage(JSON.stringify({
                 'type': type,
                 'message': filename
@@ -249,23 +276,33 @@ function cleanCanvas() {
     replaceCodeElement('language-python', "");
     lineNumbers.value = "...";
     filenameSpan.textContent = `<<<...>>>`;
+    filenameSpan.removeAttribute('title');
     canvasLoaded = false;
     disableCanvasButtons();
     canvasSettedAsContext = false;
     contextButtonClicked = false;
     contextButton.textContent = "Use as context";
+    copyCanvasButton.textContent = "Copy";
 }
 
 /**
  * Copy the canvas content to clipboard.
  */
-function copyCanvasToClipboard() {
+async function copyCanvasToClipboard() {
     if (!canvasLoaded || !textEditorCode) {
         console.log("Cannot copy: canvas not loaded or no content");
         return;
     }
 
-    const content = textEditorCode.textContent;
+    const generation = canvasLoadGeneration;
+    let content;
+    try {
+        content = await getCanvasText();
+    } catch (error) {
+        if (generation === canvasLoadGeneration) alert(error.message);
+        return;
+    }
+    if (generation !== canvasLoadGeneration) return;
     if (!content || content.trim() === '') {
         console.log("Cannot copy: canvas content is empty");
         return;
@@ -277,6 +314,7 @@ function copyCanvasToClipboard() {
         copyCanvasButton.textContent = "Copied!";
         copyCanvasButton.style.backgroundColor = "#55BBAA";
         setTimeout(() => {
+            if (generation !== canvasLoadGeneration) return;
             copyCanvasButton.textContent = originalText;
             if (canvasLoaded) {
                 copyCanvasButton.style.backgroundColor = "darkgreen";
@@ -304,7 +342,7 @@ const loadFileContent = (reOpened = false, callback = null) => {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = SOURCE_CODE_ACCEPT;
-    input.onchange = e => {
+    input.onchange = async e => {
         const file = e.target.files[0];
         if (file == null) {
             console.error("No file selected, so load file content is not allowed, function will return false...");
@@ -331,43 +369,63 @@ const loadFileContent = (reOpened = false, callback = null) => {
             return;
         }
 
-        const reader = new FileReader();
-        const filename = file.name;
-        const extension = extractExtension(filename);
-        reader.onload = event => {
-            replaceCodeElement(getLanguageClass(extension), event.target.result);
-            filenameSpan.textContent = "<<< " + filename + " >>>";
-            canvasLoaded = true;
-            enableCanvasButtons();
-
-            console.log("loaded file: " + filename + " !!!");
-            if (reOpened === false) {
-                contextButton.style.backgroundColor = "darkgreen";
-                contextButton.disabled = false;
-                canvasSettedAsContext = false;
-                contextButtonClicked = false;
-                contextButton.textContent = "Use as context";
-            } else {
-                if (callback != null) {
-                    callback();
-                }
-            }
-        };
-        reader.readAsText(file);
+        await loadSelectedCanvasFile(file, reOpened, callback);
     };
     input.click();
 };
 
+/** Read text normally; route PDFs to the complete, range-backed PDF viewer. */
+async function loadSelectedCanvasFile(file, reOpened = false, callback = null) {
+    // Reopen replaces context directly, avoiding an overlapping background
+    // rebuild of empty context while the replacement document loads.
+    cleanCanvas(reOpened && callback !== null);
+    let generation = canvasLoadGeneration;
+    const isPdf = file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf';
+    try {
+        if (isPdf) {
+            filenameSpan.textContent = `<<< ${file.name} >>>`;
+            filenameSpan.title = file.name;
+            // Keep Clear/Reopen available during loading and password entry.
+            canvasLoaded = true;
+            enableCanvasButtons();
+            const loaded = await window.TlamatiniPdfCanvas.open(file);
+            if (!loaded || generation !== canvasLoadGeneration) return;
+        } else {
+            const content = await file.text();
+            if (generation !== canvasLoadGeneration) return;
+            replaceCodeElement(getLanguageClass(extractExtension(file.name)), content);
+            generation = canvasLoadGeneration;
+            filenameSpan.textContent = `<<< ${file.name} >>>`;
+            filenameSpan.title = file.name;
+            canvasLoaded = true;
+            enableCanvasButtons();
+        }
+        if (reOpened && callback) await callback();
+    } catch (error) {
+        // Closing/replacing a PDF cancels pending work without reopening it.
+        if (generation !== canvasLoadGeneration) return;
+        if (error.name === 'AbortError') return;
+        if (isPdf && window.TlamatiniPdfProgress) {
+            window.TlamatiniPdfProgress.fail(error.message);
+            return;
+        }
+        console.error('Error opening canvas file:', error);
+        alert(`Unable to load ${file.name}: ${error.message}`);
+    }
+}
+
 // Save As button handler
 saveAsButton.addEventListener('click', () => {
+    const pdfFile = window.TlamatiniPdfCanvas?.file;
     const text = textEditorCode.textContent;
-    if (!text || text.trim().length === 0) {
+    if (!pdfFile && (!text || text.trim().length === 0)) {
         console.log("Save As ignored: canvas is empty.");
         return;
     }
-    const fileName = prompt("Save as...", "");
+    let fileName = prompt("Save as...", pdfFile?.name || "");
     if (fileName === null) return;
-    const blob = new Blob([text], { type: 'text/plain' });
+    if (pdfFile && !fileName.toLowerCase().endsWith('.pdf')) fileName += '.pdf';
+    const blob = pdfFile || new Blob([text], { type: 'text/plain' });
     const anchor = document.createElement('a');
     anchor.download = fileName;
     anchor.href = window.URL.createObjectURL(blob);
@@ -376,6 +434,7 @@ saveAsButton.addEventListener('click', () => {
     document.body.appendChild(anchor);
     anchor.click();
     document.body.removeChild(anchor);
+    setTimeout(() => window.URL.revokeObjectURL(anchor.href), 10000);
 });
 
 // Editor input / scroll sync
