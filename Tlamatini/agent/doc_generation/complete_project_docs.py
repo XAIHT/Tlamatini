@@ -84,9 +84,11 @@ BINARY_EXTENSIONS = {
 
 LANGUAGE_BY_EXTENSION = {
     ".bat": ("Batch", "Batch"),
+    ".cpp": ("C++", "C++"),
     ".css": ("CSS", "CSS"),
     ".flw": ("Tlamatini Flow", "Flow"),
     ".html": ("HTML", "HTML"),
+    ".ini": ("INI", "INI"),
     ".js": ("JavaScript", "JS"),
     ".cjs": ("JavaScript", "JS"),
     ".json": ("JSON", "JSON"),
@@ -341,7 +343,7 @@ def count_python_effective(text: str) -> int:
 
 
 def remove_block_comments(text: str, suffix: str) -> str:
-    if suffix in {".js", ".cjs", ".mjs", ".css", ".proto"}:
+    if suffix in {".js", ".cjs", ".mjs", ".css", ".proto", ".cpp"}:
         return re.sub(r"/\*.*?\*/", "", text, flags=re.DOTALL)
     if suffix == ".html" or suffix == ".md":
         return re.sub(r"<!--.*?-->", "", text, flags=re.DOTALL)
@@ -354,8 +356,10 @@ def strip_inline_comment(line: str, suffix: str) -> str:
     stripped = line.strip()
     if suffix in {".yaml", ".yml", ".ps1"}:
         return "" if stripped.startswith("#") else line
-    if suffix in {".js", ".cjs", ".mjs", ".css", ".proto"}:
+    if suffix in {".js", ".cjs", ".mjs", ".css", ".proto", ".cpp"}:
         return "" if stripped.startswith("//") else line
+    if suffix == ".ini":
+        return "" if stripped.startswith((";", "#")) else line
     if suffix == ".bat":
         lowered = stripped.lower()
         return "" if lowered.startswith("rem ") or stripped.startswith("::") else line
@@ -465,6 +469,16 @@ def commits_since_visual_docs(baseline: CommitBaseline | None) -> list[CommitInf
 def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     """Use commit-specific evidence, never broad keyword guesses or disk presence."""
     notes = {
+        "c4daacc": "Updates release-facing handbooks, self-knowledge and package metadata to v1.60.0. The tag remains at cef3995, one commit before this documentation commit.",
+        "cef3995": (
+            "Tightens Mouser/Keyboarder/Shoter input receipts, Parametrizer mappings, "
+            "FlowCreator validation and FlowHypervisor monitoring. Bundles usable ESP32 "
+            "and ESPHome starter projects. GUI-Manager remains a design. Pins fonttools."
+        ),
+        "14647ab": "Adds LaTeXer's 30 signature styles, independent template controls, original TikZ artwork and engine-free style discovery. Records implementation verification separately from this refresh.",
+        "1d22228": "Adds PDFer's 24 signature styles and PPTXer's 12 explicit styles, with typography and layout repairs. Removes the 62 earlier output assets from the tracked tree. Reusable verifier sources remain.",
+        "5c6d47e": "Introduces PPTXer, the 89th installed agent and 67th wrapped tool. Adds three migrations, document prompts 123/124, native rendering and reusable layout/visibility sources.",
+        "97b5bac": "Commits the preceding whole-project PDF/PPTX refresh for Grepper's line-reading contract and the earlier release boundary.",
         "7764353": "Restores CRLF endings in eleven files changed by the Grepper feature commit, without changing their behavior.",
         "4ae6da6": (
             "Adds Grepper's single-file lines mode, inclusive ranges and content_b64 "
@@ -748,24 +762,29 @@ def collect_publication_context(context: dict) -> dict:
     baseline_ref = baseline.short_hash if baseline else tag
     added = sorted(set(git("diff", "--name-only", "--diff-filter=A", f"{baseline_ref}..HEAD").splitlines())
                    | set(context["untracked_paths"]))
+    removed = git("diff", "--name-only", "--diff-filter=D", f"{baseline_ref}..HEAD").splitlines()
     stats = {row.path: row for row in context["file_rows"]}
-    manifest_path = REPO_ROOT / "output" / "ASSET_MANIFEST.json"
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    for asset in manifest["assets"]:
-        path = REPO_ROOT / asset["path"]
-        data = path.read_bytes()
-        if len(data) != asset["bytes"] or hashlib.sha256(data).hexdigest() != asset["sha256"]:
-            raise RuntimeError(f"Published asset manifest mismatch: {asset['path']}")
     published = [path for path in context["tracked_paths"] if path.startswith("output/")]
-    expected = {row["path"] for row in manifest["assets"]} | {"output/ASSET_MANIFEST.json"}
-    if set(published) != expected:
-        raise RuntimeError("Published output manifest path parity failed")
-    evidence = json.loads((REPO_ROOT / "output/avatar_flash_fix/visible-test/results.json").read_text(encoding="utf-8"))
-    if not evidence["finished"] or evidence["failures"] or evidence["pageErrors"]:
-        raise RuntimeError("Recorded visible avatar evidence contains failures")
+    # A local leftover is not evidence that Git still publishes it. The style
+    # release removed the old output corpus, so its manifest is now optional.
+    manifest_assets = []
+    manifest_name = "output/ASSET_MANIFEST.json"
+    if manifest_name in published:
+        manifest_assets = json.loads((REPO_ROOT / manifest_name).read_text(encoding="utf-8"))["assets"]
+        for asset in manifest_assets:
+            data = (REPO_ROOT / asset["path"]).read_bytes()
+            if len(data) != asset["bytes"] or hashlib.sha256(data).hexdigest() != asset["sha256"]:
+                raise RuntimeError(f"Published asset manifest mismatch: {asset['path']}")
+        if set(published) != {row["path"] for row in manifest_assets} | {manifest_name}:
+            raise RuntimeError("Published output manifest path parity failed")
+    evidence_path = "output/avatar_flash_fix/visible-test/results.json"
+    evidence_commit = git("log", "-1", "--diff-filter=AM", "--format=%H", "HEAD", "--", evidence_path)
+    evidence = json.loads(git("show", f"{evidence_commit}:{evidence_path}")) if evidence_commit else None
     rows = []
     for path in added:
         absolute = REPO_ROOT / path
+        if not absolute.is_file():
+            continue
         row = stats.get(path)
         kind = "text" if row else "binary"
         if absolute.suffix.lower() in {".png", ".jpg", ".jpeg"}:
@@ -782,9 +801,13 @@ def collect_publication_context(context: dict) -> dict:
         "git_describe": git("describe", "--tags", "--long", "HEAD"),
         "worktree_status": git("status", "--short"),
         "new_assets": rows, "published_files": len(published),
+        "removed_assets": removed,
+        "removed_output_files": sum(path.startswith("output/") for path in removed),
         "published_bytes": sum((REPO_ROOT / path).stat().st_size for path in published),
-        "manifest_verified_files": len(manifest["assets"]),
-        "avatar_evidence": {
+        "manifest_verified_files": len(manifest_assets),
+        "avatar_evidence": None if evidence is None else {
+            "source_commit": evidence_commit, "source_path": evidence_path,
+            "reported_clean": bool(evidence["finished"] and not evidence["failures"] and not evidence["pageErrors"]),
             "transitions": len(evidence["transitions"]), "paints": evidence["paints"],
             "min_coverage": evidence["minCoverage"], "states": len(evidence["states"]),
             "viewports": len(evidence["rectangles"]), "controls": evidence["controls"],
@@ -797,40 +820,144 @@ def publication_guide(context: dict) -> list[str]:
     evidence = context["avatar_evidence"]
     baseline = context["visual_doc_baseline"]
     baseline_ref = baseline.short_hash if baseline else context["release_tag"]
+    historical = (
+        f"Git history at {evidence['source_commit'][:7]} retains the older atomic-renderer "
+        f"report: {evidence['transitions']} transitions, {evidence['paints']:,} paints, "
+        f"minimum coverage {evidence['min_coverage']:.0%}, reported clean={evidence['reported_clean']}. "
+        "It describes that earlier renderer, not a fresh canvas verification."
+        if evidence else "No historical avatar result was found in the reachable Git history."
+    )
     return [
         f"Since the last committed dossier revision, the inspected checkout adds {len(context['new_assets'])} files "
         f"including {context['untracked_files']} untracked working additions. "
-        f"The output directory contains {context['published_files']} tracked deliverables "
-        f"({context['published_bytes']:,} bytes including its manifest). All "
-        f"{context['manifest_verified_files']} manifest-listed payloads pass SHA-256 and size checks.",
-        "Published assets include exact quadrant crops, aligned PNG frames, JPG conversions, "
-        "a sprite sheet, HTML preview, ZIP packages, screenshots, code snapshots, test results, "
-        "and a sanitized development database fixture. Binary files have no source-line count.",
+        f"The delta removes {len(context['removed_assets'])} paths, including "
+        f"{context['removed_output_files']} under output/. The current tracked output inventory "
+        f"has {context['published_files']} files. Local leftovers never establish publication.",
+        "New assets include PPTXer's implementation and three migrations, style guides/helpers, "
+        "desktop input helpers, flow schemas, firmware templates and reusable verifier sources. "
+        "image.png is a small terminal screenshot, not runtime artwork. Binary files have no line count.",
         f"Current inventory: {context['tracked_files']:,} tracked files, "
         f"{context['total_lines']:,} physical text lines, {context['total_effective_lines']:,} "
-        f"effective lines, and {context['binary_count']} binary assets. Published backup/test "
-        "text counts toward repository totals but does not add runtime agents or frontend modules.",
+        f"effective lines, and {context['binary_count']} binary assets. Counts include source "
+        "and authored documentation. Ignored galleries, caches and local runtime state are excluded.",
         f"Changes after dossier commit {baseline_ref} are listed in the Git appendix. "
-        "This refresh adds Grepper's line-reading contract and the v1.51.9 release boundary. "
-        "Sampler defaults, uninstaller protection, the wait fix and credits utility remain documented. "
-        "Canvas avatar presence, Whisperer's sound gate "
-        "and Voice Commands remain carried. Runtime JPGs ship through "
-        "Tlamatini/agent/static/; output source art remains development evidence.",
-        f"Historical atomic-renderer evidence: {evidence['transitions']} transitions, {evidence['paints']:,} "
-        f"browser paints, {evidence['states']} expression states, {evidence['viewports']} viewports, "
-        f"minimum coverage {evidence['min_coverage']:.0%}, zero reported layout/coverage failures "
-        "and no JavaScript errors. This older report is not proof of the new canvas renderer. "
-        "The separate presence suite targets current canvas behavior. No automated "
-        "tests were executed for this refresh, as requested.",
-        "Handbook audit: older 1,069-file counts and 311-transition evidence are historical. "
-        "README's one-commit tag distance is stale. Book's installation section still names "
-        "v1.51.5 as current. Atomic/reduced-motion avatar prose predates the canvas renderer. "
-        "README lists Django 5.2.4 versus requirements 5.2.15 and mentions the wait fix only "
-        "briefly. Book section 50 omits the new uninstall guards. Neither explains the "
-        "credits utility. Grepper's base64 channel carries UTF-8 decoded text, not arbitrary "
-        "original-encoding bytes. This dossier uses the source-derived facts below.",
+        "PPTXer and document styles join the whole-system coverage. Desktop and flow contracts "
+        "now distinguish input delivery from application success. Runtime avatar JPGs remain "
+        "under Tlamatini/agent/static/ despite the removal of the old output corpus.",
+        historical + " No automated tests were executed for this refresh, as requested. "
+        "Document rendering and layout inspection are the only new visual evidence.",
+        "Handbook reconciliation: active 108-tool/66-wrapper labels lag the 109/67 source counts. "
+        "README's clean-tag wording, old totals and output links are stale. It lists Django "
+        "5.2.4 versus requirements 5.2.15. Avatar/reduced-motion prose predates the canvas "
+        "renderer. Book section 50 omits uninstall guards and its ESP32 chapter contradicts "
+        "the bundled template. This dossier follows inspected source and Git history.",
     ]
 
+
+PPTXER_GUIDE = [
+    "PPTXer creates editable PowerPoint from text, Markdown, outlines or JSON. "
+    "Actions: create, outline, render, audit, info, fonts and validate. It supports "
+    "16:9, 4:3 and vertical decks with native tables/charts, diagrams and embedded media.",
+    "The registry has 36 treatments: 24 content treatments plus 12 explicit visual "
+    "styles. Empty nuance retains automatic classification. nuance=blueprint or "
+    "nuance=botanical selects a preset. Color, background, density and font overrides remain available.",
+    "Seventeen font pairings resolve against installed fonts. Measurements account "
+    "for face, tracking, line spacing and text insets. Dense content continues onto "
+    "additional slides. The 256-character fixtures describe a tested length, not an input limit.",
+    "Read status, layout_clean, ground_truth and report confidence together. "
+    "created_with_findings requires review. Disabled audits leave the verdict "
+    "unavailable. Native PowerPoint evidence, LibreOffice and geometric previews have different scopes.",
+    "Migrations 0202/0203 register the agent and chat_agent_pptxer. Migration 0204 "
+    "adds Documents prompts 123/124 at ranks 56/58, between PDFer and LaTeXer. "
+    "Native rendering needs PowerPoint for its strongest evidence, although writing the deck does not.",
+    "Source: agents/pptxer/ and its STYLES.md. The guide records 126 implementation "
+    "tests and a 151-slide native run for the twelve new 16:9 styles. Those runs "
+    "were not repeated here. scripts/verify_pptxer_styles.py regenerates the ignored gallery.",
+]
+
+PDFER_STYLES_GUIDE = [
+    "PDFer adds 24 explicit visual identities across playful, cyberpunk, cosmic, "
+    "electronics and Tlamatini families. The original 20 semantic themes remain. "
+    "mode=styles lists IDs and aliases without creating a PDF.",
+    "style selects appearance while nuance describes document purpose. For example, "
+    "style=tlamatini_celestial with nuance=marketing selects a celestial brochure. "
+    "Legal, clinical and financial semantics keep their no-ornament ceiling.",
+    "predominant_color recolors the palette. Explicit role colors, typography and "
+    "page settings override defaults before contrast repair. Host font availability "
+    "affects the resolved face. Unknown style names retain the semantic theme with a diagnostic.",
+    "Styles apply to the atelier renderer. Custom-CSS legacy rendering, image-only "
+    "composition and merged PDFs keep their own layouts. Deterministic vector artwork "
+    "adds no external image service or font download.",
+    "The new helpers measure covers and reserve footer/page-number space. Complete "
+    "titles can continue across pages. Check layout_clean and the detailed audit, "
+    "including off-page ink and contrast. status=created alone establishes only file creation.",
+    "Source: pdfer_styles.py, pdfer_artwork.py and STYLES.md. The guide records "
+    "130 implementation tests and 24 two-page style samples with clean audits. "
+    "scripts/verify_pdfer_styles.py can regenerate the ignored gallery. No such run occurred here.",
+]
+
+LATEXER_STYLES_GUIDE = [
+    "LaTeXer adds 30 explicit styles in six families, independent of its eight "
+    "document templates. action=list_styles returns IDs, aliases, motifs and "
+    "style_count=30 without probing or requiring a TeX engine.",
+    "Select template=report and style=tlamatini_celestial for a styled report. "
+    "screen retains the preset ground. print uses white paper. style_decoration "
+    "accepts none/restrained/rich. style_cover=false gives a compact document title.",
+    "Article, report, book, beamer, letter, cv, homework and spanish-article remain "
+    "distinct structures. Beamer uses a separate frame recipe and retains its title "
+    "frame when cover art is disabled. Metadata and body remain LaTeX, so escape special characters.",
+    "Styles work on scaffolds and fragment compile with auto_preamble=true. Complete "
+    "TeX sources own their preamble, so an explicit style is refused on that route. "
+    "Empty/none/plain/default preserves legacy generation. Unknown names fail clearly.",
+    "Original TikZ geometry and Latin Modern fonts travel with editable TeX. "
+    "Assigned text palettes target 4.5:1 contrast. Custom content still needs "
+    "review. Check status/success before output_path. The runtime has no layout_clean field.",
+    "Source: latexer_styles.py, latexer_design.py, latexer_artwork.py and STYLES.md. "
+    "The guide records 483 tests and 132 fresh real-engine builds at implementation "
+    "time. scripts/verify_latexer_styles.py regenerates the ignored gallery. No engines ran here.",
+]
+
+DESKTOP_INPUT_GUIDE = [
+    "Mouser declares coordinate_space: screen, desktop, normalized, window, "
+    "window_normalized or screenshot. Physical screen coordinates support negative "
+    "monitor origins. Monitor gaps and ambiguous targets produce explicit failures.",
+    "Shoter reports image dimensions, the physical capture rectangle, monitor "
+    "geometry and capture time. Screenshot targets require all six geometry fields "
+    "and Mouser's screenshot space. Cropping/resizing must update the corresponding geometry.",
+    "The screenshot transform scales image coordinates into the captured desktop "
+    "rectangle. It cannot establish which button occupies a point or repair a "
+    "stale image. Reobserve after movement. inspect reads geometry without sending input.",
+    "Keyboarder binds an HWND/PID, verifies foreground ownership during delivery "
+    "and stops on focus loss. input_mode=text sends literal Unicode through checked "
+    "SendInput. sequence keeps key/chord grammar. The clipboard remains untouched.",
+    "input_sent proves delivery only. It does not prove editing, saving or "
+    "application acceptance. Inspect partial-delivery counts and error receipts "
+    "before replay. Target agents still receive failure notifications, so branch deliberately.",
+    "Source: mouser_coordinates.py, keyboarder_input.py and shoter.py. Pool/chat "
+    "refresh copies the helpers. Serialize desktop control within one interactive "
+    "session. docs/GUI-Manager-design.md is a proposal, not an installed agent or global broker.",
+]
+
+FLOW_CONTRACT_GUIDE = [
+    "FlowCreator first selects from all 89 installed types, then receives relevant "
+    "guide sections and current schemas. Starter, Ender and Parametrizer remain "
+    "available. Unknown or unselected types fail validation before publication.",
+    "The validator checks references, branch slots, configuration types, singleton "
+    "wiring and mapping fields. Counter's two branches are explicit. Ender's "
+    "target_agents is a kill list and output_agents is its execution output.",
+    "Bounded requests use llm.num_ctx=65536, max_prompt_chars=180000 and two "
+    "repair attempts by default. These requests depend on provider support. "
+    "Graph validation does not establish valid credentials or successful live application behavior.",
+    "Parametrizer registers 53 declared structured-output producers. It preserves "
+    "CRLF and empty values, converts typed scalar mappings and requires every "
+    "mapping to succeed before writing or launching the target.",
+    "Interrupted desktop segments at config_applied or waiting_target stop for "
+    "inspection instead of replaying input. FlowHypervisor separates execution, "
+    "kill and observation relationships and retains current desktop receipts and timing.",
+    "services/flow_knowledge.py exports field names/types without local values. "
+    "Deployment refreshes the shipped catalog and guides. docs/agent-coverage.md "
+    "records discoverability, not successful execution of every workflow. Catalog and regression scripts were not run here.",
+]
 
 AVATAR_GUIDE = [
     "Four opaque 1024x1024 RGB JPGs combine open/closed eyes with neutral/smiling mouth. "
@@ -973,7 +1100,7 @@ OLLAMA_SAMPLER_GUIDE = [
     "banner. Previously, setting that config key could not reach this adapter.",
     "Commit f6404a3 reports eight trials per setting on a roughly 78k-token, "
     "117-bound-tool workload. For glm-5.3:cloud, failures fell from 7/8 at penalty "
-    "1.9 to 1/8 at 1.2. This workload's bound-tool count differs from the 108 built-ins.",
+    "1.9 to 1/8 at 1.2. The historical workload's bound-tool count differs from today's registry total.",
     "Commit cb30edf isolates lookback with penalty 1.2: glm failures were 5/8 at "
     "64 versus 2/8 at 256, with reported medians 154.0s and 26.3s. Kimi-k3 moved "
     "from 0/8 to 1/8 failures and 50.5s to 97.5s. The tradeoff is model-specific.",
@@ -1772,9 +1899,9 @@ ESP32ER_SURFACES_GUIDE = [
 ]
 
 ESP32_TEMPLATE_GUIDE = [
-    "The new `ESP32TemplateProject` repository is the known-good baseline documented in BookOfTlamatini’s bonus chapter: a plain PlatformIO project, not a server, meant to prove an ESP32 board and toolchain are healthy before larger firmware work.",
-    "It mirrors ESP32er’s grain: `platformio.ini`, `src/`, `include/`, `lib/`, `test/`, a blinking `main.cpp`, serial output at 115200, and GitHub-ready docs/CI so the reference project does not silently rot.",
-    "Operationally, ESP32er can either point at a checkout of that template (`project_dir`) or scaffold an equivalent from scratch with `action='create_project'`, then carry the directory through build, upload, and monitor steps.",
+    "ESP32er now ships ESP32TemplateProject inside its agent directory. create_project copies its PlatformIO project and stamps the requested board/framework. The blink-and-print main.cpp supplies setup/loop for an Arduino build.",
+    "Six tracked files include platformio.ini, src/main.cpp and README files for the root/include/lib/test directories. The narrow Git exception retains lib/README.md. No standalone GitHub repository or CI publication is implied by this bundled tree.",
+    "Use a new project_dir, then build and inspect the result before upload/monitor. The copy merges with an existing destination and may overwrite matching template files. If the bundle is unavailable, pio project init falls back to minimal source when appropriate.",
 ]
 
 ESPHOMER_GUIDE = [
@@ -1790,9 +1917,9 @@ ESPHOMER_SURFACES_GUIDE = [
 ]
 
 ESPHOME_TEMPLATE_GUIDE = [
-    "The bundled `ESPHomeTemplateProject` is the known-good ESPHome baseline documented in README and Book: a phone-controllable light with native `api`, `ota`, `wifi`, and a board LED output, shipped as `agent/agents/esphomer/ESPHomeTemplateProject/tlamatini-light.yaml`.",
-    "It matters because ESPHomer’s source-of-truth is a YAML device file, not a C++ project tree: that sample proves the first real workflow of `new_config` -> `config` -> `compile` -> `upload` without forcing users to invent a valid starter config from memory.",
-    "Operationally, the sample closes the gap between the new agent and a practical first build a user can validate, compile, flash, and then control from a smart-home hub such as Home Assistant.",
+    "ESPHomer's scaffold_template now copies the complete bundled ESPHomeTemplateProject into project_dir. It contains the light, a sensor example, common/base.yaml, placeholder secrets.yaml.example and a project .gitignore.",
+    "new_config remains a separate single-device generator. use_secrets=true emits !secret references and creates a sibling secrets.yaml only when one does not already exist. Keep actual credentials outside Git and inspect the generated device YAML before compilation.",
+    "Use a new destination for scaffold_template because its merge can replace matching template files. Validate configuration before compile/upload. A real board, USB driver and later OTA setup remain necessary for hardware verification, which was not performed in this refresh.",
 ]
 
 DESIGN_PRINCIPLES = [
@@ -2315,7 +2442,12 @@ def build_pdf(context: dict) -> None:
     story.append(p("Recent implementation assets and inventory impact", styles["h2"]))
     for item in publication_guide(context):
         story.append(bullet(item, styles["bullet"]))
-    for title, guide in (("Canvas avatar presence", AVATAR_GUIDE),
+    for title, guide in (("PPTXer editable presentations", PPTXER_GUIDE),
+                         ("PDFer signature styles", PDFER_STYLES_GUIDE),
+                         ("LaTeXer signature styles", LATEXER_STYLES_GUIDE),
+                         ("Desktop input and capture contracts", DESKTOP_INPUT_GUIDE),
+                         ("Flow planning and mapping contracts", FLOW_CONTRACT_GUIDE),
+                         ("Canvas avatar presence", AVATAR_GUIDE),
                          ("Reproducible visible avatar tests", AVATAR_TEST_GUIDE),
                          ("Whisperer silence gate", WHISPERER_GATE_GUIDE),
                          ("Voice Commands catalog and execution", VOICE_COMMAND_GUIDE),
@@ -3355,7 +3487,12 @@ def build_ppt(context: dict) -> None:
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Source and evidence", publication_guide(context)[3:], THEME["jade"], "recent-assets-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    for title, guide in (("Canvas Avatar Presence", AVATAR_GUIDE),
+    for title, guide in (("PPTXer Presentations", PPTXER_GUIDE),
+                         ("PDFer Signature Styles", PDFER_STYLES_GUIDE),
+                         ("LaTeXer Signature Styles", LATEXER_STYLES_GUIDE),
+                         ("Desktop Input Contracts", DESKTOP_INPUT_GUIDE),
+                         ("Flow Planning Contracts", FLOW_CONTRACT_GUIDE),
+                         ("Canvas Avatar Presence", AVATAR_GUIDE),
                          ("Visible Avatar Test Runner", AVATAR_TEST_GUIDE),
                          ("Whisperer Silence Gate", WHISPERER_GATE_GUIDE),
                          ("Voice Commands", VOICE_COMMAND_GUIDE),
@@ -4066,9 +4203,10 @@ def serialize_context(context: dict) -> dict:
         "all_text_files": [row.__dict__ for row in context["file_rows"]],
         "inventory_paths": context["inventory_paths"],
         "new_assets": context["new_assets"],
+        "removed_assets": context["removed_assets"],
         "publication": {key: context[key] for key in (
             "release_identity", "remote_head", "git_describe", "worktree_status",
-            "published_files", "published_bytes", "manifest_verified_files", "avatar_evidence")},
+            "published_files", "published_bytes", "manifest_verified_files", "removed_output_files", "avatar_evidence")},
         "recent_commits": [row.__dict__ for row in context["recent_commits"]],
         "weekly_commits": [row.__dict__ for row in context["weekly_commits"]],
         "weekly_highlights": context["weekly_highlights"],
