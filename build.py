@@ -402,6 +402,7 @@ _FROZEN_REQUIRED_AGENT_MODULES = (
     "agent.win_shim",              # Windows .cmd/.exe resolution (fail-open import)
     "agent.path_guard",            # <app>/Temp + <app>/Templates policy
     "agent.self_update",           # About ▸ Check for updates
+    "agent.sqlite_copy",           # WAL-safe DB backup + post-update restoration
     "agent._version",              # SemVer resolver
     *_FROZEN_PDF_MODULES,          # PDF extraction + optional Image-Interpreter
 )
@@ -1367,6 +1368,8 @@ def main():
         '--hidden-import=agent.external_mcp_manager',
         '--hidden-import=agent.agent_verdict',
         '--hidden-import=agent.win_shim',
+        '--hidden-import=agent.self_update',
+        '--hidden-import=agent.sqlite_copy',
         '--hidden-import=daphne.server', '--hidden-import=channels',
         '--hidden-import=whitenoise.middleware', '--hidden-import=whitenoise.storage',
         '--hidden-import=django_bootstrap5',
@@ -1733,6 +1736,9 @@ def main():
             # every release; missing helpers must abort packaging.
             Path("apply_update.ps1"): dist_manage / "apply_update.ps1",
             Path("preserved_user_state.json"): dist_manage / "preserved_user_state.json",
+            # Stdlib-only CLI used by the external updater under carried Python
+            # after the web process stops and before its files are replaced.
+            Path("Tlamatini") / "agent" / "sqlite_copy.py": dist_manage / "sqlite_copy.py",
         }
         for src, dst in required_file_copies.items():
             if not src.exists():

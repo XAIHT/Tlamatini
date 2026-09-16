@@ -211,6 +211,8 @@ DROP_PATH_GLOBS = (
 #                                  HOW_TO_GET_YOUR_*_ASSETS.md guides (~1.2 MB).
 # Deliberately NOT covered: static/agent/video/** (large, restore-mapped) and
 # agent/images/** (the ~70 MB gallery — optional, degrades gracefully).
+# PDF.js vendor assets also ship intact, including its decoder/font binaries.
+# KEEP_DIR_PATHS separately permits its otherwise-excluded build/ directory.
 # EXCLUDED_FILE_NAMES (secrets / PII / local state) is NEVER overridden here.
 KEEP_PATH_GLOBS = (
     "Tlamatini/agent/static/agent/img/**",
@@ -258,6 +260,11 @@ REQUIRED_SNAPSHOT_FILES = (
     "Tlamatini/agent/static/agent/vendor/pdfjs/web/pdf_viewer.css",
     "Tlamatini/agent/static/agent/vendor/pdfjs/LICENSE",
     "Tlamatini/agent/static/agent/vendor/pdfjs/VERSION",
+    "Tlamatini/agent/static/agent/vendor/pdfjs/wasm/jbig2.wasm",
+    "Tlamatini/agent/static/agent/vendor/pdfjs/wasm/openjpeg.wasm",
+    "Tlamatini/agent/static/agent/vendor/pdfjs/wasm/qcms_bg.wasm",
+    "Tlamatini/agent/static/agent/vendor/pdfjs/standard_fonts/LiberationSans-Regular.ttf",
+    "docs/pdf-canvas.md",
     # Core app source + LLM identity
     "Tlamatini/agent/config.json",
     "Tlamatini/agent/prompt.pmt",

@@ -37,9 +37,12 @@ generation kept) and then replaced by the new version's ``agents``.
 
 The DATABASE is handled specially (not in the preserve list above, because the
 live ``db.sqlite3`` lives inside ``_internal\\`` which IS replaced). Instead
-``apply_update.ps1`` copies the user's DB into the preserved ``DB/ToLoad``
-folder and drops ``DB/post_update_migrate.flag``; on the next launch
-``manage.py`` swaps that DB back into place and runs ``migrate``. So the user's
+``apply_update.ps1`` runs the shipped ``sqlite_copy.py`` helper under carried
+Python, after stopping the app, to write a verified SQLite online backup into
+the preserved ``DB/ToLoad``. This includes committed WAL pages, unlike a plain
+copy of ``db.sqlite3``. It aborts before replacing application files if backup
+fails, and drops ``DB/post_update_migrate.flag`` only after backup succeeds.
+On the next launch ``manage.py`` swaps that DB back into place and runs ``migrate``. So the user's
 chat history and custom Tool/Mcp/Agent toggles are KEPT while new migrations
 (new agents, ``chat_agent_*`` tools, demo prompts) are applied to their data.
 
@@ -347,7 +350,11 @@ def _launch_updater(target_install: str, staging: str) -> str:
     """Copy ``apply_update.ps1`` outside the install and launch it (visible)."""
     home = _updater_home()
     os.makedirs(home, exist_ok=True)
-    script_src = _resolve_updater_script()
+    # Use the incoming swapper so new preservation/migration rules apply to
+    # this update, not only the following one. Older packages can use ours.
+    script_src = os.path.join(staging, _UPDATER_SCRIPT)
+    if not os.path.isfile(script_src):
+        script_src = _resolve_updater_script()
     script_dst = os.path.join(home, _UPDATER_SCRIPT)
     shutil.copy2(script_src, script_dst)
     log_path = os.path.join(home, "update.log")

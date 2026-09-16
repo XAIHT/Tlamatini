@@ -356,3 +356,52 @@ def describe(report):
         return line
     detail = report.get("error") or "; ".join(report.get("attempts", [])) or "unknown"
     return "FAILED: %s" % detail
+
+
+def main(argv=None):
+    """Stage an atomic, verified database backup for the external updater."""
+    import argparse
+    import sys
+    import tempfile
+
+    parser = argparse.ArgumentParser(description=main.__doc__)
+    parser.add_argument('source')
+    parser.add_argument('destination')
+    args = parser.parse_args(argv)
+    source = os.path.realpath(args.source)
+    destination = os.path.realpath(args.destination)
+    if os.path.normcase(source) == os.path.normcase(destination):
+        parser.error('source and destination must be different files')
+    temporary = None
+    try:
+        parent = os.path.dirname(destination)
+        os.makedirs(parent, exist_ok=True)
+        fd, temporary = tempfile.mkstemp(prefix='.update-db-', suffix='.sqlite3', dir=parent)
+        os.close(fd)
+        report = consistent_copy(source, temporary)
+        if not report['ok']:
+            raise RuntimeError(describe(report))
+        # Require the online-backup path for updates: a partial raw-sidecar
+        # fallback is not sufficient proof that every WAL commit was carried.
+        if report['method'] not in {'online-backup', 'online-backup-readonly'}:
+            raise RuntimeError('Update requires a successful SQLite online backup')
+        if existing_sidecars(temporary):
+            raise RuntimeError('Update backup is not a standalone database')
+        remove_sidecars(destination, strict=True)
+        os.replace(temporary, destination)
+        temporary = None
+        print('Database staged: %s (%s bytes, integrity: ok)' % (destination, report['bytes']))
+        return 0
+    except Exception as exc:
+        print('Database preservation failed: %s' % exc, file=sys.stderr)
+        return 1
+    finally:
+        if temporary:
+            try:
+                _clear_destination(temporary)
+            except OSError:
+                pass
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

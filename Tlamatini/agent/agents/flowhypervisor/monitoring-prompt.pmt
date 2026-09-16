@@ -362,127 +362,135 @@ NMAPPER SPECIAL NOTES:
     exceeded command_timeout with no output.
 
 PPTXER SPECIAL NOTES:
-  - PPTXer is SHORT-LIVED and ACTIVE: it builds ONE presentation (or runs a read-only
-    meta action) then ALWAYS triggers `target_agents` — on success, on failure, AND on
-    a fail-safe refusal.
-  - ⚠️ THE SILENCE IS THE THING TO KNOW ABOUT. After "🏗️ building N slides" PPTXer
-    hands the finished deck to the INSTALLED POWERPOINT to render every slide, and
-    PowerPoint's FIRST launch costs roughly 20-25 SECONDS during which the log says
-    NOTHING. That is a cold start, not a hang. Measured 2026-09-14 on this machine:
-    23.2 s for the first export in a session, then ~0.6 s per deck afterwards. Do NOT
-    flag PPTXer as stuck before `render_timeout` (default 240 s) has actually elapsed.
-  - Its `INI_SECTION_PPTXER<<<` block is NORMAL routable output (carries `action`,
-    `status`, `success`, `output_path`, `slide_count`, `shape_count`,
-    `images_embedded`, `videos_embedded`, `tables`, `charts`, `diagrams`,
-    `generated_art`, `nuance`, `nuance_confidence`, `palette`, `predominant_color`,
-    `font_display`, `font_body`, `render_tier`, `slides_rendered`, `ground_truth`,
-    `layout_clean`, `overlaps`, `text_overflows`, `bytes`, `stage`) — NEVER flag it as
-    an error, even when `status: error` or `slide_count: 0`; a downstream Forker
-    branches on `{status}` / `{layout_clean}`.
-  - PPTXer PRINTS ITS DESIGN REASONING before building: a `🎨 treatment: ...` line with
-    its confidence and the evidence it matched, then a block naming the palette, the
-    fonts and the ornament programme, then `🔤 N font families available`. This is
-    DELIBERATE, EXPECTED diagnostic output on every run — not noise and not a fault.
-  - `Contrast fix : ...` lines are the theme FORCING a colour over the projected-slide
-    legibility floor and explaining why. That is the guarantee working. NOT an error.
-  - `👁️ rendered N slides via powerpoint_com (ground truth: True)` is the agent LOOKING
-    AT ITS OWN SLIDES. A line saying a renderer was UNAVAILABLE (`powerpoint_com:
-    available=False`, `libreoffice: soffice not found`) is honest degradation — PPTXer
-    falls through to the next tier and the geometry audit still runs. Do NOT flag it.
-  - `LAYOUT CLEAN` is the normal case. `LAYOUT DEFECTS: N` is a REPORT, not a crash:
-    the .pptx exists and the flow continues, and `layout_clean: false` with
-    `status: created_with_findings` is exactly what a downstream Forker is meant to
-    branch on. Flag it only if the objective demanded a flawless deck and the flow
-    ignored the branch.
-  - A `Media that could not be used:` list is PPTXer refusing a dead URL, an HTML page
-    served as an image, or a video container PowerPoint cannot embed. The deck is still
-    built without that asset and the reason is named. NOT a flow error.
-  - A `status: refused` section is PPTXer working AS DESIGNED (no content, an unknown
-    action, a missing pptx_path, an unwritable output_dir) — it REFUSES rather than
-    write an empty or wrong presentation. NOT a flow error.
-  - A `status: listed` / `validated` section (the `outline`, `info`, `fonts` and
-    `validate` meta actions) writes NO file on purpose — do NOT flag "no output".
+  - PPTXer runs one action and ALWAYS starts target_agents after success, failure or
+    refusal. INI_SECTION_PPTXER is normal routable output, not a parser error.
+    Evaluate its action/status and the downstream branch: a structured refusal or
+    error is still an unmet objective if the flow ignores it and claims delivery.
+  - The result includes status/success, output paths, slide/content counts, nuance,
+    palette/font metadata, render_tier, slides_rendered, ground_truth, layout_clean,
+    overlaps, text_overflows, elapsed_seconds, stage, and the response_body report.
+    success: true means the operation returned successfully; it also accompanies
+    created_with_findings and does NOT certify a clean presentation.
+  - Read actions with their statuses: create -> created or created_with_findings;
+    render/audit -> ok or findings; outline/info/fonts -> listed; validate -> validated.
+    Catalog/inspection/probe actions do not create a new deck. info's output_path is
+    the inspected file. validate's report may list unavailable optional dependencies.
+  - There are 36 treatments: 24 automatic content treatments and 12 explicit visual
+    styles selected through nuance, plus 17 installed-font pairings. Empty nuance
+    retains detection. There is no separate style parameter or style-catalog action.
+    Treatment reasoning, font substitution and contrast-fix messages are expected
+    diagnostics, not failures. Decorations can only lower the semantic ceiling.
+  - Long content may produce continuation slides. More slides than the initial plan
+    is expected when preserving full text; 256 characters is a stress-case length,
+    not a limit. Native chart labels and other unmeasured content still need review
+    when visual quality is part of the objective.
+  - render: auto tries PowerPoint, LibreOffice, then an approximate Pillow preview.
+    These native applications are optional for creation. render: none produces no
+    slide images; layout_audit: true can still perform geometry checks. Do not call
+    a preview or geometry-only audit native visual verification.
+  - Native Office startup/export can be silent. Use the active rendering stage and
+    render_timeout (default 240s), not a fixed startup time or total agent lifetime,
+    when assessing a stall. Media fetching and optional model consultations have
+    their own timeouts. Observe progress and actual timeout/error reports before
+    diagnosing a hang; multiple bounded stages can outlast one stage's timeout.
+    Worker cleanup is restricted to Office processes attributable to that worker.
+  - Inspect layout_clean AND response_body confidence, skipped measurements, audit
+    errors and slide coverage. Header ground_truth identifies native rendering; it
+    does not by itself prove all slides were measured or passed. Blank/missing audit
+    data is unverified. Zero overlaps alone does not exclude overflow/contrast or
+    measurement errors. created_with_findings / findings should route to review,
+    not be presented as a verified clean deck.
+  - A missing renderer may permit fallback; flag an unmet native-rendering requirement
+    if the flow claims native verification anyway. Likewise, omitted media is not
+    a crash, but required assets must be reported/recovered before claiming a
+    complete deck. Do not suppress genuine errors merely because a file exists.
 
 PDFER SPECIAL NOTES:
-  - PDFer is SHORT-LIVED and ACTIVE: it renders ONE document (or runs a read-only meta
-    action) then ALWAYS triggers `target_agents` — on success, on failure, AND on a
-    fail-safe refusal.
-  - Its `INI_SECTION_PDFER<<<` block is NORMAL routable output (carries `mode`,
-    `source_type`, `output_path`, `output_dir`, `filename`, `page_count`, `bytes`,
-    `images_used`, `engine`, `nuance`, `nuance_confidence`, `nuance_source`, `palette`,
-    `predominant_color`, `background_mode`, `font_pairing`, `decorations`, `overlaps`,
-    `layout_clean`, `repairs`, `status`) — NEVER flag it as an error, even when
-    `status: error` or `page_count: 0`; a downstream Forker branches on `{status}`.
-  - PDFer PRINTS ITS DESIGN REASONING before rendering (2026-09-06): a multi-line
-    `🔎 Nuance: ... — confidence NN%` block listing the evidence it matched, and a
-    `🎨 Design system: ...` block naming the palette, fonts, scale and ornament
-    programme. This is DELIBERATE, EXPECTED diagnostic output on every single run —
-    do NOT flag it as noise, as an error, or as the agent being stuck.
-  - `nuance_source: detected|explicit|llm|fallback` are all NORMAL. A LOW
-    `nuance_confidence` is NOT a problem: it simply means PDFer was unsure what kind of
-    document it held and therefore chose a quieter treatment with less decoration.
-    That is the safety behaviour working, not a fault.
-  - A `repairs:` value listing `tighten_padding`, `char_wrap`, `shrink_font`,
-    `landscape_hint` or `split_columns` is the LAYOUT SOLVER doing its job on a wide
-    table — the document is correct, the table was simply demanding. NOT an error.
-  - A line reporting the LAYOUT AUDIT (`🔍 layout audit CLEAN` or `layout audit FOUND
-    ISSUES`) is PDFer verifying its own finished PDF against the file on disk. `CLEAN`
-    is the normal case. `FOUND ISSUES` is a REPORT, not a crash: the PDF exists and the
-    flow continues, and `layout_clean: false` is exactly what a downstream Forker is
-    meant to branch on. Flag it only if the user's objective demanded a flawless
-    document and the flow ignored the branch.
-  - A line saying the DESIGN CONSULTATION did not apply (`ollama_design` unreachable,
-    empty, or its answer rejected by validation) is documented graceful degradation —
-    the deterministic design stands and the PDF is still produced. Do NOT flag it.
-  - A `status: refused` section is PDFer working AS DESIGNED (empty content, an unknown
-    mode, no images for `mode=images`, a missing input_file, or an unwritable
-    output_dir) — it REFUSES rather than write an empty or wrong PDF. NOT a flow error.
-  - A `status: validated` / `inspected` section (the `validate` and `info` meta actions)
-    writes NO file on purpose — do NOT flag "no output produced".
-  - A line saying the Ollama polish failed and the RAW content was kept is the documented
-    graceful degradation (`ollama_polish` is optional and never loses the document) — do
-    NOT flag it; the PDF is still produced.
-  - Rendering is fast (seconds). A run is only genuinely slow when `ollama_polish: true`
-    (an extra model round-trip, up to `ollama_timeout`, default 180s) or when embedding
-    many large images — while it keeps logging, that is NOT stuck.
-  - DO flag a genuine failure: a PDF backend reported as MISSING in a `validate` run
-    (`status: engine_unavailable` means the carried Python lost markdown / xhtml2pdf /
-    pymupdf / reportlab / pillow / pypdf), or the run exceeded command_timeout.
+  - PDFer runs one mode and ALWAYS starts target_agents after success, failure or
+    refusal. INI_SECTION_PDFER is normal routable output. Inspect the status and
+    downstream handling; refused/error/engine_unavailable do not satisfy a request
+    to create a PDF just because the flow continues.
+  - Fields include mode, source_type, output_path, output_dir, filename, page_count,
+    bytes, images_used, engine, nuance, nuance_confidence, nuance_source, style,
+    style_family, palette, predominant_color, background_mode, font_pairing,
+    decorations, overlaps, layout_clean, repairs, status, and response_body.
+    PDFer has no success contract field; branch on status and the relevant evidence.
+  - mode: styles returns the 24-style catalog with status: inspected, empty output
+    paths and zero pages; no PDF is expected. mode: info also returns inspected but
+    describes an existing PDF. validate writes nothing; validated means all probed
+    backends are available, while engine_unavailable means at least one is missing.
+    Read the report for the specific backend and its relevance to the requested mode.
+  - Keep purpose separate from appearance: nuance selects among 20 semantic themes;
+    style selects 24 explicit identities in five families. Blank/auto style retains
+    the semantic design. Aliases are normalized exact matches, not prose inference.
+    Unknown styles fall back with a diagnostic; flag an unmet explicit style request
+    if the flow ignores that fallback. style/style_family identify the applied design.
+  - Design reasoning, low nuance confidence and detected/explicit/llm/fallback sources
+    are normal. Explicit styles never raise the semantic decoration ceiling; legal,
+    clinical and financial treatments remain undecorated. This is intentional.
+  - Styles and the saved-PDF audit apply to atelier composition. Custom CSS with
+    engine: auto uses legacy rendering; image-only and merged original pages retain
+    their design. Do not promise atelier restyling or audit coverage on those paths.
+  - Atelier wraps long tokens and continues long cover/table content rather than
+    truncating it; repeated footer notes may ellipsize. repairs records layout solver
+    adjustments such as char_wrap or split_columns. Such records are expected, but
+    they do not prove that all findings were fixed.
+  - status: created confirms file creation, not a clean audit. layout_clean: false
+    reports findings that require review; a blank value means no available audit.
+    overlaps: 0 does not rule out off-sheet, blank-page or contrast findings. Read
+    response_body and route the result before declaring the document verified.
+  - ollama_polish and ollama_design are off by default. Failed optional consultations
+    preserve the existing content/design; check the final result instead of assuming
+    either success or failure from a consultation warning alone. Their configured
+    ollama_timeout defaults to 180s. Large documents, images and audits can also take
+    time; use progress and actual stage failures, not an assumption of a seconds-long
+    whole run or a global command_timeout deadline that the renderer does not enforce.
 
 LATEXER SPECIAL NOTES:
-  - LaTeXer is SHORT-LIVED and ACTIVE: it runs ONE action (typeset a document, author or
-    inspect a .tex, or a read-only meta action) then ALWAYS triggers `target_agents` — on
-    success, on failure, AND on a fail-safe refusal.
-  - Its `INI_SECTION_LATEXER<<<` block is NORMAL routable output (carries `action`,
-    `engine`, `distribution`, `tex_path`, `project_dir`, `output_path`, `page_count`,
-    `bytes`, `passes`, `bibliography`, `errors`, `warnings`, `success`, `status`) — NEVER
-    flag it as an error, even when `status: error`, `success: False` or `errors: 12`; a
-    downstream Forker branches on `{status}` / `{success}`.
-  - ⚠️ MULTIPLE COMPILER PASSES ARE CORRECT, NOT A LOOP. Lines like
-    "🔁 pdflatex (pass 2): resolving cross-references" are LaTeX working exactly as
-    designed: the first pass cannot know a reference's number yet, so LaTeXer re-runs
-    until they stop changing (up to `max_passes`, default 5), with `biber`/`bibtex`/
-    `makeindex`/`makeglossaries` in between. Seeing the SAME engine run 3-5 times in a
-    row is HEALTHY — do NOT flag it as a stuck or repeating agent.
-  - ⚠️ A SLOW FIRST BUILD IS NORMAL. With MiKTeX's on-demand installer enabled (the
-    default), the first compile of a document that uses a new package PAUSES while MiKTeX
-    downloads and installs it. A build taking minutes on its FIRST run — while it keeps
-    logging — is NOT stuck. It only happens once per package.
-  - "latexmk produced NO PDF -> falling back to LaTeXer's built-in convergence loop" is
-    the documented graceful degradation, not an error: latexmk is a Perl script and most
-    Windows machines have no Perl, so LaTeXer simply builds the document itself. The PDF
-    is still produced — do NOT flag it.
-  - A `status: refused` section is LaTeXer working AS DESIGNED (no source given, an
-    unknown action, a missing tex_path, a non-unique `find_text` for an edit, an
-    unwritable output_dir, or NO TeX distribution installed) — it REFUSES rather than
-    mis-typeset. NOT a flow error. The refusal naming MiKTeX is guidance, not a fault.
-  - A `status: validated` / `analyzed` / `listed` / `read` section (the `validate`,
-    `validate_tex`, `structure`, `list_files` and `read_file` actions) writes NO PDF on
-    purpose — do NOT flag "no output produced".
-  - `status: compiled_with_errors` means a PDF EXISTS but LaTeX reported errors. That is
-    a REPORTED, routable outcome, not a crash — do not flag it as a flow failure.
-  - DO flag a genuine failure: the run exceeded `command_timeout` (default 600s) with no
-    output at all, or the output_dir could not be written.
+  - LaTeXer runs one action and ALWAYS starts target_agents after success, failure or
+    refusal. INI_SECTION_LATEXER is normal routable output. A structured failure is
+    not a parser crash, but the flow must branch on status/success before delivery.
+  - The contract includes action, engine, distribution, tex_path, project_dir,
+    output_path, output_dir, filename, page_count, bytes, passes, bibliography,
+    errors, warnings, success, status, style, style_family, style_mode, style_count,
+    and response_body. Compile INI output also contains repairs/quarantined counts;
+    these are not in the current Parametrizer field contract. Use status/success and
+    response_body for flow routing, not unsupported repair-count placeholders.
+  - list_styles returns listed, success: true, style_count: 30 and distribution:
+    not_probed, with a JSON catalog and no PDF. Source creation/inspection also need
+    no compiler. Compilation needs an installed TeX distribution; a missing engine
+    is an environment blocker, not proof of an agent crash. validate/validate_tex,
+    structure, list_files and read_file do not produce a PDF. validate_tex can return
+    invalid; installer_launched is setup progress, not a completed installation.
+  - template controls structure; style controls one of 30 explicit identities in
+    six families. Unknown styles refuse. Styles apply to generated sources/bare
+    fragments, not complete .tex/project preambles; that refusal is intentional.
+    Metadata and body are LaTeX. Use tex_path or the *_b64 fields for complex source;
+    encoding preserves bytes but does not correct invalid LaTeX.
+  - Multiple passes, bibliography/index/glossary helpers and MiKTeX package downloads
+    are expected. max_passes (default 5) applies to a build's convergence loop;
+    command_timeout (default 600s) bounds individual tool invocations, not the whole
+    action. Repair retries and the separate repair_model_timeout (default 600s) can
+    extend the run. Assess the active rung, fresh progress and timeout diagnostics
+    before declaring a loop or hang. A latexmk fallback is not a failure if the
+    built-in convergence loop subsequently succeeds.
+  - The repair ladder is lint -> preamble -> rules -> log_directed -> acquire ->
+    engine_swap -> model -> bisect. repair defaults true; repair_rungs: [] enables all.
+    It normally uses a .latexer-fixed.tex copy (repair_write_back: false). Failed model
+    rewrites are discarded; timeout/unreachable-model failures prevent destructive
+    bisect. The last rung has repair_bisect_max_probes (default 14). Package-acquisition
+    or engine-change logs are legitimate repairs; read their final outcome.
+  - compiled with success: true and zero errors is a clean compile. Deliver the path
+    and stop unless a remaining user requirement justifies more work; do not keep
+    editing/recompiling a finished document merely to improve it.
+  - compiled_with_errors means a PDF exists with compilation errors; degraded means
+    blocks were removed to rescue a partial PDF. BOTH report success: false. They are
+    reviewable partial results, never complete clean deliverables. Read the repair
+    report and preserve the content-loss warning. Flag a flow that ignores them.
+  - A successful compile and style metadata do not certify visual layout. LaTeXer
+    has no normal layout_clean field. Overfull boxes and other layout warnings can
+    matter even with errors: 0; assess them against the requested deliverable instead
+    of treating every warning as a failure or every compiled PDF as visually verified.
 
 STM32ER SPECIAL NOTES:
   - STM32er is SHORT-LIVED and ACTIVE: it spawns the STM32 Template Project MCP

@@ -24,7 +24,7 @@
 
 <p align="center">
   <a href="https://discord.gg/WFQsrskgc"><img src="https://img.shields.io/badge/DISCORD-JOIN%20US-5865F2?style=for-the-badge&labelColor=2D2D2D&logo=discord&logoColor=white" alt="Join our Discord"/></a>
-  <a href="https://github.com/XAIHT/Tlamatini/releases"><img src="https://img.shields.io/badge/RELEASE-v1.60.0-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Release v1.60.0"/></a>
+  <a href="https://github.com/XAIHT/Tlamatini/releases"><img src="https://img.shields.io/badge/RELEASE-v1.62.0-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Release v1.62.0"/></a>
   <a href="https://www.python.org/downloads/release/python-31210/"><img src="https://img.shields.io/badge/PYTHON-3.12.10-3776AB?style=for-the-badge&labelColor=2D2D2D&logo=python&logoColor=white" alt="Python"/></a>
   <a href="#installation"><img src="https://img.shields.io/badge/PLATFORM-WIN%2010%20%7C%2011-0078D6?style=for-the-badge&labelColor=2D2D2D&logo=windows&logoColor=white" alt="Platform"/></a>
   <a href="#-the-full-capability-list"><img src="https://img.shields.io/badge/AGENT%20TYPES-89-8A2BE2?style=for-the-badge&labelColor=2D2D2D" alt="89 agent types"/></a>
@@ -50,8 +50,8 @@
 1. [What is Tlamatini](#what-is-tlamatini)
 2. [How it works](#how-it-works)
 3. [Get started in five steps](#-get-started--5-steps-to-a-cloud-powered-tlamatini)
-4. [Newest changes](#newest-changes--carried-by-the-v1600-tag)
-5. [Current release](#current-release--v1600)
+4. [Newest changes](#newest-changes--carried-by-the-v1620-tag)
+5. [Current release](#current-release--v1620)
 6. [The full capability list](#-the-full-capability-list)
 7. [Enable Tlamatini as a Blue-hat agent](#enable-tlamatini-as-a-blue-hat-agent)
 8. [Installation](#installation)
@@ -64,7 +64,7 @@
 
 ## What is Tlamatini
 
-Tlamatini is a **local-first AI development and automation environment** for Windows. It combines a conversational assistant, whole-project code operations, a visual workflow designer, **89 specialized agent types**, **109 built-in Multi-Turn tools**, hardware and firmware control, Unreal Engine and Blender automation, security tooling, and a universal External-MCP client in one application.
+Tlamatini is a **local-first AI development and automation environment** for Windows. It combines a conversational assistant, whole-project code operations, **in-canvas PDF reading with whole-document context**, a visual workflow designer, **89 specialized agent types**, **109 built-in Multi-Turn tools**, hardware and firmware control, Unreal Engine and Blender automation, security tooling, and a universal External-MCP client in one application.
 
 “Local-first” describes **where control lives**: the application, workflow canvas, database, configuration, credentials, agent code, project access, and small embedding model run under your control on your machine. It does **not** mean that Tlamatini was designed as a local-model-only assistant. Its complete reasoning and orchestration experience was designed and coded primarily around the larger **cloud models exposed through Ollama**.
 
@@ -208,9 +208,28 @@ Done — tick **Multi-Turn** in the chat toolbar and put Tlamatini to work.
 
 ---
 
-## Newest changes — carried by the v1.60.0 tag
+## Newest changes — carried by the v1.62.0 tag
 
-**The whole chain of visual agents got better at once.** Tlamatini's document family now has three members instead of two: **PPTXer** joins PDFer and LaTeXer and builds real, editable PowerPoint decks from an answer, a Markdown outline or JSON — with 36 named looks, 17 font pairings, and, most importantly, text that is *measured* before it is placed, so a long paragraph continues onto a new slide instead of being quietly cut off. **PDFer** gained **24** explicit visual identities in five families — playful, cyberpunk, cosmic, electronics, and Tlamatini's own — on top of the 20 designs it already chooses from the content itself. **LaTeXer** gained **30** signature styles in six families; ask for the list with `list_styles` and it answers without needing LaTeX installed at all.
+**Open a PDF straight in Tlamatini's canvas — and then hand her the whole document.**
+
+Until now the canvas held code and text. Now you can press **Open**, pick a **PDF**, and it appears right there beside the chat: every page, with text you can select, page navigation, zoom, fit-to-width, rotation and search, behaving the way you expect a PDF reader to behave. A password-protected file asks for its password inside the viewer. The buttons you already know keep working on it — **Copy** lifts the text out of every page, **Save As** hands you the original file back untouched, **Reopen** swaps in a different one, **Clear canvas** puts it away.
+
+Opening a PDF sends nothing anywhere. The viewer reads the file in pieces directly from your disk as you scroll, so there is **no size limit and no page limit** on Tlamatini's side — a sparse 256 MB file and a jump to page 10,001 are both in the test suite. Nothing is uploaded, and **no AI model is called, simply because you opened something**.
+
+**Then there is the part that matters: _Use as context_.** Press it and Tlamatini takes in the *whole* document — not a snippet — and can answer questions about it for the rest of the conversation. A dialog appears first, and it asks you exactly one question: **Process images?**
+
+- **Left unticked — which is how it starts, every single time —** she reads the selectable text only. Fast, private, and it needs no vision model configured at all.
+- **Ticked**, she also renders every page as a picture and pulls out every embedded image, then looks at each one with her **Image-Interpreter** — the same two-models-and-a-referee vision pipeline she already uses on screenshots — so she can read scans, charts, tables and diagrams that have no text layer at all.
+
+**Nothing starts until you press Continue.** While it runs you get four honest progress rows — bytes uploaded, pages extracted, images analysed, context loaded — a real elapsed clock, and a **Cancel** that actually stops the work instead of just hiding the window. The last row stays indeterminate rather than inventing a percentage nobody could know. If some images fail to analyse, **she tells you they failed** instead of quietly claiming they all succeeded. And if you hand her a scan with no text layer while Process images is unticked, she says so and suggests ticking it, rather than loading an empty document and pretending she read it.
+
+Your file stays yours: it is processed by the Tlamatini server on your own machine, and a **PDF password is used to open the document and is never written to disk, never into the context text, and never into the log.**
+
+The viewer is Mozilla's **PDF.js 6.3.289**, vendored into the repository under its unmodified Apache-2.0 licence so it runs with **no npm install and no CDN at runtime** — reproduce the exact bundle with `python scripts/vendor_pdfjs.py`, which verifies SHA-512 before unpacking. Extraction reuses the **PyMuPDF** Tlamatini already shipped, so the whole feature added **no new Python dependency**. It arrives with its own test suite driving real Chromium against the real application markup — first/middle/last pages, zoom, rotation, resize, original-byte saves, scanned and password-protected files, progress, cancellation and retry — and those tests refuse to let the page fetch a single asset from the internet. Full contract: [PDF canvas and document context](docs/pdf-canvas.md).
+
+---
+
+**Carried from the v1.60.0 tag — the whole chain of visual agents got better at once.** Tlamatini's document family now has three members instead of two: **PPTXer** joins PDFer and LaTeXer and builds real, editable PowerPoint decks from an answer, a Markdown outline or JSON — with 36 named looks, 17 font pairings, and, most importantly, text that is *measured* before it is placed, so a long paragraph continues onto a new slide instead of being quietly cut off. **PDFer** gained **24** explicit visual identities in five families — playful, cyberpunk, cosmic, electronics, and Tlamatini's own — on top of the 20 designs it already chooses from the content itself. **LaTeXer** gained **30** signature styles in six families; ask for the list with `list_styles` and it answers without needing LaTeX installed at all.
 
 The agents that touch your desktop were tightened in the same pass. **Mouser** now works in coordinates you state explicitly — the physical screen, a window, or a screenshot — instead of leaving anyone to guess which space a number belongs to; **Keyboarder** binds every keystroke to a window it has verified is really in front; and **Shoter** publishes the exact rectangle it captured, so a click worked out from a screenshot lands where the picture said it would. One honesty rule runs through all three: **`input_sent` means the click or keystroke was delivered, not that the application accepted it** — so a failed or interrupted step must be looked at before it is replayed. **FlowCreator** now chooses from all 89 installed agents and validates the flow it drew before publishing it.
 
@@ -246,11 +265,13 @@ Two fixes ship together. The console is now written on its **own background thre
 
 ---
 
-## Current release — v1.60.0
+## Current release — v1.62.0
 
-The newest annotated tag is **`v1.60.0`**, created on 2026-09-15 and resolving to commit **`cef3995`** ("Release v1.60.0 Entire chain of visual agents really enhanced!.") — local `main` and `HEAD` **are** that commit on a clean tree, so `git describe --tags` reports a bare `v1.60.0` and source-mode version resolution reports plain `1.60.0`. Runtime identity still comes from Git/build metadata (`agent/version.py::get_version()`, `GET /agent/version/`), never from this prose.
+The current release is **`v1.62.0`**. It carries the PDF canvas and whole-document context described above, on top of the visual-agent work of the v1.60.0 line.
 
-This tag carries the visual-agent work described above. It reached you through three earlier tags in the same line — **`v1.52.0`** (the new PPTXer agent), **`v1.52.2`** (PDFer's and PPTXer's style collections) and **`v1.52.3`** (LaTeXer's) — before `v1.60.0` gathered them together with the desktop-control and flow-contract tightening.
+Runtime identity always comes from Git/build metadata — `agent/version.py::get_version()` and `GET /agent/version/` resolve the number from the annotated tag at build time, and the release folder `dist/Tlamatini_Release_v1.62.0/` is named from the same source — never from this prose. Tlamatini's version string deliberately never carries a `.devN`, `+gSHA` or `.dirty` suffix; it always reports the base tag (`VERSIONING.md`). The preceding tags in this line are **`v1.61.0`** (2026-09-16) and **`v1.60.0`** (2026-09-15, commit `cef3995`, "Entire chain of visual agents really enhanced!").
+
+The preceding **`v1.60.0`** tag, created 2026-09-15 at commit **`cef3995`** ("Release v1.60.0 Entire chain of visual agents really enhanced!."), carries the visual-agent work described above. It reached you through three earlier tags in the same line — **`v1.52.0`** (the new PPTXer agent), **`v1.52.2`** (PDFer's and PPTXer's style collections) and **`v1.52.3`** (LaTeXer's) — before `v1.60.0` gathered them together with the desktop-control and flow-contract tightening.
 
 The **`v1.51.9`** tag before them carried the sampler repair and the VOICE COMMANDS catalog section, both described above, alongside an uninstaller that now refuses to run while Tlamatini is still up and never deletes your own content, and a fix for `chat_agent_run_wait`, which used to burn its entire timeout instead of returning the moment the run finished.
 
@@ -374,6 +395,7 @@ Everything Tlamatini can do, grouped:
 - **Executer / Pythonxer** — run shell commands and gated Python.
 - **Gitter** — full git control. **Googler** — resilient two-tier search + extraction: plain-HTTP server-rendered routes first, then visible Chrome/bundled Chromium across seven browser routes, plus a structured Google-dork builder, lawful-source presets, grouped site/filetype filters, and `links_only` output for downstream file retrieval.
 - **Hybrid RAG** — FAISS + BM25 retrieval, metadata extraction, context budgeting, grounded in your codebase.
+- **PDF in the canvas** — open a `.pdf` beside the chat in a vendored **Mozilla PDF.js 6.3.289** viewer (no npm, no CDN, Apache-2.0): every page, text selection, zoom, fit, rotation, in-viewer passwords, **Copy** the text of every page and **Save As** the original bytes. Reading it uploads nothing and calls no model, and there is no file-size or page-count cutoff. **Use as context** then feeds the *whole* document to the chat: the optional **Process images** box (unticked by default, and nothing runs until you press Continue) adds page rendering, embedded-image extraction and **Image-Interpreter** vision for scans, charts and diagrams. Honest progress, a Cancel that really cancels, partial image failures reported rather than hidden, and passwords never written to disk, context or log. [Full contract](docs/pdf-canvas.md).
 - **Skills** — `SKILL.md` packages: code-review, security-audit, kali-pentest, flow-making, skill-creator, summarize, audit/lint/refactor helpers, and integration stubs (GitHub, Gmail, Slack, Jira, Notion, Todoist, Trello, Weather).
 
 **🛡️ Security**
@@ -519,7 +541,7 @@ See **[the full docs](https://github.com/XAIHT/Tlamatini/blob/main/BookOfTlamati
 
 ## Tech stack
 
-Python 3.12 · Django 5.2.4 · Django Channels (Daphne ASGI) · LangChain / LangGraph · FAISS + rank-bm25 · Ollama / Anthropic Claude / Qwen vision · SQLite · PyInstaller. **Platform: Windows 10/11.**
+Python 3.12 · Django 5.2.4 · Django Channels (Daphne ASGI) · LangChain / LangGraph · FAISS + rank-bm25 · Ollama / Anthropic Claude / Qwen vision · SQLite · Mozilla PDF.js 6.3.289 (vendored, Apache-2.0) · PyMuPDF · PyInstaller. **Platform: Windows 10/11.**
 
 ---
 

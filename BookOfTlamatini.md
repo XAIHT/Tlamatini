@@ -155,6 +155,94 @@ If you only have ten minutes, read Part I §3–§7 (install + first login), the
 
 ---
 
+## Reading a PDF: open it in the canvas, then hand her the whole document
+
+### The canvas learned to read
+
+For its whole life the canvas on the right of the chat held one kind of thing: text. Code you loaded, code Tlamatini wrote, a file you opened to look at. Anything that was not text had to be *described* to her rather than *shown* to her.
+
+Since **2026-09-16** it holds PDFs as well. Press **Open**, pick a `.pdf`, and the document appears in the canvas — the real document, not an extracted approximation of it. Every page is there. You can select text with the mouse, jump to a page, zoom, fit to width, fit the whole page, rotate, scroll continuously or one page at a time, and search inside it. If the file is password-protected, the viewer asks you for the password itself.
+
+The buttons above the canvas keep the meanings they always had:
+
+| Button | What it does to a PDF |
+|---|---|
+| **Copy** | Lifts the selectable text out of *every* page. If the file is a scan with no text layer, it says so and explains that OCR is needed — it does not hand you an empty string and let you think the document was blank. |
+| **Save As** | Writes the **original PDF bytes** back out, untouched. |
+| **Reopen** | Swaps in a different file. If the current one was already loaded as context, the replacement is prepared *before* the context is rebuilt, and cancelling that preparation leaves your previous context intact. |
+| **Clear canvas** | Puts the document away and shuts down its background worker. |
+
+### Nothing leaves your machine just because you opened it
+
+This is worth being precise about, because “open a PDF in a web page” normally means “upload a PDF”.
+
+It does not here. The viewer reads the file **in slices, straight off your disk**, as you scroll. The document is never copied whole into memory and never sent anywhere. That has a pleasant consequence: **Tlamatini imposes no file-size limit and no page-count limit.** The test suite opens a sparse 256 MB file and navigates to page 10,001, and both work — past ten thousand pages the viewer switches itself to single-page scrolling, because browsers cannot scroll an arbitrarily tall page, and every page stays reachable. What limits you is your own machine's memory and disk, not a number somebody picked.
+
+And **no AI model is called merely because a PDF is on the screen.** Opening one costs nothing at all.
+
+### “Use as context” — the button that changes what she knows
+
+The canvas has always had a **Use as context** button. On a PDF it means what you would hope: Tlamatini takes in the **whole document** — not the page you are looking at, not a snippet — and can answer questions about it for the rest of the conversation.
+
+Press it and a dialog opens before anything happens. It shows the filename, the size, an elapsed clock, and asks you exactly one question: **Process images?**
+
+**It starts unticked. Every single time.** That is deliberate, and it is the difference between two quite different jobs:
+
+- **Unticked — text only.** She reads the selectable text of every page. No page is rendered, no image is extracted, no vision model is contacted. It is fast, it is private, and it works on a machine with no vision model configured at all. This is the right choice for a report, a manual, a paper, a contract — anything typed.
+- **Ticked — text *and* pictures.** She additionally renders every page as an image, pulls out every unique embedded image, and hands each one to her **Image-Interpreter**: the same two-models-in-parallel-plus-a-referee vision pipeline she already uses on your screenshots, running from its own saved configuration, with a prompt written for documents — read the text in the image, interpret the chart, the table, the diagram, and *say plainly when you are unsure*. This is the choice for a scan, a slide deck exported to PDF, an engineering drawing, anything where the meaning lives in the pictures.
+
+**Nothing starts until you press Continue.** Cancel, Escape or closing the dialog before that point does exactly nothing: no upload, no extraction, no analysis, no background job, and no change to whatever context you already had.
+
+### Watching it work, and stopping it
+
+Once you press Continue you get four progress rows, and they are honest ones: **bytes uploaded**, **pages extracted**, **images analysed**, **context loaded**. In text-only mode the image row simply says *Skipped* rather than pretending to do something. The clock starts when you press Continue, not while the dialog sat waiting for you. The final row stays indeterminate until the server confirms it is done — it does not invent a percentage or an estimated time that nobody could actually know.
+
+**Cancel really cancels.** It aborts the browser's requests and signals the background worker, which checks between upload chunks, between pages and between image calls. One honest caveat: a vision request that is already in flight may finish before the cancellation reaches it — the configured engine has its own request timeout. Once the context is actually loading, the button becomes **Close**, and the ordinary chat status keeps you informed.
+
+If the work succeeds the dialog closes itself. If it fails it stays open with its error, so you are never left guessing.
+
+### What she will and will not claim
+
+Three promises are built into this feature, and they are the reason to trust it:
+
+1. **Partial image analysis is reported, never hidden.** Every image keeps its own report. If four figures out of thirty could not be read, the dialog says the analysis was incomplete instead of quietly claiming all thirty succeeded.
+2. **A scan with no text is refused, not faked.** Hand her a photographed document with *Process images* unticked and she explains that there is no selectable text and suggests ticking the box — rather than loading an empty document and then answering your questions about it. On a mixed document, the pages that had no text layer are marked in the index.
+3. **A failed context load is reported separately, and you can retry.** Extraction succeeding and the context loading are two different events, and they are told apart.
+
+### Where it is kept, and your password
+
+Each prepared document becomes a private package under the runtime agent root, at `context_files/pdf_canvas/<your-user-id>/<document-id>/`: the `source.pdf`, a `document.txt` holding the complete extracted text, and — when you enabled images — the page previews, the extracted images and an `.analysis.txt` report beside each one. Successful packages stay so the context can be restored in a later session. A cancelled or failed preparation **deletes its own half-finished package**, and the upload staging file under Tlamatini's own `Temp` folder is removed when the job ends.
+
+**A PDF password is used in memory to open the document and is written nowhere** — not into browser storage, not into the context text, and not into `tlamatini.log`.
+
+Text-only and image-enabled preparations are cached **separately**, so changing that checkbox can never silently reuse a result prepared the other way.
+
+### What it is made of
+
+The viewer is **Mozilla PDF.js 6.3.289**, vendored into the repository with its unmodified Apache-2.0 licence — the API, the worker, the viewer, the character maps, the standard fonts, the annotation images, the ICC profile and the WebAssembly decoders. That means rendering needs **no npm install and no CDN at runtime**; nothing is fetched from the internet to draw your document. You can reproduce the exact pinned bundle yourself:
+
+```powershell
+python scripts/vendor_pdfjs.py
+```
+
+It verifies SHA-512 integrity before extracting an explicit subset of files.
+
+Extraction on the server side uses **PyMuPDF**, which Tlamatini already shipped, so this whole feature added **no new Python dependency**. The backend is four small modules — `pdf_context.py` (extraction, private packages, signed context tokens), `pdf_image_analysis.py` (the adapter to the real Image-Interpreter engine), `pdf_context_jobs.py` (a serial background queue with cancellation) and `pdf_context_views.py` (prepare / status / cancel, behind the existing login, CSRF and method checks). The handoff into the retrieval chain is a **user-bound signed token**, so one account's prepared document cannot be handed to another.
+
+Image-Interpreter is **reused, not re-implemented**: its pipeline builder was made import-safe so the PDF backend can call it directly, while running it as a pool agent still does its own logging and process setup exactly as before.
+
+### How it was tested
+
+The browser suite drives **real Chromium** against the application's real markup, real modules and real PDF.js, on an isolated HTTP server, with generated PDF fixtures and genuine extraction and background jobs. It covers the first, middle and last pages; zoom, rotation and resizing; saving the original bytes; copying; handing the document to context; switching between a PDF and a text file; scanned files; password-protected files; a sparse 256 MB file read in ranges; navigating to page 10,001; the progress dialog; cancellation; and retrying. It also **rejects any request for an external asset**, which is how “no CDN” is kept true rather than merely intended. Set `PDF_CANVAS_HEADED=1` to watch it run.
+
+```powershell
+python -m pytest Tests/test_pdf_canvas_browser.py Tests/test_pdf_canvas_assets.py -q
+python Tlamatini/manage.py test agent.test_pdf_context agent.test_image_interpreter_agent --noinput
+```
+
+The complete contract — every guarantee, limit and file path — lives in [docs/pdf-canvas.md](docs/pdf-canvas.md).
+
+---
 ## Voice commands: your words become the prompt
 
 ### The microphone is the keyboard
@@ -808,6 +896,8 @@ Most of the time, you want the bot to answer questions about *your* code, not ge
 | **Set file as context** | Loads a single file (smaller scope, faster). |
 | **Set canvas as context** | Uses the code currently shown in the right-hand canvas as context (handy for iterative editing). |
 | **Clear context** | Removes the current context and rebuilds the chain empty. |
+
+> **PDFs take a different door.** A PDF is not loaded from this menu: you open it in the canvas with **Open** and then press the canvas's own **Use as context** button, which reads the whole document (and, if you ask, looks at its pictures). See *Reading a PDF: open it in the canvas, then hand her the whole document* near the front of this book.
 
 After you set a context, the top of the page shows a green banner with the path. Now ask:
 
@@ -2502,14 +2592,14 @@ Pre-releases use the standard SemVer suffixes — `2.0.0-alpha.1`, `2.0.0-beta.1
 
 ```powershell
 git status                                          # clean tree, on main
-git tag -a v1.60.0 -m "Release 1.60.0: <one-liner>"   # annotated tag
-git push origin v1.60.0
+git tag -a v1.62.0 -m "Release 1.62.0: <one-liner>"   # annotated tag
+git push origin v1.62.0
 python build.py
 python build_uninstaller.py
 python build_installer.py
 ```
 
-All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.60.0/`, named for the version so the file you hand to a user is unambiguous before they even unzip it. The newest reachable tag is `v1.60.0`, so the bare runtime version resolves to `1.60.0`; the tag peels to `cef3995`, which is `HEAD` itself, so `git describe --tags --always` reports a clean `v1.60.0` with no distance suffix.
+All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.62.0/`, named for the version so the file you hand to a user is unambiguous before they even unzip it. The current release is `v1.62.0`, so the bare runtime version resolves to `1.62.0`. Tlamatini deliberately never puts a `.devN`, `+gSHA` or `.dirty` suffix into its version string — it always reports the base tag, which is the designed behaviour described in `VERSIONING.md`. That is exactly why the five commands above start with `git status` on a clean tree: a release cut from a dirty tree would ship a version number that says nothing about what is actually inside it.
 
 ### Where the version shows up in a running install
 
@@ -2517,7 +2607,7 @@ The build computes the version once and bakes it into four surfaces:
 
 - **`Tlamatini/agent/_version.py`** — generated at build time, gitignored, read at runtime by `agent.version.get_version()`. This is what every in-process surface reads.
 - **Win32 `VERSIONINFO`** — `Tlamatini.exe`, `Installer.exe`, and `Uninstaller.exe` all carry the version in their resource fork. Right-click the file → Properties → Details → ProductVersion.
-- **Release folder name** — `dist/Tlamatini_Release_v1.60.0/`.
+- **Release folder name** — `dist/Tlamatini_Release_v1.62.0/`.
 - **Runtime surfaces** — the About dialog renders `Tlamatini v{{ version }}` (Django context processor); after the release tag/build, the startup banner prints `--- [VERSION] Tlamatini 1.60.0` to both the console and `tlamatini.log`; `GET /agent/version/` returns `{"version":"1.60.0","commit":"abc1234","date":"…","source":"generated"}` as an **open** endpoint suitable for a health-check.
 
 If the four surfaces ever disagree, your build was run with a stale `$env:TLAMATINI_VERSION` or against an out-of-date `_version.py` — clear them and re-run `build.py`.
@@ -3708,6 +3798,7 @@ The other firmware agents make Tlamatini an *embedded engineer*. ESPHomer makes 
 
 ### Recent Updates
 
+- **PDF in the canvas, and the whole document as context — 2026-09-16 (`v1.62.0`)** — The chat canvas now opens `.pdf` files in a vendored **Mozilla PDF.js 6.3.289** viewer (Apache-2.0, no npm and no CDN at runtime; reproduce it with `python scripts/vendor_pdfjs.py`, which checks SHA-512 first). Pages, text selection, navigation, zoom, fit, rotation and in-viewer passwords all work; **Copy** returns the text of every page and **Save As** returns the original bytes. Reading is local — `File.slice()` ranges off the user's disk — so there is no file-size or page-count cutoff, and opening a PDF uploads nothing and calls no model. **Use as context** prepares the complete document: an authenticated, CSRF-protected upload, then a background job that uses the already-shipped **PyMuPDF** to extract every page's text, plus — only when the **Process images** box is ticked, which it never is by default — every embedded image and a rendered preview of every page, each analysed by the existing **Image-Interpreter** engine (reused, not duplicated) with a document-specific OCR/chart/table prompt. A **user-bound signed token** hands the resulting UTF-8 index to the normal contextual RAG path. Nothing runs until **Continue**; four progress rows report real bytes, pages, images and loading; **Cancel** aborts the browser requests and signals the worker; partial or failed image analyses are reported rather than hidden; a scan with no text layer is refused with an explanation instead of loading an empty document. Packages live at `context_files/pdf_canvas/<user-id>/<document-uuid>/` and delete themselves on failure or cancellation; **PDF passwords are used in memory only and never reach storage, context text or the log.** New backend: `pdf_context.py`, `pdf_image_analysis.py`, `pdf_context_jobs.py`, `pdf_context_views.py`; new frontend: `agent_page_pdf.js`, `pdf_canvas_viewer.js`, `pdf_context_progress.js`, `pdf/canvas.html`. **No new Python dependency.** Frozen builds explicitly collect the PDF backend and PyMuPDF (`pyinstaller_hooks/hook-pymupdf.py`), and Django/WhiteNoise serve `.mjs` as JavaScript and `.wasm` as WebAssembly even where the Windows registry disagrees. Tests: `Tests/test_pdf_canvas_browser.py` and `Tests/test_pdf_canvas_assets.py` (real Chromium, real markup, generated fixtures, external-asset requests rejected) plus `agent/test_pdf_context.py`. Contract: [docs/pdf-canvas.md](docs/pdf-canvas.md).
 - **PDFer: 24 signature styles and measured cover/layout improvements — 2026-09-15** — Adds `style` independently of the existing 20 `nuance` themes: six playful/nursery, four cyberpunk, five cosmic, four electronics and five Tlamatini identities. `mode: styles` returns the catalog without a PDF; `style` and `style_family` join the structured output contract. Original vector cover art respects existing decoration limits. Opaque measured cover text, long-title continuation, footer fitting, small-text contrast, sparse-font face mapping, deterministic ornament seeds/cache keys and a table-width rounding margin improve the rendered result. Development validation: **130 PDFer tests passed; all 24 two-page samples passed their audits** (48 pages, no overlap, bleed, blank-page or contrast findings). Preview PDFs, PNGs, gallery and atlas were removed after inspection and are reproducible ignored outputs. [Source guide and commands](Tlamatini/agent/agents/pdfer/STYLES.md).
 
 - **PPTXer styles and visibility — 2026-09-15** — Added 12 explicit styles (36 named treatments total, 17 font pairings), repaired full-text measurement/pagination and native audit handling, and retained reproducible checks after removing generated assets. Recorded validation: 126 regressions; 151 new-style native slides with 252 complete 256-character checks and zero findings. See [scope and reproduction commands](Tlamatini/agent/agents/pptxer/STYLES.md). This entry assigns no release tag.

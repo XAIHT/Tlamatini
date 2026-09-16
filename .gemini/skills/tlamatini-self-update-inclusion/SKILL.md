@@ -33,7 +33,7 @@ sweep makes that class of bug impossible to ship silently.
 | **`Tlamatini/agent/self_update.py`** | In-app updater: checks GitHub, downloads + unzips + stages the new build, hands off to the PowerShell swapper. Its **docstring preserve list** documents what survives. |
 | **`apply_update.ps1`** (repo root) | The external file-swapper. Its **`$Preserve` array** is the *authoritative, executed* contract for what is kept vs replaced. Renames `agents → agents_backup`, then full-replaces everything not preserved. |
 
-> `apply_update.ps1` must itself be shipped by `build.py` (`support_files`) so a self-updated
+> `apply_update.ps1` must itself be shipped by `build.py` (`required_file_copies`) so a self-updated
 > install carries the *next* updater. The pipeline is self-hosting — this is invariant #1's
 > most easily-forgotten case.
 
@@ -49,8 +49,8 @@ Every asset reaches users through **exactly one** of these. When you add an asse
 | 1 | **PyInstaller import graph → PYZ** | every `.py` reachable from the import graph (incl. lazy `from . import x`) — views, tools, registries, `self_update.py`, **migrations** | ✅ yes, if imported/in a collected package |
 | 2 | **`--add-data` list** | whole trees: `agent/templates`, `agent/static`, `staticfiles`, `agent/skills_pkg`; single files: `config.json`, `prompt.pmt`, `Tlamatini.md`; dependency data files | ✅ for files *inside* an already-listed tree; ❌ for a **new** top-level tree |
 | 3 | **`optional_dir_copies` → install root** | `agent/images`, **`agent/agents`** (the whole agent-template tree → new agents auto-ship), `agent/skills_pkg` | ✅ new agents/skills inside these dirs |
-| 4 | **`optional_file_copies` / `required_file_copies` → install root** | `config.json`, `prompt.pmt`, `Tlamatini.md`; `README.md`, `agents_descriptions.md` | ❌ a **new** root-level required file must be added by hand |
-| 5 | **`support_files` → install root** | the `.ps1` helpers (`Tlamatini.ps1`, `register_flw`/`unregister_flw`, `CreateShortcut`/`RemoveShortcut`, **`apply_update.ps1`**), `Tlamatini.ico`, `CreateShortcut.json`, `cat_art.py` | ❌ a **new** root-level support file must be added by hand |
+| 4 | **`optional_file_copies` / `required_file_copies` → install root** | `config.json`, `prompt.pmt`, `Tlamatini.md`; required `README.md`, `agents_descriptions.md`, `apply_update.ps1`, `preserved_user_state.json`, standalone `sqlite_copy.py` | ❌ a **new** root-level required file must be added by hand |
+| 5 | **`support_files` → install root** | the `.ps1` helpers (`Tlamatini.ps1`, `register_flw`/`unregister_flw`, `CreateShortcut`/`RemoveShortcut`), `Tlamatini.ico`, `CreateShortcut.json`, `cat_art.py` | ❌ a **new** root-level support file must be added by hand |
 | 6 | **bundled runtimes + deps** | carried Python, `jre`, `git`, `ms-playwright`; PyInstaller **hidden imports**, **`--collect-all`** (e.g. `ffpyplayer`); **`requirements.txt`** | ❌ a **new** runtime / hidden import / collect-all / pip dep must be added by hand |
 | 7 | **bespoke `shutil.copytree` block → install root** | **`security/`** (Angela's Blue-hat operator toolkit: `tlamatini_defender.ps1`, `tlamatini_whitelist_v2.ps1`, the `.bat` UAC launchers, `README.md`, and `automated_tests_of_security_assets.py`), copied near the end of the build with `ignore_patterns("security_logs", "*.log", "__pycache__")` | ✅ new files *inside* `security/`; ❌ a **new** bespoke tree needs its own block |
 | — | **DB delivery** | `build.py` step 8a runs `migrate`, so the shipped `db.sqlite3` carries every migration's seeded rows (new agent row, `chat_agent_*` tool row, demo prompts) | ✅ rows ship; ⚠️ see the DB special case |
@@ -71,8 +71,9 @@ automatic, which is exactly why a new *agent* needs no build edit but a new *roo
 
 ## How an update swaps — preserve vs replace
 
-`apply_update.ps1` does: validate staged build → kill running app → `agents → agents_backup`
-→ **delete** old install except `$Preserve` → **move in** new build except `$Preserve` → relaunch.
+`apply_update.ps1` does: validate staged build and backup helpers → stop running app
+→ verify a WAL-aware SQLite backup → `agents → agents_backup` → **delete** old install
+except `$Preserve` → **move in** new build except `$Preserve` → relaunch and migrate.
 
 So every top-level entry is in one of three buckets:
 
@@ -105,13 +106,13 @@ both preserve lists will be **wiped on every update** (silent user-data loss). C
 or `python`/`jre`/`git`) must **NOT** be preserved, or users get stuck on stale code forever.
 
 ### Invariant 4 — DB DELIVERY: new migration rows actually reach users
-Today `db.sqlite3` is **REPLACED** (not in `$Preserve`), so the freshly-migrated build DB —
-with the new agent/tool/prompt rows — lands. ✅ new rows arrive, ⚠️ **but the user's chat
-history + custom Tool/Mcp/Agent toggles are reset every update.** If `db.sqlite3` is ever moved
-into `$Preserve` to fix that, you MUST add a **first-run `migrate`** (apps.ready / manage.py /
-the `DB/ToLoad` swap) or new migrations will silently never apply. Pick one and keep it coherent
-— never "preserve the DB" without a migrate path. (See the DB note in the Blenderer/self-update
-review.)
+The live database sits inside replaced `_internal/`, but its data is preserved
+through `DB/ToLoad`. After stopping the app, carried Python runs the shipped
+`sqlite_copy.py` helper to produce a verified online backup including committed WAL
+pages. Only success permits the swap and creates `post_update_migrate.flag`.
+The next startup restores that database and applies new migrations. Never replace
+this with a plain copy of `db.sqlite3`, and never preserve the old DB without
+the first-launch migration path.
 
 ---
 
@@ -188,8 +189,8 @@ check needs a `python build.py` run."
 | New asset | Carry via (build.py) | Preserve on update? |
 |---|---|---|
 | New **agent** (`agent/agents/<x>/`) | mech 3 (`optional_dir_copies` agents) + mech 1 (PYZ) — **automatic** | No (arrives via `agents` swap) |
-| New **migration** (seeds rows) | mech 1 (PYZ) + step-8a `migrate` → shipped `db.sqlite3` | No (DB replaced — invariant 4 caveat) |
-| New **repo-root `.ps1`/script** (e.g. `apply_update.ps1`) | mech 5 `support_files` — **manual** | No (app code, replaced) |
+| New **migration** (seeds rows) | mech 1 (PYZ) + build-time `migrate`; first-launch `migrate` applies it to the preserved user DB | User data survives; new schema/seed changes are applied |
+| New **repo-root `.ps1`/script** | mech 5 `support_files`, or mech 4 `required_file_copies` for mandatory helpers such as `apply_update.ps1` — **manual** | No (app code, replaced) |
 | New **repo-root required data file** | mech 4 `*_file_copies` — **manual** | No |
 | New **top-level source tree** (new package dir to ship as data) | mech 2 `--add-data` / mech 3 `optional_dir_copies` — **manual** | No |
 | New **static/template/skill** file (inside existing tree) | mech 2 / 3 — **automatic** | No |
@@ -219,13 +220,28 @@ The sweep script flags exactly this.
   **and** the `self_update.py` docstring list (keep them identical), and ship it empty via
   `build.py` `empty_dirs`.
 - **Stop preserving stale app code** → remove it from `$Preserve` (+ docstring).
-- **DB** → if preserving `db.sqlite3`, wire a first-run `migrate`; if replacing it (current),
-  leave it out of `$Preserve` and keep the docstring honest ("the live db.sqlite3 is replaced;
-  the `DB/` swap folder is preserved").
+- **DB** → preserve committed data with verified SQLite online backup into `DB/ToLoad`, then restore it and run first-launch `migrate`. Keep `db.sqlite3` out of the top-level preserve set because it lives inside replaced `_internal/`.
 
 ---
 
 ## Done criteria (all must hold)
+
+### PDF and database-helper carrier gate (2026-09-16)
+
+The PDF backend and Image-Interpreter engine run inside the frozen web process.
+Keep their explicit hidden imports / archive requirements and
+`pyinstaller_hooks/hook-pymupdf.py`; the separate carried Python cannot satisfy
+imports inside `Tlamatini.exe`. PDF.js assets are carried by the static trees,
+and `context_files/pdf_canvas/` survives through the existing preserved
+`context_files` directory.
+
+`apply_update.ps1`, `preserved_user_state.json` and standalone `sqlite_copy.py`
+are REQUIRED root assets, not warning-only support copies. The in-app updater
+prefers the incoming swap script so new preservation rules apply immediately.
+The swapper checks the backup helper/runtime before shutdown, requires verified
+online backup before changing application files, and uses carried Python with
+`-I` rather than a machine-installed interpreter. Keep helper source in the
+self-modify snapshot and `agent.sqlite_copy` in the frozen archive too.
 
 ### Frontend carrier gate (v1.48.13)
 

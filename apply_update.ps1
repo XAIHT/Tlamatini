@@ -8,7 +8,7 @@
 # Sequence:
 #   1. Validate the staged new build (must contain Tlamatini.exe).
 #   2. Close the running Tlamatini (and its child processes).
-#   3. Rename agents -> agents_backup (keeping ONE backup generation).
+#   3. Verify a WAL-aware database backup, then rename agents -> agents_backup.
 #   4. Delete the old install EXCEPT the preserved user-data set.
 #   5. Move the new build in EXCEPT the preserved set (so the user's
 #      config.json / DB / etc. are never overwritten).
@@ -91,7 +91,23 @@ try {
     if (-not (Test-Path -LiteralPath $InstallDir)) {
         throw "Install directory '$InstallDir' does not exist. Aborting."
     }
-    Write-Log "Staged build validated (Tlamatini.exe present)." "Green"
+    # Database preservation must be available before closing the running app.
+    # Prefer the staged helper/runtime so the swap uses the new release's code.
+    $backupPython = Join-Path $StagingDir "python\python.exe"
+    $backupHelper = Join-Path $StagingDir "sqlite_copy.py"
+    if (-not (Test-Path -LiteralPath $backupPython -PathType Leaf)) {
+        $backupPython = Join-Path $InstallDir "python\python.exe"
+    }
+    if (-not (Test-Path -LiteralPath $backupHelper -PathType Leaf)) {
+        $backupHelper = Join-Path $InstallDir "sqlite_copy.py"
+    }
+    $userDb = Join-Path $InstallDir "_internal\db.sqlite3"
+    if ((Test-Path -LiteralPath $userDb -PathType Leaf) -and
+        (-not (Test-Path -LiteralPath $backupPython -PathType Leaf) -or
+         -not (Test-Path -LiteralPath $backupHelper -PathType Leaf))) {
+        throw "Database backup helper or carried Python is missing. Aborting before closing Tlamatini."
+    }
+    Write-Log "Staged build and database-backup assets validated." "Green"
 
     # 2) Close the running Tlamatini and its whole process tree -- but NEVER
     #    this updater process. The updater is launched by self_update.py as a
@@ -139,7 +155,33 @@ try {
     Start-Sleep -Seconds 3
     Write-Log "Tlamatini closed." "Green"
 
-    # 3) Back up the old agents directory: agents -> agents_backup.
+    # 3a) Preserve the user's DATABASE across the update. The live db.sqlite3
+    #     lives INSIDE _internal\ (PyInstaller _MEIPASS), which step 4 deletes,
+    #     so the top-level $Preserve set cannot protect it. Use SQLite's backup
+    #     API to include committed WAL pages in one verified file, staged into
+    #     the preserved DB\ToLoad folder and flag a post-update migrate: on the
+    #     next launch manage.py's _apply_pending_db_swap restores it over the
+    #     freshly shipped DB, then _run_post_update_migrate_if_flagged applies
+    #     the new migrations (new agents / tools / demo prompts) to the user's
+    #     data -- so chat history + custom toggles are KEPT, not wiped.
+    if (Test-Path -LiteralPath $userDb) {
+        $toLoadDir = Join-Path $InstallDir "DB\ToLoad"
+        if (-not (Test-Path -LiteralPath $toLoadDir)) {
+            Invoke-WithRetry { New-Item -ItemType Directory -Path $toLoadDir -Force | Out-Null }
+        }
+        $backupTarget = Join-Path $toLoadDir "db.sqlite3"
+        & $backupPython -I $backupHelper $userDb $backupTarget
+        if ($LASTEXITCODE -ne 0) {
+            throw "Database backup failed. Application files have not been replaced; the original database is intact."
+        }
+        Set-Content -LiteralPath (Join-Path $InstallDir "DB\post_update_migrate.flag") -Value (Get-Date -Format o) -Encoding UTF8
+        Write-Log "Preserved your database including WAL commits -> DB\ToLoad and flagged a post-update migrate." "Green"
+    }
+    else {
+        Write-Log "No existing database at _internal\db.sqlite3 (fresh install?) -- skipping DB preserve." "Yellow"
+    }
+
+    # 3b) Back up the old agents directory: agents -> agents_backup.
     $agentsDir = Join-Path $InstallDir "agents"
     $agentsBak = Join-Path $InstallDir "agents_backup"
     if (Test-Path -LiteralPath $agentsDir) {
@@ -153,28 +195,6 @@ try {
     }
     else {
         Write-Log "No existing 'agents' directory to back up." "Yellow"
-    }
-
-    # 3b) Preserve the user's DATABASE across the update. The live db.sqlite3
-    #     lives INSIDE _internal\ (PyInstaller _MEIPASS), which step 4 deletes,
-    #     so the top-level $Preserve set cannot protect it. Instead copy it into
-    #     the preserved DB\ToLoad folder and flag a post-update migrate: on the
-    #     next launch manage.py's _apply_pending_db_swap restores it over the
-    #     freshly shipped DB, then _run_post_update_migrate_if_flagged applies
-    #     the new migrations (new agents / tools / demo prompts) to the user's
-    #     data -- so chat history + custom toggles are KEPT, not wiped.
-    $userDb = Join-Path $InstallDir "_internal\db.sqlite3"
-    if (Test-Path -LiteralPath $userDb) {
-        $toLoadDir = Join-Path $InstallDir "DB\ToLoad"
-        if (-not (Test-Path -LiteralPath $toLoadDir)) {
-            Invoke-WithRetry { New-Item -ItemType Directory -Path $toLoadDir -Force | Out-Null }
-        }
-        Invoke-WithRetry { Copy-Item -LiteralPath $userDb -Destination (Join-Path $toLoadDir "db.sqlite3") -Force }
-        Set-Content -LiteralPath (Join-Path $InstallDir "DB\post_update_migrate.flag") -Value (Get-Date -Format o) -Encoding UTF8
-        Write-Log "Preserved your database -> DB\ToLoad and flagged a post-update migrate." "Green"
-    }
-    else {
-        Write-Log "No existing database at _internal\db.sqlite3 (fresh install?) -- skipping DB preserve." "Yellow"
     }
 
     # 3c) Preserve the Blue-hat toolkit's EVIDENCE across the update.

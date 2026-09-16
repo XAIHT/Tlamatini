@@ -39,6 +39,7 @@ ships:
 | Knob | Controls |
 |---|---|
 | `EXCLUDED_DIR_NAMES` | directory names pruned everywhere (`.git`, `node_modules`, `build`, `dist`, `pools`, `staticfiles`, `Temp`, `Templates`, `agents_backup`, `updater`, `TlamatiniSourceCode`, …) |
+| `KEEP_DIR_PATHS` | exact source-directory exceptions, including PDF.js's shipped `vendor/pdfjs/build/` API and worker; other build outputs stay excluded |
 | `EXCLUDED_EXTENSIONS` | file types dropped (`.pdf/.pptx/.png/.mp4/...`, binaries, generated state). **`.ico`/`.wav`/`.svg` are deliberately KEPT** (build-required) |
 | `EXCLUDED_FILE_NAMES` | exact files dropped (`db.sqlite3`, `data.keys`, `settings.local.json`, `_version.py`, …) |
 | `EXCLUDED_FILE_GLOBS` | patterns dropped (`*.version.txt`, `*_log.*`) |
@@ -162,6 +163,22 @@ migration 0194's Deep Internet Research prompt, and the
 contact synchronization, but it must never copy `contacts.json`, `contacts.private.json`, a
 frozen-install contact book, or live External-MCP secrets. Verify current 88/66/108/29/197
 counts from the generated snapshot rather than copying prose counts.
+
+### PDF and update-helper carriage gate (2026-09-16)
+
+Keep the complete `Tlamatini/agent/static/agent/vendor/pdfjs/` tree, including
+`build/pdf.mjs`, `build/pdf.worker.mjs`, fonts, character maps, WASM decoders and
+licenses. The global `build` directory exclusion requires the exact
+`KEEP_DIR_PATHS` exception; file KEEP rules alone cannot defeat directory pruning.
+PDF backend/frontend files, `pyinstaller_hooks/hook-pymupdf.py`, the vendoring
+script and representative binary assets belong in `REQUIRED_SNAPSHOT_FILES`.
+
+The snapshot must also include `agent/sqlite_copy.py`, `apply_update.ps1` and
+`preserved_user_state.json`. The build carries the same SQLite helper as a
+standalone install-root script for the external updater. Snapshot generation
+errors and recorded copy failures must abort the build; never fall back to a
+stale static source tree. Generated rebuild instructions must require an explicit
+`TLAMATINI_VERSION`, since snapshots omit Git history and generated version files.
 
 ### Step 3 — fix every finding, re-run Step 0 until clean, eyeball the notes.
 
