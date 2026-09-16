@@ -414,3 +414,7 @@ private_data_audit_report.json
 # Regenerable PPTXer verification decks, renders, galleries, and reports.
 /artifacts/pptxer-visibility/
 /artifacts/pptxer-styles/
+
+# Reproducible LaTeXer style PDFs, rendered previews and QA report.
+/artifacts/latexer-styles/
+/output/pdf/latexer-style-atlas.pdf

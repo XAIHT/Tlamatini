@@ -905,6 +905,7 @@ class SectionEmissionTests(unittest.TestCase):
             'filename': '', 'page_count': 0, 'bytes': 0, 'passes': 0,
             'bibliography': 'none', 'errors': 0, 'warnings': 0, 'success': False,
             'status': 'error',
+            'style': '', 'style_family': '', 'style_mode': '', 'style_count': 0,
         }
         with _CaptureLog() as cap:
             m._emit_section(outcome, 'body')
@@ -977,7 +978,8 @@ class RegistryIntegrationTests(unittest.TestCase):
     def test_section_fields_are_promoted_to_the_tool_result(self):
         from agent.tools import _PROMOTE_SECTION_FIELDS_BY_TEMPLATE_DIR
         promoted = _PROMOTE_SECTION_FIELDS_BY_TEMPLATE_DIR['latexer']
-        for field in ('output_path', 'status', 'page_count', 'errors', 'success'):
+        for field in ('output_path', 'status', 'page_count', 'errors', 'success',
+                      'style', 'style_family', 'style_mode', 'style_count'):
             self.assertIn(field, promoted)
 
     def test_connection_url_resolves(self):

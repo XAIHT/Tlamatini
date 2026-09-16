@@ -1567,6 +1567,14 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
         });
     } else if (lower === 'latexer') {
         set('action', pairs.action);
+        set('style', pairs.style);
+        set('subtitle', pairs.subtitle);
+        set('style_mode', pairs.style_mode);
+        set('style_decoration', pairs.style_decoration);
+        set('predominant_color', pairs.predominant_color);
+        if (pairs.style_cover !== undefined && pairs.style_cover !== '') {
+            config['style_cover'] = (String(pairs.style_cover).toLowerCase() === 'true');
+        }
         set('tex_path', pairs.tex_path);
         set('project_dir', pairs.project_dir);
         set('main_file', pairs.main_file);

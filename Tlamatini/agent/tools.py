@@ -1490,6 +1490,7 @@ _PROMOTE_SECTION_FIELDS_BY_TEMPLATE_DIR: dict = {
         "output_path", "output_dir", "filename", "tex_path", "project_dir",
         "action", "engine", "distribution", "page_count", "bytes", "passes",
         "bibliography", "errors", "warnings", "success", "status",
+        "style", "style_family", "style_mode", "style_count",
     ),
     # PPTXer: the LLM must be able to quote the exact deck it just wrote, and
     # `layout_clean` + `ground_truth` are what tell it whether the slides were

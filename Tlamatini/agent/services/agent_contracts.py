@@ -163,7 +163,7 @@ _PARAMETRIZER_OUTPUT_FIELDS: dict[str, tuple[str, ...]] = {
     # {predominant_color} into a second PDFer so a multi-document report comes
     # out visually consistent instead of each part choosing its own palette.
     "pdfer": ("mode", "source_type", "output_path", "output_dir", "filename", "page_count", "bytes", "images_used", "engine", "nuance", "style", "style_family", "nuance_confidence", "nuance_source", "palette", "predominant_color", "background_mode", "font_pairing", "decorations", "overlaps", "layout_clean", "repairs", "status", "response_body"),
-    "latexer": ("action", "engine", "distribution", "tex_path", "project_dir", "output_path", "output_dir", "filename", "page_count", "bytes", "passes", "bibliography", "errors", "warnings", "success", "status", "response_body"),
+    "latexer": ("action", "engine", "distribution", "tex_path", "project_dir", "output_path", "output_dir", "filename", "page_count", "bytes", "passes", "bibliography", "errors", "warnings", "success", "status", "style", "style_family", "style_mode", "style_count", "response_body"),
     # PPTXer — the PRESENTATION composer. `layout_clean` + `ground_truth` are the
     # load-bearing pair: a downstream Forker branches on whether the deck was
     # verified against PowerPoint's own rendering, not merely written. Carrying

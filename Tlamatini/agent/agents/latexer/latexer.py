@@ -15,7 +15,7 @@
 #
 # WHY AN AGENT AND NOT AN EXTERNAL MCP
 # ------------------------------------
-# LaTeXer embeds — natively, in this one file — the COMPLETE capability surface of the
+# LaTeXer embeds — natively — the COMPLETE capability surface of the
 # `mcp-latex-server` MCP (create_latex_file / create_from_template / edit_latex_file /
 # read_latex_file / list_latex_files / validate_latex / get_latex_structure /
 # compile_latex) and goes well beyond it: whole-PROJECT compilation of a SET of .tex
@@ -30,6 +30,7 @@
 # self-contained (stdlib only: subprocess + shutil + glob + re + urllib), so it runs
 # identically in source and frozen builds and NEVER imports agent.* (a pool subprocess
 # has no sys.path back into the Django app).
+# The portable sibling design modules add 30 explicit styles to newly authored sources.
 #
 # THE ONE PREREQUISITE: MiKTeX  (https://miktex.org/download)
 # ----------------------------------------------------------
@@ -390,7 +391,7 @@ def _as_tribool(raw, default: str = "auto") -> str:
 # CONTRACT: actions, engines, templates
 # ========================================
 
-_ENV_ACTIONS = {"validate", "install"}
+_ENV_ACTIONS = {"validate", "install", "list_styles"}
 _AUTHOR_ACTIONS = {
     "create_file", "create_from_template", "edit_file", "read_file",
     "list_files", "validate_tex", "structure",
@@ -1391,6 +1392,9 @@ def _babel_line(language: str) -> str:
 
 
 def _render_template(name: str, config: dict) -> str:
+    design, styles = _style_modules()
+    if styles.normalise_style(_cfg(config, "style")):
+        return design.render_document(config, str(name or "article").strip().lower())
     tpl = _TEMPLATES.get(str(name or "article").strip().lower(), _TPL_ARTICLE)
     language = str(_cfg(config, "document_language", "en"))
     title = str(_cfg(config, "title")).strip() or "Untitled Document"
@@ -1435,6 +1439,9 @@ def _declared_packages(*texts) -> set:
 
 def _build_document(config: dict) -> str:
     """create_file: assemble a .tex from discrete parameters."""
+    design, styles = _style_modules()
+    if styles.normalise_style(_cfg(config, "style")):
+        return design.render_document(config)
     cls = str(_cfg(config, "documentclass", "article")).strip() or "article"
     opts = str(_cfg(config, "class_options")).strip()
     head = "\\documentclass[%s]{%s}\n" % (opts, cls) if opts else "\\documentclass{%s}\n" % cls
@@ -1494,6 +1501,48 @@ def _wrap_fragment(fragment: str, config: dict) -> str:
 # ========================================
 # THE COMPILER
 # ========================================
+
+def _style_modules():
+    """Sibling imports work in copied pools, frozen releases and importlib tests."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    if here not in sys.path:
+        sys.path.insert(0, here)
+    import latexer_design
+    import latexer_styles
+    return latexer_design, latexer_styles
+
+
+def _style_preflight(action: str, config: dict) -> list:
+    """Fail explicitly instead of ignoring a requested design on an existing source."""
+    if action not in {"create_file", "create_from_template", "scaffold_compile",
+                      "compile", "compile_project"}:
+        return []
+    try:
+        design, styles = _style_modules()
+        if not styles.normalise_style(_cfg(config, "style")):
+            return []
+        if action == "compile_project" or (action == "compile" and (
+                str(_cfg(config, "tex_path")).strip() or str(_cfg(config, "project_dir")).strip()
+                or _is_full_document(str(_cfg(config, "input_text"))))):
+            return ["style applies to newly generated documents. For a styled PDF use "
+                    "scaffold_compile with template/content, create_file, or compile with a "
+                    "bare input_text fragment. To compile an existing complete source, omit style."]
+        template = str(_cfg(config, "template", "article")).strip().lower() if action in (
+            "create_from_template", "scaffold_compile") else None
+        design.validate_design(config, template)
+    except ValueError as exc:
+        return [str(exc)]
+    return []
+
+
+def _record_style(config: dict, outcome: dict, notes: list) -> None:
+    _, styles = _style_modules()
+    theme = styles.build_theme(config)
+    if theme:
+        outcome.update(style=theme["id"], style_family=theme["family"], style_mode=theme["mode"])
+        notes.append("DESIGN: %s | %s | %s | decoration=%s" % (
+            theme["label"], theme["family"], theme["mode"], theme["decoration"]))
+
 
 def _engine_argv(tools: dict, config: dict, tex_name: str) -> list:
     """Build the engine command line.
@@ -1724,8 +1773,10 @@ def _preflight(action: str, config: dict, tools: dict) -> dict:
         fatals.append("Unknown action %r. Valid: %s." % (action, ", ".join(sorted(_ALL_ACTIONS))))
         return {"ok": False, "fatals": fatals, "warnings": warnings}
 
-    if action in ("validate", "install"):
+    if action in ("validate", "install", "list_styles"):
         return {"ok": True, "fatals": [], "warnings": warnings}
+
+    fatals.extend(_style_preflight(action, config))
 
     # ---- a real TeX distribution, for the actions that typeset -------------
     if action in _NEED_ENGINE and not tools["latex"]:
@@ -1799,7 +1850,7 @@ def _preflight(action: str, config: dict, tools: dict) -> dict:
     if action == "compile" and tex_path and not os.path.isfile(tex_path):
         fatals.append("tex_path does not exist: %s" % tex_path)
 
-    if action == "create_from_template":
+    if action in ("create_from_template", "scaffold_compile"):
         tpl = str(_cfg(config, "template", "article")).strip().lower()
         if tpl not in _TEMPLATES:
             fatals.append("unknown template %r. Available: %s." % (tpl, ", ".join(sorted(_TEMPLATES))))
@@ -4259,7 +4310,8 @@ def main():
         logging.info(f"Targets (downstream): {target_agents}")
 
         env = get_agent_env()
-        tools = _resolve_toolchain(config, env)
+        tools = (_resolve_toolchain(config, env) if action != "list_styles" else
+                 {"engine": "", "latex": "", "distribution": "not_probed", "version_line": ""})
         logging.info("Distribution: %s%s" % (
             tools["distribution"],
             (" — " + tools["version_line"]) if tools["version_line"] else ""))
@@ -4282,6 +4334,10 @@ def main():
             "warnings": 0,
             "success": False,
             "status": "error",
+            "style": "",
+            "style_family": "",
+            "style_mode": "",
+            "style_count": 0,
         }
         notes = []
         ok = False
@@ -4289,8 +4345,11 @@ def main():
         do_preflight = _as_bool(_cfg(config, "preflight", True), True)
         pf = (_preflight(action, config, tools) if do_preflight
               else {"ok": True, "fatals": [], "warnings": []})
+        if not do_preflight:
+            pf["fatals"] = _style_preflight(action, config)
+            pf["ok"] = not pf["fatals"]
 
-        if do_preflight and not pf["ok"]:
+        if not pf["ok"]:
             notes.append("PREFLIGHT REFUSED (fail-safe):\n\n" + _format_preflight_report(pf))
             outcome["status"] = "refused"
             logging.error("❌ Preflight refused action=%s: %s" % (action, pf["fatals"]))
@@ -4301,7 +4360,14 @@ def main():
                 notes.append("")
 
             # ───────────────────────── ENVIRONMENT ─────────────────────────
-            if action == "validate":
+            if action == "list_styles":
+                _, styles = _style_modules()
+                catalog = styles.style_catalog()
+                notes.append(json.dumps({"styles": catalog}, ensure_ascii=False, indent=2))
+                outcome.update(status="listed", success=True, style_count=len(catalog))
+                ok = True
+
+            elif action == "validate":
                 found = {
                     "engine (%s)" % tools["engine"]: tools["latex"],
                     "latexmk": tools["latexmk"], "biber": tools["biber"],
@@ -4347,6 +4413,7 @@ def main():
                     tpl = str(_cfg(config, "template", "article")).strip().lower()
                     source = _render_template(tpl, config)
                     kind = "template=%s" % tpl
+                _record_style(config, outcome, notes)
 
                 target = str(_cfg(config, "tex_path")).strip()
                 if target:
@@ -4535,6 +4602,7 @@ def main():
                     outcome["status"] = "refused"
                 else:
                     outcome["tex_path"] = tex_path
+                    _record_style(config, outcome, notes)
                     if not outcome["project_dir"]:
                         outcome["project_dir"] = os.path.dirname(tex_path)
                     notes.append(note)

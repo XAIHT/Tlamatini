@@ -29,6 +29,7 @@
 #
 #  ENVIRONMENT (never write a document)
 #   validate            : report the TeX distribution + every engine/tool found. Writes nothing.
+#   list_styles         : JSON catalogue of 30 visual styles; no TeX installation needed.
 #   install             : download + launch the OFFICIAL MiKTeX installer (user consents, UAC).
 #
 #  AUTHORING (the mcp-latex-server surface, native)
@@ -85,6 +86,28 @@ content_b64: ""            # base64 of `content` — parser-immune, WINS over co
 # Bundled templates for create_from_template / scaffold_compile:
 #   article | report | book | beamer | letter | cv | homework | spanish-article
 template: "article"
+
+# -- Signature design collection (independent of the template) ------------------
+# Explicit opt-in. An empty style preserves the original source-generation behavior.
+# Applies to create_file, create_from_template, scaffold_compile, and compile with
+# a bare input_text fragment. For complete .tex files/projects, omit style: those
+# already own their preamble. Metadata (title/subtitle/author/date) and content are
+# LaTeX: escape literal &, %, _, # as usual. Use content_b64 for complex bodies.
+#
+# Editorial: scholarly | swiss | atelier
+# Playful: cute_candy | baby_blush | baby_sky | storybook | lullaby
+# Cyberpunk: cyberpunk | neon_noir | holographic | synthwave
+# Cosmic: cosmic_nebula | astral_atlas | lunar_minimal | solar_flare | aurora | deep_space
+# Electronics: circuit_board | blueprint | quantum_chip | oscilloscope
+# Tlamatini: aztec_obsidian | quetzal_jade | tlamatini_celestial | xeno_codex |
+#           alien_biolume | solar_codex | obsidian_portal | quetzal_supernova
+# action: list_styles returns labels, exact aliases, motifs and supported engines.
+style: ""
+subtitle: ""
+style_mode: "screen"        # screen = curated page ground; print = white paper, corrected inks
+style_decoration: "rich"    # none | restrained | rich; artwork occupies its own region
+style_cover: true           # full cover; false = compact title. CV/homework always compact.
+predominant_color: ""       # optional #RRGGBB primary; contrast is corrected after this override
 
 # Language of the document scaffolds LaTeXer generates (babel/polyglossia + the
 # quotation and date conventions). es | en. It does NOT translate your own content.
