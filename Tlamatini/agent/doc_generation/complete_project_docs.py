@@ -956,7 +956,7 @@ GREPPER_LINES_GUIDE = [
     "The wrapped chat_agent_grepper description and Parametrizer field map "
     "include the new contract. Success is listed, while missing paths give "
     "not_found. Self-knowledge and FlowCreator describe the read step. "
-    "TLAMATINI_VERSION: 1.51.9 is now an offline fallback behind live metadata.",
+    "TLAMATINI_VERSION: 1.60.0 is now an offline fallback behind live metadata.",
     "Three new assets: test_grepper_lines_mode.py, grepper_lines_visible.py "
     "and grepper_login_probe.py. The commit reports 505 passing cases and a "
     "headed chat search/read demonstration. Those are historical claims, not "
@@ -1400,7 +1400,7 @@ NMAPPER_GUIDE = [
 
 STARTUP_PROMPT_POLISH_GUIDE = [
     "`v1.39.4` restored first-run/startup dialog closeability so a fresh launch can no longer be trapped behind an unclosable overlay.",
-    "Commit `a45fe0e0` followed the public `v1.39.4` tag with Catalog-of-Prompts localization cleanup; that historical polish remains carried by the `v1.51.5` release line.",
+    "Commit `a45fe0e0` followed the public `v1.39.4` tag with Catalog-of-Prompts localization cleanup; that historical polish remains carried by the `v1.60.0` release line.",
     "The prompt catalog path stays centralized through the secure one-call `/agent/list_prompts/` endpoint ordered by category rank and stable surviving id, while the gap-tolerant probe loop remains only as an offline fallback.",
     "Frontend mutable-state tests and dialog templates continue to guard the chat/startup/overlay surfaces so future cleanup passes do not reintroduce const-poison or close-button regressions.",
 ]
@@ -1635,7 +1635,7 @@ PROMPT_CATALOG_GUIDE = [
     "Version `1.3.2` tightened the HTML answer contract with a Prime Directive on visual readability: explicit background and text color, no grey-on-dark body text, and safer table-body defaults.",
     "The seeded `Prompts` dropdown was also re-sorted into a learner path: context-only Q&A first, then metrics, files search, shell, code generation, vision, specialized single-tool actions, agent control, Unrealer, and heavier Multi-Turn/ACPX demos last.",
     "The `v1.35.0` prompt-search pass then makes that larger catalog easier to operate: prompt cards support substring, word-start, and fuzzy matching, with mode badges that keep one-shot, Multi-Turn, ACPX, Exec Report, and Step-by-Step demos visually distinct.",
-    "Those readability rules remain in force in the `v1.51.5` release documentation set; it carries measured networking, WAL-safe database movement, structured and resilient Googler discovery, guided MCP onboarding, and current counts while retaining encoding-safe search, guarded execution truth, private MCP runtime/defaults, diagram hardening, LaTeXer, the binary guard, PDFer, FlowCreator, prompt standardization, category grouping, and ranked fuzzy search.",
+    "Those readability rules remain in force in the `v1.60.0` release documentation set; it carries measured networking, WAL-safe database movement, structured and resilient Googler discovery, guided MCP onboarding, and current counts while retaining encoding-safe search, guarded execution truth, private MCP runtime/defaults, diagram hardening, LaTeXer, the binary guard, PDFer, FlowCreator, prompt standardization, category grouping, and ranked fuzzy search.",
 ]
 
 SELF_KNOWLEDGE_GUIDE = [

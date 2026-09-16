@@ -24,7 +24,7 @@
 
 <p align="center">
   <a href="https://discord.gg/WFQsrskgc"><img src="https://img.shields.io/badge/DISCORD-JOIN%20US-5865F2?style=for-the-badge&labelColor=2D2D2D&logo=discord&logoColor=white" alt="Join our Discord"/></a>
-  <a href="https://github.com/XAIHT/Tlamatini/releases"><img src="https://img.shields.io/badge/RELEASE-v1.51.9-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Release v1.51.9"/></a>
+  <a href="https://github.com/XAIHT/Tlamatini/releases"><img src="https://img.shields.io/badge/RELEASE-v1.60.0-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Release v1.60.0"/></a>
   <a href="https://www.python.org/downloads/release/python-31210/"><img src="https://img.shields.io/badge/PYTHON-3.12.10-3776AB?style=for-the-badge&labelColor=2D2D2D&logo=python&logoColor=white" alt="Python"/></a>
   <a href="#installation"><img src="https://img.shields.io/badge/PLATFORM-WIN%2010%20%7C%2011-0078D6?style=for-the-badge&labelColor=2D2D2D&logo=windows&logoColor=white" alt="Platform"/></a>
   <a href="#-the-full-capability-list"><img src="https://img.shields.io/badge/AGENT%20TYPES-89-8A2BE2?style=for-the-badge&labelColor=2D2D2D" alt="89 agent types"/></a>
@@ -50,8 +50,8 @@
 1. [What is Tlamatini](#what-is-tlamatini)
 2. [How it works](#how-it-works)
 3. [Get started in five steps](#-get-started--5-steps-to-a-cloud-powered-tlamatini)
-4. [Newest changes](#newest-changes--carried-by-the-v1515-tag)
-5. [Current release](#current-release--v1519)
+4. [Newest changes](#newest-changes--carried-by-the-v1600-tag)
+5. [Current release](#current-release--v1600)
 6. [The full capability list](#-the-full-capability-list)
 7. [Enable Tlamatini as a Blue-hat agent](#enable-tlamatini-as-a-blue-hat-agent)
 8. [Installation](#installation)
@@ -208,7 +208,13 @@ Done — tick **Multi-Turn** in the chat toolbar and put Tlamatini to work.
 
 ---
 
-## Newest changes — carried by the v1.51.9 tag
+## Newest changes — carried by the v1.60.0 tag
+
+**The whole chain of visual agents got better at once.** Tlamatini's document family now has three members instead of two: **PPTXer** joins PDFer and LaTeXer and builds real, editable PowerPoint decks from an answer, a Markdown outline or JSON — with 36 named looks, 17 font pairings, and, most importantly, text that is *measured* before it is placed, so a long paragraph continues onto a new slide instead of being quietly cut off. **PDFer** gained **24** explicit visual identities in five families — playful, cyberpunk, cosmic, electronics, and Tlamatini's own — on top of the 20 designs it already chooses from the content itself. **LaTeXer** gained **30** signature styles in six families; ask for the list with `list_styles` and it answers without needing LaTeX installed at all.
+
+The agents that touch your desktop were tightened in the same pass. **Mouser** now works in coordinates you state explicitly — the physical screen, a window, or a screenshot — instead of leaving anyone to guess which space a number belongs to; **Keyboarder** binds every keystroke to a window it has verified is really in front; and **Shoter** publishes the exact rectangle it captured, so a click worked out from a screenshot lands where the picture said it would. One honesty rule runs through all three: **`input_sent` means the click or keystroke was delivered, not that the application accepted it** — so a failed or interrupted step must be looked at before it is replayed. **FlowCreator** now chooses from all 89 installed agents and validates the flow it drew before publishing it.
+
+**Carried from the v1.51.9 tag in the same line — the sampler repair and VOICE COMMANDS.**
 
 **One number was emptying her answers.** If Tlamatini ever replied *"The tool-calling model returned an empty final response"* after a long silence, this was why. The setting that controls how strongly the model avoids repeating itself — `ollama_repeat_penalty` — shipped at **1.9**, roughly double the highest value any documentation endorses. Today's models are *reasoning* models: they think privately before they answer. Pushed that hard, they never stop thinking. Measured on a real request: **196,003 characters of internal reasoning over 287 seconds**, and in one case **3.1 million characters over 51 minutes** — every time producing a completely empty answer. The penalty now ships at **1.2**, the strongest value the documentation actually supports, and in testing that took failures on the flagship model from **seven runs in eight down to one**.
 
@@ -240,11 +246,13 @@ Two fixes ship together. The console is now written on its **own background thre
 
 ---
 
-## Current release — v1.51.9
+## Current release — v1.60.0
 
-The newest annotated tag is **`v1.51.9`**, created on 2026-09-14 and resolving to commit **`cb30edf`** ("Release v1.51.9 Improved the Flow-chain parameters, some general fixes, and avoiding deletion of user-elements.") — local `main` and `HEAD` sit **one commit past** it, which is normal rather than a discrepancy: Tlamatini deliberately emits the bare base tag with no distance or dirty suffix, so source-mode version resolution reports plain `1.51.9`. Runtime identity still comes from Git/build metadata (`agent/version.py::get_version()`, `GET /agent/version/`), never from this prose.
+The newest annotated tag is **`v1.60.0`**, created on 2026-09-15 and resolving to commit **`cef3995`** ("Release v1.60.0 Entire chain of visual agents really enhanced!.") — local `main` and `HEAD` **are** that commit on a clean tree, so `git describe --tags` reports a bare `v1.60.0` and source-mode version resolution reports plain `1.60.0`. Runtime identity still comes from Git/build metadata (`agent/version.py::get_version()`, `GET /agent/version/`), never from this prose.
 
-This tag carries the sampler repair and the VOICE COMMANDS catalog section, both described above, alongside an uninstaller that now refuses to run while Tlamatini is still up and never deletes your own content, and a fix for `chat_agent_run_wait`, which used to burn its entire timeout instead of returning the moment the run finished.
+This tag carries the visual-agent work described above. It reached you through three earlier tags in the same line — **`v1.52.0`** (the new PPTXer agent), **`v1.52.2`** (PDFer's and PPTXer's style collections) and **`v1.52.3`** (LaTeXer's) — before `v1.60.0` gathered them together with the desktop-control and flow-contract tightening.
+
+The **`v1.51.9`** tag before them carried the sampler repair and the VOICE COMMANDS catalog section, both described above, alongside an uninstaller that now refuses to run while Tlamatini is still up and never deletes your own content, and a fix for `chat_agent_run_wait`, which used to burn its entire timeout instead of returning the moment the run finished.
 
 The previous **`v1.51.7`** tag carried Whisperer's sound gate and the avatar's talking mouth. Under the gate, `record_seconds` became the mode switch — `0`, the new default, means *"no duration was given, so listen until the speaker stops"*, the same idiom `sample_rate: 0` already used for the native sample rate — and the recording's reported length is now what was actually captured rather than what was requested. The gate itself measures one audio block every twenty milliseconds from inside the sound callback, tracking the room continuously so that somebody who starts talking immediately is still heard; coverage for the agent grew from 41 to **69 tests**.
 

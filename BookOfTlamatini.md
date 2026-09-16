@@ -2502,14 +2502,14 @@ Pre-releases use the standard SemVer suffixes — `2.0.0-alpha.1`, `2.0.0-beta.1
 
 ```powershell
 git status                                          # clean tree, on main
-git tag -a v1.51.5 -m "Release 1.51.5: <one-liner>"   # annotated tag
-git push origin v1.51.5
+git tag -a v1.60.0 -m "Release 1.60.0: <one-liner>"   # annotated tag
+git push origin v1.60.0
 python build.py
 python build_uninstaller.py
 python build_installer.py
 ```
 
-All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.51.5/`, named for the version so the file you hand to a user is unambiguous before they even unzip it. The newest reachable tag is `v1.51.5`, so the bare runtime version resolves to `1.51.5`; the tag peels to `4a7f1cb`, which is `HEAD` itself, so `git describe --tags --always` reports a clean `v1.51.5` with no distance suffix.
+All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.60.0/`, named for the version so the file you hand to a user is unambiguous before they even unzip it. The newest reachable tag is `v1.60.0`, so the bare runtime version resolves to `1.60.0`; the tag peels to `cef3995`, which is `HEAD` itself, so `git describe --tags --always` reports a clean `v1.60.0` with no distance suffix.
 
 ### Where the version shows up in a running install
 
@@ -2517,8 +2517,8 @@ The build computes the version once and bakes it into four surfaces:
 
 - **`Tlamatini/agent/_version.py`** — generated at build time, gitignored, read at runtime by `agent.version.get_version()`. This is what every in-process surface reads.
 - **Win32 `VERSIONINFO`** — `Tlamatini.exe`, `Installer.exe`, and `Uninstaller.exe` all carry the version in their resource fork. Right-click the file → Properties → Details → ProductVersion.
-- **Release folder name** — `dist/Tlamatini_Release_v1.51.5/`.
-- **Runtime surfaces** — the About dialog renders `Tlamatini v{{ version }}` (Django context processor); after the release tag/build, the startup banner prints `--- [VERSION] Tlamatini 1.51.5` to both the console and `tlamatini.log`; `GET /agent/version/` returns `{"version":"1.51.5","commit":"abc1234","date":"…","source":"generated"}` as an **open** endpoint suitable for a health-check.
+- **Release folder name** — `dist/Tlamatini_Release_v1.60.0/`.
+- **Runtime surfaces** — the About dialog renders `Tlamatini v{{ version }}` (Django context processor); after the release tag/build, the startup banner prints `--- [VERSION] Tlamatini 1.60.0` to both the console and `tlamatini.log`; `GET /agent/version/` returns `{"version":"1.60.0","commit":"abc1234","date":"…","source":"generated"}` as an **open** endpoint suitable for a health-check.
 
 If the four surfaces ever disagree, your build was run with a stale `$env:TLAMATINI_VERSION` or against an out-of-date `_version.py` — clear them and re-run `build.py`.
 
