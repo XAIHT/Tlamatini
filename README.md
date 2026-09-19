@@ -209,7 +209,7 @@ ollama pull nomic-embed-text
 
 # Cloud models — use a signed-in Pro-or-higher account for full Tlamatini operation
 ollama pull glm-5.3:cloud
-ollama pull qwen3.5:cloud
+ollama pull jcyhsiao/qwen3.5cloud:latest
 ```
 
 Any cloud model works — these two are the current recommended pair (older screenshots below may still show earlier model names).
@@ -280,9 +280,9 @@ This is only possible because of the sound gate below. Before it, a spoken promp
 
 ## Previous release — carried by the v1.51.7 tag
 
-**Whisperer now listens instead of counting seconds.** Ask Tlamatini to take dictation and she used to record a flat thirty seconds — cutting you off in the middle of a sentence, or leaving you listening to an empty room after you had finished. Now she simply **waits for you to stop talking**: the recording stays open while you are speaking and ends on its own after **ten seconds of silence**. Say a length and she still honours it exactly — *"record 45 seconds"* records 45 — the gate only steps in when you did not name one.
+**Whisperer now listens instead of counting seconds.** Ask Tlamatini to take dictation and she used to record a flat thirty seconds — cutting you off in the middle of a sentence, or leaving you listening to an empty room after you had finished. Now she simply **waits for you to stop talking**: the recording stays open while you are speaking and ends on its own after **three and a half seconds of silence**. Say a length and she still honours it exactly — *"record 45 seconds"* records 45 — the gate only steps in when you did not name one.
 
-The console window she opens while recording shows what is happening: the familiar REC meter gains a second bar that fills up as the room stays quiet and empties the instant you speak again, turning amber and then red just before it stops, and the final line tells you why it stopped and how much it captured. Everything is adjustable in `config.yaml` — the silence window (`silence_timeout_seconds`, default 10), a ceiling so a noisy room cannot record forever (`max_record_seconds`, default 300), and a manual loudness threshold if your room needs one. One honesty note: if a sound driver refuses the live audio stream the gate cannot run at all, so Whisperer records a fixed length and **says so** rather than pretending it listened.
+The console window she opens while recording shows what is happening: the familiar REC meter gains a second bar that fills up as the room stays quiet and empties the instant you speak again, turning amber and then red just before it stops, and the final line tells you why it stopped and how much it captured. Everything is adjustable in `config.yaml` — the silence window (`silence_timeout_seconds`, default 3.5), a ceiling so a noisy room cannot record forever (`max_record_seconds`, default 300), and a manual loudness threshold if your room needs one. One honesty note: if a sound driver refuses the live audio stream the gate cannot run at all, so Whisperer records a fixed length and **says so** rather than pretending it listened.
 
 **Tlamatini's avatar has a real mouth.** Her portrait used to change on a fixed 150-millisecond timer whether she was speaking or not. Now the picture is blended live from her four portraits and her mouth follows the actual words as they are spoken, so her face moves with the sentence instead of flapping through it. It runs on plain 2-D canvas — no graphics card and no extra model.
 
@@ -453,7 +453,7 @@ Everything Tlamatini can do, grouped:
 - **Voice commands** — the catalog's **first** section. Speak your instruction instead of typing it: Whisperer listens until you stop, and the transcript becomes the prompt Tlamatini executes. She reads it back before acting, and if she did not hear you she says so instead of guessing.
 - **Recorder / Camcorder** — microphone and webcam capture.
 - **AudioPlayer / VideoPlayer** — audio and video playback with volume/loop control.
-- **Image-Interpreter** — triple-model vision analysis: qwen3.5:cloud + gemma4:cloud interpret each image **in parallel** on two dedicated Ollama connections, then glm-5.3:cloud merges both interpretations into one definitive report (mockup/GUI inventories in % coordinates, full OCR, people described exhaustively with identity clues taken from the image file name).
+- **Image-Interpreter** — triple-model vision analysis: jcyhsiao/qwen3.5cloud:latest + gemma4:cloud interpret each image **in parallel** on two dedicated Ollama connections, then glm-5.3:cloud merges both interpretations into one definitive report (mockup/GUI inventories in % coordinates, full OCR, people described exhaustively with identity clues taken from the image file name).
 
 - **Screenshot → chat (paste or drop)** — hit Print Screen (or snip), Alt+Tab back to Tlamatini and press **Ctrl+V** — or drag image files onto the chat column. She saves the image into her own `Temp` folder as `image_<timestamp>.jpg`, shows a thumbnail above the input, and drops the **full path into your message at the cursor**, so you can finish the sentence — *"…what's wrong in this screenshot?"* — and send. The path is what Image-Interpreter reads.
 

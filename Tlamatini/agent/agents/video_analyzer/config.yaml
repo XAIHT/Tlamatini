@@ -71,7 +71,7 @@ roi: ""
 # a moving part across timestamped frames.
 interpreter_model_1: "qwen3-vl:235b-cloud"
 # Interpreter 2: a strong second-opinion multimodal reasoner.
-interpreter_model_2: "qwen3.5:cloud"
+interpreter_model_2: "jcyhsiao/qwen3.5cloud:latest"
 # Merger: long-context TEXT synthesis engine (no vision needed) that fuses both
 # interpretations and issues the final verdict.
 merging_model: "glm-5.3:cloud"

@@ -118,7 +118,7 @@ VALID_VERDICTS = {
 # The template config.yaml carries the FULL engineered prompts; these compact
 # fallbacks only kick in when a stale pool config.yaml predates a field.
 DEFAULT_INTERPRETER_MODEL_1 = "qwen3-vl:235b-cloud"
-DEFAULT_INTERPRETER_MODEL_2 = "qwen3.5:cloud"
+DEFAULT_INTERPRETER_MODEL_2 = "jcyhsiao/qwen3.5cloud:latest"
 DEFAULT_MERGING_MODEL = "glm-5.3:cloud"
 DEFAULT_EXPECTED_MOTION = (
     "The servo/actuator performs its programmed motion — it sweeps between its "

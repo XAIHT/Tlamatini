@@ -731,6 +731,22 @@ class SilenceGateIndicatorTests(unittest.TestCase):
         visible = ind._out.text.replace('\r', '').replace('\x1b[2K', '')
         self.assertLessEqual(len(visible), 80)
 
+    def test_the_shipped_default_paints_as_3_point_5_not_a_rounded_4(self):
+        # 2026-09-18: the default window is 3.5 s, so a '{:.0f}' readout would
+        # print '4s' -- a number the gate does not use. The bar must say 3.5s.
+        ind = self._ind(gated=True,
+                        silence_timeout=self.mod.GATE_SILENCE_TIMEOUT_SECONDS)
+        ind.gate(1.2, False)
+        ind._paint(blink_on=True)
+        self.assertIn('1.2s/3.5s', ind._out.text)
+        self.assertNotIn('/4s', ind._out.text)
+
+    def test_stopped_line_does_not_round_the_default_window_either(self):
+        ind = self._ind(gated=True,
+                        silence_timeout=self.mod.GATE_SILENCE_TIMEOUT_SECONDS)
+        ind._paint_stopped(9.1, 'silence')
+        self.assertIn('silence 3.5s', ind._out.text)
+
 
 # ---------------------------------------------------------------------------
 # Engine resolution + transcription (GPU auto-detect + CPU fallback)
@@ -1003,7 +1019,7 @@ class WhispererRegistryTests(SimpleTestCase):
         # 0 == "no duration given, listen until the speaker stops" (2026-09-11).
         # This is THE switch: any non-zero value turns the sound gate off.
         self.assertEqual(cfg['record_seconds'], 0)
-        self.assertEqual(cfg['silence_timeout_seconds'], 10)
+        self.assertEqual(cfg['silence_timeout_seconds'], 3.5)
         self.assertEqual(cfg['silence_gate'], 'auto')
         self.assertEqual(cfg['max_record_seconds'], 300)
         self.assertEqual(cfg['silence_threshold_db'], 0)
@@ -1015,6 +1031,18 @@ class WhispererRegistryTests(SimpleTestCase):
         self.assertEqual(cfg['language'], '')
         self.assertEqual(cfg['task'], 'transcribe')
         self.assertIn('target_agents', cfg)
+
+    def test_code_fallback_matches_the_shipped_silence_window(self):
+        # GATE_SILENCE_TIMEOUT_SECONDS is what runs when the key is missing or
+        # <= 0, so a drift between it and config.yaml means two different
+        # machines wait two different lengths for the same spoken sentence.
+        config_path = os.path.join(_REPO_AGENT_DIR, 'agents', 'whisperer', 'config.yaml')
+        with open(config_path, 'r', encoding='utf-8') as handle:
+            cfg = yaml.safe_load(handle)
+        mod = _load_whisperer_module()
+        self.assertEqual(mod.GATE_SILENCE_TIMEOUT_SECONDS, 3.5)
+        self.assertEqual(
+            float(cfg['silence_timeout_seconds']), mod.GATE_SILENCE_TIMEOUT_SECONDS)
 
     def test_captured_in_exec_report(self):
         # Completeness contract (2026-06-07): EVERY Multi-Turn agent — observational

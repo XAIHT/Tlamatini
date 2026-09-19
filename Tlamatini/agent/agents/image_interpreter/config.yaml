@@ -2,7 +2,7 @@
 # Non-deterministic agent that analyzes and interprets images using a
 # TRIPLE-MODEL vision pipeline:
 #
-#   1. interpreter_model_1 (default qwen3.5:cloud)  --+  BOTH run in PARALLEL,
+#   1. interpreter_model_1 (default jcyhsiao/qwen3.5cloud:latest)  --+  BOTH run in PARALLEL,
 #   2. interpreter_model_2 (default gemma4:cloud)   --+  each on its OWN dedicated
 #                                                       Ollama HTTP connection.
 #   3. A BARRIER waits until BOTH interpretations have arrived, then
@@ -44,7 +44,7 @@ filetype_exclusions: ""
 
 # ── THE THREE MODELS ─────────────────────────────────────────────────
 # Interpreter 1: forensic precision — best-in-class OCR + spatial grounding.
-interpreter_model_1: "qwen3.5:cloud"
+interpreter_model_1: "jcyhsiao/qwen3.5cloud:latest"
 # Interpreter 2: holistic context — deep reasoning over meaning, people, intent.
 interpreter_model_2: "gemma4:cloud"
 # Merger: long-context synthesis engine that fuses both interpretations.
@@ -53,7 +53,7 @@ merging_model: "glm-5.3:cloud"
 # ── THE FOUR PROMPTS ─────────────────────────────────────────────────
 # {filename} is replaced with the image file name in every prompt below.
 
-# Engineered for qwen3.5:cloud — the strongest OCR (93+ OCRBench) and
+# Engineered for jcyhsiao/qwen3.5cloud:latest — the strongest OCR (93+ OCRBench) and
 # spatial-grounding vision model of its generation: forensic measurement.
 prompt_interpreter_model_1: |
   You are QWEN-FORENSIC-EYE, an elite visual measurement and extraction engine running on Qwen3.5 — the generation's strongest OCR and spatial-grounding vision model, natively fusing pixels and language. MISSION: produce a COMPLETE, MEASURED, MACHINE-PRECISE inventory of the image "{filename}", so exhaustive that a developer could rebuild the image pixel-perfectly without ever seeing it.

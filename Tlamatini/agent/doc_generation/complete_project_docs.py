@@ -40,6 +40,7 @@ from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import (
+    CondPageBreak,
     Image,
     PageBreak,
     Paragraph,
@@ -193,10 +194,16 @@ def release_identity() -> str:
     head = git("rev-parse", "--short", "HEAD")
     distance = git("rev-list", "--count", f"{tag}..HEAD")
     remote = git("rev-parse", "--short", "origin/main")
+    try:
+        advertised = git("ls-remote", "--tags", "origin", f"refs/tags/{tag}")
+        publication = (f"Origin advertises {tag}. " if advertised else
+                       f"Origin does not advertise {tag}; it is a local tag. ")
+    except subprocess.CalledProcessError:
+        publication = "Remote tag publication could not be checked. "
     return (
-        f"The reachable release tag {tag} resolves to {tag_commit}. "
+        f"The reachable local tag {tag} resolves to {tag_commit}. "
         f"Current source HEAD is {head}, {distance} commits beyond that tag. "
-        f"Fetched origin/main resolves to {remote}. Runtime version resolution remains "
+        f"Fetched origin/main resolves to {remote}. {publication}Runtime version resolution remains "
         "Git/build-derived. A source revision beyond the tag is not a new tagged release."
     )
 
@@ -481,6 +488,8 @@ def commits_since_visual_docs(baseline: CommitBaseline | None) -> list[CommitInf
 def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     """Use commit-specific evidence, never broad keyword guesses or disk presence."""
     notes = {
+        "2db5e26": "Sets Whisperer's default trailing silence to 3.5 seconds and preserves fractional seconds in its console label. Renames the configured Qwen vision tag to jcyhsiao/qwen3.5cloud:latest. Migrations 0205/0206 update existing prompt content without changing catalog identities. This source commit follows v1.62.2; no migrations or tests were executed for this refresh.",
+        "92a5830": "Carries the v1.62.2 tag: local frontend dependencies, strict static/runtime asset receipts, the 1.99 GB ZIP ceiling, complete self-modify snapshots and pre-shutdown update verification. Carries the integrity helper, shared preservation contract and WAL/evidence safeguards. Source inspection does not establish a successful frozen release build.",
         "cae78c3": "Repairs five order-dependent log-capture harnesses. AudioPlayer suppresses real audio under TLAMATINI_NO_AUDIO while explicitly marked fake sounddevice modules can exercise streaming math. No tests ran in this dossier refresh.",
         "6dd2b7e": "Updates README, Book, self-knowledge and document-agent contracts. Clarifies audit confidence, partial LaTeX results and repair boundaries instead of equating creation with verification.",
         "63afbf9": "Adds explicit frozen PDF/PyMuPDF collection, a LAN-safe UUID fallback, strict source-snapshot carriage and WAL-aware update backup. These changes were source-reviewed without a full frozen-build run.",
@@ -870,11 +879,10 @@ def publication_guide(context: dict) -> list[str]:
         f"The delta removes {len(context['removed_assets'])} paths (including pending deletions), with "
         f"{context['removed_output_files']} under output/. The current tracked output inventory "
         f"has {context['published_files']} files. Local leftovers never establish publication.",
-        "New assets include PDF context services, three application JS modules, two CSS files, "
-        "the viewer HTML, vendored PDF.js resources, a PyMuPDF hook, two contract guides "
-        "and reproducible test/vendoring sources. Pending additions include the no-CDN "
-        "frontend and runtime-release gates. Six gallery MP4s were removed upstream. "
-        "Binary fonts, character maps, decoders and media have no line count.",
+        "The new-asset table lists the actual delta from the committed dossier baseline, "
+        "not the older PDF-canvas rollout. At this revision the additions are migrations "
+        "0205 and 0206. PDF.js, local frontend libraries and runtime-release gates are "
+        "already tracked. Binary fonts, character maps, decoders and media have no line count.",
         f"Current inventory: {context['tracked_files']:,} tracked plus {context['untracked_files']} pending files, "
         f"{context['total_lines']:,} physical text lines, {context['total_effective_lines']:,} "
         f"effective lines, and {context['binary_count']} binary assets. Counts include source "
@@ -882,16 +890,16 @@ def publication_guide(context: dict) -> list[str]:
         f"runtime state are excluded. {len(context['missing_paths'])} index paths are absent "
         "from disk and excluded from line/binary totals. Config values are never reproduced.",
         f"Changes after dossier commit {baseline_ref} are listed in the Git appendix. "
-        "PDF reading/context and revised build/update carriage join the whole-system coverage. "
+        "The 3.5-second silence default and Qwen tag migration join the whole-system coverage. "
         "The tag and later source commits are distinguished. Runtime avatar JPGs remain "
         "tracked despite the earlier removal of the old output corpus.",
         historical + " No automated tests were executed for this refresh, as requested. "
         "Document rendering and layout inspection are the only new visual evidence.",
-        "Handbook reconciliation: active 108-tool/66-wrapper labels lag the 109/67 source counts. "
-        "Old totals/output links, Django 5.2.4 versus pinned 5.2.15, and atomic-avatar prose "
-        "remain stale. Book retains 1.60.0 runtime examples, an incomplete uninstall section "
-        "and contradictory ESP32 embedding prose. Its new PDF search claim has no dedicated "
-        "find controller/UI in the current viewer. Source and Git determine this dossier.",
+        "Handbook reconciliation: v1.62.0 release labels differ from the local v1.62.2 "
+        "tag; the September 16 commit-assets instructions describe already tracked files. Active 108-tool/66-wrapper "
+        "labels, 204 migrations and old line totals also lag source. Django 5.2.4 differs "
+        "from pinned 5.2.15. The PDF search claim has no dedicated viewer find control. "
+        "These dossiers use source-derived counts and actual Git refs, preserving historical evidence.",
     ]
 
 
@@ -992,15 +1000,37 @@ def pdf_distribution_guide(context: dict) -> list[str]:
         "PyMuPDF. hook-pymupdf.py collects native MuPDF libraries. Carried pool Python "
         "cannot supply imports inside Tlamatini.exe.",
         "Django and WhiteNoise override .mjs and .wasm MIME types on Windows. "
-        "The existing v1.62.0 ZIP contains all 354 pre-change static files, exact in "
-        "both frozen locations, and native MuPDF extensions/DLL. The new source adds "
-        "local frontend libraries and stricter build gates; those changes have not "
+        "The September 16 handbook records 354 pre-change static files matching a "
+        "v1.62.0 ZIP in both frozen locations, plus native MuPDF extensions/DLL. "
+        "The v1.62.2 source carries local frontend libraries and stricter build gates; those changes have not "
         "been built or runtime-tested during this refresh.",
     ]
 
 
+LATEST_DEFAULTS_GUIDE = [
+    "Source commit 2db5e26 follows the v1.62.2 tag. Whisperer now waits for 3.5 seconds "
+    "of trailing silence by default. record_seconds=0 enables the gate, while the "
+    "300-second maximum recording ceiling remains unchanged.",
+    "The console uses fractional-second formatting, so the operator sees 3.5 rather "
+    "than a rounded 4. Migration 0205 replaces old default text only in Voice Commands "
+    "prompts 74, 121 and 122. Missing or differently edited passages are left alone.",
+    "The configured vision model tag changes from qwen3.5:cloud to "
+    "jcyhsiao/qwen3.5cloud:latest in application defaults, agent templates and prompts. "
+    "This records repository configuration, not a fresh model-service availability check.",
+    "Migration 0206 rewrites matching promptContent values across the catalog. Both "
+    "migrations preserve prompt IDs, names, categories, sort ranks and visibility. "
+    "Their reverse operations restore the preceding default text or model tag.",
+    "Fresh seed migrations 0165/0168 and existing prompt-update paths use the new tag. "
+    "Image-Interpreter slot 1 and Video-Analyzer slot 2 use it. The other configured "
+    "vision and merger defaults remain gemma4:cloud, qwen3-vl:235b-cloud and glm-5.3:cloud.",
+    "The inventory now contains 206 migrations. This refresh reads migration source "
+    "without applying it. No database, app runtime, model calls, automated tests or "
+    "frozen builds were executed. Release validation remains a separate operator action.",
+]
+
+
 LOCAL_RELEASE_GUIDE = [
-    "The working tree removes CDN resource tags from all four application templates. "
+    "The v1.62.2 source removes CDN resource tags from all four application templates. "
     "Bootstrap 5.3.3, jQuery 3.7.1, jQuery UI 1.13.3, highlight.js 11.9.0 and Nunito "
     "400/700 are local. The duplicate Bootstrap 5.3.0 load is removed; UI ordering "
     "is retained and new URLs use the startup cache stamp plus an offline suffix.",
@@ -1020,10 +1050,10 @@ LOCAL_RELEASE_GUIDE = [
     "membership and streamed SHA-256/CRC are checked before pkg.zip.part is "
     "published; installer assembly verifies the receipt and version again. Both "
     "complete-release wrappers cap the final outer ZIP at 1,990,000,000 bytes.",
-    "The existing final v1.62.0 ZIP is 1,905,278,037 bytes: 84,721,963 bytes below "
-    "the new ceiling. This is baseline headroom, not a new build result. Oversized "
+    "The September 16 handbook records a v1.62.0 ZIP of 1,905,278,037 bytes: "
+    "84,721,963 bytes below the ceiling. This is historical headroom, not a current build result. Oversized "
     "final output stays .pending.zip and fails; required files are not removed. "
-    "New guards were source-reviewed only; no automated tests or builds ran.",
+    "This refresh reviews source only; no automated tests or release builds ran.",
 ]
 
 
@@ -1039,17 +1069,17 @@ SELF_CARRIAGE_GUIDE = [
     "require an intentional TLAMATINI_VERSION for all three build scripts. Restore "
     "omitted required binaries using the manifest, install dependencies and regenerate "
     "static files before a separate authorized rebuild.",
-    "apply_update.ps1, preserved_user_state.json and the standalone sqlite_copy.py "
-    "are mandatory install-root assets. The updater prefers the incoming release's "
-    "swap script, falling back for older payloads, then copies it outside the install tree.",
+    "apply_update.ps1, preserved_user_state.json, sqlite_copy.py and the runtime "
+    "integrity helper are mandatory carried assets. The checker is also embedded in "
+    "the app and installer. Downloaded ZIP and staging receipts are verified before shutdown.",
     "Backup prerequisites are checked before shutdown. Carried Python runs the "
-    "helper with -I. Verified SQLite online backup includes committed WAL pages and "
+    "helper with -I -B -S, avoiding bytecode and site startup hooks. SQLite online backup includes committed WAL pages and "
     "atomically stages one standalone DB in DB/ToLoad. Failure stops before agents "
     "rename or file replacement. Only success creates the migration marker.",
-    "The shared preservation set retains configuration, contacts, DB, context packages, "
-    "generated content, Temp, Templates and Uninstaller.exe. App code is replaced, "
-    "agents keep one backup, and security logs use stash/restore. The reviewed changes "
-    "require a fresh build; no updater or rebuild ran in this refresh.",
+    "The shared 13-name preservation contract retains configuration, contacts, DB, "
+    "context and generated content. Reinstall retains the live DB/WAL and requests "
+    "migration. Security-evidence stash failure stops deletion. The September 16 "
+    "guide records 740 snapshot inputs and 15 PDFer ornaments; that sweep was not rerun.",
 ]
 
 DOCUMENT_CONTRACT_GUIDE = [
@@ -1251,7 +1281,7 @@ WHISPERER_GATE_GUIDE = [
     "Whisperer captures microphone audio itself or accepts an audio file. Local "
     "faster-whisper uses GPU when available and falls back to CPU. Cloud Whisper is "
     "an alternative engine. Ollama is optional transcript cleanup, never audio ASR.",
-    "record_seconds=0 now selects the silence gate. Default trailing silence is 10 s "
+    "record_seconds=0 now selects the silence gate. Default trailing silence is 3.5 s "
     "and the hard ceiling is 300 s. A positive record_seconds selects fixed duration "
     "in auto mode. Explicit silence_gate=on forces gating, while off uses fixed capture.",
     "A 20 ms RMS callback tracks noise with a 9 dB margin, two-block attack and "
@@ -1805,7 +1835,7 @@ V136_RELEASE_GUIDE = [
     release_identity(),
     "New agent: Video-Analyzer becomes the current media-verdict workflow agent and wrapped `chat_agent_video_analyzer`, complementing Image-Interpreter with video-specific motion analysis.",
     "Implementation assets: `agent/agents/video_analyzer/`, migrations `0166_add_video_analyzer.py`, `0167_add_chat_agent_video_analyzer_tool.py`, `0168_add_video_analyzer_demo_prompt.py`, `test_video_analyzer_agent.py`, `chat_agent_registry.py`, `mcp_agent.py`, and `services/agent_contracts.py` all move together.",
-    "Model strategy: `interpreter_model_1` defaults to `qwen3-vl:235b-cloud`, `interpreter_model_2` defaults to `qwen3.5:cloud`, and `merging_model` defaults to `glm-5.3:cloud`, with independent calls merged only after both interpreters report.",
+    "Model strategy: `interpreter_model_1` defaults to `qwen3-vl:235b-cloud`, `interpreter_model_2` defaults to `jcyhsiao/qwen3.5cloud:latest`, and `merging_model` defaults to `glm-5.3:cloud`, with independent calls merged only after both interpreters report.",
     "Routing contract: every run emits `INI_SECTION_VIDEO_ANALYZER` plus `TLM_VERDICT::<TOKEN>` markers such as `PASS_OK`, `FAIL_NO_MOTION`, `FAIL_WRONG_MOTION`, `UNCLEAR`, and `ANALYSIS_ERROR` for Forker and Parametrizer.",
     "Adjacent UI work: prompt search moved from exact-title hunting to substring, word-start, and fuzzy matching, and generated `.flw` files now use a serpentine layout to reduce visual congestion.",
 ]
@@ -1881,7 +1911,7 @@ V1332_RELEASE_GUIDE = [
 
 IMAGE_INTERPRETER_GUIDE = [
     "Image-Interpreter is now a triple-model vision analyst, not a single generic image describer: each image goes through two parallel interpreter calls and one merger pass.",
-    "`interpreter_model_1` defaults to `qwen3.5:cloud` and is tuned for forensic OCR, mockup/GUI element inventories, percent-based positions/sizes, colors, fonts, and verbatim text.",
+    "`interpreter_model_1` defaults to `jcyhsiao/qwen3.5cloud:latest` and is tuned for forensic OCR, mockup/GUI element inventories, percent-based positions/sizes, colors, fonts, and verbatim text.",
     "`interpreter_model_2` defaults to `gemma4:cloud` and reads the image holistically: design intent, visual hierarchy, scene meaning, people, and reasoned identity hypotheses.",
     "`merging_model` defaults to `glm-5.3:cloud`; it waits behind a barrier until both interpretations arrive, then emits one definitive report with union-of-facts, conflict notes, and discrepancy handling.",
     "All four prompt surfaces (`prompt_user`, `prompt_interpreter_model_1`, `prompt_interpreter_model_2`, and `prompt_merging_model`) receive the image file name as an identity clue, because a file named after a person often depicts that person.",
@@ -2331,7 +2361,7 @@ OLLAMA_COMMANDS = "\n".join(
         "Invoke-WebRequest http://127.0.0.1:11434/api/tags -UseBasicParsing",
         "ollama pull Nomic-Embed-Text:latest",
         "ollama pull glm-5.3:cloud",
-        "ollama pull qwen3.5:cloud",
+        "ollama pull jcyhsiao/qwen3.5cloud:latest",
         "ollama pull gemma4:cloud",
         "ollama pull qwen3-vl:235b-cloud",
     ]
@@ -2613,7 +2643,7 @@ def build_pdf(context: dict) -> None:
     story.append(p("How it works", styles["h2"]))
     for item in HOW_IT_WORKS:
         story.append(bullet(item, styles["bullet"]))
-    story.append(PageBreak())
+    story.append(CondPageBreak(4 * inch))
 
     story.append(p("2. Architecture Layers", styles["h1"]))
     arch_rows = [["Layer", "Role"]] + [[layer, desc] for layer, desc in ARCHITECTURE_LAYERS]
@@ -2668,10 +2698,11 @@ def build_pdf(context: dict) -> None:
     story.append(p("Recent implementation assets and inventory impact", styles["h2"]))
     for item in publication_guide(context):
         story.append(bullet(item, styles["bullet"]))
-    for title, guide in (("PDF canvas reading and file lifecycle", PDF_CANVAS_GUIDE),
+    for title, guide in (("Latest defaults and prompt migrations 0205/0206", LATEST_DEFAULTS_GUIDE),
+                         ("PDF canvas reading and file lifecycle", PDF_CANVAS_GUIDE),
                          ("Whole-document PDF context", PDF_CONTEXT_GUIDE),
                          ("PDF progress, cancellation and evidence", PDF_PROGRESS_GUIDE),
-                         ("PDF distribution and pending Git assets", pdf_distribution_guide(context)),
+                         ("PDF distribution and tracked Git assets", pdf_distribution_guide(context)),
                          ("Local frontend and 1.99 GB release gate", LOCAL_RELEASE_GUIDE),
                          ("Self-modify and self-update carriage", SELF_CARRIAGE_GUIDE),
                          ("Document-agent result and repair contracts", DOCUMENT_CONTRACT_GUIDE),
@@ -3728,10 +3759,11 @@ def build_ppt(context: dict) -> None:
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Source and evidence", publication_guide(context)[3:], THEME["jade"], "recent-assets-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    for title, guide in (("PDF Canvas Reading", PDF_CANVAS_GUIDE),
+    for title, guide in (("Latest Defaults and Prompt Migrations", LATEST_DEFAULTS_GUIDE),
+                         ("PDF Canvas Reading", PDF_CANVAS_GUIDE),
                          ("Whole-Document PDF Context", PDF_CONTEXT_GUIDE),
                          ("PDF Progress and Cancellation", PDF_PROGRESS_GUIDE),
-                         ("PDF Distribution and Pending Assets", pdf_distribution_guide(context)),
+                         ("PDF Distribution and Tracked Assets", pdf_distribution_guide(context)),
                          ("Local Frontend and Release Budget", LOCAL_RELEASE_GUIDE),
                          ("Self-Modify and Update Carriage", SELF_CARRIAGE_GUIDE),
                          ("Document-Agent Result Contracts", DOCUMENT_CONTRACT_GUIDE),
@@ -4191,7 +4223,7 @@ def build_ppt(context: dict) -> None:
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Default pull set", [
         "Nomic-Embed-Text:latest",
         "glm-5.3:cloud",
-        "qwen3.5:cloud",
+        "jcyhsiao/qwen3.5cloud:latest",
         "gemma4:cloud",
         "qwen3-vl:235b-cloud",
     ], THEME["copper"], "ollama-b", 15)
@@ -4254,7 +4286,7 @@ def build_ppt(context: dict) -> None:
         ("HTML", context["html_templates"]),
     ]
     for idx, (label, value) in enumerate(metrics):
-        add_metric_card(slide, audit, 0.82 + idx * 2.05, 1.75, 1.75, label, str(value), THEME["jade"] if idx % 2 == 0 else THEME["copper"], f"repo-{idx}")
+        add_metric_card(slide, audit, 0.82 + idx * 1.96, 1.75, 1.75, label, str(value), THEME["jade"] if idx % 2 == 0 else THEME["copper"], f"repo-{idx}")
     add_panel(slide, audit, 1.05, 3.1, 10.85, 3.35, "Current HEAD", [
         f"{context['head_short']} - {context['head_subject']}",
         f"Resolved version: {context['version_info']['version']} ({context['version_info']['source']})",

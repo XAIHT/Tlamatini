@@ -497,7 +497,7 @@ def resolve_input_device(config: Dict):
 # Defaults for the gate that lets Whisperer keep recording while you are still
 # talking and stop on its own once you have finished. Tuned for speech on a
 # consumer microphone; every one is overridable from config.yaml.
-GATE_SILENCE_TIMEOUT_SECONDS = 10.0    # silence that ends the recording
+GATE_SILENCE_TIMEOUT_SECONDS = 3.5     # silence that ends the recording
 GATE_MAX_RECORD_SECONDS = 300.0        # hard ceiling -- a gate that never fires
 GATE_MARGIN_DB = 9.0                   # speech sits this far above the room
 GATE_ABSOLUTE_FLOOR_DB = -50.0         # the highest threshold we start from
@@ -705,7 +705,7 @@ class MicRecIndicator:
             try:
                 title = "\U0001f399  Tlamatini Whisperer  --  RECORDING"
                 if self._gated:
-                    title += f" (stops after {self._silence_timeout:.0f}s of silence)"
+                    title += f" (stops after {self._silence_timeout:g}s of silence)"
                 k32.SetConsoleTitleW(title)
             except Exception:
                 pass
@@ -850,7 +850,7 @@ class MicRecIndicator:
                 line = (
                     f"\r\x1b[2K {dot}{label}{self._vu_bar(self._BAR_W_GATED)} "
                     f"{el:5.1f}s   {state} {self._hold_bar()} "
-                    f"{self._silence:4.1f}s/{self._silence_timeout:.0f}s "
+                    f"{self._silence:4.1f}s/{self._silence_timeout:g}s "
                 )
             else:
                 line = f"\r\x1b[2K {dot}{label}{self._vu_bar()} {el:5.1f}s / {self._total:.0f}s "

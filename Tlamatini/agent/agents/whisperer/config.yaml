@@ -46,7 +46,7 @@ record_seconds: 0
 # ── The SOUND GATE (how a 0-duration recording ends) ─────────────────────────
 # Seconds of continuous SILENCE that end the recording. The clock starts the
 # moment recording opens, so if nobody ever speaks it still stops here.
-silence_timeout_seconds: 10
+silence_timeout_seconds: 3.5
 
 # Override the automatic mode choice above:
 #   "auto" -> THE DEFAULT: gate ON when record_seconds is 0, OFF when a

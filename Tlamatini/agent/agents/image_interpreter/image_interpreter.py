@@ -91,7 +91,7 @@ IMAGE_EXTENSIONS = {
 # The template config.yaml carries the FULL engineered prompts; these
 # compact fallbacks only kick in when a stale pool config.yaml predates
 # the triple-model upgrade, so the pipeline still works end-to-end.
-DEFAULT_INTERPRETER_MODEL_1 = "qwen3.5:cloud"
+DEFAULT_INTERPRETER_MODEL_1 = "jcyhsiao/qwen3.5cloud:latest"
 DEFAULT_INTERPRETER_MODEL_2 = "gemma4:cloud"
 DEFAULT_MERGING_MODEL = "glm-5.3:cloud"
 DEFAULT_PROMPT_INTERPRETER_1 = (

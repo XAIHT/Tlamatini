@@ -170,7 +170,7 @@ class DualPipelineSafetyTests(unittest.TestCase):
     def _pipeline(self):
         return {
             'host': 'http://localhost:11434', 'token': '',
-            'model_1': 'qwen3-vl:235b-cloud', 'model_2': 'qwen3.5:cloud',
+            'model_1': 'qwen3-vl:235b-cloud', 'model_2': 'jcyhsiao/qwen3.5cloud:latest',
             'merging_model': 'glm-5.3:cloud',
             'prompt_1': 'p1', 'prompt_2': 'p2', 'prompt_merge': 'pm', 'prompt_user': 'pu',
             'expected_motion': 'the servo sweeps and returns', 'filename': 'servo.mp4',
@@ -259,7 +259,7 @@ class EmitVerdictTests(unittest.TestCase):
             va.emit_verdict(
                 video_path="C:/clips/servo.mp4", verdict=va.VERDICT_PASS,
                 confidence=0.9, status="analyzed", motion_score=7.5, frames_analyzed=12,
-                pipeline={'model_1': 'qwen3-vl:235b-cloud', 'model_2': 'qwen3.5:cloud',
+                pipeline={'model_1': 'qwen3-vl:235b-cloud', 'model_2': 'jcyhsiao/qwen3.5cloud:latest',
                           'merging_model': 'glm-5.3:cloud'},
                 report="Servo swept 0->90->180 and returned. TLM_VERDICT::PASS_OK mentioned by model.",
             )

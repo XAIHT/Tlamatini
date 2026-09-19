@@ -30,7 +30,7 @@ whatsapp:
   to: ""                        # default recipient number (country code + number)
   # RECEIVE webhook (Meta POSTs inbound here — expose it publicly + set it in
   # Meta → WhatsApp → Configuration with this same verify_token):
-  verify_token: "tlamatini"
+  verify_token: <WHATSAPP_VERIFY_TOKEN goes here>
   webhook_host: "0.0.0.0"
   webhook_port: 8086
   webhook_path: "/wa-webhook"

@@ -16,6 +16,100 @@
 
 ---
 
+## 2026-09-19 — The Qwen3.5 vision tag is now `jcyhsiao/qwen3.5cloud:latest` everywhere
+
+Angela: *"change everywhere needed where the model was qwen3.5:cloud to
+jcyhsiao/qwen3.5cloud:latest, deeply and surgically"*.
+
+**It is the SAME model, not a different one.** `ollama list` reports both tags with the
+identical digest `a7bf6f7891c3` and a blank SIZE column — it is the same Qwen3.5 cloud model
+republished under a community namespace. Nothing about the pipeline's behaviour, prompts or
+budgets changes; only the string you pull and the string the two agents send.
+
+**Where it lives — two agents, three layers.** `interpreter_model_1` for **Image-Interpreter**
+(the forensic OCR / measurement eye) and `interpreter_model_2` for **Video-Analyzer**. Each has
+BOTH a `config.yaml` shipped value AND a module-level code fallback
+(`DEFAULT_INTERPRETER_MODEL_1` / `DEFAULT_INTERPRETER_MODEL_2`), and the global
+`image_interpreter_model` in `config.json` is seeded over the Image-Interpreter one by
+`tools._seed_global_agent_defaults`. **All three layers were updated** — changing only the
+config leaves a stale fallback that surfaces the moment the key is missing or blank.
+
+**⚠️ THE SUFFIX IS NO LONGER THE TEST FOR "IS THIS A CLOUD MODEL".** `BookOfTlamatini.md` §5
+asserted that the default tags *"carry a cloud suffix"* and told the reader to run
+`ollama pull <tag>:cloud`. Both sentences became FALSE the instant this tag landed, because
+`jcyhsiao/qwen3.5cloud:latest` is cloud-backed with no `:cloud` suffix at all. The chapter now
+says **cloud-backed**, names the exception, and gives the reliable test: `ollama list` shows a
+**blank SIZE** for a cloud tag, because nothing was downloaded. A blind find-and-replace would
+have left a confidently wrong instruction in the user-facing book — **when you retag a model,
+re-read the prose that reasons ABOUT the tag's shape, not just the prose that quotes it.**
+
+**Prompt rows needed a FORWARD migration.** Migrations 0165 / 0168 seeded Catalog-of-Prompts
+rows that name the model. Their source text was updated too, which fixes a database created
+from scratch — but `Prompt` rows are user state that survives a self-update, so an existing
+install would show the old tag forever. **`0206_qwen35_cloud_model_tag_rename`** rewrites ONLY
+`promptContent` (never `idPrompt` / `promptName` / `category` / `sort_rank` / `hidden`, so the
+catalog's ordering and contiguity contracts hold — the 0182-0185 shape), and is idempotent in
+both directions because the new tag does not contain the old one as a substring.
+
+**`flow_catalog.json` is GENERATED — do not hand-edit it.** The Image-Interpreter and
+Video-Analyzer `purpose` strings come from `agents_descriptions.md` via
+`services/flow_knowledge.build_catalog()`. Edit the description, then run
+`python scripts/update_flow_catalog.py` and confirm `--check` passes.
+
+**Deliberately NOT changed:** the prose *"running on Qwen3.5"* in the Image-Interpreter prompts
+and *"A (qwen3.5) said"* in its merge template name the model FAMILY, which is still accurate;
+and `qwen3.5:397b-cloud` in `skills_pkg/flow_making/scripts/make_flow.py` is a different tag
+Angela did not name (same underlying model — retag it only if she asks).
+
+Coverage: `agent/test_image_interpreter_agent.py`, `agent/test_video_analyzer_agent.py`,
+`agent/test_prompt_catalog_contiguous.py`, `agent/test_voice_commands_catalog.py` — 80 tests,
+all green.
+
+---
+
+## 2026-09-18 — The Whisperer silence window is 3.5 s, and it is 3.5 s in every place that SAYS so
+
+Angela: *"set the default silence everywhere it corresponds to 3.5 seconds"*. Ten seconds
+of dead air before the microphone closes is a long time to sit still; 3.5 s is closer to
+the pause a person actually leaves at the end of a sentence.
+
+**The value lives in TWO places and they must agree**: `GATE_SILENCE_TIMEOUT_SECONDS` in
+`agents/whisperer/whisperer.py` (the code fallback, used when the key is missing or <= 0)
+and `silence_timeout_seconds` in `agents/whisperer/config.yaml` (the shipped value). Both
+are now **3.5**. `max_record_seconds` (300) and every other gate constant are untouched.
+
+**⚠️ A FRACTIONAL DEFAULT BREAKS `:.0f`.** Two console readouts printed the window with
+`{…:.0f}` — fine while it was 10, but 3.5 renders as **"4s"**, so the live REC bar and the
+window title would have told the user a number the gate does not use. Both are now `:g`
+(3.5 → `3.5`, 10 → `10`, so the existing `'6.4s/10s'` assertions still hold). **If you add
+another readout of a gate duration, use `:g` — a default that is not a whole number is the
+normal case now.**
+
+**The text moved with the code, in the same pass** — the rule from the 2026-09-11 entry
+below, applied again. Changing only the number would have left the LLM's own tool
+description promising 10 s, which is exactly how a change ships *invisible while looking
+like it worked*: `chat_agent_registry` (purpose + `example_request`), `prompt.pmt`,
+`Tlamatini.md` (self-knowledge, 2 spots), FlowCreator's `agentic_skill.md` (2 spots),
+FlowHypervisor's `monitoring-prompt.pmt` (2 spots), `agents_descriptions.md`, `README.md`,
+`BookOfTlamatini.md`, `docs/claude/agents.md`, `CLAUDE.md`,
+`doc_generation/complete_project_docs.py` and the regenerated `flow_catalog.json`.
+
+**The three catalog cards that PRINT the default get a migration, not an edited history.**
+Prompts 74 / 121 / 122 carry a `[[ silence_timeout_seconds — OPTIONAL, default: 10 ]]`
+fill-in line, and a card promising 10 s while the agent stops at 3.5 s is a lie the user
+only discovers mid-sentence. `0205_silence_window_default_3_5_seconds.py` rewrites **only
+that one line inside `promptContent`** (the 0182-0185 / 0200 pattern): `idPrompt`,
+`promptName`, `category`, `sort_rank` and `hidden` are untouched, so catalog ordering,
+contiguity and the VOICE COMMANDS opener are unaffected. Each swap is a literal replace
+that NO-OPs when the row does not carry the old text, so a hand-edited database is never
+clobbered and re-running is harmless. Migration `0201` stays as written — history is not
+rewritten.
+
+Coverage: `agent/test_whisperer_agent.py` pins the shipped `config.yaml` value, the code
+constant, and that a 3.5 s window paints as `3.5s` rather than rounding to `4s`.
+
+---
+
 ## 2026-09-15 — Post-change sweep: two guards that had gone quiet, and one unpinned dependency
 
 A full-repo sweep after the desktop-input / flow-knowledge / PPTXer-LaTeXer-PDFer style work

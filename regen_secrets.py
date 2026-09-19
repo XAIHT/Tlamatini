@@ -33,7 +33,8 @@ Targeted files (resolved relative to this script):
         telegram.bot_token   (official Telegram Bot API token from @BotFather)
 
     Tlamatini/agent/agents/whatsapper/config.yaml
-        whatsapp.phone_number_id, whatsapp.access_token  (Meta WhatsApp Cloud API)
+        whatsapp.phone_number_id, whatsapp.access_token, whatsapp.verify_token
+                                                     (Meta WhatsApp Cloud API)
 
     Tlamatini/agent/agents/teletlamatini/config.yaml
         telegram.api_id, telegram.api_hash, telegram.bot_token,
@@ -229,6 +230,7 @@ TELEGRAMMER_RULES: List[Tuple[List[str], str]] = [
 WHATSAPPER_RULES: List[Tuple[List[str], str]] = [
     (["whatsapp", "phone_number_id"], "WHATSAPP_PHONE_NUMBER_ID"),
     (["whatsapp", "access_token"],    "WHATSAPP_ACCESS_TOKEN"),
+    (["whatsapp", "verify_token"],    "WHATSAPP_VERIFY_TOKEN"),
 ]
 
 TELETLAMATINI_RULES: List[Tuple[List[str], str]] = [

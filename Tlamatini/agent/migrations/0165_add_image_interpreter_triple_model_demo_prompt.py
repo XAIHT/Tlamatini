@@ -8,7 +8,7 @@
 # ═══════════════════════════════════════════════════════════════════
 #   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
 """One Catalog-of-Prompts example for the upgraded TRIPLE-MODEL Image-Interpreter
-(2026-07-04): interpreter_model_1 (qwen3.5:cloud) + interpreter_model_2
+(2026-07-04): interpreter_model_1 (jcyhsiao/qwen3.5cloud:latest) + interpreter_model_2
 (gemma4:cloud) run IN PARALLEL on two dedicated Ollama connections, a BARRIER
 waits for BOTH interpretations, then merging_model (glm-5.3:cloud) fuses them
 into one definitive report.
@@ -32,7 +32,7 @@ TRIPLE_MODEL_DEMO_PROMPT = (
     "prompt_user='Inventory every visible GUI element with its position (% of image), size (%), "
     "colors and exact text; if any person is visible, describe them exhaustively and hypothesize "
     "who they may be, using the file name as a clue.' — the agent will run interpreter_model_1 "
-    "(qwen3.5:cloud) and interpreter_model_2 (gemma4:cloud) IN PARALLEL on two dedicated Ollama "
+    "(jcyhsiao/qwen3.5cloud:latest) and interpreter_model_2 (gemma4:cloud) IN PARALLEL on two dedicated Ollama "
     "connections, wait on the BARRIER until BOTH interpretations arrive, then fuse them with "
     "merging_model (glm-5.3:cloud). STEP 3: report the 5 most interesting findings from the "
     "merged report and say which `status` the INI_SECTION_IMAGE_INTERPRETER block carried "
