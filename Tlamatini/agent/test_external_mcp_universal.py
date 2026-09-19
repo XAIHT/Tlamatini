@@ -170,7 +170,7 @@ SECRET_CASES: list[tuple[str, dict[str, Any], list[str]]] = [
     # which is why this is opaque gibberish and not something self-describing.
     # (The secret scrubber had flattened this to "<REDACTED>" -- and "<" ">" ARE
     # markers, so the case asserted the exact opposite of its own intent.)
-    ("env_secret_real_value", {"env": {"TOKEN": "<REDACTED>"}}, []),
+    ("env_secret_real_value", {"env": {"TOKEN": "tlamatini"}}, []),
     ("arg_api_key", {"args": ["--api_key=TOKEN_HERE"]}, ["args[0]"]),
     ("arg_apikey", {"args": ["--apikey=api_key_here"]}, ["args[0]"]),
     ("arg_token", {"args": ["--token=xxx"]}, ["args[0]"]),
@@ -443,6 +443,75 @@ def _add_schema_test(idx: int, label: str, schema: dict[str, Any], values: dict[
 
 for _idx, (_label, _schema, _values) in enumerate(SCHEMA_CASES, 1):
     _add_schema_test(_idx, _label, _schema, _values)
+
+
+class ExternalMcpNearMissScalarCoercionTests(SimpleTestCase):
+    """A remote MCP server owns its schema; the model sometimes misses it.
+
+    Regression for 2026-09-19: lumen-book-reader declares ``case_sensitive``
+    as a tri-state STRING on ``lumen_glob`` and as a BOOLEAN on ``lumen_grep``.
+    The model sent ``False`` to ``lumen_glob``; pydantic rejected the ENTIRE
+    call, so the tool invocation was lost rather than merely imperfect.
+    """
+
+    GLOB_SCHEMA = {
+        "type": "object",
+        "properties": {
+            "pattern": {"type": "string"},
+            "case_sensitive": {"type": "string"},
+            "include_sections": {"type": "boolean"},
+            "limit": {"type": "integer"},
+        },
+        "required": ["pattern"],
+    }
+
+    def _model(self, schema=None):
+        return em._args_model_from_schema(
+            "ext__test__tool_Args",
+            self.GLOB_SCHEMA if schema is None else schema,
+        )
+
+    def test_bool_sent_to_a_string_field_is_repaired(self):
+        model = self._model()
+        self.assertEqual(model(pattern="*.pdf", case_sensitive=False).case_sensitive, "false")
+        self.assertEqual(model(pattern="*.pdf", case_sensitive=True).case_sensitive, "true")
+
+    def test_a_correct_value_is_never_rewritten(self):
+        model = self._model()
+        self.assertEqual(model(pattern="*.pdf", case_sensitive="auto").case_sensitive, "auto")
+        self.assertIs(model(pattern="*.pdf", include_sections=True).include_sections, True)
+        self.assertEqual(model(pattern="*.pdf", limit=25).limit, 25)
+
+    def test_enum_spelling_wins_over_the_generic_word(self):
+        model = self._model({"type": "object", "properties": {
+            "mode": {"type": "string", "enum": ["AUTO", "TRUE", "FALSE"]}}})
+        self.assertEqual(model(mode=False).mode, "FALSE")
+
+    def test_string_sent_to_bool_and_int_fields_is_repaired(self):
+        model = self._model()
+        self.assertIs(model(pattern="x", include_sections="false").include_sections, False)
+        self.assertIs(model(pattern="x", include_sections="TRUE").include_sections, True)
+        self.assertEqual(model(pattern="x", limit="25").limit, 25)
+
+    def test_an_ambiguous_value_is_still_rejected(self):
+        model = self._model()
+        with self.assertRaises(Exception):
+            model(pattern="x", case_sensitive={"not": "a scalar"})
+
+    def test_a_missing_required_field_is_still_rejected(self):
+        with self.assertRaises(Exception):
+            self._model()(case_sensitive="auto")
+
+    def test_an_omitted_optional_stays_none(self):
+        self.assertIsNone(self._model()(pattern="x").case_sensitive)
+
+    def test_a_schemaless_tool_still_builds(self):
+        self.assertEqual(self._model({})().model_dump(), {})
+
+    def test_the_repair_never_raises(self):
+        for value in (None, [], {}, object(), 3.5, b"x", "text", True, 7):
+            for jtype in ("string", "boolean", "integer", "number", "array", None):
+                em._coerce_arg_value(value, {"type": jtype})
 
 
 class ExternalMcpStaticIntegrationTests(SimpleTestCase):

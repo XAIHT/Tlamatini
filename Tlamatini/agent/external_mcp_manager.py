@@ -2122,10 +2122,93 @@ def _schema_to_py_type(schema: Dict[str, Any]) -> Any:
     return _json_type_to_py(schema.get("type"))
 
 
+_COERCE_TRUE_WORDS = frozenset({"true", "yes", "on", "1"})
+_COERCE_FALSE_WORDS = frozenset({"false", "no", "off", "0"})
+
+
+def _looks_like_int(text: str) -> bool:
+    body = text.strip()
+    if body[:1] in ("+", "-"):
+        body = body[1:]
+    return bool(body) and body.isdigit()
+
+
+def _coerce_arg_value(value: Any, pdef: Dict[str, Any]) -> Any:
+    """Repair a near-miss scalar the model sent for a remote MCP argument.
+
+    An external MCP server owns its own schema and Tlamatini mirrors it
+    FAITHFULLY - that is the contract, and it is why this wrapper is generic.
+    But a server may spell the SAME parameter two different ways across its
+    OWN tools, and the model then sends the sibling's type. Measured
+    2026-09-19: lumen-book-reader declares ``case_sensitive`` as a tri-state
+    STRING ("auto"/"true"/"false") on ``lumen_glob`` and as a BOOLEAN on
+    ``lumen_grep``; the model sent ``False`` to ``lumen_glob`` and pydantic
+    rejected the ENTIRE call with a traceback, so the tool invocation was
+    lost rather than merely imperfect.
+
+    Only an UNAMBIGUOUS, meaning-preserving repair is made, and only for
+    scalars. Anything else is returned untouched, so validation still reports
+    the real problem instead of this function hiding it.
+    """
+    try:
+        jtype = pdef.get("type")
+        if isinstance(jtype, list):
+            jtype = next((t for t in jtype if t != "null"), None)
+        if not isinstance(jtype, str):
+            return value
+        enum = pdef.get("enum")
+        enum = enum if isinstance(enum, list) else None
+
+        if jtype == "string":
+            if isinstance(value, bool):
+                word = "true" if value else "false"
+                if enum is None:
+                    return word
+                for item in enum:
+                    if isinstance(item, str) and item.lower() == word:
+                        return item
+                return value
+            if isinstance(value, (int, float)):
+                text = str(value)
+                return text if (enum is None or text in enum) else value
+            return value
+
+        if jtype == "boolean":
+            if isinstance(value, str):
+                low = value.strip().lower()
+                if low in _COERCE_TRUE_WORDS:
+                    return True
+                if low in _COERCE_FALSE_WORDS:
+                    return False
+            return value
+
+        if jtype == "integer":
+            if isinstance(value, bool):
+                return value
+            if isinstance(value, float) and value.is_integer():
+                return int(value)
+            if isinstance(value, str) and _looks_like_int(value):
+                return int(value.strip())
+            return value
+
+        if jtype == "number":
+            if isinstance(value, bool):
+                return value
+            if isinstance(value, str):
+                try:
+                    return float(value.strip())
+                except ValueError:
+                    return value
+            return value
+    except Exception:  # pragma: no cover - a repair must never break a call
+        return value
+    return value
+
+
 def _args_model_from_schema(model_name: str, schema: Optional[Dict[str, Any]]):
     from typing import Optional as Opt
 
-    from pydantic import Field, create_model
+    from pydantic import Field, create_model, model_validator
     schema = schema or {}
     props = schema.get("properties", {}) or {}
     required = set(schema.get("required", []) or [])
@@ -2138,7 +2221,31 @@ def _args_model_from_schema(model_name: str, schema: Optional[Dict[str, Any]]):
             fields[pname] = (pytype, Field(..., description=desc))
         else:
             fields[pname] = (Opt[pytype], Field(default=None, description=desc))
-    return create_model(model_name, **fields)
+
+    validators: Dict[str, Any] = {}
+    if props:
+        def _repair_near_miss_scalars(cls, data):
+            if not isinstance(data, dict):
+                return data
+            repaired = dict(data)
+            for key, given in data.items():
+                pdef = props.get(key)
+                if not isinstance(pdef, dict):
+                    continue
+                fixed = _coerce_arg_value(given, pdef)
+                if type(fixed) is not type(given) or fixed != given:
+                    repaired[key] = fixed
+                    logger.info(
+                        "[external-mcp] %s.%s: model sent %r but the server "
+                        "declares '%s' - coerced to %r",
+                        model_name, key, given, pdef.get("type"), fixed,
+                    )
+            return repaired
+
+        validators["_tlm_repair_near_miss_scalars"] = model_validator(
+            mode="before")(classmethod(_repair_near_miss_scalars))
+
+    return create_model(model_name, __validators__=validators, **fields)
 
 
 def _build_tool(server_key: str, tool_def: Dict[str, Any]):
