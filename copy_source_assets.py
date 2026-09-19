@@ -140,6 +140,13 @@ EXCLUDED_EXTENSIONS = {
     # archives / binaries
     ".zip", ".7z", ".gz", ".rar", ".jar", ".exe", ".dll", ".pyd", ".so",
     ".lnk", ".msi",
+    # PARTIAL / IN-PROGRESS WRITES. A FAILED build leaves `pkg.zip.part` in the
+    # repo ROOT, where no directory rule reaches it, and `.zip` above does not
+    # match `.part`. On 2026-09-19 that let a 1 GiB fragment of the previous
+    # zip into the snapshot, so pkg.zip came out at 2.93 GB against a 1.99 GB
+    # budget - and because THAT build also failed it left an even bigger
+    # `.part` behind for the next one. A build artifact is never source.
+    ".part", ".partial", ".tmp", ".crdownload",
     # generated / local state
     ".sqlite3", ".log", ".session", ".pos", ".lock", ".pyc", ".pyo",
     ".spec", ".manifest", ".mo", ".pot",
@@ -165,7 +172,7 @@ EXCLUDED_FILE_NAMES = {
 }
 
 # Glob patterns (matched against the file name) skipped everywhere.
-EXCLUDED_FILE_GLOBS = ("*.version.txt", "*_log.txt", "*_log.log")
+EXCLUDED_FILE_GLOBS = ("*.version.txt", "*_log.txt", "*_log.log", "pkg.zip*")
 
 # ── Credential files — HARD DROP, never resurrectable ────────────────────────
 # This walk reads the WORKING TREE, not git. So a .gitignore'd secret file is

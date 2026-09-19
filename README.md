@@ -24,7 +24,7 @@
 
 <p align="center">
   <a href="https://discord.gg/WFQsrskgc"><img src="https://img.shields.io/badge/DISCORD-JOIN%20US-5865F2?style=for-the-badge&labelColor=2D2D2D&logo=discord&logoColor=white" alt="Join our Discord"/></a>
-  <a href="https://github.com/XAIHT/Tlamatini/releases"><img src="https://img.shields.io/badge/RELEASE-v1.62.0-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Release v1.62.0"/></a>
+  <a href="https://github.com/XAIHT/Tlamatini/releases"><img src="https://img.shields.io/badge/RELEASE-v1.62.2-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Release v1.62.2"/></a>
   <a href="https://www.python.org/downloads/release/python-31210/"><img src="https://img.shields.io/badge/PYTHON-3.12.10-3776AB?style=for-the-badge&labelColor=2D2D2D&logo=python&logoColor=white" alt="Python"/></a>
   <a href="#installation"><img src="https://img.shields.io/badge/PLATFORM-WIN%2010%20%7C%2011-0078D6?style=for-the-badge&labelColor=2D2D2D&logo=windows&logoColor=white" alt="Platform"/></a>
   <a href="#-the-full-capability-list"><img src="https://img.shields.io/badge/AGENT%20TYPES-89-8A2BE2?style=for-the-badge&labelColor=2D2D2D" alt="89 agent types"/></a>
@@ -79,8 +79,8 @@ ornaments. Database/WAL and security-evidence preservation are tightened. See th
 1. [What is Tlamatini](#what-is-tlamatini)
 2. [How it works](#how-it-works)
 3. [Get started in five steps](#-get-started--5-steps-to-a-cloud-powered-tlamatini)
-4. [Newest changes](#newest-changes--carried-by-the-v1620-tag)
-5. [Current release](#current-release--v1620)
+4. [Newest changes](#newest-changes--carried-by-the-v1622-tag)
+5. [Current release](#current-release--v1622)
 6. [The full capability list](#-the-full-capability-list)
 7. [Enable Tlamatini as a Blue-hat agent](#enable-tlamatini-as-a-blue-hat-agent)
 8. [Installation](#installation)
@@ -237,7 +237,7 @@ Done — tick **Multi-Turn** in the chat toolbar and put Tlamatini to work.
 
 ---
 
-## Newest changes — carried by the v1.62.0 tag
+## Newest changes — carried by the v1.62.2 tag
 
 **Open a PDF straight in Tlamatini's canvas — and then hand her the whole document.**
 
@@ -294,9 +294,9 @@ Two fixes ship together. The console is now written on its **own background thre
 
 ---
 
-## Current release — v1.62.0
+## Current release — v1.62.2
 
-The current release is **`v1.62.0`**. It carries the PDF canvas and whole-document context described above, on top of the visual-agent work of the v1.60.0 line.
+The current release is **`v1.62.2`**. It carries the PDF canvas and whole-document context described above, on top of the visual-agent work of the v1.60.0 line.
 
 Runtime identity always comes from Git/build metadata — `agent/version.py::get_version()` and `GET /agent/version/` resolve the number from the annotated tag at build time, and the release folder `dist/Tlamatini_Release_v1.62.0/` is named from the same source — never from this prose. Tlamatini's version string deliberately never carries a `.devN`, `+gSHA` or `.dirty` suffix; it always reports the base tag (`VERSIONING.md`). The preceding tags in this line are **`v1.61.0`** (2026-09-16) and **`v1.60.0`** (2026-09-15, commit `cef3995`, "Entire chain of visual agents really enhanced!").
 
