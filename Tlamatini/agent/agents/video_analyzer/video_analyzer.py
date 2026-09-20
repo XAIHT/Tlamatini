@@ -129,7 +129,8 @@ VALID_VERDICTS = {
 # ── Triple-model pipeline defaults ────────────────────────────────────
 # The template config.yaml carries the FULL engineered prompts; these compact
 # fallbacks only kick in when a stale pool config.yaml predates a field.
-DEFAULT_INTERPRETER_MODEL_1 = "qwen3-vl:235b-cloud"
+# Initial defaults only; load_config resolves saved Config -> Models choices first.
+DEFAULT_INTERPRETER_MODEL_1 = "gemma4:cloud"
 DEFAULT_INTERPRETER_MODEL_2 = "jcyhsiao/qwen3.5cloud:latest"
 DEFAULT_MERGING_MODEL = "glm-5.3:cloud"
 DEFAULT_EXPECTED_MOTION = (
@@ -163,7 +164,7 @@ DEFAULT_PROMPT_USER = (
 )
 
 
-def load_config(path: str = "config.yaml") -> Dict:
+def _load_config_file(path: str = "config.yaml") -> Dict:
     try:
         with open(path, "r", encoding="utf-8") as f:
             return yaml.safe_load(f) or {}
@@ -173,6 +174,23 @@ def load_config(path: str = "config.yaml") -> Dict:
     except Exception as e:
         logging.error(f"❌ Error parsing {path}: {e}")
         sys.exit(1)
+
+
+def load_config(*args, **kwargs):
+    """Apply Config -> Models choices while retaining explicit agent overrides."""
+    import importlib.util as _model_import
+    from pathlib import Path as _ModelPath
+    config = _load_config_file(*args, **kwargs)
+    here = _ModelPath(__file__).resolve()
+    candidates = [here.parent / 'model_settings.py']
+    candidates += [p / 'model_settings.py' for p in here.parents if p.name == 'agents']
+    for shared in candidates:
+        if shared.is_file():
+            spec = _model_import.spec_from_file_location('tlamatini_model_settings', shared)
+            module = _model_import.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            return module.resolve_agent_models('video_analyzer', config, agent_file=__file__)
+    return config
 
 
 def get_python_command() -> list:
@@ -597,6 +615,16 @@ def _sanitize_model_text(text: str) -> str:
     return (text or '').replace('TLM_VERDICT', 'TLM-VERDICT')
 
 
+class OllamaRequestError(RuntimeError):
+    """Keep the HTTP status so batch analysis can stop permanent failures."""
+    def __init__(self, model, status_code, detail):
+        self.status_code = status_code
+        self.permanent = status_code in (401, 403, 404, 410)
+        guidance = (' Select an available model in Config -> Models (or the agent override).'
+                    if status_code in (404, 410) else '')
+        super().__init__(f'Ollama model {model!r}: HTTP {status_code}: {detail}.{guidance}')
+
+
 def _call_ollama_chat(host: str, token: str, model: str, messages: list,
                       conn_label: str, timeout: int = 600,
                       temperature: float = 0.1) -> str:
@@ -627,7 +655,22 @@ def _call_ollama_chat(host: str, token: str, model: str, messages: list,
                                  headers=headers, method='POST')
     chunks = []
     done = False
-    with urllib.request.urlopen(req, timeout=timeout) as response:
+    try:
+        response = urllib.request.urlopen(req, timeout=timeout)
+    except urllib.error.HTTPError as exc:
+        try:
+            raw = exc.read(4096).decode('utf-8', errors='replace')
+            try:
+                detail = json.loads(raw).get('error', raw)
+            except (ValueError, AttributeError):
+                detail = raw
+            detail = ' '.join(str(detail or exc.reason).split())[:1000]
+            if token:
+                detail = detail.replace(str(token), '[redacted]')
+        finally:
+            exc.close()
+        raise OllamaRequestError(model, exc.code, detail) from None
+    with response:
         for line in response:
             if not line:
                 continue

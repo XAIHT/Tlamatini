@@ -358,8 +358,8 @@ class RegistryIntegrationTests(SimpleTestCase):
                     'motion_threshold', 'interpreter_model_1', 'interpreter_model_2',
                     'merging_model', 'source_agents', 'target_agents'):
             self.assertIn(key, cfg)
-        self.assertEqual(cfg['interpreter_model_1'], 'qwen3-vl:235b-cloud')
-        self.assertEqual(cfg['merging_model'], 'glm-5.3:cloud')
+        self.assertEqual(cfg['interpreter_model_1'], '@config')
+        self.assertEqual(cfg['merging_model'], '@config')
 
     def test_css_class_present_and_unique(self):
         css_path = os.path.join(_HERE, 'static', 'agent', 'css', 'agentic_control_panel.css')

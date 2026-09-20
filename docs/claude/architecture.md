@@ -8,6 +8,17 @@
 -->
 # Tlamatini — Architecture & Core Systems
 
+## Central model configuration
+
+The stdlib-only `agent/agents/model_settings.py` registry supplies 38 field schemas,
+defaults, fallback keys and 21 agent YAML mappings. Models GET returns this metadata;
+the UI renders it dynamically. Save validates the complete string-valued selection
+and atomically merges that section, preserving credentials and unrelated settings.
+Frozen web code imports the compiled module; portable agent copies use a refreshed
+helper from `get_agents_root()`. Both honor `CONFIG_PATH`. Never derive template
+paths from frozen service `__file__` values. For exact precedence, paths and the
+release gate, see [model configuration](../model_configuration.md).
+
 ## Configuration
 
 Main config: `Tlamatini/agent/config.json`

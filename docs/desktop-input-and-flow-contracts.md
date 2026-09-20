@@ -105,3 +105,16 @@ Validation on 2026-09-15: 31 flow-knowledge tests, 38 desktop-input tests, 17 ex
 Video-Analyzer supports `analysis_type: robotics` (default), `transcription`, and `summary`. Robotics preserves the deterministic motion gate and dual-vision/merge verdict, with `PASS_OK` only on two explicit independent passes. Transcription reads selected video audio tracks (`audio_tracks: all` or `0,1`) using Whisperer's local faster-whisper backend, GPU auto/CPU fallback and timestamped segments; it never opens a microphone. Summary combines speech with two independent visual observers over frame batches spanning the whole clip, then synthesizes an overview, chronology, readable screen text, facts, steps, decisions, action items and limitations. Content modes accept static scenes, bypass the motion gate, and emit `TLM_ANALYSIS::` tokens rather than robotics verdicts. Missing audio/speech and partial failures are explicit. Each content run saves transcript, segments, report and full analysis artifacts. Parametrizer and wrapped chat results expose `analysis_type`, `analysis_token`, `transcript`, `summary`, `audio_status`, timestamped `segments_json` and artifact paths; the body remains `response_body`. Input remains a file, wildcard, newest video in a folder or Camcorder pool name. Always starts downstream agents; sampled perception is not exhaustive.
 
 See [configuration, routing, Parametrizer mappings and limitations](../Tlamatini/agent/agents/video_analyzer/README.md).
+
+## Model choices in generated flows
+
+Preserve quoted `"@config"` and missing registered model fields so generated agents
+follow Config → Models. Keep a literal model/engine/voice only when an explicit
+override is intended; never fill inheritance with a guessed tag. The registry in
+`agent/agents/model_settings.py` maps all 21 model-backed agents to 38 global
+settings. Wrapped-chat globals are seeded before explicit tool arguments, so do
+not manufacture model arguments when translating a request into a flow. Optional
+empty Whisperer cloud model and LaTeXer repair model values have distinct meanings.
+Video `analysis_type` remains a per-agent task choice; its local audio model is
+separate from Whisperer's engine. See [model configuration](model_configuration.md) and the current
+generated flow catalog for exact field paths and defaults.

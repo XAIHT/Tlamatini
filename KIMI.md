@@ -1020,3 +1020,30 @@ Use `scaffold_compile` for a styled PDF, or `create_file` / `create_from_templat
 PPTXer has 36 named treatments: 24 automatic content treatments plus 12 explicit styles selected through `nuance` (for example, `blueprint`, `botanical`, or `swiss_editorial`). Empty `nuance` preserves automatic classification. Its 17 font pairings resolve against installed fonts; existing color, background, font, and density overrides remain available.
 
 Measured fitting and continuation slides preserve complete long content, including the 256-character stress fields. Review `created_with_findings`; interpret `layout_clean` together with `ground_truth` and the audit confidence/measurement errors. Keep flat sibling modules with pool copies. Generated decks, renders, and galleries are ignored and regenerable; keep source, tests, and verifier scripts. The [canonical guide](Tlamatini/agent/agents/pptxer/STYLES.md) records the 126-test snapshot and the precise 151-slide native new-style verification scope.
+
+## Central model configuration — current contract
+
+Config → Models exposes **38 settings across six searchable categories** for core
+services and **21 model-backed agents**. The complete key/default/YAML-path mapping,
+API, troubleshooting and verification instructions live in
+[Model configuration](docs/model_configuration.md). Talker model/voice, Whisperer
+engine/local/cloud/cleanup models, Video-Analyzer's independent local audio model,
+both vision pipelines, planning, documents, monitors and messaging are included.
+
+New agent templates use quoted `"@config"`; missing fields also inherit. Literal
+canvas/standalone YAML values remain overrides. Wrapped chat seeds global choices
+before explicit tool arguments; standalone MCP resolves inherited template values
+before invocation overrides. Save writes all 38 settings, preserves unrelated
+config, and does not download models. Reconnect chat and reload/restart running
+agents to apply choices. Credentials, URLs and external ACPX providers remain in
+their existing configuration. Empty Whisperer cloud model means provider default;
+empty LaTeXer repair model disables repair. Talker requires Orpheus-compatible
+audio tokens; the SNAC decoder is an internal dependency.
+
+Frozen web code imports the compiled registry; portable agents receive a refreshed
+`agents/model_settings.py` resolved through `get_agents_root()`. Never form a loose
+template path from a frozen service's synthetic `__file__`. Both modes honor
+`CONFIG_PATH`; self-modification source is optional at runtime. The release gate
+`check_agent_runtimes` prepares all templates, executes model loaders, refreshes
+helpers/catalogs and runs a harmless File-Creator check before packaging. See
+[dated execution evidence](docs/model-configuration-verification.md).

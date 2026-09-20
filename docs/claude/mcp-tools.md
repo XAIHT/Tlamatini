@@ -8,6 +8,17 @@
 -->
 # Tlamatini — Creating a New MCP or Tool
 
+## Models for wrapped agents and standalone MCP
+
+Wrapped chat resolves central model settings before explicit tool arguments.
+The root `tlamatini_mcp_server.py` instead resolves `@config`/missing template fields
+before merging invocation overrides, carries `model_settings.py` into its runtime
+and sets `CONFIG_PATH` for the child outside the ordinary agents tree. Canvas
+literals are not a global preference. Preserve inherited strings when generating
+tool/flow arguments; do not volunteer hardcoded model names. External MCP servers
+and ACPX CLI provider models retain their own settings. See
+[model configuration](../model_configuration.md) for all 38 fields and checks.
+
 **Full guide**: `Tlamatini/.mcps/create_new_mcp.md`
 
 ## First Decision: Classify the request

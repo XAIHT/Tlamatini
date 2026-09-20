@@ -88,7 +88,7 @@ PROMPT_FILE = "monitoring-prompt.pmt"
 EXCLUDED_AGENT_TYPES = {'flowcreator', 'flowhypervisor'}
 
 
-def load_config(path: str = "config.yaml") -> Dict:
+def _load_config_file(path: str = "config.yaml") -> Dict:
     try:
         with open(path, "r", encoding="utf-8") as f:
             return yaml.safe_load(f)
@@ -98,6 +98,23 @@ def load_config(path: str = "config.yaml") -> Dict:
     except yaml.YAMLError as e:
         logging.error(f"❌ Error parsing {path}: {e}")
         sys.exit(1)
+
+
+def load_config(*args, **kwargs):
+    """Apply Config -> Models choices while retaining explicit agent overrides."""
+    import importlib.util as _model_import
+    from pathlib import Path as _ModelPath
+    config = _load_config_file(*args, **kwargs)
+    here = _ModelPath(__file__).resolve()
+    candidates = [here.parent / 'model_settings.py']
+    candidates += [p / 'model_settings.py' for p in here.parents if p.name == 'agents']
+    for shared in candidates:
+        if shared.is_file():
+            spec = _model_import.spec_from_file_location('tlamatini_model_settings', shared)
+            module = _model_import.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            return module.resolve_agent_models('flowhypervisor', config, agent_file=__file__)
+    return config
 
 
 def load_monitoring_prompt() -> str:

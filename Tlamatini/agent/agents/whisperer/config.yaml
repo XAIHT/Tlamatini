@@ -1,3 +1,4 @@
+# Models: "@config" follows Config -> Models. Set a concrete value for a per-agent override.
 # Whisperer Agent Configuration
 # ---------------------------------------------------------------------------
 # SPEECH-TO-TEXT (STT / voice recognition). Whisperer is 100% SELF-SUFFICIENT
@@ -103,14 +104,14 @@ save_source_audio: true
 #                       Auto-uses the GPU when present; ALWAYS falls back to CPU.
 #   "cloud-groq"     -> Groq cloud Whisper API (very cheap/fast; needs a key).
 #   "cloud-openai"   -> OpenAI Whisper / gpt-4o-transcribe API (needs a key).
-engine: "faster-whisper"
+engine: "@config"
 
 # faster-whisper model size. Bigger = more accurate but heavier/slower and a
 # larger first-run download:
 #   tiny / base (DEFAULT — small, fast, fine on CPU) / small / medium /
 #   large-v3 (most accurate) / large-v3-turbo (near large-v3, much faster).
 # On an 8 GB GPU, large-v3-turbo is an excellent quality/speed pick.
-model: "base"
+model: "@config"
 
 # Compute device for the LOCAL engine:
 #   "auto" -> use the GPU (CUDA) if one is detected, else CPU (THE DEFAULT).
@@ -151,7 +152,7 @@ cloud_api_key: ""
 cloud_base_url: ""
 
 # Cloud model name (defaults: whisper-large-v3 for Groq, whisper-1 for OpenAI).
-cloud_model: ""
+cloud_model: "@config"
 
 # Seconds to wait for a cloud / Ollama HTTP response.
 request_timeout: 300
@@ -163,7 +164,7 @@ request_timeout: 300
 ollama_cleanup: false
 ollama_url: "http://localhost:11434"
 ollama_token: ""
-cleanup_model: "llama3.2"
+cleanup_model: "@config"
 cleanup_instruction: "Add proper punctuation and capitalization and fix obvious transcription errors. Do NOT add, remove, summarize or translate any content. Return ONLY the corrected text."
 
 # ── Output ───────────────────────────────────────────────────────────────────

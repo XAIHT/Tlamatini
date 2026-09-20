@@ -1,3 +1,4 @@
+# Models: "@config" follows Config -> Models. Set a concrete value for a per-agent override.
 source_agents: []
 poll_interval: 10
 
@@ -18,7 +19,7 @@ imap:
 # LLM Configuration
 llm:
   base_url: "http://localhost:11434"
-  model: "glm-5.3:cloud"
+  model: "@config"
   temperature: 0
 
 # Analysis Configuration

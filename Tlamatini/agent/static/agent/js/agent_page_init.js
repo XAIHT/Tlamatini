@@ -845,6 +845,102 @@ function listOllamaModels(options = {}) {
 
 let _configModelsBaseline = null;
 let _configUrlsBaseline = null;
+let _modelSettingsFields = [];
+
+function _renderModelSettings(fields) {
+    _modelSettingsFields = Array.isArray(fields) ? fields : [];
+    configModelsForm.replaceChildren();
+    const nav = document.getElementById('config-models-tabs');
+    const search = document.getElementById('config-models-search');
+    nav.replaceChildren();
+    search.value = '';
+    const groups = [...new Set(_modelSettingsFields.map(field => field.group))];
+    let selected = groups[0];
+    const panels = [];
+    function filter() {
+        const query = search.value.trim().toLowerCase();
+        panels.forEach(({panel, group, cards}) => {
+            let matches = 0;
+            cards.forEach(({card, field}) => {
+                const visible = !query || `${field.label} ${field.group} ${field.help}`.toLowerCase().includes(query);
+                card.hidden = !visible;
+                if (visible) matches += 1;
+            });
+            panel.hidden = query ? matches === 0 : group !== selected;
+        });
+        nav.querySelectorAll('button').forEach(button => {
+            button.setAttribute('aria-selected', String(!query && button.dataset.group === selected));
+            button.tabIndex = button.dataset.group === selected ? 0 : -1;
+        });
+        document.getElementById('config-models-no-results').hidden = panels.some(item => !item.panel.hidden);
+    }
+    groups.forEach((group, index) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.id = `model-tab-${index}`;
+        button.setAttribute('role', 'tab');
+        button.setAttribute('aria-controls', `model-panel-${index}`);
+        button.dataset.group = group;
+        const fieldsInGroup = _modelSettingsFields.filter(field => field.group === group);
+        button.textContent = `${group} (${fieldsInGroup.length})`;
+        button.addEventListener('click', () => { selected = group; search.value = ''; filter(); });
+        button.addEventListener('keydown', event => {
+            if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+            event.preventDefault();
+            const next = event.key === 'Home' ? 0 : event.key === 'End' ? groups.length - 1
+                : (index + (event.key === 'ArrowRight' ? 1 : -1) + groups.length) % groups.length;
+            const target = nav.children[next];
+            target.click(); target.focus();
+        });
+        nav.appendChild(button);
+        const panel = document.createElement('section');
+        panel.id = `model-panel-${index}`;
+        panel.className = 'model-settings-panel';
+        panel.setAttribute('role', 'tabpanel');
+        panel.setAttribute('aria-labelledby', button.id);
+        const heading = document.createElement('h3');
+        heading.textContent = group;
+        panel.appendChild(heading);
+        const grid = document.createElement('div');
+        grid.className = 'model-settings-grid';
+        const cards = fieldsInGroup.map(field => {
+            const card = document.createElement('div');
+            card.className = 'model-settings-card';
+            const label = document.createElement('label');
+            const id = `config-models-${field.key.replaceAll('_', '-')}`;
+            label.htmlFor = id; label.className = 'config-form-label'; label.textContent = field.label;
+            const input = document.createElement(field.kind === 'choice' ? 'select' : 'input');
+            input.id = id; input.className = 'config-form-input';
+            input.dataset.configKey = field.key;
+            input.dataset.modelKind = field.kind;
+            input.dataset.optional = String(field.optional);
+            if (field.kind === 'choice') {
+                field.choices.forEach(value => { const option = document.createElement('option'); option.value = value; option.textContent = value; input.appendChild(option); });
+            } else {
+                input.type = 'text'; input.spellcheck = false;
+                if (field.kind === 'ollama') input.setAttribute('list', 'config-models-ollama-options');
+            }
+            const hint = document.createElement('small');
+            hint.id = `${id}-help`;
+            hint.textContent = field.help || (field.kind === 'ollama' ? 'Ollama model · choose from the catalog or enter a tag.' : 'Model name or local model directory.');
+            input.setAttribute('aria-describedby', hint.id);
+            card.append(label, input, hint); grid.appendChild(card);
+            return {card, field};
+        });
+        panel.appendChild(grid); configModelsForm.appendChild(panel);
+        panels.push({panel, group, cards});
+    });
+    search.oninput = filter;
+    filter();
+    const status = document.getElementById('config-models-catalog-status');
+    status.textContent = 'Loading Ollama suggestions…';
+    listOllamaModels({silent: true}).then(models => {
+        const options = document.getElementById('config-models-ollama-options');
+        options.replaceChildren();
+        (models || []).forEach(model => { const option = document.createElement('option'); option.value = model; options.appendChild(option); });
+        status.textContent = `${(models || []).length} Ollama models available. Local speech and provider models use their own names.`;
+    }).catch(() => { status.textContent = 'Ollama suggestions unavailable. Local speech and provider settings can still be saved.'; });
+}
 
 function _snapshotConfigValues(values) {
     const snapshot = {};
@@ -887,12 +983,13 @@ async function _loadConfigSectionValues(section) {
     if (!data || data.success !== true || !data.values) {
         throw new Error(`Failed to load ${section} config: bad payload`);
     }
+    if (section === 'models') _renderModelSettings(data.fields);
     return data.values;
 }
 
 function _populateConfigForm(form, values) {
     if (!form) return;
-    const inputs = form.querySelectorAll('input[data-config-key]');
+    const inputs = form.querySelectorAll('[data-config-key]');
     inputs.forEach(input => {
         const key = input.getAttribute('data-config-key');
         input.value = (values && Object.prototype.hasOwnProperty.call(values, key)) ? String(values[key]) : '';
@@ -903,7 +1000,7 @@ function _populateConfigForm(form, values) {
 function _collectConfigFormValues(form) {
     const values = {};
     if (!form) return values;
-    const inputs = form.querySelectorAll('input[data-config-key]');
+    const inputs = form.querySelectorAll('[data-config-key]');
     inputs.forEach(input => {
         const key = input.getAttribute('data-config-key');
         values[key] = input.value.trim();
@@ -913,7 +1010,7 @@ function _collectConfigFormValues(form) {
 
 function _markInvalidInputs(form, invalidKeys) {
     if (!form) return;
-    const inputs = form.querySelectorAll('input[data-config-key]');
+    const inputs = form.querySelectorAll('[data-config-key]');
     inputs.forEach(input => {
         const key = input.getAttribute('data-config-key');
         if (invalidKeys.has(key)) {
@@ -966,8 +1063,8 @@ function OpenConfigModelsDialog(e) { // eslint-disable-line no-unused-vars
             _configModelsBaseline = _snapshotConfigValues(_collectConfigFormValues(configModelsForm));
             preRenderConfigModelsDialog(
                 'Configure Models...',
-                'Set the Ollama model used for each subsystem.',
-                'Each model must already exist in the Ollama catalog before saving.'
+                'Choose models for every agent.',
+                'Agent settings marked @config follow these choices. Explicit agent overrides take priority.'
             );
             renderConfigModelsDialog();
         })
@@ -1072,7 +1169,7 @@ function _labelForConfigInput(input) {
 function _formatErrorsForAlert(form, errors) {
     const lines = [];
     Object.keys(errors).forEach(key => {
-        const input = form ? form.querySelector(`input[data-config-key="${key}"]`) : null;
+        const input = form ? form.querySelector(`[data-config-key="${key}"]`) : null;
         const label = input ? _labelForConfigInput(input) : key;
         lines.push(`  • ${label}: ${errors[key]}`);
     });
@@ -1091,7 +1188,8 @@ async function _saveConfigModels() {
     const invalidKeys = new Set();
     const emptyErrors = {};
     Object.keys(values).forEach(key => {
-        if (!values[key]) {
+        const field = _modelSettingsFields.find(item => item.key === key);
+        if (!values[key] && !(field && field.optional)) {
             emptyErrors[key] = 'must not be empty';
             invalidKeys.add(key);
         }
@@ -1102,13 +1200,17 @@ async function _saveConfigModels() {
         return false;
     }
 
-    // 2) Fetch the live Ollama catalog. If this fails, Ollama is likely down.
+    // Validate changed Ollama choices only. Whisper/Hugging Face/provider IDs
+    // are not Ollama models; unchanged settings must not block an offline edit.
+    const ollamaKeys = _modelSettingsFields.filter(field => field.kind === 'ollama'
+        && values[field.key] && (!_configModelsBaseline || values[field.key] !== _configModelsBaseline[field.key])).map(field => field.key);
     let catalog;
+    if (ollamaKeys.length) {
     try {
         catalog = await listOllamaModels({ silent: true });
     } catch (err) {
         console.error('Failed to query Ollama for model catalog:', err);
-        alert('Could not reach the Ollama server.\n\nPlease make sure the Ollama server is running before clicking "Save" again.');
+        alert('Could not reach Ollama to validate the changed Ollama model choices. Local speech settings do not require Ollama.');
         return false;
     }
 
@@ -1121,7 +1223,7 @@ async function _saveConfigModels() {
 
     // 3) Every model in the form must be in the catalog.
     const missing = {};
-    Object.keys(values).forEach(key => {
+    ollamaKeys.forEach(key => {
         if (!catalogSet.has(values[key])) {
             missing[key] = `model "${values[key]}" is not installed in Ollama`;
             invalidKeys.add(key);
@@ -1133,6 +1235,8 @@ async function _saveConfigModels() {
             + _formatErrorsForAlert(configModelsForm, missing)
             + '\n\nPlease correct them (or install them in Ollama) before clicking "Save" again.');
         return false;
+    }
+
     }
 
     // 4) All validated — persist on the server.

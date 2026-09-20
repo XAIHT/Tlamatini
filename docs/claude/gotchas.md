@@ -8,6 +8,25 @@
 -->
 # Tlamatini — Gotchas, Build/Lint, Roadmap, Work Style
 
+## Models and frozen runtime preparation (2026-09-20)
+
+- Never open `model_settings.py` relative to a frozen service's `__file__`: the
+  `_internal` path may represent compiled code, not a loose template. Import the
+  compiled registry and resolve portable copies via `get_agents_root()`.
+- Non-model agents must prepare without a loose registry. Refresh helpers for
+  existing pools as well as new ones. Do not depend on `TlamatiniSourceCode/`.
+- Read portable YAML as UTF-8 (BOM allowed); the Windows default code page corrupted
+  Monitor-Log, Monitor-Netstat and RecMailer's real configurations.
+- A saved model choice affects the next load. Existing literal YAML overrides and
+  explicit tool arguments can intentionally differ. A global fallback to Unified
+  applies only while the dedicated key is missing/blank, not after a dedicated save.
+- HTTP 410 requires inspecting the provider's retirement message and choosing an
+  available model. Summary observer 401/403/404/410 failures remain partial and
+  disable that observer only for that run; do not turn missing evidence into PASS.
+
+Read [model configuration](../model_configuration.md) and run `check_agent_runtimes`
+in source and frozen modes; file inclusion alone does not prove execution.
+
 > **The chronological "Recent Fixes / Gotchas" fix log now lives in `docs/claude/recent-fixes.md`** — it was split out of this file and is **NOT auto-imported** into the assistant context, to keep every session lean. It holds the dated "do NOT revert this / keep these surfaces aligned" contracts for ACPX, the Flow Compiler, the planner, the Exec Report pipeline, the ACP canvas, wrapped chat-agent parsing, the desktop-UI agents, `prompt.pmt`, `regen_secrets.py`, and the logging filters. **Read `recent-fixes.md` before modifying or reverting code in any of those subsystems.**
 
 ## Claude API Client (opus_client)

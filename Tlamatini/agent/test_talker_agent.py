@@ -1043,7 +1043,9 @@ class TalkerSynthesizeTests(unittest.TestCase):
         self.addCleanup(_remove_vocoder_fakes)
         fake_sd = _install_sounddevice()
         self.addCleanup(_remove_sounddevice)
-        with unittest.mock.patch.object(self.mod, 'query_ollama_tts',
+        # Only the fake sounddevice receives playback; the runner's real-audio
+        # guard must not suppress this assertion about our mocked device.
+        with unittest.mock.patch.dict(os.environ, {'TLAMATINI_NO_AUDIO': ''}), unittest.mock.patch.object(self.mod, 'query_ollama_tts',
                                         return_value=(tokens, 200)):
             result = self.mod.synthesize(self._cfg(play_audio=True, voice='jess'))
         self.assertEqual(result['status'], 'spoken')
@@ -1230,11 +1232,11 @@ class TalkerRegistryTests(SimpleTestCase):
         with open(config_path, 'r', encoding='utf-8') as handle:
             cfg = yaml.safe_load(handle)
         self.assertEqual(cfg['input_text'], '')
-        self.assertEqual(cfg['model'], 'legraphista/Orpheus:3b-ft-q8')
+        self.assertEqual(cfg['model'], '@config')
         self.assertEqual(cfg['ollama_url'], 'http://localhost:11434')
         self.assertEqual(cfg['ollama_token'], '')
         self.assertEqual(cfg['language'], 'en')
-        self.assertEqual(cfg['voice'], 'tara')
+        self.assertEqual(cfg['voice'], '@config')
         self.assertEqual(cfg['gender'], '')
         self.assertEqual(cfg['emotion'], '')
         self.assertEqual(cfg['sample_rate'], 0)

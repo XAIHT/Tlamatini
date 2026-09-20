@@ -1,3 +1,4 @@
+# Models: "@config" follows Config -> Models. Set a concrete value for a per-agent override.
 # PDFer Agent Configuration
 #
 # PDFer is Tlamatini's DOCUMENT COMPOSER: it turns Tlamatini's own answer, a
@@ -197,7 +198,7 @@ ollama_polish: false
 ollama_design: false
 
 ollama_url: "http://localhost:11434"
-ollama_model: "glm-5.3:cloud"
+ollama_model: "@config"
 ollama_token: ""
 ollama_prompt: ""      # "" = the built-in "structure this into clean Markdown" prompt
 ollama_timeout: 180

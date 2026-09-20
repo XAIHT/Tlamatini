@@ -260,7 +260,7 @@ def _next_run_sequence() -> int:
         return next(_run_sequence_counter)
 
 
-def create_isolated_runtime_copy(template_dir: str, runtime_prefix: str) -> tuple[str, str, str]:
+def create_isolated_runtime_copy(template_dir: str, runtime_prefix: str, *, runtime_root: str | None = None) -> tuple[str, str, str]:
     logger.info("[ChatRuntime.create_isolated_runtime_copy] CALLED with template_dir = %s, runtime_prefix = %s", template_dir, runtime_prefix)
     logger.info("[ChatRuntime.create_isolated_runtime_copy] template_dir exists? %s, is_dir? %s", os.path.exists(template_dir), os.path.isdir(template_dir))
 
@@ -272,7 +272,7 @@ def create_isolated_runtime_copy(template_dir: str, runtime_prefix: str) -> tupl
         except Exception as exc:
             logger.warning("[ChatRuntime.create_isolated_runtime_copy] Could not list template_dir: %s", exc)
 
-    runtime_root = ensure_chat_runtime_root()
+    runtime_root = runtime_root or ensure_chat_runtime_root()
     run_id = uuid.uuid4().hex
     short_id = run_id[:8]
     seq = _next_run_sequence()
@@ -292,13 +292,15 @@ def create_isolated_runtime_copy(template_dir: str, runtime_prefix: str) -> tupl
     logger.info("[ChatRuntime.create_isolated_runtime_copy] runtime_dir = %s", runtime_dir)
     logger.info("[ChatRuntime.create_isolated_runtime_copy] log_path = %s", log_path)
 
+    stage = 'copy template'
     try:
         shutil.copytree(template_dir, runtime_dir, ignore=_copytree_ignore)
+        stage = 'refresh runtime helpers'
         from .services.flow_knowledge import write_runtime_knowledge
         write_runtime_knowledge(runtime_dir, os.path.basename(os.path.normpath(template_dir)))
-        logger.info("[ChatRuntime.create_isolated_runtime_copy] shutil.copytree SUCCESS -> runtime_dir exists? %s", os.path.isdir(runtime_dir))
+        logger.info("[ChatRuntime.create_isolated_runtime_copy] runtime prepared: %s", runtime_dir)
     except Exception as exc:
-        logger.error("[ChatRuntime.create_isolated_runtime_copy] shutil.copytree FAILED: template=%s -> runtime=%s, error: %s", template_dir, runtime_dir, exc)
+        logger.exception("[ChatRuntime.create_isolated_runtime_copy] %s FAILED: template=%s -> runtime=%s, error: %s", stage, template_dir, runtime_dir, exc)
         raise
 
     # List the copied runtime contents for debugging

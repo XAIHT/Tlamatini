@@ -1,3 +1,4 @@
+# Models: "@config" follows Config -> Models. Set a concrete value for a per-agent override.
 # Instant Messaging Doctor Agent Configuration
 mode: "auto"                  # auto | diagnose | repair | test
 platform: "both"              # both | telegram | whatsapp
@@ -37,7 +38,7 @@ max_retries: 1
 use_llm: true
 ollama:
   url: ""
-  model: "glm-5.3:cloud"
+  model: "@config"
   timeout_seconds: 45
 
 # Config discovery overrides. Empty means auto-detect app root/config/contacts.

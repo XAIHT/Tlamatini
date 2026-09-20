@@ -317,6 +317,10 @@ def evidence_chunks(text, limit=16000):
 def summarize(path, config, pipeline, call_model, result):
     notes = []
     successful_frames = 0
+    dual_frames = 0
+    observers = [{'slot': slot, 'model': pipeline[key], 'frames_analyzed': 0,
+                  'batches_completed': 0, 'batches_failed': 0, 'batches_skipped': 0,
+                  'disabled_reason': ''} for slot, key in enumerate(('model_1', 'model_2'), 1)]
     failed_vision = False
     try:
         for number, frames in enumerate(visual_batches(path, config, result), 1):
@@ -328,24 +332,44 @@ def summarize(path, config, pipeline, call_model, result):
                          'images': [f['b64'] for f in frames]}]
             healthy = 0
             with ThreadPoolExecutor(max_workers=2) as executor:
-                futures = [executor.submit(call_model, pipeline['host'], pipeline['token'], pipeline[key],
-                                           messages, f'SUMMARY-{number}-{key}') for key in ('model_1', 'model_2')]
-                for slot, future in enumerate(futures, 1):
+                futures = []
+                for observer in observers:
+                    if observer['disabled_reason']:
+                        observer['batches_skipped'] += 1
+                        continue
+                    slot = observer['slot']
+                    future = executor.submit(call_model, pipeline['host'], pipeline['token'], observer['model'],
+                                             messages, f'SUMMARY-{number}-model_{slot}')
+                    futures.append((observer, future))
+                for observer, future in futures:
+                    slot = observer['slot']
                     try:
                         observation = future.result()
                         if not observation or observation.startswith('Error'):
                             raise RuntimeError(observation or 'empty response')
-                        notes.append(f'Visual batch {number}, observer {slot}:\n{observation}')
+                        notes.append(f"Visual batch {number}, observer {slot} ({observer['model']}), "
+                                     f"{frames[0]['timestamp']:.3f}-{frames[-1]['timestamp']:.3f}s:\n{observation}")
+                        observer['batches_completed'] += 1
+                        observer['frames_analyzed'] += len(frames)
                         healthy += 1
                     except Exception as exc:
                         failed_vision = True
+                        observer['batches_failed'] += 1
                         result['warnings'].append(f'Visual batch {number}, observer {slot} failed: {exc}')
+                        if getattr(exc, 'permanent', False) or getattr(exc, 'code', None) in (401, 403, 404, 410):
+                            observer['disabled_reason'] = str(exc)
+                            result['warnings'].append(f"Observer {slot} ({observer['model']}) disabled for the remaining "
+                                                      "batches in this run after a permanent error; change its model/access settings.")
             if healthy:
                 successful_frames += len(frames)
+            if healthy == 2:
+                dual_frames += len(frames)
     except Exception as exc:
         failed_vision = True
         result['warnings'].append(f'Visual analysis incomplete: {exc}')
     result['frames_analyzed'] = successful_frames
+    result['visual_coverage'] = {'frames_with_any_observer': successful_frames,
+                                 'frames_with_both_observers': dual_frames, 'observers': observers}
     result['visual_observations'] = notes[:]
     if result['transcript']:
         notes.append('Timestamped speech transcript:\n' + result['transcript'])
@@ -368,8 +392,13 @@ def summarize(path, config, pipeline, call_model, result):
             raise RuntimeError(response or 'empty synthesis response')
         return response
 
-    coverage = (f"Duration: {result['duration_seconds']}s; visually analyzed {successful_frames} sampled "
-                f"frames of {result.get('frames_requested', 0)} requested; audio: {result['audio_status']}; "
+    observer_coverage = '; '.join(f"observer {o['slot']} ({o['model']}): {o['frames_analyzed']} frames, "
+                                 f"{o['batches_failed']} failed batches, {o['batches_skipped']} skipped batches"
+                                 for o in observers)
+    coverage = (f"Duration: {result['duration_seconds']}s; {successful_frames} sampled frames covered by at least "
+                f"one observer of {result.get('frames_requested', 0)} requested; {dual_frames} frames covered by both "
+                f"observers. These are different coverage measures, not conflicting metadata. {observer_coverage}. "
+                f"Audio: {result['audio_status']}; "
                 f"tracks completed: {result['audio_tracks_analyzed']}/{result['audio_track_count']}. "
                 "Sampling can miss brief events or small text. No speaker diarization or non-speech "
                 "sound recognition. " + ' '.join(result['warnings']))

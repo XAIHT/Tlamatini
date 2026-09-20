@@ -285,6 +285,15 @@ def run_agent_blocking(agent: str, info: Dict[str, Any], overrides: Dict[str, An
     run_dir = os.path.join(RUNS_ROOT, run_id)
 
     shutil.copytree(info["dir"], run_dir, ignore=_ignore)
+    # These runs live outside the agents tree, so carry the portable registry
+    # and resolve the app defaults before applying explicit per-call overrides.
+    import importlib.util
+    registry_path = os.path.join(AGENTS_ROOT, 'model_settings.py')
+    registry_spec = importlib.util.spec_from_file_location('mcp_model_settings', registry_path)
+    registry = importlib.util.module_from_spec(registry_spec)
+    registry_spec.loader.exec_module(registry)
+    if agent in registry.AGENTS:
+        shutil.copy2(registry_path, os.path.join(run_dir, 'model_settings.py'))
 
     # merge overrides onto the template config.yaml
     cfg_path = os.path.join(run_dir, "config.yaml")
@@ -293,6 +302,7 @@ def run_agent_blocking(agent: str, info: Dict[str, Any], overrides: Dict[str, An
             cfg = yaml.safe_load(f) or {}
     except Exception:
         cfg = dict(info["config"])
+    cfg = registry.resolve_agent_models(agent, cfg, agent_file=registry_path)
     _deep_merge(cfg, overrides or {})
     with open(cfg_path, "w", encoding="utf-8") as f:
         yaml.dump(cfg, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
@@ -301,6 +311,7 @@ def run_agent_blocking(agent: str, info: Dict[str, Any], overrides: Dict[str, An
     env["TLAMATINI_TEMP"] = TEMP_ROOT
     env["PYTHONUTF8"] = "1"
     env["PYTHONIOENCODING"] = "utf-8"
+    env.setdefault('CONFIG_PATH', os.path.join(os.path.dirname(AGENTS_ROOT), 'config.json'))
     env.pop("AGENT_REANIMATED", None)
 
     proc = subprocess.Popen(

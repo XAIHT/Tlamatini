@@ -251,7 +251,7 @@ class FreshCloneCanBuildTests(SimpleTestCase):
 
     def test_real_credentials_and_real_pii_are_still_caught(self):
         self.assertTrue(self.mod._is_live_secret(
-            "bot_token", "8123456789:AAH7xQvZk3mNpQrStUvWxYz012345678abc"))
+            "bot_token", "1234567890:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"))
         self.assertTrue(self.mod._is_live_secret("smtp_password", "hunter2hunter2"))
         self.assertTrue(self.mod._looks_like_pii("real.person@gmail.com"))
         self.assertTrue(self.mod._looks_like_pii("+52 55 1234 5678"))
@@ -348,7 +348,7 @@ class RefusalStillProtectsAKeyedTreeTests(SimpleTestCase):
             d = root / "Tlamatini" / "agent" / "agents" / "telegrammer"
             d.mkdir(parents=True)
             (d / "config.yaml").write_text(
-                "bot_token: '8123456789:AAH7xQvZk3mNpQrStUvWxYz012345678abc'\n"
+                "bot_token: '1234567890:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'\n"
                 "recipient: 'someone.real@gmail.com'\n", encoding="utf-8")
             evidence = self._preflight_in(root)
         self.assertTrue(evidence, "a live bot token must block a no-targets build.")

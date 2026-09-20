@@ -1,10 +1,11 @@
+# Models: "@config" follows Config -> Models. Set a concrete value for a per-agent override.
 # FlowHypervisor Agent Configuration
 # LLM-powered flow monitoring agent that watches all running agents
 
 # LLM connection settings
 llm:
   host: "http://127.0.0.1:11434"
-  model: "glm-5.3:cloud"
+  model: "@config"
   temperature: 0.0
 
 # Monitoring poll interval (seconds)

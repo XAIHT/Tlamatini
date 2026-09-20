@@ -1,12 +1,32 @@
 # Self-modify and self-update carriage review
 
-Reviewed on 2026-09-16 by reading source files, dependency code and packaging
+Initial review on 2026-09-16 read source files, dependency code and packaging
 rules. The follow-up ran the two requested file-only inclusion sweeps, generated
 sanitized diagnostic snapshots and parsed Python/PowerShell syntax. No automated
 application tests, builds, application launches, installs or updates were run.
-These are source/snapshot checks, not a frozen-runtime certification.
+Those September 16 results are source/snapshot checks. A separate September 20
+follow-up rebuilt and installed 1.63.0, then passed source/frozen runtime execution,
+model loading, wrapped-chat/MCP File-Creator and visible Models save/reopen checks.
+See [dated evidence and limitations](model-configuration-verification.md); this does
+not certify every hardware/provider workflow or a remotely published release.
 
 ## Build and rebuild
+
+### Central model settings: runtime execution gate (2026-09-20)
+
+`model_settings.py` has two required carriers: `agent.agents.model_settings` in
+the frozen archive for the web process, and `agents/model_settings.py` beside
+the executable for standalone agents. Runtime preparation imports compiled code
+and copies portable data from `get_agents_root()`. It must never construct a
+loose source path from a frozen service module's `__file__`.
+
+`build.py` now executes `check_agent_runtimes` inside the newly built executable
+before packaging. The check prepares every agent, refreshes reusable helpers,
+validates actual YAML/model loaders and planning catalogs, and executes
+File-Creator in private scratch space. The snapshot explicitly requires the
+registry, runtime preparation source, command and model regression tests, so
+self-modification retains the same release gate. Inclusion sweeps and runtime
+execution are complementary checks; passing a file inventory alone is insufficient.
 
 - `--self-modify` carries a fresh, sanitized `TlamatiniSourceCode/` plus
   `Tlamatini.md`. Default builds omit both; `--no-self-modify` wins when both
@@ -50,8 +70,9 @@ These are source/snapshot checks, not a frozen-runtime certification.
 
 ## Delivery limit
 
-These changes require a fresh build and reinstall/release. An artifact assembled
-while this review was in progress does not prove inclusion of the final edits.
+Code changes require a fresh build and reinstall/release. The September 20 local
+rebuild/install is recorded in the evidence linked above; it was not published
+remotely. A package assembled before later edits does not prove their inclusion.
 The earlier v1.62.0 `dist/Tlamatini_Release_v1.62.0/pkg.zip` was subsequently
 inspected read-only: all 354 application static files were byte-identical in
 both `_internal/agent/static` and `_internal/staticfiles`, and all four

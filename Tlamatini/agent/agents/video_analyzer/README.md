@@ -25,7 +25,7 @@ analysis_type: transcription
 video_pathfilenames: 'C:/Clips/lecture.mkv'
 audio_tracks: all
 transcription:
-  model: base
+  model: "@config"  # Config → Models → Speech; a literal value pins this agent.
   device: auto
   compute_type: auto
   language: ''
@@ -158,7 +158,29 @@ Validation on 2026-09-19 also used a real generated speech/video clip with the
 cached base Whisper model on CPU: all three spoken sentences were recovered with
 timestamps. A live summary combined that transcript with two visual samples using
 the installed `gemma4:cloud` and `jcyhsiao/qwen3.5cloud:latest` observers and
-`glm-5.3:cloud` synthesis. The original first-interpreter default
-`qwen3-vl:235b-cloud` was not installed on the validation host; its default remains
-unchanged for robotics compatibility. These checks establish execution and
+`glm-5.3:cloud` synthesis. On 2026-09-20, the former first interpreter
+`qwen3-vl:235b-cloud` returned HTTP 410 with a retirement message. The initial
+replacement is `gemma4:cloud`; all three choices now come from Config → Models
+unless an explicit agent override is supplied. These checks establish execution and
 integration, not exhaustive accuracy for every video, language or model.
+
+## Model configuration and partial coverage
+
+The visual models use `"@config"` in YAML and follow Config → Models → Vision.
+The local transcription model follows Speech → Video-Analyzer audio tracks.
+Explicit per-agent model names override the global choice. Permanent observer
+errors (HTTP 401/403/404/410) stop further calls to that observer in the current
+summary run. The healthy observer continues; status remains `partial`. The JSON
+report records `visual_coverage`: frames covered by any observer, frames covered
+by both, and per-observer failed/skipped batches. Robotics keeps its conservative
+verdict checks. See [model configuration](../../../../docs/model_configuration.md).
+
+Saving central model settings affects the next configuration load; restart an
+already running agent if needed. Wrapped chat uses global model choices followed
+by explicit tool arguments, so a saved canvas override does not govern a separate
+chat invocation. A manually copied agent needs its portable `model_settings.py`
+helper and an explicit `CONFIG_PATH` outside the normal agents tree. The frozen
+web process uses the compiled registry and refreshed portable assets, without
+depending on a self-modification source snapshot. Run `check_agent_runtimes` in
+source and frozen modes to verify preparation and model loading; this gate does
+not establish inference accuracy or provider availability.

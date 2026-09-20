@@ -69,13 +69,30 @@ logging.basicConfig(
     encoding='utf-8'
 )
 
-def load_config(path="config.yaml"):
+def _load_config_file(path="config.yaml"):
     try:
-        with open(path, "r") as f:
+        with open(path, "r", encoding="utf-8-sig") as f:
             return yaml.safe_load(f)
     except FileNotFoundError:
         logging.error("❌ Error: config.yaml not found.")
         sys.exit(1)
+
+
+def load_config(*args, **kwargs):
+    """Apply Config -> Models choices while retaining explicit agent overrides."""
+    import importlib.util as _model_import
+    from pathlib import Path as _ModelPath
+    config = _load_config_file(*args, **kwargs)
+    here = _ModelPath(__file__).resolve()
+    candidates = [here.parent / 'model_settings.py']
+    candidates += [p / 'model_settings.py' for p in here.parents if p.name == 'agents']
+    for shared in candidates:
+        if shared.is_file():
+            spec = _model_import.spec_from_file_location('tlamatini_model_settings', shared)
+            module = _model_import.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            return module.resolve_agent_models('monitor_netstat', config, agent_file=__file__)
+    return config
 
 CONFIG = load_config()
 

@@ -143,9 +143,9 @@ The final step lives inside Tlamatini's own interface. In the navbar, open the *
 
 ![The Config menu](Tlamatini/agent/images/MenuConfig.jpg)
 
-Behind **Config ▸ Models** is a single dialog where you tell each subsystem which Ollama model to use — embedding, chat, image interpretation, summarization, and the rest. Type the names you pulled in step four (each must already exist in your Ollama catalog) and press **Save**.
+Behind **Config ▸ Models** are 38 settings in six searchable categories: Core, Vision, Speech, Workflows, Documents, and Monitoring & messaging. Set the models for all 21 model-backed agents, including Talker and Whisperer. Ollama choices use catalog suggestions; Whisper and cloud-provider models use their own identifiers. Save, reconnect chat, and restart running agents as needed. Agent YAML values marked `@config` inherit these choices; explicit per-agent values remain overrides. See [the full model configuration contract](docs/model_configuration.md).
 
-![Configure Models](Tlamatini/agent/images/ConfigureModels.jpg)
+The current dialog has six category tabs, searchable fields and dedicated engine/voice selectors. [Open the complete Models guide](docs/model_configuration.md#use-the-dialog).
 
 Behind **Config ▸ Access Keys Wizard** the cloud connection is sealed — and here a single, important distinction decides whether you type anything at all. **If Ollama runs on your own machine (the usual `localhost`), you need no Ollama token — leave that field blank;** a local Ollama answers without a password. **Only when Ollama lives on a remote server — a rented GPU box on [Vast.ai](https://vast.ai), say — do you paste an Ollama token here,** so Tlamatini can authenticate to it across the network. Add any cloud-CLI keys you care to in the same place; blank fields are left untouched, so you only ever type what you mean to change. **Save**, and the wizard tallies how many of its slots are filled.
 
@@ -737,7 +737,6 @@ ollama pull Nomic-Embed-Text:latest
 ollama pull glm-5.3:cloud
 ollama pull jcyhsiao/qwen3.5cloud:latest
 ollama pull gemma4:cloud
-ollama pull qwen3-vl:235b-cloud
 ```
 
 | Model tag | Used by |
@@ -745,8 +744,7 @@ ollama pull qwen3-vl:235b-cloud
 | `Nomic-Embed-Text:latest` | RAG embedding model (default — light VRAM footprint, ~600 MB resident) |
 | `glm-5.3:cloud` | Default chat model, Multi-Turn unified-agent model, MCP file-search, internet classifier and web summarizer — and the default `model` of most workflow-agent templates (FlowCreator, FlowHypervisor, Crawler, File-Interpreter, Monitor-Log, Monitor-Netstat, Notifier, PDFer, Prompter, PSer, Recmailer, Reviewer, Summarizer, TeleTlamatini, Instant Messaging Doctor, and LaTeXer's repair rung 7) |
 | `jcyhsiao/qwen3.5cloud:latest` | Image-Interpreter interpreter 1 (forensic OCR / measurement) and Video-Analyzer interpreter 2 |
-| `gemma4:cloud` | Image-Interpreter interpreter 2 (holistic context / people) |
-| `qwen3-vl:235b-cloud` | Video-Analyzer interpreter 1 (the video / temporal specialist) |
+| `gemma4:cloud` | Image-Interpreter interpreter 2 and Video-Analyzer interpreter 1; selectable in Config → Models |
 
 Some pulls are large and slow. Start them, walk away, come back.
 
@@ -756,7 +754,7 @@ Some pulls are large and slow. Start them, walk away, come back.
 
 ## 5. Complete Tlamatini operation requires Ollama Pro or higher
 
-Four of the five default models in chapter §4 are **cloud-backed** — `glm-5.3:cloud`, `jcyhsiao/qwen3.5cloud:latest`, `gemma4:cloud`, and `qwen3-vl:235b-cloud` (only `Nomic-Embed-Text:latest` runs locally). Most of them carry a literal `:cloud` suffix, but not all: `jcyhsiao/qwen3.5cloud:latest` is that same Qwen3.5 cloud model republished under a community namespace, so the suffix is not the test. The reliable test is `ollama list` — a cloud-backed tag shows a blank **SIZE** column, because nothing was downloaded to your disk. Those models are not actually running on your machine. They live on **Ollama Cloud**, and the `ollama pull <tag>` command registers them with the local daemon, which proxies inference requests to Ollama's service. You must have an Ollama account and be signed in on the host that runs Tlamatini. Ollama documents this local-API/cloud-offload design in its **[official cloud-model documentation](https://docs.ollama.com/cloud)**.
+Three of the four default models in chapter §4 are **cloud-backed** — `glm-5.3:cloud`, `jcyhsiao/qwen3.5cloud:latest`, and `gemma4:cloud` (only `Nomic-Embed-Text:latest` runs locally). Most of them carry a literal `:cloud` suffix, but not all: `jcyhsiao/qwen3.5cloud:latest` is that same Qwen3.5 cloud model republished under a community namespace, so the suffix is not the test. The reliable test is `ollama list` — a cloud-backed tag shows a blank **SIZE** column, because nothing was downloaded to your disk. Those models are not actually running on your machine. They live on **Ollama Cloud**, and the `ollama pull <tag>` command registers them with the local daemon, which proxies inference requests to Ollama's service. You must have an Ollama account and be signed in on the host that runs Tlamatini. Ollama documents this local-API/cloud-offload design in its **[official cloud-model documentation](https://docs.ollama.com/cloud)**.
 
 Ollama may make limited cloud use available to free accounts. That does not make Free the operational baseline for this application. **Tlamatini requires an active Ollama Pro plan, or a higher plan such as Max, for its complete intended functionality.** Multi-Turn orchestration, long agent runs, FlowCreator, parallel Image-Interpreter calls, repeated tool decisions, and large project contexts can use cloud quota and concurrency much faster than a single conversational request.
 
@@ -782,7 +780,7 @@ The book names Pro because Tlamatini was designed and coded around Ollama's clou
 
 Tlamatini can be launched and experimentally reconfigured without Pro, but that is **a limited compatibility path, not the complete supported product configuration**. A free account may permit light cloud testing. An advanced user with sufficiently powerful hardware may replace cloud tags with local open-weight models. Neither path is represented as equivalent to the cloud-backed system on which Tlamatini's full orchestration behavior was designed and tested.
 
-To experiment with an all-local configuration, open `Tlamatini/agent/config.json` and replace every cloud tag with a model you have pulled locally:
+To experiment with an all-local configuration, use **Config → Models** (or the active source/installed `config.json`) and select locally available models suited to each role. The following older examples illustrate the core/vision subset; they are not a complete migration checklist or a current availability test:
 
 | Config key | Default (cloud) | A reasonable local substitute |
 |---|---|---|
@@ -794,7 +792,7 @@ To experiment with an all-local configuration, open `Tlamatini/agent/config.json
 | `image_interpreter_model_2` | `gemma4:cloud` | same as above |
 | `image_merging_model` | `glm-5.3:cloud` | `qwen2.5:32b` or any large local model you can fit in VRAM |
 
-Then also walk through `Tlamatini/agent/agents/*/config.yaml` and replace any cloud tag the agent templates name (several workflow agents — FlowCreator, FlowHypervisor, Prompter, Summarizer, Monitor-Log, Monitor-Netstat, Notifier, Crawler, PDFer, PSer, Recmailer, Reviewer, File-Interpreter, TeleTlamatini — all default to `glm-5.3:cloud`; note FlowCreator's model lives in its own `config.yaml`, not in `config.json`). After the swap, restart Tlamatini. Quality, latency, context capacity, vision support, tool-calling reliability, and concurrency will depend on the exact local models and hardware. Some individual features may work; **complete behavioral equivalence is neither promised nor the supported baseline**.
+Use **Config → Models** to review all six categories, including Video vision, speech, workflows, documents and monitors; the table above is only a core/vision subset. FlowCreator now uses the global `flowcreator_model` key through `llm.model: "@config"`, and the other model-backed agents inherit their dedicated global keys in the same way. Existing workflows with literal tags remain explicit overrides: set their registered model fields to `"@config"` if they should follow the global choices. Reconnect chat and restart already running agents after saving. Direct cloud speech/Claude paths and external ACPX providers need separate consideration in an all-local setup. [The full reference](docs/model_configuration.md) lists every setting and compatibility constraint. Quality, latency, context capacity, vision support, tool-calling reliability, and concurrency will depend on the exact local models and hardware. Some individual features may work; **complete behavioral equivalence is neither promised nor the supported baseline**.
 
 ### 5.4. This subscription is separate from your coding-agent API keys
 
@@ -904,7 +902,7 @@ Open `/agent/`. Here is what you are looking at:
 
 The five checkboxes in the toolbar are **the** thing to learn. Each one is explained in its own chapter below. They are independent — except **Ask Execs**, which only activates while **Multi-Turn** is ticked — so tick whatever combination fits your task.
 
-The navbar also has a **Config** dropdown now. It exposes two validated dialogs: **Models** for the main model-name fields and **URLs** for the Ollama / unified-agent / MCP endpoint values. That means the most common runtime settings can now be changed from the chat UI without manually editing `config.json`. The chat/canvas divider was also polished so width changes feel steadier while you work.
+The navbar also has a **Config** dropdown now. It exposes two validated dialogs: **Models** for 38 model, engine and voice settings in six searchable categories, and **URLs** for the Ollama / unified-agent / MCP endpoint values. That means the most common runtime settings can now be changed from the chat UI without manually editing `config.json`. The chat/canvas divider was also polished so width changes feel steadier while you work.
 
 ### Pasting a screenshot into the chat (2026-07-14)
 
@@ -1769,7 +1767,7 @@ A compact reference for all 89 workflow-agent types. Spotlight chapters for **Pa
 | **Recorder** | Microphone / audio-input capture via `sounddevice`, saved as a WAV (stdlib `wave`) — the audio sibling of the capture trio (Shoter = screen, Camcorder = camera, Recorder = sound). Records from the system DEFAULT input device for `record_seconds` (pick another mic with `device_index` — the agent logs the numbered device list at startup — or by case-insensitive name substring with `device_name`); `sample_rate` defaults `0` = the device's NATIVE rate (forcing an unsupported rate raises a PortAudio error, so the safe default lets the device choose — the value used is read back + logged); `channels` defaults mono (`1`, clamped down to the device max); `input_gain_percent` is POST-capture digital gain (`100` = unity; `200`/`50`/`0` = louder/quieter/silence — amplifying may CLIP, so `clipped_samples` is reported). Saves to `Music/TlamatiniRecords` with a collision-proof timestamped filename (override via `output_dir`). Observational (read-only, but STILL in the Exec Report); emits `INI_SECTION_RECORDER<<<` and always triggers `target_agents`. Needs `sounddevice`. Canvas counterpart of `chat_agent_recorder`. |
 | **AudioPlayer** | Audio-file PLAYBACK to a system OUTPUT device (speakers) via `soundfile` (decode) + `sounddevice` (stream) — the playback counterpart of Recorder (mic-IN → speakers-OUT). `audio_file` (required) is the path (WAV/FLAC/OGG/AIFF, MP3 with a recent libsndfile); plays to the system DEFAULT output by default (`device_index`/`device_name` to pick another). `volume_percent` is a software gain (`100` = unity; clip count reported). **`time_played`**: `0` = the whole file once; `N>0` = exactly N s — a longer file is TRUNCATED, a shorter one is LOOPED (whole repeats + a final partial segment) via a streaming wrap-around callback (no giant buffer). `sample_rate` defaults `0` = the file's own native rate (correct pitch; read from the file). Does NOT change the OS default output device. Observational/output (STILL in the Exec Report); emits `INI_SECTION_AUDIOPLAYER<<<` and always triggers `target_agents`. Needs `sounddevice` + `soundfile`. Canvas counterpart of `chat_agent_audioplayer`. |
 | **VideoPlayer** | Video-file PLAYBACK (WITH audio) on a chosen DISPLAY via `ffpyplayer` (decode + synced audio + volume; its pip wheel BUNDLES ffmpeg + SDL — no external ffmpeg, no runtime download — collected into the frozen build by `build.py --collect-all ffpyplayer`) + OpenCV (`cv2`) for the window; degrades to SILENT cv2 video if ffpyplayer is absent. `video_file` (required) is the path (.mp4/.mov/.mkv/.avi/.webm). `display_index` picks the monitor (`-1` = primary; enumerated via Win32 `EnumDisplayMonitors`, logged at startup). `volume_percent` = audio level (capped at 100). **`time_played`** TRUNCATES a longer video or LOOPS a shorter one (whole repeats + final partial). `window_width`/`window_height` size the window (`0` = native, centered on the chosen display); `fullscreen` fills the monitor; `keep_aspect` letterboxes (cv2 `WINDOW_KEEPRATIO`) instead of stretching. Observational/output (STILL in the Exec Report); emits `INI_SECTION_VIDEOPLAYER<<<` and always triggers `target_agents`. Needs `ffpyplayer` + `opencv-python`. Canvas counterpart of `chat_agent_videoplayer`. |
-| **Talker** | TEXT-TO-SPEECH (TTS): speaks `input_text` aloud through the speakers by driving an OLLAMA connection running a neural TTS model (default `Orpheus-3b-FT`) — streams the model's audio tokens, decodes them to a 24 kHz WAV with the **SNAC** codec, saves the file, and plays it. The voice-synthesis sibling of the media family (AudioPlayer plays an existing file; Talker GENERATES speech from text). **FEMALE-VOICE-ONLY by design** (Tlamatini is female; a male voice is FORBIDDEN — asking for one makes Talker close its execution with "male voice is forbidden by design — NOW CLOSING.. BYE", never substituting): permitted voices `tara` (default) / `leah` / `jess` / `mia` / `zoe`, and `gender` accepts only `female`. `emotion` weaves a paralinguistic tag (`<laugh>` / `<sigh>` / 8 total) into the speech; `language` is a hint; generation knobs `temperature` / `top_p` / `top_k` / `min_p` / `repetition_penalty` / `max_tokens` / `seed`; playback `device_index` / `volume_percent` / `sample_rate`. Observational/output (STILL in the Exec Report); emits `INI_SECTION_TALKER<<<` and always triggers `target_agents`. Rendering audible audio needs `snac` + `torch` (CPU is fine); without them it degrades to `status: tokens_only` (saves tokens, no sound — not a crash). Canvas counterpart of the `chat_agent_talker` Multi-Turn tool. |
+| **Talker** | TEXT-TO-SPEECH (TTS): speaks `input_text` aloud through the speakers by driving an OLLAMA connection running a neural TTS model (selected by `talker_model` in Config > Models > Speech; initial default `legraphista/Orpheus:3b-ft-q8`) — streams the model's audio tokens, decodes them to a 24 kHz WAV with the **SNAC** codec, saves the file, and plays it. The voice-synthesis sibling of the media family (AudioPlayer plays an existing file; Talker GENERATES speech from text). **FEMALE-VOICE-ONLY by design** (Tlamatini is female; a male voice is FORBIDDEN — asking for one makes Talker close its execution with "male voice is forbidden by design — NOW CLOSING.. BYE", never substituting): permitted voices `tara` (default) / `leah` / `jess` / `mia` / `zoe`, and `gender` accepts only `female`. `emotion` weaves a paralinguistic tag (`<laugh>` / `<sigh>` / 8 total) into the speech; `language` is a hint; generation knobs `temperature` / `top_p` / `top_k` / `min_p` / `repetition_penalty` / `max_tokens` / `seed`; playback `device_index` / `volume_percent` / `sample_rate`. Observational/output (STILL in the Exec Report); emits `INI_SECTION_TALKER<<<` and always triggers `target_agents`. Rendering audible audio needs `snac` + `torch` (CPU is fine); without them it degrades to `status: tokens_only` (saves tokens, no sound — not a crash). Canvas counterpart of the `chat_agent_talker` Multi-Turn tool. |
 | **Whisperer** | SPEECH-TO-TEXT (STT / voice recognition), the sibling of Talker — turns spoken audio into a text string. 100% self-sufficient for the microphone: it opens, configures (channels / sample-rate / gain) and records the mic ITSELF (no Recorder dependency; `record_seconds` default `30`), or transcribes a given audio FILE (`input_source` ∈ mic / file / auto, `audio_file`). Transcription engine: **faster-whisper LOCALLY by default** — it auto-detects an NVIDIA GPU via CTranslate2 and ALWAYS falls back to CPU (int8) on a machine without one (and auto-retries on CPU if the GPU path fails); `model` ∈ tiny / base / small / medium / large-v3 / large-v3-turbo (default `base`). Cloud engines `cloud-groq` / `cloud-openai` are also supported. **NOTE — Ollama CANNOT do speech-to-text** (no audio input): recognition is always done by the ASR engine; an optional Ollama pass only tidies the FINISHED transcript's punctuation. Observational (but STILL in the Exec Report); emits `INI_SECTION_WHISPERER<<<` (body = the transcript text) and always triggers `target_agents`. Needs `faster-whisper` for local transcription (absent + no cloud key → `status: engine_unavailable`, not a crash). Canvas counterpart of the `chat_agent_whisperer` Multi-Turn tool. |
 | **Mouser** | Pointer movement, click, drag, scroll, click-at-window, locate-image. |
 | **Keyboarder** | Keyboard typing / hotkey chords (PyAutoGUI). |
@@ -2350,7 +2348,41 @@ The main file is `Tlamatini/agent/config.json`.
 | `chat_agent_limit_runs` | Wrapped-run listing cap. |
 | `kali_server_url` | Base URL of the MCP-Kali-Server (`server.py`) on your Kali box. Tlamatini is the **embedded client** — the `chat_agent_kalier` tool auto-injects this as the default `server_url` on every run, so chat pentest prompts never repeat the address (the LLM may still override per-call). Default `http://127.0.0.1:5000` (works for WSL2 localhost-forwarding or an SSH tunnel); editable via `Config -> URLs`. |
 
-You can still edit `config.json` by hand, but you no longer have to for the common cases. The chat navbar's `Config -> Models` dialog writes the model-name subset, and `Config -> URLs` writes the endpoint / host / port subset. The browser validates shape first, the backend validates again, and `config_loader.save_config_updates()` merges only the changed keys atomically into whichever `config.json` is active for the current mode (source or frozen).
+You can still edit `config.json` by hand, but you no longer have to for the common cases. The chat navbar's `Config -> Models` dialog submits all 38 registered model, engine and voice settings, including values on hidden tabs. `Config -> URLs` writes the endpoint / host / port subset. The backend validates before `config_loader.save_config_updates()` atomically merges the submitted section into the active source/frozen `config.json`, preserving unrelated keys. The model API requires the complete 38-key object, not a one-key patch. Reconnect chat after changed client settings; already running agents must reload/restart.
+
+### Model settings, inheritance and runtime paths
+
+The complete [38-field reference](docs/model_configuration.md#complete-setting-reference)
+lists every global key, initial default, local/provider/Ollama kind, fallback and
+agent YAML path. Core and Vision each have 7 settings, Speech 7, Workflows 6,
+Documents 5, Monitoring & messaging 6. Search spans the categories; engine and voice
+fields are selectors. There are 21 model-backed agent types, not 38 separate agents.
+
+Missing registered agent fields and quoted `"@config"` inherit central settings.
+Literal canvas values remain overrides. Wrapped chat starts from globals and then
+applies explicit tool arguments; standalone MCP preserves literal template choices
+and applies invocation overrides last. Parametrizer and FlowCreator preserve these
+strings. Saving never rewrites old workflows or downloads weights.
+
+Talker requires Orpheus-compatible audio tokens and one of its five voices.
+Whisperer offers `faster-whisper`, `cloud-groq`, `cloud-openai`; an empty cloud model
+uses its provider default, while cleanup remains a separately enabled stage.
+Video-Analyzer's `transcription.model` is local and independent of Whisperer's
+engine. Empty LaTeXer repair model disables that stage. Credentials, hosts, audio
+devices, sampling controls and external ACPX/MCP provider settings remain separate.
+
+Source configuration lives at `Tlamatini/agent/config.json`; frozen configuration
+lives beside the executable. `CONFIG_PATH` overrides either. Frozen services import
+the compiled registry and copy portable helpers from the resolved agents root,
+never a synthetic `_internal` source path. The offline `check_agent_runtimes` gate
+executes in both modes and is mandatory before frozen packaging; a source snapshot
+is not needed for ordinary execution. [Dated verification](docs/model-configuration-verification.md)
+covers 89 runtime preparations, 21 loaders and actual File-Creator execution.
+
+If a video observer returns HTTP 401/403/404/410 during a summary, it is disabled for
+the rest of that run; the healthy observer continues and coverage remains partial.
+Choose an available model for a retired HTTP 410 selection and inspect old workflow
+overrides. Robotics still requires two explicit independent passes for `PASS_OK`.
 
 ## 41. RAG settings
 

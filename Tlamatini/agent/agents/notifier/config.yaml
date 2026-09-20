@@ -1,6 +1,7 @@
+# Models: "@config" follows Config -> Models. Set a concrete value for a per-agent override.
 llm:
   base_url: http://localhost:11434
-  model: glm-5.3:cloud
+  model: "@config"
   temperature: 0.1
 target:
   mode: ''

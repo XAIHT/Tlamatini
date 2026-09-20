@@ -1,3 +1,4 @@
+# Models: "@config" follows Config -> Models. Set a concrete value for a per-agent override.
 # Reviewer Agent Configuration
 #
 # LLM-powered code reviewer. On trigger it resolves a git diff for the
@@ -28,7 +29,7 @@ max_diff_chars: 60000
 # LLM connection settings (Ollama)
 llm:
   host: "http://localhost:11434"
-  model: "glm-5.3:cloud"
+  model: "@config"
 
 # Agents to start after the review (auto-populated via canvas connections)
 target_agents: []

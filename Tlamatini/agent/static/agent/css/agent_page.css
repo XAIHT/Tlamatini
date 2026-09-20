@@ -1881,6 +1881,31 @@ body.resizing-vertical {
     color: #ffffff;
 }
 
+/* Central models: compact categories, readable cards, and a reachable footer. */
+.ui-dialog.model-settings-dialog { min-width: 0 !important; max-width: calc(100vw - 24px); box-sizing: border-box; }
+.model-settings-dialog .ui-dialog-content { overflow: auto; overscroll-behavior: contain; }
+.model-settings-toolbar { display: grid; gap: 6px; margin: 16px 0 12px; text-align: left; }
+.model-settings-toolbar label { color: #e5e7eb; font-weight: 600; }
+.model-settings-toolbar small, .model-settings-card small { color: #b9c3d5; font-size: 12px; line-height: 1.5; }
+.model-settings-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 18px; }
+.model-settings-tabs button { border: 1px solid #586176; border-radius: 7px; padding: 8px 11px; background: #282d3b; color: #dce3ef; cursor: pointer; font: inherit; font-size: 12px; }
+.model-settings-tabs button[aria-selected="true"] { background: #264b47; color: #bdf5e7; border-color: #55bbaa; }
+.model-settings-tabs button:focus-visible { outline: 2px solid #8ce0ca; outline-offset: 2px; }
+#config-models-form.model-settings-form { display: block; }
+.model-settings-panel h3 { margin: 0 0 12px; color: #e6edf7; font-size: 17px; }
+.model-settings-panel + .model-settings-panel { margin-top: 20px; }
+.model-settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.model-settings-card { min-width: 0; display: flex; flex-direction: column; gap: 9px; padding: 15px; background: #272c38; border: 1px solid #444d61; border-radius: 9px; }
+.model-settings-card .config-form-label { align-self: stretch; font-size: 14px; }
+.model-settings-card .config-form-input { min-width: 0; min-height: 38px; font-size: 13px; }
+.model-settings-card small { overflow-wrap: anywhere; }
+.model-settings-panel[hidden], .model-settings-card[hidden] { display: none; }
+@media (max-width: 700px) {
+    .model-settings-grid { grid-template-columns: minmax(0, 1fr); }
+    .model-settings-tabs button { flex: 1 1 auto; }
+    .model-settings-card { padding: 12px; }
+}
+
 #editor-container[hidden], #pdf-canvas-host[hidden] {
     display: none !important;
 }

@@ -405,6 +405,9 @@ _FROZEN_PDF_MODULES = (
 )
 
 _FROZEN_REQUIRED_AGENT_MODULES = (
+    "agent.agents.model_settings",  # compiled registry, independent of data paths
+    "agent.services.flow_knowledge",  # new/existing pool helper refresh
+    "agent.management.commands.check_agent_runtimes",  # executed release gate
     "build_runtime_assets",        # updater's frozen integrity checker (stdlib only)
     "agent.runtime_provisioner",   # private node/npm/npx/pnpm/uv/uvx provisioning
     "agent.external_mcp_defaults",  # ships + seeds `memory` / `sequential-thinking`
@@ -1972,6 +1975,12 @@ def main():
             res = run_cmd(["collectstatic", "--noinput", "--clear"])
             if res.returncode != 0:
                 raise RuntimeError("Frozen collectstatic failed; refusing to package missing frontend assets")
+
+            # Exercise real runtime copies with the frozen module/data layout.
+            # Archive membership alone cannot catch __file__-based path bugs.
+            res = run_cmd(["check_agent_runtimes"], timeout=180)
+            if res.returncode != 0:
+                raise RuntimeError("Frozen agent runtime preparation failed; refusing to package broken agents")
 
             # 8d) Rename executable manage -> Tlamatini
             try:

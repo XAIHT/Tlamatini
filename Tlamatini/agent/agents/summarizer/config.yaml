@@ -1,3 +1,4 @@
+# Models: "@config" follows Config -> Models. Set a concrete value for a per-agent override.
 # Summarizer Agent Configuration
 # This agent continuously polls log files from source agents,
 # sends their content to an LLM with a configurable system prompt,
@@ -47,7 +48,7 @@ system_prompt: ""
 # LLM connection settings (Ollama)
 llm:
   host: "http://localhost:11434"
-  model: "glm-5.3:cloud"
+  model: "@config"
 
 # Polling interval in seconds between log file checks
 poll_interval: 5

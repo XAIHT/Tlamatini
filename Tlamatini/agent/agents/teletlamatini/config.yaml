@@ -1,3 +1,4 @@
+# Models: "@config" follows Config -> Models. Set a concrete value for a per-agent override.
 # TeleTlamatini — pure Telegram-bot bridge to Tlamatini.
 #
 # Only the keys below are needed. The agent reads legacy keys (telegram.listen_chat,
@@ -91,7 +92,7 @@ tlamatini:
 completeness_check:
   enabled: false
   host: "http://localhost:11434"
-  model: "glm-5.3:cloud"
+  model: "@config"
   instruction: |
     You are an intent-completeness classifier. Decide whether the user's last
     message (combined with prior conversation if any) expresses a clear and

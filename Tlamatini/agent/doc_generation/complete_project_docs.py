@@ -1011,13 +1011,53 @@ def pdf_distribution_guide(context: dict) -> list[str]:
     ]
 
 
+MODEL_CONFIGURATION_GUIDE = [
+    "Config > Models exposes 38 model, engine and voice settings for core services and 21 model-backed agents. Six searchable categories: Core 7, Vision 7, Speech 7, Workflows 6, Documents 5, Monitoring & messaging 6.",
+    "Talker model/voice, Whisperer recognition engine/local/cloud/cleanup models, Video-Analyzer local audio, vision observers/mergers, workflows, documents and monitors all have dedicated choices. External ACPX/MCP providers retain their own settings.",
+    "Save submits all 38 values, preserves unrelated configuration and downloads no weights. Changed Ollama choices are checked against the catalog; local and provider names are separate. Catalog presence is not a capability or entitlement test.",
+    "Reconnect chat to rebuild clients. Agent choices apply at their next configuration load; restart an already running monitor when needed. Existing literal workflow choices are not silently rewritten by a global save.",
+    "Quoted @config or a missing registered YAML field inherits. Canvas literals remain overrides. Wrapped chat seeds globals before explicit tool arguments; standalone MCP resolves template inheritance before invocation overrides.",
+    "The full key/default/YAML-path reference, validation API and troubleshooting are in docs/model_configuration.md. The stdlib-only model_settings.py registry supplies metadata for the UI and portable agent loaders.",
+]
+
+MODEL_COMPATIBILITY_GUIDE = [
+    "Talker requires an Orpheus-compatible audio-token model; ordinary chat models cannot speak. Supported voices: tara, leah, jess, mia, zoe. The SNAC 24 kHz decoder remains an internal format dependency.",
+    "Whisperer engines: faster-whisper, cloud-groq, cloud-openai. Empty cloud model uses the code's provider default. Keys/endpoints remain agent settings. Selecting the cleanup model does not enable ollama_cleanup.",
+    "Video audio uses an independent local faster-whisper model, initially base. Whisperer's cloud engine and microphone settings do not apply. Empty LaTeXer repair model disables model repair.",
+    "Video vision initially uses gemma4:cloud and jcyhsiao/qwen3.5cloud:latest, merged by glm-5.3:cloud. Each observer must support images. Defaults record application choices, not permanent provider availability.",
+    "Summary observer HTTP 401/403/404/410 failures disable that observer only for the current run. Healthy observers continue; status remains partial. visual_coverage distinguishes frames seen by any observer from those seen by both.",
+    "Errors retain model, HTTP status and provider explanation. A retired HTTP 410 selection needs an available replacement and a check of existing workflow overrides. Robotics still requires two explicit independent passes for PASS_OK.",
+]
+
+MODEL_RUNTIME_GUIDE = [
+    "Source config: Tlamatini/agent/config.json. Installed config: beside Tlamatini.exe. CONFIG_PATH overrides either. Portable agents locate the ancestor agents root; copied agents outside it need an explicit config path and helper.",
+    "Frozen web code imports compiled agent.agents.model_settings. Portable helpers come from get_agents_root(), not synthetic _internal module paths. Non-model agents prepare without a loose registry; reusable pools refresh helpers.",
+    "Monitor-Log, Monitor-Netstat and RecMailer read UTF-8 YAML including a BOM. The execution gate checks actual model loaders under Windows' default code page as well as normal source operation.",
+    "build.py must carry check_agent_runtimes and execute it in the new frozen executable before packaging. The self-modify snapshot carries registry, runtime code, command, tests and documentation. Source snapshots remain optional at runtime.",
+    "September 20 checks passed 89 runtime preparations, 21 model loaders, 3 catalog refreshes and exact File-Creator bytes in source, fresh frozen, snapshot-absent frozen and installed modes. Wrapped-chat and standalone MCP File-Creator also passed.",
+    "Dated regression evidence: 394 passed, 5 skipped. Visible Models save/reopen changed Talker voice to jess, confirmed loader resolution, restored tara and reconnected. This does not exercise every provider or hardware action. See docs/model-configuration-verification.md.",
+]
+
+
+def model_reference_groups() -> dict[str, list[dict]]:
+    """Load public metadata only; never read the operator's config or credentials."""
+    path = REPO_ROOT / "Tlamatini/agent/agents/model_settings.py"
+    spec = importlib.util.spec_from_file_location("dossier_model_settings", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    groups: dict[str, list[dict]] = {}
+    for field in module.FIELDS:
+        groups.setdefault(field["group"], []).append(field)
+    return groups
+
+
 LATEST_SOURCE_GUIDE = [
     "Video-Analyzer keeps analysis_type=robotics by default. Transcription reads selected video audio tracks with local faster-whisper, preserving stream offsets, segment timestamps and optional word timestamps.",
     "Summary combines audio evidence with two independent visual observers per sampled frame batch and hierarchical text synthesis. Scenes, actions, readable text, numbers, procedures, decisions and limitations are retained with timestamps.",
-    "The portable video_content.py helper bounds decoding and model context. Reports include UTF-8 text, JSON, subtitles and visual observations. Content modes bypass motion rejection and never emit a robotics PASS.",
+    "The portable video_content.py helper bounds decoding and model context. Reports include UTF-8 transcript text, timestamped JSON and visual observations. Embedded subtitle streams are not extracted. Content modes bypass motion rejection and never emit a robotics PASS.",
     "Parametrizer, the agent registry, workflow controls, root MCP and prompt migration 0207 expose the same modes and result fields. PyAV 17.1.0 is pinned and the helper is carried by frozen builds and source snapshots.",
     "External MCP calls repair only unambiguous scalar type mismatches before server-schema validation. Boolean/string enum spelling and numeric strings can be normalized; ambiguous inputs still fail validation.",
-    "Git identifies v1.63.0 at 2cf8e7f, while local and fetched remote main are 11d8130. This checkout includes the later Video-Analyzer implementation and uncommitted documentation updates. No tag is moved by this refresh.",
+    "Repository facts report actual HEAD and fetched origin/main separately from the requested 1.63.0 document/build version and reachable tags. The checkout includes uncommitted model/runtime changes; no tag is moved by this refresh.",
 ]
 
 
@@ -1036,10 +1076,10 @@ LATEST_DEFAULTS_GUIDE = [
     "Their reverse operations restore the preceding default text or model tag.",
     "Fresh seed migrations 0165/0168 and existing prompt-update paths use the new tag. "
     "Image-Interpreter slot 1 and Video-Analyzer slot 2 use it. The other configured "
-    "vision and merger defaults remain gemma4:cloud, qwen3-vl:235b-cloud and glm-5.3:cloud.",
-    "The current source contains 207 migrations, including 0207 for Video-Analyzer content prompts. "
-    "This dossier reads migration source without applying it to the operator database. "
-    "Focused regressions do not establish frozen-release validation.",
+    "vision and merger models are configurable in Config > Models.",
+    "Migration 0207 adds Video-Analyzer content prompts; 0208 points matching robotics demo text to Config > Models. "
+    "Repository facts derive the migration count from source. This dossier does not apply migrations. "
+    "September 20 source/frozen runtime evidence is recorded separately from document rendering.",
 ]
 
 
@@ -1093,7 +1133,7 @@ SELF_CARRIAGE_GUIDE = [
     "The shared 13-name preservation contract retains configuration, contacts, DB, "
     "context and generated content. Reinstall retains the live DB/WAL and requests "
     "migration. Security-evidence stash failure stops deletion. The September 16 "
-    "guide records 740 snapshot inputs and 15 PDFer ornaments; that sweep was not rerun.",
+    "guide records 740 snapshot inputs and 15 PDFer ornaments. September 20 reran both inclusion sweeps clean; execution evidence is separate.",
 ]
 
 DOCUMENT_CONTRACT_GUIDE = [
@@ -1513,7 +1553,7 @@ WHAT_IT_DOES = [
     "Can scaffold, author, build, upload, and monitor ESP32-class firmware through ESP32er and PlatformIO Core, with zero-config bootstrap and a serial-aware preflight before hardware mutation.",
     "Can author YAML-based smart-home firmware through ESPHomer and ESPHome, including zero-config bootstrap, device-config generation, validation, compile, USB/OTA upload, and bounded log observation for ESP32 / ESP8266 / RP2040 / BK72xx devices.",
     "Can play media on the operator's machine: an audio file to the speakers through AudioPlayer (soundfile + sounddevice — volume in percent and a time-played budget that truncates a longer file or loops a shorter one), or a video file with audio on a chosen display through VideoPlayer (ffpyplayer, whose wheel bundles ffmpeg + SDL, plus an OpenCV window — display, volume, the same truncate/loop time budget, window size, and fullscreen); both are observational/output and ship on the canvas and as wrapped chat tools.",
-    "Can SPEAK and LISTEN: Talker (text-to-speech) renders input_text to a 24 kHz WAV through an Ollama neural TTS model (default Orpheus-3b-FT) and is female-voice-only by design, while Whisperer (speech-to-text) records the microphone itself or transcribes a file via faster-whisper locally (NVIDIA-GPU auto-detect with an always-present CPU fallback) or a cloud Whisper API; both light a zero-latency console REC indicator driven by the live audio stream and are observational/output, on the canvas and as wrapped chat tools.",
+    "Can SPEAK and LISTEN: Talker (text-to-speech) renders input_text to a 24 kHz WAV through an Ollama neural TTS model (selected in Config > Models > Speech) and is female-voice-only by design, while Whisperer (speech-to-text) records the microphone itself or transcribes a file via faster-whisper locally (NVIDIA-GPU auto-detect with an always-present CPU fallback) or a cloud Whisper API; both light a zero-latency console REC indicator driven by the live audio stream and are observational/output, on the canvas and as wrapped chat tools.",
     "Can manage real desktop windows by title: focus them, tile them, resize them, list them, and close them deterministically through Win32 calls.",
     "Can search with Googler through four plain-HTTP server-rendered routes first and, if empty, visible installed Chrome/bundled Chromium across seven browser routes, using bounded retries, manual query operators or a visual/pool structured dork builder, and URL-only output for indexed-file workflows.",
     "Can drive a real Playwright browser through scripted interactive steps for logins, forms, assertions, downloads, extraction, and end-to-end UI checks.",
@@ -1849,7 +1889,7 @@ V136_RELEASE_GUIDE = [
     release_identity(),
     "Historical introduction: Video-Analyzer joined as a media-verdict workflow agent and wrapped `chat_agent_video_analyzer`, complementing Image-Interpreter with video-specific motion analysis.",
     "Implementation assets: `agent/agents/video_analyzer/`, migrations `0166_add_video_analyzer.py`, `0167_add_chat_agent_video_analyzer_tool.py`, `0168_add_video_analyzer_demo_prompt.py`, `test_video_analyzer_agent.py`, `chat_agent_registry.py`, `mcp_agent.py`, and `services/agent_contracts.py` all move together.",
-    "Model strategy: `interpreter_model_1` defaults to `qwen3-vl:235b-cloud`, `interpreter_model_2` defaults to `jcyhsiao/qwen3.5cloud:latest`, and `merging_model` defaults to `glm-5.3:cloud`, with independent calls merged only after both interpreters report.",
+    "Model strategy: `interpreter_model_1` defaults to `gemma4:cloud`, `interpreter_model_2` defaults to `jcyhsiao/qwen3.5cloud:latest`, and `merging_model` defaults to `glm-5.3:cloud`, with independent calls merged only after both interpreters report.",
     "Robotics routing contract: each robotics run emits `INI_SECTION_VIDEO_ANALYZER` plus `TLM_VERDICT::<TOKEN>` markers such as `PASS_OK`, `FAIL_NO_MOTION`, `FAIL_WRONG_MOTION`, `UNCLEAR`, and `ANALYSIS_ERROR` for Forker and Parametrizer.",
     "Adjacent UI work: prompt search moved from exact-title hunting to substring, word-start, and fuzzy matching, and generated `.flw` files now use a serpentine layout to reduce visual congestion.",
 ]
@@ -1931,7 +1971,7 @@ IMAGE_INTERPRETER_GUIDE = [
     "All four prompt surfaces (`prompt_user`, `prompt_interpreter_model_1`, `prompt_interpreter_model_2`, and `prompt_merging_model`) receive the image file name as an identity clue, because a file named after a person often depicts that person.",
     "Fail-safe behavior is explicit: one failed interpreter still lets the merger work from the survivor; a failed merger returns both raw interpretations concatenated instead of losing the analysis.",
     "The structured output is now `INI_SECTION_IMAGE_INTERPRETER` with `file_path`, `interpreter_model_1`, `interpreter_model_2`, `merging_model`, `status`, and the merged report body for Parametrizer/Forker routing.",
-    "Config -> Models now exposes all three Image-Interpreter model slots (`image_interpreter_model`, `image_interpreter_model_2`, `image_merging_model`), and older preserved configs receive defaults so Save is not blocked by empty new fields.",
+    "Config -> Models exposes 38 settings in six categories, including Image-Interpreter's three slots, Video-Analyzer, Talker, Whisperer, workflows, documents and monitors. Missing new keys in preserved configs receive registry defaults.",
 ]
 
 ZAVUERER_GUIDE = [
@@ -2235,8 +2275,8 @@ START_HERE_GUIDE = [
 ]
 
 FIRST_RUN_CONFIG_GUIDE = [
-    "Three new onboarding screenshots now anchor the first-run path: `Tlamatini/agent/images/MenuConfig.jpg`, `ConfigureModels.jpg`, and `ACPXKeysConfigureWizard.jpg`.",
-    "`Config -> Models` is the place where operators map embedding, chat, vision, and auxiliary model names to what Ollama actually exposes on the host machine.",
+    "The first-run path is Config > Models, URLs and Access Keys Wizard. Historical screenshots may show older menus; docs/model_configuration.md describes the current six-category Models dialog.",
+    "Config > Models has 38 fields for embedding, reasoning, vision, speech, workflows, documents and monitors. Ollama catalog choices, local speech names, provider IDs and engine/voice selectors have distinct validation.",
     "`Config -> Access Keys Wizard` now carries an especially important rule: a localhost Ollama usually needs no Ollama token, while a remote Ollama endpoint may require one.",
     "Saved model, URL, or credential changes can invalidate the assumptions of the current session, so reconnecting after major Config edits is now part of the honest operator guidance.",
 ]
@@ -2377,7 +2417,6 @@ OLLAMA_COMMANDS = "\n".join(
         "ollama pull glm-5.3:cloud",
         "ollama pull jcyhsiao/qwen3.5cloud:latest",
         "ollama pull gemma4:cloud",
-        "ollama pull qwen3-vl:235b-cloud",
     ]
 )
 
@@ -2712,7 +2751,10 @@ def build_pdf(context: dict) -> None:
     story.append(p("Recent implementation assets and inventory impact", styles["h2"]))
     for item in publication_guide(context):
         story.append(bullet(item, styles["bullet"]))
-    for title, guide in (("Current video analysis and MCP changes", LATEST_SOURCE_GUIDE),
+    for title, guide in (("Central model configuration", MODEL_CONFIGURATION_GUIDE),
+                         ("Model compatibility and partial video coverage", MODEL_COMPATIBILITY_GUIDE),
+                         ("Source and frozen model runtime", MODEL_RUNTIME_GUIDE),
+                         ("Current video analysis and MCP changes", LATEST_SOURCE_GUIDE),
                          ("Latest defaults and prompt migrations 0205/0206", LATEST_DEFAULTS_GUIDE),
                          ("PDF canvas reading and file lifecycle", PDF_CANVAS_GUIDE),
                          ("Whole-document PDF context", PDF_CONTEXT_GUIDE),
@@ -2739,6 +2781,20 @@ def build_pdf(context: dict) -> None:
         story.append(p(title, styles["h2"]))
         for item in guide:
             story.append(bullet(item, styles["bullet"]))
+    story.append(p("Complete model setting reference", styles["h2"]))
+    story.append(p("Defaults below come from the public registry, not private operator configuration. "
+                   "Missing dedicated workflow/document/monitor settings fall back to unified_agent_model. "
+                   "Optional blank cloud speech selects the provider default; optional blank LaTeXer disables repair. "
+                   "See docs/model_configuration.md for precedence, validation and credentials.", styles["body"]))
+    for group, fields in model_reference_groups().items():
+        story.append(CondPageBreak(1.5 * inch))
+        story.append(p(group, styles["h2"]))
+        rows = [["Global key", "Agent YAML path", "Default / kind"]]
+        for field in fields:
+            path = f"{field['agent']}.{field['path']}" if field["agent"] else "In-process service"
+            rows.append([field["key"], path,
+                         f"{field['default'] or '(empty)'} / {field['kind']}"])
+        story.append(table(rows, widths=[2.3 * inch, 2.35 * inch, 2.1 * inch], font_size=7))
     story.append(p("v1.41.4 External-MCP structured output", styles["h2"]))
     for item in STRUCTURED_CONTENT_1414_GUIDE:
         story.append(bullet(item, styles["bullet"]))
@@ -3774,7 +3830,10 @@ def build_ppt(context: dict) -> None:
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Source and evidence", publication_guide(context)[3:], THEME["jade"], "recent-assets-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    for title, guide in (("Video Analysis and MCP Updates", LATEST_SOURCE_GUIDE),
+    for title, guide in (("Central Model Configuration", MODEL_CONFIGURATION_GUIDE),
+                         ("Model Compatibility and Coverage", MODEL_COMPATIBILITY_GUIDE),
+                         ("Source and Frozen Model Runtime", MODEL_RUNTIME_GUIDE),
+                         ("Video Analysis and MCP Updates", LATEST_SOURCE_GUIDE),
                          ("Latest Defaults and Prompt Migrations", LATEST_DEFAULTS_GUIDE),
                          ("PDF Canvas Reading", PDF_CANVAS_GUIDE),
                          ("Whole-Document PDF Context", PDF_CONTEXT_GUIDE),
@@ -3801,6 +3860,19 @@ def build_ppt(context: dict) -> None:
         add_themed_column_slides(prs, title, "current source and verification evidence",
                                  THEME["jade"], [("Behavior", THEME["jade"], guide[:3]),
                                  ("Operation and scope", THEME["copper"], guide[3:])], size=16)
+
+    for group, fields in model_reference_groups().items():
+        items = []
+        for field in fields:
+            path = f"{field['agent']}.{field['path']}" if field["agent"] else "in-process service"
+            items.append(f"{field['key']}: {field['default'] or '(empty provider default)'}. "
+                         f"YAML: {path}. Kind: {field['kind']}.")
+        midpoint = (len(items) + 1) // 2
+        add_themed_column_slides(prs, f"Models: {group}",
+                                 "registry defaults; full semantics in docs/model_configuration.md",
+                                 THEME["jade"], [("Settings", THEME["jade"], items[:midpoint]),
+                                 ("Settings continued", THEME["copper"], items[midpoint:])],
+                                 per_column=3, size=16)
 
     slide, audit = add_slide(prs, "Release Continuity", "older waves still carried by the current dossier", THEME["copper"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "Carried product story", CURRENT_RELEASE_GUIDE[12:16], THEME["copper"], "rel-e", 10)
@@ -4241,7 +4313,6 @@ def build_ppt(context: dict) -> None:
         "glm-5.3:cloud",
         "jcyhsiao/qwen3.5cloud:latest",
         "gemma4:cloud",
-        "qwen3-vl:235b-cloud",
     ], THEME["copper"], "ollama-b", 15)
     audit_layout(audit, len(prs.slides))
 

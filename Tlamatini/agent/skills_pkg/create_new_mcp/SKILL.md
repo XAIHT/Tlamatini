@@ -121,3 +121,22 @@ Return:
 ```
 
 (That is the absolute pointer the caller should `Read` next.)
+
+## Model configuration for tools and MCPs (2026-09-20)
+
+The central `agent/agents/model_settings.py` registry owns the built-in model,
+engine and voice fields (38 settings, 21 model-backed agents). Add a metadata
+entry and a real consumer when introducing another configurable built-in model;
+do not add a disconnected selector or hardcoded tag. Wrapped chat seeds globals
+before explicit tool arguments. Standalone `tlamatini_mcp_server.py` resolves
+missing/`"@config"` template fields before applying invocation overrides and
+carries `model_settings.py` plus `CONFIG_PATH` into isolated child runtimes.
+Literal YAML choices remain standalone overrides. Credentials and provider URLs
+remain separate; external MCP/ACPX providers keep their own model configuration.
+
+Use compiled imports in frozen web services and `get_agents_root()` for portable
+assets. Never read loose source relative to a frozen service's `__file__`, and
+never require a self-modify source tree just to execute a tool. Preserve inheritance
+in Parametrizer/flow mappings. Run the source/frozen `check_agent_runtimes` gate
+and targeted wrapper tests, then both inclusion sweeps. The full field map,
+validation API, optional values and lifecycle rules are in `docs/model_configuration.md`.

@@ -4528,7 +4528,7 @@
           "provider": "str",
           "bot_token": "str",
           "chat_id": "str",
-          "api_id": "int",
+          "api_id": "str",
           "api_hash": "str",
           "session_name": "str",
           "session_string": "str"
@@ -4587,7 +4587,7 @@
         "source_agents": "list",
         "target_agents": "list",
         "telegram": {
-          "api_id": "int",
+          "api_id": "str",
           "api_hash": "str",
           "bot_token": "str"
         },
@@ -4924,7 +4924,7 @@
         "mode": "str",
         "provider": "str",
         "whatsapp": {
-          "phone_number_id": "int",
+          "phone_number_id": "str",
           "access_token": "str",
           "graph_base": "str",
           "api_version": "str",

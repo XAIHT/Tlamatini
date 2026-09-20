@@ -240,6 +240,13 @@ KEEP_PATH_GLOBS = (
 # one raises rather than producing a quietly-incomplete self-modify tree.
 # Add the canonical file of any new always-present capability here.
 REQUIRED_SNAPSHOT_FILES = (
+    # Central models must survive both frozen execution and a self-rebuild.
+    "Tlamatini/agent/agents/model_settings.py",
+    "Tlamatini/agent/services/flow_knowledge.py",
+    "Tlamatini/agent/chat_agent_runtime.py",
+    "Tlamatini/agent/management/commands/check_agent_runtimes.py",
+    "Tlamatini/agent/test_model_settings.py",
+    "docs/model_configuration.md",
     # Build + packaging pipeline
     "build.py",
     "build_runtime_assets.py",

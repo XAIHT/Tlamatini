@@ -1,3 +1,4 @@
+# Models: "@config" follows Config -> Models. Set a concrete value for a per-agent override.
 # Video-Analyzer Agent Configuration — robotics, transcription, summary
 # The robotics pipeline below is the backward-compatible default. Content modes
 # never run its motion gate or emit a TLM_VERDICT:: robotics routing token.
@@ -51,7 +52,7 @@ analysis_type: "robotics"
 audio_tracks: "all"
 transcription:
   # Same local faster-whisper backend as Whisperer. First use downloads weights.
-  model: "base"
+  model: "@config"
   device: "auto"          # auto / cuda / cpu; CUDA failure retries on CPU/int8
   compute_type: "auto"
   language: ""            # empty = automatic; e.g. en, es
@@ -99,15 +100,13 @@ motion_threshold: 2.0
 roi: ""
 
 # ── THE THREE MODELS (strictly Ollama CLOUD) ─────────────────────────
-# Interpreter 1: the VIDEO / TEMPORAL specialist — Qwen3-VL is Ollama's
-# dedicated vision-language model, trained on video benchmarks, best at tracking
-# a moving part across timestamped frames.
-interpreter_model_1: "qwen3-vl:235b-cloud"
+# Interpreter 1: selected in Config -> Models > Vision (initially gemma4:cloud).
+interpreter_model_1: "@config"
 # Interpreter 2: a strong second-opinion multimodal reasoner.
-interpreter_model_2: "jcyhsiao/qwen3.5cloud:latest"
+interpreter_model_2: "@config"
 # Merger: long-context TEXT synthesis engine (no vision needed) that fuses both
 # interpretations and issues the final verdict.
-merging_model: "glm-5.3:cloud"
+merging_model: "@config"
 
 # ── THE FOUR PROMPTS ─────────────────────────────────────────────────
 # {filename} is replaced with the video file name and {expected_motion} with the

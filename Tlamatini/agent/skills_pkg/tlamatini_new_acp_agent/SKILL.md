@@ -100,3 +100,31 @@ Use `agent/agents/flowcreator/flow_catalog.json` for canonical names, current co
 FlowCreator selects capabilities before detailed design, validates the generated plan, and uses bounded repair. Declare Ender input connections explicitly; Ender `target_agents` is a kill list. Counter uses L/G slots; source dependencies do not choose a conditional output branch. Generated Parametrizers require valid `_parametrizer_mappings`, one source and one target. Do not maintain a separate hardcoded Parametrizer producer list.
 
 For desktop flows, use explicit physical/screenshot geometry and verified target windows. `input_sent` is input delivery only; errors may be partial and must not be blindly replayed. Read `docs/desktop-input-and-flow-contracts.md` and `docs/agent-coverage.md` for the full contract and verification scope.
+
+## Central model settings contract (2026-09-20)
+
+Any new configurable AI model, recognition engine or voice must be represented in
+`agent/agents/model_settings.py::FIELDS`; the current registry exposes 38 fields
+across six categories for 21 model-backed agents. Record its global key, group,
+default, agent YAML path, kind, choices, fallback and optional/empty semantics.
+Use quoted `"@config"` in templates and resolve registered values in `load_config`
+through the stdlib-only portable helper, preserving literal overrides. Do not
+import Django or `agent.*` from an isolated agent. Core services must consume their
+registered global key; a selector without a consumer is incomplete.
+
+Carry the registry both as compiled `agent.agents.model_settings` for frozen web
+services and loose `agents/model_settings.py` for portable agents. Prepare and
+refresh isolated/reused copies through `get_agents_root()`; never derive data
+paths from compiled service `__file__`. `CONFIG_PATH` selects the global config;
+read YAML/JSON as UTF-8, accepting a BOM. Non-model agents must not depend on this
+helper. Preserve credentials and existing explicit user configuration.
+
+Wrapped chat forces global model defaults before explicit tool arguments; the
+standalone MCP resolves inherited template values before overrides. Parametrizer
+and planners preserve `"@config"` and explicit strings. Update the canonical
+`docs/model_configuration.md` field table, public docs, prompt/FlowCreator/
+FlowHypervisor guidance and generated catalogs. Test next-load inheritance,
+explicit overrides, optional blanks and visible dialog save/reopen. Run
+`check_agent_runtimes` in source and fresh frozen modes, including without a
+self-modification snapshot; the frozen build must pass it before packaging.
+Run both self-update and self-modify inclusion sweeps as complementary checks.

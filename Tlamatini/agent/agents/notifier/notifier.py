@@ -76,7 +76,7 @@ file_handler = FlushingFileHandler(LOG_FILE_PATH, encoding='utf-8')
 file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 logger.addHandler(file_handler)
 
-def load_config(path="config.yaml"):
+def _load_config_file(path="config.yaml"):
     try:
         with open(path, "r", encoding="utf-8") as f:
             return yaml.safe_load(f)
@@ -86,6 +86,23 @@ def load_config(path="config.yaml"):
     except Exception as e:
         logging.error(f"❌ Error loading config: {e}")
         sys.exit(1)
+
+
+def load_config(*args, **kwargs):
+    """Apply Config -> Models choices while retaining explicit agent overrides."""
+    import importlib.util as _model_import
+    from pathlib import Path as _ModelPath
+    config = _load_config_file(*args, **kwargs)
+    here = _ModelPath(__file__).resolve()
+    candidates = [here.parent / 'model_settings.py']
+    candidates += [p / 'model_settings.py' for p in here.parents if p.name == 'agents']
+    for shared in candidates:
+        if shared.is_file():
+            spec = _model_import.spec_from_file_location('tlamatini_model_settings', shared)
+            module = _model_import.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            return module.resolve_agent_models('notifier', config, agent_file=__file__)
+    return config
 
 CONFIG = load_config()
 

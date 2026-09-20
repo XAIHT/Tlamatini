@@ -55,7 +55,7 @@ PID_FILE = "agent.pid"
 PLACEHOLDER_RE = re.compile(r"^\s*(?:<.*>|\$\{.*\}|REPLACE_ME|PASTE_.*|TODO)\s*$", re.I)
 
 
-def load_config(path: str = "config.yaml") -> Dict[str, Any]:
+def _load_config_file(path: str = "config.yaml") -> Dict[str, Any]:
     try:
         with open(path, "r", encoding="utf-8") as handle:
             data = yaml.safe_load(handle) or {}
@@ -66,6 +66,23 @@ def load_config(path: str = "config.yaml") -> Dict[str, Any]:
     except Exception as exc:
         logging.error("Error parsing config.yaml: %s", exc)
         return {}
+
+
+def load_config(*args, **kwargs):
+    """Apply Config -> Models choices while retaining explicit agent overrides."""
+    import importlib.util as _model_import
+    from pathlib import Path as _ModelPath
+    config = _load_config_file(*args, **kwargs)
+    here = _ModelPath(__file__).resolve()
+    candidates = [here.parent / 'model_settings.py']
+    candidates += [p / 'model_settings.py' for p in here.parents if p.name == 'agents']
+    for shared in candidates:
+        if shared.is_file():
+            spec = _model_import.spec_from_file_location('tlamatini_model_settings', shared)
+            module = _model_import.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            return module.resolve_agent_models('instant_messaging_doctor', config, agent_file=__file__)
+    return config
 
 
 def write_pid_file() -> None:

@@ -216,10 +216,10 @@ class ConfigContractTests(unittest.TestCase):
         with open(CONFIG_YAML, encoding='utf-8') as f:
             cls.cfg = yaml.safe_load(f)
 
-    def test_three_models_have_the_mandated_defaults(self):
-        self.assertEqual(self.cfg['interpreter_model_1'], 'jcyhsiao/qwen3.5cloud:latest')
-        self.assertEqual(self.cfg['interpreter_model_2'], 'gemma4:cloud')
-        self.assertEqual(self.cfg['merging_model'], 'glm-5.3:cloud')
+    def test_three_models_follow_config_models(self):
+        self.assertEqual(self.cfg['interpreter_model_1'], '@config')
+        self.assertEqual(self.cfg['interpreter_model_2'], '@config')
+        self.assertEqual(self.cfg['merging_model'], '@config')
 
     def test_all_four_prompts_are_complete_and_not_empty(self):
         for key in PIPELINE_PROMPT_KEYS:

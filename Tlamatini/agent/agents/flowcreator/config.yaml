@@ -1,3 +1,4 @@
+# Models: "@config" follows Config -> Models. Set a concrete value for a per-agent override.
 # FlowCreator Agent Configuration
 # This agent uses an LLM to automatically design and create agent flows on the canvas.
 #
@@ -29,7 +30,7 @@ output_dir: ""
 # LLM connection settings (Ollama)
 llm:
   host: "http://localhost:11434"
-  model: "glm-5.3:cloud"
+  model: "@config"
   # Requested model context; actual support depends on the configured provider.
   num_ctx: 65536
   # Reject an oversized prompt rather than knowingly sending the whole guide.

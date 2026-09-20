@@ -1,3 +1,4 @@
+# Models: "@config" follows Config -> Models. Set a concrete value for a per-agent override.
 # Image-Interpreter Agent Configuration
 # Non-deterministic agent that analyzes and interprets images using a
 # TRIPLE-MODEL vision pipeline:
@@ -44,11 +45,11 @@ filetype_exclusions: ""
 
 # ── THE THREE MODELS ─────────────────────────────────────────────────
 # Interpreter 1: forensic precision — best-in-class OCR + spatial grounding.
-interpreter_model_1: "jcyhsiao/qwen3.5cloud:latest"
+interpreter_model_1: "@config"
 # Interpreter 2: holistic context — deep reasoning over meaning, people, intent.
-interpreter_model_2: "gemma4:cloud"
+interpreter_model_2: "@config"
 # Merger: long-context synthesis engine that fuses both interpretations.
-merging_model: "glm-5.3:cloud"
+merging_model: "@config"
 
 # ── THE FOUR PROMPTS ─────────────────────────────────────────────────
 # {filename} is replaced with the image file name in every prompt below.

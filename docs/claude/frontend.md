@@ -8,6 +8,24 @@
 -->
 # Tlamatini — Frontend Architecture
 
+## Config → Models: metadata-driven form
+
+The dialog renders 38 fields in Core (7), Vision (7), Speech (7), Workflows (6),
+Documents (5), Monitoring & messaging (6). Search crosses categories. Wide screens
+use two columns, narrow screens one; keep the body scrollable and actions reachable.
+`fields` metadata from `load_config_section/models/` drives labels, kind, optional
+state, choices and help. Ollama entries use catalog suggestions, local/provider
+fields use text inputs, engine/voice fields use selects. Do not hardcode another
+per-agent form or force local speech IDs into the Ollama catalog.
+
+Save collects all 38 values, including hidden panels. Changed Ollama values are
+checked against the catalog; backend validation covers strings, size, requiredness
+and enumerations, not provider inference. Show the reconnect notice for changed
+client choices. Credentials stay outside this dialog. Visible verification should
+cover all tabs, cross-category search, narrow layout, invalid values, save/reopen
+and an actual loader reading the saved value. Restore any test choice afterwards.
+See [the full model contract](../model_configuration.md).
+
 ## Chat Interface (10 modules)
 - `agent_page_init.js` - WebSocket setup, app initialization, **Context-menu "Set directory as context"** handler (see *Context directory picker* below)
 - `agent_page_chat.js` - Chat message handling; handles the `exec-permission-request` frame (Ask Execs — see below) by opening the permission dialog. `appendChatMessage` keeps the Send button on **Cancel** during self-healing "🔁 Tactic…" status frames (via `isSelfHealingStatusMessage()` in `agent_page_ui.js`) instead of re-enabling the controls, so the button only returns to **Send** on the real final answer (see `docs/claude/multi-turn.md` → *Self-healing model steps* and `recent-fixes.md` 2026-07-07)

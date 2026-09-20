@@ -16,6 +16,30 @@
 
 ---
 
+## 2026-09-20 — Complete model selection and source/frozen runtime execution
+
+Config → Models now exposes 38 model/engine/voice settings in six searchable
+categories, backed by the portable registry for all 21 model-backed agents.
+Talker and Whisperer are included; Video-Analyzer defaults to gemma4:cloud plus
+jcyhsiao/qwen3.5cloud:latest with glm-5.3:cloud synthesis, and has an independent
+local audio model. Missing fields and quoted `"@config"` inherit; explicit canvas
+values remain overrides. Wrapped chat seeds globals before explicit tool arguments.
+See [the complete current contract](../model_configuration.md); older entries below
+record earlier defaults and UI shapes and must not be used as current configuration.
+
+The frozen File-Creator failure came from opening a nonexistent loose registry via
+a compiled service path. Frozen services now import the compiled registry; portable
+copies resolve through `get_agents_root()`, and non-model agents do not require it.
+The new `check_agent_runtimes` build gate caught default-codepage YAML readers in
+Monitor-Log, Monitor-Netstat and RecMailer; they now read UTF-8 with BOM support.
+The command executes before packaging and is required in self-modify snapshots.
+Source/frozen/installed evidence and scope are in
+[the verification record](../model-configuration-verification.md).
+
+Video summaries retain model/status/body for HTTP failures. Permanent observer
+401/403/404/410 failures disable that observer for that run and leave partial
+coverage; healthy observers continue. Robotics still needs two explicit passes.
+
 ## 2026-09-19 — Video-Analyzer audio tracks and comprehensive summaries
 
 Video-Analyzer supports `analysis_type: robotics` (default), `transcription`, and `summary`. Robotics preserves the deterministic motion gate and dual-vision/merge verdict, with `PASS_OK` only on two explicit independent passes. Transcription reads selected video audio tracks (`audio_tracks: all` or `0,1`) using Whisperer's local faster-whisper backend, GPU auto/CPU fallback and timestamped segments; it never opens a microphone. Summary combines speech with two independent visual observers over frame batches spanning the whole clip, then synthesizes an overview, chronology, readable screen text, facts, steps, decisions, action items and limitations. Content modes accept static scenes, bypass the motion gate, and emit `TLM_ANALYSIS::` tokens rather than robotics verdicts. Missing audio/speech and partial failures are explicit. Each content run saves transcript, segments, report and full analysis artifacts. Parametrizer and wrapped chat results expose `analysis_type`, `analysis_token`, `transcript`, `summary`, `audio_status`, timestamped `segments_json` and artifact paths; the body remains `response_body`. Input remains a file, wildcard, newest video in a folder or Camcorder pool name. Always starts downstream agents; sampled perception is not exhaustive.

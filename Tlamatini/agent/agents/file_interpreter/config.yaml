@@ -1,3 +1,4 @@
+# Models: "@config" follows Config -> Models. Set a concrete value for a per-agent override.
 # File-Interpreter Agent Configuration
 # Hybrid deterministic/non-deterministic agent that reads and interprets
 # documents (DOCX, PPTX, XLSX, PDF, TXT, TeX, and more),
@@ -42,4 +43,4 @@ target_agents: []
 # LLM connection settings (used only when reading_type is 'summarized')
 llm:
   host: "http://localhost:11434"
-  model: "glm-5.3:cloud"
+  model: "@config"

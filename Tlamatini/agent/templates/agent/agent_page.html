@@ -494,59 +494,16 @@
   <div id="config-models-dialog-message" title="" style="display: none;">
     <h5 id="config-models-primary-dialog-legend"></h5>
     <p id="config-models-secondary-dialog-legend"></p>
-    <form id="config-models-form" class="config-form" autocomplete="off"
-      onsubmit="event.preventDefault(); return false;">
-      <div class="config-form-row">
-        <label class="config-form-label" for="config-models-embeding-model">Embedding</label>
-        <input class="config-form-input" id="config-models-embeding-model" type="text" spellcheck="false"
-          data-config-key="embeding-model">
-      </div>
-      <div class="config-form-row">
-        <label class="config-form-label" for="config-models-chained-model">Chained</label>
-        <input class="config-form-input" id="config-models-chained-model" type="text" spellcheck="false"
-          data-config-key="chained-model">
-      </div>
-      <div class="config-form-row">
-        <label class="config-form-label" for="config-models-access-aimed-prompt-model">Access aimed</label>
-        <input class="config-form-input" id="config-models-access-aimed-prompt-model" type="text" spellcheck="false"
-          data-config-key="access_aimed_prompt_model">
-      </div>
-      <div class="config-form-row">
-        <label class="config-form-label" for="config-models-unified-agent-model">Unified</label>
-        <input class="config-form-input" id="config-models-unified-agent-model" type="text" spellcheck="false"
-          data-config-key="unified_agent_model">
-      </div>
-      <div class="config-form-row">
-        <label class="config-form-label" for="config-models-image-interpreter-model">Image interpreter 1</label>
-        <input class="config-form-input" id="config-models-image-interpreter-model" type="text" spellcheck="false"
-          data-config-key="image_interpreter_model">
-      </div>
-      <div class="config-form-row">
-        <label class="config-form-label" for="config-models-image-interpreter-model-2">Image interpreter 2</label>
-        <input class="config-form-input" id="config-models-image-interpreter-model-2" type="text" spellcheck="false"
-          data-config-key="image_interpreter_model_2">
-      </div>
-      <div class="config-form-row">
-        <label class="config-form-label" for="config-models-image-merging-model">Image merger</label>
-        <input class="config-form-input" id="config-models-image-merging-model" type="text" spellcheck="false"
-          data-config-key="image_merging_model">
-      </div>
-      <div class="config-form-row">
-        <label class="config-form-label" for="config-models-mcp-files-search-model">MCP Files search</label>
-        <input class="config-form-input" id="config-models-mcp-files-search-model" type="text" spellcheck="false"
-          data-config-key="mcp_files_search_model">
-      </div>
-      <div class="config-form-row">
-        <label class="config-form-label" for="config-models-internet-classifier-model">Internet classifier</label>
-        <input class="config-form-input" id="config-models-internet-classifier-model" type="text" spellcheck="false"
-          data-config-key="internet_classifier_model">
-      </div>
-      <div class="config-form-row">
-        <label class="config-form-label" for="config-models-web-summarizer-model">Summarizer</label>
-        <input class="config-form-input" id="config-models-web-summarizer-model" type="text" spellcheck="false"
-          data-config-key="web_summarizer_model">
-      </div>
-    </form>
+    <div class="model-settings-toolbar">
+      <label for="config-models-search">Find an agent or model setting</label>
+      <input id="config-models-search" class="config-form-input" type="search" placeholder="Search Talker, video, repair…" autocomplete="off">
+      <small id="config-models-catalog-status" role="status"></small>
+    </div>
+    <div id="config-models-tabs" class="model-settings-tabs" role="tablist" aria-label="Model categories"></div>
+    <form id="config-models-form" class="config-form model-settings-form" autocomplete="off"
+      onsubmit="event.preventDefault(); return false;"></form>
+    <p id="config-models-no-results" hidden>No settings match your search.</p>
+    <datalist id="config-models-ollama-options"></datalist>
   </div>
   <div id="config-urls-dialog-message" title="" style="display: none;">
     <h5 id="config-urls-primary-dialog-legend"></h5>

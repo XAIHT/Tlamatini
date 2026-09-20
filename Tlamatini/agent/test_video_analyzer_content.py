@@ -206,6 +206,41 @@ class ContentTests(unittest.TestCase):
         self.assertTrue(result['visual_observations'])
         self.assertIn('Signal', Path(result['report_path']).read_text())
 
+    def test_retired_observer_stops_after_one_failure_and_coverage_is_explicit(self):
+        import urllib.error
+        self.config.update(summary_batch_size=1, summary_frame_interval=1)
+        calls = []
+        def fail_retired(*args, **kwargs):
+            calls.append(args)
+            if args[2] == 'a':
+                raise urllib.error.HTTPError('unused', 410, 'retired', {}, None)
+            return model_call(*args, **kwargs)
+        result = self.run_content('summary', fail_retired)
+        self.assertEqual(sum(call[2] == 'a' for call in calls), 1)
+        coverage = result['visual_coverage']
+        self.assertEqual(coverage['frames_with_any_observer'], result['frames_requested'])
+        self.assertEqual(coverage['frames_with_both_observers'], 0)
+        self.assertGreater(coverage['observers'][0]['batches_skipped'], 0)
+        self.assertEqual(result['status'], 'partial')
+        saved = json.loads(Path(result['analysis_path']).read_text(encoding='utf-8'))
+        self.assertEqual(saved['visual_coverage'], coverage)
+        self.assertIn('covered by at least one observer', result['summary'])
+
+    def test_transient_failure_does_not_disable_observer(self):
+        self.config.update(summary_batch_size=1, summary_frame_interval=1)
+        calls = []
+        def fail_once(*args, **kwargs):
+            if args[2] == 'a':
+                calls.append(args)
+                if len(calls) == 1:
+                    raise RuntimeError('temporary timeout')
+            return model_call(*args, **kwargs)
+        result = self.run_content('summary', fail_once)
+        self.assertGreater(len(calls), 1)
+        observer = result['visual_coverage']['observers'][0]
+        self.assertEqual(observer['batches_skipped'], 0)
+        self.assertEqual(observer['disabled_reason'], '')
+
     def test_chunked_reduction_keeps_end_of_long_transcript(self):
         transcript = ('A concrete fact at 1.0s.\n' * 2000) + 'END_FACT_999'
         result = {'duration_seconds': 2, 'audio_status': 'transcribed', 'transcript': transcript,
@@ -361,6 +396,19 @@ class IntegrationTests(unittest.TestCase):
             with patch.object(self.agent.urllib.request, 'urlopen', return_value=response):
                 with self.assertRaises(RuntimeError):
                     self.agent._call_ollama_chat('http://localhost:1', '', 'test', [], 'TEST')
+
+    def test_http_retirement_exposes_status_body_and_redacts_token(self):
+        import urllib.error
+        error = urllib.error.HTTPError('http://localhost:1', 410, 'Gone', {},
+                                       io.BytesIO(b'{"error":"retired; token=secret-test"}'))
+        with patch.object(self.agent.urllib.request, 'urlopen', side_effect=error):
+            with self.assertRaises(self.agent.OllamaRequestError) as raised:
+                self.agent._call_ollama_chat('http://localhost:1', 'secret-test', 'old', [], 'TEST')
+        self.assertEqual(raised.exception.status_code, 410)
+        self.assertTrue(raised.exception.permanent)
+        self.assertIn('retired', str(raised.exception))
+        self.assertIn('Config -> Models', str(raised.exception))
+        self.assertNotIn('secret-test', str(raised.exception))
 
     def test_canvas_mapping_preserves_modes_nested_bools_and_defaults(self):
         node = shutil.which('node')

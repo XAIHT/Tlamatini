@@ -1,3 +1,4 @@
+# Models: "@config" follows Config -> Models. Set a concrete value for a per-agent override.
 # Prompter Agent Configuration
 # This agent sends a configured prompt to an Ollama LLM and logs the response.
 #
@@ -20,7 +21,7 @@ prompt: ""
 # LLM connection settings (Ollama)
 llm:
   host: "http://localhost:11434"
-  model: "glm-5.3:cloud"
+  model: "@config"
 
 # Agents to start after LLM response (auto-populated via canvas connections)
 target_agents: []

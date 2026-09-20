@@ -6,6 +6,8 @@ The catalog contains **89 installed agent types**. Every row has a current confi
 
 FlowCreator selects from the entire catalog, then receives detailed reference and schema for the selected types. Deployment refreshes the catalog for FlowCreator, FlowHypervisor, and Parametrizer. This coverage demonstrates discoverability and contract coverage, not successful live execution of every possible workflow.
 
+Config → Models exposes **38 model/engine/voice settings** for **21 model-backed agents**. Missing registered fields and quoted `"@config"` inherit global choices; literal canvas/standalone values remain overrides. See [model configuration](model_configuration.md) for all keys, defaults and launch-path precedence, and [dated source/frozen verification](model-configuration-verification.md) for runtime evidence. The offline `check_agent_runtimes` gate prepares every template, executes model loaders, refreshes helpers/catalogs and runs File-Creator; it does not exercise every provider or hardware action.
+
 | Agent | Config keys | Structured fields | Output slots | Lifecycle |
 |---|---:|---:|---|---|
 | ACPXer (`acpxer`) | 10 | 6 | 0: `target_agents` | ordinary |

@@ -197,7 +197,7 @@ def opus_analyze_image(image_path: str = None, prompt: str = "Describe this imag
         enriched_prompt = f"[System Context]\n{system_context}\n\n[User Request]\n{prompt}"
 
         # Create the Claude client with the API key from config
-        client = ClaudeClient(api_key=api_key)
+        client = ClaudeClient(api_key=api_key, model=config.get("claude_image_model") or "claude-opus-4-5-20251101")
 
         # Use chat_with_image to analyze the image (same pattern as example_image_analysis)
         response = client.chat_with_image(

@@ -97,3 +97,16 @@ Use `agent/agents/flowcreator/flow_catalog.json` for canonical names, current co
 FlowCreator selects capabilities before detailed design, validates the generated plan, and uses bounded repair. Declare Ender input connections explicitly; Ender `target_agents` is a kill list. Counter uses L/G slots; source dependencies do not choose a conditional output branch. Generated Parametrizers require valid `_parametrizer_mappings`, one source and one target. Do not maintain a separate hardcoded Parametrizer producer list.
 
 For desktop flows, use explicit physical/screenshot geometry and verified target windows. `input_sent` is input delivery only; errors may be partial and must not be blindly replayed. Read `docs/desktop-input-and-flow-contracts.md` and `docs/agent-coverage.md` for the full contract and verification scope.
+
+## Model choices in generated flows
+
+Preserve quoted `"@config"` and missing registered model fields so generated agents
+follow Config → Models. Keep a literal model/engine/voice only when an explicit
+override is intended; never fill inheritance with a guessed tag. The registry in
+`agent/agents/model_settings.py` maps all 21 model-backed agents to 38 global
+settings. Wrapped-chat globals are seeded before explicit tool arguments, so do
+not manufacture model arguments when translating a request into a flow. Optional
+empty Whisperer cloud model and LaTeXer repair model values have distinct meanings.
+Video `analysis_type` remains a per-agent task choice; its local audio model is
+separate from Whisperer's engine. See `docs/model_configuration.md` and the current
+generated flow catalog for exact field paths and defaults.

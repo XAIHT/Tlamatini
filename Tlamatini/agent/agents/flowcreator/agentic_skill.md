@@ -462,7 +462,7 @@ Below is the complete list of agents you can use. For each agent, the **config p
 - **Starts other agents**: NO
 - **Config parameters**:
   - `llm.base_url`: "http://localhost:11434"
-  - `llm.model`: "gpt-oss:120b-cloud"
+  - `llm.model`: "@config" (inherits this agent's dedicated Config → Models selection)
   - `llm.temperature`: 0.0
   - `target.logfile_path`: "monitor_log.log" (path to the log file to monitor — auto-configured by canvas connections)
   - `target.poll_interval`: 5
@@ -513,7 +513,7 @@ system_prompt: |
 - **Starts other agents**: NO
 - **Config parameters**:
   - `llm.base_url`: "http://localhost:11434"
-  - `llm.model`: "gpt-oss:120b-cloud"
+  - `llm.model`: "@config" (inherits this agent's dedicated Config → Models selection)
   - `llm.temperature`: 0.0
   - `target.port`: "8080" (port number to monitor)
   - `target.poll_interval`: 5
@@ -675,7 +675,7 @@ system_prompt: |
 - **Starts other agents**: NO
 - **Config parameters**:
   - `llm.base_url`: "http://localhost:11434"
-  - `llm.model`: "gpt-oss:120b-cloud"
+  - `llm.model`: "@config" (inherits this agent's dedicated Config → Models selection)
   - `llm.temperature`: 0.1
   - `target.search_strings`: "" (text to detect in source agent logs — formulate based on what you want to be notified about)
   - `target.outcome_detail`: "" (additional descriptive text shown in the notification dialog below the detected pattern — use this to explain what the detection means in human-readable terms, e.g. "The remote server state file has changed from its baseline value. Immediate review recommended.")
@@ -927,7 +927,7 @@ system_prompt: |
   - `imap.use_ssl`: true
   - `imap.folder`: "INBOX"
   - `llm.base_url`: "http://localhost:11434"
-  - `llm.model`: "gpt-oss:120b-cloud"
+  - `llm.model`: "@config" (inherits this agent's dedicated Config → Models selection)
   - `llm.temperature`: 0
   - `keywords_or_phrases`: ["urgent", "alert"] (keywords to detect in emails — formulate based on the flow's objective)
   - `outcome_word`: "PROCESSED" (word written to this agent's log when keywords are found)
@@ -975,7 +975,7 @@ system_prompt: |
 - **Config parameters**:
   - `prompt`: "" (the prompt text to send to the LLM — formulate based on the flow's objective)
   - `llm.host`: "http://localhost:11434"
-  - `llm.model`: "gpt-oss:120b-cloud"
+  - `llm.model`: "@config" (inherits this agent's dedicated Config → Models selection)
   - `target_agents`: [] (downstream agents to start after LLM response)
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
 
@@ -1043,7 +1043,7 @@ system_prompt: |
 - **Config parameters**:
   - `likely_process_name`: "Paint" (the process name to search for — the LLM will semantically match it to the actual executable, e.g. "Paint" -> "mspaint.exe")
   - `llm.host`: "http://localhost:11434" (Ollama API endpoint)
-  - `llm.model`: "gpt-oss:120b-cloud" (LLM model to use for fuzzy matching)
+  - `llm.model`: "@config" (inherits this agent's dedicated Config → Models selection) (LLM model to use for fuzzy matching)
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after process lookup)
 
@@ -1120,7 +1120,7 @@ system_prompt: |
     - `respect_robots`: false (honor each host's `robots.txt`, skipping Disallowed paths; per-host cached, fails OPEN if robots.txt can't be fetched)
   - `extract_recon`: false (scan each page's RAW source for emails, HTML comments, source-map references, and likely secrets / API keys; findings are saved to a `*_recon.txt` file AND prepended to the LLM context — the natural follow-through to a Googler dork sweep)
   - `llm.host`: "http://localhost:11434" (Ollama server URL)
-  - `llm.model`: "gpt-oss:120b-cloud" (Ollama model name)
+  - `llm.model`: "@config" (inherits this agent's dedicated Config → Models selection) (Ollama model name)
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after execution)
 
@@ -1138,7 +1138,7 @@ system_prompt: |
   - `target_words`: 0 (one-shot only — soft target length. When >0 and no `system_prompt` is provided, a default summarization prompt is built from this number; ignored in polling mode)
   - `system_prompt`: "" (in polling mode: multi-line prompt instructing the LLM to emit `[EVENT_TRIGGERED]` / `[NONE]`. In one-shot mode: the prompt is used as-is. If left empty in one-shot mode, a default summarization prompt is built from `target_words`)
   - `llm.host`: "http://localhost:11434" (Ollama server URL)
-  - `llm.model`: "gpt-oss:120b-cloud" (Ollama model name)
+  - `llm.model`: "@config" (inherits this agent's dedicated Config → Models selection) (Ollama model name)
   - `poll_interval`: 5 (seconds between log file polling cycles — ignored in one-shot mode)
   - `target_agents`: [] (downstream agents to start when an event is triggered or the one-shot summary is non-empty)
 
@@ -1152,7 +1152,7 @@ system_prompt: |
 - **Starts other agents**: NO (System managed).
 - **Config parameters**:
   - `llm.host`: "http://localhost:11434"
-  - `llm.model`: "gpt-oss:120b-cloud"
+  - `llm.model`: "@config" (inherits this agent's dedicated Config → Models selection)
   - `llm.temperature`: 0.0
   - `monitoring_poll_time`: 10
   - `user_instructions`: "" (custom directives appended to the monitoring prompt)
@@ -1184,7 +1184,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking, informative only)
   - `target_agents`: [] (downstream agents to start after ALL files are processed)
   - `llm.host`: "http://localhost:11434" (LLM host, used only in summarized mode)
-  - `llm.model`: "gpt-oss:120b-cloud" (LLM model, used only in summarized mode)
+  - `llm.model`: "@config" (inherits this agent's dedicated Config → Models selection) (LLM model, used only in summarized mode)
 
 ### 42. Image-Interpreter
 - **Purpose**: Non-deterministic agent that analyzes and interprets images through a TRIPLE-MODEL pipeline: `interpreter_model_1` (default jcyhsiao/qwen3.5cloud:latest — forensic OCR/measurement) and `interpreter_model_2` (default gemma4:cloud — holistic context/people) analyze each image IN PARALLEL, each on its OWN dedicated Ollama connection; a BARRIER waits until BOTH interpretations have arrived; then `merging_model` (default glm-5.3:cloud) fuses them into ONE definitive report. Accepts wildcards, directory paths, or the pool name of a File-Interpreter agent as input. Converts each image to base64 and logs the merged report in structured INI_SECTION_IMAGE_INTERPRETER blocks (`file_path`, `interpreter_model_1/2`, `merging_model`, `status`, body = report). Can be strongly coupled with File-Interpreter.
@@ -1198,9 +1198,9 @@ system_prompt: |
   - `images_pathfilenames`: "" (wildcards, directory path, File-Interpreter pool name, or single file)
   - `recursive`: false (when true, scans subdirectories recursively for images)
   - `filetype_exclusions`: "" (comma-separated extensions and/or filenames to exclude, e.g. "svg, ico, thumbnail.png")
-  - `interpreter_model_1`: "jcyhsiao/qwen3.5cloud:latest" (parallel interpreter #1 — forensic OCR/measurement vision model)
-  - `interpreter_model_2`: "gemma4:cloud" (parallel interpreter #2 — holistic context/people vision model)
-  - `merging_model`: "glm-5.3:cloud" (fuses both interpretations once the barrier releases)
+  - `interpreter_model_1`: "@config" (inherits `image_interpreter_model`) (parallel interpreter #1 — forensic OCR/measurement vision model)
+  - `interpreter_model_2`: "@config" (inherits `image_interpreter_model_2`) (parallel interpreter #2 — holistic context/people vision model)
+  - `merging_model`: "@config" (inherits `image_merging_model`) (fuses both interpretations once the barrier releases)
   - `prompt_interpreter_model_1`: engineered forensic-measurement prompt (FULL default ships in config.yaml; `{filename}` is replaced with the image file name)
   - `prompt_interpreter_model_2`: engineered holistic-context prompt (FULL default ships in config.yaml; `{filename}` supported)
   - `prompt_merging_model`: engineered merge/synthesis prompt (FULL default ships in config.yaml; `{filename}` supported)
@@ -1583,7 +1583,7 @@ system_prompt: |
   - `diff_ref`: "HEAD~1" (ref to diff against; empty string = uncommitted working-tree + staged changes)
   - `focus`: "" (optional reviewer guidance, e.g. "focus on the auth path")
   - `max_diff_chars`: 60000 (diff is truncated past this before being sent to the LLM)
-  - `llm`: { host: "http://localhost:11434", model: "gpt-oss:120b-cloud" }
+  - `llm`: { host: "http://localhost:11434", model: "@config" }
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after the review)
 
@@ -1817,7 +1817,7 @@ system_prompt: |
   - `target_agents`: [] (downstream agents to start after playback)
 
 ### 74. Talker
-- **Purpose**: TEXT-TO-SPEECH (TTS): SPEAKS `input_text` aloud through a system audio OUTPUT device (speakers) by driving an OLLAMA connection that runs a neural TTS model (default `Orpheus-3b-FT`). On trigger it builds an Orpheus prompt (`<voice>: <text>`, with an optional emotive tag and language hint), streams the model's audio TOKENS over the Ollama HTTP API, decodes them to a 24 kHz waveform with the SNAC neural codec, saves a WAV, plays it, emits an `INI_SECTION_TALKER` block (`output_path`, `output_dir`, `filename`, `model`, `language`, `voice`, `gender`, `emotion`, `sample_rate`, `audio_seconds`, `char_count`, `played`, `status`, plus a `response_body`), and ALWAYS triggers `target_agents`. The voice-synthesis sibling of the media family — AudioPlayer plays an existing FILE, Talker GENERATES speech from text; observational/output, so it appears in the Exec Report. NOTE: hearing audio needs `snac` + `torch` installed; without them Talker saves the audio tokens and reports `status: tokens_only`.
+- **Purpose**: TEXT-TO-SPEECH (TTS): SPEAKS `input_text` aloud through a system audio OUTPUT device (speakers) by driving an OLLAMA connection that runs a neural TTS model (initial global default `legraphista/Orpheus:3b-ft-q8`; `model: "@config"` follows Config → Models → Speech). On trigger it builds an Orpheus prompt (`<voice>: <text>`, with an optional emotive tag and language hint), streams the model's audio TOKENS over the Ollama HTTP API, decodes them to a 24 kHz waveform with the SNAC neural codec, saves a WAV, plays it, emits an `INI_SECTION_TALKER` block (`output_path`, `output_dir`, `filename`, `model`, `language`, `voice`, `gender`, `emotion`, `sample_rate`, `audio_seconds`, `char_count`, `played`, `status`, plus a `response_body`), and ALWAYS triggers `target_agents`. The voice-synthesis sibling of the media family — AudioPlayer plays an existing FILE, Talker GENERATES speech from text; observational/output, so it appears in the Exec Report. NOTE: hearing audio needs `snac` + `torch` installed; without them Talker saves the audio tokens and reports `status: tokens_only`.
 - **Used for**: Speaking a generated/known string as an unattended flow step — an audible spoken alert, a voice prompt or announcement, reading back an LLM-generated message (from Prompter/Summarizer via Parametrizer), or pronouncing a word/phrase. Distinct from AudioPlayer (plays an existing file) and Notifier (in-browser popup); Talker SYNTHESISES speech.
 - **Aimed at**: TTS steps. **FEMALE VOICE ONLY (Tlamatini is female — a male voice is FORBIDDEN BY DESIGN).** `voice` selects one of the permitted FEMALE Orpheus voices: tara [default], leah, jess, mia, zoe (the only accepted `gender` is `female`). NEVER set `voice` to a male voice (leo/dan/zac) or `gender: male` — the agent refuses such a request by closing its execution entirely ("male voice is forbidden by design — NOW CLOSING.. BYE"), so the flow step produces no audio. `language` passes a hint to the model (base model is English-only; a multilingual fine-tune speaks others). `emotion` weaves a paralinguistic tag (laugh/chuckle/sigh/cough/sniffle/groan/yawn/gasp) into the speech. `model`/`ollama_url`/`ollama_token` configure the Ollama connection; generation knobs are `temperature`/`top_p`/`top_k`/`min_p`/`repetition_penalty`/`max_tokens`/`seed`. Playback uses `device_index`/`device_name`/`volume_percent`/`sample_rate`; the WAV is always saved to `output_dir`. Pair with Parametrizer to carry a `{response_body}` from a Prompter/Summarizer into Talker's `input_text`, or a Forker to branch on `{status}`.
 - **Application example**: Starter → Prompter (ask the LLM for a one-line greeting) → Parametrizer (map Prompter's `{response_body}` into Talker's `input_text`) → Talker (`voice: leah`, `emotion: chuckle`) → Ender (have the LLM write a line and speak it aloud). Or a spoken alert: Starter → Monitor-Log → Raiser (on `FATAL`) → Talker (`input_text: "A fatal error was detected"`, `voice: tara`) → Ender. (Always a female voice — leah/tara above.)
@@ -1827,9 +1827,9 @@ system_prompt: |
   - `input_text`: "" (REQUIRED — the text to pronounce / speak aloud)
   - `ollama_url`: "http://localhost:11434" (Ollama server hosting the TTS model)
   - `ollama_token`: "" (optional bearer token for an authenticated Ollama gateway)
-  - `model`: "Orpheus-3b-FT" (the Ollama TTS model; e.g. legraphista/Orpheus:3b-ft-q8)
+  - `model`: "@config" (inherits `talker_model`) (the Ollama TTS model; e.g. legraphista/Orpheus:3b-ft-q8)
   - `language`: "en" (language hint; base model is English-only, multilingual fine-tunes accept others)
-  - `voice`: "tara" (FEMALE voices ONLY: tara/leah/jess/mia/zoe — a male voice is FORBIDDEN BY DESIGN and aborts the agent)
+  - `voice`: "@config" (inherits `talker_voice`) (FEMALE voices ONLY: tara/leah/jess/mia/zoe — a male voice is FORBIDDEN BY DESIGN and aborts the agent)
   - `gender`: "" (optional; only `female` accepted, only used when `voice` is empty/"auto"; a non-female value aborts the agent)
   - `emotion`: "" (optional emotive tag: laugh/chuckle/sigh/cough/sniffle/groan/yawn/gasp)
   - `include_language_in_prompt`: true (weave a non-English language tag into the prompt)
@@ -1864,8 +1864,8 @@ system_prompt: |
   - `sample_rate`: 0 (0 = capture at 16 kHz, the model rate; a non-zero rate is resampled)
   - `channels`: 1 (mono; clamped to the device max, multi-channel is downmixed to mono)
   - `input_gain_percent`: 100 (software input gain %, 100 = unity)
-  - `engine`: "faster-whisper" (local; or cloud-groq / cloud-openai)
-  - `model`: "base" (tiny/base/small/medium/large-v3/large-v3-turbo)
+  - `engine`: "@config" (inherits `whisperer_engine`) (local; or cloud-groq / cloud-openai)
+  - `model`: "@config" (inherits `whisperer_model`) (tiny/base/small/medium/large-v3/large-v3-turbo)
   - `device`: "auto" (auto = GPU if present else CPU; cuda/cpu force; auto-falls-back to CPU on any GPU failure)
   - `compute_type`: "auto" (float16 on GPU, int8 on CPU)
   - `language`: "" ("" = auto-detect; else an ISO code like "en")
@@ -2025,7 +2025,7 @@ system_prompt: |
 - **Transcription**: Decode `audio_tracks: all` or comma-separated audio ordinals (`0,1`) from the VIDEO, using local faster-whisper with GPU auto/CPU fallback and timestamped segments. Never capture the microphone or call a vision model. `transcription.model`, `.language`, `.task`, `.device`, `.compute_type`, `.beam_size`, `.vad_filter`, `.word_timestamps`, `.chunk_seconds` configure recognition.
 - **Summary**: Speech plus two independent observers per timestamped frame batch, distributed across the full clip, then hierarchical synthesis. Extract scenes, actions, readable text, topics, facts/numbers, procedures, decisions, action items and limitations. Static scenes are valid; no motion gate or robotics prompts. Sampling is bounded and not exhaustive; no speaker diarization or sound-event recognition.
 - **Pool name pattern**: `video_analyzer_<n>`
-- **Config parameters**: `video_pathfilenames` accepts a file, wildcard, folder-newest or Camcorder pool name; `analysis_type` defaults to `robotics`; `audio_tracks` defaults to `all`; `summary_prompt` controls focus; `summary_language` controls output; `summary_frame_interval: 5`, `summary_max_frames: 120`, `summary_batch_size: 8`; `output_dir: ""` saves unique artifacts under app Temp/video-analysis. Robotics keeps `expected_motion`, `num_frames: 12`, `frame_sampling: uniform`, `motion_gate: true`, `motion_threshold: 2.0`, `roi`. Both visual modes use `interpreter_model_1: qwen3-vl:235b-cloud`, `interpreter_model_2: jcyhsiao/qwen3.5cloud:latest`, `merging_model: glm-5.3:cloud`, `llm.host`, `llm.token`. `source_agents`/`target_agents` remain canvas managed.
+- **Config parameters**: `video_pathfilenames` accepts a file, wildcard, folder-newest or Camcorder pool name; `analysis_type` defaults to `robotics`; `audio_tracks` defaults to `all`; `summary_prompt` controls focus; `summary_language` controls output; `summary_frame_interval: 5`, `summary_max_frames: 120`, `summary_batch_size: 8`; `output_dir: ""` saves unique artifacts under app Temp/video-analysis. Robotics keeps `expected_motion`, `num_frames: 12`, `frame_sampling: uniform`, `motion_gate: true`, `motion_threshold: 2.0`, `roi`. Both visual modes inherit `interpreter_model_1`, `interpreter_model_2`, and `merging_model` from Config → Models using `"@config"`; initial defaults are gemma4:cloud, jcyhsiao/qwen3.5cloud:latest, and glm-5.3:cloud. Preserve inheritance unless a model override is requested. Connection fields remain `llm.host` and `llm.token`. `source_agents`/`target_agents` remain canvas managed.
 - **Parametrizer source**: `INI_SECTION_VIDEO_ANALYZER` retains all robotics fields and `response_body`; adds `analysis_type`, `analysis_token`, `duration_seconds`, `audio_status`, `audio_track_count`, `audio_tracks_analyzed`, `language`, `transcription_device`, `transcript`, `summary`, `transcript_path`, `segments_path`, `report_path`, `analysis_path`, `segments_json`, `warnings_json`, `metadata_json`. `transcript`/`summary` headers are single-line; the report body and artifacts retain multiline content. Content modes use `verdict: NOT_APPLICABLE` and empty `verdict_token`.
 - **Content routing**: `TLM_ANALYSIS::TRANSCRIBED`, `SUMMARY_COMPLETE`, `NO_AUDIO`, `NO_SPEECH`, `PARTIAL`, `ERROR`. Never wait for a robotics PASS from these modes. Missing audio is valid for visual summaries; partial/error is not complete success.
 - **Application examples**: Camcorder → Parametrizer (`output_path` → `video_pathfilenames`) → Video-Analyzer (`analysis_type: summary`) → Parametrizer (`summary` → PDFer `input_text`) → PDFer → Ender. For transcription, map Video-Analyzer `transcript` into Talker `input_text`. Give each Parametrizer one source, one target, and valid `_parametrizer_mappings`.
@@ -2110,7 +2110,7 @@ system_prompt: |
   - `auto_install_packages`: true (MiKTeX only — installs a missing .sty on demand mid-compile; THE reason MiKTeX is recommended)
   - `max_passes`: 5 / `bibliography`: "auto" (auto | biber | bibtex | none) / `build_index`: true / `build_glossaries`: true
   - `repair`: true; `repair_rungs`: [] (all eight; supply rung names to select a subset); `repair_write_back`: false (preserve the original .tex; true edits in place).
-  - `repair_model`: configured by default; `""` disables model repair. `repair_model_timeout`: 600 seconds; `repair_bisect_max_probes`: 14 (each probe may compile). To prevent package acquisition, disable both `auto_install_packages` and the `acquire` rung; that rung can retry MiKTeX with its installer enabled. To require no content quarantine, omit `bisect` from a nonempty rung list.
+  - `repair_model`: "@config" (inherits `latexer_model`); `""` disables model repair. `repair_model_timeout`: 600 seconds; `repair_bisect_max_probes`: 14 (each probe may compile). To prevent package acquisition, disable both `auto_install_packages` and the `acquire` rung; that rung can retry MiKTeX with its installer enabled. To require no content quarantine, omit `bisect` from a nonempty rung list.
   - `shell_escape`: false (⚠️ LEAVE OFF — it lets a .tex execute arbitrary commands via \write18)
   - `latex_executable`: "" / `latexmk_executable`: "" / `biber_executable`: "" / `bibtex_executable`: "" / `makeindex_executable`: "" (all empty = auto-resolve, MiKTeX first)
   - `output_dir`: "" (empty = Documents/TlamatiniLaTeX) / `filename`: "" (empty = a timestamped name) / `overwrite`: false / `keep_aux`: false / `open_pdf`: false
@@ -2259,7 +2259,7 @@ You MUST respond with ONLY a JSON array. Each element represents one agent to cr
     "config": {
       "llm": {
         "base_url": "http://localhost:11434",
-        "model": "gpt-oss:120b-cloud",
+        "model": "@config",
         "temperature": 0.1
       },
       "target": {
@@ -2407,7 +2407,7 @@ Notice that Pythonxer starts Sleeper via `target_agents` on every run (both STAT
     "config": {
       "llm": {
         "base_url": "http://localhost:11434",
-        "model": "gpt-oss:120b-cloud",
+        "model": "@config",
         "temperature": 0
       },
       "target": {
@@ -2453,7 +2453,7 @@ Notice that Pythonxer starts Sleeper via `target_agents` on every run (both STAT
     "config": {
       "llm": {
         "base_url": "http://localhost:11434",
-        "model": "gpt-oss:120b-cloud",
+        "model": "@config",
         "temperature": 0.1
       },
       "target": {
@@ -2659,3 +2659,7 @@ For every agent name referenced in any `target_agents`, `target_agents_a`, `targ
               -->Emailer (1)->X.
 
 8. **❌ Never make Ender launch Cleaner in parallel with FlowBacker.** Do not wire `Ender -> Cleaner` and `Ender -> FlowBacker` in the same shutdown branch, and do not let the same Cleaner be triggered by both Ender and FlowBacker. That can delete logs such as `crawler_1.log` before FlowBacker copies the session backup.
+
+## Model selection and inheritance
+
+Model selection: Config → Models manages 38 model/engine/voice settings across Core, Vision, Speech, Workflows, Documents and Monitoring & messaging for all 21 model-backed agents. Preserve quoted `"@config"` and omitted registered fields as inheritance; never replace them with guessed tags. Literal canvas/standalone values are overrides. Wrapped chat starts from globals, then explicit tool arguments; standalone MCP resolves inherited template values before invocation overrides. Do not volunteer model arguments unless the user asks. Save applies on the next configuration load; reconnect chat and restart already running agents as needed. Talker requires an Orpheus-compatible model and supported voice. Whisperer local/cloud engine and cleanup model are separate; cleanup still needs `ollama_cleanup: true`. Video audio uses its independent local `transcription.model`. Empty Whisperer cloud model selects the provider default; empty LaTeXer repair model disables repair. Credentials, URLs, audio devices and external ACPX/MCP provider settings remain separate. Summary observer HTTP 401/403/404/410 failures disable only that observer for the current run, retain partial coverage and preserve the provider explanation; HTTP 410 may indicate retirement. Robotics cannot report PASS from missing evidence. See `docs/model_configuration.md` for all defaults, paths and source/frozen checks.

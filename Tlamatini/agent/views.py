@@ -33,6 +33,7 @@ import re
 
 from .chat_agent_runtime import CHAT_RUNTIME_ROOT_NAME
 from .config_loader import load_config, save_config_updates
+from .agents.model_settings import FIELDS as MODEL_FIELDS, values_for_dialog, validate_values
 from .services.agent_contracts import (
     get_parametrizer_source_fields,
     list_contract_summaries,
@@ -9580,27 +9581,8 @@ def update_arduiner_connection_view(request, agent_name):
 # before merging into config.json through ``save_config_updates``.
 # ============================================================================
 
-CONFIG_MODEL_KEYS: tuple[str, ...] = (
-    "embeding-model",
-    "chained-model",
-    "access_aimed_prompt_model",
-    "unified_agent_model",
-    "image_interpreter_model",
-    "image_interpreter_model_2",
-    "image_merging_model",
-    "mcp_files_search_model",
-    "internet_classifier_model",
-    "web_summarizer_model",
-)
-
-# Defaults surfaced by the load endpoint when a key is missing/empty in the
-# user's config.json (e.g. an install self-updated from before the triple-model
-# Image-Interpreter, 2026-07-04), so the Models dialog shows the real pipeline
-# defaults instead of an empty required field.
-CONFIG_MODEL_KEY_DEFAULTS: dict[str, str] = {
-    "image_interpreter_model_2": "gemma4:cloud",
-    "image_merging_model": "glm-5.3:cloud",
-}
+CONFIG_MODEL_KEYS = tuple(field['key'] for field in MODEL_FIELDS)
+CONFIG_MODEL_KEY_DEFAULTS = {field['key']: field['default'] for field in MODEL_FIELDS}
 
 CONFIG_URL_KEYS: tuple[str, ...] = (
     "ollama_base_url",
@@ -9706,7 +9688,10 @@ def load_config_section_view(request, section: str):
         return JsonResponse({"success": False, "error": f"unknown config section: {section}"}, status=400)
 
     config = load_config(force_reload=True)
-    keys = CONFIG_MODEL_KEYS if section == "models" else CONFIG_URL_KEYS
+    if section == "models":
+        return JsonResponse({"success": True, "section": section,
+                             "values": values_for_dialog(config), "fields": MODEL_FIELDS})
+    keys = CONFIG_URL_KEYS
     values: dict[str, str] = {}
     for key in keys:
         raw = config.get(key, "")
@@ -9721,10 +9706,9 @@ def load_config_section_view(request, section: str):
 @login_required
 def save_config_models_view(request):
     """
-    Persist the 10 model fields from the Config -> Models dialog. Each value
-    must be a non-empty string. The browser already validates against the
-    Ollama catalog; this endpoint only enforces type/shape so a malformed
-    request never lands in config.json.
+    Persist the central model registry, including local ASR and cloud providers.
+    Validate type, required fields and engine/voice choices before writing.
+    Local/provider model IDs are not Ollama catalog entries.
     """
     try:
         payload = json.loads(request.body.decode("utf-8") or "{}")
@@ -9734,21 +9718,7 @@ def save_config_models_view(request):
     if not isinstance(payload, dict):
         return JsonResponse({"success": False, "error": "payload must be a JSON object"}, status=400)
 
-    errors: dict[str, str] = {}
-    updates: dict[str, str] = {}
-    for key in CONFIG_MODEL_KEYS:
-        if key not in payload:
-            errors[key] = "missing"
-            continue
-        value = payload[key]
-        if not isinstance(value, str):
-            errors[key] = "must be a string"
-            continue
-        trimmed = value.strip()
-        if not trimmed:
-            errors[key] = "must not be empty"
-            continue
-        updates[key] = trimmed
+    updates, errors = validate_values(payload)
 
     if errors:
         return JsonResponse({"success": False, "errors": errors}, status=400)

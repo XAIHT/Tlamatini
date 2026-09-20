@@ -606,12 +606,26 @@ function preRenderConfigModelsDialog(message, primaryText, secondaryText) { // e
     $("#config-models-dialog-message").dialog({
         autoOpen: false,
         modal: true,
-        width: 600,
+        width: Math.min(1040, window.innerWidth - 32),
+        maxHeight: window.innerHeight - 40,
+        dialogClass: "model-settings-dialog",
         resizable: false,
         draggable: true,
         closeText: "",
-        open: function () { document.body.style.overflow = 'hidden'; },
-        close: function () { document.body.style.overflow = ''; },
+        open: function () {
+            document.body.style.overflow = 'hidden';
+            $(window).off('resize.modelSettings').on('resize.modelSettings', function () {
+                $('#config-models-dialog-message').dialog('option', {
+                    width: Math.min(1040, window.innerWidth - 32),
+                    maxHeight: window.innerHeight - 40,
+                    position: { my: 'center', at: 'center', of: window }
+                });
+            });
+        },
+        close: function () {
+            document.body.style.overflow = '';
+            $(window).off('resize.modelSettings');
+        },
         create: function () {
             $(this).parent().find('.ui-dialog-buttonpane button:contains("Save")').css(DIALOG_BUTTON_CSS);
             $(this).parent().find('.ui-dialog-buttonpane button:contains("Cancel")').css(DIALOG_BUTTON_CSS);

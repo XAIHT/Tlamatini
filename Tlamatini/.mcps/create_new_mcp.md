@@ -794,3 +794,22 @@ If that answer is not written down first, the implementation will usually end up
 ## Existing native-agent example: LaTeXer styles (2026-09-15)
 
 The LaTeXer extension adds 30 visual styles and `list_styles` to the existing native workflow agent, `chat_agent_latexer` wrapper and root connector's `latexer` tool. It requires no new MCP server or external catalogue entry. Keep config, chat description, canvas mapping, Parametrizer contract and result promotion synchronized: the added result fields are `style`, `style_family`, `style_mode`, `style_count`. Discovery bypasses engine probing; actual PDF compilation uses the installed TeX distribution. See the [style guide](../agent/agents/latexer/STYLES.md) and [connector examples](../../TLAMATINI_MCP.md#latexer-discover-and-apply-styles).
+
+## Model configuration for tools and MCPs (2026-09-20)
+
+The central `agent/agents/model_settings.py` registry owns the built-in model,
+engine and voice fields (38 settings, 21 model-backed agents). Add a metadata
+entry and a real consumer when introducing another configurable built-in model;
+do not add a disconnected selector or hardcoded tag. Wrapped chat seeds globals
+before explicit tool arguments. Standalone `tlamatini_mcp_server.py` resolves
+missing/`"@config"` template fields before applying invocation overrides and
+carries `model_settings.py` plus `CONFIG_PATH` into isolated child runtimes.
+Literal YAML choices remain standalone overrides. Credentials and provider URLs
+remain separate; external MCP/ACPX providers keep their own model configuration.
+
+Use compiled imports in frozen web services and `get_agents_root()` for portable
+assets. Never read loose source relative to a frozen service's `__file__`, and
+never require a self-modify source tree just to execute a tool. Preserve inheritance
+in Parametrizer/flow mappings. Run the source/frozen `check_agent_runtimes` gate
+and targeted wrapper tests, then both inclusion sweeps. The full field map,
+validation API, optional values and lifecycle rules are in `docs/model_configuration.md`.

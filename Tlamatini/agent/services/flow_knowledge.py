@@ -86,6 +86,25 @@ def build_catalog():
 def write_runtime_knowledge(destination, agent_type):
     """Refresh both new and existing pool/isolated runtimes before execution."""
     destination = Path(destination)
+    # In PyInstaller this module's __file__ is inside _internal, while agent
+    # templates live beside the executable. Import compiled application code;
+    # never assume its source file exists beside a frozen module.
+    if __package__ and '.' in __package__:
+        from ..agents.model_settings import AGENTS as MODEL_AGENTS
+    else:
+        # The offline catalog exporter loads services as a standalone package.
+        import importlib.util
+        registry_path = get_agents_root() / 'model_settings.py'
+        spec = importlib.util.spec_from_file_location('runtime_model_settings', registry_path)
+        registry = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(registry)
+        MODEL_AGENTS = registry.AGENTS
+    if agent_type in MODEL_AGENTS:
+        source = get_agents_root() / 'model_settings.py'
+        target = destination / 'model_settings.py'
+        destination.mkdir(parents=True, exist_ok=True)
+        if source.resolve() != target.resolve():
+            shutil.copy2(source, target)
     # A main-script-only refresh must also carry its new local dependencies.
     helpers = {"mouser": ("mouser_coordinates.py",), "keyboarder": ("keyboarder_input.py",),
                "flowcreator": ("result_to_flw.py",), "video_analyzer": ("video_content.py",)}

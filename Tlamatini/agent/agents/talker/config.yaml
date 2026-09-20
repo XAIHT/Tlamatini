@@ -1,3 +1,4 @@
+# Models: "@config" follows Config -> Models. Set a concrete value for a per-agent override.
 # Talker Agent Configuration
 # ---------------------------------------------------------------------------
 # TEXT-TO-SPEECH (TTS): speaks `input_text` aloud through a system audio OUTPUT
@@ -36,7 +37,7 @@ ollama_token: ""
 #   legraphista/Orpheus:3b-ft-q4_k_m  (~2.4 GB, balanced)
 #   legraphista/Orpheus:3b-ft-q2_k    (~1.6 GB, smallest)
 # Set `model` to whatever name you pulled it under (`ollama pull <tag>`).
-model: "legraphista/Orpheus:3b-ft-q8"
+model: "@config"
 
 # Language of the speech. Passed through to the model so a multilingual model
 # can use it ("en", "es", "fr", "de", "it", "pt", "hi", "zh", ...). The base
@@ -63,7 +64,7 @@ language: "en"
 #   zoe   — calm, soothing
 # Any other value (a male voice, or any voice that cannot be verified female) is
 # REFUSED fatally — by design Tlamatini does not carry a "male" voice at all.
-voice: "tara"
+voice: "@config"
 
 # OPTIONAL GENDER selector — FEMALE ONLY. Only consulted when `voice` is empty
 # or "auto"; accepts "female" (-> tara). Any non-female value is FORBIDDEN BY

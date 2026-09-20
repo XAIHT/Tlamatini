@@ -30,6 +30,7 @@ from .chat_agent_registry import (
     WRAPPED_CHAT_AGENT_SPECS,
 )
 from .config_loader import get_config_value
+from .agents.model_settings import FIELDS as MODEL_FIELDS, resolve_agent_models
 from .chat_agent_runtime import (
     RUNNING_STATUSES,
     create_isolated_runtime_copy,
@@ -2369,6 +2370,9 @@ def _seed_global_agent_defaults(template_dir, runtime_config):
         if wa_block:
             runtime_config["whatsapp"] = wa_block
 
+    # Apply model defaults before per-call assignments, including nested fields.
+    model_config = {field['key']: get_config_value(field['key'], None) for field in MODEL_FIELDS}
+    runtime_config = resolve_agent_models(template_dir, runtime_config, model_config, force=True)
     return runtime_config
 
 

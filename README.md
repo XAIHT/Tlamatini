@@ -66,7 +66,7 @@ carried with these build changes. See
 [runtime asset carriage](docs/self-management-carriage.md#local-frontend-and-release-completeness-gate).
 The September 16 review recorded source inspection without a release build.
 The current dossier refresh rechecks Git, source inventory and rendered documents;
-it does not establish a successful frozen release build.
+it does not itself establish runtime behavior. A separate September 20 local 1.63.0 rebuild/install passed source/frozen model loading and File-Creator execution; see [dated verification](docs/model-configuration-verification.md). No remote release is claimed.
 
 The self-management follow-up also carries the integrity checker into the frozen
 app and installer, verifies updates before shutdown, and enforces snapshot/flag
@@ -184,7 +184,7 @@ If `8000` falls inside one of those ranges, pick a port outside them (9000 is a 
 
 ### 2 · Install Ollama
 
-Install **[Ollama](https://ollama.com/download)** for Windows. Ollama is the engine that serves every model to Tlamatini — the local embedding model **and** the cloud chat models.
+Install **[Ollama](https://ollama.com/download)** for Windows. Ollama serves the embedding, reasoning and Ollama vision models. Local faster-whisper speech and direct cloud speech/Claude models use their own backends; see [model configuration](docs/model_configuration.md).
 
 ### 3 · Activate Ollama Pro or higher — required for complete operation
 
@@ -211,9 +211,10 @@ ollama pull nomic-embed-text
 # Cloud models — use a signed-in Pro-or-higher account for full Tlamatini operation
 ollama pull glm-5.3:cloud
 ollama pull jcyhsiao/qwen3.5cloud:latest
+ollama pull gemma4:cloud
 ```
 
-Any cloud model works — these two are the current recommended pair (older screenshots below may still show earlier model names).
+Choose models compatible with each role: vision observers need image support, orchestration needs tool support, and Talker needs Orpheus audio tokens. The names above match the current application defaults; catalog membership alone does not prove compatibility or provider access.
 
 ### 5 · Point Tlamatini at the models
 
@@ -221,9 +222,11 @@ In the Tlamatini navbar, open the **Config** menu:
 
 <p align="center"><img src="Tlamatini/agent/images/MenuConfig.jpg" alt="Config menu — Models, URLs, Access Keys Wizard" width="420"/></p>
 
-**a) Config ▸ Models** — set the Ollama model for each subsystem (each one must already exist in your Ollama catalog), then click **Save**:
+**a) Config ▸ Models** — configure 38 settings across Core, Vision, Speech, Workflows, Documents, and Monitoring & messaging. Search for any model-backed agent, including Talker and Whisperer. Ollama choices use catalog suggestions; local speech models and cloud-provider IDs use their own names. Click **Save**, then reconnect chat; restart running agents when needed. Templates marked `@config` follow these settings, while explicit agent overrides remain available. See [all 38 keys, defaults and override rules](docs/model_configuration.md).
 
-<p align="center"><img src="Tlamatini/agent/images/ConfigureModels.jpg" alt="Configure Models dialog" width="480"/></p>
+Save preserves unrelated configuration and does not download models. Local speech and provider IDs are separate from Ollama tags. Whisperer cloud credentials and recording controls remain in its agent configuration; Video-Analyzer audio uses its own local model. Old workflows with literal model tags keep those overrides—set them to `"@config"` to follow global choices. Source and frozen builds use the same registry; [runtime verification](docs/model-configuration-verification.md) covers both.
+
+The current dialog has six category tabs, searchable fields and dedicated engine/voice selectors. [Open the complete Models guide](docs/model_configuration.md#use-the-dialog).
 
 **b) Config ▸ Access Keys Wizard** — whether you need an **Ollama token** depends on *where* Ollama runs:
 
@@ -343,7 +346,7 @@ The previous annotated release, `v1.48.17` (2026-08-16), remains fully carried. 
 
 Exec-Report status handling now uses a closed, source-guarded vocabulary with five disjoint classes: completed diagnostics, intact completed work, degraded work, work not done, and agent errors. Degraded deliverables such as inaudible token-only speech or a compromised PDF are red rather than falsely clean; named completions are auditable greens; an unknown token still fails open but is identified by rule `R8b`. The repository-wide guard scans every pool-agent `status:` literal so a newly invented token fails during tests instead of silently defaulting green. Kuberneter now reports numeric `returncode`, explicit `success`, and a real `ok`/`failed` status token, preventing a failed `kubectl` call from being painted green.
 
-Updater coverage protects the separately built `Uninstaller.exe` during self-update and keeps the preserve-list parser from being confused by comments. Public release builders forcibly clear inherited private External-MCP catalog and contact opt-ins; only the explicit keyed/private builder can bundle private state, and it first merges same-machine contact sources into gitignored `contacts.private.json` without putting PII into a public build or self-modify snapshot. Drift-proof tests derive supervisor counts and prompt rules from source. The current v1.63.0 source inventory is reported in the [PDF dossier](tlamatini_app_summary.pdf) and [PowerPoint dossier](Tlamatini_eXtended_Artificial_Intelligence_Humanly_Tempered.pptx), with physical/effective lines by language, binary-asset counts and the complete tracked file tree. The live surface contains **89 workflow agents**, **67 wrapped chat agents**, **109 Multi-Turn tools** (**20 core + 67 wrapped + 12 ACPX/Skill + 10 External-MCP supervisors**), **43 application JavaScript modules**, **29 runtime skills**, and **207 migrations**. The `v1.48.14` private MCP runtimes, inactive Memory/Sequential-Thinking defaults, public/private catalog separation, and lossless diagram restoration remain carried.
+Updater coverage protects the separately built `Uninstaller.exe` during self-update and keeps the preserve-list parser from being confused by comments. Public release builders forcibly clear inherited private External-MCP catalog and contact opt-ins; only the explicit keyed/private builder can bundle private state, and it first merges same-machine contact sources into gitignored `contacts.private.json` without putting PII into a public build or self-modify snapshot. Drift-proof tests derive supervisor counts and prompt rules from source. The current v1.63.0 source inventory is reported in the [PDF dossier](tlamatini_app_summary.pdf) and [PowerPoint dossier](Tlamatini_eXtended_Artificial_Intelligence_Humanly_Tempered.pptx), with physical/effective lines by language, binary-asset counts and the complete tracked file tree. The live surface contains **89 workflow agents**, **67 wrapped chat agents**, **109 Multi-Turn tools** (**20 core + 67 wrapped + 12 ACPX/Skill + 10 External-MCP supervisors**), **43 application JavaScript modules**, **29 runtime skills**, and **208 migrations**. The `v1.48.14` private MCP runtimes, inactive Memory/Sequential-Thinking defaults, public/private catalog separation, and lossless diagram restoration remain carried.
 
 Dialog behaviour is now uniform on both pages: **Escape dismisses every dialog and means exactly what the titlebar ✕ means**, while an outside click still never dismisses anything — so a guarded prompt cannot be lost to a stray click, and no dialog can trap you either. A single dispatcher finds the topmost dialog and activates *that dialog's own* dismiss control, so an Ask-Execs permission prompt still answers **Deny**, a confirmation still resolves to "no", scroll locks are still released, and a sealed update step still refuses to close. The last native browser pop-ups are gone: `alert()` / `confirm()` inside the contacts book and the External-MCP dialog were replaced by themed `tlmAlert` / `tlmConfirm` panels that match the app instead of showing OS chrome over it.
 

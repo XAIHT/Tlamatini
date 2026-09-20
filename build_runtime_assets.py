@@ -48,6 +48,7 @@ SOURCE_TREES = (
     ("security", "security"),
 )
 ROOT_SOURCES = {
+    "Tlamatini/agent/agents/model_settings.py": "agents/model_settings.py",
     "build_runtime_assets.py": "build_runtime_assets.py",
     "Tlamatini/agent/config.json": "config.json",
     "Tlamatini/agent/prompt.pmt": "prompt.pmt",

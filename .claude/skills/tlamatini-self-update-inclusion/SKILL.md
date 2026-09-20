@@ -326,3 +326,23 @@ Verify `agent/agents/netspeed_calculator/`, migrations 0195-0197, its wrapped-to
 - `VERSIONING.md` — the git-tag version contract (a self-update compares tags via
   `self_update.is_newer`).
 - `docs/claude/architecture.md` → *Self-Knowledge & Self-Modification* for the build flags.
+### Central model settings runtime gate (2026-09-20)
+
+The model registry must ship as compiled `agent.agents.model_settings` and as
+portable `agents/model_settings.py`. Frozen services import compiled code and
+resolve portable data with `get_agents_root()`, never a synthetic `__file__`
+source path inside `_internal`. Require `check_agent_runtimes` in the frozen
+archive and self-modify snapshot. The build executes this command before ZIP
+creation: every template must prepare, reusable helpers and planner catalogs
+must refresh, actual model loaders must resolve saved settings, and File-Creator
+must write exact scratch bytes with the selected runtime Python. File-only
+inclusion sweeps are not a substitute for this execution check.
+
+The complete operational contract is `docs/model_configuration.md`; dated executed
+checks are in `docs/model-configuration-verification.md`. Preserve saved global
+values and explicit agent overrides during updates. Absent new keys use registry
+fallbacks/defaults; existing choices must not be silently replaced. Document model
+key changes, empty-value semantics, next-load/reconnect behavior and helper carriage
+in README, BookOfTlamatini, self-knowledge, prompts and agent/MCP creation guides.
+UTF-8/BOM loader checks must include Windows default-codepage execution. The current
+gate checks 89 templates and 21 model loaders; derive future counts from source.
