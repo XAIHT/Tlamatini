@@ -202,7 +202,7 @@ def release_identity() -> str:
         publication = "Remote tag publication could not be checked. "
     return (
         f"The reachable local tag {tag} resolves to {tag_commit}. "
-        f"Current source HEAD is {head}, {distance} commits beyond that tag. "
+        f"Current source HEAD is {head}, {distance} commit(s) beyond that tag. "
         f"Fetched origin/main resolves to {remote}. {publication}Runtime version resolution remains "
         "Git/build-derived. A source revision beyond the tag is not a new tagged release."
     )
@@ -488,6 +488,10 @@ def commits_since_visual_docs(baseline: CommitBaseline | None) -> list[CommitInf
 def weekly_highlights(commits: list[CommitInfo]) -> list[str]:
     """Use commit-specific evidence, never broad keyword guesses or disk presence."""
     notes = {
+        "11d8130": "Extends Video-Analyzer with timestamped audio-track transcription and audiovisual summaries, retaining robotics as the default. Adds PyAV decoding, local faster-whisper, bounded visual batches, structured artifacts and migration 0207. Parametrizer, UI, wrapped tools, MCP and packaging contracts move together.",
+        "2cf8e7f": "Carries the published v1.63.0 tag even though its commit subject names 1.62.2. Git tags, not commit-subject prose, determine the current release version. Later Video-Analyzer source is at 11d8130.",
+        "5275f44": "Repairs unambiguous external-MCP scalar mismatches before schema validation: Boolean/string enum spelling, true/false strings and numeric strings. Ambiguous values remain validation errors. Nine focused regression cases accompany the change.",
+        "2bac945": "The last committed dossier baseline covers Whisperer trailing silence at 3.5 seconds and the jcyhsiao/qwen3.5cloud:latest model tag, with migrations 0205/0206. This refresh compares that committed baseline with current source.",
         "2db5e26": "Sets Whisperer's default trailing silence to 3.5 seconds and preserves fractional seconds in its console label. Renames the configured Qwen vision tag to jcyhsiao/qwen3.5cloud:latest. Migrations 0205/0206 update existing prompt content without changing catalog identities. This source commit follows v1.62.2; no migrations or tests were executed for this refresh.",
         "92a5830": "Carries the v1.62.2 tag: local frontend dependencies, strict static/runtime asset receipts, the 1.99 GB ZIP ceiling, complete self-modify snapshots and pre-shutdown update verification. Carries the integrity helper, shared preservation contract and WAL/evidence safeguards. Source inspection does not establish a successful frozen release build.",
         "cae78c3": "Repairs five order-dependent log-capture harnesses. AudioPlayer suppresses real audio under TLAMATINI_NO_AUDIO while explicitly marked fake sounddevice modules can exercise streaming math. No tests ran in this dossier refresh.",
@@ -880,8 +884,8 @@ def publication_guide(context: dict) -> list[str]:
         f"{context['removed_output_files']} under output/. The current tracked output inventory "
         f"has {context['published_files']} files. Local leftovers never establish publication.",
         "The new-asset table lists the actual delta from the committed dossier baseline, "
-        "not the older PDF-canvas rollout. At this revision the additions are migrations "
-        "0205 and 0206. PDF.js, local frontend libraries and runtime-release gates are "
+        "not the older PDF-canvas rollout. The four additions are Video-Analyzer's README, "
+        "video_content.py, migration 0207 and the content regression suite. PDF.js and release gates are "
         "already tracked. Binary fonts, character maps, decoders and media have no line count.",
         f"Current inventory: {context['tracked_files']:,} tracked plus {context['untracked_files']} pending files, "
         f"{context['total_lines']:,} physical text lines, {context['total_effective_lines']:,} "
@@ -890,15 +894,15 @@ def publication_guide(context: dict) -> list[str]:
         f"runtime state are excluded. {len(context['missing_paths'])} index paths are absent "
         "from disk and excluded from line/binary totals. Config values are never reproduced.",
         f"Changes after dossier commit {baseline_ref} are listed in the Git appendix. "
-        "The 3.5-second silence default and Qwen tag migration join the whole-system coverage. "
+        "Video audio transcription, summaries and external-MCP scalar repair join the whole-system coverage. "
         "The tag and later source commits are distinguished. Runtime avatar JPGs remain "
         "tracked despite the earlier removal of the old output corpus.",
-        historical + " No automated tests were executed for this refresh, as requested. "
+        historical + " Focused source regressions and document validation are checked separately. "
         "Document rendering and layout inspection are the only new visual evidence.",
-        "Handbook reconciliation: v1.62.0 release labels differ from the local v1.62.2 "
-        "tag; the September 16 commit-assets instructions describe already tracked files. Active 108-tool/66-wrapper "
-        "labels, 204 migrations and old line totals also lag source. Django 5.2.4 differs "
-        "from pinned 5.2.15. The PDF search claim has no dedicated viewer find control. "
+        f"Historical v1.62.0 handbook snapshots precede the current {context['version_info']['version']} "
+        "release; the September 16 commit-assets instructions describe already tracked files. Historical 108-tool/66-wrapper "
+        "labels, 204 migrations and old line totals were reconciled to live source. Django is pinned "
+        "at 5.2.15. The viewer exposes navigation and text selection; no dedicated find control exists. "
         "These dossiers use source-derived counts and actual Git refs, preserving historical evidence.",
     ]
 
@@ -965,8 +969,8 @@ PDF_PROGRESS_GUIDE = [
     "docs/pdf-canvas.md records earlier September 16 results: 12 browser/static tests "
     "and 32 Django/image/JS-gate tests, plus a 256 MB sparse fixture and page 10,001. "
     "Later frozen-carriage changes explicitly have source-review evidence only.",
-    "This refresh ran no automated tests, app server, model calls, collectstatic or "
-    "frozen build. Existing test sources remain available for separate execution. "
+    "This dossier refresh does not run the app server, cloud model calls, collectstatic or "
+    "a frozen build. Earlier application test results remain dated historical evidence. "
     "Document rendering establishes dossier layout evidence only, not runtime behavior.",
 ]
 
@@ -1002,13 +1006,23 @@ def pdf_distribution_guide(context: dict) -> list[str]:
         "Django and WhiteNoise override .mjs and .wasm MIME types on Windows. "
         "The September 16 handbook records 354 pre-change static files matching a "
         "v1.62.0 ZIP in both frozen locations, plus native MuPDF extensions/DLL. "
-        "The v1.62.2 source carries local frontend libraries and stricter build gates; those changes have not "
+        f"The v{context['version_info']['version']} source carries local frontend libraries and stricter build gates; those changes have not "
         "been built or runtime-tested during this refresh.",
     ]
 
 
+LATEST_SOURCE_GUIDE = [
+    "Video-Analyzer keeps analysis_type=robotics by default. Transcription reads selected video audio tracks with local faster-whisper, preserving stream offsets, segment timestamps and optional word timestamps.",
+    "Summary combines audio evidence with two independent visual observers per sampled frame batch and hierarchical text synthesis. Scenes, actions, readable text, numbers, procedures, decisions and limitations are retained with timestamps.",
+    "The portable video_content.py helper bounds decoding and model context. Reports include UTF-8 text, JSON, subtitles and visual observations. Content modes bypass motion rejection and never emit a robotics PASS.",
+    "Parametrizer, the agent registry, workflow controls, root MCP and prompt migration 0207 expose the same modes and result fields. PyAV 17.1.0 is pinned and the helper is carried by frozen builds and source snapshots.",
+    "External MCP calls repair only unambiguous scalar type mismatches before server-schema validation. Boolean/string enum spelling and numeric strings can be normalized; ambiguous inputs still fail validation.",
+    "Git identifies v1.63.0 at 2cf8e7f, while local and fetched remote main are 11d8130. This checkout includes the later Video-Analyzer implementation and uncommitted documentation updates. No tag is moved by this refresh.",
+]
+
+
 LATEST_DEFAULTS_GUIDE = [
-    "Source commit 2db5e26 follows the v1.62.2 tag. Whisperer now waits for 3.5 seconds "
+    "Source commit 2bac945 follows the v1.62.2 tag. Whisperer now waits for 3.5 seconds "
     "of trailing silence by default. record_seconds=0 enables the gate, while the "
     "300-second maximum recording ceiling remains unchanged.",
     "The console uses fractional-second formatting, so the operator sees 3.5 rather "
@@ -1023,14 +1037,14 @@ LATEST_DEFAULTS_GUIDE = [
     "Fresh seed migrations 0165/0168 and existing prompt-update paths use the new tag. "
     "Image-Interpreter slot 1 and Video-Analyzer slot 2 use it. The other configured "
     "vision and merger defaults remain gemma4:cloud, qwen3-vl:235b-cloud and glm-5.3:cloud.",
-    "The inventory now contains 206 migrations. This refresh reads migration source "
-    "without applying it. No database, app runtime, model calls, automated tests or "
-    "frozen builds were executed. Release validation remains a separate operator action.",
+    "The current source contains 207 migrations, including 0207 for Video-Analyzer content prompts. "
+    "This dossier reads migration source without applying it to the operator database. "
+    "Focused regressions do not establish frozen-release validation.",
 ]
 
 
 LOCAL_RELEASE_GUIDE = [
-    "The v1.62.2 source removes CDN resource tags from all four application templates. "
+    "The v1.63.0 source carries the removal of CDN resource tags from all four application templates. "
     "Bootstrap 5.3.3, jQuery 3.7.1, jQuery UI 1.13.3, highlight.js 11.9.0 and Nunito "
     "400/700 are local. The duplicate Bootstrap 5.3.0 load is removed; UI ordering "
     "is retained and new URLs use the startup cache stamp plus an offline suffix.",
@@ -1053,7 +1067,7 @@ LOCAL_RELEASE_GUIDE = [
     "The September 16 handbook records a v1.62.0 ZIP of 1,905,278,037 bytes: "
     "84,721,963 bytes below the ceiling. This is historical headroom, not a current build result. Oversized "
     "final output stays .pending.zip and fails; required files are not removed. "
-    "This refresh reviews source only; no automated tests or release builds ran.",
+    "The dossier refresh checks source and rendered documents; no release build is claimed.",
 ]
 
 
@@ -1833,10 +1847,10 @@ FRONTEND_HOTFIX_GUIDE = [
 
 V136_RELEASE_GUIDE = [
     release_identity(),
-    "New agent: Video-Analyzer becomes the current media-verdict workflow agent and wrapped `chat_agent_video_analyzer`, complementing Image-Interpreter with video-specific motion analysis.",
+    "Historical introduction: Video-Analyzer joined as a media-verdict workflow agent and wrapped `chat_agent_video_analyzer`, complementing Image-Interpreter with video-specific motion analysis.",
     "Implementation assets: `agent/agents/video_analyzer/`, migrations `0166_add_video_analyzer.py`, `0167_add_chat_agent_video_analyzer_tool.py`, `0168_add_video_analyzer_demo_prompt.py`, `test_video_analyzer_agent.py`, `chat_agent_registry.py`, `mcp_agent.py`, and `services/agent_contracts.py` all move together.",
     "Model strategy: `interpreter_model_1` defaults to `qwen3-vl:235b-cloud`, `interpreter_model_2` defaults to `jcyhsiao/qwen3.5cloud:latest`, and `merging_model` defaults to `glm-5.3:cloud`, with independent calls merged only after both interpreters report.",
-    "Routing contract: every run emits `INI_SECTION_VIDEO_ANALYZER` plus `TLM_VERDICT::<TOKEN>` markers such as `PASS_OK`, `FAIL_NO_MOTION`, `FAIL_WRONG_MOTION`, `UNCLEAR`, and `ANALYSIS_ERROR` for Forker and Parametrizer.",
+    "Robotics routing contract: each robotics run emits `INI_SECTION_VIDEO_ANALYZER` plus `TLM_VERDICT::<TOKEN>` markers such as `PASS_OK`, `FAIL_NO_MOTION`, `FAIL_WRONG_MOTION`, `UNCLEAR`, and `ANALYSIS_ERROR` for Forker and Parametrizer.",
     "Adjacent UI work: prompt search moved from exact-title hunting to substring, word-start, and fuzzy matching, and generated `.flw` files now use a serpentine layout to reduce visual congestion.",
 ]
 
@@ -1901,7 +1915,7 @@ DISCOVERER_VULNX_GO_GUARD_GUIDE = [
 ]
 
 V1332_RELEASE_GUIDE = [
-    "Release identity: latest reachable public tag `v1.33.2`; the generated artifacts now describe the Zavuerer release family plus post-release cleanup while preserving the v1.32.0 quality-and-identity background.",
+    "Historical release family: `v1.33.2` introduced the Zavuerer wave and subsequent cleanup, preserving the v1.32.0 quality-and-identity background. The current release version is 1.63.0.",
     "New agent: Zavuerer becomes the 83rd workflow-agent type and the 60th wrapped chat-agent, adding `chat_agent_zavuerer` for Zavu unified messaging across SMS, WhatsApp, Telegram, Email, and Voice.",
     "Configuration: Config -> Access Keys Wizard now includes `Unified Messaging (Zavu)` and persists `zavu_api_key`, which the wrapped runtime seeds into Zavuerer without exposing the secret in prompts.",
     "Canvas/runtime support: `agent_contracts.py`, `views.py`, `capability_registry.py`, `chat_agent_registry.py`, `tools.py`, frontend ACP JS/CSS, and migrations `0159`-`0164` all move together to make Zavuerer usable from both surfaces.",
@@ -2088,7 +2102,7 @@ REVIEWER_PRECISION_GUIDE = [
 ]
 
 NATIVE_DIALOGS_GUIDE = [
-    "The current tagged release `v1.4.2` removes Tkinter from the unstable runtime-facing dialog path and replaces it with `Tlamatini/agent/native_dialogs.py`, a native Windows dialog bridge used by browser-triggered pickers.",
+    "Carried into v1.63.0 from `v1.4.2`: Tkinter was removed from the unstable runtime-facing dialog path and replaced with `Tlamatini/agent/native_dialogs.py`, a native Windows dialog bridge used by browser-triggered pickers.",
     "This change pairs with the existing DB and operator dialogs: file and folder selection still feels local and GUI-first, but the fragile Tkinter dependency is no longer part of the interactive runtime path that users trigger from chat or ACP surfaces.",
     "The patch arrived with dedicated tests (`test_native_dialogs.py`) and with follow-up orphan-reaper/runtime adjustments, so the release reads as a stability pass rather than a cosmetic refactor.",
 ]
@@ -2698,7 +2712,8 @@ def build_pdf(context: dict) -> None:
     story.append(p("Recent implementation assets and inventory impact", styles["h2"]))
     for item in publication_guide(context):
         story.append(bullet(item, styles["bullet"]))
-    for title, guide in (("Latest defaults and prompt migrations 0205/0206", LATEST_DEFAULTS_GUIDE),
+    for title, guide in (("Current video analysis and MCP changes", LATEST_SOURCE_GUIDE),
+                         ("Latest defaults and prompt migrations 0205/0206", LATEST_DEFAULTS_GUIDE),
                          ("PDF canvas reading and file lifecycle", PDF_CANVAS_GUIDE),
                          ("Whole-document PDF context", PDF_CONTEXT_GUIDE),
                          ("PDF progress, cancellation and evidence", PDF_PROGRESS_GUIDE),
@@ -3534,7 +3549,7 @@ def build_ppt(context: dict) -> None:
     add_metric_card(slide, audit, 2.85, 4.25, 1.75, "Agents", str(context["workflow_agent_count"]), THEME["copper"], "cover-m2")
     add_metric_card(slide, audit, 4.8, 4.25, 1.95, "Effective", f"{context['total_effective_lines']:,}", THEME["amber"], "cover-m3")
     add_text(slide, audit, 0.9, 5.62, 6.2, 0.32, "Created by Angela López Mendoza · @angelahack1", 10, THEME["copper"], True, name="cover-creator")
-    add_text(slide, audit, 0.9, 6.35, 6.2, 0.32, f"Generated {context['generated_at']} at HEAD {context['head_short']}", 9, THEME["muted"], name="cover-foot")
+    add_text(slide, audit, 0.9, 6.35, 6.2, 0.32, f"v{context['version_info']['version']} · Generated {context['generated_at']} at HEAD {context['head_short']}", 9, THEME["muted"], name="cover-foot")
     audit_layout(audit, 1)
 
     slide, audit = add_slide(prs, "What Tlamatini Is", "system identity", THEME["jade"])
@@ -3759,7 +3774,8 @@ def build_ppt(context: dict) -> None:
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Source and evidence", publication_guide(context)[3:], THEME["jade"], "recent-assets-b", 12)
     audit_layout(audit, len(prs.slides))
 
-    for title, guide in (("Latest Defaults and Prompt Migrations", LATEST_DEFAULTS_GUIDE),
+    for title, guide in (("Video Analysis and MCP Updates", LATEST_SOURCE_GUIDE),
+                         ("Latest Defaults and Prompt Migrations", LATEST_DEFAULTS_GUIDE),
                          ("PDF Canvas Reading", PDF_CANVAS_GUIDE),
                          ("Whole-Document PDF Context", PDF_CONTEXT_GUIDE),
                          ("PDF Progress and Cancellation", PDF_PROGRESS_GUIDE),
@@ -4115,7 +4131,7 @@ def build_ppt(context: dict) -> None:
     slide, audit = add_slide(prs, "Native Dialogs In v1.4.2", "Tkinter removed from the unstable runtime path", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What changed", NATIVE_DIALOGS_GUIDE, THEME["amber"], "native-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Release meaning", [
-        "This stability-focused patch sits immediately before the current `v1.5.0` Playwrighter release and remains part of the current operator/runtime story.",
+        "This stability-focused patch preceded the historical `v1.5.0` Playwrighter release and remains part of the v1.63.0 operator/runtime behavior.",
         "It preserves the operator experience of Browse-driven file and folder picking while removing a UI technology that was destabilizing the application.",
         "Because the fix landed with tests and runtime cleanup updates, it belongs in the technical dossier even though the markdown handbook has not yet been fully rewritten around it.",
     ], THEME["jade"], "native-b", 13)

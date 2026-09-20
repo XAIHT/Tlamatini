@@ -10442,8 +10442,8 @@ def version_view(request):
     Response shape::
 
         {
-          "version": "1.1.1",                       # public SemVer (clean, no suffix)
-          "build":   "1.1.1",                       # build descriptor (same as version)
+          "version": "1.63.0",                       # public SemVer (clean, no suffix)
+          "build":   "1.63.0",                       # build descriptor (same as version)
           "commit":  "abc1234",
           "date":    "2026-05-15T18:42:11Z",
           "source":  "generated" | "git" | "unknown"

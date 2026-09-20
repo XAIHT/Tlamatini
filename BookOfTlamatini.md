@@ -8,9 +8,9 @@
 -->
 # Tlamatini
 
-## Unreleased local-frontend and packaging update — 2026-09-16
+## Carried local-frontend and packaging update — introduced 2026-09-16
 
-The working tree now serves all application UI JavaScript, CSS and fonts locally:
+The current source serves all application UI JavaScript, CSS and fonts locally:
 Bootstrap 5.3.3 (matching the previous Django integration), jQuery 3.7.1, jQuery UI
 1.13.3, highlight.js 11.9.0 and Nunito join the existing local PDF.js/avatar assets.
 The redundant Bootstrap 5.3.0 script on login/welcome pages is removed. Vendoring
@@ -49,9 +49,9 @@ The existing v1.62.0 package was inspected read-only: its 354 application static
 files matched source in both frozen static locations and all four templates were
 present. That package still contains the old CDN-referencing templates and
 predates this hardening. Its final ZIP is 1,905,278,037 bytes; this is a baseline,
-not a measurement of a newly rebuilt release. All new code needs a fresh build
-and runtime validation. No automated tests or builds were executed in this
-refresh. Cloud models, online agents and configured external services still
+not a measurement of a newly rebuilt release. A fresh frozen build and runtime validation remain required. The September 16
+review executed no automated tests or builds; its package measurements remain
+historical evidence. Cloud models, online agents and configured external services still
 require their own network connections.
 
 ![Project Logo](Tlamatini.jpg)
@@ -207,7 +207,7 @@ If you only have ten minutes, read Part I §3–§7 (install + first login), the
 
 For its whole life the canvas on the right of the chat held one kind of thing: text. Code you loaded, code Tlamatini wrote, a file you opened to look at. Anything that was not text had to be *described* to her rather than *shown* to her.
 
-Since **2026-09-16** it holds PDFs as well. Press **Open**, pick a `.pdf`, and the document appears in the canvas — the real document, not an extracted approximation of it. Every page is there. You can select text with the mouse, jump to a page, zoom, fit to width, fit the whole page, rotate, scroll continuously or one page at a time, and search inside it. If the file is password-protected, the viewer asks you for the password itself.
+Since **2026-09-16** it holds PDFs as well. Press **Open**, pick a `.pdf`, and the document appears in the canvas — the real document, not an extracted approximation of it. Every page is there. You can select text with the mouse, jump to a page, zoom, fit to width, fit the whole page, rotate, scroll continuously or one page at a time. If the file is password-protected, the viewer asks you for the password itself.
 
 The buttons above the canvas keep the meanings they always had:
 
@@ -395,9 +395,9 @@ The avatar combines independent eye and mouth states. Each source asset is an op
 | `Tlamatini/agent/static/agent/img/avatar/eo_mo.jpg` | Eyes open, mouth open/smiling | `01_eyes_open_smiling.jpg` |
 | `Tlamatini/agent/static/agent/img/avatar/ec_mo.jpg` | Eyes closed, mouth open/smiling | `03_eyes_closed_smiling.jpg` |
 
-The [image deliverables](output/Gemini_girl_animation/) also preserve the original four 1024-square quadrant crops from the 2048-square source sheet. The animation-oriented PNGs correct small source offsets using translation registration on stable hair/armor, a shared six-pixel inset, and one common Lanczos resampling operation. The image files are not distorted independently or regenerated. `alignment.json` records crop boxes, shifts, dimensions, and hashes. Small non-rigid differences already drawn into the source remain; this is expression switching, not generated video or phoneme-level lip synthesis.
+The [image deliverables](https://github.com/XAIHT/Tlamatini/tree/46a18c8d2965af6e833b1fb3aaa68b3039be4167/output/Gemini_girl_animation/) also preserve the original four 1024-square quadrant crops from the 2048-square source sheet. The animation-oriented PNGs correct small source offsets using translation registration on stable hair/armor, a shared six-pixel inset, and one common Lanczos resampling operation. The image files are not distorted independently or regenerated. `alignment.json` records crop boxes, shifts, dimensions, and hashes. Small non-rigid differences already drawn into the source remain; this is expression switching, not generated video or phoneme-level lip synthesis.
 
-`sprite_2x2.png` contains the aligned frames in original row-major order. `preview.html` preloads/decodes the PNGs and draws them at identical canvas coordinates. The later JPG conversion retained the supplied frames' dimensions and positions, using JPEG quality 98 with no chroma subsampling. Both the [complete image ZIP](output/Gemini_girl_animation.zip) and [JPG ZIP](output/Gemini_girl_animation/girl_frames_jpg.zip) are committed deliverables.
+`sprite_2x2.png` contains the aligned frames in original row-major order. `preview.html` preloads/decodes the PNGs and draws them at identical canvas coordinates. The later JPG conversion retained the supplied frames' dimensions and positions, using JPEG quality 98 with no chroma subsampling. Both the [complete image ZIP](https://github.com/XAIHT/Tlamatini/blob/46a18c8d2965af6e833b1fb3aaa68b3039be4167/output/Gemini_girl_animation.zip) and [JPG ZIP](https://github.com/XAIHT/Tlamatini/blob/46a18c8d2965af6e833b1fb3aaa68b3039be4167/output/Gemini_girl_animation/girl_frames_jpg.zip) are committed deliverables.
 
 ### Why the entire portrait flashed
 
@@ -441,7 +441,7 @@ The tests use real Django login, templates, middleware, static HTTP responses, a
 
 ### Repository assets and publication safety
 
-The complete deliverables are now tracked under [output/](output/), rather than hidden by the old blanket `/output/` ignore rule. They include PNG/JPG frames, crops, sprite sheets, ZIPs, preview HTML, scripts, image-alignment metadata, screenshots, visual-test JSON, original code snapshots, and deployment-code backups. The [verification report](output/avatar_flash_fix/README.md) explains each evidence file. The test suites are [test_avatar_animation.cjs](Tests/test_avatar_animation.cjs), [test_avatar_collectstatic.py](Tests/test_avatar_collectstatic.py), and [test_avatar_visible.cjs](Tests/test_avatar_visible.cjs), with [run_avatar_tests.py](Tests/run_avatar_tests.py) as the Python entry point.
+The complete deliverables are now tracked under [output/](output/), rather than hidden by the old blanket `/output/` ignore rule. They include PNG/JPG frames, crops, sprite sheets, ZIPs, preview HTML, scripts, image-alignment metadata, screenshots, visual-test JSON, original code snapshots, and deployment-code backups. The [verification report](https://github.com/XAIHT/Tlamatini/blob/46a18c8d2965af6e833b1fb3aaa68b3039be4167/output/avatar_flash_fix/README.md) explains each evidence file. The test suites are [test_avatar_animation.cjs](Tests/test_avatar_animation.cjs), [test_avatar_collectstatic.py](Tests/test_avatar_collectstatic.py), and [test_avatar_visible.cjs](Tests/test_avatar_visible.cjs), with [run_avatar_tests.py](Tests/run_avatar_tests.py) as the Python entry point.
 
 The committed `output/avatar_flash_fix/development-test.sqlite3` is a **sanitized fixture containing seeded project data and the generic test user**, not a personal/production database. Live login sessions were removed before publication; runtime sessions and server logs are kept under ignored `Temp/avatar_flash_fix/`. Binary attributes prevent Git from changing line endings inside PDFs, PPTX files, image files, ZIP archives, or SQLite fixtures. The original release/file-count snapshots elsewhere in this book retain their stated measurement scope; the newly published avatar assets are documented separately here.
 
@@ -836,7 +836,7 @@ When the migrations finish and you have a superuser, run the server (chapter 7).
 
 ### Path B — Pre-built one-click installer (end users)
 
-Download the newest published release ZIP from **[Tlamatini Releases](https://github.com/XAIHT/Tlamatini/releases)** and unzip it (or use a `Tlamatini_Release/` folder somebody handed you / you built — see Part VIII). This book currently documents **v1.51.5**: the annotated `v1.51.5` tag resolves to `4a7f1cb`, which is also local `main`, `origin/main` and `origin/HEAD` — so the tag now carries the work that previously trailed behind `v1.51.3` (the launcher repair `00ecdc9`, the dossier refresh `5f96a2f`, the console-shield and welcome-keyboard implementation `c8cf369`, and the documentation reconciliations `0d2c09c` and `d8f21f3`). Runtime identity remains Git/build-derived. Then:
+Download the newest published release ZIP from **[Tlamatini Releases](https://github.com/XAIHT/Tlamatini/releases)** and unzip it (or use a `Tlamatini_Release_v1.63.0/` folder somebody handed you / you built — see Part VIII). This book currently documents **v1.63.0**: the annotated `v1.63.0` tag resolves to `2cf8e7f`, and subsequent source commits retain the bare runtime version `1.63.0`. The current source includes Video-Analyzer audio-track transcription and audiovisual summaries alongside the carried PDF canvas, visual agents, launcher repair, console shield and welcome-keyboard behavior. Runtime identity remains Git/build-derived. Then:
 
 1. Open the unzipped folder.
 2. Double-click **`Installer.exe`**.
@@ -1010,7 +1010,7 @@ This is the big one. Until you tick **Multi-Turn**, Tlamatini only *describes* t
 Multi-Turn flips Tlamatini from "answerer" to **operator**:
 
 - The chat skips its prompt-shape validator (you no longer have to phrase requests as questions).
-- A request-scoped **planner** picks the relevant tools from **108 built-ins**: 20 direct/core tools, 66 wrapped chat-agents, 12 ACPX/Skill tools, and 10 External-MCP supervisors. Healthy active servers can add lazily discovered `ext__<server>__<tool>` remotes on top without inflating every prompt permanently.
+- A request-scoped **planner** picks the relevant tools from **109 built-ins**: 20 direct/core tools, 67 wrapped chat-agents, 12 ACPX/Skill tools, and 10 External-MCP supervisors. Healthy active servers can add lazily discovered `ext__<server>__<tool>` remotes on top without inflating every prompt permanently.
 - The unified-agent loop runs **up to 4096 iterations** (`unified_agent_max_iterations`): the LLM calls a tool, sees the result, decides what to call next, and chains its way to the goal.
 - Wrapped sub-agents launch **silently** in the background (no console window pop-ups).
 
@@ -2638,14 +2638,14 @@ Pre-releases use the standard SemVer suffixes — `2.0.0-alpha.1`, `2.0.0-beta.1
 
 ```powershell
 git status                                          # clean tree, on main
-git tag -a v1.62.2 -m "Release 1.62.2: <one-liner>"   # annotated tag
-git push origin v1.62.2
+git tag -a v1.63.0 -m "Release 1.63.0: <one-liner>"   # annotated tag
+git push origin v1.63.0
 python build.py
 python build_uninstaller.py
 python build_installer.py
 ```
 
-All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.62.2/`, named for the version so the file you hand to a user is unambiguous before they even unzip it. The current release is `v1.62.2`, so the bare runtime version resolves to `1.62.2`. Tlamatini deliberately never puts a `.devN`, `+gSHA` or `.dirty` suffix into its version string — it always reports the base tag, which is the designed behaviour described in `VERSIONING.md`. That is exactly why the five commands above start with `git status` on a clean tree: a release cut from a dirty tree would ship a version number that says nothing about what is actually inside it.
+All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.63.0/`, named for the version so the file you hand to a user is unambiguous before they even unzip it. The current release is `v1.63.0`, so the bare runtime version resolves to `1.63.0`. Tlamatini deliberately never puts a `.devN`, `+gSHA` or `.dirty` suffix into its version string — it always reports the base tag, which is the designed behaviour described in `VERSIONING.md`. That is exactly why the five commands above start with `git status` on a clean tree: a release cut from a dirty tree would ship a version number that says nothing about what is actually inside it.
 
 ### Where the version shows up in a running install
 
@@ -2653,8 +2653,8 @@ The build computes the version once and bakes it into four surfaces:
 
 - **`Tlamatini/agent/_version.py`** — generated at build time, gitignored, read at runtime by `agent.version.get_version()`. This is what every in-process surface reads.
 - **Win32 `VERSIONINFO`** — `Tlamatini.exe`, `Installer.exe`, and `Uninstaller.exe` all carry the version in their resource fork. Right-click the file → Properties → Details → ProductVersion.
-- **Release folder name** — `dist/Tlamatini_Release_v1.62.2/`.
-- **Runtime surfaces** — the About dialog renders `Tlamatini v{{ version }}` (Django context processor); after the release tag/build, the startup banner prints `--- [VERSION] Tlamatini 1.62.2` to both the console and `tlamatini.log`; `GET /agent/version/` returns `{"version":"1.62.2","commit":"abc1234","date":"…","source":"generated"}` as an **open** endpoint suitable for a health-check.
+- **Release folder name** — `dist/Tlamatini_Release_v1.63.0/`.
+- **Runtime surfaces** — the About dialog renders `Tlamatini v{{ version }}` (Django context processor); after the release tag/build, the startup banner prints `--- [VERSION] Tlamatini 1.63.0` to both the console and `tlamatini.log`; `GET /agent/version/` returns `{"version":"1.63.0","commit":"abc1234","date":"…","source":"generated"}` as an **open** endpoint suitable for a health-check.
 
 If the four surfaces ever disagree, your build was run with a stale `$env:TLAMATINI_VERSION` or against an out-of-date `_version.py` — clear them and re-run `build.py`.
 

@@ -24,11 +24,11 @@
 
 <p align="center">
   <a href="https://discord.gg/WFQsrskgc"><img src="https://img.shields.io/badge/DISCORD-JOIN%20US-5865F2?style=for-the-badge&labelColor=2D2D2D&logo=discord&logoColor=white" alt="Join our Discord"/></a>
-  <a href="https://github.com/XAIHT/Tlamatini/releases"><img src="https://img.shields.io/badge/RELEASE-v1.62.2-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Release v1.62.2"/></a>
+  <a href="https://github.com/XAIHT/Tlamatini/releases"><img src="https://img.shields.io/badge/RELEASE-v1.63.0-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Release v1.63.0"/></a>
   <a href="https://www.python.org/downloads/release/python-31210/"><img src="https://img.shields.io/badge/PYTHON-3.12.10-3776AB?style=for-the-badge&labelColor=2D2D2D&logo=python&logoColor=white" alt="Python"/></a>
   <a href="#installation"><img src="https://img.shields.io/badge/PLATFORM-WIN%2010%20%7C%2011-0078D6?style=for-the-badge&labelColor=2D2D2D&logo=windows&logoColor=white" alt="Platform"/></a>
   <a href="#-the-full-capability-list"><img src="https://img.shields.io/badge/AGENT%20TYPES-89-8A2BE2?style=for-the-badge&labelColor=2D2D2D" alt="89 agent types"/></a>
-  <a href="#-the-full-capability-list"><img src="https://img.shields.io/badge/MULTI--TURN%20TOOLS-108-16A34A?style=for-the-badge&labelColor=2D2D2D" alt="108 built-in Multi-Turn tools"/></a>
+  <a href="#-the-full-capability-list"><img src="https://img.shields.io/badge/MULTI--TURN%20TOOLS-109-16A34A?style=for-the-badge&labelColor=2D2D2D" alt="109 built-in Multi-Turn tools"/></a>
   <a href="https://github.com/XAIHT/Tlamatini/blob/main/LICENSE"><img src="https://img.shields.io/badge/LICENSE-MIT-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="License"/></a>
 </p>
 
@@ -45,9 +45,9 @@
 
 ---
 
-## Unreleased packaging hardening — 2026-09-16
+## Carried packaging hardening — introduced 2026-09-16
 
-The current working tree removes frontend CDN dependencies. Bootstrap, jQuery,
+The current source carries the removal of frontend CDN dependencies. Bootstrap, jQuery,
 jQuery UI, syntax highlighting, Nunito fonts, PDF.js, avatar frames and the
 application's JavaScript/CSS are served from local static assets. This does not
 make configured cloud models, External MCPs or Internet agents offline services.
@@ -61,11 +61,12 @@ installer and uninstaller. Required assets are not silently removed to meet it.
 
 The pinned frontend can be reproduced with `python scripts/vendor_frontend.py`;
 PDF.js uses `python scripts/vendor_pdfjs.py`. Normal builds use the locally vendored
-assets without CDN downloads. Commit the newly unignored PDF.js API/worker and
-the frontend vendor tree together with these build changes. See
+assets without CDN downloads. The PDF.js API/worker and frontend vendor tree are tracked in Git and
+carried with these build changes. See
 [runtime asset carriage](docs/self-management-carriage.md#local-frontend-and-release-completeness-gate).
-These changes require a fresh release build; no automated tests or build were run
-during this source/documentation refresh.
+The September 16 review recorded source inspection without a release build.
+The current dossier refresh rechecks Git, source inventory and rendered documents;
+it does not establish a successful frozen release build.
 
 The self-management follow-up also carries the integrity checker into the frozen
 app and installer, verifies updates before shutdown, and enforces snapshot/flag
@@ -79,8 +80,8 @@ ornaments. Database/WAL and security-evidence preservation are tightened. See th
 1. [What is Tlamatini](#what-is-tlamatini)
 2. [How it works](#how-it-works)
 3. [Get started in five steps](#-get-started--5-steps-to-a-cloud-powered-tlamatini)
-4. [Newest changes](#newest-changes--carried-by-the-v1622-tag)
-5. [Current release](#current-release--v1622)
+4. [Newest changes](#newest-changes--v1630-source)
+5. [Current release](#current-release--v1630)
 6. [The full capability list](#-the-full-capability-list)
 7. [Enable Tlamatini as a Blue-hat agent](#enable-tlamatini-as-a-blue-hat-agent)
 8. [Installation](#installation)
@@ -237,11 +238,15 @@ Done — tick **Multi-Turn** in the chat toolbar and put Tlamatini to work.
 
 ---
 
-## Newest changes — carried by the v1.62.2 tag
+## Newest changes — v1.63.0 source
+
+**Video-Analyzer now transcribes video audio tracks and builds detailed summaries.** Choose `analysis_type: transcription` for timestamped speech from selected audio tracks, or `analysis_type: summary` to combine that speech with sampled visual evidence: scenes, actions, on-screen text, slides, facts, decisions and action items. Reports retain timestamps, coverage limits and partial failures. The existing `robotics` mode remains the default, and Parametrizer, workflow controls and MCP tools expose the new modes. See the [Video-Analyzer contract](Tlamatini/agent/agents/video_analyzer/README.md).
+
+**Carried PDF canvas and document context:**
 
 **Open a PDF straight in Tlamatini's canvas — and then hand her the whole document.**
 
-Until now the canvas held code and text. Now you can press **Open**, pick a **PDF**, and it appears right there beside the chat: every page, with text you can select, page navigation, zoom, fit-to-width, rotation and search, behaving the way you expect a PDF reader to behave. A password-protected file asks for its password inside the viewer. The buttons you already know keep working on it — **Copy** lifts the text out of every page, **Save As** hands you the original file back untouched, **Reopen** swaps in a different one, **Clear canvas** puts it away.
+Until now the canvas held code and text. Now you can press **Open**, pick a **PDF**, and it appears right there beside the chat: every page, with text you can select, page navigation, zoom, fit-to-width, rotation, behaving the way you expect a PDF reader to behave. A password-protected file asks for its password inside the viewer. The buttons you already know keep working on it — **Copy** lifts the text out of every page, **Save As** hands you the original file back untouched, **Reopen** swaps in a different one, **Clear canvas** puts it away.
 
 Opening a PDF sends nothing anywhere. The viewer reads the file in pieces directly from your disk as you scroll, so there is **no size limit and no page limit** on Tlamatini's side — a sparse 256 MB file and a jump to page 10,001 are both in the test suite. Nothing is uploaded, and **no AI model is called, simply because you opened something**.
 
@@ -294,11 +299,11 @@ Two fixes ship together. The console is now written on its **own background thre
 
 ---
 
-## Current release — v1.62.2
+## Current release — v1.63.0
 
-The current release is **`v1.62.2`**. It carries the PDF canvas and whole-document context described above, on top of the visual-agent work of the v1.60.0 line.
+The current release version is **`v1.63.0`**. The current source adds Video-Analyzer audio-track transcription and detailed audiovisual summaries, alongside the carried PDF canvas, whole-document context and visual-agent capabilities described above.
 
-Runtime identity always comes from Git/build metadata — `agent/version.py::get_version()` and `GET /agent/version/` resolve the number from the annotated tag at build time, and the release folder `dist/Tlamatini_Release_v1.62.0/` is named from the same source — never from this prose. Tlamatini's version string deliberately never carries a `.devN`, `+gSHA` or `.dirty` suffix; it always reports the base tag (`VERSIONING.md`). The preceding tags in this line are **`v1.61.0`** (2026-09-16) and **`v1.60.0`** (2026-09-15, commit `cef3995`, "Entire chain of visual agents really enhanced!").
+Runtime identity always comes from Git/build metadata — `agent/version.py::get_version()` and `GET /agent/version/` resolve the number from the annotated tag at build time, and the release folder `dist/Tlamatini_Release_v1.63.0/` is named from the same source — never from this prose. Tlamatini's version string deliberately never carries a `.devN`, `+gSHA` or `.dirty` suffix; it always reports the base tag (`VERSIONING.md`). The preceding tags in this line include **`v1.62.2`**, **`v1.62.0`**, **`v1.61.0`** (2026-09-16) and **`v1.60.0`** (2026-09-15, commit `cef3995`, "Entire chain of visual agents really enhanced!").
 
 The preceding **`v1.60.0`** tag, created 2026-09-15 at commit **`cef3995`** ("Release v1.60.0 Entire chain of visual agents really enhanced!."), carries the visual-agent work described above. It reached you through three earlier tags in the same line — **`v1.52.0`** (the new PPTXer agent), **`v1.52.2`** (PDFer's and PPTXer's style collections) and **`v1.52.3`** (LaTeXer's) — before `v1.60.0` gathered them together with the desktop-control and flow-contract tightening.
 
@@ -338,7 +343,7 @@ The previous annotated release, `v1.48.17` (2026-08-16), remains fully carried. 
 
 Exec-Report status handling now uses a closed, source-guarded vocabulary with five disjoint classes: completed diagnostics, intact completed work, degraded work, work not done, and agent errors. Degraded deliverables such as inaudible token-only speech or a compromised PDF are red rather than falsely clean; named completions are auditable greens; an unknown token still fails open but is identified by rule `R8b`. The repository-wide guard scans every pool-agent `status:` literal so a newly invented token fails during tests instead of silently defaulting green. Kuberneter now reports numeric `returncode`, explicit `success`, and a real `ok`/`failed` status token, preventing a failed `kubectl` call from being painted green.
 
-Updater coverage protects the separately built `Uninstaller.exe` during self-update and keeps the preserve-list parser from being confused by comments. Public release builders forcibly clear inherited private External-MCP catalog and contact opt-ins; only the explicit keyed/private builder can bundle private state, and it first merges same-machine contact sources into gitignored `contacts.private.json` without putting PII into a public build or self-modify snapshot. Drift-proof tests derive supervisor counts and prompt rules from source. The refreshed source-verified worktree surface is **1,069 tracked files**, **339,750 physical text lines**, **237,527 effective lines**, and **64 binary/media assets**; it contains **89 workflow agents**, **67 wrapped chat agents**, **109 Multi-Turn tools** (**20 core + 67 wrapped + 12 ACPX/Skill + 10 External-MCP supervisors**), **38 JavaScript modules**, **29 runtime skills**, and **204 migrations**. The `v1.48.14` private MCP runtimes, inactive Memory/Sequential-Thinking defaults, public/private catalog separation, and lossless diagram restoration remain carried.
+Updater coverage protects the separately built `Uninstaller.exe` during self-update and keeps the preserve-list parser from being confused by comments. Public release builders forcibly clear inherited private External-MCP catalog and contact opt-ins; only the explicit keyed/private builder can bundle private state, and it first merges same-machine contact sources into gitignored `contacts.private.json` without putting PII into a public build or self-modify snapshot. Drift-proof tests derive supervisor counts and prompt rules from source. The current v1.63.0 source inventory is reported in the [PDF dossier](tlamatini_app_summary.pdf) and [PowerPoint dossier](Tlamatini_eXtended_Artificial_Intelligence_Humanly_Tempered.pptx), with physical/effective lines by language, binary-asset counts and the complete tracked file tree. The live surface contains **89 workflow agents**, **67 wrapped chat agents**, **109 Multi-Turn tools** (**20 core + 67 wrapped + 12 ACPX/Skill + 10 External-MCP supervisors**), **43 application JavaScript modules**, **29 runtime skills**, and **207 migrations**. The `v1.48.14` private MCP runtimes, inactive Memory/Sequential-Thinking defaults, public/private catalog separation, and lossless diagram restoration remain carried.
 
 Dialog behaviour is now uniform on both pages: **Escape dismisses every dialog and means exactly what the titlebar ✕ means**, while an outside click still never dismisses anything — so a guarded prompt cannot be lost to a stray click, and no dialog can trap you either. A single dispatcher finds the topmost dialog and activates *that dialog's own* dismiss control, so an Ask-Execs permission prompt still answers **Deny**, a confirmation still resolves to "no", scroll locks are still released, and a sealed update step still refuses to close. The last native browser pop-ups are gone: `alert()` / `confirm()` inside the contacts book and the External-MCP dialog were replaced by themed `tlmAlert` / `tlmConfirm` panels that match the app instead of showing OS chrome over it.
 
@@ -385,7 +390,7 @@ Everything Tlamatini can do, grouped:
 
 **🧩 Orchestration & design**
 - **Visual Workflow Designer (ACP)** — 89 drag-and-drop agent types wired into runnable flows; save/load `.flw` files; Flow Compiler validates the canvas into `config.yaml`.
-- **Multi-Turn orchestration** — a tool-calling loop with **108 built-in tools** and a global execution planner; **Step-by-Step** mode paces hands-on setup one action at a time; **self-healing model steps** mean a network/model hiccup never freezes her — she retries under a watchdog, finishes gracefully from work already done, and always tells you what happened.
+- **Multi-Turn orchestration** — a tool-calling loop with **109 built-in tools** and a global execution planner; **Step-by-Step** mode paces hands-on setup one action at a time; **self-healing model steps** mean a network/model hiccup never freezes her — she retries under a watchdog, finishes gracefully from work already done, and always tells you what happened.
 - **FlowCreator / FlowHypervisor** — let an LLM design a flow; a watchdog monitors flow health. FlowCreator is now also **callable from chat** (`chat_agent_flowcreator`): describe a flow in plain words and it writes a real, canvas-loadable `.flw` file to disk.
 - **Parametrizer / Gatewayer / Gateway-Relayer / Node Manager** — chain agent outputs into the next agent's config; trigger flows from webhooks, folder-drops, or GitHub/GitLab.
 - **ACPX** — spawn external coding-agent CLIs (Claude Code, Codex, Cursor, Gemini, Qwen, and more) as tools and relay between them.
@@ -449,7 +454,7 @@ Everything Tlamatini can do, grouped:
 - **Shoter / Mouser / Keyboarder** — screenshots, mouse, keyboard.
 
 **🎙️ Audio, video, vision & speech**
-- **Talker (TTS)** — text-to-speech via Ollama. **Whisperer (STT)** — speech-to-text (faster-whisper local + cloud fallback); by default a **sound gate** keeps recording while you talk and stops after 10 s of silence, and naming a duration turns it off.
+- **Talker (TTS)** — text-to-speech via Ollama. **Whisperer (STT)** — speech-to-text (faster-whisper local + cloud fallback); by default a **sound gate** keeps recording while you talk and stops after 3.5 s of silence, and naming a duration turns it off.
 - **Voice commands** — the catalog's **first** section. Speak your instruction instead of typing it: Whisperer listens until you stop, and the transcript becomes the prompt Tlamatini executes. She reads it back before acting, and if she did not hear you she says so instead of guessing.
 - **Recorder / Camcorder** — microphone and webcam capture.
 - **AudioPlayer / VideoPlayer** — audio and video playback with volume/loop control.
@@ -570,7 +575,7 @@ See **[the full docs](https://github.com/XAIHT/Tlamatini/blob/main/BookOfTlamati
 
 ## Tech stack
 
-Python 3.12 · Django 5.2.4 · Django Channels (Daphne ASGI) · LangChain / LangGraph · FAISS + rank-bm25 · Ollama / Anthropic Claude / Qwen vision · SQLite · Mozilla PDF.js 6.3.289 (vendored, Apache-2.0) · PyMuPDF · PyInstaller. **Platform: Windows 10/11.**
+Python 3.12 · Django 5.2.15 · Django Channels (Daphne ASGI) · LangChain / LangGraph · FAISS + rank-bm25 · Ollama / Anthropic Claude / Qwen vision · SQLite · Mozilla PDF.js 6.3.289 (vendored, Apache-2.0) · PyMuPDF · PyInstaller. **Platform: Windows 10/11.**
 
 ---
 
@@ -601,10 +606,10 @@ Node.js, Playwright for Node.js, and its Chromium browser must be installed. The
 
 ### Published deliverables
 
-- [All avatar verification evidence and test setup](output/avatar_flash_fix/), including screenshots, JSON results, before/fix comparisons, code backups, and a **session-free test database fixture**. Live test sessions/logs are created separately in ignored `Temp/avatar_flash_fix/`.
-- [Original frame-splitting deliverables](output/Gemini_girl_animation/): equal-sized PNGs, untouched quadrant crops, alignment transforms, four JPG conversions, sprite sheet, HTML/JavaScript preview, and reproduction script.
-- [Complete image package](output/Gemini_girl_animation.zip) and [four-JPG package](output/Gemini_girl_animation/girl_frames_jpg.zip). Download/extract the image package and open `preview.html` locally to play it; GitHub's HTML source view is not the animation player.
-- [Detailed verification report](output/avatar_flash_fix/README.md) and [full technical walkthrough](BookOfTlamatini.md#avatar-animation-repair-and-reproducible-visible-tests). The recorded final repair run passed **311 transitions and 10,813 browser paints**, with zero coverage/layout failures and no JavaScript errors; later reproducible runs update the JSON evidence.
+- [All avatar verification evidence and test setup](https://github.com/XAIHT/Tlamatini/tree/46a18c8d2965af6e833b1fb3aaa68b3039be4167/output/avatar_flash_fix/), including screenshots, JSON results, before/fix comparisons, code backups, and a **session-free test database fixture**. Live test sessions/logs are created separately in ignored `Temp/avatar_flash_fix/`.
+- [Original frame-splitting deliverables](https://github.com/XAIHT/Tlamatini/tree/46a18c8d2965af6e833b1fb3aaa68b3039be4167/output/Gemini_girl_animation/): equal-sized PNGs, untouched quadrant crops, alignment transforms, four JPG conversions, sprite sheet, HTML/JavaScript preview, and reproduction script.
+- [Complete image package](https://github.com/XAIHT/Tlamatini/blob/46a18c8d2965af6e833b1fb3aaa68b3039be4167/output/Gemini_girl_animation.zip) and [four-JPG package](https://github.com/XAIHT/Tlamatini/blob/46a18c8d2965af6e833b1fb3aaa68b3039be4167/output/Gemini_girl_animation/girl_frames_jpg.zip). Download/extract the image package and open `preview.html` locally to play it; GitHub's HTML source view is not the animation player.
+- [Detailed verification report](https://github.com/XAIHT/Tlamatini/blob/46a18c8d2965af6e833b1fb3aaa68b3039be4167/output/avatar_flash_fix/README.md) and [full technical walkthrough](BookOfTlamatini.md#avatar-animation-repair-and-reproducible-visible-tests). The recorded final repair run passed **311 transitions and 10,813 browser paints**, with zero coverage/layout failures and no JavaScript errors; later reproducible runs update the JSON evidence.
 
 The `output/` deliverables are intentionally version-controlled. Binary Git attributes preserve PNG/JPG/PDF/PPTX/ZIP/SQLite bytes without line-ending conversion. No production login sessions or private user database are included. The existing release/line-count inventory above describes its recorded snapshot; the avatar evidence added here is a subsequent source change, not a new release tag.
 
