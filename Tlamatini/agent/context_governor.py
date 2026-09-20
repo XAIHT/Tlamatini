@@ -243,12 +243,14 @@ def zone_for(ratio: float, settings: Optional[GovernorSettings] = None) -> str:
 
 # ── Measuring ───────────────────────────────────────────────────────────────
 def _message_text(message: Any) -> str:
-    """Best-effort text of ONE message, without importing langchain.
+    """Best-effort CONTENT text of ONE message, without importing langchain.
 
-    Content may be a plain string, a list of content blocks, or a dict.  Tool
-    CALLS ride on the message too and are part of what is sent, so they are
-    counted.  Anything unrecognised contributes its ``str()`` - never zero,
-    because silently under-counting is the failure this module exists to stop.
+    Content may be a plain string, a list of content blocks, or a dict.  This
+    returns the content ONLY - tool calls and the JSON envelope are handled by
+    :func:`_message_wire`, because they are part of the WIRE size but not of
+    the text the model tokenizes.  Anything unrecognised contributes its
+    ``str()`` - never zero, because silently under-counting is the failure this
+    module exists to stop.
     """
     if message is None:
         return ""
@@ -270,15 +272,6 @@ def _message_text(message: Any) -> str:
         elif content is not None:
             parts.append(str(content))
 
-        tool_calls = getattr(message, "tool_calls", None)
-        if tool_calls is None and isinstance(message, dict):
-            tool_calls = message.get("tool_calls")
-        if tool_calls:
-            try:
-                parts.append(json.dumps(tool_calls, default=str))
-            except Exception:  # noqa: BLE001
-                parts.append(str(tool_calls))
-
         if not parts and not isinstance(message, dict):
             return str(message)
         return "".join(parts)
@@ -289,18 +282,89 @@ def _message_text(message: Any) -> str:
             return ""
 
 
+_ROLE_BY_TYPE = {
+    "human": "user",
+    "ai": "assistant",
+    "system": "system",
+    "tool": "tool",
+    "function": "tool",
+}
+
+
+def _message_wire(message: Any) -> Tuple[int, int]:
+    """Return ``(wire_bytes, prompt_chars)`` for ONE message.
+
+    **These are two different questions and they get two different numbers.**
+
+    ``wire_bytes`` is the length of the JSON object the server actually
+    receives: the envelope, the keys, the tool-call block — and the
+    **escaping**.  That escaping is not a rounding error.  Every newline costs
+    two bytes as ``\\n`` and every quote and backslash doubles, so on the
+    content Tlamatini really sends — source code, logs, exec-report HTML — the
+    JSON form measures **~10 % larger** than the raw text (measured
+    2026-09-20).  Counting the raw text and calling it "the wire" under-reports
+    every single request, which is exactly the plausible-but-wrong failure this
+    module exists to prevent.
+
+    ``prompt_chars`` is the RAW content, because Ollama parses the JSON away
+    before the tokenizer ever sees it: a ``\\n`` on the wire is ONE newline to
+    the model.  Estimating tokens from the escaped form would inflate the
+    percentage by the same ~10 %.
+
+    Never raises.
+    """
+    if message is None:
+        return 0, 0
+    try:
+        text = _message_text(message)
+
+        role = getattr(message, "type", None)
+        if role is None and isinstance(message, dict):
+            role = message.get("role") or message.get("type")
+        role_key = str(role or "").lower()
+        payload: Dict[str, Any] = {
+            "role": _ROLE_BY_TYPE.get(role_key, role_key or "user"),
+            "content": text,
+        }
+
+        tool_calls = getattr(message, "tool_calls", None)
+        if tool_calls is None and isinstance(message, dict):
+            tool_calls = message.get("tool_calls")
+        chars = len(text)
+        if tool_calls:
+            payload["tool_calls"] = tool_calls
+            # A tool CALL is prompt text to the model as well as wire bytes.
+            try:
+                chars += len(json.dumps(tool_calls, default=str))
+            except Exception:  # noqa: BLE001
+                chars += len(str(tool_calls))
+
+        for key in ("tool_call_id", "name"):
+            value = getattr(message, key, None)
+            if value is None and isinstance(message, dict):
+                value = message.get(key)
+            if value:
+                payload[key] = value
+
+        wire = json.dumps(payload, ensure_ascii=False, default=str)
+        return len(wire.encode("utf-8")), chars
+    except Exception:  # noqa: BLE001 - fall back to the raw text, never raise
+        try:
+            fallback = _message_text(message)
+            return len(fallback.encode("utf-8")), len(fallback)
+        except Exception:  # noqa: BLE001
+            return 0, 0
+
+
 def _bucket(messages: Iterable[Any]) -> Tuple[int, int, int]:
-    """Return ``(bytes, chars, count)`` for a slice of the message list."""
+    """Return ``(wire_bytes, prompt_chars, count)`` for a slice of the list."""
     total_bytes = 0
     total_chars = 0
     count = 0
     for message in messages:
-        text = _message_text(message)
-        total_chars += len(text)
-        try:
-            total_bytes += len(text.encode("utf-8"))
-        except Exception:  # noqa: BLE001
-            total_bytes += len(text)
+        wire_bytes, prompt_chars = _message_wire(message)
+        total_bytes += wire_bytes
+        total_chars += prompt_chars
         count += 1
     return total_bytes, total_chars, count
 
@@ -311,6 +375,7 @@ def measure(
     loop_start_index: int = 0,
     prefix_message_count: int = 1,
     extra_prefix_bytes: int = 0,
+    extra_prefix_chars: Optional[int] = None,
     config: Any = None,
     settings: Optional[GovernorSettings] = None,
 ) -> Measurement:
@@ -337,12 +402,18 @@ def measure(
         l_bytes, l_chars, l_count = _bucket(items[start:])
 
         extra = max(0, int(extra_prefix_bytes or 0))
+        # The tool surface has a wire size AND a prompt size, and they differ
+        # for the same reason a message's do (JSON structure + escaping). The
+        # caller measures both because only it can see the bound tools; if it
+        # gives only one, assume they are the same rather than inventing a
+        # ratio.
+        extra_chars = extra if extra_prefix_chars is None else max(0, int(extra_prefix_chars or 0))
         prefix_bytes = p_bytes + extra
         total_bytes = prefix_bytes + h_bytes + l_bytes
-        # The schema blob is counted in chars too, or the token estimate would
-        # disagree with the byte figure by exactly the tool surface - which is
-        # the single largest part of the prefix.
-        total_chars = p_chars + h_chars + l_chars + extra
+        # Chars drive the TOKEN estimate, so the schema blob is counted here
+        # too - it is the single largest part of the prefix and the model
+        # tokenizes it like everything else.
+        total_chars = p_chars + h_chars + l_chars + extra_chars
 
         tokens = int(total_chars / CHARS_PER_TOKEN) if total_chars > 0 else 0
         ceiling, source = resolve_ceiling_tokens(config, s)

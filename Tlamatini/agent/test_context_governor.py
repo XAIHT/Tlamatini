@@ -17,6 +17,7 @@ can create a cycle between ``tools.py`` and ``mcp_agent.py``.
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
@@ -42,11 +43,26 @@ class _Msg:
         self.tool_calls = tool_calls or []
 
 
+def _wire(text, role="user", **extra):
+    """The bytes ONE plain message really costs in the request body.
+
+    Independent ground truth for the tests: built here from `json`, never from
+    the module under test, so a bug in the module cannot define its own pass
+    mark.
+    """
+    payload = {"role": role, "content": text}
+    payload.update(extra)
+    return len(json.dumps(payload, ensure_ascii=False).encode("utf-8"))
+
+
 class MeasurementTests(SimpleTestCase):
-    def test_bytes_are_utf8_exact_not_character_count(self):
-        """The headline figure is the size ON THE WIRE, not len(str)."""
+    def test_bytes_are_the_real_json_object_not_the_bare_text(self):
+        """The headline figure is the size ON THE WIRE — the JSON object the
+        server receives, envelope and escaping included — not ``len(str)``."""
         m = cg.measure([_Msg("áéíóú")], prefix_message_count=1, loop_start_index=1)
-        self.assertEqual(m.total_bytes, 10)   # 5 two-byte characters
+        self.assertEqual(m.total_bytes, _wire("áéíóú"))
+        self.assertGreater(m.total_bytes, 10)   # the 5 two-byte chars, plus the envelope
+        # ...while the TOKEN basis stays the raw 5 characters.
         self.assertEqual(m.total_chars, 5)
 
     def test_buckets_sum_to_the_total(self):
@@ -56,9 +72,9 @@ class MeasurementTests(SimpleTestCase):
         self.assertEqual(
             m.prefix_bytes + m.history_bytes + m.loop_bytes, m.total_bytes
         )
-        self.assertEqual(m.prefix_bytes, 1100)
-        self.assertEqual(m.history_bytes, 50)
-        self.assertEqual(m.loop_bytes, 200)
+        self.assertEqual(m.prefix_bytes, _wire("s" * 100) + 1000)
+        self.assertEqual(m.history_bytes, _wire("h" * 50))
+        self.assertEqual(m.loop_bytes, _wire("l" * 200))
         self.assertEqual(m.loop_messages, 1)
 
     def test_tool_schema_bytes_land_in_the_prefix(self):
@@ -83,7 +99,8 @@ class MeasurementTests(SimpleTestCase):
         blocks = cg.measure([_Msg([{"type": "text", "text": "hello"}])], loop_start_index=1)
         self.assertGreater(blocks.total_bytes, 0)
         as_dict = cg.measure([{"role": "user", "content": "hello"}], loop_start_index=1)
-        self.assertEqual(as_dict.total_bytes, 5)
+        self.assertEqual(as_dict.total_bytes, _wire("hello"))
+        self.assertEqual(as_dict.total_chars, 5)
 
     def test_tokens_are_an_estimate_derived_from_characters(self):
         m = cg.measure([_Msg("x" * 4000)], prefix_message_count=1, loop_start_index=1)
@@ -212,7 +229,8 @@ class ReportingTests(SimpleTestCase):
     def test_gauge_payload_carries_the_exact_integer_and_flags_the_estimate(self):
         m = cg.measure([_Msg("x" * 4096)], prefix_message_count=1, loop_start_index=1)
         payload = cg.gauge_payload(m, cg.GovernorSettings(), "answering")
-        self.assertEqual(payload["bytes_total"], 4096)      # never rounded away
+        self.assertEqual(payload["bytes_total"], m.total_bytes)   # never rounded away
+        self.assertGreater(payload["bytes_total"], 4096)  # the envelope really travels
         self.assertTrue(payload["tokens_are_estimated"])
         self.assertIn("watermarks", payload)
         self.assertEqual(payload["label"], "answering")

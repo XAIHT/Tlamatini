@@ -39,6 +39,7 @@ from .context_governor import (
     gauge_payload as _context_gauge_payload,
     measure as _context_measure,
     publish_gauge as _context_publish_gauge,
+    resolve_ceiling_tokens as _context_ceiling_tokens,
     resolve_settings as _context_settings,
 )
 from .exec_permission import get_broker
@@ -1515,33 +1516,59 @@ class MultiTurnToolAgentExecutor:
     # an answer. It prints one grep-able ``--- [CONTEXT]`` line per model step
     # and pushes a frame to the chat gauge. Folding is steps 2–10 and is NOT
     # implemented yet — the watermarks must be set from real numbers first.
-    def _tool_schema_prefix_bytes(self) -> int:
-        """Bytes of the bound tool surface (name + description + arg schema).
+    def _tool_schema_prefix_bytes(self) -> Tuple[int, int]:
+        """``(wire_bytes, prompt_chars)`` of the bound tool surface.
 
         These are sent with EVERY request and are the largest part of the
         static prefix — with 109 tools bound they dwarf the conversation — yet
         they live nowhere in ``messages``, so a measurement that ignored them
         would under-report the wire size badly. Computed once per request and
         cached: the tool list cannot change inside one run.
+
+        ⚠️ It measures the REAL serialized spec via ``convert_to_openai_tool``
+        — ``{"type":"function","function":{"name":…,"description":…,
+        "parameters":{…}}}`` — not a concatenation of the tool's name,
+        description and ``args``. Measured 2026-09-20: the concatenation
+        under-reports each tool by **20–24 %**, because it drops the JSON
+        structure and the ``parameters`` wrapper that really do travel. Over
+        the whole bound surface that is tens of KB missing from every request.
+        Fail-open: if the helper cannot be imported or a tool cannot be
+        converted, fall back to the old rough sum for that tool rather than
+        reporting nothing.
         """
         cached = getattr(self, "_context_schema_bytes", None)
         if cached is not None:
             return cached
-        total = 0
+        try:
+            from langchain_core.utils.function_calling import convert_to_openai_tool
+        except Exception:  # noqa: BLE001
+            convert_to_openai_tool = None  # type: ignore[assignment]
+        total_bytes = 0
+        total_chars = 0
         try:
             for tool in (self.tools or []):
-                name = str(getattr(tool, "name", "") or "")
-                desc = str(getattr(tool, "description", "") or "")
-                schema = getattr(tool, "args", None)
-                try:
-                    schema_text = json.dumps(schema, default=str) if schema else ""
-                except Exception:  # noqa: BLE001
-                    schema_text = str(schema or "")
-                total += len((name + desc + schema_text).encode("utf-8"))
+                text = ""
+                if convert_to_openai_tool is not None:
+                    try:
+                        text = json.dumps(convert_to_openai_tool(tool),
+                                          ensure_ascii=False, default=str)
+                    except Exception:  # noqa: BLE001
+                        text = ""
+                if not text:
+                    name = str(getattr(tool, "name", "") or "")
+                    desc = str(getattr(tool, "description", "") or "")
+                    schema = getattr(tool, "args", None)
+                    try:
+                        schema_text = json.dumps(schema, default=str) if schema else ""
+                    except Exception:  # noqa: BLE001
+                        schema_text = str(schema or "")
+                    text = name + desc + schema_text
+                total_bytes += len(text.encode("utf-8"))
+                total_chars += len(text)
         except Exception:  # noqa: BLE001
-            total = 0
-        self._context_schema_bytes = total
-        return total
+            total_bytes, total_chars = 0, 0
+        self._context_schema_bytes = (total_bytes, total_chars)
+        return self._context_schema_bytes
 
     def _model_step(self, llm, messages, label: str = ""):
         """Measure, report, then hand the step to the self-healer unchanged.
@@ -1553,11 +1580,13 @@ class MultiTurnToolAgentExecutor:
         try:
             settings = getattr(self, "_context_governor_settings", None)
             if settings is not None and settings.enabled:
+                schema_bytes, schema_chars = self._tool_schema_prefix_bytes()
                 measurement = _context_measure(
                     messages,
                     loop_start_index=getattr(self, "_context_loop_start", 0),
                     prefix_message_count=getattr(self, "_context_prefix_count", 1),
-                    extra_prefix_bytes=self._tool_schema_prefix_bytes(),
+                    extra_prefix_bytes=schema_bytes,
+                    extra_prefix_chars=schema_chars,
                     config=getattr(self, "_context_config", None),
                     settings=settings,
                 )
@@ -2551,6 +2580,37 @@ _EMERGENCY_CORE_TOOL_ORDER = (
     "window_present",
 )
 
+# The smallest operator surface worth binding when the budgeter says "nothing
+# fits". Ordered cheapest-and-most-essential first by _EMERGENCY_CORE_TOOL_ORDER.
+_EMERGENCY_MIN_TOOLS = 8
+
+
+def _emergency_core_tools(request_tools):
+    """Never hand back an EMPTY tool surface. (Angela, 2026-09-20)
+
+    Binding nothing is never the right answer. A Multi-Turn request with zero
+    tools does not fail — it takes the no-tools branch and Tlamatini answers in
+    prose, so she reports "I created the file" and creates nothing. Measured on
+    the installed v1.65.0: ``kept 0/121`` tools, and a whole Step-by-Step wizard
+    produced an empty ``C:\\Tlamatini\\Templates``.
+
+    An oversize prompt fails LOUDLY at the server (HTTP 400 naming the limit),
+    which is recoverable and honest. A silently disarmed operator is neither.
+    So when the arithmetic says zero, keep a handful of core tools anyway and
+    let the caller warn the user.
+    """
+    try:
+        by_name = {getattr(tool, "name", ""): tool for tool in request_tools}
+        picked = [by_name[name] for name in _EMERGENCY_CORE_TOOL_ORDER if name in by_name]
+        if picked:
+            return picked[:_EMERGENCY_MIN_TOOLS]
+        return list(request_tools)[:1]
+    except Exception:  # noqa: BLE001 — a rescue path must never raise
+        try:
+            return list(request_tools)[:1]
+        except Exception:  # noqa: BLE001
+            return []
+
 
 def _estimate_text_tokens(text) -> int:
     """Cheap, model-agnostic token estimate (~4 chars per token)."""
@@ -2585,9 +2645,30 @@ def _budget_select_tools(request_tools, *, system_prompt_text, input_text,
     if len(tools_list) <= 1:
         return tools_list, 0, 0
 
-    context_limit = get_int_config_value(
-        "unified_agent_context_limit", _TOOL_BUDGET_CONTEXT_LIMIT_DEFAULT, minimum=8192
-    )
+    # ── ONE DEFINITION OF THE BUDGET (Angela, 2026-09-20) ──────────────────
+    # This used to fall back to a private 262,144 constant while the model on
+    # the other end really accepted 1,048,576 (`ollama_num_ctx`). Two parts of
+    # Tlamatini disagreeing about the size of the window is not academic: with
+    # a ~433k-token conversation — 41% of the REAL ceiling — this function
+    # concluded it was 171k OVER, dropped ALL 121 tools, and the operator
+    # silently became a chatbot that answered "created" without creating
+    # anything (measured on the installed v1.65.0, 2026-09-20).
+    #
+    # So the ceiling now comes from the SAME resolver the context gauge uses.
+    # An explicit `unified_agent_context_limit` still wins, for anyone who
+    # deliberately pinned a smaller window.
+    # ⚠️ An EXPLICIT setting is OBEYED EXACTLY, even a small one — that is the
+    # house rule, and pinning a deliberately tiny window is the only way to
+    # test this function's exhausted-budget path. So "absent" (<= 0) is the
+    # ONLY case that falls through to the shared resolver; a configured value
+    # is never second-guessed.
+    context_limit = get_int_config_value("unified_agent_context_limit", 0, minimum=0)
+    if context_limit <= 0:
+        try:
+            context_limit, _ceiling_source = _context_ceiling_tokens(_load_config())
+        except Exception:  # noqa: BLE001 — never block a request on a config read
+            context_limit = _TOOL_BUDGET_CONTEXT_LIMIT_DEFAULT
+    context_limit = max(1, int(context_limit or _TOOL_BUDGET_CONTEXT_LIMIT_DEFAULT))
     overhead = (
         _estimate_text_tokens(system_prompt_text)
         + _estimate_text_tokens(input_text)
@@ -2809,6 +2890,33 @@ class CapabilityAwareToolAgentExecutor:
                 chat_history=chat_history,
                 global_execution_plan=global_execution_plan,
             )
+            # ⚠️ NEVER SILENTLY DISARM (Angela, 2026-09-20).
+            # If the budgeter returns NOTHING while tools were requested, the
+            # executor takes its no-tools branch and Tlamatini answers in prose
+            # — reporting "I created the file" while creating nothing. That is
+            # exactly what emptied C:\Tlamatini\Templates on v1.65.0. Keep the
+            # operator core anyway, and TELL HER — in the chat, not only here.
+            if request_tools and not selected_tools:
+                selected_tools = _emergency_core_tools(request_tools)
+                _dropped = len(request_tools) - len(selected_tools)
+                _starved_notice = (
+                    "⚠️ This conversation has grown very large, so I could not bind my "
+                    f"full tool surface this turn — I kept only {len(selected_tools)} "
+                    "core tool(s). If a step needs an agent I no longer have, clear the "
+                    "chat history or start a new chat and my full surface comes back. "
+                    "I am telling you now rather than reporting work I cannot do."
+                )
+                print(
+                    "--- CapabilityAwareToolAgentExecutor: TOOL SURFACE CAME BACK EMPTY "
+                    f"({len(request_tools)} requested) — restored "
+                    f"{len(selected_tools)} core tool(s) so the operator is not silently "
+                    "turned into a chatbot."
+                )
+                try:
+                    from .self_healing import notify_user
+                    notify_user(ask_execs_user_id, _starved_notice)
+                except Exception as _warn_err:  # noqa: BLE001 — a warning must never break the turn
+                    print(f"--- [CONTEXT] could not surface the starved-surface notice: {_warn_err}")
             if _dropped:
                 print(
                     "--- CapabilityAwareToolAgentExecutor: multi-turn enabled; tool "

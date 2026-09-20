@@ -418,6 +418,16 @@ private_data_audit_report.json
 /security/security_logs/
 
 # Reproducible PDFer style previews and validation gallery.
+# PDFer's RASTER ORNAMENT CACHE - regenerated on demand, never source.
+# pdfer_ornament.py writes these and the filename IS the cache key:
+#   orn_<pattern>_<width>x<height>_<colour>_<seedhash>.png
+# so every new palette, size or seed mints a new file and git nags forever.
+# 15 of them were committed by accident with the PDFer styles work and were
+# untracked on 2026-09-20 (kept on disk - it is a cache, not a deliverable).
+# Nothing references them: not build.py, not copy_source_assets.py, not the
+# tests, not scripts/verify_pdfer_styles.py.
+Tlamatini/agent/agents/pdfer/_art/
+
 /artifacts/pdfer-styles/
 /output/pdf/pdfer-style-atlas.pdf
 
