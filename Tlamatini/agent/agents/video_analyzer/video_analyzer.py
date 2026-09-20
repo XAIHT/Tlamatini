@@ -7,7 +7,9 @@
 #   Every line of this file was written by Angela López Mendoza.
 # ═══════════════════════════════════════════════════════════════════
 #   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
-# Video-Analyzer Agent - TRIPLE-MODEL video verdict via LLM vision models,
+# Video-Analyzer Agent - robotics verdict, video-track transcription, or summary.
+# Content modes live in the portable video_content.py sibling; robotics remains
+# the backward-compatible default and uses a TRIPLE-MODEL video verdict,
 #                        gated by a deterministic OpenCV motion check.
 # Non-deterministic agent (uses LLMs) — the "eye" of Robotic-Loop-Training.
 # Action: Resolve a video path (direct / wildcard / dir-newest / Camcorder pool)
@@ -26,9 +28,19 @@ import sys
 # FIX: Disable Intel Fortran runtime Ctrl+C handler
 os.environ['FOR_DISABLE_CONSOLE_CTRL_HANDLER'] = '1'
 
+# Honor app Temp for dependencies used by isolated pool processes as well.
+if (os.environ.get('TLAMATINI_TEMP') or '').strip():
+    import tempfile as _tlt_tempfile
+    _tlt_temp_root = os.environ['TLAMATINI_TEMP'].strip()
+    os.makedirs(_tlt_temp_root, exist_ok=True)
+    _tlt_tempfile.tempdir = _tlt_temp_root
+    os.environ['TEMP'] = _tlt_temp_root
+    os.environ['TMP'] = _tlt_temp_root
+
 import re
 import glob
 import json
+import importlib.util
 import time
 import yaml
 import base64
@@ -614,6 +626,7 @@ def _call_ollama_chat(host: str, token: str, model: str, messages: list,
     req = urllib.request.Request(url, data=json.dumps(payload).encode('utf-8'),
                                  headers=headers, method='POST')
     chunks = []
+    done = False
     with urllib.request.urlopen(req, timeout=timeout) as response:
         for line in response:
             if not line:
@@ -622,6 +635,8 @@ def _call_ollama_chat(host: str, token: str, model: str, messages: list,
                 json_chunk = json.loads(line.decode('utf-8'))
             except json.JSONDecodeError:
                 continue
+            if json_chunk.get('error'):
+                raise RuntimeError(f'Ollama request failed: {json_chunk["error"]}')
             content = ""
             if "message" in json_chunk:
                 content = json_chunk["message"].get("content", "")
@@ -630,7 +645,10 @@ def _call_ollama_chat(host: str, token: str, model: str, messages: list,
             if content:
                 chunks.append(content)
             if json_chunk.get("done", False):
+                done = True
                 break
+    if not done:
+        raise RuntimeError('Ollama stream ended before its completion marker')
     return "".join(chunks).strip()
 
 
@@ -805,7 +823,7 @@ def analyze_video_dual(frames: List[Dict], pipeline: dict) -> Tuple[str, str, fl
         if status != "analyzed":
             logging.warning("⚠️ Downgrading PASS_OK -> UNCLEAR: only one interpreter succeeded.")
             final = VERDICT_UNCLEAR
-        elif (v1 and v1 != VERDICT_PASS) or (v2 and v2 != VERDICT_PASS):
+        elif v1 != VERDICT_PASS or v2 != VERDICT_PASS:
             logging.warning(f"⚠️ Downgrading PASS_OK -> UNCLEAR: interpreters disagreed (A={v1}, B={v2}).")
             final = VERDICT_UNCLEAR
     if final not in VALID_VERDICTS:
@@ -853,6 +871,16 @@ def remove_pid_file():
             return
 
 
+def _safe_section_text(value):
+    """Keep source media/model content from forging section or routing markers."""
+    return (_sanitize_model_text(str(value)).replace('TLM_ANALYSIS::', 'TLM-ANALYSIS::')
+            .replace('INI_SECTION_', 'INI-SECTION_').replace('>>>END_SECTION_', '>>>END-SECTION_'))
+
+
+def _header_value(value):
+    return _safe_section_text(value).replace('\r', ' ').replace('\n', ' ')
+
+
 def emit_verdict(video_path: str, verdict: str, confidence: float, status: str,
                  motion_score: float, frames_analyzed: int, pipeline: dict,
                  report: str):
@@ -860,10 +888,11 @@ def emit_verdict(video_path: str, verdict: str, confidence: float, status: str,
     line, the substring-safe ``TLM_VERDICT::<token>`` a Forker matches. The
     report body is sanitized so a model can never plant a rogue verdict line.
     """
-    safe_report = _sanitize_model_text(report)
+    safe_report = _safe_section_text(report)
     logging.info(
         "INI_SECTION_VIDEO_ANALYZER<<<\n"
-        f"video_path: {video_path}\n"
+        f"video_path: {_header_value(video_path)}\n"
+        "analysis_type: robotics\n"
         f"verdict: {verdict}\n"
         f"verdict_token: {TLM_PREFIX}{verdict}\n"
         f"confidence: {confidence:.2f}\n"
@@ -882,6 +911,40 @@ def emit_verdict(video_path: str, verdict: str, confidence: float, status: str,
     logging.info(f"{TLM_PREFIX}{verdict}")
 
 
+def run_content_analysis(video_path, analysis_type, config, pipeline):
+    # Flat sibling ships with the template and works in isolated/frozen pools.
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'video_content.py')
+    spec = importlib.util.spec_from_file_location('tlamatini_video_content', path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.run_content_analysis(video_path, analysis_type, config, pipeline, _call_ollama_chat)
+
+
+def emit_content_result(video_path, result, pipeline):
+    fields = {
+        'video_path': video_path, 'analysis_type': result['analysis_type'],
+        'verdict': 'NOT_APPLICABLE', 'verdict_token': '', 'confidence': '', 'motion_score': '',
+        'frames_analyzed': result.get('frames_analyzed', 0),
+        'interpreter_model_1': pipeline['model_1'] if result['analysis_type'] == 'summary' else '',
+        'interpreter_model_2': pipeline['model_2'] if result['analysis_type'] == 'summary' else '',
+        'merging_model': pipeline['merging_model'] if result['analysis_type'] == 'summary' else '',
+        'status': result['status'], 'analysis_token': result['analysis_token'],
+    }
+    for key in ('duration_seconds', 'audio_status', 'audio_track_count', 'audio_tracks_analyzed',
+                'language', 'transcription_device', 'transcript', 'summary', 'transcript_path',
+                'segments_path', 'report_path', 'analysis_path'):
+        fields[key] = result.get(key, '')
+    fields['segments_json'] = json.dumps(result.get('segments', []), ensure_ascii=False)
+    fields['warnings_json'] = json.dumps(result.get('warnings', []), ensure_ascii=False)
+    fields['metadata_json'] = json.dumps(result.get('media_metadata', {}), ensure_ascii=False)
+    # analysis_token is code-owned, never obtained from media or a model response.
+    header = '\n'.join(f'{key}: {value if key == "analysis_token" else _header_value(value)}'
+                       for key, value in fields.items())
+    logging.info('INI_SECTION_VIDEO_ANALYZER<<<\n%s\n\n%s\n>>>END_SECTION_VIDEO_ANALYZER',
+                 header, _safe_section_text(result.get('report', '')))
+    logging.info(result['analysis_token'])
+
+
 def main():
     config = load_config()
     write_pid_file()
@@ -896,6 +959,8 @@ def main():
     frames_analyzed = 0
     report = "Video-Analyzer did not complete."
     video_path = ""
+    analysis_type = str(config.get('analysis_type') or 'robotics').strip().lower()
+    content_result = None
     llm_config = config.get('llm', {}) or {}
     pipeline = {
         'host': str(llm_config.get('host') or 'http://localhost:11434'),
@@ -920,12 +985,17 @@ def main():
         roi = str(config.get('roi') or '').strip()
 
         logging.info("🎬 VIDEO-ANALYZER AGENT STARTED")
+        logging.info('Analysis type: %s', analysis_type)
+        if analysis_type not in ('robotics', 'transcription', 'summary'):
+            raise ValueError('analysis_type must be robotics, transcription or summary')
         logging.info(f"📼 video_pathfilenames: {video_pathfilenames}")
-        logging.info(f"🎯 Expected motion: {pipeline['expected_motion']}")
-        logging.info(
-            f"🤖 Triple-model @ {pipeline['host']}: '{pipeline['model_1']}' + "
-            f"'{pipeline['model_2']}' in PARALLEL -> BARRIER -> merger '{pipeline['merging_model']}'"
-        )
+        if analysis_type == 'robotics':
+            logging.info(f"🎯 Expected motion: {pipeline['expected_motion']}")
+        if analysis_type != 'transcription':
+            logging.info(
+                f"🤖 Triple-model @ {pipeline['host']}: '{pipeline['model_1']}' + "
+                f"'{pipeline['model_2']}' in PARALLEL -> BARRIER -> merger '{pipeline['merging_model']}'"
+            )
         logging.info(f"🎯 Targets: {target_agents}")
 
         video_path = resolve_video_path(video_pathfilenames) or ""
@@ -935,6 +1005,8 @@ def main():
             logging.error("❌ No video to analyze (path did not resolve to a video file).")
             verdict, status = VERDICT_ANALYSIS_ERROR, "error"
             report = f"No video resolved from '{video_pathfilenames}'."
+        elif analysis_type != 'robotics':
+            content_result = run_content_analysis(video_path, analysis_type, config, pipeline)
         else:
             try:
                 import cv2  # noqa: F401
@@ -978,8 +1050,14 @@ def main():
 
     # Emit the verdict + section (ALWAYS, even on error, so the flow can branch).
     try:
-        emit_verdict(video_path, verdict, confidence, status, motion_score,
-                     frames_analyzed, pipeline, report)
+        if analysis_type == 'robotics':
+            emit_verdict(video_path, verdict, confidence, status, motion_score,
+                         frames_analyzed, pipeline, report)
+        else:
+            emit_content_result(video_path, content_result or {
+                'analysis_type': analysis_type, 'status': 'error',
+                'analysis_token': 'TLM_ANALYSIS::ERROR', 'report': report,
+            }, pipeline)
     except Exception as e:
         logging.error(f"❌ Failed to emit verdict section: {e}")
 

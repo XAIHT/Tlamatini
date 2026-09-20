@@ -1507,7 +1507,13 @@ _PROMOTE_SECTION_FIELDS_BY_TEMPLATE_DIR: dict = {
         "status",
     ),
     "camcorder": ("output_path", "output_dir", "filename", "media_type", "resolution"),
-    "video_analyzer": ("verdict", "verdict_token", "confidence", "motion_score", "status", "video_path"),
+    "video_analyzer": (
+        "verdict", "verdict_token", "confidence", "motion_score", "status", "video_path",
+        "analysis_type", "analysis_token", "duration_seconds", "audio_status",
+        "audio_track_count", "audio_tracks_analyzed", "language", "transcription_device",
+        "transcript", "summary", "transcript_path", "segments_path", "report_path",
+        "analysis_path", "segments_json", "warnings_json", "metadata_json", "frames_analyzed",
+    ),
     # Surface the headline measurement so the LLM can answer "how fast is my
     # internet" straight from the tool result instead of re-reading the log.
     "netspeed_calculator": (
@@ -1586,6 +1592,28 @@ def _maybe_promote_section_fields_to_payload(payload, spec) -> None:
     if not promote:
         return
     log_excerpt = payload.get("log_excerpt") or ""
+    if getattr(spec, 'template_dir', '') == 'video_analyzer':
+        # Long transcripts outgrow log tails. Read only the last COMPLETE section's
+        # header from the runner-owned log; never execute/follow paths from its body.
+        try:
+            header, candidate, in_header = [], None, False
+            with open(payload.get('log_path') or '', encoding='utf-8', errors='replace') as source:
+                for line in source:
+                    if line.rstrip().endswith('INI_SECTION_VIDEO_ANALYZER<<<'):
+                        candidate, in_header = [], True
+                    elif line.strip() == '>>>END_SECTION_VIDEO_ANALYZER':
+                        if candidate is not None:
+                            header = candidate
+                        candidate, in_header = None, False
+                    elif in_header:
+                        if not line.strip():
+                            in_header = False
+                        else:
+                            candidate.append(line)
+            if header:
+                log_excerpt = 'INI_SECTION_VIDEO_ANALYZER<<<\n' + ''.join(header) + '\n>>>END_SECTION_VIDEO_ANALYZER'
+        except (OSError, TypeError):
+            pass
     if not log_excerpt:
         return
     match = _INI_SECTION_BLOCK_RE.search(log_excerpt)
@@ -1607,6 +1635,10 @@ def _maybe_promote_section_fields_to_payload(payload, spec) -> None:
         value = value.strip()
         if not key or key not in promote:
             continue
+        if getattr(spec, 'template_dir', '') == 'video_analyzer' and len(value) > 16000:
+            payload.setdefault('promoted_fields_truncated', []).append(key)
+            # Keep JSON parseable. Complete content is in analysis_path/segments_path.
+            value = '' if key.endswith('_json') else value[:16000]
         if key in payload:
             # ⚠️ COLLISION -- and this is THE bug that made a perfect run look
             # failed (Angela, LaTeXer wizard STEP 4, 2026-08-06).

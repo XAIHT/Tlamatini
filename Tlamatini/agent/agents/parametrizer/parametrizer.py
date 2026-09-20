@@ -108,6 +108,12 @@ logging.getLogger().addHandler(console_handler)
 #    (no response_body is produced).
 # 5. Sections MUST be emitted as a SINGLE atomic logging.info() call
 #    so that concurrent log writes cannot corrupt the block.
+# Video-Analyzer content modes use this SAME protocol: transcript/summary are
+# single-line text fields; segments_json carries escaped timestamped records;
+# response_body is the full multiline report. The generated catalog declares
+# these fields, including artifact paths, so no producer-specific parser/list
+# belongs here. Mapping transcript -> Talker.input_text or summary -> PDFer.input_text
+# uses the normal marker replacement and target-type coercion below.
 
 # All supported section-generating agent base names.
 # Runtime deployment copies a fresh catalog and this standalone helper locally.

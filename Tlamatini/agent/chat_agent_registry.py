@@ -423,26 +423,33 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         tool_description="Chat-Agent-Video-Analyzer",
         display_name="Video-Analyzer",
         purpose=(
-            "WATCH A RECORDED VIDEO and return a VERDICT on whether a physical system performed the "
-            "motion the user asked for — the 'eye' of a Robotic-Loop-Training loop (STM32er flashes "
-            "firmware -> Camcorder records the board -> Video-Analyzer judges the clip -> a Forker "
-            "loops back to reprogram or finishes). It extracts frames with OpenCV, runs a "
-            "DETERMINISTIC motion gate (no motion -> FAIL_NO_MOTION with NO model call), then two "
-            "Ollama CLOUD vision models (qwen3-vl:235b-cloud + jcyhsiao/qwen3.5cloud:latest) judge the frames IN "
-            "PARALLEL and a merger (glm-5.3:cloud) issues the final verdict — PASS_OK only when BOTH "
-            "agree, never a false pass. Distinct from chat_agent_image_interpreter (one still image): "
-            "Video-Analyzer judges MOTION across a whole clip. Pass video_pathfilenames='<a .mp4 path, "
-            "a wildcard, a folder, or a Camcorder pool name like camcorder_1>' and expected_motion="
-            "'<what the hardware should do>'. The wrapped result includes top-level 'verdict', "
-            "'confidence' and 'motion_score' fields, so you do NOT need to parse the log. Verdict "
-            "tokens: PASS_OK / FAIL_NO_MOTION / FAIL_WRONG_MOTION / UNCLEAR / ANALYSIS_ERROR."
+            "Analyze recorded videos with analysis_type='robotics' (default), 'transcription', or 'summary'. "
+            "For speech-to-text from a video's audio tracks explicitly choose transcription: uses Whisperer's "
+            "local faster-whisper backend with GPU auto/CPU fallback, never captures a microphone or calls "
+            "a vision model. audio_tracks='all' (default) or '0,1' selects audio track indexes. Configure "
+            "transcription.model, transcription.language, transcription.task, transcription.word_timestamps. "
+            "For a comprehensive video summary explicitly choose summary: two independent vision observers "
+            "inspect timestamped frame batches across the entire clip, transcribe selected audio tracks, "
+            "and synthesize overview, timeline, readable text, facts, steps, decisions, action items and "
+            "limitations. Set summary_prompt/summary_language; summary_max_frames bounds sampling. "
+            "Content modes bypass the robotics motion gate, accept static scenes, and emit TLM_ANALYSIS:: "
+            "tokens, never a robotics PASS. No audio and no speech are explicit audio_status values; partial "
+            "results are marked partial. Do not claim exhaustive perception or speaker identification. "
+            "Use video_pathfilenames for a file, wildcard, folder-newest, or Camcorder pool name. Results "
+            "promote transcript, summary, segments_json, report_path, transcript_path and analysis_path; "
+            "read artifacts for full results if a log excerpt is truncated. output_dir defaults to app Temp. "
+            "robotics preserves the deterministic motion gate and twin vision/merge pipeline with "
+            "expected_motion: PASS_OK requires BOTH explicit independent passes. Robotics verdicts remain "
+            "PASS_OK / FAIL_NO_MOTION / FAIL_WRONG_MOTION / UNCLEAR / ANALYSIS_ERROR."
         ),
         example_request=(
-            "Analyze the video with video_pathfilenames='C:\\Clips\\servo.mp4' and "
-            "expected_motion='the servo sweeps 0 to 90 to 180 degrees and back, repeating' and "
-            "num_frames=12"
+            "Summarize the video with video_pathfilenames='C:\\Clips\\lecture.mp4', "
+            "analysis_type='summary', audio_tracks='all', summary_language='English'. "
+            "For transcript only use analysis_type='transcription'. For a servo check use "
+            "analysis_type='robotics', expected_motion='servo sweeps 0 to 90 degrees and returns'."
         ),
-        aliases=("video_analyzer", "video analyzer", "analyze video", "video verdict", "robotic loop"),
+        aliases=("video_analyzer", "video analyzer", "analyze video", "video verdict", "robotic loop",
+                 "transcribe video", "summarize video", "video transcript"),
         security_hints=(
             "analyze video", "video analyzer", "watch the video", "did the servo move",
             "verify motion", "robotic loop training", "check the recording", "judge the video",

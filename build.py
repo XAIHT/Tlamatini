@@ -378,7 +378,7 @@ _AGENT_RUNTIME_IMPORTS = (
     "soundfile",                            # audio playback (AudioPlayer) — native libsndfile
     "ffpyplayer",                           # video+audio playback (VideoPlayer) — bundled ffmpeg+SDL
     "torch", "snac",                        # text-to-speech (Talker) — Orpheus token -> 24 kHz audio vocoder
-    "faster_whisper", "ctranslate2",        # speech-to-text (Whisperer) — local Whisper (GPU auto / CPU fallback)
+    "faster_whisper", "ctranslate2", "av",  # Whisperer / Video-Analyzer audio tracks, GPU auto / CPU fallback
 )
 
 # ── FROZEN-BUNDLE CARRIAGE PROOF (Angela review, 2026-08-16) ─────────────────
@@ -1475,6 +1475,7 @@ def main():
         # so --collect-all embeds cv2 in the frozen _internal too, for parity with
         # the carried Python. numpy is handled by pyinstaller_hooks/hook-numpy.py.
         '--collect-all', 'cv2',
+        '--collect-all', 'av',  # Video-Analyzer per-track audio decode (bundled FFmpeg libraries)
         # External MCPs network transports: external_mcp_manager.py (which runs in
         # THIS frozen Django process, not the carried Python) reaches remote MCP
         # servers over Streamable HTTP / SSE (httpx) and WebSocket (websockets).

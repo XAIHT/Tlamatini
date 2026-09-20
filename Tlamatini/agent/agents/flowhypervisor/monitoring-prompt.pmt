@@ -777,35 +777,43 @@ IMAGE_INTERPRETER SPECIAL NOTES (triple-model vision pipeline):
     status: error on EVERY image together with "Could not connect" lines
     indicates a real problem (the Ollama host is down).
 
-VIDEO_ANALYZER SPECIAL NOTES (triple-model video-verdict pipeline):
-  - Video-Analyzer WATCHES a recorded video and RULES on whether a physical
-    system performed the expected motion — the "eye" of Robotic-Loop-Training
-    (STM32er flashes firmware → Camcorder records the board → Video-Analyzer
-    judges the clip → a Forker branches on the verdict). It is READ-ONLY /
-    observational (it mutates no state), but as a Multi-Turn agent it DOES appear
-    in the Exec Report.
-  - It first runs a DETERMINISTIC OpenCV motion gate: if nothing moved it emits
-    verdict FAIL_NO_MOTION with NO model call (a fast, objective short-circuit,
-    NOT an error). If motion IS present it runs interpreter_model_1 (default
-    qwen3-vl:235b-cloud) and interpreter_model_2 (default jcyhsiao/qwen3.5cloud:latest) IN
-    PARALLEL on two dedicated Ollama connections, a BARRIER waits for BOTH, then
-    merging_model (default glm-5.3:cloud) fuses them. Expect the SAME
-    "🔀 [CONNECTION-A/B] Interpreter N STARTED/FINISHED", "🧱 BARRIER" and
-    "🔗 [CONNECTION-MERGE]" lines as Image-Interpreter — ALL NORMAL, never errors.
-  - It is SHORT-LIVED and ACTIVE but each run can take tens of seconds to a few
-    MINUTES (two cloud vision generations + one synthesis over ~8-12 frames).
-    Long silence while a model generates is NORMAL — do NOT flag before ~5 min
-    without a "Video-Analyzer agent finished" completion.
-  - It ALWAYS emits an INI_SECTION_VIDEO_ANALYZER<<< block (video_path, verdict,
-    verdict_token, confidence, motion_score, frames_analyzed, model names, status;
-    body = merged report) AND a dedicated "TLM_VERDICT::<TOKEN>" line. NEVER flag
-    either as an error — they are the agent's ROUTABLE OUTPUT for a downstream
-    Forker (pattern_a "TLM_VERDICT::PASS_OK" → finish, pattern_b "TLM_VERDICT::FAIL"
-    → reprogram). status: motion_gate_fail / partial_interpreter_* /
-    merge_fallback_concat are DOCUMENTED fail-safe outcomes, and verdict UNCLEAR /
-    ANALYSIS_ERROR (bad framing, a cloud outage, no resolvable video) is routable
-    content, NOT a flow crash. Only "Could not connect" on EVERY model together
-    indicates a real problem (the Ollama host is down).
+VIDEO_ANALYZER SPECIAL NOTES (robotics, transcription and summary):
+  - Read "Analysis type:" first. Missing analysis_type means robotics, preserving
+    the motion gate and two parallel vision interpreters + merger. No motion ->
+    FAIL_NO_MOTION without model calls is a normal diagnostic. Only two explicit
+    independent FRAME_VERDICT: PASS_OK results permit PASS_OK. Existing robotics
+    partial_interpreter_* / merge_fallback_concat / UNCLEAR are routable outcomes.
+  - transcription decodes selected audio tracks from the video using local
+    faster-whisper, never a microphone or a vision LLM. audio_tracks=all selects
+    every audio track; recognition cost scales with summed track duration,
+    transcription.model and CPU/GPU speed. First use may download model weights.
+    AUDIO: track N, start-end lines identify chunk progress; chunk_seconds is
+    30..300 media seconds, NOT a wall-clock deadline. CPU ASR can be much slower
+    than real time. CUDA failure followed by CPU/int8 retry is expected recovery.
+  - summary transcribes audio AND analyzes frame batches spanning the clip.
+    summary_max_frames (default 120, max 600) / summary_batch_size (default 8)
+    bound batch count; two vision calls per batch plus hierarchical reduction
+    and final synthesis follow. SUMMARY: visual batch / evidence reduction /
+    final synthesis lines indicate progress. Each Ollama request has a 600s
+    socket timeout; total job time grows with all batches/tracks, not one call.
+    Do not apply the robotics five-minute total expectation to content modes.
+    Model download/CPU ASR duration cannot be inferred from clip duration alone;
+    silence by itself is not proof of a hung content run. Inspect stage, process
+    liveness and explicit exceptions before escalating; do not restart blindly.
+  - Content modes bypass the motion gate. A static lecture is valid. They emit
+    verdict NOT_APPLICABLE, empty verdict_token, and TLM_ANALYSIS::TRANSCRIBED /
+    SUMMARY_COMPLETE / NO_AUDIO / NO_SPEECH / PARTIAL / ERROR, never a robotics
+    TLM_VERDICT::PASS_OK. A flow waiting for PASS_OK from a content mode is miswired.
+  - Every mode emits INI_SECTION_VIDEO_ANALYZER and triggers downstream even on
+    error. Content fields include transcript, summary, segments_json, audio_status,
+    duration_seconds and transcript/report/segments/analysis artifact paths.
+    status no_matches with no_audio/no_speech is a completed empty result; silent
+    videos can still have status analyzed summaries. status partial means evidence
+    or synthesis is incomplete, not a crash and not full success. status error
+    needs its diagnostic read before a retry. Artifacts preserve available work.
+  - Frame caps are documented sampling limits, not exhaustive perception. A
+    selected-track failure or failed observer is reported, not silently ignored.
+    "Video-Analyzer agent finished" ends the run. PID cleanup follows normally.
 
 NETSPEED_CALCULATOR SPECIAL NOTES (multi-provider RFC 6349 throughput measurement):
   - NetSpeed-Calculator measures THIS machine's Internet connection against
@@ -912,7 +920,7 @@ TYPICAL TIMING:
   - AudioPlayer / VideoPlayer: SILENT FOR THE WHOLE PLAYBACK by design — they log the start, then stream audio / paint frames with NO further log lines until the end. The expected duration comes from `time_played`: 0 = the whole file plays once (the file's own length governs — it can be minutes or hours), N = exactly N seconds (a longer file is TRUNCATED, a shorter one is LOOPED). This is the single biggest false-alarm risk in the media family: a healthy 10-minute video is 10 minutes of total silence. Do NOT flag a playing agent as stuck; flag only when it is silent well BEYOND its own configured/at-hand duration with no "AudioPlayer agent finished" / "VideoPlayer agent finished" completion. Both are observational/output in the canvas; the wrapped Multi-Turn tools are captured in Exec Report. VideoPlayer falling back to the SILENT OpenCV-only path (no `ffpyplayer`) is a documented degradation, not an error. See AUDIOPLAYER / VIDEOPLAYER SPECIAL NOTES.
   - Whisperer: speech-to-text — records the mic, then runs the neural recognizer. ⚠️ SINCE 2026-09-11 THE RECORDING LENGTH IS NOT FIXED: with `record_seconds: 0` (the DEFAULT) a SOUND GATE keeps recording while somebody is talking and stops only after `silence_timeout_seconds` (default 3.5 s) of silence, bounded by `max_record_seconds` (default 300 s). A Whisperer waiting for a person to speak is SILENT AND HEALTHY for up to that ceiling — do NOT flag it. Only a non-zero `record_seconds` means a fixed-length clip. The FIRST run can additionally take a few MINUTES while it downloads model weights, and CPU transcription can be slow. It is observational/read-only in the canvas; the wrapped Multi-Turn tool is captured in Exec Report. Flag only when it is silent well beyond `max_record_seconds` + transcription time with no completion. A `status: engine_unavailable` block is routable content, NOT a flow crash, while its wrapped row truthfully reports that the requested work did not happen. See WHISPERER SPECIAL NOTES.
   - Image-Interpreter: THREE LLM calls per image — two parallel vision interpretations (CONNECTION-A / CONNECTION-B, each on its own Ollama connection) + one merge (CONNECTION-MERGE) after the barrier; tens of seconds to a few minutes PER IMAGE with cloud models, multiplied by the number of matched images. Don't flag while the 🔀 interpreter / 🧱 barrier / 🔗 merge log lines keep appearing; flag only if silent > 5 min per image with no "Image-Interpreter agent finished" completion. See IMAGE_INTERPRETER SPECIAL NOTES.
-  - Video-Analyzer: a DETERMINISTIC OpenCV motion gate (sub-second) then, if motion is present, THREE cloud LLM calls — two parallel vision interpretations (CONNECTION-A / CONNECTION-B) + one merge (CONNECTION-MERGE) over ~8-12 frames; tens of seconds to a few minutes total. A no-motion clip short-circuits to FAIL_NO_MOTION in seconds with no model call. Don't flag while the 🔀 interpreter / 🧱 barrier / 🔗 merge lines keep appearing; flag only if silent > 5 min with no "Video-Analyzer agent finished" completion. See VIDEO_ANALYZER SPECIAL NOTES.
+  - Video-Analyzer: robotics uses the motion gate then two parallel vision calls plus one merge. Content modes scale with selected audio-track durations, transcription model/device, frame-batch count and evidence-reduction rounds; first-run weights may download. AUDIO:/SUMMARY: logs show progress. No fixed total timeout can be inferred; see VIDEO_ANALYZER SPECIAL NOTES.
   - Keyboarder/Mouser: duration depends on text/key count and configured pacing, or Mouser total_time in random mode. Use current contract facts, not a fixed five-second cutoff. Shoter/Windower are generally short operations. Windower
     `matched: false` / `state: no_match` is NOT a flow error — it is routable content (the window was not
     open yet); only flag `state: win32_unavailable` (a real platform/environment problem) or a Windower
@@ -1052,6 +1060,9 @@ If PREVIOUS CYCLE ALERT is present:
 
 ══════════════════════════════════════════
 SECTION 6 — THINGS THAT ARE NORMAL (DO NOT FLAG)
+
+Video-Analyzer content modes: static frames, no_audio/no_speech (status no_matches), CUDA-to-CPU retry, first-run ASR downloads, bounded frame sampling and TLM_ANALYSIS routing are normal. A partial artifact is a documented incomplete result: inspect warnings and route it; do not label it complete or infer a stuck process.
+
 ══════════════════════════════════════════
 
 DO NOT report these as problems:

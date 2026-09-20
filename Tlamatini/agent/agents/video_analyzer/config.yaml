@@ -1,4 +1,6 @@
-# Video-Analyzer Agent Configuration
+# Video-Analyzer Agent Configuration — robotics, transcription, summary
+# The robotics pipeline below is the backward-compatible default. Content modes
+# never run its motion gate or emit a TLM_VERDICT:: robotics routing token.
 # Non-deterministic agent that WATCHES A VIDEO and returns a VERDICT on whether a
 # physical system (e.g. an STM32-driven servo) performed the motion the user asked
 # for. It is the "eye" of the Robotic-Loop-Training loop:
@@ -38,6 +40,37 @@
 # In a Robotic-Loop-Training flow a Parametrizer copies Camcorder's output_path
 # into this field, so each loop iteration analyzes the freshest recording.
 video_pathfilenames: ""
+
+# robotics: existing conservative physical-motion verdict.
+# transcription: speech from video audio tracks; no microphone or vision LLM.
+# summary: timestamped visual evidence + all selected audio tracks + synthesis.
+analysis_type: "robotics"
+
+# Audio track ordinals, not container stream indexes. "all" or "0,1".
+# Each track is decoded separately; an audio track is NOT a speaker identity.
+audio_tracks: "all"
+transcription:
+  # Same local faster-whisper backend as Whisperer. First use downloads weights.
+  model: "base"
+  device: "auto"          # auto / cuda / cpu; CUDA failure retries on CPU/int8
+  compute_type: "auto"
+  language: ""            # empty = automatic; e.g. en, es
+  task: "transcribe"      # translate translates speech to English
+  beam_size: 5
+  vad_filter: true
+  word_timestamps: false
+  chunk_seconds: 120      # bounded decoding, clamped to 30..300 seconds
+
+# Summary-only options. These replace the robotics prompts below in summary mode.
+summary_prompt: "Summarize all available information: overview, timeline, scenes, spoken topics, readable on-screen text, key facts and numbers, demonstrated steps, decisions, action items, conclusions and uncertainties. Cite timestamps and distinguish speech from visual evidence."
+summary_language: ""      # empty = user-request/video language
+summary_frame_interval: 5 # target seconds between samples across the whole clip
+summary_max_frames: 120   # 2..600; capped samples still span the entire clip
+summary_batch_size: 8     # 1..16 images per vision call, two independent observers
+
+# Content-mode artifacts use a unique run subdirectory. Empty -> app Temp/video-analysis.
+# Saves transcript.txt, segments.json, report.md and analysis.json. No source overwrite.
+output_dir: ""
 
 # A plain-language description of the motion the firmware is SUPPOSED to produce.
 # Injected into all prompts as the checkable contract the video must satisfy.

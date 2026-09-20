@@ -99,6 +99,10 @@ _PARAMETRIZER_OUTPUT_FIELDS: dict[str, tuple[str, ...]] = {
         "video_path", "verdict", "verdict_token", "confidence", "motion_score",
         "frames_analyzed", "interpreter_model_1", "interpreter_model_2",
         "merging_model", "status", "response_body",
+        "analysis_type", "analysis_token", "duration_seconds", "audio_status",
+        "audio_track_count", "audio_tracks_analyzed", "language", "transcription_device",
+        "transcript", "summary", "transcript_path", "segments_path", "report_path",
+        "analysis_path", "segments_json", "warnings_json", "metadata_json",
     ),
     # NetSpeed-Calculator publishes the WHOLE measurement, not just the headline:
     # a downstream Forker branches on `success` / `bufferbloat_grade`, an Apirer

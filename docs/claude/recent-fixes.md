@@ -16,6 +16,12 @@
 
 ---
 
+## 2026-09-19 — Video-Analyzer audio tracks and comprehensive summaries
+
+Video-Analyzer supports `analysis_type: robotics` (default), `transcription`, and `summary`. Robotics preserves the deterministic motion gate and dual-vision/merge verdict, with `PASS_OK` only on two explicit independent passes. Transcription reads selected video audio tracks (`audio_tracks: all` or `0,1`) using Whisperer's local faster-whisper backend, GPU auto/CPU fallback and timestamped segments; it never opens a microphone. Summary combines speech with two independent visual observers over frame batches spanning the whole clip, then synthesizes an overview, chronology, readable screen text, facts, steps, decisions, action items and limitations. Content modes accept static scenes, bypass the motion gate, and emit `TLM_ANALYSIS::` tokens rather than robotics verdicts. Missing audio/speech and partial failures are explicit. Each content run saves transcript, segments, report and full analysis artifacts. Parametrizer and wrapped chat results expose `analysis_type`, `analysis_token`, `transcript`, `summary`, `audio_status`, timestamped `segments_json` and artifact paths; the body remains `response_body`. Input remains a file, wildcard, newest video in a folder or Camcorder pool name. Always starts downstream agents; sampled perception is not exhaustive.
+
+New portable helper `video_content.py` handles bounded PyAV track decoding and summary evidence reduction. Old pool refresh carries the helper; PyAV is pinned and included in build verification. Wrapped result promotion reads a completed header when long transcripts exceed log tails, reports shortened promoted fields, and retains artifact paths. Parametrizer uses the shared contract/catalog, not a second producer list. Source/model text cannot forge section or routing markers. The robotics guard now rejects missing interpreter verdicts. Catalog prompts 125/126 demonstrate both content modes. See [the guide](../../Tlamatini/agent/agents/video_analyzer/README.md).
+
 ## 2026-09-19 — The Qwen3.5 vision tag is now `jcyhsiao/qwen3.5cloud:latest` everywhere
 
 Angela: *"change everywhere needed where the model was qwen3.5:cloud to

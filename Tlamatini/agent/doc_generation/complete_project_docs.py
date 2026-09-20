@@ -1841,12 +1841,12 @@ V136_RELEASE_GUIDE = [
 ]
 
 VIDEO_ANALYZER_GUIDE = [
-    "Video-Analyzer is Tlamatini's video-verdict agent: she receives `video_pathfilenames` as a direct file, wildcard, folder-newest rule, or Camcorder pool name and resolves the video before model calls begin.",
-    "The first gate is deterministic and cheap: OpenCV/numpy frame sampling computes a motion score and returns `FAIL_NO_MOTION` without spending LLM calls when the recording clearly shows no movement.",
-    "When motion exists, two Ollama cloud vision models run in parallel. One specializes in temporal/action evidence, the other provides an independent holistic judgement, and a merger model produces the final report.",
-    "The final answer is intentionally conservative: PASS requires both interpreters to agree; disagreement or weak evidence becomes `UNCLEAR`, and wrong movement becomes `FAIL_WRONG_MOTION` rather than a false pass.",
-    "Structured output is `INI_SECTION_VIDEO_ANALYZER` with `video_path`, `verdict`, `verdict_token`, `confidence`, `motion_score`, `frames_analyzed`, model names, `status`, and the body report.",
-    "The robotics loop is now explicit: STM32er can flash firmware, Camcorder can record the board, Video-Analyzer can judge the recorded motion, and Forker can branch on the `TLM_VERDICT::` token to retry or finish.",
+    "Video-Analyzer selects analysis_type: robotics (default), transcription, or summary. Input is a video file, wildcard, folder-newest rule, or Camcorder pool name.",
+    "Robotics retains the motion gate and two independent vision interpreters plus merger. PASS_OK requires both explicit passes; a missing verdict is never agreement.",
+    "Transcription reads selected video audio tracks through local faster-whisper with GPU auto/CPU fallback, timestamps and track indexes. It never opens the microphone.",
+    "Summary combines speech with timestamped visual batches across the full clip, then synthesizes chronology, readable text, facts, steps, decisions, action items and limitations.",
+    "Content modes bypass the motion gate and route on TLM_ANALYSIS tokens. Parametrizer receives transcript, summary, segments_json, audio_status and artifact paths in INI_SECTION_VIDEO_ANALYZER.",
+    "Unique run artifacts contain the complete transcript, segments, report and analysis. Missing audio and partial failures are explicit; sampled perception is not exhaustive. See agents/video_analyzer/README.md.",
 ]
 
 PROMPT_SEARCH_AND_FLOW_GUIDE = [
@@ -2787,7 +2787,7 @@ def build_pdf(context: dict) -> None:
     story.append(p("v1.36.0 Video-Analyzer release delta", styles["h2"]))
     for item in V136_RELEASE_GUIDE:
         story.append(bullet(item, styles["bullet"]))
-    story.append(p("Video-Analyzer motion-verdict agent", styles["h2"]))
+    story.append(p("Video-Analyzer: robotics, transcription and summaries", styles["h2"]))
     for item in VIDEO_ANALYZER_GUIDE:
         story.append(bullet(item, styles["bullet"]))
     story.append(p("Prompt search and generated .flw layout", styles["h2"]))
@@ -3926,7 +3926,7 @@ def build_ppt(context: dict) -> None:
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Runtime contract", V136_RELEASE_GUIDE[3:], THEME["jade"], "v136-b", 11)
     audit_layout(audit, len(prs.slides))
 
-    slide, audit = add_slide(prs, "Video-Analyzer", "motion-verdict agent for robotic-loop training", THEME["jade"])
+    slide, audit = add_slide(prs, "Video-Analyzer", "robotics, audio-track transcription and video summaries", THEME["jade"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What she does", VIDEO_ANALYZER_GUIDE[:3], THEME["jade"], "video-analyzer-a", 11)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Verdicts and routing", VIDEO_ANALYZER_GUIDE[3:], THEME["amber"], "video-analyzer-b", 11)
     audit_layout(audit, len(prs.slides))

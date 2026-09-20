@@ -91,7 +91,7 @@ FlowCreator selects from the entire catalog, then receives detailed reference an
 | Telegrammer (`telegrammer`) | 11 | 6 | 0: `target_agents` | ordinary |
 | TeleTlamatini (`teletlamatini`) | 6 | 0 | 0: `target_agents` | long_running |
 | Unrealer (`unrealer`) | 8 | 6 | 0: `target_agents` | ordinary |
-| Video-Analyzer (`video_analyzer`) | 17 | 11 | 0: `target_agents` | ordinary |
+| Video-Analyzer (`video_analyzer`) | 26 | 28 | 0: `target_agents` | ordinary |
 | VideoPlayer (`videoplayer`) | 10 | 22 | 0: `target_agents` | ordinary |
 | Whatsapper (`whatsapper`) | 15 | 6 | 0: `target_agents` | ordinary |
 | Whisperer (`whisperer`) | 35 | 16 | 0: `target_agents` | ordinary |

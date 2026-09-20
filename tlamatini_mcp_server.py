@@ -192,6 +192,12 @@ def build_tool(name: str, info: Dict[str, Any]) -> types.Tool:
             schema = {"type": t}
         schema["description"] = f"{key} (template default: {json.dumps(default, default=str)})"
         props[key] = schema
+    if name == 'video_analyzer':
+        props['analysis_type'] = {
+            'type': 'string', 'enum': ['robotics', 'transcription', 'summary'],
+            'description': 'robotics (default): physical-motion verdict; transcription: speech from video audio tracks; '
+                           'summary: timestamped visual evidence plus speech and detailed synthesis.',
+        }
     props["config"] = {
         "type": "object",
         "description": "Free-form overrides deep-merged onto config.yaml "
@@ -213,6 +219,12 @@ def build_tool(name: str, info: Dict[str, Any]) -> types.Tool:
             f"Configurable parameters: {param_list}.\n"
             f"Returns the agent's execution log. Backgrounds (returns a run_id) "
             f"on timeout or wait=false.")
+    if name == 'video_analyzer':
+        desc += ('\nChoose analysis_type explicitly for transcription or summary; both accept static scenes and '
+                 'bypass the robotics gate. audio_tracks selects all tracks or audio indexes such as 0,1. '
+                 'Local faster-whisper uses GPU auto/CPU fallback; no microphone is opened. Content results '
+                 'include transcript, summary, timestamps, audio_status, artifact paths and TLM_ANALYSIS routing. '
+                 'Inspect partial/error outcomes and coverage limits; only robotics uses TLM_VERDICT.')
     return types.Tool(
         name=name,
         description=desc,

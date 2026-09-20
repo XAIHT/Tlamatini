@@ -4748,9 +4748,28 @@
       "aliases": [
         "video_analyzer"
       ],
-      "purpose": "The MOTION-VERDICT sibling of Image-Interpreter and the \"eye\" of the **Robotic-Loop-Training** scheme: it WATCHES A RECORDED VIDEO and rules whether a physical system (e.g. an STM32-driven servo) performed the motion the user asked for. It extracts frames with OpenCV, runs a DETERMINISTIC motion gate first (no motion → `FAIL_NO_MOTION` with NO model call — objective, hallucination-proof), then runs TWO Ollama CLOUD vision models IN PARALLEL — `interpreter_model_1` (default `qwen3-vl:235b-cloud`, the video/temporal specialist) and `interpreter_model_2` (default `jcyhsiao/qwen3.5cloud:latest`) — a BARRIER waits for BOTH, and `merging_model` (default `glm-5.3:cloud`) fuses them into ONE verdict, issuing `PASS_OK` only when BOTH interpreters agree (a false PASS is the worst outcome, so any disagreement/uncertainty → `UNCLEAR`, never a false pass). Emits an `INI_SECTION_VIDEO_ANALYZER` block (`video_path`, `verdict`, `verdict_token`, `confidence`, `motion_score`, `frames_analyzed`, the three model names, `status`, body = merged report) AND a dedicated SUBSTRING-SAFE `TLM_VERDICT::<TOKEN>` line a Forker matches cleanly (pattern_a `TLM_VERDICT::PASS_OK` → finish, pattern_b `TLM_VERDICT::FAIL` → reprogram loop; `PASS_OK` is never a substring of any `FAIL` token, so a failure can never route to success). `video_pathfilenames` accepts a file, a wildcard, a folder (newest video wins), or a Camcorder pool name (reads its last recording); `expected_motion` is the checkable motion contract. Read-only/observational (it changes no state), but every Multi-Turn agent appears in the Exec Report. The visual-canvas counterpart of the `chat_agent_video_analyzer` Multi-Turn tool.",
+      "purpose": "Video-Analyzer supports `analysis_type: robotics` (default), `transcription`, and `summary`. Robotics preserves the deterministic motion gate and dual-vision/merge verdict, with `PASS_OK` only on two explicit independent passes. Transcription reads selected video audio tracks (`audio_tracks: all` or `0,1`) using Whisperer's local faster-whisper backend, GPU auto/CPU fallback and timestamped segments; it never opens a microphone. Summary combines speech with two independent visual observers over frame batches spanning the whole clip, then synthesizes an overview, chronology, readable screen text, facts, steps, decisions, action items and limitations. Content modes accept static scenes, bypass the motion gate, and emit `TLM_ANALYSIS::` tokens rather than robotics verdicts. Missing audio/speech and partial failures are explicit. Each content run saves transcript, segments, report and full analysis artifacts. Parametrizer and wrapped chat results expose `analysis_type`, `analysis_token`, `transcript`, `summary`, `audio_status`, timestamped `segments_json` and artifact paths; the body remains `response_body`. Input remains a file, wildcard, newest video in a folder or Camcorder pool name. Always starts downstream agents; sampled perception is not exhaustive.",
       "config_schema": {
         "video_pathfilenames": "str",
+        "analysis_type": "str",
+        "audio_tracks": "str",
+        "transcription": {
+          "model": "str",
+          "device": "str",
+          "compute_type": "str",
+          "language": "str",
+          "task": "str",
+          "beam_size": "int",
+          "vad_filter": "bool",
+          "word_timestamps": "bool",
+          "chunk_seconds": "int"
+        },
+        "summary_prompt": "str",
+        "summary_language": "str",
+        "summary_frame_interval": "int",
+        "summary_max_frames": "int",
+        "summary_batch_size": "int",
+        "output_dir": "str",
         "expected_motion": "str",
         "num_frames": "int",
         "frame_sampling": "str",
@@ -4782,7 +4801,24 @@
         "interpreter_model_2",
         "merging_model",
         "status",
-        "response_body"
+        "response_body",
+        "analysis_type",
+        "analysis_token",
+        "duration_seconds",
+        "audio_status",
+        "audio_track_count",
+        "audio_tracks_analyzed",
+        "language",
+        "transcription_device",
+        "transcript",
+        "summary",
+        "transcript_path",
+        "segments_path",
+        "report_path",
+        "analysis_path",
+        "segments_json",
+        "warnings_json",
+        "metadata_json"
       ],
       "output_slots": {
         "0": "target_agents"

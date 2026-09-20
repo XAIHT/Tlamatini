@@ -23,6 +23,8 @@ import os
 import logging
 import importlib.util
 import unittest
+import tempfile
+from pathlib import Path
 
 import numpy as np
 from django.test import SimpleTestCase
@@ -285,6 +287,8 @@ class RegistryIntegrationTests(SimpleTestCase):
         self.assertIsNotNone(spec)
         self.assertEqual(spec.display_name, 'Video-Analyzer')
         self.assertEqual(spec.template_dir, 'video_analyzer')
+        for feature in ("transcription", "summary", "audio_tracks", "never captures a microphone"):
+            self.assertIn(feature, spec.purpose)
 
     def test_parametrizer_source_fields_registered(self):
         from agent.services.agent_contracts import _PARAMETRIZER_OUTPUT_FIELDS
@@ -324,6 +328,26 @@ class RegistryIntegrationTests(SimpleTestCase):
         promoted = _PROMOTE_SECTION_FIELDS_BY_TEMPLATE_DIR.get('video_analyzer')
         self.assertIsNotNone(promoted)
         self.assertIn('verdict', promoted)
+        for field in ('analysis_type', 'transcript', 'summary', 'analysis_path', 'audio_status'):
+            self.assertIn(field, promoted)
+
+    def test_long_completed_log_promotes_artifacts_even_when_excerpt_lost_header(self):
+        from agent.chat_agent_registry import WRAPPED_CHAT_AGENT_BY_TOOL_NAME
+        from agent.tools import _maybe_promote_section_fields_to_payload
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'run.log'
+            path.write_text('INI_SECTION_VIDEO_ANALYZER<<<\nanalysis_type: transcription\n'
+                            'status: transcribed\nanalysis_path: C:/artifacts/analysis.json\n'
+                            'transcript: ' + 'speech ' * 5000 + '\nsegments_json: ["' + 'x' * 17000 + '"]\n\n'
+                            + 'long report\n' * 3000 + '>>>END_SECTION_VIDEO_ANALYZER\n'
+                            'INI_SECTION_VIDEO_ANALYZER<<<\nstatus: error\n', encoding='utf-8')
+            payload = {'status': 'completed', 'log_excerpt': 'tail only', 'log_path': str(path)}
+            _maybe_promote_section_fields_to_payload(payload, WRAPPED_CHAT_AGENT_BY_TOOL_NAME['chat_agent_video_analyzer'])
+        self.assertEqual(payload['agent_status'], 'transcribed')
+        self.assertEqual(payload['analysis_path'], 'C:/artifacts/analysis.json')
+        self.assertEqual(len(payload['transcript']), 16000)
+        self.assertEqual(payload['segments_json'], '')
+        self.assertEqual(payload['promoted_fields_truncated'], ['transcript', 'segments_json'])
 
     def test_config_defaults_parse(self):
         import yaml

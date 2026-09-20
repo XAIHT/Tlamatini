@@ -1268,6 +1268,36 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
 
     } else if (lower === 'video-analyzer' || lower === 'video_analyzer') {
         set('video_pathfilenames', pairs.video_pathfilenames || pairs.video_path || pairs.video);
+        set('analysis_type', pairs.analysis_type);
+        set('audio_tracks', pairs.audio_tracks);
+        set('summary_prompt', pairs.summary_prompt);
+        set('summary_language', pairs.summary_language);
+        set('output_dir', pairs.output_dir);
+        for (const k of ['summary_frame_interval', 'summary_max_frames', 'summary_batch_size']) {
+            if (pairs[k] !== undefined && pairs[k] !== '') {
+                const value = parseInt(pairs[k], 10);
+                if (!Number.isNaN(value)) config[k] = value;
+            }
+        }
+        const transcription = {
+            ...(pairs.transcription && typeof pairs.transcription === 'object' ? pairs.transcription : {}),
+            ...collectDotted('transcription')
+        };
+        for (const [key, value] of Object.entries(transcription)) {
+            if (value === '' || value === null || value === undefined) delete transcription[key];
+        }
+        for (const k of ['vad_filter', 'word_timestamps']) {
+            if (transcription[k] !== undefined && transcription[k] !== '') {
+                transcription[k] = (String(transcription[k]).toLowerCase() === 'true');
+            }
+        }
+        for (const k of ['beam_size', 'chunk_seconds']) {
+            if (transcription[k] !== undefined && transcription[k] !== '') {
+                const value = parseInt(transcription[k], 10);
+                if (!Number.isNaN(value)) transcription[k] = value;
+            }
+        }
+        if (Object.keys(transcription).length > 0) config.transcription = transcription;
         set('expected_motion', pairs.expected_motion);
         if (pairs.num_frames !== undefined && pairs.num_frames !== '') {
             const nf = parseInt(pairs.num_frames, 10);

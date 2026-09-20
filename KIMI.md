@@ -625,7 +625,7 @@ Ground truth: `Tlamatini/agent/agents/` (88 dirs, each `<name>.py` + `config.yam
 
 | **LaTeXer** | LaTeX authoring/validation/compilation with 30 optional styles, eight independent templates, engine-free `list_styles`, and the existing copy-first repair ladder and deterministic verdicts. [Style guide](Tlamatini/agent/agents/latexer/STYLES.md). |
 | **Image-Interpreter** | Triple-model vision analyst (2 parallel interpreters + merger) |
-| **Video-Analyzer** | Motion-verdict video watcher (deterministic motion gate + dual vision models + PASS/FAIL tokens; robotic-loop eye) |
+| **Video-Analyzer** | `analysis_type`: robotics (default motion verdict), transcription (timestamped video audio tracks), summary (visual evidence + speech + synthesis); content routes on `TLM_ANALYSIS::`, robotics on `TLM_VERDICT::`. See `Tlamatini/agent/agents/video_analyzer/README.md`. |
 | **NetSpeed-Calculator** | RFC 6349 multi-provider Internet measurement — download/upload/latency/jitter/loss/bufferbloat fused by a DerSimonian-Laird random-effects meta-analysis (95% CI + I²); keyless providers, RTT-selected mirrors, never a silent 0.00 Mbps |
 | **J-Decompiler** | Java decompiler via bundled jd-cli |
 | **De-Compresser** | Deterministic compress/decompress (.gz/.zip/.7z/.tar.gz; env-var password) |
