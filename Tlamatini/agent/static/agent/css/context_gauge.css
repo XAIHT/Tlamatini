@@ -1,0 +1,202 @@
+/* =====================================================================
+ * Context gauge — the ring in the chat window (Angela, 2026-09-20)
+ * ---------------------------------------------------------------------
+ * A sibling row between the toolbar (#tools-div) and the message box,
+ * showing the REAL size of the request about to go on the wire.
+ *
+ * Contracts (design Part IV / Part V — do NOT weaken):
+ *   · NO GAUGE DATA ⇒ NO GAUGE. Until the first frame arrives the row is
+ *     `display:none` and occupies ZERO height, so a page that never gets
+ *     a measurement is byte-for-byte what it is today.
+ *   · Colour is NEVER the only signal — the zone WORD and the number
+ *     carry it too, so the row still reads correctly for a colour-blind
+ *     user and in a screenshot.
+ *   · The FLOOR state uses a STATIC halo, not a flash. A blinking element
+ *     beside a text box is an accessibility problem, not urgency.
+ *   · Bytes are the headline (measured); tokens are smaller and always
+ *     carry "est." — never present the estimate as the measurement.
+ *   · Colours come from the page's own --tlm-dlg-* tokens (with literal
+ *     fallbacks) so the row belongs to the theme rather than fighting it.
+ * ===================================================================== */
+
+#context-gauge-row {
+    /* Hidden AND zero-height until the first frame. */
+    display: none;
+    box-sizing: border-box;
+    align-items: center;
+    gap: 10px;
+    margin: 2px 0 0;
+    padding: 3px 8px;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.16);
+    color: var(--tlm-dlg-body, #c1c5d0);
+    font-family: var(--tlm-dlg-font, 'Nunito', sans-serif);
+    font-size: 11px;
+    line-height: 1.25;
+    overflow: hidden;
+}
+
+#context-gauge-row.ctxg-visible {
+    display: flex;
+}
+
+/* ── the ring ─────────────────────────────────────────────────────── */
+.ctxg-ring {
+    flex: 0 0 auto;
+    width: 34px;
+    height: 34px;
+    display: block;
+}
+
+.ctxg-ring-track {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.12);
+    stroke-width: 4;
+}
+
+.ctxg-ring-value {
+    fill: none;
+    stroke: var(--ctxg-zone, #35c08a);
+    stroke-width: 4;
+    stroke-linecap: round;
+    transform: rotate(-90deg);
+    transform-origin: 50% 50%;
+    transition: stroke-dashoffset 220ms ease, stroke 220ms ease;
+}
+
+.ctxg-ring-pct {
+    fill: var(--tlm-dlg-text, #f0f1f7);
+    font-size: 9.5px;
+    font-weight: 700;
+    text-anchor: middle;
+    dominant-baseline: central;
+}
+
+/* ── the legend: bytes lead, tokens follow ────────────────────────── */
+.ctxg-legend {
+    flex: 0 0 auto;
+    min-width: 150px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ctxg-bytes {
+    color: var(--tlm-dlg-title, #ffffff);
+    font-size: 14px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.2px;
+    white-space: nowrap;
+}
+
+/* The estimate is DELIBERATELY quieter than the measurement. */
+.ctxg-tokens {
+    color: var(--tlm-dlg-body, #c1c5d0);
+    font-size: 10px;
+    opacity: 0.85;
+    white-space: nowrap;
+}
+
+.ctxg-zone-word {
+    flex: 0 0 auto;
+    padding: 1px 6px;
+    border: 1px solid var(--ctxg-zone, #35c08a);
+    border-radius: 3px;
+    color: var(--ctxg-zone, #35c08a);
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+/* ── the sparkline: one point per model step ──────────────────────── */
+.ctxg-spark {
+    flex: 1 1 auto;
+    min-width: 40px;
+    height: 26px;
+    display: block;
+}
+
+.ctxg-spark-line {
+    fill: none;
+    stroke: var(--ctxg-zone, #35c08a);
+    stroke-width: 1.5;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+}
+
+.ctxg-spark-mark {
+    fill: var(--ctxg-zone, #35c08a);
+}
+
+/* ── the stream bar: WHY it is that big ───────────────────────────── */
+.ctxg-streams {
+    flex: 0 0 auto;
+    width: 96px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.ctxg-bar {
+    display: flex;
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.ctxg-seg {
+    height: 100%;
+}
+
+.ctxg-seg-prefix {
+    background: rgba(255, 255, 255, 0.34);
+}
+
+.ctxg-seg-history {
+    background: rgba(255, 255, 255, 0.20);
+}
+
+/* The loop is the stream that grows without limit — it wears the zone
+   colour so its share is the thing your eye lands on. */
+.ctxg-seg-loop {
+    background: var(--ctxg-zone, #35c08a);
+}
+
+.ctxg-streams-label {
+    color: var(--tlm-dlg-body, #c1c5d0);
+    font-size: 9px;
+    opacity: 0.75;
+    white-space: nowrap;
+}
+
+/* ── the four zones ───────────────────────────────────────────────── */
+#context-gauge-row[data-zone="green"] { --ctxg-zone: #35c08a; }
+#context-gauge-row[data-zone="amber"] { --ctxg-zone: #e0b341; }
+#context-gauge-row[data-zone="red"]   { --ctxg-zone: #e07a3f; }
+#context-gauge-row[data-zone="floor"] { --ctxg-zone: #e05a70; }
+
+/* STATIC halo — never a flash. */
+#context-gauge-row[data-zone="floor"] {
+    border-color: rgba(224, 90, 112, 0.55);
+    box-shadow: 0 0 0 1px rgba(224, 90, 112, 0.25) inset;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ctxg-ring-value {
+        transition: none;
+    }
+}
+
+/* Narrow chat column: drop the decorations, never the numbers. */
+@media (max-width: 720px) {
+    .ctxg-spark,
+    .ctxg-streams {
+        display: none;
+    }
+}

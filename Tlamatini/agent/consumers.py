@@ -767,6 +767,31 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 # same user keeps its own live emitter).
                 self._status_emit = _emit_status
 
+                # ── Context-gauge sink (Angela, 2026-09-20) ──
+                # The EXACT byte count can only come from the server: the page
+                # never sees the system prompt, the chat history as sent, or
+                # the bound tool schemas. Same shape as the status broadcaster
+                # directly above — a fire-and-forget emit scheduled onto THIS
+                # event loop, keyed by user id, looked up from the executor's
+                # worker thread. ONE-WAY and NEVER awaited: the gauge must not
+                # be able to slow a turn down. If it fails the turn continues
+                # and the ring simply keeps its last value.
+                from .context_governor import register_gauge_sink
+
+                def _emit_context_gauge(detail):
+                    try:
+                        asyncio.run_coroutine_threadsafe(
+                            _status_channel_layer.group_send(
+                                _status_room,
+                                {'type': 'context_gauge', 'detail': detail},
+                            ),
+                            _status_loop,
+                        )
+                    except Exception as _ge:  # noqa: BLE001 — the gauge is best-effort
+                        print(f"--- [CONTEXT] failed to emit gauge frame: {_ge}")
+
+                register_gauge_sink(broker_key, _emit_context_gauge)
+
             # ── Ask-Execs broker ──
             # The multi-turn tool executor runs in a worker thread and must be
             # able to BLOCK on a browser Proceed/Deny prompt before each
@@ -910,9 +935,28 @@ class AgentConsumer(AsyncWebsocketConsumer):
             if status_registered:
                 from .self_healing import unregister_status_broadcaster
                 unregister_status_broadcaster(broker_key, _emit_status)
+                # The gauge sink is registered in the SAME block as the status
+                # broadcaster, so this flag covers both. Pass the specific emit
+                # so a finishing request cannot tear down a concurrent
+                # same-user request's live sink (two tabs share one user id).
+                from .context_governor import unregister_gauge_sink
+                unregister_gauge_sink(broker_key, _emit_context_gauge)
             self._status_emit = None
             self._active_run = None
             self._active_broker = None
+
+    async def context_gauge(self, event):
+        """Group handler: forward one context-size measurement to this browser
+        as a `context-gauge` frame. Scheduled from the executor's worker thread
+        via run_coroutine_threadsafe, and never awaited by it — a failure here
+        costs the ring one update, never the turn."""
+        try:
+            await self.send(text_data=json.dumps({
+                'type': 'context-gauge',
+                'detail': event.get('detail') or {},
+            }))
+        except Exception as e:
+            print(f"Error in context_gauge: {e}")
 
     async def exec_permission_request(self, event):
         """Group handler: forward an Ask-Execs permission request to this

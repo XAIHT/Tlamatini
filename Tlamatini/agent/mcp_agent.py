@@ -34,6 +34,13 @@ from .capability_registry import (
 )
 from .chat_agent_registry import WRAPPED_CHAT_AGENT_BY_TOOL_NAME
 from .config_loader import get_int_config_value, load_config as _shared_load_config
+from .context_governor import (
+    format_log_line as _context_log_line,
+    gauge_payload as _context_gauge_payload,
+    measure as _context_measure,
+    publish_gauge as _context_publish_gauge,
+    resolve_settings as _context_settings,
+)
 from .exec_permission import get_broker
 from .global_execution_planner import (
     selected_tool_names_from_plan,
@@ -1500,6 +1507,74 @@ class MultiTurnToolAgentExecutor:
         )
         return "\n".join(lines)
 
+    # ── CONTEXT GOVERNOR — step 1: MEASURE (Angela, 2026-09-20) ──────────
+    # EVERY model call in this executor goes through ``_model_step``, so there
+    # is exactly ONE place that measures what is about to be sent — the same
+    # reason the healer has one entry point. This slice MEASURES ONLY: it does
+    # not read, reorder, shorten or drop a single message, so it cannot change
+    # an answer. It prints one grep-able ``--- [CONTEXT]`` line per model step
+    # and pushes a frame to the chat gauge. Folding is steps 2–10 and is NOT
+    # implemented yet — the watermarks must be set from real numbers first.
+    def _tool_schema_prefix_bytes(self) -> int:
+        """Bytes of the bound tool surface (name + description + arg schema).
+
+        These are sent with EVERY request and are the largest part of the
+        static prefix — with 109 tools bound they dwarf the conversation — yet
+        they live nowhere in ``messages``, so a measurement that ignored them
+        would under-report the wire size badly. Computed once per request and
+        cached: the tool list cannot change inside one run.
+        """
+        cached = getattr(self, "_context_schema_bytes", None)
+        if cached is not None:
+            return cached
+        total = 0
+        try:
+            for tool in (self.tools or []):
+                name = str(getattr(tool, "name", "") or "")
+                desc = str(getattr(tool, "description", "") or "")
+                schema = getattr(tool, "args", None)
+                try:
+                    schema_text = json.dumps(schema, default=str) if schema else ""
+                except Exception:  # noqa: BLE001
+                    schema_text = str(schema or "")
+                total += len((name + desc + schema_text).encode("utf-8"))
+        except Exception:  # noqa: BLE001
+            total = 0
+        self._context_schema_bytes = total
+        return total
+
+    def _model_step(self, llm, messages, label: str = ""):
+        """Measure, report, then hand the step to the self-healer unchanged.
+
+        FAIL-OPEN: any problem in the measurement is swallowed and printed —
+        the model call still happens, with the very same list. A governor that
+        breaks the chat is worse than the overflow it prevents.
+        """
+        try:
+            settings = getattr(self, "_context_governor_settings", None)
+            if settings is not None and settings.enabled:
+                measurement = _context_measure(
+                    messages,
+                    loop_start_index=getattr(self, "_context_loop_start", 0),
+                    prefix_message_count=getattr(self, "_context_prefix_count", 1),
+                    extra_prefix_bytes=self._tool_schema_prefix_bytes(),
+                    config=getattr(self, "_context_config", None),
+                    settings=settings,
+                )
+                if settings.log_each:
+                    print(_context_log_line(measurement, label))
+                if settings.gauge_enabled:
+                    # Fire-and-forget: never awaited, never retried. If the
+                    # emit fails the turn continues and the ring keeps its
+                    # last value.
+                    _context_publish_gauge(
+                        self._ask_execs_user_id,
+                        _context_gauge_payload(measurement, settings, label),
+                    )
+        except Exception as _cg_err:  # noqa: BLE001 — measuring must never break a turn
+            print(f"--- [CONTEXT] measurement skipped ({_cg_err}) — nothing changed")
+        return self._healer.invoke(llm, messages, label=label)
+
     def invoke(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         # Reset per-invocation tool call log.
         self._tool_calls_log = []
@@ -1529,6 +1604,18 @@ class MultiTurnToolAgentExecutor:
         # when Ask-Execs is off) and is the key the epoch latch is stored under.
         self._run_user_id = payload.get("ask_execs_user_id")
         self._run_epoch = payload.get("cancel_run_epoch")
+
+        # ── Context governor (measurement only) per-request state ──
+        # Resolved ONCE per request: executor instances are cached and reused,
+        # so these must be reset here like every other per-run field above.
+        try:
+            self._context_config = _load_config()
+        except Exception:  # noqa: BLE001 — never block a request on a config read
+            self._context_config = {}
+        self._context_governor_settings = _context_settings(self._context_config)
+        self._context_schema_bytes = None   # recomputed for this run's tool list
+        self._context_prefix_count = 1      # system prompt (+ planner, set below)
+        self._context_loop_start = 0        # set just before the tool loop opens
 
         # ── Self-healing model-step invoker (Angela, 2026-07-06 REDESIGN) ──
         # EVERY model call in this loop is routed through the healer so a
@@ -1578,6 +1665,11 @@ class MultiTurnToolAgentExecutor:
                     "Use only the planned tool and monitor stages unless the plan is empty."
                 )
             ))
+        # Everything appended so far is the STATIC PREFIX bucket: the system
+        # prompt, plus the planner's system message when there is one. The
+        # bound tool schemas belong to it too but live outside this list, so
+        # they are added by ``_tool_schema_prefix_bytes()``.
+        self._context_prefix_count = len(messages)
 
         def _history_content(msg: Any) -> str:
             if isinstance(msg, BaseMessage):
@@ -1609,7 +1701,7 @@ class MultiTurnToolAgentExecutor:
 
         if not self.tools:
             try:
-                response = self._healer.invoke(self.llm, messages, label="answering")
+                response = self._model_step(self.llm, messages, label="answering")
             except ModelStepUnrecoverable as _step:
                 if _step.reason == "user_cancelled":
                     return self._cancelled_result(messages)
@@ -1627,6 +1719,13 @@ class MultiTurnToolAgentExecutor:
         last_signature: str | None = None
         repeat_count: int = 0
 
+        # Everything appended from here on is appended BY THE LOOP — the hot
+        # bucket, the one that grows without limit (a model reply plus a FULL
+        # tool result per turn, re-sent on every turn that follows). The
+        # governor reports it separately from prefix and history precisely so
+        # a day of real use can show whether it really is the leak.
+        self._context_loop_start = len(messages)
+
         for iteration in range(self.max_iterations):
             # ── Cancel guard: BETWEEN model steps ──
             # Stop before spending another model call. Returns (never raises) so the
@@ -1634,7 +1733,7 @@ class MultiTurnToolAgentExecutor:
             if self._run_cancelled():
                 return self._cancelled_result(messages)
             try:
-                response = self._healer.invoke(
+                response = self._model_step(
                     self.bound_llm, messages, label=f"working on step {iteration + 1}"
                 )
             except ModelStepUnrecoverable as _step:
@@ -1789,7 +1888,7 @@ class MultiTurnToolAgentExecutor:
                         "the results you obtained. Do NOT call any more tools."
                     )))
                     try:
-                        retry_response = self._healer.invoke(
+                        retry_response = self._model_step(
                             self.bound_llm, messages, label="summarizing the results"
                         )
                     except ModelStepUnrecoverable as _step:
@@ -1872,7 +1971,7 @@ class MultiTurnToolAgentExecutor:
                     )
                 # Give the model one more chance to produce a final answer.
                 try:
-                    final_response = self._healer.invoke(
+                    final_response = self._model_step(
                         self.bound_llm, messages, label="wrapping up"
                     )
                 except ModelStepUnrecoverable as _step:

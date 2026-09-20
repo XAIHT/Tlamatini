@@ -237,8 +237,16 @@ function bindDividerPointerDrag(divider, resizingClass, onMove) {
         const toolsDivH = (toolsDivEl ? toolsDivEl.offsetHeight : 25) || 25;
         const chipsEl = document.getElementById('chat-image-chips');
         const chipsH = chipsEl ? chipsEl.offsetHeight : 0;
+        // The context gauge is a THIRD element inside this container. It is
+        // display:none (zero height) until the first measurement frame, so it
+        // costs nothing until it appears — but the instant it does it MUST be
+        // counted here, or the textarea and the Send button get pushed off
+        // the bottom of the viewport. (Its sibling edit is the ResizeObserver
+        // list below; leaving either out ships this feature broken.)
+        const gaugeEl = document.getElementById('context-gauge-row');
+        const gaugeH = gaugeEl ? gaugeEl.offsetHeight : 0;
         const formAreaPx = Math.max(170, Math.round(0.3 * ((subchatContainer && subchatContainer.clientHeight) || 700))); // textarea + Send min-heights + form margins
-        return Math.max(FALLBACK_FORM_FLOOR_PX, toolsDivH + chipsH + formAreaPx);
+        return Math.max(FALLBACK_FORM_FLOOR_PX, toolsDivH + chipsH + gaugeH + formAreaPx);
     };
 
     const pctFromYToDivider = (clientY) => {
@@ -274,7 +282,7 @@ function bindDividerPointerDrag(divider, resizingClass, onMove) {
     // or disappears, for exactly the same reason.
     if (typeof ResizeObserver !== 'undefined') {
         const ro = new ResizeObserver(() => applyVertical(null));
-        ['tools-div', 'chat-image-chips'].forEach((id) => {
+        ['tools-div', 'chat-image-chips', 'context-gauge-row'].forEach((id) => {
             const el = document.getElementById(id);
             if (el) ro.observe(el);
         });

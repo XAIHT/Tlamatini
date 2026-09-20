@@ -413,6 +413,7 @@ _FROZEN_REQUIRED_AGENT_MODULES = (
     "agent.external_mcp_defaults",  # ships + seeds `memory` / `sequential-thinking`
     "agent.external_mcp_manager",  # the universal External-MCP client
     "agent.agent_verdict",         # the deterministic Exec-Report verdict engine
+    "agent.context_governor",      # context measurement + the chat gauge sink
     "agent.win_shim",              # Windows .cmd/.exe resolution (fail-open import)
     "agent.path_guard",            # <app>/Temp + <app>/Templates policy
     "agent.self_update",           # About ▸ Check for updates
@@ -1387,6 +1388,7 @@ def main():
         '--hidden-import=agent.external_mcp_defaults',
         '--hidden-import=agent.external_mcp_manager',
         '--hidden-import=agent.agent_verdict',
+        '--hidden-import=agent.context_governor',
         '--hidden-import=agent.win_shim',
         '--hidden-import=agent.self_update',
         '--hidden-import=agent.sqlite_copy',

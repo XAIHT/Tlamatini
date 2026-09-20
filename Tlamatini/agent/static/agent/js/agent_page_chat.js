@@ -2291,6 +2291,21 @@ chatSocket.onmessage = function (e) {
         console.log('--- Received heartbeat message from server');
         return;
     }
+    // Context governor (step 1 — measurement only): the backend measured
+    // what it is about to send. Re-dispatch as a DOM event so context_gauge.js
+    // stays a self-contained IIFE with NO cross-file global. Fire-and-forget:
+    // the gauge is never allowed to affect the chat, so this returns straight
+    // away and any failure inside the gauge is the gauge's own problem.
+    if (data.type === 'context-gauge') {
+        try {
+            document.dispatchEvent(new CustomEvent('tlm:context-gauge', {
+                detail: data.detail || {}
+            }));
+        } catch (gaugeErr) {
+            console.warn('--- [context-gauge] dispatch skipped:', gaugeErr);
+        }
+        return;
+    }
     // Ask-Execs: the backend is blocked waiting for the user to approve the
     // next Multi-Turn tool execution. Pop the modal Proceed/Deny dialog.
     if (data.type === 'exec-permission-request') {
