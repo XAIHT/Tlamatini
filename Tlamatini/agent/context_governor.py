@@ -45,9 +45,11 @@ import cycle.
 
 from __future__ import annotations
 
+import contextvars
 import json
 import threading
-from dataclasses import dataclass
+import time
+from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, Iterable, Optional, Tuple
 
 __all__ = [
@@ -62,6 +64,12 @@ __all__ = [
     "register_gauge_sink",
     "unregister_gauge_sink",
     "publish_gauge",
+    "resolve_ceiling_tokens",
+    # The meter - EVERY model call site reports through measure_async().
+    "ContextMeter",
+    "MeterSample",
+    "METER",
+    "measure_async",
 ]
 
 
@@ -559,3 +567,297 @@ def publish_gauge(user_id: Any, payload: Dict[str, Any]) -> bool:
         return True
     except Exception:  # noqa: BLE001 - the chat path owes the gauge nothing
         return False
+
+
+# ── THE METER: recalculate OFF the request thread ───────────────────────────
+# Angela, 2026-09-21: *"CREATE A THREAD TO TAKE THE REAL DATA FROM THE REAL
+# CONTEXT, MARK SEMAPHORES TO TAKE THE INFORMATION WHEN SOMETHING CHANGED AND
+# THE THREAD MUST RECALCULATE, BUT DON'T RECALCULATE ONLINE ... WITHOUT
+# BLOCKING THE MAIN THREAD."*
+#
+# Measuring means SERIALIZING the payload, and a real conversation here reaches
+# 1.7 MB. Doing that inline before every model call spends the user's own
+# latency on a number that only decorates a ring. So the request thread does
+# the one thing only it can do - take a consistent snapshot of a list that is
+# still being appended to - and hands it over. One daemon worker does the
+# arithmetic.
+#
+# CONTRACTS (do NOT weaken):
+#   1. ``submit()`` NEVER blocks on the measurement and NEVER raises. It holds
+#      the mutex only long enough to swap one pointer.
+#   2. COALESCING: only the NEWEST sample survives. A gauge needs the latest
+#      value, not a backlog - five samples arriving during one computation must
+#      cost ONE computation, not five. Superseded samples are counted, not
+#      hidden.
+#   3. The heavy work runs OUTSIDE the lock, so a slow measurement can never
+#      stall a submitting thread.
+#   4. The worker CANNOT die. Every iteration is guarded; a meter that stopped
+#      silently would freeze the ring on a stale number, which is precisely the
+#      bug this replaces.
+#   5. The snapshot is taken on the CALLER's thread deliberately: the executor
+#      appends to ``messages`` between turns, so iterating it from another
+#      thread would be a race ("list changed size during iteration").
+#   6. Daemon thread: it can never hold the process open at exit.
+
+
+@dataclass(frozen=True)
+class MeterSample:
+    """One request to measure. Immutable, and already snapshotted."""
+
+    user_id: Any = None
+    messages: Tuple[Any, ...] = field(default_factory=tuple)
+    label: str = ""
+    source: str = "model"
+    loop_start_index: int = 0
+    prefix_message_count: int = 1
+    extra_prefix_bytes: int = 0
+    extra_prefix_chars: Optional[int] = None
+    config: Any = None
+    settings: Optional[GovernorSettings] = None
+
+
+class ContextMeter:
+    """A single background worker that measures whatever arrived last."""
+
+    #: Minimum gap between two measurements, in seconds.
+    #
+    # ⚠️ This is NOT cosmetic pacing - it is what keeps the promise that the
+    # request thread stays free. Python has ONE interpreter lock: a worker
+    # serializing 1.7 MB back-to-back steals it from the thread trying to
+    # submit, and a measured submit() then costs as much as measuring inline
+    # did (5.8 ms observed before this throttle). Bounding the worker's duty
+    # cycle bounds that contention. ~7 refreshes a second is still real time
+    # to a human eye, and the latest-wins rule means nothing is lost - only
+    # recomputed less often.
+    MIN_INTERVAL_SECONDS = 0.15
+
+    def __init__(self, min_interval: float = MIN_INTERVAL_SECONDS) -> None:
+        # ONE condition variable = the mutex AND the "something changed"
+        # signal. Two primitives would need an ordering rule between them;
+        # one cannot deadlock against itself.
+        self._cond = threading.Condition()
+        self._min_interval = max(0.0, float(min_interval or 0.0))
+        self._last_run = 0.0
+        self._pending: Optional[MeterSample] = None
+        self._dirty = False
+        self._thread: Optional[threading.Thread] = None
+        self._measured = 0
+        self._superseded = 0
+        self._failures = 0
+        self._last: Optional[Measurement] = None
+
+    # ── hot path: called by the request thread ──────────────────────────
+    def submit(self, sample: MeterSample) -> bool:
+        """Hand a snapshot to the worker. Returns whether it was accepted."""
+        try:
+            with self._cond:
+                if self._pending is not None:
+                    # Superseded before it was ever measured - correct for a
+                    # gauge, and counted so it is never a silent drop.
+                    self._superseded += 1
+                self._pending = sample
+                self._dirty = True
+                self._ensure_worker_locked()
+                self._cond.notify()
+            return True
+        except Exception:  # noqa: BLE001 - the model call owes the gauge nothing
+            return False
+
+    def _ensure_worker_locked(self) -> None:
+        """Start the worker on first use. Called holding ``_cond``.
+
+        Starting a thread under the lock is safe: the new thread's first act is
+        to acquire the same lock, so it simply waits the microsecond until the
+        submitter releases it.
+        """
+        if self._thread is not None and self._thread.is_alive():
+            return
+        worker = threading.Thread(
+            target=self._run, name="tlamatini-context-meter", daemon=True
+        )
+        self._thread = worker
+        worker.start()
+
+    # ── the worker ──────────────────────────────────────────────────────
+    def _run(self) -> None:
+        while True:
+            sample = None
+            try:
+                # 1. Sleep until something changed. ``wait()`` releases the
+                #    mutex, so a submitter is never delayed by a waiting
+                #    worker.
+                with self._cond:
+                    while not self._dirty:
+                        self._cond.wait()
+
+                # 2. Throttle OUTSIDE the lock, so submits stay free while we
+                #    are pacing ourselves.
+                gap = self._min_interval - (time.monotonic() - self._last_run)
+                if gap > 0:
+                    time.sleep(gap)
+
+                # 3. Only NOW take the sample - so anything that arrived
+                #    during the pause supersedes what triggered us, and the
+                #    measurement is of the freshest state, never a stale one.
+                with self._cond:
+                    sample = self._pending
+                    self._pending = None
+                    self._dirty = False
+                if sample is not None:
+                    self._last_run = time.monotonic()
+                    self._measure_and_publish(sample)
+            except Exception:  # noqa: BLE001 - the worker must never die
+                try:
+                    with self._cond:
+                        self._failures += 1
+                except Exception:  # noqa: BLE001
+                    pass
+                try:
+                    time.sleep(0.05)   # never spin hot on a repeating fault
+                except Exception:  # noqa: BLE001
+                    pass
+
+    def _measure_and_publish(self, sample: MeterSample) -> None:
+        settings = sample.settings or resolve_settings(sample.config)
+        if not settings.enabled:
+            return
+        measurement = measure(
+            sample.messages,
+            loop_start_index=sample.loop_start_index,
+            prefix_message_count=sample.prefix_message_count,
+            extra_prefix_bytes=sample.extra_prefix_bytes,
+            extra_prefix_chars=sample.extra_prefix_chars,
+            config=sample.config,
+            settings=settings,
+        )
+        with self._cond:
+            self._measured += 1
+            self._last = measurement
+        if settings.log_each:
+            print(format_log_line(measurement, sample.label))
+        if settings.gauge_enabled:
+            payload = gauge_payload(measurement, settings, sample.label)
+            payload["source"] = sample.source or "model"
+            publish_gauge(sample.user_id, payload)
+
+    # ── introspection (tests, diagnostics) ──────────────────────────────
+    def stats(self) -> Dict[str, Any]:
+        with self._cond:
+            return {
+                "measured": self._measured,
+                "superseded": self._superseded,
+                "failures": self._failures,
+                "pending": self._pending is not None,
+                "alive": bool(self._thread is not None and self._thread.is_alive()),
+            }
+
+    def latest(self) -> Optional[Measurement]:
+        with self._cond:
+            return self._last
+
+    def drain(self, timeout: float = 2.0) -> bool:
+        """Wait until nothing is pending. For TESTS only - never on a request."""
+        deadline = time.time() + max(0.0, timeout)
+        while time.time() < deadline:
+            with self._cond:
+                if not self._dirty and self._pending is None:
+                    return True
+            time.sleep(0.005)
+        return False
+
+
+METER = ContextMeter()
+
+
+# ── Whose request is this? ──────────────────────────────────────────────────
+# A LangChain callback fires deep inside a chain and has no idea which user it
+# serves, so the consumer BINDS the id once per request and every call site
+# downstream inherits it.
+#
+# ⚠️ A ContextVar, never a thread-local: ONE event-loop thread serves EVERY
+# connected user, so a thread-local would smear one user's id across another's
+# coroutine. ``sync_to_async`` propagates the context, so the whole synchronous
+# chain stack is covered for free. (The same reasoning as log_identity.py.)
+_CURRENT_USER: "contextvars.ContextVar[Any]" = contextvars.ContextVar(
+    "tlamatini_context_user", default=None
+)
+
+
+def bind_user(user_id: Any) -> Any:
+    """Bind the conversation user for this request. Returns a reset token."""
+    try:
+        return _CURRENT_USER.set(user_id)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def unbind_user(token: Any) -> None:
+    """Restore the previous binding. Never raises."""
+    if token is None:
+        return
+    try:
+        _CURRENT_USER.reset(token)
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def current_user() -> Any:
+    try:
+        return _CURRENT_USER.get()
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def measure_async(
+    user_id: Any,
+    messages: Any,
+    *,
+    label: str = "",
+    source: str = "model",
+    loop_start_index: int = 0,
+    prefix_message_count: int = 1,
+    extra_prefix_bytes: int = 0,
+    extra_prefix_chars: Optional[int] = None,
+    config: Any = None,
+    settings: Optional[GovernorSettings] = None,
+    meter: Optional[ContextMeter] = None,
+) -> bool:
+    """**The one entry point every model call site uses.**
+
+    Snapshot on this thread (cheap: a tuple of pointers), measure on the
+    worker. Returns whether the sample was accepted - never raises, so a
+    caller can invoke it on the line before ``llm.invoke`` without a guard.
+
+    ``messages`` may be a message list OR a bare prompt string (ACPX sends one
+    string to a child), so every surface can report through the same door.
+    """
+    try:
+        if isinstance(messages, str):
+            snapshot: Tuple[Any, ...] = (messages,)
+        elif messages is None:
+            snapshot = ()
+        else:
+            # THE FENCE: a shallow copy, taken here, while this thread still
+            # owns the list. Microseconds for a few hundred pointers.
+            snapshot = tuple(messages)
+    except Exception:  # noqa: BLE001
+        return False
+    if user_id is None:
+        # A chain callback does not know the user; the request bound it.
+        user_id = current_user()
+    try:
+        sample = MeterSample(
+            user_id=user_id,
+            messages=snapshot,
+            label=str(label or ""),
+            source=str(source or "model"),
+            loop_start_index=int(loop_start_index or 0),
+            prefix_message_count=int(prefix_message_count or 0),
+            extra_prefix_bytes=int(extra_prefix_bytes or 0),
+            extra_prefix_chars=extra_prefix_chars,
+            config=config,
+            settings=settings,
+        )
+    except Exception:  # noqa: BLE001
+        return False
+    return (meter or METER).submit(sample)

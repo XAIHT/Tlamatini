@@ -35,10 +35,7 @@ from .capability_registry import (
 from .chat_agent_registry import WRAPPED_CHAT_AGENT_BY_TOOL_NAME
 from .config_loader import get_int_config_value, load_config as _shared_load_config
 from .context_governor import (
-    format_log_line as _context_log_line,
-    gauge_payload as _context_gauge_payload,
-    measure as _context_measure,
-    publish_gauge as _context_publish_gauge,
+    measure_async as _context_measure_async,
     resolve_ceiling_tokens as _context_ceiling_tokens,
     resolve_settings as _context_settings,
 )
@@ -1581,8 +1578,14 @@ class MultiTurnToolAgentExecutor:
             settings = getattr(self, "_context_governor_settings", None)
             if settings is not None and settings.enabled:
                 schema_bytes, schema_chars = self._tool_schema_prefix_bytes()
-                measurement = _context_measure(
+                # SNAPSHOT AND SIGNAL — no arithmetic on this thread. The
+                # meter's worker serializes the payload and pushes the gauge;
+                # the user's latency is never spent on the ring.
+                _context_measure_async(
+                    self._ask_execs_user_id,
                     messages,
+                    label=label,
+                    source="multi-turn",
                     loop_start_index=getattr(self, "_context_loop_start", 0),
                     prefix_message_count=getattr(self, "_context_prefix_count", 1),
                     extra_prefix_bytes=schema_bytes,
@@ -1590,16 +1593,6 @@ class MultiTurnToolAgentExecutor:
                     config=getattr(self, "_context_config", None),
                     settings=settings,
                 )
-                if settings.log_each:
-                    print(_context_log_line(measurement, label))
-                if settings.gauge_enabled:
-                    # Fire-and-forget: never awaited, never retried. If the
-                    # emit fails the turn continues and the ring keeps its
-                    # last value.
-                    _context_publish_gauge(
-                        self._ask_execs_user_id,
-                        _context_gauge_payload(measurement, settings, label),
-                    )
         except Exception as _cg_err:  # noqa: BLE001 — measuring must never break a turn
             print(f"--- [CONTEXT] measurement skipped ({_cg_err}) — nothing changed")
         return self._healer.invoke(llm, messages, label=label)

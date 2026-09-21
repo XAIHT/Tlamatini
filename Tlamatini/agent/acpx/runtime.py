@@ -574,6 +574,24 @@ class AcpSession:
                 }) + "\n")
                 transcript.flush()
 
+            # ── The gauge counts ACPX too (Angela, 2026-09-21) ──
+            # A prompt handed to an external coding-agent CLI is a model call
+            # like any other, and these are the BIG ones - a relay leg carries
+            # a whole research briefing. Snapshot and signal only; the meter's
+            # worker does the arithmetic on its own thread. Imported lazily and
+            # fail-open so ACPX keeps working headless, outside Django, exactly
+            # as it does today.
+            try:
+                from ..context_governor import measure_async as _ctx_measure_async
+                _ctx_measure_async(
+                    None, text,
+                    label=f"acpx {self.spec.agent_id}",
+                    source="acpx",
+                    prefix_message_count=0,
+                )
+            except Exception:  # noqa: BLE001 - the gauge owes the child nothing
+                pass
+
             resolved = resolve_command(self.spec.command)
             if not resolved.executable or not is_executable_resolvable(self.spec.command):
                 yield {"event": "error", "text":

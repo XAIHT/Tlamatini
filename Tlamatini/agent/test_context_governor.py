@@ -19,6 +19,8 @@ from __future__ import annotations
 
 import json
 import re
+import threading
+import time
 from pathlib import Path
 
 from django.test import SimpleTestCase
@@ -33,6 +35,8 @@ _CHAT_JS = _AGENT_DIR / "static" / "agent" / "js" / "agent_page_chat.js"
 _GAUGE_JS = _AGENT_DIR / "static" / "agent" / "js" / "context_gauge.js"
 _TEMPLATE = _AGENT_DIR / "templates" / "agent" / "agent_page.html"
 _GOVERNOR = _AGENT_DIR / "context_governor.py"
+_CHAINS_BASE = _AGENT_DIR / "rag" / "chains" / "base.py"
+_ACPX_RUNTIME = _AGENT_DIR / "acpx" / "runtime.py"
 
 
 class _Msg:
@@ -273,6 +277,132 @@ class GaugeSinkTests(SimpleTestCase):
         self.assertFalse(cg.publish_gauge(None, {}))
 
 
+class MeterTests(SimpleTestCase):
+    """The worker thread: off the request thread, coalescing, unkillable.
+
+    Angela, 2026-09-21: *"CREATE A THREAD ... MARK SEMAPHORES ... THE THREAD
+    MUST RECALCULATE, BUT DON'T RECALCULATE ONLINE ... WITHOUT BLOCKING THE
+    MAIN THREAD."*
+    """
+
+    def setUp(self):
+        # Its own meter, so these tests never disturb the process-wide one.
+        self.meter = cg.ContextMeter(min_interval=0.0)
+        self.seen = []
+        cg.register_gauge_sink("meter-test", self.seen.append)
+
+    def tearDown(self):
+        for key in ("meter-test", "meter-boom"):
+            cg.unregister_gauge_sink(key)
+
+    def _submit(self, label, user="meter-test", **kw):
+        return cg.measure_async(user, [_Msg("payload " * 50)], label=label,
+                                meter=self.meter, **kw)
+
+    def test_the_measurement_does_not_happen_on_the_calling_thread(self):
+        """The whole point: the request thread must not do the arithmetic."""
+        here = threading.current_thread().name
+        where = []
+        cg.register_gauge_sink(
+            "meter-test",
+            lambda _p: where.append(threading.current_thread().name),
+        )
+        self._submit("off-thread")
+        self.assertTrue(self.meter.drain(timeout=5))
+        for _ in range(200):
+            if where:
+                break
+            time.sleep(0.01)
+        self.assertTrue(where, "the worker never published")
+        self.assertNotEqual(where[0], here)
+        self.assertIn("context-meter", where[0])
+
+    def test_the_worker_is_a_daemon_so_it_cannot_hold_the_process_open(self):
+        self._submit("daemon")
+        self.meter.drain(timeout=5)
+        worker = self.meter._thread          # noqa: SLF001 - contract under test
+        self.assertIsNotNone(worker)
+        self.assertTrue(worker.daemon)
+
+    def test_samples_coalesce_instead_of_queueing(self):
+        """Five submits during one computation must cost ONE computation."""
+        slow = cg.ContextMeter(min_interval=0.05)
+        for i in range(25):
+            cg.measure_async("meter-test", [_Msg("x" * 2000)],
+                             label="s%d" % i, meter=slow)
+        self.assertTrue(slow.drain(timeout=10))
+        time.sleep(0.2)
+        stats = slow.stats()
+        # Nothing is lost track of: every submit is either measured or
+        # explicitly counted as superseded - never silently dropped.
+        self.assertEqual(stats["measured"] + stats["superseded"], 25)
+        self.assertLess(stats["measured"], 25)
+        self.assertGreater(stats["superseded"], 0)
+
+    def test_the_newest_sample_always_wins(self):
+        for i in range(12):
+            self._submit("s%d" % i)
+        self.assertTrue(self.meter.drain(timeout=10))
+        time.sleep(0.2)
+        self.assertTrue(self.seen)
+        self.assertEqual(self.seen[-1]["label"], "s11")
+
+    def test_a_sink_that_raises_cannot_kill_the_worker(self):
+        """A meter that died would freeze the ring on a stale number."""
+        def boom(_payload):
+            raise RuntimeError("the browser exploded")
+
+        cg.register_gauge_sink("meter-boom", boom)
+        self._submit("hostile", user="meter-boom")
+        self.meter.drain(timeout=5)
+        time.sleep(0.2)
+        self._submit("after-the-explosion")
+        self.assertTrue(self.meter.drain(timeout=5))
+        time.sleep(0.2)
+        self.assertTrue(self.meter.stats()["alive"])
+        self.assertEqual(self.seen[-1]["label"], "after-the-explosion")
+
+    def test_submit_never_raises_whatever_it_is_handed(self):
+        for bad in (object(), 123, None, [object()]):
+            self.assertIn(cg.measure_async("meter-test", bad, meter=self.meter),
+                          (True, False))
+
+    def test_a_bare_prompt_string_is_accepted(self):
+        """ACPX hands a child ONE string, not a message list."""
+        self.assertTrue(cg.measure_async("meter-test", "hello there",
+                                         label="acpx claude", source="acpx",
+                                         meter=self.meter))
+        self.assertTrue(self.meter.drain(timeout=5))
+        time.sleep(0.2)
+        self.assertEqual(self.seen[-1]["source"], "acpx")
+        self.assertGreater(self.seen[-1]["bytes_total"], 0)
+
+    def test_the_payload_names_which_call_produced_it(self):
+        self._submit("working on step 2", source="multi-turn")
+        self.assertTrue(self.meter.drain(timeout=5))
+        time.sleep(0.2)
+        self.assertEqual(self.seen[-1]["source"], "multi-turn")
+        self.assertEqual(self.seen[-1]["label"], "working on step 2")
+
+    def test_a_chain_callback_inherits_the_bound_user(self):
+        """A LangChain callback has no user id; the request bound one."""
+        token = cg.bind_user("meter-test")
+        try:
+            self.assertTrue(cg.measure_async(None, [_Msg("hi")],
+                                             label="one-shot", meter=self.meter))
+            self.assertTrue(self.meter.drain(timeout=5))
+            time.sleep(0.2)
+            self.assertEqual(self.seen[-1]["label"], "one-shot")
+        finally:
+            cg.unbind_user(token)
+        self.assertIsNone(cg.current_user())
+
+    def test_the_throttle_bounds_how_often_the_worker_runs(self):
+        """It is what keeps the GIL free for the request thread."""
+        self.assertGreater(cg.ContextMeter.MIN_INTERVAL_SECONDS, 0.0)
+        self.assertLessEqual(cg.ContextMeter.MIN_INTERVAL_SECONDS, 0.5)
+
+
 class SourceContractTests(SimpleTestCase):
     """Wiring a later edit could quietly undo."""
 
@@ -290,11 +420,57 @@ class SourceContractTests(SimpleTestCase):
         self.assertEqual(src.count("self._healer.invoke("), 1)
         self.assertIn("return self._healer.invoke(llm, messages, label=label)", src)
 
-    def test_the_helper_measures_logs_and_publishes(self):
+    def test_the_helper_hands_off_instead_of_measuring_inline(self):
+        """The request thread SNAPSHOTS AND SIGNALS - it never serializes.
+
+        Measuring inline cost 6.8 ms of the user's own latency per model step
+        on a real 1.8 MB conversation; handing off costs 0.03 ms.
+        """
         src = _MCP_AGENT.read_text(encoding="utf-8")
         helper = src.split("def _model_step(", 1)[1].split("\n    def ", 1)[0]
-        for needed in ("_context_measure(", "_context_log_line(", "_context_publish_gauge("):
-            self.assertIn(needed, helper)
+        self.assertIn("_context_measure_async(", helper)
+        for banned in ("_context_measure(", "_context_log_line(",
+                       "_context_publish_gauge("):
+            self.assertNotIn(banned, helper,
+                             "synchronous measurement is back on the hot path")
+
+    def test_EVERY_surface_reports_through_the_one_door(self):
+        """One-shot, Multi-Turn and ACPX - Angela's "EVERYWHERE"."""
+        base_src = _CHAINS_BASE.read_text(encoding="utf-8")
+        self.assertIn("def on_chat_model_start(", base_src)
+        self.assertIn("_context_measure_async(", base_src)
+        self.assertIn("source='one-shot'", base_src)
+
+        acpx_src = _ACPX_RUNTIME.read_text(encoding="utf-8")
+        self.assertIn("measure_async", acpx_src)
+        self.assertIn('source="acpx"', acpx_src)
+
+        self.assertIn('source="multi-turn"', _MCP_AGENT.read_text(encoding="utf-8"))
+
+    def test_the_gauge_sink_is_registered_for_EVERY_request(self):
+        """It used to sit inside ``if multi_turn_enabled:``, so a One-Shot
+        question registered no sink and the ring stayed frozen on whatever the
+        last Multi-Turn request had left there."""
+        src = _CONSUMERS.read_text(encoding="utf-8")
+        registration = src.index("register_gauge_sink(broker_key")
+        multi_turn_only = src.index("Self-healing LIVE status broadcaster")
+        self.assertLess(
+            registration, multi_turn_only,
+            "the gauge sink must be registered BEFORE (and outside) the "
+            "Multi-Turn-only block",
+        )
+        self.assertIn("bind_user(broker_key)", src)
+        self.assertIn("unbind_user(", src)
+
+    def test_the_row_carries_a_legend_so_it_is_not_a_mystery(self):
+        js = _GAUGE_JS.read_text(encoding="utf-8")
+        self.assertIn("ctxg-title", js)
+        self.assertIn("'CONTEXT'", js)
+        self.assertIn("titleSub", js)
+        css = (_AGENT_DIR / "static" / "agent" / "css"
+               / "context_gauge.css").read_text(encoding="utf-8")
+        self.assertIn(".ctxg-title", css)
+        self.assertIn(".ctxg-title-sub", css)
 
     def test_the_loop_and_prefix_boundaries_are_recorded(self):
         src = _MCP_AGENT.read_text(encoding="utf-8")

@@ -449,3 +449,6 @@ Tlamatini/agent/agents/pdfer/_art/
 # first and its contents second — both lines are required.
 !Tlamatini/agent/agents/esp32er/ESP32TemplateProject/lib/
 !Tlamatini/agent/agents/esp32er/ESP32TemplateProject/lib/**
+ 
+# Runtime artifact: the port the window-test-screen panel is listening on. 
+.claude/skills/tlamatini-daily-chat-test/harness/window-test-screen.port

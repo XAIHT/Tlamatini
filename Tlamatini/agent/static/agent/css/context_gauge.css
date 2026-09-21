@@ -41,6 +41,41 @@
     display: flex;
 }
 
+/* ── the legend: what IS this row? ────────────────────────────────── */
+/* A number with no name is a puzzle. The row says what it is before it
+   says how big it is, and the second line names which call produced the
+   reading (one-shot / multi-turn / acpx). */
+.ctxg-title {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding-right: 9px;
+    margin-right: 3px;
+    border-right: 1px solid rgba(255, 255, 255, 0.10);
+    cursor: help;
+}
+
+.ctxg-title-main {
+    color: var(--tlm-dlg-text, #f0f1f7);
+    font-size: 9.5px;
+    font-weight: 800;
+    letter-spacing: 0.13em;
+    line-height: 1.1;
+    white-space: nowrap;
+}
+
+.ctxg-title-sub {
+    max-width: 130px;
+    overflow: hidden;
+    color: var(--tlm-dlg-body, #c1c5d0);
+    font-size: 9px;
+    line-height: 1.2;
+    opacity: 0.7;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 /* ── the ring ─────────────────────────────────────────────────────── */
 .ctxg-ring {
     flex: 0 0 auto;
@@ -176,6 +211,10 @@
 }
 
 /* ── the four zones ───────────────────────────────────────────────── */
+/* IDLE - on screen from page load, before anything has been measured.
+   Deliberately colourless: the row is present and named, but it is not
+   claiming a reading it does not have. */
+#context-gauge-row[data-zone="idle"]  { --ctxg-zone: #6f7f9c; }
 #context-gauge-row[data-zone="green"] { --ctxg-zone: #35c08a; }
 #context-gauge-row[data-zone="amber"] { --ctxg-zone: #e0b341; }
 #context-gauge-row[data-zone="red"]   { --ctxg-zone: #e07a3f; }

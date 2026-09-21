@@ -66,8 +66,8 @@
         return el;
     }
 
-    // Built once, on the first frame — never on page load, so a session
-    // that never measures anything pays nothing at all.
+    // Built once, at page load (Angela, 2026-09-21: the row must be on screen
+    // from the moment the chat opens, not only after the first measurement).
     function build(row) {
         var ring = svg('svg', {
             'class': 'ctxg-ring',
@@ -122,6 +122,24 @@
         streams.appendChild(bar);
         streams.appendChild(nodes.streamsLabel);
 
+        // THE LEGEND, at the far left of the line (Angela, 2026-09-21):
+        // "the user doesn't know what the fuck that graph is". A number with
+        // no name is a puzzle, not information — so the row says what it is
+        // before it says how big it is, and the second line names WHICH call
+        // produced the reading (one-shot / multi-turn / acpx).
+        nodes.title = div('ctxg-title');
+        var titleMain = div('ctxg-title-main');
+        titleMain.textContent = 'CONTEXT';
+        nodes.titleSub = div('ctxg-title-sub');
+        nodes.titleSub.textContent = 'sent to the model';
+        nodes.title.appendChild(titleMain);
+        nodes.title.appendChild(nodes.titleSub);
+        nodes.title.title = 'How much conversation Tlamatini is sending to the '
+            + 'model on this request: the system prompt, the bound tools, the '
+            + 'chat history and the tool loop. Bytes are measured; tokens and '
+            + 'the percentage are estimates.';
+
+        row.appendChild(nodes.title);
         row.appendChild(ring);
         row.appendChild(legend);
         row.appendChild(nodes.zoneWord);
@@ -200,6 +218,14 @@
 
         nodes.zoneWord.textContent = zone.toUpperCase();
 
+        // Name WHICH call this reading came from, so a moving ring is
+        // explainable rather than mysterious.
+        var source = String(detail.source || 'model');
+        var when = String(detail.label || '');
+        nodes.titleSub.textContent = when ? (source + ' · ' + when) : source;
+        nodes.titleSub.title = 'Last measured on a ' + source + ' call'
+            + (when ? (' while ' + when) : '');
+
         var denominator = total > 0 ? total : 1;
         nodes.segPrefix.style.width = ((prefix / denominator) * 100).toFixed(2) + '%';
         nodes.segHistory.style.width = ((hist / denominator) * 100).toFixed(2) + '%';
@@ -211,6 +237,52 @@
 
         history.push(total);
         renderSparkline(Number(detail.history_turns) || DEFAULT_HISTORY);
+    }
+
+    // ── ALWAYS ON SCREEN ──────────────────────────────────────────────────
+    // Angela, 2026-09-21: "make the graph stay always visible and showing
+    // always since the page opens".
+    //
+    // So the row is built and shown at load, in an honest IDLE state: nothing
+    // has been measured yet, so it SAYS so. It deliberately does NOT draw a
+    // zero — the next request is never 0 bytes, and a fabricated reading is
+    // worse than a missing one. The first real frame replaces every field.
+    function bootIdle() {
+        var row = document.getElementById(ROW_ID);
+        if (!row) return;
+        if (!built) build(row);
+
+        row.setAttribute('data-zone', 'idle');
+        row.classList.add('ctxg-visible');
+
+        nodes.ringValue.setAttribute('stroke-dashoffset', RING_CIRCUMFERENCE);
+        nodes.ringPct.textContent = '--';
+        nodes.bytes.textContent = '--';
+        nodes.bytes.title = 'Nothing has been measured yet on this page.';
+        nodes.tokens.textContent = 'waiting for the first request';
+        nodes.tokens.title = 'The gauge fills the moment Tlamatini builds a '
+            + 'request for the model.';
+        nodes.zoneWord.textContent = 'IDLE';
+        nodes.titleSub.textContent = 'sent to the model';
+        nodes.streamsLabel.textContent = 'prefix · history · tool loop';
+    }
+
+    function bootSafely() {
+        try {
+            bootIdle();
+        } catch (err) {
+            // The gauge must never cost the chat page. Stay silent on screen
+            // and explain once in the console.
+            if (window.console && window.console.warn) {
+                window.console.warn('[context-gauge] idle boot skipped:', err);
+            }
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', bootSafely);
+    } else {
+        bootSafely();
     }
 
     document.addEventListener(EVENT_NAME, function (event) {

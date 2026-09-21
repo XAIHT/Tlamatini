@@ -708,6 +708,8 @@ class AgentConsumer(AsyncWebsocketConsumer):
         broker = None
         broker_key = conversation_user.id
         status_registered = False
+        gauge_registered = False
+        _gauge_user_token = None
         # Per-line log attribution (Angela, 2026-08-13). receive() already bound
         # this task, and the whole synchronous executor inherits it through
         # sync_to_async -- this re-bind is the safety net for any path that
@@ -733,6 +735,41 @@ class AgentConsumer(AsyncWebsocketConsumer):
             # Exec report and Ask-Execs are both multi-turn-only by design.
             exec_report_enabled = bool(exec_report_enabled) and bool(multi_turn_enabled)
             ask_execs_enabled = bool(ask_execs_enabled) and bool(multi_turn_enabled)
+
+            # ── Context-gauge sink — EVERY request, not just Multi-Turn ──
+            # (Angela, 2026-09-21: "MAKE THAT COUNT FOR EVERY CALL TO A MODEL,
+            # EVERYWHERE: ONE-SHOT, ACPX, MULTI-TURN".)
+            #
+            # This used to live inside `if multi_turn_enabled:`, so a One-Shot
+            # question registered no sink, pushed no frame, and left the ring
+            # frozen on whatever the last Multi-Turn request had put there — a
+            # gauge showing a stale number is worse than no gauge. It is now
+            # registered unconditionally, and the user id is BOUND so a chain
+            # callback deep inside LangChain can report without new plumbing.
+            #
+            # The exact byte count can only come from the server: the page
+            # never sees the system prompt, the history as sent, or the bound
+            # tool schemas. One-way, fire-and-forget, never awaited.
+            from .context_governor import bind_user, register_gauge_sink
+            _gauge_loop = asyncio.get_running_loop()
+            _gauge_channel_layer = self.channel_layer
+            _gauge_room = self.room_group_name
+
+            def _emit_context_gauge(detail):
+                try:
+                    asyncio.run_coroutine_threadsafe(
+                        _gauge_channel_layer.group_send(
+                            _gauge_room,
+                            {'type': 'context_gauge', 'detail': detail},
+                        ),
+                        _gauge_loop,
+                    )
+                except Exception as _ge:  # noqa: BLE001 — the gauge is best-effort
+                    print(f"--- [CONTEXT] failed to emit gauge frame: {_ge}")
+
+            register_gauge_sink(broker_key, _emit_context_gauge)
+            gauge_registered = True
+            _gauge_user_token = bind_user(broker_key)
 
             # ── Self-healing LIVE status broadcaster (Angela, 2026-07-06) ──
             # The multi-turn executor's self-healing invoker pushes first-person
@@ -766,31 +803,6 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 # instant the user cancels (identity-guarded, so a second tab of the
                 # same user keeps its own live emitter).
                 self._status_emit = _emit_status
-
-                # ── Context-gauge sink (Angela, 2026-09-20) ──
-                # The EXACT byte count can only come from the server: the page
-                # never sees the system prompt, the chat history as sent, or
-                # the bound tool schemas. Same shape as the status broadcaster
-                # directly above — a fire-and-forget emit scheduled onto THIS
-                # event loop, keyed by user id, looked up from the executor's
-                # worker thread. ONE-WAY and NEVER awaited: the gauge must not
-                # be able to slow a turn down. If it fails the turn continues
-                # and the ring simply keeps its last value.
-                from .context_governor import register_gauge_sink
-
-                def _emit_context_gauge(detail):
-                    try:
-                        asyncio.run_coroutine_threadsafe(
-                            _status_channel_layer.group_send(
-                                _status_room,
-                                {'type': 'context_gauge', 'detail': detail},
-                            ),
-                            _status_loop,
-                        )
-                    except Exception as _ge:  # noqa: BLE001 — the gauge is best-effort
-                        print(f"--- [CONTEXT] failed to emit gauge frame: {_ge}")
-
-                register_gauge_sink(broker_key, _emit_context_gauge)
 
             # ── Ask-Execs broker ──
             # The multi-turn tool executor runs in a worker thread and must be
@@ -935,12 +947,13 @@ class AgentConsumer(AsyncWebsocketConsumer):
             if status_registered:
                 from .self_healing import unregister_status_broadcaster
                 unregister_status_broadcaster(broker_key, _emit_status)
-                # The gauge sink is registered in the SAME block as the status
-                # broadcaster, so this flag covers both. Pass the specific emit
-                # so a finishing request cannot tear down a concurrent
-                # same-user request's live sink (two tabs share one user id).
-                from .context_governor import unregister_gauge_sink
+            if gauge_registered:
+                # Pass the SPECIFIC emit so a finishing request cannot tear
+                # down a concurrent same-user request's live sink — two browser
+                # tabs share one user id.
+                from .context_governor import unbind_user, unregister_gauge_sink
                 unregister_gauge_sink(broker_key, _emit_context_gauge)
+                unbind_user(_gauge_user_token)
             self._status_emit = None
             self._active_run = None
             self._active_broker = None
