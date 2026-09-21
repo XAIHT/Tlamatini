@@ -1589,7 +1589,14 @@ def _engine_argv(tools: dict, config: dict, tex_name: str) -> list:
 
 def _latexmk_argv(tools: dict, config: dict, tex_name: str) -> list:
     engine_flag = {"pdflatex": "-pdf", "xelatex": "-pdfxe", "lualatex": "-pdflua"}[tools["engine"]]
-    argv = [tools["latexmk"], engine_flag, "-interaction=nonstopmode", "-file-line-error", "-halt-on-error"]
+    # NO -halt-on-error. nonstopmode already stops LaTeX hanging on an error;
+    # halting additionally aborts on a RECOVERABLE one, so latexmk emitted no PDF
+    # for documents the built-in loop (which never passed the flag) typesets fine.
+    # The caller then blamed latexmk itself (missing Perl, a broken .latexmkrc) and
+    # rebuilt from scratch -- wasted once per engine, with a diagnosis that was
+    # systematically wrong whenever the real fault lay in the document. Keep both
+    # paths failing alike: that is what makes "latexmk produced no PDF" truthful.
+    argv = [tools["latexmk"], engine_flag, "-interaction=nonstopmode", "-file-line-error"]
     if _as_bool(_cfg(config, "shell_escape", False), False):
         argv.append("-shell-escape")
     argv.append(tex_name)
@@ -3441,6 +3448,120 @@ def _repair_deprecated_font_switches(source: str, trace: list) -> str:
         "; ".join(changed), trace)
 
 
+# ---------------------------------------------------------------------------
+# A LEADING "[" IS SWALLOWED AS AN OPTIONAL ARGUMENT
+# ---------------------------------------------------------------------------
+# Several commands people write at the START of a table row or a new line take
+# an OPTIONAL DIMENSION in brackets: the line break itself (\\[<extra space>])
+# and booktabs' \toprule[<width>] / \midrule[...] / \bottomrule[...] /
+# \cmidrule[...]. So a cell or a line whose text merely BEGINS with "[" is
+# eaten as that argument, and TeX answers with the famously opaque trio
+# "Missing number, treated as zero" + "Illegal unit of measure (pt inserted)"
+# + "Missing = inserted for \ifdim" -- naming the line, never the cause.
+#
+# WARNING: THIS IS NOT AN EXOTIC CASE. It is how Angela's forensic report failed
+# on 2026-09-20: rows reading "[CTRL+C] email-cancellation framing" (after
+# \midrule) and "[NEW ROLE] reassignment" (after \\) produced 11 errors; the
+# ladder then burned both spare engines and blocked ~10 minutes on the model
+# rung until the run was killed -- while a perfectly readable 11-page PDF sat
+# on disk the whole time. Bracing the bracket by hand fixed it in one pass, 0
+# errors. That is exactly the repair this rule makes, deterministically, with
+# no compiler and no model, before the first build.
+_OPTIONAL_DIMEN_HOSTS = (
+    r"\\\\\*?"                                       # \\ and \\*  (line break)
+    r"|\\(?:toprule|midrule|bottomrule|cmidrule)\b"  # booktabs rules
+)
+
+# "[" reached after the host command plus at most ONE newline -- the same
+# whitespace TeX itself skips before looking for an optional argument. A blank
+# line ends the paragraph, so it can never be part of the argument scan.
+_LEADING_BRACKET_RE = re.compile(
+    r"(?P<host>" + _OPTIONAL_DIMEN_HOSTS + r")"
+    r"(?P<gap>[ \t]*\r?\n?[ \t]*)"
+    r"\[(?P<arg>[^\]\n]*)\]"
+)
+
+# TeX's <dimen>: an optional sign, then a factor with a unit, or a length
+# macro, or a factor scaling a length macro. Anything matching this is a REAL
+# optional argument the author meant -- it must never be touched.
+_TEX_DIMEN_RE = re.compile(
+    r"""^\s*[-+]?\s*
+        (?:
+            (?:\d+(?:[.,]\d*)?|[.,]\d+)\s*
+            (?:pt|pc|in|bp|cm|mm|dd|cc|sp|ex|em|mu|\\[A-Za-z@]+)
+          | \\[A-Za-z@]+
+        )
+        \s*$""",
+    re.VERBOSE,
+)
+
+# Regions LaTeX reproduces character-for-character: a "[" in here is the
+# author's data, and rewriting it would corrupt the rendered output.
+_LITERAL_REGION_RE = re.compile(
+    r"\\begin\s*\{(?P<env>verbatim\*?|lstlisting|minted|Verbatim|alltt)\}"
+    r".*?\\end\s*\{(?P=env)\}"
+    r"|\\verb\*?(?P<delim>[^A-Za-z*\s])(?:(?!(?P=delim)).)*(?P=delim)",
+    re.DOTALL,
+)
+
+
+def _literal_regions(source: str) -> list:
+    """(start, end) spans that must be left byte-for-byte alone.
+
+    Verbatim-like environments and inline verb runs, plus every comment tail --
+    a "[" inside any of them is not an optional argument and never was.
+    """
+    spans = [match.span() for match in _LITERAL_REGION_RE.finditer(source)]
+    offset = 0
+    for line in source.splitlines(keepends=True):
+        index, cut = 0, None
+        while index < len(line):
+            if line[index] == "\\":
+                index += 2
+                continue
+            if line[index] == "%":
+                cut = index
+                break
+            index += 1
+        if cut is not None:
+            spans.append((offset + cut, offset + len(line)))
+        offset += len(line)
+    return spans
+
+
+def _repair_leading_bracket(source: str, trace: list) -> str:
+    r"""Brace a "[" that the preceding command would otherwise eat as its
+    optional dimension argument: ``\\``, ``\midrule`` and their booktabs kin.
+
+    The bracket is wrapped as ``{[}`` rather than padding the command with
+    ``{}``: one uniform repair that is valid after EVERY such command, renders
+    byte-identically, and leaves the author's own words untouched.
+    """
+    if "[" not in source:
+        return source
+    spans = _literal_regions(source)
+    fixed = []
+
+    def _replace(match):
+        start = match.start()
+        for begin, end in spans:
+            if begin <= start < end:
+                return match.group(0)
+        argument = match.group("arg")
+        if _TEX_DIMEN_RE.match(argument):
+            return match.group(0)          # a real dimension -- the author meant it
+        fixed.append("%s[%s]" % (match.group("host").strip(), argument[:24]))
+        return "%s%s{[}%s]" % (match.group("host"), match.group("gap"), argument)
+
+    candidate = _LEADING_BRACKET_RE.sub(_replace, source)
+    if not fixed:
+        return source
+    return _accept_if_not_worse(
+        source, candidate, "rules", "leading-bracket",
+        "braced %d '[' that would be swallowed as an optional dimension "
+        "argument (%s)" % (len(fixed), "; ".join(fixed[:3])), trace)
+
+
 def _repair_display_math(source: str, trace: list) -> str:
     """``$$ ... $$`` -> ``\\[ ... \\]``.
 
@@ -3504,6 +3625,7 @@ def _repair_rules(source: str, trace: list) -> str:
     working = _repair_smart_characters(source, trace)
     working = _repair_deprecated_environments(working, trace)
     working = _repair_deprecated_font_switches(working, trace)
+    working = _repair_leading_bracket(working, trace)
     working = _repair_display_math(working, trace)
     working = _repair_duplicate_labels(working, trace)
     working = _repair_package_conflicts(working, trace)

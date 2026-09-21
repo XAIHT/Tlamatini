@@ -246,6 +246,81 @@ class RuleRepairTests(unittest.TestCase):
         self.assertIn("\\label{x-dup2}", fixed)
 
 
+class LeadingBracketRepairTests(unittest.TestCase):
+    r"""A "[" that opens a line or a table cell is eaten as an optional argument.
+
+    Angela's forensic report (C:\Tlamatini, 2026-09-20 19:46) failed on exactly
+    two rows -- "[CTRL+C] ..." after \midrule and "[NEW ROLE] ..." after \\ --
+    for 11 errors. The ladder then burned both spare engines and blocked ~10
+    minutes on the model rung until the run was killed, while a readable
+    11-page PDF sat on disk. Verified against real MiKTeX pdflatex: 11 errors
+    before, 0 after.
+    """
+
+    def test_bracket_after_linebreak_is_braced(self):
+        source = ("A row \\\\\n"
+                  "[NEW ROLE] reassignment & overwrites identity \\\\\n")
+        fixed = LX._repair_leading_bracket(source, [])
+        self.assertIn("{[}NEW ROLE]", fixed)
+
+    def test_bracket_after_midrule_is_braced(self):
+        source = ("\\midrule\n"
+                  "[CTRL+C] email-cancellation framing & fake authority \\\\\n")
+        fixed = LX._repair_leading_bracket(source, [])
+        self.assertIn("{[}CTRL+C]", fixed)
+
+    def test_every_booktabs_rule_is_covered(self):
+        for rule in ("toprule", "midrule", "bottomrule", "cmidrule"):
+            source = "\\%s\n[TAG] cell & other \\\\\n" % rule
+            fixed = LX._repair_leading_bracket(source, [])
+            self.assertIn("{[}TAG]", fixed, "\\%s not covered" % rule)
+
+    def test_a_real_dimension_argument_is_never_touched(self):
+        """The whole risk of this rule: eating a legitimate optional argument."""
+        for dimension in ("1em", "0pt", "-2ex", ".5\\baselineskip",
+                          "2\\baselineskip", "\\smallskipamount", "1.5cm"):
+            source = "text \\\\[%s]\nmore\n" % dimension
+            trace = []
+            self.assertEqual(
+                LX._repair_leading_bracket(source, trace), source,
+                "rewrote a real dimension: [%s]" % dimension)
+
+    def test_starred_linebreak_is_covered(self):
+        source = "A row \\\\*\n[TAG] cell\n"
+        self.assertIn("{[}TAG]", LX._repair_leading_bracket(source, []))
+
+    def test_verbatim_content_is_left_alone(self):
+        source = ("\\begin{verbatim}\n"
+                  "\\\\\n[NOT AN ARGUMENT] literal text\n"
+                  "\\end{verbatim}\n")
+        self.assertEqual(LX._repair_leading_bracket(source, []), source)
+
+    def test_a_commented_out_line_is_left_alone(self):
+        source = "% \\\\ [NOT AN ARGUMENT] this line is a comment\n"
+        self.assertEqual(LX._repair_leading_bracket(source, []), source)
+
+    def test_a_blank_line_ends_the_argument_scan(self):
+        """A paragraph break means the "[" can no longer be an optional arg."""
+        source = "A row \\\\\n\n[Bracketed] starts a new paragraph\n"
+        self.assertEqual(LX._repair_leading_bracket(source, []), source)
+
+    def test_an_ordinary_bracket_mid_sentence_is_left_alone(self):
+        source = "See the note [3] for details, and [CTRL+C] inline too.\n"
+        self.assertEqual(LX._repair_leading_bracket(source, []), source)
+
+    def test_the_rule_is_wired_into_rung_three(self):
+        """A rule nobody calls is a rule that does not exist."""
+        source = ("\\documentclass{article}\n\\begin{document}\n"
+                  "row \\\\\n[CTRL+C] cell\n\\end{document}\n")
+        self.assertIn("{[}CTRL+C]", LX._repair_rules(source, []))
+
+    def test_the_repair_is_recorded_in_the_trace(self):
+        trace = []
+        LX._repair_leading_bracket("row \\\\\n[CTRL+C] cell\n", trace)
+        entries = [r for r in trace if r["action"] == "leading-bracket"]
+        self.assertTrue(entries and entries[-1]["applied"])
+
+
 class LogDirectedRepairTests(unittest.TestCase):
     def test_undefined_control_sequence_adds_its_package(self):
         source = ("\\documentclass{article}\n\\begin{document}\n"

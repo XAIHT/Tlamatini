@@ -953,13 +953,41 @@ class RegistryIntegrationTests(unittest.TestCase):
         self.assertIn('status', contract.parametrizer_fields)
 
     def test_parametrizer_field_lists_agree_across_all_three_registries(self):
+        """LaTeXer must really reach Parametrizer's parser registry.
+
+        This used to assert the literal "'latexer'," appeared in parametrizer.py.
+        That stopped being the mechanism: SECTION_AGENT_TYPES is now DERIVED --
+        `[name for name, spec in load_catalog().items() if spec["output_fields"]]`
+        -- so the literal is gone by design and the old assertion failed while
+        the wiring was perfectly healthy. Pin the derivation instead, because a
+        STALE flow_catalog.json is the failure that would really break routing.
+        """
+        import json
         from agent.services.agent_contracts import _PARAMETRIZER_OUTPUT_FIELDS
         from agent.views import PARAMETRIZER_SOURCE_OUTPUT_FIELDS
         registered = tuple(_PARAMETRIZER_OUTPUT_FIELDS['latexer'])
         self.assertEqual(tuple(PARAMETRIZER_SOURCE_OUTPUT_FIELDS['latexer']), registered)
-        parametrizer = _read(_REPO_AGENT_DIR, 'agents', 'parametrizer', 'parametrizer.py')
-        self.assertIn("'latexer',", parametrizer,
-                      "'latexer' is missing from SECTION_AGENT_TYPES")
+
+        catalog_path = os.path.join(_REPO_AGENT_DIR, 'agents', 'flowcreator',
+                                    'flow_catalog.json')
+        catalog = json.loads(_read(catalog_path))['agents']
+        self.assertIn('latexer', catalog,
+                      'latexer is absent from the generated flow catalog -- '
+                      'run: python scripts/update_flow_catalog.py')
+        shipped = tuple(catalog['latexer']['output_fields'])
+        # Non-empty output_fields is LITERALLY the condition SECTION_AGENT_TYPES
+        # applies, so this is what decides whether a parser is built at all.
+        self.assertTrue(shipped, 'latexer has no output_fields -> Parametrizer '
+                                 'builds no parser for INI_SECTION_LATEXER')
+        self.assertEqual(shipped, registered,
+                         'flow_catalog.json disagrees with agent_contracts -- the '
+                         'catalog is STALE; run: python scripts/update_flow_catalog.py')
+
+        parametrizer = _read(_REPO_AGENT_DIR, 'agents', 'parametrizer',
+                             'parametrizer.py')
+        self.assertIn('load_catalog()', parametrizer,
+                      'Parametrizer no longer derives SECTION_AGENT_TYPES from the '
+                      'catalog -- re-point this test at whatever replaced it')
 
     def test_exec_report_captures_latexer(self):
         from agent.mcp_agent import _EXEC_REPORT_TOOLS, _resolve_exec_report_spec
@@ -1134,8 +1162,23 @@ class SourceContractTests(unittest.TestCase):
         hypervisor = _read(_REPO_AGENT_DIR, 'agents', 'flowhypervisor',
                            'monitoring-prompt.pmt')
         self.assertIn('LATEXER SPECIAL NOTES', hypervisor)
-        # The watchdog must be told that repeated passes are CORRECT, not a stuck loop.
-        self.assertIn('MULTIPLE COMPILER PASSES ARE CORRECT', hypervisor)
+
+        # The watchdog MUST be told that repeated compiler passes are legitimate,
+        # or it flags a healthy multi-pass build as a stuck loop. This used to
+        # assert one exact sentence ("MULTIPLE COMPILER PASSES ARE CORRECT");
+        # the block was later rewritten into much richer prose and the literal
+        # went red while the guidance was actually BETTER. Assert the meaning,
+        # scoped to LaTeXer's own block so another agent's note cannot satisfy it.
+        block = hypervisor.split('LATEXER SPECIAL NOTES', 1)[1]
+        block = re.split(r'\n[A-Z][A-Z0-9 \-]+ SPECIAL NOTES', block, maxsplit=1)[0]
+        lowered = block.lower()
+        self.assertIn('passes', lowered,
+                      'the LaTeXer watchdog block never mentions compiler passes')
+        self.assertTrue(
+            any(word in lowered for word in
+                ('expected', 'normal', 'correct', 'legitimate', 'not a failure')),
+            'the LaTeXer watchdog block mentions passes but never says they are '
+            'legitimate -- the watchdog will flag a healthy multi-pass build')
 
 
 # =====================================================================

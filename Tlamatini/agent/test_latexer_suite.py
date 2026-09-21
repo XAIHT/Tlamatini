@@ -1113,9 +1113,35 @@ class LatexmkArgvTests(unittest.TestCase):
         argv = _m()._latexmk_argv(_tools(latexmk="lmk"), {}, "d.tex")
         self.assertIn("-interaction=nonstopmode", argv)
 
-    def test_halt_on_error_is_present(self):
+    def test_halt_on_error_is_ABSENT(self):
+        """latexmk must fail for the SAME reasons the built-in loop fails.
+
+        -interaction=nonstopmode already stops LaTeX hanging on an error;
+        -halt-on-error additionally aborts on a RECOVERABLE one, so latexmk
+        emitted NO PDF for documents the built-in loop (which never passed
+        the flag) typesets fine. _compile then blamed latexmk itself -- its
+        comment says "missing Perl, a broken ~/.latexmkrc" -- and rebuilt
+        from scratch. Measured on Angela's forensic report (2026-09-20): two
+        wasted latexmk invocations per engine and a diagnosis that was
+        systematically wrong whenever the real fault lay in the document.
+        Keeping both paths equally tolerant is what makes "latexmk produced
+        no PDF" a truthful statement about latexmk.
+        """
         argv = _m()._latexmk_argv(_tools(latexmk="lmk"), {}, "d.tex")
-        self.assertIn("-halt-on-error", argv)
+        self.assertNotIn("-halt-on-error", argv)
+
+    def test_latexmk_is_no_less_tolerant_than_the_builtin_loop(self):
+        """The exact invariant: no abort flag latexmk has that the loop lacks."""
+        tools = _tools(latexmk="lmk")
+        latexmk = _m()._latexmk_argv(tools, {}, "d.tex")
+        builtin = _m()._engine_argv(tools, {}, "d.tex")
+        for flag in ("-halt-on-error",):
+            if flag in latexmk:
+                self.assertIn(
+                    flag, builtin,
+                    "latexmk aborts on %s but the built-in fallback does not, so "
+                    "latexmk will report no PDF for documents the fallback builds "
+                    "fine -- and _compile will blame latexmk for it." % flag)
 
     def test_shell_escape_is_opt_in_here_too(self):
         argv = _m()._latexmk_argv(_tools(latexmk="lmk"), {}, "d.tex")
