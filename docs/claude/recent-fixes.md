@@ -16,6 +16,82 @@
 
 ---
 
+## 2026-09-22 — A RESTORED CONTEXT MUST LOOK AS BUSY AS IT IS (the missing spinner)
+
+**Angela's report.** Load a context (directory / file / *Use as context*), close the
+browser, restart Tlamatini, log in again and open the chat page: the context starts
+loading again, the Send button correctly reads **Cancel** — and **the spinner never
+appears**, so the GUI looks completely idle while it is in fact frozen. Loading the
+very same context from the **Context** menu shows the spinner normally.
+
+**ROOT CAUSE — a RENDER was deleting a live UI widget.** `#wait-spinner` is a **child
+of `#chat-log`**, and `agent_page_chat.js::renderInitialMessages()` wipes `#chat-log`
+with `innerHTML = ''`. On the restore path that wipe lands **after** the spinner was
+created, because the two happen at very different moments in the page's life:
+
+| when | file | what happens |
+|---|---|---|
+| socket opens | `agent_page_state.js` | frames arriving before chat.js binds `.onmessage` are buffered |
+| **script-parse time** | `agent_page_chat.js` | drains that buffer → `session-restored {loading:true}` → `disableControlsDuringOperation()` → **SPINNER APPENDED** |
+| **`window.onload`** (after every image/font/stylesheet — much later) | `agent_page_init.js` | `renderInitialMessages()` → `innerHTML = ''` → **SPINNER DESTROYED** |
+
+`disableControlsDuringOperation()` is idempotent — its spinner is guarded by
+`if (!document.getElementById(spinnerId))` — so **nothing ever put it back**. The
+button stayed 'Cancel' and every menu stayed greyed (those live outside `#chat-log`),
+which is why the page was genuinely frozen while looking perfectly idle: the worst
+combination available, and indistinguishable from a hung app.
+
+**THE FIX — two layers, both deliberate, do NOT drop either.**
+
+1. **`renderInitialMessages()` captures the live spinner before the wipe and
+   re-appends it after.** A history render is a RENDER: it repaints old rows and must
+   not delete a live widget. This is the honest repair of the defect.
+2. **`window.onload` RE-ASSERTS the busy UI as its LAST statement**, guarded on
+   `inLongOperation === true || lapseLoadingContext === true`. That handler is the
+   layer that knows the busy latch, and *everything* it does runs against a page that
+   may already be busy. Both calls are idempotent and both flags start `false` on
+   every page load, so it is a strict no-op on an idle page and can never freeze one.
+   ⚠️ It must stay **last** — anything running after it could undo it, which is the
+   exact failure class being fixed.
+
+**MEASURED, in the real GUI, in BOTH runtime modes** (headed Chrome, real login,
+server restarted between phases so `global_state` really is empty and the consumer
+really takes the `loading=True` path). The pre-fix JS was served by route
+interception from `git HEAD`, so nothing on disk was touched:
+
+| mode | pre-fix | post-fix |
+|---|---|---|
+| SOURCE (`DEBUG=1`, dev static handler → source tree) | 12/12 samples `busy=True spinner=False` | 12/12 `busy=True spinner=True` |
+| RELEASE (`DEBUG=0`, WhiteNoise → collected `staticfiles/`) = the frozen web path | same failure | same pass |
+
+⚠️ **THE TWO MODES SERVE DIFFERENT FILES — check both.** Source mode serves the
+source tree; a frozen install serves the **collected** `staticfiles/` tree bundled
+next to the exe. A fix that exists only in the source tree is invisible to a frozen
+build until `collectstatic` runs. `build.py` runs `collectstatic --noinput --clear`
+on every build and **aborts if it fails**, so the fix does reach a real build — and
+`agent/test_context_restore_spinner.py::test_collected_static_carries_the_same_fix`
+pins the collected copy so a stale one cannot ship the bug while the source looks
+fixed.
+
+Coverage: `agent/test_context_restore_spinner.py` (5 contract tests, verified to go
+RED against `git HEAD`) + the VISIBLE runner
+`.claude/skills/tlamatini-daily-chat-test/harness/context_restore_spinner_visible.py`
+(`--release` runs the frozen web path). Contract: `docs/claude/frontend.md` →
+*The busy UI on a restored context*.
+
+⚠️ **A NOTE ON THE EVIDENCE, because it nearly lied twice.** The first runner
+photographed the desktop *after* its polling loop, by which time the context had
+finished loading — a true measurement with a picture of the wrong moment. The second
+verified focus and then shot, but Shoter has to spawn a process first and a console
+busy printing took the z-order back in that gap. The runner now shoots inside the
+busy window, raises the browser with **Windower**, confirms from the page itself
+(`document.hasFocus()`), **pins the window topmost through the capture**, re-checks
+afterwards, and renames anything it could not confirm to `*_UNVERIFIED`. ⚠️ Never
+match the chat window by its title: `rotateTitle()` rewrites `document.title` on a
+timer, so it is a moving target (Windower was once handed `'X amatini Tl'`).
+
+---
+
 ## 2026-09-20 — Complete model selection and source/frozen runtime execution
 
 Config → Models now exposes 38 model/engine/voice settings in six searchable

@@ -2211,8 +2211,30 @@ function _agentPurpose(canonicalName) {
     return purposes[canonicalName] || canonicalName;
 }
 
+// A HISTORY RENDER MUST NOT DELETE THE LIVE BUSY SPINNER (found 2026-09-22).
+//
+// `#wait-spinner` is a CHILD of `#chat-log`, and this function wipes
+// `#chat-log` wholesale. On an auto-restored context that wipe lands AFTER
+// the spinner was created, so it silently destroyed it:
+//
+//   state.js -> opens the socket, buffers the frames that arrive at once
+//   chat.js  -> drains the buffer -> `session-restored` {loading: true}
+//               -> disableControlsDuringOperation() -> SPINNER APPENDED
+//   init.js  -> window.onload -> renderInitialMessages() -> innerHTML = ''
+//               -> SPINNER GONE
+//
+// and because disableControlsDuringOperation() is idempotent (its spinner is
+// guarded by `if (!document.getElementById(spinnerId))`), nothing ever put it
+// back. The button still read 'Cancel' and every menu was still greyed, so
+// the page was genuinely frozen while LOOKING perfectly idle - the worst of
+// both worlds, and indistinguishable from a hung app.
+//
+// Detaching the spinner across the wipe keeps this function what its name
+// says it is: a RENDER. It repaints old rows and touches no live UI widget.
+// window.onload re-asserts the busy state afterwards as a second layer.
 function renderInitialMessages(messages) {
     if (!Array.isArray(messages)) return;
+    const liveSpinner = document.getElementById(spinnerId);
     chatLog.innerHTML = '';
     buildingInitial = true;
     for (const msg of messages) {
@@ -2220,6 +2242,11 @@ function renderInitialMessages(messages) {
         appendChatMessage(msg.username, msg.message, null, msg.timestamp);
     }
     buildingInitial = false;
+    // Put it back exactly where it was - a child of #chat-log - so a context
+    // that is still loading keeps SHOWING that it is still loading.
+    if (liveSpinner && !document.getElementById(spinnerId)) {
+        chatLog.appendChild(liveSpinner);
+    }
     chatLog.scrollTop = chatLog.scrollHeight;
 }
 

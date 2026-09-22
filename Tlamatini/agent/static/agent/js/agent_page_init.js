@@ -779,6 +779,31 @@ window.onload = () => {
 
     // Detect installed apps for "Open in..." dropdown
     detectInstalledApps();
+
+    // THE BUSY UI IS ASSERTED LONG BEFORE THIS EVENT FIRES - RE-ASSERT IT.
+    //
+    // A restored context starts rebuilding the instant the socket opens: the
+    // consumer sends `session-restored` with loading:true, and chat.js handles
+    // it at SCRIPT-PARSE time (draining the buffer agent_page_state.js filled).
+    // `window.onload` only fires once every image, font and stylesheet has
+    // landed - much later - so EVERYTHING above here runs against a page that
+    // is ALREADY busy. renderInitialMessages() in particular wipes #chat-log,
+    // which is exactly where the spinner lives.
+    //
+    // Without this, the logical state (inLongOperation / lapseLoadingContext)
+    // and the VISIBLE state disagreed: 'Cancel' button, greyed menus, read-only
+    // input - and no spinner anywhere. To the user that reads as a GUI that has
+    // simply stopped responding, which is the one thing a busy indicator exists
+    // to prevent. Re-asserting here makes the two agree again, so an
+    // auto-restored context looks identical to one loaded from the menu.
+    //
+    // Both calls are idempotent and both flags start false on every page load,
+    // so this is a strict no-op on an idle page - it can never freeze one.
+    if (inLongOperation === true || lapseLoadingContext === true) {
+        console.log('--- window.onload: an operation is already in flight - re-asserting the busy UI (spinner + Cancel).');
+        setTitleBusy(true);
+        disableControlsDuringOperation();
+    }
 };
 
 // ----------------------------------------------------------------
