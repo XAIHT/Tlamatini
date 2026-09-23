@@ -834,7 +834,7 @@ When the migrations finish and you have a superuser, run the server (chapter 7).
 
 ### Path B — Pre-built one-click installer (end users)
 
-Download the newest published release ZIP from **[Tlamatini Releases](https://github.com/XAIHT/Tlamatini/releases)** and unzip it (or use a `Tlamatini_Release_v1.64.0/` folder somebody handed you / you built — see Part VIII). This book currently documents **v1.64.0**: the annotated `v1.64.0` tag resolves to `64abcdd`, and subsequent source commits retain the bare runtime version `1.64.0`. The current source includes Video-Analyzer audio-track transcription and audiovisual summaries alongside the carried PDF canvas, visual agents, launcher repair, console shield and welcome-keyboard behavior. Runtime identity remains Git/build-derived. Then:
+Download the newest published release ZIP from **[Tlamatini Releases](https://github.com/XAIHT/Tlamatini/releases)** and unzip it (or use a `Tlamatini_Release_v1.65.4/` folder somebody handed you / you built — see Part VIII). This book currently documents **v1.65.4**: the annotated `v1.65.4` tag was created 2026-09-21, resolves to `b09c4ff`, and subsequent source commits retain the bare runtime version `1.65.4`. It is the **Latest** published release; a later `v1.65.5` tag exists in the repository with no published release attached. The `1.65.x` line is the context line — the context meter (`v1.65.0`), the Context Governor that measures the real request and never binds zero tools (`v1.65.2`), a LaTeXer repair for a leading brace being swallowed as an optional argument (`v1.65.3`) and the improved context gauge (`v1.65.4`) — carried on top of the Video-Analyzer audio-track transcription and audiovisual summaries of `v1.64.0`, the PDF canvas, visual agents, launcher repair, console shield and welcome-keyboard behavior. Runtime identity remains Git/build-derived. Then:
 
 1. Open the unzipped folder.
 2. Double-click **`Installer.exe`**.
@@ -2670,14 +2670,14 @@ Pre-releases use the standard SemVer suffixes — `2.0.0-alpha.1`, `2.0.0-beta.1
 
 ```powershell
 git status                                          # clean tree, on main
-git tag -a v1.64.0 -m "Release 1.64.0: <one-liner>"   # annotated tag
-git push origin v1.64.0
+git tag -a v1.65.4 -m "Release 1.65.4: <one-liner>"   # annotated tag
+git push origin v1.65.4
 python build.py
 python build_uninstaller.py
 python build_installer.py
 ```
 
-All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.64.0/`, named for the version so the file you hand to a user is unambiguous before they even unzip it. The current release is `v1.64.0`, so the bare runtime version resolves to `1.64.0`. Tlamatini deliberately never puts a `.devN`, `+gSHA` or `.dirty` suffix into its version string — it always reports the base tag, which is the designed behaviour described in `VERSIONING.md`. That is exactly why the five commands above start with `git status` on a clean tree: a release cut from a dirty tree would ship a version number that says nothing about what is actually inside it.
+All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.65.4/`, named for the version so the file you hand to a user is unambiguous before they even unzip it. The current release is `v1.65.4`, so the bare runtime version resolves to `1.65.4`. Tlamatini deliberately never puts a `.devN`, `+gSHA` or `.dirty` suffix into its version string — it always reports the base tag, which is the designed behaviour described in `VERSIONING.md`. That is exactly why the five commands above start with `git status` on a clean tree: a release cut from a dirty tree would ship a version number that says nothing about what is actually inside it.
 
 ### Where the version shows up in a running install
 
@@ -2685,8 +2685,8 @@ The build computes the version once and bakes it into four surfaces:
 
 - **`Tlamatini/agent/_version.py`** — generated at build time, gitignored, read at runtime by `agent.version.get_version()`. This is what every in-process surface reads.
 - **Win32 `VERSIONINFO`** — `Tlamatini.exe`, `Installer.exe`, and `Uninstaller.exe` all carry the version in their resource fork. Right-click the file → Properties → Details → ProductVersion.
-- **Release folder name** — `dist/Tlamatini_Release_v1.64.0/`.
-- **Runtime surfaces** — the About dialog renders `Tlamatini v{{ version }}` (Django context processor); after the release tag/build, the startup banner prints `--- [VERSION] Tlamatini 1.64.0` to both the console and `tlamatini.log`; `GET /agent/version/` returns `{"version":"1.64.0","commit":"abc1234","date":"…","source":"generated"}` as an **open** endpoint suitable for a health-check.
+- **Release folder name** — `dist/Tlamatini_Release_v1.65.4/`.
+- **Runtime surfaces** — the About dialog renders `Tlamatini v{{ version }}` (Django context processor); after the release tag/build, the startup banner prints `--- [VERSION] Tlamatini 1.65.4` to both the console and `tlamatini.log`; `GET /agent/version/` returns `{"version":"1.65.4","commit":"abc1234","date":"…","source":"generated"}` as an **open** endpoint suitable for a health-check.
 
 If the four surfaces ever disagree, your build was run with a stale `$env:TLAMATINI_VERSION` or against an out-of-date `_version.py` — clear them and re-run `build.py`.
 

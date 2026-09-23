@@ -1955,7 +1955,7 @@ DISCOVERER_VULNX_GO_GUARD_GUIDE = [
 ]
 
 V1332_RELEASE_GUIDE = [
-    "Historical release family: `v1.33.2` introduced the Zavuerer wave and subsequent cleanup, preserving the v1.32.0 quality-and-identity background. The current release version is 1.63.0.",
+    "Historical release family: `v1.33.2` introduced the Zavuerer wave and subsequent cleanup, preserving the v1.32.0 quality-and-identity background. The current release version is 1.65.4.",
     "New agent: Zavuerer becomes the 83rd workflow-agent type and the 60th wrapped chat-agent, adding `chat_agent_zavuerer` for Zavu unified messaging across SMS, WhatsApp, Telegram, Email, and Voice.",
     "Configuration: Config -> Access Keys Wizard now includes `Unified Messaging (Zavu)` and persists `zavu_api_key`, which the wrapped runtime seeds into Zavuerer without exposing the secret in prompts.",
     "Canvas/runtime support: `agent_contracts.py`, `views.py`, `capability_registry.py`, `chat_agent_registry.py`, `tools.py`, frontend ACP JS/CSS, and migrations `0159`-`0164` all move together to make Zavuerer usable from both surfaces.",
@@ -2142,7 +2142,7 @@ REVIEWER_PRECISION_GUIDE = [
 ]
 
 NATIVE_DIALOGS_GUIDE = [
-    "Carried into v1.63.0 from `v1.4.2`: Tkinter was removed from the unstable runtime-facing dialog path and replaced with `Tlamatini/agent/native_dialogs.py`, a native Windows dialog bridge used by browser-triggered pickers.",
+    "Carried into v1.65.4 from `v1.4.2`: Tkinter was removed from the unstable runtime-facing dialog path and replaced with `Tlamatini/agent/native_dialogs.py`, a native Windows dialog bridge used by browser-triggered pickers.",
     "This change pairs with the existing DB and operator dialogs: file and folder selection still feels local and GUI-first, but the fragile Tkinter dependency is no longer part of the interactive runtime path that users trigger from chat or ACP surfaces.",
     "The patch arrived with dedicated tests (`test_native_dialogs.py`) and with follow-up orphan-reaper/runtime adjustments, so the release reads as a stability pass rather than a cosmetic refactor.",
 ]
@@ -4203,7 +4203,7 @@ def build_ppt(context: dict) -> None:
     slide, audit = add_slide(prs, "Native Dialogs In v1.4.2", "Tkinter removed from the unstable runtime path", THEME["amber"])
     add_panel(slide, audit, 0.78, 1.6, 5.9, 4.95, "What changed", NATIVE_DIALOGS_GUIDE, THEME["amber"], "native-a", 13)
     add_panel(slide, audit, 6.95, 1.6, 5.55, 4.95, "Release meaning", [
-        "This stability-focused patch preceded the historical `v1.5.0` Playwrighter release and remains part of the v1.63.0 operator/runtime behavior.",
+        "This stability-focused patch preceded the historical `v1.5.0` Playwrighter release and remains part of the v1.65.4 operator/runtime behavior.",
         "It preserves the operator experience of Browse-driven file and folder picking while removing a UI technology that was destabilizing the application.",
         "Because the fix landed with tests and runtime cleanup updates, it belongs in the technical dossier even though the markdown handbook has not yet been fully rewritten around it.",
     ], THEME["jade"], "native-b", 13)
