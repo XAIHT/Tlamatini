@@ -33,8 +33,8 @@ metadata:
       - { name: agent_id,    type: enum, required: true,
           values: ["claude","codex","cursor","gemini","qwen","copilot","pi","droid","iflow","kilocode","kimi","kiro","opencode","tlamatini"],
           description: "The ACPX registry key from DEFAULT_ACP_AGENTS." }
-      - { name: api_key,     type: string, required: true,
-          description: "The credential value (e.g. sk-ant-api03-..., AIza..., sk-proj-...). Treated as a secret." }
+      - { name: api_key,     type: string, required: true, sensitive: true,
+          description: "The credential value. REDACTED by the SkillHarness from every audit event and from the returned envelope; it reaches only the write step that needs it." }
       - { name: command_override, type: string, required: false,
           description: "Absolute path to the CLI binary if it is not on PATH (becomes acpx.agents.<id>.command)." }
     outputs:
@@ -54,6 +54,8 @@ metadata:
 -->
 
 # Set Up a New ACPX Agent Key
+
+> **HEADLESS IS FORBIDDEN. VISIBLE FOREGROUND EXECUTION ONLY.** Every command, automated test, diagnostic, script, build, agent and browser must run in a visible foreground window on Angela's real desktop. Use forked CMD/PowerShell windows, `execute_forked_window: true`, and `headless: false`. Monitor live; if visibility cannot be confirmed, do not run. Read the [mandatory execution policy](../../../../TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).
 
 Configures the credential for ONE ACPX `agent_id` so `acp_spawn(agent_id=...)`
 launches the child CLI authenticated. The runtime never asks the LLM for a key:

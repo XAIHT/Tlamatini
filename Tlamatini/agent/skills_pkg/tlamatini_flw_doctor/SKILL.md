@@ -40,30 +40,88 @@ metadata:
 
 # .flw doctor
 
-Statically validate a .flw file.
+> **HEADLESS IS FORBIDDEN. VISIBLE FOREGROUND EXECUTION ONLY.** Every command, automated test, diagnostic, script, build, agent and browser must run in a visible foreground window on Angela's real desktop. Use forked CMD/PowerShell windows, `execute_forked_window: true`, and `headless: false`. Monitor live; if visibility cannot be confirmed, do not run. Read the [mandatory execution policy](../../../../TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).
 
-Checks:
+Statically validate a `.flw` workflow against the **current** schema. This is a
+read-only diagnostic: it reports findings and **never writes** a pool
+`config.yaml`, never rewrites the flow, and exits cleanly even when the flow is
+broken — the finding IS the deliverable.
 
-1. JSON parses; required keys present (`version`, `agents`, `connections`).
-2. Every node's `type` is a known agent type (mirrors the agent-folder list).
-3. Every connection's `from` and `to` reference real node ids.
-4. No `target_agents` connection points at Stopper / Ender / Cleaner —
-   those use `output_agents` per the agent contract.
-5. Parametrizer nodes have at most one inbound and one outbound
-   `target_agents` edge (single-lane queue invariant).
-6. Terminal agents (Emailer / Notifier / RecMailer / Monitor-*)
-   have NO outbound `target_agents`.
-7. Logic gates: OR / AND have exactly 2 inbound source connections;
-   Barrier has N>=2; Asker / Forker have exactly 2 outbound branches
-   (`target_agents_a` / `target_agents_b`); Counter has 2
-   (`target_agents_l` / `target_agents_g`).
+## The schema you are validating (schemaVersion 2)
+
+⚠️ **Do not look for `version` / `agents` / `from` / `to`.** That shape is
+obsolete; `agent/services/flow_spec.py::normalize_flow_payload` is the
+authority and it reads:
+
+| key | meaning |
+|---|---|
+| `schemaVersion` | integer; **2** is current. Treat anything else as a NAMED finding (`unknown_schema_version`), not as a parse failure. |
+| `nodes[]` | `id`, `text` (the agent display name), `left`, `top`, `agentPurpose`, `configData` |
+| `connections[]` | `sourceId`/`targetId` **or** `sourceIndex`/`targetIndex`, plus `inputSlot` / `outputSlot` |
+| `artifacts` | object; `artifacts.parametrizerMappings` is keyed by node id |
+
+A connection may address its endpoints by **id or by index** — accept both.
+An index outside `0..len(nodes)-1` is a finding (`bad_index`); a normalizer
+would silently DROP that connection, which is exactly the class of defect
+this doctor exists to surface.
+
+A node's config may also carry `_parametrizer_mappings`; that and
+`artifacts.parametrizerMappings` are two valid persistence shapes for the same
+data (`acp-file-io.js::getSavedParametrizerMappings` accepts either).
+
+## Checks
+
+1. **Parse + shape.** JSON parses; `nodes` and `connections` are arrays.
+   Report `schemaVersion` and flag an unknown one by name.
+2. **Known agent types.** Resolve every node's `text` through
+   `agent/agents/flowcreator/flow_catalog.json` (89 installed types; the
+   generated catalog is the canonical name/slot/field source). Unknown ⇒
+   `unknown_agent_type`.
+3. **Reference integrity.** Every connection resolves to a real node by id or
+   by index. Dangling ⇒ `dangling_reference`; out-of-range ⇒ `bad_index`.
+4. **Slot validity.** `inputSlot` / `outputSlot` must exist on that agent's
+   contract (`agent/services/agent_contracts.py` →
+   `input_field_by_slot` / `output_field_by_slot`). A slot the contract does
+   not define ⇒ `bad_slot`; the canvas would write it nowhere.
+5. **Relationship kind — execution vs kill vs observation.** These are three
+   different things and must not be conflated:
+   - **execution** (`target_agents`) — "start this next".
+   - **kill** (`Ender.target_agents`) — Ender's `target_agents` is a **KILL
+     LIST**, and its `output_agents` is what it launches afterwards. An Ender
+     edge is never a missing execution edge.
+   - **observation** (`source_agents`) — "watch this agent's log". Never an
+     execution edge.
+   Contracts flagged `never_starts_targets` (Stopper, Cleaner) draw the edge
+   but do not launch it. Declare Ender's input connections explicitly.
+6. **Parametrizer.** Single-lane queue: **exactly one** source and **exactly
+   one** target. Its mappings must be present and complete — every mapping
+   names a source field the producing agent actually declares
+   (`_PARAMETRIZER_OUTPUT_FIELDS` / the generated catalog) and a target field
+   that exists in the destination's `config.yaml`. Missing or partial ⇒
+   `incomplete_parametrizer_mapping`. ⚠️ Membership is **derived**; never
+   check it against a hand-maintained producer list.
+7. **Logic gates.** OR / AND take exactly 2 inbound sources; Barrier takes
+   N ≥ 2; Asker / Forker have two outbound branches
+   (`target_agents_a` / `target_agents_b`); Counter uses
+   `target_agents_l` / `target_agents_g`. A Counter's source dependency does
+   **not** choose its conditional output branch.
+8. **Terminal agents.** Monitor-* / Emailer / Notifier / RecMailer have no
+   outbound execution edge.
+
+## Validating without writing
+
+⛔ **If you confirm anything in the canvas GUI, it is a VISIBLE, HEADED
+browser on Angela's real desktop — headless is FORBIDDEN**, and any script
+that drives it runs in a VISIBLE FOREGROUND console, never
+`run_in_background`.
+
+To confirm the flow also COMPILES, use the supported dry-run path —
+`POST /agent/compile_flow/` with `mode: "dry_run"` — which runs the same Agent
+Contract validation the Start sequence uses **without** touching the session
+pool. Never call it with `mode: "write"` from this skill.
+
+## Output
 
 Return `{ ok, problems: [{node_id, kind, message}, ...], summary }`.
-
-## Current installed-agent contract — 2026-09-15
-
-Use `agent/agents/flowcreator/flow_catalog.json` for canonical names, current config schemas, output/input slots, lifecycle flags and structured fields for all 89 installed types. GUI-Manager is design only. After changing a template/contract/reference, run `python scripts/update_flow_catalog.py` and its `--check` mode in the repository. Deployment refreshes runtime snapshots.
-
-FlowCreator selects capabilities before detailed design, validates the generated plan, and uses bounded repair. Declare Ender input connections explicitly; Ender `target_agents` is a kill list. Counter uses L/G slots; source dependencies do not choose a conditional output branch. Generated Parametrizers require valid `_parametrizer_mappings`, one source and one target. Do not maintain a separate hardcoded Parametrizer producer list.
-
-For desktop flows, use explicit physical/screenshot geometry and verified target windows. `input_sent` is input delivery only; errors may be partial and must not be blindly replayed. Read `docs/desktop-input-and-flow-contracts.md` and `docs/agent-coverage.md` for the full contract and verification scope.
+`ok: false` with a populated `problems` list is a **successful** diagnostic
+run, not a failure of this skill.

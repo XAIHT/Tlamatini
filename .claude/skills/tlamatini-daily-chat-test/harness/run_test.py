@@ -24,7 +24,7 @@ Qualification (heuristic + Anthropic judge on failures): see qualify.py.
 Usage (from this directory):
     python run_test.py                      # full 1000, visible Chrome
     python run_test.py --count 10           # quick smoke run
-    python run_test.py --count 5 --headless # CI-style
+    # NOTE: --headless is FORBIDDEN and ignored; every run is VISIBLE.
     python run_test.py --resume reports/run_2026-06-05_22-00-00
 """
 

@@ -23,15 +23,26 @@ metadata:
           - "Tlamatini/agent/static/agent/js/acp-*.js"
           - "Tlamatini/agent/migrations/*.py"
           - "Tlamatini/agent/agents/flowcreator/agentic_skill.md"
+          - "Tlamatini/agent/services/agent_paths.py"
+          - "Tlamatini/agent/services/agent_contracts.py"
+          - "Tlamatini/agent/chat_agent_registry.py"
+          - "Tlamatini/agent/agents/model_settings.py"
+          - "Tlamatini/agent/agents/flowcreator/flow_catalog.json"
+          - "Tlamatini/agent/agents/flowhypervisor/monitoring-prompt.pmt"
+          - "agents_descriptions.md"
           - "README.md"
       shell:
         - "python -m ruff check Tlamatini/agent"
         - "npm run lint"
+        - "python scripts/update_flow_catalog.py"
+        - "python scripts/update_flow_catalog.py --check"
       network: deny
       db:      ["read", "write-via-migrations-only"]
     inputs:
       - { name: agent_name, type: string, required: true,
-          description: "snake_case folder name; display name derived as title-case" }
+          description: "snake_case folder/pool name (e.g. stm32er). NOT the display name." }
+      - { name: display_name, type: string, required: false,
+          description: "The EXACT display name with its intended casing, hyphens and spaces (STM32er, PDFer, Kyber-KeyGen, Node Manager). Register it in agent_paths.display_name_from_agent_type FIRST; never derive it by title-casing." }
       - { name: category,   type: enum,
           values: ["control","routing","gates","action","crypto","utility","terminal"],
           required: true }
@@ -55,6 +66,8 @@ metadata:
 -->
 
 # New ACP agent
+
+> **HEADLESS IS FORBIDDEN. VISIBLE FOREGROUND EXECUTION ONLY.** Every command, automated test, diagnostic, script, build, agent and browser must run in a visible foreground window on Angela's real desktop. Use forked CMD/PowerShell windows, `execute_forked_window: true`, and `headless: false`. Monitor live; if visibility cannot be confirmed, do not run. Read the [mandatory execution policy](../../../../TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).
 
 Read `Tlamatini/.agents/workflows/create_new_agent.md` first. It is the
 ground truth for the 8-step contract. This skill drives that procedure

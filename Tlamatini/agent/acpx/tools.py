@@ -639,9 +639,25 @@ def list_skills(filter_keywords: str = "") -> str:
 def invoke_skill(skill_name: str,
                  args_json: Union[str, Dict[str, Any], None] = "{}") -> str:
     """
-    Invoke a registered Tlamatini skill by name. The skill runs inside the
-    SkillHarness, which enforces the skill's permissions, budget, and
-    input/output contract.
+    Load a registered Tlamatini skill by name through the SkillHarness.
+
+    ⚠️ AN `in-process` SKILL IS A PLANNING HANDOFF, NOT AN EXECUTION.
+    The harness validates your arguments and returns the skill's COMPLETE
+    procedure; it does NOT run the steps and it produces NO deliverables.
+    Read `status` before you believe anything:
+
+      status "planned"   -> nothing ran. `output` is {} and
+                            `pending_outputs` lists what YOU must produce
+                            by following `plan.body` with `plan.requires_tools`.
+                            Never report a pending output as an observation.
+      status "completed" -> the harness observed the work (acpx runtime).
+      ok false           -> it failed; `reason` says why.
+
+    The harness enforces the input/output contract, secret redaction, and
+    this invocation's wall-clock/iteration caps. It does NOT sandbox
+    permissions or requires_tools, and it spends no model tokens of its own
+    — the returned `enforcement` block states exactly what is enforced
+    versus advisory. Tool access stays governed by Tlamatini's normal gates.
 
     Args:
         skill_name: registered skill name (see list_skills).
@@ -650,8 +666,11 @@ def invoke_skill(skill_name: str,
             ({"who": "angel"}). Both shapes are accepted because some
             LLMs parse the example before emitting the tool call.
 
-    Returns: JSON {"ok": true, "skill": "...", "output": {...},
-                   "iterations_used": N, "audit_id": "..."} or error envelope.
+    Returns: JSON {"ok": true, "status": "planned"|"completed",
+                   "completed": bool, "skill": "...", "output": {...},
+                   "pending_outputs": [...], "plan": {...},
+                   "enforcement": {...}, "audit_id": "..."}
+             or an error envelope.
     """
     try:
         from agent.skills.registry import skill_registry

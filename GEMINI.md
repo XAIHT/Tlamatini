@@ -12,6 +12,8 @@
 
 # ⛔ PRIVATE DATA GUARD — ABSOLUTE, NON-NEGOTIABLE, READ FIRST ⛔
 
+> **HEADLESS IS FORBIDDEN. ALL EXECUTION MUST BE VISIBLE.** Every automated test, command, diagnostic, script, build, agent, prompt and browser must run in a visible, forked foreground window on Angela's real desktop. Use visible CMD/PowerShell consoles and headed browsers (`headless=False`); keep output on screen and monitor live. No hidden/background execution, including CI or quick checks. If visibility cannot be confirmed, do not run. Mandatory policy: [visible execution](TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).
+
 **NEVER REWRITE GIT HISTORY. EVER. IN THIS REPO, FOR ANY REASON.**
 
 - **NO** `rebase`, `commit --amend`, `reset --hard` to drop commits, `filter-branch`, `git filter-repo`, BFG.
@@ -679,7 +681,7 @@ The rest of the onboarding material is split into topic files under `docs/claude
 **HEADLESS / INVISIBLE AUTOMATED TESTS ARE FORBIDDEN. EVERY automated test MUST run VISIBLE — a HEADED browser (Playwright `headless=False`, prefer real Chrome) on Angela's REAL desktop, so she can SEE every step live.** This is HARD, NON-NEGOTIABLE, FOREVER.
 
 - **Playwright**: launch HEADED. **NEVER** pass `--headless`. The chat-test harness `--headless` flag is disabled (refuses to run). Drive the **real Tlamatini chat GUI** (`http://127.0.0.1:8000/agent/agent/`, login `angela`) — never fake or bypass the UI.
-- **Run it in a VISIBLE FOREGROUND window** (`Start-Process powershell -NoExit …`, `dangerouslyDisableSandbox:true`) so it renders on her screen — never `run_in_background`, never a hidden/detached job. (Same spirit as the foreground-windows rule.)
+- **Run it in a VISIBLE FOREGROUND window** (`Start-Process powershell -WindowStyle Normal -ArgumentList '-NoExit', …`, `dangerouslyDisableSandbox:true`) so it renders on her screen — never `run_in_background`, never a hidden/detached job. (Same spirit as the foreground-windows rule.)
 - **Verify each step with a FULL-SCREEN screenshot** (the ENTIRE desktop, taskbar **clock** visible) — one photo per test + a live `SUMMARY.html`.
 - **NEVER LIE**: a stale chat-history scrape, a transient self-healing "🔁 Tactic #…" status, or a timed-out answer must NEVER be recorded as a pass. Clear chat history per test, re-assert **Multi-Turn ON at every send**, reject already-seen answers.
 - If a test cannot be made visible, **do NOT run it** — tell Angela.

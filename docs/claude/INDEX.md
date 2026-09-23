@@ -8,6 +8,8 @@
 -->
 # docs/claude/ — Tlamatini AI-Assistant Docs Index
 
+> **HEADLESS IS FORBIDDEN. ALL EXECUTION MUST BE VISIBLE.** Every automated test, command, diagnostic, script, build, agent, prompt and browser must run in a visible, forked foreground window on Angela's real desktop. Use visible CMD/PowerShell consoles and headed browsers (`headless=False`); keep output on screen and monitor live. No hidden/background execution, including CI or quick checks. If visibility cannot be confirmed, do not run. Mandatory policy: [visible execution](../../TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).
+
 This directory holds the specialized onboarding documents that back the root `CLAUDE.md`. The root file imports each of these via `@docs/claude/<name>.md` so that every assistant session loads the full set automatically.
 
 One-line descriptions:

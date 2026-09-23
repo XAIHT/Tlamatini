@@ -6,7 +6,11 @@ metadata:
     emoji: "🌊"
   tlamatini:
     runtime: in-process
-    requires_tools: ["execute_command", "chat_agent_file_creator"]
+    # DIRECT + DELEGATED. This skill is a compatibility entry point that
+    # hands off to `flow-making` via invoke_skill, so invoke_skill/list_skills
+    # are requirements, not incidentals.
+    requires_tools: ["invoke_skill", "list_skills",
+                     "execute_command", "chat_agent_file_creator"]
     requires_mcps: []
     budget:
       max_iterations: 12
@@ -16,7 +20,12 @@ metadata:
       filesystem:
         read:  ["Tlamatini/agent/agents/**/*"]
         write: ["Tlamatini/**/*.flw"]
-      shell:   []
+      # The scripted fallback really does run these; an empty list here was a
+      # scope the documented procedure could not execute within.
+      shell:
+        - "python Tlamatini/agent/skills_pkg/flow_making/scripts/make_flow.py"
+        - "python Tlamatini/agent/skills_pkg/flow_making/scripts/result_to_flw.py"
+      # DOWNSTREAM: FlowCreator may call a model. This skill opens no socket.
       network: deny
       db:      deny
     inputs:
@@ -41,6 +50,8 @@ metadata:
 -->
 
 # Flow from objective
+
+> **HEADLESS IS FORBIDDEN. VISIBLE FOREGROUND EXECUTION ONLY.** Every command, automated test, diagnostic, script, build, agent and browser must run in a visible foreground window on Angela's real desktop. Use forked CMD/PowerShell windows, `execute_forked_window: true`, and `headless: false`. Monitor live; if visibility cannot be confirmed, do not run. Read the [mandatory execution policy](../../../../TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).
 
 Produce a canvas-loadable `.flw` for the user's stated objective.
 

@@ -12,6 +12,8 @@
 
 # ⛔ PRIVATE DATA GUARD — ABSOLUTE, NON-NEGOTIABLE, READ FIRST ⛔
 
+> **HEADLESS IS FORBIDDEN. ALL EXECUTION MUST BE VISIBLE.** Every automated test, command, diagnostic, script, build, agent, prompt and browser must run in a visible, forked foreground window on Angela's real desktop. Use visible CMD/PowerShell consoles and headed browsers (`headless=False`); keep output on screen and monitor live. No hidden/background execution, including CI or quick checks. If visibility cannot be confirmed, do not run. Mandatory policy: [visible execution](TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).
+
 **NEVER REWRITE GIT HISTORY. EVER. IN THIS REPO, FOR ANY REASON.**
 
 - **NO** `rebase`, `commit --amend`, `reset --hard` to drop commits, `filter-branch`, `git filter-repo`, BFG.
@@ -145,7 +147,22 @@ When the user asks to **"use Tlamatini's agents"** — or names any pool agent (
 
 ## 🪨 HARD-STONED SKILLS — BOTH SKILL SETS ARE TRACKED, PERMANENT, AND NEVER DROPPED (Angela, 2026-08-19)
 
-**This codebase carries TWO skill sets. Both are STONE. Every single one MUST be tracked in git.**
+**This codebase carries FOUR tracked skill locations. All are STONE. Every single SKILL.md MUST be tracked in git.**
+
+⚠️ **This section used to describe TWO sets and silently omitted the Gemini
+mirrors and the Codex dossier skills** — an onboarding gap, not an untracked
+one: all four locations are and were tracked. **Never hand-type these counts.**
+Generate them:
+
+```bash
+python scripts/skill_inventory.py           # the report
+python scripts/skill_inventory.py --check   # CI: fails on an untracked or
+                                            # unaccounted SKILL.md
+```
+
+That script is the ONE canonical facts source for skill counts, locations and
+consumers. Anything below it is a description of *purpose*, not a count to
+maintain by hand.
 
 A skill that *runs* but is **untracked is a skill that disappears** — on the next clone, on a fresh
 build, on a self-update, on any machine but this one. `adding-external-mcp` was exactly that: live
@@ -165,12 +182,47 @@ administered from the **ACPX-Skills** navbar dropdown.
 `tlamatini_flow_from_objective` · `tlamatini_flw_doctor` · `tlamatini_new_acp_agent` ·
 `tlamatini_planner_trace_replay` · `tlamatini_static_version_bumper` · `todoist` · `trello` · `weather`
 
-### Set 2 — Claude Code's skills for this repo (`.claude/skills/`, **5**)
+### Set 2 — Claude Code's skills for this repo (`.claude/skills/`)
 
 Discovered at session start; they encode how an assistant must work ON Tlamatini.
+**This set is CANONICAL** — edit it here, never in a mirror.
 
 `tlamatini-agent-creation` · `tlamatini-agent-naming` · `tlamatini-daily-chat-test` ·
 `tlamatini-self-modify-inclusion` · `tlamatini-self-update-inclusion`
+
+### Set 3 — Gemini's mirror of Set 2 (`.gemini/skills/`)
+
+The SAME five skills, for Gemini sessions on this repo.
+
+**⚠️ SYNCHRONIZATION POLICY (settled 2026-09-23).** `.claude/skills/` is the
+SOURCE; `.gemini/skills/` is a MIRROR of it. Three pairs were already
+byte-identical (naming, self-modify inclusion, self-update inclusion); agent
+creation and daily chat testing had drifted, with the Gemini copies missing
+Claude-side additions about existing-agent changes, Whisperer's sentinel
+default and monitoring bounds, corrected Parametrizer prose, rendering
+lessons and PDFer guidance.
+
+1. **Edit `.claude/skills/<name>/SKILL.md`, then propagate the same change to
+   `.gemini/skills/<name>/SKILL.md` in the SAME commit.**
+2. **Correct a shared mistake BEFORE propagating it** — blind copying spreads
+   stale instructions, which is exactly how the drift in this section's own
+   history was created.
+3. **Line-ending-only differences are NOT drift.** Compare with
+   `git diff --no-index --ignore-space-at-eol`; the two inclusion sweep
+   scripts have different raw hashes and identical content.
+4. **Harness helper scripts are deliberately NOT mirrored.** Fifteen files
+   under `.claude/skills/tlamatini-daily-chat-test/harness/` exist only on the
+   Claude side (`preflight.py`, `monitor.py`, `context_gauge_visible.py`,
+   `pdfer_nuance_visible.py`, `voice_commands_visible.py`, …). That is
+   inventory, not an obligation — they are Claude-session tooling.
+
+### Set 4 — Codex's documentation skills (`.codex/skills/`)
+
+`full-project-pdf-dossier` · `overlap-safe-pptx-dossier`
+
+Assistant-specific by design and **NOT mirrored** to the other two. ⚠️ They
+mandate source-derived facts, so keep their examples DATED and explicitly
+historical rather than letting an old release number read as current.
 
 ### The newest stone — `adding-external-mcp` (tracked 2026-08-19)
 
@@ -190,16 +242,30 @@ Companion docs: `docs/claude/mcp-tools.md` → *External MCPs*, `docs/external_m
 
 ### Standing rules (do NOT weaken)
 
-1. **A new skill in either set is COMMITTED in the same pass it is written.** Finish by running
-   `git status` and confirming **no `??` under `agent/skills_pkg/` or `.claude/skills/`**.
+1. **A new skill in ANY of the four locations is COMMITTED in the same pass it is written.**
+   Finish by running `python scripts/skill_inventory.py --check` — it fails on a SKILL.md that is
+   untracked on disk or sitting outside every known location, which `git status` alone will not
+   tell you.
 2. **Never delete, rename, or disable a shipped skill** unless Angela asks in that same turn.
    Renaming breaks `Skill.name` rows, the `requires_tools` cross-check in Diagnostics, and every
    prompt that invokes it by name.
-3. `skills_pkg/` ships to users through `build.py`; `.claude/skills/` is tracked and pushed
-   **public** — never put a secret in either.
-4. Authoring guide: `Tlamatini/.skills/create_new_skill.md`; validate with
-   `skills_pkg/skill_creator/scripts/quick_validate.py`; a skill that fails to parse is silently
-   **skipped** at boot, so validate before assuming it registered.
+3. `skills_pkg/` ships to users through `build.py`; `.claude/`, `.gemini/` and `.codex/` skills are
+   tracked and pushed **public** — never put a secret in any of them.
+4. Authoring guide: `Tlamatini/.skills/create_new_skill.md`. Validate with
+   `skills_pkg/skill_creator/scripts/quick_validate.py` **or** `skills_pkg/_meta/lint.py` — since
+   2026-09-23 both run the SAME routine (`agent/skills/validation.py`), so a package can no longer
+   pass one and fail the other. Sizes are measured in **UTF-8 BYTES** (8 KiB warns, 16 KiB is a
+   hard error); the old check counted CHARACTERS while printing "bytes". A skill that fails to
+   parse is silently **skipped** at boot, so validate before assuming it registered.
+5. **⚠️ `invoke_skill` on an `in-process` skill is a PLANNING HANDOFF, not an execution.** It
+   returns `status: "planned"`, `completed: false`, the COMPLETE body, and `pending_outputs` — the
+   contract the caller must still satisfy. `output` is `{}`; there are no placeholder values, and
+   reintroducing them would restore the bug where a stub `doctor_ok: false` read like a doctor that
+   ran and failed. The `enforcement` block states per field what is enforced versus advisory —
+   permissions and `requires_tools` are DECLARED POLICY, not a sandbox.
+6. **A credential input never leaves the harness.** Mark it `sensitive: true`
+   (`agent/skills/redaction.py` also catches credential-shaped NAMES) and it is redacted from every
+   audit event and from the returned envelope — with no prefix, length or hash.
 
 ---
 
@@ -761,7 +827,7 @@ The rest of the onboarding material is split into topic files under `docs/claude
 **HEADLESS / INVISIBLE AUTOMATED TESTS ARE FORBIDDEN. EVERY automated test MUST run VISIBLE — a HEADED browser (Playwright `headless=False`, prefer real Chrome) on Angela's REAL desktop, so she can SEE every step live.** This is HARD, NON-NEGOTIABLE, FOREVER.
 
 - **Playwright**: launch HEADED. **NEVER** pass `--headless`. The chat-test harness `--headless` flag is disabled (refuses to run). Drive the **real Tlamatini chat GUI** (`http://127.0.0.1:8000/agent/agent/`, login `angela`) — never fake or bypass the UI.
-- **Run it in a VISIBLE FOREGROUND window** (`Start-Process powershell -NoExit …`, `dangerouslyDisableSandbox:true`) so it renders on her screen — never `run_in_background`, never a hidden/detached job. (Same spirit as the foreground-windows rule.)
+- **Run it in a VISIBLE FOREGROUND window** (`Start-Process powershell -WindowStyle Normal -ArgumentList '-NoExit', …`, `dangerouslyDisableSandbox:true`) so it renders on her screen — never `run_in_background`, never a hidden/detached job. (Same spirit as the foreground-windows rule.)
 - **Verify each step with a FULL-SCREEN screenshot** (the ENTIRE desktop, taskbar **clock** visible) — one photo per test + a live `SUMMARY.html`.
 - **NEVER LIE**: a stale chat-history scrape, a transient self-healing "🔁 Tactic #…" status, or a timed-out answer must NEVER be recorded as a pass. Clear chat history per test, re-assert **Multi-Turn ON at every send**, reject already-seen answers.
 - If a test cannot be made visible, **do NOT run it** — tell Angela.

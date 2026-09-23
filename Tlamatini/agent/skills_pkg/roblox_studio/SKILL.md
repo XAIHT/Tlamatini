@@ -6,7 +6,18 @@ metadata:
     emoji: "🎮"
   tlamatini:
     runtime: in-process
-    requires_tools: []
+    # DIRECT: the External-MCP supervisors this procedure actually calls.
+    # The Studio verbs themselves (execute_luau, insert_model, ...) are
+    # DYNAMICALLY DISCOVERED as ext__<server>__<tool> once the Roblox Studio
+    # MCP is active, so they cannot be named here — reach them through
+    # external_mcp_call, and report dependency_missing (never a silent
+    # partial build) if the server is not connected.
+    requires_tools: ["external_mcp_status", "external_mcp_set_active",
+                     "external_mcp_wait", "external_mcp_list_tools",
+                     "external_mcp_call", "external_mcp_doctor"]
+    # NOT an `Mcp`-model context provider: the Roblox Studio MCP is an
+    # EXTERNAL server reached through the universal client, so requires_mcps
+    # stays empty by design.
     requires_mcps: []
     budget:
       max_iterations: 64
@@ -15,6 +26,11 @@ metadata:
     permissions:
       filesystem: { read: [], write: [] }
       shell:     []
+      # DOWNSTREAM, not direct: this skill opens no socket itself. The
+      # External-MCP client it drives talks to the Studio MCP server on the
+      # user's behalf. `deny` here means "this skill makes no network call of
+      # its own" — it does not, and must not be read to, forbid the tools it
+      # calls from doing their own job.
       network:   deny
       db:        deny
     inputs:
@@ -33,6 +49,8 @@ metadata:
 -->
 
 # Roblox Studio — build it right, build it once, make it look REAL
+
+> **HEADLESS IS FORBIDDEN. VISIBLE FOREGROUND EXECUTION ONLY.** Every command, automated test, diagnostic, script, build, agent and browser must run in a visible foreground window on Angela's real desktop. Use forked CMD/PowerShell windows, `execute_forked_window: true`, and `headless: false`. Monitor live; if visibility cannot be confirmed, do not run. Read the [mandatory execution policy](../../../../TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).
 
 Runbook for anything built or edited in **Roblox Studio**. The tools are the External-MCP tools `ext__Roblox_Studio__<tool>` (need Multi-Turn + ACPX on). Work as an OPERATOR: preflight, build in a FEW big scripts, verify, report.
 

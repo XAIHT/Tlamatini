@@ -8,6 +8,8 @@
 -->
 # Tlamatini — Multi-Turn Mode, Create Flow, Parametrizer Sections
 
+> **HEADLESS IS FORBIDDEN. ALL EXECUTION MUST BE VISIBLE.** Every automated test, command, diagnostic, script, build, agent, prompt and browser must run in a visible, forked foreground window on Angela's real desktop. Use visible CMD/PowerShell consoles and headed browsers (`headless=False`); keep output on screen and monitor live. No hidden/background execution, including CI or quick checks. If visibility cannot be confirmed, do not run. Mandatory policy: [visible execution](../../TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).
+
 ## Multi-Turn Mode
 
 When **Multi-Turn is checked** in the toolbar:
@@ -15,7 +17,7 @@ When **Multi-Turn is checked** in the toolbar:
 2. Request-scoped global execution plan/DAG is built
 3. MCP contexts are prefetched selectively
 4. **The FULL enabled surface is bound** (see *Multi-Turn now binds the full surface* below) — every enabled tool/agent/skill, ACPX still filtered by its checkbox. *(Superseded 2026-06: the planner used to bind only a ≤20-tool subset via `max_selected_tools`; that starved the operator. The planner still runs for capability hints/ordering, but no longer DROPS a tool from the bind.)*
-5. Wrapped agents launch in headless/background mode
+5. Wrapped agents have background launch paths in the product implementation. For every execution performed while working on this codebase, the mandatory visible-execution policy applies: explicitly request foreground consoles and headed browsers, and do not execute a path that cannot be made visible.
 6. The MultiTurnToolAgentExecutor **deduplicates wrapped chat-agent calls** with identical arguments (prevents the LLM from launching the same sub-agent twice in a single request)
 7. After the final answer, the frontend renders a **"Create Flow"** button whenever **at least one agent executed successfully** during the request; it converts **only the successfully-executed** tool calls into a downloadable `.flw` workflow (the failed executions are dropped). *(There is no whole-answer SUCCESS/FAILURE classifier — the old `services/answer_analizer.py` was removed 2026-07-06.)*
 8. **Every model step is self-healed.** Each `llm.invoke()` in the executor is wrapped by a per-request `SelfHealingInvoker` (`agent/self_healing.py`) that retries distinct recovery tactics under a per-attempt watchdog, so a transient model failure never hangs, never discards work already done, and never yields a silent/untruthful answer (see *Self-healing model steps* below).

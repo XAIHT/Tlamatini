@@ -25,7 +25,10 @@ Server must be launched with, e.g.:
     set TLAMATINI_SELF_HEAL_FAULT_MODE=mix
     set TLAMATINI_LLM_STEP_TIMEOUT=6
 
-Env knobs here: NUM_QUESTIONS (default 1000), HEADLESS (default 0 = visible),
+Run this script in a VISIBLE FOREGROUND console. HEADLESS IS FORBIDDEN;
+requests through the old HEADLESS environment variable are refused.
+
+Env knobs here: NUM_QUESTIONS (default 1000),
 SEED, ANSWER_TIMEOUT_S (default 300), DOWNLOAD_SAMPLE (default 30), BASE_URL,
 TLAMATINI_USER, TLAMATINI_PASS.
 """
@@ -50,7 +53,6 @@ BASE_URL = os.environ.get("BASE_URL", "http://127.0.0.1:8000").rstrip("/")
 USER = os.environ.get("TLAMATINI_USER", "")
 PASS = os.environ.get("TLAMATINI_PASS", "")
 NUM_QUESTIONS = int(os.environ.get("NUM_QUESTIONS", "1000"))
-HEADLESS = os.environ.get("HEADLESS", "0") == "1"
 SEED = int(os.environ.get("SEED", "1337"))
 ANSWER_TIMEOUT_S = int(os.environ.get("ANSWER_TIMEOUT_S", "300"))
 DOWNLOAD_SAMPLE = int(os.environ.get("DOWNLOAD_SAMPLE", "30"))
@@ -148,6 +150,8 @@ def _wait_done(page, prior):
 
 
 def main():
+    if os.environ.get("HEADLESS", "0").strip().lower() not in ("", "0", "false", "no", "off"):
+        print("HEADLESS IS FORBIDDEN: ignoring HEADLESS and opening a VISIBLE browser.", flush=True)
     if not USER or not PASS:
         print("ERROR: set TLAMATINI_USER and TLAMATINI_PASS", file=sys.stderr)
         return 2
@@ -165,7 +169,7 @@ def main():
     downloaded = 0
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=HEADLESS, slow_mo=0 if HEADLESS else 25)
+        browser = p.chromium.launch(headless=False, slow_mo=25)
         ctx = browser.new_context(accept_downloads=True)
         page = ctx.new_page()
         page.on("websocket", lambda ws: ws.on("framereceived", lambda pl: frames.append(pl)))

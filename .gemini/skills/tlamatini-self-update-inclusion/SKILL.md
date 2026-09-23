@@ -13,6 +13,8 @@ description: Sweep the whole codebase and keep the SELF-UPDATE pipeline complete
 
 # Tlamatini — Self-Update Inclusion Sweep
 
+> **HEADLESS IS FORBIDDEN. VISIBLE FOREGROUND EXECUTION ONLY.** Every command, automated test, diagnostic, script, build, agent and browser must run in a visible foreground window on Angela's real desktop. Use forked CMD/PowerShell windows, `execute_forked_window: true`, and `headless: false`. Monitor live; if visibility cannot be confirmed, do not run. Read the [mandatory execution policy](../../../TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).
+
 > **Audience:** Claude Code working ON the Tlamatini codebase for **Angela**.
 > **Goal:** guarantee that *every* asset a new feature introduces is (1) **carried into
 > the release** by `build.py`, and (2) **handled correctly by the self-update swap** —
@@ -119,7 +121,7 @@ the first-launch migration path.
 ### Step 0 — run the deterministic checker (does 90% of the work)
 
 ```bash
-python .claude/skills/tlamatini-self-update-inclusion/scripts/sweep_self_update.py
+python .gemini/skills/tlamatini-self-update-inclusion/scripts/sweep_self_update.py
 ```
 
 It parses the three files and reports `[PASS]` / `[FINDING]` for invariants 2, 3, the

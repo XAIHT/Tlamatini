@@ -23,7 +23,7 @@ OFF, Internet OFF — and a fresh history clear before the loop.
 
 Run it later (from this directory):
     python mcp_playwright_suite.py                 # all 10, visible Chrome
-    python mcp_playwright_suite.py --headless      # no window
+    # NOTE: --headless is FORBIDDEN and ignored; every run is VISIBLE.
     python mcp_playwright_suite.py --count 3        # first 3 only
     python mcp_playwright_suite.py --select memory,sqlite,fetch
 Reports land in ./reports/run_<timestamp>/ (results.jsonl + report.md + summary.json).
@@ -126,7 +126,7 @@ MCP_TESTS = [
 
 def _build_args(ns) -> SimpleNamespace:
     return SimpleNamespace(
-        headless=ns.headless, slowmo=0, judge_model=None,
+        headless=False, slowmo=0, judge_model=None,   # FORBIDDEN to go headless
         user=C.USERNAME, password=C.PASSWORD,
         not_ready_retries=6, not_ready_backoff=20.0,
     )
@@ -134,7 +134,8 @@ def _build_args(ns) -> SimpleNamespace:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Tlamatini 10-MCP Playwright suite.")
-    ap.add_argument("--headless", action="store_true", help="run without a visible window")
+    ap.add_argument("--headless", action="store_true",
+                    help="[DISABLED / FORBIDDEN] tests are ALWAYS visible/headed; this flag is ignored")
     ap.add_argument("--count", type=int, default=len(MCP_TESTS), help="run only the first N tests")
     ap.add_argument("--select", default=None, help="comma-separated keys to run (e.g. memory,sqlite)")
     ap.add_argument("--timeout", type=int, default=420, help="per-test timeout seconds (default 420)")

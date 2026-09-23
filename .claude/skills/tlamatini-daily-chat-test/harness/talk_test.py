@@ -38,7 +38,7 @@ Usage (from this directory, with the Tlamatini server running on :8000):
     python talk_test.py
     python talk_test.py --user <u> --password <p>
     python talk_test.py --hold 30           # keep Chrome open 30s at the end
-    python talk_test.py --headless          # no visible window (you still hear it)
+    # NOTE: --headless is FORBIDDEN and ignored; every run is VISIBLE.
 """
 
 import argparse
@@ -158,7 +158,12 @@ class TalkHarness:
         self.page = None
 
     def launch(self, p):
-        kw = dict(headless=self.args.headless, slow_mo=self.args.slowmo)
+        # HARD RULE (Angela, 2026-07-07, reaffirmed 2026-09-23): headless
+        # automated tests are STRICTLY FORBIDDEN. Tests MUST be VISIBLE.
+        # --headless is accepted for backward compatibility and IGNORED.
+        if getattr(self.args, "headless", False):
+            print("!!! --headless is FORBIDDEN on this machine -> forcing VISIBLE (headed) Chrome.")
+        kw = dict(headless=False, slow_mo=self.args.slowmo)
         try:
             browser = p.chromium.launch(channel="chrome", **kw)
             _log("Launched Google Chrome (channel=chrome).")
@@ -327,7 +332,8 @@ def main() -> int:
     ap.add_argument("--base-url", default=None, help="override base URL")
     ap.add_argument("--user", default=C.USERNAME)
     ap.add_argument("--password", default=C.PASSWORD)
-    ap.add_argument("--headless", action="store_true", help="run headless (you still hear it)")
+    ap.add_argument("--headless", action="store_true",
+                    help="[DISABLED / FORBIDDEN] tests are ALWAYS visible/headed; this flag is ignored")
     ap.add_argument("--slowmo", type=int, default=0, help="Playwright slow_mo ms")
     ap.add_argument("--timeout", type=int, default=360, help="per-prompt timeout seconds")
     ap.add_argument("--temp-dir", default=None, help="override the <app>/Temp dir to watch for WAVs")

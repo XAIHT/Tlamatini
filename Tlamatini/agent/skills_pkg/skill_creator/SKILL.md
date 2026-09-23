@@ -43,6 +43,8 @@ metadata:
 
 # Skill Creator
 
+> **HEADLESS IS FORBIDDEN. VISIBLE FOREGROUND EXECUTION ONLY.** Every command, automated test, diagnostic, script, build, agent and browser must run in a visible foreground window on Angela's real desktop. Use forked CMD/PowerShell windows, `execute_forked_window: true`, and `headless: false`. Monitor live; if visibility cannot be confirmed, do not run. Read the [mandatory execution policy](../../../../TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).
+
 Use this skill to bootstrap a new skill correctly the first time.
 
 ## Procedure
@@ -97,11 +99,22 @@ Describe the skill. Be concise. Body must stay under 8 KiB.
 ## Constraints
 
 - Do NOT write outside `Tlamatini/agent/skills_pkg/<skill_name>/`.
-- Do NOT add a skill whose name collides with an existing one — the registry
-  rejects duplicates. The lint step catches this.
-- Body length cap is 8 KiB. Long playbooks belong in `references/<file>.md`
-  inside the skill directory and should be referenced from the body, not
-  inlined.
+- Do NOT add a skill whose name collides with an existing one. ⚠️ The registry
+  does NOT reject a duplicate — it resolves FIRST-WINS by root precedence and
+  logs the loser; within a single root that is an accidental collision and it
+  WARNS, but it still loads one of them. So a collision is silent to the user
+  and only `_meta/lint.py` (or `quick_validate.py`) will fail on it. Run the
+  lint step; do not rely on the runtime to catch this.
+- Body size: **8 KiB of UTF-8 BYTES is a WARNING, 16 KiB is a hard error** —
+  both measured by the one shared validator, `agent/skills/validation.py`.
+  (The old check counted CHARACTERS while printing "bytes", so a multibyte
+  body could exceed its own stated cap and pass.) Long playbooks belong in
+  `references/<file>.md` inside the skill directory; the harness lists every
+  such file by ABSOLUTE path in `plan.references`, so moving detail there
+  keeps it retrievable rather than losing it.
+- Validate with `python .../skill_creator/scripts/quick_validate.py <dir>` —
+  it runs the SAME validator as the catalog lint, so a package can no longer
+  pass one and fail the other.
 - Skills with `runtime: acpx` MUST set `acpx_agent` to a registered agent_id
   (see `list_acp_agents`).
 - **Scratch/output under `<app>/Temp` (2026-06-02 policy)**: if the skill writes

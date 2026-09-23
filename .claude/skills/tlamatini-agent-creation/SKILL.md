@@ -13,6 +13,8 @@ description: The authoritative, exhaustive end-to-end runbook for creating a BRA
 
 # Tlamatini — Complete New-Agent Creation Runbook (700+ steps)
 
+> **HEADLESS IS FORBIDDEN. VISIBLE FOREGROUND EXECUTION ONLY.** Every command, automated test, diagnostic, script, build, agent and browser must run in a visible foreground window on Angela's real desktop. Use forked CMD/PowerShell windows, `execute_forked_window: true`, and `headless: false`. Monitor live; if visibility cannot be confirmed, do not run. Read the [mandatory execution policy](../../../TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).
+
 > **Audience:** Claude Code working ON the Tlamatini codebase for **Angela**.
 > **Scope:** adding ONE brand-new workflow agent end-to-end across **every** surface
 > Tlamatini touches — backend pool script, Django view/url, migration, Parametrizer,
@@ -80,7 +82,7 @@ description: The authoritative, exhaustive end-to-end runbook for creating a BRA
 
 1. Confirm with Angela the agent's **purpose** in one sentence (what task it performs).
 2. Decide whether the agent is **deterministic** (no LLM) or **LLM-powered** — this changes config keys and FlowHypervisor timing notes.
-3. Decide whether the agent is **state-changing** (mutates files/DB/remote/GUI/sends messages) or **observational/read-only** (Shoter/Camcorder/Recorder/AudioPlayer/VideoPlayer/Monitor-*). This decides Exec-Report membership.
+3. Decide whether the agent is **state-changing** (mutates files/DB/remote/GUI/sends messages) or **observational/read-only** (Shoter/Camcorder/Recorder/AudioPlayer/VideoPlayer/Monitor-*). ⚠️ This does **NOT** decide Exec-Report membership — EVERY Multi-Turn agent is captured (Phase 15). It decides the **Ask-Execs** classification (Phase 14b) and the FlowHypervisor notes (Phase 19).
 4. Decide whether the agent is **Active** (starts downstream via `target_agents`) or **Terminal/Monitoring** (does not).
 5. Decide whether the agent **produces structured output** consumed by Parametrizer (emits `INI_SECTION_<CAPS>`).
 6. Decide whether the agent should be **LLM-callable in Multi-Turn** (a wrapped `chat_agent_<lower>` tool) — most new agents should be.
@@ -102,7 +104,7 @@ description: The authoritative, exhaustive end-to-end runbook for creating a BRA
 20. Read the sibling's CSS block in `agentic_control_panel.css`.
 21. Read the sibling's `ChatWrappedAgentSpec` in `chat_agent_registry.py`.
 22. Read the sibling's `_PARAMETRIZER_OUTPUT_FIELDS` entry in `services/agent_contracts.py`.
-23. Read the sibling's `_EXEC_REPORT_TOOLS` entry (if state-changing) in `mcp_agent.py`.
+23. Read the sibling's `_EXEC_REPORT_TOOLS` entry in `mcp_agent.py` **if it has one** — that map is an OPTIONAL styling/shared-key refinement, not the capture gate (`_resolve_exec_report_spec` captures every wrapped agent). Many captured agents have no entry at all.
 24. Read the sibling's `test_<sibling>_agent.py` in full — it is your test template.
 25. Write down the **full list of `config.yaml` keys** the new agent needs (params + connection fields). This list is referenced by ~8 later surfaces; keeping it stable prevents silent drift.
 26. Decide the agent's **connection-field shape**: `target_agents`+`source_agents` (normal), `target_agents_a/_b` (Asker/Forker), `target_agents_l/_g` (Counter), `source_agent_1/_2` (OR/AND), or `output_agents` (Stopper/Ender/Cleaner).
@@ -275,12 +277,12 @@ description: The authoritative, exhaustive end-to-end runbook for creating a BRA
 # PHASE 8 — Parametrizer registration (make the agent a usable source)
 
 155. Open `Tlamatini/agent/agents/parametrizer/parametrizer.py`.
-156. Add `'<lower>'` to the `SECTION_AGENT_TYPES` list (the generic parser handles the rest — no per-agent parser code).
+156. **⚠️ DO NOT EDIT `SECTION_AGENT_TYPES` — it is DERIVED.** The expression is literally `[name for name, spec in load_catalog().items() if spec["output_fields"]]`, so membership follows the generated flow catalog and a hand-added literal is either a no-op or fresh drift. Read it to CONFIRM your agent appeared; never append to it.
 157. **⚠️ CORRECTED 2026-08-23 — do NOT hand-edit `views.py` for this.** `views.PARAMETRIZER_SOURCE_OUTPUT_FIELDS` is **DERIVED** (`= get_parametrizer_source_fields()`), not a hand-maintained dict, so editing it is either a no-op or a fresh source of drift. Register the fields in ONE place — `agent_contracts.py`, the next step.
 158. Open `Tlamatini/agent/services/agent_contracts.py` and add `'<lower>': (...)` to `_PARAMETRIZER_OUTPUT_FIELDS` with the same field tuple (this is the registry the Flow-Compiler reads).
-159. Keep the **TWO** lists coherent: `parametrizer.py::SECTION_AGENT_TYPES` (membership) and `agent_contracts.py::_PARAMETRIZER_OUTPUT_FIELDS` (the field tuple). There is no third list to sync — `views.py` derives its copy from the second one.
+159. **There is exactly ONE list to edit: `agent_contracts.py::_PARAMETRIZER_OUTPUT_FIELDS`.** Everything else derives from it — `views.PARAMETRIZER_SOURCE_OUTPUT_FIELDS` via `get_parametrizer_source_fields()`, and `parametrizer.py::SECTION_AGENT_TYPES` via the generated catalog. After the contract edit run `python scripts/update_flow_catalog.py` (and `--check` in CI) to regenerate `agent/agents/flowcreator/flow_catalog.json`, then refresh the portable runtime copies so an isolated pool sees the same fields. VERIFY by importing `parametrizer.SECTION_AGENT_TYPES` and asserting `'<lower>'` is in it — if it is not, the catalog was not regenerated.
 160. Add the agent to the **Supported Source Agents** table in `README.md` (Phase 20 sweep, but note the field list now).
-161. If the agent is NOT a Parametrizer source (no INI_SECTION), SKIP 155–160 entirely.
+161. If the agent is NOT a Parametrizer source (no INI_SECTION), SKIP 155–160 entirely — but **still run Phase 8b.2** (the flow catalog covers every installed type, not only producers).
 162. Confirm `get_agent_contract('<lower>')` will resolve (alias-normalized) — if the agent has an alias spelling, add it to the contract's `aliases` (override in `agent_contracts.py` builtin overrides if needed).
 163. Decide the agent's `AgentContract` flags if it needs non-default behavior: `singleton`, `long_running`, `never_starts_targets`, `exclude_from_validation`, `no_input`, `no_output`, `special`. A normal agent needs none (synthesized default works).
 164. If you add a builtin contract override, set `input_field_by_slot` / `output_field_by_slot` to match the agent's connection shape (slot 2 → `target_agents_b` for Forker, etc.).
@@ -288,6 +290,68 @@ description: The authoritative, exhaustive end-to-end runbook for creating a BRA
 166. Confirm `connection_fields` on the contract covers every connection key the agent uses (so stale wiring is cleared on recompile).
 167. Re-read the Parametrizer "strict single-lane queue" rule — one source, one target, one-at-a-time — to confirm the agent's section granularity (N results = N sections) matches that model.
 168. Confirm the agent's `display_name` resolves through `agent_paths.display_name_from_agent_type` to exactly `<Display>` (centralized capitalization quirks live there).
+
+---
+
+# PHASE 8b — Central model registry & the generated flow catalog (R12, 2026-09-23)
+
+> ⚠️ **These gates were missing from this "exhaustive" checklist entirely.** Neither
+> master copy mentioned `model_settings`, `check_agent_runtimes`, `update_flow_catalog`,
+> `flow_catalog` or `@config`, while `create-new-agent`, CLAUDE.md's *Central model
+> selection* section and both inclusion skills all require them. Inherited guidance
+> reduced the chance of a miss; it did not remove it.
+
+## 8b.1 — If the agent uses a MODEL, an ENGINE or a VOICE
+
+168a. Does the agent call an LLM, an ASR/TTS engine, or pick a voice? If **no**, skip to
+     8b.2 — and make sure the agent does **not** depend on the model helper at all.
+168b. Register every configurable field in `Tlamatini/agent/agents/model_settings.py`
+     (`FIELDS`): its global config key, category, default, the agent's YAML path, kind,
+     choices, fallback key, and whether empty is a meaningful "disabled" value.
+168c. In the agent's `config.yaml`, write the field as the QUOTED sentinel `"@config"` so
+     it inherits the central choice. A **missing** field inherits too. A LITERAL value is
+     a deliberate canvas/standalone override and must survive untouched.
+168d. Resolve it in the agent's own `load_config` through the **portable stdlib-only
+     helper**. An isolated pool agent must never `import agent.*` and never import Django.
+168e. **A selector with no consumer is incomplete.** The core service or agent must
+     actually read the registered global key.
+168f. Preserve optional-empty semantics exactly (empty Whisperer cloud model = provider
+     default; empty LaTeXer repair model = repair disabled). Do not coerce them.
+168g. Carriage is TWO copies, not one: the **compiled** `agent.agents.model_settings` for
+     frozen web services, and a **loose** `agents/model_settings.py` refreshed through
+     `get_agents_root()` for portable agents. ⚠️ **Never derive a template path from a
+     frozen service's synthetic `__file__`** — under PyInstaller that path is compiled
+     code, not a loose file. Refresh REUSED pools, not only fresh ones.
+168h. Read portable YAML as **UTF-8, BOM tolerated**. The Windows default code page
+     corrupted Monitor-Log, Monitor-Netstat and RecMailer's real configs.
+168i. Wrapped chat seeds the global model BEFORE explicit tool arguments; the standalone
+     MCP resolves inherited template values BEFORE invocation overrides. Keep both.
+168j. Add the field to `docs/model_configuration.md`'s table and to Config → Models
+     (the dialog is metadata-driven — the registry entry is what makes it appear).
+
+## 8b.2 — Regenerate the flow catalog (EVERY agent, not just model-backed ones)
+
+168k. After ANY change to a template, an `AgentContract`, or a FlowCreator reference, run
+     `python scripts/update_flow_catalog.py` to regenerate
+     `agent/agents/flowcreator/flow_catalog.json`.
+168l. Then run `python scripts/update_flow_catalog.py --check` and keep it green — a stale
+     catalog silently drops your agent from FlowCreator's 89-type selection AND from
+     `parametrizer.SECTION_AGENT_TYPES`, which is derived from it (Phase 8).
+168m. Deployment refreshes the runtime snapshots; confirm an isolated pool copy sees the
+     same fields as the source tree.
+
+## 8b.3 — The release gate
+
+⛔ **RUN EVERY ONE OF THESE IN A VISIBLE FOREGROUND WINDOW** (`Start-Process powershell -WindowStyle Normal -ArgumentList '-NoExit', …` with `dangerouslyDisableSandbox: true`, or a Tlamatini agent with `execute_forked_window: true`). **NEVER** `run_in_background`, never a hidden or detached job — Angela watches these run. A gate she cannot see is a gate you cannot claim passed.
+
+168n. Run **`check_agent_runtimes`** in **source** mode: it prepares every template,
+     executes the real model loaders, refreshes helpers/catalogs, and runs a harmless
+     File-Creator check.
+168o. Run it again against a **fresh frozen build**, INCLUDING a build with **no**
+     `TlamatiniSourceCode/` snapshot. Report the two as SEPARATE evidence — file inclusion
+     is not proof of execution, and a source pass is not proof of a frozen pass.
+168p. Run BOTH inclusion sweeps (`sweep_self_modify.py`, `sweep_self_update.py`); they are
+     complementary, not interchangeable.
 
 ---
 
@@ -420,11 +484,16 @@ description: The authoritative, exhaustive end-to-end runbook for creating a BRA
 266. Add `<lower>` to `tools.py::_PROMOTE_SECTION_FIELDS_BY_TEMPLATE_DIR` if you want a section field (e.g. `output_path`) surfaced at the top level of the wrapped tool's JSON result (Camcorder/Recorder do this).
 266b. **(REQUIRED — added 2026-08-23) Declare the agent in EXACTLY ONE pre-launch preview set in `tools.py`:** `_PRE_LAUNCH_PREVIEW_BY_TEMPLATE` (a dict entry with a `title` and the `params`/`body` worth showing the user BEFORE the spawn) **or** `_PRE_LAUNCH_PREVIEW_OBSERVATIONAL_TEMPLATES` (a frozenset, for read-only / trivial agents with no destructive intent worth surfacing). **A contract test in `tests.py` asserts every wrapped chat-agent is in exactly one of the two**, so omitting this fails the build later, not now. The question is not "does it write?" but "is there a COST worth showing first?" — NetSpeed-Calculator mutates nothing yet gets a preview, because a run moves 100-200 MB of possibly metered bandwidth.
 267. Understand the **payload whitelist gotcha**: `acpx_enabled`, `exec_report_enabled`, `ask_execs_enabled`, `conversation_user_id`, `multi_turn_enabled` must stay in `UnifiedAgentChain.invoke`'s payload-rebuild whitelist — you are NOT adding a new payload flag, so just don't disturb it.
-268. Understand **Ask Execs is automatic**: if the wrapped tool is state-changing, the Multi-Turn executor prompts Proceed/Deny before it runs — no wiring needed.
+268. **⚠️ Ask Execs is NOT automatic — it is an EXPLICIT ALLOWLIST.** `_requires_exec_permission` tests membership in `mcp_agent.py::_ASK_EXECS_REQUIRED_TOOLS`; a tool absent from that set is NEVER prompted, however destructive it is (that gap let Deleter wipe a glob and Whatsapper message a human). Classify your new tool against the CURRENT policy, which records deliberate owner decisions — do not widen it because this step reads surprising:
+     • **ADD** it if it runs a command/script, DESTROYS or OVERWRITES data (tier A), or REACHES A REMOTE SYSTEM / the network (tier D).
+     • **DO NOT ADD** a messaging agent (tier B — Emailer/Whatsapper/Telegrammer/Zavuerer/Instant-Messaging-Doctor): gated 2026-07-14, **REVERSED 2026-07-26** — *“Messages must be able to be sent without asking, it depends only on AI desisicion.”*
+     • **DO NOT ADD** a desktop-UI or hardware agent (tier C — Keyboarder/Mouser/Windower/Playwrighter/STM32er/ESP32er/Arduiner/ESPHomer/Blenderer/Unrealer): Angela keeps these ungated for SPEED because the operation is visible while it happens.
+     • **DO NOT ADD** read-only / observational / management-polling tools.
+     `agent/test_ask_execs_allowlist.py` pins this in BOTH directions and fails if you get it wrong.
 269. If the wrapped tool is READ-ONLY/polling and should NOT be prompted, add its name to `_MANAGEMENT_TOOLS` and/or `_TOOL_QUOTA_EXEMPT` in `mcp_agent.py` (and it is likely already absent from `_EXEC_REPORT_TOOLS`).
 270. Confirm the wrapped tool returns JSON with `run_id`, `status`, `log_excerpt`, `runtime_dir`, `log_path`.
 271. Confirm launching creates a runtime copy under `agents/pools/_chat_runs_/<lower>_<N>_<id>/`.
-272. If the agent runs a desktop/visible GUI when launched from chat, recall the dogfooding rule: foreground + `dangerouslyDisableSandbox` (Phase 25), but the wrapped tool itself runs headless/background by default in Multi-Turn.
+272. If the agent runs a desktop/visible GUI when launched from chat, recall the dogfooding rule: foreground + `dangerouslyDisableSandbox` (Phase 25). ⚠️ **That is PRODUCT behaviour, not a licence to verify invisibly**: Multi-Turn suppresses visible consoles for a wrapped tool by default, but **every TEST and every verification you run is VISIBLE and FOREGROUND, always** (Angela's hard rule). When you need to SEE the agent work, launch it foreground with `dangerouslyDisableSandbox: true` / `execute_forked_window: true`, or pass the agent's own visibility knob (Playwrighter `headless: false` + `hold_open_seconds`).
 273. **DUAL ENABLE-GATE (2026-06-07 — do NOT bypass):** `get_mcp_tools()` binds your `chat_agent_<lower>` for the LLM ONLY when BOTH (a) the wrapper Tool row `Chat-Agent-<Display>` is enabled (Configure Mcps/Tools, the migration from step 263) AND (b) the Agent row `<Display>` is enabled (Configure Agents). Disabling EITHER makes the agent INVISIBLE to the LLM (reported as unknown). Both gates fail OPEN (no row → defaults enabled). This is exactly why step 255's `display_name` MUST equal the DB `agentDescription` — the agent gate is keyed on `agent_<display>_status`. VERIFY: uncheck the agent in Configure Agents (or the wrapper in Configure Mcps), ask the LLM to use it, confirm it is reported unavailable. Do NOT add the agent to the `Tool` table twice or to MCP context rows.
 274. Confirm the `_infer_execution_shell(tool_name, args)` in `mcp_agent.py` returns a sensible shell for the Ask-Execs dialog; add a branch if the agent runs through an unusual interpreter.
 275. Confirm capability scoring will surface the tool — the `security_hints` + `purpose` feed `capability_registry.py`; add an `_EXTRA_HINTS_BY_TOOL_NAME` entry only if scoring under-selects it.
@@ -532,11 +601,11 @@ description: The authoritative, exhaustive end-to-end runbook for creating a BRA
 345. Make the prompts SAFE to run repeatedly (the daily chat test may execute them) — no destructive operations.
 346. Style the prompt banner to MIRROR a recent demo (e.g. ST-blue for STM32er; pick a theme matching the agent's CSS gradient) — copy the HTML banner pattern from the sibling's prompt migration.
 347. Set each prompt's mode expectation correctly: Multi-Turn ON for operator prompts; the prompt-catalog mode badges (one-shot/multi-turn/ACPX) auto-set the toolbar toggles, so phrase the prompt so the classifier infers the right modes (scrub any "do NOT use acp_spawn" clause that would confuse the classifier).
-348. Keep `idPrompt` and `promptName` suffix contiguous and gap-free with the existing catalog.
+348. APPEND at `max(idPrompt)+1`. Gaps are tolerated (the primary load is one grouped `list_prompts` call and the legacy probe loop is gap-tolerant), so do not manufacture contiguity by touching another row.
 349. Implement the reverse migration to delete the seeded prompts.
 350. Set `dependencies` on the previous migration.
 351. Run a quick round-trip: `makemigrations --check` clean + a `sqlmigrate` mental check that rows insert.
-352. If inserting BEFORE existing prompts (to keep grouping), shift the existing `idPrompt`+`promptName` suffixes accordingly (the catalog is order-sensitive).
+352. **⚠️ NEVER RENUMBER AN EXISTING PROMPT.** To place a card earlier in its section, give the NEW row a lower `sort_rank` — that is exactly why `sort_rank` exists (migration 0181) and why no renumber has been needed since. `list_prompts_view` orders by (category rank, `sort_rank`, `idPrompt`), so identity and position are independent. Migration 0179's catalog-wide renumber was a ONE-TIME, Angela-authorised reorganization and is frozen history; do not repeat it and do not rewrite historical migrations.
 353. Document the new catalog range (e.g. "catalog now 1–66") for the memory + docs.
 354. Confirm the prompts appear in the `#prompts-catalog` modal after migrate (Phase 25 live check).
 355. Confirm each prompt's title/description clearly names the agent so Angela can find it.
@@ -560,7 +629,7 @@ description: The authoritative, exhaustive end-to-end runbook for creating a BRA
 368. Open `docs/claude/agents.md` and add the agent to the **All Workflow Agent Types** catalog under the right category with its full description.
 369. Bump the "74 total" style counts in `CLAUDE.md` and `docs/claude/agents.md`.
 370. If the agent is a media/observational sibling, update the relevant family descriptions (Shoter/Camcorder/Recorder/AudioPlayer/VideoPlayer prose) so the family stays consistent.
-371. If the agent is state-changing, confirm `docs/claude/exec-report.md` does not need a new note (it is generic — only add if behavior is unusual).
+371. Confirm `docs/claude/exec-report.md` does not need a new note (capture is generic for every Multi-Turn agent — only add one if the verdict/status behavior is unusual).
 372. Bump `package.json` "version" to the release version Angela targets (per `feedback_package_json_version_bump`) — only running-example/current-state strings, not historical changelog refs.
 373. Update any `BookOfTlamatini.md` "Recent Updates" narrative entry if Angela maintains it for releases.
 374. Confirm `agents_descriptions.md` is shipped by `build.py` next to the exe (it is — just don't break it) so tooltips work in frozen mode.
@@ -603,7 +672,7 @@ description: The authoritative, exhaustive end-to-end runbook for creating a BRA
 399. Test reanimation: with `AGENT_REANIMATED=1` the log is NOT truncated and the REANIMATED line is logged.
 400. Write **registry-integration** tests (Django `SimpleTestCase`): assert the `ChatWrappedAgentSpec` exists with the right `tool_name`/`display_name`.
 401. Assert the agent contract + `_PARAMETRIZER_OUTPUT_FIELDS['<lower>']` fields match the section header.
-402. Assert Exec-Report MEMBERSHIP (state-changing) or ABSENCE (observational) of `chat_agent_<lower>` in `_EXEC_REPORT_TOOLS`.
+402. Assert your agent RESOLVES TO A REPORT SPEC: `mcp_agent._resolve_exec_report_spec('chat_agent_<lower>')` must return a non-None `(agent_key, display)` — observational agents included. ⚠️ Do **NOT** assert absence from `_EXEC_REPORT_TOOLS`; that map is optional styling and a missing entry is normal. `ExecReportCaptureTests.test_every_multiturn_agent_is_capturable_including_observational` already covers the whole surface.
 403. Assert the `config.yaml` defaults parse and contain every documented key.
 404. Assert the CSS gradient class `.canvas-item.<css>-agent` exists and is UNIQUE (no duplicate gradient).
 405. Assert the URL route `update_<lower>_connection` resolves.
@@ -687,7 +756,7 @@ description: The authoritative, exhaustive end-to-end runbook for creating a BRA
 467. If the agent is VISIBLE/desktop (a window the user must SEE), and Angela asked to use Tlamatini's agents, launch it FOREGROUND with `dangerouslyDisableSandbox: true` so the window renders on her real desktop (the Bash sandbox hides GUIs; `run_in_background` detaches them) — per `feedback_run_tlamatini_agents_visible`.
 468. To dogfood via Tlamatini's pool (not Claude's own tools): copy the agent to an isolated runtime dir, write a tailored `config.yaml`, run `python <lower>.py`, then read `<lower>.log` for the result.
 469. In chat with Multi-Turn ON, ask the LLM to run the agent (`Run <Display> with ...`) and confirm `chat_agent_<lower>` fires and returns the JSON result.
-470. If state-changing, toggle Exec Report ON and confirm the `List of <Display> Operations` table renders with the correct gradient.
+470. Toggle Exec Report ON — for EVERY Multi-Turn agent, observational included — and confirm the `List of <Display> Operations` table renders (with the native gradient if you added the optional CSS).
 471. If state-changing, toggle Ask Execs ON and confirm the Proceed/Deny prompt appears before the tool runs.
 472. Run the new demo prompt(s) from the catalog and confirm they execute end-to-end.
 473. Confirm the FlowHypervisor (start it on a flow with the agent) does NOT falsely flag the agent's normal output/timing.
@@ -720,12 +789,16 @@ description: The authoritative, exhaustive end-to-end runbook for creating a BRA
 495. ☐ Config dialog (`canvas_item_dialog.js`) renders all keys (generic — bespoke only for special widgets).
 496. ☐ `chat_agent_registry.py::ChatWrappedAgentSpec` (key/template_dir/tool_name/display_name/purpose/example_request/aliases/security_hints) — if Multi-Turn.
 497. ☐ `tools.py::_PROMOTE_SECTION_FIELDS_BY_TEMPLATE_DIR` — if surfacing a section field.
-498. ☐ `mcp_agent.py::_EXEC_REPORT_TOOLS` + `agent_page.css` caption/accent — if state-changing.
+498. ☐ Exec Report capture VERIFIED for this agent (automatic — Phase 15). `mcp_agent.py::_EXEC_REPORT_TOOLS` + `agent_page.css` caption/accent are OPTIONAL styling only.
 499. ☐ `agent_page_chat.js::_mapToolArgsToAgentConfig` branch — if Multi-Turn.
 500. ☐ `flowcreator/agentic_skill.md` entry + capability table + categories + selection-priority.
 501. ☐ `flowhypervisor/monitoring-prompt.pmt` SHORT/LONG list + SPECIAL NOTES + markers + TYPICAL TIMING + DO-NOT-FLAG.
 502. ☐ Demo-prompt migration (contiguous catalog, safe prompts, mode badges) + banner styling.
 503. ☐ Docs: `agents_descriptions.md`, `README.md` (counts/tree/tables/glossary/changelog/API), `CLAUDE.md`, `docs/claude/agents.md`, `package.json` version.
+503b. ☐ `agents/model_settings.py` FIELDS entry + `"@config"` in the template YAML + a real consumer — if the agent uses a model/engine/voice (Phase 8b).
+503c. ☐ `python scripts/update_flow_catalog.py` run AND `--check` green (regenerates `flow_catalog.json`; `SECTION_AGENT_TYPES` derives from it).
+503d. ☐ `check_agent_runtimes` passed in SOURCE mode and against a FRESH FROZEN build (incl. one with no `TlamatiniSourceCode/`) — reported as separate evidence.
+503e. ☐ `sweep_self_modify.py` + `sweep_self_update.py` both CLEAN.
 504. ☐ `requirements.txt` pin + `build.py` `_agent_libs`/`--collect-all`/bundle — if new dep.
 505. ☐ `test_<lower>_agent.py` (helpers, fake backend, INI round-trip, main end-stage, reanimation, registry integration, JS contract) — green + ruff clean.
 506. ☐ Playwright harness: `questions.py` knowledge Qs + `wrapped_questions.py` execution Q + `--select` token — focused run PASS.
@@ -737,12 +810,12 @@ description: The authoritative, exhaustive end-to-end runbook for creating a BRA
 
 # Pitfalls index (the silent-failure traps — re-read before declaring done)
 
-510. **Naming drift** — the real source of truth is `agent_paths.display_name_from_agent_type` (the boot repopulate wipes + re-derives `agentDescription` every start; keep the migration and `chat_agent_registry.display_name` byte-identical to it); CSS classMap (HYPHEN), connection handlers (SPACED), connector symbol (PascalCase), INI token (CAPS) each transform it differently. Fix it in the migration FIRST.
+510. **Naming drift** — the real source of truth is `agent_paths.display_name_from_agent_type` (the boot repopulate wipes + re-derives `agentDescription` every start; keep the migration and `chat_agent_registry.display_name` byte-identical to it); CSS classMap (HYPHEN), connection handlers (SPACED), connector symbol (PascalCase), INI token (CAPS) each transform it differently. **Fix it in the RESOLVER OVERRIDE MAP FIRST** (`agent_paths.py::display_name_from_agent_type`), then align the migration, `chat_agent_registry.display_name`, the `data-content` CSS attribute, the `_agentPurpose` key and every derived identifier. Fixing the migration first is useless — the next boot overwrites it. Never rely on generic title-casing, and preserve intentional hyphens and spaces exactly.
 511. **Empty-string overwrites** — writing `config.field=''` (view, flow-generator, dialog) destroys the template default via the deep-merge. Always omit-if-empty / use the `set()` helper.
 512. **Pool-name cardinal mismatch** — emit `<lower>_N` (underscore + cardinal), never bare `<lower>` or `<lower>-N`, into connection lists, or the Starter fails on the first hop.
 513. **Forgetting `_IS_REANIMATED`** — without the marker before `basicConfig`, the log truncates on every resume.
 514. **Missing concurrency guard** — `wait_for_agents_to_stop` must precede `start_agent` in looping flows.
-515. **`_EXEC_REPORT_TOOLS` miss** — a state-changing agent without the map entry shows no table (silent data loss); an observational agent wrongly added shows a spurious table.
+515. **Exec-Report capture miss** — a Multi-Turn agent that produces NO table is a defect (the Talker bug). Capture is automatic via `_resolve_exec_report_spec`, so the real causes are: the wrapped spec was never registered (Phase 14), or the tool name landed in `_MANAGEMENT_TOOLS`. A missing `_EXEC_REPORT_TOOLS` entry only means the default caption is used — it is **not** a miss. An observational agent in that map is **not** a bug either; it just gets a native gradient.
 516. **Flow-Generator miss** — Multi-Turn-callable agent without a `_mapToolArgsToAgentConfig` branch produces a `.flw` node with empty config.
 517. **6 JS edit locations** — `acp-canvas-core.js` touches connections in 6 places; missing one breaks creation/removal/undo/redo/.flw-load.
 518. **CSS gradient duplicated in JS** — never type a gradient in JS; use `applyAgentToolIconStyle`.

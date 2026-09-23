@@ -42,6 +42,8 @@ metadata:
 
 # ACP Router
 
+> **HEADLESS IS FORBIDDEN. VISIBLE FOREGROUND EXECUTION ONLY.** Every command, automated test, diagnostic, script, build, agent and browser must run in a visible foreground window on Angela's real desktop. Use forked CMD/PowerShell windows, `execute_forked_window: true`, and `headless: false`. Monitor live; if visibility cannot be confirmed, do not run. Read the [mandatory execution policy](../../../../TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).
+
 Route a plain-language request to the right ACPX harness.
 
 ## Decision rules
@@ -50,7 +52,10 @@ Route a plain-language request to the right ACPX harness.
    Code", "ask Cursor to..."), use that as `harness` directly.
 2. If the user wants Codex chat conversation, prefer the native Codex
    binding (a separate skill); use ACPX Codex only when ACP/`/acp`/acpx
-   is named explicitly or when background spawn is needed.
+   is named explicitly. Before spawning, verify that the chosen route can run
+   in a visible foreground window; do not use a hidden child process. If the
+   available ACPX transport cannot satisfy this, report the limitation and do
+   not spawn through it.
 3. Default `mode` to `session` so follow-up turns can be added with
    `acp_send`. Use `one-shot` only when the user asked for a single
    non-interactive task. (Note: `mode` is ignored by `oneshot-prompt`

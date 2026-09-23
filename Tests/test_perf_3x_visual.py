@@ -18,9 +18,9 @@ REQUIREMENTS (these are end-to-end, not hermetic):
   * Login creds in env: TLAMATINI_USER / TLAMATINI_PASS  (default user angela)
   * `pip install playwright && playwright install chromium`
 
-Run:
-  python Tests/test_perf_3x_visual.py            # headed (visible) — default
-  HEADLESS=1 python Tests/test_perf_3x_visual.py # headless
+Run in a VISIBLE FOREGROUND console:
+  python Tests/test_perf_3x_visual.py            # always headed (visible)
+  # HEADLESS IS FORBIDDEN; the old environment variable cannot hide the browser.
 
 It is a standalone runner (NOT a Django test) because it needs the live server
 and a browser. It prints a PASS/FAIL line per scenario and a final summary, and
@@ -50,7 +50,6 @@ STALL_BUDGET = float(os.environ.get("STALL_BUDGET", "90"))  # seconds; a single
 URL = os.environ.get("TLAMATINI_URL", "http://127.0.0.1:8000/")
 USER = os.environ.get("TLAMATINI_USER", "angela")
 PASS = os.environ.get("TLAMATINI_PASS", "")
-HEADLESS = os.environ.get("HEADLESS", "0") == "1"
 
 PROMPTS = [
     "Say only the word READY and then END-RESPONSE.",
@@ -85,6 +84,8 @@ def _record(name, ok, detail=""):
 
 
 def main():
+    if os.environ.get("HEADLESS", "0").strip().lower() not in ("", "0", "false", "no", "off"):
+        print("HEADLESS IS FORBIDDEN: ignoring HEADLESS and opening a VISIBLE browser.", flush=True)
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:
@@ -96,7 +97,7 @@ def main():
               "Set TLAMATINI_USER / TLAMATINI_PASS env vars.")
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=HEADLESS)
+        browser = p.chromium.launch(headless=False)
         ctx = browser.new_context()
         page = ctx.new_page()
         try:

@@ -50,7 +50,12 @@ set TLAMATINI_PASS=<your password>
 python Tlamatini/tests_e2e/test_create_flow_visual.py
 ```
 
-Useful env knobs: `NUM_QUESTIONS` (default 100), `HEADLESS=1` (default visible),
+**HEADLESS IS FORBIDDEN.** Every runner and setup command must run in a visible
+foreground console on Angela's real desktop, with the browser visible throughout.
+The old `HEADLESS` environment variable cannot enable headless execution: these
+runners warn and always launch with `headless=False`.
+
+Useful env knobs: `NUM_QUESTIONS` (default 100),
 `ANSWER_TIMEOUT_S` (default 180), `DOWNLOAD_SAMPLE` (default 12; `-1` = validate
 every button-bearing flow), `BASE_URL` (default `http://127.0.0.1:8000`).
 

@@ -40,6 +40,8 @@ metadata:
 
 # Tighten ALLOWED_HOSTS
 
+> **HEADLESS IS FORBIDDEN. VISIBLE FOREGROUND EXECUTION ONLY.** Every command, automated test, diagnostic, script, build, agent and browser must run in a visible foreground window on Angela's real desktop. Use forked CMD/PowerShell windows, `execute_forked_window: true`, and `headless: false`. Monitor live; if visibility cannot be confirmed, do not run. Read the [mandatory execution policy](../../../../TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).
+
 The Tlamatini security report flagged the default `ALLOWED_HOSTS=['*']`
 in `Tlamatini/tlamatini/settings.py` as one of the Tlamatini-specific
 debts. This skill replaces it with a user-supplied whitelist and writes

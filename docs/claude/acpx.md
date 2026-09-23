@@ -8,6 +8,8 @@
 -->
 # Tlamatini — ACPX (Agent Communication Protocol eXtension)
 
+> **HEADLESS IS FORBIDDEN. ALL EXECUTION MUST BE VISIBLE.** Every automated test, command, diagnostic, script, build, agent, prompt and browser must run in a visible, forked foreground window on Angela's real desktop. Use visible CMD/PowerShell consoles and headed browsers (`headless=False`); keep output on screen and monitor live. No hidden/background execution, including CI or quick checks. If visibility cannot be confirmed, do not run. Mandatory policy: [visible execution](../../TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).
+
 This file is the authoritative reference for what **ACPX** means in Tlamatini, the mechanics it implements, and the contract every part of the system (LLM, planner, tools, frontend) honors. Whenever the user mentions "ACPX", "ACPX mechanics", "ACP child", "use ACPX to ...", "spawn an external CLI", "leg A → leg B", "multi-CLI relay", "hand off transcript", or anything semantically equivalent, route them through this surface — do not paraphrase, do not invent a workaround.
 
 ---
@@ -277,6 +279,18 @@ ACPX returned `ok: true`, the Exec Report row went **GREEN**, and the orchestrat
 3. **FAIL-OPEN.** Anything unrecognised is DELIVERED. `classify_child_output` never raises.
 4. **`acp_doctor(deep=True)` stays opt-in.** A readiness probe sends a real prompt and spends the user's money; the result is cached 10 minutes. `ready: null` is an honest "this transport cannot be probed without a session", never an invented verdict.
 5. Do NOT soften `_ok_unless_blocked` back into an unconditional `_ok`.
+6. **The SkillHarness shares this verdict too (2026-09-23).** A `runtime: acpx`
+   skill used to reverse-scan its events for "any text" and wrap the result in
+   a generic success envelope — so it could return a **stderr log line** as the
+   answer (the runtime emits assistant text, then stderr, then `done`), and a
+   blocked child was a SUCCESS. `skills/harness.py::_run_acpx` now uses
+   `extract_last_assistant_text` and honours the `done` event's `delivered`
+   flag; a non-delivery becomes `ok: false` / `reason: "not_delivered"` with
+   the shared `code`, and the full payload is preserved so the caller can still
+   read the transcript. The skill's own `max_seconds` also bounds the drain.
+   All shipped skills are `in-process`, so this was a latent path — it is fixed
+   before a custom ACPX-runtime skill can hit it. Coverage:
+   `agent/tests.py::SkillAcpxDeliveryVerdictTests`.
 
 Coverage: `agent/acpx/tests.py::ChildHealthClassifierTests` — every string in it was copied verbatim from the transcripts of the run that failed.
 
@@ -353,6 +367,40 @@ Four entries:
 ### Persistence shape (DB stays at "enumeration + enable/disable" only)
 
 The `Skill` model was pre-existing from migration `0071_acpx_skills.py` and is auto-seeded by `boot_skills()` from `apps.AgentConfig.ready()` on a background thread. The admin UI **only ever writes `Skill.enabled`** via `consumers.AgentConsumer.save_skill(name, enabled)`. The cached fields (`description`, `runtime`, `acpx_agent`, `frontmatter_json`, `body_sha256`) are owned by `boot_skills()` and refreshed from SKILL.md on every reload — the disk is the only source of truth for permissions, budgets, body. Browse / Diagnostics read fresh from `skill_registry`, not from those cached columns.
+
+### ⚠️ `invoke_skill` is a PLANNING HANDOFF, not an execution (2026-09-23)
+
+For an `in-process` skill — which is all 29 shipped ones — `invoke_skill`
+validates the arguments and returns the skill's **complete** procedure. It runs
+nothing. The envelope says so:
+
+| key | meaning |
+|---|---|
+| `status` | `planned` \| `completed` \| `failed` |
+| `completed` | `false` on a handoff — the work is still ahead |
+| `output` | **`{}`** on a handoff. Only ever real, measured values. |
+| `pending_outputs` | the declared output contract the CALLER must satisfy |
+| `plan.body` | the whole body, with `plan.body_truncated` stated explicitly |
+| `plan.references` | files beside SKILL.md, by ABSOLUTE path |
+| `enforcement` | what is enforced vs advisory, per field |
+
+It used to return `ok: true` beside schema-shaped **placeholder values** under
+`output`, so a stub `doctor_ok: false` was indistinguishable from a doctor that
+had run and failed, and `body_excerpt` silently cut the procedure at 2,000
+characters (15 of 29 bodies are longer). **Never reintroduce placeholder values
+under `output`**, and never let a truncation be implied rather than stated.
+
+`enforcement` is deliberately modest: the harness enforces the I/O contract,
+secret redaction and this invocation's wall-clock/iteration caps. It does NOT
+sandbox `permissions` or `requires_tools` — those are declared policy carried in
+the plan, gated by Tlamatini's normal Configure Mcps/Tools, Configure Agents and
+Ask-Execs surfaces — and `max_tokens` is advisory because the harness spends no
+model tokens of its own. **If you implement real scoping, update that block in
+the same commit.**
+
+A `sensitive: true` input (and any credential-shaped input NAME) is redacted
+from every audit event and from the returned envelope by
+`agent/skills/redaction.py`, with no prefix, length or hash of the value.
 
 ### Tool-surface gating
 

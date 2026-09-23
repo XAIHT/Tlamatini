@@ -38,20 +38,60 @@ metadata:
 
 # CSRF-exempt audit
 
-The TlamatiniVsOpenClaw report counted 60+ `@csrf_exempt` decorators in
-`Tlamatini/agent/views.py`. Most are necessary for WebSocket-adjacent
-JSON endpoints, but the wholesale exemption is a security smell.
+> **HEADLESS IS FORBIDDEN. VISIBLE FOREGROUND EXECUTION ONLY.** Every command, automated test, diagnostic, script, build, agent and browser must run in a visible foreground window on Angela's real desktop. Use forked CMD/PowerShell windows, `execute_forked_window: true`, and `headless: false`. Monitor live; if visibility cannot be confirmed, do not run. Read the [mandatory execution policy](../../../../TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).
 
-## Procedure
+Inventory every `@csrf_exempt` in `Tlamatini/agent/views.py` and classify each
+one against the protection the server actually applies. **Read-only** unless
+remediation is separately requested.
 
-1. Grep `Tlamatini/agent/views.py` for `@csrf_exempt`.
-2. For each match, inspect the view above it and classify:
-   - `unsafe-without-csrf`: state-changing POST that should NOT be exempt.
-   - `safe-because-websocket`: feeds a WebSocket session-restore path.
-   - `safe-because-internal-tool`: only callable by Tlamatini's own JS;
-     a CSRF token would be appropriate.
-   - `unknown`: needs human review.
-3. For each non-`safe-because-websocket` row, propose the smallest fix
-   (token tag, middleware exception, view rewrite).
+## ⚠️ Find the RIGHT function
 
-Return `{ total, classifications: [{view_name, kind}], recommendations: [...] }`.
+`@csrf_exempt` decorates the function that **FOLLOWS** it. Inspecting the view
+above a decorator audits the wrong endpoint. Anchor on the `def` immediately
+beneath the decorator stack.
+
+## ⚠️ "Called by our own JavaScript" IS NOT A CLASSIFICATION
+
+Two labels were previously handed out on the caller's identity alone:
+
+* *safe-because-internal-tool* — but CSRF is precisely the attack where a
+  **third-party page** issues the request while the victim's cookies ride
+  along. That our own JS also calls the endpoint says nothing about who else
+  can.
+* *safe-because-websocket* — the WebSocket consumer is a different transport
+  with a different origin check. It does not protect the HTTP view that
+  happens to sit near it.
+
+Neither establishes anything. Delete them.
+
+## What actually decides it — inspect the view body
+
+For each exempt endpoint record, with a line reference:
+
+1. **Authentication** — `@login_required` / an explicit `request.user`
+   check / none.
+2. **Allowed methods** — `@require_POST` and friends, or an unguarded handler.
+3. **State change** — does it write a file, a DB row, config, or spawn a
+   process? A read-only endpoint has a different risk profile from one that
+   writes `config.json`.
+4. **Credential mechanism** — session cookie (CSRF-relevant) vs a bearer
+   token or signature in the body (usually not).
+5. **Origin / token protection** — an explicit `Origin`/`Referer` check, an
+   HMAC, a shared secret, or nothing.
+6. **Reachability** — is it bound to loopback, or served on every interface
+   the `django_port` listens on?
+
+## The four verdicts (nothing else)
+
+| verdict | meaning |
+|---|---|
+| `justified_exemption` | the endpoint does not rely on cookie auth (e.g. a signed webhook), so CSRF does not apply — cite the mechanism. |
+| `protected_by_other_means` | cookie-authenticated, but an origin/token/HMAC check is present — cite the line. |
+| `protection_missing` | cookie-authenticated, state-changing, no compensating check. Report it; do not fix it here. |
+| `insufficient_evidence` | you could not establish one of the six facts above. **Leave it unresolved.** |
+
+Every verdict must cite the SERVER-SIDE check that supports it. A caller's
+name is never a citation.
+
+Return `{ endpoints: [{name, line, verdict, evidence, state_changing}],
+summary }`.

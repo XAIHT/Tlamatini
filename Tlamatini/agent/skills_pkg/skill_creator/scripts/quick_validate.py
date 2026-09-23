@@ -13,36 +13,49 @@
 Usage:
     python quick_validate.py <skill_dir>
 
-Returns 0 if the SKILL.md is parseable AND the body is non-empty AND under
-8 KiB AND the frontmatter has at least name + description.
+⚠️ This is the SAME validator the catalog lint runs
+(``agent/skills/validation.py``) — it is "quick" only because it checks one
+package instead of all of them, never because it checks less.
+
+It used to be a different validator: it substring-matched ``name:`` and
+``description:`` without parsing YAML (despite its docstring claiming
+otherwise) and applied a 12,288-character WHOLE-FILE ceiling where the linter
+applied an 8 KiB body cap. A package could therefore pass here and fail there,
+or vice versa. **Never reintroduce a local rule in this file.**
+
+Exit codes:
+    0  valid (warnings may still be printed)
+    1  invalid — the registry would refuse it
+    2  usage error
 """
 from __future__ import annotations
 
 import sys
 from pathlib import Path
 
+HERE = Path(__file__).resolve().parent
+# .../agent/skills_pkg/skill_creator/scripts -> .../Tlamatini (the app root)
+APP_ROOT = HERE.parent.parent.parent.parent
+if str(APP_ROOT) not in sys.path:
+    sys.path.insert(0, str(APP_ROOT))
+
+from agent.skills.validation import validate_skill_dir  # noqa: E402
+
 
 def main(argv: list[str]) -> int:
     if len(argv) != 2:
         print("usage: quick_validate.py <skill_dir>")
         return 2
-    skill_dir = Path(argv[1]).resolve()
-    md = skill_dir / "SKILL.md"
-    if not md.exists():
-        print(f"[FAIL] {md} does not exist")
+    result = validate_skill_dir(Path(argv[1]).resolve())
+    for f in result.warnings:
+        print(f"[WARN] {result.path}: {f.code}: {f.message}")
+    if result.errors:
+        for f in result.errors:
+            print(f"[FAIL] {result.path}: {f.code}: {f.message}")
         return 1
-    text = md.read_text(encoding="utf-8")
-    if "---" not in text:
-        print(f"[FAIL] {md} has no frontmatter")
-        return 1
-    if "name:" not in text or "description:" not in text:
-        print(f"[FAIL] {md} missing name/description")
-        return 1
-    body_size = len(text)
-    if body_size > 12 * 1024:
-        print(f"[FAIL] {md} too large ({body_size} bytes)")
-        return 1
-    print(f"[OK] {md} basic validation passed ({body_size} bytes)")
+    print(f"[OK] {result.path}: name={result.name!r} "
+          f"runtime={result.runtime} "
+          f"body={result.body_bytes}B ({result.body_chars} chars)")
     return 0
 
 

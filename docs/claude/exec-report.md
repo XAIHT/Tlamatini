@@ -8,6 +8,8 @@
 -->
 # Tlamatini — Exec Report (Per-Agent Execution Tables on the Final Answer)
 
+> **HEADLESS IS FORBIDDEN. ALL EXECUTION MUST BE VISIBLE.** Every automated test, command, diagnostic, script, build, agent, prompt and browser must run in a visible, forked foreground window on Angela's real desktop. Use visible CMD/PowerShell consoles and headed browsers (`headless=False`); keep output on screen and monitor live. No hidden/background execution, including CI or quick checks. If visibility cannot be confirmed, do not run. Mandatory policy: [visible execution](../../TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).
+
 When the **"Exec Report"** toolbar checkbox is ticked alongside Multi-Turn, the final answer gets a sequence of HTML tables appended to it — one table per kind of state-changing agent that actually fired, each row = one real tool call + SUCCESS/FAILURE verdict. It is the ground-truth "show-your-work" counterpart to the LLM's prose summary. *(This per-tool SUCCESS/FAILURE verdict is unrelated to — and outlived — the removed whole-answer classifier; see `docs/claude/multi-turn.md`.)*
 
 **Checkbox gating (2026-07-06):** Exec report is a Multi-Turn modifier, so its checkbox is **enabled only while Multi-Turn is checked** — `syncExecReportAvailability()` in `agent_page_state.js` disables + greys it otherwise (mirroring Ask Execs), wired on load, on every Multi-Turn `change`, and on the Step-by-Step force-enable in `agent_page_init.js`. `isExecReportEnabled()` already returns `false` when Multi-Turn is off, so the backend never captures/renders; the gating just makes the dependency obvious in the UI.

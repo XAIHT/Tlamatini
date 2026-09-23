@@ -16,6 +16,241 @@
 
 ---
 
+## 2026-09-23 — THE SKILL BOUNDARY MUST TELL THE TRUTH (Codex audit R01–R22)
+
+**Where this came from.** Codex audited all **41 tracked `SKILL.md` files across four
+locations** (29 application packages + 5 Claude + 5 Gemini + 2 Codex) at HEAD `158971b`,
+reachable tag `v1.65.5`, and filed 22 numbered recommendations. Its central finding: the
+skill documents, their executable runtime and their maintenance checklists no longer
+described the same behavior. This entry records what changed and what must not be undone.
+The report itself is `Codex2ClaudeRecommendations.md` at the repo root.
+
+### 1. `invoke_skill` was reporting completed work it had not done (R01)
+
+`_run_in_process` returned `ok: true` beside **schema-shaped placeholder values** in
+`output` — literally `"<plan-only stub for greeting; …>"` — after passing them through
+output-contract validation. A caller could not distinguish a stub from a measurement, and
+a stub `doctor_ok: false` read exactly like a doctor that HAD run and failed. Same
+silent-plausible-WRONG class as the PDFer missing images, the LaTeXer linter verdict and
+the ACPX blocked child.
+
+**The design was always a planning handoff** (it is why that path opens no shell and
+writes no file). It is now SAID so, explicitly, in the envelope:
+
+| key | meaning |
+|---|---|
+| `status` | `planned` \| `completed` \| `failed` |
+| `completed` | `false` on a handoff — the work is still ahead |
+| `output` | **`{}`** on a handoff. Only ever real, measured values. |
+| `pending_outputs` | the declared contract the CALLER must satisfy |
+| `plan` | the procedure + what it may use |
+| `enforcement` | what is enforced vs advisory, per field |
+
+⚠️ **NEVER reintroduce placeholder values under `output`.** If a scoped executor is ever
+built it sets `status: "completed"` and fills `output` with what it MEASURED.
+
+### 2. Fifteen of 29 procedures were being cut in half (R02)
+
+The envelope carried `self.skill.body[:2000]`. **15 of the 29 bodies exceed 2,000
+characters**, so the caller was told the playbook was "loaded" while receiving part of
+it — create-new-agent's *Central model settings* section starts at offset **6,603**, and
+roblox-studio's *VERIFY & REPORT* at **6,506**. Late validation and failure handling were
+simply unavailable through this path.
+
+Now: the **whole** body, plus `body_chars` / `body_chars_delivered` / **`body_truncated`**
+(explicit, never implied; `MAX_BODY_CHARS = 64,000` is a channel guard, not a policy), the
+`body_sha256`, the absolute `skill_md_path`, and `plan.references` — every file shipped
+beside SKILL.md by ABSOLUTE path with a named retrieval instruction, because the source
+layout differs between source mode, the frozen bundle and the install copy. Verified: the
+full 8,451-char create-new-agent body reaches the caller with the offset-6,603 sentinel
+intact.
+
+### 3. The tool description promised a sandbox that does not exist (R03)
+
+It said the harness "enforces the skill's permissions, budget, and input/output contract".
+It enforces the contract; it does not sandbox permissions, it does not scope
+`requires_tools`, and **`Budget.add_tokens` is never called by either runtime** — the
+harness spends no model tokens of its own. Every envelope now carries an `enforcement`
+block stating this per field, and `create_new_skill.md` no longer calls the budget
+"hard-enforced". ⚠️ **If you implement real scoping, update that block in the same
+commit** — a guarantee that is only documented is the bug this exists to fix.
+
+### 4. A credential input travelled into the audit file and the chat (R04)
+
+`setup-new-acpx-key` declares `api_key`. The harness recorded every coerced argument into
+the audit NDJSON **and** into the returned envelope. Nothing had leaked externally, but
+the path was unredacted. NEW **`agent/skills/redaction.py`** — the one definition — with
+five contracts that must not be weakened:
+
+1. **A redaction carries NO prefix, length or hash of the secret.** `sk-ant-…` identifies
+   the provider and account family; a length narrows a brute force.
+2. **Explicit `sensitive: true` beats the heuristic**, and a credential-shaped NAME
+   (`api_key`, `token`, `password`, `secret`, …) is redacted even without the flag — the
+   heuristic can only ever redact MORE.
+3. **The whole tree**, not the top level: nested dicts, lists, failure details, exception
+   strings.
+4. **Scrub by VALUE too** — once the literal is known it is removed from free-form text,
+   because that is where a credential reappears after the structured field was cleaned.
+5. ⚠️ **FAIL-SAFE, not fail-open.** Everywhere else in Tlamatini an error means "carry
+   on"; here it means "redact". A dropped log line is recoverable; a published credential
+   is not.
+
+Verified with a synthetic marker: absent from the envelope AND from the audit file on
+disk, including its first 12 characters.
+
+### 5. Three validators disagreed, and the catalog failed its own linter (R05)
+
+`_meta/lint.py` applied an 8 KiB cap it measured with `len(str)` — **characters** — while
+printing the word "bytes", so `setup-new-acpx-key` (8,158 chars / **8,466 bytes**) passed
+a check it exceeded, while `create-new-agent` (8,451 chars) failed. `quick_validate.py`
+never parsed YAML despite its docstring, substring-matched `name:` / `description:`, and
+used a different 12,288-character whole-file ceiling. The registry enforced neither. A
+package could pass one, fail another, and run fine.
+
+NEW **`agent/skills/validation.py`** is the ONE routine, used by the linter,
+`quick_validate.py` and Skills Diagnostics. Sizes in **UTF-8 BYTES**; an explicit
+severity policy — **8 KiB WARNS** (move detail to `references/`, which R02 keeps
+retrievable) and **16 KiB is an ERROR**; budget ranges, permission shapes, dependency
+lists, duplicate and enum declarations all validated. **All 29 packages now pass, 0
+failed, 2 warnings**, and both entry points report identical numbers. ⚠️ **Add a rule
+THERE, never in an entry point.**
+
+### 6. Root precedence was documented backwards from the code (R17)
+
+`_default_roots` orders the install copy first and the comment promised it would win —
+but `_reload_locked` did `new_skills[name] = skill`, so the **LAST** root won. In a frozen
+install that meant the BUNDLED copy ran while the user edited the install one and saw
+nothing change. Loading is now **FIRST-WINS**, roots are de-duplicated by resolved path,
+and each package records `source_root` + `shadowed_paths`. A shadow **across** roots is an
+intentional override (logged at info); a collision **within** one root is an accident
+(logged as a WARNING). `skills_diagnostics_view` now reports `roots`, `sources`,
+`shadowed`, `invalid_packages` and `validator_warnings`, so "which copy am I running?" is
+answerable. The skill-creator no longer claims the registry "rejects duplicates" — it
+does not; only the lint step catches them.
+
+### 7. The ACPX skill adapter bypassed the delivery verdict (R22)
+
+`_run_acpx` reverse-scanned events for "any text". The runtime can emit an assistant
+message, THEN stderr log text, THEN the `done` verdict — so the scan could return
+**stderr as the answer** — and a child that refused, could not authenticate, had no credit
+or printed nothing exits 0, so a blocked child was a SUCCESS. It now uses
+`extract_last_assistant_text` and honours the `done` event's `delivered` flag through the
+SAME shared vocabulary as the `acp_*` tools (`acpx/child_health.py`); a non-delivery
+becomes `ok: false` / `reason: "not_delivered"` with the named code, **keeping the full
+payload** so the caller can still read the transcript and kill the session. The skill's
+own `max_seconds` now bounds the child drain. All shipped skills are `in-process`, so this
+was a latent path — fixed before a custom ACPX-runtime skill can hit it.
+
+### 8. Instructions that would have caused wrong changes (R06–R16, R18–R21)
+
+- **Flow doctor (R06)** validated `version` / `agents` / `from` / `to` — a shape the
+  sibling skill already calls obsolete. Rebuilt on the real `flow_spec.py` schema
+  (`schemaVersion` 2, `nodes`, `connections` with `sourceId`/`targetId` **or**
+  index references, `artifacts`), with execution / **kill** / observation relationships
+  kept distinct (Ender's `target_agents` is a KILL LIST) and a `mode: "dry_run"`
+  validation path that writes nothing.
+- **Exec Report (R07)** — five separate places still said membership depends on
+  state-changing vs observational, and one told you to TEST for absence. Capture is
+  automatic via `_resolve_exec_report_spec`; `_EXEC_REPORT_TOOLS` is optional styling.
+- **Naming (R08)** — "fix it in the migration FIRST" is useless (the boot repopulate
+  overwrites it). The resolver override map is first. `tlamatini-new-acp-agent` no longer
+  says the display name is "derived as title-case" and now takes an explicit
+  `display_name`.
+- **Parametrizer (R09)** — `SECTION_AGENT_TYPES` is **derived** from the generated
+  catalog; the instruction to append to it was a no-op at best. One list to edit
+  (`_PARAMETRIZER_OUTPUT_FIELDS`), then regenerate the catalog.
+- **Ask-Execs (R10)** — was described as automatic for any state-changing agent. It is an
+  explicit allowlist (`_ASK_EXECS_REQUIRED_TOOLS`), and the deliberately ungated tiers
+  (messaging B, desktop/hardware C) are recorded so nobody "helpfully" widens it.
+- **External MCP (R11)** — the add-a-server recipe called
+  `external_mcp_set_active(["my-server"])`, and `set_active` REPLACES the whole active set
+  and closes every client not in it. Following it literally disconnected every other
+  active server. Now: read → merge → write, with the 5-server cap reported as a conflict
+  instead of silently dropping somebody else's server.
+- **Model/catalog gates (R12)** — neither master copy mentioned `model_settings`,
+  `check_agent_runtimes`, `update_flow_catalog`, `flow_catalog` or `@config`. NEW
+  **PHASE 8b** covers all of it, plus four checklist boxes.
+- **Prompt ids (R13)** — step 352 still said to shift existing `idPrompt`/`promptName`
+  suffixes to insert earlier. That is what `sort_rank` exists to prevent. Removed.
+- **STATIC_VERSION (R14)** — the skill called it an integer to increment. It is
+  `(os.environ.get('STATIC_VERSION') or str(int(time.time()))) + '-ctxspinner-1'`;
+  writing a literal would PIN it and stop cache-busting entirely.
+- **Mirror policy (R15)** — `.claude/skills/` is the SOURCE, `.gemini/skills/` the
+  MIRROR; propagate in the same commit, fix shared mistakes BEFORE propagating, and treat
+  line-ending-only diffs as noise (`--ignore-space-at-eol`).
+- **Daily test (R16)** — the file forbade `run_in_background` at the top and then told you
+  to run the long test "in the **background**". Resolved toward Angela's hard rule: a
+  visible foreground console, tee'd to a log you poll in short intervals.
+- **Planner trace (R18)** — attributed missing tools to the planner's top-20 cap, which
+  since 2026-06 no longer removes anything from the bind. Now reports five stages
+  separately and says `unavailable` rather than inferring one.
+- **CSRF audit (R19)** — "safe-because-internal-tool" and "safe-because-websocket"
+  established nothing (CSRF is precisely the third-party-page attack), and it told you to
+  inspect the view ABOVE the decorator. Replaced with six required facts and four
+  evidence-bearing verdicts including `insufficient_evidence`.
+- **Declared scope (R20)** — roblox-studio declared no tools while requiring the External
+  MCP supervisors; flow-from-objective delegated via `invoke_skill` without declaring it
+  and had an empty shell list beside a scripted fallback. Four kinds of requirement are
+  now distinguished: direct, delegated, dynamically discovered, downstream.
+- **Inventory (R21)** — CLAUDE.md described TWO skill sets and omitted the Gemini mirrors
+  and the Codex dossier skills. NEW **`scripts/skill_inventory.py`** generates the counts,
+  locations, consumers and version facts from Git and disk (`--check` fails on an
+  untracked or unaccounted SKILL.md). ⚠️ **Never hand-type a skill count or a "current
+  release" again** — three documents had drifted to v1.63.0 / v1.64.0 / v1.65.5.
+
+### 9. HEADLESS WAS STILL POSSIBLE — four shipped harnesses could run blind
+
+**Angela, same day, after the audit pass:** *"all the test must under any
+circumstance be in foreground windows, browsers, etc, **TESTS IN HEADLESS MODE
+ARE STRICTLY FORBIDDEN**"*. Auditing my own changes surfaced six verification
+steps I had written without demanding a visible window — but the sweep also
+found **live violations that predate this pass**:
+
+| file | it really did | now |
+|---|---|---|
+| `mcp_playwright_suite.py` | `headless=ns.headless` straight to `launch()` | forced `headless=False` |
+| `cyber_watchdog_test.py` | `headless=self.args.headless` | forced `False` + loud refusal |
+| `talk_test.py` | `headless=self.args.headless` | forced `False` + loud refusal |
+| `googler_dork_hunt.py` | `{"headless": bool(args.headless)}`, excused as *"diagnostic only, NOT a pass"* | forced `False` |
+| `googler_dork_hunt.py` | JSON evidence stored the **requested** flag | stores what **actually ran** |
+| `harness/README.md` | documented `--headless  # CI-style, no window` as supported | marked **DISABLED / FORBIDDEN** |
+
+⚠️ **CONTRACTS — do NOT weaken:**
+
+1. **"Diagnostic only" is NOT an exemption.** A diagnostic is still a run, and
+   an invisible run cannot be verified. That excuse is exactly how the flag
+   survived in `googler_dork_hunt.py`.
+2. **Keep accepting `--headless`, keep IGNORING it, and SAY SO LOUDLY.**
+   Removing the argument breaks old invocations; silently honouring it breaks
+   the rule. The pattern is `run_test.py`'s: warn, then
+   `dict(headless=False, ...)`.
+3. **Report what RAN, never what was REQUESTED.** An evidence file that records
+   the flag instead of the outcome is the same lie class as the skill harness's
+   placeholder outputs (§1) and ACPX's exit-0 refusals.
+4. **A verification instruction must name where the window opens.** Six of my
+   own steps said "load the page" / "run the gate" without it; they now carry
+   an explicit ⛔ banner.
+5. Applied to **both** mirrors; `scripts/sync_assistant_skills.py --check`
+   keeps them in step.
+
+Already compliant and left alone: `run_test.py`, `acp_backend_banner_test.py`,
+`context_restore_spinner_visible.py`, `dialog_policy_visible.py`,
+`grepper_lines_visible.py`. Written up for the other assistants in
+`TestsVisiblesAndVisibleExecutionFromClaude2Codex.md` (repo root).
+
+### Coverage
+
+`agent/tests.py` — `SkillHarnessDjangoTests` (planning contract, whole-body delivery,
+explicit truncation, absolute reference paths, enforcement honesty, credential
+redaction), `SkillValidationSharedRoutineTests` (byte-vs-character unit with a multibyte
+fixture, warn-vs-error policy, malformed YAML, budget ranges, all 29 packages,
+lint/quick_validate agreement), `SkillRegistryPrecedenceTests` (first-wins, dedupe, root
+order), `SkillAcpxDeliveryVerdictTests` (blocked child is not a success, delivered answer
+survives, shared extractor, deadline). Plus `_meta/lint.py` (29 pass / 0 fail / 2 warn),
+`scripts/skill_inventory.py --check`, and `ruff check` clean.
+
+---
+
 ## 2026-09-22 — A RESTORED CONTEXT MUST LOOK AS BUSY AS IT IS (the missing spinner)
 
 **Angela's report.** Load a context (directory / file / *Use as context*), close the

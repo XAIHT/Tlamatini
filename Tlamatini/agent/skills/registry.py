@@ -25,7 +25,7 @@ import json
 import logging
 import threading
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -62,6 +62,12 @@ class Skill:
     skill_md_path: Path
     frontmatter_json: str
     last_loaded_at: float
+    #: Which configured root this package was loaded FROM, and whether it
+    #: shadowed a same-named package in a lower-precedence root. Surfaced in
+    #: diagnostics so "which copy am I running?" is answerable — see the
+    #: precedence contract on ``SkillRegistry._default_roots``.
+    source_root: Optional[Path] = None
+    shadowed_paths: List[Path] = field(default_factory=list)
 
     def summary(self) -> Dict[str, Any]:
         """Tier-1 surface: name + description + runtime."""
@@ -70,6 +76,15 @@ class Skill:
             "description": self.description,
             "runtime": self.runtime,
             "acpx_agent": self.acpx_agent or None,
+        }
+
+    def source_record(self) -> Dict[str, Any]:
+        """Where this package came from — for Skills Diagnostics."""
+        return {
+            "name": self.name,
+            "skill_md_path": str(self.skill_md_path),
+            "source_root": str(self.source_root) if self.source_root else "",
+            "shadowed": [str(p) for p in self.shadowed_paths],
         }
 
     def planner_record(self) -> Dict[str, Any]:
@@ -109,10 +124,20 @@ class SkillRegistry:
         #      (build.py --add-data). Read-only fallback.
         #   3. <source>/Tlamatini/agent/skills_pkg/  — source mode.
         #
-        # Returning all three lets the registry merge them (if both exist,
-        # the install-dir copy shadows the bundled one because directory
-        # iteration order tends to put it first; duplicate names resolve
-        # by the SkillRegistry's "later wins" map insertion).
+        # ⚠️ PRECEDENCE CONTRACT — the list is ordered HIGHEST-FIRST and
+        # ``_reload_locked`` resolves it FIRST-WINS. The user-editable
+        # install copy therefore shadows the read-only bundled copy, which
+        # is the documented intent.
+        #
+        # This used to be the opposite of what the code did: the roots were
+        # ordered correctly but the loader assigned unconditionally
+        # (``new_skills[name] = skill``), so the LAST root won and a frozen
+        # install silently ran the BUNDLED copy while the user edited the
+        # install one and saw nothing change. Do not "simplify" the
+        # first-wins guard back into a plain assignment.
+        #
+        # Roots are also de-duplicated by resolved path, so passing the same
+        # directory twice cannot fabricate a shadow.
         import sys
         roots: List[Path] = []
         here = Path(__file__).resolve().parent
@@ -150,9 +175,25 @@ class SkillRegistry:
         if time.time() - self._last_load_at > self._stale_seconds:
             self.reload()
 
+    @staticmethod
+    def _dedupe_roots(roots: List[Path]) -> List[Path]:
+        """Preserve order, drop repeats by resolved path."""
+        seen: set = set()
+        out: List[Path] = []
+        for root in roots:
+            try:
+                key = str(Path(root).resolve()).lower()
+            except Exception:
+                key = str(root).lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(root)
+        return out
+
     def _reload_locked(self) -> None:
         new_skills: Dict[str, Skill] = {}
-        for root in self._roots:
+        for root in self._dedupe_roots(self._roots):
             for path in find_skill_files(root):
                 try:
                     text = path.read_text(encoding="utf-8")
@@ -178,7 +219,30 @@ class SkillRegistry:
                         skill_md_path=path,
                         frontmatter_json=json.dumps(fm.raw, ensure_ascii=False),
                         last_loaded_at=time.time(),
+                        source_root=root,
                     )
+                    prior = new_skills.get(skill.name)
+                    if prior is not None:
+                        # FIRST WINS. Two cases, deliberately distinguished:
+                        #   * different roots -> an intentional OVERRIDE (the
+                        #     editable install copy shadowing the bundled
+                        #     one). Expected; recorded, not warned.
+                        #   * the SAME root   -> an accidental COLLISION. The
+                        #     author almost certainly did not mean it, so say
+                        #     so loudly instead of silently picking one.
+                        prior.shadowed_paths.append(path)
+                        if prior.source_root == root:
+                            logger.warning(
+                                "[skills] duplicate skill name %r within one "
+                                "root: keeping %s, ignoring %s",
+                                skill.name, prior.skill_md_path, path,
+                            )
+                        else:
+                            logger.info(
+                                "[skills] %r overridden: using %s (shadows %s)",
+                                skill.name, prior.skill_md_path, path,
+                            )
+                        continue
                     new_skills[skill.name] = skill
                 except SkillParseError as e:
                     logger.warning("[skills] skipping malformed %s: %s", path, e)
@@ -211,6 +275,15 @@ class SkillRegistry:
             if all(k in hay for k in kw):
                 out.append(s.summary())
         return out
+
+    def source_records(self) -> List[Dict[str, Any]]:
+        """Where every loaded package came from, and what it shadows."""
+        self.reload_if_stale()
+        return [s.source_record() for s in self._skills.values()]
+
+    def roots(self) -> List[str]:
+        """The configured roots, highest precedence first."""
+        return [str(r) for r in self._dedupe_roots(self._roots)]
 
     def planner_records(self) -> List[Dict[str, Any]]:
         """Used by global_execution_planner to score skills against a request."""

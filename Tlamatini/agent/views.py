@@ -12577,8 +12577,15 @@ def skills_diagnostics_view(request):
       - skills that require an MCP that's disabled
       - skills with runtime=acpx whose acpx_agent isn't a known AcpAgent
       - orphan Skill DB rows (no SKILL.md on disk)
-      - duplicate-name candidates (later-wins shadowing)
+      - which ROOT each package was loaded from, and what it shadows
+      - packages that fail the shared validator (agent/skills/validation.py)
     Pure read; no writes. Safe to call repeatedly.
+
+    ⚠️ Root precedence is FIRST-WINS (highest-precedence root first), so the
+    user-editable install copy shadows the bundled one. A shadow across roots
+    is an intentional override; a collision within ONE root is an accident.
+    ``sources`` below makes the selected copy visible, because "which copy am
+    I actually running?" was previously unanswerable from any surface.
     """
     try:
         from .skills.registry import skill_registry
@@ -12628,6 +12635,37 @@ def skills_diagnostics_view(request):
             row.name for row in Skill.objects.all() if row.name not in disk_names
         )
 
+        # Provenance: which root won, and what it shadowed. Fail-open — a
+        # diagnostics page must never 500 over its own extra detail.
+        try:
+            sources = skill_registry.source_records()
+            roots = skill_registry.roots()
+            shadowed = [s for s in sources if s.get("shadowed")]
+        except Exception:
+            sources, roots, shadowed = [], [], []
+
+        # Run the SHARED validator over the live packages so Diagnostics,
+        # the catalog lint and quick_validate can never disagree.
+        invalid = []
+        warnings_out = []
+        try:
+            from .skills.validation import validate_skill_file
+            for s in live:
+                v = validate_skill_file(s.skill_md_path)
+                if v.errors:
+                    invalid.append({
+                        "skill": s.name,
+                        "path": str(s.skill_md_path),
+                        "errors": [f"{f.code}: {f.message}" for f in v.errors],
+                    })
+                if v.warnings:
+                    warnings_out.append({
+                        "skill": s.name,
+                        "warnings": [f"{f.code}: {f.message}" for f in v.warnings],
+                    })
+        except Exception:
+            pass
+
         return JsonResponse({
             "skill_count": len(live),
             "db_row_count": Skill.objects.count(),
@@ -12638,6 +12676,11 @@ def skills_diagnostics_view(request):
             "tools_known": len(tool_enabled),
             "mcps_known": len(mcp_enabled),
             "acpx_agents_known": len(known_acpx_ids),
+            "roots": roots,
+            "sources": sources,
+            "shadowed": shadowed,
+            "invalid_packages": invalid,
+            "validator_warnings": warnings_out,
         })
     except Exception as e:
         traceback.print_exc()

@@ -20,7 +20,7 @@ Tlamatini server and validates, over the LIVE WebSocket wire:
   REQ 3 — the "Exec report" checkbox is enabled ONLY while Multi-Turn is
           checked (disabled + greyed otherwise), mirroring "Ask Execs".
 
-Run it (from the repo, with the server already up):
+Run it in a VISIBLE FOREGROUND console (from the repo, with the server already up):
 
     set TLAMATINI_USER=angela
     set TLAMATINI_PASS=********
@@ -31,7 +31,7 @@ Config via environment:
     TLAMATINI_USER    login username (required)
     TLAMATINI_PASS    login password (required)
     NUM_QUESTIONS     how many of the 100-question bank to run (default 100)
-    HEADLESS          "1" to run headless (default 0 == VISIBLE, as Angela wants)
+    HEADLESS          disabled; requests are refused and the browser stays VISIBLE
     ANSWER_TIMEOUT_S  per-question wait for the answer (default 180)
     DOWNLOAD_SAMPLE   how many button-bearing answers to actually click +
                       download + validate the .flw for (default 12; 0 = none,
@@ -63,7 +63,6 @@ BASE_URL = os.environ.get("BASE_URL", "http://127.0.0.1:8000").rstrip("/")
 USER = os.environ.get("TLAMATINI_USER", "")
 PASS = os.environ.get("TLAMATINI_PASS", "")
 NUM_QUESTIONS = int(os.environ.get("NUM_QUESTIONS", "100"))
-HEADLESS = os.environ.get("HEADLESS", "0") == "1"
 ANSWER_TIMEOUT_S = int(os.environ.get("ANSWER_TIMEOUT_S", "180"))
 DOWNLOAD_SAMPLE = int(os.environ.get("DOWNLOAD_SAMPLE", "12"))
 _REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -245,6 +244,8 @@ def _latest_bot_has_create_flow(page):
 
 # ── Main ─────────────────────────────────────────────────────────────
 def main():
+    if os.environ.get("HEADLESS", "0").strip().lower() not in ("", "0", "false", "no", "off"):
+        print("HEADLESS IS FORBIDDEN: ignoring HEADLESS and opening a VISIBLE browser.", flush=True)
     if not USER or not PASS:
         print("ERROR: set TLAMATINI_USER and TLAMATINI_PASS in the environment.",
               file=sys.stderr)
@@ -267,7 +268,7 @@ def main():
     ws_frames = []
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=HEADLESS, slow_mo=0 if HEADLESS else 40)
+        browser = p.chromium.launch(headless=False, slow_mo=40)
         context = browser.new_context(accept_downloads=True)
         page = context.new_page()
 

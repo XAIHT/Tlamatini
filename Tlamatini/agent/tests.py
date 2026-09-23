@@ -4112,8 +4112,256 @@ class SkillIoContractDjangoTests(TestCase):
         self.assertFalse(v.ok)
 
 
+class SkillAcpxDeliveryVerdictTests(TestCase):
+    """R22 — the skill adapter must use the SHARED ACPX delivery semantics.
+
+    ``_run_acpx`` used to reverse-scan every event for "any text" and wrap it
+    in the generic success envelope. Two consequences, both measured classes
+    of bug elsewhere in this codebase:
+
+      * the runtime can emit an assistant message, THEN stderr log text, THEN
+        the ``done`` verdict — so the reverse scan could return **stderr** as
+        the answer;
+      * a child that refused, could not authenticate, had no credit or printed
+        nothing exits 0, so a blocked child was reported as a SUCCESS (the
+        2026-09-07 ACPX forensics).
+    """
+
+    def _skill(self, **over):
+        from agent.skills.registry import Skill
+        base = dict(
+            name="acpx-probe", description="d", runtime="acpx",
+            acpx_agent="claude", requires_tools=[], requires_mcps=[],
+            max_iterations=8, max_seconds=30, max_tokens=1000,
+            permissions={}, inputs=[], outputs=[],
+            triggers_keywords=[], triggers_file_globs=[],
+            body="body", body_sha256="x",
+            skill_dir=_AcpxPath("."), skill_md_path=_AcpxPath("."),
+            frontmatter_json="{}", last_loaded_at=0.0,
+        )
+        base.update(over)
+        return Skill(**base)
+
+    def test_delivery_verdict_reads_the_done_event(self):
+        from agent.skills.harness import SkillHarness
+        events = [
+            {"role": "assistant", "text": "an answer"},
+            {"event": "log", "text": "noise on stderr"},
+            {"done": True, "delivered": False, "code": "PERMISSION_BLOCKED",
+             "failure_reason": "the child stopped at its permission prompt"},
+        ]
+        v = SkillHarness._delivery_verdict(events)
+        self.assertIs(v.get("delivered"), False)
+        self.assertEqual(v.get("code"), "PERMISSION_BLOCKED")
+        # A transport that stamps no verdict is left alone (fail-open).
+        self.assertEqual(SkillHarness._delivery_verdict([{"done": True}]), {})
+
+    def test_blocked_child_is_not_reported_as_a_success(self):
+        from agent.skills.harness import SkillHarness
+        harness = SkillHarness(self._skill())
+        events = [{"done": True, "delivered": False, "code": "NO_CREDIT",
+                   "failure_reason": "credit balance is too low",
+                   "failure_evidence": "Credit balance is too low"}]
+        harness._run_acpx = lambda args: (
+            {"answer": "", "events": events},
+            SkillHarness._delivery_verdict(events),
+        )
+        result = harness.invoke({})
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["status"], "failed")
+        self.assertFalse(result["completed"])
+        self.assertEqual(result["reason"], "not_delivered")
+        self.assertEqual(result["code"], "NO_CREDIT")
+        # The payload SURVIVES on the failure envelope — the caller still has
+        # to read the transcript and clean up.
+        self.assertIn("output", result)
+
+    def test_a_delivered_child_completes_and_keeps_its_answer(self):
+        from agent.skills.harness import SkillHarness
+        harness = SkillHarness(self._skill())
+        events = [{"done": True, "delivered": True, "code": "DELIVERED"}]
+        harness._run_acpx = lambda args: (
+            {"answer": "the real answer", "events": events},
+            SkillHarness._delivery_verdict(events),
+        )
+        result = harness.invoke({})
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["status"], "completed")
+        self.assertTrue(result["completed"])
+        self.assertEqual(result["output"]["answer"], "the real answer")
+
+    def test_source_uses_the_shared_extractor_not_a_reverse_scan(self):
+        """A source contract: the old heuristic must not come back."""
+        src = (_AcpxPath(__file__).resolve().parent / "skills"
+               / "harness.py").read_text(encoding="utf-8")
+        self.assertIn("extract_last_assistant_text", src)
+        self.assertNotIn("for ev in reversed(events):", src)
+
+    def test_the_skill_deadline_bounds_the_child(self):
+        """R22/R03 — the child must not outlive the skill's max_seconds."""
+        from agent.skills.harness import SkillHarness
+        harness = SkillHarness(self._skill(max_seconds=7))
+        remaining = harness.budget.remaining_seconds()
+        self.assertGreater(remaining, 0)
+        self.assertLessEqual(remaining, 7)
+        src = (_AcpxPath(__file__).resolve().parent / "skills"
+               / "harness.py").read_text(encoding="utf-8")
+        self.assertIn("timeout_seconds=deadline", src)
+
+
+class SkillValidationSharedRoutineTests(TestCase):
+    """R05 — ONE validator for lint, quick_validate and Diagnostics.
+
+    Three surfaces used to disagree: the linter applied an 8 KiB cap it
+    measured in CHARACTERS while printing "bytes"; quick_validate never
+    parsed YAML and used a 12,288-character whole-file ceiling; the registry
+    enforced neither. A package could pass one and fail another.
+    """
+
+    def _text(self, *, name="probe", body="body", extra=""):
+        return (
+            "---\n"
+            f"name: {name}\n"
+            "description: d\n"
+            "metadata:\n"
+            "  tlamatini:\n"
+            "    runtime: in-process\n"
+            f"{extra}"
+            "---\n\n"
+            f"{body}\n"
+        )
+
+    def test_size_is_measured_in_utf8_bytes_not_characters(self):
+        from agent.skills.validation import (
+            BODY_WARN_BYTES, validate_skill_text,
+        )
+        # 4,200 accented characters = 8,400 UTF-8 bytes. Under the old
+        # character-based check this passed an "8 KiB" cap it exceeded.
+        body = "á" * 4200
+        v = validate_skill_text(self._text(body=body))
+        self.assertLess(v.body_chars, BODY_WARN_BYTES)
+        self.assertGreater(v.body_bytes, BODY_WARN_BYTES)
+        self.assertIn("body_large", [f.code for f in v.warnings])
+
+    def test_oversize_body_is_an_error_but_large_body_is_only_a_warning(self):
+        from agent.skills.validation import (
+            BODY_MAX_BYTES, validate_skill_text,
+        )
+        warn = validate_skill_text(self._text(body="x" * (9 * 1024)))
+        self.assertTrue(warn.ok, "a large body must still LOAD")
+        self.assertTrue(warn.warnings)
+        err = validate_skill_text(self._text(body="x" * (BODY_MAX_BYTES + 1)))
+        self.assertFalse(err.ok)
+        self.assertIn("body_too_large", [f.code for f in err.errors])
+
+    def test_malformed_yaml_and_out_of_range_budget_both_fail(self):
+        from agent.skills.validation import validate_skill_text
+        bad_yaml = validate_skill_text("---\nname: [unclosed\n---\n\nb\n")
+        self.assertFalse(bad_yaml.ok)
+        self.assertIn("parse", [f.code for f in bad_yaml.errors])
+        bad_budget = validate_skill_text(self._text(
+            extra="    budget:\n      max_iterations: 9999\n"))
+        self.assertFalse(bad_budget.ok)
+        self.assertIn("budget_range", [f.code for f in bad_budget.errors])
+
+    def test_enum_input_without_values_is_rejected(self):
+        from agent.skills.validation import validate_skill_text
+        v = validate_skill_text(self._text(
+            extra="    inputs:\n      - { name: mode, type: enum }\n"))
+        self.assertFalse(v.ok)
+        self.assertIn("inputs_enum", [f.code for f in v.errors])
+
+    def test_every_shipped_package_passes_the_shared_validator(self):
+        from agent.skills.registry import skill_registry
+        from agent.skills.validation import validate_skill_file
+        skill_registry.reload()
+        bad = []
+        for s in skill_registry.all():
+            v = validate_skill_file(s.skill_md_path)
+            if v.errors:
+                bad.append((s.name, [f.code for f in v.errors]))
+        self.assertEqual(bad, [], f"shipped packages must validate: {bad}")
+
+    def test_quick_validate_cannot_pass_what_the_linter_rejects(self):
+        """Both entry points share one routine — prove they agree."""
+        import importlib.util as _ilu
+        from agent.skills.validation import validate_skill_dir
+        qv_path = (_AcpxPath(__file__).resolve().parent / "skills_pkg"
+                   / "skill_creator" / "scripts" / "quick_validate.py")
+        self.assertTrue(qv_path.exists())
+        spec = _ilu.spec_from_file_location("_qv_probe", qv_path)
+        qv = _ilu.module_from_spec(spec)
+        spec.loader.exec_module(qv)
+        with _acpx_tempfile.TemporaryDirectory() as tmp:
+            d = _AcpxPath(tmp) / "broken"
+            d.mkdir()
+            (d / "SKILL.md").write_text(
+                "---\nname: broken\ndescription: d\nmetadata:\n"
+                "  tlamatini:\n    budget:\n      max_seconds: 99999\n"
+                "---\n\nbody\n", encoding="utf-8")
+            self.assertFalse(validate_skill_dir(d).ok)
+            self.assertEqual(qv.main(["quick_validate.py", str(d)]), 1)
+
+
+class SkillRegistryPrecedenceTests(TestCase):
+    """R17 — the editable install copy must WIN over the bundled one.
+
+    The roots were ordered correctly but ``_reload_locked`` assigned
+    unconditionally, so the LAST root won: a frozen install silently ran the
+    BUNDLED copy while the user edited the install one and saw no change.
+    """
+
+    _SKILL = ("---\nname: precedence-probe\ndescription: p\n"
+              "metadata:\n  tlamatini:\n    runtime: in-process\n"
+              "---\n\nBODY FROM {}\n")
+
+    def _root(self, base, label):
+        d = _AcpxPath(base) / label / "precedence_probe"
+        d.mkdir(parents=True)
+        (d / "SKILL.md").write_text(self._SKILL.format(label.upper()),
+                                    encoding="utf-8")
+        return _AcpxPath(base) / label
+
+    def test_first_root_wins_and_the_shadow_is_recorded(self):
+        from agent.skills.registry import SkillRegistry
+        with _acpx_tempfile.TemporaryDirectory() as tmp:
+            high = self._root(tmp, "install")
+            low = self._root(tmp, "bundled")
+            reg = SkillRegistry(roots=[high, low])
+            reg.reload()
+            skill = reg.get("precedence-probe")
+            self.assertIn("INSTALL", skill.body)
+            self.assertEqual(_AcpxPath(skill.source_root), high)
+            self.assertEqual(len(skill.shadowed_paths), 1)
+            self.assertTrue(skill.source_record()["shadowed"])
+
+    def test_repeating_one_root_does_not_fabricate_a_shadow(self):
+        from agent.skills.registry import SkillRegistry
+        with _acpx_tempfile.TemporaryDirectory() as tmp:
+            high = self._root(tmp, "install")
+            reg = SkillRegistry(roots=[high, high])
+            reg.reload()
+            self.assertEqual(reg.get("precedence-probe").shadowed_paths, [])
+
+    def test_roots_are_reported_highest_precedence_first(self):
+        from agent.skills.registry import SkillRegistry
+        with _acpx_tempfile.TemporaryDirectory() as tmp:
+            high = self._root(tmp, "install")
+            low = self._root(tmp, "bundled")
+            reg = SkillRegistry(roots=[high, low])
+            self.assertEqual(reg.roots()[0], str(high))
+
+
 class SkillHarnessDjangoTests(TestCase):
-    def test_invoke_hello_world_returns_ok_envelope(self):
+    """The in-process runtime is a PLANNING HANDOFF, not an executor.
+
+    Until 2026-09-23 the envelope returned ``ok: true`` beside schema-shaped
+    placeholder values under ``output``, so a caller could not tell a stub
+    from a measured result — a ``doctor_ok: false`` stub read exactly like a
+    doctor that had run and failed. These tests pin the honest contract.
+    """
+
+    def test_invoke_hello_world_returns_planning_envelope(self):
         from agent.skills.harness import SkillHarness
         from agent.skills.registry import skill_registry
         skill_registry.reload()
@@ -4123,9 +4371,105 @@ class SkillHarnessDjangoTests(TestCase):
         self.assertTrue(result["ok"])
         self.assertEqual(result["skill"], "hello-world")
         self.assertEqual(result["runtime"], "in-process")
-        self.assertIn("greeting", result["output"])
+        # The invocation succeeded; the WORK has not happened.
+        self.assertEqual(result["status"], "planned")
+        self.assertFalse(result["completed"])
         self.assertIn("audit_id", result)
         self.assertGreater(result["iterations_used"], 0)
+
+    def test_planning_envelope_never_fabricates_output_values(self):
+        """⚠️ Do NOT reintroduce placeholder values under ``output``."""
+        from agent.skills.harness import SkillHarness
+        from agent.skills.registry import skill_registry
+        skill_registry.reload()
+        skill = skill_registry.get("hello-world")
+        result = SkillHarness(skill).invoke({"who": "tester"})
+        # `greeting` is a DECLARED output, so it must appear as a pending
+        # contract item — never as a value in `output`.
+        self.assertEqual(result["output"], {})
+        pending = {p["name"] for p in result["pending_outputs"]}
+        self.assertIn("greeting", pending)
+        self.assertNotIn("plan-only stub", json.dumps(result))
+
+    def test_planning_envelope_delivers_the_whole_body(self):
+        """A 2,000-character excerpt is not the procedure (R02)."""
+        from agent.skills.harness import SkillHarness
+        from agent.skills.registry import skill_registry
+        skill_registry.reload()
+        skill = skill_registry.get("create-new-agent")
+        self.assertIsNotNone(skill)
+        self.assertGreater(len(skill.body), 2000,
+                           "fixture must exceed the old 2,000-char cut")
+        result = SkillHarness(skill).invoke({})
+        plan = result["plan"]
+        self.assertFalse(plan["body_truncated"])
+        self.assertEqual(plan["body"], skill.body)
+        self.assertEqual(plan["body_sha256"], skill.body_sha256)
+        # A sentinel past the old cut really reaches the caller.
+        self.assertIn(skill.body[2500:2560], plan["body"])
+
+    def test_body_truncation_is_explicit_and_never_silent(self):
+        from agent.skills.harness import SkillHarness, MAX_BODY_CHARS
+        from agent.skills.registry import skill_registry
+        import copy
+        skill_registry.reload()
+        skill = copy.copy(skill_registry.get("hello-world"))
+        skill.body = "x" * (MAX_BODY_CHARS + 500)
+        result = SkillHarness(skill).invoke({"who": "t"})
+        plan = result["plan"]
+        self.assertTrue(plan["body_truncated"])
+        self.assertEqual(plan["body_chars"], MAX_BODY_CHARS + 500)
+        self.assertEqual(plan["body_chars_delivered"], MAX_BODY_CHARS)
+        self.assertIn("body_truncation_note", plan)
+
+    def test_reference_files_are_listed_with_absolute_paths(self):
+        from agent.skills.harness import SkillHarness
+        from agent.skills.registry import skill_registry
+        skill_registry.reload()
+        skill = skill_registry.get("adding-external-mcp")
+        result = SkillHarness(skill).invoke({
+            "server_key": "probe", "server_config": {"command": "npx"},
+        })
+        refs = result["plan"]["references"]
+        self.assertTrue(refs, "adding-external-mcp ships reference files")
+        rel = {r["relative_path"] for r in refs}
+        self.assertIn("references/transport_guide.md", rel)
+        for r in refs:
+            self.assertTrue(_AcpxPath(r["path"]).is_absolute())
+        # Truncation of references is stated, never implied.
+        self.assertFalse(result["plan"]["references_inlined"])
+
+    def test_enforcement_block_does_not_overstate_the_harness(self):
+        """R03 — the tool description used to promise a sandbox."""
+        from agent.skills.harness import SkillHarness
+        from agent.skills.registry import skill_registry
+        skill_registry.reload()
+        skill = skill_registry.get("hello-world")
+        enf = SkillHarness(skill).invoke({"who": "t"})["enforcement"]
+        self.assertEqual(enf["input_contract"], "enforced")
+        self.assertEqual(enf["secret_redaction"], "enforced")
+        self.assertEqual(enf["max_tokens"], "advisory")
+        self.assertEqual(enf["permissions"],
+                         "advisory_declared_not_sandboxed")
+        self.assertEqual(enf["requires_tools"],
+                         "advisory_declared_not_scoped")
+
+    def test_credential_input_never_reaches_envelope_or_audit(self):
+        """R04 — a synthetic marker, never a real credential."""
+        from agent.skills.harness import SkillHarness
+        from agent.skills.registry import skill_registry
+        skill_registry.reload()
+        skill = skill_registry.get("setup-new-acpx-key")
+        marker = "SYNTHETIC-NOT-A-REAL-CREDENTIAL-0123456789"
+        harness = SkillHarness(skill)
+        result = harness.invoke({"agent_id": "claude", "api_key": marker})
+        self.assertNotIn(marker, json.dumps(result))
+        self.assertEqual(result["plan"]["args"]["api_key"], "<redacted>")
+        audit_text = _AcpxPath(harness.audit.path).read_text(encoding="utf-8")
+        self.assertNotIn(marker, audit_text)
+        # A prefix is as identifying as the whole key — never emit one.
+        self.assertNotIn(marker[:12], audit_text)
+        self.assertNotIn(marker[:12], json.dumps(result))
 
     def test_input_contract_violation_routes_to_failure_envelope(self):
         from agent.skills.harness import SkillHarness
@@ -4137,16 +4481,17 @@ class SkillHarnessDjangoTests(TestCase):
         self.assertEqual(result["reason"], "input_contract_violation")
         self.assertIn("hosts", result["detail"])
 
-    def test_envelope_includes_permissions_block(self):
+    def test_plan_carries_permissions_and_required_tools(self):
         from agent.skills.harness import SkillHarness
         from agent.skills.registry import skill_registry
         skill_registry.reload()
         skill = skill_registry.get("github")
         result = SkillHarness(skill).invoke({"action": "list-prs"})
         self.assertTrue(result["ok"])
-        env = result["output"]["_skill_envelope"]
-        self.assertIn("permissions", env)
-        self.assertIn("requires_tools", env)
+        plan = result["plan"]
+        self.assertIn("permissions", plan)
+        self.assertIn("requires_tools", plan)
+        self.assertIn("requires_mcps", plan)
 
     def test_unknown_runtime_fails_cleanly(self):
         from agent.skills.harness import SkillHarness

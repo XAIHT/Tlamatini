@@ -25,6 +25,7 @@ The 3 modes are exercised DETERMINISTICALLY by injecting a fake answer message
 and toggling the chat input disabled->enabled (the same "answer complete" signal
 the feature listens on) - so no dependency on the cloud LLM. HEADED real Chrome
 only; full-desktop screenshots per Angela's visible-tests rule.
+Run this script in a VISIBLE FOREGROUND console. HEADLESS IS FORBIDDEN.
 """
 import json
 import os
@@ -64,7 +65,6 @@ except Exception:  # noqa: BLE001
 BASE_URL = os.environ.get("BASE_URL", "http://127.0.0.1:8000").rstrip("/")
 USER = os.environ.get("TLAMATINI_USER", "")
 PASS = os.environ.get("TLAMATINI_PASS", "")
-HEADLESS = os.environ.get("HEADLESS", "0") == "1"
 _REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 STAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
 OUT_DIR = os.path.join(_REPO_ROOT, "Temp", "voice_test_" + STAMP)
@@ -134,6 +134,8 @@ _SIMULATE_JS = r"""
 
 
 def main():
+    if os.environ.get("HEADLESS", "0").strip().lower() not in ("", "0", "false", "no", "off"):
+        print("HEADLESS IS FORBIDDEN: ignoring HEADLESS and opening a VISIBLE browser.", flush=True)
     if not USER or not PASS:
         print("ERROR: no credentials (TLAMATINI_USER/TLAMATINI_PASS or .creds.env)", file=sys.stderr)
         return 2
@@ -141,10 +143,10 @@ def main():
 
     with sync_playwright() as p:
         try:
-            browser = p.chromium.launch(headless=HEADLESS, channel="chrome",
+            browser = p.chromium.launch(headless=False, channel="chrome",
                                         args=["--start-maximized"], slow_mo=50)
         except Exception:  # noqa: BLE001
-            browser = p.chromium.launch(headless=HEADLESS, args=["--start-maximized"], slow_mo=50)
+            browser = p.chromium.launch(headless=False, args=["--start-maximized"], slow_mo=50)
         context = browser.new_context(no_viewport=True)
         page = context.new_page()
 

@@ -63,6 +63,7 @@
                   "name":     { "type": "string", "minLength": 1 },
                   "type":     { "type": "string" },
                   "required": { "type": "boolean" },
+                  "sensitive": { "type": "boolean", "description": "True when this input carries a credential. The SkillHarness redacts it from every audit event and from the returned envelope. An input whose NAME matches the credential heuristic is redacted even without this flag." },
                   "default":  {},
                   "values":   { "type": "array" },
                   "choices":  { "type": "array" },

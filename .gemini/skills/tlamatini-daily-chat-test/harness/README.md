@@ -8,6 +8,8 @@
 -->
 # Tlamatini Daily Chat Test — harness
 
+> **HEADLESS IS FORBIDDEN. ALL EXECUTION MUST BE VISIBLE.** Every automated test, command, diagnostic, script, build, agent, prompt and browser must run in a visible, forked foreground window on Angela's real desktop. Use visible CMD/PowerShell consoles and headed browsers (`headless=False`); keep output on screen and monitor live. No hidden/background execution, including CI or quick checks. If visibility cannot be confirmed, do not run. Mandatory policy: [visible execution](../../../../TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).
+
 A Playwright harness that drives **real Chrome**, logs into Tlamatini, and asks
 up to **1000 curated, safe-to-execute questions** to the chat one at a time —
 typing each, sending, waiting for the answer to finish rendering, scraping it,
@@ -65,7 +67,7 @@ python run_test.py --user youruser --password yourpass
 # from this directory
 python run_test.py                       # full 1000, visible Chrome
 python run_test.py --count 10            # quick smoke
-python run_test.py --count 5 --headless  # CI-style, no window
+# --headless is FORBIDDEN and ignored - every run is VISIBLE/headed
 python run_test.py --resume reports/run_2026-06-05_22-00-00   # continue a crashed run
 python questions.py                      # print the bank distribution (no browser)
 
@@ -85,7 +87,7 @@ python run_test.py --bank wrapped --select emailer,recmailer   # run a few
 | `--count N` | 1000 | how many questions (from `--start` offset) |
 | `--start K` | 0 | 0-based offset into the bank |
 | `--timeout S` | 240 | per-question hard cap in **seconds** (Multi-Turn tool loops can be slow) |
-| `--headless` | off | run without a visible window |
+| `--headless` | off | **DISABLED / FORBIDDEN** - accepted then ignored; runs are ALWAYS visible/headed |
 | `--slowmo MS` | 0 | Playwright `slow_mo` — slows actions so you can watch |
 | `--clear-every N` | 0 | clear chat history every N questions (0 = never; a clear runs once at start unless `--no-fresh-start`) |
 | `--no-judge` | off | skip the Anthropic judge on failures |

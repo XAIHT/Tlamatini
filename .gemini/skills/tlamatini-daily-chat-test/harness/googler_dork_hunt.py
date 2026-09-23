@@ -33,7 +33,7 @@ USAGE
     python googler_dork_hunt.py --list              # show hunt names
     python googler_dork_hunt.py --hunt gutenberg    # one hunt by name
     python googler_dork_hunt.py --title "Frankenstein" --hunt gutenberg
-    python googler_dork_hunt.py --headless          # diagnostic only, NOT a pass
+    # NOTE: --headless is FORBIDDEN and ignored; every run is VISIBLE.
 
 EXIT CODE
     0 = at least one FILE FOUND in every hunt that ran
@@ -232,7 +232,7 @@ def main(argv=None) -> int:
     parser.add_argument("--limit", type=int, default=12, help="max hits per hunt")
     parser.add_argument("--list", action="store_true", help="list hunt names and exit")
     parser.add_argument("--headless", action="store_true",
-                        help="DIAGNOSTIC ONLY — a headless run is never a pass")
+                        help="[DISABLED / FORBIDDEN] tests are ALWAYS visible/headed; this flag is ignored")
     args = parser.parse_args(argv)
 
     if args.list:
@@ -265,7 +265,8 @@ def main(argv=None) -> int:
 
     results = []
     with sync_playwright() as p:
-        launch = {"headless": bool(args.headless),
+        # FORBIDDEN to go headless — Angela's hard rule. Always headed.
+        launch = {"headless": False,
                   "args": ["--disable-blink-features=AutomationControlled"]}
         try:
             browser = p.chromium.launch(channel="chrome", **launch)
@@ -308,7 +309,7 @@ def main(argv=None) -> int:
     report = os.path.join(REPORT_DIR, f"dork_hunt_{stamp}.json")
     with open(report, "w", encoding="utf-8") as fh:
         json.dump({"when": stamp, "title": args.title,
-                   "headless": bool(args.headless), "results": results}, fh, indent=2)
+                   "headless": False, "results": results}, fh, indent=2)
     print(f"  report -> {report}")
 
     if failed:

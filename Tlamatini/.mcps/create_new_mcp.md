@@ -751,7 +751,7 @@ The body of the skill is the runbook the LLM will follow when it calls
 3. If Z is true, do W; else do V.
 ```
 
-### Step 3: Validate against the schema
+### Step 3: Validate with the ONE shared validator
 
 `agent/skills_pkg/_meta/schema.json` defines the frontmatter contract; `agent/skills_pkg/_meta/lint.py` is the linter the registry uses internally. The skill_creator skill ships `scripts/quick_validate.py` for ad-hoc validation:
 
@@ -764,10 +764,54 @@ A skill that fails to parse is skipped on startup with a logger warning — it d
 
 ### Step 4: Verify discovery and invocation
 
+⛔ **VISIBLE ONLY.** Restart Django in a **VISIBLE FOREGROUND console** and do this check in the **REAL chat GUI in a VISIBLE browser** on Angela's desktop. Headless verification is STRICTLY FORBIDDEN (her hard rule) — and a skill you only proved in a hidden process is a skill you have not proved.
+
 Restart Django (the registry caches discoveries with a 30-second freshness window). In the chat with **Multi-Turn + ACPX both enabled** (since `list_skills` / `invoke_skill` live on the ACPX surface), ask:
 
 1. "List the available skills." — `list_skills` should return the new entry with the description and runtime fields.
-2. "Invoke the `<skill_name>` skill with `<args>`." — the LLM picks `invoke_skill(...)`, the harness validates inputs against the frontmatter contract, runs the skill body, and returns the structured outputs.
+2. "Invoke the `<skill_name>` skill with `<args>`." — the LLM picks `invoke_skill(...)` and the harness validates the inputs against the frontmatter contract. For an `in-process` skill it then returns `status: "planned"` with the COMPLETE body and the `pending_outputs` contract — it does **not** run the body (see Step 4b). Confirm the plan carries your whole procedure and the outputs you declared; the LLM produces the actual values by following it.
+
+### Step 4b: Know what `invoke_skill` actually does with your skill
+
+⚠️ **An `in-process` skill is a PLANNING HANDOFF, not an execution.**
+`invoke_skill` validates the arguments and hands the caller your COMPLETE body
+plus `pending_outputs` — the output contract it must satisfy *after* doing the
+work. It does not run your steps, and it returns `output: {}` with
+`status: "planned"`, `completed: false`. Write the body as a procedure for
+another agent to carry out, and declare `outputs` as the contract you expect
+back, never as values this call will produce. (Until 2026-09-23 the harness
+synthesized schema-shaped placeholders into `output` beside `ok: true`, so a
+stub `doctor_ok: false` was indistinguishable from a doctor that ran and
+failed, and the body was silently cut at 2,000 characters.)
+
+Four consequences when authoring:
+
+* **Size is measured in UTF-8 BYTES** — 8 KiB warns, 16 KiB is a hard error,
+  decided by `agent/skills/validation.py`, which is the SAME routine
+  `_meta/lint.py`, `quick_validate.py` and Skills Diagnostics all run. A
+  package can no longer pass one and fail another. Move detail into
+  `references/`; the harness lists every such file by ABSOLUTE path in
+  `plan.references`, so it stays retrievable rather than lost.
+* **Declare a credential input as `sensitive: true`.** It is then redacted from
+  every audit event and from the returned envelope by
+  `agent/skills/redaction.py`, with no prefix, length or hash. A
+  credential-shaped NAME (`api_key`, `token`, `password`, `secret`, …) is
+  redacted even without the flag.
+* **Declare what the procedure REALLY needs** — four different kinds, all of
+  which used to collapse into an empty list: DIRECT tools; DELEGATED skills
+  (`invoke_skill`, if you hand off to another skill); DYNAMICALLY DISCOVERED
+  external capabilities (`ext__<server>__<tool>`, reached through the
+  `external_mcp_*` supervisors — name the supervisors, since the remote tool
+  names only exist once the server is active); and the shell commands a
+  scripted fallback actually runs. `network: deny` means *this skill opens no
+  socket of its own*; it does not, and must not be read to, forbid a tool it
+  calls from doing its job.
+* **Budget honesty.** `max_iterations` and `max_seconds` bound the harness
+  invocation (and, on the `acpx` runtime, the child drain). `max_tokens` is
+  ADVISORY — the harness spends no model tokens itself. `permissions` and
+  `requires_tools` are declared policy surfaced in the plan, NOT a sandbox;
+  the real gates stay Configure Mcps/Tools, Configure Agents and Ask-Execs.
+  Every envelope carries an `enforcement` block saying exactly this.
 
 ### Step 5: NO database migration, NO frontend wiring, NO `@tool` registration
 

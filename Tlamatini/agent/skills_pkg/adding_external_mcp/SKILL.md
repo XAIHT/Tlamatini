@@ -88,6 +88,8 @@ metadata:
 
 # Adding External MCP — canonical reference
 
+> **HEADLESS IS FORBIDDEN. VISIBLE FOREGROUND EXECUTION ONLY.** Every command, automated test, diagnostic, script, build, agent and browser must run in a visible foreground window on Angela's real desktop. Use forked CMD/PowerShell windows, `execute_forked_window: true`, and `headless: false`. Monitor live; if visibility cannot be confirmed, do not run. Read the [mandatory execution policy](../../../../TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).
+
 The full, ground-truth procedure for adding a NEW external MCP server to
 Tlamatini universal MCP client layer. This skill makes Tlamatini
 autonomously capable of adding, configuring, activating, and verifying any
@@ -177,14 +179,35 @@ Call external_mcp_doctor(server_key="my-server") to run a static triage:
 
 Alternatively, use chat_agent_mcp_doctor for the canvas-agent version.
 
-### Step 5 — Activate the server
+### Step 5 — Activate the server (READ THIS BEFORE YOU CALL IT)
 
-Call external_mcp_set_active(server_keys=["my-server"]) or pass a
-comma-separated string. This:
+⚠️ **external_mcp_set_active REPLACES the whole active set — it does not add
+to it.** `external_mcp_manager.set_active` writes `data["active"] = capped`
+and then CLOSES every client that is not in the list you passed. Calling
+`external_mcp_set_active(server_keys=["my-server"])` while other servers are
+active therefore DISCONNECTS all of them. Adding a server is a read → merge →
+write, never a bare write:
+
+1. Call external_mcp_status() and read back the CURRENT `active` list.
+2. Merge: `merged = current_active + ["my-server"]` (skip it if already there;
+   preserve the existing order so nothing is silently reordered out of the cap).
+3. If `len(merged) <= 5`, call
+   external_mcp_set_active(server_keys=merged) — A and B both stay active.
+4. If `len(merged) > 5`, **STOP and report the capacity conflict**, naming the
+   currently-active servers. The cap silently truncates (`capped: true`), so a
+   blind call would deactivate whichever server fell off the end. **Never
+   choose an unrelated server to drop on the user's behalf** — ask which one
+   to deactivate, then pass the explicit merged list they chose.
+
+Use the replacement behaviour ONLY when replacement is what was asked for
+(e.g. "switch to just this server").
+
+Once the list is written, activation:
 - Caps at MAX_ACTIVE=5 (silently drops excess, reports capped: true)
 - Spawns the child process (stdio) or opens the network connection
 - Performs the MCP initialize handshake -> tools/list
 - Wraps each remote tool as ext__<server>__<tool>
+- Closes any previously-active client absent from the list you passed
 
 ### Step 6 — Wait for the server to be ready
 

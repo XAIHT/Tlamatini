@@ -45,6 +45,15 @@
 
 ---
 
+## Mandatory execution rule for contributors and coding agents
+
+**HEADLESS IS FORBIDDEN. ALL EXECUTION MUST BE VISIBLE.** Every automated test,
+command, diagnostic, script, build, agent and browser must run in a visible,
+forked foreground window on Angela's real desktop. Use visible CMD/PowerShell
+consoles and headed browsers; monitor live. No hidden/background execution,
+including CI or quick checks. If visibility cannot be confirmed, do not run.
+Read [AGENTS.md](AGENTS.md) and the [mandatory execution policy](TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).
+
 ## Carried packaging hardening — introduced 2026-09-16
 
 The current source carries the removal of frontend CDN dependencies. Bootstrap, jQuery,

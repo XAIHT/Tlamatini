@@ -173,7 +173,12 @@ class Harness:
         self.page = None
 
     def launch(self, p):
-        kwargs = dict(headless=self.args.headless, slow_mo=self.args.slowmo)
+        # HARD RULE (Angela, 2026-07-07, reaffirmed 2026-09-23): headless
+        # automated tests are STRICTLY FORBIDDEN. Tests MUST be VISIBLE.
+        # --headless is accepted for backward compatibility and IGNORED.
+        if getattr(self.args, "headless", False):
+            print("!!! --headless is FORBIDDEN on this machine -> forcing VISIBLE (headed) Chrome.")
+        kwargs = dict(headless=False, slow_mo=self.args.slowmo)
         try:
             browser = p.chromium.launch(channel="chrome", **kwargs)
             _log("Launched Google Chrome (channel=chrome) -- VISIBLE window.")
@@ -353,7 +358,8 @@ def main():
     ap.add_argument("--user", default=C.USERNAME)
     ap.add_argument("--password", default=C.PASSWORD)
     ap.add_argument("--base-url", default=None)
-    ap.add_argument("--headless", action="store_true", help="run headless (default: VISIBLE Chrome)")
+    ap.add_argument("--headless", action="store_true",
+                    help="[DISABLED / FORBIDDEN] tests are ALWAYS visible/headed; this flag is ignored")
     ap.add_argument("--slowmo", type=int, default=0)
     ap.add_argument("--hold", type=int, default=10, help="seconds to keep the browser open at the end")
     ap.add_argument("--out", default=os.path.join(os.path.dirname(__file__), "reports"))

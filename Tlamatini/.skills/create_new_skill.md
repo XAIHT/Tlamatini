@@ -50,6 +50,22 @@ No DB row, no UI checkbox markup, no chain rewiring.
 
 ---
 
+> ## ⛔ EVERY RUN HERE IS VISIBLE AND FOREGROUND — HEADLESS IS FORBIDDEN
+>
+> **Angela's HARD RULE, no exceptions, forever.** Every command, build, test,
+> script, agent and browser this skill tells you to run MUST open in a
+> **VISIBLE FOREGROUND window on her real desktop** so she can watch it live:
+>
+> - `Start-Process powershell -NoExit …` with `dangerouslyDisableSandbox: true`
+>   (the sandbox hides GUIs in an isolated window station), or a Tlamatini
+>   agent with `execute_forked_window: true`.
+> - **NEVER** `run_in_background`, never a detached or hidden job.
+> - **Playwright launches HEADED** (`headless=False`, prefer real Chrome).
+>   **NEVER** pass `--headless`.
+> - If a step cannot be made visible, **do NOT run it** — tell Angela.
+
+---
+
 ## 1 · The two Skill runtimes (this is the core decision)
 
 `metadata.tlamatini.runtime` selects how `SkillHarness` (`agent/skills/harness.py`)
@@ -58,12 +74,22 @@ other (`frontmatter.py` raises `SkillParseError`).
 
 ### `runtime: in-process` (default)
 
-- The body is loaded as a **planning playbook**. The harness returns a
-  structured *envelope* (`skill_runtime`, `body_excerpt`, `permissions`,
-  `requires_tools`, `requires_mcps`, `guidance`) plus stub values shaped to the
-  declared `outputs`. The calling unified-agent then **carries the plan
-  forward using the tools listed in `requires_tools`**. The harness itself does
-  NOT execute destructive actions in this revision (safe-by-default).
+- The body is delivered as a **planning playbook — a HANDOFF, not an
+  execution**. The harness validates the arguments, then returns an envelope
+  carrying `status: "planned"`, `completed: false`, the **complete** body
+  (`plan.body`, with `plan.body_truncated` stated explicitly and never
+  implied), `plan.references` (absolute paths to the files shipped beside
+  SKILL.md), `plan.permissions`, `plan.requires_tools`, `plan.requires_mcps`,
+  and `guidance`. The calling unified-agent then **carries the plan forward
+  using the tools listed in `requires_tools`**. The harness itself executes
+  nothing on this path (safe-by-default: no shell, no file write, no model
+  call).
+- ⚠️ **`output` is `{}` on a planning handoff, and the declared outputs appear
+  under `pending_outputs` as a CONTRACT, not as values.** Before 2026-09-23 the
+  harness synthesized schema-shaped placeholders into `output` beside
+  `ok: true`, so a caller could not tell a stub from a measurement — a
+  `doctor_ok: false` stub read exactly like a doctor that had run and failed.
+  **Never reintroduce placeholder values under `output`.**
 - **This is what an "ACPX skill" almost always is**: a skill whose body tells
   the LLM how to drive `acp_spawn` / `acp_send_and_wait` / `acp_relay` /
   `acp_kill` (and `acp_doctor` first). `acp-router` and `setup-new-acpx-key` are
@@ -155,13 +181,30 @@ Contract enforcement at invoke time (`harness.py` + `io_contract.py`):
 
 - **Inputs** are validated and coerced *before* the body runs. A missing
   `required: true` input fails with `input_contract_violation`.
-- **Outputs** are validated *after* the body runs, but **only when `outputs` is
-  declared**. Declaring outputs you don't actually return causes
-  `output_contract_violation` — so declare only what the skill genuinely yields.
-- **Budget** is hard-enforced: `max_iterations`, `max_seconds`, `max_tokens`.
-  Exceeding any returns `budget_exceeded`. Keep ACPX skills' `max_seconds`
-  realistic — a slow CLI relay can need 120–300 s (and the ACPX child has its
-  own timeout/idle budgets separate from this skill budget).
+- **Outputs** are validated *after* the body runs, and **only on the `acpx`
+  runtime**, which is the only path that actually produces them. Declaring
+  outputs you don't return there causes `output_contract_violation` — so
+  declare only what the skill genuinely yields. On `in-process` the same
+  declarations become the `pending_outputs` contract handed to the caller.
+- **Budget — be precise about what is enforced.** `max_iterations` and
+  `max_seconds` bound *this harness invocation* and return `budget_exceeded`;
+  on the `acpx` runtime `max_seconds` also bounds the child drain. `max_tokens`
+  is **ADVISORY**: the harness spends no model tokens of its own, so nothing
+  ticks it — the caller's own budget governs the work it goes on to do. Every
+  envelope carries an `enforcement` block stating this per field; **if you ever
+  implement real scoping, update that block in the same commit.**
+- **Permissions and `requires_tools` are DECLARED POLICY, not a sandbox.** They
+  are surfaced in the plan so the caller knows what it may do; the actual gates
+  are Tlamatini's existing ones (Configure Mcps/Tools, Configure Agents,
+  Ask-Execs). Do not describe them as enforcement.
+- **A `sensitive: true` input is REDACTED** from every audit event and from the
+  returned envelope (`agent/skills/redaction.py`). An input whose *name* looks
+  like a credential (`api_key`, `token`, `password`, `secret`, …) is redacted
+  even without the flag, and the literal value is additionally swept out of
+  free-form text such as error details. A redaction never emits a prefix,
+  length or hash of the secret. Keep ACPX skills' `max_seconds` realistic — a
+  slow CLI relay can need 120–300 s (and the ACPX child has its own
+  timeout/idle budgets separate from this skill budget).
 
 ---
 

@@ -65,6 +65,8 @@ metadata:
 
 # Security Audit
 
+> **HEADLESS IS FORBIDDEN. VISIBLE FOREGROUND EXECUTION ONLY.** Every command, automated test, diagnostic, script, build, agent and browser must run in a visible foreground window on Angela's real desktop. Use forked CMD/PowerShell windows, `execute_forked_window: true`, and `headless: false`. Monitor live; if visibility cannot be confirmed, do not run. Read the [mandatory execution policy](../../../../TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).
+
 Run a defensive, read-only security sweep over `${input.path}`. This skill is
 for authorized auditing of code you own or are permitted to test. Never use it
 to evade detection or attack third-party systems.
