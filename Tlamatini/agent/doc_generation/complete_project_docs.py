@@ -187,6 +187,51 @@ def local_stamp() -> str:
     return datetime.now().astimezone().strftime("%B %d, %Y %I:%M %p UTC%z")
 
 
+def published_releases() -> dict[str, object]:
+    """Report the release actually PUBLISHED on GitHub.
+
+    A tag is not a release. A repository can carry a newer annotated tag with
+    no release attached to it, in which case ``git describe`` reports a version
+    that nobody can download and that no installer was ever cut from. Reading
+    the tag alone is therefore not enough to state "the current release".
+
+    Fail-open by contract: if the GitHub CLI is missing, unauthenticated or
+    offline, return an empty mapping so the caller keeps its Git-only prose
+    rather than inventing a publication status.
+    """
+    try:
+        listing = subprocess.run(
+            [
+                "gh", "release", "list", "--limit", "30",
+                "--json", "tagName,isLatest,isDraft,isPrerelease,publishedAt",
+            ],
+            cwd=str(REPO_ROOT),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=90,
+            check=True,
+        ).stdout.strip()
+        rows = json.loads(listing) if listing else []
+    except Exception:
+        return {}
+    if not isinstance(rows, list) or not rows:
+        return {}
+    live = [r for r in rows if isinstance(r, dict) and not r.get("isDraft")]
+    latest = next((r for r in live if r.get("isLatest")), None)
+    return {
+        "latest_tag": str((latest or {}).get("tagName", "")).strip(),
+        "latest_published_at": str((latest or {}).get("publishedAt", "")).strip(),
+        "published_tags": [str(r.get("tagName", "")).strip() for r in live],
+        "draft_tags": [
+            str(r.get("tagName", "")).strip()
+            for r in rows
+            if isinstance(r, dict) and r.get("isDraft")
+        ],
+    }
+
+
 def release_identity() -> str:
     """Keep tagged release identity separate from the inspected checkout."""
     tag = git("describe", "--tags", "--abbrev=0", "HEAD")
@@ -200,10 +245,38 @@ def release_identity() -> str:
                        f"Origin does not advertise {tag}; it is a local tag. ")
     except subprocess.CalledProcessError:
         publication = "Remote tag publication could not be checked. "
+    # A tag is not a release: state the published release explicitly, because
+    # the newest reachable tag can have no release attached to it.
+    releases = published_releases()
+    latest_release = str(releases.get("latest_tag", "") or "")
+    published_tags = list(releases.get("published_tags", []) or [])
+    if latest_release and latest_release != tag:
+        release_note = (
+            f"The current PUBLISHED release is {latest_release}, which is the Latest "
+            f"release on GitHub. The newer reachable tag {tag} has no published "
+            f"release attached to it, so {latest_release} — not {tag} — is the "
+            "version an operator can download and install. "
+        )
+    elif latest_release:
+        release_note = (
+            f"The current PUBLISHED release is {latest_release}, which is both the "
+            "newest reachable tag and the Latest release on GitHub. "
+        )
+    elif published_tags:
+        release_note = (
+            "No release is marked Latest on GitHub; publication status is therefore "
+            "reported from tags only. "
+        )
+    else:
+        release_note = (
+            "Published-release status could not be read from GitHub, so only "
+            "Git tag facts are asserted here. "
+        )
     return (
         f"The reachable local tag {tag} resolves to {tag_commit}. "
         f"Current source HEAD is {head}, {distance} commit(s) beyond that tag. "
-        f"Fetched origin/main resolves to {remote}. {publication}Runtime version resolution remains "
+        f"Fetched origin/main resolves to {remote}. {publication}{release_note}"
+        "Runtime version resolution remains "
         "Git/build-derived. A source revision beyond the tag is not a new tagged release."
     )
 
@@ -1057,7 +1130,7 @@ LATEST_SOURCE_GUIDE = [
     "The portable video_content.py helper bounds decoding and model context. Reports include UTF-8 transcript text, timestamped JSON and visual observations. Embedded subtitle streams are not extracted. Content modes bypass motion rejection and never emit a robotics PASS.",
     "Parametrizer, the agent registry, workflow controls, root MCP and prompt migration 0207 expose the same modes and result fields. PyAV 17.1.0 is pinned and the helper is carried by frozen builds and source snapshots.",
     "External MCP calls repair only unambiguous scalar type mismatches before server-schema validation. Boolean/string enum spelling and numeric strings can be normalized; ambiguous inputs still fail validation.",
-    "Repository facts report actual HEAD and fetched origin/main separately from the requested 1.63.0 document/build version and reachable tags. The checkout includes uncommitted model/runtime changes; no tag is moved by this refresh.",
+    "Repository facts report actual HEAD and fetched origin/main separately from the resolved document/build version, separately from the reachable Git tags, and separately again from the release actually published on GitHub. A tag with no published release attached is not a release. The checkout may include uncommitted model/runtime changes; no tag is moved and no release is published by this refresh.",
 ]
 
 
