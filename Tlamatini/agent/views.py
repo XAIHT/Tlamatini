@@ -434,6 +434,11 @@ def agentic_control_panel(request):
     return render(request, 'agent/agentic_control_panel.html', context)
 
 
+@login_required
+def prompt_flow_panel(request):
+    return render(request, 'agent/prompt_flow_panel.html')
+
+
 @csrf_exempt
 def clear_pool_view(request):
     """

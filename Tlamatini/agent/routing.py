@@ -10,7 +10,9 @@
 # agent/routing.py
 from django.urls import re_path
 from . import consumers
+from .prompt_flow_panel_consumer import PromptFlowPanelConsumer
 
 websocket_urlpatterns = [
+    re_path(r'ws/prompt-flow-panel/$', PromptFlowPanelConsumer.as_asgi()),
     re_path(r'ws/agent/$', consumers.AgentConsumer.as_asgi()),
 ]

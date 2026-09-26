@@ -2308,12 +2308,8 @@ function send2SaveFiles(files) {
 chatSocket.onmessage = function (e) {
     const data = JSON.parse(e.data);
 
-    if (data && data.username === 'Tlamatini' && !isBusyMessageRequest(data.message)) {
-        setTitleBusy(false);
-    }
-    if (data && data.username === 'Tlamatini' && !isBusyMessageContext(data.message)) {
-        setTitleBusy(false);
-    }
+    // Only lifecycle handling in appendChatMessage may finish the chat's busy
+    // title. Informational/structured frames can arrive during context loading.
     if (data.username === 'ping') {
         console.log('--- Received heartbeat message from server');
         return;

@@ -39,7 +39,7 @@ const SOURCE_CODE_ACCEPT = [
     '.gitignore', '.gitattributes', '.dockerignore',
     '.jinja', '.jinja2', '.j2', '.twig', '.erb', '.ejs', '.hbs', '.handlebars', '.mustache',
     '.pug', '.haml', '.liquid',
-    '.flw', '.pmt', '.pdf', 'application/pdf',
+    '.flw', '.pmt', '.fpmt', '.pdf', 'application/pdf',
     'text/*',
 ].join(',');
 

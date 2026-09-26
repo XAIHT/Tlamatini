@@ -154,7 +154,7 @@ TEXT_EXTENSIONS = frozenset({
     '.html', '.htm', '.xhtml', '.xml', '.xsl', '.xsd', '.svg', '.css',
     '.scss', '.sass', '.less', '.styl',
     '.csv', '.tsv', '.sql', '.graphql', '.gql', '.proto', '.thrift',
-    '.pmt', '.flw', '.skill', '.patch', '.diff', '.srt', '.vtt', '.ino',
+    '.pmt', '.fpmt', '.flw', '.skill', '.patch', '.diff', '.srt', '.vtt', '.ino',
     '.s', '.asm', '.ld', '.dts', '.dtsi', '.kconfig', '.pem', '.crt',
     '.cer', '.key', '.pub', '.csr',
 })

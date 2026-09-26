@@ -120,6 +120,10 @@ function applyDisconnectedSocketUi(message) {
 
     inLongOperation = false;
     lapseLoadingContext = false;
+    reConnectEnabled = true;
+    if (typeof restoreMenuControlsAfterOperation === 'function') {
+        restoreMenuControlsAfterOperation();
+    }
     setConnectionStatus(message || 'Live connection lost. Use Reconnect or refresh before continuing.', 'warning');
 }
 
@@ -240,8 +244,7 @@ const askExecsCheckbox = document.getElementById('ask-execs-enabled');
 const askExecsToggleLabel = document.getElementById('ask-execs-toggle');
 const stepByStepCheckbox = document.getElementById('step-by-step-enabled');
 const contextMenuButton = document.getElementById('context-menu-button');
-const mcpsMenuButton = document.getElementById('mcps-menu-button');
-const agentsMenuButton = document.getElementById('agents-menu-button');
+const panelsMenuButton = document.getElementById('panels-menu-button');
 const filenameDivRight = document.getElementById('filename-div-right'); // eslint-disable-line no-unused-vars
 const filenameDivLeft = document.getElementById('filename-div-left'); // eslint-disable-line no-unused-vars
 const filenameSpan = document.getElementById('filename'); // eslint-disable-line no-unused-vars

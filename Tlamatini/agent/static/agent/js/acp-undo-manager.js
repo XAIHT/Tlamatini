@@ -43,6 +43,7 @@ class UndoManager {
             this.undoStack.shift();  // Remove oldest action
         }
 
+        window.ACP?.refreshEditor?.();
         console.log(`[UndoManager] Recorded action: ${action.type}, stack size: ${this.undoStack.length}`);
     }
 
@@ -51,12 +52,13 @@ class UndoManager {
      * @returns {boolean} True if an action was undone
      */
     async undo() {
-        if (this.undoStack.length === 0) {
+        if (this.isProcessing || this.undoStack.length === 0) {
             console.log('[UndoManager] Nothing to undo');
             return false;
         }
 
         this.isProcessing = true;
+        window.ACP?.refreshEditor?.();
         try {
             const action = this.undoStack.pop();
             console.log(`[UndoManager] Undoing action: ${action.type}`);
@@ -68,6 +70,7 @@ class UndoManager {
             return false;
         } finally {
             this.isProcessing = false;
+            window.ACP?.refreshEditor?.();
         }
     }
 
@@ -76,12 +79,13 @@ class UndoManager {
      * @returns {boolean} True if an action was redone
      */
     async redo() {
-        if (this.redoStack.length === 0) {
+        if (this.isProcessing || this.redoStack.length === 0) {
             console.log('[UndoManager] Nothing to redo');
             return false;
         }
 
         this.isProcessing = true;
+        window.ACP?.refreshEditor?.();
         try {
             const action = this.redoStack.pop();
             console.log(`[UndoManager] Redoing action: ${action.type}`);
@@ -93,6 +97,7 @@ class UndoManager {
             return false;
         } finally {
             this.isProcessing = false;
+            window.ACP?.refreshEditor?.();
         }
     }
 
@@ -101,6 +106,7 @@ class UndoManager {
     clear() {
         this.undoStack = [];
         this.redoStack = [];
+        window.ACP?.refreshEditor?.();
         console.log('[UndoManager] History cleared');
     }
 }

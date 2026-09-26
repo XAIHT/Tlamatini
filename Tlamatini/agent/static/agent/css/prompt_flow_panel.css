@@ -1,0 +1,99 @@
+/* Tlamatini — "one who knows"
+ * Created by Angela López Mendoza · @angelahack1
+ * Tlamatini Author Banner — do not remove */
+.pmt-panel { display: flex; flex-direction: column; height: 100dvh; }
+.pmt-panel #navbar-container { flex: 0 0 auto; }
+.pmt-panel #connection-status { flex: 0 0 auto; }
+.pmt-panel #agents-container { flex: 1 1 auto; height: auto; min-height: 0; }
+.pmt-panel #main-agents-container { flex: 0 0 var(--pmt-sidebar, 25%); min-width: 15%; max-width: 70%; min-height: 0; overflow: auto !important; }
+.pmt-panel #monitor-container { flex: 1 1 0; min-width: 0; min-height: 0; border: 0; }
+.pmt-panel #drag-divider { position: relative; flex: 0 0 8px; }
+.pmt-panel #agents-header { height: auto !important; padding: 9px 12px; margin: 0 !important; font-size: 1rem; }
+.pmt-panel #monitor-header { height: auto !important; min-height: 42px; gap: 8px; padding: 7px 10px; flex-wrap: wrap !important; margin: 0 !important; }
+.pmt-panel #monitor-header-title { font-size: .95rem; }
+.pmt-panel #monitor-controls { flex-wrap: wrap; }
+.pmt-panel .control-btn { height: 26px; font-size: .78rem; width: auto; min-width: 40px; }
+.pmt-panel #submonitor-container { flex: 1 1 auto; height: auto; min-height: 160px; touch-action: none; }
+.pmt-panel #canvas-content { min-width: 100%; min-height: 100%; width: 1200px; height: 800px; }
+#pmt-world { position: absolute; left: 0; top: 0; transform-origin: 0 0; background-image: radial-gradient(#4b4b56 .8px, transparent .8px); background-size: 20px 20px; }
+.pmt-panel #connections-layer { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: 1; }
+.pmt-palette-intro, .pmt-palette-foot { padding: 12px; font-size: .8rem; color: #bcbcc7; line-height: 1.5; }
+.pmt-palette-foot { margin-top: auto; border-top: 1px solid #484852; }
+.pmt-panel .agent-tool-item { width: 100%; min-height: 62px; gap: 10px; color: #ececf1; text-align: left; font-size: .86rem; }
+.pmt-panel .agent-tool-item svg { width: 52px; height: 38px; flex-shrink: 0; overflow: visible; }
+.pmt-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; padding: 6px 8px; background: #303039; border-bottom: 1px solid #51515f; font-size: .76rem; }
+.pmt-tools button, #pmt-empty button { border: 1px solid #656570; border-radius: 4px; color: #ececf1; background: #41414e; padding: 4px 7px; }
+.pmt-tools button:hover, #pmt-empty button:hover { background: #535364; }
+.pmt-panel button:disabled { opacity: .45; cursor: not-allowed; }
+.pmt-panel button:focus-visible, .pmt-panel input:focus-visible, .pmt-panel select:focus-visible, #pmt-world .pmt-node:focus-visible { outline: 2px solid #8bded2; outline-offset: 3px; }
+.pmt-tools select { background: #202123; color: #ececf1; border: 1px solid #656570; max-width: 170px; border-radius: 3px; padding: 4px; }
+.pmt-tool-divider { width: 1px; height: 20px; background: #626272; margin: 0 4px; }
+.pmt-tool-spacer { flex: 1; }
+#pmt-zoom { min-width: 38px; text-align: center; }
+.pmt-node { position: absolute; width: 200px; height: 128px; cursor: grab; user-select: none; z-index: 2; color: #f8fafc; }
+.pmt-node svg { width: 100%; height: 100%; overflow: visible; pointer-events: none; filter: drop-shadow(0 4px 4px #0008); }
+.pmt-shape { fill: var(--pmt-fill, #334b69); stroke: var(--pmt-color, #83c0f3); stroke-width: 2.5; stroke-linejoin: round; }
+.pmt-clock { fill: #202b38; stroke: #f3df9f; stroke-width: 2; }
+/* Match ACP selection; SVG shadows follow every operation's outline. */
+.pmt-node.selected { z-index: 3; }
+.pmt-node.selected svg { filter: drop-shadow(0 0 5px rgba(255, 204, 0, .7)); }
+.pmt-node.selected .pmt-shape { stroke: #ffcc00; stroke-width: 3; }
+/* Playback keeps its status color while a selected figure retains the gold halo. */
+.pmt-node.running .pmt-shape { stroke: #facc15; stroke-width: 5; }
+.pmt-node.completed .pmt-shape { stroke: #4ade80; }
+.pmt-node.failed .pmt-shape { stroke: #fb7185; stroke-width: 5; }
+.pmt-node-label { position: absolute; left: 24px; right: 24px; top: 33px; bottom: 28px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; pointer-events: none; gap: 3px; }
+.pmt-node-label strong { font-size: 13px; line-height: 1.2; max-width: 100%; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+.pmt-node-label small { font-size: 10px; color: #e0e5ee; opacity: .9; }
+.pmt-node[data-type="decision"] .pmt-node-label { left: 51px; right: 51px; top: 31px; bottom: 31px; }
+.pmt-node[data-type="feed_embeddings"] .pmt-node-label { left: 54px; right: 54px; top: 58px; bottom: 15px; }
+.pmt-node[data-type="flush_embeddings"] .pmt-node-label { left: 49px; right: 49px; top: 18px; bottom: 57px; }
+.pmt-node[data-type="programmed_prompt"] .pmt-node-label { right: 48px; }
+.pmt-node[data-type="clean_history"] .pmt-node-label { left: 47px; right: 47px; }
+/* Geometry/colors come from ACP's input/output-triangle and output-label rules.
+   Reset only native button chrome; highlighting never changes the port size. */
+.pmt-start-badge { position: absolute; top: -14px; left: 76px; color: #68e0bd; font-size: 10px; letter-spacing: .12em; }
+.pmt-node-status { position: absolute; bottom: -15px; left: 0; width: 100%; text-align: center; font-size: 10px; color: #c3c3d2; }
+/* Wires, hit areas, hover and selection reuse ACP's connection-* classes. */
+.pmt-edge.traversed:not(.selected):not(:hover) .pmt-wire { stroke: #62d4a6; stroke-width: 4; }
+#pmt-marquee { position: absolute; border: 1px solid #86d7df; background: #80d7df22; pointer-events: none; z-index: 5; }
+#pmt-empty { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; padding: 20px; color: #bcbcc9; text-align: center; }
+#pmt-empty[hidden] { display: none; }
+#pmt-empty button { pointer-events: auto; }
+.pmt-empty-symbol { font-size: 60px; color: #66bda8; }
+#pmt-empty h1 { font-size: 1.35rem; color: #ececf1; }
+#pmt-empty p { font-size: .9rem; }
+.pmt-status-strip { display: flex; gap: 10px; justify-content: space-between; padding: 5px 10px; background: #24242c; font-size: .75rem; color: #cfcfda; }
+#pmt-status { min-width: 0; overflow-wrap: anywhere; }
+#pmt-count { flex-shrink: 0; }
+#pmt-run-panel { flex: 0 0 auto; border-top: 1px solid #555560; background: #25252e; }
+#pmt-run-panel summary { padding: 6px 10px; cursor: pointer; font-size: .8rem; font-weight: 600; }
+#pmt-run-state { float: right; color: #8cdbc3; }
+#pmt-run-log { height: 145px; overflow: auto; padding: 5px 12px; font-size: .8rem; }
+#pmt-run-log article { border-left: 3px solid #62748a; padding: 5px 10px; margin: 4px 0 10px; }
+#pmt-run-log article.error { border-color: #fb7185; }
+#pmt-run-log article strong { font-size: .75rem; color: #a6dbc9; }
+#pmt-run-log pre { margin: 5px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
+.pmt-log-hint { color: #b2b2c0; }
+.pmt-panel .ui-dialog { position: absolute; }
+.pmt-panel .ui-widget-overlay { position: fixed; inset: 0; z-index: 9999; }
+.pmt-panel .ui-dialog .pmt-form { text-align: left; display: flex; flex-direction: column; gap: 12px; padding: 22px 28px; }
+.pmt-panel .ui-dialog .ui-dialog-titlebar-close { min-width: 32px; padding: 0; font-size: 0; }
+.pmt-panel .ui-dialog-titlebar-close .ui-icon { display: none; }
+.pmt-panel .ui-dialog .ui-dialog-title { display: block; padding-right: 32px; }
+.pmt-form label { display: flex; flex-direction: column; gap: 5px; font-size: .85rem; }
+.pmt-form input:not([type="checkbox"]), .pmt-form textarea, .pmt-form select { width: 100%; padding: 8px; border: var(--tlm-dlg-input-border, 1px solid #626978); border-radius: 5px; color: var(--tlm-dlg-text, #eee); background: var(--tlm-dlg-input-bg, #292b36); }
+.pmt-form textarea { min-height: 160px; resize: vertical; }
+.pmt-form .pmt-checkbox { display: flex; flex-direction: row; align-items: center; }
+.pmt-form p, .pmt-form small { color: var(--tlm-dlg-body, #c8c8d3); font-size: .8rem; margin: 0; }
+.pmt-form .pmt-form-error { color: #fda4af; }
+.pmt-form code { color: #8be5d0; }
+.pmt-panel kbd { float: right; margin-left: 20px; font-size: .7rem; }
+@media (max-width: 760px) {
+    .pmt-panel .agent-tool-item { padding: 7px; gap: 6px; font-size: .75rem; }
+    .pmt-panel .agent-tool-item svg { width: 37px; }
+    .pmt-palette-intro, .pmt-palette-foot { font-size: .7rem; padding: 8px; }
+    #pmt-count { display: none; }
+    #pmt-run-log { height: 110px; }
+    .pmt-panel #monitor-controls { gap: 4px !important; }
+}

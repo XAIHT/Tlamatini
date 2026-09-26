@@ -104,6 +104,7 @@ LANGUAGE_BY_EXTENSION = {
     ".md": ("Markdown", "MD"),
     ".mjs": ("JavaScript module", "MJS"),
     ".pmt": ("Prompt template", "Prompt"),
+    ".fpmt": ("Prompt flow", "JSON"),
     ".proto": ("Protocol Buffers", "Proto"),
     ".ps1": ("PowerShell", "PowerShell"),
     ".py": ("Python", "Python"),

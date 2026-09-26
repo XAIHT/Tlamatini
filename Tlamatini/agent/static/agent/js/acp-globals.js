@@ -73,6 +73,8 @@ let hasUnsavedChanges = false;
 // so they can be accessed across multiple split files.
 const ACP = window.ACP = {
     // Canvas data structures
+    zoom: 1,
+    editorBusy: false,
     connections: [],        // { source, target, path, visiblePath, hitPath, inputSlot, outputSlot }
     selectedItems: new Set(), // Selected DOM elements (.canvas-item) and connection objects
     itemCounters: new Map(), // baseName -> count (for unique ID generation)
@@ -119,28 +121,18 @@ window.nodeConfigs = ACP.nodeConfigs;
  */
 function updateCanvasContentSize() { // eslint-disable-line no-unused-vars
     if (!canvasContent || !submonitor) return;
-    const margin = 240; // headroom so the user can always drop beyond current extent
-    let maxRight = submonitor.clientWidth;
-    let maxBottom = submonitor.clientHeight;
-    const items = canvasContent.querySelectorAll('.canvas-item');
-    items.forEach(item => {
-        const right = item.offsetLeft + item.offsetWidth;
-        const bottom = item.offsetTop + item.offsetHeight;
-        if (right > maxRight) maxRight = right;
-        if (bottom > maxBottom) maxBottom = bottom;
+    const zoom = ACP.zoom || 1;
+    const width = submonitor.clientWidth / zoom;
+    const height = submonitor.clientHeight / zoom;
+    let right = 0, bottom = 0;
+    canvasContent.querySelectorAll('.canvas-item').forEach(item => {
+        right = Math.max(right, item.offsetLeft + item.offsetWidth);
+        bottom = Math.max(bottom, item.offsetTop + item.offsetHeight);
     });
-    // Only set pixel sizes when content exceeds viewport; otherwise clear to let
-    // the CSS min-width/min-height:100% rule track viewport size automatically.
-    if (maxRight > submonitor.clientWidth) {
-        canvasContent.style.width = (maxRight + margin) + 'px';
-    } else {
-        canvasContent.style.width = '';
-    }
-    if (maxBottom > submonitor.clientHeight) {
-        canvasContent.style.height = (maxBottom + margin) + 'px';
-    } else {
-        canvasContent.style.height = '';
-    }
+    canvasContent.style.minWidth = width + 'px';
+    canvasContent.style.minHeight = height + 'px';
+    canvasContent.style.width = Math.max(width, right + (right ? 240 : 0)) + 'px';
+    canvasContent.style.height = Math.max(height, bottom + (bottom ? 240 : 0)) + 'px';
 }
 
 function updateSaveButtonState() {

@@ -468,6 +468,7 @@ function appendLedIndicator(el) {
  * Deploys the agent template to the pool directory.
  */
 async function createCanvasItem(clientX, clientY, textContent) {
+    if (ACP.canEdit && !ACP.canEdit()) return;
     if (textContent.toLowerCase() === 'flowcreator') {
         const existingFlowCreators = document.querySelectorAll('.flowcreator-agent');
         if (existingFlowCreators.length > 0) {
@@ -485,8 +486,8 @@ async function createCanvasItem(clientX, clientY, textContent) {
     // canvasContent's bounding rect already reflects current scroll offset, so the
     // subtraction below yields coordinates in content-space (what style.left expects).
     const rect = canvasContent.getBoundingClientRect();
-    let x = clientX - rect.left;
-    let y = clientY - rect.top;
+    let x = (clientX - rect.left) / ACP.zoom;
+    let y = (clientY - rect.top) / ACP.zoom;
 
     const newItem = document.createElement('div');
     newItem.classList.add('canvas-item');
@@ -561,6 +562,7 @@ async function createCanvasItem(clientX, clientY, textContent) {
  * @param {HTMLElement} originalItem - The item to clone
  * @returns {HTMLElement} The new cloned item
  */
+/* exported cloneAndRegister */
 function cloneAndRegister(originalItem) {
     const agentName = originalItem.dataset.agentName || originalItem.textContent.split(' (')[0];
     const lowerName = agentName.toLowerCase();
@@ -610,121 +612,83 @@ function cloneAndRegister(originalItem) {
  * @param {HTMLElement} el - The canvas item to make draggable
  */
 function makeDraggable(el) {
-    let isMoving = false;
-    let hasCloned = false;
-    let startX, startY;
-    let initialPositions = new Map();
-
-    el.addEventListener('mousedown', (e) => {
-        if (e.target.classList.contains('input-triangle') || e.target.classList.contains('output-triangle')) return;
-
-        if (e.ctrlKey) {
-            if (!ACP.selectedItems.has(el)) selectItem(el, true);
-        } else {
-            if (!ACP.selectedItems.has(el)) selectItem(el, false);
-        }
-
-        isMoving = true;
-        hasCloned = false;
-        startX = e.clientX;
-        startY = e.clientY;
-
-        initialPositions.clear();
-        ACP.selectedItems.forEach(item => {
-            if (item.classList && item.classList.contains('canvas-item')) {
-                initialPositions.set(item, { left: item.offsetLeft, top: item.offsetTop });
-            }
-        });
-
-        el.style.zIndex = 1100;
-        e.preventDefault();
-        e.stopPropagation();
+    el.tabIndex = 0;
+    el.querySelectorAll('.input-triangle, .output-triangle').forEach(port => {
+        port.tabIndex = 0; port.setAttribute('role', 'button');
+        port.setAttribute('aria-label', el.dataset.agentName + ': ' + (port.classList.contains('input-triangle') ? 'input' : 'output') + (port.classList.contains('output-2') ? ' 2' : ' 1'));
     });
-
-    window.addEventListener('mousemove', (e) => {
-        if (!isMoving) return;
-
-        const dx = e.clientX - startX;
-        const dy = e.clientY - startY;
-
-        // Ctrl+Drag: clone selected items on first meaningful move
-        if (!hasCloned && e.ctrlKey && (Math.abs(dx) > 3 || Math.abs(dy) > 3)) {
-            const newSelection = new Set();
-            const newInitialPositions = new Map();
-            const originalToClone = new Map();
-
-            ACP.selectedItems.forEach(original => {
-                if (original.classList && original.classList.contains('canvas-item')) {
-                    const clone = cloneAndRegister(original);
-                    if (clone) {
-                        newSelection.add(clone);
-                        originalToClone.set(original, clone);
-                        const origPos = initialPositions.get(original);
-                        if (origPos) newInitialPositions.set(clone, origPos);
-                    }
-                }
-            });
-
-            // Deploy pool directories for cloned items (async, fire-and-forget)
-            originalToClone.forEach((clone, _original) => {
-                fetch(`/agent/deploy_agent_template/${clone.id}/`, {
-                    method: 'POST', headers: getHeaders(), credentials: 'same-origin'
-                }).then(response => {
-                    if (response.ok) console.log(`[Clone] Deployed pool directory for ${clone.id}`);
-                    else console.error(`[Clone] Failed to deploy pool for ${clone.id}:`, response.statusText);
-                }).catch(error => {
-                    console.error(`[Clone] Error deploying pool for ${clone.id}:`, error);
-                });
-            });
-
-            // Clone connections between selected items
-            const existingConnections = [...ACP.connections];
-            existingConnections.forEach(conn => {
-                const sourceClone = originalToClone.get(conn.source);
-                const targetClone = originalToClone.get(conn.target);
-                if (sourceClone && targetClone) {
-                    const groupData = createConnectionGroup();
-                    ACP.connections.push({
-                        source: sourceClone,
-                        target: targetClone,
-                        path: groupData.group,
-                        visiblePath: groupData.visiblePath,
-                        hitPath: groupData.hitPath,
-                        inputSlot: conn.inputSlot || 0,
-                        outputSlot: conn.outputSlot || 0
-                    });
-                }
-            });
-
-            deselectAll();
-            newSelection.forEach(clone => selectItem(clone, true));
-            initialPositions = newInitialPositions;
-            hasCloned = true;
-        }
-
-        initialPositions.forEach((startPos, item) => {
-            let newLeft = startPos.left + dx;
-            let newTop = startPos.top + dy;
-            // Only clamp the top-left against zero; the canvas can grow to the right
-            // and bottom, so upper bounds are intentionally omitted.
-            newLeft = Math.max(0, newLeft);
-            newTop = Math.max(0, newTop);
-            item.style.left = newLeft + 'px';
-            item.style.top = newTop + 'px';
+    let movement = null;
+    function applyPosition() {
+        if (!movement) return;
+        const dx = (movement.x - movement.startX) / ACP.zoom;
+        const dy = (movement.y - movement.startY) / ACP.zoom;
+        movement.positions.forEach((before, item) => {
+            item.style.left = Math.max(0, before.left + dx) + 'px';
+            item.style.top = Math.max(0, before.top + dy) + 'px';
             updateAttachedConnections(item);
         });
         updateCanvasContentSize();
-    });
-
-    window.addEventListener('mouseup', () => {
-        if (isMoving) {
-            isMoving = false;
-            el.style.zIndex = '';
-            initialPositions.clear();
-            updateCanvasContentSize();
-            markDirty();
+    }
+    function finish() {
+        if (!movement) return;
+        if (movement.pending) { movement.finished = true; return; }
+        const previous = movement; movement = null;
+        el.style.zIndex = '';
+        if (submonitor.hasPointerCapture(previous.pointerId)) submonitor.releasePointerCapture(previous.pointerId);
+        const moves = [...previous.positions].map(([item, before]) => ({
+            id: item.id, before, after: { left: item.offsetLeft, top: item.offsetTop }
+        })).filter(move => move.before.left !== move.after.left || move.before.top !== move.after.top);
+        if (previous.copy) previous.copy.record();
+        else if (moves.length) {
+            const apply = key => moves.forEach(move => {
+                const item = document.getElementById(move.id);
+                if (!item) return;
+                item.style.left = move[key].left + 'px'; item.style.top = move[key].top + 'px';
+                updateAttachedConnections(item); updateCanvasContentSize();
+            });
+            undoManager.record({ type: 'MOVE_ITEMS', undo: () => apply('before'), redo: () => apply('after') });
         }
+        if (moves.length || previous.copy) markDirty();
+        ACP.refreshEditor?.();
+    }
+    el.addEventListener('pointerdown', event => {
+        if (event.button !== 0 || event.target.closest('.input-triangle, .output-triangle')) return;
+        event.preventDefault(); event.stopPropagation();
+        ACP.cancelConnection?.(); ACP.cancelMove?.();
+        if (!ACP.selectedItems.has(el)) selectItem(el, window.FlowCanvasInteractions.modified(event));
+        ACP.refreshEditor?.();
+        submonitor.focus({ preventScroll: true });
+        if (ACP.canEdit && !ACP.canEdit()) return;
+        const positions = new Map([...ACP.selectedItems].filter(item => item.matches?.('.canvas-item'))
+            .map(item => [item, { left: item.offsetLeft, top: item.offsetTop }]));
+        movement = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY,
+            x: event.clientX, y: event.clientY, positions, pending: false, copied: false };
+        ACP.cancelMove = finish; el.style.zIndex = '1100';
+        submonitor.setPointerCapture(event.pointerId);
     });
+    document.addEventListener('pointermove', async event => {
+        if (!movement || movement.pointerId !== event.pointerId) return;
+        movement.x = event.clientX; movement.y = event.clientY;
+        if (movement.pending) return;
+        const dx = (event.clientX - movement.startX) / ACP.zoom, dy = (event.clientY - movement.startY) / ACP.zoom;
+        if (!movement.copied && window.FlowCanvasInteractions.modified(event) && (Math.abs(dx) > 3 || Math.abs(dy) > 3)) {
+            movement.copied = true; movement.pending = true; ACP.editorBusy = true; ACP.refreshEditor?.();
+            try {
+                const copy = await ACP.duplicateSelection({ offset: 0, deferHistory: true });
+                if (copy) {
+                    movement.positions = new Map([...copy.copies].map(([original, item]) => [item, movement.positions.get(original)]));
+                    movement.copy = copy;
+                }
+            } catch (error) { acpAlert(error.message); }
+            finally { movement.pending = false; ACP.editorBusy = false; ACP.refreshEditor?.(); }
+        }
+        applyPosition();
+        if (movement.finished) finish();
+    });
+    document.addEventListener('pointerup', event => { if (movement?.pointerId === event.pointerId) finish(); });
+    document.addEventListener('pointercancel', finish);
+    window.addEventListener('blur', finish);
+    submonitor.addEventListener('lostpointercapture', finish);
 }
 
 // ========================================
@@ -781,10 +745,13 @@ function deselectAll() {
 
 function startSelectionBox(e) {
     ACP.isSelecting = true;
+    ACP.selectionInitial = new Set(ACP.selectedItems);
+    ACP.selectionPointerId = e.pointerId;
+    submonitor.setPointerCapture(e.pointerId);
     // canvasContent's rect already accounts for scroll offset, so no manual add.
     const rect = canvasContent.getBoundingClientRect();
-    ACP.initialBoxX = e.clientX - rect.left;
-    ACP.initialBoxY = e.clientY - rect.top;
+    ACP.initialBoxX = (e.clientX - rect.left) / ACP.zoom;
+    ACP.initialBoxY = (e.clientY - rect.top) / ACP.zoom;
     ACP.selectionBox.style.left = ACP.initialBoxX + 'px';
     ACP.selectionBox.style.top = ACP.initialBoxY + 'px';
     ACP.selectionBox.style.width = '0px';
@@ -806,16 +773,13 @@ function getCenter(el) {
     // so center coordinates must be expressed in canvas-content space.
     const containerRect = canvasContent.getBoundingClientRect();
     return {
-        x: rect.left + rect.width / 2 - containerRect.left,
-        y: rect.top + rect.height / 2 - containerRect.top
+        x: (rect.left + rect.width / 2 - containerRect.left) / ACP.zoom,
+        y: (rect.top + rect.height / 2 - containerRect.top) / ACP.zoom
     };
 }
 
 function setPathD(x1, y1, x2, y2, ...paths) {
-    const dist = Math.abs(x2 - x1) * 0.5;
-    const cp1x = x1 + dist, cp1y = y1;
-    const cp2x = x2 - dist, cp2y = y2;
-    const d = `M ${x1} ${y1} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${x2} ${y2}`;
+    const d = window.FlowCanvasInteractions.connectionPath(x1, y1, x2, y2);
     paths.forEach(p => p.setAttribute('d', d));
 }
 
@@ -1227,6 +1191,24 @@ async function populateAgentsList() {
     if (!agentsList) return;
     initAgentListTooltips();
     agentsList.innerHTML = '';
+    agentsList.setAttribute('aria-busy', 'true');
+    const search = document.getElementById('acp-agent-search');
+    const empty = document.getElementById('acp-agent-search-empty');
+    let loading = true;
+    const query = () => (search?.value || '').trim().toLowerCase();
+    const matches = name => name.toLowerCase().includes(query());
+    const filterAgents = () => {
+        hideAgentPurposeTooltip();
+        let visible = 0;
+        for (const item of agentsList.querySelectorAll('.agent-tool-item')) {
+            item.hidden = !matches(item.dataset.content);
+            if (!item.hidden) visible++;
+        }
+        if (empty) empty.hidden = loading || !query() || visible > 0;
+    };
+    // Replacing this handler also keeps a catalog reload from stacking listeners.
+    if (search) search.oninput = filterAgents;
+    if (empty) empty.hidden = true;
 
     for (let i = 1; i <= ACP.MAX_AGENTS; i++) {
         const agentName = `agent-${i}`;
@@ -1248,8 +1230,13 @@ async function populateAgentsList() {
 
         atomDiv.appendChild(iconDiv);
         atomDiv.appendChild(span);
+        // The user can already be searching while descriptions arrive.
+        atomDiv.hidden = !matches(description);
         agentsList.appendChild(atomDiv);
     }
+    loading = false;
+    agentsList.setAttribute('aria-busy', 'false');
+    filterAgents();
 }
 
 // ========================================
@@ -1274,6 +1261,14 @@ function initCanvasEvents() {
         canvasContent.appendChild(sb);
     }
     ACP.selectionBox = document.getElementById('selection-box');
+    ACP.cancelSelection = () => {
+        ACP.isSelecting = false; ACP.selectionBox.style.display = 'none';
+        if (ACP.selectionPointerId !== undefined && submonitor.hasPointerCapture(ACP.selectionPointerId)) submonitor.releasePointerCapture(ACP.selectionPointerId);
+        ACP.selectionPointerId = undefined;
+    };
+    window.addEventListener('blur', ACP.cancelSelection);
+    document.addEventListener('pointercancel', ACP.cancelSelection);
+    submonitor.addEventListener('lostpointercapture', ACP.cancelSelection);
 
     const agentsList = document.getElementById('agents-list');
 
@@ -1300,7 +1295,9 @@ function initCanvasEvents() {
     });
 
     // ---- Canvas Background: Deselect + Start Selection Box ----
-    submonitor.addEventListener('mousedown', (e) => {
+    submonitor.addEventListener('pointerdown', (e) => {
+        if (e.button !== 0) return;
+        ACP.cancelConnection?.();
         if (e.target.classList.contains('input-triangle') ||
             e.target.classList.contains('output-triangle') ||
             e.target.classList.contains('connection-hit-area') ||
@@ -1308,42 +1305,69 @@ function initCanvasEvents() {
             return;
         }
         if (e.target === submonitor || e.target === canvasContent || e.target.id === 'connections-layer') {
-            if (!e.ctrlKey) deselectAll();
-            startSelectionBox(e);
+            if (!e.ctrlKey && !e.metaKey) deselectAll();
+            e.preventDefault(); submonitor.focus({ preventScroll: true }); startSelectionBox(e);
         }
     });
 
-    // ---- Canvas: Start Connection (mousedown on output-triangle) + Select Connection ----
-    submonitor.addEventListener('mousedown', (e) => {
-        if (e.target.classList.contains('output-triangle')) {
-            e.preventDefault();
-            e.stopPropagation();
+    // One shared connection gesture for both flow editors.
+    const drag = window.FlowCanvasInteractions.connectionDrag({
+        viewport: submonitor,
+        canEdit: () => !ACP.canEdit || ACP.canEdit(),
+        targetAt: event => {
+            const target = document.elementFromPoint(event.clientX, event.clientY)?.closest('.input-triangle');
+            return target && canvasContent.contains(target) ? target : null;
+        },
+        begin: port => {
             ACP.isConnecting = true;
-            ACP.sourceNode = e.target.closest('.canvas-item');
-            ACP.sourceOutputEl = e.target;
-            const startPos = getCenter(e.target);
-            const created = createConnectionGroup();
-            ACP.tempPath = created;
-            created.group.style.pointerEvents = 'none';
-            setPathD(startPos.x, startPos.y, startPos.x, startPos.y, created.visiblePath, created.hitPath);
+            ACP.sourceNode = port.closest('.canvas-item');
+            ACP.sourceOutputEl = port;
+            ACP.tempPath = createConnectionGroup();
+            ACP.tempPath.group.style.pointerEvents = 'none';
+            ACP.tempPath.group.classList.add('connection-preview');
+            const point = getCenter(port);
+            setPathD(point.x, point.y, point.x, point.y, ACP.tempPath.visiblePath, ACP.tempPath.hitPath);
+            return ACP.tempPath;
+        },
+        move: (preview, event) => {
+            const point = getCenter(ACP.sourceOutputEl);
+            const rect = canvasContent.getBoundingClientRect();
+            setPathD(point.x, point.y, (event.clientX - rect.left) / ACP.zoom,
+                (event.clientY - rect.top) / ACP.zoom, preview.visiblePath, preview.hitPath);
+        },
+        complete: (_preview, target) => finishConnection(target),
+        dispose: (preview, keep) => {
+            if (!keep) preview.group.remove();
+            else preview.group.classList.remove('connection-preview');
+            ACP.isConnecting = false; ACP.tempPath = null;
+            ACP.sourceNode = null; ACP.sourceOutputEl = null;
+        }
+    });
+    ACP.cancelConnection = drag.cancel;
+    submonitor.addEventListener('pointerdown', e => {
+        if (e.button !== 0) return;
+        if (e.target.classList.contains('output-triangle')) {
+            e.preventDefault(); e.stopPropagation();
+            drag.start(e.target, e.pointerId);
         } else if (e.target.classList.contains('connection-hit-area')) {
-            e.stopPropagation();
-            const group = e.target.closest('.connection-group');
-            const conn = ACP.connections.find(c => c.path === group);
+            e.preventDefault(); e.stopPropagation(); drag.cancel();
+            const conn = ACP.connections.find(c => c.path === e.target.closest('.connection-group'));
             if (conn) {
-                if (e.ctrlKey) toggleConnectionSelection(conn);
+                if (window.FlowCanvasInteractions.modified(e)) toggleConnectionSelection(conn);
                 else selectConnection(conn, false);
-                updateSaveButtonState();
+                ACP.refreshEditor?.();
             }
         }
     });
+    submonitor.addEventListener('keydown', e => {
+        if (!e.target.matches('.input-triangle, .output-triangle') || !['Enter', ' '].includes(e.key)) return;
+        e.preventDefault(); e.stopPropagation();
+        if (e.target.matches('.output-triangle')) drag.start(e.target);
+        else if (drag.active?.pointerId === undefined) drag.finish(e.target);
+    });
 
-    // ---- Double-click on canvas item: open config editor ----
-    submonitor.addEventListener('dblclick', async (e) => {
-        const item = e.target.closest('.canvas-item');
-        if (item) {
-            e.preventDefault();
-            e.stopPropagation();
+    ACP.configureItem = async (item) => {
+        if (!item) return;
             const agentId = item.id;
             const agentDesc = (item.dataset.agentName || '').toLowerCase();
 
@@ -1378,34 +1402,42 @@ function initCanvasEvents() {
             } catch (err) {
                 console.error("Error loading config:", err);
             }
-        }
-    });
 
-    // ---- Window: Draw temporary connection line ----
-    window.addEventListener('mousemove', (e) => {
-        if (ACP.isConnecting && ACP.tempPath) {
-            const startEl = ACP.sourceNode.querySelector('.output-triangle');
-            const startPos = getCenter(startEl);
-            const rect = canvasContent.getBoundingClientRect();
-            setPathD(startPos.x, startPos.y, e.clientX - rect.left, e.clientY - rect.top,
-                ACP.tempPath.visiblePath, ACP.tempPath.hitPath);
-        }
+    };
+    submonitor.addEventListener('dblclick', async (e) => {
+        const item = e.target.closest('.canvas-item');
+        if (!item || (ACP.canEdit && !ACP.canEdit())) return;
+        e.preventDefault();
+        e.stopPropagation();
+        await ACP.configureItem(item);
     });
 
     // ---- Window: Selection Box resize ----
-    window.addEventListener('mousemove', (e) => {
+    window.addEventListener('pointermove', (e) => {
         if (!ACP.isSelecting) return;
         const rect = canvasContent.getBoundingClientRect();
-        const currentX = e.clientX - rect.left;
-        const currentY = e.clientY - rect.top;
+        const currentX = (e.clientX - rect.left) / ACP.zoom;
+        const currentY = (e.clientY - rect.top) / ACP.zoom;
         ACP.selectionBox.style.width = Math.abs(currentX - ACP.initialBoxX) + 'px';
         ACP.selectionBox.style.height = Math.abs(currentY - ACP.initialBoxY) + 'px';
         ACP.selectionBox.style.left = Math.min(currentX, ACP.initialBoxX) + 'px';
         ACP.selectionBox.style.top = Math.min(currentY, ACP.initialBoxY) + 'px';
+        deselectAll();
+        ACP.selectionInitial.forEach(item => item.path ? selectConnection(item, true) : selectItem(item, true));
+        if (Math.abs(currentX - ACP.initialBoxX) > 5 || Math.abs(currentY - ACP.initialBoxY) > 5) {
+            const bounds = ACP.selectionBox.getBoundingClientRect();
+            canvasContent.querySelectorAll('.canvas-item').forEach(node => {
+                if (isIntersecting(bounds, node.getBoundingClientRect())) selectItem(node, true);
+            });
+            ACP.connections.forEach(conn => {
+                if (isIntersecting(bounds, conn.visiblePath.getBoundingClientRect())) selectConnection(conn, true);
+            });
+        }
+        ACP.refreshEditor?.();
     });
 
     // ---- Window: Finish connection / Finish selection box ----
-    window.addEventListener('mouseup', (e) => {
+    window.addEventListener('pointerup', () => {
         // --- Finalize Selection Box ---
         if (ACP.isSelecting) {
             ACP.isSelecting = false;
@@ -1424,12 +1456,12 @@ function initCanvasEvents() {
                     }
                 });
             }
-            ACP.selectionBox.style.display = 'none';
+            ACP.cancelSelection();
         }
 
-        // --- Finalize Connection ---
-        if (ACP.isConnecting) {
-            const targetEl = e.target;
+    });
+
+    function finishConnection(targetEl) {
             let created = false;
 
             if (targetEl.classList.contains('input-triangle')) {
@@ -1446,36 +1478,31 @@ function initCanvasEvents() {
 
                     if (isTargetCleaner && !isSourceEnder && !isSourceFlowBacker) {
                         acpAlert('Invalid Connection: Cleaner Agent only accepts input from Ender or FlowBacker Agents.');
-                        ACP.tempPath.group.remove(); ACP.tempPath = null; ACP.isConnecting = false;
-                        isBusyProcessing = false; document.body.classList.remove('connecting'); return;
+                        return false;
                     }
                     if (isTargetCleaner && (isSourceEnder || isSourceFlowBacker)) {
                         const existingInputs = ACP.connections.filter(c => c.target === targetNode);
                         if (existingInputs.length >= 1) {
                             acpAlert('Invalid Connection: Cleaner Agent can only accept ONE input connection.');
-                            ACP.tempPath.group.remove(); ACP.tempPath = null; ACP.isConnecting = false;
-                            isBusyProcessing = false; document.body.classList.remove('connecting'); return;
+                            return false;
                         }
                     }
                     if (isSourceEnder && !isTargetCleaner && !isTargetFlowBacker) {
                         acpAlert('Invalid Connection: Ender Agent outputs can ONLY connect to Cleaner or FlowBacker Agents.');
-                        ACP.tempPath.group.remove(); ACP.tempPath = null; ACP.isConnecting = false;
-                        isBusyProcessing = false; document.body.classList.remove('connecting'); return;
+                        return false;
                     }
                     // FlowBacker input restriction: only Starter, Ender, Forker, Asker can connect to it
                     if (isTargetFlowBacker) {
                         const allowedSources = ['starter', 'ender', 'forker', 'asker'];
                         if (!allowedSources.includes(sourceAgentName.toLowerCase())) {
                             acpAlert('Invalid Connection: FlowBacker Agent only accepts input from Starter, Ender, Forker, or Asker Agents.');
-                            ACP.tempPath.group.remove(); ACP.tempPath = null; ACP.isConnecting = false;
-                            isBusyProcessing = false; document.body.classList.remove('connecting'); return;
+                            return false;
                         }
                     }
                     // FlowBacker output restriction: can only connect to Cleaner
                     if (isSourceFlowBacker && !isTargetCleaner) {
                         acpAlert('Invalid Connection: FlowBacker Agent outputs can ONLY connect to Cleaner Agents.');
-                        ACP.tempPath.group.remove(); ACP.tempPath = null; ACP.isConnecting = false;
-                        isBusyProcessing = false; document.body.classList.remove('connecting'); return;
+                        return false;
                     }
 
                     // Finalize the connection
@@ -1688,12 +1715,8 @@ function initCanvasEvents() {
                 }
             }
 
-            if (!created && ACP.tempPath) ACP.tempPath.group.remove();
-            ACP.isConnecting = false;
-            ACP.tempPath = null;
-            ACP.sourceNode = null;
-        }
-    });
+            return created;
+    }
 }
 
 // ========================================
@@ -1711,6 +1734,7 @@ window.getAgentConnections = function () {
  * Clear all canvas items, connections, selections, and reset counters.
  */
 window.clearAllCanvasItems = function () {
+    ACP.cancelConnection?.();
     const canvasItems = submonitor.querySelectorAll('.canvas-item');
     canvasItems.forEach(item => item.remove());
 
@@ -1719,6 +1743,9 @@ window.clearAllCanvasItems = function () {
 
     ACP.selectedItems.clear();
     ACP.itemCounters.clear();
+    ACP.nodeConfigs.clear();
+    undoManager.clear();
+    updateCanvasContentSize();
 
     updateSaveButtonState();
     markClean();

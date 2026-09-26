@@ -227,7 +227,7 @@ SKIP_DIRS = {".git", "node_modules", "__pycache__", "venv", ".venv", "dist",
              # Mirrors the SKIP_DIRS in check_private_data.py.
              "security_logs"}
 TEXT_EXT = {".py", ".js", ".ts", ".json", ".yaml", ".yml", ".md", ".txt", ".env",
-            ".cfg", ".ini", ".toml", ".html", ".css", ".csv", ".pmt", ".keys"}
+            ".cfg", ".ini", ".toml", ".html", ".css", ".csv", ".pmt", ".fpmt", ".keys"}
 # NEVER scrub the sources of truth: the keys vault and the targets file. Scrubbing
 # .private_targets.json turns your real values into "<REDACTED>" inside it, which
 # then makes the verifier hunt for the literal text "<REDACTED>" and "find" it in

@@ -147,33 +147,26 @@ class FrontendMutableStateTests(unittest.TestCase):
         The hand-listed tests above only guard names somebody remembered to list.
         This one guards every name, so it catches the NEXT one for free.
         """
-        js_dir = ROOT / Path("static", "agent", "js")
-        sources = {p.name: p.read_text(encoding="utf-8") for p in sorted(js_dir.glob("*.js"))}
+        # Lexical scopes distinguish a local/destructured canvas from the ACP
+        # global. Text matching cannot prove a cross-file variable write.
+        import json
+        import shutil
+        import subprocess
+        import tempfile
 
-        offenders = []
-        for decl_file, decl_text in sources.items():
-            for name in self._TOP_LEVEL_CONST_RE.findall(decl_text):
-                assignment_re = self._assignment_re(name)
-                redeclaration_re = self._redeclaration_re(name)
-                for other_file, other_text in sources.items():
-                    if other_file == decl_file:
-                        continue
-                    # A sibling with its own binding of the name shadows the global.
-                    if redeclaration_re.search(other_text):
-                        continue
-                    if assignment_re.search(other_text):
-                        offenders.append(
-                            f"{name}: declared `const` in {decl_file}, but assigned in {other_file}"
-                        )
-
-        self.assertEqual(
-            [],
-            sorted(offenders),
-            msg=(
-                "Cross-file const-poison detected. These MUST be declared `let` — a "
-                "sibling script reassigns them at runtime:\n  " + "\n  ".join(sorted(offenders))
-            ),
-        )
+        node = shutil.which("node")
+        if not node:
+            self.skipTest("Node/ESLint is required for the scope-aware cross-file check")
+        repo = PROJECT_ROOT.parent
+        scratch = repo / "Temp"
+        scratch.mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(prefix="menu-scope-", dir=scratch) as directory:
+            report = Path(directory) / "references.json"
+            subprocess.run([node, str(repo / "scripts/menu_reference_graph.mjs"), str(report)],
+                           cwd=repo, check=True, timeout=60)
+            graph = json.loads(report.read_text(encoding="utf-8"))
+        self.assertEqual([], graph["crossFileConstWrites"],
+                         "A sibling script writes a global const binding")
 
     def test_changed_state_scripts_force_fresh_browser_cache(self):
         agent_page = self._read("templates", "agent", "agent_page.html")

@@ -13,7 +13,7 @@
 // ============================================================
 // agent_page_init.js  –  Initialization, event wiring & actions
 // ============================================================
-/* global syncClearContextMenuState, isMultiTurnEnabled, applyStoredMultiTurnState, multiTurnCheckbox, persistMultiTurnState, isExecReportEnabled, applyStoredExecReportState, execReportCheckbox, persistExecReportState, isAcpxEnabled, applyStoredAcpxState, acpxCheckbox, persistAcpxState, isAskExecsEnabled, applyStoredAskExecsState, syncAskExecsAvailability, askExecsCheckbox, persistAskExecsState, isStepByStepEnabled, applyStoredStepByStepState, stepByStepCheckbox, persistStepByStepState, dismissExecPermissionDialogForRuntimeProceed, dismissExecPermissionDialogSilently, openAccessKeysWizardDialog */
+/* global restoreMenuControlsAfterOperation, syncClearContextMenuState, isMultiTurnEnabled, applyStoredMultiTurnState, multiTurnCheckbox, persistMultiTurnState, isExecReportEnabled, applyStoredExecReportState, execReportCheckbox, persistExecReportState, isAcpxEnabled, applyStoredAcpxState, acpxCheckbox, persistAcpxState, isAskExecsEnabled, applyStoredAskExecsState, syncAskExecsAvailability, askExecsCheckbox, persistAskExecsState, isStepByStepEnabled, applyStoredStepByStepState, stepByStepCheckbox, persistStepByStepState, dismissExecPermissionDialogForRuntimeProceed, dismissExecPermissionDialogSilently, openAccessKeysWizardDialog */
 
 // --- Prevent accidental close during long operations ---
 window.addEventListener('beforeunload', (event) => {
@@ -69,10 +69,10 @@ function Reconnect(e) { // eslint-disable-line no-unused-vars
     reConnectButton.disabled = false;
     contextMenuButton.removeAttribute('disabled', 'disabled');
     contextMenuButton.setAttribute('data-bs-toggle', 'dropdown');
-    mcpsMenuButton.removeAttribute('disabled', 'disabled');
-    mcpsMenuButton.setAttribute('data-bs-toggle', 'dropdown');
-    agentsMenuButton.removeAttribute('disabled', 'disabled');
-    agentsMenuButton.setAttribute('data-bs-toggle', 'dropdown');
+    panelsMenuButton.removeAttribute('disabled', 'disabled');
+    panelsMenuButton.setAttribute('data-bs-toggle', 'dropdown');
+
+    restoreMenuControlsAfterOperation();
 
     contextButton.textContent = "Use as context";
     contextButton.disabled = false;
@@ -100,6 +100,7 @@ function Reconnect(e) { // eslint-disable-line no-unused-vars
     clearContextButton.setAttribute("style", "display: none !important;");
     contextDataSpan.innerText = "<<<" + "..." + ">>>  ";
     contextInfoDiv.setAttribute("class", "col-md-2 col-lg-3 col-xl-4 col-xxl-4 flex-nowrap p-0 m-0 context-info-invisible");
+    enableControlsAfterOperation();
     console.log("--- Reconnect message sent to server.");
 }
 
@@ -140,10 +141,10 @@ function CleanHistory(e) {
         cleanHistoryButton.style.backgroundColor = "darkgreen";
         contextMenuButton.removeAttribute('disabled', 'disabled');
         contextMenuButton.setAttribute('data-bs-toggle', 'dropdown');
-        mcpsMenuButton.removeAttribute('disabled', 'disabled');
-        mcpsMenuButton.setAttribute('data-bs-toggle', 'dropdown');
-        agentsMenuButton.removeAttribute('disabled', 'disabled');
-        agentsMenuButton.setAttribute('data-bs-toggle', 'dropdown');
+        panelsMenuButton.removeAttribute('disabled', 'disabled');
+        panelsMenuButton.setAttribute('data-bs-toggle', 'dropdown');
+
+        restoreMenuControlsAfterOperation();
 
         contextButton.textContent = "Use as context";
         contextButton.disabled = false;
@@ -164,6 +165,7 @@ function CleanHistory(e) {
         contextDataSpan.innerText = "<<<" + "..." + ">>>  ";
         contextInfoDiv.setAttribute("class", "col-md-2 col-lg-3 col-xl-4 col-xxl-4 flex-nowrap p-0 m-0 context-info-invisible");
 
+        enableControlsAfterOperation();
         console.log("--- Clean history message sent to server.");
         return true;
     };
@@ -449,10 +451,10 @@ document.getElementById('chat-form').onsubmit = function (e) {
         contextEnabled = true;
         contextMenuButton.removeAttribute('disabled');
         contextMenuButton.setAttribute('data-bs-toggle', 'dropdown');
-        mcpsMenuButton.removeAttribute('disabled', 'disabled');
-        mcpsMenuButton.setAttribute('data-bs-toggle', 'dropdown');
-        agentsMenuButton.removeAttribute('disabled', 'disabled');
-        agentsMenuButton.setAttribute('data-bs-toggle', 'dropdown');
+        panelsMenuButton.removeAttribute('disabled', 'disabled');
+        panelsMenuButton.setAttribute('data-bs-toggle', 'dropdown');
+
+        restoreMenuControlsAfterOperation();
         cleanCanvasButton.style.backgroundColor = "darkgreen";
         cleanCanvasButton.disabled = false;
         cleanCanvasEnabled = true;
@@ -466,6 +468,7 @@ document.getElementById('chat-form').onsubmit = function (e) {
         contextInfoDiv.setAttribute("class", "col-md-2 col-lg-3 col-xl-4 col-xxl-4 flex-nowrap p-0 m-0 context-info-invisible");
         actualContextDir = null;
         updateViewContextDirMenuState();
+        enableControlsAfterOperation();
         console.log("--- actualContextDir reset to null on cancel.");
     };
 
@@ -1084,6 +1087,9 @@ function OpenConfigModelsDialog(e) { // eslint-disable-line no-unused-vars
 
     _loadConfigSectionValues('models')
         .then(values => {
+            // The chat can start loading while the configuration fetch is in
+            // flight. Recheck the lock before opening the delayed dialog.
+            if (inLongOperation) return;
             _populateConfigForm(configModelsForm, values);
             _configModelsBaseline = _snapshotConfigValues(_collectConfigFormValues(configModelsForm));
             preRenderConfigModelsDialog(
@@ -1108,6 +1114,7 @@ function OpenConfigUrlsDialog(e) { // eslint-disable-line no-unused-vars
 
     _loadConfigSectionValues('urls')
         .then(values => {
+            if (inLongOperation) return;
             _populateConfigForm(configUrlsForm, values);
             _configUrlsBaseline = _snapshotConfigValues(_collectConfigFormValues(configUrlsForm));
             preRenderConfigUrlsDialog(

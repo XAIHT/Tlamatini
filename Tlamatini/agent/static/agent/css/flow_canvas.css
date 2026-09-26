@@ -1,0 +1,58 @@
+/* Tlamatini — "one who knows"
+ * Created by Angela López Mendoza · @angelahack1
+ * Tlamatini Author Banner — do not remove */
+/* Loaded after panel styles in both editors: common interaction states have one owner. */
+:root {
+    --flow-highlight: #ffcc00;
+    --flow-port-glow: drop-shadow(0 0 4px rgba(255, 204, 0, .8));
+    --flow-selection-glow: drop-shadow(0 0 5px rgba(255, 204, 0, .7));
+}
+:is(.acp-panel, .pmt-panel) :is(.input-triangle, .output-triangle) {
+    padding: 0; border-right: 0; border-radius: 0; background: transparent;
+    cursor: crosshair; touch-action: none; outline: none;
+}
+:is(.acp-panel, .pmt-panel) :is(.input-triangle, .output-triangle):is(:hover, :focus-visible, .connecting-source, .connecting-target):not(:disabled):not([aria-disabled="true"]) {
+    border-left-color: var(--flow-highlight); filter: var(--flow-port-glow);
+}
+:is(.acp-panel, .pmt-panel) :is(.input-triangle, .output-triangle):is(:disabled, [aria-disabled="true"]) {
+    opacity: .45; cursor: not-allowed;
+}
+.connection-preview, .connection-preview * { pointer-events: none !important; }
+.connection-group:hover .connection-path { stroke: var(--flow-highlight); }
+.connection-group.selected .connection-path {
+    stroke: var(--flow-highlight); stroke-width: 3px; filter: var(--flow-port-glow);
+}
+:is(.acp-panel, .pmt-panel) :is(.canvas-item, .pmt-node) { cursor: move; touch-action: none; }
+.canvas-item.selected, .canvas-item.selected:hover {
+    border-color: var(--flow-highlight); box-shadow: 0 0 10px rgba(255, 204, 0, .7);
+}
+.pmt-node.selected svg { filter: var(--flow-selection-glow); }
+.pmt-node.selected:not(.running):not(.completed):not(.failed) .pmt-shape { stroke: var(--flow-highlight); stroke-width: 2px; }
+#selection-box, #pmt-marquee {
+    position: absolute; border: 1px solid rgba(0, 120, 215, .7);
+    background: rgba(0, 120, 215, .2); pointer-events: none; z-index: 9999;
+}
+:is(.acp-panel, .pmt-panel) .flow-editor-tools {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 5px; padding: 6px 8px;
+    flex-shrink: 0; background: #30303a; border-bottom: 1px solid #52525f; font-size: .8rem;
+}
+:is(.acp-panel, .pmt-panel) .flow-editor-tools button {
+    border: 1px solid #656570; border-radius: 4px; color: #ececf1; background: #41414e; padding: 4px 7px;
+}
+:is(.acp-panel, .pmt-panel) .flow-editor-tools button:hover:not(:disabled) { background: #535364; }
+:is(.acp-panel, .pmt-panel) .flow-editor-tools button:disabled { opacity: .4; cursor: not-allowed; }
+:is(.acp-panel, .pmt-panel) .flow-editor-tools :focus-visible { outline: 2px solid #8bded2; outline-offset: 2px; }
+:is(.acp-panel, .pmt-panel) .flow-editor-tools select {
+    color: #ececf1; background: #202123; border: 1px solid #656570; border-radius: 3px; padding: 4px; max-width: 180px;
+}
+.flow-editor-tools label { border-left: 1px solid #656570; padding-left: 9px; margin-left: 4px; }
+.flow-editor-tools output { min-width: 42px; text-align: center; }
+:is(.acp-panel, .pmt-panel) #monitor-header {
+    height: auto !important; min-height: 42px; gap: 8px; padding: 7px 10px;
+    flex-wrap: wrap !important; margin: 0 !important;
+}
+:is(.acp-panel, .pmt-panel) #monitor-header-title { font-size: .95rem; }
+:is(.acp-panel, .pmt-panel) #monitor-controls { flex-wrap: wrap; }
+:is(.acp-panel, .pmt-panel) .control-btn { height: 26px; font-size: .78rem; width: auto; min-width: 40px; }
+:is(.acp-panel, .pmt-panel) .control-btn:disabled { opacity: .6; }
+:is(.acp-panel, .pmt-panel) .control-btn-validate:disabled { opacity: .5; }

@@ -52,7 +52,7 @@ External-MCP runtime strip and long-operation menu behavior.
 `Tlamatini/tlamatini/settings.py` computes it at import time:
 
 ```python
-STATIC_VERSION = (os.environ.get('STATIC_VERSION') or str(int(time.time()))) + '-ctxspinner-1'
+STATIC_VERSION = (os.environ.get('STATIC_VERSION') or str(int(time.time()))) + '-prompt-flow-panel-11-shared-mechanics'
 ```
 
 So it is **an environment override OR the process start timestamp**, plus a
@@ -70,7 +70,7 @@ somewhere — the current release is whatever `git describe` says today.
 |---|---|
 | source dev run | **Restart the server.** The timestamp is evaluated once at import, so a running process keeps its stamp until it restarts. |
 | deployment with a pinned stamp | Set the `STATIC_VERSION` env var to a NEW value and restart. |
-| a permanent marker for one change | Edit only the **suffix** literal (`-ctxspinner-1` → `-ctxspinner-2`). Keep the `os.environ.get(...) or str(int(time.time()))` head intact. |
+| a permanent marker for one change | Edit only the **suffix** literal (e.g. `-prompt-flow-panel-11-shared-mechanics` → a new marker naming YOUR change; the value shown above was current on 2026-09-25 — read the live one first). Keep the `os.environ.get(...) or str(int(time.time()))` head intact. |
 
 ## Procedure
 

@@ -271,6 +271,14 @@ shapes, but a novel config path needs the redaction rule extended).
 - `docs/claude/architecture.md` → *Self-Knowledge & Self-Modification* and
   `docs/claude/gotchas.md` → *Building & Packaging* for the `--self-modify` flag mechanics.
 - `VERSIONING.md` — use Git tags in the repository; a Git-free snapshot requires an explicit `TLAMATINI_VERSION`.
+### Prompt Flow Panel and menu snapshot gate (2026-09-25)
+
+`REQUIRED_SNAPSHOT_FILES` guarantees the whole feature: the backend (`agent/prompt_flow_panel_consumer.py`, `agent/prompt_flow_panel_runtime.py`, `agent/services/prompt_flow_panel.py`, `agent/management/commands/check_prompt_flow_panel.py`), the page, its CSS, `prompt-flow-panel-model.js`, `prompt-flow-panel.js` and `acp-editor-tools.js`, the four `agent/test_prompt_flow_panel*.py` modules, the visible menu/panel scripts (`scripts/menu_reference_graph.mjs`, `menu_browser_checks.py`, `menu_live_checks.py`, `run_menu_state_checks.py`, `panel_search_title_visible.py`, `acp_editor_visible.py`, `prompt_flow_extension_visible.py`), `docs/prompting-flow-designer.md` and `docs/examples/prompting-kickoff.fpmt`. `scripts/menu_reference_graph.mjs` is not optional tooling: `agent/test_frontend_mutable_state.py` runs it for the scope-aware cross-file const-poison check.
+
+`.fpmt` is a source/text extension — never add it to `EXCLUDED_EXTENSIONS`. The kept snapshot of 2026-09-25 physically contained `docs/examples/prompting-kickoff.fpmt` and no `.pmt` copy of it. The plain-text `prompt.pmt` / `monitoring-prompt.pmt` remain ordinary carried inputs.
+
+⚠️ On 2026-09-25 `git diff` also showed `copy_source_assets.py` with a whole-file line-ending rewrite (543 changed lines, only 23 real). Review that before committing, so history records the real change rather than churn.
+
 ### Central model settings runtime gate (2026-09-20)
 
 The model registry must ship as compiled `agent.agents.model_settings` and as

@@ -587,6 +587,22 @@ body.resizing-vertical {
 }
 
 /* Agents List Toolbar Styles */
+#acp-agent-search {
+    flex-shrink: 0;
+    margin: 10px 10px 4px;
+    width: calc(100% - 20px);
+    min-width: 0;
+    padding: 8px 10px;
+    color: #ececf1;
+    background: #202123;
+    border: 1px solid #60606c;
+    border-radius: 5px;
+}
+
+#acp-agent-search:focus-visible { outline: 2px solid #8bded2; outline-offset: 2px; }
+#acp-agent-search-empty { padding: 0 10px; color: #bcbcc7; font-size: .85rem; }
+#agents-list .agent-tool-item[hidden] { display: none; }
+
 #agents-list {
     display: flex;
     flex-direction: column;
@@ -2920,3 +2936,31 @@ body.resizing-vertical {
 .connection-status-hidden { display: none; }
 .connection-status-warning { display: block; background-color: #5c2b29; color: #ffe0de; }
 .connection-status-ok { display: block; background-color: #21413d; color: #d8fffa; }
+
+/* Agent flow editor: same control palette as the Prompt Flow Panel. */
+.acp-panel #acp-canvas-shell { position: relative; flex: 1 1 0; min-height: 0; overflow: hidden; }
+.acp-panel #monitor-container { min-height: 0; }
+.acp-panel #submonitor-container { height: 100%; min-height: 0; }
+.acp-panel #canvas-content { background-image: radial-gradient(#4b4b56 .8px, transparent .8px); background-size: 20px 20px; }
+.acp-panel #canvas-content.acp-grid-hidden { background-image: none; }
+.acp-editor-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; padding: 6px 8px; flex-shrink: 0; background: #30303a; border-bottom: 1px solid #52525f; font-size: .8rem; }
+.acp-editor-tools button, #acp-empty button { border: 1px solid #656570; border-radius: 4px; color: #ececf1; background: #41414e; padding: 4px 7px; }
+.acp-editor-tools button:hover:not(:disabled), #acp-empty button:hover { background: #535364; }
+.acp-editor-tools button:disabled { opacity: .4; cursor: not-allowed; }
+.acp-editor-tools :focus-visible, #acp-empty button:focus-visible { outline: 2px solid #8bded2; outline-offset: 2px; }
+.acp-editor-tools select { color: #ececf1; background: #202123; border: 1px solid #656570; border-radius: 3px; padding: 4px; max-width: 180px; }
+.acp-editor-tools label { border-left: 1px solid #656570; padding-left: 9px; margin-left: 4px; }
+.acp-tools-spacer { flex: 1; }
+#acp-zoom-label { min-width: 42px; text-align: center; }
+#acp-empty { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; padding: 20px; color: #bcbcc9; text-align: center; }
+#acp-empty[hidden] { display: none; }
+#acp-empty button { pointer-events: auto; }
+.acp-empty-symbol { font-size: 60px; color: #66bda8; }
+#acp-empty h1 { font-size: 1.35rem; color: #ececf1; }
+#acp-empty p { font-size: .9rem; }
+.acp-editor-dialog p, .acp-editor-dialog li { line-height: 1.6; }
+.acp-editor-dialog label { display: block; margin: 12px 0; }
+.acp-editor-dialog select { margin-left: 8px; padding: 4px; }
+
+.acp-editor-dialog { text-align: left; }
+.acp-editor-dialog-window .ui-dialog-buttonset { flex-wrap: wrap; }

@@ -22,9 +22,10 @@ function rotateTitle() {
     let charIndex = 0;
 
     const rotate = () => {
-        document.title = titleBusyPrefix + (baseTitle.slice(charIndex) + baseTitle.slice(0, charIndex));
+        document.title = (hasUnsavedChanges ? '• ' : '') + titleBusyPrefix + (baseTitle.slice(charIndex) + baseTitle.slice(0, charIndex));
         charIndex = (charIndex + 1) % baseTitle.length;
     };
+    rotate();
     setInterval(rotate, 100);
 }
 
@@ -37,7 +38,6 @@ function rotateTitle() {
 
     if (!container || !canvas || !chat || !divider) return;
 
-    let isDragging = false;
     let seamPct;
 
     const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
@@ -79,42 +79,9 @@ function rotateTitle() {
         updateSaveButtonState();
     })();
 
-    // Mouse drag
-    divider.addEventListener('mousedown', (e) => {
-        isDragging = true;
-        document.body.classList.add('resizing');
-        e.preventDefault();
-    });
-    window.addEventListener('mousemove', (e) => {
-        if (!isDragging) return;
-        apply(pctFromXToSeam(e.clientX));
-    });
-    window.addEventListener('mouseup', () => {
-        if (!isDragging) return;
-        isDragging = false;
-        document.body.classList.remove('resizing');
-    });
-
-    // Touch drag
-    divider.addEventListener('touchstart', () => {
-        isDragging = true;
-        document.body.classList.add('resizing');
-    }, { passive: true });
-    window.addEventListener('touchmove', (e) => {
-        if (!isDragging) return;
-        const t = e.touches && e.touches[0];
-        if (t) apply(pctFromXToSeam(t.clientX));
-    }, { passive: true });
-    window.addEventListener('touchend', () => {
-        if (!isDragging) return;
-        isDragging = false;
-        document.body.classList.remove('resizing');
-    });
-
-    // Keyboard nudge
-    divider.addEventListener('keydown', (e) => {
-        if (e.key === 'ArrowLeft') { apply(seamPct - 1); e.preventDefault(); }
-        if (e.key === 'ArrowRight') { apply(seamPct + 1); e.preventDefault(); }
+    window.FlowCanvasInteractions.bindDivider({
+        element: divider, value: () => seamPct, atPointer: pctFromXToSeam, apply,
+        before: () => { ACP.cancelConnection?.(); ACP.cancelMove?.(); }
     });
 
     window.addEventListener('resize', () => apply(seamPct));

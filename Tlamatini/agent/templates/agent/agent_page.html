@@ -96,21 +96,17 @@
             </ul>
           </li>
           <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" href="#" id="mcps-menu-button" role="button" data-bs-toggle="dropdown"
-              aria-expanded="false">MCPs</a>
-            <ul class="dropdown-menu dropdown-entry" aria-labelledby="mcps-menu-button">
-              <li><a class="dropdown-item menu-entry" href="#" id="enable-mcps" onclick="OpenMcpsDialog(event);">
-                  Configure MCPs</a></li>
-            </ul>
-          </li>
-          <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" href="#" id="agents-menu-button" role="button" data-bs-toggle="dropdown"
-              aria-expanded="false">Agents</a>
-            <ul class="dropdown-menu dropdown-entry" aria-labelledby="agents-menu-button">
-              <li><a class="dropdown-item menu-entry" href="#" id="enable-agents" onclick="OpenAgentsDialog(event);">
-                  Configure Agents</a></li>
+            <a class="nav-link dropdown-toggle" href="#" id="panels-menu-button" role="button" data-bs-toggle="dropdown"
+              aria-expanded="false">Panels</a>
+            <ul class="dropdown-menu dropdown-entry" aria-labelledby="panels-menu-button">
               <li><a class="dropdown-item menu-entry" href="{% url 'agentic_control_panel' %}"
                   id="agentic-control-panel" target="_blank" rel="noopener">Agentic Control Panel</a></li>
+              <li><a class="dropdown-item menu-entry" href="{% url 'prompt_flow_panel' %}"
+                  id="prompt-flow-panel" target="_blank" rel="noopener">Prompt Flow Panel</a></li>
+              {% if request.user.is_staff %}
+              <li><a class="dropdown-item menu-entry" href="{% url 'admin:index' %}" id="open-admin" target="_blank"
+                  rel="noopener">Admin Panel</a></li>
+              {% endif %}
             </ul>
           </li>
           <li class="nav-item dropdown">
@@ -140,6 +136,10 @@
             <a class="nav-link dropdown-toggle" href="#" id="config-menu-button" role="button" data-bs-toggle="dropdown"
               aria-expanded="false">Config</a>
             <ul class="dropdown-menu dropdown-entry" aria-labelledby="config-menu-button">
+              <li><a class="dropdown-item menu-entry" href="#" id="enable-mcps" onclick="OpenMcpsDialog(event);">
+                  Configure MCPs</a></li>
+              <li><a class="dropdown-item menu-entry" href="#" id="enable-agents" onclick="OpenAgentsDialog(event);">
+                  Configure Agents</a></li>
               <li><a class="dropdown-item menu-entry" href="#" id="config-models"
                   onclick="OpenConfigModelsDialog(event);">Models</a></li>
               <li><a class="dropdown-item menu-entry" href="#" id="config-urls"
@@ -161,16 +161,6 @@
                   onclick="OpenSetDbDialog(event);">Set DB</a></li>
             </ul>
           </li>
-          {% if request.user.is_staff %}
-          <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" href="#" id="admin-menu-button" role="button" data-bs-toggle="dropdown"
-              aria-expanded="false">Admin</a>
-            <ul class="dropdown-menu dropdown-entry" aria-labelledby="admin-menu-button">
-              <li><a class="dropdown-item menu-entry" href="{% url 'admin:index' %}" id="open-admin" target="_blank"
-                  rel="noopener">Open Admin page</a></li>
-            </ul>
-          </li>
-          {% endif %}
           <li class="nav-item"><a class="nav-link" href="#" id="re-connect-button"
               onclick="Reconnect(event);">Reconnect</a></li>
           <li class="nav-item dropdown">

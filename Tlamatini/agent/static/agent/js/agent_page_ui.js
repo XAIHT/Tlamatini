@@ -113,7 +113,7 @@ const openInAppIcons = {
 function updateOpenInMenuState() {
     if (!openInDropdownItem) return;
 
-    if (installedApps.length > 0 && actualContextDir !== null && actualContextDir !== '') {
+    if (!inLongOperation && !lapseLoadingContext && installedApps.length > 0 && actualContextDir !== null && actualContextDir !== '') {
         openInDropdownItem.style.display = '';
     } else {
         openInDropdownItem.style.display = 'none';
@@ -283,7 +283,6 @@ const LONG_OPERATION_DISABLED_MENU_BUTTONS = [
     'open-button',
     'save-as-button',
     'context-menu-button',
-    'mcps-menu-button',
     'skills-menu-button',
     'external-menu-button',
     'config-menu-button',
@@ -319,19 +318,24 @@ function disableControlsDuringOperation() {
     cleanHistoryButton.disabled = true;
     cleanHistoryButton.style.backgroundColor = "#808080";
     cleanHistoryEnabled = false;
-    // Context / MCPs / Config are disabled by LONG_OPERATION_DISABLED_MENU_BUTTONS
+    // Context / Config are disabled by LONG_OPERATION_DISABLED_MENU_BUTTONS
     // below (single source of truth) - do NOT re-add per-button code here.
     if (openInDropdownItem) {
         openInDropdownItem.style.display = 'none';
     }
-    // Keep agentsMenuButton enabled so "Agentic Control Panel" remains accessible
-    // Only disable the "Configure Agents" entry
+    // Keep Panels accessible; Config and its configuration entries are locked below.
     // The "External" and "DB" navbar dropdowns are disabled WHOLE during a long
     // operation - both functionally (Bootstrap cannot open them without
     // data-bs-toggle) and visually (same greying "Configure Agents" gets).
     LONG_OPERATION_DISABLED_MENU_BUTTONS.forEach(function (menuButtonId) {
         const menuButton = document.getElementById(menuButtonId);
         if (menuButton) {
+            // Close an open dropdown before disabling its toggle. Otherwise its
+            // entries stay reachable while the operation locks the parent.
+            if (window.bootstrap && window.bootstrap.Dropdown) {
+                const dropdown = window.bootstrap.Dropdown.getInstance(menuButton);
+                if (dropdown) dropdown.hide();
+            }
             if (menuButton.hasAttribute('data-bs-toggle')) {
                 menuButton.dataset.longOpBsToggle = menuButton.getAttribute('data-bs-toggle');
                 menuButton.removeAttribute('data-bs-toggle');
@@ -344,7 +348,7 @@ function disableControlsDuringOperation() {
     });
 
     // Only the "Check for updates" ENTRY of the About menu is disabled (the
-    // rest of that dropdown stays usable) - exactly like "Configure Agents".
+    // rest of that dropdown stays usable).
     const checkUpdatesItem = document.getElementById('check-updates-button');
     if (checkUpdatesItem) {
         checkUpdatesItem.classList.add('disabled');
@@ -368,6 +372,40 @@ function disableControlsDuringOperation() {
     contextButton.style.backgroundColor = "#808080";
     contextButton.disabled = true;
     inLongOperation = true;
+}
+
+// Shared by completion and explicit reconnect, history-clear and cancel resets.
+function restoreMenuControlsAfterOperation() {
+    // Re-enable the "Configure Agents" entry
+    // Re-arm the "External" and "DB" navbar dropdowns (mirror of the disable
+    // pass above: restore data-bs-toggle AND clear the greying).
+    LONG_OPERATION_DISABLED_MENU_BUTTONS.forEach(function (menuButtonId) {
+        const menuButton = document.getElementById(menuButtonId);
+        if (menuButton) {
+            if (menuButton.dataset.longOpBsToggle) {
+                menuButton.setAttribute('data-bs-toggle', menuButton.dataset.longOpBsToggle);
+                delete menuButton.dataset.longOpBsToggle;
+            }
+            menuButton.removeAttribute('disabled');
+            menuButton.classList.remove('disabled');
+            menuButton.style.pointerEvents = '';
+            menuButton.style.opacity = '';
+        }
+    });
+
+    const checkUpdatesItem = document.getElementById('check-updates-button');
+    if (checkUpdatesItem) {
+        checkUpdatesItem.classList.remove('disabled');
+        checkUpdatesItem.style.pointerEvents = '';
+        checkUpdatesItem.style.opacity = '';
+    }
+
+    const configureAgentsItem = document.getElementById('enable-agents');
+    if (configureAgentsItem) {
+        configureAgentsItem.classList.remove('disabled');
+        configureAgentsItem.style.pointerEvents = '';
+        configureAgentsItem.style.opacity = '';
+    }
 }
 
 /**
@@ -408,39 +446,10 @@ function enableControlsAfterOperation() {
     cleanHistoryButton.disabled = false;
     cleanHistoryButton.style.backgroundColor = "darkgreen";
     cleanHistoryEnabled = true;
-    // Context / MCPs / Config are re-armed by LONG_OPERATION_DISABLED_MENU_BUTTONS
+    // Context / Config are re-armed by LONG_OPERATION_DISABLED_MENU_BUTTONS
     // below (single source of truth) - do NOT re-add per-button code here.
     updateOpenInMenuState();
-    // Re-enable the "Configure Agents" entry
-    // Re-arm the "External" and "DB" navbar dropdowns (mirror of the disable
-    // pass above: restore data-bs-toggle AND clear the greying).
-    LONG_OPERATION_DISABLED_MENU_BUTTONS.forEach(function (menuButtonId) {
-        const menuButton = document.getElementById(menuButtonId);
-        if (menuButton) {
-            if (menuButton.dataset.longOpBsToggle) {
-                menuButton.setAttribute('data-bs-toggle', menuButton.dataset.longOpBsToggle);
-                delete menuButton.dataset.longOpBsToggle;
-            }
-            menuButton.removeAttribute('disabled');
-            menuButton.classList.remove('disabled');
-            menuButton.style.pointerEvents = '';
-            menuButton.style.opacity = '';
-        }
-    });
-
-    const checkUpdatesItem = document.getElementById('check-updates-button');
-    if (checkUpdatesItem) {
-        checkUpdatesItem.classList.remove('disabled');
-        checkUpdatesItem.style.pointerEvents = '';
-        checkUpdatesItem.style.opacity = '';
-    }
-
-    const configureAgentsItem = document.getElementById('enable-agents');
-    if (configureAgentsItem) {
-        configureAgentsItem.classList.remove('disabled');
-        configureAgentsItem.style.pointerEvents = '';
-        configureAgentsItem.style.opacity = '';
-    }
+    restoreMenuControlsAfterOperation();
 
     if (canvasLoaded === true) {
         cleanCanvasButton.style.backgroundColor = "darkgreen";
@@ -463,6 +472,7 @@ function enableControlsAfterOperation() {
     chatSubmitButton.textContent = 'Send';
     inLongOperation = false;
     lapseLoadingContext = false;
+    updateOpenInMenuState();
     window.TlamatiniPdfCanvas?.syncButtons();
 }
 

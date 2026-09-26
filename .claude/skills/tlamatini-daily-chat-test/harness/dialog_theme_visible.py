@@ -129,7 +129,7 @@ TEAL_PROBE = """(sel) => {
 def build_steps():
     steps = [
         {"action": "goto", "url": CHAT},
-        {"action": "wait_for", "selector": "#mcps-menu-button", "state": "attached"},
+        {"action": "wait_for", "selector": "#config-menu-button", "state": "attached"},
         {"action": "wait", "ms": 2500},
     ]
     for label, item_id, panel, header, footer, has_teal in DIALOGS:

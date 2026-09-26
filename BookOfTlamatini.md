@@ -188,6 +188,7 @@ Tlamatini does a lot. This book is organized so you can stop reading at the dept
 - **Part X — Survival Guide**: troubleshooting, `tlamatini.log`, common issues.
 - **Bonus chapter §57** — Driving Unreal Engine 5 from Tlamatini (the Unrealer agent + Unreal MCP plugin). Read this if you build games or simulations in UE5 and want a chat / canvas surface for the editor.
 - **Bonus chapter §59** — Sculpting in Blender from Tlamatini (the Blenderer agent + the official Blender MCP add-on). Read this if you make 3D art / assets in Blender and want a chat / canvas surface for the editor — and to see why Blender's *code-execution* protocol differs from Unreal's verbs.
+- **[The Prompt Flow Panel: draw a chain of prompts, then press Play](#the-prompt-flow-panel-draw-a-chain-of-prompts-then-press-play)** — the 2026-09-25 sibling of the Agentic Control Panel: seven operations, `.fpmt` files (and why `.pmt` stays with the system prompt), running, pausing and stopping, and what a run may and may not touch.
 - **[Enable Tlamatini as a Blue-hat agent](#enable-tlamatini-as-a-blue-hat-agent)** — the complete Windows defensive-toolkit runbook: asset validation, persistent host changes, detect-only baselining, armed/watch modes, evidence review, false positives, response rollback, and operator responsibility.
 - **[Voice commands: your words become the prompt](#voice-commands-your-words-become-the-prompt)** — the catalog's new first section: speak your instruction instead of typing it, why it needed the silence gate to exist, and the two promises (she reads it back; if she did not hear you she says so).
 - **[Whisperer listens: the silence gate](#whisperer-listens-the-silence-gate)** — why a fixed recording length was the wrong question, how the gate hears you, the countdown in the console bar, and the one thing that would have made the whole feature invisible.
@@ -198,6 +199,68 @@ Tlamatini does a lot. This book is organized so you can stop reading at the dept
 - **Appendix D** — Acknowledgments / Contributing / License.
 
 If you only have ten minutes, read Part I §3–§7 (install + first login), then Part II §12 (Multi-Turn).
+
+---
+
+## The Prompt Flow Panel: draw a chain of prompts, then press Play
+
+### Why a second canvas
+
+The Agentic Control Panel wires **agents** together: a Starter, an Executer, a Shoter, an Ender. But a lot of real work is a *conversation* with a shape — ask something, look at the answer, go one way or another, ask a follow-up, stop and check with a human. The **Prompt Flow Panel** (2026-09-25) is a canvas for exactly that: you draw the conversation once, and Tlamatini walks it for you.
+
+Open it from the chat with **Panels ▸ Prompt Flow Panel**, or from the Agentic Control Panel with **File ▸ Prompt Flow Panel**. It opens in its own tab.
+
+### The seven operations
+
+| Operation | Shape | What happens when the flow reaches it |
+|---|---|---|
+| **Prompt** | rectangle | Sends its text to Tlamatini. You can switch on **Multi-Turn** (and, with it, **ACPX**) for that one step, so a step can use every tool and agent she has. |
+| **Programmed Prompt** | rectangle with a clock | The same, but first waits a number of seconds, or until a date and time you choose. |
+| **Decision** | diamond | Takes the **Y** or **N** branch: does the last answer *contain*, *not contain* or *equal* some text, or is it *empty*? Or it can simply ask you. |
+| **Feed embeddings** | triangle pointing up | Adds reference text to this run, so the following prompts can draw on it. |
+| **Flush embeddings** | triangle pointing down | Takes that reference text away again, keeping the conversation. |
+| **Clean History** | trapezoid | Forgets this run's conversation so far, keeping the reference text. |
+| **User Commentary** | speech bubble | Stops and asks you something; your reply joins the conversation. |
+
+Anywhere you write `{{last_output}}`, Tlamatini puts the previous answer (or your last reply). A Decision only ever compares text — nothing in a flow file is ever run as code.
+
+### Building and running a flow
+
+1. Drag operations from the **Operations bar** onto the canvas, or just click one to drop it in.
+2. Double-click a figure (or right-click it, or select it and press **Configure**) to set its text and options.
+3. Click an **output dot**, then an **input dot**, to connect them. A Decision has two outputs, **Y** and **N**; every output leads to exactly one place, and connecting it again replaces the old line.
+4. Choose where the flow begins in the **Start** list, press **Validate**, then **Play**. Validate refuses a flow with a dead end it cannot explain: every operation must be reachable from Start, and every Decision needs both branches.
+5. Watch the running figure light up and read everything in **Run output** below the canvas. **Pause** lets the current step finish and holds the next one; **Stop** cancels and waits for the current step to wind down cleanly. Loops are allowed — **Flow settings** caps how many steps one run may take (500 by default, 5,000 at most).
+
+Keep the page — and Tlamatini — open while a flow is playing, especially one with a scheduled prompt. This is not a background scheduler. Closing a question dialog with **Cancel**, **✕** or **Esc** stops the flow; clicking outside it does not.
+
+### What a run may and may not touch
+
+Every run is its own little world. It gets its **own conversation** and its **own reference text**, starts empty, and throws both away when it ends. It never edits your chat history, never changes your global embedding settings, and never loads the shared `application` folder into its context. Stopping a flow never cancels an answer she is writing for you in another tab.
+
+### Saving flows: `.fpmt`, not `.pmt`
+
+**File ▸ Save as .fpmt** downloads your diagram; **File ▸ Open .fpmt**, or dropping a file on the canvas, brings it back. Opening a flow never runs it. A file may hold up to 500 operations and 1,000 connections and be up to 5 MiB. The panel also keeps a draft in your browser, just for you, so a closed tab is not a lost afternoon — but save a file if you want to keep or share the flow.
+
+Why the odd extension? Because **`.pmt` already means something**: it is the extension of Tlamatini's own plain-text system prompt, `prompt.pmt`. Flow diagrams are **`.fpmt`** — *flow prompt* — so the two can never be confused, and the panel refuses to open a `.pmt`. If you made a diagram in the earliest version and saved it as `.pmt`, just rename it to `.fpmt`; nothing inside it needs to change.
+
+Want to see one first? **File ▸ Open example** loads a small branching flow, and the full tour — all seven operations — ships as `docs/examples/prompting-kickoff.fpmt`.
+
+### Shortcuts
+
+| Keys | Action |
+|---|---|
+| Ctrl+S / Ctrl+O | save / open |
+| Ctrl+Z / Ctrl+Shift+Z or Ctrl+Y | undo / redo |
+| Ctrl+A / Ctrl+D | select all / duplicate the selection with its inner connections |
+| Delete or Backspace | delete the selection |
+| Arrow keys / Shift+arrows | nudge the selection 10 / 40 units |
+| Ctrl + mouse wheel, **Fit** | zoom, fit the whole flow |
+| Esc | close the top dialog, or leave connection mode and clear the selection |
+
+### How it was tested
+
+The file format and the interpreter have their own regression tests, the real WebSocket route is exercised end to end with a stand-in model, and the release build refuses to package itself unless the panel's self-check (`check_prompt_flow_panel`) passes *inside the frozen application*. The `.fpmt` behaviour — default and typed file names, an old `.pmt` name being converted, Unicode and upper-case names, a real reopened flow playing back, the example, and every kind of bad file being refused — was checked in a visible Chrome window with fifteen photographed checkpoints, all passing on 2026-09-25. The full maintainer guide is `docs/prompting-flow-designer.md`.
 
 ---
 
@@ -878,11 +941,12 @@ After login you arrive at the welcome page. **Just press Enter** and you are in 
 
 ## 8. A tour of the chat page
 
-Open `/agent/`. Here is what you are looking at:
+Open `/agent/agent/` (the page the welcome screen's **Go to Chat** takes you to). Here is what you are looking at:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ Tlamatini  [Context ▼] [Open in… ▼] [MCPs ▼] [Tools ▼] [Agents ▼] [Config ▼] [Logout] │ ← Top navigation
+│ Tlamatini [Open] [Save] [Context ▼] [Panels ▼] [ACPX-Skills ▼] [External ▼] │ ← Top navigation
+│           [Config ▼] [DB ▼] [Reconnect] [About ▼]                           │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │ Multi-Turn ☐  Exec Report ☐  ACPX ☐  Ask Execs ☐  Add internet context ☐  │ ← Toolbar (the five checkboxes!)
 ├─────────────────────────────────────────────────────────────────────────────┤
@@ -903,6 +967,8 @@ Open `/agent/`. Here is what you are looking at:
 The five checkboxes in the toolbar are **the** thing to learn. Each one is explained in its own chapter below. They are independent — except **Ask Execs**, which only activates while **Multi-Turn** is ticked — so tick whatever combination fits your task.
 
 The navbar also has a **Config** dropdown now. It exposes two validated dialogs: **Models** for 38 model, engine and voice settings in six searchable categories, and **URLs** for the Ollama / unified-agent / MCP endpoint values. That means the most common runtime settings can now be changed from the chat UI without manually editing `config.json`. The chat/canvas divider was also polished so width changes feel steadier while you work.
+
+**The menu bar was reorganized on 2026-09-25.** Two things you may be looking for moved: **Configure MCPs** and **Configure Agents** now live inside **Config**, right above Models and URLs, and there is a new **Panels** menu that opens the **Agentic Control Panel**, the **Prompt Flow Panel** and — if your account is staff — the Django **Admin Panel**, each in its own tab. The old separate *MCPs*, *Agents* and *Admin* menus are gone. While Tlamatini is busy answering you, most menus grey out so nothing can change under her feet — but **Panels stays open**, because opening another panel in a new tab never disturbs the answer she is writing.
 
 ### Pasting a screenshot into the chat (2026-07-14)
 
@@ -1416,7 +1482,7 @@ Tlamatini ships with 27 markdown skill packages under `Tlamatini/agent/skills_pk
 
 Before May 2026, the only way to interact with this catalog was through the LLM itself. You'd type "list the skills you have" and the chat would call `list_skills` and read out the rows; you'd type "use the summarize skill to compress this" and the chat would call `invoke_skill('summarize', '{...}')` and surface the result. Catalog hygiene — knowing exactly what was installed, picking which skills the planner was allowed to surface, reloading the registry after editing a SKILL.md on disk — all of it had to be routed through the model. That worked but it felt wrong: a piece of catalog admin that belongs to the person at the keyboard kept asking permission from the model.
 
-The **ACPX-Skills** dropdown closes that gap. It lives between **Agents** and **Config** in the chat navbar and has four entries:
+The **ACPX-Skills** dropdown closes that gap. It lives between **Panels** and **External** in the chat navbar (before the 2026-09-25 menu reorganization it sat between *Agents* and *Config*) and has four entries:
 
 ### `ACPX-Skills → Browse Skills`
 
@@ -1426,7 +1492,7 @@ Use Browse when (a) you've just authored a new SKILL.md and you want to confirm 
 
 ### `ACPX-Skills → Configure Skills`
 
-A checkbox grid, one row per skill, that mirrors the **MCPs** and **Agents** dialogs you already know. Each row is `[ ] skill-name — description`. Toggle a checkbox off, click **Continue**, and a couple of things happen simultaneously: the `Skill.enabled` column flips to `false` in the database, and the change broadcasts over the same WebSocket channel the existing MCPs/Tools/Agents toggles ride — the payload is encoded as `name=description=true|false,...` exactly the way `set-mcps` / `set-tools` / `set-agents` encode their payloads. The backend's new `set-skills` handler in `consumers.AgentConsumer.receive` parses the payload and calls `save_skill(name, enabled)` for each row.
+A checkbox grid, one row per skill, that mirrors the **Configure MCPs** and **Configure Agents** dialogs you already know (both under **Config** since 2026-09-25). Each row is `[ ] skill-name — description`. Toggle a checkbox off, click **Continue**, and a couple of things happen simultaneously: the `Skill.enabled` column flips to `false` in the database, and the change broadcasts over the same WebSocket channel the existing MCPs/Tools/Agents toggles ride — the payload is encoded as `name=description=true|false,...` exactly the way `set-mcps` / `set-tools` / `set-agents` encode their payloads. The backend's new `set-skills` handler in `consumers.AgentConsumer.receive` parses the payload and calls `save_skill(name, enabled)` for each row.
 
 After the toggle lands, two consequences arrive immediately for the next request:
 
@@ -1486,7 +1552,7 @@ Those are flows. You drag agents from a sidebar onto a canvas, draw lines betwee
 
 ## 19. Anatomy of the canvas
 
-Open `/agentic_control_panel/`:
+Open it from the chat's **Panels ▸ Agentic Control Panel** (it lives at `/agent/agentic_control_panel/` and opens in its own tab):
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -1514,6 +1580,10 @@ A few facts about the canvas you need to internalize:
 - **Each agent is a draggable item.** Double-click to open its config. Right-click for the context menu (description, log, explore directory, open cmd, restart).
 - **Connections are typed.** A green line means "start the target after this finishes" (`target_agents`). A blue line means "monitor this source's log" (`source_agents`). The direction matters.
 - **LEDs show state.** Green = running, red = down while the flow is active, yellow blinking = paused, gray = stopped/idle.
+- **It has an editor toolbar (2026-09-25)**, in a strip right above the canvas: **↶ Undo / ↷ Redo** (Ctrl+Z / Ctrl+Y), **⚙ Configure** (opens the one selected agent's settings — the same thing a double-click does), **▣ Duplicate** (copies the selected agents *together with their settings* and the connections between them; FlowCreator and FlowHypervisor are one-per-flow, so they are never duplicated), **⌫ Delete**, a **Starters** list that scrolls to any Starter on a big canvas (Start still runs all of them), **Flow settings** (show or hide the dot grid, set the zoom, quick-configure Starter/FlowCreator/FlowHypervisor), and **− 100% + Fit** to zoom from 25 % to 200 % or fit the whole flow on screen. Zooming never changes the positions saved in your `.flw`.
+- **You can search the agents.** The box above the sidebar filters the 89 agents by name as you type ("shot" finds Shoter), even while the list is still loading.
+- **An empty canvas helps you start.** It says *Design your agent flow* and offers **Try an example**, which lays down a Starter → Sleeper → Ender flow you can undo in one step. **Help** in the top bar lists every gesture.
+- **Editing locks while a flow runs or is paused.** Stop the flow to change it. A leading **•** in the browser tab title means you have unsaved changes.
 
 Another recent change matters if you use the config dialogs heavily: dialog-edited wiring fields now survive the compile pass. In practice that means a user-edited `source_agents`, `target_agents`, or Ender kill list is preserved, while the canvas still contributes its live connections where appropriate. Validate and Start no longer flatten those deliberate edits back into stale pool defaults.
 
@@ -1538,7 +1608,7 @@ You'll see LEDs go green, then sequential outputs in the log viewer, then everyt
 
 ## 21. Saving and loading `.flw` files
 
-Click **💾 Save**, pick a name. You get a JSON file with all node positions, configs, and connections. Distribute it; somebody else loads it via **📂 Load**, gets the same flow.
+Use **File ▸ Save as**, pick a name. You get a JSON file with all node positions, configs, and connections. Distribute it; somebody else loads it via **File ▸ Open**, gets the same flow. Positions are always saved at 100 % zoom, so a flow you arranged while zoomed out reopens exactly where you put it. Loading a flow clears the undo history — the loaded diagram is the new starting point.
 
 `.flw` files are also what the chat's **Create Flow** button (chapter 16) emits.
 
@@ -2753,7 +2823,7 @@ The Multi-Turn implementation carries frozen-build awareness in supporting runti
 
 ## 52. WebSocket protocol
 
-Endpoint: `ws://<host>/ws/agent/`.
+Endpoint: `ws://<host>/ws/agent/`. (A second, separate endpoint — `ws://<host>/ws/prompt-flow-panel/` — carries the Prompt Flow Panel's run commands: `start`, `pause`, `resume`, `stop`, `reply` and a `ping` heartbeat. It serves one run per connection and refuses anonymous sockets; see the chapter *The Prompt Flow Panel* near the front of this book.)
 
 ### Client → Server (chat)
 
@@ -3846,6 +3916,9 @@ The other firmware agents make Tlamatini an *embedded engineer*. ESPHomer makes 
 | **Playwrighter** | Tlamatini agent that drives a REAL browser (Playwright — Chromium/Firefox/WebKit) through a scripted, interactive step list (goto/click/fill/wait_for/extract/assert/screenshot/download). Set `headless: false` to watch it and `hold_open_seconds: N` (alias `hold_open_ms`) to keep the browser visible N seconds after the last step before it closes. Available both as the wrapped Multi-Turn tool `chat_agent_playwrighter` and as a visual canvas node. The 65th entry in the agent catalog. |
 | **PDFer** | Document composer with 24 explicit visual styles in five families alongside 20 semantic content themes. `mode: styles` discovers the catalog; atelier composes measured, audited layouts with original vector art. [Style guide](Tlamatini/agent/agents/pdfer/STYLES.md). |
 | **Pool** | Directory where deployed agent instances are stored. |
+| **Prompt Flow Panel** | The canvas for chains of prompts (2026-09-25): Prompt, Programmed Prompt, Decision, Feed/Flush embeddings, Clean History and User Commentary, played against your own models with an isolated conversation per run. Opened from **Panels ▸ Prompt Flow Panel**. |
+| **`.fpmt`** | A Prompt Flow Panel diagram file (JSON, `format: "tlamatini-prompting-flow"`). Not to be confused with **`.pmt`**, Tlamatini's plain-text system prompt. |
+| **Panels menu** | The chat navbar menu (since 2026-09-25) that opens the Agentic Control Panel, the Prompt Flow Panel and, for staff, the Admin Panel. |
 | **Pser** | LLM-powered fuzzy process finder. |
 | **Pythonxer** | Inline-Python agent behind a strict `compile()` + blocking-Ruff gate; ALWAYS triggers downstream regardless of outcome (exit code drives only the LED + Multi-Turn retry loop). |
 | **PyAutoGUI** | Python library for mouse/keyboard control, used by Mouser and Keyboarder. |
@@ -3877,6 +3950,7 @@ The other firmware agents make Tlamatini an *embedded engineer*. ESPHomer makes 
 
 ### Recent Updates
 
+- **The Prompt Flow Panel, a reorganized menu bar, and an editable Agentic Control Panel — 2026-09-25 (in the working tree; not yet in a published release)** — **Prompt Flow Panel:** a new page at `/agent/prompt_flow_panel/` (**Panels ▸ Prompt Flow Panel**, or the ACP's **File** menu) for drawing and playing chains of *prompts*: Prompt, Programmed Prompt, Decision, Feed embeddings, Flush embeddings, Clean History and User Commentary, saved as **`.fpmt`** JSON (`format: "tlamatini-prompting-flow"`, version 1). The extension was chosen so it can never be mistaken for the plain-text system prompt `prompt.pmt`; the panel refuses to open a `.pmt`, and legacy flow names are converted to `.fpmt`. Each run has its own chain, conversation, embeddings and cancellation key, never loads the shared `application/` corpus (`setup_llm(..., include_application_context=False)`), and drains its model worker on Stop instead of abandoning it. New backend `prompt_flow_panel_consumer.py` (`ws/prompt-flow-panel/`), `prompt_flow_panel_runtime.py`, `services/prompt_flow_panel.py`; new frontend `prompt-flow-panel-model.js`, `prompt-flow-panel.js`, `prompt_flow_panel.css`; frozen-build gate `check_prompt_flow_panel`. **Menus:** the chat navbar lost its separate *MCPs*, *Agents* and *Admin* menus — **Configure MCPs** and **Configure Agents** moved into **Config**, and a new **Panels** menu holds the Agentic Control Panel, the Prompt Flow Panel and (staff) the Admin Panel; Panels stays usable during a long operation, and one helper, `restoreMenuControlsAfterOperation()`, now re-arms the menus after completion, Reconnect, Clean History, Cancel or a dropped socket. **Agentic Control Panel:** a new `acp-editor-tools.js` toolbar (Undo/Redo, Configure, Duplicate with settings and inner connections, Delete, Starters, Flow settings, zoom 25–200 % and Fit), an agent search box, an empty-canvas example, a Help dialog, an unsaved-changes `•` in the tab title, undo that restores an agent's settings, and an edit lock while a flow runs. Tests: `test_prompt_flow_panel*.py` (four modules), `test_chain_readiness.py::ContextFreeChainTests`, a scope-aware const-poison check (`scripts/menu_reference_graph.mjs`), and the visible runners `scripts/run_menu_state_checks.py`, `scripts/acp_editor_visible.py`, `scripts/panel_search_title_visible.py` and `scripts/prompt_flow_extension_visible.py` (15 checkpoints, all passing on 2026-09-25). Guide: [docs/prompting-flow-designer.md](docs/prompting-flow-designer.md).
 - **PDF in the canvas, and the whole document as context — 2026-09-16 (`v1.62.0`)** — The chat canvas now opens `.pdf` files in a vendored **Mozilla PDF.js 6.3.289** viewer (Apache-2.0, no npm and no CDN at runtime; reproduce it with `python scripts/vendor_pdfjs.py`, which checks SHA-512 first). Pages, text selection, navigation, zoom, fit, rotation and in-viewer passwords all work; **Copy** returns the text of every page and **Save As** returns the original bytes. Reading is local — `File.slice()` ranges off the user's disk — so there is no file-size or page-count cutoff, and opening a PDF uploads nothing and calls no model. **Use as context** prepares the complete document: an authenticated, CSRF-protected upload, then a background job that uses the already-shipped **PyMuPDF** to extract every page's text, plus — only when the **Process images** box is ticked, which it never is by default — every embedded image and a rendered preview of every page, each analysed by the existing **Image-Interpreter** engine (reused, not duplicated) with a document-specific OCR/chart/table prompt. A **user-bound signed token** hands the resulting UTF-8 index to the normal contextual RAG path. Nothing runs until **Continue**; four progress rows report real bytes, pages, images and loading; **Cancel** aborts the browser requests and signals the worker; partial or failed image analyses are reported rather than hidden; a scan with no text layer is refused with an explanation instead of loading an empty document. Packages live at `context_files/pdf_canvas/<user-id>/<document-uuid>/` and delete themselves on failure or cancellation; **PDF passwords are used in memory only and never reach storage, context text or the log.** New backend: `pdf_context.py`, `pdf_image_analysis.py`, `pdf_context_jobs.py`, `pdf_context_views.py`; new frontend: `agent_page_pdf.js`, `pdf_canvas_viewer.js`, `pdf_context_progress.js`, `pdf/canvas.html`. **No new Python dependency.** Frozen builds explicitly collect the PDF backend and PyMuPDF (`pyinstaller_hooks/hook-pymupdf.py`), and Django/WhiteNoise serve `.mjs` as JavaScript and `.wasm` as WebAssembly even where the Windows registry disagrees. Tests: `Tests/test_pdf_canvas_browser.py` and `Tests/test_pdf_canvas_assets.py` (real Chromium, real markup, generated fixtures, external-asset requests rejected) plus `agent/test_pdf_context.py`. Contract: [docs/pdf-canvas.md](docs/pdf-canvas.md).
 - **PDFer: 24 signature styles and measured cover/layout improvements — 2026-09-15** — Adds `style` independently of the existing 20 `nuance` themes: six playful/nursery, four cyberpunk, five cosmic, four electronics and five Tlamatini identities. `mode: styles` returns the catalog without a PDF; `style` and `style_family` join the structured output contract. Original vector cover art respects existing decoration limits. Opaque measured cover text, long-title continuation, footer fitting, small-text contrast, sparse-font face mapping, deterministic ornament seeds/cache keys and a table-width rounding margin improve the rendered result. Development validation: **130 PDFer tests passed; all 24 two-page samples passed their audits** (48 pages, no overlap, bleed, blank-page or contrast findings). Preview PDFs, PNGs, gallery and atlas were removed after inspection and are reproducible ignored outputs. [Source guide and commands](Tlamatini/agent/agents/pdfer/STYLES.md).
 

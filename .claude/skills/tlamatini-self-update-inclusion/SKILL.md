@@ -328,6 +328,14 @@ Verify `agent/agents/netspeed_calculator/`, migrations 0195-0197, its wrapped-to
 - `VERSIONING.md` — the git-tag version contract (a self-update compares tags via
   `self_update.is_newer`).
 - `docs/claude/architecture.md` → *Self-Knowledge & Self-Modification* for the build flags.
+### Prompt Flow Panel and menu carrier gate (2026-09-25)
+
+The Prompt Flow Panel executes inside the frozen **web process** (`routing.py` imports its consumer), so the carried Python cannot satisfy it. `build.py::_FROZEN_PROMPT_FLOW_PANEL_MODULES` hidden-imports AND frozen-requires `agent.prompt_flow_panel_consumer`, `agent.prompt_flow_panel_runtime`, `agent.services.prompt_flow_panel` and `agent.management.commands.check_prompt_flow_panel`, and the build runs `check_prompt_flow_panel` inside the freshly frozen app right after `check_agent_runtimes` — a failure aborts packaging. `build_runtime_assets.py` must keep `agent/css/prompt_flow_panel.css`, `agent/js/prompt-flow-panel-model.js` and `agent/js/prompt-flow-panel.js` in `REQUIRED_STATIC`, and the template, `docs/prompting-flow-designer.md` and `docs/examples/prompting-kickoff.fpmt` in `ROOT_SOURCES` and in the receipt floor; `build.py`'s `required_file_copies` carries those two docs files to `dist/manage/docs/`. They are application assets that updates REPLACE — never add them to `$Preserve`. A user's saved `.fpmt` files live wherever the user saved them and browser drafts live in browser storage, so there is no panel state to preserve.
+
+`acp-editor-tools.js` and the reorganized menus ride the existing static/template tree carriers, but every JS/CSS/template change still needs a `STATIC_VERSION` suffix bump (currently `-prompt-flow-panel-11-shared-mechanics`). `.fpmt` must stay a TEXT extension in `rag/binary_guard.py` and a scrubbed extension in `build_complete_public_release.py`.
+
+⚠️ **Carriage is only real once the files are COMMITTED.** On 2026-09-25 all 22 new files of this work (backend, frontend, tests, visible scripts, the guide and the example) were untracked. `build_runtime_assets.py` requires the guide and the example, so a release built from a clean clone or tag fails until they are committed, and a self-update can only deliver what a release contains. The source sweep walks the working tree, so it passes either way — check `git ls-files --others --exclude-standard` before trusting a CLEAN. Guard: `agent/test_prompt_flow_panel_carriage.py`.
+
 ### Central model settings runtime gate (2026-09-20)
 
 The model registry must ship as compiled `agent.agents.model_settings` and as

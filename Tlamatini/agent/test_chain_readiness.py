@@ -170,6 +170,26 @@ class ChainReadinessSourceContractTests(SimpleTestCase):
                          "nothing may gate the release of the chain")
 
 
+class ContextFreeChainTests(SimpleTestCase):
+    """Flush embeddings must not silently reload the shared application corpus."""
+
+    def test_context_free_build_skips_documents_and_chat_default_keeps_them(self):
+        from unittest.mock import patch
+        from agent.rag import factory as F
+
+        chain = object()
+        with patch.object(F, 'load_config_and_prompt', return_value=({}, 'System prompt', None)), \
+                patch.object(F.os.path, 'isdir', return_value=True), \
+                patch.object(F, 'DirectoryLoader') as loader, \
+                patch.object(F, 'build_retrieval_chain', return_value=chain) as build:
+            loader.return_value.load.return_value = []
+            self.assertIs(F.setup_llm(include_application_context=False), chain)
+            loader.assert_not_called()
+            build.assert_called_once_with(None, {}, 'System prompt')
+            self.assertIs(F.setup_llm(), chain)
+            loader.assert_called_once()
+
+
 class ChainBuildLatchTests(SimpleTestCase):
     """The REBUILD path — this is what actually caused the outage.
 

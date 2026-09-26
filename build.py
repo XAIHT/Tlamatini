@@ -404,6 +404,14 @@ _FROZEN_PDF_MODULES = (
     "pymupdf",
 )
 
+# Prompt Flow Panel runs execute in the frozen web process, not in a pool agent.
+_FROZEN_PROMPT_FLOW_PANEL_MODULES = (
+    "agent.prompt_flow_panel_consumer",
+    "agent.prompt_flow_panel_runtime",
+    "agent.services.prompt_flow_panel",
+    "agent.management.commands.check_prompt_flow_panel",
+)
+
 _FROZEN_REQUIRED_AGENT_MODULES = (
     "agent.agents.model_settings",  # compiled registry, independent of data paths
     "agent.services.flow_knowledge",  # new/existing pool helper refresh
@@ -420,6 +428,7 @@ _FROZEN_REQUIRED_AGENT_MODULES = (
     "agent.sqlite_copy",           # WAL-safe DB backup + post-update restoration
     "agent._version",              # SemVer resolver
     *_FROZEN_PDF_MODULES,          # PDF extraction + optional Image-Interpreter
+    *_FROZEN_PROMPT_FLOW_PANEL_MODULES,
 )
 
 
@@ -1372,6 +1381,7 @@ def main():
         # These execute inside the frozen web process. Copying agents/ and
         # bundling the separate carried Python does not make them importable here.
         *(f'--hidden-import={module}' for module in _FROZEN_PDF_MODULES),
+        *(f'--hidden-import={module}' for module in _FROZEN_PROMPT_FLOW_PANEL_MODULES),
         # ── The agent.* modules NOTHING ELSE NAMES (Angela review, 2026-08-16) ──
         # Every one of these is reached only through a FAIL-OPEN import:
         #   external_mcp_manager.py  `try: from . import runtime_provisioner
@@ -1757,6 +1767,9 @@ def main():
             Path("build_runtime_assets.py"): dist_manage / "build_runtime_assets.py",
             Path("README.md"): dist_manage / "README.md",
             Path("agents_descriptions.md"): dist_manage / "agents_descriptions.md",
+            # Keep the designer guide and its relative example link usable in installs.
+            Path("docs") / "prompting-flow-designer.md": dist_manage / "docs" / "prompting-flow-designer.md",
+            Path("docs") / "examples" / "prompting-kickoff.fpmt": dist_manage / "docs" / "examples" / "prompting-kickoff.fpmt",
             # The update handoff and shared preservation contract must survive
             # every release; missing helpers must abort packaging.
             Path("apply_update.ps1"): dist_manage / "apply_update.ps1",
@@ -1983,6 +1996,11 @@ def main():
             res = run_cmd(["check_agent_runtimes"], timeout=180)
             if res.returncode != 0:
                 raise RuntimeError("Frozen agent runtime preparation failed; refusing to package broken agents")
+
+            # Use the compiled consumer and shipped page/assets, without a model call.
+            res = run_cmd(["check_prompt_flow_panel"], timeout=60)
+            if res.returncode != 0:
+                raise RuntimeError("Frozen prompt-flow-panel check failed; refusing to package the panel")
 
             # 8d) Rename executable manage -> Tlamatini
             try:

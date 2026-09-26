@@ -41,6 +41,7 @@ const submittedAskerRequests = (window.SharedRuntimeDialogs
  * the same STOPPED-only rule plus a canvas-content check.
  */
 function updateControlButtonStates() {
+    ACP.refreshEditor?.();
     const canvasItems = document.querySelectorAll('#submonitor-container .canvas-item');
     const hasAgents = canvasItems.length > 0;
 

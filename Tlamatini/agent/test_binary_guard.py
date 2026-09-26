@@ -51,6 +51,16 @@ class BinaryGuardExtensionStageTests(unittest.TestCase):
             path = _write(tmp, 'module.py', 'print("hola Angela")\n')
             self.assertFalse(binary_guard.classify_file(path).is_binary)
 
+    def test_prompt_and_flow_extensions_remain_text(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            for name, content in (
+                ('prompt.pmt', 'Ordinary Tlamatini prompt text'),
+                ('diagram.fpmt', '{"format": "tlamatini-prompting-flow", "version": 1}'),
+            ):
+                with self.subTest(name=name):
+                    path = _write(tmp, name, content)
+                    self.assertFalse(binary_guard.classify_file(path).is_binary)
+
     def test_extra_binary_extensions_from_config_are_honoured(self):
         verdict = binary_guard.classify_file(
             r'C:\nowhere\thing.weird', extra_binary_extensions=frozenset({'.weird'}))
@@ -381,7 +391,7 @@ class BinaryGuardTableSanityTests(unittest.TestCase):
 
     def test_core_source_extensions_are_never_binary(self):
         for ext in ('.py', '.js', '.md', '.json', '.yaml', '.html', '.css', '.txt',
-                    '.pmt', '.flw', '.csv', '.sql', '.ps1'):
+                    '.pmt', '.fpmt', '.flw', '.csv', '.sql', '.ps1'):
             self.assertNotIn(ext, binary_guard.BINARY_EXTENSIONS)
 
     def test_longest_signature_constant_matches_the_table(self):

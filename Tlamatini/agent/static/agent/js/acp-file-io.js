@@ -223,6 +223,10 @@ function getSavedParametrizerMappings(data, nodeData, resolvedNodeId, configData
  * @param {Object} data - Parsed .flw file data
  */
 async function loadDiagram(data) {
+    ACP.fileLoading = true;
+    ACP.refreshEditor?.();
+    undoManager.clear();
+    try {
     // 1. Clear existing connections
     [...ACP.connections].forEach(conn => removeConnection(conn));
 
@@ -431,6 +435,10 @@ async function loadDiagram(data) {
     updateCanvasContentSize();
     updateSaveButtonState();
     markClean();
+    } finally {
+        ACP.fileLoading = false;
+        ACP.refreshEditor?.();
+    }
 }
 
 // ========================================

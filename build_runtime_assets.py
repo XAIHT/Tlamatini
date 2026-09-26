@@ -23,6 +23,10 @@ MAX_RELEASE_ZIP_BYTES = 1_990_000_000  # decimal GB, not GiB; user release ceili
 STATIC_SOURCE = "Tlamatini/agent/static"
 PDFJS = "agent/vendor/pdfjs/"
 REQUIRED_STATIC = (
+    "agent/css/prompt_flow_panel.css",
+    "agent/css/flow_canvas.css",
+    "agent/js/flow-canvas-interactions.js",
+    "agent/js/prompt-flow-panel-model.js", "agent/js/prompt-flow-panel.js",
     "agent/js/avatar.js", "agent/css/avatar.css",
     "agent/img/avatar/eo_mc.jpg", "agent/img/avatar/ec_mc.jpg",
     "agent/img/avatar/eo_mo.jpg", "agent/img/avatar/ec_mo.jpg",
@@ -48,6 +52,10 @@ SOURCE_TREES = (
     ("security", "security"),
 )
 ROOT_SOURCES = {
+    "Tlamatini/agent/templates/agent/prompt_flow_panel.html":
+        "_internal/agent/templates/agent/prompt_flow_panel.html",
+    "docs/prompting-flow-designer.md": "docs/prompting-flow-designer.md",
+    "docs/examples/prompting-kickoff.fpmt": "docs/examples/prompting-kickoff.fpmt",
     "Tlamatini/agent/agents/model_settings.py": "agents/model_settings.py",
     "build_runtime_assets.py": "build_runtime_assets.py",
     "Tlamatini/agent/config.json": "config.json",
@@ -310,6 +318,8 @@ def validate_runtime_document(document, *, expected_version=None):
     floor = {"Tlamatini.exe", "python/python.exe", "config.json", "prompt.pmt",
              "apply_update.ps1", "sqlite_copy.py", "preserved_user_state.json",
              "build_runtime_assets.py", "jre/bin/java.exe", "git/cmd/git.exe",
+             "_internal/agent/templates/agent/prompt_flow_panel.html",
+             "docs/prompting-flow-designer.md", "docs/examples/prompting-kickoff.fpmt",
              "jd-cli/jd-cli.jar", "_internal/db.sqlite3",
              "_internal/pymupdf/_mupdf.pyd", "_internal/pymupdf/_extra.pyd",
              "_internal/pymupdf/mupdfcpp64.dll",

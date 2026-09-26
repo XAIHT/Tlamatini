@@ -86,6 +86,13 @@ function initContextMenu() {
         });
     }
 
+    for (const action of ['duplicate', 'delete']) {
+        document.getElementById('ctx-menu-' + action)?.addEventListener('click', () => {
+            hideContextMenu();
+            ACP.performEdit(action === 'duplicate' ? () => ACP.duplicateSelection() : ACP.deleteSelection);
+        });
+    }
+
     // Menu item: Description
     const descriptionMenuItem = document.getElementById('ctx-menu-description');
     if (descriptionMenuItem) {
@@ -182,25 +189,17 @@ function showContextMenu(x, y, canvasItem) {
     if (!contextMenu) return;
 
     currentContextMenuItem = canvasItem;
+    ACP.cancelConnection?.();
+    if (!ACP.selectedItems.has(canvasItem)) selectItem(canvasItem);
+    ACP.refreshEditor?.();
+    ['configure', 'duplicate', 'delete'].forEach(action => {
+        document.getElementById('ctx-menu-' + action)?.classList.toggle('context-menu-item-disabled', !ACP.canEdit());
+    });
 
     // Update Restart menu item enabled state
     updateRestartMenuItemState(canvasItem);
 
-    // Position once so the browser can measure the rendered menu.
-    contextMenu.style.left = '0px';
-    contextMenu.style.top = '0px';
-    contextMenu.style.display = 'block';
-
-    // Ensure menu stays within viewport
-    const menuRect = contextMenu.getBoundingClientRect();
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-    const margin = 8;
-    const maxLeft = Math.max(margin, viewportWidth - menuRect.width - margin);
-    const maxTop = Math.max(margin, viewportHeight - menuRect.height - margin);
-
-    contextMenu.style.left = `${Math.min(Math.max(x, margin), maxLeft)}px`;
-    contextMenu.style.top = `${Math.min(Math.max(y, margin), maxTop)}px`;
+    window.FlowCanvasInteractions.showMenu(contextMenu, x, y);
 }
 
 /**

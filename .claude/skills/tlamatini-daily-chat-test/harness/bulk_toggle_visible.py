@@ -86,7 +86,7 @@ with sync_playwright() as pw:
     page.click("form button[type=submit]")
     page.wait_for_load_state("domcontentloaded")
     page.goto(BASE + "/agent/agent/", wait_until="domcontentloaded")
-    page.wait_for_selector("#mcps-menu-button", timeout=30000)
+    page.wait_for_selector("#config-menu-button", timeout=30000)
     time.sleep(2.0)
 
     # The module must actually be on the page.
@@ -96,7 +96,7 @@ with sync_playwright() as pw:
     check("checkbox_bulk_toggle.js is loaded by the page", loaded)
 
     # ---- open Configure Mcps -------------------------------------------
-    page.click("#mcps-menu-button")
+    page.click("#config-menu-button")
     time.sleep(0.6)
     page.click("#enable-mcps")
     page.wait_for_selector("#tool-mcps-list input[type=checkbox]", timeout=20000)

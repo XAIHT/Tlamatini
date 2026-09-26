@@ -915,7 +915,7 @@ def _setup_llm_with_context_impl(path_only, agents=None, mcps=None, tools=None, 
     global_state.set_state('rag_chain_ready', True)
     return retrieval_chain
 
-def setup_llm(agents=None, mcps=None, tools=None, omissions=None):
+def setup_llm(agents=None, mcps=None, tools=None, omissions=None, *, include_application_context=True):
     """Build the chat chain. ALWAYS reopens the lane on the way out.
 
     ⚠️ THE ``finally`` IS THE FIX — do not remove it, and do not gate it.
@@ -937,8 +937,11 @@ def setup_llm(agents=None, mcps=None, tools=None, omissions=None):
     ``ask_rag`` already had this treatment; the REBUILD path never did, and
     that asymmetry is the whole incident.
     """
+    # Prompt Flow Panel runs explicitly start/flush without the shared ./application
+    # corpus. Existing chat callers retain their default document loading.
     try:
-        return _setup_llm_impl(agents, mcps, tools, omissions)
+        return _setup_llm_impl(agents, mcps, tools, omissions,
+                               include_application_context=include_application_context)
     finally:
         # FAIL-OPEN: a failed build must leave the lane OPEN so the next
         # message can retry. The consumer decides separately whether a usable
@@ -946,7 +949,7 @@ def setup_llm(agents=None, mcps=None, tools=None, omissions=None):
         global_state.set_state('rag_chain_ready', True)
 
 
-def _setup_llm_impl(agents=None, mcps=None, tools=None, omissions=None):
+def _setup_llm_impl(agents=None, mcps=None, tools=None, omissions=None, *, include_application_context=True):
     global_state.set_state('rag_chain_ready', False)
 
     if agents is not None:
@@ -1007,7 +1010,7 @@ def _setup_llm_impl(agents=None, mcps=None, tools=None, omissions=None):
     application_context_path = os.path.join(application_path, 'application')
     oversizedDocs = False
 
-    if os.path.isdir(application_context_path):
+    if include_application_context and os.path.isdir(application_context_path):
         print(f"The directory '{application_context_path}' exists.\nLoading documents (excluding specified patterns)...")
         loader = DirectoryLoader(
             application_context_path,

@@ -34,7 +34,8 @@ function captureItemState(item) {
             x: parseFloat(item.style.left) || 0,
             y: parseFloat(item.style.top) || 0
         },
-        classes: Array.from(item.classList)
+        classes: Array.from(item.classList).filter(name => name !== 'selected'),
+        configData: ACP.nodeConfigs.has(item.id) ? JSON.parse(JSON.stringify(ACP.nodeConfigs.get(item.id))) : null
     };
 }
 
@@ -113,6 +114,15 @@ async function recreateCanvasItem(state) {
         console.error(`[Undo] Failed to re-deploy ${state.id}:`, error);
     }
 
+    if (state.configData) {
+        const config = JSON.parse(JSON.stringify(state.configData));
+        const response = await fetch('/agent/save_agent_config/' + state.id + '/', {
+            method: 'POST', headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin', body: JSON.stringify(config)
+        });
+        if (!response.ok) throw new Error('Could not restore configuration for ' + state.id);
+        ACP.nodeConfigs.set(state.id, config);
+    }
     return newItem;
 }
 
@@ -968,14 +978,18 @@ async function recreateConnection(state) {
 // ========================================
 
 window.addEventListener('keydown', async (e) => {
+    if (window.FlowCanvasInteractions.isTyping(e)) return;
     const tag = e.target.tagName.toLowerCase();
     if (tag === 'input' || tag === 'textarea' || tag === 'select' || e.target.isContentEditable) {
         return;
     }
 
+    if (ACP.canEdit && !ACP.canEdit()) return;
+
     // Ctrl+Z - Undo
-    if (e.ctrlKey && (e.key === 'z' || e.key === 'Z') && !e.shiftKey) {
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z') && !e.shiftKey) {
         e.preventDefault();
+        ACP.cancelConnection?.();
         const undone = await undoManager.undo();
         if (undone) {
             console.log('--- Undo performed');
@@ -986,9 +1000,10 @@ window.addEventListener('keydown', async (e) => {
     }
 
     // Ctrl+Y or Ctrl+Shift+Z - Redo
-    if ((e.ctrlKey && (e.key === 'y' || e.key === 'Y')) ||
-        (e.ctrlKey && e.shiftKey && (e.key === 'z' || e.key === 'Z'))) {
+    if (((e.ctrlKey || e.metaKey) && (e.key === 'y' || e.key === 'Y')) ||
+        ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'z' || e.key === 'Z'))) {
         e.preventDefault();
+        ACP.cancelConnection?.();
         const redone = await undoManager.redo();
         if (redone) {
             console.log('--- Redo performed');
@@ -998,8 +1013,15 @@ window.addEventListener('keydown', async (e) => {
         return;
     }
 
-    // Delete key - delete selected items and connections
-    if ((e.key === 'Delete' || e.key === 'Del') && ACP.selectedItems.size > 0) {
+    // The toolbar and keyboard share exactly the same deletion path.
+    if ((e.key === 'Delete' || e.key === 'Del' || e.key === 'Backspace') && ACP.selectedItems.size > 0) {
+        e.preventDefault();
+        if (ACP.performEdit) await ACP.performEdit(ACP.deleteSelection);
+        else await ACP.deleteSelection();
+    }
+});
+
+ACP.deleteSelection = async function () {
         const canvasItemsToDelete = [];
         const connectionsToDelete = [];
 
@@ -1164,5 +1186,4 @@ window.addEventListener('keydown', async (e) => {
         ACP.selectedItems.clear();
         updateSaveButtonState();
         markDirty();
-    }
-});
+};

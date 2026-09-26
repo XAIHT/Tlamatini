@@ -1,0 +1,102 @@
+{% load static %}
+<!-- Tlamatini — "one who knows"
+     Created by Angela López Mendoza · @angelahack1
+     Tlamatini Author Banner — do not remove -->
+<!DOCTYPE html>
+<html lang="en" class="html-general">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Tlamatini (Prompt Flow Panel)</title>
+    <link rel="icon" href="{% static 'agent/img/Tlamatini.ico' %}?v={{ STATIC_VERSION }}">
+    <link rel="stylesheet" href="{% static 'agent/vendor/frontend/bootstrap/dist/css/bootstrap.min.css' %}?v={{ STATIC_VERSION }}">
+    <link rel="stylesheet" href="{% static 'agent/vendor/frontend/nunito/400.css' %}?v={{ STATIC_VERSION }}">
+    <link rel="stylesheet" href="{% static 'agent/vendor/frontend/nunito/700.css' %}?v={{ STATIC_VERSION }}">
+    <link rel="stylesheet" href="{% static 'agent/css/agentic_control_panel.css' %}?v={{ STATIC_VERSION }}">
+    <link rel="stylesheet" href="{% static 'agent/css/prompt_flow_panel.css' %}?v={{ STATIC_VERSION }}">
+    <link rel="stylesheet" href="{% static 'agent/css/flow_canvas.css' %}?v={{ STATIC_VERSION }}">
+    <link rel="stylesheet" href="{% static 'agent/css/dialog_theme.css' %}?v={{ STATIC_VERSION }}">
+    <script src="{% static 'agent/vendor/frontend/jquery/dist/jquery.min.js' %}?v={{ STATIC_VERSION }}"></script>
+    <script src="{% static 'agent/vendor/frontend/jquery-ui/jquery-ui.min.js' %}?v={{ STATIC_VERSION }}"></script>
+    <!-- Shared policy first: Escape = Cancel; clicking outside keeps dialogs open. -->
+    <script src="{% static 'agent/js/dialog_policy.js' %}?v={{ STATIC_VERSION }}"></script>
+    <script src="{% static 'agent/vendor/frontend/bootstrap/dist/js/bootstrap.bundle.min.js' %}?v={{ STATIC_VERSION }}"></script>
+</head>
+<body class="pmt-panel" data-user-id="{{ request.user.pk }}">
+    <nav id="navbar-container" class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div id="navbar-content" class="container-fluid align-items-center">
+            <a class="navbar-brand navbar-margin" href="{% url 'agent_page' %}">Tlamatini (Prompt Flow Panel)</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMenu" aria-controls="navbarMenu" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button>
+            <div class="collapse navbar-collapse justify-content-end" id="navbarMenu">
+                <ul class="navbar-nav align-items-lg-center" id="menu-editor">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">File</a>
+                        <ul class="dropdown-menu dropdown-menu-dark">
+                            <li><button class="dropdown-item" data-action="new">New flow</button></li>
+                            <li><button class="dropdown-item" data-action="open">Open .fpmt… <kbd>Ctrl+O</kbd></button></li>
+                            <li><button class="dropdown-item" data-action="save">Save as .fpmt… <kbd>Ctrl+S</kbd></button></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><button class="dropdown-item" data-action="example">Open example</button></li>
+                            <li><button class="dropdown-item" data-action="new">Close flow</button></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item"><button class="nav-link" data-action="reconnect" disabled>Reconnect</button></li>
+                    <li class="nav-item"><button class="nav-link" data-action="help">Help</button></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    <div id="connection-status" class="connection-status connection-status-hidden" role="status" aria-live="polite"></div>
+    <main id="agents-container">
+        <aside id="main-agents-container" aria-label="Operations bar">
+            <div id="agents-header" class="header-title"><span id="agents-header-title">Operations bar</span></div>
+            <div class="pmt-palette-intro">Drag an operation onto the canvas, or click to add it.</div>
+            <div id="subagents-container"><div id="agents-list"></div></div>
+            <div class="pmt-palette-foot">Drag an output triangle to an input triangle to connect.<br>Double-click a figure to configure it.</div>
+        </aside>
+        <div id="drag-divider" role="separator" aria-label="Resize Operations bar" aria-orientation="vertical" tabindex="0"></div>
+        <section id="monitor-container" aria-label="Prompt flow canvas">
+            <div id="monitor-header" class="header-title">
+                <div id="monitor-header-left"><span id="monitor-header-title">Prompt Flow:</span><span id="filename">Untitled.fpmt</span></div>
+                <div id="monitor-controls">
+                    <button type="button" id="pmt-validate" class="control-btn control-btn-validate" data-action="validate" title="Validate flow">✓ Validate</button>
+                    <button type="button" id="pmt-play" class="control-btn" data-action="play" title="Play flow">▶ Play</button>
+                    <button type="button" id="pmt-stop" class="control-btn" data-action="stop" title="Stop flow" disabled>■ Stop</button>
+                    <button type="button" id="pmt-pause" class="control-btn" data-action="pause" title="Pause before the next operation" disabled>Ⅱ Pause</button>
+                    <button type="button" class="control-btn" data-action="new" title="Clear canvas">⌫ Clear</button>
+                </div>
+            </div>
+            <div class="pmt-tools flow-editor-tools" role="toolbar" aria-label="Diagram tools">
+                <button type="button" data-action="undo" title="Undo (Ctrl+Z)">↶ Undo</button>
+                <button type="button" data-action="redo" title="Redo (Ctrl+Shift+Z)">↷ Redo</button>
+                <button type="button" data-action="configure">⚙ Configure</button>
+                <button type="button" data-action="duplicate">▣ Duplicate</button>
+                <button type="button" data-action="delete">⌫ Delete</button>
+                
+                <label for="pmt-start">Start</label><select id="pmt-start"><option value="">Add an operation</option></select>
+                <button type="button" data-action="settings" title="Flow name and step limit">Flow settings</button>
+                <span class="pmt-tool-spacer"></span>
+                <button type="button" data-action="zoom-out" aria-label="Zoom out">−</button>
+                <output id="pmt-zoom">100%</output>
+                <button type="button" data-action="zoom-in" aria-label="Zoom in">+</button>
+                <button type="button" data-action="fit">Fit</button>
+            </div>
+            <div id="submonitor-container" tabindex="0" aria-label="Diagram canvas; use arrow keys to move selected operations">
+                <div id="canvas-content"><div id="pmt-world">
+                    <svg id="connections-layer" aria-label="Connections"></svg>
+                    <div id="pmt-nodes"></div>
+                    <div id="pmt-marquee" hidden></div>
+                </div></div>
+                <div id="pmt-empty"><span class="pmt-empty-symbol">◇</span><h1>Design your prompt flow</h1><p>Add operations, connect their outputs, then press Play.</p><button type="button" data-action="example">Try an example</button></div>
+            </div>
+            <div class="pmt-status-strip"><span id="pmt-status" role="status" aria-live="polite">Ready to design</span><span id="pmt-count">0 operations · 0 connections</span></div>
+            <details id="pmt-run-panel" open><summary>Run output <span id="pmt-run-state">Idle</span></summary><div id="pmt-run-log" role="log" aria-live="polite"><p class="pmt-log-hint">Execution results appear here. Keep this page open while a flow is playing.</p></div></details>
+        </section>
+    </main>
+    <div id="agent-context-menu"></div>
+    <input id="pmt-file-input" type="file" accept=".fpmt" hidden>
+    <script src="{% static 'agent/js/flow-canvas-interactions.js' %}?v={{ STATIC_VERSION }}"></script>
+    <script src="{% static 'agent/js/prompt-flow-panel-model.js' %}?v={{ STATIC_VERSION }}"></script>
+    <script src="{% static 'agent/js/prompt-flow-panel.js' %}?v={{ STATIC_VERSION }}"></script>
+</body>
+</html>

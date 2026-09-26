@@ -336,7 +336,7 @@ def build_steps(do_chat, do_canvas):
     if do_chat:
         steps += [
             {"action": "goto", "url": CHAT},
-            {"action": "wait_for", "selector": "#mcps-menu-button", "state": "attached"},
+            {"action": "wait_for", "selector": "#config-menu-button", "state": "attached"},
             {"action": "wait", "ms": 2500},
         ]
         for label, opener, settle in CHAT_DIALOGS:

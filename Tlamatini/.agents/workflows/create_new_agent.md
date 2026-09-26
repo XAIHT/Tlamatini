@@ -353,23 +353,25 @@ async function update<AgentName>Connection(agentId, targetAgentId, action, type 
 
 ### 5b. `acp-canvas-core.js` — 6 locations
 
-1. **`applyAgentTypeClass()` classMap** (~line 32) — KEY is the **hyphenated** form:
+1. **`applyAgentTypeClass()` classMap** (~line 364 as of 2026-09-25 — search by name, line numbers drift) — KEY is the **hyphenated** form:
    ```javascript
    'shoter': 'shoter-agent',
    'node-manager': 'nodemanager-agent',
    ```
-2. **`AGENTS_NEVER_START_OTHERS`** (~line 94) — hyphenated form if the agent does NOT start downstream.
-3. **`populateAgentsList()`** (~line 830) — keep the shared helper; do NOT add a per-agent gradient branch:
+2. **`AGENTS_NEVER_START_OTHERS`** (~line 396) — hyphenated form if the agent does NOT start downstream.
+3. **`populateAgentsList()`** (~line 1241; it also wires the sidebar's agent search box — nothing to add for it) — keep the shared helper; do NOT add a per-agent gradient branch:
    ```javascript
    applyAgentToolIconStyle(iconDiv, description);
    ```
-4. **`removeConnection()`** (~line 600) — SPACED form:
+4. **`removeConnection()`** (~line 897) — SPACED form:
    ```javascript
    if (targetAgentName.toLowerCase() === 'node manager') updateNodeManagerConnection(targetId, sourceId, 'remove', 'source');
    if (sourceAgentName.toLowerCase() === 'node manager') updateNodeManagerConnection(sourceId, targetId, 'remove', 'target');
    ```
-5. **`removeConnectionsFor()`** (~line 740) — SPACED form, with deletion guards (`!targetBeingDeleted` / `!sourceBeingDeleted`).
-6. **mouseup handler** (~line 1200) — SPACED form, `'add'` instead of `'remove'`.
+5. **`removeConnectionsFor()`** (~line 1058) — SPACED form, with deletion guards (`!targetBeingDeleted` / `!sourceBeingDeleted`).
+6. **mouseup handler** (~line 1451 — the `window` mouseup in `initCanvasEvents()` that completes a connection, NOT the drag-end mouseup in `makeDraggable()`) — SPACED form, `'add'` instead of `'remove'`.
+
+> ⚠️ **Zoom and the edit lock (2026-09-25).** The canvas now zooms (CSS `zoom` on `#canvas-content`, `ACP.zoom` 0.25–2) and edits are locked while a flow runs (`ACP.canEdit()`). A normal agent needs NO code for either — the six locations above are unaffected. But if your agent ever adds its own pointer handling on the canvas, divide every `clientX/clientY - canvasContent.getBoundingClientRect()` delta by `ACP.zoom`, and return early when `ACP.canEdit()` is false. The editor toolbar's **Configure**, **Duplicate** (settings and inner connections included) and **Undo** work on your agent generically.
 
 ### 5c. `acp-canvas-undo.js` — undo/redo
 
@@ -467,7 +469,7 @@ The unified agent picks it up via `WRAPPED_CHAT_AGENT_BY_TOOL_NAME` — no edits
 
 **Seed the wrapper `Tool` row (so it is toggleable in Configure Mcps/Tools).** Add a tiny migration mirroring `migrations/0121_add_chat_agent_talker_tool.py` that creates a `Tool` row with `toolDescription="Chat-Agent-MyAgent"` (the same `tool_description` as the spec). Without it the wrapper still defaults ON (fail-open) but the user has no checkbox to disable it.
 
-**Dual enable-gate (do NOT bypass).** `get_mcp_tools()` binds your `chat_agent_<name>` for the LLM ONLY when BOTH (a) the wrapper Tool row `Chat-Agent-<Name>` is enabled (Configure Mcps/Tools) AND (b) the Agent row `<Name>` is enabled (Configure Agents). Disabling EITHER makes the agent invisible to the LLM (reported as unknown). This is exactly why `display_name` MUST equal the DB `agentDescription` — the Agent-row gate is keyed on `agent_<display>_status`. Verify: uncheck the agent in Configure Agents (or the wrapper in Configure Mcps), ask the LLM to use it, and confirm it reports the agent as unavailable.
+**Dual enable-gate (do NOT bypass).** `get_mcp_tools()` binds your `chat_agent_<name>` for the LLM ONLY when BOTH (a) the wrapper Tool row `Chat-Agent-<Name>` is enabled (Configure Mcps/Tools) AND (b) the Agent row `<Name>` is enabled (Configure Agents). Disabling EITHER makes the agent invisible to the LLM (reported as unknown). This is exactly why `display_name` MUST equal the DB `agentDescription` — the Agent-row gate is keyed on `agent_<display>_status`. Verify: uncheck the agent in **Config ▸ Configure Agents** (or the wrapper in **Config ▸ Configure MCPs** — both moved into Config on 2026-09-25), ask the LLM to use it, and confirm it reports the agent as unavailable.
 
 ---
 
