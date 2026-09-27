@@ -422,6 +422,8 @@ _FROZEN_REQUIRED_AGENT_MODULES = (
     "agent.external_mcp_manager",  # the universal External-MCP client
     "agent.agent_verdict",         # the deterministic Exec-Report verdict engine
     "agent.context_governor",      # context measurement + the chat gauge sink
+    "agent.skills.validation",     # ONE skill validator; Diagnostics imports it fail-open
+    "agent.skills.redaction",      # secret redaction at the skill boundary (harness)
     "agent.win_shim",              # Windows .cmd/.exe resolution (fail-open import)
     "agent.path_guard",            # <app>/Temp + <app>/Templates policy
     "agent.self_update",           # About ▸ Check for updates
@@ -1399,6 +1401,11 @@ def main():
         '--hidden-import=agent.external_mcp_manager',
         '--hidden-import=agent.agent_verdict',
         '--hidden-import=agent.context_governor',
+        # Skills Diagnostics imports the shared validator inside a try/except
+        # that swallows everything, so a missing module would silently report
+        # "no invalid skills". Name it (and the harness's redaction module) here.
+        '--hidden-import=agent.skills.validation',
+        '--hidden-import=agent.skills.redaction',
         '--hidden-import=agent.win_shim',
         '--hidden-import=agent.self_update',
         '--hidden-import=agent.sqlite_copy',

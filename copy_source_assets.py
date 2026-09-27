@@ -275,6 +275,28 @@ REQUIRED_SNAPSHOT_FILES = (
     "Tlamatini/agent/management/commands/check_agent_runtimes.py",
     "Tlamatini/agent/test_model_settings.py",
     "docs/model_configuration.md",
+    # Context Governor: the real-request meter and the always-on chat gauge.
+    "Tlamatini/agent/context_governor.py",
+    "Tlamatini/agent/static/agent/js/context_gauge.js",
+    "Tlamatini/agent/static/agent/css/context_gauge.css",
+    # Skill boundary: ONE validator, ONE redaction definition, and the tools
+    # that count the skills and keep the .gemini mirror in step.
+    "Tlamatini/agent/skills/validation.py",
+    "Tlamatini/agent/skills/redaction.py",
+    "scripts/skill_inventory.py",
+    "scripts/sync_assistant_skills.py",
+    # Every skill links to the visible-execution policy; AGENTS.md is the
+    # Codex twin of CLAUDE.md.
+    "TestsVisiblesAndVisibleExecutionFromClaude2Codex.md",
+    "AGENTS.md",
+    # Project dossier generator (tlamatini_app_summary.pdf + the PPTX). The
+    # modules only work together, so all six are guaranteed as a set.
+    "Tlamatini/agent/doc_generation/complete_project_docs.py",
+    "Tlamatini/agent/doc_generation/dossier_content.py",
+    "Tlamatini/agent/doc_generation/dossier_pdf.py",
+    "Tlamatini/agent/doc_generation/dossier_pptx.py",
+    "Tlamatini/agent/doc_generation/dossier_theme.py",
+    "Tlamatini/agent/doc_generation/dossier_verify.py",
     # Build + packaging pipeline
     "build.py",
     "build_runtime_assets.py",

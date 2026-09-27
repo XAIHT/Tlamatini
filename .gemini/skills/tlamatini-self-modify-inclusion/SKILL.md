@@ -279,6 +279,12 @@ shapes, but a novel config path needs the redaction rule extended).
 
 ⚠️ On 2026-09-25 `git diff` also showed `copy_source_assets.py` with a whole-file line-ending rewrite (543 changed lines, only 23 real). Review that before committing, so history records the real change rather than churn.
 
+### Skill boundary, Context Governor and dossier snapshot gate (2026-09-26)
+
+`REQUIRED_SNAPSHOT_FILES` also guarantees: `agent/context_governor.py` with `context_gauge.js` / `context_gauge.css`; `agent/skills/validation.py`, `agent/skills/redaction.py`, `scripts/skill_inventory.py` and `scripts/sync_assistant_skills.py`; `TestsVisiblesAndVisibleExecutionFromClaude2Codex.md` (every skill links to it) and `AGENTS.md`; and the six-file dossier generator (`agent/doc_generation/complete_project_docs.py` + `dossier_content.py`, `dossier_theme.py`, `dossier_pdf.py`, `dossier_pptx.py`, `dossier_verify.py`), which only works as a set. The generator reads Git (`git ls-files`, tags), so it runs from a repository clone, not from a Git-free snapshot. The shared `flow_canvas.css` / `flow-canvas-interactions.js` and the three newest visible scripts (`flow_canvas_mechanics_visible.py`, `prompt_flow_selection_visible.py`, `prompt_flow_connections_visible.py`) were already listed.
+
+The 2026-09-25 line-ending warning about `copy_source_assets.py` is resolved: `ca66745` committed only its 28 real lines. It happens easily: `build.py` and `copy_source_assets.py` have MIXED line endings, and an editor that normalizes them rewrites the whole file. Check `git diff --stat` against `git diff --ignore-space-at-eol --stat` before committing.
+
 ### Central model settings runtime gate (2026-09-20)
 
 The model registry must ship as compiled `agent.agents.model_settings` and as

@@ -459,10 +459,11 @@ When asked to debug an issue, `Tlamatini/tlamatini.log` is the first artifact to
 
 ## Doc Generation (agent/doc_generation)
 
-- `refresh_project_docs.py` — Pipeline that regenerates `tlamatini_app_summary.pdf` (the repository-root PDF overview) from the current source tree. Invoked manually during documentation passes
-- `mardown_to_pdf.py` *(sic, typo preserved)* — Markdown → PDF helper used by `refresh_project_docs.py`
+- `complete_project_docs.py` — the project-dossier generator (2026-09-26). One run rebuilds BOTH `tlamatini_app_summary.pdf` and `Tlamatini_eXtended_Artificial_Intelligence_Humanly_Tempered.pptx` from facts it derives from the source and Git (agent, tool, skill and migration counts, release tags, the tracked file tree). It then verifies both files: no glyph off the page, no overlapping lines, every PowerPoint text box inside its shape, and the file tree in each file matching `git ls-files`. It exits non-zero rather than publish a file that failed. Helpers: `dossier_content.py` (the chapters), `dossier_theme.py` (palette, fonts, glyph coverage), `dossier_pdf.py`, `dossier_pptx.py` and `dossier_verify.py`. It needs Git, the Windows fonts it names, and PowerPoint for the native check.
+- `refresh_project_docs.py` — thin entry point that calls `complete_project_docs.main()`.
+- `mardown_to_pdf.py` *(sic, typo preserved)* — the older Markdown → PDF helper; PDFer's pipeline was ported from it. The dossier no longer uses it.
 
-Output artifact: `tlamatini_app_summary.pdf` in the repository root.
+Output artifacts: the PDF and the PPTX in the repository root; the tracked-file tree, the fact context and `dossier_verification.json` under `build/documentation_refresh/`.
 
 ---
 

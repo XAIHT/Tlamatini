@@ -27,6 +27,8 @@ REQUIRED_STATIC = (
     "agent/css/flow_canvas.css",
     "agent/js/flow-canvas-interactions.js",
     "agent/js/prompt-flow-panel-model.js", "agent/js/prompt-flow-panel.js",
+    "agent/js/acp-editor-tools.js",
+    "agent/js/context_gauge.js", "agent/css/context_gauge.css",
     "agent/js/avatar.js", "agent/css/avatar.css",
     "agent/img/avatar/eo_mc.jpg", "agent/img/avatar/ec_mc.jpg",
     "agent/img/avatar/eo_mo.jpg", "agent/img/avatar/ec_mo.jpg",
