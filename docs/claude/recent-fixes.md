@@ -16,6 +16,18 @@
 
 ---
 
+## 2026-09-26 — PDF context: Image-Interpreter received the model name "@config"
+
+**Symptom.** Context ▸ PDF canvas with *Process images* on: the dialog finished in ~25 s, but all 12 page images failed and the loaded context carried no visual analysis. Every `*.analysis.txt` read `[@config] ... HTTP Error 400: Bad Request` for BOTH interpreters.
+
+**Root cause.** `agent/pdf_image_analysis.py` read `agents/image_interpreter/config.yaml` with a raw `yaml.safe_load`. Since the central model registry, that template ships `interpreter_model_1/2` and `merging_model` as `"@config"`, and nothing resolved them — so the literal string `@config` was sent to Ollama as the model name.
+
+**Fix.** Resolve the template through `agents.model_settings.resolve_agent_models('image_interpreter', config, model_config)` with values from `config_loader.get_config_value` — the same source the wrapped chat launcher uses (`tools.py`), and a compiled import that works frozen. `force=False`, so a concrete per-agent model in the YAML still wins. Regression test: `test_pdf_context.py::test_template_config_models_follow_config_models_instead_of_sending_at_config` (a template with `@config` must reach the fake Ollama as real names, never `@config`). Verified live on a real page: `partial_interpreter_2_only`, 159 s.
+
+**Do NOT** read an agent template's YAML from web code without passing it through `resolve_agent_models` — any registered model field can be `@config`.
+
+**Separate, not fixed here:** `jcyhsiao/qwen3.5cloud:latest` (`qwen3.5:397b`) now answers **HTTP 410, retired 2026-09-25**. It is still the shipped default for `image_interpreter_model` and Video-Analyzer interpreter 2, so image analysis runs on one interpreter until a replacement vision model is chosen.
+
 ## 2026-09-26 — Native node double-click and transactional Ctrl-drag
 
 Both panels now share `FlowCanvasInteractions.nodeDrag`. A node press remains a native click until movement reaches four **screen** pixels; only then does the viewport capture the pointer. Capturing it on pointerdown redirected native clicks/double-clicks to the viewport. Moving originals below the copy threshold also shifted originals during a slow Ctrl-drag. Both defects were reproduced in foreground Chrome.

@@ -133,6 +133,33 @@ class PdfContextTests(SimpleTestCase):
             self.assertEqual(result['analysis_warnings'], 0)
             self.assertIn('Transcribe visible document text', server.by_model('pdf-vision-a')[0]['user'])
 
+    def test_template_config_models_follow_config_models_instead_of_sending_at_config(self):
+        # Regression 2026-09-26: the shipped template says "@config"; the PDF
+        # path read it raw and sent model "@config" to Ollama (HTTP 400 on
+        # every image, 12/12 analyses lost while the dialog looked fine).
+        import yaml
+        from .test_image_interpreter_agent import _FakeOllama
+        from . import pdf_image_analysis
+        chosen = {'image_interpreter_model': 'pdf-vision-a', 'image_interpreter_model_2': 'pdf-vision-b',
+                  'image_merging_model': 'pdf-merge'}
+        with _FakeOllama(delay_seconds=0.01) as server:
+            config_dir = self.root / 'agents/image_interpreter'
+            config_dir.mkdir(parents=True)
+            (config_dir / 'config.yaml').write_text(yaml.safe_dump({
+                'llm': {'host': server.host}, 'interpreter_model_1': '@config',
+                'interpreter_model_2': '@config', 'merging_model': '@config',
+            }), encoding='utf-8')
+            self.analyzer_mock.side_effect = self.real_analyzer
+            with patch.object(pdf_image_analysis, 'get_runtime_agent_root', return_value=str(self.root)), \
+                    patch.object(pdf_image_analysis, 'get_config_value',
+                                 side_effect=lambda key, default=None: chosen.get(key, default)):
+                result = prepare_pdf_context(self.pdf_upload(), 7, process_images=True)
+            self.assertEqual(server.by_model('@config'), [])
+            self.assertEqual(len(server.by_model('pdf-vision-a')), 3)
+            self.assertEqual(len(server.by_model('pdf-vision-b')), 3)
+            self.assertEqual(len(server.by_model('pdf-merge')), 3)
+            self.assertEqual(result['analysis_warnings'], 0)
+
     def test_cancelled_background_job_stops_before_next_image(self):
         from .pdf_context_jobs import start_job, job_status
         entered, release = threading.Event(), threading.Event()
