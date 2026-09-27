@@ -304,46 +304,44 @@ class TripleModelPipelineLiveTests(unittest.TestCase):
         self.assertIn('INTERPRETATION A', merge['user'])
         self.assertIn('INTERPRETATION B', merge['user'])
 
-    def test_partial_when_interpreter_2_fails(self):
-        with _FakeOllama(delay_seconds=0.05, fail_models={'fake-gemma'}) as srv:
-            description, status = self.mod.interpret_image_dual(
-                self.image_path, self._pipeline(srv.host))
-        self.assertEqual(status, 'partial_interpreter_1_only')
-        self.assertEqual(description, 'REPLY-FROM-fake-glm')
-        merge = srv.by_model('fake-glm')[0]
-        self.assertIn('FAILED', merge['user'])
-        self.assertIn('REPLY-FROM-fake-qwen', merge['user'])
+    def _assert_fatal(self, fail_models, *expected):
+        with _FakeOllama(delay_seconds=0.05, fail_models=fail_models) as srv:
+            with self.assertRaises(self.mod.ImageInterpreterFatal) as caught:
+                self.mod.interpret_image_dual(self.image_path, self._pipeline(srv.host))
+        message = str(caught.exception)
+        self.assertTrue(message.startswith('FATAL:'), message)
+        for text in expected:
+            self.assertIn(text, message)
+        return srv
 
-    def test_partial_when_interpreter_1_fails(self):
-        with _FakeOllama(delay_seconds=0.05, fail_models={'fake-qwen'}) as srv:
-            description, status = self.mod.interpret_image_dual(
-                self.image_path, self._pipeline(srv.host))
-        self.assertEqual(status, 'partial_interpreter_2_only')
-        self.assertEqual(description, 'REPLY-FROM-fake-glm')
+    def test_interpreter_2_failure_is_fatal_no_partial_merge(self):
+        srv = self._assert_fatal({'fake-gemma'}, "interpreter 2 model 'fake-gemma' failed")
+        self.assertEqual(len(srv.by_model('fake-glm')), 0, 'no merge from a single survivor')
 
-    def test_merge_fallback_delivers_both_raw_interpretations(self):
-        with _FakeOllama(delay_seconds=0.05, fail_models={'fake-glm'}) as srv:
-            description, status = self.mod.interpret_image_dual(
-                self.image_path, self._pipeline(srv.host))
-        self.assertEqual(status, 'merge_fallback_concat')
-        self.assertIn('[MERGE FALLBACK', description)
-        self.assertIn('REPLY-FROM-fake-qwen', description)
-        self.assertIn('REPLY-FROM-fake-gemma', description)
+    def test_interpreter_1_failure_is_fatal_no_partial_merge(self):
+        srv = self._assert_fatal({'fake-qwen'}, "interpreter 1 model 'fake-qwen' failed")
+        self.assertEqual(len(srv.by_model('fake-glm')), 0, 'no merge from a single survivor')
 
-    def test_error_when_both_interpreters_fail_skips_the_merge(self):
-        with _FakeOllama(delay_seconds=0.05, fail_models={'fake-qwen', 'fake-gemma'}) as srv:
-            description, status = self.mod.interpret_image_dual(
-                self.image_path, self._pipeline(srv.host))
-        self.assertEqual(status, 'error')
-        self.assertTrue(description.startswith('Error: both interpreters failed'))
+    def test_merger_failure_is_fatal_no_raw_concatenation(self):
+        self._assert_fatal({'fake-glm'}, "merging model 'fake-glm' failed")
+
+    def test_both_interpreters_failing_names_both_models(self):
+        srv = self._assert_fatal({'fake-qwen', 'fake-gemma'}, "'fake-qwen'", "'fake-gemma'")
         self.assertEqual(len(srv.by_model('fake-glm')), 0, 'merge must be skipped')
 
-    def test_missing_image_is_reported_not_raised(self):
-        description, status = self.mod.interpret_image_dual(
-            os.path.join(self.tmp_dir, 'does_not_exist.png'),
-            self._pipeline('http://127.0.0.1:9'))
-        self.assertEqual(status, 'error')
-        self.assertTrue(description.startswith('Error'))
+    def test_missing_image_is_fatal(self):
+        with self.assertRaises(self.mod.ImageInterpreterFatal) as caught:
+            self.mod.interpret_image_dual(
+                os.path.join(self.tmp_dir, 'does_not_exist.png'),
+                self._pipeline('http://127.0.0.1:9'))
+        self.assertIn('FATAL: could not read image', str(caught.exception))
+
+    def test_unconfigured_model_is_fatal_not_a_hidden_default(self):
+        for value in ('', '@config'):
+            with self.assertRaises(self.mod.ImageInterpreterFatal) as caught:
+                self.mod.build_pipeline({'interpreter_model_1': value,
+                                         'interpreter_model_2': 'b', 'merging_model': 'c'})
+            self.assertIn('interpreter 1 model is not configured', str(caught.exception))
 
 
 class IniSectionRoundTripTests(unittest.TestCase):

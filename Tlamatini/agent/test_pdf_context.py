@@ -191,14 +191,23 @@ class PdfContextTests(SimpleTestCase):
         self.analyzer_mock.assert_not_called()
         self.assertFalse((self.root / 'context_files').exists())
 
-    def test_image_analysis_failures_are_reported_without_losing_pdf_text(self):
-        self.analyzer_mock.return_value = lambda path: ('Error: vision models are unavailable.', 'error')
-        result = prepare_pdf_context(self.pdf_upload(), 7, process_images=True)
-        directory, filename = resolve_pdf_context(result['token'], 7)
-        content = (directory / filename).read_text(encoding='utf-8')
-        self.assertEqual(result['analysis_warnings'], 3)
-        self.assertIn('Context page 3', content)
-        self.assertIn('Status: error', content)
+    def test_a_failing_model_is_fatal_and_loads_no_context(self):
+        # No fallbacks (Angela, 2026-09-26): one failing configured model stops
+        # the whole PDF load with a FATAL message; nothing half-analysed is kept.
+        from .agents.image_interpreter.image_interpreter import ImageInterpreterFatal
+
+        def failing(path):
+            raise ImageInterpreterFatal("FATAL: interpreter 1 model 'x-vision' failed: HTTP Error 410: Gone")
+        self.analyzer_mock.return_value = failing
+        with self.assertRaisesMessage(PdfContextError, "FATAL: interpreter 1 model 'x-vision' failed"):
+            prepare_pdf_context(self.pdf_upload(), 7, process_images=True)
+        self.assertEqual(list((self.root / 'context_files/pdf_canvas/7').iterdir()), [])
+
+    def test_a_non_merged_analysis_is_fatal_too(self):
+        self.analyzer_mock.return_value = lambda path: ('partial report', 'partial_interpreter_2_only')
+        with self.assertRaisesMessage(PdfContextError, 'FATAL'):
+            prepare_pdf_context(self.pdf_upload(), 7, process_images=True)
+        self.assertEqual(list((self.root / 'context_files/pdf_canvas/7').iterdir()), [])
 
     def test_default_text_only_skips_all_image_work_and_model_configuration(self):
         import pymupdf

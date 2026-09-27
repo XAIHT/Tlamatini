@@ -113,12 +113,17 @@ def prepare_pdf_context(upload, user_id, password="", *, process_images=False,
         if not process_images and not has_text:
             raise PdfContextError('This PDF has no selectable text. Enable Process images and press Continue to read scanned pages.')
         analysis_count = 0
-        analysis_failures = 0
         if process_images:
             # Release the PDF parser lock before network/model work. Reuse the
             # actual Image-Interpreter engine only when the user opts in.
+            # NO FALLBACKS: any failing configured model is FATAL. The job
+            # stops, this package is removed and nothing half-analysed loads.
+            from .agents.image_interpreter.image_interpreter import ImageInterpreterFatal
             from .pdf_image_analysis import create_pdf_image_analyzer
-            analyze = create_pdf_image_analyzer()
+            try:
+                analyze = create_pdf_image_analyzer()
+            except ImageInterpreterFatal as error:
+                raise PdfContextError(f'{error} The PDF context was NOT loaded.') from error
             with index.open('a', encoding='utf-8') as text:
                 text.write('\n=== Image-Interpreter visual analyses ===\n')
                 artifacts = sorted(images.iterdir())
@@ -126,20 +131,27 @@ def prepare_pdf_context(upload, user_id, password="", *, process_images=False,
                     check_cancelled()
                     progress({'stage': 'analyze', 'completed': number - 1, 'total': len(artifacts),
                               'message': f'Image-Interpreter: analyzing image {number} of {len(artifacts)}…'})
-                    description, status = analyze(artifact)
+                    try:
+                        description, status = analyze(artifact)
+                    except ImageInterpreterFatal as error:
+                        raise PdfContextError(
+                            f'{error} (image {number} of {len(artifacts)}: {artifact.name}). '
+                            'The PDF context was NOT loaded.') from error
+                    if status != 'merged':
+                        raise PdfContextError(
+                            f'FATAL: Image-Interpreter returned "{status}" for image {number} of '
+                            f'{len(artifacts)} ({artifact.name}). The PDF context was NOT loaded.')
                     check_cancelled()
                     report = artifact.with_suffix(artifact.suffix + '.analysis.txt')
                     report.write_text(f'Source image: {artifact}\nStatus: {status}\n\n{description}', encoding='utf-8')
                     text.write(f'\nSource image: {artifact}\nAnalysis report: {report}\nStatus: {status}\n{description}\n')
                     analysis_count += 1
-                    if status != 'merged':
-                        analysis_failures += 1
         check_cancelled()
         token = signing.dumps({"user": int(user_id), "document": document_id}, salt=_TOKEN_SALT)
         return {"token": token, "context_path": str(index), "context_filename": index.name,
                 "pages": pages, "images": len(saved_images), "page_previews": pages if process_images else 0,
                 "process_images": process_images,
-                "analyses": analysis_count, "analysis_warnings": analysis_failures}
+                "analyses": analysis_count, "analysis_warnings": 0}
     except Exception:
         # Only remove the new, private package created by this request.
         resolved = directory.resolve()

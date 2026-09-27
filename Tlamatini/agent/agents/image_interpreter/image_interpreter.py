@@ -89,11 +89,15 @@ IMAGE_EXTENSIONS = {
 
 # ── Triple-model pipeline defaults ────────────────────────────────────
 # The template config.yaml carries the FULL engineered prompts; these
-# compact fallbacks only kick in when a stale pool config.yaml predates
-# the triple-model upgrade, so the pipeline still works end-to-end.
-DEFAULT_INTERPRETER_MODEL_1 = "mistral-large-3:675b-cloud"
-DEFAULT_INTERPRETER_MODEL_2 = "gemma4:cloud"
-DEFAULT_MERGING_MODEL = "glm-5.3:cloud"
+# compact prompt texts only apply when a stale pool config.yaml predates
+# the triple-model upgrade. There are NO default MODELS: the three models
+# come from Config -> Models (or a concrete per-agent value), and a missing
+# or failing model is FATAL, never silently replaced (Angela, 2026-09-26).
+
+
+class ImageInterpreterFatal(RuntimeError):
+    """A configured model or the input image failed. Stop; never degrade."""
+
 DEFAULT_PROMPT_INTERPRETER_1 = (
     'You are a forensic visual measurement engine. Produce a complete, measured inventory of the '
     'image "{filename}": every element of a mockup/GUI with position and size in % of the image, '
@@ -644,20 +648,19 @@ def interpret_image_dual(image_path: str, pipeline: dict) -> tuple:
        interpretations have arrived.
     3. The merging model fuses both into one definitive report.
 
-    Fail-safe degradation: one failed interpreter still merges from the
-    surviving interpretation; a failed merger falls back to the raw
-    interpretations; both interpreters failing reports the errors.
-    Returns ``(description, status)``.
+    NO FALLBACKS: if either interpreter or the merger fails, or the image
+    cannot be read, raise ImageInterpreterFatal naming the model and its
+    error. There is no partial merge and no raw-concatenation fallback.
+    Returns ``(merged_report, "merged")``.
     """
     try:
         image_base64 = convert_image_to_base64(image_path)
-        if not image_base64:
-            return "Error: Failed to convert image to base64", "error"
-        logging.info(f"   Image converted to base64, size: {len(image_base64)} chars.")
-    except FileNotFoundError as e:
-        return f"Error: {e}", "error"
     except Exception as e:
-        return f"Error converting image: {e}", "error"
+        raise ImageInterpreterFatal(f"FATAL: could not read image '{image_path}': {e}") from e
+    if not image_base64:
+        raise ImageInterpreterFatal(
+            f"FATAL: could not read image '{image_path}': base64 conversion returned nothing")
+    logging.info(f"   Image converted to base64, size: {len(image_base64)} chars.")
 
     host = pipeline['host']
     token = pipeline['token']
@@ -696,34 +699,15 @@ def interpret_image_dual(image_path: str, pipeline: dict) -> tuple:
 
     interp_1 = results.get(1) or "Error: interpreter 1 produced no result"
     interp_2 = results.get(2) or "Error: interpreter 2 produced no result"
-    ok_1 = not _is_error_result(interp_1)
-    ok_2 = not _is_error_result(interp_2)
-
-    if not ok_1 and not ok_2:
-        logging.error("❌ BOTH interpreters failed — skipping the merge.")
-        return (
-            f"Error: both interpreters failed.\n"
-            f"[{pipeline['model_1']}] {interp_1}\n"
-            f"[{pipeline['model_2']}] {interp_2}",
-            "error",
-        )
-
-    if ok_1 and ok_2:
-        status = "merged"
-    elif ok_1:
-        status = "partial_interpreter_1_only"
-        interp_2 = (
-            f"(Interpreter 2 '{pipeline['model_2']}' FAILED: {interp_2} "
-            f"— merge from Interpretation A alone.)"
-        )
-        logging.warning("⚠️ Interpreter 2 failed — merging from Interpretation A alone.")
-    else:
-        status = "partial_interpreter_2_only"
-        interp_1 = (
-            f"(Interpreter 1 '{pipeline['model_1']}' FAILED: {interp_1} "
-            f"— merge from Interpretation B alone.)"
-        )
-        logging.warning("⚠️ Interpreter 1 failed — merging from Interpretation B alone.")
+    failures = []
+    if _is_error_result(interp_1):
+        failures.append(f"interpreter 1 model '{pipeline['model_1']}' failed: {interp_1}")
+    if _is_error_result(interp_2):
+        failures.append(f"interpreter 2 model '{pipeline['model_2']}' failed: {interp_2}")
+    if failures:
+        message = "FATAL: " + " | ".join(failures)
+        logging.critical(message)
+        raise ImageInterpreterFatal(message)
 
     merge_started = time.time()
     merged = merge_interpretations(
@@ -732,19 +716,14 @@ def interpret_image_dual(image_path: str, pipeline: dict) -> tuple:
         pipeline['model_2'], interp_2, image_path,
     )
     if _is_error_result(merged):
-        logging.warning(f"⚠️ Merging model failed ({merged}) — falling back to the raw interpretations.")
-        merged = (
-            f"[MERGE FALLBACK — the merging model failed: {merged}]\n\n"
-            f"=== INTERPRETATION A ({pipeline['model_1']}) ===\n{interp_1}\n\n"
-            f"=== INTERPRETATION B ({pipeline['model_2']}) ===\n{interp_2}"
-        )
-        status = "merge_fallback_concat"
-    else:
-        logging.info(
-            f"🔗 [CONNECTION-MERGE] Merging model '{pipeline['merging_model']}' "
-            f"finished in {time.time() - merge_started:.1f}s"
-        )
-    return merged, status
+        message = f"FATAL: merging model '{pipeline['merging_model']}' failed: {merged}"
+        logging.critical(message)
+        raise ImageInterpreterFatal(message)
+    logging.info(
+        f"[CONNECTION-MERGE] Merging model '{pipeline['merging_model']}' "
+        f"finished in {time.time() - merge_started:.1f}s"
+    )
+    return merged, "merged"
 
 
 # PID Management
@@ -772,6 +751,16 @@ def remove_pid_file():
             return
 
 
+def _required_model(config, key, role):
+    """A model is REQUIRED: empty or unresolved "@config" is FATAL, never a default."""
+    value = str(config.get(key) or '').strip()
+    if not value or value == '@config':
+        raise ImageInterpreterFatal(
+            f"FATAL: {role} model is not configured ({key} = {value or 'empty'}). "
+            "Set it in Config > Models.")
+    return value
+
+
 def build_pipeline(config):
     """Resolve the same configured vision models/prompts for agent and PDF use."""
     llm_config = config.get('llm', {}) or {}
@@ -784,9 +773,9 @@ def build_pipeline(config):
     pipeline = {
         'host': str(llm_config.get('host') or 'http://localhost:11434'),
         'token': llm_config.get('token', ''),
-        'model_1': str(config.get('interpreter_model_1') or '').strip() or DEFAULT_INTERPRETER_MODEL_1,
-        'model_2': str(config.get('interpreter_model_2') or '').strip() or DEFAULT_INTERPRETER_MODEL_2,
-        'merging_model': str(config.get('merging_model') or '').strip() or DEFAULT_MERGING_MODEL,
+        'model_1': _required_model(config, 'interpreter_model_1', 'interpreter 1'),
+        'model_2': _required_model(config, 'interpreter_model_2', 'interpreter 2'),
+        'merging_model': _required_model(config, 'merging_model', 'merging'),
         'prompt_1': str(config.get('prompt_interpreter_model_1') or '').strip() or DEFAULT_PROMPT_INTERPRETER_1,
         'prompt_2': str(config.get('prompt_interpreter_model_2') or '').strip() or DEFAULT_PROMPT_INTERPRETER_2,
         'prompt_merge': str(config.get('prompt_merging_model') or '').strip() or DEFAULT_PROMPT_MERGING,
@@ -806,6 +795,8 @@ def main():
         logging.info(f"🔄 {CURRENT_DIR_NAME} REANIMATED (resuming from pause)")
         logging.info("=" * 60)
 
+    exit_code = 0
+    current_image = ''
     try:
         images_pathfilenames = config.get('images_pathfilenames', '')
         recursive = config.get('recursive', False)
@@ -839,6 +830,7 @@ def main():
             for idx, image_path in enumerate(image_files, 1):
                 logging.info(f"--- Processing image {idx}/{len(image_files)}: {image_path}")
 
+                current_image = image_path
                 description, status = interpret_image_dual(image_path, pipeline)
 
                 # Log in structured format (single atomic call — Parametrizer contract)
@@ -867,12 +859,27 @@ def main():
 
         logging.info(f"🏁 Image-Interpreter agent finished. Triggered {total_triggered}/{len(target_agents)} agents.")
 
+    except ImageInterpreterFatal as fatal_error:
+        # NO FALLBACKS: a failing configured model stops the run right here.
+        logging.critical(str(fatal_error))
+        logging.info(
+            f"INI_SECTION_IMAGE_INTERPRETER<<<\n"
+            f"file_path: {current_image}\n"
+            f"status: error\n"
+            f"\n"
+            f"{fatal_error}\n"
+            f">>>END_SECTION_IMAGE_INTERPRETER"
+        )
+        logging.critical(
+            "Image-Interpreter STOPPED: no fallback was used, the remaining images "
+            "were NOT processed and downstream agents were NOT started.")
+        exit_code = 1
     finally:
         # Keep LED green briefly for visual feedback
         time.sleep(0.4)
         remove_pid_file()
 
-    sys.exit(0)
+    sys.exit(exit_code)
 
 
 if __name__ == "__main__":
