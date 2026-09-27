@@ -617,78 +617,80 @@ function makeDraggable(el) {
         port.tabIndex = 0; port.setAttribute('role', 'button');
         port.setAttribute('aria-label', el.dataset.agentName + ': ' + (port.classList.contains('input-triangle') ? 'input' : 'output') + (port.classList.contains('output-2') ? ' 2' : ' 1'));
     });
-    let movement = null;
-    function applyPosition() {
-        if (!movement) return;
-        const dx = (movement.x - movement.startX) / ACP.zoom;
-        const dy = (movement.y - movement.startY) / ACP.zoom;
-        movement.positions.forEach((before, item) => {
-            item.style.left = Math.max(0, before.left + dx) + 'px';
-            item.style.top = Math.max(0, before.top + dy) + 'px';
-            updateAttachedConnections(item);
-        });
-        updateCanvasContentSize();
-    }
-    function finish() {
-        if (!movement) return;
-        if (movement.pending) { movement.finished = true; return; }
-        const previous = movement; movement = null;
-        el.style.zIndex = '';
-        if (submonitor.hasPointerCapture(previous.pointerId)) submonitor.releasePointerCapture(previous.pointerId);
-        const moves = [...previous.positions].map(([item, before]) => ({
-            id: item.id, before, after: { left: item.offsetLeft, top: item.offsetTop }
-        })).filter(move => move.before.left !== move.after.left || move.before.top !== move.after.top);
-        if (previous.copy) previous.copy.record();
-        else if (moves.length) {
-            const apply = key => moves.forEach(move => {
-                const item = document.getElementById(move.id);
-                if (!item) return;
-                item.style.left = move[key].left + 'px'; item.style.top = move[key].top + 'px';
-                updateAttachedConnections(item); updateCanvasContentSize();
-            });
-            undoManager.record({ type: 'MOVE_ITEMS', undo: () => apply('before'), redo: () => apply('after') });
-        }
-        if (moves.length || previous.copy) markDirty();
-        ACP.refreshEditor?.();
-    }
-    el.addEventListener('pointerdown', event => {
-        if (event.button !== 0 || event.target.closest('.input-triangle, .output-triangle')) return;
-        event.preventDefault(); event.stopPropagation();
-        ACP.cancelConnection?.(); ACP.cancelMove?.();
-        if (!ACP.selectedItems.has(el)) selectItem(el, window.FlowCanvasInteractions.modified(event));
-        ACP.refreshEditor?.();
-        submonitor.focus({ preventScroll: true });
-        if (ACP.canEdit && !ACP.canEdit()) return;
-        const positions = new Map([...ACP.selectedItems].filter(item => item.matches?.('.canvas-item'))
-            .map(item => [item, { left: item.offsetLeft, top: item.offsetTop }]));
-        movement = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY,
-            x: event.clientX, y: event.clientY, positions, pending: false, copied: false };
-        ACP.cancelMove = finish; el.style.zIndex = '1100';
-        submonitor.setPointerCapture(event.pointerId);
-    });
-    document.addEventListener('pointermove', async event => {
-        if (!movement || movement.pointerId !== event.pointerId) return;
-        movement.x = event.clientX; movement.y = event.clientY;
-        if (movement.pending) return;
-        const dx = (event.clientX - movement.startX) / ACP.zoom, dy = (event.clientY - movement.startY) / ACP.zoom;
-        if (!movement.copied && window.FlowCanvasInteractions.modified(event) && (Math.abs(dx) > 3 || Math.abs(dy) > 3)) {
-            movement.copied = true; movement.pending = true; ACP.editorBusy = true; ACP.refreshEditor?.();
+    // One controller per canvas, including nodes restored from files or history.
+    ACP.nodeMove ||= window.FlowCanvasInteractions.nodeDrag({
+        viewport: submonitor,
+        duplicate: async data => {
+            ACP.editorBusy = true; ACP.refreshEditor?.();
             try {
                 const copy = await ACP.duplicateSelection({ offset: 0, deferHistory: true });
-                if (copy) {
-                    movement.positions = new Map([...copy.copies].map(([original, item]) => [item, movement.positions.get(original)]));
-                    movement.copy = copy;
+                if (!copy) throw new Error('This selection contains an agent limited to one per flow.');
+                data.copy = copy;
+                data.positions = new Map([...copy.copies].map(([original, item]) => [item, data.positions.get(original)]));
+            } finally { ACP.editorBusy = false; ACP.refreshEditor?.(); }
+        },
+        move: (data, dx, dy) => {
+            data.positions.forEach((before, item) => {
+                item.style.left = Math.max(0, before.left + dx / data.zoom) + 'px';
+                item.style.top = Math.max(0, before.top + dy / data.zoom) + 'px';
+                updateAttachedConnections(item);
+            });
+            updateCanvasContentSize();
+        },
+        finish: async (data, cancelled) => {
+            if (cancelled) {
+                if (data.copy) {
+                    ACP.editorBusy = true;
+                    try { for (const item of data.copy.copies.values()) await deleteCanvasItemWithoutUndo(item.id); }
+                    finally { ACP.editorBusy = false; }
+                } else {
+                    data.positions.forEach((before, item) => {
+                        item.style.left = before.left + 'px'; item.style.top = before.top + 'px';
+                        updateAttachedConnections(item);
+                    });
                 }
-            } catch (error) { acpAlert(error.message); }
-            finally { movement.pending = false; ACP.editorBusy = false; ACP.refreshEditor?.(); }
-        }
-        applyPosition();
-        if (movement.finished) finish();
+                deselectAll(); data.originals.forEach(item => { if (item.isConnected) selectItem(item, true); });
+                hasUnsavedChanges = data.dirty;
+                updateSaveButtonState();
+            } else if (data.copy) data.copy.record();
+            else {
+                const moves = [...data.positions].map(([item, before]) => ({
+                    id: item.id, before, after: { left: parseFloat(item.style.left), top: parseFloat(item.style.top) }
+                })).filter(move => move.before.left !== move.after.left || move.before.top !== move.after.top);
+                if (moves.length) {
+                    const apply = key => {
+                        moves.forEach(move => {
+                            const item = document.getElementById(move.id);
+                            if (!item) return;
+                            item.style.left = move[key].left + 'px'; item.style.top = move[key].top + 'px';
+                            updateAttachedConnections(item);
+                        });
+                        updateCanvasContentSize();
+                    };
+                    undoManager.record({ type: 'MOVE_ITEMS', undo: () => apply('before'), redo: () => apply('after') });
+                    markDirty();
+                }
+            }
+            updateCanvasContentSize(); ACP.refreshEditor?.();
+        },
+        failed: error => acpAlert(error.message)
     });
-    document.addEventListener('pointerup', event => { if (movement?.pointerId === event.pointerId) finish(); });
-    document.addEventListener('pointercancel', finish);
-    window.addEventListener('blur', finish);
-    submonitor.addEventListener('lostpointercapture', finish);
+    ACP.cancelMove = ACP.nodeMove.cancel;
+    el.addEventListener('pointerdown', event => {
+        if (event.button !== 0 || event.target.closest('.input-triangle, .output-triangle, button, input, textarea, select, a')) return;
+        event.preventDefault(); event.stopPropagation();
+        if (ACP.nodeMove.active) return;
+        ACP.cancelConnection?.();
+        if (!ACP.selectedItems.has(el)) selectItem(el, window.FlowCanvasInteractions.modified(event));
+        ACP.refreshEditor?.(); submonitor.focus({ preventScroll: true });
+        if (ACP.canEdit && !ACP.canEdit()) return;
+        const originals = [...ACP.selectedItems].filter(item => item.matches?.('.canvas-item'));
+        const positions = new Map(originals.map(item => [item, {
+            left: parseFloat(item.style.left) || 0, top: parseFloat(item.style.top) || 0
+        }]));
+        ACP.nodeMove.start(event, { positions, originals, zoom: ACP.zoom, dirty: hasUnsavedChanges });
+    });
+
 }
 
 // ========================================
@@ -1374,7 +1376,7 @@ function initCanvasEvents() {
             // Intercept Parametrizer to show custom mapping dialog
             if (agentDesc === 'parametrizer') {
                 if (typeof openParametrizerDialog === 'function') {
-                    openParametrizerDialog(agentId);
+                    await openParametrizerDialog(agentId);
                 } else {
                     console.error('openParametrizerDialog function not found');
                 }
@@ -1405,11 +1407,13 @@ function initCanvasEvents() {
 
     };
     submonitor.addEventListener('dblclick', async (e) => {
+        if (e.target.closest('.input-triangle, .output-triangle, button, input, textarea, select, a')) return;
         const item = e.target.closest('.canvas-item');
         if (!item || (ACP.canEdit && !ACP.canEdit())) return;
         e.preventDefault();
         e.stopPropagation();
-        await ACP.configureItem(item);
+        selectItem(item); ACP.refreshEditor?.();
+        await ACP.performEdit(() => ACP.configureItem(item));
     });
 
     // ---- Window: Selection Box resize ----

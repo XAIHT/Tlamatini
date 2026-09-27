@@ -45,17 +45,17 @@ The versioned format is `tlamatini-prompting-flow`, version `1`, with `name`, `s
 | Ctrl+S / Ctrl+O | Save / open |
 | Ctrl+Z / Ctrl+Shift+Z or Ctrl+Y | Undo / redo |
 | Ctrl+click / drag empty canvas | Select multiple figures / marquee selection |
-| Ctrl+drag | Copy selected figures and internal connections, with one-step Undo/Redo |
-| Enter | Configure the selected figure |
+| Ctrl+drag | Copy selected figures, settings and internal connections with new IDs and numbered labels; one-step Undo/Redo |
+| Double-click / Enter | Configure the clicked / selected figure |
 | Ctrl+A / Ctrl+D | Select all / duplicate selected figures and their internal connections |
 | Delete or Backspace | Delete selection and related connections |
 | Arrow keys / Shift+arrows | Move selection 10 / 40 canvas units |
 | Ctrl+mouse wheel / Fit | Zoom / fit diagram |
-| Escape | Cancel the top dialog or connection drag; otherwise clear selection |
+| Escape | Cancel the top dialog, connection or node drag; otherwise clear selection |
 
 ## Maintenance and validation
 
-The template `agent/templates/agent/prompt_flow_panel.html`, `prompt_flow_panel.css`, `prompt-flow-panel-model.js` and `prompt-flow-panel.js` use the existing local frontend dependencies, shared dark canvas styles and shared dialog policy/theme. Both panels load `flow-canvas-interactions.js` for shared connection gestures, geometry, Fit/zoom, menu placement and divider mechanics. `flow_canvas.css` owns shared interaction styling; load it after panel styles and keep `dialog_theme.css` last. Both editors use free dragging without grid snapping, Ctrl-drag copying, live marquee selection of figures and wires, and matching shortcuts. The route is login-protected; the websocket is `/ws/prompt-flow-panel/`, authenticated and scoped to its connection. The graph interpreter lives in `agent/services/prompt_flow_panel.py`; `prompt_flow_panel_runtime.py` adapts it to the existing RAG stack.
+The template `agent/templates/agent/prompt_flow_panel.html`, `prompt_flow_panel.css`, `prompt-flow-panel-model.js` and `prompt-flow-panel.js` use the existing local frontend dependencies, shared dark canvas styles and shared dialog policy/theme. Both panels load `flow-canvas-interactions.js` for shared connection gestures, geometry, Fit/zoom, menu placement and divider mechanics. `flow_canvas.css` owns shared interaction styling; load it after panel styles and keep `dialog_theme.css` last. Both editors use free dragging without grid snapping, Ctrl-drag copying, live marquee selection of figures and wires, and matching shortcuts. Native double-click opens every node’s existing configuration dialog. Node movement and copy-drag share a four-screen-pixel threshold, keeping click targets stable and originals stationary. Copy intent is retained until release; Escape cancels a pending move/copy. Copies retain settings, acquire distinct IDs and numbered labels, and form one undoable action even when backend deployment finishes after release. The route is login-protected; the websocket is `/ws/prompt-flow-panel/`, authenticated and scoped to its connection. The graph interpreter lives in `agent/services/prompt_flow_panel.py`; `prompt_flow_panel_runtime.py` adapts it to the existing RAG stack.
 
 Run `python Tlamatini/agent/test_prompt_flow_panel.py`, `python Tlamatini/manage.py test agent.test_prompt_flow_panel_runtime agent.test_chain_readiness --noinput`, the targeted Python lint check, and `npm.cmd run lint` in a **verified visible foreground PowerShell console left open with `-NoExit`**. The adapter tests use fake providers to check history, embedding rebuilds, cleanup and cancellation isolation. Run browser checks in visible Chrome with explicit `headless=False`, verify its actual desktop visibility before the workload, monitor live output, and leave the browser open afterward. Never substitute a hidden run. UI checks should cover `.fpmt` file round trips, rejection of unrelated `.pmt` files, draft recovery, shape/port alignment after zoom and drag, both decision branches, reply cancellation, pause/resume/stop and backend failure. Model and embedding checks require the user's configured providers to be available.
 

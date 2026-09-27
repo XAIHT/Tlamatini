@@ -17,7 +17,7 @@ import urllib.request
 
 from playwright.sync_api import expect, sync_playwright
 import panel_search_title_visible as visible
-from flow_canvas_mechanics_visible import check_editor
+from flow_canvas_mechanics_visible import check_agent_catalog, check_editor
 
 ROOT = visible.ROOT
 OUT = ROOT / 'Temp/prompt-connections-visible'
@@ -31,6 +31,7 @@ ASSETS = (
     'agent/static/agent/js/acp-canvas-core.js',
     'agent/static/agent/js/acp-canvas-undo.js',
     'agent/static/agent/js/acp-editor-tools.js',
+    'agent/static/agent/js/acp-parametrizer-dialog.js',
     'agent/static/agent/js/acp-layout.js',
     'agent/templates/agent/agentic_control_panel.html',
     'agent/static/agent/css/agentic_control_panel.css',
@@ -155,6 +156,9 @@ def main():
                 page.mouse.move(*center(target), steps=12)
                 page.mouse.up()
 
+            if '--catalog' in sys.argv:
+                check_agent_catalog(page, checkpoint, require_browser_foreground)
+
             style = """el => {
                 const s = getComputedStyle(el);
                 return Object.fromEntries(['borderTopWidth', 'borderBottomWidth',
@@ -204,7 +208,8 @@ def main():
                 }''')
             page.mouse.move(*wire_point(page.locator('.connection-hit-area').first))
             acp_wire_hover = page.locator('.connection-group:hover .connection-path').last.evaluate(wire_style)
-            page.mouse.down(); page.mouse.up()
+            page.mouse.down()
+            page.mouse.up()
             acp_wire_selected = page.locator('.connection-group.selected .connection-path').evaluate(wire_style)
             checkpoint('01b-agentic-hover-and-selected-wire-glow')
             page.keyboard.press('Escape')
@@ -229,7 +234,8 @@ def main():
             page.locator('#agents-list .agent-tool-item:visible').drag_to(page.locator('#submonitor-container'), target_position={'x': 430, 'y': 360})
             expect(page.locator('.canvas-item')).to_have_count(4)
             second = page.locator('#asker-1 .output-2')
-            page.mouse.move(*center(second)); page.mouse.down()
+            page.mouse.move(*center(second))
+            page.mouse.down()
             page.mouse.move(*center(page.locator('#ender-1 .input-triangle')), steps=10)
             geometry = page.locator('.connection-preview .connection-path').evaluate('''el => {
                 const p=el.getPointAtLength(0), q=new DOMPoint(p.x,p.y).matrixTransform(el.getScreenCTM());
@@ -238,13 +244,17 @@ def main():
             anchor = center(second)
             assert all(abs(a-b) < .1 for a,b in zip(geometry, anchor)), (geometry,anchor)
             checkpoint('agentic-second-output-preview-uses-correct-triangle')
-            page.keyboard.press('Escape'); page.mouse.up()
-            second.focus(); page.keyboard.press('Enter')
-            page.locator('#ender-1 .input-triangle').focus(); page.keyboard.press('Enter')
+            page.keyboard.press('Escape')
+            page.mouse.up()
+            second.focus()
+            page.keyboard.press('Enter')
+            page.locator('#ender-1 .input-triangle').focus()
+            page.keyboard.press('Enter')
             expect(page.locator('.connection-group')).to_have_count(4)
             page.keyboard.press('Control+z')
             expect(page.locator('.connection-group')).to_have_count(3)
-            page.locator('#asker-1').click(); page.keyboard.press('Delete')
+            page.locator('#asker-1').click()
+            page.keyboard.press('Delete')
             expect(page.locator('.canvas-item')).to_have_count(3)
             page.locator('#acp-agent-search').fill('')
             checkpoint('agentic-keyboard-connect-and-undo')
@@ -259,7 +269,7 @@ def main():
             for asset in (asset for asset in ASSETS if "/static/" in asset):
                 url = '/static/' + asset.split('/static/', 1)[1]
                 assert page.request.get(BASE + url).body() == (ROOT / 'Tlamatini' / asset).read_bytes()
-            assert '-prompt-flow-panel-11-shared-mechanics' in page.locator('script[src*="prompt-flow-panel.js"]').get_attribute('src')
+            assert '-prompt-flow-panel-12-node-gestures' in page.locator('script[src*="prompt-flow-panel.js"]').get_attribute('src')
 
             kinds = ['prompt', 'programmed_prompt', 'decision', 'feed_embeddings',
                      'flush_embeddings', 'clean_history', 'user_commentary']
@@ -336,7 +346,8 @@ def main():
             checkpoint('04-release-commits-agentic-wire')
             page.mouse.move(*wire_point(page.locator('.pmt-wire-hit').first))
             assert page.locator('.connection-group:hover .connection-path').evaluate(wire_style) == acp_wire_hover
-            page.mouse.down(); page.mouse.up()
+            page.mouse.down()
+            page.mouse.up()
             assert page.locator('.connection-group.selected .connection-path').evaluate(wire_style) == acp_wire_selected
             checkpoint('04a-identical-hover-selection-and-glow')
             page.keyboard.press('Escape')
@@ -477,7 +488,10 @@ def main():
             page.locator('.agent-tool-item[data-type="clean_history"]').click()
             cleaner = page.locator('.pmt-node[data-type="clean_history"]')
             x, y = center(cleaner)
-            page.mouse.move(x,y); page.mouse.down(); page.mouse.move(x+350,y,steps=10); page.mouse.up()
+            page.mouse.move(x,y)
+            page.mouse.down()
+            page.mouse.move(x+350,y,steps=10)
+            page.mouse.up()
             commentary = page.locator('.pmt-node[data-type="user_commentary"]')
             drag(commentary.locator('.output-triangle'), cleaner.locator('.input-triangle'))
             commentary.click()
@@ -494,7 +508,8 @@ def main():
             expect(page.locator('.pmt-edge.traversed')).to_have_count(1)
             page.mouse.move(*wire_point(page.locator('.pmt-wire-hit')))
             assert page.locator('.pmt-wire').evaluate(wire_style) == acp_wire_hover
-            page.mouse.down(); page.mouse.up()
+            page.mouse.down()
+            page.mouse.up()
             assert page.locator('.pmt-wire').evaluate(wire_style) == acp_wire_selected
             checkpoint('11-traversed-wire-retains-identical-hover-selection-glow')
             assert not errors, errors

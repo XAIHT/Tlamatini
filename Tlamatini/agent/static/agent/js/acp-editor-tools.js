@@ -2,7 +2,7 @@
 /* global ACP, canvasContent, submonitor, undoManager, globalRunningState, GLOBAL_STATE,
    isBusyProcessing, markDirty, updateCanvasContentSize, updateSaveButtonState,
    selectItem, deselectAll, cloneAndRegister, captureItemState, captureConnectionState,
-   recreateCanvasItem, recreateConnection, deleteCanvasItemWithoutUndo, getHeaders,
+   recreateCanvasItem, recreateConnection, deleteCanvasItemWithoutUndo, getHeaders, restoreParametrizerMappings,
    updateAttachedConnections, loadDiagram, acpAlert */
 
 // Loaded after the existing canvas modules: all editing goes through their APIs.
@@ -110,7 +110,14 @@
         for (const item of originals) {
             const response = await fetch('/agent/load_agent_config/' + item.id + '/', { headers: getHeaders() });
             if (!response.ok) throw new Error('Could not read configuration for ' + item.id);
-            configs.set(item, ACP.nodeConfigs.get(item.id) || await response.json());
+            const config = await response.json();
+            // Mapping artifacts are saved separately from config.yaml. Their
+            // current UI value is maintained by the mapping dialog and .flw load.
+            const mappings = ACP.nodeConfigs.get(item.id)?._parametrizer_mappings;
+            if (item.dataset.agentName.toLowerCase() === 'parametrizer' && Array.isArray(mappings)) {
+                config._parametrizer_mappings = JSON.parse(JSON.stringify(mappings));
+            }
+            configs.set(item, config);
         }
         const copies = new Map();
         const connections = ACP.connections.filter(conn => originals.includes(conn.source) && originals.includes(conn.target));
@@ -128,10 +135,11 @@
             const ids = new Map([...copies].flatMap(([old, copy]) => [
                 [old.id, copy.id], [old.id.replaceAll('-', '_'), copy.id.replaceAll('-', '_')]
             ]));
-            const remap = value => {
-                if (typeof value === 'string') return ids.get(value) || value;
-                if (Array.isArray(value)) return value.map(remap);
-                if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, remap(entry)]));
+            const remap = (value, reference = false) => {
+                if (typeof value === 'string') return reference ? ids.get(value) || value : value;
+                if (Array.isArray(value)) return value.map(entry => remap(entry, reference));
+                if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key,
+                    remap(entry, /^(source|target|output)_agents?(_[a-z0-9]+)?$/.test(key))]));
                 return value;
             };
             for (const [original, copy] of copies) {
@@ -141,6 +149,7 @@
                     credentials: 'same-origin', body: JSON.stringify(config)
                 });
                 if (!response.ok) throw new Error('Could not save configuration for ' + copy.id);
+                if (copy.dataset.agentName.toLowerCase() === 'parametrizer') await restoreParametrizerMappings(copy.id, config);
                 ACP.nodeConfigs.set(copy.id, config);
             }
             for (const conn of connections) await recreateConnection({

@@ -236,7 +236,12 @@
         if (!Object.hasOwn(M.operations, type) || flow.nodes.length >= 500) return;
         const offset = (flow.nodes.length % 6) * 30;
         point = point || { x: viewport.scrollLeft / zoom + 70 + offset, y: viewport.scrollTop / zoom + 65 + offset };
-        mutate(() => { const n = M.node(type, snap(point.x), snap(point.y)); flow.nodes.push(n); flow.start ||= n.id; selected = new Set([n.id]); selectedEdge = null; selectedEdges.clear(); });
+        mutate(() => {
+            const n = M.node(type, snap(point.x), snap(point.y));
+            const labels = new Set(flow.nodes.map(node => node.label));
+            if (labels.has(n.label)) n.label = M.uniqueLabel(n.label, labels);
+            flow.nodes.push(n); flow.start ||= n.id; selected = new Set([n.id]); selectedEdge = null; selectedEdges.clear();
+        });
         status('Operation added. Double-click it to configure.');
     }
     const connection = UI.connectionDrag({
@@ -272,16 +277,36 @@
     function startConnection(_node, _branch, port, pointerId) {
         endGesture(); connection.start(port, pointerId);
     }
+    const nodeMove = UI.nodeDrag({
+        viewport,
+        duplicate: data => {
+            const copies = duplicateNodes(0);
+            data.origins = new Map(copies.map(n => [n.id, { x: n.x, y: n.y }]));
+        },
+        move: (data, dx, dy) => {
+            for (const n of flow.nodes) if (data.origins.has(n.id)) {
+                const origin = data.origins.get(n.id);
+                n.x = snap(origin.x + dx / data.zoom); n.y = snap(origin.y + dy / data.zoom);
+            }
+            render();
+        },
+        finish: (data, cancelled) => {
+            if (cancelled) { flow = JSON.parse(data.before); selected = data.selection; render(); }
+            else changed(data.before);
+        },
+        failed: error => { status(error.message); alertMessage(error.message); }
+    });
     function nodeDown(event, node) {
         if (event.button !== 0 || event.target.closest('button')) return;
         event.stopPropagation();
+        if (nodeMove.active) return;
         cancelConnection();
         if (!UI.modified(event) && !selected.has(node.id)) resetSelection();
         selected.add(node.id);
         if (editable() && selected.has(node.id)) {
-            gesture = { kind: 'move', pointerId: event.pointerId, before: snapshot(), from: position(event), origins: new Map(flow.nodes.filter(n => selected.has(n.id)).map(n => [n.id, { x: n.x, y: n.y }])) };
+            nodeMove.start(event, { before: snapshot(), zoom, selection: new Set(selected),
+                origins: new Map(flow.nodes.filter(n => selected.has(n.id)).map(n => [n.id, { x: n.x, y: n.y }])) });
         }
-        if (gesture?.kind === 'move') viewport.setPointerCapture(event.pointerId);
         paintSelection(); event.preventDefault(); viewport.focus({ preventScroll: true });
     }
     function deleteSelection() {
@@ -292,15 +317,19 @@
             resetSelection();
         });
     }
-    function duplicate() {
-        mutate(() => {
+    function duplicateNodes(offset = 40) {
             if (flow.nodes.length + selected.size > 500) throw new Error('The canvas supports up to 500 operations.');
+            const labels = new Set(flow.nodes.map(n => n.label));
             const mapping = new Map(), copies = flow.nodes.filter(n => selected.has(n.id)).map(n => {
-                const clone = M.copy(n); clone.id = M.id(); clone.x = snap(n.x + 40); clone.y = snap(n.y + 40); mapping.set(n.id, clone.id); return clone;
+                const clone = M.copy(n); clone.id = M.id(); clone.label = M.uniqueLabel(n.label, labels);
+                labels.add(clone.label); clone.x = snap(n.x + offset); clone.y = snap(n.y + offset); mapping.set(n.id, clone.id); return clone;
             });
             const links = flow.edges.filter(e => mapping.has(e.source) && mapping.has(e.target)).map(e => ({ ...e, id: M.id(), source: mapping.get(e.source), target: mapping.get(e.target) }));
-            flow.nodes.push(...copies); flow.edges.push(...links); selected = new Set(mapping.values()); selectedEdge = null;
-        });
+            flow.nodes.push(...copies); flow.edges.push(...links); selected = new Set(mapping.values()); selectedEdge = null; selectedEdges.clear();
+            return copies;
+    }
+    function duplicate() {
+        mutate(() => duplicateNodes());
     }
     function restoreHistory(from, to) {
         if (!editable() || !from.length) return;
@@ -613,21 +642,7 @@
     document.addEventListener('pointermove', event => {
         if (!gesture) return;
         const p = position(event);
-        if (gesture.kind === 'move') {
-            if (!gesture.cloned && UI.modified(event) && (Math.abs(p.x - gesture.from.x) > 3 || Math.abs(p.y - gesture.from.y) > 3)) {
-                if (flow.nodes.length + selected.size > 500) { endGesture(); status('The canvas supports up to 500 operations.'); return; }
-                const mapping = new Map(), copies = flow.nodes.filter(n => selected.has(n.id)).map(n => {
-                    const copy = M.copy(n); copy.id = M.id(); mapping.set(n.id, copy.id); return copy;
-                });
-                const links = flow.edges.filter(e => mapping.has(e.source) && mapping.has(e.target))
-                    .map(e => ({ ...e, id: M.id(), source: mapping.get(e.source), target: mapping.get(e.target) }));
-                flow.nodes.push(...copies); flow.edges.push(...links);
-                selected = new Set(mapping.values()); selectedEdges.clear(); selectedEdge = null;
-                gesture.origins = new Map(copies.map(n => [n.id, { x: n.x, y: n.y }])); gesture.cloned = true;
-            }
-            for (const n of flow.nodes) if (gesture.origins.has(n.id)) { const origin = gesture.origins.get(n.id); n.x = snap(origin.x + p.x - gesture.from.x); n.y = snap(origin.y + p.y - gesture.from.y); }
-            render();
-        } else {
+        {
             const left = Math.min(p.x, gesture.from.x), top = Math.min(p.y, gesture.from.y), width = Math.abs(p.x - gesture.from.x), height = Math.abs(p.y - gesture.from.y);
             const box = $id('pmt-marquee'); box.hidden = false; Object.assign(box.style, { left: `${left}px`, top: `${top}px`, width: `${width}px`, height: `${height}px` });
             selected = new Set(gesture.initial);
@@ -643,13 +658,14 @@
     });
     function endGesture() {
         if (cancelConnection()) return;
+        nodeMove.cancel();
         if (!gesture) return;
         const previous = gesture; gesture = null; $id('pmt-marquee').hidden = true; document.body.classList.remove('resizing');
         if (previous.pointerId !== undefined && viewport.hasPointerCapture(previous.pointerId)) viewport.releasePointerCapture(previous.pointerId);
-        if (previous.kind === 'move' && previous.before !== snapshot()) changed(previous.before); else paintSelection();
+        paintSelection();
     }
-    document.addEventListener('pointerup', endGesture);
-    viewport.addEventListener('lostpointercapture', endGesture);
+    document.addEventListener('pointerup', () => { if (gesture) endGesture(); });
+    viewport.addEventListener('lostpointercapture', () => { if (gesture) endGesture(); });
     document.addEventListener('pointercancel', endGesture); window.addEventListener('blur', endGesture);
     UI.bindDivider({
         element: $id('drag-divider'), before: endGesture,

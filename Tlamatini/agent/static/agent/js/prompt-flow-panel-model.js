@@ -20,6 +20,15 @@
         user_commentary: { label: 'User Commentary', color: '#eaaed6', fill: '#653d59', path: 'M28 10H172Q196 10 196 34V82Q196 106 172 106H70L48 124L33 106H28Q4 106 4 82V34Q4 10 28 10Z', input: [4, 64], output: [196, 64], help: 'Pause for a user reply and add it to the conversation.' },
     };
     const copy = value => JSON.parse(JSON.stringify(value));
+    function uniqueLabel(label, used) {
+        const base = label.replace(/ \(\d+\)$/, '');
+        let index = 2, candidate;
+        do {
+            const suffix = ` (${index++})`;
+            candidate = base.slice(0, 120 - suffix.length) + suffix;
+        } while (used.has(candidate));
+        return candidate;
+    }
     const id = () => 'pmt_' + (globalThis.crypto?.randomUUID?.() || Date.now().toString(36) + Math.random().toString(36).slice(2));
     const blank = () => ({ format: FORMAT, version: 1, name: 'Untitled', start: null, max_steps: 500, nodes: [], edges: [] });
     function node(type, x, y) {
@@ -101,5 +110,5 @@
         flow.edges = [{ id: id(), source: a.id, target: b.id, branch: 'next' }, { id: id(), source: b.id, target: c.id, branch: 'yes' }, { id: id(), source: b.id, target: d.id, branch: 'no' }];
         return flow;
     }
-    window.PromptFlowPanelModel = Object.freeze({ FORMAT, EXTENSION, isFlowFilename, flowFilename, operations, copy, id, blank, node, validate, example });
+    window.PromptFlowPanelModel = Object.freeze({ FORMAT, EXTENSION, isFlowFilename, flowFilename, operations, copy, uniqueLabel, id, blank, node, validate, example });
 })();

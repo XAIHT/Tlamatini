@@ -73,11 +73,19 @@ function captureRelatedConnections(items) {
 // ITEM RESTORATION (Undo Delete)
 // ========================================
 
-/**
- * Recreate a canvas item from captured state (for undo delete).
- * @param {Object} state - The captured item state
- * @returns {HTMLElement} The recreated DOM element
- */
+// Parametrizer mappings live in a CSV artifact, separately from config.yaml.
+async function restoreParametrizerMappings(agentId, config) {
+    if (!Array.isArray(config._parametrizer_mappings)) return;
+    const response = await fetch('/agent/save_parametrizer_scheme/' + agentId + '/', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', ...getHeaders() },
+        credentials: 'same-origin', body: JSON.stringify({ mappings: config._parametrizer_mappings })
+    });
+    if (!response.ok || !(await response.json()).success) {
+        throw new Error('Could not restore mappings for ' + agentId);
+    }
+}
+
+/** Recreate a canvas item and its configuration artifacts from captured state. */
 async function recreateCanvasItem(state) {
     const newItem = document.createElement('div');
     newItem.className = state.classes.join(' ');
@@ -121,6 +129,7 @@ async function recreateCanvasItem(state) {
             credentials: 'same-origin', body: JSON.stringify(config)
         });
         if (!response.ok) throw new Error('Could not restore configuration for ' + state.id);
+        if (agentName === 'parametrizer') await restoreParametrizerMappings(state.id, config);
         ACP.nodeConfigs.set(state.id, config);
     }
     return newItem;

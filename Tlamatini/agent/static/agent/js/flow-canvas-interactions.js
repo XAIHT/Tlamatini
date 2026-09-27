@@ -101,5 +101,70 @@
         });
         return { start, finish, cancel: () => clear(), get active() { return active; } };
     }
-    window.FlowCanvasInteractions = Object.freeze({ modified, clampZoom, connectionPath, intersects, fitView, isTyping, showMenu, bindDivider, connectionDrag });
+    // A press remains a native click until movement exceeds four screen pixels.
+    // In particular, capturing the viewport on pointerdown retargets click and
+    // dblclick away from the node. Both editors share this transaction lifecycle.
+    function nodeDrag({ viewport, duplicate, move, finish, failed }) {
+        let active = null;
+        function release(current) {
+            if (viewport.hasPointerCapture(current.pointerId)) viewport.releasePointerCapture(current.pointerId);
+        }
+        async function settle(current) {
+            if (current.pending || current.settling) return;
+            current.settling = true;
+            try {
+                if (current.started) {
+                    if (!current.cancelled) move(current.data, current.x - current.startX, current.y - current.startY);
+                    await finish(current.data, current.cancelled);
+                }
+            } catch (error) { failed(error); }
+            finally { if (active === current) active = null; release(current); }
+        }
+        function end(cancelled = false) {
+            if (!active) return false;
+            const current = active;
+            current.ended = true; current.cancelled ||= cancelled;
+            release(current);
+            void settle(current);
+            return true;
+        }
+        function start(event, data) {
+            if (active) return false;
+            active = { data, pointerId: event.pointerId, startX: event.clientX, startY: event.clientY,
+                x: event.clientX, y: event.clientY, copy: modified(event), started: false,
+                pending: false, ended: false, cancelled: false, settling: false };
+            return true;
+        }
+        document.addEventListener('pointermove', async event => {
+            const current = active;
+            if (!current || current.ended || current.pointerId !== event.pointerId) return;
+            current.x = event.clientX; current.y = event.clientY;
+            if (current.pending) return;
+            if (!current.started) {
+                if (Math.hypot(current.x - current.startX, current.y - current.startY) < 4) return;
+                current.started = true;
+                viewport.setPointerCapture(current.pointerId);
+                if (current.copy) {
+                    current.pending = true;
+                    try { await duplicate(current.data); }
+                    catch (error) { current.cancelled = true; current.ended = true; failed(error); }
+                    finally { current.pending = false; }
+                }
+            }
+            if (current.ended) { void settle(current); return; }
+            move(current.data, current.x - current.startX, current.y - current.startY);
+        });
+        document.addEventListener('pointerup', event => {
+            if (active?.pointerId !== event.pointerId) return;
+            active.x = event.clientX; active.y = event.clientY; end();
+        });
+        document.addEventListener('pointercancel', event => { if (active?.pointerId === event.pointerId) end(true); });
+        viewport.addEventListener('lostpointercapture', () => { if (active && !active.ended) end(true); });
+        window.addEventListener('blur', () => end(true));
+        document.addEventListener('keydown', event => {
+            if (event.key === 'Escape' && end(true)) { event.preventDefault(); }
+        });
+        return { start, cancel: () => end(true), get active() { return active !== null; } };
+    }
+    window.FlowCanvasInteractions = Object.freeze({ modified, clampZoom, connectionPath, intersects, fitView, isTyping, showMenu, bindDivider, connectionDrag, nodeDrag });
 })();
