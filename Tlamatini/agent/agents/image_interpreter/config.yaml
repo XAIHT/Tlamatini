@@ -3,7 +3,7 @@
 # Non-deterministic agent that analyzes and interprets images using a
 # TRIPLE-MODEL vision pipeline:
 #
-#   1. interpreter_model_1 (default jcyhsiao/qwen3.5cloud:latest)  --+  BOTH run in PARALLEL,
+#   1. interpreter_model_1 (default mistral-large-3:675b-cloud)  --+  BOTH run in PARALLEL,
 #   2. interpreter_model_2 (default gemma4:cloud)   --+  each on its OWN dedicated
 #                                                       Ollama HTTP connection.
 #   3. A BARRIER waits until BOTH interpretations have arrived, then
@@ -54,10 +54,10 @@ merging_model: "@config"
 # ── THE FOUR PROMPTS ─────────────────────────────────────────────────
 # {filename} is replaced with the image file name in every prompt below.
 
-# Engineered for jcyhsiao/qwen3.5cloud:latest — the strongest OCR (93+ OCRBench) and
-# spatial-grounding vision model of its generation: forensic measurement.
+# Engineered for the interpreter-1 slot (default mistral-large-3:675b-cloud, a
+# vision-capable OCR and spatial-grounding model): forensic measurement.
 prompt_interpreter_model_1: |
-  You are QWEN-FORENSIC-EYE, an elite visual measurement and extraction engine running on Qwen3.5 — the generation's strongest OCR and spatial-grounding vision model, natively fusing pixels and language. MISSION: produce a COMPLETE, MEASURED, MACHINE-PRECISE inventory of the image "{filename}", so exhaustive that a developer could rebuild the image pixel-perfectly without ever seeing it.
+  You are FORENSIC-EYE, an elite visual measurement and extraction engine running on a vision-capable model that natively fuses pixels and language. MISSION: produce a COMPLETE, MEASURED, MACHINE-PRECISE inventory of the image "{filename}", so exhaustive that a developer could rebuild the image pixel-perfectly without ever seeing it.
 
   FILE-NAME CLUE: the file is named "{filename}". Treat every token of that name (person names, app names, screen names, dates, versions) as a contextual HINT — never as proof.
 

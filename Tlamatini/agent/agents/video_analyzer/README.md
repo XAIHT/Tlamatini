@@ -157,7 +157,7 @@ copied-pool execution; ASR/LLM replies are mocked unless a live check is explici
 Validation on 2026-09-19 also used a real generated speech/video clip with the
 cached base Whisper model on CPU: all three spoken sentences were recovered with
 timestamps. A live summary combined that transcript with two visual samples using
-the installed `gemma4:cloud` and `jcyhsiao/qwen3.5cloud:latest` observers and
+the installed `gemma4:cloud` and `mistral-large-3:675b-cloud` observers and
 `glm-5.3:cloud` synthesis. On 2026-09-20, the former first interpreter
 `qwen3-vl:235b-cloud` returned HTTP 410 with a retirement message. The initial
 replacement is `gemma4:cloud`; all three choices now come from Config → Models

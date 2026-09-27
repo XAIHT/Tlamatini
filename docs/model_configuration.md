@@ -58,11 +58,11 @@ saving a dedicated value means later Unified model changes do not override it.
 
 | Global key / label | Agent YAML path | Initial default | Kind / fallback |
 |---|---|---|---|
-| `image_interpreter_model` — Image interpreter 1 | `image_interpreter.interpreter_model_1` | `jcyhsiao/qwen3.5cloud:latest` | ollama |
+| `image_interpreter_model` — Image interpreter 1 | `image_interpreter.interpreter_model_1` | `mistral-large-3:675b-cloud` | ollama |
 | `image_interpreter_model_2` — Image interpreter 2 | `image_interpreter.interpreter_model_2` | `gemma4:cloud` | ollama |
 | `image_merging_model` — Image merger | `image_interpreter.merging_model` | `glm-5.3:cloud` | ollama |
 | `video_interpreter_model` — Video interpreter 1 | `video_analyzer.interpreter_model_1` | `gemma4:cloud` | ollama |
-| `video_interpreter_model_2` — Video interpreter 2 | `video_analyzer.interpreter_model_2` | `jcyhsiao/qwen3.5cloud:latest` | ollama |
+| `video_interpreter_model_2` — Video interpreter 2 | `video_analyzer.interpreter_model_2` | `mistral-large-3:675b-cloud` | ollama |
 | `video_merging_model` — Video merger | `video_analyzer.merging_model` | `glm-5.3:cloud` | ollama |
 | `claude_image_model` — Claude image analysis | — | `claude-opus-4-5-20251101` | provider |
 
@@ -234,7 +234,7 @@ evidence that a local Whisper name or provider model ID is invalid.
 ## Video summaries and HTTP failures
 
 Video-Analyzer initially uses `gemma4:cloud` and
-`jcyhsiao/qwen3.5cloud:latest`, merged by `glm-5.3:cloud`. Its local audio model
+`mistral-large-3:675b-cloud`, merged by `glm-5.3:cloud`. Its local audio model
 initially uses `base`. `robotics` remains the default task; `transcription` extracts
 timestamped audio tracks and `summary` combines speech with sampled visual evidence.
 

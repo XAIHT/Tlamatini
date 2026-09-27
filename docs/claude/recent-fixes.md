@@ -26,7 +26,7 @@
 
 **Do NOT** read an agent template's YAML from web code without passing it through `resolve_agent_models` — any registered model field can be `@config`.
 
-**Separate, not fixed here:** `jcyhsiao/qwen3.5cloud:latest` (`qwen3.5:397b`) now answers **HTTP 410, retired 2026-09-25**. It is still the shipped default for `image_interpreter_model` and Video-Analyzer interpreter 2, so image analysis runs on one interpreter until a replacement vision model is chosen.
+**Retired model replaced (same day).** `jcyhsiao/qwen3.5cloud:latest` (`qwen3.5:397b`) answers **HTTP 410, retired 2026-09-25**, and was the shipped default for Image-Interpreter interpreter 1 and Video-Analyzer interpreter 2, so every image ran on one interpreter. Angela chose **`mistral-large-3:675b-cloud`** (Ollama reports `vision`; it read page 12's title correctly). It is now the default in `model_settings.py`, both agents' `DEFAULT_*` constants, `agent/config.json`, every LLM-facing description (`chat_agent_registry.py`, `mcp_agent.py`, `agentic_skill.md`, `agents_descriptions.md`, `flow_catalog.json`, `Tlamatini.md`) and the docs; the interpreter-1 prompt no longer claims to run on Qwen3.5. Migration **0209** rewrites the tag in the Catalog-of-Prompts rows; 0165/0168/0206/0208 keep the old text on purpose, because 0208 matches it exactly. Live proof on the real page 12: mistral OK 36.6 s, gemma4 OK 7.1 s, glm-5.3 merge → **`status=merged`**, 134.7 s.
 
 ## 2026-09-26 — Native node double-click and transactional Ctrl-drag
 

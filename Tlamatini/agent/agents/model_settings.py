@@ -34,8 +34,8 @@ for key, label, default in (
     _field(key, label, 'Core', default)
 
 for agent, prefix, first, second in (
-    ('image_interpreter', 'image', 'jcyhsiao/qwen3.5cloud:latest', 'gemma4:cloud'),
-    ('video_analyzer', 'video', 'gemma4:cloud', 'jcyhsiao/qwen3.5cloud:latest'),
+    ('image_interpreter', 'image', 'mistral-large-3:675b-cloud', 'gemma4:cloud'),
+    ('video_analyzer', 'video', 'gemma4:cloud', 'mistral-large-3:675b-cloud'),
 ):
     for suffix, label, path, default in (
         ('interpreter_model', 'interpreter 1', 'interpreter_model_1', first),

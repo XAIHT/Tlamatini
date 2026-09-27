@@ -219,7 +219,7 @@ ollama pull nomic-embed-text
 
 # Cloud models — use a signed-in Pro-or-higher account for full Tlamatini operation
 ollama pull glm-5.3:cloud
-ollama pull jcyhsiao/qwen3.5cloud:latest
+ollama pull mistral-large-3:675b-cloud
 ollama pull gemma4:cloud
 ```
 
@@ -477,7 +477,7 @@ Everything Tlamatini can do, grouped:
 - **Voice commands** — the catalog's **first** section. Speak your instruction instead of typing it: Whisperer listens until you stop, and the transcript becomes the prompt Tlamatini executes. She reads it back before acting, and if she did not hear you she says so instead of guessing.
 - **Recorder / Camcorder** — microphone and webcam capture.
 - **AudioPlayer / VideoPlayer** — audio and video playback with volume/loop control.
-- **Image-Interpreter** — triple-model vision analysis: jcyhsiao/qwen3.5cloud:latest + gemma4:cloud interpret each image **in parallel** on two dedicated Ollama connections, then glm-5.3:cloud merges both interpretations into one definitive report (mockup/GUI inventories in % coordinates, full OCR, people described exhaustively with identity clues taken from the image file name).
+- **Image-Interpreter** — triple-model vision analysis: mistral-large-3:675b-cloud + gemma4:cloud interpret each image **in parallel** on two dedicated Ollama connections, then glm-5.3:cloud merges both interpretations into one definitive report (mockup/GUI inventories in % coordinates, full OCR, people described exhaustively with identity clues taken from the image file name).
 
 - **Screenshot → chat (paste or drop)** — hit Print Screen (or snip), Alt+Tab back to Tlamatini and press **Ctrl+V** — or drag image files onto the chat column. She saves the image into her own `Temp` folder as `image_<timestamp>.jpg`, shows a thumbnail above the input, and drops the **full path into your message at the cursor**, so you can finish the sentence — *"…what's wrong in this screenshot?"* — and send. The path is what Image-Interpreter reads.
 

@@ -9,7 +9,7 @@
 #   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
 """Hard tests for the Image-Interpreter TRIPLE-MODEL pipeline (2026-07-04).
 
-The agent runs interpreter_model_1 (default jcyhsiao/qwen3.5cloud:latest) and
+The agent runs interpreter_model_1 (default mistral-large-3:675b-cloud) and
 interpreter_model_2 (default gemma4:cloud) IN PARALLEL — each on its OWN
 dedicated Ollama HTTP connection — then a BARRIER waits until BOTH
 interpretations have arrived before merging_model (default glm-5.3:cloud)
@@ -356,7 +356,7 @@ class IniSectionRoundTripTests(unittest.TestCase):
 
     def test_section_round_trip_matches_contract_fields(self):
         pipeline = {
-            'model_1': 'jcyhsiao/qwen3.5cloud:latest', 'model_2': 'gemma4:cloud',
+            'model_1': 'mistral-large-3:675b-cloud', 'model_2': 'gemma4:cloud',
             'merging_model': 'glm-5.3:cloud',
         }
         section = (
