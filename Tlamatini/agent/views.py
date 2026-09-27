@@ -3187,14 +3187,15 @@ def check_all_agents_status_view(request):
             notif_file = os.path.join(folder_path, "notification.json")
             if os.path.exists(notif_file):
                 try:
-                    with open(notif_file, "r") as nf:
+                    with open(notif_file, "r", encoding="utf-8") as nf:
                         notif_data = json.load(nf)
                         # Ensure agent_id matches canvas_id format if possible, or just pass through
                         notif_data['agent_id'] = canvas_id 
                         notifications.append(notif_data)
                     # Remove the file so we don't alert again
                     try:
-                        os.remove(notif_file)
+                        if notif_data.get('kind') != 'fatal_visual_error':
+                            os.remove(notif_file)
                     except Exception as e:
                         print(f"Error removing notification file {notif_file}: {e}")
                 except Exception as e:
@@ -3348,7 +3349,8 @@ def check_chat_runtimes_status_view(request):
                     notif_data['runtime_name'] = entry_name
                     info["notification"] = notif_data
                     try:
-                        os.remove(notif_file_path)
+                        if notif_data.get('kind') != 'fatal_visual_error':
+                            os.remove(notif_file_path)
                     except Exception as exc:
                         print(f"Error removing notification {notif_file_path}: {exc}")
                 except Exception as exc:

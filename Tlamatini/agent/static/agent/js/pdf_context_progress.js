@@ -13,9 +13,9 @@
     let timer = null;
     let started = 0;
     let expectedToken = null;
-    let warningCount = 0;
     let pendingChoice = null;
     let fileSize = 0;
+    let failureReported = false;
 
     function tick() {
         const seconds = Math.floor((performance.now() - started) / 1000);
@@ -62,7 +62,7 @@
         stopTimer();
         cancel = onCancel;
         expectedToken = null;
-        warningCount = 0;
+        failureReported = false;
         fileSize = file.size;
         processImages.checked = false;
         processImages.disabled = false;
@@ -94,15 +94,13 @@
             ? 'Ready to prepare text and analyze images. Press Continue to begin.'
             : 'Ready to prepare selectable text. Press Continue to begin.';
     }
-    function loadingContext(token, warnings = 0) {
+    function loadingContext(token) {
         expectedToken = token;
-        warningCount = warnings;
         cancel = null;
         action.textContent = 'Close';
         update('rag', 0, 0, (processImages.checked
             ? 'PDF processing is complete. Loading its text and image analyses into Tlamatini’s context…'
-            : 'PDF text extraction is complete. Loading its text into Tlamatini’s context…') +
-            (warningCount ? ` ${warningCount} image analyses were incomplete; details are included in the context.` : ''));
+            : 'PDF text extraction is complete. Loading its text into Tlamatini’s context…'));
     }
     function finish(token, success) {
         if (token !== expectedToken) return;
@@ -112,12 +110,19 @@
         action.textContent = 'Close';
         cancel = null;
         if (success) {
-            update('rag', 1, 1, 'Your PDF context is ready. You can now ask Tlamatini about the document.' +
-                (warningCount ? ` ${warningCount} image analyses were incomplete. Check the saved analysis reports before relying on visual details.` : ''));
+            update('rag', 1, 1, 'Your PDF context is ready. You can now ask Tlamatini about the document.');
             dialog.close();
         } else fail('The PDF was processed, but context loading failed. Please retry and check the configured model service if the problem persists.');
     }
     function fail(detail) {
+        if (processImages.checked && !failureReported) {
+            failureReported = true;
+            // A native modal occupies the browser top layer. Release it so the
+            // shared accumulating dialog is visible and the chat stays usable.
+            cancel = null;
+            if (dialog.open) dialog.close();
+            window.SharedRuntimeDialogs.renderFatalError({ source_agent: 'PDF Image-Interpreter', message: detail });
+        }
         if (pendingChoice) { pendingChoice.reject(new Error(detail)); pendingChoice = null; }
         proceed.hidden = true;
         processImages.disabled = true;

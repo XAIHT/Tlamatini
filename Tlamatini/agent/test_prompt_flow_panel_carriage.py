@@ -62,6 +62,20 @@ class PromptFlowPanelCarriageTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, "omits mandatory files"):
                     assets.validate_runtime_document(incomplete)
 
+    def test_build_copies_every_required_root_source(self):
+        # write_runtime_manifest() aborts the frozen build for any ROOT_SOURCES
+        # file that build.py never copied; docs/visual-analysis-errors.md was
+        # listed but not copied. Tree-carried entries are covered by SOURCE_TREES.
+        text = (ROOT / "build.py").read_text(encoding="utf-8")
+        for src, dst in assets.ROOT_SOURCES.items():
+            if any(src.startswith(tree + "/") and dst == carried + src[len(tree):]
+                   for tree, carried in assets.SOURCE_TREES):
+                continue
+            with self.subTest(source=src):
+                named = {'"' + src + '"', '"' + src.rsplit("/", 1)[-1] + '"'}
+                self.assertTrue(any(literal in text for literal in named),
+                                f"build.py never copies required source {src} -> {dst}")
+
 
 if __name__ == "__main__":
     unittest.main()

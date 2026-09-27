@@ -1,8 +1,10 @@
 # Tlamatini Author Banner — Angela López Mendoza
 """Real Chromium PDF canvas regression, isolated from RAG, accounts and databases.
 
-Run: python -m pytest Tests/test_pdf_canvas_browser.py -q
-Set PDF_CANVAS_HEADED=1 to watch; PDF_CANVAS_SCREENSHOT names an optional PNG.
+Run in a verified visible foreground PowerShell -NoExit console:
+    python -m pytest Tests/test_pdf_canvas_browser.py -q
+Chrome is always visible; legacy headless requests are refused loudly.
+Optional PDF_*_SCREENSHOT paths capture the complete desktop with Shoter.
 The harness uses the actual canvas markup, CSS and application JS, with only
 the chat/socket globals stubbed. PDF parsing, workers and rendering are real.
 """
@@ -22,6 +24,18 @@ from playwright.sync_api import expect, sync_playwright
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
+from visual_fatal_dialog_visible import require_visible
+import panel_search_title_visible as visible
+
+
+def capture_desktop(destination):
+    destination = Path(destination).resolve()
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    visible.OUT = destination.parent
+    visible.photograph(destination.stem)
+
+
 STATIC = ROOT / "Tlamatini/agent/static"
 TEMPLATE = ROOT / "Tlamatini/agent/templates/agent/agent_page.html"
 BOOTSTRAP = """
@@ -54,7 +68,6 @@ function getCsrfToken() { return 'test-token'; }
 document.getElementById('open').addEventListener('click', () => openCanvas());
 cleanCanvasButton.addEventListener('click', () => cleanCanvas());
 reopenOpenCanvasButton.addEventListener('click', () => reopenCanvas());
-window.addEventListener('DOMContentLoaded', () => rotateTitle());
 """
 
 
@@ -121,13 +134,16 @@ def server(tmp_path_factory):
     markup = markup[:markup.index('  <div id="confirmation-dialog-message"')]
     markup = re.sub(r"{% static '([^']+)' %}", r"/\1", markup)
     markup = markup.replace("{{ STATIC_VERSION }}", "test")
-    scripts = ["agent_page_ui", "agent_page_layout", "pdf_context_progress", "agent_page_pdf", "agent_page_canvas", "agent_page_context"]
+    scripts = ["dialog_policy", "shared-runtime-dialogs", "agent_page_ui", "agent_page_layout", "pdf_context_progress", "agent_page_pdf", "agent_page_canvas", "agent_page_context"]
     html = ("<!doctype html><meta charset='utf-8'><link rel='stylesheet' href='/agent/css/agent_page.css'>"
             "<link rel='stylesheet' href='/agent/css/pdf_context_progress.css'>"
+            "<link rel='stylesheet' href='/agent/css/dialog_theme.css'>"
             "<link rel='stylesheet' href='/test.css'><button id='open'>Open</button>"
             "<button id='save-as'>Save As</button><button id='clear-context'>Clear context</button>"
             "<div><span id='context-data'>&lt;&lt;&lt;...&gt;&gt;&gt;</span></div>"
-            + markup + "<script src='/test.js'></script>"
+            + markup + "<script src='/agent/vendor/frontend/jquery/dist/jquery.min.js'></script>"
+            "<script src='/agent/vendor/frontend/jquery-ui/jquery-ui.min.js'></script>"
+            "<script src='/test.js'></script>"
             + "".join(f"<script src='/agent/js/{name}.js'></script>" for name in scripts))
     # Add both real divider elements and the real layout module around the
     # canvas; only the chat contents/services are replaced by a small fixture.
@@ -209,7 +225,9 @@ def server(tmp_path_factory):
 @pytest.fixture
 def browser_page(server):
     with sync_playwright() as playwright:
-        browser = playwright.chromium.launch(headless=os.environ.get("PDF_CANVAS_HEADED") != "1")
+        if os.environ.get("PDF_CANVAS_HEADED") == "0":
+            print("HEADLESS IS FORBIDDEN: refusing PDF_CANVAS_HEADED=0; launching visible Chrome.", flush=True)
+        browser = playwright.chromium.launch(channel="chrome", headless=False)
         context = browser.new_context(viewport={"width": 1280, "height": 960},
                                       permissions=["clipboard-read", "clipboard-write"])
         # Count genuine byte reads inside the viewer; reject external dependencies.
@@ -228,7 +246,13 @@ def browser_page(server):
         errors = []
         page.on("pageerror", lambda error: errors.append(str(error)))
         page.goto(server)
+        page.evaluate("document.title = 'Visible PDF Canvas Regression'")
+        page.bring_to_front()
+        page.wait_for_timeout(800)
+        require_visible("Visible PDF Canvas Regression")
+        page.evaluate('rotateTitle()')
         yield page
+        page.wait_for_timeout(1500)
         assert not errors, errors
         assert not external, external
         browser.close()
@@ -415,7 +439,7 @@ def test_complete_pdf_navigation_text_save_and_switching(browser_page, tmp_path)
         page.get_by_role("button", name="Save As", exact=True).click()
     assert Path(download.value.path()).read_bytes() == pdf.read_bytes()
     if os.environ.get("PDF_CANVAS_SCREENSHOT"):
-        page.screenshot(path=os.environ["PDF_CANVAS_SCREENSHOT"])
+        capture_desktop(os.environ["PDF_CANVAS_SCREENSHOT"])
     txt = tmp_path / "source.py"
     txt.write_text("print('text restored')\n", encoding="utf-8")
     choose(page, txt, "Reopen")
@@ -468,7 +492,7 @@ def test_image_option_waits_for_continue_and_caches_modes_separately(browser_pag
         expect(page).not_to_have_title(re.compile('^⏳ '))
         expect(page.locator('#pdf-context-progress-elapsed')).to_have_text('0:00')
         if os.environ.get('PDF_OPTIONS_SCREENSHOT') and dismissal == 'cancel':
-            page.screenshot(path=os.environ['PDF_OPTIONS_SCREENSHOT'])
+            capture_desktop(os.environ['PDF_OPTIONS_SCREENSHOT'])
         option.check()
         assert not calls and not requests
         if dismissal == 'cancel':
@@ -503,7 +527,7 @@ def test_image_option_waits_for_continue_and_caches_modes_separately(browser_pag
     finish_context(page, cached_text['context_token'])
 
 
-def test_progress_cancel_and_retry_with_image_warning(browser_page, tmp_path, monkeypatch):
+def test_progress_cancel_fatal_image_failure_and_successful_retry(browser_page, tmp_path, monkeypatch):
     from agent import pdf_image_analysis
     from agent.pdf_context_jobs import job_status
 
@@ -531,7 +555,7 @@ def test_progress_cancel_and_retry_with_image_warning(browser_page, tmp_path, mo
         expect(page.locator('[data-pdf-stage="extract"] output')).to_have_text('Done')
         expect(page.locator('#pdf-context-progress-elapsed')).not_to_have_text('0:00', timeout=5000)
         if os.environ.get('PDF_PROGRESS_SCREENSHOT'):
-            page.screenshot(path=os.environ['PDF_PROGRESS_SCREENSHOT'])
+            capture_desktop(os.environ['PDF_PROGRESS_SCREENSHOT'])
         page.set_viewport_size({'width': 420, 'height': 760})
         bounds = page.locator('#pdf-context-progress').bounding_box()
         assert bounds['x'] >= 0 and bounds['x'] + bounds['width'] <= 420
@@ -552,11 +576,20 @@ def test_progress_cancel_and_retry_with_image_warning(browser_page, tmp_path, mo
     while job_status(token, 7)['status'] == 'pending' and time.monotonic() < deadline:
         time.sleep(0.01)
     assert job_status(token, 7)['status'] == 'cancelled'
-    # Retry the same open PDF; the previous cancellation must not affect it.
+    # A legacy partial response now fails visibly and cannot enter context.
+    page.locator('#context-button').click()
+    continue_context(page, process_images=True)
+    expect(page.locator('#tlm-visual-fatal-errors')).to_be_visible(timeout=30000)
+    expect(page.locator('#pdf-context-progress')).not_to_be_visible()
+    expect(page.locator('#tlm-visual-fatal-errors')).to_be_visible()
+    assert not page.evaluate("sentMessages.some(m => m.type === 'set-pdf-canvas-as-context')")
+    expect(page.locator('#context-button')).to_be_enabled()
+    page.locator('.notification-error .ui-dialog-buttonpane button').click()
+    monkeypatch.setattr(pdf_image_analysis, 'create_pdf_image_analyzer',
+                        lambda: lambda path: ('Complete configured-model image analysis.', 'merged'))
     page.locator('#context-button').click()
     continue_context(page, process_images=True)
     page.wait_for_function("sentMessages.some(m => m.type === 'set-pdf-canvas-as-context')")
-    expect(page.locator('#pdf-context-progress-message')).to_contain_text('2 image analyses were incomplete')
     finish_context(page, page.evaluate('sentMessages.at(-1).context_token'))
 
 
@@ -572,11 +605,12 @@ def test_preparation_failure_stays_visible_without_changing_context(browser_page
     rendered(browser_page, 1)
     browser_page.locator('#context-button').click()
     continue_context(browser_page, process_images=True)
-    expect(browser_page.locator('#pdf-context-progress-message')).to_contain_text('configuration is unavailable')
-    expect(browser_page.locator('#pdf-context-progress-action')).to_have_text('Close')
+    expect(browser_page.locator('#tlm-visual-fatal-errors')).to_contain_text('configuration is unavailable')
+    expect(browser_page.locator('#tlm-visual-fatal-errors')).to_be_visible()
+    expect(browser_page.locator('#pdf-context-progress')).not_to_be_visible()
     expect(browser_page).not_to_have_title(re.compile('^⏳ '))
     assert not browser_page.evaluate("sentMessages.some(m => m.type === 'set-pdf-canvas-as-context')")
-    browser_page.locator('#pdf-context-progress-action').click()
+    browser_page.locator('.notification-error .ui-dialog-buttonpane button').click()
     expect(browser_page.locator('#context-button')).to_be_enabled()
     rendered(browser_page, 1)
 

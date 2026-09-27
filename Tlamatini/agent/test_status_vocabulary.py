@@ -377,11 +377,11 @@ class ReviewedStatusDecisionsTests(SimpleTestCase):
             self.assertIn(token, av.WORK_DEGRADED_STATUSES)
             self.assertEqual(av.status_class(token), av.CLASS_DEGRADED, token)
 
-    def test_fault_tolerant_paths_that_still_deliver_stay_green(self):
-        """The boundary is the DELIVERABLE, not the path taken to it."""
+    def test_legacy_visual_fallback_statuses_are_incomplete(self):
+        """Configured observers and synthesis must all complete successfully."""
         for token in ("partial_interpreter_1_only", "partial_interpreter_2_only",
                       "merge_fallback_concat"):
-            self.assertEqual(av.status_class(token), av.CLASS_COMPLETED, token)
+            self.assertEqual(av.status_class(token), av.CLASS_DEGRADED, token)
 
 
 class DegradedVerdictEndToEndTests(SimpleTestCase):
@@ -455,7 +455,7 @@ class DegradedVerdictEndToEndTests(SimpleTestCase):
                          "content must never be reported as a clean success")
         self.assertEqual(verdict.rule, "R3b.work_degraded")
 
-    def test_an_image_interpreter_partial_stays_green(self):
+    def test_an_image_interpreter_partial_is_a_failure(self):
         section = av.parse_section(
             "INI_SECTION_IMAGE_INTERPRETER<<<\n"
             "file_path: C:\\Development\\Tlamatini\\image.png\n"
@@ -465,10 +465,8 @@ class DegradedVerdictEndToEndTests(SimpleTestCase):
             ">>>END_SECTION_IMAGE_INTERPRETER"
         )
         verdict = av.evaluate(section, exit_code=0)
-        self.assertTrue(verdict.ok,
-                        "the documented fail-safe still handed back a complete "
-                        "interpretation -- that is a success, not a defect")
-        self.assertEqual(verdict.rule, "R7b.work_completed")
+        self.assertFalse(verdict.ok, "A missing configured observer is a failed analysis")
+        self.assertEqual(verdict.rule, "R3b.work_degraded")
 
 
 class RuleOrderNeutralityTests(SimpleTestCase):

@@ -10,8 +10,8 @@ directory (newest video), or Camcorder pool name. They emit one atomic
 | Mode | Processing | Routing |
 |---|---|---|
 | `robotics` (default) | OpenCV motion gate, two independent vision interpreters, merger; `expected_motion` describes the physical test | Existing `TLM_VERDICT::PASS_OK`, `FAIL_NO_MOTION`, `FAIL_WRONG_MOTION`, `UNCLEAR`, `ANALYSIS_ERROR` |
-| `transcription` | Decode selected audio tracks, transcribe with local faster-whisper, preserve timestamps; no microphone or vision calls | `TLM_ANALYSIS::TRANSCRIBED`, `NO_AUDIO`, `NO_SPEECH`, `PARTIAL`, `ERROR` |
-| `summary` | Transcription plus two independent visual observers per timestamped frame batch, then hierarchical text synthesis | `TLM_ANALYSIS::SUMMARY_COMPLETE`, `PARTIAL`, `ERROR` |
+| `transcription` | Decode selected audio tracks, transcribe with local faster-whisper, preserve timestamps; no microphone or vision calls | `TLM_ANALYSIS::TRANSCRIBED`, `NO_AUDIO`, `NO_SPEECH`, `ERROR` |
+| `summary` | Transcription plus two independent visual observers per timestamped frame batch, then hierarchical text synthesis | `TLM_ANALYSIS::SUMMARY_COMPLETE`, `ERROR` |
 
 Content modes bypass the motion gate: lectures, slides and static scenes are valid.
 They report `verdict: NOT_APPLICABLE` and an empty `verdict_token`, never a robotics
@@ -44,8 +44,9 @@ of silently choosing another track. Each selected track is decoded in bounded
 30–300 second chunks, at 16 kHz. Stream offsets and timestamp discontinuities are
 retained. Chunk boundaries can split speech; use longer chunks when context matters.
 
-The local backend follows Whisperer's GPU auto-detection and CPU/int8 fallback,
-including failures while decoding the lazy segment generator. `model` accepts a
+The local backend preserves Whisperer's GPU auto-detection and CPU/int8 recovery
+with the **same configured model**, including lazy segment decoding failures.
+The failed GPU attempt appears in the accumulated dialog while recovery continues. `model` accepts a
 faster-whisper model name or local model directory. First use may download weights.
 `language: ''` auto-detects; `task: translate` translates to English. This agent's
 transcription mode uses the local backend; Whisperer's cloud endpoint and microphone
@@ -66,7 +67,8 @@ Summary frames are uniformly distributed from start to end. `summary_max_frames`
 is clamped to 2–600 and `summary_batch_size` to 1–16; frames are resized to at most
 1280 pixels on their longest side. Reaching the cap widens sampling intervals
 instead of analyzing only the beginning. Missing frame count/rate or unreadable
-frames is reported as incomplete coverage. An unreadable sample is retried up to
+frames fails the analysis attempt if the existing bounded recovery cannot recover
+the requested samples. An unreadable sample is retried up to
 one second earlier without duplicating the previous frame; any recovered sample
 uses its decoded frame index and reports the adjusted timestamp. The existing `interpreter_model_1`,
 `interpreter_model_2`, `merging_model`, `llm.host` and `llm.token` select models and
@@ -77,8 +79,10 @@ Visual observations cover scenes, actions, objects, setting, readable on-screen
 text, slides, diagrams, numbers and transitions. The synthesis combines these
 with timestamped speech into an overview, chronology, concrete facts, procedures,
 decisions, action items, conclusions and limitations. Long evidence is reduced in
-bounded chunks, including its tail. If synthesis fails, raw observations and speech
-remain available; the agent does not claim a completed summary.
+bounded chunks, including its tail. If an observer or synthesis fails, the attempt
+reports an error; raw observations or speech alone never replace the requested
+summary. No partial success artifacts are published. Tlamatini can retry through
+its existing tactics with the configured models.
 
 This is sampled perception, not exhaustive recovery. Brief events, small text and
 unclear speech may be missed. OCR is performed by the vision models. Embedded subtitle
@@ -90,7 +94,7 @@ repeat the same content. Summary quality depends on the selected models and samp
 
 Content modes create a unique run subdirectory under `output_dir`; the default is
 `TLAMATINI_TEMP/video-analysis` (app Temp in standalone source/pool use). Existing
-files and the input video are never overwritten. Each run saves:
+files and the input video are never overwritten. Each successful run saves:
 
 - `transcript.txt`: track-tagged speech with segment timestamps.
 - `segments.json`: track, start/end, text, language, optional word timestamps.
@@ -114,8 +118,7 @@ are escaped to prevent forged sections and routing tokens; artifact text is orig
 | Completed transcript | `transcribed` | `transcribed` |
 | No audio tracks / no detected speech | `no_matches` | `no_audio` / `no_speech` |
 | Completed summary (silent videos are valid) | `analyzed` | `transcribed`, `no_audio` or `no_speech` |
-| Some evidence missing or synthesis failed | `partial` | `partial`, `error`, or the completed audio outcome |
-| No useful requested analysis | `error` | `error` where applicable |
+| Requested evidence, configured model or synthesis failed | `error` | `error` where applicable |
 
 Parametrizer's source choices come from `services/agent_contracts.py` and the generated
 FlowCreator catalog. The generic parser handles all three modes. Example mappings:
@@ -127,7 +130,7 @@ FlowCreator catalog. The generic parser handles all three modes. Example mapping
 
 Keep Parametrizer's one-source/one-target rule and configure `analysis_type` on the
 target Video-Analyzer. Use `analysis_token` for content flow branching, including
-partial/error routes; a content flow must not wait for `TLM_VERDICT::PASS_OK`.
+error/recovery routes; a content flow must not wait for `TLM_VERDICT::PASS_OK`.
 
 The wrapped `chat_agent_video_analyzer` tool promotes fields to its result. Process
 `status` and semantic `agent_status` remain distinct. Promotion reads the completed
@@ -138,8 +141,8 @@ the full values. Parametrizer's on-disk log retains the full fields.
 
 ## Runtime and validation
 
-The flat `video_content.py` sibling ships with new pools and is refreshed into
-existing pools. No `agent.*`/Django import is required. PyAV is explicitly pinned
+The flat `video_content.py` sibling and shared `visual_errors.py` helper ship with
+new pools and are refreshed into existing pools. No `agent.*`/Django import is required. PyAV is explicitly pinned
 and included in build import/asset checks; its FFmpeg libraries decode tracks
 without an external executable. OpenCV is only needed for visual analysis.
 
@@ -147,6 +150,9 @@ Transcription cost scales with the duration and number of selected tracks and
 model/device speed. Summaries add two vision calls per frame batch plus evidence
 reduction and final synthesis. `AUDIO:` and `SUMMARY:` logs identify stage progress;
 weight downloads and CPU decoding can take longer than a robotics test.
+
+Run every command below in a verified visible foreground console kept open with
+PowerShell `-NoExit`; monitor the live output. Headless execution is forbidden.
 
 Offline regressions: `python -m unittest Tlamatini.agent.test_video_analyzer_content`.
 Original robotics/integration tests: `python Tlamatini/manage.py test agent.test_video_analyzer_agent`.
@@ -164,16 +170,17 @@ replacement is `gemma4:cloud`; all three choices now come from Config → Models
 unless an explicit agent override is supplied. These checks establish execution and
 integration, not exhaustive accuracy for every video, language or model.
 
-## Model configuration and partial coverage
+## Model configuration and accumulated errors
 
-The visual models use `"@config"` in YAML and follow Config → Models → Vision.
+The visual models use "@config" in YAML and follow Config → Models → Vision.
 The local transcription model follows Speech → Video-Analyzer audio tracks.
-Explicit per-agent model names override the global choice. Permanent observer
-errors (HTTP 401/403/404/410) stop further calls to that observer in the current
-summary run. The healthy observer continues; status remains `partial`. The JSON
-report records `visual_coverage`: frames covered by any observer, frames covered
-by both, and per-observer failed/skipped batches. Robotics keeps its conservative
-verdict checks. See [model configuration](../../../../docs/model_configuration.md).
+Explicit per-agent model names override the global choice. Any configured model
+failure, including HTTP 401/403/404/410, rejects the attempt and accumulates a
+visible fatal error. Keep both observers and the merger; never replace them,
+accept a surviving observer, or concatenate raw output as success. Tlamatini's
+retry tactics and configured downstream recovery routes remain active.
+See [model configuration](../../../../docs/model_configuration.md) and
+[error reporting and recovery](../../../../docs/visual-analysis-errors.md).
 
 Saving central model settings affects the next configuration load; restart an
 already running agent if needed. Wrapped chat uses global model choices followed

@@ -240,12 +240,12 @@ timestamped audio tracks and `summary` combines speech with sampled visual evide
 
 The former `qwen3-vl:235b-cloud` selection returned HTTP 410 with an explicit
 retirement message on 2026-09-20. HTTP errors retain model, status and server
-explanation. During summaries, observer failures with 401, 403, 404 or 410 disable
-that observer for the remaining batches of **that run**. The healthy observer
-continues, the result remains `partial`, and `visual_coverage` distinguishes frames
-seen by any observer from frames seen by both, including failed/skipped batches.
-Transient failures do not disable later batches. Robotics keeps conservative
-verdict rules: missing evidence cannot become `PASS_OK`.
+explanation. Any configured observer or merger failure rejects that analysis attempt
+and appears in the accumulated fatal-error dialog. No observer is silently dropped,
+no model is substituted, and raw notes never replace a completed synthesis.
+Tlamatini keeps its existing retries, recovery tactics and flow routing; a new
+attempt uses the configured models. A retired model requires an explicit user
+configuration change. Missing evidence cannot become `PASS_OK`.
 
 | Symptom | Action |
 |---|---|
@@ -295,3 +295,7 @@ saved Talker voice `jess`, confirmed the actual loader read it, restored `tara`,
 and reconnected chat. These are dated checks, not a claim that every model service
 or all 89 agents' external actions were exercised. See
 [verification evidence](model-configuration-verification.md).
+
+## Image/video error reporting and recovery (2026-09-26)
+
+Image/video model failures accumulate in one shared, themed, non-modal fatal-error dialog with an audible notification. Tlamatini keeps running: preserve its retry/tactic ladder, cancellation controls and configured flow recovery routes. Keep the configured model identities; never report a surviving observer or raw concatenation as successful analysis. Dismiss hides the dialog while retaining its history; new failures reopen it. See [the shared behavior and verification contract](visual-analysis-errors.md).

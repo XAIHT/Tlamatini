@@ -16,13 +16,31 @@
 
 ---
 
+## 2026-09-26 — Strict visual results, accumulated dialogs, uninterrupted recovery
+
+Image/video attempts reject failed observers, failed merges, incomplete streams
+and invented verdict/confidence. One shared themed non-modal dialog accumulates
+errors, sounds the existing notification and keeps history after Dismiss. PDF
+image preparation releases its native modal before showing the error and never
+loads partial visual context. The titlebar close button is 32 pixels with an
+icon only; its accessible name and the readable footer Dismiss remain intact.
+
+Tlamatini's retry/tactic ladder, cancellation, watchdog and configured downstream
+recovery routes are preserved. CUDA-to-CPU recovery uses the same Whisper model;
+bounded nearby-frame recovery retains truthful timestamps. Fatal means this
+attempt failed, never shutdown of Tlamatini. See
+[the contract and verification scope](../visual-analysis-errors.md). Verified in
+visible foreground runs on 2026-09-27: 444 automated tests and 60 browser checks
+passed. Provider responses were controlled; live inference accuracy and a frozen
+rebuild were not part of this verification.
+
 ## 2026-09-26 — PDF context: Image-Interpreter received the model name "@config"
 
 **Symptom.** Context ▸ PDF canvas with *Process images* on: the dialog finished in ~25 s, but all 12 page images failed and the loaded context carried no visual analysis. Every `*.analysis.txt` read `[@config] ... HTTP Error 400: Bad Request` for BOTH interpreters.
 
 **Root cause.** `agent/pdf_image_analysis.py` read `agents/image_interpreter/config.yaml` with a raw `yaml.safe_load`. Since the central model registry, that template ships `interpreter_model_1/2` and `merging_model` as `"@config"`, and nothing resolved them — so the literal string `@config` was sent to Ollama as the model name.
 
-**Fix.** Resolve the template through `agents.model_settings.resolve_agent_models('image_interpreter', config, model_config)` with values from `config_loader.get_config_value` — the same source the wrapped chat launcher uses (`tools.py`), and a compiled import that works frozen. `force=False`, so a concrete per-agent model in the YAML still wins. Regression test: `test_pdf_context.py::test_template_config_models_follow_config_models_instead_of_sending_at_config` (a template with `@config` must reach the fake Ollama as real names, never `@config`). Verified live on a real page: `partial_interpreter_2_only`, 159 s.
+**Fix.** Resolve the template through `agents.model_settings.resolve_agent_models('image_interpreter', config, model_config)` with values from `config_loader.get_config_value` — the same source the wrapped chat launcher uses (`tools.py`), and a compiled import that works frozen. `force=False`, so a concrete per-agent model in the YAML still wins. Regression test: `test_pdf_context.py::test_template_config_models_follow_config_models_instead_of_sending_at_config` (a template with `@config` must reach the fake Ollama as real names, never `@config`). Historical verification on a real page: `partial_interpreter_2_only`, 159 s. **Superseded on 2026-09-26:** this partial result is now a failed attempt with an accumulated fatal dialog; it cannot be loaded as successful visual context.
 
 **Do NOT** read an agent template's YAML from web code without passing it through `resolve_agent_models` — any registered model field can be `@config`.
 
@@ -439,9 +457,10 @@ The command executes before packaging and is required in self-modify snapshots.
 Source/frozen/installed evidence and scope are in
 [the verification record](../model-configuration-verification.md).
 
-Video summaries retain model/status/body for HTTP failures. Permanent observer
-401/403/404/410 failures disable that observer for that run and leave partial
-coverage; healthy observers continue. Robotics still needs two explicit passes.
+Video summaries retain model/status/body for HTTP failures. The historical
+observer-disable/partial-output policy in this entry was superseded on 2026-09-26:
+any configured observer failure rejects the attempt and accumulates a fatal dialog;
+Tlamatini retries and configured recovery routes continue with the same models.
 
 ## 2026-09-19 — Video-Analyzer audio tracks and comprehensive summaries
 

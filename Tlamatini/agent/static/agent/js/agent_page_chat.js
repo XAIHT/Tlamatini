@@ -2319,6 +2319,10 @@ chatSocket.onmessage = function (e) {
     // stays a self-contained IIFE with NO cross-file global. Fire-and-forget:
     // the gauge is never allowed to affect the chat, so this returns straight
     // away and any failure inside the gauge is the gauge's own problem.
+    if (data.type === 'visual-analysis-error') {
+        window.SharedRuntimeDialogs.renderFatalError(data.detail || {});
+        return;
+    }
     if (data.type === 'context-gauge') {
         try {
             document.dispatchEvent(new CustomEvent('tlm:context-gauge', {

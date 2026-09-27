@@ -27,6 +27,54 @@
     // page-load session. Keyed by the same identifier the caller uses (canvas
     // id for ACP, runtime name for chat).
     const submittedAskerRequests = new Set();
+    const fatalErrors = new Map();
+    let fatalDialog = null;
+
+    // One accumulating, non-blocking dialog. Reporting must never cancel a run,
+    // pause a worker, or change the executor's retry/tactic state.
+    function renderFatalError(error) {
+        if (!error) return;
+        const id = error.id || error.error_id;
+        if (id && fatalErrors.has(id)) return;
+        const key = id || `visual-error-${Date.now()}-${fatalErrors.size}`;
+        fatalErrors.set(key, error);
+        if (!fatalDialog) {
+            fatalDialog = document.createElement('div');
+            fatalDialog.id = 'tlm-visual-fatal-errors';
+            const explanation = document.createElement('p');
+            explanation.textContent = 'Image/video analysis failures. Tlamatini remains active; its retry and recovery tactics continue.';
+            fatalDialog.appendChild(explanation);
+            const entries = document.createElement('ol');
+            entries.className = 'tlm-visual-fatal-error-list';
+            entries.setAttribute('aria-live', 'assertive');
+            fatalDialog.appendChild(entries);
+            document.body.appendChild(fatalDialog);
+            $(fatalDialog).dialog({
+                autoOpen: false, modal: false, width: 640, maxHeight: 600,
+                resizable: true, draggable: true, closeText: 'Dismiss',
+                dialogClass: 'notification-dialog-class notification-error',
+                buttons: { 'Dismiss': function () { $(this).dialog('close'); } },
+                position: { my: 'center', at: 'center', of: window }
+            });
+        }
+        const entry = document.createElement('li');
+        const heading = document.createElement('strong');
+        heading.textContent = `FATAL — ${error.source_agent || error.runtime_name || 'Image/video analysis'}`;
+        entry.appendChild(heading);
+        const detail = document.createElement('p');
+        detail.style.whiteSpace = 'pre-wrap';
+        detail.style.overflowWrap = 'anywhere';
+        detail.textContent = error.message || error.outcome_detail || 'The configured analysis failed.';
+        entry.appendChild(detail);
+        fatalDialog.querySelector('ol').appendChild(entry);
+        $(fatalDialog).dialog('option', 'title', `Fatal analysis errors (${fatalErrors.size})`);
+        $(fatalDialog).dialog('open');
+        flashTlamatiniWindow('notification');
+        try {
+            const sound = new Audio('/static/agent/sounds/notification.wav');
+            sound.play().catch(() => {});
+        } catch (_error) { /* The visible dialog remains the primary alert. */ }
+    }
 
     function escapeHtmlShared(str) {
         const div = document.createElement('div');
@@ -73,6 +121,10 @@
      */
     function renderNotifierToast(notification) {
         if (!notification) return;
+        if (notification.kind === 'fatal_visual_error') {
+            (notification.errors || [notification]).forEach(renderFatalError);
+            return;
+        }
         // Flash the Tlamatini.exe taskbar button + log banner. The backend
         // dedupes notifications (notification.json is deleted after one read),
         // so this fires exactly once per notification.
@@ -283,6 +335,7 @@
     }
 
     root.SharedRuntimeDialogs = {
+        renderFatalError: renderFatalError,
         renderNotifierToast: renderNotifierToast,
         renderAskerChoiceDialog: renderAskerChoiceDialog,
         escapeHtml: escapeHtmlShared,

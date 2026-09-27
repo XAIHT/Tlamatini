@@ -3225,6 +3225,15 @@ def _launch_wrapped_chat_agent(spec, request, *, auto_diagnose=True):
         )
         payload["retryable"] = False
         payload["needs_observation"] = True
+    elif run.status == "failed" and spec.template_dir in {"image_interpreter", "video_analyzer"}:
+        payload["message"] = (
+            f"{spec.display_name} reported a fatal analysis error for this attempt. "
+            "The accumulated error dialog contains the failure. Continue Tlamatini's "
+            "existing retry and recovery tactics with the configured models. "
+            "Do not substitute models, omit a failed observer, or treat partial/raw output as success. "
+            "Read log_excerpt for the cause; preserve the configured model identities."
+        )
+        payload["retryable"] = True
     elif run.status == "failed":
         payload["message"] = (
             f"{spec.display_name} FAILED with a non-zero exit (exit_code={run.exitCode}). "
@@ -3256,7 +3265,13 @@ def _build_wrapped_chat_agent_tool(spec):
         return cached
 
     def _runner(request: str) -> str:
-        return _launch_wrapped_chat_agent(spec, request)
+        result = _launch_wrapped_chat_agent(spec, request)
+        if spec.template_dir in {'image_interpreter', 'video_analyzer'}:
+            payload = json.loads(result)
+            if payload.get('status') == 'error':
+                from .visual_error_reporting import report_visual_error
+                report_visual_error(spec.display_name, payload.get('message', 'Analysis could not start'))
+        return result
 
     _runner.__name__ = spec.tool_name
     description = (

@@ -1,6 +1,7 @@
 """Regenerate/check the standalone agent catalog and its documentation inventory.
 
-Run from any directory with the repository's Python environment:
+Run in a verified visible foreground PowerShell -NoExit console with the
+repository's Python environment; keep the console open and monitor the output:
     python scripts/update_flow_catalog.py [--check]
 No application startup, agent execution, or network access is required.
 """
@@ -32,6 +33,9 @@ def render_inventory(catalog):
         "canonical name, aliases, connection slots, lifecycle flags, and declared structured output fields. "
         "Field types are inferred from templates; they are not a complete semantic validator. "
         "No template values or credentials are exported. GUI-Manager remains a design and is excluded.", "",
+        "Image/video failures accumulate in the shared themed fatal-error dialog. Configured models stay fixed; "
+        "Tlamatini's existing retry tactics and downstream recovery routes remain active. "
+        "See [visual analysis errors](visual-analysis-errors.md) for the complete contract.", "",
         "FlowCreator selects from the entire catalog, then receives detailed reference and schema for the selected types. "
         "Deployment refreshes the catalog for FlowCreator, FlowHypervisor, and Parametrizer. "
         "This coverage demonstrates discoverability and contract coverage, not successful live execution of every possible workflow.", "",

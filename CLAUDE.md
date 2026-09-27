@@ -962,3 +962,7 @@ template path from a frozen service's synthetic `__file__`. Both modes honor
 `check_agent_runtimes` prepares all templates, executes model loaders, refreshes
 helpers/catalogs and runs a harmless File-Creator check before packaging. See
 [dated execution evidence](docs/model-configuration-verification.md).
+
+## Image/video error reporting and recovery (2026-09-26)
+
+Image/video model failures accumulate in one shared, themed, non-modal fatal-error dialog with an audible notification. Tlamatini keeps running: preserve its retry/tactic ladder, cancellation controls and configured flow recovery routes. Keep the configured model identities; never report a surviving observer or raw concatenation as successful analysis. Dismiss hides the dialog while retaining its history; new failures reopen it. See [the shared behavior and verification contract](docs/visual-analysis-errors.md).

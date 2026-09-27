@@ -149,9 +149,6 @@ WORK_COMPLETED_STATUSES = frozenset({
     "spoken", "played", "recorded", "captured", "transcribed",
     # liveness / lifecycle probes
     "pong", "healthy", "connected", "started", "stopped",
-    # fault-tolerant paths whose DELIVERABLE is still whole
-    "partial_interpreter_1_only", "partial_interpreter_2_only",
-    "merge_fallback_concat",
 })
 
 #: The agent produced SOMETHING, but the DELIVERABLE is COMPROMISED or ABSENT.
@@ -182,6 +179,8 @@ WORK_DEGRADED_STATUSES = frozenset({
     "operator_required",      # parked pending a human -- the work has not happened
     "assert_failed",          # Playwrighter: the flow's own assertion did not hold
     "partial", "partial_success", "incomplete",
+    # Legacy visual results are incomplete, never successful model recovery.
+    "partial_interpreter_1_only", "partial_interpreter_2_only", "merge_fallback_concat",
 })
 
 #: The agent behaved CORRECTLY but the work the user asked for did NOT happen.

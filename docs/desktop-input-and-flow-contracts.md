@@ -118,3 +118,7 @@ empty Whisperer cloud model and LaTeXer repair model values have distinct meanin
 Video `analysis_type` remains a per-agent task choice; its local audio model is
 separate from Whisperer's engine. See [model configuration](model_configuration.md) and the current
 generated flow catalog for exact field paths and defaults.
+
+## Image/video error reporting and recovery (2026-09-26)
+
+Image/video model failures accumulate in one shared, themed, non-modal fatal-error dialog with an audible notification. Tlamatini keeps running: preserve its retry/tactic ladder, cancellation controls and configured flow recovery routes. Keep the configured model identities; never report a surviving observer or raw concatenation as successful analysis. Dismiss hides the dialog while retaining its history; new failures reopen it. See [the shared behavior and verification contract](visual-analysis-errors.md).

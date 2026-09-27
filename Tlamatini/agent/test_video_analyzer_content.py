@@ -79,7 +79,7 @@ class ContentTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         self.clip = self.root / 'two tracks.mkv'
         make_clip(self.clip)
-        self.config = {'audio_tracks': 'all', 'output_dir': str(self.root / 'outputs'), 'transcription': {'device': 'cpu'}}
+        self.config = {'audio_tracks': 'all', 'output_dir': str(self.root / 'outputs'), 'transcription': {'device': 'cpu', 'model': 'base'}}
         self.pipeline = {'host': 'unused', 'token': '', 'model_1': 'a', 'model_2': 'b', 'merging_model': 'm'}
 
     def fake_transcribe(self, samples):
@@ -139,9 +139,8 @@ class ContentTests(unittest.TestCase):
         result = self.run_content()
         self.assertEqual({s['track'] for s in result['segments']}, {1})
         self.config['audio_tracks'] = '2'
-        result = self.run_content()
-        self.assertEqual(result['status'], 'error')
-        self.assertIn('unavailable track', result['warnings'][0])
+        with self.assertRaisesRegex(ValueError, 'unavailable track'):
+            self.run_content()
 
     def test_static_video_summary_bypasses_robotics_gate(self):
         self.config.update(motion_gate=True, motion_threshold=100, expected_motion='servo must move')
@@ -174,39 +173,41 @@ class ContentTests(unittest.TestCase):
         self.assertEqual(result['audio_track_count'], 2)
         self.assertEqual(result['analysis_token'], 'TLM_ANALYSIS::NO_SPEECH')
 
-    def test_partial_audio_preserves_successful_track_and_error_status(self):
+    def test_failed_audio_track_rejects_attempt_without_summary(self):
+        calls = []
         def fail_second(samples):
             if samples.mean() > .05:
                 raise RuntimeError('decoder failure')
             return self.fake_transcribe(samples)
         with patch.object(content.Transcriber, 'transcribe', side_effect=fail_second):
-            result = content.run_content_analysis(str(self.clip), 'summary', self.config, self.pipeline, model_call)
-        self.assertEqual(result['status'], 'partial')
-        self.assertEqual(result['audio_tracks_analyzed'], 1)
-        self.assertEqual(result['audio_status'], 'partial')
-        self.assertIn('Signal', result['transcript'])
+            with self.assertRaisesRegex(RuntimeError, 'decoder failure'):
+                content.run_content_analysis(str(self.clip), 'summary', self.config, self.pipeline, lambda *args: calls.append(args))
+        self.assertEqual(calls, [])
 
-    def test_one_vision_failure_is_partial_even_when_merger_succeeds(self):
+
+    def test_one_vision_failure_never_calls_merger(self):
+        calls = []
         def fail_one(*args, **kwargs):
+            calls.append(args)
             if args[4].endswith('model_2'):
                 raise RuntimeError('offline')
             return model_call(*args, **kwargs)
-        result = self.run_content('summary', fail_one)
-        self.assertEqual(result['status'], 'partial')
-        self.assertIn('Overview:', result['summary'])
+        with self.assertRaisesRegex(RuntimeError, 'observer 2.*offline'):
+            self.run_content('summary', fail_one)
+        self.assertFalse(any(c[2] == 'm' for c in calls))
 
-    def test_merger_failure_preserves_transcript_and_observations(self):
+
+    def test_merger_failure_never_returns_raw_observations_as_summary(self):
         def fail_merge(*args, **kwargs):
             if args[4] == 'SUMMARY-FINAL':
                 raise RuntimeError('offline')
             return model_call(*args, **kwargs)
-        result = self.run_content('summary', fail_merge)
-        self.assertEqual(result['status'], 'partial')
-        self.assertEqual(result['summary'], '')
-        self.assertTrue(result['visual_observations'])
-        self.assertIn('Signal', Path(result['report_path']).read_text())
+        with self.assertRaisesRegex(RuntimeError, 'offline'):
+            self.run_content('summary', fail_merge)
+        self.assertFalse((self.root / 'outputs').exists())
 
-    def test_retired_observer_stops_after_one_failure_and_coverage_is_explicit(self):
+
+    def test_retired_observer_never_produces_partial_success(self):
         import urllib.error
         self.config.update(summary_batch_size=1, summary_frame_interval=1)
         calls = []
@@ -215,19 +216,13 @@ class ContentTests(unittest.TestCase):
             if args[2] == 'a':
                 raise urllib.error.HTTPError('unused', 410, 'retired', {}, None)
             return model_call(*args, **kwargs)
-        result = self.run_content('summary', fail_retired)
-        self.assertEqual(sum(call[2] == 'a' for call in calls), 1)
-        coverage = result['visual_coverage']
-        self.assertEqual(coverage['frames_with_any_observer'], result['frames_requested'])
-        self.assertEqual(coverage['frames_with_both_observers'], 0)
-        self.assertGreater(coverage['observers'][0]['batches_skipped'], 0)
-        self.assertEqual(result['status'], 'partial')
-        saved = json.loads(Path(result['analysis_path']).read_text(encoding='utf-8'))
-        self.assertEqual(saved['visual_coverage'], coverage)
-        self.assertIn('covered by at least one observer', result['summary'])
+        with self.assertRaisesRegex(RuntimeError, 'retired'):
+            self.run_content('summary', fail_retired)
+        self.assertEqual(sum(c[2] == 'a' for c in calls), 1)
+        self.assertFalse(any(c[2] == 'm' for c in calls))
 
-    def test_transient_failure_does_not_disable_observer(self):
-        self.config.update(summary_batch_size=1, summary_frame_interval=1)
+
+    def test_caller_can_retry_same_models_after_failed_attempt(self):
         calls = []
         def fail_once(*args, **kwargs):
             if args[2] == 'a':
@@ -235,11 +230,12 @@ class ContentTests(unittest.TestCase):
                 if len(calls) == 1:
                     raise RuntimeError('temporary timeout')
             return model_call(*args, **kwargs)
+        with self.assertRaisesRegex(RuntimeError, 'temporary timeout'):
+            self.run_content('summary', fail_once)
         result = self.run_content('summary', fail_once)
-        self.assertGreater(len(calls), 1)
-        observer = result['visual_coverage']['observers'][0]
-        self.assertEqual(observer['batches_skipped'], 0)
-        self.assertEqual(observer['disabled_reason'], '')
+        self.assertEqual(result['status'], 'analyzed')
+        self.assertEqual(result['vision_models'], ['a', 'b'])
+
 
     def test_chunked_reduction_keeps_end_of_long_transcript(self):
         transcript = ('A concrete fact at 1.0s.\n' * 2000) + 'END_FACT_999'
@@ -337,17 +333,21 @@ class IntegrationTests(unittest.TestCase):
         self.assertNotIn('TLM_VERDICT::', log)
         self.assertIn('TLM-VERDICT::PASS_OK', fields[0]['response_body'])
 
-    def test_content_main_errors_always_emit_and_trigger_downstream(self):
+    def test_content_main_reports_failed_attempt_and_preserves_recovery_routing(self):
         for mode, path in [('transcription', ''), ('summary', 'missing.mp4'), ('bad_mode', 'anything')]:
             with (self.subTest(mode=mode),
                   patch.object(self.agent, 'load_config', return_value={'analysis_type': mode, 'video_pathfilenames': path,
                                                                       'target_agents': ['ender_1']}),
+                  patch.object(self.agent, '_configure_agent_runtime'),
+                  patch.object(self.agent, 'report_fatal_error') as report_error,
                   patch.object(self.agent, 'write_pid_file'), patch.object(self.agent, 'remove_pid_file') as remove,
                   patch.object(self.agent, 'wait_for_agents_to_stop'),
                   patch.object(self.agent, 'start_agent', return_value=True) as start,
                   patch.object(self.agent.time, 'sleep'), patch.object(self.agent, 'emit_content_result') as emit):
-                with self.assertRaises(SystemExit):
+                with self.assertRaises(SystemExit) as exit_result:
                     self.agent.main()
+                self.assertEqual(exit_result.exception.code, 1)
+                report_error.assert_called_once()
                 self.assertEqual(emit.call_args.args[1]['status'], 'error')
                 start.assert_called_once_with('ender_1')
                 remove.assert_called_once()
@@ -360,15 +360,15 @@ class IntegrationTests(unittest.TestCase):
             return {'CONNECTION-A': 'FRAME_VERDICT: PASS_OK', 'CONNECTION-B': 'looks fine without a verdict',
                     'CONNECTION-MERGE': 'FINAL_VERDICT: PASS_OK\nCONFIDENCE: 0.99'}[args[4]]
         with patch.object(self.agent, '_call_ollama_chat', side_effect=call):
-            _, verdict, _, _ = self.agent.analyze_video_dual([{'timestamp': 0, 'b64': 'a'}], pipeline)
-        self.assertEqual(verdict, 'UNCLEAR')
+            with self.assertRaises(self.agent.VideoAnalyzerFatal):
+                self.agent.analyze_video_dual([{'timestamp': 0, 'b64': 'a'}], pipeline)
 
     def test_gpu_generator_failure_retries_cpu_once(self):
         attempted = []
         class Model:
             def __init__(self, model, device, compute_type):
                 self.device = device
-                attempted.append((device, compute_type))
+                attempted.append((model, device, compute_type))
             def transcribe(self, audio, **kwargs):
                 def segments():
                     if self.device == 'cuda':
@@ -376,9 +376,9 @@ class IntegrationTests(unittest.TestCase):
                     yield SimpleNamespace(text='hello')
                 return segments(), SimpleNamespace(language='en')
         with patch.dict(sys.modules, {'faster_whisper': SimpleNamespace(WhisperModel=Model)}):
-            engine = content.Transcriber({'device': 'cuda'})
+            engine = content.Transcriber({'device': 'cuda', 'model': 'configured-whisper'})
             segments, _ = engine.transcribe(np.zeros(16000, dtype=np.float32))
-        self.assertEqual(attempted, [('cuda', 'float16'), ('cpu', 'int8')])
+        self.assertEqual(attempted, [('configured-whisper', 'cuda', 'float16'), ('configured-whisper', 'cpu', 'int8')])
         self.assertEqual(segments[0].text, 'hello')
 
     def test_parametrizer_applies_content_and_nested_target_mappings(self):

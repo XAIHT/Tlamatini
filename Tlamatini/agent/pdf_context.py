@@ -137,11 +137,14 @@ def prepare_pdf_context(upload, user_id, password="", *, process_images=False,
                         raise PdfContextError(
                             f'{error} (image {number} of {len(artifacts)}: {artifact.name}). '
                             'The PDF context was NOT loaded.') from error
+                    finally:
+                        # Honour Cancel received while the model was running,
+                        # including when that in-flight attempt fails.
+                        check_cancelled()
                     if status != 'merged':
                         raise PdfContextError(
                             f'FATAL: Image-Interpreter returned "{status}" for image {number} of '
                             f'{len(artifacts)} ({artifact.name}). The PDF context was NOT loaded.')
-                    check_cancelled()
                     report = artifact.with_suffix(artifact.suffix + '.analysis.txt')
                     report.write_text(f'Source image: {artifact}\nStatus: {status}\n\n{description}', encoding='utf-8')
                     text.write(f'\nSource image: {artifact}\nAnalysis report: {report}\nStatus: {status}\n{description}\n')

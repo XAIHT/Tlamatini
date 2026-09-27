@@ -22,9 +22,10 @@
 - A saved model choice affects the next load. Existing literal YAML overrides and
   explicit tool arguments can intentionally differ. A global fallback to Unified
   applies only while the dedicated key is missing/blank, not after a dedicated save.
-- HTTP 410 requires inspecting the provider's retirement message and choosing an
-  available model. Summary observer 401/403/404/410 failures remain partial and
-  disable that observer only for that run; do not turn missing evidence into PASS.
+- Image/video model failures reject the attempt and accumulate a themed fatal
+  error without stopping Tlamatini or its retry/flow recovery tactics. Keep the
+  configured models. HTTP 410 requires an explicit user configuration change;
+  never turn a missing observer, raw notes or missing evidence into success.
 
 Read [model configuration](../model_configuration.md) and run `check_agent_runtimes`
 in source and frozen modes; file inclusion alone does not prove execution.
@@ -182,3 +183,7 @@ From `NEW_AGENT_RECOMMENDATIONS.md`:
 - Only ask for confirmation on truly ambiguous architectural decisions
 - The developer values robustness ("bullet-proof") and uniformity in system design
 - Comfortable with large cross-cutting changes (16+ files in one session)
+
+## Image/video error reporting and recovery (2026-09-26)
+
+Image/video model failures accumulate in one shared, themed, non-modal fatal-error dialog with an audible notification. Tlamatini keeps running: preserve its retry/tactic ladder, cancellation controls and configured flow recovery routes. Keep the configured model identities; never report a surviving observer or raw concatenation as successful analysis. Dismiss hides the dialog while retaining its history; new failures reopen it. See [the shared behavior and verification contract](../visual-analysis-errors.md).

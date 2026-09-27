@@ -14,6 +14,23 @@ import requests
 from langchain_core.tools import tool
 from .converter import convert_image_to_base64
 from typing import Dict
+from functools import wraps
+from ..visual_error_reporting import report_visual_error
+
+
+def _report_visual_tool_errors(function):
+    @wraps(function)
+    def invoke(*args, **kwargs):
+        try:
+            result = function(*args, **kwargs)
+        except Exception as error:
+            result = f'Error: {error}'
+        if not isinstance(result, str) or not result.strip():
+            result = 'Error: Configured image model returned an empty response.'
+        if result.lstrip().startswith('Error'):
+            report_visual_error(function.__name__, result)
+        return result
+    return invoke
 
 
 def _extract_image_metadata(image_path: str) -> Dict:
@@ -113,6 +130,7 @@ def _get_config():
     return {}
 
 @tool
+@_report_visual_tool_errors
 def opus_analyze_image(image_path: str = None, prompt: str = "Describe this image in detail.") -> str:
     """
     Analyzes and describes with Opus model the details of an image and returns a description based on the prompt using this tool.
@@ -197,7 +215,10 @@ def opus_analyze_image(image_path: str = None, prompt: str = "Describe this imag
         enriched_prompt = f"[System Context]\n{system_context}\n\n[User Request]\n{prompt}"
 
         # Create the Claude client with the API key from config
-        client = ClaudeClient(api_key=api_key, model=config.get("claude_image_model") or "claude-opus-4-5-20251101")
+        model = str(config.get("claude_image_model") or "").strip()
+        if not model or model == '@config':
+            raise ValueError('Configure claude_image_model before interpreting images')
+        client = ClaudeClient(api_key=api_key, model=model)
 
         # Use chat_with_image to analyze the image (same pattern as example_image_analysis)
         response = client.chat_with_image(
@@ -218,6 +239,7 @@ def opus_analyze_image(image_path: str = None, prompt: str = "Describe this imag
         return f"Error analyzing image: {str(e)}"
 
 @tool
+@_report_visual_tool_errors
 def qwen_analyze_image(image_path: str = None, prompt: str = "Describe this image in detail.") -> str:
     """
     Analyzes and describes with Qwen model the details of an image and returns a description based on the prompt using this tool.
@@ -256,7 +278,9 @@ def qwen_analyze_image(image_path: str = None, prompt: str = "Describe this imag
     except Exception as e:
         return f"Error loading config: {str(e)}"
     base_url = config.get("image_interpreter_base_url", "http://localhost:11434").rstrip('/')
-    model = config.get("image_interpreter_model", "llama3.2-vision:11b")
+    model = str(config.get("image_interpreter_model") or "").strip()
+    if not model or model == '@config':
+        return 'Error: Configure image_interpreter_model before interpreting images'
     
     target_image_path = image_path
     if not target_image_path:
@@ -335,27 +359,24 @@ def qwen_analyze_image(image_path: str = None, prompt: str = "Describe this imag
         full_description = []
         print("--- [Image Interpreter] Streaming Response: ---")
         
-        for line in response.iter_lines():
-            if line:
-                try:
-                    json_chunk = json.loads(line.decode('utf-8'))
-                    content = ""
-                    if "message" in json_chunk:
-                        content = json_chunk["message"].get("content", "")
-                    elif "response" in json_chunk:
-                        content = json_chunk.get("response", "")
-                    
-                    if content:
-                        print(content, end="", flush=True)
-                        
-                    full_description.append(content)
-                    
-                    if json_chunk.get("done", False):
-                        print("\n--- [Image Interpreter] Stream Complete ---\n")
-                except json.JSONDecodeError:
+        done = False
+        try:
+            for line in response.iter_lines():
+                if not line.strip():
                     continue
-
-        return "".join(full_description)
+                record = json.loads(line.decode('utf-8'))
+                if not isinstance(record, dict) or record.get('error'):
+                    raise ValueError(f'Image model {model!r} failed: {record}')
+                content = record.get('message', {}).get('content', record.get('response', ''))
+                full_description.append(content)
+                if record.get('done'):
+                    done = True
+                    break
+            if not done:
+                raise ValueError(f'Image model {model!r} stream ended before completion')
+            return ''.join(full_description).strip()
+        finally:
+            response.close()
     except requests.exceptions.Timeout:
         # Covers ConnectTimeout AND ReadTimeout (a stalled stream). Caught
         # BEFORE ConnectionError because requests' ConnectTimeout subclasses

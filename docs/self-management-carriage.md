@@ -213,3 +213,13 @@ its location. It does not start Django or invoke a build.
   after old application deletion can still require reinstalling; the DB,
   preserved state, agents backup and uniquely stashed evidence are separate
   recovery safeguards, not a rollback guarantee.
+
+
+## Accumulated visual errors (2026-09-27)
+
+Release assets require `agents/visual_errors.py` and `docs/visual-analysis-errors.md`.
+Self-modify snapshots also require `visual_error_reporting.py`, the error regression
+suite, visible browser harness and forward prompt-contract migration. Portable
+image/video runtime refresh copies the shared notification helper. These support
+accumulated themed errors without changing retries or configured recovery routes.
+See [the behavior and verification record](visual-analysis-errors.md).

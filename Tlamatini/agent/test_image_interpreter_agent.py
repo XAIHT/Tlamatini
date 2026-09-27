@@ -24,9 +24,8 @@ Covered here against REAL code (no mocking of the thing under test):
     streams NDJSON) counts simultaneous in-flight requests and MUST see 2.
   * BARRIER ordering — the merge request reaches the server only after
     BOTH interpreter requests completed.
-  * Fail-safe degradation — partial_interpreter_1_only /
-    partial_interpreter_2_only / merge_fallback_concat / error statuses,
-    driven through REAL HTTP 500s, not stubs.
+  * Configured-model failures reject the attempt with a fatal error,
+    driven through REAL HTTP 500s; recovery remains the caller's responsibility.
   * Registry / contract integration — ChatWrappedAgentSpec, contract
     parametrizer fields, SECTION_AGENT_TYPES, INI-section round-trip.
 """

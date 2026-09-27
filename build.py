@@ -1777,6 +1777,8 @@ def main():
             # Keep the designer guide and its relative example link usable in installs.
             Path("docs") / "prompting-flow-designer.md": dist_manage / "docs" / "prompting-flow-designer.md",
             Path("docs") / "examples" / "prompting-kickoff.fpmt": dist_manage / "docs" / "examples" / "prompting-kickoff.fpmt",
+            # Image/video failure contract; build_runtime_assets.ROOT_SOURCES requires it.
+            Path("docs") / "visual-analysis-errors.md": dist_manage / "docs" / "visual-analysis-errors.md",
             # The update handoff and shared preservation contract must survive
             # every release; missing helpers must abort packaging.
             Path("apply_update.ps1"): dist_manage / "apply_update.ps1",

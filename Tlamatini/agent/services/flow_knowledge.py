@@ -105,6 +105,12 @@ def write_runtime_knowledge(destination, agent_type):
         destination.mkdir(parents=True, exist_ok=True)
         if source.resolve() != target.resolve():
             shutil.copy2(source, target)
+    if agent_type in {'image_interpreter', 'video_analyzer'}:
+        source = get_agents_root() / 'visual_errors.py'
+        target = destination / 'visual_errors.py'
+        destination.mkdir(parents=True, exist_ok=True)
+        if source.resolve() != target.resolve():
+            shutil.copy2(source, target)
     # A main-script-only refresh must also carry its new local dependencies.
     helpers = {"mouser": ("mouser_coordinates.py",), "keyboarder": ("keyboarder_input.py",),
                "flowcreator": ("result_to_flw.py",), "video_analyzer": ("video_content.py",)}

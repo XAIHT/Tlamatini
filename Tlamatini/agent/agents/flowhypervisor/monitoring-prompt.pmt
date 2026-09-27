@@ -756,9 +756,9 @@ TALKER SPECIAL NOTES (text-to-speech via Ollama):
 
 IMAGE_INTERPRETER SPECIAL NOTES (triple-model vision pipeline):
   - Image-Interpreter runs THREE LLM calls per image: interpreter_model_1
-    (default jcyhsiao/qwen3.5cloud:latest) and interpreter_model_2 (default gemma4:cloud)
+    and interpreter_model_2 (both resolved from the configured Vision slots)
     run IN PARALLEL on two dedicated Ollama connections, a BARRIER waits for
-    BOTH interpretations, then merging_model (default glm-5.3:cloud) fuses
+    BOTH interpretations, then the configured merging_model fuses
     them into one report. Expect "🔀 [CONNECTION-A/B] Interpreter N
     STARTED/FINISHED", "🧱 BARRIER: waiting for BOTH interpretations..." and
     "🧱 BARRIER RELEASED" log lines — ALL of these are NORMAL pipeline
@@ -767,29 +767,28 @@ IMAGE_INTERPRETER SPECIAL NOTES (triple-model vision pipeline):
     seconds to a few MINUTES (two vision generations + one synthesis, cloud
     models included). Long silence while a model generates is NORMAL — do
     NOT flag before ~5 min per image without a completion line.
-  - It ALWAYS emits an INI_SECTION_IMAGE_INTERPRETER<<< block per image
-    (file_path, interpreter_model_1/2, merging_model, status; body = merged
-    report). NEVER flag that block as an error. The status values
-    partial_interpreter_1_only / partial_interpreter_2_only /
-    merge_fallback_concat are DOCUMENTED fail-safe degradations (one engine
-    or the merger failed but the pipeline still delivered a report) —
-    routable content for a downstream Forker, NOT a flow crash. Only
-    status: error on EVERY image together with "Could not connect" lines
-    indicates a real problem (the Ollama host is down).
+  - Successful images emit status merged in INI_SECTION_IMAGE_INTERPRETER.
+    A failed configured model emits status error and a visible accumulated fatal
+    notification. Legacy partial_interpreter_* and merge_fallback_concat mean
+    incomplete analysis, never success. Preserve Tlamatini's retry tactics and
+    configured downstream error/recovery routes with the same model identities.
+    A failed attempt does not stop Tlamatini. Inspect the diagnostic before retry.
 
 VIDEO_ANALYZER SPECIAL NOTES (robotics, transcription and summary):
   - Read "Analysis type:" first. Missing analysis_type means robotics, preserving
     the motion gate and two parallel vision interpreters + merger. No motion ->
     FAIL_NO_MOTION without model calls is a normal diagnostic. Only two explicit
-    independent FRAME_VERDICT: PASS_OK results permit PASS_OK. Existing robotics
-    partial_interpreter_* / merge_fallback_concat / UNCLEAR are routable outcomes.
+    independent FRAME_VERDICT: PASS_OK results permit PASS_OK. UNCLEAR is a valid
+    diagnostic from complete evidence; missing observers or merger failures are
+    errors. Never accept legacy partial/concatenation results as complete analysis.
   - transcription decodes selected audio tracks from the video using local
     faster-whisper, never a microphone or a vision LLM. audio_tracks=all selects
     every audio track; recognition cost scales with summed track duration,
     transcription.model and CPU/GPU speed. First use may download model weights.
     AUDIO: track N, start-end lines identify chunk progress; chunk_seconds is
     30..300 media seconds, NOT a wall-clock deadline. CPU ASR can be much slower
-    than real time. CUDA failure followed by CPU/int8 retry is expected recovery.
+    than real time. CUDA failure followed by CPU/int8 retry of the SAME configured
+    model is preserved recovery; show the failed attempt in the accumulated dialog.
   - summary transcribes audio AND analyzes frame batches spanning the clip.
     summary_max_frames (default 120, max 600) / summary_batch_size (default 8)
     bound batch count; two vision calls per batch plus hierarchical reduction
@@ -802,15 +801,16 @@ VIDEO_ANALYZER SPECIAL NOTES (robotics, transcription and summary):
     liveness and explicit exceptions before escalating; do not restart blindly.
   - Content modes bypass the motion gate. A static lecture is valid. They emit
     verdict NOT_APPLICABLE, empty verdict_token, and TLM_ANALYSIS::TRANSCRIBED /
-    SUMMARY_COMPLETE / NO_AUDIO / NO_SPEECH / PARTIAL / ERROR, never a robotics
+    SUMMARY_COMPLETE / NO_AUDIO / NO_SPEECH / ERROR, never a robotics
     TLM_VERDICT::PASS_OK. A flow waiting for PASS_OK from a content mode is miswired.
   - Every mode emits INI_SECTION_VIDEO_ANALYZER and triggers downstream even on
     error. Content fields include transcript, summary, segments_json, audio_status,
     duration_seconds and transcript/report/segments/analysis artifact paths.
     status no_matches with no_audio/no_speech is a completed empty result; silent
-    videos can still have status analyzed summaries. status partial means evidence
-    or synthesis is incomplete, not a crash and not full success. status error
-    needs its diagnostic read before a retry. Artifacts preserve available work.
+    videos can still have status analyzed summaries. Legacy status partial is failed
+    requested analysis. status error needs its diagnostic read before the existing
+    retry tactics proceed; preserve configured models and flow recovery routing.
+    A failed attempt never stops Tlamatini or publishes incomplete success artifacts.
   - Frame caps are documented sampling limits, not exhaustive perception. A
     selected-track failure or failed observer is reported, not silently ignored.
     "Video-Analyzer agent finished" ends the run. PID cleanup follows normally.
@@ -1090,7 +1090,7 @@ DO NOT report these as problems:
   - Camcorder / Recorder INI_SECTION_CAMCORDER / INI_SECTION_RECORDER blocks — observational capture agents that ALWAYS emit their block and trigger target_agents; never a flow crash. Their wrapped Multi-Turn counterparts are captured in Exec Report. A device-not-found body remains routable content for a downstream Forker.
   - Whisperer INI_SECTION_WHISPERER blocks with any status — including no-speech, `engine_unavailable`, or `error` outcomes — are routable canvas content and not themselves a flow crash. The wrapped Multi-Turn counterpart IS captured in Exec Report, where not-done/error statuses render red. Do NOT flag a Whisperer merely downloading a model on first run or doing slow CPU transcription.
   - Talker INI_SECTION_TALKER blocks with any `status` — including `tokens_only` or `error` — are routable canvas content and not themselves a flow crash. The wrapped Multi-Turn counterpart IS captured in Exec Report, where `tokens_only` is deliberately red because no audible deliverable exists. Do NOT flag Talker merely waiting on slow Ollama generation.
-  - Image-Interpreter INI_SECTION_IMAGE_INTERPRETER blocks with any `status` — including the documented fail-safe degradations `partial_interpreter_1_only` / `partial_interpreter_2_only` (one of the two parallel interpreters failed; the merge proceeded from the survivor) and `merge_fallback_concat` (the merging model failed; both raw interpretations were delivered concatenated). The block is routable content for a downstream Forker, never a flow error; its 🔀 interpreter / 🧱 barrier / 🔗 merge lines are normal pipeline mechanics (see IMAGE_INTERPRETER SPECIAL NOTES).
+  - Image-Interpreter pipeline connection/barrier/merge progress lines are normal. Read the atomic result status: merged means complete; error or legacy partial/concatenation means failed analysis. Deliver the accumulated fatal notification and preserve configured downstream recovery and Tlamatini retries; never reinterpret a failed attempt as success or shut down Tlamatini.
   - A Whisperer sitting SILENT while its sound gate waits for a human to speak — since 2026-09-11 a default (`record_seconds: 0`) recording has NO fixed length: it ends after `silence_timeout_seconds` of silence, bounded by `max_record_seconds` (default 300 s). Minutes of silence from a gated Whisperer is the feature working, not a stuck agent. Its `stop_reason` values (`silence` / `max_duration` / `fixed_fallback`) and a `status: empty` (nobody spoke) are all routable content (see WHISPERER SPECIAL NOTES).
   - Long FIRST firmware build/flash on STM32er / ESP32er / ESPHomer / Arduiner while Downloading/Installing/Unpacking progress keeps appearing — the first run pulls a large toolchain (hundreds of MB); this is NORMAL (see their SPECIAL NOTES). Only the total-silence > 10 min rule or an explicit install/error line is a problem.
   - "No process matching..." → Pser found no matching process
@@ -1144,4 +1144,4 @@ The execution matrix uses current installed contract slots, including Counter L/
 Mouser/Keyboarder action_status=input_sent means input delivery only; observed means inspection. error may follow partial changes and requires fresh observation before retry. Keyboarder counts describe delivered characters/commands, not saved document content. Shoter coordinate_space=unknown makes screenshot coordinates unusable. Do not infer UI success or recommend automatic input replay from process exit or downstream activity.
 Current configs are reloaded each cycle; use total_time and keyboard pacing rather than a universal five-second timeout. Latest desktop receipts are retained through bounded current-log tail reads even when incremental output is empty. This watchdog remains advisory and does not implement GUI-Manager or UI Automation verification.
 
-Model selection: Config → Models manages 38 model/engine/voice settings across Core, Vision, Speech, Workflows, Documents and Monitoring & messaging for all 21 model-backed agents. Preserve quoted `"@config"` and omitted registered fields as inheritance; never replace them with guessed tags. Literal canvas/standalone values are overrides. Wrapped chat starts from globals, then explicit tool arguments; standalone MCP resolves inherited template values before invocation overrides. Do not volunteer model arguments unless the user asks. Save applies on the next configuration load; reconnect chat and restart already running agents as needed. Talker requires an Orpheus-compatible model and supported voice. Whisperer local/cloud engine and cleanup model are separate; cleanup still needs `ollama_cleanup: true`. Video audio uses its independent local `transcription.model`. Empty Whisperer cloud model selects the provider default; empty LaTeXer repair model disables repair. Credentials, URLs, audio devices and external ACPX/MCP provider settings remain separate. Summary observer HTTP 401/403/404/410 failures disable only that observer for the current run, retain partial coverage and preserve the provider explanation; HTTP 410 may indicate retirement. Robotics cannot report PASS from missing evidence. See `docs/model_configuration.md` for all defaults, paths and source/frozen checks.
+Model selection: Config → Models manages 38 model/engine/voice settings across Core, Vision, Speech, Workflows, Documents and Monitoring & messaging for all 21 model-backed agents. Preserve quoted `"@config"` and omitted registered fields as inheritance; never replace them with guessed tags. Literal canvas/standalone values are overrides. Wrapped chat starts from globals, then explicit tool arguments; standalone MCP resolves inherited template values before invocation overrides. Do not volunteer model arguments unless the user asks. Save applies on the next configuration load; reconnect chat and restart already running agents as needed. Talker requires an Orpheus-compatible model and supported voice. Whisperer local/cloud engine and cleanup model are separate; cleanup still needs `ollama_cleanup: true`. Video audio uses its independent local `transcription.model`. Empty Whisperer cloud model selects the provider default; empty LaTeXer repair model disables repair. Credentials, URLs, audio devices and external ACPX/MCP provider settings remain separate. Image/video model failures accumulate in the shared themed fatal-error dialog. Preserve Tlamatini's existing retry and recovery tactics and the configured model identities. Never substitute a model or accept missing-observer/raw-concatenation output as success; HTTP 410 may indicate retirement. Robotics cannot report PASS from missing evidence. See `docs/model_configuration.md` for all defaults, paths and source/frozen checks.

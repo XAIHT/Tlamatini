@@ -90,8 +90,9 @@ importing that executable's process setup. Image-Interpreter itself is reused,
 not duplicated: its reusable pipeline builder is import-safe, while its executable
 still performs its original logging/cwd/process initialization in `main()`.
 
-Vision failures and partial results are kept in per-image reports and the index.
-The dialog reports incomplete analyses instead of claiming all images succeeded.
+A failed image analysis rejects that preparation: no incomplete visual context is
+loaded. The progress modal closes and the shared, non-modal fatal-error dialog
+accumulates the failure. Tlamatini and its existing retry tactics keep running.
 A failed RAG load is reported separately and permits retry. No live model calls
 are made merely by opening a PDF.
 
@@ -226,3 +227,7 @@ Broader pre-existing checks are not all green: the mutable-state suite flags
 function-scoped), and the authorship sweep reports 195 existing source files
 without its required banner. New authored PDF files carry the banner; unmodified
 Mozilla assets are exempted to preserve upstream attribution and license.
+
+## Image/video error reporting and recovery (2026-09-26)
+
+Image/video model failures accumulate in one shared, themed, non-modal fatal-error dialog with an audible notification. Tlamatini keeps running: preserve its retry/tactic ladder, cancellation controls and configured flow recovery routes. Keep the configured model identities; never report a surviving observer or raw concatenation as successful analysis. Dismiss hides the dialog while retaining its history; new failures reopen it. See [the shared behavior and verification contract](visual-analysis-errors.md).

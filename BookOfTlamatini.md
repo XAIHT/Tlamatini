@@ -2449,10 +2449,11 @@ executes in both modes and is mandatory before frozen packaging; a source snapsh
 is not needed for ordinary execution. [Dated verification](docs/model-configuration-verification.md)
 covers 89 runtime preparations, 21 loaders and actual File-Creator execution.
 
-If a video observer returns HTTP 401/403/404/410 during a summary, it is disabled for
-the rest of that run; the healthy observer continues and coverage remains partial.
-Choose an available model for a retired HTTP 410 selection and inspect old workflow
-overrides. Robotics still requires two explicit independent passes for `PASS_OK`.
+Any failed image/video observer or merger rejects that attempt and accumulates a
+visible fatal error. Tlamatini continues its configured recovery routes and existing
+retry tactics with the same model identities. A retired HTTP 410 model requires an
+explicit user configuration change; do not substitute a survivor or raw notes.
+Robotics still requires two explicit independent passes for `PASS_OK`.
 
 ## 41. RAG settings
 
@@ -4450,3 +4451,7 @@ See [configuration, examples and limitations](docs/desktop-input-and-flow-contra
 Video-Analyzer supports `analysis_type: robotics` (default), `transcription`, and `summary`. Robotics preserves the deterministic motion gate and dual-vision/merge verdict, with `PASS_OK` only on two explicit independent passes. Transcription reads selected video audio tracks (`audio_tracks: all` or `0,1`) using Whisperer's local faster-whisper backend, GPU auto/CPU fallback and timestamped segments; it never opens a microphone. Summary combines speech with two independent visual observers over frame batches spanning the whole clip, then synthesizes an overview, chronology, readable screen text, facts, steps, decisions, action items and limitations. Content modes accept static scenes, bypass the motion gate, and emit `TLM_ANALYSIS::` tokens rather than robotics verdicts. Missing audio/speech and partial failures are explicit. Each content run saves transcript, segments, report and full analysis artifacts. Parametrizer and wrapped chat results expose `analysis_type`, `analysis_token`, `transcript`, `summary`, `audio_status`, timestamped `segments_json` and artifact paths; the body remains `response_body`. Input remains a file, wildcard, newest video in a folder or Camcorder pool name. Always starts downstream agents; sampled perception is not exhaustive.
 
 See [configuration, routing, Parametrizer mappings and limitations](Tlamatini/agent/agents/video_analyzer/README.md).
+
+## Image/video error reporting and recovery (2026-09-26)
+
+Image/video model failures accumulate in one shared, themed, non-modal fatal-error dialog with an audible notification. Tlamatini keeps running: preserve its retry/tactic ladder, cancellation controls and configured flow recovery routes. Keep the configured model identities; never report a surviving observer or raw concatenation as successful analysis. Dismiss hides the dialog while retaining its history; new failures reopen it. See [the shared behavior and verification contract](docs/visual-analysis-errors.md).

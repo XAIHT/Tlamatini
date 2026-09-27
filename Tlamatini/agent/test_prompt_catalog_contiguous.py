@@ -41,6 +41,32 @@ _OTHER = _RANK['other']
 _RESERVED_OPENER_RANK = 10
 
 
+class VisualPromptContractTests(TestCase):
+    def test_fresh_catalog_never_offers_partial_vision_as_success(self):
+        self.assertFalse(Prompt.objects.filter(promptContent__contains='partial_interpreter_1_only').exists())
+        summary = Prompt.objects.get(idPrompt=126).promptContent
+        self.assertIn('visible fatal error', summary)
+        self.assertIn('Preserve Tlamatini retries', summary)
+        self.assertNotIn('Report missing audio or partial results honestly', summary)
+
+    def test_contract_update_preserves_user_text_identity_and_order_and_is_idempotent(self):
+        import importlib
+        from django.apps import apps
+        migration = importlib.import_module('agent.migrations.0210_strict_visual_analysis_prompt_contract')
+        old, new = migration.REPLACEMENTS[0]
+        row = Prompt.objects.create(idPrompt=999, promptName='user-visual-example',
+                                    promptContent='My introduction: ' + old + '\nMy closing instructions.',
+                                    category='media_voice', sort_rank=777)
+        original_count = Prompt.objects.count()
+        migration.update_prompts(apps, None)
+        migration.update_prompts(apps, None)
+        row.refresh_from_db()
+        self.assertEqual(Prompt.objects.count(), original_count)
+        self.assertEqual((row.pk, row.promptName, row.category, row.sort_rank),
+                         (999, 'user-visual-example', 'media_voice', 777))
+        self.assertEqual(row.promptContent, 'My introduction: ' + new + '\nMy closing instructions.')
+
+
 def _rank(category):
     return _RANK.get((category or '').strip(), _OTHER)
 

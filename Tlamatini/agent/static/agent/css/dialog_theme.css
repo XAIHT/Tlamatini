@@ -215,6 +215,22 @@
     opacity: 0.7;
 }
 
+/* Titlebar X is an icon control, not a footer action. The generic .ui-button
+   minimum width and visible closeText otherwise paint "Dismiss" over its SVG. */
+.ui-dialog .ui-dialog-titlebar-close.ui-button {
+    min-width: 32px;
+    max-width: 32px;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    font-size: 0;
+}
+
+.ui-dialog .ui-dialog-titlebar-close .ui-button-icon,
+.ui-dialog .ui-dialog-titlebar-close .ui-button-icon-space {
+    display: none;
+}
+
 /* ------------------------------------------------------------
  * 2 · Shared primitives for dialog bodies
  * ------------------------------------------------------------

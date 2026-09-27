@@ -275,6 +275,13 @@ REQUIRED_SNAPSHOT_FILES = (
     "Tlamatini/agent/management/commands/check_agent_runtimes.py",
     "Tlamatini/agent/test_model_settings.py",
     "docs/model_configuration.md",
+    # Fatal visual diagnostics must survive both portable copies and self-rebuilds.
+    "Tlamatini/agent/agents/visual_errors.py",
+    "Tlamatini/agent/visual_error_reporting.py",
+    "Tlamatini/agent/test_visual_fatal_errors.py",
+    "Tlamatini/agent/migrations/0210_strict_visual_analysis_prompt_contract.py",
+    "scripts/visual_fatal_dialog_visible.py",
+    "docs/visual-analysis-errors.md",
     # Context Governor: the real-request meter and the always-on chat gauge.
     "Tlamatini/agent/context_governor.py",
     "Tlamatini/agent/static/agent/js/context_gauge.js",

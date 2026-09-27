@@ -905,3 +905,7 @@ The [PDFer style guide](../../../Tlamatini/agent/agents/pdfer/STYLES.md) records
 LaTeXer's 30-style collection is an extension of an existing agent, not 30 new agents or eight replacement templates. Its `list_styles` action discovers IDs without TeX; compilation still needs an installed engine. When extending an agent this way, update config inputs, the wrapped description, canvas argument mapping, structured output contract, promoted result fields and FlowCreator's reference together. Keep scalar types such as `style_cover: false` intact.
 
 LaTeXer's `latexer_styles.py`, `latexer_artwork.py` and `latexer_design.py` are flat siblings copied with the template. Test from a copied pool without an importable Django package, not only from the source tree. Preserve legacy defaults and existing complete source documents. The [LaTeXer style guide](../../../Tlamatini/agent/agents/latexer/STYLES.md) provides the catalogue, integration fields and reproducible checks.
+
+## Image/video error reporting and recovery (2026-09-26)
+
+Image/video model failures accumulate in one shared, themed, non-modal fatal-error dialog with an audible notification. Tlamatini keeps running: preserve its retry/tactic ladder, cancellation controls and configured flow recovery routes. Keep the configured model identities; never report a surviving observer or raw concatenation as successful analysis. Dismiss hides the dialog while retaining its history; new failures reopen it. See [the shared behavior and verification contract](../../../docs/visual-analysis-errors.md).

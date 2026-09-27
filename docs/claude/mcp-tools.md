@@ -211,3 +211,7 @@ When changing this surface, keep `config.yaml`, the wrapped description, fronten
 ## PPTXer visual presets through existing tools — 2026-09-15
 
 PPTXer uses its existing wrapped `chat_agent_pptxer` and configuration-derived external `pptxer` tool. Set `nuance` to one of the 12 added styles; 36 named treatments are available overall, with 17 font pairings. Empty `nuance` retains automatic content classification. Preserve the existing action/configuration schema and output fields when binding tools. `created_with_findings`, `layout_clean`, `ground_truth`, and audit confidence determine how to describe a generated deck. [Usage and verification](../../Tlamatini/agent/agents/pptxer/STYLES.md); [external connector example](../../TLAMATINI_MCP.md#pptxer-create-and-verify-styled-slides).
+
+## Image/video error reporting and recovery (2026-09-26)
+
+Image/video model failures accumulate in one shared, themed, non-modal fatal-error dialog with an audible notification. Tlamatini keeps running: preserve its retry/tactic ladder, cancellation controls and configured flow recovery routes. Keep the configured model identities; never report a surviving observer or raw concatenation as successful analysis. Dismiss hides the dialog while retaining its history; new failures reopen it. See [the shared behavior and verification contract](../visual-analysis-errors.md).

@@ -142,19 +142,20 @@ def audio_chunks(path, track, chunk_seconds, origin=0):
 
 
 class Transcriber:
-    """Whisperer's local backend, reused across tracks/chunks with CUDA -> CPU retry."""
-    def __init__(self, config):
+    """Recover device failures using the same configured transcription model."""
+    def __init__(self, config, on_error=None):
         self.config = config
+        self.on_error = on_error
         self.model = None
         self.device = str(config.get('device') or 'auto').lower()
         if self.device not in ('auto', 'cuda', 'cpu'):
             raise ValueError('transcription.device must be auto, cuda or cpu')
         if self.device == 'auto':
-            try:
-                import ctranslate2
-                self.device = 'cuda' if ctranslate2.get_cuda_device_count() > 0 else 'cpu'
-            except Exception:
-                self.device = 'cpu'
+            import ctranslate2
+            self.device = 'cuda' if ctranslate2.get_cuda_device_count() > 0 else 'cpu'
+        self.model_name = str(config.get('model') or '').strip()
+        if not self.model_name or self.model_name == '@config':
+            raise ValueError('Configure a transcription model before analyzing video')
         self.compute = str(config.get('compute_type') or 'auto')
         if self.compute == 'auto':
             self.compute = 'float16' if self.device == 'cuda' else 'int8'
@@ -165,8 +166,8 @@ class Transcriber:
         def run():
             if self.model is None:
                 logging.info('AUDIO: loading faster-whisper %s on %s (%s); first use may download weights',
-                             self.config.get('model', 'base'), self.device, self.compute)
-                self.model = WhisperModel(str(self.config.get('model') or 'base'),
+                             self.model_name, self.device, self.compute)
+                self.model = WhisperModel(self.model_name,
                                           device=self.device, compute_type=self.compute)
             task = str(self.config.get('task') or 'transcribe')
             if task not in ('transcribe', 'translate'):
@@ -178,27 +179,35 @@ class Transcriber:
                 word_timestamps=boolean(self.config.get('word_timestamps'), False),
                 condition_on_previous_text=False,
             )
-            return list(segments), info  # generator failures must also trigger CPU fallback
+            return list(segments), info  # Lazy decoding errors are fatal too.
 
         try:
             return run()
-        except Exception:
+        except Exception as exc:
+            message = f'Transcription model {self.model_name!r} on {self.device} failed: {exc}'
+            if self.on_error:
+                try:
+                    self.on_error(message)
+                except Exception:
+                    logging.exception('Could not deliver transcription error notification; recovery remains active')
             if self.device != 'cuda':
-                raise
-            logging.warning('AUDIO: CUDA transcription failed; retrying this chunk on CPU/int8')
+                raise RuntimeError(message) from exc
+            # Preserve the existing device-recovery tactic. The model identity
+            # is unchanged; failed output is never accepted as analysis.
+            logging.warning('AUDIO: retrying configured model %s on CPU/int8', self.model_name)
             self.model = None
             self.device, self.compute = 'cpu', 'int8'
             return run()
 
 
-def transcribe_tracks(path, metadata, config, result):
+def transcribe_tracks(path, metadata, config, result, on_error=None):
     tracks = select_tracks(config.get('audio_tracks', 'all'), len(metadata['audio_tracks']))
     result['audio_tracks_analyzed'] = 0
     if not tracks:
         result['audio_status'] = 'no_audio'
         return
     settings = config.get('transcription') or {}
-    engine = Transcriber(settings)
+    engine = Transcriber(settings, on_error=on_error)
     chunk_seconds = integer(settings.get('chunk_seconds'), 120, 30, 300)
     languages = set()
     for track in tracks:
@@ -225,16 +234,13 @@ def transcribe_tracks(path, metadata, config, result):
                 raise RuntimeError('selected audio track decoded no samples')
             result['audio_tracks_analyzed'] += 1
         except Exception as exc:
-            result['warnings'].append(f'Audio track {track} incomplete: {exc}')
+            raise RuntimeError(f'Audio track {track} failed: {exc}') from exc
     result['language'] = ','.join(sorted(languages))
     result['transcription_device'] = engine.device
     result['segments'].sort(key=lambda item: (item['start'], item['track']))
     result['transcript'] = '\n'.join(
         f"[track {s['track']} {s['start']:.3f}-{s['end']:.3f}s] {s['text']}" for s in result['segments'])
-    if result['audio_tracks_analyzed'] != len(tracks):
-        result['audio_status'] = 'partial' if result['segments'] or result['audio_tracks_analyzed'] else 'error'
-    else:
-        result['audio_status'] = 'transcribed' if result['segments'] else 'no_speech'
+    result['audio_status'] = 'transcribed' if result['segments'] else 'no_speech'
 
 
 def visual_batches(path, config, result):
@@ -279,8 +285,7 @@ def visual_batches(path, config, result):
             else:
                 ok = False
             if not ok or frame is None:
-                result['warnings'].append(f'Could not decode visual frame at {start + requested_index / fps:.3f}s')
-                continue
+                raise RuntimeError(f'Could not decode visual frame at {start + requested_index / fps:.3f}s')
             previous_index = index
             if index != requested_index:
                 result['warnings'].append(f'Visual sample at {start + requested_index / fps:.3f}s '
@@ -291,8 +296,7 @@ def visual_batches(path, config, result):
                 frame = cv2.resize(frame, (max(1, round(w * scale)), max(1, round(h * scale))))
             ok, encoded = cv2.imencode('.jpg', frame, [int(cv2.IMWRITE_JPEG_QUALITY), 85])
             if not ok:
-                result['warnings'].append(f'Could not encode visual frame at {index / fps:.3f}s')
-                continue
+                raise RuntimeError(f'Could not encode visual frame at {index / fps:.3f}s')
             batch.append({'timestamp': round(start + index / fps, 3),
                           'b64': base64.b64encode(encoded.tobytes()).decode('ascii')})
             if len(batch) == batch_size:
@@ -321,62 +325,39 @@ def summarize(path, config, pipeline, call_model, result):
     observers = [{'slot': slot, 'model': pipeline[key], 'frames_analyzed': 0,
                   'batches_completed': 0, 'batches_failed': 0, 'batches_skipped': 0,
                   'disabled_reason': ''} for slot, key in enumerate(('model_1', 'model_2'), 1)]
-    failed_vision = False
-    try:
-        for number, frames in enumerate(visual_batches(path, config, result), 1):
-            logging.info('SUMMARY: visual batch %s (%s frames, %.1f-%.1fs)', number, len(frames),
-                         frames[0]['timestamp'], frames[-1]['timestamp'])
-            messages = [{'role': 'system', 'content': EVIDENCE_PROMPT},
-                        {'role': 'user', 'content': 'Frame timestamps (seconds): ' +
-                         json.dumps([f['timestamp'] for f in frames]),
-                         'images': [f['b64'] for f in frames]}]
-            healthy = 0
-            with ThreadPoolExecutor(max_workers=2) as executor:
-                futures = []
-                for observer in observers:
-                    if observer['disabled_reason']:
-                        observer['batches_skipped'] += 1
-                        continue
-                    slot = observer['slot']
-                    future = executor.submit(call_model, pipeline['host'], pipeline['token'], observer['model'],
-                                             messages, f'SUMMARY-{number}-model_{slot}')
-                    futures.append((observer, future))
-                for observer, future in futures:
-                    slot = observer['slot']
-                    try:
-                        observation = future.result()
-                        if not observation or observation.startswith('Error'):
-                            raise RuntimeError(observation or 'empty response')
-                        notes.append(f"Visual batch {number}, observer {slot} ({observer['model']}), "
-                                     f"{frames[0]['timestamp']:.3f}-{frames[-1]['timestamp']:.3f}s:\n{observation}")
-                        observer['batches_completed'] += 1
-                        observer['frames_analyzed'] += len(frames)
-                        healthy += 1
-                    except Exception as exc:
-                        failed_vision = True
-                        observer['batches_failed'] += 1
-                        result['warnings'].append(f'Visual batch {number}, observer {slot} failed: {exc}')
-                        if getattr(exc, 'permanent', False) or getattr(exc, 'code', None) in (401, 403, 404, 410):
-                            observer['disabled_reason'] = str(exc)
-                            result['warnings'].append(f"Observer {slot} ({observer['model']}) disabled for the remaining "
-                                                      "batches in this run after a permanent error; change its model/access settings.")
-            if healthy:
-                successful_frames += len(frames)
-            if healthy == 2:
-                dual_frames += len(frames)
-    except Exception as exc:
-        failed_vision = True
-        result['warnings'].append(f'Visual analysis incomplete: {exc}')
+    for number, frames in enumerate(visual_batches(path, config, result), 1):
+        logging.info('SUMMARY: visual batch %s (%s frames, %.1f-%.1fs)', number, len(frames),
+                     frames[0]['timestamp'], frames[-1]['timestamp'])
+        messages = [{'role': 'system', 'content': EVIDENCE_PROMPT},
+                    {'role': 'user', 'content': 'Frame timestamps (seconds): ' +
+                     json.dumps([f['timestamp'] for f in frames]),
+                     'images': [f['b64'] for f in frames]}]
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            futures = [(observer, executor.submit(
+                call_model, pipeline['host'], pipeline['token'], observer['model'],
+                messages, f"SUMMARY-{number}-model_{observer['slot']}")) for observer in observers]
+            for observer, future in futures:
+                try:
+                    observation = future.result()
+                    if not isinstance(observation, str) or not observation.strip() or observation.lstrip().startswith('Error'):
+                        raise RuntimeError(observation or 'empty response')
+                except Exception as exc:
+                    raise RuntimeError(f"Visual batch {number}, observer {observer['slot']} "
+                                       f"({observer['model']}) failed: {exc}") from exc
+                notes.append(f"Visual batch {number}, observer {observer['slot']} ({observer['model']}), "
+                             f"{frames[0]['timestamp']:.3f}-{frames[-1]['timestamp']:.3f}s:\n{observation}")
+                observer['batches_completed'] += 1
+                observer['frames_analyzed'] += len(frames)
+        successful_frames += len(frames)
+        dual_frames += len(frames)
+    if not successful_frames or successful_frames != result.get('frames_requested', successful_frames):
+        raise RuntimeError('Visual sampling did not complete; video summary stopped')
     result['frames_analyzed'] = successful_frames
     result['visual_coverage'] = {'frames_with_any_observer': successful_frames,
                                  'frames_with_both_observers': dual_frames, 'observers': observers}
     result['visual_observations'] = notes[:]
     if result['transcript']:
         notes.append('Timestamped speech transcript:\n' + result['transcript'])
-    if not notes:
-        result['status'] = 'error'
-        result['analysis_token'] = 'TLM_ANALYSIS::ERROR'
-        return
 
     request = str(config.get('summary_prompt') or 'Summarize all available information in the video.')
     language = str(config.get('summary_language') or 'the language of the user request or the video')
@@ -388,7 +369,7 @@ def summarize(path, config, pipeline, call_model, result):
         response = call_model(pipeline['host'], pipeline['token'], pipeline['merging_model'],
                               [{'role': 'system', 'content': system},
                                {'role': 'user', 'content': instruction + '\n\nSOURCE EVIDENCE:\n' + evidence}], label)
-        if not response or response.startswith('Error'):
+        if not isinstance(response, str) or not response.strip() or response.lstrip().startswith('Error'):
             raise RuntimeError(response or 'empty synthesis response')
         return response
 
@@ -404,31 +385,26 @@ def summarize(path, config, pipeline, call_model, result):
                 "sound recognition. " + ' '.join(result['warnings']))
     evidence = ('Container and track metadata (untrusted source data):\n' +
                 json.dumps(result.get('media_metadata', {}), ensure_ascii=False) + '\n\n' + '\n\n'.join(notes))
-    try:
-        # Hierarchical reduction covers EVERY chunk; no silent transcript prefix clipping.
-        for level in range(8):
-            if len(evidence) <= 24000:
-                break
-            chunks = list(evidence_chunks(evidence))
-            reduced = []
-            for number, chunk in enumerate(chunks, 1):
-                logging.info('SUMMARY: evidence reduction level %s, chunk %s/%s', level + 1, number, len(chunks))
-                reduced.append(synthesize(chunk, f'SUMMARY-REDUCE-{level}-{number}', True))
-            next_evidence = '\n\n'.join(reduced)
-            if len(next_evidence) >= len(evidence):
-                raise RuntimeError('Evidence reduction did not shrink; full evidence is preserved in report')
-            evidence = next_evidence
-        if len(evidence) > 24000:
-            raise RuntimeError('Evidence exceeds synthesis budget after eight reduction levels')
-        logging.info('SUMMARY: final synthesis')
-        result['summary'] = synthesize('Coverage:\n' + coverage + '\n\n' + evidence, 'SUMMARY-FINAL')
-        result['summary'] += '\n\nCoverage: ' + coverage
-        result['status'] = 'partial' if (failed_vision or successful_frames < result.get('frames_requested', 0)
-                                         or result['audio_status'] in ('partial', 'error')) else 'analyzed'
-    except Exception as exc:
-        result['warnings'].append(f'Summary synthesis failed: {exc}')
-        result['status'] = 'partial'
-    result['analysis_token'] = 'TLM_ANALYSIS::SUMMARY_COMPLETE' if result['status'] == 'analyzed' else 'TLM_ANALYSIS::PARTIAL'
+    # Hierarchical reduction covers EVERY chunk; no silent transcript prefix clipping.
+    for level in range(8):
+        if len(evidence) <= 24000:
+            break
+        chunks = list(evidence_chunks(evidence))
+        reduced = []
+        for number, chunk in enumerate(chunks, 1):
+            logging.info('SUMMARY: evidence reduction level %s, chunk %s/%s', level + 1, number, len(chunks))
+            reduced.append(synthesize(chunk, f'SUMMARY-REDUCE-{level}-{number}', True))
+        next_evidence = '\n\n'.join(reduced)
+        if len(next_evidence) >= len(evidence):
+            raise RuntimeError('Evidence reduction did not shrink; synthesis stopped')
+        evidence = next_evidence
+    if len(evidence) > 24000:
+        raise RuntimeError('Evidence exceeds synthesis budget after eight reduction levels')
+    logging.info('SUMMARY: final synthesis')
+    result['summary'] = synthesize('Coverage:\n' + coverage + '\n\n' + evidence, 'SUMMARY-FINAL')
+    result['summary'] += '\n\nCoverage: ' + coverage
+    result['status'] = 'analyzed'
+    result['analysis_token'] = 'TLM_ANALYSIS::SUMMARY_COMPLETE'
 
 
 def output_directory(config):
@@ -449,7 +425,7 @@ def output_directory(config):
     return directory
 
 
-def run_content_analysis(path, mode, config, pipeline, call_model):
+def run_content_analysis(path, mode, config, pipeline, call_model, on_error=None):
     result = {'video_path': str(Path(path).resolve()), 'analysis_type': mode,
               'status': 'error', 'analysis_token': 'TLM_ANALYSIS::ERROR',
               'audio_status': 'error', 'audio_tracks_analyzed': 0, 'duration_seconds': 0,
@@ -457,19 +433,14 @@ def run_content_analysis(path, mode, config, pipeline, call_model):
               'segments': [], 'warnings': [], 'visual_observations': []}
     settings = config.get('transcription') or {}
     if isinstance(settings, dict):
-        result['transcription_model'] = str(settings.get('model') or 'base')
+        result['transcription_model'] = str(settings.get('model') or '')
         result['transcription_task'] = str(settings.get('task') or 'transcribe')
     if mode == 'summary':
         result['vision_models'] = [pipeline['model_1'], pipeline['model_2']]
         result['merging_model'] = pipeline['merging_model']
-    metadata = {'audio_tracks': [], 'timeline_origin': 0}
-    try:
-        metadata = probe_media(path)
-        result['duration_seconds'] = metadata['duration_seconds']
-        transcribe_tracks(path, metadata, config, result)
-    except Exception as exc:
-        result['warnings'].append(f'Audio analysis failed: {exc}')
-        result['audio_status'] = 'error'
+    metadata = probe_media(path)
+    result['duration_seconds'] = metadata['duration_seconds']
+    transcribe_tracks(path, metadata, config, result, on_error=on_error)
     result['audio_track_count'] = len(metadata['audio_tracks'])
     result['media_metadata'] = metadata
     if mode == 'summary':
@@ -478,8 +449,8 @@ def run_content_analysis(path, mode, config, pipeline, call_model):
         result.update(status='transcribed', analysis_token='TLM_ANALYSIS::TRANSCRIBED')
     elif result['audio_status'] in ('no_audio', 'no_speech'):
         result.update(status='no_matches', analysis_token='TLM_ANALYSIS::' + result['audio_status'].upper())
-    elif result['audio_status'] == 'partial':
-        result.update(status='partial', analysis_token='TLM_ANALYSIS::PARTIAL')
+    else:
+        raise RuntimeError(f"Audio analysis did not complete: {result['audio_status']}")
 
     directory = output_directory(config)
     result['transcript_path'] = str(directory / 'transcript.txt')

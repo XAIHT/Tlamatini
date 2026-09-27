@@ -710,6 +710,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
         status_registered = False
         gauge_registered = False
         _gauge_user_token = None
+        _visual_error_token = None
         # Per-line log attribution (Angela, 2026-08-13). receive() already bound
         # this task, and the whole synchronous executor inherits it through
         # sync_to_async -- this re-bind is the safety net for any path that
@@ -767,6 +768,16 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 except Exception as _ge:  # noqa: BLE001 — the gauge is best-effort
                     print(f"--- [CONTEXT] failed to emit gauge frame: {_ge}")
 
+            from .visual_error_reporting import bind_visual_error_sink
+
+            def _emit_visual_error(detail):
+                asyncio.run_coroutine_threadsafe(
+                    _gauge_channel_layer.group_send(
+                        _gauge_room, {'type': 'visual_analysis_error', 'detail': detail}),
+                    _gauge_loop,
+                )
+
+            _visual_error_token = bind_visual_error_sink(_emit_visual_error)
             register_gauge_sink(broker_key, _emit_context_gauge)
             gauge_registered = True
             _gauge_user_token = bind_user(broker_key)
@@ -954,9 +965,18 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 from .context_governor import unbind_user, unregister_gauge_sink
                 unregister_gauge_sink(broker_key, _emit_context_gauge)
                 unbind_user(_gauge_user_token)
+            if _visual_error_token is not None:
+                from .visual_error_reporting import unbind_visual_error_sink
+                unbind_visual_error_sink(_visual_error_token)
             self._status_emit = None
             self._active_run = None
             self._active_broker = None
+
+    async def visual_analysis_error(self, event):
+        """Report an attempt without ending or pausing its recovery loop."""
+        await self.send(text_data=json.dumps({
+            'type': 'visual-analysis-error', 'detail': event.get('detail') or {},
+        }))
 
     async def context_gauge(self, event):
         """Group handler: forward one context-size measurement to this browser

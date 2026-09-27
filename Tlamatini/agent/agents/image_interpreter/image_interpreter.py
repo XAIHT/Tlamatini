@@ -130,10 +130,10 @@ def _load_config_file(path: str = "config.yaml") -> Dict:
             return yaml.safe_load(f)
     except FileNotFoundError:
         logging.error(f"❌ Error: {path} not found.")
-        sys.exit(1)
+        raise ImageInterpreterFatal(f'FATAL: configuration file {path!r} was not found') from None
     except Exception as e:
         logging.error(f"❌ Error parsing {path}: {e}")
-        sys.exit(1)
+        raise ImageInterpreterFatal(f'FATAL: could not read configuration {path!r}: {e}') from e
 
 
 def load_config(*args, **kwargs):
@@ -565,14 +565,16 @@ def _call_ollama_chat(host: str, token: str, model: str, messages: list,
     req = urllib.request.Request(url, data=json.dumps(payload).encode('utf-8'),
                                  headers=headers, method='POST')
     chunks = []
+    done = False
     with urllib.request.urlopen(req, timeout=timeout) as response:
         for line in response:
-            if not line:
+            if not line.strip():
                 continue
-            try:
-                json_chunk = json.loads(line.decode('utf-8'))
-            except json.JSONDecodeError:
-                continue
+            json_chunk = json.loads(line.decode('utf-8'))
+            if not isinstance(json_chunk, dict):
+                raise RuntimeError(f'{model}: invalid Ollama stream object')
+            if json_chunk.get('error'):
+                raise RuntimeError(f"{model}: {json_chunk['error']}")
             content = ""
             if "message" in json_chunk:
                 content = json_chunk["message"].get("content", "")
@@ -581,12 +583,17 @@ def _call_ollama_chat(host: str, token: str, model: str, messages: list,
             if content:
                 chunks.append(content)
             if json_chunk.get("done", False):
+                done = True
                 break
+    if not done:
+        raise RuntimeError(f'{model}: Ollama stream ended before its completion marker')
+    if not ''.join(chunks).strip():
+        raise RuntimeError(f'{model}: Ollama returned an empty response')
     return "".join(chunks).strip()
 
 
 def _is_error_result(text: str) -> bool:
-    return (not text) or text.startswith("Error")
+    return not isinstance(text, str) or not text.strip() or text.lstrip().startswith("Error")
 
 
 def analyze_image_with_model(image_path: str, image_base64: str, host: str,
@@ -695,7 +702,7 @@ def interpret_image_dual(image_path: str, pipeline: dict) -> tuple:
     logging.info("🧱 BARRIER: waiting for BOTH interpretations to arrive...")
     thread_1.join()
     thread_2.join()
-    logging.info("🧱 BARRIER RELEASED: both interpretations arrived — invoking the merging model.")
+    logging.info("🧱 BARRIER RELEASED: validating both interpreter responses.")
 
     interp_1 = results.get(1) or "Error: interpreter 1 produced no result"
     interp_2 = results.get(2) or "Error: interpreter 2 produced no result"
@@ -785,9 +792,37 @@ def build_pipeline(config):
     return pipeline
 
 
+def report_fatal_error(error, config):
+    """Deliver a visible accumulated error; never change Tlamatini's retry state."""
+    try:
+        _publish_fatal_error(error, config)
+    except Exception:
+        # Delivery failures must not prevent the configured recovery route.
+        logging.exception('Could not deliver fatal image analysis dialog: %s', error)
+
+
+def _publish_fatal_error(error, config):
+    import importlib.util
+    from pathlib import Path
+    here = Path(__file__).resolve()
+    shared = next((p / 'visual_errors.py' for p in here.parents
+                   if (p / 'visual_errors.py').is_file()), None)
+    if shared is None:
+        raise RuntimeError('Visual error dialog support is missing from this runtime')
+    spec = importlib.util.spec_from_file_location('tlamatini_visual_errors', shared)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    module.publish_visual_error(here.parent, CURRENT_DIR_NAME, error,
+                                secrets=((config.get('llm') or {}).get('token'),))
+
+
 def main():
     _configure_agent_runtime()
-    config = load_config()
+    try:
+        config = load_config()
+    except Exception as error:
+        report_fatal_error(error, {})
+        sys.exit(1)
 
     # Write PID file immediately
     write_pid_file()
@@ -797,11 +832,11 @@ def main():
 
     exit_code = 0
     current_image = ''
+    target_agents = config.get('target_agents', []) or []
     try:
         images_pathfilenames = config.get('images_pathfilenames', '')
         recursive = config.get('recursive', False)
         filetype_exclusions = config.get('filetype_exclusions', '')
-        target_agents = config.get('target_agents', [])
         pipeline = build_pipeline(config)
 
         logging.info("🖼️ IMAGE-INTERPRETER AGENT STARTED")
@@ -822,7 +857,7 @@ def main():
         image_files = apply_exclusions(image_files, excl_exts, excl_names)
 
         if not image_files:
-            logging.warning("⚠️ No image files found to process.")
+            raise ImageInterpreterFatal('No image files found to process.')
         else:
             logging.info(f"📷 Found {len(image_files)} image(s) to process.")
 
@@ -848,19 +883,9 @@ def main():
 
             logging.info(f"✅ All {len(image_files)} image(s) processed successfully.")
 
-        # Trigger downstream agents
-        total_triggered = 0
-        if target_agents:
-            wait_for_agents_to_stop(target_agents)
-            logging.info(f"🚀 Triggering {len(target_agents)} downstream agents...")
-            for target in target_agents:
-                if start_agent(target):
-                    total_triggered += 1
-
-        logging.info(f"🏁 Image-Interpreter agent finished. Triggered {total_triggered}/{len(target_agents)} agents.")
-
-    except ImageInterpreterFatal as fatal_error:
-        # NO FALLBACKS: a failing configured model stops the run right here.
+    except Exception as fatal_error:
+        # Reject this attempt; keep Tlamatini and its recovery routes running.
+        report_fatal_error(fatal_error, config)
         logging.critical(str(fatal_error))
         logging.info(
             f"INI_SECTION_IMAGE_INTERPRETER<<<\n"
@@ -871,13 +896,20 @@ def main():
             f">>>END_SECTION_IMAGE_INTERPRETER"
         )
         logging.critical(
-            "Image-Interpreter STOPPED: no fallback was used, the remaining images "
-            "were NOT processed and downstream agents were NOT started.")
+            "Image-Interpreter attempt failed: no fallback was used. "
+            "Configured downstream error/recovery routes remain active.")
         exit_code = 1
     finally:
-        # Keep LED green briefly for visual feedback
-        time.sleep(0.4)
-        remove_pid_file()
+        try:
+            # Keep normal routing alive: Forker/Raiser/recovery agents receive
+            # the explicit error section instead of a fabricated interpretation.
+            if target_agents:
+                wait_for_agents_to_stop(target_agents)
+                for target in target_agents:
+                    start_agent(target)
+        finally:
+            time.sleep(0.4)
+            remove_pid_file()
 
     sys.exit(exit_code)
 

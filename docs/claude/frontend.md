@@ -216,3 +216,7 @@ Use `action: list_styles` for the current 30-style catalogue, and preserve canon
 ## PPTXer style configuration — 2026-09-15
 
 PPTXer's 12 added visual styles use the existing `nuance` setting; 36 named treatments and 17 font pairings are available. Preserve an explicit `nuance` such as `blueprint` through chat-to-flow configuration and retain empty `nuance` for automatic classification. Existing color, background, font, and density controls still apply. Surface `created_with_findings` and the layout/native-evidence fields honestly when presenting results. See [style keys, output semantics, and test scope](../../Tlamatini/agent/agents/pptxer/STYLES.md).
+
+## Image/video error reporting and recovery (2026-09-26)
+
+Image/video model failures accumulate in one shared, themed, non-modal fatal-error dialog with an audible notification. Tlamatini keeps running: preserve its retry/tactic ladder, cancellation controls and configured flow recovery routes. Keep the configured model identities; never report a surviving observer or raw concatenation as successful analysis. Dismiss hides the dialog while retaining its history; new failures reopen it. See [the shared behavior and verification contract](../visual-analysis-errors.md).

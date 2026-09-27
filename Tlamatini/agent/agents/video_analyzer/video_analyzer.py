@@ -20,22 +20,11 @@
 #         -> BARRIER: wait for BOTH -> merging_model fuses them into one report
 #            AND a final verdict (PASS_OK only if BOTH agree — no false PASS)
 #         -> emit INI_SECTION_VIDEO_ANALYZER + a SUBSTRING-SAFE TLM_VERDICT:: line
-#         -> ALWAYS start downstream agents (so a Forker can branch on the verdict)
+#         -> start configured downstream routes for success OR error recovery
 
 import os
 import sys
 
-# FIX: Disable Intel Fortran runtime Ctrl+C handler
-os.environ['FOR_DISABLE_CONSOLE_CTRL_HANDLER'] = '1'
-
-# Honor app Temp for dependencies used by isolated pool processes as well.
-if (os.environ.get('TLAMATINI_TEMP') or '').strip():
-    import tempfile as _tlt_tempfile
-    _tlt_temp_root = os.environ['TLAMATINI_TEMP'].strip()
-    os.makedirs(_tlt_temp_root, exist_ok=True)
-    _tlt_tempfile.tempdir = _tlt_temp_root
-    os.environ['TEMP'] = _tlt_temp_root
-    os.environ['TMP'] = _tlt_temp_root
 
 import re
 import glob
@@ -48,60 +37,52 @@ import logging
 import threading
 import subprocess
 
-# -- conhost.exe orphan guard ------------------------------------------
-# When Tlamatini's runtime launches us with DETACHED_PROCESS we have no
-# console attached. Any child we Popen WITHOUT CREATE_NO_WINDOW makes
-# Windows allocate a fresh console (and a companion conhost.exe) for the
-# child -- which lingers as an orphan bearing the Tlamatini icon if we
-# exit before the child detaches. Default every Popen to
-# CREATE_NO_WINDOW unless the caller explicitly asked for a console
-# (CREATE_NEW_CONSOLE) or detached the child themselves.
-if os.name == 'nt' and not getattr(subprocess, '_conhost_guard_applied', False):
-    _CHG_NO_WINDOW = subprocess.CREATE_NO_WINDOW
-    _CHG_RESPECT = (
-        _CHG_NO_WINDOW
-        | getattr(subprocess, 'CREATE_NEW_CONSOLE', 0)
-        | getattr(subprocess, 'DETACHED_PROCESS', 0)
-    )
-    _chg_orig_init = subprocess.Popen.__init__
-    def _chg_guarded_init(self, *args, **kwargs):
-        cf = kwargs.get('creationflags', 0) or 0
-        if not (cf & _CHG_RESPECT):
-            kwargs['creationflags'] = cf | _CHG_NO_WINDOW
-        return _chg_orig_init(self, *args, **kwargs)
-    subprocess.Popen.__init__ = _chg_guarded_init
-    subprocess._conhost_guard_applied = True
 import urllib.request
 import urllib.error
 from typing import Dict, List, Optional, Tuple
 
-# Set working directory to script location
-try:
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    os.chdir(script_dir)
-except Exception as e:
-    sys.stderr.write(f"Critical Error: Failed to set working directory: {e}\n")
-
-# Use directory name for log file
 CURRENT_DIR_NAME = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
 LOG_FILE_PATH = f"{CURRENT_DIR_NAME}.log"
-
-# Reanimation detection: AGENT_REANIMATED=1 means resume from pause
 _IS_REANIMATED = os.environ.get('AGENT_REANIMATED') == '1'
-if not _IS_REANIMATED:
-    open(LOG_FILE_PATH, 'w').close()
-logging.basicConfig(
-    filename=LOG_FILE_PATH,
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    encoding='utf-8'
-)
 
-# Also log to console
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.INFO)
-console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
-logging.getLogger().addHandler(console_handler)
+def _configure_agent_runtime():
+    # FIX: Disable Intel Fortran runtime Ctrl+C handler
+    os.environ['FOR_DISABLE_CONSOLE_CTRL_HANDLER'] = '1'
+
+    # Honor app Temp for dependencies used by isolated pool processes as well.
+    if (os.environ.get('TLAMATINI_TEMP') or '').strip():
+        import tempfile as _tlt_tempfile
+        _tlt_temp_root = os.environ['TLAMATINI_TEMP'].strip()
+        os.makedirs(_tlt_temp_root, exist_ok=True)
+        _tlt_tempfile.tempdir = _tlt_temp_root
+        os.environ['TEMP'] = _tlt_temp_root
+        os.environ['TMP'] = _tlt_temp_root
+
+    # Set working directory to script location
+    try:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        os.chdir(script_dir)
+    except Exception as e:
+        sys.stderr.write(f"Critical Error: Failed to set working directory: {e}\n")
+
+    # Use directory name for log file
+
+    # Reanimation detection: AGENT_REANIMATED=1 means resume from pause
+    if not _IS_REANIMATED:
+        open(LOG_FILE_PATH, 'w').close()
+    logging.basicConfig(
+        filename=LOG_FILE_PATH,
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        encoding='utf-8'
+    )
+
+    # Also log to console
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+    logging.getLogger().addHandler(console_handler)
+
 
 # Supported video extensions
 VIDEO_EXTENSIONS = {
@@ -125,6 +106,10 @@ VALID_VERDICTS = {
     VERDICT_PASS, VERDICT_FAIL_NO_MOTION, VERDICT_FAIL_WRONG_MOTION,
     VERDICT_UNCLEAR, VERDICT_ANALYSIS_ERROR,
 }
+
+
+class VideoAnalyzerFatal(RuntimeError):
+    """A required analysis stage failed; never continue with substitute evidence."""
 
 # ── Triple-model pipeline defaults ────────────────────────────────────
 # The template config.yaml carries the FULL engineered prompts; these compact
@@ -672,12 +657,11 @@ def _call_ollama_chat(host: str, token: str, model: str, messages: list,
         raise OllamaRequestError(model, exc.code, detail) from None
     with response:
         for line in response:
-            if not line:
+            if not line.strip():
                 continue
-            try:
-                json_chunk = json.loads(line.decode('utf-8'))
-            except json.JSONDecodeError:
-                continue
+            json_chunk = json.loads(line.decode('utf-8'))
+            if not isinstance(json_chunk, dict):
+                raise VideoAnalyzerFatal(f'Model {model!r} returned an invalid stream record')
             if json_chunk.get('error'):
                 raise RuntimeError(f'Ollama request failed: {json_chunk["error"]}')
             content = ""
@@ -692,11 +676,14 @@ def _call_ollama_chat(host: str, token: str, model: str, messages: list,
                 break
     if not done:
         raise RuntimeError('Ollama stream ended before its completion marker')
-    return "".join(chunks).strip()
+    result = "".join(chunks).strip()
+    if not result:
+        raise VideoAnalyzerFatal(f'Model {model!r} returned an empty response')
+    return result
 
 
 def _is_error_result(text: str) -> bool:
-    return (not text) or text.startswith("Error")
+    return not isinstance(text, str) or not text.strip() or text.lstrip().startswith("Error")
 
 
 def _frames_timeline(frames: List[Dict]) -> str:
@@ -767,15 +754,16 @@ def _extract_verdict(text: str, key: str) -> Optional[str]:
 
 
 def _extract_confidence(text: str) -> float:
-    if not text:
-        return 0.5
-    m = re.search(r'CONFIDENCE\s*[:=]\s*([01](?:\.\d+)?|\.\d+)', text)
+    m = re.search(r'CONFIDENCE\s*[:=]\s*([^\s]+)', text or '')
     if not m:
-        return 0.5
+        raise VideoAnalyzerFatal('FATAL: merging model omitted CONFIDENCE')
     try:
-        return max(0.0, min(1.0, float(m.group(1))))
+        value = float(m.group(1))
     except ValueError:
-        return 0.5
+        raise VideoAnalyzerFatal('FATAL: merging model returned invalid CONFIDENCE') from None
+    if not 0.0 <= value <= 1.0:
+        raise VideoAnalyzerFatal('FATAL: merging model CONFIDENCE must be between 0 and 1')
+    return value
 
 
 def analyze_video_dual(frames: List[Dict], pipeline: dict) -> Tuple[str, str, float, str]:
@@ -785,7 +773,7 @@ def analyze_video_dual(frames: List[Dict], pipeline: dict) -> Tuple[str, str, fl
 
     Returns ``(report, verdict, confidence, status)`` where verdict is one of the
     substring-safe token STEMS (e.g. PASS_OK) and status describes the pipeline
-    outcome (analyzed / partial_* / merge_fallback_concat / error).
+    outcome (analyzed). Any required model failure raises VideoAnalyzerFatal.
     """
     host = pipeline['host']
     token = pipeline['token']
@@ -811,34 +799,24 @@ def analyze_video_dual(frames: List[Dict], pipeline: dict) -> Tuple[str, str, fl
     logging.info("🧱 BARRIER: waiting for BOTH interpretations to arrive...")
     thread_1.join()
     thread_2.join()
-    logging.info("🧱 BARRIER RELEASED: both interpretations arrived — invoking the merging model.")
+    logging.info("🧱 BARRIER RELEASED: validating both interpreter responses.")
 
     interp_1 = results.get(1) or "Error: interpreter 1 produced no result"
     interp_2 = results.get(2) or "Error: interpreter 2 produced no result"
     ok_1 = not _is_error_result(interp_1)
     ok_2 = not _is_error_result(interp_2)
 
-    if not ok_1 and not ok_2:
-        logging.error("❌ BOTH interpreters failed — cannot judge the video.")
-        report = (
-            f"Error: both interpreters failed.\n"
-            f"[{pipeline['model_1']}] {interp_1}\n[{pipeline['model_2']}] {interp_2}"
-        )
-        return report, VERDICT_ANALYSIS_ERROR, 0.0, "error"
+    if not ok_1 or not ok_2:
+        failures = [f"model '{pipeline[key]}' failed: {response}"
+                    for key, response, ok in [('model_1', interp_1, ok_1), ('model_2', interp_2, ok_2)] if not ok]
+        raise VideoAnalyzerFatal('FATAL: ' + ' | '.join(failures))
 
     v1 = _extract_verdict(interp_1, 'FRAME_VERDICT') if ok_1 else None
     v2 = _extract_verdict(interp_2, 'FRAME_VERDICT') if ok_2 else None
 
-    if ok_1 and ok_2:
-        status = "analyzed"
-    elif ok_1:
-        status = "partial_interpreter_1_only"
-        interp_2 = f"(Interpreter 2 '{pipeline['model_2']}' FAILED: {interp_2})"
-        logging.warning("⚠️ Interpreter 2 failed — the merger must not PASS from one witness alone.")
-    else:
-        status = "partial_interpreter_2_only"
-        interp_1 = f"(Interpreter 1 '{pipeline['model_1']}' FAILED: {interp_1})"
-        logging.warning("⚠️ Interpreter 1 failed — the merger must not PASS from one witness alone.")
+    for key, value in [('model_1', v1), ('model_2', v2)]:
+        if value is None or value == VERDICT_ANALYSIS_ERROR:
+            raise VideoAnalyzerFatal(f"FATAL: interpreter '{pipeline[key]}' returned no valid FRAME_VERDICT")
 
     merged = merge_interpretations(
         host, token, pipeline['merging_model'], pipeline['prompt_merge'],
@@ -847,46 +825,20 @@ def analyze_video_dual(frames: List[Dict], pipeline: dict) -> Tuple[str, str, fl
     )
 
     if _is_error_result(merged):
-        logging.warning(f"⚠️ Merging model failed ({merged}) — falling back to the raw interpretations.")
-        merged_report = (
-            f"[MERGE FALLBACK — the merging model failed: {merged}]\n\n"
-            f"=== ANALYSIS A ({pipeline['model_1']}) ===\n{interp_1}\n\n"
-            f"=== ANALYSIS B ({pipeline['model_2']}) ===\n{interp_2}"
-        )
-        final = _reconcile_without_merger(v1, v2)
-        confidence = 0.3
-        return merged_report, final, confidence, "merge_fallback_concat"
+        raise VideoAnalyzerFatal(f"FATAL: merging model '{pipeline['merging_model']}' failed: {merged}")
 
     final = _extract_verdict(merged, 'FINAL_VERDICT')
+    if final is None or final == VERDICT_ANALYSIS_ERROR:
+        raise VideoAnalyzerFatal(f"FATAL: merging model '{pipeline['merging_model']}' returned no valid FINAL_VERDICT")
     confidence = _extract_confidence(merged)
 
     # SAFETY OVERRIDE (a false PASS is the worst outcome): only accept PASS_OK
     # when BOTH interpreters were healthy AND neither independently disagreed.
     if final == VERDICT_PASS:
-        if status != "analyzed":
-            logging.warning("⚠️ Downgrading PASS_OK -> UNCLEAR: only one interpreter succeeded.")
-            final = VERDICT_UNCLEAR
-        elif v1 != VERDICT_PASS or v2 != VERDICT_PASS:
+        if v1 != VERDICT_PASS or v2 != VERDICT_PASS:
             logging.warning(f"⚠️ Downgrading PASS_OK -> UNCLEAR: interpreters disagreed (A={v1}, B={v2}).")
             final = VERDICT_UNCLEAR
-    if final not in VALID_VERDICTS:
-        final = _reconcile_without_merger(v1, v2)
-
-    return merged, final, confidence, status
-
-
-def _reconcile_without_merger(v1: Optional[str], v2: Optional[str]) -> str:
-    """Fallback verdict when the merger didn't give a parseable one: PASS only on
-    unanimous PASS; agree-on-a-fail wins; anything else is UNCLEAR.
-    """
-    if v1 == VERDICT_PASS and v2 == VERDICT_PASS:
-        return VERDICT_PASS
-    if v1 and v1 == v2:
-        return v1
-    for fail in (VERDICT_FAIL_NO_MOTION, VERDICT_FAIL_WRONG_MOTION):
-        if v1 == fail or v2 == fail:
-            return fail
-    return VERDICT_UNCLEAR
+    return merged, final, confidence, 'analyzed'
 
 
 # PID Management
@@ -960,7 +912,8 @@ def run_content_analysis(video_path, analysis_type, config, pipeline):
     spec = importlib.util.spec_from_file_location('tlamatini_video_content', path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    return module.run_content_analysis(video_path, analysis_type, config, pipeline, _call_ollama_chat)
+    return module.run_content_analysis(video_path, analysis_type, config, pipeline, _call_ollama_chat,
+                                       on_error=lambda error: report_fatal_error(error, config))
 
 
 def emit_content_result(video_path, result, pipeline):
@@ -988,8 +941,37 @@ def emit_content_result(video_path, result, pipeline):
     logging.info(result['analysis_token'])
 
 
+def report_fatal_error(error, config):
+    """Deliver a visible accumulated error; never change Tlamatini's retry state."""
+    try:
+        _publish_fatal_error(error, config)
+    except Exception:
+        # Delivery failures must not prevent the configured recovery route.
+        logging.exception('Could not deliver fatal video analysis dialog: %s', error)
+
+
+def _publish_fatal_error(error, config):
+    import importlib.util
+    from pathlib import Path
+    here = Path(__file__).resolve()
+    shared = next((p / 'visual_errors.py' for p in here.parents
+                   if (p / 'visual_errors.py').is_file()), None)
+    if shared is None:
+        raise RuntimeError('Visual error dialog support is missing from this runtime')
+    spec = importlib.util.spec_from_file_location('tlamatini_visual_errors', shared)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    module.publish_visual_error(here.parent, CURRENT_DIR_NAME, error,
+                                secrets=((config.get('llm') or {}).get('token'),))
+
+
 def main():
-    config = load_config()
+    _configure_agent_runtime()
+    try:
+        config = load_config()
+    except (Exception, SystemExit) as error:
+        report_fatal_error(f'Could not load Video-Analyzer configuration: {error}', {})
+        sys.exit(1)
     write_pid_file()
     if _IS_REANIMATED:
         logging.info(f"🔄 {CURRENT_DIR_NAME} REANIMATED (resuming from pause)")
@@ -1008,9 +990,9 @@ def main():
     pipeline = {
         'host': str(llm_config.get('host') or 'http://localhost:11434'),
         'token': llm_config.get('token', ''),
-        'model_1': str(config.get('interpreter_model_1') or '').strip() or DEFAULT_INTERPRETER_MODEL_1,
-        'model_2': str(config.get('interpreter_model_2') or '').strip() or DEFAULT_INTERPRETER_MODEL_2,
-        'merging_model': str(config.get('merging_model') or '').strip() or DEFAULT_MERGING_MODEL,
+        'model_1': str(config.get('interpreter_model_1') or '').strip(),
+        'model_2': str(config.get('interpreter_model_2') or '').strip(),
+        'merging_model': str(config.get('merging_model') or '').strip(),
         'prompt_1': str(config.get('prompt_interpreter_model_1') or '').strip() or DEFAULT_PROMPT_INTERPRETER_1,
         'prompt_2': str(config.get('prompt_interpreter_model_2') or '').strip() or DEFAULT_PROMPT_INTERPRETER_2,
         'prompt_merge': str(config.get('prompt_merging_model') or '').strip() or DEFAULT_PROMPT_MERGING,
@@ -1035,6 +1017,9 @@ def main():
         if analysis_type == 'robotics':
             logging.info(f"🎯 Expected motion: {pipeline['expected_motion']}")
         if analysis_type != 'transcription':
+            for role in ('model_1', 'model_2', 'merging_model'):
+                if not pipeline[role] or pipeline[role] == '@config':
+                    raise VideoAnalyzerFatal(f'Configure and resolve {role} before analyzing video')
             logging.info(
                 f"🤖 Triple-model @ {pipeline['host']}: '{pipeline['model_1']}' + "
                 f"'{pipeline['model_2']}' in PARALLEL -> BARRIER -> merger '{pipeline['merging_model']}'"
@@ -1045,9 +1030,7 @@ def main():
         pipeline['filename'] = os.path.basename(video_path) if video_path else video_pathfilenames
 
         if not video_path:
-            logging.error("❌ No video to analyze (path did not resolve to a video file).")
-            verdict, status = VERDICT_ANALYSIS_ERROR, "error"
-            report = f"No video resolved from '{video_pathfilenames}'."
+            raise VideoAnalyzerFatal(f"No video resolved from '{video_pathfilenames}'.")
         elif analysis_type != 'robotics':
             content_result = run_content_analysis(video_path, analysis_type, config, pipeline)
         else:
@@ -1091,7 +1074,7 @@ def main():
         logging.error(f"❌ Video-Analyzer failed: {e}")
         verdict, status, report = VERDICT_ANALYSIS_ERROR, "error", f"Unhandled error: {e}"
 
-    # Emit the verdict + section (ALWAYS, even on error, so the flow can branch).
+    # Preserve the error result so configured flow recovery can branch on it.
     try:
         if analysis_type == 'robotics':
             emit_verdict(video_path, verdict, confidence, status, motion_score,
@@ -1103,9 +1086,16 @@ def main():
             }, pipeline)
     except Exception as e:
         logging.error(f"❌ Failed to emit verdict section: {e}")
+        status, report = 'error', f'Could not publish video analysis: {e}'
 
-    # Trigger downstream agents (ALWAYS).
+    failed = status in ('error', 'engine_unavailable') if analysis_type == 'robotics' else (
+        content_result is None or content_result.get('status') not in ('analyzed', 'transcribed', 'no_matches'))
+    # An emission failure is fatal for every analysis mode.
+    failed = failed or report.startswith('Could not publish video analysis:')
     try:
+        if failed:
+            report_fatal_error(report, config)
+            logging.critical('Video-Analyzer attempt failed: %s. Configured recovery routing remains active.', report)
         target_agents = config.get('target_agents', []) or []
         total_triggered = 0
         if target_agents:
@@ -1119,7 +1109,7 @@ def main():
         time.sleep(0.4)
         remove_pid_file()
 
-    sys.exit(0)
+    sys.exit(1 if failed else 0)
 
 
 if __name__ == "__main__":

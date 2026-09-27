@@ -14,6 +14,8 @@ This directory holds the specialized onboarding documents that back the root `CL
 
 One-line descriptions:
 
+- **[../visual-analysis-errors.md](../visual-analysis-errors.md)** — strict configured image/video models, accumulated themed errors, preserved retries/recovery routes, PDF context behavior and visible verification.
+
 - **[../model_configuration.md](../model_configuration.md)** — all 38 model/engine/voice settings, 21 agent mappings, defaults, inheritance, API, compatibility, frozen/source paths and release checks.
 - **[../model-configuration-verification.md](../model-configuration-verification.md)** — dated source/frozen/installed execution evidence and its limits.
 

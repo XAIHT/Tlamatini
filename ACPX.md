@@ -826,3 +826,7 @@ That smoke test for ACPX is §7.7. The smoke test for the skill harness is §7.5
 If both pass, the work is ready to commit. If they don't, **drop the changes** — `git checkout -- .` and `git clean -fd Tlamatini/agent/acpx Tlamatini/agent/skills Tlamatini/agent/skills_pkg ACPX.md` will return the tree to the last commit. There is no ambiguity here: a feature that does not animate in a real instance does not ship.
 
 Welcome to ACPX. It is built to be small at the boundary, large at the catalog, and safe by default.
+
+## Image/video error reporting and recovery (2026-09-26)
+
+Image/video model failures accumulate in one shared, themed, non-modal fatal-error dialog with an audible notification. Tlamatini keeps running: preserve its retry/tactic ladder, cancellation controls and configured flow recovery routes. Keep the configured model identities; never report a surviving observer or raw concatenation as successful analysis. Dismiss hides the dialog while retaining its history; new failures reopen it. See [the shared behavior and verification contract](docs/visual-analysis-errors.md).
