@@ -188,7 +188,6 @@ def _next_request(rag_chain: Any, history: list, flags: RefreshFlags
     from .rag.chains.unified import (
         history_summary_tail,
         summarized_history,
-        with_system_context,
         wrap_loaded_context,
     )
 
@@ -203,21 +202,11 @@ def _next_request(rag_chain: Any, history: list, flags: RefreshFlags
         notes.append("the history summary written for that question "
                      + ("(the last one is used here)" if summary else "(none written yet)"))
 
-    # 2. The input: the chain's own wrappers around an EMPTY question, in the
-    #    chain's own order (system metrics, then the loaded context).
+    # 2. The input: the chain's own wrapper around an EMPTY question.  System
+    #    metrics join a question only when that question needs them - the
+    #    sidecar sends NOTHING otherwise (no placeholder since 2026-09-28) - so
+    #    one-shot and Multi-Turn wrap an empty question identically.
     input_text = ""
-    extra = "web / system / file-search context, if that question needs it"
-    if not flags.multi_turn:
-        # A one-shot request runs the legacy prefetch: while the
-        # System-Metrics MCP is on EVERY question is sent as
-        # "System Context: ..." - the sidecar's placeholder when the question
-        # needs no metrics (measured 2026-09-28: 63 characters per request).
-        from .rag.factory import _system_context_enabled
-        if _system_context_enabled():
-            from .chain_system_lcel import NO_SYSTEM_CONTEXT
-            input_text = with_system_context(NO_SYSTEM_CONTEXT, input_text)
-            extra = ("web / file-search context, and live system metrics in place of "
-                     "the 'no system context' placeholder, if that question needs them")
     loaded_context = str(getattr(rag_chain, "loaded_context", "") or "")
     if loaded_context:
         input_text = wrap_loaded_context(loaded_context, input_text)
@@ -267,7 +256,7 @@ def _next_request(rag_chain: Any, history: list, flags: RefreshFlags
 
     # 4. The messages - the executor's OWN builder.
     messages, prefix_count = executor.build_request_messages(input_text, hist)
-    notes.append(extra)
+    notes.append("web / system / file-search context, if that question needs it")
     return {
         "executor": executor,
         "messages": messages,

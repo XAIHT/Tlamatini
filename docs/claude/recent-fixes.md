@@ -32,8 +32,8 @@ is no `/api/tokenize` (404), so a real count only exists after a real call.
 Clear history, Clear context, context loaded, answer finished, Multi-Turn / ACPX /
 Step-by-Step toggled, skills changed, agent rebuilt after a cancel.
 `agent/context_baseline.py` rebuilds the NEXT request with the main chain's OWN
-code (`build_request_messages`, `history_summary_tail`, `wrap_loaded_context`,
-`with_system_context`) and asks Ollama once (`num_predict=1`, `stream=False`); a
+code (`build_request_messages`, `history_summary_tail`, `wrap_loaded_context`)
+and asks Ollama once (`num_predict=1`, `stream=False`); a
 byte-identical request reuses the cached count (sha256 of the wire body). The probe
 costs real tokens and is logged (`[CONTEXT-PROBE]`); `context_gauge_probe_enable` /
 `context_gauge_probe_after_answer` switch it off.
@@ -50,11 +50,13 @@ count and answer total is keyed by the user id.
    `build_request_messages` now also recognises the question at the END of the
    wrapped input (after a line break or `User Question: `) - human messages only,
    and `"say ok"` never swallows an earlier `"ok"`.
-2. **One-shot with System-Metrics ON prepends `System Context: No system context
-   required for this question.`** to EVERY question (63 characters) - the sidecar's
-   placeholder when no metrics are needed. It is still sent (changing what the model
-   is told is Angela's call), but it is now ONE named constant
-   (`chain_system_lcel.NO_SYSTEM_CONTEXT`) and the at-rest rebuild predicts it.
+2. **One-shot with System-Metrics ON prepended `System Context: No system context
+   required for this question.`** to EVERY question (63 characters, ~11 tokens) -
+   the sidecar's placeholder when no metrics are needed. **Removed on Angela's
+   decision ("stop sending that placeholder line")**: `intelligent_context_fetch`
+   now returns `""`, exactly what the chains already get when System-Metrics is
+   off, so they skip the `System Context:` block entirely. Live metrics are still
+   sent when a question really needs them.
 
 **Exact accounting (visible lab, 60/60, `context_gauge_real_lab.py`):** the live
 request equals the at-rest prediction PLUS the question's own bytes (history) PLUS,
@@ -63,13 +65,13 @@ nothing else. One-shot: 402,997 B -> 403,042 B (+45 = the question). Multi-Turn:
 402,664 B -> 408,662 B (+47 question +5,951 plan). Every REAL number on the ring
 equalled the `prompt_eval_count` in `tlamatini.log`, digit for digit.
 
-**Do NOT:** re-inline the system preamble or the placeholder string (the at-rest
-prediction would drift silently); narrow the dedupe back to bare equality; meter an
+**Do NOT:** bring the "no system context" placeholder back, or re-inline the
+system preamble (the at-rest prediction would drift silently); narrow the dedupe back to bare equality; meter an
 out-of-band call on the ring; show an estimate as REAL; or read a live frame's ring
 after the answer (the lab snapshots the ring inside `dispatchEvent` - a 0.5 s poll
 lost that race). Honest limits the frame states in its `note`: the next question's
 own text, the Multi-Turn plan, per-question retrieved context, and live system
-metrics replacing the placeholder cannot exist before the question is asked.
+metrics (only when that question needs them) cannot exist before it is asked.
 Coverage: `agent/test_context_real_tokens.py`.
 
 ## 2026-09-27 — Required build files use one inventory

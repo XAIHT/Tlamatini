@@ -142,15 +142,26 @@ def is_rest_real(reason):
                       and reason in str(f.get("label", "")))
 
 
-def log_real_for(seq):
-    """Ollama's prompt_eval_count for request `seq`, as the SERVER logged it."""
-    try:
-        with open(LOG_PATH, "r", encoding="utf-8", errors="replace") as fh:
-            text = fh.read()
-    except OSError:
-        return None
-    hits = re.findall(r"\[CONTEXT-REAL\][^\n]*?seq=%d [^\n]*?prompt_eval_count=(\d+)" % seq, text)
-    return int(hits[-1]) if hits else None
+def log_real_for(seq, wait=5.0):
+    """Ollama's prompt_eval_count for request `seq`, as the SERVER logged it.
+
+    Waits briefly for the line: the frame can reach the browser a moment
+    before the server's log line reaches the disk. ⚠️ Never run another
+    `manage.py` (e.g. the test suite) during the lab - every manage.py opens
+    tlamatini.log in truncate mode, and two writers overwrite each other's
+    lines (2026-09-28: a concurrent test run erased the server's seq lines).
+    """
+    deadline = time.time() + wait
+    pattern = re.compile(r"\[CONTEXT-REAL\][^\n]*?seq=%d [^\n]*?prompt_eval_count=(\d+)" % seq)
+    while True:
+        try:
+            with open(LOG_PATH, "r", encoding="utf-8", errors="replace") as fh:
+                hits = pattern.findall(fh.read())
+        except OSError:
+            hits = []
+        if hits or time.time() >= deadline:
+            return int(hits[-1]) if hits else None
+        time.sleep(0.25)
 
 
 def digits(text):

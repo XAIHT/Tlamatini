@@ -25,12 +25,6 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnableLambda, RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 
-# What intelligent_context_fetch returns when the question needs no system
-# metrics. It is NOT empty: the one-shot chain still sends it to the model as
-# "System Context: <this>", so the context gauge's at-rest rebuild imports this
-# one definition to predict that request exactly (2026-09-28).
-NO_SYSTEM_CONTEXT = "No system context required for this question."
-
 class SystemRAGChain:
     def __init__(self, config_path=None):
         # Load configuration from config.json
@@ -194,7 +188,12 @@ Answer ONLY with YES or NO:"""
             context = await self.fetch_system_context()
         else:
             print(f"[INFO] No system context needed for question: {question}")
-            context = NO_SYSTEM_CONTEXT
+            # NOTHING, not a placeholder (Angela, 2026-09-28): the one-shot
+            # chain sent "System Context: No system context required for this
+            # question." with EVERY question - ~11 tokens of noise per request,
+            # measured by the context gauge. Empty is exactly what the chains
+            # already get when System-Metrics is off, so they skip the block.
+            context = ""
 
         return {
             "context": context,

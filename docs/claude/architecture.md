@@ -179,11 +179,13 @@ estimate (`≈N tokens est.`) appears only until Ollama has answered.
 4. **Exact, both modes.** The live request = the at-rest prediction + the
    question's own bytes + (Multi-Turn only) the planner's plan (`bytes_plan`,
    measured). The rebuild therefore shares the chain's own builders -
-   `MultiTurnToolAgentExecutor.build_request_messages`, `history_summary_tail`,
-   `wrap_loaded_context`, `with_system_context` and
-   `chain_system_lcel.NO_SYSTEM_CONTEXT` (one-shot with System-Metrics on sends
-   that placeholder with EVERY question). Re-inlining any of them makes the
-   prediction drift silently.
+   `MultiTurnToolAgentExecutor.build_request_messages`, `history_summary_tail`
+   and `wrap_loaded_context`; both chains prepend live metrics through ONE
+   `with_system_context`. Re-inlining any of them makes the prediction drift
+   silently. The System-Metrics sidecar sends NOTHING when a question needs no
+   metrics - its old "No system context required for this question." placeholder
+   went out with every one-shot question and was removed on Angela's decision
+   (2026-09-28). Do not bring it back.
 5. **The current question is sent once.** `build_request_messages` drops the last
    history message when it IS the question, bare or wrapped.
 6. **Say what cannot be known.** The at-rest frame's `note` names what depends on

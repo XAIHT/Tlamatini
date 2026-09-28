@@ -563,7 +563,7 @@ class AtRestTests(SimpleTestCase):
         with mock.patch.object(cb, "_load_config", return_value=self.cfg):
             self.assertIsNone(cb.refresh(self.user, SimpleNamespace(), [], cb.RefreshFlags(), "x"))
 
-    def _next_input(self, *, multi_turn, system_on, loaded=""):
+    def _next_input(self, *, multi_turn, loaded=""):
         seen = {}
         executor = self.chain.unified_agent.executor
         original = executor.build_request_messages
@@ -573,25 +573,20 @@ class AtRestTests(SimpleTestCase):
             return original(input_text, chat_history, planner_summary)
 
         self.chain.loaded_context = loaded
-        with mock.patch.object(executor, "build_request_messages", side_effect=spy), \
-                mock.patch("agent.rag.factory._system_context_enabled", return_value=system_on):
+        with mock.patch.object(executor, "build_request_messages", side_effect=spy):
             self.assertIsNotNone(cb._next_request(self.chain, [], cb.RefreshFlags(multi_turn=multi_turn)))
         return seen["input"]
 
-    def test_one_shot_at_rest_carries_the_system_placeholder_it_will_really_send(self):
-        # Measured live 2026-09-28: with the System-Metrics MCP on, every
-        # one-shot question is sent as "System Context: <placeholder>\n\n..."
-        from agent.chain_system_lcel import NO_SYSTEM_CONTEXT
-        from agent.rag.chains.unified import with_system_context, wrap_loaded_context
-        self.assertEqual(self._next_input(multi_turn=False, system_on=True),
-                         with_system_context(NO_SYSTEM_CONTEXT, ""))
-        # ... and the loaded context wraps OUTSIDE it, in the chain's own order.
-        self.assertEqual(self._next_input(multi_turn=False, system_on=True, loaded="SRC"),
-                         wrap_loaded_context("SRC", with_system_context(NO_SYSTEM_CONTEXT, "")))
-
-    def test_multi_turn_and_a_disabled_mcp_add_no_system_prefix(self):
-        self.assertEqual(self._next_input(multi_turn=True, system_on=True), "")
-        self.assertEqual(self._next_input(multi_turn=False, system_on=False), "")
+    def test_at_rest_the_empty_question_is_wrapped_as_the_chain_wraps_it(self):
+        # No system placeholder any more (Angela, 2026-09-28), so one-shot and
+        # Multi-Turn wrap an empty question the same way - only the loaded
+        # context, with the chain's own wrapper.
+        from agent.rag.chains.unified import wrap_loaded_context
+        for multi_turn in (True, False):
+            with self.subTest(multi_turn=multi_turn):
+                self.assertEqual(self._next_input(multi_turn=multi_turn), "")
+                self.assertEqual(self._next_input(multi_turn=multi_turn, loaded="SRC"),
+                                 wrap_loaded_context("SRC", ""))
 
 
 # ── The request itself: no preamble drift, the question never sent twice ────
@@ -607,17 +602,43 @@ class OneQuestionOnceTests(SimpleTestCase):
         return [m.content for m in messages[1:]]
 
     def test_the_system_preamble_is_byte_identical_to_the_old_literal(self):
-        from agent.chain_system_lcel import NO_SYSTEM_CONTEXT
         from agent.rag.chains.unified import with_system_context
-        self.assertEqual(NO_SYSTEM_CONTEXT, "No system context required for this question.")
-        for sc, text in (("cpu 3%", "Q?"), (NO_SYSTEM_CONTEXT, ""), ("x", "a\nb")):
+        for sc, text in (("cpu 3%", "Q?"), ("mem 41%", ""), ("x", "a\nb")):
             self.assertEqual(with_system_context(sc, text), f"System Context: {sc}\n\n{text}")
 
-    def test_the_sidecar_returns_the_named_placeholder(self):
+    def test_the_sidecar_sends_nothing_when_no_metrics_are_needed(self):
+        # Angela, 2026-09-28: "stop sending that placeholder line". It was
+        # "System Context: No system context required for this question." on
+        # EVERY one-shot question while System-Metrics was on.
+        import asyncio
+        from agent.chain_system_lcel import SystemRAGChain
+
+        async def decide_no(_question):
+            return False
+
+        async def decide_yes(_question):
+            return True
+
+        async def live_metrics():
+            return "cpu 3%"
+
+        fake = SimpleNamespace(should_fetch_system_context=decide_no,
+                               fetch_system_context=live_metrics)
+        out = asyncio.run(SystemRAGChain.intelligent_context_fetch(fake, {"question": "2+2?"}))
+        self.assertEqual(out["context"], "")
+        fake.should_fetch_system_context = decide_yes
+        out = asyncio.run(SystemRAGChain.intelligent_context_fetch(fake, {"question": "cpu?"}))
+        self.assertEqual(out["context"], "cpu 3%")
+
+    def test_both_chains_skip_an_empty_system_context(self):
+        # So "" really means NOTHING is sent: no "System Context: " prefix.
         import inspect
-        from agent import chain_system_lcel
-        src = inspect.getsource(chain_system_lcel.SystemRAGChain.intelligent_context_fetch)
-        self.assertIn("context = NO_SYSTEM_CONTEXT", src)
+        from agent.rag.chains import unified
+        src = inspect.getsource(unified)
+        self.assertIn('if payload.get("system_context"):\n'
+                      "            enhanced_input = with_system_context(", src.replace("\r\n", "\n"))
+        self.assertIn("if sys_ctx:\n            enhanced_input = with_system_context(sys_ctx",
+                      src.replace("\r\n", "\n"))
 
     def test_a_bare_question_is_not_sent_twice(self):
         from langchain_core.messages import AIMessage, HumanMessage
@@ -626,13 +647,12 @@ class OneQuestionOnceTests(SimpleTestCase):
 
     def test_a_wrapped_question_is_not_sent_twice(self):
         from langchain_core.messages import AIMessage, HumanMessage
-        from agent.chain_system_lcel import NO_SYSTEM_CONTEXT
         from agent.rag.chains.unified import (with_system_context, wrap_loaded_context,
                                               wrap_retrieved_context)
         history = [HumanMessage(content="hi"), AIMessage(content="hello"),
                    HumanMessage(content="What is 2 plus 2?")]
         q = "What is 2 plus 2?"
-        for wrapped in (with_system_context(NO_SYSTEM_CONTEXT, q),
+        for wrapped in (with_system_context("cpu 3%", q),
                         wrap_loaded_context("SRC", q),
                         wrap_retrieved_context("DOCS", q),
                         wrap_loaded_context("SRC", with_system_context("cpu", q)),

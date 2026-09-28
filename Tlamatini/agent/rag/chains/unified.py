@@ -245,11 +245,10 @@ def wrap_retrieved_context(scoped_context_blob: str, question: str) -> str:
 def with_system_context(system_context: str, text: str) -> str:
     """The system-metrics preamble both unified chains prepend.
 
-    One-shot requests ALWAYS carry it while the System-Metrics MCP is on: when
-    the question needs no metrics the sidecar still returns its placeholder
-    (``chain_system_lcel.NO_SYSTEM_CONTEXT``).  Shared with the at-rest context
-    gauge so it predicts that prefix exactly; byte-identical to the literal it
-    replaced (2026-09-28).
+    Only when a question really needs live metrics: the sidecar returns
+    NOTHING otherwise (it used to return a "no system context required"
+    placeholder, sent with every one-shot question - removed 2026-09-28).
+    ONE definition for both chains; byte-identical to the literal it replaced.
     """
     return f"System Context: {system_context}\n\n{text}"
 
