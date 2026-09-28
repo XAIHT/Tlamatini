@@ -861,3 +861,13 @@ validation API, optional values and lifecycle rules are in `docs/model_configura
 ## Image/video error reporting and recovery (2026-09-26)
 
 Image/video model failures accumulate in one shared, themed, non-modal fatal-error dialog with an audible notification. Tlamatini keeps running: preserve its retry/tactic ladder, cancellation controls and configured flow recovery routes. Keep the configured model identities; never report a surviving observer or raw concatenation as successful analysis. Dismiss hides the dialog while retaining its history; new failures reopen it. See [the shared behavior and verification contract](../../docs/visual-analysis-errors.md).
+
+## Direct chat dictation and developer visibility (2026-09-27)
+
+The microphone beside Send is an internal input service, not a newly registered
+workflow agent or an External MCP. It reuses Whisperer through an authenticated
+same-origin WebSocket, then submits text through the existing chat form. It adds
+no agent/tool catalog entry. The child runs under source/carried Python without
+a separate console; diagnostics use the main app logger. Angela's visible-work
+rule governs developer commands and verification, not extra windows in the
+end-user product. Keep that distinction when applying this runbook.

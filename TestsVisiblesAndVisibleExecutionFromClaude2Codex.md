@@ -44,6 +44,15 @@ result would be identical either way.
 
 ---
 
+## Product UX clarification — Angela, 2026-09-27
+
+These are requirements for developer execution and verification, not a demand
+that end users see additional internal-service consoles. Chat dictation must
+keep the normal Tlamatini main console only: no Whisperer PowerShell/conhost
+window, no focus stealing and no console-visibility prerequisite. Its internal
+worker may run without a window, with diagnostics forwarded to the main app log.
+Tests of that behavior still run in a verified visible development console.
+
 ## Why — this is not ceremony
 
 1. **She watches the screen.** A run that dies thirty seconds in is obvious to

@@ -417,6 +417,16 @@ class AgentBundlingCompletenessTests(SimpleTestCase):
 
 
 class RequirementsCoverageTests(SimpleTestCase):
+    def test_all_repository_source_and_build_dependencies_are_declared(self):
+        audit_path = REPO_ROOT / 'scripts' / 'check_requirements_coverage.py'
+        spec = importlib.util.spec_from_file_location('requirements_coverage', audit_path)
+        coverage = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(coverage)
+        result = coverage.audit(REPO_ROOT)
+        self.assertEqual(result['missing'], {}, result['missing'])
+        self.assertEqual(result['syntax_errors'], [], result['syntax_errors'])
+        self.assertEqual(result['unreviewed_dynamic_imports'], [], result['unreviewed_dynamic_imports'])
+
     def test_every_agent_third_party_import_is_pinned(self):
         uncovered = {}
         for mod, files in _agent_third_party_imports().items():

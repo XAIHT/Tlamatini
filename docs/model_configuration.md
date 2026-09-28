@@ -143,6 +143,23 @@ saving a dedicated value means later Unified model changes do not override it.
   external MCP servers keep their own provider configuration. This dialog does
   not replace their credentials, endpoints, CLI settings or external model IDs.
 
+## Direct microphone button
+
+The chat microphone reloads Whisperer's template for every recording, so the
+Speech engine/model choices above apply through the existing `@config` rules.
+Explicit template overrides still win. This does not add a new model selector.
+
+Interactive dictation forces `input_source: mic`, `record_seconds: 0`,
+`silence_gate: on`, `ollama_cleanup: false` and no downstream targets for
+that job. Device, language, gain, threshold, silence timeout and maximum duration
+keep their configured values. Selecting `whisperer_cleanup_model` therefore
+does not insert an Ollama cleanup stage into the button path. The normal chat
+model is invoked only after recognized text is submitted.
+
+The browser avatar acknowledgment uses Config → Voice and Silent mode, not
+Talker's model/voice. The mic belongs to the Tlamatini host even when chat is
+opened remotely. See [the direct microphone guide](chat-microphone-design.md).
+
 ## Global choices, overrides and Parametrizer
 
 New templates use the quoted YAML string `"@config"`. A missing registered field

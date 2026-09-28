@@ -513,6 +513,9 @@ document.getElementById('chat-form').onsubmit = function (e) {
             console.error("Catched error in onsubmit(): " + err);
         }
         chatInput.value = '';
+        document.dispatchEvent(new CustomEvent('tlm-chat-submitted', {
+            detail: {voice: document.getElementById('chat-form').dataset.voiceSubmitting === 'true'}
+        }));
     }
 };
 

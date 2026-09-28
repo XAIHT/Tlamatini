@@ -15,6 +15,19 @@ description: Run the daily automated Tlamatini chat regression — drive a visib
 
 > **HEADLESS IS FORBIDDEN. VISIBLE FOREGROUND EXECUTION ONLY.** Every command, automated test, diagnostic, script, build, agent and browser must run in a visible foreground window on Angela's real desktop. Use forked CMD/PowerShell windows, `execute_forked_window: true`, and `headless: false`. Monitor live; if visibility cannot be confirmed, do not run. Read the [mandatory execution policy](../../../TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).
 
+> **Developer/product boundary (Angela, 2026-09-27):** these visibility requirements govern development and verification. They must not create extra windows, steal focus or expose internal diagnostics in the shipped UX. Direct chat dictation keeps status in chat and uses only Tlamatini's main console/log.
+
+### Direct microphone verification is separate from catalog verification
+
+The chat microphone beside Send uses `/ws/chat-voice/` and automatic normal-form
+submission. The catalog's `voice_commands_visible.py` checks do not test this
+button or prove real audio capture. `scripts/chat_microphone_visible.py` verifies
+the direct UI in headed Chrome using controlled transport; real host capture,
+gate/ASR and windowless lifecycle require separate visible probes. Keep the
+production worker windowless, its diagnostics in the main application log and
+recording status in chat. Do not introduce a debug console to satisfy the test
+visibility rule. See [the direct voice guide](../../../docs/chat-microphone-design.md).
+
 A self-contained Playwright harness lives in `harness/` next to this file. It opens
 **real Chrome**, logs into Tlamatini, and asks up to **1000 curated questions** to
 the chat one at a time — typing, sending, waiting for the answer to finish, scraping

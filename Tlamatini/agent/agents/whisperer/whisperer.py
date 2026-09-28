@@ -896,7 +896,12 @@ class MicRecIndicator:
             pass
 
 
-def record_from_microphone(config: Dict):
+class CaptureCancelled(RuntimeError):
+    """The caller cancelled dictation; no transcript may be submitted."""
+
+
+def record_from_microphone(config: Dict, *, progress=None, cancel_event=None,
+                           strict_stream=False):
     """
     Open, CONFIGURE and RECORD the microphone entirely on our own. Returns
     ``(audio_float32_mono_16k, meta)`` where the audio is a 1-D float32 numpy
@@ -910,6 +915,8 @@ def record_from_microphone(config: Dict):
     import numpy as np
     import sounddevice as sd
 
+    if cancel_event is not None and cancel_event.is_set():
+        raise CaptureCancelled("Dictation cancelled.")
     device_arg, device_index, device_name, info = resolve_input_device(config)
 
     # -- Fixed duration, or listen until the speaker stops? ------------------
@@ -997,8 +1004,12 @@ def record_from_microphone(config: Dict):
         # only -- no logging, no lock, no disk, no allocation beyond the block
         # copy we already make. A callback that blocks drops samples, and
         # dropped samples are a wrong transcript.
-        if not indicator._active:
-            indicator.on()                 # ON edge == first samples in hand
+        if cancel_event is not None and cancel_event.is_set():
+            outcome["reason"] = "cancelled"
+            done.set()
+            raise sd.CallbackStop
+        if progress is None and not indicator._active:
+            indicator.on()                 # legacy console; chat paints outside callback
         block = np.array(indata, dtype=np.float32, copy=True)
         chunks.append(block)
         collected["n"] += n_frames
@@ -1033,7 +1044,40 @@ def record_from_microphone(config: Dict):
             latency='low',
             callback=_on_audio,
         ):
-            done.wait(timeout=record_seconds + 5.0)
+            if progress is None and cancel_event is None:
+                done.wait(timeout=record_seconds + 5.0)
+            else:
+                # IPC/UI work belongs here, NEVER in PortAudio's callback.
+                opened = time.monotonic()
+                last_audio, last_count = opened, 0
+                while not done.wait(0.04):
+                    if cancel_event is not None and cancel_event.is_set():
+                        outcome["reason"] = "cancelled"
+                        break
+                    if collected["n"] and progress is not None:
+                        progress({
+                            "event": "recording",
+                            "elapsed": collected["n"] / float(capture_rate),
+                            "level": indicator._peak,
+                            "silence": gate.silence_seconds if gate else 0.0,
+                            "silence_timeout": silence_timeout if gated else 0.0,
+                        })
+                    now = time.monotonic()
+                    if collected["n"] != last_count:
+                        last_audio, last_count = now, collected["n"]
+                    elif last_count and now - last_audio > 2.0:
+                        raise RuntimeError("The microphone stopped delivering audio samples.")
+                    elapsed = now - opened
+                    if (not collected["n"] and elapsed > 5.0) or elapsed > record_seconds + 5.0:
+                        raise RuntimeError("The microphone stopped delivering audio samples.")
+                if collected["n"] and progress is not None:
+                    progress({
+                        "event": "recording",
+                        "elapsed": collected["n"] / float(capture_rate),
+                        "level": indicator._peak,
+                        "silence": gate.silence_seconds if gate else 0.0,
+                        "silence_timeout": silence_timeout if gated else 0.0,
+                    })
         captured = collected["n"] / float(capture_rate) if capture_rate else 0.0
         indicator.off(captured, outcome["reason"])   # OFF edge == stream torn down
         if chunks:
@@ -1043,6 +1087,10 @@ def record_from_microphone(config: Dict):
         # unsupported on this host/driver -- recording must still succeed
         # (the live light just won't be available in that degraded mode).
         indicator.off(collected["n"] / float(capture_rate) if capture_rate else 0.0)
+        if strict_stream:
+            # Interactive dictation promises an actual REC light, a working gate
+            # and cancellation. A blind fixed-duration fallback cannot honor it.
+            raise RuntimeError(f"Live microphone capture is unavailable: {stream_err}") from stream_err
         fallback_seconds = requested_seconds if requested_seconds > 0 else 30.0
         if gated:
             # The gate LIVES in the audio callback, so a driver that refuses
@@ -1064,6 +1112,8 @@ def record_from_microphone(config: Dict):
         )
         sd.wait()
 
+    if cancel_event is not None and cancel_event.is_set():
+        raise CaptureCancelled("Dictation cancelled.")
     if recording is None or len(recording) == 0:
         raise RuntimeError("Microphone opened but returned no samples.")
 
@@ -1183,14 +1233,46 @@ def resolve_local_device(config: Dict) -> Tuple[str, str]:
     return device, compute
 
 
-def transcribe_faster_whisper(audio, config: Dict) -> Dict:
+_MODEL_CACHE_LOCK = threading.Lock()
+
+
+def load_recognition_model(model_name, device, compute_type, cache=None):
+    """Optional resident cache; standalone workflow runs keep their old lifetime."""
+    from faster_whisper import WhisperModel
+    if cache is None:
+        return WhisperModel(model_name, device=device, compute_type=compute_type)
+    key = (model_name, device, compute_type)
+    with _MODEL_CACHE_LOCK:
+        if key not in cache:
+            # At most one selected model, with its GPU/CPU variants.
+            for old in list(cache):
+                if old[0] != model_name:
+                    del cache[old]
+            cache[key] = WhisperModel(model_name, device=device, compute_type=compute_type)
+        return cache[key]
+
+
+def warm_recognition_model(config, cache):
+    """Load during capture without delaying the first microphone sample."""
+    device, compute = resolve_local_device(config)
+    name = str(config.get('model', 'base') or 'base').strip()
+    if cache.get((name, 'cuda-failed', compute)):
+        device, compute = 'cpu', 'int8'
+    try:
+        return load_recognition_model(name, device, compute, cache)
+    except Exception:
+        if device == 'cuda':
+            cache[(name, 'cuda-failed', compute)] = True
+            return load_recognition_model(name, 'cpu', 'int8', cache)
+        raise
+
+
+def transcribe_faster_whisper(audio, config: Dict, *, model_cache=None) -> Dict:
     """
     Transcribe with faster-whisper. Tries the resolved device (GPU when present),
     and on ANY GPU failure (driver/cuDNN/VRAM) AUTOMATICALLY falls back to CPU so
     a machine without a working GPU ALWAYS gets a transcript.
     """
-    from faster_whisper import WhisperModel
-
     model_name = str(config.get('model', 'base') or 'base').strip()
     language = str(config.get('language', '') or '').strip() or None
     task = str(config.get('task', 'transcribe') or 'transcribe').strip().lower()
@@ -1201,10 +1283,12 @@ def transcribe_faster_whisper(audio, config: Dict) -> Dict:
     word_timestamps = _coerce_bool(config.get('word_timestamps', False), False)
 
     device, compute_type = resolve_local_device(config)
+    if model_cache is not None and model_cache.get((model_name, 'cuda-failed', compute_type)):
+        device, compute_type = 'cpu', 'int8'
 
     def _run(dev: str, comp: str) -> Dict:
         logging.info(f"🧠 Loading faster-whisper '{model_name}' on {dev} ({comp})...")
-        model = WhisperModel(model_name, device=dev, compute_type=comp)
+        model = load_recognition_model(model_name, dev, comp, model_cache)
         segments, info = model.transcribe(
             audio,
             language=language,
@@ -1230,6 +1314,8 @@ def transcribe_faster_whisper(audio, config: Dict) -> Dict:
         return _run(device, compute_type)
     except Exception as gpu_err:
         if device == 'cuda':
+            if model_cache is not None:
+                model_cache[(model_name, 'cuda-failed', compute_type)] = True
             logging.warning(
                 f"⚠️ GPU transcription failed ({gpu_err}); falling back to CPU (int8). "
                 f"This always works on a machine without a usable GPU."

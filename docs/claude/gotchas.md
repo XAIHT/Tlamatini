@@ -10,6 +10,34 @@
 
 > **HEADLESS IS FORBIDDEN. ALL EXECUTION MUST BE VISIBLE.** Every automated test, command, diagnostic, script, build, agent, prompt and browser must run in a visible, forked foreground window on Angela's real desktop. Use visible CMD/PowerShell consoles and headed browsers (`headless=False`); keep output on screen and monitor live. No hidden/background execution, including CI or quick checks. If visibility cannot be confirmed, do not run. Mandatory policy: [visible execution](../../TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).
 
+> **Developer/product boundary (Angela, 2026-09-27):** these visibility requirements govern development and verification. They must not create extra windows, steal focus or expose internal diagnostics in the shipped UX. Direct chat dictation keeps status in chat and uses only Tlamatini's main console/log.
+
+## Direct microphone: product UX and release carriage (2026-09-27)
+
+Angela is the developer; her visible-execution rule governs our commands and
+verification, not end-user UI. Do not reintroduce a Whisperer PowerShell/conhost
+window, foreground activation or a visibility gate. Keep the main console/log
+and the chat's recording indicator.
+
+The source/carried-Python child must include capture and ASR dependencies.
+`build.py` requires `agent.chat_voice_consumer` and
+`agent.chat_voice_runtime`; `build_runtime_assets.py` verifies
+`agents/whisperer/chat_worker.py`, `chat_dictation.js` and
+`chat_dictation.css`. Keep routing, template, composer sizing, form dispatch,
+avatar hooks and INFO logging aligned. Required files alone do not prove a
+frozen runtime works. Restart source; rebuild/update installed binaries.
+
+The current source record is 98 passing voice tests, real capture/cancellation
+and two actual worker restart cycles without extra windows or focus changes.
+Earlier headed-browser tests used controlled transport; no new live Ollama job
+or installer build is claimed. Run checks in a visible console and inspect the
+main application log. [Full contract](../chat-microphone-design.md).
+
+The whole-source dependency guard is `scripts/check_requirements_coverage.py`;
+the older agent-only import test is insufficient on its own. Main declarations
+and ESPHome's separate private-runtime manifest are explained in the
+[dependency audit](../dependency-coverage-audit.md).
+
 ## Models and frozen runtime preparation (2026-09-20)
 
 - Never open `model_settings.py` relative to a frozen service's `__file__`: the

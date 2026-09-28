@@ -16,6 +16,48 @@
 
 ---
 
+## 2026-09-27 — Microphone documentation synchronized across product and maintainer surfaces
+
+README, the Book, self-knowledge, agent catalog, model settings, frontend,
+architecture, orchestration/Exec Report, release carriage and mirrored developer
+runbooks distinguish the direct button from model-mediated catalog/workflow
+Whisperer. The canonical [microphone guide](../chat-microphone-design.md) includes
+user steps, protocol limits, config overrides, cancellation, diagnostics and
+verification limits. The shared PDF/PPTX content includes the same feature and
+dated evidence; native PowerPoint verification runs visibly and leaves the deck
+open. Do not turn that developer verification behavior into product windows.
+
+## 2026-09-27 — Internal dictation must not open another console
+
+Angela clarified that developer visibility requirements are not end-user UX
+requirements. The resident chat Whisperer launches directly without a shell,
+console window, foreground activation or visibility prerequisite. Its output
+flows through `agent.chat_voice_runtime` into the main application console/log;
+recording state stays in chat. Reap the child on failed startup and shutdown.
+Do not reintroduce PowerShell `-NoExit`, conhost, CREATE_NEW_CONSOLE or worker
+window checks. Development tests still run visibly. This distinction applies
+to product design generally: Angela is the developer, not a proxy for every
+end user's preferences.
+
+## 2026-09-27 — Direct chat microphone
+
+The microphone beside Send opens Whisperer directly through authenticated,
+same-origin `/ws/chat-voice/`; never add planner/tool selection or optional
+Ollama cleanup before capture/submission. The resident internal worker retains
+the configured recognition model between prompts, honors the existing silence
+window and reports Recording only after real samples. Django must not import
+the speech ML stack. Source/carried Python runs the worker; keep the worker,
+JS/CSS and runtime modules in the release inventories.
+
+Capture progress stays outside the audio callback; interactive capture refuses
+the ungated fallback. Preserve cancellation ownership, stale-result rejection,
+the existing chat form/options, avatar acknowledgment deduplication and Silent
+mode. Include the status row in both the composer height calculation and its
+ResizeObserver. Releasing dictation must restore its read-only lock even when
+the chat socket has disconnected.
+
+See [design, measurements and verification scope](../chat-microphone-design.md).
+
 ## 2026-09-26 — Strict visual results, accumulated dialogs, uninterrupted recovery
 
 Image/video attempts reject failed observers, failed merges, incomplete streams

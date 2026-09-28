@@ -36,8 +36,17 @@ diagnostic, script, build, agent, prompt, CMD/PowerShell session and browser.
   Legacy headless flags must be refused loudly and must never enable a hidden
   browser. Review launch sites and fallbacks, not only default settings.
 
-The linked policy contains the concrete launch instructions. It governs execution
-even where older documentation describes background product implementation.
+The linked policy contains the concrete launch instructions. It governs development and verification, including tests of background product
+implementation. It does not require additional end-user service windows.
+
+## Product UX boundary — clarified by Angela on 2026-09-27
+
+The visibility rule governs our development work and verification. It must not
+be imposed on end users as extra application windows. Internal chat dictation
+runs without a separate console or foreground activation; its status belongs in
+the chat and its diagnostics in Tlamatini's main console/log. Verify this product
+behavior from a visible development console. Do not reintroduce a persistent
+Whisperer PowerShell/conhost window or require its visibility to enable recording.
 
 ## Existing repository contracts
 

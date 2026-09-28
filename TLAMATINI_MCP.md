@@ -190,3 +190,12 @@ validation API, optional values and lifecycle rules are in [model configuration]
 ## Image/video error reporting and recovery (2026-09-26)
 
 Image/video model failures accumulate in one shared, themed, non-modal fatal-error dialog with an audible notification. Tlamatini keeps running: preserve its retry/tactic ladder, cancellation controls and configured flow recovery routes. Keep the configured model identities; never report a surviving observer or raw concatenation as successful analysis. Dismiss hides the dialog while retaining its history; new failures reopen it. See [the shared behavior and verification contract](docs/visual-analysis-errors.md).
+
+## Direct microphone input is not an MCP tool (2026-09-27)
+
+The chat button beside Send uses authenticated same-origin `/ws/chat-voice/`
+and an internal resident Whisperer worker. It does not need an External MCP,
+ACPX, a model tool decision or a newly registered agent. The transcript returns
+to the browser's normal chat form for automatic submission with current options.
+Existing Whisperer workflow/MCP tools keep their own contracts. See
+[the microphone guide](docs/chat-microphone-design.md).

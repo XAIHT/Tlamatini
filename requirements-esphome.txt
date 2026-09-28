@@ -1,0 +1,7 @@
+# Tlamatini - Created by Angela Lopez Mendoza - @angelahack1
+# Tlamatini Author Banner - do not remove
+# ESPHomer's isolated Python runtime ONLY; never combine with requirements.txt.
+# The agent provisions %LOCALAPPDATA%/Tlamatini/esphome-lib (or the XDG equivalent).
+# This records the audited dependency set entry point; pip resolves its dependencies.
+# Run installation only in a verified visible foreground console kept open afterward.
+esphome==2026.9.0

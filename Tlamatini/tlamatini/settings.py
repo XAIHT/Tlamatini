@@ -247,7 +247,7 @@ if getattr(sys, 'frozen', False):
 
 # Version stamp for cache-busting of static assets in templates
 # Override via env var STATIC_VERSION when deploying
-STATIC_VERSION = (os.environ.get('STATIC_VERSION') or str(int(time.time()))) + '-prompt-flow-panel-12-node-gestures'
+STATIC_VERSION = (os.environ.get('STATIC_VERSION') or str(int(time.time()))) + '-direct-whisperer-microphone-1'
 
 # WhiteNoise configuration: dev vs release.
 # NOTE (speed batch, 2026-07-02): the old per-branch STATICFILES_STORAGE lines
@@ -346,6 +346,12 @@ LOGGING = {
         # FriendlyErrorMiddleware's logger: error id + method/path + full
         # traceback for release-mode unhandled view exceptions.
         "tlamatini.request": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        # The internal dictation worker writes here, never to a second window.
+        "agent.chat_voice_runtime": {
             "handlers": ["console"],
             "level": "INFO",
             "propagate": False,

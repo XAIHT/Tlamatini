@@ -10,6 +10,8 @@
 
 > **HEADLESS IS FORBIDDEN. ALL EXECUTION MUST BE VISIBLE.** Every automated test, command, diagnostic, script, build, agent, prompt and browser must run in a visible, forked foreground window on Angela's real desktop. Use visible CMD/PowerShell consoles and headed browsers (`headless=False`); keep output on screen and monitor live. No hidden/background execution, including CI or quick checks. If visibility cannot be confirmed, do not run. Mandatory policy: [visible execution](../../TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).
 
+> **Developer/product boundary (Angela, 2026-09-27):** these visibility requirements govern development and verification. They must not create extra windows, steal focus or expose internal diagnostics in the shipped UX. Direct chat dictation keeps status in chat and uses only Tlamatini's main console/log.
+
 ## Config → Models: metadata-driven form
 
 The dialog renders 38 fields in Core (7), Vision (7), Speech (7), Workflows (6),
@@ -28,7 +30,7 @@ cover all tabs, cross-category search, narrow layout, invalid values, save/reope
 and an actual loader reading the saved value. Restore any test choice afterwards.
 See [the full model contract](../model_configuration.md).
 
-## Chat Interface (16 modules)
+## Chat Interface (17 modules)
 - `agent_page_init.js` - WebSocket setup, app initialization, **Context-menu "Set directory as context"** handler (see *Context directory picker* below)
 - `agent_page_chat.js` - Chat message handling; handles the `exec-permission-request` frame (Ask Execs — see below) by opening the permission dialog. `appendChatMessage` keeps the Send button on **Cancel** during self-healing "🔁 Tactic…" status frames (via `isSelfHealingStatusMessage()` in `agent_page_ui.js`) instead of re-enabling the controls, so the button only returns to **Send** on the real final answer (see `docs/claude/multi-turn.md` → *Self-healing model steps* and `recent-fixes.md` 2026-07-07)
 - `agent_page_canvas.js` - Code canvas rendering
@@ -44,7 +46,33 @@ See [the full model contract](../model_configuration.md).
 - `avatar_presence.js` - The avatar's presence compositor. Her portrait is pre-scaled to EXACTLY the frame: no overscan, no zoom, no breath/sway transform (see memory *avatar-presence-engine*)
 - `avatar_size.js` - Persists the avatar dock size. ⚠️ Keep its **re-entrancy guard** — `apply()` dispatches a synthetic `resize` and the `resize` handler calls `apply()`, which once threw "Maximum call stack size exceeded" on every resize
 - `chat_image_paste.js` - **Screenshot → chat box** (2026-07-14). PrtScn → Alt+Tab → **Ctrl+V** (or drop image files onto the chat column) saves the image to `<app>/Temp` as `image_<timestamp>.jpg` via `POST /agent/paste_image/` and splices its **absolute path into the chat box at the caret**, with a thumbnail chip (`#chat-image-chips`) above the input — so the user can immediately ask Tlamatini to analyze that path. Self-contained IIFE (declares **no** cross-file globals). The `paste` listener is on `document` (after Alt+Tab the focus is on `<body>`, so a textarea-scoped listener would never fire) and the caret is remembered separately; drag-and-drop is scoped to `#main-chat-container` so it doesn't fight the External-MCP dialog's document-level `.json` drop handler. **`agent_page_layout.js::computeFormMinHeight()` must keep counting the chips row** — it pins `#tools-chat-form-container` to an explicit pixel height, so an uncounted row pushes the textarea + Send off-screen. Contract: `docs/claude/recent-fixes.md` (2026-07-14)
+- `chat_dictation.js` - Direct microphone button beside Send. Authenticated `/ws/chat-voice/` opens the resident Whisperer host microphone without LLM planning. Real sample feedback, configured silence gate, cached ASR, automatic normal-form submission and immediate avatar acknowledgment. Escape/second click cancel; late results cannot submit. Count `dictation-status` in `computeFormMinHeight()` and its ResizeObserver, or the buttons fall off-screen. See [design and verification](../chat-microphone-design.md).
 - `avatar.js` - **Chat-avatar + browser speech engine** (extracted out of `agent_page.html`, 2026-07-17; animation Tier-2 2026-07-18). Drives the clickable talking portrait in the chat input footer and speaks Tlamatini's replies through the **browser's** `speechSynthesis` (distinct from the **Talker** agent, which synthesizes a WAV server-side through Ollama). **FEMALE VOICE ONLY, same as Talker** — `femaleVoices()` filters the installed voices with a female allow-pattern and a male deny-pattern, falls back to "any voice that is not male", and only then to whatever exists; Tlamatini is female and a male voice is not an acceptable substitute. Long answers are `chunk()`ed to ~170 chars on sentence boundaries because the Web Speech API truncates long utterances, `queue: true` means consecutive messages are ALL spoken rather than cutting each other off, a `keepAlive` interval works around the Chrome bug that silently stops long speech, and `prime()` satisfies the browser's user-gesture requirement. Settings (mode / voiceURI / volume / rate / pitch) persist in `localStorage` under `tlm_voice_settings`. Self-contained IIFE
+
+### Microphone composer contract
+
+`#chat-microphone` sits immediately left of `#chat-message-submit`;
+`#dictation-status` contains live text, meter, elapsed time and gate countdown.
+`chat_dictation.css` provides the gradient microphone, focus treatment,
+recording state and reduced-motion rules. `chat_dictation.js` loads after
+`avatar.js` and connects only to the same-origin `/ws/chat-voice/` route.
+
+Preparation leaves the host microphone closed. Show Listening only after real
+samples. Lock the draft against edits during capture and prevent all submit
+paths, including Enter/legacy submit dispatch. Escape or a second click cancels.
+A matching result clears ownership before calling the normal form exactly once;
+cancelled, duplicate and stale frames cannot submit. Restore the original
+read-only lock even after chat disconnects. If sending becomes unavailable, keep
+the recognized text in the draft.
+
+The avatar is quiet while listening. `voiceSubmitting` marks the form handoff;
+the avatar acknowledges successful dispatch and deduplicates the matching
+server acknowledgment, respecting Silent mode. The button preserves current
+flags. Do not replace this with a second submission implementation.
+
+All recording UI belongs in the composer; no product console is created or
+activated. This captures the Tlamatini host microphone, not a remote browser
+device. See [states, limits and evidence](../chat-microphone-design.md).
 
 ### Chat navbar — menu layout (reorganized 2026-09-25)
 
@@ -154,7 +182,7 @@ If you add a new canvas-level feature (layout grid, minimap, overlay HUD, etc.),
 - `prompt-flow-panel-model.js` - The `.fpmt` document contract, frozen as `window.PromptFlowPanelModel` (`FORMAT = 'tlamatini-prompting-flow'`, `EXTENSION = '.fpmt'`, `isFlowFilename`, `flowFilename`, the seven `operations` with their SVG outlines and port positions, `blank`, `node`, `validate(flow, playable)`, `example`). Pure data: no DOM, no network. Its validator mirrors `agent/services/prompt_flow_panel.py::validate_flow` rule for rule, and the backend re-validates every document anyway
 - `prompt-flow-panel.js` - The editor/controller for `prompt_flow_panel.html`: seven-operation palette, drag/click-to-add, ACP-style press-drag-release connections (white side triangles, horizontal curves, Decision has right-side Y/N outputs; one destination per output), marquee and Ctrl-click selection, undo/redo, zoom 25 %–200 % (Ctrl+wheel) and Fit, the per-operation configure dialogs (shared `dialog_policy.js` / `dialog_theme.css`), file Open/Save/drop, the per-user browser draft (`localStorage` key `tlamatini.prompting-flow.draft.v1.<user id>`), and playback over the connection-scoped **`/ws/prompt-flow-panel/`** WebSocket (8 s `ping` heartbeat, explicit **Reconnect**; a connection never starts or resumes a run by itself). Full contract: *Prompt Flow Panel* below and [the user guide](../prompting-flow-designer.md)
 
-**Total: 47 JS modules** (16 chat + 15 ACP + 1 ACP entry-point + 13 shared/chat-runtime auxiliary + 1 welcome + 2 Prompt Flow Panel). Count them with a file listing (`agent/static/agent/js/*.js`), never by hand.
+**Total: 49 JS modules** (17 chat + 15 ACP + 1 ACP entry-point + 13 shared/chat-runtime auxiliary + 1 welcome + 2 Prompt Flow Panel). Count them with a file listing (`agent/static/agent/js/*.js`), never by hand.
 
 ### Uniform dialog and long-operation contract (v1.48.13)
 

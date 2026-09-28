@@ -519,6 +519,59 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ["Step-by-Step", "One concrete action at a time, waiting for your reply before the next."],
                 ["Internet", "Allows a web search to add context to the answer."],
             ]}, deck="table"),
+        Section("dictation", "DIRECT VOICE INPUT", "Speak beside Send",
+            "The microphone captures first; no model tool-selection step stands between the click and recording.",
+            body=[
+                "Click the microphone beside Send, wait for Listening, and speak into the microphone on the "
+                "Tlamatini host. Real input level, elapsed time and the silence countdown stay in the chat. "
+                "After the configured silence window (shipped default 3.5 seconds), recognition runs and the "
+                "text is appended to the existing draft and sent automatically through the normal form.",
+                "There is no transcript review step. A second click or Escape cancels; empty or failed "
+                "recognition sends nothing. Current modes and permission behavior remain in force. "
+                "The avatar acknowledges dispatch through browser speech and respects Silent mode.",
+            ],
+            points=[
+                ("Click", "Direct Whisperer start; the host microphone opens only for a recording."),
+                ("Listen", "Live samples drive the in-chat indicator and the configured silence gate."),
+                ("Recognize", "Local faster-whisper or the explicitly configured cloud speech engine."),
+                ("Send", "Automatically submit once, with the current draft and mode switches; no review dialog."),
+            ], deck="cards"),
+        Section("dictationruntime", "INTERNAL SERVICE", "One main console, no extra window",
+            "Developer visibility requirements do not become additional product windows.",
+            body=[
+                "The authenticated same-origin /ws/chat-voice/ connection prepares one resident worker per "
+                "web process. Source/carried Python runs chat_worker.py; the frozen Django process stays "
+                "free of the speech ML stack. A private token-authenticated loopback socket carries control "
+                "and result frames. Preparation does not open the microphone.",
+                "No PowerShell, conhost, focus activation or console-visibility prerequisite is involved. "
+                "The worker's stdout/stderr flows through agent.chat_voice_runtime into the main console/log. "
+                "Failed startup and shutdown reap the child. Config reloads per job; compatible models are "
+                "cached, and late cancelled results cannot submit.",
+            ],
+            points=[
+                ("UI ownership", "The composer displays recording and transcription; no second console."),
+                ("Configuration", "Speech model settings and explicit template overrides still apply."),
+                ("Boundary", "The direct button is input, not a wrapped tool or an Exec Report row."),
+                ("Release", "Ship the consumer/runtime modules, carried worker, JS/CSS and matching template."),
+            ], deck="cards"),
+        Section("dictationevidence", "VERIFICATION SCOPE", "Measured source behavior",
+            "Dated source checks are evidence, not a claim that an older installer contains the change.",
+            body=[
+                "On September 27, 2026, 98 voice tests passed: 26 direct-voice and 72 existing Whisperer "
+                "checks. A real host microphone began yielding samples in 297 ms after direct start; "
+                "cancellation and normal worker exit were observed. Two startup/shutdown cycles created "
+                "no additional visible windows and left foreground focus unchanged.",
+                "The earlier headed-browser suite passed 33 controlled-transport checks. Earlier cached "
+                "recognition of a 5.768-second synthetic speech file took 0.203 seconds, versus 11.094 "
+                "seconds on first decode. These are separate observations, not end-to-end latency guarantees. "
+                "No new live Ollama task or rebuilt installer was certified by those checks.",
+            ],
+            points=[
+                ("Current source", "98 voice regressions plus real microphone and worker lifecycle probes."),
+                ("Browser evidence", "33 earlier headed checks with controlled transport; not live ASR."),
+                ("Limits", "Cold model loading, provider latency and hardware vary; no zero-latency promise."),
+                ("Detailed guide", "docs/chat-microphone-design.md records configuration, protocol and evidence."),
+            ], deck="cards"),
         Section("navbar", "NAVIGATION", "The menu bar, reorganized in v1.70.0",
             "A new Panels menu opens the two canvases, and every configuration dialog lives under Config.",
             table={"columns": ["Menu", "What you find there"], "widths": [0.20, 0.80], "rows": [
@@ -592,7 +645,9 @@ def build_chapters(f: dict) -> list[Chapter]:
             f"Step-by-Step wizard and growing from simple to advanced.",
             body=[
                 f"Sections: {catalog_names}. VOICE COMMANDS comes first, because speaking is the shortest way "
-                f"to use her: you talk, Whisperer transcribes, and the transcript becomes the prompt.",
+                f"to use her: you talk, Whisperer transcribes, and the transcript becomes the prompt. "
+                "These catalog workflows use the model-mediated wrapped tool and their card-specific modes; "
+                "they are distinct from the direct microphone button beside Send.",
                 "The mode badges on each card are derived from the prompt text itself, and clicking a card sets "
                 "the toolbar switches to exactly those modes. Every prompt uses one grammar, so it is always "
                 "clear whose blank is whose.",
@@ -876,26 +931,28 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("Trade-offs", "Exclusions and Audit-mode rules are recorded and explained."),
             ]),
         Section("voice", "VOICE", "She listens until you stop, and answers in her voice",
-            "Whisperer, Talker and the Voice Commands section turn speech into a first-class way to work.",
+            "Direct chat dictation, workflow Whisperer, Talker and catalog commands have distinct voice contracts.",
             body=[
-                "With no duration given, Whisperer's sound gate keeps recording while you are talking and stops "
+                "In standalone/workflow Whisperer, no duration means the gate records while you talk and stops "
                 "after 3.5 seconds of silence, with a 300-second ceiling. `record_seconds: 0` is the switch; name "
                 "a duration and it is honoured exactly. The gate starts at a sensitive floor so a speaker who "
                 "begins at once is heard, and if a sound driver refuses the live stream she records a fixed "
-                "length and says so.",
+                "length and says so. Direct chat dictation instead requires the gate and refuses that fallback.",
                 "Transcription runs locally with faster-whisper, on a GPU when present and on the CPU otherwise, "
                 "or through a cloud Whisper provider. Talker speaks through an Orpheus-compatible model in a "
                 "female voice — tara, leah, jess, mia or zoe. A male voice is refused by design.",
                 "The catalog's first section, VOICE COMMANDS, makes the microphone the keyboard: she transcribes "
                 "your instruction, reads it back, and only then acts. Anything irreversible still needs your "
-                "written confirmation.",
+                "written confirmation under those catalog instructions. The direct chat microphone submits "
+                "automatically and uses browser speech for its acknowledgment, respecting Silent mode.",
             ], deck="list",
             deck_points=[
                 ("Sound gate", "Records while you talk; stops after 3.5 s of silence."),
-                ("Exact durations", "Name a length and it is honoured to the sample."),
+                ("Workflow duration", "Standalone/workflow recording can use an explicit fixed duration."),
                 ("Local first", "faster-whisper on GPU or CPU, or a cloud provider."),
                 ("Her voice", "Female only: tara, leah, jess, mia or zoe."),
-                ("Voice Commands", "Speak a prompt; she reads it back before acting."),
+                ("Direct microphone", "Gate, recognize, automatically send; no review dialog or extra console."),
+                ("Catalog commands", "Model-mediated cards can request readback before acting."),
             ]),
         Section("vision", "VISION AND VIDEO", "Eyes that report their limits",
             "Image and video analysis combine independent observers, so one model's guess is never presented "
@@ -1059,7 +1116,24 @@ def build_chapters(f: dict) -> list[Chapter]:
                   "python Tlamatini/manage.py runserver --noreload\n"
                   "# open http://127.0.0.1:8000/   (default login: user / changeme)"),
             deck="visual"),
-        Section("modes", "RUNTIME", "Two modes, three listeners",
+        Section("dependencies", "DEPENDENCY COVERAGE", "Every referenced Python library is accounted for",
+            "The September 27 source audit covers all 89 agents, build helpers, optional imports and tests.",
+            body=[
+                "The static guard scanned 743 Python files and 69 directly referenced distributions. The "
+                "main requirements file contains 87 declarations; missing Autobahn, lxml, six, pip and "
+                "PlatformIO declarations were added. Existing framework and compatibility pins remain.",
+                "ESPHome has a separate requirements-esphome.txt manifest because its py7zr and PlatformIO "
+                "pins conflict with the main environment. Keep it in its private runtime. Blender bpy, "
+                "Unreal unreal, device toolchains, npm packages and model weights follow their own runtime "
+                "contracts; they are not missing pip packages.",
+            ],
+            points=[
+                ("Coverage guard", "scripts/check_requirements_coverage.py checks source and build inventories."),
+                ("Verification", "Zero missing declarations; 10 guard tests and four build dependency checks passed."),
+                ("Resolution", "Main and separate ESPHome dry runs passed; new dependencies passed temporary-environment smoke checks."),
+                ("Limits", "Static coverage and selective smoke tests do not certify a clean installation or frozen build."),
+            ], deck="cards"),
+        Section("modes", "RUNTIME", "Two modes and their service ports",
             "Tlamatini runs either from source or as a frozen executable built by PyInstaller. Only path "
             "resolution differs, and `CONFIG_PATH` overrides the configuration location in both.",
             body=[
@@ -1067,6 +1141,8 @@ def build_chapters(f: dict) -> list[Chapter]:
                 "`Tlamatini/agent/config.json`. A second, independent axis is self-modification: a build made "
                 "with `--self-modify` carries her complete, rebuildable source beside the executable, and her "
                 "self-knowledge travels with it. Without the flag, neither ships.",
+                "Direct dictation additionally uses a private ephemeral loopback listener for its worker "
+                "handshake. It closes after authentication; it is not a fourth public service or fixed port.",
             ],
             table={"columns": ["Port", "Protocol", "Service"], "widths": [0.20, 0.22, 0.58], "rows": [
                 ["8000 (default)", "HTTP + WebSocket", "Web interface and chat; change it with django_port."],
@@ -1158,10 +1234,28 @@ def build_chapters(f: dict) -> list[Chapter]:
             ]),
     ])
 
-    release = Chapter("release", "VIII", f"Release {f['release_tag']}",
-        "The Prompt Flow Panel release: a new canvas for prompts, tidier menus and one shared set of canvas "
-        "mechanics.", accent="gold", sections=[
-        Section("whatsnew", "WHAT IS NEW", "The Prompt Flow Panel release",
+    release = Chapter("release", "VIII", "Source and Release Status",
+        f"Source tag {f['release_tag']}; latest published release "
+        f"{f['release']['latest_published'] or 'unverified'}. Local changes are stated separately.",
+        accent="gold", sections=[
+        Section("working_voice", "LOCAL DEVELOPMENT", "Direct dictation and dependency coverage",
+            "These September 27 changes are in the working tree; a source tag does not publish them.",
+            body=[
+                "The chat microphone starts Whisperer directly, stops on the configured silence gate, "
+                "recognizes speech and submits the normal chat form. The internal worker uses the main "
+                "application logger and creates no second console. Developer tests remain visibly executed.",
+                "The root dependency manifest and separate ESPHome manifest now account for referenced "
+                "libraries across agents and source. The static guard and detailed dependency audit record "
+                "coverage and runtime boundaries. Neither this work nor the regenerated dossiers establishes "
+                "that the published v1.70.0 installer contains the local microphone changes.",
+            ],
+            points=[
+                ("User guide", "README.md and BookOfTlamatini.md explain recording, cancellation and automatic Send."),
+                ("Runtime contract", "docs/chat-microphone-design.md records ownership, protocol, configuration and limits."),
+                ("Dependencies", "docs/dependency-coverage-audit.md records declarations, isolation and verification."),
+                ("Delivery", "Restart source runs; rebuild and validate an installer before distributing these changes."),
+            ], deck="cards"),
+        Section("whatsnew", "CARRIED RELEASE", "v1.70.0: the Prompt Flow Panel",
             "Version 1.70.0 is about designing conversations and editing flows with the same ease.",
             points=[
                 ("Prompt Flow Panel", "Seven operations, `.fpmt` files, validated playback, isolated runs."),

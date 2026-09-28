@@ -777,7 +777,7 @@ def cover_slide(deck: Deck):
         "and the reach to drive real boards, engines and networks.", "sans-light", 16.5, "light"))],
          label="cover subtitle")
     metrics = [(str(f["agents"]), "agent types"), (str(f["tools"]), "Multi-Turn tools"),
-               (str(f["skills"]), "skills"), (f"v{f['version']}", "release")]
+               (str(f["skills"]), "skills"), (f"v{f['version']}", "source version")]
     mw = 5.8 / 4
     for index, (value, label) in enumerate(metrics):
         mx = x + index * mw

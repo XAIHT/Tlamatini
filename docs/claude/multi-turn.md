@@ -10,6 +10,25 @@
 
 > **HEADLESS IS FORBIDDEN. ALL EXECUTION MUST BE VISIBLE.** Every automated test, command, diagnostic, script, build, agent, prompt and browser must run in a visible, forked foreground window on Angela's real desktop. Use visible CMD/PowerShell consoles and headed browsers (`headless=False`); keep output on screen and monitor live. No hidden/background execution, including CI or quick checks. If visibility cannot be confirmed, do not run. Mandatory policy: [visible execution](../../TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).
 
+> **Developer/product boundary (Angela, 2026-09-27):** these visibility requirements govern development and verification. They must not create extra windows, steal focus or expose internal diagnostics in the shipped UX. Direct chat dictation keeps status in chat and uses only Tlamatini's main console/log.
+
+## Voice input before model orchestration
+
+The microphone beside Send is an input path, available with the current chat
+modes. It starts Whisperer directly, closes capture on silence, transcribes and
+submits once through the normal form. It does not select tools, invoke a planner,
+enable Multi-Turn/ACPX or bypass the request's normal permissions. Existing draft
+text and current toggles remain part of the request.
+
+The VOICE COMMANDS catalog cards still launch model-mediated workflows through
+`chat_agent_whisperer` and select the modes encoded in their cards. Their
+transcript read-back instructions are not a direct-button confirmation step.
+Dictation itself emits no wrapped-agent Exec Report row or Create Flow node.
+Those features observe the actual tools used after the text is submitted.
+
+The resident worker opens no extra product console. Development verification
+remains visible. See [direct dictation](../chat-microphone-design.md).
+
 ## Multi-Turn Mode
 
 When **Multi-Turn is checked** in the toolbar:

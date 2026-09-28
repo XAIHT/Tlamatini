@@ -38,8 +38,9 @@
     });
     if(buf)out.push(buf); return out;
   }
+  var _listening=false;
   function speak(text,opts){
-    if(!('speechSynthesis' in window))return;
+    if(_listening || !('speechSynthesis' in window))return;
     var s=loadSettings(); settings=s;
     // opts.queue = true  ->  do NOT cut off what is already being said, so that
     // consecutive messages are ALL spoken, one after another, none swallowed.
@@ -72,7 +73,7 @@
     if(on)stopSpeaking();
     return s.mode;
   }
-  window.TLM_VOICE={speak:speak,notify:function(){speak('Your request is complete.');},femaleVoices:femaleVoices,pickVoice:pickVoice,loadSettings:loadSettings,saveSettings:saveSettings,prime:prime,stop:stopSpeaking,setSilent:setSilent};
+  window.TLM_VOICE={speak:speak,notify:function(){speak('Your request is complete.');},femaleVoices:femaleVoices,pickVoice:pickVoice,loadSettings:loadSettings,saveSettings:saveSettings,prime:prime,stop:stopSpeaking,setSilent:setSilent,setListening:function(on){_listening=!!on;if(on)stopSpeaking();}};
   try{ if(window.speechSynthesis) window.speechSynthesis.onvoiceschanged=function(){}; }catch(e){}
   // ESC anywhere = shut up immediately.  Ctrl+Shift+M = mute for good / unmute.
   document.addEventListener('keydown',function(e){
@@ -200,7 +201,10 @@
 
     // ---- run lifecycle: pending -> saw-work -> completed / cancelled ----
     var _pending=false, _seenWork=false, _spoken=false;
+    var _voiceAckText='';
     function markSend(){
+      if(window.TLM_DICTATION && window.TLM_DICTATION.isActive())return;
+      _voiceAckText='';
       _pending=true; _seenWork=false; _spoken=false;
       _said={};        // new run -> every fixed message may be announced again
       // NOTE: nothing is invented here. The server's own fixed message
@@ -244,6 +248,15 @@
     if(submit)submit.addEventListener('click',function(){ if(isCancelButton()){ doCancelSpeak(); } else { markSend(); } });
     if(input)input.addEventListener('keydown',function(e){ if(e.key==='Enter'&&!e.shiftKey && !isCancelButton()){ markSend(); } });
     var _cf=document.getElementById('chat-form'); if(_cf)_cf.addEventListener('submit',function(){ if(!isCancelButton()){ markSend(); } });
+
+    document.addEventListener('tlm-chat-submitted',function(e){
+      if(!e.detail || !e.detail.voice)return;
+      // Wait until the form's existing listeners have marked the same run.
+      setTimeout(function(){
+        _voiceAckText='Your request is being processed by Tlamatini. Please wait a moment.';
+        announce('t:'+_voiceAckText.slice(0,80),_voiceAckText,0);
+      },0);
+    });
 
     // (completion is handled below by hooking the app's own appendChatMessage)
 
@@ -398,6 +411,7 @@
       var text=plainText(message);
       if(!text)return;
       var kind=classify(message);
+      if(kind==='busy' && _voiceAckText && text===_voiceAckText){ _voiceAckText=''; return; }
       // The REAL answer to a request WE sent: "speak" mode reads it aloud,
       // "notify" mode says the fixed completion line instead.
       if(kind==='answer'&&_pending&&!_spoken){ doComplete(); return; }

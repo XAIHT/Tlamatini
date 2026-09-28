@@ -2663,3 +2663,12 @@ For every agent name referenced in any `target_agents`, `target_agents_a`, `targ
 ## Model selection and inheritance
 
 Model selection: Config → Models manages 38 model/engine/voice settings across Core, Vision, Speech, Workflows, Documents and Monitoring & messaging for all 21 model-backed agents. Preserve quoted `"@config"` and omitted registered fields as inheritance; never replace them with guessed tags. Literal canvas/standalone values are overrides. Wrapped chat starts from globals, then explicit tool arguments; standalone MCP resolves inherited template values before invocation overrides. Do not volunteer model arguments unless the user asks. Save applies on the next configuration load; reconnect chat and restart already running agents as needed. Talker requires an Orpheus-compatible model and supported voice. Whisperer local/cloud engine and cleanup model are separate; cleanup still needs `ollama_cleanup: true`. Video audio uses its independent local `transcription.model`. Empty Whisperer cloud model selects the provider default; empty LaTeXer repair model disables repair. Credentials, URLs, audio devices and external ACPX/MCP provider settings remain separate. Image/video model failures accumulate in the shared themed fatal-error dialog. Preserve Tlamatini's existing retry and recovery tactics and the configured model identities. Never substitute a model or accept missing-observer/raw-concatenation output as success; HTTP 410 may indicate retirement. Robotics cannot report PASS from missing evidence. See `docs/model_configuration.md` for all defaults, paths and source/frozen checks.
+
+## Direct chat microphone boundary (2026-09-27)
+
+The microphone beside chat Send is a composer input service, not a canvas node
+or an additional workflow agent. Do not generate a `chat_worker` agent or a
+`/ws/chat-voice/` node in a flow. For a workflow that needs speech recognition,
+use the existing Whisperer agent and its normal configuration, structured
+outputs and connections. Direct-button automatic submission has no workflow
+targets or Exec Report row of its own.

@@ -45,6 +45,29 @@ execution are complementary checks; passing a file inventory alone is insufficie
   three build scripts. Git history and generated version modules are omitted
   from snapshots, so an implicit version could otherwise become `0.0.0+unknown`.
 
+### Direct chat microphone carriage (source development, 2026-09-27)
+
+The frozen archive now requires `agent.chat_voice_consumer` and
+`agent.chat_voice_runtime`. The shared runtime inventory additionally requires
+`agents/whisperer/chat_worker.py` plus the collected
+`agent/js/chat_dictation.js` and `agent/css/chat_dictation.css` assets.
+The matching chat template, WebSocket route, composer sizing, avatar handoff and
+main-console logger must be present. Worker imports use source/carried Python;
+ASR libraries must not migrate into the frozen web process.
+
+The worker is an internal service and starts without a separate console or
+foreground activation. The source snapshot must retain its source and relevant
+requirements along with the frontend. The main requirements file declares the
+direct source/build dependencies; `requirements-esphome.txt` documents the
+incompatible separately provisioned ESPHome SDK. Do not merge that SDK into the
+main environment to make a package list look complete.
+
+Source regression and hardware checks are recorded in
+[the microphone guide](chat-microphone-design.md). Those checks do not certify
+the previously built installer or change the older dated evidence above.
+Release verification must separately exercise the actual rebuilt worker and
+static assets from a visible development session.
+
 ## Self-update
 
 - `apply_update.ps1`, `preserved_user_state.json` and the standalone

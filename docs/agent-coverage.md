@@ -101,3 +101,11 @@ Config → Models exposes **38 model/engine/voice settings** for **21 model-back
 | Whisperer (`whisperer`) | 35 | 16 | 0: `target_agents` | ordinary |
 | Windower (`windower`) | 13 | 10 | 0: `target_agents` | ordinary |
 | Zavuerer (`zavuerer`) | 13 | 8 | 0: `target_agents` | ordinary |
+
+## Direct chat microphone (2026-09-27)
+
+The microphone beside Send reuses Whisperer as an internal input service; it
+adds no workflow-agent type or catalog row. It starts host capture directly,
+then transcribes and submits through the existing composer. This is distinct
+from the wrapped `chat_agent_whisperer` contract in this inventory. See
+[the direct microphone guide](chat-microphone-design.md).

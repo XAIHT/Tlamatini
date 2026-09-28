@@ -413,6 +413,8 @@ _FROZEN_PROMPT_FLOW_PANEL_MODULES = (
 )
 
 _FROZEN_REQUIRED_AGENT_MODULES = (
+    "agent.chat_voice_consumer",
+    "agent.chat_voice_runtime",
     "agent.agents.model_settings",  # compiled registry, independent of data paths
     "agent.services.flow_knowledge",  # new/existing pool helper refresh
     "agent.management.commands.check_agent_runtimes",  # executed release gate

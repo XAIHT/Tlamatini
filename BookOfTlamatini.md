@@ -354,37 +354,66 @@ The complete contract — every guarantee, limit and file path — lives in [doc
 ---
 ## Voice commands: your words become the prompt
 
-### The microphone is the keyboard
+### Direct microphone beside Send
 
-There is a difference between *recording your voice* and *being driven by it*, and until now Tlamatini only did the first. Whisperer could write down what you said; turning those words into an instruction she then carried out was something you did yourself, by reading the transcript and typing it back in.
+Click the microphone next to **Send**, wait for **Listening**, and speak your
+prompt. The colored microphone, live input meter, elapsed time and silence
+countdown stay in the chat. **Opening microphone** means capture is starting;
+**Listening** means actual samples have arrived.
 
-The **VOICE COMMANDS** section — the new first section of the Catalog of Prompts, sitting ahead of *Getting Started* — closes that gap. You speak, Whisperer writes it down, and **the words you spoke become the prompt Tlamatini executes.** Nothing else about the system changes: the same planner runs, the same tools are bound, the same Exec Report is produced. Only the input device is different.
+After the configured continuous silence (default **3.5 seconds**) the gate
+stops capture. Whisperer immediately begins transcription, then the normal chat
+form **sends the recognized text automatically**, including any draft already
+in the box. There is no read-back or confirmation dialog before this handoff.
+The normal chat/permission behavior then applies to the resulting request.
+Successful dispatch triggers the avatar's browser-voice acknowledgment unless
+Silent mode suppresses it.
 
-It is the first section on purpose. Speaking is the shortest path there is to using Tlamatini at all — you talk, she does it — so it is the first thing a new user meets.
+The button does not ask Ollama to choose Whisperer and does not turn on
+Multi-Turn, Exec Report, ACPX, Ask Execs, Step-by-Step or Internet. Those current
+settings travel with the submitted prompt. Click again or press **Escape** to
+cancel; a cancelled or stale transcript cannot be sent. No speech, empty
+recognition and errors leave the original draft unchanged. If submission becomes
+unavailable after transcription, the recognized text remains in the draft.
 
-### Why it could not exist before v1.51.7
+Recording uses the **microphone on the Tlamatini host computer**, not a remote
+phone or laptop's browser microphone. No extra Whisperer console opens and the
+worker does not steal focus. Its diagnostics go to the main Tlamatini console
+and log. Config ▸ Models ▸ Speech selects the recognizer; input device, language,
+gain and silence settings remain in Whisperer's configuration. First model
+loading or download can delay recognition; the button does not promise zero
+latency.
 
-A spoken prompt has no length you can know in advance. Under the old fixed `record_seconds: 30`, a long instruction was cut in half and a short one left you talking to an empty room; either way the transcript was not what you said, so treating it as a prompt would have meant treating a half-sentence as a command. The silence gate described in the next chapter is what makes this trustworthy: the recording stays open while you are talking and closes itself once you stop.
+### The VOICE COMMANDS catalog is a different entry point
 
-That dependency is also the one rule the card insists on. **Tlamatini must not pass `record_seconds` here.** Passing any number turns the gate off and cuts you off mid-sentence — and it does so while appearing to work, which is the worst kind of defect. The card says it, the tool description says it, and a test pins the sentence so it cannot quietly drift back.
+The catalog's **VOICE COMMANDS** section still contains guided workflows that
+ask the model to invoke the wrapped `chat_agent_whisperer` tool. They keep
+their own instructions and mode badges; they are not the microphone button.
 
-### Two cards, and why there are two
+**#121 — YOUR FIRST VOICE COMMAND** is the Step-by-Step rehearsal: it checks
+microphone/recognition setup, shows the transcript and guides a read-only trial.
 
-**#121 — YOUR FIRST VOICE COMMAND** is a rehearsal. It runs Step-by-Step: one action, then it stops and waits for you. It checks the machine can hear you at all, shows you the transcript and asks whether that is really what you said, tells you the two things that fix it when it is not (a different microphone, or a larger model), and only then lets you try a spoken instruction — restricted to read-only work, because a rehearsal should not be able to delete anything.
-
-**#122 — SPEAK YOUR PROMPT** is the real thing, and it is Angela's own sentence, kept word for word:
+**#122 — SPEAK YOUR PROMPT** uses Angela's original request:
 
 > *"Tlamatini, using Whisperer record my voice till I finish to tell you a prompt, then use the text extracted as a prompt and invoke it, go!."*
 
-Clicking it arms **Multi-Turn, Exec report and ACPX**. The ACPX tick is not decoration: nobody — not you, not her — knows in advance what you are about to ask for, so her whole tool surface, skills and external coding agents included, has to already be in her hands by the time the transcript arrives. With ACPX off those tools are filtered out before the request is even planned, and a spoken *"ask Codex about this"* would die with nothing to serve it.
+That card selects **Multi-Turn, Exec report and ACPX**. Its transcript read-back
+and written-confirmation instructions belong to that catalog workflow. They
+must not be described as a confirmation screen implemented by the direct button.
+Both routes refuse to invent a command from empty or failed recognition.
 
-### Two promises, because a misheard command is worse than no command
+### Shared gate, distinct lifecycle
 
-**She reads the transcript back before she acts on it** — verbatim, no tidying, no guessing at words she did not catch. You cannot see what she heard, so she shows you.
+Standalone/workflow Whisperer still supports fixed-duration and file inputs,
+saved transcript/audio artifacts, optional Ollama transcript cleanup, structured
+`INI_SECTION_WHISPERER` output and downstream targets. The direct button
+forces microphone input, silence gating and no cleanup/targets for that job; it
+returns text to the existing composer instead of writing workflow output files
+or calling an agent pool. It does not create a separate Exec Report tool row.
 
-**If she did not hear you, she says so and stops.** An empty recording (`status: empty`) means the gate correctly closed a recording nobody spoke into — that is the gate working, not a failure. A missing recogniser (`status: engine_unavailable`, fixed by `pip install faster-whisper`) means there was nothing to transcribe with. In neither case may she invent a plausible instruction and run it. That is the single specific failure this feature must never produce.
-
-And one boundary worth stating plainly: **your voice is enough to start work; your typing is what authorises the irreversible kind.** If what you said would delete or overwrite something, message a real person, spend money, or reach a machine that is not yours, she does the safe part and asks you to confirm the rest in writing.
+See [the full microphone contract](docs/chat-microphone-design.md) for the state
+machine, configuration precedence, authentication, worker lifecycle, troubleshooting
+and dated measurements.
 
 ---
 
@@ -415,12 +444,12 @@ Two decisions inside that are worth knowing, because both protect *you* rather t
 
 ### The countdown you can watch
 
-The console window Whisperer opens while recording already showed a blinking REC light and a live VU meter. It now carries a second bar beside them:
+**Direct chat dictation shows its meter and countdown inside the composer and opens no extra window.** The console example below belongs only to standalone/workflow Whisperer's legacy REC indicator; it is not the microphone-button interface. The sample uses the current 3.5-second silence default:
 
 ```
- ● REC [████████──────] 12.3s   ● VOICE    [──────────] 0.0s/10s
- ● REC [──────────────] 19.8s   ○ silence  [██████────] 6.4s/10s
- ■ REC STOPPED ✓  silence 10.0s   captured 20.7s
+ ● REC [████████──────] 12.3s   ● VOICE    [──────────] 0.0s/3.5s
+ ● REC [──────────────] 14.5s   ○ silence  [██████────] 2.2s/3.5s
+ ■ REC STOPPED ✓  silence 3.5s   captured 15.8s
 ```
 
 The silence bar fills as the room stays quiet and empties the instant you speak, turning amber past halfway and red past eighty percent — so you can see it about to fire and keep talking if you want it. The final line says *why* it stopped, which matters: a recording that ends on its own and does not explain itself reads as a crash.
@@ -431,7 +460,7 @@ The largest risk in this change was never the audio code. It was habit. Whispere
 
 So the description now says plainly: **do not pass `record_seconds` unless the user named a duration**, and a test fails if that sentence ever drifts back out.
 
-Two smaller honesty repairs travelled with it. The reported recording length used to echo what was *requested*; it now reports what was actually *captured*, which under a gate are different numbers by design. And because the gate lives inside the audio callback, a sound driver that refuses that callback cannot be gated at all — in that case Whisperer records a fixed length and **says so**, rather than quietly recording thirty seconds and still calling it listening.
+Two smaller honesty repairs travelled with it. The reported recording length used to echo what was *requested*; it now reports what was actually *captured*, which under a gate are different numbers by design. And because the gate lives inside the audio callback, a sound driver that refuses that callback cannot be gated at all — standalone Whisperer records a fixed length and **says so**, rather than calling it gated listening. Direct chat dictation instead refuses that fallback and reports an error, because automatic submission requires a working gate and reliable cancellation.
 
 ### Knobs
 
@@ -734,7 +763,7 @@ The four things Tlamatini gives you that a plain ChatGPT-style box does not:
 1. **A real RAG pipeline** that reads your project files, classifies their architectural roles, and grounds answers in your real source code.
 2. **Multi-Turn mode** that turns the chat into a tool operator: the LLM can run shell commands, hit APIs, send emails, take screenshots, type into windows, query SQL — and chain those steps to finish the job.
 3. **ACPX** that lets the LLM delegate sub-tasks to external coding-agent CLIs you already have installed (Claude Code, Cursor, Codex, Gemini CLI, Qwen Code, and more).
-4. **A visual workflow designer** where you drag 82 different agent types onto a canvas (including the microcontroller-firmware trio **STM32er** / **ESP32er** / **Arduiner**, the **Unrealer** for driving Unreal Engine 5 — see bonus chapter §57 — the **Camcorder** for grabbing photos/video off a webcam, the **Recorder** for capturing audio off a microphone, the matching **AudioPlayer** / **VideoPlayer** for playing sound to the speakers and video on a screen, the **Talker** for synthesizing speech from text, and the **Whisperer** for transcribing speech back into text), wire them up, and run the result as an unattended `.flw` workflow. Save, Validate, and Start all funnel the canvas through a backend **Flow Compiler** (`agent/services/flow_compiler.py`) that consults a single Agent Contract registry — so a flow that runs in source mode runs identically in a frozen `.exe` install.
+4. **A visual workflow designer** where you drag 89 different agent types onto a canvas (including the microcontroller-firmware trio **STM32er** / **ESP32er** / **Arduiner**, the **Unrealer** for driving Unreal Engine 5 — see bonus chapter §57 — the **Camcorder** for grabbing photos/video off a webcam, the **Recorder** for capturing audio off a microphone, the matching **AudioPlayer** / **VideoPlayer** for playing sound to the speakers and video on a screen, the **Talker** for synthesizing speech from text, and the **Whisperer** for transcribing speech back into text), wire them up, and run the result as an unattended `.flw` workflow. Save, Validate, and Start all funnel the canvas through a backend **Flow Compiler** (`agent/services/flow_compiler.py`) that consults a single Agent Contract registry — so a flow that runs in source mode runs identically in a frozen `.exe` install.
 
 The **control plane is local**; the intended reasoning plane is cloud-backed through Ollama. The small retrieval embedding model runs locally, while configured `:cloud` models handle demanding chat, planning, coding, tool selection, long contexts, and vision. Prompts and context sent to those models are processed by Ollama's cloud service. The whole application can still be packaged as a standalone Windows `.exe`, but the executable does not remove the Pro-or-higher service requirement for complete functionality.
 
@@ -960,7 +989,7 @@ Open `/agent/agent/` (the page the welcome screen's **Go to Chat** takes you to)
 │   └─────────────────────────────────┘   └───────────────────────────────┘  │
 │                                                                             │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│  Type your prompt here…                                          [ Send ] │ ← Input bar
+│  Type your prompt here…                               [ Mic ] [ Send ] │ ← Input bar
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -969,6 +998,10 @@ The five checkboxes in the toolbar are **the** thing to learn. Each one is expla
 The navbar also has a **Config** dropdown now. It exposes two validated dialogs: **Models** for 38 model, engine and voice settings in six searchable categories, and **URLs** for the Ollama / unified-agent / MCP endpoint values. That means the most common runtime settings can now be changed from the chat UI without manually editing `config.json`. The chat/canvas divider was also polished so width changes feel steadier while you work.
 
 **The menu bar was reorganized on 2026-09-25.** Two things you may be looking for moved: **Configure MCPs** and **Configure Agents** now live inside **Config**, right above Models and URLs, and there is a new **Panels** menu that opens the **Agentic Control Panel**, the **Prompt Flow Panel** and — if your account is staff — the Django **Admin Panel**, each in its own tab. The old separate *MCPs*, *Agents* and *Admin* menus are gone. While Tlamatini is busy answering you, most menus grey out so nothing can change under her feet — but **Panels stays open**, because opening another panel in a new tab never disturbs the answer she is writing.
+
+### Speaking instead of typing
+
+The microphone beside Send starts the [direct voice-prompt route](#voice-commands-your-words-become-the-prompt). It listens on the Tlamatini host, shows recording and silence progress inside this composer, then transcribes and sends automatically. Click again or press Escape to cancel. It uses the existing draft and selected modes; no extra terminal opens.
 
 ### Pasting a screenshot into the chat (2026-07-14)
 
@@ -1838,7 +1871,7 @@ A compact reference for all 89 workflow-agent types. Spotlight chapters for **Pa
 | **AudioPlayer** | Audio-file PLAYBACK to a system OUTPUT device (speakers) via `soundfile` (decode) + `sounddevice` (stream) — the playback counterpart of Recorder (mic-IN → speakers-OUT). `audio_file` (required) is the path (WAV/FLAC/OGG/AIFF, MP3 with a recent libsndfile); plays to the system DEFAULT output by default (`device_index`/`device_name` to pick another). `volume_percent` is a software gain (`100` = unity; clip count reported). **`time_played`**: `0` = the whole file once; `N>0` = exactly N s — a longer file is TRUNCATED, a shorter one is LOOPED (whole repeats + a final partial segment) via a streaming wrap-around callback (no giant buffer). `sample_rate` defaults `0` = the file's own native rate (correct pitch; read from the file). Does NOT change the OS default output device. Observational/output (STILL in the Exec Report); emits `INI_SECTION_AUDIOPLAYER<<<` and always triggers `target_agents`. Needs `sounddevice` + `soundfile`. Canvas counterpart of `chat_agent_audioplayer`. |
 | **VideoPlayer** | Video-file PLAYBACK (WITH audio) on a chosen DISPLAY via `ffpyplayer` (decode + synced audio + volume; its pip wheel BUNDLES ffmpeg + SDL — no external ffmpeg, no runtime download — collected into the frozen build by `build.py --collect-all ffpyplayer`) + OpenCV (`cv2`) for the window; degrades to SILENT cv2 video if ffpyplayer is absent. `video_file` (required) is the path (.mp4/.mov/.mkv/.avi/.webm). `display_index` picks the monitor (`-1` = primary; enumerated via Win32 `EnumDisplayMonitors`, logged at startup). `volume_percent` = audio level (capped at 100). **`time_played`** TRUNCATES a longer video or LOOPS a shorter one (whole repeats + final partial). `window_width`/`window_height` size the window (`0` = native, centered on the chosen display); `fullscreen` fills the monitor; `keep_aspect` letterboxes (cv2 `WINDOW_KEEPRATIO`) instead of stretching. Observational/output (STILL in the Exec Report); emits `INI_SECTION_VIDEOPLAYER<<<` and always triggers `target_agents`. Needs `ffpyplayer` + `opencv-python`. Canvas counterpart of `chat_agent_videoplayer`. |
 | **Talker** | TEXT-TO-SPEECH (TTS): speaks `input_text` aloud through the speakers by driving an OLLAMA connection running a neural TTS model (selected by `talker_model` in Config > Models > Speech; initial default `legraphista/Orpheus:3b-ft-q8`) — streams the model's audio tokens, decodes them to a 24 kHz WAV with the **SNAC** codec, saves the file, and plays it. The voice-synthesis sibling of the media family (AudioPlayer plays an existing file; Talker GENERATES speech from text). **FEMALE-VOICE-ONLY by design** (Tlamatini is female; a male voice is FORBIDDEN — asking for one makes Talker close its execution with "male voice is forbidden by design — NOW CLOSING.. BYE", never substituting): permitted voices `tara` (default) / `leah` / `jess` / `mia` / `zoe`, and `gender` accepts only `female`. `emotion` weaves a paralinguistic tag (`<laugh>` / `<sigh>` / 8 total) into the speech; `language` is a hint; generation knobs `temperature` / `top_p` / `top_k` / `min_p` / `repetition_penalty` / `max_tokens` / `seed`; playback `device_index` / `volume_percent` / `sample_rate`. Observational/output (STILL in the Exec Report); emits `INI_SECTION_TALKER<<<` and always triggers `target_agents`. Rendering audible audio needs `snac` + `torch` (CPU is fine); without them it degrades to `status: tokens_only` (saves tokens, no sound — not a crash). Canvas counterpart of the `chat_agent_talker` Multi-Turn tool. |
-| **Whisperer** | SPEECH-TO-TEXT (STT / voice recognition), the sibling of Talker — turns spoken audio into a text string. 100% self-sufficient for the microphone: it opens, configures (channels / sample-rate / gain) and records the mic ITSELF (no Recorder dependency; `record_seconds` default `30`), or transcribes a given audio FILE (`input_source` ∈ mic / file / auto, `audio_file`). Transcription engine: **faster-whisper LOCALLY by default** — it auto-detects an NVIDIA GPU via CTranslate2 and ALWAYS falls back to CPU (int8) on a machine without one (and auto-retries on CPU if the GPU path fails); `model` ∈ tiny / base / small / medium / large-v3 / large-v3-turbo (default `base`). Cloud engines `cloud-groq` / `cloud-openai` are also supported. **NOTE — Ollama CANNOT do speech-to-text** (no audio input): recognition is always done by the ASR engine; an optional Ollama pass only tidies the FINISHED transcript's punctuation. Observational (but STILL in the Exec Report); emits `INI_SECTION_WHISPERER<<<` (body = the transcript text) and always triggers `target_agents`. Needs `faster-whisper` for local transcription (absent + no cloud key → `status: engine_unavailable`, not a crash). Canvas counterpart of the `chat_agent_whisperer` Multi-Turn tool. |
+| **Whisperer** | **Direct chat microphone:** the button beside Send starts host capture without an LLM decision, stops on the configured silence gate, transcribes and submits automatically with the current draft/modes. It has no extra console, transcript review step, workflow artifact output or wrapped-tool Exec Report row. **Standalone/workflow surface:** SPEECH-TO-TEXT (STT / voice recognition), the sibling of Talker — turns spoken audio into a text string. 100% self-sufficient for the microphone: it opens, configures (channels / sample-rate / gain) and records the mic ITSELF (no Recorder dependency; `record_seconds` default `30`), or transcribes a given audio FILE (`input_source` ∈ mic / file / auto, `audio_file`). Transcription engine: **faster-whisper LOCALLY by default** — it auto-detects an NVIDIA GPU via CTranslate2 and ALWAYS falls back to CPU (int8) on a machine without one (and auto-retries on CPU if the GPU path fails); `model` ∈ tiny / base / small / medium / large-v3 / large-v3-turbo (default `base`). Cloud engines `cloud-groq` / `cloud-openai` are also supported. **NOTE — Ollama CANNOT do speech-to-text** (no audio input): recognition is always done by the ASR engine; an optional Ollama pass only tidies the FINISHED transcript's punctuation. Observational (but STILL in the Exec Report); emits `INI_SECTION_WHISPERER<<<` (body = the transcript text) and always triggers `target_agents`. Needs `faster-whisper` for local transcription (absent + no cloud key → `status: engine_unavailable`, not a crash). Canvas counterpart of the `chat_agent_whisperer` Multi-Turn tool. |
 | **Mouser** | Pointer movement, click, drag, scroll, click-at-window, locate-image. |
 | **Keyboarder** | Keyboard typing / hotkey chords (PyAutoGUI). |
 | **Windower** | Deterministic Win32 window manager (pywin32 + ctypes). Locates an application window by title (`match_mode` ∈ substring/exact/regex, plus `match_index` to disambiguate same-titled windows) and runs ONE window-lifecycle operation: `focus`, `minimize`, `maximize`, `restore`, `move`, `resize`, `move_resize`, `close`, `topmost` / `untopmost` (always-on-top), or `arrange` (snap/tile to left/right/top/bottom halves, four quadrants, center, or full) — or `list` every open window with its position, size, and state. The window member of the desktop-UI trio (Windower = the window, Mouser = clicks, Keyboarder = typing). Ports the window-management subset of Microsoft's Windows-MCP (incl. the AttachThreadInput cross-process focus-transfer dance). Emits an `INI_SECTION_WINDOWER<<<` block (`action`, `window_title`, `matched`, `match_count`, `state`, `left`, `top`, `width`, `height`, `response_body`) and always triggers `target_agents`. Canvas counterpart of the `chat_agent_windower` Multi-Turn tool. |
@@ -1976,7 +2009,7 @@ Every tool the chat LLM can call in Multi-Turn mode. Tools can be individually e
 | `agent_stopper` | Stop a template workflow agent. |
 | `agent_stat_getter` | Check template-agent runtime status. |
 
-## 28. Wrapped chat-agent tools (66)
+## 28. Wrapped chat-agent tools (67)
 
 Each wrapped tool launches an isolated, sequenced runtime copy of a workflow agent template under `agent/agents/pools/_chat_runs_/{agent}_{seq:03d}_{short_id}/`. Failed runs are preserved.
 
@@ -2826,6 +2859,10 @@ The Multi-Turn implementation carries frozen-build awareness in supporting runti
 
 Endpoint: `ws://<host>/ws/agent/`. (A second, separate endpoint — `ws://<host>/ws/prompt-flow-panel/` — carries the Prompt Flow Panel's run commands: `start`, `pause`, `resume`, `stop`, `reply` and a `ping` heartbeat. It serves one run per connection and refuses anonymous sockets; see the chapter *The Prompt Flow Panel* near the front of this book.)
 
+### Direct voice input: `/ws/chat-voice/`
+
+This authenticated same-origin WebSocket prepares a resident Whisperer worker without opening the microphone. Client messages are `{"action":"start","run_id":"unique-id"}` and `{"action":"cancel","run_id":"unique-id"}`. The server reports preparing/ready, starting, real recording telemetry, transcribing and a terminal result/empty/error/cancelled event; cancellation can first report cancelling. It rejects anonymous or foreign-origin sockets and overlapping commands. Text results return to the browser, which submits once through `/ws/agent/` with the current options. No raw audio travels through this browser socket and no new public port is introduced. Full frame and size limits: [microphone protocol](docs/chat-microphone-design.md#transport-and-ownership).
+
 ### Client → Server (chat)
 
 ```json
@@ -2979,6 +3016,10 @@ Plus the Parametrizer-specific pair:
 # Part X — Survival Guide (Troubleshooting)
 
 ## 54. Common issues
+
+### Microphone button unavailable, silent, or opening another console
+
+Wait for voice preparation and ensure the normal chat connection is ready and idle. The host computer's microphone must be available to Tlamatini; changing a remote browser's microphone permission does not select that device. Check Whisperer's device/engine settings and the main `tlamatini.log` for `[Whisperer]` diagnostics. Empty audio preserves the draft. Cancellation during recognition can wait for the native decode to finish, but its result is discarded. A second Whisperer PowerShell window indicates an older launcher: restart the updated source app, or install a rebuilt package. See [diagnosis and recovery](docs/chat-microphone-design.md#troubleshooting).
 
 ### Ollama connection failed
 
@@ -3950,6 +3991,12 @@ The other firmware agents make Tlamatini an *embedded engineer*. ESPHomer makes 
 # Appendix C — Changelog
 
 ### Recent Updates
+
+**Verified source/publication split — 2026-09-27:** annotated source tag `v1.71.0` points to `512973fb`; the latest published GitHub release is `v1.70.0`. No `v1.71.0` release was published at verification time. The direct microphone and console correction remain local working-tree changes, so neither the tag nor the older published installer alone proves their presence. Runtime version comes from the resolver; feature availability also depends on build contents.
+
+
+- **Direct chat dictation — source development, 2026-09-27.** The microphone beside Send starts Whisperer directly, displays real recording/gate progress in chat, transcribes and submits through the existing form, preserves selected modes and acknowledges via the avatar. Its resident worker opens no extra console; logs use the main app logger. 98 voice tests passed; real host capture/cancellation and two windowless restart cycles were checked. Installer and live Ollama response behavior were not newly certified. [Contract and evidence](docs/chat-microphone-design.md).
+- **Dependency completeness — source audit, 2026-09-27.** All 89 agents and 743 Python files were scanned; five missing main-environment declarations were added, with ESPHome declared separately for its incompatible private runtime. A source-wide regression guard now complements the older agent-only check. [Audit](docs/dependency-coverage-audit.md).
 
 - **The Prompt Flow Panel, a reorganized menu bar, and an editable Agentic Control Panel — 2026-09-25 (`v1.70.0`)** — **Prompt Flow Panel:** a new page at `/agent/prompt_flow_panel/` (**Panels ▸ Prompt Flow Panel**, or the ACP's **File** menu) for drawing and playing chains of *prompts*: Prompt, Programmed Prompt, Decision, Feed embeddings, Flush embeddings, Clean History and User Commentary, saved as **`.fpmt`** JSON (`format: "tlamatini-prompting-flow"`, version 1). The extension was chosen so it can never be mistaken for the plain-text system prompt `prompt.pmt`; the panel refuses to open a `.pmt`, and legacy flow names are converted to `.fpmt`. Each run has its own chain, conversation, embeddings and cancellation key, never loads the shared `application/` corpus (`setup_llm(..., include_application_context=False)`), and drains its model worker on Stop instead of abandoning it. New backend `prompt_flow_panel_consumer.py` (`ws/prompt-flow-panel/`), `prompt_flow_panel_runtime.py`, `services/prompt_flow_panel.py`; new frontend `prompt-flow-panel-model.js`, `prompt-flow-panel.js`, `prompt_flow_panel.css`; frozen-build gate `check_prompt_flow_panel`. **Menus:** the chat navbar lost its separate *MCPs*, *Agents* and *Admin* menus — **Configure MCPs** and **Configure Agents** moved into **Config**, and a new **Panels** menu holds the Agentic Control Panel, the Prompt Flow Panel and (staff) the Admin Panel; Panels stays usable during a long operation, and one helper, `restoreMenuControlsAfterOperation()`, now re-arms the menus after completion, Reconnect, Clean History, Cancel or a dropped socket. **Agentic Control Panel:** a new `acp-editor-tools.js` toolbar (Undo/Redo, Configure, Duplicate with settings and inner connections, Delete, Starters, Flow settings, zoom 25–200 % and Fit), an agent search box, an empty-canvas example, a Help dialog, an unsaved-changes `•` in the tab title, undo that restores an agent's settings, and an edit lock while a flow runs. Tests: `test_prompt_flow_panel*.py` (four modules), `test_chain_readiness.py::ContextFreeChainTests`, a scope-aware const-poison check (`scripts/menu_reference_graph.mjs`), and the visible runners `scripts/run_menu_state_checks.py`, `scripts/acp_editor_visible.py`, `scripts/panel_search_title_visible.py` and `scripts/prompt_flow_extension_visible.py` (15 checkpoints, all passing on 2026-09-25). Guide: [docs/prompting-flow-designer.md](docs/prompting-flow-designer.md).
 - **PDF in the canvas, and the whole document as context — 2026-09-16 (`v1.62.0`)** — The chat canvas now opens `.pdf` files in a vendored **Mozilla PDF.js 6.3.289** viewer (Apache-2.0, no npm and no CDN at runtime; reproduce it with `python scripts/vendor_pdfjs.py`, which checks SHA-512 first). Pages, text selection, navigation, zoom, fit, rotation and in-viewer passwords all work; **Copy** returns the text of every page and **Save As** returns the original bytes. Reading is local — `File.slice()` ranges off the user's disk — so there is no file-size or page-count cutoff, and opening a PDF uploads nothing and calls no model. **Use as context** prepares the complete document: an authenticated, CSRF-protected upload, then a background job that uses the already-shipped **PyMuPDF** to extract every page's text, plus — only when the **Process images** box is ticked, which it never is by default — every embedded image and a rendered preview of every page, each analysed by the existing **Image-Interpreter** engine (reused, not duplicated) with a document-specific OCR/chart/table prompt. A **user-bound signed token** hands the resulting UTF-8 index to the normal contextual RAG path. Nothing runs until **Continue**; four progress rows report real bytes, pages, images and loading; **Cancel** aborts the browser requests and signals the worker; partial or failed image analyses are reported rather than hidden; a scan with no text layer is refused with an explanation instead of loading an empty document. Packages live at `context_files/pdf_canvas/<user-id>/<document-uuid>/` and delete themselves on failure or cancellation; **PDF passwords are used in memory only and never reach storage, context text or the log.** New backend: `pdf_context.py`, `pdf_image_analysis.py`, `pdf_context_jobs.py`, `pdf_context_views.py`; new frontend: `agent_page_pdf.js`, `pdf_canvas_viewer.js`, `pdf_context_progress.js`, `pdf/canvas.html`. **No new Python dependency.** Frozen builds explicitly collect the PDF backend and PyMuPDF (`pyinstaller_hooks/hook-pymupdf.py`), and Django/WhiteNoise serve `.mjs` as JavaScript and `.wasm` as WebAssembly even where the Windows registry disagrees. Tests: `Tests/test_pdf_canvas_browser.py` and `Tests/test_pdf_canvas_assets.py` (real Chromium, real markup, generated fixtures, external-asset requests rejected) plus `agent/test_pdf_context.py`. Contract: [docs/pdf-canvas.md](docs/pdf-canvas.md).

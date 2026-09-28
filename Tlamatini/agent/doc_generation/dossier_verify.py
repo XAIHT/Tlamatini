@@ -155,7 +155,11 @@ def verify_pptx_structure(facts: dict, path: Path) -> dict:
 def verify_pptx_native(path: Path) -> dict:
     try:
         import pythoncom
+        import win32api
         import win32com.client
+        import win32con
+        import win32gui
+        import win32process
     except ImportError:
         return {"available": False, "problems": [], "note": "pywin32 not installed; native check skipped"}
     pythoncom.CoInitialize()
@@ -170,11 +174,53 @@ def verify_pptx_native(path: Path) -> dict:
         app = win32com.client.DispatchEx("PowerPoint.Application")
     except Exception as exc:  # PowerPoint not installed or not startable
         return {"available": False, "problems": [], "note": f"PowerPoint unavailable: {exc}"}
-    deck = app.Presentations.Open(str(path), True, False, False)
+    # Developer verification must be visible; this is not a product-service window.
+    app.Visible = True
+    deck = next((item for item in app.Presentations
+                 if Path(item.FullName).resolve() == path.resolve()), None)
+    if deck is None:
+        deck = app.Presentations.Open(str(path), True, False, True)
+    window = deck.Windows(1)
+    window.Activate()
+    # PowerPoint does not expose Excel\'s Application.Hwnd COM property.
+    # Match the actual document frame after activating this exact presentation.
+    frames: list[int] = []
+    win32gui.EnumWindows(
+        lambda handle, _: frames.append(handle)
+        if (win32gui.GetClassName(handle) == "PPTFrameClass"
+            and path.stem.casefold() in win32gui.GetWindowText(handle).casefold()) else None,
+        None,
+    )
+    if len(frames) != 1:
+        raise RuntimeError(f"Expected one PowerPoint dossier frame, found {len(frames)}.")
+    hwnd = frames[0]
+    win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+    foreground = win32gui.GetForegroundWindow()
+    foreground_thread, _ = win32process.GetWindowThreadProcessId(foreground)
+    calling_thread = win32api.GetCurrentThreadId()
+    attached = False
+    try:
+        if calling_thread != foreground_thread:
+            win32process.AttachThreadInput(calling_thread, foreground_thread, True)
+            attached = True
+        win32gui.BringWindowToTop(hwnd)
+        win32gui.SetForegroundWindow(hwnd)
+    except Exception:
+        pass  # The verification below refuses to run unless activation actually worked.
+    finally:
+        if attached:
+            win32process.AttachThreadInput(calling_thread, foreground_thread, False)
+    if not (win32gui.IsWindowVisible(hwnd) and not win32gui.IsIconic(hwnd)
+            and win32gui.GetForegroundWindow() == hwnd):
+        raise RuntimeError("Native dossier verification requires visible foreground PowerPoint.")
+    print("VISIBLE VERIFIED: native PowerPoint dossier verification.", flush=True)
     try:
         width, height = deck.PageSetup.SlideWidth, deck.PageSetup.SlideHeight
         for s_index in range(1, deck.Slides.Count + 1):
             slide = deck.Slides(s_index)
+            window.View.GotoSlide(s_index)
+            if s_index == 1 or s_index % 10 == 0 or s_index == deck.Slides.Count:
+                print(f"PowerPoint: measuring/rendering slide {s_index}/{deck.Slides.Count}", flush=True)
             for shape in _iter_shapes(slide.Shapes):
                 left, top, w, h = shape.Left, shape.Top, shape.Width, shape.Height
                 if left < -TOLERANCE or top < -TOLERANCE or left + w > width + TOLERANCE \
@@ -194,8 +240,8 @@ def verify_pptx_native(path: Path) -> dict:
                                     f"({bw:.1f}pt in {w:.1f}pt): {sample!r}")
             slide.Export(str(out / f"s{s_index:03d}.png"), "PNG", 1600, 900)
     finally:
-        deck.Close()
-        app.Quit()
+        # Leave this visible document available for developer inspection.
+        print("PowerPoint remains open for inspection.", flush=True)
     return {"available": True, "text_boxes_checked": checked, "problems": problems}
 
 

@@ -10,6 +10,34 @@
 
 > **HEADLESS IS FORBIDDEN. ALL EXECUTION MUST BE VISIBLE.** Every automated test, command, diagnostic, script, build, agent, prompt and browser must run in a visible, forked foreground window on Angela's real desktop. Use visible CMD/PowerShell consoles and headed browsers (`headless=False`); keep output on screen and monitor live. No hidden/background execution, including CI or quick checks. If visibility cannot be confirmed, do not run. Mandatory policy: [visible execution](../../TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).
 
+> **Developer/product boundary (Angela, 2026-09-27):** these visibility requirements govern development and verification. They must not create extra windows, steal focus or expose internal diagnostics in the shipped UX. Direct chat dictation keeps status in chat and uses only Tlamatini's main console/log.
+
+## Direct voice input beside Send
+
+`chat_dictation.js` opens authenticated same-origin `/ws/chat-voice/`.
+`ChatVoiceConsumer` prepares `VoiceRuntime`, which launches
+`agents/whisperer/chat_worker.py` with source/carried Python and authenticates
+it over an ephemeral private loopback socket. Preparation imports capture
+libraries but opens no microphone or model. A click sends `start` directly:
+no Ollama planning, wrapped-agent preparation or pool launch precedes capture.
+
+The worker reuses Whisperer's configured gate and recognition code, warms the
+model after the first samples, caches it across prompts and reloads config per
+job. It returns telemetry and text; the browser performs the existing form
+submission with current flags. The avatar acknowledges that dispatch through
+browser speech. The dictation transport itself does not execute the prompt.
+
+This worker is internal product infrastructure: no extra console, shell,
+foreground activation or console-visibility prerequisite. Its output reaches
+the main `agent.chat_voice_runtime` INFO logger. Cancellation, bounded
+shutdown, per-process ownership, stale-run rejection and draft preservation are
+part of the contract. One web process owns one resident worker; this is not a
+host-wide microphone mutex across multiple servers.
+
+The standalone Whisperer workflow surface still has its own files, structured
+outputs and targets. Do not apply those contracts to the direct button. See
+[protocol, packaging and verification](../chat-microphone-design.md).
+
 ## Central model configuration
 
 The stdlib-only `agent/agents/model_settings.py` registry supplies 38 field schemas,
@@ -347,7 +375,7 @@ Contract (do NOT weaken): HKCU only, never admin, every writer fail-open, read-o
 - Defined in `tools.py` as synchronous `@tool` functions
 - Returned by `get_mcp_tools()` (misnamed - returns LangChain tools, NOT MCP services)
 - Only active when unified-agent chain is selected
-- Includes 20 direct/core tools, 66 wrapped chat-agent launchers (see `chat_agent_registry.WRAPPED_CHAT_AGENT_SPECS`), 12 ACPX/Skill tools, and 10 External-MCP supervisors for **108 built-ins** before dynamic `ext__*` remotes. The wrapped set includes `chat_agent_flowcreator`, PDFer, LaTeXer, and the media playback pair.
+- Includes 20 direct/core tools, 67 wrapped chat-agent launchers (see `chat_agent_registry.WRAPPED_CHAT_AGENT_SPECS`), 12 ACPX/Skill tools, and 10 External-MCP supervisors for **109 built-ins** before dynamic `ext__*` remotes. The wrapped set includes `chat_agent_flowcreator`, PDFer, LaTeXer, and the media playback pair.
 - Googler tool must run Playwright inside a `ThreadPoolExecutor` — `sync_playwright()` is incompatible with Django Channels' running event loop
 
 ---

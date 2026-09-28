@@ -21,6 +21,7 @@
   <link rel="stylesheet" href="{% static 'agent/css/access_keys_wizard.css' %}?v={{ STATIC_VERSION }}">
   <link rel="stylesheet" href="{% static 'agent/css/avatar.css' %}?v={{ STATIC_VERSION }}_avatar_atomic1">
   <link rel="stylesheet" href="{% static 'agent/css/context_gauge.css' %}?v={{ STATIC_VERSION }}">
+  <link rel="stylesheet" href="{% static 'agent/css/chat_dictation.css' %}?v={{ STATIC_VERSION }}">
   {# dialog_theme.css MUST stay LAST: it supersedes the legacy .ui-dialog chrome on cascade ORDER. #}
   <link rel="stylesheet" href="{% static 'agent/css/dialog_theme.css' %}?v={{ STATIC_VERSION }}_dlg3">
   <link rel="stylesheet" href="{% static 'agent/vendor/frontend/nunito/400.css' %}?v={{ STATIC_VERSION }}_offline1">
@@ -232,11 +233,33 @@
                page that never measures is byte-for-byte what it was. -->
           <div id="context-gauge-row" aria-live="off"></div>
           <div id="chat-image-chips" aria-live="polite"></div>
+          <div id="dictation-status" data-state="preparing">
+            <span id="dictation-meter" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+            <span class="dictation-copy">
+              <strong id="dictation-label" role="status" aria-live="polite">Preparing voice input…</strong>
+              <span id="dictation-detail" aria-hidden="true">The microphone is off.</span>
+            </span>
+            <span id="dictation-clock" aria-hidden="true"></span>
+          </div>
           <form id="chat-form">
             {% csrf_token %}
             <textarea id="chat-message-input" autocomplete="off" placeholder="Send a message..."
               spellcheck="false"></textarea>
-            <button type="submit" id="chat-message-submit">Send</button>
+            <div class="chat-composer-actions">
+              <button type="button" id="chat-microphone" data-state="preparing"
+                aria-label="Speak and send a voice prompt" aria-pressed="false"
+                aria-describedby="dictation-label" disabled
+                title="Speak using the microphone on the Tlamatini computer. Stops on silence and sends automatically.">
+                <span class="mic-live-dot" aria-hidden="true"></span>
+                <svg class="mic-glyph" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+                  <rect x="12" y="3" width="8" height="17" rx="4" fill="currentColor" fill-opacity=".12" stroke="currentColor" stroke-width="1.7"/>
+                  <path d="M8 15v2a8 8 0 0 0 16 0v-2M16 25v4M12 29h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                  <path d="M15 7h2M15 10h2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".6"/>
+                </svg>
+                <span class="mic-label" aria-hidden="true">Voice</span>
+              </button>
+              <button type="submit" id="chat-message-submit">Send</button>
+            </div>
 <div id="tlm-avatar-dock" title="Click me - I will tell you how it is going" role="button" tabindex="0" aria-label="Tlamatini avatar - click to hear a status update"><div id="tlm-face-outer"><div id="tlm-face"><img id="tlm-s-eo-mc" class="tlm-on" src="{% static 'agent/img/avatar/eo_mc.jpg' %}?v={{ STATIC_VERSION }}" alt="Tlamatini" draggable="false"><img id="tlm-s-ec-mc" src="{% static 'agent/img/avatar/ec_mc.jpg' %}?v={{ STATIC_VERSION }}" alt="" draggable="false"><img id="tlm-s-eo-mo" src="{% static 'agent/img/avatar/eo_mo.jpg' %}?v={{ STATIC_VERSION }}" alt="" draggable="false"><img id="tlm-s-ec-mo" src="{% static 'agent/img/avatar/ec_mo.jpg' %}?v={{ STATIC_VERSION }}" alt="" draggable="false"></div></div></div>
 
 
@@ -751,6 +774,7 @@
 <script src="{% static 'agent/js/avatar_presence.js' %}?v={{ STATIC_VERSION }}_presence1"></script>
 <script src="{% static 'agent/js/avatar_size.js' %}?v={{ STATIC_VERSION }}_presence1"></script>
 <script src="{% static 'agent/js/avatar.js' %}?v={{ STATIC_VERSION }}_avatar_atomic1"></script>
+<script src="{% static 'agent/js/chat_dictation.js' %}?v={{ STATIC_VERSION }}"></script>
 <!-- TLM_AVATAR_PHASE1_END -->
 </body>
 

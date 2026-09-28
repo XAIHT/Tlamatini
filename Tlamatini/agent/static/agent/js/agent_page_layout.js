@@ -245,8 +245,11 @@ function bindDividerPointerDrag(divider, resizingClass, onMove) {
         // list below; leaving either out ships this feature broken.)
         const gaugeEl = document.getElementById('context-gauge-row');
         const gaugeH = gaugeEl ? gaugeEl.offsetHeight : 0;
+        // Dictation adds a live status row; count its height and top margin.
+        const voiceEl = document.getElementById('dictation-status');
+        const voiceH = voiceEl && !voiceEl.hidden ? voiceEl.offsetHeight + 7 : 0;
         const formAreaPx = Math.max(170, Math.round(0.3 * ((subchatContainer && subchatContainer.clientHeight) || 700))); // textarea + Send min-heights + form margins
-        return Math.max(FALLBACK_FORM_FLOOR_PX, toolsDivH + chipsH + gaugeH + formAreaPx);
+        return Math.max(FALLBACK_FORM_FLOOR_PX, toolsDivH + chipsH + gaugeH + voiceH + formAreaPx);
     };
 
     const pctFromYToDivider = (clientY) => {
@@ -282,7 +285,7 @@ function bindDividerPointerDrag(divider, resizingClass, onMove) {
     // or disappears, for exactly the same reason.
     if (typeof ResizeObserver !== 'undefined') {
         const ro = new ResizeObserver(() => applyVertical(null));
-        ['tools-div', 'chat-image-chips', 'context-gauge-row'].forEach((id) => {
+        ['tools-div', 'chat-image-chips', 'context-gauge-row', 'dictation-status'].forEach((id) => {
             const el = document.getElementById(id);
             if (el) ro.observe(el);
         });

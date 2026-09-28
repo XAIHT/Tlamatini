@@ -1,5 +1,6 @@
 <!-- THE USER IS ANGELA, A WOMAN — always address her by name. -->
 <!-- Unless noted, work is UNCOMMITTED in source; frozen needs build.py. Detail in topic files. -->
+- [Developer workflow is not product UX](feedback_developer_product_boundary.md) — Angela is the developer; visible verification must not become extra product windows or focus stealing. Direct dictation uses the main console/log and in-chat recording status.
 - [User profile](user_profile.md) — **Angela**, primary Tlamatini dev (<REDACTED>). Always "Angela".
 - [ALWAYS ENGLISH to Angela (MANDATORY)](feedback_always_english_to_angela.md) — talk to her ONLY in English; Spanish only for her users' content.
 - [Fixed messages VERBATIM](feedback_speak_fixed_messages_verbatim.md) — never paraphrase a pre-established message; speak/show it exactly (strip only markup/timestamp).

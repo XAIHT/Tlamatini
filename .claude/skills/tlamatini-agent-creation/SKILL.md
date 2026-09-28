@@ -15,6 +15,17 @@ description: The authoritative, exhaustive end-to-end runbook for creating a BRA
 
 > **HEADLESS IS FORBIDDEN. VISIBLE FOREGROUND EXECUTION ONLY.** Every command, automated test, diagnostic, script, build, agent and browser must run in a visible foreground window on Angela's real desktop. Use forked CMD/PowerShell windows, `execute_forked_window: true`, and `headless: false`. Monitor live; if visibility cannot be confirmed, do not run. Read the [mandatory execution policy](../../../TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).
 
+> **Developer/product boundary (Angela, 2026-09-27):** these visibility requirements govern development and verification. They must not create extra windows, steal focus or expose internal diagnostics in the shipped UX. Direct chat dictation keeps status in chat and uses only Tlamatini's main console/log.
+
+### Internal product services are not additional workflow agents
+
+The direct chat microphone reuses Whisperer behind `/ws/chat-voice/`; it does not
+add a canvas agent, migration, wrapped tool or catalog count. Its resident worker
+has no product console or focus activation, while development checks remain
+visible. Keep source/carried Python, runtime asset inventory, main-console
+logging and the actual input/agent boundary documented. See
+[the microphone contract](../../../docs/chat-microphone-design.md).
+
 > **Audience:** Claude Code working ON the Tlamatini codebase for **Angela**.
 > **Scope:** adding ONE brand-new workflow agent end-to-end across **every** surface
 > Tlamatini touches — backend pool script, Django view/url, migration, Parametrizer,

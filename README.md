@@ -54,6 +54,10 @@ consoles and headed browsers; monitor live. No hidden/background execution,
 including CI or quick checks. If visibility cannot be confirmed, do not run.
 Read [AGENTS.md](AGENTS.md) and the [mandatory execution policy](TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).
 
+This is a developer verification rule, not an end-user interface requirement.
+Internal dictation opens no extra window; recording feedback stays in chat and
+diagnostics use the main application console/log.
+
 ## Carried packaging hardening — introduced 2026-09-16
 
 The current source carries the removal of frontend CDN dependencies. Bootstrap, jQuery,
@@ -89,15 +93,16 @@ ornaments. Database/WAL and security-evidence preservation are tightened. See th
 1. [What is Tlamatini](#what-is-tlamatini)
 2. [How it works](#how-it-works)
 3. [Get started in five steps](#-get-started--5-steps-to-a-cloud-powered-tlamatini)
-4. [Newest changes](#newest-changes--v1700-source)
-5. [Current release](#current-release--v1700)
-6. [The full capability list](#-the-full-capability-list)
-7. [Enable Tlamatini as a Blue-hat agent](#enable-tlamatini-as-a-blue-hat-agent)
-8. [Installation](#installation)
-9. [Tech stack](#tech-stack)
-10. [Avatar animation, assets, and visible tests](#avatar-animation-assets-and-visible-tests)
-11. [Contributing](#contributing)
-12. [License](#license)
+4. [Speak a prompt from the chat](#speak-a-prompt-from-the-chat)
+5. [Newest changes](#newest-changes--v1710-source)
+6. [Current release](#current-release--v1700)
+7. [The full capability list](#-the-full-capability-list)
+8. [Enable Tlamatini as a Blue-hat agent](#enable-tlamatini-as-a-blue-hat-agent)
+9. [Installation](#installation)
+10. [Tech stack](#tech-stack)
+11. [Avatar animation, assets, and visible tests](#avatar-animation-assets-and-visible-tests)
+12. [Contributing](#contributing)
+13. [License](#license)
 
 ---
 
@@ -250,9 +255,39 @@ Done — tick **Multi-Turn** in the chat toolbar and put Tlamatini to work.
 
 ---
 
-## Newest changes — v1.70.0 source
+## Speak a prompt from the chat
 
-**In the working tree (2026-09-25, not yet in a published release): a Prompt Flow Panel, a tidier menu bar, and a canvas you can really edit.**
+The microphone immediately beside **Send** starts direct Whisperer dictation.
+Click it, wait for **Listening**, and speak. The chat shows the real input level,
+elapsed recording time and silence countdown. When the configured silence
+window expires (shipped default: **3.5 seconds**), recording stops, Whisperer
+transcribes, and the words are **sent automatically** through the normal chat
+form. Existing draft text is included. There is no transcript confirmation step.
+
+Click the microphone again or press **Escape** to cancel. Empty audio and failed
+recognition do not send a prompt. Your selected chat modes stay as they are;
+the button does not enable Multi-Turn, ACPX or other switches. After a successful
+send, the avatar acknowledges processing through its browser voice, respecting
+Silent mode and voice settings.
+
+The microphone belongs to the **computer running Tlamatini**, even when you open
+chat from another device. The chat is the recording indicator; dictation opens
+no extra console and does not move foreground focus. Config ▸ Models ▸ Speech
+selects the recognition engine/model; microphone and gate settings remain in
+Whisperer's agent configuration. First model loading can take longer.
+
+The **VOICE COMMANDS** catalog cards remain available as guided, model-mediated
+workflows. They are distinct from this direct button. See the
+[complete microphone guide](docs/chat-microphone-design.md) for configuration,
+cancellation, privacy, diagnostics and measured validation.
+
+## Newest changes — v1.71.0 source
+
+**Source development, 2026-09-27:** direct voice prompts now start from the microphone beside Send. Whisperer captures without waiting for an Ollama tool decision, stops on silence, transcribes and submits through the existing chat. Recording status stays in chat; internal worker diagnostics use the main console/log. This adds no agent type or tool and is not a claim of a newly published installer.
+
+The same dependency audit covers all 89 agents and 743 Python files: missing direct declarations are now present, with ESPHome's incompatible private runtime kept in its own manifest. See [dependency coverage](docs/dependency-coverage-audit.md).
+
+**Carried from the published v1.70.0 release:** a Prompt Flow Panel, a tidier menu bar, and a canvas you can edit.
 
 - **Prompt Flow Panel — draw a conversation, then press Play.** Open **Panels ▸ Prompt Flow Panel**. Drag operations onto a canvas and connect them: **Prompt** (ask Tlamatini something, optionally with Multi-Turn and ACPX), **Programmed Prompt** (the same, after a delay or at a set time), **Decision** (take the Yes or No branch depending on the last answer, or ask you), **Feed embeddings** / **Flush embeddings** (give that run extra reference text, or take it away), **Clean History**, and **User Commentary** (stop and ask you something). Write `{{last_output}}` to pass the previous answer forward. **Validate**, then **Play** — the running step lights up, and **Pause** / **Stop** work mid-flow. Each run has its own conversation and embeddings, so it never disturbs your chat. Save your diagram as a **`.fpmt`** file; opening one never runs it. Try **File ▸ Open example**, or open [docs/examples/prompting-kickoff.fpmt](docs/examples/prompting-kickoff.fpmt). Full guide: [docs/prompting-flow-designer.md](docs/prompting-flow-designer.md).
 - **The menu bar was reorganized.** A new **Panels** menu opens the **Agentic Control Panel**, the **Prompt Flow Panel** and, for staff, the **Admin Panel**. **Configure MCPs** and **Configure Agents** moved into **Config**, next to Models, URLs and the Access Keys Wizard. The separate MCPs, Agents and Admin menus are gone. Panels stays usable while Tlamatini is busy answering you.
@@ -319,7 +354,10 @@ Two fixes ship together. The console is now written on its **own background thre
 
 ## Current release — v1.70.0
 
-The current release version is **`v1.70.0`** — the Prompt Flow Panel release: a new **Prompt Flow Panel** where you draw a chain of prompts as a diagram, save it as a `.fpmt` file and play it; a reorganized chat menu bar (**Panels** and **Config**); an editor toolbar for the **Agentic Control Panel** (undo/redo, duplicate, zoom, agent search and help); and one shared set of canvas mechanics, so both panels connect, drag, select and zoom the same way. It carries the preceding **`v1.65.4`** release ("Tlamatini Release v1.65.4 Win11x64", annotated 2026-09-21 at commit `b09c4ff`) and its context-meter line: the context meter itself (`v1.65.0`), the Context Governor that measures the real request and never binds zero tools (`v1.65.2`), a LaTeXer repair for a leading brace being swallowed as an optional argument (`v1.65.3`), and the improved context gauge (`v1.65.4`). It also carries the Video-Analyzer audio-track transcription and detailed audiovisual summaries of `v1.64.0`, alongside the PDF canvas, whole-document context and visual-agent capabilities described above.
+**Verified source/publication split — 2026-09-27:** annotated source tag `v1.71.0` points to `512973fb`; the latest published GitHub release is `v1.70.0`. No `v1.71.0` release was published at verification time. The direct microphone and console correction remain local working-tree changes, so neither the tag nor the older published installer alone proves their presence. Runtime version comes from the resolver; feature availability also depends on build contents.
+
+
+The latest published release version is **`v1.70.0`** — the Prompt Flow Panel release: a new **Prompt Flow Panel** where you draw a chain of prompts as a diagram, save it as a `.fpmt` file and play it; a reorganized chat menu bar (**Panels** and **Config**); an editor toolbar for the **Agentic Control Panel** (undo/redo, duplicate, zoom, agent search and help); and one shared set of canvas mechanics, so both panels connect, drag, select and zoom the same way. It carries the preceding **`v1.65.4`** release ("Tlamatini Release v1.65.4 Win11x64", annotated 2026-09-21 at commit `b09c4ff`) and its context-meter line: the context meter itself (`v1.65.0`), the Context Governor that measures the real request and never binds zero tools (`v1.65.2`), a LaTeXer repair for a leading brace being swallowed as an optional argument (`v1.65.3`), and the improved context gauge (`v1.65.4`). It also carries the Video-Analyzer audio-track transcription and detailed audiovisual summaries of `v1.64.0`, alongside the PDF canvas, whole-document context and visual-agent capabilities described above.
 
 Runtime identity always comes from Git/build metadata — `agent/version.py::get_version()` and `GET /agent/version/` resolve the number from the annotated tag at build time, and the release folder `dist/Tlamatini_Release_v1.70.0/` is named from the same source — never from this prose. Tlamatini's version string deliberately never carries a `.devN`, `+gSHA` or `.dirty` suffix; it always reports the base tag (`VERSIONING.md`). The preceding tags in this line are **`v1.65.4`** (2026-09-21), **`v1.65.3`**, **`v1.65.2`** and **`v1.65.0`** (all 2026-09-20), then **`v1.64.0`** (2026-09-19), **`v1.62.2`**, **`v1.62.0`**, **`v1.61.0`** (2026-09-16) and **`v1.60.0`** (2026-09-15, commit `cef3995`, "Entire chain of visual agents really enhanced!"). A **`v1.65.5`** tag also exists in the repository with no published release attached; `v1.70.0` supersedes it.
 
@@ -361,7 +399,7 @@ The previous annotated release, `v1.48.17` (2026-08-16), remains fully carried. 
 
 Exec-Report status handling now uses a closed, source-guarded vocabulary with five disjoint classes: completed diagnostics, intact completed work, degraded work, work not done, and agent errors. Degraded deliverables such as inaudible token-only speech or a compromised PDF are red rather than falsely clean; named completions are auditable greens; an unknown token still fails open but is identified by rule `R8b`. The repository-wide guard scans every pool-agent `status:` literal so a newly invented token fails during tests instead of silently defaulting green. Kuberneter now reports numeric `returncode`, explicit `success`, and a real `ok`/`failed` status token, preventing a failed `kubectl` call from being painted green.
 
-Updater coverage protects the separately built `Uninstaller.exe` during self-update and keeps the preserve-list parser from being confused by comments. Public release builders forcibly clear inherited private External-MCP catalog and contact opt-ins; only the explicit keyed/private builder can bundle private state, and it first merges same-machine contact sources into gitignored `contacts.private.json` without putting PII into a public build or self-modify snapshot. Drift-proof tests derive supervisor counts and prompt rules from source. The current source inventory is reported in the [PDF dossier](tlamatini_app_summary.pdf) and [PowerPoint dossier](Tlamatini_eXtended_Artificial_Intelligence_Humanly_Tempered.pptx), with physical/effective lines by language, binary-asset counts and the complete tracked file tree. The live surface contains **89 workflow agents**, **67 wrapped chat agents**, **109 Multi-Turn tools** (**20 core + 67 wrapped + 12 ACPX/Skill + 10 External-MCP supervisors**), **48 application JavaScript modules**, **29 runtime skills**, and **208 migrations**. The `v1.48.14` private MCP runtimes, inactive Memory/Sequential-Thinking defaults, public/private catalog separation, and lossless diagram restoration remain carried.
+Updater coverage protects the separately built `Uninstaller.exe` during self-update and keeps the preserve-list parser from being confused by comments. Public release builders forcibly clear inherited private External-MCP catalog and contact opt-ins; only the explicit keyed/private builder can bundle private state, and it first merges same-machine contact sources into gitignored `contacts.private.json` without putting PII into a public build or self-modify snapshot. Drift-proof tests derive supervisor counts and prompt rules from source. The current source inventory is reported in the [PDF dossier](tlamatini_app_summary.pdf) and [PowerPoint dossier](Tlamatini_eXtended_Artificial_Intelligence_Humanly_Tempered.pptx), with physical/effective lines by language, binary-asset counts and the complete tracked file tree. The live surface contains **89 workflow agents**, **67 wrapped chat agents**, **109 Multi-Turn tools** (**20 core + 67 wrapped + 12 ACPX/Skill + 10 External-MCP supervisors**), **49 application JavaScript modules**, **29 runtime skills**, and **210 migrations**. The `v1.48.14` private MCP runtimes, inactive Memory/Sequential-Thinking defaults, public/private catalog separation, and lossless diagram restoration remain carried.
 
 Dialog behaviour is now uniform on both pages: **Escape dismisses every dialog and means exactly what the titlebar ✕ means**, while an outside click still never dismisses anything — so a guarded prompt cannot be lost to a stray click, and no dialog can trap you either. A single dispatcher finds the topmost dialog and activates *that dialog's own* dismiss control, so an Ask-Execs permission prompt still answers **Deny**, a confirmation still resolves to "no", scroll locks are still released, and a sealed update step still refuses to close. The last native browser pop-ups are gone: `alert()` / `confirm()` inside the contacts book and the External-MCP dialog were replaced by themed `tlmAlert` / `tlmConfirm` panels that match the app instead of showing OS chrome over it.
 
