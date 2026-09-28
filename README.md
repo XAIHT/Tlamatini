@@ -24,7 +24,7 @@
 
 <p align="center">
   <a href="https://discord.gg/WFQsrskgc"><img src="https://img.shields.io/badge/DISCORD-JOIN%20US-5865F2?style=for-the-badge&labelColor=2D2D2D&logo=discord&logoColor=white" alt="Join our Discord"/></a>
-  <a href="https://github.com/XAIHT/Tlamatini/releases"><img src="https://img.shields.io/badge/RELEASE-v1.70.0-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Release v1.70.0"/></a>
+  <a href="https://github.com/XAIHT/Tlamatini/releases"><img src="https://img.shields.io/badge/VERSION-v1.72.0-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Version v1.72.0"/></a>
   <a href="https://www.python.org/downloads/release/python-31210/"><img src="https://img.shields.io/badge/PYTHON-3.12.10-3776AB?style=for-the-badge&labelColor=2D2D2D&logo=python&logoColor=white" alt="Python"/></a>
   <a href="#installation"><img src="https://img.shields.io/badge/PLATFORM-WIN%2010%20%7C%2011-0078D6?style=for-the-badge&labelColor=2D2D2D&logo=windows&logoColor=white" alt="Platform"/></a>
   <a href="#-the-full-capability-list"><img src="https://img.shields.io/badge/AGENT%20TYPES-89-8A2BE2?style=for-the-badge&labelColor=2D2D2D" alt="89 agent types"/></a>
@@ -285,9 +285,9 @@ workflows. They are distinct from this direct button. See the
 [complete microphone guide](docs/chat-microphone-design.md) for configuration,
 cancellation, privacy, diagnostics and measured validation.
 
-## Newest changes — v1.71.0 source
+## Newest changes — v1.72.0
 
-**Source development, 2026-09-27:** direct voice prompts now start from the microphone beside Send. Whisperer captures without waiting for an Ollama tool decision, stops on silence, transcribes and either submits through the existing chat or leaves an editable draft, as selected in the new Config ▸ Mic dialog. Recording status stays in chat; internal worker diagnostics use the main console/log. This adds no agent type or tool and is not a claim of a newly published installer.
+**v1.72.0, 2026-09-27:** direct voice prompts now start from the microphone beside Send. Whisperer captures without waiting for an Ollama tool decision, stops on silence, transcribes and either submits through the existing chat or leaves an editable draft, as selected in the new Config ▸ Mic dialog. Recording status stays in chat; internal worker diagnostics use the main console/log. This adds no agent type or tool. v1.72.0 is a tag; no installer for it has been published yet.
 
 The same dependency audit covers all 89 agents and 743 Python files: missing direct declarations are now present, with ESPHome's incompatible private runtime kept in its own manifest. See [dependency coverage](docs/dependency-coverage-audit.md).
 
@@ -356,14 +356,14 @@ Two fixes ship together. The console is now written on its **own background thre
 
 ---
 
-## Current release — v1.70.0
+## Current version — v1.72.0
 
-**Verified source/publication split — 2026-09-27:** annotated source tag `v1.71.0` points to `512973fb`; the latest published GitHub release is `v1.70.0`. No `v1.71.0` release was published at verification time. The direct microphone and console correction remain local working-tree changes, so neither the tag nor the older published installer alone proves their presence. Runtime version comes from the resolver; feature availability also depends on build contents.
+**Latest version — `v1.72.0` (tagged 2026-09-27):** annotated tag `v1.72.0` points to `e3668a47` — *"Implementing a fancy fancy microphone to Whisperer in a cero latency direct implementation into Tlamatini's Chat, and added configuration parameters."* It is the first tag that actually contains the direct chat microphone and the **Config ▸ Mic** settings: `v1.71.0` points to `512973fb`, which predates the microphone commit. GitHub's latest *published* release is still `v1.70.0`; `v1.71.0` and `v1.72.0` are tags without a published release (checked with `gh release list` on 2026-09-27), so self-update cannot deliver v1.72.0 until a release is published. Runtime version comes from the resolver; feature availability also depends on build contents.
 
 
 The latest published release version is **`v1.70.0`** — the Prompt Flow Panel release: a new **Prompt Flow Panel** where you draw a chain of prompts as a diagram, save it as a `.fpmt` file and play it; a reorganized chat menu bar (**Panels** and **Config**); an editor toolbar for the **Agentic Control Panel** (undo/redo, duplicate, zoom, agent search and help); and one shared set of canvas mechanics, so both panels connect, drag, select and zoom the same way. It carries the preceding **`v1.65.4`** release ("Tlamatini Release v1.65.4 Win11x64", annotated 2026-09-21 at commit `b09c4ff`) and its context-meter line: the context meter itself (`v1.65.0`), the Context Governor that measures the real request and never binds zero tools (`v1.65.2`), a LaTeXer repair for a leading brace being swallowed as an optional argument (`v1.65.3`), and the improved context gauge (`v1.65.4`). It also carries the Video-Analyzer audio-track transcription and detailed audiovisual summaries of `v1.64.0`, alongside the PDF canvas, whole-document context and visual-agent capabilities described above.
 
-Runtime identity always comes from Git/build metadata — `agent/version.py::get_version()` and `GET /agent/version/` resolve the number from the annotated tag at build time, and the release folder `dist/Tlamatini_Release_v1.70.0/` is named from the same source — never from this prose. Tlamatini's version string deliberately never carries a `.devN`, `+gSHA` or `.dirty` suffix; it always reports the base tag (`VERSIONING.md`). The preceding tags in this line are **`v1.65.4`** (2026-09-21), **`v1.65.3`**, **`v1.65.2`** and **`v1.65.0`** (all 2026-09-20), then **`v1.64.0`** (2026-09-19), **`v1.62.2`**, **`v1.62.0`**, **`v1.61.0`** (2026-09-16) and **`v1.60.0`** (2026-09-15, commit `cef3995`, "Entire chain of visual agents really enhanced!"). A **`v1.65.5`** tag also exists in the repository with no published release attached; `v1.70.0` supersedes it.
+Runtime identity always comes from Git/build metadata — `agent/version.py::get_version()` and `GET /agent/version/` resolve the number from the annotated tag at build time, and the release folder `dist/Tlamatini_Release_v1.72.0/` is named from the same source — never from this prose. Tlamatini's version string deliberately never carries a `.devN`, `+gSHA` or `.dirty` suffix; it always reports the base tag (`VERSIONING.md`). The preceding tags in this line are **`v1.71.0`** (2026-09-27, commit `512973fb`), **`v1.70.0`** (tagged 2026-09-26, commit `cf62bd8c`), **`v1.65.4`** (2026-09-21), **`v1.65.3`**, **`v1.65.2`** and **`v1.65.0`** (all 2026-09-20), then **`v1.64.0`** (2026-09-19), **`v1.62.2`**, **`v1.62.0`**, **`v1.61.0`** (2026-09-16) and **`v1.60.0`** (2026-09-15, commit `cef3995`, "Entire chain of visual agents really enhanced!"). A **`v1.65.5`** tag also exists in the repository with no published release attached; `v1.70.0` supersedes it.
 
 The preceding **`v1.60.0`** tag, created 2026-09-15 at commit **`cef3995`** ("Release v1.60.0 Entire chain of visual agents really enhanced!."), carries the visual-agent work described above. It reached you through three earlier tags in the same line — **`v1.52.0`** (the new PPTXer agent), **`v1.52.2`** (PDFer's and PPTXer's style collections) and **`v1.52.3`** (LaTeXer's) — before `v1.60.0` gathered them together with the desktop-control and flow-contract tightening.
 

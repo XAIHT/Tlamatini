@@ -1258,8 +1258,8 @@ def build_chapters(f: dict) -> list[Chapter]:
         f"Source tag {f['release_tag']}; latest published release "
         f"{f['release']['latest_published'] or 'unverified'}. Local changes are stated separately.",
         accent="gold", sections=[
-        Section("working_voice", "LOCAL DEVELOPMENT", "Direct dictation and dependency coverage",
-            "These September 27 changes are in the working tree; a source tag does not publish them.",
+        Section("working_voice", "NEW IN v1.72.0", "Direct dictation and dependency coverage",
+            "These September 27 changes are committed and tagged v1.72.0; a tag alone publishes no installer.",
             body=[
                 "The chat microphone starts Whisperer directly, stops on the configured silence gate, "
                 "recognizes speech and sends or leaves an editable draft as selected in Config > Mic. "
@@ -1267,8 +1267,8 @@ def build_chapters(f: dict) -> list[Chapter]:
                 "application logger and creates no second console. Developer tests remain visibly executed.",
                 "The root dependency manifest and separate ESPHome manifest now account for referenced "
                 "libraries across agents and source. The static guard and detailed dependency audit record "
-                "coverage and runtime boundaries. Neither this work nor the regenerated dossiers establishes "
-                "that the published v1.70.0 installer contains the local microphone changes.",
+                "coverage and runtime boundaries. The published v1.70.0 installer does not contain them; "
+                "they reach users once a v1.72.0 release is built and published.",
             ],
             points=[
                 ("User guide", "README.md and BookOfTlamatini.md explain Mic settings, recording, cancellation and both modes."),
