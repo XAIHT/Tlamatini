@@ -106,6 +106,7 @@ Config → Models exposes **38 model/engine/voice settings** for **21 model-back
 
 The microphone beside Send reuses Whisperer as an internal input service; it
 adds no workflow-agent type or catalog row. It starts host capture directly,
-then transcribes and submits through the existing composer. This is distinct
+then transcribes and either submits through the existing composer or leaves
+an editable draft according to Config → Mic. This is distinct
 from the wrapped `chat_agent_whisperer` contract in this inventory. See
 [the direct microphone guide](chat-microphone-design.md).

@@ -21,15 +21,17 @@ and the chat's recording indicator.
 
 The source/carried-Python child must include capture and ASR dependencies.
 `build.py` requires `agent.chat_voice_consumer` and
-`agent.chat_voice_runtime`; `build_runtime_assets.py` verifies
-`agents/whisperer/chat_worker.py`, `chat_dictation.js` and
+`agent.chat_voice_runtime` and `agent.chat_voice_settings`;
+`build_runtime_assets.py` carries `chat_voice_settings.py` at the install root
+and verifies `agents/whisperer/chat_worker.py`, `mic_settings.js`, `chat_dictation.js` and
 `chat_dictation.css`. Keep routing, template, composer sizing, form dispatch,
 avatar hooks and INFO logging aligned. Required files alone do not prove a
 frozen runtime works. Restart source; rebuild/update installed binaries.
 
-The current source record is 98 passing voice tests, real capture/cancellation
-and two actual worker restart cycles without extra windows or focus changes.
-Earlier headed-browser tests used controlled transport; no new live Ollama job
+The current source record is 108 passing voice regressions and 42 existing
+dialog-theme tests. Real capture/cancellation was checked earlier; current
+metadata refresh and two worker restart cycles produced no windows or focus
+changes. Headed-browser checks cover both modes and settings using controlled transport; no new live Ollama job
 or installer build is claimed. Run checks in a visible console and inspect the
 main application log. [Full contract](../chat-microphone-design.md).
 
@@ -37,6 +39,13 @@ The whole-source dependency guard is `scripts/check_requirements_coverage.py`;
 the older agent-only import test is insufficient on its own. Main declarations
 and ESPHome's separate private-runtime manifest are explained in the
 [dependency audit](../dependency-coverage-audit.md).
+
+Config → Mic is last, after Voice. Keep capture preferences per recording:
+saving during dictation cannot change its send/draft behavior. Review mode must
+restore editing without calling the form or avatar processing acknowledgment.
+Use whole shared border tokens and explicit secondary backgrounds for all Mic
+buttons; unset backgrounds produced white buttons with white text. Outside
+clicks must not discard settings. Source/static collection must stay in sync.
 
 ## Models and frozen runtime preparation (2026-09-20)
 

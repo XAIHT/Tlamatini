@@ -522,11 +522,12 @@ def build_chapters(f: dict) -> list[Chapter]:
         Section("dictation", "DIRECT VOICE INPUT", "Speak beside Send",
             "The microphone captures first; no model tool-selection step stands between the click and recording.",
             body=[
-                "Click the microphone beside Send, wait for Listening, and speak into the microphone on the "
+                "Click Mic beside Send, wait for Listening, and speak into the microphone on the "
                 "Tlamatini host. Real input level, elapsed time and the silence countdown stay in the chat. "
                 "After the configured silence window (shipped default 3.5 seconds), recognition runs and the "
-                "text is appended to the existing draft and sent automatically through the normal form.",
-                "There is no transcript review step. A second click or Escape cancels; empty or failed "
+                "text is appended to the existing draft. Config > Mic selects automatic normal-form submission "
+                "or an editable draft for manual Send.",
+                "Review mode starts no task until Send. A second click or Escape cancels; empty or failed "
                 "recognition sends nothing. Current modes and permission behavior remain in force. "
                 "The avatar acknowledges dispatch through browser speech and respects Silent mode.",
             ],
@@ -534,7 +535,24 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("Click", "Direct Whisperer start; the host microphone opens only for a recording."),
                 ("Listen", "Live samples drive the in-chat indicator and the configured silence gate."),
                 ("Recognize", "Local faster-whisper or the explicitly configured cloud speech engine."),
-                ("Send", "Automatically submit once, with the current draft and mode switches; no review dialog."),
+                ("Send or review", "Submit once with current modes, or review the editable draft and press Send yourself."),
+            ], deck="cards"),
+        Section("micsettings", "CONFIGURATION", "Config ends with Mic",
+            "Choose automatic Send or an editable draft, using the same dialog style as the rest of Tlamatini.",
+            body=[
+                "The button label is Mic. Config > Mic follows Voice and controls what happens after recognition. "
+                "Send automatically is the default. Keep in the chat input restores editing without launching "
+                "a task or processing acknowledgment; correct the words, then press Send.",
+                "Preferences are saved in this browser for the next recording. Each recording owns a snapshot. "
+                "Unset fields inherit the current Whisperer template; Reset then Save restores that inheritance. "
+                "Cancel, close and Escape discard unsaved edits; outside clicks leave the dialog open. "
+                "Config > Voice controls avatar playback; Config > Models > Speech selects the recognizer.",
+            ],
+            points=[
+                ("Input", "Configured/default/listed host device, refresh and software gain from 0 to 300%."),
+                ("Sound gate", "Silence 0.3-20 seconds, cap 5-600 seconds, adaptive or manual sensitivity."),
+                ("Recognition", "Language, English translation, capture rate/channels, local beam size and VAD."),
+                ("Guardrails", "Validate settings before capture; removed or ambiguous saved devices cannot silently change inputs."),
             ], deck="cards"),
         Section("dictationruntime", "INTERNAL SERVICE", "One main console, no extra window",
             "Developer visibility requirements do not become additional product windows.",
@@ -550,25 +568,27 @@ def build_chapters(f: dict) -> list[Chapter]:
             ],
             points=[
                 ("UI ownership", "The composer displays recording and transcription; no second console."),
-                ("Configuration", "Speech model settings and explicit template overrides still apply."),
+                ("Configuration", "Model/template inheritance plus validated, per-recording Mic capture overrides."),
                 ("Boundary", "The direct button is input, not a wrapped tool or an Exec Report row."),
-                ("Release", "Ship the consumer/runtime modules, carried worker, JS/CSS and matching template."),
+                ("Release", "Ship consumer/runtime/settings modules, carried validator and worker, Mic JS/CSS and template."),
             ], deck="cards"),
         Section("dictationevidence", "VERIFICATION SCOPE", "Measured source behavior",
             "Dated source checks are evidence, not a claim that an older installer contains the change.",
             body=[
-                "On September 27, 2026, 98 voice tests passed: 26 direct-voice and 72 existing Whisperer "
-                "checks. A real host microphone began yielding samples in 297 ms after direct start; "
+                "On September 27, 2026, 108 voice regressions and 42 existing dialog-theme tests passed. "
+                "The worker refreshed 16 host inputs and restarted twice without extra windows or focus changes. "
+                "Earlier real host capture yielded samples in 297 ms after direct start; "
                 "cancellation and normal worker exit were observed. Two startup/shutdown cycles created "
                 "no additional visible windows and left foreground focus unchanged.",
-                "The earlier headed-browser suite passed 33 controlled-transport checks. Earlier cached "
+                "The updated headed-browser suite passed 62 controlled-transport checks, including both modes, "
+                "settings persistence, shared control styles and narrow layouts. Earlier cached "
                 "recognition of a 5.768-second synthetic speech file took 0.203 seconds, versus 11.094 "
                 "seconds on first decode. These are separate observations, not end-to-end latency guarantees. "
                 "No new live Ollama task or rebuilt installer was certified by those checks.",
             ],
             points=[
-                ("Current source", "98 voice regressions plus real microphone and worker lifecycle probes."),
-                ("Browser evidence", "33 earlier headed checks with controlled transport; not live ASR."),
+                ("Current source", "108 voice regressions, 42 theme tests and real worker metadata/lifecycle probes."),
+                ("Browser evidence", "62 headed checks with controlled transport; separate from live ASR."),
                 ("Limits", "Cold model loading, provider latency and hardware vary; no zero-latency promise."),
                 ("Detailed guide", "docs/chat-microphone-design.md records configuration, protocol and evidence."),
             ], deck="cards"),
@@ -582,7 +602,7 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ["ACPX-Skills", "Browse, configure, diagnose and reload the skill catalog."],
                 ["External", "The External MCPs dialog: catalog, activation and runtime readiness."],
                 ["Config", "Configure MCPs, Configure Agents, Models, URLs, Contacts, Access Keys Wizard, "
-                 "Voice."],
+                 "Voice, then Mic (dictation behavior and capture preferences)."],
                 ["DB", "WAL-safe database backup and staged replacement."],
                 ["Reconnect · About", "Rebuild the chat connection; version, credits and Check for "
                  "updates."],
@@ -943,15 +963,15 @@ def build_chapters(f: dict) -> list[Chapter]:
                 "female voice — tara, leah, jess, mia or zoe. A male voice is refused by design.",
                 "The catalog's first section, VOICE COMMANDS, makes the microphone the keyboard: she transcribes "
                 "your instruction, reads it back, and only then acts. Anything irreversible still needs your "
-                "written confirmation under those catalog instructions. The direct chat microphone submits "
-                "automatically and uses browser speech for its acknowledgment, respecting Silent mode.",
+                "written confirmation under those catalog instructions. Config > Mic selects automatic submission "
+                "or an editable draft. Actual dispatch uses browser speech for acknowledgment, respecting Silent mode.",
             ], deck="list",
             deck_points=[
                 ("Sound gate", "Records while you talk; stops after 3.5 s of silence."),
                 ("Workflow duration", "Standalone/workflow recording can use an explicit fixed duration."),
                 ("Local first", "faster-whisper on GPU or CPU, or a cloud provider."),
                 ("Her voice", "Female only: tara, leah, jess, mia or zoe."),
-                ("Direct microphone", "Gate, recognize, automatically send; no review dialog or extra console."),
+                ("Direct microphone", "Gate, recognize, then send or keep an editable draft; no extra console."),
                 ("Catalog commands", "Model-mediated cards can request readback before acting."),
             ]),
         Section("vision", "VISION AND VIDEO", "Eyes that report their limits",
@@ -1119,7 +1139,7 @@ def build_chapters(f: dict) -> list[Chapter]:
         Section("dependencies", "DEPENDENCY COVERAGE", "Every referenced Python library is accounted for",
             "The September 27 source audit covers all 89 agents, build helpers, optional imports and tests.",
             body=[
-                "The static guard scanned 743 Python files and 69 directly referenced distributions. The "
+                "The refreshed static guard scanned 744 Python files and 69 directly referenced distributions. The "
                 "main requirements file contains 87 declarations; missing Autobahn, lxml, six, pip and "
                 "PlatformIO declarations were added. Existing framework and compatibility pins remain.",
                 "ESPHome has a separate requirements-esphome.txt manifest because its py7zr and PlatformIO "
@@ -1242,7 +1262,8 @@ def build_chapters(f: dict) -> list[Chapter]:
             "These September 27 changes are in the working tree; a source tag does not publish them.",
             body=[
                 "The chat microphone starts Whisperer directly, stops on the configured silence gate, "
-                "recognizes speech and submits the normal chat form. The internal worker uses the main "
+                "recognizes speech and sends or leaves an editable draft as selected in Config > Mic. "
+                "The dialog also saves browser-local input, gain, gate and recognition preferences. The worker uses the main "
                 "application logger and creates no second console. Developer tests remain visibly executed.",
                 "The root dependency manifest and separate ESPHome manifest now account for referenced "
                 "libraries across agents and source. The static guard and detailed dependency audit record "
@@ -1250,7 +1271,7 @@ def build_chapters(f: dict) -> list[Chapter]:
                 "that the published v1.70.0 installer contains the local microphone changes.",
             ],
             points=[
-                ("User guide", "README.md and BookOfTlamatini.md explain recording, cancellation and automatic Send."),
+                ("User guide", "README.md and BookOfTlamatini.md explain Mic settings, recording, cancellation and both modes."),
                 ("Runtime contract", "docs/chat-microphone-design.md records ownership, protocol, configuration and limits."),
                 ("Dependencies", "docs/dependency-coverage-audit.md records declarations, isolation and verification."),
                 ("Delivery", "Restart source runs; rebuild and validate an installer before distributing these changes."),

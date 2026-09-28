@@ -79,3 +79,51 @@
 @media (prefers-reduced-motion: reduce) {
   #chat-microphone, #chat-microphone::before, #dictation-meter i { transition: none; animation: none !important; }
 }
+
+/* Mic settings uses the shared Voice/system modal shell and theme variables. */
+.tlm-mic-modal { width: min(720px, 100%); }
+.tlm-mic-modes label { display: flex; align-items: flex-start; gap: 8px; }
+.tlm-mic-modes input { margin-top: 5px; flex: none; }
+.tlm-mic-modes small { display: block; color: var(--tlm-dlg-muted,#9ca2ba); font-size: .8rem; margin-top: 2px; }
+.tlm-mic-grid { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 12px; }
+.tlm-mic-field { display: block; font-size: .8rem; font-weight: 700; color: var(--tlm-dlg-body,#c1c5d0); }
+.tlm-mic-field input,.tlm-mic-field select { display: block; width: 100%; margin-top: 5px; }
+.tlm-mic-modal input:not([type=radio],[type=checkbox],[type=range]),.tlm-mic-modal select {
+  box-sizing: border-box; min-width: 0; padding: 8px 10px; border-radius: 8px;
+  border: var(--tlm-dlg-input-border);
+  background: var(--tlm-dlg-input-bg); color: var(--tlm-dlg-title);
+  font-family: var(--tlm-dlg-font); color-scheme: dark;
+}
+.tlm-mic-modal select option { background: var(--tlm-dlg-chrome); color: var(--tlm-dlg-title); }
+.tlm-mic-modal :is(input,select,button,summary):focus-visible { outline: 2px solid #55bbaa; outline-offset: 2px; }
+.tlm-mic-modal input[type=range] { width: 100%; accent-color: var(--tlm-dlg-accent,#55bbaa); }
+.tlm-mic-modal input[type=checkbox] { accent-color: var(--tlm-dlg-accent,#55bbaa); }
+.tlm-mic-device-row { display: flex; gap: 8px; margin-top: 6px; }
+.tlm-mic-device-row select { flex: 1; width: 0; }
+.tlm-mic-device-row button,
+#tlm-mic-reset,
+#tlm-mic-cancel {
+  border: var(--tlm-dlg-border); border-radius: var(--tlm-dlg-radius-sm);
+  color: var(--tlm-dlg-title); background: var(--tlm-dlg-btn-secondary);
+  font-family: var(--tlm-dlg-font); font-size: .88rem; font-weight: 700;
+  line-height: 1.2; cursor: pointer; transition: background-color .18s ease-out;
+}
+.tlm-mic-device-row button { padding: 8px 14px; }
+.tlm-mic-device-row button:hover:not(:disabled),
+#tlm-mic-reset:hover,
+#tlm-mic-cancel:hover { background: var(--tlm-dlg-btn-secondary-hover); }
+.tlm-mic-modal button:disabled { opacity: .7; cursor: wait; }
+.tlm-mic-help { color: var(--tlm-dlg-muted,#9ca2ba); font-size: .78rem; line-height: 1.4; margin: 7px 0 14px; }
+.tlm-mic-advanced summary { color: var(--tlm-dlg-body,#c1c5d0); cursor: pointer; font-size: .85rem; font-weight: 700; }
+.tlm-mic-advanced[open] summary { margin-bottom: 14px; }
+.tlm-mic-check { display: flex; gap: 8px; align-items: center; font-size: .8rem; color: var(--tlm-dlg-body,#c1c5d0); }
+.tlm-mic-feedback { padding: 9px; color: #f3d29a; border: 1px solid #826534; border-radius: 8px; font-size: .82rem; }
+#tlm-mic-gain-value { float: right; color: #64d5bd; }
+#tlm-mic-save { background: var(--tlm-dlg-accent,#55bbaa); }
+#tlm-mic-save:hover { background: var(--tlm-dlg-accent-hover,#469f91); }
+#tlm-mic-threshold-row[hidden] { display: none; }
+@media (max-width: 520px) {
+  .tlm-mic-grid { grid-template-columns: minmax(0,1fr); }
+  .tlm-mic-device-row { flex-wrap: wrap; }
+  .tlm-mic-device-row select { flex-basis: 100%; width: 100%; }
+}

@@ -151,8 +151,12 @@ Explicit template overrides still win. This does not add a new model selector.
 
 Interactive dictation forces `input_source: mic`, `record_seconds: 0`,
 `silence_gate: on`, `ollama_cleanup: false` and no downstream targets for
-that job. Device, language, gain, threshold, silence timeout and maximum duration
-keep their configured values. Selecting `whisperer_cleanup_model` therefore
+that job. Config → Mic (last after Voice) can override device, language, gain,
+threshold, silence timeout, maximum duration, sample rate/channels, task and
+local beam/VAD per recording. Unset fields inherit the current template.
+It also selects automatic Send (default) or an editable transcript for manual
+Send. Preferences persist in browser storage; they do not rewrite shared model
+settings or workflow YAML. Selecting `whisperer_cleanup_model` therefore
 does not insert an Ollama cleanup stage into the button path. The normal chat
 model is invoked only after recognized text is submitted.
 

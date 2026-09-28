@@ -150,6 +150,7 @@
               <li><a class="dropdown-item menu-entry" href="#" id="access-keys-wizard"
                   onclick="OpenAccessKeysWizard(event);">Access Keys Wizard</a></li>
               <li><a class="dropdown-item menu-entry" href="#" id="config-voice" onclick="OpenVoiceDialog(event);">Voice</a></li>
+              <li><a class="dropdown-item menu-entry" href="#" id="config-mic" onclick="OpenMicDialog(event);">Mic</a></li>
             </ul>
           </li>
           <li class="nav-item dropdown">
@@ -256,7 +257,7 @@
                   <path d="M8 15v2a8 8 0 0 0 16 0v-2M16 25v4M12 29h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
                   <path d="M15 7h2M15 10h2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".6"/>
                 </svg>
-                <span class="mic-label" aria-hidden="true">Voice</span>
+                <span class="mic-label" aria-hidden="true">Mic</span>
               </button>
               <button type="submit" id="chat-message-submit">Send</button>
             </div>
@@ -771,9 +772,65 @@
   </div>
  </div>
 </div>
+<div id="tlm-mic-overlay" class="tlm-modal-overlay" style="display:none;">
+ <form id="tlm-mic-form" class="tlm-modal tlm-mic-modal" role="dialog" aria-modal="true"
+       aria-labelledby="tlm-mic-title" aria-describedby="tlm-mic-description">
+  <div class="tlm-modal-head">
+   <div><span class="tlm-modal-kicker">Config · Mic</span><h2 id="tlm-mic-title">Microphone settings</h2></div>
+   <button type="button" class="tlm-modal-x" id="tlm-mic-close" aria-label="Close microphone settings">&times;</button>
+  </div>
+  <div class="tlm-modal-body">
+   <p id="tlm-mic-description" class="tlm-voice-note">Choose what happens after dictation. Uses the microphone on the computer running Tlamatini.</p>
+   <fieldset class="tlm-voice-modes tlm-mic-modes"><legend>After speech becomes text</legend>
+    <label><input type="radio" name="tlm-mic-mode" value="send" checked><span><strong>Send automatically</strong><small>Start the request as soon as transcription finishes.</small></span></label>
+    <label><input type="radio" name="tlm-mic-mode" value="draft"><span><strong>Keep in the chat input</strong><small>Review, correct or add to the text, then press Send yourself.</small></span></label>
+   </fieldset>
+   <div class="tlm-voice-pane tlm-mic-inputs">
+    <label class="tlm-mic-field" for="tlm-mic-device">Microphone</label>
+    <div class="tlm-mic-device-row">
+     <select id="tlm-mic-device"><option value="inherit">Use configured Whisperer microphone</option><option value="default">System default input</option></select>
+     <button type="button" id="tlm-mic-refresh">Refresh inputs</button>
+    </div>
+    <p id="tlm-mic-device-note" class="tlm-mic-help" role="status">Loading input devices…</p>
+    <label class="tlm-mic-field" for="tlm-mic-gain">Input volume (gain) <output id="tlm-mic-gain-value" for="tlm-mic-gain">100%</output></label>
+    <input id="tlm-mic-gain" data-mic-setting="input_gain_percent" type="range" min="0" max="300" step="5" value="100">
+    <p class="tlm-mic-help">100% keeps the original level. Boost quiet speech carefully; high gain can distort it. This does not change the system volume.</p>
+    <div class="tlm-mic-grid">
+     <label class="tlm-mic-field">Stop after silence (seconds)<input data-mic-setting="silence_timeout_seconds" type="number" min="0.3" max="20" step="0.1" value="3.5" required></label>
+     <label class="tlm-mic-field">Recording limit (seconds)<input data-mic-setting="max_record_seconds" type="number" min="5" max="600" step="1" value="300" required></label>
+    </div>
+    <p class="tlm-mic-help">A longer silence window allows longer pauses. Recording always ends at the limit.</p>
+    <div class="tlm-mic-grid">
+     <label class="tlm-mic-field">Silence sensitivity<select id="tlm-mic-sensitivity"><option value="auto">Automatic — adapt to the room</option><option value="manual">Manual threshold</option></select></label>
+     <label class="tlm-mic-field" id="tlm-mic-threshold-row" hidden>Speech threshold (dBFS)<input id="tlm-mic-threshold" type="number" min="-90" max="-10" step="1" value="-50" required></label>
+    </div>
+    <p class="tlm-mic-help">A lower manual threshold hears quieter speech; a higher one ignores more background noise.</p>
+   </div>
+   <details class="tlm-voice-pane tlm-mic-advanced">
+    <summary>Recognition &amp; advanced capture</summary>
+    <div class="tlm-mic-grid">
+     <label class="tlm-mic-field">Spoken language<input data-mic-setting="language" type="text" maxlength="3" pattern="[a-zA-Z]{2,3}" placeholder="Automatic (or en, es, fr…)" autocomplete="off"></label>
+     <label class="tlm-mic-field">Transcript language<select data-mic-setting="task"><option value="transcribe">Keep the spoken language</option><option value="translate">Translate to English</option></select></label>
+     <label class="tlm-mic-field">Capture sample rate<select data-mic-setting="sample_rate"><option value="0">16 kHz — recommended</option><option value="8000">8 kHz</option><option value="16000">16 kHz</option><option value="22050">22.05 kHz</option><option value="24000">24 kHz</option><option value="32000">32 kHz</option><option value="44100">44.1 kHz</option><option value="48000">48 kHz</option></select></label>
+     <label class="tlm-mic-field">Input channels<select data-mic-setting="channels"><option value="1">Mono — recommended</option><option value="2">Stereo — converted to mono</option></select></label>
+     <label class="tlm-mic-field">Local decoding beam size<input data-mic-setting="beam_size" type="number" min="1" max="10" step="1" value="5" required></label>
+     <label class="tlm-mic-check"><input data-mic-setting="vad_filter" type="checkbox" checked>Filter silence during local recognition</label>
+    </div>
+    <p class="tlm-mic-help">Higher beam sizes can improve recognition and take longer. Translation support depends on the selected speech model. Configure the speech engine and model in Config → Models → Speech.</p>
+   </details>
+   <p id="tlm-mic-feedback" class="tlm-mic-feedback" role="status" hidden></p>
+  </div>
+  <div class="tlm-modal-foot">
+   <span class="tlm-modal-foot-note">Saved in this browser. Changes apply to the next recording.</span>
+   <div class="tlm-voice-actions"><button type="button" id="tlm-mic-reset">Reset</button><button type="button" id="tlm-mic-cancel">Cancel</button><button type="submit" id="tlm-mic-save">Save</button></div>
+  </div>
+ </form>
+</div>
+
 <script src="{% static 'agent/js/avatar_presence.js' %}?v={{ STATIC_VERSION }}_presence1"></script>
 <script src="{% static 'agent/js/avatar_size.js' %}?v={{ STATIC_VERSION }}_presence1"></script>
 <script src="{% static 'agent/js/avatar.js' %}?v={{ STATIC_VERSION }}_avatar_atomic1"></script>
+<script src="{% static 'agent/js/mic_settings.js' %}?v={{ STATIC_VERSION }}"></script>
 <script src="{% static 'agent/js/chat_dictation.js' %}?v={{ STATIC_VERSION }}"></script>
 <!-- TLM_AVATAR_PHASE1_END -->
 </body>

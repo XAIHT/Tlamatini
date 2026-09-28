@@ -16,6 +16,24 @@
 
 ---
 
+## 2026-09-27 — Mic preferences, editable transcripts and shared control styles
+
+The composer label is Mic; Config ends with Mic after Voice. The dialog saves
+browser-local send/draft and capture preferences, with Reset/Save and a shared
+system modal. Draft mode appends text and restores editing without dispatch or
+processing speech. Snapshot settings per recording; a preference saved during
+capture applies only to the next run. Validate the same allowlist in consumer
+and worker; revalidate device name/API before opening a saved numeric ID.
+Ready/options metadata exposes defaults/devices only and never opens a stream.
+
+Reset/Cancel initially inherited a native pale background under white text.
+They and Refresh now use the shared secondary/hover tokens. Input borders must
+consume the complete border token, never `1px solid var(--tlm-dlg-border)`.
+Keep outside-click dismissal disabled and Escape/✕/Cancel behavior consistent.
+Ship the shared validator both compiled and as a carried root module, and require
+`mic_settings.js` in the static payload. Verification and all control ranges:
+[Mic contract](../chat-microphone-design.md#config--mic).
+
 ## 2026-09-27 — Microphone documentation synchronized across product and maintainer surfaces
 
 README, the Book, self-knowledge, agent catalog, model settings, frontend,

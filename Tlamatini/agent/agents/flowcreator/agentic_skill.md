@@ -2666,9 +2666,13 @@ Model selection: Config → Models manages 38 model/engine/voice settings across
 
 ## Direct chat microphone boundary (2026-09-27)
 
+Config → Mic selects automatic submission or an editable draft for manual Send,
+with browser-local capture settings. This adds no canvas node or workflow field.
+Do not serialize those browser preferences into generated Whisperer workflows.
+
 The microphone beside chat Send is a composer input service, not a canvas node
 or an additional workflow agent. Do not generate a `chat_worker` agent or a
 `/ws/chat-voice/` node in a flow. For a workflow that needs speech recognition,
 use the existing Whisperer agent and its normal configuration, structured
-outputs and connections. Direct-button automatic submission has no workflow
+outputs and connections. Direct-button input has no workflow
 targets or Exec Report row of its own.

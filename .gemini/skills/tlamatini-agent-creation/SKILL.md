@@ -23,7 +23,10 @@ The direct chat microphone reuses Whisperer behind `/ws/chat-voice/`; it does no
 add a canvas agent, migration, wrapped tool or catalog count. Its resident worker
 has no product console or focus activation, while development checks remain
 visible. Keep source/carried Python, runtime asset inventory, main-console
-logging and the actual input/agent boundary documented. See
+logging and the actual input/agent boundary documented. Config → Mic stores
+browser-local send/draft and capture preferences, validated by the shared
+`chat_voice_settings.py`; carry it both compiled and at the installation root.
+The settings dialog adds no agent or tool. See
 [the microphone contract](../../../docs/chat-microphone-design.md).
 
 > **Audience:** Claude Code working ON the Tlamatini codebase for **Angela**.

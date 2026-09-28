@@ -7,13 +7,14 @@ Tlamatini Author Banner — do not remove -->
 
 1. Open the chat and wait for voice preparation to finish. The microphone is off
    during preparation; the button is unavailable while chat is disconnected or busy.
-2. Click the microphone immediately left of **Send**. Wait for **Listening**:
+2. Click **Mic** immediately left of **Send**. Wait for **Listening**:
    **Opening microphone** is only the startup state.
 3. Speak into the microphone configured on the **Tlamatini host computer**.
    The composer shows live input level, elapsed time and the silence countdown.
-4. Stop speaking. The configured gate closes capture, recognition runs, and the
-   transcript is appended to any existing draft and **sent automatically**.
-   There is no edit/review/confirmation screen before this send.
+4. Stop speaking. The configured gate closes capture and recognition runs.
+   In the default **Send automatically** mode, the transcript joins the existing
+   draft and is sent once. In **Keep in the chat input** mode, it remains editable
+   until you press Send. Choose the behavior in **Config → Mic**.
 5. To abandon the prompt, click the microphone again or press **Escape**.
    Once the prompt has been sent, use the normal chat cancellation controls.
 
@@ -25,7 +26,58 @@ capture to that provider. The resulting text follows the normal chat/model path.
 
 The **VOICE COMMANDS** catalog cards use the model-mediated wrapped agent and
 their own instructions. Their rehearsal/read-back behavior must not be promised
-for this direct, automatically submitting button.
+for this direct button. Its optional review mode uses the ordinary chat input.
+
+## Config → Mic
+
+**Mic** is the last Config entry, after Voice. Its dialog uses the shared system
+modal shell, theme tokens, secondary buttons and teal Save action. The composer
+button's idle label is **Mic**. Config → Voice still controls the avatar's output
+voice; Config → Models → Speech still selects the recognition engine/model.
+
+Choose what happens after speech becomes text:
+
+- **Send automatically** (default): append the transcript to the existing draft
+  and submit the normal form once, using the current chat flags.
+- **Keep in the chat input**: append the transcript, restore editing and focus,
+  and show **Transcription ready — review your prompt**. No model task or avatar
+  processing acknowledgment starts until the user edits as needed and presses Send.
+
+| Setting | Choices / direct-input limits |
+| --- | --- |
+| Microphone | Inherit the Whisperer configuration, system default input, or a listed host device; Refresh inputs re-enumerates without recording |
+| Input volume (gain) | 0–300%; 100% preserves the level, 0% mutes the captured signal; software gain does not change OS volume |
+| Stop after silence | 0.3–20 seconds; shipped Whisperer default 3.5 |
+| Recording limit | 5–600 seconds; shipped default 300; capture still always uses the silence gate |
+| Silence sensitivity | Automatic room adaptation, or a manual threshold from −90 to −10 dBFS |
+| Spoken language | Empty for detection, or a two/three-letter code such as en or es |
+| Transcript language | Transcribe as spoken, or translate to English when supported by the configured speech model |
+| Capture sample rate | Configured/automatic (0), 8/16/22.05/24/32/44.1/48 kHz; existing Whisperer treats 0 as 16 kHz and converts recognition input to mono 16 kHz |
+| Input channels | Mono or stereo (converted to mono); the device must support the selected rate/channels |
+| Local decoding beam size | 1–10; larger beams may cost more time; local engine only |
+| Filter silence during local recognition | VAD on/off; independent of the capture sound gate |
+
+Preferences use this browser origin's local storage, `tlm_mic_settings_v1`,
+with `{mode: "send" | "draft", capture: {...overrides}}`. They are shared by tabs
+on that origin, not synchronized to other browsers or stored per server account.
+Only values different from the loaded Whisperer defaults are saved as overrides.
+Unset fields inherit the current template on each recording. **Reset** previews
+inherited capture defaults and automatic send; **Save** commits that choice.
+Cancel, ✕ and Escape discard unsaved dialog edits; an outside click does not
+dismiss it. If browser storage fails, the dialog reports that the applied settings
+will last only for this tab.
+
+Every recording snapshots its behavior and capture overrides when it starts.
+Saving during capture affects the next recording; it cannot turn a pending
+review draft into an automatic send. A metadata refresh does not overwrite
+unsaved fields. Escape closes an open Mic dialog before it can cancel a recording.
+The shared busy/context lock still governs opening Config.
+
+Device choices carry index, name and host API. If the index changes, the worker
+accepts the same named device/API only when the identity is unambiguous. Removed
+or ambiguous devices fail before capture rather than silently recording from
+another input. The dialog preserves an unavailable saved choice for correction.
+Refresh is unavailable during an active recording; it never starts recording.
 
 ## Existing system and the delay
 
@@ -58,7 +110,9 @@ Status always uses text as well as color. Keyboard focus is visible; Escape and
 a second click cancel. Decorative motion respects reduced-motion settings.
 
 Main state sequence:
-`preparing → ready → starting → recording → transcribing → submitting → ready`.
+`preparing → ready → starting → recording → transcribing → submitting → ready`
+for automatic mode. Review mode returns from transcribing to ready with an
+editable transcript; it does not enter submitting until the user sends.
 Cancellation uses `cancelling`; `empty` and `error` are recoverable visible states.
 Starting never claims to be recording. Recording begins only after real samples.
 Errors and empty audio restore controls and preserve the draft. Cancellation,
@@ -79,7 +133,9 @@ The worker loads capture libraries before declaring itself ready, but does not
 open the microphone until a click. The first real recording event starts model
 warmup concurrently. A bounded model cache reuses the selected model and its
 GPU/CPU variants across subsequent prompts. Config is resolved afresh per job;
-Config → Models and explicit Whisperer template overrides remain authoritative.
+Config → Models and explicit Whisperer template overrides select recognition;
+validated Config → Mic capture/decoding preferences override the template for
+that direct recording only.
 
 The existing capture function gains optional progress and cancellation hooks.
 Progress is sent outside the audio callback. Interactive capture refuses the
@@ -89,8 +145,9 @@ gate or reliable cancellation. Standalone Whisperer keeps its legacy behavior.
 After capture closes, the worker transcribes the raw 16 kHz mono array locally
 (or a temporary WAV for an explicitly configured cloud engine). No optional
 Ollama cleanup is inserted. Silence-only input is not sent to ASR. Completed
-text joins any existing draft and goes through the normal chat form exactly once.
-The avatar acknowledges successful dispatch immediately, honoring Silent mode;
+text joins any existing draft. Automatic mode invokes the normal chat form once;
+review mode restores editing without dispatching. The avatar acknowledges an
+actual successful dispatch immediately, honoring Silent mode;
 the matching server acknowledgment is deduplicated.
 
 ## Boundaries and latency
@@ -115,15 +172,17 @@ The worker reloads `agents/whisperer/config.yaml` through Whisperer's existing
 loader for every job. Central Config → Models → Speech selections apply through
 `@config`; explicit template values remain overrides. The resident model cache
 reuses compatible selections and is replaced as selections change. No database
-schema or new model setting was added for dictation.
+schema or new model setting was added for dictation. The Config → Mic fields
+listed above override capture/decoding values only for that recording; engine,
+model and credentials retain their existing configuration precedence.
 
 | Setting | Direct-button behavior |
 | --- | --- |
 | `engine`, `model`, `cloud_model` | Existing Whisperer selection: faster-whisper, cloud-groq or cloud-openai |
-| `device_index`, `device_name`, `input_gain_percent` | Existing host input-device selection and gain |
-| `language`, `task`, recognition options | Existing Whisperer recognition settings |
-| `silence_timeout_seconds` | Existing value; shipped default 3.5 seconds |
-| `silence_threshold_db`, `max_record_seconds` | Existing gate threshold and bounded recording ceiling; shipped ceiling 300 seconds |
+| `device_index`, `device_name`, `input_gain_percent` | Inherited host input/gain unless Config → Mic overrides them; saved explicit devices also carry host API identity |
+| `language`, `task`, recognition options | Inherited Whisperer settings unless allowed Config → Mic fields override them |
+| `silence_timeout_seconds` | Inherited or Config → Mic override; shipped default 3.5 seconds |
+| `silence_threshold_db`, `max_record_seconds` | Inherited or Config → Mic overrides; shipped ceiling 300 seconds |
 | `input_source`, `record_seconds`, `silence_gate` | Forced to `mic`, `0`, `on` for this interactive job |
 | `ollama_cleanup`, `target_agents` | Forced to `False` and `[]`; no second model cleanup or workflow chaining |
 
@@ -143,15 +202,22 @@ origins close with 4403. This adds no separately exposed public service.
 
 | Direction | Frame or event |
 | --- | --- |
-| Browser → server | `{"action":"start","run_id":"unique-id"}` |
+| Browser → server | `{"action":"start","run_id":"unique-id","settings":{...captureOverrides}}`; settings is optional |
 | Browser → server | `{"action":"cancel","run_id":"unique-id"}` |
-| Server → browser, connection | `preparing`, then `ready`, or `error` |
+| Browser → server | `{"action":"options"}` refreshes public defaults and input devices without capture |
+| Server → browser, connection | `preparing`, then `ready` with defaults/devices, or `error` |
+| Server → browser, metadata | `options` with `defaults`, `devices`, optional `devices_error`; never engine credentials |
 | Server → browser, active run | `starting`, `recording`, `transcribing`; cancellation acknowledgment `cancelling` |
 | Terminal events | `result` with `text`, `timings`, `stop_reason`; or `empty`, `error`, `cancelled` |
 | Invalid/overlapping command | `rejected` |
 
 The browser sends JSON controls, not audio. Commands are limited to 1,024
 characters; run IDs contain 1–64 letters, digits, underscores or hyphens.
+`chat_voice_settings.py` validates the capture allowlist both at the consumer
+and worker. Invalid ranges/types, unknown keys and device identities are refused
+before capture; the run ID on rejection lets the composer unlock. Send/draft
+mode is browser behavior and is not an engine option. Engine credentials, file
+paths, target agents and cleanup flags are never accepted as capture overrides.
 Recording telemetry contains `level`, `elapsed`, `silence` and
 `silence_timeout`. Successful worker timings are `capture_start_ms`,
 `transcription_ms` and `audio_seconds`. Recognized text is limited to 24,000
@@ -173,8 +239,10 @@ terminate/kill fallback if normal exit stalls.
 ## Packaging and diagnostics
 
 `build.py` requires the compiled `agent.chat_voice_consumer` and
-`agent.chat_voice_runtime` modules. `build_runtime_assets.py` verifies
-`agents/whisperer/chat_worker.py`, `agent/js/chat_dictation.js` and
+`agent.chat_voice_runtime` and `agent.chat_voice_settings` modules.
+`build_runtime_assets.py` also carries the stdlib-only `chat_voice_settings.py`
+at the installation root for the worker, and verifies
+`agents/whisperer/chat_worker.py`, `agent/js/mic_settings.js`, `agent/js/chat_dictation.js` and
 `agent/css/chat_dictation.css` in the payload. The template, routing, composer
 layout, form handoff and avatar hooks must travel with them. Packaged workers use
 the carried Python; the frozen Django executable must not import the speech ML
@@ -198,7 +266,10 @@ in [the dependency audit](dependency-coverage-audit.md).
 | --- | --- |
 | Preparing stays visible | Main log, carried/source Python and required capture libraries; preparation does not open the microphone |
 | Button disabled | Normal chat connection, busy/context-loading state and Send availability |
-| Wrong device or no audio | The host's Whisperer device configuration and OS microphone access; remote browser permissions do not choose the host device |
+| Wrong device or no audio | Config → Mic input selection, Refresh inputs, software gain and host OS access; remote browser permissions do not choose the host device |
+| Transcript remains editable | Keep in the chat input is selected; press Send after reviewing, or choose Send automatically in Config → Mic |
+| Settings do not persist | Browser storage may be blocked; the dialog reports tab-only application; other browsers keep separate preferences |
+| Selected device disappeared | Refresh inputs and choose an available input; a saved device is not silently replaced |
 | Empty audio/recognition | No prompt is sent; retain the draft and try again |
 | Turning voice into a prompt takes time | First model download/load, configured model/device and provider latency; inspect the main log |
 | Cancelling stays visible during ASR | Native recognition/warmup may need to finish; late results are discarded and no new recording is allowed until cleanup |
@@ -228,7 +299,9 @@ from deterministic audio/transport fixtures; neither proves the other.
 
 | Responsibility | Source |
 | --- | --- |
-| Button, status, exact-once handoff | `agent/static/agent/js/chat_dictation.js` |
+| Button, status, behavior snapshot, exact-once handoff | `agent/static/agent/js/chat_dictation.js` |
+| Config → Mic dialog and browser preferences | `agent/static/agent/js/mic_settings.js` |
+| Shared defaults and capture validation | `agent/chat_voice_settings.py` |
 | Appearance and responsive controls | `agent/static/agent/css/chat_dictation.css` |
 | Composer sizing | `agent/static/agent/js/agent_page_layout.js` |
 | Authenticated direct voice transport | `agent/chat_voice_consumer.py` |
@@ -250,8 +323,14 @@ sequenceDiagram
     Note over W: Existing silence gate closes capture
     W->>W: Transcribe with cached model
     W-->>C: Transcript
-    C->>A: Existing form submit with current options
-    C-->>U: Avatar acknowledges processing
+    alt Send automatically
+        C->>A: Existing form submit with current options
+        C-->>U: Avatar acknowledges processing
+    else Keep in the chat input
+        C-->>U: Editable transcript; no task starts
+        U->>C: Correct text and press Send
+        C->>A: Existing form submit with current options
+    end
 ```
 
 ## Measured verification — 2026-09-27
@@ -316,3 +395,26 @@ check is recorded in `89-real-worker-window-and-restart-check.log` and
 restarted to replace an already loaded launcher; already built installations
 need the normal rebuild/update to receive this source change.
 
+## Mic preferences and system-style correction — 2026-09-27
+
+The idle label is Mic and Config ends with Mic. The new dialog offers automatic
+send or an editable draft, input selection/gain, gate controls and advanced
+recognition options. Shared theme tokens style secondary actions and input
+borders; use the whole border token as a border value, not as a color.
+
+Validation: 108 Python voice regressions passed (36 direct plus 72 existing
+Whisperer), and 42 existing dialog-theme tests passed after static collection.
+The real worker enumerated 16 host inputs and refreshed metadata over IPC in
+two startup/shutdown cycles; neither cycle opened a window or changed focus.
+All 62 updated headed-browser checks passed, covering mode persistence, draft editing/manual
+Send, immutable per-recording preferences, all advanced settings, missing device
+choices, invalid fields, shared control styles and narrow-screen keyboard access.
+These browser checks use controlled transport, not live speech or Ollama.
+The whole-source dependency audit passes for 744 Python files and 89 agents:
+69 referenced distributions, 87 main declarations, no missing imports.
+
+Evidence: `Temp/voice-development/141-mic-preferences-regression-tests.log`,
+`153-final-mic-runtime-and-static-checks.log`,
+`156-final-visible-mic-browser-check.log`,
+`Temp/chat-microphone-checks/results.json` and its wide/advanced/narrow screenshots.
+Historical measurements above remain dated evidence; no installer was rebuilt.

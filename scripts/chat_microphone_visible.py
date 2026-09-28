@@ -14,6 +14,13 @@ from pathlib import Path
 import sys
 from types import SimpleNamespace
 
+from django.apps import AppConfig
+
+
+class VoicePreviewAppConfig(AppConfig):
+    """Register templates/models without application startup or database mutations."""
+    name = "agent"
+
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "Temp/chat-microphone-checks"
 
@@ -50,10 +57,13 @@ def main():
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "tlamatini.settings")
     os.environ["TLAMATINI_NO_AUDIO"] = "1"
     import django
+    from django.conf import settings
+    settings.INSTALLED_APPS = [f"{__name__}.VoicePreviewAppConfig" if item == "agent" or item.startswith("agent.")
+                               else item for item in settings.INSTALLED_APPS]
+    settings.DATABASES = {}
     django.setup()
     from django.http import HttpRequest
     from django.template.loader import render_to_string
-    from django.conf import settings
     from menu_browser_checks import MenuBrowserChecks
     import run_menu_state_checks as shared
     shared.OUT = OUT
@@ -220,7 +230,7 @@ def main():
         check("Keyboard focus is visible", page.locator("#chat-microphone").evaluate("(el)=>getComputedStyle(el).outlineStyle") != "none")
         check("Reduced motion retains a static microphone", page.locator("#chat-microphone").evaluate("(el)=>getComputedStyle(el,'::before').animationName") == "none")
         check("No browser JavaScript exceptions", fixture.errors == [])
-        check("Updated static marker is served", page.locator("script[src*='chat_dictation.js']").get_attribute("src").endswith("-direct-whisperer-microphone-1"))
+        check("Updated static marker is served", page.locator("script[src*='chat_dictation.js']").get_attribute("src").endswith("-mic-settings-3"))
         page.locator("#main-chat-container").evaluate("(el,style)=>{el.style.width=style.width;el.style.flex=style.flex;}", original_style)
         page.emulate_media(reduced_motion="no-preference")
         reset_chat()
@@ -228,6 +238,119 @@ def main():
         page.locator("#chat-microphone").blur()
         page.wait_for_timeout(400)
         capture("06-final-design")
+
+        # Config > Mic uses the same system shell and never starts capture while editing.
+        reset_chat()
+        emit("ready", defaults={"input_gain_percent": 100, "silence_timeout_seconds": 3.5,
+             "max_record_seconds": 300, "silence_threshold_db": 0, "sample_rate": 0,
+             "channels": 1, "language": "", "task": "transcribe", "beam_size": 5, "vad_filter": True},
+             devices=[{"index": 7, "name": "USB microphone", "hostapi": "Windows WASAPI", "channels": 2}])
+        check("Idle microphone label is Mic", page.locator(".mic-label").inner_text() == "Mic")
+        check("Mic is the last Config entry", page.locator('[aria-labelledby="config-menu-button"] li').last.inner_text() == "Mic")
+        page.locator("#config-menu-button").click()
+        page.locator("#config-mic").click()
+        page.wait_for_selector("#tlm-mic-overlay", state="visible")
+        starts_before = page.evaluate("__voiceHarness.sent.filter(x=>x.data.action==='start').length")
+        emit("options", devices=[{"index": 7, "name": "USB microphone", "hostapi": "Windows WASAPI", "channels": 2}])
+        check("Opening Mic settings does not record", page.evaluate("__voiceHarness.sent.filter(x=>x.data.action==='start').length") == starts_before)
+        check("Mic dialog has the system style", page.locator("#tlm-mic-form").evaluate("(el)=>el.classList.contains('tlm-modal')"))
+        page.locator("#tlm-mic-overlay").click(position={"x": 5, "y": 5})
+        check("Outside click preserves the settings dialog", page.locator("#tlm-mic-overlay").is_visible())
+        print("MIC BUTTON STYLES:", page.locator("#tlm-mic-reset,#tlm-mic-cancel,#tlm-mic-refresh").evaluate_all("(items)=>items.map(el=>{const s=getComputedStyle(el);return {id:el.id,background:s.backgroundColor,color:s.color,border:s.borderTopWidth,style:s.borderTopStyle};})"), flush=True)
+        check("Secondary buttons use the system theme", page.evaluate("""()=>['tlm-mic-reset','tlm-mic-cancel','tlm-mic-refresh'].every(id=>{const s=getComputedStyle(document.getElementById(id));return s.backgroundColor==='rgba(255, 255, 255, 0.08)'&&s.color==='rgb(255, 255, 255)'&&s.borderTopStyle==='solid'&&parseFloat(s.borderTopWidth)>0;})"""))
+        check("Mic input border resolves to a valid theme border", page.locator('[data-mic-setting="silence_timeout_seconds"]').evaluate("(el)=>parseFloat(getComputedStyle(el).borderTopWidth)>0"))
+        page.locator("#tlm-mic-cancel").hover()
+        page.wait_for_timeout(250)
+        check("Secondary hover follows the shared theme", page.locator("#tlm-mic-cancel").evaluate("(el)=>getComputedStyle(el).backgroundColor") == "rgba(255, 255, 255, 0.14)")
+        page.locator('[name="tlm-mic-mode"][value="draft"]').check()
+        page.locator("#tlm-mic-gain").fill("150")
+        page.locator('[data-mic-setting="silence_timeout_seconds"]').fill("2")
+        page.locator("#tlm-mic-device").select_option(label="USB microphone · Windows WASAPI")
+        page.locator("#tlm-mic-save").click()
+        check("Settings save closes the dialog", not page.locator("#tlm-mic-overlay").is_visible())
+        saved = page.evaluate("JSON.parse(localStorage.getItem('tlm_mic_settings_v1'))")
+        check("Mode and gain persist in browser storage", saved["mode"] == "draft" and saved["capture"]["input_gain_percent"] == 150)
+        page.evaluate("OpenMicDialog()")
+        emit("options", devices=[{"index": 7, "name": "USB microphone", "hostapi": "Windows WASAPI", "channels": 2}])
+        check("Reopening restores saved preferences", page.locator('[name="tlm-mic-mode"][value="draft"]').is_checked() and page.locator("#tlm-mic-gain").input_value() == "150")
+        capture("07-mic-settings")
+        page.locator("#tlm-mic-gain").fill("200")
+        page.keyboard.press("Escape")
+        check("Escape dismisses without saving edits", not page.locator("#tlm-mic-overlay").is_visible() and page.evaluate("TLM_MIC.snapshot().capture.input_gain_percent") == 150)
+        check("Focus returns to Config", page.evaluate("document.activeElement.id") == "config-menu-button")
+        page.locator("#chat-message-input").fill("Review this draft")
+        before = count()
+        spoken_before = page.evaluate("__voiceHarness.spoken.length")
+        run_id = start()
+        sent_options = page.evaluate("__voiceHarness.sent.filter(x=>x.data.action==='start').at(-1).data.settings")
+        check("Capture preferences travel in the direct start command", sent_options["input_gain_percent"] == 150 and sent_options["silence_timeout_seconds"] == 2 and sent_options["device_name"] == "USB microphone")
+        emit("recording", run_id=run_id, elapsed=1, level=.3, silence=0, silence_timeout=2)
+        emit("transcribing", run_id=run_id)
+        check("Review-mode transcription status promises a draft", "draft" in page.locator("#dictation-detail").inner_text())
+        emit("result", run_id=run_id, text="Correct these words.")
+        check("Review mode appends text without launching a prompt", count() == before and page.locator("#chat-message-input").input_value() == "Review this draft\nCorrect these words.")
+        check("Review mode restores focus and editing", page.locator("#chat-message-input").is_editable() and page.evaluate("document.activeElement.id") == "chat-message-input")
+        check("Review mode does not acknowledge an unsubmitted task", page.evaluate("__voiceHarness.spoken.length") == spoken_before)
+        emit("result", run_id=run_id, text="duplicate")
+        check("Review mode also ignores duplicate transcripts", page.locator("#chat-message-input").input_value().count("Correct these words.") == 1 and "duplicate" not in page.locator("#chat-message-input").input_value())
+        capture("08-review-draft")
+        page.locator("#chat-message-input").fill("My corrected prompt.")
+        page.locator("#chat-message-submit").click()
+        check("User can edit and manually send the transcript", count() == before + 1 and page.evaluate("__voiceHarness.prompts().at(-1).message") == "My corrected prompt.")
+        reset_chat()
+
+        # Saving a new behavior mid-recording must not change that recording.
+        page.locator("#chat-message-input").fill("")
+        run_id = start()
+        page.evaluate("OpenMicDialog()")
+        page.locator('[name="tlm-mic-mode"][value="send"]').check()
+        page.locator("#tlm-mic-save").click()
+        before = count()
+        emit("result", run_id=run_id, text="Still review this recording.")
+        check("Each recording owns an immutable behavior snapshot", count() == before and page.locator("#chat-message-input").input_value() == "Still review this recording.")
+        page.locator("#chat-message-input").fill("")
+        run_id = start()
+        emit("result", run_id=run_id, text="Automatic again.")
+        check("The next recording uses the newly saved automatic mode", count() == before + 1)
+        reset_chat()
+
+        page.evaluate("OpenMicDialog()")
+        emit("options", devices=[], devices_error=True)
+        check("Missing saved hardware is retained visibly", "unavailable" in page.locator("#tlm-mic-device option:checked").inner_text())
+        page.locator("#tlm-mic-reset").click()
+        page.locator('[data-mic-setting="silence_timeout_seconds"]').fill("0")
+        page.locator("#tlm-mic-save").click()
+        check("Invalid silence timing cannot be saved", page.locator("#tlm-mic-overlay").is_visible() and not page.locator('[data-mic-setting="silence_timeout_seconds"]').evaluate("(el)=>el.validity.valid"))
+        page.locator("#tlm-mic-reset").click()
+        page.locator(".tlm-mic-advanced").evaluate("(el)=>el.open=true")
+        page.locator('[data-mic-setting="language"]').fill("es")
+        page.locator('[data-mic-setting="task"]').select_option("translate")
+        page.locator('[data-mic-setting="sample_rate"]').select_option("48000")
+        page.locator('[data-mic-setting="channels"]').select_option("2")
+        page.locator('[data-mic-setting="beam_size"]').fill("3")
+        page.locator('[data-mic-setting="vad_filter"]').uncheck()
+        page.locator("#tlm-mic-sensitivity").select_option("manual")
+        page.locator("#tlm-mic-threshold").fill("-60")
+        capture("09-mic-advanced")
+        page.locator("#tlm-mic-save").click()
+        settings = page.evaluate("TLM_MIC.snapshot().capture")
+        check("All advanced recognition/capture options persist", settings["language"] == "es" and settings["task"] == "translate" and settings["sample_rate"] == 48000 and settings["channels"] == 2 and settings["beam_size"] == 3 and settings["vad_filter"] is False and settings["silence_threshold_db"] == -60)
+        # Mobile layout and keyboard containment: modal scrolls; actions remain visible.
+        page.set_viewport_size({"width": 390, "height": 760})
+        page.evaluate("OpenMicDialog()")
+        page.locator(".tlm-mic-advanced").evaluate("(el)=>el.open=true")
+        page.locator("#tlm-mic-form .tlm-modal-body").evaluate("(el)=>el.scrollTop=el.scrollHeight")
+        check("Narrow Mic dialog keeps Save and Close on screen", page.evaluate("""()=>['tlm-mic-save','tlm-mic-close'].every(id=>{const r=document.getElementById(id).getBoundingClientRect();return r.left>=0&&r.right<=innerWidth&&r.top>=0&&r.bottom<=innerHeight;})"""))
+        page.locator("#tlm-mic-save").focus()
+        page.keyboard.press("Tab")
+        check("Tab focus stays inside the Mic dialog", page.evaluate("document.activeElement.id") == "tlm-mic-close")
+        capture("10-mic-narrow")
+        page.locator("#tlm-mic-reset").click()
+        page.locator("#tlm-mic-save").click()
+        check("Reset and Save return to inherited capture defaults", page.evaluate("JSON.stringify(TLM_MIC.snapshot())") == '{"mode":"send","capture":{}}')
+        page.set_viewport_size({"width": 1440, "height": 900})
+        check("Mic settings introduced no JavaScript exceptions", fixture.errors == [])
+
         (OUT / "results.json").write_text(json.dumps({"passed": results, "errors": fixture.errors, "exit_code": 0}, indent=2), encoding="utf-8")
         print(f"ALL {len(results)} VISIBLE UI CHECKS PASSED. Inspect results; create finish to end.", flush=True)
         finish = OUT / "finish"

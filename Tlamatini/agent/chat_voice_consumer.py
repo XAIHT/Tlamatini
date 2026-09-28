@@ -9,6 +9,7 @@ from urllib.parse import urlsplit
 from channels.generic.websocket import AsyncWebsocketConsumer
 
 from .chat_voice_runtime import runtime, TERMINAL_EVENTS
+from .chat_voice_settings import validate_capture_settings
 
 
 def same_origin(scope):
@@ -49,12 +50,13 @@ class ChatVoiceConsumer(AsyncWebsocketConsumer):
     async def prepare(self):
         try:
             await asyncio.to_thread(runtime.ensure_ready)
-            await self.emit({"event": "ready"})
+            await self.emit({"event": "ready", **runtime.get_options()})
         except Exception:
             await self.emit({"event": "error", "message":
                              "Whisperer could not start. Check the audio runtime and Tlamatini log."})
 
     async def receive(self, text_data=None, bytes_data=None):
+        run_id = None
         try:
             if text_data is None or len(text_data) > 1024:
                 raise ValueError("Invalid dictation command.")
@@ -62,14 +64,24 @@ class ChatVoiceConsumer(AsyncWebsocketConsumer):
             if not isinstance(message, dict):
                 raise ValueError("Expected a dictation command.")
             action, run_id = message.get("action"), message.get("run_id")
+            if action == "options":
+                if self.run_id:
+                    raise ValueError("A recording is active.")
+                try:
+                    options = await asyncio.to_thread(runtime.get_options, True)
+                    await self.emit({"event": "options", **options})
+                except Exception:
+                    await self.emit({"event": "options", "devices_error": True})
+                return
             if action == "start":
                 if self.run_id:
                     raise ValueError("This dictation is still active.")
                 if not isinstance(run_id, str) or not re.fullmatch(r"[a-zA-Z0-9_-]{1,64}", run_id):
                     raise ValueError("Invalid dictation identifier.")
+                capture_settings = validate_capture_settings(message.get("settings", {}))
                 self.run_id, self.cancelled = run_id, False
                 await self.emit({"event": "starting", "run_id": run_id})
-                self.start_task = asyncio.create_task(self.start(run_id))
+                self.start_task = asyncio.create_task(self.start(run_id, capture_settings))
             elif action == "cancel" and run_id == self.run_id:
                 self.cancelled = True
                 await asyncio.to_thread(runtime.cancel, run_id)
@@ -77,14 +89,15 @@ class ChatVoiceConsumer(AsyncWebsocketConsumer):
             else:
                 raise ValueError("Unknown or stale dictation command.")
         except (ValueError, TypeError):
-            await self.emit({"event": "rejected", "message": "Invalid or overlapping dictation command."})
+            await self.emit({"event": "rejected", "run_id": run_id if isinstance(run_id, str) else None,
+                             "message": "Invalid microphone settings or overlapping dictation command."})
 
-    async def start(self, run_id):
+    async def start(self, run_id, capture_settings):
         def relay(event):
             # No socket writes on the audio/worker thread.
             self.loop.call_soon_threadsafe(lambda: asyncio.create_task(self.on_event(event)))
         try:
-            await asyncio.to_thread(runtime.start, run_id, relay)
+            await asyncio.to_thread(runtime.start, run_id, relay, capture_settings)
             if self.cancelled or not self.connected:
                 await asyncio.to_thread(runtime.cancel, run_id)
         except Exception as exc:

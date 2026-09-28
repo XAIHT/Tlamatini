@@ -18,6 +18,7 @@
   let socket = null, ready = false, runId = null, cancelled = false;
   let state = 'preparing', clickedAt = 0, firstSample = false, startWhenReady = false;
   let previousReadOnly = false, previousDisabled = false;
+  let activePreferences = {mode: 'send', capture: {}};
 
   function chatAvailable() {
     return isChatSocketOpen() && !inLongOperation && !lapseLoadingContext
@@ -30,11 +31,14 @@
     panel.hidden = next === 'ready';
     if (message) label.textContent = message;
     buttonLabel.textContent = next === 'recording' ? 'Listening' :
-      (next === 'transcribing' ? 'To text' : (runId ? 'Cancel' : 'Voice'));
+      (next === 'transcribing' ? 'To text' : (runId ? 'Cancel' : 'Mic'));
     button.setAttribute('aria-pressed', runId ? 'true' : 'false');
-    button.setAttribute('aria-label', runId ? 'Cancel voice prompt' : 'Speak and send a voice prompt');
+    const mode = runId ? activePreferences.mode : (window.TLM_MIC?.snapshot().mode || 'send');
+    button.setAttribute('aria-label', runId ? 'Cancel dictation' :
+      (mode === 'draft' ? 'Dictate into the chat input' : 'Dictate and send a prompt'));
     button.title = runId ? 'Cancel dictation · Escape' :
-      'Speak using the microphone on the Tlamatini computer. Stops on silence and sends automatically.';
+      'Use the microphone on the Tlamatini computer. Stops on silence; ' +
+      (mode === 'draft' ? 'keeps the text in your draft for review.' : 'sends automatically.');
     button.disabled = !runId && (!chatAvailable() || (next === 'preparing' && !ready));
   }
   function release() {
@@ -65,7 +69,7 @@
     window.TLM_VOICE?.setListening(false);
     transmit({action: 'cancel', run_id: runId});
     paint('cancelling', 'Cancelling voice prompt…');
-    detail.textContent = 'The transcript will not be sent.';
+    detail.textContent = 'The transcript will not be added or sent.';
   }
   function start() {
     if (runId || !chatAvailable() || input.readOnly || send.disabled) return;
@@ -78,6 +82,7 @@
     window.crypto.getRandomValues(bytes);
     runId = Array.from(bytes, n => n.toString(16)).join('-');
     cancelled = false;
+    activePreferences = window.TLM_MIC?.snapshot() || {mode: 'send', capture: {}};
     firstSample = false;
     clickedAt = performance.now();
     previousReadOnly = input.readOnly;
@@ -87,8 +92,9 @@
     window.TLM_VOICE?.prime();
     window.TLM_VOICE?.setListening(true);
     paint('starting', 'Opening microphone…');
-    detail.textContent = 'Speak when Listening appears. Your prompt sends automatically.';
-    if (!transmit({action: 'start', run_id: runId})) {
+    detail.textContent = 'Speak when Listening appears. ' + (activePreferences.mode === 'draft'
+      ? 'Your words will stay in the chat input for review.' : 'Your prompt sends automatically.');
+    if (!transmit({action: 'start', run_id: runId, settings: activePreferences.capture})) {
       finish('error', 'Voice connection lost. Click the microphone to retry.');
       ready = false;
     }
@@ -104,6 +110,16 @@
     const original = input.value;
     input.value = original + (original && !/\s$/.test(original) ? '\n' : '') + text;
     input.dispatchEvent(new Event('input', {bubbles: true}));
+    if (activePreferences.mode === 'draft') {
+      paint('draft', 'Transcription ready — review your prompt');
+      detail.textContent = 'Edit the text, then press Send when you are ready.';
+      if (!window.TLM_MIC?.isOpen()) {
+        input.focus();
+        input.setSelectionRange(input.value.length, input.value.length);
+      }
+      document.dispatchEvent(new CustomEvent('tlm-dictation-timing', {detail: data.timings || {}}));
+      return;
+    }
     if (!chatAvailable() || input.readOnly || send.disabled) {
       paint('error', 'Your voice prompt is in the draft. Send it when chat is ready.');
       return;
@@ -123,6 +139,8 @@
     }
   }
   function onMessage(data) {
+    if (data.event === 'ready' || data.event === 'options') window.TLM_MIC?.applyMetadata(data);
+    if (data.event === 'options') return;
     if (data.event === 'ready') {
       ready = true;
       if (!runId) paint('ready');
@@ -139,6 +157,10 @@
       return;
     }
     if (data.run_id !== runId) return;
+    if (data.event === 'rejected') {
+      finish('error', data.message || 'Mic settings were rejected. Open Config → Mic to correct them.');
+      return;
+    }
     if (cancelled && !['cancelled', 'error', 'empty', 'result'].includes(data.event)) return;
     switch (data.event) {
       case 'recording': {
@@ -156,14 +178,16 @@
         button.style.setProperty('--silence-turn', (timeout ? Math.min(360, silence / timeout * 360) : 0) + 'deg');
         clock.textContent = Math.floor(elapsed / 60) + ':' + String(Math.floor(elapsed % 60)).padStart(2, '0');
         detail.textContent = silence > 0.2 && timeout
-          ? 'Sending after ' + Math.max(0, timeout - silence).toFixed(1) + 's of silence'
+          ? 'Recording ends after ' + Math.max(0, timeout - silence).toFixed(1) + 's of silence'
           : 'Speak naturally · click again or press Esc to cancel';
         break;
       }
       case 'transcribing':
         window.TLM_VOICE?.setListening(false);
         paint('transcribing', 'Turning your voice into a prompt…');
-        detail.textContent = 'Recording finished. Sending automatically when the words are ready.';
+        detail.textContent = activePreferences.mode === 'draft'
+          ? 'Recording finished. The words will appear in your draft for review.'
+          : 'Recording finished. Sending automatically when the words are ready.';
         break;
       case 'result': submitTranscript(data); break;
       case 'empty': finish('empty', data.message || 'No speech detected. Try again.'); break;
@@ -201,6 +225,7 @@
 
   button.addEventListener('click', () => runId ? cancel() : start());
   document.addEventListener('keydown', event => {
+    if (event.defaultPrevented || window.TLM_MIC?.isOpen()) return;
     if (event.key === 'Escape' && runId) { event.preventDefault(); cancel(); }
   });
   // Covers Enter, requestSubmit and legacy dispatchEvent('submit') callers.
@@ -217,6 +242,8 @@
     paint(state);
   }).observe(send, {attributes: true, childList: true, characterData: true, subtree: true});
   window.addEventListener('pagehide', () => { cancel(); socket?.close(); });
-  window.TLM_DICTATION = {isActive: () => !!runId, cancel};
+  document.addEventListener('tlm-mic-settings-changed', () => paint(state));
+  window.TLM_DICTATION = {isActive: () => !!runId, cancel,
+    refreshSettings: () => !runId && ready && transmit({action: 'options'})};
   connect();
 }());

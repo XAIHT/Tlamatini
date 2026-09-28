@@ -193,9 +193,15 @@ Image/video model failures accumulate in one shared, themed, non-modal fatal-err
 
 ## Direct microphone input is not an MCP tool (2026-09-27)
 
+Config → Mic is the last chat Config entry. It chooses automatic submission or
+an editable draft for manual Send, and saves per-browser capture preferences.
+Neither the settings dialog nor draft-only transcription invokes an MCP tool.
+Model orchestration starts only after the resulting text is actually submitted.
+
 The chat button beside Send uses authenticated same-origin `/ws/chat-voice/`
 and an internal resident Whisperer worker. It does not need an External MCP,
 ACPX, a model tool decision or a newly registered agent. The transcript returns
-to the browser's normal chat form for automatic submission with current options.
+to the browser's composer, which either submits with current options or keeps
+an editable draft according to Config → Mic.
 Existing Whisperer workflow/MCP tools keep their own contracts. See
 [the microphone guide](docs/chat-microphone-design.md).

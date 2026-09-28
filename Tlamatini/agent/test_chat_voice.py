@@ -176,6 +176,42 @@ class WorkerPipelineTests(unittest.TestCase):
         self.assertEqual(self.events[-1]["event"], "error")
 
 
+    def test_capture_preferences_reach_capture_and_recognition_without_changing_template(self):
+        source = self.w.load_config.return_value.copy()
+        overrides = {"input_gain_percent": 150, "silence_timeout_seconds": 2,
+                     "language": "es", "task": "translate", "vad_filter": False}
+        self.worker.run("configured", self.cancelled, overrides)
+        capture = self.w.record_from_microphone.call_args.args[0]
+        for key, value in overrides.items():
+            self.assertEqual(capture[key], value)
+        self.assertEqual(self.w.transcribe_faster_whisper.call_args.args[1]["language"], "es")
+        self.assertFalse(capture["ollama_cleanup"])
+        # The real loader gives a new dict per run; no persistent config file is written.
+        self.assertEqual(source["silence_timeout_seconds"], 3.5)
+
+    def test_removed_device_cannot_silently_record_another_microphone(self):
+        with patch.object(self.module, "input_devices", return_value=[]):
+            self.worker.run("missing", self.cancelled,
+                            {"device_index": 7, "device_name": "USB", "device_hostapi": "WASAPI"})
+        self.w.record_from_microphone.assert_not_called()
+        self.assertEqual(self.events[-1]["event"], "error")
+
+    def test_device_identity_survives_changed_portaudio_index(self):
+        options = [{"index": 9, "name": "USB", "hostapi": "WASAPI"}]
+        with patch.object(self.module, "input_devices", return_value=options):
+            self.worker.run("moved", self.cancelled,
+                            {"device_index": 7, "device_name": "USB", "device_hostapi": "WASAPI"})
+        capture = self.w.record_from_microphone.call_args.args[0]
+        self.assertEqual(capture["device_index"], 9)
+        self.assertNotIn("device_hostapi", capture)
+        self.assertEqual(self.events[-1]["event"], "result")
+
+    def test_invalid_preferences_do_not_open_the_microphone(self):
+        self.worker.run("bad", self.cancelled, {"input_gain_percent": 10000})
+        self.w.record_from_microphone.assert_not_called()
+        self.assertEqual(self.events[-1]["event"], "error")
+
+
 class BrokerTests(unittest.TestCase):
     def test_two_tabs_cannot_share_a_microphone_job(self):
         runtime = VoiceRuntime()
@@ -286,7 +322,11 @@ class FakeRuntime:
     def ensure_ready(self):
         self.calls.append("prepare")
 
-    def start(self, run_id, emit):
+    def get_options(self, refresh=False):
+        return {"devices": [], "defaults": {"input_gain_percent": 100}}
+
+    def start(self, run_id, emit, capture_settings=None):
+        self.settings = capture_settings
         self.calls.append(("start", run_id))
         self.emit = emit
 
@@ -377,6 +417,35 @@ class VoiceSocketTests(unittest.IsolatedAsyncioTestCase):
         self.runtime.emit({"event": "recording", "run_id": "one", "level": .2})
         self.assertEqual((await self.event(socket))["event"], "recording")
 
+    async def test_invalid_settings_rejected_before_capture_and_socket_recovers(self):
+        socket, _ = await self.connect()
+        await self.send(socket, action="start", run_id="bad", settings={"record_seconds": 999})
+        event = await self.event(socket)
+        self.assertEqual(event["event"], "rejected")
+        self.assertEqual(event["run_id"], "bad")
+        self.assertEqual(self.runtime.calls, ["prepare"])
+        await self.start(socket, "valid")
+
+    async def test_settings_forwarded_to_owned_job(self):
+        socket, _ = await self.connect()
+        options = {"input_gain_percent": 125, "silence_timeout_seconds": 1.5}
+        await self.send(socket, action="start", run_id="configured", settings=options)
+        self.assertEqual((await self.event(socket))["event"], "starting")
+        for _ in range(100):
+            if self.runtime.emit:
+                break
+            await asyncio.sleep(.01)
+        self.assertEqual(self.runtime.settings, options)
+
+    async def test_options_refresh_never_starts_recording(self):
+        socket, _ = await self.connect()
+        await self.send(socket, action="options")
+        event = await self.event(socket)
+        self.assertEqual(event["event"], "options")
+        self.assertIn("defaults", event)
+        self.assertEqual(self.runtime.calls, ["prepare"])
+        self.assertIsNone(self.runtime.emit)
+
     async def test_disconnect_cancels_only_its_owned_run(self):
         socket, _ = await self.connect()
         await self.start(socket)
@@ -384,3 +453,39 @@ class VoiceSocketTests(unittest.IsolatedAsyncioTestCase):
         await socket.wait(timeout=2)
         self.sockets.remove(socket)
         self.assertIn(("cancel", "one"), self.runtime.calls)
+
+class MicSettingsValidationTests(unittest.TestCase):
+    def test_untrusted_capture_options_are_rejected(self):
+        from agent.chat_voice_settings import validate_capture_settings
+        invalid = [
+            {"input_source": "file"}, {"cloud_api_key": "injected"},
+            {"record_seconds": 9}, {"target_agents": ["executer"]},
+            {"input_gain_percent": float("nan")}, {"input_gain_percent": 301},
+            {"silence_timeout_seconds": 0}, {"max_record_seconds": 99999},
+            {"silence_threshold_db": -1}, {"sample_rate": 96000},
+            {"channels": True}, {"vad_filter": "true"}, {"beam_size": 1.5},
+            {"language": "en-US"}, {"task": "run"}, {"device_index": 3},
+            {"device_name": "\nnot-a-device"}, [], None,
+        ]
+        for value in invalid:
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                validate_capture_settings(value)
+
+    def test_defaults_never_expose_provider_secrets(self):
+        from agent.chat_voice_settings import public_defaults
+        result = public_defaults({"cloud_api_key": "private", "ollama_token": "private",
+                                  "input_gain_percent": 150, "language": "es"})
+        self.assertNotIn("cloud_api_key", result)
+        self.assertNotIn("ollama_token", result)
+        self.assertEqual(result["input_gain_percent"], 150)
+        self.assertEqual(result["language"], "es")
+
+    def test_valid_capture_options_are_copied(self):
+        from agent.chat_voice_settings import validate_capture_settings
+        options = {"input_gain_percent": 0, "silence_threshold_db": -60,
+                   "silence_timeout_seconds": .3, "max_record_seconds": 5,
+                   "sample_rate": 48000, "channels": 2, "language": "es",
+                   "task": "translate", "beam_size": 1, "vad_filter": False}
+        result = validate_capture_settings(options)
+        self.assertEqual(result, options)
+        self.assertIsNot(result, options)

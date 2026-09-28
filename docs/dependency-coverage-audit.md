@@ -4,7 +4,9 @@ Tlamatini Author Banner - do not remove
 -->
 # Python dependency coverage audit - 2026-09-27
 
-The source audit covers **743 Python files and all 89 runnable agents**.
+The refreshed source audit covers **744 Python files and all 89 runnable agents**.
+The added `chat_voice_settings.py` shares stdlib-only Mic preference validation
+between Django and the carried Whisperer worker; the new dialog adds no package.
 There are **87 declarations in the main requirements file**, covering all
 **69 pip distributions referenced by the scanned source and build inventories**.
 The additional declarations are retained: packages can also be needed through

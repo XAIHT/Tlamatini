@@ -23,8 +23,13 @@ no Ollama planning, wrapped-agent preparation or pool launch precedes capture.
 
 The worker reuses Whisperer's configured gate and recognition code, warms the
 model after the first samples, caches it across prompts and reloads config per
-job. It returns telemetry and text; the browser performs the existing form
-submission with current flags. The avatar acknowledges that dispatch through
+job. Config → Mic snapshots browser-local preferences per run; validated
+capture overrides reach the worker through `start.settings`. `ready`/`options`
+expose public defaults and host input choices, never credentials; metadata
+refresh opens no stream. Shared `chat_voice_settings.py` validates both ends
+and explicit device identity is checked before capture. The worker returns
+telemetry and text. The browser either submits the existing form with current
+flags or leaves an editable draft for manual Send. The avatar acknowledges actual dispatch through
 browser speech. The dictation transport itself does not execute the prompt.
 
 This worker is internal product infrastructure: no extra console, shell,

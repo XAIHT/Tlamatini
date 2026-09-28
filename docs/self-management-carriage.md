@@ -48,9 +48,13 @@ execution are complementary checks; passing a file inventory alone is insufficie
 ### Direct chat microphone carriage (source development, 2026-09-27)
 
 The frozen archive now requires `agent.chat_voice_consumer` and
-`agent.chat_voice_runtime`. The shared runtime inventory additionally requires
+`agent.chat_voice_runtime` and `agent.chat_voice_settings`. The shared runtime
+inventory carries the stdlib-only validator as root `chat_voice_settings.py`
+for the source/carried worker, and additionally requires
 `agents/whisperer/chat_worker.py` plus the collected
-`agent/js/chat_dictation.js` and `agent/css/chat_dictation.css` assets.
+`agent/js/chat_dictation.js`, `agent/js/mic_settings.js` and
+`agent/css/chat_dictation.css` assets. The final Config → Mic entry, modal,
+settings validation and send/draft branch must travel together.
 The matching chat template, WebSocket route, composer sizing, avatar handoff and
 main-console logger must be present. Worker imports use source/carried Python;
 ASR libraries must not migrate into the frozen web process.

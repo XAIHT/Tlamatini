@@ -22,7 +22,9 @@ The microphone beside Send uses `/ws/chat-voice/` and the resident
 `chat_worker.py`. It returns words to the composer, without calling
 `chat_agent_whisperer`, creating a workflow pool or emitting an
 `INI_SECTION_WHISPERER` result. It therefore has no standalone Whisperer row
-in the Exec Report. After automatic submission, actual tool calls are captured
+in the Exec Report. Config → Mic may keep recognition in an editable draft;
+that mode starts no tool calls before manual Send. After automatic or manual
+submission, actual tool calls are captured
 according to the existing Multi-Turn/Exec Report settings.
 
 A model-invoked `chat_agent_whisperer` call from a VOICE COMMANDS catalog

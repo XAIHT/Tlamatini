@@ -16,7 +16,7 @@
 
 > **Developer/product boundary (Angela, 2026-09-27):** these visibility requirements govern development and verification. They must not create extra windows, steal focus or expose internal diagnostics in the shipped UX. Direct chat dictation keeps status in chat and uses only Tlamatini's main console/log.
 
-Direct microphone architecture, automatic submission, configuration, packaging and verification: [docs/chat-microphone-design.md](docs/chat-microphone-design.md). The button is a direct input path, not another workflow agent or a VOICE COMMANDS catalog card.
+Direct microphone architecture, Config → Mic automatic-send/editable-draft preferences, configuration, packaging and verification: [docs/chat-microphone-design.md](docs/chat-microphone-design.md). The button is a direct input path, not another workflow agent or a VOICE COMMANDS catalog card.
 
 **NEVER REWRITE GIT HISTORY. EVER. IN THIS REPO, FOR ANY REASON.**
 

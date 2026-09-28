@@ -257,12 +257,13 @@ Done — tick **Multi-Turn** in the chat toolbar and put Tlamatini to work.
 
 ## Speak a prompt from the chat
 
-The microphone immediately beside **Send** starts direct Whisperer dictation.
+**Mic**, immediately beside **Send**, starts direct Whisperer dictation.
 Click it, wait for **Listening**, and speak. The chat shows the real input level,
 elapsed recording time and silence countdown. When the configured silence
 window expires (shipped default: **3.5 seconds**), recording stops, Whisperer
-transcribes, and the words are **sent automatically** through the normal chat
-form. Existing draft text is included. There is no transcript confirmation step.
+transcribes, and the words join any existing draft. **Config ▸ Mic**, the last
+Config entry, lets you choose **Send automatically** (the default) or **Keep in
+the chat input** to review, correct and press Send yourself.
 
 Click the microphone again or press **Escape** to cancel. Empty audio and failed
 recognition do not send a prompt. Your selected chat modes stay as they are;
@@ -273,8 +274,11 @@ Silent mode and voice settings.
 The microphone belongs to the **computer running Tlamatini**, even when you open
 chat from another device. The chat is the recording indicator; dictation opens
 no extra console and does not move foreground focus. Config ▸ Models ▸ Speech
-selects the recognition engine/model; microphone and gate settings remain in
-Whisperer's agent configuration. First model loading can take longer.
+selects the recognition engine/model. **Config ▸ Mic** controls the host input,
+software gain, silence timing, recording limit and sensitivity, plus language,
+translation, sample rate, channels and local decoding options. Its system-style
+dialog saves preferences in this browser for the next recording; unset values
+inherit Whisperer's configuration. First model loading can take longer.
 
 The **VOICE COMMANDS** catalog cards remain available as guided, model-mediated
 workflows. They are distinct from this direct button. See the
@@ -283,7 +287,7 @@ cancellation, privacy, diagnostics and measured validation.
 
 ## Newest changes — v1.71.0 source
 
-**Source development, 2026-09-27:** direct voice prompts now start from the microphone beside Send. Whisperer captures without waiting for an Ollama tool decision, stops on silence, transcribes and submits through the existing chat. Recording status stays in chat; internal worker diagnostics use the main console/log. This adds no agent type or tool and is not a claim of a newly published installer.
+**Source development, 2026-09-27:** direct voice prompts now start from the microphone beside Send. Whisperer captures without waiting for an Ollama tool decision, stops on silence, transcribes and either submits through the existing chat or leaves an editable draft, as selected in the new Config ▸ Mic dialog. Recording status stays in chat; internal worker diagnostics use the main console/log. This adds no agent type or tool and is not a claim of a newly published installer.
 
 The same dependency audit covers all 89 agents and 743 Python files: missing direct declarations are now present, with ESPHome's incompatible private runtime kept in its own manifest. See [dependency coverage](docs/dependency-coverage-audit.md).
 
@@ -399,7 +403,7 @@ The previous annotated release, `v1.48.17` (2026-08-16), remains fully carried. 
 
 Exec-Report status handling now uses a closed, source-guarded vocabulary with five disjoint classes: completed diagnostics, intact completed work, degraded work, work not done, and agent errors. Degraded deliverables such as inaudible token-only speech or a compromised PDF are red rather than falsely clean; named completions are auditable greens; an unknown token still fails open but is identified by rule `R8b`. The repository-wide guard scans every pool-agent `status:` literal so a newly invented token fails during tests instead of silently defaulting green. Kuberneter now reports numeric `returncode`, explicit `success`, and a real `ok`/`failed` status token, preventing a failed `kubectl` call from being painted green.
 
-Updater coverage protects the separately built `Uninstaller.exe` during self-update and keeps the preserve-list parser from being confused by comments. Public release builders forcibly clear inherited private External-MCP catalog and contact opt-ins; only the explicit keyed/private builder can bundle private state, and it first merges same-machine contact sources into gitignored `contacts.private.json` without putting PII into a public build or self-modify snapshot. Drift-proof tests derive supervisor counts and prompt rules from source. The current source inventory is reported in the [PDF dossier](tlamatini_app_summary.pdf) and [PowerPoint dossier](Tlamatini_eXtended_Artificial_Intelligence_Humanly_Tempered.pptx), with physical/effective lines by language, binary-asset counts and the complete tracked file tree. The live surface contains **89 workflow agents**, **67 wrapped chat agents**, **109 Multi-Turn tools** (**20 core + 67 wrapped + 12 ACPX/Skill + 10 External-MCP supervisors**), **49 application JavaScript modules**, **29 runtime skills**, and **210 migrations**. The `v1.48.14` private MCP runtimes, inactive Memory/Sequential-Thinking defaults, public/private catalog separation, and lossless diagram restoration remain carried.
+Updater coverage protects the separately built `Uninstaller.exe` during self-update and keeps the preserve-list parser from being confused by comments. Public release builders forcibly clear inherited private External-MCP catalog and contact opt-ins; only the explicit keyed/private builder can bundle private state, and it first merges same-machine contact sources into gitignored `contacts.private.json` without putting PII into a public build or self-modify snapshot. Drift-proof tests derive supervisor counts and prompt rules from source. The current source inventory is reported in the [PDF dossier](tlamatini_app_summary.pdf) and [PowerPoint dossier](Tlamatini_eXtended_Artificial_Intelligence_Humanly_Tempered.pptx), with physical/effective lines by language, binary-asset counts and the complete tracked file tree. The live surface contains **89 workflow agents**, **67 wrapped chat agents**, **109 Multi-Turn tools** (**20 core + 67 wrapped + 12 ACPX/Skill + 10 External-MCP supervisors**), **50 application JavaScript modules**, **29 runtime skills**, and **210 migrations**. The `v1.48.14` private MCP runtimes, inactive Memory/Sequential-Thinking defaults, public/private catalog separation, and lossless diagram restoration remain carried.
 
 Dialog behaviour is now uniform on both pages: **Escape dismisses every dialog and means exactly what the titlebar ✕ means**, while an outside click still never dismisses anything — so a guarded prompt cannot be lost to a stray click, and no dialog can trap you either. A single dispatcher finds the topmost dialog and activates *that dialog's own* dismiss control, so an Ask-Execs permission prompt still answers **Deny**, a confirmation still resolves to "no", scroll locks are still released, and a sealed update step still refuses to close. The last native browser pop-ups are gone: `alert()` / `confirm()` inside the contacts book and the External-MCP dialog were replaced by themed `tlmAlert` / `tlmConfirm` panels that match the app instead of showing OS chrome over it.
 

@@ -41,6 +41,9 @@ class VoiceRuntime:
         self.connection = None
         self.process = None
         self.active = None
+        self.options = {}
+        self._options_lock = threading.Lock()
+        self._options_received = threading.Event()
 
     def ensure_ready(self):
         with self._startup:
@@ -97,6 +100,8 @@ class VoiceRuntime:
                         ready = json.loads(reader.readline(MAX_FRAME + 1))
                         if ready.get("event") != "ready":
                             raise RuntimeError("Whisperer did not become ready.")
+                        self.options = {key: ready[key] for key in ("devices", "defaults", "devices_error")
+                                        if key in ready}
                         connection.settimeout(None)
                         self.connection = connection
                         threading.Thread(target=self._read, args=(connection, reader),
@@ -150,14 +155,26 @@ class VoiceRuntime:
                 raise RuntimeError("Whisperer is disconnected.")
             connection.sendall(payload)
 
-    def start(self, run_id, emit):
+    def get_options(self, refresh=False):
+        """Refresh device/config metadata without opening a microphone."""
+        if not refresh:
+            return self.options.copy()
+        with self._options_lock:
+            self.ensure_ready()
+            self._options_received.clear()
+            self._send({"action": "options"})
+            if not self._options_received.wait(5):
+                raise TimeoutError("Microphone input list is unavailable.")
+            return self.options.copy()
+
+    def start(self, run_id, emit, capture_settings=None):
         self.ensure_ready()
         with self._state:
             if self.active is not None:
                 raise RuntimeError("The microphone is already in use by another dictation.")
             self.active = (run_id, emit)
         try:
-            self._send({"action": "start", "run_id": run_id})
+            self._send({"action": "start", "run_id": run_id, "settings": capture_settings or {}})
         except Exception:
             with self._state:
                 self.active = None
@@ -181,6 +198,11 @@ class VoiceRuntime:
                 if len(line) > MAX_FRAME:
                     raise ValueError("Oversized Whisperer frame.")
                 event = json.loads(line)
+                if event.get("event") == "options":
+                    self.options = {key: event[key] for key in ("devices", "defaults", "devices_error")
+                                    if key in event}
+                    self._options_received.set()
+                    continue
                 with self._state:
                     active = self.active
                     if not active or event.get("run_id") != active[0]:

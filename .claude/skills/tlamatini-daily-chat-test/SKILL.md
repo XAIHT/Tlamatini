@@ -19,8 +19,10 @@ description: Run the daily automated Tlamatini chat regression — drive a visib
 
 ### Direct microphone verification is separate from catalog verification
 
-The chat microphone beside Send uses `/ws/chat-voice/` and automatic normal-form
-submission. The catalog's `voice_commands_visible.py` checks do not test this
+The Mic button beside Send uses `/ws/chat-voice/`. Config → Mic selects
+automatic normal-form submission or an editable draft for manual Send. Verify
+both modes, saved settings, per-recording snapshots, invalid/missing device
+choices, shared button styles, Escape/focus and narrow layouts. The catalog's `voice_commands_visible.py` checks do not test this
 button or prove real audio capture. `scripts/chat_microphone_visible.py` verifies
 the direct UI in headed Chrome using controlled transport; real host capture,
 gate/ASR and windowless lifecycle require separate visible probes. Keep the

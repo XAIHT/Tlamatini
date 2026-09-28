@@ -16,7 +16,9 @@
 
 The microphone beside Send is an input path, available with the current chat
 modes. It starts Whisperer directly, closes capture on silence, transcribes and
-submits once through the normal form. It does not select tools, invoke a planner,
+either submits once through the normal form or leaves an editable draft, as
+selected in Config → Mic. Review mode starts no task until manual Send.
+It does not select tools, invoke a planner,
 enable Multi-Turn/ACPX or bypass the request's normal permissions. Existing draft
 text and current toggles remain part of the request.
 

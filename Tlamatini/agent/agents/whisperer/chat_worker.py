@@ -13,7 +13,36 @@ import sys
 import threading
 import time
 
+# In source this is agent/; in a carried runtime it is the installation root.
+_SETTINGS_ROOT = str(Path(__file__).resolve().parents[2])
+if _SETTINGS_ROOT not in sys.path:
+    sys.path.insert(0, _SETTINGS_ROOT)
+from chat_voice_settings import public_defaults, validate_capture_settings  # noqa: E402
+
 MAX_FRAME = 131072
+
+
+def input_devices():
+    """Enumerate host inputs without opening a stream; retain a stable identity."""
+    import sounddevice as sd
+    apis = sd.query_hostapis()
+    return [{"index": index, "name": str(item["name"])[:128],
+             "hostapi": str(apis[item["hostapi"]]["name"])[:80],
+             "channels": int(item["max_input_channels"])}
+            for index, item in enumerate(sd.query_devices())
+            if item["max_input_channels"] > 0][:200]
+
+
+def microphone_options(whisperer):
+    options = {"defaults": public_defaults({}), "devices": [], "devices_error": False}
+    try:
+        config = whisperer.load_config(str(Path(whisperer.__file__).with_name("config.yaml")))
+        options["defaults"] = public_defaults(config)
+        options["devices"] = input_devices()
+    except (Exception, SystemExit) as exc:
+        print(f"Mic settings metadata unavailable: {type(exc).__name__}", flush=True)
+        options["devices_error"] = True
+    return options
 
 
 class DictationWorker:
@@ -26,21 +55,21 @@ class DictationWorker:
         self.run_id = None
         self.cancelled = threading.Event()
 
-    def start(self, run_id):
+    def start(self, run_id, capture_settings=None):
         if self.busy:
             self.send({"event": "error", "run_id": run_id, "message": "Whisperer is still busy."})
             return
         self.busy = True
         self.run_id = run_id
         self.cancelled = threading.Event()
-        self.job = threading.Thread(target=self.run, args=(run_id, self.cancelled), daemon=True)
+        self.job = threading.Thread(target=self.run, args=(run_id, self.cancelled, capture_settings), daemon=True)
         self.job.start()
 
     def cancel(self, run_id):
         if run_id == self.run_id:
             self.cancelled.set()
 
-    def run(self, run_id, cancelled):
+    def run(self, run_id, cancelled, capture_settings=None):
         w = self.whisperer
         started = time.monotonic()
         first_sample = None
@@ -58,6 +87,21 @@ class DictationWorker:
 
         try:
             config = w.load_config(str(Path(w.__file__).with_name("config.yaml")))
+            overrides = validate_capture_settings(capture_settings or {})
+            if overrides.get("device_index", -1) >= 0:
+                # PortAudio indices can move. Match the saved device identity first.
+                matches = [d for d in input_devices()
+                           if d["name"] == overrides["device_name"]
+                           and d["hostapi"] == overrides["device_hostapi"]]
+                exact = [d for d in matches if d["index"] == overrides["device_index"]]
+                if len(exact) == 1:
+                    overrides["device_index"] = exact[0]["index"]
+                elif len(matches) == 1:
+                    overrides["device_index"] = matches[0]["index"]
+                else:
+                    raise RuntimeError("Selected microphone is missing or ambiguous; select it again in Config > Mic.")
+            overrides.pop("device_hostapi", None)
+            config.update(overrides)
             config.update(input_source="mic", record_seconds=0, silence_gate="on",
                           ollama_cleanup=False, target_agents=[])
             engine = str(config.get("engine", "faster-whisper")).lower()
@@ -156,7 +200,7 @@ def main():
     import sounddevice  # noqa: F401
     import whisperer
     worker = DictationWorker(send, whisperer)
-    send({"event": "ready"})
+    send({"event": "ready", **microphone_options(whisperer)})
     print("READY: direct dictation. No microphone is open. Waiting for a click.", flush=True)
     try:
         with connection.makefile("rb") as reader:
@@ -169,9 +213,11 @@ def main():
                 message = json.loads(line)
                 action = message.get("action")
                 if action == "start":
-                    worker.start(message["run_id"])
+                    worker.start(message["run_id"], message.get("settings", {}))
                 elif action == "cancel":
                     worker.cancel(message["run_id"])
+                elif action == "options":
+                    send({"event": "options", **microphone_options(whisperer)})
                 elif action == "shutdown":
                     break
     finally:
