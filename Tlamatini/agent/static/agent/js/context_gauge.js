@@ -42,6 +42,7 @@
 
     var built = false;
     var history = [];
+    var lastSeq = 0;
     var nodes = {};
 
     function groupDigits(value) {
@@ -113,9 +114,11 @@
         var streams = div('ctxg-streams');
         var bar = div('ctxg-bar');
         nodes.segPrefix = div('ctxg-seg ctxg-seg-prefix');
+        nodes.segContext = div('ctxg-seg ctxg-seg-context');
         nodes.segHistory = div('ctxg-seg ctxg-seg-history');
         nodes.segLoop = div('ctxg-seg ctxg-seg-loop');
         bar.appendChild(nodes.segPrefix);
+        bar.appendChild(nodes.segContext);
         bar.appendChild(nodes.segHistory);
         bar.appendChild(nodes.segLoop);
         nodes.streamsLabel = div('ctxg-streams-label');
@@ -134,10 +137,11 @@
         nodes.titleSub.textContent = 'sent to the model';
         nodes.title.appendChild(titleMain);
         nodes.title.appendChild(nodes.titleSub);
-        nodes.title.title = 'How much conversation Tlamatini is sending to the '
-            + 'model on this request: the system prompt, the bound tools, the '
-            + 'chat history and the tool loop. Bytes are measured; tokens and '
-            + 'the percentage are estimates.';
+        nodes.title.title = 'How much Tlamatini sends to her main model on one '
+            + 'request: the system prompt, the bound tools, your loaded context, '
+            + 'the chat history and the tool loop. Bytes are measured. Tokens say '
+            + 'REAL when they are Ollama\'s own prompt_eval_count for that exact '
+            + 'request, and est. until Ollama has answered.';
 
         row.appendChild(nodes.title);
         row.appendChild(ring);
@@ -193,6 +197,11 @@
         var zone = String(detail.zone || 'green');
         var tokens = Number(detail.tokens_estimated) || 0;
         var ceiling = Number(detail.ceiling_tokens) || 0;
+        // Ollama's own count for THIS request, once it has answered it.
+        var isReal = detail.ratio_is_real === true
+            && detail.tokens_real !== null && detail.tokens_real !== undefined;
+        var realTokens = isReal ? (Number(detail.tokens_real) || 0) : 0;
+        var ctxBytes = Math.max(0, Number(detail.bytes_context) || 0);
 
         row.setAttribute('data-zone', zone);
         row.classList.add('ctxg-visible');
@@ -210,11 +219,37 @@
         nodes.bytes.title = groupDigits(total) + ' bytes exactly — measured, '
             + 'the literal size of the request on the wire';
 
-        nodes.tokens.textContent = '≈' + groupDigits(tokens) + ' tokens est. · '
-            + pct.toFixed(1) + '% est.';
-        nodes.tokens.title = 'Estimated at ~4 characters per token, of a '
-            + groupDigits(ceiling) + '-token ceiling (' + (detail.ceiling_source || '?')
-            + '). Tokens are ESTIMATED; the byte figure above is MEASURED.';
+        var turn = detail.turn || null;
+        var turnText = '';
+        if (turn && Number(turn.calls) > 0) {
+            turnText = ' This answer so far: ' + groupDigits(turn.calls)
+                + ' main-model call(s), ' + groupDigits(turn.prompt_tokens)
+                + ' prompt + ' + groupDigits(turn.completion_tokens)
+                + ' output tokens (REAL, from Ollama).';
+        }
+        var ceilingText = groupDigits(ceiling) + '-token context ('
+            + (detail.ceiling_source || '?') + ')';
+        if (isReal) {
+            nodes.tokens.textContent = groupDigits(realTokens) + ' tokens REAL · '
+                + pct.toFixed(1) + '%';
+            nodes.tokens.classList.add('ctxg-real');
+            var err = detail.estimate_error_pct;
+            nodes.tokens.title = 'REAL: Ollama\'s own prompt_eval_count for this exact '
+                + 'request (' + (detail.real_model || detail.model || 'model') + '), of a '
+                + ceilingText + '. The chars/4 estimate was ' + groupDigits(tokens)
+                + (err !== undefined && err !== null ? (' (' + (err > 0 ? '+' : '') + err + '%)') : '')
+                + '.' + turnText;
+        } else {
+            nodes.tokens.textContent = '≈' + groupDigits(tokens) + ' tokens est. · '
+                + pct.toFixed(1) + '% est.';
+            nodes.tokens.classList.remove('ctxg-real');
+            var last = detail.last_real || null;
+            nodes.tokens.title = 'ESTIMATE (~4 characters per token) of a ' + ceilingText
+                + ', shown until Ollama answers this request with its own count.'
+                + (last ? (' Last REAL count: ' + groupDigits(last.tokens) + ' tokens ('
+                    + (last.label || 'previous request') + ').') : '')
+                + turnText;
+        }
 
         nodes.zoneWord.textContent = zone.toUpperCase();
 
@@ -223,19 +258,41 @@
         var source = String(detail.source || 'model');
         var when = String(detail.label || '');
         nodes.titleSub.textContent = when ? (source + ' · ' + when) : source;
-        nodes.titleSub.title = 'Last measured on a ' + source + ' call'
-            + (when ? (' while ' + when) : '');
+        nodes.titleSub.title = (detail.kind === 'rest'
+            ? 'What your NEXT message will send, rebuilt with the main chain\'s own '
+              + 'code while nothing is running'
+            : 'Measured on the ' + source + ' main-model call')
+            + (when ? (' - ' + when) : '')
+            + (detail.note ? ('. ' + detail.note) : '') + '.';
 
+        // The context block sits inside the history bucket on the wire, so it
+        // is carved OUT of it here - never counted twice.
         var denominator = total > 0 ? total : 1;
+        var ctxShown = Math.min(ctxBytes, hist);
+        var histOnly = Math.max(0, hist - ctxShown);
         nodes.segPrefix.style.width = ((prefix / denominator) * 100).toFixed(2) + '%';
-        nodes.segHistory.style.width = ((hist / denominator) * 100).toFixed(2) + '%';
+        nodes.segContext.style.width = ((ctxShown / denominator) * 100).toFixed(2) + '%';
+        nodes.segHistory.style.width = ((histOnly / denominator) * 100).toFixed(2) + '%';
         nodes.segLoop.style.width = ((loop / denominator) * 100).toFixed(2) + '%';
-        nodes.streamsLabel.textContent = 'loop ' + Math.round((loop / denominator) * 100)
-            + '% · ' + (Number(detail.loop_messages) || 0) + ' msg';
-        nodes.streamsLabel.title = 'prefix ' + groupDigits(prefix) + ' B · history '
-            + groupDigits(hist) + ' B · tool loop ' + groupDigits(loop) + ' B';
+        nodes.streamsLabel.textContent = 'ctx ' + Math.round((ctxShown / denominator) * 100)
+            + '% · hist ' + Math.round((histOnly / denominator) * 100)
+            + '% · loop ' + Math.round((loop / denominator) * 100) + '%';
+        nodes.streamsLabel.title = 'prefix (system prompt + tools) ' + groupDigits(prefix)
+            + ' B · your context ' + groupDigits(ctxShown) + ' B · chat history '
+            + groupDigits(histOnly) + ' B · tool loop ' + groupDigits(loop) + ' B ('
+            + (Number(detail.loop_messages) || 0) + ' msg)';
 
-        history.push(total);
+        // ONE point per request: the same request is published more than once
+        // (estimate first, then Ollama's REAL count, then the answer's totals),
+        // and a repeat must update its point, not add a fake step.
+        var seq = Number(detail.seq) || 0;
+        var point = isReal ? realTokens : tokens;
+        if (seq && seq === lastSeq && history.length) {
+            history[history.length - 1] = point;
+        } else {
+            history.push(point);
+        }
+        lastSeq = seq;
         renderSparkline(Number(detail.history_turns) || DEFAULT_HISTORY);
     }
 
@@ -259,12 +316,13 @@
         nodes.ringPct.textContent = '--';
         nodes.bytes.textContent = '--';
         nodes.bytes.title = 'Nothing has been measured yet on this page.';
-        nodes.tokens.textContent = 'waiting for the first request';
-        nodes.tokens.title = 'The gauge fills the moment Tlamatini builds a '
-            + 'request for the model.';
+        nodes.tokens.textContent = 'measuring your next request…';
+        nodes.tokens.title = 'As soon as the agent is ready, Tlamatini rebuilds the '
+            + 'request your next message will send and asks Ollama how many tokens '
+            + 'it really is.';
         nodes.zoneWord.textContent = 'IDLE';
         nodes.titleSub.textContent = 'sent to the model';
-        nodes.streamsLabel.textContent = 'prefix · history · tool loop';
+        nodes.streamsLabel.textContent = 'prefix · context · history · loop';
     }
 
     function bootSafely() {
@@ -296,4 +354,68 @@
             }
         }
     });
+
+    // ── ASK FOR A FRESH READING (Angela, 2026-09-28) ─────────────────────
+    // "don't stay static but always dynamic". The server rebuilds what the
+    // NEXT message will send and asks Ollama for its real count whenever the
+    // answer changes. The server already knows about Clear history, Clear
+    // context, context loads, reconnects and finished answers; the page adds
+    // the two things only it sees: the socket opening, and the toolbar
+    // switches that change which tools are bound (Multi-Turn / ACPX /
+    // Step-by-Step). Debounced; silent when the socket is not open, because a
+    // gauge must never paint the "connection lost" banner.
+    var SOCKET_OPEN_EVENT = 'tlm:chat-socket-open';
+    var TOGGLES = [
+        ['multi-turn-enabled', 'Multi-Turn'],
+        ['acpx-enabled', 'ACPX'],
+        ['step-by-step-enabled', 'Step-by-Step']
+    ];
+    var refreshTimer = null;
+
+    function toggleChecked(id) {
+        var el = document.getElementById(id);
+        return !!(el && el.checked);
+    }
+
+    function requestRefresh(reason) {
+        if (refreshTimer) window.clearTimeout(refreshTimer);
+        refreshTimer = window.setTimeout(function () {
+            refreshTimer = null;
+            try {
+                if (typeof window.isChatSocketOpen !== 'function' || !window.isChatSocketOpen()) return;
+                if (typeof window.sendChatSocketMessage !== 'function') return;
+                window.sendChatSocketMessage({
+                    type: 'context-gauge-refresh',
+                    message: 'context-gauge-refresh',
+                    reason: reason,
+                    multi_turn_enabled: toggleChecked('multi-turn-enabled'),
+                    acpx_enabled: toggleChecked('acpx-enabled'),
+                    step_by_step_enabled: toggleChecked('step-by-step-enabled')
+                });
+            } catch (err) {
+                if (window.console && window.console.warn) {
+                    window.console.warn('[context-gauge] refresh request skipped:', err);
+                }
+            }
+        }, 250);
+    }
+
+    function wireToggles() {
+        TOGGLES.forEach(function (pair) {
+            var el = document.getElementById(pair[0]);
+            if (!el) return;
+            el.addEventListener('change', function () {
+                requestRefresh(pair[1] + (el.checked ? ' on' : ' off'));
+            });
+        });
+    }
+
+    document.addEventListener(SOCKET_OPEN_EVENT, function () {
+        requestRefresh('page opened');
+    });
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', wireToggles);
+    } else {
+        wireToggles();
+    }
 }());

@@ -45,6 +45,7 @@ the chat live, as they happen.
 
 from __future__ import annotations
 
+import contextvars
 import os
 import queue
 import random
@@ -215,7 +216,18 @@ def _run_with_watchdog(fn: Callable[[], Any], timeout: float, poll: float = 0.25
             except Exception:
                 pass
 
-    threading.Thread(target=_worker, daemon=True).start()
+    # Run the call inside a COPY of the caller's context. The model call's
+    # callbacks (the context gauge's real-token meter, the per-line log tag)
+    # read ContextVars to know WHOSE request this is; a bare thread starts with
+    # an empty context and would credit the call to nobody. log_identity does
+    # the same globally, but only when `log_user_tag_thread_inherit` is on -
+    # a metering fact must not depend on a logging preference. (2026-09-28)
+    try:
+        _ctx = contextvars.copy_context()
+        _target = lambda: _ctx.run(_worker)  # noqa: E731
+    except Exception:  # noqa: BLE001 - never block the call on bookkeeping
+        _target = _worker
+    threading.Thread(target=_target, daemon=True).start()
 
     waited = 0.0
     while waited < timeout:
@@ -299,6 +311,14 @@ class SelfHealingInvoker:
         self.recovery_events: List[str] = []       # transcript of what she went through
         self.recovered = False                     # True if any tactic beyond the first worked
         self._saw_oversized = False                # a body-too-large THIS step → trim hard
+        # The tactic whose call ACTUALLY answered the last step.  The context
+        # gauge reads it: only "normal"/"retry"/"patient-retry" re-send the
+        # measured request unchanged, so only their real token count may be
+        # paired with the measured frame (2026-09-28).
+        self.last_tactic = ""
+
+    #: Tactics that send exactly the request the caller handed in.
+    UNCHANGED_REQUEST_TACTICS = frozenset({"normal", "retry", "patient-retry"})
 
     def _is_cancelled(self) -> bool:
         """Did the USER cancel THIS run? (per-run epoch latch, boolean fallback)"""
@@ -395,6 +415,7 @@ class SelfHealingInvoker:
         # ladder to trim). Reset each step so one big step doesn't over-trim later
         # ones. (Angela, 2026-07-26)
         self._saw_oversized = False
+        self.last_tactic = ""
 
         for attempt in range(1, self.max_attempts + 1):
             if self._is_cancelled():
@@ -436,6 +457,7 @@ class SelfHealingInvoker:
                 raise ModelStepUnrecoverable("user_cancelled", attempt, tactics_tried, last_exc)
 
             if status == "ok":
+                self.last_tactic = name
                 if attempt > 1:
                     self.recovered = True
                     self._announce(f"✅ Tactic '{name}' worked — continuing the run right where I left off.")

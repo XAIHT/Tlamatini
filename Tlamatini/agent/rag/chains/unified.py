@@ -18,6 +18,11 @@ from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
 from ...cancellation import is_run_cancelled
 from ...chat_history_loader import DBChatHistoryLoader
+from ...context_governor import (
+    CONTEXT_FALLBACK_OPEN,
+    CONTEXT_RETRIEVED_CLOSE,
+    CONTEXT_RETRIEVED_OPEN,
+)
 from ...global_state import global_state
 from ...mcp_agent import create_unified_agent
 from ..config import apply_conditional_rule_blocks
@@ -209,6 +214,68 @@ def _should_include_file_manifest(question: str, q_rewritten: str) -> bool:
 def _has_explicit_file_listing_context(context_blob: str) -> bool:
     return bool(context_blob and _FILE_LISTING_CONTEXT_RE.search(context_blob))
 
+_LOADED_CONTEXT_NOTE = (
+    "IMPORTANT: The loaded context above is the USER'S OWN project/files (NOT Tlamatini's own "
+    "source code or self-knowledge), already provided even though vector retrieval is unavailable. "
+    "Use it directly to answer the user's question; for any request to summarize, explain, or analyze "
+    "\"the project\", \"the source code\", or \"the provided context\", answer from THIS content — never "
+    "with a description of Tlamatini herself."
+)
+
+
+def wrap_loaded_context(loaded_context: str, question: str) -> str:
+    """The fallback-context preamble the unified agent receives.
+
+    Built from the context governor's own markers, so the text that is SENT
+    and the text the gauge MEASURES as "context" are one definition.  The
+    output is byte-identical to the literal it replaced (2026-09-28).
+    """
+    return (
+        f"{CONTEXT_FALLBACK_OPEN}{loaded_context}\n\n"
+        f"{_LOADED_CONTEXT_NOTE}\n\n"
+        f"User Question: {question}"
+    )
+
+
+def wrap_retrieved_context(scoped_context_blob: str, question: str) -> str:
+    """The retrieved-context preamble (see :func:`wrap_loaded_context`)."""
+    return f"{CONTEXT_RETRIEVED_OPEN}{scoped_context_blob}{CONTEXT_RETRIEVED_CLOSE}{question}"
+
+
+def with_system_context(system_context: str, text: str) -> str:
+    """The system-metrics preamble both unified chains prepend.
+
+    One-shot requests ALWAYS carry it while the System-Metrics MCP is on: when
+    the question needs no metrics the sidecar still returns its placeholder
+    (``chain_system_lcel.NO_SYSTEM_CONTEXT``).  Shared with the at-rest context
+    gauge so it predicts that prefix exactly; byte-identical to the literal it
+    replaced (2026-09-28).
+    """
+    return f"System Context: {system_context}\n\n{text}"
+
+
+def history_summary_tail(cfg: Any, chat_history: Any) -> Optional[List[Any]]:
+    """``None`` when the history is sent as-is; else the tail kept verbatim.
+
+    The ONE decision both unified chains make before summarizing, shared with
+    the at-rest context gauge so it rebuilds exactly what the next question
+    will send (2026-09-28).  Pure: no model call.
+    """
+    mh = cfg or {}
+    if not mh.get("enable", False) or not chat_history:
+        return None
+    est_tokens = sum(_approx_tokens(getattr(m, "content", str(m))) for m in chat_history)
+    if est_tokens <= mh.get("trigger_tokens", 800):
+        return None
+    keep_last = mh.get("keep_last_turns", 6)
+    return list(chat_history[-keep_last:]) if keep_last > 0 else []
+
+
+def summarized_history(summary: str, tail: List[Any]) -> List[Any]:
+    """What the model receives in place of a long history."""
+    return [SystemMessage(content=f"CHAT HISTORY SUMMARY:\n{summary}")] + list(tail)
+
+
 class UnifiedAgentChain:
     """
     Chain wrapper that uses the unified agent (with tool support) while maintaining
@@ -283,12 +350,8 @@ class UnifiedAgentChain:
 
     def _summarize_history_if_needed(self, chat_history: List[Any], question: str) -> List[Any]:
         """Summarize chat history if it exceeds token limits."""
-        mh = self.history_summary_cfg
-        if not mh.get("enable", False) or not chat_history:
-            return chat_history
-
-        est_tokens = sum(_approx_tokens(getattr(m, "content", str(m))) for m in chat_history)
-        if est_tokens <= mh.get("trigger_tokens", 800):
+        tail = history_summary_tail(self.history_summary_cfg, chat_history)
+        if tail is None:
             return chat_history
 
         sum_prompt = ChatPromptTemplate.from_messages([
@@ -306,9 +369,10 @@ class UnifiedAgentChain:
         msgs = sum_prompt.format_messages(chat_history=chat_history, q=question)
         out = self.llm.with_config({"callbacks": [Callbacks()]}).invoke(msgs)
         summary = getattr(out, "content", str(out))
-        keep_last = mh.get("keep_last_turns", 6)
-        tail = chat_history[-keep_last:] if keep_last > 0 else []
-        return [SystemMessage(content=f"CHAT HISTORY SUMMARY:\n{summary}")] + tail
+        # Remembered for the at-rest context gauge; the NEXT question gets a
+        # freshly written one, and the gauge says so.
+        self.last_history_summary = summary
+        return summarized_history(summary, tail)
 
     def invoke(self, payload: dict):
         """Invoke the unified agent with tool support."""
@@ -367,20 +431,11 @@ User Question: {enhanced_input}"""
         
         # Add system context
         if payload.get("system_context"):
-            enhanced_input = f"System Context: {payload['system_context']}\n\n{enhanced_input}"
+            enhanced_input = with_system_context(payload['system_context'], enhanced_input)
 
         # Add loaded-document fallback context if retrieval/embeddings failed but documents were loaded.
         if loaded_context:
-            enhanced_input = (
-                "Loaded Context from Knowledge Base Fallback:\n"
-                f"{loaded_context}\n\n"
-                "IMPORTANT: The loaded context above is the USER'S OWN project/files (NOT Tlamatini's own "
-                "source code or self-knowledge), already provided even though vector retrieval is unavailable. "
-                "Use it directly to answer the user's question; for any request to summarize, explain, or analyze "
-                "\"the project\", \"the source code\", or \"the provided context\", answer from THIS content — never "
-                "with a description of Tlamatini herself.\n\n"
-                f"User Question: {enhanced_input}"
-            )
+            enhanced_input = wrap_loaded_context(loaded_context, enhanced_input)
         
         # Incorporate external web context
         ext_raw = payload.get("external_context", "")
@@ -470,7 +525,7 @@ User Question: {enhanced_input}"""
                     MessagesPlaceholder("chat_history"),
                     ("human", "{input}"),
                 ])
-                answer_chain = (qa_prompt | self.llm).with_config({"callbacks": [Callbacks()]})
+                answer_chain = (qa_prompt | self.llm).with_config({"callbacks": [Callbacks(main=True)]})
                 answered = answer_chain.invoke(answer_payload)
                 answer = getattr(answered, "content", str(answered))
         else:
@@ -488,7 +543,7 @@ User Question: {enhanced_input}"""
                 MessagesPlaceholder("chat_history"),
                 ("human", "{input}"),
             ])
-            answer_chain = (qa_prompt | self.llm).with_config({"callbacks": [Callbacks()]})
+            answer_chain = (qa_prompt | self.llm).with_config({"callbacks": [Callbacks(main=True)]})
             answered = answer_chain.invoke(answer_payload)
             answer = getattr(answered, "content", str(answered))
 
@@ -616,11 +671,8 @@ class UnifiedAgentRAGChain:
         return getattr(response, "content", str(response))
 
     def _summarize_history_if_needed(self, chat_history: List[Any], question: str) -> List[Any]:
-        mh = self.history_summary_cfg
-        if not mh.get("enable", False) or not chat_history:
-            return chat_history
-        est_tokens = sum(_approx_tokens(getattr(m, "content", str(m))) for m in chat_history)
-        if est_tokens <= mh.get("trigger_tokens", 800):
+        tail = history_summary_tail(self.history_summary_cfg, chat_history)
+        if tail is None:
             return chat_history
         sum_prompt = ChatPromptTemplate.from_messages([
             ("system", "You are a conversation summarizer. Create **JUST ONCE** a concise, factual summary of the dialogue that captures information relevant to answering the user's current question.\n\n"
@@ -637,9 +689,10 @@ class UnifiedAgentRAGChain:
         msgs = sum_prompt.format_messages(chat_history=chat_history, q=question)
         out = self.llm.with_config({"callbacks": [Callbacks()]}).invoke(msgs)
         summary = getattr(out, "content", str(out))
-        keep_last = mh.get("keep_last_turns", 6)
-        tail = chat_history[-keep_last:] if keep_last > 0 else []
-        return [SystemMessage(content=f"CHAT HISTORY SUMMARY:\n{summary}")] + tail
+        # Remembered for the at-rest context gauge; the NEXT question gets a
+        # freshly written one, and the gauge says so.
+        self.last_history_summary = summary
+        return summarized_history(summary, tail)
 
     def _retrieve(self, q: str) -> List[Document]:
         return retrieve_documents(q, self.vector_store, self.bm25, self.retrieval_cfg, self.split_docs)
@@ -879,11 +932,14 @@ User Question: {enhanced_input}"""
 
         # Add retrieved context (contains file information from knowledge base)
         if context_blob:
-            enhanced_input = f"Retrieved Context from Knowledge Base:\n{scoped_context_blob}\n\nUser Question: {enhanced_input}"
+            enhanced_input = wrap_retrieved_context(scoped_context_blob, enhanced_input)
+        # What THIS question retrieved - the at-rest gauge reports it as
+        # "retrieved per question" (it cannot know the next question's).
+        self.last_retrieved_context_chars = len(scoped_context_blob) if context_blob else 0
         
         # Add system context
         if sys_ctx:
-            enhanced_input = f"System Context: {sys_ctx}\n\n{enhanced_input}"
+            enhanced_input = with_system_context(sys_ctx, enhanced_input)
 
         # Save context blob (for compatibility)
         hash_object = hashlib.sha256(original_input.encode())
@@ -955,7 +1011,7 @@ User Question: {enhanced_input}"""
                     "files_context": files_ctx or "",
                     "context": scoped_context_blob,
                 }
-                answer_chain = (qa_prompt | self.llm).with_config({"callbacks": [Callbacks()]})
+                answer_chain = (qa_prompt | self.llm).with_config({"callbacks": [Callbacks(main=True)]})
                 answered = answer_chain.invoke(answer_payload)
                 answer = getattr(answered, "content", str(answered))
         else:
@@ -973,7 +1029,7 @@ User Question: {enhanced_input}"""
                 "files_context": files_ctx or "",
                 "context": scoped_context_blob,
             }
-            answer_chain = (qa_prompt | self.llm).with_config({"callbacks": [Callbacks()]})
+            answer_chain = (qa_prompt | self.llm).with_config({"callbacks": [Callbacks(main=True)]})
             answered = answer_chain.invoke(answer_payload)
             answer = getattr(answered, "content", str(answered))
 

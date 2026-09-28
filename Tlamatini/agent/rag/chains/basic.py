@@ -33,7 +33,7 @@ class BasicPromptOnlyChain:
     ):
         self.llm = llm
         self.contextualize_chain = (contextualize_q_prompt | llm).with_config({"callbacks": [Callbacks()]})
-        self.answer_chain = (qa_prompt_no_ctx | llm).with_config({"callbacks": [Callbacks()]})
+        self.answer_chain = (qa_prompt_no_ctx | llm).with_config({"callbacks": [Callbacks(main=True)]})
         self.history_summary_cfg = history_summary_cfg
         self.prompt_template_string = prompt_template_string
         self.last_programs_name: List[str] = []  # avoid attribute errors

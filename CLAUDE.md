@@ -748,6 +748,12 @@ After login, `welcome.html` offers exactly two things — **Go to Chat** and **L
 
 ---
 
+## 📏 The context gauge is REAL — Ollama's own numbers, exact in both modes (2026-09-28)
+
+Angela: *"make that gauge counter to be real, NOT FAKE ... SO BETTER YOU DONT LIE!"* The ring shows Ollama's own `prompt_eval_count` for the exact request (`N tokens REAL`, paired by `seq`) and the ceiling from `/api/show`; an estimate is labelled `est.` until Ollama answers. At rest it shows the NEXT request, rebuilt by `agent/context_baseline.py` with the main chain's OWN builders and probed once (`num_predict=1`, cached by wire hash) at every change point (open, Clear history, Clear context, context loaded, answer finished, toolbar toggles). **Main chain only, per user** — out-of-band calls (Prompter, rewriter, summarizer, ACPX) never reach the ring. The visible lab proves every byte: live = prediction + the question + (Multi-Turn) the planner's `bytes_plan`. ⚠️ Do NOT re-inline `with_system_context` / `NO_SYSTEM_CONTEXT` or narrow the question dedupe in `build_request_messages` (the question used to go out TWICE). Contract: `docs/claude/architecture.md` → *The REAL context gauge*; story: `recent-fixes.md` (2026-09-28); proof: `context_gauge_real_lab.py` (60/60).
+
+---
+
 ## Latest version — v1.72.0 (tagged 2026-09-27; latest published release v1.70.0)
 
 **Latest version — `v1.72.0` (tagged 2026-09-27):** annotated tag `v1.72.0` points to `e3668a47` — *"Implementing a fancy fancy microphone to Whisperer in a cero latency direct implementation into Tlamatini's Chat, and added configuration parameters."* It is the first tag that actually contains the direct chat microphone and the **Config ▸ Mic** settings: `v1.71.0` points to `512973fb`, which predates the microphone commit. GitHub's latest *published* release is still `v1.70.0`; `v1.71.0` and `v1.72.0` are tags without a published release (checked with `gh release list` on 2026-09-27), so self-update cannot deliver v1.72.0 until a release is published. Runtime version comes from the resolver; feature availability also depends on build contents.

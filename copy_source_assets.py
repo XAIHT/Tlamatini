@@ -284,6 +284,7 @@ REQUIRED_SNAPSHOT_FILES = (
     "docs/visual-analysis-errors.md",
     # Context Governor: the real-request meter and the always-on chat gauge.
     "Tlamatini/agent/context_governor.py",
+    "Tlamatini/agent/context_baseline.py",
     "Tlamatini/agent/static/agent/js/context_gauge.js",
     "Tlamatini/agent/static/agent/css/context_gauge.css",
     # Skill boundary: ONE validator, ONE redaction definition, and the tools

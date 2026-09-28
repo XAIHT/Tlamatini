@@ -153,6 +153,55 @@ Upgrading is separate work and is NOT done.
 
 ---
 
+## The REAL context gauge — Ollama's own numbers (2026-09-28)
+
+The ring beside the message box shows what Tlamatini's MAIN chain sends to the
+model, per connected user. Bytes are measured; tokens are **Ollama's own
+`prompt_eval_count`** for that exact request, shown as `N tokens REAL`. A chars/4
+estimate (`≈N tokens est.`) appears only until Ollama has answered.
+
+| Piece | Where | Role |
+|---|---|---|
+| Live metering | `mcp_agent._model_step` | each model step: `measure_async(seq=…)` before, `report_real_usage(seq, prompt_eval_count)` after; pairs only if the self-healer re-sent the SAME request (`UNCHANGED_REQUEST_TACTICS`) |
+| Answer chains | `rag/chains/base.Callbacks(main=True)` | the same for the basic / history-aware / RAG answer calls, paired by LangChain `run_id` |
+| At rest | `agent/context_baseline.py` | rebuilds the NEXT request with the chain's own code and probes Ollama once (`num_predict=1`); cached by sha256 of the wire body |
+| Ceiling | `context_governor.resolve_ceiling_tokens` | Ollama `/api/show` → `<arch>.context_length` (cloud); a local model is bounded by its `num_ctx`; cached 1 h |
+| Change points | `consumers.py` + `context_gauge.js` | page open, reconnect, Clear history, Clear context, context loaded, answer finished, toolbar toggles, skills changed, cancel → `context-gauge-refresh` |
+
+**Contracts (do NOT weaken):**
+1. **Main chain only.** Out-of-band calls (Prompter-style agents, the question
+   rewriter, the history summarizer, ACPX children) never reach the ring; ACPX
+   frames are `KIND_SIDE` (logged only).
+2. **Per user.** Frames, pending counts, turn totals and probe caches are keyed by
+   the user id; `consumers` restores the connection's own sink after every answer.
+3. **A count is pinned only on the request that produced it** (`seq`), arrives
+   early or late, and never overwrites a newer frame.
+4. **Exact, both modes.** The live request = the at-rest prediction + the
+   question's own bytes + (Multi-Turn only) the planner's plan (`bytes_plan`,
+   measured). The rebuild therefore shares the chain's own builders -
+   `MultiTurnToolAgentExecutor.build_request_messages`, `history_summary_tail`,
+   `wrap_loaded_context`, `with_system_context` and
+   `chain_system_lcel.NO_SYSTEM_CONTEXT` (one-shot with System-Metrics on sends
+   that placeholder with EVERY question). Re-inlining any of them makes the
+   prediction drift silently.
+5. **The current question is sent once.** `build_request_messages` drops the last
+   history message when it IS the question, bare or wrapped.
+6. **Say what cannot be known.** The at-rest frame's `note` names what depends on
+   the next question (its text, the Multi-Turn plan, retrieved RAG context, live
+   system metrics). An unanswered request stays labelled an estimate.
+7. **Fail-open.** Nothing here may break a turn; a probe that cannot run leaves
+   the estimate on screen and says so.
+
+**Config:** `context_ceiling_from_ollama` (true), `context_ollama_show_timeout_seconds`
+(4), `context_gauge_real_tokens` (true), `context_gauge_probe_enable` (true),
+`context_gauge_probe_after_answer` (true). The probe costs one real request per
+changed state (logged as `[CONTEXT-PROBE]`). Log lines: `[CONTEXT]` (bytes),
+`[CONTEXT-REAL]` (Ollama's count), `[CONTEXT-CALL]` / `[CONTEXT-TURN]` (answer
+totals), `[CONTEXT-CEILING]`. Visible proof: `context_gauge_real_lab.py`
+(60/60 on 2026-09-28); unit coverage: `agent/test_context_real_tokens.py`.
+
+---
+
 ## Binary-content guard for context loading (`agent/rag/binary_guard.py`)
 
 Every file that enters the RAG chain is now screened for **binary content** before it is read as text, split, embedded and indexed. Binary files are dropped exactly the way a user-configured omission is dropped — and **every drop is named in `tlamatini.log`**.

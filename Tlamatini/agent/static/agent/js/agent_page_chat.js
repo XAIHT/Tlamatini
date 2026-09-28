@@ -2515,6 +2515,14 @@ try {
 chatSocket.onopen = function () {
     console.log('--- Chat socket connected');
     restoreConnectedSocketUi();
+    // The context gauge asks the server for a fresh, REAL reading of the next
+    // request (context_gauge.js). An event, not a call, so the gauge stays a
+    // self-contained module with no cross-file global.
+    try {
+        document.dispatchEvent(new CustomEvent('tlm:chat-socket-open'));
+    } catch (err) {
+        console.warn('[context-gauge] socket-open event not dispatched:', err);
+    }
 };
 
 chatSocket.onerror = function (_e) {

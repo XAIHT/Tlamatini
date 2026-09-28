@@ -28,6 +28,12 @@ Contracts (from Part V - do NOT weaken):
   is which.  ``total_bytes`` is ``len(text.encode('utf-8'))`` - the literal
   size of what goes on the wire.  ``tokens_estimated`` is a division.  Never
   present the estimate as the measurement.
+* **REAL tokens come only from Ollama itself** (2026-09-28).  When the main
+  chain's request is answered, Ollama's own ``prompt_eval_count`` replaces the
+  estimate on that request's frame (``ratio_is_real``), and the model's own
+  context length from ``/api/show`` becomes the denominator.  Only Tlamatini's
+  MAIN inference is shown; side calls never reach the ring.  Everything is
+  kept per connected user.  See the REAL TOKENS section at the end.
 * **On doubt about the ceiling, assume the LARGER budget.**  Under-reporting
   pressure is safe today (nothing folds); over-reporting it would train the
   watermarks wrong.
@@ -49,6 +55,7 @@ import contextvars
 import json
 import threading
 import time
+import urllib.request
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, Iterable, Optional, Tuple
 
@@ -70,6 +77,24 @@ __all__ = [
     "MeterSample",
     "METER",
     "measure_async",
+    # REAL tokens - Ollama's own counts (2026-09-28).
+    "next_seq",
+    "report_real_usage",
+    "record_call_usage",
+    "begin_turn",
+    "end_turn",
+    "turn_totals",
+    "ollama_context_length",
+    "is_cloud_model",
+    "apply_real_tokens",
+    "usage_from_llm_result",
+    "note_run_seq",
+    "report_run_usage",
+    "latest_frame",
+    "KIND_LIVE",
+    "KIND_REST",
+    "KIND_SIDE",
+    "CONTEXT_BLOCKS",
 ]
 
 
@@ -84,6 +109,13 @@ DEFAULT_WATERMARK_FLOOR = 0.85
 DEFAULT_GAUGE_ENABLED = True
 DEFAULT_GAUGE_HISTORY_TURNS = 12
 DEFAULT_LOG_EACH = True
+# Ask Ollama's own /api/show for the model's context length (the REAL
+# denominator) instead of trusting a config number.  Cached; worker-thread only.
+DEFAULT_CEILING_FROM_BACKEND = True
+# Replace the estimate with Ollama's own prompt_eval_count whenever the server
+# reports it (every /api/chat and /api/generate response does).
+DEFAULT_REAL_TOKENS = True
+DEFAULT_SHOW_TIMEOUT_SECONDS = 4.0
 
 # The ceiling used when nothing else answers.  Deliberately LARGE: "on doubt,
 # fold less, never more".  It matches the shipped ``ollama_num_ctx`` and the
@@ -96,6 +128,31 @@ FALLBACK_CEILING_TOKENS = 1_048_576
 # than a config key on purpose: it is the definition of the estimate, not a
 # preference, and every surface that shows it also labels it "est.".
 CHARS_PER_TOKEN = 4.0
+
+# Where the user's loaded / retrieved PROJECT CONTEXT sits inside a request.
+# Each pair is (opening text, closing text) written by the chain that builds
+# the request.  ``rag/chains/unified.py`` IMPORTS these constants to build its
+# preambles, so the text that is sent and the text that is measured are one
+# definition and cannot drift apart.  The third pair is prompt.pmt's own
+# ``<context>`` block (the one-shot chains put the context in the system
+# prompt).  Anything between an opening and its closing text is the context.
+CONTEXT_FALLBACK_OPEN = "Loaded Context from Knowledge Base Fallback:\n"
+CONTEXT_FALLBACK_CLOSE = "\n\nIMPORTANT: The loaded context above"
+CONTEXT_RETRIEVED_OPEN = "Retrieved Context from Knowledge Base:\n"
+CONTEXT_RETRIEVED_CLOSE = "\n\nUser Question: "
+CONTEXT_BLOCKS: Tuple[Tuple[str, str], ...] = (
+    (CONTEXT_FALLBACK_OPEN, CONTEXT_FALLBACK_CLOSE),
+    (CONTEXT_RETRIEVED_OPEN, CONTEXT_RETRIEVED_CLOSE),
+    ("\n<context>\n", "\n</context>"),
+)
+
+# What a frame describes.  LIVE = the main chain's request being sent right
+# now.  REST = the request the NEXT message would send, measured while idle
+# (after Clear history, Clear context, a context load, a reconnect...).
+# SIDE = anything that is NOT Tlamatini's main inference: logged, never shown.
+KIND_LIVE = "live"
+KIND_REST = "rest"
+KIND_SIDE = "side"
 
 ZONE_GREEN = "green"
 ZONE_AMBER = "amber"
@@ -115,6 +172,10 @@ class GovernorSettings:
     gauge_enabled: bool = DEFAULT_GAUGE_ENABLED
     gauge_history_turns: int = DEFAULT_GAUGE_HISTORY_TURNS
     log_each: bool = DEFAULT_LOG_EACH
+    # 2026-09-28 - the REAL numbers.  Both default ON; both fail open.
+    ceiling_from_backend: bool = DEFAULT_CEILING_FROM_BACKEND
+    real_tokens: bool = DEFAULT_REAL_TOKENS
+    show_timeout_seconds: float = DEFAULT_SHOW_TIMEOUT_SECONDS
 
 
 @dataclass(frozen=True)
@@ -139,6 +200,17 @@ class Measurement:
     messages_count: int = 0
     loop_messages: int = 0
     ok: bool = True
+    # The loaded / retrieved project context INSIDE the request, located by
+    # the chain's own fixed markers (see CONTEXT_BLOCKS).  Measured, not
+    # guessed: 0 means "no context block is in this request".
+    context_bytes: int = 0
+    context_chars: int = 0
+    model: str = ""
+    # The prefix messages AFTER the system prompt - in practice the Multi-Turn
+    # planner's per-question plan.  Part of prefix_bytes, broken out so the
+    # difference between the at-rest prediction and the live request can be
+    # accounted for byte by byte (the plan cannot exist before its question).
+    plan_bytes: int = 0
 
 
 # ── Settings ────────────────────────────────────────────────────────────────
@@ -203,23 +275,46 @@ def resolve_settings(config: Any) -> GovernorSettings:
                 cfg.get("context_gauge_history_turns"), DEFAULT_GAUGE_HISTORY_TURNS, minimum=1
             ),
             log_each=_as_bool(cfg.get("context_governor_log_each_fold"), DEFAULT_LOG_EACH),
+            ceiling_from_backend=_as_bool(
+                cfg.get("context_ceiling_from_ollama"), DEFAULT_CEILING_FROM_BACKEND
+            ),
+            real_tokens=_as_bool(cfg.get("context_gauge_real_tokens"), DEFAULT_REAL_TOKENS),
+            show_timeout_seconds=float(_as_int(
+                cfg.get("context_ollama_show_timeout_seconds"),
+                int(DEFAULT_SHOW_TIMEOUT_SECONDS), minimum=1,
+            )),
         )
     except Exception:  # noqa: BLE001 - settings must never break a request
         return GovernorSettings()
 
 
 # ── The ceiling (the denominator) ───────────────────────────────────────────
-def resolve_ceiling_tokens(config: Any, settings: Optional[GovernorSettings] = None) -> Tuple[int, str]:
+def resolve_ceiling_tokens(
+    config: Any,
+    settings: Optional[GovernorSettings] = None,
+    *,
+    model: str = "",
+    base_url: str = "",
+) -> Tuple[int, str]:
     """Return ``(ceiling_tokens, source)``.
 
-    Order: an explicit ``context_ceiling_tokens`` wins; else the local model's
-    ``ollama_num_ctx`` (which is real for a LOCAL model - it sizes the KV cache
-    at load); else the large fallback.  "75% full" means nothing until we know
-    75% of what, and a wrong denominator mis-scales every number on the gauge.
+    Order:
 
-    (The design's second rung - learning the ceiling from the server's own
-    HTTP 400 "model maximum context length: N" - belongs to step 2 and is
-    deliberately not implemented here.)
+    1. An explicit ``context_ceiling_tokens`` wins - the operator said so.
+    2. **When the model is known, ask Ollama itself** (``POST /api/show`` ->
+       ``model_info["<arch>.context_length"]``).  For a ``:cloud`` model that
+       IS the limit - ``num_ctx`` is a proven no-op there (a 263,159-token
+       prompt sent with ``num_ctx=8192`` was answered in full).  For a LOCAL
+       model the KV cache is sized by ``num_ctx`` at load, so the real limit is
+       the SMALLER of the two.  Cached per (server, model); never called on a
+       request thread - only the meter's worker and the at-rest probe get here.
+    3. ``ollama_num_ctx`` (real for a local model, meaningless for cloud - and
+       labelled so when the model is known to be cloud).
+    4. The large fallback.
+
+    "75% full" means nothing until we know 75% of WHAT; a wrong denominator
+    mis-scales every number on the gauge.  Called without ``model`` this
+    behaves exactly as it always did - no network, ever.
     """
     try:
         cfg: Dict[str, Any] = config if isinstance(config, dict) else {}
@@ -227,7 +322,25 @@ def resolve_ceiling_tokens(config: Any, settings: Optional[GovernorSettings] = N
         if s.ceiling_tokens > 0:
             return s.ceiling_tokens, "config"
         num_ctx = _as_int(cfg.get("ollama_num_ctx"), 0, minimum=1)
+        name = str(model or "").strip()
+        if name and s.ceiling_from_backend:
+            base = str(base_url or cfg.get("ollama_base_url") or "").strip()
+            info = _ollama_show_info(
+                name, base, token=str(cfg.get("ollama_token") or ""),
+                timeout=s.show_timeout_seconds,
+            )
+            ctx_len = int(info.get("context_length") or 0)
+            if ctx_len > 0:
+                if is_cloud_model(name, info):
+                    return ctx_len, "ollama /api/show"
+                if 0 < num_ctx < ctx_len:
+                    return num_ctx, "ollama_num_ctx (< /api/show %d)" % ctx_len
+                return ctx_len, "ollama /api/show"
         if num_ctx > 0:
+            if name and is_cloud_model(name):
+                # Honest label: for a cloud model this number was NOT
+                # confirmed by the server and num_ctx does not bind it.
+                return num_ctx, "ollama_num_ctx (unverified: cloud ignores num_ctx)"
             return num_ctx, "ollama_num_ctx"
     except Exception:  # noqa: BLE001
         pass
@@ -364,6 +477,34 @@ def _message_wire(message: Any) -> Tuple[int, int]:
             return 0, 0
 
 
+def _context_span(text: str) -> Tuple[int, int]:
+    """``(chars, utf8_bytes)`` of the project-context blocks inside ``text``.
+
+    Finds every CONTEXT_BLOCKS opening and the FIRST matching close after it.
+    Raw text (what the model reads), not the JSON-escaped wire form.  Never
+    raises; no block -> ``(0, 0)``.
+    """
+    chars = 0
+    size = 0
+    try:
+        if not text:
+            return 0, 0
+        for opener, closer in CONTEXT_BLOCKS:
+            start = text.find(opener)
+            while start >= 0:
+                body_start = start + len(opener)
+                end = text.find(closer, body_start)
+                if end < 0:
+                    break
+                body = text[body_start:end]
+                chars += len(body)
+                size += len(body.encode("utf-8"))
+                start = text.find(opener, end + len(closer))
+    except Exception:  # noqa: BLE001
+        return 0, 0
+    return chars, size
+
+
 def _bucket(messages: Iterable[Any]) -> Tuple[int, int, int]:
     """Return ``(wire_bytes, prompt_chars, count)`` for a slice of the list."""
     total_bytes = 0
@@ -386,6 +527,8 @@ def measure(
     extra_prefix_chars: Optional[int] = None,
     config: Any = None,
     settings: Optional[GovernorSettings] = None,
+    model: str = "",
+    base_url: str = "",
 ) -> Measurement:
     """Measure what this model step is about to send.  **Never raises.**
 
@@ -406,6 +549,7 @@ def measure(
         start = max(head, min(loop_start_index if loop_start_index > 0 else n, n))
 
         p_bytes, p_chars, _ = _bucket(items[:head])
+        plan_bytes, _plan_chars, _ = _bucket(items[1:head])
         h_bytes, h_chars, _ = _bucket(items[head:start])
         l_bytes, l_chars, l_count = _bucket(items[start:])
 
@@ -424,7 +568,15 @@ def measure(
         total_chars = p_chars + h_chars + l_chars + extra_chars
 
         tokens = int(total_chars / CHARS_PER_TOKEN) if total_chars > 0 else 0
-        ceiling, source = resolve_ceiling_tokens(config, s)
+        ctx_chars = 0
+        ctx_bytes = 0
+        for message in items:
+            c_chars, c_bytes = _context_span(_message_text(message))
+            ctx_chars += c_chars
+            ctx_bytes += c_bytes
+        ceiling, source = resolve_ceiling_tokens(
+            config, s, model=model, base_url=base_url
+        )
         ratio = (tokens / ceiling) if ceiling > 0 else 0.0
         return Measurement(
             prefix_bytes=prefix_bytes,
@@ -440,6 +592,10 @@ def measure(
             messages_count=n,
             loop_messages=l_count,
             ok=True,
+            context_bytes=ctx_bytes,
+            context_chars=ctx_chars,
+            model=str(model or ""),
+            plan_bytes=plan_bytes,
         )
     except Exception:  # noqa: BLE001 - measurement must never break a request
         return Measurement(ok=False)
@@ -498,6 +654,8 @@ def gauge_payload(measurement: Measurement, settings: Optional[GovernorSettings]
             "ok": bool(measurement.ok),
             "bytes_total": int(measurement.total_bytes),
             "bytes_prefix": int(measurement.prefix_bytes),
+            # Of bytes_prefix: the per-question planner plan (0 when none).
+            "bytes_plan": int(measurement.plan_bytes),
             "bytes_history": int(measurement.history_bytes),
             "bytes_loop": int(measurement.loop_bytes),
             "bytes_human": humanize_bytes(measurement.total_bytes),
@@ -510,6 +668,17 @@ def gauge_payload(measurement: Measurement, settings: Optional[GovernorSettings]
             "messages": int(measurement.messages_count),
             "loop_messages": int(measurement.loop_messages),
             "label": str(label or ""),
+            # The project context inside this request (measured, raw UTF-8).
+            "bytes_context": int(measurement.context_bytes),
+            "chars_context": int(measurement.context_chars),
+            "model": str(measurement.model or ""),
+            # REAL tokens arrive later from Ollama itself (prompt_eval_count)
+            # and are merged by apply_real_tokens().  Until then the frame is
+            # an ESTIMATE and says so - the GUI must never show it as real.
+            "tokens_real": None,
+            "ratio_is_real": False,
+            "ratio_estimated": round(float(measurement.ratio), 6),
+            "tokens_source": "estimate (chars / %g)" % CHARS_PER_TOKEN,
             "watermarks": {
                 "compact": s.watermark_compact,
                 "fold": s.watermark_fold,
@@ -614,6 +783,15 @@ class MeterSample:
     extra_prefix_chars: Optional[int] = None
     config: Any = None
     settings: Optional[GovernorSettings] = None
+    # 2026-09-28: pairing with Ollama's REAL count.  ``seq`` identifies this
+    # exact request so the prompt_eval_count that comes back for it lands on
+    # the right frame; ``kind`` is "live" (being sent now) or "rest" (the
+    # request the NEXT message would send, measured while idle).
+    seq: int = 0
+    model: str = ""
+    base_url: str = ""
+    kind: str = "live"
+    note: str = ""
 
 
 class ContextMeter:
@@ -729,16 +907,27 @@ class ContextMeter:
             extra_prefix_chars=sample.extra_prefix_chars,
             config=sample.config,
             settings=settings,
+            model=sample.model,
+            base_url=sample.base_url,
         )
         with self._cond:
             self._measured += 1
             self._last = measurement
         if settings.log_each:
             print(format_log_line(measurement, sample.label))
+        if sample.kind == KIND_SIDE:
+            # Not Tlamatini's main inference (an ACPX child's prompt, say):
+            # logged for the record, NEVER shown on the ring - the ring is the
+            # main chain's request and nothing else (Angela, 2026-09-28).
+            return
         if settings.gauge_enabled:
             payload = gauge_payload(measurement, settings, sample.label)
             payload["source"] = sample.source or "model"
-            publish_gauge(sample.user_id, payload)
+            payload["seq"] = int(sample.seq or 0)
+            payload["kind"] = str(sample.kind or "live")
+            if sample.note:
+                payload["note"] = str(sample.note)
+            _remember_and_publish(sample.user_id, payload, settings)
 
     # ── introspection (tests, diagnostics) ──────────────────────────────
     def stats(self) -> Dict[str, Any]:
@@ -821,6 +1010,11 @@ def measure_async(
     config: Any = None,
     settings: Optional[GovernorSettings] = None,
     meter: Optional[ContextMeter] = None,
+    seq: Optional[int] = None,
+    model: str = "",
+    base_url: str = "",
+    kind: str = "live",
+    note: str = "",
 ) -> bool:
     """**The one entry point every model call site uses.**
 
@@ -857,7 +1051,597 @@ def measure_async(
             extra_prefix_chars=extra_prefix_chars,
             config=config,
             settings=settings,
+            # Pass the SAME number to report_real_usage() when Ollama answers,
+            # or the real count cannot be paired with this frame.
+            seq=int(seq) if seq else next_seq(),
+            model=str(model or ""),
+            base_url=str(base_url or ""),
+            kind=str(kind or "live"),
+            note=str(note or ""),
         )
     except Exception:  # noqa: BLE001
         return False
     return (meter or METER).submit(sample)
+
+
+# ══ REAL TOKENS - Ollama's own counts (2026-09-28) ═══════════════════════════
+# Angela, 2026-09-28: *"make that gauge counter to be real, NOT FAKE ... this is
+# going to be metered by NVIDIA/INTEL/CISCO systems in real executions, SO
+# BETTER YOU DONT LIE!"*
+#
+# Everything above ESTIMATES tokens (chars / 4) because it runs BEFORE the
+# request leaves.  Ollama reports the real number AFTER: every /api/chat and
+# /api/generate reply carries ``prompt_eval_count`` (prompt tokens the server
+# evaluated - system prompt, tool schemas, history, context, question, all of
+# it, after the model's own chat template) and ``eval_count`` (tokens it
+# generated).  Ollama has NO /api/tokenize (measured: HTTP 404), so that reply
+# is the only real count it exposes - and it is the one used here.
+#
+# CONTRACTS (do NOT weaken):
+#   1. A number is shown as REAL only when it came from Ollama's own reply.
+#      Every frame says which: ``ratio_is_real`` + ``tokens_source``.
+#   2. A real count is PAIRED to the exact request that produced it by
+#      ``seq``.  A count for an older request never overwrites the frame of a
+#      newer one - it only updates ``last_real``.
+#   3. FAIL OPEN.  A missing / malformed count leaves the estimate in place,
+#      still labelled an estimate.  Nothing here raises into a caller.
+#   4. Stdlib only; /api/show is plain urllib, cached, and never called on a
+#      request thread (only the meter worker and the at-rest probe reach it).
+
+_SEQ_LOCK = threading.Lock()
+_SEQ_COUNTER = [0]
+
+
+def next_seq() -> int:
+    """A process-wide, strictly increasing request number.  Never raises."""
+    with _SEQ_LOCK:
+        _SEQ_COUNTER[0] += 1
+        return _SEQ_COUNTER[0]
+
+
+def _nonneg_int(value: Any) -> Optional[int]:
+    try:
+        if value is None or isinstance(value, bool):
+            return None
+        out = int(value)
+    except (TypeError, ValueError):
+        return None
+    return out if out >= 0 else None
+
+
+# ── The model's real context length (the denominator) ─────────────────────────
+_SHOW_CACHE: "Dict[Tuple[str, str], Tuple[float, Dict[str, Any]]]" = {}
+_SHOW_LOCK = threading.Lock()
+_SHOW_TTL_OK_SECONDS = 3600.0     # a model's context length does not change
+_SHOW_TTL_FAIL_SECONDS = 60.0     # ...but a server that was down may come back
+
+
+def is_cloud_model(model: str, info: Optional[Dict[str, Any]] = None) -> bool:
+    """Ollama cloud models are tagged ``:cloud`` or ``:<size>-cloud``.
+
+    ``/api/show`` does not say so (``remote_host`` came back ``null`` for
+    ``glm-5.3:cloud``, measured 2026-09-28), so the tag is the evidence.
+    """
+    try:
+        if info and info.get("remote_host"):
+            return True
+        tag = str(model or "").strip().lower()
+        if ":" in tag:
+            tag = tag.rsplit(":", 1)[1]
+        return tag == "cloud" or tag.endswith("-cloud")
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _ollama_show_info(
+    model: str,
+    base_url: str = "",
+    *,
+    token: str = "",
+    timeout: float = DEFAULT_SHOW_TIMEOUT_SECONDS,
+) -> Dict[str, Any]:
+    """``POST /api/show`` -> ``{"context_length": int, "remote_host": ...}``.
+
+    Cached per (server, model).  Returns ``{}`` on any failure.  The token is
+    sent as a Bearer header exactly as the chat client sends it, and is never
+    printed.
+    """
+    name = str(model or "").strip()
+    if not name:
+        return {}
+    base = (str(base_url or "").strip() or "http://127.0.0.1:11434").rstrip("/")
+    key = (base, name)
+    now = time.monotonic()
+    with _SHOW_LOCK:
+        hit = _SHOW_CACHE.get(key)
+        if hit is not None and hit[0] > now:
+            return dict(hit[1])
+    info: Dict[str, Any] = {}
+    ctx_len = 0
+    error = ""
+    try:
+        headers = {"Content-Type": "application/json"}
+        tok = str(token or "").strip()
+        if tok and not tok.startswith("<"):       # "<KEY goes here>" = no key
+            headers["Authorization"] = "Bearer " + tok
+        request = urllib.request.Request(
+            base + "/api/show",
+            data=json.dumps({"model": name}).encode("utf-8"),
+            headers=headers,
+            method="POST",
+        )
+        with urllib.request.urlopen(request, timeout=max(1.0, float(timeout or 4.0))) as resp:
+            data = json.loads(resp.read().decode("utf-8", "replace") or "{}")
+        model_info = data.get("model_info") or {}
+        if isinstance(model_info, dict):
+            for k, v in model_info.items():
+                if str(k).endswith(".context_length"):
+                    n = _nonneg_int(v) or 0
+                    ctx_len = max(ctx_len, n)
+        info = {
+            "context_length": ctx_len,
+            "remote_host": data.get("remote_host"),
+            "family": str((data.get("details") or {}).get("family") or ""),
+        }
+    except Exception as exc:  # noqa: BLE001 - fail open to config/fallback
+        error = type(exc).__name__
+        info = {}
+    ok = ctx_len > 0
+    with _SHOW_LOCK:
+        _SHOW_CACHE[key] = (
+            now + (_SHOW_TTL_OK_SECONDS if ok else _SHOW_TTL_FAIL_SECONDS),
+            dict(info),
+        )
+    try:
+        if ok:
+            print(f"--- [CONTEXT-CEILING] {name}: context_length {ctx_len} "
+                  f"(REAL, from {base}/api/show)")
+        else:
+            print(f"--- [CONTEXT-CEILING] {name}: /api/show gave no context_length"
+                  f"{' (' + error + ')' if error else ''} - using config / fallback")
+    except Exception:  # noqa: BLE001
+        pass
+    return info
+
+
+def ollama_context_length(
+    model: str,
+    base_url: str = "",
+    *,
+    token: str = "",
+    timeout: float = DEFAULT_SHOW_TIMEOUT_SECONDS,
+) -> int:
+    """The model's own context length from Ollama, or 0 when unknown."""
+    try:
+        return int(_ollama_show_info(model, base_url, token=token, timeout=timeout)
+                   .get("context_length") or 0)
+    except Exception:  # noqa: BLE001
+        return 0
+
+
+# ── Reading Ollama's counts out of a LangChain result ────────────────────────
+def usage_from_llm_result(obj: Any) -> Optional[Dict[str, Any]]:
+    """Ollama's own ``prompt_eval_count`` / ``eval_count`` from a result.
+
+    Accepts an ``LLMResult`` (callbacks), an ``AIMessage`` (a chat model's
+    return value) or Ollama's raw reply dict.  Duck-typed: this module never
+    imports langchain.  Returns ``None`` when no real count is present - the
+    caller must then keep the estimate, labelled as one.
+    """
+    try:
+        infos = []
+        messages = []
+        if isinstance(obj, dict):
+            infos.append(obj)
+        else:
+            gens = getattr(obj, "generations", None)
+            if isinstance(gens, (list, tuple)) and gens:
+                first = gens[0]
+                if isinstance(first, (list, tuple)):
+                    first = first[0] if first else None
+                if first is not None:
+                    gen_info = getattr(first, "generation_info", None)
+                    if isinstance(gen_info, dict):
+                        infos.append(gen_info)
+                    msg = getattr(first, "message", None)
+                    if msg is not None:
+                        messages.append(msg)
+            else:
+                messages.append(obj)
+        for msg in messages:
+            meta = getattr(msg, "response_metadata", None)
+            if isinstance(meta, dict):
+                infos.append(meta)
+        for info in infos:
+            prompt = _nonneg_int(info.get("prompt_eval_count"))
+            if prompt is not None:
+                return {
+                    "prompt_tokens": prompt,
+                    "completion_tokens": _nonneg_int(info.get("eval_count")),
+                    "model": str(info.get("model") or ""),
+                    "field": "prompt_eval_count",
+                }
+        for msg in messages:
+            usage = getattr(msg, "usage_metadata", None)
+            if isinstance(usage, dict):
+                prompt = _nonneg_int(usage.get("input_tokens"))
+                if prompt is not None:
+                    return {
+                        "prompt_tokens": prompt,
+                        "completion_tokens": _nonneg_int(usage.get("output_tokens")),
+                        "model": "",
+                        "field": "usage_metadata.input_tokens",
+                    }
+    except Exception:  # noqa: BLE001
+        return None
+    return None
+
+
+# ── Frames, pairing, and the last real count ─────────────────────────────────
+_REAL_LOCK = threading.Lock()
+_LAST_FRAME: "Dict[Any, Dict[str, Any]]" = {}
+_PENDING_REAL: "Dict[Tuple[Any, int], Dict[str, Any]]" = {}
+_LAST_REAL: "Dict[Any, Dict[str, Any]]" = {}
+_RUN_SEQ: "Dict[str, Tuple[Any, int]]" = {}
+_TURNS: "Dict[Any, Dict[str, Any]]" = {}
+_PENDING_LIMIT = 64
+_RUN_SEQ_LIMIT = 256
+
+
+def _settings_from_watermarks(payload: Dict[str, Any]) -> GovernorSettings:
+    wm = payload.get("watermarks") or {}
+    try:
+        return GovernorSettings(
+            watermark_compact=float(wm.get("compact", DEFAULT_WATERMARK_COMPACT)),
+            watermark_fold=float(wm.get("fold", DEFAULT_WATERMARK_FOLD)),
+            watermark_floor=float(wm.get("floor", DEFAULT_WATERMARK_FLOOR)),
+        )
+    except Exception:  # noqa: BLE001
+        return GovernorSettings()
+
+
+def apply_real_tokens(payload: Dict[str, Any], real: Dict[str, Any]) -> Dict[str, Any]:
+    """Merge Ollama's own count into a frame (in place).  Never raises.
+
+    From here on the ring, the percentage and the zone are computed from the
+    REAL count.  The estimate stays in the frame beside it, with the error
+    between the two, so anyone can check the arithmetic.
+    """
+    try:
+        prompt = _nonneg_int((real or {}).get("prompt_tokens"))
+        if prompt is None:
+            return payload
+        payload["tokens_real"] = prompt
+        payload["completion_tokens_real"] = _nonneg_int(real.get("completion_tokens"))
+        payload["ratio_is_real"] = True
+        payload["tokens_source"] = "Ollama " + str(real.get("field") or "prompt_eval_count")
+        payload["real_model"] = str(real.get("model") or payload.get("model") or "")
+        ceiling = int(payload.get("ceiling_tokens") or 0)
+        if ceiling > 0:
+            ratio = prompt / float(ceiling)
+            payload["ratio"] = round(ratio, 6)
+            payload["zone"] = zone_for(ratio, _settings_from_watermarks(payload))
+        estimate = int(payload.get("tokens_estimated") or 0)
+        if prompt > 0:
+            payload["estimate_error_pct"] = round((estimate - prompt) * 100.0 / prompt, 2)
+    except Exception:  # noqa: BLE001
+        pass
+    return payload
+
+
+def _turn_snapshot_locked(user_id: Any) -> Optional[Dict[str, Any]]:
+    turn = _TURNS.get(user_id)
+    if not turn:
+        return None
+    snap = dict(turn)
+    snap["models"] = {k: dict(v) for k, v in (turn.get("models") or {}).items()}
+    return snap
+
+
+def _format_real_line(payload: Optional[Dict[str, Any]], real: Dict[str, Any]) -> str:
+    try:
+        label = str(real.get("label") or (payload or {}).get("label") or "")
+        where = f" [{label}]" if label else ""
+        prompt = int(real.get("prompt_tokens") or 0)
+        completion = real.get("completion_tokens")
+        head = (f"--- [CONTEXT-REAL]{where} seq={real.get('seq')} "
+                f"model={real.get('model') or (payload or {}).get('model') or '?'} "
+                f"prompt_eval_count={prompt} eval_count="
+                f"{completion if completion is not None else '?'}")
+        if not payload:
+            return head + " | estimate for this request not measured yet"
+        est = int(payload.get("tokens_estimated") or 0)
+        err = payload.get("estimate_error_pct")
+        ceiling = int(payload.get("ceiling_tokens") or 0)
+        pct = (prompt * 100.0 / ceiling) if ceiling else 0.0
+        return (f"{head} | estimate {est} "
+                f"({'%+.2f%%' % err if err is not None else 'n/a'}) | "
+                f"{prompt} of {ceiling} ({payload.get('ceiling_source')}) = "
+                f"{pct:.2f}% REAL | {payload.get('kind', 'live')}")
+    except Exception:  # noqa: BLE001
+        return "--- [CONTEXT-REAL] (unformattable)"
+
+
+def _remember_and_publish(user_id: Any, payload: Dict[str, Any],
+                          settings: Optional[GovernorSettings] = None) -> bool:
+    """Store a fresh frame as this user's latest and publish it.
+
+    Merges a real count that arrived BEFORE the measurement finished, attaches
+    ``last_real`` and the current turn's totals, and refuses to let an older
+    frame replace a newer one.  Never raises.
+    """
+    try:
+        seq = int(payload.get("seq") or 0)
+        use_real = settings is None or settings.real_tokens
+        with _REAL_LOCK:
+            prev = _LAST_FRAME.get(user_id)
+            if prev is not None and seq and int(prev.get("seq") or 0) > seq:
+                return False                     # a newer frame is already showing
+            real = _PENDING_REAL.pop((user_id, seq), None) if seq else None
+            for key in [k for k in _PENDING_REAL if k[0] == user_id and k[1] < seq]:
+                _PENDING_REAL.pop(key, None)     # superseded, never measured
+            last_real = dict(_LAST_REAL[user_id]) if user_id in _LAST_REAL else None
+            turn = _turn_snapshot_locked(user_id)
+        if real and use_real:
+            apply_real_tokens(payload, real)
+            print(_format_real_line(payload, real))
+        if last_real:
+            payload["last_real"] = last_real
+        if turn:
+            payload["turn"] = turn
+        with _REAL_LOCK:
+            _LAST_FRAME[user_id] = payload
+        return publish_gauge(user_id, dict(payload))
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _republish_latest(user_id: Any) -> bool:
+    """Re-send this user's newest frame with fresh ``last_real`` / ``turn``."""
+    try:
+        with _REAL_LOCK:
+            frame = _LAST_FRAME.get(user_id)
+            if frame is None:
+                return False
+            frame = dict(frame)
+            if user_id in _LAST_REAL:
+                frame["last_real"] = dict(_LAST_REAL[user_id])
+            turn = _turn_snapshot_locked(user_id)
+            if turn:
+                frame["turn"] = turn
+            _LAST_FRAME[user_id] = frame
+        return publish_gauge(user_id, dict(frame))
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def latest_frame(user_id: Any) -> Optional[Dict[str, Any]]:
+    """The newest frame published for ``user_id`` (a copy), or None."""
+    with _REAL_LOCK:
+        frame = _LAST_FRAME.get(user_id)
+        return dict(frame) if frame is not None else None
+
+
+def report_real_usage(
+    user_id: Any,
+    seq: Any,
+    prompt_tokens: Any,
+    completion_tokens: Any = None,
+    *,
+    model: str = "",
+    label: str = "",
+    field_name: str = "prompt_eval_count",
+    config: Any = None,
+) -> bool:
+    """Ollama answered request ``seq``: attach its REAL prompt count.
+
+    Returns whether the count was accepted.  Never raises.
+    """
+    try:
+        if user_id is None:
+            user_id = current_user()
+        prompt = _nonneg_int(prompt_tokens)
+        seq_i = int(seq or 0)
+        if user_id is None or prompt is None or seq_i <= 0:
+            return False
+        settings = resolve_settings(config) if config is not None else GovernorSettings()
+        if not settings.real_tokens:
+            return False
+        real = {
+            "prompt_tokens": prompt,
+            "completion_tokens": _nonneg_int(completion_tokens),
+            "model": str(model or ""),
+            "label": str(label or ""),
+            "field": str(field_name or "prompt_eval_count"),
+            "seq": seq_i,
+            "at": time.time(),
+        }
+        merged = None
+        with _REAL_LOCK:
+            _LAST_REAL[user_id] = {
+                "tokens": prompt,
+                "completion_tokens": real["completion_tokens"],
+                "model": real["model"],
+                "label": real["label"],
+                "seq": seq_i,
+                "at": real["at"],
+            }
+            frame = _LAST_FRAME.get(user_id)
+            frame_seq = int(frame.get("seq") or 0) if frame is not None else 0
+            if frame is not None and frame_seq == seq_i:
+                merged = dict(frame)
+            elif frame_seq < seq_i:
+                # Its measurement has not been published yet: park it; the
+                # worker merges it the moment that frame is ready.
+                _PENDING_REAL[(user_id, seq_i)] = real
+                while len(_PENDING_REAL) > _PENDING_LIMIT:
+                    _PENDING_REAL.pop(next(iter(_PENDING_REAL)), None)
+        if merged is not None:
+            apply_real_tokens(merged, real)
+            print(_format_real_line(merged, real))
+            with _REAL_LOCK:
+                if int((_LAST_FRAME.get(user_id) or {}).get("seq") or 0) == seq_i:
+                    merged["last_real"] = dict(_LAST_REAL[user_id])
+                    turn = _turn_snapshot_locked(user_id)
+                    if turn:
+                        merged["turn"] = turn
+                    _LAST_FRAME[user_id] = merged
+                else:
+                    merged = None
+            if merged is not None:
+                publish_gauge(user_id, dict(merged))
+                return True
+        else:
+            print(_format_real_line(None, real))
+        _republish_latest(user_id)
+        return True
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def note_run_seq(run_id: Any, seq: Any, user_id: Any = None) -> None:
+    """Remember which frame a LangChain run (``run_id``) belongs to.
+
+    The one-shot chains measure in ``on_chat_model_start`` and learn Ollama's
+    count in ``on_llm_end``; the run id is the only thing the two callbacks
+    share.  Bounded; never raises.
+    """
+    try:
+        if run_id is None or not seq:
+            return
+        uid = user_id if user_id is not None else current_user()
+        with _REAL_LOCK:
+            _RUN_SEQ[str(run_id)] = (uid, int(seq))
+            while len(_RUN_SEQ) > _RUN_SEQ_LIMIT:
+                _RUN_SEQ.pop(next(iter(_RUN_SEQ)), None)
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def report_run_usage(run_id: Any, usage: Optional[Dict[str, Any]], label: str = "") -> bool:
+    """Pair a finished LangChain run's real count with its frame, if any."""
+    try:
+        if run_id is None or not usage:
+            return False
+        with _REAL_LOCK:
+            hit = _RUN_SEQ.pop(str(run_id), None)
+        if hit is None:
+            return False
+        uid, seq = hit
+        return report_real_usage(
+            uid, seq, usage.get("prompt_tokens"), usage.get("completion_tokens"),
+            model=str(usage.get("model") or ""), label=label,
+            field_name=str(usage.get("field") or "prompt_eval_count"),
+        )
+    except Exception:  # noqa: BLE001
+        return False
+
+
+# ── Per-answer totals: every Ollama call a chat turn makes ────────────────────
+# One answer is rarely one call: the internet / access classifiers, the
+# history summarizer, the system-metrics and file-search sidecars, and every
+# Multi-Turn step each send their own prompt.  The gauge ring shows the size
+# of ONE request; this is what the whole answer really cost, call by call, in
+# Ollama's own numbers.  Workflow agents run as separate processes and meter
+# themselves - they are NOT in these totals, and the GUI says so.
+
+def begin_turn(user_id: Any = None, label: str = "") -> None:
+    """Start counting a new answer for ``user_id``.  Never raises."""
+    try:
+        uid = user_id if user_id is not None else current_user()
+        if uid is None:
+            return
+        with _REAL_LOCK:
+            _TURNS[uid] = {
+                "label": str(label or ""),
+                "started_at": time.time(),
+                "open": True,
+                "calls": 0,
+                "prompt_tokens": 0,
+                "completion_tokens": 0,
+                "largest_prompt": 0,
+                "models": {},
+            }
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def record_call_usage(
+    prompt_tokens: Any,
+    completion_tokens: Any = None,
+    *,
+    user_id: Any = None,
+    model: str = "",
+    source: str = "",
+) -> bool:
+    """Add ONE real Ollama call to the current answer's totals.  Never raises."""
+    try:
+        prompt = _nonneg_int(prompt_tokens)
+        if prompt is None:
+            return False
+        completion = _nonneg_int(completion_tokens) or 0
+        uid = user_id if user_id is not None else current_user()
+        name = str(model or "?")
+        line = (f"--- [CONTEXT-CALL] {name} prompt_eval_count={prompt} "
+                f"eval_count={completion} ({source or 'ollama'})")
+        if uid is None:
+            print(line + " | no user bound - not attributed to an answer")
+            return False
+        with _REAL_LOCK:
+            turn = _TURNS.get(uid)
+            if turn is None:
+                turn = {
+                    "label": "", "started_at": time.time(), "open": True,
+                    "calls": 0, "prompt_tokens": 0, "completion_tokens": 0,
+                    "largest_prompt": 0, "models": {},
+                }
+                _TURNS[uid] = turn
+            turn["calls"] += 1
+            turn["prompt_tokens"] += prompt
+            turn["completion_tokens"] += completion
+            turn["largest_prompt"] = max(int(turn.get("largest_prompt") or 0), prompt)
+            per = turn["models"].setdefault(
+                name, {"calls": 0, "prompt_tokens": 0, "completion_tokens": 0}
+            )
+            per["calls"] += 1
+            per["prompt_tokens"] += prompt
+            per["completion_tokens"] += completion
+            totals = (turn["calls"], turn["prompt_tokens"], turn["completion_tokens"])
+        print(f"{line} | answer so far: {totals[0]} call(s), "
+              f"{totals[1]} prompt + {totals[2]} output tokens (REAL)")
+        _republish_latest(uid)
+        return True
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def turn_totals(user_id: Any = None) -> Optional[Dict[str, Any]]:
+    """A copy of the current answer's totals, or None."""
+    try:
+        uid = user_id if user_id is not None else current_user()
+        with _REAL_LOCK:
+            return _turn_snapshot_locked(uid)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def end_turn(user_id: Any = None) -> Optional[Dict[str, Any]]:
+    """Close the answer's totals, log them once, and return them."""
+    try:
+        uid = user_id if user_id is not None else current_user()
+        with _REAL_LOCK:
+            turn = _TURNS.get(uid)
+            if turn is None:
+                return None
+            turn["open"] = False
+            turn["ended_at"] = time.time()
+            snap = _turn_snapshot_locked(uid)
+        seconds = (snap.get("ended_at", 0) - snap.get("started_at", 0)) if snap else 0
+        print(f"--- [CONTEXT-TURN] answer finished: {snap['calls']} Ollama call(s), "
+              f"{snap['prompt_tokens']} prompt + {snap['completion_tokens']} output "
+              f"tokens (REAL, prompt_eval_count/eval_count), largest single prompt "
+              f"{snap['largest_prompt']}, {seconds:.1f} s")
+        _republish_latest(uid)
+        return snap
+    except Exception:  # noqa: BLE001
+        return None

@@ -574,13 +574,15 @@ class AcpSession:
                 }) + "\n")
                 transcript.flush()
 
-            # ── The gauge counts ACPX too (Angela, 2026-09-21) ──
-            # A prompt handed to an external coding-agent CLI is a model call
-            # like any other, and these are the BIG ones - a relay leg carries
-            # a whole research briefing. Snapshot and signal only; the meter's
-            # worker does the arithmetic on its own thread. Imported lazily and
-            # fail-open so ACPX keeps working headless, outside Django, exactly
-            # as it does today.
+            # ── ACPX prompts are LOGGED, never put on the ring ──
+            # A prompt handed to an external coding-agent CLI goes to ANOTHER
+            # model, not to Tlamatini's own inference. The 2026-09-21 version
+            # put it on the ring; on 2026-09-28 Angela ruled the ring shows
+            # ONLY the main chain ("JUST THE METERING MUST BE IN THE MODEL OF
+            # THE MAIN CONNECTION CHAIN FROM TLAMATINI"), so it is measured as
+            # kind="side": one [CONTEXT] log line, no gauge frame. Snapshot and
+            # signal only; lazy, fail-open import so ACPX keeps working
+            # headless, outside Django.
             try:
                 from ..context_governor import measure_async as _ctx_measure_async
                 _ctx_measure_async(
@@ -588,6 +590,7 @@ class AcpSession:
                     label=f"acpx {self.spec.agent_id}",
                     source="acpx",
                     prefix_message_count=0,
+                    kind="side",
                 )
             except Exception:  # noqa: BLE001 - the gauge owes the child nothing
                 pass

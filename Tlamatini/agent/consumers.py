@@ -146,6 +146,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
             )
             await self.accept()
             print("--- WebSocket connection accepted and successful.")
+            self._ensure_connection_gauge_sink(user.id)
 
         except Exception as e:
             print(f"!!! CONNECTION FAILED: {e}")
@@ -205,6 +206,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
             for skill in skills:
                 await self.skill_establishment(skill['name'], skill['description'], 'true' if skill['enabled'] else 'false')
             print("--- Skills re-established on session restore")
+            self._schedule_context_gauge_refresh("session restored")
         else:
             # No existing RAG chain - check session state for context to restore
             if user and user.is_authenticated:
@@ -398,6 +400,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                                 {'type': 'agent_message', 'message': constants.MSG_OVERSIZED_DOCS_WARNING, 'username': 'Tlamatini'}
                             )
                     print("--- Bot ready message broadcast to room.")
+                    self._schedule_context_gauge_refresh(self._take_gauge_reason("agent ready"))
                     return
             except Exception as e:
                 print(f"!!! ERROR during RAG chain setup: {e}")
@@ -576,6 +579,8 @@ class AgentConsumer(AsyncWebsocketConsumer):
                                 {'type': 'agent_message', 'message': detected_oversized_docs_warning, 'username': 'Tlamatini'}
                             )
                     print("--- Bot ready message broadcast to room.")
+                    self._gauge_reason = None
+                    self._schedule_context_gauge_refresh("context loaded")
                     return not isinstance(self.rag_chain, BasicPromptOnlyChain)
             except Exception as e:
                 print(f"!!! ERROR during Contextual RAG chain setup: {e}")
@@ -697,6 +702,15 @@ class AgentConsumer(AsyncWebsocketConsumer):
         if self.heartbeat_task is not None:
             self.heartbeat_task.cancel()
             self.heartbeat_task = None
+        # The connection's gauge sink goes with the socket - identity-guarded,
+        # so another open tab of the same user keeps its own.
+        try:
+            if getattr(self, '_gauge_emit', None) is not None:
+                from .context_governor import unregister_gauge_sink
+                unregister_gauge_sink(self._gauge_user_id, self._gauge_emit)
+                self._gauge_emit = None
+        except Exception as exc:  # noqa: BLE001 — teardown must never raise
+            print(f"--- [CONTEXT] gauge sink teardown skipped: {exc}")
 
         if self.room_group_name:
             await self.channel_layer.group_discard(   # type: ignore
@@ -781,6 +795,13 @@ class AgentConsumer(AsyncWebsocketConsumer):
             register_gauge_sink(broker_key, _emit_context_gauge)
             gauge_registered = True
             _gauge_user_token = bind_user(broker_key)
+            # This answer's REAL Ollama totals start here; while the turn is
+            # open the at-rest gauge refresh stands aside (a live request owns
+            # the ring).  Remember the toolbar flags for later at-rest rebuilds.
+            from .context_governor import begin_turn
+            begin_turn(broker_key, label=str(message or "")[:80])
+            self._gauge_flags = (bool(multi_turn_enabled), bool(acpx_enabled),
+                                 bool(step_by_step_enabled))
 
             # ── Self-healing LIVE status broadcaster (Angela, 2026-07-06) ──
             # The multi-turn executor's self-healing invoker pushes first-person
@@ -959,12 +980,20 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 from .self_healing import unregister_status_broadcaster
                 unregister_status_broadcaster(broker_key, _emit_status)
             if gauge_registered:
+                # Close this answer's REAL totals (logged once) while the sink
+                # can still deliver the final frame.
+                from .context_governor import end_turn
+                end_turn(broker_key)
                 # Pass the SPECIFIC emit so a finishing request cannot tear
                 # down a concurrent same-user request's live sink — two browser
                 # tabs share one user id.
                 from .context_governor import unbind_user, unregister_gauge_sink
                 unregister_gauge_sink(broker_key, _emit_context_gauge)
                 unbind_user(_gauge_user_token)
+                # Hand the ring back to this connection's persistent sink and
+                # show what the NEXT message will send (the history just grew).
+                self._restore_connection_gauge_sink()
+                self._schedule_context_gauge_refresh("answer finished", after_answer=True)
             if _visual_error_token is not None:
                 from .visual_error_reporting import unbind_visual_error_sink
                 unbind_visual_error_sink(_visual_error_token)
@@ -977,6 +1006,96 @@ class AgentConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps({
             'type': 'visual-analysis-error', 'detail': event.get('detail') or {},
         }))
+
+    # ── The context gauge AT REST (Angela, 2026-09-28) ──────────────────────
+    # The meter only measures a request while it is being SENT, so between
+    # messages the ring froze: Clear history, Clear context, loading a context
+    # or reconnecting changed nothing on screen.  These helpers rebuild "what
+    # my NEXT message will send" with the main chain's own code and ask Ollama
+    # for its real prompt_eval_count (agent/context_baseline.py) at every point
+    # where that answer changes.  Per connected user; fail-open everywhere.
+    def _ensure_connection_gauge_sink(self, user_id):
+        """A sink that lives as long as this socket, so at-rest frames reach
+        the page between requests.  Sends the latest frame at once, so a
+        reopened tab shows the current state instead of an empty ring."""
+        try:
+            from .context_governor import latest_frame, register_gauge_sink
+            loop = asyncio.get_running_loop()
+            layer = self.channel_layer
+            room = self.room_group_name
+
+            def _emit(detail):
+                try:
+                    asyncio.run_coroutine_threadsafe(
+                        layer.group_send(room, {'type': 'context_gauge', 'detail': detail}),
+                        loop,
+                    )
+                except Exception as _ge:  # noqa: BLE001 — the gauge is best-effort
+                    print(f"--- [CONTEXT] failed to emit gauge frame: {_ge}")
+
+            self._gauge_emit = _emit
+            self._gauge_user_id = user_id
+            register_gauge_sink(user_id, _emit)
+            frame = latest_frame(user_id)
+            if frame:
+                _emit(frame)
+        except Exception as exc:  # noqa: BLE001
+            print(f"--- [CONTEXT] connection gauge sink not registered ({exc})")
+
+    def _restore_connection_gauge_sink(self):
+        """After a request tears its own sink down, hand the ring back to the
+        connection's sink.  Never raises."""
+        try:
+            emit = getattr(self, '_gauge_emit', None)
+            user_id = getattr(self, '_gauge_user_id', None)
+            if emit is not None and user_id is not None:
+                from .context_governor import register_gauge_sink
+                register_gauge_sink(user_id, emit)
+        except Exception:  # noqa: BLE001
+            pass
+
+    def _take_gauge_reason(self, default):
+        """The reason a pending chain rebuild was started (e.g. "history
+        cleared"), consumed once so the ring can say WHY it changed."""
+        reason = getattr(self, '_gauge_reason', None) or default
+        self._gauge_reason = None
+        return reason
+
+    def _schedule_context_gauge_refresh(self, reason, after_answer=False):
+        """Fire-and-forget: never delays the caller.  Never raises."""
+        try:
+            asyncio.get_running_loop().create_task(
+                self._context_gauge_refresh(reason, after_answer=after_answer)
+            )
+        except Exception as exc:  # noqa: BLE001
+            print(f"--- [CONTEXT-REST] refresh not scheduled ({exc})")
+
+    async def _context_gauge_refresh(self, reason, after_answer=False):
+        try:
+            user = self.scope.get('user')
+            if user is None or not user.is_authenticated:
+                return
+            chain = self.rag_chain or global_state.get_state(f'rag_chain_{user.id}')
+            if chain is None:
+                return
+            history = await self.load_recent_chat_history(user, limit=8)
+            multi_turn, acpx, step_by_step = (
+                getattr(self, '_gauge_flags', None) or (False, False, False)
+            )
+            from .context_baseline import RefreshFlags, probe_settings, schedule_refresh
+            probe = None
+            if after_answer:
+                from .config_loader import load_config as _cfg_loader
+                _cfg = await asyncio.to_thread(_cfg_loader)
+                if not probe_settings(_cfg)["after_answer"]:
+                    probe = False
+            schedule_refresh(
+                user.id, chain, history,
+                RefreshFlags(multi_turn, acpx, step_by_step),
+                str(reason or "refresh"), probe=probe,
+            )
+        except Exception as exc:  # noqa: BLE001 — the gauge owes the chat nothing
+            print(f"--- [CONTEXT-REST] refresh not scheduled ({exc})")
 
     async def context_gauge(self, event):
         """Group handler: forward one context-size measurement to this browser
@@ -1150,6 +1269,22 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 )
                 return
 
+            if type == 'context-gauge-refresh':
+                # The page asks what its NEXT message would send - on load and
+                # whenever a toolbar switch that changes the request flips
+                # (Multi-Turn / ACPX / Step-by-Step).  Remember the switches for
+                # every later at-rest rebuild, then refresh (coalesced per user;
+                # a request in flight owns the ring and is never overwritten).
+                self._gauge_flags = (
+                    bool(text_data_json.get('multi_turn_enabled', False)),
+                    bool(text_data_json.get('acpx_enabled', False)),
+                    bool(text_data_json.get('step_by_step_enabled', False)),
+                )
+                self._restore_connection_gauge_sink()
+                _why = str(text_data_json.get('reason') or 'page request')[:60]
+                self._schedule_context_gauge_refresh(_why)
+                return
+
             if type == 'set-ask-execs-runtime':
                 # The user toggled the "Ask Execs" checkbox WHILE a Multi-Turn
                 # run is in flight. Propagate the new choice to the live broker
@@ -1243,6 +1378,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 return
             if type == 'unset-canvas-as-context':
                 print("--- Received unset-canvas-as-context message from client.")
+                self._gauge_reason = "context cleared"
                 global_state.set_state('chat_hist_summarizer_counter', 0)                
                 asyncio.create_task(self.setup_rag_chain())
                 return
@@ -1416,6 +1552,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     # arrives before the rebuild finishes will hit
                     # "Cannot send a request, as the client has been closed".
                     print("--- [CANCEL] Scheduling RAG chain rebuild (awaiting completion) ---")
+                    self._gauge_reason = "cancelled, agent rebuilt"
                     await self.setup_rag_chain()
 
                     # Step 10: Send confirmation that rebuild is done
@@ -1446,6 +1583,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     global_state.set_state(f'rag_chain_{user_id}', None)
                     global_state.set_state(f'context_path_{user_id}', None)
                     print(f"--- Cleared global_state cache for user {user_id}")
+                    self._gauge_reason = "reconnected"
                     asyncio.create_task(self.setup_rag_chain())
                     print("--- LLM reconnected.")
                     await self.channel_layer.group_send(   # type: ignore
@@ -1476,6 +1614,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                         client = self.rag_chain.getHttpxClientInstance()
                         if client:
                             client.close()
+                    self._gauge_reason = "history cleared"
                     asyncio.create_task(self.setup_rag_chain())
                     print("--- LLM reconnected after history clean.")
                     await self.channel_layer.group_send(   # type: ignore
@@ -1502,6 +1641,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     global_state.set_state(f'rag_chain_{user_id}', None)
                     global_state.set_state(f'context_path_{user_id}', None)
                     print(f"--- Cleared global_state cache for user {user_id}")
+                    self._gauge_reason = "context cleared"
                     asyncio.create_task(self.setup_rag_chain())
                     print("--- LLM context cleaned and reconnected.")
                     await self.channel_layer.group_send(   # type: ignore
@@ -1710,6 +1850,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                      'username': 'Tlamatini'}
                 )
                 print(f"--- Bot message broadcast to room. Touched {touched} skill rows.")
+                self._schedule_context_gauge_refresh("skills changed")
                 return
 
             if re.match(constants.REGEX_GREETING, message, flags=re.IGNORECASE):

@@ -417,8 +417,13 @@ class SourceContractTests(SimpleTestCase):
         self.assertEqual(src.count("self._model_step("), 4,
                          "the four model-call sites must all use the helper")
         # The ONLY remaining direct healer call is the one INSIDE the helper.
+        # (2026-09-28: the helper keeps the response so it can read Ollama's
+        # REAL prompt_eval_count before returning it untouched.)
         self.assertEqual(src.count("self._healer.invoke("), 1)
-        self.assertIn("return self._healer.invoke(llm, messages, label=label)", src)
+        helper = src.split("def _model_step(", 1)[1].split("\n    def ", 1)[0]
+        self.assertIn("response = self._healer.invoke(llm, messages, label=label)", helper)
+        self.assertIn("return response", helper)
+        self.assertIn("self._report_real_step_usage(response, seq, model, label)", helper)
 
     def test_the_helper_hands_off_instead_of_measuring_inline(self):
         """The request thread SNAPSHOTS AND SIGNALS - it never serializes.
@@ -445,7 +450,12 @@ class SourceContractTests(SimpleTestCase):
         self.assertIn("measure_async", acpx_src)
         self.assertIn('source="acpx"', acpx_src)
 
-        self.assertIn('source="multi-turn"', _MCP_AGENT.read_text(encoding="utf-8"))
+        # The one executor serves both modes and names the one it is in
+        # (behaviour pinned in test_context_real_tokens: the ring used to say
+        # "multi-turn" on every one-shot answer).
+        mcp_src = _MCP_AGENT.read_text(encoding="utf-8")
+        self.assertIn('source=("multi-turn" if get_request_state("multi_turn_enabled", True)', mcp_src)
+        self.assertIn('else "one-shot")', mcp_src)
 
     def test_the_gauge_sink_is_registered_for_EVERY_request(self):
         """It used to sit inside ``if multi_turn_enabled:``, so a One-Shot
@@ -474,7 +484,11 @@ class SourceContractTests(SimpleTestCase):
 
     def test_the_loop_and_prefix_boundaries_are_recorded(self):
         src = _MCP_AGENT.read_text(encoding="utf-8")
-        self.assertIn("self._context_prefix_count = len(messages)", src)
+        # 2026-09-28: the request is assembled by ONE pure builder that the
+        # at-rest gauge shares, so the prefix boundary is computed there.
+        self.assertIn("prefix_count = len(messages)", src)
+        self.assertIn("self._context_prefix_count = prefix_count", src)
+        self.assertIn("def build_request_messages(", src)
         self.assertIn("self._context_loop_start = len(messages)", src)
 
     def test_consumer_registers_and_tears_down_the_gauge_sink(self):
@@ -502,10 +516,13 @@ class SourceContractTests(SimpleTestCase):
         src = _LAYOUT_JS.read_text(encoding="utf-8")
         self.assertIn("getElementById('context-gauge-row')", src,
                       "computeFormMinHeight must measure the gauge row")
-        self.assertIn("toolsDivH + chipsH + gaugeH + formAreaPx", src,
-                      "the gauge row must be ADDED to the form min height")
-        self.assertIn("'tools-div', 'chat-image-chips', 'context-gauge-row'", src,
-                      "the ResizeObserver must watch the gauge row too")
+        # Checked by INTENT, not by exact text: the microphone row (2026-09-27)
+        # joined the same sum and the same observer list, and a literal match
+        # went red for a change that kept the gauge row counted.
+        self.assertRegex(src, r"toolsDivH \+ chipsH \+ gaugeH \+[^;]*formAreaPx",
+                         "the gauge row must be ADDED to the form min height")
+        self.assertRegex(src, r"\['tools-div', 'chat-image-chips', 'context-gauge-row'",
+                         "the ResizeObserver must watch the gauge row too")
 
     def test_template_carries_the_row_and_both_assets(self):
         src = _TEMPLATE.read_text(encoding="utf-8")

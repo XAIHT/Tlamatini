@@ -62,7 +62,7 @@ class HistoryAwareNoDocsChain:
                  history_summary_cfg: Dict[str, Any]):
         self.llm = llm
         self.contextualize_chain = (contextualize_q_prompt | llm).with_config({"callbacks": [Callbacks()]})
-        self.answer_chain = (qa_prompt_no_ctx | llm).with_config({"callbacks": [Callbacks()]})
+        self.answer_chain = (qa_prompt_no_ctx | llm).with_config({"callbacks": [Callbacks(main=True)]})
         self.last_programs_name: List[str] = []
         self.history_summary_cfg = history_summary_cfg
         self.httpx_client_instance = None
@@ -235,7 +235,7 @@ class OptimizedHistoryAwareRAGChain:
         ])
         # Chains with cancellation callbacks
         self.contextualize_chain = (contextualize_q_prompt | llm).with_config({"callbacks": [Callbacks()]})
-        self.answer_chain = (self.qa_prompt | llm).with_config({"callbacks": [Callbacks()]})
+        self.answer_chain = (self.qa_prompt | llm).with_config({"callbacks": [Callbacks(main=True)]})
         self.vector_store = vector_store
         self.split_docs = split_docs
         self.retrieval_cfg = retrieval_cfg

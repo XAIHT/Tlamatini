@@ -36,15 +36,19 @@ from .chat_agent_registry import WRAPPED_CHAT_AGENT_BY_TOOL_NAME
 from .config_loader import get_int_config_value, load_config as _shared_load_config
 from .context_governor import (
     measure_async as _context_measure_async,
+    next_seq as _context_next_seq,
+    record_call_usage as _context_record_call,
+    report_real_usage as _context_report_real,
     resolve_ceiling_tokens as _context_ceiling_tokens,
     resolve_settings as _context_settings,
+    usage_from_llm_result as _context_usage_from,
 )
 from .exec_permission import get_broker
 from .global_execution_planner import (
     selected_tool_names_from_plan,
     summarize_global_execution_plan,
 )
-from .global_state import global_state, scoped_request_state
+from .global_state import get_request_state, global_state, scoped_request_state
 from .orphan_reaper import reap_orphans
 # Import the MCP tools defined in the same package
 from .tools import get_mcp_tools
@@ -1567,17 +1571,42 @@ class MultiTurnToolAgentExecutor:
         self._context_schema_bytes = (total_bytes, total_chars)
         return self._context_schema_bytes
 
-    def _model_step(self, llm, messages, label: str = ""):
-        """Measure, report, then hand the step to the self-healer unchanged.
+    @staticmethod
+    def _llm_identity(llm) -> Tuple[str, str]:
+        """``(model, base_url)`` of the Ollama chat model behind ``llm``.
 
-        FAIL-OPEN: any problem in the measurement is swallowed and printed —
-        the model call still happens, with the very same list. A governor that
-        breaks the chat is worse than the overflow it prevents.
+        ``llm`` is either the ChatOllama itself or the RunnableBinding that
+        ``bind_tools`` wraps it in (``.bound``).  Fail-open to empty strings.
         """
         try:
-            settings = getattr(self, "_context_governor_settings", None)
+            target = getattr(llm, "bound", None) or llm
+            return (str(getattr(target, "model", "") or ""),
+                    str(getattr(target, "base_url", "") or ""))
+        except Exception:  # noqa: BLE001
+            return "", ""
+
+    def _model_step(self, llm, messages, label: str = ""):
+        """Measure, call through the self-healer, then report Ollama's REAL count.
+
+        THIS is Tlamatini's main inference - the only call the gauge meters
+        (Angela, 2026-09-28).  Before the call: snapshot and signal (the
+        meter's worker does the arithmetic).  After it: Ollama's own
+        ``prompt_eval_count`` for THIS request (paired by ``seq``) replaces the
+        estimate on the ring, and the call joins the answer's real totals.
+
+        FAIL-OPEN both ways: a measuring or reporting problem is swallowed and
+        printed - the model call still happens with the very same list, and its
+        result is returned untouched. A governor that breaks the chat is worse
+        than the overflow it prevents.
+        """
+        seq = 0
+        model = ""
+        settings = getattr(self, "_context_governor_settings", None)
+        try:
             if settings is not None and settings.enabled:
                 schema_bytes, schema_chars = self._tool_schema_prefix_bytes()
+                model, base_url = self._llm_identity(llm)
+                seq = _context_next_seq()
                 # SNAPSHOT AND SIGNAL — no arithmetic on this thread. The
                 # meter's worker serializes the payload and pushes the gauge;
                 # the user's latency is never spent on the ring.
@@ -1585,17 +1614,143 @@ class MultiTurnToolAgentExecutor:
                     self._ask_execs_user_id,
                     messages,
                     label=label,
-                    source="multi-turn",
+                    # The SAME executor serves both modes: name the one this
+                    # request is really in (the ring used to say "multi-turn"
+                    # on every one-shot answer).
+                    source=("multi-turn" if get_request_state("multi_turn_enabled", True)
+                            else "one-shot"),
                     loop_start_index=getattr(self, "_context_loop_start", 0),
                     prefix_message_count=getattr(self, "_context_prefix_count", 1),
                     extra_prefix_bytes=schema_bytes,
                     extra_prefix_chars=schema_chars,
                     config=getattr(self, "_context_config", None),
                     settings=settings,
+                    seq=seq,
+                    model=model,
+                    base_url=base_url,
                 )
         except Exception as _cg_err:  # noqa: BLE001 — measuring must never break a turn
             print(f"--- [CONTEXT] measurement skipped ({_cg_err}) — nothing changed")
-        return self._healer.invoke(llm, messages, label=label)
+        response = self._healer.invoke(llm, messages, label=label)
+        try:
+            if settings is not None and settings.enabled:
+                self._report_real_step_usage(response, seq, model, label)
+        except Exception as _cg_err:  # noqa: BLE001 — reporting must never break a turn
+            print(f"--- [CONTEXT-REAL] report skipped ({_cg_err})")
+        return response
+
+    def _report_real_step_usage(self, response, seq: int, model: str, label: str) -> None:
+        """Hand Ollama's own counts for one main-chain step to the governor.
+
+        Paired with the measured frame ONLY when the self-healer's winning
+        tactic re-sent that exact request.  A trimmed / tool-less retry sent a
+        DIFFERENT request, so its real count is logged and totalled but never
+        pinned on a frame it does not describe.
+        """
+        usage = _context_usage_from(response)
+        if not usage:
+            print(f"--- [CONTEXT-REAL] [{label}] Ollama returned no prompt_eval_count "
+                  "for this step - the ring keeps the ESTIMATE, labelled as one")
+            return
+        user_id = self._ask_execs_user_id
+        used_model = str(usage.get("model") or model or "")
+        tactic = str(getattr(self._healer, "last_tactic", "") or "")
+        unchanged = getattr(self._healer, "UNCHANGED_REQUEST_TACTICS", frozenset())
+        if seq and (not tactic or tactic in unchanged):
+            _context_report_real(
+                user_id, seq, usage.get("prompt_tokens"), usage.get("completion_tokens"),
+                model=used_model, label=label,
+                field_name=str(usage.get("field") or "prompt_eval_count"),
+                config=getattr(self, "_context_config", None),
+            )
+        else:
+            print(f"--- [CONTEXT-REAL] [{label}] tactic '{tactic}' sent a CHANGED request: "
+                  f"prompt_eval_count={usage.get('prompt_tokens')} belongs to that "
+                  "request, not to the one measured - not paired with the ring")
+        _context_record_call(
+            usage.get("prompt_tokens"), usage.get("completion_tokens"),
+            user_id=user_id, model=used_model,
+            source=f"main chain: {label}" + (f" ({tactic})" if tactic and tactic != "normal" else ""),
+        )
+
+    def build_request_messages(
+        self,
+        input_text: str,
+        chat_history: Any,
+        planner_summary: str = "",
+    ) -> Tuple[list, int]:
+        """The exact message list the FIRST model step of a request sends.
+
+        Returns ``(messages, prefix_count)``.  PURE: it reads only the prompt
+        and its arguments and touches no per-run state, which is what lets the
+        context gauge rebuild the NEXT request while nothing is running (after
+        Clear history, Clear context, a context load...) with the very same
+        code a real message uses - one definition, so the at-rest number and
+        the live number cannot drift apart (2026-09-28).
+        """
+        messages: list = [SystemMessage(content=self.system_prompt)]
+        planner_summary = str(planner_summary or "").strip()
+        if planner_summary:
+            messages.append(SystemMessage(
+                content=(
+                    "REQUEST-SCOPED GLOBAL EXECUTION PLAN:\n"
+                    f"{planner_summary}\n\n"
+                    "Follow this planner output. Prefetch stages have already been applied before this executor runs. "
+                    "Use only the planned tool and monitor stages unless the plan is empty."
+                )
+            ))
+        prefix_count = len(messages)
+
+        def _history_content(msg: Any) -> str:
+            if isinstance(msg, BaseMessage):
+                return str(getattr(msg, "content", "") or "")
+            if isinstance(msg, dict):
+                return str(msg.get("content", "") or "")
+            return str(msg or "")
+
+        def _is_the_current_question(msg: Any) -> bool:
+            # The chat saves the question BEFORE it loads the history, so the
+            # last history message is normally the question being asked - and
+            # it must not be sent twice.  The chains may WRAP the question
+            # (system metrics, file search, loaded / retrieved context, web
+            # context) but always put it LAST, after a line break or
+            # "User Question: ".  Matching only the bare equality let every
+            # wrapped question go out twice (measured 2026-09-28: one-shot
+            # with System-Metrics on sent it as history AND as input).
+            last = _history_content(msg).strip()
+            text = str(input_text).strip()
+            if not last:
+                return False
+            if last == text:
+                return True
+            is_human = isinstance(msg, HumanMessage) or (
+                isinstance(msg, dict)
+                and str(msg.get("type") or msg.get("role") or "").lower() in {"human", "user"}
+            )
+            return is_human and (text.endswith("\n" + last)
+                                 or text.endswith("User Question: " + last))
+
+        history_items = list(chat_history)[-8:] if isinstance(chat_history, (list, tuple)) else []
+        if history_items and _is_the_current_question(history_items[-1]):
+            history_items = history_items[:-1]
+        for hist_msg in history_items:
+            if isinstance(hist_msg, ToolMessage):
+                continue
+            if isinstance(hist_msg, BaseMessage):
+                messages.append(hist_msg)
+                continue
+            if isinstance(hist_msg, dict):
+                role = str(hist_msg.get("type") or hist_msg.get("role") or "").lower()
+                content = _history_content(hist_msg)
+                if not content:
+                    continue
+                messages.append(AIMessage(content=content) if role in {"assistant", "ai"} else HumanMessage(content=content))
+                continue
+            content = _history_content(hist_msg)
+            if content:
+                messages.append(HumanMessage(content=content))
+        messages.append(HumanMessage(content=input_text))
+        return messages, prefix_count
 
     def invoke(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         # Reset per-invocation tool call log.
@@ -1675,51 +1830,14 @@ class MultiTurnToolAgentExecutor:
         self._stashed_final_answer = ""
         chat_history = payload.get("chat_history", []) or []
         planner_summary = str(payload.get("planner_summary", "") or "").strip()
-        messages = [
-            SystemMessage(content=self.system_prompt),
-        ]
-        if planner_summary:
-            messages.append(SystemMessage(
-                content=(
-                    "REQUEST-SCOPED GLOBAL EXECUTION PLAN:\n"
-                    f"{planner_summary}\n\n"
-                    "Follow this planner output. Prefetch stages have already been applied before this executor runs. "
-                    "Use only the planned tool and monitor stages unless the plan is empty."
-                )
-            ))
-        # Everything appended so far is the STATIC PREFIX bucket: the system
-        # prompt, plus the planner's system message when there is one. The
-        # bound tool schemas belong to it too but live outside this list, so
-        # they are added by ``_tool_schema_prefix_bytes()``.
-        self._context_prefix_count = len(messages)
-
-        def _history_content(msg: Any) -> str:
-            if isinstance(msg, BaseMessage):
-                return str(getattr(msg, "content", "") or "")
-            if isinstance(msg, dict):
-                return str(msg.get("content", "") or "")
-            return str(msg or "")
-
-        history_items = list(chat_history)[-8:] if isinstance(chat_history, (list, tuple)) else []
-        if history_items and _history_content(history_items[-1]).strip() == str(input_text).strip():
-            history_items = history_items[:-1]
-        for hist_msg in history_items:
-            if isinstance(hist_msg, ToolMessage):
-                continue
-            if isinstance(hist_msg, BaseMessage):
-                messages.append(hist_msg)
-                continue
-            if isinstance(hist_msg, dict):
-                role = str(hist_msg.get("type") or hist_msg.get("role") or "").lower()
-                content = _history_content(hist_msg)
-                if not content:
-                    continue
-                messages.append(AIMessage(content=content) if role in {"assistant", "ai"} else HumanMessage(content=content))
-                continue
-            content = _history_content(hist_msg)
-            if content:
-                messages.append(HumanMessage(content=content))
-        messages.append(HumanMessage(content=input_text))
+        messages, prefix_count = self.build_request_messages(
+            input_text, chat_history, planner_summary
+        )
+        # Everything before ``prefix_count`` is the STATIC PREFIX bucket: the
+        # system prompt, plus the planner's system message when there is one.
+        # The bound tool schemas belong to it too but live outside this list,
+        # so they are added by ``_tool_schema_prefix_bytes()``.
+        self._context_prefix_count = prefix_count
 
         if not self.tools:
             try:

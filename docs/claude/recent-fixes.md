@@ -16,6 +16,62 @@
 
 ---
 
+## 2026-09-28 — The context gauge is REAL: Ollama's own numbers, exact in both modes
+
+Angela: *"make that gauge counter to be real, NOT FAKE ... this is going to be
+metered by NVIDIA/INTEL/CISCO systems in real executions, SO BETTER YOU DONT
+LIE!"* and *"it must work very exact, in both not multi-turn and multi-turn"*.
+
+**What the ring shows now.** The chars/4 figure is only a placeholder until
+Ollama answers; then the ring shows Ollama's own `prompt_eval_count` for THAT
+request (`N tokens REAL`), paired by a per-request `seq`. The ceiling comes from
+Ollama's `/api/show` (`<arch>.context_length`, 1,048,576 for glm-5.3:cloud). There
+is no `/api/tokenize` (404), so a real count only exists after a real call.
+
+**At rest it is recalculated at EVERY change point** — page open / reconnect,
+Clear history, Clear context, context loaded, answer finished, Multi-Turn / ACPX /
+Step-by-Step toggled, skills changed, agent rebuilt after a cancel.
+`agent/context_baseline.py` rebuilds the NEXT request with the main chain's OWN
+code (`build_request_messages`, `history_summary_tail`, `wrap_loaded_context`,
+`with_system_context`) and asks Ollama once (`num_predict=1`, `stream=False`); a
+byte-identical request reuses the cached count (sha256 of the wire body). The probe
+costs real tokens and is logged (`[CONTEXT-PROBE]`); `context_gauge_probe_enable` /
+`context_gauge_probe_after_answer` switch it off.
+
+**Scope: the MAIN chain only, per connected user.** Out-of-band model calls
+(Prompter & co., the question rewriter, the history summarizer, ACPX children) are
+not metered - ACPX frames are `KIND_SIDE`: logged, never on the ring. Every frame,
+count and answer total is keyed by the user id.
+
+**The live lab found two real defects (both fixed):**
+1. **The question was sent to the model TWICE** whenever a chain wrapped it
+   (system metrics, file search, loaded / retrieved / web context): the executor's
+   "don't resend the current question" dedupe only matched the bare text.
+   `build_request_messages` now also recognises the question at the END of the
+   wrapped input (after a line break or `User Question: `) - human messages only,
+   and `"say ok"` never swallows an earlier `"ok"`.
+2. **One-shot with System-Metrics ON prepends `System Context: No system context
+   required for this question.`** to EVERY question (63 characters) - the sidecar's
+   placeholder when no metrics are needed. It is still sent (changing what the model
+   is told is Angela's call), but it is now ONE named constant
+   (`chain_system_lcel.NO_SYSTEM_CONTEXT`) and the at-rest rebuild predicts it.
+
+**Exact accounting (visible lab, 60/60, `context_gauge_real_lab.py`):** the live
+request equals the at-rest prediction PLUS the question's own bytes (history) PLUS,
+in Multi-Turn only, the planner's per-question plan (`bytes_plan`, measured) -
+nothing else. One-shot: 402,997 B -> 403,042 B (+45 = the question). Multi-Turn:
+402,664 B -> 408,662 B (+47 question +5,951 plan). Every REAL number on the ring
+equalled the `prompt_eval_count` in `tlamatini.log`, digit for digit.
+
+**Do NOT:** re-inline the system preamble or the placeholder string (the at-rest
+prediction would drift silently); narrow the dedupe back to bare equality; meter an
+out-of-band call on the ring; show an estimate as REAL; or read a live frame's ring
+after the answer (the lab snapshots the ring inside `dispatchEvent` - a 0.5 s poll
+lost that race). Honest limits the frame states in its `note`: the next question's
+own text, the Multi-Turn plan, per-question retrieved context, and live system
+metrics replacing the placeholder cannot exist before the question is asked.
+Coverage: `agent/test_context_real_tokens.py`.
+
 ## 2026-09-27 — Required build files use one inventory
 
 The release verifier correctly rejected missing `chat_voice_settings.py`:

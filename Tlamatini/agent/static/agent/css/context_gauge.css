@@ -134,6 +134,14 @@
     white-space: nowrap;
 }
 
+/* Ollama's OWN prompt_eval_count (2026-09-28): a measurement, not an
+   estimate, so it is shown at full strength and says REAL. */
+.ctxg-tokens.ctxg-real {
+    color: #eef1f8;
+    opacity: 1;
+    font-weight: 600;
+}
+
 .ctxg-zone-word {
     flex: 0 0 auto;
     padding: 1px 6px;
@@ -170,7 +178,7 @@
 /* ── the stream bar: WHY it is that big ───────────────────────────── */
 .ctxg-streams {
     flex: 0 0 auto;
-    width: 96px;
+    width: 150px;
     display: flex;
     flex-direction: column;
     gap: 2px;
@@ -195,6 +203,12 @@
 
 .ctxg-seg-history {
     background: rgba(255, 255, 255, 0.20);
+}
+
+/* The user's loaded / retrieved project context (2026-09-28) - its own
+   colour, so "Clear context" visibly removes exactly this slice. */
+.ctxg-seg-context {
+    background: #5aa9e6;
 }
 
 /* The loop is the stream that grows without limit — it wears the zone
