@@ -171,8 +171,12 @@ def validate_preservation_contract(repo):
     return names
 
 
-def validate_source_assets(repo):
-    """Catch missing inputs BEFORE dependency installs, DB removal or freezing."""
+def validate_source_assets(repo, *, check_tracked=True):
+    """Catch missing inputs BEFORE dependency installs, DB removal or freezing.
+
+    Builds retain the tracked-deletion check. Explicit file-only audits can
+    disable it when Git is forbidden, and must report that coverage limit.
+    """
     repo = Path(repo)
     validate_preservation_contract(repo)
     for name in ROOT_SOURCES:
@@ -198,7 +202,7 @@ def validate_source_assets(repo):
             raise RuntimeError(f"Frontend vendor asset missing/modified: {name}; run scripts/vendor_frontend.py")
     # A tracked vendor font, map or asset deleted locally must not disappear from
     # the baseline merely because rglob no longer sees it. Snapshots have no Git.
-    if (repo / ".git").exists():
+    if check_tracked and (repo / ".git").exists():
         paths = [src for src, _ in SOURCE_TREES if src != "Tlamatini/staticfiles"]
         result = subprocess.run(
             ["git", "ls-files", "-z", "--", *paths], cwd=repo,
@@ -242,6 +246,23 @@ def verify_collected_static(repo):
             target = collected / value.removeprefix("/static/") if value.startswith("/static/") else css.parent / value
             require_file(target)
     print(f"Static carriage: {count} source files match collected bytes; literal references resolved.")
+
+
+def copy_root_sources(repo, dist_root):
+    """Copy required loose files from the same inventory used by verification.
+
+    Check every source before copying so an incomplete checkout cannot leave
+    a partially refreshed set of root helpers. The final manifest still checks
+    these bytes against the baseline captured before freezing.
+    """
+    repo, dist_root = Path(repo), Path(dist_root)
+    for source in ROOT_SOURCES:
+        require_file(repo / source)
+    for source, destination in ROOT_SOURCES.items():
+        target = dist_root / destination
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(repo / source, target)
+        print(f"Copied required file: {source} -> {target}")
 
 
 def capture_source_payload(repo, *, self_modify=False):
@@ -332,6 +353,7 @@ def validate_runtime_document(document, *, expected_version=None):
              "_internal/pymupdf/_mupdf.pyd", "_internal/pymupdf/_extra.pyd",
              "_internal/pymupdf/mupdfcpp64.dll",
              "_internal/staticfiles/agent/vendor/frontend/manifest.json",
+             *ROOT_SOURCES.values(),
              *("_internal/staticfiles/" + name for name in REQUIRED_STATIC)}
     if not floor.issubset(files):
         raise RuntimeError("Runtime manifest omits mandatory files: " + ", ".join(sorted(floor - set(files))))

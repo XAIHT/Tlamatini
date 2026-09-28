@@ -33,6 +33,18 @@ the *same* `build.py` — so **every input `build.py` consumes must survive the 
 
 ---
 
+## Shared build inputs (2026-09-27)
+
+The runtime build now copies loose files directly from
+`build_runtime_assets.ROOT_SOURCES`; the sweep adds this inventory to its build
+inputs, and `validate_snapshot_carriage()` compares each source against the
+snapshot or its explicit restore mapping. This includes the shared
+`chat_voice_settings.py` and Whisperer `chat_worker.py`. No second copy list is
+needed when adding a helper. Run the snapshot sweep in a verified visible
+foreground console, kept open afterward; `--keep` retains the generated tree
+for inspection. If Git is forbidden, omit history comparisons elsewhere in this
+skill and state that limitation; snapshot generation itself needs no Git.
+
 ## The file this skill owns
 
 **`copy_source_assets.py`** (repo root) — generates the snapshot. The following rules decide what
@@ -60,7 +72,7 @@ new always-present capability file not in `REQUIRED_SNAPSHOT_FILES`, or a secret
 
 ### Invariant 1 — INCLUDE: every rebuild SOURCE input survives
 Every file `build.py` reads to build (the build scripts, `requirements.txt`, all
-`--add-data` source trees, `optional/required_file_copies`, `optional_dir_copies` sources,
+`--add-data` source trees, `ROOT_SOURCES`, optional identity copies, `optional_dir_copies` sources,
 `support_files`, the icon/wav/svg, every agent template, every `SKILL.md`, `prompt.pmt`,
 `Tlamatini.md`, `agentic_skill.md`, `monitoring-prompt.pmt`) must appear in the snapshot —
 **or** be in `RESTORE_FROM_INSTALL`. A source file dropped by an exclusion rule = a rebuild
@@ -125,7 +137,7 @@ config file**, or a new **always-present** file that belongs in `REQUIRED_SNAPSH
 
 ```bash
 # (a) New binary build inputs the build reads (icons/fonts/wav/jar/etc.) that EXCLUDED_EXTENSIONS would drop
-grep -nE "--add-data=|--icon|optional_dir_copies|required_file_copies|support_files" build.py | grep -iE "\.(ico|wav|svg|png|jpg|ttf|otf|jar|dll|bin|dat)"
+grep -nE "--add-data=|--icon|optional_dir_copies|copy_root_sources|support_files" build.py | grep -iE "\.(ico|wav|svg|png|jpg|ttf|otf|jar|dll|bin|dat)"
 # (b) New config files that may carry secrets but AREN'T covered by _wants_redaction()
 grep -rilE "api[_-]?key|token|secret|password|client_secret" Tlamatini --include=*.json --include=*.yaml --include=*.yml \
   | grep -viE "/agents/.*/config.yaml$|agent/config.json$"

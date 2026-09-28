@@ -331,7 +331,8 @@ def main(argv: list[str] | None = None) -> int:
     restore_targets = {t.replace("\\", "/") for t in getattr(csa, "RESTORE_FROM_INSTALL", {})}
     excluded_dirs = set(getattr(csa, "EXCLUDED_DIR_NAMES", set()))
     media_ext = set(getattr(csa, "EXCLUDED_EXTENSIONS", set()))
-    inputs = build_inputs(build_txt)
+    from build_runtime_assets import ROOT_SOURCES
+    inputs = build_inputs(build_txt) | set(ROOT_SOURCES)
     checked = covered = 0
     for rel in sorted(inputs):
         repo_path = root / rel

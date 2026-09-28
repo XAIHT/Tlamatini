@@ -16,6 +16,18 @@
 
 ---
 
+## 2026-09-27 — Required build files use one inventory
+
+The release verifier correctly rejected missing `chat_voice_settings.py`:
+`ROOT_SOURCES` required it, but the separate `build.py` copy dictionary omitted it.
+`copy_root_sources()` now copies that inventory directly, and the mandatory
+receipt floor includes every destination. Never fix such failures by weakening
+hash or membership verification. Tests execute the real build carrier, import
+the worker from a staged install, and reject omitted/corrupted update payloads.
+The mirrored update/rebuild sweeps understand the shared inventory; update
+`--no-git` skips only explicitly reported history/tracked-file checks. No DB
+backup/restore mechanics changed. [Evidence](../build-root-assets-verification.md).
+
 ## 2026-09-27 — Mic preferences, editable transcripts and shared control styles
 
 The composer label is Mic; Config ends with Mic after Voice. The dialog saves
@@ -2279,7 +2291,7 @@ audit. Migrations **0195/0196/0197**; catalog prompt **119**
 > `v1.48.16` = `6ee630ca` (themed `tlmAlert`/`tlmConfirm` pop-ups + the
 > frozen-bundle carriage proof in `build.py`), **`v1.48.17` = `f948be7b` — the
 > newest release on that day**, carrying everything below. The current release
-> is now `v1.70.0`; entries that say a change "landed in v1.48.15" or
+> is now `v1.72.0` (latest published release `v1.70.0`); entries that say a change "landed in v1.48.15" or
 > `v1.48.17` are historical statements and remain as written.
 
 **Angela, verbatim:** *"Standarize in every ... every dialog and all of the

@@ -112,6 +112,8 @@ _NOT_THIRD_PARTY = {
     # to flowcreator.py). Not a pip package — do not require it in requirements.txt.
     "result_to_flw",
     "flow_knowledge", "mouser_coordinates", "keyboarder_input",
+    # Shared stdlib-only worker helper carried to the install root, not a pip dependency.
+    "chat_voice_settings",
 }
 
 
@@ -235,8 +237,13 @@ class BuildPyAssetBundlingTests(SimpleTestCase):
         self.src = _read(BUILD_PY)
 
     def test_required_assets_referenced_and_present(self):
+        from build_runtime_assets import ROOT_SOURCES
         for token, rel in self.REQUIRED_ASSETS:
-            self.assertIn(token, self.src, f"build.py does not reference {token!r}")
+            if rel in ROOT_SOURCES:
+                self.assertIs(_load_build_module().copy_root_sources,
+                              sys.modules["build_runtime_assets"].copy_root_sources)
+            else:
+                self.assertIn(token, self.src, f"build.py does not reference {token!r}")
             self.assertTrue((REPO_ROOT / rel).exists(),
                             f"asset source missing on disk: {rel}")
 

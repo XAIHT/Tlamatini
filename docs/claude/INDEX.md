@@ -16,6 +16,8 @@ This directory holds the specialized onboarding documents that back the root `CL
 
 One-line descriptions:
 
+- **[../build-root-assets-verification.md](../build-root-assets-verification.md)** — shared required-file build carrier, missing voice-helper repair, update/rebuild inclusion checks and dated verification limits.
+
 - **[../dependency-coverage-audit.md](../dependency-coverage-audit.md)** - whole-repository Python dependency coverage, required manifests, private ESPHome runtime boundary and visible regression checks.
 
 - **[../chat-microphone-design.md](../chat-microphone-design.md)** — direct Whisperer chat dictation: user steps, Config → Mic automatic Send/editable draft choices, capture preferences, host microphone, windowless worker/main logging, gate/ASR/configuration, authenticated protocol, packaging, troubleshooting and dated verification.

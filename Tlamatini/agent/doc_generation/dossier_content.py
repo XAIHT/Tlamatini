@@ -1139,7 +1139,7 @@ def build_chapters(f: dict) -> list[Chapter]:
         Section("dependencies", "DEPENDENCY COVERAGE", "Every referenced Python library is accounted for",
             "The September 27 source audit covers all 89 agents, build helpers, optional imports and tests.",
             body=[
-                "The refreshed static guard scanned 744 Python files and 69 directly referenced distributions. The "
+                "The refreshed static guard scanned 745 Python files and 69 directly referenced distributions. The "
                 "main requirements file contains 87 declarations; missing Autobahn, lxml, six, pip and "
                 "PlatformIO declarations were added. Existing framework and compatibility pins remain.",
                 "ESPHome has a separate requirements-esphome.txt manifest because its py7zr and PlatformIO "
@@ -1216,9 +1216,45 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("Bundle", "Static files, templates, agents, skills and both Pythons."),
                 ("Carriage proof", "Aborts if a required fail-open module is missing."),
                 ("Runtime gates", "Every agent runtime and model loader runs frozen."),
-                ("Receipt", "SHA-256 for every payload file, checked twice."),
+                ("Receipt", "SHA-256 for every payload file and all required root helpers, checked before use."),
                 ("Ceiling", "Under 1,990,000,000 bytes, nothing dropped to fit."),
             ]),
+        Section("root_carriage", "LATEST BUILD REPAIR", "One inventory ships every required helper",
+            "The current working tree repairs the missing Whisperer settings helper without weakening package verification.",
+            body=[
+                "A build correctly refused a runtime receipt because chat_voice_settings.py was missing. "
+                "The verifier required the loose helper, but build.py used a separate copy dictionary that "
+                "omitted it. Compiling agent.chat_voice_settings does not satisfy the standalone Whisperer "
+                "worker running under the carried Python.",
+                "build.py now calls copy_root_sources using the verifier's ROOT_SOURCES inventory. All "
+                "inputs are checked before copying. Every mapped destination is mandatory in both ZIP and "
+                "extracted-stage receipts, so removing a required file and its receipt entry still fails. "
+                "The pre-freeze hash baseline continues to reject source changes during a build.",
+            ],
+            points=[
+                ("One carrier", "Copy and verification share ROOT_SOURCES; a new required helper needs no second list."),
+                ("Worker import", "Carry chat_voice_settings.py at the installation root as well as compiling the Django module."),
+                ("Integrity", "Reject missing, edited or unmanifested files, including otherwise consistent incomplete receipts."),
+                ("Rebuild inputs", "Mirrored self-update/self-modify sweeps include the shared inventory and report omitted Git checks."),
+            ], deck="cards"),
+        Section("carriage_evidence", "RECORDED VERIFICATION", "Packaging evidence and its limits",
+            "The September 27 file-level checks establish carriage and integrity; a full installer is a separate verification.",
+            body=[
+                "The recorded focused suite ran 146 tests: 145 passed and one Git-dependent census was skipped. "
+                "It exercised the real carrier with source files, imported the worker from a staged installation, "
+                "and verified ZIP creation, extraction and receipts with synthetic runtime binaries. "
+                "Missing or corrupted helpers and extra files were rejected.",
+                "The recorded self-update sweep with --no-git had no findings. A self-modify snapshot copied "
+                "1,579 files with zero copy errors and accounted for all 778 runtime source inputs. "
+                "These are that audit's dated counts. Neither those checks nor this dossier regeneration ran "
+                "a complete PyInstaller build, installed a release or performed a live update swap.",
+            ],
+            points=[
+                ("Focused suite", "146 tests recorded: 145 passed, one skipped; file-only harness exited successfully."),
+                ("Real files", "Every mapped source destination matched; the staged worker resolved its settings helper."),
+                ("Snapshot", "Recorded audit: 1,579 files, 11 redacted, 778 runtime inputs covered, zero copy errors."),
+                ("Evidence", "docs/build-root-assets-verification.md records scope, skipped checks and local transcripts."),
+            ], deck="cards"),
         Section("update", "SELF-UPDATE", "Updating herself without losing you",
             "About ▸ Check for updates fetches the latest published release, stages it, and hands the "
             "locked-file swap to an external script.",
@@ -1268,13 +1304,14 @@ def build_chapters(f: dict) -> list[Chapter]:
                 "The root dependency manifest and separate ESPHome manifest now account for referenced "
                 "libraries across agents and source. The static guard and detailed dependency audit record "
                 "coverage and runtime boundaries. The published v1.70.0 installer does not contain them; "
-                "they reach users once a v1.72.0 release is built and published.",
+                "they reach users once a v1.72.0 release is built and published. The later shared "
+                "root-asset carrier repair is documented separately as current working-tree work.",
             ],
             points=[
                 ("User guide", "README.md and BookOfTlamatini.md explain Mic settings, recording, cancellation and both modes."),
                 ("Runtime contract", "docs/chat-microphone-design.md records ownership, protocol, configuration and limits."),
                 ("Dependencies", "docs/dependency-coverage-audit.md records declarations, isolation and verification."),
-                ("Delivery", "Restart source runs; rebuild and validate an installer before distributing these changes."),
+                ("Delivery", "v1.72.0 is tagged; rebuild and verify an installer, including the later root-asset carrier repair."),
             ], deck="cards"),
         Section("whatsnew", "CARRIED RELEASE", "v1.70.0: the Prompt Flow Panel",
             "Version 1.70.0 is about designing conversations and editing flows with the same ease.",

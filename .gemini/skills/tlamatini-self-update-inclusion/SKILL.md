@@ -27,6 +27,21 @@ sweep makes that class of bug impossible to ship silently.
 
 ---
 
+## Shared loose-file inventory and no-Git audits (2026-09-27)
+
+The build copies every `ROOT_SOURCES` entry through `copy_root_sources()`.
+The receipt floor requires every destination, including `chat_voice_settings.py`
+and `agents/whisperer/chat_worker.py`. Do not maintain another required-file
+copy list: that drift caused the missing-helper release failure.
+
+When the user forbids Git, run the sweep with `--no-git` in a verified visible
+foreground console kept open afterward. This retains file/carrier/vendor,
+preservation and update-order checks, while explicitly skipping tracked-file
+census and release-history comparisons. Default runs retain those Git checks.
+Do not run the history commands elsewhere in this skill under that constraint;
+report the skipped coverage. Unit tests must execute the actual carrier and
+compare bytes, then validate ZIP and extracted staging membership/hashes.
+
 ## Pipeline files this skill owns
 
 | File | Role in the pipeline |
@@ -35,7 +50,7 @@ sweep makes that class of bug impossible to ship silently.
 | **`Tlamatini/agent/self_update.py`** | In-app updater: checks GitHub, downloads + unzips + stages the new build, hands off to the PowerShell swapper. Its **docstring preserve list** documents what survives. |
 | **`apply_update.ps1`** (repo root) | The external file-swapper. Its **`$Preserve` array** is the *authoritative, executed* contract for what is kept vs replaced. Renames `agents → agents_backup`, then full-replaces everything not preserved. |
 
-> `apply_update.ps1` must itself be shipped by `build.py` (`required_file_copies`) so a self-updated
+> `apply_update.ps1` must itself be shipped by `build.py` (`copy_root_sources()`) so a self-updated
 > install carries the *next* updater. The pipeline is self-hosting — this is invariant #1's
 > most easily-forgotten case.
 
@@ -51,7 +66,7 @@ Every runtime asset needs at least one of these carriers (some deliberately have
 | 1 | **PyInstaller import graph → PYZ** | every `.py` reachable from the import graph (incl. lazy `from . import x`) — views, tools, registries, `self_update.py`, **migrations** | ✅ yes, if imported/in a collected package |
 | 2 | **`--add-data` list** | whole trees: `agent/templates`, `agent/static`, `staticfiles`, `agent/skills_pkg`; single files: `config.json`, `prompt.pmt`, `Tlamatini.md`; dependency data files | ✅ for files *inside* an already-listed tree; ❌ for a **new** top-level tree |
 | 3 | **`optional_dir_copies` → install root** | `agent/images`, **`agent/agents`** (the whole agent-template tree → new agents auto-ship), `agent/skills_pkg` | ✅ new agents/skills inside these dirs |
-| 4 | **`optional_file_copies` / `required_file_copies` → install root** | `config.json`, `prompt.pmt`, `Tlamatini.md`; required `README.md`, `agents_descriptions.md`, `apply_update.ps1`, `preserved_user_state.json`, standalone `sqlite_copy.py` | ❌ a **new** root-level required file must be added by hand |
+| 4 | **`copy_root_sources()` → destinations in `build_runtime_assets.ROOT_SOURCES`** | Required loose files, including `chat_voice_settings.py`, update helpers, docs, config and prompt; optional identity remains gated by `self_modify` | ✅ every new `ROOT_SOURCES` entry is copied and required by the runtime receipt automatically |
 | 5 | **`support_files` → install root** | the `.ps1` helpers (`Tlamatini.ps1`, `register_flw`/`unregister_flw`, `CreateShortcut`/`RemoveShortcut`), `Tlamatini.ico`, `CreateShortcut.json`, `cat_art.py` | ❌ a **new** root-level support file must be added by hand |
 | 6 | **bundled runtimes + deps** | carried Python, `jre`, `git`, `ms-playwright`; PyInstaller **hidden imports**, **`--collect-all`** (e.g. `ffpyplayer`); **`requirements.txt`** | ❌ a **new** runtime / hidden import / collect-all / pip dep must be added by hand |
 | 7 | **bespoke `shutil.copytree` block → install root** | **`security/`** (Angela's Blue-hat operator toolkit: `tlamatini_defender.ps1`, `tlamatini_whitelist_v2.ps1`, the `.bat` UAC launchers, `README.md`, and `automated_tests_of_security_assets.py`), copied near the end of the build with `ignore_patterns("security_logs", "*.log", "__pycache__")` | ✅ new files *inside* `security/`; ❌ a **new** bespoke tree needs its own block |
@@ -121,7 +136,7 @@ the first-launch migration path.
 ### Step 0 — run the deterministic checker (does 90% of the work)
 
 ```bash
-python .gemini/skills/tlamatini-self-update-inclusion/scripts/sweep_self_update.py
+python .claude/skills/tlamatini-self-update-inclusion/scripts/sweep_self_update.py
 ```
 
 It parses the three files and reports `[PASS]` / `[FINDING]` for invariants 2, 3, the
@@ -190,8 +205,8 @@ check needs a `python build.py` run."
 |---|---|---|
 | New **agent** (`agent/agents/<x>/`) | mech 3 (`optional_dir_copies` agents) + mech 1 (PYZ) — **automatic** | No (arrives via `agents` swap) |
 | New **migration** (seeds rows) | mech 1 (PYZ) + build-time `migrate`; first-launch `migrate` applies it to the preserved user DB | User data survives; new schema/seed changes are applied |
-| New **repo-root `.ps1`/script** | mech 5 `support_files`, or mech 4 `required_file_copies` for mandatory helpers such as `apply_update.ps1` — **manual** | No (app code, replaced) |
-| New **repo-root required data file** | mech 4 `*_file_copies` — **manual** | No |
+| New **repo-root `.ps1`/script** | mech 5 `support_files`, or mech 4 `ROOT_SOURCES` for mandatory helpers such as `apply_update.ps1` — **manual** | No (app code, replaced) |
+| New **repo-root required data file** | mech 4 `ROOT_SOURCES` — declare once; carrier and receipt follow | No |
 | New **top-level source tree** (new package dir to ship as data) | mech 2 `--add-data` / mech 3 `optional_dir_copies` — **manual** | No |
 | New **static/template/skill** file (inside existing tree) | mech 2 / 3 — **automatic** | No |
 | New **pip dependency** | mech 6 `requirements.txt` (+ hidden-import / `--collect-all` if dynamic) — **manual** | n/a |
@@ -209,8 +224,9 @@ The sweep script flags exactly this.
 
 ## Where to make each fix
 
-- **Carry a root file** → add to `support_files` (scripts/icons) or `required_file_copies`
-  (data) in `build.py`, with a one-line comment on *why it must be next to the exe*.
+- **Carry a required root file** → add its source/destination to
+  `build_runtime_assets.ROOT_SOURCES`, with a comment explaining its installed
+  consumer. `build.py` copies that inventory directly.
 - **Carry a new tree** → add an `--add-data` line (if read from the bundle) or an
   `optional_dir_copies` entry (if read from the install root).
 - **Carry a dep** → `requirements.txt`; if PyInstaller can't see it, add a hidden-import or
@@ -299,8 +315,9 @@ Verify `agent/agents/netspeed_calculator/`, migrations 0195-0197, its wrapped-to
 
 - Read `build_runtime_assets.py`, `preserved_user_state.json`, `install.py` and
   both complete-release wrappers as well as the three primary pipeline files.
-- The checker parses `required_file_copies` with AST and `support_files`; a helper
-  moved from one to the other is not a missing-carrier finding.
+- The checker detects `copy_root_sources(repo_root, dist_manage)` with AST and
+  reads the shared inventory; it also understands legacy literal copy dictionaries
+  and `support_files`. A filename in a comment is not evidence of carriage.
 - Carry `build_runtime_assets.py` at the install root AND in the frozen module
   archive. The installer imports the same checker. `runtime-assets.json` records
   every file's size/hash, exact membership, version and boolean self-modify mode.
@@ -330,7 +347,7 @@ Verify `agent/agents/netspeed_calculator/`, migrations 0195-0197, its wrapped-to
 - `docs/claude/architecture.md` → *Self-Knowledge & Self-Modification* for the build flags.
 ### Prompt Flow Panel and menu carrier gate (2026-09-25)
 
-The Prompt Flow Panel executes inside the frozen **web process** (`routing.py` imports its consumer), so the carried Python cannot satisfy it. `build.py::_FROZEN_PROMPT_FLOW_PANEL_MODULES` hidden-imports AND frozen-requires `agent.prompt_flow_panel_consumer`, `agent.prompt_flow_panel_runtime`, `agent.services.prompt_flow_panel` and `agent.management.commands.check_prompt_flow_panel`, and the build runs `check_prompt_flow_panel` inside the freshly frozen app right after `check_agent_runtimes` — a failure aborts packaging. `build_runtime_assets.py` must keep `agent/css/prompt_flow_panel.css`, `agent/js/prompt-flow-panel-model.js` and `agent/js/prompt-flow-panel.js` in `REQUIRED_STATIC`, and the template, `docs/prompting-flow-designer.md` and `docs/examples/prompting-kickoff.fpmt` in `ROOT_SOURCES` and in the receipt floor; `build.py`'s `required_file_copies` carries those two docs files to `dist/manage/docs/`. They are application assets that updates REPLACE — never add them to `$Preserve`. A user's saved `.fpmt` files live wherever the user saved them and browser drafts live in browser storage, so there is no panel state to preserve.
+The Prompt Flow Panel executes inside the frozen **web process** (`routing.py` imports its consumer), so the carried Python cannot satisfy it. `build.py::_FROZEN_PROMPT_FLOW_PANEL_MODULES` hidden-imports AND frozen-requires `agent.prompt_flow_panel_consumer`, `agent.prompt_flow_panel_runtime`, `agent.services.prompt_flow_panel` and `agent.management.commands.check_prompt_flow_panel`, and the build runs `check_prompt_flow_panel` inside the freshly frozen app right after `check_agent_runtimes` — a failure aborts packaging. `build_runtime_assets.py` must keep `agent/css/prompt_flow_panel.css`, `agent/js/prompt-flow-panel-model.js` and `agent/js/prompt-flow-panel.js` in `REQUIRED_STATIC`, and the template, `docs/prompting-flow-designer.md` and `docs/examples/prompting-kickoff.fpmt` in `ROOT_SOURCES` and in the receipt floor; `build.py`'s `copy_root_sources()` carries those two docs files to `dist/manage/docs/`. They are application assets that updates REPLACE — never add them to `$Preserve`. A user's saved `.fpmt` files live wherever the user saved them and browser drafts live in browser storage, so there is no panel state to preserve.
 
 `acp-editor-tools.js` and the reorganized menus ride the existing static/template tree carriers, but every JS/CSS/template change still needs a `STATIC_VERSION` suffix bump (currently `-prompt-flow-panel-12-node-gestures`). `.fpmt` must stay a TEXT extension in `rag/binary_guard.py` and a scrubbed extension in `build_complete_public_release.py`.
 

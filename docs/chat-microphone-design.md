@@ -248,6 +248,15 @@ layout, form handoff and avatar hooks must travel with them. Packaged workers us
 the carried Python; the frozen Django executable must not import the speech ML
 stack. Recognition/capture dependencies belong in that interpreter as well.
 
+Required loose files are copied by `copy_root_sources()` from the same
+`ROOT_SOURCES` inventory used for source hashes and mandatory receipt entries.
+Adding the validator only to verification without copying it caused the
+2026-09-27 `chat_voice_settings.py` build failure. Keep that single inventory:
+the worker helper must exist beside the executable, and the self-modify snapshot
+must retain its source. ZIP and extracted update checks reject missing or
+changed helpers before handoff/shutdown. See the
+[packaging repair verification](build-root-assets-verification.md).
+
 `agent.chat_voice_runtime` is an INFO logger on the application's existing
 console handler. Worker stdout/stderr is drained there with a `[Whisperer]`
 prefix and follows the main `tlamatini.log` path. The initial development

@@ -24,6 +24,7 @@ import zipfile
 from build_runtime_assets import (
     MAX_RELEASE_ZIP_BYTES,
     capture_source_payload,
+    copy_root_sources,
     ignore_runtime_state,
     validate_source_assets,
     verify_collected_static,
@@ -1768,34 +1769,8 @@ def main():
               + (", ".join(sorted(external_mcps_doc.get("mcpServers", {}))) or "(none)")
               + f"  active: {external_mcps_doc.get('active') or '[]'}")
 
-        # Required root-level assets for the installed application.
-        # ``agents_descriptions.md`` is the authoritative source for the
-        # workflow-agent sidebar tooltips and the canvas Description dialog
-        # — it must ship next to the executable so ``agent.views`` can
-        # resolve it in frozen mode just like in source mode.
-        required_file_copies = {
-            Path("build_runtime_assets.py"): dist_manage / "build_runtime_assets.py",
-            Path("README.md"): dist_manage / "README.md",
-            Path("agents_descriptions.md"): dist_manage / "agents_descriptions.md",
-            # Keep the designer guide and its relative example link usable in installs.
-            Path("docs") / "prompting-flow-designer.md": dist_manage / "docs" / "prompting-flow-designer.md",
-            Path("docs") / "examples" / "prompting-kickoff.fpmt": dist_manage / "docs" / "examples" / "prompting-kickoff.fpmt",
-            # Image/video failure contract; build_runtime_assets.ROOT_SOURCES requires it.
-            Path("docs") / "visual-analysis-errors.md": dist_manage / "docs" / "visual-analysis-errors.md",
-            # The update handoff and shared preservation contract must survive
-            # every release; missing helpers must abort packaging.
-            Path("apply_update.ps1"): dist_manage / "apply_update.ps1",
-            Path("preserved_user_state.json"): dist_manage / "preserved_user_state.json",
-            # Stdlib-only CLI used by the external updater under carried Python
-            # after the web process stops and before its files are replaced.
-            Path("Tlamatini") / "agent" / "sqlite_copy.py": dist_manage / "sqlite_copy.py",
-        }
-        for src, dst in required_file_copies.items():
-            if not src.exists():
-                raise FileNotFoundError(f"Required file not found: {src}")
-            dst.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(src, dst)
-            print(f"Copied required file: {src} -> {dst}")
+        # Copy from the verifier inventory so newly required helpers always ship.
+        copy_root_sources(repo_root, dist_manage)
 
         # Runtime directory trees. Only the decorative images gallery is optional.
         optional_dir_copies = {

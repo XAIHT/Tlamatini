@@ -186,8 +186,14 @@ def top_level(names: set[str]) -> set[str]:
     return {n.split("/")[0].split("\\")[0] for n in names}
 
 
-def required_file_sources(text: str) -> set[str]:
-    """Read literal Path(...) / 'part' keys without executing build.py."""
+def required_file_sources(text: str, root_sources=()) -> set[str]:
+    """Read the shared carrier or legacy literal keys without executing build.py."""
+    tree = ast.parse(text)
+    if any(isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+           and node.func.id == "copy_root_sources"
+           and [arg.id if isinstance(arg, ast.Name) else None for arg in node.args]
+               == ["repo_root", "dist_manage"] for node in ast.walk(tree)):
+        return set(root_sources)
     def path_value(node):
         if isinstance(node, ast.Constant) and isinstance(node.value, str):
             return node.value
@@ -211,6 +217,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Audit Tlamatini's self-update inclusion pipeline.")
     parser.add_argument("--repo-root", default=None,
                         help="Repo root (default: auto-detect from this script's location).")
+    parser.add_argument("--no-git", action="store_true",
+                        help="Inspect working files only; skip tracked-file/history checks explicitly.")
     args = parser.parse_args(argv)
 
     try:                                  # Windows consoles default to cp1252
@@ -245,14 +253,16 @@ def main(argv: list[str] | None = None) -> int:
     su_preserve = parse_self_update_preserve(su_txt)
     empty_dirs = parse_build_list(build_txt, "empty_dirs")
     support_files = parse_build_list(build_txt, "support_files")
+    sys.path.insert(0, str(root))
+    from build_runtime_assets import ROOT_SOURCES, validate_preservation_contract, validate_source_assets
     try:
-        required_files = required_file_sources(build_txt)
+        required_files = required_file_sources(build_txt, ROOT_SOURCES)
     except (ValueError, SyntaxError, AttributeError):
         required_files = set()
-        finding("could not parse required_file_copies from build.py")
+        finding("could not parse the required root carrier from build.py")
     shipped = {Path(s).name for s in (support_files or set()) | required_files}
-    sys.path.insert(0, str(root))
-    from build_runtime_assets import validate_preservation_contract, validate_source_assets
+    if args.no_git:
+        note("--no-git: tracked deletions, release-history migration diff and tracked-tree census are NOT checked")
 
     # ── Check 1: preserve parity ─────────────────────────────────────────────
     print("\n[1] PRESERVE PARITY -- apply_update.ps1 $Preserve == self_update.py docstring")
@@ -311,7 +321,7 @@ def main(argv: list[str] | None = None) -> int:
                     f"'{b}' forever. Remove it ('agents' is replaced via the agents_backup swap).")
 
     # ── Check 4: root .ps1 census ────────────────────────────────────────────
-    print("\n[4] ROOT .ps1 CENSUS -- support_files + required_file_copies")
+    print("\n[4] ROOT .ps1 CENSUS -- support_files + required root inventory")
     root_ps1 = sorted(p.name for p in root.glob("*.ps1"))
     if support_files is None:
         finding("could not parse support_files from build.py")
@@ -327,13 +337,13 @@ def main(argv: list[str] | None = None) -> int:
 
     # ── Check 5: the updater itself ships ────────────────────────────────────
     print("\n[5] UPDATER SHIPPED -- apply_update.ps1 is carried into the release")
-    for helper in ("apply_update.ps1", "sqlite_copy.py", "preserved_user_state.json", "build_runtime_assets.py"):
+    for helper in ("apply_update.ps1", "sqlite_copy.py", "preserved_user_state.json", "build_runtime_assets.py", "chat_voice_settings.py"):
         if helper in {Path(s).name for s in required_files}:
             ok(f"{helper} is a required root asset")
         else:
-            finding(f"{helper} is missing from required_file_copies")
+            finding(f"{helper} is missing from the required root carrier")
     try:
-        validate_source_assets(root)
+        validate_source_assets(root, check_tracked=not args.no_git)
         ok("mandatory source trees/files, preservation and local vendor receipt passed")
     except Exception as exc:
         finding(f"runtime source carriage failed: {exc}")
@@ -361,7 +371,7 @@ def main(argv: list[str] | None = None) -> int:
     mig_dir = root / "Tlamatini" / "agent" / "migrations"
     db_preserved = bool(ps1_preserve and ("db.sqlite3" in ps1_preserve))
     startup_migrate = _has_startup_migrate(root)
-    new_migs = _migrations_since_last_tag(root, mig_dir)
+    new_migs = None if args.no_git else _migrations_since_last_tag(root, mig_dir)
     if new_migs is None:
         note("could not compute migrations since last tag (no git / no tag)")
     elif new_migs:
@@ -388,7 +398,7 @@ def main(argv: list[str] | None = None) -> int:
     # it ships through a bespoke copytree (carrier mechanism 7), which no list-
     # parsing check can see, and its build block fails OPEN with a WARNING.
     print("\n[8] TOP-LEVEL ASSET CENSUS -- every tracked top-level tree is carried or declared dev-only")
-    tops = _tracked_top_level_dirs(root)
+    tops = None if args.no_git else _tracked_top_level_dirs(root)
     if tops is None:
         note("could not enumerate tracked top-level directories (no git) -- census skipped")
     else:

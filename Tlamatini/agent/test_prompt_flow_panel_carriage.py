@@ -1,7 +1,9 @@
 # Tlamatini Author Banner — Angela López Mendoza
 """Packaging omission regressions; run in a verified visible foreground console."""
 
+import ast
 import importlib.util
+import tempfile
 from pathlib import Path
 import sys
 import unittest
@@ -63,18 +65,21 @@ class PromptFlowPanelCarriageTests(unittest.TestCase):
                     assets.validate_runtime_document(incomplete)
 
     def test_build_copies_every_required_root_source(self):
-        # write_runtime_manifest() aborts the frozen build for any ROOT_SOURCES
-        # file that build.py never copied; docs/visual-analysis-errors.md was
-        # listed but not copied. Tree-carried entries are covered by SOURCE_TREES.
-        text = (ROOT / "build.py").read_text(encoding="utf-8")
-        for src, dst in assets.ROOT_SOURCES.items():
-            if any(src.startswith(tree + "/") and dst == carried + src[len(tree):]
-                   for tree, carried in assets.SOURCE_TREES):
-                continue
-            with self.subTest(source=src):
-                named = {'"' + src + '"', '"' + src.rsplit("/", 1)[-1] + '"'}
-                self.assertTrue(any(literal in text for literal in named),
-                                f"build.py never copies required source {src} -> {dst}")
+        # Execute the actual carrier call in isolation, then compare every byte.
+        # Merely mentioning a filename in a comment/import did not catch the
+        # missing chat_voice_settings.py copy in the old build script.
+        tree = ast.parse((ROOT / "build.py").read_text(encoding="utf-8"))
+        calls = [node for node in ast.walk(tree) if isinstance(node, ast.Call)
+                 and isinstance(node.func, ast.Name) and node.func.id == "copy_root_sources"]
+        self.assertEqual(len(calls), 1, "build.py must invoke the shared root carrier")
+        with tempfile.TemporaryDirectory() as tmp:
+            stage = Path(tmp)
+            namespace = {"repo_root": ROOT, "dist_manage": stage,
+                         "copy_root_sources": assets.copy_root_sources}
+            exec(compile(ast.Expression(calls[0]), "<build root carrier>", "eval"), namespace)
+            for source, destination in assets.ROOT_SOURCES.items():
+                with self.subTest(source=source):
+                    self.assertEqual((stage / destination).read_bytes(), (ROOT / source).read_bytes())
 
 
 if __name__ == "__main__":
