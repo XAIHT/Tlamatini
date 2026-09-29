@@ -2960,6 +2960,10 @@ class CapabilityAwareToolAgentExecutor:
         with scoped_request_state(
             multi_turn_enabled=multi_turn_enabled,
             suppress_visible_consoles=multi_turn_enabled,
+            # A long-running tool (the googler search) polls these so the user's
+            # Cancel stops it mid-flight instead of being waited out.
+            cancel_user_id=ask_execs_user_id,
+            cancel_run_epoch=payload.get("cancel_run_epoch"),
         ):
             if not multi_turn_enabled:
                 print(

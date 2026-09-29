@@ -112,6 +112,26 @@ number_of_results: 5
 #
 # The engine that actually answered is always named in the log, so a report can
 # never imply Google answered when Mojeek did.
+#
+# INVULNERABLE TO BLOCKS AND HANGS  (2026-09-28, after a second total failure)
+# Measured on a network the engines had flagged: plain HTTP was refused almost
+# everywhere (DuckDuckGo "bots use DuckDuckGo too", Brave 429, Mojeek 403,
+# Google "your browser isn't supported"), Bing answered with POISONED results
+# (online games for a benchmark query), and a real Chrome met Google's CAPTCHA
+# while Brave and Yahoo still answered. So, since then:
+#   * ONE time budget (`deadline_seconds`) bounds the whole run. Every request
+#     runs on a thread that is abandoned, never awaited, when time is up.
+#   * Every result set is RELEVANCE-CHECKED: a page that never mentions the
+#     query (or ignores `site:`) is rejected as poisoned, not returned.
+#   * Every refusal is REMEMBERED in a small health ledger shared by all
+#     Googler runs (<app>/Temp/googler_engine_health.json): a route that just
+#     refused cools down (3 -> 10 -> 30 min) and is skipped meanwhile; a route
+#     that answered recently is tried first. Asking a refusing engine again is
+#     what makes a block last longer.
+#   * TIER 2: when every web route refuses, open knowledge sources answer
+#     (Wikipedia, arXiv, Hacker News, GitHub, OpenAlex, Internet Archive, and
+#     Project Gutenberg for book hunts), clearly labelled as such.
+#   * "blocked", "no results" and "timed out" are reported as what they are.
 # ═══════════════════════════════════════════════════════════════════════════
 
 # Applies only when Tier 1 or text/raw result fetching needs a browser.
@@ -119,15 +139,54 @@ number_of_results: 5
 # true  = headless: faster and unattended, but MEASURABLY more refusal-prone.
 headless: false
 
-# Browser-engine order. Empty = Tier 0 first, then the built-in Tier-1 chain:
-#   duckduckgo-html, duckduckgo-lite, mojeek, bing, google, brave, startpage
-# An explicit list skips Tier 0. Pin [google] for the FULL dork vocabulary —
+# Browser-engine order. Empty = Tier 0 first, then the built-in Tier-1 routes
+#   google, brave, bing, duckduckgo-html, yahoo, duckduckgo-lite, mojeek, startpage
+# re-ordered on every run by the health ledger (recent answers first, recent
+# refusals skipped while they cool down), then Tier 2 (open sources).
+# An explicit list skips Tier 0 AND Tier 2. Pin [google] for the FULL dork vocabulary —
 # `before:`/`after:`/`AROUND()`/numeric ranges are Google-only; `site:` and
 # `filetype:` work everywhere.
 engines: []
 
 # Tries per engine before falling through, with jittered backoff between them.
+# A route that REFUSED (CAPTCHA, anomaly page, poisoned results) is never asked
+# twice in one run, whatever this says.
 attempts_per_engine: 2
+
+# The WHOLE run (search + page fetching) always ends within this many seconds.
+deadline_seconds: 120
+
+# How the browser tier shows itself (it only starts when Tier 0 found nothing):
+#   visible   : a normal, visible Chrome window (the default, like `headless: false`)
+#   offscreen : the same REAL Chrome, placed off the desktop: trusted like a
+#               visible one, without a window in the way
+#   headless  : no window at all; measurably the most refused mode
+# Empty = decided by `headless` above.
+window_mode: ""
+
+# Googler's own persistent Chrome profile, so consent choices and CAPTCHA
+# clearances survive between searches like a returning visitor's.
+# "" = %LOCALAPPDATA%\Tlamatini\googler\chrome-profile ; "none" = a fresh one each run.
+browser_profile_dir: ""
+
+# VISIBLE mode only: when an engine shows a CAPTCHA, wait up to this many
+# seconds for a person to solve it in the Googler window (0 = never wait).
+# The persistent profile then keeps the clearance for the next searches.
+captcha_wait_seconds: 0
+
+# Tier 2: when every web route refuses, ask open knowledge sources instead.
+open_sources: true
+
+# In text mode, a page that comes back as a thin JavaScript shell is rendered
+# by the browser when there is time left in the budget.
+render_thin_pages: true
+
+# Characters of page text kept per result (text / raw modes).
+max_chars_per_result: 200000
+
+# Optional machine-readable outcome (search_status, the route that answered,
+# the routes that refused, every result). Relative paths land beside this file.
+result_json: ""
 
 # text | raw | links_only
 #   text        : fetch each result page, extract visible text

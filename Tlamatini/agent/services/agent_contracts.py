@@ -88,7 +88,7 @@ _PARAMETRIZER_OUTPUT_FIELDS: dict[str, tuple[str, ...]] = {
     # raw exit code, which no verdict rule could read. The number now has its own
     # key and `status` carries a real token (see kuberneter.py).
     "kuberneter": ("parameters", "returncode", "success", "status", "response_body"),
-    "crawler": ("label", "model", "url", "crawl_type", "content_mode", "response_body"),
+    "crawler": ("label", "model", "url", "crawl_type", "content_mode", "status", "http_status", "response_body"),
     "summarizer": ("model", "source", "target_words", "response_body"),
     "file_interpreter": ("file_path", "mode", "response_body"),
     "image_interpreter": (
@@ -127,7 +127,8 @@ _PARAMETRIZER_OUTPUT_FIELDS: dict[str, tuple[str, ...]] = {
     "gatewayer": ("event_id", "event_type", "session_id", "correlation_id", "content_type", "method", "path", "body"),
     "gateway_relayer": ("event_type", "delivery_id", "action", "ref", "repository", "sender", "body"),
     "de_compresser": ("operation", "extension", "input", "output", "passwordless", "success", "response_body"),
-    "googler": ("url", "title", "status", "content_length", "response_body"),
+    "googler": ("url", "title", "status", "content_length", "engine", "tier",
+                "search_status", "response_body"),
     "acpxer": ("agent_id", "session_id", "transport", "settle", "transcript_path", "response_body"),
     "shoter": ("output_path", "output_dir", "filename", "all_screens", "coordinate_space",
                "capture_left", "capture_top", "capture_width", "capture_height",

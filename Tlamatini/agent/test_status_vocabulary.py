@@ -69,6 +69,13 @@ _EXIT_CODE_NAMES = frozenset({
     "status_code", "statuscode", "code", "ret", "retcode",
 })
 
+#: The text right before an interpolated value ends in the KEY ``status``: at the
+#: start of the string, after a newline (real or the escaped ``\\n`` spelling) or
+#: after any non-identifier character.  A suffix test is not enough:
+#: ``http_status: {status_code}`` (Crawler) is a DIFFERENT, legitimately numeric
+#: field, and agent_verdict reads the ``status`` key by exact match only.
+_STATUS_KEY_TAIL_RE = re.compile(r"(?:^|\\n|[^A-Za-z0-9_])status: $")
+
 
 # =====================================================================
 # The extractor  --  PUBLIC, reusable, side-effect free
@@ -159,7 +166,7 @@ def extract_interpolated_status_expressions(source: str,
         parts = list(node.values)
         for index, part in enumerate(parts[:-1]):
             text = _string_literal(part)
-            if text is None or not text.endswith("status: "):
+            if text is None or not _STATUS_KEY_TAIL_RE.search(text):
                 continue
             nxt = parts[index + 1]
             if isinstance(nxt, ast.FormattedValue):
@@ -329,6 +336,23 @@ class AgentStatusVocabularyGuardTests(SimpleTestCase):
         found = extract_interpolated_status_expressions(planted, "<planted>")
         self.assertTrue(any(expr == "exit_code" for _line, expr in found),
                         f"the exit-code lint missed a planted case: {found}")
+
+    def test_a_key_that_merely_ends_in_status_is_not_the_status(self):
+        """``http_status: {status_code}`` is its own numeric field, not ``status:``.
+
+        The lint used to test a SUFFIX, so Crawler's HTTP code (2026-09-28) read as
+        an exit code published as the verdict.  It must stay silent there and
+        still catch the real thing, in every spelling of the line break.
+        """
+        field = ('logging.info(f"INI_SECTION_X<<<\\nstatus: ok\\n'
+                 'http_status: {status_code}\\n")\n')
+        self.assertEqual(extract_interpolated_status_expressions(field, "<planted>"), [])
+        for planted in ('logging.info(f"INI_SECTION_X<<<\\nstatus: {status_code}\\n")\n',
+                        'logging.info(f"INI_SECTION_X<<<\\\\nstatus: {status_code}\\\\n")\n',
+                        'logging.info(f"status: {status_code}")\n',
+                        'logging.info(f"x | status: {status_code}")\n'):
+            found = extract_interpolated_status_expressions(planted, "<planted>")
+            self.assertEqual([expr for _line, expr in found], ["status_code"], planted)
 
     def test_the_extractor_ignores_prose(self):
         """Docstrings that merely LIST statuses must not enter the vocabulary."""

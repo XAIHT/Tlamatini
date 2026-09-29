@@ -43,7 +43,7 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         tool_name="chat_agent_crawler",
         tool_description="Chat-Agent-Crawler",
         display_name="Crawler",
-        purpose="Crawl any URL and capture its full page content (HTML, scripts, styles, meta tags) or plain text. Supports JavaScript-rendered SPAs. Use when the user asks to scrape, read, or analyze a web page.",
+        purpose="Read a web page over plain HTTP and analyze it with an LLM: full raw source (HTML, scripts, styles, meta tags) or plain text. By DEFAULT it reads exactly the URL you give (crawl_type='page'); pass crawl_type='small-range' only when the user wants the page's same-site links too (max_pages bounds it). It does NOT run JavaScript: for a page built by JavaScript use chat_agent_playwrighter. A bot wall, 401/403/429 or a timeout comes back as status blocked/timeout, never as page content. Use when the user asks to scrape, read, or analyze a web page.",
         example_request="Crawl url='https://example.com' with system_prompt='Extract all links, headings, and a page summary' and content_mode='text'",
         aliases=("crawler", "crawl", "web crawler"),
         security_hints=("crawl", "crawler", "url", "website", "web page", "scrape"),

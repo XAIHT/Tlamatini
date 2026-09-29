@@ -10,11 +10,19 @@ urls: []
 system_prompt: Extract all visible text content from this page
 content_mode: raw
 include_headers: true
-crawl_type: small-range
+# page (default) = analyze exactly the URL(s) above. small-range = the page AND its
+# same-site links; medium-range = the page and ALL its links; large-range = recursive
+# up to `depth`. include_seed: false restores the old "links only, never the page
+# itself" behaviour of the *-range types.
+crawl_type: page
+include_seed: true
 depth: 1
 
 # --- Safety / politeness bounds ---------------------------------------------
-max_pages: 0              # hard cap on total pages processed (0 = unlimited)
+max_pages: 25             # hard cap on total pages processed (0 = unlimited)
+deadline_seconds: 900     # whole-crawl wall clock: stops cleanly and reports (0 = none)
+page_timeout_seconds: 45  # ONE page (connect + download), even from a server that dribbles
+max_page_bytes: 8000000   # read at most this much of one page; the rest is cut and logged
 request_delay_seconds: 0  # delay between fetches (politeness / rate-limit)
 respect_robots: false     # honor robots.txt (skip Disallowed paths; fails open)
 

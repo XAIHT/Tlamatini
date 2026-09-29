@@ -22,8 +22,8 @@ import re
 import time
 import yaml
 import json
-import gzip
 import zlib
+import threading
 import logging
 import subprocess
 
@@ -358,31 +358,69 @@ def remove_pid_file():
 # ============================================================
 
 class HTMLTextExtractor(HTMLParser):
-    """Extract visible text from HTML, stripping all markup."""
+    """Extract visible text from HTML, stripping all markup.
 
-    SKIP_TAGS = {'script', 'style', 'head', 'meta', 'link', 'noscript'}
+    Only elements that can CONTAIN text are skipped. ``meta`` and ``link`` used
+    to be in the skip list, but they are VOID elements: HTML5 writes them with
+    no end tag, so the skip region they opened never closed and every modern
+    page (Wikipedia, MkDocs, ...) came back with ZERO characters - the Crawler
+    then dropped the page as "no text content" (seen live on 2026-09-28).
+    ``head`` may be left open in HTML5 too, so it ends at the first element
+    that cannot live inside a head. The page ``<title>`` becomes the first line.
+    """
+
+    SKIP_TAGS = {'script', 'style', 'noscript', 'template', 'svg', 'head'}
+    #: The only elements allowed inside <head>; any other one means the body began.
+    HEAD_TAGS = {'title', 'meta', 'link', 'style', 'script', 'noscript', 'base', 'template'}
 
     def __init__(self):
-        super().__init__()
+        super().__init__(convert_charrefs=True)
         self._pieces: List[str] = []
-        self._skip_depth = 0
+        self._skip: List[str] = []
+        self._in_title = False
+        self.title = ''
+
+    def _leave_head(self, tag: str) -> None:
+        if 'head' in self._skip and tag not in self.HEAD_TAGS:
+            self._skip = [open_tag for open_tag in self._skip if open_tag != 'head']
 
     def handle_starttag(self, tag, attrs):
-        if tag.lower() in self.SKIP_TAGS:
-            self._skip_depth += 1
+        tag = tag.lower()
+        if self._in_title and tag != 'title':
+            self._in_title = False          # a <title> never contains elements
+        self._leave_head(tag)
+        if tag == 'title':
+            self._in_title = not self.title and 'svg' not in self._skip
+        elif tag in self.SKIP_TAGS:
+            self._skip.append(tag)
+
+    def handle_startendtag(self, tag, attrs):
+        # <x/> opens and closes at once: it can never start a skipped region.
+        self._leave_head(tag.lower())
 
     def handle_endtag(self, tag):
-        if tag.lower() in self.SKIP_TAGS and self._skip_depth > 0:
-            self._skip_depth -= 1
+        tag = tag.lower()
+        if tag == 'title':
+            self._in_title = False
+        elif tag in self._skip:
+            while self._skip and self._skip.pop() != tag:
+                pass
 
     def handle_data(self, data):
-        if self._skip_depth == 0:
+        if self._in_title:
+            self.title += data
+            return
+        if not self._skip:
             text = data.strip()
             if text:
                 self._pieces.append(text)
 
     def get_text(self) -> str:
-        return '\n'.join(self._pieces)
+        title = ' '.join(self.title.split())
+        body = '\n'.join(self._pieces)
+        if title and not body.startswith(title):
+            return f"{title}\n{body}" if body else title
+        return body
 
 
 def strip_html(html_content: str) -> str:
@@ -697,11 +735,16 @@ def _fetch_robots_txt(base_url: str, timeout: int = 10) -> Optional[str]:
 
 class CrawlBudget:
     """Bounds and politeness for a crawl run: a hard ``max_pages`` cap (0 = unlimited),
-    an inter-request ``delay_seconds``, and optional ``robots.txt`` enforcement
-    (per-host, cached, fail-open). Without these, ``large-range`` crawling is unbounded."""
+    a whole-crawl ``deadline_seconds`` (0 = none), an inter-request ``delay_seconds``,
+    and optional ``robots.txt`` enforcement (per-host, cached, fail-open). Without
+    these, ``large-range`` crawling is unbounded.
+
+    It also RECORDS what happened to every page (``ok``, ``blocked``, ``timeout``,
+    ``unreachable``, ``not_found``, ``error`` or ``skipped``), so a crawl that
+    delivered nothing says exactly why instead of ending in silence."""
 
     def __init__(self, max_pages=0, delay_seconds=0, respect_robots=False,
-                 user_agent: str = _CRAWLER_UA):
+                 user_agent: str = _CRAWLER_UA, deadline_seconds=0):
         try:
             self.max_pages = max(0, int(max_pages or 0))
         except (TypeError, ValueError):
@@ -710,9 +753,17 @@ class CrawlBudget:
             self.delay_seconds = max(0.0, float(delay_seconds or 0))
         except (TypeError, ValueError):
             self.delay_seconds = 0.0
+        try:
+            self.deadline_seconds = max(0.0, float(deadline_seconds or 0))
+        except (TypeError, ValueError):
+            self.deadline_seconds = 0.0
+        self.deadline_at = (time.monotonic() + self.deadline_seconds
+                            if self.deadline_seconds > 0 else None)
         self.respect_robots = bool(respect_robots)
         self.user_agent = user_agent or _CRAWLER_UA
         self.processed = 0
+        self.outcomes: List[Tuple[str, str, str]] = []
+        self._deadline_announced = False
         self._robots_cache: Dict[str, Optional[RobotFileParser]] = {}
 
     def remaining(self) -> Optional[int]:
@@ -720,11 +771,52 @@ class CrawlBudget:
             return None  # unlimited
         return max(0, self.max_pages - self.processed)
 
+    def time_left(self) -> Optional[float]:
+        """Seconds until the crawl deadline, or None when there is none."""
+        if self.deadline_at is None:
+            return None
+        return self.deadline_at - time.monotonic()
+
+    def deadline_passed(self) -> bool:
+        left = self.time_left()
+        return left is not None and left <= 0
+
     def exhausted(self) -> bool:
+        if self.deadline_passed():
+            if not self._deadline_announced:
+                self._deadline_announced = True
+                logging.warning(f"Crawl deadline ({self.deadline_seconds:.0f}s) reached after "
+                                f"{self.processed} page(s); stopping cleanly.")
+            return True
         return self.max_pages != 0 and self.processed >= self.max_pages
+
+    def stop_reason(self) -> str:
+        if self.deadline_passed():
+            return f"crawl deadline of {self.deadline_seconds:.0f}s reached"
+        return f"page budget reached ({self.processed}/{self.max_pages})"
+
+    def page_timeout(self, configured: float) -> float:
+        """``configured`` seconds EXACTLY, never past the deadline (a page begun near it still gets 5 s)."""
+        left = self.time_left()
+        if left is None:
+            return configured
+        return min(configured, max(5.0, left))
 
     def note_processed(self) -> None:
         self.processed += 1
+
+    def record(self, url: str, result) -> None:
+        """Remember one page's outcome. A caller that returns nothing (``None``)
+        counts as ``ok``, so older callers keep working."""
+        if isinstance(result, tuple) and result:
+            outcome = str(result[0] or 'ok')
+            detail = str(result[1]) if len(result) > 1 else url
+        else:
+            outcome, detail = 'ok', url
+        self.outcomes.append((url, outcome, detail))
+
+    def count(self, outcome: str) -> int:
+        return sum(1 for _url, got, _detail in self.outcomes if got == outcome)
 
     def wait(self) -> None:
         if self.delay_seconds > 0:
@@ -837,15 +929,117 @@ def format_recon_summary(findings: Dict[str, List[str]]) -> str:
 # URL Fetching - Enhanced with full HTTP response capture
 # ============================================================
 
-def fetch_page_raw(url: str, include_headers: bool = True,
-                   timeout: int = 60) -> Tuple[str, Dict[str, str], int]:
+#: Wall-clock budget for ONE page: connect + headers + body. A per-socket
+#: timeout alone bounds nothing (a server that dribbles a byte every few seconds
+#: resets it forever), so the whole fetch runs on a worker thread that is
+#: abandoned at this limit.
+PAGE_TIMEOUT_SECONDS = 45.0
+#: The most bytes read from one page; the rest is cut off, and that is logged.
+MAX_PAGE_BYTES = 8 * 1024 * 1024
+
+
+class FetchError(RuntimeError):
+    """A fetch that produced no usable page: a timeout, a network error, or an HTTP
+    status >= 400. It keeps what the server DID say (status, headers, a body
+    excerpt), so the caller can tell a bot wall from a dead link."""
+
+    def __init__(self, message: str, status_code: int = 0, body: str = '',
+                 headers: Optional[Dict[str, str]] = None, timed_out: bool = False,
+                 network: bool = False):
+        super().__init__(message)
+        self.status_code = status_code
+        self.body = body
+        self.headers = headers or {}
+        self.timed_out = timed_out
+        self.network = network
+
+
+def _header_value(headers: Dict[str, str], name: str, default: str = '') -> str:
+    """HTTP header names are case-insensitive; a plain dict lookup is not.
+    Wikipedia sends ``content-type`` in lower case, so ``headers.get('Content-Type')``
+    answered "unknown" and the binary guard went blind (2026-09-28)."""
+    wanted = name.lower()
+    for key, value in (headers or {}).items():
+        if str(key).lower() == wanted:
+            return value
+    return default
+
+
+def _decode_body(raw: bytes, content_encoding: str, charset: Optional[str]) -> str:
+    """Decompress (a truncated stream still yields what arrived) and decode."""
+    encoding = (content_encoding or '').lower()
+    try:
+        if encoding == 'gzip':
+            raw = zlib.decompressobj(16 + zlib.MAX_WBITS).decompress(raw)
+        elif encoding == 'deflate':
+            try:
+                raw = zlib.decompressobj().decompress(raw)
+            except zlib.error:
+                raw = zlib.decompressobj(-zlib.MAX_WBITS).decompress(raw)
+    except zlib.error:
+        pass
+    try:
+        return raw.decode(charset or 'utf-8', errors='replace')
+    except LookupError:
+        return raw.decode('utf-8', errors='replace')
+
+
+def _fetch_worker(req, socket_timeout: float, max_bytes: int, box: Dict) -> None:
+    """Runs on a daemon thread and writes everything it learns into ``box``."""
+    try:
+        with urllib.request.urlopen(req, timeout=socket_timeout) as resp:
+            box['status_code'] = resp.getcode()
+            box['headers'] = dict(resp.headers.items())
+            box['encoding'] = resp.headers.get('Content-Encoding', '')
+            box['charset'] = resp.headers.get_content_charset()
+            read_some = getattr(resp, 'read1', None) or resp.read
+            chunks, total = [], 0
+            while total < max_bytes and not box.get('abandoned'):
+                chunk = read_some(65536)
+                if not chunk:
+                    break
+                chunks.append(chunk)
+                total += len(chunk)
+            box['truncated'] = total >= max_bytes
+            box['raw'] = b''.join(chunks)[:max_bytes]
+    except urllib.error.HTTPError as e:
+        headers = e.headers
+        box['status_code'] = e.code
+        box['headers'] = dict(headers.items()) if headers else {}
+        box['encoding'] = headers.get('Content-Encoding', '') if headers else ''
+        box['charset'] = headers.get_content_charset() if headers else None
+        try:
+            box['raw'] = e.read(256 * 1024) or b''
+        except Exception:
+            box['raw'] = b''
+        box['http_error'] = f"HTTP {e.code} {e.reason}"
+    except urllib.error.URLError as e:
+        box['error'] = f"cannot reach the site: {e.reason}"
+        box['timed_out'] = isinstance(e.reason, TimeoutError)
+        box['network'] = True
+    except TimeoutError as e:
+        box['error'] = f"the server stopped answering ({e})"
+        box['timed_out'] = True
+    except OSError as e:
+        box['error'] = f"{type(e).__name__}: {e}"
+        box['network'] = True
+    except Exception as e:
+        box['error'] = f"{type(e).__name__}: {e}"
+
+
+def fetch_page_raw(url: str, include_headers: bool = True, timeout: int = 60, *,
+                   page_timeout: Optional[float] = None,
+                   max_bytes: int = MAX_PAGE_BYTES) -> Tuple[str, Dict[str, str], int]:
     """
     Fetch a web page via HTTP GET and return:
       - raw_body: the complete decoded response body (HTML/JS/CSS/JSON/everything)
       - headers: dict of HTTP response headers
       - status_code: HTTP status code
 
-    Handles gzip/deflate encoding transparently.
+    Handles gzip/deflate encoding transparently. It NEVER hangs: the whole fetch
+    is bounded by ``page_timeout`` (default PAGE_TIMEOUT_SECONDS) and at most
+    ``max_bytes`` are read. Raises FetchError on a timeout, a network error or
+    an HTTP status >= 400.
     """
     req = urllib.request.Request(
         url,
@@ -857,31 +1051,111 @@ def fetch_page_raw(url: str, include_headers: bool = True,
             'Accept-Encoding': 'gzip, deflate, identity',
         }
     )
+    limit = max(1.0, float(PAGE_TIMEOUT_SECONDS if page_timeout is None else page_timeout))
+    box: Dict = {}
+    worker = threading.Thread(target=_fetch_worker,
+                              args=(req, min(float(timeout), limit), int(max_bytes), box),
+                              daemon=True)
+    worker.start()
+    worker.join(limit)
+    if worker.is_alive():
+        box['abandoned'] = True
+        raise FetchError(f"no complete page after {limit:.0f}s (the server kept the "
+                         f"connection open without finishing)", timed_out=True)
+    if box.get('error'):
+        raise FetchError(box['error'], timed_out=bool(box.get('timed_out')),
+                         network=bool(box.get('network')))
+    headers = box.get('headers') or {}
+    body = _decode_body(box.get('raw') or b'', box.get('encoding', ''), box.get('charset'))
+    status_code = int(box.get('status_code') or 0)
+    if box.get('http_error'):
+        raise FetchError(box['http_error'], status_code=status_code, body=body,
+                         headers=headers)
+    if box.get('truncated'):
+        logging.warning(f"Page larger than {int(max_bytes)} bytes; analyzing only the "
+                        f"first {int(max_bytes)} bytes of {url}")
+    return body, (headers if include_headers else {}), status_code
 
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        status_code = resp.getcode()
-        headers_dict = {}
-        if include_headers:
-            for key in resp.headers:
-                headers_dict[key] = resp.headers[key]
 
-        raw_bytes = resp.read()
+#: Words that mark a bot wall / challenge page instead of the page asked for.
+#: Checked ONLY on short pages: a real article may well mention "captcha".
+_BLOCK_MARKERS = (
+    ('just a moment...', 'Cloudflare browser check'),
+    ('attention required! | cloudflare', 'Cloudflare block page'),
+    ('cf-chl', 'Cloudflare challenge'),
+    ('checking your browser', 'browser check'),
+    ('verify you are human', 'human verification'),
+    ('are you a robot', 'bot check'),
+    ('pardon our interruption', 'bot check'),
+    ('unusual traffic', 'unusual-traffic block'),
+    ('captcha', 'CAPTCHA'),
+    ('access denied', 'access denied'),
+    ('enable javascript and cookies to continue', 'JavaScript/cookie wall'),
+    ('ddos protection by', 'DDoS-protection wall'),
+    ('request unsuccessful. incapsula', 'Incapsula block'),
+)
+#: A challenge page is small; above this much visible text it is real content.
+_BLOCK_TEXT_LIMIT = 1500
 
-        # Handle compressed responses
-        content_encoding = resp.headers.get('Content-Encoding', '').lower()
-        if content_encoding == 'gzip':
-            raw_bytes = gzip.decompress(raw_bytes)
-        elif content_encoding == 'deflate':
-            raw_bytes = zlib.decompress(raw_bytes, -zlib.MAX_WBITS)
 
-        charset = resp.headers.get_content_charset() or 'utf-8'
-        raw_body = raw_bytes.decode(charset, errors='replace')
+def detect_block(status_code: int, body: str, text: Optional[str] = None) -> Optional[str]:
+    """Why this response is a REFUSAL rather than the page, or None.
 
-        return raw_body, headers_dict, status_code
+    401 / 403 / 429 always are. Any other page counts only when it is short AND
+    carries a bot-wall marker, so an article that merely mentions "captcha" is
+    never thrown away."""
+    if status_code in (401, 403):
+        return f"HTTP {status_code}: the site refused this request"
+    if status_code == 429:
+        return "HTTP 429: rate limited (too many requests)"
+    visible = strip_html(body or '') if text is None else text
+    if len(visible) > _BLOCK_TEXT_LIMIT:
+        return None
+    sample = (visible + '\n' + (body or '')[:8000]).lower()
+    for marker, reason in _BLOCK_MARKERS:
+        if marker in sample:
+            prefix = f"HTTP {status_code}: " if status_code and status_code >= 400 else ''
+            return f"{prefix}{reason} page instead of the content"
+    return None
+
+
+def _retry_after_seconds(value) -> Optional[float]:
+    try:
+        seconds = float(str(value).strip())
+    except (TypeError, ValueError):
+        return None
+    return seconds if seconds >= 0 else None
+
+
+def _fetch_with_retry(url: str, page_timeout: Optional[float], max_bytes: int):
+    """Fetch once; when the server answers 429/503 with a short ``Retry-After``,
+    wait exactly that long and try ONE more time - never a hammering loop."""
+    try:
+        return fetch_page_raw(url, include_headers=True, page_timeout=page_timeout,
+                              max_bytes=max_bytes)
+    except FetchError as e:
+        if e.status_code not in (429, 503):
+            raise
+        wait = _retry_after_seconds(_header_value(e.headers, 'Retry-After'))
+        if wait is None or wait > 20 or _crawl_time_left() < wait + 10:
+            raise
+        logging.info(f"HTTP {e.status_code} from {url}; waiting {wait:.0f}s as the server "
+                     f"asked, then ONE retry")
+        time.sleep(wait)
+        return fetch_page_raw(url, include_headers=True, page_timeout=page_timeout,
+                              max_bytes=max_bytes)
+
+
+#: The HTML of the page analyzed last, kept for ONE reuse: a *-range crawl reads
+#: its seed's links right after analyzing the seed, without downloading it twice.
+_PAGE_CACHE: Dict[str, str] = {}
 
 
 def fetch_page(url: str) -> str:
     """Legacy: Fetch a web page and return its raw HTML content."""
+    cached = _PAGE_CACHE.pop(url, None)
+    if cached is not None:
+        return cached
     body, _, _ = fetch_page_raw(url, include_headers=False)
     return body
 
@@ -990,12 +1264,33 @@ def tokens_to_chars(num_tokens: int) -> int:
     return int(num_tokens * 3.5)
 
 
+#: time.monotonic() instant by which the whole crawl must end, or None. Set by
+#: crawl(); no LLM call waits much past it and no retry sleeps past it.
+_CRAWL_DEADLINE: Optional[float] = None
+#: Longest a single LLM call may take when no crawl deadline is closer.
+LLM_TIMEOUT_SECONDS = 300.0
+
+
+def _crawl_time_left() -> float:
+    if _CRAWL_DEADLINE is None:
+        return float('inf')
+    return _CRAWL_DEADLINE - time.monotonic()
+
+
+def _llm_timeout() -> float:
+    """300 s per call, but never much past the crawl deadline (30 s of grace)."""
+    return max(20.0, min(LLM_TIMEOUT_SECONDS, _crawl_time_left() + 30.0))
+
+
 def query_ollama(host: str, model: str, system_prompt: str, context: str) -> str:
     """
     Send a prompt to an Ollama LLM with a system prompt and context,
     and return the full response text.
     Uses the 'system' field so the LLM treats the prompt with proper priority,
     separate from the content/context which goes in 'prompt'.
+
+    Every failure is raised as RuntimeError - including a timeout, which used to
+    escape as a bare socket error and abort the WHOLE crawl.
     """
     url = f"{host.rstrip('/')}/api/generate"
 
@@ -1013,8 +1308,9 @@ def query_ollama(host: str, model: str, system_prompt: str, context: str) -> str
         method="POST"
     )
 
+    timeout = _llm_timeout()
     try:
-        with urllib.request.urlopen(req, timeout=300) as resp:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
             body = json.loads(resp.read().decode("utf-8"))
             return body.get("response", "")
     except urllib.error.HTTPError as e:
@@ -1022,6 +1318,10 @@ def query_ollama(host: str, model: str, system_prompt: str, context: str) -> str
         raise RuntimeError(f"Ollama HTTP {e.code}: {error_body}") from e
     except urllib.error.URLError as e:
         raise RuntimeError(f"Cannot reach Ollama at {host}: {e.reason}") from e
+    except TimeoutError as e:
+        raise RuntimeError(f"Ollama did not answer within {timeout:.0f}s") from e
+    except (OSError, ValueError) as e:
+        raise RuntimeError(f"Ollama call failed: {type(e).__name__}: {e}") from e
 
 
 # ============================================================
@@ -1247,44 +1547,82 @@ def query_ollama_chunked(host: str, model: str, system_prompt: str,
         return synthesis_context
 
 
+def _outcome_of(result) -> str:
+    """The outcome word of a process_url_with_llm() result (None means ok)."""
+    if isinstance(result, tuple) and result:
+        return str(result[0] or 'ok')
+    return 'ok'
+
+
+def _classify_fetch_error(page_url: str, error: FetchError) -> Tuple[str, str]:
+    """Name what went wrong: a refusal is BLOCKED, never "no content"."""
+    if error.timed_out:
+        return 'timeout', f"{page_url}: {error}"
+    reason = detect_block(error.status_code, error.body) if error.status_code else None
+    if reason:
+        return 'blocked', f"{page_url}: {reason}"
+    if error.status_code in (404, 410):
+        return 'not_found', f"{page_url}: HTTP {error.status_code} (the page does not exist)"
+    if error.network:
+        return 'unreachable', f"{page_url}: {error}"
+    return 'error', f"{page_url}: {error}"
+
+
 def process_url_with_llm(page_url: str, host: str, model: str, system_prompt: str,
                          crawl_type: str, timestamp: str,
                          content_mode: str = "raw",
                          include_headers: bool = True,
-                         extract_recon: bool = False) -> None:
+                         extract_recon: bool = False,
+                         page_timeout: Optional[float] = None,
+                         max_page_bytes: int = MAX_PAGE_BYTES) -> Tuple[str, str]:
     """
     Fetch a URL, capture content, save it, query LLM with automatic chunking.
 
     The chunk size is determined automatically by querying the Ollama API for the
-    model's actual context window. NO content is ever dropped or ignored — if the
+    model's actual context window. NO content is ever dropped or ignored - if the
     page is too big for one request, it is split into as many chunks as needed.
 
     content_mode:
       - "raw"  : send the FULL raw HTML/JS/CSS body + headers + resource inventory to the LLM
-      - "text" : legacy mode — strip HTML and send only visible text
+      - "text" : legacy mode - strip HTML and send only visible text
+
+    Returns ``(outcome, detail)``. ``ok`` means the page was analyzed and its
+    INI_SECTION_CRAWLER logged. Anything else (``blocked``, ``timeout``,
+    ``unreachable``, ``not_found``, ``error``, ``skipped``) means it was NOT, and
+    a bot wall's words never reach the LLM dressed up as the page.
     """
     logging.info(f"Fetching [{content_mode}]: {page_url}")
 
     try:
-        raw_html, headers, status_code = fetch_page_raw(
-            page_url, include_headers=include_headers
-        )
+        raw_html, headers, status_code = _fetch_with_retry(page_url, page_timeout, max_page_bytes)
+    except FetchError as e:
+        outcome, detail = _classify_fetch_error(page_url, e)
+        logging.error(f"{outcome.upper()}: {detail}")
+        return outcome, detail
     except Exception as e:
         logging.error(f"Failed to fetch {page_url}: {e}")
-        return
+        return 'error', f"{page_url}: {e}"
 
+    _PAGE_CACHE.clear()
+    _PAGE_CACHE[page_url] = raw_html
     logging.info(f"Received {len(raw_html)} chars, HTTP {status_code} from {page_url}")
-    content_type = headers.get('Content-Type', 'unknown')
+    content_type = _header_value(headers, 'Content-Type', 'unknown')
     logging.info(f"Content-Type: {content_type}")
 
     if not raw_html.strip():
         logging.warning(f"Empty response body from {page_url}, skipping LLM query.")
-        return
+        return 'skipped', f"{page_url}: the server returned an empty page"
 
     # Binary guard: never decode-as-text + feed a PDF/image/archive to the LLM.
     if _is_binary_for_llm(content_type, page_url):
         logging.info(f"Skipping binary content for LLM ({content_type}) at {page_url}")
-        return
+        return 'skipped', f"{page_url}: a binary file ({content_type}), not analyzed"
+
+    visible_text = strip_html(raw_html)
+    block = detect_block(status_code, raw_html, visible_text)
+    if block:
+        logging.error(f"BLOCKED: {page_url}: {block} - not analyzed, never reported as content")
+        return 'blocked', f"{page_url}: {block}"
 
     # Recon pass (runs on the RAW source in both modes; saved + injected into context).
     recon_block = ''
@@ -1310,16 +1648,16 @@ def process_url_with_llm(page_url: str, host: str, model: str, system_prompt: st
         if api_endpoints:
             logging.info(f"Discovered {len(api_endpoints)} API endpoints in source")
 
-        # Build ALL content as one flat string — chunking handled by query_ollama_chunked
+        # Build ALL content as one flat string - chunking handled by query_ollama_chunked
         full_content = build_full_content(
-            page_url, raw_html, headers, status_code,
+            page_url, raw_html, headers if include_headers else {}, status_code,
             resource_summary, api_endpoints
         )
 
         if recon_block:
             full_content = f"{recon_block}\n\n{full_content}"
 
-        # User's prompt goes FIRST — it is THE task. Dev preamble is secondary context.
+        # User's prompt goes FIRST - it is THE task. Dev preamble is secondary context.
         full_system_prompt = (
             f"YOUR PRIMARY TASK:\n{system_prompt}\n\n"
             f"CONTEXT ABOUT THE INPUT:\n{DEV_RAW_PREAMBLE}{DEV_RESOURCE_PREAMBLE}"
@@ -1335,23 +1673,25 @@ def process_url_with_llm(page_url: str, host: str, model: str, system_prompt: st
             )
             logging.info(f"Saved resource inventory to: {filepath_res}")
 
-        # Query LLM — auto-chunks based on model's real context window
+        # Query LLM - auto-chunks based on model's real context window
         try:
             response_text = query_ollama_chunked(
                 host, model, full_system_prompt, full_content, page_url
             )
         except RuntimeError as e:
             logging.error(f"LLM query failed for {page_url}: {e}")
-            return
+            return 'error', f"{page_url}: the LLM did not answer ({e})"
 
     else:
         # --- TEXT MODE ---
-        plain_text = strip_html(raw_html)
+        plain_text = visible_text
         logging.info(f"Extracted {len(plain_text)} chars of text from {page_url}")
 
         if not plain_text.strip():
-            logging.warning(f"No text content found at {page_url}, skipping LLM query.")
-            return
+            logging.warning(f"No text content found at {page_url} (the page is probably built "
+                            f"by JavaScript; Playwrighter can render it), skipping LLM query.")
+            return 'skipped', (f"{page_url}: no readable text (the page is probably built "
+                               f"by JavaScript)")
 
         if recon_block:
             plain_text = f"{recon_block}\n\n{plain_text}"
@@ -1359,14 +1699,18 @@ def process_url_with_llm(page_url: str, host: str, model: str, system_prompt: st
         filepath = save_crawled_content(plain_text, crawl_type, timestamp)
         logging.info(f"Saved crawled content to: {filepath}")
 
-        # Query LLM — auto-chunks based on model's real context window
+        # Query LLM - auto-chunks based on model's real context window
         try:
             response_text = query_ollama_chunked(
                 host, model, system_prompt, plain_text, page_url
             )
         except RuntimeError as e:
             logging.error(f"LLM query failed for {page_url}: {e}")
-            return
+            return 'error', f"{page_url}: the LLM did not answer ({e})"
+
+    if not str(response_text or '').strip():
+        logging.error(f"The LLM returned an EMPTY answer for {page_url}; not reported as a result.")
+        return 'error', f"{page_url}: the LLM returned an empty answer"
 
     # Log response
     type_label = crawl_type.replace('-range', '')
@@ -1378,15 +1722,26 @@ def process_url_with_llm(page_url: str, host: str, model: str, system_prompt: st
         f"url: {page_url}\n"
         f"crawl_type: {type_label}\n"
         f"content_mode: {content_mode}\n"
+        f"status: ok\n"
+        f"http_status: {status_code}\n"
         f"\n"
         f"{response_text}\n"
         f">>>END_SECTION_CRAWLER"
     )
+    return 'ok', page_url
 
 
 # ============================================================
 # Crawl orchestration (multi-seed, bounded, polite)
 # ============================================================
+
+
+def _page_kwargs(budget: CrawlBudget, proc_kwargs: Dict) -> Dict:
+    """proc_kwargs with this page's timeout clipped to the crawl deadline."""
+    kwargs = dict(proc_kwargs)
+    kwargs['page_timeout'] = budget.page_timeout(
+        float(proc_kwargs.get('page_timeout') or PAGE_TIMEOUT_SECONDS))
+    return kwargs
 
 
 def _process_link_list(links, label, budget, visited, host, model, system_prompt, proc_kwargs):
@@ -1395,7 +1750,7 @@ def _process_link_list(links, label, budget, visited, host, model, system_prompt
     total = len(links)
     for i, link in enumerate(links):
         if budget.exhausted():
-            logging.info(f"Page budget reached ({budget.processed}/{budget.max_pages}); stopping.")
+            logging.info(f"Stopping: {budget.stop_reason()}.")
             break
         if link in visited:
             continue
@@ -1406,21 +1761,23 @@ def _process_link_list(links, label, budget, visited, host, model, system_prompt
         budget.wait()
         link_ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         logging.info(f"Processing link {i + 1}/{total}: {link}")
-        process_url_with_llm(link, host, model, system_prompt, label, link_ts, **proc_kwargs)
+        result = process_url_with_llm(link, host, model, system_prompt, label, link_ts,
+                                      **_page_kwargs(budget, proc_kwargs))
+        budget.record(link, result)
         budget.note_processed()
 
 
 def _crawl_recursive(urls_to_process, current_depth, max_depth, budget, visited,
                      host, model, system_prompt, proc_kwargs):
     """large-range: process links at the current depth, then recurse into the links they
-    contain, up to max_depth — bounded by the shared budget and visited set."""
+    contain, up to max_depth - bounded by the shared budget and visited set."""
     if current_depth > max_depth:
         return
     total = len(urls_to_process)
     next_level = []
     for i, link in enumerate(urls_to_process):
         if budget.exhausted():
-            logging.info(f"Page budget reached ({budget.processed}/{budget.max_pages}); stopping.")
+            logging.info(f"Stopping: {budget.stop_reason()}.")
             return
         if link in visited:
             continue
@@ -1431,10 +1788,13 @@ def _crawl_recursive(urls_to_process, current_depth, max_depth, budget, visited,
         budget.wait()
         link_ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         logging.info(f"[depth={current_depth}/{max_depth}] Processing link {i + 1}/{total}: {link}")
-        process_url_with_llm(link, host, model, system_prompt, 'large', link_ts, **proc_kwargs)
+        result = process_url_with_llm(link, host, model, system_prompt, 'large', link_ts,
+                                      **_page_kwargs(budget, proc_kwargs))
+        budget.record(link, result)
         budget.note_processed()
 
-        if current_depth < max_depth:
+        # Only a page that answered is worth reading for deeper links.
+        if current_depth < max_depth and _outcome_of(result) == 'ok':
             try:
                 link_html = fetch_page(link)
                 next_level.extend(extract_links(link_html, link))
@@ -1447,30 +1807,156 @@ def _crawl_recursive(urls_to_process, current_depth, max_depth, budget, visited,
                          host, model, system_prompt, proc_kwargs)
 
 
+#: Every crawl type, and the spellings people use for "just this page".
+CRAWL_TYPES = ('page', 'small-range', 'medium-range', 'large-range')
+_CRAWL_TYPE_ALIASES = {'single': 'page', 'single-page': 'page', 'page-only': 'page',
+                       'one': 'page', 'seed': 'page'}
+#: When NOTHING was delivered, the section names the most telling failure.
+_FAILURE_PRIORITY = ('blocked', 'timeout', 'unreachable', 'not_found', 'error', 'skipped')
+#: The budget of the last crawl(); main() and the tests read its outcomes.
+LAST_BUDGET: Optional[CrawlBudget] = None
+
+
+def _normalize_crawl_type(value) -> str:
+    text = str(value if value is not None else 'page').strip().lower() or 'page'
+    return _CRAWL_TYPE_ALIASES.get(text, text)
+
+
+def _as_bool(value, default: bool) -> bool:
+    if isinstance(value, bool):
+        return value
+    text = str(value if value is not None else '').strip().lower()
+    if text in ('1', 'true', 'yes', 'on'):
+        return True
+    if text in ('0', 'false', 'no', 'off'):
+        return False
+    return default
+
+
+def _as_number(value, default: float) -> float:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return default
+    return number if number > 0 else default
+
+
+def _analyze_seed(seed, label, budget, visited, host, model, system_prompt, proc_kwargs):
+    """Analyze the seed page ITSELF - the page the user actually asked about."""
+    if seed in visited:
+        return
+    if not budget.robots_allowed(seed):
+        logging.info(f"robots.txt disallows {seed}; skipping.")
+        budget.record(seed, ('skipped', f"{seed}: robots.txt disallows this page"))
+        return
+    visited.add(seed)
+    budget.wait()
+    seed_ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    logging.info(f"Analyzing the page itself: {seed}")
+    result = process_url_with_llm(seed, host, model, system_prompt, label, seed_ts,
+                                  **_page_kwargs(budget, proc_kwargs))
+    budget.record(seed, result)
+    budget.note_processed()
+
+
+def _emit_failure_section(url: str, crawl_type: str, content_mode: str, model: str,
+                          status: str, body: str) -> None:
+    """ONE truthful INI_SECTION_CRAWLER for a crawl that delivered NOTHING, so a
+    flow or the chat reads a named failure instead of an empty success."""
+    label = str(crawl_type).replace('-range', '')
+    logging.info(
+        f"INI_SECTION_CRAWLER<<<\n"
+        f"label: {label.upper()}\n"
+        f"model: {model}\n"
+        f"url: {url}\n"
+        f"crawl_type: {label}\n"
+        f"content_mode: {content_mode}\n"
+        f"status: {status}\n"
+        f"http_status: \n"
+        f"\n"
+        f"{body}\n"
+        f">>>END_SECTION_CRAWLER"
+    )
+
+
+def _report_outcome(budget: CrawlBudget, seeds: List[str], crawl_type: str,
+                    content_mode: str, model: str) -> None:
+    """Say what the crawl achieved: always a summary line, and when NOTHING was
+    analyzed, one failure section naming why - a crawl never ends in silence."""
+    counts = {word: budget.count(word) for word in ('ok',) + _FAILURE_PRIORITY}
+    parts = [f"{number} {word}" for word, number in counts.items() if number]
+    logging.info("Crawl summary: " + (", ".join(parts) if parts else "no page was processed"))
+    if counts['ok']:
+        return
+    failures = [(url, outcome, detail) for url, outcome, detail in budget.outcomes
+                if outcome != 'ok']
+    if failures:
+        status = next((word for word in _FAILURE_PRIORITY if counts.get(word)), 'error')
+    elif budget.deadline_passed():
+        status = 'timeout'
+    else:
+        status = 'error'
+    lines = ["NOTHING WAS ANALYZED. Do not present any page content for this crawl."]
+    for _url, outcome, detail in failures[:20]:
+        lines.append(f"- {outcome}: {detail}")
+    if len(failures) > 20:
+        lines.append(f"- ... and {len(failures) - 20} more")
+    if not failures:
+        lines.append("- " + (budget.stop_reason() if budget.deadline_passed()
+                             else "no page could be processed"))
+    if status == 'blocked':
+        lines.append("The site answered with a refusal (bot wall, CAPTCHA, 401/403/429). "
+                     "Try again later; open it in a real browser (Playwrighter) only if the "
+                     "user is entitled to access it. Never try to get around a CAPTCHA.")
+    elif status == 'skipped':
+        lines.append("The pages had no readable text (built by JavaScript, empty, or a "
+                     "binary file). For a JavaScript page use Playwrighter; for a file use "
+                     "Apirer and File-Extractor.")
+    _emit_failure_section(seeds[0] if seeds else '', crawl_type, content_mode, model,
+                          status, "\n".join(lines))
+
+
 def crawl(config: Dict, host: str, model: str, system_prompt: str) -> int:
     """Drive the crawl across ALL seed URLs with a shared page budget + visited set.
-    Returns the number of pages processed. With a single ``url`` and default flags the
-    behavior is identical to the legacy single-seed crawl."""
+    Returns the number of pages processed.
+
+    ``crawl_type: page`` (the default) analyzes exactly the seed URL(s). The
+    ``*-range`` types analyze each seed ITSELF first (``include_seed``, default
+    true; false restores the old links-only behaviour) and then its links. The
+    whole run is bounded by ``max_pages`` and ``deadline_seconds``, and it always
+    ends with a truthful summary."""
+    global LAST_BUDGET, _CRAWL_DEADLINE
     seeds = _collect_seed_urls(config)
     if not seeds:
         logging.error("No URL configured. Set the 'url' or 'urls' field in config.yaml.")
         return 0
 
-    crawl_type = config.get('crawl_type', 'small-range')
-    if crawl_type not in ('small-range', 'medium-range', 'large-range'):
-        logging.error(f"Unknown crawl_type: {crawl_type}. Use small-range, medium-range, or large-range.")
+    content_mode = config.get('content_mode', 'raw')
+    crawl_type = _normalize_crawl_type(config.get('crawl_type', 'page'))
+    if crawl_type not in CRAWL_TYPES:
+        logging.error(f"Unknown crawl_type: {crawl_type}. Use page, small-range, "
+                      f"medium-range, or large-range.")
+        _emit_failure_section(seeds[0], crawl_type, content_mode, model, 'error',
+                              f"Unknown crawl_type '{crawl_type}'. Use page, small-range, "
+                              f"medium-range, or large-range.")
         return 0
 
     budget = CrawlBudget(
         max_pages=config.get('max_pages', 0),
         delay_seconds=config.get('request_delay_seconds', 0),
         respect_robots=bool(config.get('respect_robots', False)),
+        deadline_seconds=config.get('deadline_seconds', 0),
     )
+    LAST_BUDGET = budget
+    _CRAWL_DEADLINE = budget.deadline_at
     proc_kwargs = {
-        'content_mode': config.get('content_mode', 'raw'),
+        'content_mode': content_mode,
         'include_headers': config.get('include_headers', True),
         'extract_recon': bool(config.get('extract_recon', False)),
+        'page_timeout': _as_number(config.get('page_timeout_seconds'), PAGE_TIMEOUT_SECONDS),
+        'max_page_bytes': int(_as_number(config.get('max_page_bytes'), MAX_PAGE_BYTES)),
     }
+    include_seed = _as_bool(config.get('include_seed', True), True)
 
     depth = config.get('depth', 1)
     if crawl_type == 'large-range' and (not isinstance(depth, int) or depth < 1):
@@ -1478,33 +1964,51 @@ def crawl(config: Dict, host: str, model: str, system_prompt: str) -> int:
         depth = 1
 
     visited = set()
+    label = crawl_type.replace('-range', '')
 
-    for seed in seeds:
-        if budget.exhausted():
-            logging.info(f"Page budget ({budget.max_pages}) reached; stopping before seed {seed}.")
-            break
+    try:
+        for seed in seeds:
+            if budget.exhausted():
+                logging.info(f"Stopping before seed {seed}: {budget.stop_reason()}.")
+                break
 
-        logging.info(f"=== Crawling seed: {seed} (type={crawl_type}) ===")
-        try:
-            main_html = fetch_page(seed)
-        except Exception as e:
-            logging.error(f"Failed to fetch seed {seed}: {e}")
-            continue
+            logging.info(f"=== Crawling seed: {seed} (type={crawl_type}) ===")
+            if crawl_type == 'page' or include_seed:
+                _analyze_seed(seed, label, budget, visited, host, model, system_prompt,
+                              proc_kwargs)
+            if crawl_type == 'page' or budget.exhausted():
+                continue
 
-        all_links = extract_links(main_html, seed)
+            try:
+                main_html = fetch_page(seed)
+            except Exception as e:
+                logging.error(f"Failed to fetch seed {seed}: {e}")
+                if not include_seed:
+                    outcome = (_classify_fetch_error(seed, e) if isinstance(e, FetchError)
+                               else ('error', f"{seed}: {e}"))
+                    budget.record(seed, outcome)
+                continue
 
-        if crawl_type == 'small-range':
-            links = filter_same_domain(all_links, seed)
-            logging.info(f"Found {len(links)} same-domain links")
-            _process_link_list(links, 'small', budget, visited, host, model, system_prompt, proc_kwargs)
-        elif crawl_type == 'medium-range':
-            logging.info(f"Found {len(all_links)} total links (cross-domain)")
-            _process_link_list(all_links, 'medium', budget, visited, host, model, system_prompt, proc_kwargs)
-        else:  # large-range
-            visited.add(seed)  # don't revisit the seed itself
-            logging.info(f"Found {len(all_links)} links from seed (recursive depth={depth})")
-            _crawl_recursive(all_links, 1, depth, budget, visited, host, model, system_prompt, proc_kwargs)
+            all_links = extract_links(main_html, seed)
 
+            if crawl_type == 'small-range':
+                links = filter_same_domain(all_links, seed)
+                logging.info(f"Found {len(links)} same-domain links")
+                _process_link_list(links, label, budget, visited, host, model, system_prompt,
+                                   proc_kwargs)
+            elif crawl_type == 'medium-range':
+                logging.info(f"Found {len(all_links)} total links (cross-domain)")
+                _process_link_list(all_links, label, budget, visited, host, model,
+                                   system_prompt, proc_kwargs)
+            else:  # large-range
+                visited.add(seed)  # don't revisit the seed itself
+                logging.info(f"Found {len(all_links)} links from seed (recursive depth={depth})")
+                _crawl_recursive(all_links, 1, depth, budget, visited, host, model,
+                                 system_prompt, proc_kwargs)
+    finally:
+        _CRAWL_DEADLINE = None
+
+    _report_outcome(budget, seeds, crawl_type, content_mode, model)
     return budget.processed
 
 
@@ -1520,7 +2024,7 @@ def main():
     try:
         url = config.get('url', '')
         system_prompt = config.get('system_prompt', '')
-        crawl_type = config.get('crawl_type', 'small-range')
+        crawl_type = _normalize_crawl_type(config.get('crawl_type', 'page'))
         content_mode = config.get('content_mode', 'raw')
         include_headers = config.get('include_headers', True)
         llm_config = config.get('llm', {})
@@ -1534,10 +2038,16 @@ def main():
         if crawl_type == 'large-range':
             depth = config.get('depth', 1)
             logging.info(f"Recursive depth: {depth}")
+        if crawl_type != 'page':
+            logging.info(f"Analyze the seed page itself: "
+                         f"{_as_bool(config.get('include_seed', True), True)}")
         logging.info(f"Content mode: {content_mode}")
         logging.info(f"Include headers: {include_headers}")
         logging.info(f"Seed URLs: {len(_collect_seed_urls(config))}")
         logging.info(f"Max pages: {config.get('max_pages', 0)} (0 = unlimited)")
+        logging.info(f"Crawl deadline (s): {config.get('deadline_seconds', 0)} (0 = none)")
+        logging.info(f"Page timeout (s): "
+                     f"{_as_number(config.get('page_timeout_seconds'), PAGE_TIMEOUT_SECONDS):.0f}")
         logging.info(f"Request delay (s): {config.get('request_delay_seconds', 0)}")
         logging.info(f"Respect robots.txt: {bool(config.get('respect_robots', False))}")
         logging.info(f"Extract recon: {bool(config.get('extract_recon', False))}")
@@ -1553,10 +2063,16 @@ def main():
 
         if content_mode not in ('raw', 'text'):
             logging.error(f"Invalid content_mode: {content_mode}. Use 'raw' or 'text'.")
+            _emit_failure_section(url, crawl_type, str(content_mode), model, 'error',
+                                  f"Invalid content_mode '{content_mode}'. Use 'raw' or 'text'.")
         elif not seeds:
             logging.error("No URL configured. Set the 'url' (or 'urls') field in config.yaml.")
+            _emit_failure_section(url, crawl_type, content_mode, model, 'error',
+                                  "No URL configured. Set 'url' (or 'urls').")
         elif not system_prompt.strip():
             logging.error("No system_prompt configured. Set the 'system_prompt' field in config.yaml.")
+            _emit_failure_section(url, crawl_type, content_mode, model, 'error',
+                                  "No system_prompt configured: say what to extract from the page.")
         else:
             pages = crawl(config, host, model, system_prompt)
             logging.info(f"Crawl processed {pages} page(s).")

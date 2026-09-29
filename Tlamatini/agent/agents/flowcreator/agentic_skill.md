@@ -102,7 +102,7 @@ When multiple agents COULD accomplish a task, you MUST follow these priority rul
 | Analyze/describe images | **Image-Interpreter** | Pythonxer writing vision API scripts | Image-Interpreter handles base64 encoding, LLM vision calls, multi-image batching, and wildcard patterns internally. Pythonxer reinvents all of this. |
 | Read/interpret document files | **File-Interpreter** | Pythonxer with file-reading code | File-Interpreter supports 20+ formats (PDF, DOCX, XLSX, etc.) with structured output. Pythonxer requires manual parsing libraries. |
 | Extract raw text from documents | **File-Extractor** | Pythonxer with extraction code | File-Extractor handles the same formats deterministically without LLM overhead. |
-| Crawl/scrape a website | **Crawler** | Pythonxer with requests/BeautifulSoup | Crawler handles HTTP fetching, JavaScript rendering, multi-page crawling, and LLM analysis in one agent. |
+| Crawl/scrape a website | **Crawler** | Pythonxer with requests/BeautifulSoup | Crawler handles bounded HTTP fetching, multi-page crawling, honest blocked/timeout reporting, and LLM analysis in one agent. It does NOT run JavaScript: for a page built by JavaScript use Playwrighter. |
 | Call an HTTP REST API | **Apirer** | Pythonxer with requests library | Apirer handles methods, headers, auth, timeouts, and produces structured output for Parametrizer. |
 | Run SQL queries | **SQLer** | Pythonxer with pyodbc/sqlite3 | SQLer provides pre-connected cursor, structured logging, and proper error handling. |
 | Run MongoDB operations | **Mongoxer** | Pythonxer with pymongo | Mongoxer injects a pre-connected `db` object into the script scope. |
@@ -114,7 +114,7 @@ When multiple agents COULD accomplish a task, you MUST follow these priority rul
 | Create a file | **File-Creator** | Pythonxer writing to disk | File-Creator is purpose-built for single-file creation with configurable path and content. |
 | Take a screenshot | **Shoter** | Pythonxer with pyautogui | Shoter is a one-config agent with directory output and canvas integration. |
 | Focus/move/resize/min/max/close/tile a WINDOW, or list open windows | **Windower** | Mouser, or Pythonxer with pygetwindow | Windower acts on the window itself via the Win32 API (reliable cross-process focus, geometry, tiling). Mouser only CLICKS controls inside a window; it cannot move/resize/close/enumerate windows. |
-| Search / indexed-file discovery | **Googler** | Crawler or Pythonxer | Googler tries four plain-HTTP server-rendered routes first, then visible Chrome/bundled Chromium across seven browser routes for top-N extraction or `links_only` URLs; its structured dork builder normalizes presets, aliases, operators, and grouped site/filetype alternatives. |
+| Search / indexed-file discovery | **Googler** | Crawler or Pythonxer | Googler runs under one deadline: six plain-HTTP server-rendered routes first, then real Chrome across eight browser routes, then open knowledge sources, for top-N extraction or `links_only` URLs; it rejects off-topic answers, names refusals in `search_status`, and its structured dork builder normalizes presets, aliases, operators, and grouped site/filetype alternatives. |
 
 **When IS Pythonxer the right choice?**
 - Custom data transformation or computation that no specialized agent covers
@@ -315,8 +315,8 @@ Use this table to quickly decide which agent to use. The **Starts Others** colum
 | **pythonxer** | Runs inline Python code | YES | Action |
 | **prompter** | Sends a prompt to an LLM and logs the response | YES | Action |
 | **summarizer** | Summarizes text/logs with an LLM (can start next agents) | YES | Action |
-| **crawler** | Crawls URLs and captures content with optional LLM analysis | YES | Action |
-| **googler** | Two-tier indexed-web search (plain HTTP first, then a real browser) with a structured Google-dork builder — finds FILES (PDF/EPUB/DOCX) as well as pages | YES | Action |
+| **crawler** | Reads a page (by default exactly that page, optionally its links) over HTTP and analyzes it with an LLM; reports blocked/timeout instead of content | YES | Action |
+| **googler** | Block- and hang-proof indexed-web search (plain HTTP first, then a real browser, then open knowledge sources, all under one deadline) with a structured Google-dork builder — finds FILES (PDF/EPUB/DOCX) as well as pages | YES | Action |
 | **apirer** | Calls HTTP REST APIs | YES | Action |
 | **gitter** | Runs git operations | YES | Action |
 | **ssher** | Runs commands on remote hosts via SSH | YES | Action |
@@ -1097,25 +1097,30 @@ system_prompt: |
   - `target_agents`: [] (downstream agents to start after execution)
 
 ### 37. Crawler
-- **Purpose**: Crawls web pages via HTTP GET, captures full raw content (HTML, JavaScript, CSS, headers, meta tags, data attributes, API endpoints), and processes each page's content with an LLM using a configurable system prompt. Supports three crawl modes: small-range (same-domain links, not recursive), medium-range (all links cross-domain, not recursive), and large-range (all links cross-domain, recursive up to a configurable depth).
+- **Purpose**: Reads web pages via HTTP GET, captures full raw content (HTML, JavaScript, CSS, headers, meta tags, data attributes, API endpoints) or the visible text, and processes each page's content with an LLM using a configurable system prompt. By DEFAULT it reads exactly the given page (`crawl_type: page`); three range modes also walk its links, each analyzing the seed page itself first: small-range (same-domain links, not recursive), medium-range (all links cross-domain, not recursive), and large-range (all links cross-domain, recursive up to a configurable depth). It never hangs (every page and the whole run are time-bounded) and never passes a refusal off as content: a bot wall, CAPTCHA, 401/403/429 or timeout is reported as `status: blocked` / `timeout` and never reaches the LLM. It does not run JavaScript — for a page built by JavaScript use Playwrighter.
 - **Used for**: Fetching and analyzing web content using LLM-powered processing. It captures the full raw page source (HTML, JS, CSS, headers, forms, endpoints) or plain text, and sends it to an LLM along with a configurable system prompt for deep technical analysis. Supports multi-page crawling across same-domain or cross-domain links.
 - **Aimed at**: Enabling web intelligence and analysis workflows — such as competitive monitoring, security auditing of web applications, content change detection, API endpoint discovery, or extracting structured data from websites for downstream processing via Parametrizer.
 - **Application example**: A Crawler fetches a competitor's product page in raw mode, processes it with an LLM prompt "List all API endpoints, JavaScript libraries, and form actions found in this page". The structured output is logged and a Parametrizer feeds key findings into a File-Creator that produces a technical analysis report.
 - **Pool name pattern**: `crawler_<n>`
-- **Starts other agents**: YES (after all crawling and LLM processing completes)
+- **Starts other agents**: YES — ALWAYS, once the crawl ends, whether its pages succeeded or not (put a Forker on `{status}` to branch)
 - **Config parameters**:
   - `url`: "" (URL to crawl)
   - `urls`: [] (OPTIONAL additional seed URLs crawled with the same settings — a YAML list or a comma/space-separated string. Lets a Googler dork hit-list, `content_mode: links_only`, flow straight in via the Parametrizer)
   - `system_prompt`: "" (multi-line prompt to send to the LLM along with the crawled content)
   - `content_mode`: "raw" (one of: raw, text — raw sends full HTML/JS/CSS source; text sends only visible text)
   - `include_headers`: true (include HTTP response headers in the LLM context, only applies to raw mode)
-  - `crawl_type`: "small-range" (one of: small-range, medium-range, large-range)
-    - small-range: follows all same-domain links on the page (not recursively) and processes each with the LLM
-    - medium-range: follows ALL links on the page regardless of domain (not recursively) and processes each with the LLM
-    - large-range: follows ALL links on the page regardless of domain RECURSIVELY up to `depth` levels and processes each with the LLM
+  - `crawl_type`: "page" (one of: page, small-range, medium-range, large-range; `single` / `single-page` / `page-only` / `one` / `seed` also mean page)
+    - page: analyzes exactly the given URL(s) — the default, and what "read / summarize / analyze this page" means
+    - small-range: the page itself, then all same-domain links on it (not recursively), each processed with the LLM
+    - medium-range: the page itself, then ALL links on it regardless of domain (not recursively), each processed with the LLM
+    - large-range: the page itself, then ALL links regardless of domain RECURSIVELY up to `depth` levels, each processed with the LLM
+  - `include_seed`: true (range modes also analyze the seed page itself; false = the old links-only walk)
   - `depth`: 1 (recursive depth, only used when crawl_type is "large-range". depth=1 behaves like medium-range; depth=2 also processes links found in those linked pages, etc.)
-  - Safety / politeness bounds (all OPTIONAL):
-    - `max_pages`: 0 (hard cap on TOTAL pages processed across all seeds/depth; 0 = unlimited — set this to bound a `large-range` crawl)
+  - Safety / politeness bounds:
+    - `max_pages`: 25 (hard cap on TOTAL pages processed across all seeds/depth; 0 = unlimited)
+    - `deadline_seconds`: 900 (the whole crawl stops cleanly at this wall-clock limit and says so; 0 = none)
+    - `page_timeout_seconds`: 45 (hard wall-clock limit for ONE page — connect + headers + body; a server that never finishes is abandoned and reported as `timeout`; an explicit value is obeyed exactly)
+    - `max_page_bytes`: 8000000 (at most this many bytes are read from one page; the cut is logged)
     - `request_delay_seconds`: 0 (delay between fetches — rate-limit / politeness)
     - `respect_robots`: false (honor each host's `robots.txt`, skipping Disallowed paths; per-host cached, fails OPEN if robots.txt can't be fetched)
   - `extract_recon`: false (scan each page's RAW source for emails, HTML comments, source-map references, and likely secrets / API keys; findings are saved to a `*_recon.txt` file AND prepended to the LLM context — the natural follow-through to a Googler dork sweep)
@@ -1123,6 +1128,7 @@ system_prompt: |
   - `llm.model`: "@config" (inherits this agent's dedicated Config → Models selection) (Ollama model name)
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after execution)
+- **Output (`INI_SECTION_CRAWLER`, one per analyzed page)**: `label`, `model`, `url`, `crawl_type`, `content_mode`, `status` (`ok` for an analyzed page), `http_status` (that page's HTTP code), and the LLM's analysis as the body (`response_body`). When NOTHING was analyzed, exactly ONE section is emitted whose `status` names the most telling failure (`blocked` > `timeout` > `unreachable` > `not_found` > `error` > `skipped`) and whose body begins "NOTHING WAS ANALYZED" — route it with a Forker on `{status}`; never pass that body onward as page content.
 
 ### 38. Summarizer
 - **Purpose**: Two operating modes selected by config. **Polling mode** (default canvas behavior): continuously polls log files from `source_agents` and sends each log to an LLM with `system_prompt` to detect events; when the LLM response contains `[EVENT_TRIGGERED]`, starts all configured downstream target agents. **One-shot mode** (used by the chat tool `chat_agent_summarize_text`): when `input_text` is non-empty AND `source_agents` is empty, the agent bypasses the polling loop entirely, sends `input_text` directly to the LLM with the resolved prompt, emits exactly one `INI_SECTION_SUMMARIZER<<<` block (so Parametrizer / Exec Report consume it identically to a polling-mode result), and triggers `target_agents` whenever the summary is non-empty.
@@ -1472,7 +1478,7 @@ system_prompt: |
 - **Example**: establish the desired window and edit field, use `input_mode: text` with the user's literal text, then inspect the resulting content. Handle save/close dialogs based on observed state and the user's intent; do not assume a particular localized accelerator or discard unsaved work by default.
 
 ### 57. Googler
-- **Purpose**: Performs resilient indexed-web search, then either extracts readable text/raw HTML from the top N pages or returns the SERP URL/title list without fetching result bodies. Its structured dork builder compiles high-level fields into mechanically valid Google syntax. Tier 0 uses plain `urllib` against four server-rendered routes; Tier 1 falls back to visible installed Chrome/bundled Chromium across seven direct-URL browser routes.
+- **Purpose**: Performs resilient indexed-web search, then either extracts readable text/raw HTML from the top N pages or returns the SERP URL/title list without fetching result bodies. Its structured dork builder compiles high-level fields into mechanically valid Google syntax. The whole run obeys ONE wall-clock deadline (`deadline_seconds`), so it can never hang a flow. Tier 0 asks six server-rendered routes over plain HTTP in parallel; Tier 1 opens real installed Chrome with a persistent profile across eight browser routes; Tier 2 answers from open knowledge sources (Wikipedia, arXiv, OpenAlex, Hacker News, GitHub, Internet Archive, Project Gutenberg). Off-topic ("poisoned") answers and CAPTCHA/anomaly/rate-limit walls are detected, refusing engines are rested on a cooldown ladder, and `search_status` reports the truth.
 - **Used for**: Automated internet research, public indexed-file discovery, lawful/open-book and paper discovery, targeted site/date/title searches, and URL handoff to downstream download/extraction agents.
 - **Aimed at**: Enabling search-driven workflows without relying on fragile operator spacing/capitalization: no space after operator colons, uppercase `OR`, parenthesized alternatives, double-quoted exact phrases, and no-space `-term` exclusions are enforced.
 - **Application example**: Googler uses `preset: paper`, an exact topic, and `content_mode: links_only` to return open/institutional PDF URLs; Parametrizer maps each URL to Apirer for download, File-Extractor reads the file, and Summarizer produces the report.
@@ -1493,17 +1499,25 @@ system_prompt: |
   - `exclude`: [] (each term becomes `-term`; list or comma/space-separated string)
   - `allow_same_domain`: false (de-dup by full URL instead of domain; auto-enabled for a single `site:` operator or a parenthesized site-`OR` group)
   - `number_of_results`: 5 (top results; max 10 in `text`/`raw` mode, max 50 in `links_only`)
-  - `headless`: false (applies to the Tier-1 browser fallback: visible installed Chrome is the measured default; bundled Chromium is the browser fallback. `true` is unattended but more refusal-prone)
-  - `engines`: [] (empty = Tier 0 plain HTTP first, then Tier 1 `duckduckgo-html`, `duckduckgo-lite`, `mojeek`, `bing`, `google`, `brave`, `startpage`; an explicit list skips Tier 0; pin `[google]` when advanced Google-only date/proximity/range semantics must remain exact)
-  - `attempts_per_engine`: 2 (bounded retries with jittered backoff before falling through; the answering engine is named in the log)
+  - `deadline_seconds`: 120 (ONE wall-clock budget for the whole search + page fetch; every network call is bounded by it, so no engine can hang the flow)
+  - `headless`: false (legacy switch, used only while `window_mode` is empty: false = `visible`, true = `headless`)
+  - `window_mode`: "" (`visible` = a real Chrome window on screen; `offscreen` = a real window parked off-screen so it never covers the desktop; `headless` = no window, the most refusal-prone. Empty = decided by `headless`)
+  - `browser_profile_dir`: "" (empty = Googler's own persistent Chrome profile under `%LOCALAPPDATA%\Tlamatini\googler\chrome-profile`, so consent choices survive like a returning visitor's; `none` = a fresh throw-away profile each run)
+  - `captcha_wait_seconds`: 0 (0 = never wait. N > 0 with a visible window = when an engine shows a CAPTCHA, wait up to N seconds for a PERSON to solve it; Googler never solves one itself)
+  - `open_sources`: true (Tier 2: when every web route refuses, answer from Wikipedia/arXiv/OpenAlex/Hacker News/GitHub/Internet Archive/Project Gutenberg and say so)
+  - `engines`: [] (empty = Tier 0 plain HTTP, then Tier 1 browser routes `google`, `brave`, `bing`, `duckduckgo-html`, `yahoo`, `duckduckgo-lite`, `mojeek`, `startpage` in health-ledger order, then Tier 2; an explicit list skips Tier 0 and Tier 2; pin `[google]` when advanced Google-only date/proximity/range semantics must remain exact)
+  - `attempts_per_engine`: 2 (bounded retries per browser route; a route that REFUSED is never re-asked in the same run; the answering engine is named in the log)
+  - `render_thin_pages`: true (a result page that came back nearly empty over plain HTTP is re-rendered in the browser, time permitting)
+  - `max_chars_per_result`: 200000 (cap on extracted text per result)
+  - `result_json`: "" (optional path; when set, a machine-readable result file with `search_status`, the answering engine and every attempt is written atomically)
   - `content_mode`: "text" (`text` = readable page text; `raw` = HTML; `links_only` = SERP `url`+`title` without fetching pages. `links_only` is the correct mode for PDF/EPUB/file hunts; route URLs to Apirer, then File-Extractor/File-Interpreter)
   - `output_file`: "googler_results.txt" (file path to save search results)
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after search completes)
-- **Output fields** (Parametrizer-addressable): `url`, `title`, `status`, `content_length`, `response_body`
-- **Responsible-use boundary**: Googler locates only publicly indexed URLs and does not bypass access controls. Indexing is not a license; copyright, authorization, download, and use remain the operator's responsibility.
+- **Output fields** (Parametrizer-addressable): `url`, `title`, `status`, `content_length`, `engine`, `tier`, `search_status`, `response_body` (`status` is the per-result HTTP code; `search_status` is the whole search: `ok`, `no_matches`, `blocked`, `unreachable` or `timeout` — branch a Forker on it)
+- **Responsible-use boundary**: Googler locates only publicly indexed URLs, never solves a CAPTCHA itself, and does not bypass access controls. Indexing is not a license; copyright, authorization, download, and use remain the operator's responsibility.
 - **Direct-tool distinction**: the direct Multi-Turn `googler` tool accepts manual operators in its `query`; the structured fields above belong to this visual/pool-agent surface.
-- **Fallback semantics**: Tier 0 uses DuckDuckGo HTML, Bing, DuckDuckGo Lite, and Mojeek without launching a browser; first non-empty results win. Tier 1 runs only if Tier 0 is empty or an explicit `engines` list pins browser routes. `site:` and `filetype:` carry broadly, while `before:`/`after:`/`AROUND()`/numeric ranges are Google-specific. A non-Google fallback may return broader candidates; do not claim the answer came from Google when the log names another route.
+- **Fallback semantics**: Tier 0 asks DuckDuckGo HTML/Lite, Bing, Mojeek, Brave and Yahoo in parallel without launching a browser; the first RELEVANT answer wins (an off-topic answer is rejected as poisoned). Tier 1 runs only if Tier 0 found nothing relevant or an explicit `engines` list pins browser routes; Tier 2 (open knowledge sources) runs only when the web tiers found nothing and `open_sources` is on. `site:` and `filetype:` carry broadly, while `before:`/`after:`/`AROUND()`/numeric ranges are Google-specific. A non-Google fallback may return broader candidates; do not claim the answer came from Google when the log names another route.
 
 ### 58. TeleTlamatini
 - **Purpose**: Long-running pure-bot agent that exposes the full Tlamatini chat (same Multi-Turn + Exec Report behavior as `agent_page.html`) over Telegram. It stays alive holding ONE persistent Tlamatini WebSocket (one HTTP login at startup, reused for every Telegram message — no per-message re-login overhead), password-gates each chat on first contact, and forwards every subsequent message straight into the local Tlamatini chat with `multi_turn_enabled=true` and `exec_report_enabled=true`. The user sees an editable "🔄 Working on it…" message that gets replaced in place by the assembled answer. After every completed request cycle, starts the configured `target_agents`. **Bot mode only** — the Telegrammer agent covers direct Telegram send/receive; do not give TeleTlamatini a `listen_chat` field.

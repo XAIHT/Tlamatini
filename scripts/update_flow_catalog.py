@@ -53,6 +53,20 @@ def render_inventory(catalog):
         slots = ", ".join(f"{k}: `{v}`" for k, v in spec["output_slots"].items())
         flags = ", ".join(k for k in ("singleton", "no_input", "no_output", "long_running", "never_starts_targets") if spec[k]) or "ordinary"
         lines.append(f"| {spec['display_name']} (`{name}`) | {len(spec['config_schema'])} | {len(spec['output_fields'])} | {slots} | {flags} |")
+    # Hand-written notes belong HERE, never in docs/agent-coverage.md itself:
+    # that file is regenerated from this function, so text appended to it by
+    # hand is silently erased by the next run (it happened to this note).
+    lines += [
+        "",
+        "## Direct chat microphone (2026-09-27)",
+        "",
+        "The microphone beside Send reuses Whisperer as an internal input service; it",
+        "adds no workflow-agent type or catalog row. It starts host capture directly,",
+        "then transcribes and either submits through the existing composer or leaves",
+        "an editable draft according to Config → Mic. This is distinct",
+        "from the wrapped `chat_agent_whisperer` contract in this inventory. See",
+        "[the direct microphone guide](chat-microphone-design.md).",
+    ]
     return "\n".join(lines) + "\n"
 
 

@@ -24,7 +24,7 @@ Config → Models exposes **38 model/engine/voice settings** for **21 model-back
 | Camcorder (`camcorder`) | 10 | 9 | 0: `target_agents` | ordinary |
 | Cleaner (`cleaner`) | 4 | 0 | 0: `output_agents` | never_starts_targets |
 | Counter (`counter`) | 5 | 0 | 0: `target_agents_l`, 1: `target_agents_l`, 2: `target_agents_g` | ordinary |
-| Crawler (`crawler`) | 14 | 6 | 0: `target_agents` | ordinary |
+| Crawler (`crawler`) | 18 | 8 | 0: `target_agents` | ordinary |
 | Croner (`croner`) | 4 | 0 | 0: `target_agents` | ordinary |
 | De-Compresser (`de_compresser`) | 5 | 7 | 0: `target_agents` | ordinary |
 | Deleter (`deleter`) | 10 | 0 | 0: `target_agents` | ordinary |
@@ -47,7 +47,7 @@ Config → Models exposes **38 model/engine/voice settings** for **21 model-back
 | Gatewayer (`gatewayer`) | 12 | 8 | 0: `target_agents` | long_running |
 | Gitter (`gitter`) | 8 | 2 | 0: `target_agents` | ordinary |
 | Globber (`globber`) | 6 | 6 | 0: `target_agents` | ordinary |
-| Googler (`googler`) | 37 | 5 | 0: `target_agents` | ordinary |
+| Googler (`googler`) | 45 | 8 | 0: `target_agents` | ordinary |
 | Grepper (`grepper`) | 11 | 13 | 0: `target_agents` | ordinary |
 | Image-Interpreter (`image_interpreter`) | 13 | 6 | 0: `target_agents` | ordinary |
 | Instant Messaging Doctor (`instant_messaging_doctor`) | 19 | 9 | 0: `target_agents` | ordinary |

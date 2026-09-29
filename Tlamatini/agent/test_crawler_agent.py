@@ -268,7 +268,7 @@ class CrawlOrchestrationTests(unittest.TestCase):
             'https://seed.com/a', 'https://seed.com/b', 'https://other.com/x',
         ])}
         processed, count = self._run(
-            {'url': seed, 'crawl_type': 'small-range', 'system_prompt': 'go'}, html)
+            {'url': seed, 'crawl_type': 'small-range', 'include_seed': False, 'system_prompt': 'go'}, html)
         self.assertEqual(sorted(processed), ['https://seed.com/a', 'https://seed.com/b'])
         self.assertEqual(count, 2)
 
@@ -276,7 +276,7 @@ class CrawlOrchestrationTests(unittest.TestCase):
         seed = 'https://seed.com'
         html = {seed: self._links_html(['https://seed.com/a', 'https://other.com/x'])}
         processed, count = self._run(
-            {'url': seed, 'crawl_type': 'medium-range', 'system_prompt': 'go'}, html)
+            {'url': seed, 'crawl_type': 'medium-range', 'include_seed': False, 'system_prompt': 'go'}, html)
         self.assertEqual(sorted(processed), ['https://other.com/x', 'https://seed.com/a'])
         self.assertEqual(count, 2)
 
@@ -287,7 +287,7 @@ class CrawlOrchestrationTests(unittest.TestCase):
         }
         processed, count = self._run(
             {'url': 'https://a.com', 'urls': ['https://b.com'],
-             'crawl_type': 'medium-range', 'system_prompt': 'go'}, html)
+             'crawl_type': 'medium-range', 'include_seed': False, 'system_prompt': 'go'}, html)
         # shared.com/s appears under both seeds but is processed ONCE (shared visited set).
         self.assertEqual(processed.count('https://shared.com/s'), 1)
         self.assertIn('https://a.com/p', processed)
@@ -322,7 +322,7 @@ class CrawlOrchestrationTests(unittest.TestCase):
         robots = "User-agent: *\nDisallow: /private"
         with patch.object(C, '_fetch_robots_txt', return_value=robots):
             processed, count = self._run(
-                {'url': seed, 'crawl_type': 'small-range', 'respect_robots': True,
+                {'url': seed, 'crawl_type': 'small-range', 'respect_robots': True, 'include_seed': False,
                  'system_prompt': 'go'}, html)
         self.assertEqual(processed, ['https://seed.com/public/a'])
         self.assertEqual(count, 1)

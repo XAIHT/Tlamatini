@@ -4309,33 +4309,6 @@ def _extract_readable_text(html_content):
         return "\n".join(line for line in lines if line)
 
 
-_GOOGLER_BROWSER_ARGS = [
-    '--disable-blink-features=AutomationControlled',
-    '--no-first-run',
-    '--no-default-browser-check',
-    '--disable-extensions',
-]
-
-_GOOGLER_USER_AGENT = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-    "AppleWebKit/537.36 (KHTML, like Gecko) "
-    "Chrome/131.0.0.0 Safari/537.36"
-)
-
-_GOOGLER_RESULT_SELECTORS = [
-    '#rso a:has(h3)',
-    '#search a:has(h3)',
-    'div.g a[href^="http"]',
-    '#rso a[href^="http"]',
-    'div#search a[href^="http"]',
-]
-
-_GOOGLER_DDG_RESULT_SELECTORS = [
-    'article[data-testid="result"] a[data-testid="result-title-a"]',
-    'a.result__a',
-    'h2 a[href^="http"]',
-]
-
 _GOOGLER_BINARY_EXTENSIONS = {
     '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
     '.zip', '.gz', '.tar', '.rar', '.7z', '.exe', '.dmg',
@@ -4350,65 +4323,6 @@ _GOOGLER_BINARY_CONTENT_TYPES = {
     'application/vnd.ms-powerpoint',
     'application/vnd.openxmlformats-officedocument',
 }
-
-
-def _dismiss_consent_banner(page) -> None:
-    """Try to dismiss Google's cookie consent banner if present."""
-    consent_selectors = [
-        'button:has-text("Accept all")',
-        'button:has-text("Accept")',
-        'button:has-text("Acepto")',
-        'button:has-text("Aceptar todo")',
-        'button:has-text("Tout accepter")',
-        'button:has-text("Alle akzeptieren")',
-        'button:has-text("Accetta tutto")',
-        'button#L2AGLb',
-        'button[aria-label="Accept all"]',
-        'div[role="dialog"] button:first-of-type',
-    ]
-    for selector in consent_selectors:
-        try:
-            btn = page.query_selector(selector)
-            if btn and btn.is_visible():
-                btn.click()
-                page.wait_for_timeout(1000)
-                return
-        except Exception:
-            continue
-
-
-def _googler_extract_links(page, selectors, skip_domains=None):
-    """Try each selector in order; return first non-empty list of unique URLs."""
-    from urllib.parse import urlparse as _urlparse
-    if skip_domains is None:
-        skip_domains = {'google.com', 'google.co', 'accounts.google', 'support.google',
-                        'maps.google', 'policies.google'}
-    for selector in selectors:
-        try:
-            elements = page.query_selector_all(selector)
-        except Exception:
-            continue
-        if not elements:
-            continue
-
-        urls, seen = [], set()
-        for elem in elements:
-            href = elem.get_attribute("href")
-            if not href or not href.startswith("http"):
-                continue
-            try:
-                domain = _urlparse(href).netloc.lower()
-            except Exception:
-                continue
-            if any(sd in domain for sd in skip_domains):
-                continue
-            if domain in seen:
-                continue
-            seen.add(domain)
-            urls.append(href)
-        if urls:
-            return urls
-    return []
 
 
 def _googler_is_binary(url: str, content_type: str = '') -> bool:
@@ -4496,13 +4410,318 @@ def _googler_fetch_page_text(page, url: str) -> dict:
     return {"url": url, "status_code": status, "content": text}
 
 
+# ── The chat `googler` tool RUNS THE GOOGLER AGENT (2026-09-28) ─────────────
+# The tool used to run its own copy of an old two-engine search (a headless
+# Chromium typing into google.com, then DuckDuckGo's JavaScript app) inside the
+# Django process. Measured on Angela's machine, both refused it: twenty calls in
+# a row answered "No search results found" after ~39 s each, every one was
+# recorded as a SUCCESS, and the model kept rephrasing and retrying, which only
+# prolongs a block. Its `future.result(timeout=120)` never bounded anything
+# either: leaving a `with ThreadPoolExecutor()` block waits for the worker.
+#
+# Now the tool runs agents/googler/googler.py (hedged plain-HTTP engines, a real
+# Chrome, open knowledge sources, relevance checks, a health ledger shared by
+# every run) as its OWN PROCESS, polled for the user's Cancel and killed with its
+# whole process tree at a hard wall-clock limit. One search implementation for
+# chat, canvas and flows, and a hang can never reach the chat.
+#
+# Optional config.json keys (all fail-open):
+#   googler_chat_deadline_seconds      (60)         whole-search time budget
+#   googler_chat_window_mode           (offscreen)  visible | offscreen | headless
+#   googler_chat_captcha_wait_seconds  (0)          visible mode: wait for a person
+
+_GOOGLER_CHAT_DEFAULT_DEADLINE = 60.0
+_GOOGLER_CHAT_KILL_GRACE = 20.0
+_GOOGLER_CHAT_MAX_CHARS = 20000
+_GOOGLER_CHAT_RUNS_KEPT = 12
+_GOOGLER_CHAT_WINDOW_MODES = ("visible", "offscreen", "headless")
+# A page text is never cut below this many characters, however many results share.
+_GOOGLER_CHAT_MIN_PAGE_SHARE = 300
+
+
+def _googler_reply_budget():
+    """Characters one googler reply may use: 80% of the executor's tool-result cap.
+
+    The Multi-Turn executor keeps only ``unified_agent_tool_output_char_cap``
+    characters of a tool reply (24,000 by default); the margin leaves room for the
+    "shortened" notes, so the model always receives every result whole. Fail-open.
+    """
+    try:
+        cap = int(get_config_value("unified_agent_tool_output_char_cap", 24000) or 24000)
+    except Exception:  # noqa: BLE001 - a budget lookup must never break a search
+        cap = 24000
+    return max(1500, max(2000, cap) * 4 // 5)
+
+
+def _googler_chat_settings():
+    """``(deadline_seconds, window_mode, captcha_wait_seconds)``, fail-open."""
+    try:
+        deadline = float(get_config_value("googler_chat_deadline_seconds",
+                                          _GOOGLER_CHAT_DEFAULT_DEADLINE)
+                         or _GOOGLER_CHAT_DEFAULT_DEADLINE)
+    except (TypeError, ValueError):
+        deadline = _GOOGLER_CHAT_DEFAULT_DEADLINE
+    deadline = max(20.0, min(deadline, 300.0))
+    window_mode = str(get_config_value("googler_chat_window_mode", "offscreen")
+                      or "offscreen").strip().lower()
+    if window_mode not in _GOOGLER_CHAT_WINDOW_MODES:
+        window_mode = "offscreen"
+    try:
+        captcha_wait = float(get_config_value("googler_chat_captcha_wait_seconds", 0) or 0)
+    except (TypeError, ValueError):
+        captcha_wait = 0.0
+    captcha_wait = max(0.0, min(captcha_wait, deadline - 15.0))
+    return deadline, window_mode, captcha_wait
+
+
+def _googler_search_cancelled() -> bool:
+    """Did the user press Cancel on the request this search belongs to?"""
+    try:
+        from .cancellation import is_generation_cancelled
+        return bool(is_generation_cancelled(get_request_state("cancel_user_id"),
+                                            get_request_state("cancel_run_epoch")))
+    except Exception:
+        return False
+
+
+def _read_googler_result(path):
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            payload = json.load(handle)
+        return payload if isinstance(payload, dict) else None
+    except Exception:
+        return None
+
+
+def _prune_googler_runs(root, keep=_GOOGLER_CHAT_RUNS_KEPT):
+    """Keep the newest run folders only (a failed run's folder is its evidence)."""
+    import shutil
+    try:
+        folders = [os.path.join(root, name) for name in os.listdir(root)]
+        folders = [path for path in folders if os.path.isdir(path)]
+        folders.sort(key=os.path.getmtime, reverse=True)
+        for stale in folders[keep:]:
+            shutil.rmtree(stale, ignore_errors=True)
+    except Exception:
+        pass
+
+
+def _format_googler_result(query, payload, *, timed_out=False, cancelled=False, elapsed=0.0):
+    """Turn the Googler agent's JSON outcome into the text the model reads.
+
+    The FIRST LINE is the verdict, and it decides how the call is recorded: a
+    refusal starts with ``Error:`` (a failed call, never a green success), an
+    honest empty answer says ``No results``, and real results name their source.
+    """
+    if cancelled:
+        return "Error: WEB SEARCH CANCELLED by the user before it finished."
+    if payload is None:
+        if timed_out:
+            return (f"Error: WEB SEARCH TIMED OUT for '{query}' after {elapsed:.0f}s and was "
+                    "stopped. The search engines did not answer in time. Do NOT retry googler "
+                    "right away; tell the user, or read a URL you already know with "
+                    "chat_agent_crawler.")
+        return (f"Error: WEB SEARCH FAILED for '{query}': the Googler agent ended without "
+                "reporting a result.")
+    search_status = str(payload.get("search_status") or "error")
+    results = payload.get("results") or []
+    refused = [str(r) for r in (payload.get("refused") or [])]
+    cooling = [str(c) for c in (payload.get("cooling") or [])]
+    engine = payload.get("engine") or "?"
+    tier = payload.get("tier") or ""
+    seconds = float(payload.get("elapsed_seconds") or elapsed or 0.0)
+    if search_status == "ok" and results:
+        source = {"http": "web search", "browser": "web search, real browser",
+                  "open_sources": "OPEN KNOWLEDGE SOURCES"}.get(tier, tier or "web search")
+        parts = [f"Web search for '{query}': {len(results)} result(s) via {engine} "
+                 f"[{source}] in {seconds:.1f}s."]
+        if tier == "open_sources":
+            parts.append("NOTE: every web search engine refused this machine right now, so these "
+                         "results come from open knowledge sources (Wikipedia, arXiv, Hacker News, "
+                         "GitHub, OpenAlex, Internet Archive). Say so when you use them.")
+        if refused:
+            parts.append("Refused this machine (skipped): " + "; ".join(refused[:8]))
+        parts.append("Results at a glance (details below):")
+        for i, result in enumerate(results, 1):
+            label = result.get("title") or result.get("url", "unknown")
+            parts.append(f"  {i}. {label} - {result.get('url', 'unknown')}")
+        parts.append("")
+        # EVERY result must reach the model. The executor keeps only
+        # unified_agent_tool_output_char_cap (24,000) characters of one tool reply,
+        # so a single long page used to push results 2..N out of sight, and the
+        # model spent 700 s hunting for them in the logs (2026-09-28). The page
+        # texts now SHARE whatever room the reply has left after everything else.
+        pages = []  # (slot in parts, full page text)
+        for i, result in enumerate(results, 1):
+            parts.append(f"=== Result {i} ===")
+            parts.append(f"URL: {result.get('url', 'unknown')}")
+            if result.get("title"):
+                parts.append(f"Title: {result['title']}")
+            if result.get("source"):
+                parts.append(f"Source: {result['source']}")
+            if result.get("snippet"):
+                parts.append(f"Snippet: {result['snippet']}")
+            if result.get("kind") == "file":
+                # A located file is a SUCCESS, not a fetch failure: the URL above
+                # is the deliverable of a `filetype:` hunt.
+                bits = [b for b in ((result.get("filetype") or "").upper() or None,
+                                    result.get("content_type") or None) if b]
+                parts.append("FILE FOUND" + (f" [{' · '.join(bits)}]" if bits else ""))
+                parts.append("Download it with the Apirer agent, or open the URL directly.")
+            elif "error" in result:
+                parts.append(f"Page not fetched: {result['error']} (use the URL and snippet above)")
+            else:
+                parts.append(f"HTTP status: {result.get('status_code', 'unknown')}")
+                pages.append((len(parts), result.get("content") or "[empty page]"))
+                parts.append("")  # the page text goes here once its share is known
+            parts.append("")
+        if pages:
+            room = _googler_reply_budget() - len("\n".join(parts))
+            share = max(_GOOGLER_CHAT_MIN_PAGE_SHARE, room // len(pages))
+            for slot, text in pages:
+                if len(text) > share:
+                    text = (text[:share] + f"\n... [page text shortened to {share} of "
+                            f"{len(text)} characters so every result fits in this reply; "
+                            "read the URL with chat_agent_crawler for the whole page]")
+                parts[slot] = text
+        return "\n".join(parts)
+    if search_status == "no_matches":
+        return (f"No results: the search engines answered but found nothing for '{query}' "
+                f"({seconds:.1f}s). Broaden the query: drop one operator at a time, or use "
+                "fewer words.")
+    label = {"timeout": "TIMED OUT", "unreachable": "UNREACHABLE (network)",
+             "blocked": "BLOCKED"}.get(search_status, "FAILED")
+    reason = "; ".join(refused[:8]) or "no route answered"
+    retry = f" Cooling down: {'; '.join(cooling[:6])}." if cooling else ""
+    return (f"Error: WEB SEARCH {label} for '{query}' after {seconds:.1f}s. Refused by: {reason}."
+            f"{retry} This is NOT 'no results': the search engines did not answer this machine. "
+            "Do NOT retry googler with rephrased queries (each retry makes a block last longer). "
+            "Tell the user the web search engines are refusing this network right now, or read a "
+            "URL you already know with chat_agent_crawler / chat_agent_apirer.")
+
+
+def _run_googler_agent(query, number_of_results):
+    """Run agents/googler in its own process, bounded by a hard wall-clock kill."""
+    import time as _time
+    deadline, window_mode, captcha_wait = _googler_chat_settings()
+    started = _time.monotonic()
+    template = _find_template_agent_by_dir_name("googler")
+    if template is None:
+        return ("Error: WEB SEARCH UNAVAILABLE: the Googler agent template was not found in "
+                "this installation.")
+    try:
+        from .path_guard import resolve_temp_path
+        runs_root = resolve_temp_path("googler_runs")
+        if not runs_root:
+            raise RuntimeError("<app>/Temp/googler_runs could not be resolved")
+        os.makedirs(runs_root, exist_ok=True)
+        run_id, runtime_dir, _log_path = create_isolated_runtime_copy(
+            template["agent_dir"], "googler", runtime_root=runs_root)
+    except Exception as exc:
+        return f"Error: WEB SEARCH UNAVAILABLE: could not prepare the Googler run: {exc}"
+
+    config_path = os.path.join(runtime_dir, "config.yaml")
+    try:
+        with open(config_path, "r", encoding="utf-8") as handle:
+            runtime_config = yaml.safe_load(handle) or {}
+        runtime_config.update({
+            "query": query,
+            "number_of_results": number_of_results,
+            "content_mode": "text",
+            "deadline_seconds": deadline,
+            "window_mode": window_mode,
+            "captcha_wait_seconds": captcha_wait,
+            "open_sources": True,
+            "render_thin_pages": True,
+            "max_chars_per_result": _GOOGLER_CHAT_MAX_CHARS,
+            "result_json": "googler_result.json",
+            "output_file": "googler_results.txt",
+            "target_agents": [],
+            "source_agents": [],
+        })
+        with open(config_path, "w", encoding="utf-8") as handle:
+            yaml.safe_dump(runtime_config, handle, sort_keys=False, allow_unicode=True)
+    except Exception as exc:
+        return f"Error: WEB SEARCH UNAVAILABLE: could not configure the Googler run: {exc}"
+
+    script_path = resolve_runtime_script_path(runtime_dir, "googler")
+    python_exe, python_error = _resolve_python_executable()
+    if python_error or not script_path:
+        return ("Error: WEB SEARCH UNAVAILABLE: "
+                f"{python_error or 'googler.py is missing from the run copy'}")
+
+    from .chat_agent_runtime import _build_child_env
+    popen_kwargs = {
+        "cwd": runtime_dir,
+        "env": _build_child_env(),
+        "stdin": subprocess.DEVNULL,
+        "stdout": subprocess.DEVNULL,
+        "stderr": subprocess.DEVNULL,
+    }
+    if sys.platform.startswith("win"):
+        popen_kwargs["creationflags"] = (getattr(subprocess, "CREATE_NO_WINDOW", 0)
+                                         | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0))
+    logger.info("[googler] run %s: query=%r budget=%.0fs window=%s",
+                run_id[:8], query, deadline, window_mode)
+    try:
+        process = subprocess.Popen([python_exe, script_path], **popen_kwargs)
+    except Exception as exc:
+        return f"Error: WEB SEARCH UNAVAILABLE: could not start the Googler agent: {exc}"
+
+    hard_stop = started + deadline + _GOOGLER_CHAT_KILL_GRACE
+    timed_out = cancelled = False
+    while process.poll() is None:
+        if _googler_search_cancelled():
+            cancelled = True
+            break
+        if _time.monotonic() >= hard_stop:
+            timed_out = True
+            break
+        _time.sleep(0.25)
+    if process.poll() is None:
+        try:
+            _terminate_process_tree(psutil.Process(process.pid))
+        except Exception:
+            try:
+                process.kill()
+            except Exception:
+                pass
+        try:
+            process.wait(timeout=5)
+        except Exception:
+            pass
+
+    payload = None if cancelled else _read_googler_result(
+        os.path.join(runtime_dir, "googler_result.json"))
+    elapsed = _time.monotonic() - started
+    text = _format_googler_result(query, payload, timed_out=timed_out, cancelled=cancelled,
+                                  elapsed=elapsed)
+    logger.info("[googler] run %s finished: status=%s engine=%s tier=%s in %.1fs",
+                run_id[:8],
+                (payload or {}).get("search_status",
+                                    "cancelled" if cancelled else ("timeout" if timed_out else "none")),
+                (payload or {}).get("engine", ""), (payload or {}).get("tier", ""), elapsed)
+    if payload is not None and payload.get("search_status") == "ok":
+        import shutil
+        shutil.rmtree(runtime_dir, ignore_errors=True)
+    _prune_googler_runs(runs_root)
+    return text
+
+
 @tool
 def googler(query: str, number_of_results: int = 5) -> str:
     """
-    Search Google (falling back to DuckDuckGo) and return the top results. Text pages
-    come back as readable text; a PDF/EPUB/DOCX hit comes back as **FILE FOUND** with
-    its direct download URL — so this tool FINDS FILES AND WHOLE DOCUMENTS, not just
-    articles.
+    Search the web and return the top results, and NEVER HANG doing it (one hard
+    time budget covers the whole search). Text pages come back as readable text;
+    a PDF/EPUB/DOCX hit comes back as **FILE FOUND** with its direct download URL,
+    so this tool FINDS FILES AND WHOLE DOCUMENTS, not just articles.
+
+    It runs Tlamatini's Googler agent: Google-quality engines first; engines that
+    refused this machine recently are skipped while they cool down; alternate
+    engines and a real Chrome next; and when EVERY web engine refuses, open
+    knowledge sources (Wikipedia, arXiv, Hacker News, GitHub, OpenAlex, the
+    Internet Archive). Results that do not match the query are discarded, and the
+    first line of the answer always says which source answered.
 
     `query` accepts the FULL Google search-operator ("dork") language. Composing a
     precise dork instead of plain keywords is the single biggest quality lever you
@@ -4606,148 +4825,25 @@ def googler(query: str, number_of_results: int = 5) -> str:
     Input:
     - query: The search query — plain words, or any combination of the operators above.
     - number_of_results: Number of top hits to process (default 5, max 10).
-    """
-    try:
-        from playwright.sync_api import sync_playwright
-    except ImportError:
-        return (
-            "Error: Playwright is not installed. "
-            "Install it with: pip install playwright && playwright install chromium"
-        )
 
+    Reading the answer (its FIRST LINE is the verdict):
+    - "Web search for ... via <engine>"  -> real results: use them. If it says
+      OPEN KNOWLEDGE SOURCES, tell the user where the results came from.
+    - "No results: ..."                  -> the engines answered but found
+      nothing: broaden the query (drop one operator at a time).
+    - "Error: WEB SEARCH BLOCKED ..."    -> the search engines REFUSED this
+      machine (CAPTCHA / bot check). Do NOT retry googler with rephrased
+      queries: each retry makes the block last longer. Tell the user, or read
+      a URL you already know with chat_agent_crawler / chat_agent_apirer.
+    """
     if not query or not str(query).strip():
         return "Error: No search query provided. Please specify what to search for."
-
-    number_of_results = max(1, min(int(number_of_results), 10))
-
-    def _run_playwright_search(search_query, num_results):
-        """Run the Playwright search in an isolated thread to avoid async event-loop conflicts."""
-        results = []
-        with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True, args=_GOOGLER_BROWSER_ARGS)
-            context = browser.new_context(
-                user_agent=_GOOGLER_USER_AGENT,
-                viewport={'width': 1920, 'height': 1080},
-                locale='en-US',
-            )
-            context.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
-            page = context.new_page()
-
-            try:
-                # --- Google search ---
-                page.goto("https://www.google.com", wait_until="domcontentloaded", timeout=15000)
-                _dismiss_consent_banner(page)
-
-                search_box = page.wait_for_selector(
-                    'textarea[name="q"], input[name="q"]', timeout=10000
-                )
-                search_box.fill(str(search_query))
-                search_box.press("Enter")
-
-                try:
-                    page.wait_for_selector('#rso, #search, div.g', timeout=15000)
-                except Exception:
-                    pass
-                page.wait_for_timeout(2000)
-
-                top_links = _googler_extract_links(page, _GOOGLER_RESULT_SELECTORS)
-
-                # --- DuckDuckGo fallback ---
-                if not top_links:
-                    page.goto(
-                        f"https://duckduckgo.com/?q={str(search_query).replace(' ', '+')}&t=h_&ia=web",
-                        wait_until="domcontentloaded", timeout=15000
-                    )
-                    try:
-                        page.wait_for_selector(
-                            'article[data-testid="result"], a.result__a, h2 a', timeout=15000
-                        )
-                    except Exception:
-                        pass
-                    page.wait_for_timeout(2000)
-                    top_links = _googler_extract_links(
-                        page, _GOOGLER_DDG_RESULT_SELECTORS, skip_domains={'duckduckgo.com'}
-                    )
-
-                top_links = top_links[:num_results]
-
-                if not top_links:
-                    return None  # Signal: no results
-
-                # Fetch content using Playwright (handles JS-rendered pages)
-                for url in top_links:
-                    result = _googler_fetch_page_text(page, url)
-                    results.append(result)
-            finally:
-                browser.close()
-
-        return results
-
-    def _run_playwright_search_win_safe(search_query, num_results):
-        """Pin a subprocess-capable event-loop policy for the duration of this thread.
-
-        Daphne/Twisted installs a process-wide WindowsSelectorEventLoopPolicy, but a
-        SelectorEventLoop cannot spawn the Playwright node driver subprocess on Windows
-        (asyncio raises NotImplementedError). sync_playwright() builds its own loop via
-        asyncio.new_event_loop(), which honors the global policy, so swap to a Proactor
-        policy in this worker thread and always restore the original afterwards.
-        """
-        import asyncio
-        import sys as _sys
-        _saved_loop_policy = None
-        if _sys.platform == 'win32':
-            try:
-                _saved_loop_policy = asyncio.get_event_loop_policy()
-                asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
-            except Exception:
-                _saved_loop_policy = None
-        try:
-            return _run_playwright_search(search_query, num_results)
-        finally:
-            if _saved_loop_policy is not None:
-                try:
-                    asyncio.set_event_loop_policy(_saved_loop_policy)
-                except Exception:
-                    pass
-
-    # Run Playwright in a dedicated thread to avoid conflicts with
-    # Django Channels' async event loop (sync_playwright cannot be called
-    # from inside a running asyncio loop).
-    from concurrent.futures import ThreadPoolExecutor
-    outcomes = []
     try:
-        with ThreadPoolExecutor(max_workers=1) as executor:
-            future = executor.submit(_run_playwright_search_win_safe, query, number_of_results)
-            result = future.result(timeout=120)
-            if result is None:
-                return f"No search results found for '{query}'."
-            outcomes = result
-    except Exception as e:
-        return f"Error launching browser for Google search: {e}"
-
-    output_parts = [f"Google search for '{query}' - {len(outcomes)} results:\n"]
-    for i, outcome in enumerate(outcomes, 1):
-        output_parts.append(f"=== Result {i} ===")
-        output_parts.append(f"URL: {outcome.get('url', 'unknown')}")
-        if outcome.get("kind") == "file":
-            # A located file is a SUCCESS, not a fetch failure — the URL above is
-            # the deliverable of a `filetype:` hunt.
-            bits = [b for b in (
-                (outcome.get("filetype") or "").upper() or None,
-                outcome.get("content_type") or None,
-                (f"{outcome['content_length']} bytes"
-                 if outcome.get("content_length") else None),
-            ) if b]
-            output_parts.append("FILE FOUND" + (f" [{' · '.join(bits)}]" if bits else ""))
-            output_parts.append("Download it with the Apirer agent, or open the URL directly.")
-        elif "error" in outcome:
-            output_parts.append(f"Fetch error: {outcome['error']}")
-        else:
-            output_parts.append(f"HTTP status: {outcome.get('status_code', 'unknown')}")
-            output_parts.append(outcome.get("content", "[empty page]"))
-        output_parts.append("")
-
-    return "\n".join(output_parts)
+        number_of_results = int(number_of_results)
+    except (TypeError, ValueError):
+        number_of_results = 5
+    number_of_results = max(1, min(number_of_results, 10))
+    return _run_googler_agent(str(query).strip(), number_of_results)
 
 
 @tool

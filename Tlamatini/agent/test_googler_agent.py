@@ -421,7 +421,10 @@ class GooglerSearchIntegrationTests(unittest.TestCase):
         ])
         results = self._run(page, 'site:target.com filetype:pdf', 10, 'links_only', True)
         urls = [r['url'] for r in results]
-        self.assertEqual(len(results), 4)
+        # 2026-09-28: `site:target.com` is a CONSTRAINT. An engine that ignored
+        # it served other.com, so off-site hits are dropped instead of trusted.
+        self.assertEqual(len(results), 3)
+        self.assertNotIn('https://other.com/x', urls)
         self.assertEqual(urls.count('https://target.com/a.pdf'), 1)
         self.assertIn('https://target.com/c.pdf', urls)
         # Every entry carries a title + the "listed" sentinel status.
@@ -460,9 +463,12 @@ class GooglerSearchIntegrationTests(unittest.TestCase):
         self.assertEqual(len(results), 2)
 
     def test_text_mode_fetches_each_result_and_extracts_content(self):
+        # The fixtures mention the query ('foo') on purpose: since 2026-09-28 a
+        # results page whose hits never mention the query is rejected as
+        # POISONED (Bing served online games for a benchmark query).
         page = _FakePage([
-            _FakeElement('https://a.com/page1', 'P1'),
-            _FakeElement('https://b.com/page2', 'P2'),
+            _FakeElement('https://a.com/foo/page1', 'P1'),
+            _FakeElement('https://b.com/foo/page2', 'P2'),
         ], body_text='VISIBLE BODY TEXT')
         results = self._run(page, 'foo', 5, 'text', False)
         self.assertEqual(len(results), 2)
@@ -471,8 +477,8 @@ class GooglerSearchIntegrationTests(unittest.TestCase):
             page.goto_calls,
             [
                 'https://www.google.com/search?q=foo&num=30&hl=en',
-                'https://a.com/page1',
-                'https://b.com/page2',
+                'https://a.com/foo/page1',
+                'https://b.com/foo/page2',
             ],
         )
         self.assertEqual(results[0]['content'], 'VISIBLE BODY TEXT')
@@ -480,7 +486,7 @@ class GooglerSearchIntegrationTests(unittest.TestCase):
         self.assertGreater(results[0]['content_length'], 0)
 
     def test_raw_mode_returns_html_and_title(self):
-        page = _FakePage([_FakeElement('https://a.com/p', 'Raw')], html='<html>RAWHTML</html>')
+        page = _FakePage([_FakeElement('https://a.com/foo', 'Raw')], html='<html>RAWHTML</html>')
         results = self._run(page, 'foo', 5, 'raw', False)
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]['content'], '<html>RAWHTML</html>')

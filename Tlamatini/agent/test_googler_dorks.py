@@ -421,13 +421,23 @@ class SearchResilienceTests(unittest.TestCase):
         self.assertIs(g._resolve_allow_same_domain(
             {'allow_same_domain': 'false'}, 'ordinary words'), False)
 
-    def test_default_chain_is_seven_routes_and_js_free_first(self):
+    def test_browser_chain_is_a_candidate_list_of_independent_routes(self):
+        """The ORDER is decided per run by the health ledger (2026-09-28), so
+        what is pinned here is the SHAPE: unique routes, each reachable by a
+        direct result URL, spread over several independent providers."""
         names = [engine['name'] for engine in g._SEARCH_ENGINES]
-        self.assertEqual(names, [
-            'duckduckgo-html', 'duckduckgo-lite', 'mojeek', 'bing',
-            'google', 'brave', 'startpage',
-        ])
-        self.assertTrue(all(engine['js_free'] for engine in g._SEARCH_ENGINES[:3]))
+        self.assertEqual(len(names), len(set(names)))
+        # Brave and Yahoo are the routes that answered a real Chrome on the
+        # flagged network measured 2026-09-28; Google keeps full dork semantics.
+        for required in ('google', 'brave', 'bing', 'yahoo', 'duckduckgo-html', 'mojeek'):
+            with self.subTest(route=required):
+                self.assertIn(required, names)
+        for engine in g._SEARCH_ENGINES:
+            with self.subTest(route=engine['name']):
+                self.assertIn('{q}', engine['url'])
+                self.assertTrue(engine['selectors'])
+                self.assertTrue(engine['wait'])
+        self.assertTrue(any(engine['js_free'] for engine in g._SEARCH_ENGINES))
 
     @mock.patch.object(g.time, 'sleep')
     @mock.patch.object(g.random, 'uniform', return_value=0.2)
@@ -459,11 +469,19 @@ class SearchResilienceTests(unittest.TestCase):
         self.assertEqual(search.call_count, 1)
         self.assertEqual(search.call_args.args[1]['name'], 'second')
 
-    def test_plain_http_tier_has_four_server_rendered_routes(self):
-        self.assertEqual(
-            [engine['name'] for engine in g._HTTP_ENGINES],
-            ['duckduckgo-html', 'bing-http', 'duckduckgo-lite', 'mojeek-http'],
-        )
+    def test_plain_http_tier_keeps_its_server_rendered_routes(self):
+        names = [engine['name'] for engine in g._HTTP_ENGINES]
+        self.assertEqual(len(names), len(set(names)))
+        # the four routes measured on 2026-08-23 are still offered
+        for original in ('duckduckgo-html', 'bing-http', 'duckduckgo-lite', 'mojeek-http'):
+            with self.subTest(route=original):
+                self.assertIn(original, names)
+        for engine in g._HTTP_ENGINES:
+            with self.subTest(route=engine['name']):
+                self.assertIn('{q}', engine['url'])
+                self.assertTrue(engine['url'].startswith('https://'))
+        # one definition: the pool agent mirrors the resilience core
+        self.assertEqual(names, [engine['name'] for engine in g.E.HTTP_ENGINES])
 
     def test_links_only_http_answer_returns_before_playwright_import(self):
         expected = [{'url': 'https://example.com/open.pdf', 'title': ''}]

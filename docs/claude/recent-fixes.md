@@ -16,6 +16,172 @@
 
 ---
 
+## 2026-09-29 — Crawler reads the page it is given, never hangs, and never analyzes a refusal
+
+Angela, right after the Googler fix: *"Check if the same happens to Tlamatini's
+Crawler agent and improve it too (if possible)"*. It did — worse.
+
+**What was wrong.**
+- **Text mode returned ZERO characters for every modern page** (seen live on
+  2026-09-28 with Wikipedia): `meta` and `link` were in the text extractor's skip
+  list, but they are VOID elements with no end tag, so the skip region they opened
+  never closed. The page was then dropped as "no text content".
+- Headers were read case-sensitively: Wikipedia sends `content-type` in lower case,
+  so the content type read "unknown" and the binary guard went blind.
+- The default `crawl_type` was `small-range`, which analyzed the page's LINKS and
+  never the page itself — "read this page" analyzed other pages.
+- Nothing bounded a page: the socket timeout restarts on every byte, so a server
+  that dribbles, or never finishes, held the agent forever. `max_pages` defaulted to
+  0 (unlimited) and there was no crawl deadline.
+- A bot wall, CAPTCHA or 403 page was handed to the LLM as if it were content.
+- An LLM timeout escaped as a bare socket error and aborted the WHOLE crawl.
+- A crawl that analyzed nothing ended in silence, with no section for a flow or the
+  chat to read.
+
+**Measured after the fix (2026-09-29, live and visible, Windower + Shoter photos in
+`Temp/crawler-live/photos`, each checked to show the Crawler console):**
+
+| case | result |
+|---|---|
+| Wikipedia *Humanity's Last Exam*, text mode | 146,432 chars fetched in 0.35 s, **10,858 chars of text** extracted, `status: ok`, `http_status: 200`, correct summary, 10.4 s end to end |
+| `httpbin.org/status/403` | `status: blocked` in 3.0 s, NO LLM call, body "NOTHING WAS ANALYZED" |
+| `httpbin.org/delay/10` with `page_timeout_seconds: 4` | stopped at **exactly 4 s**, `status: timeout`, NO LLM call |
+
+The first run of the third case stopped at 5 s, not 4: `CrawlBudget.page_timeout()`
+applied its 5 s grace (meant for a page begun just before the crawl deadline) on
+top of the user's own value. It now returns `min(configured, max(5, time_left))`.
+
+**The fix (all in `agents/crawler/crawler.py`, still stdlib-only).**
+`HTMLTextExtractor` skips only text-bearing elements, ends `head` at the first
+element that cannot live there, and puts the `<title>` first; `_header_value()`
+reads headers case-insensitively. `fetch_page_raw` runs on a daemon thread abandoned
+at `page_timeout_seconds` and reads at most `max_page_bytes`; `_fetch_with_retry`
+retries ONCE, only for a 429/503 that names a `Retry-After` of at most 20 s.
+`detect_block()` turns 401/403/429 and SHORT bot-wall pages into `blocked` before the
+LLM sees them. `CrawlBudget` records every page's outcome and bounds the run;
+`query_ollama` raises every failure as `RuntimeError`, the call bounded by
+`_llm_timeout()` (300 s, never much past the crawl deadline); an empty LLM answer is
+an `error`, not a result. `_report_outcome()` ends a crawl that analyzed nothing
+with ONE section. Defaults: `crawl_type: page`, `include_seed: true`,
+`max_pages: 25`, `deadline_seconds: 900`, `page_timeout_seconds: 45`,
+`max_page_bytes: 8000000`. The contract gained `status` and `http_status`
+(`agent_contracts`), and `chat_agent_crawler`'s description now says it reads the
+given page by default and does not run JavaScript.
+
+**Contracts (do NOT weaken):**
+1. **Nothing waits without a deadline** — every page, every LLM call and the whole
+   run are bounded, and stopping at a bound is SAID in the log.
+2. **A refusal is never content.** 401/403/429 are always `blocked`; other pages
+   count as walls only when SHORT (≤ 1,500 visible characters) and carrying a
+   marker, so an article that merely mentions "captcha" is never thrown away.
+3. **Never silence.** A crawl that analyzed nothing emits exactly ONE
+   `INI_SECTION_CRAWLER` whose `status` names the most telling failure (`blocked` >
+   `timeout` > `unreachable` > `not_found` > `error` > `skipped`) and whose body
+   begins "NOTHING WAS ANALYZED. Do not present any page content".
+4. **The default reads the page given.** Range types analyze the seed first unless
+   `include_seed: false` (the old links-only walk).
+5. **An explicit `page_timeout_seconds` is obeyed exactly.**
+6. **`status:` is a word, the HTTP code is `http_status`.** The status-vocabulary
+   guard used a SUFFIX test and read `http_status: {status_code}` as a numeric
+   `status:`; it now compares the KEY (`_STATUS_KEY_TAIL_RE`, pinned both ways by
+   `test_a_key_that_merely_ends_in_status_is_not_the_status`). Do not turn it back
+   into a suffix test.
+7. Never hammer: one retry at most, and only when the server asked for it.
+
+Coverage: NEW `agent/test_crawler_resilience.py` (35 tests: text extraction,
+scope, bounded fetches against never-answering and dribbling local servers,
+refusals, page processing, nothing-delivered sections, contract/vocabulary) and the
+updated `agent/test_crawler_agent.py` (42). With the Googler, verdict, flow and
+naming suites: **403 tests, all passing on 2026-09-29**; both inclusion sweeps
+CLEAN. Like Googler's chat tool, the installed build needs a rebuild or self-update
+to receive this.
+
+## 2026-09-28 — Googler is block- and hang-proof, and never reports a refusal as "no results"
+
+Angela: *"Googler agent that is taking too much to give the proper results, is
+Googler being blocked? ... make Googler invulnerable to block/hangs"*.
+
+**What was really happening (measured on her machine, 2026-09-28).** The chat's
+direct `googler` tool was a separate, obsolete headless-Chromium path inside
+`tools.py`, NOT the pool agent. In her installed build it returned *"No search
+results found"* **20 times out of 20**, about **39 s** each, and every call was
+recorded as a SUCCESS. Its `with ThreadPoolExecutor()` + `future.result(timeout=120)`
+bounded nothing: leaving the `with` block waits for the hung worker anyway. And the
+web really was refusing her IP: DuckDuckGo html/lite answered 202 *"anomaly"*,
+Google *"Your browser isn't supported"* / a JS wall / the `/sorry/` CAPTCHA, Yahoo a
+bot-verification page, Mojeek 403, Brave 429 over plain HTTP, Startpage an error
+page, Ecosia a firewall page. Bing answered but was **POISONED**: game pages for a
+physics query, Wikipedia for a `site:gutenberg.org` dork. In a visible real Chrome,
+Brave and Yahoo answered normally.
+
+**The fix.**
+- **`agents/googler/googler_engines.py` (NEW, stdlib-only, imports nothing from
+  `agent.*`)**: `Deadline`; `bounded_fetch` (daemon thread, `read1`, byte cap);
+  `run_hedged`; the relevance guard (`parse_query_terms` / `hit_is_relevant` /
+  `assess_hits` — an on-site `site:` or matching `filetype:` extension is proof, an
+  off-topic answer is poisoned); the refusal classifier (`classify_response`);
+  `EngineHealth`, the shared ledger at `<app>/Temp/googler_engine_health.json`;
+  Tier 0 `http_tier_search`; Tier 2 `open_sources_search`; `fetch_page_text`;
+  `overall_status`.
+- **`googler.py`** orchestrates under ONE deadline (`deadline_seconds`, 120):
+  Tier 0 hedges six HTTP routes → Tier 1 real Chrome with a persistent profile
+  (`%LOCALAPPDATA%\Tlamatini\googler\chrome-profile`, `window_mode`
+  visible/offscreen/headless) across eight routes in ledger order, never re-asking a
+  route that refused → Tier 2 Wikipedia, arXiv, OpenAlex, Hacker News, GitHub,
+  Internet Archive, Project Gutenberg. `search_status`, `engine` and `tier` are
+  APPENDED to `INI_SECTION_GOOGLER` and to `agent_contracts`; it still exits 0 and
+  still starts its targets.
+- **`tools.py::googler`** now runs THE SAME pool agent as a child
+  (`create_isolated_runtime_copy` under `<app>/Temp/googler_runs`), polls every
+  0.25 s for the user's Cancel (`mcp_agent.py` now puts `cancel_user_id` /
+  `cancel_run_epoch` into `scoped_request_state`), hard-kills the process tree at
+  its deadline + 20 s, and answers with a first line that cannot be misread:
+  `Web search for '…': N result(s) via <engine>` / `No results: …` /
+  `Error: WEB SEARCH BLOCKED | TIMED OUT | UNREACHABLE …`. The `Error:` prefix makes
+  `_result_is_failure` record the call as FAILED, and the text tells the model not to
+  retry with rephrased queries (also in `prompt.pmt` rule 18d).
+
+**Contracts (do NOT weaken):**
+1. **Nothing waits without a deadline.** Never use `with ThreadPoolExecutor(...)`
+   plus `result(timeout=)` as a timeout again — the `with` exit waits forever for a
+   hung worker. Use `bounded_fetch` / `run_hedged` (daemon threads, stragglers
+   abandoned at the deadline).
+2. **A refusal is never "no results".** `blocked`, `timeout` and `unreachable` are
+   distinct from `no_matches`, and an engine that answers off-topic is POISONED, not
+   a success.
+3. **Never hammer a refusing engine.** The ledger rests it (180 s → 600 s → 1800 s
+   for a refusal) and a refusing route is never retried in the same run.
+4. **Googler never solves or bypasses a CAPTCHA.** `captcha_wait_seconds` only gives
+   a PERSON time to solve one in a visible window, bounded by the deadline.
+5. The words `ok`, `no_matches`, `blocked`, `unreachable`, `timeout` all belong to
+   `agent_verdict.KNOWN_STATUSES`; they travel as `search_status`, while each
+   result's `status` stays its HTTP code.
+6. `googler_engines.py` is a flat sibling of `googler.py` and must travel with it
+   into every pool copy.
+7. **Every result must reach the model (2026-09-29).** The Multi-Turn executor keeps
+   only `unified_agent_tool_output_char_cap` (24,000) characters of one tool reply.
+   In the live chat test ONE long page (result 1, about 37,000 characters of text)
+   filled that cap alone, results 2..N never reached the model, and it spent 736 s
+   hunting for them in the logs. `_format_googler_result` now lists EVERY result
+   (title + URL) first, and the page texts share whatever room the reply has left
+   (`_googler_reply_budget()` = 80 % of that cap), each shortened page saying how
+   much was kept and pointing at `chat_agent_crawler` for the rest. Pinned by
+   `test_every_result_survives_the_executors_tool_reply_cap`.
+
+**Config.** Pool: `deadline_seconds` (120), `window_mode` (""), `browser_profile_dir`
+(""), `captcha_wait_seconds` (0), `open_sources` (true), `render_thin_pages` (true),
+`max_chars_per_result` (200000), `result_json` (""). Chat (`config.json`, optional):
+`googler_chat_deadline_seconds` (60, clamped 20-300), `googler_chat_window_mode`
+(`offscreen`), `googler_chat_captcha_wait_seconds` (0).
+
+Coverage: NEW `agent/test_googler_resilience.py` (deadline, never-answering and
+dribbling local servers, hedging, the poison guard, the refusal classifier, the
+ledger, the orchestrator, the chat tool with a fake hung / cancelled child) plus the
+updated `test_googler_agent.py` and `test_googler_dorks.py`; with
+`test_status_vocabulary` that is 198 tests, all passing on 2026-09-28. The installed
+build needs a rebuild or self-update before the chat tool changes reach it:
+`tools.py` is compiled into the executable.
+
 ## 2026-09-28 — The context gauge is REAL: Ollama's own numbers, exact in both modes
 
 > **Shipped in `v1.72.1`** (annotated tag at `df709d78`, published 2026-09-28 and marked Latest).
