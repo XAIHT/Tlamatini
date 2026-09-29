@@ -20,7 +20,9 @@ import time
 from urllib.request import urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
-HELPER = ROOT / "output/avatar_flash_fix/development_test.py"
+# Lives beside the tests since 2026-09-29. It used to sit in output/, and the
+# 2026-09-15 cleanup of output/ deleted it, which broke this launcher.
+HELPER = ROOT / "Tests/avatar_dev_server/development_test.py"
 RUNTIME = ROOT / "Temp/avatar_flash_fix"
 
 

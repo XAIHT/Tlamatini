@@ -150,12 +150,45 @@ unavailable to a web page. But the engine fires `boundary` events carrying `char
 So the engine precomputes an openness value per character (vowels wide, `/m/ /b/ /p/` sealed,
 punctuation closed), advances a cursor through that track at the measured speaking rate, and
 **re-anchors on every boundary event**. Between anchors it interpolates; at each anchor it snaps
-back to ground truth. A ±1-character weighted window (0.25 / 0.5 / 0.25) *is* co-articulation —
-a shape bent by its neighbours — and an attack/release envelope (45 ms / 90 ms) keeps the jaw
-from ever snapping.
+back to ground truth. A ±1-character weighted window (0.18 / 0.64 / 0.18 since 2026-09-29; it
+was 0.25 / 0.5 / 0.25) *is* co-articulation — a shape bent by its neighbours — and an
+attack/release envelope (45 ms / 75 ms; release was 90 ms) keeps the jaw from ever snapping.
 
 Spanish helps here: five pure vowels against English's twelve-plus, and syllable-timed rather
 than stress-timed, so viseme durations are far more regular.
+
+#### (b2) 2026-09-29 — the lips were too subtle; now they move visibly, without gaping
+
+Angela, relaying a user: *"make her see her move more her lips, but not so exagerated of
+course"*. Measured first (`Temp/lip_gain_lab/simulate_lips.py`, the engine re-run on the test
+phrase and on an English sentence): the mouth **peaked at 0.59–0.71** and spent **85–89 % of
+speech as a half-transparent blend** of the closed and open portraits, **0 %** of it clearly
+open. A ghost of a mouth. Three changes, all inside `avatar_presence.js`:
+
+1. **Narrower co-articulation** (0.18 / 0.64 / 0.18) so a sealed `/m/ /b/ /p/` between two
+   vowels actually dips instead of being averaged away.
+2. **`lipShape()`**: the sampled openness is stretched from `[LIP_FLOOR 0.14, LIP_CEIL 0.70]`
+   onto `[0, 1]` through a smoothstep, so the jaw commits to open or shut. Monotonic, so the
+   mouth still follows the text.
+3. **Release 75 ms** (was 90) so the lips close between syllables.
+
+| | before | after |
+|---|---|---|
+| peak opening (visible test) | 0.593 | **0.915 / 0.946** |
+| mean opening | 0.39 | 0.43 (she moves more; she does not gape) |
+| lip travel per second (sim.) | 1.1–1.3 | **2.9–3.3** |
+| time clearly open | 0 % | 10–14 % |
+| correlation with the text | 0.835 | 0.843–0.848 |
+
+**Not exaggerated by construction:** the ceiling is her own open-mouth portrait; nothing can
+open her mouth wider than the artwork. Pinned by the new check **E9 LIPS CLEARLY VISIBLE BUT
+NOT EXAGGERATED** (peak ≥ 0.75, clearly open ≥ 5 %, mean ≤ 0.55), both directions. The visible
+run on 2026-09-29 passed **all 76 checks** (was 74).
+
+⚠️ While doing this, `Tests/run_avatar_tests.py` turned out to be **broken since 2026-09-15**:
+its helper lived in `output/avatar_flash_fix/`, which was cleaned out in commit `1d222286`. The
+helper and its settings were restored from git into `Tests/avatar_dev_server/`, beside the
+tests, so an `output/` cleanup cannot take them again.
 
 **Fallbacks, in order:** real `boundary` events → a rate estimated from `elapsedTime` (`driver:
 'estimated'`) → the legacy `<img>` path if the canvas cannot start at all.

@@ -104,7 +104,29 @@
   var BLINK_MIN = 2.4, BLINK_MAX = 5.2;   // s between blinks -> 12-20/min
   var BLINK_CLOSE = 55, BLINK_HOLD = 25, BLINK_OPEN = 130;  // ms, asymmetric
   var DOUBLE_BLINK = 0.12;
-  var MOUTH_ATTACK = 45, MOUTH_RELEASE = 90;  // ms time constants
+  var MOUTH_ATTACK = 45, MOUTH_RELEASE = 75;  // ms time constants
+
+  // ── LIP VISIBILITY (Angela, 2026-09-29) ──
+  // "make her see her move more her lips, but not so exagerated of course".
+  // MEASURED before this change (Temp/lip_gain_lab/simulate_lips.py, the
+  // engine re-run on the test phrase and an English one): the mouth PEAKED at
+  // 0.59-0.71 and spent 85-89 % of speech as a half-transparent blend of the
+  // closed and open portraits, with 0 % of the time clearly open. A ghost of a
+  // mouth, not a moving one. Three changes, all bounded by her own artwork:
+  //   1. Co-articulation is narrower (0.18/0.64/0.18, was 0.25/0.50/0.25) so a
+  //      sealed /m/ /b/ /p/ between vowels actually dips instead of averaging
+  //      away.
+  //   2. The sampled openness is STRETCHED from [LIP_FLOOR, LIP_CEIL] onto
+  //      [0, 1] through a smoothstep, so the jaw commits to open or shut and
+  //      spends less time as a double exposure.
+  //   3. Release is 75 ms (was 90) so the lips close between syllables.
+  // Result: peak 0.89-0.94, 2.6x more lip travel per second, about 3x more
+  // visible open-close cycles, clearly open 12-14 % of the time, and the mean
+  // opening barely moved (0.39 -> 0.45) — she moves more, she does not gape.
+  // ⚠️ NOT EXAGGERATED BY CONSTRUCTION: the ceiling is her own open-mouth
+  // portrait. Nothing here can open her mouth wider than the artwork does.
+  var COART_SIDE = 0.18, COART_CENTRE = 0.64;
+  var LIP_FLOOR = 0.14, LIP_CEIL = 0.70;
 
   // Frame budget governor. Start conservative; promote ONCE if the machine is
   // clearly fast; demote whenever it is not. Never oscillate.
@@ -292,7 +314,15 @@
     var a = track[clamp(i - 1, 0, trackLen - 1)];
     var b = track[i];
     var c = track[clamp(i + 1, 0, trackLen - 1)];
-    return (a * 0.25 + b * 0.5 + c * 0.25);
+    return (a * COART_SIDE + b * COART_CENTRE + c * COART_SIDE);
+  }
+
+  // Stretch [LIP_FLOOR, LIP_CEIL] onto [0, 1] and ease it, so the lips commit
+  // to a shape instead of hovering as a half-blend. Monotonic, so the mouth
+  // still follows the text exactly as before, just with more contrast.
+  function lipShape(v) {
+    var x = clamp((v - LIP_FLOOR) / (LIP_CEIL - LIP_FLOOR), 0, 1);
+    return x * x * (3 - 2 * x);
   }
 
   function stepMouth(t, dt) {
@@ -300,7 +330,7 @@
     if (speaking && track) {
       var pos = anchorChar + (t - anchorT) * rate;
       if (pos >= trackLen) { pos = trackLen - 1; }
-      target = sampleTrack(pos);
+      target = lipShape(sampleTrack(pos));
       // A sustained vowel is never perfectly still.
       target *= 0.93 + 0.07 * Math.sin(t / 47);
       if (!rateKnown && boundaryCount === 0 && (t - speechStart) > 600) {

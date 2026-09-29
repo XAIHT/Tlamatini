@@ -1,5 +1,5 @@
 /* Visible real-Django avatar regression. Never launches headless.
- * Start output/avatar_flash_fix/development_test.py serve after prepare.
+ * Start Tests/avatar_dev_server/development_test.py serve after prepare.
  * PLAYWRIGHT_MODULE may name a bundled Playwright package.
  * The real login, Django templates, middleware, static files and native OS
  * speech synthesis are used. Only the LLM websocket is isolated: no prompts,

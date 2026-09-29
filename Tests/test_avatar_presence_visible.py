@@ -311,6 +311,16 @@ def suite(page, label: str, expect_reduced: bool) -> None:
     mouth = spoke["mouth"]
     R.check(label, "E2 the mouth really opens", max(mouth) > 0.5, "peak=%.3f" % max(mouth))
     R.check(label, "E3 the mouth really closes", min(mouth) < 0.15, "floor=%.3f" % min(mouth))
+    # Angela, 2026-09-29: "make her see her move more her lips, but not so
+    # exagerated". Before that change the peak was 0.59 and the lips were a
+    # faint half-blend 88 % of the time. Pin BOTH directions: clearly visible
+    # (a real peak, real time spent open) and not gaping (mean stays modest).
+    mean_mouth = sum(mouth) / len(mouth) if mouth else 0.0
+    open_share = (sum(1 for v in mouth if v >= 0.75) / len(mouth)) if mouth else 0.0
+    R.check(label, "E9 LIPS CLEARLY VISIBLE BUT NOT EXAGGERATED",
+            max(mouth) >= 0.75 and open_share >= 0.05 and mean_mouth <= 0.55,
+            "peak=%.3f, clearly open %.0f%% of the time, mean=%.3f"
+            % (max(mouth), open_share * 100, mean_mouth))
     distinct = len(set(round(v, 3) for v in mouth))
     R.check(label, "E4 MOUTH IS CONTINUOUS (a metronome yields 2 values)", distinct > 25,
             "%d distinct mouth values" % distinct)
@@ -322,7 +332,9 @@ def suite(page, label: str, expect_reduced: bool) -> None:
     for t in spoke["t"]:
         idx = int(min(len(track) - 1, max(0, (t / dur) * (len(track) - 1))))
         lo, hi = max(0, idx - 1), min(len(track) - 1, idx + 1)
-        exp.append(track[lo] * 0.25 + track[idx] * 0.5 + track[hi] * 0.25)
+        # Same co-articulation window as avatar_presence.js (COART_SIDE /
+        # COART_CENTRE, narrowed 2026-09-29 so /m/ /b/ /p/ really dip).
+        exp.append(track[lo] * 0.18 + track[idx] * 0.64 + track[hi] * 0.18)
     r = pearson(mouth, exp)
     R.check(label, "E5 MOUTH FOLLOWS THE TEXT (correlation with the phrase)", r > 0.45,
             "pearson r = %.3f against the phonetic track" % r)
