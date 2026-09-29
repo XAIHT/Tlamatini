@@ -155,6 +155,8 @@ Upgrading is separate work and is NOT done.
 
 ## The REAL context gauge — Ollama's own numbers (2026-09-28)
 
+Shipped in `v1.72.1`.
+
 The ring beside the message box shows what Tlamatini's MAIN chain sends to the
 model, per connected user. Bytes are measured; tokens are **Ollama's own
 `prompt_eval_count`** for that exact request, shown as `N tokens REAL`. A chars/4

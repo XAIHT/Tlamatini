@@ -1294,8 +1294,26 @@ def build_chapters(f: dict) -> list[Chapter]:
         f"Source tag {f['release_tag']}; latest published release "
         f"{f['release']['latest_published'] or 'unverified'}. Local changes are stated separately.",
         accent="gold", sections=[
-        Section("working_voice", "NEW IN v1.72.0", "Direct dictation and dependency coverage",
-            "These September 27 changes are committed and tagged v1.72.0; a tag alone publishes no installer.",
+        Section("working_gauge", "NEW IN v1.72.1", "A context gauge that tells the truth",
+            "Tagged and published on September 28: the ring beside the message box shows Ollama's own count.",
+            body=[
+                "The ring now reports the exact request Tlamatini's main chain sends. Bytes are measured; "
+                "the token figure is Ollama's own prompt_eval_count for that request, and the ceiling is the "
+                "context length Ollama reports. An estimate is shown only until Ollama answers, and says so.",
+                "Between questions the ring shows what the next request will cost, recalculated whenever the "
+                "state changes: page open, Clear history, Clear context, a context loaded, an answer finished "
+                "or a mode toggled. It is exact in one-shot and Multi-Turn alike, per connected user, and "
+                "one-shot questions no longer carry an empty System-Metrics line.",
+            ],
+            points=[
+                ("Real tokens", "Ollama's prompt_eval_count, paired to its own request."),
+                ("Exact in both modes", "Live = at-rest prediction + the question + the Multi-Turn plan."),
+                ("Main chain only", "Out-of-band calls never reach the ring; each user sees their own."),
+                ("Less waste", "The question is sent once; the one-shot placeholder line is gone."),
+                ("Proof", "A visible lab passed 60 of 60 checks against tlamatini.log."),
+            ], deck="cards"),
+        Section("working_voice", "CARRIED FROM v1.72.0", "Direct dictation and dependency coverage",
+            "These September 27 changes were tagged v1.72.0 and published on September 28.",
             body=[
                 "The chat microphone starts Whisperer directly, stops on the configured silence gate, "
                 "recognizes speech and sends or leaves an editable draft as selected in Config > Mic. "
@@ -1303,15 +1321,14 @@ def build_chapters(f: dict) -> list[Chapter]:
                 "application logger and creates no second console. Developer tests remain visibly executed.",
                 "The root dependency manifest and separate ESPHome manifest now account for referenced "
                 "libraries across agents and source. The static guard and detailed dependency audit record "
-                "coverage and runtime boundaries. The published v1.70.0 installer does not contain them; "
-                "they reach users once a v1.72.0 release is built and published. The later shared "
-                "root-asset carrier repair is documented separately as current working-tree work.",
+                "coverage and runtime boundaries. They shipped in the published v1.72.0 release; the "
+                "shared root-asset carrier repair that followed is committed and carried by v1.72.1.",
             ],
             points=[
                 ("User guide", "README.md and BookOfTlamatini.md explain Mic settings, recording, cancellation and both modes."),
                 ("Runtime contract", "docs/chat-microphone-design.md records ownership, protocol, configuration and limits."),
                 ("Dependencies", "docs/dependency-coverage-audit.md records declarations, isolation and verification."),
-                ("Delivery", "v1.72.0 is tagged; rebuild and verify an installer, including the later root-asset carrier repair."),
+                ("Delivery", "Published as v1.72.0 and carried by v1.72.1, with the root-asset carrier repair."),
             ], deck="cards"),
         Section("whatsnew", "CARRIED RELEASE", "v1.70.0: the Prompt Flow Panel",
             "Version 1.70.0 is about designing conversations and editing flows with the same ease.",

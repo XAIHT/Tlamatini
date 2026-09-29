@@ -18,6 +18,8 @@
 
 ## 2026-09-28 — The context gauge is REAL: Ollama's own numbers, exact in both modes
 
+> **Shipped in `v1.72.1`** (annotated tag at `df709d78`, published 2026-09-28 and marked Latest).
+
 Angela: *"make that gauge counter to be real, NOT FAKE ... this is going to be
 metered by NVIDIA/INTEL/CISCO systems in real executions, SO BETTER YOU DONT
 LIE!"* and *"it must work very exact, in both not multi-turn and multi-turn"*.
@@ -2349,7 +2351,7 @@ audit. Migrations **0195/0196/0197**; catalog prompt **119**
 > `v1.48.16` = `6ee630ca` (themed `tlmAlert`/`tlmConfirm` pop-ups + the
 > frozen-bundle carriage proof in `build.py`), **`v1.48.17` = `f948be7b` — the
 > newest release on that day**, carrying everything below. The current release
-> is now `v1.72.0` (latest published release `v1.70.0`); entries that say a change "landed in v1.48.15" or
+> is now `v1.72.1` (also the latest published release); entries that say a change "landed in v1.48.15" or
 > `v1.48.17` are historical statements and remain as written.
 
 **Angela, verbatim:** *"Standarize in every ... every dialog and all of the
