@@ -22,6 +22,7 @@ import re
 import time
 import yaml
 import json
+import html as _html_lib
 import zlib
 import threading
 import logging
@@ -423,11 +424,73 @@ class HTMLTextExtractor(HTMLParser):
         return body
 
 
+#: Elements whose content is never visible text, for the plain fallback below.
+_FALLBACK_OPEN_RE = re.compile(r'<(script|style|noscript|template|svg)\b', re.IGNORECASE)
+_FALLBACK_BREAK_RE = re.compile(
+    r'<(?:br|/p|/div|/li|/tr|/h[1-6]|/section|/article|/blockquote|/pre|/dd|/dt)\b[^>]*>',
+    re.IGNORECASE)
+_FALLBACK_COMMENT_RE = re.compile(r'<!--.*?-->', re.DOTALL)
+_FALLBACK_TAG_RE = re.compile(r'<[^>]*>')
+#: A parse that keeps less than this share of the plain text has lost the page...
+FALLBACK_MIN_SHARE = 0.25
+#: ...once the page holds at least this much plain text at all.
+FALLBACK_MIN_CHARS = 200
+
+
+def plain_text_fallback(html_content: str) -> str:
+    """Visible text by plain tag-stripping: no parser state that can get stuck.
+
+    Script/style/noscript/template/svg blocks are dropped only when they are
+    CLOSED. An unclosed one keeps everything after it, because a region that
+    never closes is exactly the failure this fallback exists to survive.
+    """
+    markup = _FALLBACK_COMMENT_RE.sub(' ', html_content or '')
+    lower = markup.lower()
+    pieces, pos, never_closed = [], 0, set()
+    for match in _FALLBACK_OPEN_RE.finditer(markup):
+        tag = match.group(1).lower()
+        if match.start() < pos or tag in never_closed:
+            continue
+        gt = lower.find('>', match.end())
+        if gt > 0 and markup[gt - 1] == '/':
+            continue                   # <svg/> opens nothing
+        end = lower.find('</' + tag, match.end())
+        if end < 0:
+            never_closed.add(tag)      # every later one is unclosed too: never rescan
+            continue
+        close = lower.find('>', end)
+        pieces.append(markup[pos:match.start()])
+        pos = len(markup) if close < 0 else close + 1
+    pieces.append(markup[pos:])
+    text = _FALLBACK_BREAK_RE.sub('\n', ' '.join(pieces))
+    text = _html_lib.unescape(_FALLBACK_TAG_RE.sub(' ', text))
+    lines = (' '.join(line.split()) for line in text.splitlines())
+    return '\n'.join(line for line in lines if line)
+
+
 def strip_html(html_content: str) -> str:
-    """Remove all HTML markup and return plain text."""
+    """Remove all HTML markup and return plain text.
+
+    Two layers. The parser above does the real work; the plain tag-strip is the
+    safety net. If the parser kept less than a quarter of the text the plain
+    strip finds, a parser state got stuck - exactly how every page lost ALL its
+    text to the void <meta>/<link> bug (2026-09-28) - so the plain text is used
+    instead and the log says so. A page can never silently lose its text again.
+    """
     extractor = HTMLTextExtractor()
-    extractor.feed(html_content)
-    return extractor.get_text()
+    try:
+        extractor.feed(html_content or '')
+        extractor.close()
+    except Exception as exc:
+        logging.warning(f"The HTML parser failed ({exc}); using the plain-text fallback")
+        return plain_text_fallback(html_content)
+    text = extractor.get_text()
+    fallback = plain_text_fallback(html_content)
+    if len(fallback) >= FALLBACK_MIN_CHARS and len(text) < len(fallback) * FALLBACK_MIN_SHARE:
+        logging.warning(f"The HTML parser kept only {len(text)} of {len(fallback)} characters of "
+                        f"visible text; using the plain-text fallback so no text is lost")
+        return fallback
+    return text
 
 
 # ============================================================

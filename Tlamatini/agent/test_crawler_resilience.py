@@ -174,6 +174,54 @@ class TextExtractionTests(unittest.TestCase):
         self.assertEqual(C._header_value(headers, 'Content-Type'), 'application/pdf')
         self.assertEqual(C._header_value(headers, 'X-Missing', 'unknown'), 'unknown')
 
+    def test_the_example_com_page_that_came_back_empty_for_another_user(self):
+        # 2026-09-29: an OLD copy of this agent logged "Extracted 0 chars" here.
+        page = ('<!doctype html><html><head><title>Example Domain</title>'
+                '<meta charset="utf-8" /><meta http-equiv="Content-type" '
+                'content="text/html; charset=utf-8" /><meta name="viewport" '
+                'content="width=device-width, initial-scale=1" />'
+                '<style type="text/css">body { background-color: #f0f0f2; }</style></head>'
+                '<body><div><h1>Example Domain</h1><p>This domain is for use in illustrative '
+                'examples in documents.</p><p><a href="https://www.iana.org/domains/example">'
+                'More information...</a></p></div></body></html>')
+        text = C.strip_html(page)
+        self.assertIn('This domain is for use in illustrative examples in documents.', text)
+        self.assertNotIn('background-color', text)
+
+    def test_a_minified_page_without_head_or_body_tags_keeps_its_text(self):
+        page = ('<!doctype html><meta charset=utf-8><title>T</title>'
+                '<link rel=stylesheet href=a.css><h1>Hello</h1><p>World</p>')
+        text = C.strip_html(page)
+        self.assertIn('Hello', text)
+        self.assertIn('World', text)
+
+    def test_a_region_that_never_closes_cannot_swallow_the_page(self):
+        # The same CLASS of bug as the void <meta>/<link> one: any region the
+        # parser opens and never closes. The safety net must rescue the text AND say so.
+        body = 'This paragraph must survive the broken markup. ' * 20
+        page = f'<html><body><p>Intro</p><svg><path d="M0 0"><p>{body}</p></body></html>'
+        with self.assertLogs(level='WARNING') as logs:
+            text = C.strip_html(page)
+        self.assertIn('This paragraph must survive the broken markup.', text)
+        self.assertIn('plain-text fallback', '\n'.join(logs.output))
+
+    def test_a_healthy_page_never_uses_the_fallback(self):
+        page = ('<html><head><title>T</title></head><body>'
+                + '<p>Plenty of real words here.</p>' * 30 + '</body></html>')
+        with self.assertNoLogs(level='WARNING'):
+            text = C.strip_html(page)
+        self.assertTrue(text.startswith('T\n'))
+
+    def test_the_plain_fallback_keeps_text_and_drops_code(self):
+        text = C.plain_text_fallback(
+            '<p>a &amp; b</p><script>var secret = 1;</script><style>.x{}</style>'
+            '<!-- hidden --><div>visible</div><svg/><p>after a self-closing svg</p>'
+            '<svg><title>icon label</title></svg>')
+        for kept in ('a & b', 'visible', 'after a self-closing svg'):
+            self.assertIn(kept, text)
+        for noise in ('secret', '.x{}', 'hidden', 'icon label'):
+            self.assertNotIn(noise, text)
+
 
 # =============================================================================
 # 2. It analyzes the page it was GIVEN, inside a bounded crawl

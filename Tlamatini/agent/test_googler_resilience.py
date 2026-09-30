@@ -528,6 +528,42 @@ class PageTextTests(unittest.TestCase):
         self.assertNotIn('var a', text)
         self.assertNotIn('.x', text)
 
+    def test_a_page_that_leaves_out_its_closing_head_keeps_its_text(self):
+        # HTML5 allows it and minified pages do it; the old depth counter then
+        # waited for </head> forever and returned NO text at all (2026-09-29).
+        title, text = E.html_to_text('<html><head><meta charset=utf-8><title>T</title>'
+                                     '<link rel=stylesheet href=a.css><p>Body text here</p></html>')
+        self.assertEqual(title, 'T')
+        self.assertIn('Body text here', text)
+
+    def test_a_minified_page_without_head_or_body_tags_keeps_its_text(self):
+        _title, text = E.html_to_text('<!doctype html><meta charset=utf-8><title>T</title>'
+                                      '<link rel=stylesheet href=a.css><h1>Hello</h1><p>World</p>')
+        self.assertIn('Hello', text)
+        self.assertIn('World', text)
+
+    def test_a_self_closing_skip_tag_never_opens_a_region(self):
+        _title, text = E.html_to_text('<body><p>Alpha</p><svg/><p>Beta</p></body>')
+        self.assertIn('Alpha', text)
+        self.assertIn('Beta', text)
+
+    def test_a_region_that_never_closes_falls_back_and_says_so(self):
+        body = 'This paragraph must survive the broken markup. ' * 20
+        notes = []
+        _title, text = E.html_to_text(
+            f'<html><body><p>Intro</p><svg><path d="M0 0"><p>{body}</p></body></html>', report=notes)
+        self.assertIn('This paragraph must survive the broken markup.', text)
+        self.assertEqual(len(notes), 1)
+        self.assertIn('plain-text fallback', notes[0])
+
+    def test_a_healthy_page_never_uses_the_fallback(self):
+        notes = []
+        page = ('<html><head><title>T</title></head><body>'
+                + '<p>Plenty of real words here.</p>' * 30 + '</body></html>')
+        _title, text = E.html_to_text(page, report=notes)
+        self.assertEqual(notes, [])
+        self.assertIn('Plenty of real words here.', text)
+
     def test_a_binary_url_is_a_found_file(self):
         result = E.fetch_page_text('https://www.gutenberg.org/cache/epub/15/pg15.epub',
                                    deadline=E.Deadline(5))

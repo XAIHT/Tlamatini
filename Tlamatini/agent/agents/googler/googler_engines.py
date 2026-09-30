@@ -1163,7 +1163,18 @@ def open_sources_search(terms: QueryTerms, number_of_results: int, *, deadline: 
 # =============================================================================
 
 class _HTMLToText(HTMLParser):
+    """Visible text of a page, for the model.
+
+    Skipped regions are a STACK of open tags, never a bare counter, and <head>
+    ends at the first element that cannot live inside a head. HTML5 lets a page
+    leave </head> out (minified pages do), and a counter waiting for it drops
+    every word of the page - the class of bug that cost the Crawler ALL of its
+    text on 2026-09-28 (void <meta>/<link> opening regions that never closed).
+    A self-closing <x/> never opens a region.
+    """
     _SKIP = frozenset({"script", "style", "noscript", "svg", "template", "iframe", "canvas", "object", "head"})
+    #: The only elements allowed inside <head>; any other one means the body began.
+    _HEAD_TAGS = frozenset({"title", "meta", "link", "style", "script", "noscript", "base", "template"})
     _BLOCK = frozenset({"p", "div", "br", "li", "ul", "ol", "tr", "table", "section", "article",
                         "header", "footer", "nav", "aside", "main", "form", "pre", "blockquote",
                         "dd", "dt", "figcaption", "h1", "h2", "h3", "h4", "h5", "h6"})
@@ -1172,42 +1183,106 @@ class _HTMLToText(HTMLParser):
         super().__init__(convert_charrefs=True)
         self.parts: list = []
         self.title: list = []
-        self._skip = 0
+        self._open: list = []
         self._in_title = False
+
+    def _leave_head(self, tag):
+        if "head" in self._open and tag not in self._HEAD_TAGS:
+            self._open = [name for name in self._open if name != "head"]
 
     def handle_starttag(self, tag, attrs):
         tag = tag.lower()
+        if self._in_title and tag != "title":
+            self._in_title = False          # a <title> never contains elements
+        self._leave_head(tag)
         if tag == "title":
             self._in_title = True
         if tag in self._SKIP:
-            self._skip += 1
+            self._open.append(tag)
         elif tag in self._BLOCK:
+            self.parts.append("\n")
+
+    def handle_startendtag(self, tag, attrs):
+        tag = tag.lower()
+        self._leave_head(tag)
+        if tag in self._BLOCK:
             self.parts.append("\n")
 
     def handle_endtag(self, tag):
         tag = tag.lower()
         if tag == "title":
             self._in_title = False
-        if tag in self._SKIP:
-            self._skip = max(0, self._skip - 1)
+        if tag in self._open:
+            while self._open and self._open.pop() != tag:
+                pass
         elif tag in self._BLOCK:
             self.parts.append("\n")
 
     def handle_data(self, data):
         if self._in_title:
             self.title.append(data)
-        if not self._skip:
+        if not self._open:
             self.parts.append(data)
 
 
-def html_to_text(markup: str):
-    """``(title, text)`` of an HTML document, blank lines collapsed."""
+_FALLBACK_OPEN_RE = re.compile(r"<(script|style|noscript|template|svg)\b", re.IGNORECASE)
+_FALLBACK_BREAK_RE = re.compile(
+    r"<(?:br|/p|/div|/li|/tr|/h[1-6]|/section|/article|/blockquote|/pre|/dd|/dt)\b[^>]*>",
+    re.IGNORECASE)
+_FALLBACK_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
+_FALLBACK_TAG_RE = re.compile(r"<[^>]*>")
+#: A parse that keeps less than this share of the plain text has lost the page...
+FALLBACK_MIN_SHARE = 0.25
+#: ...once the page holds at least this much plain text at all.
+FALLBACK_MIN_CHARS = 200
+
+
+def plain_text_fallback(markup: str) -> str:
+    """Visible text by plain tag-stripping: no parser state that can get stuck.
+
+    Script/style/noscript/template/svg blocks are dropped only when they are
+    CLOSED. An unclosed one keeps everything after it, because a region that
+    never closes is exactly the failure this fallback exists to survive.
+    """
+    markup = _FALLBACK_COMMENT_RE.sub(" ", str(markup or ""))
+    lower = markup.lower()
+    pieces, pos, never_closed = [], 0, set()
+    for match in _FALLBACK_OPEN_RE.finditer(markup):
+        tag = match.group(1).lower()
+        if match.start() < pos or tag in never_closed:
+            continue
+        gt = lower.find(">", match.end())
+        if gt > 0 and markup[gt - 1] == "/":
+            continue                   # <svg/> opens nothing
+        end = lower.find("</" + tag, match.end())
+        if end < 0:
+            never_closed.add(tag)      # every later one is unclosed too: never rescan
+            continue
+        close = lower.find(">", end)
+        pieces.append(markup[pos:match.start()])
+        pos = len(markup) if close < 0 else close + 1
+    pieces.append(markup[pos:])
+    text = _FALLBACK_BREAK_RE.sub("\n", " ".join(pieces))
+    text = html.unescape(_FALLBACK_TAG_RE.sub(" ", text))
+    lines = (" ".join(line.split()) for line in text.splitlines())
+    return "\n".join(line for line in lines if line)
+
+
+def html_to_text(markup: str, report: list = None):
+    """``(title, text)`` of an HTML document, blank lines collapsed.
+
+    Two layers: the parser, then ``plain_text_fallback`` as a safety net. If the
+    parser failed, or kept less than a quarter of the plain text, a parser state
+    got stuck and the plain text is used instead; ``report`` (a list) receives a
+    note saying so, so a page can never silently lose its text.
+    """
     parser = _HTMLToText()
+    failed = ""
     try:
         parser.feed(str(markup or ""))
         parser.close()
-    except Exception:
-        pass
+    except Exception as exc:
+        failed = str(exc) or type(exc).__name__
     lines = [_WS_RE.sub(" ", line).strip() for line in "".join(parser.parts).splitlines()]
     text_lines, blank = [], 0
     for line in lines:
@@ -1219,7 +1294,16 @@ def html_to_text(markup: str):
             if blank == 1 and text_lines:
                 text_lines.append("")
     title = _WS_RE.sub(" ", "".join(parser.title)).strip()
-    return title, "\n".join(text_lines).strip()
+    text = "\n".join(text_lines).strip()
+    fallback = plain_text_fallback(markup)
+    lost = len(fallback) >= FALLBACK_MIN_CHARS and len(text) < len(fallback) * FALLBACK_MIN_SHARE
+    if (failed or lost) and len(fallback) > len(text):
+        if report is not None:
+            report.append("plain-text fallback: the HTML parser "
+                          + ("failed (%s)" % failed if failed else
+                             "kept only %d of %d characters" % (len(text), len(fallback))))
+        text = fallback
+    return title, text
 
 
 #: A page this short is probably a JavaScript shell or a challenge: the
@@ -1243,10 +1327,11 @@ def fetch_page_text(url: str, *, deadline: Deadline, timeout: float = 10.0, mode
         return {"url": url, "error": response["error"], "thin": True, "fetched_by": "http",
                 "timed_out": bool(response["timed_out"])}
     body = response["body"]
+    notes: list = []
     if mode == "raw":
         content = body[:500_000]
     elif "html" in response["content_type"].lower() or "<html" in body[:2000].lower():
-        _title, content = html_to_text(body)
+        _title, content = html_to_text(body, report=notes)
     else:
         content = body
     content = content.strip()
@@ -1257,9 +1342,12 @@ def fetch_page_text(url: str, *, deadline: Deadline, timeout: float = 10.0, mode
                 "error": "the site answered with a bot challenge (%s)" % reason}
     if len(content) > max_chars:
         content = content[:max_chars] + "\n... [truncated]"
-    return {"url": url, "status_code": response["status_code"], "content": content,
-            "content_length": len(content), "fetched_by": "http",
-            "thin": len(content) < THIN_PAGE_CHARS}
+    result = {"url": url, "status_code": response["status_code"], "content": content,
+              "content_length": len(content), "fetched_by": "http",
+              "thin": len(content) < THIN_PAGE_CHARS}
+    if notes:
+        result["extraction_note"] = notes[0]   # the safety net had to step in
+    return result
 
 
 def fetch_pages(urls, *, deadline: Deadline, mode: str = "text", max_chars: int = 50_000,

@@ -16,6 +16,62 @@
 
 ---
 
+## 2026-09-29 — HTML text extraction can no longer lose a page in silence (Crawler AND Googler)
+
+Another user sent Tlamatini's own diagnosis of a Crawler run: text mode said
+*"Extracted 0 chars"* for example.com, httpbin.org and 65 python.org pages. It was
+the pre-`524a67ff` code (meta/link in the skip list, a `_skip_depth` counter that
+void elements never decrement) — their install simply predates the fix below.
+Angela then asked to check Googler for the same problem. **It had it:** its own
+`_HTMLToText` counted skip depth too, so any page that leaves out the optional
+`</head>` (HTML5 allows it; minified pages do it) came back with ZERO text.
+
+**The bug CLASS, not one instance.** An `HTMLParser` that opens a "skip" region on
+a start tag and waits for its end tag loses the whole rest of the page whenever
+that end tag never comes: a void element, an optional `</head>`, a stray `<svg/>`,
+a truncated body. Fixing one tag leaves the next one waiting.
+
+**Two layers, in BOTH agents (`crawler.py::strip_html`, `googler_engines.py::html_to_text`):**
+1. **A stack, not a counter.** Open skip tags are pushed; `<head>` ends at the first
+   element that cannot live there; a self-closing tag (`handle_startendtag`) never
+   opens a region; an end tag pops back to its match.
+2. **A safety net that measures the result.** `plain_text_fallback()` strips markup
+   with a plain scan that drops only CLOSED script/style/noscript/template/svg
+   blocks (an unclosed one keeps the rest of the page; `<svg/>` opens nothing). If
+   the parser kept less than `FALLBACK_MIN_SHARE` (25 %) of the fallback's text and
+   the fallback has at least `FALLBACK_MIN_CHARS` (200), the fallback is used — and
+   it is SAID: Crawler logs a WARNING, Googler returns `extraction_note` in the page
+   result. A parser exception takes the same route.
+
+**Measured live (2026-09-29, visible, Shoter photos in `Temp/text-safety-live/photos`),
+the SAME fetched page through old and new code (characters of text):**
+
+| page | old Crawler | NEW Crawler | NEW Googler |
+|---|---|---|---|
+| example.com | **0** | 182 | 167 |
+| httpbin.org/html | 3,594 | 3,594 | 3,595 |
+| python.org | **0** | 7,156 | 7,240 |
+| docs.python.org/3/ | **0** | 3,233 | 3,353 |
+| Wikipedia article | **0** | 10,858 | 11,138 |
+
+On all five healthy pages the safety net stayed OFF (the parser alone was enough),
+and the real Crawler agent then analyzed example.com, httpbin.org and python.org
+with the model (`status: ok`, `http_status: 200`, `Content-Type` read correctly).
+
+**Contracts (do NOT weaken):**
+1. Never make a skip region depend on an end tag arriving. Stack + pop-to-match.
+2. Keep the net, and keep it LOUD. A fallback nobody hears about hides the next
+   parser bug; a WARNING / `extraction_note` makes it visible.
+3. The net must never degrade a healthy page: it only replaces a result that lost
+   three quarters of the text. `test_a_healthy_page_never_uses_the_fallback` pins
+   that in both agents.
+
+Coverage: `test_crawler_resilience.py` (40) and `test_googler_resilience.py` (65)
+gained the example.com page, a minified page with no head/body tags, a page without
+`</head>`, a self-closing `<svg/>`, a region that never closes, and the plain
+fallback itself. With the agent, dork and status-vocabulary suites: **288 tests,
+all passing**. An installed build receives this only through a rebuild or update.
+
 ## 2026-09-29 — Crawler reads the page it is given, never hangs, and never analyzes a refusal
 
 Angela, right after the Googler fix: *"Check if the same happens to Tlamatini's
