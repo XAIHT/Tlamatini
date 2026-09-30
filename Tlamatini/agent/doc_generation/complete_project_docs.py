@@ -32,6 +32,7 @@ import tokenize
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 SCRIPT_PATH = Path(__file__).resolve()
 REPO_ROOT = SCRIPT_PATH.parents[3]
@@ -76,6 +77,7 @@ LANGUAGE_BY_EXTENSION = {
 }
 
 CORE_PYTHON_TOOLS = 20
+DOCUMENT_TIMEZONE = ZoneInfo("America/Mexico_City")
 MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September",
           "October", "November", "December"]
 
@@ -107,13 +109,19 @@ def git_ok(*args: str) -> bool:
     return subprocess.run(["git", *args], cwd=REPO_ROOT, capture_output=True).returncode == 0
 
 
-def long_date(iso_value: str) -> str:
+def document_datetime(iso_value: str) -> datetime:
+    """Render timestamp dates in Angela's timezone; preserve date-only values."""
     moment = datetime.fromisoformat(iso_value.replace("Z", "+00:00"))
+    return moment.astimezone(DOCUMENT_TIMEZONE) if moment.tzinfo is not None else moment
+
+
+def long_date(iso_value: str) -> str:
+    moment = document_datetime(iso_value)
     return f"{MONTHS[moment.month - 1]} {moment.day}, {moment.year}"
 
 
 def short_date(iso_value: str) -> str:
-    return datetime.fromisoformat(iso_value.replace("Z", "+00:00")).strftime("%Y-%m-%d")
+    return document_datetime(iso_value).strftime("%Y-%m-%d")
 
 
 def published_releases() -> dict:
@@ -496,7 +504,7 @@ def collect_facts() -> dict:
     vendored = [row for row in files if row.path.startswith(VENDOR_PREFIX)]
     vendored_effective = sum(row.effective_lines for row in vendored)
     tools = CORE_PYTHON_TOOLS + len(wrapped) + len(acpx_tools) + len(supervisors)
-    now = datetime.now().astimezone()
+    now = datetime.now(DOCUMENT_TIMEZONE)
     commits = []
     for line in git("log", "-12", "--format=%h\x1f%cI\x1f%s").splitlines():
         sha, when, subject = line.split("\x1f", 2)

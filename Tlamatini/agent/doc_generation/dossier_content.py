@@ -507,8 +507,10 @@ def build_chapters(f: dict) -> list[Chapter]:
                 "Ctrl+V or drop images on the chat: she saves them to her Temp folder and writes the full path "
                 "into your message, ready for Image-Interpreter. A context ring between the toolbar and the "
                 "message box shows how much of the model's window the real request uses, measured by the "
-                "backend in bytes with tokens estimated.",
-                "Her avatar speaks answers aloud when you ask, with a mouth that follows the spoken words. After "
+                "backend in bytes. Tokens use Ollama's own prompt_eval_count for the request; an "
+                "estimate is labeled until a measured count arrives.",
+                "Her avatar speaks answers aloud when you ask. Since v1.72.3, clearer syllable movement and "
+                "faster closure make her lips easier to follow, with opening capped to her portrait. After "
                 "login, pressing Enter on the welcome page takes you straight to the chat.",
             ],
             table={"columns": ["Switch", "What it does"], "widths": [0.24, 0.76], "rows": [
@@ -1001,24 +1003,61 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("Playwrighter", "A real browser through declared steps, with a hold-open knob to watch."),
                 ("Windower", "Focus, move, resize, tile, pin and close windows by title."),
             ], deck="cards"),
-        Section("web", "WEB AND NETWORK", "Search that survives, measurement that shows its error bar",
-            "Googler keeps finding results when browsers are refused, and NetSpeed-Calculator publishes a "
-            "speed with its confidence interval.",
+        Section("web", "WEB SEARCH", "Three search tiers, one time budget",
+            "The chat search tool and pool agent use the same Googler implementation, with a default "
+            "120-second budget and explicit outcomes.",
             body=[
-                "Googler tries four plain-HTTP, server-rendered routes first, then a visible installed Chrome "
-                "across seven browser routes with bounded retries, and always names the route that answered. "
-                "Its structured dork builder writes valid operators, presets and grouped site or file-type "
-                "filters, and `links_only` returns URLs for downloads handled downstream. Indexed is not "
-                "permitted: licensing and authorization remain yours.",
-                "NetSpeed-Calculator measures several keyless providers at once, discards the TCP slow-start "
+                "With no engine pinned, six plain-HTTP routes race for relevant results. If none answers, "
+                "real installed Chrome uses a persistent profile across eight browser routes. Open knowledge "
+                "sources form the final tier: Wikipedia, arXiv, OpenAlex, Hacker News, GitHub, Internet Archive "
+                "and Project Gutenberg. The log names the answering engine and tier.",
+                "A shared health ledger rests refusing engines for 3, 10 or 30 minutes; an off-topic result "
+                "is rejected, and a refusing route is not asked again in the same run. Blocked, timed out, "
+                "unreachable and no matches are separate outcomes. The chat wrapper supports Cancel and "
+                "enforces a process deadline with a cleanup allowance.",
+                "Structured dorks retain presets, grouped filters and links_only URL delivery. An explicit "
+                "engines list skips the HTTP and open-source tiers. Pin Google when Google-only operators "
+                "matter; fallback engines may broaden their meaning. Licensing and authorization remain yours.",
+            ], deck="list",
+            deck_points=[
+                ("Tier 0", "Six hedged HTTP routes; relevance checked before acceptance."),
+                ("Tier 1", "Eight browser routes in health-ledger order; persistent Chrome profile."),
+                ("Tier 2", "Clearly attributed open knowledge sources when search routes fail."),
+                ("Bounded work", "120-second default, cancellation and named failure outcomes."),
+                ("Dork contract", "Explicit engines skip fallback tiers; links_only delivers URLs."),
+            ]),
+        Section("crawler_current", "WEB READING", "Read the requested page, report what happened",
+            "Crawler starts with the supplied page, bounds its work and keeps refusal pages away from the model.",
+            body=[
+                "The default crawl_type is page, with include_seed enabled. A range crawl defaults to "
+                "25 pages and a 900-second whole-run budget. Each download has a 45-second default wall-clock "
+                "limit and an 8,000,000-byte cap. These are configurable defaults; zero disables the page "
+                "count or whole-crawl limit, so unlimited operation must be a deliberate choice.",
+                "Headers are read case-insensitively. Bot walls, CAPTCHA pages and access refusals are "
+                "reported before analysis; timeouts and unreachable pages remain named outcomes. If nothing "
+                "was analyzed, the final report says so. Crawler reads fetched HTML; it does not execute JavaScript.",
+                "Since v1.72.4, both Crawler and Googler use a stack of skipped HTML regions, handle omitted "
+                "head endings and self-closing tags, and compare the extraction with a plain-text fallback. "
+                "When that fallback has at least 200 characters and the parser kept less than 25 percent, "
+                "the fallback takes over. Crawler warns in its log; Googler returns an extraction_note. "
+                "Parser exceptions also use the fallback; healthy extractions stay unchanged.",
+            ], deck="cards",
+            points=[
+                ("Page first", "Read the seed URL by default; range crawling is explicit."),
+                ("Budgets", "Defaults: 25 pages, 900 seconds overall, 45 seconds per download."),
+                ("Truthful outcome", "Refusals never become source content; no analysis is reported plainly."),
+                ("Text safety net", "Below 25% of a 200+ character fallback: recover and disclose."),
+            ]),
+        Section("network_measurement", "NETWORK MEASUREMENT", "Speed measured with its error bar",
+            "NetSpeed-Calculator publishes a speed with a confidence interval and measures latency under load.",
+            body=[
+                "Several keyless providers run in parallel. The measurement discards the TCP slow-start "
                 "ramp, samples throughput as a derivative, rejects outliers and fuses providers with a "
                 "random-effects meta-analysis. It grades bufferbloat from A+ to F. A full run transfers about "
                 "100 to 200 MB, so it asks before running.",
             ], deck="list",
             deck_points=[
-                ("Googler tiers", "Four plain-HTTP routes, then visible Chrome across seven."),
-                ("Dork builder", "Valid operators, presets, grouped filters, links_only output."),
-                ("NetSpeed", "Parallel streams, Student-t intervals, random-effects fusion."),
+                ("Throughput", "Parallel streams, Student-t intervals, random-effects fusion."),
                 ("Bufferbloat", "Latency under load, graded A+ to F."),
                 ("Metered", "About 100 to 200 MB per full run; it asks first."),
             ]),
@@ -1137,9 +1176,9 @@ def build_chapters(f: dict) -> list[Chapter]:
                   "# open http://127.0.0.1:8000/   (default login: user / changeme)"),
             deck="visual"),
         Section("dependencies", "DEPENDENCY COVERAGE", "Every referenced Python library is accounted for",
-            "The September 27 source audit covers all 89 agents, build helpers, optional imports and tests.",
+            "The September 29 static coverage check includes all 89 agents, build helpers, optional imports and tests.",
             body=[
-                "The refreshed static guard scanned 745 Python files and 69 directly referenced distributions. The "
+                "The refreshed static guard scanned 753 Python files and 69 directly referenced distributions. The "
                 "main requirements file contains 87 declarations; missing Autobahn, lxml, six, pip and "
                 "PlatformIO declarations were added. Existing framework and compatibility pins remain.",
                 "ESPHome has a separate requirements-esphome.txt manifest because its py7zr and PlatformIO "
@@ -1149,8 +1188,8 @@ def build_chapters(f: dict) -> list[Chapter]:
             ],
             points=[
                 ("Coverage guard", "scripts/check_requirements_coverage.py checks source and build inventories."),
-                ("Verification", "Zero missing declarations; 10 guard tests and four build dependency checks passed."),
-                ("Resolution", "Main and separate ESPHome dry runs passed; new dependencies passed temporary-environment smoke checks."),
+                ("Verification", "September 29: no missing declarations, syntax errors or unreviewed dynamic imports."),
+                ("Earlier evidence", "September 27: main/ESPHome dry runs and temporary-environment dependency smoke checks passed."),
                 ("Limits", "Static coverage and selective smoke tests do not certify a clean installation or frozen build."),
             ], deck="cards"),
         Section("modes", "RUNTIME", "Two modes and their service ports",
@@ -1302,15 +1341,15 @@ def build_chapters(f: dict) -> list[Chapter]:
                 "download, used to swallow the rest of the page. Both now track open blocks with a stack, "
                 "and a plain-text safety net replaces any result that kept too little, logging a warning "
                 "when it does.",
-                "Two tags travel with it. v1.72.2 made both agents block- and hang-proof: one deadline "
-                "bounds every run, and a CAPTCHA or bot wall is reported as blocked, never read as content. "
+                "Two tags travel with it. v1.72.2 added deadline-bound defaults to both agents, and a "
+                "CAPTCHA or bot wall is reported as blocked, never read as content. "
                 "v1.72.3 made the chat avatar's lips move clearly while she speaks, never wider than her "
                 "own portrait.",
             ],
             points=[
                 ("No silent loss", "A stack of open tags replaces a counter in both agents."),
                 ("Safety net", "A plain reading takes over when a parse keeps too little."),
-                ("Never hangs", "v1.72.2: one deadline bounds every search and every crawl."),
+                ("Bounded defaults", "v1.72.2: search and crawl budgets, cancellation and explicit outcomes."),
                 ("Refusals named", "A CAPTCHA or bot wall comes back as blocked, never as content."),
                 ("Visible lips", "v1.72.3: her lips open and close clearly, without gaping."),
             ], deck="cards"),
