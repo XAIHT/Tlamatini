@@ -572,7 +572,7 @@ The frontend reaches this layer over three new endpoints: `POST /agent/compile_f
 
 ---
 
-## Database Models (13 models in agent/models.py)
+## Database Models (17 models in agent/models.py)
 
 Key models:
 - `Agent` - Agent type registry (idAgent, agentName, agentDescription, agentContent). **⚠️ This table is DELETED and rebuilt from the `agents/` folder listing on EVERY startup** by `apps.py::AgentConfig.ready()`, so `agentDescription` is derived, not authored: the boot resolver `_canonical_agent_display_name()` reads `services/agent_paths.py::display_name_from_agent_type`, which is the real source of truth for a display name (a migration's value survives only until the next launch). See `docs/claude/recent-fixes.md` (2026-07-26).
@@ -582,8 +582,14 @@ Key models:
 - `AcpAgent` - Mirror of the ACPX agent registry (agent_id, command, description, enabled, healthy)
 - `AcpSession` - One row per ACP child-process session
 - `SkillInvocation` - Append-only audit row for each `SkillHarness.invoke()` call
-- `ChatHistory` - Chat message history
-- Plus session, context, and configuration models
+- `AgentMessage` - One row per chat message (user, Tlamatini, greetings, status lines, hidden `Referenced Rephrase:` rows). It is the ONLY store of the history the model reads: `DBChatHistoryLoader.load(limit=8)` re-reads the newest rows for that user on EVERY request, with no cache and no summary. The **Drop** button (2026-09-30) deletes one row, so the model forgets it on the next question with no reconnect (see *Chat history and the Drop button* below)
+- Plus session, context, and configuration models (`LLMProgram`, `LLMSnippet`, `Prompt`, `Omission`, `ContextCache`, `AgentProcess`, `ChatAgentRun`, `Asset`, `SessionState`)
+
+### Chat history and the Drop button (2026-09-30, on `main`, not yet released)
+
+Every chat card has a **Drop** button beside Copy (`agent_page_chat.js`). After a themed `tlmConfirm` (Cancel focused; Escape and ✕ cancel) the page sends a `drop-message` frame; `AgentConsumer._handle_drop_message` refuses while an answer is running (`_active_run`), then `delete_message_for_user` deletes the row — filtered by `conversation_user`, so a user can only drop their own — plus, for a dropped prompt, the `Referenced Rephrase:` rows saved right after it (`rag/interaction.py::show_rephrased_question` repeats the prompt's words there). Nothing else is touched: the messages before and after stay, and the 8-message window simply slides back one row. The group frame `message-dropped` carries `message_ids`, so every open tab removes every deleted card, and the context gauge is refreshed. Each card knows its row id because `save_message(...)` returns `.pk` on all three save paths (greeting, prompt, answer) and `views.initial_messages` sends `id` on first render.
+
+⚠️ **Chat history is not the only memory.** The `memory` External MCP keeps a knowledge graph at `%LOCALAPPDATA%\Tlamatini\memory\memory.json`, shared by every install on the machine; a fact she wrote there survives a Drop (the dialog says so). Tests must never write into that graph. Coverage: `agent/test_drop_message.py`; visible proof: `drop_message_visible.py`.
 
 ## Desktop control and flow contracts — 2026-09-15
 

@@ -1019,6 +1019,22 @@ Dragging image files from Explorer onto the chat column does exactly the same th
 
 The reason it hands you a *path* instead of an attachment is that a path is what her vision agent actually eats: **Image-Interpreter** reads the file from disk and answers in text. Tick **Multi-Turn** and she will do it herself — read the screenshot, then act on what she saw.
 
+### Dropping a message (2026-09-30)
+
+Every message card has two small buttons in its header: **Copy** and **Drop**. Drop works on your own messages and on Tlamatini's answers alike.
+
+Press **Drop** and a confirmation explains exactly what happens next: she forgets that message, it leaves the chat, and from your next message on she answers as if it had never been written. Everything before and after it stays exactly as it was, and nothing reconnects. **Cancel** is selected when the dialog opens, so a stray Enter never deletes anything; the red **Drop** confirms, and Escape backs out.
+
+Why it needs no reconnect: Tlamatini re-reads your conversation from her database before every answer (the newest eight saved messages). Nothing else keeps a copy — no cached summary, nothing inside the chain — so removing one saved message is all it takes. Because the window is "the newest eight", an older message may slide back into view, exactly as if the dropped one had never existed.
+
+A few details worth knowing:
+
+- Dropping only her answer leaves your question behind, so she may treat it as not answered yet. Drop both to erase the whole exchange.
+- When you drop your own message, the hidden "Referenced Rephrase" rows she saved for it go too, so a page reload cannot bring the dropped words back.
+- Status lines such as "Your request is being processed…" were never saved; dropping one only tidies your screen.
+- You cannot drop while she is still answering — that answer already read its history.
+- If her **memory tool** (External ▸ MCPs ▸ memory) is switched on, she may have copied a fact into that long-term memory. That copy is separate from the chat and stays; ask her to forget it too. The dialog reminds you of this.
+
 ## 9. Asking your first question (no toggles)
 
 Leave every checkbox unticked. This is the **simplest** possible chat: one question in, one answer out.
@@ -2381,7 +2397,7 @@ The **ACPXer** workflow agent is the canvas counterpart of the 12 LLM-facing too
 | `Mcp` | UI toggle rows for MCP context providers. |
 | `Tool` | UI toggle rows for unified-agent tools. |
 | `ChatHistory` | Chat messages, with per-user isolation via `conversation_user`. |
-| `AgentMessage` | Per-message records, `conversation_user` foreign key for user isolation. |
+| `AgentMessage` | Per-message records, `conversation_user` foreign key for user isolation. It is the ONLY place the LLM's conversation memory lives (re-read before every answer), which is why the chat card's **Drop** deletes one row and needs no reconnect. |
 | `AcpAgent` | Mirrors `agent_registry.py + config.json` overrides. Reconciled by `service.boot_acpx()` on every start. |
 | `Skill` | Mirrors `SKILL.md` packages. Reconciled by `service.boot_skills()`. |
 | `AcpSession` | One row per real (or recently-real) ACP child. |
@@ -2895,6 +2911,7 @@ Optional toggles. `multi_turn_enabled=false` falls back to legacy one-shot.
 | `cancel-current` | Cancel the current generation |
 | `reconnect-llm-agent` | Rebuild the current LLM/RAG chain |
 | `clean-history-and-reconnect` | Clear chat history and rebuild |
+| `drop-message` | Delete ONE saved message (`message_id`) of this user's conversation — the card's **Drop** button; no rebuild. Answered with a `message-dropped` frame (`ok`, `message_ids`, or a `reason`) sent to every open tab |
 | `clear-context` | Remove persisted context and rebuild |
 | `cancel-all` | Cancel all active generation |
 | `save-files-from-db` | Persist canvas / DB-backed files |
@@ -2917,6 +2934,8 @@ Optional toggles. `multi_turn_enabled=false` falls back to legacy one-shot.
 ```
 
 A Multi-Turn message also carries `tool_calls_log` and `multi_turn_used`. The Create Flow button appears whenever ≥1 agent in that log executed successfully; the old `answer_success` classifier flag was removed 2026-07-06.
+
+A message that was SAVED to the conversation (your prompt, her answer) also carries `message_id`, the row's id; the card keeps it so its **Drop** button can name the row. Live status lines carry none. The first page render passes the same id as `id` in `initial_messages`.
 
 ## 53. HTTP endpoints
 
@@ -3931,6 +3950,7 @@ The other firmware agents make Tlamatini an *embedded engineer*. ESPHomer makes 
 | **Discoverer** | Tlamatini agent that runs the **ProjectDiscovery** recon / attack-surface / vuln-discovery suite — `subfinder` / `httpx` / `naabu` / `katana` / `nuclei` / `cvemap`→`vulnx` (cvemap's API was retired Aug 2025, so the CVE search runs `vulnx`), one tool per run — by invoking each CLI directly (no MCP server), like Kalier / ESP32er / Arduiner. Zero-config: a self-installing PRIVATE Go toolchain under `<install_dir>/Go` compiles the tools on first use (no system Go, no PATH change); the PDCP key is optional — set it once in **Config ▸ Access Keys Wizard ▸ "Security Recon (ProjectDiscovery)"** (auto-injected on every run; redacted from `.flw` exports and by `regen_secrets.py` before a push) — naabu defaults to a Windows-safe CONNECT scan, and a fail-safe preflight refuses rather than mis-scan. Available both as the wrapped Multi-Turn tool `chat_agent_discoverer` and as a visual canvas node. **Authorized targets only.** |
 | **Zavuerer** | Tlamatini agent that sends a message through **Zavu** (zavu.dev) — ONE unified REST API for **SMS / WhatsApp / Telegram / Email / Voice** from a single key. Instead of separately wiring Twilio + Meta's WhatsApp Cloud API + SMTP, Zavuerer POSTs to Zavu's `/v1/messages` endpoint; `channel: auto` lets Zavu's ML pick the best/cheapest channel with automatic fallback (e.g. WhatsApp fails → SMS). Direct HTTP over the Python stdlib (`urllib`, no SDK), like Kalier / Apirer. The `zavu_api_key` (free to sign up at zavu.dev, but Zavu charges pay-as-you-go to send) is set ONCE via **Config ▸ Access Keys Wizard ▸ "Unified Messaging (Zavu)"** and auto-injected on every run; with no key a send safely REFUSES (`status: refused`) instead of failing silently, and a fail-safe preflight checks the key / recipient / text / channel first. Available both as the wrapped Multi-Turn tool `chat_agent_zavuerer` and as a visual canvas node. **Authorized, opted-in recipients only** (A2P / the WhatsApp 24-hour window / GDPR). |
 | **Dockerer** | Docker container management agent. |
+| **Drop** | The button on every chat card (2026-09-30) that erases that ONE message from the chat AND from the history the model reads, after a themed confirmation. No reconnect; the messages before and after it stay untouched. A saved note in the `memory` External MCP is separate and stays. |
 | **Embedding** | Numerical vector representation of text for similarity comparison. |
 | **ESP32er** | Tlamatini agent that scaffolds, builds, flashes, and monitors ESP32 firmware by driving **PlatformIO Core** (`pio`) directly — no MCP server (unlike STM32er). Zero-config bootstrap downloads PlatformIO via `get-platformio.py`; the `scaffold_build_upload` composite collapses create→write→build→upload into one run. Available both as the wrapped Multi-Turn tool `chat_agent_esp32er` and as a visual canvas node. The 69th entry in the agent catalog; the direct-CLI sibling of Arduiner. |
 | **FAISS** | Facebook AI Similarity Search — vector similarity library. |
@@ -4003,6 +4023,7 @@ The other firmware agents make Tlamatini an *embedded engineer*. ESPHomer makes 
 **Latest version — `v1.72.4` (tagged 2026-09-29):** annotated tag `v1.72.4` points to `323c1051` — *"Release v1.72.4 Making HTML text extraction unable to lose a page in silence, in Crawler and Googler."* Crawler and Googler now read a page's text with a stack of open tags instead of a counter, so a void element, an omitted `</head>` or a stray `<svg/>` can no longer swallow the rest of the page, and a plain-text safety net replaces any parse that kept less than a quarter of the page's text — and logs a WARNING saying so. It is also the latest *published* release ("v1.72.4", marked Latest; checked with `gh release list` on 2026-09-29), so **About ▸ Check for updates** now delivers it. It carries two tags with no published release of their own: **`v1.72.3`** (`87db1df8`) — the chat avatar's lips now open and close clearly while she speaks, never wider than her own open-mouth portrait, plus a small refinement of the general prompt — and **`v1.72.2`** (`524a67ff`) — Googler and Crawler became block- and hang-proof: one deadline bounds every run, a CAPTCHA, bot wall or rate limit is reported as `blocked` instead of being read as content, and a search or crawl that read nothing says so plainly instead of returning silence. Those stand on **`v1.72.1`** (`df709d78`, published 2026-09-28): the REAL context gauge — the ring beside the message box shows Ollama's own token count for the exact request (`N tokens REAL`), exact in both one-shot and Multi-Turn — plus the removal of the one-shot System-Metrics "No system context required for this question." line. It follows `v1.72.0` (tag at `e3668a47`, published 2026-09-28): the direct chat microphone and the **Config ▸ Mic** settings. `v1.71.0` (`512973fb`) predates the microphone and has no published release. Runtime version comes from the resolver; feature availability also depends on build contents.
 
 
+- **Drop a message — 2026-09-30 (on `main` after v1.72.4, not yet released).** Every chat card, yours and hers, now has a **Drop** button beside Copy. A themed dialog explains what happens and asks if you are sure (Cancel is the default; Escape and ✕ also cancel). Drop erases the message from the chat AND from the database history the model reads on every question, so from your next message on she answers as if it had never existed. The messages before and after it stay exactly as they are, the eight-message history window slides back to include an older one, and no reconnection is needed. Dropping your own prompt also removes the hidden `Referenced Rephrase:` rows that came from it, so the words cannot sneak back in; a status line is removed from the screen only. Drop is refused while she is still answering. A note she saved with the `memory` External MCP lives apart from the chat and stays — ask her to forget it too. Visible proof: `drop_message_visible.py` (30/30).
 - **HTML text extraction can no longer lose a page in silence — v1.72.4, 2026-09-29.** Crawler and Googler strip a page down to its words by skipping scripts, styles and similar blocks. They used to COUNT those blocks, so one that never closed — a page that leaves out the optional `</head>`, a stray `<svg/>`, a cut-off download — swallowed everything after it, and the page came back with zero text and no warning. Both agents now keep a stack of open blocks, and a second, plain reading of the page replaces any result that kept less than a quarter of the page's text, with a WARNING in `tlamatini.log` saying so. It is the latest published release.
 - **Her lips move — v1.72.3, 2026-09-29.** The chat avatar's mouth used to stay a faint, half-open blur while she spoke. Now it opens and closes clearly with the words — and it can never open wider than her own open-mouth portrait, so she moves more without gaping. A small refinement of the general prompt came with it. Tagged without a GitHub release of its own; v1.72.4 carries it.
 - **Googler and Crawler never hang and never pass off a refusal as content — v1.72.2, 2026-09-29.** One deadline bounds every search and every crawl, and each network call can be abandoned rather than waited on. A CAPTCHA, a "verify you are human" page or a rate limit is reported as `blocked` instead of being read as content, and a run that read nothing tells the model so plainly. Crawler now reads exactly the page it is given by default. Tagged without a GitHub release of its own; v1.72.4 carries it.

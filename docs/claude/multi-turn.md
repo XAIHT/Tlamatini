@@ -190,6 +190,16 @@ Files involved:
 
 ---
 
+## Dropped messages and Multi-Turn (2026-09-30, on `main`, not yet released)
+
+The **Drop** button on a chat card deletes that message's `AgentMessage` row. Every chain, including both unified (Multi-Turn) chains, loads its history with `DBChatHistoryLoader.load(limit=8)` on each request, so the next Multi-Turn plan and tool loop are built as if the dropped message had never existed. There is no reconnect, no cache to clear, and the messages before and after it stay untouched. Three consequences:
+
+- **Drop is refused while an answer is running** (`AgentConsumer._active_run`), so a request can never lose a message from under its own feet.
+- **Dropping an answer card also removes its Create Flow button** — the button lives on that card. Download the `.flw` first if you want it.
+- **Work already done stays done.** Files, messages sent, agent runs and Exec Report rows are real side effects; dropping the message that asked for them does not undo them. A fact written to the `memory` External MCP also stays (the dialog says so).
+
+Contract: `docs/claude/architecture.md` → *Chat history and the Drop button*; story: `recent-fixes.md` (2026-09-30).
+
 ## Unified Section Format (Parametrizer)
 
 All declared section-generating agents (53 currently) use a single output format:

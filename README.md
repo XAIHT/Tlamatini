@@ -94,15 +94,16 @@ ornaments. Database/WAL and security-evidence preservation are tightened. See th
 2. [How it works](#how-it-works)
 3. [Get started in five steps](#-get-started--5-steps-to-a-cloud-powered-tlamatini)
 4. [Speak a prompt from the chat](#speak-a-prompt-from-the-chat)
-5. [Newest changes](#newest-changes--v1721)
-6. [Current version](#current-version--v1721)
-7. [The full capability list](#-the-full-capability-list)
-8. [Enable Tlamatini as a Blue-hat agent](#enable-tlamatini-as-a-blue-hat-agent)
-9. [Installation](#installation)
-10. [Tech stack](#tech-stack)
-11. [Avatar animation, assets, and visible tests](#avatar-animation-assets-and-visible-tests)
-12. [Contributing](#contributing)
-13. [License](#license)
+5. [Drop a message from the chat](#drop-a-message-from-the-chat)
+6. [Newest changes](#newest-changes--v1724)
+7. [Current version](#current-version--v1724)
+8. [The full capability list](#-the-full-capability-list)
+9. [Enable Tlamatini as a Blue-hat agent](#enable-tlamatini-as-a-blue-hat-agent)
+10. [Installation](#installation)
+11. [Tech stack](#tech-stack)
+12. [Avatar animation, assets, and visible tests](#avatar-animation-assets-and-visible-tests)
+13. [Contributing](#contributing)
+14. [License](#license)
 
 ---
 
@@ -285,7 +286,36 @@ workflows. They are distinct from this direct button. See the
 [complete microphone guide](docs/chat-microphone-design.md) for configuration,
 cancellation, privacy, diagnostics and measured validation.
 
+## Drop a message from the chat
+
+Every message card has two buttons in its header: **Copy** and **Drop**. Drop
+works on **your** messages and on **Tlamatini's** answers.
+
+Press **Drop** and a confirmation tells you what will happen: she forgets that
+message, it disappears from the chat, and from your next message on she answers
+as if it had never existed. The messages before and after it stay exactly as
+they are, and nothing reconnects. **Cancel** is selected by default, so pressing
+Enter never deletes anything; press the red **Drop** to confirm, or Escape to
+back out. A dropped message does not come back after a page reload.
+
+Good to know:
+
+- Dropping only her answer leaves your question, so she may treat it as not
+  answered yet; drop both to erase the whole exchange.
+- Status lines such as "Your request is being processed…" were never saved, so
+  dropping one only clears your screen.
+- You cannot drop while she is still answering — wait for the answer first.
+- If her **memory tool** (External ▸ MCPs ▸ memory) is switched on and she saved
+  a note from that message there, the note is separate from the chat and stays;
+  ask her to forget it too.
+
+This is on `main` after v1.72.4 and not yet in a published release. It was
+checked by 82 automated tests and a visible browser test (30 of 30 checks). How
+it works: [the Drop contract](docs/claude/recent-fixes.md).
+
 ## Newest changes — v1.72.4
+
+**Not yet released — on `main` after v1.72.4, 2026-09-30: drop any message.** Each chat card now has a **Drop** button beside **Copy**, for your messages and hers. After you confirm, she forgets that one message and answers as if it had never existed, while everything before and after it stays. See [Drop a message from the chat](#drop-a-message-from-the-chat).
 
 **v1.72.4, 2026-09-29 — a web page can no longer lose its text in silence.** Crawler and Googler read a page's words by skipping scripts, styles and similar blocks. If one of those blocks never closed — a page that leaves out the optional `</head>`, a stray `<svg/>`, a cut-off download — everything after it was thrown away, so a page could come back with zero text and nobody was told. Both agents now keep track of open blocks properly, and a second, plain reading of the page replaces any result that kept less than a quarter of the page's text, with a WARNING in `tlamatini.log` saying so. v1.72.4 is published on GitHub as the latest release, so **About ▸ Check for updates** delivers it.
 
@@ -536,6 +566,7 @@ Everything Tlamatini can do, grouped:
 - **Whatsapper** — WhatsApp send/receive with a `provider` switch for **which number sends**: **`cloud`** (default, the official Meta WhatsApp Cloud API — business number, templates, System User) or **`web`** (say *"send it as me"* / *"from my own WhatsApp"*) which sends from **your own personal number** by automating WhatsApp Web after a one-time QR login — no templates, no System User. The `web` path is unofficial (it drives WhatsApp Web) and carries Meta-ban risk; the `cloud` path remains the official, supported route.
 - **Instant Messaging Doctor** — automatically diagnoses Telegrammer/Whatsapper failures and can be called directly before critical sends; validates official tokens, contacts, readable `@username` routing, Meta templates/webhooks, and emits Parametrizer-ready repair actions.
 - **TeleTlamatini** — Telegram bridge into the full chat.
+- **Drop a message** — every chat card has **Drop** beside **Copy**, for your messages and hers; she forgets that one message with no reconnect, and the messages around it stay.
 - **Multi-model** — Ollama (local), Anthropic Claude (cloud), Qwen (vision).
 - **Self-knowledge & self-modification** — can read, modify, and rebuild her own source.
 - **PyInstaller packaging** — ships as a standalone Windows `.exe`.
