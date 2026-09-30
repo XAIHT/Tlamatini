@@ -1294,7 +1294,27 @@ def build_chapters(f: dict) -> list[Chapter]:
         f"Source tag {f['release_tag']}; latest published release "
         f"{f['release']['latest_published'] or 'unverified'}. Local changes are stated separately.",
         accent="gold", sections=[
-        Section("working_gauge", "NEW IN v1.72.1", "A context gauge that tells the truth",
+        Section("working_web", "NEW IN v1.72.4", "Web pages that cannot vanish in silence",
+            "Tagged and published on September 29: no web page loses its text without saying so.",
+            body=[
+                "Crawler and Googler strip a page to its words by skipping scripts, styles and similar "
+                "blocks. A block that never closed, such as an omitted closing head tag or a cut-off "
+                "download, used to swallow the rest of the page. Both now track open blocks with a stack, "
+                "and a plain-text safety net replaces any result that kept too little, logging a warning "
+                "when it does.",
+                "Two tags travel with it. v1.72.2 made both agents block- and hang-proof: one deadline "
+                "bounds every run, and a CAPTCHA or bot wall is reported as blocked, never read as content. "
+                "v1.72.3 made the chat avatar's lips move clearly while she speaks, never wider than her "
+                "own portrait.",
+            ],
+            points=[
+                ("No silent loss", "A stack of open tags replaces a counter in both agents."),
+                ("Safety net", "A plain reading takes over when a parse keeps too little."),
+                ("Never hangs", "v1.72.2: one deadline bounds every search and every crawl."),
+                ("Refusals named", "A CAPTCHA or bot wall comes back as blocked, never as content."),
+                ("Visible lips", "v1.72.3: her lips open and close clearly, without gaping."),
+            ], deck="cards"),
+        Section("working_gauge", "CARRIED FROM v1.72.1", "A context gauge that tells the truth",
             "Tagged and published on September 28: the ring beside the message box shows Ollama's own count.",
             body=[
                 "The ring now reports the exact request Tlamatini's main chain sends. Bytes are measured; "

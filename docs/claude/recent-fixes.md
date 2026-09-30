@@ -18,6 +18,8 @@
 
 ## 2026-09-29 — HTML text extraction can no longer lose a page in silence (Crawler AND Googler)
 
+> **Shipped in `v1.72.4`** (annotated tag at `323c1051`, published 2026-09-29 and marked Latest).
+
 Another user sent Tlamatini's own diagnosis of a Crawler run: text mode said
 *"Extracted 0 chars"* for example.com, httpbin.org and 65 python.org pages. It was
 the pre-`524a67ff` code (meta/link in the skip list, a `_skip_depth` counter that
@@ -73,6 +75,8 @@ fallback itself. With the agent, dork and status-vocabulary suites: **288 tests,
 all passing**. An installed build receives this only through a rebuild or update.
 
 ## 2026-09-29 — Crawler reads the page it is given, never hangs, and never analyzes a refusal
+
+> **Shipped in `v1.72.2`** (annotated tag at `524a67ff`, 2026-09-29; no GitHub release of its own — the published `v1.72.4` carries it).
 
 Angela, right after the Googler fix: *"Check if the same happens to Tlamatini's
 Crawler agent and improve it too (if possible)"*. It did — worse.
@@ -153,6 +157,8 @@ CLEAN. Like Googler's chat tool, the installed build needs a rebuild or self-upd
 to receive this.
 
 ## 2026-09-28 — Googler is block- and hang-proof, and never reports a refusal as "no results"
+
+> **Shipped in `v1.72.2`** (annotated tag at `524a67ff`, 2026-09-29; no GitHub release of its own — the published `v1.72.4` carries it).
 
 Angela: *"Googler agent that is taking too much to give the proper results, is
 Googler being blocked? ... make Googler invulnerable to block/hangs"*.
@@ -2573,7 +2579,7 @@ audit. Migrations **0195/0196/0197**; catalog prompt **119**
 > `v1.48.16` = `6ee630ca` (themed `tlmAlert`/`tlmConfirm` pop-ups + the
 > frozen-bundle carriage proof in `build.py`), **`v1.48.17` = `f948be7b` — the
 > newest release on that day**, carrying everything below. The current release
-> is now `v1.72.1` (also the latest published release); entries that say a change "landed in v1.48.15" or
+> is now `v1.72.4` (also the latest published release); entries that say a change "landed in v1.48.15" or
 > `v1.48.17` are historical statements and remain as written.
 
 **Angela, verbatim:** *"Standarize in every ... every dialog and all of the
