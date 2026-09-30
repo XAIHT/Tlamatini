@@ -196,6 +196,9 @@ def agent_page(request):
     messages = AgentMessage.objects.filter(conversation_user=request.user).order_by('timestamp')
     initial_messages = [
         {
+            # The row's id lets the Drop button on each replayed card erase
+            # exactly this message from the history the model reads.
+            'id': m.pk,
             'username': m.user.username,
             'message': m.message,
             'timestamp': m.timestamp.strftime('%Y/%m/%d %H:%M:%S.%f')[:-3] if m.timestamp else '',

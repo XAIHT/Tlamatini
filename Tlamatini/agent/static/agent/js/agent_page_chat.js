@@ -185,18 +185,33 @@ function buildAutomatedMessageElement(message, addedContent = null) {
     return automatedMessage;
 }
 
-function appendChatMessage(username, message, addedContent = null, timestampStr = null, toolCallsLog = null, multiTurnUsed = false) {
+function appendChatMessage(username, message, addedContent = null, timestampStr = null, toolCallsLog = null, multiTurnUsed = false, messageId = null) {
     const messageDiv = document.createElement('div');
     const messageContentDiv = document.createElement('div');
     const usernameDiv = document.createElement('div');
     const usernameTextSpan = document.createElement('span');
     const copyBtn = document.createElement('button');
+    const dropBtn = document.createElement('button');
 
     messageDiv.classList.add('message');
     messageContentDiv.classList.add('message-content');
     usernameDiv.classList.add('username');
     copyBtn.classList.add('message-copy-btn');
     copyBtn.innerHTML = '<i class="bi bi-clipboard"></i> Copy';
+
+    // Drop (Angela, 2026-09-30): `messageId` is the AgentMessage primary key,
+    // present only for a message that was SAVED to the conversation - the
+    // user's prompt or Tlamatini's answer. A live status line has none.
+    const savedId = Number(messageId) > 0 ? Number(messageId) : null;
+    if (savedId) {
+        messageDiv.dataset.messageId = String(savedId);
+    }
+    dropBtn.type = 'button';
+    dropBtn.classList.add('message-drop-btn');
+    dropBtn.innerHTML = '<i class="bi bi-trash3"></i> Drop';
+    dropBtn.title = savedId
+        ? 'Erase this message from the chat and from the history Tlamatini reads'
+        : 'Remove this status line from the screen (it was never saved in the history)';
 
     if (buildingInitial) {
         // ⚠️ HISTORY REPLAY MUST NOT DRIVE LIVE CONTROL STATE (found 2026-07-29).
@@ -373,6 +388,13 @@ function appendChatMessage(username, message, addedContent = null, timestampStr 
         });
     }
 
+    // Drop always sits LAST, at the right edge of the header, so it is in the
+    // same place on every card whether or not Create Flow is present.
+    usernameDiv.appendChild(dropBtn);
+    dropBtn.addEventListener('click', () => {
+        requestDropMessage(messageDiv, username, savedId, dropBtn);
+    });
+
     messageContentDiv.prepend(usernameDiv);
     messageDiv.appendChild(messageContentDiv);
     chatLog.appendChild(messageDiv);
@@ -405,6 +427,159 @@ function appendChatMessage(username, message, addedContent = null, timestampStr 
             }, 2000);
         });
     });
+}
+
+// ============================================================
+// Drop a message - from the chat AND from the history the LLM reads
+// (Angela, 2026-09-30)
+// ============================================================
+//
+// WHY THIS NEEDS NO RECONNECT. The conversation the model reads is rebuilt
+// from the database on EVERY request (chat_history_loader.py: the newest rows
+// of this user's AgentMessage table). Nothing else remembers it - no cached
+// summary, no checkpoint, no history inside the chain object. So dropping a
+// card asks the server to delete that ONE saved row (consumers.py
+// ::_handle_drop_message); from the next message on, Tlamatini answers as if
+// it had never been written, and the messages before and after it stay
+// exactly as they are.
+//
+// A card with NO message id is a live status line ("Processing...", an error,
+// a retry notice) that was never saved: dropping it only clears the screen.
+
+// How long to wait for the server's `message-dropped` reply before giving the
+// card back (a server running older code would never answer).
+const DROP_REPLY_TIMEOUT_MS = 15000;
+
+function _dropDialogText(isBot, hasSavedId) {
+    if (!hasSavedId) {
+        return {
+            primary: 'Remove this status line from the chat?',
+            secondary: 'This line was only a live notice. It was never saved in the '
+                + 'history Tlamatini reads, so removing it does not change how she '
+                + 'answers - it only clears it from your screen.\n\n'
+                + 'Are you sure you want to remove it?',
+        };
+    }
+    const forget = isBot
+        ? '• She will forget she ever wrote this answer. It is erased from the '
+            + 'chat and from the history she reads before every reply.'
+        : '• She will forget you ever sent this message. It is erased from the '
+            + 'chat and from the history she reads before every reply.';
+    const pair = isBot
+        ? '• The question that led to it stays, so she may treat it as not '
+            + 'answered yet. Drop that message too if you want her to forget the '
+            + 'whole exchange.'
+        : '• Her answer to it stays. Drop that answer too if you want her to '
+            + 'forget the whole exchange.';
+    return {
+        primary: isBot
+            ? 'Drop this answer from Tlamatini?'
+            : 'Drop your message from the conversation?',
+        secondary: 'What Tlamatini will do after you drop it:\n\n'
+            + forget + '\n'
+            + '• From your next message on, she answers as if it had never existed.\n'
+            + '• Every message before and after it stays exactly as it is.\n'
+            + pair + '\n'
+            // Measured 2026-09-30: with the External MCP "memory" server active,
+            // she can COPY a fact into her long-term memory graph on her own.
+            // That copy is not the chat history, so Drop cannot reach it - say so.
+            + '• A note she saved with her memory tool (External ▸ MCPs ▸ memory) '
+            + 'lives apart from the chat and stays; ask her to forget it too.\n'
+            + '• No reconnection is needed.\n\n'
+            + 'This cannot be undone. Are you sure you want to drop it?',
+    };
+}
+
+function _restoreDropButton(messageDiv) {
+    if (!messageDiv) return;
+    messageDiv.classList.remove('message-dropping');
+    const btn = messageDiv.querySelector('.message-drop-btn');
+    if (btn) btn.disabled = false;
+}
+
+function _removeDroppedCard(messageDiv) {
+    if (!messageDiv || !messageDiv.parentNode) return;
+    // Start the fold from the card's REAL height (max-height cannot animate
+    // from `none`), then take it out of the DOM once the transition is over.
+    messageDiv.style.maxHeight = messageDiv.scrollHeight + 'px';
+    void messageDiv.offsetHeight;   // force a reflow so the transition runs
+    messageDiv.classList.remove('message-dropping');
+    messageDiv.classList.add('message-dropped');
+    window.setTimeout(() => {
+        if (messageDiv.parentNode) messageDiv.parentNode.removeChild(messageDiv);
+    }, 350);
+}
+
+async function requestDropMessage(messageDiv, username, savedId, dropBtn) {
+    if (messageDiv.classList.contains('message-dropping')) return;
+    // While a request is being answered its history is already in use - the
+    // server refuses too, but say so here before the user confirms anything.
+    if (inLongOperation === true || lapseLoadingContext === true) {
+        await tlmAlert('Tlamatini is still working on a request. Drop this message '
+            + 'when she has finished, so the answer in progress is not built on a '
+            + 'history that changes under it.', 'Drop message');
+        return;
+    }
+    const text = _dropDialogText(username === 'Tlamatini', Boolean(savedId));
+    const confirmed = await tlmConfirm(text.primary, text.secondary, 'Drop message', {
+        confirmLabel: 'Drop',
+        cancelLabel: 'Cancel',
+        danger: true,
+        focusCancel: true,
+    });
+    if (!confirmed) return;
+
+    if (!savedId) {
+        // Never in the history - nothing to tell the server.
+        _removeDroppedCard(messageDiv);
+        return;
+    }
+
+    messageDiv.classList.add('message-dropping');
+    dropBtn.disabled = true;
+    const sent = sendChatSocketMessage(JSON.stringify({
+        // `message` is read unconditionally by consumers.receive().
+        message: 'drop-message',
+        type: 'drop-message',
+        message_id: savedId,
+    }));
+    if (!sent) {
+        _restoreDropButton(messageDiv);
+        tlmAlert('The live connection is down, so the message was NOT dropped. '
+            + 'Use Reconnect, then try again.', 'Drop message');
+        return;
+    }
+    window.setTimeout(() => {
+        if (messageDiv.isConnected && messageDiv.classList.contains('message-dropping')) {
+            _restoreDropButton(messageDiv);
+            tlmAlert('The server did not confirm the drop, so the message is still '
+                + 'in the history. Please try again.', 'Drop message');
+        }
+    }, DROP_REPLY_TIMEOUT_MS);
+}
+
+// The server's answer to a drop (sent to EVERY tab of this user on success).
+function handleMessageDropped(data) {
+    const id = String(data.message_id ?? '');
+    const cardFor = (value) => (/^\d+$/.test(String(value))
+        ? chatLog.querySelector('.message[data-message-id="' + String(value) + '"]')
+        : null);
+    const card = cardFor(id);
+    if (data.ok) {
+        // A user prompt takes its "Referenced Rephrase" rows with it; their
+        // cards exist only after a reload, so most of these lookups find none.
+        const ids = Array.isArray(data.message_ids) && data.message_ids.length
+            ? data.message_ids : [id];
+        ids.forEach((value) => {
+            const each = cardFor(value);
+            if (each) _removeDroppedCard(each);
+        });
+        console.log('--- Message ' + id + ' dropped from the chat and from the LLM history'
+            + (data.already_gone ? ' (it was already gone from the history).' : '.'));
+        return;
+    }
+    _restoreDropButton(card);
+    tlmAlert(data.reason || 'The message could not be dropped.', 'Drop message');
 }
 
 // ============================================================
@@ -2239,7 +2414,7 @@ function renderInitialMessages(messages) {
     buildingInitial = true;
     for (const msg of messages) {
         if (!msg) continue;
-        appendChatMessage(msg.username, msg.message, null, msg.timestamp);
+        appendChatMessage(msg.username, msg.message, null, msg.timestamp, null, false, msg.id || null);
     }
     buildingInitial = false;
     // Put it back exactly where it was - a child of #chat-log - so a context
@@ -2321,6 +2496,11 @@ chatSocket.onmessage = function (e) {
     // away and any failure inside the gauge is the gauge's own problem.
     if (data.type === 'visual-analysis-error') {
         window.SharedRuntimeDialogs.renderFatalError(data.detail || {});
+        return;
+    }
+    // The server's answer to a Drop (see requestDropMessage).
+    if (data.type === 'message-dropped') {
+        handleMessageDropped(data);
         return;
     }
     if (data.type === 'context-gauge') {
@@ -2485,7 +2665,8 @@ chatSocket.onmessage = function (e) {
         console.log(">>>>>>>>>>>>>>>>>");
     }
     appendChatMessage(data.username, data.message, filesAnchorElement, null,
-        data.tool_calls_log || null, data.multi_turn_used || false);
+        data.tool_calls_log || null, data.multi_turn_used || false,
+        data.message_id || null);
     chatLog.scrollTop = chatLog.scrollHeight;
 };
 

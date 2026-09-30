@@ -562,13 +562,18 @@
         var foot = _popupEl('div', 'tlmpop-foot');
         var buttons = opts.buttons || [];
         var focusTarget = null;
+        var focusForced = false;
         buttons.forEach(function (spec) {
             var btn = _popupEl('button',
-                'tlmpop-btn' + (spec.primary ? ' tlmpop-btn-primary' : ''), spec.label);
+                'tlmpop-btn' + (spec.primary ? ' tlmpop-btn-primary' : '')
+                + (spec.danger ? ' tlmpop-btn-danger' : ''), spec.label);
             btn.type = 'button';
             btn.onclick = function () { _popupTeardown(host, onDone, spec.value); };
             foot.appendChild(btn);
-            if (spec.primary) focusTarget = btn;
+            // `focus` wins over `primary`: a DESTRUCTIVE confirm focuses its
+            // Cancel, so a stray Enter can never erase anything.
+            if (spec.focus) { focusTarget = btn; focusForced = true; }
+            else if (spec.primary && !focusForced) focusTarget = btn;
         });
         card.appendChild(foot);
 
@@ -645,8 +650,16 @@
     /**
      * Themed replacement for `window.confirm`. Returns a Promise<boolean>.
      * Anything other than pressing Continue resolves FALSE.
+     *
+     * Optional `options` (all may be omitted - the default is the classic
+     * Cancel / Continue pair with Continue focused):
+     *   confirmLabel  - text of the affirmative button   (default 'Continue')
+     *   cancelLabel   - text of the dismissing button    (default 'Cancel')
+     *   danger        - paint the affirmative button red  (destructive action)
+     *   focusCancel   - focus Cancel instead, so Enter cannot confirm
      */
-    function tlmConfirm(primary, secondary, title) {
+    function tlmConfirm(primary, secondary, title, options) {
+        var o = options || {};
         return new Promise(function (resolve) {
             var decided = false;
             var finish = function (value) {
@@ -662,8 +675,10 @@
                     secondary: secondary,
                     dismissValue: false,
                     buttons: [
-                        { label: 'Cancel', value: false },
-                        { label: 'Continue', value: true, primary: true }
+                        { label: o.cancelLabel || 'Cancel', value: false,
+                          focus: o.focusCancel === true },
+                        { label: o.confirmLabel || 'Continue', value: true, primary: true,
+                          danger: o.danger === true }
                     ]
                 }, finish);
             } catch (err) {

@@ -654,6 +654,20 @@
     background: var(--tlm-dlg-accent-hover);
 }
 
+/* A DESTRUCTIVE affirmative button (tlmConfirm options.danger), e.g. the chat
+   card's "Drop". Declared AFTER the primary rules so red wins over the accent. */
+.tlmpop-btn-danger,
+.tlmpop-btn-primary.tlmpop-btn-danger {
+    background: #c0392b;
+    color: #ffffff;
+    font-weight: 700;
+}
+
+.tlmpop-btn-danger:hover,
+.tlmpop-btn-primary.tlmpop-btn-danger:hover {
+    background: #a93226;
+}
+
 .tlmpop-btn:focus-visible {
     outline: none;
     box-shadow: var(--tlm-dlg-accent-ring);

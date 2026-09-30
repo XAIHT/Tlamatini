@@ -16,6 +16,43 @@
 
 ---
 
+## 2026-09-30 — The chat card's **Drop** button: erase ONE message from the chat AND from what the LLM reads
+
+Angela: *"the LLM must process the history of messages as if the deleted
+messages have never been existed and previous messages and posterior messages
+to the deleted one must stay there untouched, AND FOR BOTH TYPE OF MESSAGES"*,
+with no reconnection.
+
+**Where the model's memory of a conversation lives — the whole design rests on
+this.** `consumers.queue_llm_retrieval` rebuilds the history on EVERY request
+from the `AgentMessage` table (`DBChatHistoryLoader.load`, newest 8 rows of the
+user, `Referenced Rephrase:` rows skipped). There is no cached summary, no
+LangGraph checkpoint and no history inside the chain object. So Drop deletes
+ONE row and nothing else: no chain rebuild, no reconnect, and the 8-row window
+slides back exactly as if the row had never existed.
+
+| Piece | Where |
+|---|---|
+| Every saved message carries its row id to the page | `consumers.save_message` / `response_parser.save_message` return the pk → `message_id` on the broadcast; `views.agent_page` adds `id` to `initial_messages` |
+| The button + themed confirm | `agent_page_chat.js` (`requestDropMessage`, `_dropDialogText`), `.message-drop-btn` in `agent_page.css` |
+| The socket command | `drop-message` → `AgentConsumer._handle_drop_message` → `delete_message_for_user` |
+| Every tab removes the card | group event `message_dropped` → frame `message-dropped` with `message_ids` |
+| Destructive confirm | `tlmConfirm(…, options)` gained `confirmLabel` / `danger` / `focusCancel`; `.tlmpop-btn-danger` in `dialog_theme.css` |
+
+**Contracts — do NOT weaken:**
+1. **Scoped to the user** — the delete filters on `conversation_user` too, so a forged id can never touch another user's history.
+2. **Refused while this connection is answering** (`_active_run`), client and server side — the run in flight already read its history.
+3. **A user prompt takes its `Referenced Rephrase:` rows with it** (only the rows directly after it). The model never reads them, but a page reload replays them, so leaving one would bring the dropped words back on screen. Tlamatini's answer is NOT taken along.
+4. **A live status line has no id** ("Processing…", errors, retry notices were never saved): Drop only clears the screen and sends nothing.
+5. **Cancel is focused** and Escape/✕ resolve `false` — Enter can never drop anything.
+6. **The context gauge is recalculated** (`"message dropped"`), because the at-rest prediction was built from the old history.
+
+⚠️ **Measured, and now stated in the dialog: the External MCP `memory` graph is NOT chat history.** With that server active, Tlamatini copied the test facts into `%LOCALAPPDATA%\Tlamatini\memory\memory.json` on her own — a store shared by EVERY install on the machine. Drop cannot reach such a copy, so the dialog says *"A note she saved with her memory tool … stays; ask her to forget it too."* The visible harness forbids tool use in its prompts and its `memory_guard` proves the graph was not written (and removes only lines it added if it was). Never let a test write into that file.
+
+Coverage: `agent/test_drop_message.py` (both kinds of message, neighbours kept, window slide, cross-user refusal, busy refusal, rephrase rows, frame shapes, source contracts) + the VISIBLE runner `.claude/skills/tlamatini-daily-chat-test/harness/drop_message_visible.py` (headed Chrome, Shoter photos, ground truth = the history lines the server logged for the next request).
+
+---
+
 ## 2026-09-29 — HTML text extraction can no longer lose a page in silence (Crawler AND Googler)
 
 > **Shipped in `v1.72.4`** (annotated tag at `323c1051`, published 2026-09-29 and marked Latest).

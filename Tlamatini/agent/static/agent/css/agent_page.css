@@ -214,6 +214,64 @@ body.resizing-vertical iframe {
     color: white;
 }
 
+/* The card's actions sit together on the RIGHT: the first one (Copy) takes the
+   free space, so Copy, Create Flow and Drop line up side by side instead of
+   `space-between` scattering them across the header. */
+.username > .message-copy-btn {
+    margin-left: auto;
+}
+
+/* Drop - erase this message from the chat AND from the history the model
+   reads (Angela, 2026-09-30). Same shape as Copy; red only on hover, because
+   it is destructive and the confirmation dialog is where it gets serious. */
+.message-drop-btn {
+    background: transparent;
+    border: 1px solid #7a4a52;
+    color: #ececf1;
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 0.85em;
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+    margin-left: 6px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.message-drop-btn:hover {
+    background-color: #c0392b;
+    border-color: #c0392b;
+    color: white;
+}
+
+.message-drop-btn[disabled],
+.message-drop-btn[disabled]:hover {
+    cursor: progress;
+    opacity: 0.45;
+    background: transparent;
+    border-color: #555;
+    color: #ececf1;
+}
+
+/* Sent to the server, waiting for its confirmation. */
+.message.message-dropping {
+    opacity: 0.45;
+    transition: opacity 0.2s;
+}
+
+/* Confirmed: fade and fold away, then the card is removed from the DOM. */
+.message.message-dropped {
+    opacity: 0;
+    max-height: 0 !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    overflow: hidden;
+    transition: opacity 0.25s, max-height 0.3s, margin 0.3s, padding 0.3s;
+}
+
 .create-flow {
     background: transparent;
     border: 1px solid #6C63FF;

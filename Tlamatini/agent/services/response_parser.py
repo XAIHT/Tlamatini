@@ -30,7 +30,7 @@ _LOG_FULL_ANSWERS = (
 # Database operations wrapped for async
 @sync_to_async
 def save_message(user, message, conversation_user=None):
-    AgentMessage.objects.create(user=user, conversation_user=conversation_user, message=message)
+    return AgentMessage.objects.create(user=user, conversation_user=conversation_user, message=message).pk  # message_id for the Drop button
 
 # ── NAME-COLLISION GUARD (Angela, 2026-09-06) ────────────────────────────────
 # Program / snippet names are built as `<UTC timestamp to the SECOND>_<name>`
@@ -665,10 +665,10 @@ async def process_llm_response(llm_response, rag_chain, channel_layer, room_grou
     # independently of the SUCCESS/FAILURE verdict above.
     print("\n--- We take the parsed/processed response by the LLM and save it to the DB")
     bot_user, _ = await get_or_create_bot_user()
-    await save_message(bot_user, llm_response, conversation_user=conversation_user)
+    answer_message_id = await save_message(bot_user, llm_response, conversation_user=conversation_user)
 
     if channel_layer:
-        broadcast_msg = {'type': 'agent_message', 'message': llm_response, 'username': 'Tlamatini'}
+        broadcast_msg = {'type': 'agent_message', 'message': llm_response, 'username': 'Tlamatini', 'message_id': answer_message_id}
         if tool_calls_log:
             broadcast_msg['tool_calls_log'] = tool_calls_log
         if multi_turn_used:

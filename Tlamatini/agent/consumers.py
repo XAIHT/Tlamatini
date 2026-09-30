@@ -1269,6 +1269,12 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 )
                 return
 
+            if type == 'drop-message':
+                # The Drop button on a chat card: erase ONE saved message from
+                # this user's conversation, with no reconnect.
+                await self._handle_drop_message(user, text_data_json)
+                return
+
             if type == 'context-gauge-refresh':
                 # The page asks what its NEXT message would send - on load and
                 # whenever a toolbar switch that changes the request flips
@@ -1855,10 +1861,11 @@ class AgentConsumer(AsyncWebsocketConsumer):
 
             if re.match(constants.REGEX_GREETING, message, flags=re.IGNORECASE):
                 print("--- User message saved to DB.")
-                await self.save_message(user, message, conversation_user=user)
+                greeting_id = await self.save_message(user, message, conversation_user=user)
                 await self.channel_layer.group_send(   # type: ignore
                     self.room_group_name,
-                    {'type': 'agent_message', 'message': message, 'username': user.username}
+                    {'type': 'agent_message', 'message': message, 'username': user.username,
+                     'message_id': greeting_id}
                 )
                 await self.channel_layer.group_send(   # type: ignore
                     self.room_group_name,
@@ -1892,11 +1899,12 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 return
             
             print(f"--- Message parsed: '{message}' from user '{user.username}' **** to be sent to LLM")
-            await self.save_message(user, message, conversation_user=user)
-            print("--- User message saved to DB.")
+            user_message_id = await self.save_message(user, message, conversation_user=user)
+            print(f"--- User message saved to DB (id={user_message_id}).")
             await self.channel_layer.group_send(   # type: ignore
                 self.room_group_name,
-                {'type': 'agent_message', 'message': message, 'username': user.username}
+                {'type': 'agent_message', 'message': message, 'username': user.username,
+                 'message_id': user_message_id}
             )
             print("--- User question broadcasted to room.")
             print("--- User question is now being processed by the LLM.")
@@ -1939,11 +1947,79 @@ class AgentConsumer(AsyncWebsocketConsumer):
             ws_payload['tool_calls_log'] = event['tool_calls_log']
         if event.get('multi_turn_used'):
             ws_payload['multi_turn_used'] = True
+        # The AgentMessage primary key, present ONLY for frames that were
+        # saved to the conversation (the user's prompt, Tlamatini's answer).
+        # Live status lines carry none: they were never in the history.
+        if event.get('message_id'):
+            ws_payload['message_id'] = event['message_id']
         await self.send(text_data=json.dumps(ws_payload))
+
+    async def message_dropped(self, event):
+        """Group handler: a message was dropped from this user's history.
+        Every open tab of the same user removes the card, not only the tab
+        whose Drop button was pressed."""
+        await self.send(text_data=json.dumps({
+            'type': 'message-dropped',
+            'message_id': event.get('message_id'),
+            # Every row that went with it (the prompt's rephrase rows).
+            'message_ids': event.get('message_ids') or [event.get('message_id')],
+            'ok': True,
+        }))
+
+    async def _handle_drop_message(self, user, payload):
+        """The Drop button on a chat card (Angela, 2026-09-30).
+
+        WHERE THE LLM'S MEMORY LIVES. The conversation the model reads is
+        rebuilt from the AgentMessage table on EVERY request
+        (DBChatHistoryLoader.load, newest 8 rows of this user). No summary is
+        cached, no LangGraph checkpoint exists, and the chain object holds no
+        history of its own. So deleting the ONE row is the whole job: from the
+        next request on, the model reads the conversation as if that message
+        had never been written, the rows before and after it are untouched, and
+        no reconnect or chain rebuild is needed. The window simply slides back
+        to include one older message, exactly as if this one never existed.
+
+        Refused while a request is being answered on this connection: that run
+        already read its history, and the answer it is about to save must not
+        land beside a history that changed under it.
+        """
+        raw_id = payload.get('message_id')
+        try:
+            message_id = int(raw_id)
+        except (TypeError, ValueError):
+            message_id = 0
+        reply = {'type': 'message-dropped', 'message_id': raw_id, 'ok': False}
+        if message_id <= 0:
+            reply['reason'] = 'This message has no saved id, so there is nothing to drop from the history.'
+        elif getattr(self, '_active_run', None):
+            reply['reason'] = ('Tlamatini is still answering. Drop the message again '
+                               'when she has finished.')
+        else:
+            deleted = await self.delete_message_for_user(user, message_id)
+            if deleted:
+                print(f"--- [DROP] message id={message_id} removed from user {user.id}'s "
+                      f"history (rows {deleted}); the next request will not see it.")
+                await self.channel_layer.group_send(   # type: ignore
+                    self.room_group_name,
+                    {'type': 'message_dropped', 'message_id': message_id,
+                     'message_ids': deleted},
+                )
+                # The at-rest context gauge predicted the NEXT request with the
+                # old history; recalculate it now that the history is shorter.
+                self._schedule_context_gauge_refresh("message dropped")
+                return
+            # Nothing of THIS user's matched: already dropped in another tab, or
+            # removed by Clear history. The goal state holds either way.
+            print(f"--- [DROP] message id={message_id} was not in user {user.id}'s history.")
+            reply['ok'] = True
+            reply['already_gone'] = True
+        await self.send(text_data=json.dumps(reply))
 
     @database_sync_to_async
     def save_message(self, user, message, conversation_user=None):
-        AgentMessage.objects.create(user=user, conversation_user=conversation_user, message=message)
+        # Returns the row's primary key so the broadcast frame can carry it as
+        # `message_id` - the Drop button on the card needs it to name the row.
+        return AgentMessage.objects.create(user=user, conversation_user=conversation_user, message=message).pk
 
     @database_sync_to_async
     def load_recent_chat_history(self, user, limit=8):
@@ -1952,6 +2028,40 @@ class AgentConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def delete_messages_for_user(self, user):
         AgentMessage.objects.filter(conversation_user=user).delete()
+
+    @database_sync_to_async
+    def delete_message_for_user(self, user, message_id):
+        """Drop ONE message from THIS user's conversation (the Drop button).
+
+        Filtered by ``conversation_user`` as well as the primary key, so a
+        forged id can never reach another user's history. Returns the list of
+        deleted ids - empty when there was nothing of this user's to drop.
+
+        A USER prompt also takes the "Referenced Rephrase:" rows the chain
+        saved for it right after it (rag/interaction.py::show_rephrased_question
+        - the question REWORDED against the history). The model never reads
+        those rows (DBChatHistoryLoader skips them), but a page reload replays
+        them, so leaving one behind would bring the dropped words back on
+        screen. Only the rows directly following the prompt go, up to the
+        first row that is not a rephrase (normally Tlamatini's answer, which
+        stays unless she drops it too).
+        """
+        row = AgentMessage.objects.select_related('user').filter(
+            pk=message_id, conversation_user=user).first()
+        if row is None:
+            return []
+        doomed = [row.pk]
+        if getattr(row.user, 'username', '') != DBChatHistoryLoader.BOT_USERNAME:
+            following = (AgentMessage.objects
+                         .filter(conversation_user=user, pk__gt=row.pk)
+                         .order_by('pk')[:20])
+            for later in following:
+                if str(later.message or '').lstrip().lower().startswith('referenced rephrase:'):
+                    doomed.append(later.pk)
+                    continue
+                break
+        AgentMessage.objects.filter(pk__in=doomed, conversation_user=user).delete()
+        return doomed
 
     @database_sync_to_async
     def save_program(self, programName, programLanguage, programContent):
