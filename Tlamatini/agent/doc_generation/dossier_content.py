@@ -228,7 +228,8 @@ def build_chapters(f: dict) -> list[Chapter]:
                 "canvases, SQLite database, agent programs, permissions, files and hardware connections. "
                 "**Local retrieval** builds embeddings with `nomic-embed-text` so project context is found "
                 "quickly. **Cloud reasoning** — configured `:cloud` models served through Ollama — performs "
-                "chat, tool calling, long context, vision and Multi-Turn planning.",
+                "chat, tool calling, long context, vision and Multi-Turn planning. A smaller local model also works: "
+                "a request it cannot hold is sent in Compact mode.",
                 "Because the complete experience was engineered around Ollama's cloud-model capacity, an active "
                 "**Ollama Pro plan or higher** is part of the intended system requirements. This is an "
                 "independent technical recommendation: Tlamatini and XAIHT are not sponsored by, affiliated "
@@ -244,7 +245,7 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("Hybrid RAG", "FAISS vectors, BM25 keywords, metadata extraction, context budgeting and a "
                  "binary-content guard keep answers grounded in your real project."),
                 ("Multi-Turn", f"A planner and a tool loop of up to 4,096 iterations over the full enabled "
-                 f"surface of {tools} built-in tools, with self-healing model steps."),
+                 f"surface of {tools} built-in tools, self-healing steps and Compact mode for small models."),
                 ("Agentic Control Panel", f"{agents} drag-and-drop agent types wired into runnable, savable "
                  f"`.flw` workflows."),
                 ("Prompt Flow Panel", "New in v1.70.0: prompts, decisions and embeddings drawn as a diagram, "
@@ -321,7 +322,7 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("Send", "The browser sends the text and its toolbar flags over the chat WebSocket."),
                 ("Route", "AgentConsumer receives it, attributes it to the user and queues retrieval."),
                 ("Context", "It decides whether RAG context is loaded and whether web search is needed."),
-                ("Chain", "The RAG, Basic or Unified-Agent chain is selected."),
+                ("Chain", "The RAG, Basic or Unified-Agent chain is selected and fitted to the model."),
                 ("Gate", "Multi-Turn selects planned execution; ACPX filters its twelve tools in or out."),
                 ("Permission", "With Ask Execs on, a risky tool waits for Proceed or Deny."),
                 ("Prefetch", "System-metrics and file-search sidecars add context when it helps."),
@@ -377,6 +378,35 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("5", "minimal", "Keep the last six messages; tools stay bound."),
                 ("6", "plain summary", "Last resort: summarize truthfully what was gathered."),
             ]}, deck="visual"),
+        Section("compact", "COMPACT MODE", "Every request fits the model it is sent to",
+            "A model whose real window cannot hold the complete request receives a compact one; a model "
+            "that can hold it receives exactly the request it always did.",
+            body=[
+                "Ollama does not refuse an oversized request for a local model: it keeps the end and answers "
+                "from that. A local qwen2.5 whose 32,768 tokens were split between two request slots read "
+                "16,386 tokens of a request of about 52,000, lost the live system metrics, and answered a "
+                "CPU question with the time.",
+                "Ollama's own count is now the proof. When the characters sent cannot fit the tokens Ollama "
+                "says it read, the request was cut, and that count is learned as the model's real window. A "
+                "local model's reported context length is never taken as its per-request window, because "
+                "parallel request slots divide it.",
+                "A request that fits the usable window is sent byte for byte, as before. Otherwise Compact "
+                "mode keeps System-Metrics and Files-Search, whose context rides inside the question, and "
+                "binds only the current-time tool. ACPX and External MCPs pause for that request without "
+                "changing your selections, the system prompt is rebuilt by rule priority and closed by a "
+                "seven-rule note, and history keeps the six newest messages. A first step that Ollama still "
+                "cut is re-fitted and resent before any tool runs.",
+            ],
+            points=[
+                ("Full", "A model that can hold the request receives it unchanged, byte for byte."),
+                ("Compact", "Metrics, file search and current time stay; agents, ACPX and External MCPs pause."),
+                ("Told plainly", "A once-per-model dialog and a Compact badge say what is active and paused."),
+                ("Your choice", "`context_compact_mode` is auto by default, or always or never, obeyed exactly."),
+            ],
+            callout=("It fails open to the full request",
+                     "Every part of the fitter fails open: when anything is uncertain, the complete request is "
+                     "sent exactly as before."),
+            deck="cards"),
         Section("verdict", "EXEC REPORT", "A verdict you can trust",
             "An exit code is one bit. An agent's own structured self-report is a typed record, and it "
             "outranks the exit code.",
@@ -508,10 +538,15 @@ def build_chapters(f: dict) -> list[Chapter]:
                 "into your message, ready for Image-Interpreter. A context ring between the toolbar and the "
                 "message box shows how much of the model's window the real request uses, measured by the "
                 "backend in bytes. Tokens use Ollama's own prompt_eval_count for the request; an "
-                "estimate is labeled until a measured count arrives.",
+                "estimate is labeled until a measured count arrives. When the model cannot hold the complete "
+                "request, a Compact mode badge beside the ring reopens a dialog naming what stays active "
+                "and what is paused.",
                 "Her avatar speaks answers aloud when you ask. Since v1.72.3, clearer syllable movement and "
                 "faster closure make her lips easier to follow, with opening capped to her portrait. After "
                 "login, pressing Enter on the welcome page takes you straight to the chat.",
+                "Answer tables stay readable with every model: only a cell whose text would fall below 3:1 "
+                "contrast is recoloured, while readable tables, Exec Report tables and gradient backgrounds "
+                "keep their colours.",
             ],
             table={"columns": ["Switch", "What it does"], "widths": [0.24, 0.76], "rows": [
                 ["Multi-Turn", "Planned, tool-calling operator mode; unchecked means direct one-shot answers."],
@@ -749,7 +784,8 @@ def build_chapters(f: dict) -> list[Chapter]:
             body=[
                 f"Categories: {groups_text}. Save submits all values, preserves unrelated configuration and "
                 "downloads nothing. Reconnect the chat to rebuild its clients; agents pick up a choice at their "
-                "next configuration load.",
+                "next configuration load. The model list comes from the configured Ollama servers, asked by "
+                "the backend with their token, so a remote server's models are offered and accepted.",
                 "Agent templates marked `\"@config\"` follow the global choice, while a literal value in a "
                 "workflow remains an explicit override. Wrapped chat launches seed the global choices before "
                 "any explicit tool argument, and the frozen build proves every model loader runs before it "
@@ -761,6 +797,7 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("Agents", f"{model_agents} model-backed agents configured centrally."),
                 ("Inheritance", "\"@config\" follows the global choice; literals override."),
                 ("Save", "Preserves unrelated configuration; downloads nothing."),
+                ("Catalog", "Listed by the configured Ollama servers, asked with their token."),
             ]),
         Section("dialogs", "OPERATOR DIALOGS", "Everything else, without editing files",
             "Configuration, credentials, databases and updates are handled from the browser.",
@@ -1134,6 +1171,7 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ["Verdict parsing", "Open", "A parse error falls through to the next rule; it never raises."],
                 ["Port and console settings", "Open", "A typo must never stop the server from starting."],
                 ["Runtime provisioner", "Open", "A failed download never blocks start-up."],
+                ["Compact-mode fitter", "Open", "Any doubt sends the complete request, exactly as before."],
                 ["Ask Execs", "Safe", "Any doubt resolves to Deny."],
                 ["Database copies", "Safe", "An unclear or unchecked copy is reported as a failure."],
                 ["LaTeXer bisect guard", "Safe", "When in doubt, protect the author's content."],
@@ -1214,9 +1252,9 @@ def build_chapters(f: dict) -> list[Chapter]:
                   "# open http://127.0.0.1:8000/   (default login: user / changeme)"),
             deck="visual"),
         Section("dependencies", "DEPENDENCY COVERAGE", "Every referenced Python library is accounted for",
-            "The September 30 static coverage check includes all 89 agents, build helpers, optional imports and tests.",
+            "The October 1 static coverage check includes all 89 agents, build helpers, optional imports and tests.",
             body=[
-                "The refreshed static guard scanned 755 Python files and 69 directly referenced distributions. The "
+                "The refreshed static guard scanned 762 Python files and 69 directly referenced distributions. The "
                 "main requirements file contains 87 declarations; missing Autobahn, lxml, six, pip and "
                 "PlatformIO declarations were added. Existing framework and compatibility pins remain.",
                 "ESPHome has a separate requirements-esphome.txt manifest because its py7zr and PlatformIO "
@@ -1226,7 +1264,7 @@ def build_chapters(f: dict) -> list[Chapter]:
             ],
             points=[
                 ("Coverage guard", "scripts/check_requirements_coverage.py checks source and build inventories."),
-                ("Verification", "September 30: no missing declarations, syntax errors or unreviewed dynamic imports."),
+                ("Verification", "October 1: no missing declarations, syntax errors or unreviewed dynamic imports."),
                 ("Earlier evidence", "September 27: main/ESPHome dry runs and temporary-environment dependency smoke checks passed."),
                 ("Limits", "Static coverage and selective smoke tests do not certify a clean installation or frozen build."),
             ], deck="cards"),
@@ -1262,6 +1300,7 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ["ollama_repeat_penalty", "1.2", "Repetition penalty; 1.9 emptied answers."],
                 ["ollama_repeat_last_n", "256", "How far back that penalty looks."],
                 ["ollama_num_ctx", "1048576", "Requested context window."],
+                ["context_compact_mode", "auto", "Compact requests for models that cannot hold the full one."],
                 ["binary_context_detection", "true", "Screens files by content before embedding."],
                 ["console_quick_edit", "false", "Keeps a click from pausing a frozen console."],
                 ["runtime_autoprovision", "true", "Lets MCP servers provision Node or uv privately."],
@@ -1371,8 +1410,51 @@ def build_chapters(f: dict) -> list[Chapter]:
         f"Source tag {f['release_tag']}; latest published release "
         f"{f['release']['latest_published'] or 'unverified'}. Local changes are stated separately.",
         accent="gold", sections=[
-        Section("working_drop", "NEW IN v1.73.0", "One card removed from future context",
-            "The September 30 source tag adds Drop throughout chat, with explicit confirmation and history updates.",
+        Section("working_compact", "NEW IN v1.74.0", "Compact mode and readable tables",
+            "Tagged on October 1: every request is fitted to the model it is sent to.",
+            body=[
+                "A model that can hold Tlamatini's complete request still receives it byte for byte. A model "
+                "whose real window is smaller receives Compact mode, described in the How She Works chapter, "
+                "with a once-per-model dialog, a Compact badge beside the context ring and a locked ACPX box.",
+                "The visible run on a local qwen2.5 exposed three more problems, fixed in the same release. In "
+                "Compact mode the one-shot file guard now states the real reason a file cannot be opened, and a "
+                "table the user asked to see is shown as a table instead of fenced code. For every model, an "
+                "answer-table cell whose text would be unreadable is recoloured.",
+                "On October 1 the visible Compact run on the installed qwen2.5:latest passed 37 of 37 checks at "
+                "about 8,100 tokens per request, with no cuts. On nemotron-3-ultra:cloud every request stayed "
+                "complete, with Ollama reading 102,539 to 104,259 tokens. A small model can still sometimes "
+                "re-answer an earlier question before the new one. This dossier refresh reran the 43 "
+                "Compact-mode regression tests; all passed.",
+            ],
+            points=[
+                ("Fitted", "Full when the model can hold the request; Compact when it cannot."),
+                ("Compact proof", "37/37 visible checks on a local qwen2.5, about 8.1K tokens, no cuts."),
+                ("Full proof", "A large cloud model read every request complete: about 103K tokens."),
+                ("Readable tables", "Cells below 3:1 contrast are recoloured, for every model."),
+            ], deck="cards"),
+        Section("working_catalog", "CARRIED FROM v1.73.1", "Model lists from the server you configured",
+            "Tagged on October 1: Config ▸ Models asks the configured Ollama servers, with their token.",
+            body=[
+                "Config ▸ Models used to ask the browser's own Ollama for the model list, at an address fixed "
+                "when the page loaded. After Config ▸ URLs pointed Tlamatini at a remote server, a model "
+                "installed only there was marked red and could not be saved.",
+                "A login-protected endpoint now reads config.json on every call, asks each distinct configured "
+                "Ollama address in parallel with the same bearer token the chat sends, and merges their model "
+                "names. Each server reports its own status, and the dialog names the server and the reason "
+                "when one cannot answer, such as an HTTP 401 that points to the token.",
+                "The same release made the start-up GPU step send the token too, so a token-protected remote "
+                "server no longer answers 401 at every start. A visible run against a simulated "
+                "token-protected server passed 16 of 16 checks, with every request carrying the token. This "
+                "dossier refresh reran the 18 model-catalog regression tests; all passed.",
+            ],
+            points=[
+                ("Fresh address", "Read from config.json on every call, never fixed at page load."),
+                ("Token", "Every configured server is asked with the chat's own bearer token."),
+                ("Clear errors", "Each server reports its status; a 401 points at the token."),
+                ("Start-up", "The GPU warm-up sends the token too: no 401 at every start."),
+            ], deck="cards"),
+        Section("working_drop", "CARRIED FROM v1.73.0", "One card removed from future context",
+            "Tagged and published on September 30: Drop throughout chat, with confirmation and history updates.",
             body=[
                 "Saved greetings, user prompts and answers carry their AgentMessage id from the first page "
                 "render and subsequent WebSocket frames. The drop-message request validates that id against "
@@ -1384,7 +1466,8 @@ def build_chapters(f: dict) -> list[Chapter]:
                 "or another user's message is never included in that cleanup.",
                 "All 23 focused Drop regression tests passed on September 30, covering ownership, both message roles, neighboring rows, "
                 "the history window, busy refusal, rephrases and browser/server protocol contracts. The "
-                "September 30 maintainer record also reports 30/30 checks in the visible browser harness; "
+                "September 30 maintainer record reports 42/42 checks in the extended visible browser harness, "
+                "including a new real context count after every drop that ends lower than before; "
                 "this dossier refresh reruns the focused suite without writing to the real memory graph.",
             ],
             points=[
