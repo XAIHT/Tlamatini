@@ -53,6 +53,7 @@ import importlib.util
 import logging
 import os
 import re
+import sys
 import tempfile
 import unittest
 from functools import lru_cache
@@ -71,6 +72,17 @@ _REPO_ROOT = os.path.dirname(os.path.dirname(_REPO_AGENT_DIR))
 
 def _load_pdfer_module():
     module_path = os.path.join(_REPO_AGENT_DIR, 'agents', 'pdfer', 'pdfer.py')
+    # Load it the way the pool RUNS it. A pool agent is started as
+    # ``python pdfer.py``, so sys.path[0] is its own directory and its twelve
+    # flat siblings (pdfer_atelier, pdfer_styles, ...) import as plain modules.
+    # spec_from_file_location does NOT add that directory, so without this line
+    # the fail-open atelier import silently fell back to xhtml2pdf and
+    # ``import pdfer_styles`` raised - but ONLY when this file ran without
+    # test_pdfer_styles / test_pdfer_nuance_layout, which insert the same path
+    # at import time and so used to hide the gap (2026-09-30).
+    pdfer_dir = os.path.dirname(module_path)
+    if pdfer_dir not in sys.path:
+        sys.path.insert(0, pdfer_dir)
     spec = importlib.util.spec_from_file_location(
         'agent_pdfer_module_for_tests', module_path,
     )
@@ -881,13 +893,40 @@ class PdferRegistryIntegrationTests(SimpleTestCase):
         self.assertEqual(contract.display_name, 'PDFer')
 
     def test_parametrizer_source_lists_are_identical_across_all_three_surfaces(self):
+        """PDFer must really reach Parametrizer's parser registry.
+
+        This used to assert the literal "'pdfer'," appeared in parametrizer.py.
+        That stopped being the mechanism on 2026-09-15: SECTION_AGENT_TYPES is
+        now DERIVED from the generated flow catalog, so the literal is gone by
+        design and the old assertion failed while the wiring was healthy. Pin
+        the derivation instead (same shape as the LaTeXer test), because a STALE
+        flow_catalog.json is the failure that would really break routing.
+        """
+        import json
         from agent.services.agent_contracts import _PARAMETRIZER_OUTPUT_FIELDS
         from agent.views import PARAMETRIZER_SOURCE_OUTPUT_FIELDS
         registered = tuple(_PARAMETRIZER_OUTPUT_FIELDS['pdfer'])
         self.assertEqual(tuple(PARAMETRIZER_SOURCE_OUTPUT_FIELDS['pdfer']), registered)
+
+        catalog_path = os.path.join(_REPO_AGENT_DIR, 'agents', 'flowcreator',
+                                    'flow_catalog.json')
+        catalog = json.loads(_read(catalog_path))['agents']
+        self.assertIn('pdfer', catalog,
+                      'pdfer is absent from the generated flow catalog -- '
+                      'run: python scripts/update_flow_catalog.py')
+        shipped = tuple(catalog['pdfer']['output_fields'])
+        # Non-empty output_fields is LITERALLY the condition SECTION_AGENT_TYPES
+        # applies, so this is what decides whether a parser is built at all.
+        self.assertTrue(shipped, 'pdfer has no output_fields -> Parametrizer '
+                                 'builds no parser for INI_SECTION_PDFER')
+        self.assertEqual(shipped, registered,
+                         'flow_catalog.json disagrees with agent_contracts -- the '
+                         'catalog is STALE; run: python scripts/update_flow_catalog.py')
+
         parametrizer = _read(_REPO_AGENT_DIR, 'agents', 'parametrizer', 'parametrizer.py')
-        self.assertIn("'pdfer',", parametrizer,
-                      "'pdfer' is missing from SECTION_AGENT_TYPES")
+        self.assertIn('load_catalog()', parametrizer,
+                      'Parametrizer no longer derives SECTION_AGENT_TYPES from the '
+                      'catalog -- re-point this test at whatever replaced it')
         for field in ('output_path', 'status', 'page_count', 'response_body'):
             self.assertIn(field, registered)
 
