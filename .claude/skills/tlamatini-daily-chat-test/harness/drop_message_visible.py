@@ -21,6 +21,11 @@ desktop). The run:
      Cancel keeps the card; Escape keeps the card.
   3. DROP the user's code-word message   (type 1: a USER message)
   4. DROP Tlamatini's answer to it       (type 2: a TLAMATINI message)
+     THE CONTEXT RING, before and after each drop: the ring beside the
+     message box must be recalculated. After EACH drop a new at-rest frame
+     tagged "message dropped" arrives with Ollama's REAL token count - the
+     same prompt_eval_count the server logged for that request - and after
+     both drops the count is LOWER than it was before the first one.
   5. DROP a live status line (never saved) - only the screen changes.
   6. Ask what she remembers. GROUND TRUTH from the server log: the history
      the model received has the colour and the pet, and NOT the code word.
@@ -220,6 +225,106 @@ def card_gone(page, selector, timeout=20):
     return False
 
 
+# ------------------------------------------------------- the context ring
+# Every gauge frame is stored WITH the ring exactly as the gauge drew it for
+# that frame. The gauge renders synchronously inside dispatchEvent and the
+# next frame can replace it within a second, so polling the ring would lose
+# that race - the same technique context_gauge_real_lab.py uses.
+RING_JS = """function () {
+  var el = document.getElementById('context-gauge-row');
+  if (!el) return null;
+  var t = function (s) { var n = el.querySelector(s); return n ? (n.textContent || '').trim() : ''; };
+  return {tokens: t('.ctxg-tokens'), sub: t('.ctxg-title-sub'), bytes: t('.ctxg-bytes')};
+}"""
+
+COLLECT = """
+window.__gauge = [];
+(function () {
+  var readRing = %s;
+  var original = EventTarget.prototype.dispatchEvent;
+  EventTarget.prototype.dispatchEvent = function (event) {
+    var result = original.apply(this, arguments);
+    try {
+      if (event && event.type === 'tlm:context-gauge') {
+        var frame = JSON.parse(JSON.stringify(event.detail || {}));
+        frame.__ring = readRing();
+        window.__gauge.push(frame);
+      }
+    } catch (_) {}
+    return result;
+  };
+})();
+""" % RING_JS
+
+READ_RING = "() => (%s)()" % RING_JS
+
+
+def gauge_frames(page):
+    try:
+        return page.evaluate("window.__gauge || []")
+    except Exception:                               # noqa: BLE001
+        return []
+
+
+def wait_rest_real(page, start, reason, timeout):
+    """The newest AT-REST frame tagged `reason` that carries Ollama's REAL
+    count and was produced after every live frame seen since `start` (so an
+    older request's late frame can never be mistaken for this one)."""
+    deadline = time.time() + timeout
+    last_note = time.time()
+    while time.time() < deadline:
+        new = gauge_frames(page)[start:]
+        live_max = max([int(f.get("seq") or 0) for f in new if f.get("kind") == "live"] or [0])
+        found = [f for f in new if f.get("kind") == "rest" and f.get("ratio_is_real") is True
+                 and reason in str(f.get("label", "")) and int(f.get("seq") or 0) > live_max]
+        if found:
+            return found[-1]
+        if time.time() - last_note > 10:
+            ring = page.evaluate(READ_RING) or {}
+            say("   ... waiting for the ring (%s) | ring now: %s | %s"
+                % (reason, ring.get("tokens"), ring.get("sub")))
+            last_note = time.time()
+        time.sleep(0.5)
+    return None
+
+
+def logged_real(seq, wait=5.0):
+    """Ollama's prompt_eval_count for request `seq`, as the SERVER logged it."""
+    pattern = re.compile(r"\[CONTEXT-REAL\][^\n]*?seq=%d [^\n]*?prompt_eval_count=(\d+)" % seq)
+    deadline = time.time() + wait
+    while True:
+        try:
+            hits = pattern.findall(server_log_from(0))
+        except OSError:
+            hits = []
+        if hits or time.time() >= deadline:
+            return int(hits[-1]) if hits else None
+        time.sleep(0.25)
+
+
+def ring_digits(text):
+    return re.sub(r"\D", "", (text or "").split("tokens")[0])
+
+
+def check_ring(step, frame):
+    """Did the ring get a new at-rest frame, and is it Ollama's REAL count -
+    the very number the server logged for that request?"""
+    if not check("%s: a new at-rest frame reached the ring" % step, frame is not None,
+                 "" if frame is not None else "none within the timeout"):
+        return None
+    ring = frame.get("__ring") or {}
+    real = frame.get("tokens_real")
+    logged = logged_real(int(frame.get("seq") or 0))
+    say("   RING %s: %s | %s | seq %s, history %s B"
+        % (step, ring.get("tokens"), frame.get("label"), frame.get("seq"), frame.get("bytes_history")))
+    check("%s: the ring shows Ollama's count as REAL" % step,
+          "REAL" in (ring.get("tokens") or "") and ring_digits(ring.get("tokens")) == str(real),
+          "ring=%r frame=%s" % (ring.get("tokens"), real))
+    check("%s: it is the prompt_eval_count the server logged for that request" % step,
+          logged is not None and logged == real, "log=%s frame=%s" % (logged, real))
+    return frame
+
+
 # ------------------------------------------------------------- the truth
 def db_ids(ids):
     """Which of these AgentMessage ids still exist (read-only connection)."""
@@ -242,6 +347,24 @@ def server_log_from(offset):
 def history_lines(text):
     """The lines chat_history_loader prints for every message it hands the model."""
     return [ln for ln in text.splitlines() if "message to chat history:" in ln]
+
+
+OLLAMA_DOWN = "Failed to connect to Ollama"
+
+
+def ollama_unreachable(offset, wait):
+    """True when the SERVER's own log says, since `offset`, that it could not
+    reach Ollama. Waits up to `wait` s for the ring's refresh to report (a
+    probe line means Ollama answered). The log is the authority: it is the
+    server's real connection, wherever its config points Ollama."""
+    deadline = time.time() + wait
+    while True:
+        text = server_log_from(offset)
+        if OLLAMA_DOWN in text:
+            return True
+        if "[CONTEXT-PROBE]" in text or "[CONTEXT-REAL]" in text or time.time() >= deadline:
+            return False
+        time.sleep(1.0)
 
 
 def memory_lines():
@@ -307,6 +430,7 @@ def main():
             say("real Chrome unavailable (%s) - bundled Chromium, STILL HEADED" % exc)
             browser = pw.chromium.launch(headless=False, args=["--start-maximized"])
         ctx = browser.new_context(no_viewport=True)
+        ctx.add_init_script(COLLECT)            # read the context ring frame by frame
         page = ctx.new_page()
         page.set_default_timeout(C.NAV_TIMEOUT_MS)
         page.on("websocket", lambda ws: ws.on(
@@ -331,6 +455,7 @@ def main():
                 time.sleep(0.3)
 
         # 0. a clean conversation ----------------------------------------
+        clean_offset = os.path.getsize(SERVER_LOG)
         page.click(C.SEL["clean_history"])
         page.locator(".ui-dialog-buttonpane button:has-text('Continue')").last.click()
         time.sleep(3.0)
@@ -338,12 +463,23 @@ def main():
         check("0 Clean History: the chat starts empty", len([c for c in cards(page) if c["id"]]) == 0,
               "%d saved cards left" % len([c for c in cards(page) if c["id"]]))
         shot(page, "00_clean_start")
+        # Without Ollama nothing here can be proven: the model never answers and
+        # the ring never gets a REAL count. Clean History refreshes the ring, and
+        # the server logs at once whether Ollama answered - stop on a NAMED
+        # reason instead of timing out ten minutes later (2026-09-30).
+        if ollama_unreachable(clean_offset, 30):
+            say("!! ENVIRONMENT NOT READY: the server cannot reach Ollama (its log says '%s')."
+                % OLLAMA_DOWN)
+            say("   Start Ollama and run this test again: without it there is no answer and no REAL count.")
+            browser.close()
+            return 4
 
         # 1. three facts ---------------------------------------------------
         memory_before = memory_lines()
         run_offset = os.path.getsize(SERVER_LOG)
         u1, a1 = ask(page, M1, "colour")
         u2, a2 = ask(page, M2, "code word")
+        gauge_start = len(gauge_frames(page))
         u3, a3 = ask(page, M3, "pet")
         if not all((u1, a1, u2, a2, u3, a3)):
             check("1 the three facts were answered", False, "u/a: %s" % [bool(x) for x in (u1, a1, u2, a2, u3, a3)])
@@ -354,6 +490,9 @@ def main():
         check("1 every saved card (user AND Tlamatini) carries its id and a Drop button",
               all(c["hasDrop"] for c in cards(page)) and len(set(every)) == 6, every)
         check("1 the six rows exist in the database", db_ids(every) == set(every))
+        # 1b. the ring BEFORE any drop: Ollama's REAL count for the next request
+        base = check_ring("1b ring before any drop",
+                          wait_rest_real(page, gauge_start, "answer finished", 240))
         shot(page, "01_three_facts")
 
         # 2. the dialog: text, buttons, Cancel and Escape keep the card ---
@@ -389,9 +528,16 @@ def main():
 
         # 3. DROP the user's message --------------------------------------
         open_drop_dialog(page, card_sel(u2["id"]))
+        gauge_start = len(gauge_frames(page))
         page.locator(".tlmpop-btn-danger").click()
         check("3 USER message: the card disappears", card_gone(page, card_sel(u2["id"])))
         check("3 USER message: its row is gone from the database", db_ids([u2["id"]]) == set())
+        first = check_ring("3b ring after dropping the USER message",
+                           wait_rest_real(page, gauge_start, "message dropped", 180))
+        if base and first:
+            check("3b the ring was recalculated from the new history (history part changed)",
+                  first.get("bytes_history") != base.get("bytes_history"),
+                  "history %s B -> %s B" % (base.get("bytes_history"), first.get("bytes_history")))
         shot(page, "03_user_message_dropped")
 
         # 4. DROP Tlamatini's answer --------------------------------------
@@ -401,6 +547,7 @@ def main():
               and "She will forget she ever wrote this answer" in (info or {}).get("secondary", ""),
               (info or {}).get("primary"))
         shot(page, "04_dialog_tlamatini_answer")
+        gauge_start = len(gauge_frames(page))
         page.locator(".tlmpop-btn-danger").click()
         check("4 TLAMATINI answer: the card disappears", card_gone(page, card_sel(a2["id"])))
         check("4 TLAMATINI answer: its row is gone from the database", db_ids([a2["id"]]) == set())
@@ -409,6 +556,15 @@ def main():
               and db_ids([u1["id"], a1["id"], u3["id"], a3["id"]]) == {u1["id"], a1["id"], u3["id"], a3["id"]})
         drop_frames = [f for f in SENT_FRAMES if '"drop-message"' in f]
         check("4 exactly two drop-message frames went to the server", len(drop_frames) == 2, drop_frames)
+        second = check_ring("4b ring after dropping Tlamatini's answer",
+                            wait_rest_real(page, gauge_start, "message dropped", 180))
+        if base and second:
+            check("4b after both drops Ollama's REAL count is LOWER than before the first drop",
+                  int(second.get("tokens_real") or 0) < int(base.get("tokens_real") or 0),
+                  "%s -> %s tokens" % (base.get("tokens_real"), second.get("tokens_real")))
+            check("4b after both drops the history part of the request is smaller",
+                  int(second.get("bytes_history") or 0) < int(base.get("bytes_history") or 0),
+                  "history %s B -> %s B" % (base.get("bytes_history"), second.get("bytes_history")))
         shot(page, "05_both_dropped")
 
         # 5. a live status line (never saved) -----------------------------
