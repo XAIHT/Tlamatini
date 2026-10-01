@@ -190,7 +190,7 @@ Files involved:
 
 ---
 
-## Multi-Turn on a small model — Compact mode (2026-10-01)
+## Multi-Turn on a small model — Compact mode (2026-10-01, shipped in `v1.74.0`)
 
 Multi-Turn normally binds the FULL enabled surface. When the model cannot hold that complete request, `CapabilityAwareToolAgentExecutor.fit_request` sends a COMPACT one instead: the only tool bound is `get_current_time`, ACPX is off (the toolbar box is locked), the External-MCP surface is not refreshed and the planner's hint is withheld. Live metrics and file-search results still ride inside the question. A model that holds the complete request gets exactly the Multi-Turn request described above. See `architecture.md` → *Compact mode*.
 

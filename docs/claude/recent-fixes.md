@@ -18,6 +18,8 @@
 
 ## 2026-10-01 — COMPACT MODE: every request fits the model it is sent to
 
+> **Shipped in `v1.74.0`** (annotated tag at `c1fadb90`, 2026-10-01; no GitHub release published yet at that date).
+
 **Angela's report:** the installed build, running the local `qwen2.5:latest`, answered *"What is the actual CPU usage, memory usage and disk space?"* with the time — *"did you erase system context?"*
 
 **ROOT CAUSE — nothing was erased; Ollama silently threw most of the request away.** Tlamatini sent 210,845 bytes (the whole `prompt.pmt` plus 119 tool schemas, ~52K tokens). Her Ollama serves qwen2.5 with 32,768 tokens split by `OLLAMA_NUM_PARALLEL=2`, so one request slot holds ~16K: Ollama answered with `prompt_eval_count=16386` and kept only the tail — the System Context was among what it dropped. `/api/show` still reported 32,768, so the gauge said "50% REAL", which was also untrue.
@@ -39,6 +41,8 @@
 **Do NOT:** send the complete request to a model that cannot hold it; treat a local model's `/api/show` `context_length` as the per-request window (`OLLAMA_NUM_PARALLEL` splits it); remove the first-step cut guard; widen `unwrap_display_tables` beyond Compact mode; move the Compact note away from the END of the system prompt. Known limit: a 7B model still sometimes re-answers an earlier question before the new one.
 
 ## 2026-09-30 — Config ▸ Models asks the CONFIGURED Ollama, never the browser's idea of it
+
+> **Shipped in `v1.73.1`** (annotated tag at `757b0edc`, 2026-10-01; a tag with no published release).
 
 **Angela's report:** she pointed Tlamatini at a rented GPU server (vast.ai) in Config ▸ URLs, with its token, and pulled `deepseek-coder-v2:236b` there. Config ▸ Models marked it red and refused to save it: *"it keeps asking the local ollama its models, not the remote super-server."*
 
@@ -2652,7 +2656,7 @@ audit. Migrations **0195/0196/0197**; catalog prompt **119**
 > `v1.48.16` = `6ee630ca` (themed `tlmAlert`/`tlmConfirm` pop-ups + the
 > frozen-bundle carriage proof in `build.py`), **`v1.48.17` = `f948be7b` — the
 > newest release on that day**, carrying everything below. The current release
-> is now `v1.73.0` (also the latest published release); entries that say a change "landed in v1.48.15" or
+> is now `v1.74.0` (tagged 2026-10-01; the latest published release is still `v1.73.0`); entries that say a change "landed in v1.48.15" or
 > `v1.48.17` are historical statements and remain as written.
 
 **Angela, verbatim:** *"Standarize in every ... every dialog and all of the

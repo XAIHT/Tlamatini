@@ -206,7 +206,7 @@ totals), `[CONTEXT-CEILING]`. Visible proof: `context_gauge_real_lab.py`
 
 ---
 
-## Compact mode — every request fits the model it is sent to (2026-10-01)
+## Compact mode — every request fits the model it is sent to (2026-10-01, shipped in `v1.74.0`)
 
 A model whose REAL window cannot hold Tlamatini's complete request (~100K+ tokens: the whole `prompt.pmt` plus every bound tool schema) is no longer handed it. Ollama never refuses an oversized request for a local model — it silently keeps the tail and answers from that.
 
