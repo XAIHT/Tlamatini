@@ -206,6 +206,23 @@ totals), `[CONTEXT-CEILING]`. Visible proof: `context_gauge_real_lab.py`
 
 ---
 
+## Compact mode — every request fits the model it is sent to (2026-10-01)
+
+A model whose REAL window cannot hold Tlamatini's complete request (~100K+ tokens: the whole `prompt.pmt` plus every bound tool schema) is no longer handed it. Ollama never refuses an oversized request for a local model — it silently keeps the tail and answers from that.
+
+| Piece | Where | Role |
+|---|---|---|
+| Cut detection | `context_governor.note_real_count` | chars sent ÷ `prompt_eval_count` > 6.0 (or > 1.6× the measured ratio) = CUT; the count IS the window, learned per (server, model) and used by `resolve_ceiling_tokens` |
+| The decision + fitting | `agent/context_fitter.py`, `CapabilityAwareToolAgentExecutor.fit_request` | FULL (byte-identical complete request) when it fits the usable window; COMPACT otherwise |
+| Tool-less chains | `rag/chains/unified.py::_fit_tool_less`, `rag/factory.py::_fit_non_tool_prompt_for_model` | same fitter, same closing note |
+| The verdict on the page | `detail.capacity` on every `context-gauge` frame → `model_capacity.js` | dialog, badge, ACPX lock |
+
+**COMPACT keeps** System-Metrics and Files-Search (their context rides inside the question) and Current-Time (`get_current_time`, the only tool bound). **It pauses** every other tool/agent, ACPX and the External-MCP refresh (the user's selection is untouched). The prompt is rebuilt by rule priority and ends with a seven-rule COMPACT MODE note (`compact_tool_rule`); history is newest-first (≤ 6); tool output is capped at 25% of the window. A first step Ollama cut is re-fitted and resent before any tool ran.
+
+**Contracts (do NOT weaken):** a model that can hold the complete request gets exactly the request it always got; the window comes from Ollama's own proof first (a local `/api/show` `context_length` is NOT the per-request window — `OLLAMA_NUM_PARALLEL` splits it); `context_compact_mode` = `auto` | `always` | `never`, an explicit value obeyed; every piece fails open to the complete request. Story and proof: `recent-fixes.md` (2026-10-01); coverage `agent/test_model_capacity.py`, visible `compact_mode_visible.py` / `full_mode_visible.py`.
+
+---
+
 ## Binary-content guard for context loading (`agent/rag/binary_guard.py`)
 
 Every file that enters the RAG chain is now screened for **binary content** before it is read as text, split, embedded and indexed. Binary files are dropped exactly the way a user-configured omission is dropped — and **every drop is named in `tlamatini.log`**.

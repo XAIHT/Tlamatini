@@ -16,6 +16,28 @@
 
 ---
 
+## 2026-10-01 — COMPACT MODE: every request fits the model it is sent to
+
+**Angela's report:** the installed build, running the local `qwen2.5:latest`, answered *"What is the actual CPU usage, memory usage and disk space?"* with the time — *"did you erase system context?"*
+
+**ROOT CAUSE — nothing was erased; Ollama silently threw most of the request away.** Tlamatini sent 210,845 bytes (the whole `prompt.pmt` plus 119 tool schemas, ~52K tokens). Her Ollama serves qwen2.5 with 32,768 tokens split by `OLLAMA_NUM_PARALLEL=2`, so one request slot holds ~16K: Ollama answered with `prompt_eval_count=16386` and kept only the tail — the System Context was among what it dropped. `/api/show` still reported 32,768, so the gauge said "50% REAL", which was also untrue.
+
+**FIX — three layers.**
+1. **The truth.** `context_governor.note_real_count`: a request was CUT when the characters sent cannot fit the tokens Ollama says it read (chars/token > 6.0, or > 1.6× the measured ratio). The count it read IS the window — learned per (server, model), `localhost`/`127.0.0.1`/`0.0.0.0` treated as one server — and `resolve_ceiling_tokens` answers with it (an explicit `context_ceiling_tokens` still wins). The gauge frame turns red/floor and says so.
+2. **The fit.** `agent/context_fitter.py` + `CapabilityAwareToolAgentExecutor.fit_request`. If the complete request (prompt + tool schemas + the smallest dynamic part) fits the usable window (window − a 20% answer reserve, clamped 768..8192 tokens) it is sent **byte for byte as before (FULL)**. Otherwise **COMPACT**: tools = `{get_current_time}` ∩ enabled; the System-Metrics and Files-Search sidecars stay (their context rides inside the question); ACPX off; External MCPs are not refreshed for that request (paused — the user's selection is untouched); `prompt.pmt` is rebuilt by rule priority (self-knowledge and sentinel blocks out, a micro prompt as last resort); a seven-rule **COMPACT MODE** note closes the prompt; history newest-first, at most 6; an attached context shrinks before the question ever does; tool output capped at 25% of the usable window. A request Ollama cut on its first step (no tool ran) raises `ContextWindowExceeded` and is re-fitted and resent (3 attempts). The tool-less chains (`unified.py` fallbacks, `factory.py` prompt-only/history-aware) use the same fitter and the same note.
+3. **Telling the user.** The verdict rides on every `context-gauge` frame (`detail.capacity`). `model_capacity.js` opens a once-per-model dialog (what stays active, what is paused, the window, an *Open Config ▸ Models* button; Escape/✕ close it, "don't show again" per model), shows a `Compact mode · <model> · 32K` badge that reopens it, locks the ACPX checkbox, and toasts when Full mode returns.
+
+**Found by the visible run on qwen2.5 and fixed in the same pass:**
+- The one-shot file-access guard (`rag/interface.py`) answered a Compact user *"provide explicit and absolute routes/paths"* — a dead end, since no file tool is bound. `_compact_mode_access_message` now says the real reason and the way out. Full mode keeps the guard's own message.
+- A 7B model fences a table it was asked to SHOW (```` ```html ````) or puts it in `BEGIN-CODE<<<x.html>>>`, so the user saw tags or a canvas link. `context_fitter.unwrap_display_tables` (Compact only) lifts a block whose WHOLE body is one table — never when the question asked for code/a file/a page, never markup beyond a table (scripts, styles, forms, images, `on*=` handlers stay fenced); HTML comments are dropped, `END-RESPONSE` kept.
+- A table painted white with no cell text colour inherited the chat's white text — rendered, and unreadable. `chat_table_contrast.js` (every model) re-colours only a cell whose WCAG contrast is below 3:1; gradient/image backgrounds and Exec Report tables are left alone.
+
+**Config:** `context_compact_mode` = `auto` (default) | `always` | `never` — an explicit value is obeyed exactly.
+
+**Proof (2026-10-01, visible):** `compact_mode_visible.py` on the installed app's `qwen2.5:latest` — **37/37** (dialog, badge, ACPX lock, metrics, time, identity, code, a READABLE table, history, an honest "I can't do that right now", Multi-Turn), ~8.1K tokens REAL per request, 0 cuts. `full_mode_visible.py` on `nemotron-3-ultra:cloud` — every request FULL and read complete (102,539–104,259 tokens REAL); 20/21, the one failure being the harness's own contrast check, which measured a gradient header against the white table behind it (fixed). Unit: `agent/test_model_capacity.py`.
+
+**Do NOT:** send the complete request to a model that cannot hold it; treat a local model's `/api/show` `context_length` as the per-request window (`OLLAMA_NUM_PARALLEL` splits it); remove the first-step cut guard; widen `unwrap_display_tables` beyond Compact mode; move the Compact note away from the END of the system prompt. Known limit: a 7B model still sometimes re-answers an earlier question before the new one.
+
 ## 2026-09-30 — Config ▸ Models asks the CONFIGURED Ollama, never the browser's idea of it
 
 **Angela's report:** she pointed Tlamatini at a rented GPU server (vast.ai) in Config ▸ URLs, with its token, and pulled `deepseek-coder-v2:236b` there. Config ▸ Models marked it red and refused to save it: *"it keeps asking the local ollama its models, not the remote super-server."*

@@ -448,6 +448,14 @@ Every chat card (the user's and Tlamatini's) has a **Drop** button beside Copy. 
 
 ---
 
+## 7.8 Compact mode — every request fits the model it is sent to (2026-10-01, in source)
+
+A model whose REAL window cannot hold the complete request (~100K+ tokens with every tool schema) is no longer handed it — Ollama would silently keep the tail (measured: the installed `qwen2.5:latest` read 16,386 of ~52K tokens and lost the System Context). `agent/context_fitter.py` + `CapabilityAwareToolAgentExecutor.fit_request` send the complete request byte for byte when it fits (**FULL**), else a **COMPACT** one: System-Metrics, Files-Search and Current-Time only, ACPX off, External MCPs paused, `prompt.pmt` by rule priority plus a seven-rule note at the end, newest history. `context_governor.note_real_count` learns a cut window from Ollama's own count; the page shows a dialog, a badge and an ACPX lock (`model_capacity.js`); `chat_table_contrast.js` keeps answer tables readable. `context_compact_mode` = auto | always | never.
+
+**Do NOT:** send the complete request to a model that cannot hold it, or trust a local model's `/api/show` `context_length` as its per-request window (`OLLAMA_NUM_PARALLEL` splits it). Story: `docs/claude/recent-fixes.md` (2026-10-01).
+
+---
+
 ## 8. Multi-Turn Orchestration
 
 When the **Multi-Turn** toolbar checkbox is on, Tlamatini shifts from a text box to a **stateful runtime operator**:

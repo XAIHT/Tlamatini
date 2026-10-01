@@ -8,6 +8,7 @@
 # ═══════════════════════════════════════════════════════════════════
 #   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
 # MCP Agent (mcp_agent.py)
+import hashlib
 import json
 import logging
 import re
@@ -42,6 +43,22 @@ from .context_governor import (
     resolve_ceiling_tokens as _context_ceiling_tokens,
     resolve_settings as _context_settings,
     usage_from_llm_result as _context_usage_from,
+)
+from . import context_governor as _cg
+from .context_fitter import (
+    COMPACT_TOOL_NAMES,
+    MODE_COMPACT,
+    MODE_FULL,
+    ContextWindowExceeded,
+    FitReport,
+    compact_mode_setting,
+    compact_prompt,
+    compact_tool_rule,
+    fit_history,
+    fit_input,
+    message_chars as _fit_message_chars,
+    resolve_window,
+    unwrap_display_tables,
 )
 from .exec_permission import get_broker
 from .global_execution_planner import (
@@ -1637,7 +1654,55 @@ class MultiTurnToolAgentExecutor:
                 self._report_real_step_usage(response, seq, model, label)
         except Exception as _cg_err:  # noqa: BLE001 — reporting must never break a turn
             print(f"--- [CONTEXT-REAL] report skipped ({_cg_err})")
+        cut_check = getattr(self, "_check_context_cut", None)
+        if cut_check is not None:
+            cut_check(llm, messages, response, label)
         return response
+
+    def _check_context_cut(self, llm, messages, response, label: str = "") -> None:
+        """Did Ollama CUT this request?  (Angela, 2026-10-01)
+
+        A local Ollama does not refuse an oversize request - it silently keeps
+        the tail that fits and answers from THAT.  Every step's real count is
+        judged against the characters sent (``context_governor.note_real_count``)
+        so the model's true window is learned the first time it bites.  On the
+        FIRST step of a turn nothing has executed yet, so the step is thrown
+        away and ``ContextWindowExceeded`` asks the caller to re-fit and re-send:
+        a cut request is never answered from.  Later steps keep their work and
+        are reported loudly instead.  Never raises anything else.
+        """
+        try:
+            self._fit_steps = int(getattr(self, "_fit_steps", 0) or 0) + 1
+            tactic = str(getattr(self._healer, "last_tactic", "") or "")
+            unchanged = getattr(self._healer, "UNCHANGED_REQUEST_TACTICS", frozenset())
+            if tactic and tactic not in unchanged:
+                return          # the healer sent a DIFFERENT request than this list
+            usage = _context_usage_from(response)
+            if not usage or not usage.get("prompt_tokens"):
+                return
+            model, base_url = self._llm_identity(llm)
+            schema_chars = 0
+            if llm is not None and llm is getattr(self, "bound_llm", None):
+                schema_chars = int(self._tool_schema_prefix_bytes()[1] or 0)
+            chars = _fit_message_chars(messages) + schema_chars
+            verdict = _cg.note_real_count(
+                model, base_url, usage.get("prompt_tokens"), chars,
+                source=f"live: {label or 'model step'}",
+            )
+            if not verdict.get("truncated"):
+                return
+            window = int(verdict.get("window") or 0)
+            if self._fit_steps == 1 and not self._tool_calls_log:
+                print(f"--- [CONTEXT-FIT] {model}: the FIRST step of this turn was cut by "
+                      f"Ollama (window {window}) - discarding that answer and re-fitting")
+                raise ContextWindowExceeded(window, model)
+            print(f"--- [CONTEXT-FIT] ⚠️ {model}: step '{label}' was CUT by Ollama (window "
+                  f"{window} tokens) after tools already ran - the run continues on what "
+                  "the model could read")
+        except ContextWindowExceeded:
+            raise
+        except Exception as _cut_err:  # noqa: BLE001 — a judge must never break a turn
+            print(f"--- [CONTEXT-FIT] cut check skipped ({_cut_err})")
 
     def _report_real_step_usage(self, response, seq: int, model: str, label: str) -> None:
         """Hand Ollama's own counts for one main-chain step to the governor.
@@ -1793,6 +1858,7 @@ class MultiTurnToolAgentExecutor:
         self._context_schema_bytes = None   # recomputed for this run's tool list
         self._context_prefix_count = 1      # system prompt (+ planner, set below)
         self._context_loop_start = 0        # set just before the tool loop opens
+        self._fit_steps = 0                 # model steps judged for an Ollama cut (2026-10-01)
 
         # ── Self-healing model-step invoker (Angela, 2026-07-06 REDESIGN) ──
         # EVERY model call in this loop is routed through the healer so a
@@ -2335,7 +2401,10 @@ class MultiTurnToolAgentExecutor:
                     ToolMessage(
                         tool_call_id=tool_call.get("id", ""),
                         name=tool_name,
-                        content=_cap_tool_message_content(tool_result),
+                        # A compact request carries a window-sized cap (the
+                        # fitter sets it); a full one keeps the configured cap.
+                        content=_cap_tool_message_content(
+                            tool_result, getattr(self, "fit_tool_output_cap", None)),
                     )
                 )
 
@@ -2861,11 +2930,49 @@ def _budget_select_tools(request_tools, *, system_prompt_text, input_text,
     return selected, used, dropped
 
 
+def _build_compact_system_prompt(preeliminary_prompt: str, tools, *, budget_chars: int,
+                                 model: str = "", window_tokens: int = 0,
+                                 step_by_step_enabled: bool = False,
+                                 context_loaded: bool = False) -> Tuple[str, Dict[str, Any]]:
+    """The system prompt of a COMPACT request (Angela, 2026-10-01).
+
+    Angela's own prompt.pmt, rebuilt by rule priority until it fits
+    ``budget_chars`` (``context_fitter.compact_prompt``), a one-line platform
+    note, the Step-by-Step guidance when that mode is on, and an honest
+    COMPACT MODE note naming the only tools bound - instead of Rule 11's
+    31,000-character manual and the 100+ tool catalogue a small model cannot
+    hold.  Returns ``(prompt, info)``.
+    """
+    import platform
+    text, info = compact_prompt(preeliminary_prompt, budget_chars, keep_placeholders=False,
+                                context_loaded=context_loaded)
+    os_name = platform.system()
+    if os_name == "Windows":
+        plat = (f"**PLATFORM**: {os_name} {platform.release()} - Windows commands (dir, type, "
+                "PowerShell) and backslash paths.")
+    else:
+        plat = f"**PLATFORM**: {os_name} {platform.release()} - Unix commands and / paths."
+    step = _STEP_BY_STEP_SYSTEM_GUIDANCE if step_by_step_enabled else ""
+    rule = compact_tool_rule([getattr(t, "name", "") for t in tools], model=model,
+                             window_tokens=window_tokens)
+    prompt = text.rstrip() + "\n\n" + plat + "\n" + (step.strip() + "\n" if step else "") + "\n" + rule + "\n"
+    info["prompt_chars"] = len(prompt)
+    return prompt, info
+
+
 class CapabilityAwareToolAgentExecutor:
     """
     Delegates to the legacy full-tool executor by default and only applies
     Phase 1 selective capability binding when the request explicitly enables it.
+
+    Since 2026-10-01 every request is FITTED to the model it is sent to
+    (``fit_request``): the complete request when the model can hold it, a
+    COMPACT one when it cannot - see ``agent/context_fitter.py``.
     """
+
+    #: How many (tool-set, prompt) executors are kept warm.  Each one holds a
+    #: bound LLM; the oldest is dropped first.
+    _EXECUTOR_CACHE_LIMIT = 48
 
     def __init__(self, llm, preeliminary_prompt: str, tools, max_iterations: int = 4096):
         self.llm = llm
@@ -2873,24 +2980,36 @@ class CapabilityAwareToolAgentExecutor:
         self.tools = list(tools)
         self.max_iterations = max_iterations
         self._executor_cache: Dict[tuple[str, ...], MultiTurnToolAgentExecutor] = {}
+        self._tool_chars_cache: Dict[str, int] = {}
         self.legacy_executor = self._get_executor_for_tools(self.tools)
+        self.last_fit: Optional[FitReport] = None
 
-    def _get_executor_for_tools(self, tools_subset, step_by_step_enabled: bool = False):
-        key = tuple([f"__step_by_step__={int(bool(step_by_step_enabled))}"] + [tool.name for tool in tools_subset])
+    def _get_executor_for_tools(self, tools_subset, step_by_step_enabled: bool = False,
+                                system_prompt: Optional[str] = None):
+        key_parts = [f"__step_by_step__={int(bool(step_by_step_enabled))}"]
+        if system_prompt is not None:
+            digest = hashlib.sha1(system_prompt.encode("utf-8", "replace")).hexdigest()[:16]
+            key_parts.append(f"__compact__={digest}")
+        key = tuple(key_parts + [tool.name for tool in tools_subset])
         cached = self._executor_cache.get(key)
         if cached is not None:
             return cached
 
         executor = MultiTurnToolAgentExecutor(
             llm=self.llm,
-            system_prompt=_build_system_prompt(
-                self.preeliminary_prompt,
-                tools_subset,
-                step_by_step_enabled=step_by_step_enabled,
+            system_prompt=(
+                system_prompt if system_prompt is not None else _build_system_prompt(
+                    self.preeliminary_prompt,
+                    tools_subset,
+                    step_by_step_enabled=step_by_step_enabled,
+                )
             ),
             tools=tools_subset,
             max_iterations=self.max_iterations,
         )
+        if len(self._executor_cache) >= self._EXECUTOR_CACHE_LIMIT:
+            # Insertion order = age; the legacy executor stays referenced on self.
+            self._executor_cache.pop(next(iter(self._executor_cache)), None)
         self._executor_cache[key] = executor
         return executor
 
@@ -2934,11 +3053,231 @@ class CapabilityAwareToolAgentExecutor:
             flush=True,
         )
 
+    # ── The CONTEXT FITTER (Angela, 2026-10-01) ─────────────────────────────
+    def _tool_chars(self, tools) -> int:
+        """Characters the tools' schemas cost on the wire (cached per name)."""
+        cache = getattr(self, "_tool_chars_cache", None)
+        if cache is None:
+            cache = self._tool_chars_cache = {}
+        total = 0
+        for tool in tools or []:
+            name = str(getattr(tool, "name", "") or "")
+            cost = cache.get(name)
+            if cost is None:
+                cost = int(_estimate_tool_schema_tokens(tool)) * 4
+                if name:
+                    cache[name] = cost
+            total += cost
+        return total
+
+    def _active_external_servers(self) -> list:
+        """Names of the External MCP servers the user has ACTIVE (paused in
+        compact mode - her selection itself is never touched)."""
+        try:
+            from .external_mcp_manager import load_catalog
+            catalog = load_catalog() or {}
+            active = catalog.get("active") or []
+            if isinstance(active, (list, tuple)):
+                return [str(name) for name in active][:16]
+        except Exception:  # noqa: BLE001 — a status list must never break a request
+            pass
+        names = set()
+        for tool in self.tools:
+            name = str(getattr(tool, "name", "") or "")
+            if _is_external_mcp_tool_name(name) and name.count("__") >= 2:
+                names.add(name.split("__")[1])
+        return sorted(names)
+
+    def fit_request(
+        self,
+        *,
+        input_text: str,
+        chat_history: Any,
+        request_tools,
+        multi_turn: bool = False,
+        step_by_step: bool = False,
+        acpx_requested: bool = False,
+        global_execution_plan: Any = None,
+        user_id: Any = None,
+        publish: bool = True,
+    ) -> Dict[str, Any]:
+        """FULL or COMPACT - and the request fitted to the model's REAL window.
+
+        ONE definition: ``invoke`` AND the at-rest gauge rebuild
+        (``context_baseline``) call this, so the ring always shows the request
+        that is really sent.  Fail-open: on any error the complete request is
+        returned unchanged, exactly as before the fitter existed.
+        """
+        hist = list(chat_history or []) if isinstance(chat_history, (list, tuple)) else []
+        input_text = str(input_text or "")
+        request_tools = list(request_tools or [])
+        result: Dict[str, Any] = {"executor": None, "input": input_text, "history": hist,
+                                  "tools": request_tools, "mode": MODE_FULL, "report": None,
+                                  "dropped": 0, "tool_tokens": 0, "starved": False}
+        try:
+            config = _load_config()
+            model, base_url = MultiTurnToolAgentExecutor._llm_identity(self.llm)
+            window = resolve_window(config, model, base_url)
+            setting = compact_mode_setting(config)
+            usable = window.usable_chars
+            cpt = window.chars_per_token
+
+            # 1. The COMPLETE request - exactly what was sent before the fitter.
+            if multi_turn:
+                full_tools, tool_tokens, dropped = _budget_select_tools(
+                    request_tools,
+                    system_prompt_text=self.preeliminary_prompt,
+                    input_text=input_text,
+                    chat_history=hist,
+                    global_execution_plan=global_execution_plan,
+                )
+                if request_tools and not full_tools:
+                    full_tools = _emergency_core_tools(request_tools)
+                    dropped = len(request_tools) - len(full_tools)
+                    result["starved"] = True
+                result.update(dropped=dropped, tool_tokens=tool_tokens)
+            else:
+                full_tools = list(request_tools)
+            if not multi_turn and acpx_requested and not step_by_step:
+                # The legacy one-shot path with ACPX on reuses the cached
+                # full-tool executor, exactly as before the fitter.
+                full_executor = self.legacy_executor
+            else:
+                full_executor = self._get_executor_for_tools(full_tools, step_by_step_enabled=step_by_step)
+            full_prompt_chars = len(str(getattr(full_executor, "system_prompt", "") or ""))
+            static_chars = full_prompt_chars + self._tool_chars(full_tools)
+            input_chars = len(input_text)
+            hist_chars = _fit_message_chars(hist[-8:])
+            full_chars = static_chars + input_chars + hist_chars
+            full_tokens = int(full_chars / cpt) if cpt else 0
+            # The mode is decided by what CANNOT shrink (prompt + tool schemas)
+            # plus a minimum of question and history, so it stays stable while
+            # a conversation grows instead of flapping between messages.
+            fits_static = static_chars + min(input_chars, 6000) + 1200 <= usable
+            if setting == "always":
+                mode = MODE_COMPACT
+            elif setting == "never":
+                mode = MODE_FULL
+            else:
+                mode = MODE_FULL if fits_static else MODE_COMPACT
+
+            report = FitReport(
+                mode=mode, model=model, window_tokens=window.tokens,
+                window_source=window.source, reserve_tokens=window.reserve_tokens,
+                chars_per_token=cpt, full_tokens_estimate=full_tokens,
+                tools_total=len(request_tools), acpx_requested=bool(acpx_requested),
+                setting=setting,
+            )
+            details: Dict[str, Any] = {"history_total": len(hist[-8:]),
+                                       "history_kept": len(hist[-8:])}
+            if mode == MODE_FULL:
+                executor, tools = full_executor, full_tools
+                fitted_input, fitted_hist = input_text, hist
+                if full_chars > usable and setting != "never":
+                    # Only the DYNAMIC parts shrink - the rules and the tools a
+                    # big model can hold are never touched.
+                    dynamic = max(0, usable - static_chars)
+                    in_budget = max(min(input_chars, 2000), int(dynamic * 0.65))
+                    fitted_input, in_info = fit_input(input_text, in_budget)
+                    details.update(in_info)
+                    hist_budget = max(0, dynamic - len(fitted_input))
+                    fitted_hist, h_info = fit_history(
+                        hist, hist_budget, input_text=fitted_input, max_messages=8)
+                    details.update(h_info)
+                try:
+                    executor.fit_tool_output_cap = None
+                except Exception:  # noqa: BLE001 — a read-only stand-in executor
+                    pass
+                details.update(prompt_profile="full",
+                               prompt_chars=full_prompt_chars,
+                               prompt_full_chars=full_prompt_chars,
+                               tools_kept_count=len(tools))
+                fitted_chars = static_chars + len(fitted_input) + _fit_message_chars(fitted_hist[-8:])
+                report.reason = (
+                    f"{model} reads {window.tokens:,} tokens at a time; Tlamatini's complete "
+                    f"request (~{full_tokens:,}) fits, so nothing is held back."
+                )
+            else:
+                # COMPACT - Angela's rule: only System-Metrics, Files-Search
+                # (context sidecars, untouched) and Current-Time stay active;
+                # ACPX is off; External MCPs are paused.  A capability the user
+                # switched OFF is never switched back on (only tools already
+                # in self.tools - i.e. enabled ones - can be kept).
+                tools = [t for t in filter_acpx_tools(self.tools, False)
+                         if getattr(t, "name", "") in COMPACT_TOOL_NAMES]
+                prompt_budget = int(min(max(usable * 0.40, 1500), 30000))
+                system_prompt, p_info = _build_compact_system_prompt(
+                    self.preeliminary_prompt, tools, budget_chars=prompt_budget,
+                    model=model, window_tokens=window.tokens,
+                    step_by_step_enabled=step_by_step,
+                    context_loaded=any(opener in input_text
+                                       for opener, _closer in _cg.CONTEXT_BLOCKS[:2]),
+                )
+                details.update(p_info)
+                details["prompt_full_chars"] = full_prompt_chars
+                fixed = len(system_prompt) + self._tool_chars(tools)
+                min_hist = min(1500, int(usable * 0.10))
+                in_budget = max(min(input_chars, 1200), usable - fixed - min_hist)
+                fitted_input, in_info = fit_input(input_text, in_budget)
+                details.update(in_info)
+                hist_budget = max(0, usable - fixed - len(fitted_input))
+                fitted_hist, h_info = fit_history(
+                    hist, hist_budget, input_text=fitted_input, max_messages=6,
+                    per_message_cap=max(800, usable // 6),
+                )
+                details.update(h_info)
+                executor = self._get_executor_for_tools(
+                    tools, step_by_step_enabled=step_by_step, system_prompt=system_prompt)
+                executor.fit_tool_output_cap = max(1500, int(usable * 0.25))
+                fitted_chars = fixed + len(fitted_input) + _fit_message_chars(fitted_hist)
+                report.tools_kept = [getattr(t, "name", "") for t in tools]
+                report.agents_paused = sum(
+                    1 for t in request_tools if str(getattr(t, "name", "")).startswith("chat_agent_"))
+                report.external_mcps_paused = self._active_external_servers()
+                details["tools_kept_count"] = len(tools)
+                report.reason = (
+                    f"{model} reads only {window.tokens:,} tokens at a time ({window.source}), "
+                    f"and Tlamatini's complete request needs ~{full_tokens:,} - so she works in "
+                    "Compact mode until a larger model is chosen."
+                )
+            report.fitted_tokens_estimate = int(fitted_chars / cpt) if cpt else 0
+            report.details = details
+            result.update(executor=executor, input=fitted_input, history=fitted_hist,
+                          tools=tools, mode=mode, report=report, window=window)
+            self.last_fit = report
+            if publish:
+                self._publish_fit(report, user_id)
+            return result
+        except Exception as fit_err:  # noqa: BLE001 — the fitter must never break a request
+            print(f"--- [CONTEXT-FIT] failed open ({type(fit_err).__name__}: {fit_err}) - "
+                  "sending the complete request unchanged")
+            if result["executor"] is None:
+                result["executor"] = (
+                    self._get_executor_for_tools(request_tools, step_by_step_enabled=step_by_step)
+                    if (step_by_step or not acpx_requested) else self.legacy_executor
+                )
+                try:
+                    result["executor"].fit_tool_output_cap = None
+                except Exception:  # noqa: BLE001
+                    pass
+            return result
+
+    def _publish_fit(self, report: Optional[FitReport], user_id: Any = None) -> None:
+        """Log the verdict and hand it to the page (rides on every gauge frame)."""
+        if report is None:
+            return
+        try:
+            print(report.log_line())
+            uid = user_id if user_id is not None else _cg.current_user()
+            if uid is not None and _cg.set_capacity(uid, report.as_capacity()):
+                _cg.publish_capacity(uid)
+        except Exception as pub_err:  # noqa: BLE001
+            print(f"--- [CONTEXT-FIT] verdict not published ({pub_err})")
+
     def invoke(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         input_text = payload.get("input", "")
         chat_history = payload.get("chat_history", []) or []
         multi_turn_enabled = bool(payload.get("multi_turn_enabled", False))
-        self._refresh_external_mcp_tool_surface()
         # Exec report is multi-turn-only: outside multi-turn we strip it.
         exec_report_enabled = bool(payload.get("exec_report_enabled", False)) and multi_turn_enabled
         # ACPX defaults to DISABLED. The user must explicitly tick the
@@ -2947,8 +3286,8 @@ class CapabilityAwareToolAgentExecutor:
         # or capability-based selection runs, so the entire ACPX surface
         # is invisible to the request and the system runs the legacy
         # Multi-Turn / one-shot mechanics.
-        acpx_enabled = bool(payload.get("acpx_enabled", False))
-        request_tools = filter_acpx_tools(self.tools, acpx_enabled)
+        acpx_requested = bool(payload.get("acpx_enabled", False))
+        acpx_enabled = acpx_requested
         global_execution_plan = payload.get("global_execution_plan")
         # Ask-Execs is a Multi-Turn-only modifier: the per-tool permission
         # prompt only exists in the multi-turn executor loop, so it is ignored
@@ -2956,6 +3295,35 @@ class CapabilityAwareToolAgentExecutor:
         ask_execs_enabled = bool(payload.get("ask_execs_enabled", False)) and multi_turn_enabled
         ask_execs_user_id = payload.get("ask_execs_user_id")
         step_by_step_enabled = bool(payload.get("step_by_step_enabled", False))
+
+        def _fit(publish: bool) -> Dict[str, Any]:
+            return self.fit_request(
+                input_text=input_text,
+                chat_history=chat_history,
+                request_tools=filter_acpx_tools(self.tools, acpx_enabled),
+                multi_turn=multi_turn_enabled,
+                step_by_step=step_by_step_enabled,
+                acpx_requested=acpx_requested,
+                global_execution_plan=global_execution_plan,
+                user_id=ask_execs_user_id,
+                publish=publish,
+            )
+
+        # ── FIT FIRST (Angela, 2026-10-01) ──
+        # A COMPACT request binds only Current-Time, so the External-MCP surface
+        # is never refreshed for it - her active servers are PAUSED, not
+        # reconnected.  A FULL request refreshes them exactly as before and is
+        # re-fitted with whatever they added.
+        fit = _fit(publish=False)
+        if fit["mode"] == MODE_COMPACT:
+            acpx_enabled = False
+            if acpx_requested:
+                print("--- [CONTEXT-FIT] ACPX was ticked, but this model runs in Compact mode - "
+                      "ACPX is OFF for this request")
+            self._publish_fit(fit["report"], ask_execs_user_id)
+        else:
+            self._refresh_external_mcp_tool_surface()
+            fit = _fit(publish=True)
 
         with scoped_request_state(
             multi_turn_enabled=multi_turn_enabled,
@@ -2965,114 +3333,156 @@ class CapabilityAwareToolAgentExecutor:
             cancel_user_id=ask_execs_user_id,
             cancel_run_epoch=payload.get("cancel_run_epoch"),
         ):
-            if not multi_turn_enabled:
-                print(
-                    "--- CapabilityAwareToolAgentExecutor: multi-turn disabled; "
-                    f"using legacy full-tool binding (acpx_enabled={acpx_enabled}) ---"
-                )
-                # Legacy path: rebuild a one-shot executor over the request-scoped
-                # tool set so disabling ACPX in legacy mode also strips the ACPX
-                # tools from the LLM's bind_tools() list.
-                if step_by_step_enabled or not acpx_enabled:
-                    legacy_executor = self._get_executor_for_tools(
-                        request_tools,
-                        step_by_step_enabled=step_by_step_enabled,
-                    )
-                    return legacy_executor.invoke({"input": input_text, "chat_history": chat_history})
-                return self.legacy_executor.invoke({"input": input_text, "chat_history": chat_history})
-
-            # === MANDATE (Angela, 2026-06-16, refined 2026-06-19) ===
-            # Multi-Turn must let Tlamatini SEE the tools she needs — binding a tiny
-            # planner subset once starved the operator ("no file/shell tool bound").
-            # But blindly binding the FULL surface (88 agents + active External-MCP
-            # tools) overflowed the model window live ("prompt too long 273284 >
-            # 262144") and crashed the turn into a basic-LLM fallback. So we
-            # RANK-AND-BUDGET (_budget_select_tools): when the whole surface fits,
-            # bind it all unchanged; when it does not, keep a guaranteed operator
-            # CORE + the planner's picks + the highest capability-scored tools until
-            # a token budget is reached, and drop the low-rank tail (logged, never
-            # silent). ACPX is still filtered per the toolbar checkbox; External MCP
-            # tools were refreshed above; the planner summary is still forwarded
-            # below for ordering hints.
-            _planned_count = (
-                len(selected_tool_names_from_plan(global_execution_plan))
-                if global_execution_plan else 0
-            )
-            selected_tools, _tool_tokens, _dropped = _budget_select_tools(
-                request_tools,
-                system_prompt_text=self.preeliminary_prompt,
-                input_text=input_text,
-                chat_history=chat_history,
-                global_execution_plan=global_execution_plan,
-            )
-            # ⚠️ NEVER SILENTLY DISARM (Angela, 2026-09-20).
-            # If the budgeter returns NOTHING while tools were requested, the
-            # executor takes its no-tools branch and Tlamatini answers in prose
-            # — reporting "I created the file" while creating nothing. That is
-            # exactly what emptied C:\Tlamatini\Templates on v1.65.0. Keep the
-            # operator core anyway, and TELL HER — in the chat, not only here.
-            if request_tools and not selected_tools:
-                selected_tools = _emergency_core_tools(request_tools)
-                _dropped = len(request_tools) - len(selected_tools)
-                _starved_notice = (
-                    "⚠️ This conversation has grown very large, so I could not bind my "
-                    f"full tool surface this turn — I kept only {len(selected_tools)} "
-                    "core tool(s). If a step needs an agent I no longer have, clear the "
-                    "chat history or start a new chat and my full surface comes back. "
-                    "I am telling you now rather than reporting work I cannot do."
-                )
-                print(
-                    "--- CapabilityAwareToolAgentExecutor: TOOL SURFACE CAME BACK EMPTY "
-                    f"({len(request_tools)} requested) — restored "
-                    f"{len(selected_tools)} core tool(s) so the operator is not silently "
-                    "turned into a chatbot."
-                )
+            # ── A CUT request is never answered from (Angela, 2026-10-01) ──
+            # When Ollama proves a smaller window on the first step, the
+            # executor raises ContextWindowExceeded before ANY tool ran; the
+            # window is learned, the request is re-fitted and sent again.
+            for attempt in range(1, 4):
                 try:
-                    from .self_healing import notify_user
-                    notify_user(ask_execs_user_id, _starved_notice)
-                except Exception as _warn_err:  # noqa: BLE001 — a warning must never break the turn
-                    print(f"--- [CONTEXT] could not surface the starved-surface notice: {_warn_err}")
-            if _dropped:
-                print(
-                    "--- CapabilityAwareToolAgentExecutor: multi-turn enabled; tool "
-                    f"surface OVER budget — kept {len(selected_tools)}/{len(request_tools)} "
-                    f"highest-ranked tools (~{_tool_tokens} tool-tokens), dropped {_dropped} "
-                    f"low-rank tools to fit the model window (planner hinted "
-                    f"{_planned_count}; acpx_enabled={acpx_enabled})"
-                )
-            else:
-                print(
-                    "--- CapabilityAwareToolAgentExecutor: multi-turn enabled; binding "
-                    f"the FULL enabled surface: {len(selected_tools)} tools (~{_tool_tokens} "
-                    f"tool-tokens, within budget; planner hinted {_planned_count}; "
-                    f"acpx_enabled={acpx_enabled})"
-                )
-            executor = self._get_executor_for_tools(
-                selected_tools,
-                step_by_step_enabled=step_by_step_enabled,
+                    result = self._run_fitted(
+                        fit,
+                        payload=payload,
+                        multi_turn_enabled=multi_turn_enabled,
+                        exec_report_enabled=exec_report_enabled,
+                        ask_execs_enabled=ask_execs_enabled,
+                        ask_execs_user_id=ask_execs_user_id,
+                        acpx_enabled=acpx_enabled,
+                        global_execution_plan=global_execution_plan,
+                    )
+                    if fit["mode"] == MODE_COMPACT and isinstance(result, dict):
+                        # A small model fences the table the user asked to
+                        # SEE; show it as a table (context_fitter).
+                        shown, lifted = unwrap_display_tables(result.get("output") or "", input_text)
+                        if lifted:
+                            result["output"] = shown
+                            print(f"--- [CONTEXT-FIT] showed {lifted} fenced table(s) as tables "
+                                  "(Compact mode: the small model fenced what the user asked to see)")
+                    return result
+                except ContextWindowExceeded as cut:
+                    if attempt >= 3:
+                        raise RuntimeError(
+                            f"Ollama kept cutting the request to {cut.model} even after it was "
+                            f"fitted to {cut.window} tokens") from cut
+                    print(f"--- [CONTEXT-FIT] re-fitting to the window Ollama just proved "
+                          f"({cut.window} tokens) and sending again (attempt {attempt + 1}/3)")
+                    fit = _fit(publish=True)
+                    if fit["mode"] == MODE_COMPACT:
+                        acpx_enabled = False
+        return {"output": ""}  # unreachable - the loop returns or raises
+
+    def _run_fitted(self, fit: Dict[str, Any], *, payload: Dict[str, Any],
+                    multi_turn_enabled: bool, exec_report_enabled: bool,
+                    ask_execs_enabled: bool, ask_execs_user_id: Any,
+                    acpx_enabled: bool, global_execution_plan: Any) -> Dict[str, Any]:
+        executor = fit["executor"]
+        compact = fit["mode"] == MODE_COMPACT
+        fitted_input = fit["input"]
+        # The history the executor receives IS the fitted one (identical to the
+        # chat's own history whenever it fits the model).
+        chat_history = fit["history"]
+
+        if not multi_turn_enabled:
+            print(
+                "--- CapabilityAwareToolAgentExecutor: multi-turn disabled; "
+                + ("COMPACT request: " + str([t.name for t in fit["tools"]]) + " (ACPX off) ---"
+                   if compact else f"using legacy full-tool binding (acpx_enabled={acpx_enabled}) ---")
             )
-            executor_payload = {"input": input_text, "chat_history": chat_history}
-            # Always forward the conversation user id so the executor's
-            # self-healing invoker can push LIVE recovery status to THIS user's
-            # chat (independent of Ask-Execs).
-            executor_payload["ask_execs_user_id"] = ask_execs_user_id
-            # Always forward this run's cancellation epoch. The LAST of the three
-            # plumbing hops (ask_rag payload → UnifiedAgentChain's rebuild whitelist →
-            # the executor sub-payloads → here). Drop it and the executor's run_epoch
-            # is None, every cancel guard silently no-ops, and a cancelled Multi-Turn
-            # run comes back to life. (Angela, 2026-07-14)
-            executor_payload["cancel_run_epoch"] = payload.get("cancel_run_epoch")
-            if exec_report_enabled:
-                executor_payload["exec_report_enabled"] = True
-            if ask_execs_enabled:
-                executor_payload["ask_execs_enabled"] = True
-            if global_execution_plan:
-                executor_payload["global_execution_plan"] = global_execution_plan
-                executor_payload["planner_summary"] = (
-                    payload.get("planner_summary")
-                    or summarize_global_execution_plan(global_execution_plan)
-                )
-            return executor.invoke(executor_payload)
+            # Legacy path: a one-shot executor over the request-scoped tool set
+            # (fit_request built it), so disabling ACPX in legacy mode also
+            # strips the ACPX tools from the LLM's bind_tools() list.
+            return executor.invoke({"input": fitted_input, "chat_history": chat_history})
+
+        # === MANDATE (Angela, 2026-06-16, refined 2026-06-19) ===
+        # Multi-Turn must let Tlamatini SEE the tools she needs — binding a tiny
+        # planner subset once starved the operator ("no file/shell tool bound").
+        # But blindly binding the FULL surface (88 agents + active External-MCP
+        # tools) overflowed the model window live ("prompt too long 273284 >
+        # 262144") and crashed the turn into a basic-LLM fallback. So we
+        # RANK-AND-BUDGET (_budget_select_tools, inside fit_request): when the
+        # whole surface fits, bind it all unchanged; when it does not, keep a
+        # guaranteed operator CORE + the planner's picks + the highest
+        # capability-scored tools until a token budget is reached, and drop the
+        # low-rank tail (logged, never silent). ACPX is still filtered per the
+        # toolbar checkbox; External MCP tools were refreshed above; the planner
+        # summary is still forwarded below for ordering hints.
+        # (2026-10-01) A model too small for even that runs COMPACT instead —
+        # Current-Time only, ACPX off, External MCPs paused — and the planner
+        # summary is NOT forwarded: it would order tools that are not bound.
+        _planned_count = (
+            len(selected_tool_names_from_plan(global_execution_plan))
+            if global_execution_plan else 0
+        )
+        selected_tools = fit["tools"]
+        _dropped = int(fit.get("dropped") or 0)
+        _tool_tokens = int(fit.get("tool_tokens") or 0)
+        # ⚠️ NEVER SILENTLY DISARM (Angela, 2026-09-20).
+        # If the budgeter returns NOTHING while tools were requested, the
+        # executor takes its no-tools branch and Tlamatini answers in prose
+        # — reporting "I created the file" while creating nothing. That is
+        # exactly what emptied C:\Tlamatini\Templates on v1.65.0. Keep the
+        # operator core anyway, and TELL HER — in the chat, not only here.
+        if not compact and fit.get("starved"):
+            _starved_notice = (
+                "⚠️ This conversation has grown very large, so I could not bind my "
+                f"full tool surface this turn — I kept only {len(selected_tools)} "
+                "core tool(s). If a step needs an agent I no longer have, clear the "
+                "chat history or start a new chat and my full surface comes back. "
+                "I am telling you now rather than reporting work I cannot do."
+            )
+            print(
+                "--- CapabilityAwareToolAgentExecutor: TOOL SURFACE CAME BACK EMPTY "
+                f"({len(filter_acpx_tools(self.tools, acpx_enabled))} requested) — restored "
+                f"{len(selected_tools)} core tool(s) so the operator is not silently "
+                "turned into a chatbot."
+            )
+            try:
+                from .self_healing import notify_user
+                notify_user(ask_execs_user_id, _starved_notice)
+            except Exception as _warn_err:  # noqa: BLE001 — a warning must never break the turn
+                print(f"--- [CONTEXT] could not surface the starved-surface notice: {_warn_err}")
+        if compact:
+            print(
+                "--- CapabilityAwareToolAgentExecutor: multi-turn enabled; COMPACT request — "
+                f"binding {[t.name for t in selected_tools]} (Current-Time only; ACPX off; "
+                "External MCPs paused; planner hint withheld)"
+            )
+        elif _dropped:
+            print(
+                "--- CapabilityAwareToolAgentExecutor: multi-turn enabled; tool "
+                f"surface OVER budget — kept {len(selected_tools)}/{len(selected_tools) + _dropped} "
+                f"highest-ranked tools (~{_tool_tokens} tool-tokens), dropped {_dropped} "
+                f"low-rank tools to fit the model window (planner hinted "
+                f"{_planned_count}; acpx_enabled={acpx_enabled})"
+            )
+        else:
+            print(
+                "--- CapabilityAwareToolAgentExecutor: multi-turn enabled; binding "
+                f"the FULL enabled surface: {len(selected_tools)} tools (~{_tool_tokens} "
+                f"tool-tokens, within budget; planner hinted {_planned_count}; "
+                f"acpx_enabled={acpx_enabled})"
+            )
+        executor_payload = {"input": fitted_input, "chat_history": chat_history}
+        # Always forward the conversation user id so the executor's
+        # self-healing invoker can push LIVE recovery status to THIS user's
+        # chat (independent of Ask-Execs).
+        executor_payload["ask_execs_user_id"] = ask_execs_user_id
+        # Always forward this run's cancellation epoch. The LAST of the three
+        # plumbing hops (ask_rag payload → UnifiedAgentChain's rebuild whitelist →
+        # the executor sub-payloads → here). Drop it and the executor's run_epoch
+        # is None, every cancel guard silently no-ops, and a cancelled Multi-Turn
+        # run comes back to life. (Angela, 2026-07-14)
+        executor_payload["cancel_run_epoch"] = payload.get("cancel_run_epoch")
+        if exec_report_enabled:
+            executor_payload["exec_report_enabled"] = True
+        if ask_execs_enabled:
+            executor_payload["ask_execs_enabled"] = True
+        if global_execution_plan and not compact:
+            executor_payload["global_execution_plan"] = global_execution_plan
+            executor_payload["planner_summary"] = (
+                payload.get("planner_summary")
+                or summarize_global_execution_plan(global_execution_plan)
+            )
+        return executor.invoke(executor_payload)
 
 
 def create_unified_agent(llm, preeliminary_prompt: str):

@@ -1,0 +1,261 @@
+/*
+ * ═══════════════════════════════════════════════════════════════════
+ *   ✦  T L A M A T I N I  ✦   —   "one who knows"
+ *
+ *   Created by  Angela López Mendoza   ·   @angelahack1
+ *   Developer · Architect · Creator of Tlamatini
+ * ═══════════════════════════════════════════════════════════════════
+ *   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
+ *
+ * model_capacity.css — the Compact-mode badge, dialog body and notices
+ * (Angela, 2026-10-01).  The dialog frame itself wears the shared
+ * .tlmpop-* identity from dialog_theme.css; only its body is styled here,
+ * and every colour comes from the --tlm-dlg-* tokens (amber marks
+ * "reduced", teal marks "active").
+ */
+
+/* ── Toolbar badge ─────────────────────────────────────────────────── */
+.compact-mode-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 6px;
+    padding: 3px 10px;
+    border: 1px solid rgba(245, 180, 60, 0.75);
+    border-radius: 999px;
+    background: rgba(245, 180, 60, 0.16);
+    color: #ffe2a6;
+    font-family: var(--tlm-dlg-font, 'Nunito', sans-serif);
+    font-size: 0.78rem;
+    font-weight: 700;
+    line-height: 1.3;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.compact-mode-badge:hover {
+    background: rgba(245, 180, 60, 0.28);
+    color: #ffffff;
+}
+
+.compact-mode-badge:focus-visible {
+    outline: none;
+    box-shadow: var(--tlm-dlg-accent-ring, 0 0 0 2px rgba(85, 187, 170, 0.25));
+}
+
+.compact-mode-badge[hidden] {
+    display: none;
+}
+
+.compact-mode-badge-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #f5b43c;
+    box-shadow: 0 0 6px rgba(245, 180, 60, 0.9);
+}
+
+/* The ACPX switch while it is locked by Compact mode. */
+.toolbar-toggle.compact-locked {
+    cursor: not-allowed;
+}
+
+/* ── Dialog body ───────────────────────────────────────────────────── */
+/* Two classes: dialog_theme.css loads LAST and sets .tlmpop-card to 440px,
+   which would squeeze the two capability columns. */
+.tlmpop-card.tlmcap-card {
+    width: min(680px, 100%);
+}
+
+.tlmcap-body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.tlmcap-meter {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.tlmcap-bar {
+    position: relative;
+    height: 10px;
+    border-radius: 999px;
+    background: rgba(245, 180, 60, 0.25);
+    border: var(--tlm-dlg-hairline, 1px solid rgba(255, 255, 255, 0.08));
+    overflow: hidden;
+}
+
+.tlmcap-bar-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: var(--tlm-dlg-accent, #55bbaa);
+}
+
+.tlmcap-legend {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.tlmcap-legend-win {
+    color: var(--tlm-dlg-accent, #55bbaa);
+}
+
+.tlmcap-legend-full {
+    color: #ffd27a;
+}
+
+.tlmcap-lead {
+    margin: 0;
+    line-height: 1.5;
+}
+
+.tlmcap-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+@media (max-width: 560px) {
+    .tlmcap-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.tlmcap-col {
+    padding: 10px 12px;
+    border-radius: var(--tlm-dlg-radius-sm, 6px);
+    background: var(--tlm-dlg-pane, rgba(27, 30, 44, 0.32));
+    border: var(--tlm-dlg-hairline, 1px solid rgba(255, 255, 255, 0.08));
+}
+
+.tlmcap-col-title {
+    margin-bottom: 6px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.tlmcap-col-title.tlmcap-on {
+    color: var(--tlm-dlg-accent, #55bbaa);
+}
+
+.tlmcap-col-title.tlmcap-off {
+    color: #ffd27a;
+}
+
+.tlmcap-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.tlmcap-row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+}
+
+.tlmcap-icon {
+    flex: 0 0 18px;
+    text-align: center;
+    font-weight: 700;
+}
+
+.tlmcap-on .tlmcap-icon {
+    color: var(--tlm-dlg-accent, #55bbaa);
+}
+
+.tlmcap-off .tlmcap-icon {
+    color: #ffd27a;
+}
+
+.tlmcap-copy {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.tlmcap-name {
+    color: var(--tlm-dlg-title, #ffffff);
+    font-size: 0.86rem;
+}
+
+.tlmcap-detail {
+    color: var(--tlm-dlg-body, #c1c5d0);
+    font-size: 0.78rem;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+}
+
+.tlmcap-back {
+    color: var(--tlm-dlg-text, #f0f1f7);
+}
+
+.tlmcap-source {
+    margin: 0;
+    color: var(--tlm-dlg-muted, #9ca2ba);
+    font-size: 0.74rem;
+    overflow-wrap: anywhere;
+}
+
+.tlmcap-dontshow {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--tlm-dlg-body, #c1c5d0);
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+
+.tlmcap-dontshow input {
+    accent-color: var(--tlm-dlg-accent, #55bbaa);
+}
+
+/* ── Notices ───────────────────────────────────────────────────────── */
+.tlm-capacity-toast {
+    position: fixed;
+    left: 50%;
+    bottom: 26px;
+    z-index: 100002;
+    max-width: min(620px, calc(100vw - 32px));
+    transform: translateX(-50%);
+    padding: 10px 16px;
+    border-radius: var(--tlm-dlg-radius, 8px);
+    background: var(--tlm-dlg-surface, #4a4f5c);
+    border: var(--tlm-dlg-border, 1px solid rgba(255, 255, 255, 0.12));
+    box-shadow: var(--tlm-dlg-shadow, 0 22px 70px rgba(0, 0, 0, 0.62));
+    color: var(--tlm-dlg-title, #ffffff);
+    font-family: var(--tlm-dlg-font, 'Nunito', sans-serif);
+    font-size: 0.86rem;
+    line-height: 1.4;
+    transition: opacity 0.6s ease;
+}
+
+.tlm-capacity-toast-ok {
+    border-left: 4px solid var(--tlm-dlg-accent, #55bbaa);
+}
+
+.tlm-capacity-toast-warn {
+    border-left: 4px solid #f5b43c;
+}
+
+.tlm-capacity-toast.is-leaving {
+    opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .tlm-capacity-toast {
+        transition: none;
+    }
+}

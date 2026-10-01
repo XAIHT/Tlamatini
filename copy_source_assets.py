@@ -287,6 +287,12 @@ REQUIRED_SNAPSHOT_FILES = (
     "Tlamatini/agent/context_baseline.py",
     "Tlamatini/agent/static/agent/js/context_gauge.js",
     "Tlamatini/agent/static/agent/css/context_gauge.css",
+    # Compact mode (2026-10-01): every request fitted to the model's REAL
+    # window; the capacity dialog/badge; readable answer tables.
+    "Tlamatini/agent/context_fitter.py",
+    "Tlamatini/agent/static/agent/js/model_capacity.js",
+    "Tlamatini/agent/static/agent/css/model_capacity.css",
+    "Tlamatini/agent/static/agent/js/chat_table_contrast.js",
     # Skill boundary: ONE validator, ONE redaction definition, and the tools
     # that count the skills and keep the .gemini mirror in step.
     "Tlamatini/agent/skills/validation.py",

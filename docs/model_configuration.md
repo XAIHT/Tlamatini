@@ -164,6 +164,10 @@ The browser avatar acknowledgment uses Config → Voice and Silent mode, not
 Talker's model/voice. The mic belongs to the Tlamatini host even when chat is
 opened remotely. See [the direct microphone guide](chat-microphone-design.md).
 
+## Small models and Compact mode
+
+Any Ollama model can be chosen. Tlamatini's complete request (her full prompt plus every enabled tool) is ~100K+ tokens, so for a model whose real window cannot hold it she switches to **Compact mode** for that model: System-Metrics, Files-Search and Current-Time keep working; agents, ACPX and External MCPs pause; a dialog and a toolbar badge say so, and choosing a larger model here brings everything back. Models with a 256K-token window (for example `nemotron-3-ultra:cloud`, `gemma4:31b-cloud`) receive the complete request. `context_compact_mode` (`auto` | `always` | `never`) overrides the automatic choice; an explicit value is obeyed. Details: [Compact mode](claude/architecture.md).
+
 ## Global choices, overrides and Parametrizer
 
 New templates use the quoted YAML string `"@config"`. A missing registered field

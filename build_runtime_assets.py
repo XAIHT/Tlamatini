@@ -30,6 +30,8 @@ REQUIRED_STATIC = (
     "agent/js/prompt-flow-panel-model.js", "agent/js/prompt-flow-panel.js",
     "agent/js/acp-editor-tools.js",
     "agent/js/context_gauge.js", "agent/css/context_gauge.css",
+    "agent/js/model_capacity.js", "agent/css/model_capacity.css",
+    "agent/js/chat_table_contrast.js",
     "agent/js/shared-runtime-dialogs.js", "agent/css/dialog_theme.css",
     "agent/js/avatar.js", "agent/css/avatar.css",
     "agent/img/avatar/eo_mc.jpg", "agent/img/avatar/ec_mc.jpg",

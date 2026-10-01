@@ -172,8 +172,8 @@ def schedule_refresh(user_id: Any, rag_chain: Any, history: list,
 
 
 # ── Rebuilding the next request with the chain's own code ───────────────────
-def _next_request(rag_chain: Any, history: list, flags: RefreshFlags
-                  ) -> Optional[Dict[str, Any]]:
+def _next_request(rag_chain: Any, history: list, flags: RefreshFlags,
+                  user_id: Any = None) -> Optional[Dict[str, Any]]:
     """Everything the NEXT message's first model step would send, minus the
     question text.  ``None`` when the main chain cannot be rebuilt."""
     cae = getattr(rag_chain, "unified_agent", None)
@@ -229,30 +229,66 @@ def _next_request(rag_chain: Any, history: list, flags: RefreshFlags
         notes.append("the context retrieved for that question"
                      + (f" ({'; '.join(detail)})" if detail else ""))
 
-    # 3. The tool surface, selected exactly as CapabilityAwareToolAgentExecutor.invoke does.
-    try:
-        cae._refresh_external_mcp_tool_surface()
-    except Exception:  # noqa: BLE001
-        pass
-    request_tools = filter_acpx_tools(cae.tools, flags.acpx)
-    if flags.multi_turn:
-        selected, _tool_tokens, dropped = _budget_select_tools(
-            request_tools,
-            system_prompt_text=cae.preeliminary_prompt,
-            input_text=input_text,
-            chat_history=hist,
-            global_execution_plan=None,
-        )
-        if request_tools and not selected:
-            selected = _emergency_core_tools(request_tools)
-            dropped = len(request_tools) - len(selected)
-        if dropped:
-            notes.append(f"which tools that question keeps ({len(selected)} of "
-                         f"{len(request_tools)} kept at rest)")
-        notes.append("the planner hint")
+    # 3. The tool surface AND the fit (full / compact) - the SAME
+    #    ``fit_request`` CapabilityAwareToolAgentExecutor.invoke uses
+    #    (2026-10-01), so the ring and the Compact-mode dialog show the
+    #    request that will really be sent.  A compact request never refreshes
+    #    the External-MCP surface (those servers are paused for it).
+    if hasattr(cae, "fit_request"):
+        def _fit(publish: bool) -> Dict[str, Any]:
+            return cae.fit_request(
+                input_text=input_text, chat_history=hist,
+                request_tools=filter_acpx_tools(cae.tools, flags.acpx),
+                multi_turn=flags.multi_turn, step_by_step=flags.step_by_step,
+                acpx_requested=flags.acpx, user_id=user_id, publish=publish,
+            )
+        fit = _fit(publish=False)
+        if fit.get("mode") != "compact":
+            try:
+                cae._refresh_external_mcp_tool_surface()
+            except Exception:  # noqa: BLE001
+                pass
+            fit = _fit(publish=True)
+        else:
+            cae._publish_fit(fit.get("report"), user_id)
+        executor = fit["executor"]
+        selected = list(fit.get("tools") or [])
+        input_text = fit.get("input", input_text)
+        hist = list(fit.get("history") or [])
+        dropped = int(fit.get("dropped") or 0)
+        if fit.get("mode") == "compact":
+            report = fit.get("report")
+            notes.append("COMPACT mode: this model is too small for the complete request"
+                         + (f" ({report.window_tokens:,}-token window)" if report else ""))
+        elif flags.multi_turn:
+            if dropped:
+                notes.append(f"which tools that question keeps ({len(selected)} of "
+                             f"{len(selected) + dropped} kept at rest)")
+            notes.append("the planner hint")
     else:
-        selected = request_tools
-    executor = cae._get_executor_for_tools(selected, step_by_step_enabled=flags.step_by_step)
+        try:
+            cae._refresh_external_mcp_tool_surface()
+        except Exception:  # noqa: BLE001
+            pass
+        request_tools = filter_acpx_tools(cae.tools, flags.acpx)
+        if flags.multi_turn:
+            selected, _tool_tokens, dropped = _budget_select_tools(
+                request_tools,
+                system_prompt_text=cae.preeliminary_prompt,
+                input_text=input_text,
+                chat_history=hist,
+                global_execution_plan=None,
+            )
+            if request_tools and not selected:
+                selected = _emergency_core_tools(request_tools)
+                dropped = len(request_tools) - len(selected)
+            if dropped:
+                notes.append(f"which tools that question keeps ({len(selected)} of "
+                             f"{len(request_tools)} kept at rest)")
+            notes.append("the planner hint")
+        else:
+            selected = request_tools
+        executor = cae._get_executor_for_tools(selected, step_by_step_enabled=flags.step_by_step)
 
     # 4. The messages - the executor's OWN builder.
     messages, prefix_count = executor.build_request_messages(input_text, hist)
@@ -325,7 +361,8 @@ def _probe(chat: Any, params: Dict[str, Any]) -> Tuple[Optional[int], Optional[i
 
 
 def refresh(user_id: Any, rag_chain: Any, history: list, flags: RefreshFlags,
-            reason: str, *, probe: Optional[bool] = None) -> Optional[Dict[str, Any]]:
+            reason: str, *, probe: Optional[bool] = None,
+            _refit: bool = False) -> Optional[Dict[str, Any]]:
     """Rebuild, measure and (optionally) probe the next request for ``user_id``.
 
     Returns a small summary dict (for tests and the lab), or None when nothing
@@ -340,7 +377,7 @@ def refresh(user_id: Any, rag_chain: Any, history: list, flags: RefreshFlags,
         settings = cg.resolve_settings(config)
         if not settings.enabled or not settings.gauge_enabled:
             return None
-        built = _next_request(rag_chain, history, flags)
+        built = _next_request(rag_chain, history, flags, user_id)
         if built is None:
             return None
         executor = built["executor"]
@@ -414,6 +451,27 @@ def refresh(user_id: Any, rag_chain: Any, history: list, flags: RefreshFlags,
                              field_name="prompt_eval_count (probe, num_predict=1)",
                              config=config)
         summary.update(prompt_tokens=prompt, probed=True, seconds=round(seconds, 3))
+        # 2026-10-01: did Ollama CUT this request?  Then its count IS the
+        # model's real window - learn it and rebuild the next request ONCE,
+        # fitted to that window, so the ring and the Compact-mode dialog are
+        # right BEFORE the user's first question (not after it fails).
+        try:
+            from .context_fitter import message_chars
+            chars = message_chars(messages) + int(schema_chars or 0)
+            verdict = cg.note_real_count(model, base_url, prompt, chars,
+                                         source=f"at-rest probe ({reason})")
+            if verdict.get("truncated") and not _refit:
+                summary["truncated"] = True
+                print(f"--- [CONTEXT-PROBE] ({reason}) Ollama cut the probed request at "
+                      f"{verdict.get('window')} tokens - re-fitting the next request")
+                with _LOCK:
+                    _LAST_PROBE.pop(user_id, None)
+                refit = refresh(user_id, rag_chain, history, flags, f"{reason}, re-fitted",
+                                probe=probe, _refit=True)
+                if refit is not None:
+                    summary["refit"] = refit
+        except Exception as cut_err:  # noqa: BLE001
+            print(f"--- [CONTEXT-PROBE] cut check skipped ({cut_err})")
         return summary
     except Exception as exc:  # noqa: BLE001 - the gauge owes the chat nothing
         print(f"--- [CONTEXT-REST] ({reason}) failed open: {type(exc).__name__}: {exc}")

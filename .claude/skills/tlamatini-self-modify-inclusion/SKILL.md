@@ -297,6 +297,10 @@ shapes, but a novel config path needs the redaction rule extended).
 
 The 2026-09-25 line-ending warning about `copy_source_assets.py` is resolved: `ca66745` committed only its 28 real lines. It happens easily: `build.py` and `copy_source_assets.py` have MIXED line endings, and an editor that normalizes them rewrites the whole file. Check `git diff --stat` against `git diff --ignore-space-at-eol --stat` before committing.
 
+### Compact mode snapshot gate (2026-10-01)
+
+- `REQUIRED_SNAPSHOT_FILES` (`copy_source_assets.py`) names `context_fitter.py`, `model_capacity.js`, `model_capacity.css` and `chat_table_contrast.js`, so a self-rebuild keeps the fitter and its page pieces together.
+
 ### Central model settings runtime gate (2026-09-20)
 
 The model registry must ship as compiled `agent.agents.model_settings` and as

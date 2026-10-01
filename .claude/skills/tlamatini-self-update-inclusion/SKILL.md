@@ -361,6 +361,12 @@ The Prompt Flow Panel executes inside the frozen **web process** (`routing.py` i
 - The 22 Prompt Flow Panel files that were untracked on 2026-09-25 were committed in `ca66745` (2026-09-26), so a clean clone now carries them.
 - ⚠️ The `v1.70.0` tag points at `cf62bd8` (2026-09-23), which is BEFORE `ca66745`. A release built from that tag does not contain the Prompt Flow Panel. Build the release from a commit at or after `ca66745`, and never move or delete a pushed tag to fix this. `sweep_self_update.py` counts migrations against the nearest TAG, so also compare by hand against the last PUBLISHED release (`gh release list`); no migration was added after `v1.65.4`.
 
+### Compact mode carrier gate (2026-10-01)
+
+- `REQUIRED_STATIC` (`build_runtime_assets.py`) also names `model_capacity.js`, `model_capacity.css` and `chat_table_contrast.js` — every chat page loads them.
+- `agent/context_fitter.py` is imported at module level by `mcp_agent.py`, so the frozen import graph carries it; the tool-less chains import it fail-open.
+- No migration and no new `config.json` key are required: `context_compact_mode` falls back to `auto` in code.
+
 ### Central model settings runtime gate (2026-09-20)
 
 The model registry must ship as compiled `agent.agents.model_settings` and as

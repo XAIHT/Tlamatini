@@ -325,6 +325,51 @@ def _build_loaded_documents_fallback_context(documents, config):
 
     return packed_context
 
+def _fit_non_tool_prompt_for_model(config, prompt_string, llm, compression_cfg=None):
+    """A TOOL-LESS chain built for a model too small for the complete prompt
+    gets Angela's rules by priority instead (Angela, 2026-10-01).
+
+    The tool-less chains (unified agent switched off) used to hand the full
+    ~87 KB prompt.pmt to whatever model was configured; a small local model
+    silently lost most of it.  The model's REAL window
+    (``context_fitter.resolve_window`` - Ollama's own proof first) decides:
+    a model that can hold the prompt plus room for a conversation gets it
+    unchanged; a smaller one gets ``compact_prompt`` (template placeholders
+    kept) and a retrieved-context budget clipped to its window.  Fail-open.
+    """
+    try:
+        from ..context_fitter import (
+            compact_answer_rules, compact_mode_setting, compact_prompt, resolve_window,
+        )
+        target = getattr(llm, "bound", None) or llm
+        model = str(getattr(target, "model", "") or config.get("chained-model") or "")
+        base_url = str(getattr(target, "base_url", "") or config.get("ollama_base_url") or "")
+        window = resolve_window(config, model, base_url)
+        setting = compact_mode_setting(config)
+        usable = window.usable_chars
+        if setting == "never" or (setting == "auto" and len(prompt_string) + 12000 <= usable):
+            return prompt_string
+        text, info = compact_prompt(prompt_string, int(min(max(usable * 0.40, 1500), 30000)),
+                                    keep_placeholders=True)
+        # The seven Compact-mode answer rules close the prompt (no braces in
+        # them, so the template stays valid).
+        text = text.rstrip() + "\n\n" + compact_answer_rules(
+            model=model, window_tokens=window.tokens).replace("{", "{{").replace("}", "}}") + "\n"
+        if isinstance(compression_cfg, dict):
+            cap = max(1500, int(usable * 0.35))
+            if int(compression_cfg.get("max_context_chars") or 0) > cap:
+                compression_cfg["max_context_chars"] = cap
+            if int(compression_cfg.get("max_doc_chars") or 0) > cap:
+                compression_cfg["max_doc_chars"] = cap
+        print(f"--- [CONTEXT-FIT] {model}: tool-less chain prompt compacted {len(prompt_string):,} -> "
+              f"{len(text):,} chars ({info.get('prompt_profile')}) for a {window.tokens:,}-token "
+              f"window ({window.source})")
+        return text
+    except Exception as fit_err:  # noqa: BLE001 - the fitter must never break a chain build
+        print(f"--- [CONTEXT-FIT] tool-less prompt fit failed open ({fit_err})")
+        return prompt_string
+
+
 def build_prompt_only_chain(config, prompt_template_string, documents=None):
     """Builds a simple prompt-only chain with the same interface as the retrieval chain.
 
@@ -402,6 +447,8 @@ def _build_prompt_only_chain_impl(config, prompt_template_string, documents=None
     # _build_system_prompt can resolve the blocks per-request from its tool set.
     non_tool_prompt_string = apply_conditional_rule_blocks(
         prompt_template_string, include_acpx=False, include_templates=False)
+    if not bool(config.get("enable_unified_agent", False)):
+        non_tool_prompt_string = _fit_non_tool_prompt_for_model(config, non_tool_prompt_string, llm)
 
     # Create unified prompt that supports all contexts
     final_qa_prompt = ChatPromptTemplate.from_messages([
@@ -529,6 +576,9 @@ def build_retrieval_chain(documents, config, prompt_template_string):
             # rule blocks (no tools are ever bound on this chain).
             non_tool_prompt_string = apply_conditional_rule_blocks(
                 prompt_template_string, include_acpx=False, include_templates=False)
+            if not bool(config.get("enable_unified_agent", False)):
+                non_tool_prompt_string = _fit_non_tool_prompt_for_model(
+                    config, non_tool_prompt_string, llm)
             final_qa_prompt = ChatPromptTemplate.from_messages([
                 ("system", non_tool_prompt_string),
                 MessagesPlaceholder("chat_history"),
@@ -646,8 +696,13 @@ def build_retrieval_chain(documents, config, prompt_template_string):
             # blocks (this chain never binds tools).
             chain = OptimizedHistoryAwareRAGChain(
                 llm=llm,
-                prompt_template_string=apply_conditional_rule_blocks(
-                    final_prompt_string, include_acpx=False, include_templates=False),
+                prompt_template_string=_fit_non_tool_prompt_for_model(
+                    config,
+                    apply_conditional_rule_blocks(
+                        final_prompt_string, include_acpx=False, include_templates=False),
+                    llm,
+                    compression_cfg,
+                ),
                 contextualize_q_prompt=contextualize_q_prompt,
                 vector_store=vector_store,
                 split_docs=split_docs,

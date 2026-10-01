@@ -95,6 +95,17 @@ __all__ = [
     "KIND_REST",
     "KIND_SIDE",
     "CONTEXT_BLOCKS",
+    # The EFFECTIVE window + model capacity (2026-10-01).
+    "window_key",
+    "learned_window",
+    "learned_window_info",
+    "measured_chars_per_token",
+    "fit_chars_per_token",
+    "forget_learned_windows",
+    "note_real_count",
+    "set_capacity",
+    "capacity_for",
+    "publish_capacity",
 ]
 
 
@@ -323,6 +334,13 @@ def resolve_ceiling_tokens(
             return s.ceiling_tokens, "config"
         num_ctx = _as_int(cfg.get("ollama_num_ctx"), 0, minimum=1)
         name = str(model or "").strip()
+        if name:
+            # 2026-10-01: a window Ollama PROVED by cutting a larger request
+            # outranks every declared number - /api/show cannot see a server
+            # that splits its cache into parallel slots.
+            learned = learned_window(name, str(base_url or cfg.get("ollama_base_url") or ""))
+            if learned:
+                return learned, "learned: Ollama read only %d tokens of a larger request" % learned
         if name and s.ceiling_from_backend:
             base = str(base_url or cfg.get("ollama_base_url") or "").strip()
             info = _ollama_show_info(
@@ -659,6 +677,10 @@ def gauge_payload(measurement: Measurement, settings: Optional[GovernorSettings]
             "bytes_history": int(measurement.history_bytes),
             "bytes_loop": int(measurement.loop_bytes),
             "bytes_human": humanize_bytes(measurement.total_bytes),
+            # Characters drive the truncation verdict when Ollama's real
+            # count arrives (a request cannot hold more chars than physics
+            # allows per token - see note_real_count).
+            "chars_total": int(measurement.total_chars),
             "tokens_estimated": int(measurement.tokens_estimated),
             "tokens_are_estimated": True,
             "ceiling_tokens": int(measurement.ceiling_tokens),
@@ -732,6 +754,12 @@ def publish_gauge(user_id: Any, payload: Dict[str, Any]) -> bool:
     if emit is None:
         return False
     try:
+        # 2026-10-01: every frame carries this user's model-capacity verdict
+        # (full / compact) so the page reacts from the frame that draws the ring.
+        cap = capacity_for(user_id)
+        if cap and isinstance(payload, dict):
+            payload = dict(payload)
+            payload["capacity"] = cap
         emit(payload)
         return True
     except Exception:  # noqa: BLE001 - the chat path owes the gauge nothing
@@ -1219,6 +1247,202 @@ def ollama_context_length(
         return 0
 
 
+# ── The EFFECTIVE window: what Ollama REALLY reads (Angela, 2026-10-01) ─────
+# ``/api/show`` names the context a model was TRAINED for.  A LOCAL Ollama can
+# serve less, and no API says so.  Measured 2026-10-01 on ``qwen2.5:latest``:
+# ``/api/show`` and ``/api/ps`` both reported 32,768, yet every ~52,000-token
+# request came back with ``prompt_eval_count = 16386`` - the server runs with
+# ``OLLAMA_NUM_PARALLEL=2``, which splits the 32,768-token cache into two
+# 16,384-token slots, and Ollama silently DROPPED two thirds of every request.
+# The model then answered "what is my CPU usage?" with the time of day.
+#
+# The only honest source for the real window is therefore Ollama's own count.
+# A request whose characters cannot possibly fit in the tokens Ollama says it
+# read was CUT, and the count it reports IS the window.  ``note_real_count()``
+# is fed every main-chain count (live steps and at-rest probes); the window it
+# learns is consulted FIRST by ``resolve_ceiling_tokens`` after an explicit
+# ``context_ceiling_tokens``, so the gauge, the tool budgeter and the request
+# fitter all agree on one number - one definition of the budget.
+#
+# CONTRACTS (do NOT weaken):
+#   * FAIL OPEN - nothing here raises; an unusable observation is ignored.
+#   * Judge only what physics can judge: a request is called "cut" only when
+#     its characters per reported token are beyond anything a tokenizer
+#     produces (or beyond this model's own measured ratio by a wide margin).
+#   * A learned window is forgotten the moment Ollama reads MORE than it in
+#     one request - the evidence moved, so the belief must move with it.
+TRUNCATION_MIN_CHARS = 6000
+TRUNCATION_CHARS_PER_TOKEN = 6.0
+TRUNCATION_MEASURED_FACTOR = 1.6
+DEFAULT_FIT_CHARS_PER_TOKEN = 3.0
+_WINDOW_LOCK = threading.Lock()
+_LEARNED_WINDOWS: "Dict[Tuple[str, str], Dict[str, Any]]" = {}
+_MEASURED_CPT: "Dict[Tuple[str, str], float]" = {}
+
+
+def window_key(model: str, base_url: str = "") -> Tuple[str, str]:
+    """``(server, model)`` normalised so 127.0.0.1 / localhost / 0.0.0.0 agree."""
+    base = (str(base_url or "").strip() or "http://127.0.0.1:11434").rstrip("/").lower()
+    for alias in ("//localhost", "//0.0.0.0", "//[::1]"):
+        base = base.replace(alias, "//127.0.0.1")
+    return base, str(model or "").strip().lower()
+
+
+def learned_window(model: str, base_url: str = "") -> Optional[int]:
+    """The window Ollama PROVED for this model (a cut request), or None."""
+    try:
+        with _WINDOW_LOCK:
+            hit = _LEARNED_WINDOWS.get(window_key(model, base_url))
+        return int(hit["tokens"]) if hit else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def learned_window_info(model: str, base_url: str = "") -> Optional[Dict[str, Any]]:
+    try:
+        with _WINDOW_LOCK:
+            hit = _LEARNED_WINDOWS.get(window_key(model, base_url))
+        return dict(hit) if hit else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def measured_chars_per_token(model: str, base_url: str = "") -> Optional[float]:
+    """This model's measured characters-per-token on Tlamatini's own requests."""
+    try:
+        with _WINDOW_LOCK:
+            value = _MEASURED_CPT.get(window_key(model, base_url))
+        return float(value) if value else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def fit_chars_per_token(model: str, base_url: str = "") -> float:
+    """The ratio a FITTER should plan with: measured when known (with a 10 %
+    safety margin), otherwise a deliberately pessimistic 3.0 - over-counting
+    tokens only shrinks a request a little more; under-counting gets it cut."""
+    measured = measured_chars_per_token(model, base_url)
+    if measured:
+        return max(1.5, min(4.5, measured * 0.9))
+    return DEFAULT_FIT_CHARS_PER_TOKEN
+
+
+def forget_learned_windows() -> None:
+    """Drop every learned window and ratio (tests, and a model change)."""
+    with _WINDOW_LOCK:
+        _LEARNED_WINDOWS.clear()
+        _MEASURED_CPT.clear()
+
+
+def note_real_count(
+    model: str,
+    base_url: str,
+    prompt_tokens: Any,
+    request_chars: Any,
+    *,
+    source: str = "",
+) -> Dict[str, Any]:
+    """Judge one REAL count: was this request cut?  Learn from it.  Never raises.
+
+    Returns ``{"truncated": bool, "window": int|None, "chars_per_token": float,
+    "kept_pct": float}`` (``{}`` when the observation cannot be judged).
+    """
+    try:
+        tokens = _nonneg_int(prompt_tokens) or 0
+        chars = _nonneg_int(request_chars) or 0
+        name = str(model or "").strip()
+        if not name or tokens <= 0 or chars <= 0:
+            return {}
+        key = window_key(name, base_url)
+        cpt = chars / float(tokens)
+        with _WINDOW_LOCK:
+            measured = _MEASURED_CPT.get(key)
+            known = _LEARNED_WINDOWS.get(key)
+        limit = TRUNCATION_CHARS_PER_TOKEN
+        if measured:
+            limit = min(limit, max(measured * TRUNCATION_MEASURED_FACTOR, 4.2))
+        truncated = chars >= TRUNCATION_MIN_CHARS and cpt > limit
+        if (not truncated and known and chars >= TRUNCATION_MIN_CHARS
+                and abs(tokens - int(known["tokens"])) <= 16
+                and cpt > (measured or DEFAULT_FIT_CHARS_PER_TOKEN) * 1.15):
+            # Exactly the window we already learned, from a request that is
+            # clearly larger than it: the same wall, hit again.
+            truncated = True
+        result: Dict[str, Any] = {"truncated": truncated, "window": None,
+                                  "chars_per_token": round(cpt, 3)}
+        if truncated:
+            expected = chars / float(measured or DEFAULT_FIT_CHARS_PER_TOKEN)
+            kept_pct = max(0.0, min(100.0, tokens * 100.0 / expected)) if expected else 0.0
+            info = {"tokens": tokens, "at": time.time(), "chars": chars,
+                    "source": str(source or ""), "kept_pct": round(kept_pct, 1)}
+            with _WINDOW_LOCK:
+                _LEARNED_WINDOWS[key] = info
+            result.update(window=tokens, kept_pct=round(kept_pct, 1))
+            print(f"--- [CONTEXT-WINDOW] {name}: Ollama CUT a request - it read only "
+                  f"{tokens} tokens of ~{chars} characters ({cpt:.1f} chars/token, "
+                  f"limit {limit:.1f}; ~{kept_pct:.0f}% kept). The REAL window of this "
+                  f"model on this server is {tokens} tokens - learned"
+                  f"{' (' + source + ')' if source else ''}.")
+            return result
+        if chars >= 2000:
+            with _WINDOW_LOCK:
+                prev = _MEASURED_CPT.get(key)
+                _MEASURED_CPT[key] = cpt if not prev else (prev * 0.7 + cpt * 0.3)
+        if known and tokens > int(known["tokens"]) + 16:
+            with _WINDOW_LOCK:
+                _LEARNED_WINDOWS.pop(key, None)
+            print(f"--- [CONTEXT-WINDOW] {name}: Ollama read {tokens} tokens, more than the "
+                  f"{known['tokens']} learned earlier - that window is forgotten")
+        return result
+    except Exception:  # noqa: BLE001
+        return {}
+
+
+# ── Per-user MODEL CAPACITY (Angela, 2026-10-01) ────────────────────────────
+# The fitter (``agent/context_fitter.py``) decides, for every request, whether
+# the model can hold Tlamatini's COMPLETE request ("full") or must run in
+# "compact" mode.  That verdict is per connected user (each tab may run a
+# different chain) and rides on EVERY gauge frame as ``capacity``, so the page
+# can show the Compact-mode dialog, the badge and the locked ACPX switch from
+# the same frame that draws the ring - no second channel to drift.
+_CAPACITY_LOCK = threading.Lock()
+_CAPACITY: "Dict[Any, Dict[str, Any]]" = {}
+
+
+def set_capacity(user_id: Any, info: Optional[Dict[str, Any]]) -> bool:
+    """Store this user's capacity verdict.  Returns True when the MODE, the
+    model or the window changed (the page needs a fresh frame)."""
+    try:
+        if user_id is None or not isinstance(info, dict):
+            return False
+        with _CAPACITY_LOCK:
+            prev = _CAPACITY.get(user_id)
+            _CAPACITY[user_id] = dict(info)
+        if prev is None:
+            return True
+        return any(prev.get(k) != info.get(k) for k in ("mode", "model", "window_tokens"))
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def capacity_for(user_id: Any) -> Optional[Dict[str, Any]]:
+    try:
+        with _CAPACITY_LOCK:
+            hit = _CAPACITY.get(user_id)
+        return dict(hit) if hit else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def publish_capacity(user_id: Any) -> bool:
+    """Re-send this user's newest frame so a changed verdict reaches the page
+    at once.  Never raises."""
+    try:
+        return _republish_latest(user_id)
+    except Exception:  # noqa: BLE001
+        return False
+
+
 # ── Reading Ollama's counts out of a LangChain result ────────────────────────
 def usage_from_llm_result(obj: Any) -> Optional[Dict[str, Any]]:
     """Ollama's own ``prompt_eval_count`` / ``eval_count`` from a result.
@@ -1324,6 +1548,18 @@ def apply_real_tokens(payload: Dict[str, Any], real: Dict[str, Any]) -> Dict[str
         estimate = int(payload.get("tokens_estimated") or 0)
         if prompt > 0:
             payload["estimate_error_pct"] = round((estimate - prompt) * 100.0 / prompt, 2)
+        # 2026-10-01: a REAL count that is physically too small for the
+        # characters sent means Ollama CUT the request.  Never draw that as
+        # "50% used" - it is 100% full and something was thrown away.
+        chars = int(payload.get("chars_total") or 0)
+        if (prompt > 0 and chars >= TRUNCATION_MIN_CHARS
+                and chars / float(prompt) > TRUNCATION_CHARS_PER_TOKEN):
+            payload["truncated"] = True
+            payload["ratio"] = 1.0
+            payload["zone"] = ZONE_FLOOR
+            payload["truncated_note"] = (
+                "Ollama read only %d tokens of this request and DROPPED the rest - "
+                "the model's real window is smaller than its declared one" % prompt)
     except Exception:  # noqa: BLE001
         pass
     return payload

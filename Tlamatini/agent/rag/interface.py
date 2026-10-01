@@ -302,6 +302,35 @@ def _has_deterministic_filesystem_intent(question: str) -> bool:
     return bool(_DIRECT_FILESYSTEM_ACTION.search(normalized))
 
 
+def _compact_mode_access_message(user_id):
+    """The file-access guard's answer for a user whose model runs in COMPACT
+    mode (Angela, 2026-10-01).
+
+    The guard normally asks for an explicit absolute path.  In Compact mode
+    that advice is a dead end: the request carries NO file, command or agent
+    tools at all (``context_fitter``), so the user would type the full path
+    and still get nothing.  Measured on qwen2.5:latest - "Create a file named
+    compact_test.txt on my Desktop" got the path lecture.  Say the true reason
+    and the way out instead.  ``None`` outside Compact mode; never raises.
+    """
+    try:
+        from .. import context_governor
+        cap = context_governor.capacity_for(user_id) or {}
+        if cap.get("mode") != "compact":
+            return None
+        model = str(cap.get("model") or "the current model")
+        window = int(cap.get("window_tokens") or 0)
+        size = f" ({window:,}-token window)" if window else ""
+        return (
+            f"I can't do that right now - Tlamatini is in Compact mode because {model} is a "
+            f"small model{size}, so she has no tools to read, create, edit, move or delete "
+            "files, run commands or launch agents. Choose a larger model in Config ▸ Models "
+            "to get those abilities back."
+        )
+    except Exception:  # noqa: BLE001 - the guard's own message stays
+        return None
+
+
 def _relative_path_rejection_message() -> str:
     return (
         "The actions to routes or files must exclusively be in absolute "
@@ -773,6 +802,10 @@ def _ask_rag_impl(rag_chain, question, chat_history=None, inet_enabled=False):
         access_rejection = None
     else:
         access_rejection = _validate_accesses_in_prompt(raw_text)
+        if access_rejection:
+            # In Compact mode the guard's "give me an absolute path" advice is
+            # a dead end - say the true reason instead (2026-10-01).
+            access_rejection = _compact_mode_access_message(_conversation_user_id) or access_rejection
     if access_rejection:
         print("--- ask_rag: prompt rejected by access validation")
         # Cancel/discard the inet result — security gate takes priority

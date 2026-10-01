@@ -49,6 +49,68 @@ def _non_tool_system_prompt(prompt_template_string: str) -> str:
         prompt_template_string, include_acpx=False, include_templates=False)
 
 
+def _fit_tool_less(prompt_template_string: str, llm, answer_payload: dict):
+    """The TOOL-LESS answer path, fitted to the model's REAL window (2026-10-01).
+
+    Every fallback / basic answer used to send the complete prompt.pmt (~87 KB)
+    plus the whole loaded context to whatever model was configured.  A small
+    local model silently lost most of it.  Now: a model that can hold the
+    complete request gets exactly the prompt it always got; a smaller one gets
+    Angela's rules by priority (``context_fitter.compact_prompt``, template
+    placeholders kept) and the loaded context / history clipped into what is
+    left.  Returns ``(system_prompt, payload)``.  Fail-open: on any error the
+    complete prompt and the untouched payload come back.
+    """
+    base = _non_tool_system_prompt(prompt_template_string)
+    try:
+        from ...config_loader import load_config
+        from ...context_fitter import (
+            compact_answer_rules, compact_mode_setting, compact_prompt, fit_history,
+            fit_input, message_chars, resolve_window,
+        )
+        cfg = load_config() or {}
+        target = getattr(llm, "bound", None) or llm
+        model = str(getattr(target, "model", "") or "")
+        base_url = str(getattr(target, "base_url", "") or "")
+        window = resolve_window(cfg, model, base_url)
+        setting = compact_mode_setting(cfg)
+        usable = window.usable_chars
+        hist = list(answer_payload.get("chat_history") or [])
+        dyn = sum(len(str(answer_payload.get(k) or ""))
+                  for k in ("input", "system_context", "files_context", "context"))
+        total = len(base) + dyn + message_chars(hist)
+        if setting == "never" or (setting == "auto" and total <= usable):
+            return base, answer_payload
+        prompt, info = compact_prompt(
+            base, int(min(max(usable * 0.40, 1500), 30000)), keep_placeholders=True,
+            context_loaded=bool(answer_payload.get("context")),
+        )
+        # The seven Compact-mode answer rules close the prompt (braces escaped:
+        # this prompt is a template).
+        prompt = prompt.rstrip() + "\n\n" + compact_answer_rules(
+            model=model, window_tokens=window.tokens).replace("{", "{{").replace("}", "}}") + "\n"
+        fitted = dict(answer_payload)
+        room = usable - len(prompt) - sum(
+            len(str(fitted.get(k) or "")) for k in ("input", "system_context", "files_context"))
+        ctx = str(fitted.get("context") or "")
+        if ctx:
+            fitted["context"], _ctx_info = fit_input(ctx, max(600, int(room * 0.7)))
+            room -= len(fitted["context"])
+        fitted["chat_history"], _h_info = fit_history(
+            hist, max(0, room), input_text=str(fitted.get("input") or ""),
+            max_messages=6, per_message_cap=max(800, usable // 6),
+        )
+        print(f"--- [CONTEXT-FIT] {model}: tool-less answer fitted to {window.tokens:,} tokens "
+              f"({window.source}) - prompt {len(base):,} -> {len(prompt):,} chars "
+              f"({info.get('prompt_profile')}), context {len(ctx):,} -> "
+              f"{len(str(fitted.get('context') or '')):,} chars, history "
+              f"{len(fitted['chat_history'])}/{len(hist)}")
+        return prompt, fitted
+    except Exception as fit_err:  # noqa: BLE001 — the fitter must never break an answer
+        print(f"--- [CONTEXT-FIT] tool-less fit failed open ({fit_err}) - complete prompt sent")
+        return base, answer_payload
+
+
 # Transient-error fingerprints that warrant retrying the unified-agent call
 # before falling back to the tool-less basic-LLM path. Cloud Ollama in
 # particular returns 500 / 502 / forcibly-closed sockets under load; when that
@@ -519,8 +581,9 @@ User Question: {enhanced_input}"""
                     "files_context": payload.get("files_context", ""),
                     "context": loaded_context,
                 }
+                _fit_prompt, answer_payload = _fit_tool_less(self.prompt_template_string, self.llm, answer_payload)
                 qa_prompt = ChatPromptTemplate.from_messages([
-                    ("system", _non_tool_system_prompt(self.prompt_template_string)),
+                    ("system", _fit_prompt),
                     MessagesPlaceholder("chat_history"),
                     ("human", "{input}"),
                 ])
@@ -537,8 +600,9 @@ User Question: {enhanced_input}"""
                 "files_context": payload.get("files_context", ""),
                 "context": loaded_context,
             }
+            _fit_prompt, answer_payload = _fit_tool_less(self.prompt_template_string, self.llm, answer_payload)
             qa_prompt = ChatPromptTemplate.from_messages([
-                ("system", _non_tool_system_prompt(self.prompt_template_string)),
+                ("system", _fit_prompt),
                 MessagesPlaceholder("chat_history"),
                 ("human", "{input}"),
             ])
@@ -998,11 +1062,6 @@ User Question: {enhanced_input}"""
                     fallback_input = _fallback_notice_for(
                         agent_exception, q_rewritten, with_context=True
                     )
-                qa_prompt = ChatPromptTemplate.from_messages([
-                    ("system", _non_tool_system_prompt(self.prompt_template_string)),
-                    MessagesPlaceholder("chat_history"),
-                    ("human", "{input}"),
-                ])
                 answer_payload = {
                     "input": fallback_input,
                     "chat_history": hist,
@@ -1010,16 +1069,17 @@ User Question: {enhanced_input}"""
                     "files_context": files_ctx or "",
                     "context": scoped_context_blob,
                 }
+                _fit_prompt, answer_payload = _fit_tool_less(self.prompt_template_string, self.llm, answer_payload)
+                qa_prompt = ChatPromptTemplate.from_messages([
+                    ("system", _fit_prompt),
+                    MessagesPlaceholder("chat_history"),
+                    ("human", "{input}"),
+                ])
                 answer_chain = (qa_prompt | self.llm).with_config({"callbacks": [Callbacks(main=True)]})
                 answered = answer_chain.invoke(answer_payload)
                 answer = getattr(answered, "content", str(answered))
         else:
             # Fallback to basic LLM call with context
-            qa_prompt = ChatPromptTemplate.from_messages([
-                ("system", _non_tool_system_prompt(self.prompt_template_string)),
-                MessagesPlaceholder("chat_history"),
-                ("human", "{input}"),
-            ])
             answer_payload = {
                 #"input": original_input,
                 "input": q_rewritten,
@@ -1028,6 +1088,12 @@ User Question: {enhanced_input}"""
                 "files_context": files_ctx or "",
                 "context": scoped_context_blob,
             }
+            _fit_prompt, answer_payload = _fit_tool_less(self.prompt_template_string, self.llm, answer_payload)
+            qa_prompt = ChatPromptTemplate.from_messages([
+                ("system", _fit_prompt),
+                MessagesPlaceholder("chat_history"),
+                ("human", "{input}"),
+            ])
             answer_chain = (qa_prompt | self.llm).with_config({"callbacks": [Callbacks(main=True)]})
             answered = answer_chain.invoke(answer_payload)
             answer = getattr(answered, "content", str(answered))
