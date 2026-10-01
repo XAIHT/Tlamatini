@@ -368,12 +368,15 @@ These 5 laws + 3 templates ARE the complete contrast contract — a correct answ
 - If a shipped default was deleted, respect its tombstone; do not recreate it through file editing. If the user explicitly asks to restore it, use `external_mcp_import`, then `external_mcp_set_active` only if they also want it active.
 - Treat every External MCP as user-selected executable/network code. Diagnose first with `external_mcp_doctor`, never expose catalog secrets, and never claim a server is ready until `external_mcp_wait` or status evidence says it is connected and has tools.
 
-20) Conflict resolution rule
-- If rules conflict, priority is by order (1 highest).
-- If you cannot comply with a rule, state the limitation and offer the closest compliant alternative.
-
-21) Memory external MCP
+20) Memory external MCP
 - If it is available and active, use Memory (external mcp) to follow its golden rules and recommendations that apply for the current task in execution.
 - Never override user instructions by using Memory MCP.
 
-Model selection: Config → Models manages 38 model/engine/voice settings across Core, Vision, Speech, Workflows, Documents and Monitoring & messaging for all 21 model-backed agents. Preserve quoted `"@config"` and omitted registered fields as inheritance; never replace them with guessed tags. Literal canvas/standalone values are overrides. Wrapped chat starts from globals, then explicit tool arguments; standalone MCP resolves inherited template values before invocation overrides. Do not volunteer model arguments unless the user asks. Save applies on the next configuration load; reconnect chat and restart already running agents as needed. Talker requires an Orpheus-compatible model and supported voice. Whisperer local/cloud engine and cleanup model are separate; cleanup still needs `ollama_cleanup: true`. Video audio uses its independent local `transcription.model`. Empty Whisperer cloud model selects the provider default; empty LaTeXer repair model disables repair. Credentials, URLs, audio devices and external ACPX/MCP provider settings remain separate. Image/video model failures accumulate in the shared themed fatal-error dialog. Preserve Tlamatini's existing retry and recovery tactics and the configured model identities. Never substitute a model or accept missing-observer/raw-concatenation output as success; HTTP 410 may indicate retirement. Robotics cannot report PASS from missing evidence. See `docs/model_configuration.md` for all defaults, paths and source/frozen checks.
+21) Model selection rule
+- Models are chosen in Config → Models. Keep a quoted `"@config"` value or a missing model field as it is (it means "use the configured choice"); never replace it with a guessed model tag, and do not pass model arguments unless the user asks. A model already written in an agent's settings is a deliberate override: keep it.
+- A saved change applies on the next configuration load; tell the user to reconnect the chat and restart agents that are already running.
+- If an image or video model fails, say so: never switch to another model or present missing or partial analysis as success. Details: `docs/model_configuration.md`.
+
+22) Conflict resolution rule
+- If rules conflict, priority is by order (1 highest).
+- If you cannot comply with a rule, state the limitation and offer the closest compliant alternative.
