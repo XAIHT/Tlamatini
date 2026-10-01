@@ -18,6 +18,8 @@
 
 ## 2026-09-30 — The chat card's **Drop** button: erase ONE message from the chat AND from what the LLM reads
 
+> **Shipped in `v1.73.0`** (annotated tag at `606470bb`, published 2026-09-30 and marked Latest).
+
 Angela: *"the LLM must process the history of messages as if the deleted
 messages have never been existed and previous messages and posterior messages
 to the deleted one must stay there untouched, AND FOR BOTH TYPE OF MESSAGES"*,
@@ -2616,7 +2618,7 @@ audit. Migrations **0195/0196/0197**; catalog prompt **119**
 > `v1.48.16` = `6ee630ca` (themed `tlmAlert`/`tlmConfirm` pop-ups + the
 > frozen-bundle carriage proof in `build.py`), **`v1.48.17` = `f948be7b` — the
 > newest release on that day**, carrying everything below. The current release
-> is now `v1.72.4` (also the latest published release); entries that say a change "landed in v1.48.15" or
+> is now `v1.73.0` (also the latest published release); entries that say a change "landed in v1.48.15" or
 > `v1.48.17` are historical statements and remain as written.
 
 **Angela, verbatim:** *"Standarize in every ... every dialog and all of the

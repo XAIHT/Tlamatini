@@ -190,7 +190,7 @@ Files involved:
 
 ---
 
-## Dropped messages and Multi-Turn (2026-09-30, on `main`, not yet released)
+## Dropped messages and Multi-Turn (2026-09-30, shipped in `v1.73.0`)
 
 The **Drop** button on a chat card deletes that message's `AgentMessage` row. Every chain, including both unified (Multi-Turn) chains, loads its history with `DBChatHistoryLoader.load(limit=8)` on each request, so the next Multi-Turn plan and tool loop are built as if the dropped message had never existed. There is no reconnect, no cache to clear, and the messages before and after it stay untouched. Three consequences:
 
