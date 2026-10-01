@@ -208,7 +208,20 @@ def _apply_nvidia_levers() -> None:
         print(f"--- [GPU-PERF] Post-apply GPU state: {state}")
 
 
-def pin_ollama_model(model: str, base_url: str, timeout: int = 5) -> bool:
+def _ollama_auth_headers(token: str | None) -> dict:
+    """The Bearer header every other Ollama call in Tlamatini sends, or {}.
+
+    A remote Ollama behind a token proxy (e.g. a rented GPU server) answers
+    401 to a request without it. A ``<... goes here>`` placeholder is not a
+    token and is never sent.
+    """
+    token = str(token or "").strip()
+    if not token or (token.startswith("<") and token.endswith(">")):
+        return {}
+    return {"Authorization": f"Bearer {token}"}
+
+
+def pin_ollama_model(model: str, base_url: str, timeout: int = 5, token: str = "") -> bool:
     """Tell Ollama to keep ``model`` in VRAM forever (keep_alive=-1).
 
     Uses /api/embed with a 1-token payload to nudge a load; passes
@@ -229,7 +242,7 @@ def pin_ollama_model(model: str, base_url: str, timeout: int = 5) -> bool:
         url,
         data=payload,
         method="POST",
-        headers={"Content-Type": "application/json"},
+        headers={"Content-Type": "application/json", **_ollama_auth_headers(token)},
     )
     try:
         with urllib.request.urlopen(req, timeout=timeout) as response:
@@ -273,7 +286,7 @@ def persist_ollama_env_for_user() -> None:
     print("--- [GPU-PERF] Persisted OLLAMA_* user env vars (effective after next 'ollama serve' restart)")
 
 
-def detect_ollama_serving_issues(base_url: str, timeout: int = 5) -> str | None:
+def detect_ollama_serving_issues(base_url: str, timeout: int = 5, token: str = "") -> str | None:
     """Best-effort probe for a broken / contended Ollama serving layer.
 
     The classic, hard-to-diagnose failure (see memory
@@ -293,7 +306,7 @@ def detect_ollama_serving_issues(base_url: str, timeout: int = 5) -> str | None:
     root = base_url.rstrip("/")
 
     def _get(path: str):
-        req = urllib.request.Request(root + path, method="GET")
+        req = urllib.request.Request(root + path, method="GET", headers=_ollama_auth_headers(token))
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             return resp.status, resp.read(65536).decode("utf-8", "replace")
 
@@ -377,7 +390,8 @@ def apply_gpu_max_performance(config: dict | None = None) -> None:
     try:
         base_url_probe = str((config or {}).get("ollama_base_url") or "").strip()
         if base_url_probe:
-            banner = detect_ollama_serving_issues(base_url_probe)
+            banner = detect_ollama_serving_issues(
+                base_url_probe, token=str((config or {}).get("ollama_token") or ""))
             if banner:
                 print(banner)
     except Exception as exc:
@@ -391,7 +405,7 @@ def apply_gpu_max_performance(config: dict | None = None) -> None:
             model = str(config.get(cfg_key) or "").strip()
             # Cloud models (suffix ':cloud') are not served by local Ollama.
             if model and base_url and not model.endswith(":cloud"):
-                pin_ollama_model(model, base_url)
+                pin_ollama_model(model, base_url, token=str(config.get("ollama_token") or ""))
 
     print("--- [GPU-PERF] Apply phase complete.")
 

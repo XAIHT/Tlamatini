@@ -296,7 +296,7 @@
     <form id="csrf-bootstrap-form" style="display: none;">
         {% csrf_token %}
     </form>
-    {{ ollama_base_url|json_script:"ollama_config" }}
+    {# The Ollama URL is NOT baked into the page: /agent/ollama_models/ reads config.json on every call. #}
     {{ agent_purpose_map|json_script:"agent-purpose-map" }}
     {% if flw_data %}
     {{ flw_data|json_script:"server-flw-data" }}

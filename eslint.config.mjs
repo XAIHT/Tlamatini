@@ -292,7 +292,6 @@ export default [
                 OpenConfigUrlsDialog: "readonly",
                 OpenBackupDbDialog: "readonly",
                 OpenSetDbDialog: "readonly",
-                getConfiguredOllamaBaseUrl: "readonly",
                 _saveConfigModels: "readonly",
                 _saveConfigUrls: "readonly",
                 _saveBackupDb: "readonly",

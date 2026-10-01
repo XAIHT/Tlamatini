@@ -16,6 +16,18 @@
 
 ---
 
+## 2026-09-30 — Config ▸ Models asks the CONFIGURED Ollama, never the browser's idea of it
+
+**Angela's report:** she pointed Tlamatini at a rented GPU server (vast.ai) in Config ▸ URLs, with its token, and pulled `deepseek-coder-v2:236b` there. Config ▸ Models marked it red and refused to save it: *"it keeps asking the local ollama its models, not the remote super-server."*
+
+**ROOT CAUSE.** `agent_page_init.js::listOllamaModels()` fetched `<ollama_base_url>/api/tags` **from the browser**, with the URL read from `{{ ollama_base_url|json_script:"ollama_config" }}` — baked into the HTML when the page loaded. Saving Config ▸ URLs and pressing Reconnect moved the chat to the new server (log: `base_url=http://145.241.107.153:32236`), but the page kept the OLD value until a full reload, so the dialog listed the local Ollama's 16 cloud models and rejected a model that WAS installed remotely. The browser fetch also never sent `ollama_token` and depended on the remote server's CORS rules.
+
+**FIX.** New `GET /agent/ollama_models/` (`views.ollama_models_view`, login required): reads `config.json` fresh on every call, asks every distinct configured Ollama URL (`ollama_base_url`, `unified_agent_base_url`, `image_interpreter_base_url`) in parallel with the same `Authorization: Bearer <ollama_token>` the chat sends (a `<... goes here>` placeholder is not sent), merges the model names, and returns one status row per server (`{url, ok, count, error}`); 502 only when no server answered. `listOllamaModels()` now calls it, and the dialog's status line and alerts name the server(s) and the reason (e.g. `HTTP 401 - check ollama_token`). The baked `ollama_config` script tag is gone from both pages. The MCP entry points (System-Metrics / Files-Search) are untouched and stay local.
+
+**Second bug found by the visible run (2026-10-01): the startup GPU step skipped the token too.** `gpu_perf.pin_ollama_model` (`POST /api/embed`) and `gpu_perf.detect_ollama_serving_issues` (`/api/version`, `/api/tags`) built their requests without `Authorization`, so a token-protected remote answered `401 Unauthorized` on every start (`--- [GPU-PERF] Could not reach Ollama … HTTP Error 401`). Both now take a `token` argument, `apply_gpu_max_performance` passes `ollama_token`, and `_ollama_auth_headers()` drops a `<… goes here>` placeholder. Covered by `GpuPerfSendsTheTokenTests`. Proven end to end by `.claude/skills/tlamatini-daily-chat-test/harness/deepseek_remote_chat_visible.py`: a simulated token-protected remote serving `deepseek-coder-v2:236b`, the real chat page in headed Chrome, a one-shot and a Multi-Turn coding answer, every request carrying the token, no error in `tlamatini.log`, and the dev `config.json` restored byte for byte (16/16). **If you see 401 from a remote Ollama, look for an Ollama call that builds its own request without the token.**
+
+**Do NOT** move the catalog fetch back into the browser or bake an Ollama URL into a template again — a value fixed at page load is stale the moment Config ▸ URLs changes it. URLs come from `config.json` only, never from the request. Coverage: `agent/test_ollama_catalog_from_server.py` (fake token-protected Ollama servers on loopback; includes the "URL changed after page load" regression).
+
 ## 2026-09-30 — The chat card's **Drop** button: erase ONE message from the chat AND from what the LLM reads
 
 > **Shipped in `v1.73.0`** (annotated tag at `606470bb`, published 2026-09-30 and marked Latest).

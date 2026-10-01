@@ -816,53 +816,50 @@ window.onload = () => {
 // Ollama helper
 // ----------------------------------------------------------------
 
-function getConfiguredOllamaBaseUrl() {
-    const ollamaConfigScript = document.getElementById('ollama_config');
-    let ollamaBaseUrl = 'http://localhost:11434';
+// Per-server result of the last catalog request: [{url, ok, count, error}].
+let _ollamaCatalogServers = [];
 
-    if (ollamaConfigScript && ollamaConfigScript.textContent) {
-        try {
-            ollamaBaseUrl = JSON.parse(ollamaConfigScript.textContent);
-        } catch (e) {
-            console.error('Error parsing ollama_base_url from config:', e);
-        }
-    }
-    return ollamaBaseUrl;
+function _ollamaServersText(servers) {
+    return (servers || [])
+        .map(s => s.ok ? `${s.url} (${s.count} models)` : `${s.url} (unreachable: ${s.error})`)
+        .join(', ');
 }
 
 /**
- * Fetch the model catalog from the configured Ollama server and return the
- * list of model names as a Promise. Resolves to ``string[]`` on success.
- * Rejects when the server is unreachable or returns a malformed payload —
- * callers use that rejection to surface the "Ollama not running" alert.
+ * Fetch the Ollama model catalog and return the model names (Promise<string[]>).
  *
- * The function ALSO keeps its legacy side effect of logging the catalog to
- * the console so existing diagnostic flows that called it without awaiting
- * the result still work the same way.
+ * The SERVER asks Ollama (/agent/ollama_models/), never the browser. The page
+ * used to fetch <ollama_base_url>/api/tags by itself, with a URL baked into
+ * the HTML when the page loaded. After Config -> URLs pointed Tlamatini at a
+ * remote Ollama (a rented GPU server) it kept asking the OLD, usually local,
+ * Ollama until a full page reload, so the Models dialog refused models that
+ * WERE installed on the remote server. It also could not send ollama_token.
+ * The server reads config.json on every call and sends the token.
+ *
+ * Rejects when no configured Ollama server answered; the Error message names
+ * each server and why it failed. The per-server detail of the last call stays
+ * in _ollamaCatalogServers.
  */
 function listOllamaModels(options = {}) {
-    const { silent = false, overrideBaseUrl = null, timeoutMs = 10000 } = options;
-    const ollamaBaseUrl = overrideBaseUrl || getConfiguredOllamaBaseUrl();
+    const { silent = false, timeoutMs = 20000 } = options;
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-    return fetch(`${ollamaBaseUrl}/api/tags`, { signal: controller.signal })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`Ollama returned HTTP ${response.status}`);
+    return fetch('/agent/ollama_models/', { signal: controller.signal, credentials: 'same-origin' })
+        .then(response => response.json()
+            .catch(() => ({}))
+            .then(data => ({ response, data })))
+        .then(({ response, data }) => {
+            _ollamaCatalogServers = Array.isArray(data.servers) ? data.servers : [];
+            if (!response.ok || !data.success || !Array.isArray(data.models)) {
+                throw new Error(_ollamaCatalogServers.length
+                    ? _ollamaServersText(_ollamaCatalogServers)
+                    : `Tlamatini answered HTTP ${response.status}`);
             }
-            return response.json();
-        })
-        .then(data => {
-            if (!data || !Array.isArray(data.models)) {
-                throw new Error('Ollama response has no "models" array');
-            }
-            const names = data.models
-                .map(m => (m && typeof m.name === 'string') ? m.name : null)
-                .filter(n => !!n);
+            const names = data.models.filter(n => typeof n === 'string' && n);
             if (!silent) {
-                console.log('Available Ollama models:');
+                console.log('Available Ollama models on ' + _ollamaServersText(_ollamaCatalogServers) + ':');
                 names.forEach(n => console.log(" - " + n));
             }
             return names;
@@ -969,8 +966,8 @@ function _renderModelSettings(fields) {
         const options = document.getElementById('config-models-ollama-options');
         options.replaceChildren();
         (models || []).forEach(model => { const option = document.createElement('option'); option.value = model; options.appendChild(option); });
-        status.textContent = `${(models || []).length} Ollama models available. Local speech and provider models use their own names.`;
-    }).catch(() => { status.textContent = 'Ollama suggestions unavailable. Local speech and provider settings can still be saved.'; });
+        status.textContent = `${(models || []).length} Ollama models available on ${_ollamaServersText(_ollamaCatalogServers)}. Local speech and provider models use their own names.`;
+    }).catch(err => { status.textContent = `Ollama suggestions unavailable: ${err.message}. Local speech and provider settings can still be saved.`; });
 }
 
 function _snapshotConfigValues(values) {
@@ -1245,12 +1242,15 @@ async function _saveConfigModels() {
         catalog = await listOllamaModels({ silent: true });
     } catch (err) {
         console.error('Failed to query Ollama for model catalog:', err);
-        alert('Could not reach Ollama to validate the changed Ollama model choices. Local speech settings do not require Ollama.');
+        alert('Could not reach Ollama to validate the changed Ollama model choices:\n\n'
+            + err.message
+            + '\n\nCheck Config -> URLs and ollama_token. Local speech settings do not require Ollama.');
         return false;
     }
 
+    const serversText = _ollamaServersText(_ollamaCatalogServers);
     if (!Array.isArray(catalog) || catalog.length === 0) {
-        alert('The Ollama server replied with an empty catalog.\n\nPlease make sure at least one model is installed in Ollama before clicking "Save" again.');
+        alert(`The Ollama server(s) ${serversText} replied with an empty catalog.\n\nPlease make sure at least one model is installed in Ollama before clicking "Save" again.`);
         return false;
     }
 
@@ -1260,13 +1260,13 @@ async function _saveConfigModels() {
     const missing = {};
     ollamaKeys.forEach(key => {
         if (!catalogSet.has(values[key])) {
-            missing[key] = `model "${values[key]}" is not installed in Ollama`;
+            missing[key] = `model "${values[key]}" is not installed`;
             invalidKeys.add(key);
         }
     });
     if (Object.keys(missing).length > 0) {
         _markInvalidInputs(configModelsForm, invalidKeys);
-        alert('The following models are NOT installed in Ollama:\n\n'
+        alert(`The following models are NOT installed on the configured Ollama server(s) ${serversText}:\n\n`
             + _formatErrorsForAlert(configModelsForm, missing)
             + '\n\nPlease correct them (or install them in Ollama) before clicking "Save" again.');
         return false;

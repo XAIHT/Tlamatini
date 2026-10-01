@@ -55,6 +55,7 @@ urlpatterns = [
     path('deploy_agent_template/<str:agent_name>/', secure_post(views.deploy_agent_template_view), name='deploy_agent_template'),
     path('ensure_agent_exists/<str:agent_name>/', secure_post(views.ensure_agent_exists_view), name='ensure_agent_exists'),
     path('load_config_section/<str:section>/', secure_get(views.load_config_section_view), name='load_config_section'),
+    path('ollama_models/', secure_get(views.ollama_models_view), name='ollama_models'),
     path('save_config_models/', secure_post(views.save_config_models_view), name='save_config_models'),
     path('save_config_urls/', secure_post(views.save_config_urls_view), name='save_config_urls'),
     path('access_keys_wizard/', secure_get(views.access_keys_wizard_view), name='access_keys_wizard'),

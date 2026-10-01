@@ -9711,6 +9711,118 @@ def load_config_section_view(request, section: str):
     return JsonResponse({"success": True, "section": section, "values": values})
 
 
+# ----------------------------------------------------------------------------
+# Ollama model catalog for the Config -> Models dialog.
+#
+# The SERVER asks Ollama, never the browser. The page used to fetch
+# <ollama_base_url>/api/tags by itself, with the URL baked into the HTML when
+# the page loaded. After the user pointed Tlamatini at a remote Ollama (a
+# rented GPU server) in Config -> URLs and pressed Reconnect, the chat used the
+# new server but the page kept asking the OLD, usually local, Ollama: the
+# dialog listed the wrong models and refused to save a model that WAS
+# installed on the remote server. A browser fetch also never sent ollama_token
+# and depended on the remote server's CORS rules.
+#
+# This endpoint reads config.json fresh on every call, asks every configured
+# Ollama URL (chat, Multi-Turn, image) with the same Bearer token the chat
+# sends, and says which server answered and which did not. The URLs come from
+# config.json only, never from the request.
+# ----------------------------------------------------------------------------
+
+OLLAMA_CATALOG_URL_KEYS: tuple[str, ...] = (
+    "ollama_base_url",
+    "unified_agent_base_url",
+    "image_interpreter_base_url",
+)
+OLLAMA_CATALOG_DEFAULT_URL = "http://127.0.0.1:11434"
+OLLAMA_CATALOG_TIMEOUT_SECONDS = 8.0
+
+
+def _usable_ollama_token(config) -> str:
+    """ollama_token, or "" when it is empty or still a ``<... goes here>`` placeholder."""
+    token = str(config.get("ollama_token") or "").strip()
+    if token.startswith("<") and token.endswith(">"):
+        return ""
+    return token
+
+
+def _ollama_catalog_urls(config) -> list[str]:
+    """The distinct configured Ollama URLs, the main chat URL first."""
+    urls: list[str] = []
+    for key in OLLAMA_CATALOG_URL_KEYS:
+        url = str(config.get(key) or "").strip().rstrip("/")
+        if url and url not in urls:
+            urls.append(url)
+    return urls or [OLLAMA_CATALOG_DEFAULT_URL]
+
+
+def _describe_ollama_error(exc) -> str:
+    """A short, token-free reason a catalog request failed."""
+    import socket
+    import urllib.error
+    if isinstance(exc, urllib.error.HTTPError):
+        hint = " - check ollama_token" if exc.code in (401, 403) else ""
+        return f"HTTP {exc.code}{hint}"
+    if isinstance(exc, urllib.error.URLError):
+        if isinstance(exc.reason, (socket.timeout, TimeoutError)):
+            return "timed out"
+        return str(exc.reason) or "unreachable"
+    if isinstance(exc, (socket.timeout, TimeoutError)):
+        return "timed out"
+    return str(exc) or type(exc).__name__
+
+
+def _fetch_ollama_model_names(base_url: str, token: str) -> list[str]:
+    """GET <base_url>/api/tags and return the installed model names."""
+    import urllib.request
+    request = urllib.request.Request(base_url + "/api/tags", method="GET")
+    if token:
+        request.add_header("Authorization", f"Bearer {token}")
+    with urllib.request.urlopen(request, timeout=OLLAMA_CATALOG_TIMEOUT_SECONDS) as response:
+        data = json.loads(response.read().decode("utf-8") or "{}")
+    models = data.get("models") if isinstance(data, dict) else None
+    if not isinstance(models, list):
+        raise ValueError('the reply has no "models" list - is this an Ollama server?')
+    return [m["name"] for m in models
+            if isinstance(m, dict) and isinstance(m.get("name"), str) and m["name"]]
+
+
+@login_required
+def ollama_models_view(request):
+    """
+    Return every model installed on the configured Ollama server(s) plus one
+    status row per server: {"success", "models", "servers": [{url, ok, count,
+    error}]}. HTTP 502 when no configured server answered.
+    """
+    from concurrent.futures import ThreadPoolExecutor
+
+    config = load_config(force_reload=True)
+    token = _usable_ollama_token(config)
+    urls = _ollama_catalog_urls(config)
+
+    def probe(url):
+        try:
+            return url, _fetch_ollama_model_names(url, token), ""
+        except Exception as exc:  # one bad server must not hide the others
+            return url, [], _describe_ollama_error(exc) or "failed"
+
+    with ThreadPoolExecutor(max_workers=len(urls)) as pool:
+        results = list(pool.map(probe, urls))
+
+    models: list[str] = []
+    servers: list[dict] = []
+    for url, names, error in results:
+        servers.append({"url": url, "ok": not error, "count": len(names), "error": error})
+        for name in names:
+            if name not in models:
+                models.append(name)
+        outcome = f"UNREACHABLE ({error})" if error else f"{len(names)} model(s)"
+        print(f"--- [OLLAMA-CATALOG] {url}: {outcome}")
+    ok = any(server["ok"] for server in servers)
+    return JsonResponse({"success": ok, "models": models, "servers": servers},
+                        status=200 if ok else 502)
+
+
 @csrf_exempt
 @require_POST
 @login_required
