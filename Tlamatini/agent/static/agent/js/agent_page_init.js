@@ -514,7 +514,7 @@ document.getElementById('chat-form').onsubmit = function (e) {
         }
         chatInput.value = '';
         document.dispatchEvent(new CustomEvent('tlm-chat-submitted', {
-            detail: {voice: document.getElementById('chat-form').dataset.voiceSubmitting === 'true'}
+            detail: { voice: document.getElementById('chat-form').dataset.voiceSubmitting === 'true' }
         }));
     }
 };
@@ -887,9 +887,9 @@ function _renderModelSettings(fields) {
     const panels = [];
     function filter() {
         const query = search.value.trim().toLowerCase();
-        panels.forEach(({panel, group, cards}) => {
+        panels.forEach(({ panel, group, cards }) => {
             let matches = 0;
-            cards.forEach(({card, field}) => {
+            cards.forEach(({ card, field }) => {
                 const visible = !query || `${field.label} ${field.group} ${field.help}`.toLowerCase().includes(query);
                 card.hidden = !visible;
                 if (visible) matches += 1;
@@ -953,16 +953,16 @@ function _renderModelSettings(fields) {
             hint.textContent = field.help || (field.kind === 'ollama' ? 'Ollama model · choose from the catalog or enter a tag.' : 'Model name or local model directory.');
             input.setAttribute('aria-describedby', hint.id);
             card.append(label, input, hint); grid.appendChild(card);
-            return {card, field};
+            return { card, field };
         });
         panel.appendChild(grid); configModelsForm.appendChild(panel);
-        panels.push({panel, group, cards});
+        panels.push({ panel, group, cards });
     });
     search.oninput = filter;
     filter();
     const status = document.getElementById('config-models-catalog-status');
     status.textContent = 'Loading Ollama suggestions…';
-    listOllamaModels({silent: true}).then(models => {
+    listOllamaModels({ silent: true }).then(models => {
         const options = document.getElementById('config-models-ollama-options');
         options.replaceChildren();
         (models || []).forEach(model => { const option = document.createElement('option'); option.value = model; options.appendChild(option); });
@@ -1174,7 +1174,7 @@ function _validateUrlsForm(form) {
             }
             if (!parsed.host) {
                 errors[key] = 'must include a host';
-                
+
             }
         } else if (type === 'host') {
             const ipv4 = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
@@ -1238,39 +1238,39 @@ async function _saveConfigModels() {
         && values[field.key] && (!_configModelsBaseline || values[field.key] !== _configModelsBaseline[field.key])).map(field => field.key);
     let catalog;
     if (ollamaKeys.length) {
-    try {
-        catalog = await listOllamaModels({ silent: true });
-    } catch (err) {
-        console.error('Failed to query Ollama for model catalog:', err);
-        alert('Could not reach Ollama to validate the changed Ollama model choices:\n\n'
-            + err.message
-            + '\n\nCheck Config -> URLs and ollama_token. Local speech settings do not require Ollama.');
-        return false;
-    }
-
-    const serversText = _ollamaServersText(_ollamaCatalogServers);
-    if (!Array.isArray(catalog) || catalog.length === 0) {
-        alert(`The Ollama server(s) ${serversText} replied with an empty catalog.\n\nPlease make sure at least one model is installed in Ollama before clicking "Save" again.`);
-        return false;
-    }
-
-    const catalogSet = new Set(catalog);
-
-    // 3) Every model in the form must be in the catalog.
-    const missing = {};
-    ollamaKeys.forEach(key => {
-        if (!catalogSet.has(values[key])) {
-            missing[key] = `model "${values[key]}" is not installed`;
-            invalidKeys.add(key);
+        try {
+            catalog = await listOllamaModels({ silent: true });
+        } catch (err) {
+            console.error('Failed to query Ollama for model catalog:', err);
+            alert('Could not reach Ollama to validate the changed Ollama model choices:\n\n'
+                + err.message
+                + '\n\nCheck Config -> URLs and ollama_token. Local speech settings do not require Ollama.');
+            return false;
         }
-    });
-    if (Object.keys(missing).length > 0) {
-        _markInvalidInputs(configModelsForm, invalidKeys);
-        alert(`The following models are NOT installed on the configured Ollama server(s) ${serversText}:\n\n`
-            + _formatErrorsForAlert(configModelsForm, missing)
-            + '\n\nPlease correct them (or install them in Ollama) before clicking "Save" again.');
-        return false;
-    }
+
+        const serversText = _ollamaServersText(_ollamaCatalogServers);
+        if (!Array.isArray(catalog) || catalog.length === 0) {
+            alert(`The Ollama server(s) ${serversText} replied with an empty catalog.\n\nPlease make sure at least one model is installed in Ollama before clicking "Save" again.`);
+            return false;
+        }
+
+        const catalogSet = new Set(catalog);
+
+        // 3) Every model in the form must be in the catalog.
+        const missing = {};
+        ollamaKeys.forEach(key => {
+            if (!catalogSet.has(values[key])) {
+                missing[key] = `model "${values[key]}" is not installed`;
+                invalidKeys.add(key);
+            }
+        });
+        if (Object.keys(missing).length > 0) {
+            _markInvalidInputs(configModelsForm, invalidKeys);
+            alert(`The following models are NOT installed on the configured Ollama server(s) ${serversText}:\n\n`
+                + _formatErrorsForAlert(configModelsForm, missing)
+                + '\n\nPlease correct them (or install them in Ollama) before clicking "Save" again.');
+            return false;
+        }
 
     }
 
@@ -1510,7 +1510,7 @@ function _promptForContextDirectory(body) {
 // Browse button — opens a native folder picker on the server host and
 // drops the chosen absolute path into the dialog's input so the existing
 // live-validation pipeline (`_onBackupDbInputChanged`) classifies it.
-async function _browseBackupDbDirectory() {  
+async function _browseBackupDbDirectory() {
     const browseBtn = document.getElementById('backup-db-browse-btn');
     if (!backupDbTargetDirInput) return;
     if (browseBtn) browseBtn.disabled = true;
@@ -1570,7 +1570,7 @@ function OpenBackupDbDialog(e) { // eslint-disable-line no-unused-vars
     renderBackupDbDialog();
 }
 
-async function _saveBackupDb() {  
+async function _saveBackupDb() {
     const raw = (backupDbTargetDirInput ? backupDbTargetDirInput.value : '').trim();
 
     if (!raw) {
@@ -1740,7 +1740,7 @@ function _onSetDbInputChanged() {
 // absolute path into the dialog's input so the existing live-validation
 // pipeline (`_onSetDbInputChanged`) classifies it (SQLite-header check,
 // basename match, etc.).
-async function _browseSetDbFile() {  
+async function _browseSetDbFile() {
     const browseBtn = document.getElementById('set-db-browse-btn');
     if (!setDbSourcePathInput) return;
     if (browseBtn) browseBtn.disabled = true;
@@ -1809,7 +1809,7 @@ function _showSetDbLoadedNextSessionWarning() {
     renderSetDbWarningDialog();
 }
 
-async function _saveSetDb() {  
+async function _saveSetDb() {
     const raw = (setDbSourcePathInput ? setDbSourcePathInput.value : '').trim();
 
     if (!raw) {
