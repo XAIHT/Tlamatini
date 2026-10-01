@@ -521,6 +521,44 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ["Step-by-Step", "One concrete action at a time, waiting for your reply before the next."],
                 ["Internet", "Allows a web search to add context to the answer."],
             ]}, deck="table"),
+        Section("drop", "CHAT HISTORY", "Drop a message from the conversation",
+            "Every message card has Drop beside Copy, for your prompts and Tlamatini's answers.",
+            body=[
+                "Press Drop and read the themed confirmation. Cancel starts focused, so Enter cancels by "
+                "default. The red Drop button confirms deletion. Escape and the close button also cancel. "
+                "The saved message disappears from the chat and the database history used for future requests.",
+                "The other messages stay. Dropping only a prompt leaves its answer; dropping only an answer "
+                "leaves its prompt. Remove both cards to remove the exchange. A user prompt also takes its "
+                "directly following Referenced Rephrase rows, so a reload cannot show those duplicate words.",
+                "Connected tabs for the same user remove the saved cards after the server confirms. A status, "
+                "error or retry card without a saved message id only disappears from the current screen. "
+                "The connection refuses Drop while it is answering, and a disconnected chat asks you to reconnect.",
+            ],
+            points=[
+                ("Choose", "Drop sits beside Copy on both user and assistant message cards."),
+                ("Confirm", "Cancel starts focused. Red Drop confirms; Escape and close cancel."),
+                ("Remove", "Delete the saved message from chat history. Its paired prompt or answer stays."),
+                ("Continue", "The next request reads the updated history without a reconnect."),
+            ], deck="cards"),
+        Section("drop_scope", "MEMORY AND EFFECTS", "What remains after Drop",
+            "Deleting a chat card changes future conversation context. Separate saved notes and completed work remain.",
+            body=[
+                "Each request reloads up to eight newest AgentMessage rows through DBChatHistoryLoader, then "
+                "filters status and rephrase content. No cached conversation summary or LangGraph checkpoint "
+                "needs clearing. Removing a row lets the window reach an older row when one exists.",
+                "An enabled External MCP memory tool stores notes separately from AgentMessage. Drop does "
+                "not erase that knowledge graph; ask Tlamatini to forget the saved note too. Retained messages "
+                "may also repeat a fact from a deleted card, so Drop is not a guarantee of complete forgetting.",
+                "Files created, messages sent, agent runs and Exec Report rows remain real completed work. "
+                "Dropping their prompt or answer cannot undo those effects. A Create Flow button belongs to "
+                "its answer card and disappears with it, so download a needed .flw before deleting the card.",
+            ],
+            points=[
+                ("History", "Every request reloads a window of up to eight newest database rows."),
+                ("Saved notes", "External MCP memory is separate. Ask her to forget its note too."),
+                ("Other messages", "The paired answer or prompt stays and may repeat the same information."),
+                ("Completed work", "Files and sent messages remain. Save a needed flow before dropping its card."),
+            ], deck="cards"),
         Section("dictation", "DIRECT VOICE INPUT", "Speak beside Send",
             "The microphone captures first; no model tool-selection step stands between the click and recording.",
             body=[
@@ -1176,9 +1214,9 @@ def build_chapters(f: dict) -> list[Chapter]:
                   "# open http://127.0.0.1:8000/   (default login: user / changeme)"),
             deck="visual"),
         Section("dependencies", "DEPENDENCY COVERAGE", "Every referenced Python library is accounted for",
-            "The September 29 static coverage check includes all 89 agents, build helpers, optional imports and tests.",
+            "The September 30 static coverage check includes all 89 agents, build helpers, optional imports and tests.",
             body=[
-                "The refreshed static guard scanned 753 Python files and 69 directly referenced distributions. The "
+                "The refreshed static guard scanned 755 Python files and 69 directly referenced distributions. The "
                 "main requirements file contains 87 declarations; missing Autobahn, lxml, six, pip and "
                 "PlatformIO declarations were added. Existing framework and compatibility pins remain.",
                 "ESPHome has a separate requirements-esphome.txt manifest because its py7zr and PlatformIO "
@@ -1188,7 +1226,7 @@ def build_chapters(f: dict) -> list[Chapter]:
             ],
             points=[
                 ("Coverage guard", "scripts/check_requirements_coverage.py checks source and build inventories."),
-                ("Verification", "September 29: no missing declarations, syntax errors or unreviewed dynamic imports."),
+                ("Verification", "September 30: no missing declarations, syntax errors or unreviewed dynamic imports."),
                 ("Earlier evidence", "September 27: main/ESPHome dry runs and temporary-environment dependency smoke checks passed."),
                 ("Limits", "Static coverage and selective smoke tests do not certify a clean installation or frozen build."),
             ], deck="cards"),
@@ -1333,7 +1371,29 @@ def build_chapters(f: dict) -> list[Chapter]:
         f"Source tag {f['release_tag']}; latest published release "
         f"{f['release']['latest_published'] or 'unverified'}. Local changes are stated separately.",
         accent="gold", sections=[
-        Section("working_web", "NEW IN v1.72.4", "Web pages that cannot vanish in silence",
+        Section("working_drop", "NEW IN v1.73.0", "One card removed from future context",
+            "The September 30 source tag adds Drop throughout chat, with explicit confirmation and history updates.",
+            body=[
+                "Saved greetings, user prompts and answers carry their AgentMessage id from the first page "
+                "render and subsequent WebSocket frames. The drop-message request validates that id against "
+                "the signed-in conversation owner before deleting rows. A busy guard checks this connection's "
+                "active run; it is not a global lock across all of the user's tabs.",
+                "Successful deletion broadcasts message-dropped with all deleted ids to the user's tabs, "
+                "then schedules a context-gauge refresh. Dropping a user prompt also removes up to twenty "
+                "directly following Referenced Rephrase rows, stopping at the first other row. An answer "
+                "or another user's message is never included in that cleanup.",
+                "All 23 focused Drop regression tests passed on September 30, covering ownership, both message roles, neighboring rows, "
+                "the history window, busy refusal, rephrases and browser/server protocol contracts. The "
+                "September 30 maintainer record also reports 30/30 checks in the visible browser harness; "
+                "this dossier refresh reruns the focused suite without writing to the real memory graph.",
+            ],
+            points=[
+                ("Owned rows", "Server deletion is scoped to the signed-in user's conversation."),
+                ("Tabs and gauge", "Confirmed ids remove saved cards across tabs and refresh the context estimate."),
+                ("Rephrases", "Prompt cleanup removes following rephrase copies and keeps the answer."),
+                ("Run guard", "An active answer blocks Drop on that connection. Other tabs have separate runs."),
+            ], deck="cards"),
+        Section("working_web", "CARRIED FROM v1.72.4", "Web pages that cannot vanish in silence",
             "Tagged and published on September 29: no web page loses its text without saying so.",
             body=[
                 "Crawler and Googler strip a page to its words by skipping scripts, styles and similar "
@@ -1360,7 +1420,7 @@ def build_chapters(f: dict) -> list[Chapter]:
                 "the token figure is Ollama's own prompt_eval_count for that request, and the ceiling is the "
                 "context length Ollama reports. An estimate is shown only until Ollama answers, and says so.",
                 "Between questions the ring shows what the next request will cost, recalculated whenever the "
-                "state changes: page open, Clear history, Clear context, a context loaded, an answer finished "
+                "state changes: page open, Clear history, Drop, Clear context, a context loaded, an answer finished "
                 "or a mode toggled. It is exact in one-shot and Multi-Turn alike, per connected user, and "
                 "one-shot questions no longer carry an empty System-Metrics line.",
             ],
