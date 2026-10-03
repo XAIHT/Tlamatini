@@ -292,6 +292,9 @@ REQUIRED_SNAPSHOT_FILES = (
     "Tlamatini/agent/context_fitter.py",
     "Tlamatini/agent/compact_mode.py",
     "Tlamatini/agent/migrations/0211_compact_state.py",
+    # The Self-modify switch (2026-10-03).
+    "Tlamatini/agent/migrations/0212_compact_state_self_modify.py",
+    "Tlamatini/agent/static/agent/js/self_modify_switch.js",
     "Tlamatini/agent/static/agent/js/compact_costs.js",
     "Tlamatini/agent/static/agent/js/model_capacity.js",
     "Tlamatini/agent/static/agent/css/model_capacity.css",

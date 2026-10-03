@@ -8,6 +8,7 @@
 # ═══════════════════════════════════════════════════════════════════
 #   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
 import os
+import re
 import sys
 import json
 from typing import Tuple, Dict, Any
@@ -32,6 +33,20 @@ NOT_SELF_ABLE_MODIFY_NOTICE = (
     "here. Do not claim to read, edit or rebuild your own code. Speak about "
     "yourself only from these prompt rules and, in Multi-Turn, from your tools "
     "inspecting the running system.)"
+)
+
+# The Self-modify SWITCH (Angela, 2026-10-03).  A build that CAN self-modify
+# (``build.py --self-modify``, and EVERY source checkout: dev mode is always
+# like --self-modify) may still switch it OFF from the chat toolbar - or have it
+# locked OFF because the model cannot hold the self-knowledge.  Then the
+# identity bullets give way to this one line and the <self_knowledge> section
+# is not sent.  No braces: it is inserted into a prompt template verbatim.
+SELF_MODIFY_OFF_NOTICE = (
+    "- **Self-modify is switched OFF** (the Self-modify box in the chat toolbar): your "
+    "self-knowledge (`Tlamatini.md`) is not loaded into this request, and you must not "
+    "read, edit or rebuild your own source code now. If the user asks about your "
+    "internals or asks you to change yourself, say so plainly and tell them to tick "
+    "Self-modify; answer everything else from these rules and from what your tools observe."
 )
 
 # The Tlamatini Temp policy surfaces the ABSOLUTE temporary directory to the LLM
@@ -138,6 +153,48 @@ def is_self_able_modify(application_path: str) -> bool:
         return False
 
 
+# This file lives in agent/rag/, so this is the agent/ directory of the
+# checkout: the application directory of a source (not frozen) run.
+_SOURCE_AGENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def default_application_path() -> str:
+    """Where prompt.pmt / config.json live: beside the .exe when frozen, the
+    agent/ directory from source - the same rule rag/factory.py follows."""
+    if getattr(sys, 'frozen', False):
+        return os.path.dirname(sys.executable)
+    return _SOURCE_AGENT_DIR
+
+
+def is_source_checkout(application_path) -> bool:
+    """True for a source (NOT frozen) run of THIS checkout - dev mode."""
+    if getattr(sys, 'frozen', False):
+        return False
+    try:
+        return (os.path.normcase(os.path.realpath(str(application_path)))
+                == os.path.normcase(os.path.realpath(_SOURCE_AGENT_DIR)))
+    except Exception:
+        return False
+
+
+def self_modify_available(application_path=None) -> bool:
+    """Can this deployment self-modify at all?  (Angela, 2026-10-03)
+
+    Dev mode is ALWAYS like ``--self-modify``: a source run of this checkout
+    has its own source and its Tlamatini.md, folder or no folder.  A FROZEN
+    build only when ``build.py --self-modify`` bundled TlamatiniSourceCode/.
+    It decides what the prompt loader injects AND whether the chat shows the
+    Self-modify box at all (hidden completely when False).  Fails CLOSED, like
+    ``is_self_able_modify``.
+    """
+    try:
+        if application_path is None:
+            application_path = default_application_path()
+        return is_source_checkout(application_path) or is_self_able_modify(application_path)
+    except Exception:
+        return False
+
+
 def apply_self_knowledge_blocks(prompt: str, self_able: bool) -> str:
     """Keep XOR drop the whole <self_knowledge> section (fail-open)."""
     try:
@@ -200,7 +257,7 @@ def _load_self_knowledge_block(application_path: str) -> str:
     # The placeholder is still REPLACED (with this notice) rather than left raw:
     # an unreplaced '{self_knowledge}' would become an unexpected f-string input
     # variable in ChatPromptTemplate and break every chain.
-    if not is_self_able_modify(application_path):
+    if not self_modify_available(application_path):
         return NOT_SELF_ABLE_MODIFY_NOTICE
 
     self_knowledge_path = os.path.join(application_path, SELF_KNOWLEDGE_FILENAME)
@@ -241,7 +298,7 @@ def load_config_and_prompt(application_path: str) -> Tuple[Dict[str, Any], str, 
     # the file would be injected into a block that is about to be deleted (and
     # the markers would leak into the prompt the LLM actually reads).
     prompt_template = apply_self_knowledge_blocks(
-        prompt_template, is_self_able_modify(application_path))
+        prompt_template, self_modify_available(application_path))
 
     # Inject the live self-knowledge file into the {self_knowledge} placeholder
     # (when present) before the template reaches ChatPromptTemplate. Resolving
@@ -271,3 +328,118 @@ def load_config_and_prompt(application_path: str) -> Tuple[Dict[str, Any], str, 
         )
 
     return config, prompt_template, config_file_path
+
+
+# ---------------------------------------------------------------------------
+# The Self-modify SWITCH at request time (Angela, 2026-10-03)
+# ---------------------------------------------------------------------------
+# load_config_and_prompt resolves the self-knowledge ONCE, for what the build
+# CAN do.  The switch decides, per request, whether that text is SENT.  The
+# exact text a self-able load injects is recomputed from the files themselves
+# (cached on their size and time), so the switch can take it out of any prompt
+# built from that load - no marker is ever left in a prompt for this.
+
+_SEGMENT_CACHE: Dict[Any, Tuple[str, ...]] = {}
+_SELF_KNOWLEDGE_TAG_RE = re.compile(r"<self_knowledge>.*?</self_knowledge>\n?", re.DOTALL)
+
+
+def _file_stamp(path):
+    try:
+        st = os.stat(path)
+        return (st.st_mtime_ns, st.st_size)
+    except Exception:
+        return None
+
+
+def self_knowledge_segments(application_path=None) -> Tuple[str, ...]:
+    """The EXACT text a self-able load puts in the prompt for each
+    SELF_KNOWLEDGE block of prompt.pmt: the identity bullets, then the
+    <self_knowledge> section with Tlamatini.md injected (brace-escaped, as the
+    loader leaves it).  Empty when this deployment cannot self-modify.  Never
+    raises."""
+    try:
+        app = application_path or default_application_path()
+        if not self_modify_available(app):
+            return ()
+        prompt_path = os.path.join(app, 'prompt.pmt')
+        key = (os.path.normcase(os.path.abspath(app)), _file_stamp(prompt_path),
+               _file_stamp(os.path.join(app, SELF_KNOWLEDGE_FILENAME)))
+        cached = _SEGMENT_CACHE.get(key)
+        if cached is not None:
+            return cached
+        with open(prompt_path, 'r', encoding='utf-8') as f:
+            text = f.read()
+        begin, end = SELF_KNOWLEDGE_MARKERS
+        segments = []
+        cursor = 0
+        while True:
+            start = text.find(begin, cursor)
+            if start == -1:
+                break
+            stop = text.find(end, start + len(begin))
+            if stop == -1:
+                break
+            inner = text[start + len(begin):stop]
+            # Exactly the trimming _resolve_rule_block does when it KEEPS a block.
+            if inner.startswith('\n'):
+                inner = inner[1:]
+            if inner.endswith('\n'):
+                inner = inner[:-1]
+            segment = inner + '\n'
+            # ...and the same replacements, in the same order, as the loader.
+            if SELF_KNOWLEDGE_PLACEHOLDER in segment:
+                segment = segment.replace(SELF_KNOWLEDGE_PLACEHOLDER, _load_self_knowledge_block(app))
+            if TEMP_DIRECTORY_PLACEHOLDER in segment:
+                segment = segment.replace(TEMP_DIRECTORY_PLACEHOLDER, _resolve_temp_directory_for_prompt())
+            if TEMPLATES_DIRECTORY_PLACEHOLDER in segment:
+                segment = segment.replace(TEMPLATES_DIRECTORY_PLACEHOLDER,
+                                          _resolve_templates_directory_for_prompt())
+            if segment.strip():
+                segments.append(segment)
+            cursor = stop + len(end)
+        result = tuple(segments)
+        if len(_SEGMENT_CACHE) > 8:
+            _SEGMENT_CACHE.clear()
+        _SEGMENT_CACHE[key] = result
+        return result
+    except Exception:
+        return ()
+
+
+def self_knowledge_text(application_path=None) -> str:
+    """The self-knowledge as plain text (braces NOT escaped) - what Compact
+    mode appends to its own prompt when Self-modify is ON and fits."""
+    return "".join(self_knowledge_segments(application_path)).replace('{{', '{').replace('}}', '}')
+
+
+def apply_self_modify_switch(prompt: str, on: bool, application_path=None) -> str:
+    """Self-modify OFF: the identity bullets become SELF_MODIFY_OFF_NOTICE and
+    the <self_knowledge> section is NOT sent.  ON - or a build that cannot
+    self-modify, whose prompt never carried it - returns the prompt unchanged.
+    Fail-open: never raises."""
+    if on or not prompt:
+        return prompt
+    try:
+        out = prompt
+        found = False
+        for segment in self_knowledge_segments(application_path):
+            if segment in out:
+                out = out.replace(segment, '' if found else SELF_MODIFY_OFF_NOTICE + '\n', 1)
+                found = True
+        if '<self_knowledge>' in out and '</self_knowledge>' in out:
+            # A prompt reshaped since the load: never send the section anyway.
+            out = _SELF_KNOWLEDGE_TAG_RE.sub('', out, count=1)
+        return out
+    except Exception:
+        return prompt
+
+
+def self_modify_on() -> bool:
+    """The switch as every prompt builder reads it: the build can self-modify,
+    the user wants it, and the self-knowledge was not found too big for the
+    model.  Fail-open ON - a broken switch keeps the prompt exactly as loaded."""
+    try:
+        from .. import compact_mode
+        return bool(compact_mode.self_modify_active())
+    except Exception:
+        return True

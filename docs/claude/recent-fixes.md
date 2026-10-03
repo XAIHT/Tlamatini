@@ -16,6 +16,26 @@
 
 ---
 
+## 2026-10-03 — The SELF-MODIFY switch: her self-knowledge, only where it exists and only when it fits
+
+Angela asked for a control to enable/disable self-modify *"if and only if the model can fit it (similar to Compact mode)"*, visible ONLY in a `--self-modify` build and *"COMPLETELY HIDDEN"* otherwise — and *"THE DEV MODE MUST ALWAYS BE LIKE --self-modify MODE"*.
+
+**What was true before.** Self-knowledge was decided once, at load: a build with `TlamatiniSourceCode/` sent Tlamatini.md (measured **115,711 chars, ~28.9K tokens**) with EVERY request, whatever the model; one without sent a single line. Dev mode only had it because a placeholder `TlamatiniSourceCode/README.md` happened to sit in the checkout. And a small model received it anyway (Compact mode stripped it only because Compact strips everything non-essential).
+
+**What changed.**
+- `rag/config.self_modify_available()` — a source run of this checkout is ALWAYS self-able; a frozen build needs the folder. The loader and `_load_self_knowledge_block` use it.
+- `rag/config.apply_self_modify_switch()` turns a self-able prompt into the OFF prompt by replacing the EXACT injected text (recomputed from the files by `self_knowledge_segments()`), so the gate tests' "no marker ever leaks" contract holds.
+- `compact_mode`: `CompactState.self_modify` (migration **0212**, ON by default), `set_self_modify` (refuses `unavailable` / `too_small`), `note_self_modify`, `self_modify_active`; `state()` carries `self_modify_available / _locked / _active`.
+- `fit_request`: FULL measures the request without it + the self-knowledge + 2400 against the usable window; COMPACT measures its own prompt + the very text it would append. The verdict reaches the page as `capacity.self_modify` and the log as `[SELF-MODIFY] … does NOT fit - Self-modify is locked OFF` / `… it fits`. The executor cache key carries `__self__`; STRICT is measured without it.
+- Page: `{% if self_modify_available %}` renders the box and `self_modify_switch.js` together; consumer `set-self-modify` (refused while an answer runs); a `self_modify` notify re-sends no Configure rows.
+- `prompt.pmt`'s self-modify bullet now says a source run's checkout IS her source, with or without that folder.
+
+**Found while testing (and fixed).** The first compact path measured the self-knowledge on the executor's prompt but appended it from the files — a raw prompt (tests) measured ~3.5K and appended ~115K, so a 16K-window request jumped to ~44K tokens. Compact now measures the text it appends. The visible run's first "bytes come back" check failed for an honest reason unrelated to the switch: External MCP servers (lumen-book-reader, torrent-search) finished connecting between frames and added ~10K bytes of tools — the check now compares OFF with ON-again (same 119 tools): **117,517 bytes** in the final run.
+
+**Do NOT run `build.py` to test frozen mode:** it erases `Tlamatini/db.sqlite3` and wipes `dist/` (the v1.74.0 release zip sat there). The frozen branch is covered by `FrozenPageTests`, which render the real chat page under a patched `sys.frozen`: no `--self-modify` → no box, no script, no "Self-modify" text anywhere; with it → the box.
+
+**Proof.** Unit: 473 tests across the self-modify, gate, Compact, capacity, gauge and frontend suites — OK. Visible (headed Chrome, Shoter photos, `self_modify_visible.py`): qwen2.5 local → box present, unticked, greyed, 🔒, the click explains, a forged tick is refused; nemotron-3-ultra:cloud (free allowance, probes off, no question) → ticked by default, OFF saves 107,458 bytes at rest, ON brings back 117,517 with the same tools; database, choice and config.json restored — **ALL 28 CHECKS PASSED**.
+
 ## 2026-10-02 — The COMPACT MODE switch: the real rows, a locked box, a truthful gauge
 
 **Angela's design, approved in her words:** in STRICT compact mode (a small model really active) the user must NOT be able to untick "Compact mode"; only a model that can fit **everything activated** lets it be ticked and unticked freely. Compact mode starts with System-Metrics, Files-Search and Current-Time enabled, *"BUT THE USER MUST BE ABLE TO FOR EXAMPLE DEACTIVATE System Metrics, DEACTIVATE Files Search, BUT ACTIVATE FOR EXAMPLE ESPHomer"*; the selections in Configure MCPs / Configure Agents must get *"REALLY chained/unchained"* - ALL of them, not only PDFer or Unrealer; unticking re-enables ALL; *"the gauge must be the most real value"*; the gauge says **CONTEXT-WINDOW**; the not-ready legend tells the user to make the request fit the CONTEXT WINDOW. Then: *"keep compact, and yes show the warning"*.

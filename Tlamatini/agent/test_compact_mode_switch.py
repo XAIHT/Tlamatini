@@ -295,6 +295,7 @@ class FitObeysTheSwitchTests(SimpleTestCase):
         with patch("agent.mcp_agent._load_config", return_value=cfg), \
              patch.object(cm, "is_active", return_value=True), \
              patch.object(cm, "note_capacity", return_value=False), \
+             patch.object(cm, "note_self_modify", return_value=False), \
              patch.object(type(cae), "_refresh_toggle_tool_surface", return_value=False):
             return cae.fit_request(input_text="Make a PDF of the plan", chat_history=[],
                                    request_tools=filter_acpx_tools(cae.tools, acpx),

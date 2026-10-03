@@ -724,11 +724,16 @@ class AgentConsumer(AsyncWebsocketConsumer):
         """Group handler: the switch, or a saved Configure dialog, changed the
         rows - send this tab the switch and the REAL rows, then re-measure."""
         try:
+            kind = event.get('kind') or 'state'
             await self.send(text_data=json.dumps({
                 'type': 'compact-mode-state',
-                'kind': event.get('kind') or 'state',
+                'kind': kind,
                 'state': event.get('state') or {},
             }))
+            if kind == 'self_modify':
+                # The Self-modify switch rewrites no Configure row.
+                self._schedule_context_gauge_refresh("Self-modify changed")
+                return
             await self._send_toggle_rows()
             self._schedule_context_gauge_refresh("Configure rows changed")
         except Exception as exc:  # noqa: BLE001
@@ -769,6 +774,41 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 {'type': 'agent_message', 'message': message, 'username': 'Tlamatini'}
             )
         self._schedule_context_gauge_refresh("compact mode " + ("on" if enabled else "off"))
+
+    async def _handle_set_self_modify(self, user, payload):
+        """The toolbar's "Self-modify" box (Angela, 2026-10-03).  Refused while
+        an answer runs, in a build that cannot self-modify, and - tick only -
+        while the model cannot hold Tlamatini's self-knowledge."""
+        from . import compact_mode
+        enabled = bool(payload.get('enabled'))
+        message = None
+        if getattr(self, '_active_run', None):
+            message = ("Self-modify was not changed: an answer is still running. "
+                       "Try again when it finishes.")
+            await self._send_compact_state("refused")
+        else:
+            result = await database_sync_to_async(compact_mode.set_self_modify)(
+                enabled, f"user {getattr(user, 'username', '') or '?'}")
+            if result.get('refused'):
+                message = result.get('message') or "Self-modify was not changed."
+                await self._send_compact_state("refused")
+            elif not result.get('ok'):
+                message = "Self-modify could not be changed: " + str(result.get('error') or 'unknown error')
+                await self._send_compact_state("error")
+            elif not result.get('changed'):
+                await self._send_compact_state("unchanged")
+            elif enabled:
+                message = ("Self-modify is ON: Tlamatini's self-knowledge goes with every request the "
+                           "model can hold, so she can read, change and rebuild her own source.")
+            else:
+                message = ("Self-modify is OFF: Tlamatini's self-knowledge is no longer sent, and she "
+                           "will not read, edit or rebuild her own source code.")
+        if message:
+            await self.channel_layer.group_send(   # type: ignore
+                self.room_group_name,
+                {'type': 'agent_message', 'message': message, 'username': 'Tlamatini'}
+            )
+        self._schedule_context_gauge_refresh("self-modify " + ("on" if enabled else "off"))
 
     @staticmethod
     def _toggles_summary(label, message):
@@ -1441,6 +1481,11 @@ class AgentConsumer(AsyncWebsocketConsumer):
             if type == 'set-compact-mode':
                 # The toolbar's "Compact mode" box (Angela, 2026-10-02).
                 await self._handle_set_compact_mode(user, text_data_json)
+                return
+
+            if type == 'set-self-modify':
+                # The toolbar's "Self-modify" box (Angela, 2026-10-03).
+                await self._handle_set_self_modify(user, text_data_json)
                 return
 
             if type == 'compact-mode-sync':

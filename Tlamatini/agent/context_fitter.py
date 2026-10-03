@@ -679,9 +679,25 @@ class FitReport:
     everything_tokens: int = 0
     acpx_bound: bool = False
     toggles_version: int = 0
+    # The Self-modify switch (agent/compact_mode.py, 2026-10-03).
+    self_modify_available: bool = False
+    self_modify_wanted: bool = False
+    self_modify_fits: Optional[bool] = None
+    self_modify_active: bool = False
+    self_modify_tokens: int = 0
+    self_modify_need_tokens: int = 0
 
     def as_capacity(self) -> Dict[str, Any]:
         return {
+            "self_modify": {
+                "available": bool(self.self_modify_available),
+                "wanted": bool(self.self_modify_wanted),
+                "fits": self.self_modify_fits,
+                "active": bool(self.self_modify_active),
+                "locked": bool(self.self_modify_available and self.self_modify_fits is False),
+                "tokens": int(self.self_modify_tokens),
+                "need_tokens": int(self.self_modify_need_tokens),
+            },
             "compact_active": bool(self.compact_active),
             "strict": bool(self.strict),
             "locked": bool(self.strict),
@@ -735,5 +751,9 @@ class FitReport:
             extra.append(f"history {d.get('history_kept')}/{d.get('history_total')}")
         if d.get("input_clipped"):
             extra.append(f"input {d.get('input_fitted_chars'):,}/{d.get('input_chars'):,} chars")
+        if self.self_modify_available:
+            extra.append("self-modify " + ("ON" if self.self_modify_active else (
+                "locked OFF (does not fit)" if self.self_modify_fits is False else "OFF"))
+                + f" (~{self.self_modify_tokens:,} tokens)")
         tail = (" | " + ", ".join(extra)) if extra else ""
         return f"--- [CONTEXT-FIT] {self.model}: {what}{tail} | setting={self.setting}"

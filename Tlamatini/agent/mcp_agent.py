@@ -2534,11 +2534,19 @@ _STEP_BY_STEP_SYSTEM_GUIDANCE = """
 """
 
 
-def _build_system_prompt(preeliminary_prompt: str, tools, step_by_step_enabled: bool = False) -> str:
+def _build_system_prompt(preeliminary_prompt: str, tools, step_by_step_enabled: bool = False,
+                         self_knowledge: Optional[bool] = None) -> str:
     import platform
     import sys as _sys
     # Lazy import (avoids any rag<->mcp_agent import-cycle at module load).
-    from .rag.config import apply_conditional_rule_blocks
+    from .rag.config import apply_conditional_rule_blocks, apply_self_modify_switch, self_modify_on
+
+    # The Self-modify switch (Angela, 2026-10-03): Tlamatini's self-knowledge
+    # is sent only while it is ON.  None = read the switch; the fitter passes
+    # its own verdict (the model must also be able to hold it).
+    if self_knowledge is None:
+        self_knowledge = self_modify_on()
+    preeliminary_prompt = apply_self_modify_switch(preeliminary_prompt, bool(self_knowledge))
 
     # Keep the per-tool system-prompt list to ONE short line each. The model
     # ALREADY receives every tool's full name / description / parameters through
@@ -2972,6 +2980,17 @@ def _build_compact_system_prompt(preeliminary_prompt: str, tools, *, budget_char
     return prompt, info
 
 
+def _self_knowledge_text() -> str:
+    """Tlamatini's self-knowledge as plain text (empty when this build cannot
+    self-modify) - what a COMPACT request carries when Self-modify is ON and
+    the model can hold it.  Never raises."""
+    try:
+        from .rag.config import self_knowledge_text
+        return self_knowledge_text()
+    except Exception:  # noqa: BLE001
+        return ""
+
+
 class CapabilityAwareToolAgentExecutor:
     """
     Delegates to the legacy full-tool executor by default and only applies
@@ -3006,11 +3025,21 @@ class CapabilityAwareToolAgentExecutor:
         self._everything_names: list = []
 
     def _get_executor_for_tools(self, tools_subset, step_by_step_enabled: bool = False,
-                                system_prompt: Optional[str] = None):
+                                system_prompt: Optional[str] = None,
+                                self_knowledge: Optional[bool] = None):
         key_parts = [f"__step_by_step__={int(bool(step_by_step_enabled))}"]
         if system_prompt is not None:
             digest = hashlib.sha1(system_prompt.encode("utf-8", "replace")).hexdigest()[:16]
             key_parts.append(f"__compact__={digest}")
+        else:
+            # The Self-modify switch decides the prompt, so it is part of the key.
+            if self_knowledge is None:
+                try:
+                    from .rag.config import self_modify_on
+                    self_knowledge = self_modify_on()
+                except Exception:  # noqa: BLE001
+                    self_knowledge = True
+            key_parts.append(f"__self__={int(bool(self_knowledge))}")
         key = tuple(key_parts + [tool.name for tool in tools_subset])
         cached = self._executor_cache.get(key)
         if cached is not None:
@@ -3023,6 +3052,7 @@ class CapabilityAwareToolAgentExecutor:
                     self.preeliminary_prompt,
                     tools_subset,
                     step_by_step_enabled=step_by_step_enabled,
+                    self_knowledge=self_knowledge,
                 )
             ),
             tools=tools_subset,
@@ -3124,13 +3154,50 @@ class CapabilityAwareToolAgentExecutor:
         except Exception:  # noqa: BLE001
             every = [t for t in self.tools if not _is_external_mcp_tool_name(getattr(t, "name", ""))]
         try:
-            prompt_chars = len(_build_system_prompt(self.preeliminary_prompt, every))
+            # Measured WITHOUT the self-knowledge: Self-modify is its own
+            # switch (below) and must never lock Compact mode ON by itself.
+            prompt_chars = len(_build_system_prompt(self.preeliminary_prompt, every, self_knowledge=False))
         except Exception:  # noqa: BLE001
             prompt_chars = len(str(self.preeliminary_prompt or ""))
         chars = prompt_chars + self._tool_chars(every)
         self._everything_chars = chars
         self._everything_names = [str(getattr(t, "name", "") or "") for t in every]
         return chars
+
+    def _self_knowledge_chars(self) -> int:
+        """What Tlamatini's self-knowledge adds to a request, in characters
+        (0 when this build cannot self-modify).  Cached; never raises."""
+        cached = getattr(self, "_self_chars", None)
+        if cached is not None:
+            return int(cached)
+        try:
+            with_self = len(_build_system_prompt(self.preeliminary_prompt, [], self_knowledge=True))
+            without = len(_build_system_prompt(self.preeliminary_prompt, [], self_knowledge=False))
+            chars = max(0, with_self - without)
+        except Exception:  # noqa: BLE001
+            chars = 0
+        self._self_chars = chars
+        return chars
+
+    def _prompt_chars_without_self(self, tools, step_by_step: bool = False) -> int:
+        """The complete system prompt for ``tools`` WITHOUT the self-knowledge,
+        in characters - the base the Self-modify verdict adds it to.  Cached
+        per tool set; never raises."""
+        cache = getattr(self, "_off_prompt_cache", None)
+        if cache is None:
+            cache = self._off_prompt_cache = {}
+        key = (int(bool(step_by_step)),) + tuple(str(getattr(t, "name", "") or "") for t in tools or [])
+        cached = cache.get(key)
+        if cached is None:
+            try:
+                cached = len(_build_system_prompt(self.preeliminary_prompt, list(tools or []),
+                                                  step_by_step_enabled=step_by_step, self_knowledge=False))
+            except Exception:  # noqa: BLE001
+                cached = len(str(self.preeliminary_prompt or ""))
+            if len(cache) > 32:
+                cache.clear()
+            cache[key] = cached
+        return int(cached)
 
     def _tool_chars(self, tools) -> int:
         """Characters the tools' schemas cost on the wire (cached per name)."""
@@ -3232,6 +3299,22 @@ class CapabilityAwareToolAgentExecutor:
                         request_tools = list(filter_acpx_tools(self.tools, acpx_requested))
                         result["tools"] = request_tools
 
+            # The mode follows the SWITCH: Compact mode ON (by the user, or
+            # locked ON by a model too small for everything) sends exactly the
+            # user's Compact selection; OFF sends the complete request.
+            mode = MODE_COMPACT if (compact_active or strict) else MODE_FULL
+
+            # 0b. SELF-MODIFY (Angela, 2026-10-03): Tlamatini's self-knowledge
+            #     rides along only when this build can self-modify (always from
+            #     source), the user wants it, AND the model can hold it on top
+            #     of this request - otherwise the box is locked OFF.
+            self_available = _compact_mode.self_modify_available()
+            self_wanted = bool(self_available and _compact_mode.self_modify_wanted())
+            self_chars = self._self_knowledge_chars() if self_available else 0
+            self_fits: Optional[bool] = None
+            self_on = False
+            self_need_chars = 0
+
             # 1. The COMPLETE request - exactly what was sent before the fitter.
             if multi_turn and not compact_active:
                 full_tools, tool_tokens, dropped = _budget_select_tools(
@@ -3248,22 +3331,25 @@ class CapabilityAwareToolAgentExecutor:
                 result.update(dropped=dropped, tool_tokens=tool_tokens)
             else:
                 full_tools = list(request_tools)
+            if mode == MODE_FULL and self_available:
+                self_need_chars = (self._prompt_chars_without_self(full_tools, step_by_step)
+                                   + self._tool_chars(full_tools) + self_chars)
+                self_fits = self_need_chars + 2400 <= usable
+                self_on = bool(self_wanted and self_fits)
             if not multi_turn and acpx_requested and not step_by_step and not compact_active:
                 # The legacy one-shot path with ACPX on reuses the cached
-                # full-tool executor, exactly as before the fitter.
-                full_executor = self.legacy_executor
+                # full-tool executor (the same cache entry legacy_executor is),
+                # exactly as before the fitter.
+                full_executor = self._get_executor_for_tools(self.tools, self_knowledge=self_on)
             else:
-                full_executor = self._get_executor_for_tools(full_tools, step_by_step_enabled=step_by_step)
+                full_executor = self._get_executor_for_tools(full_tools, step_by_step_enabled=step_by_step,
+                                                             self_knowledge=self_on)
             full_prompt_chars = len(str(getattr(full_executor, "system_prompt", "") or ""))
             static_chars = full_prompt_chars + self._tool_chars(full_tools)
             input_chars = len(input_text)
             hist_chars = _fit_message_chars(hist[-8:])
             full_chars = static_chars + input_chars + hist_chars
             full_tokens = int(full_chars / cpt) if cpt else 0
-            # The mode follows the SWITCH: Compact mode ON (by the user, or
-            # locked ON by a model too small for everything) sends exactly the
-            # user's Compact selection; OFF sends the complete request.
-            mode = MODE_COMPACT if (compact_active or strict) else MODE_FULL
 
             report = FitReport(
                 mode=mode, model=model, window_tokens=window.tokens,
@@ -3332,6 +3418,18 @@ class CapabilityAwareToolAgentExecutor:
                                        for opener, _closer in _cg.CONTEXT_BLOCKS[:2]),
                     strict=bool(strict),
                 )
+                # Self-modify in Compact mode: the self-knowledge is added to the
+                # compact prompt only when the window still holds it - measured
+                # on the very text that would be appended.
+                self_text = _self_knowledge_text() if self_available else ""
+                if self_text:
+                    self_chars = len(self_text)
+                    self_need_chars = len(system_prompt) + self._tool_chars(tools) + self_chars
+                    self_fits = self_need_chars + 2400 <= usable
+                    self_on = bool(self_wanted and self_fits)
+                    if self_on:
+                        system_prompt = system_prompt.rstrip() + "\n\n" + self_text.rstrip() + "\n"
+                        p_info["prompt_chars"] = len(system_prompt)
                 details.update(p_info)
                 details["prompt_full_chars"] = full_prompt_chars
                 fixed = len(system_prompt) + self._tool_chars(tools)
@@ -3371,6 +3469,12 @@ class CapabilityAwareToolAgentExecutor:
                         f"Compact mode is switched on: Tlamatini sends only what you ticked "
                         f"({len(tools)} tool(s)). Untick the Compact mode box to bring everything back."
                     )
+            report.self_modify_available = bool(self_available)
+            report.self_modify_wanted = bool(self_wanted)
+            report.self_modify_fits = self_fits
+            report.self_modify_active = bool(self_on)
+            report.self_modify_tokens = int(self_chars / cpt) if cpt else 0
+            report.self_modify_need_tokens = int(self_need_chars / cpt) if cpt else 0
             report.fitted_tokens_estimate = int(fitted_chars / cpt) if cpt else 0
             report.details = details
             result.update(executor=executor, input=fitted_input, history=fitted_hist,
@@ -3384,6 +3488,10 @@ class CapabilityAwareToolAgentExecutor:
                 base_tokens=int(base_chars / cpt) if cpt else 0, chars_per_token=cpt,
                 setting=setting, auto_enter=False,
             )
+            if self_available and self_fits is not None:
+                _compact_mode.note_self_modify(fits=bool(self_fits),
+                                               tokens=report.self_modify_tokens,
+                                               need_tokens=report.self_modify_need_tokens)
             if publish:
                 self._publish_fit(report, user_id)
             return result

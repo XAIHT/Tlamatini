@@ -17,7 +17,8 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from ..global_state import global_state
 from ..llm_timing import llm_timing_callbacks
 from agent.rag_enhancements import enrich_documents_with_metadata, get_project_summary
-from .config import load_config_and_prompt, apply_conditional_rule_blocks
+from .config import (load_config_and_prompt, apply_conditional_rule_blocks,
+                     apply_self_modify_switch, self_modify_on)
 from .loaders import report_oversized_docs
 from . import binary_guard
 from .splitters import get_text_splitter
@@ -445,8 +446,10 @@ def _build_prompt_only_chain_impl(config, prompt_template_string, documents=None
     # irrelevant there — strip both so a smaller model isn't handed them. The
     # tool-enabled UnifiedAgentChain keeps the raw string (with sentinels) so
     # _build_system_prompt can resolve the blocks per-request from its tool set.
-    non_tool_prompt_string = apply_conditional_rule_blocks(
-        prompt_template_string, include_acpx=False, include_templates=False)
+    # The Self-modify switch is read when this tool-less chain is BUILT (the
+    # unified chain reads it on every request).
+    non_tool_prompt_string = apply_self_modify_switch(apply_conditional_rule_blocks(
+        prompt_template_string, include_acpx=False, include_templates=False), self_modify_on())
     if not bool(config.get("enable_unified_agent", False)):
         non_tool_prompt_string = _fit_non_tool_prompt_for_model(config, non_tool_prompt_string, llm)
 
@@ -574,8 +577,8 @@ def build_retrieval_chain(documents, config, prompt_template_string):
         if not has_docs:
             # No-docs, non-tool path: strip the feature-gated ACPX/Templates
             # rule blocks (no tools are ever bound on this chain).
-            non_tool_prompt_string = apply_conditional_rule_blocks(
-                prompt_template_string, include_acpx=False, include_templates=False)
+            non_tool_prompt_string = apply_self_modify_switch(apply_conditional_rule_blocks(
+                prompt_template_string, include_acpx=False, include_templates=False), self_modify_on())
             if not bool(config.get("enable_unified_agent", False)):
                 non_tool_prompt_string = _fit_non_tool_prompt_for_model(
                     config, non_tool_prompt_string, llm)
@@ -698,8 +701,9 @@ def build_retrieval_chain(documents, config, prompt_template_string):
                 llm=llm,
                 prompt_template_string=_fit_non_tool_prompt_for_model(
                     config,
-                    apply_conditional_rule_blocks(
+                    apply_self_modify_switch(apply_conditional_rule_blocks(
                         final_prompt_string, include_acpx=False, include_templates=False),
+                        self_modify_on()),
                     llm,
                     compression_cfg,
                 ),

@@ -26,7 +26,11 @@ rewrites those rows for the switch:
 * ``apply_rows_to_global_state()`` + ``toggles_version()`` - the unified
   executor re-reads its tool surface whenever the version moves;
 * ``cut_warning_html()`` - the line a CUT answer carries in the chat;
-* ``costs()`` - what each row costs, for the Configure dialogs.
+* ``costs()`` - what each row costs, for the Configure dialogs;
+* ``set_self_modify()`` / ``note_self_modify()`` / ``self_modify_active()`` -
+  the SELF-MODIFY switch (Angela, 2026-10-03): Tlamatini's self-knowledge
+  rides along only in a build that can self-modify (always from source), when
+  the user wants it, and when the model can hold it - locked OFF otherwise.
 
 Every function is FAIL-OPEN: a broken switch must never cost the chat.  With no
 database (a SimpleTestCase, a broken install) Compact mode simply reads OFF.
@@ -80,6 +84,13 @@ _STATE: Dict[str, Any] = {
     "setting": "auto",
     "reason": "",
     "since": 0.0,
+    # The Self-modify switch (2026-10-03).  ``self_modify`` is the user's
+    # choice (persisted, ON by default); ``self_modify_fits`` the fitter's last
+    # verdict (None = not measured yet, False = locked OFF for this model).
+    "self_modify": True,
+    "self_modify_fits": None,
+    "self_modify_tokens": 0,
+    "self_modify_need_tokens": 0,
 }
 _VERSION = [1]
 _NOTIFY: Dict[str, Any] = {"loop": None, "layer": None}
@@ -107,6 +118,7 @@ def _load(force: bool = False) -> None:
                 model=str(row.model or ""),
                 window_tokens=int(row.window_tokens or 0),
                 reason=str(row.reason or ""),
+                self_modify=bool(getattr(row, "self_modify", True)),
             )
         global_state.set_state(GLOBAL_ACTIVE_KEY, bool(row.active))
     except Exception:  # noqa: BLE001 - no database: Compact mode reads OFF
@@ -118,7 +130,9 @@ def reset_cache() -> None:
     with _LOCK:
         _STATE.update(loaded=False, active=False, strict=False, model="", window_tokens=0,
                       usable_tokens=0, everything_tokens=0, base_tokens=0,
-                      chars_per_token=0.0, setting="auto", reason="", since=0.0)
+                      chars_per_token=0.0, setting="auto", reason="", since=0.0,
+                      self_modify=True, self_modify_fits=None, self_modify_tokens=0,
+                      self_modify_need_tokens=0)
         _COSTS.clear()
     global_state.set_state(GLOBAL_ACTIVE_KEY, None)
 
@@ -130,6 +144,11 @@ def state() -> Dict[str, Any]:
         snap = {k: v for k, v in _STATE.items() if k != "loaded"}
     snap["version"] = _VERSION[0]
     snap["locked"] = bool(snap["strict"])
+    available = self_modify_available()
+    snap["self_modify_available"] = available
+    snap["self_modify_locked"] = bool(available and snap["self_modify_fits"] is False)
+    snap["self_modify_active"] = bool(available and snap["self_modify"]
+                                      and snap["self_modify_fits"] is not False)
     return snap
 
 
@@ -352,6 +371,99 @@ def note_capacity(*, model: str, strict: bool, window_tokens: int, usable_tokens
         return False
     except Exception as exc:  # noqa: BLE001
         print(f"--- [COMPACT] capacity not noted ({exc})")
+        return False
+
+
+# ── The Self-modify switch (Angela, 2026-10-03) ───────────────────────────────
+def self_modify_available() -> bool:
+    """Can this build self-modify at all?  ALWAYS from source (dev mode); a
+    frozen build only with ``--self-modify``.  False = the box is not even
+    rendered.  Never raises."""
+    try:
+        from .rag.config import self_modify_available as _available
+        return bool(_available())
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def self_modify_wanted() -> bool:
+    """The user's choice (ON by default)."""
+    _load()
+    with _LOCK:
+        return bool(_STATE["self_modify"])
+
+
+def self_modify_active() -> bool:
+    """Send Tlamatini's self-knowledge?  The build can, the user wants it, and
+    the fitter did not find it too big for the model."""
+    if not self_modify_available():
+        return False
+    _load()
+    with _LOCK:
+        return bool(_STATE["self_modify"]) and _STATE["self_modify_fits"] is not False
+
+
+def set_self_modify(enabled: bool, reason: str = "") -> Dict[str, Any]:
+    """The toolbar's "Self-modify" box.  Refused when the build cannot
+    self-modify, and - tick only - while the model cannot hold it."""
+    enabled = bool(enabled)
+    if not self_modify_available():
+        return {"ok": False, "changed": False, "refused": "unavailable", "state": state(),
+                "message": ("Self-modify is not available: this build was made without "
+                            "--self-modify, so it carries neither its source nor its self-knowledge.")}
+    snap = state()
+    if enabled and snap.get("self_modify_fits") is False:
+        return {
+            "ok": False, "changed": False, "refused": "too_small", "state": snap,
+            "message": (f"Self-modify stays OFF: {snap.get('model') or 'this model'} reads only "
+                        f"{int(snap.get('window_tokens') or 0):,} tokens, and your request with "
+                        f"Tlamatini's self-knowledge (~{int(snap.get('self_modify_tokens') or 0):,} "
+                        f"tokens) needs ~{int(snap.get('self_modify_need_tokens') or 0):,}. Choose a "
+                        "larger model in Config > Models, or untick some agents."),
+        }
+    try:
+        _load()
+        with _LOCK:
+            if bool(_STATE["self_modify"]) == enabled:
+                return {"ok": True, "changed": False, "state": state()}
+        from .models import CompactState
+        _row()
+        CompactState.objects.filter(pk=1).update(self_modify=enabled)
+        with _LOCK:
+            _STATE["self_modify"] = enabled
+        print(f"--- [SELF-MODIFY] Self-modify {'ON' if enabled else 'OFF'} ({reason or 'by the user'}) - "
+              + ("Tlamatini's self-knowledge rides along with every request that can hold it"
+                 if enabled else "Tlamatini's self-knowledge is no longer sent"))
+        notify("self_modify")
+        return {"ok": True, "changed": True, "state": state()}
+    except Exception as exc:  # noqa: BLE001
+        print(f"--- [SELF-MODIFY] could not switch Self-modify {'ON' if enabled else 'OFF'} ({exc})")
+        return {"ok": False, "changed": False, "error": str(exc), "state": state()}
+
+
+def note_self_modify(*, fits: bool, tokens: int = 0, need_tokens: int = 0) -> bool:
+    """The fitter's verdict: can this model hold the self-knowledge on top of
+    the request?  Remembered, logged and sent to every tab when it changes.
+    Returns True when it changed.  Never raises."""
+    try:
+        if not self_modify_available():
+            return False
+        _load()
+        with _LOCK:
+            changed = _STATE["self_modify_fits"] is None or bool(fits) != bool(_STATE["self_modify_fits"])
+            _STATE.update(self_modify_fits=bool(fits), self_modify_tokens=int(tokens or 0),
+                          self_modify_need_tokens=int(need_tokens or 0))
+            model = str(_STATE["model"] or "the model")
+            window = int(_STATE["window_tokens"] or 0)
+        if changed:
+            print(f"--- [SELF-MODIFY] {model}: window {window:,} tokens; the self-knowledge adds "
+                  f"~{int(tokens or 0):,} (request with it ~{int(need_tokens or 0):,}) -> "
+                  + ("it fits - Self-modify can be ticked or unticked freely" if fits
+                     else "it does NOT fit - Self-modify is locked OFF"))
+            notify("self_modify")
+        return changed
+    except Exception as exc:  # noqa: BLE001
+        print(f"--- [SELF-MODIFY] verdict not noted ({exc})")
         return False
 
 

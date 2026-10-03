@@ -217,9 +217,18 @@ def agent_page(request):
     except Exception as e:
         print(f"Warning: Could not load ollama_base_url via config_loader: {e}")
 
+    # The Self-modify box is rendered ONLY in a build that can self-modify:
+    # always from source (dev mode), a frozen build only with --self-modify.
+    try:
+        from .rag.config import self_modify_available
+        self_modify_ok = bool(self_modify_available())
+    except Exception:
+        self_modify_ok = False
+
     return render(request, 'agent/agent_page.html', {
         'initial_messages': initial_messages,
         'ollama_base_url': ollama_base_url,
+        'self_modify_available': self_modify_ok,
     })
 
 def load_canvas_view(request, filename):

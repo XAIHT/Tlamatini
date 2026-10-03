@@ -228,6 +228,14 @@
                 <input id="compact-mode-enabled" type="checkbox" />
                 <span>Compact mode</span>
               </label>
+              {% if self_modify_available %}
+              {# Self-modify toggle - only in a build that can self-modify (always from source); agent/compact_mode.py holds the switch, self_modify_switch.js owns the box. #}
+              <label id="self-modify-toggle" class="toolbar-toggle" for="self-modify-enabled"
+                title="Self-modify: send Tlamatini her own self-knowledge so she can read, change and rebuild herself.">
+                <input id="self-modify-enabled" type="checkbox" />
+                <span>Self-modify</span>
+              </label>
+              {% endif %}
               <label id="internet-toggle" class="toolbar-toggle" for="internetEnabled">
                 <input id="internetEnabled" type="checkbox" />
                 <span>Add internet context</span>
@@ -749,6 +757,10 @@
   <script src="{% static 'agent/js/context_gauge.js' %}?v={{ STATIC_VERSION }}"></script>
   {# Compact mode (2026-10-01): reads detail.capacity from every context-gauge frame. #}
   <script src="{% static 'agent/js/model_capacity.js' %}?v={{ STATIC_VERSION }}"></script>
+  {% if self_modify_available %}
+  {# The Self-modify box (2026-10-03): shown only in a build that can self-modify. #}
+  <script src="{% static 'agent/js/self_modify_switch.js' %}?v={{ STATIC_VERSION }}"></script>
+  {% endif %}
   {# The price of every Configure row + the live budget line (2026-10-02). #}
   <script src="{% static 'agent/js/compact_costs.js' %}?v={{ STATIC_VERSION }}"></script>
   {# Every answer table stays readable: unreadable cell text is re-coloured (2026-10-01). #}

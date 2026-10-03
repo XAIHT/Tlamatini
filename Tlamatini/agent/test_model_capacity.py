@@ -26,6 +26,7 @@ from unittest.mock import patch
 
 from django.test import SimpleTestCase
 
+from agent import compact_mode as cm
 from agent import context_fitter as cf
 from agent import context_governor as cg
 
@@ -36,11 +37,13 @@ PROMPT = (AGENT_DIR / "prompt.pmt").read_text(encoding="utf-8")
 class _Reset(SimpleTestCase):
     def setUp(self):
         cg.forget_learned_windows()
+        cm.reset_cache()          # the Self-modify verdict is process-wide too
         with cg._CAPACITY_LOCK:
             cg._CAPACITY.clear()
 
     def tearDown(self):
         cg.forget_learned_windows()
+        cm.reset_cache()
         with cg._CAPACITY_LOCK:
             cg._CAPACITY.clear()
 

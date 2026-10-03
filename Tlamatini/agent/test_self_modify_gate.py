@@ -51,6 +51,7 @@ from agent.rag.config import (
     _load_self_knowledge_block,
     is_self_able_modify,
     load_config_and_prompt,
+    self_modify_available,
 )
 
 _AGENT_DIR = Path(__file__).resolve().parent
@@ -260,9 +261,12 @@ class SelfKnowledgeInjectorTests(_AppDirTestCase):
         self.assertNotIn("}", NOT_SELF_ABLE_MODIFY_NOTICE)
 
     def test_real_checkout_is_self_consistent(self):
-        # Whatever this checkout looks like, the two must agree.
+        # Whatever this checkout looks like, the two must agree.  Since
+        # 2026-10-03 a source checkout is ALWAYS self-able (dev mode is always
+        # like --self-modify), folder or no folder.
         _, prompt_template, _ = load_config_and_prompt(str(_AGENT_DIR))
-        has_tree = is_self_able_modify(str(_AGENT_DIR))
+        has_tree = self_modify_available(str(_AGENT_DIR))
+        self.assertTrue(has_tree)
         self.assertEqual(has_tree, "<self_knowledge>" in prompt_template)
         self.assertNotIn(SELF_KNOWLEDGE_PLACEHOLDER, prompt_template)
         for marker in _ALL_MARKERS:

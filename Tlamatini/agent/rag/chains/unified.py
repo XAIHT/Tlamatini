@@ -25,7 +25,7 @@ from ...context_governor import (
 )
 from ...global_state import global_state
 from ...mcp_agent import create_unified_agent
-from ..config import apply_conditional_rule_blocks
+from ..config import apply_conditional_rule_blocks, apply_self_modify_switch, self_modify_on
 from ..utils import _approx_tokens, _sanitize_rewritten_question, _sanitize_and_redact, _normalize_text, _unique_filenames_from_split, _pack_context, prepend_loaded_context_scope
 from ..interaction import show_rephrased_question, save_context_blob
 from ..retrieval import retrieve_documents
@@ -44,9 +44,10 @@ def _non_tool_system_prompt(prompt_template_string: str) -> str:
     """System prompt for the tool-LESS fallback QA path. No tools are bound
     here, so the feature-gated ACPX (Rule 12) / Templates (Rule 16) rule blocks
     are never relevant — strip them both so the fallback prompt stays lean and
-    no sentinel markers leak to the model."""
-    return apply_conditional_rule_blocks(
-        prompt_template_string, include_acpx=False, include_templates=False)
+    no sentinel markers leak to the model.  The Self-modify switch decides,
+    per request, whether Tlamatini's self-knowledge goes with it (2026-10-03)."""
+    return apply_self_modify_switch(apply_conditional_rule_blocks(
+        prompt_template_string, include_acpx=False, include_templates=False), self_modify_on())
 
 
 def _fit_tool_less(prompt_template_string: str, llm, answer_payload: dict):

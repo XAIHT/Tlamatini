@@ -32,6 +32,7 @@ REQUIRED_STATIC = (
     "agent/js/context_gauge.js", "agent/css/context_gauge.css",
     "agent/js/model_capacity.js", "agent/css/model_capacity.css",
     "agent/js/compact_costs.js",
+    "agent/js/self_modify_switch.js",
     "agent/js/chat_table_contrast.js",
     "agent/js/shared-runtime-dialogs.js", "agent/css/dialog_theme.css",
     "agent/js/avatar.js", "agent/css/avatar.css",
