@@ -92,8 +92,14 @@ class EffectiveWindowTests(_Reset):
                  "watermarks": {"compact": 0.6, "fold": 0.75, "floor": 0.85}}
         cg.apply_real_tokens(frame, {"prompt_tokens": 16386})
         self.assertTrue(frame["truncated"])
-        self.assertEqual(frame["ratio"], 1.0)
+        # 2026-10-02: the TRUE share - what was sent against what the model
+        # read (207,000 chars / 3 per token = 69,000 of 16,386 = ~421%).
+        self.assertEqual(frame["window_real"], 16386)
+        self.assertEqual(frame["tokens_sent_estimate"], 69_000)
+        self.assertAlmostEqual(frame["ratio"], 69_000 / 16386, 3)
+        self.assertGreater(frame["ratio"], 1.0)
         self.assertEqual(frame["zone"], cg.ZONE_FLOOR)
+        self.assertIn("16386 of about 69000", frame["truncated_note"])
 
     def test_every_gauge_frame_carries_the_capacity_verdict(self):
         sent = []

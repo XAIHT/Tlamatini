@@ -132,16 +132,19 @@
         // produced the reading (one-shot / multi-turn / acpx).
         nodes.title = div('ctxg-title');
         var titleMain = div('ctxg-title-main');
-        titleMain.textContent = 'CONTEXT';
+        // CONTEXT-WINDOW (Angela, 2026-10-02): the ring is the share of the
+        // model's context window one request fills - and it says so.
+        titleMain.textContent = 'CONTEXT-WINDOW';
         nodes.titleSub = div('ctxg-title-sub');
         nodes.titleSub.textContent = 'sent to the model';
         nodes.title.appendChild(titleMain);
         nodes.title.appendChild(nodes.titleSub);
-        nodes.title.title = 'How much Tlamatini sends to her main model on one '
-            + 'request: the system prompt, the bound tools, your loaded context, '
-            + 'the chat history and the tool loop. Bytes are measured. Tokens say '
-            + 'REAL when they are Ollama\'s own prompt_eval_count for that exact '
-            + 'request, and est. until Ollama has answered.';
+        nodes.title.title = 'How much of the model\'s CONTEXT WINDOW one request fills: '
+            + 'the system prompt, the bound tools, your loaded context, the chat history '
+            + 'and the tool loop. It can pass 100% - then the model cannot read it all and '
+            + 'not everything will work. Bytes are measured. Tokens say REAL when they are '
+            + 'Ollama\'s own prompt_eval_count for that exact request, and est. until Ollama '
+            + 'has answered.';
 
         row.appendChild(nodes.title);
         row.appendChild(ring);
@@ -193,7 +196,11 @@
         var hist = Number(detail.bytes_history) || 0;
         var loop = Number(detail.bytes_loop) || 0;
         var ratio = Number(detail.ratio) || 0;
-        var pct = Math.max(0, Math.min(100, ratio * 100));
+        // The TRUE share of the window - it may pass 100% (Angela, 2026-10-02:
+        // "the gauge must be the most real value"); only the ring stops at full.
+        var pctTrue = Math.max(0, ratio * 100);
+        var pct = Math.min(100, pctTrue);
+        var cut = detail.truncated === true;
         var zone = String(detail.zone || 'green');
         var tokens = Number(detail.tokens_estimated) || 0;
         var ceiling = Number(detail.ceiling_tokens) || 0;
@@ -212,7 +219,9 @@
         );
         // The ring's percentage is an ESTIMATE (the ceiling is in tokens),
         // so it is the small figure and it is labelled as one below.
-        nodes.ringPct.textContent = Math.round(pct) + '%';
+        nodes.ringPct.textContent = Math.round(pctTrue) + '%';
+        row.setAttribute('data-over', pctTrue > 100 ? 'true' : 'false');
+        row.setAttribute('data-cut', cut ? 'true' : 'false');
 
         // The measurement, unqualified — and the exact integer on hover.
         nodes.bytes.textContent = (detail.bytes_human || (total + ' B'));
@@ -229,9 +238,19 @@
         }
         var ceilingText = groupDigits(ceiling) + '-token context ('
             + (detail.ceiling_source || '?') + ')';
-        if (isReal) {
+        if (cut) {
+            // Ollama CUT this request: what it read IS the window.
+            var windowReal = Number(detail.window_real) || realTokens;
+            var sentTokens = Number(detail.tokens_sent_estimate) || tokens;
+            nodes.tokens.textContent = 'CUT · read ' + groupDigits(windowReal) + ' of ≈'
+                + groupDigits(sentTokens) + ' tokens · ' + pctTrue.toFixed(0) + '%';
+            nodes.tokens.classList.add('ctxg-real');
+            nodes.tokens.title = (detail.truncated_note || 'Ollama could not read the whole request.')
+                + ' REAL: Ollama\'s own prompt_eval_count. Untick agents or tools in Config ▸ '
+                + 'Configure Agents / Configure MCPs, or shorten the request, so it fits.' + turnText;
+        } else if (isReal) {
             nodes.tokens.textContent = groupDigits(realTokens) + ' tokens REAL · '
-                + pct.toFixed(1) + '%';
+                + pctTrue.toFixed(1) + '%';
             nodes.tokens.classList.add('ctxg-real');
             var err = detail.estimate_error_pct;
             nodes.tokens.title = 'REAL: Ollama\'s own prompt_eval_count for this exact '
@@ -241,7 +260,7 @@
                 + '.' + turnText;
         } else {
             nodes.tokens.textContent = '≈' + groupDigits(tokens) + ' tokens est. · '
-                + pct.toFixed(1) + '% est.';
+                + pctTrue.toFixed(1) + '% est.';
             nodes.tokens.classList.remove('ctxg-real');
             var last = detail.last_real || null;
             nodes.tokens.title = 'ESTIMATE (~4 characters per token) of a ' + ceilingText
@@ -251,7 +270,7 @@
                 + turnText;
         }
 
-        nodes.zoneWord.textContent = zone.toUpperCase();
+        nodes.zoneWord.textContent = cut ? 'CUT' : (pctTrue > 100 ? 'OVER' : zone.toUpperCase());
 
         // Name WHICH call this reading came from, so a moving ring is
         // explainable rather than mysterious.

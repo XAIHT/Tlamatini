@@ -197,6 +197,7 @@ urlpatterns = [
     # ── ACPX-Skills admin (browse + diagnostics + reload) ──
     # Toggle (enable/disable) goes through the existing WebSocket `set-skills`
     # channel for symmetry with Mcps/Agents/Tools; HTTP here is read-mostly.
+    path('compact_mode/costs/', secure_get(views.compact_costs_view), name='compact_costs'),
     path('skills/', secure_get(views.list_skills_view), name='list_skills'),
     path('skills/<str:skill_name>/', secure_get(views.skill_detail_view), name='skill_detail'),
     path('skills/_/reload/', secure_post(views.reload_skills_view), name='reload_skills'),

@@ -262,6 +262,29 @@ class AgentConfig(AppConfig):
                     
                     agent_folders.sort()
                     
+                    # Keep each agent's Configure Agents choice across the
+                    # rebuild (Angela, 2026-10-02): the table is wiped and
+                    # re-created from the folders, but an agent she ticked or
+                    # unticked stays exactly as she left it.  A NEW agent starts
+                    # unticked while Compact mode is on, ticked otherwise.
+                    previous_flags = {}
+                    try:
+                        previous_flags = {
+                            str(desc or '').lower(): content
+                            for desc, content in Agent.objects.values_list(
+                                'agentDescription', 'agentContent')
+                        }
+                    except Exception:
+                        previous_flags = {}
+                    new_agent_flag = 'true'
+                    try:
+                        from .models import CompactState
+                        state_row = CompactState.objects.filter(pk=1).first()
+                        if state_row is not None and state_row.active:
+                            new_agent_flag = 'false'
+                    except Exception:
+                        new_agent_flag = 'true'
+
                     # Clear existing agents
                     Agent.objects.all().delete()
                     
@@ -313,7 +336,7 @@ class AgentConfig(AppConfig):
                             idAgent=index,
                             agentName=agent_name,
                             agentDescription=display_name,
-                            agentContent='true' # Keeps existing convention
+                            agentContent=previous_flags.get(display_name.lower(), new_agent_flag)
                         )
                     print("--- Agent repopulation complete.")
                 else:

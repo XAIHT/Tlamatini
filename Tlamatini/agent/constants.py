@@ -10,7 +10,7 @@
 # agent/constants.py
 
 # Error messages
-ERROR_AGENT_NOT_READY = "Your agent cannot process your requests. <br> check you didn't specify context out of the root directory. <br> If everything is correct, then check Ollama is running and the config.json file is correct."
+ERROR_AGENT_NOT_READY = "Your agent cannot process your requests. <br> Check that you didn't specify context outside of the root directory. <br> And make sure your request can be fitted in the CONTEXT WINDOW: watch the CONTEXT-WINDOW gauge above the message box - when it is red or past 100%, untick agents or tools in Config > Configure Agents / Configure MCPs, or turn on Compact mode. <br> If everything is correct, please check that Ollama is running and the config.json file is correct."
 ERROR_NOT_AUTHENTICATED = "You're not authenticated."
 ERROR_AGENT_NOT_READY_SIMPLE = "Agent is not ready. Please try again later."
 ERROR_DIRECTORY_OUTSIDE_ROOT = "Selected directory is outside the application root path and is not allowed."

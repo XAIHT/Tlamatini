@@ -222,6 +222,12 @@
                 <input id="step-by-step-enabled" type="checkbox" />
                 <span>Step-by-Step</span>
               </label>
+              {# Compact mode toggle - the switch is agent/compact_mode.py, the box is owned by model_capacity.js. #}
+              <label id="compact-mode-toggle" class="toolbar-toggle" for="compact-mode-enabled"
+                title="Compact mode: send the model only what you tick in Config ▸ Configure MCPs / Configure Agents.">
+                <input id="compact-mode-enabled" type="checkbox" />
+                <span>Compact mode</span>
+              </label>
               <label id="internet-toggle" class="toolbar-toggle" for="internetEnabled">
                 <input id="internetEnabled" type="checkbox" />
                 <span>Add internet context</span>
@@ -743,6 +749,8 @@
   <script src="{% static 'agent/js/context_gauge.js' %}?v={{ STATIC_VERSION }}"></script>
   {# Compact mode (2026-10-01): reads detail.capacity from every context-gauge frame. #}
   <script src="{% static 'agent/js/model_capacity.js' %}?v={{ STATIC_VERSION }}"></script>
+  {# The price of every Configure row + the live budget line (2026-10-02). #}
+  <script src="{% static 'agent/js/compact_costs.js' %}?v={{ STATIC_VERSION }}"></script>
   {# Every answer table stays readable: unreadable cell text is re-coloured (2026-10-01). #}
   <script src="{% static 'agent/js/chat_table_contrast.js' %}?v={{ STATIC_VERSION }}"></script>
   <script src="{% static 'agent/js/checkbox_bulk_toggle.js' %}?v={{ STATIC_VERSION }}_bulktoggle"></script>

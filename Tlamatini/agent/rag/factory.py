@@ -848,6 +848,11 @@ def _setup_llm_with_context_impl(path_only, agents=None, mcps=None, tools=None, 
             descr = tool.get('toolDescription')
             content = tool.get('toolContent')
             global_state.set_state('tool_'+descr.lower()+'_status', 'enabled' if content == 'true' else 'disabled')
+            # A row keyed by its NAME too (the ACPX rows: name "acpx-spawn",
+            # description "ACP spawn") - the gate table reads that key.
+            row_name = str(tool.get('toolName') or '')
+            if row_name and not (row_name.startswith('tool-') and row_name[5:].isdigit()):
+                global_state.set_state('tool_'+row_name.lower()+'_status', 'enabled' if content == 'true' else 'disabled')
             print(f"--- Tool: {descr} [tool_{descr.lower()}_status] - Status: {global_state.get_state('tool_'+descr.lower()+'_status')}")
 
     # Parse omissions
@@ -1033,6 +1038,11 @@ def _setup_llm_impl(agents=None, mcps=None, tools=None, omissions=None, *, inclu
             descr = tool.get('toolDescription')
             content = tool.get('toolContent')
             global_state.set_state('tool_'+descr.lower()+'_status', 'enabled' if content == 'true' else 'disabled')
+            # A row keyed by its NAME too (the ACPX rows: name "acpx-spawn",
+            # description "ACP spawn") - the gate table reads that key.
+            row_name = str(tool.get('toolName') or '')
+            if row_name and not (row_name.startswith('tool-') and row_name[5:].isdigit()):
+                global_state.set_state('tool_'+row_name.lower()+'_status', 'enabled' if content == 'true' else 'disabled')
             print(f"--- Tool: {descr} [tool_{descr.lower()}_status] - Status: {global_state.get_state('tool_'+descr.lower()+'_status')}")
 
     # Parse omissions

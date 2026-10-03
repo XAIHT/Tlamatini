@@ -206,23 +206,30 @@ totals), `[CONTEXT-CEILING]`. Visible proof: `context_gauge_real_lab.py`
 
 ---
 
-## Compact mode — every request fits the model it is sent to (2026-10-01, shipped in `v1.74.0`)
+## Compact mode — every request fits the model it is sent to (2026-10-01, shipped in `v1.74.0`; the SWITCH 2026-10-02)
 
 A model whose REAL window cannot hold Tlamatini's complete request (~100K+ tokens: the whole `prompt.pmt` plus every bound tool schema) is no longer handed it. Ollama never refuses an oversized request for a local model — it silently keeps the tail and answers from that.
 
 | Piece | Where | Role |
 |---|---|---|
 | Cut detection | `context_governor.note_real_count` | chars sent ÷ `prompt_eval_count` > 6.0 (or > 1.6× the measured ratio) = CUT; the count IS the window, learned per (server, model) and used by `resolve_ceiling_tokens` |
-| The decision + fitting | `agent/context_fitter.py`, `CapabilityAwareToolAgentExecutor.fit_request` | FULL (byte-identical complete request) when it fits the usable window; COMPACT otherwise |
+| The switch | `agent/compact_mode.py`, model `CompactState` (pk=1, migration 0211) | `enter_compact` / `leave_compact` rewrite the Configure rows atomically; `note_capacity` locks it for a strict model; `after_toggles_saved` chains and applies saved dialogs; `costs()` prices every row |
+| The decision + fitting | `agent/context_fitter.py`, `CapabilityAwareToolAgentExecutor.fit_request` | STRICT when everything activated does not fit the usable window; COMPACT when the switch is ON (or strict); FULL otherwise |
+| The tool surface | `tools.tool_gate_table()` + `get_mcp_tools(ignore_gates=False)` | ONE table of every built-in tool and the rows gating it; in Compact a gate with no row reads OFF; `ignore_gates=True` = everything activated |
 | Tool-less chains | `rag/chains/unified.py::_fit_tool_less`, `rag/factory.py::_fit_non_tool_prompt_for_model` | same fitter, same closing note |
-| The verdict on the page | `detail.capacity` on every `context-gauge` frame → `model_capacity.js` | dialog, badge, ACPX lock |
+| The verdict on the page | `detail.capacity` on every `context-gauge` frame + `compact-mode-state` frames → `model_capacity.js` | the toolbar box (checked / locked 🔒), the dialog, the resync |
 
-**COMPACT keeps** System-Metrics and Files-Search (their context rides inside the question) and Current-Time (`get_current_time`, the only tool bound). **It pauses** every other tool/agent, ACPX and the External-MCP refresh (the user's selection is untouched). The prompt is rebuilt by rule priority and ends with a seven-rule COMPACT MODE note (`compact_tool_rule`); history is newest-first (≤ 6); tool output is capped at 25% of the window. A first step Ollama cut is re-fitted and resent before any tool ran.
+**The switch (Angela, 2026-10-02).** Ticking the toolbar's **Compact mode** box REALLY unticks every MCP / Tool / Agent / Skill row except **System-Metrics, Files-Search and Current-Time** and empties the External-MCP active list (saved in `CompactState.saved_external_active`). The user then ticks back only what she needs, one by one, in the existing Configure dialogs; a COMPACT request binds EXACTLY the enabled tools (External-MCP tools and their supervisors stay paused) under the compact prompt (rule priority, ≤ 40% of the window, a seven-rule COMPACT MODE note whose rule 5 lists the ticked tools and rule 6 names what is missing), history ≤ 6, tool output capped at 25% of the window. Unticking the box ticks EVERY row again and restores the External MCPs.
 
-**Contracts (do NOT weaken):** a model that can hold the complete request gets exactly the request it always got; the window comes from Ollama's own proof first (a local `/api/show` `context_length` is NOT the per-request window — `OLLAMA_NUM_PARALLEL` splits it); `context_compact_mode` = `auto` | `always` | `never`, an explicit value obeyed; every piece fails open to the complete request. Story and proof: `recent-fixes.md` (2026-10-01); coverage `agent/test_model_capacity.py`, visible `compact_mode_visible.py` / `full_mode_visible.py`.
+**STRICT.** `fit_request` measures everything activated (`_everything_static_chars`: the full system prompt over every built-in tool + all schemas, cached per executor) against the usable window; `everything + 2400 > usable` ⇒ strict. A strict model with the switch OFF switches it ON at once (`enter_compact(auto=True)`, then the surface is re-read so the same request already carries the Compact selection) and the box is locked; `leave_compact` refuses while strict (the server re-checks; a forged frame cannot unlock it). A big model unlocks the box and **keeps Compact ON** until the user unticks it. If the database cannot be written, a strict request falls back to the old defaults (Current-Time only).
+
+**Rows apply at once.** `consumers` saves the rows, then `compact_mode.after_toggles_saved(kind, before)`: chains Agent X ↔ Tool `Chat-Agent-X` (and Pythonxer/Executer/Googler → their direct tools; a direct tool ticked ticks its agent), ticks `Chat-Agent-Run-Wait/Status` with the first agent in Compact, copies every row into the same `global_state` keys `setup_llm` sets, and moves `toggles_version`. `CapabilityAwareToolAgentExecutor._refresh_toggle_tool_surface` re-reads `get_mcp_tools()` when the version moved — on the next request or at-rest rebuild; no reconnect, no rebuild. Every tab joins the `tlamatini_compact_mode` Channels group and receives `compact-mode-state` + the REAL rows. `apps.py` preserves each Agent row's flag across the startup rebuild (a NEW agent starts unticked while Compact is ON).
+
+**Cut answers.** A first step Ollama cut is re-fitted and resent (3 attempts); the 4th attempt sets `executor.accept_context_cut` and is answered from what the model read. A live cut of an open answer is recorded on the turn (`context_governor._note_frame_cut` / `turn_cut`; a thrown-away first step clears it) and `consumers.queue_llm_retrieval` prepends `compact_mode.cut_warning_html` — the **CONTEXT-WINDOW exceeded** line — before the answer is saved. A cut frame's ratio is now *sent ÷ read* (`tokens_sent_estimate`, `window_real`), so the gauge can read 300%, not a polite 100%.
+
+**Contracts (do NOT weaken):** a model that can hold everything activated gets exactly the request it always got while the switch is OFF; the window comes from Ollama's own proof first (a local `/api/show` `context_length` is NOT the per-request window — `OLLAMA_NUM_PARALLEL` splits it); `context_compact_mode` = `auto` | `always` (strict) | `never` (never locked, never automatic), an explicit value obeyed; every piece fails open (no database ⇒ the switch reads OFF). Register a new built-in tool in `tools.tool_gate_table()` — never a second gate list. Story and proof: `recent-fixes.md` (2026-10-01, 2026-10-02); coverage `agent/test_model_capacity.py`, `agent/test_compact_mode_switch.py`, visible `compact_switch_visible.py`.
 
 ---
-
 ## Binary-content guard for context loading (`agent/rag/binary_guard.py`)
 
 Every file that enters the RAG chain is now screened for **binary content** before it is read as text, split, embedded and indexed. Binary files are dropped exactly the way a user-configured omission is dropped — and **every drop is named in `tlamatini.log`**.

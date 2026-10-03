@@ -975,6 +975,24 @@ async function loadOmission(omissionName) {
     }
 }
 
+// A box the user already clicked keeps HER choice (2026-10-02): the loaders
+// below ask the server one row at a time - about two seconds for every agent -
+// and used to overwrite the first ticks made while the dialog was still loading.
+document.addEventListener('change', function (event) {
+    const box = event.target;
+    if (box && box.type === 'checkbox' && box.closest && box.closest('#agents-list, #tool-mcps-list')) {
+        box.dataset.userTouched = '1';
+    }
+}, true);
+
+function setLoadedCheckbox(id, enabled) {
+    const box = document.getElementById(id);
+    if (!box || box.dataset.userTouched === '1') {
+        return;
+    }
+    box.checked = enabled === true;
+}
+
 async function loadMcp(mcpName) {
     try {
         const response = await fetch(`/agent/load_mcp/${mcpName}/`);
@@ -1025,11 +1043,7 @@ async function loadTool(toolName) {
             return true;
         }
 
-        const toolEnabled = (content === 'true') ? true : false;
-        if (toolEnabled === true)
-            $('#' + toolName).prop('checked', true);
-        else
-            $('#' + toolName).prop('checked', false);
+        setLoadedCheckbox(toolName, content === 'true');
         return false;
     } catch (error) {
         console.error('Error loading tool:', error);
@@ -1056,11 +1070,7 @@ async function loadAgent(agentName) {
             return true;
         }
 
-        const agentEnabled = (content === 'true') ? true : false;
-        if (agentEnabled === true)
-            $('#' + agentName).prop('checked', true);
-        else
-            $('#' + agentName).prop('checked', false);
+        setLoadedCheckbox(agentName, content === 'true');
         return false;
     } catch (error) {
         console.error('Error loading agent:', error);

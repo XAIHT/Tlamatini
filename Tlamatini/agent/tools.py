@@ -4974,81 +4974,60 @@ def chat_agent_run_wait(run_id: str, max_seconds: int = 120, poll_interval_secon
     return _tool_output(payload)
 
 
-def get_mcp_tools():
-    """
-    Returns a list of all tools available to the MCP.
-    NOTE: File operations (read_file, list_files, search_files) are handled by FileSearchRAGChain,
-    not by any of the tools below. The unified agent should rely on the context provided by FileSearchRAGChain.
-    """
+def tool_gate_table():
+    """ONE table of every built-in tool and the rows that gate it (Angela, 2026-10-02).
 
-    tools = []
-    if global_state.get_state('tool_current-time_status', 'enabled') == 'enabled': 
-        tools.append(get_current_time)
-    # Direct @tool agents are gated by BOTH their Tool flag AND their Agent row
-    # (Configure Agents) — disabling the canvas agent (Pythonxer / Executer /
-    # Googler) hides its direct tool too, consistent with the wrapped-agent gate.
-    # Fail-open: an agent with no matching row defaults to enabled.
-    if (global_state.get_state('tool_execute-file_status', 'enabled') == 'enabled'
-            and global_state.get_state(_agent_status_key('Pythonxer'), 'enabled') == 'enabled'):
-        tools.append(execute_file)
-    if (global_state.get_state('tool_execute-command_status', 'enabled') == 'enabled'
-            and global_state.get_state(_agent_status_key('Executer'), 'enabled') == 'enabled'):
-        tools.append(execute_command)
-    if global_state.get_state('tool_view-image_status', 'enabled') == 'enabled': 
-        tools.append(launch_view_image)
-    if global_state.get_state('tool_opus-analyze-image_status', 'enabled') == 'enabled': 
-        tools.append(opus_analyze_image)
-    if global_state.get_state('tool_qwen-analyze-image_status', 'enabled') == 'enabled': 
-        tools.append(qwen_analyze_image)
-    if global_state.get_state('tool_execute-netstat_status', 'enabled') == 'enabled': 
-        tools.append(execute_netstat)
-    if global_state.get_state('tool_unzip-file_status', 'enabled') == 'enabled': 
-        tools.append(unzip_file)
-    if global_state.get_state('tool_decompile-java_status', 'enabled') == 'enabled': 
-        tools.append(decompile_java)
-    if global_state.get_state('tool_agent-parametrizer_status', 'enabled') == 'enabled':
-        tools.append(agent_parametrizer)
-    if global_state.get_state('tool_agent-starter_status', 'enabled') == 'enabled':
-        tools.append(agent_starter)
-    if global_state.get_state('tool_agent-stopper_status', 'enabled') == 'enabled':
-        tools.append(agent_stopper)
-    if global_state.get_state('tool_agent-stat-getter_status', 'enabled') == 'enabled':
-        tools.append(agent_stat_getter)
-    if global_state.get_state('tool_chat-agent-run-list_status', 'enabled') == 'enabled':
-        tools.append(chat_agent_run_list)
-    if global_state.get_state('tool_chat-agent-run-status_status', 'enabled') == 'enabled':
-        tools.append(chat_agent_run_status)
-    if global_state.get_state('tool_chat-agent-run-log_status', 'enabled') == 'enabled':
-        tools.append(chat_agent_run_log)
-    if global_state.get_state('tool_chat-agent-run-stop_status', 'enabled') == 'enabled':
-        tools.append(chat_agent_run_stop)
-    if global_state.get_state('tool_chat-agent-run-wait_status', 'enabled') == 'enabled':
-        tools.append(chat_agent_run_wait)
-    if global_state.get_state('tool_window-present_status', 'enabled') == 'enabled':
-        tools.append(window_present)
-    if (global_state.get_state('tool_googler_status', 'enabled') == 'enabled'
-            and global_state.get_state(_agent_status_key('Googler'), 'enabled') == 'enabled'):
-        tools.append(googler)
+    ``[(tool_key, agent_display, build), ...]`` in binding order.  ``tool_key``
+    is the Tool row's description lower-cased (its ``tool_<key>_status`` gate);
+    ``agent_display`` is the Agent row that must ALSO be on (None when the Tool
+    row alone gates it); ``build()`` returns the LangChain tool.
+    ``get_mcp_tools`` and the Compact-mode cost labels read the SAME table, so
+    what a Configure dialog says a row costs is what that row really binds.
+    """
+    table = [
+        ('current-time', None, lambda: get_current_time),
+        # Direct @tool agents are gated by BOTH their Tool flag AND their Agent row
+        # (Configure Agents) - disabling the canvas agent (Pythonxer / Executer /
+        # Googler) hides its direct tool too, consistent with the wrapped-agent gate.
+        ('execute-file', 'Pythonxer', lambda: execute_file),
+        ('execute-command', 'Executer', lambda: execute_command),
+        ('view-image', None, lambda: launch_view_image),
+        ('opus-analyze-image', None, lambda: opus_analyze_image),
+        ('qwen-analyze-image', None, lambda: qwen_analyze_image),
+        # The seeded row is "Monitor-Netstat".  The gate used to read a key no row
+        # ever wrote ("execute-netstat"), so that checkbox never reached the tool
+        # and Compact mode could never switch it off.
+        ('monitor-netstat', None, lambda: execute_netstat),
+        ('unzip-file', None, lambda: unzip_file),
+        ('decompile-java', None, lambda: decompile_java),
+        ('agent-parametrizer', None, lambda: agent_parametrizer),
+        ('agent-starter', None, lambda: agent_starter),
+        ('agent-stopper', None, lambda: agent_stopper),
+        ('agent-stat-getter', None, lambda: agent_stat_getter),
+        ('chat-agent-run-list', None, lambda: chat_agent_run_list),
+        ('chat-agent-run-status', None, lambda: chat_agent_run_status),
+        ('chat-agent-run-log', None, lambda: chat_agent_run_log),
+        ('chat-agent-run-stop', None, lambda: chat_agent_run_stop),
+        ('chat-agent-run-wait', None, lambda: chat_agent_run_wait),
+        ('window-present', None, lambda: window_present),
+        ('googler', 'Googler', lambda: googler),
+    ]
     for spec in WRAPPED_CHAT_AGENT_SPECS:
         # A wrapped chat-agent is bound for the LLM ONLY when BOTH gates are
         # enabled:
-        #   1. its wrapper Tool row  — "Chat-Agent-<Name>" in Configure Mcps/Tools
+        #   1. its wrapper Tool row  - "Chat-Agent-<Name>" in Configure Mcps/Tools
         #      (tool_<desc>_status), and
-        #   2. its Agent row         — "<Name>" in Configure Agents
+        #   2. its Agent row         - "<Name>" in Configure Agents
         #      (agent_<display>_status).
         # Disabling EITHER makes the agent INVISIBLE to the LLM (it will report
-        # the agent as unknown / nonexistent). Both gates FAIL OPEN — a missing
-        # row defaults to 'enabled' (get_state default) — so a spec whose
+        # the agent as unknown / nonexistent).  Outside Compact mode both gates
+        # FAIL OPEN - a missing row defaults to 'enabled' - so a spec whose
         # display_name maps to no Agent row, or that has no Tool row, is only
         # hidden by an EXPLICIT disable, never by accident.
-        tool_enabled = global_state.get_state(
-            _tool_status_key(spec.tool_description), 'enabled') == 'enabled'
-        agent_enabled = global_state.get_state(
-            _agent_status_key(spec.display_name), 'enabled') == 'enabled'
-        if tool_enabled and agent_enabled:
-            tools.append(_build_wrapped_chat_agent_tool(spec))
+        table.append((str(spec.tool_description).lower(), spec.display_name,
+                      lambda s=spec: _build_wrapped_chat_agent_tool(s)))
 
-    # ── ACPX runtime tools ───────────────────────────────────────────
+    # ── ACPX runtime tools ──────────────────────────────────────────────────
     # Each tool is independently toggleable through the existing pattern.
     try:
         from .acpx import (
@@ -5065,42 +5044,77 @@ def get_mcp_tools():
             invoke_skill,
             list_skills,
         )
-        if global_state.get_state('tool_acpx-spawn_status', 'enabled') == 'enabled':
-            tools.append(acp_spawn)
-        if global_state.get_state('tool_acpx-send_status', 'enabled') == 'enabled':
-            tools.append(acp_send)
-        if global_state.get_state('tool_acpx-send-and-wait_status', 'enabled') == 'enabled':
-            tools.append(acp_send_and_wait)
-        if global_state.get_state('tool_acpx-kill_status', 'enabled') == 'enabled':
-            tools.append(acp_kill)
-        if global_state.get_state('tool_acpx-doctor_status', 'enabled') == 'enabled':
-            tools.append(acp_doctor)
-        if global_state.get_state('tool_acpx-transcript_status', 'enabled') == 'enabled':
-            tools.append(acp_transcript)
-        if global_state.get_state('tool_acpx-session-status_status', 'enabled') == 'enabled':
-            tools.append(acp_session_status)
-        if global_state.get_state('tool_acpx-list-sessions_status', 'enabled') == 'enabled':
-            tools.append(acp_list_sessions)
-        if global_state.get_state('tool_acpx-relay_status', 'enabled') == 'enabled':
-            tools.append(acp_relay)
-        if global_state.get_state('tool_acpx-list-agents_status', 'enabled') == 'enabled':
-            tools.append(list_acp_agents)
-        if global_state.get_state('tool_acpx-invoke-skill_status', 'enabled') == 'enabled':
-            tools.append(invoke_skill)
-        if global_state.get_state('tool_acpx-list-skills_status', 'enabled') == 'enabled':
-            tools.append(list_skills)
+        for key, acpx_tool in (
+            ('acpx-spawn', acp_spawn),
+            ('acpx-send', acp_send),
+            ('acpx-send-and-wait', acp_send_and_wait),
+            ('acpx-kill', acp_kill),
+            ('acpx-doctor', acp_doctor),
+            ('acpx-transcript', acp_transcript),
+            ('acpx-session-status', acp_session_status),
+            ('acpx-list-sessions', acp_list_sessions),
+            ('acpx-relay', acp_relay),
+            ('acpx-list-agents', list_acp_agents),
+            ('acpx-invoke-skill', invoke_skill),
+            ('acpx-list-skills', list_skills),
+        ):
+            table.append((key, None, lambda t=acpx_tool: t))
     except Exception:
         # Never let an ACPX import error block tool initialization. Log only.
         logger.exception("[ACPX] failed to register tools")
+    return table
 
-    # ── External MCP servers (config-driven catalog, max 5 active) ────
+
+def _compact_mode_active():
+    """Is the Compact-mode switch ON?  (agent/compact_mode.py; fail-open OFF)."""
+    try:
+        flag = global_state.get_state('compact_mode_active', None)
+        if flag is None:
+            from . import compact_mode
+            return compact_mode.is_active()
+        return bool(flag)
+    except Exception:
+        return False
+
+
+def get_mcp_tools(ignore_gates=False):
+    """
+    Returns a list of all tools available to the MCP.
+    NOTE: File operations (read_file, list_files, search_files) are handled by FileSearchRAGChain,
+    not by any of the tools below. The unified agent should rely on the context provided by FileSearchRAGChain.
+
+    ``ignore_gates=True`` returns EVERY built-in tool regardless of the
+    Configure rows (no External MCP tools) - what "everything activated"
+    costs, which decides whether Compact mode is locked ON.
+
+    In Compact mode (Angela, 2026-10-02) a gate with NO row reads DISABLED
+    instead of enabled: Compact mode binds exactly what the user ticked.
+    """
+    missing = 'disabled' if (not ignore_gates and _compact_mode_active()) else 'enabled'
+
+    def _on(key):
+        return ignore_gates or global_state.get_state(key, missing) == 'enabled'
+
+    tools = []
+    for tool_key, agent_display, build in tool_gate_table():
+        if not _on(_tool_status_key(tool_key)):
+            continue
+        if agent_display and not _on(_agent_status_key(agent_display)):
+            continue
+        try:
+            tools.append(build())
+        except Exception:
+            logger.exception("[tools] failed to build the %s tool", tool_key)
+
+    # ── External MCP servers (config-driven catalog, max 5 active) ────────
     # Tools exposed by the user's activated external MCP servers (declared
     # in external_mcps.json, managed via the External ▸ MCPs menu). Lazy +
     # cached; only the active ≤5 servers are ever connected. Fully
     # defensive — get_external_mcp_tools() never raises.
     try:
-        from .external_mcp_manager import get_external_mcp_tools
-        tools.extend(get_external_mcp_tools())
+        if not ignore_gates:
+            from .external_mcp_manager import get_external_mcp_tools
+            tools.extend(get_external_mcp_tools())
     except Exception:
         logger.exception("[ExternalMCP] failed to register external MCP tools")
 

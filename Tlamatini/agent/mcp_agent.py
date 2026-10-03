@@ -45,6 +45,7 @@ from .context_governor import (
     usage_from_llm_result as _context_usage_from,
 )
 from . import context_governor as _cg
+from . import compact_mode as _compact_mode
 from .context_fitter import (
     COMPACT_TOOL_NAMES,
     MODE_COMPACT,
@@ -1692,9 +1693,19 @@ class MultiTurnToolAgentExecutor:
             if not verdict.get("truncated"):
                 return
             window = int(verdict.get("window") or 0)
+            if getattr(self, "accept_context_cut", False):
+                # The last attempt (Angela, 2026-10-02): the user's own Compact
+                # selection still does not fit - answer from what the model read
+                # and let the chat say so.
+                print(f"--- [CONTEXT-FIT] ⚠️ {model}: the request was CUT again (window {window} "
+                      "tokens) - the selection the user ticked still does not fit; answering from "
+                      "what the model could read, with a CONTEXT-WINDOW warning in the chat")
+                return
             if self._fit_steps == 1 and not self._tool_calls_log:
                 print(f"--- [CONTEXT-FIT] {model}: the FIRST step of this turn was cut by "
                       f"Ollama (window {window}) - discarding that answer and re-fitting")
+                # That answer is thrown away: it must not leave a warning behind.
+                _cg.clear_turn_cut(_cg.current_user())
                 raise ContextWindowExceeded(window, model)
             print(f"--- [CONTEXT-FIT] ⚠️ {model}: step '{label}' was CUT by Ollama (window "
                   f"{window} tokens) after tools already ran - the run continues on what "
@@ -2933,7 +2944,8 @@ def _budget_select_tools(request_tools, *, system_prompt_text, input_text,
 def _build_compact_system_prompt(preeliminary_prompt: str, tools, *, budget_chars: int,
                                  model: str = "", window_tokens: int = 0,
                                  step_by_step_enabled: bool = False,
-                                 context_loaded: bool = False) -> Tuple[str, Dict[str, Any]]:
+                                 context_loaded: bool = False,
+                                 strict: bool = True) -> Tuple[str, Dict[str, Any]]:
     """The system prompt of a COMPACT request (Angela, 2026-10-01).
 
     Angela's own prompt.pmt, rebuilt by rule priority until it fits
@@ -2954,7 +2966,7 @@ def _build_compact_system_prompt(preeliminary_prompt: str, tools, *, budget_char
         plat = f"**PLATFORM**: {os_name} {platform.release()} - Unix commands and / paths."
     step = _STEP_BY_STEP_SYSTEM_GUIDANCE if step_by_step_enabled else ""
     rule = compact_tool_rule([getattr(t, "name", "") for t in tools], model=model,
-                             window_tokens=window_tokens)
+                             window_tokens=window_tokens, strict=strict)
     prompt = text.rstrip() + "\n\n" + plat + "\n" + (step.strip() + "\n" if step else "") + "\n" + rule + "\n"
     info["prompt_chars"] = len(prompt)
     return prompt, info
@@ -2983,6 +2995,15 @@ class CapabilityAwareToolAgentExecutor:
         self._tool_chars_cache: Dict[str, int] = {}
         self.legacy_executor = self._get_executor_for_tools(self.tools)
         self.last_fit: Optional[FitReport] = None
+        # The Configure rows this tool surface was built from (Angela,
+        # 2026-10-02): a saved dialog moves the version and the next request
+        # re-reads the surface - no reconnect, no rebuild.
+        try:
+            self._toggles_version = _compact_mode.toggles_version()
+        except Exception:  # noqa: BLE001
+            self._toggles_version = None
+        self._everything_chars: Optional[int] = None
+        self._everything_names: list = []
 
     def _get_executor_for_tools(self, tools_subset, step_by_step_enabled: bool = False,
                                 system_prompt: Optional[str] = None):
@@ -3054,6 +3075,63 @@ class CapabilityAwareToolAgentExecutor:
         )
 
     # ── The CONTEXT FITTER (Angela, 2026-10-01) ─────────────────────────────
+    def _refresh_toggle_tool_surface(self) -> bool:
+        """Re-read the tool surface when a Configure dialog (or the Compact-mode
+        switch) changed the rows since the last request (Angela, 2026-10-02).
+
+        The rows are applied to ``global_state`` the moment they are saved
+        (``compact_mode.apply_rows_to_global_state``), so ``get_mcp_tools``
+        already answers with them - the cached unified agent only has to ask
+        again.  Returns True when the surface changed.  Never raises.
+        """
+        try:
+            version = _compact_mode.toggles_version()
+        except Exception:  # noqa: BLE001
+            return False
+        if not hasattr(self, "_toggles_version"):
+            # Built without __init__ (a caller that handed over its own tool
+            # list): that list IS the surface - adopt the version, keep it.
+            self._toggles_version = version
+            return False
+        if version == self._toggles_version:
+            return False
+        self._toggles_version = version
+        try:
+            fresh = list(get_mcp_tools())
+        except Exception:  # noqa: BLE001
+            logger.exception("[TOGGLES] request-time tool refresh failed")
+            return False
+        old = [getattr(t, "name", "") for t in self.tools]
+        new = [getattr(t, "name", "") for t in fresh]
+        if old == new:
+            return False
+        self.tools = fresh
+        self.legacy_executor = self._get_executor_for_tools(self.tools)
+        print(f"--- [TOGGLES] tool surface re-read from the Configure rows: {len(old)} -> "
+              f"{len(new)} tool(s) (version {version})", flush=True)
+        return True
+
+    def _everything_static_chars(self) -> int:
+        """What EVERYTHING activated costs on the wire: the complete system
+        prompt over every built-in tool plus all of their schemas (Angela,
+        2026-10-02).  A model that cannot hold it is STRICT - Compact mode is
+        locked ON.  Cached per executor; never raises."""
+        cached = getattr(self, "_everything_chars", None)
+        if cached:
+            return int(cached)
+        try:
+            every = list(get_mcp_tools(ignore_gates=True))
+        except Exception:  # noqa: BLE001
+            every = [t for t in self.tools if not _is_external_mcp_tool_name(getattr(t, "name", ""))]
+        try:
+            prompt_chars = len(_build_system_prompt(self.preeliminary_prompt, every))
+        except Exception:  # noqa: BLE001
+            prompt_chars = len(str(self.preeliminary_prompt or ""))
+        chars = prompt_chars + self._tool_chars(every)
+        self._everything_chars = chars
+        self._everything_names = [str(getattr(t, "name", "") or "") for t in every]
+        return chars
+
     def _tool_chars(self, tools) -> int:
         """Characters the tools' schemas cost on the wire (cached per name)."""
         cache = getattr(self, "_tool_chars_cache", None)
@@ -3107,13 +3185,24 @@ class CapabilityAwareToolAgentExecutor:
         (``context_baseline``) call this, so the ring always shows the request
         that is really sent.  Fail-open: on any error the complete request is
         returned unchanged, exactly as before the fitter existed.
+
+        The Compact-mode SWITCH (Angela, 2026-10-02, ``agent/compact_mode.py``):
+        a model that cannot hold EVERYTHING activated is STRICT - Compact mode
+        is switched ON (the Configure rows rewritten) and locked.  While the
+        switch is ON the request binds EXACTLY the tools the user ticked;
+        nothing is dropped behind her back - the CONTEXT-WINDOW gauge shows
+        what her selection costs.
         """
+        # A Configure dialog saved since the last request applies NOW.
+        if self._refresh_toggle_tool_surface():
+            request_tools = filter_acpx_tools(self.tools, acpx_requested)
         hist = list(chat_history or []) if isinstance(chat_history, (list, tuple)) else []
         input_text = str(input_text or "")
         request_tools = list(request_tools or [])
         result: Dict[str, Any] = {"executor": None, "input": input_text, "history": hist,
                                   "tools": request_tools, "mode": MODE_FULL, "report": None,
-                                  "dropped": 0, "tool_tokens": 0, "starved": False}
+                                  "dropped": 0, "tool_tokens": 0, "starved": False,
+                                  "acpx_bound": bool(acpx_requested)}
         try:
             config = _load_config()
             model, base_url = MultiTurnToolAgentExecutor._llm_identity(self.llm)
@@ -3122,8 +3211,29 @@ class CapabilityAwareToolAgentExecutor:
             usable = window.usable_chars
             cpt = window.chars_per_token
 
+            # 0. STRICT?  EVERYTHING activated (every built-in tool) must fit
+            #    with room for a short question - or Compact mode is locked ON.
+            everything_chars = self._everything_static_chars()
+            everything_tokens = int(everything_chars / cpt) if cpt else 0
+            if setting == "always":
+                strict = True
+            elif setting == "never":
+                strict = False
+            else:
+                strict = everything_chars + 2400 > usable
+            compact_active = _compact_mode.is_active()
+            if strict and not compact_active:
+                switched = _compact_mode.enter_compact(
+                    f"{model or 'this model'} reads only {window.tokens:,} tokens and everything "
+                    f"activated needs ~{everything_tokens:,}", auto=True)
+                if switched.get("ok") and _compact_mode.is_active():
+                    compact_active = True
+                    if self._refresh_toggle_tool_surface():
+                        request_tools = list(filter_acpx_tools(self.tools, acpx_requested))
+                        result["tools"] = request_tools
+
             # 1. The COMPLETE request - exactly what was sent before the fitter.
-            if multi_turn:
+            if multi_turn and not compact_active:
                 full_tools, tool_tokens, dropped = _budget_select_tools(
                     request_tools,
                     system_prompt_text=self.preeliminary_prompt,
@@ -3138,7 +3248,7 @@ class CapabilityAwareToolAgentExecutor:
                 result.update(dropped=dropped, tool_tokens=tool_tokens)
             else:
                 full_tools = list(request_tools)
-            if not multi_turn and acpx_requested and not step_by_step:
+            if not multi_turn and acpx_requested and not step_by_step and not compact_active:
                 # The legacy one-shot path with ACPX on reuses the cached
                 # full-tool executor, exactly as before the fitter.
                 full_executor = self.legacy_executor
@@ -3150,16 +3260,10 @@ class CapabilityAwareToolAgentExecutor:
             hist_chars = _fit_message_chars(hist[-8:])
             full_chars = static_chars + input_chars + hist_chars
             full_tokens = int(full_chars / cpt) if cpt else 0
-            # The mode is decided by what CANNOT shrink (prompt + tool schemas)
-            # plus a minimum of question and history, so it stays stable while
-            # a conversation grows instead of flapping between messages.
-            fits_static = static_chars + min(input_chars, 6000) + 1200 <= usable
-            if setting == "always":
-                mode = MODE_COMPACT
-            elif setting == "never":
-                mode = MODE_FULL
-            else:
-                mode = MODE_FULL if fits_static else MODE_COMPACT
+            # The mode follows the SWITCH: Compact mode ON (by the user, or
+            # locked ON by a model too small for everything) sends exactly the
+            # user's Compact selection; OFF sends the complete request.
+            mode = MODE_COMPACT if (compact_active or strict) else MODE_FULL
 
             report = FitReport(
                 mode=mode, model=model, window_tokens=window.tokens,
@@ -3168,6 +3272,10 @@ class CapabilityAwareToolAgentExecutor:
                 tools_total=len(request_tools), acpx_requested=bool(acpx_requested),
                 setting=setting,
             )
+            report.compact_active = bool(compact_active)
+            report.strict = bool(strict)
+            report.everything_tokens = everything_tokens
+            report.toggles_version = int(getattr(self, "_toggles_version", 0) or 0)
             details: Dict[str, Any] = {"history_total": len(hist[-8:]),
                                        "history_kept": len(hist[-8:])}
             if mode == MODE_FULL:
@@ -3193,18 +3301,28 @@ class CapabilityAwareToolAgentExecutor:
                                prompt_full_chars=full_prompt_chars,
                                tools_kept_count=len(tools))
                 fitted_chars = static_chars + len(fitted_input) + _fit_message_chars(fitted_hist[-8:])
+                base_chars = full_prompt_chars
                 report.reason = (
                     f"{model} reads {window.tokens:,} tokens at a time; Tlamatini's complete "
                     f"request (~{full_tokens:,}) fits, so nothing is held back."
                 )
             else:
-                # COMPACT - Angela's rule: only System-Metrics, Files-Search
-                # (context sidecars, untouched) and Current-Time stay active;
-                # ACPX is off; External MCPs are paused.  A capability the user
-                # switched OFF is never switched back on (only tools already
-                # in self.tools - i.e. enabled ones - can be kept).
-                tools = [t for t in filter_acpx_tools(self.tools, False)
-                         if getattr(t, "name", "") in COMPACT_TOOL_NAMES]
+                if compact_active:
+                    # EXACTLY what the user ticked - the switch rewrote the
+                    # Configure rows, so the enabled surface IS her selection.
+                    # External MCPs are paused in Compact mode (their tools and
+                    # the supervisors that manage them are listed in no
+                    # Configure dialog), so none of them ride along.
+                    supervisors = _external_mcp_supervisor_names()
+                    tools = [t for t in request_tools
+                             if getattr(t, "name", "") not in supervisors
+                             and not _is_external_mcp_tool_name(getattr(t, "name", ""))]
+                else:
+                    # The switch could not rewrite the rows (no database): the
+                    # Compact defaults, from what is enabled - a capability the
+                    # user switched OFF is never switched back on.
+                    tools = [t for t in filter_acpx_tools(self.tools, False)
+                             if getattr(t, "name", "") in COMPACT_TOOL_NAMES]
                 prompt_budget = int(min(max(usable * 0.40, 1500), 30000))
                 system_prompt, p_info = _build_compact_system_prompt(
                     self.preeliminary_prompt, tools, budget_chars=prompt_budget,
@@ -3212,6 +3330,7 @@ class CapabilityAwareToolAgentExecutor:
                     step_by_step_enabled=step_by_step,
                     context_loaded=any(opener in input_text
                                        for opener, _closer in _cg.CONTEXT_BLOCKS[:2]),
+                    strict=bool(strict),
                 )
                 details.update(p_info)
                 details["prompt_full_chars"] = full_prompt_chars
@@ -3230,21 +3349,41 @@ class CapabilityAwareToolAgentExecutor:
                     tools, step_by_step_enabled=step_by_step, system_prompt=system_prompt)
                 executor.fit_tool_output_cap = max(1500, int(usable * 0.25))
                 fitted_chars = fixed + len(fitted_input) + _fit_message_chars(fitted_hist)
-                report.tools_kept = [getattr(t, "name", "") for t in tools]
-                report.agents_paused = sum(
-                    1 for t in request_tools if str(getattr(t, "name", "")).startswith("chat_agent_"))
-                report.external_mcps_paused = self._active_external_servers()
+                base_chars = len(system_prompt)
+                kept_names = [getattr(t, "name", "") for t in tools]
+                report.tools_kept = kept_names
+                report.acpx_bound = any(name in ACPX_TOOL_NAMES for name in kept_names)
+                every_agents = sum(1 for n in (self._everything_names or []) if n.startswith("chat_agent_"))
+                bound_agents = sum(1 for n in kept_names if str(n).startswith("chat_agent_"))
+                report.agents_paused = max(0, every_agents - bound_agents)
+                report.external_mcps_paused = self._active_external_servers() if not compact_active else (
+                    _compact_mode_saved_external())
                 details["tools_kept_count"] = len(tools)
-                report.reason = (
-                    f"{model} reads only {window.tokens:,} tokens at a time ({window.source}), "
-                    f"and Tlamatini's complete request needs ~{full_tokens:,} - so she works in "
-                    "Compact mode until a larger model is chosen."
-                )
+                if strict:
+                    report.reason = (
+                        f"{model} reads only {window.tokens:,} tokens at a time ({window.source}), "
+                        f"and everything activated needs ~{everything_tokens:,} - so Compact mode is "
+                        "locked ON. Tick what you need in Config > Configure Agents / Configure MCPs; "
+                        "the CONTEXT-WINDOW gauge shows what still fits."
+                    )
+                else:
+                    report.reason = (
+                        f"Compact mode is switched on: Tlamatini sends only what you ticked "
+                        f"({len(tools)} tool(s)). Untick the Compact mode box to bring everything back."
+                    )
             report.fitted_tokens_estimate = int(fitted_chars / cpt) if cpt else 0
             report.details = details
             result.update(executor=executor, input=fitted_input, history=fitted_hist,
-                          tools=tools, mode=mode, report=report, window=window)
+                          tools=tools, mode=mode, report=report, window=window,
+                          acpx_bound=bool(report.acpx_bound) if mode == MODE_COMPACT
+                          else bool(acpx_requested))
             self.last_fit = report
+            _compact_mode.note_capacity(
+                model=model, strict=bool(strict), window_tokens=window.tokens,
+                usable_tokens=window.usable_tokens, everything_tokens=everything_tokens,
+                base_tokens=int(base_chars / cpt) if cpt else 0, chars_per_token=cpt,
+                setting=setting, auto_enter=False,
+            )
             if publish:
                 self._publish_fit(report, user_id)
             return result
@@ -3309,17 +3448,20 @@ class CapabilityAwareToolAgentExecutor:
                 publish=publish,
             )
 
-        # ── FIT FIRST (Angela, 2026-10-01) ──
-        # A COMPACT request binds only Current-Time, so the External-MCP surface
-        # is never refreshed for it - her active servers are PAUSED, not
-        # reconnected.  A FULL request refreshes them exactly as before and is
-        # re-fitted with whatever they added.
+        # ── FIT FIRST (Angela, 2026-10-01; the Compact-mode switch 2026-10-02) ──
+        # The Configure rows are re-read first, so a dialog saved since the last
+        # request applies NOW.  A COMPACT request never refreshes the
+        # External-MCP surface - those servers are PAUSED, not reconnected.  A
+        # FULL request refreshes them exactly as before and is re-fitted with
+        # whatever they added.
+        self._refresh_toggle_tool_surface()
         fit = _fit(publish=False)
         if fit["mode"] == MODE_COMPACT:
-            acpx_enabled = False
-            if acpx_requested:
-                print("--- [CONTEXT-FIT] ACPX was ticked, but this model runs in Compact mode - "
-                      "ACPX is OFF for this request")
+            if not fit.get("acpx_bound"):
+                if acpx_requested:
+                    print("--- [CONTEXT-FIT] ACPX was ticked, but no ACPX tool is ticked in Compact "
+                          "mode - ACPX is OFF for this request")
+                acpx_enabled = False
             self._publish_fit(fit["report"], ask_execs_user_id)
         else:
             self._refresh_external_mcp_tool_surface()
@@ -3333,11 +3475,21 @@ class CapabilityAwareToolAgentExecutor:
             cancel_user_id=ask_execs_user_id,
             cancel_run_epoch=payload.get("cancel_run_epoch"),
         ):
-            # ── A CUT request is never answered from (Angela, 2026-10-01) ──
+            # ── A CUT request (Angela, 2026-10-01 / 2026-10-02) ──
             # When Ollama proves a smaller window on the first step, the
             # executor raises ContextWindowExceeded before ANY tool ran; the
-            # window is learned, the request is re-fitted and sent again.
-            for attempt in range(1, 4):
+            # window is learned, the request is re-fitted and sent again.  When
+            # the user's OWN Compact selection still does not fit after that,
+            # the LAST attempt is answered from what the model could read - her
+            # selection is never dropped behind her back - and the chat shows a
+            # CONTEXT-WINDOW warning above the answer.
+            for attempt in range(1, 5):
+                executor = fit.get("executor")
+                try:
+                    if executor is not None:
+                        executor.accept_context_cut = attempt == 4
+                except Exception:  # noqa: BLE001 — a read-only stand-in executor
+                    executor = None
                 try:
                     result = self._run_fitted(
                         fit,
@@ -3359,15 +3511,23 @@ class CapabilityAwareToolAgentExecutor:
                                   "(Compact mode: the small model fenced what the user asked to see)")
                     return result
                 except ContextWindowExceeded as cut:
-                    if attempt >= 3:
+                    if attempt >= 4:
                         raise RuntimeError(
                             f"Ollama kept cutting the request to {cut.model} even after it was "
                             f"fitted to {cut.window} tokens") from cut
                     print(f"--- [CONTEXT-FIT] re-fitting to the window Ollama just proved "
-                          f"({cut.window} tokens) and sending again (attempt {attempt + 1}/3)")
+                          f"({cut.window} tokens) and sending again (attempt {attempt + 1}/4"
+                          + (", the last one is answered even if it is cut" if attempt == 3 else "")
+                          + ")")
                     fit = _fit(publish=True)
-                    if fit["mode"] == MODE_COMPACT:
+                    if fit["mode"] == MODE_COMPACT and not fit.get("acpx_bound"):
                         acpx_enabled = False
+                finally:
+                    try:
+                        if executor is not None:
+                            executor.accept_context_cut = False
+                    except Exception:  # noqa: BLE001
+                        pass
         return {"output": ""}  # unreachable - the loop returns or raises
 
     def _run_fitted(self, fit: Dict[str, Any], *, payload: Dict[str, Any],
@@ -3384,7 +3544,8 @@ class CapabilityAwareToolAgentExecutor:
         if not multi_turn_enabled:
             print(
                 "--- CapabilityAwareToolAgentExecutor: multi-turn disabled; "
-                + ("COMPACT request: " + str([t.name for t in fit["tools"]]) + " (ACPX off) ---"
+                + ("COMPACT request: " + str([t.name for t in fit["tools"]])
+                   + f" (ACPX {'on' if acpx_enabled else 'off'}) ---"
                    if compact else f"using legacy full-tool binding (acpx_enabled={acpx_enabled}) ---")
             )
             # Legacy path: a one-shot executor over the request-scoped tool set
@@ -3483,6 +3644,26 @@ class CapabilityAwareToolAgentExecutor:
                 or summarize_global_execution_plan(global_execution_plan)
             )
         return executor.invoke(executor_payload)
+
+
+def _external_mcp_supervisor_names() -> frozenset:
+    """The External-MCP supervisor tools - listed in no Configure dialog, so a
+    Compact request (exactly what the user ticked) never binds them."""
+    try:
+        from .external_mcp_manager import _SUPERVISOR_TOOL_NAMES
+        return frozenset(_SUPERVISOR_TOOL_NAMES)
+    except Exception:  # noqa: BLE001
+        return frozenset()
+
+
+def _compact_mode_saved_external() -> list:
+    """The External MCPs the Compact-mode switch paused (and will restore)."""
+    try:
+        from .models import CompactState
+        row = CompactState.objects.filter(pk=1).first()
+        return [str(k) for k in json.loads((row.saved_external_active if row else "") or "[]")]
+    except Exception:  # noqa: BLE001
+        return []
 
 
 def create_unified_agent(llm, preeliminary_prompt: str):

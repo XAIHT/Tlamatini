@@ -7,23 +7,31 @@
  * ═══════════════════════════════════════════════════════════════════
  *   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
  *
- * model_capacity.js — COMPACT MODE, told to the user (Angela, 2026-10-01).
+ * model_capacity.js — the COMPACT MODE box, told to the user
+ * (Angela, 2026-10-01; the switch 2026-10-02).
  *
- * The backend fits every request to the model's REAL window
- * (agent/context_fitter.py).  When the configured model cannot hold
- * Tlamatini's complete request she runs in COMPACT mode: only
- * System-Metrics, Files-Search and Current-Time stay active, ACPX is off
- * and the user's External MCPs are paused.  That verdict rides on EVERY
- * context-gauge frame as `detail.capacity`; this module turns it into:
+ * The toolbar's "Compact mode" box (#compact-mode-enabled) is the switch in
+ * agent/compact_mode.py.  Ticking it REALLY unticks every MCP, tool, agent
+ * and skill row (Config ▸ Configure MCPs / Configure Agents / ACPX-Skills)
+ * except System-Metrics, Files-Search and Current-Time; the user then ticks
+ * back - one by one - only what she needs.  Unticking it ticks them ALL
+ * again.  A model that cannot hold EVERYTHING activated locks the box ON
+ * (strict): it cannot be unticked until a larger model is chosen.
  *
- *   1. a dialog that explains, in plain words, what the model can hold and
- *      what is paused — shown ONCE per model per page, never for a model the
- *      user asked us to stop explaining (localStorage, per model);
- *   2. a badge in the toolbar while compact (click = the dialog again);
- *   3. the ACPX switch LOCKED off while compact, restored exactly as the
- *      user left it when a model that can hold everything comes back;
- *   4. a short notice when full mode returns, and one when Ollama is caught
- *      cutting a request.
+ * Two sources of truth, both from the server:
+ *   - `compact-mode-state` frames (re-dispatched as tlm:compact-mode-state):
+ *     the switch {active, strict, locked, model, window_tokens,
+ *     everything_tokens, version};
+ *   - `detail.capacity` on every context-gauge frame: what the last request
+ *     really sent (mode, tools_kept, toggles_version, ...).
+ * This module turns them into:
+ *   1. the box itself - checked = ON; greyed + 🔒 = locked ON;
+ *   2. a dialog that explains, in plain words, what the model can hold and
+ *      how to add what she needs - opened once per model per browser session
+ *      when a small model locks the box, and on a click of the locked box;
+ *   3. a short notice when the switch changes and when Ollama cuts a request;
+ *   4. a resync request when a gauge frame carries a newer rows version, so
+ *      the Configure dialogs always show the REAL rows.
  *
  * Contracts: self-contained IIFE, NO cross-file globals (exports only
  * window.TlmModelCapacity); every step is fail-open — a broken notice must
@@ -35,20 +43,24 @@
     'use strict';
 
     const EVENT_NAME = 'tlm:context-gauge';
+    const STATE_EVENT = 'tlm:compact-mode-state';
     const OVERLAY_ID = 'tlm-compact-overlay';
-    const BADGE_ID = 'compact-mode-badge';
+    const BOX_ID = 'compact-mode-enabled';
+    const LABEL_ID = 'compact-mode-toggle';
     const TOAST_ID = 'tlm-capacity-toast';
     const SUPPRESS_PREFIX = 'tlm_compact_dialog_hidden:';
     const SEEN_PREFIX = 'tlm_compact_dialog_seen:';
 
     const state = {
-        capacity: null,          // latest verdict from the backend
-        shownFor: {},            // model -> true (dialog already shown this page)
-        acpxSaved: null,         // the ACPX checkbox state before we locked it
-        acpxTimer: null,
-        lastMode: null,
-        lastModel: null,
-        cutNoticeAt: 0
+        sw: null,            // the switch, from compact-mode-state frames
+        capacity: null,      // what the last request really sent (gauge frames)
+        shownFor: {},        // model -> true (dialog already shown this page)
+        lastActive: null,
+        knownVersion: 0,
+        syncAt: 0,
+        cutNoticeAt: 0,
+        pending: false,      // a set-compact-mode request is on its way
+        pendingTimer: null
     };
 
     function byId(id) {
@@ -62,13 +74,6 @@
         } catch (err) {
             return String(v);
         }
-    }
-
-    function shortTokens(n) {
-        const v = Number(n) || 0;
-        if (v >= 1000000) { return (Math.round(v / 100000) / 10) + 'M'; }
-        if (v >= 1000) { return Math.round(v / 1024) + 'K'; }
-        return String(v);
     }
 
     function el(tag, cls, text) {
@@ -97,101 +102,116 @@
         try { window.sessionStorage.setItem(key, value); } catch (err) { /* blocked storage: fine */ }
     }
 
-    function relayout() {
-        try { window.dispatchEvent(new Event('resize')); } catch (err) { /* noop */ }
+    function send(payload) {
+        try {
+            if (typeof window.isChatSocketOpen === 'function' && !window.isChatSocketOpen()) { return false; }
+            if (typeof window.sendChatSocketMessage !== 'function') { return false; }
+            window.sendChatSocketMessage(payload);
+            return true;
+        } catch (err) {
+            return false;
+        }
     }
 
-    // ── ACPX lock ────────────────────────────────────────────────────────
-    function acpxBox() { return byId('acpx-enabled'); }
-    function acpxLabel() { return byId('acpx-toggle'); }
+    function sw() {
+        return state.sw || {};
+    }
 
-    function lockAcpx(cap) {
-        const box = acpxBox();
-        const label = acpxLabel();
+    function isLocked() {
+        const s = sw();
+        return !!(s.active && s.locked);
+    }
+
+    // ── The box ────────────────────────────────────────────────────────────
+    function titleFor(s) {
+        if (s.active && s.locked) {
+            return 'Compact mode is locked ON: ' + (s.model || 'this model') + ' reads only ' +
+                fmt(s.window_tokens) + ' tokens, and everything activated needs about ' +
+                fmt(s.everything_tokens) + '. Tick what you need in Config ▸ Configure MCPs / ' +
+                'Configure Agents - the CONTEXT-WINDOW gauge shows what it costs. Click for details.';
+        }
+        if (s.active) {
+            return 'Compact mode is ON: only what you ticked in Config ▸ Configure MCPs / ' +
+                'Configure Agents is sent. Untick this box to switch EVERYTHING back on.';
+        }
+        return 'Compact mode: unticks every MCP, tool, agent and skill except System-Metrics, ' +
+            'Files-Search and Current-Time, so you send the model only what you pick. Untick it ' +
+            'later to switch everything back on.';
+    }
+
+    function paintBox() {
+        const box = byId(BOX_ID);
+        const label = byId(LABEL_ID);
         if (!box) { return; }
-        if (state.acpxSaved === null) {
-            state.acpxSaved = { checked: !!box.checked, title: label ? (label.getAttribute('title') || '') : '' };
-        }
-        box.checked = false;
-        box.disabled = true;
+        const s = sw();
+        const locked = isLocked();
+        box.checked = !!s.active;
+        box.disabled = locked || state.pending;
         if (label) {
-            label.classList.add('toolbar-toggle-disabled', 'compact-locked');
-            label.setAttribute('title', 'ACPX is off in Compact mode: ' + (cap.model || 'this model') +
-                ' cannot hold it. Choose a larger model in Config ▸ Models to use ACPX.');
-        }
-        if (!state.acpxTimer) {
-            // A catalog prompt can tick boxes programmatically (no change
-            // event fires); keep ACPX honest while the model is small.
-            state.acpxTimer = window.setInterval(function () {
-                const b = acpxBox();
-                if (b && b.checked && state.capacity && state.capacity.mode === 'compact') {
-                    b.checked = false;
-                }
-            }, 750);
+            label.classList.toggle('compact-locked', locked);
+            label.classList.toggle('compact-on', !!s.active);
+            label.classList.toggle('toolbar-toggle-disabled', locked || state.pending);
+            const text = label.querySelector('span');
+            if (text) { text.textContent = locked ? 'Compact mode 🔒' : 'Compact mode'; }
+            label.setAttribute('title', titleFor(s));
+            label.setAttribute('aria-disabled', locked ? 'true' : 'false');
         }
     }
 
-    function unlockAcpx() {
-        const box = acpxBox();
-        const label = acpxLabel();
-        if (state.acpxTimer) {
-            window.clearInterval(state.acpxTimer);
-            state.acpxTimer = null;
+    function setPending(on) {
+        state.pending = !!on;
+        if (state.pendingTimer) {
+            window.clearTimeout(state.pendingTimer);
+            state.pendingTimer = null;
         }
-        if (!box || state.acpxSaved === null) { return; }
-        box.disabled = false;
-        box.checked = !!state.acpxSaved.checked;
-        if (label) {
-            label.classList.remove('toolbar-toggle-disabled', 'compact-locked');
-            if (state.acpxSaved.title) { label.setAttribute('title', state.acpxSaved.title); }
-            else { label.removeAttribute('title'); }
+        if (on) {
+            // Never leave the box greyed out if the answer is lost.
+            state.pendingTimer = window.setTimeout(function () { setPending(false); }, 8000);
         }
-        state.acpxSaved = null;
+        paintBox();
     }
 
-    // ── Badge ────────────────────────────────────────────────────────────
-    function ensureBadge() {
-        let badge = byId(BADGE_ID);
-        if (badge) { return badge; }
-        const host = byId('tools-left');
-        if (!host) { return null; }
-        badge = el('button', 'compact-mode-badge');
-        badge.id = BADGE_ID;
-        badge.type = 'button';
-        badge.hidden = true;
-        badge.addEventListener('click', function () {
-            if (state.capacity) { openDialog(state.capacity, true); }
-        });
-        host.appendChild(badge);
-        return badge;
+    function onBoxChange() {
+        const box = byId(BOX_ID);
+        if (!box) { return; }
+        const want = !!box.checked;
+        if (!want && isLocked()) {
+            box.checked = true;
+            openDialog(true);
+            return;
+        }
+        const sent = send({ type: 'set-compact-mode', message: 'set-compact-mode', enabled: want });
+        if (!sent) {
+            box.checked = !want;
+            toast('Compact mode was not changed: the connection is not open. Use Reconnect and try again.', 'warn');
+            return;
+        }
+        setPending(true);
     }
 
-    function showBadge(cap) {
-        const badge = ensureBadge();
-        if (!badge) { return; }
-        badge.textContent = '';
-        badge.appendChild(el('span', 'compact-mode-badge-dot'));
-        badge.appendChild(el('span', 'compact-mode-badge-text',
-            'Compact mode · ' + (cap.model || 'model') + ' · ' + shortTokens(cap.window_tokens)));
-        badge.setAttribute('title', 'This model reads ' + fmt(cap.window_tokens) +
-            ' tokens at a time, so Tlamatini runs with System-Metrics, Files-Search and ' +
-            'Current-Time only. Click for details.');
-        badge.setAttribute('aria-label', 'Compact mode is on. Click for details.');
-        if (badge.hidden) {
-            badge.hidden = false;
-            relayout();
+    function onLabelClick(event) {
+        if (isLocked()) {
+            // The box is greyed out: a click explains why instead of doing nothing.
+            try { event.preventDefault(); } catch (err) { /* noop */ }
+            openDialog(true);
         }
     }
 
-    function hideBadge() {
-        const badge = byId(BADGE_ID);
-        if (badge && !badge.hidden) {
-            badge.hidden = true;
-            relayout();
+    function wireBox() {
+        const box = byId(BOX_ID);
+        const label = byId(LABEL_ID);
+        if (box && !box.dataset.tlmCompactWired) {
+            box.dataset.tlmCompactWired = '1';
+            box.addEventListener('change', onBoxChange);
         }
+        if (label && !label.dataset.tlmCompactWired) {
+            label.dataset.tlmCompactWired = '1';
+            label.addEventListener('click', onLabelClick);
+        }
+        paintBox();
     }
 
-    // ── Toast ────────────────────────────────────────────────────────────
+    // ── Toast ──────────────────────────────────────────────────────────────
     function toast(text, tone) {
         try {
             const old = byId(TOAST_ID);
@@ -205,13 +225,14 @@
         } catch (err) { /* a notice must never break the page */ }
     }
 
-    // ── Dialog ───────────────────────────────────────────────────────────
+    // ── Dialog ─────────────────────────────────────────────────────────────
     function closeDialog() {
         const overlay = byId(OVERLAY_ID);
         if (!overlay) { return; }
         const box = overlay.querySelector('.tlmcap-dontshow input');
-        if (box && state.capacity && state.capacity.model) {
-            storageSet(SUPPRESS_PREFIX + state.capacity.model, box.checked ? '1' : null);
+        const model = sw().model || '';
+        if (box && model) {
+            storageSet(SUPPRESS_PREFIX + model, box.checked ? '1' : null);
         }
         if (overlay.parentNode) { overlay.parentNode.removeChild(overlay); }
         try {
@@ -230,9 +251,22 @@
         list.appendChild(li);
     }
 
-    function openDialog(cap, fromBadge) {
-        if (!cap || byId(OVERLAY_ID)) { return; }
-        const model = cap.model || 'This model';
+    function openConfigure(fnName) {
+        closeDialog();
+        try {
+            if (typeof window[fnName] === 'function') {
+                // The menu handlers call e.preventDefault() first.
+                window[fnName]({ preventDefault: function () {} });
+            }
+        } catch (err) { /* the dialog itself is optional */ }
+    }
+
+    function openDialog(fromUser) {
+        if (byId(OVERLAY_ID)) { return; }
+        const s = sw();
+        const cap = state.capacity || {};
+        const model = s.model || cap.model || 'This model';
+        const locked = isLocked();
 
         const overlay = el('div', 'tlmpop-overlay tlmcap-overlay');
         overlay.id = OVERLAY_ID;
@@ -242,7 +276,8 @@
 
         const card = el('div', 'tlmpop-card tlmcap-card');
         const head = el('div', 'tlmpop-head');
-        const title = el('span', 'tlmpop-title', 'Compact mode — a small model is selected');
+        const title = el('span', 'tlmpop-title',
+            locked ? 'Compact mode — locked ON for this model' : (s.active ? 'Compact mode is ON' : 'Compact mode'));
         title.id = 'tlmcap-title';
         const x = el('button', 'tlmpop-x', '×');
         x.type = 'button';
@@ -253,10 +288,10 @@
 
         const body = el('div', 'tlmpop-body tlmcap-body');
 
+        const win = Number(s.window_tokens || cap.window_tokens) || 0;
+        const every = Number(s.everything_tokens || cap.everything_tokens) || 0;
         const meter = el('div', 'tlmcap-meter');
-        const full = Number(cap.full_tokens_estimate) || 0;
-        const win = Number(cap.window_tokens) || 0;
-        const pct = full > 0 ? Math.max(4, Math.min(100, Math.round(win * 100 / full))) : 100;
+        const pct = every > 0 ? Math.max(4, Math.min(100, Math.round(win * 100 / every))) : 100;
         const bar = el('div', 'tlmcap-bar');
         const fill = el('div', 'tlmcap-bar-fill');
         fill.style.width = pct + '%';
@@ -264,55 +299,64 @@
         meter.appendChild(bar);
         const legend = el('div', 'tlmcap-legend');
         legend.appendChild(el('span', 'tlmcap-legend-win', model + ' reads ' + fmt(win) + ' tokens'));
-        legend.appendChild(el('span', 'tlmcap-legend-full', 'Complete request ≈ ' + fmt(full)));
+        legend.appendChild(el('span', 'tlmcap-legend-full', 'Everything activated ≈ ' + fmt(every)));
         meter.appendChild(legend);
 
         const lead = el('p', 'tlmpop-msg tlmcap-lead');
-        lead.textContent = model + ' can read about ' + fmt(win) + ' tokens at a time, and ' +
-            'Tlamatini\'s complete request needs about ' + fmt(full) + '. Sending it anyway would ' +
-            'make Ollama silently throw most of it away, so Tlamatini works in Compact mode ' +
-            'to keep every answer correct.';
+        if (locked) {
+            lead.textContent = model + ' can read about ' + fmt(win) + ' tokens at a time, and ' +
+                'Tlamatini with everything activated needs about ' + fmt(every) + '. Sending it all ' +
+                'would make Ollama silently throw most of it away, so Compact mode is locked ON: ' +
+                'every MCP, tool, agent and skill was unticked except System-Metrics, Files-Search ' +
+                'and Current-Time - and you add back only what you need.';
+        } else {
+            lead.textContent = 'Compact mode is ON: Tlamatini sends ' + model + ' only what you ' +
+                'ticked. Untick the Compact mode box to switch every MCP, tool, agent and skill ' +
+                'back on.';
+        }
 
         const grid = el('div', 'tlmcap-grid');
         const keep = el('div', 'tlmcap-col');
-        keep.appendChild(el('div', 'tlmcap-col-title tlmcap-on', 'Still active'));
+        keep.appendChild(el('div', 'tlmcap-col-title tlmcap-on', 'Sent with your next message'));
         const keepList = el('ul', 'tlmcap-list');
-        row(keepList, '✓', 'System-Metrics', 'live CPU, memory and disk in your questions', 'on');
-        row(keepList, '✓', 'Files-Search', 'file-search results in your questions', 'on');
-        const keptTools = (cap.tools_kept || []).length;
-        row(keepList, keptTools ? '✓' : '–', 'Current-Time',
-            keptTools ? 'the only tool bound' : 'switched off in Config ▸ Configure MCPs', keptTools ? 'on' : 'off');
+        const kept = (cap.tools_kept || []).filter(function (n) { return !!n; });
+        row(keepList, '✓', 'System-Metrics · Files-Search', 'as ticked in Config ▸ Configure MCPs', 'on');
+        if (kept.length) {
+            row(keepList, '✓', kept.length + ' tool(s) you ticked', kept.slice(0, 8).join(', ') +
+                (kept.length > 8 ? ', …' : ''), 'on');
+        } else {
+            row(keepList, '–', 'No tools', 'tick Current-Time or an agent to add one', 'off');
+        }
         row(keepList, '✓', 'Your loaded context and recent chat',
             'fitted to the window (' + fmt(cap.history_kept) + ' of ' + fmt(cap.history_total) + ' recent messages)', 'on');
         keep.appendChild(keepList);
 
-        const paused = el('div', 'tlmcap-col');
-        paused.appendChild(el('div', 'tlmcap-col-title tlmcap-off', 'Paused for this model'));
-        const pausedList = el('ul', 'tlmcap-list');
-        row(pausedList, '⏸', 'Agents (' + fmt(cap.agents_paused) + ')', 'files, commands, browser, messaging…', 'off');
-        row(pausedList, '⏸', 'ACPX', 'locked off — the switch is greyed out', 'off');
+        const how = el('div', 'tlmcap-col');
+        how.appendChild(el('div', 'tlmcap-col-title tlmcap-off', 'Add what you need'));
+        const howList = el('ul', 'tlmcap-list');
+        row(howList, '1', 'Config ▸ Configure Agents', 'tick an agent (for example PDFer or ESPHomer) - its tool is ticked with it', 'off');
+        row(howList, '2', 'Config ▸ Configure MCPs', 'tick or untick tools, System-Metrics and Files-Search', 'off');
+        row(howList, '3', 'Watch the CONTEXT-WINDOW gauge', 'green fits; red or past 100% means not everything will work', 'off');
         const ext = cap.external_mcps_paused || [];
-        row(pausedList, '⏸', 'External MCPs (' + ext.length + ' active)',
-            ext.length ? ext.join(', ') + ' — your selection is kept' : 'none active', 'off');
-        const promptKb = Math.round((Number(cap.prompt_chars) || 0) / 1024);
-        const promptFullKb = Math.round((Number(cap.prompt_full_chars) || 0) / 1024);
-        row(pausedList, '⏸', 'Long rules', 'core rules kept (' + promptKb + ' of ' + promptFullKb + ' KB)', 'off');
-        paused.appendChild(pausedList);
+        row(howList, '⏸', 'External MCPs (' + ext.length + ' paused)',
+            ext.length ? ext.join(', ') + ' - restored when Compact mode is switched off' : 'none were active', 'off');
+        how.appendChild(howList);
         grid.appendChild(keep);
-        grid.appendChild(paused);
+        grid.appendChild(how);
 
         const back = el('p', 'tlmpop-sub tlmcap-back');
-        back.textContent = 'Everything comes back on its own when you choose a larger model ' +
-            '(for example a :cloud model) in Config ▸ Models.';
+        back.textContent = locked
+            ? 'The lock lifts on its own when you choose a model that can hold everything (for example a :cloud model) in Config ▸ Models.'
+            : 'Your choices are kept exactly as you leave them until you untick Compact mode.';
 
         const src = el('p', 'tlmcap-source');
-        src.textContent = 'Window source: ' + (cap.window_source || 'unknown') +
+        src.textContent = 'Window source: ' + (cap.window_source || 'measured') +
             '. Reserved for the answer: ' + fmt(cap.reserve_tokens) + ' tokens.';
 
         const dont = el('label', 'tlmcap-dontshow');
         const dontBox = document.createElement('input');
         dontBox.type = 'checkbox';
-        dontBox.checked = storageGet(SUPPRESS_PREFIX + (cap.model || '')) === '1';
+        dontBox.checked = storageGet(SUPPRESS_PREFIX + (s.model || '')) === '1';
         dont.appendChild(dontBox);
         dont.appendChild(el('span', null, ' Don\'t open this automatically again for ' + model));
 
@@ -324,20 +368,16 @@
         body.appendChild(dont);
 
         const foot = el('div', 'tlmpop-foot');
+        const agents = el('button', 'tlmpop-btn tlmcap-agents', 'Open Configure Agents');
+        agents.type = 'button';
+        agents.addEventListener('click', function () { openConfigure('OpenAgentsDialog'); });
         const models = el('button', 'tlmpop-btn tlmcap-models', 'Open Config ▸ Models');
         models.type = 'button';
-        models.addEventListener('click', function () {
-            closeDialog();
-            try {
-                if (typeof window.OpenConfigModelsDialog === 'function') {
-                    // The menu handler calls e.preventDefault() first.
-                    window.OpenConfigModelsDialog({ preventDefault: function () {} });
-                }
-            } catch (err) { /* the dialog itself is optional */ }
-        });
-        const ok = el('button', 'tlmpop-btn tlmpop-btn-primary tlmcap-ok', 'Continue in Compact mode');
+        models.addEventListener('click', function () { openConfigure('OpenConfigModelsDialog'); });
+        const ok = el('button', 'tlmpop-btn tlmpop-btn-primary tlmcap-ok', 'OK');
         ok.type = 'button';
         ok.addEventListener('click', closeDialog);
+        foot.appendChild(agents);
         foot.appendChild(models);
         foot.appendChild(ok);
 
@@ -348,71 +388,105 @@
         // dialog_policy.js: Escape invokes the dialog's own dismiss path.
         overlay.tlmDismiss = closeDialog;
         document.body.appendChild(overlay);
-        state.shownFor[cap.model || ''] = true;
         try { ok.focus(); } catch (err) { /* noop */ }
-        if (!fromBadge) {
-            try { window.console.info('[compact-mode] dialog shown for', cap.model); } catch (err) { /* noop */ }
+        if (!fromUser) {
+            try { window.console.info('[compact-mode] dialog shown for', model); } catch (err) { /* noop */ }
         }
     }
 
-    // ── The verdict ──────────────────────────────────────────────────────
-    function apply(cap, frame) {
-        if (!cap || typeof cap !== 'object') { return; }
-        const prevMode = state.lastMode;
-        const prevModel = state.lastModel;
-        state.capacity = cap;
-        state.lastMode = cap.mode;
-        state.lastModel = cap.model;
-        document.documentElement.setAttribute('data-tlm-capacity', cap.mode || 'full');
+    function maybeOpenForModel(s) {
+        if (!(s.active && s.locked)) { return; }
+        const model = s.model || '';
+        if (!model || state.shownFor[model]) { return; }
+        state.shownFor[model] = true;
+        if (storageGet(SUPPRESS_PREFIX + model) === '1' || sessionGet(SEEN_PREFIX + model) === '1') {
+            return;
+        }
+        sessionSet(SEEN_PREFIX + model, '1');
+        openDialog(false);
+    }
 
-        if (cap.mode === 'compact') {
-            showBadge(cap);
-            lockAcpx(cap);
-            const model = cap.model || '';
-            const suppressed = storageGet(SUPPRESS_PREFIX + model) === '1';
-            // Once per model per BROWSER SESSION: a reload must not nag again.
-            const seenThisSession = sessionGet(SEEN_PREFIX + model) === '1';
-            if (!state.shownFor[model] && !suppressed && !seenThisSession) {
-                openDialog(cap, false);
-                sessionSet(SEEN_PREFIX + model, '1');
-            } else if ((suppressed || seenThisSession) && prevMode !== 'compact' && !state.shownFor[model]) {
-                toast('Compact mode: ' + (model || 'this model') + ' reads ' + fmt(cap.window_tokens) +
-                      ' tokens — System-Metrics, Files-Search and Current-Time only.', 'warn');
-                state.shownFor[model] = true;
-            }
-        } else {
-            hideBadge();
-            unlockAcpx();
-            const overlay = byId(OVERLAY_ID);
-            if (overlay && overlay.parentNode) { overlay.parentNode.removeChild(overlay); }
-            if (prevMode === 'compact') {
-                toast('Full mode restored: ' + (cap.model || prevModel || 'this model') +
-                      ' holds Tlamatini\'s complete request — every agent, ACPX and External MCP is back.', 'ok');
+    // ── The switch ─────────────────────────────────────────────────────────
+    function applySwitch(s, kind) {
+        if (!s || typeof s !== 'object') { return; }
+        const prevActive = state.lastActive;
+        state.sw = s;
+        state.lastActive = !!s.active;
+        if (Number(s.version) > state.knownVersion) { state.knownVersion = Number(s.version); }
+        setPending(false);
+        document.documentElement.setAttribute('data-tlm-compact',
+            s.active ? (s.locked ? 'locked' : 'on') : 'off');
+        if (prevActive !== null && prevActive !== !!s.active) {
+            if (s.active) {
+                toast('Compact mode is ON - only what you tick in Config ▸ Configure MCPs / ' +
+                      'Configure Agents is sent.', 'warn');
+            } else {
+                toast('Compact mode is OFF - every MCP, tool, agent and skill is back.', 'ok');
             }
         }
+        if (kind === 'refused' && s.locked) {
+            toast('Compact mode stays ON: ' + (s.model || 'this model') + ' cannot hold everything activated.', 'warn');
+        }
+        maybeOpenForModel(s);
+    }
 
+    function onState(event) {
+        try {
+            const data = event && event.detail ? event.detail : null;
+            if (data && data.state) { applySwitch(data.state, data.kind || 'state'); }
+        } catch (err) {
+            try { window.console.warn('[compact-mode] state skipped:', err); } catch (e) { /* noop */ }
+        }
+    }
+
+    // ── The verdict on every gauge frame ───────────────────────────────────
+    function applyCapacity(cap, frame) {
+        if (!cap || typeof cap !== 'object') { return; }
+        state.capacity = cap;
+        document.documentElement.setAttribute('data-tlm-capacity', cap.mode || 'full');
+        // A frame can be newer than the switch this tab knows (another tab, or
+        // the automatic switch): ask for the switch and the REAL rows.
+        const version = Number(cap.toggles_version) || 0;
+        const s = sw();
+        const stale = version > state.knownVersion ||
+            (typeof cap.compact_active === 'boolean' && state.sw && cap.compact_active !== !!s.active) ||
+            (typeof cap.strict === 'boolean' && state.sw && cap.strict !== !!s.strict);
+        if (stale && Date.now() - state.syncAt > 1500) {
+            state.syncAt = Date.now();
+            if (version > state.knownVersion) { state.knownVersion = version; }
+            send({ type: 'compact-mode-sync', message: 'compact-mode-sync' });
+        }
         if (frame && frame.truncated && Date.now() - state.cutNoticeAt > 20000) {
             state.cutNoticeAt = Date.now();
-            toast('Ollama cut a request to ' + (cap.model || 'the model') + ' at ' +
-                  fmt(frame.tokens_real) + ' tokens. Tlamatini learned the real window and re-fits ' +
-                  'every request to it.', 'warn');
+            toast('CONTEXT-WINDOW exceeded: ' + (cap.model || 'the model') + ' read only ' +
+                  fmt(frame.window_real || frame.tokens_real) + ' of about ' +
+                  fmt(frame.tokens_sent_estimate || frame.tokens_estimated) +
+                  ' tokens sent. Untick agents or tools so the request fits.', 'warn');
         }
     }
 
     function onFrame(event) {
         try {
             const frame = event && event.detail ? event.detail : null;
-            if (frame && frame.capacity) { apply(frame.capacity, frame); }
+            if (frame && frame.capacity) { applyCapacity(frame.capacity, frame); }
         } catch (err) {
             try { window.console.warn('[compact-mode] frame skipped:', err); } catch (e) { /* noop */ }
         }
     }
 
     document.addEventListener(EVENT_NAME, onFrame);
+    document.addEventListener(STATE_EVENT, onState);
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', wireBox);
+    } else {
+        wireBox();
+    }
 
     window.TlmModelCapacity = {
-        isCompact: function () { return !!(state.capacity && state.capacity.mode === 'compact'); },
+        isCompact: function () { return !!sw().active; },
+        isLocked: function () { return isLocked(); },
         capacity: function () { return state.capacity ? JSON.parse(JSON.stringify(state.capacity)) : null; },
-        open: function () { if (state.capacity) { openDialog(state.capacity, true); } }
+        state: function () { return state.sw ? JSON.parse(JSON.stringify(state.sw)) : null; },
+        open: function () { openDialog(true); }
     };
 }());

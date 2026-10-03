@@ -253,3 +253,8 @@
         display: none;
     }
 }
+
+/* A request PAST the window, or one Ollama CUT (2026-10-02): the strongest
+   colour the ring has - not everything will work. */
+#context-gauge-row[data-over="true"],
+#context-gauge-row[data-cut="true"] { --ctxg-zone: #ff3b5c; }

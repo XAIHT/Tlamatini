@@ -147,6 +147,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
             await self.accept()
             print("--- WebSocket connection accepted and successful.")
             self._ensure_connection_gauge_sink(user.id)
+            await self._join_compact_mode_group()
 
         except Exception as e:
             print(f"!!! CONNECTION FAILED: {e}")
@@ -544,7 +545,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 
                 if self.rag_chain is None:
                     print("!!! Contextual RAG chain setup failed. Please check the config.json file and Ollama is running.")
-                    not_ready_response = "Your agent cannot process your requests. <br> Check that you didn't specify context outside of the root directory. <br> If everything is correct, please check that Ollama is running and the config.json file is correct."
+                    not_ready_response = constants.ERROR_AGENT_NOT_READY
                     await self.channel_layer.group_send(   # type: ignore
                         self.room_group_name,
                         {'type': 'agent_message', 'message': not_ready_response, 'username': 'Tlamatini'}
@@ -585,7 +586,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
             except Exception as e:
                 print(f"!!! ERROR during Contextual RAG chain setup: {e}")
                 self.rag_chain = _prev_chain   # do NOT discard a working chain
-                not_ready_response = "Your agent cannot process your requests. <br> Check that you didn't specify context outside of the root directory. <br> If everything is correct, please check that Ollama is running and the config.json file is correct."
+                not_ready_response = constants.ERROR_AGENT_NOT_READY
                 await self.channel_layer.group_send(   # type: ignore
                     self.room_group_name,
                     {'type': 'agent_message', 'message': not_ready_response, 'username': 'Tlamatini'}
@@ -680,8 +681,140 @@ class AgentConsumer(AsyncWebsocketConsumer):
         except Exception as e:
             print(f"Error in skill_establishment: {e}")
             
+    # ── The Compact-mode switch (Angela, 2026-10-02) ───────────────────────
+    # Every chat tab joins ONE group, so a switch made in any tab - or made
+    # automatically because the model is too small for everything - reaches
+    # every tab at once, with the REAL Configure rows behind it.
+    async def _join_compact_mode_group(self):
+        try:
+            from . import compact_mode
+            compact_mode.register_loop(asyncio.get_running_loop(), self.channel_layer)
+            await self.channel_layer.group_add(compact_mode.GROUP, self.channel_name)  # type: ignore
+            self._in_compact_group = True
+            await self._send_compact_state("connect")
+        except Exception as exc:  # noqa: BLE001 - the switch owes the chat nothing
+            print(f"--- [COMPACT] this tab is not subscribed to the switch ({exc})")
+
+    async def _send_compact_state(self, kind="state"):
+        """Send this tab the Compact-mode switch (``compact-mode-state``)."""
+        try:
+            from . import compact_mode
+            snap = await database_sync_to_async(compact_mode.state)()
+            await self.send(text_data=json.dumps({
+                'type': 'compact-mode-state', 'kind': kind, 'state': snap,
+            }))
+        except Exception as exc:  # noqa: BLE001
+            print(f"--- [COMPACT] switch state not sent ({exc})")
+
+    async def _send_toggle_rows(self):
+        """Re-send every Configure row, so every dialog shows the REAL state."""
+        try:
+            for mcp in await self.get_all_mcps():
+                await self.mcp_establishment(mcp['mcpName'], mcp['mcpDescription'], mcp['mcpContent'])
+            for tool in await self.get_all_tools():
+                await self.tool_establishment(tool['toolName'], tool['toolDescription'], tool['toolContent'])
+            for agent in await self.get_all_agents():
+                await self.agent_establishment(agent['agentName'], agent['agentDescription'], agent['agentContent'])
+            for skill in await self.get_all_skills():
+                await self.skill_establishment(skill['name'], skill['description'], 'true' if skill['enabled'] else 'false')
+        except Exception as exc:  # noqa: BLE001
+            print(f"--- [COMPACT] Configure rows not re-sent ({exc})")
+
+    async def compact_mode_changed(self, event):
+        """Group handler: the switch, or a saved Configure dialog, changed the
+        rows - send this tab the switch and the REAL rows, then re-measure."""
+        try:
+            await self.send(text_data=json.dumps({
+                'type': 'compact-mode-state',
+                'kind': event.get('kind') or 'state',
+                'state': event.get('state') or {},
+            }))
+            await self._send_toggle_rows()
+            self._schedule_context_gauge_refresh("Configure rows changed")
+        except Exception as exc:  # noqa: BLE001
+            print(f"--- [COMPACT] switch change not forwarded ({exc})")
+
+    async def _handle_set_compact_mode(self, user, payload):
+        """The toolbar's "Compact mode" box.  Refused while an answer runs, and
+        - untick only - while the model is too small for everything (strict)."""
+        from . import compact_mode
+        enabled = bool(payload.get('enabled'))
+        message = None
+        if getattr(self, '_active_run', None):
+            message = ("Compact mode was not changed: an answer is still running. "
+                       "Try again when it finishes.")
+            await self._send_compact_state("refused")
+        else:
+            result = await database_sync_to_async(compact_mode.set_active)(
+                enabled, f"user {getattr(user, 'username', '') or '?'}")
+            if result.get('refused'):
+                message = result.get('message') or "Compact mode stays ON."
+                await self._send_compact_state("refused")
+            elif not result.get('ok'):
+                message = "Compact mode could not be changed: " + str(result.get('error') or 'unknown error')
+                await self._send_compact_state("error")
+            elif not result.get('changed'):
+                await self._send_compact_state("unchanged")
+            elif enabled:
+                message = ("Compact mode is ON: every MCP, tool, agent and skill was unticked except "
+                           "System-Metrics, Files-Search and Current-Time. Tick what you need in "
+                           "Config > Configure MCPs / Configure Agents - the CONTEXT-WINDOW gauge shows "
+                           "what it costs.")
+            else:
+                message = ("Compact mode is OFF: every MCP, tool, agent and skill is ticked again, "
+                           "and your External MCPs are back.")
+        if message:
+            await self.channel_layer.group_send(   # type: ignore
+                self.room_group_name,
+                {'type': 'agent_message', 'message': message, 'username': 'Tlamatini'}
+            )
+        self._schedule_context_gauge_refresh("compact mode " + ("on" if enabled else "off"))
+
+    @staticmethod
+    def _toggles_summary(label, message):
+        """'agent-1=ACPXer=false,agent-23=ESPHomer=true,...' -> one readable
+        line: how many are on, and which.  The raw payload used to be echoed
+        into the chat whole - a wall of 90 'name=desc=false' items."""
+        names, total = [], 0
+        for item in str(message or '').split(','):
+            parts = item.strip().split('=')
+            if len(parts) < 3:
+                continue
+            total += 1
+            if parts[-1].strip().lower() == 'true':
+                names.append('='.join(parts[1:-1]).strip() or parts[0])
+        shown = ', '.join(names[:15]) + (f" and {len(names) - 15} more" if len(names) > 15 else '')
+        return (f"{label} activation saved: {len(names)} of {total} on"
+                + (f" ({shown})" if names else '') + '.')
+
+    async def _after_toggles_saved(self, kind, before, text):
+        """A Configure dialog was saved: apply it AT ONCE (Angela, 2026-10-02) -
+        chain agent <-> tool rows, refresh the gates, tell every tab."""
+        linked = []
+        try:
+            from . import compact_mode
+            result = await database_sync_to_async(compact_mode.after_toggles_saved)(kind, before or [])
+            linked = result.get('linked') or []
+        except Exception as exc:  # noqa: BLE001
+            print(f"--- [TOGGLES] saved rows not applied at once ({exc})")
+        if text:
+            extra = ("\n\nAlso switched to match: " + "; ".join(linked) + ".") if linked else ""
+            await self.channel_layer.group_send(   # type: ignore
+                self.room_group_name,
+                {'type': 'agent_message',
+                 'message': text + extra + "\n\nIt applies from your next message - no restart needed.",
+                 'username': 'Tlamatini'}
+            )
+        self._schedule_context_gauge_refresh(f"{kind} rows changed")
+
     async def disconnect(self, close_code):   # type: ignore
         print("--- WebSocket disconnected.")
+        if getattr(self, '_in_compact_group', False):
+            try:
+                from . import compact_mode
+                await self.channel_layer.group_discard(compact_mode.GROUP, self.channel_name)  # type: ignore
+            except Exception:  # noqa: BLE001 - teardown must never raise
+                pass
         # ── Free a worker parked on an Ask-Execs prompt (Angela, 2026-07-14) ──
         # If this tab closed / hard-reloaded while a Proceed/Deny prompt was BLOCKING,
         # the executor thread is sitting inside request_permission() with no deadline —
@@ -923,6 +1056,20 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 )
                 return
 
+            # ── A CUT answer says so (Angela, 2026-10-02: "yes show the warning") ──
+            # The model could not read the whole request; its answer is shown,
+            # but never without the CONTEXT-WINDOW warning above it.
+            try:
+                from .context_governor import turn_cut as _turn_cut
+                from .compact_mode import cut_warning_html as _cut_warning_html
+                _cut = _turn_cut(broker_key)
+                if _cut and isinstance(llm_response, str):
+                    llm_response = _cut_warning_html(_cut) + llm_response
+                    print(f"--- [CONTEXT-FIT] this answer came from a CUT request ({_cut}) - "
+                          "the CONTEXT-WINDOW warning is shown above it")
+            except Exception as _cut_err:  # noqa: BLE001 - a warning must never cost the answer
+                print(f"--- [CONTEXT-FIT] cut warning skipped ({_cut_err})")
+
             await process_llm_response(
                 llm_response,
                 self.rag_chain,
@@ -957,7 +1104,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
             # raw boolean, which the cancel handler had already cleared. (2026-07-14)
             if is_generation_cancelled(broker_key, run_epoch):
                 return
-            not_ready_response = "Your agent cannot process your requests. <br> Check that you didn't specify context outside of the root directory. <br> If everything is correct, please check that Ollama is running and the config.json file is correct."
+            not_ready_response = constants.ERROR_AGENT_NOT_READY
             await self.channel_layer.group_send(   # type: ignore
                 self.room_group_name,
                 {'type': 'agent_message', 'message': not_ready_response, 'username': 'Tlamatini'}
@@ -1289,6 +1436,18 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 self._restore_connection_gauge_sink()
                 _why = str(text_data_json.get('reason') or 'page request')[:60]
                 self._schedule_context_gauge_refresh(_why)
+                return
+
+            if type == 'set-compact-mode':
+                # The toolbar's "Compact mode" box (Angela, 2026-10-02).
+                await self._handle_set_compact_mode(user, text_data_json)
+                return
+
+            if type == 'compact-mode-sync':
+                # The page saw a newer switch/rows version on a gauge frame and
+                # asks for the switch and the REAL rows.
+                await self._send_compact_state("sync")
+                await self._send_toggle_rows()
                 return
 
             if type == 'set-ask-execs-runtime':
@@ -1755,10 +1914,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     mcpDescription = descAndContent[1]
                     mcpContent = descAndContent[2]
                     await self.save_mcp(mcpName, mcpDescription, mcpContent)
-                await self.channel_layer.group_send(   # type: ignore
-                    self.room_group_name,
-                    {'type': 'agent_message', 'message': "MCPs activation: "+message+".\n\nYou need to restart the agent/connection to apply the changes.", 'username': 'Tlamatini'}
-                )
+                await self._after_toggles_saved('mcp', None, self._toggles_summary("MCPs", message))
                 print("--- Bot message broadcast to room.")
                 return
 
@@ -1768,6 +1924,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 if(tools == '' or tools.isspace()):
                     print("--- Error tools are empty. Message rejected.")
                     return
+                before_rows = await self.get_all_tools()
                 tools = message.split(',')
                 for tool in tools:
                     if(tool == '' or tool.isspace()):
@@ -1784,10 +1941,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     toolDescription = descAndContent[1]
                     toolContent = descAndContent[2]
                     await self.save_tool(toolName, toolDescription, toolContent)
-                await self.channel_layer.group_send(   # type: ignore
-                    self.room_group_name,
-                    {'type': 'agent_message', 'message': "Tools activation: "+message+".\n\nYou need to restart the agent/connection to apply the changes.", 'username': 'Tlamatini'}
-                )
+                await self._after_toggles_saved('tool', before_rows, self._toggles_summary("Tools", message))
                 print("--- Bot message broadcast to room.")
                 return
 
@@ -1797,6 +1951,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 if(agents == '' or agents.isspace()):
                     print("--- Error agents are empty. Message rejected.")
                     return
+                before_rows = await self.get_all_agents()
                 agents = message.split(',')
                 for agent in agents:
                     if(agent == '' or agent.isspace()):
@@ -1813,10 +1968,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     agentDescription = descAndContent[1]
                     agentContent = descAndContent[2]
                     await self.save_agent(agentName, agentDescription, agentContent)
-                await self.channel_layer.group_send(   # type: ignore
-                    self.room_group_name,
-                    {'type': 'agent_message', 'message': "Agents activation: "+message+".\n\nYou need to restart the agent/connection to apply the changes.", 'username': 'Tlamatini'}
-                )
+                await self._after_toggles_saved('agent', before_rows, self._toggles_summary("Agents", message))
                 print("--- Bot message broadcast to room.")
                 return
 
@@ -1856,7 +2008,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                      'username': 'Tlamatini'}
                 )
                 print(f"--- Bot message broadcast to room. Touched {touched} skill rows.")
-                self._schedule_context_gauge_refresh("skills changed")
+                await self._after_toggles_saved('skill', None, None)
                 return
 
             if re.match(constants.REGEX_GREETING, message, flags=re.IGNORECASE):
@@ -1923,7 +2075,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
             ))
         except Exception as e:
             print(f"!!! ERROR in receive method: {e}")
-            not_ready_response = "Your agent cannot process your requests. <br> check you didn't specify context out of the root directory. <br> If everything is correct, then check Ollama is running and the config.json file is correct."
+            not_ready_response = constants.ERROR_AGENT_NOT_READY
             await self.channel_layer.group_send(   # type: ignore
                 self.room_group_name,
                 {'type': 'agent_message', 'message': not_ready_response, 'username': 'Tlamatini'}

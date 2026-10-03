@@ -1550,16 +1550,22 @@ def apply_real_tokens(payload: Dict[str, Any], real: Dict[str, Any]) -> Dict[str
             payload["estimate_error_pct"] = round((estimate - prompt) * 100.0 / prompt, 2)
         # 2026-10-01: a REAL count that is physically too small for the
         # characters sent means Ollama CUT the request.  Never draw that as
-        # "50% used" - it is 100% full and something was thrown away.
+        # "50% used" - the window is FULL and something was thrown away.
+        # 2026-10-02 (Angela: "the gauge must be the most real value"): the
+        # ratio is what was SENT against what the model could READ, so a
+        # request three times too big reads ~300%, not a polite 100%.
         chars = int(payload.get("chars_total") or 0)
         if (prompt > 0 and chars >= TRUNCATION_MIN_CHARS
                 and chars / float(prompt) > TRUNCATION_CHARS_PER_TOKEN):
+            sent = max(int(estimate or 0), int(chars / DEFAULT_FIT_CHARS_PER_TOKEN), prompt + 1)
             payload["truncated"] = True
-            payload["ratio"] = 1.0
+            payload["window_real"] = prompt
+            payload["tokens_sent_estimate"] = sent
+            payload["ratio"] = round(sent / float(prompt), 6)
             payload["zone"] = ZONE_FLOOR
             payload["truncated_note"] = (
-                "Ollama read only %d tokens of this request and DROPPED the rest - "
-                "the model's real window is smaller than its declared one" % prompt)
+                "Ollama read only %d of about %d tokens sent and DROPPED the rest - this "
+                "request does not fit the model's real context window" % (prompt, sent))
     except Exception:  # noqa: BLE001
         pass
     return payload
@@ -1621,6 +1627,7 @@ def _remember_and_publish(user_id: Any, payload: Dict[str, Any],
         if real and use_real:
             apply_real_tokens(payload, real)
             print(_format_real_line(payload, real))
+            _note_frame_cut(user_id, payload)
         if last_real:
             payload["last_real"] = last_real
         if turn:
@@ -1715,6 +1722,7 @@ def report_real_usage(
         if merged is not None:
             apply_real_tokens(merged, real)
             print(_format_real_line(merged, real))
+            _note_frame_cut(user_id, merged)
             with _REAL_LOCK:
                 if int((_LAST_FRAME.get(user_id) or {}).get("seq") or 0) == seq_i:
                     merged["last_real"] = dict(_LAST_REAL[user_id])
@@ -1849,6 +1857,50 @@ def record_call_usage(
         return True
     except Exception:  # noqa: BLE001
         return False
+
+
+def _note_frame_cut(user_id: Any, payload: Dict[str, Any]) -> None:
+    """A LIVE request of an open answer was cut: remember it for the chat
+    warning (Angela, 2026-10-02 - "yes show the warning").  Never raises."""
+    try:
+        if user_id is None or not payload.get("truncated") or payload.get("kind") == KIND_REST:
+            return
+        with _REAL_LOCK:
+            turn = _TURNS.get(user_id)
+            if turn is None or not turn.get("open"):
+                return
+            turn["cut"] = {
+                "model": str(payload.get("real_model") or payload.get("model") or ""),
+                "window": int(payload.get("window_real") or payload.get("tokens_real") or 0),
+                "sent_tokens": int(payload.get("tokens_sent_estimate") or 0),
+                "seq": int(payload.get("seq") or 0),
+            }
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def turn_cut(user_id: Any = None) -> Optional[Dict[str, Any]]:
+    """The CUT this answer was produced from, or None.  Never raises."""
+    try:
+        uid = user_id if user_id is not None else current_user()
+        with _REAL_LOCK:
+            turn = _TURNS.get(uid) or {}
+            cut = turn.get("cut")
+            return dict(cut) if cut else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def clear_turn_cut(user_id: Any = None) -> None:
+    """A cut first step was thrown away and re-sent: forget it.  Never raises."""
+    try:
+        uid = user_id if user_id is not None else current_user()
+        with _REAL_LOCK:
+            turn = _TURNS.get(uid)
+            if turn is not None:
+                turn.pop("cut", None)
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def turn_totals(user_id: Any = None) -> Optional[Dict[str, Any]]:

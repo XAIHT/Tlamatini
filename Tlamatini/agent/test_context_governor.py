@@ -475,7 +475,9 @@ class SourceContractTests(SimpleTestCase):
     def test_the_row_carries_a_legend_so_it_is_not_a_mystery(self):
         js = _GAUGE_JS.read_text(encoding="utf-8")
         self.assertIn("ctxg-title", js)
-        self.assertIn("'CONTEXT'", js)
+        # Angela, 2026-10-02: the legend names the CONTEXT WINDOW it measures.
+        self.assertIn("'CONTEXT-WINDOW'", js)
+        self.assertNotIn("textContent = 'CONTEXT';", js)
         self.assertIn("titleSub", js)
         css = (_AGENT_DIR / "static" / "agent" / "css"
                / "context_gauge.css").read_text(encoding="utf-8")

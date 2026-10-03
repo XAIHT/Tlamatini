@@ -318,14 +318,20 @@ def _compact_mode_access_message(user_id):
         cap = context_governor.capacity_for(user_id) or {}
         if cap.get("mode") != "compact":
             return None
+        if [n for n in (cap.get("tools_kept") or []) if str(n) != "get_current_time"]:
+            # The user ticked tools in Compact mode (2026-10-02): "no tools"
+            # would be untrue, so the guard's own advice stands.
+            return None
         model = str(cap.get("model") or "the current model")
         window = int(cap.get("window_tokens") or 0)
         size = f" ({window:,}-token window)" if window else ""
+        because = (f"because {model} is a small model{size}" if cap.get("strict", True)
+                   else "because Compact mode is switched on")
         return (
-            f"I can't do that right now - Tlamatini is in Compact mode because {model} is a "
-            f"small model{size}, so she has no tools to read, create, edit, move or delete "
-            "files, run commands or launch agents. Choose a larger model in Config ▸ Models "
-            "to get those abilities back."
+            f"I can't do that right now - Tlamatini is in Compact mode {because}, so she has "
+            "no tools to read, create, edit, move or delete files, run commands or launch agents. "
+            "Tick the agent you need in Config > Configure Agents (the CONTEXT-WINDOW gauge "
+            "shows whether it fits), or choose a larger model in Config > Models."
         )
     except Exception:  # noqa: BLE001 - the guard's own message stays
         return None

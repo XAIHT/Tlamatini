@@ -12610,6 +12610,24 @@ def contacts_save_view(request):
 
 
 @login_required
+def compact_costs_view(request):
+    """What each Configure row costs (Angela, 2026-10-02).
+
+    Feeds the cost labels and the budget line of Config > Configure MCPs /
+    Configure Agents: tokens per Tool row and per Agent row, measured on the
+    real schemas, plus the Compact-mode switch and the current model's window.
+    Estimates - the CONTEXT-WINDOW gauge stays the authority once the next
+    request is measured.
+    """
+    try:
+        from . import compact_mode
+        return JsonResponse(compact_mode.costs())
+    except Exception as e:
+        traceback.print_exc()
+        return JsonResponse({"ok": False, "error": str(e)}, status=500)
+
+
+@login_required
 def list_skills_view(request):
     """
     Browse-pane payload. Returns every discovered skill with merged

@@ -352,9 +352,9 @@ Typical pattern already used in `tools.py`:
 
 Do not hardcode only the source-tree location if the feature must also work from a packaged build.
 
-### Step 3: Register the tool in `get_mcp_tools()`
+### Step 3: Register the tool in `tool_gate_table()` (read by `get_mcp_tools()`)
 
-Append the tool under a `global_state` gate.
+Add ONE entry to `tools.tool_gate_table()` - `('<tool-row-key>', '<Agent display or None>', lambda: <your_tool>)` - in the order it should bind. Since 2026-10-02 that table is the single gate list: `get_mcp_tools()` binds from it, Compact mode binds exactly the ticked rows from it (a key with NO Tool row reads OFF while Compact mode is on), and the Configure dialogs price every row from it. A tool appended anywhere else is invisible to all three.
 
 This is a manual mapping. Treat it as fragile.
 

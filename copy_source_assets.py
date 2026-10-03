@@ -290,6 +290,9 @@ REQUIRED_SNAPSHOT_FILES = (
     # Compact mode (2026-10-01): every request fitted to the model's REAL
     # window; the capacity dialog/badge; readable answer tables.
     "Tlamatini/agent/context_fitter.py",
+    "Tlamatini/agent/compact_mode.py",
+    "Tlamatini/agent/migrations/0211_compact_state.py",
+    "Tlamatini/agent/static/agent/js/compact_costs.js",
     "Tlamatini/agent/static/agent/js/model_capacity.js",
     "Tlamatini/agent/static/agent/css/model_capacity.css",
     "Tlamatini/agent/static/agent/js/chat_table_contrast.js",

@@ -2513,6 +2513,17 @@ chatSocket.onmessage = function (e) {
         }
         return;
     }
+    // The Compact-mode switch (Angela, 2026-10-02) - model_capacity.js owns it.
+    if (data.type === 'compact-mode-state') {
+        try {
+            document.dispatchEvent(new CustomEvent('tlm:compact-mode-state', {
+                detail: { kind: data.kind || 'state', state: data.state || {} }
+            }));
+        } catch (compactErr) {
+            console.warn('--- [compact-mode] dispatch skipped:', compactErr);
+        }
+        return;
+    }
     // Ask-Execs: the backend is blocked waiting for the user to approve the
     // next Multi-Turn tool execution. Pop the modal Proceed/Deny dialog.
     if (data.type === 'exec-permission-request') {

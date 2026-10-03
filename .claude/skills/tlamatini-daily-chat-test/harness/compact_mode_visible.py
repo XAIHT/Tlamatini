@@ -318,7 +318,7 @@ def main():
                 text = page.inner_text("#tlm-compact-overlay")
                 say("   DIALOG: %s" % text.replace("\n", " | ")[:700])
                 check("2b it names the installed model", model in text, model)
-                for need in ("System-Metrics", "Files-Search", "Current-Time", "ACPX",
+                for need in ("System-Metrics", "Files-Search", "Current-Time",
                              "External MCPs", "Config"):
                     check("2c it explains '%s'" % need, need in text)
                 check("2d it shows the model's window in tokens", bool(re.search(r"reads [\d,]+ tokens", text)))
@@ -328,21 +328,20 @@ def main():
                 page.click("#tlm-compact-overlay .tlmcap-ok")
                 page.wait_for_timeout(600)
             check("3a the dialog closed", page.locator("#tlm-compact-overlay").count() == 0)
-            badge = page.locator("#compact-mode-badge")
-            check("3b the Compact-mode badge is visible",
-                  badge.count() and badge.is_visible(), badge.inner_text() if badge.count() else "")
-            check("3c ACPX is locked off",
-                  page.is_disabled(C.SEL["t_acpx"]) and not page.is_checked(C.SEL["t_acpx"]))
-            page.click("#acpx-toggle", force=True)
-            page.wait_for_timeout(1200)
-            check("3d clicking ACPX cannot turn it on", not page.is_checked(C.SEL["t_acpx"]))
-            shot(page, "03_badge_and_acpx_locked")
+            # 2026-10-02: the badge and the ACPX lock are gone - the toolbar's
+            # Compact mode box is the switch, ON and LOCKED for a small model.
+            box = page.locator("#compact-mode-enabled")
+            check("3b the Compact mode box is ON", box.count() and box.is_checked())
+            check("3c and LOCKED for this small model", box.count() and box.is_disabled(),
+                  page.inner_text("#compact-mode-toggle"))
+            shot(page, "03_compact_box_locked")
 
-            # 4. badge -> dialog, Escape -> closed --------------------------
-            badge.click()
+            # 4. the locked box -> dialog, Escape -> closed ------------------
+            page.click("#compact-mode-toggle", force=True)
             page.wait_for_timeout(600)
-            check("4a the badge re-opens the dialog", page.locator("#tlm-compact-overlay").count() == 1)
-            shot(page, "04_dialog_from_badge")
+            check("4a a click on the locked box re-opens the dialog",
+                  page.locator("#tlm-compact-overlay").count() == 1)
+            shot(page, "04_dialog_from_locked_box")
             page.keyboard.press("Escape")
             page.wait_for_timeout(600)
             check("4b Escape closes it", page.locator("#tlm-compact-overlay").count() == 0)
@@ -415,8 +414,7 @@ def main():
             check("6 Multi-Turn on the small model answers too", fin and str(now.year) in ans, ans[:200])
             set_toggle(page, C.SEL["t_multi_turn"], False)
 
-            badge_text = badge.inner_text() if badge.count() else ""
-            say("   badge at the end: %s" % badge_text)
+            say("   Compact mode box at the end: %s" % page.inner_text("#compact-mode-toggle"))
             shot(page, "07_final")
         except Exception:                           # noqa: BLE001
             check("the run itself crashed", False, traceback.format_exc()[-700:])

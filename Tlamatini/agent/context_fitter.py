@@ -71,11 +71,12 @@ __all__ = [
 MODE_FULL = "full"
 MODE_COMPACT = "compact"
 
-# The ONLY tool a compact request binds: "Current-Time" (get_current_time).
-# System-Metrics and Files-Search are context SIDECARS - they put live data
-# into the question before the model is called - so they stay exactly as the
-# user configured them.  Everything else (89 agents, ACPX, skills, External
-# MCPs) is paused for the request and comes back with a larger model.
+# The tool a compact request binds BEFORE the Compact-mode switch has
+# rewritten the Configure rows: "Current-Time" (get_current_time).  Once the
+# switch is ON (agent/compact_mode.py, 2026-10-02) a compact request binds
+# EXACTLY the tools the user ticked - Current-Time to start with, then whatever
+# she switches on one by one.  System-Metrics and Files-Search are context
+# SIDECARS - they put live data into the question before the model is called.
 COMPACT_TOOL_NAMES = frozenset({"get_current_time"})
 COMPACT_SIDECARS = ("System-Metrics", "Files-Search")
 
@@ -506,7 +507,7 @@ def compact_prompt(
 
 
 def compact_tool_rule(tool_names: Sequence[str], *, model: str = "",
-                      window_tokens: int = 0) -> str:
+                      window_tokens: int = 0, strict: bool = True) -> str:
     """The honest note a compact request carries instead of Rule 11's
     31,000-character tool manual.
 
@@ -521,15 +522,25 @@ def compact_tool_rule(tool_names: Sequence[str], *, model: str = "",
       code, so the user saw tags instead of a table               -> rule 2;
     * asked to create a file with no file tools, it answered with an
       invented "use absolute paths" lecture instead of "I can't" -> rule 6.
+
+    Since 2026-10-02 the tools listed in rule 5 are the ones the USER ticked
+    in Compact mode, so rule 6 names what is missing instead of a fixed list.
+    ``strict=False`` is a large model the user put in Compact mode herself.
     """
     names = [str(n) for n in tool_names if n]
     listed = ", ".join(f"`{n}`" for n in names) if names else "none"
     window = f" ({window_tokens:,} tokens)" if window_tokens else ""
     who = f"`{model}`" if model else "the current model"
     plain = model or "the current model"
+    if strict:
+        head = (who + " has a small context window" + window + ", so Tlamatini is running "
+                "with a reduced surface.")
+        because = "because " + plain + " is a small model"
+    else:
+        head = "Compact mode is switched on, so Tlamatini is running with a reduced surface."
+        because = "because Compact mode is switched on"
     return (
-        "**COMPACT MODE** - " + who + " has a small context window" + window + ", so "
-        "Tlamatini is running with a reduced surface. Follow these rules exactly:\n"
+        "**COMPACT MODE** - " + head + " Follow these rules exactly:\n"
         "1. Answer ONLY the user's newest message. Earlier messages in this conversation "
         "were already answered - never answer them again.\n"
         "2. To SHOW a table, write the raw HTML <table> element directly in your answer "
@@ -544,12 +555,14 @@ def compact_tool_rule(tool_names: Sequence[str], *, model: str = "",
         "values - answer from them directly, without calling a tool.\n"
         "5. Tools you may call now: " + listed + ". Never invent a tool and never claim you "
         "ran something you did not run.\n"
-        "6. In this mode you CANNOT create, edit, move or delete files, run commands or "
-        "scripts, browse the web, or launch agents; ACPX and External MCPs are paused too. "
-        "If the user asks for any of that, begin your answer (in the user's language) with: "
-        "\"I can't do that right now - Tlamatini is in Compact mode because " + plain + " is "
-        "a small model.\" Then say that choosing a larger model in Config > Models brings "
-        "those abilities back. Do not ask for paths and do not offer to do it.\n"
+        "6. Only the tools listed in rule 5 are switched on. Creating, editing, moving or "
+        "deleting files, running commands or scripts, browsing the web, launching agents, "
+        "ACPX and External MCPs work ONLY through a listed tool. If the user asks for "
+        "something no listed tool can do, begin your answer (in the user's language) with: "
+        "\"I can't do that right now - Tlamatini is in Compact mode " + because + ".\" Then "
+        "say that ticking the needed agent in Config > Configure Agents (the CONTEXT-WINDOW "
+        "gauge shows whether it still fits) or choosing a larger model in Config > Models "
+        "brings it back. Do not ask for paths and do not offer to do it.\n"
         "7. End every answer with a final line that is exactly END-RESPONSE."
     )
 
@@ -660,9 +673,20 @@ class FitReport:
     details: Dict[str, Any] = field(default_factory=dict)
     reason: str = ""
     setting: str = "auto"
+    # The Compact-mode switch (agent/compact_mode.py, 2026-10-02).
+    compact_active: bool = False
+    strict: bool = False
+    everything_tokens: int = 0
+    acpx_bound: bool = False
+    toggles_version: int = 0
 
     def as_capacity(self) -> Dict[str, Any]:
         return {
+            "compact_active": bool(self.compact_active),
+            "strict": bool(self.strict),
+            "locked": bool(self.strict),
+            "everything_tokens": int(self.everything_tokens),
+            "toggles_version": int(self.toggles_version),
             "mode": self.mode,
             "model": self.model,
             "window_tokens": int(self.window_tokens),
@@ -674,7 +698,7 @@ class FitReport:
             "tools_kept": list(self.tools_kept),
             "tools_kept_count": int(self.details.get("tools_kept_count", len(self.tools_kept)) or 0),
             "sidecars": list(COMPACT_SIDECARS),
-            "acpx_off": self.mode == MODE_COMPACT,
+            "acpx_off": self.mode == MODE_COMPACT and not self.acpx_bound,
             "acpx_requested": bool(self.acpx_requested),
             "external_mcps_paused": list(self.external_mcps_paused),
             "agents_paused": int(self.agents_paused),
@@ -696,12 +720,15 @@ class FitReport:
             what = (f"FULL - complete request (~{self.full_tokens_estimate:,} tokens est.) fits "
                     f"{self.window_tokens:,} ({self.window_source})")
         else:
-            what = (f"COMPACT - the complete request (~{self.full_tokens_estimate:,} tokens est.) "
-                    f"cannot fit {self.window_tokens:,} ({self.window_source}); sending "
+            why = (f"everything activated (~{self.everything_tokens:,} tokens est.) cannot fit "
+                   f"{self.window_tokens:,} ({self.window_source})" if self.strict
+                   else "the Compact-mode switch is ON")
+            what = (f"COMPACT - {why}; sending "
                     f"~{self.fitted_tokens_estimate:,}: prompt {d.get('prompt_profile')} "
                     f"{d.get('prompt_chars', 0):,}/{d.get('prompt_full_chars', 0):,} chars "
                     f"({d.get('sections_kept', 0)}/{d.get('sections_total', 0)} sections), tools "
-                    f"{self.tools_kept or '[]'} of {self.tools_total}, ACPX off, "
+                    f"{self.tools_kept or '[]'} of {self.tools_total}, "
+                    f"ACPX {'on' if self.acpx_bound else 'off'}, "
                     f"{len(self.external_mcps_paused)} External MCP(s) paused")
         extra = []
         if d.get("history_total") is not None and d.get("history_kept", d.get("history_total")) != d.get("history_total"):

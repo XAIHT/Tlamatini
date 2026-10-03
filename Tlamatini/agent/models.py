@@ -248,3 +248,28 @@ class SkillInvocation(models.Model):
 
     def __str__(self):
         return f"{self.skill_name} @ {self.started_at}"
+
+
+class CompactState(models.Model):
+    """The Compact-mode switch - ONE row, pk=1 (Angela, 2026-10-02).
+
+    ``active``: Compact mode is ON - the Configure rows were rewritten by
+    ``agent.compact_mode.enter_compact``.  ``strict``: the current model cannot
+    hold everything activated, so the switch is locked ON.  The External-MCP
+    active list is saved here while Compact mode pauses it, and restored when
+    the switch is turned off.  Owned by ``agent/compact_mode.py`` only.
+    """
+    active                = models.BooleanField(default=False)
+    strict                = models.BooleanField(default=False)
+    model                 = models.CharField(max_length=200, blank=True, default="")
+    window_tokens         = models.IntegerField(default=0)
+    saved_external_active = models.TextField(blank=True, default="[]")
+    reason                = models.CharField(max_length=300, blank=True, default="")
+    updated_at            = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Compact mode state"
+        verbose_name_plural = "Compact mode state"
+
+    def __str__(self):
+        return f"Compact mode {'ON' if self.active else 'OFF'}{' (strict)' if self.strict else ''}"

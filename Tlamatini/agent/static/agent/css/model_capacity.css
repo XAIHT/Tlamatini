@@ -259,3 +259,55 @@
         transition: none;
     }
 }
+
+/* ── The Compact mode box (2026-10-02) ───────────────────────────────── */
+.toolbar-toggle.compact-on > span {
+    color: var(--tlm-dlg-warn, #f0b85a);
+    font-weight: 700;
+}
+
+.toolbar-toggle.compact-locked {
+    cursor: help;
+}
+
+/* ── The price of every Configure row (compact_costs.js) ─────────────── */
+.tlm-cost {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 0 5px;
+    border-radius: 8px;
+    font-size: 0.78em;
+    font-weight: 600;
+    line-height: 1.5;
+    color: #1b1e2c;
+    background: #c9d3e6;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.tlm-budget {
+    margin: 8px 0 0;
+    padding: 6px 10px;
+    border-radius: var(--tlm-dlg-radius-sm, 6px);
+    font-family: var(--tlm-dlg-font, 'Nunito', sans-serif);
+    font-size: 0.88em;
+    font-weight: 600;
+    color: #1b1e2c;
+    background: #c9d3e6;
+}
+
+.tlm-budget[data-zone="green"] { background: #9fe3c6; }
+.tlm-budget[data-zone="amber"] { background: #f5d38a; }
+.tlm-budget[data-zone="red"] { background: #f2a3ad; }
+
+/* ── The warning above an answer produced from a CUT request ─────────── */
+.tlm-cut-warning {
+    margin: 0 0 10px;
+    padding: 8px 12px;
+    border-left: 4px solid #e05a70;
+    border-radius: 6px;
+    background: #fde3e7;
+    color: #5a1020;
+    font-weight: 600;
+    line-height: 1.45;
+}

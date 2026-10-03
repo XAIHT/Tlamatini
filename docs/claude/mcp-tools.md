@@ -38,7 +38,7 @@ and ACPX CLI provider models retain their own settings. See
 ## Tool-Only Workflow
 1. Implement `@tool` function in `tools.py` (sync, returns strings)
 2. Resolve bundled paths for both frozen and source modes
-3. Register in `get_mcp_tools()` under a `global_state` gate
+3. Register it in `tools.tool_gate_table()` (2026-10-02: the ONE gate list `get_mcp_tools()`, Compact mode and the Configure dialogs' cost labels all read) with its Tool-row key and, if a canvas agent also gates it, that agent's display name
 4. Seed a `Tool` row via new migration
 5. Frontend: usually NO changes needed (tool UI is dynamic)
 6. Only usable in unified-agent mode

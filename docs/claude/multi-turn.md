@@ -190,10 +190,9 @@ Files involved:
 
 ---
 
-## Multi-Turn on a small model — Compact mode (2026-10-01, shipped in `v1.74.0`)
+## Multi-Turn on a small model — Compact mode (2026-10-01, shipped in `v1.74.0`; the switch 2026-10-02)
 
-Multi-Turn normally binds the FULL enabled surface. When the model cannot hold that complete request, `CapabilityAwareToolAgentExecutor.fit_request` sends a COMPACT one instead: the only tool bound is `get_current_time`, ACPX is off (the toolbar box is locked), the External-MCP surface is not refreshed and the planner's hint is withheld. Live metrics and file-search results still ride inside the question. A model that holds the complete request gets exactly the Multi-Turn request described above. See `architecture.md` → *Compact mode*.
-
+Multi-Turn normally binds the FULL enabled surface. With the toolbar's **Compact mode** box ON — switched on by the user, or switched on and LOCKED because the model cannot hold everything activated — `CapabilityAwareToolAgentExecutor.fit_request` binds EXACTLY the tools the user ticked in Config ▸ Configure MCPs / Configure Agents (Current-Time to start with), under the compact prompt; the planner's hint is withheld and External MCPs stay paused. ACPX tools ride along only when their rows are ticked AND the toolbar's ACPX box is on. A first step Ollama cuts is re-fitted and resent; if her selection still does not fit, the 4th attempt is answered and the chat shows a CONTEXT-WINDOW warning. A model that holds everything gets exactly the Multi-Turn request described above while the box is OFF. See `architecture.md` → *Compact mode*.
 ## Dropped messages and Multi-Turn (2026-09-30, shipped in `v1.73.0`)
 
 The **Drop** button on a chat card deletes that message's `AgentMessage` row. Every chain, including both unified (Multi-Turn) chains, loads its history with `DBChatHistoryLoader.load(limit=8)` on each request, so the next Multi-Turn plan and tool loop are built as if the dropped message had never existed. There is no reconnect, no cache to clear, and the messages before and after it stay untouched. Three consequences:

@@ -16,6 +16,42 @@
 
 ---
 
+## 2026-10-02 — The COMPACT MODE switch: the real rows, a locked box, a truthful gauge
+
+**Angela's design, approved in her words:** in STRICT compact mode (a small model really active) the user must NOT be able to untick "Compact mode"; only a model that can fit **everything activated** lets it be ticked and unticked freely. Compact mode starts with System-Metrics, Files-Search and Current-Time enabled, *"BUT THE USER MUST BE ABLE TO FOR EXAMPLE DEACTIVATE System Metrics, DEACTIVATE Files Search, BUT ACTIVATE FOR EXAMPLE ESPHomer"*; the selections in Configure MCPs / Configure Agents must get *"REALLY chained/unchained"* - ALL of them, not only PDFer or Unrealer; unticking re-enables ALL; *"the gauge must be the most real value"*; the gauge says **CONTEXT-WINDOW**; the not-ready legend tells the user to make the request fit the CONTEXT WINDOW. Then: *"keep compact, and yes show the warning"*.
+
+**What was wrong before.** Compact mode (2026-10-01) was an invisible verdict: it bound Current-Time only, behind the user's back, while the Configure dialogs kept showing every agent ticked; nothing could be added; the ACPX box was force-locked; a saved dialog said *"You need to restart the agent/connection"*; `apps.py` reset every agent to ON at each start; a cut request was drawn as a polite 100%.
+
+**What changed.**
+- `agent/compact_mode.py` (NEW) + model `CompactState` (migration **0211**): `enter_compact` / `leave_compact` rewrite the Mcp / Tool / Agent / Skill rows atomically and save/restore the External-MCP active list; `note_capacity` records STRICT and switches ON automatically; `after_toggles_saved` chains agent ↔ tool rows (+ run companions in Compact), applies every row to `global_state` and moves `toggles_version`; `costs()` prices every row; `cut_warning_html()`.
+- `tools.tool_gate_table()` (NEW): ONE list of every built-in tool and its gates; `get_mcp_tools(ignore_gates=False)` reads it; in Compact a gate with no row reads OFF. ⚠️ The Monitor-Netstat row now really gates `execute_netstat` (its old key matched no row).
+- `mcp_agent`: `_refresh_toggle_tool_surface` (no rebuild), `_everything_static_chars` (strict), `fit_request` binds EXACTLY the ticked tools in Compact (External MCPs stay paused), the 4th cut attempt is answered (`accept_context_cut`) and a thrown-away first step clears its cut.
+- `context_governor`: a cut frame's ratio is sent ÷ read (`tokens_sent_estimate`, `window_real`); `_note_frame_cut` / `turn_cut` / `clear_turn_cut`.
+- `consumers`: `set-compact-mode` (refused while an answer runs; untick refused while strict), `compact-mode-sync`, the `tlamatini_compact_mode` group, saved dialogs apply at once ("no restart needed"), the CUT warning prepended to the answer, ONE `constants.ERROR_AGENT_NOT_READY`.
+- `apps.py`: each agent's flag survives the startup rebuild; a NEW agent starts unticked while Compact is ON.
+- Page: `#compact-mode-enabled` in the toolbar; `model_capacity.js` rewritten (box, lock 🔒, dialog, resync; the badge and the ACPX lock are gone); `compact_costs.js` (NEW) prices every row + the live budget line; `context_gauge.js` says CONTEXT-WINDOW, shows the true % past 100 (`OVER`) and `CUT · read X of ≈Y tokens`.
+- `rag/interface._compact_mode_access_message` no longer says "no tools" when the user ticked some.
+
+**Found by the visible run (2026-10-03) and fixed:**
+- **A two-line `{# #}` comment was PRINTED on the chat page** (Angela saw it). Django hides `{# #}` only on ONE line; use `{% comment %}` for more. Guard: `test_no_template_comment_spans_two_lines` + the visible check A1b.
+- **Ticks made while a Configure dialog was still loading were lost** (old race): `loadAgents()` / `loadTools()` ask the server one row at a time (~2 s for every agent) and overwrote the boxes. `agent_page_dialogs.js::setLoadedCheckbox` now leaves a box the user already clicked alone.
+- **The budget line under-counted a freshly ticked agent**: saving CHAINS rows, so `compact_costs.js` projects the same chain (agent ⇄ its tools, + the run companions in Compact); it paints at once from the cached prices and says "Measuring…" instead of showing the previous opening's number.
+- **The seeded ACPX rows reached no tool**: they are named `acpx-spawn` but described "ACP spawn", and the gate reads the name. `rag/factory.py` and `compact_mode.apply_rows_to_global_state` now also set the key by `toolName`; the cost labels map it back to the row text.
+- **A saved dialog echoed its whole raw payload** (`agent-1=ACPXer=false,…` ×89) into the chat; it is now one line: `Agents activation saved: 1 of 89 on (ESPHomer).` (`AgentConsumer._toggles_summary`).
+- `mcp_agent._refresh_toggle_tool_surface` adopts the version (and keeps the tools) of an executor built without `__init__`, so a caller's own tool list is never replaced.
+- The harness resets the dev database to "every row ON, Compact OFF" at the start and end — a crashed run had left Compact ON and the dev External MCPs paused.
+
+**Contracts (do NOT weaken):**
+1. The switch rewrites the REAL rows; the request binds exactly them. Never bind a tool the user did not tick in Compact, never drop one she did.
+2. STRICT = locked: the server refuses the untick (`leave_compact(force=False)`), not only the page.
+3. A big model unlocks the box and KEEPS Compact ON until the user unticks it.
+4. Saved dialogs apply at once — never bring back "restart the agent/connection" for MCPs / Tools / Agents.
+5. A cut answer is never shown without the CONTEXT-WINDOW warning; a re-fitted first step never leaves one behind.
+6. Fail-open: no database ⇒ the switch reads OFF and a strict request falls back to Current-Time only.
+7. New built-in tools go into `tool_gate_table()` — never a second gate list.
+
+**Proof.** Unit: `agent/test_compact_mode_switch.py` (+ updated `test_model_capacity.py`, `test_context_governor.py`). Visible: `.claude/skills/tlamatini-daily-chat-test/harness/compact_switch_visible.py` - headed Chrome, Shoter photos; phase A on the installed app's local `qwen2.5:latest` (auto-lock, dialog, Configure rows, ESPHomer chained, gauge past the window, the warned answer), phase B on the free `nemotron-3-ultra:cloud` with NO question asked and probes OFF (unlocked, choices survived the restart, untick ⇒ every row back, tick ⇒ Current-Time only). **Result 2026-10-03 00:14: ALL 57 CHECKS PASSED** (unit: 221 passed in the Compact/gauge/drop/Multi-Turn/ACPX/Exec-Report set).
+
 ## 2026-10-01 — COMPACT MODE: every request fits the model it is sent to
 
 > **Shipped in `v1.74.0`** (annotated tag at `c1fadb90`, 2026-10-01; no GitHub release published yet at that date).
