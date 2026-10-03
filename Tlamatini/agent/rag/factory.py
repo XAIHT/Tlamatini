@@ -16,6 +16,7 @@ from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from ..global_state import global_state
 from ..llm_timing import llm_timing_callbacks
+from ..ollama_stop import STOP_LIMIT, fit_stop_sequences
 from agent.rag_enhancements import enrich_documents_with_metadata, get_project_summary
 from .config import (load_config_and_prompt, apply_conditional_rule_blocks,
                      apply_self_modify_switch, self_modify_on)
@@ -84,6 +85,25 @@ def _resolve_keep_alive():
 # reload). Switching the embedding model (Config -> Models) changes the key and
 # misses, so a model switch still takes effect.
 _EMBEDDINGS_CACHE = {}
+
+
+# Stop sequences for the chat LLM. NEVER MORE THAN FOUR: Ollama's cloud models
+# refuse a request with five or more (HTTP 400 "too many stop sequences;
+# maximum is 4"), which killed every chat-history summary on glm-5.3:cloud
+# (Angela, 2026-10-03). The cap holds for EVERY model (ollama_stop.py says why);
+# a local model still stops at its own end-of-generation token natively.
+_CHAT_STOP_TOKENS = (
+    "\nEND-RESPONSE\n", "\nHuman:", "\nUser:", "\nAI:",
+)
+
+
+def _chat_stop_tokens(config):
+    """The chat LLM's stop sequences - at most STOP_LIMIT, for any model."""
+    stops = fit_stop_sequences(_CHAT_STOP_TOKENS, config.get('chained-model'),
+                               config.get('ollama_base_url'))
+    print(f"--- [LLM-STOP] {config.get('chained-model')}: {len(stops)} stop sequences "
+          f"(an Ollama request may carry at most {STOP_LIMIT}) ---")
+    return stops
 
 
 def _llm_client_timeout(config):
@@ -396,11 +416,7 @@ def _build_prompt_only_chain_impl(config, prompt_template_string, documents=None
     if token:
         client_kwargs['headers'] = {'Authorization': f'Bearer {token}'}
 
-    stop_tokens = [
-        "<|endoftext|>", "<|im_start|>", "<|im_end|>",
-        "\nHuman:", "\nUser:", "\nAssistant:", "\nSystem:", "\nAI:",
-        "\nEND-RESPONSE\n"
-    ]
+    stop_tokens = _chat_stop_tokens(config)
 
     llm = OllamaLLM(
         model=config.get('chained-model'),
@@ -504,11 +520,7 @@ def build_retrieval_chain(documents, config, prompt_template_string):
         if token:
             client_kwargs['headers'] = {'Authorization': f'Bearer {token}'}
 
-        stop_tokens = [
-            "<|endoftext|>", "<|im_start|>", "<|im_end|>",
-            "\nHuman:", "\nUser:", "\nAssistant:", "\nSystem:", "\nAI:",
-            "\nEND-RESPONSE\n"
-        ]
+        stop_tokens = _chat_stop_tokens(config)
 
         llm = OllamaLLM(
             model=config.get('chained-model'),

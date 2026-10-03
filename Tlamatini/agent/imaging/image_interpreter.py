@@ -16,6 +16,7 @@ from .converter import convert_image_to_base64
 from typing import Dict
 from functools import wraps
 from ..visual_error_reporting import report_visual_error
+from ..ollama_stop import fit_stop_sequences
 
 
 def _report_visual_tool_errors(function):
@@ -323,7 +324,12 @@ def qwen_analyze_image(image_path: str = None, prompt: str = "Describe this imag
                 "repeat_penalty": 1.85,
                 "top_p": 0.95,
                 "top_k": 50,
-                "stop": ["<|end_of_text|>", "<|eot_id|>", "assistant", "</html>", "</body>"]
+                # A cloud model accepts at most four stop sequences (more is an
+                # HTTP 400), so the bare word "assistant" - the least useful -
+                # comes last and is the one a cloud model does not receive.
+                "stop": fit_stop_sequences(
+                    ["<|eot_id|>", "<|end_of_text|>", "</html>", "</body>", "assistant"],
+                    model, base_url),
             }
         }
 

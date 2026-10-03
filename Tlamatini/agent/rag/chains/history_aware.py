@@ -21,7 +21,7 @@ from ..utils import _approx_tokens, _sanitize_rewritten_question, _sanitize_and_
 from ..interaction import show_rephrased_question, save_context_blob
 from ..retrieval import retrieve_documents
 from agent.rag_enhancements import expand_query_with_context, allocate_context_budget, add_cross_references
-from .base import Callbacks
+from .base import Callbacks, summarize_or_none
 
 # Regex to strip code blocks (``` or ''') so embedded code doesn't cause
 # false-positive file-listing detection.
@@ -137,8 +137,9 @@ class HistoryAwareNoDocsChain:
             ("human", "Current user question: {q}\n\nGenerate summary focusing on information relevant to this question:")
         ])
         msgs = sum_prompt.format_messages(chat_history=chat_history, q=question)
-        out = self.llm.with_config({"callbacks": [Callbacks()]}).invoke(msgs)
-        summary = getattr(out, "content", str(out))
+        summary = summarize_or_none(self.llm, msgs)
+        if summary is None:
+            return chat_history
         # Keep the last few turns verbatim for recency, prepend the summary as a system message
         keep_last = mh.get("keep_last_turns", 6)
         tail = chat_history[-keep_last:] if keep_last > 0 else []
@@ -318,8 +319,9 @@ class OptimizedHistoryAwareRAGChain:
             ("human", "Current user question: {q}\n\nGenerate summary focusing on information relevant to this question:")
         ])
         msgs = sum_prompt.format_messages(chat_history=chat_history, q=question)
-        out = self.llm.with_config({"callbacks": [Callbacks()]}).invoke(msgs)
-        summary = getattr(out, "content", str(out))
+        summary = summarize_or_none(self.llm, msgs)
+        if summary is None:
+            return chat_history
         keep_last = mh.get("keep_last_turns", 6)
         tail = chat_history[-keep_last:] if keep_last > 0 else []
         return [SystemMessage(content=f"CHAT HISTORY SUMMARY:\n{summary}")] + tail

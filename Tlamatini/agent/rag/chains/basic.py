@@ -15,7 +15,7 @@ from ...chat_history_loader import DBChatHistoryLoader
 from ...global_state import global_state
 from ..utils import _approx_tokens, _sanitize_rewritten_question, _sanitize_and_redact, _normalize_text, prepend_loaded_context_scope
 from ..interaction import show_rephrased_question
-from .base import Callbacks
+from .base import Callbacks, summarize_or_none
 
 class BasicPromptOnlyChain:
     """
@@ -110,8 +110,9 @@ class BasicPromptOnlyChain:
             ("human", "Current user question: {q}\n\nGenerate summary focusing on information relevant to this question:")
         ])
         msgs = sum_prompt.format_messages(chat_history=chat_history, q=question)
-        out = self.llm.with_config({"callbacks": [Callbacks()]}).invoke(msgs)
-        summary = getattr(out, "content", str(out))
+        summary = summarize_or_none(self.llm, msgs)
+        if summary is None:
+            return chat_history
         # Keep the last few turns verbatim for recency, prepend the summary as a system message
         keep_last = mh.get("keep_last_turns", 6)
         tail = chat_history[-keep_last:] if keep_last > 0 else []

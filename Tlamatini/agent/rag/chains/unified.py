@@ -30,7 +30,7 @@ from ..utils import _approx_tokens, _sanitize_rewritten_question, _sanitize_and_
 from ..interaction import show_rephrased_question, save_context_blob
 from ..retrieval import retrieve_documents
 from agent.rag_enhancements import expand_query_with_context, allocate_context_budget, add_cross_references
-from .base import Callbacks
+from .base import Callbacks, summarize_or_none
 from .history_aware import _is_list_files_query, _CODE_BLOCK_RE
 
 
@@ -429,8 +429,9 @@ class UnifiedAgentChain:
             ("human", "Current user question: {q}\n\nGenerate summary focusing on information relevant to this question:")
         ])
         msgs = sum_prompt.format_messages(chat_history=chat_history, q=question)
-        out = self.llm.with_config({"callbacks": [Callbacks()]}).invoke(msgs)
-        summary = getattr(out, "content", str(out))
+        summary = summarize_or_none(self.llm, msgs)
+        if summary is None:
+            return chat_history
         # Remembered for the at-rest context gauge; the NEXT question gets a
         # freshly written one, and the gauge says so.
         self.last_history_summary = summary
@@ -751,8 +752,9 @@ class UnifiedAgentRAGChain:
             ("human", "Current user question: {q}\n\nGenerate summary focusing on information relevant to this question:")
         ])
         msgs = sum_prompt.format_messages(chat_history=chat_history, q=question)
-        out = self.llm.with_config({"callbacks": [Callbacks()]}).invoke(msgs)
-        summary = getattr(out, "content", str(out))
+        summary = summarize_or_none(self.llm, msgs)
+        if summary is None:
+            return chat_history
         # Remembered for the at-rest context gauge; the NEXT question gets a
         # freshly written one, and the gauge says so.
         self.last_history_summary = summary

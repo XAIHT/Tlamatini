@@ -153,3 +153,25 @@ class Callbacks(BaseCallbackHandler):
                 )
         except Exception:  # noqa: BLE001
             pass
+
+
+def summarize_or_none(llm, msgs):
+    """The chat-history summary, or None when the summary call failed.
+
+    The summary is an optimisation, never a reason to lose the answer: on
+    2026-10-03 a cloud model refused the summarizer's request (HTTP 400, too
+    many stop sequences) and Angela's whole question failed before any work
+    was done. Any failure here is logged and the caller sends the history
+    unsummarized. A user's Cancel still propagates.
+    """
+    try:
+        out = llm.with_config({"callbacks": [Callbacks()]}).invoke(msgs)
+    except GenerationCancelledException:
+        raise
+    except Exception as exc:
+        print(f"--- [HISTORY-SUMMARY] the chat-history summary failed ({exc}); "
+              f"sending the history unsummarized ---")
+        return None
+    summary = getattr(out, "content", str(out))
+    print(f"--- [HISTORY-SUMMARY] chat history summarized ({len(str(summary))} chars) ---")
+    return summary

@@ -5958,7 +5958,8 @@ class AgentDescriptionsCoverageTests(TestCase):
     new agent added to the codebase but forgotten in agents_descriptions.md
     will fail this test."""
 
-    EXCLUDED_DIRS = frozenset({'pools'})
+    # __pycache__ appears as soon as agents/model_settings.py is imported from source.
+    EXCLUDED_DIRS = frozenset({'pools', '__pycache__'})
 
     @classmethod
     def setUpClass(cls):
