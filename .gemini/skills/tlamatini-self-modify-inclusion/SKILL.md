@@ -300,6 +300,14 @@ The 2026-09-25 line-ending warning about `copy_source_assets.py` is resolved: `c
 ### Compact mode snapshot gate (2026-10-01)
 
 - `REQUIRED_SNAPSHOT_FILES` (`copy_source_assets.py`) names `context_fitter.py`, `model_capacity.js`, `model_capacity.css` and `chat_table_contrast.js`, so a self-rebuild keeps the fitter and its page pieces together.
+- **2026-10-02 — the Compact mode SWITCH.** The list also names `agent/compact_mode.py`, its migration `0211_compact_state.py` and `compact_costs.js` (the per-row token prices in the Configure dialogs). The box is the toolbar's `#compact-mode-enabled`, owned by `model_capacity.js`; the old Compact badge and the ACPX lock are gone, so do not look for them. `build_runtime_assets.REQUIRED_STATIC` carries the same page pieces (`model_capacity.js` / `.css`, `compact_costs.js`) into the release.
+
+### Self-modify switch snapshot gate (2026-10-03)
+
+- **Who is self-able now.** `rag/config.self_modify_available()` decides. A SOURCE (dev) run of this checkout is ALWAYS self-able, folder or no folder — Angela: *"THE DEV MODE MUST ALWAYS BE LIKE --self-modify MODE"*. A FROZEN build is self-able only when `build.py --self-modify` bundled `TlamatiniSourceCode/` beside the exe. So the snapshot this skill owns is what makes a FROZEN build self-able; dev mode does not depend on it.
+- **The switch.** A toolbar box **Self-modify** (`#self-modify-enabled`, right after Compact mode), owned by `self_modify_switch.js` and persisted in `CompactState.self_modify` (migration `0212_compact_state_self_modify.py`, ON by default). ON sends Tlamatini.md (≈28.9K tokens per request); OFF sends one honest line instead. A model that cannot hold it shows the box locked OFF (🔒). Where self-modify is not available, the box and its script are not rendered at all.
+- **Carriage (verified 2026-10-03).** `REQUIRED_SNAPSHOT_FILES` names `Tlamatini/agent/migrations/0212_compact_state_self_modify.py` and `Tlamatini/agent/static/agent/js/self_modify_switch.js`, and `build_runtime_assets.REQUIRED_STATIC` names `agent/js/self_modify_switch.js`. A missing one makes `copy_source_assets.py` raise rather than produce a quietly-incomplete tree.
+- ⚠️ Never run `build.py` just to check the frozen branch: it erases `Tlamatini/db.sqlite3` and wipes `dist/`. The frozen page is covered by `agent/test_self_modify_switch.py::FrozenPageTests`, which render the real chat page under a patched `sys.frozen`, with and without `--self-modify`.
 
 ### Central model settings runtime gate (2026-09-20)
 

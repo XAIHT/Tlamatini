@@ -247,7 +247,7 @@ Use this as a hard boundary guide.
 
 Must usually touch:
 
-- `agent/tools.py`
+- `agent/tools.py` — the `@tool` itself AND one entry in `tools.tool_gate_table()` (the ONE gate list; see Step 3)
 - `agent/rag/factory.py`
 - a new migration that seeds the `Tool` row
 - `agent/mcp_agent.py` → `_EXEC_REPORT_TOOLS` (only if the tool changes system state)
@@ -282,7 +282,7 @@ Usually must not touch:
 
 - `agent/tools.py` (the wrapped-agent runner is already implemented)
 - `agent/rag/factory.py`
-- `Tool` or `Mcp` seed rows
+- `Tool` or `Mcp` seed rows — ⚠️ EXCEPT the wrapper's own `Chat-Agent-<Name>` `Tool` row, which you DO seed (assumption #12; while the toolbar's **Compact mode** box is ON, a wrapper with no Tool row is invisible to the model)
 
 ### If adding an MCP-backed context provider only
 
@@ -368,6 +368,8 @@ But the project already contains a mismatch:
 - checked status key: `tool_execute-netstat_status`
 
 That mismatch proves the naming is not self-healing. Verify the actual `Tool.toolDescription`, the `factory.py` mapping, and the `get_mcp_tools()` gate all agree exactly.
+
+⚠️ **Fixed 2026-10-02 (the Compact mode switch):** `tool_gate_table()` now uses the key `monitor-netstat`, so the Monitor-Netstat checkbox really gates `execute_netstat` — its old key `execute-netstat` matched no row, so that checkbox never reached the tool and Compact mode could never switch it off. A second case of the same drift was found at the same time: the seeded ACPX rows are NAMED `acpx-spawn` but DESCRIBED "ACP spawn", and the gate reads the name, so `rag/factory.py` and `compact_mode.apply_rows_to_global_state` now also set the key by `toolName`. The lesson stands: check the key against the real row before you trust it — and with Compact mode ON a key that matches no row reads OFF, so a mismatch now hides the tool instead of leaving it on.
 
 ### Step 4: Seed a `Tool` row with a new migration
 
@@ -469,6 +471,8 @@ Without this branch, the "Create Flow" button produces a `.flw` whose node for y
 ### Step 6: No `Tool` DB row is needed
 
 Wrapped chat-agent tools are not managed through the `Tool` table. They are enabled whenever the unified agent is active. The `Tool` table is for the dynamic tool-toggle UI of direct @tool functions in `tools.py` — wrapped chat-agents are always-on when the unified agent runs.
+
+⚠️ **Superseded — read assumption #12 below, and Compact mode (2026-10-02).** A wrapped chat-agent IS gated by its wrapper `Tool` row `Chat-Agent-<Name>` AND its `Agent` row, so DO seed the Tool row with a migration (like `0121_add_chat_agent_talker_tool.py`). Outside Compact mode a missing row fails open; while the toolbar's **Compact mode** box is ON, `get_mcp_tools()` reads a gate with NO row as DISABLED, so an un-seeded wrapper is invisible. You still edit nothing in `tools.py`: `tools.tool_gate_table()` loops over `WRAPPED_CHAT_AGENT_SPECS` and adds every wrapper itself.
 
 ### Step 7: No management-tools treatment unless it is truly management
 
@@ -624,7 +628,7 @@ Use those patterns when building tools that touch bundled assets or template-age
 9. `mcp_files_search_server.py` currently hardcodes gRPC port and worker count instead of reading the config keys already present.
 10. Tool status keys are handwritten and can drift from seeded DB descriptions.
 11. `mcpContent` is stored as string text, not a boolean.
-12. **Wrapped chat-agent tools ARE gated by TWO enable flags (2026-06-07 — supersedes the old "always-on" note).** A `chat_agent_*` tool is bound for the LLM by `get_mcp_tools()` ONLY when BOTH (a) its wrapper `Tool` row `Chat-Agent-<Name>` is enabled (`tool_<desc>_status`, toggled in Configure Mcps/Tools — seed it with a `Tool`-row migration like `0121_add_chat_agent_talker_tool.py`) AND (b) its `Agent` row `<Name>` is enabled (`agent_<display>_status`, toggled in Configure Agents). Disabling EITHER hides the agent from the LLM (reported as unknown). Both gates fail OPEN — a spec whose `display_name` maps to no Agent row, or that has no Tool row, defaults to enabled, so only an explicit disable hides it. (The `display_name` MUST equal the `agentDescription` for the Agent-row gate to match — naming convention.)
+12. **Wrapped chat-agent tools ARE gated by TWO enable flags (2026-06-07 — supersedes the old "always-on" note).** A `chat_agent_*` tool is bound for the LLM by `get_mcp_tools()` ONLY when BOTH (a) its wrapper `Tool` row `Chat-Agent-<Name>` is enabled (`tool_<desc>_status`, toggled in Configure Mcps/Tools — seed it with a `Tool`-row migration like `0121_add_chat_agent_talker_tool.py`) AND (b) its `Agent` row `<Name>` is enabled (`agent_<display>_status`, toggled in Configure Agents). Disabling EITHER hides the agent from the LLM (reported as unknown). Both gates fail OPEN — a spec whose `display_name` maps to no Agent row, or that has no Tool row, defaults to enabled, so only an explicit disable hides it. (The `display_name` MUST equal the `agentDescription` for the Agent-row gate to match — naming convention.) ⚠️ **In Compact mode (2026-10-02) the fail-open flips:** with the toolbar's Compact mode box ON, `get_mcp_tools()` reads a gate with NO row as DISABLED, so a wrapper with no seeded `Chat-Agent-<Name>` Tool row, or an agent with no Agent row, is invisible. Ticking or unticking either row chains the other (`compact_mode._link_rows`, through `spec.display_name` ↔ `spec.tool_description`) and applies at once, with no restart; and a NEW agent's Agent row starts unticked while Compact is ON.
 13. **`UnifiedAgentChain.invoke()` rebuilds the payload with a hardcoded key whitelist** (around line 138 of `rag/chains/unified.py`). Any new payload key (`multi_turn_enabled`, `exec_report_enabled`, future flags) MUST be added to that whitelist or it is silently dropped at the chain boundary. This has already caused one production bug — see the Exec Report section in `CLAUDE.md`.
 14. **The Exec Report capture point in `mcp_agent.py` is `_invoke_tool()`, not the chain layer.** Capture is unconditional (ignores the per-request flag); the flag only gates rendering. **Capture covers EVERY wrapped `chat_agent_*` automatically** via `_resolve_exec_report_spec`; `_EXEC_REPORT_TOOLS` is only an optional styling/merge refinement. Only management polling helpers and direct read-only `@tool`s are excluded. The deterministic `agent/agent_verdict.py` parser gives the agent's `INI_SECTION` self-report precedence over the process exit code. Its vocabulary is CLOSED across five pairwise-disjoint sets: diagnostic-completed and work-completed are green; degraded, work-not-done, and agent-error are red. Emit exactly one semantic token from those sets, make completed read-only diagnostics exit 0 even for adverse findings, and expose numeric process results as `returncode` plus `success` rather than `status: <number>`. Unknown literals fail open only for runtime compatibility; `agent/test_status_vocabulary.py` must reject them before release. Never inline a second vocabulary. See `docs/claude/exec-report.md` → *Success/failure classification*.
 15. **Flow-Generator emits cardinal-suffixed pool names** (`executer_1`, `executer_2`, …) in `target_agents` / `source_agents` lists. A wrapped chat-agent tool whose Flow-Generator branch emits bare names like `"executer"` will produce a `.flw` whose Starter cannot find the agent and the chain dies on the first hop.
@@ -644,6 +648,7 @@ Use those patterns when building tools that touch bundled assets or template-age
 If you added a direct @tool, verify:
 
 - the `@tool` exists
+- it has its entry in `tools.tool_gate_table()` (2026-10-02 — a tool appended anywhere else is invisible to binding, to Compact mode and to the Configure dialogs' per-row prices)
 - `get_mcp_tools()` returns it
 - the status key matches the seeded `Tool` row and `factory.py` mapping
 - bundled paths work in both frozen and non-frozen modes if applicable
@@ -661,7 +666,7 @@ If you added a wrapped chat-agent tool, verify:
 - the underlying `agent/agents/<name>/` template exists and accepts the advertised `example_request` fields
 - (MANDATORY) it appears in the Exec Report (Multi-Turn + Exec Report ON) — automatic for every wrapped chat-agent; `_EXEC_REPORT_TOOLS` entry + CSS are OPTIONAL styling refinements only
 - branch in `_mapToolArgsToAgentConfig` so `.flw` generation produces populated config fields
-- NO new `Tool` DB row (wrapped chat-agents are always-on, not in the `Tool` toggle UI)
+- NO new `Tool` DB row (wrapped chat-agents are always-on, not in the `Tool` toggle UI) — ⚠️ superseded: DO seed the `Chat-Agent-<Name>` Tool row (assumption #12); without it the agent is invisible while Compact mode is ON
 
 If you added an MCP context provider, verify:
 

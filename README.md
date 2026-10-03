@@ -24,7 +24,7 @@
 
 <p align="center">
   <a href="https://discord.gg/WFQsrskgc"><img src="https://img.shields.io/badge/DISCORD-JOIN%20US-5865F2?style=for-the-badge&labelColor=2D2D2D&logo=discord&logoColor=white" alt="Join our Discord"/></a>
-  <a href="https://github.com/XAIHT/Tlamatini/releases"><img src="https://img.shields.io/badge/VERSION-v1.74.0-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Version v1.73.0"/></a>
+  <a href="https://github.com/XAIHT/Tlamatini/releases"><img src="https://img.shields.io/badge/VERSION-v1.75.0-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Version v1.75.0"/></a>
   <a href="https://www.python.org/downloads/release/python-31210/"><img src="https://img.shields.io/badge/PYTHON-3.12.10-3776AB?style=for-the-badge&labelColor=2D2D2D&logo=python&logoColor=white" alt="Python"/></a>
   <a href="#installation"><img src="https://img.shields.io/badge/PLATFORM-WIN%2010%20%7C%2011-0078D6?style=for-the-badge&labelColor=2D2D2D&logo=windows&logoColor=white" alt="Platform"/></a>
   <a href="#-the-full-capability-list"><img src="https://img.shields.io/badge/AGENT%20TYPES-89-8A2BE2?style=for-the-badge&labelColor=2D2D2D" alt="89 agent types"/></a>
@@ -95,15 +95,17 @@ ornaments. Database/WAL and security-evidence preservation are tightened. See th
 3. [Get started in five steps](#-get-started--5-steps-to-a-cloud-powered-tlamatini)
 4. [Speak a prompt from the chat](#speak-a-prompt-from-the-chat)
 5. [Drop a message from the chat](#drop-a-message-from-the-chat)
-6. [Newest changes](#newest-changes--v1724)
-7. [Current version](#current-version--v1724)
-8. [The full capability list](#-the-full-capability-list)
-9. [Enable Tlamatini as a Blue-hat agent](#enable-tlamatini-as-a-blue-hat-agent)
-10. [Installation](#installation)
-11. [Tech stack](#tech-stack)
-12. [Avatar animation, assets, and visible tests](#avatar-animation-assets-and-visible-tests)
-13. [Contributing](#contributing)
-14. [License](#license)
+6. [Compact mode — fit every request to your model](#compact-mode--fit-every-request-to-your-model)
+7. [Self-modify — her self-knowledge, on or off](#self-modify--her-self-knowledge-on-or-off)
+8. [Newest changes](#newest-changes--v1750)
+9. [Current version](#current-version--v1750)
+10. [The full capability list](#-the-full-capability-list)
+11. [Enable Tlamatini as a Blue-hat agent](#enable-tlamatini-as-a-blue-hat-agent)
+12. [Installation](#installation)
+13. [Tech stack](#tech-stack)
+14. [Avatar animation, assets, and visible tests](#avatar-animation-assets-and-visible-tests)
+15. [Contributing](#contributing)
+16. [License](#license)
 
 ---
 
@@ -313,13 +315,90 @@ This shipped in v1.73.0, published on GitHub on 2026-09-30. It was
 checked by 82 automated tests and a visible browser test (30 of 30 checks). How
 it works: [the Drop contract](docs/claude/recent-fixes.md).
 
-## Newest changes — v1.74.0
+## Compact mode — fit every request to your model
 
-**v1.74.0, 2026-10-01 — small models work properly: Compact mode.** If the model you choose is too small to read everything Tlamatini normally sends, she no longer sends it anyway (the model used to silently lose most of it and answer the wrong question). She switches to **Compact mode** for that model: the live CPU/memory/disk metrics, file search and the current time keep working, while agents, ACPX and external MCPs pause until you pick a bigger model. A short dialog tells you exactly what is on and what is paused, a small badge stays beside the toolbar, and a big model (for example a 256K-token cloud model) still gets the complete context. Answer tables are also always readable now — text that would be invisible on its background is recoloured.
+Tlamatini normally sends the model her whole prompt plus every tool you have
+switched on, which is easily more than 100K tokens. A small model cannot read
+that much: Ollama quietly keeps only the end of the request, and the answer
+comes from a fragment. **Compact mode**, a box in the chat toolbar, prevents
+that.
+
+- **Tick Compact mode** and Tlamatini really unticks every row in
+  **Config ▸ Configure MCPs**, **Config ▸ Configure Agents** and **ACPX-Skills**
+  (every MCP, tool, agent and skill) except **System-Metrics**,
+  **Files-Search** and **Current-Time**, and pauses the External MCPs. Then
+  tick back, one by one, only what you need: for example, untick
+  System-Metrics and tick ESPHomer. Each request carries exactly the rows you
+  ticked.
+- **Untick Compact mode** and every row is ticked again, and the External MCPs
+  you had active come back.
+- **A small model locks it ON.** If the model you chose cannot hold everything
+  you have activated, the box ticks itself, greys out and shows
+  **Compact mode 🔒**. Clicking it explains why, and the server refuses to
+  untick it. A short dialog tells you, once per model, what is sent now and how
+  to add more. Choose a bigger model and the box unlocks; Compact mode stays ON
+  with your picks until you untick it.
+- **Your choices apply at once.** A saved Configure dialog takes effect on your
+  next question, with no restart. Ticking an agent also ticks the chat tool that
+  runs it (ticking PDFer ticks Chat-Agent-PDFer), and your agent choices
+  survive a restart.
+- **Every row shows its price.** In the Configure dialogs each row shows about
+  how many tokens it adds to every request, and a line under the list says
+  whether your current selection still fits the model: green, amber, or red
+  "does NOT fit".
+- **The gauge tells the truth.** The ring beside the message box is labelled
+  **CONTEXT-WINDOW**. It can pass 100% (**OVER**), and a request that Ollama
+  cut shows `CUT · read X of ≈Y tokens`. An answer that came from a cut request
+  carries a **CONTEXT-WINDOW exceeded** warning, so you know it was answered
+  from only part of what was sent.
+
+There is no separate ACPX lock or toolbar badge any more: ACPX tools follow the
+rows you tick (and the toolbar's ACPX box). `context_compact_mode` in
+`config.json` (`auto`, `always` or `never`) overrides the automatic lock, and an
+explicit value is obeyed exactly.
+
+This shipped in v1.75.0 (tagged 2026-10-03); no GitHub release is published for
+it yet. A visible browser test passed 57 of 57 checks. How
+it works: [Compact mode](docs/claude/architecture.md).
+
+## Self-modify — her self-knowledge, on or off
+
+Tlamatini can carry a description of herself (`Tlamatini.md`: her architecture,
+modes, ports and pages) so that she can read, change and rebuild her own
+source. That description costs about **28.9K tokens on every request**. The
+**Self-modify** box, right after Compact mode in the chat toolbar, decides
+whether it is sent.
+
+- **Who sees the box.** A source (developer) run always has it: dev mode always
+  behaves like a `--self-modify` build. A frozen build has it only when it was
+  built with `build.py --self-modify`. Any other build does not show the box at
+  all.
+- **ON** (the default) sends her self-knowledge exactly as before.
+- **OFF** leaves it out and puts one line in its place, telling her not to read,
+  edit or rebuild her own code until the box is ticked again. That saves about
+  28.9K tokens per request.
+- **Locked OFF on a small model.** If the model you chose cannot hold her
+  self-knowledge, the box shows unticked, greyed, **Self-modify 🔒**. Clicking
+  it explains why, and the server refuses to tick it. Your choice is kept:
+  choose a bigger model and the box unlocks by itself.
+
+This is on `main` since 2026-10-03, right after the v1.75.0 tag (commit
+`70aeeb87`); it is not in a tag yet, and a source run reports 1.75.0. It was
+checked by 473 unit tests and a visible
+browser test (28 of 28 checks). How it works:
+[the Self-modify switch](docs/claude/architecture.md).
+
+## Newest changes — v1.75.0
+
+**On `main` right after v1.75.0, 2026-10-03 — the Self-modify switch.** A new **Self-modify** box in the chat toolbar turns her self-knowledge (about 28.9K tokens per request) on or off. It appears only where self-modify is possible (always from source; in a frozen build only with `--self-modify`), it is ON by default, and it locks OFF when the chosen model cannot hold it. See [Self-modify](#self-modify--her-self-knowledge-on-or-off). Not in a tag yet (commit `70aeeb87`; a source run reports 1.75.0); the latest published release is v1.74.0.
+
+**v1.75.0, 2026-10-02 — Compact mode became a switch you drive.** Compact mode is now a real toolbar box. Ticking it unticks every Configure row except System-Metrics, Files-Search and Current-Time, so you tick back only what you need; unticking it ticks every row again. A small model locks it ON (🔒). Saved rows apply at once with no restart, every row shows its token price, the gauge is labelled CONTEXT-WINDOW and says when a request was cut, and an answer from a cut request carries a warning. The toolbar badge and the ACPX lock of v1.74.0 are gone: ACPX follows the rows you tick. See [Compact mode](#compact-mode--fit-every-request-to-your-model). Tagged as v1.75.0 on 2026-10-03; no GitHub release is published for it yet.
+
+**v1.74.0, 2026-10-01 — small models work properly: Compact mode.** If the model you choose is too small to read everything Tlamatini normally sends, she no longer sends it anyway (the model used to silently lose most of it and answer the wrong question). She switches to **Compact mode** for that model: the live CPU/memory/disk metrics, file search and the current time keep working, while agents, ACPX and external MCPs pause until you pick a bigger model. A short dialog tells you exactly what is on and what is paused, a small badge stays beside the toolbar, and a big model (for example a 256K-token cloud model) still gets the complete context. Answer tables are also always readable now — text that would be invisible on its background is recoloured. v1.74.0 was published on GitHub on 2026-10-01 and is the latest published release, so **About ▸ Check for updates** delivers it until v1.75.0 is published. *(Since v1.75.0 (2026-10-02) the badge is gone and Compact mode is a toolbar switch: in Compact mode you can tick agents, ACPX tools and MCPs back one by one — see the entry above.)*
 
 **v1.73.1, 2026-10-01 — Config ▸ Models lists the models of the Ollama you configured.** If Tlamatini points at another Ollama server (for example a rented GPU) with its own token, Config ▸ Models now asks THAT server, with that token, for its models — they are no longer marked red and refused because your browser looked at a different Ollama.
 
-**v1.73.0, 2026-09-30 — drop any message.** Each chat card now has a **Drop** button beside **Copy**, for your messages and hers. After you confirm, she forgets that one message and answers as if it had never existed, while everything before and after it stays. See [Drop a message from the chat](#drop-a-message-from-the-chat). v1.73.0 is published on GitHub as the latest release, so **About ▸ Check for updates** delivers it.
+**v1.73.0, 2026-09-30 — drop any message.** Each chat card now has a **Drop** button beside **Copy**, for your messages and hers. After you confirm, she forgets that one message and answers as if it had never existed, while everything before and after it stays. See [Drop a message from the chat](#drop-a-message-from-the-chat). v1.73.0 was published on GitHub on 2026-09-30 and was the latest release until v1.74.0 was published on 2026-10-01.
 
 **v1.72.4, 2026-09-29 — a web page can no longer lose its text in silence.** Crawler and Googler read a page's words by skipping scripts, styles and similar blocks. If one of those blocks never closed — a page that leaves out the optional `</head>`, a stray `<svg/>`, a cut-off download — everything after it was thrown away, so a page could come back with zero text and nobody was told. Both agents now keep track of open blocks properly, and a second, plain reading of the page replaces any result that kept less than a quarter of the page's text, with a WARNING in `tlamatini.log` saying so. v1.72.4 was published on GitHub on 2026-09-29, and v1.73.0 carries it.
 
@@ -398,14 +477,14 @@ Two fixes ship together. The console is now written on its **own background thre
 
 ---
 
-## Current version — v1.74.0
+## Current version — v1.75.0
 
-**Latest version — `v1.74.0` (tagged 2026-10-01):** annotated tag `v1.74.0` points to `c1fadb90` — *"Release v1.74.0 Making every request fit the model it is sent to: Compact mode for small models, the complete context for big ones, and readable answer tables."* If the model you choose is too small to read everything Tlamatini sends, she switches to Compact mode for it (live metrics, file search and the current time keep working; agents, ACPX and external MCPs pause; a dialog and a badge tell you so), a big model still gets the complete context, and answer tables are always readable. ⚠️ **No GitHub release is published for `v1.74.0` yet** (checked 2026-10-01): the latest *published* release is still `v1.73.0`, so **About ▸ Check for updates** delivers v1.73.0 until v1.74.0 is published. It carries **`v1.73.1`** (`757b0edc`, a tag with no published release) — Config ▸ Models lists the models of the Ollama server you configured, with its token — which stands on **`v1.73.0`** (tag at `606470bb`, published 2026-09-30) — *"Release v1.73.0 Implemented the Drop button, which erases one message from the chat AND from the history the model reads."* Every chat card, yours and hers, has a **Drop** button beside Copy; after a themed confirmation (Cancel focused, Escape and ✕ cancel) that one message is deleted, so from your next question on she answers as if it had never existed while the messages before and after it stay untouched — no reconnect, refused while she is still answering, and a note in the `memory` External MCP is NOT erased (see [Drop a message from the chat](#drop-a-message-from-the-chat)). It is also the latest *published* release ("Tlamatini Release v1.73.0 Win11x64", marked Latest; checked with `gh release list` on 2026-09-30), so **About ▸ Check for updates** now delivers it. It carries **`v1.72.4`** (`323c1051`, published 2026-09-29) — Crawler and Googler read a page's text with a stack of open tags instead of a counter, so a void element, an omitted `</head>` or a stray `<svg/>` can no longer swallow the rest of the page, and a plain-text safety net replaces any parse that kept less than a quarter of the page's text — and logs a WARNING saying so. That in turn carries two tags with no published release of their own: **`v1.72.3`** (`87db1df8`) — the chat avatar's lips now open and close clearly while she speaks, never wider than her own open-mouth portrait, plus a small refinement of the general prompt — and **`v1.72.2`** (`524a67ff`) — Googler and Crawler became block- and hang-proof: one deadline bounds every run, a CAPTCHA, bot wall or rate limit is reported as `blocked` instead of being read as content, and a search or crawl that read nothing says so plainly instead of returning silence. Those stand on **`v1.72.1`** (`df709d78`, published 2026-09-28): the REAL context gauge — the ring beside the message box shows Ollama's own token count for the exact request (`N tokens REAL`), exact in both one-shot and Multi-Turn — plus the removal of the one-shot System-Metrics "No system context required for this question." line. It follows `v1.72.0` (tag at `e3668a47`, published 2026-09-28): the direct chat microphone and the **Config ▸ Mic** settings. `v1.71.0` (`512973fb`) predates the microphone and has no published release. Runtime version comes from the resolver; feature availability also depends on build contents.
+**Latest version — `v1.75.0` (tagged 2026-10-03; the latest published release is `v1.74.0`):** annotated tag `v1.75.0` points to `f7eb53ff` — *"Release v1.75.0 Making Compact mode a real checkbox: it unticks the real Configure rows, locks ON for a small model, prices every row, and warns when a request is cut."* Compact mode is now a box in the chat toolbar that you drive: ticking it unticks every Configure row except System-Metrics, Files-Search and Current-Time so you tick back only what you need, a model too small to hold everything you activated locks it ON (🔒), saved rows apply at once with no restart, every row shows its token price, and an answer from a cut request carries a CONTEXT-WINDOW warning (see [Compact mode](#compact-mode--fit-every-request-to-your-model)). ⚠️ **No GitHub release is published for `v1.75.0` yet** (checked 2026-10-03): the latest *published* release is **`v1.74.0`** ("Tlamatini Release v1.74.0 Win11x64", marked Latest, published 2026-10-01), so **About ▸ Check for updates** delivers v1.74.0 until v1.75.0 is published. It carries **`v1.74.0`** (tag at `c1fadb90`, tagged 2026-10-01) — *"Release v1.74.0 Making every request fit the model it is sent to: Compact mode for small models, the complete context for big ones, and readable answer tables."* In v1.74.0 a model too small to read everything Tlamatini sends got Compact mode (live metrics, file search and the current time kept working; agents, ACPX and external MCPs paused; a dialog and a badge said so), a big model still gets the complete context, and answer tables are always readable. It carries **`v1.73.1`** (`757b0edc`, a tag with no published release) — Config ▸ Models lists the models of the Ollama server you configured, with its token — which stands on **`v1.73.0`** (tag at `606470bb`, published 2026-09-30) — *"Release v1.73.0 Implemented the Drop button, which erases one message from the chat AND from the history the model reads."* Every chat card, yours and hers, has a **Drop** button beside Copy; after a themed confirmation (Cancel focused, Escape and ✕ cancel) that one message is deleted, so from your next question on she answers as if it had never existed while the messages before and after it stay untouched — no reconnect, refused while she is still answering, and a note in the `memory` External MCP is NOT erased (see [Drop a message from the chat](#drop-a-message-from-the-chat)). It was the latest *published* release ("Tlamatini Release v1.73.0 Win11x64", marked Latest; checked with `gh release list` on 2026-09-30) until v1.74.0 was published on 2026-10-01. It carries **`v1.72.4`** (`323c1051`, published 2026-09-29) — Crawler and Googler read a page's text with a stack of open tags instead of a counter, so a void element, an omitted `</head>` or a stray `<svg/>` can no longer swallow the rest of the page, and a plain-text safety net replaces any parse that kept less than a quarter of the page's text — and logs a WARNING saying so. That in turn carries two tags with no published release of their own: **`v1.72.3`** (`87db1df8`) — the chat avatar's lips now open and close clearly while she speaks, never wider than her own open-mouth portrait, plus a small refinement of the general prompt — and **`v1.72.2`** (`524a67ff`) — Googler and Crawler became block- and hang-proof: one deadline bounds every run, a CAPTCHA, bot wall or rate limit is reported as `blocked` instead of being read as content, and a search or crawl that read nothing says so plainly instead of returning silence. Those stand on **`v1.72.1`** (`df709d78`, published 2026-09-28): the REAL context gauge — the ring beside the message box shows Ollama's own token count for the exact request (`N tokens REAL`), exact in both one-shot and Multi-Turn — plus the removal of the one-shot System-Metrics "No system context required for this question." line. It follows `v1.72.0` (tag at `e3668a47`, published 2026-09-28): the direct chat microphone and the **Config ▸ Mic** settings. `v1.71.0` (`512973fb`) predates the microphone and has no published release. Runtime version comes from the resolver; feature availability also depends on build contents. Right after the `v1.75.0` tag, commit `70aeeb87` on `main` (2026-10-03; not in a tag yet, so a source run reports 1.75.0) added the **Self-modify** switch; see [Self-modify](#self-modify--her-self-knowledge-on-or-off) and [Newest changes](#newest-changes--v1750).
 
 
 Before them came **`v1.70.0`** — the Prompt Flow Panel release: a new **Prompt Flow Panel** where you draw a chain of prompts as a diagram, save it as a `.fpmt` file and play it; a reorganized chat menu bar (**Panels** and **Config**); an editor toolbar for the **Agentic Control Panel** (undo/redo, duplicate, zoom, agent search and help); and one shared set of canvas mechanics, so both panels connect, drag, select and zoom the same way. It carries the preceding **`v1.65.4`** release ("Tlamatini Release v1.65.4 Win11x64", annotated 2026-09-21 at commit `b09c4ff`) and its context-meter line: the context meter itself (`v1.65.0`), the Context Governor that measures the real request and never binds zero tools (`v1.65.2`), a LaTeXer repair for a leading brace being swallowed as an optional argument (`v1.65.3`), and the improved context gauge (`v1.65.4`). It also carries the Video-Analyzer audio-track transcription and detailed audiovisual summaries of `v1.64.0`, alongside the PDF canvas, whole-document context and visual-agent capabilities described above.
 
-Runtime identity always comes from Git/build metadata — `agent/version.py::get_version()` and `GET /agent/version/` resolve the number from the annotated tag at build time, and the release folder `dist/Tlamatini_Release_v1.74.0/` is named from the same source — never from this prose. Tlamatini's version string deliberately never carries a `.devN`, `+gSHA` or `.dirty` suffix; it always reports the base tag (`VERSIONING.md`). The preceding tags in this line are **`v1.73.1`** (2026-10-01, commit `757b0edc`), **`v1.73.0`** (2026-09-30, commit `606470bb`), **`v1.72.4`** (2026-09-29, commit `323c1051`), **`v1.72.3`** (2026-09-29, commit `87db1df8`), **`v1.72.2`** (2026-09-29, commit `524a67ff`), **`v1.72.1`** (2026-09-28, commit `df709d78`), **`v1.72.0`** (2026-09-27, commit `e3668a47`), **`v1.71.0`** (2026-09-27, commit `512973fb`), **`v1.70.0`** (tagged 2026-09-26, commit `cf62bd8c`), **`v1.65.4`** (2026-09-21), **`v1.65.3`**, **`v1.65.2`** and **`v1.65.0`** (all 2026-09-20), then **`v1.64.0`** (2026-09-19), **`v1.62.2`**, **`v1.62.0`**, **`v1.61.0`** (2026-09-16) and **`v1.60.0`** (2026-09-15, commit `cef3995`, "Entire chain of visual agents really enhanced!"). A **`v1.65.5`** tag also exists in the repository with no published release attached; `v1.70.0` supersedes it.
+Runtime identity always comes from Git/build metadata — `agent/version.py::get_version()` and `GET /agent/version/` resolve the number from the annotated tag at build time, and the release folder `dist/Tlamatini_Release_v1.75.0/` is named from the same source — never from this prose. Tlamatini's version string deliberately never carries a `.devN`, `+gSHA` or `.dirty` suffix; it always reports the base tag (`VERSIONING.md`). The preceding tags in this line are **`v1.74.0`** (2026-10-01, commit `c1fadb90`, published 2026-10-01), **`v1.73.1`** (2026-10-01, commit `757b0edc`), **`v1.73.0`** (2026-09-30, commit `606470bb`), **`v1.72.4`** (2026-09-29, commit `323c1051`), **`v1.72.3`** (2026-09-29, commit `87db1df8`), **`v1.72.2`** (2026-09-29, commit `524a67ff`), **`v1.72.1`** (2026-09-28, commit `df709d78`), **`v1.72.0`** (2026-09-27, commit `e3668a47`), **`v1.71.0`** (2026-09-27, commit `512973fb`), **`v1.70.0`** (tagged 2026-09-26, commit `cf62bd8c`), **`v1.65.4`** (2026-09-21), **`v1.65.3`**, **`v1.65.2`** and **`v1.65.0`** (all 2026-09-20), then **`v1.64.0`** (2026-09-19), **`v1.62.2`**, **`v1.62.0`**, **`v1.61.0`** (2026-09-16) and **`v1.60.0`** (2026-09-15, commit `cef3995`, "Entire chain of visual agents really enhanced!"). A **`v1.65.5`** tag also exists in the repository with no published release attached; `v1.70.0` supersedes it.
 
 The preceding **`v1.60.0`** tag, created 2026-09-15 at commit **`cef3995`** ("Release v1.60.0 Entire chain of visual agents really enhanced!."), carries the visual-agent work described above. It reached you through three earlier tags in the same line — **`v1.52.0`** (the new PPTXer agent), **`v1.52.2`** (PDFer's and PPTXer's style collections) and **`v1.52.3`** (LaTeXer's) — before `v1.60.0` gathered them together with the desktop-control and flow-contract tightening.
 
@@ -445,7 +524,7 @@ The previous annotated release, `v1.48.17` (2026-08-16), remains fully carried. 
 
 Exec-Report status handling now uses a closed, source-guarded vocabulary with five disjoint classes: completed diagnostics, intact completed work, degraded work, work not done, and agent errors. Degraded deliverables such as inaudible token-only speech or a compromised PDF are red rather than falsely clean; named completions are auditable greens; an unknown token still fails open but is identified by rule `R8b`. The repository-wide guard scans every pool-agent `status:` literal so a newly invented token fails during tests instead of silently defaulting green. Kuberneter now reports numeric `returncode`, explicit `success`, and a real `ok`/`failed` status token, preventing a failed `kubectl` call from being painted green.
 
-Updater coverage protects the separately built `Uninstaller.exe` during self-update and keeps the preserve-list parser from being confused by comments. Public release builders forcibly clear inherited private External-MCP catalog and contact opt-ins; only the explicit keyed/private builder can bundle private state, and it first merges same-machine contact sources into gitignored `contacts.private.json` without putting PII into a public build or self-modify snapshot. Drift-proof tests derive supervisor counts and prompt rules from source. The current source inventory is reported in the [PDF dossier](tlamatini_app_summary.pdf) and [PowerPoint dossier](Tlamatini_eXtended_Artificial_Intelligence_Humanly_Tempered.pptx), with physical/effective lines by language, binary-asset counts and the complete tracked file tree. The live surface contains **89 workflow agents**, **67 wrapped chat agents**, **109 Multi-Turn tools** (**20 core + 67 wrapped + 12 ACPX/Skill + 10 External-MCP supervisors**), **50 application JavaScript modules**, **29 runtime skills**, and **210 migrations**. The `v1.48.14` private MCP runtimes, inactive Memory/Sequential-Thinking defaults, public/private catalog separation, and lossless diagram restoration remain carried.
+Updater coverage protects the separately built `Uninstaller.exe` during self-update and keeps the preserve-list parser from being confused by comments. Public release builders forcibly clear inherited private External-MCP catalog and contact opt-ins; only the explicit keyed/private builder can bundle private state, and it first merges same-machine contact sources into gitignored `contacts.private.json` without putting PII into a public build or self-modify snapshot. Drift-proof tests derive supervisor counts and prompt rules from source. The current source inventory is reported in the [PDF dossier](tlamatini_app_summary.pdf) and [PowerPoint dossier](Tlamatini_eXtended_Artificial_Intelligence_Humanly_Tempered.pptx), with physical/effective lines by language, binary-asset counts and the complete tracked file tree. The live surface contains **89 workflow agents**, **67 wrapped chat agents**, **109 Multi-Turn tools** (**20 core + 67 wrapped + 12 ACPX/Skill + 10 External-MCP supervisors**), **54 application JavaScript modules**, **29 runtime skills**, and **212 migrations**. The `v1.48.14` private MCP runtimes, inactive Memory/Sequential-Thinking defaults, public/private catalog separation, and lossless diagram restoration remain carried.
 
 Dialog behaviour is now uniform on both pages: **Escape dismisses every dialog and means exactly what the titlebar ✕ means**, while an outside click still never dismisses anything — so a guarded prompt cannot be lost to a stray click, and no dialog can trap you either. A single dispatcher finds the topmost dialog and activates *that dialog's own* dismiss control, so an Ask-Execs permission prompt still answers **Deny**, a confirmation still resolves to "no", scroll locks are still released, and a sealed update step still refuses to close. The last native browser pop-ups are gone: `alert()` / `confirm()` inside the contacts book and the External-MCP dialog were replaced by themed `tlmAlert` / `tlmConfirm` panels that match the app instead of showing OS chrome over it.
 
@@ -572,7 +651,8 @@ Everything Tlamatini can do, grouped:
 - **TeleTlamatini** — Telegram bridge into the full chat.
 - **Drop a message** — every chat card has **Drop** beside **Copy**, for your messages and hers; she forgets that one message with no reconnect, and the messages around it stay.
 - **Multi-model** — Ollama (local), Anthropic Claude (cloud), Qwen (vision).
-- **Self-knowledge & self-modification** — can read, modify, and rebuild her own source.
+- **Compact mode** — a toolbar switch that fits every request to the model: it unticks every Configure row except System-Metrics, Files-Search and Current-Time so you tick back only what you need, locks ON (🔒) for a model too small for everything you activated, prices every row in tokens, and warns when a request was cut. See [Compact mode](#compact-mode--fit-every-request-to-your-model).
+- **Self-knowledge & self-modification** — can read, modify, and rebuild her own source. The toolbar **Self-modify** box (shown only where self-modify is possible) switches her self-knowledge on or off, and locks OFF when the model cannot hold it. See [Self-modify](#self-modify--her-self-knowledge-on-or-off).
 - **PyInstaller packaging** — ships as a standalone Windows `.exe`.
 
 ---

@@ -16,7 +16,27 @@
 
 ---
 
+## 2026-10-03 — "too many stop sequences; maximum is 4": never more than FOUR, and a failed history summary never fails the answer
+
+> **On `main` after the `v1.75.0` tag** — not yet inside any tag; a source run reports `1.75.0`.
+
+Angela's installed build (`glm-5.3:cloud`) answered a CPU question, then died on the very next Multi-Turn prompt (Lumen Book Reader + Memory + torrent-search) in 0.2 s: *"Your agent cannot process your requests … Error detail: too many stop sequences; maximum is 4 (status code: 400)"*. Nothing had run yet.
+
+**Root cause — measured, not guessed.** The chat LLM in `rag/factory.py` carried **NINE** stop sequences (old code, not part of v1.74/v1.75). Ollama's cloud models refuse five or more: straight to `/api/generate`, `glm-5.3:cloud` and `glm-5.2:cloud` both answer **HTTP 400** to 5 or 9 and **HTTP 200** to 4. The first call made with that LLM in a request is the **chat-history summary** (`_summarize_history_if_needed`), which runs as soon as the history passes `history_summary_trigger_tokens` (Angela's config: **150**, so after almost any real answer) — and its exception killed the whole request. Self-modify ON/OFF had nothing to do with it; her failing turn simply had it OFF.
+
+**The fix — two layers.**
+- `agent/ollama_stop.py` (new, stdlib-only, never raises): `fit_stop_sequences()` drops duplicates/empties and keeps at most **`STOP_LIMIT = 4`**, for **EVERY** model — not decided by the name, because a local alias of a cloud model, a remote Ollama proxying the cloud or a new naming scheme would slip past a name check. A local model loses nothing: it stops at its own end-of-generation token natively. `rag/factory.py` now sends `_CHAT_STOP_TOKENS = ("\nEND-RESPONSE\n", "\nHuman:", "\nUser:", "\nAI:")` through `_chat_stop_tokens(config)` in BOTH chat builders, and logs `[LLM-STOP] <model>: 4 stop sequences`. The image interpreter (`imaging/image_interpreter.py`, 5 stops incl. a bare `"assistant"` that cut any description using that word) is fitted too — the `"assistant"` entry is the one dropped.
+- `rag/chains/base.summarize_or_none()` — ALL FIVE chains' history summaries (basic, history-aware ×2, unified ×2) go through it: FAIL-OPEN (a failed summary logs `[HISTORY-SUMMARY] the chat-history summary failed (…); sending the history unsummarized` and the answer goes on), a user's **Cancel still propagates**, and a success logs `[HISTORY-SUMMARY] chat history summarized (N chars)`.
+
+**Contracts (do NOT weaken).** No request ever carries more than 4 stop sequences — `agent/test_ollama_stop_limit.py::NoLongStopListAnywhereTests` AST-scans the whole source tree (Tlamatini/, scripts/, root) and fails on any `stop=` / `"stop":` that is not fitted and is longer than four. The summary is an optimisation, never a reason to lose an answer. Order matters: list the sequences that matter most FIRST.
+
+**Also fixed.** `agent.tests.AgentDescriptionsCoverageTests` counted `agent/agents/__pycache__` (present since 2026-09-20, created whenever `agents/model_settings.py` is imported from source) as an agent folder — it was red on this checkout for unrelated reasons; `__pycache__` is now excluded.
+
+**Proof.** Unit: `agent.test_ollama_stop_limit` (guard + 5 chains × fail-open/success/cancel) plus every suite that touches the chains, the factory and the image interpreter — 751 tests, all green after the `__pycache__` fix. Visible (headed Chrome, Shoter photos, `stop_sequence_visible.py`, ONLY `glm-5.2:cloud` and `qwen2.5:latest` per Angela): phase 0 — the list Tlamatini sends is accepted by both models and `glm-5.2:cloud` still refuses the old nine; phase A — `glm-5.2:cloud`, Self-modify ticked: her CPU question, her Lumen/Memory book prompt (3,046 chars, 12,689-book catalog searched) and a torrent-search prompt, the summary ran twice, 3 of 3 requests reached the agent; phase B — `qwen2.5:latest` locked in Compact mode: the same sequence, the summary ran twice; Angela's Memory graph unchanged and config.json restored byte for byte — **ALL 48 CHECKS PASSED**. Phase C (`--phases C`) — `glm-5.2:cloud` with Self-modify UNTICKED by a click for her CPU question and her book prompt (the exact state of her failing turn: OFF, after a long answer, the summary ran), then ticked again for a follow-up: every answer arrived, the summary ran twice and never failed, 3 of 3 requests reached the agent, both switches are in the log, no Traceback — **ALL 31 CHECKS PASSED**.
+
 ## 2026-10-03 — The SELF-MODIFY switch: her self-knowledge, only where it exists and only when it fits
+
+> **On `main` right after the `v1.75.0` tag** (commit `70aeeb87`, 2026-10-03) — not yet inside any tag; a source run reports `1.75.0`.
 
 Angela asked for a control to enable/disable self-modify *"if and only if the model can fit it (similar to Compact mode)"*, visible ONLY in a `--self-modify` build and *"COMPLETELY HIDDEN"* otherwise — and *"THE DEV MODE MUST ALWAYS BE LIKE --self-modify MODE"*.
 
@@ -37,6 +57,8 @@ Angela asked for a control to enable/disable self-modify *"if and only if the mo
 **Proof.** Unit: 473 tests across the self-modify, gate, Compact, capacity, gauge and frontend suites — OK. Visible (headed Chrome, Shoter photos, `self_modify_visible.py`): qwen2.5 local → box present, unticked, greyed, 🔒, the click explains, a forged tick is refused; nemotron-3-ultra:cloud (free allowance, probes off, no question) → ticked by default, OFF saves 107,458 bytes at rest, ON brings back 117,517 with the same tools; database, choice and config.json restored — **ALL 28 CHECKS PASSED**.
 
 ## 2026-10-02 — The COMPACT MODE switch: the real rows, a locked box, a truthful gauge
+
+> **Shipped in `v1.75.0`** (annotated tag at `f7eb53ff`, 2026-10-03; no GitHub release published for it yet as of 2026-10-03 — the latest published release is `v1.74.0`, so self-update still delivers v1.74.0).
 
 **Angela's design, approved in her words:** in STRICT compact mode (a small model really active) the user must NOT be able to untick "Compact mode"; only a model that can fit **everything activated** lets it be ticked and unticked freely. Compact mode starts with System-Metrics, Files-Search and Current-Time enabled, *"BUT THE USER MUST BE ABLE TO FOR EXAMPLE DEACTIVATE System Metrics, DEACTIVATE Files Search, BUT ACTIVATE FOR EXAMPLE ESPHomer"*; the selections in Configure MCPs / Configure Agents must get *"REALLY chained/unchained"* - ALL of them, not only PDFer or Unrealer; unticking re-enables ALL; *"the gauge must be the most real value"*; the gauge says **CONTEXT-WINDOW**; the not-ready legend tells the user to make the request fit the CONTEXT WINDOW. Then: *"keep compact, and yes show the warning"*.
 
@@ -74,7 +96,7 @@ Angela asked for a control to enable/disable self-modify *"if and only if the mo
 
 ## 2026-10-01 — COMPACT MODE: every request fits the model it is sent to
 
-> **Shipped in `v1.74.0`** (annotated tag at `c1fadb90`, 2026-10-01; no GitHub release published yet at that date).
+> **Shipped in `v1.74.0`** (annotated tag at `c1fadb90`, 2026-10-01; no GitHub release was published yet when this entry was written — v1.74.0 was published later on 2026-10-01 and marked Latest).
 
 **Angela's report:** the installed build, running the local `qwen2.5:latest`, answered *"What is the actual CPU usage, memory usage and disk space?"* with the time — *"did you erase system context?"*
 
@@ -2712,7 +2734,7 @@ audit. Migrations **0195/0196/0197**; catalog prompt **119**
 > `v1.48.16` = `6ee630ca` (themed `tlmAlert`/`tlmConfirm` pop-ups + the
 > frozen-bundle carriage proof in `build.py`), **`v1.48.17` = `f948be7b` — the
 > newest release on that day**, carrying everything below. The current release
-> is now `v1.74.0` (tagged 2026-10-01; the latest published release is still `v1.73.0`); entries that say a change "landed in v1.48.15" or
+> is now `v1.75.0` (tagged 2026-10-03; the latest published release is `v1.74.0`); entries that say a change "landed in v1.48.15" or
 > `v1.48.17` are historical statements and remain as written.
 
 **Angela, verbatim:** *"Standarize in every ... every dialog and all of the

@@ -72,6 +72,47 @@ the previously built installer or change the older dated evidence above.
 Release verification must separately exercise the actual rebuilt worker and
 static assets from a visible development session.
 
+### Compact mode and Self-modify switches (source development, 2026-10-02/03)
+
+The Compact mode switch shipped in `v1.75.0` (annotated tag at `f7eb53ff`,
+2026-10-03). The Self-modify switch is on `main` right after that tag (commit
+`70aeeb87`) and is not yet in a tag; a source run reports `1.75.0`. No GitHub
+release is published for `v1.75.0` yet, so the latest published release, and
+the one self-update delivers, is still `v1.74.0`.
+
+- **Compact mode switch (2026-10-02).** `agent/compact_mode.py` is imported at
+  module level by `mcp_agent.py`, so the frozen archive carries it through the
+  import graph. Model `CompactState` arrives with migration
+  `0211_compact_state.py`. The snapshot requires `compact_mode.py`,
+  `0211_compact_state.py`, `context_fitter.py`, `compact_costs.js`,
+  `model_capacity.js` / `.css` and `chat_table_contrast.js`; the runtime
+  inventory's `REQUIRED_STATIC` requires the same page assets.
+- **Self-modify switch (2026-10-03).** `rag/config.self_modify_available()`
+  decides whether a deployment can self-modify at all: a source (dev) run of
+  this checkout always can, folder or no folder; a frozen build only when
+  `build.py --self-modify` bundled `TlamatiniSourceCode/` beside the
+  executable. The chat template renders the toolbar's **Self-modify** box and
+  `self_modify_switch.js` only where that is true, so a default build carries
+  the script but never shows it. The choice persists in
+  `CompactState.self_modify` (migration `0212_compact_state_self_modify.py`,
+  ON by default) and decides, per request, whether `Tlamatini.md` (115,711
+  characters, about 28.9K tokens) is sent; a model that cannot hold it shows
+  the box locked OFF.
+- **Carriage.** `copy_source_assets.REQUIRED_SNAPSHOT_FILES` names
+  `0212_compact_state_self_modify.py` and `self_modify_switch.js`, and
+  `build_runtime_assets.REQUIRED_STATIC` names `agent/js/self_modify_switch.js`
+  (read from source on 2026-10-03). Both migrations reach existing users
+  through the normal post-update path: the updater stages the database through
+  `DB/ToLoad` and the first launch after the swap runs `migrate`.
+- **Evidence and limits.** Source unit tests (473 across the self-modify, gate,
+  Compact, capacity, gauge and frontend suites) and the visible
+  `compact_switch_visible.py` (57 checks) and `self_modify_visible.py` (28
+  checks) runs passed on 2026-10-03. The frozen branch is covered only by
+  `FrozenPageTests`, which render the real chat page under a patched
+  `sys.frozen`; no frozen build was produced for this, because `build.py`
+  erases `Tlamatini/db.sqlite3` and wipes `dist/` before it builds. A release
+  still needs both inclusion sweeps and a visible rebuild check.
+
 ## Self-update
 
 - `apply_update.ps1`, `preserved_user_state.json` and the standalone

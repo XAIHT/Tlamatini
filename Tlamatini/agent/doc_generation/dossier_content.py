@@ -392,15 +392,16 @@ def build_chapters(f: dict) -> list[Chapter]:
                 "parallel request slots divide it.",
                 "A request that fits the usable window is sent byte for byte, as before. Otherwise Compact "
                 "mode keeps System-Metrics and Files-Search, whose context rides inside the question, and "
-                "binds only the current-time tool. ACPX and External MCPs pause for that request without "
-                "changing your selections, the system prompt is rebuilt by rule priority and closed by a "
+                "binds only the rows you tick. Since v1.75.0 that is a toolbar switch: ticking it unticks every "
+                "Configure row but those three and pauses External MCPs, and each row shows its price. The "
+                "system prompt is rebuilt by rule priority and closed by a "
                 "seven-rule note, and history keeps the six newest messages. A first step that Ollama still "
                 "cut is re-fitted and resent before any tool runs.",
             ],
             points=[
                 ("Full", "A model that can hold the request receives it unchanged, byte for byte."),
-                ("Compact", "Metrics, file search and current time stay; agents, ACPX and External MCPs pause."),
-                ("Told plainly", "A once-per-model dialog and a Compact badge say what is active and paused."),
+                ("Compact", "A toolbar switch: only the rows you tick are bound, each with its price."),
+                ("Locked", "A model too small for everything turns Compact on by itself and locks it."),
                 ("Your choice", "`context_compact_mode` is auto by default, or always or never, obeyed exactly."),
             ],
             callout=("It fails open to the full request",
@@ -531,16 +532,15 @@ def build_chapters(f: dict) -> list[Chapter]:
         "The chat, the two canvases, the catalog and the dialogs that operate everything else.",
         accent="gold", sections=[
         Section("chat", "THE CHAT PAGE", "Conversation with modes",
-            "The chat page is where you talk to her. Six toolbar switches decide how each request runs.",
+            "The chat page is where you talk to her. Up to eight toolbar switches decide how each request runs.",
             body=[
                 "Beside the conversation sits a canvas that shows code, text and PDFs. Paste a screenshot with "
                 "Ctrl+V or drop images on the chat: she saves them to her Temp folder and writes the full path "
                 "into your message, ready for Image-Interpreter. A context ring between the toolbar and the "
                 "message box shows how much of the model's window the real request uses, measured by the "
                 "backend in bytes. Tokens use Ollama's own prompt_eval_count for the request; an "
-                "estimate is labeled until a measured count arrives. When the model cannot hold the complete "
-                "request, a Compact mode badge beside the ring reopens a dialog naming what stays active "
-                "and what is paused.",
+                "estimate is labeled until a measured count arrives. When Ollama cut a request the ring says "
+                "so, and an answer built from a cut request carries a CONTEXT-WINDOW warning.",
                 "Her avatar speaks answers aloud when you ask. Since v1.72.3, clearer syllable movement and "
                 "faster closure make her lips easier to follow, with opening capped to her portrait. After "
                 "login, pressing Enter on the welcome page takes you straight to the chat.",
@@ -555,6 +555,8 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ["Ask Execs", "Proceed/Deny before each risky tool; a Deny stops the chain."],
                 ["Step-by-Step", "One concrete action at a time, waiting for your reply before the next."],
                 ["Internet", "Allows a web search to add context to the answer."],
+                ["Compact mode", "Binds only the rows you tick; locked on when the model cannot hold all."],
+                ["Self-modify", "Sends her self-knowledge; only in self-modify builds, locked off if too big."],
             ]}, deck="table"),
         Section("drop", "CHAT HISTORY", "Drop a message from the conversation",
             "Every message card has Drop beside Copy, for your prompts and Tlamatini's answers.",
@@ -1275,7 +1277,9 @@ def build_chapters(f: dict) -> list[Chapter]:
                 "An installed build resolves `config.json` beside `Tlamatini.exe`; a source run uses "
                 "`Tlamatini/agent/config.json`. A second, independent axis is self-modification: a build made "
                 "with `--self-modify` carries her complete, rebuildable source beside the executable, and her "
-                "self-knowledge travels with it. Without the flag, neither ships.",
+                "self-knowledge travels with it. Without the flag, neither ships. A source run is always "
+                "self-able, and a toolbar Self-modify switch decides per request whether her self-knowledge "
+                "is sent; it locks off when the model cannot hold it.",
                 "Direct dictation additionally uses a private ephemeral loopback listener for its worker "
                 "handshake. It closes after authentication; it is not a fourth public service or fixed port.",
             ],
@@ -1287,7 +1291,7 @@ def build_chapters(f: dict) -> list[Chapter]:
             deck_points=[
                 ("Source", "Run from the repository with manage.py."),
                 ("Frozen", "A PyInstaller executable with its own Python."),
-                ("Self-modify", "Optional: her rebuildable source ships beside her."),
+                ("Self-modify", "Always from source; optional in a build; a switch sends it."),
                 ("Ports", "8000 (configurable), 8765 and 50051 on loopback."),
             ]),
         Section("settings", "CONFIGURATION", "The settings that matter most",
@@ -1300,7 +1304,7 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ["ollama_repeat_penalty", "1.2", "Repetition penalty; 1.9 emptied answers."],
                 ["ollama_repeat_last_n", "256", "How far back that penalty looks."],
                 ["ollama_num_ctx", "1048576", "Requested context window."],
-                ["context_compact_mode", "auto", "Compact requests for models that cannot hold the full one."],
+                ["context_compact_mode", "auto", "Compact mode locks on for models that cannot hold everything."],
                 ["binary_context_detection", "true", "Screens files by content before embedding."],
                 ["console_quick_edit", "false", "Keeps a click from pausing a frozen console."],
                 ["runtime_autoprovision", "true", "Lets MCP servers provision Node or uv privately."],
@@ -1410,12 +1414,36 @@ def build_chapters(f: dict) -> list[Chapter]:
         f"Source tag {f['release_tag']}; latest published release "
         f"{f['release']['latest_published'] or 'unverified'}. Local changes are stated separately.",
         accent="gold", sections=[
-        Section("working_compact", "NEW IN v1.74.0", "Compact mode and readable tables",
+        Section("working_switches", "NEW IN v1.75.0", "Compact mode and Self-modify become switches",
+            "Tagged on October 3: Compact mode is a toolbar switch; the Self-modify switch followed the tag.",
+            body=[
+                "Compact mode as tagged in v1.74.0 was a verdict made behind the user's back. In v1.75.0 it is "
+                "a toolbar box. Ticking it unticks every row in Configure MCPs, Configure Agents and "
+                "ACPX-Skills except System-Metrics, Files-Search and Current-Time, and pauses the External "
+                "MCPs; unticking it ticks every row again. Each row shows the tokens it adds, a model that "
+                "cannot hold everything turns the box on and locks it, and an answer built from a cut request "
+                "carries a CONTEXT-WINDOW warning.",
+                "Right after the tag, commit 70aeeb87 added the Self-modify box. A source run always shows it; "
+                "a frozen build shows it only when built with --self-modify. On, it sends her self-knowledge, "
+                "about 28,900 tokens per request; off, one line tells her not to change her own code. A model "
+                "that cannot hold it shows the box locked off.",
+                "The visible Compact-switch run passed 57 of 57 checks on a local qwen2.5 and a free cloud "
+                "model. The visible Self-modify run passed 28 of 28: with the same 119 tools, the request with "
+                "the self-knowledge was 117,517 bytes larger than without it. 473 unit tests passed, including "
+                "a render of the page as a frozen build.",
+            ],
+            points=[
+                ("Compact switch", "Only the rows you tick; locked on when the model cannot hold everything."),
+                ("Prices", "Every Configure row shows the tokens it adds to each request."),
+                ("Self-modify", "Her self-knowledge on or off; locked off when it does not fit."),
+                ("Proof", "57/57 and 28/28 visible checks; 473 unit tests."),
+            ], deck="cards"),
+        Section("working_compact", "CARRIED FROM v1.74.0", "Compact mode and readable tables",
             "Tagged on October 1: every request is fitted to the model it is sent to.",
             body=[
                 "A model that can hold Tlamatini's complete request still receives it byte for byte. A model "
                 "whose real window is smaller receives Compact mode, described in the How She Works chapter, "
-                "with a once-per-model dialog, a Compact badge beside the context ring and a locked ACPX box.",
+                "with a once-per-model dialog, a Compact badge and a locked ACPX box, replaced in v1.75.0 by a switch.",
                 "The visible run on a local qwen2.5 exposed three more problems, fixed in the same release. In "
                 "Compact mode the one-shot file guard now states the real reason a file cannot be opened, and a "
                 "table the user asked to see is shown as a table instead of fenced code. For every model, an "
@@ -1423,7 +1451,7 @@ def build_chapters(f: dict) -> list[Chapter]:
                 "On October 1 the visible Compact run on the installed qwen2.5:latest passed 37 of 37 checks at "
                 "about 8,100 tokens per request, with no cuts. On nemotron-3-ultra:cloud every request stayed "
                 "complete, with Ollama reading 102,539 to 104,259 tokens. A small model can still sometimes "
-                "re-answer an earlier question before the new one. This dossier refresh reran the 43 "
+                "re-answer an earlier question before the new one. The v1.74.0 dossier refresh reran the 43 "
                 "Compact-mode regression tests; all passed.",
             ],
             points=[
@@ -1444,8 +1472,8 @@ def build_chapters(f: dict) -> list[Chapter]:
                 "when one cannot answer, such as an HTTP 401 that points to the token.",
                 "The same release made the start-up GPU step send the token too, so a token-protected remote "
                 "server no longer answers 401 at every start. A visible run against a simulated "
-                "token-protected server passed 16 of 16 checks, with every request carrying the token. This "
-                "dossier refresh reran the 18 model-catalog regression tests; all passed.",
+                "token-protected server passed 16 of 16 checks, with every request carrying the token. The "
+                "v1.74.0 dossier refresh reran the 18 model-catalog regression tests; all passed.",
             ],
             points=[
                 ("Fresh address", "Read from config.json on every call, never fixed at page load."),

@@ -206,7 +206,7 @@ totals), `[CONTEXT-CEILING]`. Visible proof: `context_gauge_real_lab.py`
 
 ---
 
-## Compact mode — every request fits the model it is sent to (2026-10-01, shipped in `v1.74.0`; the SWITCH 2026-10-02)
+## Compact mode — every request fits the model it is sent to (2026-10-01, shipped in `v1.74.0`; the SWITCH 2026-10-02, shipped in `v1.75.0`)
 
 A model whose REAL window cannot hold Tlamatini's complete request (~100K+ tokens: the whole `prompt.pmt` plus every bound tool schema) is no longer handed it. Ollama never refuses an oversized request for a local model — it silently keeps the tail and answers from that.
 
@@ -221,7 +221,7 @@ A model whose REAL window cannot hold Tlamatini's complete request (~100K+ token
 
 **The switch (Angela, 2026-10-02).** Ticking the toolbar's **Compact mode** box REALLY unticks every MCP / Tool / Agent / Skill row except **System-Metrics, Files-Search and Current-Time** and empties the External-MCP active list (saved in `CompactState.saved_external_active`). The user then ticks back only what she needs, one by one, in the existing Configure dialogs; a COMPACT request binds EXACTLY the enabled tools (External-MCP tools and their supervisors stay paused) under the compact prompt (rule priority, ≤ 40% of the window, a seven-rule COMPACT MODE note whose rule 5 lists the ticked tools and rule 6 names what is missing), history ≤ 6, tool output capped at 25% of the window. Unticking the box ticks EVERY row again and restores the External MCPs.
 
-**STRICT.** `fit_request` measures everything activated (`_everything_static_chars`: the full system prompt over every built-in tool + all schemas, cached per executor) against the usable window; `everything + 2400 > usable` ⇒ strict. A strict model with the switch OFF switches it ON at once (`enter_compact(auto=True)`, then the surface is re-read so the same request already carries the Compact selection) and the box is locked; `leave_compact` refuses while strict (the server re-checks; a forged frame cannot unlock it). A big model unlocks the box and **keeps Compact ON** until the user unticks it. If the database cannot be written, a strict request falls back to the old defaults (Current-Time only).
+**STRICT.** `fit_request` measures everything activated (`_everything_static_chars`: the full system prompt over every built-in tool + all schemas, cached per executor) against the usable window; `everything + 2400 > usable` ⇒ strict. A strict model with the switch OFF switches it ON at once (`enter_compact(auto=True)`, then the surface is re-read so the same request already carries the Compact selection) and the box is locked; `leave_compact` refuses while strict (the server re-checks; a forged frame cannot unlock it). A big model unlocks the box and **keeps Compact ON** until the user unticks it. If the database cannot be written, a strict request falls back to the old defaults (Current-Time only). ⚠️ "Everything activated" is measured WITHOUT the self-knowledge (`_everything_static_chars` builds its prompt with `_build_system_prompt(…, self_knowledge=False)`), so the Self-modify switch can never lock Compact mode ON by itself — see *The Self-modify switch* below.
 
 **Rows apply at once.** `consumers` saves the rows, then `compact_mode.after_toggles_saved(kind, before)`: chains Agent X ↔ Tool `Chat-Agent-X` (and Pythonxer/Executer/Googler → their direct tools; a direct tool ticked ticks its agent), ticks `Chat-Agent-Run-Wait/Status` with the first agent in Compact, copies every row into the same `global_state` keys `setup_llm` sets, and moves `toggles_version`. `CapabilityAwareToolAgentExecutor._refresh_toggle_tool_surface` re-reads `get_mcp_tools()` when the version moved — on the next request or at-rest rebuild; no reconnect, no rebuild. Every tab joins the `tlamatini_compact_mode` Channels group and receives `compact-mode-state` + the REAL rows. `apps.py` preserves each Agent row's flag across the startup rebuild (a NEW agent starts unticked while Compact is ON).
 
@@ -404,6 +404,8 @@ It is injected into `prompt.pmt`'s `<self_knowledge>{self_knowledge}</self_knowl
 Commits: `a927f5c` (self-knowledge file + injection + `prompt.pmt` identity rules), `2aab751` (`build.py --self-modify`), `1f36217` (4096 iterations). Authored by "Tlamatini's-AutoBot".
 
 ### The Self-modify switch (2026-10-03)
+
+> On `main` right after the `v1.75.0` tag (commit `70aeeb87`) — not yet inside any tag; a source run reports `1.75.0`.
 
 The load decides what the build CAN send; the **Self-modify** toolbar box decides, per request, whether it IS sent.
 
@@ -611,7 +613,7 @@ The frontend reaches this layer over three new endpoints: `POST /agent/compile_f
 
 ---
 
-## Database Models (17 models in agent/models.py)
+## Database Models (18 models in agent/models.py)
 
 Key models:
 - `Agent` - Agent type registry (idAgent, agentName, agentDescription, agentContent). **⚠️ This table is DELETED and rebuilt from the `agents/` folder listing on EVERY startup** by `apps.py::AgentConfig.ready()`, so `agentDescription` is derived, not authored: the boot resolver `_canonical_agent_display_name()` reads `services/agent_paths.py::display_name_from_agent_type`, which is the real source of truth for a display name (a migration's value survives only until the next launch). See `docs/claude/recent-fixes.md` (2026-07-26).
@@ -622,6 +624,7 @@ Key models:
 - `AcpSession` - One row per ACP child-process session
 - `SkillInvocation` - Append-only audit row for each `SkillHarness.invoke()` call
 - `AgentMessage` - One row per chat message (user, Tlamatini, greetings, status lines, hidden `Referenced Rephrase:` rows). It is the ONLY store of the history the model reads: `DBChatHistoryLoader.load(limit=8)` re-reads the newest rows for that user on EVERY request, with no cache and no summary. The **Drop** button (2026-09-30) deletes one row, so the model forgets it on the next question with no reconnect (see *Chat history and the Drop button* below)
+- `CompactState` - ONE row (pk=1) holding the toolbar switches: `active` (the Compact mode switch), `strict` (its lock), the `model` and `window_tokens` the verdict was made for, and `saved_external_active` (the External-MCP active list kept while Compact pauses it) — migration 0211, 2026-10-02 — plus `self_modify`, the Self-modify switch (migration 0212, ON by default, 2026-10-03). Owned by `agent/compact_mode.py`; see *Compact mode* and *The Self-modify switch* above
 - Plus session, context, and configuration models (`LLMProgram`, `LLMSnippet`, `Prompt`, `Omission`, `ContextCache`, `AgentProcess`, `ChatAgentRun`, `Asset`, `SessionState`)
 
 ### Chat history and the Drop button (2026-09-30, shipped in `v1.73.0`)

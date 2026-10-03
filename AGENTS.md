@@ -54,3 +54,61 @@ Read [CLAUDE.md](CLAUDE.md) and relevant documents indexed by
 [docs/claude/INDEX.md](docs/claude/INDEX.md). Preserve unrelated local edits.
 Never rewrite Git history. Do not modify the protected database backup/restore
 mechanics unless Angela explicitly requests it in the current turn.
+
+## Compact mode is a real switch (2026-10-02)
+
+Since 2026-10-02 (shipped in `v1.75.0`, tag at `f7eb53ff`) the chat
+toolbar's **Compact mode** box (`#compact-mode-enabled`; `agent/compact_mode.py`,
+model `CompactState`, migration 0211) rewrites the REAL Configure rows:
+
+- Ticking it unticks every MCP, tool, agent and skill row (Config ▸ Configure
+  MCPs, Configure Agents, ACPX-Skills) except **System-Metrics, Files-Search and
+  Current-Time**, and pauses the External MCPs (the active list is saved, then
+  restored). The user ticks back only what she needs; a Compact request binds
+  exactly the ticked tools. Unticking it ticks EVERY row again.
+- **STRICT = locked ON:** a model that cannot hold everything activated switches
+  the box ON by itself and locks it (greyed, 🔒); the server refuses a forged
+  untick. A big model unlocks it and keeps Compact ON until the user unticks it.
+- Saved Configure dialogs apply at once (`compact_mode.after_toggles_saved`);
+  there is no "restart the agent" any more. The old Compact badge and ACPX lock
+  are gone: ACPX tools ride along only when their rows are ticked AND the
+  toolbar's ACPX box is on.
+- The gauge legend reads **CONTEXT-WINDOW** and may pass 100 % (`OVER`); a cut
+  request shows `CUT · read X of ≈Y tokens`, and its answer carries a
+  CONTEXT-WINDOW warning line. The Configure dialogs price every row
+  (`compact_costs.js`, `GET /agent/compact_mode/costs/`).
+- Register every new built-in tool in **`tools.tool_gate_table()`**, the one
+  gate list that binding, Compact mode and the cost labels read.
+
+Contract: [CLAUDE.md](CLAUDE.md) → *Compact mode*,
+`docs/claude/architecture.md` → *Compact mode*,
+`docs/claude/recent-fixes.md` (2026-10-02).
+
+## Self-modify is a switch, only where it exists (2026-10-03)
+
+The chat toolbar's **Self-modify** box (`#self-modify-toggle`, after Compact
+mode; `self_modify_switch.js`; `CompactState.self_modify`, migration 0212, ON by
+default) decides per request whether her self-knowledge (`Tlamatini.md`,
+115,711 chars ≈ 28.9K tokens per request) is sent. It is on `main` right after the
+`v1.75.0` tag (commit `70aeeb87`), not yet in a tag; a source run reports
+`1.75.0`.
+
+- **Who sees it:** `rag/config.self_modify_available()`. A source (dev) run of
+  this checkout is ALWAYS self-able; a frozen build only when
+  `build.py --self-modify` bundled `TlamatiniSourceCode/`. Otherwise the box and
+  its script are not rendered at all (`{% if self_modify_available %}`).
+- **ON** sends the identity bullets and the whole `<self_knowledge>` section as
+  before; **OFF** replaces the bullets with `SELF_MODIFY_OFF_NOTICE` (she must
+  not read, edit or rebuild her own code) and drops the section. No marker is
+  ever left in a prompt.
+- **Only when it fits:** a model that cannot hold it shows the box unticked,
+  greyed and 🔒, and the server refuses a forged tick. Her choice is never
+  rewritten; a big model unlocks it by itself. Compact mode's STRICT check is
+  measured WITHOUT the self-knowledge.
+- ⚠️ **`build.py` ERASES `Tlamatini/db.sqlite3` and wipes `dist/`** before it
+  builds. Never run it just to "test the frozen mode"; `FrozenPageTests` render
+  the real chat page as a frozen build. Ask Angela before any real build.
+
+Contract: [CLAUDE.md](CLAUDE.md) → *Self-modify*,
+`docs/claude/architecture.md` → *The Self-modify switch*,
+`docs/claude/recent-fixes.md` (2026-10-03).

@@ -366,6 +366,14 @@ The Prompt Flow Panel executes inside the frozen **web process** (`routing.py` i
 - `REQUIRED_STATIC` (`build_runtime_assets.py`) also names `model_capacity.js`, `model_capacity.css` and `chat_table_contrast.js` — every chat page loads them.
 - `agent/context_fitter.py` is imported at module level by `mcp_agent.py`, so the frozen import graph carries it; the tool-less chains import it fail-open.
 - No migration and no new `config.json` key are required: `context_compact_mode` falls back to `auto` in code.
+- ⚠️ **Superseded 2026-10-02 — the Compact mode SWITCH added a migration.** Model `CompactState` (pk=1) arrives with migration `0211_compact_state.py`. `agent/compact_mode.py` is imported at module level by `mcp_agent.py`, so the frozen import graph carries it. `REQUIRED_STATIC` also names `compact_costs.js` (the per-row token prices in the Configure dialogs). The line above still holds for `config.json` (no new key), not for the database.
+
+### Self-modify switch carrier gate (2026-10-03)
+
+- Migration `0212_compact_state_self_modify.py` adds `CompactState.self_modify` (ON by default). It reaches EXISTING users exactly like every migration: the updater stages their database through `DB/ToLoad`, and the first launch after the swap runs `migrate` (Invariant 4). Nothing extra to wire — ship the migration.
+- `REQUIRED_STATIC` (`build_runtime_assets.py`) names `agent/js/self_modify_switch.js` (verified 2026-10-03). The chat template renders the box and this script only where `rag/config.self_modify_available()` is True — always from source, and in a FROZEN build only when `build.py --self-modify` bundled `TlamatiniSourceCode/`. A release built WITHOUT `--self-modify` (the default of both `build_complete_*` wrappers) still carries the file but never renders it; that is correct, not a missing asset.
+- `0211` shipped in the `v1.75.0` tag (annotated, `f7eb53ff`, 2026-10-03, pushed); `0212` is on `main` right after that tag (commit `70aeeb87`) and is not yet in any tag. No GitHub release is published for `v1.75.0` yet, so the last PUBLISHED release is `v1.74.0` (marked Latest, the one self-update delivers), and it contains NEITHER migration. Count migrations against the last published release (`gh release list`), not the nearest tag.
+- ⚠️ `build.py` ERASES `Tlamatini/db.sqlite3` and wipes `dist/` before it builds — never run it just to check carriage.
 
 ### Central model settings runtime gate (2026-09-20)
 

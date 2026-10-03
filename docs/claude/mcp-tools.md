@@ -39,7 +39,7 @@ and ACPX CLI provider models retain their own settings. See
 1. Implement `@tool` function in `tools.py` (sync, returns strings)
 2. Resolve bundled paths for both frozen and source modes
 3. Register it in `tools.tool_gate_table()` (2026-10-02: the ONE gate list `get_mcp_tools()`, Compact mode and the Configure dialogs' cost labels all read) with its Tool-row key and, if a canvas agent also gates it, that agent's display name
-4. Seed a `Tool` row via new migration
+4. Seed a `Tool` row via new migration — ⚠️ required, not optional, since the Compact mode switch (2026-10-02): outside Compact mode a gate with no Tool row fails OPEN, but while the toolbar's **Compact mode** box is ON `get_mcp_tools()` reads a gate with NO row as **OFF**, so an un-seeded tool is invisible to the model
 5. Frontend: usually NO changes needed (tool UI is dynamic)
 6. Only usable in unified-agent mode
 
