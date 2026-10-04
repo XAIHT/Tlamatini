@@ -50,6 +50,15 @@
 .pmt-node[data-type="flush_embeddings"] .pmt-node-label { left: 49px; right: 49px; top: 18px; bottom: 57px; }
 .pmt-node[data-type="programmed_prompt"] .pmt-node-label { right: 48px; }
 .pmt-node[data-type="clean_history"] .pmt-node-label { left: 47px; right: 47px; }
+.pmt-node[data-type="user_input"] .pmt-node-label { left: 62px; right: 62px; top: 43px; bottom: 35px; }
+.pmt-comment-text { position: absolute; inset: 28px 24px 44px; color: #1f2937; white-space: pre-wrap; overflow-wrap: anywhere; overflow: hidden; line-height: 1.45; cursor: inherit; }
+.pmt-comment-text.placeholder { opacity: .65; }
+.pmt-comment-editor { width: calc(100% - 48px); height: calc(100% - 72px); border: 1px dashed #946780; background: transparent; border-radius: 3px; resize: none; padding: 4px; cursor: text; user-select: text; }
+.pmt-node.editing { z-index: 6; cursor: default; }
+.pmt-comment-editor-tools { position: absolute; top: -30px; right: 5px; display: flex; gap: 5px; padding: 2px; background: #303039; border-radius: 4px; }
+.pmt-comment-editor-tools button { background: #41414e; color: #fff; border: 1px solid #656570; border-radius: 3px; font-size: 12px; }
+.pmt-comment-resize { position: absolute; bottom: 25px; right: 8px; border: 0; border-radius: 4px; background: #1f29371a; color: #1f2937; cursor: nwse-resize; font-size: 16px; line-height: 1; padding: 4px; }
+.pmt-node[data-type="user_commentary"] { color: #1f2937; }
 /* Geometry/colors come from ACP's input/output-triangle and output-label rules.
    Reset only native button chrome; highlighting never changes the port size. */
 .pmt-start-badge { position: absolute; top: -14px; left: 76px; color: #68e0bd; font-size: 10px; letter-spacing: .12em; }

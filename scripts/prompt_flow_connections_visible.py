@@ -272,7 +272,7 @@ def main():
             assert '-prompt-flow-panel-12-node-gestures' in page.locator('script[src*="prompt-flow-panel.js"]').get_attribute('src')
 
             kinds = ['prompt', 'programmed_prompt', 'decision', 'feed_embeddings',
-                     'flush_embeddings', 'clean_history', 'user_commentary']
+                     'flush_embeddings', 'clean_history', 'user_input']
             nodes = []
             for i, kind in enumerate(kinds):
                 config = {'text': 'Connection check'}
@@ -432,7 +432,7 @@ def main():
 
             assert_anchors()
             page.locator('[data-action="zoom-in"]').click()
-            drag(port('feed_embeddings'), port('user_commentary', 'input'))
+            drag(port('feed_embeddings'), port('user_input', 'input'))
             edges(4)
             assert_anchors()
             page.mouse.move(*center(node('feed_embeddings')))
@@ -453,7 +453,7 @@ def main():
             expect(page.locator('.pmt-connection-preview, .connecting-source, .connecting-target')).to_have_count(0)
             port('flush_embeddings').focus()
             page.keyboard.press('Enter')
-            port('user_commentary', 'input').focus()
+            port('user_input', 'input').focus()
             page.keyboard.press('Enter')
             edges(5)
             assert_anchors()
@@ -473,8 +473,8 @@ def main():
             graph = json.loads(saved.read_text(encoding='utf-8'))
             assert {(e['source'], e['target'], e['branch']) for e in graph['edges']} == {
                 ('prompt', 'decision', 'next'), ('decision', 'feed_embeddings', 'yes'),
-                ('decision', 'clean_history', 'no'), ('feed_embeddings', 'user_commentary', 'next'),
-                ('flush_embeddings', 'user_commentary', 'next')}
+                ('decision', 'clean_history', 'no'), ('feed_embeddings', 'user_input', 'next'),
+                ('flush_embeddings', 'user_input', 'next')}
             open_file(saved)
             edges(5)
             assert_anchors()
@@ -484,7 +484,7 @@ def main():
             # Real model-free playback verifies editing locks and status highlighting.
             page.get_by_role('button', name='File', exact=True).click()
             page.locator('[data-action="new"]').first.click()
-            page.locator('.agent-tool-item[data-type="user_commentary"]').click()
+            page.locator('.agent-tool-item[data-type="user_input"]').click()
             page.locator('.agent-tool-item[data-type="clean_history"]').click()
             cleaner = page.locator('.pmt-node[data-type="clean_history"]')
             x, y = center(cleaner)
@@ -492,7 +492,7 @@ def main():
             page.mouse.down()
             page.mouse.move(x+350,y,steps=10)
             page.mouse.up()
-            commentary = page.locator('.pmt-node[data-type="user_commentary"]')
+            commentary = page.locator('.pmt-node[data-type="user_input"]')
             drag(commentary.locator('.output-triangle'), cleaner.locator('.input-triangle'))
             commentary.click()
             page.locator('#pmt-play').click()

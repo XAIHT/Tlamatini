@@ -16,6 +16,37 @@
 
 ---
 
+## 2026-10-03 — Full source/Markdown sweep, the dossier refreshed, and two traps in the visible Prompt Flow harness
+
+Angela asked for a complete sweep of the source and every Markdown document, a visual check of the changes, and a refreshed PDF and PPTX dossier. Findings and fixes:
+
+- **Counts that had drifted.** The root stdio MCP server exposes one tool per complete agent template plus 7 management/skill and 10 ACPX tools: **106**, not 105 (89 + 17). The old figure came from the separate MCP-server install at `C:/Development/Tlamatini`, which lacks PPTXer. Fixed in `CLAUDE.md`, `GEMINI.md`, `KIMI.md` and `TLAMATINI_MCP.md`. `KIMI.md` was also still on its 2026-08-23 / v1.50.0 inventory (88 agents, 66 wrapped, 108 tools, 197 migrations, 17 models, 15 CSS); it now carries the counts measured from source today (89 / 67 / 109 / 212 migrations / 18 models / 18 CSS / 54 JS / 178 URL routes). ⚠️ Derive such counts from source; the MCP server you happen to be connected to may be an older tree.
+- **Ruff was not clean on `main`.** 22 errors, almost all in already-committed helper scripts (`_peek.py`, `context_gauge_100.py`, `monitor.py`, `Tests/test_pdf_canvas_browser.py`, `test_visual_fatal_errors.py`, `build_complete_private_release.py`, `visual_fatal_dialog_visible.py`) plus two semicolon lines in the new commentary test and harness. All fixed; `python -m ruff check` is clean.
+- **"1 comments".** The Prompt Flow status bar now pluralises each count (`1 comment`, `2 comments`). No cache-suffix change: in source mode the `STATIC_VERSION` head is the process start time, so a restart already refetches the file (see the `tlamatini-static-version-bumper` skill).
+- **The dossier** (`tlamatini_app_summary.pdf`, `Tlamatini_eXtended_Artificial_Intelligence_Humanly_Tempered.pptx`) now draws User Input with the panel's notched figure and User Commentary as a separate static note, states `.fpmt` version 2, and opens its Release chapter with what landed on `main` after `v1.75.0` (the four-stop-sequence limit and this split).
+
+**Trap 1 — Windows Terminal fails the harness's console gate.** `scripts/prompt_flow_commentary_visible.py` refuses to start unless `GetConsoleWindow()` is the foreground window. Inside Windows Terminal that handle is a hidden `PseudoConsoleWindow` while the visible window is `CASCADIA_HOSTING_WINDOW_CLASS`, so the gate refuses even when the console is plainly in front. Launch the harness under `conhost.exe` (a classic console window); the gate then passes honestly.
+
+**Trap 2 — Chrome itself can crash at the checkpoint-5 download.** In four runs that evening the test Chrome crashed three times at the instant the `.fpmt` file is downloaded (`TargetClosedError: Download.save_as`). The proof is Chrome's own: Crashpad dumps in `Temp/prompt-commentary-visible/chrome-profile-containment/Crashpad/reports` at 21:04:18, 21:08:05 and 21:25:10, one per failure, and the profile's `exit_type: Crashed`. Codex saw the same closure earlier that day. The page uses a plain blob download (`a.download` + `a.click()`), and the run that did not crash passed **9 of 9** checkpoints (21:16, photographs reviewed), so this is a crash in Chrome under automation, not a Prompt Flow defect. Treat a crash there as inconclusive and re-run; never count it as a pass. (A first guess blamed the `PYTHONPATH` and `TEMP` the MCP Executer passes down; a clean-environment run crashed the same way, so that guess was wrong.)
+
+Verification for this sweep, all in visible consoles: 430 targeted unit tests, `check_prompt_flow_panel`, ESLint (0 errors) plus the 54-file parse gate, `skill_inventory.py --check`, both inclusion sweeps (CLEAN), `git diff --check`, and the visible commentary harness (9/9 at 21:16; a later run showed the pluralised `1 comment` in its photographs before Chrome crashed at checkpoint 5).
+
+## 2026-10-03 — Prompt Flow Markdown audit and test-process cleanup
+
+Angela requested every applicable Markdown document be updated and all task-owned background processes stopped. The audit covered 204 repository Markdown files, including assistant contracts, mirrored maintenance instructions and project memory. Current guides now consistently distinguish runtime User Input from static User Commentary, document full-text containment without internal scrollbars, version 2 saves/version 1 migration, compatible drafts and source-only delivery. Historical releases/test records keep the names and versions they used at the time; the entry below supersedes their commentary execution contract.
+
+The task-owned Chrome/test server closed gracefully through the browser harness marker. Remaining owned verification consoles/workers were stopped; unrelated user processes were preserved. Scope and documentation verification are in [the follow-up record](../changes/2026-10-03-prompt-flow-documentation.md). No executable/installer was rebuilt and no Git write was performed.
+
+## 2026-10-03 — Static User Commentary and separate User Input
+
+Source changes; no executable or installer rebuilt. Angela separated review annotations from the existing runtime reply mechanism. **User Input** retains that mechanism and its reply/cancel protocol, using the supplied notched figure. **User Commentary** retains the speech bubble as an independent static annotation: double-click to edit in place; Configure selects palette color, font, size, emphasis and alignment; resize, move, duplicate, Undo/Redo and portable/draft persistence work. Static notes have no ports, cannot be Start and never affect playback or step counts.
+
+**No internal scrollbars.** Angela rejected the black scrollbar inside long notes. Bubbles and their inline editors grow to contain the complete wrapped text at the selected width/font. The stored height is a user-chosen minimum; automatic content height is recomputed when loading, formatting and resizing. Canvas bounds and Fit include that actual height. Do not reintroduce clipping or scrollable commentary controls.
+
+The diagram contract is now version **2**. Version 1 files/drafts migrate executable `user_commentary` nodes to `user_input` while preserving IDs, edges and configuration. Only version 2 `user_commentary` means a static note; keep this migration to prevent old flows from silently losing reply steps. Static text is literal, including HTML-like text and `{{last_output}}`. Backend and frontend independently validate its style and dimensions.
+
+Verification: 25 diagram/runner tests and 33 runtime/WebSocket/readiness tests passed; the offline page/real WebSocket check passed with all eight asset types. Nine checks in `scripts/prompt_flow_commentary_visible.py` passed in foreground Chrome, including 5,000-character editing/containment without scrolling, formatting, zoom-aware resize/Undo/Redo, save/reopen/draft recovery, real User Input replies/cancellation and legacy migration. Evidence: `Temp/prompt-commentary-visible/summary.json` and numbered Shoter desktop photographs. The check uses an isolated source installation and no model call or mocked transport. The final source-carriage/lint results are recorded in the [change record](../changes/2026-10-03-prompt-commentary-input.md).
+
 ## 2026-10-03 — "too many stop sequences; maximum is 4": never more than FOUR, and a failed history summary never fails the answer
 
 > **On `main` after the `v1.75.0` tag** — not yet inside any tag; a source run reports `1.75.0`.

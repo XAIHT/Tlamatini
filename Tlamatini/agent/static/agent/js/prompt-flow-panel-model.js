@@ -6,6 +6,9 @@
     // The JSON contract stays stable when a flow file is renamed to .fpmt.
     const FORMAT = 'tlamatini-prompting-flow';
     const EXTENSION = '.fpmt';
+    const VERSION = 2;
+    const commentColors = [['#fbcfe8', 'Pink'], ['#fef3c7', 'Yellow'], ['#dcfce7', 'Green'], ['#dbeafe', 'Blue'], ['#ede9fe', 'Purple'], ['#ffedd5', 'Orange'], ['#ffffff', 'White'], ['#e5e7eb', 'Grey']];
+    const commentFonts = ['Nunito', 'Arial', 'Verdana', 'Georgia', 'Times New Roman', 'Courier New'];
     const isFlowFilename = name => /\.fpmt$/i.test(name);
     // Migrate old flow draft/save names without changing system prompt files.
     const flowFilename = name => isFlowFilename(name) ? name : name.replace(/\.pmt$/i, '') + EXTENSION;
@@ -17,7 +20,8 @@
         feed_embeddings: { label: 'Feed embeddings', color: '#77d8b2', fill: '#285849', path: 'M100 4L196 120H4Z', input: [100 - 96 * 60 / 116, 64], output: [100 + 96 * 60 / 116, 64], help: 'Add text to this run’s retrieval context.' },
         flush_embeddings: { label: 'Flush embeddings', color: '#f0a88b', fill: '#684237', path: 'M4 8H196L100 124Z', input: [4 + 96 * 56 / 116, 64], output: [196 - 96 * 56 / 116, 64], help: 'Remove this run’s embeddings while retaining its conversation.' },
         clean_history: { label: 'Clean History', color: '#90cddc', fill: '#315665', path: 'M4 14H196L160 114H40Z', input: [22, 64], output: [178, 64], help: 'Clear this run’s conversation and last output; keep its embeddings.' },
-        user_commentary: { label: 'User Commentary', color: '#eaaed6', fill: '#653d59', path: 'M28 10H172Q196 10 196 34V82Q196 106 172 106H70L48 124L33 106H28Q4 106 4 82V34Q4 10 28 10Z', input: [4, 64], output: [196, 64], help: 'Pause for a user reply and add it to the conversation.' },
+        user_input: { label: 'User Input', color: '#eaaed6', fill: '#653d59', path: 'M52 4L100 38L148 4V88L100 124L52 88Z', input: [52, 64], output: [148, 64], help: 'Pause for a user reply and add it to the conversation.' },
+        user_commentary: { label: 'User Commentary', color: '#eaaed6', fill: '#653d59', path: 'M28 10H172Q196 10 196 34V82Q196 106 172 106H70L48 124L33 106H28Q4 106 4 82V34Q4 10 28 10Z', static: true, help: 'A static review note. Double-click to write in the bubble; Configure changes its colors and font. It never runs.' },
     };
     const copy = value => JSON.parse(JSON.stringify(value));
     function uniqueLabel(label, used) {
@@ -30,18 +34,22 @@
         return candidate;
     }
     const id = () => 'pmt_' + (globalThis.crypto?.randomUUID?.() || Date.now().toString(36) + Math.random().toString(36).slice(2));
-    const blank = () => ({ format: FORMAT, version: 1, name: 'Untitled', start: null, max_steps: 500, nodes: [], edges: [] });
+    const blank = () => ({ format: FORMAT, version: VERSION, name: 'Untitled', start: null, max_steps: 500, nodes: [], edges: [] });
+    const isComment = n => n.type === 'user_commentary';
+    const size = n => isComment(n) ? { width: n.config.width, height: n.config.height } : { width: 200, height: 128 };
     function node(type, x, y) {
         const config = { text: '' };
         if (type === 'prompt' || type === 'programmed_prompt') Object.assign(config, { multi_turn: false, acpx: false });
         if (type === 'programmed_prompt') Object.assign(config, { delay_seconds: 5, scheduled_at: '' });
         if (type === 'decision') Object.assign(config, { comparison: 'contains', value: '', case_sensitive: false });
+        if (type === 'user_commentary') Object.assign(config, { width: 320, height: 200, color: '#fbcfe8', font_family: 'Nunito', font_size: 16, bold: false, italic: false, align: 'left' });
         return { id: id(), type, label: operations[type].label, x, y, config };
     }
     function validate(value, playable = false) {
         const fail = message => { throw new Error(message); };
         if (!value || value.format !== FORMAT) fail('This is not a Prompt Flow Panel document. Legacy prompt.pmt text is not a diagram.');
-        if (value.version !== 1) fail('Unsupported .fpmt version. This panel supports version 1.');
+        if (![1, VERSION].includes(value.version)) fail('Unsupported .fpmt version. This panel supports versions 1 and 2.');
+        const legacy = value.version === 1;
         const flow = copy(value);
         const text = (s, max, label) => { if (typeof s !== 'string' || s.length > max) fail(`${label} must be text of at most ${max.toLocaleString()} characters.`); return s; };
         const number = (n, min, max, label) => { if (typeof n !== 'number' || !Number.isFinite(n) || n < min || n > max) fail(`${label} must be between ${min} and ${max}.`); return n; };
@@ -52,10 +60,19 @@
         const known = new Map(), slots = new Set(), edgeIds = new Set();
         for (const n of flow.nodes) {
             if (!n || typeof n.id !== 'string' || !/^[A-Za-z0-9_-]{1,80}$/.test(n.id) || known.has(n.id)) fail('Operation IDs must be unique letters, digits, underscores or dashes.');
+            if (legacy && n.type === 'user_commentary') { n.type = 'user_input'; if (n.label === 'User Commentary') n.label = 'User Input'; }
             if (!Object.hasOwn(operations, n.type)) fail('Unknown operation type.');
             text(n.label, 120, 'Label'); number(n.x, 0, 100000, 'X'); number(n.y, 0, 100000, 'Y');
             if (!n.config || typeof n.config !== 'object' || Array.isArray(n.config)) fail('Missing operation settings.');
             text(n.config.text, 100000, 'Operation text');
+            if (isComment(n)) {
+                const c = n.config;
+                for (const [key, fallback, min, max] of [['width', 320, 200, 2400], ['height', 200, 128, 2400], ['font_size', 16, 10, 48]]) { if (c[key] === undefined) c[key] = fallback; number(c[key], min, max, `Comment ${key}`); }
+                for (const [key, fallback] of [['color', '#fbcfe8'], ['font_family', 'Nunito'], ['align', 'left'], ['bold', false], ['italic', false]]) if (c[key] === undefined) c[key] = fallback;
+                if (!commentColors.some(([color]) => color === c.color) || !commentFonts.includes(c.font_family) || !['left', 'center', 'right'].includes(c.align)) fail('Choose a supported comment color, font and alignment.');
+                if (typeof c.bold !== 'boolean' || typeof c.italic !== 'boolean') fail('Comment style switches must be true or false.');
+                n.config = Object.fromEntries(['text', 'width', 'height', 'color', 'font_family', 'font_size', 'bold', 'italic', 'align'].map(key => [key, c[key]]));
+            }
             if (['prompt', 'programmed_prompt'].includes(n.type)) {
                 if (typeof n.config.multi_turn !== 'boolean' || typeof n.config.acpx !== 'boolean') fail('Prompt switches must be true or false.');
                 if (n.config.acpx && !n.config.multi_turn) fail('ACPX requires Multi-Turn.');
@@ -78,12 +95,14 @@
             if (!e || typeof e.id !== 'string' || !/^[A-Za-z0-9_-]{1,80}$/.test(e.id) || edgeIds.has(e.id)) fail('Invalid or duplicate connection ID.');
             edgeIds.add(e.id);
             if (!known.has(e.source) || !known.has(e.target)) fail('A connection points to a missing operation.');
+            if (isComment(known.get(e.source)) || isComment(known.get(e.target))) fail('Static User Commentary assets cannot have connections.');
             const allowed = known.get(e.source).type === 'decision' ? ['yes', 'no'] : ['next'];
             const slot = `${e.source}:${e.branch}`;
             if (!allowed.includes(e.branch) || slots.has(slot)) fail('Each output supports one connection; decisions use Yes and No.');
             slots.add(slot);
         }
         if (flow.start !== null && !known.has(flow.start)) fail('The Start operation is missing.');
+        if (flow.start !== null && isComment(known.get(flow.start))) fail('A static User Commentary cannot be the Start operation.');
         if (playable) {
             if (!known.size || !flow.start) fail('Add an operation and choose Start.');
             const reached = new Set(), pending = [flow.start];
@@ -93,15 +112,15 @@
                 reached.add(current);
                 pending.push(...flow.edges.filter(e => e.source === current).map(e => e.target));
             }
-            if (reached.size !== known.size) fail('Some operations are unreachable from Start. Connect them or choose another Start.');
+            if (reached.size !== flow.nodes.filter(n => !isComment(n)).length) fail('Some operations are unreachable from Start. Connect them or choose another Start.');
             for (const n of flow.nodes) if (n.type === 'decision' && !['yes', 'no'].every(b => slots.has(`${n.id}:${b}`))) fail('Connect both Yes and No outputs of every decision.');
         }
         // Keep the document a data contract, discarding any unrelated fields.
-        return { format: FORMAT, version: 1, name: flow.name, start: flow.start, max_steps: flow.max_steps, nodes: flow.nodes.map(n => ({ id: n.id, type: n.type, label: n.label, x: n.x, y: n.y, config: n.config })), edges: flow.edges.map(e => ({ id: e.id, source: e.source, target: e.target, branch: e.branch })) };
+        return { format: FORMAT, version: VERSION, name: flow.name, start: flow.start, max_steps: flow.max_steps, nodes: flow.nodes.map(n => ({ id: n.id, type: n.type, label: n.label, x: n.x, y: n.y, config: n.config })), edges: flow.edges.map(e => ({ id: e.id, source: e.source, target: e.target, branch: e.branch })) };
     }
     function example() {
         const flow = blank(); flow.name = 'Prompting kickoff';
-        const a = node('user_commentary', 80, 60), b = node('decision', 80, 260), c = node('prompt', 370, 440), d = node('programmed_prompt', 40, 620);
+        const a = node('user_input', 80, 60), b = node('decision', 80, 260), c = node('prompt', 370, 440), d = node('programmed_prompt', 40, 620);
         a.label = 'Choose a subject'; a.config.text = 'What would you like to explore? Include the word “code” to take the coding branch.';
         b.label = 'About code?'; b.config.value = 'code';
         c.label = 'Explain the code'; c.config.text = 'Explain this coding subject and give one short example: {{last_output}}';
@@ -110,5 +129,5 @@
         flow.edges = [{ id: id(), source: a.id, target: b.id, branch: 'next' }, { id: id(), source: b.id, target: c.id, branch: 'yes' }, { id: id(), source: b.id, target: d.id, branch: 'no' }];
         return flow;
     }
-    window.PromptFlowPanelModel = Object.freeze({ FORMAT, EXTENSION, isFlowFilename, flowFilename, operations, copy, uniqueLabel, id, blank, node, validate, example });
+    window.PromptFlowPanelModel = Object.freeze({ FORMAT, VERSION, EXTENSION, commentColors, commentFonts, isComment, size, isFlowFilename, flowFilename, operations, copy, uniqueLabel, id, blank, node, validate, example });
 })();

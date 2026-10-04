@@ -13,10 +13,14 @@
     let selected = new Set(), selectedEdge = null;
     const selectedEdges = new Set();
     let zoom = 1, undo = [], redo = [], gesture = null, dirty = false;
+    let commentEditor = null;
     let socket = null, connecting = null, runId = null, runState = 'idle', activeNode = null;
     let inputDialog = null, internalClose = false, draftTimer = null, socketReady = false;
     const nodeStates = new Map(), traversed = new Set();
-    const editable = () => !['starting', 'running', 'paused', 'stopping'].includes(runState);
+    const commentarySizes = new WeakMap();
+    const nodeSize = node => commentarySizes.get(node) || M.size(node);
+    const playbackActive = () => ['starting', 'running', 'paused', 'stopping'].includes(runState);
+    const editable = () => !commentEditor && !playbackActive();
     const status = message => { $id('pmt-status').textContent = message; };
     const alertMessage = (message, title = 'Prompt Flow Panel') => window.tlmAlert(String(message), title);
     const confirm = (message, detail = '') => window.tlmConfirm(message, detail, 'Prompt Flow Panel');
@@ -72,8 +76,8 @@
     }
     const snap = value => Math.min(100000, Math.max(0, value));
     function extent() {
-        const width = Math.max(1000, viewport.clientWidth / zoom, ...flow.nodes.map(n => n.x + 350));
-        const height = Math.max(700, viewport.clientHeight / zoom, ...flow.nodes.map(n => n.y + 300));
+        const width = Math.max(1000, viewport.clientWidth / zoom, ...flow.nodes.map(n => n.x + nodeSize(n).width + 150));
+        const height = Math.max(700, viewport.clientHeight / zoom, ...flow.nodes.map(n => n.y + nodeSize(n).height + 150));
         world.style.width = `${width}px`; world.style.height = `${height}px`;
         world.style.transform = `scale(${zoom})`;
         content.style.width = `${width * zoom}px`; content.style.height = `${height * zoom}px`;
@@ -101,7 +105,7 @@
     }
     function configureSelectedNode(node, event) {
         event?.preventDefault();
-        if (editable()) { resetSelection(); selected.add(node.id); render(); configureNode(node); }
+        if (editable()) { resetSelection(); selected.add(node.id); render(); if (M.isComment(node)) editCommentary(node); else configureNode(node); }
     }
     function showNodeMenu(node, event) {
         event.preventDefault(); event.stopPropagation(); endGesture();
@@ -140,6 +144,73 @@
         }
         if (connection.active) layer.append(connection.active.data.preview);
     }
+    function fitCommentary(el, node, text) {
+        const width = node.config.width;
+        // Measure natural wrapped text at the chosen width, independently of zoom.
+        // Height is a minimum chosen by the user; content always fits in the bubble.
+        text.style.bottom = 'auto';
+        if (text.tagName === 'TEXTAREA') text.style.height = '0px';
+        const height = Math.max(node.config.height, Math.ceil(text.scrollHeight) + 76);
+        text.style.bottom = '';
+        if (text.tagName === 'TEXTAREA') text.style.height = '';
+        commentarySizes.set(node, { width, height });
+        el.style.width = `${width}px`; el.style.height = `${height}px`;
+        const graphic = el.querySelector('svg');
+        graphic.setAttribute('viewBox', `0 0 ${width} ${height}`);
+        graphic.style.setProperty('--pmt-fill', node.config.color);
+        graphic.style.setProperty('--pmt-color', '#946780');
+        graphic.querySelector('path').setAttribute('d', `M28 10H${width - 28}Q${width - 4} 10 ${width - 4} 34V${height - 46}Q${width - 4} ${height - 22} ${width - 28} ${height - 22}H70L48 ${height - 4}L33 ${height - 22}H28Q4 ${height - 22} 4 ${height - 46}V34Q4 10 28 10Z`);
+    }
+    function renderCommentary(el, node) {
+        const c = node.config, width = c.width;
+        el.style.width = `${width}px`;
+        const text = element('div', 'pmt-comment-text', c.text || 'Double-click to write a commentary');
+        text.classList.toggle('placeholder', !c.text);
+        Object.assign(text.style, { fontFamily: c.font_family, fontSize: `${c.font_size}px`, fontWeight: c.bold ? '700' : '400', fontStyle: c.italic ? 'italic' : 'normal', textAlign: c.align });
+        el.append(text);
+        fitCommentary(el, node, text);
+        const height = Math.min(2400, nodeSize(node).height);
+        const resize = element('button', 'pmt-comment-resize', '↘'); resize.type = 'button';
+        resize.title = 'Resize User Commentary'; resize.setAttribute('aria-label', resize.title); resize.disabled = !editable();
+        resize.addEventListener('pointerdown', event => {
+            event.preventDefault(); event.stopPropagation(); if (!editable() || event.button !== 0) return;
+            endGesture(); selected = new Set([node.id]); selectedEdges.clear(); selectedEdge = null;
+            gesture = { kind: 'resize', node, before: snapshot(), width, height, fromX: event.clientX, fromY: event.clientY, scale: zoom };
+            paintSelection();
+        });
+        resize.addEventListener('dblclick', event => event.stopPropagation());
+        el.append(resize);
+    }
+    function editCommentary(node) {
+        if (!editable()) return;
+        endGesture();
+        const el = [...nodesLayer.children].find(item => item.dataset.nodeId === node.id);
+        const display = el.querySelector('.pmt-comment-text');
+        const input = element('textarea', 'pmt-comment-text pmt-comment-editor');
+        input.value = node.config.text; input.maxLength = 100000;
+        input.setAttribute('aria-label', 'Static User Commentary text'); input.style.cssText = display.style.cssText;
+        display.replaceWith(input);
+        fitCommentary(el, node, input);
+        const controls = element('div', 'pmt-comment-editor-tools');
+        const done = element('button', '', 'Done'), cancel = element('button', '', 'Cancel');
+        done.type = cancel.type = 'button'; controls.append(done, cancel); el.append(controls);
+        commentEditor = { node, input }; el.classList.add('editing'); updateButtons();
+        function finish(save) {
+            const value = input.value; commentEditor = null;
+            if (save) mutate(() => { node.config.text = value; }); else render();
+            status(save ? 'Static commentary saved. Use Configure for colors and fonts.' : 'Commentary editing cancelled.');
+        }
+        done.addEventListener('click', () => finish(true)); cancel.addEventListener('click', () => finish(false));
+        input.addEventListener('pointerdown', event => event.stopPropagation());
+        input.addEventListener('dblclick', event => event.stopPropagation());
+        input.addEventListener('input', () => { fitCommentary(el, node, input); extent(); });
+        input.addEventListener('keydown', event => {
+            event.stopPropagation();
+            if (event.key === 'Escape') { event.preventDefault(); finish(false); }
+            else if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') { event.preventDefault(); finish(true); }
+        });
+        input.focus(); status('Write in the bubble. Done or Ctrl+Enter saves; Cancel or Escape discards this edit.');
+    }
     function addPort(el, node, name, point) {
         const direction = name === 'input' ? 'input' : 'output';
         const slot = name === 'yes' ? ' output-1' : name === 'no' ? ' output-2' : '';
@@ -177,28 +248,35 @@
             el.dataset.nodeId = node.id; el.dataset.type = node.type; el.tabIndex = 0;
             el.setAttribute('role', 'group'); el.setAttribute('aria-label', `${node.label}, ${info.label}`);
             el.style.left = `${node.x}px`; el.style.top = `${node.y}px`; el.append(shape(node.type));
-            const label = element('div', 'pmt-node-label'); label.append(element('strong', '', node.label));
-            if (node.label !== info.label && !['decision', 'feed_embeddings', 'flush_embeddings'].includes(node.type)) label.append(element('small', '', info.label));
-            el.append(label);
+            nodesLayer.append(el);
+            if (M.isComment(node)) renderCommentary(el, node);
+            else {
+                const label = element('div', 'pmt-node-label'); label.append(element('strong', '', node.label));
+                if (node.label !== info.label && !['decision', 'feed_embeddings', 'flush_embeddings'].includes(node.type)) label.append(element('small', '', info.label));
+                el.append(label);
+            }
             if (flow.start === node.id) el.append(element('span', 'pmt-start-badge', 'START'));
             if (state) el.append(element('span', 'pmt-node-status', state));
-            addPort(el, node, 'input', info.input);
-            if (node.type === 'decision') { addPort(el, node, 'yes', info.yes); addPort(el, node, 'no', info.no); }
-            else addPort(el, node, 'next', info.output);
+            if (!M.isComment(node)) {
+                addPort(el, node, 'input', info.input);
+                if (node.type === 'decision') { addPort(el, node, 'yes', info.yes); addPort(el, node, 'no', info.no); }
+                else addPort(el, node, 'next', info.output);
+            }
             el.addEventListener('pointerdown', event => nodeDown(event, node));
             el.addEventListener('dblclick', event => configureSelectedNode(node, event));
             el.addEventListener('contextmenu', event => showNodeMenu(node, event));
             el.addEventListener('keydown', event => nodeKey(event, node));
-            nodesLayer.append(el);
         }
         renderEdges(); extent();
         $id('pmt-empty').hidden = flow.nodes.length > 0;
         $id('filename').textContent = `${filename}${dirty ? ' •' : ''}`;
         document.title = `${dirty ? '• ' : ''}${flow.name} — Prompt Flow Panel`;
-        $id('pmt-count').textContent = `${flow.nodes.length} operations · ${flow.edges.length} connections`;
+        const operations = flow.nodes.filter(n => !M.isComment(n));
+        const counted = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+        $id('pmt-count').textContent = `${counted(operations.length, 'operation')} · ${counted(flow.nodes.length - operations.length, 'comment')} · ${counted(flow.edges.length, 'connection')}`;
         const select = $id('pmt-start'); select.replaceChildren();
-        if (!flow.nodes.length) select.append(new Option('Add an operation', ''));
-        for (const n of flow.nodes) select.append(new Option(n.label, n.id));
+        if (!operations.length) select.append(new Option('Add an operation', ''));
+        for (const n of operations) select.append(new Option(n.label, n.id));
         select.value = flow.start || ''; select.disabled = !editable();
         updateButtons();
     }
@@ -213,7 +291,8 @@
             if (action === 'configure') button.disabled = !editable() || selected.size + selectedEdges.size !== 1;
             if (action === 'duplicate') button.disabled = !editable() || !selected.size;
             if (action === 'delete') button.disabled = !editable() || !(selected.size || selectedEdges.size);
-            if (action === 'play') button.disabled = !socketReady || !editable() || !flow.nodes.length;
+            if (action === 'play') button.disabled = !socketReady || !editable() || !flow.nodes.some(n => !M.isComment(n));
+            if (action === 'save') button.disabled = !!commentEditor;
             if (action === 'reconnect') button.disabled = !!connecting || socketReady;
             if (action === 'pause') { button.disabled = !['running', 'paused'].includes(runState); button.textContent = runState === 'paused' ? '▶ Resume' : 'Ⅱ Pause'; }
             if (action === 'stop') button.disabled = !['running', 'paused'].includes(runState);
@@ -240,7 +319,7 @@
             const n = M.node(type, snap(point.x), snap(point.y));
             const labels = new Set(flow.nodes.map(node => node.label));
             if (labels.has(n.label)) n.label = M.uniqueLabel(n.label, labels);
-            flow.nodes.push(n); flow.start ||= n.id; selected = new Set([n.id]); selectedEdge = null; selectedEdges.clear();
+            flow.nodes.push(n); if (!M.isComment(n)) flow.start ||= n.id; selected = new Set([n.id]); selectedEdge = null; selectedEdges.clear();
         });
         status('Operation added. Double-click it to configure.');
     }
@@ -313,7 +392,7 @@
         mutate(() => {
             flow.nodes = flow.nodes.filter(n => !selected.has(n.id));
             flow.edges = flow.edges.filter(e => !selectedEdges.has(e.id) && !selected.has(e.source) && !selected.has(e.target));
-            if (selected.has(flow.start)) flow.start = flow.nodes[0]?.id || null;
+            if (selected.has(flow.start)) flow.start = flow.nodes.find(n => !M.isComment(n))?.id || null;
             resetSelection();
         });
     }
@@ -378,9 +457,22 @@
             form.append(element('p', '', M.operations[kind].help));
             field('label', 'Label', 'text', draft.label).maxLength = 120;
             if (!['flush_embeddings', 'clean_history'].includes(kind)) {
-                const title = kind === 'decision' ? 'Question (when asking the user)' : kind === 'user_commentary' ? 'Message to the user' : kind === 'feed_embeddings' ? 'Text to embed' : 'Prompt';
+                const title = kind === 'decision' ? 'Question (when asking the user)' : kind === 'user_input' ? 'Message to the user' : kind === 'user_commentary' ? 'Static commentary' : kind === 'feed_embeddings' ? 'Text to embed' : 'Prompt';
                 field('text', title, 'textarea', config.text).maxLength = 100000;
-                form.append(element('small', '', 'Use {{last_output}} to insert the previous prompt answer or user reply.'));
+                if (kind !== 'user_commentary') form.append(element('small', '', 'Use {{last_output}} to insert the previous prompt answer or user reply.'));
+            }
+            if (kind === 'user_commentary') {
+                const color = field('color', 'Bubble color', 'select', config.color, M.commentColors);
+                const updateColor = () => { color.style.backgroundColor = color.value; color.style.color = '#1f2937'; };
+                color.addEventListener('change', updateColor); updateColor();
+                field('font_family', 'Font', 'select', config.font_family, M.commentFonts.map(font => [font, font]));
+                const fontSize = field('font_size', 'Font size (px)', 'number', config.font_size); fontSize.min = 10; fontSize.max = 48; fontSize.step = 'any';
+                field('bold', 'Bold', 'checkbox', config.bold); field('italic', 'Italic', 'checkbox', config.italic);
+                field('align', 'Text alignment', 'select', config.align, [['left', 'Left'], ['center', 'Center'], ['right', 'Right']]);
+                for (const [name, label, min] of [['width', 'Bubble width', 200], ['height', 'Bubble height', 128]]) {
+                    const input = field(name, label, 'number', config[name]); input.min = min; input.max = 2400; input.step = 'any';
+                }
+                form.append(element('small', '', 'Double-click the bubble to write directly in it. Drag its bottom-right handle to resize. Bubbles grow to contain all text, without scrollbars. Height is a minimum.'));
             }
             if (['prompt', 'programmed_prompt'].includes(kind)) {
                 field('multi_turn', 'Multi-Turn — allow enabled tools and agents', 'checkbox', config.multi_turn);
@@ -403,8 +495,9 @@
             if (!editable()) throw new Error('Stop playback before editing.');
             draft.label = fields.label.value.trim() || M.operations[kind].label;
             if (fields.text) config.text = fields.text.value;
-            for (const name of ['multi_turn', 'acpx', 'case_sensitive']) if (fields[name]) config[name] = fields[name].checked;
-            for (const name of ['comparison', 'value']) if (fields[name]) config[name] = fields[name].value;
+            for (const name of ['multi_turn', 'acpx', 'case_sensitive', 'bold', 'italic']) if (fields[name]) config[name] = fields[name].checked;
+            for (const name of ['comparison', 'value', 'color', 'font_family', 'align']) if (fields[name]) config[name] = fields[name].value;
+            for (const name of ['font_size', 'width', 'height']) if (fields[name]) config[name] = Number(fields[name].value);
             if (fields.delay_seconds) config.delay_seconds = Number(fields.delay_seconds.value);
             if (fields.scheduled_at) config.scheduled_at = fields.scheduled_at.value ? new Date(fields.scheduled_at.value).toISOString() : '';
             const candidate = M.copy(flow); candidate.nodes[candidate.nodes.findIndex(n => n.id === node.id)] = draft;
@@ -415,7 +508,7 @@
         if (!editable()) return;
         const source = flow.nodes.find(n => n.id === edge.source);
         formDialog('Configure connection', ({ field }) => {
-            field('target', 'Destination', 'select', edge.target, flow.nodes.map(n => [n.id, n.label]));
+            field('target', 'Destination', 'select', edge.target, flow.nodes.filter(n => !M.isComment(n)).map(n => [n.id, n.label]));
             field('branch', 'Output', 'select', edge.branch, source.type === 'decision' ? [['yes', 'Yes'], ['no', 'No']] : [['next', 'Next']]);
         }, fields => {
             const candidate = M.copy(flow), item = candidate.edges.find(e => e.id === edge.id);
@@ -473,7 +566,7 @@
         bar.classList.remove('connection-status-hidden', 'connection-status-ok');
         bar.classList.add('connection-status-warning');
         status(message);
-        if (!editable()) {
+        if (playbackActive()) {
             runState = 'failed'; $id('pmt-run-state').textContent = runState;
             if (activeNode && nodeStates.get(activeNode) === 'running') nodeStates.set(activeNode, 'failed');
             closeInput();
@@ -572,8 +665,8 @@
     function showInput(data) {
         closeInput();
         const decision = data.kind === 'decision';
-        inputDialog = formDialog(decision ? 'Decision · choose a branch' : 'User Commentary', ({ form, field }) => {
-            form.append(element('p', '', data.message || (decision ? 'Which branch should the flow take?' : 'Enter your commentary to continue.')));
+        inputDialog = formDialog(decision ? 'Decision · choose a branch' : 'User Input', ({ form, field }) => {
+            form.append(element('p', '', data.message || (decision ? 'Which branch should the flow take?' : 'Enter your reply to continue.')));
             if (!decision) field('reply', 'Your reply', 'textarea', '').maxLength = 100000;
         }, fields => send('reply', { request_id: data.request_id, value: fields.reply.value }), {
             acceptLabel: 'Continue flow',
@@ -595,7 +688,7 @@
         cancelConnection();
         if (!flow.nodes.length) { setZoom(1); viewport.scrollTo(0, 0); return; }
         const minX = Math.min(...flow.nodes.map(n => n.x)), minY = Math.min(...flow.nodes.map(n => n.y));
-        const maxX = Math.max(...flow.nodes.map(n => n.x + 200)), maxY = Math.max(...flow.nodes.map(n => n.y + 128));
+        const maxX = Math.max(...flow.nodes.map(n => n.x + nodeSize(n).width)), maxY = Math.max(...flow.nodes.map(n => n.y + nodeSize(n).height));
         const view = UI.fitView(viewport, { left: minX, top: minY, right: maxX, bottom: maxY });
         zoom = view.zoom; extent(); viewport.scrollLeft = view.left; viewport.scrollTop = view.top; persist();
     }
@@ -619,7 +712,7 @@
             else if (name === 'zoom-in') setZoom(zoom + .1);
             else if (name === 'zoom-out') setZoom(zoom - .1);
             else if (name === 'fit') fit();
-            else if (name === 'help') await alertMessage('Drag or click an operation to add it. Double-click a figure to edit its settings. Drag a right-side output triangle to a left-side input triangle, then release to connect, just like the Agentic Control Panel. The curve follows your pointer and the triangles highlight. Release on empty canvas or press Escape to cancel. Reconnecting an occupied output replaces that connection. Decision figures have Y and N outputs on the right. With the keyboard, activate an output, Tab to an input and activate it.\n\nCtrl+click selects multiple figures; drag empty canvas to select a group. Delete removes the selection, Ctrl+D duplicates, Ctrl+Z undoes, Ctrl+Shift+Z redoes. Use arrow keys to move selected figures.\n\nChoose Start, Validate, then Play. Each run has its own conversation and embeddings. {{last_output}} inserts the last answer or user commentary. Clean History clears that run’s conversation and last output; Flush Embeddings clears its retrieval context.\n\nPause takes effect between operations. Stop requests cancellation and waits for the active model call to drain. Closing an input dialog stops the flow. Keep this page and Tlamatini open for scheduled prompts. Files never run merely by opening them.\n\nSave downloads a versioned .fpmt diagram. The panel also keeps a local draft in this browser. Legacy system prompt.pmt text files remain separate.', 'Using the Prompt Flow Panel');
+            else if (name === 'help') await alertMessage('Drag or click an operation to add it. Double-click a figure to edit its settings. Drag a right-side output triangle to a left-side input triangle, then release to connect, just like the Agentic Control Panel. The curve follows your pointer and the triangles highlight. Release on empty canvas or press Escape to cancel. Reconnecting an occupied output replaces that connection. Decision figures have Y and N outputs on the right. With the keyboard, activate an output, Tab to an input and activate it.\n\nCtrl+click selects multiple figures; drag empty canvas to select a group. Delete removes the selection, Ctrl+D duplicates, Ctrl+Z undoes, Ctrl+Shift+Z redoes. Use arrow keys to move selected figures.\n\nUser Commentary is a static speech-bubble note. Double-click to write in it; Done or Ctrl+Enter saves, Escape cancels. Configure chooses color, font, size and alignment. Drag its bottom-right handle to resize. The bubble grows to fit the text without scrollbars. Notes are saved with the diagram and never run. User Input uses the notched figure and asks for a runtime reply.\n\nChoose Start, Validate, then Play. Each run has its own conversation and embeddings. {{last_output}} inserts the last answer or user input. Clean History clears that run’s conversation and last output; Flush Embeddings clears its retrieval context.\n\nPause takes effect between operations. Stop requests cancellation and waits for the active model call to drain. Closing an input dialog stops the flow. Keep this page and Tlamatini open for scheduled prompts. Files never run merely by opening them.\n\nSave downloads a versioned .fpmt diagram. The panel also keeps a local draft in this browser. Legacy system prompt.pmt text files remain separate.', 'Using the Prompt Flow Panel');
         } catch (e) { status(e.message); await alertMessage(e.message); }
     }
     document.querySelectorAll('[data-action]').forEach(button => button.addEventListener('click', event => { event.preventDefault(); action(button.dataset.action); }));
@@ -641,6 +734,12 @@
     });
     document.addEventListener('pointermove', event => {
         if (!gesture) return;
+        if (gesture.kind === 'resize') {
+            const { node, width, height, fromX, fromY, scale } = gesture;
+            node.config.width = Math.min(2400, Math.max(200, width + (event.clientX - fromX) / scale));
+            node.config.height = Math.min(2400, Math.max(128, height + (event.clientY - fromY) / scale));
+            render(); return;
+        }
         const p = position(event);
         {
             const left = Math.min(p.x, gesture.from.x), top = Math.min(p.y, gesture.from.y), width = Math.abs(p.x - gesture.from.x), height = Math.abs(p.y - gesture.from.y);
@@ -661,10 +760,14 @@
         nodeMove.cancel();
         if (!gesture) return;
         const previous = gesture; gesture = null; $id('pmt-marquee').hidden = true; document.body.classList.remove('resizing');
+        if (previous.kind === 'resize') { flow = JSON.parse(previous.before); render(); }
         if (previous.pointerId !== undefined && viewport.hasPointerCapture(previous.pointerId)) viewport.releasePointerCapture(previous.pointerId);
         paintSelection();
     }
-    document.addEventListener('pointerup', () => { if (gesture) endGesture(); });
+    document.addEventListener('pointerup', () => {
+        if (gesture?.kind === 'resize') { const before = gesture.before; gesture = null; changed(before); }
+        else if (gesture) endGesture();
+    });
     viewport.addEventListener('lostpointercapture', () => { if (gesture) endGesture(); });
     document.addEventListener('pointercancel', endGesture); window.addEventListener('blur', endGesture);
     UI.bindDivider({
@@ -675,6 +778,7 @@
     });
     viewport.addEventListener('wheel', event => { if (event.ctrlKey || event.metaKey) { event.preventDefault(); setZoom(zoom + (event.deltaY < 0 ? .1 : -.1)); } }, { passive: false });
     document.addEventListener('keydown', event => {
+        if (commentEditor) return;
         if (UI.isTyping(event)) return;
         const key = event.key.toLowerCase(), mod = event.ctrlKey || event.metaKey;
         if (mod && ['s', 'o', 'z', 'y', 'd', 'a'].includes(key)) {
@@ -696,6 +800,10 @@
         if (saved) { flow = M.validate(saved.flow); filename = M.flowFilename(typeof saved.filename === 'string' && saved.filename.trim() ? saved.filename : 'Recovered.fpmt'); zoom = Math.min(2, Math.max(.25, Number(saved.zoom) || 1)); clean = ''; dirty = true; status('Restored your local draft. Save a .fpmt file to keep a portable copy.'); }
     } catch (e) { status(`Local draft could not be restored: ${e.message}`); }
     palette(); render();
+    document.fonts.ready.then(() => {
+        if (commentEditor) { fitCommentary(commentEditor.input.closest('.pmt-node'), commentEditor.node, commentEditor.input); extent(); }
+        else if (!gesture) render();
+    });
     // Monitor idle pages too. A connection never starts or resumes a flow.
     connectSocket().catch(error => status(error.message));
 })();

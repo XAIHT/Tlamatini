@@ -1,0 +1,14 @@
+---
+name: Prompt Flow static Commentary and runtime User Input
+description: Preserve the 2026-10-03 annotation/input split, file migration, automatic containment and verification boundaries.
+type: project
+---
+<!-- Tlamatini Author Banner — Angela López Mendoza · @angelahack1 -->
+
+**Commentary/Input split (2026-10-03, source changes):** The Operations bar contains seven executable operations and a separate static **User Commentary** asset. **User Input** (`user_input`) keeps the old question/reply/cancellation mechanism and uses the supplied notched-top, downward-point figure. **User Commentary** (`user_commentary`) is a speech-bubble review note: double-click/Enter writes in place, Done/Ctrl+Enter saves, Escape cancels; Configure selects palette color, font, size, emphasis, alignment and dimensions. Bubbles and their editors grow to contain the full wrapped text at the chosen width/font, **without internal scrollbars**; saved height is a minimum. They move, resize, duplicate and Undo/Redo, save/open/recover with the diagram, have no ports or Start status, and never affect model context, history or playback steps. New `.fpmt` saves use version **2**; version 1 files/drafts migrate their executable commentary to User Input while preserving IDs, connections and configuration. The local-storage key still ends in `.draft.v1.<user id>` for compatibility; it does not identify the document version. Current cache suffix: `-prompt-commentary-input-1`. Verified: 61 backend/packaging tests and nine real foreground Chrome checks in `scripts/prompt_flow_commentary_visible.py`. No release executable was rebuilt. See `docs/prompting-flow-designer.md` and the 2026-10-03 entry in `docs/claude/recent-fixes.md`.
+
+Angela explicitly rejected the black line/scrollbar inside commentary assets. Preserve full-text containment in both display and inline editing, recomputed after typing, font/width changes, resize, file open and draft recovery. Canvas bounds and Fit use the actual content height. Never replace containment with clipping or an internal scrollbar. Multiple notes retain independent text/style/dimensions and Undo/Redo.
+
+The canonical guide is [docs/prompting-flow-designer.md](../../docs/prompting-flow-designer.md); implementation/verification and precise rollback are in [the refactor record](../../docs/changes/2026-10-03-prompt-commentary-input.md). Source checks do not mean the installed executable was rebuilt. No new release/version claim follows from this change.
+
+Angela asked to stop all task-owned background processes after accepting the visuals. The test harness closes its own Chrome/server via `Temp/prompt-commentary-visible/close.confirmed`; verify process ownership and released test ports, preserving unrelated user applications. Development commands still require actually verified visible foreground consoles.

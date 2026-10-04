@@ -10,7 +10,6 @@ import json
 from pathlib import Path
 import sys
 import threading
-import time
 import panel_search_title_visible as visible
 
 from playwright.sync_api import sync_playwright

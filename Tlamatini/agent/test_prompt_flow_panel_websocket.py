@@ -92,7 +92,7 @@ class PromptFlowPanelSocketTests(unittest.IsolatedAsyncioTestCase):
         self.fail(f'No {event} event matching {values}')
 
     async def start_input(self, communicator):
-        await self.send(communicator, action='start', flow=diagram([node('comment', 'user_commentary')]))
+        await self.send(communicator, action='start', flow=diagram([node('comment', 'user_input'), node('note', 'user_commentary', text='Static review only')]))
         return await self.until(communicator, 'input')
 
     async def test_anonymous_websocket_is_rejected(self):

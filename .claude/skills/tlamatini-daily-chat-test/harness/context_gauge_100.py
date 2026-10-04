@@ -268,7 +268,6 @@ def main():
         if state["repairs"]:
             print("!! repairs attempted: %s" % "; ".join(state["repairs"]))
         return state["exit_code"]
-    env_repairs = state["repairs"]
 
     with sync_playwright() as pw:
         try:

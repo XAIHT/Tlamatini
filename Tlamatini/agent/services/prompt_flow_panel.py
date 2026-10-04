@@ -16,12 +16,14 @@ from datetime import datetime, timezone
 
 # Keep the JSON contract stable when existing flow files are renamed to .fpmt.
 FORMAT = "tlamatini-prompting-flow"
-VERSION = 1
+VERSION = 2
 MAX_FILE_BYTES = 5 * 1024 * 1024
 OPERATIONS = {
     "prompt", "programmed_prompt", "decision", "feed_embeddings",
-    "flush_embeddings", "clean_history", "user_commentary",
+    "flush_embeddings", "clean_history", "user_input", "user_commentary",
 }
+COMMENT_COLORS = {"#fbcfe8", "#fef3c7", "#dcfce7", "#dbeafe", "#ede9fe", "#ffedd5", "#ffffff", "#e5e7eb"}
+COMMENT_FONTS = {"Nunito", "Arial", "Verdana", "Georgia", "Times New Roman", "Courier New"}
 COMPARISONS = {"contains", "not_contains", "equals", "is_empty", "user"}
 
 
@@ -63,8 +65,9 @@ def validate_flow(payload, *, playable=False):
     """Return a fresh, allowlisted document; do not mutate input or trust IDs."""
     if not isinstance(payload, dict) or payload.get("format") != FORMAT:
         raise FlowError("Open a Prompt Flow Panel .fpmt document (legacy prompt.pmt text is not a diagram).")
-    if payload.get("version") != VERSION:
-        raise FlowError("Unsupported .fpmt version. This panel supports version 1.")
+    legacy = payload.get("version") == 1
+    if payload.get("version") not in (1, VERSION):
+        raise FlowError("Unsupported .fpmt version. This panel supports versions 1 and 2.")
     nodes, edges = payload.get("nodes"), payload.get("edges")
     if not isinstance(nodes, list) or len(nodes) > 500 or not isinstance(edges, list) or len(edges) > 1000:
         raise FlowError("A flow may contain up to 500 operations and 1,000 connections.")
@@ -83,12 +86,29 @@ def validate_flow(payload, *, playable=False):
         if not re.fullmatch(r"[A-Za-z0-9_-]+", node_id) or node_id in known:
             raise FlowError("Operation IDs must be unique letters, digits, underscores or dashes.")
         kind = node.get("type")
+        if legacy and kind == "user_commentary":
+            kind = "user_input"
         if kind not in OPERATIONS:
             raise FlowError(f"Unknown operation: {kind!r}.")
         config = node.get("config", {})
         if not isinstance(config, dict):
             raise FlowError("Operation settings must be an object.")
         clean = {"text": _text(config.get("text", ""), "Operation text")}
+        if kind == "user_commentary":
+            clean.update(
+                width=_number(config.get("width", 320), "Comment width", 200, 2400),
+                height=_number(config.get("height", 200), "Comment height", 128, 2400),
+                font_size=_number(config.get("font_size", 16), "Comment font size", 10, 48),
+                color=_text(config.get("color", "#fbcfe8"), "Comment color", 20),
+                font_family=_text(config.get("font_family", "Nunito"), "Comment font", 80),
+                align=_text(config.get("align", "left"), "Comment alignment", 10),
+            )
+            if clean["color"] not in COMMENT_COLORS or clean["font_family"] not in COMMENT_FONTS or clean["align"] not in {"left", "center", "right"}:
+                raise FlowError("Choose a supported comment color, font and alignment.")
+            for key in ("bold", "italic"):
+                clean[key] = config.get(key, False)
+                if not isinstance(clean[key], bool):
+                    raise FlowError(f"Comment {key} must be true or false.")
         if kind in {"prompt", "programmed_prompt"}:
             for key in ("multi_turn", "acpx"):
                 clean[key] = config.get(key, False)
@@ -122,6 +142,8 @@ def validate_flow(payload, *, playable=False):
             "config": clean,
         }
         known[node_id] = item
+        if legacy and node.get("type") == "user_commentary" and item["label"] == "User Commentary":
+            item["label"] = "User Input"
         result["nodes"].append(item)
     slots, edge_ids = set(), set()
     for edge in edges:
@@ -134,6 +156,8 @@ def validate_flow(payload, *, playable=False):
         if not isinstance(source, str) or not isinstance(target, str) or source not in known or target not in known:
             raise FlowError("Every connection must join existing operations.")
         branch = edge.get("branch", "next")
+        if any(known[key]["type"] == "user_commentary" for key in (source, target)):
+            raise FlowError("Static User Commentary assets cannot have connections.")
         allowed = {"yes", "no"} if known[source]["type"] == "decision" else {"next"}
         if branch not in allowed or (source, branch) in slots:
             raise FlowError("Each output accepts one connection. Decisions have separate Yes and No outputs.")
@@ -142,6 +166,8 @@ def validate_flow(payload, *, playable=False):
         result["edges"].append({"id": edge_id, "source": source, "target": target, "branch": branch})
     if result["start"] is not None and (not isinstance(result["start"], str) or result["start"] not in known):
         raise FlowError("The start operation does not exist.")
+    if result["start"] is not None and known[result["start"]]["type"] == "user_commentary":
+        raise FlowError("A static User Commentary cannot be the Start operation.")
     if playable:
         if not nodes or result["start"] is None:
             raise FlowError("Add an operation and choose where the flow starts.")
@@ -152,7 +178,7 @@ def validate_flow(payload, *, playable=False):
                 continue
             reachable.add(current)
             pending.extend(e["target"] for e in result["edges"] if e["source"] == current)
-        if len(reachable) != len(nodes):
+        if len(reachable) != sum(n["type"] != "user_commentary" for n in result["nodes"]):
             raise FlowError("Some operations are unreachable from Start. Connect them or choose another Start.")
         for node in nodes:
             if node["type"] == "decision" and not all((node["id"], branch) in slots for branch in ("yes", "no")):
@@ -260,7 +286,7 @@ class FlowRunner:
             elif kind == "clean_history":
                 await self.runtime.clean_history()
                 self.last_output = ""
-            elif kind == "user_commentary":
+            elif kind == "user_input":
                 output = await self.ask_user(node, "commentary")
                 await self.runtime.comment(output)
             elif kind == "decision":

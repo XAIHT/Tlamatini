@@ -262,6 +262,7 @@ REQUIRED_SNAPSHOT_FILES = (
     "scripts/prompt_flow_extension_visible.py",
     "scripts/prompt_flow_selection_visible.py",
     "scripts/prompt_flow_connections_visible.py",
+    "scripts/prompt_flow_commentary_visible.py",
     "scripts/flow_canvas_mechanics_visible.py",
     "Tlamatini/agent/static/agent/js/acp-editor-tools.js",
     "scripts/run_menu_state_checks.py",

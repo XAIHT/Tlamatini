@@ -705,8 +705,8 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("Help", "Explains every gesture; • marks unsaved changes."),
             ], deck="split"),
         Section("pfp", "PROMPT FLOW PANEL", "Draw a conversation, then press Play",
-            "The Prompt Flow Panel turns a chain of prompts into a diagram of seven operations, saved as a "
-            "portable `.fpmt` file and played against your configured models.",
+            "The Prompt Flow Panel turns a chain of prompts into a diagram of seven operations plus static "
+            "review notes, saved as a portable `.fpmt` file and played against your configured models.",
             visual="operations",
             visual_data={"ops": [
                 ("prompt", "Prompt", "Sends its text to the model; Multi-Turn and ACPX can be enabled."),
@@ -715,7 +715,8 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("feed", "Feed embeddings", "Adds reference text to this run's retrieval context."),
                 ("flush", "Flush embeddings", "Clears the run's retrieval context."),
                 ("clean", "Clean History", "Clears the run's conversation and last output."),
-                ("commentary", "User Commentary", "Stops to ask you something; your reply joins the run."),
+                ("input", "User Input", "Stops to ask you something; your reply joins the run."),
+                ("commentary", "User Commentary", "A static speech-bubble note for reviewers; it never runs."),
             ]}, deck="visual"),
         Section("pfprun", "PROMPT FLOW PANEL", "Playback that stays in its own lane",
             "Validate checks the diagram, Play runs it, and every run keeps its own conversation, embeddings "
@@ -727,11 +728,11 @@ def build_chapters(f: dict) -> list[Chapter]:
                 "operations, 500 by default and up to 5,000.",
                 "The running figure lights up and traversed connections are highlighted. Pause lets the current "
                 "operation finish and holds the next; Stop drains the running worker before another run may "
-                "start. Opening a file never runs it.",
+                "start. Opening a file never runs it, and a User Commentary note never runs at all.",
             ],
             points=[
-                ("Format", "JSON `tlamatini-prompting-flow`, version 1."),
-                ("Limits", "5 MiB, 500 operations, 1,000 connections."),
+                ("Format", "JSON `tlamatini-prompting-flow`, version 2; version 1 files migrate."),
+                ("Limits", "5 MiB, 500 assets, 1,000 connections."),
                 ("Isolation", "Empty history and embeddings at every start."),
                 ("Validation", "Checked in the browser and again on the server."),
                 ("Not .pmt", "Plain-text system prompts keep .pmt and are refused."),
@@ -1414,6 +1415,33 @@ def build_chapters(f: dict) -> list[Chapter]:
         f"Source tag {f['release_tag']}; latest published release "
         f"{f['release']['latest_published'] or 'unverified'}. Local changes are stated separately.",
         accent="gold", sections=[
+        Section("working_main", "ON MAIN, AFTER v1.75.0", "Four stop sequences and a clearer Prompt Flow Panel",
+            "Committed on main after the v1.75.0 tag; a build from this source still reports 1.75.0.",
+            body=[
+                "Ollama's cloud models refuse a request that carries more than four stop sequences, and the chat "
+                "model used to send nine, so the chat-history summary, the first call once a conversation grows "
+                "long, failed the whole request. Every stop list now passes through one fitter that keeps at "
+                "most four, most important first, and a failed summary no longer fails the answer: the request "
+                "continues without it, while Cancel still stops it.",
+                "The Prompt Flow Panel separates two things that shared one name. User Input is the operation "
+                "that stops to ask you something; it keeps exactly its old behaviour under a new notched figure. "
+                "User Commentary is now a static speech-bubble note for reviewers: written in place, coloured "
+                "and styled freely, growing to hold its whole text without a scrollbar, and never run. New "
+                "files are saved as version 2; version 1 files open with their old commentary steps turned into "
+                "User Input, identifiers and connections kept.",
+                "This refresh reran 430 targeted unit tests, the offline Prompt Flow check, ESLint with zero "
+                "errors, the skills inventory and both inclusion sweeps; all passed, and ruff now reports a "
+                "clean tree. In a visible Chrome on the real desktop, the commentary test passed all nine "
+                "checkpoints: long notes without scrollbars, fonts and colours, resize with Undo and Redo, "
+                "save and reopen, a real User Input run, Escape stopping it, and a version 1 file migrating.",
+            ],
+            points=[
+                ("Four stop sequences", "Every Ollama request; a failed summary never fails the answer."),
+                ("User Input", "The step that asks you: same mechanism, new figure."),
+                ("User Commentary", "A static review note; it never runs and never reaches the model."),
+                ("Version 2 files", "Version 1 flows migrate on open; identifiers and links are kept."),
+                ("Proof", "430 unit tests; 9 of 9 visible Chrome checkpoints."),
+            ], deck="cards"),
         Section("working_switches", "NEW IN v1.75.0", "Compact mode and Self-modify become switches",
             "Tagged on October 3: Compact mode is a toolbar switch; the Self-modify switch followed the tag.",
             body=[

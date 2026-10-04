@@ -9,7 +9,6 @@ import json
 from pathlib import Path
 import tempfile
 from contextlib import ExitStack
-from types import SimpleNamespace
 from unittest.mock import patch
 
 from django.test import RequestFactory, SimpleTestCase

@@ -804,6 +804,16 @@ def _glyph(canv, kind, x, y, w, h, tone):
         path.lineTo(x, y)
         path.close()
         canv.drawPath(path, stroke=1, fill=1)
+    elif kind == "input":
+        # The panel's notched figure: a V-notch on top, straight sides, a point below.
+        fw = h * 0.8
+        x0 = x + (w - fw) / 2
+        points = [(0, 0), (0.5, 0.283), (1, 0), (1, 0.7), (0.5, 1), (0, 0.7)]
+        path.moveTo(x0, y + h)
+        for nx, ny in points[1:]:
+            path.lineTo(x0 + nx * fw, y + h - ny * h)
+        path.close()
+        canv.drawPath(path, stroke=1, fill=1)
     elif kind == "commentary":
         canv.roundRect(x, y + h * 0.25, w, h * 0.75, 6, stroke=1, fill=1)
         path.moveTo(x + w * 0.25, y + h * 0.26)
@@ -815,7 +825,7 @@ def _glyph(canv, kind, x, y, w, h, tone):
 
 class Operations(Flowable):
     TONES = {"prompt": "jade", "programmed": "jade", "decision": "gold", "feed": "cyan", "flush": "cyan",
-             "clean": "copper", "commentary": "magenta"}
+             "clean": "copper", "input": "magenta", "commentary": "rose"}
 
     def __init__(self, ops, st: Styles):
         super().__init__()

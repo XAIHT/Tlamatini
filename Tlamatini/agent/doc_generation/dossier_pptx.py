@@ -604,7 +604,28 @@ def visual_cascade(sc, stages, x=MX, y=CONTENT_TOP, w=CONTENT_W, h=CONTENT_BOTTO
         code_color="gold"))], label="cascade note")
 
 
+def _input_shape(sc, x, y, w, h, tone):
+    """The panel's User Input figure: a V-notch on top, straight sides and a point below."""
+    fw = h * 0.8
+    x0 = x + (w - fw) / 2
+    points = [(0, 0), (0.5, 0.283), (1, 0), (1, 0.7), (0.5, 1), (0, 0.7)]
+    emu = [(int(Inches(x0 + nx * fw)), int(Inches(y + ny * h))) for nx, ny in points]
+    builder = sc.slide.shapes.build_freeform(emu[0][0], emu[0][1], scale=1.0)
+    builder.add_line_segments(emu[1:], close=True)
+    shp = builder.convert_to_shape()
+    shp.shadow.inherit = False
+    shp.fill.solid()
+    shp.fill.fore_color.rgb = rgb(tone)
+    _alpha(shp.fill._xPr.find(qn("a:solidFill")), 0.25)
+    shp.line.color.rgb = rgb(tone)
+    shp.line.width = Pt(0.75)
+    sc.track(x0, y, fw, h, "deco", "op glyph")
+
+
 def _op_shape(sc, kind, x, y, w, h, tone):
+    if kind == "input":
+        _input_shape(sc, x, y, w, h, tone)
+        return
     shapes = {"prompt": MSO_AUTO_SHAPE_TYPE.ROUNDED_RECTANGLE, "programmed": MSO_AUTO_SHAPE_TYPE.ROUNDED_RECTANGLE,
               "decision": MSO_AUTO_SHAPE_TYPE.DIAMOND, "feed": MSO_AUTO_SHAPE_TYPE.ISOSCELES_TRIANGLE,
               "flush": MSO_AUTO_SHAPE_TYPE.FLOWCHART_MERGE, "clean": MSO_AUTO_SHAPE_TYPE.TRAPEZOID,
@@ -618,7 +639,7 @@ def _op_shape(sc, kind, x, y, w, h, tone):
 
 def visual_operations(sc, ops, x=MX, y=CONTENT_TOP, w=CONTENT_W, h=CONTENT_BOTTOM - CONTENT_TOP):
     tones = {"prompt": "jade", "programmed": "jade", "decision": "gold", "feed": "cyan", "flush": "cyan",
-             "clean": "copper", "commentary": "magenta"}
+             "clean": "copper", "input": "magenta", "commentary": "rose"}
     cols = 4
     rows = math.ceil(len(ops) / cols)
     gap = 0.24
@@ -641,7 +662,7 @@ def visual_operations(sc, ops, x=MX, y=CONTENT_TOP, w=CONTENT_W, h=CONTENT_BOTTO
                            label="format card")
         text(sc, cx + 0.25, cy + 0.2, w - col * (cw + gap) - 0.5, ch - 0.4, [
             Para([Run(".fpmt", "mono-bold", 22, "gold")]),
-            Para(marked("A portable JSON diagram: `tlamatini-prompting-flow`, version 1. Opening a file never "
+            Para(marked("A portable JSON diagram: `tlamatini-prompting-flow`, version 2. Opening a file never "
                         "runs it; Validate, then Play.", "sans", 13, "light", code_color="gold"), space_before=8)],
              label="format text", parent=parent)
 

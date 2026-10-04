@@ -38,12 +38,10 @@ import argparse
 import glob
 import json
 import os
-import shutil
 import subprocess
 import sys
 import time
 import unicodedata
-import zipfile
 from pathlib import Path
 
 from build_runtime_assets import create_release_archive, verify_package
@@ -92,7 +90,8 @@ def assert_self_modify_payload(expect_self_modify: bool) -> None:
     kept ``Tlamatini.md`` would put her entire self-description back into the
     system prompt of EVERY request (~63k characters, ~15.7k tokens) — exactly
     what the default not-self-able-modify mode exists to avoid. So we open the
-    artifact and LOOK, and we fail loud on a mismatch in either direction.
+    artifact and LOOK (``verify_package()`` reads pkg.zip with ``zipfile`` and
+    lists every member), and we fail loud on a mismatch in either direction.
     """
     if not PKG_ZIP.is_file():
         sys.exit(f"ABORT: required payload is missing: {PKG_ZIP.name}")

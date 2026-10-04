@@ -138,7 +138,7 @@ def main():
             assert json.loads(blank.read_text(encoding='utf-8'))['nodes'] == []
             checkpoint('02-default-download')
 
-            page.locator('.agent-tool-item[data-type="user_commentary"]').click()
+            page.locator('.agent-tool-item[data-type="user_input"]').click()
             expect(page.locator('.pmt-node')).to_have_count(1)
             portable = save_file('roundtrip', 'roundtrip.fpmt')
             snapshot = json.loads(portable.read_text(encoding='utf-8'))
@@ -168,7 +168,7 @@ def main():
 
             sample = ROOT / 'docs/examples/prompting-kickoff.fpmt'
             open_file(sample)
-            expect(page.locator('.pmt-node')).to_have_count(7)
+            expect(page.locator('.pmt-node')).to_have_count(8)
             expect(page.locator('#filename')).to_have_text(sample.name)
             checkpoint('07-bundled-example-opens')
             invalid = OUT / 'invalid.fpmt'
@@ -179,7 +179,7 @@ def main():
             reject_file(old, 'Choose a .fpmt Prompt Flow Panel file.', '09-old-extension-rejected')
             reject_file(ROOT / 'Tlamatini/agent/prompt.pmt', 'Choose a .fpmt Prompt Flow Panel file.', '10-system-prompt-remains-separate')
             wrong = OUT / 'wrong-version.fpmt'
-            wrong.write_text(json.dumps({**snapshot, 'version': 2}), encoding='utf-8')
+            wrong.write_text(json.dumps({**snapshot, 'version': 99}), encoding='utf-8')
             reject_file(wrong, 'Unsupported .fpmt version.', '11-version-error-uses-fpmt')
             oversized = OUT / 'oversized.fpmt'
             oversized.write_text(' ' * (5 * 1024 * 1024 + 1), encoding='utf-8')

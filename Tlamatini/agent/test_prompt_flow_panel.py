@@ -25,7 +25,7 @@ def node(key, kind="prompt", **config):
 
 
 def diagram(nodes, edges=(), max_steps=20):
-    return {"format": flow_module.FORMAT, "version": 1, "name": "Test", "start": nodes[0]["id"] if nodes else None,
+    return {"format": flow_module.FORMAT, "version": flow_module.VERSION, "name": "Test", "start": next((n["id"] for n in nodes if n["type"] != "user_commentary"), None),
             "max_steps": max_steps, "nodes": nodes,
             "edges": [{"id": f"e{i}", "source": a, "target": b, "branch": c} for i, (a, b, c) in enumerate(edges)]}
 
@@ -70,7 +70,7 @@ class ValidationTests(unittest.TestCase):
             flow_module.validate_flow(diagram([]), playable=True)
 
     def test_legacy_and_future_files_rejected(self):
-        for payload in ("You are Tlamatini", {"format": flow_module.FORMAT, "version": 2}, {}):
+        for payload in ("You are Tlamatini", {"format": flow_module.FORMAT, "version": 99}, {}):
             with self.subTest(payload=payload), self.assertRaises(FlowError):
                 flow_module.validate_flow(payload)
 
@@ -108,6 +108,46 @@ class ValidationTests(unittest.TestCase):
 
     def test_substitution_is_literal(self):
         self.assertEqual(flow_module.expand_text("Use {{last_output}} and {{unknown}}", "<script>x</script>"), "Use <script>x</script> and {{unknown}}")
+
+    def test_legacy_commentary_migrates_without_changing_user_input_graph(self):
+        original = diagram([node("input", "user_commentary"), node("p")], [("input", "p", "next")])
+        original.update(version=1, start="input")
+        original["nodes"][0]["label"] = "User Commentary"
+        before = copy.deepcopy(original)
+        result = flow_module.validate_flow(original, playable=True)
+        self.assertEqual(result["version"], 2)
+        self.assertEqual(result["nodes"][0]["type"], "user_input")
+        self.assertEqual(result["nodes"][0]["label"], "User Input")
+        self.assertEqual(result["edges"], original["edges"])
+        self.assertEqual(result["nodes"][0]["config"]["text"], original["nodes"][0]["config"]["text"])
+        self.assertEqual(original, before)
+
+    def test_static_comment_roundtrip_preserves_long_literal_text_and_formatting(self):
+        note = node("note", "user_commentary", text=("Paragraph ñ <script> {{last_output}}\n" * 500),
+                    width=650, height=450, color="#dbeafe", font_family="Georgia", font_size=22,
+                    bold=True, italic=True, align="right")
+        result = flow_module.validate_flow(diagram([node("p"), note]), playable=True)
+        self.assertEqual(result["nodes"][1]["config"], {k: note["config"][k] for k in result["nodes"][1]["config"]})
+        self.assertEqual(flow_module.validate_flow(result), result)
+
+    def test_static_comments_save_alone_but_cannot_be_start_or_connected(self):
+        note = node("note", "user_commentary")
+        flow_module.validate_flow(diagram([note]))
+        with self.assertRaises(FlowError):
+            flow_module.validate_flow(diagram([note]), playable=True)
+        for source, target in [("note", "p"), ("p", "note")]:
+            with self.assertRaisesRegex(FlowError, "cannot have connections"):
+                flow_module.validate_flow(diagram([node("p"), note], [(source, target, "next")]))
+        payload = diagram([node("p"), note])
+        payload["start"] = "note"
+        with self.assertRaisesRegex(FlowError, "Start"):
+            flow_module.validate_flow(payload)
+
+    def test_comment_style_rejects_unsafe_or_out_of_range_values(self):
+        for key, value in [("color", "url(javascript:evil)"), ("font_family", "evil; color:red"),
+                           ("width", 199), ("height", 2401), ("font_size", 0), ("bold", 1), ("align", "evil")]:
+            with self.subTest(key=key), self.assertRaises(FlowError):
+                flow_module.validate_flow(diagram([node("note", "user_commentary", **{key: value})]))
 
 
 class RunnerTests(unittest.IsolatedAsyncioTestCase):
@@ -159,7 +199,7 @@ class RunnerTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(self.runtime.cancelled)
 
     async def test_commentary_rejects_stale_reply(self):
-        runner = FlowRunner(diagram([node("a", "user_commentary")]), self.runtime, self.emit)
+        runner = FlowRunner(diagram([node("a", "user_input")]), self.runtime, self.emit)
         task = asyncio.create_task(runner.run())
         await asyncio.sleep(0)
         with self.assertRaises(FlowError):
@@ -170,7 +210,7 @@ class RunnerTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.runtime.calls, [("comment", "My reply")])
 
     async def test_stop_releases_pending_user_input(self):
-        runner = FlowRunner(diagram([node("a", "user_commentary")]), self.runtime, self.emit)
+        runner = FlowRunner(diagram([node("a", "user_input")]), self.runtime, self.emit)
         task = asyncio.create_task(runner.run())
         await asyncio.sleep(0)
         runner.stop()
@@ -194,6 +234,16 @@ class RunnerTests(unittest.IsolatedAsyncioTestCase):
         runner.reply(runner.reply_id, "no")
         await task
         self.assertEqual([d["node_id"] for e, d in self.events if e == "node" and d["status"] == "completed"], ["d", "no"])
+
+    async def test_static_comments_never_emit_input_or_change_run_state(self):
+        flow = diagram([node("p"), node("note1", "user_commentary", text="{{last_output}}"),
+                        node("note2", "user_commentary", text="Review only")], max_steps=1)
+        runner = FlowRunner(flow, self.runtime, self.emit)
+        await runner.run()
+        self.assertEqual(self.runtime.calls, [("prompt", "Explain a graph")])
+        self.assertEqual(runner.step, 1)
+        self.assertEqual(runner.last_output, "YES, useful output")
+        self.assertFalse(any(e == "input" or d.get("node_id") in {"note1", "note2"} for e, d in self.events))
 
 
 if __name__ == "__main__":

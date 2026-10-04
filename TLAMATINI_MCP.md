@@ -13,7 +13,7 @@ version)** as MCP tools so an MCP client (Claude Code, etc.) can drive
 them directly — Executer, Pythonxer, Croner, ACPXer, STM32er, ESP32er,
 Arduiner, Shoter, Playwrighter, Kalier, MCP Doctor, NetSpeed-Calculator, and
 the rest of the live catalog. It also exposes 7 management/skill tools and 10
-ACPX tools: **105 root stdio MCP tools total**. The server discovers agents
+ACPX tools: **106 root stdio MCP tools total**. The server discovers agents
 dynamically; these counts are a verified snapshot, not a hardcoded limit.
 
 ## Files

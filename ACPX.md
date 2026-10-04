@@ -21,6 +21,8 @@
 
 ---
 
+**Prompt Flow source update (2026-10-03):** Prompt and Programmed Prompt still control Multi-Turn/ACPX per operation. **User Input** retains the existing user-reply step; **User Commentary** is a static speech-bubble review note and never invokes ACPX, tools or a model, or modifies run history. Version 2 `.fpmt` saves migrate version 1 executable commentary to User Input. Static notes support inline editing, color/font/size choices and automatic full-text containment without internal scrollbars. This source change does not imply a rebuilt release. See [the Prompt Flow guide](docs/prompting-flow-designer.md).
+
 ## 0. Read this first
 
 This document explains a feature that has just been added to Tlamatini and that you, the user, have **not yet committed**. The feature has two parts that work together:

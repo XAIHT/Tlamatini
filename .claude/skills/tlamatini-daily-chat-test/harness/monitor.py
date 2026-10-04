@@ -117,7 +117,7 @@ def main():
                 elif ln.strip() and any(b in ln for b in BAD):
                     errs.append(ln.strip())
 
-            if any(("DONE" in l) or ("elapsed " in l) for l in lines[-25:]):
+            if any(("DONE" in row) or ("elapsed " in row) for row in lines[-25:]):
                 seen_done = True
 
             if not lines:

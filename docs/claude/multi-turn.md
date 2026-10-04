@@ -280,9 +280,10 @@ See [configuration, routing, Parametrizer mappings and limitations](../../Tlamat
 Each **Prompt** and **Programmed Prompt** operation in a Prompt Flow Panel diagram (`.fpmt`) carries its own `multi_turn` and `acpx` switches, and `PromptFlowPanelRuntime.prompt()` forwards them to `ask_rag` as `multi_turn_enabled` / `acpx_enabled` — the same per-request flags the chat toolbar sends. So one flow can mix plain Q&A steps with full operator steps that bind every enabled tool and agent.
 
 - **ACPX requires Multi-Turn.** Both validators (`prompt-flow-panel-model.js` and `services/prompt_flow_panel.py`) reject an operation with `acpx: true` and `multi_turn: false`, mirroring the chat, where ACPX tools are only bound inside Multi-Turn.
-- **Ask-Execs, Exec Report and Step-by-Step are not sent.** A flow runs unattended between its own User Commentary steps, so there is no Proceed/Deny prompt to answer and no Exec Report table is rendered — the run's output appears in the panel's **Run output** log instead.
+- **Ask-Execs, Exec Report and Step-by-Step are not sent.** A flow runs unattended between its own User Input steps, so there is no Proceed/Deny prompt to answer and no Exec Report table is rendered — the run's output appears in the panel's **Run output** log instead.
 - **The run key, not the chat user id, is the `conversation_user_id`.** It is `prompt_flow_panel_<user pk>_<uuid4>`, so self-healing status lines (`register_status_broadcaster`) and cancellation (`cancel_run_epoch`) are scoped to that one run and never cross into the user's chat tab.
-- **History is per run.** The last 16 messages of the run's own conversation go with each prompt. **Clean History** clears it and resets `{{last_output}}`; **User Commentary** appends the user's reply as a human turn.
+- **History is per run.** The last 16 messages of the run's own conversation go with each prompt. **Clean History** clears it and resets `{{last_output}}`; **User Input** appends the user's reply as a human turn.
+- **User Commentary is static (2026-10-03).** Its speech-bubble text, including `{{last_output}}`, remains literal. It has no ports/Start state, consumes no playback step and never invokes a model, tools, ACPX, a reply dialog or a history write. Version 2 saves distinguish `user_input` from `user_commentary`; version 1 executable commentary migrates to User Input with the same connections, settings and cancellation behavior.
 
 See `docs/claude/architecture.md` → *Prompt Flow Panel runtime* and [the user guide](../prompting-flow-designer.md).
 

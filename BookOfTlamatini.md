@@ -188,7 +188,7 @@ Tlamatini does a lot. This book is organized so you can stop reading at the dept
 - **Part X — Survival Guide**: troubleshooting, `tlamatini.log`, common issues.
 - **Bonus chapter §57** — Driving Unreal Engine 5 from Tlamatini (the Unrealer agent + Unreal MCP plugin). Read this if you build games or simulations in UE5 and want a chat / canvas surface for the editor.
 - **Bonus chapter §59** — Sculpting in Blender from Tlamatini (the Blenderer agent + the official Blender MCP add-on). Read this if you make 3D art / assets in Blender and want a chat / canvas surface for the editor — and to see why Blender's *code-execution* protocol differs from Unreal's verbs.
-- **[The Prompt Flow Panel: draw a chain of prompts, then press Play](#the-prompt-flow-panel-draw-a-chain-of-prompts-then-press-play)** — the 2026-09-25 sibling of the Agentic Control Panel: seven operations, `.fpmt` files (and why `.pmt` stays with the system prompt), running, pausing and stopping, and what a run may and may not touch.
+- **[The Prompt Flow Panel: draw a chain of prompts, then press Play](#the-prompt-flow-panel-draw-a-chain-of-prompts-then-press-play)** — the 2026-09-25 sibling of the Agentic Control Panel: seven executable operations plus static review bubbles, `.fpmt` files (and why `.pmt` stays with the system prompt), running, pausing and stopping, and what a run may and may not touch.
 - **[Enable Tlamatini as a Blue-hat agent](#enable-tlamatini-as-a-blue-hat-agent)** — the complete Windows defensive-toolkit runbook: asset validation, persistent host changes, detect-only baselining, armed/watch modes, evidence review, false positives, response rollback, and operator responsibility.
 - **[Voice commands: your words become the prompt](#voice-commands-your-words-become-the-prompt)** — the catalog's new first section: speak your instruction instead of typing it, why it needed the silence gate to exist, and the two promises (she reads it back; if she did not hear you she says so).
 - **[Whisperer listens: the silence gate](#whisperer-listens-the-silence-gate)** — why a fixed recording length was the wrong question, how the gate hears you, the countdown in the console bar, and the one thing that would have made the whole feature invisible.
@@ -210,7 +210,7 @@ The Agentic Control Panel wires **agents** together: a Starter, an Executer, a S
 
 Open it from the chat with **Panels ▸ Prompt Flow Panel**, or from the Agentic Control Panel with **File ▸ Prompt Flow Panel**. It opens in its own tab.
 
-### The seven operations
+### Seven operations and static review bubbles
 
 | Operation | Shape | What happens when the flow reaches it |
 |---|---|---|
@@ -220,19 +220,28 @@ Open it from the chat with **Panels ▸ Prompt Flow Panel**, or from the Agentic
 | **Feed embeddings** | triangle pointing up | Adds reference text to this run, so the following prompts can draw on it. |
 | **Flush embeddings** | triangle pointing down | Takes that reference text away again, keeping the conversation. |
 | **Clean History** | trapezoid | Forgets this run's conversation so far, keeping the reference text. |
-| **User Commentary** | speech bubble | Stops and asks you something; your reply joins the conversation. |
+| **User Input** | notched top and downward point | Stops and asks you something; your reply joins the conversation. |
+| **User Commentary** | speech bubble | A static review note on the canvas; it never runs or changes the conversation. |
 
-Anywhere you write `{{last_output}}`, Tlamatini puts the previous answer (or your last reply). A Decision only ever compares text — nothing in a flow file is ever run as code.
+In executable operation text, `{{last_output}}` inserts the previous answer (or your last reply). Inside a static User Commentary, that token stays literal. A Decision only ever compares text — nothing in a flow file is ever run as code.
 
 ### Building and running a flow
 
 1. Drag operations from the **Operations bar** onto the canvas, or just click one to drop it in.
-2. Double-click a figure (or right-click it, or select it and press **Configure**) to set its text and options.
-3. Click an **output dot**, then an **input dot**, to connect them. A Decision has two outputs, **Y** and **N**; every output leads to exactly one place, and connecting it again replaces the old line.
-4. Choose where the flow begins in the **Start** list, press **Validate**, then **Play**. Validate refuses a flow with a dead end it cannot explain: every operation must be reachable from Start, and every Decision needs both branches.
+2. Double-click an executable figure (or select **Configure**) to set its text and options. Double-click a User Commentary to write directly inside its bubble; use Configure for its appearance.
+3. Drag a white **output triangle** on the right of an executable figure onto an **input triangle** on the left of another and release to connect them. Static commentary has no ports. A Decision has two outputs, **Y** and **N**; every output leads to exactly one place, and connecting it again replaces the old line.
+4. Choose where the flow begins in the **Start** list, press **Validate**, then **Play**. Validate refuses a flow with a dead end it cannot explain: every executable operation must be reachable from Start, and every Decision needs both branches. Static comments need no connection and cannot be Start.
 5. Watch the running figure light up and read everything in **Run output** below the canvas. **Pause** lets the current step finish and holds the next one; **Stop** cancels and waits for the current step to wind down cleanly. Loops are allowed — **Flow settings** caps how many steps one run may take (500 by default, 5,000 at most).
 
 Keep the page — and Tlamatini — open while a flow is playing, especially one with a scheduled prompt. This is not a background scheduler. Closing a question dialog with **Cancel**, **✕** or **Esc** stops the flow; clicking outside it does not.
+
+### Writing static User Commentaries
+
+Add as many independent **User Commentary** bubbles as you need within the diagram's 500-asset limit. Double-click a bubble, or select it and press Enter, to write a note in place. **Done** or Ctrl+Enter saves; **Cancel** or Escape discards that edit. **Configure**, available in the toolbar or right-click menu, chooses one of eight basic colors, six font families, font size, bold/italic, alignment, width and minimum height. Drag the bottom-right handle to resize, and use Undo/Redo for editing, formatting, moving or duplication.
+
+The bubble grows to contain the complete text at the chosen width and font, including while typing. There is **no internal scrollbar** and no clipped paragraph. Long notes save in full, up to 100,000 characters. Notes are visible review annotations; they never ask a runtime question, enter the model context, change history or count as a playback step. A diagram containing only notes can be saved, but needs an executable operation before Play is available.
+
+The separate **User Input** operation keeps the former question-and-reply behavior and uses the notched figure. Closing its reply dialog stops the flow.
 
 ### What a run may and may not touch
 
@@ -240,11 +249,13 @@ Every run is its own little world. It gets its **own conversation** and its **ow
 
 ### Saving flows: `.fpmt`, not `.pmt`
 
-**File ▸ Save as .fpmt** downloads your diagram; **File ▸ Open .fpmt**, or dropping a file on the canvas, brings it back. Opening a flow never runs it. A file may hold up to 500 operations and 1,000 connections and be up to 5 MiB. The panel also keeps a draft in your browser, just for you, so a closed tab is not a lost afternoon — but save a file if you want to keep or share the flow.
+**File ▸ Save as .fpmt** downloads your diagram; **File ▸ Open .fpmt**, or dropping a file on the canvas, brings it back. Opening a flow never runs it. A file may hold up to 500 assets (executable operations and static comments together) and 1,000 connections and be up to 5 MiB. The panel also keeps a draft in your browser, just for you, so a closed tab is not a lost afternoon — but save a file if you want to keep or share the flow.
 
 Why the odd extension? Because **`.pmt` already means something**: it is the extension of Tlamatini's own plain-text system prompt, `prompt.pmt`. Flow diagrams are **`.fpmt`** — *flow prompt* — so the two can never be confused, and the panel refuses to open a `.pmt`. If you made a diagram in the earliest version and saved it as `.pmt`, just rename it to `.fpmt`; nothing inside it needs to change.
 
-Want to see one first? **File ▸ Open example** loads a small branching flow, and the full tour — all seven operations — ships as `docs/examples/prompting-kickoff.fpmt`.
+Want to see one first? **File ▸ Open example** loads a small branching flow, and the full tour — seven executable operations and a static commentary — ships as `docs/examples/prompting-kickoff.fpmt`.
+
+New saves use document **version 2**. Version 1 files and browser drafts automatically turn their old executable `user_commentary` nodes into **User Input**, keeping IDs, connections and settings. Version 2 `user_commentary` means a static note. Opening an old file never silently changes a reply step into an annotation. The extension remains `.fpmt`. This refactor is a source change from 2026-10-03; an installed executable includes it after being rebuilt or updated with it.
 
 ### Shortcuts
 
@@ -256,11 +267,13 @@ Want to see one first? **File ▸ Open example** loads a small branching flow, a
 | Delete or Backspace | delete the selection |
 | Arrow keys / Shift+arrows | nudge the selection 10 / 40 units |
 | Ctrl + mouse wheel, **Fit** | zoom, fit the whole flow |
-| Esc | close the top dialog, or leave connection mode and clear the selection |
+| Double-click / Enter on a commentary | edit the static note in its bubble |
+| Ctrl+Enter while editing a commentary | save the text |
+| Esc | cancel a commentary edit, close the top dialog, or leave connection mode and clear the selection |
 
 ### How it was tested
 
-The file format and the interpreter have their own regression tests, the real WebSocket route is exercised end to end with a stand-in model, and the release build refuses to package itself unless the panel's self-check (`check_prompt_flow_panel`) passes *inside the frozen application*. The `.fpmt` behaviour — default and typed file names, an old `.pmt` name being converted, Unicode and upper-case names, a real reopened flow playing back, the example, and every kind of bad file being refused — was checked in a visible Chrome window with fifteen photographed checkpoints, all passing on 2026-09-25. The full maintainer guide is `docs/prompting-flow-designer.md`.
+The file format and the interpreter have their own regression tests, the real WebSocket route is exercised end to end with a stand-in model, and the release build refuses to package itself unless the panel's self-check (`check_prompt_flow_panel`) passes *inside the frozen application*. The `.fpmt` behaviour — default and typed file names, an old `.pmt` name being converted, Unicode and upper-case names, a real reopened flow playing back, the example, and every kind of bad file being refused — was checked in a visible Chrome window with fifteen photographed checkpoints, all passing on 2026-09-25. The 2026-10-03 commentary/input refactor passed 61 backend/packaging tests and nine visible Chrome checkpoints, including 5,000-character containment without scrolling, formatting, resize/Undo/Redo, saved-file/draft recovery, unchanged User Input replies/cancellation and version 1 migration. The full maintainer guide is `docs/prompting-flow-designer.md`.
 
 ---
 
@@ -3986,8 +3999,8 @@ The other firmware agents make Tlamatini an *embedded engineer*. ESPHomer makes 
 | **Playwrighter** | Tlamatini agent that drives a REAL browser (Playwright — Chromium/Firefox/WebKit) through a scripted, interactive step list (goto/click/fill/wait_for/extract/assert/screenshot/download). Set `headless: false` to watch it and `hold_open_seconds: N` (alias `hold_open_ms`) to keep the browser visible N seconds after the last step before it closes. Available both as the wrapped Multi-Turn tool `chat_agent_playwrighter` and as a visual canvas node. The 65th entry in the agent catalog. |
 | **PDFer** | Document composer with 24 explicit visual styles in five families alongside 20 semantic content themes. `mode: styles` discovers the catalog; atelier composes measured, audited layouts with original vector art. [Style guide](Tlamatini/agent/agents/pdfer/STYLES.md). |
 | **Pool** | Directory where deployed agent instances are stored. |
-| **Prompt Flow Panel** | The canvas for chains of prompts (2026-09-25): Prompt, Programmed Prompt, Decision, Feed/Flush embeddings, Clean History and User Commentary, played against your own models with an isolated conversation per run. Opened from **Panels ▸ Prompt Flow Panel**. |
-| **`.fpmt`** | A Prompt Flow Panel diagram file (JSON, `format: "tlamatini-prompting-flow"`). Not to be confused with **`.pmt`**, Tlamatini's plain-text system prompt. |
+| **Prompt Flow Panel** | The canvas for chains of prompts (2026-09-25): Prompt, Programmed Prompt, Decision, Feed/Flush embeddings, Clean History and User Input, plus static customizable User Commentary notes that never run, played against your own models with an isolated conversation per run. Opened from **Panels ▸ Prompt Flow Panel**. |
+| **`.fpmt`** | A Prompt Flow Panel diagram file (JSON, `format: "tlamatini-prompting-flow"`, version 2; version 1 reply steps migrate to User Input). Not to be confused with **`.pmt`**, Tlamatini's plain-text system prompt. |
 | **Panels menu** | The chat navbar menu (since 2026-09-25) that opens the Agentic Control Panel, the Prompt Flow Panel and, for staff, the Admin Panel. |
 | **Pser** | LLM-powered fuzzy process finder. |
 | **Pythonxer** | Inline-Python agent behind a strict `compile()` + blocking-Ruff gate; ALWAYS triggers downstream regardless of outcome (exit code drives only the LED + Multi-Turn retry loop). |
@@ -4019,6 +4032,8 @@ The other firmware agents make Tlamatini an *embedded engineer*. ESPHomer makes 
 # Appendix C — Changelog
 
 ### Recent Updates
+
+**Source update — static User Commentary and separate User Input (2026-10-03):** The existing question/reply/cancel operation is now User Input with the supplied notched figure. User Commentary is an independent speech-bubble review note: inline writing, palette/font/size choices, resizing, Undo/Redo and complete content containment without internal scrollbars. Notes save with the diagram and never enter playback or model history. New `.fpmt` saves are version 2; version 1 executable commentary migrates to User Input without losing settings or connections. Verified by 61 backend/packaging tests and nine visible Chrome checkpoints. This change is uncommitted source work; no executable/installer was rebuilt. The older release entries below retain their historical names/format versions. [Implementation and verification](docs/changes/2026-10-03-prompt-commentary-input.md).
 
 **Latest version — `v1.75.0` (tagged 2026-10-03; the latest published release is `v1.74.0`):** annotated tag `v1.75.0` points to `f7eb53ff` — *"Release v1.75.0 Making Compact mode a real checkbox: it unticks the real Configure rows, locks ON for a small model, prices every row, and warns when a request is cut."* Compact mode is now a box in the chat toolbar that you drive: ticking it unticks every Configure row except System-Metrics, Files-Search and Current-Time so you tick back only what you need, a model too small to hold everything you activated locks it ON (🔒), saved rows apply at once with no restart, every row shows its token price, and an answer from a cut request carries a CONTEXT-WINDOW warning (see the Compact-switch entry below). ⚠️ **No GitHub release is published for `v1.75.0` yet** (checked 2026-10-03): the latest *published* release is **`v1.74.0`** ("Tlamatini Release v1.74.0 Win11x64", marked Latest, published 2026-10-01), so **About ▸ Check for updates** delivers v1.74.0 until v1.75.0 is published. It carries **`v1.74.0`** (tag at `c1fadb90`, tagged 2026-10-01) — *"Release v1.74.0 Making every request fit the model it is sent to: Compact mode for small models, the complete context for big ones, and readable answer tables."* In v1.74.0 a model too small to read everything Tlamatini sends got Compact mode (live metrics, file search and the current time kept working; agents, ACPX and external MCPs paused; a dialog and a badge said so), a big model still gets the complete context, and answer tables are always readable. It carries **`v1.73.1`** (`757b0edc`, a tag with no published release) — Config ▸ Models lists the models of the Ollama server you configured, with its token — which stands on **`v1.73.0`** (tag at `606470bb`, published 2026-09-30) — *"Release v1.73.0 Implemented the Drop button, which erases one message from the chat AND from the history the model reads."* Every chat card, yours and hers, has a **Drop** button beside Copy; after a themed confirmation (Cancel focused, Escape and ✕ cancel) that one message is deleted, so from your next question on she answers as if it had never existed while the messages before and after it stay untouched — no reconnect, refused while she is still answering, and a note in the `memory` External MCP is NOT erased (see the Drop entry below). It was the latest *published* release ("Tlamatini Release v1.73.0 Win11x64", marked Latest; checked with `gh release list` on 2026-09-30) until v1.74.0 was published on 2026-10-01. It carries **`v1.72.4`** (`323c1051`, published 2026-09-29) — Crawler and Googler read a page's text with a stack of open tags instead of a counter, so a void element, an omitted `</head>` or a stray `<svg/>` can no longer swallow the rest of the page, and a plain-text safety net replaces any parse that kept less than a quarter of the page's text — and logs a WARNING saying so. That in turn carries two tags with no published release of their own: **`v1.72.3`** (`87db1df8`) — the chat avatar's lips now open and close clearly while she speaks, never wider than her own open-mouth portrait, plus a small refinement of the general prompt — and **`v1.72.2`** (`524a67ff`) — Googler and Crawler became block- and hang-proof: one deadline bounds every run, a CAPTCHA, bot wall or rate limit is reported as `blocked` instead of being read as content, and a search or crawl that read nothing says so plainly instead of returning silence. Those stand on **`v1.72.1`** (`df709d78`, published 2026-09-28): the REAL context gauge — the ring beside the message box shows Ollama's own token count for the exact request (`N tokens REAL`), exact in both one-shot and Multi-Turn — plus the removal of the one-shot System-Metrics "No system context required for this question." line. It follows `v1.72.0` (tag at `e3668a47`, published 2026-09-28): the direct chat microphone and the **Config ▸ Mic** settings. `v1.71.0` (`512973fb`) predates the microphone and has no published release. Runtime version comes from the resolver; feature availability also depends on build contents. Right after the `v1.75.0` tag, commit `70aeeb87` on `main` (2026-10-03; not in a tag yet, so a source run reports 1.75.0) added the **Self-modify** switch. The Self-modify switch and the v1.75.0 Compact switch are the first two entries below.
 

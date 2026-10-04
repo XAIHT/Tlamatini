@@ -1,0 +1,1409 @@
+diff --git a/CLAUDE.md b/CLAUDE.md
+index 3650588e..9a7b7975 100644
+--- a/CLAUDE.md
++++ b/CLAUDE.md
+@@ -846,7 +846,9 @@ Coverage: `agent/test_dialog_dismissal_policy.py` (**35 tests** — bubble phase
+ 
+ ## 🧩 Prompt Flow Panel — a diagram editor for chains of prompts (2026-09-25, NOT YET COMMITTED)
+ 
+-A separate, login-protected page at **`/agent/prompt_flow_panel/`** (view `views.prompt_flow_panel`, URL name `prompt_flow_panel`), opened from the chat navbar's **Panels** menu (**Panels ▸ Prompt Flow Panel**, beside **Panels ▸ Agentic Control Panel**) and from **File ▸ Prompt Flow Panel** in the Agentic Control Panel (both `target="_blank"`). The user draws a flow of seven operation shapes — Prompt, Programmed Prompt, Decision (Yes/No), Feed embeddings, Flush embeddings, Clean History, User Commentary — joined by connections, saves/opens it as a versioned JSON **`.fpmt`** document (JSON `format: "tlamatini-prompting-flow"`, `version: 1`), and plays it against the configured model stack. Opening a file never runs it.
++A separate, login-protected page at **`/agent/prompt_flow_panel/`** (view `views.prompt_flow_panel`, URL name `prompt_flow_panel`), opened from the chat navbar's **Panels** menu (**Panels ▸ Prompt Flow Panel**, beside **Panels ▸ Agentic Control Panel**) and from **File ▸ Prompt Flow Panel** in the Agentic Control Panel (both `target="_blank"`). The user draws a flow of seven operation shapes — Prompt, Programmed Prompt, Decision (Yes/No), Feed embeddings, Flush embeddings, Clean History, User Input, plus static User Commentary — joined by connections, saves/opens it as a versioned JSON **`.fpmt`** document (JSON `format: "tlamatini-prompting-flow"`, `version: 2`; version 1 imports migrate the executable commentary to User Input), and plays it against the configured model stack. Opening a file never runs it.
++
++**Commentary/Input split (2026-10-03):** `user_input` preserves the old reply operation and uses Angela's notched-top, downward-point reference figure. `user_commentary` is a static speech bubble: double-click/Enter edits text in place; Configure chooses basic colors, fonts, size, bold/italic/alignment and dimensions; its handle resizes with zoom-aware deltas and one-step Undo/Redo. Notes save/open/recover in full with other assets, never connect, never become Start and never affect playback/history/step counts. File version 2 distinguishes them; version 1 files/drafts migrate executable commentary to User Input with IDs, settings and connections intact. Visible regression: `scripts/prompt_flow_commentary_visible.py`.
+ 
+ **⚠️ The extension is `.fpmt` ("flow prompt"), NOT `.pmt` (changed 2026-09-25)** — `.pmt` already belongs to the plain-text system prompts (`agent/prompt.pmt`, `flowhypervisor/monitoring-prompt.pmt`), and sharing it invited exactly the confusion the editor then had to reject. Where the extension lives: `prompt-flow-panel-model.js` (`EXTENSION = '.fpmt'`, `isFlowFilename` = `/\.fpmt$/i`, and `flowFilename()` converts a legacy `name.pmt` to `name.fpmt` — so an old browser draft or a typed `x.pmt` save name comes back as `.fpmt`), the page's `<input accept=".fpmt">` and **Open .fpmt… / Save as .fpmt…** menu items, the open-time guard (*"Choose a .fpmt Prompt Flow Panel file."* — a `.pmt` file, including `prompt.pmt` itself, is refused), and the backend's error text in `services/prompt_flow_panel.py` + the consumer. The shipped example is **`docs/examples/prompting-kickoff.fpmt`** (the old `.pmt` copy is gone). `.fpmt` is registered as TEXT in `rag/binary_guard.py`, as a canvas-viewable type in `agent_page_canvas.js`, as a scrubbable type in `build_complete_public_release.py`, and in `doc_generation/complete_project_docs.py`. ⚠️ **The JSON `format` string deliberately stayed `tlamatini-prompting-flow`** — a rename of the EXTENSION must never invalidate the CONTENTS of flows users already saved. `STATIC_VERSION` carries the `-prompt-flow-panel-12-node-gestures` suffix; read the live value in `tlamatini/settings.py` before changing it. There is **no Windows file association** for `.fpmt` (only `.flw` has one); double-clicking a `.fpmt` does nothing yet. Visible coverage: `scripts/prompt_flow_extension_visible.py` (15 checkpoints — menus + file filter, default/typed/legacy save names, uppercase + BOM + Unicode, a real reopened-file playback, the bundled example, invalid JSON, an old `.pmt`, `prompt.pmt` itself, wrong version, >5 MiB, New + generated example, a recovered browser draft, and the Help text that tells the two formats apart). Its log (`Temp/fpmt-extension-visible/console.log`, 2026-09-25 16:07) records **all 15 checkpoints PASS, exit code 0**, after an earlier run failed at the example's filename check (the title carries a `•` dirty marker). The same log's `agent.test_binary_guard` run then went `OK` (46 tests); its 5 `test_documentation_mentions_the_feature` failures happened only in a copied runtime under `Temp/` that has no docs beside it — not a real regression.
+ 
+@@ -866,7 +868,7 @@ A separate, login-protected page at **`/agent/prompt_flow_panel/`** (view `views
+ 3. **Carriage is explicit on both mechanisms.** `build.py` names the three backend modules plus the check command as hidden imports / frozen-required modules; `build_runtime_assets.py` lists the CSS + both JS files in `REQUIRED_STATIC` and the template, `docs/prompting-flow-designer.md` and `docs/examples/prompting-kickoff.fpmt` in `ROOT_SOURCES` (+ its install-root floor list); `build.py` copies the example to `dist/manage/docs/examples/`; `copy_source_assets.py` lists them in `REQUIRED_SNAPSHOT_FILES`; `test_prompt_flow_panel_carriage.py` pins the `.fpmt` path. Both inclusion sweeps passed CLEAN after the `.fpmt` rename (2026-09-25), and a kept snapshot physically contained `prompting-kickoff.fpmt` and no `.pmt` copy.
+ 4. ⚠️ **Commit the whole feature together.** On 2026-09-25 all 22 of its new files (backend, frontend, tests, the visible scripts incl. `scripts/prompt_flow_extension_visible.py`, `docs/prompting-flow-designer.md`, `docs/examples/prompting-kickoff.fpmt`) were UNTRACKED. `build_runtime_assets.py` REQUIRES the two docs files, so a release built from a clean clone or a tag would fail — and a self-update can only deliver what a release contains.
+ 5. **One name survives from the first draft: the guide's FILENAME.** The feature was drafted on 2026-09-23 as the "Prompting Flow Designer" (`prompting_flow_designer.html`, `/ws/prompting-flow/`, `check_prompting_flow`, `.pmt`). Every doc now uses the real names, but the guide is still `docs/prompting-flow-designer.md` because `build.py`, `build_runtime_assets.py`, `copy_source_assets.py` and `test_prompt_flow_panel_carriage.py` pin that exact path, and it ships to users. Rename it only by changing all four in the same pass. The 2026-09-23 entry in `recent-fixes.md` keeps the old names on purpose (it is history) under a "Renamed 2026-09-25" banner. Full contract: `docs/claude/frontend.md` → *Prompt Flow Panel*, `docs/claude/architecture.md` → *Prompt Flow Panel runtime*, `docs/claude/multi-turn.md` → *Multi-Turn and ACPX inside the Prompt Flow Panel*.
+-6. **Both panels share canvas mechanics.** `flow-canvas-interactions.js` and `flow_canvas.css` own triangle highlighting, connection capture/cancellation, curve geometry, wire hover/selection glow, Fit/zoom, context-menu placement and divider gestures. Keep free dragging, Ctrl/Meta-drag duplication, modifier/marquee selection, keyboard editing and one-step Undo/Redo aligned. Use gold SVG contour glow for selected Prompt Flow figures; playback keeps node status colors, while wire hover/selection feedback takes precedence over traversed-wire green. Load the shared stylesheet after panel styles and before `dialog_theme.css`. Keep seven operations and no Connection tool. Current cache suffix: `-prompt-flow-panel-12-node-gestures`. The foreground `scripts/prompt_flow_connections_visible.py` run passed all 30 comparison checkpoints on 2026-09-26; `scripts/acp_editor_visible.py` passed 17 regressions.
++6. **Both panels share canvas mechanics.** `flow-canvas-interactions.js` and `flow_canvas.css` own triangle highlighting, connection capture/cancellation, curve geometry, wire hover/selection glow, Fit/zoom, context-menu placement and divider gestures. Keep free dragging, Ctrl/Meta-drag duplication, modifier/marquee selection, keyboard editing and one-step Undo/Redo aligned. Use gold SVG contour glow for selected Prompt Flow figures; playback keeps node status colors, while wire hover/selection feedback takes precedence over traversed-wire green. Load the shared stylesheet after panel styles and before `dialog_theme.css`. Keep seven executable operations, a separate static User Commentary annotation, and no Connection tool. Current cache suffix: `-prompt-flow-panel-12-node-gestures`. The foreground `scripts/prompt_flow_connections_visible.py` run passed all 30 comparison checkpoints on 2026-09-26; `scripts/acp_editor_visible.py` passed 17 regressions.
+ 
+ ---
+ 
+diff --git a/Tlamatini/agent/Tlamatini.md b/Tlamatini/agent/Tlamatini.md
+index 1e674fcc..3fa477d6 100644
+--- a/Tlamatini/agent/Tlamatini.md
++++ b/Tlamatini/agent/Tlamatini.md
+@@ -90,7 +90,7 @@ External services you *talk to* but do **not** open: Ollama (`11434`), Anthropic
+ | `/agent/welcome/` | `welcome.html` | Post-login landing. **Pressing ENTER goes straight to the chat** (2026-09-10, `welcome_enter_default.js`) — nothing has to be clicked or tabbed first | login required |
+ | `/agent/agent/` | `agent_page.html` | **Chat UI** — toolbar: Multi-Turn · Exec Report · ACPX · Ask Execs · Step-by-Step · Internet. Its canvas also opens **PDFs** through the vendored PDF.js viewer and can turn one into context (§1, `docs/pdf-canvas.md`) | login required |
+ | `/agent/agentic_control_panel/` | `agentic_control_panel.html` | **Visual ACP Workflow Designer** — drag-drop the 89 agents (with a search box), save/load `.flw`. Since 2026-09-25 it has an editor toolbar: Undo/Redo, Configure, Duplicate, Delete, Starters, Flow settings, zoom −/+/Fit, and a Help entry | login required |
+-| `/agent/prompt_flow_panel/` | `prompt_flow_panel.html` | **Prompt Flow Panel** (2026-09-25) — draw a chain of PROMPTS (Prompt, Programmed Prompt, Decision, Feed/Flush embeddings, Clean History, User Commentary), save it as a **`.fpmt`** file and play it against your own model stack over `ws/prompt-flow-panel/`. Each run has its own conversation and embeddings. Guide: `docs/prompting-flow-designer.md` | login required |
++| `/agent/prompt_flow_panel/` | `prompt_flow_panel.html` | **Prompt Flow Panel** (2026-09-25) — draw a chain of PROMPTS (Prompt, Programmed Prompt, Decision, Feed/Flush embeddings, Clean History, User Input, plus static User Commentary notes), save it as a **`.fpmt`** file and play it against your own model stack over `ws/prompt-flow-panel/`. Each run has its own conversation and embeddings. Guide: `docs/prompting-flow-designer.md` | login required |
+ 
+ **Where the user finds each page (chat navbar, reorganized 2026-09-25):** Open · Save · Context · **Panels** (Agentic Control Panel, Prompt Flow Panel, and Admin Panel for staff) · ACPX-Skills · External · **Config** (Configure MCPs, Configure Agents, Models, URLs, Contacts, Access Keys Wizard, Voice, Mic) · DB · Reconnect · About. There is **no** separate MCPs, Agents or Admin menu any more — if a user asks where "Configure Agents" or "Configure MCPs" went, the answer is **Config**; if they ask how to open the canvas, the answer is **Panels ▸ Agentic Control Panel**. The Agentic Control Panel's own **File** menu also links to the Prompt Flow Panel. ⚠️ **`.pmt` is YOUR system-prompt format** (`prompt.pmt`, `monitoring-prompt.pmt`); a Prompt Flow Panel diagram is a **`.fpmt`** file, and the panel refuses to open a `.pmt`.
+ 
+diff --git a/Tlamatini/agent/management/commands/check_prompt_flow_panel.py b/Tlamatini/agent/management/commands/check_prompt_flow_panel.py
+index fa071bb6..a7627e37 100644
+--- a/Tlamatini/agent/management/commands/check_prompt_flow_panel.py
++++ b/Tlamatini/agent/management/commands/check_prompt_flow_panel.py
+@@ -59,8 +59,9 @@ async def check_websocket():
+             raise CommandError('Prompt Flow Panel websocket did not become ready')
+         flow = {'format': FORMAT, 'version': VERSION, 'name': 'Offline release check',
+                 'start': 'comment', 'nodes': [
+-                    {'id': 'comment', 'type': 'user_commentary', 'config': {'text': 'Release check'}},
++                    {'id': 'comment', 'type': 'user_input', 'config': {'text': 'Release check'}},
+                     {'id': 'clean', 'type': 'clean_history'},
++                    {'id': 'note', 'type': 'user_commentary', 'config': {'text': 'Static release-check note'}},
+                 ], 'edges': [{'id': 'edge', 'source': 'comment', 'target': 'clean'}]}
+         await communicator.send_input({'type': 'websocket.receive', 'text': json.dumps({
+             'action': 'start', 'flow': flow})})
+diff --git a/Tlamatini/agent/services/prompt_flow_panel.py b/Tlamatini/agent/services/prompt_flow_panel.py
+index 5d0e1316..248cd4b2 100644
+--- a/Tlamatini/agent/services/prompt_flow_panel.py
++++ b/Tlamatini/agent/services/prompt_flow_panel.py
+@@ -16,12 +16,14 @@ from datetime import datetime, timezone
+ 
+ # Keep the JSON contract stable when existing flow files are renamed to .fpmt.
+ FORMAT = "tlamatini-prompting-flow"
+-VERSION = 1
++VERSION = 2
+ MAX_FILE_BYTES = 5 * 1024 * 1024
+ OPERATIONS = {
+     "prompt", "programmed_prompt", "decision", "feed_embeddings",
+-    "flush_embeddings", "clean_history", "user_commentary",
++    "flush_embeddings", "clean_history", "user_input", "user_commentary",
+ }
++COMMENT_COLORS = {"#fbcfe8", "#fef3c7", "#dcfce7", "#dbeafe", "#ede9fe", "#ffedd5", "#ffffff", "#e5e7eb"}
++COMMENT_FONTS = {"Nunito", "Arial", "Verdana", "Georgia", "Times New Roman", "Courier New"}
+ COMPARISONS = {"contains", "not_contains", "equals", "is_empty", "user"}
+ 
+ 
+@@ -63,8 +65,9 @@ def validate_flow(payload, *, playable=False):
+     """Return a fresh, allowlisted document; do not mutate input or trust IDs."""
+     if not isinstance(payload, dict) or payload.get("format") != FORMAT:
+         raise FlowError("Open a Prompt Flow Panel .fpmt document (legacy prompt.pmt text is not a diagram).")
+-    if payload.get("version") != VERSION:
+-        raise FlowError("Unsupported .fpmt version. This panel supports version 1.")
++    legacy = payload.get("version") == 1
++    if payload.get("version") not in (1, VERSION):
++        raise FlowError("Unsupported .fpmt version. This panel supports versions 1 and 2.")
+     nodes, edges = payload.get("nodes"), payload.get("edges")
+     if not isinstance(nodes, list) or len(nodes) > 500 or not isinstance(edges, list) or len(edges) > 1000:
+         raise FlowError("A flow may contain up to 500 operations and 1,000 connections.")
+@@ -83,12 +86,29 @@ def validate_flow(payload, *, playable=False):
+         if not re.fullmatch(r"[A-Za-z0-9_-]+", node_id) or node_id in known:
+             raise FlowError("Operation IDs must be unique letters, digits, underscores or dashes.")
+         kind = node.get("type")
++        if legacy and kind == "user_commentary":
++            kind = "user_input"
+         if kind not in OPERATIONS:
+             raise FlowError(f"Unknown operation: {kind!r}.")
+         config = node.get("config", {})
+         if not isinstance(config, dict):
+             raise FlowError("Operation settings must be an object.")
+         clean = {"text": _text(config.get("text", ""), "Operation text")}
++        if kind == "user_commentary":
++            clean.update(
++                width=_number(config.get("width", 320), "Comment width", 200, 2400),
++                height=_number(config.get("height", 200), "Comment height", 128, 2400),
++                font_size=_number(config.get("font_size", 16), "Comment font size", 10, 48),
++                color=_text(config.get("color", "#fbcfe8"), "Comment color", 20),
++                font_family=_text(config.get("font_family", "Nunito"), "Comment font", 80),
++                align=_text(config.get("align", "left"), "Comment alignment", 10),
++            )
++            if clean["color"] not in COMMENT_COLORS or clean["font_family"] not in COMMENT_FONTS or clean["align"] not in {"left", "center", "right"}:
++                raise FlowError("Choose a supported comment color, font and alignment.")
++            for key in ("bold", "italic"):
++                clean[key] = config.get(key, False)
++                if not isinstance(clean[key], bool):
++                    raise FlowError(f"Comment {key} must be true or false.")
+         if kind in {"prompt", "programmed_prompt"}:
+             for key in ("multi_turn", "acpx"):
+                 clean[key] = config.get(key, False)
+@@ -122,6 +142,8 @@ def validate_flow(payload, *, playable=False):
+             "config": clean,
+         }
+         known[node_id] = item
++        if legacy and node.get("type") == "user_commentary" and item["label"] == "User Commentary":
++            item["label"] = "User Input"
+         result["nodes"].append(item)
+     slots, edge_ids = set(), set()
+     for edge in edges:
+@@ -134,6 +156,8 @@ def validate_flow(payload, *, playable=False):
+         if not isinstance(source, str) or not isinstance(target, str) or source not in known or target not in known:
+             raise FlowError("Every connection must join existing operations.")
+         branch = edge.get("branch", "next")
++        if any(known[key]["type"] == "user_commentary" for key in (source, target)):
++            raise FlowError("Static User Commentary assets cannot have connections.")
+         allowed = {"yes", "no"} if known[source]["type"] == "decision" else {"next"}
+         if branch not in allowed or (source, branch) in slots:
+             raise FlowError("Each output accepts one connection. Decisions have separate Yes and No outputs.")
+@@ -142,6 +166,8 @@ def validate_flow(payload, *, playable=False):
+         result["edges"].append({"id": edge_id, "source": source, "target": target, "branch": branch})
+     if result["start"] is not None and (not isinstance(result["start"], str) or result["start"] not in known):
+         raise FlowError("The start operation does not exist.")
++    if result["start"] is not None and known[result["start"]]["type"] == "user_commentary":
++        raise FlowError("A static User Commentary cannot be the Start operation.")
+     if playable:
+         if not nodes or result["start"] is None:
+             raise FlowError("Add an operation and choose where the flow starts.")
+@@ -152,7 +178,7 @@ def validate_flow(payload, *, playable=False):
+                 continue
+             reachable.add(current)
+             pending.extend(e["target"] for e in result["edges"] if e["source"] == current)
+-        if len(reachable) != len(nodes):
++        if len(reachable) != sum(n["type"] != "user_commentary" for n in result["nodes"]):
+             raise FlowError("Some operations are unreachable from Start. Connect them or choose another Start.")
+         for node in nodes:
+             if node["type"] == "decision" and not all((node["id"], branch) in slots for branch in ("yes", "no")):
+@@ -260,7 +286,7 @@ class FlowRunner:
+             elif kind == "clean_history":
+                 await self.runtime.clean_history()
+                 self.last_output = ""
+-            elif kind == "user_commentary":
++            elif kind == "user_input":
+                 output = await self.ask_user(node, "commentary")
+                 await self.runtime.comment(output)
+             elif kind == "decision":
+diff --git a/Tlamatini/agent/static/agent/css/prompt_flow_panel.css b/Tlamatini/agent/static/agent/css/prompt_flow_panel.css
+index a8bfe963..abf2b31d 100644
+--- a/Tlamatini/agent/static/agent/css/prompt_flow_panel.css
++++ b/Tlamatini/agent/static/agent/css/prompt_flow_panel.css
+@@ -50,6 +50,15 @@
+ .pmt-node[data-type="flush_embeddings"] .pmt-node-label { left: 49px; right: 49px; top: 18px; bottom: 57px; }
+ .pmt-node[data-type="programmed_prompt"] .pmt-node-label { right: 48px; }
+ .pmt-node[data-type="clean_history"] .pmt-node-label { left: 47px; right: 47px; }
++.pmt-node[data-type="user_input"] .pmt-node-label { left: 62px; right: 62px; top: 43px; bottom: 35px; }
++.pmt-comment-text { position: absolute; inset: 28px 24px 44px; color: #1f2937; white-space: pre-wrap; overflow-wrap: anywhere; overflow: hidden; line-height: 1.45; cursor: inherit; }
++.pmt-comment-text.placeholder { opacity: .65; }
++.pmt-comment-editor { width: calc(100% - 48px); height: calc(100% - 72px); border: 1px dashed #946780; background: transparent; border-radius: 3px; resize: none; padding: 4px; cursor: text; user-select: text; }
++.pmt-node.editing { z-index: 6; cursor: default; }
++.pmt-comment-editor-tools { position: absolute; top: -30px; right: 5px; display: flex; gap: 5px; padding: 2px; background: #303039; border-radius: 4px; }
++.pmt-comment-editor-tools button { background: #41414e; color: #fff; border: 1px solid #656570; border-radius: 3px; font-size: 12px; }
++.pmt-comment-resize { position: absolute; bottom: 25px; right: 8px; border: 0; border-radius: 4px; background: #1f29371a; color: #1f2937; cursor: nwse-resize; font-size: 16px; line-height: 1; padding: 4px; }
++.pmt-node[data-type="user_commentary"] { color: #1f2937; }
+ /* Geometry/colors come from ACP's input/output-triangle and output-label rules.
+    Reset only native button chrome; highlighting never changes the port size. */
+ .pmt-start-badge { position: absolute; top: -14px; left: 76px; color: #68e0bd; font-size: 10px; letter-spacing: .12em; }
+diff --git a/Tlamatini/agent/static/agent/js/prompt-flow-panel-model.js b/Tlamatini/agent/static/agent/js/prompt-flow-panel-model.js
+index e30173a6..7798dd45 100644
+--- a/Tlamatini/agent/static/agent/js/prompt-flow-panel-model.js
++++ b/Tlamatini/agent/static/agent/js/prompt-flow-panel-model.js
+@@ -6,6 +6,9 @@
+     // The JSON contract stays stable when a flow file is renamed to .fpmt.
+     const FORMAT = 'tlamatini-prompting-flow';
+     const EXTENSION = '.fpmt';
++    const VERSION = 2;
++    const commentColors = [['#fbcfe8', 'Pink'], ['#fef3c7', 'Yellow'], ['#dcfce7', 'Green'], ['#dbeafe', 'Blue'], ['#ede9fe', 'Purple'], ['#ffedd5', 'Orange'], ['#ffffff', 'White'], ['#e5e7eb', 'Grey']];
++    const commentFonts = ['Nunito', 'Arial', 'Verdana', 'Georgia', 'Times New Roman', 'Courier New'];
+     const isFlowFilename = name => /\.fpmt$/i.test(name);
+     // Migrate old flow draft/save names without changing system prompt files.
+     const flowFilename = name => isFlowFilename(name) ? name : name.replace(/\.pmt$/i, '') + EXTENSION;
+@@ -17,7 +20,8 @@
+         feed_embeddings: { label: 'Feed embeddings', color: '#77d8b2', fill: '#285849', path: 'M100 4L196 120H4Z', input: [100 - 96 * 60 / 116, 64], output: [100 + 96 * 60 / 116, 64], help: 'Add text to this run’s retrieval context.' },
+         flush_embeddings: { label: 'Flush embeddings', color: '#f0a88b', fill: '#684237', path: 'M4 8H196L100 124Z', input: [4 + 96 * 56 / 116, 64], output: [196 - 96 * 56 / 116, 64], help: 'Remove this run’s embeddings while retaining its conversation.' },
+         clean_history: { label: 'Clean History', color: '#90cddc', fill: '#315665', path: 'M4 14H196L160 114H40Z', input: [22, 64], output: [178, 64], help: 'Clear this run’s conversation and last output; keep its embeddings.' },
+-        user_commentary: { label: 'User Commentary', color: '#eaaed6', fill: '#653d59', path: 'M28 10H172Q196 10 196 34V82Q196 106 172 106H70L48 124L33 106H28Q4 106 4 82V34Q4 10 28 10Z', input: [4, 64], output: [196, 64], help: 'Pause for a user reply and add it to the conversation.' },
++        user_input: { label: 'User Input', color: '#eaaed6', fill: '#653d59', path: 'M52 4L100 38L148 4V88L100 124L52 88Z', input: [52, 64], output: [148, 64], help: 'Pause for a user reply and add it to the conversation.' },
++        user_commentary: { label: 'User Commentary', color: '#eaaed6', fill: '#653d59', path: 'M28 10H172Q196 10 196 34V82Q196 106 172 106H70L48 124L33 106H28Q4 106 4 82V34Q4 10 28 10Z', static: true, help: 'A static review note. Double-click to write in the bubble; Configure changes its colors and font. It never runs.' },
+     };
+     const copy = value => JSON.parse(JSON.stringify(value));
+     function uniqueLabel(label, used) {
+@@ -30,18 +34,22 @@
+         return candidate;
+     }
+     const id = () => 'pmt_' + (globalThis.crypto?.randomUUID?.() || Date.now().toString(36) + Math.random().toString(36).slice(2));
+-    const blank = () => ({ format: FORMAT, version: 1, name: 'Untitled', start: null, max_steps: 500, nodes: [], edges: [] });
++    const blank = () => ({ format: FORMAT, version: VERSION, name: 'Untitled', start: null, max_steps: 500, nodes: [], edges: [] });
++    const isComment = n => n.type === 'user_commentary';
++    const size = n => isComment(n) ? { width: n.config.width, height: n.config.height } : { width: 200, height: 128 };
+     function node(type, x, y) {
+         const config = { text: '' };
+         if (type === 'prompt' || type === 'programmed_prompt') Object.assign(config, { multi_turn: false, acpx: false });
+         if (type === 'programmed_prompt') Object.assign(config, { delay_seconds: 5, scheduled_at: '' });
+         if (type === 'decision') Object.assign(config, { comparison: 'contains', value: '', case_sensitive: false });
++        if (type === 'user_commentary') Object.assign(config, { width: 320, height: 200, color: '#fbcfe8', font_family: 'Nunito', font_size: 16, bold: false, italic: false, align: 'left' });
+         return { id: id(), type, label: operations[type].label, x, y, config };
+     }
+     function validate(value, playable = false) {
+         const fail = message => { throw new Error(message); };
+         if (!value || value.format !== FORMAT) fail('This is not a Prompt Flow Panel document. Legacy prompt.pmt text is not a diagram.');
+-        if (value.version !== 1) fail('Unsupported .fpmt version. This panel supports version 1.');
++        if (![1, VERSION].includes(value.version)) fail('Unsupported .fpmt version. This panel supports versions 1 and 2.');
++        const legacy = value.version === 1;
+         const flow = copy(value);
+         const text = (s, max, label) => { if (typeof s !== 'string' || s.length > max) fail(`${label} must be text of at most ${max.toLocaleString()} characters.`); return s; };
+         const number = (n, min, max, label) => { if (typeof n !== 'number' || !Number.isFinite(n) || n < min || n > max) fail(`${label} must be between ${min} and ${max}.`); return n; };
+@@ -52,10 +60,19 @@
+         const known = new Map(), slots = new Set(), edgeIds = new Set();
+         for (const n of flow.nodes) {
+             if (!n || typeof n.id !== 'string' || !/^[A-Za-z0-9_-]{1,80}$/.test(n.id) || known.has(n.id)) fail('Operation IDs must be unique letters, digits, underscores or dashes.');
++            if (legacy && n.type === 'user_commentary') { n.type = 'user_input'; if (n.label === 'User Commentary') n.label = 'User Input'; }
+             if (!Object.hasOwn(operations, n.type)) fail('Unknown operation type.');
+             text(n.label, 120, 'Label'); number(n.x, 0, 100000, 'X'); number(n.y, 0, 100000, 'Y');
+             if (!n.config || typeof n.config !== 'object' || Array.isArray(n.config)) fail('Missing operation settings.');
+             text(n.config.text, 100000, 'Operation text');
++            if (isComment(n)) {
++                const c = n.config;
++                for (const [key, fallback, min, max] of [['width', 320, 200, 2400], ['height', 200, 128, 2400], ['font_size', 16, 10, 48]]) { if (c[key] === undefined) c[key] = fallback; number(c[key], min, max, `Comment ${key}`); }
++                for (const [key, fallback] of [['color', '#fbcfe8'], ['font_family', 'Nunito'], ['align', 'left'], ['bold', false], ['italic', false]]) if (c[key] === undefined) c[key] = fallback;
++                if (!commentColors.some(([color]) => color === c.color) || !commentFonts.includes(c.font_family) || !['left', 'center', 'right'].includes(c.align)) fail('Choose a supported comment color, font and alignment.');
++                if (typeof c.bold !== 'boolean' || typeof c.italic !== 'boolean') fail('Comment style switches must be true or false.');
++                n.config = Object.fromEntries(['text', 'width', 'height', 'color', 'font_family', 'font_size', 'bold', 'italic', 'align'].map(key => [key, c[key]]));
++            }
+             if (['prompt', 'programmed_prompt'].includes(n.type)) {
+                 if (typeof n.config.multi_turn !== 'boolean' || typeof n.config.acpx !== 'boolean') fail('Prompt switches must be true or false.');
+                 if (n.config.acpx && !n.config.multi_turn) fail('ACPX requires Multi-Turn.');
+@@ -78,12 +95,14 @@
+             if (!e || typeof e.id !== 'string' || !/^[A-Za-z0-9_-]{1,80}$/.test(e.id) || edgeIds.has(e.id)) fail('Invalid or duplicate connection ID.');
+             edgeIds.add(e.id);
+             if (!known.has(e.source) || !known.has(e.target)) fail('A connection points to a missing operation.');
++            if (isComment(known.get(e.source)) || isComment(known.get(e.target))) fail('Static User Commentary assets cannot have connections.');
+             const allowed = known.get(e.source).type === 'decision' ? ['yes', 'no'] : ['next'];
+             const slot = `${e.source}:${e.branch}`;
+             if (!allowed.includes(e.branch) || slots.has(slot)) fail('Each output supports one connection; decisions use Yes and No.');
+             slots.add(slot);
+         }
+         if (flow.start !== null && !known.has(flow.start)) fail('The Start operation is missing.');
++        if (flow.start !== null && isComment(known.get(flow.start))) fail('A static User Commentary cannot be the Start operation.');
+         if (playable) {
+             if (!known.size || !flow.start) fail('Add an operation and choose Start.');
+             const reached = new Set(), pending = [flow.start];
+@@ -93,15 +112,15 @@
+                 reached.add(current);
+                 pending.push(...flow.edges.filter(e => e.source === current).map(e => e.target));
+             }
+-            if (reached.size !== known.size) fail('Some operations are unreachable from Start. Connect them or choose another Start.');
++            if (reached.size !== flow.nodes.filter(n => !isComment(n)).length) fail('Some operations are unreachable from Start. Connect them or choose another Start.');
+             for (const n of flow.nodes) if (n.type === 'decision' && !['yes', 'no'].every(b => slots.has(`${n.id}:${b}`))) fail('Connect both Yes and No outputs of every decision.');
+         }
+         // Keep the document a data contract, discarding any unrelated fields.
+-        return { format: FORMAT, version: 1, name: flow.name, start: flow.start, max_steps: flow.max_steps, nodes: flow.nodes.map(n => ({ id: n.id, type: n.type, label: n.label, x: n.x, y: n.y, config: n.config })), edges: flow.edges.map(e => ({ id: e.id, source: e.source, target: e.target, branch: e.branch })) };
++        return { format: FORMAT, version: VERSION, name: flow.name, start: flow.start, max_steps: flow.max_steps, nodes: flow.nodes.map(n => ({ id: n.id, type: n.type, label: n.label, x: n.x, y: n.y, config: n.config })), edges: flow.edges.map(e => ({ id: e.id, source: e.source, target: e.target, branch: e.branch })) };
+     }
+     function example() {
+         const flow = blank(); flow.name = 'Prompting kickoff';
+-        const a = node('user_commentary', 80, 60), b = node('decision', 80, 260), c = node('prompt', 370, 440), d = node('programmed_prompt', 40, 620);
++        const a = node('user_input', 80, 60), b = node('decision', 80, 260), c = node('prompt', 370, 440), d = node('programmed_prompt', 40, 620);
+         a.label = 'Choose a subject'; a.config.text = 'What would you like to explore? Include the word “code” to take the coding branch.';
+         b.label = 'About code?'; b.config.value = 'code';
+         c.label = 'Explain the code'; c.config.text = 'Explain this coding subject and give one short example: {{last_output}}';
+@@ -110,5 +129,5 @@
+         flow.edges = [{ id: id(), source: a.id, target: b.id, branch: 'next' }, { id: id(), source: b.id, target: c.id, branch: 'yes' }, { id: id(), source: b.id, target: d.id, branch: 'no' }];
+         return flow;
+     }
+-    window.PromptFlowPanelModel = Object.freeze({ FORMAT, EXTENSION, isFlowFilename, flowFilename, operations, copy, uniqueLabel, id, blank, node, validate, example });
++    window.PromptFlowPanelModel = Object.freeze({ FORMAT, VERSION, EXTENSION, commentColors, commentFonts, isComment, size, isFlowFilename, flowFilename, operations, copy, uniqueLabel, id, blank, node, validate, example });
+ })();
+diff --git a/Tlamatini/agent/static/agent/js/prompt-flow-panel.js b/Tlamatini/agent/static/agent/js/prompt-flow-panel.js
+index 5c19eeb6..3438d293 100644
+--- a/Tlamatini/agent/static/agent/js/prompt-flow-panel.js
++++ b/Tlamatini/agent/static/agent/js/prompt-flow-panel.js
+@@ -13,10 +13,14 @@
+     let selected = new Set(), selectedEdge = null;
+     const selectedEdges = new Set();
+     let zoom = 1, undo = [], redo = [], gesture = null, dirty = false;
++    let commentEditor = null;
+     let socket = null, connecting = null, runId = null, runState = 'idle', activeNode = null;
+     let inputDialog = null, internalClose = false, draftTimer = null, socketReady = false;
+     const nodeStates = new Map(), traversed = new Set();
+-    const editable = () => !['starting', 'running', 'paused', 'stopping'].includes(runState);
++    const commentarySizes = new WeakMap();
++    const nodeSize = node => commentarySizes.get(node) || M.size(node);
++    const playbackActive = () => ['starting', 'running', 'paused', 'stopping'].includes(runState);
++    const editable = () => !commentEditor && !playbackActive();
+     const status = message => { $id('pmt-status').textContent = message; };
+     const alertMessage = (message, title = 'Prompt Flow Panel') => window.tlmAlert(String(message), title);
+     const confirm = (message, detail = '') => window.tlmConfirm(message, detail, 'Prompt Flow Panel');
+@@ -72,8 +76,8 @@
+     }
+     const snap = value => Math.min(100000, Math.max(0, value));
+     function extent() {
+-        const width = Math.max(1000, viewport.clientWidth / zoom, ...flow.nodes.map(n => n.x + 350));
+-        const height = Math.max(700, viewport.clientHeight / zoom, ...flow.nodes.map(n => n.y + 300));
++        const width = Math.max(1000, viewport.clientWidth / zoom, ...flow.nodes.map(n => n.x + nodeSize(n).width + 150));
++        const height = Math.max(700, viewport.clientHeight / zoom, ...flow.nodes.map(n => n.y + nodeSize(n).height + 150));
+         world.style.width = `${width}px`; world.style.height = `${height}px`;
+         world.style.transform = `scale(${zoom})`;
+         content.style.width = `${width * zoom}px`; content.style.height = `${height * zoom}px`;
+@@ -101,7 +105,7 @@
+     }
+     function configureSelectedNode(node, event) {
+         event?.preventDefault();
+-        if (editable()) { resetSelection(); selected.add(node.id); render(); configureNode(node); }
++        if (editable()) { resetSelection(); selected.add(node.id); render(); if (M.isComment(node)) editCommentary(node); else configureNode(node); }
+     }
+     function showNodeMenu(node, event) {
+         event.preventDefault(); event.stopPropagation(); endGesture();
+@@ -140,6 +144,73 @@
+         }
+         if (connection.active) layer.append(connection.active.data.preview);
+     }
++    function fitCommentary(el, node, text) {
++        const width = node.config.width;
++        // Measure natural wrapped text at the chosen width, independently of zoom.
++        // Height is a minimum chosen by the user; content always fits in the bubble.
++        text.style.bottom = 'auto';
++        if (text.tagName === 'TEXTAREA') text.style.height = '0px';
++        const height = Math.max(node.config.height, Math.ceil(text.scrollHeight) + 76);
++        text.style.bottom = '';
++        if (text.tagName === 'TEXTAREA') text.style.height = '';
++        commentarySizes.set(node, { width, height });
++        el.style.width = `${width}px`; el.style.height = `${height}px`;
++        const graphic = el.querySelector('svg');
++        graphic.setAttribute('viewBox', `0 0 ${width} ${height}`);
++        graphic.style.setProperty('--pmt-fill', node.config.color);
++        graphic.style.setProperty('--pmt-color', '#946780');
++        graphic.querySelector('path').setAttribute('d', `M28 10H${width - 28}Q${width - 4} 10 ${width - 4} 34V${height - 46}Q${width - 4} ${height - 22} ${width - 28} ${height - 22}H70L48 ${height - 4}L33 ${height - 22}H28Q4 ${height - 22} 4 ${height - 46}V34Q4 10 28 10Z`);
++    }
++    function renderCommentary(el, node) {
++        const c = node.config, width = c.width;
++        el.style.width = `${width}px`;
++        const text = element('div', 'pmt-comment-text', c.text || 'Double-click to write a commentary');
++        text.classList.toggle('placeholder', !c.text);
++        Object.assign(text.style, { fontFamily: c.font_family, fontSize: `${c.font_size}px`, fontWeight: c.bold ? '700' : '400', fontStyle: c.italic ? 'italic' : 'normal', textAlign: c.align });
++        el.append(text);
++        fitCommentary(el, node, text);
++        const height = Math.min(2400, nodeSize(node).height);
++        const resize = element('button', 'pmt-comment-resize', '↘'); resize.type = 'button';
++        resize.title = 'Resize User Commentary'; resize.setAttribute('aria-label', resize.title); resize.disabled = !editable();
++        resize.addEventListener('pointerdown', event => {
++            event.preventDefault(); event.stopPropagation(); if (!editable() || event.button !== 0) return;
++            endGesture(); selected = new Set([node.id]); selectedEdges.clear(); selectedEdge = null;
++            gesture = { kind: 'resize', node, before: snapshot(), width, height, fromX: event.clientX, fromY: event.clientY, scale: zoom };
++            paintSelection();
++        });
++        resize.addEventListener('dblclick', event => event.stopPropagation());
++        el.append(resize);
++    }
++    function editCommentary(node) {
++        if (!editable()) return;
++        endGesture();
++        const el = [...nodesLayer.children].find(item => item.dataset.nodeId === node.id);
++        const display = el.querySelector('.pmt-comment-text');
++        const input = element('textarea', 'pmt-comment-text pmt-comment-editor');
++        input.value = node.config.text; input.maxLength = 100000;
++        input.setAttribute('aria-label', 'Static User Commentary text'); input.style.cssText = display.style.cssText;
++        display.replaceWith(input);
++        fitCommentary(el, node, input);
++        const controls = element('div', 'pmt-comment-editor-tools');
++        const done = element('button', '', 'Done'), cancel = element('button', '', 'Cancel');
++        done.type = cancel.type = 'button'; controls.append(done, cancel); el.append(controls);
++        commentEditor = { node, input }; el.classList.add('editing'); updateButtons();
++        function finish(save) {
++            const value = input.value; commentEditor = null;
++            if (save) mutate(() => { node.config.text = value; }); else render();
++            status(save ? 'Static commentary saved. Use Configure for colors and fonts.' : 'Commentary editing cancelled.');
++        }
++        done.addEventListener('click', () => finish(true)); cancel.addEventListener('click', () => finish(false));
++        input.addEventListener('pointerdown', event => event.stopPropagation());
++        input.addEventListener('dblclick', event => event.stopPropagation());
++        input.addEventListener('input', () => { fitCommentary(el, node, input); extent(); });
++        input.addEventListener('keydown', event => {
++            event.stopPropagation();
++            if (event.key === 'Escape') { event.preventDefault(); finish(false); }
++            else if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') { event.preventDefault(); finish(true); }
++        });
++        input.focus(); status('Write in the bubble. Done or Ctrl+Enter saves; Cancel or Escape discards this edit.');
++    }
+     function addPort(el, node, name, point) {
+         const direction = name === 'input' ? 'input' : 'output';
+         const slot = name === 'yes' ? ' output-1' : name === 'no' ? ' output-2' : '';
+@@ -177,28 +248,34 @@
+             el.dataset.nodeId = node.id; el.dataset.type = node.type; el.tabIndex = 0;
+             el.setAttribute('role', 'group'); el.setAttribute('aria-label', `${node.label}, ${info.label}`);
+             el.style.left = `${node.x}px`; el.style.top = `${node.y}px`; el.append(shape(node.type));
+-            const label = element('div', 'pmt-node-label'); label.append(element('strong', '', node.label));
+-            if (node.label !== info.label && !['decision', 'feed_embeddings', 'flush_embeddings'].includes(node.type)) label.append(element('small', '', info.label));
+-            el.append(label);
++            nodesLayer.append(el);
++            if (M.isComment(node)) renderCommentary(el, node);
++            else {
++                const label = element('div', 'pmt-node-label'); label.append(element('strong', '', node.label));
++                if (node.label !== info.label && !['decision', 'feed_embeddings', 'flush_embeddings'].includes(node.type)) label.append(element('small', '', info.label));
++                el.append(label);
++            }
+             if (flow.start === node.id) el.append(element('span', 'pmt-start-badge', 'START'));
+             if (state) el.append(element('span', 'pmt-node-status', state));
+-            addPort(el, node, 'input', info.input);
+-            if (node.type === 'decision') { addPort(el, node, 'yes', info.yes); addPort(el, node, 'no', info.no); }
+-            else addPort(el, node, 'next', info.output);
++            if (!M.isComment(node)) {
++                addPort(el, node, 'input', info.input);
++                if (node.type === 'decision') { addPort(el, node, 'yes', info.yes); addPort(el, node, 'no', info.no); }
++                else addPort(el, node, 'next', info.output);
++            }
+             el.addEventListener('pointerdown', event => nodeDown(event, node));
+             el.addEventListener('dblclick', event => configureSelectedNode(node, event));
+             el.addEventListener('contextmenu', event => showNodeMenu(node, event));
+             el.addEventListener('keydown', event => nodeKey(event, node));
+-            nodesLayer.append(el);
+         }
+         renderEdges(); extent();
+         $id('pmt-empty').hidden = flow.nodes.length > 0;
+         $id('filename').textContent = `${filename}${dirty ? ' •' : ''}`;
+         document.title = `${dirty ? '• ' : ''}${flow.name} — Prompt Flow Panel`;
+-        $id('pmt-count').textContent = `${flow.nodes.length} operations · ${flow.edges.length} connections`;
++        const operations = flow.nodes.filter(n => !M.isComment(n));
++        $id('pmt-count').textContent = `${operations.length} operations · ${flow.nodes.length - operations.length} comments · ${flow.edges.length} connections`;
+         const select = $id('pmt-start'); select.replaceChildren();
+-        if (!flow.nodes.length) select.append(new Option('Add an operation', ''));
+-        for (const n of flow.nodes) select.append(new Option(n.label, n.id));
++        if (!operations.length) select.append(new Option('Add an operation', ''));
++        for (const n of operations) select.append(new Option(n.label, n.id));
+         select.value = flow.start || ''; select.disabled = !editable();
+         updateButtons();
+     }
+@@ -213,7 +290,8 @@
+             if (action === 'configure') button.disabled = !editable() || selected.size + selectedEdges.size !== 1;
+             if (action === 'duplicate') button.disabled = !editable() || !selected.size;
+             if (action === 'delete') button.disabled = !editable() || !(selected.size || selectedEdges.size);
+-            if (action === 'play') button.disabled = !socketReady || !editable() || !flow.nodes.length;
++            if (action === 'play') button.disabled = !socketReady || !editable() || !flow.nodes.some(n => !M.isComment(n));
++            if (action === 'save') button.disabled = !!commentEditor;
+             if (action === 'reconnect') button.disabled = !!connecting || socketReady;
+             if (action === 'pause') { button.disabled = !['running', 'paused'].includes(runState); button.textContent = runState === 'paused' ? '▶ Resume' : 'Ⅱ Pause'; }
+             if (action === 'stop') button.disabled = !['running', 'paused'].includes(runState);
+@@ -240,7 +318,7 @@
+             const n = M.node(type, snap(point.x), snap(point.y));
+             const labels = new Set(flow.nodes.map(node => node.label));
+             if (labels.has(n.label)) n.label = M.uniqueLabel(n.label, labels);
+-            flow.nodes.push(n); flow.start ||= n.id; selected = new Set([n.id]); selectedEdge = null; selectedEdges.clear();
++            flow.nodes.push(n); if (!M.isComment(n)) flow.start ||= n.id; selected = new Set([n.id]); selectedEdge = null; selectedEdges.clear();
+         });
+         status('Operation added. Double-click it to configure.');
+     }
+@@ -313,7 +391,7 @@
+         mutate(() => {
+             flow.nodes = flow.nodes.filter(n => !selected.has(n.id));
+             flow.edges = flow.edges.filter(e => !selectedEdges.has(e.id) && !selected.has(e.source) && !selected.has(e.target));
+-            if (selected.has(flow.start)) flow.start = flow.nodes[0]?.id || null;
++            if (selected.has(flow.start)) flow.start = flow.nodes.find(n => !M.isComment(n))?.id || null;
+             resetSelection();
+         });
+     }
+@@ -378,9 +456,22 @@
+             form.append(element('p', '', M.operations[kind].help));
+             field('label', 'Label', 'text', draft.label).maxLength = 120;
+             if (!['flush_embeddings', 'clean_history'].includes(kind)) {
+-                const title = kind === 'decision' ? 'Question (when asking the user)' : kind === 'user_commentary' ? 'Message to the user' : kind === 'feed_embeddings' ? 'Text to embed' : 'Prompt';
++                const title = kind === 'decision' ? 'Question (when asking the user)' : kind === 'user_input' ? 'Message to the user' : kind === 'user_commentary' ? 'Static commentary' : kind === 'feed_embeddings' ? 'Text to embed' : 'Prompt';
+                 field('text', title, 'textarea', config.text).maxLength = 100000;
+-                form.append(element('small', '', 'Use {{last_output}} to insert the previous prompt answer or user reply.'));
++                if (kind !== 'user_commentary') form.append(element('small', '', 'Use {{last_output}} to insert the previous prompt answer or user reply.'));
++            }
++            if (kind === 'user_commentary') {
++                const color = field('color', 'Bubble color', 'select', config.color, M.commentColors);
++                const updateColor = () => { color.style.backgroundColor = color.value; color.style.color = '#1f2937'; };
++                color.addEventListener('change', updateColor); updateColor();
++                field('font_family', 'Font', 'select', config.font_family, M.commentFonts.map(font => [font, font]));
++                const fontSize = field('font_size', 'Font size (px)', 'number', config.font_size); fontSize.min = 10; fontSize.max = 48; fontSize.step = 'any';
++                field('bold', 'Bold', 'checkbox', config.bold); field('italic', 'Italic', 'checkbox', config.italic);
++                field('align', 'Text alignment', 'select', config.align, [['left', 'Left'], ['center', 'Center'], ['right', 'Right']]);
++                for (const [name, label, min] of [['width', 'Bubble width', 200], ['height', 'Bubble height', 128]]) {
++                    const input = field(name, label, 'number', config[name]); input.min = min; input.max = 2400; input.step = 'any';
++                }
++                form.append(element('small', '', 'Double-click the bubble to write directly in it. Drag its bottom-right handle to resize. Bubbles grow to contain all text, without scrollbars. Height is a minimum.'));
+             }
+             if (['prompt', 'programmed_prompt'].includes(kind)) {
+                 field('multi_turn', 'Multi-Turn — allow enabled tools and agents', 'checkbox', config.multi_turn);
+@@ -403,8 +494,9 @@
+             if (!editable()) throw new Error('Stop playback before editing.');
+             draft.label = fields.label.value.trim() || M.operations[kind].label;
+             if (fields.text) config.text = fields.text.value;
+-            for (const name of ['multi_turn', 'acpx', 'case_sensitive']) if (fields[name]) config[name] = fields[name].checked;
+-            for (const name of ['comparison', 'value']) if (fields[name]) config[name] = fields[name].value;
++            for (const name of ['multi_turn', 'acpx', 'case_sensitive', 'bold', 'italic']) if (fields[name]) config[name] = fields[name].checked;
++            for (const name of ['comparison', 'value', 'color', 'font_family', 'align']) if (fields[name]) config[name] = fields[name].value;
++            for (const name of ['font_size', 'width', 'height']) if (fields[name]) config[name] = Number(fields[name].value);
+             if (fields.delay_seconds) config.delay_seconds = Number(fields.delay_seconds.value);
+             if (fields.scheduled_at) config.scheduled_at = fields.scheduled_at.value ? new Date(fields.scheduled_at.value).toISOString() : '';
+             const candidate = M.copy(flow); candidate.nodes[candidate.nodes.findIndex(n => n.id === node.id)] = draft;
+@@ -415,7 +507,7 @@
+         if (!editable()) return;
+         const source = flow.nodes.find(n => n.id === edge.source);
+         formDialog('Configure connection', ({ field }) => {
+-            field('target', 'Destination', 'select', edge.target, flow.nodes.map(n => [n.id, n.label]));
++            field('target', 'Destination', 'select', edge.target, flow.nodes.filter(n => !M.isComment(n)).map(n => [n.id, n.label]));
+             field('branch', 'Output', 'select', edge.branch, source.type === 'decision' ? [['yes', 'Yes'], ['no', 'No']] : [['next', 'Next']]);
+         }, fields => {
+             const candidate = M.copy(flow), item = candidate.edges.find(e => e.id === edge.id);
+@@ -473,7 +565,7 @@
+         bar.classList.remove('connection-status-hidden', 'connection-status-ok');
+         bar.classList.add('connection-status-warning');
+         status(message);
+-        if (!editable()) {
++        if (playbackActive()) {
+             runState = 'failed'; $id('pmt-run-state').textContent = runState;
+             if (activeNode && nodeStates.get(activeNode) === 'running') nodeStates.set(activeNode, 'failed');
+             closeInput();
+@@ -572,8 +664,8 @@
+     function showInput(data) {
+         closeInput();
+         const decision = data.kind === 'decision';
+-        inputDialog = formDialog(decision ? 'Decision · choose a branch' : 'User Commentary', ({ form, field }) => {
+-            form.append(element('p', '', data.message || (decision ? 'Which branch should the flow take?' : 'Enter your commentary to continue.')));
++        inputDialog = formDialog(decision ? 'Decision · choose a branch' : 'User Input', ({ form, field }) => {
++            form.append(element('p', '', data.message || (decision ? 'Which branch should the flow take?' : 'Enter your reply to continue.')));
+             if (!decision) field('reply', 'Your reply', 'textarea', '').maxLength = 100000;
+         }, fields => send('reply', { request_id: data.request_id, value: fields.reply.value }), {
+             acceptLabel: 'Continue flow',
+@@ -595,7 +687,7 @@
+         cancelConnection();
+         if (!flow.nodes.length) { setZoom(1); viewport.scrollTo(0, 0); return; }
+         const minX = Math.min(...flow.nodes.map(n => n.x)), minY = Math.min(...flow.nodes.map(n => n.y));
+-        const maxX = Math.max(...flow.nodes.map(n => n.x + 200)), maxY = Math.max(...flow.nodes.map(n => n.y + 128));
++        const maxX = Math.max(...flow.nodes.map(n => n.x + nodeSize(n).width)), maxY = Math.max(...flow.nodes.map(n => n.y + nodeSize(n).height));
+         const view = UI.fitView(viewport, { left: minX, top: minY, right: maxX, bottom: maxY });
+         zoom = view.zoom; extent(); viewport.scrollLeft = view.left; viewport.scrollTop = view.top; persist();
+     }
+@@ -619,7 +711,7 @@
+             else if (name === 'zoom-in') setZoom(zoom + .1);
+             else if (name === 'zoom-out') setZoom(zoom - .1);
+             else if (name === 'fit') fit();
+-            else if (name === 'help') await alertMessage('Drag or click an operation to add it. Double-click a figure to edit its settings. Drag a right-side output triangle to a left-side input triangle, then release to connect, just like the Agentic Control Panel. The curve follows your pointer and the triangles highlight. Release on empty canvas or press Escape to cancel. Reconnecting an occupied output replaces that connection. Decision figures have Y and N outputs on the right. With the keyboard, activate an output, Tab to an input and activate it.\n\nCtrl+click selects multiple figures; drag empty canvas to select a group. Delete removes the selection, Ctrl+D duplicates, Ctrl+Z undoes, Ctrl+Shift+Z redoes. Use arrow keys to move selected figures.\n\nChoose Start, Validate, then Play. Each run has its own conversation and embeddings. {{last_output}} inserts the last answer or user commentary. Clean History clears that run’s conversation and last output; Flush Embeddings clears its retrieval context.\n\nPause takes effect between operations. Stop requests cancellation and waits for the active model call to drain. Closing an input dialog stops the flow. Keep this page and Tlamatini open for scheduled prompts. Files never run merely by opening them.\n\nSave downloads a versioned .fpmt diagram. The panel also keeps a local draft in this browser. Legacy system prompt.pmt text files remain separate.', 'Using the Prompt Flow Panel');
++            else if (name === 'help') await alertMessage('Drag or click an operation to add it. Double-click a figure to edit its settings. Drag a right-side output triangle to a left-side input triangle, then release to connect, just like the Agentic Control Panel. The curve follows your pointer and the triangles highlight. Release on empty canvas or press Escape to cancel. Reconnecting an occupied output replaces that connection. Decision figures have Y and N outputs on the right. With the keyboard, activate an output, Tab to an input and activate it.\n\nCtrl+click selects multiple figures; drag empty canvas to select a group. Delete removes the selection, Ctrl+D duplicates, Ctrl+Z undoes, Ctrl+Shift+Z redoes. Use arrow keys to move selected figures.\n\nUser Commentary is a static speech-bubble note. Double-click to write in it; Done or Ctrl+Enter saves, Escape cancels. Configure chooses color, font, size and alignment. Drag its bottom-right handle to resize. The bubble grows to fit the text without scrollbars. Notes are saved with the diagram and never run. User Input uses the notched figure and asks for a runtime reply.\n\nChoose Start, Validate, then Play. Each run has its own conversation and embeddings. {{last_output}} inserts the last answer or user input. Clean History clears that run’s conversation and last output; Flush Embeddings clears its retrieval context.\n\nPause takes effect between operations. Stop requests cancellation and waits for the active model call to drain. Closing an input dialog stops the flow. Keep this page and Tlamatini open for scheduled prompts. Files never run merely by opening them.\n\nSave downloads a versioned .fpmt diagram. The panel also keeps a local draft in this browser. Legacy system prompt.pmt text files remain separate.', 'Using the Prompt Flow Panel');
+         } catch (e) { status(e.message); await alertMessage(e.message); }
+     }
+     document.querySelectorAll('[data-action]').forEach(button => button.addEventListener('click', event => { event.preventDefault(); action(button.dataset.action); }));
+@@ -641,6 +733,12 @@
+     });
+     document.addEventListener('pointermove', event => {
+         if (!gesture) return;
++        if (gesture.kind === 'resize') {
++            const { node, width, height, fromX, fromY, scale } = gesture;
++            node.config.width = Math.min(2400, Math.max(200, width + (event.clientX - fromX) / scale));
++            node.config.height = Math.min(2400, Math.max(128, height + (event.clientY - fromY) / scale));
++            render(); return;
++        }
+         const p = position(event);
+         {
+             const left = Math.min(p.x, gesture.from.x), top = Math.min(p.y, gesture.from.y), width = Math.abs(p.x - gesture.from.x), height = Math.abs(p.y - gesture.from.y);
+@@ -661,10 +759,14 @@
+         nodeMove.cancel();
+         if (!gesture) return;
+         const previous = gesture; gesture = null; $id('pmt-marquee').hidden = true; document.body.classList.remove('resizing');
++        if (previous.kind === 'resize') { flow = JSON.parse(previous.before); render(); }
+         if (previous.pointerId !== undefined && viewport.hasPointerCapture(previous.pointerId)) viewport.releasePointerCapture(previous.pointerId);
+         paintSelection();
+     }
+-    document.addEventListener('pointerup', () => { if (gesture) endGesture(); });
++    document.addEventListener('pointerup', () => {
++        if (gesture?.kind === 'resize') { const before = gesture.before; gesture = null; changed(before); }
++        else if (gesture) endGesture();
++    });
+     viewport.addEventListener('lostpointercapture', () => { if (gesture) endGesture(); });
+     document.addEventListener('pointercancel', endGesture); window.addEventListener('blur', endGesture);
+     UI.bindDivider({
+@@ -675,6 +777,7 @@
+     });
+     viewport.addEventListener('wheel', event => { if (event.ctrlKey || event.metaKey) { event.preventDefault(); setZoom(zoom + (event.deltaY < 0 ? .1 : -.1)); } }, { passive: false });
+     document.addEventListener('keydown', event => {
++        if (commentEditor) return;
+         if (UI.isTyping(event)) return;
+         const key = event.key.toLowerCase(), mod = event.ctrlKey || event.metaKey;
+         if (mod && ['s', 'o', 'z', 'y', 'd', 'a'].includes(key)) {
+@@ -696,6 +799,10 @@
+         if (saved) { flow = M.validate(saved.flow); filename = M.flowFilename(typeof saved.filename === 'string' && saved.filename.trim() ? saved.filename : 'Recovered.fpmt'); zoom = Math.min(2, Math.max(.25, Number(saved.zoom) || 1)); clean = ''; dirty = true; status('Restored your local draft. Save a .fpmt file to keep a portable copy.'); }
+     } catch (e) { status(`Local draft could not be restored: ${e.message}`); }
+     palette(); render();
++    document.fonts.ready.then(() => {
++        if (commentEditor) { fitCommentary(commentEditor.input.closest('.pmt-node'), commentEditor.node, commentEditor.input); extent(); }
++        else if (!gesture) render();
++    });
+     // Monitor idle pages too. A connection never starts or resumes a flow.
+     connectSocket().catch(error => status(error.message));
+ })();
+diff --git a/Tlamatini/agent/templates/agent/prompt_flow_panel.html b/Tlamatini/agent/templates/agent/prompt_flow_panel.html
+index 9fcaadb9..d757e362 100644
+--- a/Tlamatini/agent/templates/agent/prompt_flow_panel.html
++++ b/Tlamatini/agent/templates/agent/prompt_flow_panel.html
+@@ -50,9 +50,9 @@
+     <main id="agents-container">
+         <aside id="main-agents-container" aria-label="Operations bar">
+             <div id="agents-header" class="header-title"><span id="agents-header-title">Operations bar</span></div>
+-            <div class="pmt-palette-intro">Drag an operation onto the canvas, or click to add it.</div>
++            <div class="pmt-palette-intro">Drag an operation or static commentary onto the canvas, or click to add it.</div>
+             <div id="subagents-container"><div id="agents-list"></div></div>
+-            <div class="pmt-palette-foot">Drag an output triangle to an input triangle to connect.<br>Double-click a figure to configure it.</div>
++            <div class="pmt-palette-foot">Drag an output triangle to an input triangle to connect.<br>Double-click an operation to configure it.<br>Double-click a commentary to write; Configure chooses its font and color.</div>
+         </aside>
+         <div id="drag-divider" role="separator" aria-label="Resize Operations bar" aria-orientation="vertical" tabindex="0"></div>
+         <section id="monitor-container" aria-label="Prompt flow canvas">
+diff --git a/Tlamatini/agent/test_prompt_flow_panel.py b/Tlamatini/agent/test_prompt_flow_panel.py
+index a738eb7c..e4946bed 100644
+--- a/Tlamatini/agent/test_prompt_flow_panel.py
++++ b/Tlamatini/agent/test_prompt_flow_panel.py
+@@ -25,7 +25,7 @@ def node(key, kind="prompt", **config):
+ 
+ 
+ def diagram(nodes, edges=(), max_steps=20):
+-    return {"format": flow_module.FORMAT, "version": 1, "name": "Test", "start": nodes[0]["id"] if nodes else None,
++    return {"format": flow_module.FORMAT, "version": flow_module.VERSION, "name": "Test", "start": next((n["id"] for n in nodes if n["type"] != "user_commentary"), None),
+             "max_steps": max_steps, "nodes": nodes,
+             "edges": [{"id": f"e{i}", "source": a, "target": b, "branch": c} for i, (a, b, c) in enumerate(edges)]}
+ 
+@@ -70,7 +70,7 @@ class ValidationTests(unittest.TestCase):
+             flow_module.validate_flow(diagram([]), playable=True)
+ 
+     def test_legacy_and_future_files_rejected(self):
+-        for payload in ("You are Tlamatini", {"format": flow_module.FORMAT, "version": 2}, {}):
++        for payload in ("You are Tlamatini", {"format": flow_module.FORMAT, "version": 99}, {}):
+             with self.subTest(payload=payload), self.assertRaises(FlowError):
+                 flow_module.validate_flow(payload)
+ 
+@@ -109,6 +109,45 @@ class ValidationTests(unittest.TestCase):
+     def test_substitution_is_literal(self):
+         self.assertEqual(flow_module.expand_text("Use {{last_output}} and {{unknown}}", "<script>x</script>"), "Use <script>x</script> and {{unknown}}")
+ 
++    def test_legacy_commentary_migrates_without_changing_user_input_graph(self):
++        original = diagram([node("input", "user_commentary"), node("p")], [("input", "p", "next")])
++        original.update(version=1, start="input")
++        original["nodes"][0]["label"] = "User Commentary"
++        before = copy.deepcopy(original)
++        result = flow_module.validate_flow(original, playable=True)
++        self.assertEqual(result["version"], 2)
++        self.assertEqual(result["nodes"][0]["type"], "user_input")
++        self.assertEqual(result["nodes"][0]["label"], "User Input")
++        self.assertEqual(result["edges"], original["edges"])
++        self.assertEqual(result["nodes"][0]["config"]["text"], original["nodes"][0]["config"]["text"])
++        self.assertEqual(original, before)
++
++    def test_static_comment_roundtrip_preserves_long_literal_text_and_formatting(self):
++        note = node("note", "user_commentary", text=("Paragraph ñ <script> {{last_output}}\n" * 500),
++                    width=650, height=450, color="#dbeafe", font_family="Georgia", font_size=22,
++                    bold=True, italic=True, align="right")
++        result = flow_module.validate_flow(diagram([node("p"), note]), playable=True)
++        self.assertEqual(result["nodes"][1]["config"], {k: note["config"][k] for k in result["nodes"][1]["config"]})
++        self.assertEqual(flow_module.validate_flow(result), result)
++
++    def test_static_comments_save_alone_but_cannot_be_start_or_connected(self):
++        note = node("note", "user_commentary")
++        flow_module.validate_flow(diagram([note]))
++        with self.assertRaises(FlowError):
++            flow_module.validate_flow(diagram([note]), playable=True)
++        for source, target in [("note", "p"), ("p", "note")]:
++            with self.assertRaisesRegex(FlowError, "cannot have connections"):
++                flow_module.validate_flow(diagram([node("p"), note], [(source, target, "next")]))
++        payload = diagram([node("p"), note]); payload["start"] = "note"
++        with self.assertRaisesRegex(FlowError, "Start"):
++            flow_module.validate_flow(payload)
++
++    def test_comment_style_rejects_unsafe_or_out_of_range_values(self):
++        for key, value in [("color", "url(javascript:evil)"), ("font_family", "evil; color:red"),
++                           ("width", 199), ("height", 2401), ("font_size", 0), ("bold", 1), ("align", "evil")]:
++            with self.subTest(key=key), self.assertRaises(FlowError):
++                flow_module.validate_flow(diagram([node("note", "user_commentary", **{key: value})]))
++
+ 
+ class RunnerTests(unittest.IsolatedAsyncioTestCase):
+     async def asyncSetUp(self):
+@@ -159,7 +198,7 @@ class RunnerTests(unittest.IsolatedAsyncioTestCase):
+         self.assertTrue(self.runtime.cancelled)
+ 
+     async def test_commentary_rejects_stale_reply(self):
+-        runner = FlowRunner(diagram([node("a", "user_commentary")]), self.runtime, self.emit)
++        runner = FlowRunner(diagram([node("a", "user_input")]), self.runtime, self.emit)
+         task = asyncio.create_task(runner.run())
+         await asyncio.sleep(0)
+         with self.assertRaises(FlowError):
+@@ -170,7 +209,7 @@ class RunnerTests(unittest.IsolatedAsyncioTestCase):
+         self.assertEqual(self.runtime.calls, [("comment", "My reply")])
+ 
+     async def test_stop_releases_pending_user_input(self):
+-        runner = FlowRunner(diagram([node("a", "user_commentary")]), self.runtime, self.emit)
++        runner = FlowRunner(diagram([node("a", "user_input")]), self.runtime, self.emit)
+         task = asyncio.create_task(runner.run())
+         await asyncio.sleep(0)
+         runner.stop()
+@@ -195,6 +234,16 @@ class RunnerTests(unittest.IsolatedAsyncioTestCase):
+         await task
+         self.assertEqual([d["node_id"] for e, d in self.events if e == "node" and d["status"] == "completed"], ["d", "no"])
+ 
++    async def test_static_comments_never_emit_input_or_change_run_state(self):
++        flow = diagram([node("p"), node("note1", "user_commentary", text="{{last_output}}"),
++                        node("note2", "user_commentary", text="Review only")], max_steps=1)
++        runner = FlowRunner(flow, self.runtime, self.emit)
++        await runner.run()
++        self.assertEqual(self.runtime.calls, [("prompt", "Explain a graph")])
++        self.assertEqual(runner.step, 1)
++        self.assertEqual(runner.last_output, "YES, useful output")
++        self.assertFalse(any(e == "input" or d.get("node_id") in {"note1", "note2"} for e, d in self.events))
++
+ 
+ if __name__ == "__main__":
+     unittest.main(verbosity=2)
+diff --git a/Tlamatini/agent/test_prompt_flow_panel_websocket.py b/Tlamatini/agent/test_prompt_flow_panel_websocket.py
+index e7e21b20..7f50e4fe 100644
+--- a/Tlamatini/agent/test_prompt_flow_panel_websocket.py
++++ b/Tlamatini/agent/test_prompt_flow_panel_websocket.py
+@@ -92,7 +92,7 @@ class PromptFlowPanelSocketTests(unittest.IsolatedAsyncioTestCase):
+         self.fail(f'No {event} event matching {values}')
+ 
+     async def start_input(self, communicator):
+-        await self.send(communicator, action='start', flow=diagram([node('comment', 'user_commentary')]))
++        await self.send(communicator, action='start', flow=diagram([node('comment', 'user_input'), node('note', 'user_commentary', text='Static review only')]))
+         return await self.until(communicator, 'input')
+ 
+     async def test_anonymous_websocket_is_rejected(self):
+diff --git a/Tlamatini/tlamatini/settings.py b/Tlamatini/tlamatini/settings.py
+index 07f79ee2..bced57f6 100644
+--- a/Tlamatini/tlamatini/settings.py
++++ b/Tlamatini/tlamatini/settings.py
+@@ -247,7 +247,7 @@ if getattr(sys, 'frozen', False):
+ 
+ # Version stamp for cache-busting of static assets in templates
+ # Override via env var STATIC_VERSION when deploying
+-STATIC_VERSION = (os.environ.get('STATIC_VERSION') or str(int(time.time()))) + '-self-modify-switch-1'
++STATIC_VERSION = (os.environ.get('STATIC_VERSION') or str(int(time.time()))) + '-prompt-commentary-input-1'
+ 
+ # WhiteNoise configuration: dev vs release.
+ # NOTE (speed batch, 2026-07-02): the old per-branch STATICFILES_STORAGE lines
+@@ -395,4 +395,4 @@ LOGGING = {
+             "filters": ["suppress_http_get_200"],
+         },
+     },
+-}
+\ No newline at end of file
++}
+diff --git a/docs/claude/architecture.md b/docs/claude/architecture.md
+index 56cb761c..e0ac79be 100644
+--- a/docs/claude/architecture.md
++++ b/docs/claude/architecture.md
+@@ -676,6 +676,8 @@ Font measurement includes face variants, tracking, line spacing, insets, and 115
+ | Model adapter | `agent/prompt_flow_panel_runtime.py` | `PromptFlowPanelRuntime`: reads the Agent/Mcp/Tool/Omission rows once, builds its OWN chain, calls `ask_rag` on a worker thread with `multi_turn_enabled` / `acpx_enabled` taken from the operation, keeps its own history (last 16 messages sent per prompt), and relays self-healing status lines to the page through the existing `register_status_broadcaster` under its own run key. |
+ | Build gate | `agent/management/commands/check_prompt_flow_panel.py` | Renders the page, checks its local assets, validates the shipped example, plays a commentary/history-clear flow through the real consumer with no model, and round-trips a UTF-8 context file under `<app>/Temp`. `build.py` runs it inside the frozen app. |
+ 
++**Static commentary and runtime input (2026-10-03).** File version 2 uses `user_input` for the old reply step and `user_commentary` for static speech-bubble notes. Both validators migrate version 1 reply steps without altering their graph/settings. Static notes preserve literal text, dimensions and allowlisted color/font/style choices, reject connections/Start, and are excluded from executable reachability and step counts. They never enter the conversation or model prompts.
++
+ **`setup_llm(..., include_application_context=True)` gained a keyword-only switch.** The default is unchanged, so every chat caller still loads the shared `application/` corpus. The panel passes `False` for its initial build and for **Flush embeddings**; without it, "flush" silently reloaded the global corpus into a run that was supposed to be empty. `test_chain_readiness.py::ContextFreeChainTests` pins both directions. The `finally` that re-opens the build lane is untouched.
+ 
+ **Cancellation is per run.** Each run's key is `prompt_flow_panel_<user pk>_<uuid4>`; `cancel()` raises that key's latch through `cancellation.request_cancel_generation(key)` and then clears the legacy process-wide flag, so stopping a flow never cancels a chat request in another tab. Stop and disconnect drain the active `asyncio.to_thread` worker instead of abandoning it, and `close()` removes the run's temporary context directory.
+diff --git a/docs/claude/frontend.md b/docs/claude/frontend.md
+index 97e46db7..a1db07b9 100644
+--- a/docs/claude/frontend.md
++++ b/docs/claude/frontend.md
+@@ -210,7 +210,7 @@ If you add a new canvas-level feature (layout grid, minimap, overlay HUD, etc.),
+ ## Prompt Flow Panel page (2 modules)
+ 
+ - `prompt-flow-panel-model.js` - The `.fpmt` document contract, frozen as `window.PromptFlowPanelModel` (`FORMAT = 'tlamatini-prompting-flow'`, `EXTENSION = '.fpmt'`, `isFlowFilename`, `flowFilename`, the seven `operations` with their SVG outlines and port positions, `blank`, `node`, `validate(flow, playable)`, `example`). Pure data: no DOM, no network. Its validator mirrors `agent/services/prompt_flow_panel.py::validate_flow` rule for rule, and the backend re-validates every document anyway
+-- `prompt-flow-panel.js` - The editor/controller for `prompt_flow_panel.html`: seven-operation palette, drag/click-to-add, ACP-style press-drag-release connections (white side triangles, horizontal curves, Decision has right-side Y/N outputs; one destination per output), marquee and Ctrl-click selection, undo/redo, zoom 25 %–200 % (Ctrl+wheel) and Fit, the per-operation configure dialogs (shared `dialog_policy.js` / `dialog_theme.css`), file Open/Save/drop, the per-user browser draft (`localStorage` key `tlamatini.prompting-flow.draft.v1.<user id>`), and playback over the connection-scoped **`/ws/prompt-flow-panel/`** WebSocket (8 s `ping` heartbeat, explicit **Reconnect**; a connection never starts or resumes a run by itself). Full contract: *Prompt Flow Panel* below and [the user guide](../prompting-flow-designer.md)
++- `prompt-flow-panel.js` - The editor/controller for `prompt_flow_panel.html`: seven-operation palette plus static User Commentary, drag/click-to-add, ACP-style press-drag-release connections (white side triangles, horizontal curves, Decision has right-side Y/N outputs; one destination per output), marquee and Ctrl-click selection, undo/redo, zoom 25 %–200 % (Ctrl+wheel) and Fit, the per-operation configure dialogs (shared `dialog_policy.js` / `dialog_theme.css`), file Open/Save/drop, the per-user browser draft (`localStorage` key `tlamatini.prompting-flow.draft.v1.<user id>`), and playback over the connection-scoped **`/ws/prompt-flow-panel/`** WebSocket (8 s `ping` heartbeat, explicit **Reconnect**; a connection never starts or resumes a run by itself). Full contract: *Prompt Flow Panel* below and [the user guide](../prompting-flow-designer.md)
+ 
+ **Total: 54 JS modules** (22 chat + 15 ACP + 1 ACP entry-point + 13 shared/chat-runtime auxiliary + 1 welcome + 2 Prompt Flow Panel). Count them with a file listing (`agent/static/agent/js/*.js`), never by hand.
+ 
+@@ -238,17 +238,17 @@ Both surfaces share `agent/services/flow_spec.py` (the in-memory `FlowSpec` repr
+ 
+ ## Prompt Flow Panel — 2026-09-25 (first drafted 2026-09-23 as the "Prompting Flow Designer")
+ 
+-`agent/templates/agent/prompt_flow_panel.html` is a separate, login-protected diagram editor at **`/agent/prompt_flow_panel/`** (view `views.prompt_flow_panel`, URL name `prompt_flow_panel`), opened from **Panels ▸ Prompt Flow Panel** in the chat navbar and **File ▸ Prompt Flow Panel** in the Agentic Control Panel (both in a new tab). It reuses the ACP page skeleton and CSS (`agentic_control_panel.css` then `prompt_flow_panel.css`, with `dialog_theme.css` LAST) plus the shared `dialog_policy.js`, and its body class `pmt-panel` scopes every rule. The Operations bar holds seven shapes — Prompt, Programmed Prompt, Decision, Feed embeddings, Flush embeddings, Clean History, User Commentary — and diagrams are saved as versioned JSON **`.fpmt`** files (`format: "tlamatini-prompting-flow"`, `version: 1`).
++`agent/templates/agent/prompt_flow_panel.html` is a separate, login-protected diagram editor at **`/agent/prompt_flow_panel/`** (view `views.prompt_flow_panel`, URL name `prompt_flow_panel`), opened from **Panels ▸ Prompt Flow Panel** in the chat navbar and **File ▸ Prompt Flow Panel** in the Agentic Control Panel (both in a new tab). It reuses the ACP page skeleton and CSS (`agentic_control_panel.css` then `prompt_flow_panel.css`, with `dialog_theme.css` LAST) plus the shared `dialog_policy.js`, and its body class `pmt-panel` scopes every rule. The Operations bar holds eight assets — Prompt, Programmed Prompt, Decision, Feed embeddings, Flush embeddings, Clean History, User Input, static User Commentary — and diagrams are saved as versioned JSON **`.fpmt`** files (`format: "tlamatini-prompting-flow"`, `version: 2` (version 1 imports migrate executable commentary to User Input)).
+ 
+ Contracts (do NOT weaken):
+ 
+-- **Connection parity (2026-09-26):** use the ACP stylesheet's `input-triangle`, `output-triangle`, `output-label`, `connection-group`, `connection-path` and `connection-hit-area` classes directly. Do not reintroduce circular ports, arrowhead markers or a Connection palette tool. Curves follow ACP's horizontal half-distance Bezier construction, anchored at triangle centers. Pointer capture belongs to the viewport; resolve the input under the pointer with `elementFromPoint`, since captured events target the viewport. Commit only on release over an input. Empty/body drops, Escape, pointer cancellation, lost capture and blur remove the preview and port highlights without changing the document. Decision Y/N previews start from the selected branch. Gold port highlighting is retained; shared hover/selection colors override playback wire colors while interacting. Current `STATIC_VERSION` suffix: `-prompt-flow-panel-12-node-gestures`. Visible regression runner: `scripts/prompt_flow_connections_visible.py`.
++- **Connection parity (2026-09-26):** use the ACP stylesheet's `input-triangle`, `output-triangle`, `output-label`, `connection-group`, `connection-path` and `connection-hit-area` classes directly. Do not reintroduce circular ports, arrowhead markers or a Connection palette tool. Curves follow ACP's horizontal half-distance Bezier construction, anchored at triangle centers. Pointer capture belongs to the viewport; resolve the input under the pointer with `elementFromPoint`, since captured events target the viewport. Commit only on release over an input. Empty/body drops, Escape, pointer cancellation, lost capture and blur remove the preview and port highlights without changing the document. Decision Y/N previews start from the selected branch. Gold port highlighting is retained; shared hover/selection colors override playback wire colors while interacting. Current `STATIC_VERSION` suffix: `-prompt-commentary-input-1`. Visible regression runner: `scripts/prompt_flow_connections_visible.py`.
+ 
+-- **Selection styling:** `prompt_flow_panel.css` matches ACP's `#ffcc00` outline and yellow halo. Use an SVG `drop-shadow` so diamonds, triangles, trapezoids and speech bubbles glow around their contours, never a rectangular box shadow on `.pmt-node`. Selected nodes sit above other nodes but below the marquee. Playback status strokes take precedence while the selection halo stays visible; deselection removes only that halo. Selected wires inherit ACP's gold stroke/shadow; traversed wires are green only when neither hovered nor selected. The real headed checks are `scripts/prompt_flow_selection_visible.py`, using ordinary file-open, selection, zoom and commentary playback on port 8001; its 2026-09-25 20:26 run passed all 14 checks with exit code 0. ⚠️ Keep node `.selected` rules ABOVE `.running` / `.completed` / `.failed`, load `flow_canvas.css` after both panel styles and before `dialog_theme.css`. Keep `.pmt-edge.traversed` restricted to `:not(.selected):not(:hover)` so interaction feedback remains identical. Current `STATIC_VERSION` suffix: `-prompt-flow-panel-12-node-gestures`.
++- **Selection styling:** `prompt_flow_panel.css` matches ACP's `#ffcc00` outline and yellow halo. Use an SVG `drop-shadow` so diamonds, triangles, trapezoids and speech bubbles glow around their contours, never a rectangular box shadow on `.pmt-node`. Selected nodes sit above other nodes but below the marquee. Playback status strokes take precedence while the selection halo stays visible; deselection removes only that halo. Selected wires inherit ACP's gold stroke/shadow; traversed wires are green only when neither hovered nor selected. The real headed checks are `scripts/prompt_flow_selection_visible.py`, using ordinary file-open, selection, zoom and commentary playback on port 8001; its 2026-09-25 20:26 run passed all 14 checks with exit code 0. ⚠️ Keep node `.selected` rules ABOVE `.running` / `.completed` / `.failed`, load `flow_canvas.css` after both panel styles and before `dialog_theme.css`. Keep `.pmt-edge.traversed` restricted to `:not(.selected):not(:hover)` so interaction feedback remains identical. Current `STATIC_VERSION` suffix: `-prompt-commentary-input-1`.
+ 
+ 1. **`.fpmt`, never `.pmt`.** The file picker is `accept=".fpmt"`, the open guard refuses any other name (including `prompt.pmt` itself) with *"Choose a .fpmt Prompt Flow Panel file."*, and `flowFilename()` turns a legacy `name.pmt` save name or browser draft into `name.fpmt`. The JSON `format` string deliberately did NOT change, so renaming an old flow file is enough to open it. The plain-text system prompts (`agent/prompt.pmt`, `monitoring-prompt.pmt`) keep `.pmt`.
+ 2. **Opening never runs anything.** Load, drop, draft recovery and even a WebSocket (re)connection are passive; only **Play** starts a run.
+-3. **Validate twice.** `prompt-flow-panel-model.js` validates in the browser and `services/prompt_flow_panel.py::validate_flow` re-validates on the server before playback: ≤ 5 MiB, ≤ 500 operations, ≤ 1,000 connections, unique ids, one destination per output (Decisions use `yes`/`no`), every operation reachable from Start, both Decision branches connected, ACPX only with Multi-Turn, a Programmed Prompt's `scheduled_at` must carry a timezone. Decisions compare strings or ask the user; nothing from a file is ever evaluated as code.
++3. **Validate twice.** `prompt-flow-panel-model.js` validates in the browser and `services/prompt_flow_panel.py::validate_flow` re-validates on the server before playback: ≤ 5 MiB, ≤ 500 operations, ≤ 1,000 connections, unique ids, one destination per output (Decisions use `yes`/`no`), every executable operation reachable from Start, both Decision branches connected, ACPX only with Multi-Turn, a Programmed Prompt's `scheduled_at` must carry a timezone. Decisions compare strings or ask the user; nothing from a file is ever evaluated as code.
+ 4. **Completion comes from the interpreter, never from model prose.** `FlowRunner` reports `completed` / `stopped` / `failed`; `max_steps` (default 500, max 5,000) bounds cycles.
+ 5. **Stop drains, it does not abandon.** Stop, closing a reply dialog (✕ / Cancel / Escape) and closing the page all request cancellation, and the consumer waits for the model worker to finish — cancelling only the `asyncio.to_thread` awaiter would leave it running. Pause holds the NEXT operation; the current one completes.
+ 6. **Each run is isolated.** Its own chain, history (last 16 messages sent), embeddings (≤ 2,000,000 characters, fed through a fresh uniquely-named file under `<app>/Temp/prompt-flow-panel-*` on every rebuild) and cancellation identity (`prompt_flow_panel_<user>_<uuid>`, which clears the legacy process-wide cancel flag so stopping a flow never cancels another chat tab). A run starts with empty history and embeddings, calls `setup_llm(..., include_application_context=False)` so it never loads the shared `application/` corpus, and fails loudly if context setup falls back to a prompt-only chain. Chat history and global embedding configuration are never edited.
+diff --git a/docs/claude/multi-turn.md b/docs/claude/multi-turn.md
+index 65ba7a40..5921ba01 100644
+--- a/docs/claude/multi-turn.md
++++ b/docs/claude/multi-turn.md
+@@ -280,9 +280,9 @@ See [configuration, routing, Parametrizer mappings and limitations](../../Tlamat
+ Each **Prompt** and **Programmed Prompt** operation in a Prompt Flow Panel diagram (`.fpmt`) carries its own `multi_turn` and `acpx` switches, and `PromptFlowPanelRuntime.prompt()` forwards them to `ask_rag` as `multi_turn_enabled` / `acpx_enabled` — the same per-request flags the chat toolbar sends. So one flow can mix plain Q&A steps with full operator steps that bind every enabled tool and agent.
+ 
+ - **ACPX requires Multi-Turn.** Both validators (`prompt-flow-panel-model.js` and `services/prompt_flow_panel.py`) reject an operation with `acpx: true` and `multi_turn: false`, mirroring the chat, where ACPX tools are only bound inside Multi-Turn.
+-- **Ask-Execs, Exec Report and Step-by-Step are not sent.** A flow runs unattended between its own User Commentary steps, so there is no Proceed/Deny prompt to answer and no Exec Report table is rendered — the run's output appears in the panel's **Run output** log instead.
++- **Ask-Execs, Exec Report and Step-by-Step are not sent.** A flow runs unattended between its own User Input steps, so there is no Proceed/Deny prompt to answer and no Exec Report table is rendered — the run's output appears in the panel's **Run output** log instead.
+ - **The run key, not the chat user id, is the `conversation_user_id`.** It is `prompt_flow_panel_<user pk>_<uuid4>`, so self-healing status lines (`register_status_broadcaster`) and cancellation (`cancel_run_epoch`) are scoped to that one run and never cross into the user's chat tab.
+-- **History is per run.** The last 16 messages of the run's own conversation go with each prompt. **Clean History** clears it and resets `{{last_output}}`; **User Commentary** appends the user's reply as a human turn.
++- **History is per run.** The last 16 messages of the run's own conversation go with each prompt. **Clean History** clears it and resets `{{last_output}}`; **User Input** appends the user's reply as a human turn.
+ 
+ See `docs/claude/architecture.md` → *Prompt Flow Panel runtime* and [the user guide](../prompting-flow-designer.md).
+ 
+diff --git a/docs/claude/recent-fixes.md b/docs/claude/recent-fixes.md
+index 65d30435..1edec6e5 100644
+--- a/docs/claude/recent-fixes.md
++++ b/docs/claude/recent-fixes.md
+@@ -16,6 +16,16 @@
+ 
+ ---
+ 
++## 2026-10-03 — Static User Commentary and separate User Input
++
++Source changes; no executable or installer rebuilt. Angela separated review annotations from the existing runtime reply mechanism. **User Input** retains that mechanism and its reply/cancel protocol, using the supplied notched figure. **User Commentary** retains the speech bubble as an independent static annotation: double-click to edit in place; Configure selects palette color, font, size, emphasis and alignment; resize, move, duplicate, Undo/Redo and portable/draft persistence work. Static notes have no ports, cannot be Start and never affect playback or step counts.
++
++**No internal scrollbars.** Angela rejected the black scrollbar inside long notes. Bubbles and their inline editors grow to contain the complete wrapped text at the selected width/font. The stored height is a user-chosen minimum; automatic content height is recomputed when loading, formatting and resizing. Canvas bounds and Fit include that actual height. Do not reintroduce clipping or scrollable commentary controls.
++
++The diagram contract is now version **2**. Version 1 files/drafts migrate executable `user_commentary` nodes to `user_input` while preserving IDs, edges and configuration. Only version 2 `user_commentary` means a static note; keep this migration to prevent old flows from silently losing reply steps. Static text is literal, including HTML-like text and `{{last_output}}`. Backend and frontend independently validate its style and dimensions.
++
++Verification: 25 diagram/runner tests and 33 runtime/WebSocket/readiness tests passed; the offline page/real WebSocket check passed with all eight asset types. Nine checks in `scripts/prompt_flow_commentary_visible.py` passed in foreground Chrome, including 5,000-character editing/containment without scrolling, formatting, zoom-aware resize/Undo/Redo, save/reopen/draft recovery, real User Input replies/cancellation and legacy migration. Evidence: `Temp/prompt-commentary-visible/summary.json` and numbered Shoter desktop photographs. The check uses an isolated source installation and no model call or mocked transport. The final source-carriage/lint results are recorded in the [change record](../changes/2026-10-03-prompt-commentary-input.md).
++
+ ## 2026-10-03 — "too many stop sequences; maximum is 4": never more than FOUR, and a failed history summary never fails the answer
+ 
+ > **On `main` after the `v1.75.0` tag** — not yet inside any tag; a source run reports `1.75.0`.
+diff --git a/docs/examples/prompting-kickoff.fpmt b/docs/examples/prompting-kickoff.fpmt
+index bffe86f4..c4ab1043 100644
+--- a/docs/examples/prompting-kickoff.fpmt
++++ b/docs/examples/prompting-kickoff.fpmt
+@@ -1,17 +1,18 @@
+ {
+   "format": "tlamatini-prompting-flow",
+-  "version": 1,
++  "version": 2,
+   "name": "Prompting kickoff — all operations",
+   "start": "subject",
+   "max_steps": 100,
+   "nodes": [
+-    {"id": "subject", "type": "user_commentary", "label": "Choose a subject", "x": 40, "y": 50, "config": {"text": "What subject would you like to explore?"}},
++    {"id": "subject", "type": "user_input", "label": "Choose a subject", "x": 40, "y": 50, "config": {"text": "What subject would you like to explore?"}},
+     {"id": "explain", "type": "prompt", "label": "Explain the subject", "x": 320, "y": 50, "config": {"text": "Explain this subject in three short points: {{last_output}}", "multi_turn": false, "acpx": false}},
+     {"id": "feed", "type": "feed_embeddings", "label": "Remember the answer", "x": 600, "y": 50, "config": {"text": "{{last_output}}"}},
+     {"id": "followup", "type": "programmed_prompt", "label": "Suggest a next step", "x": 880, "y": 50, "config": {"text": "Explain one useful next step for the subject we discussed, using the context provided.", "multi_turn": false, "acpx": false, "delay_seconds": 2, "scheduled_at": ""}},
+     {"id": "decide", "type": "decision", "label": "Flush context?", "x": 880, "y": 320, "config": {"text": "Clear the retrieval context before ending this run?", "comparison": "user", "value": "", "case_sensitive": false}},
+     {"id": "flush", "type": "flush_embeddings", "label": "Flush embeddings", "x": 600, "y": 320, "config": {"text": ""}},
+-    {"id": "clean", "type": "clean_history", "label": "Clean History", "x": 320, "y": 320, "config": {"text": ""}}
++    {"id": "clean", "type": "clean_history", "label": "Clean History", "x": 320, "y": 320, "config": {"text": ""}},
++    {"id": "review", "type": "user_commentary", "label": "Reviewer note", "x": 40, "y": 530, "config": {"text": "Review note: User Input asks for the subject during playback. This speech bubble is a static annotation: it never runs, never changes history, and needs no connection. Double-click to edit this note; Configure changes its font and color.", "width": 620, "height": 240, "color": "#fef3c7", "font_family": "Georgia", "font_size": 16, "bold": false, "italic": false, "align": "left"}}
+   ],
+   "edges": [
+     {"id": "subject_explain", "source": "subject", "target": "explain", "branch": "next"},
+diff --git a/docs/prompting-flow-designer.md b/docs/prompting-flow-designer.md
+index 7d950516..ebc082db 100644
+--- a/docs/prompting-flow-designer.md
++++ b/docs/prompting-flow-designer.md
+@@ -6,7 +6,7 @@
+ 
+ Open **Panels → Prompt Flow Panel** from chat, or **File → Prompt Flow Panel** from the Agentic Control Panel. The authenticated page is `/agent/prompt_flow_panel/`.
+ 
+-The Operations bar follows the Agentic Control Panel layout. Drag a figure onto the canvas, or click its palette entry. All figures share a 200 × 128 coordinate box; their outlines match the prompting-operation reference.
++The Operations bar follows the Agentic Control Panel layout. Drag a figure onto the canvas, or click its palette entry. The seven executable operations use a 200 × 128 coordinate box. User Commentary is a separate, resizable speech-bubble annotation.
+ 
+ [Open the complete kickoff example](examples/prompting-kickoff.fpmt) with **File → Open .fpmt** to try all seven operation types. It requires the configured model and embedding provider. The built-in **File → Open example** is a shorter branching introduction.
+ 
+@@ -18,15 +18,18 @@ The Operations bar follows the Agentic Control Panel layout. Drag a figure onto
+ | Feed embeddings | Upward triangle | Adds its text to the current run's retrieval context, rebuilding embeddings with the existing model stack. |
+ | Flush embeddings | Downward triangle | Clears the run's retrieval context, retaining its conversation. |
+ | Clean History | Trapezoid | Clears the run's conversation and last output, retaining its retrieval context. |
+-| User Commentary | Speech bubble | Opens a reply dialog and appends the reply to the run's conversation. |
++| User Input | Notched top with a downward point | Opens the same reply dialog and appends the reply to the run's conversation. |
++| User Commentary | Speech bubble | Static review note; never executes or affects the run. |
+ 
+-Double-click a figure, choose **Configure** from its right-click menu, press Enter on a selected figure, or use the **Configure** toolbar button. `{{last_output}}` in a prompt, embedding text, or user message inserts the previous model answer or commentary. Decisions support contains, does-not-contain, equality, and empty-output comparisons, with optional case matching. They never execute expressions from files.
++Add independent **User Commentary** bubbles within the 500-asset limit. Double-click a bubble (or press Enter while selected) to write directly inside it. **Done** or Ctrl+Enter saves; **Cancel** or Escape discards that edit. Use **Configure** in the toolbar or right-click menu to choose a basic bubble color, font family, font size, bold, italic, alignment, width and height. Drag the bottom-right handle to resize; moving, copying, resizing and formatting support Undo/Redo. Bubbles grow in height to contain the full text without scrollbars, including while typing or changing font and width. The chosen height is a minimum; long paragraphs save in full (up to 100,000 characters). Text, including `{{last_output}}`, stays literal. Comments have no ports, cannot be Start, need no connection and remain visible during playback. Text and formatting save/open and recover with the diagram.
++
++Double-click a figure, choose **Configure** from its right-click menu, press Enter on a selected figure, or use the **Configure** toolbar button. `{{last_output}}` in a prompt, embedding text, or user message inserts the previous model answer or user reply. Decisions support contains, does-not-contain, equality, and empty-output comparisons, with optional case matching. They never execute expressions from files.
+ 
+ Selected figures use the Agentic Control Panel's gold outline and soft yellow glow, following each figure's shape. Selected connections use the same gold highlight. Ctrl+click or marquee selection highlights every selected figure; Escape clears selection. During playback, status colors remain visible alongside the selection glow. Selection and zoom do not mark the diagram as modified.
+ 
+-Connect exactly as in the Agentic Control Panel: press a white output triangle on the right of a figure, drag the live curve to a white input triangle on the left of another figure, and release. Ports keep their gold highlight during connection; releasing on empty canvas or pressing Escape cancels. Decision figures have two right-side outputs, Y above N. The Operations bar contains only the seven operations; no Connection tool is needed. Each output has one destination; reconnecting it replaces its destination. Double-click a connection to edit its destination or branch. Keyboard users can activate an output, Tab to an input, and activate it.
++Connect exactly as in the Agentic Control Panel: press a white output triangle on the right of a figure, drag the live curve to a white input triangle on the left of another figure, and release. Ports keep their gold highlight during connection; releasing on empty canvas or pressing Escape cancels. Decision figures have two right-side outputs, Y above N. The Operations bar contains seven executable operations and static User Commentary; no Connection tool is needed. Each output has one destination; reconnecting it replaces its destination. Double-click a connection to edit its destination or branch. Keyboard users can activate an output, Tab to an input, and activate it.
+ 
+-Select the **Start** operation, then **Validate** and **Play**. Both Decision branches must connect, and every operation must be reachable from Start. An unconnected ordinary output ends playback. Cycles are allowed and bounded by **Flow settings → Maximum executed operations per run** (default 500, maximum 5,000).
++Select the **Start** operation, then **Validate** and **Play**. Both Decision branches must connect, and every executable operation must be reachable from Start. An unconnected ordinary output ends playback. Cycles are allowed and bounded by **Flow settings → Maximum executed operations per run** (default 500, maximum 5,000).
+ 
+ The running figure and traversed connections are highlighted. **Run output** displays step activity, model answers, user replies, waits and errors. Pause allows the current operation to finish and holds the next one. Scheduled times are absolute; relative delays count active playback time. Stop requests model cancellation and waits for the current worker to drain before allowing another run. Closing a reply dialog by Cancel, X or Escape stops the flow; an outside click does not dismiss it. Closing or disconnecting the page also requests a stop. Keep the page and Tlamatini open for scheduled prompts; this is not a persistent background scheduler.
+ 
+@@ -38,7 +41,7 @@ Each run has its own model chain, conversation, context files and cancellation i
+ 
+ To open an older **JSON flow diagram** saved with `.pmt`, rename that file to `.fpmt`; its contents do not need conversion. The panel rejects files still named `.pmt`. Existing browser drafts remain available, and their old flow file names are normalized to `.fpmt` when restored. Do not rename Tlamatini's plain-text `prompt.pmt` or `monitoring-prompt.pmt` files: those retain their existing names and purposes.
+ 
+-The versioned format is `tlamatini-prompting-flow`, version `1`, with `name`, `start`, `max_steps`, `nodes` and `edges`. Node types are the seven lowercase operation names shown in the implementation; edges use `next`, `yes` or `no`. The backend independently validates the document before playback. The pre-existing plain-text system `prompt.pmt` is a different format and is deliberately rejected by this diagram editor. `.flw` Agentic Control Panel files remain separate.
++The versioned format is `tlamatini-prompting-flow`, version `2`, with `name`, `start`, `max_steps`, `nodes` and `edges`. Version 1 files and existing browser drafts automatically migrate the old executable `user_commentary` to `user_input`, keeping IDs, connections, prompts and behavior. New static bubbles use `user_commentary` in version 2, preventing an old reply step from becoming a static note. Node types are the eight lowercase asset names shown in the implementation; edges use `next`, `yes` or `no`. The backend independently validates the document before playback. The pre-existing plain-text system `prompt.pmt` is a different format and is deliberately rejected by this diagram editor. `.flw` Agentic Control Panel files remain separate.
+ 
+ | Shortcut | Action |
+ | --- | --- |
+@@ -46,7 +49,7 @@ The versioned format is `tlamatini-prompting-flow`, version `1`, with `name`, `s
+ | Ctrl+Z / Ctrl+Shift+Z or Ctrl+Y | Undo / redo |
+ | Ctrl+click / drag empty canvas | Select multiple figures / marquee selection |
+ | Ctrl+drag | Copy selected figures, settings and internal connections with new IDs and numbered labels; one-step Undo/Redo |
+-| Double-click / Enter | Configure the clicked / selected figure |
++| Double-click / Enter | Configure an operation; edit a static commentary in place |
+ | Ctrl+A / Ctrl+D | Select all / duplicate selected figures and their internal connections |
+ | Delete or Backspace | Delete selection and related connections |
+ | Arrow keys / Shift+arrows | Move selection 10 / 40 canvas units |
+@@ -63,9 +66,9 @@ The complete regression set: `agent/test_prompt_flow_panel.py` (validator and in
+ 
+ When editing static files, preserve the `STATIC_VERSION` environment/timestamp expression, update its suffix, and run collectstatic in the verified visible console.
+ 
+-`scripts/prompt_flow_selection_visible.py` checks all seven selected shapes, Ctrl-click and select-all, zoom, deselection, selected connections, and selection during real User Commentary playback. It uses the separate normal port-8001 installation and an authenticated headed Chrome session, checks the actual served CSS, and records full-desktop Shoter captures under `Temp/prompt-selection-docs-visible/`. Its visibility gates must be confirmed from the desktop before proceeding. Its 2026-09-25 run passed all 14 checks with exit code 0.
++`scripts/prompt_flow_selection_visible.py` checks all eight selected shapes, Ctrl-click and select-all, zoom, deselection, selected connections, and selection during real User Input playback. It uses the separate normal port-8001 installation and an authenticated headed Chrome session, checks the actual served CSS, and records full-desktop Shoter captures under `Temp/prompt-selection-docs-visible/`. Its visibility gates must be confirmed from the desktop before proceeding. Its 2026-09-25 run passed all 14 checks with exit code 0.
+ 
+-`scripts/prompt_flow_connections_visible.py` compares triangles and wires with a live Agentic Control Panel and checks dragging, cancellation, Y/N branches, reconnecting, zoom, undo, keyboard connections, save/reopen and real commentary playback. It uses the same separate port-8001 installation, verifies the served assets, and writes Shoter captures under `Temp/prompt-connections-visible/`. Launch it from a verified foreground `-NoExit` console; confirm its desktop visibility gates before proceeding. The harness pauses when its verified Chrome window loses the foreground.
++`scripts/prompt_flow_connections_visible.py` compares triangles and wires with a live Agentic Control Panel and checks dragging, cancellation, Y/N branches, reconnecting, zoom, undo, keyboard connections, save/reopen and real User Input playback. It uses the same separate port-8001 installation, verifies the served assets, and writes Shoter captures under `Temp/prompt-connections-visible/`. Launch it from a verified foreground `-NoExit` console; confirm its desktop visibility gates before proceeding. The harness pauses when its verified Chrome window loses the foreground.
+ 
+ ## Release and self-modification carriage
+ 
+@@ -75,4 +78,4 @@ Self-modify snapshots explicitly require the backend, page, JavaScript, CSS, exe
+ 
+ Run both `.claude/skills/tlamatini-self-update-inclusion/scripts/sweep_self_update.py` and `.claude/skills/tlamatini-self-modify-inclusion/scripts/sweep_self_modify.py --keep` in the verified visible foreground console. Inspect every finding and advisory, then verify this feature's files against the retained snapshot and release receipt. Source-carriage checks do not prove that a fresh executable or installer was built.
+ 
+-`python Tlamatini/manage.py check_prompt_flow_panel` checks the source page and its local assets, validates all seven operation types in the kickoff example, exercises the real WebSocket consumer through a commentary/history-clear flow, and checks a UTF-8 context-file round trip under the application Temp directory. Run it in the same verified visible console. The build runs `manage.exe check_prompt_flow_panel` inside the freshly frozen application after collecting static files and aborts packaging on failure. The command is explicitly bundled and checked in the frozen archive. It does not call a live model or embedding provider; those integrations require separate live playback verification. Adapter regression tests also exercise the actual Temp resolver under source and frozen layouts, including installation paths with spaces and Unicode.
++`python Tlamatini/manage.py check_prompt_flow_panel` checks the source page and its local assets, validates all eight asset types in the kickoff example, exercises the real WebSocket consumer through a User Input/history-clear flow with static commentary, and checks a UTF-8 context-file round trip under the application Temp directory. Run it in the same verified visible console. The build runs `manage.exe check_prompt_flow_panel` inside the freshly frozen application after collecting static files and aborts packaging on failure. The command is explicitly bundled and checked in the frozen archive. It does not call a live model or embedding provider; those integrations require separate live playback verification. Adapter regression tests also exercise the actual Temp resolver under source and frozen layouts, including installation paths with spaces and Unicode.
+diff --git a/scripts/prompt_flow_connections_visible.py b/scripts/prompt_flow_connections_visible.py
+index 07dfb9cf..a04b0605 100644
+--- a/scripts/prompt_flow_connections_visible.py
++++ b/scripts/prompt_flow_connections_visible.py
+@@ -272,7 +272,7 @@ def main():
+             assert '-prompt-flow-panel-12-node-gestures' in page.locator('script[src*="prompt-flow-panel.js"]').get_attribute('src')
+ 
+             kinds = ['prompt', 'programmed_prompt', 'decision', 'feed_embeddings',
+-                     'flush_embeddings', 'clean_history', 'user_commentary']
++                     'flush_embeddings', 'clean_history', 'user_input']
+             nodes = []
+             for i, kind in enumerate(kinds):
+                 config = {'text': 'Connection check'}
+@@ -432,7 +432,7 @@ def main():
+ 
+             assert_anchors()
+             page.locator('[data-action="zoom-in"]').click()
+-            drag(port('feed_embeddings'), port('user_commentary', 'input'))
++            drag(port('feed_embeddings'), port('user_input', 'input'))
+             edges(4)
+             assert_anchors()
+             page.mouse.move(*center(node('feed_embeddings')))
+@@ -453,7 +453,7 @@ def main():
+             expect(page.locator('.pmt-connection-preview, .connecting-source, .connecting-target')).to_have_count(0)
+             port('flush_embeddings').focus()
+             page.keyboard.press('Enter')
+-            port('user_commentary', 'input').focus()
++            port('user_input', 'input').focus()
+             page.keyboard.press('Enter')
+             edges(5)
+             assert_anchors()
+@@ -473,8 +473,8 @@ def main():
+             graph = json.loads(saved.read_text(encoding='utf-8'))
+             assert {(e['source'], e['target'], e['branch']) for e in graph['edges']} == {
+                 ('prompt', 'decision', 'next'), ('decision', 'feed_embeddings', 'yes'),
+-                ('decision', 'clean_history', 'no'), ('feed_embeddings', 'user_commentary', 'next'),
+-                ('flush_embeddings', 'user_commentary', 'next')}
++                ('decision', 'clean_history', 'no'), ('feed_embeddings', 'user_input', 'next'),
++                ('flush_embeddings', 'user_input', 'next')}
+             open_file(saved)
+             edges(5)
+             assert_anchors()
+@@ -484,7 +484,7 @@ def main():
+             # Real model-free playback verifies editing locks and status highlighting.
+             page.get_by_role('button', name='File', exact=True).click()
+             page.locator('[data-action="new"]').first.click()
+-            page.locator('.agent-tool-item[data-type="user_commentary"]').click()
++            page.locator('.agent-tool-item[data-type="user_input"]').click()
+             page.locator('.agent-tool-item[data-type="clean_history"]').click()
+             cleaner = page.locator('.pmt-node[data-type="clean_history"]')
+             x, y = center(cleaner)
+@@ -492,7 +492,7 @@ def main():
+             page.mouse.down()
+             page.mouse.move(x+350,y,steps=10)
+             page.mouse.up()
+-            commentary = page.locator('.pmt-node[data-type="user_commentary"]')
++            commentary = page.locator('.pmt-node[data-type="user_input"]')
+             drag(commentary.locator('.output-triangle'), cleaner.locator('.input-triangle'))
+             commentary.click()
+             page.locator('#pmt-play').click()
+diff --git a/scripts/prompt_flow_extension_visible.py b/scripts/prompt_flow_extension_visible.py
+index e0b164ed..a9b29ea8 100644
+--- a/scripts/prompt_flow_extension_visible.py
++++ b/scripts/prompt_flow_extension_visible.py
+@@ -138,7 +138,7 @@ def main():
+             assert json.loads(blank.read_text(encoding='utf-8'))['nodes'] == []
+             checkpoint('02-default-download')
+ 
+-            page.locator('.agent-tool-item[data-type="user_commentary"]').click()
++            page.locator('.agent-tool-item[data-type="user_input"]').click()
+             expect(page.locator('.pmt-node')).to_have_count(1)
+             portable = save_file('roundtrip', 'roundtrip.fpmt')
+             snapshot = json.loads(portable.read_text(encoding='utf-8'))
+@@ -168,7 +168,7 @@ def main():
+ 
+             sample = ROOT / 'docs/examples/prompting-kickoff.fpmt'
+             open_file(sample)
+-            expect(page.locator('.pmt-node')).to_have_count(7)
++            expect(page.locator('.pmt-node')).to_have_count(8)
+             expect(page.locator('#filename')).to_have_text(sample.name)
+             checkpoint('07-bundled-example-opens')
+             invalid = OUT / 'invalid.fpmt'
+@@ -179,7 +179,7 @@ def main():
+             reject_file(old, 'Choose a .fpmt Prompt Flow Panel file.', '09-old-extension-rejected')
+             reject_file(ROOT / 'Tlamatini/agent/prompt.pmt', 'Choose a .fpmt Prompt Flow Panel file.', '10-system-prompt-remains-separate')
+             wrong = OUT / 'wrong-version.fpmt'
+-            wrong.write_text(json.dumps({**snapshot, 'version': 2}), encoding='utf-8')
++            wrong.write_text(json.dumps({**snapshot, 'version': 99}), encoding='utf-8')
+             reject_file(wrong, 'Unsupported .fpmt version.', '11-version-error-uses-fpmt')
+             oversized = OUT / 'oversized.fpmt'
+             oversized.write_text(' ' * (5 * 1024 * 1024 + 1), encoding='utf-8')
+diff --git a/scripts/prompt_flow_selection_visible.py b/scripts/prompt_flow_selection_visible.py
+index 2f636dfc..fc4275f6 100644
+--- a/scripts/prompt_flow_selection_visible.py
++++ b/scripts/prompt_flow_selection_visible.py
+@@ -101,7 +101,7 @@ def main():
+                 expect(node.locator('.pmt-shape')).to_have_css('stroke', status_color or 'rgb(255, 204, 0)')
+                 expect(node.locator('svg')).to_have_css('filter', 'drop-shadow(rgba(255, 204, 0, 0.7) 0px 0px 5px)')
+ 
+-            # Use an ordinary file-open action, with all seven shapes from the shipped example.
++            # Use an ordinary file-open action, with all eight shapes from the shipped example.
+             page.get_by_role('button', name='File', exact=True).click()
+             with page.expect_file_chooser() as chooser:
+                 page.locator('[data-action="open"]').click()
+@@ -109,15 +109,15 @@ def main():
+             confirm = page.locator('.tlmpop-overlay button').filter(has_text='Continue')
+             if confirm.is_visible():
+                 confirm.click()
+-            expect(page.locator('.pmt-node')).to_have_count(7)
++            expect(page.locator('.pmt-node')).to_have_count(8)
+             page.locator('[data-action="fit"]').click()
+             page.wait_for_function('!document.title.startsWith("•")')
+             css_url = page.locator('link[href*="/css/prompt_flow_panel.css"]').get_attribute('href')
+-            assert '-prompt-flow-panel-11-shared-mechanics' in css_url, css_url
++            assert '-prompt-commentary-input-1' in css_url, css_url
+             delivered = page.request.get(BASE + css_url)
+             assert delivered.ok and delivered.body() == (ROOT / 'Tlamatini/agent/static/agent/css/prompt_flow_panel.css').read_bytes()
+             positions = page.locator('.pmt-node').evaluate_all('(nodes) => nodes.map(n => [n.dataset.nodeId, n.style.left, n.style.top])')
+-            for number, kind in enumerate(('prompt', 'programmed_prompt', 'decision', 'feed_embeddings', 'flush_embeddings', 'clean_history', 'user_commentary'), 1):
++            for number, kind in enumerate(('prompt', 'programmed_prompt', 'decision', 'feed_embeddings', 'flush_embeddings', 'clean_history', 'user_input', 'user_commentary'), 1):
+                 node = page.locator('.pmt-node[data-type="' + kind + '"]')
+                 node.click(position={'x': 100, 'y': 64})
+                 expect(page.locator('.pmt-node.selected')).to_have_count(1)
+@@ -130,10 +130,10 @@ def main():
+                 gold(node)
+             checkpoint('08-ctrl-click-multiple')
+             page.keyboard.press('Control+a')
+-            expect(page.locator('.pmt-node.selected')).to_have_count(7)
++            expect(page.locator('.pmt-node.selected')).to_have_count(8)
+             for node in page.locator('.pmt-node.selected').all():
+                 gold(node)
+-            checkpoint('09-select-all-seven-shapes')
++            checkpoint('09-select-all-eight-shapes')
+             page.locator('[data-action="zoom-in"]').click()
+             for node in page.locator('.pmt-node.selected').all():
+                 gold(node)
+@@ -157,7 +157,7 @@ def main():
+             # Real model-free playback verifies that selection does not erase status colors.
+             menu('new')
+             expect(page.locator('.pmt-node')).to_have_count(0)
+-            page.locator('.agent-tool-item[data-type="user_commentary"]').click()
++            page.locator('.agent-tool-item[data-type="user_input"]').click()
+             node = page.locator('.pmt-node')
+             gold(node)
+             expect(page.locator('#pmt-play')).to_be_enabled()
+diff --git a/scripts/prompt_flow_commentary_visible.py b/scripts/prompt_flow_commentary_visible.py
+new file mode 100644
+index 00000000..95e293ba
+--- /dev/null
++++ b/scripts/prompt_flow_commentary_visible.py
+@@ -0,0 +1,314 @@
++# Tlamatini Author Banner — Angela López Mendoza
++"""Static commentary / unchanged user-input regression in real visible Chrome.
++
++Launch from a verified foreground PowerShell -NoExit console. Uses a separate
++normal source installation, real login/HTTP/WebSocket, and Shoter desktop photos.
++No headless mode, transport interception or injected editor state. The browser
++visibility photo must be reviewed before creating browser.confirmed. Successful
++checks leave Chrome and the test server open for inspection until close.confirmed.
++"""
++from __future__ import annotations
++
++import ctypes
++import json
++from pathlib import Path
++import shutil
++import subprocess
++import sys
++import time
++import traceback
++import urllib.request
++
++from playwright.sync_api import expect, sync_playwright
++import panel_search_title_visible as visible
++from prompt_flow_connections_visible import require_browser_foreground
++
++ROOT = Path(__file__).resolve().parents[1]
++OUT = ROOT / 'Temp/prompt-commentary-visible'
++visible.OUT = OUT
++visible.RUNTIME = OUT / 'runtime'
++BASE = visible.BASE
++
++
++def main():
++    if any('headless' in arg for arg in sys.argv[1:]):
++        raise SystemExit('Headless execution is forbidden.')
++    OUT.mkdir(parents=True, exist_ok=True)
++    user32 = ctypes.windll.user32
++    kernel32 = ctypes.windll.kernel32
++    kernel32.GetConsoleWindow.restype = ctypes.c_void_p
++    user32.GetForegroundWindow.restype = ctypes.c_void_p
++    user32.IsWindowVisible.argtypes = [ctypes.c_void_p]
++    user32.IsIconic.argtypes = [ctypes.c_void_p]
++    console = kernel32.GetConsoleWindow()
++    if not console or not user32.IsWindowVisible(console) or user32.IsIconic(console) or user32.GetForegroundWindow() != console:
++        raise SystemExit('A visible foreground development console is required; refusing execution.')
++    visible.photograph('console-visible')
++    before = visible.listeners()
++    if any(port in before for port in (8001, 8766, 50052)):
++        raise SystemExit('Test ports occupied; refusing to replace an existing server.')
++    original = visible.read_discovery()
++    (OUT / 'login.json').write_text(json.dumps({'username': 'user', 'password': 'changeme'}), encoding='utf-8')
++    server = None
++    results = []
++    outcome = 1
++    try:
++        env, credentials = visible.prepare_runtime()
++        # Refresh only this isolated test installation on a repeat run.
++        for path in ('agent/services/prompt_flow_panel.py', 'agent/test_prompt_flow_panel.py',
++                     'agent/test_prompt_flow_panel_websocket.py', 'agent/management/commands/check_prompt_flow_panel.py',
++                     'agent/static/agent/js/prompt-flow-panel-model.js', 'agent/static/agent/js/prompt-flow-panel.js',
++                     'agent/static/agent/css/prompt_flow_panel.css', 'agent/templates/agent/prompt_flow_panel.html',
++                     'tlamatini/settings.py'):
++            shutil.copy2(ROOT / 'Tlamatini' / path, visible.RUNTIME / 'Tlamatini' / path)
++        for path in ('docs/examples/prompting-kickoff.fpmt', 'docs/prompting-flow-designer.md'):
++            dest = visible.RUNTIME / path
++            dest.parent.mkdir(parents=True, exist_ok=True)
++            shutil.copy2(ROOT / path, dest)
++        for command in (
++            ['test', 'agent.test_prompt_flow_panel_runtime', 'agent.test_prompt_flow_panel_websocket', 'agent.test_chain_readiness', '--noinput'],
++            ['check_prompt_flow_panel'], ['collectstatic', '--noinput'],
++        ):
++            if '--resume' in sys.argv and command[0] != 'collectstatic':
++                continue
++            print('VISIBLE CHECK:', ' '.join(command), flush=True)
++            subprocess.run([sys.executable, '-u', 'Tlamatini/manage.py', *command], cwd=visible.RUNTIME, env=env, check=True)
++        server = visible.start_server(env)
++        deadline = time.monotonic() + 180
++        while time.monotonic() < deadline:
++            if server.poll() is not None:
++                raise RuntimeError('Test server exited: ' + str(server.returncode))
++            try:
++                with urllib.request.urlopen(BASE, timeout=2) as response:
++                    if response.status == 200:
++                        break
++            except (OSError, TimeoutError):
++                time.sleep(1)
++        else:
++            raise TimeoutError('Test server did not become ready.')
++        visible.restore_discovery(original)
++        with sync_playwright() as playwright:
++            context = playwright.chromium.launch_persistent_context(
++                str(OUT / 'chrome-profile-containment'), channel='chrome', headless=False,
++                chromium_sandbox=True, no_viewport=True, slow_mo=100,
++                accept_downloads=True, args=['--start-maximized'])
++            page = context.pages[0]
++            errors = []
++            page.on('pageerror', lambda error: errors.append(str(error)))
++            page.on('dialog', lambda dialog: dialog.accept())
++            page.on('close', lambda: print('Visible test page closed.', flush=True))
++            page.goto(BASE)
++            page.bring_to_front()
++            visible.visibility_gate('browser', page)
++            require_browser_foreground(page)
++            page.goto(BASE + '/agent/prompt_flow_panel/')
++            if page.locator('#id_username').is_visible():
++                page.locator('#id_username').fill(credentials['username'])
++                page.locator('#id_password').fill(credentials['password'])
++                page.locator('button[type=submit], input[type=submit]').first.click()
++                page.goto(BASE + '/agent/prompt_flow_panel/')
++            credentials.clear()
++            expect(page.locator('.agent-tool-item')).to_have_count(8)
++
++            def checkpoint(name):
++                require_browser_foreground(page)
++                visible.photograph(name)
++                results.append(name)
++                (OUT / 'checks.json').write_text(json.dumps(results, indent=2), encoding='utf-8')
++                print('PASS:', name, flush=True)
++
++            def menu(action):
++                page.get_by_role('button', name='File', exact=True).click()
++                page.locator('.dropdown-menu [data-action="' + action + '"]').first.click()
++                accept = page.locator('.tlmpop-overlay button').filter(has_text='Continue')
++                if accept.is_visible():
++                    accept.click()
++
++            def save(name):
++                menu('save')
++                page.locator('#pmt-field-filename').fill(name)
++                with page.expect_download() as downloaded:
++                    page.get_by_role('button', name='Download .fpmt', exact=True).click()
++                path = OUT / name
++                downloaded.value.save_as(path)
++                return path, json.loads(path.read_text(encoding='utf-8'))
++
++            def open_file(path):
++                page.get_by_role('button', name='File', exact=True).click()
++                with page.expect_file_chooser() as chooser:
++                    page.locator('[data-action="open"]').click()
++                chooser.value.set_files(str(path))
++                accept = page.locator('.tlmpop-overlay button').filter(has_text='Continue')
++                if accept.is_visible():
++                    accept.click()
++
++            def center(locator):
++                require_browser_foreground(page)
++                box = locator.bounding_box()
++                return box['x'] + box['width'] / 2, box['y'] + box['height'] / 2
++
++            menu('new')
++            page.locator('[data-action="fit"]').click()
++            expect(page.locator('.agent-tool-item')).to_have_count(8)
++            expect(page.locator('.agent-tool-item[data-type="user_input"]')).to_have_text('User Input')
++            expect(page.locator('.agent-tool-item[data-type="user_commentary"]')).to_have_text('User Commentary')
++            css = page.locator('link[href*="prompt_flow_panel.css"]').get_attribute('href')
++            assert '-prompt-commentary-input-1' in css
++            assert page.request.get(BASE + css).body() == (ROOT / 'Tlamatini/agent/static/agent/css/prompt_flow_panel.css').read_bytes()
++            checkpoint('01-palette-and-served-assets')
++            page.locator('.agent-tool-item[data-type="user_commentary"]').click()
++            comment = page.locator('.pmt-node[data-type="user_commentary"]')
++            expect(comment.locator('.pmt-port')).to_have_count(0)
++            expect(page.locator('#pmt-play')).to_be_disabled()
++            expect(page.locator('#pmt-start option')).to_have_count(1)
++            paragraph = ('Review paragraph: ñ <script> literal {{last_output}}. This note stays on the canvas.\n\n' * 60).rstrip()
++            comment.dblclick(position={'x': 70, 'y': 55})
++            editor = page.get_by_role('textbox', name='Static User Commentary text')
++            expect(editor).to_be_visible()
++            editor.fill(paragraph)
++            assert editor.evaluate('(el) => el.scrollHeight <= el.clientHeight + 2'), 'Editor must grow while typing'
++            expect(editor).to_have_css('overflow-y', 'hidden')
++            editor.press('Control+Enter')
++            expect(comment.locator('.pmt-comment-text')).to_have_text(paragraph)
++            assert comment.locator('.pmt-comment-text script').count() == 0
++            assert comment.locator('.pmt-comment-text').evaluate('(el) => el.scrollHeight <= el.clientHeight'), 'Long note must fit without scrolling'
++            assert float(comment.get_attribute('style').split('height: ')[1].split('px')[0]) > 200
++            checkpoint('02-in-place-long-literal-note')
++            comment.focus()
++            comment.press('Enter')
++            editor.fill('Cancelled replacement')
++            editor.press('Escape')
++            expect(comment.locator('.pmt-comment-text')).to_have_text(paragraph)
++            # A compact review note lets the whole manually resized bubble be inspected.
++            paragraph = 'Review note: Keep the runtime User Input separate from this static commentary.\n\nThe bubble contains the complete text and grows when the font or content needs more room.'
++            comment.focus()
++            comment.press('Enter')
++            editor.fill(paragraph)
++            editor.press('Control+Enter')
++            page.locator('[data-action="configure"]').click()
++            page.locator('#pmt-field-color').select_option('#dbeafe')
++            page.locator('#pmt-field-font_family').select_option('Georgia')
++            page.locator('#pmt-field-font_size').fill('21')
++            page.locator('#pmt-field-width').fill('500')
++            page.locator('#pmt-field-height').fill('320')
++            page.locator('#pmt-field-bold').check()
++            page.locator('#pmt-field-italic').check()
++            page.locator('#pmt-field-align').select_option('right')
++            page.get_by_role('button', name='Save', exact=True).click()
++            expect(comment).to_have_css('width', '500px')
++            expect(comment.locator('.pmt-comment-text')).to_have_css('font-size', '21px')
++            expect(comment.locator('.pmt-comment-text')).to_have_css('font-style', 'italic')
++            expect(comment.locator('.pmt-shape')).to_have_css('fill', 'rgb(219, 234, 254)')
++            expect(comment.locator('.pmt-comment-text')).to_have_css('overflow-y', 'hidden')
++            assert comment.locator('.pmt-comment-text').evaluate('(el) => el.scrollHeight <= el.clientHeight')
++            checkpoint('03-font-color-size-and-cancel')
++            page.locator('[data-action="zoom-out"]').click()
++            handle = comment.locator('.pmt-comment-resize')
++            x, y = center(handle)
++            page.mouse.move(x, y); page.mouse.down(); page.mouse.move(x + 90, y + 72, steps=8); page.mouse.up()
++            expect(comment).to_have_css('width', '600px')
++            expect(comment).to_have_css('height', '400px')
++            page.locator('[data-action="undo"]').click()
++            expect(comment).to_have_css('width', '500px')
++            page.locator('[data-action="redo"]').click()
++            expect(comment).to_have_css('width', '600px')
++            checkpoint('04-zoom-aware-resize-undo-redo')
++            page.locator('[data-action="duplicate"]').click()
++            expect(comment).to_have_count(2)
++            page.locator('#submonitor-container').focus()
++            page.keyboard.press('ArrowDown')
++            page.keyboard.press('Shift+ArrowDown')
++            page.keyboard.press('Shift+ArrowDown')
++            page.keyboard.press('Shift+ArrowDown')
++            page.keyboard.press('Shift+ArrowDown')
++            page.keyboard.press('Shift+ArrowDown')
++            page.locator('[data-action="fit"]').click()
++            portable, payload = save('commentaries.fpmt')
++            assert payload['version'] == 2 and payload['start'] is None and payload['edges'] == []
++            assert len(payload['nodes']) == 2
++            assert all(n['config']['text'] == paragraph and n['config']['font_family'] == 'Georgia' for n in payload['nodes'])
++            open_file(portable)
++            expect(comment).to_have_count(2)
++            page.wait_for_timeout(500)
++            page.reload()
++            expect(comment).to_have_count(2)
++            checkpoint('05-multiple-notes-file-and-draft-roundtrip')
++            # Keep the static notes, then add real input/history-clear operations.
++            page.locator('.agent-tool-item[data-type="user_input"]').click()
++            page.locator('#submonitor-container').focus()
++            for _ in range(18):
++                page.keyboard.press('Shift+ArrowRight')
++            page.locator('.agent-tool-item[data-type="clean_history"]').click()
++            page.locator('#submonitor-container').focus()
++            for _ in range(26):
++                page.keyboard.press('Shift+ArrowRight')
++            page.locator('[data-action="fit"]').click()
++            input_node = page.locator('.pmt-node[data-type="user_input"]')
++            clear_node = page.locator('.pmt-node[data-type="clean_history"]')
++            source = input_node.locator('.output-triangle')
++            target = clear_node.locator('.input-triangle')
++            page.mouse.move(*center(source)); page.mouse.down(); page.mouse.move(*center(target), steps=8); page.mouse.up()
++            expect(page.locator('.pmt-edge')).to_have_count(1)
++            expect(page.locator('#pmt-start option')).to_have_count(2)
++            page.locator('#pmt-play').click()
++            expect(page.locator('#pmt-field-reply')).to_be_visible()
++            expect(page.locator('.ui-dialog-title')).to_have_text('User Input')
++            page.locator('#pmt-field-reply').fill('Same runtime reply: ñ ✓')
++            page.get_by_role('button', name='Continue flow', exact=True).click()
++            expect(page.locator('#pmt-run-state')).to_have_text('completed', timeout=30000)
++            expect(page.locator('#pmt-run-log')).to_contain_text('Same runtime reply: ñ ✓')
++            expect(comment.locator('.pmt-node-status')).to_have_count(0)
++            checkpoint('06-real-user-input-playback-with-static-notes')
++            page.locator('#pmt-play').click()
++            expect(page.locator('#pmt-field-reply')).to_be_visible()
++            page.keyboard.press('Escape')
++            expect(page.locator('#pmt-run-state')).to_have_text('stopped', timeout=30000)
++            checkpoint('07-user-input-escape-stops-flow')
++            legacy = {'format': 'tlamatini-prompting-flow', 'version': 1, 'name': 'Legacy reply flow',
++                      'start': 'old', 'max_steps': 20, 'nodes': [
++                          {'id': 'old', 'type': 'user_commentary', 'label': 'User Commentary', 'x': 70, 'y': 60, 'config': {'text': 'Legacy request'}},
++                      ], 'edges': []}
++            legacy_path = OUT / 'legacy.fpmt'
++            legacy_path.write_text(json.dumps(legacy), encoding='utf-8')
++            open_file(legacy_path)
++            expect(input_node).to_have_count(1)
++            expect(comment).to_have_count(0)
++            expect(input_node.locator('.pmt-node-label')).to_have_text('User Input')
++            page.locator('#pmt-play').click()
++            expect(page.locator('#pmt-field-reply')).to_be_visible()
++            page.locator('#pmt-field-reply').fill('Legacy mechanism preserved')
++            page.get_by_role('button', name='Continue flow', exact=True).click()
++            expect(page.locator('#pmt-run-state')).to_have_text('completed', timeout=30000)
++            _, migrated = save('migrated.fpmt')
++            assert migrated['version'] == 2 and migrated['nodes'][0]['type'] == 'user_input'
++            checkpoint('08-legacy-input-migration-and-playback')
++            open_file(ROOT / 'docs/examples/prompting-kickoff.fpmt')
++            expect(page.locator('.pmt-node')).to_have_count(8)
++            page.locator('[data-action="fit"]').click()
++            checkpoint('09-bundled-eight-asset-example')
++            assert not errors, errors
++            outcome = 0
++            (OUT / 'summary.json').write_text(json.dumps({'exit_code': 0, 'checks': results,
++                'mocked_transports': False, 'model_called': False, 'browser_visible': True}, indent=2), encoding='utf-8')
++            print('ALL COMMENTARY CHECKS PASSED. EXIT_CODE=0. Chrome stays open for inspection.', flush=True)
++            print('Create close.confirmed to close this test session when finished inspecting.', flush=True)
++            while not (OUT / 'close.confirmed').exists():
++                page.wait_for_timeout(1000)
++            context.close()
++    except Exception:
++        traceback.print_exc()
++        try:
++            visible.photograph('failure')
++        except Exception:
++            traceback.print_exc()
++    finally:
++        visible.stop_server(server)
++        visible.restore_discovery(original)
++        if outcome:
++            (OUT / 'summary.json').write_text(json.dumps({'exit_code': outcome, 'checks': results}, indent=2), encoding='utf-8')
++        print('COMMENTARY TEST EXIT CODE:', outcome, flush=True)
++    return outcome
++
++
++if __name__ == '__main__':
++    raise SystemExit(main())

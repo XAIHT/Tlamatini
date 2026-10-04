@@ -59,8 +59,9 @@ async def check_websocket():
             raise CommandError('Prompt Flow Panel websocket did not become ready')
         flow = {'format': FORMAT, 'version': VERSION, 'name': 'Offline release check',
                 'start': 'comment', 'nodes': [
-                    {'id': 'comment', 'type': 'user_commentary', 'config': {'text': 'Release check'}},
+                    {'id': 'comment', 'type': 'user_input', 'config': {'text': 'Release check'}},
                     {'id': 'clean', 'type': 'clean_history'},
+                    {'id': 'note', 'type': 'user_commentary', 'config': {'text': 'Static release-check note'}},
                 ], 'edges': [{'id': 'edge', 'source': 'comment', 'target': 'clean'}]}
         await communicator.send_input({'type': 'websocket.receive', 'text': json.dumps({
             'action': 'start', 'flow': flow})})

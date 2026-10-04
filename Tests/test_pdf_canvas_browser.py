@@ -25,8 +25,8 @@ from playwright.sync_api import expect, sync_playwright
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
-from visual_fatal_dialog_visible import require_visible
-import panel_search_title_visible as visible
+from visual_fatal_dialog_visible import require_visible  # noqa: E402 - after sys.path insert
+import panel_search_title_visible as visible  # noqa: E402 - after sys.path insert
 
 
 def capture_desktop(destination):

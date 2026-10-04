@@ -176,7 +176,7 @@ python build_uninstaller.py
 python build_installer.py
 ```
 
-All three scripts pick up `v1.75.0` automatically (precedence #3 — Git finds the newest reachable annotated tag). This remains true when `HEAD` is a later untagged commit, because Tlamatini deliberately emits the bare base tag without a distance or dirty suffix. The current checkout is exactly that case: `HEAD` is `70aeeb87` (the Self-modify switch), one commit past `v1.75.0`, and it still reports the bare `1.75.0`.
+All three scripts pick up `v1.75.0` automatically (precedence #3 — Git finds the newest reachable annotated tag). This remains true when `HEAD` is a later untagged commit, because Tlamatini deliberately emits the bare base tag without a distance or dirty suffix. The current checkout is exactly that case: `main` carries several commits past `v1.75.0` (the Self-modify switch `70aeeb87` and the fixes after it), and it still reports the bare `1.75.0`.
 
 You'll see this in each script's output:
 ```

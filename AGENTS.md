@@ -112,3 +112,12 @@ default) decides per request whether her self-knowledge (`Tlamatini.md`,
 Contract: [CLAUDE.md](CLAUDE.md) → *Self-modify*,
 `docs/claude/architecture.md` → *The Self-modify switch*,
 `docs/claude/recent-fixes.md` (2026-10-03).
+
+## Prompt Flow comments are static; User Input runs (2026-10-03)
+
+**Commentary/Input split (2026-10-03, source changes):** The Operations bar contains seven executable operations and a separate static **User Commentary** asset. **User Input** (`user_input`) keeps the old question/reply/cancellation mechanism and uses the supplied notched-top, downward-point figure. **User Commentary** (`user_commentary`) is a speech-bubble review note: double-click/Enter writes in place, Done/Ctrl+Enter saves, Escape cancels; Configure selects palette color, font, size, emphasis, alignment and dimensions. Bubbles and their editors grow to contain the full wrapped text at the chosen width/font, **without internal scrollbars**; saved height is a minimum. They move, resize, duplicate and Undo/Redo, save/open/recover with the diagram, have no ports or Start status, and never affect model context, history or playback steps. New `.fpmt` saves use version **2**; version 1 files/drafts migrate their executable commentary to User Input while preserving IDs, connections and configuration. The local-storage key still ends in `.draft.v1.<user id>` for compatibility; it does not identify the document version. Current cache suffix: `-prompt-commentary-input-1`. Verified: 61 backend/packaging tests and nine real foreground Chrome checks in `scripts/prompt_flow_commentary_visible.py`. No release executable was rebuilt. See `docs/prompting-flow-designer.md` and the 2026-10-03 entry in `docs/claude/recent-fixes.md`.
+
+Preserve this distinction when editing the designer, importing legacy diagrams,
+writing documentation or verifying the shipped example. The user explicitly
+rejected internal commentary scrollbars. Automatic containment must include
+font/width changes, inline typing, file/draft recovery and canvas Fit.

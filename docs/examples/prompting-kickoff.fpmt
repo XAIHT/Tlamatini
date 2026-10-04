@@ -1,17 +1,18 @@
 {
   "format": "tlamatini-prompting-flow",
-  "version": 1,
+  "version": 2,
   "name": "Prompting kickoff — all operations",
   "start": "subject",
   "max_steps": 100,
   "nodes": [
-    {"id": "subject", "type": "user_commentary", "label": "Choose a subject", "x": 40, "y": 50, "config": {"text": "What subject would you like to explore?"}},
+    {"id": "subject", "type": "user_input", "label": "Choose a subject", "x": 40, "y": 50, "config": {"text": "What subject would you like to explore?"}},
     {"id": "explain", "type": "prompt", "label": "Explain the subject", "x": 320, "y": 50, "config": {"text": "Explain this subject in three short points: {{last_output}}", "multi_turn": false, "acpx": false}},
     {"id": "feed", "type": "feed_embeddings", "label": "Remember the answer", "x": 600, "y": 50, "config": {"text": "{{last_output}}"}},
     {"id": "followup", "type": "programmed_prompt", "label": "Suggest a next step", "x": 880, "y": 50, "config": {"text": "Explain one useful next step for the subject we discussed, using the context provided.", "multi_turn": false, "acpx": false, "delay_seconds": 2, "scheduled_at": ""}},
     {"id": "decide", "type": "decision", "label": "Flush context?", "x": 880, "y": 320, "config": {"text": "Clear the retrieval context before ending this run?", "comparison": "user", "value": "", "case_sensitive": false}},
     {"id": "flush", "type": "flush_embeddings", "label": "Flush embeddings", "x": 600, "y": 320, "config": {"text": ""}},
-    {"id": "clean", "type": "clean_history", "label": "Clean History", "x": 320, "y": 320, "config": {"text": ""}}
+    {"id": "clean", "type": "clean_history", "label": "Clean History", "x": 320, "y": 320, "config": {"text": ""}},
+    {"id": "review", "type": "user_commentary", "label": "Reviewer note", "x": 40, "y": 530, "config": {"text": "Review note: User Input asks for the subject during playback. This speech bubble is a static annotation: it never runs, never changes history, and needs no connection. Double-click to edit this note; Configure changes its font and color.", "width": 620, "height": 240, "color": "#fef3c7", "font_family": "Georgia", "font_size": 16, "bold": false, "italic": false, "align": "left"}}
   ],
   "edges": [
     {"id": "subject_explain", "source": "subject", "target": "explain", "branch": "next"},

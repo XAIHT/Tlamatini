@@ -101,7 +101,7 @@ def main():
                 expect(node.locator('.pmt-shape')).to_have_css('stroke', status_color or 'rgb(255, 204, 0)')
                 expect(node.locator('svg')).to_have_css('filter', 'drop-shadow(rgba(255, 204, 0, 0.7) 0px 0px 5px)')
 
-            # Use an ordinary file-open action, with all seven shapes from the shipped example.
+            # Use an ordinary file-open action, with all eight shapes from the shipped example.
             page.get_by_role('button', name='File', exact=True).click()
             with page.expect_file_chooser() as chooser:
                 page.locator('[data-action="open"]').click()
@@ -109,15 +109,15 @@ def main():
             confirm = page.locator('.tlmpop-overlay button').filter(has_text='Continue')
             if confirm.is_visible():
                 confirm.click()
-            expect(page.locator('.pmt-node')).to_have_count(7)
+            expect(page.locator('.pmt-node')).to_have_count(8)
             page.locator('[data-action="fit"]').click()
             page.wait_for_function('!document.title.startsWith("•")')
             css_url = page.locator('link[href*="/css/prompt_flow_panel.css"]').get_attribute('href')
-            assert '-prompt-flow-panel-11-shared-mechanics' in css_url, css_url
+            assert '-prompt-commentary-input-1' in css_url, css_url
             delivered = page.request.get(BASE + css_url)
             assert delivered.ok and delivered.body() == (ROOT / 'Tlamatini/agent/static/agent/css/prompt_flow_panel.css').read_bytes()
             positions = page.locator('.pmt-node').evaluate_all('(nodes) => nodes.map(n => [n.dataset.nodeId, n.style.left, n.style.top])')
-            for number, kind in enumerate(('prompt', 'programmed_prompt', 'decision', 'feed_embeddings', 'flush_embeddings', 'clean_history', 'user_commentary'), 1):
+            for number, kind in enumerate(('prompt', 'programmed_prompt', 'decision', 'feed_embeddings', 'flush_embeddings', 'clean_history', 'user_input', 'user_commentary'), 1):
                 node = page.locator('.pmt-node[data-type="' + kind + '"]')
                 node.click(position={'x': 100, 'y': 64})
                 expect(page.locator('.pmt-node.selected')).to_have_count(1)
@@ -130,10 +130,10 @@ def main():
                 gold(node)
             checkpoint('08-ctrl-click-multiple')
             page.keyboard.press('Control+a')
-            expect(page.locator('.pmt-node.selected')).to_have_count(7)
+            expect(page.locator('.pmt-node.selected')).to_have_count(8)
             for node in page.locator('.pmt-node.selected').all():
                 gold(node)
-            checkpoint('09-select-all-seven-shapes')
+            checkpoint('09-select-all-eight-shapes')
             page.locator('[data-action="zoom-in"]').click()
             for node in page.locator('.pmt-node.selected').all():
                 gold(node)
@@ -157,7 +157,7 @@ def main():
             # Real model-free playback verifies that selection does not erase status colors.
             menu('new')
             expect(page.locator('.pmt-node')).to_have_count(0)
-            page.locator('.agent-tool-item[data-type="user_commentary"]').click()
+            page.locator('.agent-tool-item[data-type="user_input"]').click()
             node = page.locator('.pmt-node')
             gold(node)
             expect(page.locator('#pmt-play')).to_be_enabled()
