@@ -29,6 +29,10 @@ Angela asked for a complete sweep of the source and every Markdown document, a v
 
 **Trap 2 — Chrome itself can crash at the checkpoint-5 download.** In four runs that evening the test Chrome crashed three times at the instant the `.fpmt` file is downloaded (`TargetClosedError: Download.save_as`). The proof is Chrome's own: Crashpad dumps in `Temp/prompt-commentary-visible/chrome-profile-containment/Crashpad/reports` at 21:04:18, 21:08:05 and 21:25:10, one per failure, and the profile's `exit_type: Crashed`. Codex saw the same closure earlier that day. The page uses a plain blob download (`a.download` + `a.click()`), and the run that did not crash passed **9 of 9** checkpoints (21:16, photographs reviewed), so this is a crash in Chrome under automation, not a Prompt Flow defect. Treat a crash there as inconclusive and re-run; never count it as a pass. (A first guess blamed the `PYTHONPATH` and `TEMP` the MCP Executer passes down; a clean-environment run crashed the same way, so that guess was wrong.)
 
+**Trap 3 — the dossier's native check needs PowerPoint in FRONT.** `dossier_verify.py` measures every text box inside the real PowerPoint and refuses (*"Native dossier verification requires visible foreground PowerPoint."*) when PowerPoint is not the foreground window. It used to ask Windows once and give up, and Windows often turns down a single foreground request from a background process, so the first run failed after writing both files. It now asks again for up to 300 s (`FOREGROUND_WAIT_SECONDS`) and prints `PAUSED: bring the PowerPoint dossier window to the front to continue.` every 10 s, so the person watching can click it. It taps ALT (which lets Windows grant the request) only on the first three tries, so someone working in another window is not sent ALT every half second. The next two runs came forward by themselves and passed: 0 problems, tree parity 1602/1602 in both files, 2,223 PowerPoint text boxes checked.
+
+**v1.75.0 is published.** During this sweep `v1.75.0` was published on GitHub (2026-10-03 16:50 UTC, "Tlamatini Release v1.75.0 Win11x64", marked Latest). The regenerated dossier said so, because it reads `gh release list` live, but `CLAUDE.md`, `GEMINI.md`, `KIMI.md`, `README.md`, `BookOfTlamatini.md`, `ACPX.md`, this file and both copies of the self-update-inclusion skill still said it was unpublished and that self-update delivered v1.74.0. All corrected. Angela's own v1.75.0 install, built from `main` that morning before the release went up, already carries the Self-modify switch, migration 0212 and the four-stop-sequence fix; the annotated tag still points to `f7eb53ff`. The release zip's inner `pkg.zip` is compressed, so what the published package contains cannot be listed from GitHub without downloading all 1.9 GB; the docs therefore state only what was checked.
+
 Verification for this sweep, all in visible consoles: 430 targeted unit tests, `check_prompt_flow_panel`, ESLint (0 errors) plus the 54-file parse gate, `skill_inventory.py --check`, both inclusion sweeps (CLEAN), `git diff --check`, and the visible commentary harness (9/9 at 21:16; a later run showed the pluralised `1 comment` in its photographs before Chrome crashed at checkpoint 5).
 
 ## 2026-10-03 — Prompt Flow Markdown audit and test-process cleanup
@@ -89,7 +93,7 @@ Angela asked for a control to enable/disable self-modify *"if and only if the mo
 
 ## 2026-10-02 — The COMPACT MODE switch: the real rows, a locked box, a truthful gauge
 
-> **Shipped in `v1.75.0`** (annotated tag at `f7eb53ff`, 2026-10-03; no GitHub release published for it yet as of 2026-10-03 — the latest published release is `v1.74.0`, so self-update still delivers v1.74.0).
+> **Shipped in `v1.75.0`** (annotated tag at `f7eb53ff`, 2026-10-03; no GitHub release was published yet when this entry was written — v1.75.0 was published later on 2026-10-03 and marked Latest).
 
 **Angela's design, approved in her words:** in STRICT compact mode (a small model really active) the user must NOT be able to untick "Compact mode"; only a model that can fit **everything activated** lets it be ticked and unticked freely. Compact mode starts with System-Metrics, Files-Search and Current-Time enabled, *"BUT THE USER MUST BE ABLE TO FOR EXAMPLE DEACTIVATE System Metrics, DEACTIVATE Files Search, BUT ACTIVATE FOR EXAMPLE ESPHomer"*; the selections in Configure MCPs / Configure Agents must get *"REALLY chained/unchained"* - ALL of them, not only PDFer or Unrealer; unticking re-enables ALL; *"the gauge must be the most real value"*; the gauge says **CONTEXT-WINDOW**; the not-ready legend tells the user to make the request fit the CONTEXT WINDOW. Then: *"keep compact, and yes show the warning"*.
 
@@ -2765,7 +2769,7 @@ audit. Migrations **0195/0196/0197**; catalog prompt **119**
 > `v1.48.16` = `6ee630ca` (themed `tlmAlert`/`tlmConfirm` pop-ups + the
 > frozen-bundle carriage proof in `build.py`), **`v1.48.17` = `f948be7b` — the
 > newest release on that day**, carrying everything below. The current release
-> is now `v1.75.0` (tagged 2026-10-03; the latest published release is `v1.74.0`); entries that say a change "landed in v1.48.15" or
+> is now `v1.75.0` (tagged and published 2026-10-03); entries that say a change "landed in v1.48.15" or
 > `v1.48.17` are historical statements and remain as written.
 
 **Angela, verbatim:** *"Standarize in every ... every dialog and all of the

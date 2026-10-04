@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from collections import Counter
 from pathlib import Path
+import time
 
 import fitz
 from pptx import Presentation
@@ -31,6 +32,7 @@ from complete_project_docs import BUILD_DIR, parse_tree
 RENDER_DIR = BUILD_DIR / "renders"
 PAGE_MARGIN = 9.0          # points: glyphs must stay at least this far from the page edge
 TOLERANCE = 1.0            # points of slack for PowerPoint's own rounding
+FOREGROUND_WAIT_SECONDS = 300  # how long to keep asking Windows to bring PowerPoint forward
 
 
 def _rebuild(lines: list[str]) -> list[str]:
@@ -195,24 +197,49 @@ def verify_pptx_native(path: Path) -> dict:
         raise RuntimeError(f"Expected one PowerPoint dossier frame, found {len(frames)}.")
     hwnd = frames[0]
     win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
-    foreground = win32gui.GetForegroundWindow()
-    foreground_thread, _ = win32process.GetWindowThreadProcessId(foreground)
-    calling_thread = win32api.GetCurrentThreadId()
-    attached = False
-    try:
-        if calling_thread != foreground_thread:
-            win32process.AttachThreadInput(calling_thread, foreground_thread, True)
-            attached = True
-        win32gui.BringWindowToTop(hwnd)
-        win32gui.SetForegroundWindow(hwnd)
-    except Exception:
-        pass  # The verification below refuses to run unless activation actually worked.
-    finally:
-        if attached:
-            win32process.AttachThreadInput(calling_thread, foreground_thread, False)
-    if not (win32gui.IsWindowVisible(hwnd) and not win32gui.IsIconic(hwnd)
-            and win32gui.GetForegroundWindow() == hwnd):
-        raise RuntimeError("Native dossier verification requires visible foreground PowerPoint.")
+
+    def activate(tap_alt: bool) -> None:
+        foreground = win32gui.GetForegroundWindow()
+        foreground_thread, _ = win32process.GetWindowThreadProcessId(foreground)
+        calling_thread = win32api.GetCurrentThreadId()
+        attached = False
+        try:
+            if calling_thread != foreground_thread:
+                win32process.AttachThreadInput(calling_thread, foreground_thread, True)
+                attached = True
+            if tap_alt:  # an ALT tap lets SetForegroundWindow succeed; only on the first tries,
+                # so a person working in another window is not sent ALT every half second
+                win32api.keybd_event(win32con.VK_MENU, 0, 0, 0)
+                win32api.keybd_event(win32con.VK_MENU, 0, win32con.KEYEVENTF_KEYUP, 0)
+            win32gui.BringWindowToTop(hwnd)
+            win32gui.SetForegroundWindow(hwnd)
+        except Exception:
+            pass  # The verification below refuses to run unless activation actually worked.
+        finally:
+            if attached:
+                win32process.AttachThreadInput(calling_thread, foreground_thread, False)
+
+    def in_front() -> bool:
+        return bool(win32gui.IsWindowVisible(hwnd) and not win32gui.IsIconic(hwnd)
+                    and win32gui.GetForegroundWindow() == hwnd)
+
+    # Windows refuses to hand over the foreground while someone is using another window.
+    # Keep asking, and say so, instead of failing at the first refusal; never measure a
+    # PowerPoint window that is not in front.
+    deadline = time.monotonic() + FOREGROUND_WAIT_SECONDS
+    last_notice = 0.0
+    attempts = 0
+    while True:
+        activate(tap_alt=attempts < 3)
+        attempts += 1
+        if in_front():
+            break
+        if time.monotonic() > deadline:
+            raise RuntimeError("Native dossier verification requires visible foreground PowerPoint.")
+        if time.monotonic() - last_notice > 10:
+            print("PAUSED: bring the PowerPoint dossier window to the front to continue.", flush=True)
+            last_notice = time.monotonic()
+        time.sleep(0.5)
     print("VISIBLE VERIFIED: native PowerPoint dossier verification.", flush=True)
     try:
         width, height = deck.PageSetup.SlideWidth, deck.PageSetup.SlideHeight
