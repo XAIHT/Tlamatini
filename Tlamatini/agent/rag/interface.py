@@ -99,6 +99,14 @@ def is_valid_prompt(text: str) -> bool:
     if normalized_text.endswith('?'):
         return True
 
+    # People often explain the situation before asking for an action. The
+    # legacy first-word check rejected "This is a check. Reply with ..." before
+    # the model ever saw it. Evaluate each sentence/paragraph using the same
+    # prompt-shape rules; filesystem access validation still runs separately.
+    clauses = re.split(r'(?:[.!?]\s+|\n+)', normalized_text)
+    if len(clauses) > 1 and any(is_valid_prompt(clause) for clause in clauses):
+        return True
+
     tokens: List[str]
     if nltk is not None:
         try:
@@ -109,6 +117,10 @@ def is_valid_prompt(text: str) -> bool:
         tokens = normalized_text.split()
     if not tokens:
         return False
+    if tokens[0] == 'please':
+        tokens = tokens[1:]
+        if not tokens:
+            return False
 
     question_words = [
         'what', 'who', 'where', 'when', 'why', 'how', 'which', 'whose',
@@ -126,6 +138,7 @@ def is_valid_prompt(text: str) -> bool:
         'document', 'comment', 'annotate', 'summarize', 'outline', 'help', 'assist', 'stop', 'terminate', 'kill',
         'unzip', 'decompile', 'decompress',
         'parametrize', 'parametrise', 'start', 'start-up', 'get',
+        'reply', 'respond', 'answer',
     ]
 
     multiword_patterns = [
@@ -538,6 +551,18 @@ def _indirect_file_access_prompt(question: str) -> bool:
         return True  # fail-safe
 
 
+def _is_literal_reply_request(question: str) -> bool:
+    """Recognize a single literal reply token, with no additional action."""
+    if not isinstance(question, str):
+        return False
+    return bool(re.fullmatch(
+        r"\s*(?:please\s+)?(?:reply|respond|answer)\s+with\s+(?:exactly\s+|only\s+)?"
+        r"""(['"]?)[A-Za-z0-9][A-Za-z0-9_-]{0,79}\1"""
+        r"(?:\s+and\s+(?:no\s+other\s+text|nothing\s+else))?[.!]?\s*",
+        question, re.IGNORECASE,
+    ))
+
+
 def _validate_accesses_in_prompt(question: str):
     """
     Inspect a user prompt for file-system paths and enforce allowed_paths policy.
@@ -550,6 +575,12 @@ def _validate_accesses_in_prompt(question: str):
     found_paths = _PATH_PATTERN.findall(question)
     if not found_paths:
         deterministic_intent = _has_deterministic_filesystem_intent(question)
+
+        # A literal one-token reply cannot touch the filesystem. The intent LLM
+        # can echo that token instead of YES/NO and wrongly deny ordinary chat.
+        # Paths, free-form content and trailing instructions do not match.
+        if _is_literal_reply_request(question):
+            return None
 
         # If the prompt references "allowed paths/locations" (or synonyms),
         # it is a valid way to indicate scope → skip indirect access check.

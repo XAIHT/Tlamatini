@@ -19,9 +19,14 @@ from .agent_paths import get_agents_root
 KNOWLEDGE_AGENTS = {"flowcreator", "flowhypervisor", "parametrizer"}
 
 
-def config_schema(value):
+def config_schema(value, path=()):
+    # Keyed YAML uses numeric IDs while public templates carry string
+    # placeholders. Both are supported by the agents, so installing keys must
+    # not change the generated flow contract or invalidate a saved definition.
+    if path in {("telegram", "api_id"), ("whatsapp", "phone_number_id")}:
+        return "str|int"
     if isinstance(value, dict):
-        return {str(key): config_schema(item) for key, item in value.items()}
+        return {str(key): config_schema(item, (*path, str(key))) for key, item in value.items()}
     if isinstance(value, list):
         return "list"
     if value is None:

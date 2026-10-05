@@ -622,13 +622,16 @@ def main() -> None:
     from dossier_verify import verify_all
 
     BUILD_DIR.mkdir(parents=True, exist_ok=True)
+    print("Collecting source, Git, release and line-count facts...", flush=True)
     facts = collect_facts()
     validate_families(facts["agents_list"])
     chapters = build_chapters(facts)
     TREE_OUTPUT.write_text(facts["tree_text"], encoding="utf-8")
     CONTEXT_OUTPUT.write_text(json.dumps(serialize(facts), indent=2, default=str), encoding="utf-8")
+    print("Rendering the complete PDF dossier...", flush=True)
     pdf_pages = build_pdf(facts, chapters, PDF_OUTPUT)
     print(f"PDF written: {PDF_OUTPUT} ({pdf_pages} pages)")
+    print("Rendering the complete PowerPoint dossier...", flush=True)
     slides = build_pptx(facts, chapters, PPT_OUTPUT)
     print(f"PPTX written: {PPT_OUTPUT} ({slides} slides)")
     report = verify_all(facts, PDF_OUTPUT, PPT_OUTPUT)

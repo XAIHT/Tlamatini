@@ -612,6 +612,7 @@ class OneQuestionOnceTests(SimpleTestCase):
         # EVERY one-shot question while System-Metrics was on.
         import asyncio
         from agent.chain_system_lcel import SystemRAGChain
+        from unittest.mock import AsyncMock
 
         async def decide_no(_question):
             return False
@@ -622,13 +623,16 @@ class OneQuestionOnceTests(SimpleTestCase):
         async def live_metrics():
             return "cpu 3%"
 
-        fake = SimpleNamespace(should_fetch_system_context=decide_no,
-                               fetch_system_context=live_metrics)
-        out = asyncio.run(SystemRAGChain.intelligent_context_fetch(fake, {"question": "2+2?"}))
+        fake = SystemRAGChain.__new__(SystemRAGChain)
+        fake.should_fetch_system_context = decide_no
+        fake.fetch_system_context = live_metrics
+        fake.mcp_client = SimpleNamespace(disconnect=AsyncMock())
+        out = asyncio.run(fake.intelligent_context_fetch({"question": "2+2?"}))
         self.assertEqual(out["context"], "")
         fake.should_fetch_system_context = decide_yes
-        out = asyncio.run(SystemRAGChain.intelligent_context_fetch(fake, {"question": "cpu?"}))
+        out = asyncio.run(fake.intelligent_context_fetch({"question": "cpu?"}))
         self.assertEqual(out["context"], "cpu 3%")
+        self.assertEqual(fake.mcp_client.disconnect.await_count, 2)
 
     def test_both_chains_skip_an_empty_system_context(self):
         # So "" really means NOTHING is sent: no "System Context: " prefix.

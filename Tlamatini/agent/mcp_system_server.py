@@ -12,6 +12,7 @@ import asyncio
 import json
 import websockets
 import os
+import sys
 from datetime import datetime
 import shutil
 import subprocess
@@ -209,9 +210,10 @@ async def system_handler(websocket):
 async def main(config_path=None):
     # Load server configuration from config.json
     if config_path is None:
-        config_path = os.path.join(os.path.dirname(__file__), "config.json")
+        base_dir = os.path.dirname(sys.executable if getattr(sys, 'frozen', False) else __file__)
+        config_path = os.environ.get('CONFIG_PATH', '').strip() or os.path.join(base_dir, 'config.json')
 
-    with open(config_path, 'r') as f:
+    with open(config_path, 'r', encoding='utf-8-sig') as f:
         config = json.load(f)
 
     host = config.get("mcp_system_server_host", "127.0.0.1")

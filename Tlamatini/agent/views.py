@@ -162,6 +162,10 @@ def home(request):
     return HttpResponse("Hello, World!")
 
 def login_view(request):
+    from django.utils.http import url_has_allowed_host_and_scheme
+    next_url = request.POST.get('next') or request.GET.get('next', '')
+    if not url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+        next_url = ''
     if request.method == 'POST':
         form = AuthenticationForm(request, data=request.POST)
         if form.is_valid():
@@ -170,18 +174,12 @@ def login_view(request):
             user = authenticate(username=username, password=password)
             if user is not None:
                 login(request, user)
-                # --- .FLW File Association Support ---
-                # If a .flw file was passed on the command line (frozen mode),
-                # redirect straight to the Agentic Control Panel instead of welcome.
-                # Only check this in frozen mode to avoid stale env vars from previous runs.
-                flw_file = os.environ.get('SYSTEMAGENT_FLW_FILE') if getattr(sys, 'frozen', False) else None
-                if flw_file:
-                    print(f"--- [FLW] Login success, redirecting to agentic_control_panel with flow: {flw_file}")
-                    return redirect('agentic_control_panel')
+                if next_url:
+                    return redirect(next_url)
                 return redirect('welcome')
     else:
         form = AuthenticationForm()
-    return render(request, 'agent/login.html', {'form': form})
+    return render(request, 'agent/login.html', {'form': form, 'next': next_url})
 
 @login_required
 def welcome_view(request):
@@ -416,39 +414,16 @@ def agentic_control_panel(request):
         'agent_purpose_map': _load_agent_purpose_map(),
     }
 
-    # --- .FLW File Association Support ---
-    # If a .flw file was passed via command line (frozen mode), read it
-    # and inject the JSON data into the template context so the JS can auto-load it.
-    # IMPORTANT: Only honour the env var when running as a frozen executable.
-    # In development (non-frozen) mode, a stale env var from a previous run
-    # must NOT cause auto-open of a .flw file.
-    is_frozen = getattr(sys, 'frozen', False)
-    flw_file = os.environ.get('SYSTEMAGENT_FLW_FILE') if is_frozen else None
-    if flw_file:
-        try:
-            if os.path.isfile(flw_file):
-                with open(flw_file, 'r', encoding='utf-8') as f:
-                    flw_content = f.read()
-                # Parse JSON so json_script outputs an object, not a double-encoded string
-                flw_parsed = json.loads(flw_content)
-                context['flw_data'] = flw_parsed
-                context['flw_filename'] = os.path.basename(flw_file)
-                print(f"--- [FLW] Loaded flow file for auto-open: {flw_file}")
-                # Clear the env var so subsequent visits don't re-trigger
-                del os.environ['SYSTEMAGENT_FLW_FILE']
-            else:
-                print(f"--- [FLW] Warning: Flow file not found: {flw_file}")
-        except json.JSONDecodeError as e:
-            print(f"--- [FLW] Warning: Invalid JSON in flow file {flw_file}: {e}")
-        except Exception as e:
-            print(f"--- [FLW] Warning: Error reading flow file {flw_file}: {e}")
+    from .flow_file_views import opening_context
+    context.update(opening_context(request, '.flw'))
 
     return render(request, 'agent/agentic_control_panel.html', context)
 
 
 @login_required
 def prompt_flow_panel(request):
-    return render(request, 'agent/prompt_flow_panel.html')
+    from .flow_file_views import opening_context
+    return render(request, 'agent/prompt_flow_panel.html', opening_context(request, '.fpmt'))
 
 
 @csrf_exempt

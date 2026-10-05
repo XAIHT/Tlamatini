@@ -1,6 +1,6 @@
 <!-- THE USER IS ANGELA, A WOMAN — always address her by name. -->
 <!-- Unless noted, work is UNCOMMITTED in source; frozen needs build.py. Detail in topic files. -->
-- [Prompt Flow: static Commentary and runtime User Input](project_prompt_flow_commentary_input.md) — version 2 saves, version 1 migration, inline notes with colors/fonts/resize and full-text containment; **no internal scrollbars**. Runtime reply/cancel stays unchanged.
+- [Prompt Flow: static Commentary and runtime User Input](project_prompt_flow_commentary_input.md) — version 2 saves, version 1 migration, inline rich notes with a floating selection toolbar, mixed fonts/styles, all-border resizing and full-text containment; **no configuration dialog**; **no internal scrollbars**. Runtime reply/cancel stays unchanged. Run output has a 5–95% divider, independent scrolling and separate per-user layout storage.
 - [Developer workflow is not product UX](feedback_developer_product_boundary.md) — Angela is the developer; visible verification must not become extra product windows or focus stealing. Direct dictation uses the main console/log and in-chat recording status.
 - [User profile](user_profile.md) — **Angela**, primary Tlamatini dev (<REDACTED>). Always "Angela".
 - [ALWAYS ENGLISH to Angela (MANDATORY)](feedback_always_english_to_angela.md) — talk to her ONLY in English; Spanish only for her users' content.
@@ -142,3 +142,5 @@
 ## Image/video error reporting and recovery (2026-09-26)
 
 Image/video model failures accumulate in one shared, themed, non-modal fatal-error dialog with an audible notification. Tlamatini keeps running: preserve its retry/tactic ladder, cancellation controls and configured flow recovery routes. Keep the configured model identities; never report a surviving observer or raw concatenation as successful analysis. Dismiss hides the dialog while retaining its history; new failures reopen it. See [the shared behavior and verification contract](../../docs/visual-analysis-errors.md).
+
+- Windows flow files: `.flw` (not `.fmt`) and `.fpmt` share bounded startup/login/browser opening and per-user association lifecycle. See `docs/windows-flow-files.md`; never overwrite UserChoice. Uncommitted October 4 changes; later local builds and source/frozen acceptance are recorded separately in `docs/changes/2026-10-04-release-validation.md`. No commit or published release.

@@ -758,7 +758,7 @@ class AgentConfig(AppConfig):
                                 asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
                             except Exception:
                                 pass
-                        asyncio.run(files_serve())
+                        files_serve()
                     except Exception:
                         logging.exception("MCP files search server crashed")
 

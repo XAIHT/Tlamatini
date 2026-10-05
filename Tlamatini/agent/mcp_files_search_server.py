@@ -51,13 +51,13 @@ def load_config():
         else:
             base_dir = os.path.dirname(os.path.abspath(__file__))
 
-        config_path = os.path.join(base_dir, "config.json")
+        config_path = os.environ.get("CONFIG_PATH", "").strip() or os.path.join(base_dir, "config.json")
 
         if not os.path.exists(config_path):
              logging.warning(f"Config file not found at {config_path}. Using defaults.")
              return {}
 
-        with open(config_path, "r", encoding="utf-8") as f:
+        with open(config_path, "r", encoding="utf-8-sig") as f:
             return json.load(f)
     except Exception as e:
         logging.error(f"Error loading config.json: {e}")
@@ -149,7 +149,9 @@ class FileSearcherServicer(filesearch_pb2_grpc.FileSearcherServicer):
         include_hidden = request.include_hidden
         base_path_key = None
         if request.HasField('base_path_key'):
-            base_path_key = request.base_path_key.lower()
+            requested_key = request.base_path_key
+            base_path_key = next((key for key in ALLOWED_PATHS
+                                  if key.casefold() == requested_key.casefold()), requested_key)
 
         print(f"--- DEBUG (gRPC): Request details: {{pattern: '{pattern}', key: '{base_path_key}', hidden: {include_hidden}}} ---")
 
@@ -203,12 +205,18 @@ class FileSearcherServicer(filesearch_pb2_grpc.FileSearcherServicer):
         return response
 
 def serve():
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    host = str(CONFIG.get('mcp_files_search_server_host', 'localhost'))
+    port = int(CONFIG.get('mcp_files_search_server_port', 50051))
+    workers = int(CONFIG.get('mcp_files_search_server_max_workers', 10))
+    if not 1 <= port <= 65535 or workers < 1:
+        raise ValueError('Files-Search requires a valid port and positive worker count.')
+    address = f'[{host}]:{port}' if ':' in host and not host.startswith('[') else f'{host}:{port}'
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=workers))
     filesearch_pb2_grpc.add_FileSearcherServicer_to_server(
         FileSearcherServicer(), server
     )
-    server.add_insecure_port('[::]:50051')
-    print("DEBUG Server (v5) started on port 50051...")
+    if not server.add_insecure_port(address):
+        raise RuntimeError(f'Files-Search could not bind {address}')
     print("Found and allowed search paths:")
     if not ALLOWED_PATHS:
         print("  - WARNING: No known folders were found.")
@@ -216,6 +224,7 @@ def serve():
         print(f"  - '{key}' -> '{path}'")
     
     server.start()
+    print(f"Files-Search gRPC server started on {address}")
     try:
         while True:
             time.sleep(86400)

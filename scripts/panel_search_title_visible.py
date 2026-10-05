@@ -121,7 +121,9 @@ def prepare_runtime():
     config_path = RUNTIME / 'Tlamatini/agent/config.json'
     config = json.loads(config_path.read_text(encoding='utf-8-sig'))
     config.update(django_port=8001, mcp_system_server_port=8766,
-                  mcp_files_search_server_port=50052)
+                  mcp_files_search_server_port=50052,
+                  mcp_system_client_uri='ws://127.0.0.1:8766',
+                  mcp_files_search_client_uri='ws://127.0.0.1:50052')
     config_path.write_text(json.dumps(config, indent=2), encoding='utf-8')
     credentials = json.loads((OUT / 'login.json').read_text(encoding='utf-8'))
     env = os.environ.copy()

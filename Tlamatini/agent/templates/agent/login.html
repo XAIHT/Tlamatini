@@ -22,6 +22,7 @@
                         <h2 class="card-title text-center mb-4 big-white-text">Tlamatini Login</h2>
                         <form method="post">
                             {% csrf_token %}
+                <input type="hidden" name="next" value="{{ next }}">
                             {% if form.errors %}
                             <div class="login-error-panel" role="alert">
                                 {% for error in form.non_field_errors %}

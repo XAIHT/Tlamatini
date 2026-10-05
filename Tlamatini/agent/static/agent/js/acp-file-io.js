@@ -72,9 +72,10 @@ if (saveBtn) {
         // RAW snapshot, so every credential typed into a node dialog shipped in
         // the shared file. The backend masks only secret fields per each agent's
         // contract and preserves the snapshot shape byte-for-byte, so the loader
-        // round-trips it losslessly. Falls back to the raw snapshot ONLY if the
-        // backend is unreachable (never a silent Save failure). (audit [5])
-        data = await _redactFlowSnapshotBeforeSave(data);
+        // round-trips it losslessly. A failed redaction leaves the flow unsaved
+        // and explains the error; raw credentials must never be downloaded.
+        try { data = await _redactFlowSnapshotBeforeSave(data); }
+        catch (error) { await acpAlert(error.message); return; }
 
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
@@ -91,10 +92,8 @@ if (saveBtn) {
 /**
  * POST the flow snapshot to the backend so it can mask secret fields (per each
  * agent's contract secret_paths) before the .flw is downloaded. Mirrors the
- * chat Create-Flow contract (_normalizeChatFlowBeforeDownload): on any failure
- * it returns the original snapshot so Save never silently fails — the canvas
- * page is served by the same Django server, so the endpoint is reachable
- * whenever the canvas itself is usable. (2026-07-11 audit [5])
+ * A failed redaction keeps the diagram dirty and reports an actionable error.
+ * Raw credentials must never be downloaded as a fallback.
  */
 async function _redactFlowSnapshotBeforeSave(flowData) {
     try {
@@ -108,11 +107,11 @@ async function _redactFlowSnapshotBeforeSave(flowData) {
         if (response.ok && result.success && result.flow) {
             return result.flow;
         }
-        console.warn('--- Save: backend redaction unavailable, saving raw snapshot:', result);
+        console.warn('--- Save: backend redaction unavailable:', result);
     } catch (err) {
-        console.warn('--- Save: backend redaction failed, saving raw snapshot:', err);
+        console.warn('--- Save: backend redaction failed:', err);
     }
-    return flowData;
+    throw new Error('The diagram could not be saved because credential protection is unavailable. Check your connection and sign-in, then try Save again.');
 }
 
 // ========================================
@@ -126,22 +125,18 @@ if (openBtn) {
         input.type = 'file';
         input.accept = '.flw';
 
-        input.onchange = (event) => {
+        input.onchange = async (event) => {
             const file = event.target.files[0];
             if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-                try {
-                    const data = JSON.parse(ev.target.result);
-                    loadDiagram(data);
-                    updateFilenameDisplay(file.name);
-                } catch (err) {
-                    console.error("Failed to load diagram", err);
-                    acpAlert("Error loading diagram file.");
-                }
-            };
-            reader.readAsText(file);
+            try {
+                if (!/\.flw$/i.test(file.name)) throw new Error('Choose a .flw agent flow.');
+                if (file.size > 5 * 1024 * 1024) throw new Error('The flow file must be no larger than 5 MiB.');
+                const data = JSON.parse((await file.text()).replace(/^\uFEFF/, ''));
+                if (await loadDiagram(data, file.name)) updateFilenameDisplay(file.name);
+            } catch (err) {
+                console.error('Failed to load diagram', err);
+                await acpAlert('Could not open diagram: ' + err.message);
+            }
         };
         input.click();
     });
@@ -222,42 +217,58 @@ function getSavedParametrizerMappings(data, nodeData, resolvedNodeId, configData
  * Clears existing canvas, deploys agents, restores connections.
  * @param {Object} data - Parsed .flw file data
  */
-async function loadDiagram(data) {
+async function loadDiagram(data, filename = 'diagram.flw', { withinEditorOperation = false } = {}) {
+    // The built-in example already owns performEdit's busy state. External
+    // file opens keep the default and cannot bypass that editing lock.
+    const locked = () => ACP.canEdit ? !ACP.canEdit({ withinEditorOperation }) : ACP.fileLoading || (ACP.editorBusy && !withinEditorOperation) || isBusyProcessing || globalRunningState !== GLOBAL_STATE.STOPPED;
+    if (locked()) throw new Error('Stop the flow and finish the current operation before opening a diagram.');
+    const body = new FormData();
+    body.append('file', new Blob([JSON.stringify(data)], { type: 'application/json' }), filename);
+    const response = await fetch('/agent/flow_files/validate/', {
+        method: 'POST', headers: getHeaders(), credentials: 'same-origin', body
+    });
+    if (response.redirected) throw new Error('Your session expired. Sign in again before opening a diagram.');
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Invalid .flw file.');
+    data = result.flow;
+    if (hasUnsavedChanges && !await acpConfirm('Replace this diagram?', 'Unsaved changes will be replaced. Save the diagram first to keep them.', 'Unsaved changes')) return false;
+    if (locked()) throw new Error('The flow is busy. Try opening the file again after it stops.');
     ACP.fileLoading = true;
     ACP.refreshEditor?.();
-    undoManager.clear();
     try {
-    // 1. Clear existing connections
-    [...ACP.connections].forEach(conn => removeConnection(conn));
-
-    // 2. Clear existing nodes
-    document.querySelectorAll('.canvas-item').forEach(el => el.remove());
-
-    // 3. Clear selection
-    ACP.selectedItems.clear();
-
-    // 4. Clear pool directory before deploying new agents
-    try {
-        const clearResponse = await fetch('/agent/clear_pool/', {
-            method: 'POST',
-            headers: getHeaders(),
-            credentials: 'same-origin'
-        });
-        const clearResult = await clearResponse.json();
-        if (clearResult.status === 'success') {
-            console.log('--- Pool directory cleared before loading diagram');
-        } else {
-            console.warn('--- Could not clear pool directory:', clearResult.message);
-        }
-    } catch (error) {
-        console.warn('--- Error clearing pool directory:', error);
+    // Validate and prepare the session before changing the visible diagram.
+    const clearResponse = await fetch('/agent/clear_pool/', {
+        method: 'POST', headers: getHeaders(), credentials: 'same-origin'
+    });
+    const clearResult = await clearResponse.json();
+    if (!clearResponse.ok || clearResult.status !== 'success') {
+        throw new Error(clearResult.message || 'The previous flow could not be closed. Your diagram was kept.');
     }
+    undoManager.clear();
+    [...ACP.connections].forEach(conn => removeConnection(conn));
+    document.querySelectorAll('.canvas-item').forEach(el => el.remove());
+    ACP.selectedItems.clear();
 
     const loadedNodes = [];
 
     // 5. Recreate nodes
     ACP.itemCounters.clear();
     ACP.nodeConfigs.clear();
+    // Saved IDs can have gaps after deletions. Preserve them so config references
+    // still point to the same agent, and reserve their numbers before adding any
+    // legacy nodes without IDs or creating future nodes on the canvas.
+    function savedRegistration(node) {
+        const base = node.text.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+        const prefix = base + '-', id = node.id;
+        if (typeof id !== 'string' || !id.startsWith(prefix)) return null;
+        const suffix = id.slice(prefix.length), count = Number(suffix);
+        return /^[1-9]\d*$/.test(suffix) && Number.isSafeInteger(count) && count < 1000000000
+            ? { id, count, baseName: base } : null;
+    }
+    for (const node of data.nodes) {
+        const saved = savedRegistration(node);
+        if (saved) ACP.itemCounters.set(saved.baseName, Math.max(ACP.itemCounters.get(saved.baseName) || 0, saved.count));
+    }
 
     if (data.nodes && Array.isArray(data.nodes)) {
         for (const nodeData of data.nodes) {
@@ -295,7 +306,7 @@ async function loadDiagram(data) {
                 newItem.textContent = agentText;
                 newItem.id = 'flowhypervisor';
             } else {
-                const registration = registerItem(agentText);
+                const registration = savedRegistration(nodeData) || registerItem(agentText);
                 newItem.textContent = `${agentText} (${registration.count})`;
                 newItem.id = registration.id;
             }
@@ -435,6 +446,7 @@ async function loadDiagram(data) {
     updateCanvasContentSize();
     updateSaveButtonState();
     markClean();
+    return true;
     } finally {
         ACP.fileLoading = false;
         ACP.refreshEditor?.();
@@ -465,7 +477,11 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
         // --- SOURCE-SIDE UPDATES ---
         // If the source node has saved configData it was already fully deployed in step 5.
         // Never let connection-restoration overwrite what the user explicitly saved.
-        if (ACP.nodeConfigs.has(sourceId)) {
+        // Parametrizer's mapping dialog can save only _parametrizer_mappings.
+        // That artifact is not a saved target list: the visible edge must still
+        // restore its runtime wiring. Explicit saved lists remain authoritative.
+        const sourceConfig = ACP.nodeConfigs.get(sourceId);
+        if (sourceConfig && (sourceAgentName !== 'parametrizer' || Object.prototype.hasOwnProperty.call(sourceConfig, 'target_agents'))) {
             console.log(`[Restore] ${sourceAgentName}(${sourceId}) has saved configData — skipping source-side update.`);
         } else {
             // Asker/Forker output slots (A/B)
@@ -585,7 +601,8 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
 
         // --- TARGET-SIDE UPDATES ---
         // Same rule: if the target node has saved configData, trust it and skip.
-        if (ACP.nodeConfigs.has(targetId)) {
+        const targetConfig = ACP.nodeConfigs.get(targetId);
+        if (targetConfig && (targetAgentName !== 'parametrizer' || Object.prototype.hasOwnProperty.call(targetConfig, 'source_agents'))) {
             console.log(`[Restore] ${targetAgentName}(${targetId}) has saved configData — skipping target-side update.`);
         } else {
             // OR/AND need slot-specific calls
@@ -672,66 +689,23 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
 // ========================================
 
 document.addEventListener('DOMContentLoaded', () => {
-    let pendingData = null;
-    let pendingFilename = null;
-
-    // Source 1: Server-injected data via Django json_script tags
-    const serverFlwDataEl = document.getElementById('server-flw-data');
-    const serverFlwFilenameEl = document.getElementById('server-flw-filename');
-    if (serverFlwDataEl) {
+    // Retire the old global, cross-user single-slot handoff without consuming it.
+    for (const key of ['pendingFlwData', 'pendingFlwFilename', 'pendingFlwTimestamp']) {
+        try { localStorage.removeItem(key); } catch (_) { /* Storage may be disabled. */ }
+    }
+    const incoming = document.getElementById('server-flw-data');
+    const error = document.getElementById('flow-open-error');
+    if (!incoming && !error) return;
+    const address = new URL(window.location.href);
+    address.searchParams.delete('open'); history.replaceState(null, '', address);
+    if (error) { acpAlert(JSON.parse(error.textContent)); return; }
+    // Let the canvas and session initialize before deploying saved configurations.
+    setTimeout(async () => {
         try {
-            pendingData = JSON.parse(serverFlwDataEl.textContent);
-            pendingFilename = serverFlwFilenameEl ? JSON.parse(serverFlwFilenameEl.textContent) : null;
-            console.log('--- [FLW] Found server-injected flow data for auto-load:', pendingFilename);
-        } catch (err) {
-            console.error('--- [FLW] Failed to parse server-injected flow data:', err);
-        }
-    }
-
-    // Source 2: localStorage (from agent_page.html Open menu)
-    if (!pendingData) {
-        const storedData = localStorage.getItem('pendingFlwData');
-        const storedFilename = localStorage.getItem('pendingFlwFilename');
-        const storedTimestamp = localStorage.getItem('pendingFlwTimestamp');
-
-        if (storedData) {
-            let isFresh = false;
-            if (storedTimestamp) {
-                const now = Date.now();
-                const ts = parseInt(storedTimestamp, 10);
-                if (!isNaN(ts) && (now - ts < 30000)) {
-                    isFresh = true;
-                } else {
-                    console.warn('--- [FLW] Ignoring stale pending flow data:', storedFilename);
-                }
-            } else {
-                console.warn('--- [FLW] Ignoring pending flow data without timestamp:', storedFilename);
+            const filename = JSON.parse(document.getElementById('server-flw-filename').textContent);
+            if (await loadDiagram(JSON.parse(incoming.textContent), filename)) {
+                updateFilenameDisplay(filename);
             }
-
-            if (isFresh) {
-                try {
-                    pendingData = JSON.parse(storedData);
-                    pendingFilename = storedFilename;
-                    console.log('--- [FLW] Found fresh pending flow data in localStorage:', pendingFilename);
-                } catch (err) {
-                    console.error('--- [FLW] Failed to parse localStorage flow data:', err);
-                }
-            }
-
-            localStorage.removeItem('pendingFlwData');
-            localStorage.removeItem('pendingFlwFilename');
-            localStorage.removeItem('pendingFlwTimestamp');
-        }
-    }
-
-    if (pendingData) {
-        setTimeout(async () => {
-            console.log('--- [FLW] Loading pending flow data...');
-            await loadDiagram(pendingData);
-            if (pendingFilename) {
-                updateFilenameDisplay(pendingFilename);
-            }
-            console.log('--- [FLW] Loaded flow file: ' + (pendingFilename || 'unknown'));
-        }, 500);
-    }
+        } catch (error) { await acpAlert('Could not open diagram: ' + error.message); }
+    }, 500);
 });

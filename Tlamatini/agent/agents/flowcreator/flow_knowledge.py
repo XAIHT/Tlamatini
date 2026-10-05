@@ -103,6 +103,7 @@ def _check_config(value, schema, path):
         elif expected != "nullable":
             valid = {"list": isinstance(item, list), "bool": isinstance(item, bool),
                      "int": type(item) is int, "number": type(item) in (int, float),
+                     "str|int": isinstance(item, str) or type(item) is int,
                      "str": isinstance(item, str)}[expected]
             if not valid:
                 raise ValueError(f"{path}.{key} must have type {expected}")

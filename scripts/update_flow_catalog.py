@@ -33,6 +33,9 @@ def render_inventory(catalog):
         "canonical name, aliases, connection slots, lifecycle flags, and declared structured output fields. "
         "Field types are inferred from templates; they are not a complete semantic validator. "
         "No template values or credentials are exported. GUI-Manager remains a design and is excluded.", "",
+        "Telegram API IDs and WhatsApp phone-number IDs have a stable `str|int` contract in public "
+        "and keyed templates. String placeholders or numeric identifiers do not change the catalog; "
+        "booleans, fractional values and containers are rejected.", "",
         "Image/video failures accumulate in the shared themed fatal-error dialog. Configured models stay fixed; "
         "Tlamatini's existing retry tactics and downstream recovery routes remain active. "
         "See [visual analysis errors](visual-analysis-errors.md) for the complete contract.", "",

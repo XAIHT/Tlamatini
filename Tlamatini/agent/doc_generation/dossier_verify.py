@@ -66,6 +66,8 @@ def verify_pdf(facts: dict, path: Path) -> dict:
         old.unlink()
     for index, page in enumerate(doc):
         number = index + 1
+        if number == 1 or number % 10 == 0 or number == doc.page_count:
+            print(f"PDF: measuring/rendering page {number}/{doc.page_count}", flush=True)
         rect = page.rect
         raw = page.get_text("rawdict")
         bands = []
@@ -244,6 +246,16 @@ def verify_pptx_native(path: Path) -> dict:
     try:
         width, height = deck.PageSetup.SlideWidth, deck.PageSetup.SlideHeight
         for s_index in range(1, deck.Slides.Count + 1):
+            if not in_front():
+                deadline = time.monotonic() + FOREGROUND_WAIT_SECONDS
+                while not in_front():
+                    activate(tap_alt=False)
+                    if time.monotonic() > deadline:
+                        raise RuntimeError("PowerPoint lost the foreground during verification.")
+                    if time.monotonic() - last_notice > 10:
+                        print("PAUSED: bring the PowerPoint dossier window to the front.", flush=True)
+                        last_notice = time.monotonic()
+                    time.sleep(0.5)
             slide = deck.Slides(s_index)
             window.View.GotoSlide(s_index)
             if s_index == 1 or s_index % 10 == 0 or s_index == deck.Slides.Count:

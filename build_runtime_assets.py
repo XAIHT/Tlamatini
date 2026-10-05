@@ -64,6 +64,7 @@ ROOT_SOURCES = {
     "Tlamatini/agent/agents/whisperer/chat_worker.py": "agents/whisperer/chat_worker.py",
     "Tlamatini/agent/templates/agent/prompt_flow_panel.html":
         "_internal/agent/templates/agent/prompt_flow_panel.html",
+    "docs/windows-flow-files.md": "docs/windows-flow-files.md",
     "docs/prompting-flow-designer.md": "docs/prompting-flow-designer.md",
     "docs/examples/prompting-kickoff.fpmt": "docs/examples/prompting-kickoff.fpmt",
     "Tlamatini/agent/agents/model_settings.py": "agents/model_settings.py",
@@ -79,6 +80,7 @@ ROOT_SOURCES = {
     "Tlamatini/agent/sqlite_copy.py": "sqlite_copy.py",
     "Tlamatini/cat_art.py": "cat_art.py",
     **{name: name for name in (
+        "flow_file_associations.ps1", "register_fpmt.ps1", "unregister_fpmt.ps1",
         "register_flw.ps1", "unregister_flw.ps1", "Tlamatini.ps1", "Tlamatini.ico",
         "CreateShortcut.ps1", "RemoveShortcut.ps1", "CreateShortcut.json",
         "freeingport8000.ps1",

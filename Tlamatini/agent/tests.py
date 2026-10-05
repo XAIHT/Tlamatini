@@ -1985,6 +1985,7 @@ class AcpxNonAcpxRequestRegressionTests(TestCase):
 
 
 class FrozenModeCompatibilityTests(TestCase):
+    @patch.dict(os.environ, {'CONFIG_PATH': ''})
     def test_file_search_default_config_path_uses_executable_directory_when_frozen(self):
         if files_chain_module is None:
             self.skipTest('FileSearchRAGChain dependencies are unavailable in this environment.')
@@ -2002,6 +2003,7 @@ class FrozenModeCompatibilityTests(TestCase):
         self.assertEqual(config_path, os.path.join(temp_dir, 'config.json'))
         self.assertEqual(application_root, temp_dir)
 
+    @patch.dict(os.environ, {'CONFIG_PATH': ''})
     def test_file_search_chain_loads_default_config_from_frozen_executable_directory(self):
         if files_chain_module is None:
             self.skipTest('FileSearchRAGChain dependencies are unavailable in this environment.')

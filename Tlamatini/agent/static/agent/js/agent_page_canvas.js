@@ -349,33 +349,40 @@ const loadFileContent = (reOpened = false, callback = null) => {
             return false;
         }
 
-        // Check for .flw extension - redirect to Agentic Control Panel
-        if (file.name.toLowerCase().endsWith('.flw')) {
-            const flwReader = new FileReader();
-            flwReader.onload = flwEvent => {
-                try {
-                    const flwData = JSON.parse(flwEvent.target.result);
-                    localStorage.setItem('pendingFlwData', JSON.stringify(flwData));
-                    localStorage.setItem('pendingFlwFilename', file.name);
-                    localStorage.setItem('pendingFlwTimestamp', Date.now().toString()); // Add timestamp
-                    window.open('/agent/agentic_control_panel/', '_blank');
-                    console.log('--- Opened .flw file in Agentic Control Panel: ' + file.name);
-                } catch (err) {
-                    console.error('Failed to parse .flw file:', err);
-                    alert('Invalid .flw file format. The file could not be parsed as JSON.');
-                }
-            };
-            flwReader.readAsText(file);
-            return;
-        }
-
         await loadSelectedCanvasFile(file, reOpened, callback);
     };
     input.click();
 };
 
 /** Read text normally; route PDFs to the complete, range-backed PDF viewer. */
+/** Keep flow files out of chat context; reserve the tab before asynchronous work. */
+async function openFlowEditor(file) {
+    const tab = window.open('about:blank', '_blank');
+    if (!tab) { await alert('Allow pop-ups for Tlamatini, then open the flow file again.'); return; }
+    tab.document.title = 'Opening flow · Tlamatini';
+    tab.document.body.textContent = 'Opening ' + file.name + '…';
+    tab.document.body.style.cssText = 'background:#24252f;color:#eee;font:18px system-ui;padding:48px';
+    tab.opener = null;
+    try {
+        if (file.size > 5 * 1024 * 1024) throw new Error('The flow file must be no larger than 5 MiB.');
+        const body = new FormData(); body.append('file', file);
+        const csrf = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+            decodeURIComponent(document.cookie.split('; ').find(v => v.startsWith('csrftoken='))?.slice(10) || '');
+        const response = await fetch('/agent/flow_files/open/', {
+            method: 'POST', credentials: 'same-origin', headers: { 'X-CSRFToken': csrf }, body
+        });
+        if (response.redirected) throw new Error('Your session expired. Sign in, then open the file again.');
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'The file could not be opened.');
+        if (!tab.closed) tab.location.replace(result.url);
+    } catch (error) {
+        if (!tab.closed) tab.close();
+        await alert('Could not open ' + file.name + ': ' + error.message);
+    }
+}
+
 async function loadSelectedCanvasFile(file, reOpened = false, callback = null) {
+    if (/\.(flw|fpmt)$/i.test(file.name)) { await openFlowEditor(file); return; }
     // Reopen replaces context directly, avoiding an overlapping background
     // rebuild of empty context while the replacement document loads.
     cleanCanvas(reOpened && callback !== null);

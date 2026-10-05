@@ -459,6 +459,17 @@ Contract (do NOT weaken): HKCU only, never admin, every writer fail-open, read-o
 - **Files-Search**: `mcp_files_search_server.py` (gRPC)
 - Started from `apps.py` and `management/commands/startserver.py`
 
+Both services and their clients resolve `CONFIG_PATH` first, then the installed
+configuration beside the frozen executable or the source configuration; UTF-8
+BOM files are accepted. System-Metrics uses its configured WebSocket host/port
+and client URI. Files-Search uses `mcp_files_search_server_host`,
+`mcp_files_search_server_port` and `mcp_files_search_server_max_workers`; its
+client resolves `mcp_files_search_client_uri` (including the legacy `ws://`
+spelling) into a gRPC endpoint. Defaults remain 8765 and 50051. Changing a server
+port requires matching the client URI. Invalid endpoints/bind failures surface
+as errors, and Files-Search RPCs have bounded deadlines. `serve()` is synchronous;
+startup must not pass its return value to `asyncio.run`.
+
 ### Layer 3: Context Fetcher Chains (Sidecars)
 - `SystemRAGChain` in `chain_system_lcel.py`
 - `FileSearchRAGChain` in `chain_files_search_lcel.py`
@@ -685,3 +696,12 @@ Font measurement includes face variants, tracking, line spacing, insets, and 115
 ## Image/video error reporting and recovery (2026-09-26)
 
 Image/video model failures accumulate in one shared, themed, non-modal fatal-error dialog with an audible notification. Tlamatini keeps running: preserve its retry/tactic ladder, cancellation controls and configured flow recovery routes. Keep the configured model identities; never report a surviving observer or raw concatenation as successful analysis. Dismiss hides the dialog while retaining its history; new failures reopen it. See [the shared behavior and verification contract](../visual-analysis-errors.md).
+
+**Graphical commentary update (2026-10-04):** User Commentary has no configuration dialog. Its floating toolbar formats selected ranges or subsequent typing with mixed fonts/sizes/colors/bold/italic/underline; eight borders/corners resize the bubble directly. Both validators preserve allowlisted rich `runs` whose literal concatenation equals `text`, normalize older plain version 2 notes, and retain version 1 User Input migration. Full-text containment, static runtime isolation and portable/draft persistence remain required. See [the designer guide](../prompting-flow-designer.md).
+
+**Run output layout (2026-10-04, source changes):** Drag the horizontal divider to give Run output 5–95% of the combined canvas/output pane height, excluding fixed headers, status and divider (initial share: 20%). Each pane scrolls independently; resizing preserves zoom, node geometry and text size. Up/Down changes one percentage point, Shift+Up/Down five, Home/End selects 5%/95%. Escape, blur or pointer cancellation ends a drag. Collapse/reopen and window resizing retain the ratio. The per-user `tlamatini.prompting-flow.layout.v1.<user id>` preference is separate from flow files, drafts, dirty state and Undo/Redo. Keep the native details log viewport explicitly sized so its scrollbar remains usable. See `docs/changes/2026-10-04-run-output-resize.md`.
+
+
+## Windows flow-file lifecycle — 2026-10-04 source changes
+
+Both `.flw` agent flows and `.fpmt` prompting flows now have Windows registration, repair, removal, status and Default Apps handling. Explorer/source command-line opening validates a bounded snapshot, reuses a matching running server before database startup, and returns through login to the correct editor without execution. Main-chat Open/drop/Reopen routes both formats into separate editor tabs while preserving the chat document. The historical `.flw` installer wrappers cover both types for old installer/uninstaller binaries; independent management uses `flow_file_associations.ps1 -Extensions`. Never erase UserChoice or another application’s Open With entries. Update Repair respects explicit unregistration and installation ownership. See [Windows flow files](../windows-flow-files.md). Cache suffix: `-flow-file-opening-2`. Committed to `main` on 2026-10-04. The October 4 local release-validation campaign also rebuilds isolated frozen artifacts; its dated evidence distinguishes build completion from runtime acceptance.

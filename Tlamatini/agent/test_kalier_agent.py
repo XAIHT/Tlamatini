@@ -250,6 +250,9 @@ class SubjectAndCfgTests(SimpleTestCase):
 class CallKaliApiTests(SimpleTestCase):
     def setUp(self):
         self.k = _load_kalier_module()
+        logger = logging.getLogger()
+        self.addCleanup(logger.setLevel, logger.level)
+        logger.setLevel(logging.INFO)
         self.cfg = {'server_url': 'http://127.0.0.1:5000', 'timeout': 5, 'target': '10.0.0.5'}
 
     def test_tool_success_envelope(self):
@@ -348,6 +351,9 @@ class CallKaliApiTests(SimpleTestCase):
 class EmitSectionTests(SimpleTestCase):
     def setUp(self):
         self.k = _load_kalier_module()
+        logger = logging.getLogger()
+        self.addCleanup(logger.setLevel, logger.level)
+        logger.setLevel(logging.INFO)
 
     def test_single_atomic_block_with_header_and_body(self):
         records = []
@@ -385,6 +391,9 @@ class EmitSectionTests(SimpleTestCase):
 class MainEndStageTests(SimpleTestCase):
     def setUp(self):
         self.k = _load_kalier_module()
+        logger = logging.getLogger()
+        self.addCleanup(logger.setLevel, logger.level)
+        logger.setLevel(logging.INFO)
         self.tmp = tempfile.mkdtemp()
         self.cwd_before = os.getcwd()
         os.chdir(self.tmp)

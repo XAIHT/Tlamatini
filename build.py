@@ -407,6 +407,8 @@ _FROZEN_PDF_MODULES = (
 
 # Prompt Flow Panel runs execute in the frozen web process, not in a pool agent.
 _FROZEN_PROMPT_FLOW_PANEL_MODULES = (
+    "agent.flow_file_open",
+    "agent.flow_file_views",
     "agent.prompt_flow_panel_consumer",
     "agent.prompt_flow_panel_runtime",
     "agent.services.prompt_flow_panel",
@@ -2003,6 +2005,9 @@ def main():
 
             # 8e) Copy support scripts, samples and icon
             support_files = [
+                "flow_file_associations.ps1",
+                "register_fpmt.ps1",
+                "unregister_fpmt.ps1",
                 "register_flw.ps1",
                 "unregister_flw.ps1",
                 "Tlamatini.ps1",

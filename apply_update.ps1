@@ -310,6 +310,16 @@ try {
         Write-Log "WARN: security evidence kept at '$logsCarryover' -- move it back by hand: $($_.Exception.Message)" "Yellow"
     }
 
+    # Repair owned flow registrations after files have been replaced. Explicitly
+    # unregistered types and Windows default-app choices remain untouched.
+    $flowRegistration = Join-Path $InstallDir 'flow_file_associations.ps1'
+    if (Test-Path -LiteralPath $flowRegistration -PathType Leaf) {
+        try {
+            & $flowRegistration -Action Repair -InstallDir $InstallDir
+            Write-Log 'Flow-file registration repair completed.'
+        } catch { Write-Log "Flow-file registration repair needs attention: $_" 'Yellow' }
+    }
+
     # 6) Clean up the staging area (best effort).
     try {
         # Exact validated directory from step 1, never a caller-derived parent.

@@ -298,6 +298,7 @@
     </form>
     {# The Ollama URL is NOT baked into the page: /agent/ollama_models/ reads config.json on every call. #}
     {{ agent_purpose_map|json_script:"agent-purpose-map" }}
+    {% if flow_open_error %}{{ flow_open_error|json_script:"flow-open-error" }}{% endif %}
     {% if flw_data %}
     {{ flw_data|json_script:"server-flw-data" }}
     {{ flw_filename|json_script:"server-flw-filename" }}

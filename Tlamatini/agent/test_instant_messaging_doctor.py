@@ -89,7 +89,9 @@ class InstantMessagingDoctorTests(SimpleTestCase):
             config = yaml.safe_load(handle)
 
         self.assertEqual(config["platform"], "both")
-        self.assertEqual(config["ollama"]["model"], "glm-5.3:cloud")
+        # The shipped template follows Config > Models; explicit per-run
+        # overrides are covered by the shared model-registry tests.
+        self.assertEqual(config["ollama"]["model"], "@config")
         self.assertIn(config["telegram"]["provider"], {"auto", "bot", "user"})
         self.assertEqual(config["whatsapp"]["graph_base"], "https://graph.facebook.com")
 

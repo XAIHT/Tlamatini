@@ -11,6 +11,7 @@
 Test script for the Barrier agent.
 Simulates multiple source agents starting barrier sub-processes concurrently.
 Verifies: flags created, last arrival fires, no deadlock, fast completion.
+Run from a verified visible foreground console; child output remains live.
 """
 import os
 import sys
@@ -19,6 +20,7 @@ import shutil
 import tempfile
 import subprocess
 import threading
+from pathlib import Path
 
 # --- Config ---
 NUM_SOURCES = 4
@@ -67,25 +69,36 @@ def start_barrier_process(test_dir, caller_name, results, index):
             [sys.executable, "barrier.py"],
             cwd=test_dir,
             env=env,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
         )
-        stdout, stderr = proc.communicate(timeout=TIMEOUT_SECONDS)
+        proc.wait(timeout=TIMEOUT_SECONDS)
         results[index] = {
             "caller": caller_name,
             "returncode": proc.returncode,
-            "stdout": stdout.decode(errors="replace"),
-            "stderr": stderr.decode(errors="replace"),
+            "stdout": "Output inherited the visible test console.",
+            "stderr": "Output inherited the visible test console.",
         }
     except subprocess.TimeoutExpired:
         proc.kill()
+        proc.wait(timeout=5)
         results[index] = {"caller": caller_name, "returncode": -1, "error": "TIMEOUT"}
     except Exception as e:
         results[index] = {"caller": caller_name, "returncode": -1, "error": str(e)}
 
 
 def run_test():
+    if sys.platform == "win32":
+        import ctypes
+        kernel32, user32 = ctypes.windll.kernel32, ctypes.windll.user32
+        kernel32.GetConsoleWindow.restype = ctypes.c_void_p
+        user32.GetForegroundWindow.restype = ctypes.c_void_p
+        user32.IsWindowVisible.argtypes = [ctypes.c_void_p]
+        user32.IsIconic.argtypes = [ctypes.c_void_p]
+        window = kernel32.GetConsoleWindow()
+        if not (window and user32.IsWindowVisible(window) and not user32.IsIconic(window)
+                and user32.GetForegroundWindow() == window):
+            raise RuntimeError("Barrier validation requires a visible foreground console")
+    elif not sys.stdout.isatty():
+        raise RuntimeError("Barrier validation requires a visible interactive terminal")
     # Create test directory structure inside a temp dir
     base_tmp = tempfile.mkdtemp(prefix="barrier_test_")
     pool_dir = os.path.join(base_tmp, "pools", "test_pool")
@@ -141,7 +154,7 @@ def run_test():
 
     # Check if target was fired
     fired_flag = os.path.join(target_dir, "FIRED.flag")
-    target_fired = os.path.exists(fired_flag)
+    target_fired = wait_for_target(target_dir)
     print(f"\n  Target fired: {target_fired}")
     print(f"  Elapsed: {elapsed:.2f}s")
 
@@ -208,8 +221,9 @@ def run_test():
         else:
             print(f"  OK:   {r['caller']} exited cleanly")
 
-    target_fired2 = os.path.exists(fired_flag)
+    target_fired2 = wait_for_target(target_dir)
     remaining_flags2 = [f for f in os.listdir(test_dir) if f.startswith("started_flag-")]
+    pid_exists2 = os.path.exists(os.path.join(test_dir, "agent.pid"))
     print(f"\n  Target fired: {target_fired2}")
     print(f"  Elapsed: {elapsed2:.2f}s")
     print(f"  Remaining flags: {remaining_flags2}")
@@ -221,16 +235,21 @@ def run_test():
             for line in f:
                 print(f"  {line.rstrip().encode('ascii', 'replace').decode()}")
 
-    if all_ok2 and target_fired2 and not remaining_flags2:
+    if all_ok2 and target_fired2 and not remaining_flags2 and not pid_exists2:
         print("\n  PASS: TEST 2 PASSED")
     else:
         print("\n  FAIL: TEST 2 FAILED")
+        all_ok2 = False
 
     # Cleanup
     try:
+        resolved = Path(base_tmp).resolve()
+        assert resolved.is_relative_to(Path(tempfile.gettempdir()).resolve())
+        assert resolved.name.startswith("barrier_test_")
         shutil.rmtree(base_tmp)
-    except Exception:
-        pass
+    except Exception as exc:
+        print(f"FAIL: Test-directory cleanup failed: {exc}")
+        all_ok = False
 
     if all_ok and target_fired and all_ok2 and target_fired2:
         print("\n" + "=" * 60)
@@ -242,6 +261,17 @@ def run_test():
         print("SOME TESTS FAILED")
         print("=" * 60)
         return 1
+
+
+def wait_for_target(target_dir):
+    """Observe completion, not just the flag written before the target exits."""
+    deadline = time.monotonic() + 5
+    while time.monotonic() < deadline:
+        if (os.path.isfile(os.path.join(target_dir, "FIRED.flag"))
+                and not os.path.exists(os.path.join(target_dir, "agent.pid"))):
+            return True
+        time.sleep(0.05)
+    return False
 
 
 if __name__ == "__main__":

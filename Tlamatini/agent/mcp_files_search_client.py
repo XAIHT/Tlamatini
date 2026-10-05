@@ -12,6 +12,7 @@ import sys  # Import sys for flushing output
 import json
 import re
 import os
+from urllib.parse import urlsplit
 from typing import Optional, Literal, Dict, Any
 from pydantic import BaseModel, Field
 from langchain_ollama import OllamaLLM
@@ -61,7 +62,7 @@ def _load_config() -> Dict[str, Any]:
     cfg: Dict[str, Any] = {}
     if path and os.path.isfile(path):
         try:
-            with open(path, 'r', encoding='utf-8') as f:
+            with open(path, 'r', encoding='utf-8-sig') as f:
                 cfg = json.load(f)
         except Exception as e:
             print(f"--- Warning: Failed to load config.json: {e} ---")
@@ -123,20 +124,38 @@ def remote_file_search(file_pattern: str, base_path_key: Optional[str] = None, i
     """Search for files/folders. This is invoked by the client after routing, not by LangChain tool-calling."""
     pass
 
+def _grpc_endpoint(config=None):
+    """Honor saved endpoints, including the historical ws://-prefixed setting."""
+    if config is None:
+        config = _load_config()
+    uri = str(config.get('mcp_files_search_client_uri') or config.get('mcp_files_search_grpc_target') or '').strip()
+    if uri:
+        parsed = urlsplit(uri if '://' in uri else '//' + uri)
+        if parsed.username or parsed.password or parsed.query or parsed.fragment or parsed.path not in ('', '/'):
+            raise ValueError('Files-Search endpoint must contain only a host and port.')
+        if not parsed.hostname or not parsed.port:
+            raise ValueError('Files-Search endpoint requires a host and port.')
+        host = parsed.hostname
+        return f'[{host}]:{parsed.port}' if ':' in host else f'{host}:{parsed.port}'
+    host = str(config.get('mcp_files_search_server_host', 'localhost'))
+    port = int(config.get('mcp_files_search_server_port', 50051))
+    return f'[{host}]:{port}' if ':' in host and not host.startswith('[') else f'{host}:{port}'
+
+
 def list_allowed_directories(verbose: bool = True):
     """List allowed directories. This is invoked by the client after routing."""
     if verbose:
-        print("\n--- DEBUG (gRPC): Attempting to connect to gRPC server at 'localhost:50051' for ListAllowedDirs ---")
+        print("\n--- DEBUG (gRPC): Connecting to the configured Files-Search endpoint for ListAllowedDirs ---")
     
     try:
-        with grpc.insecure_channel('localhost:50051') as channel:
+        with grpc.insecure_channel(_grpc_endpoint()) as channel:
             stub = filesearch_pb2_grpc.FileSearcherStub(channel)
             
             request = filesearch_pb2.ListDirsRequest() # type: ignore[attr-defined]
             
             if verbose:
                 print("--- DEBUG (gRPC): Connection successful. Sending ListAllowedDirs request ---")
-            response = stub.ListAllowedDirs(request)
+            response = stub.ListAllowedDirs(request, timeout=15)
             if verbose:
                 print("--- DEBUG (gRPC): Server responded. ---")
             
@@ -159,10 +178,10 @@ def list_allowed_directories(verbose: bool = True):
 def call_grpc_server(file_pattern: str, base_key: Optional[str], hidden: bool, *, verbose: bool = True):
     search_desc = f"in '{base_key}'" if base_key else "in *all allowed paths*"
     if verbose:
-        print(f"\n--- DEBUG (gRPC): Attempting to connect to gRPC server at 'localhost:50051' ({search_desc}) ---")
+        print(f"\n--- DEBUG (gRPC): Connecting to the configured Files-Search endpoint ({search_desc}) ---")
     
     try:
-        with grpc.insecure_channel('localhost:50051') as channel:
+        with grpc.insecure_channel(_grpc_endpoint()) as channel:
             stub = filesearch_pb2_grpc.FileSearcherStub(channel)
             
             request = filesearch_pb2.SearchRequest(  # type: ignore[attr-defined]
@@ -173,7 +192,7 @@ def call_grpc_server(file_pattern: str, base_key: Optional[str], hidden: bool, *
             
             if verbose:
                 print(f"--- DEBUG (gRPC): Connection successful. Sending request: {{pattern: '{file_pattern}', key: '{base_key}'}} ---")
-            response = stub.SearchFiles(request)
+            response = stub.SearchFiles(request, timeout=60)
             if verbose:
                 print("--- DEBUG (gRPC): Server responded. ---")
             
@@ -190,7 +209,7 @@ def call_grpc_server(file_pattern: str, base_key: Optional[str], hidden: bool, *
             total = len(response.found_files)
             if verbose:
                 config = _load_config()
-                MaxNRows = config.get("max_lines_search_files", "500")
+                MaxNRows = max(0, int(config.get("max_lines_search_files", 500)))
                 show_n = min(total, MaxNRows)
                 print(f"\n✅ Server found {total} files (showing first {show_n}):")
                 for f in response.found_files[:show_n]:

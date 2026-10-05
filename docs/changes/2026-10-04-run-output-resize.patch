@@ -1,0 +1,834 @@
+--- a/Tlamatini/agent/templates/agent/prompt_flow_panel.html
++++ b/Tlamatini/agent/templates/agent/prompt_flow_panel.html
+@@ -81,6 +81,7 @@
+                 <button type="button" data-action="zoom-in" aria-label="Zoom in">+</button>
+                 <button type="button" data-action="fit">Fit</button>
+             </div>
++            <div id="pmt-workspace">
+             <div id="submonitor-container" tabindex="0" aria-label="Diagram canvas; use arrow keys to move selected operations">
+                 <div id="canvas-content"><div id="pmt-world">
+                     <svg id="connections-layer" aria-label="Connections"></svg>
+@@ -90,7 +91,9 @@
+                 <div id="pmt-empty"><span class="pmt-empty-symbol">◇</span><h1>Design your prompt flow</h1><p>Add operations, connect their outputs, then press Play.</p><button type="button" data-action="example">Try an example</button></div>
+             </div>
+             <div class="pmt-status-strip"><span id="pmt-status" role="status" aria-live="polite">Ready to design</span><span id="pmt-count">0 operations · 0 connections</span></div>
++            <div id="pmt-output-divider" role="separator" aria-label="Resize Run output" aria-controls="pmt-run-panel submonitor-container" aria-orientation="horizontal" aria-valuemin="5" aria-valuemax="95" aria-valuenow="20" tabindex="0" title="Drag to resize Run output · ↑ / ↓ to adjust · Home 5% · End 95%"></div>
+             <details id="pmt-run-panel" open><summary>Run output <span id="pmt-run-state">Idle</span></summary><div id="pmt-run-log" role="log" aria-live="polite"><p class="pmt-log-hint">Execution results appear here. Keep this page open while a flow is playing.</p></div></details>
++            </div>
+         </section>
+     </main>
+     <div id="agent-context-menu"></div>
+--- a/Tlamatini/agent/static/agent/js/flow-canvas-interactions.js
++++ b/Tlamatini/agent/static/agent/js/flow-canvas-interactions.js
+@@ -24,29 +24,33 @@
+         menu.style.left = Math.min(Math.max(x, 8), Math.max(8, window.innerWidth - rect.width - 8)) + 'px';
+         menu.style.top = Math.min(Math.max(y, 8), Math.max(8, window.innerHeight - rect.height - 8)) + 'px';
+     }
+-    function bindDivider({ element, value, atPointer, apply, before }) {
++    function bindDivider({ element, value, atPointer, apply, before, axis = 'x', keyDirection = 1 }) {
++        const resizeClass = axis === 'y' ? 'resizing-vertical' : 'resizing';
++        const keys = axis === 'y' ? ['ArrowUp', 'ArrowDown'] : ['ArrowLeft', 'ArrowRight'];
+         let pointerId = null;
+         function end() {
+             if (pointerId === null) return;
+             const previous = pointerId; pointerId = null;
+-            document.body.classList.remove('resizing');
++            document.body.classList.remove(resizeClass);
+             if (element.hasPointerCapture(previous)) element.releasePointerCapture(previous);
+         }
+         element.style.touchAction = 'none';
+         element.addEventListener('pointerdown', event => {
+             if (event.button !== 0) return;
+             event.preventDefault(); before(); pointerId = event.pointerId;
+-            element.setPointerCapture(pointerId); document.body.classList.add('resizing');
++            element.focus({ preventScroll: true });
++            element.setPointerCapture(pointerId); document.body.classList.add(resizeClass);
+         });
+-        document.addEventListener('pointermove', event => { if (pointerId === event.pointerId) apply(atPointer(event.clientX)); });
++        document.addEventListener('pointermove', event => { if (pointerId === event.pointerId) apply(atPointer(axis === 'y' ? event.clientY : event.clientX)); });
+         document.addEventListener('pointerup', end);
+         document.addEventListener('pointercancel', end);
+         element.addEventListener('lostpointercapture', end);
+         window.addEventListener('blur', end);
+         document.addEventListener('keydown', event => { if (event.key === 'Escape') end(); });
+         element.addEventListener('keydown', event => {
+-            if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+-            event.preventDefault(); before(); apply(value() + (event.key === 'ArrowLeft' ? -1 : 1));
++            if (!keys.includes(event.key)) return;
++            event.preventDefault(); before();
++            apply(value() + (event.key === keys[0] ? -1 : 1) * keyDirection * (event.shiftKey ? 5 : 1));
+         });
+     }
+ 
+--- a/Tlamatini/agent/static/agent/css/prompt_flow_panel.css
++++ b/Tlamatini/agent/static/agent/css/prompt_flow_panel.css
+@@ -13,7 +13,7 @@
+ .pmt-panel #monitor-header-title { font-size: .95rem; }
+ .pmt-panel #monitor-controls { flex-wrap: wrap; }
+ .pmt-panel .control-btn { height: 26px; font-size: .78rem; width: auto; min-width: 40px; }
+-.pmt-panel #submonitor-container { flex: 1 1 auto; height: auto; min-height: 160px; touch-action: none; }
++.pmt-panel #submonitor-container { flex: 1 1 auto; height: auto; min-height: 0; touch-action: none; }
+ .pmt-panel #canvas-content { min-width: 100%; min-height: 100%; width: 1200px; height: 800px; }
+ #pmt-world { position: absolute; left: 0; top: 0; transform-origin: 0 0; background-image: radial-gradient(#4b4b56 .8px, transparent .8px); background-size: 20px 20px; }
+ .pmt-panel #connections-layer { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: 1; }
+@@ -137,10 +137,22 @@
+ .pmt-status-strip { display: flex; gap: 10px; justify-content: space-between; padding: 5px 10px; background: #24242c; font-size: .75rem; color: #cfcfda; }
+ #pmt-status { min-width: 0; overflow-wrap: anywhere; }
+ #pmt-count { flex-shrink: 0; }
+-#pmt-run-panel { flex: 0 0 auto; border-top: 1px solid #555560; background: #25252e; }
+-#pmt-run-panel summary { padding: 6px 10px; cursor: pointer; font-size: .8rem; font-weight: 600; }
++/* Only pane viewports resize. Canvas zoom and output typography stay independent. */
++#pmt-workspace { display: flex; flex-direction: column; flex: 1 1 0; min-height: 0; overflow: hidden; }
++.pmt-status-strip { flex: 0 0 auto; }
++#pmt-output-divider { position: relative; flex: 0 0 10px; cursor: row-resize; touch-action: none; background: #202129; outline: none; }
++#pmt-output-divider::before { content: ""; position: absolute; inset: 4px 0; background: #626573; }
++#pmt-output-divider::after { content: ""; position: absolute; width: 42px; height: 4px; left: calc(50% - 21px); top: 3px; border-radius: 4px; background: #aeb3c3; }
++#pmt-output-divider:hover::before, #pmt-output-divider:focus-visible::before,
++.pmt-panel.resizing-vertical #pmt-output-divider::before { background: #79dacd; }
++#pmt-output-divider:focus-visible { box-shadow: inset 0 0 0 2px #79dacd; }
++.pmt-panel.resizing-vertical, .pmt-panel.resizing-vertical * { cursor: row-resize !important; user-select: none !important; }
++#pmt-output-divider[hidden] { display: none; }
++#pmt-run-panel { flex: 0 0 auto; min-height: 0; overflow: hidden; background: #25252e; }
++#pmt-run-panel summary { box-sizing: border-box; height: 28px; padding: 4px 10px; cursor: pointer; font-size: .8rem; font-weight: 600; line-height: 20px; }
+ #pmt-run-state { float: right; color: #8cdbc3; }
+-#pmt-run-log { height: 145px; overflow: auto; padding: 5px 12px; font-size: .8rem; }
++#pmt-run-log { box-sizing: border-box; height: 0; min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-color: #737687 #25252e; scrollbar-width: thin; padding: 0 12px; font-size: .8rem; }
++#pmt-run-panel:not([open]) #pmt-run-log { display: none; }
+ #pmt-run-log article { border-left: 3px solid #62748a; padding: 5px 10px; margin: 4px 0 10px; }
+ #pmt-run-log article.error { border-color: #fb7185; }
+ #pmt-run-log article strong { font-size: .75rem; color: #a6dbc9; }
+@@ -165,7 +177,6 @@
+     .pmt-panel .agent-tool-item svg { width: 37px; }
+     .pmt-palette-intro, .pmt-palette-foot { font-size: .7rem; padding: 8px; }
+     #pmt-count { display: none; }
+-    #pmt-run-log { height: 110px; }
+     .pmt-panel #monitor-controls { gap: 4px !important; }
+ }
+ 
+--- a/Tlamatini/agent/static/agent/js/prompt-flow-panel.js
++++ b/Tlamatini/agent/static/agent/js/prompt-flow-panel.js
+@@ -1129,6 +1129,52 @@
+         atPointer: x => (x - $id('agents-container').getBoundingClientRect().left) / $id('agents-container').clientWidth * 100,
+         apply: value => { document.body.style.setProperty('--pmt-sidebar', Math.max(15, Math.min(70, value)) + '%'); extent(); }
+     });
++    // Layout is a per-user browser preference, never a flow edit or a zoom operation.
++    const workspace = $id('pmt-workspace'), outputPanel = $id('pmt-run-panel'), outputDivider = $id('pmt-output-divider');
++    const layoutKey = `tlamatini.prompting-flow.layout.v1.${document.body.dataset.userId}`;
++    let outputPercent = 20, layoutTimer = null;
++    try {
++        const saved = JSON.parse(localStorage.getItem(layoutKey) || 'null');
++        if (typeof saved?.outputPercent === 'number' && Number.isFinite(saved.outputPercent)) outputPercent = Math.max(5, Math.min(95, saved.outputPercent));
++    } catch (_) { /* A blocked or invalid preference must not prevent editing. */ }
++    function paneHeight() {
++        return Math.max(0, workspace.clientHeight - workspace.querySelector('.pmt-status-strip').offsetHeight - outputDivider.offsetHeight);
++    }
++    function sizeOutput() {
++        outputDivider.hidden = !outputPanel.open;
++        const height = paneHeight() * outputPercent / 100;
++        outputPanel.style.height = outputPanel.open ? `${height}px` : '';
++        // Native details has an anonymous content wrapper: percentage log heights
++        // resolve against that wrapper rather than the pane in some browsers.
++        $id('pmt-run-log').style.height = outputPanel.open ? `${Math.max(0, height - outputPanel.querySelector('summary').offsetHeight)}px` : '';
++        outputDivider.setAttribute('aria-valuenow', String(Math.round(outputPercent)));
++        outputDivider.setAttribute('aria-valuetext', `${Math.round(outputPercent)}% Run output`);
++        extent();
++    }
++    function setOutputPercent(value) {
++        outputPercent = Math.max(5, Math.min(95, value));
++        sizeOutput();
++        clearTimeout(layoutTimer);
++        layoutTimer = setTimeout(() => {
++            try { localStorage.setItem(layoutKey, JSON.stringify({ outputPercent })); }
++            catch (_) { /* Resizing remains available without browser storage. */ }
++        }, 150);
++    }
++    UI.bindDivider({
++        element: outputDivider, axis: 'y', keyDirection: -1, before: endGesture,
++        value: () => outputPercent,
++        atPointer: y => (workspace.getBoundingClientRect().bottom - y - outputDivider.offsetHeight / 2) / Math.max(1, paneHeight()) * 100,
++        apply: setOutputPercent
++    });
++    outputDivider.addEventListener('keydown', event => {
++        if (!['Home', 'End'].includes(event.key)) return;
++        event.preventDefault(); endGesture(); setOutputPercent(event.key === 'Home' ? 5 : 95);
++    });
++    outputPanel.addEventListener('toggle', sizeOutput);
++    const paneObserver = new ResizeObserver(sizeOutput);
++    paneObserver.observe(workspace);
++    paneObserver.observe(workspace.querySelector('.pmt-status-strip'));
++    sizeOutput();
+     viewport.addEventListener('wheel', event => { if (event.ctrlKey || event.metaKey) { event.preventDefault(); setZoom(zoom + (event.deltaY < 0 ? .1 : -.1)); } }, { passive: false });
+     document.addEventListener('keydown', event => {
+         if (commentEditor) {
+--- a/Tlamatini/tlamatini/settings.py
++++ b/Tlamatini/tlamatini/settings.py
+@@ -247,7 +247,7 @@
+ 
+ # Version stamp for cache-busting of static assets in templates
+ # Override via env var STATIC_VERSION when deploying
+-STATIC_VERSION = (os.environ.get('STATIC_VERSION') or str(int(time.time()))) + '-prompt-commentary-canvas-2'
++STATIC_VERSION = (os.environ.get('STATIC_VERSION') or str(int(time.time()))) + '-prompt-run-output-resize-1'
+ 
+ # WhiteNoise configuration: dev vs release.
+ # NOTE (speed batch, 2026-07-02): the old per-branch STATICFILES_STORAGE lines
+--- /dev/null
++++ b/scripts/prompt_flow_output_resize_visible.py
+@@ -0,0 +1,381 @@
++# Tlamatini Author Banner — Angela López Mendoza
++"""Run output splitter regression in real visible Chrome.
++
++Launch from a verified foreground PowerShell -NoExit console. Uses a separate
++normal source installation, real login/HTTP/WebSocket, and Shoter desktop photos.
++No headless mode, transport interception or injected editor state. The foreground window gate verifies real Chrome visibility. Successful
++checks leave Chrome and the test server open for inspection until close.confirmed.
++
++Launch it in a classic console (conhost.exe): inside Windows Terminal the console
++handle is a hidden pseudo-console window, so the foreground gate below refuses.
++"""
++from __future__ import annotations
++
++import ctypes
++import json
++import secrets
++from pathlib import Path
++import shutil
++import subprocess
++import sys
++import time
++import traceback
++import urllib.request
++
++from playwright.sync_api import expect, sync_playwright
++import panel_search_title_visible as visible
++from prompt_flow_connections_visible import require_browser_foreground
++
++ROOT = Path(__file__).resolve().parents[1]
++OUT = ROOT / 'Temp/run-output-resize-visible'
++visible.OUT = OUT
++visible.RUNTIME = ROOT / 'Temp/prompt-commentary-visible/runtime'
++BASE = visible.BASE
++
++
++def main():
++    if any('headless' in arg for arg in sys.argv[1:]):
++        raise SystemExit('Headless execution is forbidden.')
++    OUT.mkdir(parents=True, exist_ok=True)
++    (OUT / 'close.confirmed').unlink(missing_ok=True)
++    user32 = ctypes.windll.user32
++    kernel32 = ctypes.windll.kernel32
++    kernel32.GetConsoleWindow.restype = ctypes.c_void_p
++    user32.GetForegroundWindow.restype = ctypes.c_void_p
++    user32.IsWindowVisible.argtypes = [ctypes.c_void_p]
++    user32.IsIconic.argtypes = [ctypes.c_void_p]
++    console = kernel32.GetConsoleWindow()
++    if not console or not user32.IsWindowVisible(console) or user32.IsIconic(console) or user32.GetForegroundWindow() != console:
++        raise SystemExit('A visible foreground development console is required; refusing execution.')
++    visible.photograph('console-visible')
++    before = visible.listeners()
++    if any(port in before for port in (8001, 8766, 50052)):
++        raise SystemExit('Test ports occupied; refusing to replace an existing server.')
++    original = visible.read_discovery()
++    (OUT / 'login.json').write_text(json.dumps({'username': 'user', 'password': secrets.token_urlsafe(32)}), encoding='utf-8')
++    server = None
++    results = []
++    (OUT / 'checks.json').write_text('[]', encoding='utf-8')
++    outcome = 1
++    try:
++        env, credentials = visible.prepare_runtime()
++        if '--resume' in sys.argv:
++            # Rotate only the isolated test account, avoiding Chrome's breached-password modal.
++            subprocess.run([sys.executable, '-u', 'Tlamatini/manage.py', 'shell', '-c',
++                'import os; from django.contrib.auth import get_user_model; '
++                'u = get_user_model().objects.get(username="user"); '
++                'u.set_password(os.environ["TLAMATINI_COMMENT_TEST_PASSWORD"]); u.save(update_fields=["password"])'],
++                cwd=visible.RUNTIME, env={**env, 'TLAMATINI_COMMENT_TEST_PASSWORD': credentials['password']}, check=True)
++        # Refresh only this isolated test installation on a repeat run.
++        for path in ('agent/services/prompt_flow_panel.py', 'agent/test_prompt_flow_panel.py',
++                     'agent/test_prompt_flow_panel_websocket.py', 'agent/management/commands/check_prompt_flow_panel.py',
++                     'agent/static/agent/js/flow-canvas-interactions.js', 'agent/static/agent/js/prompt-flow-panel-model.js', 'agent/static/agent/js/prompt-flow-panel.js',
++                     'agent/static/agent/css/prompt_flow_panel.css', 'agent/templates/agent/prompt_flow_panel.html',
++                     'tlamatini/settings.py'):
++            shutil.copy2(ROOT / 'Tlamatini' / path, visible.RUNTIME / 'Tlamatini' / path)
++        for path in ('docs/examples/prompting-kickoff.fpmt', 'docs/prompting-flow-designer.md'):
++            dest = visible.RUNTIME / path
++            dest.parent.mkdir(parents=True, exist_ok=True)
++            shutil.copy2(ROOT / path, dest)
++        for command in (
++            ['test', 'agent.test_prompt_flow_panel_runtime', 'agent.test_prompt_flow_panel_websocket', 'agent.test_chain_readiness', '--noinput'],
++            ['check_prompt_flow_panel'], ['collectstatic', '--noinput'],
++        ):
++            if '--resume' in sys.argv and command[0] != 'collectstatic':
++                continue
++            print('VISIBLE CHECK:', ' '.join(command), flush=True)
++            subprocess.run([sys.executable, '-u', 'Tlamatini/manage.py', *command], cwd=visible.RUNTIME, env=env, check=True)
++        server = visible.start_server(env)
++        deadline = time.monotonic() + 180
++        while time.monotonic() < deadline:
++            if server.poll() is not None:
++                raise RuntimeError('Test server exited: ' + str(server.returncode))
++            try:
++                with urllib.request.urlopen(BASE, timeout=2) as response:
++                    if response.status == 200:
++                        break
++            except (OSError, TimeoutError):
++                time.sleep(1)
++        else:
++            raise TimeoutError('Test server did not become ready.')
++        visible.restore_discovery(original)
++        # This isolated profile must not cover the actual controls with Chrome's password bubble.
++        profile = OUT / ('chrome-profile-' + str(time.time_ns()))
++        preferences = profile / 'Default/Preferences'
++        preferences.parent.mkdir(parents=True, exist_ok=True)
++        prefs = json.loads(preferences.read_text(encoding='utf-8')) if preferences.exists() else {}
++        prefs['credentials_enable_service'] = False
++        prefs.setdefault('profile', {})['password_manager_enabled'] = False
++        preferences.write_text(json.dumps(prefs), encoding='utf-8')
++        with sync_playwright() as playwright:
++            context = playwright.chromium.launch_persistent_context(
++                str(profile), channel='chrome', headless=False,
++                chromium_sandbox=True, no_viewport=True, slow_mo=100,
++                accept_downloads=True, args=['--start-maximized'])
++            page = context.pages[0]
++            errors = []
++            def page_error(error):
++                errors.append(str(error))
++                print('BROWSER SCRIPT ERROR:', error, flush=True)
++            page.on('pageerror', page_error)
++            page.on('dialog', lambda dialog: dialog.accept())
++            page.on('close', lambda: print('Visible test page closed.', flush=True))
++            page.goto(BASE)
++            page.bring_to_front()
++            require_browser_foreground(page)
++            visible.photograph('browser-visible')
++            page.goto(BASE + '/agent/prompt_flow_panel/')
++            if page.locator('#id_username').is_visible():
++                page.locator('#id_username').fill(credentials['username'])
++                page.locator('#id_password').fill(credentials['password'])
++                page.locator('button[type=submit], input[type=submit]').first.click()
++                page.goto(BASE + '/agent/prompt_flow_panel/')
++            credentials.clear()
++            expect(page.locator('.agent-tool-item')).to_have_count(8)
++            expect(page.locator('[data-action="reconnect"]')).to_be_disabled()
++            page.wait_for_load_state('networkidle')
++            page.bring_to_front()
++            require_browser_foreground(page)
++            visible.photograph('panel-ready')
++
++
++            def checkpoint(name):
++                require_browser_foreground(page)
++                visible.photograph(name)
++                results.append(name)
++                (OUT / 'checks.json').write_text(json.dumps(results, indent=2), encoding='utf-8')
++                print('PASS:', name, flush=True)
++
++            def open_file(path):
++                page.get_by_role('button', name='File', exact=True).click()
++                with page.expect_file_chooser() as chooser:
++                    page.locator('[data-action="open"]').click()
++                chooser.value.set_files(str(path))
++
++            fixture = json.loads((ROOT / 'docs/examples/prompting-kickoff.fpmt').read_text(encoding='utf-8'))
++            fixture.update(name='Run output resizing demonstration', start='input', max_steps=10)
++            fixture['nodes'] = [
++                {'id': 'input', 'type': 'user_input', 'label': 'Review notes', 'x': 80, 'y': 80,
++                 'config': {'text': 'Enter review notes to demonstrate the scrollable output.'}},
++                {'id': 'clean', 'type': 'clean_history', 'label': 'Finish review', 'x': 540, 'y': 80, 'config': {'text': ''}},
++            ]
++            fixture['edges'] = [{'id': 'next', 'source': 'input', 'target': 'clean', 'branch': 'next'}]
++            original_note = json.loads((ROOT / 'docs/examples/prompting-kickoff.fpmt').read_text(encoding='utf-8'))['nodes'][-1]
++            for index, (x, y, color) in enumerate(((80, 320, '#fef3c7'), (850, 320, '#dbeafe'), (80, 1100, '#dcfce7'))):
++                note = json.loads(json.dumps(original_note))
++                note.update(id='note-' + str(index), x=x, y=y)
++                note['config'].update(color=color)
++                fixture['nodes'].append(note)
++            fixture_path = OUT / 'resize-demo.fpmt'
++            fixture_path.write_text(json.dumps(fixture, ensure_ascii=False), encoding='utf-8')
++            open_file(fixture_path)
++            expect(page.locator('.pmt-node')).to_have_count(5)
++            page.locator('#pmt-play').click()
++            reply = '\n'.join('Review line %02d — Keep text readable at every pane height.' % i for i in range(1, 81))
++            page.locator('#pmt-field-reply').fill(reply)
++            page.get_by_role('button', name='Continue flow', exact=True).click()
++            expect(page.locator('#pmt-run-state')).to_have_text('completed', timeout=30000)
++            expect(page.locator('#pmt-run-log')).to_contain_text('Review line 80')
++            divider = page.locator('#pmt-output-divider')
++            canvas = page.locator('#submonitor-container')
++            output = page.locator('#pmt-run-log')
++            panel = page.locator('#pmt-run-panel')
++
++            def dimensions():
++                return page.evaluate('''() => {
++                    const byId = id => document.getElementById(id), c = byId('submonitor-container'), p = byId('pmt-run-panel'), l = byId('pmt-run-log');
++                    return {canvas: c.getBoundingClientRect().height, output: p.getBoundingClientRect().height,
++                        percent: Number(byId('pmt-output-divider').getAttribute('aria-valuenow')),
++                        canvasScroll: c.scrollTop, outputScroll: l.scrollTop,
++                        canvasWidth: c.clientWidth, canvasHeight: c.clientHeight,
++                        canvasScrollWidth: c.scrollWidth, canvasScrollHeight: c.scrollHeight,
++                        outputHeight: l.clientHeight, outputScrollHeight: l.scrollHeight,
++                        zoom: byId('pmt-zoom').textContent, transform: byId('pmt-world').style.transform,
++                        outputText: l.textContent, outputFont: getComputedStyle(l).fontSize,
++                        nodes: [...document.querySelectorAll('.pmt-node')].map(n => ({id: n.dataset.nodeId, left: n.style.left, top: n.style.top,
++                            width: n.getBoundingClientRect().width, height: n.getBoundingClientRect().height,
++                            runs: [...n.querySelectorAll('[data-comment-run]')].map(r => [r.textContent, getComputedStyle(r).fontFamily, getComputedStyle(r).fontSize])}))};
++                }''')
++
++            baseline = dimensions()
++            def unchanged():
++                actual = dimensions()
++                for key in ('zoom', 'transform', 'outputText', 'outputFont', 'nodes'):
++                    assert actual[key] == baseline[key], ('Resizing changed content', key)
++                expect(page.locator('[data-action="undo"]')).to_be_disabled()
++                return actual
++
++            def ratio(expected):
++                current = unchanged()
++                actual = current['output'] / (current['canvas'] + current['output']) * 100
++                assert abs(actual - expected) < .15, (expected, actual, current)
++                assert current['percent'] == expected
++                return current
++
++            def drag_to(percent):
++                require_browser_foreground(page)
++                rect = divider.bounding_box()
++                box = page.locator('#pmt-workspace').bounding_box()
++                current = dimensions()
++                target_y = box['y'] + box['height'] - (current['canvas'] + current['output']) * percent / 100 - rect['height'] / 2
++                x = rect['x'] + rect['width'] / 2
++                print('DEMONSTRATING: drag Run output to', percent, 'percent', flush=True)
++                page.mouse.move(x, rect['y'] + rect['height'] / 2)
++                page.mouse.down()
++                page.mouse.move(x, max(1, min(page.evaluate('innerHeight') - 1, target_y)), steps=30)
++                page.mouse.up()
++                page.wait_for_timeout(1200)
++
++            css_url = page.locator('link[href*="prompt_flow_panel.css"]').get_attribute('href')
++            assert '-prompt-run-output-resize-1' in css_url
++            for asset, filename in (('link[href*="prompt_flow_panel.css"]', 'css/prompt_flow_panel.css'),
++                                    ('script[src*="flow-canvas-interactions.js"]', 'js/flow-canvas-interactions.js'),
++                                    ('script[src*="prompt-flow-panel.js"]', 'js/prompt-flow-panel.js')):
++                locator = page.locator(asset)
++                url = locator.get_attribute('href') or locator.get_attribute('src')
++                assert page.request.get(BASE + url).body() == (ROOT / 'Tlamatini/agent/static/agent' / filename).read_bytes()
++            ratio(20)
++            checkpoint('01-real-playback-default-layout-and-served-assets')
++            drag_to(50)
++            ratio(50)
++            checkpoint('02-drag-half-height-preserves-content')
++            drag_to(95)
++            ratio(95)
++            checkpoint('03-drag-95-percent-output')
++            drag_to(110)
++            ratio(95)
++            checkpoint('04-upper-limit-clamped')
++            drag_to(5)
++            ratio(5)
++            checkpoint('05-drag-5-percent-output')
++            drag_to(-15)
++            ratio(5)
++            checkpoint('06-lower-limit-clamped')
++            drag_to(50)
++            ratio(50)
++            # Scroll the actual panes with real mouse wheel input; no injected scroll positions.
++            c = canvas.bounding_box()
++            page.mouse.move(c['x'] + c['width'] - 45, c['y'] + c['height'] / 2)
++            before_scroll = dimensions()
++            page.mouse.wheel(0, 640)
++            page.wait_for_timeout(500)
++            after_scroll = unchanged()
++            assert after_scroll['canvasScroll'] > before_scroll['canvasScroll']
++            assert after_scroll['outputScroll'] == before_scroll['outputScroll']
++            page.mouse.wheel(0, -2000)
++            log_box = output.bounding_box()
++            page.mouse.move(log_box['x'] + log_box['width'] / 2, log_box['y'] + log_box['height'] / 2)
++            before_scroll = dimensions()
++            page.mouse.wheel(0, -1200)
++            page.wait_for_timeout(500)
++            after_scroll = unchanged()
++            assert after_scroll['outputScroll'] < before_scroll['outputScroll'], (before_scroll, after_scroll)
++            assert after_scroll['canvasScroll'] == before_scroll['canvasScroll']
++            assert after_scroll['canvasScrollWidth'] > after_scroll['canvasWidth']
++            assert after_scroll['outputScrollHeight'] > after_scroll['outputHeight']
++            checkpoint('07-independent-canvas-and-output-scrolling')
++            divider.focus()
++            divider.press('Home')
++            ratio(5)
++            divider.press('ArrowUp')
++            ratio(6)
++            divider.press('Shift+ArrowUp')
++            ratio(11)
++            divider.press('ArrowDown')
++            ratio(10)
++            divider.press('End')
++            ratio(95)
++            checkpoint('08-keyboard-arrows-shift-home-end')
++            drag_to(50)
++            panel.locator('summary').click()
++            expect(output).not_to_be_visible()
++            expect(divider).not_to_be_visible()
++            unchanged()
++            panel.locator('summary').click()
++            expect(divider).to_be_visible()
++            ratio(50)
++            checkpoint('09-collapse-and-reopen-preserve-height')
++            # Escape releases the captured pointer; subsequent movement cannot resize.
++            box = divider.bounding_box()
++            x, y = box['x'] + box['width'] / 2, box['y'] + 5
++            page.mouse.move(x, y)
++            page.mouse.down()
++            page.mouse.move(x, y - 80, steps=10)
++            page.keyboard.press('Escape')
++            after_escape = dimensions()['output']
++            page.mouse.move(x, y + 100, steps=10)
++            page.mouse.up()
++            assert abs(dimensions()['output'] - after_escape) < 1
++            assert 'resizing-vertical' not in page.locator('body').get_attribute('class')
++            unchanged()
++            checkpoint('10-escape-releases-resize-gesture')
++            drag_to(50)
++            side = page.locator('#drag-divider')
++            sidebar_before = page.locator('#main-agents-container').bounding_box()['width']
++            side.focus()
++            side.press('ArrowRight')
++            assert page.locator('#main-agents-container').bounding_box()['width'] > sidebar_before
++            side.press('ArrowLeft')
++            ratio(50)
++            checkpoint('11-operations-divider-still-resizes')
++            # Browser zoom is unchanged; a real window restore tests responsive pane percentages.
++            require_browser_foreground(page)
++            browser_window = user32.GetForegroundWindow()
++            user32.ShowWindow.argtypes = [ctypes.c_void_p, ctypes.c_int]
++            user32.SetWindowPos.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_uint]
++            user32.ShowWindow(browser_window, 9)
++            user32.SetWindowPos(browser_window, None, 80, 60, 1400, 1000, 4)
++            page.wait_for_timeout(600)
++            ratio(50)
++            checkpoint('12a-real-window-resize-keeps-ratio')
++            user32.ShowWindow(browser_window, 3)
++            page.wait_for_timeout(600)
++            ratio(50)
++            # Preserve only layout in localStorage, outside the portable diagram and its Undo history.
++            page.wait_for_timeout(400)
++            stored = page.evaluate('JSON.parse(localStorage.getItem("tlamatini.prompting-flow.layout.v1." + document.body.dataset.userId))')
++            assert abs(stored['outputPercent'] - 50) < .1
++            page.reload()
++            expect(page.locator('.pmt-node')).to_have_count(5)
++            expect(divider).to_have_attribute('aria-valuenow', '50')
++            reloaded = dimensions()
++            assert abs(reloaded['output'] / (reloaded['canvas'] + reloaded['output']) * 100 - 50) < .15
++            assert reloaded['nodes'] == baseline['nodes']
++            assert reloaded['zoom'] == baseline['zoom']
++            checkpoint('12-height-restored-without-changing-diagram')
++            # Leave real output on screen for inspection after the reload.
++            page.locator('#pmt-play').click()
++            page.locator('#pmt-field-reply').fill(reply)
++            page.get_by_role('button', name='Continue flow', exact=True).click()
++            expect(page.locator('#pmt-run-state')).to_have_text('completed', timeout=30000)
++            log_box = output.bounding_box()
++            page.mouse.move(log_box['x'] + 100, log_box['y'] + 80)
++            page.mouse.wheel(0, -10000)
++            page.wait_for_timeout(500)
++            checkpoint('13-final-half-height-demonstration')
++            assert not errors, errors
++            outcome = 0
++            (OUT / 'summary.json').write_text(json.dumps({'exit_code': 0, 'checks': results,
++                'mocked_transports': False, 'model_called': False, 'browser_visible': True}, indent=2), encoding='utf-8')
++            print('ALL RUN OUTPUT CHECKS PASSED. EXIT_CODE=0. Chrome stays open for inspection.', flush=True)
++            print('Create close.confirmed to close this test session when finished inspecting.', flush=True)
++            while not (OUT / 'close.confirmed').exists():
++                page.wait_for_timeout(1000)
++            context.close()
++    except Exception:
++        traceback.print_exc()
++        try:
++            visible.photograph('failure')
++        except Exception:
++            traceback.print_exc()
++    finally:
++        visible.stop_server(server)
++        visible.restore_discovery(original)
++        if outcome:
++            (OUT / 'summary.json').write_text(json.dumps({'exit_code': outcome, 'checks': results}, indent=2), encoding='utf-8')
++        print('RUN OUTPUT TEST EXIT CODE:', outcome, flush=True)
++    return outcome
++
++
++if __name__ == '__main__':
++    raise SystemExit(main())
+--- a/docs/prompting-flow-designer.md
++++ b/docs/prompting-flow-designer.md
+@@ -37,6 +37,8 @@
+ 
+ The running figure and traversed connections are highlighted. **Run output** displays step activity, model answers, user replies, waits and errors. Pause allows the current operation to finish and holds the next one. Scheduled times are absolute; relative delays count active playback time. Stop requests model cancellation and waits for the current worker to drain before allowing another run. Closing a reply dialog by Cancel, X or Escape stops the flow; an outside click does not dismiss it. Closing or disconnecting the page also requests a stop. Keep the page and Tlamatini open for scheduled prompts; this is not a persistent background scheduler.
+ 
++Drag the horizontal divider above **Run output** to give it **5%–95% of the available canvas/output height** (the headers, status strip and divider are excluded). The canvas and output scroll independently; resizing never changes canvas zoom, figure geometry or text size. Tab to the divider and use Up/Down for one percentage point, Shift+Up/Down for five, Home for 5%, or End for 95%. Escape ends the drag. Collapse Run output by clicking its heading; reopening restores its height. The browser remembers your height per signed-in user, separately from `.fpmt` files and flow Undo/Redo.
++
+ Each run has its own model chain, conversation, context files and cancellation identity. It starts with empty history and embeddings and uses the existing configured model, enabled tools and agents. Feed embeddings requires a functioning embedding provider and fails explicitly if context setup falls back to a non-retrieving chain. The run cleans up its own temporary context directory after completion. Chat history and global embedding configuration are not edited.
+ 
+ ## Files and editing
+@@ -71,6 +73,8 @@
+ 
+ The complete regression set: `agent/test_prompt_flow_panel.py` (validator and interpreter, no model or database), `agent/test_prompt_flow_panel_runtime.py` (model adapter with fake providers), `agent/test_prompt_flow_panel_websocket.py` (the real ASGI route and consumer, with a deterministic adapter), `agent/test_prompt_flow_panel_carriage.py` (every panel module must be in the frozen archive and every panel asset in the release receipt), and `agent/test_chain_readiness.py::ContextFreeChainTests` (`include_application_context=False` skips the shared `application/` corpus while the chat default still loads it). The redesigned `scripts/prompt_flow_commentary_visible.py` checks the floating toolbar, mixed selection/caret styles, all eight borders, editor and flow Undo/Redo, long text without scrollbars, several comments through three real download/reopen cycles and draft recovery, unchanged User Input and version 1 migration. It compares saved data and rendered line boxes/fonts/colors/geometry. Current results are recorded in [the 2026-10-04 change record](changes/2026-10-04-commentary-graphical-redesign.md). Create `Temp/prompt-commentary-redesign-visible/close.confirmed` to close its own Chrome/test server, then verify no owned workers/listeners remain. Never terminate unrelated user applications.
+ 
++`scripts/prompt_flow_output_resize_visible.py --resume` demonstrates the horizontal divider in real Chrome: 5%, 50%, 95%, clamped limits, independent scrolling, keyboard controls, collapse/reopen, gesture cancellation, the Operations divider, a real window resize and remembered layout. It opens a real `.fpmt` with two operations and three mixed-style notes, and uses User Input to produce an 80-line log. See [the resize verification record](changes/2026-10-04-run-output-resize.md). Launch it from a verified foreground `-NoExit` console. Its full-desktop photographs and results are under `Temp/run-output-resize-visible/`; create `close.confirmed` there after inspection to stop its own browser/server.
++
+ The visible browser scripts, each launched from a verified foreground `-NoExit` console with Shoter photographing the whole desktop, are `scripts/prompt_flow_extension_visible.py` (15 `.fpmt` checkpoints), `scripts/panel_search_title_visible.py` (14 checkpoints: the Agentic Control Panel's agent search, and the unsaved-changes `•` in both panels' titles through save, edit, undo and reopen) and `scripts/run_menu_state_checks.py`, which drives `scripts/menu_browser_checks.py` (including the panel's play/pause/stop and stale-event states) and `scripts/menu_live_checks.py`.
+ 
+ When editing static files, preserve the `STATIC_VERSION` environment/timestamp expression, update its suffix, and run collectstatic in the verified visible console.
+--- a/docs/claude/frontend.md
++++ b/docs/claude/frontend.md
+@@ -242,11 +242,13 @@
+ 
+ **Commentary layout (2026-10-04):** Add independent **User Commentary** bubbles within the 500-asset limit. Double-click a bubble or press Enter to write directly inside it. Select a word or passage, then use the **floating mini toolbar** to choose its font, text size, text color, bold, italic or underline. One note can mix styles: an Arial italic sentence, a large Verdana heading and a Georgia paragraph. With no text selected, a formatting choice sets the style for the next text you type. When the note is selected outside editing, formatting applies to the entire note. The color swatches change the bubble; the underlined **A** opens text colors. Alignment applies to the whole note. Drag **any border or corner** to reshape the bubble; the handles also respond to arrow keys (Shift moves farther). Resizing works while writing. **Fit text** removes spare height. There are no numeric dimension fields or commentary configuration dialogs. **Edit comment** in the main toolbar or context menu starts the same inline editor. **Done** or Ctrl+Enter saves the complete edit; **Cancel** or Escape restores its original text, styles, size and position. Ctrl+Z/Y undoes/redoes changes while writing. Completed edits, moving, resizing, copying and deletion also support flow Undo/Redo. Bubbles grow to contain every wrapped line at the chosen width and mixed fonts, without internal scrollbars. The chosen height is a minimum. Text stays literal, including `<script>` and `{{last_output}}`. Notes have no ports or Start status and never enter model context, history or playback steps. Notes save/open and recover with the diagram. The palettes offer eight bubble colors and eight text colors; fonts are Nunito, Arial, Verdana, Georgia, Times New Roman and Courier New. Text sizes range from 10 to 48, with named choices from Fine through Display. Each note holds up to 100,000 characters and 10,000 formatted runs. Internal geometry limits are width 200–2,400 and minimum height 128–2,400; automatic containment can grow taller. A notes-only diagram can be saved; Play requires an executable operation.
+ 
++**Run output split (2026-10-04):** `#pmt-workspace` owns the scrollable canvas, status strip, horizontal `#pmt-output-divider` and collapsible output. Output takes 5–95% of the two pane heights, excluding fixed chrome. `ResizeObserver` preserves the ratio when the workspace changes; native details content needs an explicit log viewport height. Never call Fit, change zoom, scale fonts, or re-render nodes from this divider. The shared `bindDivider` supports axis `y` and inverted arrow direction while keeping the Operations divider on axis `x`. Up/Down, Shift+arrows, Home/End and pointer cancellation work. Layout storage is `tlamatini.prompting-flow.layout.v1.<user id>`, outside the flow draft and Undo stack. Visible checks: `scripts/prompt_flow_output_resize_visible.py`.
++
+ Contracts (do NOT weaken):
+ 
+-- **Connection parity (2026-09-26):** use the ACP stylesheet's `input-triangle`, `output-triangle`, `output-label`, `connection-group`, `connection-path` and `connection-hit-area` classes directly. Do not reintroduce circular ports, arrowhead markers or a Connection palette tool. Curves follow ACP's horizontal half-distance Bezier construction, anchored at triangle centers. Pointer capture belongs to the viewport; resolve the input under the pointer with `elementFromPoint`, since captured events target the viewport. Commit only on release over an input. Empty/body drops, Escape, pointer cancellation, lost capture and blur remove the preview and port highlights without changing the document. Decision Y/N previews start from the selected branch. Gold port highlighting is retained; shared hover/selection colors override playback wire colors while interacting. Current `STATIC_VERSION` suffix: `-prompt-commentary-canvas-2`. Visible regression runner: `scripts/prompt_flow_connections_visible.py`.
+-
+-- **Selection styling:** Static commentary uses a mint outline and eight edge/corner grips (specificity must override shared canvas gold). Executable nodes in `prompt_flow_panel.css` match ACP's `#ffcc00` outline and yellow halo. Use an SVG `drop-shadow` so diamonds, triangles, trapezoids glow around their contours, never a rectangular box shadow on `.pmt-node`. Selected nodes sit above other nodes but below the marquee. Playback status strokes take precedence while the selection halo stays visible; deselection removes only that halo. Selected wires inherit ACP's gold stroke/shadow; traversed wires are green only when neither hovered nor selected. The real headed checks are `scripts/prompt_flow_selection_visible.py`, using ordinary file-open, selection, zoom and User Input playback on port 8001 (called User Commentary in that historical run); its 2026-09-25 20:26 run passed all 14 checks with exit code 0. ⚠️ Keep node `.selected` rules ABOVE `.running` / `.completed` / `.failed`, load `flow_canvas.css` after both panel styles and before `dialog_theme.css`. Keep `.pmt-edge.traversed` restricted to `:not(.selected):not(:hover)` so interaction feedback remains identical. Current `STATIC_VERSION` suffix: `-prompt-commentary-canvas-2`.
++- **Connection parity (2026-09-26):** use the ACP stylesheet's `input-triangle`, `output-triangle`, `output-label`, `connection-group`, `connection-path` and `connection-hit-area` classes directly. Do not reintroduce circular ports, arrowhead markers or a Connection palette tool. Curves follow ACP's horizontal half-distance Bezier construction, anchored at triangle centers. Pointer capture belongs to the viewport; resolve the input under the pointer with `elementFromPoint`, since captured events target the viewport. Commit only on release over an input. Empty/body drops, Escape, pointer cancellation, lost capture and blur remove the preview and port highlights without changing the document. Decision Y/N previews start from the selected branch. Gold port highlighting is retained; shared hover/selection colors override playback wire colors while interacting. Current `STATIC_VERSION` suffix: `-prompt-run-output-resize-1`. Visible regression runner: `scripts/prompt_flow_connections_visible.py`.
++
++- **Selection styling:** Static commentary uses a mint outline and eight edge/corner grips (specificity must override shared canvas gold). Executable nodes in `prompt_flow_panel.css` match ACP's `#ffcc00` outline and yellow halo. Use an SVG `drop-shadow` so diamonds, triangles, trapezoids glow around their contours, never a rectangular box shadow on `.pmt-node`. Selected nodes sit above other nodes but below the marquee. Playback status strokes take precedence while the selection halo stays visible; deselection removes only that halo. Selected wires inherit ACP's gold stroke/shadow; traversed wires are green only when neither hovered nor selected. The real headed checks are `scripts/prompt_flow_selection_visible.py`, using ordinary file-open, selection, zoom and User Input playback on port 8001 (called User Commentary in that historical run); its 2026-09-25 20:26 run passed all 14 checks with exit code 0. ⚠️ Keep node `.selected` rules ABOVE `.running` / `.completed` / `.failed`, load `flow_canvas.css` after both panel styles and before `dialog_theme.css`. Keep `.pmt-edge.traversed` restricted to `:not(.selected):not(:hover)` so interaction feedback remains identical. Current `STATIC_VERSION` suffix: `-prompt-run-output-resize-1`.
+ 
+ 1. **`.fpmt`, never `.pmt`.** The file picker is `accept=".fpmt"`, the open guard refuses any other name (including `prompt.pmt` itself) with *"Choose a .fpmt Prompt Flow Panel file."*, and `flowFilename()` turns a legacy `name.pmt` save name or browser draft into `name.fpmt`. The JSON `format` string deliberately did NOT change, so renaming an old flow file is enough to open it. The plain-text system prompts (`agent/prompt.pmt`, `monitoring-prompt.pmt`) keep `.pmt`.
+ 2. **Opening never runs anything.** Load, drop, draft recovery and even a WebSocket (re)connection are passive; only **Play** starts a run.
+--- a/scripts/prompt_flow_commentary_visible.py
++++ b/scripts/prompt_flow_commentary_visible.py
+@@ -183,7 +183,7 @@
+             page.locator('[data-action="fit"]').click()
+             expect(page.locator('.agent-tool-item')).to_have_count(8)
+             css = page.locator('link[href*="prompt_flow_panel.css"]').get_attribute('href')
+-            assert '-prompt-commentary-canvas-2' in css
++            assert '-prompt-run-output-resize-1' in css
+             assert page.request.get(BASE + css).body() == (ROOT / 'Tlamatini/agent/static/agent/css/prompt_flow_panel.css').read_bytes()
+             page.locator('.agent-tool-item[data-type="user_commentary"]').click()
+             comment = page.locator('.pmt-node[data-type="user_commentary"]')
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -115,9 +115,13 @@
+ 
+ ## Prompt Flow comments are static; User Input runs (2026-10-03)
+ 
+-**Commentary/Input contract (2026-10-04, source changes):** Seven executable operations remain separate from static **User Commentary**. **User Input** (`user_input`) keeps the question/reply/cancellation mechanism and notched figure. **User Commentary** (`user_commentary`) is edited entirely on the canvas: double-click/Enter writes in the bubble; a floating mini toolbar formats selected text with different fonts, sizes, text colors, bold, italic and underline within the same note. With a caret, formatting applies to newly typed text; outside editing it applies to the whole note. Bubble color and alignment affect the note. There is no commentary configuration dialog or numeric dimension form. Drag any border or corner to resize, including while editing; Fit text removes spare height. Done/Ctrl+Enter saves; Cancel/Escape restores the whole edit. Ctrl+Z/Y works inside the editor; completed edits, moves, resizes and duplicates use flow Undo/Redo. Bubbles contain their full wrapped text without internal scrollbars. Version 2 files persist allowlisted `runs` plus matching literal `text`; older plain notes normalize to one run, and version 1 executable commentary still migrates to User Input with IDs/edges/settings intact. Comments have no ports/Start/runtime/context/history/step effects. The draft key remains `.draft.v1.<user id>`. Cache suffix: `-prompt-commentary-canvas-2`. See `docs/prompting-flow-designer.md` and the 2026-10-04 verification record; no release executable was rebuilt.
++**Commentary/Input contract (2026-10-04, source changes):** Seven executable operations remain separate from static **User Commentary**. **User Input** (`user_input`) keeps the question/reply/cancellation mechanism and notched figure. **User Commentary** (`user_commentary`) is edited entirely on the canvas: double-click/Enter writes in the bubble; a floating mini toolbar formats selected text with different fonts, sizes, text colors, bold, italic and underline within the same note. With a caret, formatting applies to newly typed text; outside editing it applies to the whole note. Bubble color and alignment affect the note. There is no commentary configuration dialog or numeric dimension form. Drag any border or corner to resize, including while editing; Fit text removes spare height. Done/Ctrl+Enter saves; Cancel/Escape restores the whole edit. Ctrl+Z/Y works inside the editor; completed edits, moves, resizes and duplicates use flow Undo/Redo. Bubbles contain their full wrapped text without internal scrollbars. Version 2 files persist allowlisted `runs` plus matching literal `text`; older plain notes normalize to one run, and version 1 executable commentary still migrates to User Input with IDs/edges/settings intact. Comments have no ports/Start/runtime/context/history/step effects. The draft key remains `.draft.v1.<user id>`. Cache suffix: `-prompt-run-output-resize-1`. See `docs/prompting-flow-designer.md` and the 2026-10-04 verification record; no release executable was rebuilt.
+ 
+ Preserve this distinction when editing the designer, importing legacy diagrams,
+ writing documentation or verifying the shipped example. The user explicitly
+ rejected internal commentary scrollbars. Automatic containment must include
+ font/width changes, inline typing, file/draft recovery and canvas Fit.
++
++## Prompt Flow Run output resizing (2026-10-04)
++
++The horizontal divider gives Run output 5–95% of the usable canvas/output height. Resize only pane viewports: preserve canvas zoom, node geometry and output fonts, with independent scrolling. Keep collapse/reopen, per-user layout memory and keyboard resizing. Layout does not enter `.fpmt`, flow dirty state or Undo/Redo. See `docs/prompting-flow-designer.md` and `scripts/prompt_flow_output_resize_visible.py`.
+--- a/CLAUDE.md
++++ b/CLAUDE.md
+@@ -848,9 +848,9 @@
+ 
+ A separate, login-protected page at **`/agent/prompt_flow_panel/`** (view `views.prompt_flow_panel`, URL name `prompt_flow_panel`), opened from the chat navbar's **Panels** menu (**Panels ▸ Prompt Flow Panel**, beside **Panels ▸ Agentic Control Panel**) and from **File ▸ Prompt Flow Panel** in the Agentic Control Panel (both `target="_blank"`). The user draws a flow with seven executable shapes and static notes — Prompt, Programmed Prompt, Decision (Yes/No), Feed embeddings, Flush embeddings, Clean History, User Input, plus static User Commentary. Executable shapes are joined by connections; notes have no ports. The user saves/opens the diagram as a versioned JSON **`.fpmt`** document (JSON `format: "tlamatini-prompting-flow"`, `version: 2`; version 1 imports migrate the executable commentary to User Input), and plays it against the configured model stack. Opening a file never runs it.
+ 
+-**Commentary/Input contract (2026-10-04, source changes):** Seven executable operations remain separate from static **User Commentary**. **User Input** (`user_input`) keeps the question/reply/cancellation mechanism and notched figure. **User Commentary** (`user_commentary`) is edited entirely on the canvas: double-click/Enter writes in the bubble; a floating mini toolbar formats selected text with different fonts, sizes, text colors, bold, italic and underline within the same note. With a caret, formatting applies to newly typed text; outside editing it applies to the whole note. Bubble color and alignment affect the note. There is no commentary configuration dialog or numeric dimension form. Drag any border or corner to resize, including while editing; Fit text removes spare height. Done/Ctrl+Enter saves; Cancel/Escape restores the whole edit. Ctrl+Z/Y works inside the editor; completed edits, moves, resizes and duplicates use flow Undo/Redo. Bubbles contain their full wrapped text without internal scrollbars. Version 2 files persist allowlisted `runs` plus matching literal `text`; older plain notes normalize to one run, and version 1 executable commentary still migrates to User Input with IDs/edges/settings intact. Comments have no ports/Start/runtime/context/history/step effects. The draft key remains `.draft.v1.<user id>`. Cache suffix: `-prompt-commentary-canvas-2`. See `docs/prompting-flow-designer.md` and the 2026-10-04 verification record; no release executable was rebuilt.
+-
+-**⚠️ The extension is `.fpmt` ("flow prompt"), NOT `.pmt` (changed 2026-09-25)** — `.pmt` already belongs to the plain-text system prompts (`agent/prompt.pmt`, `flowhypervisor/monitoring-prompt.pmt`), and sharing it invited exactly the confusion the editor then had to reject. Where the extension lives: `prompt-flow-panel-model.js` (`EXTENSION = '.fpmt'`, `isFlowFilename` = `/\.fpmt$/i`, and `flowFilename()` converts a legacy `name.pmt` to `name.fpmt` — so an old browser draft or a typed `x.pmt` save name comes back as `.fpmt`), the page's `<input accept=".fpmt">` and **Open .fpmt… / Save as .fpmt…** menu items, the open-time guard (*"Choose a .fpmt Prompt Flow Panel file."* — a `.pmt` file, including `prompt.pmt` itself, is refused), and the backend's error text in `services/prompt_flow_panel.py` + the consumer. The shipped example is **`docs/examples/prompting-kickoff.fpmt`** (the old `.pmt` copy is gone). `.fpmt` is registered as TEXT in `rag/binary_guard.py`, as a canvas-viewable type in `agent_page_canvas.js`, as a scrubbable type in `build_complete_public_release.py`, and in `doc_generation/complete_project_docs.py`. ⚠️ **The JSON `format` string deliberately stayed `tlamatini-prompting-flow`** — a rename of the EXTENSION must never invalidate the CONTENTS of flows users already saved. `STATIC_VERSION` carries the `-prompt-commentary-canvas-2` suffix; read the live value in `tlamatini/settings.py` before changing it. There is **no Windows file association** for `.fpmt` (only `.flw` has one); double-clicking a `.fpmt` does nothing yet. Visible coverage: `scripts/prompt_flow_extension_visible.py` (15 checkpoints — menus + file filter, default/typed/legacy save names, uppercase + BOM + Unicode, a real reopened-file playback, the bundled example, invalid JSON, an old `.pmt`, `prompt.pmt` itself, wrong version, >5 MiB, New + generated example, a recovered browser draft, and the Help text that tells the two formats apart). Its log (`Temp/fpmt-extension-visible/console.log`, 2026-09-25 16:07) records **all 15 checkpoints PASS, exit code 0**, after an earlier run failed at the example's filename check (the title carries a `•` dirty marker). The same log's `agent.test_binary_guard` run then went `OK` (46 tests); its 5 `test_documentation_mentions_the_feature` failures happened only in a copied runtime under `Temp/` that has no docs beside it — not a real regression.
++**Commentary/Input contract (2026-10-04, source changes):** Seven executable operations remain separate from static **User Commentary**. **User Input** (`user_input`) keeps the question/reply/cancellation mechanism and notched figure. **User Commentary** (`user_commentary`) is edited entirely on the canvas: double-click/Enter writes in the bubble; a floating mini toolbar formats selected text with different fonts, sizes, text colors, bold, italic and underline within the same note. With a caret, formatting applies to newly typed text; outside editing it applies to the whole note. Bubble color and alignment affect the note. There is no commentary configuration dialog or numeric dimension form. Drag any border or corner to resize, including while editing; Fit text removes spare height. Done/Ctrl+Enter saves; Cancel/Escape restores the whole edit. Ctrl+Z/Y works inside the editor; completed edits, moves, resizes and duplicates use flow Undo/Redo. Bubbles contain their full wrapped text without internal scrollbars. Version 2 files persist allowlisted `runs` plus matching literal `text`; older plain notes normalize to one run, and version 1 executable commentary still migrates to User Input with IDs/edges/settings intact. Comments have no ports/Start/runtime/context/history/step effects. The draft key remains `.draft.v1.<user id>`. Cache suffix: `-prompt-run-output-resize-1`. See `docs/prompting-flow-designer.md` and the 2026-10-04 verification record; no release executable was rebuilt.
++
++**⚠️ The extension is `.fpmt` ("flow prompt"), NOT `.pmt` (changed 2026-09-25)** — `.pmt` already belongs to the plain-text system prompts (`agent/prompt.pmt`, `flowhypervisor/monitoring-prompt.pmt`), and sharing it invited exactly the confusion the editor then had to reject. Where the extension lives: `prompt-flow-panel-model.js` (`EXTENSION = '.fpmt'`, `isFlowFilename` = `/\.fpmt$/i`, and `flowFilename()` converts a legacy `name.pmt` to `name.fpmt` — so an old browser draft or a typed `x.pmt` save name comes back as `.fpmt`), the page's `<input accept=".fpmt">` and **Open .fpmt… / Save as .fpmt…** menu items, the open-time guard (*"Choose a .fpmt Prompt Flow Panel file."* — a `.pmt` file, including `prompt.pmt` itself, is refused), and the backend's error text in `services/prompt_flow_panel.py` + the consumer. The shipped example is **`docs/examples/prompting-kickoff.fpmt`** (the old `.pmt` copy is gone). `.fpmt` is registered as TEXT in `rag/binary_guard.py`, as a canvas-viewable type in `agent_page_canvas.js`, as a scrubbable type in `build_complete_public_release.py`, and in `doc_generation/complete_project_docs.py`. ⚠️ **The JSON `format` string deliberately stayed `tlamatini-prompting-flow`** — a rename of the EXTENSION must never invalidate the CONTENTS of flows users already saved. `STATIC_VERSION` carries the `-prompt-run-output-resize-1` suffix; read the live value in `tlamatini/settings.py` before changing it. There is **no Windows file association** for `.fpmt` (only `.flw` has one); double-clicking a `.fpmt` does nothing yet. Visible coverage: `scripts/prompt_flow_extension_visible.py` (15 checkpoints — menus + file filter, default/typed/legacy save names, uppercase + BOM + Unicode, a real reopened-file playback, the bundled example, invalid JSON, an old `.pmt`, `prompt.pmt` itself, wrong version, >5 MiB, New + generated example, a recovered browser draft, and the Help text that tells the two formats apart). Its log (`Temp/fpmt-extension-visible/console.log`, 2026-09-25 16:07) records **all 15 checkpoints PASS, exit code 0**, after an earlier run failed at the example's filename check (the title carries a `•` dirty marker). The same log's `agent.test_binary_guard` run then went `OK` (46 tests); its 5 `test_documentation_mentions_the_feature` failures happened only in a copied runtime under `Temp/` that has no docs beside it — not a real regression.
+ 
+ | Piece | File |
+ |---|---|
+@@ -868,7 +868,7 @@
+ 3. **Carriage is explicit on both mechanisms.** `build.py` names the three backend modules plus the check command as hidden imports / frozen-required modules; `build_runtime_assets.py` lists the CSS + both JS files in `REQUIRED_STATIC` and the template, `docs/prompting-flow-designer.md` and `docs/examples/prompting-kickoff.fpmt` in `ROOT_SOURCES` (+ its install-root floor list); `build.py` copies the example to `dist/manage/docs/examples/`; `copy_source_assets.py` lists them in `REQUIRED_SNAPSHOT_FILES`; `test_prompt_flow_panel_carriage.py` pins the `.fpmt` path. Both inclusion sweeps passed CLEAN after the `.fpmt` rename (2026-09-25), and a kept snapshot physically contained `prompting-kickoff.fpmt` and no `.pmt` copy.
+ 4. ⚠️ **Commit the whole feature together.** On 2026-09-25 all 22 of its new files (backend, frontend, tests, the visible scripts incl. `scripts/prompt_flow_extension_visible.py`, `docs/prompting-flow-designer.md`, `docs/examples/prompting-kickoff.fpmt`) were UNTRACKED. `build_runtime_assets.py` REQUIRES the two docs files, so a release built from a clean clone or a tag would fail — and a self-update can only deliver what a release contains.
+ 5. **One name survives from the first draft: the guide's FILENAME.** The feature was drafted on 2026-09-23 as the "Prompting Flow Designer" (`prompting_flow_designer.html`, `/ws/prompting-flow/`, `check_prompting_flow`, `.pmt`). Every doc now uses the real names, but the guide is still `docs/prompting-flow-designer.md` because `build.py`, `build_runtime_assets.py`, `copy_source_assets.py` and `test_prompt_flow_panel_carriage.py` pin that exact path, and it ships to users. Rename it only by changing all four in the same pass. The 2026-09-23 entry in `recent-fixes.md` keeps the old names on purpose (it is history) under a "Renamed 2026-09-25" banner. Full contract: `docs/claude/frontend.md` → *Prompt Flow Panel*, `docs/claude/architecture.md` → *Prompt Flow Panel runtime*, `docs/claude/multi-turn.md` → *Multi-Turn and ACPX inside the Prompt Flow Panel*.
+-6. **Both panels share canvas mechanics.** `flow-canvas-interactions.js` and `flow_canvas.css` own triangle highlighting, connection capture/cancellation, curve geometry, wire hover/selection glow, Fit/zoom, context-menu placement and divider gestures. Keep free dragging, Ctrl/Meta-drag duplication, modifier/marquee selection, keyboard editing and one-step Undo/Redo aligned. Use gold SVG contour glow for selected Prompt Flow figures; playback keeps node status colors, while wire hover/selection feedback takes precedence over traversed-wire green. Load the shared stylesheet after panel styles and before `dialog_theme.css`. Keep seven executable operations, a separate static User Commentary annotation, and no Connection tool. Current cache suffix: `-prompt-commentary-canvas-2`. The foreground `scripts/prompt_flow_connections_visible.py` run passed all 30 comparison checkpoints on 2026-09-26; `scripts/acp_editor_visible.py` passed 17 regressions.
++6. **Both panels share canvas mechanics.** `flow-canvas-interactions.js` and `flow_canvas.css` own triangle highlighting, connection capture/cancellation, curve geometry, wire hover/selection glow, Fit/zoom, context-menu placement and divider gestures. Keep free dragging, Ctrl/Meta-drag duplication, modifier/marquee selection, keyboard editing and one-step Undo/Redo aligned. Use gold SVG contour glow for selected Prompt Flow figures; playback keeps node status colors, while wire hover/selection feedback takes precedence over traversed-wire green. Load the shared stylesheet after panel styles and before `dialog_theme.css`. Keep seven executable operations, a separate static User Commentary annotation, and no Connection tool. Current cache suffix: `-prompt-run-output-resize-1`. The foreground `scripts/prompt_flow_connections_visible.py` run passed all 30 comparison checkpoints on 2026-09-26; `scripts/acp_editor_visible.py` passed 17 regressions.
+ 
+ ---
+ 
+--- a/GEMINI.md
++++ b/GEMINI.md
+@@ -693,13 +693,13 @@
+ 
+ **Chat navbar:** Open · Save · Context ▾ · **Panels ▾** · ACPX-Skills ▾ · External ▾ · **Config ▾** · DB ▾ · Reconnect · About ▾. The old **MCPs**, **Agents** and staff **Admin** menus are gone: **Configure MCPs** and **Configure Agents** are now in **Config**; **Agentic Control Panel**, the new **Prompt Flow Panel** and (staff) **Admin Panel** are in **Panels**. ⚠️ `#mcps-menu-button`, `#agents-menu-button` and `#admin-menu-button` no longer exist — wait on `#config-menu-button` / `#panels-menu-button`. Panels stays usable during a long operation; every end-of-operation path re-arms the menus through `agent_page_ui.js::restoreMenuControlsAfterOperation()`.
+ 
+-**Shared canvas mechanics (2026-09-26):** Both panels use `flow-canvas-interactions.js` and `flow_canvas.css` for triangles, connection dragging/cancellation, curve geometry, gold hover/selection glow, zoom/Fit, menus and divider gestures. Keep free dragging, Ctrl/Meta-drag copies, marquee selection, keyboard editing and Undo/Redo aligned. Prompt Flow retains node status colors; interactive wire highlights override traversed-wire green. The Operations bar has seven executable operations plus static User Commentary and no Connection tool. Cache suffix: `-prompt-commentary-canvas-2`. See `docs/claude/frontend.md` and the 30-check foreground comparison harness.
++**Shared canvas mechanics (2026-09-26):** Both panels use `flow-canvas-interactions.js` and `flow_canvas.css` for triangles, connection dragging/cancellation, curve geometry, gold hover/selection glow, zoom/Fit, menus and divider gestures. Keep free dragging, Ctrl/Meta-drag copies, marquee selection, keyboard editing and Undo/Redo aligned. Prompt Flow retains node status colors; interactive wire highlights override traversed-wire green. The Operations bar has seven executable operations plus static User Commentary and no Connection tool. Cache suffix: `-prompt-run-output-resize-1`. See `docs/claude/frontend.md` and the 30-check foreground comparison harness.
+ 
+ **Agentic Control Panel editor** (`acp-editor-tools.js`): Undo/Redo, Configure, Duplicate (with settings and internal connections), Delete, Starters, Flow settings, zoom −/+/Fit, agent search, "Try an example", Help, and a `• ` unsaved marker in the title. ⚠️ Divide every pointer→canvas conversion by `ACP.zoom`, and check `ACP.canEdit()` before any edit.
+ 
+ **Prompt Flow Panel** (`/agent/prompt_flow_panel/`, WebSocket `ws/prompt-flow-panel/`): a diagram editor for chains of prompts with seven executable operations (Prompt, Programmed Prompt, Decision, Feed embeddings, Flush embeddings, Clean History, User Input), plus static User Commentary notes, saved as **`.fpmt`** JSON (`format: "tlamatini-prompting-flow"`, version 2; version 1 imports migrate the old reply nodes to User Input). ⚠️ **`.pmt` stays with the plain-text system prompts** (`prompt.pmt`, `monitoring-prompt.pmt`); the panel refuses to open a `.pmt`. Each run is isolated (own chain, history, embeddings, cancellation) and never loads the shared `application/` corpus (`setup_llm(..., include_application_context=False)`). Guide: `docs/prompting-flow-designer.md` (historical filename, pinned by three build scripts). Contracts: `docs/claude/frontend.md` → *Chat navbar*, *ACP Canvas DOM Contract*, *Prompt Flow Panel*; `docs/claude/architecture.md` → *Prompt Flow Panel runtime*; dated story `docs/claude/recent-fixes.md` (2026-09-25).
+ 
+-**Commentary/Input contract (2026-10-04, source changes):** Seven executable operations remain separate from static **User Commentary**. **User Input** (`user_input`) keeps the question/reply/cancellation mechanism and notched figure. **User Commentary** (`user_commentary`) is edited entirely on the canvas: double-click/Enter writes in the bubble; a floating mini toolbar formats selected text with different fonts, sizes, text colors, bold, italic and underline within the same note. With a caret, formatting applies to newly typed text; outside editing it applies to the whole note. Bubble color and alignment affect the note. There is no commentary configuration dialog or numeric dimension form. Drag any border or corner to resize, including while editing; Fit text removes spare height. Done/Ctrl+Enter saves; Cancel/Escape restores the whole edit. Ctrl+Z/Y works inside the editor; completed edits, moves, resizes and duplicates use flow Undo/Redo. Bubbles contain their full wrapped text without internal scrollbars. Version 2 files persist allowlisted `runs` plus matching literal `text`; older plain notes normalize to one run, and version 1 executable commentary still migrates to User Input with IDs/edges/settings intact. Comments have no ports/Start/runtime/context/history/step effects. The draft key remains `.draft.v1.<user id>`. Cache suffix: `-prompt-commentary-canvas-2`. See `docs/prompting-flow-designer.md` and the 2026-10-04 verification record; no release executable was rebuilt.
++**Commentary/Input contract (2026-10-04, source changes):** Seven executable operations remain separate from static **User Commentary**. **User Input** (`user_input`) keeps the question/reply/cancellation mechanism and notched figure. **User Commentary** (`user_commentary`) is edited entirely on the canvas: double-click/Enter writes in the bubble; a floating mini toolbar formats selected text with different fonts, sizes, text colors, bold, italic and underline within the same note. With a caret, formatting applies to newly typed text; outside editing it applies to the whole note. Bubble color and alignment affect the note. There is no commentary configuration dialog or numeric dimension form. Drag any border or corner to resize, including while editing; Fit text removes spare height. Done/Ctrl+Enter saves; Cancel/Escape restores the whole edit. Ctrl+Z/Y works inside the editor; completed edits, moves, resizes and duplicates use flow Undo/Redo. Bubbles contain their full wrapped text without internal scrollbars. Version 2 files persist allowlisted `runs` plus matching literal `text`; older plain notes normalize to one run, and version 1 executable commentary still migrates to User Input with IDs/edges/settings intact. Comments have no ports/Start/runtime/context/history/step effects. The draft key remains `.draft.v1.<user id>`. Cache suffix: `-prompt-run-output-resize-1`. See `docs/prompting-flow-designer.md` and the 2026-10-04 verification record; no release executable was rebuilt.
+ 
+ ---
+ 
+--- a/KIMI.md
++++ b/KIMI.md
+@@ -575,9 +575,9 @@
+ 
+ **Prompt Flow Panel (2026-09-25).** A sibling page at `/agent/prompt_flow_panel/` (template `prompt_flow_panel.html`, WebSocket `ws/prompt-flow-panel/`) for chains of **prompts** rather than agents: seven executable operations (Prompt, Programmed Prompt, Decision, Feed embeddings, Flush embeddings, Clean History, User Input), plus static User Commentary notes, saved as **`.fpmt`** JSON (`format: "tlamatini-prompting-flow"`, version 2; version 1 imports migrate the old reply nodes to User Input). ⚠️ `.pmt` stays with the plain-text system prompts (`prompt.pmt`, `monitoring-prompt.pmt`) and the panel refuses to open one. Each run gets its own chain, history, embeddings and cancellation key, and never loads the shared `application/` corpus. Backend: `prompt_flow_panel_consumer.py`, `prompt_flow_panel_runtime.py`, `services/prompt_flow_panel.py`; frozen-build gate `check_prompt_flow_panel`. Guide: `docs/prompting-flow-designer.md`.
+ 
+-**Commentary/Input contract (2026-10-04, source changes):** Seven executable operations remain separate from static **User Commentary**. **User Input** (`user_input`) keeps the question/reply/cancellation mechanism and notched figure. **User Commentary** (`user_commentary`) is edited entirely on the canvas: double-click/Enter writes in the bubble; a floating mini toolbar formats selected text with different fonts, sizes, text colors, bold, italic and underline within the same note. With a caret, formatting applies to newly typed text; outside editing it applies to the whole note. Bubble color and alignment affect the note. There is no commentary configuration dialog or numeric dimension form. Drag any border or corner to resize, including while editing; Fit text removes spare height. Done/Ctrl+Enter saves; Cancel/Escape restores the whole edit. Ctrl+Z/Y works inside the editor; completed edits, moves, resizes and duplicates use flow Undo/Redo. Bubbles contain their full wrapped text without internal scrollbars. Version 2 files persist allowlisted `runs` plus matching literal `text`; older plain notes normalize to one run, and version 1 executable commentary still migrates to User Input with IDs/edges/settings intact. Comments have no ports/Start/runtime/context/history/step effects. The draft key remains `.draft.v1.<user id>`. Cache suffix: `-prompt-commentary-canvas-2`. See `docs/prompting-flow-designer.md` and the 2026-10-04 verification record; no release executable was rebuilt.
+-
+-**Shared canvas mechanics (2026-09-26):** Both panels use `flow-canvas-interactions.js` and `flow_canvas.css` for triangles, connection dragging/cancellation, curve geometry, gold hover/selection glow, zoom/Fit, menus and divider gestures. Keep free dragging, Ctrl/Meta-drag copies, marquee selection, keyboard editing and Undo/Redo aligned. Prompt Flow retains node status colors; interactive wire highlights override traversed-wire green. The Operations bar has seven executable operations plus static User Commentary and no Connection tool. Cache suffix: `-prompt-commentary-canvas-2`. See `docs/claude/frontend.md` and the 30-check foreground comparison harness.
++**Commentary/Input contract (2026-10-04, source changes):** Seven executable operations remain separate from static **User Commentary**. **User Input** (`user_input`) keeps the question/reply/cancellation mechanism and notched figure. **User Commentary** (`user_commentary`) is edited entirely on the canvas: double-click/Enter writes in the bubble; a floating mini toolbar formats selected text with different fonts, sizes, text colors, bold, italic and underline within the same note. With a caret, formatting applies to newly typed text; outside editing it applies to the whole note. Bubble color and alignment affect the note. There is no commentary configuration dialog or numeric dimension form. Drag any border or corner to resize, including while editing; Fit text removes spare height. Done/Ctrl+Enter saves; Cancel/Escape restores the whole edit. Ctrl+Z/Y works inside the editor; completed edits, moves, resizes and duplicates use flow Undo/Redo. Bubbles contain their full wrapped text without internal scrollbars. Version 2 files persist allowlisted `runs` plus matching literal `text`; older plain notes normalize to one run, and version 1 executable commentary still migrates to User Input with IDs/edges/settings intact. Comments have no ports/Start/runtime/context/history/step effects. The draft key remains `.draft.v1.<user id>`. Cache suffix: `-prompt-run-output-resize-1`. See `docs/prompting-flow-designer.md` and the 2026-10-04 verification record; no release executable was rebuilt.
++
++**Shared canvas mechanics (2026-09-26):** Both panels use `flow-canvas-interactions.js` and `flow_canvas.css` for triangles, connection dragging/cancellation, curve geometry, gold hover/selection glow, zoom/Fit, menus and divider gestures. Keep free dragging, Ctrl/Meta-drag copies, marquee selection, keyboard editing and Undo/Redo aligned. Prompt Flow retains node status colors; interactive wire highlights override traversed-wire green. The Operations bar has seven executable operations plus static User Commentary and no Connection tool. Cache suffix: `-prompt-run-output-resize-1`. See `docs/claude/frontend.md` and the 30-check foreground comparison harness.
+ 
+ ### 12.2 Flow Compiler pipeline (canvas / chat → backend → pool)
+ Two browser surfaces produce flows; **both compile through the same backend Agent Contract registry** before touching disk:
+--- a/Tlamatini/agent/Tlamatini.md
++++ b/Tlamatini/agent/Tlamatini.md
+@@ -92,7 +92,7 @@
+ | `/agent/agentic_control_panel/` | `agentic_control_panel.html` | **Visual ACP Workflow Designer** — drag-drop the 89 agents (with a search box), save/load `.flw`. Since 2026-09-25 it has an editor toolbar: Undo/Redo, Configure, Duplicate, Delete, Starters, Flow settings, zoom −/+/Fit, and a Help entry | login required |
+ | `/agent/prompt_flow_panel/` | `prompt_flow_panel.html` | **Prompt Flow Panel** (2026-09-25) — draw a chain of PROMPTS (Prompt, Programmed Prompt, Decision, Feed/Flush embeddings, Clean History, User Input, plus static User Commentary notes), save it as a **`.fpmt`** file and play it against your own model stack over `ws/prompt-flow-panel/`. Each run has its own conversation and embeddings. Guide: `docs/prompting-flow-designer.md` | login required |
+ 
+-**Commentary/Input contract (2026-10-04, source changes):** Seven executable operations remain separate from static **User Commentary**. **User Input** (`user_input`) keeps the question/reply/cancellation mechanism and notched figure. **User Commentary** (`user_commentary`) is edited entirely on the canvas: double-click/Enter writes in the bubble; a floating mini toolbar formats selected text with different fonts, sizes, text colors, bold, italic and underline within the same note. With a caret, formatting applies to newly typed text; outside editing it applies to the whole note. Bubble color and alignment affect the note. There is no commentary configuration dialog or numeric dimension form. Drag any border or corner to resize, including while editing; Fit text removes spare height. Done/Ctrl+Enter saves; Cancel/Escape restores the whole edit. Ctrl+Z/Y works inside the editor; completed edits, moves, resizes and duplicates use flow Undo/Redo. Bubbles contain their full wrapped text without internal scrollbars. Version 2 files persist allowlisted `runs` plus matching literal `text`; older plain notes normalize to one run, and version 1 executable commentary still migrates to User Input with IDs/edges/settings intact. Comments have no ports/Start/runtime/context/history/step effects. The draft key remains `.draft.v1.<user id>`. Cache suffix: `-prompt-commentary-canvas-2`. See `docs/prompting-flow-designer.md` and the 2026-10-04 verification record; no release executable was rebuilt.
++**Commentary/Input contract (2026-10-04, source changes):** Seven executable operations remain separate from static **User Commentary**. **User Input** (`user_input`) keeps the question/reply/cancellation mechanism and notched figure. **User Commentary** (`user_commentary`) is edited entirely on the canvas: double-click/Enter writes in the bubble; a floating mini toolbar formats selected text with different fonts, sizes, text colors, bold, italic and underline within the same note. With a caret, formatting applies to newly typed text; outside editing it applies to the whole note. Bubble color and alignment affect the note. There is no commentary configuration dialog or numeric dimension form. Drag any border or corner to resize, including while editing; Fit text removes spare height. Done/Ctrl+Enter saves; Cancel/Escape restores the whole edit. Ctrl+Z/Y works inside the editor; completed edits, moves, resizes and duplicates use flow Undo/Redo. Bubbles contain their full wrapped text without internal scrollbars. Version 2 files persist allowlisted `runs` plus matching literal `text`; older plain notes normalize to one run, and version 1 executable commentary still migrates to User Input with IDs/edges/settings intact. Comments have no ports/Start/runtime/context/history/step effects. The draft key remains `.draft.v1.<user id>`. Cache suffix: `-prompt-run-output-resize-1`. See `docs/prompting-flow-designer.md` and the 2026-10-04 verification record; no release executable was rebuilt.
+ 
+ **Where the user finds each page (chat navbar, reorganized 2026-09-25):** Open · Save · Context · **Panels** (Agentic Control Panel, Prompt Flow Panel, and Admin Panel for staff) · ACPX-Skills · External · **Config** (Configure MCPs, Configure Agents, Models, URLs, Contacts, Access Keys Wizard, Voice, Mic) · DB · Reconnect · About. There is **no** separate MCPs, Agents or Admin menu any more — if a user asks where "Configure Agents" or "Configure MCPs" went, the answer is **Config**; if they ask how to open the canvas, the answer is **Panels ▸ Agentic Control Panel**. The Agentic Control Panel's own **File** menu also links to the Prompt Flow Panel. ⚠️ **`.pmt` is YOUR system-prompt format** (`prompt.pmt`, `monitoring-prompt.pmt`); a Prompt Flow Panel diagram is a **`.fpmt`** file, and the panel refuses to open a `.pmt`.
+ 
+--- a/.claude/skills/tlamatini-self-update-inclusion/SKILL.md
++++ b/.claude/skills/tlamatini-self-update-inclusion/SKILL.md
+@@ -349,7 +349,7 @@
+ 
+ The Prompt Flow Panel executes inside the frozen **web process** (`routing.py` imports its consumer), so the carried Python cannot satisfy it. `build.py::_FROZEN_PROMPT_FLOW_PANEL_MODULES` hidden-imports AND frozen-requires `agent.prompt_flow_panel_consumer`, `agent.prompt_flow_panel_runtime`, `agent.services.prompt_flow_panel` and `agent.management.commands.check_prompt_flow_panel`, and the build runs `check_prompt_flow_panel` inside the freshly frozen app right after `check_agent_runtimes` — a failure aborts packaging. `build_runtime_assets.py` must keep `agent/css/prompt_flow_panel.css`, `agent/js/prompt-flow-panel-model.js` and `agent/js/prompt-flow-panel.js` in `REQUIRED_STATIC`, and the template, `docs/prompting-flow-designer.md` and `docs/examples/prompting-kickoff.fpmt` in `ROOT_SOURCES` and in the receipt floor; `build.py`'s `copy_root_sources()` carries those two docs files to `dist/manage/docs/`. They are application assets that updates REPLACE — never add them to `$Preserve`. A user's saved `.fpmt` files live wherever the user saved them and browser drafts live in browser storage, so there is no panel state to preserve.
+ 
+-`acp-editor-tools.js` and the reorganized menus ride the existing static/template tree carriers, but every JS/CSS/template change still needs a `STATIC_VERSION` suffix bump (currently `-prompt-commentary-canvas-2`). `.fpmt` must stay a TEXT extension in `rag/binary_guard.py` and a scrubbed extension in `build_complete_public_release.py`.
++`acp-editor-tools.js` and the reorganized menus ride the existing static/template tree carriers, but every JS/CSS/template change still needs a `STATIC_VERSION` suffix bump (currently `-prompt-run-output-resize-1`). `.fpmt` must stay a TEXT extension in `rag/binary_guard.py` and a scrubbed extension in `build_complete_public_release.py`.
+ 
+ ⚠️ **Carriage is only real once the files are COMMITTED.** On 2026-09-25 all 22 new files of this work (backend, frontend, tests, visible scripts, the guide and the example) were untracked. `build_runtime_assets.py` requires the guide and the example, so a release built from a clean clone or tag fails until they are committed, and a self-update can only deliver what a release contains. The source sweep walks the working tree, so it passes either way — check `git ls-files --others --exclude-standard` before trusting a CLEAN. Guard: `agent/test_prompt_flow_panel_carriage.py`.
+ 
+@@ -357,7 +357,7 @@
+ 
+ New `.fpmt` documents are version 2: `user_input` is the existing runtime reply step with the supplied notched figure; `user_commentary` is a static speech-bubble annotation. Preserve version 1 migration, identifiers, connections, settings and cancellation behavior. Static notes have no ports/Start state and do not enter prompts, history or playback steps. The 2026-10-04 graphical redesign removes commentary configuration dialogs and numeric dimension forms: a floating mini toolbar formats selected text or subsequent typing with mixed fonts/sizes/colors/emphasis/underline, and all borders/corners resize directly. Preserve allowlisted rich `runs` plus matching plain `text`, legacy plain-note normalization, native rich copy/paste between comments, Undo/Redo and repeated file/draft rendering equivalence. Their full wrapped text and inline editors grow at the chosen width/font without internal scrollbars; saved height is a minimum. The compatible browser-draft key still ends in `.draft.v1.<user id>`.
+ 
+-The existing backend/template/static/guide/example carriers cover these changes. Keep the frontend and backend version/validation contracts synchronized, carry the updated kickoff example (seven operations plus one note), and verify source/collected-static byte parity. `scripts/prompt_flow_commentary_visible.py` travels through the generic source snapshot walk; do not claim it is explicitly required unless the live manifest lists it. The 2026-10-03 split passed 61 backend/packaging tests and nine foreground Chrome checks. Current redesign evidence is in `docs/changes/2026-10-04-commentary-graphical-redesign.md`; no executable/installer was rebuilt. A source sweep does not establish release delivery. Current cache suffix is `-prompt-commentary-canvas-2`; retain the timestamp/environment expression. See `docs/prompting-flow-designer.md` and `docs/changes/2026-10-03-prompt-commentary-input.md`.
++The existing backend/template/static/guide/example carriers cover these changes. Keep the frontend and backend version/validation contracts synchronized, carry the updated kickoff example (seven operations plus one note), and verify source/collected-static byte parity. `scripts/prompt_flow_commentary_visible.py` travels through the generic source snapshot walk; do not claim it is explicitly required unless the live manifest lists it. The 2026-10-03 split passed 61 backend/packaging tests and nine foreground Chrome checks. Current redesign evidence is in `docs/changes/2026-10-04-commentary-graphical-redesign.md`; no executable/installer was rebuilt. A source sweep does not establish release delivery. Current cache suffix is `-prompt-run-output-resize-1`; retain the timestamp/environment expression. See `docs/prompting-flow-designer.md` and `docs/changes/2026-10-03-prompt-commentary-input.md`.
+ 
+ Run checks only in a verified visible foreground console and explicitly headed Chrome. Stop the task-owned harness/browser/server when Angela asks; use its `Temp/prompt-commentary-redesign-visible/close.confirmed` marker and verify owned processes/listeners are gone. Do not stop unrelated user processes.
+ 
+--- a/.gemini/skills/tlamatini-self-update-inclusion/SKILL.md
++++ b/.gemini/skills/tlamatini-self-update-inclusion/SKILL.md
+@@ -349,7 +349,7 @@
+ 
+ The Prompt Flow Panel executes inside the frozen **web process** (`routing.py` imports its consumer), so the carried Python cannot satisfy it. `build.py::_FROZEN_PROMPT_FLOW_PANEL_MODULES` hidden-imports AND frozen-requires `agent.prompt_flow_panel_consumer`, `agent.prompt_flow_panel_runtime`, `agent.services.prompt_flow_panel` and `agent.management.commands.check_prompt_flow_panel`, and the build runs `check_prompt_flow_panel` inside the freshly frozen app right after `check_agent_runtimes` — a failure aborts packaging. `build_runtime_assets.py` must keep `agent/css/prompt_flow_panel.css`, `agent/js/prompt-flow-panel-model.js` and `agent/js/prompt-flow-panel.js` in `REQUIRED_STATIC`, and the template, `docs/prompting-flow-designer.md` and `docs/examples/prompting-kickoff.fpmt` in `ROOT_SOURCES` and in the receipt floor; `build.py`'s `copy_root_sources()` carries those two docs files to `dist/manage/docs/`. They are application assets that updates REPLACE — never add them to `$Preserve`. A user's saved `.fpmt` files live wherever the user saved them and browser drafts live in browser storage, so there is no panel state to preserve.
+ 
+-`acp-editor-tools.js` and the reorganized menus ride the existing static/template tree carriers, but every JS/CSS/template change still needs a `STATIC_VERSION` suffix bump (currently `-prompt-commentary-canvas-2`). `.fpmt` must stay a TEXT extension in `rag/binary_guard.py` and a scrubbed extension in `build_complete_public_release.py`.
++`acp-editor-tools.js` and the reorganized menus ride the existing static/template tree carriers, but every JS/CSS/template change still needs a `STATIC_VERSION` suffix bump (currently `-prompt-run-output-resize-1`). `.fpmt` must stay a TEXT extension in `rag/binary_guard.py` and a scrubbed extension in `build_complete_public_release.py`.
+ 
+ ⚠️ **Carriage is only real once the files are COMMITTED.** On 2026-09-25 all 22 new files of this work (backend, frontend, tests, visible scripts, the guide and the example) were untracked. `build_runtime_assets.py` requires the guide and the example, so a release built from a clean clone or tag fails until they are committed, and a self-update can only deliver what a release contains. The source sweep walks the working tree, so it passes either way — check `git ls-files --others --exclude-standard` before trusting a CLEAN. Guard: `agent/test_prompt_flow_panel_carriage.py`.
+ 
+@@ -357,7 +357,7 @@
+ 
+ New `.fpmt` documents are version 2: `user_input` is the existing runtime reply step with the supplied notched figure; `user_commentary` is a static speech-bubble annotation. Preserve version 1 migration, identifiers, connections, settings and cancellation behavior. Static notes have no ports/Start state and do not enter prompts, history or playback steps. The 2026-10-04 graphical redesign removes commentary configuration dialogs and numeric dimension forms: a floating mini toolbar formats selected text or subsequent typing with mixed fonts/sizes/colors/emphasis/underline, and all borders/corners resize directly. Preserve allowlisted rich `runs` plus matching plain `text`, legacy plain-note normalization, native rich copy/paste between comments, Undo/Redo and repeated file/draft rendering equivalence. Their full wrapped text and inline editors grow at the chosen width/font without internal scrollbars; saved height is a minimum. The compatible browser-draft key still ends in `.draft.v1.<user id>`.
+ 
+-The existing backend/template/static/guide/example carriers cover these changes. Keep the frontend and backend version/validation contracts synchronized, carry the updated kickoff example (seven operations plus one note), and verify source/collected-static byte parity. `scripts/prompt_flow_commentary_visible.py` travels through the generic source snapshot walk; do not claim it is explicitly required unless the live manifest lists it. The 2026-10-03 split passed 61 backend/packaging tests and nine foreground Chrome checks. Current redesign evidence is in `docs/changes/2026-10-04-commentary-graphical-redesign.md`; no executable/installer was rebuilt. A source sweep does not establish release delivery. Current cache suffix is `-prompt-commentary-canvas-2`; retain the timestamp/environment expression. See `docs/prompting-flow-designer.md` and `docs/changes/2026-10-03-prompt-commentary-input.md`.
++The existing backend/template/static/guide/example carriers cover these changes. Keep the frontend and backend version/validation contracts synchronized, carry the updated kickoff example (seven operations plus one note), and verify source/collected-static byte parity. `scripts/prompt_flow_commentary_visible.py` travels through the generic source snapshot walk; do not claim it is explicitly required unless the live manifest lists it. The 2026-10-03 split passed 61 backend/packaging tests and nine foreground Chrome checks. Current redesign evidence is in `docs/changes/2026-10-04-commentary-graphical-redesign.md`; no executable/installer was rebuilt. A source sweep does not establish release delivery. Current cache suffix is `-prompt-run-output-resize-1`; retain the timestamp/environment expression. See `docs/prompting-flow-designer.md` and `docs/changes/2026-10-03-prompt-commentary-input.md`.
+ 
+ Run checks only in a verified visible foreground console and explicitly headed Chrome. Stop the task-owned harness/browser/server when Angela asks; use its `Temp/prompt-commentary-redesign-visible/close.confirmed` marker and verify owned processes/listeners are gone. Do not stop unrelated user processes.
+ 
+--- a/.claude/skills/tlamatini-self-modify-inclusion/SKILL.md
++++ b/.claude/skills/tlamatini-self-modify-inclusion/SKILL.md
+@@ -295,7 +295,7 @@
+ 
+ New `.fpmt` documents are version 2: `user_input` is the existing runtime reply step with the supplied notched figure; `user_commentary` is a static speech-bubble annotation. Preserve version 1 migration, identifiers, connections, settings and cancellation behavior. Static notes have no ports/Start state and do not enter prompts, history or playback steps. The 2026-10-04 graphical redesign removes commentary configuration dialogs and numeric dimension forms: a floating mini toolbar formats selected text or subsequent typing with mixed fonts/sizes/colors/emphasis/underline, and all borders/corners resize directly. Preserve allowlisted rich `runs` plus matching plain `text`, legacy plain-note normalization, native rich copy/paste between comments, Undo/Redo and repeated file/draft rendering equivalence. Their full wrapped text and inline editors grow at the chosen width/font without internal scrollbars; saved height is a minimum. The compatible browser-draft key still ends in `.draft.v1.<user id>`.
+ 
+-The existing backend/template/static/guide/example carriers cover these changes. Keep the frontend and backend version/validation contracts synchronized, carry the updated kickoff example (seven operations plus one note), and verify source/collected-static byte parity. `scripts/prompt_flow_commentary_visible.py` travels through the generic source snapshot walk; do not claim it is explicitly required unless the live manifest lists it. The 2026-10-03 split passed 61 backend/packaging tests and nine foreground Chrome checks. Current redesign evidence is in `docs/changes/2026-10-04-commentary-graphical-redesign.md`; no executable/installer was rebuilt. A source sweep does not establish release delivery. Current cache suffix is `-prompt-commentary-canvas-2`; retain the timestamp/environment expression. See `docs/prompting-flow-designer.md` and `docs/changes/2026-10-03-prompt-commentary-input.md`.
++The existing backend/template/static/guide/example carriers cover these changes. Keep the frontend and backend version/validation contracts synchronized, carry the updated kickoff example (seven operations plus one note), and verify source/collected-static byte parity. `scripts/prompt_flow_commentary_visible.py` travels through the generic source snapshot walk; do not claim it is explicitly required unless the live manifest lists it. The 2026-10-03 split passed 61 backend/packaging tests and nine foreground Chrome checks. Current redesign evidence is in `docs/changes/2026-10-04-commentary-graphical-redesign.md`; no executable/installer was rebuilt. A source sweep does not establish release delivery. Current cache suffix is `-prompt-run-output-resize-1`; retain the timestamp/environment expression. See `docs/prompting-flow-designer.md` and `docs/changes/2026-10-03-prompt-commentary-input.md`.
+ 
+ Run checks only in a verified visible foreground console and explicitly headed Chrome. Stop the task-owned harness/browser/server when Angela asks; use its `Temp/prompt-commentary-redesign-visible/close.confirmed` marker and verify owned processes/listeners are gone. Do not stop unrelated user processes.
+ 
+--- a/.gemini/skills/tlamatini-self-modify-inclusion/SKILL.md
++++ b/.gemini/skills/tlamatini-self-modify-inclusion/SKILL.md
+@@ -295,7 +295,7 @@
+ 
+ New `.fpmt` documents are version 2: `user_input` is the existing runtime reply step with the supplied notched figure; `user_commentary` is a static speech-bubble annotation. Preserve version 1 migration, identifiers, connections, settings and cancellation behavior. Static notes have no ports/Start state and do not enter prompts, history or playback steps. The 2026-10-04 graphical redesign removes commentary configuration dialogs and numeric dimension forms: a floating mini toolbar formats selected text or subsequent typing with mixed fonts/sizes/colors/emphasis/underline, and all borders/corners resize directly. Preserve allowlisted rich `runs` plus matching plain `text`, legacy plain-note normalization, native rich copy/paste between comments, Undo/Redo and repeated file/draft rendering equivalence. Their full wrapped text and inline editors grow at the chosen width/font without internal scrollbars; saved height is a minimum. The compatible browser-draft key still ends in `.draft.v1.<user id>`.
+ 
+-The existing backend/template/static/guide/example carriers cover these changes. Keep the frontend and backend version/validation contracts synchronized, carry the updated kickoff example (seven operations plus one note), and verify source/collected-static byte parity. `scripts/prompt_flow_commentary_visible.py` travels through the generic source snapshot walk; do not claim it is explicitly required unless the live manifest lists it. The 2026-10-03 split passed 61 backend/packaging tests and nine foreground Chrome checks. Current redesign evidence is in `docs/changes/2026-10-04-commentary-graphical-redesign.md`; no executable/installer was rebuilt. A source sweep does not establish release delivery. Current cache suffix is `-prompt-commentary-canvas-2`; retain the timestamp/environment expression. See `docs/prompting-flow-designer.md` and `docs/changes/2026-10-03-prompt-commentary-input.md`.
++The existing backend/template/static/guide/example carriers cover these changes. Keep the frontend and backend version/validation contracts synchronized, carry the updated kickoff example (seven operations plus one note), and verify source/collected-static byte parity. `scripts/prompt_flow_commentary_visible.py` travels through the generic source snapshot walk; do not claim it is explicitly required unless the live manifest lists it. The 2026-10-03 split passed 61 backend/packaging tests and nine foreground Chrome checks. Current redesign evidence is in `docs/changes/2026-10-04-commentary-graphical-redesign.md`; no executable/installer was rebuilt. A source sweep does not establish release delivery. Current cache suffix is `-prompt-run-output-resize-1`; retain the timestamp/environment expression. See `docs/prompting-flow-designer.md` and `docs/changes/2026-10-03-prompt-commentary-input.md`.
+ 
+ Run checks only in a verified visible foreground console and explicitly headed Chrome. Stop the task-owned harness/browser/server when Angela asks; use its `Temp/prompt-commentary-redesign-visible/close.confirmed` marker and verify owned processes/listeners are gone. Do not stop unrelated user processes.
+ 
+--- a/docs/claude/recent-fixes.md
++++ b/docs/claude/recent-fixes.md
+@@ -15,6 +15,10 @@
+ > **When to add to it**: when you land a non-obvious fix whose intent a future assistant could accidentally undo. Prepend new entries at the top of the list, dated, in the same style as the existing bullets.
+ 
+ ---
++
++## 2026-10-04 — Run output resizes from 5% to 95%
++
++Prompt Flow now has a horizontal divider between canvas and Run output. It changes the pane viewports only: canvas zoom, figure/comment geometry and output text sizes stay unchanged while each pane scrolls independently. The shared divider helper retains the Operations bar behavior and adds vertical pointer/keyboard control. Up/Down adjusts one percentage point, Shift adds five, and Home/End select the limits. Collapse/reopen retains the chosen ratio; per-user browser layout storage is separate from `.fpmt` and flow Undo/Redo. The output log has an explicit viewport height because native `details` wraps its content in an anonymous box. Do not restore percentage-only log sizing: it can clip output instead of scrolling. Source cache suffix: `-prompt-run-output-resize-1`. [Verification and rollback](../changes/2026-10-04-run-output-resize.md). No commit or executable rebuild.
+ 
+ ## 2026-10-04 — Graphical rich-text User Commentary
+ 
+--- a/.claude/memory/project_prompt_flow_commentary_input.md
++++ b/.claude/memory/project_prompt_flow_commentary_input.md
+@@ -5,10 +5,12 @@
+ ---
+ <!-- Tlamatini Author Banner — Angela López Mendoza · @angelahack1 -->
+ 
+-**Commentary/Input contract (2026-10-04, source changes):** Seven executable operations remain separate from static **User Commentary**. **User Input** (`user_input`) keeps the question/reply/cancellation mechanism and notched figure. **User Commentary** (`user_commentary`) is edited entirely on the canvas: double-click/Enter writes in the bubble; a floating mini toolbar formats selected text with different fonts, sizes, text colors, bold, italic and underline within the same note. With a caret, formatting applies to newly typed text; outside editing it applies to the whole note. Bubble color and alignment affect the note. There is no commentary configuration dialog or numeric dimension form. Drag any border or corner to resize, including while editing; Fit text removes spare height. Done/Ctrl+Enter saves; Cancel/Escape restores the whole edit. Ctrl+Z/Y works inside the editor; completed edits, moves, resizes and duplicates use flow Undo/Redo. Bubbles contain their full wrapped text without internal scrollbars. Version 2 files persist allowlisted `runs` plus matching literal `text`; older plain notes normalize to one run, and version 1 executable commentary still migrates to User Input with IDs/edges/settings intact. Comments have no ports/Start/runtime/context/history/step effects. The draft key remains `.draft.v1.<user id>`. Cache suffix: `-prompt-commentary-canvas-2`. See `docs/prompting-flow-designer.md` and the 2026-10-04 verification record; no release executable was rebuilt.
++**Commentary/Input contract (2026-10-04, source changes):** Seven executable operations remain separate from static **User Commentary**. **User Input** (`user_input`) keeps the question/reply/cancellation mechanism and notched figure. **User Commentary** (`user_commentary`) is edited entirely on the canvas: double-click/Enter writes in the bubble; a floating mini toolbar formats selected text with different fonts, sizes, text colors, bold, italic and underline within the same note. With a caret, formatting applies to newly typed text; outside editing it applies to the whole note. Bubble color and alignment affect the note. There is no commentary configuration dialog or numeric dimension form. Drag any border or corner to resize, including while editing; Fit text removes spare height. Done/Ctrl+Enter saves; Cancel/Escape restores the whole edit. Ctrl+Z/Y works inside the editor; completed edits, moves, resizes and duplicates use flow Undo/Redo. Bubbles contain their full wrapped text without internal scrollbars. Version 2 files persist allowlisted `runs` plus matching literal `text`; older plain notes normalize to one run, and version 1 executable commentary still migrates to User Input with IDs/edges/settings intact. Comments have no ports/Start/runtime/context/history/step effects. The draft key remains `.draft.v1.<user id>`. Cache suffix: `-prompt-run-output-resize-1`. See `docs/prompting-flow-designer.md` and the 2026-10-04 verification record; no release executable was rebuilt.
+ 
+ Angela explicitly rejected the black line/scrollbar inside commentary assets. Preserve full-text containment in both display and inline editing, recomputed after typing, font/width changes, resize, file open and draft recovery. Canvas bounds and Fit use the actual content height. Never replace containment with clipping or an internal scrollbar. Multiple notes retain independent text/style/dimensions and Undo/Redo.
+ 
+ The canonical guide is [docs/prompting-flow-designer.md](../../docs/prompting-flow-designer.md); implementation/verification and precise rollback are in [the refactor record](../../docs/changes/2026-10-03-prompt-commentary-input.md). Source checks do not mean the installed executable was rebuilt. No new release/version claim follows from this change.
+ 
+ Angela asked to stop all task-owned background processes after accepting the visuals. The test harness closes its own Chrome/server via `Temp/prompt-commentary-visible/close.confirmed`; verify process ownership and released test ports, preserving unrelated user applications. Development commands still require actually verified visible foreground consoles.
++
++Run output now resizes vertically via a horizontal divider: 5–95% of the usable canvas/output height, without scaling content. Each pane scrolls independently. Keep collapse/reopen, keyboard resizing and the separate per-user layout preference. See `docs/changes/2026-10-04-run-output-resize.md`.
+--- /dev/null
++++ b/docs/changes/2026-10-04-run-output-resize.md
+@@ -0,0 +1,33 @@
++<!-- Tlamatini Author Banner — Angela López Mendoza -->
++# Prompt Flow Run output resizing — 2026-10-04
++
++## Request
++
++> Now, make the Run output area to be vertically resizable from 5% to 95% of total height, without resizing the internal content of it and the canvas content (the scrollbars must do their job), just like the vertical bar between the Operations bar and the canvas works, make visual tests for me to see how the resize mecchanisms work, go!
++
++> Remember: don't comit anything.
++
++## Behavior
++
++The horizontal divider resizes Run output from 5% to 95% of the combined canvas/output pane height; fixed headers, status strip and divider are excluded. The initial share is 20%. Each pane scrolls independently, preserving canvas zoom, node/comment geometry and text sizes. Native details content uses an explicit log viewport height to avoid clipping inside its anonymous content wrapper. The output scrollbar follows the dark canvas palette.
++
++The shared divider helper now accepts vertical coordinates and arrow direction, retaining the existing Operations divider. Up/Down changes one percentage point; Shift changes five; Home/End selects 5%/95%. Escape, blur, pointer cancellation and lost capture release a drag. The output heading still collapses/expands, retaining its last ratio. A ResizeObserver preserves the ratio when the workspace changes size.
++
++The per-user browser preference uses tlamatini.prompting-flow.layout.v1.<user id>. It is separate from flow files, drafts, dirty state and Undo/Redo. No backend, file-format, dependency or database-mechanics change. The static cache suffix is -prompt-run-output-resize-1; the environment/timestamp expression remains intact.
++
++## Verification
++
++All commands ran in verified foreground conhost/PowerShell -NoExit windows. Chrome was explicitly headed, checked against its actual foreground HWND, and photographed by Shoter across the whole desktop. The fixture contains two executable operations and three mixed-style comments. Ordinary file-open and real User Input playback produce an 80-line log; no injected canvas state or mocked transport.
++
++- The final visible run passed **14 of 14 checkpoints**, exit 0 (10:56 local). The visible harness covers 5%/50%/95% dragging, both clamped limits, unchanged geometry/fonts/zoom/output, independent scrolling, keyboard resizing, collapse/reopen, Escape, the Operations divider, native window resizing and restored layout after reload.
++- JavaScript lint: exit 0, 0 errors, 648 existing warnings; all 54 modules parse.
++- Targeted Ruff passed, exit 0. All three packaging omission tests passed, exit 0.
++- Both source inclusion sweeps are CLEAN: 784 runtime source inputs carried or restore-mapped; 1,622 files in the retained snapshot, no copy errors. Advisory exclusions remain the optional gallery, regenerated staticfiles, and optional demo flows. These checks do not build an executable or installer.
++
++Evidence: Temp/run-output-resize-visible/summary.json and numbered Shoter PNGs; live transcripts in Temp/run-output-resize/. The first scrolling check caught the native details wrapper issue; explicit viewport height corrected it. A broad unittest discovery command also attempted to import unrelated Django packages without package context; invoking the carriage test file directly is the correct command. Ruff's two ambiguous local-variable names in the new harness were corrected.
++
++## Reproduce and rollback
++
++From a verified visible foreground PowerShell -NoExit console, run python -u scripts/prompt_flow_output_resize_visible.py --resume. It uses the separate port-8001 test installation and a fresh Chrome profile; it refuses occupied test ports and hidden execution. Inspect the final browser, then create Temp/run-output-resize-visible/close.confirmed to close its owned browser/server. Leave the console open for reading and verify owned processes have stopped.
++
++The scoped patch 2026-10-04-run-output-resize.patch records only this follow-up against the already-modified commentary baseline. Before copies are under Temp/run-output-resize/before/. If rollback is requested, reverse this patch after checking for newer edits; do not reset the working tree or remove previous commentary work. No Git commit, staging, push, installer build or update was performed.
+--- a/PIVOT_CHANGES.md
++++ b/PIVOT_CHANGES.md
+@@ -465,3 +465,12 @@
+ ```
+ 
+ Replaced commentary configuration with direct inline rich editing, a floating selection/caret toolbar and all-border resizing. Mixed styles persist in version 2 allowlisted runs and matching plain text. Repeated saves, loads and draft recovery compare several rendered notes. User Input behavior and legacy migration remain intact. [Exact changes, visible checks and rollback patch](docs/changes/2026-10-04-commentary-graphical-redesign.md). No commit or push.
++
++
++---
++
++## 2026-10-04 — Run output resizes vertically from 5% to 95%
++
++**Verbatim request:** “Now, make the Run output area to be vertically resizable from 5% to 95% of total height, without resizing the internal content of it and the canvas content (the scrollbars must do their job), just like the vertical bar between the Operations bar and the canvas works, make visual tests for me to see how the resize mecchanisms work, go!” Follow-up: “Remember: don't comit anything.”
++
++Replaced the fixed output height with a horizontal divider and two independent scrolling viewports. Canvas zoom, diagram geometry and text sizes remain unchanged. Includes 5–95% clamping, keyboard controls, collapse/reopen and per-user layout storage separate from flow data. Preserves all earlier commentary edits. See [implementation, visible evidence and precise rollback](docs/changes/2026-10-04-run-output-resize.md) and its scoped patch. No commit or release build.

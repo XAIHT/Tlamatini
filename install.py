@@ -183,7 +183,7 @@ class FancyInstaller:
         ("Writing configuration…",             0.05),
         ("Copying uninstaller…",               0.05),
         ("Creating shortcuts…",                0.075),
-        ("Registering .flw file association…", 0.075),
+        ("Registering .flw and .fpmt file associations…", 0.075),
         ("Refreshing Windows Desktop…",        0.05),
     ]
 
@@ -698,11 +698,12 @@ class FancyInstaller:
             self._set_progress(cumulative)
             self._mark_step(step_idx)
 
-            # ── Step 6: run register_flw.ps1 ─────────────────────────
+            # ── Step 6: register both flow formats ─────────────────────────
             step_idx = 6
             self._activate_step(step_idx)
-            self._set_progress(cumulative, "Registering .flw file association…")
+            self._set_progress(cumulative, "Registering .flw and .fpmt file associations…")
             self._run_ps1("register_flw.ps1", target)
+            self._run_ps1("register_fpmt.ps1", target)
             cumulative += self.STEPS[step_idx][1]
             self._set_progress(cumulative)
             self._mark_step(step_idx)
@@ -1020,7 +1021,7 @@ class FancyInstaller:
             f"Tlamatini was installed successfully!\n\n"
             f"Location: {target}\n\n"
             "Shortcuts have been created on your Desktop\n"
-            "and .flw files are now associated with Tlamatini.",
+            "and .flw and .fpmt files are now associated with Tlamatini.",
         )
         self.root.destroy()
 

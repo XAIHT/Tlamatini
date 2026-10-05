@@ -83,6 +83,18 @@ class CatalogTests(unittest.TestCase):
         self.assertNotIn('SECRET', json.dumps(schema))
         self.assertEqual(schema['port'], 'int')
 
+    def test_identifier_schema_is_stable_for_public_and_keyed_templates(self):
+        public = {'telegram': {'api_id': '<APP_ID>'}, 'whatsapp': {'phone_number_id': '<PHONE_ID>'}}
+        keyed = {'telegram': {'api_id': 12345}, 'whatsapp': {'phone_number_id': 98765}}
+        schema = UPDATER.exporter.config_schema(public)
+        self.assertEqual(schema, UPDATER.exporter.config_schema(keyed))
+        for value in ('12345', 12345):
+            KNOWLEDGE._check_config({'telegram': {'api_id': value}}, schema, 'telegrammer')
+            KNOWLEDGE._check_config({'whatsapp': {'phone_number_id': value}}, schema, 'whatsapper')
+        for value in (True, 1.25, [], {}):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                KNOWLEDGE._check_config({'telegram': {'api_id': value}}, schema, 'telegrammer')
+
     def test_runtime_refresh_contains_helper_and_current_catalog(self):
         with tempfile.TemporaryDirectory(dir=REPO / 'Temp') as temp:
             for name in ('flowcreator', 'flowhypervisor', 'parametrizer'):

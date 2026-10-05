@@ -1,7 +1,7 @@
 # Tlamatini PowerShell Script
 # Executes the Django development server with --noreload flag
-# and automatically opens the browser to http://localhost:8000/
-# Accepts an optional .flw file path as argument (e.g. from file association)
+# and automatically opens the browser on the configured web port
+# Accepts an optional .flw or .fpmt file path as argument (e.g. from file association)
 
 param(
     [string]$FlowFile
@@ -15,6 +15,12 @@ Write-Host ""
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
 $TlamatiniExe = Join-Path $scriptDir "Tlamatini.exe"
 
+# Resolve an incoming relative path BEFORE changing the working directory.
+if ($FlowFile) {
+    if ([IO.Path]::GetExtension($FlowFile) -notin @('.flw', '.fpmt')) { throw 'Choose a .flw or .fpmt flow file.' }
+    $FlowFile = (Resolve-Path -LiteralPath $FlowFile -ErrorAction Stop).Path
+}
+
 # Set working directory to the script's directory (critical for PyInstaller builds)
 Set-Location $scriptDir
 Write-Host "Working directory: $scriptDir" -ForegroundColor Gray
@@ -27,10 +33,10 @@ if (-not (Test-Path $TlamatiniExe)) {
     exit 1
 }
 
-# Build argument list depending on whether a .flw file was passed
-# When a .flw file is given, pass ONLY the file path to Tlamatini.exe
-# (manage.py detects the .flw and internally rewrites argv to runserver --noreload)
-# When no .flw file is given, pass runserver --noreload explicitly.
+# Build argument list depending on whether a flow file was passed
+# When a flow file is given, pass ONLY the file path to Tlamatini.exe
+# (manage.py detects either flow format and internally rewrites argv to runserver --noreload)
+# When no flow file is given, pass runserver --noreload explicitly.
 if ($FlowFile) {
     if (-not (Test-Path $FlowFile)) {
         Write-Host "Warning: Flow file not found: $FlowFile" -ForegroundColor Yellow
@@ -52,10 +58,7 @@ Write-Host "Server starting..." -ForegroundColor Cyan
 Write-Host "Press Ctrl+C to stop the server." -ForegroundColor Cyan
 Write-Host ""
 
-# Open browser in background 10 seconds after the server starts
-$browserUrl = "http://localhost:8000/"
-Write-Host "Browser will open at $browserUrl in 20 seconds..." -ForegroundColor Yellow
-Start-Process powershell.exe -ArgumentList "-NoProfile -WindowStyle Hidden -Command `"Start-Sleep -Seconds 20; Start-Process '$browserUrl'`"" -WindowStyle Hidden
+# manage.py opens the correct editor once, using the configured web port.
 
 # Run Tlamatini.exe directly so all output and errors are visible in this console
 & $TlamatiniExe $serverArgs

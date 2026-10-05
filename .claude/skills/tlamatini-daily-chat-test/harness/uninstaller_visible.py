@@ -340,13 +340,13 @@ def main():
     import uninstall
 
     # The two calls that would reach OUTSIDE the throw-away tree.
-    def _stub_registry():
+    def _stub_registry(_target):
         log("  [STUBBED] _unregister_programs_entry() — would delete the REAL "
             "HKCU Installed-apps key.")
 
     def _stub_explorer():
-        log("  [STUBBED] _restart_explorer() — would kill and restart the REAL "
-            "Windows desktop.")
+        log("  [STUBBED] _restart_explorer() — would notify the REAL "
+            "Windows shell without restarting Explorer.")
 
     uninstall.FancyUninstaller._unregister_programs_entry = staticmethod(_stub_registry)
     uninstall.FancyUninstaller._restart_explorer = staticmethod(_stub_explorer)

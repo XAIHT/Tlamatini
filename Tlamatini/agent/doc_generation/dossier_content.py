@@ -729,6 +729,9 @@ def build_chapters(f: dict) -> list[Chapter]:
                 "The running figure lights up and traversed connections are highlighted. Pause lets the current "
                 "operation finish and holds the next; Stop drains the running worker before another run may "
                 "start. Opening a file never runs it, and a User Commentary note never runs at all.",
+                "Feed embeddings requires a real vector store. A provider error cannot become success "
+                "through the chat stack's prompt-only fallback, including with tools enabled. The flow "
+                "reports failure before its next operation and keeps any previously accepted context.",
             ],
             points=[
                 ("Format", "JSON `tlamatini-prompting-flow`, version 2; version 1 files migrate."),
@@ -738,6 +741,163 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("Not .pmt", "Plain-text system prompts keep .pmt and are refused."),
                 ("Drafts", "Kept per user in browser storage."),
             ], deck="cards"),
+        Section("pfpnotes", "STATIC REVIEW NOTES", "Writing and formatting a commentary",
+            "User Commentary is a review note on the canvas. User Input is the operation that pauses "
+            "playback for a reply, using the notched figure.",
+            body=[
+                "Double-click a bubble or press Enter to write directly in it. Select words or paragraphs, "
+                "then use the floating mini toolbar for font, size, text color, bold, italic and underline. "
+                "For example, one bubble can have a large Verdana heading, an italic Arial sentence and a "
+                "Georgia paragraph. With only a caret, formatting applies to subsequent typing. Outside "
+                "editing, it applies to the whole selected note. Bubble color and alignment affect the note.",
+                "Drag any of the eight borders or corners to resize, even while writing. The handles also "
+                "accept arrow keys. Fit text removes spare height, and the bubble grows to contain all "
+                "wrapped text. There are no internal scrollbars, numeric size fields or commentary "
+                "configuration dialogs.",
+                "Done or Ctrl+Enter saves the complete edit. Cancel or Escape restores its original text, "
+                "styles, dimensions and position. Ctrl+Z/Y works inside the editor. Completed edits, moves, "
+                "resizes and duplicates participate in the diagram's Undo/Redo. Copying between comment "
+                "editors preserves formatting. External clipboard text stays literal.",
+            ], deck="list", deck_points=[
+                ("Write in place", "Double-click or Enter edits the bubble. No configuration dialog or numeric dimensions."),
+                ("Mixed styles", "Floating toolbar: font, size, text color, bold, italic and underline for each passage."),
+                ("Selection or caret", "Format selected text or subsequent typing; outside editing, format the whole note."),
+                ("Direct sizing", "Drag any edge/corner, even while writing. Fit text removes spare height. No internal scrollbars."),
+                ("Finish or restore", "Done/Ctrl+Enter saves; Cancel/Escape restores text, styles and geometry. Editor and flow Undo/Redo."),
+            ]),
+        Section("pfpfiles", "PORTABLE FLOW FILES", "Comments survive save, open and draft recovery",
+            "Version 2 .fpmt files retain independent notes with their full text, formatting and geometry.",
+            body=[
+                "Each note stores allowlisted text runs plus matching literal text. Runs carry font, size, "
+                "text color, bold, italic and underline. Older plain version 2 notes normalize to one run. "
+                "Version 1 executable commentary migrates to User Input with its identifiers, connections, "
+                "settings and reply/cancellation behavior intact. Opening a file never starts playback.",
+                "A note has no connection ports or Start state and never enters model context, conversation "
+                "history or playback step counts. Tokens such as {{last_output}} and HTML-like text remain "
+                "literal in a comment. Several independently styled notes can share a diagram.",
+                "The per-user browser draft keeps the existing .draft.v1 key for compatibility. Portable "
+                "files retain the .fpmt extension. The similarly named .pmt files belong to system prompts "
+                "and remain a separate format. Limits are 5 MiB per flow, 500 assets, 1,000 connections, "
+                "100,000 characters and 10,000 formatted runs per note.",
+            ], deck="list", deck_points=[
+                ("Version 2", "Literal text and allowlisted runs preserve mixed formatting."),
+                ("Older files", "Plain v2 notes normalize. Version 1 reply steps become User Input with IDs, edges and settings intact."),
+                ("Static isolation", "No ports, Start or execution steps. Text stays literal and never enters context or history."),
+                ("Recovery", "Independent notes retain text, styles and geometry. Opening never plays the flow; draft key stays compatible."),
+            ]),
+        Section("flowopen", "OPENING FLOW FILES", "The right editor, from chat or Windows",
+            "October 4 source changes: .flw opens agents; .fpmt opens prompting flows. Opening never runs them.",
+            body=[
+                "The main chat routes both formats into their own editor tabs and keeps its current document. "
+                "An external file launch validates a bounded snapshot and reuses a matching running server "
+                "before any database startup work. A cold launch starts the application on its configured port.",
+                "Login returns to the requested file. Short-lived, single-use opening links carry a random "
+                "token rather than a filesystem path; browser uploads are bound to the signed-in user. "
+                "Invalid formats, unsupported versions and files over 5 MiB are rejected before replacement.",
+                "Unsaved diagrams and recovered drafts require confirmation. Rich commentary runs retain "
+                "their fonts, styles and layout through .fpmt save/open. Agent-flow opening now awaits "
+                "validation and session preparation; failed credential redaction blocks unsafe .flw downloads.",
+            ],
+            points=[
+                ("From chat", "Open either flow in its editor and keep the chat document."),
+                ("From Windows", "Start once or reuse the running app; return through login."),
+                ("Preserve work", "Validate before replacement; confirm unsaved changes."),
+                ("No automatic run", "Opening prepares the diagram. Play remains a user action."),
+            ], deck="cards"),
+        Section("flowwindows", "WINDOWS FILE TYPES", "Register, repair and remove both formats",
+            "Per-user associations, installation ownership and Windows default-app choices.",
+            body=[
+                "A shared PowerShell helper registers .flw and .fpmt with separate ProgIDs, friendly names, "
+                "icons, Open With entries and Default Apps capabilities. Status reports the current registration; "
+                "DefaultApps opens Windows Settings so the user can choose a default.",
+                "Installation registers both formats. Update Repair preserves explicit unregistration and never "
+                "takes another installation's owned entry. Removal deletes only this installation's values, "
+                "preserving Windows UserChoice and other applications' Open With entries. Historical .flw "
+                "wrappers cover both formats so existing installer/uninstaller binaries remain compatible.",
+                "The scripts and opening modules are included in frozen and self-modify packaging. Native "
+                "registry checks use an isolated test key, and visible Chrome tests exercise real file opening "
+                "and login. The October 4 release campaign also rebuilt local main and uninstaller executables. "
+                "The working tree remains uncommitted; compiled acceptance is recorded separately from source tests. "
+                "See docs/windows-flow-files.md for commands, contracts and verification.",
+            ],
+            points=[
+                ("Install", "Register both types with names, icons and the correct editor destinations."),
+                ("Administer", "Inspect Status, register or remove one type, or open Default Apps."),
+                ("Update", "Repair owned entries without undoing the user's opt-out."),
+                ("Uninstall", "Remove owned registrations; keep other apps and user documents."),
+            ], deck="cards"),
+        Section("uninstallworkers", "WINDOWS LIFECYCLE", "Remove the application and its owned workers",
+            "Confirmation, installation ownership, retryable errors and preserved user content.",
+            body=[
+                "The real installer registration failure came from an omitted InstallDir whose parameter "
+                "default evaluated before Windows PowerShell populated PSScriptRoot. The wrappers now "
+                "resolve that default inside the script. Fresh powershell.exe -File tests exercise the "
+                "same entry point from an unrelated working directory.",
+                "The uninstaller first requires the main application to close. After confirmation it stops "
+                "workers belonging to the selected installation and their descendants. Exact path boundaries, "
+                "creation times and inherited TLAMATINI_AGENTS_ROOT identify agent children even after "
+                "reparenting; unrelated processes and Explorer remain running.",
+                "A temporary independent copy allows the installed uninstaller itself to be removed. "
+                "Helpers and the installation marker remain until file and owned-registry removal succeed, "
+                "so a partial failure can be retried. Locked files and denied registry deletion report failure. "
+                "Drive roots, shared folders, source checkouts and redirected targets are rejected.",
+                "Agents and nonempty user-content directories remain under the existing preservation contract. "
+                "A full directory/registry reset is a separate authorized action. Verification distinguishes "
+                "real compiled GUI outcomes from backend tests and records any blocked native launch explicitly.",
+            ], deck="cards", points=[
+                ("Installer entry points", "Resolve the installation directory inside PowerShell script bodies."),
+                ("Owned workers", "Stop this installation's agents and surviving descendants after confirmation."),
+                ("Honest retry", "Retain removal support until success; report locked files and registry errors."),
+                ("Preserve user work", "Keep agents and nonempty content; notify the shell without restarting Explorer."),
+            ]),
+        Section("release_repair", "LOCAL RELEASE VALIDATION", "Repair the boundary, then repeat the real operation",
+            "Uncommitted October 4 repairs have separate source, frozen, package and visual evidence.",
+            body=[
+                "The visible campaign checks the actual installer, Windows associations, authenticated "
+                "file opening, administration, main chat and both flow panels. It also compares several "
+                "rich comments across repeated file writes and reads, executes local agents, and audits "
+                "owned workers after shutdown. A configuration dialog opening is not proof that a "
+                "hardware or external-service agent executed successfully.",
+                "System-Metrics and Files-Search now honor the effective configuration and nondefault "
+                "ports, including UTF-8 BOM files. The path-security and chat-chain readers accept the same "
+                "encoding without weakening directory boundaries. Both auxiliary context chains use the same "
+                "effective paths and endpoints; system sockets close after each request and file RPCs have deadlines. "
+                "Parametrizer restores connections when a saved file "
+                "contains mappings without explicit connection lists. Model-free agents avoid unrelated "
+                "model-setting reads. Numeric messaging identifiers keep the same string/integer "
+                "contract in public and keyed templates.",
+                "A rejected embedding request must fail the flow before its next operation. The campaign's "
+                "provider returned HTTP 401; this is recorded as a blocked capability with a tested failure "
+                "path. The desktop-control tool also blocked the compiled uninstaller launch. Backend "
+                "cleanup tests do not certify its unobserved native confirmation and completion screens.",
+                "Detailed results and retained failed attempts are in "
+                "docs/changes/2026-10-04-release-validation.md. The review profile requested by Angela "
+                "lists each changed file and code segment. No commit or published release is implied.",
+            ], deck="cards", points=[
+                ("Real user paths", "Installer, login, Admin, chat, both panels and Windows file opening."),
+                ("File fidelity", "Mixed styles, geometry and rendered text checked across save/open cycles."),
+                ("Runtime boundaries", "Configured MCP endpoints, agent defaults, mappings and identifier types."),
+                ("Explicit limits", "Provider failure and blocked native launch remain visible in the verdict."),
+            ]),
+        Section("pfpoutput", "RUN OUTPUT", "More room for the canvas or the log",
+            "Drag the horizontal divider above Run output to give it 5% to 95% of the available pane height.",
+            body=[
+                "The percentage uses the combined canvas and output height, excluding headers, the status "
+                "strip and the divider. The initial allocation is 20%. The canvas and Run output each keep "
+                "their own scrollbar. Moving the divider preserves canvas zoom, node dimensions and text "
+                "size. The Operations bar keeps its separate horizontal sizing control.",
+                "Tab to the divider and use Up/Down for one percentage point, or Shift+Up/Down for five. "
+                "Home selects 5% and End selects 95%. Escape ends a drag. Click the Run output heading to "
+                "collapse it. Reopening restores the chosen height, and resizing the window retains the ratio.",
+                "The browser remembers the output height per signed-in user. This layout preference does "
+                "not modify a flow file, mark the diagram as edited or add an Undo step. Resizing the panel "
+                "also leaves the run and its output unchanged.",
+            ], deck="list", deck_points=[
+                ("5% to 95%", "Share of canvas/output height, excluding headers, status and divider. Initial share: 20%."),
+                ("Stable content", "Independent scrolling. Canvas zoom and text sizes stay unchanged."),
+                ("Keyboard", "Up/Down: 1 point; Shift: 5. Home: 5%; End: 95%. Escape ends the drag."),
+                ("Remembered layout", "Collapse/reopen and window resizing retain the ratio. Saved per user, outside flow files and Undo/Redo."),
+            ]),
         Section("catalog", "CATALOG OF PROMPTS", "Ready-made prompts, grouped by purpose",
             f"The Catalog of Prompts opens with {sections_count} sections, each beginning with a guided "
             f"Step-by-Step wizard and growing from simple to advanced.",
@@ -1283,17 +1443,20 @@ def build_chapters(f: dict) -> list[Chapter]:
                 "is sent; it locks off when the model cannot hold it.",
                 "Direct dictation additionally uses a private ephemeral loopback listener for its worker "
                 "handshake. It closes after authentication; it is not a fourth public service or fixed port.",
+                "Both MCP services honor their configured hosts and ports in source and frozen mode; "
+                "their client URIs must match. Files-Search also honors its worker count and bounds RPC "
+                "waits. UTF-8 BOM configuration files and CONFIG_PATH overrides are supported by both clients.",
             ],
             table={"columns": ["Port", "Protocol", "Service"], "widths": [0.20, 0.22, 0.58], "rows": [
                 ["8000 (default)", "HTTP + WebSocket", "Web interface and chat; change it with django_port."],
-                ["8765", "WebSocket", "System-Metrics MCP context provider."],
-                ["50051", "gRPC", "Files-Search MCP context provider."],
+                ["8765 (default)", "WebSocket", "System-Metrics MCP; match server port and client URI."],
+                ["50051 (default)", "gRPC", "Files-Search MCP; match server port and client URI."],
             ]}, deck="split",
             deck_points=[
                 ("Source", "Run from the repository with manage.py."),
                 ("Frozen", "A PyInstaller executable with its own Python."),
                 ("Self-modify", "Always from source; optional in a build; a switch sends it."),
-                ("Ports", "8000 (configurable), 8765 and 50051 on loopback."),
+                ("Ports", "Defaults: 8000, 8765 and 50051; configure clients and servers together."),
             ]),
         Section("settings", "CONFIGURATION", "The settings that matter most",
             "A handful of `config.json` keys shape her behaviour; everything else has sensible defaults.",
@@ -1415,6 +1578,31 @@ def build_chapters(f: dict) -> list[Chapter]:
         f"Source tag {f['release_tag']}; latest published release "
         f"{f['release']['latest_published'] or 'unverified'}. Local changes are stated separately.",
         accent="gold", sections=[
+        Section("working_canvas", "LOCAL SOURCE CHANGES · OCTOBER 4", "Graphical notes and resizable Run output",
+            "These working-tree changes are uncommitted. Local executables were rebuilt for the release-validation campaign.",
+            body=[
+                "User Commentary is edited entirely on the canvas. Double-click or press Enter to write, "
+                "then format selected words with the floating mini toolbar. A single note can combine "
+                "different fonts, sizes, text colors, bold, italic and underline. A caret styles the next "
+                "text you type. Bubble color and alignment apply to the whole note.",
+                "Drag any border or corner, including while writing. Fit text removes spare height. "
+                "Every wrapped line stays inside the bubble without an internal scrollbar. Done or "
+                "Ctrl+Enter saves the edit. Cancel or Escape restores its text, styles, size and position.",
+                "The divider above Run output allocates 5% to 95% of the usable canvas/output height. "
+                "Only the two viewports change. Canvas zoom, figure dimensions and text sizes stay fixed, "
+                "and each pane scrolls independently. The browser remembers the ratio per signed-in user.",
+                "The October 4 commentary verification passed 29 diagram/runner tests, 3 carriage tests "
+                "and 23 visible Chrome checkpoints, including three mixed-style comments through three "
+                "file save/open cycles with identical data and rendered line boxes. The output-divider "
+                "verification separately passed 14 visible Chrome checkpoints and 3 carriage tests. "
+                "These are dated results, not a claim that this documentation refresh reran them.",
+            ], deck="list", deck_points=[
+                ("Rich notes", "Selected text keeps its own fonts, sizes, colors and emphasis."),
+                ("Direct editing", "Floating tools and all-border resizing. No commentary dialog."),
+                ("Run output", "5% to 95% height. Independent scrolling with content sizes preserved."),
+                ("File fidelity", "Three mixed-style notes rendered identically across three save/open cycles."),
+                ("Source status", "Uncommitted changes; local main and uninstaller builds receive separate acceptance checks."),
+            ]),
         Section("working_main", "ON MAIN, AFTER v1.75.0", "Four stop sequences and a clearer Prompt Flow Panel",
             "Committed on main after the v1.75.0 tag; a build from this source still reports 1.75.0.",
             body=[
@@ -1429,7 +1617,7 @@ def build_chapters(f: dict) -> list[Chapter]:
                 "and styled freely, growing to hold its whole text without a scrollbar, and never run. New "
                 "files are saved as version 2; version 1 files open with their old commentary steps turned into "
                 "User Input, identifiers and connections kept.",
-                "This refresh reran 430 targeted unit tests, the offline Prompt Flow check, ESLint with zero "
+                "The October 3 refresh reran 430 targeted unit tests, the offline Prompt Flow check, ESLint with zero "
                 "errors, the skills inventory and both inclusion sweeps; all passed, and ruff now reports a "
                 "clean tree. In a visible Chrome on the real desktop, the commentary test passed all nine "
                 "checkpoints: long notes without scrollbars, fonts and colours, resize with Undo and Redo, "
@@ -1440,7 +1628,7 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("User Input", "The step that asks you: same mechanism, new figure."),
                 ("User Commentary", "A static review note; it never runs and never reaches the model."),
                 ("Version 2 files", "Version 1 flows migrate on open; identifiers and links are kept."),
-                ("Proof", "430 unit tests; 9 of 9 visible Chrome checkpoints."),
+                ("October 3 evidence", "430 unit tests; 9 of 9 visible Chrome checkpoints."),
             ], deck="cards"),
         Section("working_switches", "NEW IN v1.75.0", "Compact mode and Self-modify become switches",
             "Tagged on October 3: Compact mode is a toolbar switch; the Self-modify switch followed the tag.",

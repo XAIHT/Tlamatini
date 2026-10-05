@@ -115,9 +115,28 @@ Contract: [CLAUDE.md](CLAUDE.md) → *Self-modify*,
 
 ## Prompt Flow comments are static; User Input runs (2026-10-03)
 
-**Commentary/Input split (2026-10-03, source changes):** The Operations bar contains seven executable operations and a separate static **User Commentary** asset. **User Input** (`user_input`) keeps the old question/reply/cancellation mechanism and uses the supplied notched-top, downward-point figure. **User Commentary** (`user_commentary`) is a speech-bubble review note: double-click/Enter writes in place, Done/Ctrl+Enter saves, Escape cancels; Configure selects palette color, font, size, emphasis, alignment and dimensions. Bubbles and their editors grow to contain the full wrapped text at the chosen width/font, **without internal scrollbars**; saved height is a minimum. They move, resize, duplicate and Undo/Redo, save/open/recover with the diagram, have no ports or Start status, and never affect model context, history or playback steps. New `.fpmt` saves use version **2**; version 1 files/drafts migrate their executable commentary to User Input while preserving IDs, connections and configuration. The local-storage key still ends in `.draft.v1.<user id>` for compatibility; it does not identify the document version. Current cache suffix: `-prompt-commentary-input-1`. Verified: 61 backend/packaging tests and nine real foreground Chrome checks in `scripts/prompt_flow_commentary_visible.py`. No release executable was rebuilt. See `docs/prompting-flow-designer.md` and the 2026-10-03 entry in `docs/claude/recent-fixes.md`.
+**Commentary/Input contract (2026-10-04, source changes):** Seven executable operations remain separate from static **User Commentary**. **User Input** (`user_input`) keeps the question/reply/cancellation mechanism and notched figure. **User Commentary** (`user_commentary`) is edited entirely on the canvas: double-click/Enter writes in the bubble; a floating mini toolbar formats selected text with different fonts, sizes, text colors, bold, italic and underline within the same note. With a caret, formatting applies to newly typed text; outside editing it applies to the whole note. Bubble color and alignment affect the note. There is no commentary configuration dialog or numeric dimension form. Drag any border or corner to resize, including while editing; Fit text removes spare height. Done/Ctrl+Enter saves; Cancel/Escape restores the whole edit. Ctrl+Z/Y works inside the editor; completed edits, moves, resizes and duplicates use flow Undo/Redo. Bubbles contain their full wrapped text without internal scrollbars. Version 2 files persist allowlisted `runs` plus matching literal `text`; older plain notes normalize to one run, and version 1 executable commentary still migrates to User Input with IDs/edges/settings intact. Comments have no ports/Start/runtime/context/history/step effects. The draft key remains `.draft.v1.<user id>`. Cache suffix: `-flow-file-opening-2`. See `docs/prompting-flow-designer.md` and the 2026-10-04 verification record; the October 4 local release-validation campaign tracks subsequent isolated frozen builds and runtime acceptance.
 
 Preserve this distinction when editing the designer, importing legacy diagrams,
 writing documentation or verifying the shipped example. The user explicitly
 rejected internal commentary scrollbars. Automatic containment must include
 font/width changes, inline typing, file/draft recovery and canvas Fit.
+
+## Prompt Flow Run output resizing (2026-10-04)
+
+**Run output layout (2026-10-04, source changes):** Drag the horizontal divider to give Run output 5–95% of the combined canvas/output pane height, excluding fixed headers, status and divider (initial share: 20%). Each pane scrolls independently; resizing preserves zoom, node geometry and text size. Up/Down changes one percentage point, Shift+Up/Down five, Home/End selects 5%/95%. Escape, blur or pointer cancellation ends a drag. Collapse/reopen and window resizing retain the ratio. The per-user `tlamatini.prompting-flow.layout.v1.<user id>` preference is separate from flow files, drafts, dirty state and Undo/Redo. Keep the native details log viewport explicitly sized so its scrollbar remains usable. See `docs/changes/2026-10-04-run-output-resize.md`.
+
+
+## Windows flow-file lifecycle — 2026-10-04 source changes
+
+Both `.flw` agent flows and `.fpmt` prompting flows now have Windows registration, repair, removal, status and Default Apps handling. Explorer/source command-line opening validates a bounded snapshot, reuses a matching running server before database startup, and returns through login to the correct editor without execution. Main-chat Open/drop/Reopen routes both formats into separate editor tabs while preserving the chat document. The historical `.flw` installer wrappers cover both types for old installer/uninstaller binaries; independent management uses `flow_file_associations.ps1 -Extensions`. Never erase UserChoice or another application’s Open With entries. Update Repair respects explicit unregistration and installation ownership. See [Windows flow files](docs/windows-flow-files.md). Cache suffix: `-flow-file-opening-2`. These changes remain uncommitted. The October 4 local release-validation campaign also rebuilds isolated frozen artifacts; its dated evidence distinguishes build completion from runtime acceptance.
+
+## Complete release verification (2026-10-04)
+
+For release acceptance and installer/panel regressions, use
+[the release-validation skill](.codex/skills/tlamatini-release-validation/SKILL.md).
+A clean-install test requires the authorized installation directory and owned
+registrations to be removed first. Run the actual compiled Installer.exe with
+its pkg.zip, then test the installed Admin, Prompt Flow and Agentic Control
+Panels. Explicit-argument registry tests do not certify the installer’s
+PowerShell -File invocation. Keep source/frozen and partial/full results distinct.

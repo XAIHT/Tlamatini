@@ -435,3 +435,48 @@ Edits are limited to PPTXer sections, rows, and links. Each file is read and upd
 Audited all 204 repository Markdown documents, including hidden assistant contracts/skills/memories and excluding generated/build/dependency trees. Updated all applicable current Prompt Flow descriptions: seven executable operations plus static User Commentary, User Input shape and unchanged runtime replies, full-text containment without internal scrollbars, inline editing/formatting/persistence, version 2 saves and version 1 migration, compatible draft key, limits, cache suffix, source/update carriage and visible verification. Dated release/test history remains historical. The accepted source refactor is recorded separately in [the implementation pivot](docs/changes/2026-10-03-prompt-commentary-input.md).
 
 The test harness closed its Chrome and isolated test server via `close.confirmed`; only task-owned worker/consoles were stopped. No background worker is retained, and unrelated user applications are preserved. [Documentation scope, checks and precise follow-up rollback](docs/changes/2026-10-03-prompt-flow-documentation.md). Its adjacent patch captures only this documentation follow-up, preserving prior source changes and unrelated local edits. No Git history, database backup/restore mechanics, release version or executable was changed.
+
+## 2026-10-04 — Graphical rich-text User Commentary
+
+**Verbatim user requirements:**
+
+```text
+Sorry, but still horrible your fucking User Commentary:
+-It cannot be resized, directly in the borders of the figure.
+-The user does not now the ratio of the text and the size of the bubble, so the most stupid thing: let the user write the width and height by value of pixels!! (You really are an idiot!!).
+
+REFACTOR COMPLETELLY THE DESIGN OF THAT STUPID MEDIOCRE "User Commentary" MAKE IT 100% AGAIN FROM SCRATCH YOU MAKE AN STUPID ENGINEER NOT LIKE A GRAPHICAL DESIGNER, GO AGAIN!
+
+The text controls, FONT, COLOR, ITALIC, ETC... must be like Microsoft Word like Floating tool tip controls!!, not in the fucking configuration engineer dialog STUPID DUMB!!!
+
+This User Commentary MUST NOT HAV A Configuration dialog it must be 100% modified graphically as a Microsoft Word Commentary or an Adobe professional commantary.
+
+dont make me get mad, make a beyond perfection implementation
+
+REMEMBER AN ELITE-LEVEL DESIGNER WOULD MAKE A CONTROL IN WHICH THE TEXT INSIDE THE SAME ASSEST CAN HAVE MULTIPLE TYPES OF STYLES!, SO WITHIN THE SAME USER COMMENTARY SOME PARTS OF THE TEXT COULD BE ITALICS OF ARIA FONT, OTHER WITH BIGGER SIZZER WITH VERDANA, ETC...
+
+YOU STUPID MADE ME MAD, NOW FOR THAT REASON YOU MUST CREATE A BEYOND EXTRATERRESTRIAL LEVEL GOD-LEVEL DESIGNER JOB!!!!!!!!!!!!!!!
+
+AND REMEMBER TO MAKE TESTS OF LOADING/WRITING .fmpt FILES THAT ALWAYS RENDER IDENTICALLY WHILE SAVING/LOADING, ETC.
+
+OF COURSE WITH SEVERAL COMMENTARIES EXAMPLES
+
+remember: don't commit!!!!!!!!!!
+```
+
+Replaced commentary configuration with direct inline rich editing, a floating selection/caret toolbar and all-border resizing. Mixed styles persist in version 2 allowlisted runs and matching plain text. Repeated saves, loads and draft recovery compare several rendered notes. User Input behavior and legacy migration remain intact. [Exact changes, visible checks and rollback patch](docs/changes/2026-10-04-commentary-graphical-redesign.md). No commit or push.
+
+
+---
+
+## 2026-10-04 — Run output resizes vertically from 5% to 95%
+
+**Verbatim request:** “Now, make the Run output area to be vertically resizable from 5% to 95% of total height, without resizing the internal content of it and the canvas content (the scrollbars must do their job), just like the vertical bar between the Operations bar and the canvas works, make visual tests for me to see how the resize mecchanisms work, go!” Follow-up: “Remember: don't comit anything.”
+
+Replaced the fixed output height with a horizontal divider and two independent scrolling viewports. Canvas zoom, diagram geometry and text sizes remain unchanged. Includes 5–95% clamping, keyboard controls, collapse/reopen and per-user layout storage separate from flow data. Preserves all earlier commentary edits. See [implementation, visible evidence and precise rollback](docs/changes/2026-10-04-run-output-resize.md) and its scoped patch. No commit or release build.
+
+## 2026-10-04 — Complete documentation, PDF and PowerPoint refresh
+
+**Verbatim request:** “Now update completely all the related documentation considering all of the implementations/changes/modifications, including .pptx and .pdf files, go!.” The standing instruction remains: do not commit.
+
+Synchronized the active Prompt Flow guides, maintenance contracts, memories and mirrored skills; extended the shared dossier content for graphical mixed-style commentary, version 2 file fidelity and the 5–95% Run output divider. Existing dated implementation evidence remains historical. Rebuilt the two project dossiers and retained source-derived inventory, line counts and the full tracked tree. [Scope, artifact verification and rollback](docs/changes/2026-10-04-prompt-flow-documentation.md). Before-copies and a scoped patch are under `Temp/documentation-refresh-2026-10-04/`; never reset whole files over the earlier implementation or unrelated configuration edits.

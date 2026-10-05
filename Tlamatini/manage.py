@@ -20,6 +20,23 @@ import time
 # (collections/threading/time above are pure stdlib — they never touch MKL.)
 os.environ['FOR_DISABLE_CONSOLE_CTRL_HANDLER'] = '1'
 
+# File dispatch must happen before any database/startup work. Resolve the path
+# before frozen mode changes cwd, and reuse a ready instance instead of starting
+# a second server. Importing this module for tests has no dispatch side effects.
+_FLOW_FILE_OPEN = None
+if __name__ == '__main__' and len(sys.argv) == 2 and sys.argv[1].lower().endswith(('.flw', '.fpmt')):
+    from agent import flow_file_open as _flow_files
+    try:
+        _file_url, _file_port, _already_opened = _flow_files.prepare_launch(sys.argv[1])
+    except Exception as _file_error:
+        _flow_files.launch_error(_file_error)
+        raise SystemExit(1)
+    if _already_opened:
+        raise SystemExit(0)
+    _FLOW_FILE_OPEN = (_file_url, _file_port)
+    sys.argv = [sys.argv[0], 'runserver', '--noreload', f'127.0.0.1:{_file_port}']
+
+
 
 def _set_app_user_model_id():
     """Set the explicit AppUserModelID for taskbar identity.
@@ -1149,54 +1166,18 @@ def main():
     if not (len(sys.argv) >= 2 and sys.argv[1] == 'test'):
         _apply_console_quick_edit_policy()
 
-    # --- .FLW File Association Support ---
-    # When running as a frozen executable (PyInstaller) and the sole argument
-    # is a .flw file path (e.g. from double-clicking in Explorer), we:
-    #   1. Store the file path in an environment variable for Django views
-    #   2. Rewrite sys.argv so Django starts the web server
-    # If running frozen WITHOUT a .flw argument, clear any stale env var
-    # left over from a previous run so no file auto-opens.
     if getattr(sys, 'frozen', False):
-        # Pin the working directory to the install folder. Previously this
-        # was done by Tlamatini.ps1 via Set-Location; now that the desktop
-        # shortcut launches Tlamatini.exe directly (so the console window
-        # picks up the embedded icon instead of inheriting cmd/WT's), we
-        # have to pin it here ourselves.
         try:
             os.chdir(os.path.dirname(sys.executable))
         except OSError:
             pass
-
-        if len(sys.argv) == 2:
-            candidate = sys.argv[1]
-            if candidate.lower().endswith('.flw') and not candidate.startswith('-'):
-                # Normalize and store the .flw file path
-                flw_path = os.path.abspath(candidate)
-                os.environ['SYSTEMAGENT_FLW_FILE'] = flw_path
-                print(f"--- [FLW] Flow file detected: {flw_path}")
-                print("--- [FLW] Rewriting argv to start server...")
-                # Replace argv so Django starts the server instead of
-                # interpreting the .flw path as a management command
-                sys.argv = [sys.argv[0], 'runserver', '--noreload', f'0.0.0.0:{_resolve_django_port()}']
-            else:
-                # Argument is not a .flw file — clear any stale env var
-                os.environ.pop('SYSTEMAGENT_FLW_FILE', None)
-        elif len(sys.argv) == 1:
-            # Bare double-click on the shortcut: no args at all. Behave
-            # identically to the old Tlamatini.ps1 wrapper by injecting
-            # `runserver --noreload` so the user gets a working server.
-            os.environ.pop('SYSTEMAGENT_FLW_FILE', None)
+        if len(sys.argv) == 1:
             sys.argv = [sys.argv[0], 'runserver', '--noreload', f'0.0.0.0:{_resolve_django_port()}']
-        else:
-            # No .flw argument provided — clear any stale env var
-            os.environ.pop('SYSTEMAGENT_FLW_FILE', None)
-
-        # Auto-open the browser ~10s after the server starts, mirroring the
-        # behavior the legacy Tlamatini.ps1 wrapper provided. Only fires
-        # when the resolved command is `runserver`; covers both the bare
-        # double-click and the .flw-association paths above.
-        if len(sys.argv) >= 2 and sys.argv[1] == 'runserver':
-            _schedule_browser_open(f'http://localhost:{_resolve_django_port()}/', delay_seconds=10.0)
+    if _FLOW_FILE_OPEN:
+        from agent.flow_file_open import schedule_open
+        schedule_open(*_FLOW_FILE_OPEN)
+    elif getattr(sys, 'frozen', False) and len(sys.argv) >= 2 and sys.argv[1] == 'runserver':
+        _schedule_browser_open(f'http://localhost:{_resolve_django_port()}/', delay_seconds=10.0)
 
     # Configurable web port: honor config.json's ``django_port`` on EVERY launch
     # path — the frozen rewrites above, the source ``runserver``, and

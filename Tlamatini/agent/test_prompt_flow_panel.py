@@ -7,6 +7,7 @@ python Tlamatini/agent/test_prompt_flow_panel.py. No model calls or database wri
 import asyncio
 import copy
 import importlib.util
+import json
 from pathlib import Path
 import unittest
 
@@ -124,11 +125,52 @@ class ValidationTests(unittest.TestCase):
 
     def test_static_comment_roundtrip_preserves_long_literal_text_and_formatting(self):
         note = node("note", "user_commentary", text=("Paragraph ñ <script> {{last_output}}\n" * 500),
-                    width=650, height=450, color="#dbeafe", font_family="Georgia", font_size=22,
+                    width=650, height=450, color="#dbeafe", text_color="#1d4ed8", font_family="Georgia", font_size=22,
                     bold=True, italic=True, align="right")
         result = flow_module.validate_flow(diagram([node("p"), note]), playable=True)
-        self.assertEqual(result["nodes"][1]["config"], {k: note["config"][k] for k in result["nodes"][1]["config"]})
+        self.assertEqual({k: result["nodes"][1]["config"][k] for k in ("text", "width", "height", "color", "text_color", "font_family", "font_size", "bold", "italic", "align")}, {k: note["config"][k] for k in ("text", "width", "height", "color", "text_color", "font_family", "font_size", "bold", "italic", "align")})
         self.assertEqual(flow_module.validate_flow(result), result)
+
+    def test_existing_version_two_note_gets_readable_default_text_color(self):
+        note = node("note", "user_commentary", text="Saved before text colors existed", color="#dbeafe")
+        result = flow_module.validate_flow(diagram([note]))
+        self.assertEqual(result["nodes"][0]["config"]["text_color"], "#202938")
+        self.assertEqual(result["nodes"][0]["config"]["text"], note["config"]["text"])
+        self.assertEqual(result["nodes"][0]["config"]["color"], "#dbeafe")
+
+    def test_several_mixed_style_comments_survive_repeated_json_roundtrips(self):
+        notes = []
+        for index, color in enumerate(sorted(flow_module.COMMENT_COLORS)):
+            runs = [{"text": "Review ñ 👩🏽‍💻\n", "font_family": "Arial", "italic": True},
+                    {"text": "A larger heading\n", "font_family": "Verdana", "font_size": 28, "bold": True},
+                    {"text": "Literal <script> & {{last_output}}\n" * 50, "font_family": "Georgia", "text_color": "#1d4ed8", "underline": True}]
+            notes.append(node(f"note{index}", "user_commentary", color=color, width=300 + index * 30,
+                              text="".join(run["text"] for run in runs), runs=runs))
+        original = diagram(notes)
+        normalized = flow_module.validate_flow(original)
+        for _ in range(3):
+            normalized = flow_module.validate_flow(json.loads(json.dumps(normalized, ensure_ascii=False)))
+            self.assertEqual(normalized, flow_module.validate_flow(original))
+        self.assertEqual(len(normalized["nodes"]), 8)
+        self.assertEqual(normalized["nodes"][0]["config"]["runs"][1]["font_size"], 28)
+        self.assertTrue(normalized["nodes"][0]["config"]["runs"][2]["underline"])
+
+    def test_rich_runs_reject_mismatches_and_unsafe_styles(self):
+        for runs in (None, {}, [None], [{"text": "wrong"}], [{"text": "x", "font_size": 100}],
+                     [{"text": "x", "font_family": []}], [{"text": "x", "text_color": "url(evil)"}],
+                     [{"text": "x", "italic": 1}], [{"text": "x", "underline": "yes"}],
+                     [{"text": ""}] * 10001):
+            with self.subTest(runs=str(runs)[:80]), self.assertRaises(FlowError):
+                flow_module.validate_flow(diagram([node("note", "user_commentary", text="x", runs=runs)]))
+
+    def test_rich_runs_are_allowlisted_and_adjacent_equal_styles_merge(self):
+        note = node("note", "user_commentary", text="abcd", runs=[
+            {"text": "ab", "font_family": "Arial", "html": "<script>evil</script>"},
+            {"text": "cd", "font_family": "Arial"}])
+        runs = flow_module.validate_flow(diagram([note]))["nodes"][0]["config"]["runs"]
+        self.assertEqual(len(runs), 1)
+        self.assertEqual(runs[0]["text"], "abcd")
+        self.assertNotIn("html", runs[0])
 
     def test_static_comments_save_alone_but_cannot_be_start_or_connected(self):
         note = node("note", "user_commentary")
@@ -144,7 +186,7 @@ class ValidationTests(unittest.TestCase):
             flow_module.validate_flow(payload)
 
     def test_comment_style_rejects_unsafe_or_out_of_range_values(self):
-        for key, value in [("color", "url(javascript:evil)"), ("font_family", "evil; color:red"),
+        for key, value in [("color", "url(javascript:evil)"), ("text_color", "url(javascript:evil)"), ("font_family", "evil; color:red"),
                            ("width", 199), ("height", 2401), ("font_size", 0), ("bold", 1), ("align", "evil")]:
             with self.subTest(key=key), self.assertRaises(FlowError):
                 flow_module.validate_flow(diagram([node("note", "user_commentary", **{key: value})]))

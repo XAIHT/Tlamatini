@@ -37,7 +37,7 @@ class PromptFlowPanelRuntime:
         )
 
     async def _build(self, context=None):
-        from .rag import BasicPromptOnlyChain, setup_llm, setup_llm_with_context
+        from .rag import setup_llm, setup_llm_with_context
         from .path_guard import get_app_temp_root
         if self.catalog is None:
             self.catalog = await self._catalog()
@@ -53,7 +53,10 @@ class PromptFlowPanelRuntime:
             filename = f"context-{uuid4().hex}.txt"
             await asyncio.to_thread((self.directory / filename).write_text, context, encoding="utf-8")
             chain = await asyncio.to_thread(setup_llm_with_context, str(self.directory), *self.catalog, filename=filename)
-            if chain is None or isinstance(chain, BasicPromptOnlyChain):
+            # Both tool-enabled and basic chat chains may fall back to literal
+            # document context after embedding failure. Feed embeddings must
+            # prove a vector store exists before accepting the new context.
+            if chain is None or getattr(chain, "vector_store", None) is None:
                 self._close_chain(chain)
                 raise FlowError("Embedding setup failed. The flow stopped without claiming that context was loaded.")
         else:

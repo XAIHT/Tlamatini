@@ -313,7 +313,7 @@ def _load_config() -> dict:
     path = _find_config_path()
     if path:
         try:
-            with open(path, "r", encoding="utf-8") as fh:
+            with open(path, "r", encoding="utf-8-sig") as fh:
                 return json.load(fh)
         except Exception as exc:
             logging.error("path_guard: failed to load config.json: %s", exc)

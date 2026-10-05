@@ -2371,8 +2371,12 @@ def _seed_global_agent_defaults(template_dir, runtime_config):
             runtime_config["whatsapp"] = wa_block
 
     # Apply model defaults before per-call assignments, including nested fields.
-    model_config = {field['key']: get_config_value(field['key'], None) for field in MODEL_FIELDS}
-    runtime_config = resolve_agent_models(template_dir, runtime_config, model_config, force=True)
+    # Agents without registered model fields must not read unrelated settings.
+    # Besides unnecessary I/O, those reads made a local-only agent depend on
+    # model configuration availability (and broke Kalier's best-effort seeding).
+    if any(field['agent'] == template_dir for field in MODEL_FIELDS):
+        model_config = {field['key']: get_config_value(field['key'], None) for field in MODEL_FIELDS}
+        runtime_config = resolve_agent_models(template_dir, runtime_config, model_config, force=True)
     return runtime_config
 
 

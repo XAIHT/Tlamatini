@@ -26,6 +26,8 @@ class PromptFlowPanelCarriageTests(unittest.TestCase):
     def test_frozen_archive_rejects_each_missing_execution_module(self):
         complete = set(build._FROZEN_REQUIRED_AGENT_MODULES)
         for module in (
+            "agent.flow_file_open",
+            "agent.flow_file_views",
             "agent.prompt_flow_panel_consumer",
             "agent.prompt_flow_panel_runtime",
             "agent.services.prompt_flow_panel",
@@ -56,6 +58,12 @@ class PromptFlowPanelCarriageTests(unittest.TestCase):
             "_internal/staticfiles/agent/js/flow-canvas-interactions.js",
             "_internal/staticfiles/agent/js/prompt-flow-panel-model.js",
             "_internal/staticfiles/agent/js/prompt-flow-panel.js",
+            "flow_file_associations.ps1",
+            "register_fpmt.ps1",
+            "unregister_fpmt.ps1",
+            "register_flw.ps1",
+            "unregister_flw.ps1",
+            "docs/windows-flow-files.md",
             "docs/prompting-flow-designer.md",
             "docs/examples/prompting-kickoff.fpmt",
         ):

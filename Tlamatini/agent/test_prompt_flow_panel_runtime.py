@@ -23,13 +23,23 @@ from agent import path_guard as real_path_guard  # noqa: E402
 class Chain:
     def __init__(self):
         self.client = Mock()
+        self.vector_store = object()
 
     def getHttpxClientInstance(self):
         return self.client
 
 
 class PromptOnlyFallback(Chain):
-    pass
+    def __init__(self):
+        super().__init__()
+        self.vector_store = None
+
+
+class ToolEnabledFallback(Chain):
+    def __init__(self):
+        super().__init__()
+        self.vector_store = None
+        self.loaded_context = 'Literal document text without embeddings'
 
 
 class RuntimeTests(unittest.IsolatedAsyncioTestCase):
@@ -114,6 +124,19 @@ class RuntimeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.runtime.history, [])
         self.assertIs(self.runtime.chain, chain)
         self.assertEqual(self.runtime.context, ['Retain these embeddings'])
+
+    async def test_tool_enabled_prompt_fallback_cannot_claim_embedding_success(self):
+        await self.runtime.feed('Previously embedded context')
+        previous = self.runtime.chain
+        fallback = ToolEnabledFallback()
+        self.rag.setup_llm_with_context.side_effect = None
+        self.rag.setup_llm_with_context.return_value = fallback
+        with self.assertRaisesRegex(FlowError, 'Embedding setup failed'):
+            await self.runtime.feed('Rejected addition')
+        self.assertIs(self.runtime.chain, previous)
+        self.assertEqual(self.runtime.context, ['Previously embedded context'])
+        fallback.client.close.assert_called_once()
+        previous.client.close.assert_not_called()
 
     async def test_stop_latches_only_its_run_and_prevents_next_prompt(self):
         other_epoch = begin_llm_run('unrelated-chat')

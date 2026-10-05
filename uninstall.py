@@ -27,9 +27,19 @@ import stat
 import subprocess
 import sys
 import threading
+import tempfile
 import tkinter as tk
 from ctypes import wintypes
 from tkinter import filedialog, messagebox, ttk
+from uninstall_processes import owned_processes, main_application, stop_owned_workers
+
+# Keep a retryable uninstaller and its registration helpers until all other
+# application files and the owned Installed Apps entry have been removed.
+UNINSTALL_SUPPORT_FILES = frozenset({
+    "uninstaller.exe", "createshortcut.json", "tlamatini.ps1",
+    "removeshortcut.ps1", "unregister_flw.ps1", "unregister_fpmt.ps1",
+    "flow_file_associations.ps1",
+})
 
 
 # ─── Version resolution ───────────────────────────────────────────────────────
@@ -375,7 +385,7 @@ class FancyUninstaller:
     # ── weighted uninstallation steps ────────────────────────────────
     STEPS = [
         ("Removing shortcuts…",                  0.10),
-        ("Unregistering .flw file association…", 0.15),
+        ("Unregistering .flw and .fpmt file associations…", 0.15),
         ("Removing application files…",          0.65),
         ("Cleaning up…",                         0.05),
         ("Refreshing Windows Desktop…",          0.05),
@@ -412,6 +422,9 @@ class FancyUninstaller:
     def _detect_install_path() -> str:
         """Try to auto-detect the Tlamatini installation directory."""
 
+        if len(sys.argv) == 3 and sys.argv[1] == "--install-dir":
+            return os.path.abspath(sys.argv[2])
+
         # 1. Check for CreateShortcut.json next to this executable
         if getattr(sys, 'frozen', False):
             base = os.path.dirname(sys.executable)
@@ -429,24 +442,28 @@ class FancyUninstaller:
             except Exception:
                 pass
 
-        # 2. Try reading from registry (.flw shell command contains the path)
+        # Both current conhost commands and legacy PowerShell commands are valid.
         try:
             import winreg
-            key = winreg.OpenKey(
-                winreg.HKEY_CURRENT_USER,
-                r"Software\Classes\Tlamatini.FlowFile\shell\open\command",
-            )
-            cmd, _ = winreg.QueryValueEx(key, "")
-            winreg.CloseKey(key)
-            # cmd looks like:
-            #   cmd.exe /k powershell.exe ... -File "D:\Tlamatini\Tlamatini.ps1" ...
-            match = re.search(r'-File\s+"([^"]+)"', cmd)
-            if match:
-                ps1_path = match.group(1)
-                candidate = os.path.dirname(ps1_path)
-                if os.path.isdir(candidate):
-                    return candidate
-        except Exception:
+            for prog_id in ('Tlamatini.FlowFile', 'Tlamatini.PromptFlowFile'):
+                try:
+                    with winreg.OpenKey(winreg.HKEY_CURRENT_USER, rf'Software\Classes\{prog_id}') as key:
+                        try:
+                            candidate = winreg.QueryValueEx(key, 'TlamatiniInstallDir')[0]
+                            if os.path.isfile(os.path.join(candidate, 'Uninstaller.exe')):
+                                return candidate
+                        except OSError:
+                            pass
+                    with winreg.OpenKey(winreg.HKEY_CURRENT_USER, rf'Software\Classes\{prog_id}\shell\open\command') as key:
+                        command = winreg.QueryValueEx(key, '')[0]
+                    for quoted_path in re.findall(r'"([^"]+)"', command):
+                        if os.path.basename(quoted_path).lower() in ('tlamatini.exe', 'tlamatini.ps1'):
+                            candidate = os.path.dirname(quoted_path)
+                            if os.path.isdir(candidate):
+                                return candidate
+                except OSError:
+                    continue
+        except ImportError:
             pass
 
         return ""
@@ -694,20 +711,36 @@ class FancyUninstaller:
             )
             return None
 
-        # Check if it looks like a Tlamatini installation
-        markers = ["Tlamatini.exe", "Tlamatini.ps1", "CreateShortcut.json"]
-        found = any(os.path.exists(os.path.join(raw, m)) for m in markers)
-        if not found:
-            ans = messagebox.askyesno(
-                "Not a Tlamatini installation?",
-                f"The selected directory does not appear to contain a "
-                f"Tlamatini installation:\n{raw}\n\n"
-                "None of the expected files (Tlamatini.exe, Tlamatini.ps1) "
-                "were found.\n\n"
-                "Do you want to continue anyway?",
+        raw = os.path.abspath(raw)
+        # A typo must never turn uninstall into removal of a drive, a shared
+        # system directory, the development checkout, or a redirected folder.
+        protected = {os.path.normcase(os.path.abspath(path)) for path in (
+            os.path.expanduser("~"), os.environ.get("WINDIR", ""),
+            os.environ.get("ProgramFiles", ""), os.environ.get("ProgramFiles(x86)", ""),
+        ) if path}
+        redirected = os.path.normcase(os.path.realpath(raw)) != os.path.normcase(raw)
+        source_checkout = (os.path.exists(os.path.join(raw, ".git"))
+                           or os.path.isfile(os.path.join(raw, "Tlamatini", "manage.py")))
+        if (os.path.dirname(raw) == raw or os.path.normcase(raw) in protected
+                or redirected or source_checkout):
+            messagebox.showerror(
+                "Invalid installation directory",
+                "Select the installed Tlamatini folder. A drive root, shared system "
+                "folder, source checkout or redirected directory cannot be uninstalled.",
             )
-            if not ans:
-                return None
+            return None
+
+        # Check if it looks like a Tlamatini installation. Arbitrary directories
+        # are never accepted, even if the user clicks through a warning.
+        markers = ["Tlamatini.exe", "Tlamatini.ps1", "CreateShortcut.json"]
+        found = any(os.path.isfile(os.path.join(raw, m)) for m in markers)
+        if not found:
+            messagebox.showerror(
+                "Not a Tlamatini installation",
+                f"The selected directory does not appear to contain a "
+                f"Tlamatini installation:\n{raw}\n\nSelect the installed application folder.",
+            )
+            return None
 
         return raw
 
@@ -724,6 +757,8 @@ class FancyUninstaller:
             "applications/, content_generated/, context_files/ and Temp/ "
             "whenever they hold content.\n"
             "All other files will be permanently deleted.\n\n"
+            "Remaining workers launched from this installation, including "
+            "agents and their child processes, will be stopped.\n\n"
             "Do you want to continue?",
         ))
 
@@ -744,13 +779,21 @@ class FancyUninstaller:
         Exit (or closed the dialog, which counts as Exit) and the whole
         uninstaller has already been shut down.
         """
-        running = find_running_tlamatini(target)
+        running = self._blocking_processes(target)
         if not running:
             return True
         if self._show_running_gate(target, running):
             return True
         self._shutdown()
         return False
+
+    @staticmethod
+    def _blocking_processes(target):
+        workers = {row["pid"] for row in owned_processes(target)
+                   if not main_application(row, target)}
+        # The main app must close normally. Proven leftover workers are stopped
+        # only AFTER the user confirms removal, never merely by opening the GUI.
+        return [row for row in find_running_tlamatini(target) if row["pid"] not in workers]
 
     def _show_running_gate(self, target: str, running: list[dict]) -> bool:
         """The modal dialog.  True = clear to proceed, False = Exit.
@@ -841,7 +884,7 @@ class FancyUninstaller:
 
         def _retry():
             self._gate_attempts += 1
-            still = find_running_tlamatini(target)
+            still = self._blocking_processes(target)
             if not still:
                 outcome["proceed"] = True
                 dlg.destroy()
@@ -949,6 +992,9 @@ class FancyUninstaller:
         try:
             cumulative = 0.0
 
+            self._set_progress(0.0, "Stopping remaining agent workers…")
+            self.cleanup_report = stop_owned_workers(target)
+
             # ── Step 0: remove shortcuts ─────────────────────────────
             step_idx = 0
             self._activate_step(step_idx)
@@ -961,8 +1007,9 @@ class FancyUninstaller:
             # ── Step 1: unregister .flw file association ─────────────
             step_idx = 1
             self._activate_step(step_idx)
-            self._set_progress(cumulative, "Unregistering .flw file association…")
+            self._set_progress(cumulative, "Unregistering .flw and .fpmt file associations…")
             self._run_ps1("unregister_flw.ps1", target)
+            self._run_ps1("unregister_fpmt.ps1", target)
             cumulative += self.STEPS[step_idx][1]
             self._set_progress(cumulative)
             self._mark_step(step_idx)
@@ -971,7 +1018,7 @@ class FancyUninstaller:
             step_idx = 2
             self._activate_step(step_idx)
             weight = self.STEPS[step_idx][1]
-            self._remove_files(target, cumulative, weight)
+            self._remove_files(target, cumulative, weight, keep_support=True)
             cumulative += weight
             self._set_progress(cumulative)
             self._mark_step(step_idx)
@@ -980,13 +1027,14 @@ class FancyUninstaller:
             step_idx = 3
             self._activate_step(step_idx)
             self._set_progress(cumulative, "Cleaning up…")
-            self._unregister_programs_entry()
+            self._unregister_programs_entry(target)
+            self._remove_uninstall_support(target)
             self._cleanup_install_dir(target)
             cumulative += self.STEPS[step_idx][1]
             self._set_progress(cumulative)
             self._mark_step(step_idx)
 
-            # ── Step 4: restart explorer ─────────────────────────────
+            # ── Step 4: notify the shell without closing Explorer ────
             step_idx = 4
             self._activate_step(step_idx)
             self._set_progress(cumulative, "Refreshing Windows Desktop…")
@@ -1030,9 +1078,9 @@ class FancyUninstaller:
             os.chmod(path, stat.S_IWUSR | stat.S_IREAD)
             func(path)
         except Exception:
-            pass
+            raise
 
-    def _remove_files(self, target: str, cumulative: float, weight: float):
+    def _remove_files(self, target: str, cumulative: float, weight: float, *, keep_support=False):
         """Remove everything in *target* except what has to survive.
 
         ALWAYS kept: ``agents/``.  Kept WHENEVER IT HOLDS CONTENT: every name in
@@ -1046,9 +1094,15 @@ class FancyUninstaller:
         items = os.listdir(target)
         total = len(items)
         processed = 0
+        failures = []
+        self.preserved_dirs = []
 
         for item in items:
             item_path = os.path.join(target, item)
+
+            if keep_support and item.lower() in UNINSTALL_SUPPORT_FILES:
+                processed += 1
+                continue
 
             # ── PRESERVE the agents directory (always) ───────────────
             if item.lower() == "agents":
@@ -1083,7 +1137,11 @@ class FancyUninstaller:
                 continue
 
             try:
-                if os.path.isdir(item_path):
+                if os.path.islink(item_path):
+                    os.unlink(item_path)
+                elif getattr(os.path, "isjunction", lambda _: False)(item_path):
+                    os.rmdir(item_path)
+                elif os.path.isdir(item_path):
                     shutil.rmtree(item_path, onerror=self._on_rmtree_error)
                 else:
                     try:
@@ -1091,8 +1149,8 @@ class FancyUninstaller:
                     except Exception:
                         pass
                     os.remove(item_path)
-            except Exception:
-                pass  # best-effort removal
+            except OSError as exc:
+                failures.append(f"{item}: {exc}")
 
             processed += 1
             frac = processed / total if total else 1.0
@@ -1100,6 +1158,33 @@ class FancyUninstaller:
                 cumulative + weight * frac,
                 f"Removing files… ({processed}/{total})",
             )
+
+        if failures:
+            raise RuntimeError(
+                "Some application files could not be removed. Close programs "
+                "using this installation and retry.\n\n" + "\n".join(failures[:12])
+            )
+
+    @staticmethod
+    def _remove_uninstall_support(target: str):
+        """Remove retry support only after application and registry removal.
+
+        Leave the installation marker until last. If a helper remains locked,
+        the installed worker and marker continue to support an honest retry.
+        """
+        names = [name for name in os.listdir(target)
+                 if name.lower() in UNINSTALL_SUPPORT_FILES]
+        last = {"uninstaller.exe": 1, "tlamatini.ps1": 2, "createshortcut.json": 3}
+        names.sort(key=lambda name: (last.get(name.lower(), 0), name))
+        for name in names:
+            path = os.path.join(target, name)
+            if not os.path.isfile(path):
+                continue
+            try:
+                os.chmod(path, stat.S_IWUSR | stat.S_IREAD)
+                os.remove(path)
+            except OSError as exc:
+                raise RuntimeError(f"Could not remove {name}. Close programs using this installation and retry: {exc}") from exc
 
     def _write_preserved_agents_marker(self, agents_dir: str, original_install: str):
         """Leave ``.tlamatini-preserved-agents.json`` in the preserved agents/
@@ -1194,22 +1279,27 @@ class FancyUninstaller:
         return count
 
     @staticmethod
-    def _unregister_programs_entry():
+    def _unregister_programs_entry(target: str):
         """Remove the per-user "Installed apps" (Add/Remove Programs) entry that
-        install.py wrote under HKCU. Best-effort: never raises into the
-        uninstall pipeline, and a missing key counts as success."""
+        install.py wrote under HKCU. A missing key counts as success; denied
+        removal must be reported as incomplete, rather than silently succeeding."""
         if sys.platform != "win32":
             return
         try:
             import winreg
             key_path = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\Tlamatini"
             try:
+                with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path) as key:
+                    owner = winreg.QueryValueEx(key, "InstallLocation")[0]
+                if os.path.normcase(os.path.abspath(owner)) != os.path.normcase(os.path.abspath(target)):
+                    print("Keeping Installed-apps entry owned by another installation.")
+                    return
                 winreg.DeleteKey(winreg.HKEY_CURRENT_USER, key_path)
                 print("Removed Installed-apps entry (HKCU).")
             except FileNotFoundError:
                 pass  # already absent
         except Exception as e:
-            print(f"WARNING: Could not remove Installed-apps entry: {e}")
+            raise RuntimeError(f"Could not remove the Installed-apps entry: {e}") from e
 
     @staticmethod
     def _cleanup_install_dir(target: str):
@@ -1225,42 +1315,17 @@ class FancyUninstaller:
                 pass
         # If only agents/ (or other items) remain, leave the directory
 
-    # ─── Explorer restart robust helper ──────────────────────────────
+    # ─── Refresh shell associations without closing user windows ─────
     @staticmethod
     def _restart_explorer():
-        import time
-        # Stop Explorer
-        subprocess.run(["taskkill", "/f", "/im", "explorer.exe"], capture_output=True)
-        time.sleep(0.5)
-
-        # Clear icon cache (best-effort)
+        """Notify the shell; never terminate Explorer or erase its global cache."""
+        if sys.platform != "win32":
+            return
         try:
-            local_appdata = os.environ.get("LOCALAPPDATA", "")
-            if local_appdata:
-                icon_db = os.path.join(local_appdata, "IconCache.db")
-                if os.path.exists(icon_db):
-                    os.remove(icon_db)
-                explorer_cache = os.path.join(local_appdata, "Microsoft", "Windows", "Explorer")
-                if os.path.exists(explorer_cache):
-                    for f in os.listdir(explorer_cache):
-                        if f.startswith("iconcache"):
-                            try:
-                                os.remove(os.path.join(explorer_cache, f))
-                            except Exception:
-                                pass
-        except Exception:
-            pass
+            ctypes.windll.shell32.SHChangeNotify(0x08000000, 0, None, None)
+        except OSError as exc:
+            print(f"WARNING: Shell refresh failed: {exc}")
 
-        # Start Explorer and ensure it is running
-        retries = 5
-        while retries > 0:
-            subprocess.Popen(["explorer.exe"])
-            time.sleep(1.5)
-            # Verify if it started
-            res = subprocess.run(["tasklist", "/FI", "IMAGENAME eq explorer.exe"], capture_output=True, text=True)
-            if "explorer.exe" in res.stdout:
-                break
-            retries -= 1
 
     # ─── Completion dialogs ──────────────────────────────────────────
     def _preserved_content_note(self) -> str:
@@ -1299,7 +1364,7 @@ class FancyUninstaller:
             f"Location: {target}"
             f"{agents_note}"
             f"{self._preserved_content_note()}\n\n"
-            "The .flw file association has been removed\n"
+            "The .flw and .fpmt file associations have been removed\n"
             "and shortcuts have been deleted.",
         )
         self.root.destroy()
@@ -1316,8 +1381,38 @@ class FancyUninstaller:
         )
 
 
+def relocate_installed_uninstaller() -> bool:
+    """Run the frozen GUI from Temp so its installed EXE can be removed.
+
+    The original bootloader exits before the user confirms removal. A fresh
+    PyInstaller environment prevents the child borrowing its parent's extraction
+    directory, which is deleted when that parent exits. No removal is automatic:
+    the ordinary running-process gate and confirmation still apply.
+    """
+    if not getattr(sys, "frozen", False) or sys.platform != "win32":
+        return False
+    source = os.path.abspath(sys.executable)
+    install_dir = os.path.dirname(source)
+    if not os.path.isfile(os.path.join(install_dir, "Tlamatini.exe")):
+        return False
+    staging = tempfile.mkdtemp(prefix="Tlamatini-Uninstaller-")
+    worker = os.path.join(staging, "Uninstaller.exe")
+    try:
+        shutil.copy2(source, worker)
+        subprocess.Popen(
+            [worker, "--install-dir", install_dir], cwd=staging,
+            env={**os.environ, "PYINSTALLER_RESET_ENVIRONMENT": "1"},
+        )
+    except Exception:
+        shutil.rmtree(staging)
+        raise
+    return True
+
+
 # ─── Entry point ─────────────────────────────────────────────────────────────
 if __name__ == "__main__":
+    if relocate_installed_uninstaller():
+        sys.exit(0)
     root = tk.Tk()
     root.withdraw()
 

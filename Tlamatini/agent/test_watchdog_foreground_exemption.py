@@ -21,9 +21,9 @@ The contract under test:
   * A NON-shell process (e.g. a python agent waiting on stdin with no window) is
     not a watchdog target at all — the watchdog only judges cmd/powershell/pwsh.
 
-Coverage is two-layered: deterministic fakes for the decision logic, plus REAL
-spawned processes (a real CREATE_NEW_CONSOLE window vs a real headless shell) so
-the detector is exercised against actual Windows windows, not just mocks.
+Coverage is two-layered: deterministic fakes for the decision logic, including
+the windowless negative case, plus real explicit conhost windows. No test
+launches a hidden shell to prove that hidden shells are unprotected.
 """
 import os
 import subprocess
@@ -253,6 +253,25 @@ class WatchdogRealForegroundWindowTests(unittest.TestCase):
     """Spawn REAL processes so the EnumWindows-based detector is exercised against
     actual windows, not mocks."""
 
+    def _spawn_visible_shell(self):
+        """Avoid Windows Terminal delegation; inspect the shell inside conhost."""
+        import psutil
+        host = subprocess.Popen(
+            ["conhost.exe", "cmd.exe", "/k", "echo TLAMATINI_TEST_WINDOW & pause"],
+        )
+        deadline = time.monotonic() + 20
+        try:
+            while time.monotonic() < deadline:
+                for child in psutil.Process(host.pid).children(recursive=True):
+                    if child.name().lower() == "cmd.exe":
+                        self._await_visible(child)
+                        return host, child
+                time.sleep(0.1)
+            self.fail("The explicit visible console did not start its cmd.exe fixture")
+        except BaseException:
+            self._term(host)
+            raise
+
     def _await_visible(self, proc, timeout=20.0):
         """Block until the spawned console is ACTUALLY recognised as foreground.
 
@@ -310,10 +329,7 @@ class WatchdogRealForegroundWindowTests(unittest.TestCase):
 
     def test_real_forked_console_window_is_detected_as_foreground(self):
         import psutil
-        proc = subprocess.Popen(
-            ["cmd.exe", "/k", "echo TLAMATINI_TEST_WINDOW & pause"],
-            creationflags=subprocess.CREATE_NEW_CONSOLE,
-        )
+        host, proc = self._spawn_visible_shell()
         try:
             visible = self._await_visible(proc)  # wait for it, never assume it
             self.assertTrue(visible, "EnumWindows should see at least one visible window")
@@ -323,32 +339,18 @@ class WatchdogRealForegroundWindowTests(unittest.TestCase):
                 "a real CREATE_NEW_CONSOLE window must be recognised as a foreground console",
             )
         finally:
-            self._term(proc)
+            self._term(host)
 
-    def test_real_headless_shell_is_not_foreground(self):
-        import psutil
-        proc = subprocess.Popen(
-            ["cmd.exe", "/c", "pause"],
-            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-            stdin=subprocess.PIPE,
+    def test_windowless_shell_is_not_foreground_without_hidden_execution(self):
+        self.assertFalse(
+            orphan_reaper.is_protected_foreground_console(
+                FakeProc(9000, "cmd.exe", cmdline=["cmd.exe", "/c", "pause"]), set(), {os.getpid()}),
+            "a shell without a visible window or keep-alive marker must not be protected",
         )
-        try:
-            time.sleep(1.0)
-            visible = orphan_reaper._visible_window_owner_pids()
-            self.assertFalse(
-                orphan_reaper.is_protected_foreground_console(
-                    psutil.Process(proc.pid), visible, {os.getpid()}),
-                "a headless CREATE_NO_WINDOW shell must NOT look like a foreground console",
-            )
-        finally:
-            self._term(proc)
 
     def test_real_forked_window_survives_a_full_watchdog_scan(self):
         import psutil
-        proc = subprocess.Popen(
-            ["cmd.exe", "/k", "echo TLAMATINI_TEST_WINDOW & pause"],
-            creationflags=subprocess.CREATE_NEW_CONSOLE,
-        )
+        host, proc = self._spawn_visible_shell()
         killed = []
         try:
             self._await_visible(proc)  # the precondition, established not assumed
@@ -368,7 +370,7 @@ class WatchdogRealForegroundWindowTests(unittest.TestCase):
                 wd.scan_and_reap()
             self.assertEqual(killed, [], "the watchdog must not kill a real visible forked console")
         finally:
-            self._term(proc)
+            self._term(host)
 
 
 class ForkedWindowCarriesTheKeepAliveMarkerTests(unittest.TestCase):

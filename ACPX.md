@@ -21,7 +21,9 @@
 
 ---
 
-**Prompt Flow source update (2026-10-03):** Prompt and Programmed Prompt still control Multi-Turn/ACPX per operation. **User Input** retains the existing user-reply step; **User Commentary** is a static speech-bubble review note and never invokes ACPX, tools or a model, or modifies run history. Version 2 `.fpmt` saves migrate version 1 executable commentary to User Input. Static notes support inline editing, color/font/size choices and automatic full-text containment without internal scrollbars. This source change does not imply a rebuilt release. See [the Prompt Flow guide](docs/prompting-flow-designer.md).
+**Prompt Flow source update (2026-10-04):** Prompt and Programmed Prompt still control Multi-Turn/ACPX per operation. **User Input** retains the existing user-reply step; **User Commentary** is a static speech-bubble review note and never invokes ACPX, tools or a model, or modifies run history. Version 2 `.fpmt` saves migrate version 1 executable commentary to User Input. Static notes support inline editing, a floating toolbar for mixed text styles, direct border/corner resizing and automatic full-text containment without internal scrollbars. This source change does not imply a rebuilt release. See [the Prompt Flow guide](docs/prompting-flow-designer.md).
+
+The Run output divider gives the log 5–95% of the available canvas/output height with independent scrolling and unchanged content scale. Its per-user layout preference is separate from flow files. This layout change does not alter ACPX invocation, model context or runtime tool protocols.
 
 ## 0. Read this first
 

@@ -66,7 +66,7 @@ LOCATIONS: List[Dict[str, str]] = [
     },
     {
         "path": ".codex/skills",
-        "label": "Codex documentation skills",
+        "label": "Codex documentation and release-validation skills",
         "consumer": "Codex sessions. Assistant-specific by design; NOT "
                     "mirrored to the other two.",
         "owner": "canonical",

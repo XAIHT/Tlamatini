@@ -286,7 +286,7 @@ def load_config_and_prompt(application_path: str) -> Tuple[Dict[str, Any], str, 
             print("--- Please ensure all required configuration files are present before running the application.")
             sys.exit(1)
 
-    with open(config_file_path, 'r', encoding='utf-8') as f:
+    with open(config_file_path, 'r', encoding='utf-8-sig') as f:
         config = json.load(f)
     with open(prompt_file_path, 'r', encoding='utf-8') as f:
         prompt_template = f.read()

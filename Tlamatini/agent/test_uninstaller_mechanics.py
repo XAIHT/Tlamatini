@@ -430,7 +430,8 @@ class GateWiringContractTests(SimpleTestCase):
         """Retry must ask the machine again, not replay the first answer."""
         source = _function_source("_show_running_gate")
         retry = source[source.index("def _retry"):source.index("def _exit")]
-        self.assertIn("find_running_tlamatini", retry)
+        self.assertIn("_blocking_processes(target)", retry)
+        self.assertIn("find_running_tlamatini(target)", _function_source("_blocking_processes"))
 
     def test_the_gate_offers_exactly_retry_and_exit(self):
         source = _code_only("_show_running_gate")
@@ -456,8 +457,8 @@ class GateWiringContractTests(SimpleTestCase):
         source = _function_source("_start_uninstall")
         self.assertIn("self.preserved_dirs = []", source)
 
-    def test_the_uninstaller_stays_dependency_free(self):
-        """It is packaged alone by build_uninstaller.py — stdlib + tkinter."""
+    def test_the_uninstaller_does_not_import_the_application(self):
+        """Standalone GUI plus its bundled worker helper; never import Django."""
         tree = ast.parse(UNINSTALL_SOURCE)
         imported = set()
         for node in ast.walk(tree):
@@ -467,7 +468,7 @@ class GateWiringContractTests(SimpleTestCase):
                 imported.add(node.module.split(".")[0])
         allowed = {
             "ctypes", "json", "os", "re", "shutil", "stat", "subprocess", "sys",
-            "threading", "time", "tkinter", "winreg", "datetime", "hashlib",
+            "threading", "time", "tkinter", "winreg", "datetime", "hashlib", "tempfile", "uninstall_processes",
         }
         self.assertTrue(imported <= allowed, f"unexpected import: {imported - allowed}")
 

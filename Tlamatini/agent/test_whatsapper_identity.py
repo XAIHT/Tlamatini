@@ -162,7 +162,7 @@ class WhatsappWebClientGuardTests(SimpleTestCase):
         cls.mod = _load_whatsapper()
 
     def _client(self):
-        return self.mod.WhatsAppWebClient('ignored_profile_dir', headless=True)
+        return self.mod.WhatsAppWebClient('ignored_profile_dir', headless=False)
 
     def test_empty_recipient_fails_without_browser(self):
         ok, info, mid = self._client().send_text('', 'hello')

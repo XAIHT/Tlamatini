@@ -16,8 +16,8 @@
     let startersSignature = '';
     let scheduled = false;
 
-    ACP.canEdit = () => globalRunningState === GLOBAL_STATE.STOPPED &&
-        !isBusyProcessing && !ACP.editorBusy && !ACP.fileLoading && !undoManager.isProcessing;
+    ACP.canEdit = ({ withinEditorOperation = false } = {}) => globalRunningState === GLOBAL_STATE.STOPPED &&
+        !isBusyProcessing && (!ACP.editorBusy || withinEditorOperation) && !ACP.fileLoading && !undoManager.isProcessing;
 
     ACP.refreshEditor = () => {
         const items = nodes();
@@ -233,14 +233,15 @@
 
     async function example() {
         if (nodes().length) return;
-        await loadDiagram({ nodes: [
+        const loaded = await loadDiagram({ nodes: [
             { text: 'Starter', left: '100px', top: '140px' },
             { text: 'Sleeper', left: '380px', top: '140px', configData: { duration_ms: 1000, source_agents: ['starter_1'], target_agents: ['ender_1'] } },
             { text: 'Ender', left: '660px', top: '140px' }
         ], connections: [
             { sourceIndex: 0, targetIndex: 1, inputSlot: 0, outputSlot: 0 },
             { sourceIndex: 1, targetIndex: 2, inputSlot: 0, outputSlot: 0 }
-        ] });
+        ] }, 'example.flw', { withinEditorOperation: true });
+        if (!loaded) return;
         const states = nodes().map(captureItemState);
         const links = ACP.connections.map(captureConnectionState);
         undoManager.record({ type: 'EXAMPLE',

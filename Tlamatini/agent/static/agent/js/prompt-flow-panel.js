@@ -53,7 +53,7 @@
     function persist() {
         clearTimeout(draftTimer);
         draftTimer = setTimeout(() => {
-            try { localStorage.setItem(storeKey, JSON.stringify({ flow, filename, zoom })); }
+            try { localStorage.setItem(storeKey, JSON.stringify({ flow: commentEditor ? JSON.parse(commentEditor.before) : flow, filename, zoom })); }
             catch (error) { status(`Draft could not be stored in this browser. Save a .fpmt file: ${error.message}`); }
         }, 250);
     }
@@ -112,7 +112,7 @@
         if (!selected.has(node.id)) { resetSelection(); selected.add(node.id); paintSelection(); }
         const menu = $id('agent-context-menu');
         menu.replaceChildren();
-        for (const [icon, label, command] of [['⚙️', 'Configure', () => configureNode(node)], ['ℹ️', 'Description', () => alertMessage(M.operations[node.type].help, node.label)], ['▣', 'Duplicate', duplicate], ['⌫', 'Delete', deleteSelection]]) {
+        for (const [icon, label, command] of [[M.isComment(node) ? '✎' : '⚙️', M.isComment(node) ? 'Edit comment' : 'Configure', () => configureNode(node)], ['ℹ️', 'Description', () => alertMessage(M.operations[node.type].help, node.label)], ['▣', 'Duplicate', duplicate], ['⌫', 'Delete', deleteSelection]]) {
             const item = element('div', 'context-menu-item');
             const disabled = label !== 'Description' && !editable();
             item.classList.toggle('context-menu-item-disabled', disabled);
@@ -124,9 +124,9 @@
     }
     document.addEventListener('click', event => { if (!event.target.closest('#agent-context-menu')) $id('agent-context-menu').style.display = 'none'; });
     document.addEventListener('keydown', event => { if (event.key === 'Escape') $id('agent-context-menu').style.display = 'none'; });
-    viewport.addEventListener('scroll', () => { $id('agent-context-menu').style.display = 'none'; });
+    viewport.addEventListener('scroll', () => { $id('agent-context-menu').style.display = 'none'; positionCommentTools(); });
     function nodeKey(event, node) {
-        if (event.target.closest('.pmt-port')) return;
+        if (event.target.closest('.pmt-port, .pmt-comment-handle, button, textarea')) return;
         if (event.key === 'Enter') configureSelectedNode(node, event);
     }
     function renderEdges() {
@@ -144,73 +144,427 @@
         }
         if (connection.active) layer.append(connection.active.data.preview);
     }
+    // Notes are edited on the canvas. Their controls never cover the text.
+    let commentToolbar = null, commentToolbarKey = '';
+    function commentElement(node) { return [...nodesLayer.children].find(el => el.dataset.nodeId === node.id); }
+    function commentTypography(text, config) {
+        Object.assign(text.style, { fontFamily: config.font_family, fontSize: `${config.font_size}px`, fontWeight: config.bold ? '700' : '400', fontStyle: config.italic ? 'italic' : 'normal', textAlign: config.align || '', color: config.text_color || '#202938', textDecoration: config.underline ? 'underline' : 'none' });
+    }
+    function paintCommentText(text, config, editing = false) {
+        text.replaceChildren();
+        M.commentRuns(config).forEach((run, index) => {
+            const span = element('span', '', run.text); span.dataset.commentRun = index;
+            commentTypography(span, run); text.append(span);
+        });
+        if (editing && (!config.text || config.text.endsWith('\n'))) text.append(document.createElement('br'));
+        if (!editing && !config.text) text.textContent = 'Write a note…';
+    }
+    function commentSelection() {
+        const editor = commentEditor, selection = window.getSelection();
+        if (!editor || !selection.rangeCount) return editor?.selection;
+        const range = selection.getRangeAt(0);
+        if (!editor.input.contains(range.startContainer) || !editor.input.contains(range.endContainer)) return editor.selection;
+        const offset = (container, end) => {
+            const prefix = document.createRange(); prefix.selectNodeContents(editor.input); prefix.setEnd(container, end); return prefix.toString().length;
+        };
+        const next = { start: offset(range.startContainer, range.startOffset), end: offset(range.endContainer, range.endOffset) };
+        if (next.start !== editor.selection.start || next.end !== editor.selection.end) editor.typingStyle = null;
+        editor.selection = next;
+        return next;
+    }
+    function restoreCommentSelection() {
+        const editor = commentEditor;
+        if (!editor) return;
+        const point = offset => {
+            const walker = document.createTreeWalker(editor.input, NodeFilter.SHOW_TEXT);
+            let text, last;
+            while ((text = walker.nextNode())) {
+                last = text;
+                if (offset <= text.length) return [text, offset];
+                offset -= text.length;
+            }
+            return last ? [last, last.length] : [editor.input, 0];
+        };
+        const range = document.createRange();
+        range.setStart(...point(editor.selection.start)); range.setEnd(...point(editor.selection.end));
+        const selection = window.getSelection(); selection.removeAllRanges(); selection.addRange(range);
+    }
+    function selectedCommentStyle() {
+        const c = currentComment()?.config;
+        if (!c) return {};
+        const editor = commentEditor;
+        if (editor?.typingStyle && editor.selection.start === editor.selection.end) return editor.typingStyle;
+        const { start, end } = editor?.selection || { start: 0, end: c.text.length };
+        const runs = M.sliceCommentRuns(M.commentRuns(c), start === end ? Math.max(0, start - 1) : start, start === end ? Math.max(1, end) : end);
+        if (!runs.length) return M.commentStyle(c);
+        return Object.fromEntries(M.commentStyleKeys.map(key => [key, runs.every(run => run[key] === runs[0][key]) ? runs[0][key] : null]));
+    }
+    function editorState() {
+        return { x: commentEditor.node.x, y: commentEditor.node.y, config: M.copy(commentEditor.node.config), selection: { ...commentEditor.selection }, typingStyle: commentEditor.typingStyle && { ...commentEditor.typingStyle } };
+    }
+    function rememberCommentEdit() {
+        const editor = commentEditor; editor.undo.push(editorState());
+        if (editor.undo.length > 100) editor.undo.shift();
+        editor.redo = [];
+    }
+    function replayCommentEdit(backwards) {
+        const editor = commentEditor, source = backwards ? editor.undo : editor.redo, target = backwards ? editor.redo : editor.undo;
+        if (!source.length) return;
+        target.push(editorState()); const saved = source.pop();
+        editor.node.config = saved.config; editor.node.x = saved.x; editor.node.y = saved.y; editor.selection = saved.selection; editor.typingStyle = saved.typingStyle;
+        repaintCommentEditor();
+    }
+    function repaintCommentEditor() {
+        const editor = commentEditor;
+        paintCommentText(editor.input, editor.node.config, true);
+        editor.renderedRuns = M.copy(M.commentRuns(editor.node.config));
+        refreshComment(editor.node); restoreCommentSelection(); syncCommentTools();
+    }
+    function formatCommentText(patch) {
+        const node = currentComment(); if (!node || playbackActive()) return;
+        const c = node.config, editor = commentEditor;
+        if (editor) commentSelection();
+        const { start, end } = editor?.selection || { start: 0, end: c.text.length };
+        const apply = () => {
+            if (start === end && editor) {
+                editor.typingStyle = { ...selectedCommentStyle(), ...patch };
+                if (!c.text) Object.assign(c, patch);
+            } else {
+                const replacement = M.sliceCommentRuns(M.commentRuns(c), start, end).map(run => ({ ...run, ...patch }));
+                const candidate = M.copy(c); M.replaceCommentRange(candidate, start, end, replacement);
+                if (candidate.runs.length > 10000) { status('This comment has reached its formatting limit.'); return; }
+                c.runs = candidate.runs; c.text = candidate.text;
+                if (start === 0 && end === c.text.length) Object.assign(c, patch);
+                if (editor) editor.typingStyle = null;
+            }
+        };
+        if (editor) { rememberCommentEdit(); apply(); repaintCommentEditor(); editor.input.focus({ preventScroll: true }); restoreCommentSelection(); }
+        else mutate(() => { apply(); if (!c.text) Object.assign(c, patch); });
+    }
+    function insertCommentText(text, range = commentSelection(), formatted = null) {
+        const editor = commentEditor, c = editor.node.config;
+        text = text.replace(/\r\n?/g, '\n');
+        if (c.text.length - (range.end - range.start) + text.length > 100000) { status('A comment can contain up to 100,000 characters.'); return; }
+        const style = editor.typingStyle || M.commentStyle(M.sliceCommentRuns(M.commentRuns(c), range.start, range.start + 1)[0] || c);
+        const candidate = M.copy(c);
+        M.replaceCommentRange(candidate, range.start, range.end, formatted || (text ? [{ text, ...style }] : []));
+        if (candidate.runs.length > 10000) { status('This comment has reached its formatting limit.'); return; }
+        rememberCommentEdit(); c.text = candidate.text; c.runs = candidate.runs;
+        editor.selection = { start: range.start + text.length, end: range.start + text.length };
+        editor.typingStyle = style;
+        repaintCommentEditor();
+    }
+    function commentBeforeInput(event) {
+        const editor = commentEditor;
+        if (editor.composing || event.isComposing) return;
+        commentSelection();
+        const type = event.inputType;
+        if (type === 'historyUndo' || type === 'historyRedo') { event.preventDefault(); replayCommentEdit(type === 'historyUndo'); return; }
+        if (['formatBold', 'formatItalic', 'formatUnderline'].includes(type)) {
+            event.preventDefault(); const key = type.slice(6).toLowerCase(); formatCommentText({ [key]: !selectedCommentStyle()[key] }); return;
+        }
+        if (['insertText', 'insertParagraph', 'insertLineBreak'].includes(type)) {
+            event.preventDefault(); insertCommentText(type === 'insertParagraph' || type === 'insertLineBreak' ? '\n' : event.data || ''); return;
+        }
+        if (type.startsWith('delete')) {
+            event.preventDefault(); let { start, end } = editor.selection;
+            const targets = event.getTargetRanges?.();
+            if (targets?.length) {
+                const range = targets[0], prefix = document.createRange(); prefix.selectNodeContents(editor.input);
+                prefix.setEnd(range.startContainer, range.startOffset); start = prefix.toString().length;
+                prefix.setEnd(range.endContainer, range.endOffset); end = prefix.toString().length;
+            } else if (start === end) {
+                const boundaries = [...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(editor.node.config.text)].map(part => part.index);
+                boundaries.push(editor.node.config.text.length);
+                if (type.includes('Backward')) start = boundaries.filter(index => index < start).pop() ?? 0;
+                else end = boundaries.find(index => index > end) ?? end;
+            }
+            if (start !== end) insertCommentText('', { start, end });
+        }
+    }
+    function readNativeCommentEdit() {
+        const editor = commentEditor;
+        if (!editor || editor.composing) return;
+        commentSelection();
+        const runs = [], walker = document.createTreeWalker(editor.input, NodeFilter.SHOW_TEXT);
+        let text;
+        while ((text = walker.nextNode())) {
+            const index = text.parentElement.closest('[data-comment-run]')?.dataset.commentRun;
+            runs.push({ text: text.data, ...M.commentStyle(editor.renderedRuns[index] || editor.node.config) });
+        }
+        const value = runs.map(run => run.text).join('');
+        if (value.length > 100000) { repaintCommentEditor(); status('A comment can contain up to 100,000 characters.'); return; }
+        rememberCommentEdit(); editor.node.config.text = value; editor.node.config.runs = M.mergeCommentRuns(runs);
+        repaintCommentEditor();
+    }
+    document.addEventListener('selectionchange', () => {
+        if (!commentEditor || commentEditor.composing) return;
+        commentSelection(); syncCommentTools();
+    });
     function fitCommentary(el, node, text) {
-        const width = node.config.width;
-        // Measure natural wrapped text at the chosen width, independently of zoom.
-        // Height is a minimum chosen by the user; content always fits in the bubble.
-        text.style.bottom = 'auto';
-        if (text.tagName === 'TEXTAREA') text.style.height = '0px';
-        const height = Math.max(node.config.height, Math.ceil(text.scrollHeight) + 76);
-        text.style.bottom = '';
-        if (text.tagName === 'TEXTAREA') text.style.height = '';
-        commentarySizes.set(node, { width, height });
-        el.style.width = `${width}px`; el.style.height = `${height}px`;
-        const graphic = el.querySelector('svg');
+        // Measure in document coordinates, so changing zoom never changes wrapping.
+        el.style.width = `${node.config.width}px`;
+        commentTypography(text, node.config); text.style.textDecoration = 'none';
+        text.style.height = '0px';
+        const textHeight = Math.ceil(text.scrollHeight);
+        const height = Math.max(node.config.height, textHeight + 82);
+        text.style.height = `${height - 82}px`;
+        commentarySizes.set(node, { width: node.config.width, height });
+        el.style.height = `${height}px`;
+        el.style.setProperty('--comment-color', node.config.color);
+        const width = node.config.width, bottom = height - 18, graphic = el.querySelector('svg');
         graphic.setAttribute('viewBox', `0 0 ${width} ${height}`);
         graphic.style.setProperty('--pmt-fill', node.config.color);
-        graphic.style.setProperty('--pmt-color', '#946780');
-        graphic.querySelector('path').setAttribute('d', `M28 10H${width - 28}Q${width - 4} 10 ${width - 4} 34V${height - 46}Q${width - 4} ${height - 22} ${width - 28} ${height - 22}H70L48 ${height - 4}L33 ${height - 22}H28Q4 ${height - 22} 4 ${height - 46}V34Q4 10 28 10Z`);
+        // Constant corner radius and tail: the drawing does not stretch with the text.
+        graphic.querySelector('path').setAttribute('d', `M20 1H${width - 20}Q${width - 1} 1 ${width - 1} 20V${bottom - 19}Q${width - 1} ${bottom} ${width - 20} ${bottom}H72L53 ${height - 1}L35 ${bottom}H20Q1 ${bottom} 1 ${bottom - 19}V20Q1 1 20 1Z`);
+    }
+    function refreshComment(node) {
+        const el = commentElement(node);
+        if (!el) return;
+        fitCommentary(el, node, el.querySelector('.pmt-comment-text'));
+        el.style.left = `${node.x}px`; el.style.top = `${node.y}px`;
+        extent();
+    }
+    function changeComment(node, patch) {
+        if (playbackActive()) return;
+        if (commentEditor?.node === node) {
+            rememberCommentEdit(); Object.assign(node.config, patch); refreshComment(node); syncCommentTools();
+        } else mutate(() => Object.assign(node.config, patch));
+    }
+    function fitCommentText(node) {
+        changeComment(node, { height: 128 });
+        status('Comment fitted to its text. Drag any edge or corner to reshape it.');
+    }
+    function resizeComment(drag, dx, dy) {
+        const { node, direction, x, y, width, height, minimum } = drag;
+        const east = direction.includes('e'), west = direction.includes('w');
+        const north = direction.includes('n'), south = direction.includes('s');
+        if (east || west) {
+            node.config.width = Math.max(200, Math.min(2400, width + (west ? -dx : dx), west ? x + width : 2400));
+            node.x = west ? x + width - node.config.width : x;
+        }
+        node.config.height = north || south ? Math.max(128, Math.min(2400, height + (north ? -dy : dy), north ? y + height : 2400)) : minimum;
+        refreshComment(node);
+        if (north) { node.y = Math.max(0, y + height - nodeSize(node).height); refreshComment(node); }
+    }
+    function beginCommentResize(event, node, direction) {
+        event.preventDefault(); event.stopPropagation();
+        if (event.button !== 0 || playbackActive() || (commentEditor && commentEditor.node !== node)) return;
+        endGesture();
+        if (commentEditor) rememberCommentEdit();
+        selected = new Set([node.id]); selectedEdges.clear(); selectedEdge = null;
+        gesture = { kind: 'resize', node, direction, before: snapshot(), x: node.x, y: node.y,
+            ...nodeSize(node), minimum: node.config.height, fromX: event.clientX, fromY: event.clientY, scale: zoom, pointerId: event.pointerId };
+        viewport.setPointerCapture(event.pointerId);
+        document.body.style.cursor = `${direction}-resize`;
+        commentElement(node).classList.add('comment-resizing'); paintSelection();
     }
     function renderCommentary(el, node) {
-        const c = node.config, width = c.width;
-        el.style.width = `${width}px`;
-        const text = element('div', 'pmt-comment-text', c.text || 'Double-click to write a commentary');
-        text.classList.toggle('placeholder', !c.text);
-        Object.assign(text.style, { fontFamily: c.font_family, fontSize: `${c.font_size}px`, fontWeight: c.bold ? '700' : '400', fontStyle: c.italic ? 'italic' : 'normal', textAlign: c.align });
-        el.append(text);
-        fitCommentary(el, node, text);
-        const height = Math.min(2400, nodeSize(node).height);
-        const resize = element('button', 'pmt-comment-resize', '↘'); resize.type = 'button';
-        resize.title = 'Resize User Commentary'; resize.setAttribute('aria-label', resize.title); resize.disabled = !editable();
-        resize.addEventListener('pointerdown', event => {
-            event.preventDefault(); event.stopPropagation(); if (!editable() || event.button !== 0) return;
-            endGesture(); selected = new Set([node.id]); selectedEdges.clear(); selectedEdge = null;
-            gesture = { kind: 'resize', node, before: snapshot(), width, height, fromX: event.clientX, fromY: event.clientY, scale: zoom };
-            paintSelection();
-        });
-        resize.addEventListener('dblclick', event => event.stopPropagation());
-        el.append(resize);
+        const heading = element('div', 'pmt-comment-heading');
+        heading.append(element('span', 'pmt-comment-kicker', node.label === 'User Commentary' ? 'Comment' : node.label));
+        const edit = element('button', 'pmt-comment-edit', 'Edit');
+        edit.type = 'button'; edit.title = 'Edit comment'; edit.setAttribute('aria-label', 'Edit comment'); edit.disabled = playbackActive();
+        edit.addEventListener('click', event => { event.stopPropagation(); editCommentary(node); });
+        edit.addEventListener('dblclick', event => event.stopPropagation()); heading.append(edit); el.append(heading);
+        const text = element('div', 'pmt-comment-text'); paintCommentText(text, node.config);
+        text.classList.toggle('pmt-comment-empty', !node.config.text); el.append(text); fitCommentary(el, node, text);
+        const directions = { n: 'top edge', e: 'right edge', s: 'bottom edge', w: 'left edge', nw: 'top left corner', ne: 'top right corner', sw: 'bottom left corner', se: 'bottom right corner' };
+        for (const [direction, label] of Object.entries(directions)) {
+            const handle = element('button', `pmt-comment-handle handle-${direction}`);
+            handle.type = 'button'; handle.dataset.resize = direction; handle.disabled = playbackActive();
+            handle.title = `Resize comment ${label}`; handle.setAttribute('aria-label', handle.title);
+            handle.addEventListener('pointerdown', event => beginCommentResize(event, node, direction));
+            handle.addEventListener('dblclick', event => { event.preventDefault(); event.stopPropagation(); fitCommentText(node); });
+            handle.addEventListener('keydown', event => resizeCommentKey(event, node, direction));
+            el.append(handle);
+        }
+    }
+    function resizeCommentKey(event, node, direction) {
+        if (!event.key.startsWith('Arrow') || playbackActive()) return;
+        event.preventDefault(); event.stopPropagation();
+        const before = snapshot(), amount = event.shiftKey ? 40 : 10;
+        if (commentEditor) rememberCommentEdit();
+        resizeComment({ node, direction, x: node.x, y: node.y, ...nodeSize(node), minimum: node.config.height },
+            event.key === 'ArrowRight' ? amount : event.key === 'ArrowLeft' ? -amount : 0,
+            event.key === 'ArrowDown' ? amount : event.key === 'ArrowUp' ? -amount : 0);
+        if (!commentEditor) { changed(before); commentElement(node)?.querySelector(`[data-resize="${direction}"]`)?.focus({ preventScroll: true }); }
+    }
+    function finishCommentary(save) {
+        if (!commentEditor) return;
+        if (gesture?.kind === 'resize') endGesture();
+        const { node, before } = commentEditor;
+        commentEditor = null;
+        if (save) { changed(before); }
+        else { flow = JSON.parse(before); persist(); render(); }
+        commentElement(node)?.focus({ preventScroll: true });
+        status(save ? 'Comment saved.' : 'Comment changes discarded.');
     }
     function editCommentary(node) {
+        if (commentEditor?.node === node) { commentEditor.input.focus({ preventScroll: true }); return; }
         if (!editable()) return;
-        endGesture();
-        const el = [...nodesLayer.children].find(item => item.dataset.nodeId === node.id);
-        const display = el.querySelector('.pmt-comment-text');
-        const input = element('textarea', 'pmt-comment-text pmt-comment-editor');
-        input.value = node.config.text; input.maxLength = 100000;
-        input.setAttribute('aria-label', 'Static User Commentary text'); input.style.cssText = display.style.cssText;
-        display.replaceWith(input);
-        fitCommentary(el, node, input);
-        const controls = element('div', 'pmt-comment-editor-tools');
-        const done = element('button', '', 'Done'), cancel = element('button', '', 'Cancel');
-        done.type = cancel.type = 'button'; controls.append(done, cancel); el.append(controls);
-        commentEditor = { node, input }; el.classList.add('editing'); updateButtons();
-        function finish(save) {
-            const value = input.value; commentEditor = null;
-            if (save) mutate(() => { node.config.text = value; }); else render();
-            status(save ? 'Static commentary saved. Use Configure for colors and fonts.' : 'Commentary editing cancelled.');
-        }
-        done.addEventListener('click', () => finish(true)); cancel.addEventListener('click', () => finish(false));
+        endGesture(); resetSelection(); selected.add(node.id);
+        const el = commentElement(node), display = el.querySelector('.pmt-comment-text');
+        const input = element('div', 'pmt-comment-text pmt-comment-editor');
+        input.contentEditable = 'true'; input.spellcheck = true; input.setAttribute('role', 'textbox'); input.setAttribute('aria-multiline', 'true');
+        input.setAttribute('aria-label', 'Static User Commentary text');
+        commentEditor = { node, input, before: snapshot(), selection: { start: 0, end: 0 }, typingStyle: null, undo: [], redo: [], composing: false, renderedRuns: M.copy(M.commentRuns(node.config)) };
+        paintCommentText(input, node.config, true);
+        display.replaceWith(input); el.classList.add('editing');
         input.addEventListener('pointerdown', event => event.stopPropagation());
         input.addEventListener('dblclick', event => event.stopPropagation());
-        input.addEventListener('input', () => { fitCommentary(el, node, input); extent(); });
+        input.addEventListener('beforeinput', commentBeforeInput);
+        input.addEventListener('input', readNativeCommentEdit);
+        input.addEventListener('compositionstart', () => { commentEditor.composing = true; });
+        input.addEventListener('compositionend', () => { commentEditor.composing = false; readNativeCommentEdit(); });
+        const clipboardType = 'application/x-tlamatini-comment-runs+json';
+        const copySelection = event => {
+            const range = commentSelection();
+            if (range.start === range.end) return;
+            event.preventDefault();
+            const runs = M.sliceCommentRuns(M.commentRuns(node.config), range.start, range.end);
+            event.clipboardData.setData('text/plain', runs.map(run => run.text).join(''));
+            event.clipboardData.setData(clipboardType, JSON.stringify(runs));
+            if (event.type === 'cut') insertCommentText('', range);
+        };
+        input.addEventListener('copy', copySelection); input.addEventListener('cut', copySelection);
+        input.addEventListener('paste', event => {
+            event.preventDefault();
+            const text = event.clipboardData.getData('text/plain');
+            let runs = null;
+            try {
+                const encoded = event.clipboardData.getData(clipboardType);
+                if (encoded && encoded.length <= 5 * 1024 * 1024) {
+                    const note = M.copy(node); note.config.text = text; note.config.runs = JSON.parse(encoded);
+                    runs = M.validate({ ...M.blank(), nodes: [note] }).nodes[0].config.runs;
+                }
+            } catch { /* Unrecognized clipboard formatting falls back to literal text. */ }
+            insertCommentText(text, commentSelection(), runs);
+        });
+        input.addEventListener('drop', event => { event.preventDefault(); });
         input.addEventListener('keydown', event => {
             event.stopPropagation();
-            if (event.key === 'Escape') { event.preventDefault(); finish(false); }
-            else if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') { event.preventDefault(); finish(true); }
+            if (event.isComposing) return;
+            const control = event.ctrlKey || event.metaKey, key = event.key.toLowerCase();
+            if (event.key === 'Escape') { event.preventDefault(); if (gesture) endGesture(); else finishCommentary(false); }
+            else if (control && event.key === 'Enter') { event.preventDefault(); finishCommentary(true); }
+            else if (control && ['b', 'i', 'u'].includes(key)) { event.preventDefault(); const property = { b: 'bold', i: 'italic', u: 'underline' }[key]; formatCommentText({ [property]: !selectedCommentStyle()[property] }); }
+            else if (control && (key === 'z' || key === 'y')) { event.preventDefault(); replayCommentEdit(key === 'z' && !event.shiftKey); }
         });
-        input.focus(); status('Write in the bubble. Done or Ctrl+Enter saves; Cancel or Escape discards this edit.');
+        refreshComment(node); paintSelection(); input.focus({ preventScroll: true });
+        status('Write directly in the note. Drag its borders to resize; Done saves, Escape cancels.');
     }
+    function syncCommentTools() {
+        const node = selected.size === 1 && !selectedEdges.size ? flow.nodes.find(n => selected.has(n.id) && M.isComment(n)) : null;
+        if (!commentToolbar) {
+            commentToolbar = element('div', 'pmt-comment-toolbar'); commentToolbar.id = 'pmt-comment-toolbar';
+            commentToolbar.setAttribute('role', 'region'); commentToolbar.setAttribute('aria-label', 'Comment formatting');
+            document.body.append(commentToolbar);
+            commentToolbar.addEventListener('pointerdown', event => {
+                if (!commentEditor) return;
+                commentSelection();
+                if (event.target.closest('button')) event.preventDefault();
+            });
+            commentToolbar.addEventListener('keydown', event => {
+                event.stopPropagation();
+                if (event.key === 'Escape' && commentEditor) { event.preventDefault(); finishCommentary(false); }
+                else if ((event.ctrlKey || event.metaKey) && event.key === 'Enter' && commentEditor) { event.preventDefault(); finishCommentary(true); }
+            });
+        }
+        const visible = !!node && !playbackActive();
+        commentToolbar.hidden = !visible;
+        if (!visible) { commentToolbarKey = ''; return; }
+        const key = `${node.id}:${!!commentEditor}`;
+        if (commentToolbarKey !== key) {
+            commentToolbarKey = key; commentToolbar.replaceChildren();
+            const title = element('span', 'pmt-comment-tools-title', commentEditor ? 'Select text to format' : 'Commentary');
+            commentToolbar.append(title);
+            const colors = element('div', 'pmt-comment-swatches'); colors.setAttribute('role', 'group'); colors.setAttribute('aria-label', 'Comment color');
+            for (const [value, name] of M.commentColors) {
+                const button = element('button', 'pmt-comment-swatch'); button.type = 'button'; button.dataset.color = value;
+                button.style.setProperty('--swatch', value); button.title = name; button.setAttribute('aria-label', `${name} comment`);
+                button.addEventListener('click', () => changeComment(currentComment(), { color: value })); colors.append(button);
+            }
+            commentToolbar.append(colors);
+            const typography = element('div', 'pmt-comment-tool-group');
+            const font = element('select', 'pmt-comment-font'); font.setAttribute('aria-label', 'Comment font');
+            for (const family of M.commentFonts) { const option = new Option(family, family); option.style.fontFamily = family; font.append(option); }
+            font.prepend(new Option('Mixed fonts', '')); font.options[0].disabled = true;
+            font.addEventListener('change', () => formatCommentText({ font_family: font.value }));
+            const size = element('select', 'pmt-comment-size'); size.setAttribute('aria-label', 'Comment text size');
+            for (const [value, label] of [[10, 'Fine'], [12, 'Small'], [16, 'Body'], [20, 'Large'], [28, 'Heading'], [36, 'Title'], [48, 'Display']]) size.append(new Option(label, value));
+            size.prepend(new Option('Mixed sizes', '')); size.options[0].disabled = true;
+            size.addEventListener('change', () => formatCommentText({ font_size: Number(size.value) }));
+            typography.append(font, size);
+            const ink = element('details', 'pmt-comment-ink');
+            const inkToggle = element('summary', '', 'A'); inkToggle.title = 'Text color'; inkToggle.setAttribute('aria-label', 'Text color');
+            const inkColors = element('div', 'pmt-comment-ink-colors'); inkColors.setAttribute('role', 'group'); inkColors.setAttribute('aria-label', 'Text color palette');
+            for (const [value, name] of M.commentTextColors) {
+                const button = element('button', 'pmt-comment-swatch'); button.type = 'button'; button.dataset.textColor = value; button.style.setProperty('--swatch', value);
+                button.title = name; button.setAttribute('aria-label', `${name} text`);
+                button.addEventListener('click', () => { formatCommentText({ text_color: value }); ink.open = false; }); inkColors.append(button);
+            }
+            ink.append(inkToggle, inkColors); typography.append(ink);
+            for (const [property, label, glyph] of [['bold', 'Bold', 'B'], ['italic', 'Italic', 'I'], ['underline', 'Underline', 'U']]) {
+                const button = toolButton(glyph, label, () => formatCommentText({ [property]: !selectedCommentStyle()[property] }));
+                button.dataset.emphasis = property; typography.append(button);
+            }
+            commentToolbar.append(typography);
+            const alignment = element('div', 'pmt-comment-tool-group'); alignment.setAttribute('role', 'group'); alignment.setAttribute('aria-label', 'Comment alignment');
+            for (const value of ['left', 'center', 'right']) {
+                const button = toolButton('', `Align ${value}`, () => changeComment(currentComment(), { align: value }));
+                button.dataset.align = value;
+                const icon = svg('svg', { viewBox: '0 0 20 20', 'aria-hidden': 'true' });
+                const short = value === 'left' ? 3 : value === 'right' ? 8 : 5.5;
+                icon.append(svg('path', { d: `M3 4H17M${short} 8h9M3 12H17M${short} 16h9`, fill: 'none', stroke: 'currentColor', 'stroke-width': 1.7, 'stroke-linecap': 'round' }));
+                button.append(icon); alignment.append(button);
+            }
+            commentToolbar.append(alignment, toolButton('Fit text', 'Fit bubble to text', () => fitCommentText(currentComment())));
+            const actions = element('div', 'pmt-comment-actions');
+            if (commentEditor) {
+                actions.append(toolButton('Cancel', 'Cancel comment changes', () => finishCommentary(false)), toolButton('Done', 'Done', () => finishCommentary(true), 'primary'));
+            } else actions.append(toolButton('Edit text', 'Edit comment text', () => editCommentary(currentComment()), 'primary'));
+            commentToolbar.append(actions);
+        }
+        const c = { ...node.config, ...selectedCommentStyle() };
+        for (const button of commentToolbar.querySelectorAll('[data-text-color]')) button.setAttribute('aria-pressed', String(button.dataset.textColor === (c.text_color || '#202938')));
+        commentToolbar.querySelector('.pmt-comment-ink summary').style.textDecorationColor = c.text_color || '#202938';
+        for (const button of commentToolbar.querySelectorAll('[data-color]')) button.setAttribute('aria-pressed', String(button.dataset.color === c.color));
+        commentToolbar.querySelector('.pmt-comment-font').value = c.font_family || '';
+        const size = commentToolbar.querySelector('.pmt-comment-size');
+        size.querySelector('[data-saved-size]')?.remove();
+        if (c.font_size !== null && ![...size.options].some(option => Number(option.value) === c.font_size)) {
+            const option = new Option('Saved size', c.font_size); option.dataset.savedSize = ''; size.append(option);
+        }
+        size.value = c.font_size ?? '';
+        for (const button of commentToolbar.querySelectorAll('[data-emphasis]')) button.setAttribute('aria-pressed', c[button.dataset.emphasis] === null ? 'mixed' : String(c[button.dataset.emphasis]));
+        for (const button of commentToolbar.querySelectorAll('[data-align]')) button.setAttribute('aria-pressed', String(button.dataset.align === c.align));
+        positionCommentTools();
+    }
+    function positionCommentTools() {
+        if (!commentToolbar || commentToolbar.hidden) return;
+        const node = currentComment(), el = node && commentElement(node);
+        if (!el) return;
+        const box = el.getBoundingClientRect(), view = viewport.getBoundingClientRect();
+        const margin = 12, width = Math.min(420, view.width - margin * 2);
+        commentToolbar.style.width = Math.max(260, width) + 'px';
+        const height = commentToolbar.offsetHeight;
+        const lowX = Math.max(margin, view.left + margin), highX = Math.min(window.innerWidth - margin, view.right - margin) - commentToolbar.offsetWidth;
+        const lowY = Math.max(margin, view.top + margin), highY = Math.min(window.innerHeight - margin, view.bottom - margin) - height;
+        let left = box.left, top = box.top - height - margin;
+        if (top < lowY) {
+            if (box.right + margin <= highX) { left = box.right + margin; top = box.top; }
+            else if (box.left - margin - commentToolbar.offsetWidth >= lowX) { left = box.left - margin - commentToolbar.offsetWidth; top = box.top; }
+            else top = box.bottom + margin;
+        }
+        commentToolbar.style.left = Math.max(lowX, Math.min(highX, left)) + 'px';
+        commentToolbar.style.top = Math.max(lowY, Math.min(highY, top)) + 'px';
+    }
+    function currentComment() { return flow.nodes.find(n => selected.has(n.id) && M.isComment(n)); }
+    function toolButton(text, label, action, extra = '') {
+        const button = element('button', `pmt-comment-tool ${extra}`, text); button.type = 'button';
+        button.title = label; button.setAttribute('aria-label', label); button.addEventListener('click', action); return button;
+    }
+
     function addPort(el, node, name, point) {
         const direction = name === 'input' ? 'input' : 'output';
         const slot = name === 'yes' ? ' output-1' : name === 'no' ? ' output-2' : '';
@@ -288,7 +642,10 @@
             if (action === 'redo') button.disabled = !editable() || !redo.length;
             if (action === 'zoom-out') button.disabled = zoom <= .25;
             if (action === 'zoom-in') button.disabled = zoom >= 2;
-            if (action === 'configure') button.disabled = !editable() || selected.size + selectedEdges.size !== 1;
+            if (action === 'configure') {
+                button.disabled = !editable() || selected.size + selectedEdges.size !== 1;
+                button.textContent = currentComment() && selected.size === 1 && !selectedEdges.size ? '✎ Edit comment' : '⚙ Configure';
+            }
             if (action === 'duplicate') button.disabled = !editable() || !selected.size;
             if (action === 'delete') button.disabled = !editable() || !(selected.size || selectedEdges.size);
             if (action === 'play') button.disabled = !socketReady || !editable() || !flow.nodes.some(n => !M.isComment(n));
@@ -298,6 +655,7 @@
             if (action === 'stop') button.disabled = !['running', 'paused'].includes(runState);
         }
         for (const button of document.querySelectorAll('.agent-tool-item')) { button.disabled = !editable(); button.draggable = editable(); }
+        syncCommentTools();
     }
     function palette() {
         const list = $id('agents-list'); list.replaceChildren();
@@ -321,7 +679,7 @@
             if (labels.has(n.label)) n.label = M.uniqueLabel(n.label, labels);
             flow.nodes.push(n); if (!M.isComment(n)) flow.start ||= n.id; selected = new Set([n.id]); selectedEdge = null; selectedEdges.clear();
         });
-        status('Operation added. Double-click it to configure.');
+        status(type === 'user_commentary' ? 'Comment added. Double-click to write; drag any edge or corner to resize.' : 'Operation added. Double-click it to configure.');
     }
     const connection = UI.connectionDrag({
         viewport, canEdit: editable,
@@ -376,6 +734,7 @@
         failed: error => { status(error.message); alertMessage(error.message); }
     });
     function nodeDown(event, node) {
+        if (commentEditor) return;
         if (event.button !== 0 || event.target.closest('button')) return;
         event.stopPropagation();
         if (nodeMove.active) return;
@@ -451,28 +810,16 @@
         return { close, form };
     }
     function configureNode(node) {
+        if (M.isComment(node)) { editCommentary(node); return; }
         if (!editable()) return;
         const draft = M.copy(node), config = draft.config, kind = draft.type;
         formDialog(`Configure · ${M.operations[kind].label}`, ({ form, field, fields }) => {
             form.append(element('p', '', M.operations[kind].help));
             field('label', 'Label', 'text', draft.label).maxLength = 120;
             if (!['flush_embeddings', 'clean_history'].includes(kind)) {
-                const title = kind === 'decision' ? 'Question (when asking the user)' : kind === 'user_input' ? 'Message to the user' : kind === 'user_commentary' ? 'Static commentary' : kind === 'feed_embeddings' ? 'Text to embed' : 'Prompt';
+                const title = kind === 'decision' ? 'Question (when asking the user)' : kind === 'user_input' ? 'Message to the user' : kind === 'feed_embeddings' ? 'Text to embed' : 'Prompt';
                 field('text', title, 'textarea', config.text).maxLength = 100000;
-                if (kind !== 'user_commentary') form.append(element('small', '', 'Use {{last_output}} to insert the previous prompt answer or user reply.'));
-            }
-            if (kind === 'user_commentary') {
-                const color = field('color', 'Bubble color', 'select', config.color, M.commentColors);
-                const updateColor = () => { color.style.backgroundColor = color.value; color.style.color = '#1f2937'; };
-                color.addEventListener('change', updateColor); updateColor();
-                field('font_family', 'Font', 'select', config.font_family, M.commentFonts.map(font => [font, font]));
-                const fontSize = field('font_size', 'Font size (px)', 'number', config.font_size); fontSize.min = 10; fontSize.max = 48; fontSize.step = 'any';
-                field('bold', 'Bold', 'checkbox', config.bold); field('italic', 'Italic', 'checkbox', config.italic);
-                field('align', 'Text alignment', 'select', config.align, [['left', 'Left'], ['center', 'Center'], ['right', 'Right']]);
-                for (const [name, label, min] of [['width', 'Bubble width', 200], ['height', 'Bubble height', 128]]) {
-                    const input = field(name, label, 'number', config[name]); input.min = min; input.max = 2400; input.step = 'any';
-                }
-                form.append(element('small', '', 'Double-click the bubble to write directly in it. Drag its bottom-right handle to resize. Bubbles grow to contain all text, without scrollbars. Height is a minimum.'));
+                form.append(element('small', '', 'Use {{last_output}} to insert the previous prompt answer or user reply.'));
             }
             if (['prompt', 'programmed_prompt'].includes(kind)) {
                 field('multi_turn', 'Multi-Turn — allow enabled tools and agents', 'checkbox', config.multi_turn);
@@ -495,9 +842,8 @@
             if (!editable()) throw new Error('Stop playback before editing.');
             draft.label = fields.label.value.trim() || M.operations[kind].label;
             if (fields.text) config.text = fields.text.value;
-            for (const name of ['multi_turn', 'acpx', 'case_sensitive', 'bold', 'italic']) if (fields[name]) config[name] = fields[name].checked;
-            for (const name of ['comparison', 'value', 'color', 'font_family', 'align']) if (fields[name]) config[name] = fields[name].value;
-            for (const name of ['font_size', 'width', 'height']) if (fields[name]) config[name] = Number(fields[name].value);
+            for (const name of ['multi_turn', 'acpx', 'case_sensitive']) if (fields[name]) config[name] = fields[name].checked;
+            for (const name of ['comparison', 'value']) if (fields[name]) config[name] = fields[name].value;
             if (fields.delay_seconds) config.delay_seconds = Number(fields.delay_seconds.value);
             if (fields.scheduled_at) config.scheduled_at = fields.scheduled_at.value ? new Date(fields.scheduled_at.value).toISOString() : '';
             const candidate = M.copy(flow); candidate.nodes[candidate.nodes.findIndex(n => n.id === node.id)] = draft;
@@ -712,7 +1058,7 @@
             else if (name === 'zoom-in') setZoom(zoom + .1);
             else if (name === 'zoom-out') setZoom(zoom - .1);
             else if (name === 'fit') fit();
-            else if (name === 'help') await alertMessage('Drag or click an operation to add it. Double-click a figure to edit its settings. Drag a right-side output triangle to a left-side input triangle, then release to connect, just like the Agentic Control Panel. The curve follows your pointer and the triangles highlight. Release on empty canvas or press Escape to cancel. Reconnecting an occupied output replaces that connection. Decision figures have Y and N outputs on the right. With the keyboard, activate an output, Tab to an input and activate it.\n\nCtrl+click selects multiple figures; drag empty canvas to select a group. Delete removes the selection, Ctrl+D duplicates, Ctrl+Z undoes, Ctrl+Shift+Z redoes. Use arrow keys to move selected figures.\n\nUser Commentary is a static speech-bubble note. Double-click to write in it; Done or Ctrl+Enter saves, Escape cancels. Configure chooses color, font, size and alignment. Drag its bottom-right handle to resize. The bubble grows to fit the text without scrollbars. Notes are saved with the diagram and never run. User Input uses the notched figure and asks for a runtime reply.\n\nChoose Start, Validate, then Play. Each run has its own conversation and embeddings. {{last_output}} inserts the last answer or user input. Clean History clears that run’s conversation and last output; Flush Embeddings clears its retrieval context.\n\nPause takes effect between operations. Stop requests cancellation and waits for the active model call to drain. Closing an input dialog stops the flow. Keep this page and Tlamatini open for scheduled prompts. Files never run merely by opening them.\n\nSave downloads a versioned .fpmt diagram. The panel also keeps a local draft in this browser. Legacy system prompt.pmt text files remain separate.', 'Using the Prompt Flow Panel');
+            else if (name === 'help') await alertMessage('Drag or click an operation to add it. Double-click a figure to edit its settings. Drag a right-side output triangle to a left-side input triangle, then release to connect, just like the Agentic Control Panel. The curve follows your pointer and the triangles highlight. Release on empty canvas or press Escape to cancel. Reconnecting an occupied output replaces that connection. Decision figures have Y and N outputs on the right. With the keyboard, activate an output, Tab to an input and activate it.\n\nCtrl+click selects multiple figures; drag empty canvas to select a group. Delete removes the selection, Ctrl+D duplicates, Ctrl+Z undoes, Ctrl+Shift+Z redoes. Use arrow keys to move selected figures.\n\nUser Commentary is a static speech-bubble note. Double-click to write in it; Done or Ctrl+Enter saves, Escape cancels. Select a passage to mix fonts, sizes, text colors, bold, italic and underline using the floating mini toolbar. With a caret, formatting styles newly typed text. Bubble color and alignment apply to the note. Drag any edge or corner to resize; Fit text removes spare vertical space. There is no commentary configuration dialog. The bubble grows to fit the text without scrollbars. Notes are saved with the diagram and never run. User Input uses the notched figure and asks for a runtime reply.\n\nChoose Start, Validate, then Play. Each run has its own conversation and embeddings. {{last_output}} inserts the last answer or user input. Clean History clears that run’s conversation and last output; Flush Embeddings clears its retrieval context.\n\nPause takes effect between operations. Stop requests cancellation and waits for the active model call to drain. Closing an input dialog stops the flow. Keep this page and Tlamatini open for scheduled prompts. Files never run merely by opening them.\n\nSave downloads a versioned .fpmt diagram. The panel also keeps a local draft in this browser. Legacy system prompt.pmt text files remain separate.', 'Using the Prompt Flow Panel');
         } catch (e) { status(e.message); await alertMessage(e.message); }
     }
     document.querySelectorAll('[data-action]').forEach(button => button.addEventListener('click', event => { event.preventDefault(); action(button.dataset.action); }));
@@ -727,7 +1073,7 @@
         } catch (e) { await alertMessage(e.message); }
     });
     viewport.addEventListener('pointerdown', event => {
-        if (event.button !== 0 || event.target.closest('.pmt-node, .pmt-edge, button')) return;
+        if (commentEditor || event.button !== 0 || event.target.closest('.pmt-node, .pmt-edge, button')) return;
         const p = position(event);
         if (!event.ctrlKey && !event.metaKey) resetSelection();
         endGesture(); gesture = { kind: 'select', from: p, initial: new Set(selected), initialEdges: new Set(selectedEdges) }; render(); event.preventDefault(); viewport.focus({ preventScroll: true });
@@ -735,10 +1081,8 @@
     document.addEventListener('pointermove', event => {
         if (!gesture) return;
         if (gesture.kind === 'resize') {
-            const { node, width, height, fromX, fromY, scale } = gesture;
-            node.config.width = Math.min(2400, Math.max(200, width + (event.clientX - fromX) / scale));
-            node.config.height = Math.min(2400, Math.max(128, height + (event.clientY - fromY) / scale));
-            render(); return;
+            resizeComment(gesture, (event.clientX - gesture.fromX) / gesture.scale, (event.clientY - gesture.fromY) / gesture.scale);
+            return;
         }
         const p = position(event);
         {
@@ -760,12 +1104,21 @@
         nodeMove.cancel();
         if (!gesture) return;
         const previous = gesture; gesture = null; $id('pmt-marquee').hidden = true; document.body.classList.remove('resizing');
-        if (previous.kind === 'resize') { flow = JSON.parse(previous.before); render(); }
+        if (previous.kind === 'resize') {
+            document.body.style.cursor = ''; commentElement(previous.node)?.classList.remove('comment-resizing');
+            if (commentEditor) { Object.assign(previous.node, JSON.parse(previous.before).nodes.find(n => n.id === previous.node.id)); refreshComment(previous.node); }
+            else { flow = JSON.parse(previous.before); render(); }
+        }
         if (previous.pointerId !== undefined && viewport.hasPointerCapture(previous.pointerId)) viewport.releasePointerCapture(previous.pointerId);
         paintSelection();
     }
     document.addEventListener('pointerup', () => {
-        if (gesture?.kind === 'resize') { const before = gesture.before; gesture = null; changed(before); }
+        if (gesture?.kind === 'resize') {
+            const previous = gesture; gesture = null; document.body.style.cursor = '';
+            commentElement(previous.node)?.classList.remove('comment-resizing');
+            if (viewport.hasPointerCapture(previous.pointerId)) viewport.releasePointerCapture(previous.pointerId);
+            if (!commentEditor) changed(previous.before); else syncCommentTools();
+        }
         else if (gesture) endGesture();
     });
     viewport.addEventListener('lostpointercapture', () => { if (gesture) endGesture(); });
@@ -776,9 +1129,59 @@
         atPointer: x => (x - $id('agents-container').getBoundingClientRect().left) / $id('agents-container').clientWidth * 100,
         apply: value => { document.body.style.setProperty('--pmt-sidebar', Math.max(15, Math.min(70, value)) + '%'); extent(); }
     });
+    // Layout is a per-user browser preference, never a flow edit or a zoom operation.
+    const workspace = $id('pmt-workspace'), outputPanel = $id('pmt-run-panel'), outputDivider = $id('pmt-output-divider');
+    const layoutKey = `tlamatini.prompting-flow.layout.v1.${document.body.dataset.userId}`;
+    let outputPercent = 20, layoutTimer = null;
+    try {
+        const saved = JSON.parse(localStorage.getItem(layoutKey) || 'null');
+        if (typeof saved?.outputPercent === 'number' && Number.isFinite(saved.outputPercent)) outputPercent = Math.max(5, Math.min(95, saved.outputPercent));
+    } catch (_) { /* A blocked or invalid preference must not prevent editing. */ }
+    function paneHeight() {
+        return Math.max(0, workspace.clientHeight - workspace.querySelector('.pmt-status-strip').offsetHeight - outputDivider.offsetHeight);
+    }
+    function sizeOutput() {
+        outputDivider.hidden = !outputPanel.open;
+        const height = paneHeight() * outputPercent / 100;
+        outputPanel.style.height = outputPanel.open ? `${height}px` : '';
+        // Native details has an anonymous content wrapper: percentage log heights
+        // resolve against that wrapper rather than the pane in some browsers.
+        $id('pmt-run-log').style.height = outputPanel.open ? `${Math.max(0, height - outputPanel.querySelector('summary').offsetHeight)}px` : '';
+        outputDivider.setAttribute('aria-valuenow', String(Math.round(outputPercent)));
+        outputDivider.setAttribute('aria-valuetext', `${Math.round(outputPercent)}% Run output`);
+        extent();
+    }
+    function setOutputPercent(value) {
+        outputPercent = Math.max(5, Math.min(95, value));
+        sizeOutput();
+        clearTimeout(layoutTimer);
+        layoutTimer = setTimeout(() => {
+            try { localStorage.setItem(layoutKey, JSON.stringify({ outputPercent })); }
+            catch (_) { /* Resizing remains available without browser storage. */ }
+        }, 150);
+    }
+    UI.bindDivider({
+        element: outputDivider, axis: 'y', keyDirection: -1, before: endGesture,
+        value: () => outputPercent,
+        atPointer: y => (workspace.getBoundingClientRect().bottom - y - outputDivider.offsetHeight / 2) / Math.max(1, paneHeight()) * 100,
+        apply: setOutputPercent
+    });
+    outputDivider.addEventListener('keydown', event => {
+        if (!['Home', 'End'].includes(event.key)) return;
+        event.preventDefault(); endGesture(); setOutputPercent(event.key === 'Home' ? 5 : 95);
+    });
+    outputPanel.addEventListener('toggle', sizeOutput);
+    const paneObserver = new ResizeObserver(sizeOutput);
+    paneObserver.observe(workspace);
+    paneObserver.observe(workspace.querySelector('.pmt-status-strip'));
+    sizeOutput();
     viewport.addEventListener('wheel', event => { if (event.ctrlKey || event.metaKey) { event.preventDefault(); setZoom(zoom + (event.deltaY < 0 ? .1 : -.1)); } }, { passive: false });
     document.addEventListener('keydown', event => {
-        if (commentEditor) return;
+        if (commentEditor) {
+            if (event.key === 'Escape') { event.preventDefault(); if (gesture) endGesture(); else finishCommentary(false); }
+            else if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') { event.preventDefault(); finishCommentary(true); }
+            return;
+        }
         if (UI.isTyping(event)) return;
         const key = event.key.toLowerCase(), mod = event.ctrlKey || event.metaKey;
         if (mod && ['s', 'o', 'z', 'y', 'd', 'a'].includes(key)) {
@@ -800,6 +1203,20 @@
         if (saved) { flow = M.validate(saved.flow); filename = M.flowFilename(typeof saved.filename === 'string' && saved.filename.trim() ? saved.filename : 'Recovered.fpmt'); zoom = Math.min(2, Math.max(.25, Number(saved.zoom) || 1)); clean = ''; dirty = true; status('Restored your local draft. Save a .fpmt file to keep a portable copy.'); }
     } catch (e) { status(`Local draft could not be restored: ${e.message}`); }
     palette(); render();
+    async function openIncomingFile() {
+        const incoming = $id('server-fpmt-data'), error = $id('flow-open-error');
+        if (!incoming && !error) return;
+        const address = new URL(window.location.href);
+        address.searchParams.delete('open');
+        history.replaceState(null, '', address);
+        if (error) { await alertMessage(JSON.parse(error.textContent), 'Could not open flow'); return; }
+        try {
+            const value = M.validate(JSON.parse(incoming.textContent));
+            if (await mayReplace()) load(value, JSON.parse($id('server-fpmt-filename').textContent));
+            else status('Opening cancelled. Your current diagram was kept.');
+        } catch (error) { await alertMessage(error.message, 'Could not open flow'); }
+    }
+    openIncomingFile();
     document.fonts.ready.then(() => {
         if (commentEditor) { fitCommentary(commentEditor.input.closest('.pmt-node'), commentEditor.node, commentEditor.input); extent(); }
         else if (!gesture) render();

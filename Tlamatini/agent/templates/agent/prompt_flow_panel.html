@@ -52,7 +52,7 @@
             <div id="agents-header" class="header-title"><span id="agents-header-title">Operations bar</span></div>
             <div class="pmt-palette-intro">Drag an operation or static commentary onto the canvas, or click to add it.</div>
             <div id="subagents-container"><div id="agents-list"></div></div>
-            <div class="pmt-palette-foot">Drag an output triangle to an input triangle to connect.<br>Double-click an operation to configure it.<br>Double-click a commentary to write; Configure chooses its font and color.</div>
+            <div class="pmt-palette-foot">Drag an output triangle to an input triangle to connect.<br>Double-click an operation to configure it.<br>Double-click a commentary to write. Format with its floating toolbar; drag any border or corner to resize.</div>
         </aside>
         <div id="drag-divider" role="separator" aria-label="Resize Operations bar" aria-orientation="vertical" tabindex="0"></div>
         <section id="monitor-container" aria-label="Prompt flow canvas">
@@ -81,6 +81,7 @@
                 <button type="button" data-action="zoom-in" aria-label="Zoom in">+</button>
                 <button type="button" data-action="fit">Fit</button>
             </div>
+            <div id="pmt-workspace">
             <div id="submonitor-container" tabindex="0" aria-label="Diagram canvas; use arrow keys to move selected operations">
                 <div id="canvas-content"><div id="pmt-world">
                     <svg id="connections-layer" aria-label="Connections"></svg>
@@ -90,10 +91,14 @@
                 <div id="pmt-empty"><span class="pmt-empty-symbol">◇</span><h1>Design your prompt flow</h1><p>Add operations, connect their outputs, then press Play.</p><button type="button" data-action="example">Try an example</button></div>
             </div>
             <div class="pmt-status-strip"><span id="pmt-status" role="status" aria-live="polite">Ready to design</span><span id="pmt-count">0 operations · 0 connections</span></div>
+            <div id="pmt-output-divider" role="separator" aria-label="Resize Run output" aria-controls="pmt-run-panel submonitor-container" aria-orientation="horizontal" aria-valuemin="5" aria-valuemax="95" aria-valuenow="20" tabindex="0" title="Drag to resize Run output · ↑ / ↓ to adjust · Home 5% · End 95%"></div>
             <details id="pmt-run-panel" open><summary>Run output <span id="pmt-run-state">Idle</span></summary><div id="pmt-run-log" role="log" aria-live="polite"><p class="pmt-log-hint">Execution results appear here. Keep this page open while a flow is playing.</p></div></details>
+            </div>
         </section>
     </main>
     <div id="agent-context-menu"></div>
+    {% if fpmt_data %}{{ fpmt_data|json_script:"server-fpmt-data" }}{{ fpmt_filename|json_script:"server-fpmt-filename" }}{% endif %}
+    {% if flow_open_error %}{{ flow_open_error|json_script:"flow-open-error" }}{% endif %}
     <input id="pmt-file-input" type="file" accept=".fpmt" hidden>
     <script src="{% static 'agent/js/flow-canvas-interactions.js' %}?v={{ STATIC_VERSION }}"></script>
     <script src="{% static 'agent/js/prompt-flow-panel-model.js' %}?v={{ STATIC_VERSION }}"></script>

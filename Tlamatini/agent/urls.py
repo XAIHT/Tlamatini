@@ -13,7 +13,7 @@ from django.urls import path
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_POST
 
-from . import views
+from . import views, flow_file_views
 from .pdf_context_views import prepare_pdf_context_view, pdf_context_status_view, cancel_pdf_context_view
 
 
@@ -46,6 +46,9 @@ urlpatterns = [
     path('list_all_agent_descriptions/', secure_get(views.list_all_agent_descriptions_view), name='list_all_agent_descriptions'),
     path('load_agent_config/<str:agent_name>/', secure_get(views.load_agent_config_view), name='load_agent_config'),
     path('agentic_control_panel/', secure_get(views.agentic_control_panel), name='agentic_control_panel'),
+    path('flow_files/status/', flow_file_views.status, name='flow_file_status'),
+    path('flow_files/validate/', secure_post(flow_file_views.validate), name='flow_file_validate'),
+    path('flow_files/open/', secure_post(flow_file_views.upload), name='flow_file_open'),
     path('prompt_flow_panel/', secure_get(views.prompt_flow_panel), name='prompt_flow_panel'),
     path('save_agent_config/<str:agent_name>/', secure_post(views.save_agent_config_view), name='save_agent_config'),
     path('clear_pool/', secure_post(views.clear_pool_view), name='clear_pool'),

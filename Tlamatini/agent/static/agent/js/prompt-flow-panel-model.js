@@ -8,6 +8,7 @@
     const EXTENSION = '.fpmt';
     const VERSION = 2;
     const commentColors = [['#fbcfe8', 'Pink'], ['#fef3c7', 'Yellow'], ['#dcfce7', 'Green'], ['#dbeafe', 'Blue'], ['#ede9fe', 'Purple'], ['#ffedd5', 'Orange'], ['#ffffff', 'White'], ['#e5e7eb', 'Grey']];
+    const commentTextColors = [['#202938', 'Ink'], ['#000000', 'Black'], ['#1d4ed8', 'Blue'], ['#166534', 'Green'], ['#7e22ce', 'Purple'], ['#b91c1c', 'Red'], ['#92400e', 'Brown'], ['#ffffff', 'White']];
     const commentFonts = ['Nunito', 'Arial', 'Verdana', 'Georgia', 'Times New Roman', 'Courier New'];
     const isFlowFilename = name => /\.fpmt$/i.test(name);
     // Migrate old flow draft/save names without changing system prompt files.
@@ -21,7 +22,7 @@
         flush_embeddings: { label: 'Flush embeddings', color: '#f0a88b', fill: '#684237', path: 'M4 8H196L100 124Z', input: [4 + 96 * 56 / 116, 64], output: [196 - 96 * 56 / 116, 64], help: 'Remove this run’s embeddings while retaining its conversation.' },
         clean_history: { label: 'Clean History', color: '#90cddc', fill: '#315665', path: 'M4 14H196L160 114H40Z', input: [22, 64], output: [178, 64], help: 'Clear this run’s conversation and last output; keep its embeddings.' },
         user_input: { label: 'User Input', color: '#eaaed6', fill: '#653d59', path: 'M52 4L100 38L148 4V88L100 124L52 88Z', input: [52, 64], output: [148, 64], help: 'Pause for a user reply and add it to the conversation.' },
-        user_commentary: { label: 'User Commentary', color: '#eaaed6', fill: '#653d59', path: 'M28 10H172Q196 10 196 34V82Q196 106 172 106H70L48 124L33 106H28Q4 106 4 82V34Q4 10 28 10Z', static: true, help: 'A static review note. Double-click to write in the bubble; Configure changes its colors and font. It never runs.' },
+        user_commentary: { label: 'User Commentary', color: '#eaaed6', fill: '#653d59', path: 'M28 10H172Q196 10 196 34V82Q196 106 172 106H70L48 124L33 106H28Q4 106 4 82V34Q4 10 28 10Z', static: true, help: 'A static review note. Double-click to write. Use the floating toolbar to format; drag any edge or corner to resize. It never runs.' },
     };
     const copy = value => JSON.parse(JSON.stringify(value));
     function uniqueLabel(label, used) {
@@ -42,8 +43,34 @@
         if (type === 'prompt' || type === 'programmed_prompt') Object.assign(config, { multi_turn: false, acpx: false });
         if (type === 'programmed_prompt') Object.assign(config, { delay_seconds: 5, scheduled_at: '' });
         if (type === 'decision') Object.assign(config, { comparison: 'contains', value: '', case_sensitive: false });
-        if (type === 'user_commentary') Object.assign(config, { width: 320, height: 200, color: '#fbcfe8', font_family: 'Nunito', font_size: 16, bold: false, italic: false, align: 'left' });
+        if (type === 'user_commentary') Object.assign(config, { width: 360, height: 160, color: '#fef3c7', text_color: '#202938', font_family: 'Nunito', font_size: 16, bold: false, italic: false, underline: false, align: 'left', runs: [] });
         return { id: id(), type, label: operations[type].label, x, y, config };
+    }
+    const commentStyleKeys = ['font_family', 'font_size', 'text_color', 'bold', 'italic', 'underline'];
+    const commentStyle = c => Object.fromEntries(commentStyleKeys.map(key => [key, key === 'underline' ? !!c[key] : c[key]]));
+    function mergeCommentRuns(runs) {
+        const merged = [];
+        for (const run of runs) {
+            if (!run.text) continue;
+            const last = merged[merged.length - 1];
+            if (last && commentStyleKeys.every(key => last[key] === run[key])) last.text += run.text;
+            else merged.push({ text: run.text, ...commentStyle(run) });
+        }
+        return merged;
+    }
+    function sliceCommentRuns(runs, start, end) {
+        let offset = 0;
+        return runs.flatMap(run => {
+            const from = Math.max(0, start - offset), to = Math.min(run.text.length, end - offset);
+            offset += run.text.length;
+            return to > from ? [{ ...run, text: run.text.slice(from, to) }] : [];
+        });
+    }
+    const commentRuns = c => c.runs || (c.text ? [{ text: c.text, ...commentStyle(c) }] : []);
+    function replaceCommentRange(c, start, end, replacement) {
+        const runs = commentRuns(c);
+        c.runs = mergeCommentRuns([...sliceCommentRuns(runs, 0, start), ...replacement, ...sliceCommentRuns(runs, end, c.text.length)]);
+        c.text = c.runs.map(run => run.text).join('');
     }
     function validate(value, playable = false) {
         const fail = message => { throw new Error(message); };
@@ -68,10 +95,23 @@
             if (isComment(n)) {
                 const c = n.config;
                 for (const [key, fallback, min, max] of [['width', 320, 200, 2400], ['height', 200, 128, 2400], ['font_size', 16, 10, 48]]) { if (c[key] === undefined) c[key] = fallback; number(c[key], min, max, `Comment ${key}`); }
-                for (const [key, fallback] of [['color', '#fbcfe8'], ['font_family', 'Nunito'], ['align', 'left'], ['bold', false], ['italic', false]]) if (c[key] === undefined) c[key] = fallback;
-                if (!commentColors.some(([color]) => color === c.color) || !commentFonts.includes(c.font_family) || !['left', 'center', 'right'].includes(c.align)) fail('Choose a supported comment color, font and alignment.');
-                if (typeof c.bold !== 'boolean' || typeof c.italic !== 'boolean') fail('Comment style switches must be true or false.');
-                n.config = Object.fromEntries(['text', 'width', 'height', 'color', 'font_family', 'font_size', 'bold', 'italic', 'align'].map(key => [key, c[key]]));
+                for (const [key, fallback] of [['color', '#fbcfe8'], ['text_color', '#202938'], ['font_family', 'Nunito'], ['align', 'left'], ['bold', false], ['italic', false], ['underline', false]]) if (c[key] === undefined) c[key] = fallback;
+                if (!commentColors.some(([color]) => color === c.color) || !commentTextColors.some(([color]) => color === c.text_color) || !commentFonts.includes(c.font_family) || !['left', 'center', 'right'].includes(c.align)) fail('Choose a supported comment color, font and alignment.');
+                if (typeof c.bold !== 'boolean' || typeof c.italic !== 'boolean' || typeof c.underline !== 'boolean') fail('Comment style switches must be true or false.');
+                if (c.runs === undefined) c.runs = c.text ? [{ text: c.text, ...commentStyle(c) }] : [];
+                if (!Array.isArray(c.runs) || c.runs.length > 10000) fail('Use at most 10,000 formatted text runs per comment.');
+                c.runs = c.runs.map(run => {
+                    if (!run || typeof run !== 'object' || Array.isArray(run)) fail('A formatted text run must be an object.');
+                    text(run.text, 100000, 'Comment run text');
+                    const style = { ...commentStyle(c), ...run };
+                    number(style.font_size, 10, 48, 'Comment run font size');
+                    if (!commentFonts.includes(style.font_family) || !commentTextColors.some(([color]) => color === style.text_color)) fail('Choose a supported comment font and text color.');
+                    if (['bold', 'italic', 'underline'].some(key => typeof style[key] !== 'boolean')) fail('Comment run style switches must be true or false.');
+                    return { text: run.text, ...commentStyle(style) };
+                });
+                if (c.runs.map(run => run.text).join('') !== c.text) fail('Comment runs must contain exactly the comment text.');
+                c.runs = mergeCommentRuns(c.runs);
+                n.config = Object.fromEntries(['text', 'runs', 'width', 'height', 'color', 'text_color', 'font_family', 'font_size', 'bold', 'italic', 'underline', 'align'].map(key => [key, c[key]]));
             }
             if (['prompt', 'programmed_prompt'].includes(n.type)) {
                 if (typeof n.config.multi_turn !== 'boolean' || typeof n.config.acpx !== 'boolean') fail('Prompt switches must be true or false.');
@@ -129,5 +169,5 @@
         flow.edges = [{ id: id(), source: a.id, target: b.id, branch: 'next' }, { id: id(), source: b.id, target: c.id, branch: 'yes' }, { id: id(), source: b.id, target: d.id, branch: 'no' }];
         return flow;
     }
-    window.PromptFlowPanelModel = Object.freeze({ FORMAT, VERSION, EXTENSION, commentColors, commentFonts, isComment, size, isFlowFilename, flowFilename, operations, copy, uniqueLabel, id, blank, node, validate, example });
+    window.PromptFlowPanelModel = Object.freeze({ FORMAT, VERSION, EXTENSION, commentColors, commentTextColors, commentFonts, commentStyleKeys, commentStyle, commentRuns, mergeCommentRuns, sliceCommentRuns, replaceCommentRange, isComment, size, isFlowFilename, flowFilename, operations, copy, uniqueLabel, id, blank, node, validate, example });
 })();

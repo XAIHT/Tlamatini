@@ -29,9 +29,10 @@ class SystemRAGChain:
     def __init__(self, config_path=None):
         # Load configuration from config.json
         if config_path is None:
-            config_path = os.path.join(os.path.dirname(__file__), "config.json")
+            base_dir = os.path.dirname(sys.executable if getattr(sys, 'frozen', False) else __file__)
+            config_path = os.environ.get('CONFIG_PATH', '').strip() or os.path.join(base_dir, "config.json")
 
-        with open(config_path, 'r') as f:
+        with open(config_path, 'r', encoding='utf-8-sig') as f:
             config = json.load(f)
 
         # Initialize Ollama LLM with values from config
@@ -96,7 +97,7 @@ Answer ONLY with YES or NO:"""
             return self.available_resources
 
         # Connect to MCP server
-        if not await self.mcp_client.connect():
+        if self.mcp_client.websocket is None and not await self.mcp_client.connect():
             raise Exception("Failed to connect to MCP server")
 
         try:
@@ -156,7 +157,7 @@ Answer ONLY with YES or NO:"""
     async def fetch_system_context(self):
         """Fetch actual system context from MCP server"""
         # Connect to MCP server if not already connected
-        if not await self.mcp_client.connect():
+        if self.mcp_client.websocket is None and not await self.mcp_client.connect():
             raise Exception("Failed to connect to MCP server")
 
         try:
@@ -178,6 +179,14 @@ Answer ONLY with YES or NO:"""
 
     async def intelligent_context_fetch(self, input_data):
         """Intelligently decide whether to fetch system context based on the question"""
+        try:
+            return await self._fetch_context(input_data)
+        finally:
+            # The chat creates this chain per request; do not leave its routing
+            # or metrics socket attached to an event loop that is about to close.
+            await self.mcp_client.disconnect()
+
+    async def _fetch_context(self, input_data):
         question = input_data.get('question', '')
 
         # Use LLM to decide if we need system context

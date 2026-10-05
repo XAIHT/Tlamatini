@@ -23,6 +23,7 @@ OPERATIONS = {
     "flush_embeddings", "clean_history", "user_input", "user_commentary",
 }
 COMMENT_COLORS = {"#fbcfe8", "#fef3c7", "#dcfce7", "#dbeafe", "#ede9fe", "#ffedd5", "#ffffff", "#e5e7eb"}
+COMMENT_TEXT_COLORS = {"#202938", "#000000", "#1d4ed8", "#166534", "#7e22ce", "#b91c1c", "#92400e", "#ffffff"}
 COMMENT_FONTS = {"Nunito", "Arial", "Verdana", "Georgia", "Times New Roman", "Courier New"}
 COMPARISONS = {"contains", "not_contains", "equals", "is_empty", "user"}
 
@@ -100,15 +101,40 @@ def validate_flow(payload, *, playable=False):
                 height=_number(config.get("height", 200), "Comment height", 128, 2400),
                 font_size=_number(config.get("font_size", 16), "Comment font size", 10, 48),
                 color=_text(config.get("color", "#fbcfe8"), "Comment color", 20),
+                text_color=_text(config.get("text_color", "#202938"), "Comment text color", 20),
                 font_family=_text(config.get("font_family", "Nunito"), "Comment font", 80),
                 align=_text(config.get("align", "left"), "Comment alignment", 10),
             )
-            if clean["color"] not in COMMENT_COLORS or clean["font_family"] not in COMMENT_FONTS or clean["align"] not in {"left", "center", "right"}:
+            if clean["color"] not in COMMENT_COLORS or clean["text_color"] not in COMMENT_TEXT_COLORS or clean["font_family"] not in COMMENT_FONTS or clean["align"] not in {"left", "center", "right"}:
                 raise FlowError("Choose a supported comment color, font and alignment.")
-            for key in ("bold", "italic"):
+            for key in ("bold", "italic", "underline"):
                 clean[key] = config.get(key, False)
                 if not isinstance(clean[key], bool):
                     raise FlowError(f"Comment {key} must be true or false.")
+            style_keys = ("font_family", "font_size", "text_color", "bold", "italic", "underline")
+            runs = config.get("runs", [{"text": clean["text"]}] if clean["text"] else [])
+            if not isinstance(runs, list) or len(runs) > 10000:
+                raise FlowError("Use at most 10,000 formatted text runs per comment.")
+            clean["runs"] = []
+            for run in runs:
+                if not isinstance(run, dict):
+                    raise FlowError("A formatted text run must be an object.")
+                part = {"text": _text(run.get("text"), "Comment run text")}
+                part.update({key: run.get(key, clean[key]) for key in style_keys})
+                _number(part["font_size"], "Comment run font size", 10, 48)
+                if _text(part["font_family"], "Comment run font", 80) not in COMMENT_FONTS or _text(part["text_color"], "Comment run color", 20) not in COMMENT_TEXT_COLORS:
+                    raise FlowError("Choose a supported comment font and text color.")
+                if any(not isinstance(part[key], bool) for key in ("bold", "italic", "underline")):
+                    raise FlowError("Comment run style switches must be true or false.")
+                if not part["text"]:
+                    continue
+                last = clean["runs"][-1] if clean["runs"] else None
+                if last and all(last[key] == part[key] for key in style_keys):
+                    last["text"] += part["text"]
+                else:
+                    clean["runs"].append(part)
+            if "".join(run["text"] for run in clean["runs"]) != clean["text"]:
+                raise FlowError("Comment runs must contain exactly the comment text.")
         if kind in {"prompt", "programmed_prompt"}:
             for key in ("multi_turn", "acpx"):
                 clean[key] = config.get(key, False)

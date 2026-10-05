@@ -21,6 +21,7 @@ try:
     from . import filesearch_pb2
     from . import filesearch_pb2_grpc
     from .path_guard import is_path_allowed, REJECTION_MESSAGE
+    from .mcp_files_search_client import _grpc_endpoint
 except ImportError:
     # If relative import fails, try importing from the same directory
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -28,6 +29,7 @@ except ImportError:
         import filesearch_pb2
         import filesearch_pb2_grpc
         from path_guard import is_path_allowed, REJECTION_MESSAGE
+        from mcp_files_search_client import _grpc_endpoint
     except ImportError:
         print("ERROR: Could not find 'filesearch_pb2.py' or 'filesearch_pb2_grpc.py'.")
         print("Please ensure they are in the same directory as this script.")
@@ -93,6 +95,9 @@ def _get_application_root() -> str:
 
 
 def _get_default_config_path() -> str:
+    configured = os.environ.get('CONFIG_PATH', '').strip()
+    if configured:
+        return configured
     if getattr(sys, 'frozen', False):
         return os.path.join(os.path.dirname(sys.executable), "config.json")
     return os.path.join(os.path.dirname(__file__), "config.json")
@@ -152,7 +157,7 @@ class FileSearchRAGChain:
             config_path = _get_default_config_path()
 
         try:
-            with open(config_path, 'r') as f:
+            with open(config_path, 'r', encoding='utf-8-sig') as f:
                 config = json.load(f)
         except FileNotFoundError:
             print(f"Warning: config.json not found at {config_path}. Using defaults.")
@@ -175,7 +180,7 @@ class FileSearchRAGChain:
         )
 
         # Get gRPC target from config, default to localhost
-        self.grpc_target = config.get("mcp_files_search_grpc_target", "localhost:50051")
+        self.grpc_target = _grpc_endpoint(config)
 
         # --- Prompts ---
 
@@ -283,7 +288,7 @@ User Query: {query}
                 
                 if verbose:
                     print(f"--- [FileSearchRAGChain]: gRPC connection successful. Sending request: {{pattern: '{file_pattern}', key: '{base_key}'}} ---")
-                response = stub.SearchFiles(request)
+                response = stub.SearchFiles(request, timeout=15)
                 if verbose:
                     print("--- [FileSearchRAGChain]: gRPC server responded. ---")
                 
@@ -334,7 +339,7 @@ User Query: {query}
                 
                 if verbose:
                     print("--- [FileSearchRAGChain]: gRPC connection successful. Sending ListAllowedDirs request ---")
-                response = stub.ListAllowedDirs(request)
+                response = stub.ListAllowedDirs(request, timeout=15)
                 if verbose:
                     print("--- [FileSearchRAGChain]: gRPC server responded. ---")
                 

@@ -3,20 +3,17 @@
 
 Launch from a verified foreground PowerShell -NoExit console. Uses a separate
 normal source installation, real login/HTTP/WebSocket, and Shoter desktop photos.
-No headless mode, transport interception or injected editor state. The browser
-visibility photo must be reviewed before creating browser.confirmed. Successful
+No headless mode, transport interception or injected editor state. The foreground window gate verifies real Chrome visibility. Successful
 checks leave Chrome and the test server open for inspection until close.confirmed.
 
 Launch it in a classic console (conhost.exe): inside Windows Terminal the console
 handle is a hidden pseudo-console window, so the foreground gate below refuses.
-Chrome itself can crash at the checkpoint 5 download (2026-10-03: three Crashpad
-dumps in the test profile, one per failed run); a run without the crash passed
-9/9. Treat that crash as inconclusive and re-run; never count it as a pass.
 """
 from __future__ import annotations
 
 import ctypes
 import json
+import secrets
 from pathlib import Path
 import shutil
 import subprocess
@@ -30,9 +27,9 @@ import panel_search_title_visible as visible
 from prompt_flow_connections_visible import require_browser_foreground
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / 'Temp/prompt-commentary-visible'
+OUT = ROOT / 'Temp/prompt-commentary-redesign-visible'
 visible.OUT = OUT
-visible.RUNTIME = OUT / 'runtime'
+visible.RUNTIME = ROOT / 'Temp/prompt-commentary-visible/runtime'
 BASE = visible.BASE
 
 
@@ -40,6 +37,7 @@ def main():
     if any('headless' in arg for arg in sys.argv[1:]):
         raise SystemExit('Headless execution is forbidden.')
     OUT.mkdir(parents=True, exist_ok=True)
+    (OUT / 'close.confirmed').unlink(missing_ok=True)
     user32 = ctypes.windll.user32
     kernel32 = ctypes.windll.kernel32
     kernel32.GetConsoleWindow.restype = ctypes.c_void_p
@@ -54,12 +52,20 @@ def main():
     if any(port in before for port in (8001, 8766, 50052)):
         raise SystemExit('Test ports occupied; refusing to replace an existing server.')
     original = visible.read_discovery()
-    (OUT / 'login.json').write_text(json.dumps({'username': 'user', 'password': 'changeme'}), encoding='utf-8')
+    (OUT / 'login.json').write_text(json.dumps({'username': 'user', 'password': secrets.token_urlsafe(32)}), encoding='utf-8')
     server = None
     results = []
+    (OUT / 'checks.json').write_text('[]', encoding='utf-8')
     outcome = 1
     try:
         env, credentials = visible.prepare_runtime()
+        if '--resume' in sys.argv:
+            # Rotate only the isolated test account, avoiding Chrome's breached-password modal.
+            subprocess.run([sys.executable, '-u', 'Tlamatini/manage.py', 'shell', '-c',
+                'import os; from django.contrib.auth import get_user_model; '
+                'u = get_user_model().objects.get(username="user"); '
+                'u.set_password(os.environ["TLAMATINI_COMMENT_TEST_PASSWORD"]); u.save(update_fields=["password"])'],
+                cwd=visible.RUNTIME, env={**env, 'TLAMATINI_COMMENT_TEST_PASSWORD': credentials['password']}, check=True)
         # Refresh only this isolated test installation on a repeat run.
         for path in ('agent/services/prompt_flow_panel.py', 'agent/test_prompt_flow_panel.py',
                      'agent/test_prompt_flow_panel_websocket.py', 'agent/management/commands/check_prompt_flow_panel.py',
@@ -93,20 +99,31 @@ def main():
         else:
             raise TimeoutError('Test server did not become ready.')
         visible.restore_discovery(original)
+        # This isolated profile must not cover the actual controls with Chrome's password bubble.
+        profile = OUT / ('chrome-profile-' + str(time.time_ns()))
+        preferences = profile / 'Default/Preferences'
+        preferences.parent.mkdir(parents=True, exist_ok=True)
+        prefs = json.loads(preferences.read_text(encoding='utf-8')) if preferences.exists() else {}
+        prefs['credentials_enable_service'] = False
+        prefs.setdefault('profile', {})['password_manager_enabled'] = False
+        preferences.write_text(json.dumps(prefs), encoding='utf-8')
         with sync_playwright() as playwright:
             context = playwright.chromium.launch_persistent_context(
-                str(OUT / 'chrome-profile-containment'), channel='chrome', headless=False,
+                str(profile), channel='chrome', headless=False,
                 chromium_sandbox=True, no_viewport=True, slow_mo=100,
                 accept_downloads=True, args=['--start-maximized'])
             page = context.pages[0]
             errors = []
-            page.on('pageerror', lambda error: errors.append(str(error)))
+            def page_error(error):
+                errors.append(str(error))
+                print('BROWSER SCRIPT ERROR:', error, flush=True)
+            page.on('pageerror', page_error)
             page.on('dialog', lambda dialog: dialog.accept())
             page.on('close', lambda: print('Visible test page closed.', flush=True))
             page.goto(BASE)
             page.bring_to_front()
-            visible.visibility_gate('browser', page)
             require_browser_foreground(page)
+            visible.photograph('browser-visible')
             page.goto(BASE + '/agent/prompt_flow_panel/')
             if page.locator('#id_username').is_visible():
                 page.locator('#id_username').fill(credentials['username'])
@@ -115,6 +132,11 @@ def main():
                 page.goto(BASE + '/agent/prompt_flow_panel/')
             credentials.clear()
             expect(page.locator('.agent-tool-item')).to_have_count(8)
+            expect(page.locator('[data-action="reconnect"]')).to_be_disabled()
+            page.wait_for_load_state('networkidle')
+            page.bring_to_front()
+            require_browser_foreground(page)
+            visible.photograph('panel-ready')
 
             def checkpoint(name):
                 require_browser_foreground(page)
@@ -123,181 +145,8 @@ def main():
                 (OUT / 'checks.json').write_text(json.dumps(results, indent=2), encoding='utf-8')
                 print('PASS:', name, flush=True)
 
-            def menu(action):
-                page.get_by_role('button', name='File', exact=True).click()
-                page.locator('.dropdown-menu [data-action="' + action + '"]').first.click()
-                accept = page.locator('.tlmpop-overlay button').filter(has_text='Continue')
-                if accept.is_visible():
-                    accept.click()
-
-            def save(name):
-                menu('save')
-                page.locator('#pmt-field-filename').fill(name)
-                with page.expect_download() as downloaded:
-                    page.get_by_role('button', name='Download .fpmt', exact=True).click()
-                path = OUT / name
-                downloaded.value.save_as(path)
-                return path, json.loads(path.read_text(encoding='utf-8'))
-
-            def open_file(path):
-                page.get_by_role('button', name='File', exact=True).click()
-                with page.expect_file_chooser() as chooser:
-                    page.locator('[data-action="open"]').click()
-                chooser.value.set_files(str(path))
-                accept = page.locator('.tlmpop-overlay button').filter(has_text='Continue')
-                if accept.is_visible():
-                    accept.click()
-
-            def center(locator):
-                require_browser_foreground(page)
-                box = locator.bounding_box()
-                return box['x'] + box['width'] / 2, box['y'] + box['height'] / 2
-
-            menu('new')
-            page.locator('[data-action="fit"]').click()
-            expect(page.locator('.agent-tool-item')).to_have_count(8)
-            expect(page.locator('.agent-tool-item[data-type="user_input"]')).to_have_text('User Input')
-            expect(page.locator('.agent-tool-item[data-type="user_commentary"]')).to_have_text('User Commentary')
-            css = page.locator('link[href*="prompt_flow_panel.css"]').get_attribute('href')
-            assert '-prompt-commentary-input-1' in css
-            assert page.request.get(BASE + css).body() == (ROOT / 'Tlamatini/agent/static/agent/css/prompt_flow_panel.css').read_bytes()
-            checkpoint('01-palette-and-served-assets')
-            page.locator('.agent-tool-item[data-type="user_commentary"]').click()
-            comment = page.locator('.pmt-node[data-type="user_commentary"]')
-            expect(comment.locator('.pmt-port')).to_have_count(0)
-            expect(page.locator('#pmt-play')).to_be_disabled()
-            expect(page.locator('#pmt-start option')).to_have_count(1)
-            paragraph = ('Review paragraph: ñ <script> literal {{last_output}}. This note stays on the canvas.\n\n' * 60).rstrip()
-            comment.dblclick(position={'x': 70, 'y': 55})
-            editor = page.get_by_role('textbox', name='Static User Commentary text')
-            expect(editor).to_be_visible()
-            editor.fill(paragraph)
-            assert editor.evaluate('(el) => el.scrollHeight <= el.clientHeight + 2'), 'Editor must grow while typing'
-            expect(editor).to_have_css('overflow-y', 'hidden')
-            editor.press('Control+Enter')
-            expect(comment.locator('.pmt-comment-text')).to_have_text(paragraph)
-            assert comment.locator('.pmt-comment-text script').count() == 0
-            assert comment.locator('.pmt-comment-text').evaluate('(el) => el.scrollHeight <= el.clientHeight'), 'Long note must fit without scrolling'
-            assert float(comment.get_attribute('style').split('height: ')[1].split('px')[0]) > 200
-            checkpoint('02-in-place-long-literal-note')
-            comment.focus()
-            comment.press('Enter')
-            editor.fill('Cancelled replacement')
-            editor.press('Escape')
-            expect(comment.locator('.pmt-comment-text')).to_have_text(paragraph)
-            # A compact review note lets the whole manually resized bubble be inspected.
-            paragraph = 'Review note: Keep the runtime User Input separate from this static commentary.\n\nThe bubble contains the complete text and grows when the font or content needs more room.'
-            comment.focus()
-            comment.press('Enter')
-            editor.fill(paragraph)
-            editor.press('Control+Enter')
-            page.locator('[data-action="configure"]').click()
-            page.locator('#pmt-field-color').select_option('#dbeafe')
-            page.locator('#pmt-field-font_family').select_option('Georgia')
-            page.locator('#pmt-field-font_size').fill('21')
-            page.locator('#pmt-field-width').fill('500')
-            page.locator('#pmt-field-height').fill('320')
-            page.locator('#pmt-field-bold').check()
-            page.locator('#pmt-field-italic').check()
-            page.locator('#pmt-field-align').select_option('right')
-            page.get_by_role('button', name='Save', exact=True).click()
-            expect(comment).to_have_css('width', '500px')
-            expect(comment.locator('.pmt-comment-text')).to_have_css('font-size', '21px')
-            expect(comment.locator('.pmt-comment-text')).to_have_css('font-style', 'italic')
-            expect(comment.locator('.pmt-shape')).to_have_css('fill', 'rgb(219, 234, 254)')
-            expect(comment.locator('.pmt-comment-text')).to_have_css('overflow-y', 'hidden')
-            assert comment.locator('.pmt-comment-text').evaluate('(el) => el.scrollHeight <= el.clientHeight')
-            checkpoint('03-font-color-size-and-cancel')
-            page.locator('[data-action="zoom-out"]').click()
-            handle = comment.locator('.pmt-comment-resize')
-            x, y = center(handle)
-            page.mouse.move(x, y)
-            page.mouse.down()
-            page.mouse.move(x + 90, y + 72, steps=8)
-            page.mouse.up()
-            expect(comment).to_have_css('width', '600px')
-            expect(comment).to_have_css('height', '400px')
-            page.locator('[data-action="undo"]').click()
-            expect(comment).to_have_css('width', '500px')
-            page.locator('[data-action="redo"]').click()
-            expect(comment).to_have_css('width', '600px')
-            checkpoint('04-zoom-aware-resize-undo-redo')
-            page.locator('[data-action="duplicate"]').click()
-            expect(comment).to_have_count(2)
-            page.locator('#submonitor-container').focus()
-            page.keyboard.press('ArrowDown')
-            page.keyboard.press('Shift+ArrowDown')
-            page.keyboard.press('Shift+ArrowDown')
-            page.keyboard.press('Shift+ArrowDown')
-            page.keyboard.press('Shift+ArrowDown')
-            page.keyboard.press('Shift+ArrowDown')
-            page.locator('[data-action="fit"]').click()
-            portable, payload = save('commentaries.fpmt')
-            assert payload['version'] == 2 and payload['start'] is None and payload['edges'] == []
-            assert len(payload['nodes']) == 2
-            assert all(n['config']['text'] == paragraph and n['config']['font_family'] == 'Georgia' for n in payload['nodes'])
-            open_file(portable)
-            expect(comment).to_have_count(2)
-            page.wait_for_timeout(500)
-            page.reload()
-            expect(comment).to_have_count(2)
-            checkpoint('05-multiple-notes-file-and-draft-roundtrip')
-            # Keep the static notes, then add real input/history-clear operations.
-            page.locator('.agent-tool-item[data-type="user_input"]').click()
-            page.locator('#submonitor-container').focus()
-            for _ in range(18):
-                page.keyboard.press('Shift+ArrowRight')
-            page.locator('.agent-tool-item[data-type="clean_history"]').click()
-            page.locator('#submonitor-container').focus()
-            for _ in range(26):
-                page.keyboard.press('Shift+ArrowRight')
-            page.locator('[data-action="fit"]').click()
-            input_node = page.locator('.pmt-node[data-type="user_input"]')
-            clear_node = page.locator('.pmt-node[data-type="clean_history"]')
-            source = input_node.locator('.output-triangle')
-            target = clear_node.locator('.input-triangle')
-            page.mouse.move(*center(source))
-            page.mouse.down()
-            page.mouse.move(*center(target), steps=8)
-            page.mouse.up()
-            expect(page.locator('.pmt-edge')).to_have_count(1)
-            expect(page.locator('#pmt-start option')).to_have_count(2)
-            page.locator('#pmt-play').click()
-            expect(page.locator('#pmt-field-reply')).to_be_visible()
-            expect(page.locator('.ui-dialog-title')).to_have_text('User Input')
-            page.locator('#pmt-field-reply').fill('Same runtime reply: ñ ✓')
-            page.get_by_role('button', name='Continue flow', exact=True).click()
-            expect(page.locator('#pmt-run-state')).to_have_text('completed', timeout=30000)
-            expect(page.locator('#pmt-run-log')).to_contain_text('Same runtime reply: ñ ✓')
-            expect(comment.locator('.pmt-node-status')).to_have_count(0)
-            checkpoint('06-real-user-input-playback-with-static-notes')
-            page.locator('#pmt-play').click()
-            expect(page.locator('#pmt-field-reply')).to_be_visible()
-            page.keyboard.press('Escape')
-            expect(page.locator('#pmt-run-state')).to_have_text('stopped', timeout=30000)
-            checkpoint('07-user-input-escape-stops-flow')
-            legacy = {'format': 'tlamatini-prompting-flow', 'version': 1, 'name': 'Legacy reply flow',
-                      'start': 'old', 'max_steps': 20, 'nodes': [
-                          {'id': 'old', 'type': 'user_commentary', 'label': 'User Commentary', 'x': 70, 'y': 60, 'config': {'text': 'Legacy request'}},
-                      ], 'edges': []}
-            legacy_path = OUT / 'legacy.fpmt'
-            legacy_path.write_text(json.dumps(legacy), encoding='utf-8')
-            open_file(legacy_path)
-            expect(input_node).to_have_count(1)
-            expect(comment).to_have_count(0)
-            expect(input_node.locator('.pmt-node-label')).to_have_text('User Input')
-            page.locator('#pmt-play').click()
-            expect(page.locator('#pmt-field-reply')).to_be_visible()
-            page.locator('#pmt-field-reply').fill('Legacy mechanism preserved')
-            page.get_by_role('button', name='Continue flow', exact=True).click()
-            expect(page.locator('#pmt-run-state')).to_have_text('completed', timeout=30000)
-            _, migrated = save('migrated.fpmt')
-            assert migrated['version'] == 2 and migrated['nodes'][0]['type'] == 'user_input'
-            checkpoint('08-legacy-input-migration-and-playback')
-            open_file(ROOT / 'docs/examples/prompting-kickoff.fpmt')
-            expect(page.locator('.pmt-node')).to_have_count(8)
-            page.locator('[data-action="fit"]').click()
-            checkpoint('09-bundled-eight-asset-example')
+            from release_commentary_checks import run_commentary_checks
+            run_commentary_checks(page, OUT, BASE, checkpoint, errors)
             assert not errors, errors
             outcome = 0
             (OUT / 'summary.json').write_text(json.dumps({'exit_code': 0, 'checks': results,

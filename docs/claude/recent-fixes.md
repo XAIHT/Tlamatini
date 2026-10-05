@@ -16,6 +16,152 @@
 
 ---
 
+## 2026-10-04 — Auxiliary chat chains share the effective MCP configuration
+
+The frozen live chat still attempted System-Metrics on 8765 while the configured
+server used 8767: `SystemRAGChain` independently read the bundled development
+configuration. It and `FileSearchRAGChain` now honor explicit paths, CONFIG_PATH,
+the frozen executable directory and UTF-8 BOM. The file chain shares the MCP
+client's endpoint normalizer, preferring the current URI while retaining legacy
+`mcp_files_search_grpc_target`; both search and directory-list RPCs have deadlines.
+The system chain reuses a socket within the request and disconnects in `finally`,
+including routing failures. Test the actual auxiliary chains as well as direct
+clients in source and frozen modes; a direct-client pass missed this caller.
+
+Default-only frozen fixtures clear CONFIG_PATH explicitly. The no-placeholder
+sidecar fixture uses the real chain class with mocked I/O and asserts disconnect
+after both metrics/no-metrics requests. These and the endpoint regressions passed
+18 focused tests. Keep the model restriction and initial/final chat-log checks in
+the release-validation skill; see the dated ledger for subsequent broad results.
+
+## 2026-10-04 — BOM configuration in path security and chat startup
+
+The actual frozen application exposed two additional independent config readers:
+`path_guard._load_config` and `rag.config.load_config_and_prompt`. Both now use
+`utf-8-sig`, accepting ordinary UTF-8 and Windows BOM UTF-8 without changing
+values or path boundaries. Six focused tests cover the effective endpoints,
+plain/BOM chat startup and allowed/sibling/traversal paths. The actual compiled
+MCP probe also passed on nondefault ports. Keep the initial application-log
+assertion: a later configuration Save can remove the BOM and hide an earlier
+RAG initialization failure. The dated campaign ledger records frozen retesting.
+
+## 2026-10-04 — Full-suite configuration and fixture regressions
+
+The first broad release run found 13 failures and one error among 5,966 tests.
+After repair, all 5,967 tests completed successfully with 18 explicit skips;
+the affected areas also passed a separate 159-test run. This does not certify
+unavailable live providers or hardware. See the dated release-validation record.
+
+`tools._seed_global_agent_defaults` now reads model settings only for agents
+with registered model fields. The former unconditional reads made Pythonxer
+and Kalier depend on unrelated configuration and defeated Kalier's best-effort
+fallback when its configuration reader raised.
+
+Flow catalog generation assigns `str|int` to Telegram API IDs and WhatsApp
+phone-number IDs. Public placeholders and keyed numeric values therefore have
+the same contract, and the standalone validator accepts either representation
+while rejecting booleans, fractions and containers. Do not regenerate a different
+schema merely because a private installation has filled its credentials.
+
+Password-quoting tests again contain the intentional `fake app pass 0000`
+fixtures rather than mismatching redaction markers. The messaging-doctor
+template assertion follows `@config`. Kalier log assertions set and restore
+INFO capture locally; they must pass alone as well as in the complete suite.
+
+## 2026-10-04 — Feed embeddings refuses prompt-only fallback
+
+The live release campaign received an embedding-provider HTTP 401, but Feed
+embeddings completed and advanced anyway. The runtime rejected only
+`BasicPromptOnlyChain`; the enabled tool path returned `UnifiedAgentChain` with
+literal document context instead. Feed now requires an actual `vector_store`
+before adopting a new chain/context. A rejected fallback is closed, the previous
+chain/context remains intact, and the flow reports failure without running its
+next operation. Ordinary chat's useful prompt-only fallback is unchanged.
+Keep both the adapter regression and the live failure/next-node check. A UI
+"completed" label alone was insufficient evidence of successful embeddings.
+
+## 2026-10-04 — Configured MCP endpoints and the ACP example
+
+Files-Search previously ignored its configured host, port and worker count, and
+its client always connected to localhost:50051. Both ends now honor their saved
+settings. The client accepts the existing `ws://` URI spelling while translating
+it to a gRPC endpoint, validates endpoints and uses bounded RPC deadlines.
+System-Metrics now resolves the same installed/source configuration as its
+client. All four loaders honor `CONFIG_PATH` and UTF-8 BOM files. Source startup
+calls the synchronous Files-Search server directly. Do not wrap it in
+`asyncio.run`: it returns a gRPC server, not a coroutine. The live regression
+starts both services on alternative ports and performs real client requests.
+
+The ACP example button already owns an editor operation while loading its file.
+The stricter file-opening guard mistakenly rejected that legitimate nested load.
+Only the example's internal load now opts into `withinEditorOperation`; ordinary
+file openings still obey the busy/running/undo locks. The complete 17-case source
+editor sequence passed, including the example, connections, duplication, zoom,
+Undo/Redo and Save/Open. The current cache suffix is `-flow-file-opening-2`.
+
+Saving an actual Parametrizer mapping exposed another reload issue: its special
+dialog stores `_parametrizer_mappings`, which is not a complete runtime config.
+The loader now restores missing Parametrizer source/target lists from diagram
+edges instead of skipping them merely because mapping metadata exists. Explicit
+saved source/target lists remain authoritative. Keep the live mapping Save/Open
+test; opening and cancelling the mapping dialog alone misses this regression.
+
+## 2026-10-04 — Windows installation, owned-worker removal and real chat acceptance
+
+The real compiled installer exposed a PowerShell entry-point defect: parameter
+defaults read `$PSScriptRoot` before it was populated, producing an empty
+installation path and a `GetFullPath` failure. All registration wrappers now
+resolve an omitted directory inside their script bodies. Keep fresh
+`powershell.exe -File` tests from an unrelated working directory; tests that pass
+`-InstallDir` explicitly cannot catch this failure. The corrected real installer
+completed all eight stages and reached its success dialog.
+
+The uninstaller now identifies workers by installation paths and the inherited
+`TLAMATINI_AGENTS_ROOT`, including children whose original agent parent has
+exited. It revalidates process identities and stops descendants without a global
+name-based kill. The installed frozen executable relocates to a temporary worker
+before confirmation, allowing removal of its original executable. Unsafe roots,
+source checkouts and redirected installation folders are rejected. Locked files
+and denied registry removal produce errors; retry support and installation
+markers remain until the preceding removal steps succeed. Preserve the existing
+agents/nonempty-user-content contract. Explorer is refreshed by shell notification,
+never restarted. See [Windows flow lifecycle](../windows-flow-files.md).
+
+Real chat testing found the first-word prompt heuristic rejected ordinary requests
+that begin with context and put the instruction in a later sentence. The validator
+now considers each sentence/paragraph and accepts explicit reply/respond/answer
+instructions, including a leading “please.” Bare filename fragments remain
+rejected; filesystem authorization remains a separate check.
+
+A later scheduled-prompt retest exposed a classifier echo: a request for the
+literal token `SCHEDULED_OK` was treated as ambiguous filesystem access because
+the classifier repeated the token instead of YES/NO. A strict, whole-request
+single-token reply pattern now bypasses that intent classifier. Paths, multiple
+instructions and arbitrary free-form content do not qualify; ordinary ambiguous
+local access still uses the existing fail-closed checks.
+
+The local main executable and standalone uninstaller were rebuilt in isolated
+output directories without invoking build.py's database/dist cleanup. Source
+tests and frozen-bundle membership are separate evidence from compiled UI tests.
+The current desktop-control policy blocks launching the compiled uninstaller;
+its GUI lifecycle is therefore unverified, even when backend cleanup tests pass.
+The visible release campaign records source and frozen results separately and
+uses only `nemotron-3-ultra:cloud` for Ollama inference. No Git commit was made.
+
+## 2026-10-04 — Complete Prompt Flow documentation and dossier refresh
+
+Updated current user guides, assistant contracts, architecture/frontend/runtime notes, memory and mirrored regression/carriage instructions for inline mixed-style commentary, file fidelity and 5–95% Run output resizing. The shared dossier model now gives graphical editing, portable files and output layout their own sections. Re-derived inventory/version facts and retained historical verification dates. PDF and PowerPoint verification is recorded separately from implementation tests in [the refresh record](../changes/2026-10-04-prompt-flow-documentation.md). No commit, release build or protected database-mechanics change.
+
+## 2026-10-04 — Run output resizes from 5% to 95%
+
+Prompt Flow now has a horizontal divider between canvas and Run output. It changes the pane viewports only: canvas zoom, figure/comment geometry and output text sizes stay unchanged while each pane scrolls independently. The shared divider helper retains the Operations bar behavior and adds vertical pointer/keyboard control. Up/Down adjusts one percentage point, Shift adds five, and Home/End select the limits. Collapse/reopen retains the chosen ratio; per-user browser layout storage is separate from `.fpmt` and flow Undo/Redo. The output log has an explicit viewport height because native `details` wraps its content in an anonymous box. Do not restore percentage-only log sizing: it can clip output instead of scrolling. Source cache suffix: `-prompt-run-output-resize-1`. [Verification and rollback](../changes/2026-10-04-run-output-resize.md). No commit or executable rebuild.
+
+## 2026-10-04 — Graphical rich-text User Commentary
+
+User Commentary now has **no configuration dialog**: all writing and formatting happens in its speech bubble and floating mini toolbar. Selected passages retain distinct fonts, sizes, colors, bold, italic and underline; a collapsed caret styles subsequent typing. Rich copy/cut/paste between comments preserves runs; external text stays literal. Any of eight borders/corners resizes directly, including while editing, with keyboard support. Done/Ctrl+Enter commits the complete edit, Escape/Cancel restores it, and editor plus diagram Undo/Redo preserve styles and geometry. The text grows without internal scrollbars, using the actual mixed-font layout.
+
+Version 2 gains allowlisted `runs` whose text must concatenate exactly to `config.text`; older plain v2 notes normalize to one run. The v1 User Input migration and runtime protocol remain unchanged. Static comments never execute. Source cache suffix is `-prompt-commentary-canvas-2`. See [implementation and verification](../changes/2026-10-04-commentary-graphical-redesign.md). The historical 2026-10-03 Configure workflow below is superseded. No executable/installer rebuild or Git commit was made for this change.
+
 ## 2026-10-03 — Full source/Markdown sweep, the dossier refreshed, and two traps in the visible Prompt Flow harness
 
 Angela asked for a complete sweep of the source and every Markdown document, a visual check of the changes, and a refreshed PDF and PPTX dossier. Findings and fixes:
@@ -4408,3 +4554,8 @@ The `.flw` the converter (`scripts/result_to_flw.py`) emits must stay the `schem
 ## 2026-09-15 — Desktop input and complete flow knowledge
 
 Mouser/Keyboarder/Shoter received the coordinate, target-binding and receipt changes documented in [desktop input and flow contracts](../desktop-input-and-flow-contracts.md). Parametrizer preserves CRLF/empty fields, converts typed targets, refuses partial mappings and blocks replay of interrupted desktop input. FlowCreator now selects from all 89 agents, validates schemas/references/slots/mappings, repairs within configured limits, preserves canonical labels and never emits success after a failed .flw write. Early failures exit nonzero. Hypervisor uses contract-based execution edges and durable desktop receipt context. Credential-only contract overrides no longer erase passive Emailer/Recmailer lifecycle behavior. [Generated coverage](../agent-coverage.md) is checked against installed templates; GUI-Manager remains a design.
+
+
+## 2026-10-04 — Windows .flw / .fpmt lifecycle (source changes)
+
+Both flow types now support owned per-user registration/removal, update repair, Default Apps, early command-line opening, running-instance reuse and login handoff. Chat routes each to its editor. Invalid .flw files preserve the canvas; saved agent IDs remain stable and failed credential redaction blocks unsafe downloads. See [verification and changes](../changes/2026-10-04-windows-flow-files.md) and [Windows flow files](../windows-flow-files.md). No executable rebuild or commit.

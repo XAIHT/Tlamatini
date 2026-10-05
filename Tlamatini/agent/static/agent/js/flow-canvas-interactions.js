@@ -24,29 +24,33 @@
         menu.style.left = Math.min(Math.max(x, 8), Math.max(8, window.innerWidth - rect.width - 8)) + 'px';
         menu.style.top = Math.min(Math.max(y, 8), Math.max(8, window.innerHeight - rect.height - 8)) + 'px';
     }
-    function bindDivider({ element, value, atPointer, apply, before }) {
+    function bindDivider({ element, value, atPointer, apply, before, axis = 'x', keyDirection = 1 }) {
+        const resizeClass = axis === 'y' ? 'resizing-vertical' : 'resizing';
+        const keys = axis === 'y' ? ['ArrowUp', 'ArrowDown'] : ['ArrowLeft', 'ArrowRight'];
         let pointerId = null;
         function end() {
             if (pointerId === null) return;
             const previous = pointerId; pointerId = null;
-            document.body.classList.remove('resizing');
+            document.body.classList.remove(resizeClass);
             if (element.hasPointerCapture(previous)) element.releasePointerCapture(previous);
         }
         element.style.touchAction = 'none';
         element.addEventListener('pointerdown', event => {
             if (event.button !== 0) return;
             event.preventDefault(); before(); pointerId = event.pointerId;
-            element.setPointerCapture(pointerId); document.body.classList.add('resizing');
+            element.focus({ preventScroll: true });
+            element.setPointerCapture(pointerId); document.body.classList.add(resizeClass);
         });
-        document.addEventListener('pointermove', event => { if (pointerId === event.pointerId) apply(atPointer(event.clientX)); });
+        document.addEventListener('pointermove', event => { if (pointerId === event.pointerId) apply(atPointer(axis === 'y' ? event.clientY : event.clientX)); });
         document.addEventListener('pointerup', end);
         document.addEventListener('pointercancel', end);
         element.addEventListener('lostpointercapture', end);
         window.addEventListener('blur', end);
         document.addEventListener('keydown', event => { if (event.key === 'Escape') end(); });
         element.addEventListener('keydown', event => {
-            if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
-            event.preventDefault(); before(); apply(value() + (event.key === 'ArrowLeft' ? -1 : 1));
+            if (!keys.includes(event.key)) return;
+            event.preventDefault(); before();
+            apply(value() + (event.key === keys[0] ? -1 : 1) * keyDirection * (event.shiftKey ? 5 : 1));
         });
     }
 

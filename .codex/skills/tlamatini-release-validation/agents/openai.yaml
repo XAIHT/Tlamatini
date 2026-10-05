@@ -1,0 +1,4 @@
+interface:
+  display_name: "Tlamatini Release Validation"
+  short_description: "Test clean installs and all Tlamatini panels visibly"
+  default_prompt: "Use $tlamatini-release-validation to verify this Tlamatini Windows release through a clean installation and all application panels."
