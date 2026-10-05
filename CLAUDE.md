@@ -832,7 +832,7 @@ Coverage: `agent/test_dialog_dismissal_policy.py` (**35 tests** — bubble phase
 
 ---
 
-## 🧭 Chat menus and the Agentic Control Panel editor — reorganized 2026-09-25 (NOT YET COMMITTED)
+## 🧭 Chat menus and the Agentic Control Panel editor — reorganized 2026-09-25 (shipped in `v1.70.0`)
 
 **The chat navbar is now: Open · Save · Context ▾ · Panels ▾ · ACPX-Skills ▾ · External ▾ · Config ▾ · DB ▾ · Reconnect · About ▾.** The standalone **MCPs**, **Agents** and staff **Admin** menus are gone:
 
@@ -850,7 +850,7 @@ Coverage: `agent/test_dialog_dismissal_policy.py` (**35 tests** — bubble phase
 
 ---
 
-## 🧩 Prompt Flow Panel — a diagram editor for chains of prompts (2026-09-25, NOT YET COMMITTED)
+## 🧩 Prompt Flow Panel — a diagram editor for chains of prompts (2026-09-25, shipped in `v1.70.0`)
 
 A separate, login-protected page at **`/agent/prompt_flow_panel/`** (view `views.prompt_flow_panel`, URL name `prompt_flow_panel`), opened from the chat navbar's **Panels** menu (**Panels ▸ Prompt Flow Panel**, beside **Panels ▸ Agentic Control Panel**) and from **File ▸ Prompt Flow Panel** in the Agentic Control Panel (both `target="_blank"`). The user draws a flow with seven executable shapes and static notes — Prompt, Programmed Prompt, Decision (Yes/No), Feed embeddings, Flush embeddings, Clean History, User Input, plus static User Commentary. Executable shapes are joined by connections; notes have no ports. The user saves/opens the diagram as a versioned JSON **`.fpmt`** document (JSON `format: "tlamatini-prompting-flow"`, `version: 2`; version 1 imports migrate the executable commentary to User Input), and plays it against the configured model stack. Opening a file never runs it.
 
