@@ -429,6 +429,7 @@ _FROZEN_REQUIRED_AGENT_MODULES = (
     "agent.agent_verdict",         # the deterministic Exec-Report verdict engine
     "agent.context_governor",      # context measurement + the chat gauge sink
     "agent.context_baseline",      # the gauge AT REST: next request + Ollama's real count
+    "agent.context_sidecar_timeout",  # time limit on the Files-Search/System-Metrics Ollama calls
     "agent.skills.validation",     # ONE skill validator; Diagnostics imports it fail-open
     "agent.skills.redaction",      # secret redaction at the skill boundary (harness)
     "agent.win_shim",              # Windows .cmd/.exe resolution (fail-open import)
@@ -1409,6 +1410,10 @@ def main():
         '--hidden-import=agent.agent_verdict',
         '--hidden-import=agent.context_governor',
         '--hidden-import=agent.context_baseline',
+        # The Files-Search / System-Metrics chains reach the app through a
+        # fail-open import in rag/factory.py; without their time-limit module
+        # they would vanish silently instead of failing the build.
+        '--hidden-import=agent.context_sidecar_timeout',
         # Skills Diagnostics imports the shared validator inside a try/except
         # that swallows everything, so a missing module would silently report
         # "no invalid skills". Name it (and the harness's redaction module) here.

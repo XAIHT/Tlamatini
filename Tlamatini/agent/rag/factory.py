@@ -150,8 +150,13 @@ def get_system_context_sync(payload):
         chain = SystemRAGChain()
         # Wrap async call
         async_fetch = async_to_sync(chain.intelligent_context_fetch)
-        # Call with payload (expects 'question' key, payload has 'input')
-        input_data = {"question": payload.get("input", "")}
+        # Call with payload (expects 'question' key, payload has 'input').
+        # The request's identity lets the user's Cancel end a sidecar wait.
+        input_data = {
+            "question": payload.get("input", ""),
+            "conversation_user_id": payload.get("conversation_user_id"),
+            "cancel_run_epoch": payload.get("cancel_run_epoch"),
+        }
         result = async_fetch(input_data)
         
         # Merge result into payload
@@ -175,6 +180,8 @@ def get_files_context_sync(payload):
         input_data = {
             "question": payload.get("input", ""),
             "multi_turn_enabled": bool(payload.get("multi_turn_enabled", False)),
+            "conversation_user_id": payload.get("conversation_user_id"),
+            "cancel_run_epoch": payload.get("cancel_run_epoch"),
         }
         result = async_fetch(input_data)
         

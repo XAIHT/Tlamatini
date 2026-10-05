@@ -36,6 +36,30 @@ except ImportError:
         filesearch_pb2 = None
         filesearch_pb2_grpc = None
 
+try:
+    from .context_sidecar_timeout import (
+        DEFAULT_TIMEOUT_SECONDS,
+        SidecarLLMCancelled,
+        SidecarLLMTimeout,
+        ainvoke_with_time_limit,
+        client_kwargs_with_timeout,
+        make_cancel_check,
+        resolve_timeout,
+    )
+    from .llm_timing import llm_timing_callbacks
+except ImportError:
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from context_sidecar_timeout import (
+        DEFAULT_TIMEOUT_SECONDS,
+        SidecarLLMCancelled,
+        SidecarLLMTimeout,
+        ainvoke_with_time_limit,
+        client_kwargs_with_timeout,
+        make_cancel_check,
+        resolve_timeout,
+    )
+    from llm_timing import llm_timing_callbacks
+
 from langchain_ollama import OllamaLLM
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
@@ -172,11 +196,20 @@ class FileSearchRAGChain:
         if ollama_token:
             client_kwargs["headers"] = {"Authorization": f"Bearer {ollama_token}"}
 
+        # Both Ollama calls of this sidecar (routing + planning) run BEFORE the
+        # main answer, so each one is bounded (context_sidecar_timeout.py) and
+        # logged with [OLLAMA-TIMING] like every other Ollama call.
+        self.ollama_model = ollama_model
+        self.llm_time_limit = resolve_timeout(config)
+        self._cancelled = None
+        client_kwargs = client_kwargs_with_timeout(client_kwargs, self.llm_time_limit)
+
         self.llm = OllamaLLM(
             base_url=ollama_base_url,
             model=ollama_model,
             format="json",  # Ensure LLM outputs JSON for planning
-            client_kwargs=client_kwargs
+            client_kwargs=client_kwargs,
+            callbacks=llm_timing_callbacks(),
         )
 
         # Get gRPC target from config, default to localhost
@@ -376,6 +409,17 @@ User Query: {query}
             True # verbose
         )
 
+    async def _ask_ollama(self, runnable, inputs, label: str):
+        """One sidecar Ollama call, bounded by the time limit and the user's Cancel."""
+        return await ainvoke_with_time_limit(
+            runnable,
+            inputs,
+            timeout=getattr(self, "llm_time_limit", DEFAULT_TIMEOUT_SECONDS),
+            label=label,
+            model=getattr(self, "ollama_model", "ollama"),
+            cancelled=getattr(self, "_cancelled", None),
+        )
+
     async def should_fetch_files_context(self, question: str):
         """Use LLM to decide if file search context is needed for this question"""
         try:
@@ -384,9 +428,11 @@ User Query: {query}
             non_json_llm = self.llm.with_config({"format": "text"})
             routing_chain = self.routing_prompt | non_json_llm | StrOutputParser()
             
-            decision = await routing_chain.ainvoke({"question": question})
+            decision = await self._ask_ollama(routing_chain, {"question": question}, "Files-Search routing")
             decision_clean = decision.strip().upper()
             return "YES" in decision_clean
+        except (SidecarLLMTimeout, SidecarLLMCancelled):
+            return False
         except Exception as e:
             print(f"Error in file search routing: {e}")
             return False
@@ -414,7 +460,7 @@ User Query: {query}
         """Use LLM to generate a JSON plan for file searching"""
         planning_chain = self.planning_prompt | self.llm | StrOutputParser()
         try:
-            ai_raw = await planning_chain.ainvoke({"query": question})
+            ai_raw = await self._ask_ollama(planning_chain, {"query": question}, "Files-Search planning")
             
             # Parse JSON robustly
             plan: Dict[str, Any]
@@ -433,6 +479,9 @@ User Query: {query}
                 # Fallback if JSON is truly broken
                 print(f"--- [FileSearchRAGChain]: Failed to parse LLM JSON plan. Raw output: {ai_raw}")
                 return {"action": "answer", "answer": ai_raw}
+        except (SidecarLLMTimeout, SidecarLLMCancelled):
+            # No plan: intelligent_context_fetch skips the file search.
+            return None
         except Exception as e:
             print(f"Error in file search planning: {e}")
             return {"action": "clarify", "clarify": "I had trouble understanding that file request."}
@@ -668,6 +717,9 @@ User Query: {query}
         """
         question = input_data.get('question', '')
         multi_turn_enabled = bool(input_data.get('multi_turn_enabled', False))
+        # The user's Cancel for THIS request also ends a sidecar wait on Ollama.
+        self._cancelled = make_cancel_check(
+            input_data.get('conversation_user_id'), input_data.get('cancel_run_epoch'))
         deterministic_plan = self._build_deterministic_plan(question) if multi_turn_enabled else None
         if deterministic_plan is not None:
             print(f"[INFO] Using deterministic file plan for question: {question}")
@@ -687,6 +739,10 @@ User Query: {query}
         
         # 2. Plan
         plan = await self.plan_file_search(question)
+        if plan is None:
+            # Ollama did not plan the search in time (or the user cancelled):
+            # skip the file search, the answer goes ahead without it.
+            return {**input_data, "files_context": ""}
         
         # 3. Fetch (pass original question through the plan for disambiguation)
         plan["__question"] = question

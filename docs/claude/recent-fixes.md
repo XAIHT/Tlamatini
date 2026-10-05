@@ -16,6 +16,30 @@
 
 ---
 
+## 2026-10-05 — The context sidecars' own Ollama calls have a time limit
+
+Angela's installed build sat for about five minutes on `[INFO] Fetching file
+search context ...` (00:06:47 → 00:11:38), and it looked as if Tlamatini never
+called Ollama. Before the main answer, `FileSearchRAGChain` asks Ollama two
+small questions (routing YES/NO, then a JSON search plan) and
+`SystemRAGChain` asks one (routing). Those calls had no time limit, and they
+were the only Ollama calls with no `[OLLAMA-TIMING]` lines, so the log showed
+nothing while the planning call waited on `nemotron-3-ultra:cloud`.
+
+`agent/context_sidecar_timeout.py` now bounds every one of them by
+`context_sidecar_llm_timeout_seconds` (`config.json`, default 60 s; an explicit
+value is obeyed exactly), plus a slightly longer HTTP backstop. The user's
+Cancel ends the wait at once (`factory.py` passes `conversation_user_id` and
+`cancel_run_epoch` to both sidecars). At the limit the sidecar skips its
+context, writes `--- ⌛ [CONTEXT-SIDECAR] <step>: Ollama (model=…) did not
+answer within Ns - skipping this step …`, and the main answer goes ahead
+without it. Both sidecar LLMs carry `llm_timing_callbacks()`, so their waits
+appear in the log like every other call. The chains reach the app through a
+fail-open import, so the module is named in `build.py`'s hidden imports and
+`_FROZEN_REQUIRED_AGENT_MODULES`. Coverage: `agent/test_context_sidecar_timeout.py`.
+Do not remove the limit from these calls: a sidecar answer is optional, a
+frozen chat is not.
+
 ## 2026-10-04 — Auxiliary chat chains share the effective MCP configuration
 
 The frozen live chat still attempted System-Metrics on 8765 while the configured

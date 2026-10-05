@@ -20,6 +20,30 @@ except ImportError:
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     from mcp_system_client import MCPSystemClient
 
+try:
+    from .context_sidecar_timeout import (
+        DEFAULT_TIMEOUT_SECONDS,
+        SidecarLLMCancelled,
+        SidecarLLMTimeout,
+        ainvoke_with_time_limit,
+        client_kwargs_with_timeout,
+        make_cancel_check,
+        resolve_timeout,
+    )
+    from .llm_timing import llm_timing_callbacks
+except ImportError:
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from context_sidecar_timeout import (
+        DEFAULT_TIMEOUT_SECONDS,
+        SidecarLLMCancelled,
+        SidecarLLMTimeout,
+        ainvoke_with_time_limit,
+        client_kwargs_with_timeout,
+        make_cancel_check,
+        resolve_timeout,
+    )
+    from llm_timing import llm_timing_callbacks
+
 from langchain_ollama import OllamaLLM
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnableLambda, RunnablePassthrough
@@ -44,10 +68,18 @@ class SystemRAGChain:
         if ollama_token:
             client_kwargs["headers"] = {"Authorization": f"Bearer {ollama_token}"}
 
+        # The routing call runs BEFORE the main answer, so it is bounded
+        # (context_sidecar_timeout.py) and logged with [OLLAMA-TIMING].
+        self.ollama_model = ollama_model
+        self.llm_time_limit = resolve_timeout(config)
+        self._cancelled = None
+        client_kwargs = client_kwargs_with_timeout(client_kwargs, self.llm_time_limit)
+
         self.llm = OllamaLLM(
             base_url=ollama_base_url,
             model=ollama_model,
-            client_kwargs=client_kwargs
+            client_kwargs=client_kwargs,
+            callbacks=llm_timing_callbacks(),
         )
 
         # Initialize MCP client with URI from config
@@ -144,10 +176,18 @@ Answer ONLY with YES or NO:"""
             resources_str = ", ".join(resources) if resources else "None available"
 
             routing_chain = self.routing_prompt | self.llm | StrOutputParser()
-            decision = await routing_chain.ainvoke({
-                "question": question,
-                "resources": resources_str
-            })
+            try:
+                decision = await ainvoke_with_time_limit(
+                    routing_chain,
+                    {"question": question, "resources": resources_str},
+                    timeout=getattr(self, "llm_time_limit", DEFAULT_TIMEOUT_SECONDS),
+                    label="System-Metrics routing",
+                    model=getattr(self, "ollama_model", "ollama"),
+                    cancelled=getattr(self, "_cancelled", None),
+                )
+            except (SidecarLLMTimeout, SidecarLLMCancelled):
+                # No answer in time: skip system metrics, the answer goes ahead.
+                return False
 
             decision_clean = decision.strip().upper()
             needs_context = "YES" in decision_clean
@@ -188,6 +228,9 @@ Answer ONLY with YES or NO:"""
 
     async def _fetch_context(self, input_data):
         question = input_data.get('question', '')
+        # The user's Cancel for THIS request also ends a sidecar wait on Ollama.
+        self._cancelled = make_cancel_check(
+            input_data.get('conversation_user_id'), input_data.get('cancel_run_epoch'))
 
         # Use LLM to decide if we need system context
         needs_context = await self.should_fetch_system_context(question)
