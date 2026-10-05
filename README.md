@@ -45,49 +45,6 @@
 
 ---
 
-## Mandatory execution rule for contributors and coding agents
-
-**HEADLESS IS FORBIDDEN. ALL EXECUTION MUST BE VISIBLE.** Every automated test,
-command, diagnostic, script, build, agent and browser must run in a visible,
-forked foreground window on Angela's real desktop. Use visible CMD/PowerShell
-consoles and headed browsers; monitor live. No hidden/background execution,
-including CI or quick checks. If visibility cannot be confirmed, do not run.
-Read [AGENTS.md](AGENTS.md) and the [mandatory execution policy](TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).
-
-This is a developer verification rule, not an end-user interface requirement.
-Internal dictation opens no extra window; recording feedback stays in chat and
-diagnostics use the main application console/log.
-
-## Carried packaging hardening — introduced 2026-09-16
-
-The current source carries the removal of frontend CDN dependencies. Bootstrap, jQuery,
-jQuery UI, syntax highlighting, Nunito fonts, PDF.js, avatar frames and the
-application's JavaScript/CSS are served from local static assets. This does not
-make configured cloud models, External MCPs or Internet agents offline services.
-
-`build.py` now checks source-to-collected and source-to-frozen asset integrity,
-rejects missing runtime dependencies, and writes `runtime-assets.json` into the
-payload. Every ZIP member is checked against its SHA-256 receipt before publishing
-`pkg.zip`; `build_installer.py` verifies it again. Both complete-release wrappers
-enforce a **1,990,000,000-byte (1.99 decimal GB) final ZIP ceiling**, including the
-installer and uninstaller. Required assets are not silently removed to meet it.
-
-The pinned frontend can be reproduced with `python scripts/vendor_frontend.py`;
-PDF.js uses `python scripts/vendor_pdfjs.py`. Normal builds use the locally vendored
-assets without CDN downloads. The PDF.js API/worker and frontend vendor tree are tracked in Git and
-carried with these build changes. See
-[runtime asset carriage](docs/self-management-carriage.md#local-frontend-and-release-completeness-gate).
-The September 16 review recorded source inspection without a release build.
-The current dossier refresh rechecks Git, source inventory and rendered documents;
-it does not itself establish runtime behavior. A separate September 20 local 1.63.0 rebuild/install passed source/frozen model loading and File-Creator execution; see [dated verification](docs/model-configuration-verification.md). No remote release is claimed.
-
-The self-management follow-up also carries the integrity checker into the frozen
-app and installer, verifies updates before shutdown, and enforces snapshot/flag
-coherence. Both inclusion skills' file-only sweeps pass: 740 runtime inputs are
-accounted for in a sanitized snapshot, including 15 previously omitted PDFer
-ornaments. Database/WAL and security-evidence preservation are tightened. See the
-[audit evidence and remaining release checks](docs/self-management-carriage.md#self-management-follow-up-inclusion-skills-and-executed-file-audits).
-
 ## Table of contents
 
 1. [What is Tlamatini](#what-is-tlamatini)

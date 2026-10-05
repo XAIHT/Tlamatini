@@ -8,52 +8,6 @@
 -->
 # Tlamatini
 
-## Carried local-frontend and packaging update — introduced 2026-09-16
-
-The current source serves all application UI JavaScript, CSS and fonts locally:
-Bootstrap 5.3.3 (matching the previous Django integration), jQuery 3.7.1, jQuery UI
-1.13.3, highlight.js 11.9.0 and Nunito join the existing local PDF.js/avatar assets.
-The redundant Bootstrap 5.3.0 script on login/welcome pages is removed. Vendoring
-retains upstream licenses, verifies pinned npm SHA-512 archives and records file
-SHA-256 hashes. `scripts/vendor_frontend.py` is an explicit maintainer operation,
-not an application-startup or normal-build download. Source and frozen templates
-use the same local URLs, with cache-busting query strings.
-
-`build_runtime_assets.py` is the shared packaging gate: it inventories all static
-files, templates, agent/skill resources, required root helpers and collected
-Django assets, then checks their final carried bytes. Source and frozen
-`collectstatic --clear` failures abort; missing Java/Git/Playwright payloads,
-unreadable frozen module archives and required-copy failures no longer quietly
-produce a successful release. A per-file `runtime-assets.json` receipt covers the
-entire assembled payload; both ZIP publication and installer assembly verify it.
-The receipt is an integrity/completeness record, not a publisher signature.
-
-The self-management follow-up also embeds the checker in the frozen application
-and installer and carries its standalone source for the swapper. Downloaded
-payloads and extracted staging are verified before shutdown. Both inclusion
-skills now share the 13-name preservation contract and account for 740 runtime
-source inputs in a generated sanitized snapshot, including PDFer ornaments.
-Reinstall retains the live database/WAL and requests migration; security-log
-stash failure stops deletion. Detailed file-only sweep evidence and limitations
-are recorded in [the carriage review](docs/self-management-carriage.md#self-management-follow-up-inclusion-skills-and-executed-file-audits).
-
-Use a complete-release wrapper to produce the final distributable. Both
-`build_complete_public_release.py` and `build_complete_private_release.py` enforce
-**1,990,000,000 bytes (1.99 decimal GB)** on the outer ZIP, while `build.py` applies
-the same ceiling to the inner `pkg.zip`. Oversized final output stays under a
-`.pending.zip` name for inspection, and the command fails. No required runtime is
-automatically deleted to shrink the archive. `build_all.cmd` still assembles the
-installer directory; it does not create an outer ZIP.
-
-The existing v1.62.0 package was inspected read-only: its 354 application static
-files matched source in both frozen static locations and all four templates were
-present. That package still contains the old CDN-referencing templates and
-predates this hardening. Its final ZIP is 1,905,278,037 bytes; this is a baseline,
-not a measurement of a newly rebuilt release. A fresh frozen build and runtime validation remain required. The September 16
-review executed no automated tests or builds; its package measurements remain
-historical evidence. Cloud models, online agents and configured external services still
-require their own network connections.
-
 ![Project Logo](Tlamatini.jpg)
 
 > **The Book of Tlamatini** — a step-by-step guide to running, using, and mastering a locally-deployed AI developer assistant with RAG, Multi-Turn tool orchestration, ACPX external-CLI delegation, an Unreal MCP client for driving Unreal Engine 5 from chat or canvas, a visual workflow designer, 89 drag-and-drop agent types, and a backend Flow Compiler that turns the live canvas — or a chat-generated tool-call log — into a registry-validated, secret-redacted, source-and-frozen-portable workflow.
