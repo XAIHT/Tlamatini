@@ -28,6 +28,7 @@ import subprocess
 import sys
 import threading
 import tempfile
+import time
 import tkinter as tk
 from ctypes import wintypes
 from tkinter import filedialog, messagebox, ttk
@@ -40,6 +41,27 @@ UNINSTALL_SUPPORT_FILES = frozenset({
     "removeshortcut.ps1", "unregister_flw.ps1", "unregister_fpmt.ps1",
     "flow_file_associations.ps1",
 })
+
+# ─── Removing a file Windows still holds (the uninstaller's own EXE) ────────
+# A file can be impossible to DELETE for a few seconds while it is perfectly
+# possible to RENAME: antivirus scanning it, or Explorer / Settings reading its
+# icon, map the EXE as an image, and Windows refuses DeleteFile ("Access is
+# denied", WinError 5) on a mapped image while still allowing a move.  So the
+# uninstaller does what professional uninstallers do instead of failing:
+#   1. retry the delete for SUPPORT_DELETE_RETRY_SECONDS;
+#   2. still held: MOVE it into a uniquely named PENDING folder inside the
+#      installation, so the original name is free immediately;
+#   3. when the uninstaller closes, a hidden cleanup (schedule_cleanup) deletes
+#      that pending folder, the uninstaller's own Temp copy and the now-empty
+#      installation folder, retrying until Windows lets go.
+# The cleanup only ever deletes recursively a folder whose name carries one of
+# the two random prefixes below, so a quick reinstall into the same folder can
+# never lose its fresh Uninstaller.exe to a cleanup from the previous run.
+SUPPORT_DELETE_RETRY_SECONDS = 8.0
+STAGING_PREFIX = "Tlamatini-Uninstaller-"
+PENDING_PREFIX = ".tlamatini-uninstall-pending-"
+CLEANUP_ATTEMPTS = 90          # one attempt every ~2 s: about three minutes
+STALE_STAGING_SECONDS = 600    # older Temp copies are leftovers of past runs
 
 
 # ─── Version resolution ───────────────────────────────────────────────────────
@@ -414,6 +436,12 @@ class FancyUninstaller:
         self.preserved_dirs: list[str] = []
         # How many times the user pressed Retry on the still-running gate.
         self._gate_attempts = 0
+        # Files Windows still held when they were removed; the hidden cleanup
+        # deletes them after this window closes (see schedule_cleanup).
+        self.removal_target = ""
+        self.pending_dir = ""
+        self.deferred_files: list[str] = []
+        self.deferred_in_place: list[str] = []
 
         self._build_ui()
 
@@ -991,6 +1019,7 @@ class FancyUninstaller:
     def _run_uninstall(self, target: str):
         try:
             cumulative = 0.0
+            self.removal_target = target
 
             self._set_progress(0.0, "Stopping remaining agent workers…")
             self.cleanup_report = stop_owned_workers(target)
@@ -1165,13 +1194,21 @@ class FancyUninstaller:
                 "using this installation and retry.\n\n" + "\n".join(failures[:12])
             )
 
-    @staticmethod
-    def _remove_uninstall_support(target: str):
+    def _remove_uninstall_support(self, target: str):
         """Remove retry support only after application and registry removal.
 
-        Leave the installation marker until last. If a helper remains locked,
-        the installed worker and marker continue to support an honest retry.
+        Leave the installation marker until last.  Every helper goes through
+        the ladder described above SUPPORT_DELETE_RETRY_SECONDS: delete with
+        retries, then move aside into the pending folder.  The uninstaller's
+        OWN running image (when it could not relocate to Temp) is never moved:
+        a PyInstaller program re-reads its own file for every later import, so
+        it is left for the cleanup that runs once this process has exited.
+        Only a file that can be neither deleted nor moved stops the uninstall,
+        and then the installed worker and marker still support an honest retry.
         """
+        self.deferred_files = []
+        self.deferred_in_place = []
+        own = own_image_path()
         names = [name for name in os.listdir(target)
                  if name.lower() in UNINSTALL_SUPPORT_FILES]
         last = {"uninstaller.exe": 1, "tlamatini.ps1": 2, "createshortcut.json": 3}
@@ -1180,11 +1217,55 @@ class FancyUninstaller:
             path = os.path.join(target, name)
             if not os.path.isfile(path):
                 continue
+            if own and os.path.normcase(os.path.abspath(path)) == own:
+                self.deferred_in_place.append(path)
+                continue
+            if self._delete_or_move_aside(target, path) == "deferred":
+                self.deferred_files.append(name)
+
+    def _delete_or_move_aside(self, target: str, path: str) -> str:
+        """Delete *path*, or move it into the pending folder.
+
+        Returns ``"removed"`` or ``"deferred"``; raises only when Windows
+        refuses both the delete and the move.
+        """
+        deadline = time.monotonic() + SUPPORT_DELETE_RETRY_SECONDS
+        delay = 0.1
+        while True:
             try:
                 os.chmod(path, stat.S_IWUSR | stat.S_IREAD)
+            except OSError:
+                pass
+            try:
                 os.remove(path)
+                return "removed"
+            except FileNotFoundError:
+                return "removed"
             except OSError as exc:
-                raise RuntimeError(f"Could not remove {name}. Close programs using this installation and retry: {exc}") from exc
+                held = exc
+            if time.monotonic() >= deadline:
+                break
+            time.sleep(delay)
+            delay = min(delay * 2, 1.0)
+        name = os.path.basename(path)
+        try:
+            os.replace(path, os.path.join(self._pending_folder(target), name))
+        except OSError as exc:
+            raise RuntimeError(
+                f"Could not remove {name}: another program keeps it open (an "
+                "antivirus scan or an Explorer window showing this folder are "
+                f"the usual causes). Close it and press Uninstall again.\n\n{held}"
+            ) from exc
+        print(f"{name} was still held by Windows ({held}); moved aside for "
+              "deletion after the uninstaller closes.")
+        return "deferred"
+
+    def _pending_folder(self, target: str) -> str:
+        """The uniquely named folder that receives files Windows still holds."""
+        current = getattr(self, "pending_dir", "")
+        if not current or not os.path.isdir(current):
+            self.pending_dir = tempfile.mkdtemp(prefix=PENDING_PREFIX, dir=target)
+        return self.pending_dir
 
     def _write_preserved_agents_marker(self, agents_dir: str, original_install: str):
         """Leave ``.tlamatini-preserved-agents.json`` in the preserved agents/
@@ -1363,11 +1444,32 @@ class FancyUninstaller:
             f"Tlamatini has been successfully uninstalled.\n\n"
             f"Location: {target}"
             f"{agents_note}"
-            f"{self._preserved_content_note()}\n\n"
+            f"{self._preserved_content_note()}"
+            f"{self._deferred_note()}\n\n"
             "The .flw and .fpmt file associations have been removed\n"
             "and shortcuts have been deleted.",
         )
         self.root.destroy()
+
+    def _deferred_note(self) -> str:
+        """Say plainly which files are deleted only after this window closes.
+
+        Empty when everything was deleted on the spot.  Never claims the files
+        are already gone: the cleanup that removes them runs after exit.
+        """
+        names = list(dict.fromkeys(
+            list(getattr(self, "deferred_files", []))
+            + [os.path.basename(p) for p in getattr(self, "deferred_in_place", [])]
+        ))
+        if not names:
+            return ""
+        return (
+            "\n\nWindows was still holding " + ", ".join(names) + " (usually an "
+            "antivirus scan or Explorer reading its icon), so it was set aside. "
+            "It is deleted automatically a few seconds after you close this "
+            "window, together with the installation folder if nothing else "
+            "is left in it."
+        )
 
     def _show_error(self, detail: str):
         self._uninstalling = False
@@ -1395,34 +1497,174 @@ def relocate_installed_uninstaller() -> bool:
     install_dir = os.path.dirname(source)
     if not os.path.isfile(os.path.join(install_dir, "Tlamatini.exe")):
         return False
-    staging = tempfile.mkdtemp(prefix="Tlamatini-Uninstaller-")
-    worker = os.path.join(staging, "Uninstaller.exe")
+    # Fail-open: when the copy or the launch fails, the uninstaller runs in
+    # place instead of crashing; its own EXE is then left to the cleanup.
+    staging = ""
     try:
+        staging = tempfile.mkdtemp(prefix=STAGING_PREFIX)
+        worker = os.path.join(staging, "Uninstaller.exe")
         shutil.copy2(source, worker)
         subprocess.Popen(
             [worker, "--install-dir", install_dir], cwd=staging,
             env={**os.environ, "PYINSTALLER_RESET_ENVIRONMENT": "1"},
         )
-    except Exception:
-        shutil.rmtree(staging)
-        raise
+    except Exception as exc:
+        print(f"WARNING: could not relocate the uninstaller to Temp ({exc}); "
+              "running in place.")
+        if staging:
+            shutil.rmtree(staging, ignore_errors=True)
+        return False
     return True
+
+
+def relocated_staging_dir() -> str:
+    """The Temp folder THIS process runs from when it is the relocated copy.
+
+    Empty for the installed copy, for a source run, and whenever the answer is
+    uncertain: the cleanup deletes this folder recursively, so a guess is never
+    good enough.
+    """
+    if not getattr(sys, "frozen", False):
+        return ""
+    try:
+        folder = os.path.dirname(os.path.realpath(sys.executable))
+        temp = os.path.realpath(tempfile.gettempdir())
+    except Exception:
+        return ""
+    if not os.path.basename(folder).startswith(STAGING_PREFIX):
+        return ""
+    if os.path.normcase(os.path.dirname(folder)) != os.path.normcase(temp):
+        return ""
+    return folder
+
+
+def sweep_stale_staging(keep: str = "") -> None:
+    """Delete Temp copies that earlier runs left behind.  Never raises.
+
+    Only real folders named with STAGING_PREFIX and older than
+    STALE_STAGING_SECONDS; a link or junction is never followed, and *keep*
+    (this process's own folder) is never touched.
+    """
+    try:
+        now = time.time()
+        for entry in os.scandir(tempfile.gettempdir()):
+            if not entry.name.startswith(STAGING_PREFIX):
+                continue
+            if entry.is_symlink() or not entry.is_dir(follow_symlinks=False):
+                continue
+            if getattr(os.path, "isjunction", lambda _p: False)(entry.path):
+                continue
+            if keep and os.path.normcase(entry.path) == os.path.normcase(keep):
+                continue
+            try:
+                if now - entry.stat(follow_symlinks=False).st_mtime < STALE_STAGING_SECONDS:
+                    continue
+            except OSError:
+                continue
+            shutil.rmtree(entry.path, ignore_errors=True)
+    except Exception:
+        pass
+
+
+def build_cleanup_command(trees=(), files=(), empty_dirs=(),
+                          attempts: int = CLEANUP_ATTEMPTS) -> str:
+    """The hidden ``cmd.exe`` line that deletes what this process could not.
+
+    It refuses anything it cannot prove is ours: a folder deleted recursively
+    must carry STAGING_PREFIX or PENDING_PREFIX, a single file must be an
+    ``Uninstaller.exe``, a folder in *empty_dirs* is only removed when empty,
+    and every path must be absolute and free of characters cmd.exe interprets.
+    Every ~2 s it retries until the trees and files are gone, then exits.
+    Returns "" when there is nothing safe to do.
+    """
+    def safe(path):
+        return (bool(path) and os.path.isabs(path)
+                and not any(ch in path for ch in '"%\r\n'))
+
+    trees = [p for p in trees if safe(p) and os.path.basename(
+        os.path.normpath(p)).startswith((STAGING_PREFIX, PENDING_PREFIX))]
+    files = [p for p in files
+             if safe(p) and os.path.basename(p).lower() == "uninstaller.exe"]
+    empty_dirs = [p for p in empty_dirs if safe(p)]
+    if not (trees or files or empty_dirs):
+        return ""
+    steps = [f'rd /s /q "{p}"' for p in trees]
+    steps += [f'del /f /q "{p}"' for p in files]
+    steps += [f'rd "{p}"' for p in empty_dirs]
+    body = " & ".join(f"{step} 2>nul" for step in steps)
+    done = "".join(f'if not exist "{p}" ' for p in trees + files) + "exit"
+    comspec = os.environ.get("COMSPEC") or "cmd.exe"
+    return (f'"{comspec}" /d /q /s /c "for /l %i in (1,1,{int(attempts)}) do '
+            f'@(ping -n 3 127.0.0.1 >nul & {body} & {done})"')
+
+
+def schedule_cleanup(command: str) -> bool:
+    """Start the hidden cleanup, which outlives this process.  Never raises.
+
+    No window (CREATE_NO_WINDOW keeps even ping's console hidden), its own
+    process group, and a working directory outside every folder it deletes.
+    It first asks to break away from a job object so the program that launched
+    the uninstaller cannot take the cleanup down with it.
+    """
+    if not command or sys.platform != "win32":
+        return False
+    base = 0x08000000 | 0x00000200   # CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP
+    for flags in (base | 0x01000000, base):   # | CREATE_BREAKAWAY_FROM_JOB
+        try:
+            subprocess.Popen(
+                command, creationflags=flags, close_fds=True,
+                cwd=os.environ.get("SystemRoot") or None,
+                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            return True
+        except OSError:
+            continue
+    return False
+
+
+def cleanup_after_exit(app) -> bool:
+    """Hand everything this process could not delete to the hidden cleanup:
+    its own Temp copy, the pending folder, its own EXE when it ran in place,
+    and the installation folder once it is empty.  Never raises."""
+    try:
+        trees = []
+        staging = relocated_staging_dir()
+        if staging:
+            trees.append(staging)
+        pending = getattr(app, "pending_dir", "") or ""
+        if pending and os.path.isdir(pending):
+            trees.append(pending)
+        files = [p for p in getattr(app, "deferred_in_place", []) or []
+                 if os.path.isfile(p)]
+        target = getattr(app, "removal_target", "") or ""
+        empty = [target] if target and os.path.isdir(target) else []
+        return schedule_cleanup(build_cleanup_command(trees, files, empty))
+    except Exception:
+        return False
 
 
 # ─── Entry point ─────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     if relocate_installed_uninstaller():
         sys.exit(0)
-    root = tk.Tk()
-    root.withdraw()
-
-    app = FancyUninstaller(root)
-
-    root.update_idletasks()
-
+    sweep_stale_staging(keep=relocated_staging_dir())
+    app = None
     try:
-        root.deiconify()
-    except tk.TclError:
-        pass
+        root = tk.Tk()
+        root.withdraw()
 
-    root.mainloop()
+        app = FancyUninstaller(root)
+
+        root.update_idletasks()
+
+        try:
+            root.deiconify()
+        except tk.TclError:
+            pass
+
+        root.mainloop()
+    finally:
+        # Last one out turns off the lights: after success, an error or Exit,
+        # the Temp copy and anything set aside are removed once this ends.
+        cleanup_after_exit(app)

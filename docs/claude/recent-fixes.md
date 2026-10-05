@@ -16,6 +16,55 @@
 
 ---
 
+## 2026-10-05 — The uninstaller no longer fails on its own Uninstaller.exe
+
+Angela: *"now it always throws the error that Uninstaller can't be erased"*.
+The relocation to Temp (2026-10-04) was right, and the original EXE is
+released about 5 s after launch (measured). The error came later: something
+else **maps** `Uninstaller.exe` as an image. Antivirus scanning a program
+that just ran does it, and so do Explorer and Settings when they read its
+icon. On a mapped image Windows refuses `DeleteFile` (`[WinError 5] Access is
+denied`) but still allows a **rename**. The 2026-10-04 change had made that
+delete fatal, so the run ended in "Uninstallation Error", with the install
+folder and the Temp copy left behind. Reproduced exactly with the shipped
+binary by mapping the file with `LoadLibraryEx(AS_IMAGE_RESOURCE |
+AS_DATAFILE)`, which is how Explorer reads an icon.
+
+`uninstall.py` now follows the ladder professional uninstallers use:
+
+1. **Retry** the delete for `SUPPORT_DELETE_RETRY_SECONDS` (8 s).
+2. Still held: **move** it into a uniquely named
+   `<install>\.tlamatini-uninstall-pending-*` folder. The original name is
+   free at once, and the dialog says **Uninstallation Complete** with one
+   honest line: the file is deleted a few seconds after the window closes.
+3. On exit (`finally` around `mainloop`), `cleanup_after_exit()` starts one
+   **hidden** `cmd.exe` (`CREATE_NO_WINDOW`, own process group, breakaway
+   from a job when allowed, cwd `%SystemRoot%`). It retries every ~2 s for
+   ~3 min, then deletes the pending folder, the uninstaller's own Temp copy
+   and the install folder once it is empty (non-recursive `rd`).
+
+Contracts (do NOT weaken):
+- **Never move the running image.** PyInstaller re-opens its own EXE by path
+  for every later import (`pyimod01_archive.extract`), so moving it breaks the
+  next import. When relocation fails, the in-place copy is left to the cleanup.
+- **The cleanup deletes recursively only folders whose names carry
+  `STAGING_PREFIX` or `PENDING_PREFIX`.** A quick reinstall into the same
+  folder can never lose its fresh `Uninstaller.exe`. `build_cleanup_command`
+  refuses relative paths and `"`/`%` characters.
+- Only a file Windows refuses to delete **and** to move still stops the run,
+  with the marker kept for an honest retry.
+- Relocation failing is fail-open: the uninstaller runs in place, never crashes.
+- `sweep_stale_staging()` removes `Tlamatini-Uninstaller-*` Temp copies older
+  than 10 min left by earlier runs. It never follows links and never touches
+  its own folder.
+
+Proof: `agent/test_uninstaller_lifecycle.py` (70 uninstaller tests incl. a
+real image-mapped lock and a real hidden cleanup run, all OK). Visible frozen
+before/after on a throw-away install with the file held: the old binary showed
+the exact WinError 5 dialog and left the folder and Temp copy behind; the
+rebuilt one finished with "Uninstallation Complete", and 2 s after the lock
+was released the install folder and Temp copy were gone, with no window shown.
+
 ## 2026-10-05 — The context sidecars' own Ollama calls have a time limit
 
 Angela's installed build sat for about five minutes on `[INFO] Fetching file

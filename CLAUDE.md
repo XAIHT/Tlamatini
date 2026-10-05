@@ -1030,8 +1030,14 @@ Uninstallation stops installation-owned workers only after confirmation, includi
 agent children identified through their inherited `TLAMATINI_AGENTS_ROOT` after
 reparenting. PID creation times and path boundaries protect unrelated processes;
 never replace this with a process-name sweep. The main application must close
-first. Preserve the existing agents/nonempty-content contract. A locked binary
-or denied owned registry removal is an incomplete uninstall, and shell refresh
+first. Preserve the existing agents/nonempty-content contract. A locked
+application binary or denied owned registry removal is an incomplete uninstall.
+The uninstaller's own support files are different (2026-10-05): one Windows
+still maps (antivirus, Explorer/Settings reading its icon: WinError 5 on delete,
+rename allowed) is retried, moved into a `.tlamatini-uninstall-pending-*`
+folder and removed by a hidden cleanup after exit, together with the Temp copy.
+Never move the running image (PyInstaller re-reads it for imports); see
+`recent-fixes.md` (2026-10-05). Shell refresh
 must not terminate Explorer. The standalone uninstaller bundles
 `uninstall_processes.py` and psutil. See the release-validation skill and lifecycle
 tests; retain the user's explicit no-commit instruction during a validation run.
