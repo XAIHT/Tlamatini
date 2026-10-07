@@ -489,8 +489,47 @@ def _temp_root(subdir="") -> str:
     return target
 
 
+_DELIVERY_NOTES: list = []
+
+
+def _fallback_output_dir() -> str:
+    """A folder that is ALWAYS ours to write: <app>/Temp/PPTXer/delivered."""
+    return _temp_root("delivered")
+
+
+def _protected_folder_hint(path: str) -> str:
+    """Name the usual cause when a write into Documents / Desktop / Pictures is
+    refused. Windows' Controlled Folder Access (ransomware protection) reports a
+    BLOCKED write as "[WinError 2] cannot find the file", which sends people
+    hunting for a missing folder that is not missing."""
+    try:
+        parts = set(os.path.normcase(os.path.abspath(path or "")).split(os.sep))
+        protected = {"documents", "documentos", "desktop", "escritorio", "pictures",
+                     "imagenes", "music", "musica", "videos", "onedrive"}
+        if os.name == "nt" and parts & protected:
+            return ("Likely cause: Windows Security 'Controlled folder access' (ransomware "
+                    "protection) is blocking this program from writing there, and reports it "
+                    "as 'cannot find the file'. Fix: run security\\enable_tlamatini_v2.bat as "
+                    "administrator, or allow Tlamatini's python.exe in Windows Security > "
+                    "Ransomware protection > Allow an app.")
+    except Exception:                                             # noqa: BLE001
+        pass
+    return ""
+
+
 def _resolve_output_path(config: dict) -> str:
     out_dir = _default_output_dir(config)
+    # NEVER lose a finished deck to a refused folder: build it in our own
+    # fallback folder instead and say why (the result carries the real path).
+    if not _dir_accepts_new_files(out_dir):
+        fallback = _fallback_output_dir()
+        if _dir_accepts_new_files(fallback):
+            hint = _protected_folder_hint(out_dir)
+            note = (f"{out_dir} refuses new files, so the deck was saved in {fallback} instead."
+                    + (" " + hint if hint else ""))
+            _DELIVERY_NOTES.append(note)
+            logging.warning(f"⚠️ {note}")
+            out_dir = fallback
     # basename() so `filename` can never escape output_dir — a path-traversal
     # guard that costs nothing and closes the hole permanently.
     name = os.path.basename(str(_cfg(config, "filename", "")).strip())
@@ -566,8 +605,12 @@ def _preflight(action: str, config: dict, content: str) -> dict:
     if action == "create":
         out_dir = _default_output_dir(config)
         if not _dir_accepts_new_files(out_dir):
-            blockers.append(
-                f"the output directory cannot be written: {out_dir}")
+            hint = _protected_folder_hint(out_dir)
+            message = f"the output directory cannot be written: {out_dir}" + (" " + hint if hint else "")
+            if _dir_accepts_new_files(_fallback_output_dir()):
+                warnings.append(message + f" The deck will be saved under {_fallback_output_dir()} instead.")
+            else:
+                blockers.append(message)
 
     size = str(_cfg(config, "slide_size", "16:9")).strip().lower()
     if size and size not in _MODULES["layout"].SLIDE_SIZES:
@@ -970,6 +1013,9 @@ def _action_create(config: dict, content: str) -> dict:
             logging.info(f"   {line}")
 
     body_parts = [theme.describe(), ""]
+    if _DELIVERY_NOTES:
+        body_parts.extend(_DELIVERY_NOTES)
+        body_parts.append("")
     if report is not None:
         body_parts.append(report.summary())
     if build.warnings:

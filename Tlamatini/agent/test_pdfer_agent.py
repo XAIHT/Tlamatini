@@ -590,8 +590,23 @@ class PdferPreflightTests(SimpleTestCase):
             blocker = os.path.join(tmp, 'blocker')
             with open(blocker, 'w', encoding='utf-8') as f:
                 f.write('x')
-            pf = self._pf('markdown', {'output_dir': os.path.join(blocker, 'sub')},
-                          text='# hi')
+            bad_dir = os.path.join(blocker, 'sub')
+
+            # 2026-10-07: a refused folder no longer costs the user the document.
+            # While OUR fallback folder works, the build proceeds and the
+            # preflight only WARNS (still naming output_dir)...
+            pf = self._pf('markdown', {'output_dir': bad_dir}, text='# hi')
+            self.assertTrue(pf['ok'], f"fallback is writable, so no refusal: {pf!r}")
+            self.assertTrue(
+                any('output_dir' in w and 'instead' in w for w in pf['warnings']),
+                f"the warning must name output_dir and say where the PDF goes; "
+                f"got {pf['warnings']!r}")
+
+            # ...and it REFUSES only when even the fallback cannot take a file.
+            from unittest import mock
+            with mock.patch.object(_pdfer(), '_fallback_output_dir',
+                                   return_value=os.path.join(blocker, 'fallback')):
+                pf = self._pf('markdown', {'output_dir': bad_dir}, text='# hi')
             self.assertFalse(pf['ok'])
             self.assertTrue(
                 any('output_dir' in f for f in pf['fatals']),

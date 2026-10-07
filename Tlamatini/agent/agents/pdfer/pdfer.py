@@ -641,9 +641,51 @@ def _temp_root() -> str:
     return os.path.dirname(os.path.abspath(__file__))
 
 
+_DELIVERY_NOTES: list = []
+
+
+def _fallback_output_dir() -> str:
+    """A folder that is ALWAYS ours to write: <app>/Temp/PDFer/delivered."""
+    return os.path.join(_temp_root(), "PDFer", "delivered")
+
+
+def _protected_folder_hint(path: str) -> str:
+    """Name the usual cause when a write into Documents / Desktop / Pictures is
+    refused. Windows' Controlled Folder Access (ransomware protection) reports a
+    BLOCKED write as "[WinError 2] cannot find the file", which sends people
+    hunting for a missing folder that is not missing."""
+    try:
+        parts = set(os.path.normcase(os.path.abspath(path or "")).split(os.sep))
+        protected = {"documents", "documentos", "desktop", "escritorio", "pictures",
+                     "imagenes", "music", "musica", "videos", "onedrive"}
+        if os.name == "nt" and parts & protected:
+            return ("Likely cause: Windows Security 'Controlled folder access' (ransomware "
+                    "protection) is blocking this program from writing there, and reports it "
+                    "as 'cannot find the file'. Fix: run security\\enable_tlamatini_v2.bat as "
+                    "administrator, or allow Tlamatini's python.exe in Windows Security > "
+                    "Ransomware protection > Allow an app.")
+    except Exception:
+        pass
+    return ""
+
+
 def _resolve_output_path(config: dict) -> str:
-    """Absolute, collision-proof destination path. Creates the directory."""
+    """Absolute, collision-proof destination path. Creates the directory.
+
+    NEVER loses a finished document to a refused folder: when the chosen folder
+    cannot take a new file but our own fallback can, the PDF is built THERE and
+    the reason (with the likely cause) is recorded in ``_DELIVERY_NOTES``.
+    """
     out_dir = _default_output_dir(config)
+    if not _dir_accepts_new_files(out_dir):
+        fallback = _fallback_output_dir()
+        if _dir_accepts_new_files(fallback):
+            hint = _protected_folder_hint(out_dir)
+            note = (f"{out_dir} refuses new files, so the PDF was saved in {fallback} instead."
+                    + (" " + hint if hint else ""))
+            _DELIVERY_NOTES.append(note)
+            logging.warning(f"⚠️ {note}")
+            out_dir = fallback
     try:
         os.makedirs(out_dir, exist_ok=True)
     except Exception as e:
@@ -1509,11 +1551,18 @@ def _preflight(mode: str, config: dict, text: str, images: list, pdfs: list,
     # to do about it instead of just quoting errno 2.
     out_dir = _default_output_dir(config)
     if not _dir_accepts_new_files(out_dir):
-        fatals.append(
+        hint = _protected_folder_hint(out_dir)
+        message = (
             f"output_dir cannot accept a new file ({out_dir}). A folder can "
             f"exist and still refuse creates - a paused or erroring OneDrive, "
-            f"or a folder-protection policy, does exactly that. Pass a "
-            f"different output_dir, or fix the sync/permission on that folder.")
+            f"or a folder-protection policy, does exactly that."
+            + (" " + hint if hint else ""))
+        if _dir_accepts_new_files(_fallback_output_dir()):
+            # The PDF can still be built and kept safe: it is saved under
+            # <app>/Temp/PDFer/delivered and the result says so.
+            warnings.append(message + f" The PDF will be saved under {_fallback_output_dir()} instead.")
+        else:
+            fatals.append(message + " Pass a different output_dir, or fix the sync/permission on that folder.")
 
     if str(_cfg(config, "page_size", "A4")).strip().lower() not in _PAGE_SIZES:
         warnings.append(
@@ -1812,6 +1861,7 @@ def main():
                     "bytes": os.path.getsize(output_path),
                     "status": "created",
                 })
+                notes.extend(_DELIVERY_NOTES)
                 notes.append(
                     f"WROTE {output_path} "
                     f"({outcome['page_count']} page(s), {outcome['bytes']} bytes)")

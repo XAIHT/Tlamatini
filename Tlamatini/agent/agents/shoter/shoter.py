@@ -328,6 +328,51 @@ def _default_temp_output_dir() -> str:
     return os.path.join(os.path.expanduser("~"), "Tlamatini", "Temp")
 
 
+def _tlm_dir_accepts_new_files(path: str) -> bool:
+    """True when a NEW file can really be created in ``path`` (exists-and-lists is not
+    proof: Windows Controlled Folder Access / a paused OneDrive refuse every create)."""
+    try:
+        os.makedirs(path, exist_ok=True)
+        probe = os.path.join(path, ".tlm_write_probe_%d" % os.getpid())
+        with open(probe, "w", encoding="utf-8") as fh:
+            fh.write("ok")
+        os.remove(probe)
+        return True
+    except Exception:
+        return False
+
+
+def _tlm_protected_folder_hint(path: str) -> str:
+    """Name the usual cause of a refused write into Documents / Desktop / Pictures:
+    Windows' Controlled Folder Access reports a BLOCKED write as
+    "[WinError 2] cannot find the file"."""
+    try:
+        parts = set(os.path.normcase(os.path.abspath(path or "")).split(os.sep))
+        protected = {"documents", "documentos", "desktop", "escritorio", "pictures",
+                     "imagenes", "music", "musica", "videos", "onedrive"}
+        if os.name == "nt" and parts & protected:
+            return ("Likely cause: Windows Security 'Controlled folder access' (ransomware "
+                    "protection) blocks this program from writing there. Fix: run "
+                    "security\\enable_tlamatini_v2.bat as administrator, or allow Tlamatini's "
+                    "python.exe in Windows Security > Ransomware protection > Allow an app.")
+    except Exception:
+        pass
+    return ""
+
+
+def _tlm_safe_output_dir(chosen: str, label: str, fallback_base: str) -> str:
+    """NEVER lose a capture to a refused folder: when ``chosen`` cannot take a new file,
+    save under <app>/Temp/<label>/saved instead and say why (and the likely cause)."""
+    if _tlm_dir_accepts_new_files(chosen):
+        return chosen
+    fallback = os.path.join(os.path.abspath(fallback_base), label, "saved")
+    if _tlm_dir_accepts_new_files(fallback):
+        hint = _tlm_protected_folder_hint(chosen)
+        logging.warning("[%s] %s refuses new files - saving under %s instead. %s",
+                        label, chosen, fallback, hint)
+        return fallback
+    return chosen
+
 def get_next_shoter_dir(base_output_dir: str) -> str:
     """
     Find the next available shoter_<n> subdirectory.
@@ -478,6 +523,8 @@ def main():
 
     try:
         output_dir = str(config.get('output_dir') or '').strip() or _default_temp_output_dir()
+        _base = output_dir if os.path.isabs(output_dir) else os.path.join(script_dir, output_dir)
+        output_dir = _tlm_safe_output_dir(_base, 'Shoter', _default_temp_output_dir())
         target_agents = config.get('target_agents', [])
         # Defaults to TRUE when the key is absent: an older config.yaml keeps
         # working AND silently gains the fix (it used to crop to the primary).

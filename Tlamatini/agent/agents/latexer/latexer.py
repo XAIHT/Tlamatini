@@ -1757,14 +1757,78 @@ def _clean_aux(work_dir: str, jobname: str = "", keep_log: bool = False) -> list
     return removed
 
 
+def _atomic_copy(src: str, dst: str) -> None:
+    """Copy ``src`` to ``dst`` so ``dst`` is either COMPLETE or absent -- never a
+    half-written PDF -- and verify the size before it takes the final name."""
+    part = dst + ".part"
+    try:
+        shutil.copyfile(src, part)
+        if os.path.getsize(part) != os.path.getsize(src):
+            raise OSError("the copy is incomplete (size mismatch)")
+        os.replace(part, dst)
+    except Exception:
+        _safe_unlink(part)
+        raise
+
+
+def _protected_folder_hint(path: str) -> str:
+    """Name the usual cause when a write into Documents / Desktop / Pictures is
+    refused. Windows' Controlled Folder Access (ransomware protection) reports a
+    BLOCKED write as "[WinError 2] cannot find the file", which sends people
+    hunting for a missing folder that is not missing."""
+    try:
+        parts = set(os.path.normcase(os.path.abspath(path or "")).split(os.sep))
+        protected = {"documents", "documentos", "desktop", "escritorio", "pictures",
+                     "imagenes", "music", "musica", "videos", "onedrive"}
+        if os.name == "nt" and parts & protected:
+            return ("Likely cause: Windows Security 'Controlled folder access' (ransomware "
+                    "protection) is blocking this program from writing there, and reports it "
+                    "as 'cannot find the file'. Fix: run security\\enable_tlamatini_v2.bat as "
+                    "administrator, or allow Tlamatini's python.exe in Windows Security > "
+                    "Ransomware protection > Allow an app.")
+    except Exception:
+        pass
+    return ""
+
+
+def _fallback_delivery_dir() -> str:
+    """A folder that is ALWAYS ours to write: <app>/Temp/LaTeXer/delivered."""
+    return os.path.join(_temp_root(), "LaTeXer", "delivered")
+
+
+def _deliver_to_fallback(built_pdf: str, target: str, error) -> tuple:
+    """The requested destination refused the PDF. NEVER lose a document that was
+    successfully typeset: save it where we can always write, and say so."""
+    hint = _protected_folder_hint(target)
+    why = f"could not deliver to {target}: {error}"
+    try:
+        fb_dir = _fallback_delivery_dir()
+        os.makedirs(fb_dir, exist_ok=True)
+        fallback = _unique_path(os.path.join(fb_dir, os.path.basename(target)), False)
+        _atomic_copy(built_pdf, fallback)
+        return fallback, (why + (" " + hint if hint else "") +
+                          f" -- your PDF was saved here instead: {fallback}")
+    except Exception as e2:
+        return built_pdf, (why + (" " + hint if hint else "") +
+                           f" -- the fallback folder also failed ({e2}); the PDF stays at {built_pdf}")
+
+
 def _deliver_pdf(built_pdf: str, config: dict) -> tuple:
     """Copy the freshly-typeset PDF into the delivery folder with a collision-proof
     name. Returns (final_path, note)."""
+    if not os.path.isfile(built_pdf):
+        # Say what REALLY happened. Without this the later copy fails with
+        # "[WinError 2] cannot find the file" and the user hunts a Desktop /
+        # Windows protection problem that does not exist.
+        return built_pdf, (f"the typeset PDF is missing ({built_pdf}) -- it was removed by a "
+                           "later repair step, so there is nothing to deliver. This is NOT a "
+                           "problem with the destination folder.")
     out_dir = os.path.normpath(_default_output_dir(config))
+    create_error = None
     try:
         os.makedirs(out_dir, exist_ok=True)
     except Exception as e:
-        return built_pdf, f"could not create output_dir ({out_dir}): {e} — the PDF stays at {built_pdf}"
+        create_error = e
     name = _safe_basename(_cfg(config, "filename"), ".pdf") or _timestamped_name(".pdf")
     if not name.lower().endswith(".pdf"):
         name += ".pdf"
@@ -1774,10 +1838,12 @@ def _deliver_pdf(built_pdf: str, config: dict) -> tuple:
     target = _unique_path(os.path.normpath(os.path.join(out_dir, name)),
                           _as_bool(_cfg(config, "overwrite", False), False))
     try:
-        shutil.copy2(built_pdf, target)
+        if create_error is not None:
+            raise create_error
+        _atomic_copy(built_pdf, target)
         return target, f"delivered to {target}"
     except Exception as e:
-        return built_pdf, f"could not copy to {target}: {e} — the PDF stays at {built_pdf}"
+        return _deliver_to_fallback(built_pdf, target, e)
 
 
 # ========================================
@@ -1889,7 +1955,25 @@ def _preflight(action: str, config: dict, tools: dict) -> dict:
                 f.write("ok")
             os.remove(probe)
         except Exception as e:
-            fatals.append("output_dir is not writable (%s): %s" % (out_dir, e))
+            # The document can still be BUILT and kept safe: the delivery step falls back to
+            # <app>/Temp. Refuse only when even that folder cannot take a file.
+            fb_ok = True
+            try:
+                fb_dir = _fallback_delivery_dir()
+                os.makedirs(fb_dir, exist_ok=True)
+                fb_probe = os.path.join(fb_dir, ".latexer_write_probe_%d" % os.getpid())
+                with open(fb_probe, "w", encoding="utf-8") as f:
+                    f.write("ok")
+                os.remove(fb_probe)
+            except Exception:
+                fb_ok = False
+            msg = "output_dir is not writable (%s): %s" % (out_dir, e)
+            hint = _protected_folder_hint(out_dir)
+            if fb_ok:
+                warnings.append(msg + (" " + hint if hint else "") +
+                                " -- the PDF will be built and saved under " + _fallback_delivery_dir())
+            else:
+                fatals.append(msg + (" " + hint if hint else ""))
 
     return {"ok": not fatals, "fatals": fatals, "warnings": warnings}
 
@@ -4142,6 +4226,56 @@ def _write_working_copy(tex_path: str, source: str, config: dict) -> str:
     return target
 
 
+def _write_side_copy(tex_path: str, source: str, tag: str) -> str:
+    """Write a THROWAWAY candidate under its OWN name (``*.latexer-<tag>.tex``).
+
+    A speculative build (the model's rewrite) must never share a file stem with
+    the working copy: LaTeX writes its .pdf/.aux/.log next to the .tex, and the
+    cleanup of a failed speculation would otherwise delete the artefacts -- the
+    PDF included -- of the build that DID produce something.
+    """
+    base, ext = os.path.splitext(tex_path)
+    target = base + ".latexer-" + tag + (ext or ".tex")
+    with open(target, "w", encoding="utf-8") as handle:
+        handle.write(source)
+    return target
+
+
+def _safe_unlink(path: str) -> None:
+    """Remove one file; never raise; ignore an empty path."""
+    try:
+        if path and os.path.isfile(path):
+            os.remove(path)
+    except Exception:
+        pass
+
+
+def _pdf_is_present(result: dict) -> bool:
+    """True when ``result`` claims a PDF AND that file is really on disk."""
+    try:
+        return bool(result and result.get("produced")) and os.path.isfile(str(result.get("pdf") or ""))
+    except Exception:
+        return False
+
+
+def _keep_best_pdf(result: dict, tex_path: str):
+    """Snapshot a PDF that exists (even one carrying LaTeX errors) before the
+    destructive/speculative rungs run, so a later rung can never leave the user
+    with nothing. Returns ``(best_result, snapshot_path)`` or ``(None, "")``.
+    FAIL-OPEN: any problem returns ``(None, "")`` and the ladder behaves as before."""
+    try:
+        if not _pdf_is_present(result):
+            return None, ""
+        base = os.path.splitext(tex_path)[0]
+        snapshot = base + ".latexer-best.pdf"
+        shutil.copy2(result["pdf"], snapshot)
+        kept = dict(result)
+        kept["pdf"] = snapshot
+        return kept, snapshot
+    except Exception:
+        return None, ""
+
+
 def _compile_with_ladder(tex_path: str, config: dict, tools: dict, env: dict) -> dict:
     """Build ``tex_path``, escalating through the repair ladder until it works.
 
@@ -4254,6 +4388,13 @@ def _compile_with_ladder(tex_path: str, config: dict, tools: dict, env: dict) ->
                 return _finalise_ladder(result, trace, rungs, quarantined, build_path,
                                         active_tools, degraded=False)
 
+    # A PDF that exists now (even with LaTeX errors) is kept safe BEFORE the
+    # speculative / destructive rungs run. Bug seen 2026-10-07: rung 6 produced
+    # a 196 KB PDF, then rung 7 rewrote the SAME *.latexer-fixed.tex and its
+    # cleanup deleted that PDF, so the user got "bytes: 0" and a copy error that
+    # blamed the Desktop for a file that no longer existed.
+    best_result, best_snapshot = _keep_best_pdf(result, build_path)
+
     # ---- Rung 7: the model. Deliberately BEFORE bisect, because it can repair
     # the document without deleting any of it. Its answer is not trusted: it
     # re-enters the static gate (rungs 1-2) and must actually compile.
@@ -4262,7 +4403,7 @@ def _compile_with_ladder(tex_path: str, config: dict, tools: dict, env: dict) ->
         if rewritten != source:
             model_source = _repair_static_structure(rewritten, trace)
             model_source = _repair_preamble(model_source, trace)
-            model_path = _write_working_copy(tex_path, model_source, config)
+            model_path = _write_side_copy(tex_path, model_source, "model")
             model_result = _compile(model_path, config, active_tools, env)
             if model_result.get("ok"):
                 return _finalise_ladder(model_result, trace, rungs, quarantined,
@@ -4309,6 +4450,16 @@ def _compile_with_ladder(tex_path: str, config: dict, tools: dict, env: dict) ->
 
     # Everything was tried.  Report honestly -- including a PDF that exists but
     # carries errors, which is still more useful to the user than nothing.
+    if best_result is not None and not _pdf_is_present(result):
+        # The last rung left no PDF behind: fall back to the one we kept, with
+        # ITS diagnostics (so the errors reported are the ones in that PDF).
+        trace.append(_repair_record(
+            "bisect" if "bisect" in rungs else "model", "restore-best",
+            "the last repair attempt left no PDF -- keeping the earlier build "
+            "(it carries LaTeX errors, reported below)", True))
+        return _finalise_ladder(best_result, trace, rungs, [], build_path,
+                                active_tools, degraded=False)
+    _safe_unlink(best_snapshot)
     return _finalise_ladder(result, trace, rungs, quarantined, build_path,
                             active_tools, degraded=bool(quarantined))
 

@@ -68,6 +68,9 @@ $ScriptVersion = "2.2"
 Write-Host ""
 Write-Host "================================================" -ForegroundColor Cyan
 Write-Host "  TLAMATINI SECURITY WHITELIST SCRIPT v$ScriptVersion" -ForegroundColor Cyan
+try {
+    Write-Host ("  Last modified: " + (Get-Item -LiteralPath $PSCommandPath).LastWriteTime.ToString('yyyy-MM-dd HH:mm')) -ForegroundColor Cyan
+} catch {}
 Write-Host "  Created by Angela Lopez Mendoza (@angelahack1)" -ForegroundColor Cyan
 Write-Host "================================================" -ForegroundColor Cyan
 Write-Host ""

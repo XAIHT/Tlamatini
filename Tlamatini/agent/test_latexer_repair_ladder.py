@@ -447,5 +447,92 @@ class LadderContractTests(unittest.TestCase):
         self.assertTrue(any("truncated" in r["detail"] for r in trace))
 
 
+class PdfSurvivesTheLadderTests(unittest.TestCase):
+    """2026-10-07: a PDF that an earlier rung produced must NEVER be lost to a later
+    speculative rung, and a refused destination must never cost the user the file."""
+
+    def _fake_result(self, path, produced):
+        pdf = os.path.splitext(path)[0] + ".pdf"
+        if produced:
+            with open(pdf, "wb") as handle:
+                handle.write(b"%PDF-1.4 fake")
+        return {"ok": False, "produced": produced, "passes": 1,
+                "pdf": pdf if produced else "", "steps": [],
+                "diag": {"errors": ["boom"], "warnings": [], "pages": 1,
+                         "output_bytes": 13, "missing_packages": []},
+                "log": "", "returncode": 1, "work_dir": os.path.dirname(path),
+                "jobname": os.path.splitext(os.path.basename(path))[0],
+                "bibliography": "none"}
+
+    def test_a_failed_model_rewrite_does_not_delete_the_earlier_pdf(self):
+        import tempfile
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as tmp:
+            tex = os.path.join(tmp, "a.tex")
+            with open(tex, "w", encoding="utf-8") as handle:
+                handle.write("\\documentclass{article}\n\\begin{document}\nx\n\\end{document}\n")
+            calls = []
+
+            def fake_compile(path, config, tools, env):
+                calls.append(path)
+                # first build (the working copy) yields a PDF with errors; the
+                # model's rewrite then yields nothing at all
+                return self._fake_result(path, produced=len(calls) == 1)
+
+            with mock.patch.object(LX, "_enabled_rungs", return_value=("rules", "model")), \
+                 mock.patch.object(LX, "_repair_rules", side_effect=lambda s, t: s + "\n%rule\n"), \
+                 mock.patch.object(LX, "_ollama_repair", side_effect=lambda s, d, c, t: s + "\n%model\n"), \
+                 mock.patch.object(LX, "_compile", side_effect=fake_compile):
+                result = LX._compile_with_ladder(tex, {}, {"engine": "pdflatex"}, {})
+
+            self.assertGreaterEqual(len(calls), 2, "the model rung should have built a candidate")
+            self.assertNotEqual(calls[0], calls[1],
+                                "the model candidate shared a file stem with the working copy")
+            self.assertTrue(LX._pdf_is_present(result),
+                            "the PDF built before the model rung vanished: %r" % result.get("pdf"))
+
+    def test_the_best_pdf_is_restored_when_the_last_rung_leaves_none(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            good = os.path.join(tmp, "good.pdf")
+            with open(good, "wb") as handle:
+                handle.write(b"%PDF-1.4 fake")
+            best, snap = LX._keep_best_pdf(
+                {"produced": True, "pdf": good, "diag": {"errors": ["x"]}},
+                os.path.join(tmp, "doc.tex"))
+            self.assertIsNotNone(best)
+            os.remove(good)                      # the destructive rung wipes it
+            self.assertTrue(os.path.isfile(snap), "the snapshot must survive")
+            self.assertEqual(best["pdf"], snap)
+
+    def test_a_refused_destination_saves_the_pdf_in_the_fallback_folder(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            blocker = os.path.join(tmp, "blocker")
+            with open(blocker, "w", encoding="utf-8") as handle:
+                handle.write("x")                # a FILE where a folder is needed
+            pdf = os.path.join(tmp, "built.pdf")
+            with open(pdf, "wb") as handle:
+                handle.write(b"%PDF-1.4 fake")
+            old = os.environ.get("TLAMATINI_TEMP")
+            os.environ["TLAMATINI_TEMP"] = os.path.join(tmp, "Temp")
+            try:
+                final, note = LX._deliver_pdf(
+                    pdf, {"output_dir": os.path.join(blocker, "sub"), "filename": "x.pdf"})
+            finally:
+                if old is None:
+                    os.environ.pop("TLAMATINI_TEMP", None)
+                else:
+                    os.environ["TLAMATINI_TEMP"] = old
+            self.assertTrue(os.path.isfile(final), "the PDF was lost: %s" % note)
+            self.assertIn("saved here instead", note)
+            self.assertTrue(final.startswith(os.path.join(tmp, "Temp")))
+
+    def test_a_missing_built_pdf_is_reported_honestly_not_as_a_folder_problem(self):
+        final, note = LX._deliver_pdf(os.path.join("nowhere", "gone.pdf"), {})
+        self.assertIn("missing", note)
+        self.assertIn("NOT a problem with the destination", note)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
