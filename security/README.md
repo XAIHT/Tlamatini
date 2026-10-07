@@ -12,7 +12,9 @@ substitute for Microsoft Defender and a real incident-response process.
 
 `tlamatini_whitelist_v2.ps1` makes persistent host changes. Defender and firewall
 services remain running, but the script adds Defender path/process exclusions,
-allows Tlamatini through Controlled Folder Access, changes six selected ASR rules
+allows Tlamatini through Controlled Folder Access (since v2.2: `Tlamatini.exe` AND
+the Python that runs its agents, for every frozen or source install it discovers,
+so LaTeXer/PDFer can save into Documents and Desktop), changes six selected ASR rules
 to **Audit** instead of Block, creates broad outbound allow rules, changes the
 current user's PowerShell execution policy, grants Security-log visibility, and
 enables additional auditing/logging. These exceptions reduce enforcement around
