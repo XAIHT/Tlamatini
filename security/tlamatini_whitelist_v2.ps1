@@ -1,5 +1,5 @@
 # =============================================================================
-# TLAMATINI SECURITY WHITELIST SCRIPT v2.1 - EXPANDED PRIVILEGES
+# TLAMATINI SECURITY WHITELIST SCRIPT v2.2 - EXPANDED PRIVILEGES
 # =============================================================================
 # Purpose: Adds Tlamatini to Windows security exclusions AND grants it
 #          additional monitoring privileges so it can detect hackers.
@@ -14,7 +14,9 @@
 #
 # What it DOES grant:
 #   1. Defender exclusions for the Tlamatini install folder (auto-detected)
-#   2. Controlled Folder Access whitelist (so I can traverse protected folders)
+#   2. Controlled Folder Access whitelist for Tlamatini.exe AND its Python
+#      (the agents run as python.exe; without it no PDF/document can be saved
+#      into Documents, Desktop, Pictures, Music or Videos)
 #   3. ASR audit mode (so my subprocesses are not blocked)
 #   4. PowerShell RemoteSigned policy (so my scripts run)
 #   5. Firewall outbound rules (so I can reach models/APIs)
@@ -34,6 +36,18 @@
 #     dead/broken MOF block that referenced an undefined $OCTUALLY placeholder).
 #   - BONUS: enable ProcessCreationIncludeCmdLine + ScriptBlockLogging.
 #
+# v2.2 changes (2026-10-07):
+#   - NEW DISCOVERY step: no hard-coded program paths. It finds every
+#     installation route (the folder this script lives in + the install that
+#     Tlamatini registers in HKCU\Software\XAIHT\Tlamatini) and classifies each
+#     as FROZEN (Tlamatini.exe + its carried python\python.exe) or SOURCE
+#     (Tlamatini\manage.py + the Python that runs it: live processes, venv,
+#     PATH). Steps 1, 2 and 5 all use that one list.
+#   - STEP 2 allows those programs through Controlled Folder Access, then reads
+#     the list back and reports [OK]/[FAIL] per program. v2.1 allowed only
+#     Tlamatini.exe, so LaTeXer/PDFer could not save into Documents/Desktop.
+#   - STEP 5 adds one outbound rule per discovered program, never duplicates.
+#
 # REQUIREMENTS:
 #   - Run as Administrator
 #   - Windows 10/11
@@ -49,7 +63,7 @@ $ErrorActionPreference = "Continue"
 # Tlamatini root = parent of that folder. Works on any drive / directory name.
 $TlamatiniPath = Split-Path -Parent $PSScriptRoot
 $TlamatiniExe = Join-Path $TlamatiniPath "Tlamatini.exe"
-$ScriptVersion = "2.1"
+$ScriptVersion = "2.2"
 
 Write-Host ""
 Write-Host "================================================" -ForegroundColor Cyan
@@ -75,19 +89,131 @@ if (-not $isAdmin) {
 Write-Host "[OK] Administrator privileges confirmed." -ForegroundColor Green
 
 # -----------------------------------------------------------------------------
+# DISCOVERY: every Tlamatini installation route, and the programs it runs
+# -----------------------------------------------------------------------------
+# No program path below is hard-coded. A route is classified by what is on disk:
+#   FROZEN  <root>\Tlamatini.exe exists. The workflow agents (LaTeXer, PDFer,
+#           PPTXer, ...) run under the carried <root>\python\python.exe.
+#   SOURCE  <root>\Tlamatini\manage.py exists. The agents run under the SAME
+#           Python that runs manage.py: found from the running processes, a
+#           venv beside the checkout (plus the base Python it runs on), or PATH.
+# Routes come from the folder this script lives in AND the installation that
+# Tlamatini registers in HKCU\Software\XAIHT\Tlamatini (InstallLocation), so
+# running either copy (the repository one or the installed one) covers both.
+function Add-UniqueExistingPath {
+    param([System.Collections.Generic.List[string]]$List, [string]$Path)
+    if ([string]::IsNullOrWhiteSpace($Path)) { return }
+    try { $full = [System.IO.Path]::GetFullPath($Path.Trim().Trim('"')) } catch { return }
+    if ($full.Length -gt 3) { $full = $full.TrimEnd('\') }
+    if (-not (Test-Path -LiteralPath $full)) { return }
+    foreach ($known in $List) { if ($known -ieq $full) { return } }
+    $List.Add($full)
+}
+
+$TlamatiniRoots = New-Object System.Collections.Generic.List[string]
+Add-UniqueExistingPath -List $TlamatiniRoots -Path $TlamatiniPath
+try {
+    $registeredRoot = (Get-ItemProperty -Path 'HKCU:\Software\XAIHT\Tlamatini' -ErrorAction Stop).InstallLocation
+    Add-UniqueExistingPath -List $TlamatiniRoots -Path $registeredRoot
+} catch {}
+
+$TlamatiniPrograms = New-Object System.Collections.Generic.List[string]       # every program to allow
+$TlamatiniCarriedPythons = New-Object System.Collections.Generic.List[string] # frozen: <root>\python\
+$TlamatiniDevPythons = New-Object System.Collections.Generic.List[string]     # source: the developer's Python
+$TlamatiniRouteReport = New-Object System.Collections.Generic.List[string]
+$sourceRouteFound = $false
+
+foreach ($root in $TlamatiniRoots) {
+    $frozenExe = Join-Path $root "Tlamatini.exe"
+    if (Test-Path -LiteralPath $frozenExe) {
+        $TlamatiniRouteReport.Add("FROZEN  $root")
+        Add-UniqueExistingPath -List $TlamatiniPrograms -Path $frozenExe
+        foreach ($pyName in @("python.exe", "pythonw.exe")) {
+            Add-UniqueExistingPath -List $TlamatiniCarriedPythons -Path (Join-Path $root ("python\" + $pyName))
+        }
+    } elseif (Test-Path -LiteralPath (Join-Path $root "Tlamatini\manage.py")) {
+        $TlamatiniRouteReport.Add("SOURCE  $root")
+        $sourceRouteFound = $true
+        foreach ($venvName in @("venv", ".venv", "env")) {
+            $venvPy = Join-Path $root ($venvName + "\Scripts\python.exe")
+            if (-not (Test-Path -LiteralPath $venvPy)) { continue }
+            Add-UniqueExistingPath -List $TlamatiniDevPythons -Path $venvPy
+            # A venv python.exe only redirects to its base interpreter, and the
+            # base interpreter is the process that actually writes the files.
+            $venvCfg = Join-Path $root ($venvName + "\pyvenv.cfg")
+            $homeLine = Get-Content -LiteralPath $venvCfg -ErrorAction SilentlyContinue |
+                Where-Object { $_ -match '^\s*home\s*=' } | Select-Object -First 1
+            if ($homeLine) {
+                Add-UniqueExistingPath -List $TlamatiniDevPythons -Path (Join-Path (($homeLine -split '=', 2)[1].Trim()) "python.exe")
+            }
+        }
+    } else {
+        $TlamatiniRouteReport.Add("SKIPPED $root (neither Tlamatini.exe nor Tlamatini\manage.py)")
+    }
+}
+
+# The Python processes Tlamatini is running right now (web server, MCP server,
+# pool agents): the exact interpreter, in either mode.
+try {
+    $liveTlamatiniPythons = Get-CimInstance -ClassName Win32_Process -Filter "Name='python.exe' OR Name='pythonw.exe'" -ErrorAction Stop |
+        Where-Object { $_.ExecutablePath -and ($_.CommandLine -match 'Tlamatini[\\/]+manage\.py|tlamatini_mcp_server\.py|[\\/]agents[\\/]+pools[\\/]') }
+    foreach ($proc in $liveTlamatiniPythons) {
+        $exePath = $proc.ExecutablePath
+        $isCarried = $false
+        foreach ($root in $TlamatiniRoots) {
+            if ($exePath -like ((Join-Path $root "python") + "\*")) { $isCarried = $true }
+        }
+        if ($isCarried) {
+            Add-UniqueExistingPath -List $TlamatiniCarriedPythons -Path $exePath
+        } else {
+            Add-UniqueExistingPath -List $TlamatiniDevPythons -Path $exePath
+        }
+    }
+} catch {}
+
+# Source mode with nothing running and no venv: the python.exe on PATH is the
+# one `python Tlamatini\manage.py runserver` would use (the Store stub skipped).
+if ($sourceRouteFound) {
+    $pathPython = Get-Command python.exe -All -ErrorAction SilentlyContinue |
+        Where-Object { $_.Source -notmatch '\\WindowsApps\\' } | Select-Object -First 1
+    if ($pathPython) { Add-UniqueExistingPath -List $TlamatiniDevPythons -Path $pathPython.Source }
+}
+
+foreach ($py in $TlamatiniCarriedPythons) { Add-UniqueExistingPath -List $TlamatiniPrograms -Path $py }
+foreach ($py in $TlamatiniDevPythons) { Add-UniqueExistingPath -List $TlamatiniPrograms -Path $py }
+
+Write-Host ""
+Write-Host "[DISCOVERY] Tlamatini installation routes:" -ForegroundColor Yellow
+if ($TlamatiniRouteReport.Count -eq 0) {
+    Write-Host "  [WARN] No Tlamatini installation was found." -ForegroundColor Yellow
+}
+foreach ($line in $TlamatiniRouteReport) { Write-Host "  $line" -ForegroundColor Cyan }
+Write-Host "  Programs that run Tlamatini and save its files:" -ForegroundColor Yellow
+foreach ($prog in $TlamatiniPrograms) { Write-Host "    $prog" -ForegroundColor Cyan }
+if ($TlamatiniDevPythons.Count -gt 0) {
+    Write-Host "  [NOTE] Development Python(s) are in this list (source mode): any script" -ForegroundColor Yellow
+    Write-Host "         they run may also save into protected folders." -ForegroundColor Yellow
+}
+if ($TlamatiniPrograms.Count -eq 0) {
+    Write-Host "  [WARN] No Tlamatini program was found - nothing will be allowed." -ForegroundColor Yellow
+}
+
+# -----------------------------------------------------------------------------
 # STEP 1: Defender exclusions
 # -----------------------------------------------------------------------------
 Write-Host ""
 Write-Host "[STEP 1/10] Adding Tlamatini to Defender exclusions..." -ForegroundColor Yellow
 
-try {
-    Add-MpPreference -ExclusionPath $TlamatiniPath -ErrorAction Stop
-    Write-Host "  [OK] Folder exclusion: $TlamatiniPath" -ForegroundColor Green
-} catch {
-    if ($_.Exception.Message -match "already exists") {
-        Write-Host "  [SKIP] Folder exclusion already exists." -ForegroundColor DarkGray
-    } else {
-        Write-Host "  [WARN] $($_.Exception.Message)" -ForegroundColor Yellow
+foreach ($root in $TlamatiniRoots) {
+    try {
+        Add-MpPreference -ExclusionPath $root -ErrorAction Stop
+        Write-Host "  [OK] Folder exclusion: $root" -ForegroundColor Green
+    } catch {
+        if ($_.Exception.Message -match "already exists") {
+            Write-Host "  [SKIP] Folder exclusion already exists: $root" -ForegroundColor DarkGray
+        } else {
+            Write-Host "  [WARN] $($_.Exception.Message)" -ForegroundColor Yellow
+        }
     }
 }
 
@@ -102,17 +228,16 @@ try {
     }
 }
 
-# Also exclude python if it exists inside Tlamatini
-$pythonExes = @(
-    (Join-Path $TlamatiniPath "python\python.exe"),
-    (Join-Path $TlamatiniPath "python\Scripts\python.exe")
-)
-foreach ($pyExe in $pythonExes) {
-    if (Test-Path $pyExe) {
-        try {
-            Add-MpPreference -ExclusionProcess $pyExe -ErrorAction SilentlyContinue
-            Write-Host "  [OK] Process exclusion: $pyExe" -ForegroundColor Green
-        } catch {}
+# Also exclude the Python that a FROZEN install carries (<root>\python\). A
+# developer's own Python is deliberately NOT excluded from virus scanning: that
+# would stop Defender scanning every script it ever runs. Source mode gets the
+# Controlled Folder Access allowance (STEP 2) instead, which is all it needs.
+foreach ($pyExe in $TlamatiniCarriedPythons) {
+    try {
+        Add-MpPreference -ExclusionProcess $pyExe -ErrorAction Stop
+        Write-Host "  [OK] Process exclusion: $pyExe" -ForegroundColor Green
+    } catch {
+        Write-Host "  [WARN] $pyExe : $($_.Exception.Message)" -ForegroundColor Yellow
     }
 }
 
@@ -130,11 +255,49 @@ try {
     } else {
         Write-Host "  [OK] CFA already enabled." -ForegroundColor Green
     }
-
-    Add-MpPreference -ControlledFolderAccessAllowedApplications $TlamatiniExe -ErrorAction Stop
-    Write-Host "  [OK] Tlamatini.exe added to CFA whitelist." -ForegroundColor Green
 } catch {
     Write-Host "  [WARN] $($_.Exception.Message)" -ForegroundColor Yellow
+}
+
+# Tlamatini.exe is NOT the program that saves the user's documents. Every
+# workflow agent (LaTeXer, PDFer, PPTXer, Camcorder, Recorder, ...) runs as a
+# separate python.exe, and Controlled Folder Access judges THAT program. The
+# antivirus process exclusions of STEP 1 do NOT apply to Controlled Folder
+# Access - it keeps its own allowed-apps list. Without this, every file an
+# agent saves into Documents, Desktop, Pictures, Music or Videos is refused,
+# and Windows reports it as "The system cannot find the file specified".
+# Seen 2026-10-07: event 1123 blocked <install>\python\python.exe writing
+# OneDrive\Documentos\TlamatiniLaTeX and OneDrive\Documentos\TlamatiniPDF.
+# The list comes from DISCOVERY: every route, frozen AND source.
+$cfaApps = $TlamatiniPrograms
+
+foreach ($app in $cfaApps) {
+    try {
+        Add-MpPreference -ControlledFolderAccessAllowedApplications $app -ErrorAction Stop
+    } catch {
+        Write-Host "  [WARN] Could not add $app : $($_.Exception.Message)" -ForegroundColor Yellow
+    }
+}
+
+# Read the list back: never report an allowance that did not land.
+$cfaMissing = 0
+$cfaVerified = $true
+$cfaAllowed = @()
+try {
+    $cfaAllowed = @((Get-MpPreference -ErrorAction Stop).ControlledFolderAccessAllowedApplications)
+} catch {
+    $cfaVerified = $false
+    Write-Host "  [WARN] Could not read the allowed-apps list back to verify: $($_.Exception.Message)" -ForegroundColor Yellow
+}
+if ($cfaVerified) {
+    foreach ($app in $cfaApps) {
+        if ($cfaAllowed -contains $app) {
+            Write-Host "  [OK] Allowed through Controlled Folder Access: $app" -ForegroundColor Green
+        } else {
+            $cfaMissing++
+            Write-Host "  [FAIL] NOT allowed through Controlled Folder Access: $app" -ForegroundColor Red
+        }
+    }
 }
 
 # -----------------------------------------------------------------------------
@@ -216,37 +379,23 @@ try {
 Write-Host ""
 Write-Host "[STEP 5/10] Adding firewall rules..." -ForegroundColor Yellow
 
-try {
-    $existingRule = Get-NetFirewallRule -DisplayName "Tlamatini Outbound" -ErrorAction SilentlyContinue
-    if ($null -eq $existingRule) {
-        New-NetFirewallRule -DisplayName "Tlamatini Outbound" `
-            -Direction Outbound -Program $TlamatiniExe -Action Allow -Profile Any | Out-Null
-        Write-Host "  [OK] Firewall rule: Tlamatini.exe outbound" -ForegroundColor Green
-    } else {
-        Write-Host "  [OK] Firewall rule already exists." -ForegroundColor Green
-    }
-} catch {
-    Write-Host "  [WARN] $($_.Exception.Message)" -ForegroundColor Yellow
-}
-
-# Python firewall rules
-$pythonPaths = @(
-    (Join-Path $TlamatiniPath "python\python.exe"),
-    (Join-Path $TlamatiniPath "python\Scripts\python.exe"),
-    "$env:LOCALAPPDATA\Programs\Python\Python312\python.exe",
-    "$env:LOCALAPPDATA\Programs\Python\Python311\python.exe"
-)
-foreach ($pyPath in $pythonPaths) {
-    if (Test-Path $pyPath) {
-        try {
-            $existingPy = Get-NetFirewallRule -DisplayName "Tlamatini Python Outbound" -ErrorAction SilentlyContinue
-            if ($null -eq $existingPy) {
-                New-NetFirewallRule -DisplayName "Tlamatini Python Outbound" `
-                    -Direction Outbound -Program $pyPath -Action Allow -Profile Any | Out-Null
-                Write-Host "  [OK] Firewall rule: $pyPath" -ForegroundColor Green
-            }
-        } catch {}
-        break
+# One outbound rule per discovered program (frozen AND source routes). A program
+# that already has an outbound Allow rule is left alone, so re-running the
+# script never piles up duplicates.
+foreach ($prog in $TlamatiniPrograms) {
+    try {
+        $existingRule = Get-NetFirewallApplicationFilter -Program $prog -ErrorAction SilentlyContinue |
+            Get-NetFirewallRule -ErrorAction SilentlyContinue |
+            Where-Object { $_.Direction -eq 'Outbound' -and $_.Action -eq 'Allow' }
+        if ($existingRule) {
+            Write-Host "  [OK] Outbound rule already exists: $prog" -ForegroundColor Green
+        } else {
+            New-NetFirewallRule -DisplayName ("Tlamatini Outbound - " + $prog) `
+                -Direction Outbound -Program $prog -Action Allow -Profile Any -ErrorAction Stop | Out-Null
+            Write-Host "  [OK] Outbound rule added: $prog" -ForegroundColor Green
+        }
+    } catch {
+        Write-Host "  [WARN] $prog : $($_.Exception.Message)" -ForegroundColor Yellow
     }
 }
 
@@ -408,11 +557,18 @@ try {
 # -----------------------------------------------------------------------------
 Write-Host ""
 Write-Host "================================================" -ForegroundColor Cyan
-Write-Host "  WHITELIST v2.1 COMPLETE - SUMMARY" -ForegroundColor Cyan
+Write-Host "  WHITELIST v$ScriptVersion COMPLETE - SUMMARY" -ForegroundColor Cyan
 Write-Host "================================================" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "  [1]  Defender exclusions:      $TlamatiniPath\ + processes" -ForegroundColor Green
-Write-Host "  [2]  Controlled Folder Access: Tlamatini.exe whitelisted" -ForegroundColor Green
+Write-Host "  [0]  Installation routes:      $($TlamatiniRoots.Count) found ($($TlamatiniPrograms.Count) program(s))" -ForegroundColor Green
+Write-Host "  [1]  Defender exclusions:      $($TlamatiniRoots.Count) folder(s) + processes" -ForegroundColor Green
+if (-not $cfaVerified) {
+    Write-Host "  [2]  Controlled Folder Access: could NOT be verified - see STEP 2" -ForegroundColor Yellow
+} elseif ($cfaMissing -gt 0) {
+    Write-Host "  [2]  Controlled Folder Access: $cfaMissing app(s) NOT allowed - see STEP 2" -ForegroundColor Red
+} else {
+    Write-Host "  [2]  Controlled Folder Access: Tlamatini + its Python allowed ($($cfaApps.Count) app(s))" -ForegroundColor Green
+}
 Write-Host "  [3]  ASR rules:                Audit mode (log, not block)" -ForegroundColor Green
 Write-Host "  [4]  PowerShell policy:        RemoteSigned" -ForegroundColor Green
 Write-Host "  [5]  Firewall:                 Outbound rules for Tlamatini" -ForegroundColor Green
@@ -434,6 +590,7 @@ Write-Host "    - Read Run keys (find autostart malware)" -ForegroundColor Green
 Write-Host "    - Enumerate services (find malicious services)" -ForegroundColor Green
 Write-Host "    - See destructive command lines (ransomware shadow-copy deletion)" -ForegroundColor Green
 Write-Host "    - Run subprocesses without ASR blocking" -ForegroundColor Green
+Write-Host "    - Save PDFs/documents into Documents, Desktop, Pictures (LaTeXer, PDFer...)" -ForegroundColor Green
 Write-Host "    - Make network calls to models and APIs" -ForegroundColor Green
 Write-Host ""
 Write-Host "  Review the exclusions, Audit rules, and outbound allowances as" -ForegroundColor Yellow
