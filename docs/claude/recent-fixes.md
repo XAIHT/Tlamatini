@@ -16,6 +16,51 @@
 
 ---
 
+## 2026-10-08 — LaTeXer: a mostly-deleted PDF no longer wears the requested name; the model rung repairs a REGION
+
+Angela's Podman cheat-sheet run took 46.6 min (49 model calls). Its FIRST LaTeXer
+compile cost 4 min 11 s: two engine swaps, then rung 7 asked glm-5.3:cloud to echo
+back the whole 22,589-char document (3.5 min, ONE character changed, still failed),
+then rung 8 (bisect) "quarantined 1 of 7 blocks". Block 7 was the entire two-column
+body, so a 1-page / 235,004-byte PDF (the environment table plus a box of raw LaTeX)
+was delivered to the Desktop as `Podman-CheatSheet.pdf`. Reproduced end-to-end with
+real MiKTeX + glm-5.3:cloud: identical page count and byte size.
+
+**Fix 1 (proven live): `MAJOR_REMOVAL_FRACTION = 0.25`, `DEGRADED_NAME_SUFFIX = ".DEGRADED"`.**
+`_removed_body_fraction()` measures what bisect cut in typeset characters (comments and
+whitespace excluded) and `_bisect_failing_blocks` returns `removed_fraction`, carried
+through `_compile_with_ladder` into the result. `_finish_compile` delivers a degraded build
+that lost >= 25% of its body as `<stem>.DEGRADED.pdf` (`_deliver_pdf(..., name_suffix)`),
+leaves the requested name untouched and inserts a `MAJOR REMOVAL` note. A clean build, or
+a minor removal, keeps its name. No new INI field (the 21-field contract is unchanged).
+
+**Fix 2 (bounded downside, benefit NOT proven as a speed-up): region repair.** For a document
+> 8,000 chars whose error names a `.tex` line, rung 7 sends the +/-30 lines around it, not the
+whole document: `think: false` (re-sent without it on HTTP 400), `num_predict: 6000`, the
+reported line QUOTED. The reply is read from its LAST fenced block. An unusable-but-answered
+reply falls back to the original whole-document request, so this path cannot do worse than
+before. An empty reply, one cut by the cap (`done_reason: length`), or a timeout is "no
+response" and `_model_rung_never_answered()` then forbids bisect: the author's content is
+never cut because the model rambled.
+
+**Measured, do not re-derive.** glm-5.3:cloud generates ~200 tokens/s. The OLD whole-document
+request fixed an easy error in ~33 s; the incident's 3.5 min was a HARD problem. `think: false`
+does NOT stop this model reasoning: it narrates in the reply ("Let me analyze... Wait,
+but...") and fences the answer last. With thinking ON and a 6000 cap the reply came back EMPTY
+(the cap was spent thinking); told "line 31 of the region" it counted lines aloud until the cap.
+Whole-run samples on the same broken file: old code 59 s, final code 41 s (region reply was a
+32-char snippet, discarded as truncated; the fallback fixed it). Single samples of a
+heavy-tailed process: NOT a benchmark.
+
+**Contracts.** Keep the words "no response" in the empty/capped paths (that is the marker
+`_model_rung_never_answered` reads). Keep `if "bisect" in rungs and _model_rung_never_answered(trace):`
+verbatim (`test_latexer_verbatim_channel` pins it). The rename lives ONLY in `_finish_compile`.
+Not fixed, noted: the wrapped parser keeps trailing prose after `overwrite=true -- ...` as part of
+the value, so the flag is not a boolean and LaTeXer writes `_2` duplicates.
+
+Coverage: `agent/test_latexer_major_removal_and_window_repair.py` (37 tests). All 549 LaTeXer
+tests, 99 neighbouring tests and `ruff` pass.
+
 ## 2026-10-07 — Mover preserves destinations; LaTeXer reports layout overflow
 
 A scalar `source_files` path was iterated character by character. On Windows,

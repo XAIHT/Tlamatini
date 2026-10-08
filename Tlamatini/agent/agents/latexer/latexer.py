@@ -1821,9 +1821,12 @@ def _deliver_to_fallback(built_pdf: str, target: str, error) -> tuple:
                            f" -- the fallback folder also failed ({e2}); the PDF stays at {built_pdf}")
 
 
-def _deliver_pdf(built_pdf: str, config: dict) -> tuple:
+def _deliver_pdf(built_pdf: str, config: dict, name_suffix: str = "") -> tuple:
     """Copy the freshly-typeset PDF into the delivery folder with a collision-proof
-    name. Returns (final_path, note)."""
+    name. Returns (final_path, note).
+
+    ``name_suffix`` is inserted before ``.pdf`` (``Doc.pdf`` -> ``Doc.DEGRADED.pdf``).
+    It is how a mostly-deleted degraded build avoids taking the requested name."""
     if not _pdf_is_present({"produced": True, "pdf": built_pdf}):
         # Say what REALLY happened. Without this the later copy fails with
         # "[WinError 2] cannot find the file" and the user hunts a Desktop /
@@ -1840,6 +1843,8 @@ def _deliver_pdf(built_pdf: str, config: dict) -> tuple:
     name = _safe_basename(_cfg(config, "filename"), ".pdf") or _timestamped_name(".pdf")
     if not name.lower().endswith(".pdf"):
         name += ".pdf"
+    if name_suffix:
+        name = os.path.splitext(name)[0] + name_suffix + ".pdf"
     # normpath: an output_dir written with forward slashes (perfectly legal in YAML, and
     # what an LLM tends to emit) would otherwise produce a mixed-separator path like
     # C:/x/y\report.pdf in the very line we ask the user to click.
@@ -2068,6 +2073,20 @@ def _build(tex_path: str, config: dict, tools: dict, env: dict) -> dict:
     return _compile(tex_path, config, tools, env)
 
 
+def _removed_body_share(result: dict) -> float:
+    """The share (0.0-1.0) of the document body a DEGRADED build cut out.
+
+    0.0 for any build that is not degraded, and for anything unreadable: this
+    only ever decides a file NAME, so on doubt it must never invent a removal.
+    """
+    try:
+        if not (result.get("degraded") or result.get("quarantined")):
+            return 0.0
+        return max(0.0, min(1.0, float(result.get("removed_fraction") or 0.0)))
+    except (TypeError, ValueError):
+        return 0.0
+
+
 def _finish_compile(result: dict, config: dict, tools: dict, outcome: dict, notes: list) -> bool:
     """Shared tail for compile / compile_project / scaffold_compile."""
     diag = result["diag"]
@@ -2087,8 +2106,13 @@ def _finish_compile(result: dict, config: dict, tools: dict, outcome: dict, note
     outcome.update(output_path="", output_dir="", filename="", page_count=0, bytes=0)
     delivered = False
 
+    # A degraded build that lost a large share of its body is a DIFFERENT document,
+    # not "the document minus a paragraph": it must not take the requested name
+    # (see MAJOR_REMOVAL_FRACTION). A build that is not degraded is never renamed.
+    removed_share = _removed_body_share(result)
+    name_suffix = DEGRADED_NAME_SUFFIX if removed_share >= MAJOR_REMOVAL_FRACTION else ""
     if result.get("produced"):
-        final, note = _deliver_pdf(result["pdf"], config)
+        final, note = _deliver_pdf(result["pdf"], config, name_suffix)
         notes.append(note)
         try:
             size = os.path.getsize(final) if os.path.isfile(final) else 0
@@ -2144,6 +2168,13 @@ def _finish_compile(result: dict, config: dict, tools: dict, outcome: dict, note
         # It is not a success and must never be reported as one — but it is also
         # not a bare failure, because the user has 40 of 41 pages in their hand.
         outcome["status"] = "degraded"
+        if name_suffix:
+            notes.insert(0, "MAJOR REMOVAL -- about %d%% of the document body was cut, so this "
+                            "PDF was saved as %s and NOT under the requested name %s, which was "
+                            "left untouched. This file is not the deliverable: fix the LaTeX "
+                            "source and compile again."
+                         % (int(round(removed_share * 100)), os.path.basename(final),
+                            _safe_basename(_cfg(config, "filename"), ".pdf") or "(auto-named)"))
         notes.insert(0, "⚠️  DEGRADED BUILD — a PDF WAS produced, but %d block(s) could not be "
                         "typeset and were REMOVED. Each removal is marked visibly inside the "
                         "document. See the repair-ladder report below for exactly what was cut."
@@ -3195,6 +3226,28 @@ LADDER_RUNGS = (
 # model), so they are opt-out separately from the cheap deterministic ones.
 _DEFAULT_ENABLED_RUNGS = LADDER_RUNGS
 
+# ---- A degraded PDF that lost MOST of its body must not wear the real name ----
+# (Angela, 2026-10-08.) Bisect quarantined "1 of 7 blocks" -- but block 7 was the
+# whole two-column body, so the PDF delivered under the requested name held only
+# the environment table and a box of raw LaTeX. A reader opening
+# Podman-CheatSheet.pdf could not tell it from the deliverable. When the cut
+# blocks held this share (or more) of the document body, the PDF is saved as
+# "<stem>.DEGRADED.pdf" instead and the requested file name is left untouched.
+MAJOR_REMOVAL_FRACTION = 0.25
+DEGRADED_NAME_SUFFIX = ".DEGRADED"
+
+# ---- Rung 7 asks the model for a REGION, not the whole document, when it can ----
+# (Angela, 2026-10-08.) Asking glm-5.3:cloud to echo back a 22,589-character
+# document took 3.5 minutes and changed ONE character: the model generates about
+# 200 tokens/s, so a long answer costs minutes while a 60-line region costs
+# seconds. Used only when the document is large AND the compiler named a line;
+# anything else keeps the whole-document request exactly as before.
+_MODEL_WINDOW_MIN_DOC_CHARS = 8000
+_MODEL_WINDOW_RADIUS_LINES = 30
+# Caps the model's total generated tokens (reasoning included) for a region
+# request, so a runaway turn costs ~30 s instead of minutes.
+_MODEL_WINDOW_NUM_PREDICT = 6000
+
 # Engines tried by rung 6, in order of increasing tolerance.  xelatex and
 # lualatex both accept UTF-8 and system fonts natively, which is why a document
 # that dies under pdflatex with "Unicode character not set up for use with
@@ -4057,6 +4110,25 @@ def _quarantine_note(block: str, index: int) -> str:
     )
 
 
+def _removed_body_fraction(blocks, bad) -> float:
+    """What share of the document body the quarantined blocks held (0.0-1.0).
+
+    Measured in typeset-relevant characters (comments and whitespace runs do not
+    count), because "1 of 7 blocks" says nothing about HOW MUCH was cut: in
+    Angela's cheatsheet block 7 was the entire two-column body. Never raises; on
+    any doubt it reports 0.0, so a measuring failure cannot rename a PDF.
+    """
+    try:
+        weights = [len(" ".join(_strip_comments(block).split())) for block in blocks]
+        total = sum(weights)
+        if total <= 0:
+            return 0.0
+        removed = sum(weights[index] for index in bad if 0 <= index < len(weights))
+        return max(0.0, min(1.0, removed / float(total)))
+    except Exception:
+        return 0.0
+
+
 def _bisect_failing_blocks(source: str, tex_path: str, config: dict, tools: dict,
                            env: dict, trace: list) -> dict:
     """RUNG 7: binary-search for the blocks that break the build.
@@ -4135,11 +4207,15 @@ def _bisect_failing_blocks(source: str, tex_path: str, config: dict, tools: dict
             parts.append("\n\n")
     parts.append(tail)
     repaired = "".join(parts)
+    fraction = _removed_body_fraction(blocks, bad)
     trace.append(_repair_record(
         "bisect", "quarantine",
-        "quarantined %d of %d block(s) after %d probe(s): block(s) %s"
-        % (len(bad), len(blocks), probes["n"], ", ".join(str(i + 1) for i in bad)), True))
-    return {"ok": True, "source": repaired, "quarantined": [i + 1 for i in bad]}
+        "quarantined %d of %d block(s) -- about %d%% of the document body -- after "
+        "%d probe(s): block(s) %s"
+        % (len(bad), len(blocks), int(round(fraction * 100)), probes["n"],
+           ", ".join(str(i + 1) for i in bad)), True))
+    return {"ok": True, "source": repaired, "quarantined": [i + 1 for i in bad],
+            "removed_fraction": fraction}
 
 
 def _safe_remove(path: str) -> None:
@@ -4178,8 +4254,213 @@ def _body_is_literal_listing(source: str) -> bool:
         r".*?\\end\s*\{\1\}", body, flags=re.DOTALL))
 
 
+_ERROR_LINE_PATTERNS = (
+    re.compile(r"^[^:\s][^:]*\.tex:(\d+):", re.IGNORECASE),   # -file-line-error form
+    re.compile(r"(?:^|\s)l\.(\d+)\b"),                          # classic "! ... l.42" form
+)
+
+
+def _error_line_from_diag(diag: dict) -> int:
+    """1-based line of the first compiler error that names one, else 0.
+
+    For the ``file:line:`` form only ``.tex`` files count: an error inside a
+    ``.sty`` / ``.cls`` carries THAT file's line number, which says nothing about
+    the author's document.
+    """
+    try:
+        for message in (diag or {}).get("errors") or []:
+            text = str(message)
+            for pattern in _ERROR_LINE_PATTERNS:
+                found = pattern.search(text)
+                if found:
+                    return int(found.group(1))
+    except Exception:
+        return 0
+    return 0
+
+
+def _model_repair_window(source: str, diag: dict):
+    """``(first, last, error_line)`` -- the 1-based, inclusive line range to hand the
+    model -- or ``None`` when the whole-document request must be used instead.
+
+    A window is only worth it for a LARGE document whose error names a line that
+    really exists; every other case keeps the original whole-document request.
+    """
+    try:
+        if len(source) <= _MODEL_WINDOW_MIN_DOC_CHARS:
+            return None
+        error_line = _error_line_from_diag(diag)
+        total = len(source.splitlines())
+        if error_line < 1 or error_line > total:
+            return None
+        return (max(1, error_line - _MODEL_WINDOW_RADIUS_LINES),
+                min(total, error_line + _MODEL_WINDOW_RADIUS_LINES), error_line)
+    except Exception:
+        return None
+
+
+_FENCED_BLOCK = re.compile(r"```[A-Za-z]*[ \t]*\r?\n(.*?)```", re.DOTALL)
+
+
+def _last_fenced_block(text: str) -> str:
+    """The content of the LAST ``` fenced block of a chatty reply, else ''."""
+    blocks = _FENCED_BLOCK.findall(text or "")
+    return blocks[-1] if blocks else ""
+
+
+def _ollama_repair_window(source: str, window: tuple, diag: dict, url: str, model: str,
+                          config: dict, trace: list) -> str:
+    """Repair ONE REGION of a large document instead of echoing all of it back.
+
+    The model sees the lines around the reported error and returns only their
+    replacement, which is spliced into the author's source. Same safety net as the
+    whole-document request: a reply that is not a plain region, looks truncated or
+    absurdly large, turns the text into a code listing, or lints worse is
+    discarded -- and the result must still compile before it is believed.
+    """
+    first, last, error_line = window
+    lines = source.splitlines(True)
+    region = "".join(lines[first - 1:last])
+    errors = "\n".join((diag.get("errors") or [])[:12]) or "(no explicit LaTeX error)"
+    # The reported line is QUOTED, never given as a line number to find: told
+    # "line 31 of the region", glm-5.3 counted lines out loud ("Line 1: ...",
+    # "Line 2: ...") until it hit the output cap, and never answered.
+    reported = lines[error_line - 1].rstrip("\r\n")[:300]
+    prompt = (
+        "You are repairing ONE REGION of a LaTeX document that fails to compile.\n"
+        "The compiler stopped at this line (quoted verbatim):\n%s\n"
+        "The real cause can be on that very line (an undefined command) or a few "
+        "lines EARLIER (an unclosed brace, an unbalanced $, a missing \\end).\n"
+        "Reply with the corrected region ONLY: the SAME lines, repaired, from its "
+        "first line to its last. Do NOT explain, do NOT analyse, do NOT count or "
+        "number lines, no commentary, no markdown fences, and nothing outside the "
+        "region. Preserve every sentence of the author's content exactly; change "
+        "only what is required to make it compile. Do not turn the region into a "
+        "verbatim/code listing or print its LaTeX source instead of typesetting "
+        "it. Preserve intentional code listings already there.\n\n"
+        "COMPILER ERRORS:\n%s\n\nREGION:\n%s\n"
+        % (reported, errors, region)
+    )
+    token = str(_cfg(config, "ollama_token", "")).strip()
+    timeout = float(_as_int(_cfg(config, "repair_model_timeout", 180), 180))
+
+    def _post(fields: dict) -> dict:
+        request = urllib.request.Request(
+            url + "/api/generate", data=json.dumps(fields).encode("utf-8"),
+            headers={"Content-Type": "application/json"})
+        if token:
+            request.add_header("Authorization", "Bearer " + token)
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            return json.loads(response.read().decode("utf-8", "replace"))
+
+    fields = {
+        "model": model,
+        "prompt": prompt,
+        "stream": False,
+        # Repairing 60 lines needs no chain of thought. Live 2026-10-08: with
+        # reasoning left on, glm-5.3:cloud spent the WHOLE output cap thinking and
+        # returned an EMPTY answer, so the repair never happened.
+        "think": False,
+        # The cap counts a reasoning model's hidden thinking too: a runaway turn
+        # costs ~30 s here instead of minutes.
+        "options": {"temperature": 0.1, "num_predict": _MODEL_WINDOW_NUM_PREDICT},
+    }
+    try:
+        try:
+            body = _post(fields)
+        except Exception as exc:
+            # A server or model that rejects the `think` field (HTTP 400) is asked
+            # again without it; any other failure is a real failure.
+            if getattr(exc, "code", None) != 400:
+                raise
+            fields.pop("think")
+            body = _post(fields)
+        answer = str(body.get("response") or "")
+    except Exception as exc:
+        trace.append(_repair_record(
+            "model", "request", "Ollama call failed: %s" % exc, False))
+        return source
+
+    if str(body.get("done_reason") or "") == "length":
+        # The model ran out of its output cap mid-thought. Whatever it printed is
+        # an unfinished monologue, NOT a repair -- and not a verdict on the
+        # document either, so (like an empty reply) it must never let the
+        # destructive bisect rung cut the author's content. "no response" is the
+        # marker _model_rung_never_answered() reads.
+        trace.append(_repair_record(
+            "model", "validate",
+            "model gave no response: it hit the %d-token output cap before finishing "
+            "lines %d-%d; the document is left intact"
+            % (_MODEL_WINDOW_NUM_PREDICT, first, last), False))
+        return source
+
+    # glm-5.3 reasons OUT LOUD in the reply even with `think` off ("Let me
+    # analyze... Wait, but... So output the region:") and puts the corrected region
+    # in its LAST fenced block. Measured live 2026-10-08: that block equalled the
+    # expected fix byte for byte. A reply with no fence is used as-is.
+    fenced = _last_fenced_block(answer)
+    if fenced.strip():
+        answer = fenced
+
+    answer = re.sub(r"^\s*```(?:latex|tex)?\s*", "", answer)
+    answer = re.sub(r"```\s*$", "", answer).strip("\r\n")
+    if not answer.strip():
+        # "no response" is deliberate wording: _model_rung_never_answered() reads
+        # it as "the model never really answered", so the destructive bisect rung
+        # does not cut the author's content over an empty or capped reply.
+        trace.append(_repair_record(
+            "model", "validate",
+            "model gave no response for lines %d-%d (an empty reply -- usually the "
+            "output cap or a stalled model); the document is left intact" % (first, last),
+            False))
+        return source
+    for marker in ("\\documentclass", "\\begin{document}", "\\end{document}"):
+        if marker in answer and marker not in region:
+            trace.append(_repair_record(
+                "model", "validate",
+                "model returned a whole document instead of the requested region -- "
+                "discarded", False))
+            return source
+    if len(answer.strip()) < len(region.strip()) * 0.4:
+        trace.append(_repair_record(
+            "model", "validate",
+            "model reply is %d chars vs %d for the region -- looks truncated, discarded"
+            % (len(answer.strip()), len(region.strip())), False))
+        return source
+    if len(answer) > len(region) * 3 + 400:
+        trace.append(_repair_record(
+            "model", "validate",
+            "model reply is %d chars for a %d-char region -- far larger than asked, "
+            "discarded" % (len(answer), len(region)), False))
+        return source
+
+    ending = "\r\n" if region.endswith("\r\n") else ("\n" if region.endswith("\n") else "")
+    spliced = "".join(lines[:first - 1]) + answer + ending + "".join(lines[last:])
+    if spliced == source:
+        trace.append(_repair_record(
+            "model", "validate",
+            "model returned lines %d-%d unchanged -- no repair" % (first, last), False))
+        return source
+    if _body_is_literal_listing(spliced) and not _body_is_literal_listing(source):
+        trace.append(_repair_record(
+            "model", "validate",
+            "model replaced the document with literal source in a code listing -- "
+            "discarded; repair must typeset the content", False))
+        return source
+    return _accept_if_not_worse(
+        source, spliced, "model", "llm-repair",
+        "model '%s' repaired lines %d-%d around the error at line %d (%d -> %d chars) "
+        "instead of rewriting the whole %d-char document"
+        % (model, first, last, error_line, len(region), len(answer) + len(ending),
+           len(source)),
+        trace)
+
+
 def _ollama_repair(source: str, diag: dict, config: dict, trace: list) -> str:
     """Ask an Ollama model to repair the source. Stdlib only, fails open.
+
+    A LARGE document whose error names a line is repaired by REGION (see
+    ``_ollama_repair_window``); every other case sends the whole document.
 
     Three rules make this safe to have at all:
       * it is the last NON-DESTRUCTIVE rung, so it only ever sees documents the
@@ -4198,6 +4479,18 @@ def _ollama_repair(source: str, diag: dict, config: dict, trace: list) -> str:
         trace.append(_repair_record(
             "model", "skip", "no repair_model configured -- model rung disabled", False))
         return source
+
+    window = _model_repair_window(source, diag)
+    if window:
+        repaired = _ollama_repair_window(source, window, diag, url, model, config, trace)
+        if repaired != source or _model_rung_never_answered(trace):
+            # Either a repair was accepted, or the model gave NO answer (timed out,
+            # empty, capped): a second, long whole-document request would only
+            # repeat that. Both end here.
+            return repaired
+        # The model DID answer but its region reply was unusable (not a region,
+        # unchanged, lint worse): the proven whole-document request still gets its
+        # turn, so the region path can never do worse than the old behaviour.
 
     errors = "\n".join((diag.get("errors") or [])[:12]) or "(no explicit LaTeX error)"
     prompt = (
@@ -4508,7 +4801,10 @@ def _compile_with_ladder(tex_path: str, config: dict, tools: dict, env: dict) ->
             source = outcome["source"]
             quarantined = outcome.get("quarantined") or []
             build_path = _write_working_copy(tex_path, source, config)
-            result = _compile(build_path, config, active_tools, env)
+            result = dict(_compile(build_path, config, active_tools, env))
+            # How much of the body was cut decides whether this PDF may take the
+            # requested file name (see MAJOR_REMOVAL_FRACTION).
+            result["removed_fraction"] = outcome.get("removed_fraction", 0.0)
             if result.get("produced"):
                 return _finalise_ladder(result, trace, rungs, quarantined, build_path,
                                         active_tools, degraded=True)
