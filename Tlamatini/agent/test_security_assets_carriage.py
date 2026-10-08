@@ -37,6 +37,11 @@ class AssetsPresentTests(unittest.TestCase):
         "run_defender.bat",
         "enable_tlamatini_v2.bat",
         "automated_tests_of_security_assets.py",
+        "windows_access_helpers.ps1",
+        "sync_enable_launcher.py",
+        "test_security_syntax.ps1",
+        "test_windows_access.ps1",
+        "verify_agent_execution.py",
         "README.md",
     )
 

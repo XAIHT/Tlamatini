@@ -275,14 +275,15 @@ class NeverLoseTheAuthorsWorkTests(SimpleTestCase):
         )
 
 
-class CleanBuildIsTheEndOfTheJobTests(SimpleTestCase):
-    """A clean PDF must tell the model to STOP, not invite more polishing."""
+class CleanBuildStopConditionTests(SimpleTestCase):
+    """A clean build stops polishing once the requested requirements are met."""
 
     def test_clean_compile_emits_an_explicit_stop(self):
         source = _read(LATEXER_PY)
-        self.assertIn("THE DOCUMENT IS FINISHED", source)
+        self.assertIn("If those requirements are met", source)
+        self.assertNotIn("THE DOCUMENT IS FINISHED", source)
         self.assertIn('outcome["status"] = "compiled"', source)
-        stop_at = source.index("THE DOCUMENT IS FINISHED")
+        stop_at = source.index("If those requirements are met")
         compiled_at = source.index('outcome["status"] = "compiled"')
         self.assertLess(
             compiled_at, stop_at,

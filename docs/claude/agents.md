@@ -239,7 +239,24 @@ The display name transforms differently per context:
 
 ---
 
+## Mover: destination preservation and operation verdicts
+
+`source_files` accepts a scalar path or a nonempty list; a scalar is always one
+pattern. Root sources and overlapping directory transfers are refused. Same-file
+copy/move is a verified no-op. Directory transfers merge without recursively
+erasing destinations; regular file replacement is staged before publication.
+`INI_SECTION_MOVER` reports `success`, `status`, `completed`, `errors`, `unchanged`
+and `output_paths`. Immediate failures exit nonzero. Never restore destination
+`rmtree` or success-by-process-exit alone. See the
+[2026-10-07 incident](../changes/2026-10-07-pdf-mover-incident.md).
+
 ## LaTeXer: signature collection and result contract
+
+The 2026-10-07 layout gate also uses `status: created_with_findings` with
+`success: False` when a delivered PDF has a TeX overfull box exceeding 5 pt.
+The file is retained and the response calls for layout repair. Tiny protrusions
+and underfull spacing retain existing completion behavior; this compiler check
+does not certify visual layout.
 
 LaTeXer adds 30 explicit styles in six families: editorial (3), playful/cute/nursery (5), cyberpunk (4), cosmic (6), electronics (4), and Tlamatini (8). `template` still chooses one of eight document structures; `style` chooses appearance. The [canonical guide](../../Tlamatini/agent/agents/latexer/STYLES.md) contains all IDs and examples.
 
@@ -248,6 +265,8 @@ LaTeXer adds 30 explicit styles in six families: editorial (3), playful/cute/nur
 - Controls: `style`, `subtitle`, `style_mode` (screen/print), `style_decoration` (none/restrained/rich), `style_cover` (boolean), `predominant_color` (six-digit hex). Beamer uses a separate renderer; metadata/content are LaTeX. Prefer base64 source channels for complex chat payloads.
 - `INI_SECTION_LATEXER` has **21 contract fields including `response_body`**. The four additions are `style`, `style_family`, `style_mode`, `style_count`. They are promoted to chat results and exposed to Parametrizer. Use `status`/`success` to branch; style metadata is not build or layout evidence.
 - Flat siblings `latexer_styles.py`, `latexer_artwork.py`, `latexer_design.py` must ship with `latexer.py`. They add no Python graphics dependency to the runtime; styled compilation uses ordinary TeX packages.
+- Delivery truth (2026-10-07): `compiled`, `compiled_with_errors` and `degraded` require an actual nonempty final file. A stale compiler-log byte count never supplies `bytes` or proves delivery. Missing/empty artifacts return `error`, empty output fields and zero bytes; do not blame the destination when the built PDF itself is missing. Speculative model repairs use a separate `.latexer-model.tex` stem, and the ladder preserves a surviving PDF before destructive rungs. Keep these checks when changing repair or delivery behavior.
+- Model repair must typeset the content: replacing the entire body with a new verbatim/code listing is rejected, even if that would compile. Existing intentional listings remain supported. This guard does not certify content or layout; inspect the resulting PDF when validating a requested document.
 
 Validation snapshot, 2026-09-15: 483 automated tests and 132 fresh real-engine builds passed, with zero measured overfull boxes or out-of-bounds text. All 60 atlas pages were rendered and visually reviewed. The developer verifier, rather than every normal agent run, performs the PDF bounds/preview checks. See the guide for reproduction and limitations.
 

@@ -1076,6 +1076,7 @@ def _parse_latex_log(log_text: str) -> dict:
     """
     errors, warnings, missing_packages, missing_files = [], [], [], []
     boxes = 0
+    overfull_boxes = []
     pages, out_file, out_bytes = 0, "", 0
 
     lines = log_text.splitlines()
@@ -1119,6 +1120,10 @@ def _parse_latex_log(log_text: str) -> dict:
                 warnings.append(text)
         if "Overfull " in line or "Underfull " in line:
             boxes += 1
+        overflow = re.search(r"Overfull \\([hv])box \(([\d.]+)pt too (?:wide|high)\)", line)
+        if overflow:
+            overfull_boxes.append({"axis": overflow.group(1),
+                                   "points": float(overflow.group(2)), "detail": line.strip()})
 
         mo = re.search(r"Output written on\s+(.+?)\s+\((\d+)\s+pages?,\s*(\d+)\s+bytes\)", line)
         if mo:
@@ -1145,6 +1150,7 @@ def _parse_latex_log(log_text: str) -> dict:
         "missing_packages": missing_packages,
         "missing_files": missing_files,
         "boxes": boxes,
+        "overfull_boxes": overfull_boxes,
         "pages": pages,
         "output_file": out_file,
         "output_bytes": out_bytes,
@@ -1181,7 +1187,9 @@ def _format_diagnostics(diag: dict, distribution: str, auto_install: bool, limit
             lines.append("  ... and %d more" % (len(diag["warnings"]) - 20))
     if diag["boxes"]:
         lines.append("")
-        lines.append("TYPOGRAPHY: %d overfull/underfull box(es) — cosmetic, not an error." % diag["boxes"])
+        lines.append("TYPOGRAPHY: %d overfull/underfull box(es). Underfull boxes concern spacing; "
+                     "overfull boxes can overlap or clip content." % diag["boxes"])
+        lines += ["  • " + box["detail"] for box in diag.get("overfull_boxes", [])[:20]]
     text = "\n".join(lines)
     if limit > 0 and len(text) > limit:
         text = text[:limit] + "\n... [diagnostics truncated]"
@@ -1816,12 +1824,12 @@ def _deliver_to_fallback(built_pdf: str, target: str, error) -> tuple:
 def _deliver_pdf(built_pdf: str, config: dict) -> tuple:
     """Copy the freshly-typeset PDF into the delivery folder with a collision-proof
     name. Returns (final_path, note)."""
-    if not os.path.isfile(built_pdf):
+    if not _pdf_is_present({"produced": True, "pdf": built_pdf}):
         # Say what REALLY happened. Without this the later copy fails with
         # "[WinError 2] cannot find the file" and the user hunts a Desktop /
         # Windows protection problem that does not exist.
-        return built_pdf, (f"the typeset PDF is missing ({built_pdf}) -- it was removed by a "
-                           "later repair step, so there is nothing to deliver. This is NOT a "
+        return built_pdf, (f"the typeset PDF is missing or empty ({built_pdf}) -- "
+                           "there is no usable file to deliver. This is NOT a "
                            "problem with the destination folder.")
     out_dir = os.path.normpath(_default_output_dir(config))
     create_error = None
@@ -2074,22 +2082,35 @@ def _finish_compile(result: dict, config: dict, tools: dict, outcome: dict, note
     outcome["warnings"] = len(diag["warnings"])
     outcome["bibliography"] = result.get("bibliography", "none")
     notes.extend("  " + s for s in result["steps"])
+    # Engine/log claims can outlive their artifact (for example after a failed
+    # repair). Only the final file may supply a success verdict or byte count.
+    outcome.update(output_path="", output_dir="", filename="", page_count=0, bytes=0)
+    delivered = False
 
     if result.get("produced"):
         final, note = _deliver_pdf(result["pdf"], config)
-        outcome.update({
-            "output_path": final,
-            "output_dir": os.path.dirname(final),
-            "filename": os.path.basename(final),
-            "page_count": diag["pages"],
-            "bytes": os.path.getsize(final) if os.path.isfile(final) else diag["output_bytes"],
-        })
         notes.append(note)
-        if not _as_bool(_cfg(config, "keep_aux", False), False) and result["ok"]:
+        try:
+            size = os.path.getsize(final) if os.path.isfile(final) else 0
+        except OSError:
+            size = 0
+        delivered = size > 0
+        if delivered:
+            outcome.update({
+                "output_path": final,
+                "output_dir": os.path.dirname(final),
+                "filename": os.path.basename(final),
+                "page_count": diag["pages"],
+                "bytes": size,
+            })
+        else:
+            notes.append("PDF delivery verification failed: the final file is missing or empty. "
+                         "The compiler log is not evidence that a PDF still exists.")
+        if delivered and not _as_bool(_cfg(config, "keep_aux", False), False) and result["ok"]:
             removed = _clean_aux(result["work_dir"], result["jobname"], keep_log=True)
             if removed:
                 notes.append("tidied %d auxiliary file(s) (the .log is kept)" % len(removed))
-        if _as_bool(_cfg(config, "open_pdf", False), False) and os.name == "nt":
+        if delivered and _as_bool(_cfg(config, "open_pdf", False), False) and os.name == "nt":
             try:
                 os.startfile(final)  # noqa: S606 - user asked for the PDF to be opened
             except Exception:
@@ -2118,7 +2139,7 @@ def _finish_compile(result: dict, config: dict, tools: dict, outcome: dict, note
         notes.append("")
         notes.append(_format_ladder_report(result))
 
-    if result.get("degraded") or result.get("quarantined"):
+    if delivered and (result.get("degraded") or result.get("quarantined")):
         # THE THIRD OUTCOME. A PDF exists, but only because content was cut out.
         # It is not a success and must never be reported as one — but it is also
         # not a bare failure, because the user has 40 of 41 pages in their hand.
@@ -2129,22 +2150,40 @@ def _finish_compile(result: dict, config: dict, tools: dict, outcome: dict, note
                      % len(result.get("quarantined") or []))
         return False
 
-    if result["ok"]:
+    # A compiler can exit 0 while a table spans two columns and overwrites
+    # adjacent text. Preserve its PDF, but never pronounce it clean/finished.
+    # Five points allows tiny TeX rounding/protrusion; larger measured overflow
+    # is an actionable finding, not a claim of complete visual validation.
+    substantial_overflows = [box for box in diag.get("overfull_boxes", [])
+                            if box["points"] > 5.0]
+    if result["ok"] and delivered and substantial_overflows:
+        outcome["status"] = "created_with_findings"
+        notes.insert(0, "LAYOUT REPAIR REQUIRED — the PDF exists at %s, but TeX reports %d "
+                        "box(es) overflowing by more than 5 pt (maximum %.1f pt). "
+                        "It is NOT a clean finished document. Constrain table widths to "
+                        "the current column/line width, wrap long cells, and verify the "
+                        "rendered pages before reporting completion. Preserve this PDF "
+                        "while repairing the source."
+                     % (outcome["output_path"], len(substantial_overflows),
+                        max(box["points"] for box in substantial_overflows)))
+        return False
+
+    if result["ok"] and delivered:
         outcome["status"] = "compiled"
-        # EXPLICIT STOP CONDITION (Angela, 2026-08-11). A clean build IS the end
-        # of the job. Nothing used to say so, so the LLM kept "improving" an
-        # already-finished 27-page, 0-error PDF - re-editing and recompiling for
-        # 50+ Multi-Turn iterations until one of its own edits broke the document
-        # and the ladder had to cut a block out of it. The deliverable EXISTS;
-        # say so in the first line the model reads.
+        # Stop speculative rewrites of a successful build (2026-08-11), while
+        # preserving the distinction between compilation and task completion.
+        # The compiler cannot establish that the authored body contains every
+        # requested section. An unmet requirement is a reason to revise it.
         notes.insert(0, (
-            "DONE - a CLEAN PDF now exists: %s (%s page(s), 0 errors). "
-            "THE DOCUMENT IS FINISHED. Do NOT recompile it, do NOT 'improve' it, "
-            "do NOT edit the .tex again and do NOT produce a _v2/_v3 variant: "
-            "report this absolute path to the user and STOP."
+            "COMPILED - a verified PDF now exists: %s (%s page(s), 0 errors). "
+            "This confirms compilation and delivery, not content completeness or visual quality. "
+            "Compare the saved PDF with the user's requested content, style and destination. "
+            "If those requirements are met, report this absolute path and STOP; do not make "
+            "speculative improvements or extra variants. Revise only an identified unmet "
+            "requirement or actual finding, preserving existing valid files."
         ) % (outcome.get("output_path", ""), outcome.get("page_count", "?")))
         return True
-    if result.get("produced"):
+    if delivered:
         # A PDF exists but LaTeX reported errors: say so plainly. Never call this a
         # clean success, and never throw away the PDF the user can still inspect.
         outcome["status"] = "compiled_with_errors"
@@ -2153,7 +2192,7 @@ def _finish_compile(result: dict, config: dict, tools: dict, outcome: dict, note
                      % len(diag["errors"]))
         return False
     outcome["status"] = "error"
-    notes.insert(0, "❌ No PDF was produced, and the repair ladder could not rescue it. "
+    notes.insert(0, "❌ No usable PDF is available after compilation and delivery. "
                     "Everything it tried is listed below.")
     return False
 
@@ -4122,6 +4161,23 @@ def _safe_remove(path: str) -> None:
 #                 model BEFORE bisect -- see the 2026-08-05 reorder note.)
 # =============================================================================
 
+def _body_is_literal_listing(source: str) -> bool:
+    """Recognize a document whose entire body is a verbatim/code listing.
+
+    A model can make broken TeX compile by wrapping it in lstlisting. That
+    prints the source instead of typesetting it and is not a valid repair.
+    Existing documents intentionally containing only code remain supported.
+    """
+    start = re.search(r"\\begin\s*\{document\}", source)
+    ends = list(re.finditer(r"\\end\s*\{document\}", source))
+    if not start or not ends or ends[-1].start() < start.end():
+        return False
+    body = source[start.end():ends[-1].start()].strip()
+    return bool(re.fullmatch(
+        r"\\begin\s*\{(verbatim\*?|Verbatim\*?|lstlisting|minted)\}"
+        r".*?\\end\s*\{\1\}", body, flags=re.DOTALL))
+
+
 def _ollama_repair(source: str, diag: dict, config: dict, trace: list) -> str:
     """Ask an Ollama model to repair the source. Stdlib only, fails open.
 
@@ -4148,7 +4204,9 @@ def _ollama_repair(source: str, diag: dict, config: dict, trace: list) -> str:
         "You are repairing a LaTeX document that fails to compile.\n"
         "Return ONLY the corrected, COMPLETE LaTeX document. No commentary, no "
         "markdown fences. Preserve every sentence of the author's content exactly; "
-        "change only what is required to make it compile.\n\n"
+        "change only what is required to make it compile. Do not turn the document "
+        "into a verbatim/code listing or print its LaTeX source instead of typesetting "
+        "its content. Preserve intentional code listings already in the document.\n\n"
         "COMPILER ERRORS:\n%s\n\nDOCUMENT:\n%s\n" % (errors, source)
     )
     payload = json.dumps({
@@ -4180,6 +4238,12 @@ def _ollama_repair(source: str, diag: dict, config: dict, trace: list) -> str:
         trace.append(_repair_record(
             "model", "validate",
             "model reply is not a complete document -- discarded", False))
+        return source
+    if _body_is_literal_listing(answer) and not _body_is_literal_listing(source):
+        trace.append(_repair_record(
+            "model", "validate",
+            "model replaced the document with literal source in a code listing -- "
+            "discarded; repair must typeset the content", False))
         return source
     if len(answer) < len(source) * 0.6:
         trace.append(_repair_record(
@@ -4251,9 +4315,10 @@ def _safe_unlink(path: str) -> None:
 
 
 def _pdf_is_present(result: dict) -> bool:
-    """True when ``result`` claims a PDF AND that file is really on disk."""
+    """True when ``result`` claims a PDF AND a nonempty file is really on disk."""
     try:
-        return bool(result and result.get("produced")) and os.path.isfile(str(result.get("pdf") or ""))
+        path = str((result or {}).get("pdf") or "")
+        return bool(result and result.get("produced")) and os.path.isfile(path) and os.path.getsize(path) > 0
     except Exception:
         return False
 

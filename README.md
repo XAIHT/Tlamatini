@@ -650,25 +650,26 @@ Turn it off with `"binary_context_detection": false` in `config.json`; tune it w
 |---|---|
 | `security/enable_tlamatini_v2.bat` | Self-elevating launcher for the one-time Windows enablement script. |
 | `security/tlamatini_whitelist_v2.ps1` | Applies persistent Defender, CFA, ASR, execution-policy, firewall, event-log, audit-policy, and logging changes; verifies WMI, Task Scheduler, registry, and service visibility. |
-| `security/run_defender.bat` | Self-elevating launcher for one armed scan using the defender's default mode. |
+| `security/run_defender.bat` | Self-elevating launcher for one report-only scan; no automatic blocking or killing. |
 | `security/tlamatini_defender.ps1` | Runs one-shot or continuous monitoring in detect-only, armed, or aggressive mode. |
-| `security/automated_tests_of_security_assets.py` | Non-destructive visible regression harness: parses both PowerShell files, exercises the self-safe classifier, validates official ASR/audit GUIDs and launcher contracts, captures the desktop through Shoter, and displays a headed-browser summary. It does **not** enable Windows policies or run an armed scan. |
+| `security/automated_tests_of_security_assets.py` | Non-admin visible harness: parses every PowerShell asset, tests mocked access/response behavior, verifies embedded payload parity and BAT syntax from complex paths, and captures the desktop through Shoter. It does **not** apply policy or run an armed scan. |
+| `security/verify_agent_execution.py` | Checks real Python, CMD, PowerShell, Temp/Desktop/Documents writes and loopback networking without admin or model calls. |
 | `security/README.md` | Security-specific quick reference kept beside the executable. |
 
 ### Pause before enabling
 
-The enablement script requires **Windows 10/11, Microsoft Defender PowerShell cmdlets, and Administrator approval**. Its settings persist after the script exits. Core Defender and firewall services remain enabled, but enforcement is deliberately relaxed around Tlamatini: the install tree and selected processes are added to Defender exclusions, Tlamatini is allowed through Controlled Folder Access, six ASR rules are changed to **Audit** rather than Block, and broad outbound allow rules are created for Tlamatini/Python. These exceptions reduce protection if malicious code reaches an excluded path or process.
+The enablement script requires **Windows 10/11, Microsoft Defender PowerShell cmdlets, and Administrator approval**. Its settings persist after the script exits. It discovers source/frozen installations and their actual Python/toolchain paths, adds verified Defender/CFA/per-program ASR exceptions, and verifies outbound and loopback firewall rules. It leaves CFA's global mode unchanged. Exact local application blocks can be disabled; managed and broad blocks are reported. Shared interpreter exceptions also affect commands outside Tlamatini. Core Defender and firewall services remain enabled, but exclusions reduce protection around those paths and processes.
 
-The six ASR rules are: Office applications creating child processes; LSASS credential stealing; WMI event-subscription persistence; executable content from email/webmail; untrusted or unsigned USB processes; and process creation through PSExec/WMI. The script uses Microsoft's published rule IDs, reads the effective Defender configuration back after each write, and reports `[OK]` only when action `6` (Audit) is verified; otherwise it emits `[WARN]`. Audit mode records matching behavior but does not block it. See the [Microsoft ASR rules reference](https://learn.microsoft.com/en-us/defender-endpoint/attack-surface-reduction-rules-reference).
+Only explicit `-AuditCompatibility` changes six machine-wide ASR rules: Office child processes, LSASS access, WMI persistence, email/webmail executables, untrusted USB executables and PSExec/WMI processes. It verifies **AuditMode (2)**; action **6 means Warn**. Global ASR changes are not the default. `-AllowLan` explicitly adds LocalSubnet inbound access on Private/Domain profiles. See the [Microsoft ASR configuration guidance](https://learn.microsoft.com/en-us/defender-endpoint/enable-attack-surface-reduction).
 
 The script also enables locale-neutral audit subcategories by GUID: success/failure Logon, Credential Validation, Sensitive Privilege Use, and User Account Management, plus success Process Creation. It checks `auditpol`'s exit status rather than assuming each command worked. Process-command-line and PowerShell Script Block Logging can capture sensitive arguments, so protect the Windows event logs as carefully as Tlamatini's own logs.
 
-Before enabling, create a restore point or record your current Defender exclusions, ASR configuration, execution policies, audit policy, Security-log permissions, and matching firewall rules. The repository currently provides **no automatic rollback script**; restore the recorded baseline through your organisation's Windows security policy if you later disable the toolkit.
+Each run saves Defender/audit/execution-policy baselines and a pre-operation change journal under `security_logs/enablement-<timestamp>/`. Exit 0 means the configured checks succeeded, 2 means partial results need attention, and 1 means setup failed. There is **no automatic rollback script**; the records support selective recovery. This does not replace a full restore point or prove every agent dependency is installed.
 
 ### Recommended enablement sequence
 
 1. Review every file in `security/`, especially the whitelist's persistent changes and the defender's process/IP response rules.
-2. Validate the shipped assets without changing security policy: `python security\automated_tests_of_security_assets.py`. The test intentionally opens a foreground PowerShell window and headed Chrome, and writes proof under `security\security_logs\asset_tests\`.
+2. Open a new foreground PowerShell with `-NoExit`, confirm it is visible, and run `python security\automated_tests_of_security_assets.py`. It asks for visibility confirmation, uses that persistent console, and writes proof under `security\security_logs\asset_tests\`.
 3. Record the current Defender/ASR/CFA, execution-policy, audit-policy, Security-log, and matching firewall-rule baseline.
 4. From `<Tlamatini-root>\security`, double-click `enable_tlamatini_v2.bat` or run it as administrator, approve UAC, and restart Tlamatini/PowerShell after it completes.
 5. Establish a false-positive baseline with an elevated **detect-only** scan:
@@ -679,24 +680,25 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\tlamatini_defender.ps1 -De
 ```
 
 6. Review `security_logs\alerts.log` and `security_logs\monitor.log`. `WARNING`, `ALERT`, and `CRITICAL` entries are **investigation leads, not proof of compromise**.
-7. Only after reviewing the baseline, use `run_defender.bat` for a default armed one-shot scan or start a deliberate watch session from an elevated PowerShell window.
+7. Use `run_defender.bat` for report-only scans. Response requires explicitly passing `-Armed` to the PS1 after reviewing the findings. Run `python security\verify_agent_execution.py` in the visible non-admin console to check real file, shell and loopback access.
 
 ### Defender modes
 
 | Command | Behaviour |
 |---|---|
 | `.\tlamatini_defender.ps1 -DetectOnly` | Reports what it **would** block or kill; safest first run. |
-| `.\tlamatini_defender.ps1` | Armed one-shot scan; may create firewall blocks and force-stop processes classified as known attacker tooling. |
-| `.\tlamatini_defender.ps1 -Watch` | Armed continuous sweeps every 60 seconds until `Ctrl+C`. |
+| `.\tlamatini_defender.ps1` | Report-only one-shot scan. |
+| `.\tlamatini_defender.ps1 -Watch` | Report-only continuous sweeps every 60 seconds until `Ctrl+C`. |
 | `.\tlamatini_defender.ps1 -Watch -IntervalSeconds 30 -DetectOnly` | Continuous observation without blocking or killing. |
-| `.\tlamatini_defender.ps1 -Aggressive` | Also kills dual-use tools such as `nmap`, `nc`, `john`, or `hashcat` when they run outside recognised Tlamatini roots. Use only during a confirmed incident. |
+| `.\tlamatini_defender.ps1 -Armed` | Explicitly enables persistent IP blocks and process termination. |
+| `.\tlamatini_defender.ps1 -Armed -Aggressive` | Also permits stopping dual-use tools such as `nmap` outside recognised Tlamatini roots. |
 
 `-IntervalSeconds` accepts `5` through `86400`; invalid values are rejected before monitoring begins. The defender monitors ten areas: Defender health/detections; failed and remote/network logons; established connections and suspicious listeners; process names and launch paths; non-Microsoft scheduled tasks; services; Run/RunOnce, Winlogon, AppInit and IFEO persistence; recent executable/script files in critical directories; ransomware/recovery-tampering indicators; and account/admin-group changes.
 
 ### Response boundaries and review
 
-- Default armed mode blocks an IP inbound and outbound after the scanned Security-log sample contains at least five failed logons from that address. The resulting `Tlamatini Block <IP> Inbound|Outbound` firewall rules persist; there is no automatic expiry or unblock.
-- Process response is name-pattern based. Recognised Tlamatini paths are protected; known attacker-tool patterns are force-stopped, while dual-use tools only alert unless `-Aggressive` is supplied. Basename heuristics and suspicious-directory checks can produce false positives.
+- Explicit armed mode blocks an IP inbound and outbound after the scanned Security-log sample contains at least five failed logons from that address. The resulting `Tlamatini Block <IP> Inbound|Outbound` firewall rules persist; there is no automatic expiry or unblock.
+- Armed process response is name-pattern based. Recognised Tlamatini paths, unreadable paths and changed process names are refused. Dual-use tools only alert unless `-Armed -Aggressive` is supplied. Basename heuristics can produce false positives.
 - Suspicious ports, persistence entries, ransomware indicators, account events, and many path findings are alerts only. The script is not an antivirus engine, EDR, SIEM, forensic conclusion, or replacement for Microsoft Defender and professional incident response.
 - Inspect created block rules with `Get-NetFirewallRule -DisplayName "Tlamatini Block *"`. Remove a specific inbound/outbound pair only after validating the incident and the IP; keep an audit record of that decision.
 - Logs append under `security/security_logs/`, are intentionally git-ignored, are excluded from public builds/source snapshots, and can contain usernames, process paths, command lines, IP addresses, administrator-group membership, and other sensitive host telemetry. Protect and retain them according to your policy.

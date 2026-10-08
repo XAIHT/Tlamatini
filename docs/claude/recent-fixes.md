@@ -16,6 +16,87 @@
 
 ---
 
+## 2026-10-07 — Mover preserves destinations; LaTeXer reports layout overflow
+
+A scalar `source_files` path was iterated character by character. On Windows,
+its backslash matched the drive root; the empty basename made the destination
+equal to the user's Desktop. Mover recursively deleted destination contents
+before its copy failed, then exited zero without a structured result. Never
+restore that deletion-before-copy branch. Normalize scalar paths to one entry,
+reject roots and overlapping directories, treat same-file operations as verified
+no-ops, merge directories without erasing unrelated entries, and stage regular
+file replacement before publication. Failures emit `INI_SECTION_MOVER` with
+`success: False`, `status: failed`, and a nonzero immediate-run exit code.
+
+LaTeXer's compiler success is insufficient for a clean-layout claim. Parse
+overfull box dimensions; any box exceeding 5 pt keeps the delivered PDF but
+returns `created_with_findings` and `success: False`, with explicit layout repair
+instructions. Underfull spacing and tiny protrusions do not trigger that gate.
+This is an overflow check, not full visual validation. Preserve the earlier
+delivery and speculative-repair protections.
+
+Validated with 126 focused regressions, five installed Mover subprocess cases,
+and real installed LaTeXer compilations that first reported overflow and then
+completed after the source layout was repaired. See
+[incident evidence and recovery limits](../changes/2026-10-07-pdf-mover-incident.md).
+
+## 2026-10-07 — Windows access scripts include actual agent interpreters
+
+Controlled Folder Access event 1123 confirmed a Documents-write block for the
+Python bundled in the source checkout. Include `root/python/python.exe` for
+source as well as frozen routes; granting access only to Tlamatini.exe or PATH
+Python is insufficient. `security/windows_access_helpers.ps1` verifies retained
+Defender entries and effective owned firewall rules, records change intent,
+and preserves broad/managed blocks for review. CFA mode stays unchanged;
+global ASR changes require explicit `-AuditCompatibility` and use AuditMode **2**,
+not Warn **6**. Failures produce attention items and nonzero status.
+
+The defender and its BAT default to report-only. `-Armed` is required for any
+process/IP response, and `-Aggressive` requires `-Armed`. Never restore the
+ordinary launcher's automatic termination of agent tools. Regenerate the
+standalone enable BAT with `security/sync_enable_launcher.py` after changing
+the whitelist/helpers; its payload parity is tested. Run commands only in a
+confirmed visible persistent foreground console. No elevated settings were
+applied during validation; the real checkout Documents block remains pending
+operator enablement. See [evidence and limits](../changes/2026-10-07-windows-access-verification.md).
+
+## 2026-10-07 — LaTeXer verifies the delivered PDF before reporting success
+
+A compiler log can still say `Output written ...` after a repair deleted its
+PDF. `_finish_compile` previously trusted `ok` and used that stale byte count
+when the final file was gone, so it could announce `DONE - a CLEAN PDF` with
+no deliverable. It now requires a nonempty file at the actual returned path
+before reporting `compiled`, `compiled_with_errors` or `degraded`. Missing or
+empty artifacts produce `error`, empty output fields and zero bytes. Auxiliary
+cleanup and opening the PDF also require verified delivery. `_deliver_pdf` and
+the repair snapshot helper reject empty files as well as missing ones.
+
+Keep the earlier artifact-preservation fix: speculative model repairs have
+their own `.latexer-model.tex` stem, the ladder snapshots a surviving PDF, and
+destination failures use a verified fallback path. Never replace a real file
+check with compiler-log claims or blame Desktop permissions for a missing
+source artifact.
+
+The real installed chat then exposed a second false success: its configured
+model generated malformed source and its repair wrapped the whole body in
+`lstlisting`. The PDF compiled with zero errors but printed raw TeX. The model
+repair gate now rejects replacing the entire document body with a verbatim,
+Verbatim, lstlisting or minted block. Its prompt explicitly forbids that
+shortcut; intentional existing code-listing documents remain supported. This
+is a guard for the observed failure, not a general semantic/layout validator.
+
+Four delivery regressions and the model-listing regression (four environment
+variants) failed before their fixes and passed afterward. The final visible
+Django run passed **517 tests**, covering delivery, repair, styles, verbatim
+payload transport, wrapped-agent integration and model settings. The installed
+loose LaTeXer template was backed up and updated; the frozen executable was not
+rebuilt. Configured model identities and timeouts were preserved.
+
+The final installed-chat test generated `Hello-from-Tlamatini.pdf`: one page,
+50,262 bytes, zero errors/warnings, with the requested text and rendered
+equation verified. See [the verification record](../changes/2026-10-07-latexer-verification.md)
+for the failed first attempt, successful short-fragment retry and limits.
+
 ## 2026-10-05 — The uninstaller no longer fails on its own Uninstaller.exe
 
 Angela: *"now it always throws the error that Uninstaller can't be erased"*.

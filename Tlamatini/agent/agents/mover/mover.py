@@ -23,6 +23,7 @@ import logging
 import shutil
 import glob
 import subprocess
+import tempfile
 
 # -- conhost.exe orphan guard ------------------------------------------
 # When Tlamatini's runtime launches us with DETACHED_PROCESS we have no
@@ -201,7 +202,7 @@ def _expand_source_files(sources_list, recursive, excluded_extensions, excluded_
     non-excluded paths (mirrors the expansion the main loop performs)."""
     found = []
     seen = set()
-    for original_pattern in sources_list:
+    for original_pattern in normalize_sources(sources_list):
         patterns_to_check = [original_pattern]
         if original_pattern.endswith('*.*'):
             patterns_to_check.append(original_pattern[:-3] + '*')
@@ -234,6 +235,87 @@ def _resolve_rename_target(sources_list, destination, recursive, excluded_extens
     return None
 
 
+def normalize_sources(sources):
+    """A scalar path is ONE pattern, never a sequence of path characters."""
+    if isinstance(sources, str):
+        sources = [sources]
+    if not isinstance(sources, (list, tuple)) or not sources:
+        raise ValueError('source_files must be a path or a nonempty list of paths')
+    if any(not isinstance(item, str) or not item.strip() for item in sources):
+        raise ValueError('Every source_files entry must be a nonempty path string')
+    return list(sources)
+
+
+def _canonical(path):
+    return os.path.normcase(os.path.realpath(os.path.abspath(path)))
+
+
+def _is_link(path):
+    return os.path.islink(path) or getattr(os.path, 'isjunction', lambda p: False)(path)
+
+
+def _check_transfer_paths(source, destination):
+    src, dst = _canonical(source), _canonical(destination)
+    if os.path.dirname(src) == src:
+        raise ValueError('Refusing a filesystem root as a source')
+    if src == dst or (os.path.exists(destination) and os.path.samefile(source, destination)):
+        return False
+    if _is_link(source) or _is_link(destination):
+        raise ValueError('Refusing to transfer through a symbolic link or junction')
+    if os.path.isdir(source):
+        try:
+            shared = os.path.commonpath([src, dst])
+        except ValueError:  # different Windows drives
+            shared = None
+        if shared in (src, dst):
+            raise ValueError('Source and destination directories must not contain each other')
+    return True
+
+
+def _transfer_path(source, destination, operation):
+    """Merge directories without deleting destinations; publish files atomically."""
+    if not _check_transfer_paths(source, destination):
+        return False  # already at the requested destination, leave it intact
+    if os.path.isdir(source):
+        os.makedirs(destination, exist_ok=True)
+        with os.scandir(source) as entries:
+            children = list(entries)
+        for entry in children:
+            _transfer_path(entry.path, os.path.join(destination, entry.name), operation)
+        if operation == 'move':
+            os.rmdir(source)  # only remove the now-empty source, never a destination
+    elif os.path.isfile(source):
+        parent = os.path.dirname(os.path.abspath(destination))
+        os.makedirs(parent, exist_ok=True)
+        fd, staged = tempfile.mkstemp(prefix='.tlamatini-copy-', dir=parent)
+        os.close(fd)
+        try:
+            shutil.copy2(source, staged)
+            if os.path.getsize(staged) != os.path.getsize(source):
+                raise OSError('Copy verification failed: byte count differs')
+            os.replace(staged, destination)
+            if operation == 'move':
+                os.remove(source)
+        finally:
+            if os.path.exists(staged):
+                os.remove(staged)
+    else:
+        raise ValueError('Source is not a regular file or directory')
+    return True
+
+
+def _operation_report(operation, completed, failed, unchanged=0, outputs=None):
+    success = failed == 0 and (completed + unchanged) > 0
+    status = 'completed' if success else 'failed'
+    result = dict(success=success, status=status, completed=completed, errors=failed,
+                  unchanged=unchanged, output_paths=outputs or [])
+    logging.info('INI_SECTION_MOVER<<<\noperation: %s\nsuccess: %s\nstatus: %s\n'
+                 'completed: %s\nerrors: %s\nunchanged: %s\noutput_paths: %s\n'
+                 '>>>END_SECTION_MOVER', operation, success, status, completed,
+                 failed, unchanged, result['output_paths'])
+    return result
+
+
 def perform_file_operations(operation: str, sources_list: List[str], destination_folder: str, recursive: bool = False, excluded_extensions: set = None, excluded_filenames: set = None):
     """
     Executes the move/copy operation for the given list of source patterns.
@@ -244,6 +326,17 @@ def perform_file_operations(operation: str, sources_list: List[str], destination
     as the FULL target file path (move/copy + rename in one step). Otherwise it
     is treated as a folder (created if missing) and each item keeps its basename.
     """
+    try:
+        sources_list = normalize_sources(sources_list)
+        operation = operation.lower()
+        if operation not in ('copy', 'move'):
+            raise ValueError('operation must be copy or move')
+        if not isinstance(destination_folder, str) or not destination_folder.strip():
+            raise ValueError('A nonempty destination_folder is required')
+    except (TypeError, ValueError, AttributeError) as exc:
+        logging.error('Invalid file operation: %s', exc)
+        return _operation_report(operation, 0, 1)
+
     rename_target = _resolve_rename_target(
         sources_list, destination_folder, recursive,
         excluded_extensions or set(), excluded_filenames or set(),
@@ -260,10 +353,13 @@ def perform_file_operations(operation: str, sources_list: List[str], destination
             logging.info(f"📁 Created destination folder: {destination_folder}")
         except Exception as e:
             logging.error(f"❌ Failed to create destination folder {destination_folder}: {e}")
-            return
+            return _operation_report(operation, 0, 1)
 
     total_success = 0
     total_failed = 0
+    unchanged = 0
+    output_paths = []
+    processed_paths = set()
 
     for original_pattern in sources_list:
         patterns_to_check = [original_pattern]
@@ -271,7 +367,7 @@ def perform_file_operations(operation: str, sources_list: List[str], destination
         if original_pattern.endswith('*.*'):
              patterns_to_check.append(original_pattern[:-3] + '*')
 
-        processed_paths = set()
+        pattern_matched = False
 
         for pattern in patterns_to_check:
             # When recursive, inject **/ before the filename portion if not already present
@@ -288,50 +384,40 @@ def perform_file_operations(operation: str, sources_list: List[str], destination
                  continue
             
             for file_path in files_found:
-                if file_path in processed_paths:
+                pattern_matched = True
+                canonical_path = _canonical(file_path)
+                if canonical_path in processed_paths:
                     continue
-                processed_paths.add(file_path)
+                processed_paths.add(canonical_path)
 
                 if is_excluded(file_path, excluded_extensions or set(), excluded_filenames or set()):
                     logging.info(f"🚫 Excluded: {file_path}")
                     continue
 
-                filename = os.path.basename(file_path)
+                filename = os.path.basename(os.path.normpath(file_path))
                 dest_path = rename_target if rename_target else os.path.join(destination_folder, filename)
                 
                 try:
-                    if os.path.isdir(file_path):
-                        # Directory Operation - overwrite if destination exists
-                        if os.path.exists(dest_path):
-                            logging.info(f"🔄 Overwriting existing destination: {dest_path}")
-                            shutil.rmtree(dest_path)
-                        
-                        if operation.lower() == 'move':
-                            shutil.move(file_path, dest_path)
-                            logging.info(f"🚚 Moved Folder: {filename} -> {destination_folder}")
-                        else: # Copy
-                            shutil.copytree(file_path, dest_path)
-                            logging.info(f"📋 Copied Folder: {filename} -> {destination_folder}")
+                    if _transfer_path(file_path, dest_path, operation):
                         total_success += 1
-
-                    elif os.path.isfile(file_path):
-                        # File Operation - overwrite if destination exists
-                        if os.path.exists(dest_path):
-                            logging.info(f"🔄 Overwriting existing file: {dest_path}")
-                        
-                        if operation.lower() == 'move':
-                            shutil.move(file_path, dest_path)
-                            logging.info(f"🚚 Moved File: {filename} -> {destination_folder}")
-                        else: # Copy
-                            shutil.copy2(file_path, dest_path)
-                            logging.info(f"📋 Copied File: {filename} -> {destination_folder}")
-                        total_success += 1
+                        logging.info('%s completed: %s -> %s', operation, file_path, dest_path)
+                    else:
+                        unchanged += 1
+                        logging.info('Already at destination; preserved unchanged: %s', dest_path)
+                    output_paths.append(os.path.abspath(dest_path))
                 
                 except Exception as e:
                     logging.error(f"❌ Failed to {operation} {filename}: {e}")
                     total_failed += 1
+        if not pattern_matched:
+            total_failed += 1
 
-    logging.info(f"✅ Operation Completed. Success: {total_success}, Failed: {total_failed}")
+    log_summary = logging.error if total_failed or not (total_success + unchanged) else logging.info
+    log_summary(
+        "Operation finished. Completed: %s, Unchanged: %s, Failed: %s",
+        total_success, unchanged, total_failed,
+    )
+    return _operation_report(operation, total_success, total_failed, unchanged, output_paths)
 
 
 def check_log_for_event(log_path: str, offset: int, event_string: str) -> tuple:
@@ -430,20 +516,22 @@ def main():
     try:
         if not destination:
             logging.error("❌ No destination folder configured.")
+            _operation_report(operation, 0, 1)
             if target_agents:
                 wait_for_agents_to_stop(target_agents)
                 logging.info(f"🚀 Triggering {len(target_agents)} downstream agents despite error...")
                 for target in target_agents:
                     start_agent(target)
-            return  # Will trigger finally block
+            return 1  # Will trigger finally block
 
         if trigger_mode.lower() == 'immediate':
             logging.info("🚀 Executing immediate operation...")
 
             try:
-                perform_file_operations(operation, source_patterns, destination, recursive=recursive, excluded_extensions=excl_exts, excluded_filenames=excl_names)
+                result = perform_file_operations(operation, source_patterns, destination, recursive=recursive, excluded_extensions=excl_exts, excluded_filenames=excl_names)
             except Exception as e:
                 logging.error(f"❌ Operation terminated with error: {e}")
+                result = _operation_report(operation, 0, 1)
                 logging.warning("⚠️ Proceeding to downstream agents despite errors...")
 
             # Trigger downstream agents
@@ -460,18 +548,20 @@ def main():
                 logging.info("ℹ️ No downstream agents configured.")
 
             logging.info("🏁 Immediate task finished. Exiting.")
+            return 0 if result['success'] else 1
 
         elif trigger_mode.lower() == 'event':
             log_paths = resolve_log_paths(source_agents)
             
             if not log_paths:
                 logging.error("❌ No valid source agent logs found for event mode.")
+                _operation_report(operation, 0, 1)
                 if target_agents:
                     wait_for_agents_to_stop(target_agents)
                     logging.info(f"🚀 Triggering {len(target_agents)} downstream agents despite error...")
                     for target in target_agents:
                         start_agent(target)
-                return  # Will trigger finally block
+                return 1  # Will trigger finally block
                  
             logging.info(f"👀 Monitoring {len(log_paths)} log(s)")
             logging.info(f"WAITING FOR: '{trigger_event_string}'")
@@ -515,11 +605,16 @@ def main():
 
         else:
             logging.error(f"❌ Unknown trigger mode: {trigger_mode}")
+            _operation_report(operation, 0, 1)
+            return 1
 
     except KeyboardInterrupt:
         logging.info("\n⛔ Mover agent stopped by user.")
+        return 130
     except Exception as e:
         logging.error(f"❌ Mover agent error: {e}")
+        _operation_report(operation, 0, 1)
+        return 1
     finally:
         # Keep LED green for 400ms for visual feedback
         time.sleep(0.4)
@@ -753,4 +848,4 @@ def start_agent(agent_name: str) -> bool:
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main() or 0)

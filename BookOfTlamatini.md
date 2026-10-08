@@ -552,9 +552,9 @@ The safest operating pattern is always **validate → record a baseline → enab
 └── security/
     ├── README.md                         # local quick reference
     ├── enable_tlamatini_v2.bat           # self-elevating enablement launcher
-    ├── tlamatini_whitelist_v2.ps1        # persistent Windows-policy/visibility setup v2.1
-    ├── run_defender.bat                  # self-elevating default armed-scan launcher
-    ├── tlamatini_defender.ps1            # monitor/response engine v2.1
+    ├── tlamatini_whitelist_v2.ps1        # verified Windows access setup v2.3
+    ├── run_defender.bat                  # self-elevating report-only launcher
+    ├── tlamatini_defender.ps1            # report-only monitor, optional response v2.2
     ├── automated_tests_of_security_assets.py
     └── security_logs/                    # created at runtime; git-ignored
         ├── alerts.log                    # concise alert and response stream
@@ -582,13 +582,13 @@ Run the persistent test from the repository/install root:
 python security\automated_tests_of_security_assets.py
 ```
 
-The test is deliberately visible. It opens a forked foreground PowerShell console, parses both `.ps1` files, loads only the defender's function definitions, checks the self-safe threat classifier, validates required monitor tokens, official ASR/audit GUIDs, watch-interval protection, batch-to-PowerShell wiring, UAC path handling, and exit-code propagation, captures the entire desktop through Tlamatini's **Shoter** agent, and shows a local `SUMMARY.html` in headed Chrome/Chromium. A successful run exits `0`; a failed check exits `1`.
+Open a new foreground PowerShell with `-NoExit`, confirm that it is visible, and run the test there. The harness asks for confirmation before checks and keeps using that console. It parses every PowerShell asset, verifies standalone payload parity, runs mocked permission/defender behavior tests, checks the real BAT parser from a complex path, and captures all screens through **Shoter**. JSON and a viewable HTML summary are saved under `security/security_logs/asset_tests/`. No browser is started automatically.
 
-What this proves is intentionally narrow: syntax, selected static contracts, launcher targets, and classifier smoke behavior. It does **not** apply the whitelist, require admin rights, execute a live defender sweep, validate every Windows policy mutation, prove every heuristic accurate, or certify the machine as uncompromised. The generated screenshots and logs under `security\security_logs\asset_tests\` can contain visible desktop information; handle them as sensitive host telemetry.
+These checks do not apply Windows policies or run an armed sweep. Screenshots may contain sensitive desktop information. For actual non-admin interpreter, file, shell and loopback checks, run `python security\verify_agent_execution.py` in the same confirmed visible console. Its unique scratch files are removed afterward; it makes no paid model calls and does not certify external dependencies. Use `--visible-console-verified` only after a human confirms that same persistent console. See [security/README.md](security/README.md) for the maintained file inventory and switches.
 
 ### Record a pre-enable baseline
 
-The whitelist does not save the settings it replaces. Before running it, create a Windows restore point or capture the state your organisation will need to restore. These read-only commands are a useful minimum:
+The whitelist saves Defender preferences and audit policy before changing them, execution policies before policy changes, and a pre-operation journal for firewall, registry and group membership changes under `security_logs/enablement-<timestamp>/`. These are selective recovery records, not an automatic rollback or a full system restore point. Additional read-only baseline commands are:
 
 ```powershell
 Get-MpPreference | Select-Object ExclusionPath, ExclusionProcess, `
@@ -609,25 +609,25 @@ Run `security\enable_tlamatini_v2.bat` once and approve UAC. It launches `tlamat
 | Area | Actual implementation | Security consequence |
 |---|---|---|
 | Microsoft Defender | Adds the whole Tlamatini root to `ExclusionPath`, adds `Tlamatini.exe`, and adds bundled Python executables when found to `ExclusionProcess`. | Defender services remain on, but excluded content/processes receive less scanning. Malicious code placed in the excluded tree can inherit that blind spot. |
-| Controlled Folder Access | Enables CFA if currently disabled, then adds `Tlamatini.exe` to `ControlledFolderAccessAllowedApplications`. | Protected folders remain guarded for other apps; Tlamatini receives an explicit write exception. |
-| Attack Surface Reduction | Sets six selected ASR rule GUIDs to action `6` (**Audit**), then reads Defender's effective IDs/actions and verifies every pair before reporting success. | Those rules log rather than block for the host. This is a real enforcement reduction, not merely extra visibility; a rejected or unverifiable setting produces `[WARN]`. |
+| Controlled Folder Access | Leaves the global mode unchanged and adds exact discovered Python, application and toolchain paths, including bundled Python in source checkouts. Every entry is read back. | Shared interpreter exceptions also apply to commands run outside Tlamatini. |
+| Attack Surface Reduction | Adds verified per-program exceptions. Only explicit `-AuditCompatibility` changes six global rules to **AuditMode (2)**. Action **6 means Warn**, not Audit. | Global changes are opt-in; a rejected or unverifiable setting produces `[ATTENTION]` and exit 2. |
 | PowerShell | Sets the current user's execution policy to `RemoteSigned`. | Local scripts can run unsigned; downloaded scripts normally require a trusted signature unless explicitly bypassed. The batch launchers themselves use `Bypass`. |
-| Windows Firewall | Adds outbound Allow rules named `Tlamatini Outbound` and, when found, `Tlamatini Python Outbound`. | Broad outbound access is allowed for those executable paths across all profiles. Existing inbound policy remains unchanged. |
-| Security event log | Adds the elevated user to `Event Log Readers`; when a `CustomSD` exists and lacks the SID, appends a read ACE. | Grants additional Security-log visibility. Group membership may require a new logon/session before non-elevated processes observe it. |
+| Windows Firewall | Creates stable owned outbound/loopback rules, checks ActiveStore, and disables exact local application blocks. Managed/broad blocks are reported and preserved. | Incoming access defaults to loopback; `-AllowLan` explicitly adds LocalSubnet access on Private/Domain profiles. |
+| Security event log | Adds and verifies elevated-user Event Log Readers membership by locale-neutral SID, records the change, and leaves CustomSD untouched. | A new logon may be needed; using another administrator account applies membership to that account. |
 | Audit policy | Uses stable subcategory GUIDs to enable success/failure Logon, Credential Validation, Sensitive Privilege Use, and User Account Management; success Process Creation. Every `auditpol` exit code is checked. | Produces the events the defender reads, avoids dependence on the Windows display language, and can increase Security-log volume. |
 | Process command lines | Sets `ProcessCreationIncludeCmdLine_Enabled=1`. | Event 4688 gains command-line evidence, which is useful but can record sensitive arguments. |
 | PowerShell logging | Enables Script Block Logging. | Improves script evidence but may log commands or values that need restricted retention. |
 | WMI, tasks, registry, services | Executes `Get-CimInstance`, `Get-ScheduledTask`, Run-key reads, and `Get-Service` probes. | These four steps **verify** the elevated session's existing access; they do not install a WMI provider or create separate task/registry/service permissions. |
 
-The accurate statement is therefore: **Defender, CFA, ASR, and firewall components are not globally disabled, but the whitelist deliberately creates exceptions and changes selected ASR rules from enforcement to audit.** Treat the Tlamatini tree and every executable allowed by those exceptions as a privileged trust boundary.
+The accurate statement is therefore: **Defender, CFA, ASR, and firewall components are not globally disabled, but the whitelist deliberately creates exceptions; selected global ASR rules change only with explicit `-AuditCompatibility`.** Treat the Tlamatini tree and every executable allowed by those exceptions as a privileged trust boundary.
 
-The six audited ASR behaviors are: Office applications creating child processes; LSASS credential stealing; WMI event-subscription persistence; executable content from email/webmail; untrusted or unsigned USB processes; and process creation through PSExec/WMI. Their IDs are Microsoft's published identifiers, not locally invented aliases; compare them against the [Microsoft ASR rules reference](https://learn.microsoft.com/en-us/defender-endpoint/attack-surface-reduction-rules-reference) whenever the toolkit is updated.
+The six optional `-AuditCompatibility` ASR behaviors are: Office applications creating child processes; LSASS credential stealing; WMI event-subscription persistence; executable content from email/webmail; untrusted or unsigned USB processes; and process creation through PSExec/WMI. Their IDs are Microsoft's published identifiers, not locally invented aliases; compare them against the [Microsoft ASR rules reference](https://learn.microsoft.com/en-us/defender-endpoint/attack-surface-reduction-rules-reference) whenever the toolkit is updated.
 
-After enablement completes, restart Tlamatini and open a fresh PowerShell/logon session where practical. Read every `[WARN]` line from the launcher; `$ErrorActionPreference="Continue"` means one failed step does not automatically roll back earlier successful steps.
+After enablement completes, restart Tlamatini and open a fresh PowerShell/logon session where practical. Read every `[ATTENTION]` line. Exit 0 means configured checks succeeded, 2 means partial results need attention, and 1 means setup failed. Successful earlier changes are not automatically rolled back.
 
 ### Start with detect-only
 
-The batch launcher `run_defender.bat` always runs one **default armed** scan. Do not use it as the first behavioral test. Open PowerShell as Administrator and establish a baseline without containment:
+The batch launcher `run_defender.bat` runs one **report-only** scan. The PS1 also defaults to report-only. To establish a baseline, open a visible persistent PowerShell as Administrator:
 
 ```powershell
 cd <Tlamatini-root>\security
@@ -648,14 +648,14 @@ In detect-only mode, a response candidate becomes `WOULD BLOCK` or `WOULD KILL` 
 # Continuous observation with a deliberate interval
 .\tlamatini_defender.ps1 -Watch -IntervalSeconds 30 -DetectOnly
 
-# One-shot armed response (same mode run_defender.bat launches)
-.\tlamatini_defender.ps1
+# One-shot armed response (explicit opt-in)
+.\tlamatini_defender.ps1 -Armed
 
 # Armed watch loop
-.\tlamatini_defender.ps1 -Watch -IntervalSeconds 60
+.\tlamatini_defender.ps1 -Armed -Watch -IntervalSeconds 60
 
 # Also kill recognised dual-use tools outside Tlamatini's self roots
-.\tlamatini_defender.ps1 -Aggressive
+.\tlamatini_defender.ps1 -Armed -Aggressive
 ```
 
 `-Watch` is a foreground loop, not a Windows service or scheduled task. It scans, appends logs, sleeps, and repeats until `Ctrl+C` or process termination. `-IntervalSeconds` is validated from `5` through `86400`, preventing zero/negative busy loops and unbounded accidental values. The whitelist's Windows settings persist; the watch process does not.
@@ -679,13 +679,13 @@ The monitor is primarily heuristic. A developer tool, legitimate red-team utilit
 
 ### Self-safe classification: availability guard, not trust proof
 
-The defender builds two recognised self roots: the parent of the active `security/` directory and `%LOCALAPPDATA%\Tlamatini` when that directory exists. `Test-IsSelf` compares a process/file path to those roots. A matching process is not auto-killed. Names such as `nmap`, `ncat`, `john`, and `hashcat` are classified as dual-use and only alert by default; `-Aggressive` may stop them when they run outside a self root.
+The defender recognizes the parent of the active `security/` directory, `%LOCALAPPDATA%\Tlamatini` when present, and the registered installation root. Comparisons use literal normalized path boundaries. `Test-IsSelf` compares a process/file path to those roots. A matching process is not auto-killed. Names such as `nmap`, `ncat`, `john`, and `hashcat` are classified as dual-use and only alert by default; `-Aggressive` may stop them when they run outside a self root.
 
 This protects Tlamatini's Nmapper, Kalier, Discoverer, and related work from accidental termination, but **a path match is not a code-signing or provenance check**. If an attacker places a payload inside a recognised/excluded Tlamatini tree, both the defender's self-safe rule and the Defender path exclusion can reduce scrutiny. Protect write access to the install/source tree, review modifications, and never treat "self" as equivalent to "trusted".
 
 ### Armed response and rollback
 
-Default armed mode has two automatic containment actions:
+Explicit `-Armed` mode has two containment actions:
 
 1. `Block-SuspiciousIP` creates `Tlamatini Block <IP> Inbound` and `Tlamatini Block <IP> Outbound` Windows Firewall rules.
 2. `Stop-SuspiciousProcess` uses `Stop-Process -Force` for a process classified by the known attacker-tool name patterns, after refusing a recognised self path.

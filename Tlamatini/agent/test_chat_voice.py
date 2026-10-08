@@ -241,7 +241,7 @@ class WorkerLifecycleTests(unittest.TestCase):
         process = Mock(stdout=io.StringIO("worker ready\n"))
         connection = Mock()
         connection.makefile.return_value = io.BytesIO(
-            (json.dumps({"token": "test-token"}) + "\n" +
+            (json.dumps({"token": "<REDACTED>"}) + "\n" +
              json.dumps({"event": ready}) + "\n").encode())
         listener = MagicMock()
         listener.__enter__.return_value = listener

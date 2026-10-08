@@ -27,10 +27,32 @@ content: |
 filename: celestial.pdf
 ```
 
-For chat tool calls, use `content_b64` for multiline LaTeX; it wins over `content`.
-`input_text_b64` is the equivalent for fragment compilation. Title, subtitle,
+For chat tool calls, `content` is a byte-exact verbatim channel, including
+multiline LaTeX and row breaks. Prefer it when authoring a document; never ask
+the model to calculate base64 by hand. If a tool has already encoded the source,
+`content_b64` is also supported and wins over `content`. `input_text` and
+`input_text_b64` are the equivalent channels for fragment compilation. Title, subtitle,
 author, date and content are **LaTeX**, consistent with the original agent:
 escape literal `&`, `%`, `_`, `#`, etc. This layer does not translate prose.
+
+## Choosing a style from a chat request
+
+A request for a fancier, polished, illustrated or branded LaTeX PDF authorizes
+the chat assistant to choose a suitable named style when the user has not named
+one. The runtime still applies styles explicitly: use `scaffold_compile` with
+the selected `style` and a body fragment, not a complete document/preamble.
+Read an existing source before restyling it; preserve its substantive content in
+a new scaffold and preserve the original file. A successful plain compilation
+does not satisfy a request for a new visual design. Check the actual returned
+style and delivery fields, and repair `created_with_findings` layout overflows.
+Resolve Windows special folders through the OS; a redirected Desktop need not
+be `<profile>/Desktop`. Reopen/extract the delivered PDF and compare the actual
+body with the requested sections and examples before claiming they are included.
+The compiler receipt verifies compilation/delivery, not semantic completeness.
+Once those checks pass, stop; do not keep rewriting an already complete document.
+If LaTeXer already delivered to the requested directory, return that exact path
+without a redundant Mover copy. This chat routing guidance lives in `prompt.pmt`
+and does not change the empty-style default for explicit agent configurations.
 
 ## Explore the collection
 

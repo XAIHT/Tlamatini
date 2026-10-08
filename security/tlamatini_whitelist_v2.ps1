@@ -1,5 +1,5 @@
 # =============================================================================
-# TLAMATINI SECURITY WHITELIST SCRIPT v2.2 - EXPANDED PRIVILEGES
+# TLAMATINI SECURITY WHITELIST SCRIPT v2.3 - VERIFIED APPLICATION ACCESS
 # =============================================================================
 # Purpose: Adds Tlamatini to Windows security exclusions AND grants it
 #          additional monitoring privileges so it can detect hackers.
@@ -17,9 +17,9 @@
 #   2. Controlled Folder Access whitelist for Tlamatini.exe AND its Python
 #      (the agents run as python.exe; without it no PDF/document can be saved
 #      into Documents, Desktop, Pictures, Music or Videos)
-#   3. ASR audit mode (so my subprocesses are not blocked)
+#   3. Per-program ASR exceptions; global AuditMode only with -AuditCompatibility
 #   4. PowerShell RemoteSigned policy (so my scripts run)
-#   5. Firewall outbound rules (so I can reach models/APIs)
+#   5. Verified outbound/loopback rules; LAN access only with -AllowLan
 #   6. Security log read access (so I can see hacker logons)
 #   7. WMI namespace verification (so I can query system state)
 #   8. Task Scheduler read access (so I can audit persistence)
@@ -56,14 +56,29 @@
 # =============================================================================
 
 #Requires -RunAsAdministrator
+[CmdletBinding()]
+param(
+    [switch]$NoPause,
+    [switch]$AuditCompatibility,
+    [switch]$AllowLan,
+    [string[]]$AdditionalProgram = @()
+)
+
+$securityDir = if ($PSScriptRoot) { $PSScriptRoot } else { $env:TLAMATINI_SECURITY_DIR }
+if (-not $securityDir) { throw 'Cannot locate the security directory.' }
+# The standalone BAT injects the same helpers before this payload.
+if (-not (Get-Command Add-VerifiedDefenderEntry -ErrorAction SilentlyContinue)) {
+    . (Join-Path $securityDir 'windows_access_helpers.ps1')
+}
+$script:EnablementFailures = New-Object 'System.Collections.Generic.List[string]'
 
 $ErrorActionPreference = "Continue"
 # --- AUTO-DETECT installation path (path-independent) ---
 # $PSScriptRoot = the folder where this .ps1 lives (e.g. ...\Tlamatini\security)
 # Tlamatini root = parent of that folder. Works on any drive / directory name.
-$TlamatiniPath = Split-Path -Parent $PSScriptRoot
+$TlamatiniPath = Split-Path -Parent $securityDir
 $TlamatiniExe = Join-Path $TlamatiniPath "Tlamatini.exe"
-$ScriptVersion = "2.2"
+$ScriptVersion = "2.3"
 
 Write-Host ""
 Write-Host "================================================" -ForegroundColor Cyan
@@ -86,10 +101,25 @@ $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIde
 if (-not $isAdmin) {
     Write-Host "[ERROR] This script requires Administrator privileges." -ForegroundColor Red
     Write-Host "        Right-click -> Run as Administrator." -ForegroundColor Red
-    Read-Host "Press Enter to exit"
+    if (-not $NoPause) { Read-Host "Press Enter to exit" | Out-Null }
     exit 1
 }
 Write-Host "[OK] Administrator privileges confirmed." -ForegroundColor Green
+# Stop before changing policy if the recovery baseline cannot be saved.
+$runDir = Join-Path $securityDir ('security_logs\enablement-' + (Get-Date -Format 'yyyyMMdd-HHmmss-fff'))
+try {
+    New-Item -ItemType Directory -Path $runDir -Force -ErrorAction Stop | Out-Null
+    Get-MpPreference -ErrorAction Stop | Export-Clixml -LiteralPath (Join-Path $runDir 'defender-before.xml') -ErrorAction Stop
+    $auditBackup = Join-Path $runDir 'audit-before.csv'
+    $backupOutput = & "$env:SystemRoot\System32\auditpol.exe" /backup "/file:$auditBackup" 2>&1
+    if ($LASTEXITCODE -ne 0) { throw "Could not save audit policy: $backupOutput" }
+    $script:ChangesPath = Join-Path $runDir 'changes.jsonl'
+    [IO.File]::WriteAllText($script:ChangesPath, '')
+    Write-Host "Recovery baseline and change journal: $runDir" -ForegroundColor Cyan
+} catch {
+    Write-Host "[ERROR] Could not save the pre-change baseline: $($_.Exception.Message)" -ForegroundColor Red
+    exit 1
+}
 
 # -----------------------------------------------------------------------------
 # DISCOVERY: every Tlamatini installation route, and the programs it runs
@@ -126,14 +156,26 @@ $TlamatiniDevPythons = New-Object System.Collections.Generic.List[string]     # 
 $TlamatiniRouteReport = New-Object System.Collections.Generic.List[string]
 $sourceRouteFound = $false
 
+# Never exclude an arbitrary directory or drive merely because it exists.
+for ($i = $TlamatiniRoots.Count - 1; $i -ge 0; $i--) {
+    $candidate = $TlamatiniRoots[$i]
+    if (-not (Test-Path -LiteralPath (Join-Path $candidate 'Tlamatini.exe') -PathType Leaf) -and
+        -not (Test-Path -LiteralPath (Join-Path $candidate 'Tlamatini\manage.py') -PathType Leaf)) {
+        $TlamatiniRoots.RemoveAt($i)
+    }
+}
+if (-not $TlamatiniRoots.Count) { Write-Host '[ERROR] No valid installation found; no settings changed.' -ForegroundColor Red; exit 1 }
+
 foreach ($root in $TlamatiniRoots) {
+    # A source checkout can carry the same embedded Python as a frozen install.
+    # It is not a venv and may have different CFA permissions from PATH Python.
+    foreach ($pyName in @('python.exe', 'pythonw.exe')) {
+        Add-UniqueExistingPath -List $TlamatiniCarriedPythons -Path (Join-Path $root ("python\" + $pyName))
+    }
     $frozenExe = Join-Path $root "Tlamatini.exe"
     if (Test-Path -LiteralPath $frozenExe) {
         $TlamatiniRouteReport.Add("FROZEN  $root")
         Add-UniqueExistingPath -List $TlamatiniPrograms -Path $frozenExe
-        foreach ($pyName in @("python.exe", "pythonw.exe")) {
-            Add-UniqueExistingPath -List $TlamatiniCarriedPythons -Path (Join-Path $root ("python\" + $pyName))
-        }
     } elseif (Test-Path -LiteralPath (Join-Path $root "Tlamatini\manage.py")) {
         $TlamatiniRouteReport.Add("SOURCE  $root")
         $sourceRouteFound = $true
@@ -185,10 +227,34 @@ if ($sourceRouteFound) {
 foreach ($py in $TlamatiniCarriedPythons) { Add-UniqueExistingPath -List $TlamatiniPrograms -Path $py }
 foreach ($py in $TlamatiniDevPythons) { Add-UniqueExistingPath -List $TlamatiniPrograms -Path $py }
 
+# Agents launch these runtimes too; an allowance for Tlamatini.exe is not inherited.
+# Named, existing executable paths only. No recursive trust of arbitrary programs.
+foreach ($name in @('node.exe','git.exe','ffmpeg.exe','ffprobe.exe','pdflatex.exe',
+    'xelatex.exe','lualatex.exe','latexmk.exe','biber.exe','bibtex.exe','makeindex.exe',
+    'perl.exe','blender.exe','ollama.exe','powershell.exe','pwsh.exe','cmd.exe')) {
+    foreach ($command in @(Get-Command $name -CommandType Application -ErrorAction SilentlyContinue)) {
+        if ($command.Source -notmatch '\\WindowsApps\\') {
+            Add-UniqueExistingPath -List $TlamatiniPrograms -Path $command.Source
+        }
+    }
+}
+foreach ($root in $TlamatiniRoots) {
+    foreach ($relative in @('node\node.exe','nodejs\node.exe','Git\cmd\git.exe')) {
+        Add-UniqueExistingPath -List $TlamatiniPrograms -Path (Join-Path $root $relative)
+    }
+}
+foreach ($program in $AdditionalProgram) {
+    if (-not (Test-Path -LiteralPath $program -PathType Leaf) -or [IO.Path]::GetExtension($program) -ine '.exe') {
+        throw "AdditionalProgram must be an existing .exe: $program"
+    }
+    Add-UniqueExistingPath -List $TlamatiniPrograms -Path $program
+}
+
+
 Write-Host ""
 Write-Host "[DISCOVERY] Tlamatini installation routes:" -ForegroundColor Yellow
 if ($TlamatiniRouteReport.Count -eq 0) {
-    Write-Host "  [WARN] No Tlamatini installation was found." -ForegroundColor Yellow
+    Write-EnablementWarning "No Tlamatini installation was found."
 }
 foreach ($line in $TlamatiniRouteReport) { Write-Host "  $line" -ForegroundColor Cyan }
 Write-Host "  Programs that run Tlamatini and save its files:" -ForegroundColor Yellow
@@ -198,7 +264,7 @@ if ($TlamatiniDevPythons.Count -gt 0) {
     Write-Host "         they run may also save into protected folders." -ForegroundColor Yellow
 }
 if ($TlamatiniPrograms.Count -eq 0) {
-    Write-Host "  [WARN] No Tlamatini program was found - nothing will be allowed." -ForegroundColor Yellow
+    Write-EnablementWarning "No Tlamatini program was found - nothing will be allowed."
 }
 
 # -----------------------------------------------------------------------------
@@ -208,107 +274,35 @@ Write-Host ""
 Write-Host "[STEP 1/10] Adding Tlamatini to Defender exclusions..." -ForegroundColor Yellow
 
 foreach ($root in $TlamatiniRoots) {
-    try {
-        Add-MpPreference -ExclusionPath $root -ErrorAction Stop
-        Write-Host "  [OK] Folder exclusion: $root" -ForegroundColor Green
-    } catch {
-        if ($_.Exception.Message -match "already exists") {
-            Write-Host "  [SKIP] Folder exclusion already exists: $root" -ForegroundColor DarkGray
-        } else {
-            Write-Host "  [WARN] $($_.Exception.Message)" -ForegroundColor Yellow
-        }
-    }
+    try { Add-VerifiedDefenderEntry 'ExclusionPath' $root }
+    catch { Write-EnablementWarning $_.Exception.Message }
+}
+foreach ($prog in @($TlamatiniPrograms | Where-Object { [IO.Path]::GetFileName($_) -ieq 'Tlamatini.exe' }) + @($TlamatiniCarriedPythons)) {
+    try { Add-VerifiedDefenderEntry 'ExclusionProcess' $prog }
+    catch { Write-EnablementWarning $_.Exception.Message }
 }
 
-try {
-    Add-MpPreference -ExclusionProcess "Tlamatini.exe" -ErrorAction Stop
-    Write-Host "  [OK] Process exclusion: Tlamatini.exe" -ForegroundColor Green
-} catch {
-    if ($_.Exception.Message -match "already exists") {
-        Write-Host "  [SKIP] Process exclusion already exists." -ForegroundColor DarkGray
-    } else {
-        Write-Host "  [WARN] $($_.Exception.Message)" -ForegroundColor Yellow
-    }
-}
-
-# Also exclude the Python that a FROZEN install carries (<root>\python\). A
-# developer's own Python is deliberately NOT excluded from virus scanning: that
-# would stop Defender scanning every script it ever runs. Source mode gets the
-# Controlled Folder Access allowance (STEP 2) instead, which is all it needs.
-foreach ($pyExe in $TlamatiniCarriedPythons) {
-    try {
-        Add-MpPreference -ExclusionProcess $pyExe -ErrorAction Stop
-        Write-Host "  [OK] Process exclusion: $pyExe" -ForegroundColor Green
-    } catch {
-        Write-Host "  [WARN] $pyExe : $($_.Exception.Message)" -ForegroundColor Yellow
-    }
+# STEP 2: Allow actual writers through CFA, without changing CFA's global mode.
+Write-Host '[STEP 2/10] Verifying protected-folder access for agents and their runtimes...' -ForegroundColor Yellow
+Write-Host 'Shared shells/interpreters also run commands outside Tlamatini. Their exact paths are listed above.' -ForegroundColor Yellow
+foreach ($app in $TlamatiniPrograms) {
+    try { Add-VerifiedDefenderEntry 'ControlledFolderAccessAllowedApplications' $app }
+    catch { Write-EnablementWarning $_.Exception.Message }
 }
 
 # -----------------------------------------------------------------------------
-# STEP 2: Controlled Folder Access whitelist
+# STEP 3: Per-program ASR exceptions; optional machine-wide Audit mode
 # -----------------------------------------------------------------------------
 Write-Host ""
-Write-Host "[STEP 2/10] Adding Tlamatini to Controlled Folder Access..." -ForegroundColor Yellow
+Write-Host "[STEP 3/10] Verifying application-specific ASR exceptions..." -ForegroundColor Yellow
 
-try {
-    $cfaStatus = Get-MpPreference | Select-Object -ExpandProperty EnableControlledFolderAccess -ErrorAction SilentlyContinue
-    if ($cfaStatus -eq 0 -or $null -eq $cfaStatus) {
-        Set-MpPreference -EnableControlledFolderAccess 1 -ErrorAction Stop
-        Write-Host "  [OK] CFA enabled (protection stays ON)." -ForegroundColor Green
-    } else {
-        Write-Host "  [OK] CFA already enabled." -ForegroundColor Green
-    }
-} catch {
-    Write-Host "  [WARN] $($_.Exception.Message)" -ForegroundColor Yellow
+# Per-program exceptions first. Global policy changes require an explicit switch.
+foreach ($app in $TlamatiniPrograms) {
+    try { Add-VerifiedDefenderEntry 'AttackSurfaceReductionOnlyExclusions' $app }
+    catch { Write-EnablementWarning $_.Exception.Message }
 }
-
-# Tlamatini.exe is NOT the program that saves the user's documents. Every
-# workflow agent (LaTeXer, PDFer, PPTXer, Camcorder, Recorder, ...) runs as a
-# separate python.exe, and Controlled Folder Access judges THAT program. The
-# antivirus process exclusions of STEP 1 do NOT apply to Controlled Folder
-# Access - it keeps its own allowed-apps list. Without this, every file an
-# agent saves into Documents, Desktop, Pictures, Music or Videos is refused,
-# and Windows reports it as "The system cannot find the file specified".
-# Seen 2026-10-07: event 1123 blocked <install>\python\python.exe writing
-# OneDrive\Documentos\TlamatiniLaTeX and OneDrive\Documentos\TlamatiniPDF.
-# The list comes from DISCOVERY: every route, frozen AND source.
-$cfaApps = $TlamatiniPrograms
-
-foreach ($app in $cfaApps) {
-    try {
-        Add-MpPreference -ControlledFolderAccessAllowedApplications $app -ErrorAction Stop
-    } catch {
-        Write-Host "  [WARN] Could not add $app : $($_.Exception.Message)" -ForegroundColor Yellow
-    }
-}
-
-# Read the list back: never report an allowance that did not land.
-$cfaMissing = 0
-$cfaVerified = $true
-$cfaAllowed = @()
-try {
-    $cfaAllowed = @((Get-MpPreference -ErrorAction Stop).ControlledFolderAccessAllowedApplications)
-} catch {
-    $cfaVerified = $false
-    Write-Host "  [WARN] Could not read the allowed-apps list back to verify: $($_.Exception.Message)" -ForegroundColor Yellow
-}
-if ($cfaVerified) {
-    foreach ($app in $cfaApps) {
-        if ($cfaAllowed -contains $app) {
-            Write-Host "  [OK] Allowed through Controlled Folder Access: $app" -ForegroundColor Green
-        } else {
-            $cfaMissing++
-            Write-Host "  [FAIL] NOT allowed through Controlled Folder Access: $app" -ForegroundColor Red
-        }
-    }
-}
-
-# -----------------------------------------------------------------------------
-# STEP 3: ASR rules to Audit mode
-# -----------------------------------------------------------------------------
-Write-Host ""
-Write-Host "[STEP 3/10] Setting ASR rules to Audit mode..." -ForegroundColor Yellow
-
+if ($AuditCompatibility) {
+    Write-Host 'Explicit compatibility mode: six machine-wide ASR rules will use AuditMode (2), not Warn (6).' -ForegroundColor Yellow
 $asrRules = @(
     [pscustomobject]@{ Id = "d4f940ab-401b-4efc-aadc-ad5f3c50688a"; Name = "Office child processes" },
     [pscustomobject]@{ Id = "9e6c4e1f-7d60-472f-ba1a-a39ef669e4b2"; Name = "LSASS credential stealing" },
@@ -321,7 +315,7 @@ $asrRules = @(
 $auditCount = 0
 foreach ($rule in $asrRules) {
     try {
-        Add-MpPreference -AttackSurfaceReductionRules_Ids $rule.Id -AttackSurfaceReductionRules_Actions 6 -ErrorAction Stop
+        Add-MpPreference -AttackSurfaceReductionRules_Ids $rule.Id -AttackSurfaceReductionRules_Actions AuditMode -ErrorAction Stop
 
         # Do not report success until Defender confirms this exact rule/action pair.
         $preference = Get-MpPreference -ErrorAction Stop
@@ -334,7 +328,7 @@ foreach ($rule in $asrRules) {
                 $rule.Id,
                 [System.StringComparison]::OrdinalIgnoreCase
             )
-            if ($sameRule -and [int]$actions[$i] -eq 6) {
+            if ($sameRule -and [int]$actions[$i] -eq 2) {
                 $verified = $true
                 break
             }
@@ -344,19 +338,21 @@ foreach ($rule in $asrRules) {
             $auditCount++
             Write-Host "  [OK] $($rule.Name): verified in Audit mode." -ForegroundColor Green
         } else {
-            Write-Host "  [WARN] $($rule.Name): Defender did not report Audit mode." -ForegroundColor Yellow
+            Write-EnablementWarning "$($rule.Name): Defender did not report Audit mode."
         }
     } catch {
-        Write-Host "  [WARN] $($rule.Name): $($_.Exception.Message)" -ForegroundColor Yellow
+        Write-EnablementWarning "$($rule.Name): $($_.Exception.Message)"
     }
 }
 if ($auditCount -eq $asrRules.Count) {
     Write-Host "  [OK] $auditCount/$($asrRules.Count) ASR rules verified in Audit mode." -ForegroundColor Green
 } else {
-    Write-Host "  [WARN] Only $auditCount/$($asrRules.Count) ASR rules were verified in Audit mode." -ForegroundColor Yellow
+    Write-EnablementWarning "Only $auditCount/$($asrRules.Count) ASR rules were verified in Audit mode."
 }
 Write-Host "       Audit mode logs matching behavior; it does not block it." -ForegroundColor DarkGray
 Write-Host "       ASR rules not listed here retain their configured actions." -ForegroundColor DarkGray
+
+}
 
 # -----------------------------------------------------------------------------
 # STEP 4: PowerShell execution policy
@@ -365,15 +361,20 @@ Write-Host ""
 Write-Host "[STEP 4/10] Setting PowerShell execution policy..." -ForegroundColor Yellow
 
 try {
+    Import-Module (Join-Path $PSHOME 'Modules\Microsoft.PowerShell.Security\Microsoft.PowerShell.Security.psd1') -ErrorAction Stop
+    Get-ExecutionPolicy -List | Export-Clixml -LiteralPath (Join-Path $runDir 'powershell-before.xml') -ErrorAction Stop
     $currentPolicy = Get-ExecutionPolicy -Scope CurrentUser
     if ($currentPolicy -ne "RemoteSigned") {
+        Save-EnablementChange 'ExecutionPolicy' 'CurrentUser' $currentPolicy
         Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force -ErrorAction Stop
         Write-Host "  [OK] Policy set to RemoteSigned (was: $currentPolicy)." -ForegroundColor Green
     } else {
         Write-Host "  [OK] Policy already RemoteSigned." -ForegroundColor Green
     }
+    if ((Get-ExecutionPolicy -Scope CurrentUser) -ne 'RemoteSigned') { throw 'CurrentUser execution policy was not retained.' }
+    if ((Get-ExecutionPolicy) -in @('Restricted','AllSigned')) { throw 'A higher-priority PowerShell policy still restricts scripts; inspect MachinePolicy/UserPolicy.' }
 } catch {
-    Write-Host "  [WARN] $($_.Exception.Message)" -ForegroundColor Yellow
+    Write-EnablementWarning "$($_.Exception.Message)"
 }
 
 # -----------------------------------------------------------------------------
@@ -382,25 +383,25 @@ try {
 Write-Host ""
 Write-Host "[STEP 5/10] Adding firewall rules..." -ForegroundColor Yellow
 
-# One outbound rule per discovered program (frozen AND source routes). A program
-# that already has an outbound Allow rule is left alone, so re-running the
-# script never piles up duplicates.
 foreach ($prog in $TlamatiniPrograms) {
-    try {
-        $existingRule = Get-NetFirewallApplicationFilter -Program $prog -ErrorAction SilentlyContinue |
-            Get-NetFirewallRule -ErrorAction SilentlyContinue |
-            Where-Object { $_.Direction -eq 'Outbound' -and $_.Action -eq 'Allow' }
-        if ($existingRule) {
-            Write-Host "  [OK] Outbound rule already exists: $prog" -ForegroundColor Green
-        } else {
-            New-NetFirewallRule -DisplayName ("Tlamatini Outbound - " + $prog) `
-                -Direction Outbound -Program $prog -Action Allow -Profile Any -ErrorAction Stop | Out-Null
-            Write-Host "  [OK] Outbound rule added: $prog" -ForegroundColor Green
-        }
-    } catch {
-        Write-Host "  [WARN] $prog : $($_.Exception.Message)" -ForegroundColor Yellow
+    foreach ($kind in @('Outbound','Loopback')) {
+        try { Set-VerifiedFirewallAllowance $prog $kind }
+        catch { Write-EnablementWarning $_.Exception.Message }
+    }
+    if ($AllowLan) {
+        try { Set-VerifiedFirewallAllowance $prog 'LAN' }
+        catch { Write-EnablementWarning $_.Exception.Message }
     }
 }
+try {
+    $blocks = @(Get-NetFirewallRule -PolicyStore ActiveStore -Enabled True -Action Block -ErrorAction Stop)
+    Repair-ExactApplicationBlocks $blocks $TlamatiniPrograms.ToArray()
+    foreach ($profile in Get-NetFirewallProfile -PolicyStore ActiveStore -ErrorAction Stop) {
+        if ($profile.AllowLocalFirewallRules -eq 'False') {
+            Write-EnablementWarning "Profile $($profile.Name) ignores local firewall rules. Managed policy must allow them."
+        }
+    }
+} catch { Write-EnablementWarning $_.Exception.Message }
 
 # -----------------------------------------------------------------------------
 # STEP 6: Security event log read access
@@ -410,30 +411,24 @@ Write-Host "[STEP 6/10] Granting Security log access..." -ForegroundColor Yellow
 
 try {
     $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent().Name
-    $isMember = Get-LocalGroupMember -Group "Event Log Readers" -Member $currentUser -ErrorAction SilentlyContinue
+    $isMember = Get-LocalGroupMember -SID ([Security.Principal.SecurityIdentifier]::new('S-1-5-32-573')) -Member $currentUser -ErrorAction SilentlyContinue
     if ($null -eq $isMember) {
-        Add-LocalGroupMember -Group "Event Log Readers" -Member $currentUser -ErrorAction Stop
+        Save-EnablementChange 'EventLogReadersMembership' $currentUser $false
+        Add-LocalGroupMember -SID ([Security.Principal.SecurityIdentifier]::new('S-1-5-32-573')) -Member $currentUser -ErrorAction Stop
+        if (-not (Get-LocalGroupMember -SID ([Security.Principal.SecurityIdentifier]::new('S-1-5-32-573')) -Member $currentUser -ErrorAction Stop)) {
+            throw 'Event Log Readers membership was not retained.'
+        }
         Write-Host "  [OK] Added to Event Log Readers group." -ForegroundColor Green
     } else {
         Write-Host "  [OK] Already in Event Log Readers." -ForegroundColor Green
     }
 } catch {
-    Write-Host "  [WARN] $($_.Exception.Message)" -ForegroundColor Yellow
+    Write-EnablementWarning "$($_.Exception.Message)"
 }
 
-# SDDL backup method
-try {
-    $sid = ([Security.Principal.WindowsIdentity]::GetCurrent()).User.Value
-    $currentSddl = (Get-Item "HKLM:\SYSTEM\CurrentControlSet\Services\EventLog\Security").GetValue("CustomSD")
-    if ($currentSddl -and $currentSddl -notlike "*$sid*") {
-        $newAce = "(A;;0x2;;;$sid)"
-        $newSddl = $currentSddl + $newAce
-        Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\EventLog\Security" -Name "CustomSD" -Value $newSddl -ErrorAction Stop
-        Write-Host "  [OK] Security log SDDL updated." -ForegroundColor Green
-    }
-} catch {
-    Write-Host "  [INFO] SDDL method skipped (group membership should suffice)." -ForegroundColor DarkGray
-}
+# Group membership is the supported access route. Appending an ACE to CustomSD
+# can corrupt the descriptor or grant write access, so never rewrite it here.
+Write-Host '  Sign out/in if Event Log Readers membership was newly added.' -ForegroundColor DarkGray
 
 # -----------------------------------------------------------------------------
 # STEP 7: WMI namespace verification (v2.1 - real query, no dead MOF)
@@ -448,11 +443,11 @@ try {
         Write-Host "  [OK] WMI root\cimv2 query succeeded ($($os.Caption))." -ForegroundColor Green
     }
     # Confirm the enumerations the defender relies on actually work.
-    $procCount = (Get-CimInstance -ClassName Win32_Process -ErrorAction SilentlyContinue | Measure-Object).Count
-    $svcCount  = (Get-CimInstance -ClassName Win32_Service -ErrorAction SilentlyContinue | Measure-Object).Count
+    $procCount = (Get-CimInstance -ClassName Win32_Process -ErrorAction Stop | Measure-Object).Count
+    $svcCount  = (Get-CimInstance -ClassName Win32_Service -ErrorAction Stop | Measure-Object).Count
     Write-Host "  [OK] WMI enumeration OK (processes=$procCount, services=$svcCount)." -ForegroundColor Green
 } catch {
-    Write-Host "  [WARN] WMI: $($_.Exception.Message)" -ForegroundColor Yellow
+    Write-EnablementWarning "WMI: $($_.Exception.Message)"
 }
 
 # -----------------------------------------------------------------------------
@@ -469,7 +464,7 @@ try {
         Write-Host "  [OK] Task Scheduler accessible (no tasks returned for test)." -ForegroundColor Green
     }
 } catch {
-    Write-Host "  [WARN] Task Scheduler: $($_.Exception.Message)" -ForegroundColor Yellow
+    Write-EnablementWarning "Task Scheduler: $($_.Exception.Message)"
 }
 
 # -----------------------------------------------------------------------------
@@ -490,9 +485,9 @@ foreach ($key in $runKeys) {
             $props = Get-ItemProperty -Path $key -ErrorAction Stop
             $regOk++
         }
-    } catch {}
+    } catch { Write-EnablementWarning "Cannot read Run key $key : $($_.Exception.Message)" }
 }
-Write-Host "  [OK] $regOk/$($runKeys.Count) Run keys accessible." -ForegroundColor Green
+Write-Host "  Read $regOk of $($runKeys.Count) candidate Run keys (absent keys are normal)." -ForegroundColor Cyan
 
 # -----------------------------------------------------------------------------
 # STEP 10: Service Control Manager query access
@@ -506,7 +501,7 @@ try {
         Write-Host "  [OK] Service Control Manager accessible." -ForegroundColor Green
     }
 } catch {
-    Write-Host "  [WARN] SCM: $($_.Exception.Message)" -ForegroundColor Yellow
+    Write-EnablementWarning "SCM: $($_.Exception.Message)"
 }
 
 # -----------------------------------------------------------------------------
@@ -525,12 +520,12 @@ $auditPolicies = @(
 foreach ($policy in $auditPolicies) {
     $arguments = @("/set", "/subcategory:$($policy.Id)", "/success:enable")
     if ($policy.Failure) { $arguments += "/failure:enable" }
-    $auditOutput = & auditpol @arguments 2>&1
+    $auditOutput = & "$env:SystemRoot\System32\auditpol.exe" @arguments 2>&1
     if ($LASTEXITCODE -eq 0) {
         Write-Host "  [OK] $($policy.Name) auditing enabled." -ForegroundColor Green
     } else {
         $detail = ($auditOutput | Out-String).Trim()
-        Write-Host "  [WARN] $($policy.Name) audit policy failed: $detail" -ForegroundColor Yellow
+        Write-EnablementWarning "$($policy.Name) audit policy failed: $detail"
     }
 }
 
@@ -538,74 +533,35 @@ foreach ($policy in $auditPolicies) {
 # defender can spot 'vssadmin delete shadows', 'wbadmin delete', 'bcdedit ...'.
 try {
     $auditKey = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\Audit"
-    if (-not (Test-Path $auditKey)) { New-Item -Path $auditKey -Force | Out-Null }
-    Set-ItemProperty -Path $auditKey -Name "ProcessCreationIncludeCmdLine_Enabled" -Value 1 -Type DWord -ErrorAction Stop
+    Set-VerifiedLoggingValue $auditKey 'ProcessCreationIncludeCmdLine_Enabled'
     Write-Host "  [OK] Command line included in process-creation events." -ForegroundColor Green
 } catch {
-    Write-Host "  [WARN] Cmdline-in-4688: $($_.Exception.Message)" -ForegroundColor Yellow
+    Write-EnablementWarning "Cmdline-in-4688: $($_.Exception.Message)"
 }
 
 # Enable PowerShell Script Block Logging so attacker scripts are recorded.
 try {
     $sbl = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging"
-    if (-not (Test-Path $sbl)) { New-Item -Path $sbl -Force | Out-Null }
-    Set-ItemProperty -Path $sbl -Name "EnableScriptBlockLogging" -Value 1 -Type DWord -ErrorAction Stop
+    Set-VerifiedLoggingValue $sbl 'EnableScriptBlockLogging'
     Write-Host "  [OK] PowerShell script-block logging enabled." -ForegroundColor Green
 } catch {
-    Write-Host "  [WARN] ScriptBlockLogging: $($_.Exception.Message)" -ForegroundColor Yellow
+    Write-EnablementWarning "ScriptBlockLogging: $($_.Exception.Message)"
 }
 
-# -----------------------------------------------------------------------------
-# SUMMARY
-# -----------------------------------------------------------------------------
-Write-Host ""
-Write-Host "================================================" -ForegroundColor Cyan
-Write-Host "  WHITELIST v$ScriptVersion COMPLETE - SUMMARY" -ForegroundColor Cyan
-Write-Host "================================================" -ForegroundColor Cyan
-Write-Host ""
-Write-Host "  [0]  Installation routes:      $($TlamatiniRoots.Count) found ($($TlamatiniPrograms.Count) program(s))" -ForegroundColor Green
-Write-Host "  [1]  Defender exclusions:      $($TlamatiniRoots.Count) folder(s) + processes" -ForegroundColor Green
-if (-not $cfaVerified) {
-    Write-Host "  [2]  Controlled Folder Access: could NOT be verified - see STEP 2" -ForegroundColor Yellow
-} elseif ($cfaMissing -gt 0) {
-    Write-Host "  [2]  Controlled Folder Access: $cfaMissing app(s) NOT allowed - see STEP 2" -ForegroundColor Red
+# Summary derives from observed failures, never from optimistic fixed text.
+Write-Host ''
+Write-Host '================================================' -ForegroundColor Cyan
+if ($script:EnablementFailures.Count) {
+    Write-Host "ENABLEMENT NEEDS ATTENTION: $($script:EnablementFailures.Count) item(s)." -ForegroundColor Yellow
+    foreach ($failure in $script:EnablementFailures) { Write-Host "  - $failure" -ForegroundColor Yellow }
 } else {
-    Write-Host "  [2]  Controlled Folder Access: Tlamatini + its Python allowed ($($cfaApps.Count) app(s))" -ForegroundColor Green
+    Write-Host 'ENABLEMENT SETTINGS VERIFIED.' -ForegroundColor Green
 }
-Write-Host "  [3]  ASR rules:                Audit mode (log, not block)" -ForegroundColor Green
-Write-Host "  [4]  PowerShell policy:        RemoteSigned" -ForegroundColor Green
-Write-Host "  [5]  Firewall:                 Outbound rules for Tlamatini" -ForegroundColor Green
-Write-Host "  [6]  Security log:             Read access granted" -ForegroundColor Green
-Write-Host "  [7]  WMI namespace:            Verified" -ForegroundColor Green
-Write-Host "  [8]  Task Scheduler:           Accessible" -ForegroundColor Green
-Write-Host "  [9]  Registry Run keys:        Readable" -ForegroundColor Green
-Write-Host "  [10] Service Control Manager:  Accessible" -ForegroundColor Green
-Write-Host ""
-Write-Host "  BONUS: Security auditing ENABLED (logon, process-creation w/ cmdline," -ForegroundColor Green
-Write-Host "         account logon, privilege use, account management, script-block)." -ForegroundColor Green
-Write-Host ""
-Write-Host "  SECURITY STATUS: CORE SERVICES REMAIN ENABLED; EXCEPTIONS WERE ADDED." -ForegroundColor Yellow
-Write-Host "  Tlamatini can now:" -ForegroundColor Green
-Write-Host "    - Read Security log (see hacker logons)" -ForegroundColor Green
-Write-Host "    - Query WMI (enumerate processes, services, users)" -ForegroundColor Green
-Write-Host "    - Audit scheduled tasks (find persistence)" -ForegroundColor Green
-Write-Host "    - Read Run keys (find autostart malware)" -ForegroundColor Green
-Write-Host "    - Enumerate services (find malicious services)" -ForegroundColor Green
-Write-Host "    - See destructive command lines (ransomware shadow-copy deletion)" -ForegroundColor Green
-Write-Host "    - Run subprocesses without ASR blocking" -ForegroundColor Green
-Write-Host "    - Save PDFs/documents into Documents, Desktop, Pictures (LaTeXer, PDFer...)" -ForegroundColor Green
-Write-Host "    - Make network calls to models and APIs" -ForegroundColor Green
-Write-Host ""
-Write-Host "  Review the exclusions, Audit rules, and outbound allowances as" -ForegroundColor Yellow
-Write-Host "  privileged trust decisions; no script can certify a clean host." -ForegroundColor Yellow
-Write-Host ""
-Write-Host "  NOTE: Restart Tlamatini for changes to take full effect." -ForegroundColor Yellow
-Write-Host "  Then run: run_defender.bat to scan for hacker activity." -ForegroundColor Yellow
-Write-Host ""
-Write-Host "================================================" -ForegroundColor Cyan
-Write-Host "  Created by Angela Lopez Mendoza (@angelahack1)" -ForegroundColor Cyan
-Write-Host "  Tlamatini - the one who knows" -ForegroundColor Cyan
-Write-Host "================================================" -ForegroundColor Cyan
-Write-Host ""
-
-Read-Host "Press Enter to finish"
+Write-Host "Recovery evidence: $runDir"
+Write-Host 'Restart Tlamatini, then run the non-admin execution check described in security/README.md.'
+Write-Host 'Windows access does not install missing tools, bypass UAC/domain policy, or repair an unavailable model service.'
+Write-Host 'run_defender.bat now reports findings without automatically killing tools or blocking IPs.'
+ConvertTo-Json -InputObject @($script:EnablementFailures.ToArray()) | Set-Content -LiteralPath (Join-Path $runDir 'attention.json') -Encoding UTF8
+if (-not $NoPause) { Read-Host 'Press Enter to finish' | Out-Null }
+if ($script:EnablementFailures.Count) { exit 2 }
+exit 0

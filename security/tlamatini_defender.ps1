@@ -1,13 +1,13 @@
 # =============================================================================
-# TLAMATINI ACTIVE DEFENDER - SECURITY MONITORING & AUTO-RESPONSE  (v2.1)
+# TLAMATINI DEFENDER - REPORT-ONLY BY DEFAULT, OPTIONAL RESPONSE  (v2.2)
 # =============================================================================
 # Purpose: Real-time intrusion detection and automated defensive response.
 #          This is NOT malware. This is a DEFENDER that:
 #          - Monitors Defender health, logons, network, processes, tasks,
 #            services, registry persistence, ransomware indicators and
 #            account/privilege abuse
-#          - Detects hacker activity in real-time
-#          - Auto-isolates threats (blocks IPs inbound+outbound, kills malware)
+#          - Reports indicators that need human review
+#          - Blocks IPs/stops selected processes only with explicit -Armed
 #          - Alerts the user via log + desktop notification
 #
 # This script does NOT:
@@ -22,11 +22,11 @@
 #            unless you pass -Aggressive.
 #
 # USAGE:
-#   .\tlamatini_defender.ps1                 # one-shot armed scan
-#   .\tlamatini_defender.ps1 -Watch          # continuous scan every 60s
+#   .\tlamatini_defender.ps1                 # one-shot report-only scan
+#   .\tlamatini_defender.ps1 -Watch          # report-only scan every 60s
 #   .\tlamatini_defender.ps1 -Watch -IntervalSeconds 30
 #   .\tlamatini_defender.ps1 -DetectOnly     # report only, never block/kill
-#   .\tlamatini_defender.ps1 -Aggressive     # also kill dual-use offensive tools
+#   .\tlamatini_defender.ps1 -Armed -Aggressive # explicit containment of dual-use tools
 #
 # REQUIREMENTS:
 #   - Run as Administrator
@@ -44,12 +44,16 @@ param(
     [ValidateRange(5, 86400)]
     [int]$IntervalSeconds = 60,
     [switch]$DetectOnly,
+    [switch]$Armed,
+    [switch]$NoPause,
     [switch]$Aggressive
 )
 
 $ErrorActionPreference = "Continue"
-$ScriptVersion = "2.1"
-$script:Respond = -not $DetectOnly
+$ScriptVersion = "2.2"
+if ($Armed -and $DetectOnly) { throw 'Choose Armed or DetectOnly, not both.' }
+if ($Aggressive -and -not $Armed) { throw 'Aggressive requires explicit -Armed; ordinary scans never stop tools.' }
+$script:Respond = [bool]$Armed -and -not $DetectOnly
 
 # --- AUTO-DETECT: logs go next to this .ps1 (in <script-dir>\security_logs) ---
 $LogDir = Join-Path $PSScriptRoot "security_logs"
@@ -64,13 +68,21 @@ if (-not (Test-Path $LogDir)) {
 $script:SelfRoots = @(
     (Split-Path -Parent $PSScriptRoot),
     (Join-Path $env:LOCALAPPDATA "Tlamatini")
-) | Where-Object { $_ -and (Test-Path $_) }
+) | Where-Object { $_ -and (Test-Path -LiteralPath $_) }
+try {
+    $registered = (Get-ItemProperty 'HKCU:\Software\XAIHT\Tlamatini' -ErrorAction Stop).InstallLocation
+    if ($registered -and (Test-Path -LiteralPath $registered -PathType Container)) { $script:SelfRoots += $registered }
+} catch {}
 
 function Test-IsSelf {
     param([string]$Path)
     if ([string]::IsNullOrWhiteSpace($Path)) { return $false }
     foreach ($root in $script:SelfRoots) {
-        if ($Path -like "$root\*") { return $true }
+        try {
+            $full = [IO.Path]::GetFullPath($Path)
+            $base = [IO.Path]::GetFullPath($root).TrimEnd('\')
+            if ($full.StartsWith($base + '\', [StringComparison]::OrdinalIgnoreCase)) { return $true }
+        } catch { continue }
     }
     return $false
 }
@@ -141,7 +153,13 @@ function Stop-SuspiciousProcess {
                 Write-Alert "REFUSED to kill Tlamatini's own process $ProcessName (PID $ProcessId)" "INFO"
                 return
             }
-            Stop-Process -Id $ProcessId -Force -ErrorAction Stop
+            # A name alone is not proof, and a reused PID must never stop an
+            # unrelated process. Unreadable paths fail closed for containment.
+            if (-not $proc.Path -or $proc.ProcessName -ine $ProcessName) {
+                Write-Alert "REFUSED to stop PID ${ProcessId}: identity/path could not be verified." 'WARNING'
+                return
+            }
+            Stop-Process -InputObject $proc -Force -ErrorAction Stop
             Write-Alert "KILLED process $ProcessName (PID $ProcessId) - $Reason" "CRITICAL"
             Send-DesktopNotification "TLAMATINI: Process Killed" "Killed $ProcessName (PID $ProcessId) - $Reason"
         }
@@ -151,7 +169,7 @@ function Stop-SuspiciousProcess {
 }
 
 # --- Threat classification ---------------------------------------------------
-# Unambiguous ATTACKER tooling -> auto-kill (finding one locally is a red flag).
+# Name-based leads, not proof of compromise. Response requires explicit -Armed.
 $script:MalwarePatterns = @(
     "*mimikatz*", "*pypykatz*", "*safetykatz*", "*cobaltstrike*", "*rubeus*",
     "*responder*", "*seatbelt*", "*lazagne*", "*sharphound*", "*bloodhound*",
@@ -617,7 +635,7 @@ function Monitor-AccountThreats {
         }
     } catch { }
     try {
-        $admins = Get-LocalGroupMember -Group "Administrators" -ErrorAction SilentlyContinue
+        $admins = Get-LocalGroupMember -SID ([Security.Principal.SecurityIdentifier]::new('S-1-5-32-544')) -ErrorAction Stop
         if ($admins) {
             $names = ($admins | ForEach-Object { $_.Name }) -join ", "
             Write-Alert "Current local administrators: $names" "INFO"
@@ -649,9 +667,9 @@ Write-Host "  Created by Angela Lopez Mendoza (@angelahack1)" -ForegroundColor C
 Write-Host "================================================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "This is a DEFENSIVE monitoring script." -ForegroundColor Green
-Write-Host "It detects hackers and isolates threats." -ForegroundColor Green
+Write-Host "It reports indicators for review; containment requires explicit -Armed." -ForegroundColor Green
 Write-Host "It does NOT disable security or destroy data." -ForegroundColor Green
-if ($DetectOnly) { Write-Host "MODE: DETECT-ONLY (no auto-block/kill)." -ForegroundColor Yellow }
+if (-not $script:Respond) { Write-Host "MODE: DETECT-ONLY (no auto-block/kill)." -ForegroundColor Yellow }
 elseif ($Aggressive) { Write-Host "MODE: ARMED + AGGRESSIVE (kills dual-use tools too)." -ForegroundColor Yellow }
 else { Write-Host "MODE: ARMED (auto-kills known malware; alerts on dual-use)." -ForegroundColor Yellow }
 Write-Host ""
@@ -696,5 +714,5 @@ if ($Watch) {
     Write-Host "  Tlamatini - the one who knows" -ForegroundColor Cyan
     Write-Host "================================================" -ForegroundColor Cyan
     Write-Host ""
-    Read-Host "Press Enter to finish"
+    if (-not $NoPause) { Read-Host "Press Enter to finish" | Out-Null }
 }

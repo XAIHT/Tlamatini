@@ -248,14 +248,20 @@ index 9bf66bda..75b82e65 100644
 --- a/.claude/memory/MEMORY.md
 +++ b/.claude/memory/MEMORY.md
 @@ -1,7 +1,7 @@
- <!-- THE USER IS ANGELA, A WOMAN — always address her by name. -->
- <!-- Unless noted, work is UNCOMMITTED in source; frozen needs build.py. Detail in topic files. -->
+ <!-- THE USER IS ANGELA, A WOMAN — always address her by name. -->
+
+ <!-- Unless noted, work is UNCOMMITTED in source; frozen needs build.py. Detail in topic files. -->
+
 -- [Prompt Flow: static Commentary and runtime User Input](project_prompt_flow_commentary_input.md) — version 2 saves, version 1 migration, inline notes with colors/fonts/resize and full-text containment; **no internal scrollbars**. Runtime reply/cancel stays unchanged.
 +- [Prompt Flow: static Commentary and runtime User Input](project_prompt_flow_commentary_input.md) — version 2 saves, version 1 migration, inline rich notes with a floating selection toolbar, mixed fonts/styles, all-border resizing and full-text containment; **no configuration dialog**; **no internal scrollbars**. Runtime reply/cancel stays unchanged. Run output has a 5–95% divider, independent scrolling and separate per-user layout storage.
- - [Developer workflow is not product UX](feedback_developer_product_boundary.md) — Angela is the developer; visible verification must not become extra product windows or focus stealing. Direct dictation uses the main console/log and in-chat recording status.
- - [User profile](user_profile.md) — **Angela**, primary Tlamatini dev (<REDACTED>). Always "Angela".
- - [ALWAYS ENGLISH to Angela (MANDATORY)](feedback_always_english_to_angela.md) — talk to her ONLY in English; Spanish only for her users' content.
- - [Fixed messages VERBATIM](feedback_speak_fixed_messages_verbatim.md) — never paraphrase a pre-established message; speak/show it exactly (strip only markup/timestamp).
+ - [Developer workflow is not product UX](feedback_developer_product_boundary.md) — Angela is the developer; visible verification must not become extra product windows or focus stealing. Direct dictation uses the main console/log and in-chat recording status.
+
+ - [User profile](user_profile.md) — **Angela**, primary Tlamatini dev (<REDACTED>). Always "Angela".
+
+ - [ALWAYS ENGLISH to Angela (MANDATORY)](feedback_always_english_to_angela.md) — talk to her ONLY in English; Spanish only for her users' content.
+
+ - [Fixed messages VERBATIM](feedback_speak_fixed_messages_verbatim.md) — never paraphrase a pre-established message; speak/show it exactly (strip only markup/timestamp).
+
 @@ -141,4 +141,6 @@
  
  ## Image/video error reporting and recovery (2026-09-26)
@@ -349,11 +355,16 @@ index 51d5d49a..46b35338 100644
  
  When External MCP or response rendering changes, visibly verify: the dialog lists inactive `memory` and `sequential-thinking`; the runtime strip reports node/npm/npx/pnpm/uv/uvx without blocking the page; **Install now** has honest success/failure state; activating a default is explicit; deleting it does not resurrect it after reload; and a nested explicit/auto ASCII diagram followed by Markdown `---` renders every diagram once with no `DGRM_*` or NUL leakage. Use an isolated catalog/config path for tests so a maintainer's keyed `external_mcps.json` is never modified.
 @@ -254,5 +254,9 @@ follows stays intact as the record of what the v1.50.0 pass covered.
- When the current release is touched, verify NetSpeed-Calculator with `action='latency'` or `validate` by default, never a repeated `full` run; assert the full/download/upload bandwidth warning and tier-D Ask-Execs classification. Run WAL-mode Backup DB/Set DB/hot-swap tests through `sqlite_copy.py` and prove `quick_check` plus sidecar hygiene. Run `agent.test_googler_dorks` and pin preset-under-explicit-field precedence, aliases, no-space operator syntax, uppercase parenthesized `OR`, site-group same-domain handling, `links_only` file-hunt guidance, and the direct-tool versus visual/pool structured-field boundary. Also pin the two-tier order (four plain-HTTP server-rendered routes before any browser), explicit engine pins skipping Tier 0, `headless: false` for Tier 1, the seven-route browser order, tolerant string booleans, bounded retries, first-answer stopping, pinned-engine behavior, redirect unwrapping, and explicit Google-only advanced-operator semantics. The optional visible proof is `harness/googler_dork_hunt.py`: it uses the shipped builder, opens headed Chrome, targets public-domain/open-access sources, and stores JSON evidence under Tlamatini `Temp`; search-engine refusal is a failed proof run, not proof that the compiled query is wrong. Validate migration 0194's Deep Internet Research card and 0195-0197's NetSpeed rows, the `adding-external-mcp` classify/import/doctor/activate/wait/list/call lifecycle, the 88/66/108/29/197 source counts, and the private contact-sync/public-empty boundary. (That pass verified `v1.50.0` as the annotated release. The RULE generalises and still applies: verify whatever `git describe` reports today, and report a later `HEAD` separately rather than calling the release untagged.)
- 
- > ⚠️ If the answer-complete logic ever needs adjusting, verify it against a LIVE
- > server with `--count 2` before trusting a full run — a daily test that silently
--> mis-detects completion is worse than no test.
+ When the current release is touched, verify NetSpeed-Calculator with `action='latency'` or `validate` by default, never a repeated `full` run; assert the full/download/upload bandwidth warning and tier-D Ask-Execs classification. Run WAL-mode Backup DB/Set DB/hot-swap tests through `sqlite_copy.py` and prove `quick_check` plus sidecar hygiene. Run `agent.test_googler_dorks` and pin preset-under-explicit-field precedence, aliases, no-space operator syntax, uppercase parenthesized `OR`, site-group same-domain handling, `links_only` file-hunt guidance, and the direct-tool versus visual/pool structured-field boundary. Also pin the two-tier order (four plain-HTTP server-rendered routes before any browser), explicit engine pins skipping Tier 0, `headless: false` for Tier 1, the seven-route browser order, tolerant string booleans, bounded retries, first-answer stopping, pinned-engine behavior, redirect unwrapping, and explicit Google-only advanced-operator semantics. The optional visible proof is `harness/googler_dork_hunt.py`: it uses the shipped builder, opens headed Chrome, targets public-domain/open-access sources, and stores JSON evidence under Tlamatini `Temp`; search-engine refusal is a failed proof run, not proof that the compiled query is wrong. Validate migration 0194's Deep Internet Research card and 0195-0197's NetSpeed rows, the `adding-external-mcp` classify/import/doctor/activate/wait/list/call lifecycle, the 88/66/108/29/197 source counts, and the private contact-sync/public-empty boundary. (That pass verified `v1.50.0` as the annotated release. The RULE generalises and still applies: verify whatever `git describe` reports today, and report a later `HEAD` separately rather than calling the release untagged.)
+
+ 
+
+ > ⚠️ If the answer-complete logic ever needs adjusting, verify it against a LIVE
+
+ > server with `--count 2` before trusting a full run — a daily test that silently
+
+-> mis-detects completion is worse than no test.
+
 +> mis-detects completion is worse than no test.
 +
 +### Prompt Flow Run output regression (2026-10-04)
@@ -557,15 +568,23 @@ index 235c614c..a6e34255 100644
  
  For the v1.48.17 release and later, verify Grepper's BOM-first UTF-8/16/32 plus cp1252/Latin-1 search, the guarded five-class Exec Report vocabulary, Kuberneter's `returncode`/`success`/semantic-status shape, `Uninstaller.exe` preservation, source-derived public/private build tests, the standardized dialog dismissal (Escape closes every dialog with the meaning of its ✕, an outside click never does, and only a sealed downloading updater refuses), the themed `tlmAlert`/`tlmConfirm` popups replacing native browser pop-ups, and the post-build proof that the fail-open `agent.*` modules really landed in the frozen archive. Carry forward the v1.48.14 private External-MCP runtime, ten supervisor tools, inactive Memory/Sequential-Thinking defaults, tombstones, persistent Memory path, public/private catalog separation, nested-diagram restoration, and design-only transactional-updater label, plus the v1.48.13 placement/dialog/logging foundations.
  
--For the v1.50.0 release and later, verify NetSpeed-Calculator's full source/wiring and metered-bandwidth contract; WAL-safe Backup DB, Set DB, and pre-Django hot-swap through `sqlite_copy.py`; Googler's structured dork compiler, presets/aliases, syntax normalization, grouped site/filetype alternatives, lawful-source boundary, `links_only` downstream workflow, four plain-HTTP server-rendered routes before browser launch, visible installed-Chrome default, bundled-browser fallback, seven browser routes, explicit-engine Tier-0 bypass, bounded retry/answer-attribution contract, Google-only advanced-operator caveat, live harness, and `test_googler_dorks.py`; the `adding-external-mcp` classify/import/doctor/activate/wait/list/call lifecycle; migration 0194's Deep Internet Research starter and migrations 0195-0197; the Ollama Pro-or-higher complete-operation requirement; private contact synchronization with public/snapshot PII exclusion; and the live 89 agents / 67 wrapped / 109 built-ins / 29 skills / 210 migrations counts. ⚠️ Those five numbers move with almost every release, so treat the figures written here as a stale-detector, not as truth: RE-DERIVE each one from source before publishing (count `agent/agents/*/<name>.py` dirs, `tool_name="chat_agent_*"` in `chat_agent_registry.py`, 20 core + wrapped + 12 ACPX/Skill + 10 External-MCP supervisors, `agent/skills_pkg/*/SKILL.md`, and `agent/migrations/0*.py`) and update this line in the same pass when they disagree. Verify the annotated `v1.50.0` tag and report its commit separately from a later `HEAD` when the worktree is ahead; never relabel a real release as an untagged target.
-+For the v1.50.0 release and later, verify NetSpeed-Calculator's full source/wiring and metered-bandwidth contract; WAL-safe Backup DB, Set DB, and pre-Django hot-swap through `sqlite_copy.py`; Googler's structured dork compiler, presets/aliases, syntax normalization, grouped site/filetype alternatives, lawful-source boundary, `links_only` downstream workflow, four plain-HTTP server-rendered routes before browser launch, visible installed-Chrome default, bundled-browser fallback, seven browser routes, explicit-engine Tier-0 bypass, bounded retry/answer-attribution contract, Google-only advanced-operator caveat, live harness, and `test_googler_dorks.py`; the `adding-external-mcp` classify/import/doctor/activate/wait/list/call lifecycle; migration 0194's Deep Internet Research starter and migrations 0195-0197; the Ollama Pro-or-higher complete-operation requirement; private contact synchronization with public/snapshot PII exclusion; and the live 89 agents / 67 wrapped / 109 built-ins / 29 skills / 212 migrations counts. ⚠️ Those five numbers move with almost every release, so treat the figures written here as a stale-detector, not as truth: RE-DERIVE each one from source before publishing (count `agent/agents/*/<name>.py` dirs, `tool_name="chat_agent_*"` in `chat_agent_registry.py`, 20 core + wrapped + 12 ACPX/Skill + 10 External-MCP supervisors, `agent/skills_pkg/*/SKILL.md`, and `agent/migrations/0*.py`) and update this line in the same pass when they disagree. Verify the annotated `v1.50.0` tag and report its commit separately from a later `HEAD` when the worktree is ahead; never relabel a real release as an untagged target.
- 
- ## Inventory Rules
- 
- - Use `git ls-files` for the complete tracked source tree.
+-For the v1.50.0 release and later, verify NetSpeed-Calculator's full source/wiring and metered-bandwidth contract; WAL-safe Backup DB, Set DB, and pre-Django hot-swap through `sqlite_copy.py`; Googler's structured dork compiler, presets/aliases, syntax normalization, grouped site/filetype alternatives, lawful-source boundary, `links_only` downstream workflow, four plain-HTTP server-rendered routes before browser launch, visible installed-Chrome default, bundled-browser fallback, seven browser routes, explicit-engine Tier-0 bypass, bounded retry/answer-attribution contract, Google-only advanced-operator caveat, live harness, and `test_googler_dorks.py`; the `adding-external-mcp` classify/import/doctor/activate/wait/list/call lifecycle; migration 0194's Deep Internet Research starter and migrations 0195-0197; the Ollama Pro-or-higher complete-operation requirement; private contact synchronization with public/snapshot PII exclusion; and the live 89 agents / 67 wrapped / 109 built-ins / 29 skills / 210 migrations counts. ⚠️ Those five numbers move with almost every release, so treat the figures written here as a stale-detector, not as truth: RE-DERIVE each one from source before publishing (count `agent/agents/*/<name>.py` dirs, `tool_name="chat_agent_*"` in `chat_agent_registry.py`, 20 core + wrapped + 12 ACPX/Skill + 10 External-MCP supervisors, `agent/skills_pkg/*/SKILL.md`, and `agent/migrations/0*.py`) and update this line in the same pass when they disagree. Verify the annotated `v1.50.0` tag and report its commit separately from a later `HEAD` when the worktree is ahead; never relabel a real release as an untagged target.
+
++For the v1.50.0 release and later, verify NetSpeed-Calculator's full source/wiring and metered-bandwidth contract; WAL-safe Backup DB, Set DB, and pre-Django hot-swap through `sqlite_copy.py`; Googler's structured dork compiler, presets/aliases, syntax normalization, grouped site/filetype alternatives, lawful-source boundary, `links_only` downstream workflow, four plain-HTTP server-rendered routes before browser launch, visible installed-Chrome default, bundled-browser fallback, seven browser routes, explicit-engine Tier-0 bypass, bounded retry/answer-attribution contract, Google-only advanced-operator caveat, live harness, and `test_googler_dorks.py`; the `adding-external-mcp` classify/import/doctor/activate/wait/list/call lifecycle; migration 0194's Deep Internet Research starter and migrations 0195-0197; the Ollama Pro-or-higher complete-operation requirement; private contact synchronization with public/snapshot PII exclusion; and the live 89 agents / 67 wrapped / 109 built-ins / 29 skills / 212 migrations counts. ⚠️ Those five numbers move with almost every release, so treat the figures written here as a stale-detector, not as truth: RE-DERIVE each one from source before publishing (count `agent/agents/*/<name>.py` dirs, `tool_name="chat_agent_*"` in `chat_agent_registry.py`, 20 core + wrapped + 12 ACPX/Skill + 10 External-MCP supervisors, `agent/skills_pkg/*/SKILL.md`, and `agent/migrations/0*.py`) and update this line in the same pass when they disagree. Verify the annotated `v1.50.0` tag and report its commit separately from a later `HEAD` when the worktree is ahead; never relabel a real release as an untagged target.
+
+ 
+
+ ## Inventory Rules
+
+ 
+
+ - Use `git ls-files` for the complete tracked source tree.
+
 @@ -68,4 +68,8 @@ For the v1.50.0 release and later, verify NetSpeed-Calculator's full source/wiri
- - Include exact dates and commit ids when discussing current state.
- - When generating or modifying Python source code for the dossier workflow, run `python -m ruff check` from the project root and fix reported errors before handing off.
+ - Include exact dates and commit ids when discussing current state.
+
+ - When generating or modifying Python source code for the dossier workflow, run `python -m ruff check` from the project root and fix reported errors before handing off.
+
  - Verify by extracting PDF text or checking page count after generation.
  - Confirm the complete tree in the PDF has exact path parity with `git ls-files`, not only the same total count.
 +
@@ -604,15 +623,23 @@ index 59b57523..c6ca2177 100644
  
  For the v1.48.17 release and later, include Grepper's multi-encoding search, the guarded five-class Exec Report vocabulary, Kuberneter's canonical result fields, `Uninstaller.exe` preservation, source-derived public/private build checks, the standardized Escape-closes-every-dialog policy with its sealed-updater exception, the themed `tlmAlert`/`tlmConfirm` popups, and the frozen-bundle carriage proof. Retain the v1.48.14 private External-MCP runtime flow, ten supervisors, inactive defaults, catalog tombstones, persistent Memory state, secret-separated builds, nested-diagram repair, and explicit "proposal, not shipped behavior" updater label, plus the v1.48.13 placement/dialog/logging foundations.
  
--For the v1.50.0 release and later, include separate, readable slides for NetSpeed-Calculator and its metered-bandwidth warning; WAL-safe SQLite backup/set/hot-swap; Googler's structured dork compiler, syntax/preset contract, `links_only` file workflow, and responsible-use boundary; a separate Googler resilience slide covering four plain-HTTP server-rendered routes before browser launch, visible installed Chrome, bundled-browser fallback, seven browser routes, explicit-engine Tier-0 bypass, bounded retries, answer attribution, and Google-only advanced operators; the External MCP Adder lifecycle; Deep Internet Research prompt; Ollama Pro-or-higher setup; private contact synchronization/public PII exclusion; and the source-derived 89/67/109/29/210 counts. Show the annotated `v1.50.0` tag commit separately from a later `HEAD` when needed. Split these topics rather than shrinking type or allowing dense panels to overlap.
-+For the v1.50.0 release and later, include separate, readable slides for NetSpeed-Calculator and its metered-bandwidth warning; WAL-safe SQLite backup/set/hot-swap; Googler's structured dork compiler, syntax/preset contract, `links_only` file workflow, and responsible-use boundary; a separate Googler resilience slide covering four plain-HTTP server-rendered routes before browser launch, visible installed Chrome, bundled-browser fallback, seven browser routes, explicit-engine Tier-0 bypass, bounded retries, answer attribution, and Google-only advanced operators; the External MCP Adder lifecycle; Deep Internet Research prompt; Ollama Pro-or-higher setup; private contact synchronization/public PII exclusion; and the source-derived 89/67/109/29/212 counts. Show the annotated `v1.50.0` tag commit separately from a later `HEAD` when needed. Split these topics rather than shrinking type or allowing dense panels to overlap.
- 
- ## Validation Checklist
- 
- - If Python source code was generated or modified, run `python -m ruff check` from the project root and fix all reported issues.
+-For the v1.50.0 release and later, include separate, readable slides for NetSpeed-Calculator and its metered-bandwidth warning; WAL-safe SQLite backup/set/hot-swap; Googler's structured dork compiler, syntax/preset contract, `links_only` file workflow, and responsible-use boundary; a separate Googler resilience slide covering four plain-HTTP server-rendered routes before browser launch, visible installed Chrome, bundled-browser fallback, seven browser routes, explicit-engine Tier-0 bypass, bounded retries, answer attribution, and Google-only advanced operators; the External MCP Adder lifecycle; Deep Internet Research prompt; Ollama Pro-or-higher setup; private contact synchronization/public PII exclusion; and the source-derived 89/67/109/29/210 counts. Show the annotated `v1.50.0` tag commit separately from a later `HEAD` when needed. Split these topics rather than shrinking type or allowing dense panels to overlap.
+
++For the v1.50.0 release and later, include separate, readable slides for NetSpeed-Calculator and its metered-bandwidth warning; WAL-safe SQLite backup/set/hot-swap; Googler's structured dork compiler, syntax/preset contract, `links_only` file workflow, and responsible-use boundary; a separate Googler resilience slide covering four plain-HTTP server-rendered routes before browser launch, visible installed Chrome, bundled-browser fallback, seven browser routes, explicit-engine Tier-0 bypass, bounded retries, answer attribution, and Google-only advanced operators; the External MCP Adder lifecycle; Deep Internet Research prompt; Ollama Pro-or-higher setup; private contact synchronization/public PII exclusion; and the source-derived 89/67/109/29/212 counts. Show the annotated `v1.50.0` tag commit separately from a later `HEAD` when needed. Split these topics rather than shrinking type or allowing dense panels to overlap.
+
+ 
+
+ ## Validation Checklist
+
+ 
+
+ - If Python source code was generated or modified, run `python -m ruff check` from the project root and fix all reported issues.
+
 @@ -80,4 +80,8 @@ For the v1.50.0 release and later, include separate, readable slides for NetSpee
- - Confirm the line-inventory slide contains the total effective line count.
- - Confirm the tree appendix count covers the complete tracked file tree.
+ - Confirm the line-inventory slide contains the total effective line count.
+
+ - Confirm the tree appendix count covers the complete tracked file tree.
+
  - Confirm no audit exceptions were raised during generation.
  - When Microsoft PowerPoint is available, render every slide through native PowerPoint and inspect text bounds, out-of-bounds shapes, and unintended text-to-text intersections.
 +
@@ -936,11 +963,16 @@ index 80ae7b27..6ade7491 100644
  
  When External MCP or response rendering changes, visibly verify: the dialog lists inactive `memory` and `sequential-thinking`; the runtime strip reports node/npm/npx/pnpm/uv/uvx without blocking the page; **Install now** has honest success/failure state; activating a default is explicit; deleting it does not resurrect it after reload; and a nested explicit/auto ASCII diagram followed by Markdown `---` renders every diagram once with no `DGRM_*` or NUL leakage. Use an isolated catalog/config path for tests so a maintainer's keyed `external_mcps.json` is never modified.
 @@ -254,5 +254,9 @@ follows stays intact as the record of what the v1.50.0 pass covered.
- When the current release is touched, verify NetSpeed-Calculator with `action='latency'` or `validate` by default, never a repeated `full` run; assert the full/download/upload bandwidth warning and tier-D Ask-Execs classification. Run WAL-mode Backup DB/Set DB/hot-swap tests through `sqlite_copy.py` and prove `quick_check` plus sidecar hygiene. Run `agent.test_googler_dorks` and pin preset-under-explicit-field precedence, aliases, no-space operator syntax, uppercase parenthesized `OR`, site-group same-domain handling, `links_only` file-hunt guidance, and the direct-tool versus visual/pool structured-field boundary. Also pin the two-tier order (four plain-HTTP server-rendered routes before any browser), explicit engine pins skipping Tier 0, `headless: false` for Tier 1, the seven-route browser order, tolerant string booleans, bounded retries, first-answer stopping, pinned-engine behavior, redirect unwrapping, and explicit Google-only advanced-operator semantics. The optional visible proof is `harness/googler_dork_hunt.py`: it uses the shipped builder, opens headed Chrome, targets public-domain/open-access sources, and stores JSON evidence under Tlamatini `Temp`; search-engine refusal is a failed proof run, not proof that the compiled query is wrong. Validate migration 0194's Deep Internet Research card and 0195-0197's NetSpeed rows, the `adding-external-mcp` classify/import/doctor/activate/wait/list/call lifecycle, the 88/66/108/29/197 source counts, and the private contact-sync/public-empty boundary. (That pass verified `v1.50.0` as the annotated release. The RULE generalises and still applies: verify whatever `git describe` reports today, and report a later `HEAD` separately rather than calling the release untagged.)
- 
- > ⚠️ If the answer-complete logic ever needs adjusting, verify it against a LIVE
- > server with `--count 2` before trusting a full run — a daily test that silently
--> mis-detects completion is worse than no test.
+ When the current release is touched, verify NetSpeed-Calculator with `action='latency'` or `validate` by default, never a repeated `full` run; assert the full/download/upload bandwidth warning and tier-D Ask-Execs classification. Run WAL-mode Backup DB/Set DB/hot-swap tests through `sqlite_copy.py` and prove `quick_check` plus sidecar hygiene. Run `agent.test_googler_dorks` and pin preset-under-explicit-field precedence, aliases, no-space operator syntax, uppercase parenthesized `OR`, site-group same-domain handling, `links_only` file-hunt guidance, and the direct-tool versus visual/pool structured-field boundary. Also pin the two-tier order (four plain-HTTP server-rendered routes before any browser), explicit engine pins skipping Tier 0, `headless: false` for Tier 1, the seven-route browser order, tolerant string booleans, bounded retries, first-answer stopping, pinned-engine behavior, redirect unwrapping, and explicit Google-only advanced-operator semantics. The optional visible proof is `harness/googler_dork_hunt.py`: it uses the shipped builder, opens headed Chrome, targets public-domain/open-access sources, and stores JSON evidence under Tlamatini `Temp`; search-engine refusal is a failed proof run, not proof that the compiled query is wrong. Validate migration 0194's Deep Internet Research card and 0195-0197's NetSpeed rows, the `adding-external-mcp` classify/import/doctor/activate/wait/list/call lifecycle, the 88/66/108/29/197 source counts, and the private contact-sync/public-empty boundary. (That pass verified `v1.50.0` as the annotated release. The RULE generalises and still applies: verify whatever `git describe` reports today, and report a later `HEAD` separately rather than calling the release untagged.)
+
+ 
+
+ > ⚠️ If the answer-complete logic ever needs adjusting, verify it against a LIVE
+
+ > server with `--count 2` before trusting a full run — a daily test that silently
+
+-> mis-detects completion is worse than no test.
+
 +> mis-detects completion is worse than no test.
 +
 +### Prompt Flow Run output regression (2026-10-04)
@@ -1086,17 +1118,28 @@ index 57b8a321..84d63c23 100644
 --- a/.gitignore
 +++ b/.gitignore
 @@ -239,9 +239,12 @@ open_router.key
- # .claude/ assets (hooks, settings.json, skills, memories) ARE tracked and
- # uploaded to GitHub. ONLY settings.local.json stays ignored — it holds
- # machine-local permission rules that embed live API-key fragments.
- .claude/settings.local.json
--.codex
-+.codex/*
-+!.codex/skills/
-+.codex/skills/*
-+!.codex/skills/tlamatini-release-validation/
- .vscode
- *.pos
+ # .claude/ assets (hooks, settings.json, skills, memories) ARE tracked and
+
+ # uploaded to GitHub. ONLY settings.local.json stays ignored — it holds
+
+ # machine-local permission rules that embed live API-key fragments.
+
+ .claude/settings.local.json
+
+-.codex
+
++.codex/*
+
++!.codex/skills/
+
++.codex/skills/*
+
++!.codex/skills/tlamatini-release-validation/
+
+ .vscode
+
+ *.pos
+
  *.log
 ````
 
@@ -1126,16 +1169,21 @@ index b7834472..5d3641b7 100644
 +++ b/ACPX.md
 @@ -20,9 +20,11 @@
  > **Current-state banner (Tlamatini v1.75.0 of 2026-10-03 — Compact mode became a real toolbar switch: ticking it unticks the real Configure rows, a model too small for everything activated locks it ON, every row is priced and a cut request is warned about, so ACPX follows the rows the user ticks (see the Compact mode note above); tagged at `f7eb53ff` and published on GitHub the same day (marked Latest, so self-update delivers it); the Self-modify switch landed on `main` right after the tag (`70aeeb87`) and is not yet in a tag — on top of v1.74.0 (Compact mode: a model too small for the complete request gets a COMPACT one, which in that tag had ACPX switched off; published 2026-10-01; the latest published release until v1.75.0 was published on 2026-10-03), v1.73.1 (Config ▸ Models asks the configured Ollama), v1.73.0 (every chat card gains a Drop button that erases one message from the chat AND from the history the model reads; the latest published release until v1.74.0 was published on 2026-10-01), v1.72.4 (Crawler and Googler can no longer lose a page's text in silence), v1.72.3 (the avatar's lips move clearly), v1.72.2 (block- and hang-proof Googler and Crawler), v1.72.1, the real context gauge release, v1.72.0, the direct chat microphone release, and v1.70.0, the Prompt Flow Panel release, superseding the v1.65.4 release of 2026-09-21; runtime/build resolution reports bare `1.75.0` even on subsequent source commits; a `v1.65.5` tag exists with no published release attached).** This file is the original ACPX/Skills design walkthrough; its per-section numbers are an intentional **historical Phase-1 snapshot** (5 ACPX `@tool`s, 20 seed skills, 14 agent_ids, 57 visual agents). The authoritative current counts are **89 visual agent types**, **109 built-in Multi-Turn tools** (20 core + 67 wrapped `chat_agent_*` + 12 ACPX/Skill + 10 External-MCP supervisors), **29 skills**, and a **12-tool LLM-facing ACPX/Skill surface** (`acp_doctor`, `list_acp_agents`, `acp_spawn`, `acp_send`, `acp_send_and_wait`, `acp_kill`, `acp_transcript`, `acp_session_status`, `acp_list_sessions`, `acp_relay`, `list_skills`, `invoke_skill`). Dynamic `ext__*` remotes are counted separately. The `DEFAULT_ACP_AGENTS` registry remains **14** entries (§3.5). For the live surface read `CLAUDE.md` and `docs/claude/acpx.md`, not the historical numbers below.
- 
- ---
- 
+ 
+
+ ---
+
+ 
+
 -**Prompt Flow source update (2026-10-03):** Prompt and Programmed Prompt still control Multi-Turn/ACPX per operation. **User Input** retains the existing user-reply step; **User Commentary** is a static speech-bubble review note and never invokes ACPX, tools or a model, or modifies run history. Version 2 `.fpmt` saves migrate version 1 executable commentary to User Input. Static notes support inline editing, color/font/size choices and automatic full-text containment without internal scrollbars. This source change does not imply a rebuilt release. See [the Prompt Flow guide](docs/prompting-flow-designer.md).
 +**Prompt Flow source update (2026-10-04):** Prompt and Programmed Prompt still control Multi-Turn/ACPX per operation. **User Input** retains the existing user-reply step; **User Commentary** is a static speech-bubble review note and never invokes ACPX, tools or a model, or modifies run history. Version 2 `.fpmt` saves migrate version 1 executable commentary to User Input. Static notes support inline editing, a floating toolbar for mixed text styles, direct border/corner resizing and automatic full-text containment without internal scrollbars. This source change does not imply a rebuilt release. See [the Prompt Flow guide](docs/prompting-flow-designer.md).
 +
 +The Run output divider gives the log 5–95% of the available canvas/output height with independent scrolling and unchanged content scale. Its per-user layout preference is separate from flow files. This layout change does not alter ACPX invocation, model context or runtime tool protocols.
  
- ## 0. Read this first
- 
+ ## 0. Read this first
+
+ 
+
  This document explains a feature that has just been added to Tlamatini and that you, the user, have **not yet committed**. The feature has two parts that work together:
 ````
 
@@ -1355,25 +1403,44 @@ index b49e7787..f23b0bf7 100644
 --- a/CLAUDE.md
 +++ b/CLAUDE.md
 @@ -219,11 +219,17 @@ lessons and PDFer guidance.
-    Claude side (`preflight.py`, `monitor.py`, `context_gauge_visible.py`,
-    `pdfer_nuance_visible.py`, `voice_commands_visible.py`, …). That is
-    inventory, not an obligation — they are Claude-session tooling.
- 
--### Set 4 — Codex's documentation skills (`.codex/skills/`)
-+### Set 4 — Codex's documentation and release-validation skills (`.codex/skills/`)
- 
--`full-project-pdf-dossier` · `overlap-safe-pptx-dossier`
-+`full-project-pdf-dossier` · `overlap-safe-pptx-dossier` · `tlamatini-release-validation`
-+
-+The release-validation skill covers the real Windows installer, source/frozen
-+panels, chat, agent lifecycle and cleanup evidence. It is a new, uncommitted
-+worktree addition during the October 4 campaign; Angela's explicit no-commit
-+instruction takes precedence over the standing commit rule below. Keep it
-+visible in the worktree and report the inventory's untracked result honestly.
- 
- Assistant-specific by design and **NOT mirrored** to the other two. ⚠️ They
- mandate source-derived facts, so keep their examples DATED and explicitly
- historical rather than letting an old release number read as current.
+    Claude side (`preflight.py`, `monitor.py`, `context_gauge_visible.py`,
+
+    `pdfer_nuance_visible.py`, `voice_commands_visible.py`, …). That is
+
+    inventory, not an obligation — they are Claude-session tooling.
+
+ 
+
+-### Set 4 — Codex's documentation skills (`.codex/skills/`)
+
++### Set 4 — Codex's documentation and release-validation skills (`.codex/skills/`)
+
+ 
+
+-`full-project-pdf-dossier` · `overlap-safe-pptx-dossier`
+
++`full-project-pdf-dossier` · `overlap-safe-pptx-dossier` · `tlamatini-release-validation`
+
++
+
++The release-validation skill covers the real Windows installer, source/frozen
+
++panels, chat, agent lifecycle and cleanup evidence. It is a new, uncommitted
+
++worktree addition during the October 4 campaign; Angela's explicit no-commit
+
++instruction takes precedence over the standing commit rule below. Keep it
+
++visible in the worktree and report the inventory's untracked result honestly.
+
+ 
+
+ Assistant-specific by design and **NOT mirrored** to the other two. ⚠️ They
+
+ mandate source-derived facts, so keep their examples DATED and explicitly
+
+ historical rather than letting an old release number read as current.
+
 @@ -847,11 +853,13 @@ Coverage: `agent/test_dialog_dismissal_policy.py` (**35 tests** — bubble phase
  ## 🧩 Prompt Flow Panel — a diagram editor for chains of prompts (2026-09-25, NOT YET COMMITTED)
  
@@ -1397,10 +1464,14 @@ index b49e7787..f23b0bf7 100644
  5. **One name survives from the first draft: the guide's FILENAME.** The feature was drafted on 2026-09-23 as the "Prompting Flow Designer" (`prompting_flow_designer.html`, `/ws/prompting-flow/`, `check_prompting_flow`, `.pmt`). Every doc now uses the real names, but the guide is still `docs/prompting-flow-designer.md` because `build.py`, `build_runtime_assets.py`, `copy_source_assets.py` and `test_prompt_flow_panel_carriage.py` pin that exact path, and it ships to users. Rename it only by changing all four in the same pass. The 2026-09-23 entry in `recent-fixes.md` keeps the old names on purpose (it is history) under a "Renamed 2026-09-25" banner. Full contract: `docs/claude/frontend.md` → *Prompt Flow Panel*, `docs/claude/architecture.md` → *Prompt Flow Panel runtime*, `docs/claude/multi-turn.md` → *Multi-Turn and ACPX inside the Prompt Flow Panel*.
 -6. **Both panels share canvas mechanics.** `flow-canvas-interactions.js` and `flow_canvas.css` own triangle highlighting, connection capture/cancellation, curve geometry, wire hover/selection glow, Fit/zoom, context-menu placement and divider gestures. Keep free dragging, Ctrl/Meta-drag duplication, modifier/marquee selection, keyboard editing and one-step Undo/Redo aligned. Use gold SVG contour glow for selected Prompt Flow figures; playback keeps node status colors, while wire hover/selection feedback takes precedence over traversed-wire green. Load the shared stylesheet after panel styles and before `dialog_theme.css`. Keep seven executable operations, a separate static User Commentary annotation, and no Connection tool. Current cache suffix: `-prompt-commentary-input-1`. The foreground `scripts/prompt_flow_connections_visible.py` run passed all 30 comparison checkpoints on 2026-09-26; `scripts/acp_editor_visible.py` passed 17 regressions.
 +6. **Both panels share canvas mechanics.** `flow-canvas-interactions.js` and `flow_canvas.css` own triangle highlighting, connection capture/cancellation, curve geometry, wire hover/selection glow, Fit/zoom, context-menu placement and divider gestures. Keep free dragging, Ctrl/Meta-drag duplication, modifier/marquee selection, keyboard editing and one-step Undo/Redo aligned. Use gold SVG contour glow for selected Prompt Flow figures; playback keeps node status colors, while wire hover/selection feedback takes precedence over traversed-wire green. Load the shared stylesheet after panel styles and before `dialog_theme.css`. Keep seven executable operations, a separate static User Commentary annotation, and no Connection tool. Current cache suffix: `-flow-file-opening-2`. The foreground `scripts/prompt_flow_connections_visible.py` run passed all 30 comparison checkpoints on 2026-09-26; `scripts/acp_editor_visible.py` passed 17 regressions.
- 
- ---
- 
- ## Temp & Templates Directory Policy (2026-06-02)
+ 
+
+ ---
+
+ 
+
+ ## Temp & Templates Directory Policy (2026-06-02)
+
 @@ -1011,4 +1019,19 @@ helpers/catalogs and runs a harmless File-Creator check before packaging. See
  
  ## Image/video error reporting and recovery (2026-09-26)
@@ -1410,16 +1481,26 @@ index b49e7787..f23b0bf7 100644
 +
 +## Windows flow-file lifecycle — 2026-10-04 source changes
 +
-+Both `.flw` agent flows and `.fpmt` prompting flows now have Windows registration, repair, removal, status and Default Apps handling. Explorer/source command-line opening validates a bounded snapshot, reuses a matching running server before database startup, and returns through login to the correct editor without execution. Main-chat Open/drop/Reopen routes both formats into separate editor tabs while preserving the chat document. The historical `.flw` installer wrappers cover both types for old installer/uninstaller binaries; independent management uses `flow_file_associations.ps1 -Extensions`. Never erase UserChoice or another application’s Open With entries. Update Repair respects explicit unregistration and installation ownership. See [Windows flow files](docs/windows-flow-files.md). Cache suffix: `-flow-file-opening-2`. Registration scripts resolve omitted `InstallDir` inside the body, never from a `$PSScriptRoot` parameter default. Release acceptance must identify the exact compiled artifacts tested; source tests and package edits alone do not verify a frozen executable.
-+
-+Uninstallation stops installation-owned workers only after confirmation, including
-+agent children identified through their inherited `TLAMATINI_AGENTS_ROOT` after
-+reparenting. PID creation times and path boundaries protect unrelated processes;
-+never replace this with a process-name sweep. The main application must close
-+first. Preserve the existing agents/nonempty-content contract. A locked binary
-+or denied owned registry removal is an incomplete uninstall, and shell refresh
-+must not terminate Explorer. The standalone uninstaller bundles
-+`uninstall_processes.py` and psutil. See the release-validation skill and lifecycle
++Both `.flw` agent flows and `.fpmt` prompting flows now have Windows registration, repair, removal, status and Default Apps handling. Explorer/source command-line opening validates a bounded snapshot, reuses a matching running server before database startup, and returns through login to the correct editor without execution. Main-chat Open/drop/Reopen routes both formats into separate editor tabs while preserving the chat document. The historical `.flw` installer wrappers cover both types for old installer/uninstaller binaries; independent management uses `flow_file_associations.ps1 -Extensions`. Never erase UserChoice or another application’s Open With entries. Update Repair respects explicit unregistration and installation ownership. See [Windows flow files](docs/windows-flow-files.md). Cache suffix: `-flow-file-opening-2`. Registration scripts resolve omitted `InstallDir` inside the body, never from a `$PSScriptRoot` parameter default. Release acceptance must identify the exact compiled artifacts tested; source tests and package edits alone do not verify a frozen executable.
+
++
+
++Uninstallation stops installation-owned workers only after confirmation, including
+
++agent children identified through their inherited `TLAMATINI_AGENTS_ROOT` after
+
++reparenting. PID creation times and path boundaries protect unrelated processes;
+
++never replace this with a process-name sweep. The main application must close
+
++first. Preserve the existing agents/nonempty-content contract. A locked binary
+
++or denied owned registry removal is an incomplete uninstall, and shell refresh
+
++must not terminate Explorer. The standalone uninstaller bundles
+
++`uninstall_processes.py` and psutil. See the release-validation skill and lifecycle
+
 +tests; retain the user's explicit no-commit instruction during a validation run.
 ````
 
@@ -1464,10 +1545,14 @@ index 3bd02bc6..6e6ce085 100644
 +**Commentary/Input contract (2026-10-04, source changes):** Seven executable operations remain separate from static **User Commentary**. **User Input** (`user_input`) keeps the question/reply/cancellation mechanism and notched figure. **User Commentary** (`user_commentary`) is edited entirely on the canvas: double-click/Enter writes in the bubble; a floating mini toolbar formats selected text with different fonts, sizes, text colors, bold, italic and underline within the same note. With a caret, formatting applies to newly typed text; outside editing it applies to the whole note. Bubble color and alignment affect the note. There is no commentary configuration dialog or numeric dimension form. Drag any border or corner to resize, including while editing; Fit text removes spare height. Done/Ctrl+Enter saves; Cancel/Escape restores the whole edit. Ctrl+Z/Y works inside the editor; completed edits, moves, resizes and duplicates use flow Undo/Redo. Bubbles contain their full wrapped text without internal scrollbars. Version 2 files persist allowlisted `runs` plus matching literal `text`; older plain notes normalize to one run, and version 1 executable commentary still migrates to User Input with IDs/edges/settings intact. Comments have no ports/Start/runtime/context/history/step effects. The draft key remains `.draft.v1.<user id>`. Cache suffix: `-flow-file-opening-2`. See `docs/prompting-flow-designer.md` and the 2026-10-04 verification record; the October 4 local release-validation campaign tracks subsequent isolated frozen builds and runtime acceptance.
 +
 +**Run output layout (2026-10-04, source changes):** Drag the horizontal divider to give Run output 5–95% of the combined canvas/output pane height, excluding fixed headers, status and divider (initial share: 20%). Each pane scrolls independently; resizing preserves zoom, node geometry and text size. Up/Down changes one percentage point, Shift+Up/Down five, Home/End selects 5%/95%. Escape, blur or pointer cancellation ends a drag. Collapse/reopen and window resizing retain the ratio. The per-user `tlamatini.prompting-flow.layout.v1.<user id>` preference is separate from flow files, drafts, dirty state and Undo/Redo. Keep the native details log viewport explicitly sized so its scrollbar remains usable. See `docs/changes/2026-10-04-run-output-resize.md`.
- 
- ---
- 
- ## Temp & Templates Directory Policy (2026-06-02)
+ 
+
+ ---
+
+ 
+
+ ## Temp & Templates Directory Policy (2026-06-02)
+
 @@ -839,4 +841,9 @@ helpers/catalogs and runs a harmless File-Creator check before packaging. See
  
  ## Image/video error reporting and recovery (2026-09-26)
@@ -1508,7 +1593,8 @@ index 5394ebeb..d5a06041 100644
 @@ -574,11 +574,13 @@ Markdown-defined `SKILL.md` packages run by `SkillHarness`. Disk is the source o
  The ACP (Agentic Control Panel) page (`templates/agent/agentic_control_panel.html` + 18 `acp-*`/canvas JS modules in strict load order) is a drag-and-drop canvas of agent nodes wired by connections, saved/loaded as **`.flw`** files (JSON, `schemaVersion: 2`). A `.flw` double-click opens Tlamatini via the file association (`register_flw.ps1`). Open it from the chat's **Panels ▸ Agentic Control Panel** (the old *Agents* menu is gone since 2026-09-25). Since 2026-09-25 it also has an **editor toolbar** (`acp-editor-tools.js`: Undo/Redo, Configure, Duplicate with settings + internal connections, Delete, Starters, Flow settings, zoom −/+/Fit), an **agent search box**, an empty-canvas "Try an example" card, a **Help** entry, and a `• ` unsaved marker in the tab title; its File menu links to the **Prompt Flow Panel**.
  
- **Prompt Flow Panel (2026-09-25).** A sibling page at `/agent/prompt_flow_panel/` (template `prompt_flow_panel.html`, WebSocket `ws/prompt-flow-panel/`) for chains of **prompts** rather than agents: seven executable operations (Prompt, Programmed Prompt, Decision, Feed embeddings, Flush embeddings, Clean History, User Input), plus static User Commentary notes, saved as **`.fpmt`** JSON (`format: "tlamatini-prompting-flow"`, version 2; version 1 imports migrate the old reply nodes to User Input). ⚠️ `.pmt` stays with the plain-text system prompts (`prompt.pmt`, `monitoring-prompt.pmt`) and the panel refuses to open one. Each run gets its own chain, history, embeddings and cancellation key, and never loads the shared `application/` corpus. Backend: `prompt_flow_panel_consumer.py`, `prompt_flow_panel_runtime.py`, `services/prompt_flow_panel.py`; frozen-build gate `check_prompt_flow_panel`. Guide: `docs/prompting-flow-designer.md`.
+ **Prompt Flow Panel (2026-09-25).** A sibling page at `/agent/prompt_flow_panel/` (template `prompt_flow_panel.html`, WebSocket `ws/prompt-flow-panel/`) for chains of **prompts** rather than agents: seven executable operations (Prompt, Programmed Prompt, Decision, Feed embeddings, Flush embeddings, Clean History, User Input), plus static User Commentary notes, saved as **`.fpmt`** JSON (`format: "tlamatini-prompting-flow"`, version 2; version 1 imports migrate the old reply nodes to User Input). ⚠️ `.pmt` stays with the plain-text system prompts (`prompt.pmt`, `monitoring-prompt.pmt`) and the panel refuses to open one. Each run gets its own chain, history, embeddings and cancellation key, and never loads the shared `application/` corpus. Backend: `prompt_flow_panel_consumer.py`, `prompt_flow_panel_runtime.py`, `services/prompt_flow_panel.py`; frozen-build gate `check_prompt_flow_panel`. Guide: `docs/prompting-flow-designer.md`.
+
  
 -**Commentary/Input split (2026-10-03, source changes):** The Operations bar contains seven executable operations and a separate static **User Commentary** asset. **User Input** (`user_input`) keeps the old question/reply/cancellation mechanism and uses the supplied notched-top, downward-point figure. **User Commentary** (`user_commentary`) is a speech-bubble review note: double-click/Enter writes in place, Done/Ctrl+Enter saves, Escape cancels; Configure selects palette color, font, size, emphasis, alignment and dimensions. Bubbles and their editors grow to contain the full wrapped text at the chosen width/font, **without internal scrollbars**; saved height is a minimum. They move, resize, duplicate and Undo/Redo, save/open/recover with the diagram, have no ports or Start status, and never affect model context, history or playback steps. New `.fpmt` saves use version **2**; version 1 files/drafts migrate their executable commentary to User Input while preserving IDs, connections and configuration. The local-storage key still ends in `.draft.v1.<user id>` for compatibility; it does not identify the document version. Current cache suffix: `-prompt-commentary-input-1`. Verified: 61 backend/packaging tests and nine real foreground Chrome checks in `scripts/prompt_flow_commentary_visible.py`. No release executable was rebuilt. See `docs/prompting-flow-designer.md` and the 2026-10-03 entry in `docs/claude/recent-fixes.md`.
 +**Commentary/Input contract (2026-10-04, source changes):** Seven executable operations remain separate from static **User Commentary**. **User Input** (`user_input`) keeps the question/reply/cancellation mechanism and notched figure. **User Commentary** (`user_commentary`) is edited entirely on the canvas: double-click/Enter writes in the bubble; a floating mini toolbar formats selected text with different fonts, sizes, text colors, bold, italic and underline within the same note. With a caret, formatting applies to newly typed text; outside editing it applies to the whole note. Bubble color and alignment affect the note. There is no commentary configuration dialog or numeric dimension form. Drag any border or corner to resize, including while editing; Fit text removes spare height. Done/Ctrl+Enter saves; Cancel/Escape restores the whole edit. Ctrl+Z/Y works inside the editor; completed edits, moves, resizes and duplicates use flow Undo/Redo. Bubbles contain their full wrapped text without internal scrollbars. Version 2 files persist allowlisted `runs` plus matching literal `text`; older plain notes normalize to one run, and version 1 executable commentary still migrates to User Input with IDs/edges/settings intact. Comments have no ports/Start/runtime/context/history/step effects. The draft key remains `.draft.v1.<user id>`. Cache suffix: `-flow-file-opening-2`. See `docs/prompting-flow-designer.md` and the 2026-10-04 verification record; the October 4 local release-validation campaign tracks subsequent isolated frozen builds and runtime acceptance.
@@ -1517,10 +1603,14 @@ index 5394ebeb..d5a06041 100644
 +**Run output layout (2026-10-04, source changes):** Drag the horizontal divider to give Run output 5–95% of the combined canvas/output pane height, excluding fixed headers, status and divider (initial share: 20%). Each pane scrolls independently; resizing preserves zoom, node geometry and text size. Up/Down changes one percentage point, Shift+Up/Down five, Home/End selects 5%/95%. Escape, blur or pointer cancellation ends a drag. Collapse/reopen and window resizing retain the ratio. The per-user `tlamatini.prompting-flow.layout.v1.<user id>` preference is separate from flow files, drafts, dirty state and Undo/Redo. Keep the native details log viewport explicitly sized so its scrollbar remains usable. See `docs/changes/2026-10-04-run-output-resize.md`.
 +
 +**Shared canvas mechanics (2026-09-26):** Both panels use `flow-canvas-interactions.js` and `flow_canvas.css` for triangles, connection dragging/cancellation, curve geometry, gold hover/selection glow, zoom/Fit, menus and divider gestures. Keep free dragging, Ctrl/Meta-drag copies, marquee selection, keyboard editing and Undo/Redo aligned. Prompt Flow retains node status colors; interactive wire highlights override traversed-wire green. The Operations bar has seven executable operations plus static User Commentary and no Connection tool. Cache suffix: `-flow-file-opening-2`. See `docs/claude/frontend.md` and the 30-check foreground comparison harness.
- 
- ### 12.2 Flow Compiler pipeline (canvas / chat → backend → pool)
- Two browser surfaces produce flows; **both compile through the same backend Agent Contract registry** before touching disk:
- 
+ 
+
+ ### 12.2 Flow Compiler pipeline (canvas / chat → backend → pool)
+
+ Two browser surfaces produce flows; **both compile through the same backend Agent Contract registry** before touching disk:
+
+ 
+
 @@ -1123,4 +1125,9 @@ helpers/catalogs and runs a harmless File-Creator check before packaging. See
  
  Image/video model failures accumulate in one shared, themed, non-modal fatal-error dialog with an audible notification. Tlamatini keeps running: preserve its retry/tactic ladder, cancellation controls and configured flow recovery routes. Keep the configured model identities; never report a surviving observer or raw concatenation as successful analysis. Dismiss hides the dialog while retaining its history; new failures reopen it. See [the shared behavior and verification contract](docs/visual-analysis-errors.md).
@@ -1635,12 +1725,17 @@ index 0bde9ad7..251d172d 100644
 --- a/README.md
 +++ b/README.md
 @@ -411,11 +411,12 @@ browser test (28 of 28 checks). How it works:
- **v1.72.0, 2026-09-27:** direct voice prompts now start from the microphone beside Send. Whisperer captures without waiting for an Ollama tool decision, stops on silence, transcribes and either submits through the existing chat or leaves an editable draft, as selected in the new Config ▸ Mic dialog. Recording status stays in chat; internal worker diagnostics use the main console/log. This adds no agent type or tool. v1.72.0 was published on GitHub on 2026-09-28, and v1.72.4 carries it.
- 
- The same dependency audit covers all 89 agents and 743 Python files: missing direct declarations are now present, with ESPHome's incompatible private runtime kept in its own manifest. See [dependency coverage](docs/dependency-coverage-audit.md).
+ **v1.72.0, 2026-09-27:** direct voice prompts now start from the microphone beside Send. Whisperer captures without waiting for an Ollama tool decision, stops on silence, transcribes and either submits through the existing chat or leaves an editable draft, as selected in the new Config ▸ Mic dialog. Recording status stays in chat; internal worker diagnostics use the main console/log. This adds no agent type or tool. v1.72.0 was published on GitHub on 2026-09-28, and v1.72.4 carries it.
+
  
--**Carried from the published v1.70.0 release:** a Prompt Flow Panel, a tidier menu bar, and a canvas you can edit. **Source refactor, 2026-10-03:** the former executable User Commentary is now User Input, and User Commentary is a static note. New diagrams use version 2; version 1 files/drafts migrate automatically without changing reply behavior. This refactor has not been rebuilt into a release executable.
-+**Carried from the published v1.70.0 release:** a Prompt Flow Panel, a tidier menu bar, and a canvas you can edit. **Source refactor, 2026-10-03/04:** the former executable User Commentary is now User Input, and User Commentary is a static note. New diagrams use version 2; version 1 files/drafts migrate automatically without changing reply behavior. These changes remain uncommitted. The [October 4 release-validation record](docs/changes/2026-10-04-release-validation.md) tracks the subsequent local frozen builds, actual installation, runtime checks and remaining limitations.
+
+ The same dependency audit covers all 89 agents and 743 Python files: missing direct declarations are now present, with ESPHome's incompatible private runtime kept in its own manifest. See [dependency coverage](docs/dependency-coverage-audit.md).
+
+ 
+-**Carried from the published v1.70.0 release:** a Prompt Flow Panel, a tidier menu bar, and a canvas you can edit. **Source refactor, 2026-10-03:** the former executable User Commentary is now User Input, and User Commentary is a static note. New diagrams use version 2; version 1 files/drafts migrate automatically without changing reply behavior. This refactor has not been rebuilt into a release executable.
+
++**Carried from the published v1.70.0 release:** a Prompt Flow Panel, a tidier menu bar, and a canvas you can edit. **Source refactor, 2026-10-03/04:** the former executable User Commentary is now User Input, and User Commentary is a static note. New diagrams use version 2; version 1 files/drafts migrate automatically without changing reply behavior. These changes remain uncommitted. The [October 4 release-validation record](docs/changes/2026-10-04-release-validation.md) tracks the subsequent local frozen builds, actual installation, runtime checks and remaining limitations.
+
  
 -- **Prompt Flow Panel — draw a conversation, then press Play.** Open **Panels ▸ Prompt Flow Panel**. Drag operations onto a canvas and connect them: **Prompt** (ask Tlamatini something, optionally with Multi-Turn and ACPX), **Programmed Prompt** (the same, after a delay or at a set time), **Decision** (take the Yes or No branch depending on the last answer, or ask you), **Feed embeddings** / **Flush embeddings** (give that run extra reference text, or take it away), **Clean History**, and **User Input** (stop and ask you something, using the notched figure). Add independent **User Commentary** speech bubbles for static review notes: double-click to write, choose colors and fonts in Configure, and resize freely; the bubbles grow to contain their text without internal scrollbars. Comments save with the flow and never execute. In executable operation text, write `{{last_output}}` to pass the previous answer forward; it stays literal inside a static comment. **Validate**, then **Play** — the running step lights up, and **Pause** / **Stop** work mid-flow. Each run has its own conversation and embeddings, so it never disturbs your chat. Save your diagram as a **`.fpmt`** file; opening one never runs it. Try **File ▸ Open example**, or open [docs/examples/prompting-kickoff.fpmt](docs/examples/prompting-kickoff.fpmt). Full guide: [docs/prompting-flow-designer.md](docs/prompting-flow-designer.md).
 +- **Prompt Flow Panel — draw a conversation, then press Play.** Open **Panels ▸ Prompt Flow Panel**. Drag operations onto a canvas and connect them: **Prompt** (ask Tlamatini something, optionally with Multi-Turn and ACPX), **Programmed Prompt** (the same, after a delay or at a set time), **Decision** (take the Yes or No branch depending on the last answer, or ask you), **Feed embeddings** / **Flush embeddings** (give that run extra reference text, or take it away), **Clean History**, and **User Input** (stop and ask you something, using the notched figure). Add independent **User Commentary** speech bubbles for static review notes: double-click to write, format selected passages with a floating toolbar (mixed fonts, sizes, colors, bold, italic and underline), and resize from any edge or corner; the bubbles grow to contain their text without internal scrollbars. Comments save with the flow and never execute. In executable operation text, write `{{last_output}}` to pass the previous answer forward; it stays literal inside a static comment. **Validate**, then **Play** — the running step lights up, and **Pause** / **Stop** work mid-flow. Each run has its own conversation and embeddings, so it never disturbs your chat. Save your diagram as a **`.fpmt`** file; opening one never runs it. Try **File ▸ Open example**, or open [docs/examples/prompting-kickoff.fpmt](docs/examples/prompting-kickoff.fpmt). Full guide: [docs/prompting-flow-designer.md](docs/prompting-flow-designer.md). The 2026-10-04 source implementation adds [Windows opening and association management](docs/windows-flow-files.md) for both `.flw` and `.fpmt`, including main-chat opening and returning through login to the right editor.
@@ -1650,15 +1745,22 @@ index 0bde9ad7..251d172d 100644
  
  **Video-Analyzer now transcribes video audio tracks and builds detailed summaries.** Choose `analysis_type: transcription` for timestamped speech from selected audio tracks, or `analysis_type: summary` to combine that speech with sampled visual evidence: scenes, actions, on-screen text, slides, facts, decisions and action items. Reports retain timestamps, coverage limits and partial failures. The existing `robotics` mode remains the default, and Parametrizer, workflow controls and MCP tools expose the new modes. See the [Video-Analyzer contract](Tlamatini/agent/agents/video_analyzer/README.md).
 @@ -570,9 +571,9 @@ When you enable, configure, modify, chain, or execute an agent, **that agent and
- Everything Tlamatini can do, grouped:
- 
- **🧩 Orchestration & design**
+ Everything Tlamatini can do, grouped:
+
+ 
+
+ **🧩 Orchestration & design**
+
  - **Visual Workflow Designer (ACP)** — 89 drag-and-drop agent types wired into runnable flows; save/load `.flw` files; Flow Compiler validates the canvas into `config.yaml`. An editor toolbar adds undo/redo, configure, duplicate-with-settings, delete, zoom/fit and an agent search box. Open it from **Panels ▸ Agentic Control Panel**.
--- **Prompt Flow Panel** — design a chain of prompts, decisions, embeddings and user questions on a canvas, save it as a `.fpmt` file, and play it against your own models; each run keeps its own conversation and embeddings. **User Input** collects runtime replies; static **User Commentary** bubbles support colors, fonts, resizing and complete text containment without scrollbars. Open it from **Panels ▸ Prompt Flow Panel**.
-+- **Prompt Flow Panel** — design a chain of prompts, decisions, embeddings and user questions on a canvas, save it as a `.fpmt` file, and play it against your own models; each run keeps its own conversation and embeddings. **User Input** collects runtime replies; static **User Commentary** bubbles support a floating rich-text toolbar, mixed styles within a note, all-border resizing and complete text containment without scrollbars. A horizontal divider gives Run output 5–95% of the canvas/output space while both panes scroll independently. Open it from **Panels ▸ Prompt Flow Panel**.
+-- **Prompt Flow Panel** — design a chain of prompts, decisions, embeddings and user questions on a canvas, save it as a `.fpmt` file, and play it against your own models; each run keeps its own conversation and embeddings. **User Input** collects runtime replies; static **User Commentary** bubbles support colors, fonts, resizing and complete text containment without scrollbars. Open it from **Panels ▸ Prompt Flow Panel**.
+
++- **Prompt Flow Panel** — design a chain of prompts, decisions, embeddings and user questions on a canvas, save it as a `.fpmt` file, and play it against your own models; each run keeps its own conversation and embeddings. **User Input** collects runtime replies; static **User Commentary** bubbles support a floating rich-text toolbar, mixed styles within a note, all-border resizing and complete text containment without scrollbars. A horizontal divider gives Run output 5–95% of the canvas/output space while both panes scroll independently. Open it from **Panels ▸ Prompt Flow Panel**.
+
  - **Multi-Turn orchestration** — a tool-calling loop with **109 built-in tools** and a global execution planner; **Step-by-Step** mode paces hands-on setup one action at a time; **self-healing model steps** mean a network/model hiccup never freezes her — she retries under a watchdog, finishes gracefully from work already done, and always tells you what happened.
- - **FlowCreator / FlowHypervisor** — let an LLM design a flow; a watchdog monitors flow health. FlowCreator is now also **callable from chat** (`chat_agent_flowcreator`): describe a flow in plain words and it writes a real, canvas-loadable `.flw` file to disk.
- - **Parametrizer / Gatewayer / Gateway-Relayer / Node Manager** — chain agent outputs into the next agent's config; trigger flows from webhooks, folder-drops, or GitHub/GitLab.
+ - **FlowCreator / FlowHypervisor** — let an LLM design a flow; a watchdog monitors flow health. FlowCreator is now also **callable from chat** (`chat_agent_flowcreator`): describe a flow in plain words and it writes a real, canvas-loadable `.flw` file to disk.
+
+ - **Parametrizer / Gatewayer / Gateway-Relayer / Node Manager** — chain agent outputs into the next agent's config; trigger flows from webhooks, folder-drops, or GitHub/GitLab.
+
  - **ACPX** — spawn external coding-agent CLIs (Claude Code, Codex, Cursor, Gemini, Qwen, and more) as tools and relay between them.
 ````
 
@@ -1931,137 +2033,263 @@ index bf55bc2c..d64a6afa 100644
 --- a/Tlamatini/agent/agents/barrier/test_barrier.py
 +++ b/Tlamatini/agent/agents/barrier/test_barrier.py
 @@ -10,16 +10,18 @@
- """
- Test script for the Barrier agent.
- Simulates multiple source agents starting barrier sub-processes concurrently.
- Verifies: flags created, last arrival fires, no deadlock, fast completion.
-+Run from a verified visible foreground console; child output remains live.
- """
- import os
- import sys
- import time
- import shutil
- import tempfile
- import subprocess
- import threading
-+from pathlib import Path
- 
- # --- Config ---
- NUM_SOURCES = 4
- SOURCE_NAMES = [f"test_source_{i}" for i in range(1, NUM_SOURCES + 1)]
+ """
+
+ Test script for the Barrier agent.
+
+ Simulates multiple source agents starting barrier sub-processes concurrently.
+
+ Verifies: flags created, last arrival fires, no deadlock, fast completion.
+
++Run from a verified visible foreground console; child output remains live.
+
+ """
+
+ import os
+
+ import sys
+
+ import time
+
+ import shutil
+
+ import tempfile
+
+ import subprocess
+
+ import threading
+
++from pathlib import Path
+
+ 
+
+ # --- Config ---
+
+ NUM_SOURCES = 4
+
+ SOURCE_NAMES = [f"test_source_{i}" for i in range(1, NUM_SOURCES + 1)]
+
 @@ -66,27 +68,38 @@ def start_barrier_process(test_dir, caller_name, results, index):
-         proc = subprocess.Popen(
-             [sys.executable, "barrier.py"],
-             cwd=test_dir,
-             env=env,
--            stdout=subprocess.PIPE,
--            stderr=subprocess.PIPE,
--            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
-         )
--        stdout, stderr = proc.communicate(timeout=TIMEOUT_SECONDS)
-+        proc.wait(timeout=TIMEOUT_SECONDS)
-         results[index] = {
-             "caller": caller_name,
-             "returncode": proc.returncode,
--            "stdout": stdout.decode(errors="replace"),
--            "stderr": stderr.decode(errors="replace"),
-+            "stdout": "Output inherited the visible test console.",
-+            "stderr": "Output inherited the visible test console.",
-         }
-     except subprocess.TimeoutExpired:
-         proc.kill()
-+        proc.wait(timeout=5)
-         results[index] = {"caller": caller_name, "returncode": -1, "error": "TIMEOUT"}
-     except Exception as e:
-         results[index] = {"caller": caller_name, "returncode": -1, "error": str(e)}
- 
- 
- def run_test():
-+    if sys.platform == "win32":
-+        import ctypes
-+        kernel32, user32 = ctypes.windll.kernel32, ctypes.windll.user32
-+        kernel32.GetConsoleWindow.restype = ctypes.c_void_p
-+        user32.GetForegroundWindow.restype = ctypes.c_void_p
-+        user32.IsWindowVisible.argtypes = [ctypes.c_void_p]
-+        user32.IsIconic.argtypes = [ctypes.c_void_p]
-+        window = kernel32.GetConsoleWindow()
-+        if not (window and user32.IsWindowVisible(window) and not user32.IsIconic(window)
-+                and user32.GetForegroundWindow() == window):
-+            raise RuntimeError("Barrier validation requires a visible foreground console")
-+    elif not sys.stdout.isatty():
-+        raise RuntimeError("Barrier validation requires a visible interactive terminal")
-     # Create test directory structure inside a temp dir
-     base_tmp = tempfile.mkdtemp(prefix="barrier_test_")
-     pool_dir = os.path.join(base_tmp, "pools", "test_pool")
-     test_dir = os.path.join(pool_dir, "barrier_test_1")
+         proc = subprocess.Popen(
+
+             [sys.executable, "barrier.py"],
+
+             cwd=test_dir,
+
+             env=env,
+
+-            stdout=subprocess.PIPE,
+
+-            stderr=subprocess.PIPE,
+
+-            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
+
+         )
+
+-        stdout, stderr = proc.communicate(timeout=TIMEOUT_SECONDS)
+
++        proc.wait(timeout=TIMEOUT_SECONDS)
+
+         results[index] = {
+
+             "caller": caller_name,
+
+             "returncode": proc.returncode,
+
+-            "stdout": stdout.decode(errors="replace"),
+
+-            "stderr": stderr.decode(errors="replace"),
+
++            "stdout": "Output inherited the visible test console.",
+
++            "stderr": "Output inherited the visible test console.",
+
+         }
+
+     except subprocess.TimeoutExpired:
+
+         proc.kill()
+
++        proc.wait(timeout=5)
+
+         results[index] = {"caller": caller_name, "returncode": -1, "error": "TIMEOUT"}
+
+     except Exception as e:
+
+         results[index] = {"caller": caller_name, "returncode": -1, "error": str(e)}
+
+ 
+
+ 
+
+ def run_test():
+
++    if sys.platform == "win32":
+
++        import ctypes
+
++        kernel32, user32 = ctypes.windll.kernel32, ctypes.windll.user32
+
++        kernel32.GetConsoleWindow.restype = ctypes.c_void_p
+
++        user32.GetForegroundWindow.restype = ctypes.c_void_p
+
++        user32.IsWindowVisible.argtypes = [ctypes.c_void_p]
+
++        user32.IsIconic.argtypes = [ctypes.c_void_p]
+
++        window = kernel32.GetConsoleWindow()
+
++        if not (window and user32.IsWindowVisible(window) and not user32.IsIconic(window)
+
++                and user32.GetForegroundWindow() == window):
+
++            raise RuntimeError("Barrier validation requires a visible foreground console")
+
++    elif not sys.stdout.isatty():
+
++        raise RuntimeError("Barrier validation requires a visible interactive terminal")
+
+     # Create test directory structure inside a temp dir
+
+     base_tmp = tempfile.mkdtemp(prefix="barrier_test_")
+
+     pool_dir = os.path.join(base_tmp, "pools", "test_pool")
+
+     test_dir = os.path.join(pool_dir, "barrier_test_1")
+
 @@ -140,9 +153,9 @@ def run_test():
-             print(f"  OK:   {r['caller']} exited cleanly")
- 
-     # Check if target was fired
-     fired_flag = os.path.join(target_dir, "FIRED.flag")
--    target_fired = os.path.exists(fired_flag)
-+    target_fired = wait_for_target(target_dir)
-     print(f"\n  Target fired: {target_fired}")
-     print(f"  Elapsed: {elapsed:.2f}s")
- 
-     # Check no stale flags remain
+             print(f"  OK:   {r['caller']} exited cleanly")
+
+ 
+
+     # Check if target was fired
+
+     fired_flag = os.path.join(target_dir, "FIRED.flag")
+
+-    target_fired = os.path.exists(fired_flag)
+
++    target_fired = wait_for_target(target_dir)
+
+     print(f"\n  Target fired: {target_fired}")
+
+     print(f"  Elapsed: {elapsed:.2f}s")
+
+ 
+
+     # Check no stale flags remain
+
 @@ -207,10 +220,11 @@ def run_test():
-             all_ok2 = False
-         else:
-             print(f"  OK:   {r['caller']} exited cleanly")
- 
--    target_fired2 = os.path.exists(fired_flag)
-+    target_fired2 = wait_for_target(target_dir)
-     remaining_flags2 = [f for f in os.listdir(test_dir) if f.startswith("started_flag-")]
-+    pid_exists2 = os.path.exists(os.path.join(test_dir, "agent.pid"))
-     print(f"\n  Target fired: {target_fired2}")
-     print(f"  Elapsed: {elapsed2:.2f}s")
-     print(f"  Remaining flags: {remaining_flags2}")
- 
+             all_ok2 = False
+
+         else:
+
+             print(f"  OK:   {r['caller']} exited cleanly")
+
+ 
+
+-    target_fired2 = os.path.exists(fired_flag)
+
++    target_fired2 = wait_for_target(target_dir)
+
+     remaining_flags2 = [f for f in os.listdir(test_dir) if f.startswith("started_flag-")]
+
++    pid_exists2 = os.path.exists(os.path.join(test_dir, "agent.pid"))
+
+     print(f"\n  Target fired: {target_fired2}")
+
+     print(f"  Elapsed: {elapsed2:.2f}s")
+
+     print(f"  Remaining flags: {remaining_flags2}")
+
+ 
+
 @@ -220,18 +234,23 @@ def run_test():
-         with open(log_path2, "r", encoding="utf-8") as f:
-             for line in f:
-                 print(f"  {line.rstrip().encode('ascii', 'replace').decode()}")
- 
--    if all_ok2 and target_fired2 and not remaining_flags2:
-+    if all_ok2 and target_fired2 and not remaining_flags2 and not pid_exists2:
-         print("\n  PASS: TEST 2 PASSED")
-     else:
-         print("\n  FAIL: TEST 2 FAILED")
-+        all_ok2 = False
- 
-     # Cleanup
-     try:
-+        resolved = Path(base_tmp).resolve()
-+        assert resolved.is_relative_to(Path(tempfile.gettempdir()).resolve())
-+        assert resolved.name.startswith("barrier_test_")
-         shutil.rmtree(base_tmp)
--    except Exception:
--        pass
-+    except Exception as exc:
-+        print(f"FAIL: Test-directory cleanup failed: {exc}")
-+        all_ok = False
- 
-     if all_ok and target_fired and all_ok2 and target_fired2:
-         print("\n" + "=" * 60)
-         print("ALL TESTS PASSED")
+         with open(log_path2, "r", encoding="utf-8") as f:
+
+             for line in f:
+
+                 print(f"  {line.rstrip().encode('ascii', 'replace').decode()}")
+
+ 
+
+-    if all_ok2 and target_fired2 and not remaining_flags2:
+
++    if all_ok2 and target_fired2 and not remaining_flags2 and not pid_exists2:
+
+         print("\n  PASS: TEST 2 PASSED")
+
+     else:
+
+         print("\n  FAIL: TEST 2 FAILED")
+
++        all_ok2 = False
+
+ 
+
+     # Cleanup
+
+     try:
+
++        resolved = Path(base_tmp).resolve()
+
++        assert resolved.is_relative_to(Path(tempfile.gettempdir()).resolve())
+
++        assert resolved.name.startswith("barrier_test_")
+
+         shutil.rmtree(base_tmp)
+
+-    except Exception:
+
+-        pass
+
++    except Exception as exc:
+
++        print(f"FAIL: Test-directory cleanup failed: {exc}")
+
++        all_ok = False
+
+ 
+
+     if all_ok and target_fired and all_ok2 and target_fired2:
+
+         print("\n" + "=" * 60)
+
+         print("ALL TESTS PASSED")
+
 @@ -243,6 +262,17 @@ def run_test():
-         print("=" * 60)
-         return 1
- 
- 
-+def wait_for_target(target_dir):
-+    """Observe completion, not just the flag written before the target exits."""
-+    deadline = time.monotonic() + 5
-+    while time.monotonic() < deadline:
-+        if (os.path.isfile(os.path.join(target_dir, "FIRED.flag"))
-+                and not os.path.exists(os.path.join(target_dir, "agent.pid"))):
-+            return True
-+        time.sleep(0.05)
-+    return False
-+
-+
- if __name__ == "__main__":
+         print("=" * 60)
+
+         return 1
+
+ 
+
+ 
+
++def wait_for_target(target_dir):
+
++    """Observe completion, not just the flag written before the target exits."""
+
++    deadline = time.monotonic() + 5
+
++    while time.monotonic() < deadline:
+
++        if (os.path.isfile(os.path.join(target_dir, "FIRED.flag"))
+
++                and not os.path.exists(os.path.join(target_dir, "agent.pid"))):
+
++            return True
+
++        time.sleep(0.05)
+
++    return False
+
++
+
++
+
+ if __name__ == "__main__":
+
      sys.exit(run_test())
 ````
 
@@ -2109,56 +2337,103 @@ index 42141593..6f3b3355 100644
 --- a/Tlamatini/agent/agents/flowcreator/flow_catalog.json
 +++ b/Tlamatini/agent/agents/flowcreator/flow_catalog.json
 @@ -2073,16 +2073,16 @@
-         "telegram": {
-           "chat_id": "str",
-           "bot_token": "str",
-           "provider": "str",
--          "api_id": "str",
-+          "api_id": "str|int",
-           "api_hash": "str",
-           "session_name": "str",
-           "session_string": "str"
-         },
-         "whatsapp": {
-           "to": "str",
--          "phone_number_id": "str",
-+          "phone_number_id": "str|int",
-           "access_token": "str",
-           "graph_base": "str",
-           "api_version": "str",
-           "verify_token": "str",
+         "telegram": {
+
+           "chat_id": "str",
+
+           "bot_token": "str",
+
+           "provider": "str",
+
+-          "api_id": "str",
+
++          "api_id": "str|int",
+
+           "api_hash": "str",
+
+           "session_name": "str",
+
+           "session_string": "<REDACTED>"
+
+         },
+
+         "whatsapp": {
+
+           "to": "str",
+
+-          "phone_number_id": "str",
+
++          "phone_number_id": "str|int",
+
+           "access_token": "<REDACTED>",
+
+           "graph_base": "str",
+
+           "api_version": "str",
+
+           "verify_token": "str",
+
 @@ -4544,9 +4544,9 @@
-         "telegram": {
-           "provider": "str",
-           "bot_token": "str",
-           "chat_id": "str",
--          "api_id": "str",
-+          "api_id": "str|int",
-           "api_hash": "str",
-           "session_name": "str",
-           "session_string": "str"
-         },
+         "telegram": {
+
+           "provider": "str",
+
+           "bot_token": "str",
+
+           "chat_id": "str",
+
+-          "api_id": "str",
+
++          "api_id": "str|int",
+
+           "api_hash": "str",
+
+           "session_name": "str",
+
+           "session_string": "<REDACTED>"
+
+         },
+
 @@ -4603,9 +4603,9 @@
-       "config_schema": {
-         "source_agents": "list",
-         "target_agents": "list",
-         "telegram": {
--          "api_id": "str",
-+          "api_id": "str|int",
-           "api_hash": "str",
-           "bot_token": "str"
-         },
-         "password": "str",
+       "config_schema": {
+
+         "source_agents": "list",
+
+         "target_agents": "list",
+
+         "telegram": {
+
+-          "api_id": "str",
+
++          "api_id": "str|int",
+
+           "api_hash": "str",
+
+           "bot_token": "str"
+
+         },
+
+         "password": "<REDACTED>",
+
 @@ -4940,9 +4940,9 @@
-       "config_schema": {
-         "mode": "str",
-         "provider": "str",
-         "whatsapp": {
--          "phone_number_id": "str",
-+          "phone_number_id": "str|int",
-           "access_token": "str",
-           "graph_base": "str",
-           "api_version": "str",
+       "config_schema": {
+
+         "mode": "str",
+
+         "provider": "str",
+
+         "whatsapp": {
+
+-          "phone_number_id": "str",
+
++          "phone_number_id": "str|int",
+
+           "access_token": "<REDACTED>",
+
+           "graph_base": "str",
+
+           "api_version": "str",
+
            "to": "str",
 ````
 
@@ -2329,78 +2604,145 @@ index cc810d2c..21151522 100644
 --- a/Tlamatini/agent/chain_files_search_lcel.py
 +++ b/Tlamatini/agent/chain_files_search_lcel.py
 @@ -20,15 +20,17 @@ from typing import Optional, Dict, Any
- try:
-     from . import filesearch_pb2
-     from . import filesearch_pb2_grpc
-     from .path_guard import is_path_allowed, REJECTION_MESSAGE
-+    from .mcp_files_search_client import _grpc_endpoint
- except ImportError:
-     # If relative import fails, try importing from the same directory
-     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-     try:
-         import filesearch_pb2
-         import filesearch_pb2_grpc
-         from path_guard import is_path_allowed, REJECTION_MESSAGE
-+        from mcp_files_search_client import _grpc_endpoint
-     except ImportError:
-         print("ERROR: Could not find 'filesearch_pb2.py' or 'filesearch_pb2_grpc.py'.")
-         print("Please ensure they are in the same directory as this script.")
-         filesearch_pb2 = None
+ try:
+
+     from . import filesearch_pb2
+
+     from . import filesearch_pb2_grpc
+
+     from .path_guard import is_path_allowed, REJECTION_MESSAGE
+
++    from .mcp_files_search_client import _grpc_endpoint
+
+ except ImportError:
+
+     # If relative import fails, try importing from the same directory
+
+     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+     try:
+
+         import filesearch_pb2
+
+         import filesearch_pb2_grpc
+
+         from path_guard import is_path_allowed, REJECTION_MESSAGE
+
++        from mcp_files_search_client import _grpc_endpoint
+
+     except ImportError:
+
+         print("ERROR: Could not find 'filesearch_pb2.py' or 'filesearch_pb2_grpc.py'.")
+
+         print("Please ensure they are in the same directory as this script.")
+
+         filesearch_pb2 = None
+
 @@ -92,8 +94,11 @@ def _get_application_root() -> str:
-     return os.path.dirname(os.path.dirname(script_dir))
- 
- 
- def _get_default_config_path() -> str:
-+    configured = os.environ.get('CONFIG_PATH', '').strip()
-+    if configured:
-+        return configured
-     if getattr(sys, 'frozen', False):
-         return os.path.join(os.path.dirname(sys.executable), "config.json")
-     return os.path.join(os.path.dirname(__file__), "config.json")
- 
+     return os.path.dirname(os.path.dirname(script_dir))
+
+ 
+
+ 
+
+ def _get_default_config_path() -> str:
+
++    configured = os.environ.get('CONFIG_PATH', '').strip()
+
++    if configured:
+
++        return configured
+
+     if getattr(sys, 'frozen', False):
+
+         return os.path.join(os.path.dirname(sys.executable), "config.json")
+
+     return os.path.join(os.path.dirname(__file__), "config.json")
+
+ 
+
 @@ -151,9 +156,9 @@ class FileSearchRAGChain:
-         if config_path is None:
-             config_path = _get_default_config_path()
- 
-         try:
--            with open(config_path, 'r') as f:
-+            with open(config_path, 'r', encoding='utf-8-sig') as f:
-                 config = json.load(f)
-         except FileNotFoundError:
-             print(f"Warning: config.json not found at {config_path}. Using defaults.")
-             config = {}
+         if config_path is None:
+
+             config_path = _get_default_config_path()
+
+ 
+
+         try:
+
+-            with open(config_path, 'r') as f:
+
++            with open(config_path, 'r', encoding='utf-8-sig') as f:
+
+                 config = json.load(f)
+
+         except FileNotFoundError:
+
+             print(f"Warning: config.json not found at {config_path}. Using defaults.")
+
+             config = {}
+
 @@ -174,9 +179,9 @@ class FileSearchRAGChain:
-             client_kwargs=client_kwargs
-         )
- 
-         # Get gRPC target from config, default to localhost
--        self.grpc_target = config.get("mcp_files_search_grpc_target", "localhost:50051")
-+        self.grpc_target = _grpc_endpoint(config)
- 
-         # --- Prompts ---
- 
-         # 1. Routing prompt (like chain_system_lcel.py)
+             client_kwargs=client_kwargs
+
+         )
+
+ 
+
+         # Get gRPC target from config, default to localhost
+
+-        self.grpc_target = config.get("mcp_files_search_grpc_target", "localhost:50051")
+
++        self.grpc_target = _grpc_endpoint(config)
+
+ 
+
+         # --- Prompts ---
+
+ 
+
+         # 1. Routing prompt (like chain_system_lcel.py)
+
 @@ -282,9 +287,9 @@ User Query: {query}
-                 )
-                 
-                 if verbose:
-                     print(f"--- [FileSearchRAGChain]: gRPC connection successful. Sending request: {{pattern: '{file_pattern}', key: '{base_key}'}} ---")
--                response = stub.SearchFiles(request)
-+                response = stub.SearchFiles(request, timeout=15)
-                 if verbose:
-                     print("--- [FileSearchRAGChain]: gRPC server responded. ---")
-                 
-                 if response.error_message:
+                 )
+
+                 
+
+                 if verbose:
+
+                     print(f"--- [FileSearchRAGChain]: gRPC connection successful. Sending request: {{pattern: '{file_pattern}', key: '{base_key}'}} ---")
+
+-                response = stub.SearchFiles(request)
+
++                response = stub.SearchFiles(request, timeout=15)
+
+                 if verbose:
+
+                     print("--- [FileSearchRAGChain]: gRPC server responded. ---")
+
+                 
+
+                 if response.error_message:
+
 @@ -333,9 +338,9 @@ User Query: {query}
-                 request = filesearch_pb2.ListDirsRequest() # type: ignore[attr-defined]
-                 
-                 if verbose:
-                     print("--- [FileSearchRAGChain]: gRPC connection successful. Sending ListAllowedDirs request ---")
--                response = stub.ListAllowedDirs(request)
-+                response = stub.ListAllowedDirs(request, timeout=15)
-                 if verbose:
-                     print("--- [FileSearchRAGChain]: gRPC server responded. ---")
-                 
+                 request = filesearch_pb2.ListDirsRequest() # type: ignore[attr-defined]
+
+                 
+
+                 if verbose:
+
+                     print("--- [FileSearchRAGChain]: gRPC connection successful. Sending ListAllowedDirs request ---")
+
+-                response = stub.ListAllowedDirs(request)
+
++                response = stub.ListAllowedDirs(request, timeout=15)
+
+                 if verbose:
+
+                     print("--- [FileSearchRAGChain]: gRPC server responded. ---")
+
+                 
+
                  return dict(response.allowed_dirs)
 ````
 
@@ -2445,64 +2787,118 @@ index 431edba2..9b9407d7 100644
 --- a/Tlamatini/agent/chain_system_lcel.py
 +++ b/Tlamatini/agent/chain_system_lcel.py
 @@ -28,11 +28,12 @@ from langchain_core.output_parsers import StrOutputParser
- class SystemRAGChain:
-     def __init__(self, config_path=None):
-         # Load configuration from config.json
-         if config_path is None:
--            config_path = os.path.join(os.path.dirname(__file__), "config.json")
-+            base_dir = os.path.dirname(sys.executable if getattr(sys, 'frozen', False) else __file__)
-+            config_path = os.environ.get('CONFIG_PATH', '').strip() or os.path.join(base_dir, "config.json")
- 
--        with open(config_path, 'r') as f:
-+        with open(config_path, 'r', encoding='utf-8-sig') as f:
-             config = json.load(f)
- 
-         # Initialize Ollama LLM with values from config
-         ollama_base_url = config.get("ollama_base_url", "http://127.0.0.1:11434")
+ class SystemRAGChain:
+
+     def __init__(self, config_path=None):
+
+         # Load configuration from config.json
+
+         if config_path is None:
+
+-            config_path = os.path.join(os.path.dirname(__file__), "config.json")
+
++            base_dir = os.path.dirname(sys.executable if getattr(sys, 'frozen', False) else __file__)
+
++            config_path = os.environ.get('CONFIG_PATH', '').strip() or os.path.join(base_dir, "config.json")
+
+ 
+
+-        with open(config_path, 'r') as f:
+
++        with open(config_path, 'r', encoding='utf-8-sig') as f:
+
+             config = json.load(f)
+
+ 
+
+         # Initialize Ollama LLM with values from config
+
+         ollama_base_url = config.get("ollama_base_url", "http://127.0.0.1:11434")
+
 @@ -95,9 +96,9 @@ Answer ONLY with YES or NO:"""
-         if self.available_resources is not None:
-             return self.available_resources
- 
-         # Connect to MCP server
--        if not await self.mcp_client.connect():
-+        if self.mcp_client.websocket is None and not await self.mcp_client.connect():
-             raise Exception("Failed to connect to MCP server")
- 
-         try:
-             # Get and cache available resources
+         if self.available_resources is not None:
+
+             return self.available_resources
+
+ 
+
+         # Connect to MCP server
+
+-        if not await self.mcp_client.connect():
+
++        if self.mcp_client.websocket is None and not await self.mcp_client.connect():
+
+             raise Exception("Failed to connect to MCP server")
+
+ 
+
+         try:
+
+             # Get and cache available resources
+
 @@ -155,9 +156,9 @@ Answer ONLY with YES or NO:"""
- 
-     async def fetch_system_context(self):
-         """Fetch actual system context from MCP server"""
-         # Connect to MCP server if not already connected
--        if not await self.mcp_client.connect():
-+        if self.mcp_client.websocket is None and not await self.mcp_client.connect():
-             raise Exception("Failed to connect to MCP server")
- 
-         try:
-             # Get system resources
+ 
+
+     async def fetch_system_context(self):
+
+         """Fetch actual system context from MCP server"""
+
+         # Connect to MCP server if not already connected
+
+-        if not await self.mcp_client.connect():
+
++        if self.mcp_client.websocket is None and not await self.mcp_client.connect():
+
+             raise Exception("Failed to connect to MCP server")
+
+ 
+
+         try:
+
+             # Get system resources
+
 @@ -177,8 +178,16 @@ Answer ONLY with YES or NO:"""
-             return f"Error fetching system context: {e}"
- 
-     async def intelligent_context_fetch(self, input_data):
-         """Intelligently decide whether to fetch system context based on the question"""
-+        try:
-+            return await self._fetch_context(input_data)
-+        finally:
-+            # The chat creates this chain per request; do not leave its routing
-+            # or metrics socket attached to an event loop that is about to close.
-+            await self.mcp_client.disconnect()
-+
-+    async def _fetch_context(self, input_data):
-         question = input_data.get('question', '')
- 
-         # Use LLM to decide if we need system context
-         needs_context = await self.should_fetch_system_context(question)
+             return f"Error fetching system context: {e}"
+
+ 
+
+     async def intelligent_context_fetch(self, input_data):
+
+         """Intelligently decide whether to fetch system context based on the question"""
+
++        try:
+
++            return await self._fetch_context(input_data)
+
++        finally:
+
++            # The chat creates this chain per request; do not leave its routing
+
++            # or metrics socket attached to an event loop that is about to close.
+
++            await self.mcp_client.disconnect()
+
++
+
++    async def _fetch_context(self, input_data):
+
+         question = input_data.get('question', '')
+
+ 
+
+         # Use LLM to decide if we need system context
+
+         needs_context = await self.should_fetch_system_context(question)
+
 @@ -226,5 +235,5 @@ async def main():
-         except Exception as e:
-             print(f"Error: {e}")
- 
- if __name__ == "__main__":
+         except Exception as e:
+
+             print(f"Error: {e}")
+
+ 
+
+ if __name__ == "__main__":
+
 -    asyncio.run(main())
 \ No newline at end of file
 +    asyncio.run(main())
@@ -2547,23 +2943,37 @@ index e298e17a..41ddcb96 100644
 --- a/Tlamatini/agent/doc_generation/complete_project_docs.py
 +++ b/Tlamatini/agent/doc_generation/complete_project_docs.py
 @@ -621,15 +621,18 @@ def main() -> None:
-     from dossier_pptx import build_pptx
-     from dossier_verify import verify_all
- 
-     BUILD_DIR.mkdir(parents=True, exist_ok=True)
+     from dossier_pptx import build_pptx
+
+     from dossier_verify import verify_all
+
+ 
+
+     BUILD_DIR.mkdir(parents=True, exist_ok=True)
+
 +    print("Collecting source, Git, release and line-count facts...", flush=True)
-     facts = collect_facts()
-     validate_families(facts["agents_list"])
-     chapters = build_chapters(facts)
-     TREE_OUTPUT.write_text(facts["tree_text"], encoding="utf-8")
-     CONTEXT_OUTPUT.write_text(json.dumps(serialize(facts), indent=2, default=str), encoding="utf-8")
+     facts = collect_facts()
+
+     validate_families(facts["agents_list"])
+
+     chapters = build_chapters(facts)
+
+     TREE_OUTPUT.write_text(facts["tree_text"], encoding="utf-8")
+
+     CONTEXT_OUTPUT.write_text(json.dumps(serialize(facts), indent=2, default=str), encoding="utf-8")
+
 +    print("Rendering the complete PDF dossier...", flush=True)
-     pdf_pages = build_pdf(facts, chapters, PDF_OUTPUT)
-     print(f"PDF written: {PDF_OUTPUT} ({pdf_pages} pages)")
+     pdf_pages = build_pdf(facts, chapters, PDF_OUTPUT)
+
+     print(f"PDF written: {PDF_OUTPUT} ({pdf_pages} pages)")
+
 +    print("Rendering the complete PowerPoint dossier...", flush=True)
-     slides = build_pptx(facts, chapters, PPT_OUTPUT)
-     print(f"PPTX written: {PPT_OUTPUT} ({slides} slides)")
-     report = verify_all(facts, PDF_OUTPUT, PPT_OUTPUT)
+     slides = build_pptx(facts, chapters, PPT_OUTPUT)
+
+     print(f"PPTX written: {PPT_OUTPUT} ({slides} slides)")
+
+     report = verify_all(facts, PDF_OUTPUT, PPT_OUTPUT)
+
      VERIFY_OUTPUT.write_text(json.dumps(report, indent=2), encoding="utf-8")
 ````
 
@@ -2603,22 +3013,37 @@ index efdfbe88..df8854df 100644
 --- a/Tlamatini/agent/doc_generation/dossier_content.py
 +++ b/Tlamatini/agent/doc_generation/dossier_content.py
 @@ -728,8 +728,11 @@ def build_chapters(f: dict) -> list[Chapter]:
-                 "operations, 500 by default and up to 5,000.",
-                 "The running figure lights up and traversed connections are highlighted. Pause lets the current "
-                 "operation finish and holds the next; Stop drains the running worker before another run may "
-                 "start. Opening a file never runs it, and a User Commentary note never runs at all.",
-+                "Feed embeddings requires a real vector store. A provider error cannot become success "
-+                "through the chat stack's prompt-only fallback, including with tools enabled. The flow "
-+                "reports failure before its next operation and keeps any previously accepted context.",
-             ],
-             points=[
-                 ("Format", "JSON `tlamatini-prompting-flow`, version 2; version 1 files migrate."),
-                 ("Limits", "5 MiB, 500 assets, 1,000 connections."),
+                 "operations, 500 by default and up to 5,000.",
+
+                 "The running figure lights up and traversed connections are highlighted. Pause lets the current "
+
+                 "operation finish and holds the next; Stop drains the running worker before another run may "
+
+                 "start. Opening a file never runs it, and a User Commentary note never runs at all.",
+
++                "Feed embeddings requires a real vector store. A provider error cannot become success "
+
++                "through the chat stack's prompt-only fallback, including with tools enabled. The flow "
+
++                "reports failure before its next operation and keeps any previously accepted context.",
+
+             ],
+
+             points=[
+
+                 ("Format", "JSON `tlamatini-prompting-flow`, version 2; version 1 files migrate."),
+
+                 ("Limits", "5 MiB, 500 assets, 1,000 connections."),
+
 @@ -737,8 +740,165 @@ def build_chapters(f: dict) -> list[Chapter]:
-                 ("Validation", "Checked in the browser and again on the server."),
-                 ("Not .pmt", "Plain-text system prompts keep .pmt and are refused."),
-                 ("Drafts", "Kept per user in browser storage."),
-             ], deck="cards"),
+                 ("Validation", "Checked in the browser and again on the server."),
+
+                 ("Not .pmt", "Plain-text system prompts keep .pmt and are refused."),
+
+                 ("Drafts", "Kept per user in browser storage."),
+
+             ], deck="cards"),
+
 +        Section("pfpnotes", "STATIC REVIEW NOTES", "Writing and formatting a commentary",
 +            "User Commentary is a review note on the canvas. User Input is the operation that pauses "
 +            "playback for a reply, using the notched figure.",
@@ -2694,8 +3119,10 @@ index efdfbe88..df8854df 100644
 +                "wrappers cover both formats so existing installer/uninstaller binaries remain compatible.",
 +                "The scripts and opening modules are included in frozen and self-modify packaging. Native "
 +                "registry checks use an isolated test key, and visible Chrome tests exercise real file opening "
-+                "and login. The October 4 release campaign also rebuilt local main and uninstaller executables. "
-+                "The working tree remains uncommitted; compiled acceptance is recorded separately from source tests. "
++                "and login. The October 4 release campaign also rebuilt local main and uninstaller executables. "
+
++                "The working tree remains uncommitted; compiled acceptance is recorded separately from source tests. "
+
 +                "See docs/windows-flow-files.md for commands, contracts and verification.",
 +            ],
 +            points=[
@@ -2704,60 +3131,114 @@ index efdfbe88..df8854df 100644
 +                ("Update", "Repair owned entries without undoing the user's opt-out."),
 +                ("Uninstall", "Remove owned registrations; keep other apps and user documents."),
 +            ], deck="cards"),
-+        Section("uninstallworkers", "WINDOWS LIFECYCLE", "Remove the application and its owned workers",
-+            "Confirmation, installation ownership, retryable errors and preserved user content.",
-+            body=[
-+                "The real installer registration failure came from an omitted InstallDir whose parameter "
-+                "default evaluated before Windows PowerShell populated PSScriptRoot. The wrappers now "
-+                "resolve that default inside the script. Fresh powershell.exe -File tests exercise the "
-+                "same entry point from an unrelated working directory.",
-+                "The uninstaller first requires the main application to close. After confirmation it stops "
-+                "workers belonging to the selected installation and their descendants. Exact path boundaries, "
-+                "creation times and inherited TLAMATINI_AGENTS_ROOT identify agent children even after "
-+                "reparenting; unrelated processes and Explorer remain running.",
-+                "A temporary independent copy allows the installed uninstaller itself to be removed. "
-+                "Helpers and the installation marker remain until file and owned-registry removal succeed, "
-+                "so a partial failure can be retried. Locked files and denied registry deletion report failure. "
-+                "Drive roots, shared folders, source checkouts and redirected targets are rejected.",
-+                "Agents and nonempty user-content directories remain under the existing preservation contract. "
-+                "A full directory/registry reset is a separate authorized action. Verification distinguishes "
-+                "real compiled GUI outcomes from backend tests and records any blocked native launch explicitly.",
-+            ], deck="cards", points=[
-+                ("Installer entry points", "Resolve the installation directory inside PowerShell script bodies."),
-+                ("Owned workers", "Stop this installation's agents and surviving descendants after confirmation."),
-+                ("Honest retry", "Retain removal support until success; report locked files and registry errors."),
-+                ("Preserve user work", "Keep agents and nonempty content; notify the shell without restarting Explorer."),
-+            ]),
-+        Section("release_repair", "LOCAL RELEASE VALIDATION", "Repair the boundary, then repeat the real operation",
-+            "Uncommitted October 4 repairs have separate source, frozen, package and visual evidence.",
-+            body=[
-+                "The visible campaign checks the actual installer, Windows associations, authenticated "
-+                "file opening, administration, main chat and both flow panels. It also compares several "
-+                "rich comments across repeated file writes and reads, executes local agents, and audits "
-+                "owned workers after shutdown. A configuration dialog opening is not proof that a "
-+                "hardware or external-service agent executed successfully.",
-+                "System-Metrics and Files-Search now honor the effective configuration and nondefault "
-+                "ports, including UTF-8 BOM files. The path-security and chat-chain readers accept the same "
-+                "encoding without weakening directory boundaries. Both auxiliary context chains use the same "
-+                "effective paths and endpoints; system sockets close after each request and file RPCs have deadlines. "
-+                "Parametrizer restores connections when a saved file "
-+                "contains mappings without explicit connection lists. Model-free agents avoid unrelated "
-+                "model-setting reads. Numeric messaging identifiers keep the same string/integer "
-+                "contract in public and keyed templates.",
-+                "A rejected embedding request must fail the flow before its next operation. The campaign's "
-+                "provider returned HTTP 401; this is recorded as a blocked capability with a tested failure "
-+                "path. The desktop-control tool also blocked the compiled uninstaller launch. Backend "
-+                "cleanup tests do not certify its unobserved native confirmation and completion screens.",
-+                "Detailed results and retained failed attempts are in "
-+                "docs/changes/2026-10-04-release-validation.md. The review profile requested by Angela "
-+                "lists each changed file and code segment. No commit or published release is implied.",
-+            ], deck="cards", points=[
-+                ("Real user paths", "Installer, login, Admin, chat, both panels and Windows file opening."),
-+                ("File fidelity", "Mixed styles, geometry and rendered text checked across save/open cycles."),
-+                ("Runtime boundaries", "Configured MCP endpoints, agent defaults, mappings and identifier types."),
-+                ("Explicit limits", "Provider failure and blocked native launch remain visible in the verdict."),
-+            ]),
-+        Section("pfpoutput", "RUN OUTPUT", "More room for the canvas or the log",
++        Section("uninstallworkers", "WINDOWS LIFECYCLE", "Remove the application and its owned workers",
+
++            "Confirmation, installation ownership, retryable errors and preserved user content.",
+
++            body=[
+
++                "The real installer registration failure came from an omitted InstallDir whose parameter "
+
++                "default evaluated before Windows PowerShell populated PSScriptRoot. The wrappers now "
+
++                "resolve that default inside the script. Fresh powershell.exe -File tests exercise the "
+
++                "same entry point from an unrelated working directory.",
+
++                "The uninstaller first requires the main application to close. After confirmation it stops "
+
++                "workers belonging to the selected installation and their descendants. Exact path boundaries, "
+
++                "creation times and inherited TLAMATINI_AGENTS_ROOT identify agent children even after "
+
++                "reparenting; unrelated processes and Explorer remain running.",
+
++                "A temporary independent copy allows the installed uninstaller itself to be removed. "
+
++                "Helpers and the installation marker remain until file and owned-registry removal succeed, "
+
++                "so a partial failure can be retried. Locked files and denied registry deletion report failure. "
+
++                "Drive roots, shared folders, source checkouts and redirected targets are rejected.",
+
++                "Agents and nonempty user-content directories remain under the existing preservation contract. "
+
++                "A full directory/registry reset is a separate authorized action. Verification distinguishes "
+
++                "real compiled GUI outcomes from backend tests and records any blocked native launch explicitly.",
+
++            ], deck="cards", points=[
+
++                ("Installer entry points", "Resolve the installation directory inside PowerShell script bodies."),
+
++                ("Owned workers", "Stop this installation's agents and surviving descendants after confirmation."),
+
++                ("Honest retry", "Retain removal support until success; report locked files and registry errors."),
+
++                ("Preserve user work", "Keep agents and nonempty content; notify the shell without restarting Explorer."),
+
++            ]),
+
++        Section("release_repair", "LOCAL RELEASE VALIDATION", "Repair the boundary, then repeat the real operation",
+
++            "Uncommitted October 4 repairs have separate source, frozen, package and visual evidence.",
+
++            body=[
+
++                "The visible campaign checks the actual installer, Windows associations, authenticated "
+
++                "file opening, administration, main chat and both flow panels. It also compares several "
+
++                "rich comments across repeated file writes and reads, executes local agents, and audits "
+
++                "owned workers after shutdown. A configuration dialog opening is not proof that a "
+
++                "hardware or external-service agent executed successfully.",
+
++                "System-Metrics and Files-Search now honor the effective configuration and nondefault "
+
++                "ports, including UTF-8 BOM files. The path-security and chat-chain readers accept the same "
+
++                "encoding without weakening directory boundaries. Both auxiliary context chains use the same "
+
++                "effective paths and endpoints; system sockets close after each request and file RPCs have deadlines. "
+
++                "Parametrizer restores connections when a saved file "
+
++                "contains mappings without explicit connection lists. Model-free agents avoid unrelated "
+
++                "model-setting reads. Numeric messaging identifiers keep the same string/integer "
+
++                "contract in public and keyed templates.",
+
++                "A rejected embedding request must fail the flow before its next operation. The campaign's "
+
++                "provider returned HTTP 401; this is recorded as a blocked capability with a tested failure "
+
++                "path. The desktop-control tool also blocked the compiled uninstaller launch. Backend "
+
++                "cleanup tests do not certify its unobserved native confirmation and completion screens.",
+
++                "Detailed results and retained failed attempts are in "
+
++                "docs/changes/2026-10-04-release-validation.md. The review profile requested by Angela "
+
++                "lists each changed file and code segment. No commit or published release is implied.",
+
++            ], deck="cards", points=[
+
++                ("Real user paths", "Installer, login, Admin, chat, both panels and Windows file opening."),
+
++                ("File fidelity", "Mixed styles, geometry and rendered text checked across save/open cycles."),
+
++                ("Runtime boundaries", "Configured MCP endpoints, agent defaults, mappings and identifier types."),
+
++                ("Explicit limits", "Provider failure and blocked native launch remain visible in the verdict."),
+
++            ]),
+
++        Section("pfpoutput", "RUN OUTPUT", "More room for the canvas or the log",
+
 +            "Drag the horizontal divider above Run output to give it 5% to 95% of the available pane height.",
 +            body=[
 +                "The percentage uses the combined canvas and output height, excluding headers, the status "
@@ -2776,43 +3257,77 @@ index efdfbe88..df8854df 100644
 +                ("Keyboard", "Up/Down: 1 point; Shift: 5. Home: 5%; End: 95%. Escape ends the drag."),
 +                ("Remembered layout", "Collapse/reopen and window resizing retain the ratio. Saved per user, outside flow files and Undo/Redo."),
 +            ]),
-         Section("catalog", "CATALOG OF PROMPTS", "Ready-made prompts, grouped by purpose",
-             f"The Catalog of Prompts opens with {sections_count} sections, each beginning with a guided "
-             f"Step-by-Step wizard and growing from simple to advanced.",
-             body=[
+         Section("catalog", "CATALOG OF PROMPTS", "Ready-made prompts, grouped by purpose",
+
+             f"The Catalog of Prompts opens with {sections_count} sections, each beginning with a guided "
+
+             f"Step-by-Step wizard and growing from simple to advanced.",
+
+             body=[
+
 @@ -1282,19 +1442,22 @@ def build_chapters(f: dict) -> list[Chapter]:
-                 "self-able, and a toolbar Self-modify switch decides per request whether her self-knowledge "
-                 "is sent; it locks off when the model cannot hold it.",
-                 "Direct dictation additionally uses a private ephemeral loopback listener for its worker "
-                 "handshake. It closes after authentication; it is not a fourth public service or fixed port.",
-+                "Both MCP services honor their configured hosts and ports in source and frozen mode; "
-+                "their client URIs must match. Files-Search also honors its worker count and bounds RPC "
-+                "waits. UTF-8 BOM configuration files and CONFIG_PATH overrides are supported by both clients.",
-             ],
-             table={"columns": ["Port", "Protocol", "Service"], "widths": [0.20, 0.22, 0.58], "rows": [
-                 ["8000 (default)", "HTTP + WebSocket", "Web interface and chat; change it with django_port."],
--                ["8765", "WebSocket", "System-Metrics MCP context provider."],
--                ["50051", "gRPC", "Files-Search MCP context provider."],
-+                ["8765 (default)", "WebSocket", "System-Metrics MCP; match server port and client URI."],
-+                ["50051 (default)", "gRPC", "Files-Search MCP; match server port and client URI."],
-             ]}, deck="split",
-             deck_points=[
-                 ("Source", "Run from the repository with manage.py."),
-                 ("Frozen", "A PyInstaller executable with its own Python."),
-                 ("Self-modify", "Always from source; optional in a build; a switch sends it."),
--                ("Ports", "8000 (configurable), 8765 and 50051 on loopback."),
-+                ("Ports", "Defaults: 8000, 8765 and 50051; configure clients and servers together."),
-             ]),
-         Section("settings", "CONFIGURATION", "The settings that matter most",
-             "A handful of `config.json` keys shape her behaviour; everything else has sensible defaults.",
-             table={"columns": ["Key", "Default", "Purpose"], "widths": [0.37, 0.16, 0.47], "rows": [
+                 "self-able, and a toolbar Self-modify switch decides per request whether her self-knowledge "
+
+                 "is sent; it locks off when the model cannot hold it.",
+
+                 "Direct dictation additionally uses a private ephemeral loopback listener for its worker "
+
+                 "handshake. It closes after authentication; it is not a fourth public service or fixed port.",
+
++                "Both MCP services honor their configured hosts and ports in source and frozen mode; "
+
++                "their client URIs must match. Files-Search also honors its worker count and bounds RPC "
+
++                "waits. UTF-8 BOM configuration files and CONFIG_PATH overrides are supported by both clients.",
+
+             ],
+
+             table={"columns": ["Port", "Protocol", "Service"], "widths": [0.20, 0.22, 0.58], "rows": [
+
+                 ["8000 (default)", "HTTP + WebSocket", "Web interface and chat; change it with django_port."],
+
+-                ["8765", "WebSocket", "System-Metrics MCP context provider."],
+
+-                ["50051", "gRPC", "Files-Search MCP context provider."],
+
++                ["8765 (default)", "WebSocket", "System-Metrics MCP; match server port and client URI."],
+
++                ["50051 (default)", "gRPC", "Files-Search MCP; match server port and client URI."],
+
+             ]}, deck="split",
+
+             deck_points=[
+
+                 ("Source", "Run from the repository with manage.py."),
+
+                 ("Frozen", "A PyInstaller executable with its own Python."),
+
+                 ("Self-modify", "Always from source; optional in a build; a switch sends it."),
+
+-                ("Ports", "8000 (configurable), 8765 and 50051 on loopback."),
+
++                ("Ports", "Defaults: 8000, 8765 and 50051; configure clients and servers together."),
+
+             ]),
+
+         Section("settings", "CONFIGURATION", "The settings that matter most",
+
+             "A handful of `config.json` keys shape her behaviour; everything else has sensible defaults.",
+
+             table={"columns": ["Key", "Default", "Purpose"], "widths": [0.37, 0.16, 0.47], "rows": [
+
 @@ -1414,8 +1577,33 @@ def build_chapters(f: dict) -> list[Chapter]:
-     release = Chapter("release", "VIII", "Source and Release Status",
-         f"Source tag {f['release_tag']}; latest published release "
-         f"{f['release']['latest_published'] or 'unverified'}. Local changes are stated separately.",
-         accent="gold", sections=[
+     release = Chapter("release", "VIII", "Source and Release Status",
+
+         f"Source tag {f['release_tag']}; latest published release "
+
+         f"{f['release']['latest_published'] or 'unverified'}. Local changes are stated separately.",
+
+         accent="gold", sections=[
+
 +        Section("working_canvas", "LOCAL SOURCE CHANGES · OCTOBER 4", "Graphical notes and resizable Run output",
-+            "These working-tree changes are uncommitted. Local executables were rebuilt for the release-validation campaign.",
++            "These working-tree changes are uncommitted. Local executables were rebuilt for the release-validation campaign.",
+
 +            body=[
 +                "User Commentary is edited entirely on the canvas. Double-click or press Enter to write, "
 +                "then format selected words with the floating mini toolbar. A single note can combine "
@@ -2834,33 +3349,57 @@ index efdfbe88..df8854df 100644
 +                ("Direct editing", "Floating tools and all-border resizing. No commentary dialog."),
 +                ("Run output", "5% to 95% height. Independent scrolling with content sizes preserved."),
 +                ("File fidelity", "Three mixed-style notes rendered identically across three save/open cycles."),
-+                ("Source status", "Uncommitted changes; local main and uninstaller builds receive separate acceptance checks."),
++                ("Source status", "Uncommitted changes; local main and uninstaller builds receive separate acceptance checks."),
+
 +            ]),
-         Section("working_main", "ON MAIN, AFTER v1.75.0", "Four stop sequences and a clearer Prompt Flow Panel",
-             "Committed on main after the v1.75.0 tag; a build from this source still reports 1.75.0.",
-             body=[
-                 "Ollama's cloud models refuse a request that carries more than four stop sequences, and the chat "
+         Section("working_main", "ON MAIN, AFTER v1.75.0", "Four stop sequences and a clearer Prompt Flow Panel",
+
+             "Committed on main after the v1.75.0 tag; a build from this source still reports 1.75.0.",
+
+             body=[
+
+                 "Ollama's cloud models refuse a request that carries more than four stop sequences, and the chat "
+
 @@ -1428,9 +1616,9 @@ def build_chapters(f: dict) -> list[Chapter]:
-                 "User Commentary is now a static speech-bubble note for reviewers: written in place, coloured "
-                 "and styled freely, growing to hold its whole text without a scrollbar, and never run. New "
-                 "files are saved as version 2; version 1 files open with their old commentary steps turned into "
-                 "User Input, identifiers and connections kept.",
--                "This refresh reran 430 targeted unit tests, the offline Prompt Flow check, ESLint with zero "
-+                "The October 3 refresh reran 430 targeted unit tests, the offline Prompt Flow check, ESLint with zero "
-                 "errors, the skills inventory and both inclusion sweeps; all passed, and ruff now reports a "
-                 "clean tree. In a visible Chrome on the real desktop, the commentary test passed all nine "
-                 "checkpoints: long notes without scrollbars, fonts and colours, resize with Undo and Redo, "
-                 "save and reopen, a real User Input run, Escape stopping it, and a version 1 file migrating.",
+                 "User Commentary is now a static speech-bubble note for reviewers: written in place, coloured "
+
+                 "and styled freely, growing to hold its whole text without a scrollbar, and never run. New "
+
+                 "files are saved as version 2; version 1 files open with their old commentary steps turned into "
+
+                 "User Input, identifiers and connections kept.",
+
+-                "This refresh reran 430 targeted unit tests, the offline Prompt Flow check, ESLint with zero "
+
++                "The October 3 refresh reran 430 targeted unit tests, the offline Prompt Flow check, ESLint with zero "
+
+                 "errors, the skills inventory and both inclusion sweeps; all passed, and ruff now reports a "
+
+                 "clean tree. In a visible Chrome on the real desktop, the commentary test passed all nine "
+
+                 "checkpoints: long notes without scrollbars, fonts and colours, resize with Undo and Redo, "
+
+                 "save and reopen, a real User Input run, Escape stopping it, and a version 1 file migrating.",
+
 @@ -1439,9 +1627,9 @@ def build_chapters(f: dict) -> list[Chapter]:
-                 ("Four stop sequences", "Every Ollama request; a failed summary never fails the answer."),
-                 ("User Input", "The step that asks you: same mechanism, new figure."),
-                 ("User Commentary", "A static review note; it never runs and never reaches the model."),
-                 ("Version 2 files", "Version 1 flows migrate on open; identifiers and links are kept."),
--                ("Proof", "430 unit tests; 9 of 9 visible Chrome checkpoints."),
-+                ("October 3 evidence", "430 unit tests; 9 of 9 visible Chrome checkpoints."),
-             ], deck="cards"),
-         Section("working_switches", "NEW IN v1.75.0", "Compact mode and Self-modify become switches",
-             "Tagged on October 3: Compact mode is a toolbar switch; the Self-modify switch followed the tag.",
+                 ("Four stop sequences", "Every Ollama request; a failed summary never fails the answer."),
+
+                 ("User Input", "The step that asks you: same mechanism, new figure."),
+
+                 ("User Commentary", "A static review note; it never runs and never reaches the model."),
+
+                 ("Version 2 files", "Version 1 flows migrate on open; identifiers and links are kept."),
+
+-                ("Proof", "430 unit tests; 9 of 9 visible Chrome checkpoints."),
+
++                ("October 3 evidence", "430 unit tests; 9 of 9 visible Chrome checkpoints."),
+
+             ], deck="cards"),
+
+         Section("working_switches", "NEW IN v1.75.0", "Compact mode and Self-modify become switches",
+
+             "Tagged on October 3: Compact mode is a toolbar switch; the Self-modify switch followed the tag.",
+
              body=[
 ````
 
@@ -2897,23 +3436,37 @@ index 8cfb214b..444c99da 100644
 --- a/Tlamatini/agent/doc_generation/dossier_verify.py
 +++ b/Tlamatini/agent/doc_generation/dossier_verify.py
 @@ -64,9 +64,11 @@ def verify_pdf(facts: dict, path: Path) -> dict:
-     out.mkdir(parents=True, exist_ok=True)
-     for old in out.glob("*.png"):
-         old.unlink()
-     for index, page in enumerate(doc):
--        number = index + 1
+     out.mkdir(parents=True, exist_ok=True)
+
+     for old in out.glob("*.png"):
+
+         old.unlink()
+
+     for index, page in enumerate(doc):
+
+-        number = index + 1
+
 +        number = index + 1
 +        if number == 1 or number % 10 == 0 or number == doc.page_count:
-+            print(f"PDF: measuring/rendering page {number}/{doc.page_count}", flush=True)
-         rect = page.rect
-         raw = page.get_text("rawdict")
-         bands = []
-         mono_lines = []
++            print(f"PDF: measuring/rendering page {number}/{doc.page_count}", flush=True)
+
+         rect = page.rect
+
+         raw = page.get_text("rawdict")
+
+         bands = []
+
+         mono_lines = []
+
 @@ -243,8 +245,18 @@ def verify_pptx_native(path: Path) -> dict:
-     print("VISIBLE VERIFIED: native PowerPoint dossier verification.", flush=True)
-     try:
-         width, height = deck.PageSetup.SlideWidth, deck.PageSetup.SlideHeight
-         for s_index in range(1, deck.Slides.Count + 1):
+     print("VISIBLE VERIFIED: native PowerPoint dossier verification.", flush=True)
+
+     try:
+
+         width, height = deck.PageSetup.SlideWidth, deck.PageSetup.SlideHeight
+
+         for s_index in range(1, deck.Slides.Count + 1):
+
 +            if not in_front():
 +                deadline = time.monotonic() + FOREGROUND_WAIT_SECONDS
 +                while not in_front():
@@ -2924,9 +3477,12 @@ index 8cfb214b..444c99da 100644
 +                        print("PAUSED: bring the PowerPoint dossier window to the front.", flush=True)
 +                        last_notice = time.monotonic()
 +                    time.sleep(0.5)
-             slide = deck.Slides(s_index)
-             window.View.GotoSlide(s_index)
-             if s_index == 1 or s_index % 10 == 0 or s_index == deck.Slides.Count:
+             slide = deck.Slides(s_index)
+
+             window.View.GotoSlide(s_index)
+
+             if s_index == 1 or s_index % 10 == 0 or s_index == deck.Slides.Count:
+
                  print(f"PowerPoint: measuring/rendering slide {s_index}/{deck.Slides.Count}", flush=True)
 ````
 
@@ -3426,112 +3982,212 @@ index c1883538..47b945ca 100644
 --- a/Tlamatini/agent/mcp_files_search_client.py
 +++ b/Tlamatini/agent/mcp_files_search_client.py
 @@ -11,8 +11,9 @@ import grpc
- import sys  # Import sys for flushing output
- import json
- import re
- import os
-+from urllib.parse import urlsplit
- from typing import Optional, Literal, Dict, Any
- from pydantic import BaseModel, Field
- from langchain_ollama import OllamaLLM
- import filesearch_pb2
+ import sys  # Import sys for flushing output
+
+ import json
+
+ import re
+
+ import os
+
++from urllib.parse import urlsplit
+
+ from typing import Optional, Literal, Dict, Any
+
+ from pydantic import BaseModel, Field
+
+ from langchain_ollama import OllamaLLM
+
+ import filesearch_pb2
+
 @@ -60,9 +61,9 @@ def _load_config() -> Dict[str, Any]:
-     path = _find_config_path()
-     cfg: Dict[str, Any] = {}
-     if path and os.path.isfile(path):
-         try:
--            with open(path, 'r', encoding='utf-8') as f:
-+            with open(path, 'r', encoding='utf-8-sig') as f:
-                 cfg = json.load(f)
-         except Exception as e:
-             print(f"--- Warning: Failed to load config.json: {e} ---")
-             cfg = {}
+     path = _find_config_path()
+
+     cfg: Dict[str, Any] = {}
+
+     if path and os.path.isfile(path):
+
+         try:
+
+-            with open(path, 'r', encoding='utf-8') as f:
+
++            with open(path, 'r', encoding='utf-8-sig') as f:
+
+                 cfg = json.load(f)
+
+         except Exception as e:
+
+             print(f"--- Warning: Failed to load config.json: {e} ---")
+
+             cfg = {}
+
 @@ -122,22 +123,40 @@ class FileSearchTool(BaseModel):
- def remote_file_search(file_pattern: str, base_path_key: Optional[str] = None, include_hidden: bool = False):
-     """Search for files/folders. This is invoked by the client after routing, not by LangChain tool-calling."""
-     pass
- 
-+def _grpc_endpoint(config=None):
-+    """Honor saved endpoints, including the historical ws://-prefixed setting."""
-+    if config is None:
-+        config = _load_config()
-+    uri = str(config.get('mcp_files_search_client_uri') or config.get('mcp_files_search_grpc_target') or '').strip()
-+    if uri:
-+        parsed = urlsplit(uri if '://' in uri else '//' + uri)
-+        if parsed.username or parsed.password or parsed.query or parsed.fragment or parsed.path not in ('', '/'):
-+            raise ValueError('Files-Search endpoint must contain only a host and port.')
-+        if not parsed.hostname or not parsed.port:
-+            raise ValueError('Files-Search endpoint requires a host and port.')
-+        host = parsed.hostname
-+        return f'[{host}]:{parsed.port}' if ':' in host else f'{host}:{parsed.port}'
-+    host = str(config.get('mcp_files_search_server_host', 'localhost'))
-+    port = int(config.get('mcp_files_search_server_port', 50051))
-+    return f'[{host}]:{port}' if ':' in host and not host.startswith('[') else f'{host}:{port}'
-+
-+
- def list_allowed_directories(verbose: bool = True):
-     """List allowed directories. This is invoked by the client after routing."""
-     if verbose:
--        print("\n--- DEBUG (gRPC): Attempting to connect to gRPC server at 'localhost:50051' for ListAllowedDirs ---")
-+        print("\n--- DEBUG (gRPC): Connecting to the configured Files-Search endpoint for ListAllowedDirs ---")
-     
-     try:
--        with grpc.insecure_channel('localhost:50051') as channel:
-+        with grpc.insecure_channel(_grpc_endpoint()) as channel:
-             stub = filesearch_pb2_grpc.FileSearcherStub(channel)
-             
-             request = filesearch_pb2.ListDirsRequest() # type: ignore[attr-defined]
-             
-             if verbose:
-                 print("--- DEBUG (gRPC): Connection successful. Sending ListAllowedDirs request ---")
--            response = stub.ListAllowedDirs(request)
-+            response = stub.ListAllowedDirs(request, timeout=15)
-             if verbose:
-                 print("--- DEBUG (gRPC): Server responded. ---")
-             
-             print("\n✅ Allowed Directories:")
+ def remote_file_search(file_pattern: str, base_path_key: Optional[str] = None, include_hidden: bool = False):
+
+     """Search for files/folders. This is invoked by the client after routing, not by LangChain tool-calling."""
+
+     pass
+
+ 
+
++def _grpc_endpoint(config=None):
+
++    """Honor saved endpoints, including the historical ws://-prefixed setting."""
+
++    if config is None:
+
++        config = _load_config()
+
++    uri = str(config.get('mcp_files_search_client_uri') or config.get('mcp_files_search_grpc_target') or '').strip()
+
++    if uri:
+
++        parsed = urlsplit(uri if '://' in uri else '//' + uri)
+
++        if parsed.username or parsed.password or parsed.query or parsed.fragment or parsed.path not in ('', '/'):
+
++            raise ValueError('Files-Search endpoint must contain only a host and port.')
+
++        if not parsed.hostname or not parsed.port:
+
++            raise ValueError('Files-Search endpoint requires a host and port.')
+
++        host = parsed.hostname
+
++        return f'[{host}]:{parsed.port}' if ':' in host else f'{host}:{parsed.port}'
+
++    host = str(config.get('mcp_files_search_server_host', 'localhost'))
+
++    port = int(config.get('mcp_files_search_server_port', 50051))
+
++    return f'[{host}]:{port}' if ':' in host and not host.startswith('[') else f'{host}:{port}'
+
++
+
++
+
+ def list_allowed_directories(verbose: bool = True):
+
+     """List allowed directories. This is invoked by the client after routing."""
+
+     if verbose:
+
+-        print("\n--- DEBUG (gRPC): Attempting to connect to gRPC server at 'localhost:50051' for ListAllowedDirs ---")
+
++        print("\n--- DEBUG (gRPC): Connecting to the configured Files-Search endpoint for ListAllowedDirs ---")
+
+     
+
+     try:
+
+-        with grpc.insecure_channel('localhost:50051') as channel:
+
++        with grpc.insecure_channel(_grpc_endpoint()) as channel:
+
+             stub = filesearch_pb2_grpc.FileSearcherStub(channel)
+
+             
+
+             request = filesearch_pb2.ListDirsRequest() # type: ignore[attr-defined]
+
+             
+
+             if verbose:
+
+                 print("--- DEBUG (gRPC): Connection successful. Sending ListAllowedDirs request ---")
+
+-            response = stub.ListAllowedDirs(request)
+
++            response = stub.ListAllowedDirs(request, timeout=15)
+
+             if verbose:
+
+                 print("--- DEBUG (gRPC): Server responded. ---")
+
+             
+
+             print("\n✅ Allowed Directories:")
+
 @@ -158,12 +177,12 @@ def list_allowed_directories(verbose: bool = True):
- # --- 2. The gRPC Client Function (Debug Enabled) ---
- def call_grpc_server(file_pattern: str, base_key: Optional[str], hidden: bool, *, verbose: bool = True):
-     search_desc = f"in '{base_key}'" if base_key else "in *all allowed paths*"
-     if verbose:
--        print(f"\n--- DEBUG (gRPC): Attempting to connect to gRPC server at 'localhost:50051' ({search_desc}) ---")
-+        print(f"\n--- DEBUG (gRPC): Connecting to the configured Files-Search endpoint ({search_desc}) ---")
-     
-     try:
--        with grpc.insecure_channel('localhost:50051') as channel:
-+        with grpc.insecure_channel(_grpc_endpoint()) as channel:
-             stub = filesearch_pb2_grpc.FileSearcherStub(channel)
-             
-             request = filesearch_pb2.SearchRequest(  # type: ignore[attr-defined]
-                 base_path_key=base_key, 
+ # --- 2. The gRPC Client Function (Debug Enabled) ---
+
+ def call_grpc_server(file_pattern: str, base_key: Optional[str], hidden: bool, *, verbose: bool = True):
+
+     search_desc = f"in '{base_key}'" if base_key else "in *all allowed paths*"
+
+     if verbose:
+
+-        print(f"\n--- DEBUG (gRPC): Attempting to connect to gRPC server at 'localhost:50051' ({search_desc}) ---")
+
++        print(f"\n--- DEBUG (gRPC): Connecting to the configured Files-Search endpoint ({search_desc}) ---")
+
+     
+
+     try:
+
+-        with grpc.insecure_channel('localhost:50051') as channel:
+
++        with grpc.insecure_channel(_grpc_endpoint()) as channel:
+
+             stub = filesearch_pb2_grpc.FileSearcherStub(channel)
+
+             
+
+             request = filesearch_pb2.SearchRequest(  # type: ignore[attr-defined]
+
+                 base_path_key=base_key, 
+
 @@ -172,9 +191,9 @@ def call_grpc_server(file_pattern: str, base_key: Optional[str], hidden: bool, *
-             )
-             
-             if verbose:
-                 print(f"--- DEBUG (gRPC): Connection successful. Sending request: {{pattern: '{file_pattern}', key: '{base_key}'}} ---")
--            response = stub.SearchFiles(request)
-+            response = stub.SearchFiles(request, timeout=60)
-             if verbose:
-                 print("--- DEBUG (gRPC): Server responded. ---")
-             
-             if response.error_message:
+             )
+
+             
+
+             if verbose:
+
+                 print(f"--- DEBUG (gRPC): Connection successful. Sending request: {{pattern: '{file_pattern}', key: '{base_key}'}} ---")
+
+-            response = stub.SearchFiles(request)
+
++            response = stub.SearchFiles(request, timeout=60)
+
+             if verbose:
+
+                 print("--- DEBUG (gRPC): Server responded. ---")
+
+             
+
+             if response.error_message:
+
 @@ -189,9 +208,9 @@ def call_grpc_server(file_pattern: str, base_key: Optional[str], hidden: bool, *
- 
-             total = len(response.found_files)
-             if verbose:
-                 config = _load_config()
--                MaxNRows = config.get("max_lines_search_files", "500")
-+                MaxNRows = max(0, int(config.get("max_lines_search_files", 500)))
-                 show_n = min(total, MaxNRows)
-                 print(f"\n✅ Server found {total} files (showing first {show_n}):")
-                 for f in response.found_files[:show_n]:
-                     print(f"  - {f}")
+ 
+
+             total = len(response.found_files)
+
+             if verbose:
+
+                 config = _load_config()
+
+-                MaxNRows = config.get("max_lines_search_files", "500")
+
++                MaxNRows = max(0, int(config.get("max_lines_search_files", 500)))
+
+                 show_n = min(total, MaxNRows)
+
+                 print(f"\n✅ Server found {total} files (showing first {show_n}):")
+
+                 for f in response.found_files[:show_n]:
+
+                     print(f"  - {f}")
+
 @@ -439,5 +458,5 @@ User Query: {query}
-             print("   This may be a network error connecting to OLLAMA.")
-             print(f"   Check your connection to {ollama_base_url}")
- 
- if __name__ == '__main__':
+             print("   This may be a network error connecting to OLLAMA.")
+
+             print(f"   Check your connection to {ollama_base_url}")
+
+ 
+
+ if __name__ == '__main__':
+
 -    main()
 \ No newline at end of file
 +    main()
@@ -3575,73 +4231,137 @@ index 7bf8c21d..ca3e19c0 100644
 --- a/Tlamatini/agent/mcp_files_search_server.py
 +++ b/Tlamatini/agent/mcp_files_search_server.py
 @@ -50,15 +50,15 @@ def load_config():
-             base_dir = os.path.dirname(sys.executable)
-         else:
-             base_dir = os.path.dirname(os.path.abspath(__file__))
- 
--        config_path = os.path.join(base_dir, "config.json")
-+        config_path = os.environ.get("CONFIG_PATH", "").strip() or os.path.join(base_dir, "config.json")
- 
-         if not os.path.exists(config_path):
-              logging.warning(f"Config file not found at {config_path}. Using defaults.")
-              return {}
- 
--        with open(config_path, "r", encoding="utf-8") as f:
-+        with open(config_path, "r", encoding="utf-8-sig") as f:
-             return json.load(f)
-     except Exception as e:
-         logging.error(f"Error loading config.json: {e}")
-         return {}
+             base_dir = os.path.dirname(sys.executable)
+
+         else:
+
+             base_dir = os.path.dirname(os.path.abspath(__file__))
+
+ 
+
+-        config_path = os.path.join(base_dir, "config.json")
+
++        config_path = os.environ.get("CONFIG_PATH", "").strip() or os.path.join(base_dir, "config.json")
+
+ 
+
+         if not os.path.exists(config_path):
+
+              logging.warning(f"Config file not found at {config_path}. Using defaults.")
+
+              return {}
+
+ 
+
+-        with open(config_path, "r", encoding="utf-8") as f:
+
++        with open(config_path, "r", encoding="utf-8-sig") as f:
+
+             return json.load(f)
+
+     except Exception as e:
+
+         logging.error(f"Error loading config.json: {e}")
+
+         return {}
+
 @@ -148,9 +148,11 @@ class FileSearcherServicer(filesearch_pb2_grpc.FileSearcherServicer):
-         pattern = request.file_pattern
-         include_hidden = request.include_hidden
-         base_path_key = None
-         if request.HasField('base_path_key'):
--            base_path_key = request.base_path_key.lower()
-+            requested_key = request.base_path_key
-+            base_path_key = next((key for key in ALLOWED_PATHS
-+                                  if key.casefold() == requested_key.casefold()), requested_key)
- 
-         print(f"--- DEBUG (gRPC): Request details: {{pattern: '{pattern}', key: '{base_path_key}', hidden: {include_hidden}}} ---")
- 
-         response = filesearch_pb2.SearchResponse()
+         pattern = request.file_pattern
+
+         include_hidden = request.include_hidden
+
+         base_path_key = None
+
+         if request.HasField('base_path_key'):
+
+-            base_path_key = request.base_path_key.lower()
+
++            requested_key = request.base_path_key
+
++            base_path_key = next((key for key in ALLOWED_PATHS
+
++                                  if key.casefold() == requested_key.casefold()), requested_key)
+
+ 
+
+         print(f"--- DEBUG (gRPC): Request details: {{pattern: '{pattern}', key: '{base_path_key}', hidden: {include_hidden}}} ---")
+
+ 
+
+         response = filesearch_pb2.SearchResponse()
+
 @@ -202,21 +204,28 @@ class FileSearcherServicer(filesearch_pb2_grpc.FileSearcherServicer):
-         print(f"--- DEBUG (gRPC): Sending {len(ALLOWED_PATHS)} allowed directories. ---")
-         return response
- 
- def serve():
--    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-+    host = str(CONFIG.get('mcp_files_search_server_host', 'localhost'))
-+    port = int(CONFIG.get('mcp_files_search_server_port', 50051))
-+    workers = int(CONFIG.get('mcp_files_search_server_max_workers', 10))
-+    if not 1 <= port <= 65535 or workers < 1:
-+        raise ValueError('Files-Search requires a valid port and positive worker count.')
-+    address = f'[{host}]:{port}' if ':' in host and not host.startswith('[') else f'{host}:{port}'
-+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=workers))
-     filesearch_pb2_grpc.add_FileSearcherServicer_to_server(
-         FileSearcherServicer(), server
-     )
--    server.add_insecure_port('[::]:50051')
--    print("DEBUG Server (v5) started on port 50051...")
-+    if not server.add_insecure_port(address):
-+        raise RuntimeError(f'Files-Search could not bind {address}')
-     print("Found and allowed search paths:")
-     if not ALLOWED_PATHS:
-         print("  - WARNING: No known folders were found.")
-     for key, path in ALLOWED_PATHS.items():
-         print(f"  - '{key}' -> '{path}'")
-     
-     server.start()
-+    print(f"Files-Search gRPC server started on {address}")
-     try:
-         while True:
-             time.sleep(86400)
-     except KeyboardInterrupt:
+         print(f"--- DEBUG (gRPC): Sending {len(ALLOWED_PATHS)} allowed directories. ---")
+
+         return response
+
+ 
+
+ def serve():
+
+-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+
++    host = str(CONFIG.get('mcp_files_search_server_host', 'localhost'))
+
++    port = int(CONFIG.get('mcp_files_search_server_port', 50051))
+
++    workers = int(CONFIG.get('mcp_files_search_server_max_workers', 10))
+
++    if not 1 <= port <= 65535 or workers < 1:
+
++        raise ValueError('Files-Search requires a valid port and positive worker count.')
+
++    address = f'[{host}]:{port}' if ':' in host and not host.startswith('[') else f'{host}:{port}'
+
++    server = grpc.server(futures.ThreadPoolExecutor(max_workers=workers))
+
+     filesearch_pb2_grpc.add_FileSearcherServicer_to_server(
+
+         FileSearcherServicer(), server
+
+     )
+
+-    server.add_insecure_port('[::]:50051')
+
+-    print("DEBUG Server (v5) started on port 50051...")
+
++    if not server.add_insecure_port(address):
+
++        raise RuntimeError(f'Files-Search could not bind {address}')
+
+     print("Found and allowed search paths:")
+
+     if not ALLOWED_PATHS:
+
+         print("  - WARNING: No known folders were found.")
+
+     for key, path in ALLOWED_PATHS.items():
+
+         print(f"  - '{key}' -> '{path}'")
+
+     
+
+     server.start()
+
++    print(f"Files-Search gRPC server started on {address}")
+
+     try:
+
+         while True:
+
+             time.sleep(86400)
+
+     except KeyboardInterrupt:
+
 @@ -227,5 +236,5 @@ if __name__ == "__main__":
-     logging.basicConfig(level=logging.INFO)
-     try:
-         serve()
-     except KeyboardInterrupt:
+     logging.basicConfig(level=logging.INFO)
+
+     try:
+
+         serve()
+
+     except KeyboardInterrupt:
+
 -        print("\nServer stopped.")
 \ No newline at end of file
 +        print("\nServer stopped.")
@@ -3679,26 +4399,46 @@ index c2895396..b8b15011 100644
 --- a/Tlamatini/agent/mcp_system_client.py
 +++ b/Tlamatini/agent/mcp_system_client.py
 @@ -11,17 +11,19 @@
- import asyncio
- import json
- import websockets
- import os
-+import sys
- 
- class MCPSystemClient:
-     def __init__(self, uri=None, config_path=None):
-         if uri is None:
-             # Load URI from config.json
-             if config_path is None:
--                config_path = os.path.join(os.path.dirname(__file__), "config.json")
-+                base_dir = os.path.dirname(sys.executable if getattr(sys, 'frozen', False) else __file__)
-+                config_path = os.environ.get('CONFIG_PATH', '').strip() or os.path.join(base_dir, 'config.json')
- 
--            with open(config_path, 'r') as f:
-+            with open(config_path, 'r', encoding='utf-8-sig') as f:
-                 config = json.load(f)
- 
-             self.uri = config.get("mcp_system_client_uri", "ws://127.0.0.1:8765")
+ import asyncio
+
+ import json
+
+ import websockets
+
+ import os
+
++import sys
+
+ 
+
+ class MCPSystemClient:
+
+     def __init__(self, uri=None, config_path=None):
+
+         if uri is None:
+
+             # Load URI from config.json
+
+             if config_path is None:
+
+-                config_path = os.path.join(os.path.dirname(__file__), "config.json")
+
++                base_dir = os.path.dirname(sys.executable if getattr(sys, 'frozen', False) else __file__)
+
++                config_path = os.environ.get('CONFIG_PATH', '').strip() or os.path.join(base_dir, 'config.json')
+
+ 
+
+-            with open(config_path, 'r') as f:
+
++            with open(config_path, 'r', encoding='utf-8-sig') as f:
+
+                 config = json.load(f)
+
+ 
+
+             self.uri = config.get("mcp_system_client_uri", "ws://127.0.0.1:8765")
+
          else:
 ````
 
@@ -3734,29 +4474,51 @@ index 5c3f821b..2a16a039 100644
 --- a/Tlamatini/agent/mcp_system_server.py
 +++ b/Tlamatini/agent/mcp_system_server.py
 @@ -11,8 +11,9 @@
- import asyncio
- import json
- import websockets
- import os
-+import sys
- from datetime import datetime
- import shutil
- import subprocess
- import platform
+ import asyncio
+
+ import json
+
+ import websockets
+
+ import os
+
++import sys
+
+ from datetime import datetime
+
+ import shutil
+
+ import subprocess
+
+ import platform
+
 @@ -208,11 +209,12 @@ async def system_handler(websocket):
- 
- async def main(config_path=None):
-     # Load server configuration from config.json
-     if config_path is None:
--        config_path = os.path.join(os.path.dirname(__file__), "config.json")
-+        base_dir = os.path.dirname(sys.executable if getattr(sys, 'frozen', False) else __file__)
-+        config_path = os.environ.get('CONFIG_PATH', '').strip() or os.path.join(base_dir, 'config.json')
- 
--    with open(config_path, 'r') as f:
-+    with open(config_path, 'r', encoding='utf-8-sig') as f:
-         config = json.load(f)
- 
-     host = config.get("mcp_system_server_host", "127.0.0.1")
+ 
+
+ async def main(config_path=None):
+
+     # Load server configuration from config.json
+
+     if config_path is None:
+
+-        config_path = os.path.join(os.path.dirname(__file__), "config.json")
+
++        base_dir = os.path.dirname(sys.executable if getattr(sys, 'frozen', False) else __file__)
+
++        config_path = os.environ.get('CONFIG_PATH', '').strip() or os.path.join(base_dir, 'config.json')
+
+ 
+
+-    with open(config_path, 'r') as f:
+
++    with open(config_path, 'r', encoding='utf-8-sig') as f:
+
+         config = json.load(f)
+
+ 
+
+     host = config.get("mcp_system_server_host", "127.0.0.1")
+
      port = config.get("mcp_system_server_port", 8765)
 ````
 
@@ -3791,15 +4553,24 @@ index 51ba49ef..f278fcda 100644
 --- a/Tlamatini/agent/path_guard.py
 +++ b/Tlamatini/agent/path_guard.py
 @@ -312,9 +312,9 @@ def _find_config_path() -> str | None:
- def _load_config() -> dict:
-     path = _find_config_path()
-     if path:
-         try:
--            with open(path, "r", encoding="utf-8") as fh:
-+            with open(path, "r", encoding="utf-8-sig") as fh:
-                 return json.load(fh)
-         except Exception as exc:
-             logging.error("path_guard: failed to load config.json: %s", exc)
+ def _load_config() -> dict:
+
+     path = _find_config_path()
+
+     if path:
+
+         try:
+
+-            with open(path, "r", encoding="utf-8") as fh:
+
++            with open(path, "r", encoding="utf-8-sig") as fh:
+
+                 return json.load(fh)
+
+         except Exception as exc:
+
+             logging.error("path_guard: failed to load config.json: %s", exc)
+
      return {}
 ````
 
@@ -3894,14 +4665,22 @@ index d4ee7329..c3f05582 100644
 --- a/Tlamatini/agent/rag/config.py
 +++ b/Tlamatini/agent/rag/config.py
 @@ -285,9 +285,9 @@ def load_config_and_prompt(application_path: str) -> Tuple[Dict[str, Any], str,
-             print(f"--- Expected location: {path}")
-             print("--- Please ensure all required configuration files are present before running the application.")
-             sys.exit(1)
- 
--    with open(config_file_path, 'r', encoding='utf-8') as f:
-+    with open(config_file_path, 'r', encoding='utf-8-sig') as f:
-         config = json.load(f)
-     with open(prompt_file_path, 'r', encoding='utf-8') as f:
+             print(f"--- Expected location: {path}")
+
+             print("--- Please ensure all required configuration files are present before running the application.")
+
+             sys.exit(1)
+
+ 
+
+-    with open(config_file_path, 'r', encoding='utf-8') as f:
+
++    with open(config_file_path, 'r', encoding='utf-8-sig') as f:
+
+         config = json.load(f)
+
+     with open(prompt_file_path, 'r', encoding='utf-8') as f:
+
          prompt_template = f.read()
 ````
 
@@ -3943,80 +4722,150 @@ index 66e02b27..52160987 100644
 --- a/Tlamatini/agent/rag/interface.py
 +++ b/Tlamatini/agent/rag/interface.py
 @@ -98,8 +98,16 @@ def is_valid_prompt(text: str) -> bool:
- 
-     if normalized_text.endswith('?'):
-         return True
- 
-+    # People often explain the situation before asking for an action. The
-+    # legacy first-word check rejected "This is a check. Reply with ..." before
-+    # the model ever saw it. Evaluate each sentence/paragraph using the same
-+    # prompt-shape rules; filesystem access validation still runs separately.
-+    clauses = re.split(r'(?:[.!?]\s+|\n+)', normalized_text)
-+    if len(clauses) > 1 and any(is_valid_prompt(clause) for clause in clauses):
-+        return True
-+
-     tokens: List[str]
-     if nltk is not None:
-         try:
-             tokens = nltk.word_tokenize(normalized_text)
+ 
+
+     if normalized_text.endswith('?'):
+
+         return True
+
+ 
+
++    # People often explain the situation before asking for an action. The
+
++    # legacy first-word check rejected "This is a check. Reply with ..." before
+
++    # the model ever saw it. Evaluate each sentence/paragraph using the same
+
++    # prompt-shape rules; filesystem access validation still runs separately.
+
++    clauses = re.split(r'(?:[.!?]\s+|\n+)', normalized_text)
+
++    if len(clauses) > 1 and any(is_valid_prompt(clause) for clause in clauses):
+
++        return True
+
++
+
+     tokens: List[str]
+
+     if nltk is not None:
+
+         try:
+
+             tokens = nltk.word_tokenize(normalized_text)
+
 @@ -108,8 +116,12 @@ def is_valid_prompt(text: str) -> bool:
-     else:
-         tokens = normalized_text.split()
-     if not tokens:
-         return False
-+    if tokens[0] == 'please':
-+        tokens = tokens[1:]
-+        if not tokens:
-+            return False
- 
-     question_words = [
-         'what', 'who', 'where', 'when', 'why', 'how', 'which', 'whose',
-         'is', 'are', 'am', 'was', 'were', 'do', 'does', 'did', 'have', 'has', 'had',
+     else:
+
+         tokens = normalized_text.split()
+
+     if not tokens:
+
+         return False
+
++    if tokens[0] == 'please':
+
++        tokens = tokens[1:]
+
++        if not tokens:
+
++            return False
+
+ 
+
+     question_words = [
+
+         'what', 'who', 'where', 'when', 'why', 'how', 'which', 'whose',
+
+         'is', 'are', 'am', 'was', 'were', 'do', 'does', 'did', 'have', 'has', 'had',
+
 @@ -125,8 +137,9 @@ def is_valid_prompt(text: str) -> bool:
-         'modify', 'update', 'change', 'improve', 'optimize', 'refactor', 'enhance',
-         'document', 'comment', 'annotate', 'summarize', 'outline', 'help', 'assist', 'stop', 'terminate', 'kill',
-         'unzip', 'decompile', 'decompress',
-         'parametrize', 'parametrise', 'start', 'start-up', 'get',
-+        'reply', 'respond', 'answer',
-     ]
- 
-     multiword_patterns = [
-         'tell me', 'show me', 'provide me', 'give me', 'help me', 'can you',
+         'modify', 'update', 'change', 'improve', 'optimize', 'refactor', 'enhance',
+
+         'document', 'comment', 'annotate', 'summarize', 'outline', 'help', 'assist', 'stop', 'terminate', 'kill',
+
+         'unzip', 'decompile', 'decompress',
+
+         'parametrize', 'parametrise', 'start', 'start-up', 'get',
+
++        'reply', 'respond', 'answer',
+
+     ]
+
+ 
+
+     multiword_patterns = [
+
+         'tell me', 'show me', 'provide me', 'give me', 'help me', 'can you',
+
 @@ -537,8 +550,20 @@ def _indirect_file_access_prompt(question: str) -> bool:
-         logging.error("_indirect_file_access_prompt: LLM call failed: %s", exc)
-         return True  # fail-safe
- 
- 
-+def _is_literal_reply_request(question: str) -> bool:
-+    """Recognize a single literal reply token, with no additional action."""
-+    if not isinstance(question, str):
-+        return False
-+    return bool(re.fullmatch(
-+        r"\s*(?:please\s+)?(?:reply|respond|answer)\s+with\s+(?:exactly\s+|only\s+)?"
-+        r"""(['"]?)[A-Za-z0-9][A-Za-z0-9_-]{0,79}\1"""
-+        r"(?:\s+and\s+(?:no\s+other\s+text|nothing\s+else))?[.!]?\s*",
-+        question, re.IGNORECASE,
-+    ))
-+
-+
- def _validate_accesses_in_prompt(question: str):
-     """
-     Inspect a user prompt for file-system paths and enforce allowed_paths policy.
- 
+         logging.error("_indirect_file_access_prompt: LLM call failed: %s", exc)
+
+         return True  # fail-safe
+
+ 
+
+ 
+
++def _is_literal_reply_request(question: str) -> bool:
+
++    """Recognize a single literal reply token, with no additional action."""
+
++    if not isinstance(question, str):
+
++        return False
+
++    return bool(re.fullmatch(
+
++        r"\s*(?:please\s+)?(?:reply|respond|answer)\s+with\s+(?:exactly\s+|only\s+)?"
+
++        r"""(['"]?)[A-Za-z0-9][A-Za-z0-9_-]{0,79}\1"""
+
++        r"(?:\s+and\s+(?:no\s+other\s+text|nothing\s+else))?[.!]?\s*",
+
++        question, re.IGNORECASE,
+
++    ))
+
++
+
++
+
+ def _validate_accesses_in_prompt(question: str):
+
+     """
+
+     Inspect a user prompt for file-system paths and enforce allowed_paths policy.
+
+ 
+
 @@ -550,8 +575,14 @@ def _validate_accesses_in_prompt(question: str):
-     found_paths = _PATH_PATTERN.findall(question)
-     if not found_paths:
-         deterministic_intent = _has_deterministic_filesystem_intent(question)
- 
-+        # A literal one-token reply cannot touch the filesystem. The intent LLM
-+        # can echo that token instead of YES/NO and wrongly deny ordinary chat.
-+        # Paths, free-form content and trailing instructions do not match.
-+        if _is_literal_reply_request(question):
-+            return None
-+
-         # If the prompt references "allowed paths/locations" (or synonyms),
-         # it is a valid way to indicate scope → skip indirect access check.
-         if _ALLOWED_SYNONYMS.search(question):
+     found_paths = _PATH_PATTERN.findall(question)
+
+     if not found_paths:
+
+         deterministic_intent = _has_deterministic_filesystem_intent(question)
+
+ 
+
++        # A literal one-token reply cannot touch the filesystem. The intent LLM
+
++        # can echo that token instead of YES/NO and wrongly deny ordinary chat.
+
++        # Paths, free-form content and trailing instructions do not match.
+
++        if _is_literal_reply_request(question):
+
++            return None
+
++
+
+         # If the prompt references "allowed paths/locations" (or synonyms),
+
+         # it is a valid way to indicate scope → skip indirect access check.
+
+         if _ALLOWED_SYNONYMS.search(question):
+
              print("--- _validate_accesses_in_prompt: prompt references allowed paths/locations -> proceed")
 ````
 
@@ -4051,12 +4900,18 @@ index 8729b3df..1259650f 100644
 --- a/Tlamatini/agent/services/__init__.py
 +++ b/Tlamatini/agent/services/__init__.py
 @@ -6,10 +6,18 @@
- #
- #   Every line of this file was written by Angela López Mendoza.
- # ═══════════════════════════════════════════════════════════════════
- #   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
--from .filesystem import generate_tree_view_content, save_files_from_db
--from .response_parser import process_llm_response
+ #
+
+ #   Every line of this file was written by Angela López Mendoza.
+
+ # ═══════════════════════════════════════════════════════════════════
+
+ #   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
+
+-from .filesystem import generate_tree_view_content, save_files_from_db
+
+-from .response_parser import process_llm_response
+
 +# Pure format validators are also used before Django starts (Explorer opening).
 +# Load the DB-backed public helpers only when callers actually request them.
 +def __getattr__(name):
@@ -4066,10 +4921,14 @@ index 8729b3df..1259650f 100644
 +    if name == 'process_llm_response':
 +        from .response_parser import process_llm_response
 +        return process_llm_response
-+    raise AttributeError(name)
- 
- __all__ = [
-     'generate_tree_view_content',
++    raise AttributeError(name)
+
+ 
+
+ __all__ = [
+
+     'generate_tree_view_content',
+
      'save_files_from_db',
 ````
 
@@ -4238,26 +5097,45 @@ index 3e17d10a..a3260fe9 100644
 --- a/Tlamatini/agent/skills_pkg/tlamatini_static_version_bumper/SKILL.md
 +++ b/Tlamatini/agent/skills_pkg/tlamatini_static_version_bumper/SKILL.md
 @@ -51,9 +51,9 @@ External-MCP runtime strip and long-operation menu behavior.
- 
- `Tlamatini/tlamatini/settings.py` computes it at import time:
- 
- ```python
--STATIC_VERSION = (os.environ.get('STATIC_VERSION') or str(int(time.time()))) + '-prompt-commentary-input-1'
-+STATIC_VERSION = (os.environ.get('STATIC_VERSION') or str(int(time.time()))) + '-flow-file-opening-2'
- ```
- 
- So it is **an environment override OR the process start timestamp**, plus a
- build suffix. There is no `STATIC_VERSION = '7'` literal to increment, and
+ 
+
+ `Tlamatini/tlamatini/settings.py` computes it at import time:
+
+ 
+
+ ```python
+
+-STATIC_VERSION = (os.environ.get('STATIC_VERSION') or str(int(time.time()))) + '-prompt-commentary-input-1'
+
++STATIC_VERSION = (os.environ.get('STATIC_VERSION') or str(int(time.time()))) + '-flow-file-opening-2'
+
+ ```
+
+ 
+
+ So it is **an environment override OR the process start timestamp**, plus a
+
+ build suffix. There is no `STATIC_VERSION = '7'` literal to increment, and
+
 @@ -69,9 +69,9 @@ somewhere — the current release is whatever `git describe` says today.
- | situation | what refreshes the stamp |
- |---|---|
- | source dev run | **Restart the server.** The timestamp is evaluated once at import, so a running process keeps its stamp until it restarts. |
- | deployment with a pinned stamp | Set the `STATIC_VERSION` env var to a NEW value and restart. |
--| a permanent marker for one change | Edit only the **suffix** literal (e.g. `-prompt-commentary-input-1` → a new marker naming YOUR change; the value shown above was current for the 2026-10-03 commentary/input refactor — read the live one first). Keep the `os.environ.get(...) or str(int(time.time()))` head intact. |
-+| a permanent marker for one change | Edit only the **suffix** literal (e.g. `-flow-file-opening-2` → a new marker naming YOUR change; the value shown above was current for the 2026-10-04 Windows flow-file opening repair — read the live one first). Keep the `os.environ.get(...) or str(int(time.time()))` head intact. |
- 
- ## Procedure
- 
+ | situation | what refreshes the stamp |
+
+ |---|---|
+
+ | source dev run | **Restart the server.** The timestamp is evaluated once at import, so a running process keeps its stamp until it restarts. |
+
+ | deployment with a pinned stamp | Set the `STATIC_VERSION` env var to a NEW value and restart. |
+
+-| a permanent marker for one change | Edit only the **suffix** literal (e.g. `-prompt-commentary-input-1` → a new marker naming YOUR change; the value shown above was current for the 2026-10-03 commentary/input refactor — read the live one first). Keep the `os.environ.get(...) or str(int(time.time()))` head intact. |
+
++| a permanent marker for one change | Edit only the **suffix** literal (e.g. `-flow-file-opening-2` → a new marker naming YOUR change; the value shown above was current for the 2026-10-04 Windows flow-file opening repair — read the live one first). Keep the `os.environ.get(...) or str(int(time.time()))` head intact. |
+
+ 
+
+ ## Procedure
+
+ 
+
  1. Read the `STATIC_VERSION = (...)` expression from settings.py and report it
 ````
 
@@ -4543,75 +5421,137 @@ index 5fb87f32..7ebc4629 100644
 --- a/Tlamatini/agent/static/agent/js/acp-file-io.js
 +++ b/Tlamatini/agent/static/agent/js/acp-file-io.js
 @@ -71,11 +71,12 @@ if (saveBtn) {
-         // keys, ...) BEFORE the .flw leaves the browser. Save used to Blob the
-         // RAW snapshot, so every credential typed into a node dialog shipped in
-         // the shared file. The backend masks only secret fields per each agent's
-         // contract and preserves the snapshot shape byte-for-byte, so the loader
--        // round-trips it losslessly. Falls back to the raw snapshot ONLY if the
--        // backend is unreachable (never a silent Save failure). (audit [5])
--        data = await _redactFlowSnapshotBeforeSave(data);
-+        // round-trips it losslessly. A failed redaction leaves the flow unsaved
-+        // and explains the error; raw credentials must never be downloaded.
+         // keys, ...) BEFORE the .flw leaves the browser. Save used to Blob the
+
+         // RAW snapshot, so every credential typed into a node dialog shipped in
+
+         // the shared file. The backend masks only secret fields per each agent's
+
+         // contract and preserves the snapshot shape byte-for-byte, so the loader
+
+-        // round-trips it losslessly. Falls back to the raw snapshot ONLY if the
+
+-        // backend is unreachable (never a silent Save failure). (audit [5])
+
+-        data = await _redactFlowSnapshotBeforeSave(data);
+
++        // round-trips it losslessly. A failed redaction leaves the flow unsaved
+
++        // and explains the error; raw credentials must never be downloaded.
+
 +        try { data = await _redactFlowSnapshotBeforeSave(data); }
-+        catch (error) { await acpAlert(error.message); return; }
- 
-         const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-         const url = URL.createObjectURL(blob);
-         const a = document.createElement('a');
++        catch (error) { await acpAlert(error.message); return; }
+
+ 
+
+         const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+
+         const url = URL.createObjectURL(blob);
+
+         const a = document.createElement('a');
+
 @@ -90,12 +91,10 @@ if (saveBtn) {
- 
- /**
-  * POST the flow snapshot to the backend so it can mask secret fields (per each
-  * agent's contract secret_paths) before the .flw is downloaded. Mirrors the
-- * chat Create-Flow contract (_normalizeChatFlowBeforeDownload): on any failure
-- * it returns the original snapshot so Save never silently fails — the canvas
-- * page is served by the same Django server, so the endpoint is reachable
-- * whenever the canvas itself is usable. (2026-07-11 audit [5])
+ 
+
+ /**
+
+  * POST the flow snapshot to the backend so it can mask secret fields (per each
+
+  * agent's contract secret_paths) before the .flw is downloaded. Mirrors the
+
+- * chat Create-Flow contract (_normalizeChatFlowBeforeDownload): on any failure
+
+- * it returns the original snapshot so Save never silently fails — the canvas
+
+- * page is served by the same Django server, so the endpoint is reachable
+
+- * whenever the canvas itself is usable. (2026-07-11 audit [5])
+
 + * A failed redaction keeps the diagram dirty and reports an actionable error.
 + * Raw credentials must never be downloaded as a fallback.
-  */
- async function _redactFlowSnapshotBeforeSave(flowData) {
-     try {
-         const response = await fetch('/agent/redact_flow_snapshot/', {
+  */
+
+ async function _redactFlowSnapshotBeforeSave(flowData) {
+
+     try {
+
+         const response = await fetch('/agent/redact_flow_snapshot/', {
+
 @@ -107,13 +106,13 @@ async function _redactFlowSnapshotBeforeSave(flowData) {
-         const result = await response.json();
-         if (response.ok && result.success && result.flow) {
-             return result.flow;
-         }
--        console.warn('--- Save: backend redaction unavailable, saving raw snapshot:', result);
-+        console.warn('--- Save: backend redaction unavailable:', result);
-     } catch (err) {
--        console.warn('--- Save: backend redaction failed, saving raw snapshot:', err);
-+        console.warn('--- Save: backend redaction failed:', err);
-     }
--    return flowData;
-+    throw new Error('The diagram could not be saved because credential protection is unavailable. Check your connection and sign-in, then try Save again.');
- }
- 
- // ========================================
- // OPEN BUTTON
+         const result = await response.json();
+
+         if (response.ok && result.success && result.flow) {
+
+             return result.flow;
+
+         }
+
+-        console.warn('--- Save: backend redaction unavailable, saving raw snapshot:', result);
+
++        console.warn('--- Save: backend redaction unavailable:', result);
+
+     } catch (err) {
+
+-        console.warn('--- Save: backend redaction failed, saving raw snapshot:', err);
+
++        console.warn('--- Save: backend redaction failed:', err);
+
+     }
+
+-    return flowData;
+
++    throw new Error('The diagram could not be saved because credential protection is unavailable. Check your connection and sign-in, then try Save again.');
+
+ }
+
+ 
+
+ // ========================================
+
+ // OPEN BUTTON
+
 @@ -125,24 +124,20 @@ if (openBtn) {
-         const input = document.createElement('input');
-         input.type = 'file';
-         input.accept = '.flw';
- 
--        input.onchange = (event) => {
+         const input = document.createElement('input');
+
+         input.type = 'file';
+
+         input.accept = '.flw';
+
+ 
+
+-        input.onchange = (event) => {
+
 +        input.onchange = async (event) => {
-             const file = event.target.files[0];
-             if (!file) return;
--
--            const reader = new FileReader();
--            reader.onload = (ev) => {
--                try {
--                    const data = JSON.parse(ev.target.result);
--                    loadDiagram(data);
--                    updateFilenameDisplay(file.name);
--                } catch (err) {
--                    console.error("Failed to load diagram", err);
--                    acpAlert("Error loading diagram file.");
--                }
--            };
--            reader.readAsText(file);
+             const file = event.target.files[0];
+
+             if (!file) return;
+
+-
+
+-            const reader = new FileReader();
+
+-            reader.onload = (ev) => {
+
+-                try {
+
+-                    const data = JSON.parse(ev.target.result);
+
+-                    loadDiagram(data);
+
+-                    updateFilenameDisplay(file.name);
+
+-                } catch (err) {
+
+-                    console.error("Failed to load diagram", err);
+
+-                    acpAlert("Error loading diagram file.");
+
+-                }
+
+-            };
+
+-            reader.readAsText(file);
+
 +            try {
 +                if (!/\.flw$/i.test(file.name)) throw new Error('Choose a .flw agent flow.');
 +                if (file.size > 5 * 1024 * 1024) throw new Error('The flow file must be no larger than 5 MiB.');
@@ -4621,20 +5561,33 @@ index 5fb87f32..7ebc4629 100644
 +                console.error('Failed to load diagram', err);
 +                await acpAlert('Could not open diagram: ' + err.message);
 +            }
-         };
-         input.click();
-     });
- }
+         };
+
+         input.click();
+
+     });
+
+ }
+
 @@ -221,44 +216,60 @@ function getSavedParametrizerMappings(data, nodeData, resolvedNodeId, configData
-  * Load a diagram from a parsed JSON data object.
-  * Clears existing canvas, deploys agents, restores connections.
-  * @param {Object} data - Parsed .flw file data
-  */
--async function loadDiagram(data) {
-+async function loadDiagram(data, filename = 'diagram.flw', { withinEditorOperation = false } = {}) {
-+    // The built-in example already owns performEdit's busy state. External
-+    // file opens keep the default and cannot bypass that editing lock.
-+    const locked = () => ACP.canEdit ? !ACP.canEdit({ withinEditorOperation }) : ACP.fileLoading || (ACP.editorBusy && !withinEditorOperation) || isBusyProcessing || globalRunningState !== GLOBAL_STATE.STOPPED;
+  * Load a diagram from a parsed JSON data object.
+
+  * Clears existing canvas, deploys agents, restores connections.
+
+  * @param {Object} data - Parsed .flw file data
+
+  */
+
+-async function loadDiagram(data) {
+
++async function loadDiagram(data, filename = 'diagram.flw', { withinEditorOperation = false } = {}) {
+
++    // The built-in example already owns performEdit's busy state. External
+
++    // file opens keep the default and cannot bypass that editing lock.
+
++    const locked = () => ACP.canEdit ? !ACP.canEdit({ withinEditorOperation }) : ACP.fileLoading || (ACP.editorBusy && !withinEditorOperation) || isBusyProcessing || globalRunningState !== GLOBAL_STATE.STOPPED;
+
 +    if (locked()) throw new Error('Stop the flow and finish the current operation before opening a diagram.');
 +    const body = new FormData();
 +    body.append('file', new Blob([JSON.stringify(data)], { type: 'application/json' }), filename);
@@ -4646,9 +5599,12 @@ index 5fb87f32..7ebc4629 100644
 +    if (!response.ok) throw new Error(result.error || 'Invalid .flw file.');
 +    data = result.flow;
 +    if (hasUnsavedChanges && !await acpConfirm('Replace this diagram?', 'Unsaved changes will be replaced. Save the diagram first to keep them.', 'Unsaved changes')) return false;
-+    if (locked()) throw new Error('The flow is busy. Try opening the file again after it stops.');
-     ACP.fileLoading = true;
-     ACP.refreshEditor?.();
++    if (locked()) throw new Error('The flow is busy. Try opening the file again after it stops.');
+
+     ACP.fileLoading = true;
+
+     ACP.refreshEditor?.();
+
 +    try {
 +    // Validate and prepare the session before changing the visible diagram.
 +    const clearResponse = await fetch('/agent/clear_pool/', {
@@ -4658,39 +5614,72 @@ index 5fb87f32..7ebc4629 100644
 +    if (!clearResponse.ok || clearResult.status !== 'success') {
 +        throw new Error(clearResult.message || 'The previous flow could not be closed. Your diagram was kept.');
 +    }
-     undoManager.clear();
--    try {
--    // 1. Clear existing connections
-     [...ACP.connections].forEach(conn => removeConnection(conn));
--
--    // 2. Clear existing nodes
-     document.querySelectorAll('.canvas-item').forEach(el => el.remove());
--
--    // 3. Clear selection
-     ACP.selectedItems.clear();
- 
--    // 4. Clear pool directory before deploying new agents
--    try {
--        const clearResponse = await fetch('/agent/clear_pool/', {
--            method: 'POST',
--            headers: getHeaders(),
--            credentials: 'same-origin'
--        });
--        const clearResult = await clearResponse.json();
--        if (clearResult.status === 'success') {
--            console.log('--- Pool directory cleared before loading diagram');
--        } else {
--            console.warn('--- Could not clear pool directory:', clearResult.message);
--        }
--    } catch (error) {
--        console.warn('--- Error clearing pool directory:', error);
--    }
--
-     const loadedNodes = [];
- 
-     // 5. Recreate nodes
-     ACP.itemCounters.clear();
-     ACP.nodeConfigs.clear();
+     undoManager.clear();
+
+-    try {
+
+-    // 1. Clear existing connections
+
+     [...ACP.connections].forEach(conn => removeConnection(conn));
+
+-
+
+-    // 2. Clear existing nodes
+
+     document.querySelectorAll('.canvas-item').forEach(el => el.remove());
+
+-
+
+-    // 3. Clear selection
+
+     ACP.selectedItems.clear();
+
+ 
+
+-    // 4. Clear pool directory before deploying new agents
+
+-    try {
+
+-        const clearResponse = await fetch('/agent/clear_pool/', {
+
+-            method: 'POST',
+
+-            headers: getHeaders(),
+
+-            credentials: 'same-origin'
+
+-        });
+
+-        const clearResult = await clearResponse.json();
+
+-        if (clearResult.status === 'success') {
+
+-            console.log('--- Pool directory cleared before loading diagram');
+
+-        } else {
+
+-            console.warn('--- Could not clear pool directory:', clearResult.message);
+
+-        }
+
+-    } catch (error) {
+
+-        console.warn('--- Error clearing pool directory:', error);
+
+-    }
+
+-
+
+     const loadedNodes = [];
+
+ 
+
+     // 5. Recreate nodes
+
+     ACP.itemCounters.clear();
+
+     ACP.nodeConfigs.clear();
+
 +    // Saved IDs can have gaps after deletions. Preserve them so config references
 +    // still point to the same agent, and reserve their numbers before adding any
 +    // legacy nodes without IDs or creating future nodes on the canvas.
@@ -4706,70 +5695,129 @@ index 5fb87f32..7ebc4629 100644
 +        const saved = savedRegistration(node);
 +        if (saved) ACP.itemCounters.set(saved.baseName, Math.max(ACP.itemCounters.get(saved.baseName) || 0, saved.count));
 +    }
- 
-     if (data.nodes && Array.isArray(data.nodes)) {
-         for (const nodeData of data.nodes) {
-             const lowerName = nodeData.text.toLowerCase();
+ 
+
+     if (data.nodes && Array.isArray(data.nodes)) {
+
+         for (const nodeData of data.nodes) {
+
+             const lowerName = nodeData.text.toLowerCase();
+
 @@ -294,9 +305,9 @@ async function loadDiagram(data) {
-                 agentText = 'FlowHypervisor';
-                 newItem.textContent = agentText;
-                 newItem.id = 'flowhypervisor';
-             } else {
--                const registration = registerItem(agentText);
-+                const registration = savedRegistration(nodeData) || registerItem(agentText);
-                 newItem.textContent = `${agentText} (${registration.count})`;
-                 newItem.id = registration.id;
-             }
-             setCanvasItemMetadata(
+                 agentText = 'FlowHypervisor';
+
+                 newItem.textContent = agentText;
+
+                 newItem.id = 'flowhypervisor';
+
+             } else {
+
+-                const registration = registerItem(agentText);
+
++                const registration = savedRegistration(nodeData) || registerItem(agentText);
+
+                 newItem.textContent = `${agentText} (${registration.count})`;
+
+                 newItem.id = registration.id;
+
+             }
+
+             setCanvasItemMetadata(
+
 @@ -434,8 +445,9 @@ async function loadDiagram(data) {
-     // Initial resize so scrollbars appear immediately, before the settled redraw.
-     updateCanvasContentSize();
-     updateSaveButtonState();
-     markClean();
-+    return true;
-     } finally {
-         ACP.fileLoading = false;
-         ACP.refreshEditor?.();
-     }
+     // Initial resize so scrollbars appear immediately, before the settled redraw.
+
+     updateCanvasContentSize();
+
+     updateSaveButtonState();
+
+     markClean();
+
++    return true;
+
+     } finally {
+
+         ACP.fileLoading = false;
+
+         ACP.refreshEditor?.();
+
+     }
+
 @@ -464,9 +476,13 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
-     try {
-         // --- SOURCE-SIDE UPDATES ---
-         // If the source node has saved configData it was already fully deployed in step 5.
-         // Never let connection-restoration overwrite what the user explicitly saved.
--        if (ACP.nodeConfigs.has(sourceId)) {
-+        // Parametrizer's mapping dialog can save only _parametrizer_mappings.
-+        // That artifact is not a saved target list: the visible edge must still
-+        // restore its runtime wiring. Explicit saved lists remain authoritative.
-+        const sourceConfig = ACP.nodeConfigs.get(sourceId);
-+        if (sourceConfig && (sourceAgentName !== 'parametrizer' || Object.prototype.hasOwnProperty.call(sourceConfig, 'target_agents'))) {
-             console.log(`[Restore] ${sourceAgentName}(${sourceId}) has saved configData — skipping source-side update.`);
-         } else {
-             // Asker/Forker output slots (A/B)
-             if (sourceAgentName === 'asker') {
+     try {
+
+         // --- SOURCE-SIDE UPDATES ---
+
+         // If the source node has saved configData it was already fully deployed in step 5.
+
+         // Never let connection-restoration overwrite what the user explicitly saved.
+
+-        if (ACP.nodeConfigs.has(sourceId)) {
+
++        // Parametrizer's mapping dialog can save only _parametrizer_mappings.
+
++        // That artifact is not a saved target list: the visible edge must still
+
++        // restore its runtime wiring. Explicit saved lists remain authoritative.
+
++        const sourceConfig = ACP.nodeConfigs.get(sourceId);
+
++        if (sourceConfig && (sourceAgentName !== 'parametrizer' || Object.prototype.hasOwnProperty.call(sourceConfig, 'target_agents'))) {
+
+             console.log(`[Restore] ${sourceAgentName}(${sourceId}) has saved configData — skipping source-side update.`);
+
+         } else {
+
+             // Asker/Forker output slots (A/B)
+
+             if (sourceAgentName === 'asker') {
+
 @@ -584,9 +600,10 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
-         }
- 
-         // --- TARGET-SIDE UPDATES ---
-         // Same rule: if the target node has saved configData, trust it and skip.
--        if (ACP.nodeConfigs.has(targetId)) {
-+        const targetConfig = ACP.nodeConfigs.get(targetId);
-+        if (targetConfig && (targetAgentName !== 'parametrizer' || Object.prototype.hasOwnProperty.call(targetConfig, 'source_agents'))) {
-             console.log(`[Restore] ${targetAgentName}(${targetId}) has saved configData — skipping target-side update.`);
-         } else {
-             // OR/AND need slot-specific calls
-             if (targetAgentName === 'or') {
+         }
+
+ 
+
+         // --- TARGET-SIDE UPDATES ---
+
+         // Same rule: if the target node has saved configData, trust it and skip.
+
+-        if (ACP.nodeConfigs.has(targetId)) {
+
++        const targetConfig = ACP.nodeConfigs.get(targetId);
+
++        if (targetConfig && (targetAgentName !== 'parametrizer' || Object.prototype.hasOwnProperty.call(targetConfig, 'source_agents'))) {
+
+             console.log(`[Restore] ${targetAgentName}(${targetId}) has saved configData — skipping target-side update.`);
+
+         } else {
+
+             // OR/AND need slot-specific calls
+
+             if (targetAgentName === 'or') {
+
 @@ -671,67 +688,24 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
- // PAGE LIFECYCLE: LOAD PENDING FLW DATA
- // ========================================
- 
- document.addEventListener('DOMContentLoaded', () => {
--    let pendingData = null;
--    let pendingFilename = null;
--
--    // Source 1: Server-injected data via Django json_script tags
--    const serverFlwDataEl = document.getElementById('server-flw-data');
--    const serverFlwFilenameEl = document.getElementById('server-flw-filename');
--    if (serverFlwDataEl) {
+ // PAGE LIFECYCLE: LOAD PENDING FLW DATA
+
+ // ========================================
+
+ 
+
+ document.addEventListener('DOMContentLoaded', () => {
+
+-    let pendingData = null;
+
+-    let pendingFilename = null;
+
+-
+
+-    // Source 1: Server-injected data via Django json_script tags
+
+-    const serverFlwDataEl = document.getElementById('server-flw-data');
+
+-    const serverFlwFilenameEl = document.getElementById('server-flw-filename');
+
+-    if (serverFlwDataEl) {
+
 +    // Retire the old global, cross-user single-slot handoff without consuming it.
 +    for (const key of ['pendingFlwData', 'pendingFlwFilename', 'pendingFlwTimestamp']) {
 +        try { localStorage.removeItem(key); } catch (_) { /* Storage may be disabled. */ }
@@ -4782,64 +5830,119 @@ index 5fb87f32..7ebc4629 100644
 +    if (error) { acpAlert(JSON.parse(error.textContent)); return; }
 +    // Let the canvas and session initialize before deploying saved configurations.
 +    setTimeout(async () => {
-         try {
--            pendingData = JSON.parse(serverFlwDataEl.textContent);
--            pendingFilename = serverFlwFilenameEl ? JSON.parse(serverFlwFilenameEl.textContent) : null;
--            console.log('--- [FLW] Found server-injected flow data for auto-load:', pendingFilename);
--        } catch (err) {
--            console.error('--- [FLW] Failed to parse server-injected flow data:', err);
--        }
--    }
--
--    // Source 2: localStorage (from agent_page.html Open menu)
--    if (!pendingData) {
--        const storedData = localStorage.getItem('pendingFlwData');
--        const storedFilename = localStorage.getItem('pendingFlwFilename');
--        const storedTimestamp = localStorage.getItem('pendingFlwTimestamp');
--
--        if (storedData) {
--            let isFresh = false;
--            if (storedTimestamp) {
--                const now = Date.now();
--                const ts = parseInt(storedTimestamp, 10);
--                if (!isNaN(ts) && (now - ts < 30000)) {
--                    isFresh = true;
--                } else {
--                    console.warn('--- [FLW] Ignoring stale pending flow data:', storedFilename);
--                }
--            } else {
--                console.warn('--- [FLW] Ignoring pending flow data without timestamp:', storedFilename);
--            }
--
--            if (isFresh) {
--                try {
--                    pendingData = JSON.parse(storedData);
--                    pendingFilename = storedFilename;
--                    console.log('--- [FLW] Found fresh pending flow data in localStorage:', pendingFilename);
--                } catch (err) {
--                    console.error('--- [FLW] Failed to parse localStorage flow data:', err);
--                }
+         try {
+
+-            pendingData = JSON.parse(serverFlwDataEl.textContent);
+
+-            pendingFilename = serverFlwFilenameEl ? JSON.parse(serverFlwFilenameEl.textContent) : null;
+
+-            console.log('--- [FLW] Found server-injected flow data for auto-load:', pendingFilename);
+
+-        } catch (err) {
+
+-            console.error('--- [FLW] Failed to parse server-injected flow data:', err);
+
+-        }
+
+-    }
+
+-
+
+-    // Source 2: localStorage (from agent_page.html Open menu)
+
+-    if (!pendingData) {
+
+-        const storedData = localStorage.getItem('pendingFlwData');
+
+-        const storedFilename = localStorage.getItem('pendingFlwFilename');
+
+-        const storedTimestamp = localStorage.getItem('pendingFlwTimestamp');
+
+-
+
+-        if (storedData) {
+
+-            let isFresh = false;
+
+-            if (storedTimestamp) {
+
+-                const now = Date.now();
+
+-                const ts = parseInt(storedTimestamp, 10);
+
+-                if (!isNaN(ts) && (now - ts < 30000)) {
+
+-                    isFresh = true;
+
+-                } else {
+
+-                    console.warn('--- [FLW] Ignoring stale pending flow data:', storedFilename);
+
+-                }
+
+-            } else {
+
+-                console.warn('--- [FLW] Ignoring pending flow data without timestamp:', storedFilename);
+
+-            }
+
+-
+
+-            if (isFresh) {
+
+-                try {
+
+-                    pendingData = JSON.parse(storedData);
+
+-                    pendingFilename = storedFilename;
+
+-                    console.log('--- [FLW] Found fresh pending flow data in localStorage:', pendingFilename);
+
+-                } catch (err) {
+
+-                    console.error('--- [FLW] Failed to parse localStorage flow data:', err);
+
+-                }
+
 +            const filename = JSON.parse(document.getElementById('server-flw-filename').textContent);
 +            if (await loadDiagram(JSON.parse(incoming.textContent), filename)) {
 +                updateFilenameDisplay(filename);
-             }
--
--            localStorage.removeItem('pendingFlwData');
--            localStorage.removeItem('pendingFlwFilename');
--            localStorage.removeItem('pendingFlwTimestamp');
--        }
--    }
--
--    if (pendingData) {
--        setTimeout(async () => {
--            console.log('--- [FLW] Loading pending flow data...');
--            await loadDiagram(pendingData);
--            if (pendingFilename) {
--                updateFilenameDisplay(pendingFilename);
--            }
--            console.log('--- [FLW] Loaded flow file: ' + (pendingFilename || 'unknown'));
--        }, 500);
--    }
+             }
+
+-
+
+-            localStorage.removeItem('pendingFlwData');
+
+-            localStorage.removeItem('pendingFlwFilename');
+
+-            localStorage.removeItem('pendingFlwTimestamp');
+
+-        }
+
+-    }
+
+-
+
+-    if (pendingData) {
+
+-        setTimeout(async () => {
+
+-            console.log('--- [FLW] Loading pending flow data...');
+
+-            await loadDiagram(pendingData);
+
+-            if (pendingFilename) {
+
+-                updateFilenameDisplay(pendingFilename);
+
+-            }
+
+-            console.log('--- [FLW] Loaded flow file: ' + (pendingFilename || 'unknown'));
+
+-        }, 500);
+
+-    }
+
 +        } catch (error) { await acpAlert('Could not open diagram: ' + error.message); }
 +    }, 500);
  });
@@ -4870,36 +5973,66 @@ index e695745f..c3dd67d3 100644
 --- a/Tlamatini/agent/static/agent/js/agent_page_canvas.js
 +++ b/Tlamatini/agent/static/agent/js/agent_page_canvas.js
 @@ -348,35 +348,42 @@ const loadFileContent = (reOpened = false, callback = null) => {
-             console.error("No file selected, so load file content is not allowed, function will return false...");
-             return false;
-         }
- 
--        // Check for .flw extension - redirect to Agentic Control Panel
--        if (file.name.toLowerCase().endsWith('.flw')) {
--            const flwReader = new FileReader();
--            flwReader.onload = flwEvent => {
--                try {
--                    const flwData = JSON.parse(flwEvent.target.result);
--                    localStorage.setItem('pendingFlwData', JSON.stringify(flwData));
--                    localStorage.setItem('pendingFlwFilename', file.name);
--                    localStorage.setItem('pendingFlwTimestamp', Date.now().toString()); // Add timestamp
--                    window.open('/agent/agentic_control_panel/', '_blank');
--                    console.log('--- Opened .flw file in Agentic Control Panel: ' + file.name);
--                } catch (err) {
--                    console.error('Failed to parse .flw file:', err);
--                    alert('Invalid .flw file format. The file could not be parsed as JSON.');
--                }
--            };
--            flwReader.readAsText(file);
--            return;
--        }
--
-         await loadSelectedCanvasFile(file, reOpened, callback);
-     };
-     input.click();
- };
- 
- /** Read text normally; route PDFs to the complete, range-backed PDF viewer. */
+             console.error("No file selected, so load file content is not allowed, function will return false...");
+
+             return false;
+
+         }
+
+ 
+
+-        // Check for .flw extension - redirect to Agentic Control Panel
+
+-        if (file.name.toLowerCase().endsWith('.flw')) {
+
+-            const flwReader = new FileReader();
+
+-            flwReader.onload = flwEvent => {
+
+-                try {
+
+-                    const flwData = JSON.parse(flwEvent.target.result);
+
+-                    localStorage.setItem('pendingFlwData', JSON.stringify(flwData));
+
+-                    localStorage.setItem('pendingFlwFilename', file.name);
+
+-                    localStorage.setItem('pendingFlwTimestamp', Date.now().toString()); // Add timestamp
+
+-                    window.open('/agent/agentic_control_panel/', '_blank');
+
+-                    console.log('--- Opened .flw file in Agentic Control Panel: ' + file.name);
+
+-                } catch (err) {
+
+-                    console.error('Failed to parse .flw file:', err);
+
+-                    alert('Invalid .flw file format. The file could not be parsed as JSON.');
+
+-                }
+
+-            };
+
+-            flwReader.readAsText(file);
+
+-            return;
+
+-        }
+
+-
+
+         await loadSelectedCanvasFile(file, reOpened, callback);
+
+     };
+
+     input.click();
+
+ };
+
+ 
+
+ /** Read text normally; route PDFs to the complete, range-backed PDF viewer. */
+
 +/** Keep flow files out of chat context; reserve the tab before asynchronous work. */
 +async function openFlowEditor(file) {
 +    const tab = window.open('about:blank', '_blank');
@@ -4926,11 +6059,16 @@ index e695745f..c3dd67d3 100644
 +    }
 +}
 +
- async function loadSelectedCanvasFile(file, reOpened = false, callback = null) {
-+    if (/\.(flw|fpmt)$/i.test(file.name)) { await openFlowEditor(file); return; }
-     // Reopen replaces context directly, avoiding an overlapping background
-     // rebuild of empty context while the replacement document loads.
-     cleanCanvas(reOpened && callback !== null);
+ async function loadSelectedCanvasFile(file, reOpened = false, callback = null) {
+
++    if (/\.(flw|fpmt)$/i.test(file.name)) { await openFlowEditor(file); return; }
+
+     // Reopen replaces context directly, avoiding an overlapping background
+
+     // rebuild of empty context while the replacement document loads.
+
+     cleanCanvas(reOpened && callback !== null);
+
      let generation = canvasLoadGeneration;
 ````
 
@@ -6035,14 +7173,22 @@ index 20f60a94..74387b13 100644
 --- a/Tlamatini/agent/templates/agent/login.html
 +++ b/Tlamatini/agent/templates/agent/login.html
 @@ -21,8 +21,9 @@
-                     <div class="card-body">
-                         <h2 class="card-title text-center mb-4 big-white-text">Tlamatini Login</h2>
-                         <form method="post">
-                             {% csrf_token %}
-+                <input type="hidden" name="next" value="{{ next }}">
-                             {% if form.errors %}
-                             <div class="login-error-panel" role="alert">
-                                 {% for error in form.non_field_errors %}
+                     <div class="card-body">
+
+                         <h2 class="card-title text-center mb-4 big-white-text">Tlamatini Login</h2>
+
+                         <form method="post">
+
+                             {% csrf_token %}
+
++                <input type="hidden" name="next" value="{{ next }}">
+
+                             {% if form.errors %}
+
+                             <div class="login-error-panel" role="alert">
+
+                                 {% for error in form.non_field_errors %}
+
                                  <div class="login-error-line">{{ error }}</div>
 ````
 
@@ -6618,17 +7764,28 @@ index 066703bb..071f725e 100644
 --- a/Tlamatini/agent/test_instant_messaging_doctor.py
 +++ b/Tlamatini/agent/test_instant_messaging_doctor.py
 @@ -88,9 +88,11 @@ class InstantMessagingDoctorTests(SimpleTestCase):
-         with open(config_path, "r", encoding="utf-8") as handle:
-             config = yaml.safe_load(handle)
- 
-         self.assertEqual(config["platform"], "both")
--        self.assertEqual(config["ollama"]["model"], "glm-5.3:cloud")
-+        # The shipped template follows Config > Models; explicit per-run
-+        # overrides are covered by the shared model-registry tests.
-+        self.assertEqual(config["ollama"]["model"], "@config")
-         self.assertIn(config["telegram"]["provider"], {"auto", "bot", "user"})
-         self.assertEqual(config["whatsapp"]["graph_base"], "https://graph.facebook.com")
- 
+         with open(config_path, "r", encoding="utf-8") as handle:
+
+             config = yaml.safe_load(handle)
+
+ 
+
+         self.assertEqual(config["platform"], "both")
+
+-        self.assertEqual(config["ollama"]["model"], "glm-5.3:cloud")
+
++        # The shipped template follows Config > Models; explicit per-run
+
++        # overrides are covered by the shared model-registry tests.
+
++        self.assertEqual(config["ollama"]["model"], "@config")
+
+         self.assertIn(config["telegram"]["provider"], {"auto", "bot", "user"})
+
+         self.assertEqual(config["whatsapp"]["graph_base"], "https://graph.facebook.com")
+
+ 
+
      def test_registry_contract_and_parametrizer_membership(self):
 ````
 
@@ -6672,39 +7829,70 @@ index 346a9d18..24acc513 100644
 --- a/Tlamatini/agent/test_kalier_agent.py
 +++ b/Tlamatini/agent/test_kalier_agent.py
 @@ -249,8 +249,11 @@ class SubjectAndCfgTests(SimpleTestCase):
- 
- class CallKaliApiTests(SimpleTestCase):
-     def setUp(self):
-         self.k = _load_kalier_module()
-+        logger = logging.getLogger()
-+        self.addCleanup(logger.setLevel, logger.level)
-+        logger.setLevel(logging.INFO)
-         self.cfg = {'server_url': 'http://127.0.0.1:5000', 'timeout': 5, 'target': '10.0.0.5'}
- 
-     def test_tool_success_envelope(self):
-         body = _envelope(stdout='PORT 22/tcp open ssh', return_code=0, success=True)
+ 
+
+ class CallKaliApiTests(SimpleTestCase):
+
+     def setUp(self):
+
+         self.k = _load_kalier_module()
+
++        logger = logging.getLogger()
+
++        self.addCleanup(logger.setLevel, logger.level)
+
++        logger.setLevel(logging.INFO)
+
+         self.cfg = {'server_url': 'http://127.0.0.1:5000', 'timeout': 5, 'target': '10.0.0.5'}
+
+ 
+
+     def test_tool_success_envelope(self):
+
+         body = _envelope(stdout='PORT 22/tcp open ssh', return_code=0, success=True)
+
 @@ -347,8 +350,11 @@ class CallKaliApiTests(SimpleTestCase):
- 
- class EmitSectionTests(SimpleTestCase):
-     def setUp(self):
-         self.k = _load_kalier_module()
-+        logger = logging.getLogger()
-+        self.addCleanup(logger.setLevel, logger.level)
-+        logger.setLevel(logging.INFO)
- 
-     def test_single_atomic_block_with_header_and_body(self):
-         records = []
- 
+ 
+
+ class EmitSectionTests(SimpleTestCase):
+
+     def setUp(self):
+
+         self.k = _load_kalier_module()
+
++        logger = logging.getLogger()
+
++        self.addCleanup(logger.setLevel, logger.level)
+
++        logger.setLevel(logging.INFO)
+
+ 
+
+     def test_single_atomic_block_with_header_and_body(self):
+
+         records = []
+
+ 
+
 @@ -384,8 +390,11 @@ class EmitSectionTests(SimpleTestCase):
- 
- class MainEndStageTests(SimpleTestCase):
-     def setUp(self):
-         self.k = _load_kalier_module()
-+        logger = logging.getLogger()
-+        self.addCleanup(logger.setLevel, logger.level)
-+        logger.setLevel(logging.INFO)
-         self.tmp = tempfile.mkdtemp()
-         self.cwd_before = os.getcwd()
+ 
+
+ class MainEndStageTests(SimpleTestCase):
+
+     def setUp(self):
+
+         self.k = _load_kalier_module()
+
++        logger = logging.getLogger()
+
++        self.addCleanup(logger.setLevel, logger.level)
+
++        logger.setLevel(logging.INFO)
+
+         self.tmp = tempfile.mkdtemp()
+
+         self.cwd_before = os.getcwd()
+
          os.chdir(self.tmp)
 ````
 
@@ -7024,125 +8212,234 @@ index 81b79b36..ebc8e7c8 100644
 --- a/Tlamatini/agent/test_password_quoting.py
 +++ b/Tlamatini/agent/test_password_quoting.py
 @@ -95,9 +95,9 @@ class PasswordContractTests(SimpleTestCase):
- class WrapPasswordValuesTests(SimpleTestCase):
-     """The pre-dump walk that swaps in `_QuotedStr` markers."""
- 
-     def test_wraps_emailer_password_in_quoted_str(self):
--        config = {"smtp": {"username": "u", "password": "<REDACTED>"}}
-+        config = {"smtp": {"username": "u", "password": "fake app pass 0000"}}
-         wrapped = _wrap_password_values(config, ("smtp.password",))
-         self.assertIsInstance(wrapped["smtp"]["password"], _QuotedStr)
-         # Plain str fields are untouched.
-         self.assertNotIsInstance(wrapped["smtp"]["username"], _QuotedStr)
+ class WrapPasswordValuesTests(SimpleTestCase):
+
+     """The pre-dump walk that swaps in `_QuotedStr` markers."""
+
+ 
+
+     def test_wraps_emailer_password_in_quoted_str(self):
+
+-        config = {"smtp": {"username": "u", "password": "<REDACTED>"}}
+
++        config = {"smtp": {"username": "u", "password": "<REDACTED>"}}
+
+         wrapped = _wrap_password_values(config, ("smtp.password",))
+
+         self.assertIsInstance(wrapped["smtp"]["password"], _QuotedStr)
+
+         # Plain str fields are untouched.
+
+         self.assertNotIsInstance(wrapped["smtp"]["username"], _QuotedStr)
+
 @@ -119,9 +119,9 @@ class WrapPasswordValuesTests(SimpleTestCase):
-         wrapped = _wrap_password_values(config, ("smtp.password",))
-         self.assertNotIn("password", wrapped["smtp"])
- 
-     def test_empty_password_paths_returns_input_untouched(self):
--        config = {"smtp": {"password": "<REDACTED>"}}
-+        config = {"smtp": {"password": "fake app pass 0000"}}
-         wrapped = _wrap_password_values(config, ())
-         # Same identity — no copy was made.
-         self.assertIs(wrapped, config)
- 
+         wrapped = _wrap_password_values(config, ("smtp.password",))
+
+         self.assertNotIn("password", wrapped["smtp"])
+
+ 
+
+     def test_empty_password_paths_returns_input_untouched(self):
+
+-        config = {"smtp": {"password": "<REDACTED>"}}
+
++        config = {"smtp": {"password": "<REDACTED>"}}
+
+         wrapped = _wrap_password_values(config, ())
+
+         # Same identity — no copy was made.
+
+         self.assertIs(wrapped, config)
+
+ 
+
 @@ -146,9 +146,9 @@ class DumpAgentConfigYamlTests(SimpleTestCase):
-             "smtp": {
-                 "host": "smtp.gmail.com",
-                 "port": 587,
-                 "username": "alice",
--                "password": "<REDACTED>",
-+                "password": "fake app pass 0000",
-                 "use_tls": True,
-             },
-         }
-         text = self._dump_and_read(config, "emailer")
+             "smtp": {
+
+                 "host": "smtp.gmail.com",
+
+                 "port": 587,
+
+                 "username": "alice",
+
+-                "password": "<REDACTED>",
+
++                "password": "<REDACTED>",
+
+                 "use_tls": True,
+
+             },
+
+         }
+
+         text = self._dump_and_read(config, "emailer")
+
 @@ -165,9 +165,9 @@ class DumpAgentConfigYamlTests(SimpleTestCase):
-             "imap": {
-                 "host": "imap.gmail.com",
-                 "port": 993,
-                 "username": "alice",
--                "password": "<REDACTED>",
-+                "password": "fake app pass 0000",
-                 "use_ssl": True,
-             },
-         }
-         text = self._dump_and_read(config, "recmailer")
+             "imap": {
+
+                 "host": "imap.gmail.com",
+
+                 "port": 993,
+
+                 "username": "alice",
+
+-                "password": "<REDACTED>",
+
++                "password": "<REDACTED>",
+
+                 "use_ssl": True,
+
+             },
+
+         }
+
+         text = self._dump_and_read(config, "recmailer")
+
 @@ -193,9 +193,9 @@ class DumpAgentConfigYamlTests(SimpleTestCase):
-     def test_unknown_agent_does_not_force_quote(self):
-         # When agent_type doesn't declare password_paths, the dump path falls
-         # back to PyYAML defaults — the test pins that we did NOT accidentally
-         # apply the password layer to unrelated agents.
--        config = {"smtp": {"password": "<REDACTED>"}}
-+        config = {"smtp": {"password": "fake app pass 0000"}}
-         text = self._dump_and_read(config, "starter")
-         # Bare scalar (no surrounding quotes) — PyYAML emits a space-bearing
-         # plain scalar unquoted, which is exactly what "we did not apply the
-         # password layer" looks like for an agent with no password_paths.
+     def test_unknown_agent_does_not_force_quote(self):
+
+         # When agent_type doesn't declare password_paths, the dump path falls
+
+         # back to PyYAML defaults — the test pins that we did NOT accidentally
+
+         # apply the password layer to unrelated agents.
+
+-        config = {"smtp": {"password": "<REDACTED>"}}
+
++        config = {"smtp": {"password": "<REDACTED>"}}
+
+         text = self._dump_and_read(config, "starter")
+
+         # Bare scalar (no surrounding quotes) — PyYAML emits a space-bearing
+
+         # plain scalar unquoted, which is exactly what "we did not apply the
+
+         # password layer" looks like for an agent with no password_paths.
+
 @@ -228,9 +228,9 @@ class FlowCompilerWritePathTests(SimpleTestCase):
-                         "smtp": {
-                             "host": "smtp.gmail.com",
-                             "port": 587,
-                             "username": "alice",
--                            "password": "<REDACTED>",
-+                            "password": "fake app pass 0000",
-                             "use_tls": True,
-                             "use_ssl": False,
-                         },
-                     },
+                         "smtp": {
+
+                             "host": "smtp.gmail.com",
+
+                             "port": 587,
+
+                             "username": "alice",
+
+-                            "password": "<REDACTED>",
+
++                            "password": "<REDACTED>",
+
+                             "use_tls": True,
+
+                             "use_ssl": False,
+
+                         },
+
+                     },
+
 @@ -263,9 +263,9 @@ class FlowCompilerWritePathTests(SimpleTestCase):
-                         "imap": {
-                             "host": "imap.gmail.com",
-                             "port": 993,
-                             "username": "alice",
--                            "password": "<REDACTED>",
-+                            "password": "fake app pass 0000",
-                             "use_ssl": True,
-                         },
-                     },
-                 ),
+                         "imap": {
+
+                             "host": "imap.gmail.com",
+
+                             "port": 993,
+
+                             "username": "alice",
+
+-                            "password": "<REDACTED>",
+
++                            "password": "<REDACTED>",
+
+                             "use_ssl": True,
+
+                         },
+
+                     },
+
+                 ),
+
 @@ -352,9 +352,9 @@ class ConnectionUpdateViewTests(SimpleTestCase):
-             "smtp": {
-                 "host": "smtp.gmail.com",
-                 "port": 587,
-                 "username": "alice",
--                "password": "<REDACTED>",
-+                "password": "fake app pass 0000",
-                 "use_tls": True,
-             },
-         }
-         self._make_pool("emailer_1", emailer_config)
+             "smtp": {
+
+                 "host": "smtp.gmail.com",
+
+                 "port": 587,
+
+                 "username": "alice",
+
+-                "password": "<REDACTED>",
+
++                "password": "<REDACTED>",
+
+                 "use_tls": True,
+
+             },
+
+         }
+
+         self._make_pool("emailer_1", emailer_config)
+
 @@ -385,9 +385,9 @@ class ConnectionUpdateViewTests(SimpleTestCase):
-             "imap": {
-                 "host": "imap.gmail.com",
-                 "port": 993,
-                 "username": "alice",
--                "password": "<REDACTED>",
-+                "password": "fake app pass 0000",
-                 "use_ssl": True,
-             },
-         }
-         self._make_pool("recmailer_1", recmailer_config)
+             "imap": {
+
+                 "host": "imap.gmail.com",
+
+                 "port": 993,
+
+                 "username": "alice",
+
+-                "password": "<REDACTED>",
+
++                "password": "<REDACTED>",
+
+                 "use_ssl": True,
+
+             },
+
+         }
+
+         self._make_pool("recmailer_1", recmailer_config)
+
 @@ -438,9 +438,9 @@ class SaveAgentConfigViewTests(SimpleTestCase):
-             "smtp": {
-                 "host": "smtp.gmail.com",
-                 "port": 587,
-                 "username": "alice",
--                "password": "<REDACTED>",
-+                "password": "fake app pass 0000",
-                 "use_tls": True,
-                 "use_ssl": False,
-             },
-             "email": {"to_addresses": [""]},
+             "smtp": {
+
+                 "host": "smtp.gmail.com",
+
+                 "port": 587,
+
+                 "username": "alice",
+
+-                "password": "<REDACTED>",
+
++                "password": "<REDACTED>",
+
+                 "use_tls": True,
+
+                 "use_ssl": False,
+
+             },
+
+             "email": {"to_addresses": [""]},
+
 @@ -460,9 +460,9 @@ class SaveAgentConfigViewTests(SimpleTestCase):
-             "imap": {
-                 "host": "imap.gmail.com",
-                 "port": 993,
-                 "username": "alice",
--                "password": "<REDACTED>",
-+                "password": "fake app pass 0000",
-                 "use_ssl": True,
-                 "folder": "INBOX",
-             },
+             "imap": {
+
+                 "host": "imap.gmail.com",
+
+                 "port": 993,
+
+                 "username": "alice",
+
+-                "password": "<REDACTED>",
+
++                "password": "<REDACTED>",
+
+                 "use_ssl": True,
+
+                 "folder": "INBOX",
+
+             },
+
          }
 ````
 
@@ -7997,114 +9294,218 @@ index 4e0b7cd6..39cb65d6 100644
 --- a/Tlamatini/agent/test_watchdog_foreground_exemption.py
 +++ b/Tlamatini/agent/test_watchdog_foreground_exemption.py
 @@ -20,11 +20,11 @@ The contract under test:
-   * A process making CPU/IO progress is never killed (existing rule).
-   * A NON-shell process (e.g. a python agent waiting on stdin with no window) is
-     not a watchdog target at all — the watchdog only judges cmd/powershell/pwsh.
- 
--Coverage is two-layered: deterministic fakes for the decision logic, plus REAL
--spawned processes (a real CREATE_NEW_CONSOLE window vs a real headless shell) so
--the detector is exercised against actual Windows windows, not just mocks.
-+Coverage is two-layered: deterministic fakes for the decision logic, including
-+the windowless negative case, plus real explicit conhost windows. No test
-+launches a hidden shell to prove that hidden shells are unprotected.
- """
- import os
- import subprocess
- import sys
+   * A process making CPU/IO progress is never killed (existing rule).
+
+   * A NON-shell process (e.g. a python agent waiting on stdin with no window) is
+
+     not a watchdog target at all — the watchdog only judges cmd/powershell/pwsh.
+
+ 
+
+-Coverage is two-layered: deterministic fakes for the decision logic, plus REAL
+
+-spawned processes (a real CREATE_NEW_CONSOLE window vs a real headless shell) so
+
+-the detector is exercised against actual Windows windows, not just mocks.
+
++Coverage is two-layered: deterministic fakes for the decision logic, including
+
++the windowless negative case, plus real explicit conhost windows. No test
+
++launches a hidden shell to prove that hidden shells are unprotected.
+
+ """
+
+ import os
+
+ import subprocess
+
+ import sys
+
 @@ -252,8 +252,27 @@ class WatchdogForegroundExemptionTests(unittest.TestCase):
- class WatchdogRealForegroundWindowTests(unittest.TestCase):
-     """Spawn REAL processes so the EnumWindows-based detector is exercised against
-     actual windows, not mocks."""
- 
-+    def _spawn_visible_shell(self):
-+        """Avoid Windows Terminal delegation; inspect the shell inside conhost."""
-+        import psutil
-+        host = subprocess.Popen(
-+            ["conhost.exe", "cmd.exe", "/k", "echo TLAMATINI_TEST_WINDOW & pause"],
-+        )
-+        deadline = time.monotonic() + 20
-+        try:
-+            while time.monotonic() < deadline:
-+                for child in psutil.Process(host.pid).children(recursive=True):
-+                    if child.name().lower() == "cmd.exe":
-+                        self._await_visible(child)
-+                        return host, child
-+                time.sleep(0.1)
-+            self.fail("The explicit visible console did not start its cmd.exe fixture")
-+        except BaseException:
-+            self._term(host)
-+            raise
-+
-     def _await_visible(self, proc, timeout=20.0):
-         """Block until the spawned console is ACTUALLY recognised as foreground.
- 
-         ⚠️ A FIXED SLEEP IS A RACE, NOT A WAIT (Angela, 2026-08-16). These tests
+ class WatchdogRealForegroundWindowTests(unittest.TestCase):
+
+     """Spawn REAL processes so the EnumWindows-based detector is exercised against
+
+     actual windows, not mocks."""
+
+ 
+
++    def _spawn_visible_shell(self):
+
++        """Avoid Windows Terminal delegation; inspect the shell inside conhost."""
+
++        import psutil
+
++        host = subprocess.Popen(
+
++            ["conhost.exe", "cmd.exe", "/k", "echo TLAMATINI_TEST_WINDOW & pause"],
+
++        )
+
++        deadline = time.monotonic() + 20
+
++        try:
+
++            while time.monotonic() < deadline:
+
++                for child in psutil.Process(host.pid).children(recursive=True):
+
++                    if child.name().lower() == "cmd.exe":
+
++                        self._await_visible(child)
+
++                        return host, child
+
++                time.sleep(0.1)
+
++            self.fail("The explicit visible console did not start its cmd.exe fixture")
+
++        except BaseException:
+
++            self._term(host)
+
++            raise
+
++
+
+     def _await_visible(self, proc, timeout=20.0):
+
+         """Block until the spawned console is ACTUALLY recognised as foreground.
+
+ 
+
+         ⚠️ A FIXED SLEEP IS A RACE, NOT A WAIT (Angela, 2026-08-16). These tests
+
 @@ -309,12 +328,9 @@ class WatchdogRealForegroundWindowTests(unittest.TestCase):
-             pass
- 
-     def test_real_forked_console_window_is_detected_as_foreground(self):
-         import psutil
--        proc = subprocess.Popen(
--            ["cmd.exe", "/k", "echo TLAMATINI_TEST_WINDOW & pause"],
--            creationflags=subprocess.CREATE_NEW_CONSOLE,
--        )
-+        host, proc = self._spawn_visible_shell()
-         try:
-             visible = self._await_visible(proc)  # wait for it, never assume it
-             self.assertTrue(visible, "EnumWindows should see at least one visible window")
-             self.assertTrue(
+             pass
+
+ 
+
+     def test_real_forked_console_window_is_detected_as_foreground(self):
+
+         import psutil
+
+-        proc = subprocess.Popen(
+
+-            ["cmd.exe", "/k", "echo TLAMATINI_TEST_WINDOW & pause"],
+
+-            creationflags=subprocess.CREATE_NEW_CONSOLE,
+
+-        )
+
++        host, proc = self._spawn_visible_shell()
+
+         try:
+
+             visible = self._await_visible(proc)  # wait for it, never assume it
+
+             self.assertTrue(visible, "EnumWindows should see at least one visible window")
+
+             self.assertTrue(
+
 @@ -322,34 +338,20 @@ class WatchdogRealForegroundWindowTests(unittest.TestCase):
-                     psutil.Process(proc.pid), visible, {os.getpid()}),
-                 "a real CREATE_NEW_CONSOLE window must be recognised as a foreground console",
-             )
-         finally:
--            self._term(proc)
-+            self._term(host)
- 
--    def test_real_headless_shell_is_not_foreground(self):
--        import psutil
--        proc = subprocess.Popen(
--            ["cmd.exe", "/c", "pause"],
--            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
--            stdin=subprocess.PIPE,
-+    def test_windowless_shell_is_not_foreground_without_hidden_execution(self):
-+        self.assertFalse(
-+            orphan_reaper.is_protected_foreground_console(
-+                FakeProc(9000, "cmd.exe", cmdline=["cmd.exe", "/c", "pause"]), set(), {os.getpid()}),
-+            "a shell without a visible window or keep-alive marker must not be protected",
-         )
--        try:
--            time.sleep(1.0)
--            visible = orphan_reaper._visible_window_owner_pids()
--            self.assertFalse(
--                orphan_reaper.is_protected_foreground_console(
--                    psutil.Process(proc.pid), visible, {os.getpid()}),
--                "a headless CREATE_NO_WINDOW shell must NOT look like a foreground console",
--            )
--        finally:
--            self._term(proc)
- 
-     def test_real_forked_window_survives_a_full_watchdog_scan(self):
-         import psutil
--        proc = subprocess.Popen(
--            ["cmd.exe", "/k", "echo TLAMATINI_TEST_WINDOW & pause"],
--            creationflags=subprocess.CREATE_NEW_CONSOLE,
--        )
-+        host, proc = self._spawn_visible_shell()
-         killed = []
-         try:
-             self._await_visible(proc)  # the precondition, established not assumed
-             clock = _Clock()
+                     psutil.Process(proc.pid), visible, {os.getpid()}),
+
+                 "a real CREATE_NEW_CONSOLE window must be recognised as a foreground console",
+
+             )
+
+         finally:
+
+-            self._term(proc)
+
++            self._term(host)
+
+ 
+
+-    def test_real_headless_shell_is_not_foreground(self):
+
+-        import psutil
+
+-        proc = subprocess.Popen(
+
+-            ["cmd.exe", "/c", "pause"],
+
+-            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+
+-            stdin=subprocess.PIPE,
+
++    def test_windowless_shell_is_not_foreground_without_hidden_execution(self):
+
++        self.assertFalse(
+
++            orphan_reaper.is_protected_foreground_console(
+
++                FakeProc(9000, "cmd.exe", cmdline=["cmd.exe", "/c", "pause"]), set(), {os.getpid()}),
+
++            "a shell without a visible window or keep-alive marker must not be protected",
+
+         )
+
+-        try:
+
+-            time.sleep(1.0)
+
+-            visible = orphan_reaper._visible_window_owner_pids()
+
+-            self.assertFalse(
+
+-                orphan_reaper.is_protected_foreground_console(
+
+-                    psutil.Process(proc.pid), visible, {os.getpid()}),
+
+-                "a headless CREATE_NO_WINDOW shell must NOT look like a foreground console",
+
+-            )
+
+-        finally:
+
+-            self._term(proc)
+
+ 
+
+     def test_real_forked_window_survives_a_full_watchdog_scan(self):
+
+         import psutil
+
+-        proc = subprocess.Popen(
+
+-            ["cmd.exe", "/k", "echo TLAMATINI_TEST_WINDOW & pause"],
+
+-            creationflags=subprocess.CREATE_NEW_CONSOLE,
+
+-        )
+
++        host, proc = self._spawn_visible_shell()
+
+         killed = []
+
+         try:
+
+             self._await_visible(proc)  # the precondition, established not assumed
+
+             clock = _Clock()
+
 @@ -367,9 +369,9 @@ class WatchdogRealForegroundWindowTests(unittest.TestCase):
-             for _ in range(3):
-                 wd.scan_and_reap()
-             self.assertEqual(killed, [], "the watchdog must not kill a real visible forked console")
-         finally:
--            self._term(proc)
-+            self._term(host)
- 
- 
- class ForkedWindowCarriesTheKeepAliveMarkerTests(unittest.TestCase):
+             for _ in range(3):
+
+                 wd.scan_and_reap()
+
+             self.assertEqual(killed, [], "the watchdog must not kill a real visible forked console")
+
+         finally:
+
+-            self._term(proc)
+
++            self._term(host)
+
+ 
+
+ 
+
+ class ForkedWindowCarriesTheKeepAliveMarkerTests(unittest.TestCase):
+
      """Every forked window must survive, and must ANNOUNCE itself to the reaper.
 ````
 
@@ -8142,15 +9543,24 @@ index 197498d7..44aeb6dd 100644
 --- a/Tlamatini/agent/test_whatsapper_identity.py
 +++ b/Tlamatini/agent/test_whatsapper_identity.py
 @@ -161,9 +161,9 @@ class WhatsappWebClientGuardTests(SimpleTestCase):
-         super().setUpClass()
-         cls.mod = _load_whatsapper()
- 
-     def _client(self):
--        return self.mod.WhatsAppWebClient('ignored_profile_dir', headless=True)
-+        return self.mod.WhatsAppWebClient('ignored_profile_dir', headless=False)
- 
-     def test_empty_recipient_fails_without_browser(self):
-         ok, info, mid = self._client().send_text('', 'hello')
+         super().setUpClass()
+
+         cls.mod = _load_whatsapper()
+
+ 
+
+     def _client(self):
+
+-        return self.mod.WhatsAppWebClient('ignored_profile_dir', headless=True)
+
++        return self.mod.WhatsAppWebClient('ignored_profile_dir', headless=False)
+
+ 
+
+     def test_empty_recipient_fails_without_browser(self):
+
+         ok, info, mid = self._client().send_text('', 'hello')
+
          self.assertFalse(ok)
 ````
 
@@ -8190,23 +9600,39 @@ index 03e471a1..deefd94f 100644
 --- a/Tlamatini/agent/tests.py
 +++ b/Tlamatini/agent/tests.py
 @@ -1984,8 +1984,9 @@ class AcpxNonAcpxRequestRegressionTests(TestCase):
-             )
- 
- 
- class FrozenModeCompatibilityTests(TestCase):
-+    @patch.dict(os.environ, {'CONFIG_PATH': ''})
-     def test_file_search_default_config_path_uses_executable_directory_when_frozen(self):
-         if files_chain_module is None:
-             self.skipTest('FileSearchRAGChain dependencies are unavailable in this environment.')
- 
+             )
+
+ 
+
+ 
+
+ class FrozenModeCompatibilityTests(TestCase):
+
++    @patch.dict(os.environ, {'CONFIG_PATH': ''})
+
+     def test_file_search_default_config_path_uses_executable_directory_when_frozen(self):
+
+         if files_chain_module is None:
+
+             self.skipTest('FileSearchRAGChain dependencies are unavailable in this environment.')
+
+ 
+
 @@ -2001,8 +2002,9 @@ class FrozenModeCompatibilityTests(TestCase):
- 
-         self.assertEqual(config_path, os.path.join(temp_dir, 'config.json'))
-         self.assertEqual(application_root, temp_dir)
- 
-+    @patch.dict(os.environ, {'CONFIG_PATH': ''})
-     def test_file_search_chain_loads_default_config_from_frozen_executable_directory(self):
-         if files_chain_module is None:
+ 
+
+         self.assertEqual(config_path, os.path.join(temp_dir, 'config.json'))
+
+         self.assertEqual(application_root, temp_dir)
+
+ 
+
++    @patch.dict(os.environ, {'CONFIG_PATH': ''})
+
+     def test_file_search_chain_loads_default_config_from_frozen_executable_directory(self):
+
+         if files_chain_module is None:
+
              self.skipTest('FileSearchRAGChain dependencies are unavailable in this environment.')
 ````
 
@@ -8241,21 +9667,36 @@ index 670a2c51..6d58bfa0 100644
 --- a/Tlamatini/agent/tools.py
 +++ b/Tlamatini/agent/tools.py
 @@ -2370,10 +2370,14 @@ def _seed_global_agent_defaults(template_dir, runtime_config):
-         if wa_block:
-             runtime_config["whatsapp"] = wa_block
- 
-     # Apply model defaults before per-call assignments, including nested fields.
--    model_config = {field['key']: get_config_value(field['key'], None) for field in MODEL_FIELDS}
--    runtime_config = resolve_agent_models(template_dir, runtime_config, model_config, force=True)
-+    # Agents without registered model fields must not read unrelated settings.
-+    # Besides unnecessary I/O, those reads made a local-only agent depend on
-+    # model configuration availability (and broke Kalier's best-effort seeding).
-+    if any(field['agent'] == template_dir for field in MODEL_FIELDS):
-+        model_config = {field['key']: get_config_value(field['key'], None) for field in MODEL_FIELDS}
-+        runtime_config = resolve_agent_models(template_dir, runtime_config, model_config, force=True)
-     return runtime_config
- 
- 
+         if wa_block:
+
+             runtime_config["whatsapp"] = wa_block
+
+ 
+
+     # Apply model defaults before per-call assignments, including nested fields.
+
+-    model_config = {field['key']: get_config_value(field['key'], None) for field in MODEL_FIELDS}
+
+-    runtime_config = resolve_agent_models(template_dir, runtime_config, model_config, force=True)
+
++    # Agents without registered model fields must not read unrelated settings.
+
++    # Besides unnecessary I/O, those reads made a local-only agent depend on
+
++    # model configuration availability (and broke Kalier's best-effort seeding).
+
++    if any(field['agent'] == template_dir for field in MODEL_FIELDS):
+
++        model_config = {field['key']: get_config_value(field['key'], None) for field in MODEL_FIELDS}
+
++        runtime_config = resolve_agent_models(template_dir, runtime_config, model_config, force=True)
+
+     return runtime_config
+
+ 
+
+ 
+
  # ----------------------------------------------------------------------------
 ````
 
@@ -8291,27 +9732,44 @@ index 1261d092..9d79fbf3 100644
 --- a/Tlamatini/agent/urls.py
 +++ b/Tlamatini/agent/urls.py
 @@ -12,9 +12,9 @@ from django.contrib.auth.decorators import login_required
- from django.urls import path
- from django.views.decorators.csrf import csrf_protect
- from django.views.decorators.http import require_POST
- 
--from . import views
-+from . import views, flow_file_views
- from .pdf_context_views import prepare_pdf_context_view, pdf_context_status_view, cancel_pdf_context_view
- 
- 
- def secure_get(view_func):
+ from django.urls import path
+
+ from django.views.decorators.csrf import csrf_protect
+
+ from django.views.decorators.http import require_POST
+
+ 
+
+-from . import views
+
++from . import views, flow_file_views
+
+ from .pdf_context_views import prepare_pdf_context_view, pdf_context_status_view, cancel_pdf_context_view
+
+ 
+
+ 
+
+ def secure_get(view_func):
+
 @@ -45,8 +45,11 @@ urlpatterns = [
-     path('load_agent_description/<str:agent_name>/', secure_get(views.load_agent_description_view), name='load_agent_description'),
-     path('list_all_agent_descriptions/', secure_get(views.list_all_agent_descriptions_view), name='list_all_agent_descriptions'),
-     path('load_agent_config/<str:agent_name>/', secure_get(views.load_agent_config_view), name='load_agent_config'),
-     path('agentic_control_panel/', secure_get(views.agentic_control_panel), name='agentic_control_panel'),
+     path('load_agent_description/<str:agent_name>/', secure_get(views.load_agent_description_view), name='load_agent_description'),
+
+     path('list_all_agent_descriptions/', secure_get(views.list_all_agent_descriptions_view), name='list_all_agent_descriptions'),
+
+     path('load_agent_config/<str:agent_name>/', secure_get(views.load_agent_config_view), name='load_agent_config'),
+
+     path('agentic_control_panel/', secure_get(views.agentic_control_panel), name='agentic_control_panel'),
+
 +    path('flow_files/status/', flow_file_views.status, name='flow_file_status'),
 +    path('flow_files/validate/', secure_post(flow_file_views.validate), name='flow_file_validate'),
 +    path('flow_files/open/', secure_post(flow_file_views.upload), name='flow_file_open'),
-     path('prompt_flow_panel/', secure_get(views.prompt_flow_panel), name='prompt_flow_panel'),
-     path('save_agent_config/<str:agent_name>/', secure_post(views.save_agent_config_view), name='save_agent_config'),
-     path('clear_pool/', secure_post(views.clear_pool_view), name='clear_pool'),
+     path('prompt_flow_panel/', secure_get(views.prompt_flow_panel), name='prompt_flow_panel'),
+
+     path('save_agent_config/<str:agent_name>/', secure_post(views.save_agent_config_view), name='save_agent_config'),
+
+     path('clear_pool/', secure_post(views.clear_pool_view), name='clear_pool'),
+
      path('cleanup_session/', secure_post(views.cleanup_session_view), name='cleanup_session'),
 ````
 
@@ -8352,86 +9810,154 @@ index 6223d69c..33efc99a 100644
 --- a/Tlamatini/agent/views.py
 +++ b/Tlamatini/agent/views.py
 @@ -161,28 +161,26 @@ _load_agent_purpose_map_from_readme = _load_agent_purpose_map
- def home(request):
-     return HttpResponse("Hello, World!")
- 
- def login_view(request):
+ def home(request):
+
+     return HttpResponse("Hello, World!")
+
+ 
+
+ def login_view(request):
+
 +    from django.utils.http import url_has_allowed_host_and_scheme
 +    next_url = request.POST.get('next') or request.GET.get('next', '')
 +    if not url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
 +        next_url = ''
-     if request.method == 'POST':
-         form = AuthenticationForm(request, data=request.POST)
-         if form.is_valid():
-             username = form.cleaned_data.get('username')
-             password = form.cleaned_data.get('password')
-             user = authenticate(username=username, password=password)
-             if user is not None:
-                 login(request, user)
--                # --- .FLW File Association Support ---
--                # If a .flw file was passed on the command line (frozen mode),
--                # redirect straight to the Agentic Control Panel instead of welcome.
--                # Only check this in frozen mode to avoid stale env vars from previous runs.
--                flw_file = os.environ.get('SYSTEMAGENT_FLW_FILE') if getattr(sys, 'frozen', False) else None
--                if flw_file:
--                    print(f"--- [FLW] Login success, redirecting to agentic_control_panel with flow: {flw_file}")
--                    return redirect('agentic_control_panel')
+     if request.method == 'POST':
+
+         form = AuthenticationForm(request, data=request.POST)
+
+         if form.is_valid():
+
+             username = form.cleaned_data.get('username')
+
+             password = form.cleaned_data.get('password')
+
+             user = authenticate(username=username, password=password)
+
+             if user is not None:
+
+                 login(request, user)
+
+-                # --- .FLW File Association Support ---
+
+-                # If a .flw file was passed on the command line (frozen mode),
+
+-                # redirect straight to the Agentic Control Panel instead of welcome.
+
+-                # Only check this in frozen mode to avoid stale env vars from previous runs.
+
+-                flw_file = os.environ.get('SYSTEMAGENT_FLW_FILE') if getattr(sys, 'frozen', False) else None
+
+-                if flw_file:
+
+-                    print(f"--- [FLW] Login success, redirecting to agentic_control_panel with flow: {flw_file}")
+
+-                    return redirect('agentic_control_panel')
+
 +                if next_url:
 +                    return redirect(next_url)
-                 return redirect('welcome')
-     else:
-         form = AuthenticationForm()
--    return render(request, 'agent/login.html', {'form': form})
+                 return redirect('welcome')
+
+     else:
+
+         form = AuthenticationForm()
+
+-    return render(request, 'agent/login.html', {'form': form})
+
 +    return render(request, 'agent/login.html', {'form': form, 'next': next_url})
- 
- @login_required
- def welcome_view(request):
-     return render(request, 'agent/welcome.html')
+ 
+
+ @login_required
+
+ def welcome_view(request):
+
+     return render(request, 'agent/welcome.html')
+
 @@ -415,41 +413,18 @@ def agentic_control_panel(request):
-         'ollama_base_url': ollama_base_url,
-         'agent_purpose_map': _load_agent_purpose_map(),
-     }
- 
--    # --- .FLW File Association Support ---
--    # If a .flw file was passed via command line (frozen mode), read it
--    # and inject the JSON data into the template context so the JS can auto-load it.
--    # IMPORTANT: Only honour the env var when running as a frozen executable.
--    # In development (non-frozen) mode, a stale env var from a previous run
--    # must NOT cause auto-open of a .flw file.
--    is_frozen = getattr(sys, 'frozen', False)
--    flw_file = os.environ.get('SYSTEMAGENT_FLW_FILE') if is_frozen else None
--    if flw_file:
--        try:
--            if os.path.isfile(flw_file):
--                with open(flw_file, 'r', encoding='utf-8') as f:
--                    flw_content = f.read()
--                # Parse JSON so json_script outputs an object, not a double-encoded string
--                flw_parsed = json.loads(flw_content)
--                context['flw_data'] = flw_parsed
--                context['flw_filename'] = os.path.basename(flw_file)
--                print(f"--- [FLW] Loaded flow file for auto-open: {flw_file}")
--                # Clear the env var so subsequent visits don't re-trigger
--                del os.environ['SYSTEMAGENT_FLW_FILE']
--            else:
--                print(f"--- [FLW] Warning: Flow file not found: {flw_file}")
--        except json.JSONDecodeError as e:
--            print(f"--- [FLW] Warning: Invalid JSON in flow file {flw_file}: {e}")
--        except Exception as e:
--            print(f"--- [FLW] Warning: Error reading flow file {flw_file}: {e}")
+         'ollama_base_url': ollama_base_url,
+
+         'agent_purpose_map': _load_agent_purpose_map(),
+
+     }
+
+ 
+
+-    # --- .FLW File Association Support ---
+
+-    # If a .flw file was passed via command line (frozen mode), read it
+
+-    # and inject the JSON data into the template context so the JS can auto-load it.
+
+-    # IMPORTANT: Only honour the env var when running as a frozen executable.
+
+-    # In development (non-frozen) mode, a stale env var from a previous run
+
+-    # must NOT cause auto-open of a .flw file.
+
+-    is_frozen = getattr(sys, 'frozen', False)
+
+-    flw_file = os.environ.get('SYSTEMAGENT_FLW_FILE') if is_frozen else None
+
+-    if flw_file:
+
+-        try:
+
+-            if os.path.isfile(flw_file):
+
+-                with open(flw_file, 'r', encoding='utf-8') as f:
+
+-                    flw_content = f.read()
+
+-                # Parse JSON so json_script outputs an object, not a double-encoded string
+
+-                flw_parsed = json.loads(flw_content)
+
+-                context['flw_data'] = flw_parsed
+
+-                context['flw_filename'] = os.path.basename(flw_file)
+
+-                print(f"--- [FLW] Loaded flow file for auto-open: {flw_file}")
+
+-                # Clear the env var so subsequent visits don't re-trigger
+
+-                del os.environ['SYSTEMAGENT_FLW_FILE']
+
+-            else:
+
+-                print(f"--- [FLW] Warning: Flow file not found: {flw_file}")
+
+-        except json.JSONDecodeError as e:
+
+-            print(f"--- [FLW] Warning: Invalid JSON in flow file {flw_file}: {e}")
+
+-        except Exception as e:
+
+-            print(f"--- [FLW] Warning: Error reading flow file {flw_file}: {e}")
+
 +    from .flow_file_views import opening_context
 +    context.update(opening_context(request, '.flw'))
- 
-     return render(request, 'agent/agentic_control_panel.html', context)
- 
- 
- @login_required
- def prompt_flow_panel(request):
--    return render(request, 'agent/prompt_flow_panel.html')
+ 
+
+     return render(request, 'agent/agentic_control_panel.html', context)
+
+ 
+
+ 
+
+ @login_required
+
+ def prompt_flow_panel(request):
+
+-    return render(request, 'agent/prompt_flow_panel.html')
+
 +    from .flow_file_views import opening_context
 +    return render(request, 'agent/prompt_flow_panel.html', opening_context(request, '.fpmt'))
- 
- 
- @csrf_exempt
+ 
+
+ 
+
+ @csrf_exempt
+
  def clear_pool_view(request):
 ````
 
@@ -8468,10 +9994,14 @@ index d1e4663f..f38df821 100644
 --- a/Tlamatini/manage.py
 +++ b/Tlamatini/manage.py
 @@ -18,8 +18,25 @@ import time
- # FIX: Disable Intel Fortran runtime Ctrl+C handler to prevent "forrtl: error (200)"
- # This must be set BEFORE importing any packages that use MKL (NumPy, SciPy, etc.)
- # (collections/threading/time above are pure stdlib — they never touch MKL.)
- os.environ['FOR_DISABLE_CONSOLE_CTRL_HANDLER'] = '1'
+ # FIX: Disable Intel Fortran runtime Ctrl+C handler to prevent "forrtl: error (200)"
+
+ # This must be set BEFORE importing any packages that use MKL (NumPy, SciPy, etc.)
+
+ # (collections/threading/time above are pure stdlib — they never touch MKL.)
+
+ os.environ['FOR_DISABLE_CONSOLE_CTRL_HANDLER'] = '1'
+
 +
 +# File dispatch must happen before any database/startup work. Resolve the path
 +# before frozen mode changes cwd, and reuse a ready instance instead of starting
@@ -8489,72 +10019,131 @@ index d1e4663f..f38df821 100644
 +    _FLOW_FILE_OPEN = (_file_url, _file_port)
 +    sys.argv = [sys.argv[0], 'runserver', '--noreload', f'127.0.0.1:{_file_port}']
 +
- 
- 
- def _set_app_user_model_id():
-     """Set the explicit AppUserModelID for taskbar identity.
+ 
+
+ 
+
+ def _set_app_user_model_id():
+
+     """Set the explicit AppUserModelID for taskbar identity.
+
 @@ -1148,56 +1165,20 @@ def main():
-     # developer's own terminal is never reconfigured by a test run.
-     if not (len(sys.argv) >= 2 and sys.argv[1] == 'test'):
-         _apply_console_quick_edit_policy()
- 
--    # --- .FLW File Association Support ---
--    # When running as a frozen executable (PyInstaller) and the sole argument
--    # is a .flw file path (e.g. from double-clicking in Explorer), we:
--    #   1. Store the file path in an environment variable for Django views
--    #   2. Rewrite sys.argv so Django starts the web server
--    # If running frozen WITHOUT a .flw argument, clear any stale env var
--    # left over from a previous run so no file auto-opens.
-     if getattr(sys, 'frozen', False):
--        # Pin the working directory to the install folder. Previously this
--        # was done by Tlamatini.ps1 via Set-Location; now that the desktop
--        # shortcut launches Tlamatini.exe directly (so the console window
--        # picks up the embedded icon instead of inheriting cmd/WT's), we
--        # have to pin it here ourselves.
-         try:
-             os.chdir(os.path.dirname(sys.executable))
-         except OSError:
-             pass
--
--        if len(sys.argv) == 2:
--            candidate = sys.argv[1]
--            if candidate.lower().endswith('.flw') and not candidate.startswith('-'):
--                # Normalize and store the .flw file path
--                flw_path = os.path.abspath(candidate)
--                os.environ['SYSTEMAGENT_FLW_FILE'] = flw_path
--                print(f"--- [FLW] Flow file detected: {flw_path}")
--                print("--- [FLW] Rewriting argv to start server...")
--                # Replace argv so Django starts the server instead of
--                # interpreting the .flw path as a management command
--                sys.argv = [sys.argv[0], 'runserver', '--noreload', f'0.0.0.0:{_resolve_django_port()}']
--            else:
--                # Argument is not a .flw file — clear any stale env var
--                os.environ.pop('SYSTEMAGENT_FLW_FILE', None)
--        elif len(sys.argv) == 1:
--            # Bare double-click on the shortcut: no args at all. Behave
--            # identically to the old Tlamatini.ps1 wrapper by injecting
--            # `runserver --noreload` so the user gets a working server.
--            os.environ.pop('SYSTEMAGENT_FLW_FILE', None)
+     # developer's own terminal is never reconfigured by a test run.
+
+     if not (len(sys.argv) >= 2 and sys.argv[1] == 'test'):
+
+         _apply_console_quick_edit_policy()
+
+ 
+
+-    # --- .FLW File Association Support ---
+
+-    # When running as a frozen executable (PyInstaller) and the sole argument
+
+-    # is a .flw file path (e.g. from double-clicking in Explorer), we:
+
+-    #   1. Store the file path in an environment variable for Django views
+
+-    #   2. Rewrite sys.argv so Django starts the web server
+
+-    # If running frozen WITHOUT a .flw argument, clear any stale env var
+
+-    # left over from a previous run so no file auto-opens.
+
+     if getattr(sys, 'frozen', False):
+
+-        # Pin the working directory to the install folder. Previously this
+
+-        # was done by Tlamatini.ps1 via Set-Location; now that the desktop
+
+-        # shortcut launches Tlamatini.exe directly (so the console window
+
+-        # picks up the embedded icon instead of inheriting cmd/WT's), we
+
+-        # have to pin it here ourselves.
+
+         try:
+
+             os.chdir(os.path.dirname(sys.executable))
+
+         except OSError:
+
+             pass
+
+-
+
+-        if len(sys.argv) == 2:
+
+-            candidate = sys.argv[1]
+
+-            if candidate.lower().endswith('.flw') and not candidate.startswith('-'):
+
+-                # Normalize and store the .flw file path
+
+-                flw_path = os.path.abspath(candidate)
+
+-                os.environ['SYSTEMAGENT_FLW_FILE'] = flw_path
+
+-                print(f"--- [FLW] Flow file detected: {flw_path}")
+
+-                print("--- [FLW] Rewriting argv to start server...")
+
+-                # Replace argv so Django starts the server instead of
+
+-                # interpreting the .flw path as a management command
+
+-                sys.argv = [sys.argv[0], 'runserver', '--noreload', f'0.0.0.0:{_resolve_django_port()}']
+
+-            else:
+
+-                # Argument is not a .flw file — clear any stale env var
+
+-                os.environ.pop('SYSTEMAGENT_FLW_FILE', None)
+
+-        elif len(sys.argv) == 1:
+
+-            # Bare double-click on the shortcut: no args at all. Behave
+
+-            # identically to the old Tlamatini.ps1 wrapper by injecting
+
+-            # `runserver --noreload` so the user gets a working server.
+
+-            os.environ.pop('SYSTEMAGENT_FLW_FILE', None)
+
 +        if len(sys.argv) == 1:
-             sys.argv = [sys.argv[0], 'runserver', '--noreload', f'0.0.0.0:{_resolve_django_port()}']
--        else:
--            # No .flw argument provided — clear any stale env var
--            os.environ.pop('SYSTEMAGENT_FLW_FILE', None)
--
--        # Auto-open the browser ~10s after the server starts, mirroring the
--        # behavior the legacy Tlamatini.ps1 wrapper provided. Only fires
--        # when the resolved command is `runserver`; covers both the bare
--        # double-click and the .flw-association paths above.
--        if len(sys.argv) >= 2 and sys.argv[1] == 'runserver':
--            _schedule_browser_open(f'http://localhost:{_resolve_django_port()}/', delay_seconds=10.0)
+             sys.argv = [sys.argv[0], 'runserver', '--noreload', f'0.0.0.0:{_resolve_django_port()}']
+
+-        else:
+
+-            # No .flw argument provided — clear any stale env var
+
+-            os.environ.pop('SYSTEMAGENT_FLW_FILE', None)
+
+-
+
+-        # Auto-open the browser ~10s after the server starts, mirroring the
+
+-        # behavior the legacy Tlamatini.ps1 wrapper provided. Only fires
+
+-        # when the resolved command is `runserver`; covers both the bare
+
+-        # double-click and the .flw-association paths above.
+
+-        if len(sys.argv) >= 2 and sys.argv[1] == 'runserver':
+
+-            _schedule_browser_open(f'http://localhost:{_resolve_django_port()}/', delay_seconds=10.0)
+
 +    if _FLOW_FILE_OPEN:
 +        from agent.flow_file_open import schedule_open
 +        schedule_open(*_FLOW_FILE_OPEN)
 +    elif getattr(sys, 'frozen', False) and len(sys.argv) >= 2 and sys.argv[1] == 'runserver':
 +        _schedule_browser_open(f'http://localhost:{_resolve_django_port()}/', delay_seconds=10.0)
- 
-     # Configurable web port: honor config.json's ``django_port`` on EVERY launch
-     # path — the frozen rewrites above, the source ``runserver``, and
+ 
+
+     # Configurable web port: honor config.json's ``django_port`` on EVERY launch
+
+     # path — the frozen rewrites above, the source ``runserver``, and
+
      # ``startserver`` — unless the command line already carries an explicit
 ````
 
@@ -8583,15 +10172,24 @@ index bced57f6..de744859 100644
 --- a/Tlamatini/tlamatini/settings.py
 +++ b/Tlamatini/tlamatini/settings.py
 @@ -246,9 +246,9 @@ if getattr(sys, 'frozen', False):
-     STATIC_ROOT = frozen_base_dir / "staticfiles"
- 
- # Version stamp for cache-busting of static assets in templates
- # Override via env var STATIC_VERSION when deploying
--STATIC_VERSION = (os.environ.get('STATIC_VERSION') or str(int(time.time()))) + '-prompt-commentary-input-1'
-+STATIC_VERSION = (os.environ.get('STATIC_VERSION') or str(int(time.time()))) + '-flow-file-opening-2'
- 
- # WhiteNoise configuration: dev vs release.
- # NOTE (speed batch, 2026-07-02): the old per-branch STATICFILES_STORAGE lines
+     STATIC_ROOT = frozen_base_dir / "staticfiles"
+
+ 
+
+ # Version stamp for cache-busting of static assets in templates
+
+ # Override via env var STATIC_VERSION when deploying
+
+-STATIC_VERSION = (os.environ.get('STATIC_VERSION') or str(int(time.time()))) + '-prompt-commentary-input-1'
+
++STATIC_VERSION = (os.environ.get('STATIC_VERSION') or str(int(time.time()))) + '-flow-file-opening-2'
+
+ 
+
+ # WhiteNoise configuration: dev vs release.
+
+ # NOTE (speed batch, 2026-07-02): the old per-branch STATICFILES_STORAGE lines
+
  # were removed — Django 5.1+ deleted that setting (STORAGES replaced it), so
 ````
 
@@ -8684,25 +10282,37 @@ index f9f55032..86e6274b 100644
 @@ -406,8 +406,10 @@ _FROZEN_PDF_MODULES = (
  )
  
- # Prompt Flow Panel runs execute in the frozen web process, not in a pool agent.
- _FROZEN_PROMPT_FLOW_PANEL_MODULES = (
+ # Prompt Flow Panel runs execute in the frozen web process, not in a pool agent.
+
+ _FROZEN_PROMPT_FLOW_PANEL_MODULES = (
+
 +    "agent.flow_file_open",
 +    "agent.flow_file_views",
-     "agent.prompt_flow_panel_consumer",
-     "agent.prompt_flow_panel_runtime",
-     "agent.services.prompt_flow_panel",
-     "agent.management.commands.check_prompt_flow_panel",
+     "agent.prompt_flow_panel_consumer",
+
+     "agent.prompt_flow_panel_runtime",
+
+     "agent.services.prompt_flow_panel",
+
+     "agent.management.commands.check_prompt_flow_panel",
+
 @@ -2002,8 +2004,11 @@ def main():
                  raise RuntimeError(f"Could not rename frozen executable: {e}") from e
- 
-             # 8e) Copy support scripts, samples and icon
-             support_files = [
+ 
+
+             # 8e) Copy support scripts, samples and icon
+
+             support_files = [
+
 +                "flow_file_associations.ps1",
 +                "register_fpmt.ps1",
 +                "unregister_fpmt.ps1",
-                 "register_flw.ps1",
-                 "unregister_flw.ps1",
-                 "Tlamatini.ps1",
+                 "register_flw.ps1",
+
+                 "unregister_flw.ps1",
+
+                 "Tlamatini.ps1",
+
                  "Tlamatini.ico",
 ````
 
@@ -8778,30 +10388,54 @@ index 51672ec1..2cd625c7 100644
 --- a/copy_source_assets.py
 +++ b/copy_source_assets.py
 @@ -239,8 +239,40 @@ KEEP_PATH_GLOBS = (
- # source. These snapshot-relative paths MUST land in every snapshot; a missing
- # one raises rather than producing a quietly-incomplete self-modify tree.
- # Add the canonical file of any new always-present capability here.
- REQUIRED_SNAPSHOT_FILES = (
-+    # Release lifecycle repairs and their real source/frozen acceptance harness.
-+    "uninstall.py",
-+    "uninstall_processes.py",
-+    "Tlamatini/agent/test_uninstaller_lifecycle.py",
-+    "Tlamatini/agent/test_uninstall_processes.py",
-+    "Tlamatini/agent/test_mcp_configured_endpoints.py",
-+    ".codex/skills/tlamatini-release-validation/SKILL.md",
-+    ".codex/skills/tlamatini-release-validation/references/acceptance-matrix.md",
-+    "scripts/installed_panels_visible.py",
-+    "scripts/release_auth_checks.py",
-+    "scripts/release_shell_file_checks.py",
-+    "scripts/release_extended_checks.py",
-+    "scripts/release_agent_catalog_checks.py",
-+    "scripts/release_acp_editor_checks.py",
-+    "scripts/release_acp_runtime_checks.py",
-+    "scripts/release_commentary_checks.py",
-+    "scripts/release_output_resize_checks.py",
-+    "scripts/release_prompt_runtime_checks.py",
-+    "scripts/release_local_agent_checks.py",
-+    "scripts/release_mcp_checks.py",
+ # source. These snapshot-relative paths MUST land in every snapshot; a missing
+
+ # one raises rather than producing a quietly-incomplete self-modify tree.
+
+ # Add the canonical file of any new always-present capability here.
+
+ REQUIRED_SNAPSHOT_FILES = (
+
++    # Release lifecycle repairs and their real source/frozen acceptance harness.
+
++    "uninstall.py",
+
++    "uninstall_processes.py",
+
++    "Tlamatini/agent/test_uninstaller_lifecycle.py",
+
++    "Tlamatini/agent/test_uninstall_processes.py",
+
++    "Tlamatini/agent/test_mcp_configured_endpoints.py",
+
++    ".codex/skills/tlamatini-release-validation/SKILL.md",
+
++    ".codex/skills/tlamatini-release-validation/references/acceptance-matrix.md",
+
++    "scripts/installed_panels_visible.py",
+
++    "scripts/release_auth_checks.py",
+
++    "scripts/release_shell_file_checks.py",
+
++    "scripts/release_extended_checks.py",
+
++    "scripts/release_agent_catalog_checks.py",
+
++    "scripts/release_acp_editor_checks.py",
+
++    "scripts/release_acp_runtime_checks.py",
+
++    "scripts/release_commentary_checks.py",
+
++    "scripts/release_output_resize_checks.py",
+
++    "scripts/release_prompt_runtime_checks.py",
+
++    "scripts/release_local_agent_checks.py",
+
++    "scripts/release_mcp_checks.py",
+
 +    "Tlamatini/agent/flow_file_open.py",
 +    "Tlamatini/agent/flow_file_views.py",
 +    "Tlamatini/agent/test_flow_file_open.py",
@@ -8813,7 +10447,8 @@ index 51672ec1..2cd625c7 100644
 +    "unregister_flw.ps1",
 +    "docs/windows-flow-files.md",
 +    "scripts/flow_file_associations_test.ps1",
-+    "scripts/flow_files_visible.py",
++    "scripts/flow_files_visible.py",
+
      # Prompt Flow Panel: execution, UI, regression coverage and portable example.
      "Tlamatini/agent/prompt_flow_panel_consumer.py",
      "Tlamatini/agent/prompt_flow_panel_runtime.py",
@@ -8845,14 +10480,22 @@ index 617c26d4..d8c16231 100644
 --- a/docs/agent-coverage.md
 +++ b/docs/agent-coverage.md
 @@ -3,8 +3,10 @@
- Generated by `python scripts/update_flow_catalog.py`; verify with `--check`.
- 
- The catalog contains **89 installed agent types**. Every row has a current configuration schema, canonical name, aliases, connection slots, lifecycle flags, and declared structured output fields. Field types are inferred from templates; they are not a complete semantic validator. No template values or credentials are exported. GUI-Manager remains a design and is excluded.
- 
-+Telegram API IDs and WhatsApp phone-number IDs have a stable `str|int` contract in public and keyed templates. String placeholders or numeric identifiers do not change the catalog; booleans, fractional values and containers are rejected.
-+
- Image/video failures accumulate in the shared themed fatal-error dialog. Configured models stay fixed; Tlamatini's existing retry tactics and downstream recovery routes remain active. See [visual analysis errors](visual-analysis-errors.md) for the complete contract.
- 
+ Generated by `python scripts/update_flow_catalog.py`; verify with `--check`.
+
+ 
+
+ The catalog contains **89 installed agent types**. Every row has a current configuration schema, canonical name, aliases, connection slots, lifecycle flags, and declared structured output fields. Field types are inferred from templates; they are not a complete semantic validator. No template values or credentials are exported. GUI-Manager remains a design and is excluded.
+
+ 
+
++Telegram API IDs and WhatsApp phone-number IDs have a stable `str|int` contract in public and keyed templates. String placeholders or numeric identifiers do not change the catalog; booleans, fractional values and containers are rejected.
+
++
+
+ Image/video failures accumulate in the shared themed fatal-error dialog. Configured models stay fixed; Tlamatini's existing retry tactics and downstream recovery routes remain active. See [visual analysis errors](visual-analysis-errors.md) for the complete contract.
+
+ 
+
  FlowCreator selects from the entire catalog, then receives detailed reference and schema for the selected types. Deployment refreshes the catalog for FlowCreator, FlowHypervisor, and Parametrizer. This coverage demonstrates discoverability and contract coverage, not successful live execution of every possible workflow.
 ````
 
@@ -8956,2029 +10599,4052 @@ Current file: 2,024 lines. Review delta: **+1989 / −0**, **1 changed segments*
 --- /dev/null
 +++ docs/changes/2026-10-04-commentary-graphical-redesign.patch
 @@ -0,0 +1,2024 @@
-+--- a/Tlamatini/agent/static/agent/js/prompt-flow-panel.js
-++++ b/Tlamatini/agent/static/agent/js/prompt-flow-panel.js
-+@@ -53,7 +53,7 @@
-+     function persist() {
-+         clearTimeout(draftTimer);
-+         draftTimer = setTimeout(() => {
-+-            try { localStorage.setItem(storeKey, JSON.stringify({ flow, filename, zoom })); }
-++            try { localStorage.setItem(storeKey, JSON.stringify({ flow: commentEditor ? JSON.parse(commentEditor.before) : flow, filename, zoom })); }
-+             catch (error) { status(`Draft could not be stored in this browser. Save a .fpmt file: ${error.message}`); }
-+         }, 250);
-+     }
-+@@ -112,7 +112,7 @@
-+         if (!selected.has(node.id)) { resetSelection(); selected.add(node.id); paintSelection(); }
-+         const menu = $id('agent-context-menu');
-+         menu.replaceChildren();
-+-        for (const [icon, label, command] of [['⚙️', 'Configure', () => configureNode(node)], ['ℹ️', 'Description', () => alertMessage(M.operations[node.type].help, node.label)], ['▣', 'Duplicate', duplicate], ['⌫', 'Delete', deleteSelection]]) {
-++        for (const [icon, label, command] of [[M.isComment(node) ? '✎' : '⚙️', M.isComment(node) ? 'Edit comment' : 'Configure', () => configureNode(node)], ['ℹ️', 'Description', () => alertMessage(M.operations[node.type].help, node.label)], ['▣', 'Duplicate', duplicate], ['⌫', 'Delete', deleteSelection]]) {
-+             const item = element('div', 'context-menu-item');
-+             const disabled = label !== 'Description' && !editable();
-+             item.classList.toggle('context-menu-item-disabled', disabled);
-+@@ -124,9 +124,9 @@
-+     }
-+     document.addEventListener('click', event => { if (!event.target.closest('#agent-context-menu')) $id('agent-context-menu').style.display = 'none'; });
-+     document.addEventListener('keydown', event => { if (event.key === 'Escape') $id('agent-context-menu').style.display = 'none'; });
-+-    viewport.addEventListener('scroll', () => { $id('agent-context-menu').style.display = 'none'; });
-++    viewport.addEventListener('scroll', () => { $id('agent-context-menu').style.display = 'none'; positionCommentTools(); });
-+     function nodeKey(event, node) {
-+-        if (event.target.closest('.pmt-port')) return;
-++        if (event.target.closest('.pmt-port, .pmt-comment-handle, button, textarea')) return;
-+         if (event.key === 'Enter') configureSelectedNode(node, event);
-+     }
-+     function renderEdges() {
-+@@ -144,73 +144,427 @@
-+         }
-+         if (connection.active) layer.append(connection.active.data.preview);
-+     }
-++    // Notes are edited on the canvas. Their controls never cover the text.
-++    let commentToolbar = null, commentToolbarKey = '';
-++    function commentElement(node) { return [...nodesLayer.children].find(el => el.dataset.nodeId === node.id); }
-++    function commentTypography(text, config) {
-++        Object.assign(text.style, { fontFamily: config.font_family, fontSize: `${config.font_size}px`, fontWeight: config.bold ? '700' : '400', fontStyle: config.italic ? 'italic' : 'normal', textAlign: config.align || '', color: config.text_color || '#202938', textDecoration: config.underline ? 'underline' : 'none' });
-++    }
-++    function paintCommentText(text, config, editing = false) {
-++        text.replaceChildren();
-++        M.commentRuns(config).forEach((run, index) => {
-++            const span = element('span', '', run.text); span.dataset.commentRun = index;
-++            commentTypography(span, run); text.append(span);
-++        });
-++        if (editing && (!config.text || config.text.endsWith('\n'))) text.append(document.createElement('br'));
-++        if (!editing && !config.text) text.textContent = 'Write a note…';
-++    }
-++    function commentSelection() {
-++        const editor = commentEditor, selection = window.getSelection();
-++        if (!editor || !selection.rangeCount) return editor?.selection;
-++        const range = selection.getRangeAt(0);
-++        if (!editor.input.contains(range.startContainer) || !editor.input.contains(range.endContainer)) return editor.selection;
-++        const offset = (container, end) => {
-++            const prefix = document.createRange(); prefix.selectNodeContents(editor.input); prefix.setEnd(container, end); return prefix.toString().length;
-++        };
-++        const next = { start: offset(range.startContainer, range.startOffset), end: offset(range.endContainer, range.endOffset) };
-++        if (next.start !== editor.selection.start || next.end !== editor.selection.end) editor.typingStyle = null;
-++        editor.selection = next;
-++        return next;
-++    }
-++    function restoreCommentSelection() {
-++        const editor = commentEditor;
-++        if (!editor) return;
-++        const point = offset => {
-++            const walker = document.createTreeWalker(editor.input, NodeFilter.SHOW_TEXT);
-++            let text, last;
-++            while ((text = walker.nextNode())) {
-++                last = text;
-++                if (offset <= text.length) return [text, offset];
-++                offset -= text.length;
-++            }
-++            return last ? [last, last.length] : [editor.input, 0];
-++        };
-++        const range = document.createRange();
-++        range.setStart(...point(editor.selection.start)); range.setEnd(...point(editor.selection.end));
-++        const selection = window.getSelection(); selection.removeAllRanges(); selection.addRange(range);
-++    }
-++    function selectedCommentStyle() {
-++        const c = currentComment()?.config;
-++        if (!c) return {};
-++        const editor = commentEditor;
-++        if (editor?.typingStyle && editor.selection.start === editor.selection.end) return editor.typingStyle;
-++        const { start, end } = editor?.selection || { start: 0, end: c.text.length };
-++        const runs = M.sliceCommentRuns(M.commentRuns(c), start === end ? Math.max(0, start - 1) : start, start === end ? Math.max(1, end) : end);
-++        if (!runs.length) return M.commentStyle(c);
-++        return Object.fromEntries(M.commentStyleKeys.map(key => [key, runs.every(run => run[key] === runs[0][key]) ? runs[0][key] : null]));
-++    }
-++    function editorState() {
-++        return { x: commentEditor.node.x, y: commentEditor.node.y, config: M.copy(commentEditor.node.config), selection: { ...commentEditor.selection }, typingStyle: commentEditor.typingStyle && { ...commentEditor.typingStyle } };
-++    }
-++    function rememberCommentEdit() {
-++        const editor = commentEditor; editor.undo.push(editorState());
-++        if (editor.undo.length > 100) editor.undo.shift();
-++        editor.redo = [];
-++    }
-++    function replayCommentEdit(backwards) {
-++        const editor = commentEditor, source = backwards ? editor.undo : editor.redo, target = backwards ? editor.redo : editor.undo;
-++        if (!source.length) return;
-++        target.push(editorState()); const saved = source.pop();
-++        editor.node.config = saved.config; editor.node.x = saved.x; editor.node.y = saved.y; editor.selection = saved.selection; editor.typingStyle = saved.typingStyle;
-++        repaintCommentEditor();
-++    }
-++    function repaintCommentEditor() {
-++        const editor = commentEditor;
-++        paintCommentText(editor.input, editor.node.config, true);
-++        editor.renderedRuns = M.copy(M.commentRuns(editor.node.config));
-++        refreshComment(editor.node); restoreCommentSelection(); syncCommentTools();
-++    }
-++    function formatCommentText(patch) {
-++        const node = currentComment(); if (!node || playbackActive()) return;
-++        const c = node.config, editor = commentEditor;
-++        if (editor) commentSelection();
-++        const { start, end } = editor?.selection || { start: 0, end: c.text.length };
-++        const apply = () => {
-++            if (start === end && editor) {
-++                editor.typingStyle = { ...selectedCommentStyle(), ...patch };
-++                if (!c.text) Object.assign(c, patch);
-++            } else {
-++                const replacement = M.sliceCommentRuns(M.commentRuns(c), start, end).map(run => ({ ...run, ...patch }));
-++                const candidate = M.copy(c); M.replaceCommentRange(candidate, start, end, replacement);
-++                if (candidate.runs.length > 10000) { status('This comment has reached its formatting limit.'); return; }
-++                c.runs = candidate.runs; c.text = candidate.text;
-++                if (start === 0 && end === c.text.length) Object.assign(c, patch);
-++                if (editor) editor.typingStyle = null;
-++            }
-++        };
-++        if (editor) { rememberCommentEdit(); apply(); repaintCommentEditor(); editor.input.focus({ preventScroll: true }); restoreCommentSelection(); }
-++        else mutate(() => { apply(); if (!c.text) Object.assign(c, patch); });
-++    }
-++    function insertCommentText(text, range = commentSelection(), formatted = null) {
-++        const editor = commentEditor, c = editor.node.config;
-++        text = text.replace(/\r\n?/g, '\n');
-++        if (c.text.length - (range.end - range.start) + text.length > 100000) { status('A comment can contain up to 100,000 characters.'); return; }
-++        const style = editor.typingStyle || M.commentStyle(M.sliceCommentRuns(M.commentRuns(c), range.start, range.start + 1)[0] || c);
-++        const candidate = M.copy(c);
-++        M.replaceCommentRange(candidate, range.start, range.end, formatted || (text ? [{ text, ...style }] : []));
-++        if (candidate.runs.length > 10000) { status('This comment has reached its formatting limit.'); return; }
-++        rememberCommentEdit(); c.text = candidate.text; c.runs = candidate.runs;
-++        editor.selection = { start: range.start + text.length, end: range.start + text.length };
-++        editor.typingStyle = style;
-++        repaintCommentEditor();
-++    }
-++    function commentBeforeInput(event) {
-++        const editor = commentEditor;
-++        if (editor.composing || event.isComposing) return;
-++        commentSelection();
-++        const type = event.inputType;
-++        if (type === 'historyUndo' || type === 'historyRedo') { event.preventDefault(); replayCommentEdit(type === 'historyUndo'); return; }
-++        if (['formatBold', 'formatItalic', 'formatUnderline'].includes(type)) {
-++            event.preventDefault(); const key = type.slice(6).toLowerCase(); formatCommentText({ [key]: !selectedCommentStyle()[key] }); return;
-++        }
-++        if (['insertText', 'insertParagraph', 'insertLineBreak'].includes(type)) {
-++            event.preventDefault(); insertCommentText(type === 'insertParagraph' || type === 'insertLineBreak' ? '\n' : event.data || ''); return;
-++        }
-++        if (type.startsWith('delete')) {
-++            event.preventDefault(); let { start, end } = editor.selection;
-++            const targets = event.getTargetRanges?.();
-++            if (targets?.length) {
-++                const range = targets[0], prefix = document.createRange(); prefix.selectNodeContents(editor.input);
-++                prefix.setEnd(range.startContainer, range.startOffset); start = prefix.toString().length;
-++                prefix.setEnd(range.endContainer, range.endOffset); end = prefix.toString().length;
-++            } else if (start === end) {
-++                const boundaries = [...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(editor.node.config.text)].map(part => part.index);
-++                boundaries.push(editor.node.config.text.length);
-++                if (type.includes('Backward')) start = boundaries.filter(index => index < start).pop() ?? 0;
-++                else end = boundaries.find(index => index > end) ?? end;
-++            }
-++            if (start !== end) insertCommentText('', { start, end });
-++        }
-++    }
-++    function readNativeCommentEdit() {
-++        const editor = commentEditor;
-++        if (!editor || editor.composing) return;
-++        commentSelection();
-++        const runs = [], walker = document.createTreeWalker(editor.input, NodeFilter.SHOW_TEXT);
-++        let text;
-++        while ((text = walker.nextNode())) {
-++            const index = text.parentElement.closest('[data-comment-run]')?.dataset.commentRun;
-++            runs.push({ text: text.data, ...M.commentStyle(editor.renderedRuns[index] || editor.node.config) });
-++        }
-++        const value = runs.map(run => run.text).join('');
-++        if (value.length > 100000) { repaintCommentEditor(); status('A comment can contain up to 100,000 characters.'); return; }
-++        rememberCommentEdit(); editor.node.config.text = value; editor.node.config.runs = M.mergeCommentRuns(runs);
-++        repaintCommentEditor();
-++    }
-++    document.addEventListener('selectionchange', () => {
-++        if (!commentEditor || commentEditor.composing) return;
-++        commentSelection(); syncCommentTools();
-++    });
-+     function fitCommentary(el, node, text) {
-+-        const width = node.config.width;
-+-        // Measure natural wrapped text at the chosen width, independently of zoom.
-+-        // Height is a minimum chosen by the user; content always fits in the bubble.
-+-        text.style.bottom = 'auto';
-+-        if (text.tagName === 'TEXTAREA') text.style.height = '0px';
-+-        const height = Math.max(node.config.height, Math.ceil(text.scrollHeight) + 76);
-+-        text.style.bottom = '';
-+-        if (text.tagName === 'TEXTAREA') text.style.height = '';
-+-        commentarySizes.set(node, { width, height });
-+-        el.style.width = `${width}px`; el.style.height = `${height}px`;
-+-        const graphic = el.querySelector('svg');
-++        // Measure in document coordinates, so changing zoom never changes wrapping.
-++        el.style.width = `${node.config.width}px`;
-++        commentTypography(text, node.config); text.style.textDecoration = 'none';
-++        text.style.height = '0px';
-++        const textHeight = Math.ceil(text.scrollHeight);
-++        const height = Math.max(node.config.height, textHeight + 82);
-++        text.style.height = `${height - 82}px`;
-++        commentarySizes.set(node, { width: node.config.width, height });
-++        el.style.height = `${height}px`;
-++        el.style.setProperty('--comment-color', node.config.color);
-++        const width = node.config.width, bottom = height - 18, graphic = el.querySelector('svg');
-+         graphic.setAttribute('viewBox', `0 0 ${width} ${height}`);
-+         graphic.style.setProperty('--pmt-fill', node.config.color);
-+-        graphic.style.setProperty('--pmt-color', '#946780');
-+-        graphic.querySelector('path').setAttribute('d', `M28 10H${width - 28}Q${width - 4} 10 ${width - 4} 34V${height - 46}Q${width - 4} ${height - 22} ${width - 28} ${height - 22}H70L48 ${height - 4}L33 ${height - 22}H28Q4 ${height - 22} 4 ${height - 46}V34Q4 10 28 10Z`);
-++        // Constant corner radius and tail: the drawing does not stretch with the text.
-++        graphic.querySelector('path').setAttribute('d', `M20 1H${width - 20}Q${width - 1} 1 ${width - 1} 20V${bottom - 19}Q${width - 1} ${bottom} ${width - 20} ${bottom}H72L53 ${height - 1}L35 ${bottom}H20Q1 ${bottom} 1 ${bottom - 19}V20Q1 1 20 1Z`);
-++    }
-++    function refreshComment(node) {
-++        const el = commentElement(node);
-++        if (!el) return;
-++        fitCommentary(el, node, el.querySelector('.pmt-comment-text'));
-++        el.style.left = `${node.x}px`; el.style.top = `${node.y}px`;
-++        extent();
-++    }
-++    function changeComment(node, patch) {
-++        if (playbackActive()) return;
-++        if (commentEditor?.node === node) {
-++            rememberCommentEdit(); Object.assign(node.config, patch); refreshComment(node); syncCommentTools();
-++        } else mutate(() => Object.assign(node.config, patch));
-++    }
-++    function fitCommentText(node) {
-++        changeComment(node, { height: 128 });
-++        status('Comment fitted to its text. Drag any edge or corner to reshape it.');
-++    }
-++    function resizeComment(drag, dx, dy) {
-++        const { node, direction, x, y, width, height, minimum } = drag;
-++        const east = direction.includes('e'), west = direction.includes('w');
-++        const north = direction.includes('n'), south = direction.includes('s');
-++        if (east || west) {
-++            node.config.width = Math.max(200, Math.min(2400, width + (west ? -dx : dx), west ? x + width : 2400));
-++            node.x = west ? x + width - node.config.width : x;
-++        }
-++        node.config.height = north || south ? Math.max(128, Math.min(2400, height + (north ? -dy : dy), north ? y + height : 2400)) : minimum;
-++        refreshComment(node);
-++        if (north) { node.y = Math.max(0, y + height - nodeSize(node).height); refreshComment(node); }
-++    }
-++    function beginCommentResize(event, node, direction) {
-++        event.preventDefault(); event.stopPropagation();
-++        if (event.button !== 0 || playbackActive() || (commentEditor && commentEditor.node !== node)) return;
-++        endGesture();
-++        if (commentEditor) rememberCommentEdit();
-++        selected = new Set([node.id]); selectedEdges.clear(); selectedEdge = null;
-++        gesture = { kind: 'resize', node, direction, before: snapshot(), x: node.x, y: node.y,
-++            ...nodeSize(node), minimum: node.config.height, fromX: event.clientX, fromY: event.clientY, scale: zoom, pointerId: event.pointerId };
-++        viewport.setPointerCapture(event.pointerId);
-++        document.body.style.cursor = `${direction}-resize`;
-++        commentElement(node).classList.add('comment-resizing'); paintSelection();
-+     }
-+     function renderCommentary(el, node) {
-+-        const c = node.config, width = c.width;
-+-        el.style.width = `${width}px`;
-+-        const text = element('div', 'pmt-comment-text', c.text || 'Double-click to write a commentary');
-+-        text.classList.toggle('placeholder', !c.text);
-+-        Object.assign(text.style, { fontFamily: c.font_family, fontSize: `${c.font_size}px`, fontWeight: c.bold ? '700' : '400', fontStyle: c.italic ? 'italic' : 'normal', textAlign: c.align });
-+-        el.append(text);
-+-        fitCommentary(el, node, text);
-+-        const height = Math.min(2400, nodeSize(node).height);
-+-        const resize = element('button', 'pmt-comment-resize', '↘'); resize.type = 'button';
-+-        resize.title = 'Resize User Commentary'; resize.setAttribute('aria-label', resize.title); resize.disabled = !editable();
-+-        resize.addEventListener('pointerdown', event => {
-+-            event.preventDefault(); event.stopPropagation(); if (!editable() || event.button !== 0) return;
-+-            endGesture(); selected = new Set([node.id]); selectedEdges.clear(); selectedEdge = null;
-+-            gesture = { kind: 'resize', node, before: snapshot(), width, height, fromX: event.clientX, fromY: event.clientY, scale: zoom };
-+-            paintSelection();
-+-        });
-+-        resize.addEventListener('dblclick', event => event.stopPropagation());
-+-        el.append(resize);
-++        const heading = element('div', 'pmt-comment-heading');
-++        heading.append(element('span', 'pmt-comment-kicker', node.label === 'User Commentary' ? 'Comment' : node.label));
-++        const edit = element('button', 'pmt-comment-edit', 'Edit');
-++        edit.type = 'button'; edit.title = 'Edit comment'; edit.setAttribute('aria-label', 'Edit comment'); edit.disabled = playbackActive();
-++        edit.addEventListener('click', event => { event.stopPropagation(); editCommentary(node); });
-++        edit.addEventListener('dblclick', event => event.stopPropagation()); heading.append(edit); el.append(heading);
-++        const text = element('div', 'pmt-comment-text'); paintCommentText(text, node.config);
-++        text.classList.toggle('pmt-comment-empty', !node.config.text); el.append(text); fitCommentary(el, node, text);
-++        const directions = { n: 'top edge', e: 'right edge', s: 'bottom edge', w: 'left edge', nw: 'top left corner', ne: 'top right corner', sw: 'bottom left corner', se: 'bottom right corner' };
-++        for (const [direction, label] of Object.entries(directions)) {
-++            const handle = element('button', `pmt-comment-handle handle-${direction}`);
-++            handle.type = 'button'; handle.dataset.resize = direction; handle.disabled = playbackActive();
-++            handle.title = `Resize comment ${label}`; handle.setAttribute('aria-label', handle.title);
-++            handle.addEventListener('pointerdown', event => beginCommentResize(event, node, direction));
-++            handle.addEventListener('dblclick', event => { event.preventDefault(); event.stopPropagation(); fitCommentText(node); });
-++            handle.addEventListener('keydown', event => resizeCommentKey(event, node, direction));
-++            el.append(handle);
-++        }
-++    }
-++    function resizeCommentKey(event, node, direction) {
-++        if (!event.key.startsWith('Arrow') || playbackActive()) return;
-++        event.preventDefault(); event.stopPropagation();
-++        const before = snapshot(), amount = event.shiftKey ? 40 : 10;
-++        if (commentEditor) rememberCommentEdit();
-++        resizeComment({ node, direction, x: node.x, y: node.y, ...nodeSize(node), minimum: node.config.height },
-++            event.key === 'ArrowRight' ? amount : event.key === 'ArrowLeft' ? -amount : 0,
-++            event.key === 'ArrowDown' ? amount : event.key === 'ArrowUp' ? -amount : 0);
-++        if (!commentEditor) { changed(before); commentElement(node)?.querySelector(`[data-resize="${direction}"]`)?.focus({ preventScroll: true }); }
-++    }
-++    function finishCommentary(save) {
-++        if (!commentEditor) return;
-++        if (gesture?.kind === 'resize') endGesture();
-++        const { node, before } = commentEditor;
-++        commentEditor = null;
-++        if (save) { changed(before); }
-++        else { flow = JSON.parse(before); persist(); render(); }
-++        commentElement(node)?.focus({ preventScroll: true });
-++        status(save ? 'Comment saved.' : 'Comment changes discarded.');
-+     }
-+     function editCommentary(node) {
-++        if (commentEditor?.node === node) { commentEditor.input.focus({ preventScroll: true }); return; }
-+         if (!editable()) return;
-+-        endGesture();
-+-        const el = [...nodesLayer.children].find(item => item.dataset.nodeId === node.id);
-+-        const display = el.querySelector('.pmt-comment-text');
-+-        const input = element('textarea', 'pmt-comment-text pmt-comment-editor');
-+-        input.value = node.config.text; input.maxLength = 100000;
-+-        input.setAttribute('aria-label', 'Static User Commentary text'); input.style.cssText = display.style.cssText;
-+-        display.replaceWith(input);
-+-        fitCommentary(el, node, input);
-+-        const controls = element('div', 'pmt-comment-editor-tools');
-+-        const done = element('button', '', 'Done'), cancel = element('button', '', 'Cancel');
-+-        done.type = cancel.type = 'button'; controls.append(done, cancel); el.append(controls);
-+-        commentEditor = { node, input }; el.classList.add('editing'); updateButtons();
-+-        function finish(save) {
-+-            const value = input.value; commentEditor = null;
-+-            if (save) mutate(() => { node.config.text = value; }); else render();
-+-            status(save ? 'Static commentary saved. Use Configure for colors and fonts.' : 'Commentary editing cancelled.');
-+-        }
-+-        done.addEventListener('click', () => finish(true)); cancel.addEventListener('click', () => finish(false));
-++        endGesture(); resetSelection(); selected.add(node.id);
-++        const el = commentElement(node), display = el.querySelector('.pmt-comment-text');
-++        const input = element('div', 'pmt-comment-text pmt-comment-editor');
-++        input.contentEditable = 'true'; input.spellcheck = true; input.setAttribute('role', 'textbox'); input.setAttribute('aria-multiline', 'true');
-++        input.setAttribute('aria-label', 'Static User Commentary text');
-++        commentEditor = { node, input, before: snapshot(), selection: { start: 0, end: 0 }, typingStyle: null, undo: [], redo: [], composing: false, renderedRuns: M.copy(M.commentRuns(node.config)) };
-++        paintCommentText(input, node.config, true);
-++        display.replaceWith(input); el.classList.add('editing');
-+         input.addEventListener('pointerdown', event => event.stopPropagation());
-+         input.addEventListener('dblclick', event => event.stopPropagation());
-+-        input.addEventListener('input', () => { fitCommentary(el, node, input); extent(); });
-++        input.addEventListener('beforeinput', commentBeforeInput);
-++        input.addEventListener('input', readNativeCommentEdit);
-++        input.addEventListener('compositionstart', () => { commentEditor.composing = true; });
-++        input.addEventListener('compositionend', () => { commentEditor.composing = false; readNativeCommentEdit(); });
-++        const clipboardType = 'application/x-tlamatini-comment-runs+json';
-++        const copySelection = event => {
-++            const range = commentSelection();
-++            if (range.start === range.end) return;
-++            event.preventDefault();
-++            const runs = M.sliceCommentRuns(M.commentRuns(node.config), range.start, range.end);
-++            event.clipboardData.setData('text/plain', runs.map(run => run.text).join(''));
-++            event.clipboardData.setData(clipboardType, JSON.stringify(runs));
-++            if (event.type === 'cut') insertCommentText('', range);
-++        };
-++        input.addEventListener('copy', copySelection); input.addEventListener('cut', copySelection);
-++        input.addEventListener('paste', event => {
-++            event.preventDefault();
-++            const text = event.clipboardData.getData('text/plain');
-++            let runs = null;
-++            try {
-++                const encoded = event.clipboardData.getData(clipboardType);
-++                if (encoded && encoded.length <= 5 * 1024 * 1024) {
-++                    const note = M.copy(node); note.config.text = text; note.config.runs = JSON.parse(encoded);
-++                    runs = M.validate({ ...M.blank(), nodes: [note] }).nodes[0].config.runs;
-++                }
-++            } catch { /* Unrecognized clipboard formatting falls back to literal text. */ }
-++            insertCommentText(text, commentSelection(), runs);
-++        });
-++        input.addEventListener('drop', event => { event.preventDefault(); });
-+         input.addEventListener('keydown', event => {
-+             event.stopPropagation();
-+-            if (event.key === 'Escape') { event.preventDefault(); finish(false); }
-+-            else if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') { event.preventDefault(); finish(true); }
-++            if (event.isComposing) return;
-++            const control = event.ctrlKey || event.metaKey, key = event.key.toLowerCase();
-++            if (event.key === 'Escape') { event.preventDefault(); if (gesture) endGesture(); else finishCommentary(false); }
-++            else if (control && event.key === 'Enter') { event.preventDefault(); finishCommentary(true); }
-++            else if (control && ['b', 'i', 'u'].includes(key)) { event.preventDefault(); const property = { b: 'bold', i: 'italic', u: 'underline' }[key]; formatCommentText({ [property]: !selectedCommentStyle()[property] }); }
-++            else if (control && (key === 'z' || key === 'y')) { event.preventDefault(); replayCommentEdit(key === 'z' && !event.shiftKey); }
-+         });
-+-        input.focus(); status('Write in the bubble. Done or Ctrl+Enter saves; Cancel or Escape discards this edit.');
-+-    }
-++        refreshComment(node); paintSelection(); input.focus({ preventScroll: true });
-++        status('Write directly in the note. Drag its borders to resize; Done saves, Escape cancels.');
-++    }
-++    function syncCommentTools() {
-++        const node = selected.size === 1 && !selectedEdges.size ? flow.nodes.find(n => selected.has(n.id) && M.isComment(n)) : null;
-++        if (!commentToolbar) {
-++            commentToolbar = element('div', 'pmt-comment-toolbar'); commentToolbar.id = 'pmt-comment-toolbar';
-++            commentToolbar.setAttribute('role', 'region'); commentToolbar.setAttribute('aria-label', 'Comment formatting');
-++            document.body.append(commentToolbar);
-++            commentToolbar.addEventListener('pointerdown', event => {
-++                if (!commentEditor) return;
-++                commentSelection();
-++                if (event.target.closest('button')) event.preventDefault();
-++            });
-++            commentToolbar.addEventListener('keydown', event => {
-++                event.stopPropagation();
-++                if (event.key === 'Escape' && commentEditor) { event.preventDefault(); finishCommentary(false); }
-++                else if ((event.ctrlKey || event.metaKey) && event.key === 'Enter' && commentEditor) { event.preventDefault(); finishCommentary(true); }
-++            });
-++        }
-++        const visible = !!node && !playbackActive();
-++        commentToolbar.hidden = !visible;
-++        if (!visible) { commentToolbarKey = ''; return; }
-++        const key = `${node.id}:${!!commentEditor}`;
-++        if (commentToolbarKey !== key) {
-++            commentToolbarKey = key; commentToolbar.replaceChildren();
-++            const title = element('span', 'pmt-comment-tools-title', commentEditor ? 'Select text to format' : 'Commentary');
-++            commentToolbar.append(title);
-++            const colors = element('div', 'pmt-comment-swatches'); colors.setAttribute('role', 'group'); colors.setAttribute('aria-label', 'Comment color');
-++            for (const [value, name] of M.commentColors) {
-++                const button = element('button', 'pmt-comment-swatch'); button.type = 'button'; button.dataset.color = value;
-++                button.style.setProperty('--swatch', value); button.title = name; button.setAttribute('aria-label', `${name} comment`);
-++                button.addEventListener('click', () => changeComment(currentComment(), { color: value })); colors.append(button);
-++            }
-++            commentToolbar.append(colors);
-++            const typography = element('div', 'pmt-comment-tool-group');
-++            const font = element('select', 'pmt-comment-font'); font.setAttribute('aria-label', 'Comment font');
-++            for (const family of M.commentFonts) { const option = new Option(family, family); option.style.fontFamily = family; font.append(option); }
-++            font.prepend(new Option('Mixed fonts', '')); font.options[0].disabled = true;
-++            font.addEventListener('change', () => formatCommentText({ font_family: font.value }));
-++            const size = element('select', 'pmt-comment-size'); size.setAttribute('aria-label', 'Comment text size');
-++            for (const [value, label] of [[10, 'Fine'], [12, 'Small'], [16, 'Body'], [20, 'Large'], [28, 'Heading'], [36, 'Title'], [48, 'Display']]) size.append(new Option(label, value));
-++            size.prepend(new Option('Mixed sizes', '')); size.options[0].disabled = true;
-++            size.addEventListener('change', () => formatCommentText({ font_size: Number(size.value) }));
-++            typography.append(font, size);
-++            const ink = element('details', 'pmt-comment-ink');
-++            const inkToggle = element('summary', '', 'A'); inkToggle.title = 'Text color'; inkToggle.setAttribute('aria-label', 'Text color');
-++            const inkColors = element('div', 'pmt-comment-ink-colors'); inkColors.setAttribute('role', 'group'); inkColors.setAttribute('aria-label', 'Text color palette');
-++            for (const [value, name] of M.commentTextColors) {
-++                const button = element('button', 'pmt-comment-swatch'); button.type = 'button'; button.dataset.textColor = value; button.style.setProperty('--swatch', value);
-++                button.title = name; button.setAttribute('aria-label', `${name} text`);
-++                button.addEventListener('click', () => { formatCommentText({ text_color: value }); ink.open = false; }); inkColors.append(button);
-++            }
-++            ink.append(inkToggle, inkColors); typography.append(ink);
-++            for (const [property, label, glyph] of [['bold', 'Bold', 'B'], ['italic', 'Italic', 'I'], ['underline', 'Underline', 'U']]) {
-++                const button = toolButton(glyph, label, () => formatCommentText({ [property]: !selectedCommentStyle()[property] }));
-++                button.dataset.emphasis = property; typography.append(button);
-++            }
-++            commentToolbar.append(typography);
-++            const alignment = element('div', 'pmt-comment-tool-group'); alignment.setAttribute('role', 'group'); alignment.setAttribute('aria-label', 'Comment alignment');
-++            for (const value of ['left', 'center', 'right']) {
-++                const button = toolButton('', `Align ${value}`, () => changeComment(currentComment(), { align: value }));
-++                button.dataset.align = value;
-++                const icon = svg('svg', { viewBox: '0 0 20 20', 'aria-hidden': 'true' });
-++                const short = value === 'left' ? 3 : value === 'right' ? 8 : 5.5;
-++                icon.append(svg('path', { d: `M3 4H17M${short} 8h9M3 12H17M${short} 16h9`, fill: 'none', stroke: 'currentColor', 'stroke-width': 1.7, 'stroke-linecap': 'round' }));
-++                button.append(icon); alignment.append(button);
-++            }
-++            commentToolbar.append(alignment, toolButton('Fit text', 'Fit bubble to text', () => fitCommentText(currentComment())));
-++            const actions = element('div', 'pmt-comment-actions');
-++            if (commentEditor) {
-++                actions.append(toolButton('Cancel', 'Cancel comment changes', () => finishCommentary(false)), toolButton('Done', 'Done', () => finishCommentary(true), 'primary'));
-++            } else actions.append(toolButton('Edit text', 'Edit comment text', () => editCommentary(currentComment()), 'primary'));
-++            commentToolbar.append(actions);
-++        }
-++        const c = { ...node.config, ...selectedCommentStyle() };
-++        for (const button of commentToolbar.querySelectorAll('[data-text-color]')) button.setAttribute('aria-pressed', String(button.dataset.textColor === (c.text_color || '#202938')));
-++        commentToolbar.querySelector('.pmt-comment-ink summary').style.textDecorationColor = c.text_color || '#202938';
-++        for (const button of commentToolbar.querySelectorAll('[data-color]')) button.setAttribute('aria-pressed', String(button.dataset.color === c.color));
-++        commentToolbar.querySelector('.pmt-comment-font').value = c.font_family || '';
-++        const size = commentToolbar.querySelector('.pmt-comment-size');
-++        size.querySelector('[data-saved-size]')?.remove();
-++        if (c.font_size !== null && ![...size.options].some(option => Number(option.value) === c.font_size)) {
-++            const option = new Option('Saved size', c.font_size); option.dataset.savedSize = ''; size.append(option);
-++        }
-++        size.value = c.font_size ?? '';
-++        for (const button of commentToolbar.querySelectorAll('[data-emphasis]')) button.setAttribute('aria-pressed', c[button.dataset.emphasis] === null ? 'mixed' : String(c[button.dataset.emphasis]));
-++        for (const button of commentToolbar.querySelectorAll('[data-align]')) button.setAttribute('aria-pressed', String(button.dataset.align === c.align));
-++        positionCommentTools();
-++    }
-++    function positionCommentTools() {
-++        if (!commentToolbar || commentToolbar.hidden) return;
-++        const node = currentComment(), el = node && commentElement(node);
-++        if (!el) return;
-++        const box = el.getBoundingClientRect(), view = viewport.getBoundingClientRect();
-++        const margin = 12, width = Math.min(420, view.width - margin * 2);
-++        commentToolbar.style.width = Math.max(260, width) + 'px';
-++        const height = commentToolbar.offsetHeight;
-++        const lowX = Math.max(margin, view.left + margin), highX = Math.min(window.innerWidth - margin, view.right - margin) - commentToolbar.offsetWidth;
-++        const lowY = Math.max(margin, view.top + margin), highY = Math.min(window.innerHeight - margin, view.bottom - margin) - height;
-++        let left = box.left, top = box.top - height - margin;
-++        if (top < lowY) {
-++            if (box.right + margin <= highX) { left = box.right + margin; top = box.top; }
-++            else if (box.left - margin - commentToolbar.offsetWidth >= lowX) { left = box.left - margin - commentToolbar.offsetWidth; top = box.top; }
-++            else top = box.bottom + margin;
-++        }
-++        commentToolbar.style.left = Math.max(lowX, Math.min(highX, left)) + 'px';
-++        commentToolbar.style.top = Math.max(lowY, Math.min(highY, top)) + 'px';
-++    }
-++    function currentComment() { return flow.nodes.find(n => selected.has(n.id) && M.isComment(n)); }
-++    function toolButton(text, label, action, extra = '') {
-++        const button = element('button', `pmt-comment-tool ${extra}`, text); button.type = 'button';
-++        button.title = label; button.setAttribute('aria-label', label); button.addEventListener('click', action); return button;
-++    }
-++
-+     function addPort(el, node, name, point) {
-+         const direction = name === 'input' ? 'input' : 'output';
-+         const slot = name === 'yes' ? ' output-1' : name === 'no' ? ' output-2' : '';
-+@@ -288,7 +642,10 @@
-+             if (action === 'redo') button.disabled = !editable() || !redo.length;
-+             if (action === 'zoom-out') button.disabled = zoom <= .25;
-+             if (action === 'zoom-in') button.disabled = zoom >= 2;
-+-            if (action === 'configure') button.disabled = !editable() || selected.size + selectedEdges.size !== 1;
-++            if (action === 'configure') {
-++                button.disabled = !editable() || selected.size + selectedEdges.size !== 1;
-++                button.textContent = currentComment() && selected.size === 1 && !selectedEdges.size ? '✎ Edit comment' : '⚙ Configure';
-++            }
-+             if (action === 'duplicate') button.disabled = !editable() || !selected.size;
-+             if (action === 'delete') button.disabled = !editable() || !(selected.size || selectedEdges.size);
-+             if (action === 'play') button.disabled = !socketReady || !editable() || !flow.nodes.some(n => !M.isComment(n));
-+@@ -298,6 +655,7 @@
-+             if (action === 'stop') button.disabled = !['running', 'paused'].includes(runState);
-+         }
-+         for (const button of document.querySelectorAll('.agent-tool-item')) { button.disabled = !editable(); button.draggable = editable(); }
-++        syncCommentTools();
-+     }
-+     function palette() {
-+         const list = $id('agents-list'); list.replaceChildren();
-+@@ -321,7 +679,7 @@
-+             if (labels.has(n.label)) n.label = M.uniqueLabel(n.label, labels);
-+             flow.nodes.push(n); if (!M.isComment(n)) flow.start ||= n.id; selected = new Set([n.id]); selectedEdge = null; selectedEdges.clear();
-+         });
-+-        status('Operation added. Double-click it to configure.');
-++        status(type === 'user_commentary' ? 'Comment added. Double-click to write; drag any edge or corner to resize.' : 'Operation added. Double-click it to configure.');
-+     }
-+     const connection = UI.connectionDrag({
-+         viewport, canEdit: editable,
-+@@ -376,6 +734,7 @@
-+         failed: error => { status(error.message); alertMessage(error.message); }
-+     });
-+     function nodeDown(event, node) {
-++        if (commentEditor) return;
-+         if (event.button !== 0 || event.target.closest('button')) return;
-+         event.stopPropagation();
-+         if (nodeMove.active) return;
-+@@ -451,28 +810,16 @@
-+         return { close, form };
-+     }
-+     function configureNode(node) {
-++        if (M.isComment(node)) { editCommentary(node); return; }
-+         if (!editable()) return;
-+         const draft = M.copy(node), config = draft.config, kind = draft.type;
-+         formDialog(`Configure · ${M.operations[kind].label}`, ({ form, field, fields }) => {
-+             form.append(element('p', '', M.operations[kind].help));
-+             field('label', 'Label', 'text', draft.label).maxLength = 120;
-+             if (!['flush_embeddings', 'clean_history'].includes(kind)) {
-+-                const title = kind === 'decision' ? 'Question (when asking the user)' : kind === 'user_input' ? 'Message to the user' : kind === 'user_commentary' ? 'Static commentary' : kind === 'feed_embeddings' ? 'Text to embed' : 'Prompt';
-++                const title = kind === 'decision' ? 'Question (when asking the user)' : kind === 'user_input' ? 'Message to the user' : kind === 'feed_embeddings' ? 'Text to embed' : 'Prompt';
-+                 field('text', title, 'textarea', config.text).maxLength = 100000;
-+-                if (kind !== 'user_commentary') form.append(element('small', '', 'Use {{last_output}} to insert the previous prompt answer or user reply.'));
-+-            }
-+-            if (kind === 'user_commentary') {
-+-                const color = field('color', 'Bubble color', 'select', config.color, M.commentColors);
-+-                const updateColor = () => { color.style.backgroundColor = color.value; color.style.color = '#1f2937'; };
-+-                color.addEventListener('change', updateColor); updateColor();
-+-                field('font_family', 'Font', 'select', config.font_family, M.commentFonts.map(font => [font, font]));
-+-                const fontSize = field('font_size', 'Font size (px)', 'number', config.font_size); fontSize.min = 10; fontSize.max = 48; fontSize.step = 'any';
-+-                field('bold', 'Bold', 'checkbox', config.bold); field('italic', 'Italic', 'checkbox', config.italic);
-+-                field('align', 'Text alignment', 'select', config.align, [['left', 'Left'], ['center', 'Center'], ['right', 'Right']]);
-+-                for (const [name, label, min] of [['width', 'Bubble width', 200], ['height', 'Bubble height', 128]]) {
-+-                    const input = field(name, label, 'number', config[name]); input.min = min; input.max = 2400; input.step = 'any';
-+-                }
-+-                form.append(element('small', '', 'Double-click the bubble to write directly in it. Drag its bottom-right handle to resize. Bubbles grow to contain all text, without scrollbars. Height is a minimum.'));
-++                form.append(element('small', '', 'Use {{last_output}} to insert the previous prompt answer or user reply.'));
-+             }
-+             if (['prompt', 'programmed_prompt'].includes(kind)) {
-+                 field('multi_turn', 'Multi-Turn — allow enabled tools and agents', 'checkbox', config.multi_turn);
-+@@ -495,9 +842,8 @@
-+             if (!editable()) throw new Error('Stop playback before editing.');
-+             draft.label = fields.label.value.trim() || M.operations[kind].label;
-+             if (fields.text) config.text = fields.text.value;
-+-            for (const name of ['multi_turn', 'acpx', 'case_sensitive', 'bold', 'italic']) if (fields[name]) config[name] = fields[name].checked;
-+-            for (const name of ['comparison', 'value', 'color', 'font_family', 'align']) if (fields[name]) config[name] = fields[name].value;
-+-            for (const name of ['font_size', 'width', 'height']) if (fields[name]) config[name] = Number(fields[name].value);
-++            for (const name of ['multi_turn', 'acpx', 'case_sensitive']) if (fields[name]) config[name] = fields[name].checked;
-++            for (const name of ['comparison', 'value']) if (fields[name]) config[name] = fields[name].value;
-+             if (fields.delay_seconds) config.delay_seconds = Number(fields.delay_seconds.value);
-+             if (fields.scheduled_at) config.scheduled_at = fields.scheduled_at.value ? new Date(fields.scheduled_at.value).toISOString() : '';
-+             const candidate = M.copy(flow); candidate.nodes[candidate.nodes.findIndex(n => n.id === node.id)] = draft;
-+@@ -712,7 +1058,7 @@
-+             else if (name === 'zoom-in') setZoom(zoom + .1);
-+             else if (name === 'zoom-out') setZoom(zoom - .1);
-+             else if (name === 'fit') fit();
-+-            else if (name === 'help') await alertMessage('Drag or click an operation to add it. Double-click a figure to edit its settings. Drag a right-side output triangle to a left-side input triangle, then release to connect, just like the Agentic Control Panel. The curve follows your pointer and the triangles highlight. Release on empty canvas or press Escape to cancel. Reconnecting an occupied output replaces that connection. Decision figures have Y and N outputs on the right. With the keyboard, activate an output, Tab to an input and activate it.\n\nCtrl+click selects multiple figures; drag empty canvas to select a group. Delete removes the selection, Ctrl+D duplicates, Ctrl+Z undoes, Ctrl+Shift+Z redoes. Use arrow keys to move selected figures.\n\nUser Commentary is a static speech-bubble note. Double-click to write in it; Done or Ctrl+Enter saves, Escape cancels. Configure chooses color, font, size and alignment. Drag its bottom-right handle to resize. The bubble grows to fit the text without scrollbars. Notes are saved with the diagram and never run. User Input uses the notched figure and asks for a runtime reply.\n\nChoose Start, Validate, then Play. Each run has its own conversation and embeddings. {{last_output}} inserts the last answer or user input. Clean History clears that run’s conversation and last output; Flush Embeddings clears its retrieval context.\n\nPause takes effect between operations. Stop requests cancellation and waits for the active model call to drain. Closing an input dialog stops the flow. Keep this page and Tlamatini open for scheduled prompts. Files never run merely by opening them.\n\nSave downloads a versioned .fpmt diagram. The panel also keeps a local draft in this browser. Legacy system prompt.pmt text files remain separate.', 'Using the Prompt Flow Panel');
-++            else if (name === 'help') await alertMessage('Drag or click an operation to add it. Double-click a figure to edit its settings. Drag a right-side output triangle to a left-side input triangle, then release to connect, just like the Agentic Control Panel. The curve follows your pointer and the triangles highlight. Release on empty canvas or press Escape to cancel. Reconnecting an occupied output replaces that connection. Decision figures have Y and N outputs on the right. With the keyboard, activate an output, Tab to an input and activate it.\n\nCtrl+click selects multiple figures; drag empty canvas to select a group. Delete removes the selection, Ctrl+D duplicates, Ctrl+Z undoes, Ctrl+Shift+Z redoes. Use arrow keys to move selected figures.\n\nUser Commentary is a static speech-bubble note. Double-click to write in it; Done or Ctrl+Enter saves, Escape cancels. Select a passage to mix fonts, sizes, text colors, bold, italic and underline using the floating mini toolbar. With a caret, formatting styles newly typed text. Bubble color and alignment apply to the note. Drag any edge or corner to resize; Fit text removes spare vertical space. There is no commentary configuration dialog. The bubble grows to fit the text without scrollbars. Notes are saved with the diagram and never run. User Input uses the notched figure and asks for a runtime reply.\n\nChoose Start, Validate, then Play. Each run has its own conversation and embeddings. {{last_output}} inserts the last answer or user input. Clean History clears that run’s conversation and last output; Flush Embeddings clears its retrieval context.\n\nPause takes effect between operations. Stop requests cancellation and waits for the active model call to drain. Closing an input dialog stops the flow. Keep this page and Tlamatini open for scheduled prompts. Files never run merely by opening them.\n\nSave downloads a versioned .fpmt diagram. The panel also keeps a local draft in this browser. Legacy system prompt.pmt text files remain separate.', 'Using the Prompt Flow Panel');
-+         } catch (e) { status(e.message); await alertMessage(e.message); }
-+     }
-+     document.querySelectorAll('[data-action]').forEach(button => button.addEventListener('click', event => { event.preventDefault(); action(button.dataset.action); }));
-+@@ -727,7 +1073,7 @@
-+         } catch (e) { await alertMessage(e.message); }
-+     });
-+     viewport.addEventListener('pointerdown', event => {
-+-        if (event.button !== 0 || event.target.closest('.pmt-node, .pmt-edge, button')) return;
-++        if (commentEditor || event.button !== 0 || event.target.closest('.pmt-node, .pmt-edge, button')) return;
-+         const p = position(event);
-+         if (!event.ctrlKey && !event.metaKey) resetSelection();
-+         endGesture(); gesture = { kind: 'select', from: p, initial: new Set(selected), initialEdges: new Set(selectedEdges) }; render(); event.preventDefault(); viewport.focus({ preventScroll: true });
-+@@ -735,10 +1081,8 @@
-+     document.addEventListener('pointermove', event => {
-+         if (!gesture) return;
-+         if (gesture.kind === 'resize') {
-+-            const { node, width, height, fromX, fromY, scale } = gesture;
-+-            node.config.width = Math.min(2400, Math.max(200, width + (event.clientX - fromX) / scale));
-+-            node.config.height = Math.min(2400, Math.max(128, height + (event.clientY - fromY) / scale));
-+-            render(); return;
-++            resizeComment(gesture, (event.clientX - gesture.fromX) / gesture.scale, (event.clientY - gesture.fromY) / gesture.scale);
-++            return;
-+         }
-+         const p = position(event);
-+         {
-+@@ -760,12 +1104,21 @@
-+         nodeMove.cancel();
-+         if (!gesture) return;
-+         const previous = gesture; gesture = null; $id('pmt-marquee').hidden = true; document.body.classList.remove('resizing');
-+-        if (previous.kind === 'resize') { flow = JSON.parse(previous.before); render(); }
-++        if (previous.kind === 'resize') {
-++            document.body.style.cursor = ''; commentElement(previous.node)?.classList.remove('comment-resizing');
-++            if (commentEditor) { Object.assign(previous.node, JSON.parse(previous.before).nodes.find(n => n.id === previous.node.id)); refreshComment(previous.node); }
-++            else { flow = JSON.parse(previous.before); render(); }
-++        }
-+         if (previous.pointerId !== undefined && viewport.hasPointerCapture(previous.pointerId)) viewport.releasePointerCapture(previous.pointerId);
-+         paintSelection();
-+     }
-+     document.addEventListener('pointerup', () => {
-+-        if (gesture?.kind === 'resize') { const before = gesture.before; gesture = null; changed(before); }
-++        if (gesture?.kind === 'resize') {
-++            const previous = gesture; gesture = null; document.body.style.cursor = '';
-++            commentElement(previous.node)?.classList.remove('comment-resizing');
-++            if (viewport.hasPointerCapture(previous.pointerId)) viewport.releasePointerCapture(previous.pointerId);
-++            if (!commentEditor) changed(previous.before); else syncCommentTools();
-++        }
-+         else if (gesture) endGesture();
-+     });
-+     viewport.addEventListener('lostpointercapture', () => { if (gesture) endGesture(); });
-+@@ -778,7 +1131,11 @@
-+     });
-+     viewport.addEventListener('wheel', event => { if (event.ctrlKey || event.metaKey) { event.preventDefault(); setZoom(zoom + (event.deltaY < 0 ? .1 : -.1)); } }, { passive: false });
-+     document.addEventListener('keydown', event => {
-+-        if (commentEditor) return;
-++        if (commentEditor) {
-++            if (event.key === 'Escape') { event.preventDefault(); if (gesture) endGesture(); else finishCommentary(false); }
-++            else if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') { event.preventDefault(); finishCommentary(true); }
-++            return;
-++        }
-+         if (UI.isTyping(event)) return;
-+         const key = event.key.toLowerCase(), mod = event.ctrlKey || event.metaKey;
-+         if (mod && ['s', 'o', 'z', 'y', 'd', 'a'].includes(key)) {
-+--- a/Tlamatini/agent/static/agent/css/prompt_flow_panel.css
-++++ b/Tlamatini/agent/static/agent/css/prompt_flow_panel.css
-+@@ -51,14 +51,76 @@
-+ .pmt-node[data-type="programmed_prompt"] .pmt-node-label { right: 48px; }
-+ .pmt-node[data-type="clean_history"] .pmt-node-label { left: 47px; right: 47px; }
-+ .pmt-node[data-type="user_input"] .pmt-node-label { left: 62px; right: 62px; top: 43px; bottom: 35px; }
-+-.pmt-comment-text { position: absolute; inset: 28px 24px 44px; color: #1f2937; white-space: pre-wrap; overflow-wrap: anywhere; overflow: hidden; line-height: 1.45; cursor: inherit; }
-+-.pmt-comment-text.placeholder { opacity: .65; }
-+-.pmt-comment-editor { width: calc(100% - 48px); height: calc(100% - 72px); border: 1px dashed #946780; background: transparent; border-radius: 3px; resize: none; padding: 4px; cursor: text; user-select: text; }
-++/* Commentary is a paper-like note, with direct edge resizing and a floating mini toolbar. */
-++.pmt-node[data-type="user_commentary"] { color: #202938; }
-++.pmt-node[data-type="user_commentary"] > svg { filter: drop-shadow(0 6px 9px #0003); }
-++.pmt-node[data-type="user_commentary"] .pmt-shape { stroke: #26344a38; stroke-width: 1.5; }
-++.pmt-panel #pmt-world .pmt-node[data-type="user_commentary"].selected > svg { filter: drop-shadow(0 6px 12px #0004); }
-++.pmt-panel #pmt-world .pmt-node[data-type="user_commentary"].selected .pmt-shape,
-++.pmt-node[data-type="user_commentary"].editing .pmt-shape { stroke: #79dacd; stroke-width: 2; }
-++.pmt-comment-heading { position: absolute; top: 14px; left: 22px; right: 20px; height: 18px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-++.pmt-comment-kicker { font: 700 10px/1.4 Arial, sans-serif; letter-spacing: .12em; text-transform: uppercase; opacity: .55; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-++.pmt-comment-edit { border: 0; background: transparent; color: #253347; padding: 0 2px; font: 600 11px/1.4 Arial, sans-serif; cursor: pointer; opacity: 0; }
-++.pmt-node:hover .pmt-comment-edit, .pmt-node.selected .pmt-comment-edit, .pmt-comment-edit:focus-visible { opacity: .7; }
-++.pmt-node.editing .pmt-comment-edit { visibility: hidden; }
-++.pmt-comment-text { position: absolute; top: 42px; left: 22px; width: calc(100% - 44px); margin: 0; padding: 0; border: 0; box-sizing: border-box; color: #202938; white-space: pre-wrap; overflow-wrap: anywhere; overflow: hidden; line-height: 1.55; cursor: inherit; }
-++.pmt-comment-text.pmt-comment-empty { color: #202938; opacity: .45; font-style: italic; }
-++.pmt-comment-editor { display: block; min-height: 0; min-width: 0; max-height: none; background: transparent; border: 0; border-radius: 0; resize: none; outline: none !important; box-shadow: none; cursor: text; user-select: text; caret-color: #172b4d; }
-+ .pmt-node.editing { z-index: 6; cursor: default; }
-+-.pmt-comment-editor-tools { position: absolute; top: -30px; right: 5px; display: flex; gap: 5px; padding: 2px; background: #303039; border-radius: 4px; }
-+-.pmt-comment-editor-tools button { background: #41414e; color: #fff; border: 1px solid #656570; border-radius: 3px; font-size: 12px; }
-+-.pmt-comment-resize { position: absolute; bottom: 25px; right: 8px; border: 0; border-radius: 4px; background: #1f29371a; color: #1f2937; cursor: nwse-resize; font-size: 16px; line-height: 1; padding: 4px; }
-+-.pmt-node[data-type="user_commentary"] { color: #1f2937; }
-++.pmt-comment-handle { position: absolute; display: block; padding: 0; margin: 0; border: 0; border-radius: 0; background: transparent; z-index: 8; touch-action: none; opacity: 0; }
-++.pmt-node:hover .pmt-comment-handle, .pmt-node.selected .pmt-comment-handle, .pmt-comment-handle:focus-visible { opacity: 1; }
-++.pmt-comment-handle::after { content: ''; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); background: #dffff8; border: 1.5px solid #257f77; border-radius: 3px; box-shadow: 0 1px 3px #0002; }
-++.pmt-comment-handle:disabled { display: none; }
-++.pmt-comment-handle.handle-n, .pmt-comment-handle.handle-s { left: 18px; right: 18px; height: 14px; cursor: ns-resize; }
-++.pmt-comment-handle.handle-n { top: -7px; }
-++.pmt-comment-handle.handle-s { bottom: 11px; }
-++.pmt-comment-handle.handle-e, .pmt-comment-handle.handle-w { top: 18px; bottom: 36px; width: 14px; cursor: ew-resize; }
-++.pmt-comment-handle.handle-e { right: -7px; }
-++.pmt-comment-handle.handle-w { left: -7px; }
-++.pmt-comment-handle.handle-n::after, .pmt-comment-handle.handle-s::after { width: 22px; height: 5px; }
-++.pmt-comment-handle.handle-e::after, .pmt-comment-handle.handle-w::after { width: 5px; height: 22px; }
-++.pmt-comment-handle.handle-ne, .pmt-comment-handle.handle-nw, .pmt-comment-handle.handle-se, .pmt-comment-handle.handle-sw { width: 18px; height: 18px; }
-++.pmt-comment-handle.handle-ne, .pmt-comment-handle.handle-nw { top: -8px; }
-++.pmt-comment-handle.handle-se, .pmt-comment-handle.handle-sw { bottom: 10px; }
-++.pmt-comment-handle.handle-nw, .pmt-comment-handle.handle-sw { left: -8px; }
-++.pmt-comment-handle.handle-ne, .pmt-comment-handle.handle-se { right: -8px; }
-++.pmt-comment-handle.handle-ne, .pmt-comment-handle.handle-sw { cursor: nesw-resize; }
-++.pmt-comment-handle.handle-nw, .pmt-comment-handle.handle-se { cursor: nwse-resize; }
-++.pmt-comment-handle.handle-ne::after, .pmt-comment-handle.handle-nw::after, .pmt-comment-handle.handle-se::after, .pmt-comment-handle.handle-sw::after { width: 8px; height: 8px; }
-++.pmt-comment-toolbar { position: fixed; z-index: 9000; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 9px 10px; padding: 12px; box-sizing: border-box; background: #29333f; border: 1px solid #586778; border-radius: 12px; box-shadow: 0 12px 30px #0005, 0 2px 6px #0004; color: #e9eef3; font: 12px/1.4 Nunito, Arial, sans-serif; }
-++.pmt-comment-toolbar[hidden] { display: none; }
-++.pmt-comment-tools-title { display: none; }
-++.pmt-comment-swatches, .pmt-comment-tool-group, .pmt-comment-actions { display: flex; align-items: center; gap: 4px; }
-++.pmt-comment-tool-group { padding: 0; gap: 4px; }
-++.pmt-comment-toolbar > .pmt-comment-tool-group:has(.pmt-comment-font) { grid-column: 1 / -1; grid-row: 1; }
-++.pmt-comment-swatches { grid-column: 1; grid-row: 2; }
-++.pmt-comment-toolbar > .pmt-comment-tool-group[aria-label="Comment alignment"] { grid-column: 2; grid-row: 2; }
-++.pmt-comment-toolbar > .pmt-comment-tool { justify-self: start; grid-row: 3; }
-++.pmt-comment-swatch { width: 23px; height: 23px; min-width: 23px; border-radius: 50%; border: 3px solid #242b35; padding: 0; background: var(--swatch); box-shadow: 0 0 0 1px #66717d; cursor: pointer; }
-++.pmt-comment-swatch:hover { box-shadow: 0 0 0 2px #c4d2df; }
-++.pmt-comment-swatch[aria-pressed="true"] { box-shadow: 0 0 0 2px #79dacd; position: relative; }
-++.pmt-comment-swatch[aria-pressed="true"]::after { content: '✓'; color: #202938; font-size: 11px; font-weight: 800; position: absolute; inset: 0; display: grid; place-items: center; }
-++.pmt-comment-toolbar select, .pmt-comment-tool { height: 31px; border: 1px solid #4b5866; border-radius: 6px; background: #303b48; color: #edf4f8; font: inherit; padding: 4px 8px; cursor: pointer; }
-++.pmt-comment-font { flex: 1; width: 130px; min-width: 75px; }
-++.pmt-comment-size { width: 91px; }
-++.pmt-comment-tool { display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; min-width: 31px; }
-++.pmt-comment-tool[data-emphasis="bold"] { font-weight: 800; }
-++.pmt-comment-tool[data-emphasis="italic"] { font-family: Georgia, serif; font-style: italic; font-size: 16px; }
-++.pmt-comment-tool svg { width: 16px; height: 16px; }
-++.pmt-comment-tool:hover { background: #415063; border-color: #718296; }
-++.pmt-comment-tool[aria-pressed="true"] { background: #385951; border-color: #79dacd; color: #cffff4; }
-++.pmt-comment-actions { margin-left: auto; grid-column: 2; grid-row: 3; }
-++.pmt-comment-tool.primary { background: #9ce4d4; color: #193a35; border-color: #9ce4d4; font-weight: 800; }
-++.pmt-comment-tool.primary:hover { background: #bcf4e7; }
-++.pmt-comment-toolbar button:focus-visible, .pmt-comment-toolbar select:focus-visible { outline: 2px solid #b1f5e5; outline-offset: 3px; }
-++
-++
-++.pmt-comment-ink { position: relative; }
-++.pmt-comment-ink summary { display: grid; place-items: center; list-style: none; width: 31px; height: 31px; border: 1px solid #4b5866; border-radius: 6px; background: #303b48; cursor: pointer; font-weight: 800; text-decoration: underline 3px; text-underline-offset: 3px; }
-++.pmt-comment-ink summary::-webkit-details-marker { display: none; }
-++.pmt-comment-ink-colors { position: absolute; z-index: 1; top: 38px; right: 0; display: grid; grid-template-columns: repeat(4, 23px); gap: 9px; padding: 12px; border: 1px solid #647387; border-radius: 9px; background: #29333f; box-shadow: 0 5px 16px #0005; }
-++.pmt-comment-ink:not([open]) .pmt-comment-ink-colors { display: none; }
-++
-+ /* Geometry/colors come from ACP's input/output-triangle and output-label rules.
-+    Reset only native button chrome; highlighting never changes the port size. */
-+ .pmt-start-badge { position: absolute; top: -14px; left: 76px; color: #68e0bd; font-size: 10px; letter-spacing: .12em; }
-+@@ -106,3 +168,11 @@
-+     #pmt-run-log { height: 110px; }
-+     .pmt-panel #monitor-controls { gap: 4px !important; }
-+ }
-++
-++.pmt-comment-tool[data-emphasis="underline"] { text-decoration: underline; text-underline-offset: 3px; }
-++.pmt-comment-tool[aria-pressed="mixed"] { border-style: dashed; border-color: #a3b4c7; }
-++.pmt-comment-editor::selection, .pmt-comment-editor *::selection { background: #439cc56b; }
-++
-++/* The bubble outline itself is the focus indicator, never a rectangular frame. */
-++.pmt-panel #pmt-world .pmt-node[data-type="user_commentary"]:focus { outline: none; }
-++.pmt-panel #pmt-world .pmt-node[data-type="user_commentary"]:focus-visible .pmt-shape { stroke: #79dacd; stroke-width: 2; }
-+--- a/Tlamatini/agent/static/agent/js/prompt-flow-panel-model.js
-++++ b/Tlamatini/agent/static/agent/js/prompt-flow-panel-model.js
-+@@ -8,6 +8,7 @@
-+     const EXTENSION = '.fpmt';
-+     const VERSION = 2;
-+     const commentColors = [['#fbcfe8', 'Pink'], ['#fef3c7', 'Yellow'], ['#dcfce7', 'Green'], ['#dbeafe', 'Blue'], ['#ede9fe', 'Purple'], ['#ffedd5', 'Orange'], ['#ffffff', 'White'], ['#e5e7eb', 'Grey']];
-++    const commentTextColors = [['#202938', 'Ink'], ['#000000', 'Black'], ['#1d4ed8', 'Blue'], ['#166534', 'Green'], ['#7e22ce', 'Purple'], ['#b91c1c', 'Red'], ['#92400e', 'Brown'], ['#ffffff', 'White']];
-+     const commentFonts = ['Nunito', 'Arial', 'Verdana', 'Georgia', 'Times New Roman', 'Courier New'];
-+     const isFlowFilename = name => /\.fpmt$/i.test(name);
-+     // Migrate old flow draft/save names without changing system prompt files.
-+@@ -21,7 +22,7 @@
-+         flush_embeddings: { label: 'Flush embeddings', color: '#f0a88b', fill: '#684237', path: 'M4 8H196L100 124Z', input: [4 + 96 * 56 / 116, 64], output: [196 - 96 * 56 / 116, 64], help: 'Remove this run’s embeddings while retaining its conversation.' },
-+         clean_history: { label: 'Clean History', color: '#90cddc', fill: '#315665', path: 'M4 14H196L160 114H40Z', input: [22, 64], output: [178, 64], help: 'Clear this run’s conversation and last output; keep its embeddings.' },
-+         user_input: { label: 'User Input', color: '#eaaed6', fill: '#653d59', path: 'M52 4L100 38L148 4V88L100 124L52 88Z', input: [52, 64], output: [148, 64], help: 'Pause for a user reply and add it to the conversation.' },
-+-        user_commentary: { label: 'User Commentary', color: '#eaaed6', fill: '#653d59', path: 'M28 10H172Q196 10 196 34V82Q196 106 172 106H70L48 124L33 106H28Q4 106 4 82V34Q4 10 28 10Z', static: true, help: 'A static review note. Double-click to write in the bubble; Configure changes its colors and font. It never runs.' },
-++        user_commentary: { label: 'User Commentary', color: '#eaaed6', fill: '#653d59', path: 'M28 10H172Q196 10 196 34V82Q196 106 172 106H70L48 124L33 106H28Q4 106 4 82V34Q4 10 28 10Z', static: true, help: 'A static review note. Double-click to write. Use the floating toolbar to format; drag any edge or corner to resize. It never runs.' },
-+     };
-+     const copy = value => JSON.parse(JSON.stringify(value));
-+     function uniqueLabel(label, used) {
-+@@ -42,8 +43,34 @@
-+         if (type === 'prompt' || type === 'programmed_prompt') Object.assign(config, { multi_turn: false, acpx: false });
-+         if (type === 'programmed_prompt') Object.assign(config, { delay_seconds: 5, scheduled_at: '' });
-+         if (type === 'decision') Object.assign(config, { comparison: 'contains', value: '', case_sensitive: false });
-+-        if (type === 'user_commentary') Object.assign(config, { width: 320, height: 200, color: '#fbcfe8', font_family: 'Nunito', font_size: 16, bold: false, italic: false, align: 'left' });
-++        if (type === 'user_commentary') Object.assign(config, { width: 360, height: 160, color: '#fef3c7', text_color: '#202938', font_family: 'Nunito', font_size: 16, bold: false, italic: false, underline: false, align: 'left', runs: [] });
-+         return { id: id(), type, label: operations[type].label, x, y, config };
-++    }
-++    const commentStyleKeys = ['font_family', 'font_size', 'text_color', 'bold', 'italic', 'underline'];
-++    const commentStyle = c => Object.fromEntries(commentStyleKeys.map(key => [key, key === 'underline' ? !!c[key] : c[key]]));
-++    function mergeCommentRuns(runs) {
-++        const merged = [];
-++        for (const run of runs) {
-++            if (!run.text) continue;
-++            const last = merged[merged.length - 1];
-++            if (last && commentStyleKeys.every(key => last[key] === run[key])) last.text += run.text;
-++            else merged.push({ text: run.text, ...commentStyle(run) });
-++        }
-++        return merged;
-++    }
-++    function sliceCommentRuns(runs, start, end) {
-++        let offset = 0;
-++        return runs.flatMap(run => {
-++            const from = Math.max(0, start - offset), to = Math.min(run.text.length, end - offset);
-++            offset += run.text.length;
-++            return to > from ? [{ ...run, text: run.text.slice(from, to) }] : [];
-++        });
-++    }
-++    const commentRuns = c => c.runs || (c.text ? [{ text: c.text, ...commentStyle(c) }] : []);
-++    function replaceCommentRange(c, start, end, replacement) {
-++        const runs = commentRuns(c);
-++        c.runs = mergeCommentRuns([...sliceCommentRuns(runs, 0, start), ...replacement, ...sliceCommentRuns(runs, end, c.text.length)]);
-++        c.text = c.runs.map(run => run.text).join('');
-+     }
-+     function validate(value, playable = false) {
-+         const fail = message => { throw new Error(message); };
-+@@ -68,10 +95,23 @@
-+             if (isComment(n)) {
-+                 const c = n.config;
-+                 for (const [key, fallback, min, max] of [['width', 320, 200, 2400], ['height', 200, 128, 2400], ['font_size', 16, 10, 48]]) { if (c[key] === undefined) c[key] = fallback; number(c[key], min, max, `Comment ${key}`); }
-+-                for (const [key, fallback] of [['color', '#fbcfe8'], ['font_family', 'Nunito'], ['align', 'left'], ['bold', false], ['italic', false]]) if (c[key] === undefined) c[key] = fallback;
-+-                if (!commentColors.some(([color]) => color === c.color) || !commentFonts.includes(c.font_family) || !['left', 'center', 'right'].includes(c.align)) fail('Choose a supported comment color, font and alignment.');
-+-                if (typeof c.bold !== 'boolean' || typeof c.italic !== 'boolean') fail('Comment style switches must be true or false.');
-+-                n.config = Object.fromEntries(['text', 'width', 'height', 'color', 'font_family', 'font_size', 'bold', 'italic', 'align'].map(key => [key, c[key]]));
-++                for (const [key, fallback] of [['color', '#fbcfe8'], ['text_color', '#202938'], ['font_family', 'Nunito'], ['align', 'left'], ['bold', false], ['italic', false], ['underline', false]]) if (c[key] === undefined) c[key] = fallback;
-++                if (!commentColors.some(([color]) => color === c.color) || !commentTextColors.some(([color]) => color === c.text_color) || !commentFonts.includes(c.font_family) || !['left', 'center', 'right'].includes(c.align)) fail('Choose a supported comment color, font and alignment.');
-++                if (typeof c.bold !== 'boolean' || typeof c.italic !== 'boolean' || typeof c.underline !== 'boolean') fail('Comment style switches must be true or false.');
-++                if (c.runs === undefined) c.runs = c.text ? [{ text: c.text, ...commentStyle(c) }] : [];
-++                if (!Array.isArray(c.runs) || c.runs.length > 10000) fail('Use at most 10,000 formatted text runs per comment.');
-++                c.runs = c.runs.map(run => {
-++                    if (!run || typeof run !== 'object' || Array.isArray(run)) fail('A formatted text run must be an object.');
-++                    text(run.text, 100000, 'Comment run text');
-++                    const style = { ...commentStyle(c), ...run };
-++                    number(style.font_size, 10, 48, 'Comment run font size');
-++                    if (!commentFonts.includes(style.font_family) || !commentTextColors.some(([color]) => color === style.text_color)) fail('Choose a supported comment font and text color.');
-++                    if (['bold', 'italic', 'underline'].some(key => typeof style[key] !== 'boolean')) fail('Comment run style switches must be true or false.');
-++                    return { text: run.text, ...commentStyle(style) };
-++                });
-++                if (c.runs.map(run => run.text).join('') !== c.text) fail('Comment runs must contain exactly the comment text.');
-++                c.runs = mergeCommentRuns(c.runs);
-++                n.config = Object.fromEntries(['text', 'runs', 'width', 'height', 'color', 'text_color', 'font_family', 'font_size', 'bold', 'italic', 'underline', 'align'].map(key => [key, c[key]]));
-+             }
-+             if (['prompt', 'programmed_prompt'].includes(n.type)) {
-+                 if (typeof n.config.multi_turn !== 'boolean' || typeof n.config.acpx !== 'boolean') fail('Prompt switches must be true or false.');
-+@@ -129,5 +169,5 @@
-+         flow.edges = [{ id: id(), source: a.id, target: b.id, branch: 'next' }, { id: id(), source: b.id, target: c.id, branch: 'yes' }, { id: id(), source: b.id, target: d.id, branch: 'no' }];
-+         return flow;
-+     }
-+-    window.PromptFlowPanelModel = Object.freeze({ FORMAT, VERSION, EXTENSION, commentColors, commentFonts, isComment, size, isFlowFilename, flowFilename, operations, copy, uniqueLabel, id, blank, node, validate, example });
-++    window.PromptFlowPanelModel = Object.freeze({ FORMAT, VERSION, EXTENSION, commentColors, commentTextColors, commentFonts, commentStyleKeys, commentStyle, commentRuns, mergeCommentRuns, sliceCommentRuns, replaceCommentRange, isComment, size, isFlowFilename, flowFilename, operations, copy, uniqueLabel, id, blank, node, validate, example });
-+ })();
-+--- a/Tlamatini/agent/services/prompt_flow_panel.py
-++++ b/Tlamatini/agent/services/prompt_flow_panel.py
-+@@ -23,6 +23,7 @@
-+     "flush_embeddings", "clean_history", "user_input", "user_commentary",
-+ }
-+ COMMENT_COLORS = {"#fbcfe8", "#fef3c7", "#dcfce7", "#dbeafe", "#ede9fe", "#ffedd5", "#ffffff", "#e5e7eb"}
-++COMMENT_TEXT_COLORS = {"#202938", "#000000", "#1d4ed8", "#166534", "#7e22ce", "#b91c1c", "#92400e", "#ffffff"}
-+ COMMENT_FONTS = {"Nunito", "Arial", "Verdana", "Georgia", "Times New Roman", "Courier New"}
-+ COMPARISONS = {"contains", "not_contains", "equals", "is_empty", "user"}
-+ 
-+@@ -100,15 +101,40 @@
-+                 height=_number(config.get("height", 200), "Comment height", 128, 2400),
-+                 font_size=_number(config.get("font_size", 16), "Comment font size", 10, 48),
-+                 color=_text(config.get("color", "#fbcfe8"), "Comment color", 20),
-++                text_color=_text(config.get("text_color", "#202938"), "Comment text color", 20),
-+                 font_family=_text(config.get("font_family", "Nunito"), "Comment font", 80),
-+                 align=_text(config.get("align", "left"), "Comment alignment", 10),
-+             )
-+-            if clean["color"] not in COMMENT_COLORS or clean["font_family"] not in COMMENT_FONTS or clean["align"] not in {"left", "center", "right"}:
-++            if clean["color"] not in COMMENT_COLORS or clean["text_color"] not in COMMENT_TEXT_COLORS or clean["font_family"] not in COMMENT_FONTS or clean["align"] not in {"left", "center", "right"}:
-+                 raise FlowError("Choose a supported comment color, font and alignment.")
-+-            for key in ("bold", "italic"):
-++            for key in ("bold", "italic", "underline"):
-+                 clean[key] = config.get(key, False)
-+                 if not isinstance(clean[key], bool):
-+                     raise FlowError(f"Comment {key} must be true or false.")
-++            style_keys = ("font_family", "font_size", "text_color", "bold", "italic", "underline")
-++            runs = config.get("runs", [{"text": clean["text"]}] if clean["text"] else [])
-++            if not isinstance(runs, list) or len(runs) > 10000:
-++                raise FlowError("Use at most 10,000 formatted text runs per comment.")
-++            clean["runs"] = []
-++            for run in runs:
-++                if not isinstance(run, dict):
-++                    raise FlowError("A formatted text run must be an object.")
-++                part = {"text": _text(run.get("text"), "Comment run text")}
-++                part.update({key: run.get(key, clean[key]) for key in style_keys})
-++                _number(part["font_size"], "Comment run font size", 10, 48)
-++                if _text(part["font_family"], "Comment run font", 80) not in COMMENT_FONTS or _text(part["text_color"], "Comment run color", 20) not in COMMENT_TEXT_COLORS:
-++                    raise FlowError("Choose a supported comment font and text color.")
-++                if any(not isinstance(part[key], bool) for key in ("bold", "italic", "underline")):
-++                    raise FlowError("Comment run style switches must be true or false.")
-++                if not part["text"]:
-++                    continue
-++                last = clean["runs"][-1] if clean["runs"] else None
-++                if last and all(last[key] == part[key] for key in style_keys):
-++                    last["text"] += part["text"]
-++                else:
-++                    clean["runs"].append(part)
-++            if "".join(run["text"] for run in clean["runs"]) != clean["text"]:
-++                raise FlowError("Comment runs must contain exactly the comment text.")
-+         if kind in {"prompt", "programmed_prompt"}:
-+             for key in ("multi_turn", "acpx"):
-+                 clean[key] = config.get(key, False)
-+--- a/Tlamatini/tlamatini/settings.py
-++++ b/Tlamatini/tlamatini/settings.py
-+@@ -247,7 +247,7 @@
-+ 
-+ # Version stamp for cache-busting of static assets in templates
-+ # Override via env var STATIC_VERSION when deploying
-+-STATIC_VERSION = (os.environ.get('STATIC_VERSION') or str(int(time.time()))) + '-prompt-commentary-input-1'
-++STATIC_VERSION = (os.environ.get('STATIC_VERSION') or str(int(time.time()))) + '-prompt-commentary-canvas-2'
-+ 
-+ # WhiteNoise configuration: dev vs release.
-+ # NOTE (speed batch, 2026-07-02): the old per-branch STATICFILES_STORAGE lines
-+--- a/Tlamatini/agent/test_prompt_flow_panel.py
-++++ b/Tlamatini/agent/test_prompt_flow_panel.py
-+@@ -7,6 +7,7 @@
-+ import asyncio
-+ import copy
-+ import importlib.util
-++import json
-+ from pathlib import Path
-+ import unittest
-+ 
-+@@ -124,11 +125,52 @@
-+ 
-+     def test_static_comment_roundtrip_preserves_long_literal_text_and_formatting(self):
-+         note = node("note", "user_commentary", text=("Paragraph ñ <script> {{last_output}}\n" * 500),
-+-                    width=650, height=450, color="#dbeafe", font_family="Georgia", font_size=22,
-++                    width=650, height=450, color="#dbeafe", text_color="#1d4ed8", font_family="Georgia", font_size=22,
-+                     bold=True, italic=True, align="right")
-+         result = flow_module.validate_flow(diagram([node("p"), note]), playable=True)
-+-        self.assertEqual(result["nodes"][1]["config"], {k: note["config"][k] for k in result["nodes"][1]["config"]})
-++        self.assertEqual({k: result["nodes"][1]["config"][k] for k in ("text", "width", "height", "color", "text_color", "font_family", "font_size", "bold", "italic", "align")}, {k: note["config"][k] for k in ("text", "width", "height", "color", "text_color", "font_family", "font_size", "bold", "italic", "align")})
-+         self.assertEqual(flow_module.validate_flow(result), result)
-++
-++    def test_existing_version_two_note_gets_readable_default_text_color(self):
-++        note = node("note", "user_commentary", text="Saved before text colors existed", color="#dbeafe")
-++        result = flow_module.validate_flow(diagram([note]))
-++        self.assertEqual(result["nodes"][0]["config"]["text_color"], "#202938")
-++        self.assertEqual(result["nodes"][0]["config"]["text"], note["config"]["text"])
-++        self.assertEqual(result["nodes"][0]["config"]["color"], "#dbeafe")
-++
-++    def test_several_mixed_style_comments_survive_repeated_json_roundtrips(self):
-++        notes = []
-++        for index, color in enumerate(sorted(flow_module.COMMENT_COLORS)):
-++            runs = [{"text": "Review ñ 👩🏽‍💻\n", "font_family": "Arial", "italic": True},
-++                    {"text": "A larger heading\n", "font_family": "Verdana", "font_size": 28, "bold": True},
-++                    {"text": "Literal <script> & {{last_output}}\n" * 50, "font_family": "Georgia", "text_color": "#1d4ed8", "underline": True}]
-++            notes.append(node(f"note{index}", "user_commentary", color=color, width=300 + index * 30,
-++                              text="".join(run["text"] for run in runs), runs=runs))
-++        original = diagram(notes)
-++        normalized = flow_module.validate_flow(original)
-++        for _ in range(3):
-++            normalized = flow_module.validate_flow(json.loads(json.dumps(normalized, ensure_ascii=False)))
-++            self.assertEqual(normalized, flow_module.validate_flow(original))
-++        self.assertEqual(len(normalized["nodes"]), 8)
-++        self.assertEqual(normalized["nodes"][0]["config"]["runs"][1]["font_size"], 28)
-++        self.assertTrue(normalized["nodes"][0]["config"]["runs"][2]["underline"])
-++
-++    def test_rich_runs_reject_mismatches_and_unsafe_styles(self):
-++        for runs in (None, {}, [None], [{"text": "wrong"}], [{"text": "x", "font_size": 100}],
-++                     [{"text": "x", "font_family": []}], [{"text": "x", "text_color": "url(evil)"}],
-++                     [{"text": "x", "italic": 1}], [{"text": "x", "underline": "yes"}],
-++                     [{"text": ""}] * 10001):
-++            with self.subTest(runs=str(runs)[:80]), self.assertRaises(FlowError):
-++                flow_module.validate_flow(diagram([node("note", "user_commentary", text="x", runs=runs)]))
-++
-++    def test_rich_runs_are_allowlisted_and_adjacent_equal_styles_merge(self):
-++        note = node("note", "user_commentary", text="abcd", runs=[
-++            {"text": "ab", "font_family": "Arial", "html": "<script>evil</script>"},
-++            {"text": "cd", "font_family": "Arial"}])
-++        runs = flow_module.validate_flow(diagram([note]))["nodes"][0]["config"]["runs"]
-++        self.assertEqual(len(runs), 1)
-++        self.assertEqual(runs[0]["text"], "abcd")
-++        self.assertNotIn("html", runs[0])
-+ 
-+     def test_static_comments_save_alone_but_cannot_be_start_or_connected(self):
-+         note = node("note", "user_commentary")
-+@@ -144,7 +186,7 @@
-+             flow_module.validate_flow(payload)
-+ 
-+     def test_comment_style_rejects_unsafe_or_out_of_range_values(self):
-+-        for key, value in [("color", "url(javascript:evil)"), ("font_family", "evil; color:red"),
-++        for key, value in [("color", "url(javascript:evil)"), ("text_color", "url(javascript:evil)"), ("font_family", "evil; color:red"),
-+                            ("width", 199), ("height", 2401), ("font_size", 0), ("bold", 1), ("align", "evil")]:
-+             with self.subTest(key=key), self.assertRaises(FlowError):
-+                 flow_module.validate_flow(diagram([node("note", "user_commentary", **{key: value})]))
-+--- a/scripts/prompt_flow_commentary_visible.py
-++++ b/scripts/prompt_flow_commentary_visible.py
-+@@ -3,20 +3,17 @@
-+ 
-+ Launch from a verified foreground PowerShell -NoExit console. Uses a separate
-+ normal source installation, real login/HTTP/WebSocket, and Shoter desktop photos.
-+-No headless mode, transport interception or injected editor state. The browser
-+-visibility photo must be reviewed before creating browser.confirmed. Successful
-++No headless mode, transport interception or injected editor state. The foreground window gate verifies real Chrome visibility. Successful
-+ checks leave Chrome and the test server open for inspection until close.confirmed.
-+ 
-+ Launch it in a classic console (conhost.exe): inside Windows Terminal the console
-+ handle is a hidden pseudo-console window, so the foreground gate below refuses.
-+-Chrome itself can crash at the checkpoint 5 download (2026-10-03: three Crashpad
-+-dumps in the test profile, one per failed run); a run without the crash passed
-+-9/9. Treat that crash as inconclusive and re-run; never count it as a pass.
-+ """
-+ from __future__ import annotations
-+ 
-+ import ctypes
-+ import json
-++import secrets
-+ from pathlib import Path
-+ import shutil
-+ import subprocess
-+@@ -30,9 +27,9 @@
-+ from prompt_flow_connections_visible import require_browser_foreground
-+ 
-+ ROOT = Path(__file__).resolve().parents[1]
-+-OUT = ROOT / 'Temp/prompt-commentary-visible'
-++OUT = ROOT / 'Temp/prompt-commentary-redesign-visible'
-+ visible.OUT = OUT
-+-visible.RUNTIME = OUT / 'runtime'
-++visible.RUNTIME = ROOT / 'Temp/prompt-commentary-visible/runtime'
-+ BASE = visible.BASE
-+ 
-+ 
-+@@ -40,6 +37,7 @@
-+     if any('headless' in arg for arg in sys.argv[1:]):
-+         raise SystemExit('Headless execution is forbidden.')
-+     OUT.mkdir(parents=True, exist_ok=True)
-++    (OUT / 'close.confirmed').unlink(missing_ok=True)
-+     user32 = ctypes.windll.user32
-+     kernel32 = ctypes.windll.kernel32
-+     kernel32.GetConsoleWindow.restype = ctypes.c_void_p
-+@@ -54,12 +52,20 @@
-+     if any(port in before for port in (8001, 8766, 50052)):
-+         raise SystemExit('Test ports occupied; refusing to replace an existing server.')
-+     original = visible.read_discovery()
-+-    (OUT / 'login.json').write_text(json.dumps({'username': 'user', 'password': 'changeme'}), encoding='utf-8')
-++    (OUT / 'login.json').write_text(json.dumps({'username': 'user', 'password': secrets.token_urlsafe(32)}), encoding='utf-8')
-+     server = None
-+     results = []
-++    (OUT / 'checks.json').write_text('[]', encoding='utf-8')
-+     outcome = 1
-+     try:
-+         env, credentials = visible.prepare_runtime()
-++        if '--resume' in sys.argv:
-++            # Rotate only the isolated test account, avoiding Chrome's breached-password modal.
-++            subprocess.run([sys.executable, '-u', 'Tlamatini/manage.py', 'shell', '-c',
-++                'import os; from django.contrib.auth import get_user_model; '
-++                'u = get_user_model().objects.get(username="user"); '
-++                'u.set_password(os.environ["TLAMATINI_COMMENT_TEST_PASSWORD"]); u.save(update_fields=["password"])'],
-++                cwd=visible.RUNTIME, env={**env, 'TLAMATINI_COMMENT_TEST_PASSWORD': credentials['password']}, check=True)
-+         # Refresh only this isolated test installation on a repeat run.
-+         for path in ('agent/services/prompt_flow_panel.py', 'agent/test_prompt_flow_panel.py',
-+                      'agent/test_prompt_flow_panel_websocket.py', 'agent/management/commands/check_prompt_flow_panel.py',
-+@@ -93,20 +99,31 @@
-+         else:
-+             raise TimeoutError('Test server did not become ready.')
-+         visible.restore_discovery(original)
-++        # This isolated profile must not cover the actual controls with Chrome's password bubble.
-++        profile = OUT / ('chrome-profile-' + str(time.time_ns()))
-++        preferences = profile / 'Default/Preferences'
-++        preferences.parent.mkdir(parents=True, exist_ok=True)
-++        prefs = json.loads(preferences.read_text(encoding='utf-8')) if preferences.exists() else {}
-++        prefs['credentials_enable_service'] = False
-++        prefs.setdefault('profile', {})['password_manager_enabled'] = False
-++        preferences.write_text(json.dumps(prefs), encoding='utf-8')
-+         with sync_playwright() as playwright:
-+             context = playwright.chromium.launch_persistent_context(
-+-                str(OUT / 'chrome-profile-containment'), channel='chrome', headless=False,
-++                str(profile), channel='chrome', headless=False,
-+                 chromium_sandbox=True, no_viewport=True, slow_mo=100,
-+                 accept_downloads=True, args=['--start-maximized'])
-+             page = context.pages[0]
-+             errors = []
-+-            page.on('pageerror', lambda error: errors.append(str(error)))
-++            def page_error(error):
-++                errors.append(str(error))
-++                print('BROWSER SCRIPT ERROR:', error, flush=True)
-++            page.on('pageerror', page_error)
-+             page.on('dialog', lambda dialog: dialog.accept())
-+             page.on('close', lambda: print('Visible test page closed.', flush=True))
-+             page.goto(BASE)
-+             page.bring_to_front()
-+-            visible.visibility_gate('browser', page)
-+             require_browser_foreground(page)
-++            visible.photograph('browser-visible')
-+             page.goto(BASE + '/agent/prompt_flow_panel/')
-+             if page.locator('#id_username').is_visible():
-+                 page.locator('#id_username').fill(credentials['username'])
-+@@ -115,6 +132,11 @@
-+                 page.goto(BASE + '/agent/prompt_flow_panel/')
-+             credentials.clear()
-+             expect(page.locator('.agent-tool-item')).to_have_count(8)
-++            expect(page.locator('[data-action="reconnect"]')).to_be_disabled()
-++            page.wait_for_load_state('networkidle')
-++            page.bring_to_front()
-++            require_browser_foreground(page)
-++            visible.photograph('panel-ready')
-+ 
-+             def checkpoint(name):
-+                 require_browser_foreground(page)
-+@@ -125,7 +147,11 @@
-+ 
-+             def menu(action):
-+                 page.get_by_role('button', name='File', exact=True).click()
-+-                page.locator('.dropdown-menu [data-action="' + action + '"]').first.click()
-++                target = page.locator('.dropdown-menu [data-action="' + action + '"]').first
-++                if not target.is_visible():
-++                    print('Menu diagnostics:', page.locator('.nav-item.dropdown').evaluate('(el) => ({html: el.outerHTML, style: getComputedStyle(el.querySelector(".dropdown-menu")).display})'), errors, flush=True)
-++                    visible.photograph('file-menu-diagnostic')
-++                target.click()
-+                 accept = page.locator('.tlmpop-overlay button').filter(has_text='Continue')
-+                 if accept.is_visible():
-+                     accept.click()
-+@@ -153,75 +179,121 @@
-+                 box = locator.bounding_box()
-+                 return box['x'] + box['width'] / 2, box['y'] + box['height'] / 2
-+ 
-+-            menu('new')
-++            expect(page.locator('.pmt-node')).to_have_count(0)
-+             page.locator('[data-action="fit"]').click()
-+             expect(page.locator('.agent-tool-item')).to_have_count(8)
-+-            expect(page.locator('.agent-tool-item[data-type="user_input"]')).to_have_text('User Input')
-+-            expect(page.locator('.agent-tool-item[data-type="user_commentary"]')).to_have_text('User Commentary')
-+             css = page.locator('link[href*="prompt_flow_panel.css"]').get_attribute('href')
-+-            assert '-prompt-commentary-input-1' in css
-++            assert '-prompt-commentary-canvas-2' in css
-+             assert page.request.get(BASE + css).body() == (ROOT / 'Tlamatini/agent/static/agent/css/prompt_flow_panel.css').read_bytes()
-+-            checkpoint('01-palette-and-served-assets')
-+             page.locator('.agent-tool-item[data-type="user_commentary"]').click()
-+             comment = page.locator('.pmt-node[data-type="user_commentary"]')
-++            toolbar = page.get_by_role('region', name='Comment formatting')
-++            expect(toolbar).to_be_visible()
-++            expect(toolbar).to_have_css('position', 'fixed')
-++            expect(comment.locator('.pmt-comment-handle')).to_have_count(8)
-+             expect(comment.locator('.pmt-port')).to_have_count(0)
-+             expect(page.locator('#pmt-play')).to_be_disabled()
-+             expect(page.locator('#pmt-start option')).to_have_count(1)
-++            expect(page.locator('#pmt-field-width, #pmt-field-height')).to_have_count(0)
-++            checkpoint('01-floating-toolbar-and-eight-border-handles')
-+             paragraph = ('Review paragraph: ñ <script> literal {{last_output}}. This note stays on the canvas.\n\n' * 60).rstrip()
-+             comment.dblclick(position={'x': 70, 'y': 55})
-+             editor = page.get_by_role('textbox', name='Static User Commentary text')
-+             expect(editor).to_be_visible()
-+             editor.fill(paragraph)
-++            editor.press('Control+a')
-+             assert editor.evaluate('(el) => el.scrollHeight <= el.clientHeight + 2'), 'Editor must grow while typing'
-+             expect(editor).to_have_css('overflow-y', 'hidden')
-+-            editor.press('Control+Enter')
-++            toolbar.get_by_role('combobox', name='Comment font').select_option('Georgia')
-++            toolbar.get_by_role('combobox', name='Comment text size').select_option('20')
-++            toolbar.get_by_role('button', name='Blue comment', exact=True).click()
-++            toolbar.get_by_role('button', name='Bold', exact=True).click()
-++            toolbar.get_by_role('button', name='Italic', exact=True).click()
-++            toolbar.get_by_role('button', name='Align right', exact=True).click()
-++            toolbar.locator('summary[aria-label="Text color"]').click()
-++            toolbar.get_by_role('button', name='Blue text', exact=True).click()
-++            expect(editor).to_have_css('font-size', '20px')
-++            expect(editor).to_have_css('font-style', 'italic')
-++            expect(editor).to_have_css('font-weight', '700')
-++            expect(editor).to_have_css('text-align', 'right')
-++            expect(editor).to_have_css('color', 'rgb(29, 78, 216)')
-++            expect(comment.locator('.pmt-shape')).to_have_css('fill', 'rgb(219, 234, 254)')
-++            assert editor.evaluate('(el) => el.scrollHeight <= el.clientHeight + 2'), 'Formatting must reflow the whole note'
-++            toolbar.get_by_role('button', name='Done', exact=True).click()
-+             expect(comment.locator('.pmt-comment-text')).to_have_text(paragraph)
-+             assert comment.locator('.pmt-comment-text script').count() == 0
-+-            assert comment.locator('.pmt-comment-text').evaluate('(el) => el.scrollHeight <= el.clientHeight'), 'Long note must fit without scrolling'
-+-            assert float(comment.get_attribute('style').split('height: ')[1].split('px')[0]) > 200
-+-            checkpoint('02-in-place-long-literal-note')
-+-            comment.focus()
-+-            comment.press('Enter')
-++            assert comment.locator('.pmt-comment-text').evaluate('(el) => el.scrollHeight <= el.clientHeight')
-++            checkpoint('02-live-floating-formatting-and-long-text-containment')
-++            # Configure now edits on the canvas; it must never create a dialog.
-++            page.locator('[data-action="configure"]').click()
-++            expect(editor).to_be_visible()
-++            expect(page.locator('.ui-dialog:visible')).to_have_count(0)
-+             editor.fill('Cancelled replacement')
-+-            editor.press('Escape')
-++            toolbar.get_by_role('button', name='Pink comment', exact=True).click()
-++            toolbar.get_by_role('combobox', name='Comment text size').select_option('48')
-++            toolbar.get_by_role('button', name='Cancel comment changes').click()
-+             expect(comment.locator('.pmt-comment-text')).to_have_text(paragraph)
-+-            # A compact review note lets the whole manually resized bubble be inspected.
-+-            paragraph = 'Review note: Keep the runtime User Input separate from this static commentary.\n\nThe bubble contains the complete text and grows when the font or content needs more room.'
-+-            comment.focus()
-+-            comment.press('Enter')
-++            expect(comment.locator('.pmt-comment-text')).to_have_css('font-size', '20px')
-++            expect(comment.locator('.pmt-shape')).to_have_css('fill', 'rgb(219, 234, 254)')
-++            checkpoint('03-no-configuration-dialog-and-transactional-cancel')
-++            paragraph = 'A note for the next review\n\nKeep the explanation clear and give this decision a little more room. This comment belongs to the canvas; the flow continues independently.'
-++            toolbar.get_by_role('button', name='Edit comment text').click()
-+             editor.fill(paragraph)
-+-            editor.press('Control+Enter')
-+-            page.locator('[data-action="configure"]').click()
-+-            page.locator('#pmt-field-color').select_option('#dbeafe')
-+-            page.locator('#pmt-field-font_family').select_option('Georgia')
-+-            page.locator('#pmt-field-font_size').fill('21')
-+-            page.locator('#pmt-field-width').fill('500')
-+-            page.locator('#pmt-field-height').fill('320')
-+-            page.locator('#pmt-field-bold').check()
-+-            page.locator('#pmt-field-italic').check()
-+-            page.locator('#pmt-field-align').select_option('right')
-+-            page.get_by_role('button', name='Save', exact=True).click()
-+-            expect(comment).to_have_css('width', '500px')
-+-            expect(comment.locator('.pmt-comment-text')).to_have_css('font-size', '21px')
-+-            expect(comment.locator('.pmt-comment-text')).to_have_css('font-style', 'italic')
-+-            expect(comment.locator('.pmt-shape')).to_have_css('fill', 'rgb(219, 234, 254)')
-+-            expect(comment.locator('.pmt-comment-text')).to_have_css('overflow-y', 'hidden')
-++            editor.press('Control+a')
-++            toolbar.get_by_role('combobox', name='Comment text size').select_option('16')
-++            toolbar.get_by_role('button', name='Bold', exact=True).click()
-++            toolbar.get_by_role('button', name='Italic', exact=True).click()
-++            toolbar.get_by_role('button', name='Align left', exact=True).click()
-++            toolbar.get_by_role('button', name='Done', exact=True).click()
-++            page.locator('[data-action="zoom-out"]').click()
-++
-++            def drag_border(direction, dx, dy, cancel=False):
-++                require_browser_foreground(page)
-++                box = comment.bounding_box()
-++                # Hit the figure's border itself, not just its small visible grip.
-++                body_bottom = box['y'] + box['height'] - 18 * .9
-++                x = box['x'] + (box['width'] if 'e' in direction else 0) if ('e' in direction or 'w' in direction) else box['x'] + box['width'] / 2
-++                y = (box['y'] if 'n' in direction else body_bottom) if ('n' in direction or 's' in direction) else (box['y'] + body_bottom) / 2
-++                page.mouse.move(x, y)
-++                page.mouse.down()
-++                page.mouse.move(x + dx, y + dy, steps=10)
-++                if cancel:
-++                    page.keyboard.press('Escape')
-++                page.mouse.up()
-++                return box, comment.bounding_box()
-++
-++            for direction in ('e', 's', 'w', 'n', 'ne', 'nw', 'se', 'sw'):
-++                dx = -36 if 'w' in direction else 36 if 'e' in direction else 0
-++                dy = -27 if 'n' in direction else 27 if 's' in direction else 0
-++                old, new = drag_border(direction, dx, dy)
-++                if dx:
-++                    assert abs(new['width'] - old['width'] - 36) < 2, (direction, old, new)
-++                if dy:
-++                    assert abs(new['height'] - old['height'] - 27) < 2, (direction, old, new)
-++                if 'w' in direction:
-++                    assert abs(new['x'] + new['width'] - old['x'] - old['width']) < 2
-++                if 'n' in direction:
-++                    assert abs(new['y'] + new['height'] - old['y'] - old['height']) < 2
-++                page.locator('[data-action="undo"]').click()
-++                restored = comment.bounding_box()
-++                assert all(abs(restored[k] - old[k]) < 2 for k in ('x', 'y', 'width', 'height'))
-++                checkpoint('04-' + direction + '-border-resize-and-undo')
-++            old, new = drag_border('se', 45, 36, cancel=True)
-++            assert all(abs(new[k] - old[k]) < 2 for k in ('x', 'y', 'width', 'height'))
-++            old, new = drag_border('se', 90, 72)
-++            page.locator('[data-action="undo"]').click()
-++            page.locator('[data-action="redo"]').click()
-++            assert abs(comment.bounding_box()['width'] - new['width']) < 2
-++            # Resize remains available while writing, without losing the editor/caret.
-++            toolbar.get_by_role('button', name='Edit comment text').click()
-++            old, new = drag_border('e', 45, 0)
-++            expect(editor).to_have_text(paragraph)
-++            assert editor.evaluate('(el) => el.scrollHeight <= el.clientHeight + 2')
-++            toolbar.get_by_role('button', name='Cancel comment changes').click()
-++            assert abs(comment.bounding_box()['width'] - old['width']) < 2
-++            toolbar.get_by_role('button', name='Fit bubble to text').click()
-+             assert comment.locator('.pmt-comment-text').evaluate('(el) => el.scrollHeight <= el.clientHeight')
-+-            checkpoint('03-font-color-size-and-cancel')
-+-            page.locator('[data-action="zoom-out"]').click()
-+-            handle = comment.locator('.pmt-comment-resize')
-+-            x, y = center(handle)
-+-            page.mouse.move(x, y)
-+-            page.mouse.down()
-+-            page.mouse.move(x + 90, y + 72, steps=8)
-+-            page.mouse.up()
-+-            expect(comment).to_have_css('width', '600px')
-+-            expect(comment).to_have_css('height', '400px')
-+-            page.locator('[data-action="undo"]').click()
-+-            expect(comment).to_have_css('width', '500px')
-+-            page.locator('[data-action="redo"]').click()
-+-            expect(comment).to_have_css('width', '600px')
-+-            checkpoint('04-zoom-aware-resize-undo-redo')
-++            checkpoint('05-resize-cancel-redo-and-live-edit-fit')
-+             page.locator('[data-action="duplicate"]').click()
-+             expect(comment).to_have_count(2)
-+             page.locator('#submonitor-container').focus()
-+@@ -235,13 +307,13 @@
-+             portable, payload = save('commentaries.fpmt')
-+             assert payload['version'] == 2 and payload['start'] is None and payload['edges'] == []
-+             assert len(payload['nodes']) == 2
-+-            assert all(n['config']['text'] == paragraph and n['config']['font_family'] == 'Georgia' for n in payload['nodes'])
-++            assert all(n['config']['text'] == paragraph and n['config']['font_family'] == 'Georgia' and n['config']['text_color'] == '#1d4ed8' for n in payload['nodes'])
-+             open_file(portable)
-+             expect(comment).to_have_count(2)
-+             page.wait_for_timeout(500)
-+             page.reload()
-+             expect(comment).to_have_count(2)
-+-            checkpoint('05-multiple-notes-file-and-draft-roundtrip')
-++            checkpoint('06-multiple-notes-file-and-draft-roundtrip')
-+             # Keep the static notes, then add real input/history-clear operations.
-+             page.locator('.agent-tool-item[data-type="user_input"]').click()
-+             page.locator('#submonitor-container').focus()
-+@@ -264,18 +336,20 @@
-+             expect(page.locator('#pmt-start option')).to_have_count(2)
-+             page.locator('#pmt-play').click()
-+             expect(page.locator('#pmt-field-reply')).to_be_visible()
-++            expect(toolbar).to_be_hidden()
-++            expect(comment.locator('.pmt-comment-handle:enabled')).to_have_count(0)
-+             expect(page.locator('.ui-dialog-title')).to_have_text('User Input')
-+             page.locator('#pmt-field-reply').fill('Same runtime reply: ñ ✓')
-+             page.get_by_role('button', name='Continue flow', exact=True).click()
-+             expect(page.locator('#pmt-run-state')).to_have_text('completed', timeout=30000)
-+             expect(page.locator('#pmt-run-log')).to_contain_text('Same runtime reply: ñ ✓')
-+             expect(comment.locator('.pmt-node-status')).to_have_count(0)
-+-            checkpoint('06-real-user-input-playback-with-static-notes')
-++            checkpoint('07-real-user-input-playback-with-static-notes')
-+             page.locator('#pmt-play').click()
-+             expect(page.locator('#pmt-field-reply')).to_be_visible()
-+             page.keyboard.press('Escape')
-+             expect(page.locator('#pmt-run-state')).to_have_text('stopped', timeout=30000)
-+-            checkpoint('07-user-input-escape-stops-flow')
-++            checkpoint('08-user-input-escape-stops-flow')
-+             legacy = {'format': 'tlamatini-prompting-flow', 'version': 1, 'name': 'Legacy reply flow',
-+                       'start': 'old', 'max_steps': 20, 'nodes': [
-+                           {'id': 'old', 'type': 'user_commentary', 'label': 'User Commentary', 'x': 70, 'y': 60, 'config': {'text': 'Legacy request'}},
-+@@ -293,11 +367,166 @@
-+             expect(page.locator('#pmt-run-state')).to_have_text('completed', timeout=30000)
-+             _, migrated = save('migrated.fpmt')
-+             assert migrated['version'] == 2 and migrated['nodes'][0]['type'] == 'user_input'
-+-            checkpoint('08-legacy-input-migration-and-playback')
-++            checkpoint('09-legacy-input-migration-and-playback')
-+             open_file(ROOT / 'docs/examples/prompting-kickoff.fpmt')
-+             expect(page.locator('.pmt-node')).to_have_count(8)
-+             page.locator('[data-action="fit"]').click()
-+-            checkpoint('09-bundled-eight-asset-example')
-++            checkpoint('10-bundled-eight-asset-example')
-++            # Finish with the actual redesigned surface, not the tiny all-operation tour.
-++            menu('new')
-++            page.locator('[data-action="fit"]').click()
-++            samples = [
-++                ('Review the decision\n\nKeep the question focused. Give the reader enough context to choose the next step with confidence.', 'Georgia', 'Blue', 100, 220),
-++                ('A little context helps\n\nUse this space for a reminder, an explanation, or feedback for the next person working on the flow.', 'Nunito', 'Yellow', 620, 220),
-++                ('Design notes · ñ 👩🏽‍💻\n\nDifferent ideas deserve different emphasis.\n\nLiteral <script> & {{last_output}} stay safely on the canvas.', 'Arial', 'Green', 1140, 220),
-++            ]
-++            for text, font, color, target_x, target_y in samples:
-++                page.locator('.agent-tool-item[data-type="user_commentary"]').click()
-++                note = comment.last
-++                note.dblclick(position={'x': 70, 'y': 55})
-++                editor.fill(text)
-++                editor.press('Control+a')
-++                toolbar.get_by_role('combobox', name='Comment font').select_option(font)
-++                toolbar.get_by_role('button', name=color + ' comment', exact=True).click()
-++                # Select an actual phrase with the keyboard; each note has mixed styles.
-++                editor.press('Control+Home')
-++                editor.press('Shift+End')
-++                toolbar.get_by_role('combobox', name='Comment font').select_option('Verdana')
-++                toolbar.get_by_role('combobox', name='Comment text size').select_option('28')
-++                toolbar.get_by_role('button', name='Bold', exact=True).click()
-++                toolbar.locator('summary[aria-label="Text color"]').click()
-++                toolbar.get_by_role('button', name='Blue text', exact=True).click()
-++                expect(editor.locator('[data-comment-run]').first).to_have_css('font-family', 'Verdana')
-++                expect(editor.locator('[data-comment-run]').first).to_have_css('font-size', '28px')
-++                expect(editor.locator('[data-comment-run]').last).to_have_css('font-family', font)
-++                # Collapsed-caret formatting styles only the newly typed ending.
-++                editor.press('Control+End')
-++                toolbar.get_by_role('combobox', name='Comment font').select_option('Arial')
-++                toolbar.get_by_role('combobox', name='Comment text size').select_option('12')
-++                toolbar.get_by_role('button', name='Italic', exact=True).click()
-++                toolbar.get_by_role('button', name='Underline', exact=True).click()
-++                editor.press('End')
-++                page.keyboard.insert_text(' — ready for review')
-++                expect(editor.locator('[data-comment-run]').last).to_have_css('font-style', 'italic')
-++                expect(editor.locator('[data-comment-run]').last).to_have_css('text-decoration-line', 'underline')
-++                editor.press('Control+z')
-++                expect(editor).to_have_text(text)
-++                editor.press('Control+y')
-++                expect(editor).to_have_text(text + ' — ready for review')
-++                toolbar.get_by_role('button', name='Done', exact=True).click()
-++                origin = note.bounding_box()
-++                canvas_box = page.locator('#pmt-world').bounding_box()
-++                page.mouse.move(origin['x'] + 80, origin['y'] + 20)
-++                page.mouse.down()
-++                page.mouse.move(canvas_box['x'] + target_x + 80, canvas_box['y'] + target_y + 20, steps=10)
-++                page.mouse.up()
-++            page.locator('[data-action="fit"]').click()
-++            comment.first.click(position={'x': 80, 'y': 20})
-++            expect(toolbar).to_be_visible()
-++            expect(comment.first.locator('.pmt-shape')).to_have_css('stroke', 'rgb(121, 218, 205)')
-++            box, bubble = toolbar.bounding_box(), comment.first.bounding_box()
-++            assert box['x'] + box['width'] <= page.evaluate('window.innerWidth')
-++            assert box['y'] + box['height'] <= page.evaluate('window.innerHeight')
-++            assert box['x'] >= bubble['x'] + bubble['width'] or box['x'] + box['width'] <= bubble['x'] or box['y'] >= bubble['y'] + bubble['height'] or box['y'] + box['height'] <= bubble['y'], 'Floating tools must leave this note unobstructed'
-++            checkpoint('11-mixed-fonts-ranges-and-caret-formatting-in-three-comments')
-++            # Border handles are reachable by keyboard as well as by mouse.
-++            handle = comment.first.locator('[data-resize="e"]')
-++            original_width = float(comment.first.evaluate('(el) => parseFloat(el.style.width)'))
-++            handle.focus()
-++            handle.press('ArrowRight')
-++            assert float(comment.first.evaluate('(el) => parseFloat(el.style.width)')) == original_width + 10
-++            page.locator('[data-action="undo"]').click()
-++            assert float(comment.first.evaluate('(el) => parseFloat(el.style.width)')) == original_width
-++            comment.first.click(position={'x': 80, 'y': 20})
-++            checkpoint('12-keyboard-resize-and-restored-final-layout')
-++            # Compare rendered line boxes, geometry, typography and SVG paths across real downloads/opens.
-++            def rendering():
-++                page.evaluate('document.fonts.ready')
-++                return comment.evaluate_all('''els => els.map(el => {
-++                    const scale = el.getBoundingClientRect().width / el.offsetWidth;
-++                    const box = el.getBoundingClientRect();
-++                    const round = x => Math.round(x * 100) / 100;
-++                    return { id: el.dataset.nodeId, x: el.style.left, y: el.style.top, width: el.style.width, height: el.style.height,
-++                        path: el.querySelector('.pmt-shape').getAttribute('d'), fill: getComputedStyle(el.querySelector('.pmt-shape')).fill,
-++                        runs: [...el.querySelectorAll('[data-comment-run]')].map(span => {
-++                            const style = getComputedStyle(span), range = document.createRange(); range.selectNodeContents(span);
-++                            return { text: span.textContent, font: style.fontFamily, size: style.fontSize, color: style.color,
-++                                bold: style.fontWeight, italic: style.fontStyle, underline: style.textDecorationLine,
-++                                lines: [...range.getClientRects()].map(r => [round((r.x - box.x) / scale), round((r.y - box.y) / scale), round(r.width / scale), round(r.height / scale)]) };
-++                        }) };
-++                })''')
-++
-++            page.locator('[data-action="fit"]').click()
-++            original_render = rendering()
-++            original_file, original_payload = save('mixed-commentaries.fpmt')
-++            assert len(original_payload['nodes']) == 3
-++            assert all(len(n['config']['runs']) >= 3 for n in original_payload['nodes'])
-++            assert all(''.join(run['text'] for run in n['config']['runs']) == n['config']['text'] for n in original_payload['nodes'])
-++            for cycle in range(3):
-++                menu('new')
-++                expect(comment).to_have_count(0)
-++                open_file(original_file)
-++                expect(comment).to_have_count(3)
-++                page.locator('[data-action="fit"]').click()
-++                assert rendering() == original_render, 'Rendering changed on file reload ' + str(cycle)
-++                original_file, reloaded_payload = save('mixed-commentaries.fpmt')
-++                assert reloaded_payload == original_payload, 'Saved document changed after reopening'
-++            page.wait_for_timeout(500)
-++            page.reload()
-++            expect(comment).to_have_count(3)
-++            page.locator('[data-action="fit"]').click()
-++            assert rendering() == original_render, 'Draft recovery changed rich text rendering'
-++            (OUT / 'rich-rendering.json').write_text(json.dumps(original_render, ensure_ascii=False, indent=2), encoding='utf-8')
-++            comment.first.click(position={'x': 80, 'y': 20})
-++            checkpoint('13-three-file-save-open-cycles-and-draft-render-identically')
-++            # Duplicating preserves every run; deleting and undoing restores the rendered note.
-++            page.locator('[data-action="duplicate"]').click()
-++            expect(comment).to_have_count(4)
-++            _, duplicated = save('mixed-commentaries-duplicate.fpmt')
-++            assert duplicated['nodes'][-1]['config'] == duplicated['nodes'][0]['config']
-++            page.locator('[data-action="delete"]').click()
-++            expect(comment).to_have_count(3)
-++            page.locator('[data-action="undo"]').click()
-++            expect(comment).to_have_count(4)
-++            page.locator('[data-action="redo"]').click()
-++            expect(comment).to_have_count(3)
-++            page.locator('[data-action="fit"]').click()
-++            assert rendering() == original_render
-++            comment.first.click(position={'x': 80, 'y': 20})
-++            checkpoint('14-rich-comment-duplicate-delete-undo-redo')
-++            # Rich copy/paste and native Enter/delete operate inside the same graphical editor.
-++            toolbar.get_by_role('button', name='Edit comment text').click()
-++            before_text = original_payload['nodes'][0]['config']['text']
-++            editor.press('Control+a')
-++            editor.press('Control+c')
-++            editor.press('Control+End')
-++            editor.press('Enter')
-++            page.keyboard.insert_text('👩🏽‍💻')
-++            editor.press('Backspace')
-++            expect(editor).to_have_text(before_text + '\n')
-++            editor.press('Control+v')
-++            expect(editor).to_have_text(before_text + '\n' + before_text)
-++            expect(editor.locator('[data-comment-run]').last).to_have_css('font-style', 'italic')
-++            assert editor.locator('[data-comment-run]').count() >= 6
-++            editor.press('Control+z')
-++            expect(editor).to_have_text(before_text + '\n')
-++            toolbar.get_by_role('button', name='Cancel comment changes').click()
-++            assert rendering() == original_render
-++            checkpoint('15-rich-clipboard-enter-grapheme-delete-and-cancel')
-++            # Zoom-triggered draft writes must not leak an uncommitted rich edit.
-++            toolbar.get_by_role('button', name='Edit comment text').click()
-++            editor.fill('This cancelled text must never replace the saved draft')
-++            page.locator('[data-action="zoom-out"]').click()
-++            page.wait_for_timeout(350)
-++            draft_text = page.evaluate('JSON.parse(localStorage.getItem("tlamatini.prompting-flow.draft.v1." + document.body.dataset.userId)).flow.nodes[0].config.text')
-++            assert draft_text == before_text
-++            toolbar.get_by_role('button', name='Cancel comment changes').click()
-++            expect(comment.first).to_have_css('outline-style', 'none')
-++            page.reload()
-++            page.locator('[data-action="fit"]').click()
-++            assert rendering() == original_render
-++            comment.first.click(position={'x': 80, 'y': 20})
-++            checkpoint('16-cancelled-rich-edit-never-leaks-into-draft')
-+             assert not errors, errors
-+             outcome = 0
-+             (OUT / 'summary.json').write_text(json.dumps({'exit_code': 0, 'checks': results,
-+--- a/Tlamatini/agent/templates/agent/prompt_flow_panel.html
-++++ b/Tlamatini/agent/templates/agent/prompt_flow_panel.html
-+@@ -52,7 +52,7 @@
-+             <div id="agents-header" class="header-title"><span id="agents-header-title">Operations bar</span></div>
-+             <div class="pmt-palette-intro">Drag an operation or static commentary onto the canvas, or click to add it.</div>
-+             <div id="subagents-container"><div id="agents-list"></div></div>
-+-            <div class="pmt-palette-foot">Drag an output triangle to an input triangle to connect.<br>Double-click an operation to configure it.<br>Double-click a commentary to write; Configure chooses its font and color.</div>
-++            <div class="pmt-palette-foot">Drag an output triangle to an input triangle to connect.<br>Double-click an operation to configure it.<br>Double-click a commentary to write. Format with its floating toolbar; drag any border or corner to resize.</div>
-+         </aside>
-+         <div id="drag-divider" role="separator" aria-label="Resize Operations bar" aria-orientation="vertical" tabindex="0"></div>
-+         <section id="monitor-container" aria-label="Prompt flow canvas">
-+--- a/AGENTS.md
-++++ b/AGENTS.md
-+@@ -115,7 +115,7 @@
-+ 
-+ ## Prompt Flow comments are static; User Input runs (2026-10-03)
-+ 
-+-**Commentary/Input split (2026-10-03, source changes):** The Operations bar contains seven executable operations and a separate static **User Commentary** asset. **User Input** (`user_input`) keeps the old question/reply/cancellation mechanism and uses the supplied notched-top, downward-point figure. **User Commentary** (`user_commentary`) is a speech-bubble review note: double-click/Enter writes in place, Done/Ctrl+Enter saves, Escape cancels; Configure selects palette color, font, size, emphasis, alignment and dimensions. Bubbles and their editors grow to contain the full wrapped text at the chosen width/font, **without internal scrollbars**; saved height is a minimum. They move, resize, duplicate and Undo/Redo, save/open/recover with the diagram, have no ports or Start status, and never affect model context, history or playback steps. New `.fpmt` saves use version **2**; version 1 files/drafts migrate their executable commentary to User Input while preserving IDs, connections and configuration. The local-storage key still ends in `.draft.v1.<user id>` for compatibility; it does not identify the document version. Current cache suffix: `-prompt-commentary-input-1`. Verified: 61 backend/packaging tests and nine real foreground Chrome checks in `scripts/prompt_flow_commentary_visible.py`. No release executable was rebuilt. See `docs/prompting-flow-designer.md` and the 2026-10-03 entry in `docs/claude/recent-fixes.md`.
-++**Commentary/Input contract (2026-10-04, source changes):** Seven executable operations remain separate from static **User Commentary**. **User Input** (`user_input`) keeps the question/reply/cancellation mechanism and notched figure. **User Commentary** (`user_commentary`) is edited entirely on the canvas: double-click/Enter writes in the bubble; a floating mini toolbar formats selected text with different fonts, sizes, text colors, bold, italic and underline within the same note. With a caret, formatting applies to newly typed text; outside editing it applies to the whole note. Bubble color and alignment affect the note. There is no commentary configuration dialog or numeric dimension form. Drag any border or corner to resize, including while editing; Fit text removes spare height. Done/Ctrl+Enter saves; Cancel/Escape restores the whole edit. Ctrl+Z/Y works inside the editor; completed edits, moves, resizes and duplicates use flow Undo/Redo. Bubbles contain their full wrapped text without internal scrollbars. Version 2 files persist allowlisted `runs` plus matching literal `text`; older plain notes normalize to one run, and version 1 executable commentary still migrates to User Input with IDs/edges/settings intact. Comments have no ports/Start/runtime/context/history/step effects. The draft key remains `.draft.v1.<user id>`. Cache suffix: `-prompt-commentary-canvas-2`. See `docs/prompting-flow-designer.md` and the 2026-10-04 verification record; no release executable was rebuilt.
-+ 
-+ Preserve this distinction when editing the designer, importing legacy diagrams,
-+ writing documentation or verifying the shipped example. The user explicitly
-+--- a/CLAUDE.md
-++++ b/CLAUDE.md
-+@@ -848,9 +848,9 @@
-+ 
-+ A separate, login-protected page at **`/agent/prompt_flow_panel/`** (view `views.prompt_flow_panel`, URL name `prompt_flow_panel`), opened from the chat navbar's **Panels** menu (**Panels ▸ Prompt Flow Panel**, beside **Panels ▸ Agentic Control Panel**) and from **File ▸ Prompt Flow Panel** in the Agentic Control Panel (both `target="_blank"`). The user draws a flow with seven executable shapes and static notes — Prompt, Programmed Prompt, Decision (Yes/No), Feed embeddings, Flush embeddings, Clean History, User Input, plus static User Commentary. Executable shapes are joined by connections; notes have no ports. The user saves/opens the diagram as a versioned JSON **`.fpmt`** document (JSON `format: "tlamatini-prompting-flow"`, `version: 2`; version 1 imports migrate the executable commentary to User Input), and plays it against the configured model stack. Opening a file never runs it.
-+ 
-+-**Commentary/Input split (2026-10-03, source changes):** The Operations bar contains seven executable operations and a separate static **User Commentary** asset. **User Input** (`user_input`) keeps the old question/reply/cancellation mechanism and uses the supplied notched-top, downward-point figure. **User Commentary** (`user_commentary`) is a speech-bubble review note: double-click/Enter writes in place, Done/Ctrl+Enter saves, Escape cancels; Configure selects palette color, font, size, emphasis, alignment and dimensions. Bubbles and their editors grow to contain the full wrapped text at the chosen width/font, **without internal scrollbars**; saved height is a minimum. They move, resize, duplicate and Undo/Redo, save/open/recover with the diagram, have no ports or Start status, and never affect model context, history or playback steps. New `.fpmt` saves use version **2**; version 1 files/drafts migrate their executable commentary to User Input while preserving IDs, connections and configuration. The local-storage key still ends in `.draft.v1.<user id>` for compatibility; it does not identify the document version. Current cache suffix: `-prompt-commentary-input-1`. Verified: 61 backend/packaging tests and nine real foreground Chrome checks in `scripts/prompt_flow_commentary_visible.py`. No release executable was rebuilt. See `docs/prompting-flow-designer.md` and the 2026-10-03 entry in `docs/claude/recent-fixes.md`.
-+-
-+-**⚠️ The extension is `.fpmt` ("flow prompt"), NOT `.pmt` (changed 2026-09-25)** — `.pmt` already belongs to the plain-text system prompts (`agent/prompt.pmt`, `flowhypervisor/monitoring-prompt.pmt`), and sharing it invited exactly the confusion the editor then had to reject. Where the extension lives: `prompt-flow-panel-model.js` (`EXTENSION = '.fpmt'`, `isFlowFilename` = `/\.fpmt$/i`, and `flowFilename()` converts a legacy `name.pmt` to `name.fpmt` — so an old browser draft or a typed `x.pmt` save name comes back as `.fpmt`), the page's `<input accept=".fpmt">` and **Open .fpmt… / Save as .fpmt…** menu items, the open-time guard (*"Choose a .fpmt Prompt Flow Panel file."* — a `.pmt` file, including `prompt.pmt` itself, is refused), and the backend's error text in `services/prompt_flow_panel.py` + the consumer. The shipped example is **`docs/examples/prompting-kickoff.fpmt`** (the old `.pmt` copy is gone). `.fpmt` is registered as TEXT in `rag/binary_guard.py`, as a canvas-viewable type in `agent_page_canvas.js`, as a scrubbable type in `build_complete_public_release.py`, and in `doc_generation/complete_project_docs.py`. ⚠️ **The JSON `format` string deliberately stayed `tlamatini-prompting-flow`** — a rename of the EXTENSION must never invalidate the CONTENTS of flows users already saved. `STATIC_VERSION` carries the `-prompt-commentary-input-1` suffix; read the live value in `tlamatini/settings.py` before changing it. There is **no Windows file association** for `.fpmt` (only `.flw` has one); double-clicking a `.fpmt` does nothing yet. Visible coverage: `scripts/prompt_flow_extension_visible.py` (15 checkpoints — menus + file filter, default/typed/legacy save names, uppercase + BOM + Unicode, a real reopened-file playback, the bundled example, invalid JSON, an old `.pmt`, `prompt.pmt` itself, wrong version, >5 MiB, New + generated example, a recovered browser draft, and the Help text that tells the two formats apart). Its log (`Temp/fpmt-extension-visible/console.log`, 2026-09-25 16:07) records **all 15 checkpoints PASS, exit code 0**, after an earlier run failed at the example's filename check (the title carries a `•` dirty marker). The same log's `agent.test_binary_guard` run then went `OK` (46 tests); its 5 `test_documentation_mentions_the_feature` failures happened only in a copied runtime under `Temp/` that has no docs beside it — not a real regression.
-++**Commentary/Input contract (2026-10-04, source changes):** Seven executable operations remain separate from static **User Commentary**. **User Input** (`user_input`) keeps the question/reply/cancellation mechanism and notched figure. **User Commentary** (`user_commentary`) is edited entirely on the canvas: double-click/Enter writes in the bubble; a floating mini toolbar formats selected text with different fonts, sizes, text colors, bold, italic and underline within the same note. With a caret, formatting applies to newly typed text; outside editing it applies to the whole note. Bubble color and alignment affect the note. There is no commentary configuration dialog or numeric dimension form. Drag any border or corner to resize, including while editing; Fit text removes spare height. Done/Ctrl+Enter saves; Cancel/Escape restores the whole edit. Ctrl+Z/Y works inside the editor; completed edits, moves, resizes and duplicates use flow Undo/Redo. Bubbles contain their full wrapped text without internal scrollbars. Version 2 files persist allowlisted `runs` plus matching literal `text`; older plain notes normalize to one run, and version 1 executable commentary still migrates to User Input with IDs/edges/settings intact. Comments have no ports/Start/runtime/context/history/step effects. The draft key remains `.draft.v1.<user id>`. Cache suffix: `-prompt-commentary-canvas-2`. See `docs/prompting-flow-designer.md` and the 2026-10-04 verification record; no release executable was rebuilt.
-++
-++**⚠️ The extension is `.fpmt` ("flow prompt"), NOT `.pmt` (changed 2026-09-25)** — `.pmt` already belongs to the plain-text system prompts (`agent/prompt.pmt`, `flowhypervisor/monitoring-prompt.pmt`), and sharing it invited exactly the confusion the editor then had to reject. Where the extension lives: `prompt-flow-panel-model.js` (`EXTENSION = '.fpmt'`, `isFlowFilename` = `/\.fpmt$/i`, and `flowFilename()` converts a legacy `name.pmt` to `name.fpmt` — so an old browser draft or a typed `x.pmt` save name comes back as `.fpmt`), the page's `<input accept=".fpmt">` and **Open .fpmt… / Save as .fpmt…** menu items, the open-time guard (*"Choose a .fpmt Prompt Flow Panel file."* — a `.pmt` file, including `prompt.pmt` itself, is refused), and the backend's error text in `services/prompt_flow_panel.py` + the consumer. The shipped example is **`docs/examples/prompting-kickoff.fpmt`** (the old `.pmt` copy is gone). `.fpmt` is registered as TEXT in `rag/binary_guard.py`, as a canvas-viewable type in `agent_page_canvas.js`, as a scrubbable type in `build_complete_public_release.py`, and in `doc_generation/complete_project_docs.py`. ⚠️ **The JSON `format` string deliberately stayed `tlamatini-prompting-flow`** — a rename of the EXTENSION must never invalidate the CONTENTS of flows users already saved. `STATIC_VERSION` carries the `-prompt-commentary-canvas-2` suffix; read the live value in `tlamatini/settings.py` before changing it. There is **no Windows file association** for `.fpmt` (only `.flw` has one); double-clicking a `.fpmt` does nothing yet. Visible coverage: `scripts/prompt_flow_extension_visible.py` (15 checkpoints — menus + file filter, default/typed/legacy save names, uppercase + BOM + Unicode, a real reopened-file playback, the bundled example, invalid JSON, an old `.pmt`, `prompt.pmt` itself, wrong version, >5 MiB, New + generated example, a recovered browser draft, and the Help text that tells the two formats apart). Its log (`Temp/fpmt-extension-visible/console.log`, 2026-09-25 16:07) records **all 15 checkpoints PASS, exit code 0**, after an earlier run failed at the example's filename check (the title carries a `•` dirty marker). The same log's `agent.test_binary_guard` run then went `OK` (46 tests); its 5 `test_documentation_mentions_the_feature` failures happened only in a copied runtime under `Temp/` that has no docs beside it — not a real regression.
-+ 
-+ | Piece | File |
-+ |---|---|
-+@@ -868,7 +868,7 @@
-+ 3. **Carriage is explicit on both mechanisms.** `build.py` names the three backend modules plus the check command as hidden imports / frozen-required modules; `build_runtime_assets.py` lists the CSS + both JS files in `REQUIRED_STATIC` and the template, `docs/prompting-flow-designer.md` and `docs/examples/prompting-kickoff.fpmt` in `ROOT_SOURCES` (+ its install-root floor list); `build.py` copies the example to `dist/manage/docs/examples/`; `copy_source_assets.py` lists them in `REQUIRED_SNAPSHOT_FILES`; `test_prompt_flow_panel_carriage.py` pins the `.fpmt` path. Both inclusion sweeps passed CLEAN after the `.fpmt` rename (2026-09-25), and a kept snapshot physically contained `prompting-kickoff.fpmt` and no `.pmt` copy.
-+ 4. ⚠️ **Commit the whole feature together.** On 2026-09-25 all 22 of its new files (backend, frontend, tests, the visible scripts incl. `scripts/prompt_flow_extension_visible.py`, `docs/prompting-flow-designer.md`, `docs/examples/prompting-kickoff.fpmt`) were UNTRACKED. `build_runtime_assets.py` REQUIRES the two docs files, so a release built from a clean clone or a tag would fail — and a self-update can only deliver what a release contains.
-+ 5. **One name survives from the first draft: the guide's FILENAME.** The feature was drafted on 2026-09-23 as the "Prompting Flow Designer" (`prompting_flow_designer.html`, `/ws/prompting-flow/`, `check_prompting_flow`, `.pmt`). Every doc now uses the real names, but the guide is still `docs/prompting-flow-designer.md` because `build.py`, `build_runtime_assets.py`, `copy_source_assets.py` and `test_prompt_flow_panel_carriage.py` pin that exact path, and it ships to users. Rename it only by changing all four in the same pass. The 2026-09-23 entry in `recent-fixes.md` keeps the old names on purpose (it is history) under a "Renamed 2026-09-25" banner. Full contract: `docs/claude/frontend.md` → *Prompt Flow Panel*, `docs/claude/architecture.md` → *Prompt Flow Panel runtime*, `docs/claude/multi-turn.md` → *Multi-Turn and ACPX inside the Prompt Flow Panel*.
-+-6. **Both panels share canvas mechanics.** `flow-canvas-interactions.js` and `flow_canvas.css` own triangle highlighting, connection capture/cancellation, curve geometry, wire hover/selection glow, Fit/zoom, context-menu placement and divider gestures. Keep free dragging, Ctrl/Meta-drag duplication, modifier/marquee selection, keyboard editing and one-step Undo/Redo aligned. Use gold SVG contour glow for selected Prompt Flow figures; playback keeps node status colors, while wire hover/selection feedback takes precedence over traversed-wire green. Load the shared stylesheet after panel styles and before `dialog_theme.css`. Keep seven executable operations, a separate static User Commentary annotation, and no Connection tool. Current cache suffix: `-prompt-commentary-input-1`. The foreground `scripts/prompt_flow_connections_visible.py` run passed all 30 comparison checkpoints on 2026-09-26; `scripts/acp_editor_visible.py` passed 17 regressions.
-++6. **Both panels share canvas mechanics.** `flow-canvas-interactions.js` and `flow_canvas.css` own triangle highlighting, connection capture/cancellation, curve geometry, wire hover/selection glow, Fit/zoom, context-menu placement and divider gestures. Keep free dragging, Ctrl/Meta-drag duplication, modifier/marquee selection, keyboard editing and one-step Undo/Redo aligned. Use gold SVG contour glow for selected Prompt Flow figures; playback keeps node status colors, while wire hover/selection feedback takes precedence over traversed-wire green. Load the shared stylesheet after panel styles and before `dialog_theme.css`. Keep seven executable operations, a separate static User Commentary annotation, and no Connection tool. Current cache suffix: `-prompt-commentary-canvas-2`. The foreground `scripts/prompt_flow_connections_visible.py` run passed all 30 comparison checkpoints on 2026-09-26; `scripts/acp_editor_visible.py` passed 17 regressions.
-+ 
-+ ---
-+ 
-+--- a/GEMINI.md
-++++ b/GEMINI.md
-+@@ -693,13 +693,13 @@
-+ 
-+ **Chat navbar:** Open · Save · Context ▾ · **Panels ▾** · ACPX-Skills ▾ · External ▾ · **Config ▾** · DB ▾ · Reconnect · About ▾. The old **MCPs**, **Agents** and staff **Admin** menus are gone: **Configure MCPs** and **Configure Agents** are now in **Config**; **Agentic Control Panel**, the new **Prompt Flow Panel** and (staff) **Admin Panel** are in **Panels**. ⚠️ `#mcps-menu-button`, `#agents-menu-button` and `#admin-menu-button` no longer exist — wait on `#config-menu-button` / `#panels-menu-button`. Panels stays usable during a long operation; every end-of-operation path re-arms the menus through `agent_page_ui.js::restoreMenuControlsAfterOperation()`.
-+ 
-+-**Shared canvas mechanics (2026-09-26):** Both panels use `flow-canvas-interactions.js` and `flow_canvas.css` for triangles, connection dragging/cancellation, curve geometry, gold hover/selection glow, zoom/Fit, menus and divider gestures. Keep free dragging, Ctrl/Meta-drag copies, marquee selection, keyboard editing and Undo/Redo aligned. Prompt Flow retains node status colors; interactive wire highlights override traversed-wire green. The Operations bar has seven executable operations plus static User Commentary and no Connection tool. Cache suffix: `-prompt-commentary-input-1`. See `docs/claude/frontend.md` and the 30-check foreground comparison harness.
-++**Shared canvas mechanics (2026-09-26):** Both panels use `flow-canvas-interactions.js` and `flow_canvas.css` for triangles, connection dragging/cancellation, curve geometry, gold hover/selection glow, zoom/Fit, menus and divider gestures. Keep free dragging, Ctrl/Meta-drag copies, marquee selection, keyboard editing and Undo/Redo aligned. Prompt Flow retains node status colors; interactive wire highlights override traversed-wire green. The Operations bar has seven executable operations plus static User Commentary and no Connection tool. Cache suffix: `-prompt-commentary-canvas-2`. See `docs/claude/frontend.md` and the 30-check foreground comparison harness.
-+ 
-+ **Agentic Control Panel editor** (`acp-editor-tools.js`): Undo/Redo, Configure, Duplicate (with settings and internal connections), Delete, Starters, Flow settings, zoom −/+/Fit, agent search, "Try an example", Help, and a `• ` unsaved marker in the title. ⚠️ Divide every pointer→canvas conversion by `ACP.zoom`, and check `ACP.canEdit()` before any edit.
-+ 
-+ **Prompt Flow Panel** (`/agent/prompt_flow_panel/`, WebSocket `ws/prompt-flow-panel/`): a diagram editor for chains of prompts with seven executable operations (Prompt, Programmed Prompt, Decision, Feed embeddings, Flush embeddings, Clean History, User Input), plus static User Commentary notes, saved as **`.fpmt`** JSON (`format: "tlamatini-prompting-flow"`, version 2; version 1 imports migrate the old reply nodes to User Input). ⚠️ **`.pmt` stays with the plain-text system prompts** (`prompt.pmt`, `monitoring-prompt.pmt`); the panel refuses to open a `.pmt`. Each run is isolated (own chain, history, embeddings, cancellation) and never loads the shared `application/` corpus (`setup_llm(..., include_application_context=False)`). Guide: `docs/prompting-flow-designer.md` (historical filename, pinned by three build scripts). Contracts: `docs/claude/frontend.md` → *Chat navbar*, *ACP Canvas DOM Contract*, *Prompt Flow Panel*; `docs/claude/architecture.md` → *Prompt Flow Panel runtime*; dated story `docs/claude/recent-fixes.md` (2026-09-25).
-+ 
-+-**Commentary/Input split (2026-10-03, source changes):** The Operations bar contains seven executable operations and a separate static **User Commentary** asset. **User Input** (`user_input`) keeps the old question/reply/cancellation mechanism and uses the supplied notched-top, downward-point figure. **User Commentary** (`user_commentary`) is a speech-bubble review note: double-click/Enter writes in place, Done/Ctrl+Enter saves, Escape cancels; Configure selects palette color, font, size, emphasis, alignment and dimensions. Bubbles and their editors grow to contain the full wrapped text at the chosen width/font, **without internal scrollbars**; saved height is a minimum. They move, resize, duplicate and Undo/Redo, save/open/recover with the diagram, have no ports or Start status, and never affect model context, history or playback steps. New `.fpmt` saves use version **2**; version 1 files/drafts migrate their executable commentary to User Input while preserving IDs, connections and configuration. The local-storage key still ends in `.draft.v1.<user id>` for compatibility; it does not identify the document version. Current cache suffix: `-prompt-commentary-input-1`. Verified: 61 backend/packaging tests and nine real foreground Chrome checks in `scripts/prompt_flow_commentary_visible.py`. No release executable was rebuilt. See `docs/prompting-flow-designer.md` and the 2026-10-03 entry in `docs/claude/recent-fixes.md`.
-++**Commentary/Input contract (2026-10-04, source changes):** Seven executable operations remain separate from static **User Commentary**. **User Input** (`user_input`) keeps the question/reply/cancellation mechanism and notched figure. **User Commentary** (`user_commentary`) is edited entirely on the canvas: double-click/Enter writes in the bubble; a floating mini toolbar formats selected text with different fonts, sizes, text colors, bold, italic and underline within the same note. With a caret, formatting applies to newly typed text; outside editing it applies to the whole note. Bubble color and alignment affect the note. There is no commentary configuration dialog or numeric dimension form. Drag any border or corner to resize, including while editing; Fit text removes spare height. Done/Ctrl+Enter saves; Cancel/Escape restores the whole edit. Ctrl+Z/Y works inside the editor; completed edits, moves, resizes and duplicates use flow Undo/Redo. Bubbles contain their full wrapped text without internal scrollbars. Version 2 files persist allowlisted `runs` plus matching literal `text`; older plain notes normalize to one run, and version 1 executable commentary still migrates to User Input with IDs/edges/settings intact. Comments have no ports/Start/runtime/context/history/step effects. The draft key remains `.draft.v1.<user id>`. Cache suffix: `-prompt-commentary-canvas-2`. See `docs/prompting-flow-designer.md` and the 2026-10-04 verification record; no release executable was rebuilt.
-+ 
-+ ---
-+ 
-+--- a/KIMI.md
-++++ b/KIMI.md
-+@@ -575,9 +575,9 @@
-+ 
-+ **Prompt Flow Panel (2026-09-25).** A sibling page at `/agent/prompt_flow_panel/` (template `prompt_flow_panel.html`, WebSocket `ws/prompt-flow-panel/`) for chains of **prompts** rather than agents: seven executable operations (Prompt, Programmed Prompt, Decision, Feed embeddings, Flush embeddings, Clean History, User Input), plus static User Commentary notes, saved as **`.fpmt`** JSON (`format: "tlamatini-prompting-flow"`, version 2; version 1 imports migrate the old reply nodes to User Input). ⚠️ `.pmt` stays with the plain-text system prompts (`prompt.pmt`, `monitoring-prompt.pmt`) and the panel refuses to open one. Each run gets its own chain, history, embeddings and cancellation key, and never loads the shared `application/` corpus. Backend: `prompt_flow_panel_consumer.py`, `prompt_flow_panel_runtime.py`, `services/prompt_flow_panel.py`; frozen-build gate `check_prompt_flow_panel`. Guide: `docs/prompting-flow-designer.md`.
-+ 
-+-**Commentary/Input split (2026-10-03, source changes):** The Operations bar contains seven executable operations and a separate static **User Commentary** asset. **User Input** (`user_input`) keeps the old question/reply/cancellation mechanism and uses the supplied notched-top, downward-point figure. **User Commentary** (`user_commentary`) is a speech-bubble review note: double-click/Enter writes in place, Done/Ctrl+Enter saves, Escape cancels; Configure selects palette color, font, size, emphasis, alignment and dimensions. Bubbles and their editors grow to contain the full wrapped text at the chosen width/font, **without internal scrollbars**; saved height is a minimum. They move, resize, duplicate and Undo/Redo, save/open/recover with the diagram, have no ports or Start status, and never affect model context, history or playback steps. New `.fpmt` saves use version **2**; version 1 files/drafts migrate their executable commentary to User Input while preserving IDs, connections and configuration. The local-storage key still ends in `.draft.v1.<user id>` for compatibility; it does not identify the document version. Current cache suffix: `-prompt-commentary-input-1`. Verified: 61 backend/packaging tests and nine real foreground Chrome checks in `scripts/prompt_flow_commentary_visible.py`. No release executable was rebuilt. See `docs/prompting-flow-designer.md` and the 2026-10-03 entry in `docs/claude/recent-fixes.md`.
-+-
-+-**Shared canvas mechanics (2026-09-26):** Both panels use `flow-canvas-interactions.js` and `flow_canvas.css` for triangles, connection dragging/cancellation, curve geometry, gold hover/selection glow, zoom/Fit, menus and divider gestures. Keep free dragging, Ctrl/Meta-drag copies, marquee selection, keyboard editing and Undo/Redo aligned. Prompt Flow retains node status colors; interactive wire highlights override traversed-wire green. The Operations bar has seven executable operations plus static User Commentary and no Connection tool. Cache suffix: `-prompt-commentary-input-1`. See `docs/claude/frontend.md` and the 30-check foreground comparison harness.
-++**Commentary/Input contract (2026-10-04, source changes):** Seven executable operations remain separate from static **User Commentary**. **User Input** (`user_input`) keeps the question/reply/cancellation mechanism and notched figure. **User Commentary** (`user_commentary`) is edited entirely on the canvas: double-click/Enter writes in the bubble; a floating mini toolbar formats selected text with different fonts, sizes, text colors, bold, italic and underline within the same note. With a caret, formatting applies to newly typed text; outside editing it applies to the whole note. Bubble color and alignment affect the note. There is no commentary configuration dialog or numeric dimension form. Drag any border or corner to resize, including while editing; Fit text removes spare height. Done/Ctrl+Enter saves; Cancel/Escape restores the whole edit. Ctrl+Z/Y works inside the editor; completed edits, moves, resizes and duplicates use flow Undo/Redo. Bubbles contain their full wrapped text without internal scrollbars. Version 2 files persist allowlisted `runs` plus matching literal `text`; older plain notes normalize to one run, and version 1 executable commentary still migrates to User Input with IDs/edges/settings intact. Comments have no ports/Start/runtime/context/history/step effects. The draft key remains `.draft.v1.<user id>`. Cache suffix: `-prompt-commentary-canvas-2`. See `docs/prompting-flow-designer.md` and the 2026-10-04 verification record; no release executable was rebuilt.
-++
-++**Shared canvas mechanics (2026-09-26):** Both panels use `flow-canvas-interactions.js` and `flow_canvas.css` for triangles, connection dragging/cancellation, curve geometry, gold hover/selection glow, zoom/Fit, menus and divider gestures. Keep free dragging, Ctrl/Meta-drag copies, marquee selection, keyboard editing and Undo/Redo aligned. Prompt Flow retains node status colors; interactive wire highlights override traversed-wire green. The Operations bar has seven executable operations plus static User Commentary and no Connection tool. Cache suffix: `-prompt-commentary-canvas-2`. See `docs/claude/frontend.md` and the 30-check foreground comparison harness.
-+ 
-+ ### 12.2 Flow Compiler pipeline (canvas / chat → backend → pool)
-+ Two browser surfaces produce flows; **both compile through the same backend Agent Contract registry** before touching disk:
-+--- a/Tlamatini/agent/Tlamatini.md
-++++ b/Tlamatini/agent/Tlamatini.md
-+@@ -92,7 +92,7 @@
-+ | `/agent/agentic_control_panel/` | `agentic_control_panel.html` | **Visual ACP Workflow Designer** — drag-drop the 89 agents (with a search box), save/load `.flw`. Since 2026-09-25 it has an editor toolbar: Undo/Redo, Configure, Duplicate, Delete, Starters, Flow settings, zoom −/+/Fit, and a Help entry | login required |
-+ | `/agent/prompt_flow_panel/` | `prompt_flow_panel.html` | **Prompt Flow Panel** (2026-09-25) — draw a chain of PROMPTS (Prompt, Programmed Prompt, Decision, Feed/Flush embeddings, Clean History, User Input, plus static User Commentary notes), save it as a **`.fpmt`** file and play it against your own model stack over `ws/prompt-flow-panel/`. Each run has its own conversation and embeddings. Guide: `docs/prompting-flow-designer.md` | login required |
-+ 
-+-**Commentary/Input split (2026-10-03, source changes):** The Operations bar contains seven executable operations and a separate static **User Commentary** asset. **User Input** (`user_input`) keeps the old question/reply/cancellation mechanism and uses the supplied notched-top, downward-point figure. **User Commentary** (`user_commentary`) is a speech-bubble review note: double-click/Enter writes in place, Done/Ctrl+Enter saves, Escape cancels; Configure selects palette color, font, size, emphasis, alignment and dimensions. Bubbles and their editors grow to contain the full wrapped text at the chosen width/font, **without internal scrollbars**; saved height is a minimum. They move, resize, duplicate and Undo/Redo, save/open/recover with the diagram, have no ports or Start status, and never affect model context, history or playback steps. New `.fpmt` saves use version **2**; version 1 files/drafts migrate their executable commentary to User Input while preserving IDs, connections and configuration. The local-storage key still ends in `.draft.v1.<user id>` for compatibility; it does not identify the document version. Current cache suffix: `-prompt-commentary-input-1`. Verified: 61 backend/packaging tests and nine real foreground Chrome checks in `scripts/prompt_flow_commentary_visible.py`. No release executable was rebuilt. See `docs/prompting-flow-designer.md` and the 2026-10-03 entry in `docs/claude/recent-fixes.md`.
-++**Commentary/Input contract (2026-10-04, source changes):** Seven executable operations remain separate from static **User Commentary**. **User Input** (`user_input`) keeps the question/reply/cancellation mechanism and notched figure. **User Commentary** (`user_commentary`) is edited entirely on the canvas: double-click/Enter writes in the bubble; a floating mini toolbar formats selected text with different fonts, sizes, text colors, bold, italic and underline within the same note. With a caret, formatting applies to newly typed text; outside editing it applies to the whole note. Bubble color and alignment affect the note. There is no commentary configuration dialog or numeric dimension form. Drag any border or corner to resize, including while editing; Fit text removes spare height. Done/Ctrl+Enter saves; Cancel/Escape restores the whole edit. Ctrl+Z/Y works inside the editor; completed edits, moves, resizes and duplicates use flow Undo/Redo. Bubbles contain their full wrapped text without internal scrollbars. Version 2 files persist allowlisted `runs` plus matching literal `text`; older plain notes normalize to one run, and version 1 executable commentary still migrates to User Input with IDs/edges/settings intact. Comments have no ports/Start/runtime/context/history/step effects. The draft key remains `.draft.v1.<user id>`. Cache suffix: `-prompt-commentary-canvas-2`. See `docs/prompting-flow-designer.md` and the 2026-10-04 verification record; no release executable was rebuilt.
-+ 
-+ **Where the user finds each page (chat navbar, reorganized 2026-09-25):** Open · Save · Context · **Panels** (Agentic Control Panel, Prompt Flow Panel, and Admin Panel for staff) · ACPX-Skills · External · **Config** (Configure MCPs, Configure Agents, Models, URLs, Contacts, Access Keys Wizard, Voice, Mic) · DB · Reconnect · About. There is **no** separate MCPs, Agents or Admin menu any more — if a user asks where "Configure Agents" or "Configure MCPs" went, the answer is **Config**; if they ask how to open the canvas, the answer is **Panels ▸ Agentic Control Panel**. The Agentic Control Panel's own **File** menu also links to the Prompt Flow Panel. ⚠️ **`.pmt` is YOUR system-prompt format** (`prompt.pmt`, `monitoring-prompt.pmt`); a Prompt Flow Panel diagram is a **`.fpmt`** file, and the panel refuses to open a `.pmt`.
-+ 
-+--- a/.claude/memory/project_prompt_flow_commentary_input.md
-++++ b/.claude/memory/project_prompt_flow_commentary_input.md
-+@@ -5,7 +5,7 @@
-+ ---
-+ <!-- Tlamatini Author Banner — Angela López Mendoza · @angelahack1 -->
-+ 
-+-**Commentary/Input split (2026-10-03, source changes):** The Operations bar contains seven executable operations and a separate static **User Commentary** asset. **User Input** (`user_input`) keeps the old question/reply/cancellation mechanism and uses the supplied notched-top, downward-point figure. **User Commentary** (`user_commentary`) is a speech-bubble review note: double-click/Enter writes in place, Done/Ctrl+Enter saves, Escape cancels; Configure selects palette color, font, size, emphasis, alignment and dimensions. Bubbles and their editors grow to contain the full wrapped text at the chosen width/font, **without internal scrollbars**; saved height is a minimum. They move, resize, duplicate and Undo/Redo, save/open/recover with the diagram, have no ports or Start status, and never affect model context, history or playback steps. New `.fpmt` saves use version **2**; version 1 files/drafts migrate their executable commentary to User Input while preserving IDs, connections and configuration. The local-storage key still ends in `.draft.v1.<user id>` for compatibility; it does not identify the document version. Current cache suffix: `-prompt-commentary-input-1`. Verified: 61 backend/packaging tests and nine real foreground Chrome checks in `scripts/prompt_flow_commentary_visible.py`. No release executable was rebuilt. See `docs/prompting-flow-designer.md` and the 2026-10-03 entry in `docs/claude/recent-fixes.md`.
-++**Commentary/Input contract (2026-10-04, source changes):** Seven executable operations remain separate from static **User Commentary**. **User Input** (`user_input`) keeps the question/reply/cancellation mechanism and notched figure. **User Commentary** (`user_commentary`) is edited entirely on the canvas: double-click/Enter writes in the bubble; a floating mini toolbar formats selected text with different fonts, sizes, text colors, bold, italic and underline within the same note. With a caret, formatting applies to newly typed text; outside editing it applies to the whole note. Bubble color and alignment affect the note. There is no commentary configuration dialog or numeric dimension form. Drag any border or corner to resize, including while editing; Fit text removes spare height. Done/Ctrl+Enter saves; Cancel/Escape restores the whole edit. Ctrl+Z/Y works inside the editor; completed edits, moves, resizes and duplicates use flow Undo/Redo. Bubbles contain their full wrapped text without internal scrollbars. Version 2 files persist allowlisted `runs` plus matching literal `text`; older plain notes normalize to one run, and version 1 executable commentary still migrates to User Input with IDs/edges/settings intact. Comments have no ports/Start/runtime/context/history/step effects. The draft key remains `.draft.v1.<user id>`. Cache suffix: `-prompt-commentary-canvas-2`. See `docs/prompting-flow-designer.md` and the 2026-10-04 verification record; no release executable was rebuilt.
-+ 
-+ Angela explicitly rejected the black line/scrollbar inside commentary assets. Preserve full-text containment in both display and inline editing, recomputed after typing, font/width changes, resize, file open and draft recovery. Canvas bounds and Fit use the actual content height. Never replace containment with clipping or an internal scrollbar. Multiple notes retain independent text/style/dimensions and Undo/Redo.
-+ 
-+--- a/docs/prompting-flow-designer.md
-++++ b/docs/prompting-flow-designer.md
-+@@ -21,11 +21,15 @@
-+ | User Input | Notched top with a downward point | Opens the same reply dialog and appends the reply to the run's conversation. |
-+ | User Commentary | Speech bubble | Static review note; never executes or affects the run. |
-+ 
-+-Add independent **User Commentary** bubbles within the 500-asset limit. Double-click a bubble (or press Enter while selected) to write directly inside it. **Done** or Ctrl+Enter saves; **Cancel** or Escape discards that edit. Use **Configure** in the toolbar or right-click menu to choose a basic bubble color, font family, font size, bold, italic, alignment, width and height. Drag the bottom-right handle to resize; moving, copying, resizing and formatting support Undo/Redo. Bubbles grow in height to contain the full text without scrollbars, including while typing or changing font and width. The chosen height is a minimum; long paragraphs save in full (up to 100,000 characters). Text, including `{{last_output}}`, stays literal. Comments have no ports, cannot be Start, need no connection and remain visible during playback. Text and formatting save/open and recover with the diagram. The basic palette is white, yellow, blue, green, pink, purple, orange and gray. Font choices are Nunito, Arial, Verdana, Georgia, Times New Roman and Courier New, at 10–48 px. Width is 200–2,400 and selected minimum height is 128–2,400; automatic containment may grow taller. A document containing only static notes can be saved, but needs an executable operation before Play.
-++Add independent **User Commentary** bubbles within the 500-asset limit. Double-click a bubble or press Enter to write directly inside it. Select a word or passage, then use the **floating mini toolbar** to choose its font, text size, text color, bold, italic or underline. One note can mix styles: an Arial italic sentence, a large Verdana heading and a Georgia paragraph. With no text selected, a formatting choice sets the style for the next text you type. When the note is selected outside editing, formatting applies to the entire note. The color swatches change the bubble; the underlined **A** opens text colors. Alignment applies to the whole note.
-+ 
-+-Double-click a figure, choose **Configure** from its right-click menu, press Enter on a selected figure, or use the **Configure** toolbar button. `{{last_output}}` in a prompt, embedding text, or user message inserts the previous model answer or user reply. Decisions support contains, does-not-contain, equality, and empty-output comparisons, with optional case matching. They never execute expressions from files.
-++Drag **any border or corner** to reshape the bubble; the handles also respond to arrow keys (Shift moves farther). Resizing works while writing. **Fit text** removes spare height. There are no numeric dimension fields or commentary configuration dialogs. **Edit comment** in the main toolbar or context menu starts the same inline editor. **Done** or Ctrl+Enter saves the complete edit; **Cancel** or Escape restores its original text, styles, size and position. Ctrl+Z/Y undoes/redoes changes while writing. Completed edits, moving, resizing, copying and deletion also support flow Undo/Redo.
-+ 
-+-Selected figures use the Agentic Control Panel's gold outline and soft yellow glow, following each figure's shape. Selected connections use the same gold highlight. Ctrl+click or marquee selection highlights every selected figure; Escape clears selection. During playback, status colors remain visible alongside the selection glow. Selection and zoom do not mark the diagram as modified.
-++Bubbles grow to contain every wrapped line at the chosen width and mixed fonts, without internal scrollbars. The chosen height is a minimum. Text stays literal, including `<script>` and `{{last_output}}`. Notes have no ports or Start status and never enter model context, history or playback steps. Notes save/open and recover with the diagram. The palettes offer eight bubble colors and eight text colors; fonts are Nunito, Arial, Verdana, Georgia, Times New Roman and Courier New. Text sizes range from 10 to 48, with named choices from Fine through Display. Each note holds up to 100,000 characters and 10,000 formatted runs. Internal geometry limits are width 200–2,400 and minimum height 128–2,400; automatic containment can grow taller. A notes-only diagram can be saved; Play requires an executable operation.
-++
-++For executable operations, double-click a figure, choose **Configure** from its right-click menu, press Enter on a selected figure, or use the **Configure** toolbar button. `{{last_output}}` in a prompt, embedding text, or user message inserts the previous model answer or user reply. Decisions support contains, does-not-contain, equality, and empty-output comparisons, with optional case matching. They never execute expressions from files.
-++
-++Selected executable figures use the Agentic Control Panel's gold outline and soft yellow glow, following each figure's shape. Selected connections use the same gold highlight. Static commentaries use a quiet mint outline and eight edge/corner grips. Ctrl+click or marquee selection highlights every selected figure; Escape clears selection. During playback, status colors remain visible alongside the selection glow. Selection and zoom do not mark the diagram as modified.
-+ 
-+ Connect exactly as in the Agentic Control Panel: press a white output triangle on the right of a figure, drag the live curve to a white input triangle on the left of another figure, and release. Ports keep their gold highlight during connection; releasing on empty canvas or pressing Escape cancels. Decision figures have two right-side outputs, Y above N. The Operations bar contains seven executable operations and static User Commentary; no Connection tool is needed. Each output has one destination; reconnecting it replaces its destination. Double-click a connection to edit its destination or branch. Keyboard users can activate an output, Tab to an input, and activate it.
-+ 
-+@@ -43,11 +47,12 @@
-+ 
-+ The browser draft retains the compatible storage key `tlamatini.prompting-flow.draft.v1.<user id>`; that suffix is independent of the file format version.
-+ 
-+-The versioned format is `tlamatini-prompting-flow`, version `2`, with `name`, `start`, `max_steps`, `nodes` and `edges`. Version 1 files and existing browser drafts automatically migrate the old executable `user_commentary` to `user_input`, keeping IDs, connections, prompts and behavior. New static bubbles use `user_commentary` in version 2, preventing an old reply step from becoming a static note. Node types are the eight lowercase asset names shown in the implementation; edges use `next`, `yes` or `no`. The backend independently validates the document before playback. The pre-existing plain-text system `prompt.pmt` is a different format and is deliberately rejected by this diagram editor. `.flw` Agentic Control Panel files remain separate.
-++The versioned format is `tlamatini-prompting-flow`, version `2`, with `name`, `start`, `max_steps`, `nodes` and `edges`. Version 1 files and existing browser drafts automatically migrate the old executable `user_commentary` to `user_input`, keeping IDs, connections, prompts and behavior. New static bubbles use `user_commentary` in version 2, preventing an old reply step from becoming a static note. Node types are the eight lowercase asset names shown in the implementation; edges use `next`, `yes` or `no`. Static commentary configuration includes `text`, `runs`, geometry, palette and default typography. Each run stores literal `text`, `font_family`, `font_size`, `text_color`, `bold`, `italic` and `underline`; concatenating runs must equal `config.text`. Both validators allowlist these values, merge adjacent matching runs, and normalize older version 2 plain notes from their original typography. No HTML is stored or executed. Alignment and bubble color belong to the note. The backend independently validates the document before playback. The pre-existing plain-text system `prompt.pmt` is a different format and is deliberately rejected by this diagram editor. `.flw` Agentic Control Panel files remain separate.
-+ 
-+ | Shortcut | Action |
-+ | --- | --- |
-+-| Ctrl+S / Ctrl+O | Save / open |
-++| Ctrl+B / Ctrl+I / Ctrl+U while writing | Bold / italic / underline the selection or subsequent typing |
-++| Ctrl+S / Ctrl+O | Save / open (finish the current comment first) |
-+ | Ctrl+Z / Ctrl+Shift+Z or Ctrl+Y | Undo / redo |
-+ | Ctrl+click / drag empty canvas | Select multiple figures / marquee selection |
-+ | Ctrl+drag | Copy selected figures, settings and internal connections with new IDs and numbered labels; one-step Undo/Redo |
-+@@ -64,7 +69,7 @@
-+ 
-+ Run `python Tlamatini/agent/test_prompt_flow_panel.py`, `python Tlamatini/manage.py test agent.test_prompt_flow_panel_runtime agent.test_chain_readiness --noinput`, the targeted Python lint check, and `npm.cmd run lint` in a **verified visible foreground PowerShell console left open with `-NoExit`**. The adapter tests use fake providers to check history, embedding rebuilds, cleanup and cancellation isolation. Run browser checks in visible Chrome with explicit `headless=False`, verify its actual desktop visibility before the workload, monitor live output, and leave the browser open afterward. Never substitute a hidden run. UI checks should cover `.fpmt` file round trips, rejection of unrelated `.pmt` files, draft recovery, shape/port alignment after zoom and drag, both decision branches, reply cancellation, pause/resume/stop and backend failure. Model and embedding checks require the user's configured providers to be available.
-+ 
-+-The complete regression set: `agent/test_prompt_flow_panel.py` (validator and interpreter, no model or database), `agent/test_prompt_flow_panel_runtime.py` (model adapter with fake providers), `agent/test_prompt_flow_panel_websocket.py` (the real ASGI route and consumer, with a deterministic adapter), `agent/test_prompt_flow_panel_carriage.py` (every panel module must be in the frozen archive and every panel asset in the release receipt), and `agent/test_chain_readiness.py::ContextFreeChainTests` (`include_application_context=False` skips the shared `application/` corpus while the chat default still loads it). The refactor-specific `scripts/prompt_flow_commentary_visible.py` passed nine foreground Chrome checkpoints, including 5,000-character containment, font/width changes, resize/Undo, file/draft round trips, version 1 migration and User Input reply cancellation. Together with 25 diagram/interpreter, 33 runtime/WebSocket/readiness and three packaging tests, the source refactor passed 61 backend/packaging tests; no executable or installer was rebuilt. When asked to stop this harness, create its `Temp/prompt-commentary-visible/close.confirmed` marker so it closes its own Chrome/test server, then verify no owned processes or test listeners remain. Never terminate unrelated user applications.
-++The complete regression set: `agent/test_prompt_flow_panel.py` (validator and interpreter, no model or database), `agent/test_prompt_flow_panel_runtime.py` (model adapter with fake providers), `agent/test_prompt_flow_panel_websocket.py` (the real ASGI route and consumer, with a deterministic adapter), `agent/test_prompt_flow_panel_carriage.py` (every panel module must be in the frozen archive and every panel asset in the release receipt), and `agent/test_chain_readiness.py::ContextFreeChainTests` (`include_application_context=False` skips the shared `application/` corpus while the chat default still loads it). The redesigned `scripts/prompt_flow_commentary_visible.py` checks the floating toolbar, mixed selection/caret styles, all eight borders, editor and flow Undo/Redo, long text without scrollbars, several comments through three real download/reopen cycles and draft recovery, unchanged User Input and version 1 migration. It compares saved data and rendered line boxes/fonts/colors/geometry. Current results are recorded in [the 2026-10-04 change record](changes/2026-10-04-commentary-graphical-redesign.md). Create `Temp/prompt-commentary-redesign-visible/close.confirmed` to close its own Chrome/test server, then verify no owned workers/listeners remain. Never terminate unrelated user applications.
-+ 
-+ The visible browser scripts, each launched from a verified foreground `-NoExit` console with Shoter photographing the whole desktop, are `scripts/prompt_flow_extension_visible.py` (15 `.fpmt` checkpoints), `scripts/panel_search_title_visible.py` (14 checkpoints: the Agentic Control Panel's agent search, and the unsaved-changes `•` in both panels' titles through save, edit, undo and reopen) and `scripts/run_menu_state_checks.py`, which drives `scripts/menu_browser_checks.py` (including the panel's play/pause/stop and stale-event states) and `scripts/menu_live_checks.py`.
-+ 
-+--- a/BookOfTlamatini.md
-++++ b/BookOfTlamatini.md
-+@@ -228,7 +228,7 @@
-+ ### Building and running a flow
-+ 
-+ 1. Drag operations from the **Operations bar** onto the canvas, or just click one to drop it in.
-+-2. Double-click an executable figure (or select **Configure**) to set its text and options. Double-click a User Commentary to write directly inside its bubble; use Configure for its appearance.
-++2. Double-click an executable figure (or select **Configure**) to set its text and options. Double-click a User Commentary to write directly inside its bubble; select text and format it with the floating mini toolbar.
-+ 3. Drag a white **output triangle** on the right of an executable figure onto an **input triangle** on the left of another and release to connect them. Static commentary has no ports. A Decision has two outputs, **Y** and **N**; every output leads to exactly one place, and connecting it again replaces the old line.
-+ 4. Choose where the flow begins in the **Start** list, press **Validate**, then **Play**. Validate refuses a flow with a dead end it cannot explain: every executable operation must be reachable from Start, and every Decision needs both branches. Static comments need no connection and cannot be Start.
-+ 5. Watch the running figure light up and read everything in **Run output** below the canvas. **Pause** lets the current step finish and holds the next one; **Stop** cancels and waits for the current step to wind down cleanly. Loops are allowed — **Flow settings** caps how many steps one run may take (500 by default, 5,000 at most).
-+@@ -237,7 +237,11 @@
-+ 
-+ ### Writing static User Commentaries
-+ 
-+-Add as many independent **User Commentary** bubbles as you need within the diagram's 500-asset limit. Double-click a bubble, or select it and press Enter, to write a note in place. **Done** or Ctrl+Enter saves; **Cancel** or Escape discards that edit. **Configure**, available in the toolbar or right-click menu, chooses one of eight basic colors, six font families, font size, bold/italic, alignment, width and minimum height. Drag the bottom-right handle to resize, and use Undo/Redo for editing, formatting, moving or duplication.
-++Add independent **User Commentary** bubbles within the 500-asset limit. Double-click a bubble or press Enter to write directly inside it. Select a word or passage, then use the **floating mini toolbar** to choose its font, text size, text color, bold, italic or underline. One note can mix styles: an Arial italic sentence, a large Verdana heading and a Georgia paragraph. With no text selected, a formatting choice sets the style for the next text you type. When the note is selected outside editing, formatting applies to the entire note. The color swatches change the bubble; the underlined **A** opens text colors. Alignment applies to the whole note.
-++
-++Drag **any border or corner** to reshape the bubble; the handles also respond to arrow keys (Shift moves farther). Resizing works while writing. **Fit text** removes spare height. There are no numeric dimension fields or commentary configuration dialogs. **Edit comment** in the main toolbar or context menu starts the same inline editor. **Done** or Ctrl+Enter saves the complete edit; **Cancel** or Escape restores its original text, styles, size and position. Ctrl+Z/Y undoes/redoes changes while writing. Completed edits, moving, resizing, copying and deletion also support flow Undo/Redo.
-++
-++Bubbles grow to contain every wrapped line at the chosen width and mixed fonts, without internal scrollbars. The chosen height is a minimum. Text stays literal, including `<script>` and `{{last_output}}`. Notes have no ports or Start status and never enter model context, history or playback steps. Notes save/open and recover with the diagram. The palettes offer eight bubble colors and eight text colors; fonts are Nunito, Arial, Verdana, Georgia, Times New Roman and Courier New. Text sizes range from 10 to 48, with named choices from Fine through Display. Each note holds up to 100,000 characters and 10,000 formatted runs. Internal geometry limits are width 200–2,400 and minimum height 128–2,400; automatic containment can grow taller. A notes-only diagram can be saved; Play requires an executable operation.
-+ 
-+ The bubble grows to contain the complete text at the chosen width and font, including while typing. There is **no internal scrollbar** and no clipped paragraph. Long notes save in full, up to 100,000 characters. Notes are visible review annotations; they never ask a runtime question, enter the model context, change history or count as a playback step. A diagram containing only notes can be saved, but needs an executable operation before Play is available.
-+ 
-+@@ -255,7 +259,7 @@
-+ 
-+ Want to see one first? **File ▸ Open example** loads a small branching flow, and the full tour — seven executable operations and a static commentary — ships as `docs/examples/prompting-kickoff.fpmt`.
-+ 
-+-New saves use document **version 2**. Version 1 files and browser drafts automatically turn their old executable `user_commentary` nodes into **User Input**, keeping IDs, connections and settings. Version 2 `user_commentary` means a static note. Opening an old file never silently changes a reply step into an annotation. The extension remains `.fpmt`. This refactor is a source change from 2026-10-03; an installed executable includes it after being rebuilt or updated with it.
-++New saves use document **version 2**. Version 1 files and browser drafts automatically turn their old executable `user_commentary` nodes into **User Input**, keeping IDs, connections and settings. Version 2 `user_commentary` means a static note. Opening an old file never silently changes a reply step into an annotation. The extension remains `.fpmt`. The commentary/input split and graphical rich-text redesign are source changes from 2026-10-03/04; an installed executable includes it after being rebuilt or updated with it.
-+ 
-+ ### Shortcuts
-+ 
-+--- a/docs/claude/frontend.md
-++++ b/docs/claude/frontend.md
-+@@ -240,13 +240,13 @@
-+ 
-+ `agent/templates/agent/prompt_flow_panel.html` is a separate, login-protected diagram editor at **`/agent/prompt_flow_panel/`** (view `views.prompt_flow_panel`, URL name `prompt_flow_panel`), opened from **Panels ▸ Prompt Flow Panel** in the chat navbar and **File ▸ Prompt Flow Panel** in the Agentic Control Panel (both in a new tab). It reuses the ACP page skeleton and CSS (`agentic_control_panel.css` then `prompt_flow_panel.css`, with `dialog_theme.css` LAST) plus the shared `dialog_policy.js`, and its body class `pmt-panel` scopes every rule. The Operations bar holds eight assets — Prompt, Programmed Prompt, Decision, Feed embeddings, Flush embeddings, Clean History, User Input, static User Commentary — and diagrams are saved as versioned JSON **`.fpmt`** files (`format: "tlamatini-prompting-flow"`, `version: 2` (version 1 imports migrate executable commentary to User Input)).
-+ 
-+-**Commentary layout:** Double-click/Enter edits static notes in place; Done/Ctrl+Enter saves and Cancel/Escape discards. Configure offers eight palette colors, six font families, 10–48 px text, bold/italic/alignment, width 200–2,400 and minimum height 128–2,400. `fitCommentary()` measures wrapped content at the chosen width/font and grows the bubble and inline editor without internal scrollbars, including after typing, formatting, resize, font loading, file open and draft recovery. The effective height participates in canvas bounds and Fit; persisted height remains a minimum. Long text (up to 100,000 characters) stays literal, including `{{last_output}}`. Notes have no ports or Start state, are excluded from executable reachability and step counts, and never enter prompts/history. Move, resize, duplicate and formatting remain undoable. A comment-only document can be saved; Play requires an executable operation.
-++**Commentary layout (2026-10-04):** Add independent **User Commentary** bubbles within the 500-asset limit. Double-click a bubble or press Enter to write directly inside it. Select a word or passage, then use the **floating mini toolbar** to choose its font, text size, text color, bold, italic or underline. One note can mix styles: an Arial italic sentence, a large Verdana heading and a Georgia paragraph. With no text selected, a formatting choice sets the style for the next text you type. When the note is selected outside editing, formatting applies to the entire note. The color swatches change the bubble; the underlined **A** opens text colors. Alignment applies to the whole note. Drag **any border or corner** to reshape the bubble; the handles also respond to arrow keys (Shift moves farther). Resizing works while writing. **Fit text** removes spare height. There are no numeric dimension fields or commentary configuration dialogs. **Edit comment** in the main toolbar or context menu starts the same inline editor. **Done** or Ctrl+Enter saves the complete edit; **Cancel** or Escape restores its original text, styles, size and position. Ctrl+Z/Y undoes/redoes changes while writing. Completed edits, moving, resizing, copying and deletion also support flow Undo/Redo. Bubbles grow to contain every wrapped line at the chosen width and mixed fonts, without internal scrollbars. The chosen height is a minimum. Text stays literal, including `<script>` and `{{last_output}}`. Notes have no ports or Start status and never enter model context, history or playback steps. Notes save/open and recover with the diagram. The palettes offer eight bubble colors and eight text colors; fonts are Nunito, Arial, Verdana, Georgia, Times New Roman and Courier New. Text sizes range from 10 to 48, with named choices from Fine through Display. Each note holds up to 100,000 characters and 10,000 formatted runs. Internal geometry limits are width 200–2,400 and minimum height 128–2,400; automatic containment can grow taller. A notes-only diagram can be saved; Play requires an executable operation.
-+ 
-+ Contracts (do NOT weaken):
-+ 
-+-- **Connection parity (2026-09-26):** use the ACP stylesheet's `input-triangle`, `output-triangle`, `output-label`, `connection-group`, `connection-path` and `connection-hit-area` classes directly. Do not reintroduce circular ports, arrowhead markers or a Connection palette tool. Curves follow ACP's horizontal half-distance Bezier construction, anchored at triangle centers. Pointer capture belongs to the viewport; resolve the input under the pointer with `elementFromPoint`, since captured events target the viewport. Commit only on release over an input. Empty/body drops, Escape, pointer cancellation, lost capture and blur remove the preview and port highlights without changing the document. Decision Y/N previews start from the selected branch. Gold port highlighting is retained; shared hover/selection colors override playback wire colors while interacting. Current `STATIC_VERSION` suffix: `-prompt-commentary-input-1`. Visible regression runner: `scripts/prompt_flow_connections_visible.py`.
-+-
-+-- **Selection styling:** `prompt_flow_panel.css` matches ACP's `#ffcc00` outline and yellow halo. Use an SVG `drop-shadow` so diamonds, triangles, trapezoids and speech bubbles glow around their contours, never a rectangular box shadow on `.pmt-node`. Selected nodes sit above other nodes but below the marquee. Playback status strokes take precedence while the selection halo stays visible; deselection removes only that halo. Selected wires inherit ACP's gold stroke/shadow; traversed wires are green only when neither hovered nor selected. The real headed checks are `scripts/prompt_flow_selection_visible.py`, using ordinary file-open, selection, zoom and User Input playback on port 8001 (called User Commentary in that historical run); its 2026-09-25 20:26 run passed all 14 checks with exit code 0. ⚠️ Keep node `.selected` rules ABOVE `.running` / `.completed` / `.failed`, load `flow_canvas.css` after both panel styles and before `dialog_theme.css`. Keep `.pmt-edge.traversed` restricted to `:not(.selected):not(:hover)` so interaction feedback remains identical. Current `STATIC_VERSION` suffix: `-prompt-commentary-input-1`.
-++- **Connection parity (2026-09-26):** use the ACP stylesheet's `input-triangle`, `output-triangle`, `output-label`, `connection-group`, `connection-path` and `connection-hit-area` classes directly. Do not reintroduce circular ports, arrowhead markers or a Connection palette tool. Curves follow ACP's horizontal half-distance Bezier construction, anchored at triangle centers. Pointer capture belongs to the viewport; resolve the input under the pointer with `elementFromPoint`, since captured events target the viewport. Commit only on release over an input. Empty/body drops, Escape, pointer cancellation, lost capture and blur remove the preview and port highlights without changing the document. Decision Y/N previews start from the selected branch. Gold port highlighting is retained; shared hover/selection colors override playback wire colors while interacting. Current `STATIC_VERSION` suffix: `-prompt-commentary-canvas-2`. Visible regression runner: `scripts/prompt_flow_connections_visible.py`.
-++
-++- **Selection styling:** Static commentary uses a mint outline and eight edge/corner grips (specificity must override shared canvas gold). Executable nodes in `prompt_flow_panel.css` match ACP's `#ffcc00` outline and yellow halo. Use an SVG `drop-shadow` so diamonds, triangles, trapezoids glow around their contours, never a rectangular box shadow on `.pmt-node`. Selected nodes sit above other nodes but below the marquee. Playback status strokes take precedence while the selection halo stays visible; deselection removes only that halo. Selected wires inherit ACP's gold stroke/shadow; traversed wires are green only when neither hovered nor selected. The real headed checks are `scripts/prompt_flow_selection_visible.py`, using ordinary file-open, selection, zoom and User Input playback on port 8001 (called User Commentary in that historical run); its 2026-09-25 20:26 run passed all 14 checks with exit code 0. ⚠️ Keep node `.selected` rules ABOVE `.running` / `.completed` / `.failed`, load `flow_canvas.css` after both panel styles and before `dialog_theme.css`. Keep `.pmt-edge.traversed` restricted to `:not(.selected):not(:hover)` so interaction feedback remains identical. Current `STATIC_VERSION` suffix: `-prompt-commentary-canvas-2`.
-+ 
-+ 1. **`.fpmt`, never `.pmt`.** The file picker is `accept=".fpmt"`, the open guard refuses any other name (including `prompt.pmt` itself) with *"Choose a .fpmt Prompt Flow Panel file."*, and `flowFilename()` turns a legacy `name.pmt` save name or browser draft into `name.fpmt`. The JSON `format` string deliberately did NOT change, so renaming an old flow file is enough to open it. The plain-text system prompts (`agent/prompt.pmt`, `monitoring-prompt.pmt`) keep `.pmt`.
-+ 2. **Opening never runs anything.** Load, drop, draft recovery and even a WebSocket (re)connection are passive; only **Play** starts a run.
-+--- a/docs/claude/architecture.md
-++++ b/docs/claude/architecture.md
-+@@ -685,3 +685,5 @@
-+ ## Image/video error reporting and recovery (2026-09-26)
-+ 
-+ Image/video model failures accumulate in one shared, themed, non-modal fatal-error dialog with an audible notification. Tlamatini keeps running: preserve its retry/tactic ladder, cancellation controls and configured flow recovery routes. Keep the configured model identities; never report a surviving observer or raw concatenation as successful analysis. Dismiss hides the dialog while retaining its history; new failures reopen it. See [the shared behavior and verification contract](../visual-analysis-errors.md).
-++
-++**Graphical commentary update (2026-10-04):** User Commentary has no configuration dialog. Its floating toolbar formats selected ranges or subsequent typing with mixed fonts/sizes/colors/bold/italic/underline; eight borders/corners resize the bubble directly. Both validators preserve allowlisted rich `runs` whose literal concatenation equals `text`, normalize older plain version 2 notes, and retain version 1 User Input migration. Full-text containment, static runtime isolation and portable/draft persistence remain required. See [the designer guide](../prompting-flow-designer.md).
-+--- a/docs/claude/gotchas.md
-++++ b/docs/claude/gotchas.md
-+@@ -232,3 +232,5 @@
-+ Image/video model failures accumulate in one shared, themed, non-modal fatal-error dialog with an audible notification. Tlamatini keeps running: preserve its retry/tactic ladder, cancellation controls and configured flow recovery routes. Keep the configured model identities; never report a surviving observer or raw concatenation as successful analysis. Dismiss hides the dialog while retaining its history; new failures reopen it. See [the shared behavior and verification contract](../visual-analysis-errors.md).
-+ 
-+ 27. **User Commentary is no longer the reply operation (2026-10-03).** New `.fpmt` files are version 2: `user_input` runs the existing question/reply/cancel mechanism with the notched-top, downward-point figure; `user_commentary` is a static speech-bubble review note. Version 1 executable commentary must migrate to User Input, preserving IDs/edges/configuration. Never reinterpret it as a static note. Static bubbles have no ports/Start state and do not count toward executable reachability or playback steps. Preserve automatic full-text containment at the chosen width/font without internal scrollbars, including the inline editor; the saved height is a minimum. The `.draft.v1.<user id>` storage key intentionally stays compatible and does not mean document version 1. See [the guide](../prompting-flow-designer.md).
-++
-++**Graphical commentary update (2026-10-04):** User Commentary has no configuration dialog. Its floating toolbar formats selected ranges or subsequent typing with mixed fonts/sizes/colors/bold/italic/underline; eight borders/corners resize the bubble directly. Both validators preserve allowlisted rich `runs` whose literal concatenation equals `text`, normalize older plain version 2 notes, and retain version 1 User Input migration. Full-text containment, static runtime isolation and portable/draft persistence remain required. See [the designer guide](../prompting-flow-designer.md).
-+--- a/docs/claude/multi-turn.md
-++++ b/docs/claude/multi-turn.md
-+@@ -291,3 +291,5 @@
-+ ## Image/video error reporting and recovery (2026-09-26)
-+ 
-+ Image/video model failures accumulate in one shared, themed, non-modal fatal-error dialog with an audible notification. Tlamatini keeps running: preserve its retry/tactic ladder, cancellation controls and configured flow recovery routes. Keep the configured model identities; never report a surviving observer or raw concatenation as successful analysis. Dismiss hides the dialog while retaining its history; new failures reopen it. See [the shared behavior and verification contract](../visual-analysis-errors.md).
-++
-++**Graphical commentary update (2026-10-04):** User Commentary has no configuration dialog. Its floating toolbar formats selected ranges or subsequent typing with mixed fonts/sizes/colors/bold/italic/underline; eight borders/corners resize the bubble directly. Both validators preserve allowlisted rich `runs` whose literal concatenation equals `text`, normalize older plain version 2 notes, and retain version 1 User Input migration. Full-text containment, static runtime isolation and portable/draft persistence remain required. See [the designer guide](../prompting-flow-designer.md).
-+--- a/.claude/memory/MEMORY.md
-++++ b/.claude/memory/MEMORY.md
-+@@ -1,6 +1,6 @@
-+ <!-- THE USER IS ANGELA, A WOMAN — always address her by name. -->
-+ <!-- Unless noted, work is UNCOMMITTED in source; frozen needs build.py. Detail in topic files. -->
-+-- [Prompt Flow: static Commentary and runtime User Input](project_prompt_flow_commentary_input.md) — version 2 saves, version 1 migration, inline notes with colors/fonts/resize and full-text containment; **no internal scrollbars**. Runtime reply/cancel stays unchanged.
-++- [Prompt Flow: static Commentary and runtime User Input](project_prompt_flow_commentary_input.md) — version 2 saves, version 1 migration, inline rich notes with a floating selection toolbar, mixed fonts/styles, all-border resizing and full-text containment; **no configuration dialog**; **no internal scrollbars**. Runtime reply/cancel stays unchanged.
-+ - [Developer workflow is not product UX](feedback_developer_product_boundary.md) — Angela is the developer; visible verification must not become extra product windows or focus stealing. Direct dictation uses the main console/log and in-chat recording status.
-+ - [User profile](user_profile.md) — **Angela**, primary Tlamatini dev (<REDACTED>). Always "Angela".
-+ - [ALWAYS ENGLISH to Angela (MANDATORY)](feedback_always_english_to_angela.md) — talk to her ONLY in English; Spanish only for her users' content.
-+--- a/README.md
-++++ b/README.md
-+@@ -412,9 +412,9 @@
-+ 
-+ The same dependency audit covers all 89 agents and 743 Python files: missing direct declarations are now present, with ESPHome's incompatible private runtime kept in its own manifest. See [dependency coverage](docs/dependency-coverage-audit.md).
-+ 
-+-**Carried from the published v1.70.0 release:** a Prompt Flow Panel, a tidier menu bar, and a canvas you can edit. **Source refactor, 2026-10-03:** the former executable User Commentary is now User Input, and User Commentary is a static note. New diagrams use version 2; version 1 files/drafts migrate automatically without changing reply behavior. This refactor has not been rebuilt into a release executable.
-+-
-+-- **Prompt Flow Panel — draw a conversation, then press Play.** Open **Panels ▸ Prompt Flow Panel**. Drag operations onto a canvas and connect them: **Prompt** (ask Tlamatini something, optionally with Multi-Turn and ACPX), **Programmed Prompt** (the same, after a delay or at a set time), **Decision** (take the Yes or No branch depending on the last answer, or ask you), **Feed embeddings** / **Flush embeddings** (give that run extra reference text, or take it away), **Clean History**, and **User Input** (stop and ask you something, using the notched figure). Add independent **User Commentary** speech bubbles for static review notes: double-click to write, choose colors and fonts in Configure, and resize freely; the bubbles grow to contain their text without internal scrollbars. Comments save with the flow and never execute. In executable operation text, write `{{last_output}}` to pass the previous answer forward; it stays literal inside a static comment. **Validate**, then **Play** — the running step lights up, and **Pause** / **Stop** work mid-flow. Each run has its own conversation and embeddings, so it never disturbs your chat. Save your diagram as a **`.fpmt`** file; opening one never runs it. Try **File ▸ Open example**, or open [docs/examples/prompting-kickoff.fpmt](docs/examples/prompting-kickoff.fpmt). Full guide: [docs/prompting-flow-designer.md](docs/prompting-flow-designer.md).
-++**Carried from the published v1.70.0 release:** a Prompt Flow Panel, a tidier menu bar, and a canvas you can edit. **Source refactor, 2026-10-03/04:** the former executable User Commentary is now User Input, and User Commentary is a static note. New diagrams use version 2; version 1 files/drafts migrate automatically without changing reply behavior. This refactor has not been rebuilt into a release executable.
-++
-++- **Prompt Flow Panel — draw a conversation, then press Play.** Open **Panels ▸ Prompt Flow Panel**. Drag operations onto a canvas and connect them: **Prompt** (ask Tlamatini something, optionally with Multi-Turn and ACPX), **Programmed Prompt** (the same, after a delay or at a set time), **Decision** (take the Yes or No branch depending on the last answer, or ask you), **Feed embeddings** / **Flush embeddings** (give that run extra reference text, or take it away), **Clean History**, and **User Input** (stop and ask you something, using the notched figure). Add independent **User Commentary** speech bubbles for static review notes: double-click to write, format selected passages with a floating toolbar (mixed fonts, sizes, colors, bold, italic and underline), and resize from any edge or corner; the bubbles grow to contain their text without internal scrollbars. Comments save with the flow and never execute. In executable operation text, write `{{last_output}}` to pass the previous answer forward; it stays literal inside a static comment. **Validate**, then **Play** — the running step lights up, and **Pause** / **Stop** work mid-flow. Each run has its own conversation and embeddings, so it never disturbs your chat. Save your diagram as a **`.fpmt`** file; opening one never runs it. Try **File ▸ Open example**, or open [docs/examples/prompting-kickoff.fpmt](docs/examples/prompting-kickoff.fpmt). Full guide: [docs/prompting-flow-designer.md](docs/prompting-flow-designer.md).
-+ - **The menu bar was reorganized.** A new **Panels** menu opens the **Agentic Control Panel**, the **Prompt Flow Panel** and, for staff, the **Admin Panel**. **Configure MCPs** and **Configure Agents** moved into **Config**, next to Models, URLs and the Access Keys Wizard. The separate MCPs, Agents and Admin menus are gone. Panels stays usable while Tlamatini is busy answering you.
-+ - **The Agentic Control Panel became a real editor.** A toolbar gives you **Undo/Redo**, **Configure**, **Duplicate** (copies agents *with* their settings and the connections between them), **Delete**, a **Starters** locator, **Flow settings** (dot grid, zoom) and **zoom −/+/Fit**. A search box filters the 89 agents by name, an empty canvas offers **Try an example**, **Help** explains every gesture, and a `•` in the tab title tells you there are unsaved changes. Editing locks while a flow is running — stop it to edit.
-+ 
-+@@ -571,7 +571,7 @@
-+ 
-+ **🧩 Orchestration & design**
-+ - **Visual Workflow Designer (ACP)** — 89 drag-and-drop agent types wired into runnable flows; save/load `.flw` files; Flow Compiler validates the canvas into `config.yaml`. An editor toolbar adds undo/redo, configure, duplicate-with-settings, delete, zoom/fit and an agent search box. Open it from **Panels ▸ Agentic Control Panel**.
-+-- **Prompt Flow Panel** — design a chain of prompts, decisions, embeddings and user questions on a canvas, save it as a `.fpmt` file, and play it against your own models; each run keeps its own conversation and embeddings. **User Input** collects runtime replies; static **User Commentary** bubbles support colors, fonts, resizing and complete text containment without scrollbars. Open it from **Panels ▸ Prompt Flow Panel**.
-++- **Prompt Flow Panel** — design a chain of prompts, decisions, embeddings and user questions on a canvas, save it as a `.fpmt` file, and play it against your own models; each run keeps its own conversation and embeddings. **User Input** collects runtime replies; static **User Commentary** bubbles support a floating rich-text toolbar, mixed styles within a note, all-border resizing and complete text containment without scrollbars. Open it from **Panels ▸ Prompt Flow Panel**.
-+ - **Multi-Turn orchestration** — a tool-calling loop with **109 built-in tools** and a global execution planner; **Step-by-Step** mode paces hands-on setup one action at a time; **self-healing model steps** mean a network/model hiccup never freezes her — she retries under a watchdog, finishes gracefully from work already done, and always tells you what happened.
-+ - **FlowCreator / FlowHypervisor** — let an LLM design a flow; a watchdog monitors flow health. FlowCreator is now also **callable from chat** (`chat_agent_flowcreator`): describe a flow in plain words and it writes a real, canvas-loadable `.flw` file to disk.
-+ - **Parametrizer / Gatewayer / Gateway-Relayer / Node Manager** — chain agent outputs into the next agent's config; trigger flows from webhooks, folder-drops, or GitHub/GitLab.
-+--- a/ACPX.md
-++++ b/ACPX.md
-+@@ -21,7 +21,7 @@
-+ 
-+ ---
-+ 
-+-**Prompt Flow source update (2026-10-03):** Prompt and Programmed Prompt still control Multi-Turn/ACPX per operation. **User Input** retains the existing user-reply step; **User Commentary** is a static speech-bubble review note and never invokes ACPX, tools or a model, or modifies run history. Version 2 `.fpmt` saves migrate version 1 executable commentary to User Input. Static notes support inline editing, color/font/size choices and automatic full-text containment without internal scrollbars. This source change does not imply a rebuilt release. See [the Prompt Flow guide](docs/prompting-flow-designer.md).
-++**Prompt Flow source update (2026-10-04):** Prompt and Programmed Prompt still control Multi-Turn/ACPX per operation. **User Input** retains the existing user-reply step; **User Commentary** is a static speech-bubble review note and never invokes ACPX, tools or a model, or modifies run history. Version 2 `.fpmt` saves migrate version 1 executable commentary to User Input. Static notes support inline editing, a floating toolbar for mixed text styles, direct border/corner resizing and automatic full-text containment without internal scrollbars. This source change does not imply a rebuilt release. See [the Prompt Flow guide](docs/prompting-flow-designer.md).
-+ 
-+ ## 0. Read this first
-+ 
-+--- a/docs/claude/INDEX.md
-++++ b/docs/claude/INDEX.md
-+@@ -34,9 +34,9 @@
-+ - **acpx.md** — ACPX (Agent Communication Protocol eXtension): authoritative definition, the 14-agent registry with transport profiles, all 12 LLM-facing tools, canonical flows (spawn-and-go, multi-CLI relay, harvest-transcript, skill-routing), runtime drain mechanics, permission model, the **ACPX toolbar toggle** (per-request enable/disable via `agent.acpx.filter_acpx_tools()`, defaults to OFF), and the "when the user says ACPX" decision matrix. (Note: the **External MCP** supervisor tools are a separate surface — NOT ACPX tools, NOT gated by the ACPX checkbox — documented in `mcp-tools.md`.)
-+ - **mcp-tools.md** — How to add a new MCP-backed context provider, a unified-agent tool (registered in `tools.tool_gate_table()`, the ONE gate list binding, Compact mode and the Configure-dialog prices read; while Compact mode is ON a gate with no Tool row reads OFF), a wrapped chat-agent tool, **OR** a Skill (`agent/skills_pkg/<name>/SKILL.md` driven by `SkillHarness`); the **External MCPs** config-driven universal MCP client (`external_mcp_manager.py` + sanitized/preserved `external_mcps.json`, 4 transports, 10 supervisor tools, private runtime provisioner, inactive Memory/Sequential-Thinking defaults, the "External ▸ MCPs" dialog + 4 endpoints, the bulletproof contract, MCP Doctor, the `adding-external-mcp` lifecycle skill, and the contrast vs `Mcp`-model checkboxes / ACPX / inline per-agent clients); plus the hardcoded-assumption warnings around `factory.py` and the MCP UI; plus the **ACPX-Skills navbar dropdown** (Browse / Configure / Diagnostics / Reload — admin surface for the 29 SKILL.md packages).
-+ - **frontend.md** — Direct microphone UI and avatar handoff; the Copy + **Drop** buttons on every chat card (2026-09-30); the toolbar's **Compact mode** box (`model_capacity.js`), the per-row prices in the Configure dialogs (`compact_costs.js`) and the **Self-modify** box (`self_modify_switch.js`, rendered only where self-modify exists); all 54 JavaScript modules (22 chat + 15 ACP + 1 ACP entry + 13 shared + 1 welcome + 2 Prompt Flow Panel); the **chat navbar layout** (since 2026-09-25: **Panels** = Agentic Control Panel / Prompt Flow Panel / Admin Panel, and **Configure MCPs / Configure Agents** live in **Config**; the old MCPs / Agents / Admin menus are gone) and the one menu re-arm path `restoreMenuControlsAfterOperation()`; the **ACP flow-editor toolbar** (`acp-editor-tools.js`: Undo/Redo, Configure, Duplicate, Delete, Starters, Flow settings, zoom/Fit, agent search) and the edit lock `ACP.canEdit()`; the **Prompt Flow Panel** page (`.fpmt`, User Input/static User Commentary split); the centralized dialog theme + dismissal policy (**since 2026-08-16 Escape dismisses EVERY dialog and means exactly what the titlebar ✕ means, while an outside click still never dismisses**; the dispatcher activates each dialog's own dismiss control, so Deny / resolve-false / scroll-unlock / sealed-updater-refusal all survive; `closeOnEscape: false` is a forbidden pattern, and the themed `tlmAlert` / `tlmConfirm` popups replace the last native `alert()` / `confirm()` calls); long-operation navigation locks; safe update-note rendering; chat and ACP modules; the **ACP Canvas DOM Contract** (now zoom-aware: every pointer delta is divided by `ACP.zoom`); and the shared Flow Compiler pipeline.
-+-- **[../prompting-flow-designer.md](../prompting-flow-designer.md)** — *(NOT in this directory; consult-on-demand; ships to users beside the executable)* The **Prompt Flow Panel** user and maintainer guide: seven executable operations, static User Commentary (inline editing, palette/font controls and automatic containment without internal scrollbars), version 2 `.fpmt` files and version 1 User Input migration (and why `.pmt` stays with the system prompts), shortcuts, playback/pause/stop semantics, per-run isolation, tests and release/self-modify carriage. Its filename keeps the first draft's name because `build.py`, `build_runtime_assets.py` and `copy_source_assets.py` reference that exact path.
-++- **[../prompting-flow-designer.md](../prompting-flow-designer.md)** — *(NOT in this directory; consult-on-demand; ships to users beside the executable)* The **Prompt Flow Panel** user and maintainer guide: seven executable operations, static User Commentary (inline rich text, a floating selection toolbar, all-border resizing, no configuration dialog and automatic containment without internal scrollbars), version 2 `.fpmt` files and version 1 User Input migration (and why `.pmt` stays with the system prompts), shortcuts, playback/pause/stop semantics, per-run isolation, tests and release/self-modify carriage. Its filename keeps the first draft's name because `build.py`, `build_runtime_assets.py` and `copy_source_assets.py` reference that exact path.
-+ - **gotchas.md** — Claude API client, build/packaging/linting commands, versioning quick-map, known hardcoded assumptions (items 22-27: a small model gets a COMPACT request; Compact mode rewrites the REAL Configure rows and a new built-in tool goes into `tools.tool_gate_table()`; the self-knowledge is a switch and dev mode always has it; `build.py` erases `db.sqlite3` and wipes `dist/`), roadmap of recommended new agents, work-style preferences for AI assistants. (The dated fix log that used to live here was split out into `recent-fixes.md` — see below.)
-+-- **recent-fixes.md** — *(NOT auto-imported; consult-on-demand)* The chronological "Recent Fixes / Gotchas" log: dated "do NOT revert this / keep these surfaces aligned" contracts for ACPX, the Flow Compiler, the planner, the Exec Report pipeline, the ACP canvas, wrapped chat-agent parsing, the desktop-UI agents, `prompt.pmt`, `regen_secrets.py`, the logging filters, and more — newest first: **2026-10-03** (the static User Commentary/User Input split, automatic containment without internal scrollbars, the four-stop-sequence limit and the Self-modify switch) and **2026-10-02** (the Compact mode switch, shipped in `v1.75.0`). It was split off `gotchas.md` (and removed from the `@`-import set) so every session's auto-loaded context stays lean. **Read it before modifying or reverting code in any of those subsystems**, and prepend new fix entries there.
-++- **recent-fixes.md** — *(NOT auto-imported; consult-on-demand)* The chronological "Recent Fixes / Gotchas" log: dated "do NOT revert this / keep these surfaces aligned" contracts for ACPX, the Flow Compiler, the planner, the Exec Report pipeline, the ACP canvas, wrapped chat-agent parsing, the desktop-UI agents, `prompt.pmt`, `regen_secrets.py`, the logging filters, and more — newest first: **2026-10-04** (graphical rich-text commentary redesign) and **2026-10-03** (the static User Commentary/User Input split, automatic containment without internal scrollbars, the four-stop-sequence limit and the Self-modify switch) and **2026-10-02** (the Compact mode switch, shipped in `v1.75.0`). It was split off `gotchas.md` (and removed from the `@`-import set) so every session's auto-loaded context stays lean. **Read it before modifying or reverting code in any of those subsystems**, and prepend new fix entries there.
-+ - **`docs/external_mcp_bulletproof_architecture.md`** — *(NOT in this directory; NOT auto-imported; consult-on-demand)* The original design contract for the **External MCPs** universal client: 4 transports, lazy background connect, negative cache, and "never crash / never hang the chat build" invariants. Read it with `mcp-tools.md` and the 2026-08-15 section of `recent-fixes.md`, which extend the design to 10 supervisors, private runtimes, default seeding/tombstones, and public/private catalog separation.
-+ 
-+ - **[PPTXer styles and visibility](../../Tlamatini/agent/agents/pptxer/STYLES.md)** — Canonical guide for 36 named treatments, the 12 explicit styles, 17 font pairings, complete-text pagination, native audit interpretation, dated verification scope, reproduction commands, and disposable output cleanup.
-+--- a/.claude/skills/tlamatini-self-update-inclusion/SKILL.md
-++++ b/.claude/skills/tlamatini-self-update-inclusion/SKILL.md
-+@@ -349,17 +349,17 @@
-+ 
-+ The Prompt Flow Panel executes inside the frozen **web process** (`routing.py` imports its consumer), so the carried Python cannot satisfy it. `build.py::_FROZEN_PROMPT_FLOW_PANEL_MODULES` hidden-imports AND frozen-requires `agent.prompt_flow_panel_consumer`, `agent.prompt_flow_panel_runtime`, `agent.services.prompt_flow_panel` and `agent.management.commands.check_prompt_flow_panel`, and the build runs `check_prompt_flow_panel` inside the freshly frozen app right after `check_agent_runtimes` — a failure aborts packaging. `build_runtime_assets.py` must keep `agent/css/prompt_flow_panel.css`, `agent/js/prompt-flow-panel-model.js` and `agent/js/prompt-flow-panel.js` in `REQUIRED_STATIC`, and the template, `docs/prompting-flow-designer.md` and `docs/examples/prompting-kickoff.fpmt` in `ROOT_SOURCES` and in the receipt floor; `build.py`'s `copy_root_sources()` carries those two docs files to `dist/manage/docs/`. They are application assets that updates REPLACE — never add them to `$Preserve`. A user's saved `.fpmt` files live wherever the user saved them and browser drafts live in browser storage, so there is no panel state to preserve.
-+ 
-+-`acp-editor-tools.js` and the reorganized menus ride the existing static/template tree carriers, but every JS/CSS/template change still needs a `STATIC_VERSION` suffix bump (currently `-prompt-commentary-input-1`). `.fpmt` must stay a TEXT extension in `rag/binary_guard.py` and a scrubbed extension in `build_complete_public_release.py`.
-++`acp-editor-tools.js` and the reorganized menus ride the existing static/template tree carriers, but every JS/CSS/template change still needs a `STATIC_VERSION` suffix bump (currently `-prompt-commentary-canvas-2`). `.fpmt` must stay a TEXT extension in `rag/binary_guard.py` and a scrubbed extension in `build_complete_public_release.py`.
-+ 
-+ ⚠️ **Carriage is only real once the files are COMMITTED.** On 2026-09-25 all 22 new files of this work (backend, frontend, tests, visible scripts, the guide and the example) were untracked. `build_runtime_assets.py` requires the guide and the example, so a release built from a clean clone or tag fails until they are committed, and a self-update can only deliver what a release contains. The source sweep walks the working tree, so it passes either way — check `git ls-files --others --exclude-standard` before trusting a CLEAN. Guard: `agent/test_prompt_flow_panel_carriage.py`.
-+ 
-+ ### Prompt Flow commentary/input refactor carriage (2026-10-03, source only)
-+ 
-+-New `.fpmt` documents are version 2: `user_input` is the existing runtime reply step with the supplied notched figure; `user_commentary` is a static speech-bubble annotation. Preserve version 1 migration, identifiers, connections, settings and cancellation behavior. Static notes have no ports/Start state and do not enter prompts, history or playback steps. Their full wrapped text and inline editors grow at the chosen width/font without internal scrollbars; saved height is a minimum. The compatible browser-draft key still ends in `.draft.v1.<user id>`.
-+-
-+-The existing backend/template/static/guide/example carriers cover these changes. Keep the frontend and backend version/validation contracts synchronized, carry the updated kickoff example (seven operations plus one note), and verify source/collected-static byte parity. `scripts/prompt_flow_commentary_visible.py` travels through the generic source snapshot walk; do not claim it is explicitly required unless the live manifest lists it. The refactor passed 61 backend/packaging tests, nine foreground Chrome checkpoints and both inclusion sweeps, with no rebuilt executable/installer. A source sweep does not establish release delivery. Current cache suffix is `-prompt-commentary-input-1`; retain the timestamp/environment expression. See `docs/prompting-flow-designer.md` and `docs/changes/2026-10-03-prompt-commentary-input.md`.
-+-
-+-Run checks only in a verified visible foreground console and explicitly headed Chrome. Stop the task-owned harness/browser/server when Angela asks; use its `Temp/prompt-commentary-visible/close.confirmed` marker and verify owned processes/listeners are gone. Do not stop unrelated user processes.
-++New `.fpmt` documents are version 2: `user_input` is the existing runtime reply step with the supplied notched figure; `user_commentary` is a static speech-bubble annotation. Preserve version 1 migration, identifiers, connections, settings and cancellation behavior. Static notes have no ports/Start state and do not enter prompts, history or playback steps. The 2026-10-04 graphical redesign removes commentary configuration dialogs and numeric dimension forms: a floating mini toolbar formats selected text or subsequent typing with mixed fonts/sizes/colors/emphasis/underline, and all borders/corners resize directly. Preserve allowlisted rich `runs` plus matching plain `text`, legacy plain-note normalization, native rich copy/paste between comments, Undo/Redo and repeated file/draft rendering equivalence. Their full wrapped text and inline editors grow at the chosen width/font without internal scrollbars; saved height is a minimum. The compatible browser-draft key still ends in `.draft.v1.<user id>`.
-++
-++The existing backend/template/static/guide/example carriers cover these changes. Keep the frontend and backend version/validation contracts synchronized, carry the updated kickoff example (seven operations plus one note), and verify source/collected-static byte parity. `scripts/prompt_flow_commentary_visible.py` travels through the generic source snapshot walk; do not claim it is explicitly required unless the live manifest lists it. The 2026-10-03 split passed 61 backend/packaging tests and nine foreground Chrome checks. Current redesign evidence is in `docs/changes/2026-10-04-commentary-graphical-redesign.md`; no executable/installer was rebuilt. A source sweep does not establish release delivery. Current cache suffix is `-prompt-commentary-canvas-2`; retain the timestamp/environment expression. See `docs/prompting-flow-designer.md` and `docs/changes/2026-10-03-prompt-commentary-input.md`.
-++
-++Run checks only in a verified visible foreground console and explicitly headed Chrome. Stop the task-owned harness/browser/server when Angela asks; use its `Temp/prompt-commentary-redesign-visible/close.confirmed` marker and verify owned processes/listeners are gone. Do not stop unrelated user processes.
-+ 
-+ ### Skill boundary, Context Governor and dossier carrier gate (2026-09-26)
-+ 
-+--- a/.claude/skills/tlamatini-self-modify-inclusion/SKILL.md
-++++ b/.claude/skills/tlamatini-self-modify-inclusion/SKILL.md
-+@@ -293,11 +293,11 @@
-+ 
-+ ### Prompt Flow commentary/input refactor carriage (2026-10-03, source only)
-+ 
-+-New `.fpmt` documents are version 2: `user_input` is the existing runtime reply step with the supplied notched figure; `user_commentary` is a static speech-bubble annotation. Preserve version 1 migration, identifiers, connections, settings and cancellation behavior. Static notes have no ports/Start state and do not enter prompts, history or playback steps. Their full wrapped text and inline editors grow at the chosen width/font without internal scrollbars; saved height is a minimum. The compatible browser-draft key still ends in `.draft.v1.<user id>`.
-+-
-+-The existing backend/template/static/guide/example carriers cover these changes. Keep the frontend and backend version/validation contracts synchronized, carry the updated kickoff example (seven operations plus one note), and verify source/collected-static byte parity. `scripts/prompt_flow_commentary_visible.py` travels through the generic source snapshot walk; do not claim it is explicitly required unless the live manifest lists it. The refactor passed 61 backend/packaging tests, nine foreground Chrome checkpoints and both inclusion sweeps, with no rebuilt executable/installer. A source sweep does not establish release delivery. Current cache suffix is `-prompt-commentary-input-1`; retain the timestamp/environment expression. See `docs/prompting-flow-designer.md` and `docs/changes/2026-10-03-prompt-commentary-input.md`.
-+-
-+-Run checks only in a verified visible foreground console and explicitly headed Chrome. Stop the task-owned harness/browser/server when Angela asks; use its `Temp/prompt-commentary-visible/close.confirmed` marker and verify owned processes/listeners are gone. Do not stop unrelated user processes.
-++New `.fpmt` documents are version 2: `user_input` is the existing runtime reply step with the supplied notched figure; `user_commentary` is a static speech-bubble annotation. Preserve version 1 migration, identifiers, connections, settings and cancellation behavior. Static notes have no ports/Start state and do not enter prompts, history or playback steps. The 2026-10-04 graphical redesign removes commentary configuration dialogs and numeric dimension forms: a floating mini toolbar formats selected text or subsequent typing with mixed fonts/sizes/colors/emphasis/underline, and all borders/corners resize directly. Preserve allowlisted rich `runs` plus matching plain `text`, legacy plain-note normalization, native rich copy/paste between comments, Undo/Redo and repeated file/draft rendering equivalence. Their full wrapped text and inline editors grow at the chosen width/font without internal scrollbars; saved height is a minimum. The compatible browser-draft key still ends in `.draft.v1.<user id>`.
-++
-++The existing backend/template/static/guide/example carriers cover these changes. Keep the frontend and backend version/validation contracts synchronized, carry the updated kickoff example (seven operations plus one note), and verify source/collected-static byte parity. `scripts/prompt_flow_commentary_visible.py` travels through the generic source snapshot walk; do not claim it is explicitly required unless the live manifest lists it. The 2026-10-03 split passed 61 backend/packaging tests and nine foreground Chrome checks. Current redesign evidence is in `docs/changes/2026-10-04-commentary-graphical-redesign.md`; no executable/installer was rebuilt. A source sweep does not establish release delivery. Current cache suffix is `-prompt-commentary-canvas-2`; retain the timestamp/environment expression. See `docs/prompting-flow-designer.md` and `docs/changes/2026-10-03-prompt-commentary-input.md`.
-++
-++Run checks only in a verified visible foreground console and explicitly headed Chrome. Stop the task-owned harness/browser/server when Angela asks; use its `Temp/prompt-commentary-redesign-visible/close.confirmed` marker and verify owned processes/listeners are gone. Do not stop unrelated user processes.
-+ 
-+ ### Skill boundary, Context Governor and dossier snapshot gate (2026-09-26)
-+ 
-+--- a/.claude/skills/tlamatini-daily-chat-test/SKILL.md
-++++ b/.claude/skills/tlamatini-daily-chat-test/SKILL.md
-+@@ -206,7 +206,7 @@
-+ 
-+ When the touched surface is relevant, include visible cases for: Mover/Deleter empty, relative, legacy `C:/Temp/...`, and explicit absolute destinations; long-operation menu disable/restore (since 2026-09-25: **Panels** stays usable while Open/Save/Context/ACPX-Skills/External/Config/DB/Reconnect lock, and all of them re-arm after completion, Reconnect, Clean History, Cancel and a dropped socket; wait on `#config-menu-button` / `#panels-menu-button` — `#mcps-menu-button`, `#agents-menu-button` and `#admin-menu-button` no longer exist, and **Configure MCPs / Configure Agents** now open from **Config**); the Agentic Control Panel editor toolbar (undo/redo, configure, duplicate-with-settings, delete, zoom/fit, agent search, locked while a flow runs); the Prompt Flow Panel (`.fpmt` open/save/draft, a `.pmt` refused, validate/play/pause/stop, User Input replies and a reply dialog's Cancel stopping the run); dialog dismissal (**Escape must close every dialog with the same meaning as its ✕ / Cancel; an outside click must still NOT dismiss; a sealed updater must refuse Escape and Ctrl+F4/F5 while downloading**), ✕/Cancel/Continue behavior, and that no native `alert()`/`confirm()` appears over a themed dialog; safe update release-note rendering; and per-user/request/stream/line log attribution. A movement test must prove Deleter scope was not widened.
-+ 
-+-For the 2026-10-03 Prompt Flow refactor, also cover multiple static User Commentary bubbles: native double-click/Enter inline editing, Done/Ctrl+Enter versus Cancel/Escape, literal text/template tokens, palette/font controls, full long-paragraph containment without internal scrollbars during typing/font/width changes, zoom-aware resize and Undo/Redo, file/draft recovery, no ports/Start/runtime effects, and version 1 executable-commentary migration to User Input. The focused `scripts/prompt_flow_commentary_visible.py` has nine foreground Chrome checkpoints; launch it visibly with explicit `headless=False`. When Angela asks to stop it, create `Temp/prompt-commentary-visible/close.confirmed` and verify its owned browser/server/processes and test listeners are gone. Leave unrelated user applications running.
-++For the 2026-10-04 graphical Prompt Flow redesign, verify multiple static commentaries entirely on the canvas: no configuration dialog or dimension inputs; floating toolbar; selected ranges with mixed fonts/sizes/colors/bold/italic/underline; styled caret typing; copy/paste between rich comments; all eight edges/corners and keyboard resizing; editor and flow Undo/Redo; long text containment without scrollbars; three real `.fpmt` save/open cycles with identical rendered line boxes and styles, plus draft recovery. Preserve User Input replies/cancellation and version 1 migration. Launch `scripts/prompt_flow_commentary_visible.py` in a verified visible foreground console with explicit `headless=False` Chrome. See the dated change record for current results. Stop only owned processes through `Temp/prompt-commentary-redesign-visible/close.confirmed`, verify cleanup, and preserve unrelated user applications.
-+ 
-+ ## v1.48.14 release-target regression set
-+ 
-+--- a/.gemini/skills/tlamatini-self-update-inclusion/SKILL.md
-++++ b/.gemini/skills/tlamatini-self-update-inclusion/SKILL.md
-+@@ -349,17 +349,17 @@
-+ 
-+ The Prompt Flow Panel executes inside the frozen **web process** (`routing.py` imports its consumer), so the carried Python cannot satisfy it. `build.py::_FROZEN_PROMPT_FLOW_PANEL_MODULES` hidden-imports AND frozen-requires `agent.prompt_flow_panel_consumer`, `agent.prompt_flow_panel_runtime`, `agent.services.prompt_flow_panel` and `agent.management.commands.check_prompt_flow_panel`, and the build runs `check_prompt_flow_panel` inside the freshly frozen app right after `check_agent_runtimes` — a failure aborts packaging. `build_runtime_assets.py` must keep `agent/css/prompt_flow_panel.css`, `agent/js/prompt-flow-panel-model.js` and `agent/js/prompt-flow-panel.js` in `REQUIRED_STATIC`, and the template, `docs/prompting-flow-designer.md` and `docs/examples/prompting-kickoff.fpmt` in `ROOT_SOURCES` and in the receipt floor; `build.py`'s `copy_root_sources()` carries those two docs files to `dist/manage/docs/`. They are application assets that updates REPLACE — never add them to `$Preserve`. A user's saved `.fpmt` files live wherever the user saved them and browser drafts live in browser storage, so there is no panel state to preserve.
-+ 
-+-`acp-editor-tools.js` and the reorganized menus ride the existing static/template tree carriers, but every JS/CSS/template change still needs a `STATIC_VERSION` suffix bump (currently `-prompt-commentary-input-1`). `.fpmt` must stay a TEXT extension in `rag/binary_guard.py` and a scrubbed extension in `build_complete_public_release.py`.
-++`acp-editor-tools.js` and the reorganized menus ride the existing static/template tree carriers, but every JS/CSS/template change still needs a `STATIC_VERSION` suffix bump (currently `-prompt-commentary-canvas-2`). `.fpmt` must stay a TEXT extension in `rag/binary_guard.py` and a scrubbed extension in `build_complete_public_release.py`.
-+ 
-+ ⚠️ **Carriage is only real once the files are COMMITTED.** On 2026-09-25 all 22 new files of this work (backend, frontend, tests, visible scripts, the guide and the example) were untracked. `build_runtime_assets.py` requires the guide and the example, so a release built from a clean clone or tag fails until they are committed, and a self-update can only deliver what a release contains. The source sweep walks the working tree, so it passes either way — check `git ls-files --others --exclude-standard` before trusting a CLEAN. Guard: `agent/test_prompt_flow_panel_carriage.py`.
-+ 
-+ ### Prompt Flow commentary/input refactor carriage (2026-10-03, source only)
-+ 
-+-New `.fpmt` documents are version 2: `user_input` is the existing runtime reply step with the supplied notched figure; `user_commentary` is a static speech-bubble annotation. Preserve version 1 migration, identifiers, connections, settings and cancellation behavior. Static notes have no ports/Start state and do not enter prompts, history or playback steps. Their full wrapped text and inline editors grow at the chosen width/font without internal scrollbars; saved height is a minimum. The compatible browser-draft key still ends in `.draft.v1.<user id>`.
-+-
-+-The existing backend/template/static/guide/example carriers cover these changes. Keep the frontend and backend version/validation contracts synchronized, carry the updated kickoff example (seven operations plus one note), and verify source/collected-static byte parity. `scripts/prompt_flow_commentary_visible.py` travels through the generic source snapshot walk; do not claim it is explicitly required unless the live manifest lists it. The refactor passed 61 backend/packaging tests, nine foreground Chrome checkpoints and both inclusion sweeps, with no rebuilt executable/installer. A source sweep does not establish release delivery. Current cache suffix is `-prompt-commentary-input-1`; retain the timestamp/environment expression. See `docs/prompting-flow-designer.md` and `docs/changes/2026-10-03-prompt-commentary-input.md`.
-+-
-+-Run checks only in a verified visible foreground console and explicitly headed Chrome. Stop the task-owned harness/browser/server when Angela asks; use its `Temp/prompt-commentary-visible/close.confirmed` marker and verify owned processes/listeners are gone. Do not stop unrelated user processes.
-++New `.fpmt` documents are version 2: `user_input` is the existing runtime reply step with the supplied notched figure; `user_commentary` is a static speech-bubble annotation. Preserve version 1 migration, identifiers, connections, settings and cancellation behavior. Static notes have no ports/Start state and do not enter prompts, history or playback steps. The 2026-10-04 graphical redesign removes commentary configuration dialogs and numeric dimension forms: a floating mini toolbar formats selected text or subsequent typing with mixed fonts/sizes/colors/emphasis/underline, and all borders/corners resize directly. Preserve allowlisted rich `runs` plus matching plain `text`, legacy plain-note normalization, native rich copy/paste between comments, Undo/Redo and repeated file/draft rendering equivalence. Their full wrapped text and inline editors grow at the chosen width/font without internal scrollbars; saved height is a minimum. The compatible browser-draft key still ends in `.draft.v1.<user id>`.
-++
-++The existing backend/template/static/guide/example carriers cover these changes. Keep the frontend and backend version/validation contracts synchronized, carry the updated kickoff example (seven operations plus one note), and verify source/collected-static byte parity. `scripts/prompt_flow_commentary_visible.py` travels through the generic source snapshot walk; do not claim it is explicitly required unless the live manifest lists it. The 2026-10-03 split passed 61 backend/packaging tests and nine foreground Chrome checks. Current redesign evidence is in `docs/changes/2026-10-04-commentary-graphical-redesign.md`; no executable/installer was rebuilt. A source sweep does not establish release delivery. Current cache suffix is `-prompt-commentary-canvas-2`; retain the timestamp/environment expression. See `docs/prompting-flow-designer.md` and `docs/changes/2026-10-03-prompt-commentary-input.md`.
-++
-++Run checks only in a verified visible foreground console and explicitly headed Chrome. Stop the task-owned harness/browser/server when Angela asks; use its `Temp/prompt-commentary-redesign-visible/close.confirmed` marker and verify owned processes/listeners are gone. Do not stop unrelated user processes.
-+ 
-+ ### Skill boundary, Context Governor and dossier carrier gate (2026-09-26)
-+ 
-+--- a/.gemini/skills/tlamatini-self-modify-inclusion/SKILL.md
-++++ b/.gemini/skills/tlamatini-self-modify-inclusion/SKILL.md
-+@@ -293,11 +293,11 @@
-+ 
-+ ### Prompt Flow commentary/input refactor carriage (2026-10-03, source only)
-+ 
-+-New `.fpmt` documents are version 2: `user_input` is the existing runtime reply step with the supplied notched figure; `user_commentary` is a static speech-bubble annotation. Preserve version 1 migration, identifiers, connections, settings and cancellation behavior. Static notes have no ports/Start state and do not enter prompts, history or playback steps. Their full wrapped text and inline editors grow at the chosen width/font without internal scrollbars; saved height is a minimum. The compatible browser-draft key still ends in `.draft.v1.<user id>`.
-+-
-+-The existing backend/template/static/guide/example carriers cover these changes. Keep the frontend and backend version/validation contracts synchronized, carry the updated kickoff example (seven operations plus one note), and verify source/collected-static byte parity. `scripts/prompt_flow_commentary_visible.py` travels through the generic source snapshot walk; do not claim it is explicitly required unless the live manifest lists it. The refactor passed 61 backend/packaging tests, nine foreground Chrome checkpoints and both inclusion sweeps, with no rebuilt executable/installer. A source sweep does not establish release delivery. Current cache suffix is `-prompt-commentary-input-1`; retain the timestamp/environment expression. See `docs/prompting-flow-designer.md` and `docs/changes/2026-10-03-prompt-commentary-input.md`.
-+-
-+-Run checks only in a verified visible foreground console and explicitly headed Chrome. Stop the task-owned harness/browser/server when Angela asks; use its `Temp/prompt-commentary-visible/close.confirmed` marker and verify owned processes/listeners are gone. Do not stop unrelated user processes.
-++New `.fpmt` documents are version 2: `user_input` is the existing runtime reply step with the supplied notched figure; `user_commentary` is a static speech-bubble annotation. Preserve version 1 migration, identifiers, connections, settings and cancellation behavior. Static notes have no ports/Start state and do not enter prompts, history or playback steps. The 2026-10-04 graphical redesign removes commentary configuration dialogs and numeric dimension forms: a floating mini toolbar formats selected text or subsequent typing with mixed fonts/sizes/colors/emphasis/underline, and all borders/corners resize directly. Preserve allowlisted rich `runs` plus matching plain `text`, legacy plain-note normalization, native rich copy/paste between comments, Undo/Redo and repeated file/draft rendering equivalence. Their full wrapped text and inline editors grow at the chosen width/font without internal scrollbars; saved height is a minimum. The compatible browser-draft key still ends in `.draft.v1.<user id>`.
-++
-++The existing backend/template/static/guide/example carriers cover these changes. Keep the frontend and backend version/validation contracts synchronized, carry the updated kickoff example (seven operations plus one note), and verify source/collected-static byte parity. `scripts/prompt_flow_commentary_visible.py` travels through the generic source snapshot walk; do not claim it is explicitly required unless the live manifest lists it. The 2026-10-03 split passed 61 backend/packaging tests and nine foreground Chrome checks. Current redesign evidence is in `docs/changes/2026-10-04-commentary-graphical-redesign.md`; no executable/installer was rebuilt. A source sweep does not establish release delivery. Current cache suffix is `-prompt-commentary-canvas-2`; retain the timestamp/environment expression. See `docs/prompting-flow-designer.md` and `docs/changes/2026-10-03-prompt-commentary-input.md`.
-++
-++Run checks only in a verified visible foreground console and explicitly headed Chrome. Stop the task-owned harness/browser/server when Angela asks; use its `Temp/prompt-commentary-redesign-visible/close.confirmed` marker and verify owned processes/listeners are gone. Do not stop unrelated user processes.
-+ 
-+ ### Skill boundary, Context Governor and dossier snapshot gate (2026-09-26)
-+ 
-+--- a/.gemini/skills/tlamatini-daily-chat-test/SKILL.md
-++++ b/.gemini/skills/tlamatini-daily-chat-test/SKILL.md
-+@@ -206,7 +206,7 @@
-+ 
-+ When the touched surface is relevant, include visible cases for: Mover/Deleter empty, relative, legacy `C:/Temp/...`, and explicit absolute destinations; long-operation menu disable/restore (since 2026-09-25: **Panels** stays usable while Open/Save/Context/ACPX-Skills/External/Config/DB/Reconnect lock, and all of them re-arm after completion, Reconnect, Clean History, Cancel and a dropped socket; wait on `#config-menu-button` / `#panels-menu-button` — `#mcps-menu-button`, `#agents-menu-button` and `#admin-menu-button` no longer exist, and **Configure MCPs / Configure Agents** now open from **Config**); the Agentic Control Panel editor toolbar (undo/redo, configure, duplicate-with-settings, delete, zoom/fit, agent search, locked while a flow runs); the Prompt Flow Panel (`.fpmt` open/save/draft, a `.pmt` refused, validate/play/pause/stop, User Input replies and a reply dialog's Cancel stopping the run); dialog dismissal (**Escape must close every dialog with the same meaning as its ✕ / Cancel; an outside click must still NOT dismiss; a sealed updater must refuse Escape and Ctrl+F4/F5 while downloading**), ✕/Cancel/Continue behavior, and that no native `alert()`/`confirm()` appears over a themed dialog; safe update release-note rendering; and per-user/request/stream/line log attribution. A movement test must prove Deleter scope was not widened.
-+ 
-+-For the 2026-10-03 Prompt Flow refactor, also cover multiple static User Commentary bubbles: native double-click/Enter inline editing, Done/Ctrl+Enter versus Cancel/Escape, literal text/template tokens, palette/font controls, full long-paragraph containment without internal scrollbars during typing/font/width changes, zoom-aware resize and Undo/Redo, file/draft recovery, no ports/Start/runtime effects, and version 1 executable-commentary migration to User Input. The focused `scripts/prompt_flow_commentary_visible.py` has nine foreground Chrome checkpoints; launch it visibly with explicit `headless=False`. When Angela asks to stop it, create `Temp/prompt-commentary-visible/close.confirmed` and verify its owned browser/server/processes and test listeners are gone. Leave unrelated user applications running.
-++For the 2026-10-04 graphical Prompt Flow redesign, verify multiple static commentaries entirely on the canvas: no configuration dialog or dimension inputs; floating toolbar; selected ranges with mixed fonts/sizes/colors/bold/italic/underline; styled caret typing; copy/paste between rich comments; all eight edges/corners and keyboard resizing; editor and flow Undo/Redo; long text containment without scrollbars; three real `.fpmt` save/open cycles with identical rendered line boxes and styles, plus draft recovery. Preserve User Input replies/cancellation and version 1 migration. Launch `scripts/prompt_flow_commentary_visible.py` in a verified visible foreground console with explicit `headless=False` Chrome. See the dated change record for current results. Stop only owned processes through `Temp/prompt-commentary-redesign-visible/close.confirmed`, verify cleanup, and preserve unrelated user applications.
-+ 
-+ ## v1.48.14 release-target regression set
-+ 
-+--- a/Tlamatini/agent/skills_pkg/tlamatini_static_version_bumper/SKILL.md
-++++ b/Tlamatini/agent/skills_pkg/tlamatini_static_version_bumper/SKILL.md
-+@@ -52,7 +52,7 @@
-+ `Tlamatini/tlamatini/settings.py` computes it at import time:
-+ 
-+ ```python
-+-STATIC_VERSION = (os.environ.get('STATIC_VERSION') or str(int(time.time()))) + '-prompt-commentary-input-1'
-++STATIC_VERSION = (os.environ.get('STATIC_VERSION') or str(int(time.time()))) + '-prompt-commentary-canvas-2'
-+ ```
-+ 
-+ So it is **an environment override OR the process start timestamp**, plus a
-+@@ -70,7 +70,7 @@
-+ |---|---|
-+ | source dev run | **Restart the server.** The timestamp is evaluated once at import, so a running process keeps its stamp until it restarts. |
-+ | deployment with a pinned stamp | Set the `STATIC_VERSION` env var to a NEW value and restart. |
-+-| a permanent marker for one change | Edit only the **suffix** literal (e.g. `-prompt-commentary-input-1` → a new marker naming YOUR change; the value shown above was current for the 2026-10-03 commentary/input refactor — read the live one first). Keep the `os.environ.get(...) or str(int(time.time()))` head intact. |
-++| a permanent marker for one change | Edit only the **suffix** literal (e.g. `-prompt-commentary-canvas-2` → a new marker naming YOUR change; the value shown above was current for the 2026-10-04 graphical commentary redesign — read the live one first). Keep the `os.environ.get(...) or str(int(time.time()))` head intact. |
-+ 
-+ ## Procedure
-+ 
-+--- a/docs/claude/recent-fixes.md
-++++ b/docs/claude/recent-fixes.md
-+@@ -15,6 +15,12 @@
-+ > **When to add to it**: when you land a non-obvious fix whose intent a future assistant could accidentally undo. Prepend new entries at the top of the list, dated, in the same style as the existing bullets.
-+ 
-+ ---
-++
-++## 2026-10-04 — Graphical rich-text User Commentary
-++
-++User Commentary now has **no configuration dialog**: all writing and formatting happens in its speech bubble and floating mini toolbar. Selected passages retain distinct fonts, sizes, colors, bold, italic and underline; a collapsed caret styles subsequent typing. Rich copy/cut/paste between comments preserves runs; external text stays literal. Any of eight borders/corners resizes directly, including while editing, with keyboard support. Done/Ctrl+Enter commits the complete edit, Escape/Cancel restores it, and editor plus diagram Undo/Redo preserve styles and geometry. The text grows without internal scrollbars, using the actual mixed-font layout.
-++
-++Version 2 gains allowlisted `runs` whose text must concatenate exactly to `config.text`; older plain v2 notes normalize to one run. The v1 User Input migration and runtime protocol remain unchanged. Static comments never execute. Source cache suffix is `-prompt-commentary-canvas-2`. See [implementation and verification](../changes/2026-10-04-commentary-graphical-redesign.md). The historical 2026-10-03 Configure workflow below is superseded. No executable/installer rebuild or Git commit was made for this change.
-+ 
-+ ## 2026-10-03 — Full source/Markdown sweep, the dossier refreshed, and two traps in the visible Prompt Flow harness
-+ 
-+--- a/docs/examples/prompting-kickoff.fpmt
-++++ b/docs/examples/prompting-kickoff.fpmt
-+@@ -12,7 +12,7 @@
-+     {"id": "decide", "type": "decision", "label": "Flush context?", "x": 880, "y": 320, "config": {"text": "Clear the retrieval context before ending this run?", "comparison": "user", "value": "", "case_sensitive": false}},
-+     {"id": "flush", "type": "flush_embeddings", "label": "Flush embeddings", "x": 600, "y": 320, "config": {"text": ""}},
-+     {"id": "clean", "type": "clean_history", "label": "Clean History", "x": 320, "y": 320, "config": {"text": ""}},
-+-    {"id": "review", "type": "user_commentary", "label": "Reviewer note", "x": 40, "y": 530, "config": {"text": "Review note: User Input asks for the subject during playback. This speech bubble is a static annotation: it never runs, never changes history, and needs no connection. Double-click to edit this note; Configure changes its font and color.", "width": 620, "height": 240, "color": "#fef3c7", "font_family": "Georgia", "font_size": 16, "bold": false, "italic": false, "align": "left"}}
-++    {"id":"review","type":"user_commentary","label":"Reviewer note","x":40,"y":530,"config":{"text":"A note for reviewers\nUser Input asks for the subject during playback. This speech bubble is a static annotation: it never runs, never changes history, and needs no connection.\n\nDouble-click to write. Select a phrase and use the floating toolbar to format it. Drag any border or corner to resize.","width":620,"height":240,"color":"#fef3c7","font_family":"Georgia","font_size":16,"bold":false,"italic":false,"align":"left","runs":[{"text":"A note for reviewers\n","font_family":"Verdana","font_size":28,"text_color":"#1d4ed8","bold":true,"italic":false,"underline":false},{"text":"User Input asks for the subject during playback. This speech bubble is a static annotation: it never runs, never changes history, and needs no connection.\n\n","font_family":"Georgia","font_size":16,"text_color":"#202938","bold":false,"italic":false,"underline":false},{"text":"Double-click to write. Select a phrase and use the floating toolbar to format it. Drag any border or corner to resize.","font_family":"Arial","font_size":16,"text_color":"#202938","bold":false,"italic":true,"underline":false}],"text_color":"#202938","underline":false}}
-+   ],
-+   "edges": [
-+     {"id": "subject_explain", "source": "subject", "target": "explain", "branch": "next"},
-+--- /dev/null
-++++ b/docs/changes/2026-10-04-commentary-graphical-redesign.md
-+@@ -0,0 +1,52 @@
-++<!-- Tlamatini Author Banner — Angela López Mendoza · @angelahack1 -->
-++# 2026-10-04 — Graphical rich-text User Commentary
-++
-++## User requirements, verbatim excerpts
-++
-++```text
-++Sorry, but still horrible your fucking User Commentary:
-++-It cannot be resized, directly in the borders of the figure.
-++-The user does not now the ratio of the text and the size of the bubble, so the most stupid thing: let the user write the width and height by value of pixels!! (You really are an idiot!!).
-++
-++REFACTOR COMPLETELLY THE DESIGN OF THAT STUPID MEDIOCRE "User Commentary" MAKE IT 100% AGAIN FROM SCRATCH YOU MAKE AN STUPID ENGINEER NOT LIKE A GRAPHICAL DESIGNER, GO AGAIN!
-++
-++The text controls, FONT, COLOR, ITALIC, ETC... must be like Microsoft Word like Floating tool tip controls!!, not in the fucking configuration engineer dialog STUPID DUMB!!!
-++
-++This User Commentary MUST NOT HAV A Configuration dialog it must be 100% modified graphically as a Microsoft Word Commentary or an Adobe professional commantary.
-++
-++dont make me get mad, make a beyond perfection implementation
-++
-++REMEMBER AN ELITE-LEVEL DESIGNER WOULD MAKE A CONTROL IN WHICH THE TEXT INSIDE THE SAME ASSEST CAN HAVE MULTIPLE TYPES OF STYLES!, SO WITHIN THE SAME USER COMMENTARY SOME PARTS OF THE TEXT COULD BE ITALICS OF ARIA FONT, OTHER WITH BIGGER SIZZER WITH VERDANA, ETC...
-++
-++YOU STUPID MADE ME MAD, NOW FOR THAT REASON YOU MUST CREATE A BEYOND EXTRATERRESTRIAL LEVEL GOD-LEVEL DESIGNER JOB!!!!!!!!!!!!!!!
-++
-++AND REMEMBER TO MAKE TESTS OF LOADING/WRITING .fmpt FILES THAT ALWAYS RENDER IDENTICALLY WHILE SAVING/LOADING, ETC.
-++
-++OF COURSE WITH SEVERAL COMMENTARIES EXAMPLES
-++
-++remember: don't commit!!!!!!!!!!
-++```
-++
-++## Result and contract
-++
-++Replaced the commentary form/textarea design with an inline rich-text bubble, a floating mini toolbar and direct resizing on eight edges/corners. No commentary configuration dialog or numeric width/height inputs remain. The existing Configure entry becomes Edit comment for this asset; executable operations retain their own settings dialogs. The selection outline is mint, corners/tail keep their proportions, and the shared Bootstrap placeholder class no longer paints a block over an empty note.
-++
-++Selected passages support different fonts, sizes, text colors, bold, italic and underline inside the same note. Collapsed-caret choices style the next input; formatting outside the editor applies to the full note. Bubble color and alignment apply to the note. Clipboard operations between commentary editors preserve rich runs; unrecognized/external clipboard formatting falls back to literal text. Enter, Unicode deletion, composition input, local edit Undo/Redo, whole-edit Cancel, flow Undo/Redo, keyboard resizing and resize while typing share the same saved model. Text measures at the actual mixed fonts and wraps into automatic height without internal scrollbars. Fit text resets spare minimum height.
-++
-++Version 2 keeps the existing schema identity and adds optional allowlisted `runs`: literal text with font_family, font_size, text_color, bold, italic and underline. Both validators normalize old plain version 2 notes and require concatenation to equal `config.text`, discard unknown keys, merge adjacent equal styles and reject unsupported values. Limits remain 100,000 characters, 10,000 runs per note and 5 MiB per file. Version 1 executable commentary still migrates to User Input. Static notes never enter context/history/playback and have no ports or Start state.
-++
-++Frontend/backend/template, the bundled eight-asset example, current user/developer guides, assistant contracts, memories and mirrored maintenance instructions were updated. Dated 2026-10-03 records remain historical. STATIC_VERSION retains its environment/timestamp expression with suffix `-prompt-commentary-canvas-2`. No new dependency, database migration, backup/restore modification, release rebuild, Git commit or push.
-++
-++Design references: Microsoft's [Mini toolbar](https://support.microsoft.com/en-au/word/use-the-mini-toolbar-to-format-text) and [selected-text formatting](https://support.microsoft.com/en-us/word/training/add-and-edit-text), plus Adobe's [text-box resizing and reflow](https://helpx.adobe.com/acrobat/desktop/edit-documents/edit-text-in-pdfs/adjust-text-boxes.html). These are public product interaction references, not a claim to have Microsoft Word's proprietary source code.
-++
-++## Verification
-++
-++Passed **29 diagram/runner tests**, **3 packaging carriage tests**, repository JavaScript lint/parse (zero errors; existing unrelated warnings), and **23 real foreground Chrome checkpoints**. The final browser run checks three differently styled comments through three real download/clear/open/save cycles, exact JSON equality and matching rendered line boxes/fonts/colors/geometry, plus draft reload, rich clipboard editing, editor/flow undo and Unicode deletion. Cancelled edits are excluded from draft writes even when zoom schedules persistence. The final checks also confirm that the bubble has no rectangular focus frame. Both source-carriage sweeps passed with only existing unrelated advisories; no executable/installer was built.
-++
-++The current Markdown reference audit covers all applicable active contracts (**26 updated Markdown files**); historical change records remain intact. The scoped rollback patch and changed relative links, maintenance mirrors, Python syntax and source/collected-static byte parity are checked by the visible final verification script.
-++
-++Earlier attempts are not counted as passes: Chrome closed during downloads in an old profile, and its breached-password modal blocked clicks for the reusable test credential. The harness now uses a fresh test profile and a random password for the **isolated port-8001 account only**. An overly broad unittest discovery invocation imported unrelated packages incorrectly; running the packaging regression module directly passed all three tests. The final browser run finished with no page errors. Logs, Shoter full-desktop photos, downloaded examples and rendered geometry are retained under `Temp/commentary-redesign/` and `Temp/prompt-commentary-redesign-visible/`. All workloads use verified visible foreground consoles and explicitly headed Chrome, monitored live. No live model is called by these checks.
-++
-++## Rollback
-++
-++[The adjacent patch](2026-10-04-commentary-graphical-redesign.patch) captures only this request's changes against before-copies under `Temp/commentary-redesign/before/`; it excludes unrelated local configuration edits and earlier dated patches. Inspect the exact affected blocks before reversing them. Do not reset entire files over later changes, alter Git history, or modify protected database mechanics.
-+--- a/PIVOT_CHANGES.md
-++++ b/PIVOT_CHANGES.md
-+@@ -435,3 +435,33 @@
-+ Audited all 204 repository Markdown documents, including hidden assistant contracts/skills/memories and excluding generated/build/dependency trees. Updated all applicable current Prompt Flow descriptions: seven executable operations plus static User Commentary, User Input shape and unchanged runtime replies, full-text containment without internal scrollbars, inline editing/formatting/persistence, version 2 saves and version 1 migration, compatible draft key, limits, cache suffix, source/update carriage and visible verification. Dated release/test history remains historical. The accepted source refactor is recorded separately in [the implementation pivot](docs/changes/2026-10-03-prompt-commentary-input.md).
-+ 
-+ The test harness closed its Chrome and isolated test server via `close.confirmed`; only task-owned worker/consoles were stopped. No background worker is retained, and unrelated user applications are preserved. [Documentation scope, checks and precise follow-up rollback](docs/changes/2026-10-03-prompt-flow-documentation.md). Its adjacent patch captures only this documentation follow-up, preserving prior source changes and unrelated local edits. No Git history, database backup/restore mechanics, release version or executable was changed.
-++
-++## 2026-10-04 — Graphical rich-text User Commentary
-++
-++**Verbatim user requirements:**
-++
-++```text
-++Sorry, but still horrible your fucking User Commentary:
-++-It cannot be resized, directly in the borders of the figure.
-++-The user does not now the ratio of the text and the size of the bubble, so the most stupid thing: let the user write the width and height by value of pixels!! (You really are an idiot!!).
-++
-++REFACTOR COMPLETELLY THE DESIGN OF THAT STUPID MEDIOCRE "User Commentary" MAKE IT 100% AGAIN FROM SCRATCH YOU MAKE AN STUPID ENGINEER NOT LIKE A GRAPHICAL DESIGNER, GO AGAIN!
-++
-++The text controls, FONT, COLOR, ITALIC, ETC... must be like Microsoft Word like Floating tool tip controls!!, not in the fucking configuration engineer dialog STUPID DUMB!!!
-++
-++This User Commentary MUST NOT HAV A Configuration dialog it must be 100% modified graphically as a Microsoft Word Commentary or an Adobe professional commantary.
-++
-++dont make me get mad, make a beyond perfection implementation
-++
-++REMEMBER AN ELITE-LEVEL DESIGNER WOULD MAKE A CONTROL IN WHICH THE TEXT INSIDE THE SAME ASSEST CAN HAVE MULTIPLE TYPES OF STYLES!, SO WITHIN THE SAME USER COMMENTARY SOME PARTS OF THE TEXT COULD BE ITALICS OF ARIA FONT, OTHER WITH BIGGER SIZZER WITH VERDANA, ETC...
-++
-++YOU STUPID MADE ME MAD, NOW FOR THAT REASON YOU MUST CREATE A BEYOND EXTRATERRESTRIAL LEVEL GOD-LEVEL DESIGNER JOB!!!!!!!!!!!!!!!
-++
-++AND REMEMBER TO MAKE TESTS OF LOADING/WRITING .fmpt FILES THAT ALWAYS RENDER IDENTICALLY WHILE SAVING/LOADING, ETC.
-++
-++OF COURSE WITH SEVERAL COMMENTARIES EXAMPLES
-++
-++remember: don't commit!!!!!!!!!!
-++```
-++
++--- a/Tlamatini/agent/static/agent/js/prompt-flow-panel.js
+
+++++ b/Tlamatini/agent/static/agent/js/prompt-flow-panel.js
+
++@@ -53,7 +53,7 @@
+
++     function persist() {
+
++         clearTimeout(draftTimer);
+
++         draftTimer = setTimeout(() => {
+
++-            try { localStorage.setItem(storeKey, JSON.stringify({ flow, filename, zoom })); }
+
+++            try { localStorage.setItem(storeKey, JSON.stringify({ flow: commentEditor ? JSON.parse(commentEditor.before) : flow, filename, zoom })); }
+
++             catch (error) { status(`Draft could not be stored in this browser. Save a .fpmt file: ${error.message}`); }
+
++         }, 250);
+
++     }
+
++@@ -112,7 +112,7 @@
+
++         if (!selected.has(node.id)) { resetSelection(); selected.add(node.id); paintSelection(); }
+
++         const menu = $id('agent-context-menu');
+
++         menu.replaceChildren();
+
++-        for (const [icon, label, command] of [['⚙️', 'Configure', () => configureNode(node)], ['ℹ️', 'Description', () => alertMessage(M.operations[node.type].help, node.label)], ['▣', 'Duplicate', duplicate], ['⌫', 'Delete', deleteSelection]]) {
+
+++        for (const [icon, label, command] of [[M.isComment(node) ? '✎' : '⚙️', M.isComment(node) ? 'Edit comment' : 'Configure', () => configureNode(node)], ['ℹ️', 'Description', () => alertMessage(M.operations[node.type].help, node.label)], ['▣', 'Duplicate', duplicate], ['⌫', 'Delete', deleteSelection]]) {
+
++             const item = element('div', 'context-menu-item');
+
++             const disabled = label !== 'Description' && !editable();
+
++             item.classList.toggle('context-menu-item-disabled', disabled);
+
++@@ -124,9 +124,9 @@
+
++     }
+
++     document.addEventListener('click', event => { if (!event.target.closest('#agent-context-menu')) $id('agent-context-menu').style.display = 'none'; });
+
++     document.addEventListener('keydown', event => { if (event.key === 'Escape') $id('agent-context-menu').style.display = 'none'; });
+
++-    viewport.addEventListener('scroll', () => { $id('agent-context-menu').style.display = 'none'; });
+
+++    viewport.addEventListener('scroll', () => { $id('agent-context-menu').style.display = 'none'; positionCommentTools(); });
+
++     function nodeKey(event, node) {
+
++-        if (event.target.closest('.pmt-port')) return;
+
+++        if (event.target.closest('.pmt-port, .pmt-comment-handle, button, textarea')) return;
+
++         if (event.key === 'Enter') configureSelectedNode(node, event);
+
++     }
+
++     function renderEdges() {
+
++@@ -144,73 +144,427 @@
+
++         }
+
++         if (connection.active) layer.append(connection.active.data.preview);
+
++     }
+
+++    // Notes are edited on the canvas. Their controls never cover the text.
+
+++    let commentToolbar = null, commentToolbarKey = '';
+
+++    function commentElement(node) { return [...nodesLayer.children].find(el => el.dataset.nodeId === node.id); }
+
+++    function commentTypography(text, config) {
+
+++        Object.assign(text.style, { fontFamily: config.font_family, fontSize: `${config.font_size}px`, fontWeight: config.bold ? '700' : '400', fontStyle: config.italic ? 'italic' : 'normal', textAlign: config.align || '', color: config.text_color || '#202938', textDecoration: config.underline ? 'underline' : 'none' });
+
+++    }
+
+++    function paintCommentText(text, config, editing = false) {
+
+++        text.replaceChildren();
+
+++        M.commentRuns(config).forEach((run, index) => {
+
+++            const span = element('span', '', run.text); span.dataset.commentRun = index;
+
+++            commentTypography(span, run); text.append(span);
+
+++        });
+
+++        if (editing && (!config.text || config.text.endsWith('\n'))) text.append(document.createElement('br'));
+
+++        if (!editing && !config.text) text.textContent = 'Write a note…';
+
+++    }
+
+++    function commentSelection() {
+
+++        const editor = commentEditor, selection = window.getSelection();
+
+++        if (!editor || !selection.rangeCount) return editor?.selection;
+
+++        const range = selection.getRangeAt(0);
+
+++        if (!editor.input.contains(range.startContainer) || !editor.input.contains(range.endContainer)) return editor.selection;
+
+++        const offset = (container, end) => {
+
+++            const prefix = document.createRange(); prefix.selectNodeContents(editor.input); prefix.setEnd(container, end); return prefix.toString().length;
+
+++        };
+
+++        const next = { start: offset(range.startContainer, range.startOffset), end: offset(range.endContainer, range.endOffset) };
+
+++        if (next.start !== editor.selection.start || next.end !== editor.selection.end) editor.typingStyle = null;
+
+++        editor.selection = next;
+
+++        return next;
+
+++    }
+
+++    function restoreCommentSelection() {
+
+++        const editor = commentEditor;
+
+++        if (!editor) return;
+
+++        const point = offset => {
+
+++            const walker = document.createTreeWalker(editor.input, NodeFilter.SHOW_TEXT);
+
+++            let text, last;
+
+++            while ((text = walker.nextNode())) {
+
+++                last = text;
+
+++                if (offset <= text.length) return [text, offset];
+
+++                offset -= text.length;
+
+++            }
+
+++            return last ? [last, last.length] : [editor.input, 0];
+
+++        };
+
+++        const range = document.createRange();
+
+++        range.setStart(...point(editor.selection.start)); range.setEnd(...point(editor.selection.end));
+
+++        const selection = window.getSelection(); selection.removeAllRanges(); selection.addRange(range);
+
+++    }
+
+++    function selectedCommentStyle() {
+
+++        const c = currentComment()?.config;
+
+++        if (!c) return {};
+
+++        const editor = commentEditor;
+
+++        if (editor?.typingStyle && editor.selection.start === editor.selection.end) return editor.typingStyle;
+
+++        const { start, end } = editor?.selection || { start: 0, end: c.text.length };
+
+++        const runs = M.sliceCommentRuns(M.commentRuns(c), start === end ? Math.max(0, start - 1) : start, start === end ? Math.max(1, end) : end);
+
+++        if (!runs.length) return M.commentStyle(c);
+
+++        return Object.fromEntries(M.commentStyleKeys.map(key => [key, runs.every(run => run[key] === runs[0][key]) ? runs[0][key] : null]));
+
+++    }
+
+++    function editorState() {
+
+++        return { x: commentEditor.node.x, y: commentEditor.node.y, config: M.copy(commentEditor.node.config), selection: { ...commentEditor.selection }, typingStyle: commentEditor.typingStyle && { ...commentEditor.typingStyle } };
+
+++    }
+
+++    function rememberCommentEdit() {
+
+++        const editor = commentEditor; editor.undo.push(editorState());
+
+++        if (editor.undo.length > 100) editor.undo.shift();
+
+++        editor.redo = [];
+
+++    }
+
+++    function replayCommentEdit(backwards) {
+
+++        const editor = commentEditor, source = backwards ? editor.undo : editor.redo, target = backwards ? editor.redo : editor.undo;
+
+++        if (!source.length) return;
+
+++        target.push(editorState()); const saved = source.pop();
+
+++        editor.node.config = saved.config; editor.node.x = saved.x; editor.node.y = saved.y; editor.selection = saved.selection; editor.typingStyle = saved.typingStyle;
+
+++        repaintCommentEditor();
+
+++    }
+
+++    function repaintCommentEditor() {
+
+++        const editor = commentEditor;
+
+++        paintCommentText(editor.input, editor.node.config, true);
+
+++        editor.renderedRuns = M.copy(M.commentRuns(editor.node.config));
+
+++        refreshComment(editor.node); restoreCommentSelection(); syncCommentTools();
+
+++    }
+
+++    function formatCommentText(patch) {
+
+++        const node = currentComment(); if (!node || playbackActive()) return;
+
+++        const c = node.config, editor = commentEditor;
+
+++        if (editor) commentSelection();
+
+++        const { start, end } = editor?.selection || { start: 0, end: c.text.length };
+
+++        const apply = () => {
+
+++            if (start === end && editor) {
+
+++                editor.typingStyle = { ...selectedCommentStyle(), ...patch };
+
+++                if (!c.text) Object.assign(c, patch);
+
+++            } else {
+
+++                const replacement = M.sliceCommentRuns(M.commentRuns(c), start, end).map(run => ({ ...run, ...patch }));
+
+++                const candidate = M.copy(c); M.replaceCommentRange(candidate, start, end, replacement);
+
+++                if (candidate.runs.length > 10000) { status('This comment has reached its formatting limit.'); return; }
+
+++                c.runs = candidate.runs; c.text = candidate.text;
+
+++                if (start === 0 && end === c.text.length) Object.assign(c, patch);
+
+++                if (editor) editor.typingStyle = null;
+
+++            }
+
+++        };
+
+++        if (editor) { rememberCommentEdit(); apply(); repaintCommentEditor(); editor.input.focus({ preventScroll: true }); restoreCommentSelection(); }
+
+++        else mutate(() => { apply(); if (!c.text) Object.assign(c, patch); });
+
+++    }
+
+++    function insertCommentText(text, range = commentSelection(), formatted = null) {
+
+++        const editor = commentEditor, c = editor.node.config;
+
+++        text = text.replace(/\r\n?/g, '\n');
+
+++        if (c.text.length - (range.end - range.start) + text.length > 100000) { status('A comment can contain up to 100,000 characters.'); return; }
+
+++        const style = editor.typingStyle || M.commentStyle(M.sliceCommentRuns(M.commentRuns(c), range.start, range.start + 1)[0] || c);
+
+++        const candidate = M.copy(c);
+
+++        M.replaceCommentRange(candidate, range.start, range.end, formatted || (text ? [{ text, ...style }] : []));
+
+++        if (candidate.runs.length > 10000) { status('This comment has reached its formatting limit.'); return; }
+
+++        rememberCommentEdit(); c.text = candidate.text; c.runs = candidate.runs;
+
+++        editor.selection = { start: range.start + text.length, end: range.start + text.length };
+
+++        editor.typingStyle = style;
+
+++        repaintCommentEditor();
+
+++    }
+
+++    function commentBeforeInput(event) {
+
+++        const editor = commentEditor;
+
+++        if (editor.composing || event.isComposing) return;
+
+++        commentSelection();
+
+++        const type = event.inputType;
+
+++        if (type === 'historyUndo' || type === 'historyRedo') { event.preventDefault(); replayCommentEdit(type === 'historyUndo'); return; }
+
+++        if (['formatBold', 'formatItalic', 'formatUnderline'].includes(type)) {
+
+++            event.preventDefault(); const key = type.slice(6).toLowerCase(); formatCommentText({ [key]: !selectedCommentStyle()[key] }); return;
+
+++        }
+
+++        if (['insertText', 'insertParagraph', 'insertLineBreak'].includes(type)) {
+
+++            event.preventDefault(); insertCommentText(type === 'insertParagraph' || type === 'insertLineBreak' ? '\n' : event.data || ''); return;
+
+++        }
+
+++        if (type.startsWith('delete')) {
+
+++            event.preventDefault(); let { start, end } = editor.selection;
+
+++            const targets = event.getTargetRanges?.();
+
+++            if (targets?.length) {
+
+++                const range = targets[0], prefix = document.createRange(); prefix.selectNodeContents(editor.input);
+
+++                prefix.setEnd(range.startContainer, range.startOffset); start = prefix.toString().length;
+
+++                prefix.setEnd(range.endContainer, range.endOffset); end = prefix.toString().length;
+
+++            } else if (start === end) {
+
+++                const boundaries = [...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(editor.node.config.text)].map(part => part.index);
+
+++                boundaries.push(editor.node.config.text.length);
+
+++                if (type.includes('Backward')) start = boundaries.filter(index => index < start).pop() ?? 0;
+
+++                else end = boundaries.find(index => index > end) ?? end;
+
+++            }
+
+++            if (start !== end) insertCommentText('', { start, end });
+
+++        }
+
+++    }
+
+++    function readNativeCommentEdit() {
+
+++        const editor = commentEditor;
+
+++        if (!editor || editor.composing) return;
+
+++        commentSelection();
+
+++        const runs = [], walker = document.createTreeWalker(editor.input, NodeFilter.SHOW_TEXT);
+
+++        let text;
+
+++        while ((text = walker.nextNode())) {
+
+++            const index = text.parentElement.closest('[data-comment-run]')?.dataset.commentRun;
+
+++            runs.push({ text: text.data, ...M.commentStyle(editor.renderedRuns[index] || editor.node.config) });
+
+++        }
+
+++        const value = runs.map(run => run.text).join('');
+
+++        if (value.length > 100000) { repaintCommentEditor(); status('A comment can contain up to 100,000 characters.'); return; }
+
+++        rememberCommentEdit(); editor.node.config.text = value; editor.node.config.runs = M.mergeCommentRuns(runs);
+
+++        repaintCommentEditor();
+
+++    }
+
+++    document.addEventListener('selectionchange', () => {
+
+++        if (!commentEditor || commentEditor.composing) return;
+
+++        commentSelection(); syncCommentTools();
+
+++    });
+
++     function fitCommentary(el, node, text) {
+
++-        const width = node.config.width;
+
++-        // Measure natural wrapped text at the chosen width, independently of zoom.
+
++-        // Height is a minimum chosen by the user; content always fits in the bubble.
+
++-        text.style.bottom = 'auto';
+
++-        if (text.tagName === 'TEXTAREA') text.style.height = '0px';
+
++-        const height = Math.max(node.config.height, Math.ceil(text.scrollHeight) + 76);
+
++-        text.style.bottom = '';
+
++-        if (text.tagName === 'TEXTAREA') text.style.height = '';
+
++-        commentarySizes.set(node, { width, height });
+
++-        el.style.width = `${width}px`; el.style.height = `${height}px`;
+
++-        const graphic = el.querySelector('svg');
+
+++        // Measure in document coordinates, so changing zoom never changes wrapping.
+
+++        el.style.width = `${node.config.width}px`;
+
+++        commentTypography(text, node.config); text.style.textDecoration = 'none';
+
+++        text.style.height = '0px';
+
+++        const textHeight = Math.ceil(text.scrollHeight);
+
+++        const height = Math.max(node.config.height, textHeight + 82);
+
+++        text.style.height = `${height - 82}px`;
+
+++        commentarySizes.set(node, { width: node.config.width, height });
+
+++        el.style.height = `${height}px`;
+
+++        el.style.setProperty('--comment-color', node.config.color);
+
+++        const width = node.config.width, bottom = height - 18, graphic = el.querySelector('svg');
+
++         graphic.setAttribute('viewBox', `0 0 ${width} ${height}`);
+
++         graphic.style.setProperty('--pmt-fill', node.config.color);
+
++-        graphic.style.setProperty('--pmt-color', '#946780');
+
++-        graphic.querySelector('path').setAttribute('d', `M28 10H${width - 28}Q${width - 4} 10 ${width - 4} 34V${height - 46}Q${width - 4} ${height - 22} ${width - 28} ${height - 22}H70L48 ${height - 4}L33 ${height - 22}H28Q4 ${height - 22} 4 ${height - 46}V34Q4 10 28 10Z`);
+
+++        // Constant corner radius and tail: the drawing does not stretch with the text.
+
+++        graphic.querySelector('path').setAttribute('d', `M20 1H${width - 20}Q${width - 1} 1 ${width - 1} 20V${bottom - 19}Q${width - 1} ${bottom} ${width - 20} ${bottom}H72L53 ${height - 1}L35 ${bottom}H20Q1 ${bottom} 1 ${bottom - 19}V20Q1 1 20 1Z`);
+
+++    }
+
+++    function refreshComment(node) {
+
+++        const el = commentElement(node);
+
+++        if (!el) return;
+
+++        fitCommentary(el, node, el.querySelector('.pmt-comment-text'));
+
+++        el.style.left = `${node.x}px`; el.style.top = `${node.y}px`;
+
+++        extent();
+
+++    }
+
+++    function changeComment(node, patch) {
+
+++        if (playbackActive()) return;
+
+++        if (commentEditor?.node === node) {
+
+++            rememberCommentEdit(); Object.assign(node.config, patch); refreshComment(node); syncCommentTools();
+
+++        } else mutate(() => Object.assign(node.config, patch));
+
+++    }
+
+++    function fitCommentText(node) {
+
+++        changeComment(node, { height: 128 });
+
+++        status('Comment fitted to its text. Drag any edge or corner to reshape it.');
+
+++    }
+
+++    function resizeComment(drag, dx, dy) {
+
+++        const { node, direction, x, y, width, height, minimum } = drag;
+
+++        const east = direction.includes('e'), west = direction.includes('w');
+
+++        const north = direction.includes('n'), south = direction.includes('s');
+
+++        if (east || west) {
+
+++            node.config.width = Math.max(200, Math.min(2400, width + (west ? -dx : dx), west ? x + width : 2400));
+
+++            node.x = west ? x + width - node.config.width : x;
+
+++        }
+
+++        node.config.height = north || south ? Math.max(128, Math.min(2400, height + (north ? -dy : dy), north ? y + height : 2400)) : minimum;
+
+++        refreshComment(node);
+
+++        if (north) { node.y = Math.max(0, y + height - nodeSize(node).height); refreshComment(node); }
+
+++    }
+
+++    function beginCommentResize(event, node, direction) {
+
+++        event.preventDefault(); event.stopPropagation();
+
+++        if (event.button !== 0 || playbackActive() || (commentEditor && commentEditor.node !== node)) return;
+
+++        endGesture();
+
+++        if (commentEditor) rememberCommentEdit();
+
+++        selected = new Set([node.id]); selectedEdges.clear(); selectedEdge = null;
+
+++        gesture = { kind: 'resize', node, direction, before: snapshot(), x: node.x, y: node.y,
+
+++            ...nodeSize(node), minimum: node.config.height, fromX: event.clientX, fromY: event.clientY, scale: zoom, pointerId: event.pointerId };
+
+++        viewport.setPointerCapture(event.pointerId);
+
+++        document.body.style.cursor = `${direction}-resize`;
+
+++        commentElement(node).classList.add('comment-resizing'); paintSelection();
+
++     }
+
++     function renderCommentary(el, node) {
+
++-        const c = node.config, width = c.width;
+
++-        el.style.width = `${width}px`;
+
++-        const text = element('div', 'pmt-comment-text', c.text || 'Double-click to write a commentary');
+
++-        text.classList.toggle('placeholder', !c.text);
+
++-        Object.assign(text.style, { fontFamily: c.font_family, fontSize: `${c.font_size}px`, fontWeight: c.bold ? '700' : '400', fontStyle: c.italic ? 'italic' : 'normal', textAlign: c.align });
+
++-        el.append(text);
+
++-        fitCommentary(el, node, text);
+
++-        const height = Math.min(2400, nodeSize(node).height);
+
++-        const resize = element('button', 'pmt-comment-resize', '↘'); resize.type = 'button';
+
++-        resize.title = 'Resize User Commentary'; resize.setAttribute('aria-label', resize.title); resize.disabled = !editable();
+
++-        resize.addEventListener('pointerdown', event => {
+
++-            event.preventDefault(); event.stopPropagation(); if (!editable() || event.button !== 0) return;
+
++-            endGesture(); selected = new Set([node.id]); selectedEdges.clear(); selectedEdge = null;
+
++-            gesture = { kind: 'resize', node, before: snapshot(), width, height, fromX: event.clientX, fromY: event.clientY, scale: zoom };
+
++-            paintSelection();
+
++-        });
+
++-        resize.addEventListener('dblclick', event => event.stopPropagation());
+
++-        el.append(resize);
+
+++        const heading = element('div', 'pmt-comment-heading');
+
+++        heading.append(element('span', 'pmt-comment-kicker', node.label === 'User Commentary' ? 'Comment' : node.label));
+
+++        const edit = element('button', 'pmt-comment-edit', 'Edit');
+
+++        edit.type = 'button'; edit.title = 'Edit comment'; edit.setAttribute('aria-label', 'Edit comment'); edit.disabled = playbackActive();
+
+++        edit.addEventListener('click', event => { event.stopPropagation(); editCommentary(node); });
+
+++        edit.addEventListener('dblclick', event => event.stopPropagation()); heading.append(edit); el.append(heading);
+
+++        const text = element('div', 'pmt-comment-text'); paintCommentText(text, node.config);
+
+++        text.classList.toggle('pmt-comment-empty', !node.config.text); el.append(text); fitCommentary(el, node, text);
+
+++        const directions = { n: 'top edge', e: 'right edge', s: 'bottom edge', w: 'left edge', nw: 'top left corner', ne: 'top right corner', sw: 'bottom left corner', se: 'bottom right corner' };
+
+++        for (const [direction, label] of Object.entries(directions)) {
+
+++            const handle = element('button', `pmt-comment-handle handle-${direction}`);
+
+++            handle.type = 'button'; handle.dataset.resize = direction; handle.disabled = playbackActive();
+
+++            handle.title = `Resize comment ${label}`; handle.setAttribute('aria-label', handle.title);
+
+++            handle.addEventListener('pointerdown', event => beginCommentResize(event, node, direction));
+
+++            handle.addEventListener('dblclick', event => { event.preventDefault(); event.stopPropagation(); fitCommentText(node); });
+
+++            handle.addEventListener('keydown', event => resizeCommentKey(event, node, direction));
+
+++            el.append(handle);
+
+++        }
+
+++    }
+
+++    function resizeCommentKey(event, node, direction) {
+
+++        if (!event.key.startsWith('Arrow') || playbackActive()) return;
+
+++        event.preventDefault(); event.stopPropagation();
+
+++        const before = snapshot(), amount = event.shiftKey ? 40 : 10;
+
+++        if (commentEditor) rememberCommentEdit();
+
+++        resizeComment({ node, direction, x: node.x, y: node.y, ...nodeSize(node), minimum: node.config.height },
+
+++            event.key === 'ArrowRight' ? amount : event.key === 'ArrowLeft' ? -amount : 0,
+
+++            event.key === 'ArrowDown' ? amount : event.key === 'ArrowUp' ? -amount : 0);
+
+++        if (!commentEditor) { changed(before); commentElement(node)?.querySelector(`[data-resize="${direction}"]`)?.focus({ preventScroll: true }); }
+
+++    }
+
+++    function finishCommentary(save) {
+
+++        if (!commentEditor) return;
+
+++        if (gesture?.kind === 'resize') endGesture();
+
+++        const { node, before } = commentEditor;
+
+++        commentEditor = null;
+
+++        if (save) { changed(before); }
+
+++        else { flow = JSON.parse(before); persist(); render(); }
+
+++        commentElement(node)?.focus({ preventScroll: true });
+
+++        status(save ? 'Comment saved.' : 'Comment changes discarded.');
+
++     }
+
++     function editCommentary(node) {
+
+++        if (commentEditor?.node === node) { commentEditor.input.focus({ preventScroll: true }); return; }
+
++         if (!editable()) return;
+
++-        endGesture();
+
++-        const el = [...nodesLayer.children].find(item => item.dataset.nodeId === node.id);
+
++-        const display = el.querySelector('.pmt-comment-text');
+
++-        const input = element('textarea', 'pmt-comment-text pmt-comment-editor');
+
++-        input.value = node.config.text; input.maxLength = 100000;
+
++-        input.setAttribute('aria-label', 'Static User Commentary text'); input.style.cssText = display.style.cssText;
+
++-        display.replaceWith(input);
+
++-        fitCommentary(el, node, input);
+
++-        const controls = element('div', 'pmt-comment-editor-tools');
+
++-        const done = element('button', '', 'Done'), cancel = element('button', '', 'Cancel');
+
++-        done.type = cancel.type = 'button'; controls.append(done, cancel); el.append(controls);
+
++-        commentEditor = { node, input }; el.classList.add('editing'); updateButtons();
+
++-        function finish(save) {
+
++-            const value = input.value; commentEditor = null;
+
++-            if (save) mutate(() => { node.config.text = value; }); else render();
+
++-            status(save ? 'Static commentary saved. Use Configure for colors and fonts.' : 'Commentary editing cancelled.');
+
++-        }
+
++-        done.addEventListener('click', () => finish(true)); cancel.addEventListener('click', () => finish(false));
+
+++        endGesture(); resetSelection(); selected.add(node.id);
+
+++        const el = commentElement(node), display = el.querySelector('.pmt-comment-text');
+
+++        const input = element('div', 'pmt-comment-text pmt-comment-editor');
+
+++        input.contentEditable = 'true'; input.spellcheck = true; input.setAttribute('role', 'textbox'); input.setAttribute('aria-multiline', 'true');
+
+++        input.setAttribute('aria-label', 'Static User Commentary text');
+
+++        commentEditor = { node, input, before: snapshot(), selection: { start: 0, end: 0 }, typingStyle: null, undo: [], redo: [], composing: false, renderedRuns: M.copy(M.commentRuns(node.config)) };
+
+++        paintCommentText(input, node.config, true);
+
+++        display.replaceWith(input); el.classList.add('editing');
+
++         input.addEventListener('pointerdown', event => event.stopPropagation());
+
++         input.addEventListener('dblclick', event => event.stopPropagation());
+
++-        input.addEventListener('input', () => { fitCommentary(el, node, input); extent(); });
+
+++        input.addEventListener('beforeinput', commentBeforeInput);
+
+++        input.addEventListener('input', readNativeCommentEdit);
+
+++        input.addEventListener('compositionstart', () => { commentEditor.composing = true; });
+
+++        input.addEventListener('compositionend', () => { commentEditor.composing = false; readNativeCommentEdit(); });
+
+++        const clipboardType = 'application/x-tlamatini-comment-runs+json';
+
+++        const copySelection = event => {
+
+++            const range = commentSelection();
+
+++            if (range.start === range.end) return;
+
+++            event.preventDefault();
+
+++            const runs = M.sliceCommentRuns(M.commentRuns(node.config), range.start, range.end);
+
+++            event.clipboardData.setData('text/plain', runs.map(run => run.text).join(''));
+
+++            event.clipboardData.setData(clipboardType, JSON.stringify(runs));
+
+++            if (event.type === 'cut') insertCommentText('', range);
+
+++        };
+
+++        input.addEventListener('copy', copySelection); input.addEventListener('cut', copySelection);
+
+++        input.addEventListener('paste', event => {
+
+++            event.preventDefault();
+
+++            const text = event.clipboardData.getData('text/plain');
+
+++            let runs = null;
+
+++            try {
+
+++                const encoded = event.clipboardData.getData(clipboardType);
+
+++                if (encoded && encoded.length <= 5 * 1024 * 1024) {
+
+++                    const note = M.copy(node); note.config.text = text; note.config.runs = JSON.parse(encoded);
+
+++                    runs = M.validate({ ...M.blank(), nodes: [note] }).nodes[0].config.runs;
+
+++                }
+
+++            } catch { /* Unrecognized clipboard formatting falls back to literal text. */ }
+
+++            insertCommentText(text, commentSelection(), runs);
+
+++        });
+
+++        input.addEventListener('drop', event => { event.preventDefault(); });
+
++         input.addEventListener('keydown', event => {
+
++             event.stopPropagation();
+
++-            if (event.key === 'Escape') { event.preventDefault(); finish(false); }
+
++-            else if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') { event.preventDefault(); finish(true); }
+
+++            if (event.isComposing) return;
+
+++            const control = event.ctrlKey || event.metaKey, key = event.key.toLowerCase();
+
+++            if (event.key === 'Escape') { event.preventDefault(); if (gesture) endGesture(); else finishCommentary(false); }
+
+++            else if (control && event.key === 'Enter') { event.preventDefault(); finishCommentary(true); }
+
+++            else if (control && ['b', 'i', 'u'].includes(key)) { event.preventDefault(); const property = { b: 'bold', i: 'italic', u: 'underline' }[key]; formatCommentText({ [property]: !selectedCommentStyle()[property] }); }
+
+++            else if (control && (key === 'z' || key === 'y')) { event.preventDefault(); replayCommentEdit(key === 'z' && !event.shiftKey); }
+
++         });
+
++-        input.focus(); status('Write in the bubble. Done or Ctrl+Enter saves; Cancel or Escape discards this edit.');
+
++-    }
+
+++        refreshComment(node); paintSelection(); input.focus({ preventScroll: true });
+
+++        status('Write directly in the note. Drag its borders to resize; Done saves, Escape cancels.');
+
+++    }
+
+++    function syncCommentTools() {
+
+++        const node = selected.size === 1 && !selectedEdges.size ? flow.nodes.find(n => selected.has(n.id) && M.isComment(n)) : null;
+
+++        if (!commentToolbar) {
+
+++            commentToolbar = element('div', 'pmt-comment-toolbar'); commentToolbar.id = 'pmt-comment-toolbar';
+
+++            commentToolbar.setAttribute('role', 'region'); commentToolbar.setAttribute('aria-label', 'Comment formatting');
+
+++            document.body.append(commentToolbar);
+
+++            commentToolbar.addEventListener('pointerdown', event => {
+
+++                if (!commentEditor) return;
+
+++                commentSelection();
+
+++                if (event.target.closest('button')) event.preventDefault();
+
+++            });
+
+++            commentToolbar.addEventListener('keydown', event => {
+
+++                event.stopPropagation();
+
+++                if (event.key === 'Escape' && commentEditor) { event.preventDefault(); finishCommentary(false); }
+
+++                else if ((event.ctrlKey || event.metaKey) && event.key === 'Enter' && commentEditor) { event.preventDefault(); finishCommentary(true); }
+
+++            });
+
+++        }
+
+++        const visible = !!node && !playbackActive();
+
+++        commentToolbar.hidden = !visible;
+
+++        if (!visible) { commentToolbarKey = ''; return; }
+
+++        const key = `${node.id}:${!!commentEditor}`;
+
+++        if (commentToolbarKey !== key) {
+
+++            commentToolbarKey = key; commentToolbar.replaceChildren();
+
+++            const title = element('span', 'pmt-comment-tools-title', commentEditor ? 'Select text to format' : 'Commentary');
+
+++            commentToolbar.append(title);
+
+++            const colors = element('div', 'pmt-comment-swatches'); colors.setAttribute('role', 'group'); colors.setAttribute('aria-label', 'Comment color');
+
+++            for (const [value, name] of M.commentColors) {
+
+++                const button = element('button', 'pmt-comment-swatch'); button.type = 'button'; button.dataset.color = value;
+
+++                button.style.setProperty('--swatch', value); button.title = name; button.setAttribute('aria-label', `${name} comment`);
+
+++                button.addEventListener('click', () => changeComment(currentComment(), { color: value })); colors.append(button);
+
+++            }
+
+++            commentToolbar.append(colors);
+
+++            const typography = element('div', 'pmt-comment-tool-group');
+
+++            const font = element('select', 'pmt-comment-font'); font.setAttribute('aria-label', 'Comment font');
+
+++            for (const family of M.commentFonts) { const option = new Option(family, family); option.style.fontFamily = family; font.append(option); }
+
+++            font.prepend(new Option('Mixed fonts', '')); font.options[0].disabled = true;
+
+++            font.addEventListener('change', () => formatCommentText({ font_family: font.value }));
+
+++            const size = element('select', 'pmt-comment-size'); size.setAttribute('aria-label', 'Comment text size');
+
+++            for (const [value, label] of [[10, 'Fine'], [12, 'Small'], [16, 'Body'], [20, 'Large'], [28, 'Heading'], [36, 'Title'], [48, 'Display']]) size.append(new Option(label, value));
+
+++            size.prepend(new Option('Mixed sizes', '')); size.options[0].disabled = true;
+
+++            size.addEventListener('change', () => formatCommentText({ font_size: Number(size.value) }));
+
+++            typography.append(font, size);
+
+++            const ink = element('details', 'pmt-comment-ink');
+
+++            const inkToggle = element('summary', '', 'A'); inkToggle.title = 'Text color'; inkToggle.setAttribute('aria-label', 'Text color');
+
+++            const inkColors = element('div', 'pmt-comment-ink-colors'); inkColors.setAttribute('role', 'group'); inkColors.setAttribute('aria-label', 'Text color palette');
+
+++            for (const [value, name] of M.commentTextColors) {
+
+++                const button = element('button', 'pmt-comment-swatch'); button.type = 'button'; button.dataset.textColor = value; button.style.setProperty('--swatch', value);
+
+++                button.title = name; button.setAttribute('aria-label', `${name} text`);
+
+++                button.addEventListener('click', () => { formatCommentText({ text_color: value }); ink.open = false; }); inkColors.append(button);
+
+++            }
+
+++            ink.append(inkToggle, inkColors); typography.append(ink);
+
+++            for (const [property, label, glyph] of [['bold', 'Bold', 'B'], ['italic', 'Italic', 'I'], ['underline', 'Underline', 'U']]) {
+
+++                const button = toolButton(glyph, label, () => formatCommentText({ [property]: !selectedCommentStyle()[property] }));
+
+++                button.dataset.emphasis = property; typography.append(button);
+
+++            }
+
+++            commentToolbar.append(typography);
+
+++            const alignment = element('div', 'pmt-comment-tool-group'); alignment.setAttribute('role', 'group'); alignment.setAttribute('aria-label', 'Comment alignment');
+
+++            for (const value of ['left', 'center', 'right']) {
+
+++                const button = toolButton('', `Align ${value}`, () => changeComment(currentComment(), { align: value }));
+
+++                button.dataset.align = value;
+
+++                const icon = svg('svg', { viewBox: '0 0 20 20', 'aria-hidden': 'true' });
+
+++                const short = value === 'left' ? 3 : value === 'right' ? 8 : 5.5;
+
+++                icon.append(svg('path', { d: `M3 4H17M${short} 8h9M3 12H17M${short} 16h9`, fill: 'none', stroke: 'currentColor', 'stroke-width': 1.7, 'stroke-linecap': 'round' }));
+
+++                button.append(icon); alignment.append(button);
+
+++            }
+
+++            commentToolbar.append(alignment, toolButton('Fit text', 'Fit bubble to text', () => fitCommentText(currentComment())));
+
+++            const actions = element('div', 'pmt-comment-actions');
+
+++            if (commentEditor) {
+
+++                actions.append(toolButton('Cancel', 'Cancel comment changes', () => finishCommentary(false)), toolButton('Done', 'Done', () => finishCommentary(true), 'primary'));
+
+++            } else actions.append(toolButton('Edit text', 'Edit comment text', () => editCommentary(currentComment()), 'primary'));
+
+++            commentToolbar.append(actions);
+
+++        }
+
+++        const c = { ...node.config, ...selectedCommentStyle() };
+
+++        for (const button of commentToolbar.querySelectorAll('[data-text-color]')) button.setAttribute('aria-pressed', String(button.dataset.textColor === (c.text_color || '#202938')));
+
+++        commentToolbar.querySelector('.pmt-comment-ink summary').style.textDecorationColor = c.text_color || '#202938';
+
+++        for (const button of commentToolbar.querySelectorAll('[data-color]')) button.setAttribute('aria-pressed', String(button.dataset.color === c.color));
+
+++        commentToolbar.querySelector('.pmt-comment-font').value = c.font_family || '';
+
+++        const size = commentToolbar.querySelector('.pmt-comment-size');
+
+++        size.querySelector('[data-saved-size]')?.remove();
+
+++        if (c.font_size !== null && ![...size.options].some(option => Number(option.value) === c.font_size)) {
+
+++            const option = new Option('Saved size', c.font_size); option.dataset.savedSize = ''; size.append(option);
+
+++        }
+
+++        size.value = c.font_size ?? '';
+
+++        for (const button of commentToolbar.querySelectorAll('[data-emphasis]')) button.setAttribute('aria-pressed', c[button.dataset.emphasis] === null ? 'mixed' : String(c[button.dataset.emphasis]));
+
+++        for (const button of commentToolbar.querySelectorAll('[data-align]')) button.setAttribute('aria-pressed', String(button.dataset.align === c.align));
+
+++        positionCommentTools();
+
+++    }
+
+++    function positionCommentTools() {
+
+++        if (!commentToolbar || commentToolbar.hidden) return;
+
+++        const node = currentComment(), el = node && commentElement(node);
+
+++        if (!el) return;
+
+++        const box = el.getBoundingClientRect(), view = viewport.getBoundingClientRect();
+
+++        const margin = 12, width = Math.min(420, view.width - margin * 2);
+
+++        commentToolbar.style.width = Math.max(260, width) + 'px';
+
+++        const height = commentToolbar.offsetHeight;
+
+++        const lowX = Math.max(margin, view.left + margin), highX = Math.min(window.innerWidth - margin, view.right - margin) - commentToolbar.offsetWidth;
+
+++        const lowY = Math.max(margin, view.top + margin), highY = Math.min(window.innerHeight - margin, view.bottom - margin) - height;
+
+++        let left = box.left, top = box.top - height - margin;
+
+++        if (top < lowY) {
+
+++            if (box.right + margin <= highX) { left = box.right + margin; top = box.top; }
+
+++            else if (box.left - margin - commentToolbar.offsetWidth >= lowX) { left = box.left - margin - commentToolbar.offsetWidth; top = box.top; }
+
+++            else top = box.bottom + margin;
+
+++        }
+
+++        commentToolbar.style.left = Math.max(lowX, Math.min(highX, left)) + 'px';
+
+++        commentToolbar.style.top = Math.max(lowY, Math.min(highY, top)) + 'px';
+
+++    }
+
+++    function currentComment() { return flow.nodes.find(n => selected.has(n.id) && M.isComment(n)); }
+
+++    function toolButton(text, label, action, extra = '') {
+
+++        const button = element('button', `pmt-comment-tool ${extra}`, text); button.type = 'button';
+
+++        button.title = label; button.setAttribute('aria-label', label); button.addEventListener('click', action); return button;
+
+++    }
+
+++
+
++     function addPort(el, node, name, point) {
+
++         const direction = name === 'input' ? 'input' : 'output';
+
++         const slot = name === 'yes' ? ' output-1' : name === 'no' ? ' output-2' : '';
+
++@@ -288,7 +642,10 @@
+
++             if (action === 'redo') button.disabled = !editable() || !redo.length;
+
++             if (action === 'zoom-out') button.disabled = zoom <= .25;
+
++             if (action === 'zoom-in') button.disabled = zoom >= 2;
+
++-            if (action === 'configure') button.disabled = !editable() || selected.size + selectedEdges.size !== 1;
+
+++            if (action === 'configure') {
+
+++                button.disabled = !editable() || selected.size + selectedEdges.size !== 1;
+
+++                button.textContent = currentComment() && selected.size === 1 && !selectedEdges.size ? '✎ Edit comment' : '⚙ Configure';
+
+++            }
+
++             if (action === 'duplicate') button.disabled = !editable() || !selected.size;
+
++             if (action === 'delete') button.disabled = !editable() || !(selected.size || selectedEdges.size);
+
++             if (action === 'play') button.disabled = !socketReady || !editable() || !flow.nodes.some(n => !M.isComment(n));
+
++@@ -298,6 +655,7 @@
+
++             if (action === 'stop') button.disabled = !['running', 'paused'].includes(runState);
+
++         }
+
++         for (const button of document.querySelectorAll('.agent-tool-item')) { button.disabled = !editable(); button.draggable = editable(); }
+
+++        syncCommentTools();
+
++     }
+
++     function palette() {
+
++         const list = $id('agents-list'); list.replaceChildren();
+
++@@ -321,7 +679,7 @@
+
++             if (labels.has(n.label)) n.label = M.uniqueLabel(n.label, labels);
+
++             flow.nodes.push(n); if (!M.isComment(n)) flow.start ||= n.id; selected = new Set([n.id]); selectedEdge = null; selectedEdges.clear();
+
++         });
+
++-        status('Operation added. Double-click it to configure.');
+
+++        status(type === 'user_commentary' ? 'Comment added. Double-click to write; drag any edge or corner to resize.' : 'Operation added. Double-click it to configure.');
+
++     }
+
++     const connection = UI.connectionDrag({
+
++         viewport, canEdit: editable,
+
++@@ -376,6 +734,7 @@
+
++         failed: error => { status(error.message); alertMessage(error.message); }
+
++     });
+
++     function nodeDown(event, node) {
+
+++        if (commentEditor) return;
+
++         if (event.button !== 0 || event.target.closest('button')) return;
+
++         event.stopPropagation();
+
++         if (nodeMove.active) return;
+
++@@ -451,28 +810,16 @@
+
++         return { close, form };
+
++     }
+
++     function configureNode(node) {
+
+++        if (M.isComment(node)) { editCommentary(node); return; }
+
++         if (!editable()) return;
+
++         const draft = M.copy(node), config = draft.config, kind = draft.type;
+
++         formDialog(`Configure · ${M.operations[kind].label}`, ({ form, field, fields }) => {
+
++             form.append(element('p', '', M.operations[kind].help));
+
++             field('label', 'Label', 'text', draft.label).maxLength = 120;
+
++             if (!['flush_embeddings', 'clean_history'].includes(kind)) {
+
++-                const title = kind === 'decision' ? 'Question (when asking the user)' : kind === 'user_input' ? 'Message to the user' : kind === 'user_commentary' ? 'Static commentary' : kind === 'feed_embeddings' ? 'Text to embed' : 'Prompt';
+
+++                const title = kind === 'decision' ? 'Question (when asking the user)' : kind === 'user_input' ? 'Message to the user' : kind === 'feed_embeddings' ? 'Text to embed' : 'Prompt';
+
++                 field('text', title, 'textarea', config.text).maxLength = 100000;
+
++-                if (kind !== 'user_commentary') form.append(element('small', '', 'Use {{last_output}} to insert the previous prompt answer or user reply.'));
+
++-            }
+
++-            if (kind === 'user_commentary') {
+
++-                const color = field('color', 'Bubble color', 'select', config.color, M.commentColors);
+
++-                const updateColor = () => { color.style.backgroundColor = color.value; color.style.color = '#1f2937'; };
+
++-                color.addEventListener('change', updateColor); updateColor();
+
++-                field('font_family', 'Font', 'select', config.font_family, M.commentFonts.map(font => [font, font]));
+
++-                const fontSize = field('font_size', 'Font size (px)', 'number', config.font_size); fontSize.min = 10; fontSize.max = 48; fontSize.step = 'any';
+
++-                field('bold', 'Bold', 'checkbox', config.bold); field('italic', 'Italic', 'checkbox', config.italic);
+
++-                field('align', 'Text alignment', 'select', config.align, [['left', 'Left'], ['center', 'Center'], ['right', 'Right']]);
+
++-                for (const [name, label, min] of [['width', 'Bubble width', 200], ['height', 'Bubble height', 128]]) {
+
++-                    const input = field(name, label, 'number', config[name]); input.min = min; input.max = 2400; input.step = 'any';
+
++-                }
+
++-                form.append(element('small', '', 'Double-click the bubble to write directly in it. Drag its bottom-right handle to resize. Bubbles grow to contain all text, without scrollbars. Height is a minimum.'));
+
+++                form.append(element('small', '', 'Use {{last_output}} to insert the previous prompt answer or user reply.'));
+
++             }
+
++             if (['prompt', 'programmed_prompt'].includes(kind)) {
+
++                 field('multi_turn', 'Multi-Turn — allow enabled tools and agents', 'checkbox', config.multi_turn);
+
++@@ -495,9 +842,8 @@
+
++             if (!editable()) throw new Error('Stop playback before editing.');
+
++             draft.label = fields.label.value.trim() || M.operations[kind].label;
+
++             if (fields.text) config.text = fields.text.value;
+
++-            for (const name of ['multi_turn', 'acpx', 'case_sensitive', 'bold', 'italic']) if (fields[name]) config[name] = fields[name].checked;
+
++-            for (const name of ['comparison', 'value', 'color', 'font_family', 'align']) if (fields[name]) config[name] = fields[name].value;
+
++-            for (const name of ['font_size', 'width', 'height']) if (fields[name]) config[name] = Number(fields[name].value);
+
+++            for (const name of ['multi_turn', 'acpx', 'case_sensitive']) if (fields[name]) config[name] = fields[name].checked;
+
+++            for (const name of ['comparison', 'value']) if (fields[name]) config[name] = fields[name].value;
+
++             if (fields.delay_seconds) config.delay_seconds = Number(fields.delay_seconds.value);
+
++             if (fields.scheduled_at) config.scheduled_at = fields.scheduled_at.value ? new Date(fields.scheduled_at.value).toISOString() : '';
+
++             const candidate = M.copy(flow); candidate.nodes[candidate.nodes.findIndex(n => n.id === node.id)] = draft;
+
++@@ -712,7 +1058,7 @@
+
++             else if (name === 'zoom-in') setZoom(zoom + .1);
+
++             else if (name === 'zoom-out') setZoom(zoom - .1);
+
++             else if (name === 'fit') fit();
+
++-            else if (name === 'help') await alertMessage('Drag or click an operation to add it. Double-click a figure to edit its settings. Drag a right-side output triangle to a left-side input triangle, then release to connect, just like the Agentic Control Panel. The curve follows your pointer and the triangles highlight. Release on empty canvas or press Escape to cancel. Reconnecting an occupied output replaces that connection. Decision figures have Y and N outputs on the right. With the keyboard, activate an output, Tab to an input and activate it.\n\nCtrl+click selects multiple figures; drag empty canvas to select a group. Delete removes the selection, Ctrl+D duplicates, Ctrl+Z undoes, Ctrl+Shift+Z redoes. Use arrow keys to move selected figures.\n\nUser Commentary is a static speech-bubble note. Double-click to write in it; Done or Ctrl+Enter saves, Escape cancels. Configure chooses color, font, size and alignment. Drag its bottom-right handle to resize. The bubble grows to fit the text without scrollbars. Notes are saved with the diagram and never run. User Input uses the notched figure and asks for a runtime reply.\n\nChoose Start, Validate, then Play. Each run has its own conversation and embeddings. {{last_output}} inserts the last answer or user input. Clean History clears that run’s conversation and last output; Flush Embeddings clears its retrieval context.\n\nPause takes effect between operations. Stop requests cancellation and waits for the active model call to drain. Closing an input dialog stops the flow. Keep this page and Tlamatini open for scheduled prompts. Files never run merely by opening them.\n\nSave downloads a versioned .fpmt diagram. The panel also keeps a local draft in this browser. Legacy system prompt.pmt text files remain separate.', 'Using the Prompt Flow Panel');
+
+++            else if (name === 'help') await alertMessage('Drag or click an operation to add it. Double-click a figure to edit its settings. Drag a right-side output triangle to a left-side input triangle, then release to connect, just like the Agentic Control Panel. The curve follows your pointer and the triangles highlight. Release on empty canvas or press Escape to cancel. Reconnecting an occupied output replaces that connection. Decision figures have Y and N outputs on the right. With the keyboard, activate an output, Tab to an input and activate it.\n\nCtrl+click selects multiple figures; drag empty canvas to select a group. Delete removes the selection, Ctrl+D duplicates, Ctrl+Z undoes, Ctrl+Shift+Z redoes. Use arrow keys to move selected figures.\n\nUser Commentary is a static speech-bubble note. Double-click to write in it; Done or Ctrl+Enter saves, Escape cancels. Select a passage to mix fonts, sizes, text colors, bold, italic and underline using the floating mini toolbar. With a caret, formatting styles newly typed text. Bubble color and alignment apply to the note. Drag any edge or corner to resize; Fit text removes spare vertical space. There is no commentary configuration dialog. The bubble grows to fit the text without scrollbars. Notes are saved with the diagram and never run. User Input uses the notched figure and asks for a runtime reply.\n\nChoose Start, Validate, then Play. Each run has its own conversation and embeddings. {{last_output}} inserts the last answer or user input. Clean History clears that run’s conversation and last output; Flush Embeddings clears its retrieval context.\n\nPause takes effect between operations. Stop requests cancellation and waits for the active model call to drain. Closing an input dialog stops the flow. Keep this page and Tlamatini open for scheduled prompts. Files never run merely by opening them.\n\nSave downloads a versioned .fpmt diagram. The panel also keeps a local draft in this browser. Legacy system prompt.pmt text files remain separate.', 'Using the Prompt Flow Panel');
+
++         } catch (e) { status(e.message); await alertMessage(e.message); }
+
++     }
+
++     document.querySelectorAll('[data-action]').forEach(button => button.addEventListener('click', event => { event.preventDefault(); action(button.dataset.action); }));
+
++@@ -727,7 +1073,7 @@
+
++         } catch (e) { await alertMessage(e.message); }
+
++     });
+
++     viewport.addEventListener('pointerdown', event => {
+
++-        if (event.button !== 0 || event.target.closest('.pmt-node, .pmt-edge, button')) return;
+
+++        if (commentEditor || event.button !== 0 || event.target.closest('.pmt-node, .pmt-edge, button')) return;
+
++         const p = position(event);
+
++         if (!event.ctrlKey && !event.metaKey) resetSelection();
+
++         endGesture(); gesture = { kind: 'select', from: p, initial: new Set(selected), initialEdges: new Set(selectedEdges) }; render(); event.preventDefault(); viewport.focus({ preventScroll: true });
+
++@@ -735,10 +1081,8 @@
+
++     document.addEventListener('pointermove', event => {
+
++         if (!gesture) return;
+
++         if (gesture.kind === 'resize') {
+
++-            const { node, width, height, fromX, fromY, scale } = gesture;
+
++-            node.config.width = Math.min(2400, Math.max(200, width + (event.clientX - fromX) / scale));
+
++-            node.config.height = Math.min(2400, Math.max(128, height + (event.clientY - fromY) / scale));
+
++-            render(); return;
+
+++            resizeComment(gesture, (event.clientX - gesture.fromX) / gesture.scale, (event.clientY - gesture.fromY) / gesture.scale);
+
+++            return;
+
++         }
+
++         const p = position(event);
+
++         {
+
++@@ -760,12 +1104,21 @@
+
++         nodeMove.cancel();
+
++         if (!gesture) return;
+
++         const previous = gesture; gesture = null; $id('pmt-marquee').hidden = true; document.body.classList.remove('resizing');
+
++-        if (previous.kind === 'resize') { flow = JSON.parse(previous.before); render(); }
+
+++        if (previous.kind === 'resize') {
+
+++            document.body.style.cursor = ''; commentElement(previous.node)?.classList.remove('comment-resizing');
+
+++            if (commentEditor) { Object.assign(previous.node, JSON.parse(previous.before).nodes.find(n => n.id === previous.node.id)); refreshComment(previous.node); }
+
+++            else { flow = JSON.parse(previous.before); render(); }
+
+++        }
+
++         if (previous.pointerId !== undefined && viewport.hasPointerCapture(previous.pointerId)) viewport.releasePointerCapture(previous.pointerId);
+
++         paintSelection();
+
++     }
+
++     document.addEventListener('pointerup', () => {
+
++-        if (gesture?.kind === 'resize') { const before = gesture.before; gesture = null; changed(before); }
+
+++        if (gesture?.kind === 'resize') {
+
+++            const previous = gesture; gesture = null; document.body.style.cursor = '';
+
+++            commentElement(previous.node)?.classList.remove('comment-resizing');
+
+++            if (viewport.hasPointerCapture(previous.pointerId)) viewport.releasePointerCapture(previous.pointerId);
+
+++            if (!commentEditor) changed(previous.before); else syncCommentTools();
+
+++        }
+
++         else if (gesture) endGesture();
+
++     });
+
++     viewport.addEventListener('lostpointercapture', () => { if (gesture) endGesture(); });
+
++@@ -778,7 +1131,11 @@
+
++     });
+
++     viewport.addEventListener('wheel', event => { if (event.ctrlKey || event.metaKey) { event.preventDefault(); setZoom(zoom + (event.deltaY < 0 ? .1 : -.1)); } }, { passive: false });
+
++     document.addEventListener('keydown', event => {
+
++-        if (commentEditor) return;
+
+++        if (commentEditor) {
+
+++            if (event.key === 'Escape') { event.preventDefault(); if (gesture) endGesture(); else finishCommentary(false); }
+
+++            else if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') { event.preventDefault(); finishCommentary(true); }
+
+++            return;
+
+++        }
+
++         if (UI.isTyping(event)) return;
+
++         const key = event.key.toLowerCase(), mod = event.ctrlKey || event.metaKey;
+
++         if (mod && ['s', 'o', 'z', 'y', 'd', 'a'].includes(key)) {
+
++--- a/Tlamatini/agent/static/agent/css/prompt_flow_panel.css
+
+++++ b/Tlamatini/agent/static/agent/css/prompt_flow_panel.css
+
++@@ -51,14 +51,76 @@
+
++ .pmt-node[data-type="programmed_prompt"] .pmt-node-label { right: 48px; }
+
++ .pmt-node[data-type="clean_history"] .pmt-node-label { left: 47px; right: 47px; }
+
++ .pmt-node[data-type="user_input"] .pmt-node-label { left: 62px; right: 62px; top: 43px; bottom: 35px; }
+
++-.pmt-comment-text { position: absolute; inset: 28px 24px 44px; color: #1f2937; white-space: pre-wrap; overflow-wrap: anywhere; overflow: hidden; line-height: 1.45; cursor: inherit; }
+
++-.pmt-comment-text.placeholder { opacity: .65; }
+
++-.pmt-comment-editor { width: calc(100% - 48px); height: calc(100% - 72px); border: 1px dashed #946780; background: transparent; border-radius: 3px; resize: none; padding: 4px; cursor: text; user-select: text; }
+
+++/* Commentary is a paper-like note, with direct edge resizing and a floating mini toolbar. */
+
+++.pmt-node[data-type="user_commentary"] { color: #202938; }
+
+++.pmt-node[data-type="user_commentary"] > svg { filter: drop-shadow(0 6px 9px #0003); }
+
+++.pmt-node[data-type="user_commentary"] .pmt-shape { stroke: #26344a38; stroke-width: 1.5; }
+
+++.pmt-panel #pmt-world .pmt-node[data-type="user_commentary"].selected > svg { filter: drop-shadow(0 6px 12px #0004); }
+
+++.pmt-panel #pmt-world .pmt-node[data-type="user_commentary"].selected .pmt-shape,
+
+++.pmt-node[data-type="user_commentary"].editing .pmt-shape { stroke: #79dacd; stroke-width: 2; }
+
+++.pmt-comment-heading { position: absolute; top: 14px; left: 22px; right: 20px; height: 18px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+
+++.pmt-comment-kicker { font: 700 10px/1.4 Arial, sans-serif; letter-spacing: .12em; text-transform: uppercase; opacity: .55; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+++.pmt-comment-edit { border: 0; background: transparent; color: #253347; padding: 0 2px; font: 600 11px/1.4 Arial, sans-serif; cursor: pointer; opacity: 0; }
+
+++.pmt-node:hover .pmt-comment-edit, .pmt-node.selected .pmt-comment-edit, .pmt-comment-edit:focus-visible { opacity: .7; }
+
+++.pmt-node.editing .pmt-comment-edit { visibility: hidden; }
+
+++.pmt-comment-text { position: absolute; top: 42px; left: 22px; width: calc(100% - 44px); margin: 0; padding: 0; border: 0; box-sizing: border-box; color: #202938; white-space: pre-wrap; overflow-wrap: anywhere; overflow: hidden; line-height: 1.55; cursor: inherit; }
+
+++.pmt-comment-text.pmt-comment-empty { color: #202938; opacity: .45; font-style: italic; }
+
+++.pmt-comment-editor { display: block; min-height: 0; min-width: 0; max-height: none; background: transparent; border: 0; border-radius: 0; resize: none; outline: none !important; box-shadow: none; cursor: text; user-select: text; caret-color: #172b4d; }
+
++ .pmt-node.editing { z-index: 6; cursor: default; }
+
++-.pmt-comment-editor-tools { position: absolute; top: -30px; right: 5px; display: flex; gap: 5px; padding: 2px; background: #303039; border-radius: 4px; }
+
++-.pmt-comment-editor-tools button { background: #41414e; color: #fff; border: 1px solid #656570; border-radius: 3px; font-size: 12px; }
+
++-.pmt-comment-resize { position: absolute; bottom: 25px; right: 8px; border: 0; border-radius: 4px; background: #1f29371a; color: #1f2937; cursor: nwse-resize; font-size: 16px; line-height: 1; padding: 4px; }
+
++-.pmt-node[data-type="user_commentary"] { color: #1f2937; }
+
+++.pmt-comment-handle { position: absolute; display: block; padding: 0; margin: 0; border: 0; border-radius: 0; background: transparent; z-index: 8; touch-action: none; opacity: 0; }
+
+++.pmt-node:hover .pmt-comment-handle, .pmt-node.selected .pmt-comment-handle, .pmt-comment-handle:focus-visible { opacity: 1; }
+
+++.pmt-comment-handle::after { content: ''; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); background: #dffff8; border: 1.5px solid #257f77; border-radius: 3px; box-shadow: 0 1px 3px #0002; }
+
+++.pmt-comment-handle:disabled { display: none; }
+
+++.pmt-comment-handle.handle-n, .pmt-comment-handle.handle-s { left: 18px; right: 18px; height: 14px; cursor: ns-resize; }
+
+++.pmt-comment-handle.handle-n { top: -7px; }
+
+++.pmt-comment-handle.handle-s { bottom: 11px; }
+
+++.pmt-comment-handle.handle-e, .pmt-comment-handle.handle-w { top: 18px; bottom: 36px; width: 14px; cursor: ew-resize; }
+
+++.pmt-comment-handle.handle-e { right: -7px; }
+
+++.pmt-comment-handle.handle-w { left: -7px; }
+
+++.pmt-comment-handle.handle-n::after, .pmt-comment-handle.handle-s::after { width: 22px; height: 5px; }
+
+++.pmt-comment-handle.handle-e::after, .pmt-comment-handle.handle-w::after { width: 5px; height: 22px; }
+
+++.pmt-comment-handle.handle-ne, .pmt-comment-handle.handle-nw, .pmt-comment-handle.handle-se, .pmt-comment-handle.handle-sw { width: 18px; height: 18px; }
+
+++.pmt-comment-handle.handle-ne, .pmt-comment-handle.handle-nw { top: -8px; }
+
+++.pmt-comment-handle.handle-se, .pmt-comment-handle.handle-sw { bottom: 10px; }
+
+++.pmt-comment-handle.handle-nw, .pmt-comment-handle.handle-sw { left: -8px; }
+
+++.pmt-comment-handle.handle-ne, .pmt-comment-handle.handle-se { right: -8px; }
+
+++.pmt-comment-handle.handle-ne, .pmt-comment-handle.handle-sw { cursor: nesw-resize; }
+
+++.pmt-comment-handle.handle-nw, .pmt-comment-handle.handle-se { cursor: nwse-resize; }
+
+++.pmt-comment-handle.handle-ne::after, .pmt-comment-handle.handle-nw::after, .pmt-comment-handle.handle-se::after, .pmt-comment-handle.handle-sw::after { width: 8px; height: 8px; }
+
+++.pmt-comment-toolbar { position: fixed; z-index: 9000; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 9px 10px; padding: 12px; box-sizing: border-box; background: #29333f; border: 1px solid #586778; border-radius: 12px; box-shadow: 0 12px 30px #0005, 0 2px 6px #0004; color: #e9eef3; font: 12px/1.4 Nunito, Arial, sans-serif; }
+
+++.pmt-comment-toolbar[hidden] { display: none; }
+
+++.pmt-comment-tools-title { display: none; }
+
+++.pmt-comment-swatches, .pmt-comment-tool-group, .pmt-comment-actions { display: flex; align-items: center; gap: 4px; }
+
+++.pmt-comment-tool-group { padding: 0; gap: 4px; }
+
+++.pmt-comment-toolbar > .pmt-comment-tool-group:has(.pmt-comment-font) { grid-column: 1 / -1; grid-row: 1; }
+
+++.pmt-comment-swatches { grid-column: 1; grid-row: 2; }
+
+++.pmt-comment-toolbar > .pmt-comment-tool-group[aria-label="Comment alignment"] { grid-column: 2; grid-row: 2; }
+
+++.pmt-comment-toolbar > .pmt-comment-tool { justify-self: start; grid-row: 3; }
+
+++.pmt-comment-swatch { width: 23px; height: 23px; min-width: 23px; border-radius: 50%; border: 3px solid #242b35; padding: 0; background: var(--swatch); box-shadow: 0 0 0 1px #66717d; cursor: pointer; }
+
+++.pmt-comment-swatch:hover { box-shadow: 0 0 0 2px #c4d2df; }
+
+++.pmt-comment-swatch[aria-pressed="true"] { box-shadow: 0 0 0 2px #79dacd; position: relative; }
+
+++.pmt-comment-swatch[aria-pressed="true"]::after { content: '✓'; color: #202938; font-size: 11px; font-weight: 800; position: absolute; inset: 0; display: grid; place-items: center; }
+
+++.pmt-comment-toolbar select, .pmt-comment-tool { height: 31px; border: 1px solid #4b5866; border-radius: 6px; background: #303b48; color: #edf4f8; font: inherit; padding: 4px 8px; cursor: pointer; }
+
+++.pmt-comment-font { flex: 1; width: 130px; min-width: 75px; }
+
+++.pmt-comment-size { width: 91px; }
+
+++.pmt-comment-tool { display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; min-width: 31px; }
+
+++.pmt-comment-tool[data-emphasis="bold"] { font-weight: 800; }
+
+++.pmt-comment-tool[data-emphasis="italic"] { font-family: Georgia, serif; font-style: italic; font-size: 16px; }
+
+++.pmt-comment-tool svg { width: 16px; height: 16px; }
+
+++.pmt-comment-tool:hover { background: #415063; border-color: #718296; }
+
+++.pmt-comment-tool[aria-pressed="true"] { background: #385951; border-color: #79dacd; color: #cffff4; }
+
+++.pmt-comment-actions { margin-left: auto; grid-column: 2; grid-row: 3; }
+
+++.pmt-comment-tool.primary { background: #9ce4d4; color: #193a35; border-color: #9ce4d4; font-weight: 800; }
+
+++.pmt-comment-tool.primary:hover { background: #bcf4e7; }
+
+++.pmt-comment-toolbar button:focus-visible, .pmt-comment-toolbar select:focus-visible { outline: 2px solid #b1f5e5; outline-offset: 3px; }
+
+++
+
+++
+
+++.pmt-comment-ink { position: relative; }
+
+++.pmt-comment-ink summary { display: grid; place-items: center; list-style: none; width: 31px; height: 31px; border: 1px solid #4b5866; border-radius: 6px; background: #303b48; cursor: pointer; font-weight: 800; text-decoration: underline 3px; text-underline-offset: 3px; }
+
+++.pmt-comment-ink summary::-webkit-details-marker { display: none; }
+
+++.pmt-comment-ink-colors { position: absolute; z-index: 1; top: 38px; right: 0; display: grid; grid-template-columns: repeat(4, 23px); gap: 9px; padding: 12px; border: 1px solid #647387; border-radius: 9px; background: #29333f; box-shadow: 0 5px 16px #0005; }
+
+++.pmt-comment-ink:not([open]) .pmt-comment-ink-colors { display: none; }
+
+++
+
++ /* Geometry/colors come from ACP's input/output-triangle and output-label rules.
+
++    Reset only native button chrome; highlighting never changes the port size. */
+
++ .pmt-start-badge { position: absolute; top: -14px; left: 76px; color: #68e0bd; font-size: 10px; letter-spacing: .12em; }
+
++@@ -106,3 +168,11 @@
+
++     #pmt-run-log { height: 110px; }
+
++     .pmt-panel #monitor-controls { gap: 4px !important; }
+
++ }
+
+++
+
+++.pmt-comment-tool[data-emphasis="underline"] { text-decoration: underline; text-underline-offset: 3px; }
+
+++.pmt-comment-tool[aria-pressed="mixed"] { border-style: dashed; border-color: #a3b4c7; }
+
+++.pmt-comment-editor::selection, .pmt-comment-editor *::selection { background: #439cc56b; }
+
+++
+
+++/* The bubble outline itself is the focus indicator, never a rectangular frame. */
+
+++.pmt-panel #pmt-world .pmt-node[data-type="user_commentary"]:focus { outline: none; }
+
+++.pmt-panel #pmt-world .pmt-node[data-type="user_commentary"]:focus-visible .pmt-shape { stroke: #79dacd; stroke-width: 2; }
+
++--- a/Tlamatini/agent/static/agent/js/prompt-flow-panel-model.js
+
+++++ b/Tlamatini/agent/static/agent/js/prompt-flow-panel-model.js
+
++@@ -8,6 +8,7 @@
+
++     const EXTENSION = '.fpmt';
+
++     const VERSION = 2;
+
++     const commentColors = [['#fbcfe8', 'Pink'], ['#fef3c7', 'Yellow'], ['#dcfce7', 'Green'], ['#dbeafe', 'Blue'], ['#ede9fe', 'Purple'], ['#ffedd5', 'Orange'], ['#ffffff', 'White'], ['#e5e7eb', 'Grey']];
+
+++    const commentTextColors = [['#202938', 'Ink'], ['#000000', 'Black'], ['#1d4ed8', 'Blue'], ['#166534', 'Green'], ['#7e22ce', 'Purple'], ['#b91c1c', 'Red'], ['#92400e', 'Brown'], ['#ffffff', 'White']];
+
++     const commentFonts = ['Nunito', 'Arial', 'Verdana', 'Georgia', 'Times New Roman', 'Courier New'];
+
++     const isFlowFilename = name => /\.fpmt$/i.test(name);
+
++     // Migrate old flow draft/save names without changing system prompt files.
+
++@@ -21,7 +22,7 @@
+
++         flush_embeddings: { label: 'Flush embeddings', color: '#f0a88b', fill: '#684237', path: 'M4 8H196L100 124Z', input: [4 + 96 * 56 / 116, 64], output: [196 - 96 * 56 / 116, 64], help: 'Remove this run’s embeddings while retaining its conversation.' },
+
++         clean_history: { label: 'Clean History', color: '#90cddc', fill: '#315665', path: 'M4 14H196L160 114H40Z', input: [22, 64], output: [178, 64], help: 'Clear this run’s conversation and last output; keep its embeddings.' },
+
++         user_input: { label: 'User Input', color: '#eaaed6', fill: '#653d59', path: 'M52 4L100 38L148 4V88L100 124L52 88Z', input: [52, 64], output: [148, 64], help: 'Pause for a user reply and add it to the conversation.' },
+
++-        user_commentary: { label: 'User Commentary', color: '#eaaed6', fill: '#653d59', path: 'M28 10H172Q196 10 196 34V82Q196 106 172 106H70L48 124L33 106H28Q4 106 4 82V34Q4 10 28 10Z', static: true, help: 'A static review note. Double-click to write in the bubble; Configure changes its colors and font. It never runs.' },
+
+++        user_commentary: { label: 'User Commentary', color: '#eaaed6', fill: '#653d59', path: 'M28 10H172Q196 10 196 34V82Q196 106 172 106H70L48 124L33 106H28Q4 106 4 82V34Q4 10 28 10Z', static: true, help: 'A static review note. Double-click to write. Use the floating toolbar to format; drag any edge or corner to resize. It never runs.' },
+
++     };
+
++     const copy = value => JSON.parse(JSON.stringify(value));
+
++     function uniqueLabel(label, used) {
+
++@@ -42,8 +43,34 @@
+
++         if (type === 'prompt' || type === 'programmed_prompt') Object.assign(config, { multi_turn: false, acpx: false });
+
++         if (type === 'programmed_prompt') Object.assign(config, { delay_seconds: 5, scheduled_at: '' });
+
++         if (type === 'decision') Object.assign(config, { comparison: 'contains', value: '', case_sensitive: false });
+
++-        if (type === 'user_commentary') Object.assign(config, { width: 320, height: 200, color: '#fbcfe8', font_family: 'Nunito', font_size: 16, bold: false, italic: false, align: 'left' });
+
+++        if (type === 'user_commentary') Object.assign(config, { width: 360, height: 160, color: '#fef3c7', text_color: '#202938', font_family: 'Nunito', font_size: 16, bold: false, italic: false, underline: false, align: 'left', runs: [] });
+
++         return { id: id(), type, label: operations[type].label, x, y, config };
+
+++    }
+
+++    const commentStyleKeys = ['font_family', 'font_size', 'text_color', 'bold', 'italic', 'underline'];
+
+++    const commentStyle = c => Object.fromEntries(commentStyleKeys.map(key => [key, key === 'underline' ? !!c[key] : c[key]]));
+
+++    function mergeCommentRuns(runs) {
+
+++        const merged = [];
+
+++        for (const run of runs) {
+
+++            if (!run.text) continue;
+
+++            const last = merged[merged.length - 1];
+
+++            if (last && commentStyleKeys.every(key => last[key] === run[key])) last.text += run.text;
+
+++            else merged.push({ text: run.text, ...commentStyle(run) });
+
+++        }
+
+++        return merged;
+
+++    }
+
+++    function sliceCommentRuns(runs, start, end) {
+
+++        let offset = 0;
+
+++        return runs.flatMap(run => {
+
+++            const from = Math.max(0, start - offset), to = Math.min(run.text.length, end - offset);
+
+++            offset += run.text.length;
+
+++            return to > from ? [{ ...run, text: run.text.slice(from, to) }] : [];
+
+++        });
+
+++    }
+
+++    const commentRuns = c => c.runs || (c.text ? [{ text: c.text, ...commentStyle(c) }] : []);
+
+++    function replaceCommentRange(c, start, end, replacement) {
+
+++        const runs = commentRuns(c);
+
+++        c.runs = mergeCommentRuns([...sliceCommentRuns(runs, 0, start), ...replacement, ...sliceCommentRuns(runs, end, c.text.length)]);
+
+++        c.text = c.runs.map(run => run.text).join('');
+
++     }
+
++     function validate(value, playable = false) {
+
++         const fail = message => { throw new Error(message); };
+
++@@ -68,10 +95,23 @@
+
++             if (isComment(n)) {
+
++                 const c = n.config;
+
++                 for (const [key, fallback, min, max] of [['width', 320, 200, 2400], ['height', 200, 128, 2400], ['font_size', 16, 10, 48]]) { if (c[key] === undefined) c[key] = fallback; number(c[key], min, max, `Comment ${key}`); }
+
++-                for (const [key, fallback] of [['color', '#fbcfe8'], ['font_family', 'Nunito'], ['align', 'left'], ['bold', false], ['italic', false]]) if (c[key] === undefined) c[key] = fallback;
+
++-                if (!commentColors.some(([color]) => color === c.color) || !commentFonts.includes(c.font_family) || !['left', 'center', 'right'].includes(c.align)) fail('Choose a supported comment color, font and alignment.');
+
++-                if (typeof c.bold !== 'boolean' || typeof c.italic !== 'boolean') fail('Comment style switches must be true or false.');
+
++-                n.config = Object.fromEntries(['text', 'width', 'height', 'color', 'font_family', 'font_size', 'bold', 'italic', 'align'].map(key => [key, c[key]]));
+
+++                for (const [key, fallback] of [['color', '#fbcfe8'], ['text_color', '#202938'], ['font_family', 'Nunito'], ['align', 'left'], ['bold', false], ['italic', false], ['underline', false]]) if (c[key] === undefined) c[key] = fallback;
+
+++                if (!commentColors.some(([color]) => color === c.color) || !commentTextColors.some(([color]) => color === c.text_color) || !commentFonts.includes(c.font_family) || !['left', 'center', 'right'].includes(c.align)) fail('Choose a supported comment color, font and alignment.');
+
+++                if (typeof c.bold !== 'boolean' || typeof c.italic !== 'boolean' || typeof c.underline !== 'boolean') fail('Comment style switches must be true or false.');
+
+++                if (c.runs === undefined) c.runs = c.text ? [{ text: c.text, ...commentStyle(c) }] : [];
+
+++                if (!Array.isArray(c.runs) || c.runs.length > 10000) fail('Use at most 10,000 formatted text runs per comment.');
+
+++                c.runs = c.runs.map(run => {
+
+++                    if (!run || typeof run !== 'object' || Array.isArray(run)) fail('A formatted text run must be an object.');
+
+++                    text(run.text, 100000, 'Comment run text');
+
+++                    const style = { ...commentStyle(c), ...run };
+
+++                    number(style.font_size, 10, 48, 'Comment run font size');
+
+++                    if (!commentFonts.includes(style.font_family) || !commentTextColors.some(([color]) => color === style.text_color)) fail('Choose a supported comment font and text color.');
+
+++                    if (['bold', 'italic', 'underline'].some(key => typeof style[key] !== 'boolean')) fail('Comment run style switches must be true or false.');
+
+++                    return { text: run.text, ...commentStyle(style) };
+
+++                });
+
+++                if (c.runs.map(run => run.text).join('') !== c.text) fail('Comment runs must contain exactly the comment text.');
+
+++                c.runs = mergeCommentRuns(c.runs);
+
+++                n.config = Object.fromEntries(['text', 'runs', 'width', 'height', 'color', 'text_color', 'font_family', 'font_size', 'bold', 'italic', 'underline', 'align'].map(key => [key, c[key]]));
+
++             }
+
++             if (['prompt', 'programmed_prompt'].includes(n.type)) {
+
++                 if (typeof n.config.multi_turn !== 'boolean' || typeof n.config.acpx !== 'boolean') fail('Prompt switches must be true or false.');
+
++@@ -129,5 +169,5 @@
+
++         flow.edges = [{ id: id(), source: a.id, target: b.id, branch: 'next' }, { id: id(), source: b.id, target: c.id, branch: 'yes' }, { id: id(), source: b.id, target: d.id, branch: 'no' }];
+
++         return flow;
+
++     }
+
++-    window.PromptFlowPanelModel = Object.freeze({ FORMAT, VERSION, EXTENSION, commentColors, commentFonts, isComment, size, isFlowFilename, flowFilename, operations, copy, uniqueLabel, id, blank, node, validate, example });
+
+++    window.PromptFlowPanelModel = Object.freeze({ FORMAT, VERSION, EXTENSION, commentColors, commentTextColors, commentFonts, commentStyleKeys, commentStyle, commentRuns, mergeCommentRuns, sliceCommentRuns, replaceCommentRange, isComment, size, isFlowFilename, flowFilename, operations, copy, uniqueLabel, id, blank, node, validate, example });
+
++ })();
+
++--- a/Tlamatini/agent/services/prompt_flow_panel.py
+
+++++ b/Tlamatini/agent/services/prompt_flow_panel.py
+
++@@ -23,6 +23,7 @@
+
++     "flush_embeddings", "clean_history", "user_input", "user_commentary",
+
++ }
+
++ COMMENT_COLORS = {"#fbcfe8", "#fef3c7", "#dcfce7", "#dbeafe", "#ede9fe", "#ffedd5", "#ffffff", "#e5e7eb"}
+
+++COMMENT_TEXT_COLORS = {"#202938", "#000000", "#1d4ed8", "#166534", "#7e22ce", "#b91c1c", "#92400e", "#ffffff"}
+
++ COMMENT_FONTS = {"Nunito", "Arial", "Verdana", "Georgia", "Times New Roman", "Courier New"}
+
++ COMPARISONS = {"contains", "not_contains", "equals", "is_empty", "user"}
+
++ 
+
++@@ -100,15 +101,40 @@
+
++                 height=_number(config.get("height", 200), "Comment height", 128, 2400),
+
++                 font_size=_number(config.get("font_size", 16), "Comment font size", 10, 48),
+
++                 color=_text(config.get("color", "#fbcfe8"), "Comment color", 20),
+
+++                text_color=_text(config.get("text_color", "#202938"), "Comment text color", 20),
+
++                 font_family=_text(config.get("font_family", "Nunito"), "Comment font", 80),
+
++                 align=_text(config.get("align", "left"), "Comment alignment", 10),
+
++             )
+
++-            if clean["color"] not in COMMENT_COLORS or clean["font_family"] not in COMMENT_FONTS or clean["align"] not in {"left", "center", "right"}:
+
+++            if clean["color"] not in COMMENT_COLORS or clean["text_color"] not in COMMENT_TEXT_COLORS or clean["font_family"] not in COMMENT_FONTS or clean["align"] not in {"left", "center", "right"}:
+
++                 raise FlowError("Choose a supported comment color, font and alignment.")
+
++-            for key in ("bold", "italic"):
+
+++            for key in ("bold", "italic", "underline"):
+
++                 clean[key] = config.get(key, False)
+
++                 if not isinstance(clean[key], bool):
+
++                     raise FlowError(f"Comment {key} must be true or false.")
+
+++            style_keys = ("font_family", "font_size", "text_color", "bold", "italic", "underline")
+
+++            runs = config.get("runs", [{"text": clean["text"]}] if clean["text"] else [])
+
+++            if not isinstance(runs, list) or len(runs) > 10000:
+
+++                raise FlowError("Use at most 10,000 formatted text runs per comment.")
+
+++            clean["runs"] = []
+
+++            for run in runs:
+
+++                if not isinstance(run, dict):
+
+++                    raise FlowError("A formatted text run must be an object.")
+
+++                part = {"text": _text(run.get("text"), "Comment run text")}
+
+++                part.update({key: run.get(key, clean[key]) for key in style_keys})
+
+++                _number(part["font_size"], "Comment run font size", 10, 48)
+
+++                if _text(part["font_family"], "Comment run font", 80) not in COMMENT_FONTS or _text(part["text_color"], "Comment run color", 20) not in COMMENT_TEXT_COLORS:
+
+++                    raise FlowError("Choose a supported comment font and text color.")
+
+++                if any(not isinstance(part[key], bool) for key in ("bold", "italic", "underline")):
+
+++                    raise FlowError("Comment run style switches must be true or false.")
+
+++                if not part["text"]:
+
+++                    continue
+
+++                last = clean["runs"][-1] if clean["runs"] else None
+
+++                if last and all(last[key] == part[key] for key in style_keys):
+
+++                    last["text"] += part["text"]
+
+++                else:
+
+++                    clean["runs"].append(part)
+
+++            if "".join(run["text"] for run in clean["runs"]) != clean["text"]:
+
+++                raise FlowError("Comment runs must contain exactly the comment text.")
+
++         if kind in {"prompt", "programmed_prompt"}:
+
++             for key in ("multi_turn", "acpx"):
+
++                 clean[key] = config.get(key, False)
+
++--- a/Tlamatini/tlamatini/settings.py
+
+++++ b/Tlamatini/tlamatini/settings.py
+
++@@ -247,7 +247,7 @@
+
++ 
+
++ # Version stamp for cache-busting of static assets in templates
+
++ # Override via env var STATIC_VERSION when deploying
+
++-STATIC_VERSION = (os.environ.get('STATIC_VERSION') or str(int(time.time()))) + '-prompt-commentary-input-1'
+
+++STATIC_VERSION = (os.environ.get('STATIC_VERSION') or str(int(time.time()))) + '-prompt-commentary-canvas-2'
+
++ 
+
++ # WhiteNoise configuration: dev vs release.
+
++ # NOTE (speed batch, 2026-07-02): the old per-branch STATICFILES_STORAGE lines
+
++--- a/Tlamatini/agent/test_prompt_flow_panel.py
+
+++++ b/Tlamatini/agent/test_prompt_flow_panel.py
+
++@@ -7,6 +7,7 @@
+
++ import asyncio
+
++ import copy
+
++ import importlib.util
+
+++import json
+
++ from pathlib import Path
+
++ import unittest
+
++ 
+
++@@ -124,11 +125,52 @@
+
++ 
+
++     def test_static_comment_roundtrip_preserves_long_literal_text_and_formatting(self):
+
++         note = node("note", "user_commentary", text=("Paragraph ñ <script> {{last_output}}\n" * 500),
+
++-                    width=650, height=450, color="#dbeafe", font_family="Georgia", font_size=22,
+
+++                    width=650, height=450, color="#dbeafe", text_color="#1d4ed8", font_family="Georgia", font_size=22,
+
++                     bold=True, italic=True, align="right")
+
++         result = flow_module.validate_flow(diagram([node("p"), note]), playable=True)
+
++-        self.assertEqual(result["nodes"][1]["config"], {k: note["config"][k] for k in result["nodes"][1]["config"]})
+
+++        self.assertEqual({k: result["nodes"][1]["config"][k] for k in ("text", "width", "height", "color", "text_color", "font_family", "font_size", "bold", "italic", "align")}, {k: note["config"][k] for k in ("text", "width", "height", "color", "text_color", "font_family", "font_size", "bold", "italic", "align")})
+
++         self.assertEqual(flow_module.validate_flow(result), result)
+
+++
+
+++    def test_existing_version_two_note_gets_readable_default_text_color(self):
+
+++        note = node("note", "user_commentary", text="Saved before text colors existed", color="#dbeafe")
+
+++        result = flow_module.validate_flow(diagram([note]))
+
+++        self.assertEqual(result["nodes"][0]["config"]["text_color"], "#202938")
+
+++        self.assertEqual(result["nodes"][0]["config"]["text"], note["config"]["text"])
+
+++        self.assertEqual(result["nodes"][0]["config"]["color"], "#dbeafe")
+
+++
+
+++    def test_several_mixed_style_comments_survive_repeated_json_roundtrips(self):
+
+++        notes = []
+
+++        for index, color in enumerate(sorted(flow_module.COMMENT_COLORS)):
+
+++            runs = [{"text": "Review ñ 👩🏽‍💻\n", "font_family": "Arial", "italic": True},
+
+++                    {"text": "A larger heading\n", "font_family": "Verdana", "font_size": 28, "bold": True},
+
+++                    {"text": "Literal <script> & {{last_output}}\n" * 50, "font_family": "Georgia", "text_color": "#1d4ed8", "underline": True}]
+
+++            notes.append(node(f"note{index}", "user_commentary", color=color, width=300 + index * 30,
+
+++                              text="".join(run["text"] for run in runs), runs=runs))
+
+++        original = diagram(notes)
+
+++        normalized = flow_module.validate_flow(original)
+
+++        for _ in range(3):
+
+++            normalized = flow_module.validate_flow(json.loads(json.dumps(normalized, ensure_ascii=False)))
+
+++            self.assertEqual(normalized, flow_module.validate_flow(original))
+
+++        self.assertEqual(len(normalized["nodes"]), 8)
+
+++        self.assertEqual(normalized["nodes"][0]["config"]["runs"][1]["font_size"], 28)
+
+++        self.assertTrue(normalized["nodes"][0]["config"]["runs"][2]["underline"])
+
+++
+
+++    def test_rich_runs_reject_mismatches_and_unsafe_styles(self):
+
+++        for runs in (None, {}, [None], [{"text": "wrong"}], [{"text": "x", "font_size": 100}],
+
+++                     [{"text": "x", "font_family": []}], [{"text": "x", "text_color": "url(evil)"}],
+
+++                     [{"text": "x", "italic": 1}], [{"text": "x", "underline": "yes"}],
+
+++                     [{"text": ""}] * 10001):
+
+++            with self.subTest(runs=str(runs)[:80]), self.assertRaises(FlowError):
+
+++                flow_module.validate_flow(diagram([node("note", "user_commentary", text="x", runs=runs)]))
+
+++
+
+++    def test_rich_runs_are_allowlisted_and_adjacent_equal_styles_merge(self):
+
+++        note = node("note", "user_commentary", text="abcd", runs=[
+
+++            {"text": "ab", "font_family": "Arial", "html": "<script>evil</script>"},
+
+++            {"text": "cd", "font_family": "Arial"}])
+
+++        runs = flow_module.validate_flow(diagram([note]))["nodes"][0]["config"]["runs"]
+
+++        self.assertEqual(len(runs), 1)
+
+++        self.assertEqual(runs[0]["text"], "abcd")
+
+++        self.assertNotIn("html", runs[0])
+
++ 
+
++     def test_static_comments_save_alone_but_cannot_be_start_or_connected(self):
+
++         note = node("note", "user_commentary")
+
++@@ -144,7 +186,7 @@
+
++             flow_module.validate_flow(payload)
+
++ 
+
++     def test_comment_style_rejects_unsafe_or_out_of_range_values(self):
+
++-        for key, value in [("color", "url(javascript:evil)"), ("font_family", "evil; color:red"),
+
+++        for key, value in [("color", "url(javascript:evil)"), ("text_color", "url(javascript:evil)"), ("font_family", "evil; color:red"),
+
++                            ("width", 199), ("height", 2401), ("font_size", 0), ("bold", 1), ("align", "evil")]:
+
++             with self.subTest(key=key), self.assertRaises(FlowError):
+
++                 flow_module.validate_flow(diagram([node("note", "user_commentary", **{key: value})]))
+
++--- a/scripts/prompt_flow_commentary_visible.py
+
+++++ b/scripts/prompt_flow_commentary_visible.py
+
++@@ -3,20 +3,17 @@
+
++ 
+
++ Launch from a verified foreground PowerShell -NoExit console. Uses a separate
+
++ normal source installation, real login/HTTP/WebSocket, and Shoter desktop photos.
+
++-No headless mode, transport interception or injected editor state. The browser
+
++-visibility photo must be reviewed before creating browser.confirmed. Successful
+
+++No headless mode, transport interception or injected editor state. The foreground window gate verifies real Chrome visibility. Successful
+
++ checks leave Chrome and the test server open for inspection until close.confirmed.
+
++ 
+
++ Launch it in a classic console (conhost.exe): inside Windows Terminal the console
+
++ handle is a hidden pseudo-console window, so the foreground gate below refuses.
+
++-Chrome itself can crash at the checkpoint 5 download (2026-10-03: three Crashpad
+
++-dumps in the test profile, one per failed run); a run without the crash passed
+
++-9/9. Treat that crash as inconclusive and re-run; never count it as a pass.
+
++ """
+
++ from __future__ import annotations
+
++ 
+
++ import ctypes
+
++ import json
+
+++import secrets
+
++ from pathlib import Path
+
++ import shutil
+
++ import subprocess
+
++@@ -30,9 +27,9 @@
+
++ from prompt_flow_connections_visible import require_browser_foreground
+
++ 
+
++ ROOT = Path(__file__).resolve().parents[1]
+
++-OUT = ROOT / 'Temp/prompt-commentary-visible'
+
+++OUT = ROOT / 'Temp/prompt-commentary-redesign-visible'
+
++ visible.OUT = OUT
+
++-visible.RUNTIME = OUT / 'runtime'
+
+++visible.RUNTIME = ROOT / 'Temp/prompt-commentary-visible/runtime'
+
++ BASE = visible.BASE
+
++ 
+
++ 
+
++@@ -40,6 +37,7 @@
+
++     if any('headless' in arg for arg in sys.argv[1:]):
+
++         raise SystemExit('Headless execution is forbidden.')
+
++     OUT.mkdir(parents=True, exist_ok=True)
+
+++    (OUT / 'close.confirmed').unlink(missing_ok=True)
+
++     user32 = ctypes.windll.user32
+
++     kernel32 = ctypes.windll.kernel32
+
++     kernel32.GetConsoleWindow.restype = ctypes.c_void_p
+
++@@ -54,12 +52,20 @@
+
++     if any(port in before for port in (8001, 8766, 50052)):
+
++         raise SystemExit('Test ports occupied; refusing to replace an existing server.')
+
++     original = visible.read_discovery()
+
++-    (OUT / 'login.json').write_text(json.dumps({'username': 'user', 'password': 'changeme'}), encoding='utf-8')
+
+++    (OUT / 'login.json').write_text(json.dumps({'username': 'user', 'password': secrets.token_urlsafe(32)}), encoding='utf-8')
+
++     server = None
+
++     results = []
+
+++    (OUT / 'checks.json').write_text('[]', encoding='utf-8')
+
++     outcome = 1
+
++     try:
+
++         env, credentials = visible.prepare_runtime()
+
+++        if '--resume' in sys.argv:
+
+++            # Rotate only the isolated test account, avoiding Chrome's breached-password modal.
+
+++            subprocess.run([sys.executable, '-u', 'Tlamatini/manage.py', 'shell', '-c',
+
+++                'import os; from django.contrib.auth import get_user_model; '
+
+++                'u = get_user_model().objects.get(username="user"); '
+
+++                'u.set_password(os.environ["TLAMATINI_COMMENT_TEST_PASSWORD"]); u.save(update_fields=["password"])'],
+
+++                cwd=visible.RUNTIME, env={**env, 'TLAMATINI_COMMENT_TEST_PASSWORD': credentials['password']}, check=True)
+
++         # Refresh only this isolated test installation on a repeat run.
+
++         for path in ('agent/services/prompt_flow_panel.py', 'agent/test_prompt_flow_panel.py',
+
++                      'agent/test_prompt_flow_panel_websocket.py', 'agent/management/commands/check_prompt_flow_panel.py',
+
++@@ -93,20 +99,31 @@
+
++         else:
+
++             raise TimeoutError('Test server did not become ready.')
+
++         visible.restore_discovery(original)
+
+++        # This isolated profile must not cover the actual controls with Chrome's password bubble.
+
+++        profile = OUT / ('chrome-profile-' + str(time.time_ns()))
+
+++        preferences = profile / 'Default/Preferences'
+
+++        preferences.parent.mkdir(parents=True, exist_ok=True)
+
+++        prefs = json.loads(preferences.read_text(encoding='utf-8')) if preferences.exists() else {}
+
+++        prefs['credentials_enable_service'] = False
+
+++        prefs.setdefault('profile', {})['password_manager_enabled'] = False
+
+++        preferences.write_text(json.dumps(prefs), encoding='utf-8')
+
++         with sync_playwright() as playwright:
+
++             context = playwright.chromium.launch_persistent_context(
+
++-                str(OUT / 'chrome-profile-containment'), channel='chrome', headless=False,
+
+++                str(profile), channel='chrome', headless=False,
+
++                 chromium_sandbox=True, no_viewport=True, slow_mo=100,
+
++                 accept_downloads=True, args=['--start-maximized'])
+
++             page = context.pages[0]
+
++             errors = []
+
++-            page.on('pageerror', lambda error: errors.append(str(error)))
+
+++            def page_error(error):
+
+++                errors.append(str(error))
+
+++                print('BROWSER SCRIPT ERROR:', error, flush=True)
+
+++            page.on('pageerror', page_error)
+
++             page.on('dialog', lambda dialog: dialog.accept())
+
++             page.on('close', lambda: print('Visible test page closed.', flush=True))
+
++             page.goto(BASE)
+
++             page.bring_to_front()
+
++-            visible.visibility_gate('browser', page)
+
++             require_browser_foreground(page)
+
+++            visible.photograph('browser-visible')
+
++             page.goto(BASE + '/agent/prompt_flow_panel/')
+
++             if page.locator('#id_username').is_visible():
+
++                 page.locator('#id_username').fill(credentials['username'])
+
++@@ -115,6 +132,11 @@
+
++                 page.goto(BASE + '/agent/prompt_flow_panel/')
+
++             credentials.clear()
+
++             expect(page.locator('.agent-tool-item')).to_have_count(8)
+
+++            expect(page.locator('[data-action="reconnect"]')).to_be_disabled()
+
+++            page.wait_for_load_state('networkidle')
+
+++            page.bring_to_front()
+
+++            require_browser_foreground(page)
+
+++            visible.photograph('panel-ready')
+
++ 
+
++             def checkpoint(name):
+
++                 require_browser_foreground(page)
+
++@@ -125,7 +147,11 @@
+
++ 
+
++             def menu(action):
+
++                 page.get_by_role('button', name='File', exact=True).click()
+
++-                page.locator('.dropdown-menu [data-action="' + action + '"]').first.click()
+
+++                target = page.locator('.dropdown-menu [data-action="' + action + '"]').first
+
+++                if not target.is_visible():
+
+++                    print('Menu diagnostics:', page.locator('.nav-item.dropdown').evaluate('(el) => ({html: el.outerHTML, style: getComputedStyle(el.querySelector(".dropdown-menu")).display})'), errors, flush=True)
+
+++                    visible.photograph('file-menu-diagnostic')
+
+++                target.click()
+
++                 accept = page.locator('.tlmpop-overlay button').filter(has_text='Continue')
+
++                 if accept.is_visible():
+
++                     accept.click()
+
++@@ -153,75 +179,121 @@
+
++                 box = locator.bounding_box()
+
++                 return box['x'] + box['width'] / 2, box['y'] + box['height'] / 2
+
++ 
+
++-            menu('new')
+
+++            expect(page.locator('.pmt-node')).to_have_count(0)
+
++             page.locator('[data-action="fit"]').click()
+
++             expect(page.locator('.agent-tool-item')).to_have_count(8)
+
++-            expect(page.locator('.agent-tool-item[data-type="user_input"]')).to_have_text('User Input')
+
++-            expect(page.locator('.agent-tool-item[data-type="user_commentary"]')).to_have_text('User Commentary')
+
++             css = page.locator('link[href*="prompt_flow_panel.css"]').get_attribute('href')
+
++-            assert '-prompt-commentary-input-1' in css
+
+++            assert '-prompt-commentary-canvas-2' in css
+
++             assert page.request.get(BASE + css).body() == (ROOT / 'Tlamatini/agent/static/agent/css/prompt_flow_panel.css').read_bytes()
+
++-            checkpoint('01-palette-and-served-assets')
+
++             page.locator('.agent-tool-item[data-type="user_commentary"]').click()
+
++             comment = page.locator('.pmt-node[data-type="user_commentary"]')
+
+++            toolbar = page.get_by_role('region', name='Comment formatting')
+
+++            expect(toolbar).to_be_visible()
+
+++            expect(toolbar).to_have_css('position', 'fixed')
+
+++            expect(comment.locator('.pmt-comment-handle')).to_have_count(8)
+
++             expect(comment.locator('.pmt-port')).to_have_count(0)
+
++             expect(page.locator('#pmt-play')).to_be_disabled()
+
++             expect(page.locator('#pmt-start option')).to_have_count(1)
+
+++            expect(page.locator('#pmt-field-width, #pmt-field-height')).to_have_count(0)
+
+++            checkpoint('01-floating-toolbar-and-eight-border-handles')
+
++             paragraph = ('Review paragraph: ñ <script> literal {{last_output}}. This note stays on the canvas.\n\n' * 60).rstrip()
+
++             comment.dblclick(position={'x': 70, 'y': 55})
+
++             editor = page.get_by_role('textbox', name='Static User Commentary text')
+
++             expect(editor).to_be_visible()
+
++             editor.fill(paragraph)
+
+++            editor.press('Control+a')
+
++             assert editor.evaluate('(el) => el.scrollHeight <= el.clientHeight + 2'), 'Editor must grow while typing'
+
++             expect(editor).to_have_css('overflow-y', 'hidden')
+
++-            editor.press('Control+Enter')
+
+++            toolbar.get_by_role('combobox', name='Comment font').select_option('Georgia')
+
+++            toolbar.get_by_role('combobox', name='Comment text size').select_option('20')
+
+++            toolbar.get_by_role('button', name='Blue comment', exact=True).click()
+
+++            toolbar.get_by_role('button', name='Bold', exact=True).click()
+
+++            toolbar.get_by_role('button', name='Italic', exact=True).click()
+
+++            toolbar.get_by_role('button', name='Align right', exact=True).click()
+
+++            toolbar.locator('summary[aria-label="Text color"]').click()
+
+++            toolbar.get_by_role('button', name='Blue text', exact=True).click()
+
+++            expect(editor).to_have_css('font-size', '20px')
+
+++            expect(editor).to_have_css('font-style', 'italic')
+
+++            expect(editor).to_have_css('font-weight', '700')
+
+++            expect(editor).to_have_css('text-align', 'right')
+
+++            expect(editor).to_have_css('color', 'rgb(29, 78, 216)')
+
+++            expect(comment.locator('.pmt-shape')).to_have_css('fill', 'rgb(219, 234, 254)')
+
+++            assert editor.evaluate('(el) => el.scrollHeight <= el.clientHeight + 2'), 'Formatting must reflow the whole note'
+
+++            toolbar.get_by_role('button', name='Done', exact=True).click()
+
++             expect(comment.locator('.pmt-comment-text')).to_have_text(paragraph)
+
++             assert comment.locator('.pmt-comment-text script').count() == 0
+
++-            assert comment.locator('.pmt-comment-text').evaluate('(el) => el.scrollHeight <= el.clientHeight'), 'Long note must fit without scrolling'
+
++-            assert float(comment.get_attribute('style').split('height: ')[1].split('px')[0]) > 200
+
++-            checkpoint('02-in-place-long-literal-note')
+
++-            comment.focus()
+
++-            comment.press('Enter')
+
+++            assert comment.locator('.pmt-comment-text').evaluate('(el) => el.scrollHeight <= el.clientHeight')
+
+++            checkpoint('02-live-floating-formatting-and-long-text-containment')
+
+++            # Configure now edits on the canvas; it must never create a dialog.
+
+++            page.locator('[data-action="configure"]').click()
+
+++            expect(editor).to_be_visible()
+
+++            expect(page.locator('.ui-dialog:visible')).to_have_count(0)
+
++             editor.fill('Cancelled replacement')
+
++-            editor.press('Escape')
+
+++            toolbar.get_by_role('button', name='Pink comment', exact=True).click()
+
+++            toolbar.get_by_role('combobox', name='Comment text size').select_option('48')
+
+++            toolbar.get_by_role('button', name='Cancel comment changes').click()
+
++             expect(comment.locator('.pmt-comment-text')).to_have_text(paragraph)
+
++-            # A compact review note lets the whole manually resized bubble be inspected.
+
++-            paragraph = 'Review note: Keep the runtime User Input separate from this static commentary.\n\nThe bubble contains the complete text and grows when the font or content needs more room.'
+
++-            comment.focus()
+
++-            comment.press('Enter')
+
+++            expect(comment.locator('.pmt-comment-text')).to_have_css('font-size', '20px')
+
+++            expect(comment.locator('.pmt-shape')).to_have_css('fill', 'rgb(219, 234, 254)')
+
+++            checkpoint('03-no-configuration-dialog-and-transactional-cancel')
+
+++            paragraph = 'A note for the next review\n\nKeep the explanation clear and give this decision a little more room. This comment belongs to the canvas; the flow continues independently.'
+
+++            toolbar.get_by_role('button', name='Edit comment text').click()
+
++             editor.fill(paragraph)
+
++-            editor.press('Control+Enter')
+
++-            page.locator('[data-action="configure"]').click()
+
++-            page.locator('#pmt-field-color').select_option('#dbeafe')
+
++-            page.locator('#pmt-field-font_family').select_option('Georgia')
+
++-            page.locator('#pmt-field-font_size').fill('21')
+
++-            page.locator('#pmt-field-width').fill('500')
+
++-            page.locator('#pmt-field-height').fill('320')
+
++-            page.locator('#pmt-field-bold').check()
+
++-            page.locator('#pmt-field-italic').check()
+
++-            page.locator('#pmt-field-align').select_option('right')
+
++-            page.get_by_role('button', name='Save', exact=True).click()
+
++-            expect(comment).to_have_css('width', '500px')
+
++-            expect(comment.locator('.pmt-comment-text')).to_have_css('font-size', '21px')
+
++-            expect(comment.locator('.pmt-comment-text')).to_have_css('font-style', 'italic')
+
++-            expect(comment.locator('.pmt-shape')).to_have_css('fill', 'rgb(219, 234, 254)')
+
++-            expect(comment.locator('.pmt-comment-text')).to_have_css('overflow-y', 'hidden')
+
+++            editor.press('Control+a')
+
+++            toolbar.get_by_role('combobox', name='Comment text size').select_option('16')
+
+++            toolbar.get_by_role('button', name='Bold', exact=True).click()
+
+++            toolbar.get_by_role('button', name='Italic', exact=True).click()
+
+++            toolbar.get_by_role('button', name='Align left', exact=True).click()
+
+++            toolbar.get_by_role('button', name='Done', exact=True).click()
+
+++            page.locator('[data-action="zoom-out"]').click()
+
+++
+
+++            def drag_border(direction, dx, dy, cancel=False):
+
+++                require_browser_foreground(page)
+
+++                box = comment.bounding_box()
+
+++                # Hit the figure's border itself, not just its small visible grip.
+
+++                body_bottom = box['y'] + box['height'] - 18 * .9
+
+++                x = box['x'] + (box['width'] if 'e' in direction else 0) if ('e' in direction or 'w' in direction) else box['x'] + box['width'] / 2
+
+++                y = (box['y'] if 'n' in direction else body_bottom) if ('n' in direction or 's' in direction) else (box['y'] + body_bottom) / 2
+
+++                page.mouse.move(x, y)
+
+++                page.mouse.down()
+
+++                page.mouse.move(x + dx, y + dy, steps=10)
+
+++                if cancel:
+
+++                    page.keyboard.press('Escape')
+
+++                page.mouse.up()
+
+++                return box, comment.bounding_box()
+
+++
+
+++            for direction in ('e', 's', 'w', 'n', 'ne', 'nw', 'se', 'sw'):
+
+++                dx = -36 if 'w' in direction else 36 if 'e' in direction else 0
+
+++                dy = -27 if 'n' in direction else 27 if 's' in direction else 0
+
+++                old, new = drag_border(direction, dx, dy)
+
+++                if dx:
+
+++                    assert abs(new['width'] - old['width'] - 36) < 2, (direction, old, new)
+
+++                if dy:
+
+++                    assert abs(new['height'] - old['height'] - 27) < 2, (direction, old, new)
+
+++                if 'w' in direction:
+
+++                    assert abs(new['x'] + new['width'] - old['x'] - old['width']) < 2
+
+++                if 'n' in direction:
+
+++                    assert abs(new['y'] + new['height'] - old['y'] - old['height']) < 2
+
+++                page.locator('[data-action="undo"]').click()
+
+++                restored = comment.bounding_box()
+
+++                assert all(abs(restored[k] - old[k]) < 2 for k in ('x', 'y', 'width', 'height'))
+
+++                checkpoint('04-' + direction + '-border-resize-and-undo')
+
+++            old, new = drag_border('se', 45, 36, cancel=True)
+
+++            assert all(abs(new[k] - old[k]) < 2 for k in ('x', 'y', 'width', 'height'))
+
+++            old, new = drag_border('se', 90, 72)
+
+++            page.locator('[data-action="undo"]').click()
+
+++            page.locator('[data-action="redo"]').click()
+
+++            assert abs(comment.bounding_box()['width'] - new['width']) < 2
+
+++            # Resize remains available while writing, without losing the editor/caret.
+
+++            toolbar.get_by_role('button', name='Edit comment text').click()
+
+++            old, new = drag_border('e', 45, 0)
+
+++            expect(editor).to_have_text(paragraph)
+
+++            assert editor.evaluate('(el) => el.scrollHeight <= el.clientHeight + 2')
+
+++            toolbar.get_by_role('button', name='Cancel comment changes').click()
+
+++            assert abs(comment.bounding_box()['width'] - old['width']) < 2
+
+++            toolbar.get_by_role('button', name='Fit bubble to text').click()
+
++             assert comment.locator('.pmt-comment-text').evaluate('(el) => el.scrollHeight <= el.clientHeight')
+
++-            checkpoint('03-font-color-size-and-cancel')
+
++-            page.locator('[data-action="zoom-out"]').click()
+
++-            handle = comment.locator('.pmt-comment-resize')
+
++-            x, y = center(handle)
+
++-            page.mouse.move(x, y)
+
++-            page.mouse.down()
+
++-            page.mouse.move(x + 90, y + 72, steps=8)
+
++-            page.mouse.up()
+
++-            expect(comment).to_have_css('width', '600px')
+
++-            expect(comment).to_have_css('height', '400px')
+
++-            page.locator('[data-action="undo"]').click()
+
++-            expect(comment).to_have_css('width', '500px')
+
++-            page.locator('[data-action="redo"]').click()
+
++-            expect(comment).to_have_css('width', '600px')
+
++-            checkpoint('04-zoom-aware-resize-undo-redo')
+
+++            checkpoint('05-resize-cancel-redo-and-live-edit-fit')
+
++             page.locator('[data-action="duplicate"]').click()
+
++             expect(comment).to_have_count(2)
+
++             page.locator('#submonitor-container').focus()
+
++@@ -235,13 +307,13 @@
+
++             portable, payload = save('commentaries.fpmt')
+
++             assert payload['version'] == 2 and payload['start'] is None and payload['edges'] == []
+
++             assert len(payload['nodes']) == 2
+
++-            assert all(n['config']['text'] == paragraph and n['config']['font_family'] == 'Georgia' for n in payload['nodes'])
+
+++            assert all(n['config']['text'] == paragraph and n['config']['font_family'] == 'Georgia' and n['config']['text_color'] == '#1d4ed8' for n in payload['nodes'])
+
++             open_file(portable)
+
++             expect(comment).to_have_count(2)
+
++             page.wait_for_timeout(500)
+
++             page.reload()
+
++             expect(comment).to_have_count(2)
+
++-            checkpoint('05-multiple-notes-file-and-draft-roundtrip')
+
+++            checkpoint('06-multiple-notes-file-and-draft-roundtrip')
+
++             # Keep the static notes, then add real input/history-clear operations.
+
++             page.locator('.agent-tool-item[data-type="user_input"]').click()
+
++             page.locator('#submonitor-container').focus()
+
++@@ -264,18 +336,20 @@
+
++             expect(page.locator('#pmt-start option')).to_have_count(2)
+
++             page.locator('#pmt-play').click()
+
++             expect(page.locator('#pmt-field-reply')).to_be_visible()
+
+++            expect(toolbar).to_be_hidden()
+
+++            expect(comment.locator('.pmt-comment-handle:enabled')).to_have_count(0)
+
++             expect(page.locator('.ui-dialog-title')).to_have_text('User Input')
+
++             page.locator('#pmt-field-reply').fill('Same runtime reply: ñ ✓')
+
++             page.get_by_role('button', name='Continue flow', exact=True).click()
+
++             expect(page.locator('#pmt-run-state')).to_have_text('completed', timeout=30000)
+
++             expect(page.locator('#pmt-run-log')).to_contain_text('Same runtime reply: ñ ✓')
+
++             expect(comment.locator('.pmt-node-status')).to_have_count(0)
+
++-            checkpoint('06-real-user-input-playback-with-static-notes')
+
+++            checkpoint('07-real-user-input-playback-with-static-notes')
+
++             page.locator('#pmt-play').click()
+
++             expect(page.locator('#pmt-field-reply')).to_be_visible()
+
++             page.keyboard.press('Escape')
+
++             expect(page.locator('#pmt-run-state')).to_have_text('stopped', timeout=30000)
+
++-            checkpoint('07-user-input-escape-stops-flow')
+
+++            checkpoint('08-user-input-escape-stops-flow')
+
++             legacy = {'format': 'tlamatini-prompting-flow', 'version': 1, 'name': 'Legacy reply flow',
+
++                       'start': 'old', 'max_steps': 20, 'nodes': [
+
++                           {'id': 'old', 'type': 'user_commentary', 'label': 'User Commentary', 'x': 70, 'y': 60, 'config': {'text': 'Legacy request'}},
+
++@@ -293,11 +367,166 @@
+
++             expect(page.locator('#pmt-run-state')).to_have_text('completed', timeout=30000)
+
++             _, migrated = save('migrated.fpmt')
+
++             assert migrated['version'] == 2 and migrated['nodes'][0]['type'] == 'user_input'
+
++-            checkpoint('08-legacy-input-migration-and-playback')
+
+++            checkpoint('09-legacy-input-migration-and-playback')
+
++             open_file(ROOT / 'docs/examples/prompting-kickoff.fpmt')
+
++             expect(page.locator('.pmt-node')).to_have_count(8)
+
++             page.locator('[data-action="fit"]').click()
+
++-            checkpoint('09-bundled-eight-asset-example')
+
+++            checkpoint('10-bundled-eight-asset-example')
+
+++            # Finish with the actual redesigned surface, not the tiny all-operation tour.
+
+++            menu('new')
+
+++            page.locator('[data-action="fit"]').click()
+
+++            samples = [
+
+++                ('Review the decision\n\nKeep the question focused. Give the reader enough context to choose the next step with confidence.', 'Georgia', 'Blue', 100, 220),
+
+++                ('A little context helps\n\nUse this space for a reminder, an explanation, or feedback for the next person working on the flow.', 'Nunito', 'Yellow', 620, 220),
+
+++                ('Design notes · ñ 👩🏽‍💻\n\nDifferent ideas deserve different emphasis.\n\nLiteral <script> & {{last_output}} stay safely on the canvas.', 'Arial', 'Green', 1140, 220),
+
+++            ]
+
+++            for text, font, color, target_x, target_y in samples:
+
+++                page.locator('.agent-tool-item[data-type="user_commentary"]').click()
+
+++                note = comment.last
+
+++                note.dblclick(position={'x': 70, 'y': 55})
+
+++                editor.fill(text)
+
+++                editor.press('Control+a')
+
+++                toolbar.get_by_role('combobox', name='Comment font').select_option(font)
+
+++                toolbar.get_by_role('button', name=color + ' comment', exact=True).click()
+
+++                # Select an actual phrase with the keyboard; each note has mixed styles.
+
+++                editor.press('Control+Home')
+
+++                editor.press('Shift+End')
+
+++                toolbar.get_by_role('combobox', name='Comment font').select_option('Verdana')
+
+++                toolbar.get_by_role('combobox', name='Comment text size').select_option('28')
+
+++                toolbar.get_by_role('button', name='Bold', exact=True).click()
+
+++                toolbar.locator('summary[aria-label="Text color"]').click()
+
+++                toolbar.get_by_role('button', name='Blue text', exact=True).click()
+
+++                expect(editor.locator('[data-comment-run]').first).to_have_css('font-family', 'Verdana')
+
+++                expect(editor.locator('[data-comment-run]').first).to_have_css('font-size', '28px')
+
+++                expect(editor.locator('[data-comment-run]').last).to_have_css('font-family', font)
+
+++                # Collapsed-caret formatting styles only the newly typed ending.
+
+++                editor.press('Control+End')
+
+++                toolbar.get_by_role('combobox', name='Comment font').select_option('Arial')
+
+++                toolbar.get_by_role('combobox', name='Comment text size').select_option('12')
+
+++                toolbar.get_by_role('button', name='Italic', exact=True).click()
+
+++                toolbar.get_by_role('button', name='Underline', exact=True).click()
+
+++                editor.press('End')
+
+++                page.keyboard.insert_text(' — ready for review')
+
+++                expect(editor.locator('[data-comment-run]').last).to_have_css('font-style', 'italic')
+
+++                expect(editor.locator('[data-comment-run]').last).to_have_css('text-decoration-line', 'underline')
+
+++                editor.press('Control+z')
+
+++                expect(editor).to_have_text(text)
+
+++                editor.press('Control+y')
+
+++                expect(editor).to_have_text(text + ' — ready for review')
+
+++                toolbar.get_by_role('button', name='Done', exact=True).click()
+
+++                origin = note.bounding_box()
+
+++                canvas_box = page.locator('#pmt-world').bounding_box()
+
+++                page.mouse.move(origin['x'] + 80, origin['y'] + 20)
+
+++                page.mouse.down()
+
+++                page.mouse.move(canvas_box['x'] + target_x + 80, canvas_box['y'] + target_y + 20, steps=10)
+
+++                page.mouse.up()
+
+++            page.locator('[data-action="fit"]').click()
+
+++            comment.first.click(position={'x': 80, 'y': 20})
+
+++            expect(toolbar).to_be_visible()
+
+++            expect(comment.first.locator('.pmt-shape')).to_have_css('stroke', 'rgb(121, 218, 205)')
+
+++            box, bubble = toolbar.bounding_box(), comment.first.bounding_box()
+
+++            assert box['x'] + box['width'] <= page.evaluate('window.innerWidth')
+
+++            assert box['y'] + box['height'] <= page.evaluate('window.innerHeight')
+
+++            assert box['x'] >= bubble['x'] + bubble['width'] or box['x'] + box['width'] <= bubble['x'] or box['y'] >= bubble['y'] + bubble['height'] or box['y'] + box['height'] <= bubble['y'], 'Floating tools must leave this note unobstructed'
+
+++            checkpoint('11-mixed-fonts-ranges-and-caret-formatting-in-three-comments')
+
+++            # Border handles are reachable by keyboard as well as by mouse.
+
+++            handle = comment.first.locator('[data-resize="e"]')
+
+++            original_width = float(comment.first.evaluate('(el) => parseFloat(el.style.width)'))
+
+++            handle.focus()
+
+++            handle.press('ArrowRight')
+
+++            assert float(comment.first.evaluate('(el) => parseFloat(el.style.width)')) == original_width + 10
+
+++            page.locator('[data-action="undo"]').click()
+
+++            assert float(comment.first.evaluate('(el) => parseFloat(el.style.width)')) == original_width
+
+++            comment.first.click(position={'x': 80, 'y': 20})
+
+++            checkpoint('12-keyboard-resize-and-restored-final-layout')
+
+++            # Compare rendered line boxes, geometry, typography and SVG paths across real downloads/opens.
+
+++            def rendering():
+
+++                page.evaluate('document.fonts.ready')
+
+++                return comment.evaluate_all('''els => els.map(el => {
+
+++                    const scale = el.getBoundingClientRect().width / el.offsetWidth;
+
+++                    const box = el.getBoundingClientRect();
+
+++                    const round = x => Math.round(x * 100) / 100;
+
+++                    return { id: el.dataset.nodeId, x: el.style.left, y: el.style.top, width: el.style.width, height: el.style.height,
+
+++                        path: el.querySelector('.pmt-shape').getAttribute('d'), fill: getComputedStyle(el.querySelector('.pmt-shape')).fill,
+
+++                        runs: [...el.querySelectorAll('[data-comment-run]')].map(span => {
+
+++                            const style = getComputedStyle(span), range = document.createRange(); range.selectNodeContents(span);
+
+++                            return { text: span.textContent, font: style.fontFamily, size: style.fontSize, color: style.color,
+
+++                                bold: style.fontWeight, italic: style.fontStyle, underline: style.textDecorationLine,
+
+++                                lines: [...range.getClientRects()].map(r => [round((r.x - box.x) / scale), round((r.y - box.y) / scale), round(r.width / scale), round(r.height / scale)]) };
+
+++                        }) };
+
+++                })''')
+
+++
+
+++            page.locator('[data-action="fit"]').click()
+
+++            original_render = rendering()
+
+++            original_file, original_payload = save('mixed-commentaries.fpmt')
+
+++            assert len(original_payload['nodes']) == 3
+
+++            assert all(len(n['config']['runs']) >= 3 for n in original_payload['nodes'])
+
+++            assert all(''.join(run['text'] for run in n['config']['runs']) == n['config']['text'] for n in original_payload['nodes'])
+
+++            for cycle in range(3):
+
+++                menu('new')
+
+++                expect(comment).to_have_count(0)
+
+++                open_file(original_file)
+
+++                expect(comment).to_have_count(3)
+
+++                page.locator('[data-action="fit"]').click()
+
+++                assert rendering() == original_render, 'Rendering changed on file reload ' + str(cycle)
+
+++                original_file, reloaded_payload = save('mixed-commentaries.fpmt')
+
+++                assert reloaded_payload == original_payload, 'Saved document changed after reopening'
+
+++            page.wait_for_timeout(500)
+
+++            page.reload()
+
+++            expect(comment).to_have_count(3)
+
+++            page.locator('[data-action="fit"]').click()
+
+++            assert rendering() == original_render, 'Draft recovery changed rich text rendering'
+
+++            (OUT / 'rich-rendering.json').write_text(json.dumps(original_render, ensure_ascii=False, indent=2), encoding='utf-8')
+
+++            comment.first.click(position={'x': 80, 'y': 20})
+
+++            checkpoint('13-three-file-save-open-cycles-and-draft-render-identically')
+
+++            # Duplicating preserves every run; deleting and undoing restores the rendered note.
+
+++            page.locator('[data-action="duplicate"]').click()
+
+++            expect(comment).to_have_count(4)
+
+++            _, duplicated = save('mixed-commentaries-duplicate.fpmt')
+
+++            assert duplicated['nodes'][-1]['config'] == duplicated['nodes'][0]['config']
+
+++            page.locator('[data-action="delete"]').click()
+
+++            expect(comment).to_have_count(3)
+
+++            page.locator('[data-action="undo"]').click()
+
+++            expect(comment).to_have_count(4)
+
+++            page.locator('[data-action="redo"]').click()
+
+++            expect(comment).to_have_count(3)
+
+++            page.locator('[data-action="fit"]').click()
+
+++            assert rendering() == original_render
+
+++            comment.first.click(position={'x': 80, 'y': 20})
+
+++            checkpoint('14-rich-comment-duplicate-delete-undo-redo')
+
+++            # Rich copy/paste and native Enter/delete operate inside the same graphical editor.
+
+++            toolbar.get_by_role('button', name='Edit comment text').click()
+
+++            before_text = original_payload['nodes'][0]['config']['text']
+
+++            editor.press('Control+a')
+
+++            editor.press('Control+c')
+
+++            editor.press('Control+End')
+
+++            editor.press('Enter')
+
+++            page.keyboard.insert_text('👩🏽‍💻')
+
+++            editor.press('Backspace')
+
+++            expect(editor).to_have_text(before_text + '\n')
+
+++            editor.press('Control+v')
+
+++            expect(editor).to_have_text(before_text + '\n' + before_text)
+
+++            expect(editor.locator('[data-comment-run]').last).to_have_css('font-style', 'italic')
+
+++            assert editor.locator('[data-comment-run]').count() >= 6
+
+++            editor.press('Control+z')
+
+++            expect(editor).to_have_text(before_text + '\n')
+
+++            toolbar.get_by_role('button', name='Cancel comment changes').click()
+
+++            assert rendering() == original_render
+
+++            checkpoint('15-rich-clipboard-enter-grapheme-delete-and-cancel')
+
+++            # Zoom-triggered draft writes must not leak an uncommitted rich edit.
+
+++            toolbar.get_by_role('button', name='Edit comment text').click()
+
+++            editor.fill('This cancelled text must never replace the saved draft')
+
+++            page.locator('[data-action="zoom-out"]').click()
+
+++            page.wait_for_timeout(350)
+
+++            draft_text = page.evaluate('JSON.parse(localStorage.getItem("tlamatini.prompting-flow.draft.v1." + document.body.dataset.userId)).flow.nodes[0].config.text')
+
+++            assert draft_text == before_text
+
+++            toolbar.get_by_role('button', name='Cancel comment changes').click()
+
+++            expect(comment.first).to_have_css('outline-style', 'none')
+
+++            page.reload()
+
+++            page.locator('[data-action="fit"]').click()
+
+++            assert rendering() == original_render
+
+++            comment.first.click(position={'x': 80, 'y': 20})
+
+++            checkpoint('16-cancelled-rich-edit-never-leaks-into-draft')
+
++             assert not errors, errors
+
++             outcome = 0
+
++             (OUT / 'summary.json').write_text(json.dumps({'exit_code': 0, 'checks': results,
+
++--- a/Tlamatini/agent/templates/agent/prompt_flow_panel.html
+
+++++ b/Tlamatini/agent/templates/agent/prompt_flow_panel.html
+
++@@ -52,7 +52,7 @@
+
++             <div id="agents-header" class="header-title"><span id="agents-header-title">Operations bar</span></div>
+
++             <div class="pmt-palette-intro">Drag an operation or static commentary onto the canvas, or click to add it.</div>
+
++             <div id="subagents-container"><div id="agents-list"></div></div>
+
++-            <div class="pmt-palette-foot">Drag an output triangle to an input triangle to connect.<br>Double-click an operation to configure it.<br>Double-click a commentary to write; Configure chooses its font and color.</div>
+
+++            <div class="pmt-palette-foot">Drag an output triangle to an input triangle to connect.<br>Double-click an operation to configure it.<br>Double-click a commentary to write. Format with its floating toolbar; drag any border or corner to resize.</div>
+
++         </aside>
+
++         <div id="drag-divider" role="separator" aria-label="Resize Operations bar" aria-orientation="vertical" tabindex="0"></div>
+
++         <section id="monitor-container" aria-label="Prompt flow canvas">
+
++--- a/AGENTS.md
+
+++++ b/AGENTS.md
+
++@@ -115,7 +115,7 @@
+
++ 
+
++ ## Prompt Flow comments are static; User Input runs (2026-10-03)
+
++ 
+
++-**Commentary/Input split (2026-10-03, source changes):** The Operations bar contains seven executable operations and a separate static **User Commentary** asset. **User Input** (`user_input`) keeps the old question/reply/cancellation mechanism and uses the supplied notched-top, downward-point figure. **User Commentary** (`user_commentary`) is a speech-bubble review note: double-click/Enter writes in place, Done/Ctrl+Enter saves, Escape cancels; Configure selects palette color, font, size, emphasis, alignment and dimensions. Bubbles and their editors grow to contain the full wrapped text at the chosen width/font, **without internal scrollbars**; saved height is a minimum. They move, resize, duplicate and Undo/Redo, save/open/recover with the diagram, have no ports or Start status, and never affect model context, history or playback steps. New `.fpmt` saves use version **2**; version 1 files/drafts migrate their executable commentary to User Input while preserving IDs, connections and configuration. The local-storage key still ends in `.draft.v1.<user id>` for compatibility; it does not identify the document version. Current cache suffix: `-prompt-commentary-input-1`. Verified: 61 backend/packaging tests and nine real foreground Chrome checks in `scripts/prompt_flow_commentary_visible.py`. No release executable was rebuilt. See `docs/prompting-flow-designer.md` and the 2026-10-03 entry in `docs/claude/recent-fixes.md`.
+
+++**Commentary/Input contract (2026-10-04, source changes):** Seven executable operations remain separate from static **User Commentary**. **User Input** (`user_input`) keeps the question/reply/cancellation mechanism and notched figure. **User Commentary** (`user_commentary`) is edited entirely on the canvas: double-click/Enter writes in the bubble; a floating mini toolbar formats selected text with different fonts, sizes, text colors, bold, italic and underline within the same note. With a caret, formatting applies to newly typed text; outside editing it applies to the whole note. Bubble color and alignment affect the note. There is no commentary configuration dialog or numeric dimension form. Drag any border or corner to resize, including while editing; Fit text removes spare height. Done/Ctrl+Enter saves; Cancel/Escape restores the whole edit. Ctrl+Z/Y works inside the editor; completed edits, moves, resizes and duplicates use flow Undo/Redo. Bubbles contain their full wrapped text without internal scrollbars. Version 2 files persist allowlisted `runs` plus matching literal `text`; older plain notes normalize to one run, and version 1 executable commentary still migrates to User Input with IDs/edges/settings intact. Comments have no ports/Start/runtime/context/history/step effects. The draft key remains `.draft.v1.<user id>`. Cache suffix: `-prompt-commentary-canvas-2`. See `docs/prompting-flow-designer.md` and the 2026-10-04 verification record; no release executable was rebuilt.
+
++ 
+
++ Preserve this distinction when editing the designer, importing legacy diagrams,
+
++ writing documentation or verifying the shipped example. The user explicitly
+
++--- a/CLAUDE.md
+
+++++ b/CLAUDE.md
+
++@@ -848,9 +848,9 @@
+
++ 
+
++ A separate, login-protected page at **`/agent/prompt_flow_panel/`** (view `views.prompt_flow_panel`, URL name `prompt_flow_panel`), opened from the chat navbar's **Panels** menu (**Panels ▸ Prompt Flow Panel**, beside **Panels ▸ Agentic Control Panel**) and from **File ▸ Prompt Flow Panel** in the Agentic Control Panel (both `target="_blank"`). The user draws a flow with seven executable shapes and static notes — Prompt, Programmed Prompt, Decision (Yes/No), Feed embeddings, Flush embeddings, Clean History, User Input, plus static User Commentary. Executable shapes are joined by connections; notes have no ports. The user saves/opens the diagram as a versioned JSON **`.fpmt`** document (JSON `format: "tlamatini-prompting-flow"`, `version: 2`; version 1 imports migrate the executable commentary to User Input), and plays it against the configured model stack. Opening a file never runs it.
+
++ 
+
++-**Commentary/Input split (2026-10-03, source changes):** The Operations bar contains seven executable operations and a separate static **User Commentary** asset. **User Input** (`user_input`) keeps the old question/reply/cancellation mechanism and uses the supplied notched-top, downward-point figure. **User Commentary** (`user_commentary`) is a speech-bubble review note: double-click/Enter writes in place, Done/Ctrl+Enter saves, Escape cancels; Configure selects palette color, font, size, emphasis, alignment and dimensions. Bubbles and their editors grow to contain the full wrapped text at the chosen width/font, **without internal scrollbars**; saved height is a minimum. They move, resize, duplicate and Undo/Redo, save/open/recover with the diagram, have no ports or Start status, and never affect model context, history or playback steps. New `.fpmt` saves use version **2**; version 1 files/drafts migrate their executable commentary to User Input while preserving IDs, connections and configuration. The local-storage key still ends in `.draft.v1.<user id>` for compatibility; it does not identify the document version. Current cache suffix: `-prompt-commentary-input-1`. Verified: 61 backend/packaging tests and nine real foreground Chrome checks in `scripts/prompt_flow_commentary_visible.py`. No release executable was rebuilt. See `docs/prompting-flow-designer.md` and the 2026-10-03 entry in `docs/claude/recent-fixes.md`.
+
++-
+
++-**⚠️ The extension is `.fpmt` ("flow prompt"), NOT `.pmt` (changed 2026-09-25)** — `.pmt` already belongs to the plain-text system prompts (`agent/prompt.pmt`, `flowhypervisor/monitoring-prompt.pmt`), and sharing it invited exactly the confusion the editor then had to reject. Where the extension lives: `prompt-flow-panel-model.js` (`EXTENSION = '.fpmt'`, `isFlowFilename` = `/\.fpmt$/i`, and `flowFilename()` converts a legacy `name.pmt` to `name.fpmt` — so an old browser draft or a typed `x.pmt` save name comes back as `.fpmt`), the page's `<input accept=".fpmt">` and **Open .fpmt… / Save as .fpmt…** menu items, the open-time guard (*"Choose a .fpmt Prompt Flow Panel file."* — a `.pmt` file, including `prompt.pmt` itself, is refused), and the backend's error text in `services/prompt_flow_panel.py` + the consumer. The shipped example is **`docs/examples/prompting-kickoff.fpmt`** (the old `.pmt` copy is gone). `.fpmt` is registered as TEXT in `rag/binary_guard.py`, as a canvas-viewable type in `agent_page_canvas.js`, as a scrubbable type in `build_complete_public_release.py`, and in `doc_generation/complete_project_docs.py`. ⚠️ **The JSON `format` string deliberately stayed `tlamatini-prompting-flow`** — a rename of the EXTENSION must never invalidate the CONTENTS of flows users already saved. `STATIC_VERSION` carries the `-prompt-commentary-input-1` suffix; read the live value in `tlamatini/settings.py` before changing it. There is **no Windows file association** for `.fpmt` (only `.flw` has one); double-clicking a `.fpmt` does nothing yet. Visible coverage: `scripts/prompt_flow_extension_visible.py` (15 checkpoints — menus + file filter, default/typed/legacy save names, uppercase + BOM + Unicode, a real reopened-file playback, the bundled example, invalid JSON, an old `.pmt`, `prompt.pmt` itself, wrong version, >5 MiB, New + generated example, a recovered browser draft, and the Help text that tells the two formats apart). Its log (`Temp/fpmt-extension-visible/console.log`, 2026-09-25 16:07) records **all 15 checkpoints PASS, exit code 0**, after an earlier run failed at the example's filename check (the title carries a `•` dirty marker). The same log's `agent.test_binary_guard` run then went `OK` (46 tests); its 5 `test_documentation_mentions_the_feature` failures happened only in a copied runtime under `Temp/` that has no docs beside it — not a real regression.
+
+++**Commentary/Input contract (2026-10-04, source changes):** Seven executable operations remain separate from static **User Commentary**. **User Input** (`user_input`) keeps the question/reply/cancellation mechanism and notched figure. **User Commentary** (`user_commentary`) is edited entirely on the canvas: double-click/Enter writes in the bubble; a floating mini toolbar formats selected text with different fonts, sizes, text colors, bold, italic and underline within the same note. With a caret, formatting applies to newly typed text; outside editing it applies to the whole note. Bubble color and alignment affect the note. There is no commentary configuration dialog or numeric dimension form. Drag any border or corner to resize, including while editing; Fit text removes spare height. Done/Ctrl+Enter saves; Cancel/Escape restores the whole edit. Ctrl+Z/Y works inside the editor; completed edits, moves, resizes and duplicates use flow Undo/Redo. Bubbles contain their full wrapped text without internal scrollbars. Version 2 files persist allowlisted `runs` plus matching literal `text`; older plain notes normalize to one run, and version 1 executable commentary still migrates to User Input with IDs/edges/settings intact. Comments have no ports/Start/runtime/context/history/step effects. The draft key remains `.draft.v1.<user id>`. Cache suffix: `-prompt-commentary-canvas-2`. See `docs/prompting-flow-designer.md` and the 2026-10-04 verification record; no release executable was rebuilt.
+
+++
+
+++**⚠️ The extension is `.fpmt` ("flow prompt"), NOT `.pmt` (changed 2026-09-25)** — `.pmt` already belongs to the plain-text system prompts (`agent/prompt.pmt`, `flowhypervisor/monitoring-prompt.pmt`), and sharing it invited exactly the confusion the editor then had to reject. Where the extension lives: `prompt-flow-panel-model.js` (`EXTENSION = '.fpmt'`, `isFlowFilename` = `/\.fpmt$/i`, and `flowFilename()` converts a legacy `name.pmt` to `name.fpmt` — so an old browser draft or a typed `x.pmt` save name comes back as `.fpmt`), the page's `<input accept=".fpmt">` and **Open .fpmt… / Save as .fpmt…** menu items, the open-time guard (*"Choose a .fpmt Prompt Flow Panel file."* — a `.pmt` file, including `prompt.pmt` itself, is refused), and the backend's error text in `services/prompt_flow_panel.py` + the consumer. The shipped example is **`docs/examples/prompting-kickoff.fpmt`** (the old `.pmt` copy is gone). `.fpmt` is registered as TEXT in `rag/binary_guard.py`, as a canvas-viewable type in `agent_page_canvas.js`, as a scrubbable type in `build_complete_public_release.py`, and in `doc_generation/complete_project_docs.py`. ⚠️ **The JSON `format` string deliberately stayed `tlamatini-prompting-flow`** — a rename of the EXTENSION must never invalidate the CONTENTS of flows users already saved. `STATIC_VERSION` carries the `-prompt-commentary-canvas-2` suffix; read the live value in `tlamatini/settings.py` before changing it. There is **no Windows file association** for `.fpmt` (only `.flw` has one); double-clicking a `.fpmt` does nothing yet. Visible coverage: `scripts/prompt_flow_extension_visible.py` (15 checkpoints — menus + file filter, default/typed/legacy save names, uppercase + BOM + Unicode, a real reopened-file playback, the bundled example, invalid JSON, an old `.pmt`, `prompt.pmt` itself, wrong version, >5 MiB, New + generated example, a recovered browser draft, and the Help text that tells the two formats apart). Its log (`Temp/fpmt-extension-visible/console.log`, 2026-09-25 16:07) records **all 15 checkpoints PASS, exit code 0**, after an earlier run failed at the example's filename check (the title carries a `•` dirty marker). The same log's `agent.test_binary_guard` run then went `OK` (46 tests); its 5 `test_documentation_mentions_the_feature` failures happened only in a copied runtime under `Temp/` that has no docs beside it — not a real regression.
+
++ 
+
++ | Piece | File |
+
++ |---|---|
+
++@@ -868,7 +868,7 @@
+
++ 3. **Carriage is explicit on both mechanisms.** `build.py` names the three backend modules plus the check command as hidden imports / frozen-required modules; `build_runtime_assets.py` lists the CSS + both JS files in `REQUIRED_STATIC` and the template, `docs/prompting-flow-designer.md` and `docs/examples/prompting-kickoff.fpmt` in `ROOT_SOURCES` (+ its install-root floor list); `build.py` copies the example to `dist/manage/docs/examples/`; `copy_source_assets.py` lists them in `REQUIRED_SNAPSHOT_FILES`; `test_prompt_flow_panel_carriage.py` pins the `.fpmt` path. Both inclusion sweeps passed CLEAN after the `.fpmt` rename (2026-09-25), and a kept snapshot physically contained `prompting-kickoff.fpmt` and no `.pmt` copy.
+
++ 4. ⚠️ **Commit the whole feature together.** On 2026-09-25 all 22 of its new files (backend, frontend, tests, the visible scripts incl. `scripts/prompt_flow_extension_visible.py`, `docs/prompting-flow-designer.md`, `docs/examples/prompting-kickoff.fpmt`) were UNTRACKED. `build_runtime_assets.py` REQUIRES the two docs files, so a release built from a clean clone or a tag would fail — and a self-update can only deliver what a release contains.
+
++ 5. **One name survives from the first draft: the guide's FILENAME.** The feature was drafted on 2026-09-23 as the "Prompting Flow Designer" (`prompting_flow_designer.html`, `/ws/prompting-flow/`, `check_prompting_flow`, `.pmt`). Every doc now uses the real names, but the guide is still `docs/prompting-flow-designer.md` because `build.py`, `build_runtime_assets.py`, `copy_source_assets.py` and `test_prompt_flow_panel_carriage.py` pin that exact path, and it ships to users. Rename it only by changing all four in the same pass. The 2026-09-23 entry in `recent-fixes.md` keeps the old names on purpose (it is history) under a "Renamed 2026-09-25" banner. Full contract: `docs/claude/frontend.md` → *Prompt Flow Panel*, `docs/claude/architecture.md` → *Prompt Flow Panel runtime*, `docs/claude/multi-turn.md` → *Multi-Turn and ACPX inside the Prompt Flow Panel*.
+
++-6. **Both panels share canvas mechanics.** `flow-canvas-interactions.js` and `flow_canvas.css` own triangle highlighting, connection capture/cancellation, curve geometry, wire hover/selection glow, Fit/zoom, context-menu placement and divider gestures. Keep free dragging, Ctrl/Meta-drag duplication, modifier/marquee selection, keyboard editing and one-step Undo/Redo aligned. Use gold SVG contour glow for selected Prompt Flow figures; playback keeps node status colors, while wire hover/selection feedback takes precedence over traversed-wire green. Load the shared stylesheet after panel styles and before `dialog_theme.css`. Keep seven executable operations, a separate static User Commentary annotation, and no Connection tool. Current cache suffix: `-prompt-commentary-input-1`. The foreground `scripts/prompt_flow_connections_visible.py` run passed all 30 comparison checkpoints on 2026-09-26; `scripts/acp_editor_visible.py` passed 17 regressions.
+
+++6. **Both panels share canvas mechanics.** `flow-canvas-interactions.js` and `flow_canvas.css` own triangle highlighting, connection capture/cancellation, curve geometry, wire hover/selection glow, Fit/zoom, context-menu placement and divider gestures. Keep free dragging, Ctrl/Meta-drag duplication, modifier/marquee selection, keyboard editing and one-step Undo/Redo aligned. Use gold SVG contour glow for selected Prompt Flow figures; playback keeps node status colors, while wire hover/selection feedback takes precedence over traversed-wire green. Load the shared stylesheet after panel styles and before `dialog_theme.css`. Keep seven executable operations, a separate static User Commentary annotation, and no Connection tool. Current cache suffix: `-prompt-commentary-canvas-2`. The foreground `scripts/prompt_flow_connections_visible.py` run passed all 30 comparison checkpoints on 2026-09-26; `scripts/acp_editor_visible.py` passed 17 regressions.
+
++ 
+
++ ---
+
++ 
+
++--- a/GEMINI.md
+
+++++ b/GEMINI.md
+
++@@ -693,13 +693,13 @@
+
++ 
+
++ **Chat navbar:** Open · Save · Context ▾ · **Panels ▾** · ACPX-Skills ▾ · External ▾ · **Config ▾** · DB ▾ · Reconnect · About ▾. The old **MCPs**, **Agents** and staff **Admin** menus are gone: **Configure MCPs** and **Configure Agents** are now in **Config**; **Agentic Control Panel**, the new **Prompt Flow Panel** and (staff) **Admin Panel** are in **Panels**. ⚠️ `#mcps-menu-button`, `#agents-menu-button` and `#admin-menu-button` no longer exist — wait on `#config-menu-button` / `#panels-menu-button`. Panels stays usable during a long operation; every end-of-operation path re-arms the menus through `agent_page_ui.js::restoreMenuControlsAfterOperation()`.
+
++ 
+
++-**Shared canvas mechanics (2026-09-26):** Both panels use `flow-canvas-interactions.js` and `flow_canvas.css` for triangles, connection dragging/cancellation, curve geometry, gold hover/selection glow, zoom/Fit, menus and divider gestures. Keep free dragging, Ctrl/Meta-drag copies, marquee selection, keyboard editing and Undo/Redo aligned. Prompt Flow retains node status colors; interactive wire highlights override traversed-wire green. The Operations bar has seven executable operations plus static User Commentary and no Connection tool. Cache suffix: `-prompt-commentary-input-1`. See `docs/claude/frontend.md` and the 30-check foreground comparison harness.
+
+++**Shared canvas mechanics (2026-09-26):** Both panels use `flow-canvas-interactions.js` and `flow_canvas.css` for triangles, connection dragging/cancellation, curve geometry, gold hover/selection glow, zoom/Fit, menus and divider gestures. Keep free dragging, Ctrl/Meta-drag copies, marquee selection, keyboard editing and Undo/Redo aligned. Prompt Flow retains node status colors; interactive wire highlights override traversed-wire green. The Operations bar has seven executable operations plus static User Commentary and no Connection tool. Cache suffix: `-prompt-commentary-canvas-2`. See `docs/claude/frontend.md` and the 30-check foreground comparison harness.
+
++ 
+
++ **Agentic Control Panel editor** (`acp-editor-tools.js`): Undo/Redo, Configure, Duplicate (with settings and internal connections), Delete, Starters, Flow settings, zoom −/+/Fit, agent search, "Try an example", Help, and a `• ` unsaved marker in the title. ⚠️ Divide every pointer→canvas conversion by `ACP.zoom`, and check `ACP.canEdit()` before any edit.
+
++ 
+
++ **Prompt Flow Panel** (`/agent/prompt_flow_panel/`, WebSocket `ws/prompt-flow-panel/`): a diagram editor for chains of prompts with seven executable operations (Prompt, Programmed Prompt, Decision, Feed embeddings, Flush embeddings, Clean History, User Input), plus static User Commentary notes, saved as **`.fpmt`** JSON (`format: "tlamatini-prompting-flow"`, version 2; version 1 imports migrate the old reply nodes to User Input). ⚠️ **`.pmt` stays with the plain-text system prompts** (`prompt.pmt`, `monitoring-prompt.pmt`); the panel refuses to open a `.pmt`. Each run is isolated (own chain, history, embeddings, cancellation) and never loads the shared `application/` corpus (`setup_llm(..., include_application_context=False)`). Guide: `docs/prompting-flow-designer.md` (historical filename, pinned by three build scripts). Contracts: `docs/claude/frontend.md` → *Chat navbar*, *ACP Canvas DOM Contract*, *Prompt Flow Panel*; `docs/claude/architecture.md` → *Prompt Flow Panel runtime*; dated story `docs/claude/recent-fixes.md` (2026-09-25).
+
++ 
+
++-**Commentary/Input split (2026-10-03, source changes):** The Operations bar contains seven executable operations and a separate static **User Commentary** asset. **User Input** (`user_input`) keeps the old question/reply/cancellation mechanism and uses the supplied notched-top, downward-point figure. **User Commentary** (`user_commentary`) is a speech-bubble review note: double-click/Enter writes in place, Done/Ctrl+Enter saves, Escape cancels; Configure selects palette color, font, size, emphasis, alignment and dimensions. Bubbles and their editors grow to contain the full wrapped text at the chosen width/font, **without internal scrollbars**; saved height is a minimum. They move, resize, duplicate and Undo/Redo, save/open/recover with the diagram, have no ports or Start status, and never affect model context, history or playback steps. New `.fpmt` saves use version **2**; version 1 files/drafts migrate their executable commentary to User Input while preserving IDs, connections and configuration. The local-storage key still ends in `.draft.v1.<user id>` for compatibility; it does not identify the document version. Current cache suffix: `-prompt-commentary-input-1`. Verified: 61 backend/packaging tests and nine real foreground Chrome checks in `scripts/prompt_flow_commentary_visible.py`. No release executable was rebuilt. See `docs/prompting-flow-designer.md` and the 2026-10-03 entry in `docs/claude/recent-fixes.md`.
+
+++**Commentary/Input contract (2026-10-04, source changes):** Seven executable operations remain separate from static **User Commentary**. **User Input** (`user_input`) keeps the question/reply/cancellation mechanism and notched figure. **User Commentary** (`user_commentary`) is edited entirely on the canvas: double-click/Enter writes in the bubble; a floating mini toolbar formats selected text with different fonts, sizes, text colors, bold, italic and underline within the same note. With a caret, formatting applies to newly typed text; outside editing it applies to the whole note. Bubble color and alignment affect the note. There is no commentary configuration dialog or numeric dimension form. Drag any border or corner to resize, including while editing; Fit text removes spare height. Done/Ctrl+Enter saves; Cancel/Escape restores the whole edit. Ctrl+Z/Y works inside the editor; completed edits, moves, resizes and duplicates use flow Undo/Redo. Bubbles contain their full wrapped text without internal scrollbars. Version 2 files persist allowlisted `runs` plus matching literal `text`; older plain notes normalize to one run, and version 1 executable commentary still migrates to User Input with IDs/edges/settings intact. Comments have no ports/Start/runtime/context/history/step effects. The draft key remains `.draft.v1.<user id>`. Cache suffix: `-prompt-commentary-canvas-2`. See `docs/prompting-flow-designer.md` and the 2026-10-04 verification record; no release executable was rebuilt.
+
++ 
+
++ ---
+
++ 
+
++--- a/KIMI.md
+
+++++ b/KIMI.md
+
++@@ -575,9 +575,9 @@
+
++ 
+
++ **Prompt Flow Panel (2026-09-25).** A sibling page at `/agent/prompt_flow_panel/` (template `prompt_flow_panel.html`, WebSocket `ws/prompt-flow-panel/`) for chains of **prompts** rather than agents: seven executable operations (Prompt, Programmed Prompt, Decision, Feed embeddings, Flush embeddings, Clean History, User Input), plus static User Commentary notes, saved as **`.fpmt`** JSON (`format: "tlamatini-prompting-flow"`, version 2; version 1 imports migrate the old reply nodes to User Input). ⚠️ `.pmt` stays with the plain-text system prompts (`prompt.pmt`, `monitoring-prompt.pmt`) and the panel refuses to open one. Each run gets its own chain, history, embeddings and cancellation key, and never loads the shared `application/` corpus. Backend: `prompt_flow_panel_consumer.py`, `prompt_flow_panel_runtime.py`, `services/prompt_flow_panel.py`; frozen-build gate `check_prompt_flow_panel`. Guide: `docs/prompting-flow-designer.md`.
+
++ 
+
++-**Commentary/Input split (2026-10-03, source changes):** The Operations bar contains seven executable operations and a separate static **User Commentary** asset. **User Input** (`user_input`) keeps the old question/reply/cancellation mechanism and uses the supplied notched-top, downward-point figure. **User Commentary** (`user_commentary`) is a speech-bubble review note: double-click/Enter writes in place, Done/Ctrl+Enter saves, Escape cancels; Configure selects palette color, font, size, emphasis, alignment and dimensions. Bubbles and their editors grow to contain the full wrapped text at the chosen width/font, **without internal scrollbars**; saved height is a minimum. They move, resize, duplicate and Undo/Redo, save/open/recover with the diagram, have no ports or Start status, and never affect model context, history or playback steps. New `.fpmt` saves use version **2**; version 1 files/drafts migrate their executable commentary to User Input while preserving IDs, connections and configuration. The local-storage key still ends in `.draft.v1.<user id>` for compatibility; it does not identify the document version. Current cache suffix: `-prompt-commentary-input-1`. Verified: 61 backend/packaging tests and nine real foreground Chrome checks in `scripts/prompt_flow_commentary_visible.py`. No release executable was rebuilt. See `docs/prompting-flow-designer.md` and the 2026-10-03 entry in `docs/claude/recent-fixes.md`.
+
++-
+
++-**Shared canvas mechanics (2026-09-26):** Both panels use `flow-canvas-interactions.js` and `flow_canvas.css` for triangles, connection dragging/cancellation, curve geometry, gold hover/selection glow, zoom/Fit, menus and divider gestures. Keep free dragging, Ctrl/Meta-drag copies, marquee selection, keyboard editing and Undo/Redo aligned. Prompt Flow retains node status colors; interactive wire highlights override traversed-wire green. The Operations bar has seven executable operations plus static User Commentary and no Connection tool. Cache suffix: `-prompt-commentary-input-1`. See `docs/claude/frontend.md` and the 30-check foreground comparison harness.
+
+++**Commentary/Input contract (2026-10-04, source changes):** Seven executable operations remain separate from static **User Commentary**. **User Input** (`user_input`) keeps the question/reply/cancellation mechanism and notched figure. **User Commentary** (`user_commentary`) is edited entirely on the canvas: double-click/Enter writes in the bubble; a floating mini toolbar formats selected text with different fonts, sizes, text colors, bold, italic and underline within the same note. With a caret, formatting applies to newly typed text; outside editing it applies to the whole note. Bubble color and alignment affect the note. There is no commentary configuration dialog or numeric dimension form. Drag any border or corner to resize, including while editing; Fit text removes spare height. Done/Ctrl+Enter saves; Cancel/Escape restores the whole edit. Ctrl+Z/Y works inside the editor; completed edits, moves, resizes and duplicates use flow Undo/Redo. Bubbles contain their full wrapped text without internal scrollbars. Version 2 files persist allowlisted `runs` plus matching literal `text`; older plain notes normalize to one run, and version 1 executable commentary still migrates to User Input with IDs/edges/settings intact. Comments have no ports/Start/runtime/context/history/step effects. The draft key remains `.draft.v1.<user id>`. Cache suffix: `-prompt-commentary-canvas-2`. See `docs/prompting-flow-designer.md` and the 2026-10-04 verification record; no release executable was rebuilt.
+
+++
+
+++**Shared canvas mechanics (2026-09-26):** Both panels use `flow-canvas-interactions.js` and `flow_canvas.css` for triangles, connection dragging/cancellation, curve geometry, gold hover/selection glow, zoom/Fit, menus and divider gestures. Keep free dragging, Ctrl/Meta-drag copies, marquee selection, keyboard editing and Undo/Redo aligned. Prompt Flow retains node status colors; interactive wire highlights override traversed-wire green. The Operations bar has seven executable operations plus static User Commentary and no Connection tool. Cache suffix: `-prompt-commentary-canvas-2`. See `docs/claude/frontend.md` and the 30-check foreground comparison harness.
+
++ 
+
++ ### 12.2 Flow Compiler pipeline (canvas / chat → backend → pool)
+
++ Two browser surfaces produce flows; **both compile through the same backend Agent Contract registry** before touching disk:
+
++--- a/Tlamatini/agent/Tlamatini.md
+
+++++ b/Tlamatini/agent/Tlamatini.md
+
++@@ -92,7 +92,7 @@
+
++ | `/agent/agentic_control_panel/` | `agentic_control_panel.html` | **Visual ACP Workflow Designer** — drag-drop the 89 agents (with a search box), save/load `.flw`. Since 2026-09-25 it has an editor toolbar: Undo/Redo, Configure, Duplicate, Delete, Starters, Flow settings, zoom −/+/Fit, and a Help entry | login required |
+
++ | `/agent/prompt_flow_panel/` | `prompt_flow_panel.html` | **Prompt Flow Panel** (2026-09-25) — draw a chain of PROMPTS (Prompt, Programmed Prompt, Decision, Feed/Flush embeddings, Clean History, User Input, plus static User Commentary notes), save it as a **`.fpmt`** file and play it against your own model stack over `ws/prompt-flow-panel/`. Each run has its own conversation and embeddings. Guide: `docs/prompting-flow-designer.md` | login required |
+
++ 
+
++-**Commentary/Input split (2026-10-03, source changes):** The Operations bar contains seven executable operations and a separate static **User Commentary** asset. **User Input** (`user_input`) keeps the old question/reply/cancellation mechanism and uses the supplied notched-top, downward-point figure. **User Commentary** (`user_commentary`) is a speech-bubble review note: double-click/Enter writes in place, Done/Ctrl+Enter saves, Escape cancels; Configure selects palette color, font, size, emphasis, alignment and dimensions. Bubbles and their editors grow to contain the full wrapped text at the chosen width/font, **without internal scrollbars**; saved height is a minimum. They move, resize, duplicate and Undo/Redo, save/open/recover with the diagram, have no ports or Start status, and never affect model context, history or playback steps. New `.fpmt` saves use version **2**; version 1 files/drafts migrate their executable commentary to User Input while preserving IDs, connections and configuration. The local-storage key still ends in `.draft.v1.<user id>` for compatibility; it does not identify the document version. Current cache suffix: `-prompt-commentary-input-1`. Verified: 61 backend/packaging tests and nine real foreground Chrome checks in `scripts/prompt_flow_commentary_visible.py`. No release executable was rebuilt. See `docs/prompting-flow-designer.md` and the 2026-10-03 entry in `docs/claude/recent-fixes.md`.
+
+++**Commentary/Input contract (2026-10-04, source changes):** Seven executable operations remain separate from static **User Commentary**. **User Input** (`user_input`) keeps the question/reply/cancellation mechanism and notched figure. **User Commentary** (`user_commentary`) is edited entirely on the canvas: double-click/Enter writes in the bubble; a floating mini toolbar formats selected text with different fonts, sizes, text colors, bold, italic and underline within the same note. With a caret, formatting applies to newly typed text; outside editing it applies to the whole note. Bubble color and alignment affect the note. There is no commentary configuration dialog or numeric dimension form. Drag any border or corner to resize, including while editing; Fit text removes spare height. Done/Ctrl+Enter saves; Cancel/Escape restores the whole edit. Ctrl+Z/Y works inside the editor; completed edits, moves, resizes and duplicates use flow Undo/Redo. Bubbles contain their full wrapped text without internal scrollbars. Version 2 files persist allowlisted `runs` plus matching literal `text`; older plain notes normalize to one run, and version 1 executable commentary still migrates to User Input with IDs/edges/settings intact. Comments have no ports/Start/runtime/context/history/step effects. The draft key remains `.draft.v1.<user id>`. Cache suffix: `-prompt-commentary-canvas-2`. See `docs/prompting-flow-designer.md` and the 2026-10-04 verification record; no release executable was rebuilt.
+
++ 
+
++ **Where the user finds each page (chat navbar, reorganized 2026-09-25):** Open · Save · Context · **Panels** (Agentic Control Panel, Prompt Flow Panel, and Admin Panel for staff) · ACPX-Skills · External · **Config** (Configure MCPs, Configure Agents, Models, URLs, Contacts, Access Keys Wizard, Voice, Mic) · DB · Reconnect · About. There is **no** separate MCPs, Agents or Admin menu any more — if a user asks where "Configure Agents" or "Configure MCPs" went, the answer is **Config**; if they ask how to open the canvas, the answer is **Panels ▸ Agentic Control Panel**. The Agentic Control Panel's own **File** menu also links to the Prompt Flow Panel. ⚠️ **`.pmt` is YOUR system-prompt format** (`prompt.pmt`, `monitoring-prompt.pmt`); a Prompt Flow Panel diagram is a **`.fpmt`** file, and the panel refuses to open a `.pmt`.
+
++ 
+
++--- a/.claude/memory/project_prompt_flow_commentary_input.md
+
+++++ b/.claude/memory/project_prompt_flow_commentary_input.md
+
++@@ -5,7 +5,7 @@
+
++ ---
+
++ <!-- Tlamatini Author Banner — Angela López Mendoza · @angelahack1 -->
+
++ 
+
++-**Commentary/Input split (2026-10-03, source changes):** The Operations bar contains seven executable operations and a separate static **User Commentary** asset. **User Input** (`user_input`) keeps the old question/reply/cancellation mechanism and uses the supplied notched-top, downward-point figure. **User Commentary** (`user_commentary`) is a speech-bubble review note: double-click/Enter writes in place, Done/Ctrl+Enter saves, Escape cancels; Configure selects palette color, font, size, emphasis, alignment and dimensions. Bubbles and their editors grow to contain the full wrapped text at the chosen width/font, **without internal scrollbars**; saved height is a minimum. They move, resize, duplicate and Undo/Redo, save/open/recover with the diagram, have no ports or Start status, and never affect model context, history or playback steps. New `.fpmt` saves use version **2**; version 1 files/drafts migrate their executable commentary to User Input while preserving IDs, connections and configuration. The local-storage key still ends in `.draft.v1.<user id>` for compatibility; it does not identify the document version. Current cache suffix: `-prompt-commentary-input-1`. Verified: 61 backend/packaging tests and nine real foreground Chrome checks in `scripts/prompt_flow_commentary_visible.py`. No release executable was rebuilt. See `docs/prompting-flow-designer.md` and the 2026-10-03 entry in `docs/claude/recent-fixes.md`.
+
+++**Commentary/Input contract (2026-10-04, source changes):** Seven executable operations remain separate from static **User Commentary**. **User Input** (`user_input`) keeps the question/reply/cancellation mechanism and notched figure. **User Commentary** (`user_commentary`) is edited entirely on the canvas: double-click/Enter writes in the bubble; a floating mini toolbar formats selected text with different fonts, sizes, text colors, bold, italic and underline within the same note. With a caret, formatting applies to newly typed text; outside editing it applies to the whole note. Bubble color and alignment affect the note. There is no commentary configuration dialog or numeric dimension form. Drag any border or corner to resize, including while editing; Fit text removes spare height. Done/Ctrl+Enter saves; Cancel/Escape restores the whole edit. Ctrl+Z/Y works inside the editor; completed edits, moves, resizes and duplicates use flow Undo/Redo. Bubbles contain their full wrapped text without internal scrollbars. Version 2 files persist allowlisted `runs` plus matching literal `text`; older plain notes normalize to one run, and version 1 executable commentary still migrates to User Input with IDs/edges/settings intact. Comments have no ports/Start/runtime/context/history/step effects. The draft key remains `.draft.v1.<user id>`. Cache suffix: `-prompt-commentary-canvas-2`. See `docs/prompting-flow-designer.md` and the 2026-10-04 verification record; no release executable was rebuilt.
+
++ 
+
++ Angela explicitly rejected the black line/scrollbar inside commentary assets. Preserve full-text containment in both display and inline editing, recomputed after typing, font/width changes, resize, file open and draft recovery. Canvas bounds and Fit use the actual content height. Never replace containment with clipping or an internal scrollbar. Multiple notes retain independent text/style/dimensions and Undo/Redo.
+
++ 
+
++--- a/docs/prompting-flow-designer.md
+
+++++ b/docs/prompting-flow-designer.md
+
++@@ -21,11 +21,15 @@
+
++ | User Input | Notched top with a downward point | Opens the same reply dialog and appends the reply to the run's conversation. |
+
++ | User Commentary | Speech bubble | Static review note; never executes or affects the run. |
+
++ 
+
++-Add independent **User Commentary** bubbles within the 500-asset limit. Double-click a bubble (or press Enter while selected) to write directly inside it. **Done** or Ctrl+Enter saves; **Cancel** or Escape discards that edit. Use **Configure** in the toolbar or right-click menu to choose a basic bubble color, font family, font size, bold, italic, alignment, width and height. Drag the bottom-right handle to resize; moving, copying, resizing and formatting support Undo/Redo. Bubbles grow in height to contain the full text without scrollbars, including while typing or changing font and width. The chosen height is a minimum; long paragraphs save in full (up to 100,000 characters). Text, including `{{last_output}}`, stays literal. Comments have no ports, cannot be Start, need no connection and remain visible during playback. Text and formatting save/open and recover with the diagram. The basic palette is white, yellow, blue, green, pink, purple, orange and gray. Font choices are Nunito, Arial, Verdana, Georgia, Times New Roman and Courier New, at 10–48 px. Width is 200–2,400 and selected minimum height is 128–2,400; automatic containment may grow taller. A document containing only static notes can be saved, but needs an executable operation before Play.
+
+++Add independent **User Commentary** bubbles within the 500-asset limit. Double-click a bubble or press Enter to write directly inside it. Select a word or passage, then use the **floating mini toolbar** to choose its font, text size, text color, bold, italic or underline. One note can mix styles: an Arial italic sentence, a large Verdana heading and a Georgia paragraph. With no text selected, a formatting choice sets the style for the next text you type. When the note is selected outside editing, formatting applies to the entire note. The color swatches change the bubble; the underlined **A** opens text colors. Alignment applies to the whole note.
+
++ 
+
++-Double-click a figure, choose **Configure** from its right-click menu, press Enter on a selected figure, or use the **Configure** toolbar button. `{{last_output}}` in a prompt, embedding text, or user message inserts the previous model answer or user reply. Decisions support contains, does-not-contain, equality, and empty-output comparisons, with optional case matching. They never execute expressions from files.
+
+++Drag **any border or corner** to reshape the bubble; the handles also respond to arrow keys (Shift moves farther). Resizing works while writing. **Fit text** removes spare height. There are no numeric dimension fields or commentary configuration dialogs. **Edit comment** in the main toolbar or context menu starts the same inline editor. **Done** or Ctrl+Enter saves the complete edit; **Cancel** or Escape restores its original text, styles, size and position. Ctrl+Z/Y undoes/redoes changes while writing. Completed edits, moving, resizing, copying and deletion also support flow Undo/Redo.
+
++ 
+
++-Selected figures use the Agentic Control Panel's gold outline and soft yellow glow, following each figure's shape. Selected connections use the same gold highlight. Ctrl+click or marquee selection highlights every selected figure; Escape clears selection. During playback, status colors remain visible alongside the selection glow. Selection and zoom do not mark the diagram as modified.
+
+++Bubbles grow to contain every wrapped line at the chosen width and mixed fonts, without internal scrollbars. The chosen height is a minimum. Text stays literal, including `<script>` and `{{last_output}}`. Notes have no ports or Start status and never enter model context, history or playback steps. Notes save/open and recover with the diagram. The palettes offer eight bubble colors and eight text colors; fonts are Nunito, Arial, Verdana, Georgia, Times New Roman and Courier New. Text sizes range from 10 to 48, with named choices from Fine through Display. Each note holds up to 100,000 characters and 10,000 formatted runs. Internal geometry limits are width 200–2,400 and minimum height 128–2,400; automatic containment can grow taller. A notes-only diagram can be saved; Play requires an executable operation.
+
+++
+
+++For executable operations, double-click a figure, choose **Configure** from its right-click menu, press Enter on a selected figure, or use the **Configure** toolbar button. `{{last_output}}` in a prompt, embedding text, or user message inserts the previous model answer or user reply. Decisions support contains, does-not-contain, equality, and empty-output comparisons, with optional case matching. They never execute expressions from files.
+
+++
+
+++Selected executable figures use the Agentic Control Panel's gold outline and soft yellow glow, following each figure's shape. Selected connections use the same gold highlight. Static commentaries use a quiet mint outline and eight edge/corner grips. Ctrl+click or marquee selection highlights every selected figure; Escape clears selection. During playback, status colors remain visible alongside the selection glow. Selection and zoom do not mark the diagram as modified.
+
++ 
+
++ Connect exactly as in the Agentic Control Panel: press a white output triangle on the right of a figure, drag the live curve to a white input triangle on the left of another figure, and release. Ports keep their gold highlight during connection; releasing on empty canvas or pressing Escape cancels. Decision figures have two right-side outputs, Y above N. The Operations bar contains seven executable operations and static User Commentary; no Connection tool is needed. Each output has one destination; reconnecting it replaces its destination. Double-click a connection to edit its destination or branch. Keyboard users can activate an output, Tab to an input, and activate it.
+
++ 
+
++@@ -43,11 +47,12 @@
+
++ 
+
++ The browser draft retains the compatible storage key `tlamatini.prompting-flow.draft.v1.<user id>`; that suffix is independent of the file format version.
+
++ 
+
++-The versioned format is `tlamatini-prompting-flow`, version `2`, with `name`, `start`, `max_steps`, `nodes` and `edges`. Version 1 files and existing browser drafts automatically migrate the old executable `user_commentary` to `user_input`, keeping IDs, connections, prompts and behavior. New static bubbles use `user_commentary` in version 2, preventing an old reply step from becoming a static note. Node types are the eight lowercase asset names shown in the implementation; edges use `next`, `yes` or `no`. The backend independently validates the document before playback. The pre-existing plain-text system `prompt.pmt` is a different format and is deliberately rejected by this diagram editor. `.flw` Agentic Control Panel files remain separate.
+
+++The versioned format is `tlamatini-prompting-flow`, version `2`, with `name`, `start`, `max_steps`, `nodes` and `edges`. Version 1 files and existing browser drafts automatically migrate the old executable `user_commentary` to `user_input`, keeping IDs, connections, prompts and behavior. New static bubbles use `user_commentary` in version 2, preventing an old reply step from becoming a static note. Node types are the eight lowercase asset names shown in the implementation; edges use `next`, `yes` or `no`. Static commentary configuration includes `text`, `runs`, geometry, palette and default typography. Each run stores literal `text`, `font_family`, `font_size`, `text_color`, `bold`, `italic` and `underline`; concatenating runs must equal `config.text`. Both validators allowlist these values, merge adjacent matching runs, and normalize older version 2 plain notes from their original typography. No HTML is stored or executed. Alignment and bubble color belong to the note. The backend independently validates the document before playback. The pre-existing plain-text system `prompt.pmt` is a different format and is deliberately rejected by this diagram editor. `.flw` Agentic Control Panel files remain separate.
+
++ 
+
++ | Shortcut | Action |
+
++ | --- | --- |
+
++-| Ctrl+S / Ctrl+O | Save / open |
+
+++| Ctrl+B / Ctrl+I / Ctrl+U while writing | Bold / italic / underline the selection or subsequent typing |
+
+++| Ctrl+S / Ctrl+O | Save / open (finish the current comment first) |
+
++ | Ctrl+Z / Ctrl+Shift+Z or Ctrl+Y | Undo / redo |
+
++ | Ctrl+click / drag empty canvas | Select multiple figures / marquee selection |
+
++ | Ctrl+drag | Copy selected figures, settings and internal connections with new IDs and numbered labels; one-step Undo/Redo |
+
++@@ -64,7 +69,7 @@
+
++ 
+
++ Run `python Tlamatini/agent/test_prompt_flow_panel.py`, `python Tlamatini/manage.py test agent.test_prompt_flow_panel_runtime agent.test_chain_readiness --noinput`, the targeted Python lint check, and `npm.cmd run lint` in a **verified visible foreground PowerShell console left open with `-NoExit`**. The adapter tests use fake providers to check history, embedding rebuilds, cleanup and cancellation isolation. Run browser checks in visible Chrome with explicit `headless=False`, verify its actual desktop visibility before the workload, monitor live output, and leave the browser open afterward. Never substitute a hidden run. UI checks should cover `.fpmt` file round trips, rejection of unrelated `.pmt` files, draft recovery, shape/port alignment after zoom and drag, both decision branches, reply cancellation, pause/resume/stop and backend failure. Model and embedding checks require the user's configured providers to be available.
+
++ 
+
++-The complete regression set: `agent/test_prompt_flow_panel.py` (validator and interpreter, no model or database), `agent/test_prompt_flow_panel_runtime.py` (model adapter with fake providers), `agent/test_prompt_flow_panel_websocket.py` (the real ASGI route and consumer, with a deterministic adapter), `agent/test_prompt_flow_panel_carriage.py` (every panel module must be in the frozen archive and every panel asset in the release receipt), and `agent/test_chain_readiness.py::ContextFreeChainTests` (`include_application_context=False` skips the shared `application/` corpus while the chat default still loads it). The refactor-specific `scripts/prompt_flow_commentary_visible.py` passed nine foreground Chrome checkpoints, including 5,000-character containment, font/width changes, resize/Undo, file/draft round trips, version 1 migration and User Input reply cancellation. Together with 25 diagram/interpreter, 33 runtime/WebSocket/readiness and three packaging tests, the source refactor passed 61 backend/packaging tests; no executable or installer was rebuilt. When asked to stop this harness, create its `Temp/prompt-commentary-visible/close.confirmed` marker so it closes its own Chrome/test server, then verify no owned processes or test listeners remain. Never terminate unrelated user applications.
+
+++The complete regression set: `agent/test_prompt_flow_panel.py` (validator and interpreter, no model or database), `agent/test_prompt_flow_panel_runtime.py` (model adapter with fake providers), `agent/test_prompt_flow_panel_websocket.py` (the real ASGI route and consumer, with a deterministic adapter), `agent/test_prompt_flow_panel_carriage.py` (every panel module must be in the frozen archive and every panel asset in the release receipt), and `agent/test_chain_readiness.py::ContextFreeChainTests` (`include_application_context=False` skips the shared `application/` corpus while the chat default still loads it). The redesigned `scripts/prompt_flow_commentary_visible.py` checks the floating toolbar, mixed selection/caret styles, all eight borders, editor and flow Undo/Redo, long text without scrollbars, several comments through three real download/reopen cycles and draft recovery, unchanged User Input and version 1 migration. It compares saved data and rendered line boxes/fonts/colors/geometry. Current results are recorded in [the 2026-10-04 change record](changes/2026-10-04-commentary-graphical-redesign.md). Create `Temp/prompt-commentary-redesign-visible/close.confirmed` to close its own Chrome/test server, then verify no owned workers/listeners remain. Never terminate unrelated user applications.
+
++ 
+
++ The visible browser scripts, each launched from a verified foreground `-NoExit` console with Shoter photographing the whole desktop, are `scripts/prompt_flow_extension_visible.py` (15 `.fpmt` checkpoints), `scripts/panel_search_title_visible.py` (14 checkpoints: the Agentic Control Panel's agent search, and the unsaved-changes `•` in both panels' titles through save, edit, undo and reopen) and `scripts/run_menu_state_checks.py`, which drives `scripts/menu_browser_checks.py` (including the panel's play/pause/stop and stale-event states) and `scripts/menu_live_checks.py`.
+
++ 
+
++--- a/BookOfTlamatini.md
+
+++++ b/BookOfTlamatini.md
+
++@@ -228,7 +228,7 @@
+
++ ### Building and running a flow
+
++ 
+
++ 1. Drag operations from the **Operations bar** onto the canvas, or just click one to drop it in.
+
++-2. Double-click an executable figure (or select **Configure**) to set its text and options. Double-click a User Commentary to write directly inside its bubble; use Configure for its appearance.
+
+++2. Double-click an executable figure (or select **Configure**) to set its text and options. Double-click a User Commentary to write directly inside its bubble; select text and format it with the floating mini toolbar.
+
++ 3. Drag a white **output triangle** on the right of an executable figure onto an **input triangle** on the left of another and release to connect them. Static commentary has no ports. A Decision has two outputs, **Y** and **N**; every output leads to exactly one place, and connecting it again replaces the old line.
+
++ 4. Choose where the flow begins in the **Start** list, press **Validate**, then **Play**. Validate refuses a flow with a dead end it cannot explain: every executable operation must be reachable from Start, and every Decision needs both branches. Static comments need no connection and cannot be Start.
+
++ 5. Watch the running figure light up and read everything in **Run output** below the canvas. **Pause** lets the current step finish and holds the next one; **Stop** cancels and waits for the current step to wind down cleanly. Loops are allowed — **Flow settings** caps how many steps one run may take (500 by default, 5,000 at most).
+
++@@ -237,7 +237,11 @@
+
++ 
+
++ ### Writing static User Commentaries
+
++ 
+
++-Add as many independent **User Commentary** bubbles as you need within the diagram's 500-asset limit. Double-click a bubble, or select it and press Enter, to write a note in place. **Done** or Ctrl+Enter saves; **Cancel** or Escape discards that edit. **Configure**, available in the toolbar or right-click menu, chooses one of eight basic colors, six font families, font size, bold/italic, alignment, width and minimum height. Drag the bottom-right handle to resize, and use Undo/Redo for editing, formatting, moving or duplication.
+
+++Add independent **User Commentary** bubbles within the 500-asset limit. Double-click a bubble or press Enter to write directly inside it. Select a word or passage, then use the **floating mini toolbar** to choose its font, text size, text color, bold, italic or underline. One note can mix styles: an Arial italic sentence, a large Verdana heading and a Georgia paragraph. With no text selected, a formatting choice sets the style for the next text you type. When the note is selected outside editing, formatting applies to the entire note. The color swatches change the bubble; the underlined **A** opens text colors. Alignment applies to the whole note.
+
+++
+
+++Drag **any border or corner** to reshape the bubble; the handles also respond to arrow keys (Shift moves farther). Resizing works while writing. **Fit text** removes spare height. There are no numeric dimension fields or commentary configuration dialogs. **Edit comment** in the main toolbar or context menu starts the same inline editor. **Done** or Ctrl+Enter saves the complete edit; **Cancel** or Escape restores its original text, styles, size and position. Ctrl+Z/Y undoes/redoes changes while writing. Completed edits, moving, resizing, copying and deletion also support flow Undo/Redo.
+
+++
+
+++Bubbles grow to contain every wrapped line at the chosen width and mixed fonts, without internal scrollbars. The chosen height is a minimum. Text stays literal, including `<script>` and `{{last_output}}`. Notes have no ports or Start status and never enter model context, history or playback steps. Notes save/open and recover with the diagram. The palettes offer eight bubble colors and eight text colors; fonts are Nunito, Arial, Verdana, Georgia, Times New Roman and Courier New. Text sizes range from 10 to 48, with named choices from Fine through Display. Each note holds up to 100,000 characters and 10,000 formatted runs. Internal geometry limits are width 200–2,400 and minimum height 128–2,400; automatic containment can grow taller. A notes-only diagram can be saved; Play requires an executable operation.
+
++ 
+
++ The bubble grows to contain the complete text at the chosen width and font, including while typing. There is **no internal scrollbar** and no clipped paragraph. Long notes save in full, up to 100,000 characters. Notes are visible review annotations; they never ask a runtime question, enter the model context, change history or count as a playback step. A diagram containing only notes can be saved, but needs an executable operation before Play is available.
+
++ 
+
++@@ -255,7 +259,7 @@
+
++ 
+
++ Want to see one first? **File ▸ Open example** loads a small branching flow, and the full tour — seven executable operations and a static commentary — ships as `docs/examples/prompting-kickoff.fpmt`.
+
++ 
+
++-New saves use document **version 2**. Version 1 files and browser drafts automatically turn their old executable `user_commentary` nodes into **User Input**, keeping IDs, connections and settings. Version 2 `user_commentary` means a static note. Opening an old file never silently changes a reply step into an annotation. The extension remains `.fpmt`. This refactor is a source change from 2026-10-03; an installed executable includes it after being rebuilt or updated with it.
+
+++New saves use document **version 2**. Version 1 files and browser drafts automatically turn their old executable `user_commentary` nodes into **User Input**, keeping IDs, connections and settings. Version 2 `user_commentary` means a static note. Opening an old file never silently changes a reply step into an annotation. The extension remains `.fpmt`. The commentary/input split and graphical rich-text redesign are source changes from 2026-10-03/04; an installed executable includes it after being rebuilt or updated with it.
+
++ 
+
++ ### Shortcuts
+
++ 
+
++--- a/docs/claude/frontend.md
+
+++++ b/docs/claude/frontend.md
+
++@@ -240,13 +240,13 @@
+
++ 
+
++ `agent/templates/agent/prompt_flow_panel.html` is a separate, login-protected diagram editor at **`/agent/prompt_flow_panel/`** (view `views.prompt_flow_panel`, URL name `prompt_flow_panel`), opened from **Panels ▸ Prompt Flow Panel** in the chat navbar and **File ▸ Prompt Flow Panel** in the Agentic Control Panel (both in a new tab). It reuses the ACP page skeleton and CSS (`agentic_control_panel.css` then `prompt_flow_panel.css`, with `dialog_theme.css` LAST) plus the shared `dialog_policy.js`, and its body class `pmt-panel` scopes every rule. The Operations bar holds eight assets — Prompt, Programmed Prompt, Decision, Feed embeddings, Flush embeddings, Clean History, User Input, static User Commentary — and diagrams are saved as versioned JSON **`.fpmt`** files (`format: "tlamatini-prompting-flow"`, `version: 2` (version 1 imports migrate executable commentary to User Input)).
+
++ 
+
++-**Commentary layout:** Double-click/Enter edits static notes in place; Done/Ctrl+Enter saves and Cancel/Escape discards. Configure offers eight palette colors, six font families, 10–48 px text, bold/italic/alignment, width 200–2,400 and minimum height 128–2,400. `fitCommentary()` measures wrapped content at the chosen width/font and grows the bubble and inline editor without internal scrollbars, including after typing, formatting, resize, font loading, file open and draft recovery. The effective height participates in canvas bounds and Fit; persisted height remains a minimum. Long text (up to 100,000 characters) stays literal, including `{{last_output}}`. Notes have no ports or Start state, are excluded from executable reachability and step counts, and never enter prompts/history. Move, resize, duplicate and formatting remain undoable. A comment-only document can be saved; Play requires an executable operation.
+
+++**Commentary layout (2026-10-04):** Add independent **User Commentary** bubbles within the 500-asset limit. Double-click a bubble or press Enter to write directly inside it. Select a word or passage, then use the **floating mini toolbar** to choose its font, text size, text color, bold, italic or underline. One note can mix styles: an Arial italic sentence, a large Verdana heading and a Georgia paragraph. With no text selected, a formatting choice sets the style for the next text you type. When the note is selected outside editing, formatting applies to the entire note. The color swatches change the bubble; the underlined **A** opens text colors. Alignment applies to the whole note. Drag **any border or corner** to reshape the bubble; the handles also respond to arrow keys (Shift moves farther). Resizing works while writing. **Fit text** removes spare height. There are no numeric dimension fields or commentary configuration dialogs. **Edit comment** in the main toolbar or context menu starts the same inline editor. **Done** or Ctrl+Enter saves the complete edit; **Cancel** or Escape restores its original text, styles, size and position. Ctrl+Z/Y undoes/redoes changes while writing. Completed edits, moving, resizing, copying and deletion also support flow Undo/Redo. Bubbles grow to contain every wrapped line at the chosen width and mixed fonts, without internal scrollbars. The chosen height is a minimum. Text stays literal, including `<script>` and `{{last_output}}`. Notes have no ports or Start status and never enter model context, history or playback steps. Notes save/open and recover with the diagram. The palettes offer eight bubble colors and eight text colors; fonts are Nunito, Arial, Verdana, Georgia, Times New Roman and Courier New. Text sizes range from 10 to 48, with named choices from Fine through Display. Each note holds up to 100,000 characters and 10,000 formatted runs. Internal geometry limits are width 200–2,400 and minimum height 128–2,400; automatic containment can grow taller. A notes-only diagram can be saved; Play requires an executable operation.
+
++ 
+
++ Contracts (do NOT weaken):
+
++ 
+
++-- **Connection parity (2026-09-26):** use the ACP stylesheet's `input-triangle`, `output-triangle`, `output-label`, `connection-group`, `connection-path` and `connection-hit-area` classes directly. Do not reintroduce circular ports, arrowhead markers or a Connection palette tool. Curves follow ACP's horizontal half-distance Bezier construction, anchored at triangle centers. Pointer capture belongs to the viewport; resolve the input under the pointer with `elementFromPoint`, since captured events target the viewport. Commit only on release over an input. Empty/body drops, Escape, pointer cancellation, lost capture and blur remove the preview and port highlights without changing the document. Decision Y/N previews start from the selected branch. Gold port highlighting is retained; shared hover/selection colors override playback wire colors while interacting. Current `STATIC_VERSION` suffix: `-prompt-commentary-input-1`. Visible regression runner: `scripts/prompt_flow_connections_visible.py`.
+
++-
+
++-- **Selection styling:** `prompt_flow_panel.css` matches ACP's `#ffcc00` outline and yellow halo. Use an SVG `drop-shadow` so diamonds, triangles, trapezoids and speech bubbles glow around their contours, never a rectangular box shadow on `.pmt-node`. Selected nodes sit above other nodes but below the marquee. Playback status strokes take precedence while the selection halo stays visible; deselection removes only that halo. Selected wires inherit ACP's gold stroke/shadow; traversed wires are green only when neither hovered nor selected. The real headed checks are `scripts/prompt_flow_selection_visible.py`, using ordinary file-open, selection, zoom and User Input playback on port 8001 (called User Commentary in that historical run); its 2026-09-25 20:26 run passed all 14 checks with exit code 0. ⚠️ Keep node `.selected` rules ABOVE `.running` / `.completed` / `.failed`, load `flow_canvas.css` after both panel styles and before `dialog_theme.css`. Keep `.pmt-edge.traversed` restricted to `:not(.selected):not(:hover)` so interaction feedback remains identical. Current `STATIC_VERSION` suffix: `-prompt-commentary-input-1`.
+
+++- **Connection parity (2026-09-26):** use the ACP stylesheet's `input-triangle`, `output-triangle`, `output-label`, `connection-group`, `connection-path` and `connection-hit-area` classes directly. Do not reintroduce circular ports, arrowhead markers or a Connection palette tool. Curves follow ACP's horizontal half-distance Bezier construction, anchored at triangle centers. Pointer capture belongs to the viewport; resolve the input under the pointer with `elementFromPoint`, since captured events target the viewport. Commit only on release over an input. Empty/body drops, Escape, pointer cancellation, lost capture and blur remove the preview and port highlights without changing the document. Decision Y/N previews start from the selected branch. Gold port highlighting is retained; shared hover/selection colors override playback wire colors while interacting. Current `STATIC_VERSION` suffix: `-prompt-commentary-canvas-2`. Visible regression runner: `scripts/prompt_flow_connections_visible.py`.
+
+++
+
+++- **Selection styling:** Static commentary uses a mint outline and eight edge/corner grips (specificity must override shared canvas gold). Executable nodes in `prompt_flow_panel.css` match ACP's `#ffcc00` outline and yellow halo. Use an SVG `drop-shadow` so diamonds, triangles, trapezoids glow around their contours, never a rectangular box shadow on `.pmt-node`. Selected nodes sit above other nodes but below the marquee. Playback status strokes take precedence while the selection halo stays visible; deselection removes only that halo. Selected wires inherit ACP's gold stroke/shadow; traversed wires are green only when neither hovered nor selected. The real headed checks are `scripts/prompt_flow_selection_visible.py`, using ordinary file-open, selection, zoom and User Input playback on port 8001 (called User Commentary in that historical run); its 2026-09-25 20:26 run passed all 14 checks with exit code 0. ⚠️ Keep node `.selected` rules ABOVE `.running` / `.completed` / `.failed`, load `flow_canvas.css` after both panel styles and before `dialog_theme.css`. Keep `.pmt-edge.traversed` restricted to `:not(.selected):not(:hover)` so interaction feedback remains identical. Current `STATIC_VERSION` suffix: `-prompt-commentary-canvas-2`.
+
++ 
+
++ 1. **`.fpmt`, never `.pmt`.** The file picker is `accept=".fpmt"`, the open guard refuses any other name (including `prompt.pmt` itself) with *"Choose a .fpmt Prompt Flow Panel file."*, and `flowFilename()` turns a legacy `name.pmt` save name or browser draft into `name.fpmt`. The JSON `format` string deliberately did NOT change, so renaming an old flow file is enough to open it. The plain-text system prompts (`agent/prompt.pmt`, `monitoring-prompt.pmt`) keep `.pmt`.
+
++ 2. **Opening never runs anything.** Load, drop, draft recovery and even a WebSocket (re)connection are passive; only **Play** starts a run.
+
++--- a/docs/claude/architecture.md
+
+++++ b/docs/claude/architecture.md
+
++@@ -685,3 +685,5 @@
+
++ ## Image/video error reporting and recovery (2026-09-26)
+
++ 
+
++ Image/video model failures accumulate in one shared, themed, non-modal fatal-error dialog with an audible notification. Tlamatini keeps running: preserve its retry/tactic ladder, cancellation controls and configured flow recovery routes. Keep the configured model identities; never report a surviving observer or raw concatenation as successful analysis. Dismiss hides the dialog while retaining its history; new failures reopen it. See [the shared behavior and verification contract](../visual-analysis-errors.md).
+
+++
+
+++**Graphical commentary update (2026-10-04):** User Commentary has no configuration dialog. Its floating toolbar formats selected ranges or subsequent typing with mixed fonts/sizes/colors/bold/italic/underline; eight borders/corners resize the bubble directly. Both validators preserve allowlisted rich `runs` whose literal concatenation equals `text`, normalize older plain version 2 notes, and retain version 1 User Input migration. Full-text containment, static runtime isolation and portable/draft persistence remain required. See [the designer guide](../prompting-flow-designer.md).
+
++--- a/docs/claude/gotchas.md
+
+++++ b/docs/claude/gotchas.md
+
++@@ -232,3 +232,5 @@
+
++ Image/video model failures accumulate in one shared, themed, non-modal fatal-error dialog with an audible notification. Tlamatini keeps running: preserve its retry/tactic ladder, cancellation controls and configured flow recovery routes. Keep the configured model identities; never report a surviving observer or raw concatenation as successful analysis. Dismiss hides the dialog while retaining its history; new failures reopen it. See [the shared behavior and verification contract](../visual-analysis-errors.md).
+
++ 
+
++ 27. **User Commentary is no longer the reply operation (2026-10-03).** New `.fpmt` files are version 2: `user_input` runs the existing question/reply/cancel mechanism with the notched-top, downward-point figure; `user_commentary` is a static speech-bubble review note. Version 1 executable commentary must migrate to User Input, preserving IDs/edges/configuration. Never reinterpret it as a static note. Static bubbles have no ports/Start state and do not count toward executable reachability or playback steps. Preserve automatic full-text containment at the chosen width/font without internal scrollbars, including the inline editor; the saved height is a minimum. The `.draft.v1.<user id>` storage key intentionally stays compatible and does not mean document version 1. See [the guide](../prompting-flow-designer.md).
+
+++
+
+++**Graphical commentary update (2026-10-04):** User Commentary has no configuration dialog. Its floating toolbar formats selected ranges or subsequent typing with mixed fonts/sizes/colors/bold/italic/underline; eight borders/corners resize the bubble directly. Both validators preserve allowlisted rich `runs` whose literal concatenation equals `text`, normalize older plain version 2 notes, and retain version 1 User Input migration. Full-text containment, static runtime isolation and portable/draft persistence remain required. See [the designer guide](../prompting-flow-designer.md).
+
++--- a/docs/claude/multi-turn.md
+
+++++ b/docs/claude/multi-turn.md
+
++@@ -291,3 +291,5 @@
+
++ ## Image/video error reporting and recovery (2026-09-26)
+
++ 
+
++ Image/video model failures accumulate in one shared, themed, non-modal fatal-error dialog with an audible notification. Tlamatini keeps running: preserve its retry/tactic ladder, cancellation controls and configured flow recovery routes. Keep the configured model identities; never report a surviving observer or raw concatenation as successful analysis. Dismiss hides the dialog while retaining its history; new failures reopen it. See [the shared behavior and verification contract](../visual-analysis-errors.md).
+
+++
+
+++**Graphical commentary update (2026-10-04):** User Commentary has no configuration dialog. Its floating toolbar formats selected ranges or subsequent typing with mixed fonts/sizes/colors/bold/italic/underline; eight borders/corners resize the bubble directly. Both validators preserve allowlisted rich `runs` whose literal concatenation equals `text`, normalize older plain version 2 notes, and retain version 1 User Input migration. Full-text containment, static runtime isolation and portable/draft persistence remain required. See [the designer guide](../prompting-flow-designer.md).
+
++--- a/.claude/memory/MEMORY.md
+
+++++ b/.claude/memory/MEMORY.md
+
++@@ -1,6 +1,6 @@
+
++ <!-- THE USER IS ANGELA, A WOMAN — always address her by name. -->
+
++ <!-- Unless noted, work is UNCOMMITTED in source; frozen needs build.py. Detail in topic files. -->
+
++-- [Prompt Flow: static Commentary and runtime User Input](project_prompt_flow_commentary_input.md) — version 2 saves, version 1 migration, inline notes with colors/fonts/resize and full-text containment; **no internal scrollbars**. Runtime reply/cancel stays unchanged.
+
+++- [Prompt Flow: static Commentary and runtime User Input](project_prompt_flow_commentary_input.md) — version 2 saves, version 1 migration, inline rich notes with a floating selection toolbar, mixed fonts/styles, all-border resizing and full-text containment; **no configuration dialog**; **no internal scrollbars**. Runtime reply/cancel stays unchanged.
+
++ - [Developer workflow is not product UX](feedback_developer_product_boundary.md) — Angela is the developer; visible verification must not become extra product windows or focus stealing. Direct dictation uses the main console/log and in-chat recording status.
+
++ - [User profile](user_profile.md) — **Angela**, primary Tlamatini dev (<REDACTED>). Always "Angela".
+
++ - [ALWAYS ENGLISH to Angela (MANDATORY)](feedback_always_english_to_angela.md) — talk to her ONLY in English; Spanish only for her users' content.
+
++--- a/README.md
+
+++++ b/README.md
+
++@@ -412,9 +412,9 @@
+
++ 
+
++ The same dependency audit covers all 89 agents and 743 Python files: missing direct declarations are now present, with ESPHome's incompatible private runtime kept in its own manifest. See [dependency coverage](docs/dependency-coverage-audit.md).
+
++ 
+
++-**Carried from the published v1.70.0 release:** a Prompt Flow Panel, a tidier menu bar, and a canvas you can edit. **Source refactor, 2026-10-03:** the former executable User Commentary is now User Input, and User Commentary is a static note. New diagrams use version 2; version 1 files/drafts migrate automatically without changing reply behavior. This refactor has not been rebuilt into a release executable.
+
++-
+
++-- **Prompt Flow Panel — draw a conversation, then press Play.** Open **Panels ▸ Prompt Flow Panel**. Drag operations onto a canvas and connect them: **Prompt** (ask Tlamatini something, optionally with Multi-Turn and ACPX), **Programmed Prompt** (the same, after a delay or at a set time), **Decision** (take the Yes or No branch depending on the last answer, or ask you), **Feed embeddings** / **Flush embeddings** (give that run extra reference text, or take it away), **Clean History**, and **User Input** (stop and ask you something, using the notched figure). Add independent **User Commentary** speech bubbles for static review notes: double-click to write, choose colors and fonts in Configure, and resize freely; the bubbles grow to contain their text without internal scrollbars. Comments save with the flow and never execute. In executable operation text, write `{{last_output}}` to pass the previous answer forward; it stays literal inside a static comment. **Validate**, then **Play** — the running step lights up, and **Pause** / **Stop** work mid-flow. Each run has its own conversation and embeddings, so it never disturbs your chat. Save your diagram as a **`.fpmt`** file; opening one never runs it. Try **File ▸ Open example**, or open [docs/examples/prompting-kickoff.fpmt](docs/examples/prompting-kickoff.fpmt). Full guide: [docs/prompting-flow-designer.md](docs/prompting-flow-designer.md).
+
+++**Carried from the published v1.70.0 release:** a Prompt Flow Panel, a tidier menu bar, and a canvas you can edit. **Source refactor, 2026-10-03/04:** the former executable User Commentary is now User Input, and User Commentary is a static note. New diagrams use version 2; version 1 files/drafts migrate automatically without changing reply behavior. This refactor has not been rebuilt into a release executable.
+
+++
+
+++- **Prompt Flow Panel — draw a conversation, then press Play.** Open **Panels ▸ Prompt Flow Panel**. Drag operations onto a canvas and connect them: **Prompt** (ask Tlamatini something, optionally with Multi-Turn and ACPX), **Programmed Prompt** (the same, after a delay or at a set time), **Decision** (take the Yes or No branch depending on the last answer, or ask you), **Feed embeddings** / **Flush embeddings** (give that run extra reference text, or take it away), **Clean History**, and **User Input** (stop and ask you something, using the notched figure). Add independent **User Commentary** speech bubbles for static review notes: double-click to write, format selected passages with a floating toolbar (mixed fonts, sizes, colors, bold, italic and underline), and resize from any edge or corner; the bubbles grow to contain their text without internal scrollbars. Comments save with the flow and never execute. In executable operation text, write `{{last_output}}` to pass the previous answer forward; it stays literal inside a static comment. **Validate**, then **Play** — the running step lights up, and **Pause** / **Stop** work mid-flow. Each run has its own conversation and embeddings, so it never disturbs your chat. Save your diagram as a **`.fpmt`** file; opening one never runs it. Try **File ▸ Open example**, or open [docs/examples/prompting-kickoff.fpmt](docs/examples/prompting-kickoff.fpmt). Full guide: [docs/prompting-flow-designer.md](docs/prompting-flow-designer.md).
+
++ - **The menu bar was reorganized.** A new **Panels** menu opens the **Agentic Control Panel**, the **Prompt Flow Panel** and, for staff, the **Admin Panel**. **Configure MCPs** and **Configure Agents** moved into **Config**, next to Models, URLs and the Access Keys Wizard. The separate MCPs, Agents and Admin menus are gone. Panels stays usable while Tlamatini is busy answering you.
+
++ - **The Agentic Control Panel became a real editor.** A toolbar gives you **Undo/Redo**, **Configure**, **Duplicate** (copies agents *with* their settings and the connections between them), **Delete**, a **Starters** locator, **Flow settings** (dot grid, zoom) and **zoom −/+/Fit**. A search box filters the 89 agents by name, an empty canvas offers **Try an example**, **Help** explains every gesture, and a `•` in the tab title tells you there are unsaved changes. Editing locks while a flow is running — stop it to edit.
+
++ 
+
++@@ -571,7 +571,7 @@
+
++ 
+
++ **🧩 Orchestration & design**
+
++ - **Visual Workflow Designer (ACP)** — 89 drag-and-drop agent types wired into runnable flows; save/load `.flw` files; Flow Compiler validates the canvas into `config.yaml`. An editor toolbar adds undo/redo, configure, duplicate-with-settings, delete, zoom/fit and an agent search box. Open it from **Panels ▸ Agentic Control Panel**.
+
++-- **Prompt Flow Panel** — design a chain of prompts, decisions, embeddings and user questions on a canvas, save it as a `.fpmt` file, and play it against your own models; each run keeps its own conversation and embeddings. **User Input** collects runtime replies; static **User Commentary** bubbles support colors, fonts, resizing and complete text containment without scrollbars. Open it from **Panels ▸ Prompt Flow Panel**.
+
+++- **Prompt Flow Panel** — design a chain of prompts, decisions, embeddings and user questions on a canvas, save it as a `.fpmt` file, and play it against your own models; each run keeps its own conversation and embeddings. **User Input** collects runtime replies; static **User Commentary** bubbles support a floating rich-text toolbar, mixed styles within a note, all-border resizing and complete text containment without scrollbars. Open it from **Panels ▸ Prompt Flow Panel**.
+
++ - **Multi-Turn orchestration** — a tool-calling loop with **109 built-in tools** and a global execution planner; **Step-by-Step** mode paces hands-on setup one action at a time; **self-healing model steps** mean a network/model hiccup never freezes her — she retries under a watchdog, finishes gracefully from work already done, and always tells you what happened.
+
++ - **FlowCreator / FlowHypervisor** — let an LLM design a flow; a watchdog monitors flow health. FlowCreator is now also **callable from chat** (`chat_agent_flowcreator`): describe a flow in plain words and it writes a real, canvas-loadable `.flw` file to disk.
+
++ - **Parametrizer / Gatewayer / Gateway-Relayer / Node Manager** — chain agent outputs into the next agent's config; trigger flows from webhooks, folder-drops, or GitHub/GitLab.
+
++--- a/ACPX.md
+
+++++ b/ACPX.md
+
++@@ -21,7 +21,7 @@
+
++ 
+
++ ---
+
++ 
+
++-**Prompt Flow source update (2026-10-03):** Prompt and Programmed Prompt still control Multi-Turn/ACPX per operation. **User Input** retains the existing user-reply step; **User Commentary** is a static speech-bubble review note and never invokes ACPX, tools or a model, or modifies run history. Version 2 `.fpmt` saves migrate version 1 executable commentary to User Input. Static notes support inline editing, color/font/size choices and automatic full-text containment without internal scrollbars. This source change does not imply a rebuilt release. See [the Prompt Flow guide](docs/prompting-flow-designer.md).
+
+++**Prompt Flow source update (2026-10-04):** Prompt and Programmed Prompt still control Multi-Turn/ACPX per operation. **User Input** retains the existing user-reply step; **User Commentary** is a static speech-bubble review note and never invokes ACPX, tools or a model, or modifies run history. Version 2 `.fpmt` saves migrate version 1 executable commentary to User Input. Static notes support inline editing, a floating toolbar for mixed text styles, direct border/corner resizing and automatic full-text containment without internal scrollbars. This source change does not imply a rebuilt release. See [the Prompt Flow guide](docs/prompting-flow-designer.md).
+
++ 
+
++ ## 0. Read this first
+
++ 
+
++--- a/docs/claude/INDEX.md
+
+++++ b/docs/claude/INDEX.md
+
++@@ -34,9 +34,9 @@
+
++ - **acpx.md** — ACPX (Agent Communication Protocol eXtension): authoritative definition, the 14-agent registry with transport profiles, all 12 LLM-facing tools, canonical flows (spawn-and-go, multi-CLI relay, harvest-transcript, skill-routing), runtime drain mechanics, permission model, the **ACPX toolbar toggle** (per-request enable/disable via `agent.acpx.filter_acpx_tools()`, defaults to OFF), and the "when the user says ACPX" decision matrix. (Note: the **External MCP** supervisor tools are a separate surface — NOT ACPX tools, NOT gated by the ACPX checkbox — documented in `mcp-tools.md`.)
+
++ - **mcp-tools.md** — How to add a new MCP-backed context provider, a unified-agent tool (registered in `tools.tool_gate_table()`, the ONE gate list binding, Compact mode and the Configure-dialog prices read; while Compact mode is ON a gate with no Tool row reads OFF), a wrapped chat-agent tool, **OR** a Skill (`agent/skills_pkg/<name>/SKILL.md` driven by `SkillHarness`); the **External MCPs** config-driven universal MCP client (`external_mcp_manager.py` + sanitized/preserved `external_mcps.json`, 4 transports, 10 supervisor tools, private runtime provisioner, inactive Memory/Sequential-Thinking defaults, the "External ▸ MCPs" dialog + 4 endpoints, the bulletproof contract, MCP Doctor, the `adding-external-mcp` lifecycle skill, and the contrast vs `Mcp`-model checkboxes / ACPX / inline per-agent clients); plus the hardcoded-assumption warnings around `factory.py` and the MCP UI; plus the **ACPX-Skills navbar dropdown** (Browse / Configure / Diagnostics / Reload — admin surface for the 29 SKILL.md packages).
+
++ - **frontend.md** — Direct microphone UI and avatar handoff; the Copy + **Drop** buttons on every chat card (2026-09-30); the toolbar's **Compact mode** box (`model_capacity.js`), the per-row prices in the Configure dialogs (`compact_costs.js`) and the **Self-modify** box (`self_modify_switch.js`, rendered only where self-modify exists); all 54 JavaScript modules (22 chat + 15 ACP + 1 ACP entry + 13 shared + 1 welcome + 2 Prompt Flow Panel); the **chat navbar layout** (since 2026-09-25: **Panels** = Agentic Control Panel / Prompt Flow Panel / Admin Panel, and **Configure MCPs / Configure Agents** live in **Config**; the old MCPs / Agents / Admin menus are gone) and the one menu re-arm path `restoreMenuControlsAfterOperation()`; the **ACP flow-editor toolbar** (`acp-editor-tools.js`: Undo/Redo, Configure, Duplicate, Delete, Starters, Flow settings, zoom/Fit, agent search) and the edit lock `ACP.canEdit()`; the **Prompt Flow Panel** page (`.fpmt`, User Input/static User Commentary split); the centralized dialog theme + dismissal policy (**since 2026-08-16 Escape dismisses EVERY dialog and means exactly what the titlebar ✕ means, while an outside click still never dismisses**; the dispatcher activates each dialog's own dismiss control, so Deny / resolve-false / scroll-unlock / sealed-updater-refusal all survive; `closeOnEscape: false` is a forbidden pattern, and the themed `tlmAlert` / `tlmConfirm` popups replace the last native `alert()` / `confirm()` calls); long-operation navigation locks; safe update-note rendering; chat and ACP modules; the **ACP Canvas DOM Contract** (now zoom-aware: every pointer delta is divided by `ACP.zoom`); and the shared Flow Compiler pipeline.
+
++-- **[../prompting-flow-designer.md](../prompting-flow-designer.md)** — *(NOT in this directory; consult-on-demand; ships to users beside the executable)* The **Prompt Flow Panel** user and maintainer guide: seven executable operations, static User Commentary (inline editing, palette/font controls and automatic containment without internal scrollbars), version 2 `.fpmt` files and version 1 User Input migration (and why `.pmt` stays with the system prompts), shortcuts, playback/pause/stop semantics, per-run isolation, tests and release/self-modify carriage. Its filename keeps the first draft's name because `build.py`, `build_runtime_assets.py` and `copy_source_assets.py` reference that exact path.
+
+++- **[../prompting-flow-designer.md](../prompting-flow-designer.md)** — *(NOT in this directory; consult-on-demand; ships to users beside the executable)* The **Prompt Flow Panel** user and maintainer guide: seven executable operations, static User Commentary (inline rich text, a floating selection toolbar, all-border resizing, no configuration dialog and automatic containment without internal scrollbars), version 2 `.fpmt` files and version 1 User Input migration (and why `.pmt` stays with the system prompts), shortcuts, playback/pause/stop semantics, per-run isolation, tests and release/self-modify carriage. Its filename keeps the first draft's name because `build.py`, `build_runtime_assets.py` and `copy_source_assets.py` reference that exact path.
+
++ - **gotchas.md** — Claude API client, build/packaging/linting commands, versioning quick-map, known hardcoded assumptions (items 22-27: a small model gets a COMPACT request; Compact mode rewrites the REAL Configure rows and a new built-in tool goes into `tools.tool_gate_table()`; the self-knowledge is a switch and dev mode always has it; `build.py` erases `db.sqlite3` and wipes `dist/`), roadmap of recommended new agents, work-style preferences for AI assistants. (The dated fix log that used to live here was split out into `recent-fixes.md` — see below.)
+
++-- **recent-fixes.md** — *(NOT auto-imported; consult-on-demand)* The chronological "Recent Fixes / Gotchas" log: dated "do NOT revert this / keep these surfaces aligned" contracts for ACPX, the Flow Compiler, the planner, the Exec Report pipeline, the ACP canvas, wrapped chat-agent parsing, the desktop-UI agents, `prompt.pmt`, `regen_secrets.py`, the logging filters, and more — newest first: **2026-10-03** (the static User Commentary/User Input split, automatic containment without internal scrollbars, the four-stop-sequence limit and the Self-modify switch) and **2026-10-02** (the Compact mode switch, shipped in `v1.75.0`). It was split off `gotchas.md` (and removed from the `@`-import set) so every session's auto-loaded context stays lean. **Read it before modifying or reverting code in any of those subsystems**, and prepend new fix entries there.
+
+++- **recent-fixes.md** — *(NOT auto-imported; consult-on-demand)* The chronological "Recent Fixes / Gotchas" log: dated "do NOT revert this / keep these surfaces aligned" contracts for ACPX, the Flow Compiler, the planner, the Exec Report pipeline, the ACP canvas, wrapped chat-agent parsing, the desktop-UI agents, `prompt.pmt`, `regen_secrets.py`, the logging filters, and more — newest first: **2026-10-04** (graphical rich-text commentary redesign) and **2026-10-03** (the static User Commentary/User Input split, automatic containment without internal scrollbars, the four-stop-sequence limit and the Self-modify switch) and **2026-10-02** (the Compact mode switch, shipped in `v1.75.0`). It was split off `gotchas.md` (and removed from the `@`-import set) so every session's auto-loaded context stays lean. **Read it before modifying or reverting code in any of those subsystems**, and prepend new fix entries there.
+
++ - **`docs/external_mcp_bulletproof_architecture.md`** — *(NOT in this directory; NOT auto-imported; consult-on-demand)* The original design contract for the **External MCPs** universal client: 4 transports, lazy background connect, negative cache, and "never crash / never hang the chat build" invariants. Read it with `mcp-tools.md` and the 2026-08-15 section of `recent-fixes.md`, which extend the design to 10 supervisors, private runtimes, default seeding/tombstones, and public/private catalog separation.
+
++ 
+
++ - **[PPTXer styles and visibility](../../Tlamatini/agent/agents/pptxer/STYLES.md)** — Canonical guide for 36 named treatments, the 12 explicit styles, 17 font pairings, complete-text pagination, native audit interpretation, dated verification scope, reproduction commands, and disposable output cleanup.
+
++--- a/.claude/skills/tlamatini-self-update-inclusion/SKILL.md
+
+++++ b/.claude/skills/tlamatini-self-update-inclusion/SKILL.md
+
++@@ -349,17 +349,17 @@
+
++ 
+
++ The Prompt Flow Panel executes inside the frozen **web process** (`routing.py` imports its consumer), so the carried Python cannot satisfy it. `build.py::_FROZEN_PROMPT_FLOW_PANEL_MODULES` hidden-imports AND frozen-requires `agent.prompt_flow_panel_consumer`, `agent.prompt_flow_panel_runtime`, `agent.services.prompt_flow_panel` and `agent.management.commands.check_prompt_flow_panel`, and the build runs `check_prompt_flow_panel` inside the freshly frozen app right after `check_agent_runtimes` — a failure aborts packaging. `build_runtime_assets.py` must keep `agent/css/prompt_flow_panel.css`, `agent/js/prompt-flow-panel-model.js` and `agent/js/prompt-flow-panel.js` in `REQUIRED_STATIC`, and the template, `docs/prompting-flow-designer.md` and `docs/examples/prompting-kickoff.fpmt` in `ROOT_SOURCES` and in the receipt floor; `build.py`'s `copy_root_sources()` carries those two docs files to `dist/manage/docs/`. They are application assets that updates REPLACE — never add them to `$Preserve`. A user's saved `.fpmt` files live wherever the user saved them and browser drafts live in browser storage, so there is no panel state to preserve.
+
++ 
+
++-`acp-editor-tools.js` and the reorganized menus ride the existing static/template tree carriers, but every JS/CSS/template change still needs a `STATIC_VERSION` suffix bump (currently `-prompt-commentary-input-1`). `.fpmt` must stay a TEXT extension in `rag/binary_guard.py` and a scrubbed extension in `build_complete_public_release.py`.
+
+++`acp-editor-tools.js` and the reorganized menus ride the existing static/template tree carriers, but every JS/CSS/template change still needs a `STATIC_VERSION` suffix bump (currently `-prompt-commentary-canvas-2`). `.fpmt` must stay a TEXT extension in `rag/binary_guard.py` and a scrubbed extension in `build_complete_public_release.py`.
+
++ 
+
++ ⚠️ **Carriage is only real once the files are COMMITTED.** On 2026-09-25 all 22 new files of this work (backend, frontend, tests, visible scripts, the guide and the example) were untracked. `build_runtime_assets.py` requires the guide and the example, so a release built from a clean clone or tag fails until they are committed, and a self-update can only deliver what a release contains. The source sweep walks the working tree, so it passes either way — check `git ls-files --others --exclude-standard` before trusting a CLEAN. Guard: `agent/test_prompt_flow_panel_carriage.py`.
+
++ 
+
++ ### Prompt Flow commentary/input refactor carriage (2026-10-03, source only)
+
++ 
+
++-New `.fpmt` documents are version 2: `user_input` is the existing runtime reply step with the supplied notched figure; `user_commentary` is a static speech-bubble annotation. Preserve version 1 migration, identifiers, connections, settings and cancellation behavior. Static notes have no ports/Start state and do not enter prompts, history or playback steps. Their full wrapped text and inline editors grow at the chosen width/font without internal scrollbars; saved height is a minimum. The compatible browser-draft key still ends in `.draft.v1.<user id>`.
+
++-
+
++-The existing backend/template/static/guide/example carriers cover these changes. Keep the frontend and backend version/validation contracts synchronized, carry the updated kickoff example (seven operations plus one note), and verify source/collected-static byte parity. `scripts/prompt_flow_commentary_visible.py` travels through the generic source snapshot walk; do not claim it is explicitly required unless the live manifest lists it. The refactor passed 61 backend/packaging tests, nine foreground Chrome checkpoints and both inclusion sweeps, with no rebuilt executable/installer. A source sweep does not establish release delivery. Current cache suffix is `-prompt-commentary-input-1`; retain the timestamp/environment expression. See `docs/prompting-flow-designer.md` and `docs/changes/2026-10-03-prompt-commentary-input.md`.
+
++-
+
++-Run checks only in a verified visible foreground console and explicitly headed Chrome. Stop the task-owned harness/browser/server when Angela asks; use its `Temp/prompt-commentary-visible/close.confirmed` marker and verify owned processes/listeners are gone. Do not stop unrelated user processes.
+
+++New `.fpmt` documents are version 2: `user_input` is the existing runtime reply step with the supplied notched figure; `user_commentary` is a static speech-bubble annotation. Preserve version 1 migration, identifiers, connections, settings and cancellation behavior. Static notes have no ports/Start state and do not enter prompts, history or playback steps. The 2026-10-04 graphical redesign removes commentary configuration dialogs and numeric dimension forms: a floating mini toolbar formats selected text or subsequent typing with mixed fonts/sizes/colors/emphasis/underline, and all borders/corners resize directly. Preserve allowlisted rich `runs` plus matching plain `text`, legacy plain-note normalization, native rich copy/paste between comments, Undo/Redo and repeated file/draft rendering equivalence. Their full wrapped text and inline editors grow at the chosen width/font without internal scrollbars; saved height is a minimum. The compatible browser-draft key still ends in `.draft.v1.<user id>`.
+
+++
+
+++The existing backend/template/static/guide/example carriers cover these changes. Keep the frontend and backend version/validation contracts synchronized, carry the updated kickoff example (seven operations plus one note), and verify source/collected-static byte parity. `scripts/prompt_flow_commentary_visible.py` travels through the generic source snapshot walk; do not claim it is explicitly required unless the live manifest lists it. The 2026-10-03 split passed 61 backend/packaging tests and nine foreground Chrome checks. Current redesign evidence is in `docs/changes/2026-10-04-commentary-graphical-redesign.md`; no executable/installer was rebuilt. A source sweep does not establish release delivery. Current cache suffix is `-prompt-commentary-canvas-2`; retain the timestamp/environment expression. See `docs/prompting-flow-designer.md` and `docs/changes/2026-10-03-prompt-commentary-input.md`.
+
+++
+
+++Run checks only in a verified visible foreground console and explicitly headed Chrome. Stop the task-owned harness/browser/server when Angela asks; use its `Temp/prompt-commentary-redesign-visible/close.confirmed` marker and verify owned processes/listeners are gone. Do not stop unrelated user processes.
+
++ 
+
++ ### Skill boundary, Context Governor and dossier carrier gate (2026-09-26)
+
++ 
+
++--- a/.claude/skills/tlamatini-self-modify-inclusion/SKILL.md
+
+++++ b/.claude/skills/tlamatini-self-modify-inclusion/SKILL.md
+
++@@ -293,11 +293,11 @@
+
++ 
+
++ ### Prompt Flow commentary/input refactor carriage (2026-10-03, source only)
+
++ 
+
++-New `.fpmt` documents are version 2: `user_input` is the existing runtime reply step with the supplied notched figure; `user_commentary` is a static speech-bubble annotation. Preserve version 1 migration, identifiers, connections, settings and cancellation behavior. Static notes have no ports/Start state and do not enter prompts, history or playback steps. Their full wrapped text and inline editors grow at the chosen width/font without internal scrollbars; saved height is a minimum. The compatible browser-draft key still ends in `.draft.v1.<user id>`.
+
++-
+
++-The existing backend/template/static/guide/example carriers cover these changes. Keep the frontend and backend version/validation contracts synchronized, carry the updated kickoff example (seven operations plus one note), and verify source/collected-static byte parity. `scripts/prompt_flow_commentary_visible.py` travels through the generic source snapshot walk; do not claim it is explicitly required unless the live manifest lists it. The refactor passed 61 backend/packaging tests, nine foreground Chrome checkpoints and both inclusion sweeps, with no rebuilt executable/installer. A source sweep does not establish release delivery. Current cache suffix is `-prompt-commentary-input-1`; retain the timestamp/environment expression. See `docs/prompting-flow-designer.md` and `docs/changes/2026-10-03-prompt-commentary-input.md`.
+
++-
+
++-Run checks only in a verified visible foreground console and explicitly headed Chrome. Stop the task-owned harness/browser/server when Angela asks; use its `Temp/prompt-commentary-visible/close.confirmed` marker and verify owned processes/listeners are gone. Do not stop unrelated user processes.
+
+++New `.fpmt` documents are version 2: `user_input` is the existing runtime reply step with the supplied notched figure; `user_commentary` is a static speech-bubble annotation. Preserve version 1 migration, identifiers, connections, settings and cancellation behavior. Static notes have no ports/Start state and do not enter prompts, history or playback steps. The 2026-10-04 graphical redesign removes commentary configuration dialogs and numeric dimension forms: a floating mini toolbar formats selected text or subsequent typing with mixed fonts/sizes/colors/emphasis/underline, and all borders/corners resize directly. Preserve allowlisted rich `runs` plus matching plain `text`, legacy plain-note normalization, native rich copy/paste between comments, Undo/Redo and repeated file/draft rendering equivalence. Their full wrapped text and inline editors grow at the chosen width/font without internal scrollbars; saved height is a minimum. The compatible browser-draft key still ends in `.draft.v1.<user id>`.
+
+++
+
+++The existing backend/template/static/guide/example carriers cover these changes. Keep the frontend and backend version/validation contracts synchronized, carry the updated kickoff example (seven operations plus one note), and verify source/collected-static byte parity. `scripts/prompt_flow_commentary_visible.py` travels through the generic source snapshot walk; do not claim it is explicitly required unless the live manifest lists it. The 2026-10-03 split passed 61 backend/packaging tests and nine foreground Chrome checks. Current redesign evidence is in `docs/changes/2026-10-04-commentary-graphical-redesign.md`; no executable/installer was rebuilt. A source sweep does not establish release delivery. Current cache suffix is `-prompt-commentary-canvas-2`; retain the timestamp/environment expression. See `docs/prompting-flow-designer.md` and `docs/changes/2026-10-03-prompt-commentary-input.md`.
+
+++
+
+++Run checks only in a verified visible foreground console and explicitly headed Chrome. Stop the task-owned harness/browser/server when Angela asks; use its `Temp/prompt-commentary-redesign-visible/close.confirmed` marker and verify owned processes/listeners are gone. Do not stop unrelated user processes.
+
++ 
+
++ ### Skill boundary, Context Governor and dossier snapshot gate (2026-09-26)
+
++ 
+
++--- a/.claude/skills/tlamatini-daily-chat-test/SKILL.md
+
+++++ b/.claude/skills/tlamatini-daily-chat-test/SKILL.md
+
++@@ -206,7 +206,7 @@
+
++ 
+
++ When the touched surface is relevant, include visible cases for: Mover/Deleter empty, relative, legacy `C:/Temp/...`, and explicit absolute destinations; long-operation menu disable/restore (since 2026-09-25: **Panels** stays usable while Open/Save/Context/ACPX-Skills/External/Config/DB/Reconnect lock, and all of them re-arm after completion, Reconnect, Clean History, Cancel and a dropped socket; wait on `#config-menu-button` / `#panels-menu-button` — `#mcps-menu-button`, `#agents-menu-button` and `#admin-menu-button` no longer exist, and **Configure MCPs / Configure Agents** now open from **Config**); the Agentic Control Panel editor toolbar (undo/redo, configure, duplicate-with-settings, delete, zoom/fit, agent search, locked while a flow runs); the Prompt Flow Panel (`.fpmt` open/save/draft, a `.pmt` refused, validate/play/pause/stop, User Input replies and a reply dialog's Cancel stopping the run); dialog dismissal (**Escape must close every dialog with the same meaning as its ✕ / Cancel; an outside click must still NOT dismiss; a sealed updater must refuse Escape and Ctrl+F4/F5 while downloading**), ✕/Cancel/Continue behavior, and that no native `alert()`/`confirm()` appears over a themed dialog; safe update release-note rendering; and per-user/request/stream/line log attribution. A movement test must prove Deleter scope was not widened.
+
++ 
+
++-For the 2026-10-03 Prompt Flow refactor, also cover multiple static User Commentary bubbles: native double-click/Enter inline editing, Done/Ctrl+Enter versus Cancel/Escape, literal text/template tokens, palette/font controls, full long-paragraph containment without internal scrollbars during typing/font/width changes, zoom-aware resize and Undo/Redo, file/draft recovery, no ports/Start/runtime effects, and version 1 executable-commentary migration to User Input. The focused `scripts/prompt_flow_commentary_visible.py` has nine foreground Chrome checkpoints; launch it visibly with explicit `headless=False`. When Angela asks to stop it, create `Temp/prompt-commentary-visible/close.confirmed` and verify its owned browser/server/processes and test listeners are gone. Leave unrelated user applications running.
+
+++For the 2026-10-04 graphical Prompt Flow redesign, verify multiple static commentaries entirely on the canvas: no configuration dialog or dimension inputs; floating toolbar; selected ranges with mixed fonts/sizes/colors/bold/italic/underline; styled caret typing; copy/paste between rich comments; all eight edges/corners and keyboard resizing; editor and flow Undo/Redo; long text containment without scrollbars; three real `.fpmt` save/open cycles with identical rendered line boxes and styles, plus draft recovery. Preserve User Input replies/cancellation and version 1 migration. Launch `scripts/prompt_flow_commentary_visible.py` in a verified visible foreground console with explicit `headless=False` Chrome. See the dated change record for current results. Stop only owned processes through `Temp/prompt-commentary-redesign-visible/close.confirmed`, verify cleanup, and preserve unrelated user applications.
+
++ 
+
++ ## v1.48.14 release-target regression set
+
++ 
+
++--- a/.gemini/skills/tlamatini-self-update-inclusion/SKILL.md
+
+++++ b/.gemini/skills/tlamatini-self-update-inclusion/SKILL.md
+
++@@ -349,17 +349,17 @@
+
++ 
+
++ The Prompt Flow Panel executes inside the frozen **web process** (`routing.py` imports its consumer), so the carried Python cannot satisfy it. `build.py::_FROZEN_PROMPT_FLOW_PANEL_MODULES` hidden-imports AND frozen-requires `agent.prompt_flow_panel_consumer`, `agent.prompt_flow_panel_runtime`, `agent.services.prompt_flow_panel` and `agent.management.commands.check_prompt_flow_panel`, and the build runs `check_prompt_flow_panel` inside the freshly frozen app right after `check_agent_runtimes` — a failure aborts packaging. `build_runtime_assets.py` must keep `agent/css/prompt_flow_panel.css`, `agent/js/prompt-flow-panel-model.js` and `agent/js/prompt-flow-panel.js` in `REQUIRED_STATIC`, and the template, `docs/prompting-flow-designer.md` and `docs/examples/prompting-kickoff.fpmt` in `ROOT_SOURCES` and in the receipt floor; `build.py`'s `copy_root_sources()` carries those two docs files to `dist/manage/docs/`. They are application assets that updates REPLACE — never add them to `$Preserve`. A user's saved `.fpmt` files live wherever the user saved them and browser drafts live in browser storage, so there is no panel state to preserve.
+
++ 
+
++-`acp-editor-tools.js` and the reorganized menus ride the existing static/template tree carriers, but every JS/CSS/template change still needs a `STATIC_VERSION` suffix bump (currently `-prompt-commentary-input-1`). `.fpmt` must stay a TEXT extension in `rag/binary_guard.py` and a scrubbed extension in `build_complete_public_release.py`.
+
+++`acp-editor-tools.js` and the reorganized menus ride the existing static/template tree carriers, but every JS/CSS/template change still needs a `STATIC_VERSION` suffix bump (currently `-prompt-commentary-canvas-2`). `.fpmt` must stay a TEXT extension in `rag/binary_guard.py` and a scrubbed extension in `build_complete_public_release.py`.
+
++ 
+
++ ⚠️ **Carriage is only real once the files are COMMITTED.** On 2026-09-25 all 22 new files of this work (backend, frontend, tests, visible scripts, the guide and the example) were untracked. `build_runtime_assets.py` requires the guide and the example, so a release built from a clean clone or tag fails until they are committed, and a self-update can only deliver what a release contains. The source sweep walks the working tree, so it passes either way — check `git ls-files --others --exclude-standard` before trusting a CLEAN. Guard: `agent/test_prompt_flow_panel_carriage.py`.
+
++ 
+
++ ### Prompt Flow commentary/input refactor carriage (2026-10-03, source only)
+
++ 
+
++-New `.fpmt` documents are version 2: `user_input` is the existing runtime reply step with the supplied notched figure; `user_commentary` is a static speech-bubble annotation. Preserve version 1 migration, identifiers, connections, settings and cancellation behavior. Static notes have no ports/Start state and do not enter prompts, history or playback steps. Their full wrapped text and inline editors grow at the chosen width/font without internal scrollbars; saved height is a minimum. The compatible browser-draft key still ends in `.draft.v1.<user id>`.
+
++-
+
++-The existing backend/template/static/guide/example carriers cover these changes. Keep the frontend and backend version/validation contracts synchronized, carry the updated kickoff example (seven operations plus one note), and verify source/collected-static byte parity. `scripts/prompt_flow_commentary_visible.py` travels through the generic source snapshot walk; do not claim it is explicitly required unless the live manifest lists it. The refactor passed 61 backend/packaging tests, nine foreground Chrome checkpoints and both inclusion sweeps, with no rebuilt executable/installer. A source sweep does not establish release delivery. Current cache suffix is `-prompt-commentary-input-1`; retain the timestamp/environment expression. See `docs/prompting-flow-designer.md` and `docs/changes/2026-10-03-prompt-commentary-input.md`.
+
++-
+
++-Run checks only in a verified visible foreground console and explicitly headed Chrome. Stop the task-owned harness/browser/server when Angela asks; use its `Temp/prompt-commentary-visible/close.confirmed` marker and verify owned processes/listeners are gone. Do not stop unrelated user processes.
+
+++New `.fpmt` documents are version 2: `user_input` is the existing runtime reply step with the supplied notched figure; `user_commentary` is a static speech-bubble annotation. Preserve version 1 migration, identifiers, connections, settings and cancellation behavior. Static notes have no ports/Start state and do not enter prompts, history or playback steps. The 2026-10-04 graphical redesign removes commentary configuration dialogs and numeric dimension forms: a floating mini toolbar formats selected text or subsequent typing with mixed fonts/sizes/colors/emphasis/underline, and all borders/corners resize directly. Preserve allowlisted rich `runs` plus matching plain `text`, legacy plain-note normalization, native rich copy/paste between comments, Undo/Redo and repeated file/draft rendering equivalence. Their full wrapped text and inline editors grow at the chosen width/font without internal scrollbars; saved height is a minimum. The compatible browser-draft key still ends in `.draft.v1.<user id>`.
+
+++
+
+++The existing backend/template/static/guide/example carriers cover these changes. Keep the frontend and backend version/validation contracts synchronized, carry the updated kickoff example (seven operations plus one note), and verify source/collected-static byte parity. `scripts/prompt_flow_commentary_visible.py` travels through the generic source snapshot walk; do not claim it is explicitly required unless the live manifest lists it. The 2026-10-03 split passed 61 backend/packaging tests and nine foreground Chrome checks. Current redesign evidence is in `docs/changes/2026-10-04-commentary-graphical-redesign.md`; no executable/installer was rebuilt. A source sweep does not establish release delivery. Current cache suffix is `-prompt-commentary-canvas-2`; retain the timestamp/environment expression. See `docs/prompting-flow-designer.md` and `docs/changes/2026-10-03-prompt-commentary-input.md`.
+
+++
+
+++Run checks only in a verified visible foreground console and explicitly headed Chrome. Stop the task-owned harness/browser/server when Angela asks; use its `Temp/prompt-commentary-redesign-visible/close.confirmed` marker and verify owned processes/listeners are gone. Do not stop unrelated user processes.
+
++ 
+
++ ### Skill boundary, Context Governor and dossier carrier gate (2026-09-26)
+
++ 
+
++--- a/.gemini/skills/tlamatini-self-modify-inclusion/SKILL.md
+
+++++ b/.gemini/skills/tlamatini-self-modify-inclusion/SKILL.md
+
++@@ -293,11 +293,11 @@
+
++ 
+
++ ### Prompt Flow commentary/input refactor carriage (2026-10-03, source only)
+
++ 
+
++-New `.fpmt` documents are version 2: `user_input` is the existing runtime reply step with the supplied notched figure; `user_commentary` is a static speech-bubble annotation. Preserve version 1 migration, identifiers, connections, settings and cancellation behavior. Static notes have no ports/Start state and do not enter prompts, history or playback steps. Their full wrapped text and inline editors grow at the chosen width/font without internal scrollbars; saved height is a minimum. The compatible browser-draft key still ends in `.draft.v1.<user id>`.
+
++-
+
++-The existing backend/template/static/guide/example carriers cover these changes. Keep the frontend and backend version/validation contracts synchronized, carry the updated kickoff example (seven operations plus one note), and verify source/collected-static byte parity. `scripts/prompt_flow_commentary_visible.py` travels through the generic source snapshot walk; do not claim it is explicitly required unless the live manifest lists it. The refactor passed 61 backend/packaging tests, nine foreground Chrome checkpoints and both inclusion sweeps, with no rebuilt executable/installer. A source sweep does not establish release delivery. Current cache suffix is `-prompt-commentary-input-1`; retain the timestamp/environment expression. See `docs/prompting-flow-designer.md` and `docs/changes/2026-10-03-prompt-commentary-input.md`.
+
++-
+
++-Run checks only in a verified visible foreground console and explicitly headed Chrome. Stop the task-owned harness/browser/server when Angela asks; use its `Temp/prompt-commentary-visible/close.confirmed` marker and verify owned processes/listeners are gone. Do not stop unrelated user processes.
+
+++New `.fpmt` documents are version 2: `user_input` is the existing runtime reply step with the supplied notched figure; `user_commentary` is a static speech-bubble annotation. Preserve version 1 migration, identifiers, connections, settings and cancellation behavior. Static notes have no ports/Start state and do not enter prompts, history or playback steps. The 2026-10-04 graphical redesign removes commentary configuration dialogs and numeric dimension forms: a floating mini toolbar formats selected text or subsequent typing with mixed fonts/sizes/colors/emphasis/underline, and all borders/corners resize directly. Preserve allowlisted rich `runs` plus matching plain `text`, legacy plain-note normalization, native rich copy/paste between comments, Undo/Redo and repeated file/draft rendering equivalence. Their full wrapped text and inline editors grow at the chosen width/font without internal scrollbars; saved height is a minimum. The compatible browser-draft key still ends in `.draft.v1.<user id>`.
+
+++
+
+++The existing backend/template/static/guide/example carriers cover these changes. Keep the frontend and backend version/validation contracts synchronized, carry the updated kickoff example (seven operations plus one note), and verify source/collected-static byte parity. `scripts/prompt_flow_commentary_visible.py` travels through the generic source snapshot walk; do not claim it is explicitly required unless the live manifest lists it. The 2026-10-03 split passed 61 backend/packaging tests and nine foreground Chrome checks. Current redesign evidence is in `docs/changes/2026-10-04-commentary-graphical-redesign.md`; no executable/installer was rebuilt. A source sweep does not establish release delivery. Current cache suffix is `-prompt-commentary-canvas-2`; retain the timestamp/environment expression. See `docs/prompting-flow-designer.md` and `docs/changes/2026-10-03-prompt-commentary-input.md`.
+
+++
+
+++Run checks only in a verified visible foreground console and explicitly headed Chrome. Stop the task-owned harness/browser/server when Angela asks; use its `Temp/prompt-commentary-redesign-visible/close.confirmed` marker and verify owned processes/listeners are gone. Do not stop unrelated user processes.
+
++ 
+
++ ### Skill boundary, Context Governor and dossier snapshot gate (2026-09-26)
+
++ 
+
++--- a/.gemini/skills/tlamatini-daily-chat-test/SKILL.md
+
+++++ b/.gemini/skills/tlamatini-daily-chat-test/SKILL.md
+
++@@ -206,7 +206,7 @@
+
++ 
+
++ When the touched surface is relevant, include visible cases for: Mover/Deleter empty, relative, legacy `C:/Temp/...`, and explicit absolute destinations; long-operation menu disable/restore (since 2026-09-25: **Panels** stays usable while Open/Save/Context/ACPX-Skills/External/Config/DB/Reconnect lock, and all of them re-arm after completion, Reconnect, Clean History, Cancel and a dropped socket; wait on `#config-menu-button` / `#panels-menu-button` — `#mcps-menu-button`, `#agents-menu-button` and `#admin-menu-button` no longer exist, and **Configure MCPs / Configure Agents** now open from **Config**); the Agentic Control Panel editor toolbar (undo/redo, configure, duplicate-with-settings, delete, zoom/fit, agent search, locked while a flow runs); the Prompt Flow Panel (`.fpmt` open/save/draft, a `.pmt` refused, validate/play/pause/stop, User Input replies and a reply dialog's Cancel stopping the run); dialog dismissal (**Escape must close every dialog with the same meaning as its ✕ / Cancel; an outside click must still NOT dismiss; a sealed updater must refuse Escape and Ctrl+F4/F5 while downloading**), ✕/Cancel/Continue behavior, and that no native `alert()`/`confirm()` appears over a themed dialog; safe update release-note rendering; and per-user/request/stream/line log attribution. A movement test must prove Deleter scope was not widened.
+
++ 
+
++-For the 2026-10-03 Prompt Flow refactor, also cover multiple static User Commentary bubbles: native double-click/Enter inline editing, Done/Ctrl+Enter versus Cancel/Escape, literal text/template tokens, palette/font controls, full long-paragraph containment without internal scrollbars during typing/font/width changes, zoom-aware resize and Undo/Redo, file/draft recovery, no ports/Start/runtime effects, and version 1 executable-commentary migration to User Input. The focused `scripts/prompt_flow_commentary_visible.py` has nine foreground Chrome checkpoints; launch it visibly with explicit `headless=False`. When Angela asks to stop it, create `Temp/prompt-commentary-visible/close.confirmed` and verify its owned browser/server/processes and test listeners are gone. Leave unrelated user applications running.
+
+++For the 2026-10-04 graphical Prompt Flow redesign, verify multiple static commentaries entirely on the canvas: no configuration dialog or dimension inputs; floating toolbar; selected ranges with mixed fonts/sizes/colors/bold/italic/underline; styled caret typing; copy/paste between rich comments; all eight edges/corners and keyboard resizing; editor and flow Undo/Redo; long text containment without scrollbars; three real `.fpmt` save/open cycles with identical rendered line boxes and styles, plus draft recovery. Preserve User Input replies/cancellation and version 1 migration. Launch `scripts/prompt_flow_commentary_visible.py` in a verified visible foreground console with explicit `headless=False` Chrome. See the dated change record for current results. Stop only owned processes through `Temp/prompt-commentary-redesign-visible/close.confirmed`, verify cleanup, and preserve unrelated user applications.
+
++ 
+
++ ## v1.48.14 release-target regression set
+
++ 
+
++--- a/Tlamatini/agent/skills_pkg/tlamatini_static_version_bumper/SKILL.md
+
+++++ b/Tlamatini/agent/skills_pkg/tlamatini_static_version_bumper/SKILL.md
+
++@@ -52,7 +52,7 @@
+
++ `Tlamatini/tlamatini/settings.py` computes it at import time:
+
++ 
+
++ ```python
+
++-STATIC_VERSION = (os.environ.get('STATIC_VERSION') or str(int(time.time()))) + '-prompt-commentary-input-1'
+
+++STATIC_VERSION = (os.environ.get('STATIC_VERSION') or str(int(time.time()))) + '-prompt-commentary-canvas-2'
+
++ ```
+
++ 
+
++ So it is **an environment override OR the process start timestamp**, plus a
+
++@@ -70,7 +70,7 @@
+
++ |---|---|
+
++ | source dev run | **Restart the server.** The timestamp is evaluated once at import, so a running process keeps its stamp until it restarts. |
+
++ | deployment with a pinned stamp | Set the `STATIC_VERSION` env var to a NEW value and restart. |
+
++-| a permanent marker for one change | Edit only the **suffix** literal (e.g. `-prompt-commentary-input-1` → a new marker naming YOUR change; the value shown above was current for the 2026-10-03 commentary/input refactor — read the live one first). Keep the `os.environ.get(...) or str(int(time.time()))` head intact. |
+
+++| a permanent marker for one change | Edit only the **suffix** literal (e.g. `-prompt-commentary-canvas-2` → a new marker naming YOUR change; the value shown above was current for the 2026-10-04 graphical commentary redesign — read the live one first). Keep the `os.environ.get(...) or str(int(time.time()))` head intact. |
+
++ 
+
++ ## Procedure
+
++ 
+
++--- a/docs/claude/recent-fixes.md
+
+++++ b/docs/claude/recent-fixes.md
+
++@@ -15,6 +15,12 @@
+
++ > **When to add to it**: when you land a non-obvious fix whose intent a future assistant could accidentally undo. Prepend new entries at the top of the list, dated, in the same style as the existing bullets.
+
++ 
+
++ ---
+
+++
+
+++## 2026-10-04 — Graphical rich-text User Commentary
+
+++
+
+++User Commentary now has **no configuration dialog**: all writing and formatting happens in its speech bubble and floating mini toolbar. Selected passages retain distinct fonts, sizes, colors, bold, italic and underline; a collapsed caret styles subsequent typing. Rich copy/cut/paste between comments preserves runs; external text stays literal. Any of eight borders/corners resizes directly, including while editing, with keyboard support. Done/Ctrl+Enter commits the complete edit, Escape/Cancel restores it, and editor plus diagram Undo/Redo preserve styles and geometry. The text grows without internal scrollbars, using the actual mixed-font layout.
+
+++
+
+++Version 2 gains allowlisted `runs` whose text must concatenate exactly to `config.text`; older plain v2 notes normalize to one run. The v1 User Input migration and runtime protocol remain unchanged. Static comments never execute. Source cache suffix is `-prompt-commentary-canvas-2`. See [implementation and verification](../changes/2026-10-04-commentary-graphical-redesign.md). The historical 2026-10-03 Configure workflow below is superseded. No executable/installer rebuild or Git commit was made for this change.
+
++ 
+
++ ## 2026-10-03 — Full source/Markdown sweep, the dossier refreshed, and two traps in the visible Prompt Flow harness
+
++ 
+
++--- a/docs/examples/prompting-kickoff.fpmt
+
+++++ b/docs/examples/prompting-kickoff.fpmt
+
++@@ -12,7 +12,7 @@
+
++     {"id": "decide", "type": "decision", "label": "Flush context?", "x": 880, "y": 320, "config": {"text": "Clear the retrieval context before ending this run?", "comparison": "user", "value": "", "case_sensitive": false}},
+
++     {"id": "flush", "type": "flush_embeddings", "label": "Flush embeddings", "x": 600, "y": 320, "config": {"text": ""}},
+
++     {"id": "clean", "type": "clean_history", "label": "Clean History", "x": 320, "y": 320, "config": {"text": ""}},
+
++-    {"id": "review", "type": "user_commentary", "label": "Reviewer note", "x": 40, "y": 530, "config": {"text": "Review note: User Input asks for the subject during playback. This speech bubble is a static annotation: it never runs, never changes history, and needs no connection. Double-click to edit this note; Configure changes its font and color.", "width": 620, "height": 240, "color": "#fef3c7", "font_family": "Georgia", "font_size": 16, "bold": false, "italic": false, "align": "left"}}
+
+++    {"id":"review","type":"user_commentary","label":"Reviewer note","x":40,"y":530,"config":{"text":"A note for reviewers\nUser Input asks for the subject during playback. This speech bubble is a static annotation: it never runs, never changes history, and needs no connection.\n\nDouble-click to write. Select a phrase and use the floating toolbar to format it. Drag any border or corner to resize.","width":620,"height":240,"color":"#fef3c7","font_family":"Georgia","font_size":16,"bold":false,"italic":false,"align":"left","runs":[{"text":"A note for reviewers\n","font_family":"Verdana","font_size":28,"text_color":"#1d4ed8","bold":true,"italic":false,"underline":false},{"text":"User Input asks for the subject during playback. This speech bubble is a static annotation: it never runs, never changes history, and needs no connection.\n\n","font_family":"Georgia","font_size":16,"text_color":"#202938","bold":false,"italic":false,"underline":false},{"text":"Double-click to write. Select a phrase and use the floating toolbar to format it. Drag any border or corner to resize.","font_family":"Arial","font_size":16,"text_color":"#202938","bold":false,"italic":true,"underline":false}],"text_color":"#202938","underline":false}}
+
++   ],
+
++   "edges": [
+
++     {"id": "subject_explain", "source": "subject", "target": "explain", "branch": "next"},
+
++--- /dev/null
+
+++++ b/docs/changes/2026-10-04-commentary-graphical-redesign.md
+
++@@ -0,0 +1,52 @@
+
+++<!-- Tlamatini Author Banner — Angela López Mendoza · @angelahack1 -->
+
+++# 2026-10-04 — Graphical rich-text User Commentary
+
+++
+
+++## User requirements, verbatim excerpts
+
+++
+
+++```text
+
+++Sorry, but still horrible your fucking User Commentary:
+
+++-It cannot be resized, directly in the borders of the figure.
+
+++-The user does not now the ratio of the text and the size of the bubble, so the most stupid thing: let the user write the width and height by value of pixels!! (You really are an idiot!!).
+
+++
+
+++REFACTOR COMPLETELLY THE DESIGN OF THAT STUPID MEDIOCRE "User Commentary" MAKE IT 100% AGAIN FROM SCRATCH YOU MAKE AN STUPID ENGINEER NOT LIKE A GRAPHICAL DESIGNER, GO AGAIN!
+
+++
+
+++The text controls, FONT, COLOR, ITALIC, ETC... must be like Microsoft Word like Floating tool tip controls!!, not in the fucking configuration engineer dialog STUPID DUMB!!!
+
+++
+
+++This User Commentary MUST NOT HAV A Configuration dialog it must be 100% modified graphically as a Microsoft Word Commentary or an Adobe professional commantary.
+
+++
+
+++dont make me get mad, make a beyond perfection implementation
+
+++
+
+++REMEMBER AN ELITE-LEVEL DESIGNER WOULD MAKE A CONTROL IN WHICH THE TEXT INSIDE THE SAME ASSEST CAN HAVE MULTIPLE TYPES OF STYLES!, SO WITHIN THE SAME USER COMMENTARY SOME PARTS OF THE TEXT COULD BE ITALICS OF ARIA FONT, OTHER WITH BIGGER SIZZER WITH VERDANA, ETC...
+
+++
+
+++YOU STUPID MADE ME MAD, NOW FOR THAT REASON YOU MUST CREATE A BEYOND EXTRATERRESTRIAL LEVEL GOD-LEVEL DESIGNER JOB!!!!!!!!!!!!!!!
+
+++
+
+++AND REMEMBER TO MAKE TESTS OF LOADING/WRITING .fmpt FILES THAT ALWAYS RENDER IDENTICALLY WHILE SAVING/LOADING, ETC.
+
+++
+
+++OF COURSE WITH SEVERAL COMMENTARIES EXAMPLES
+
+++
+
+++remember: don't commit!!!!!!!!!!
+
+++```
+
+++
+
+++## Result and contract
+
+++
+
+++Replaced the commentary form/textarea design with an inline rich-text bubble, a floating mini toolbar and direct resizing on eight edges/corners. No commentary configuration dialog or numeric width/height inputs remain. The existing Configure entry becomes Edit comment for this asset; executable operations retain their own settings dialogs. The selection outline is mint, corners/tail keep their proportions, and the shared Bootstrap placeholder class no longer paints a block over an empty note.
+
+++
+
+++Selected passages support different fonts, sizes, text colors, bold, italic and underline inside the same note. Collapsed-caret choices style the next input; formatting outside the editor applies to the full note. Bubble color and alignment apply to the note. Clipboard operations between commentary editors preserve rich runs; unrecognized/external clipboard formatting falls back to literal text. Enter, Unicode deletion, composition input, local edit Undo/Redo, whole-edit Cancel, flow Undo/Redo, keyboard resizing and resize while typing share the same saved model. Text measures at the actual mixed fonts and wraps into automatic height without internal scrollbars. Fit text resets spare minimum height.
+
+++
+
+++Version 2 keeps the existing schema identity and adds optional allowlisted `runs`: literal text with font_family, font_size, text_color, bold, italic and underline. Both validators normalize old plain version 2 notes and require concatenation to equal `config.text`, discard unknown keys, merge adjacent equal styles and reject unsupported values. Limits remain 100,000 characters, 10,000 runs per note and 5 MiB per file. Version 1 executable commentary still migrates to User Input. Static notes never enter context/history/playback and have no ports or Start state.
+
+++
+
+++Frontend/backend/template, the bundled eight-asset example, current user/developer guides, assistant contracts, memories and mirrored maintenance instructions were updated. Dated 2026-10-03 records remain historical. STATIC_VERSION retains its environment/timestamp expression with suffix `-prompt-commentary-canvas-2`. No new dependency, database migration, backup/restore modification, release rebuild, Git commit or push.
+
+++
+
+++Design references: Microsoft's [Mini toolbar](https://support.microsoft.com/en-au/word/use-the-mini-toolbar-to-format-text) and [selected-text formatting](https://support.microsoft.com/en-us/word/training/add-and-edit-text), plus Adobe's [text-box resizing and reflow](https://helpx.adobe.com/acrobat/desktop/edit-documents/edit-text-in-pdfs/adjust-text-boxes.html). These are public product interaction references, not a claim to have Microsoft Word's proprietary source code.
+
+++
+
+++## Verification
+
+++
+
+++Passed **29 diagram/runner tests**, **3 packaging carriage tests**, repository JavaScript lint/parse (zero errors; existing unrelated warnings), and **23 real foreground Chrome checkpoints**. The final browser run checks three differently styled comments through three real download/clear/open/save cycles, exact JSON equality and matching rendered line boxes/fonts/colors/geometry, plus draft reload, rich clipboard editing, editor/flow undo and Unicode deletion. Cancelled edits are excluded from draft writes even when zoom schedules persistence. The final checks also confirm that the bubble has no rectangular focus frame. Both source-carriage sweeps passed with only existing unrelated advisories; no executable/installer was built.
+
+++
+
+++The current Markdown reference audit covers all applicable active contracts (**26 updated Markdown files**); historical change records remain intact. The scoped rollback patch and changed relative links, maintenance mirrors, Python syntax and source/collected-static byte parity are checked by the visible final verification script.
+
+++
+
+++Earlier attempts are not counted as passes: Chrome closed during downloads in an old profile, and its breached-password modal blocked clicks for the reusable test credential. The harness now uses a fresh test profile and a random password for the **isolated port-8001 account only**. An overly broad unittest discovery invocation imported unrelated packages incorrectly; running the packaging regression module directly passed all three tests. The final browser run finished with no page errors. Logs, Shoter full-desktop photos, downloaded examples and rendered geometry are retained under `Temp/commentary-redesign/` and `Temp/prompt-commentary-redesign-visible/`. All workloads use verified visible foreground consoles and explicitly headed Chrome, monitored live. No live model is called by these checks.
+
+++
+
+++## Rollback
+
+++
+
+++[The adjacent patch](2026-10-04-commentary-graphical-redesign.patch) captures only this request's changes against before-copies under `Temp/commentary-redesign/before/`; it excludes unrelated local configuration edits and earlier dated patches. Inspect the exact affected blocks before reversing them. Do not reset entire files over later changes, alter Git history, or modify protected database mechanics.
+
++--- a/PIVOT_CHANGES.md
+
+++++ b/PIVOT_CHANGES.md
+
++@@ -435,3 +435,33 @@
+
++ Audited all 204 repository Markdown documents, including hidden assistant contracts/skills/memories and excluding generated/build/dependency trees. Updated all applicable current Prompt Flow descriptions: seven executable operations plus static User Commentary, User Input shape and unchanged runtime replies, full-text containment without internal scrollbars, inline editing/formatting/persistence, version 2 saves and version 1 migration, compatible draft key, limits, cache suffix, source/update carriage and visible verification. Dated release/test history remains historical. The accepted source refactor is recorded separately in [the implementation pivot](docs/changes/2026-10-03-prompt-commentary-input.md).
+
++ 
+
++ The test harness closed its Chrome and isolated test server via `close.confirmed`; only task-owned worker/consoles were stopped. No background worker is retained, and unrelated user applications are preserved. [Documentation scope, checks and precise follow-up rollback](docs/changes/2026-10-03-prompt-flow-documentation.md). Its adjacent patch captures only this documentation follow-up, preserving prior source changes and unrelated local edits. No Git history, database backup/restore mechanics, release version or executable was changed.
+
+++
+
+++## 2026-10-04 — Graphical rich-text User Commentary
+
+++
+
+++**Verbatim user requirements:**
+
+++
+
+++```text
+
+++Sorry, but still horrible your fucking User Commentary:
+
+++-It cannot be resized, directly in the borders of the figure.
+
+++-The user does not now the ratio of the text and the size of the bubble, so the most stupid thing: let the user write the width and height by value of pixels!! (You really are an idiot!!).
+
+++
+
+++REFACTOR COMPLETELLY THE DESIGN OF THAT STUPID MEDIOCRE "User Commentary" MAKE IT 100% AGAIN FROM SCRATCH YOU MAKE AN STUPID ENGINEER NOT LIKE A GRAPHICAL DESIGNER, GO AGAIN!
+
+++
+
+++The text controls, FONT, COLOR, ITALIC, ETC... must be like Microsoft Word like Floating tool tip controls!!, not in the fucking configuration engineer dialog STUPID DUMB!!!
+
+++
+
+++This User Commentary MUST NOT HAV A Configuration dialog it must be 100% modified graphically as a Microsoft Word Commentary or an Adobe professional commantary.
+
+++
+
+++dont make me get mad, make a beyond perfection implementation
+
+++
+
+++REMEMBER AN ELITE-LEVEL DESIGNER WOULD MAKE A CONTROL IN WHICH THE TEXT INSIDE THE SAME ASSEST CAN HAVE MULTIPLE TYPES OF STYLES!, SO WITHIN THE SAME USER COMMENTARY SOME PARTS OF THE TEXT COULD BE ITALICS OF ARIA FONT, OTHER WITH BIGGER SIZZER WITH VERDANA, ETC...
+
+++
+
+++YOU STUPID MADE ME MAD, NOW FOR THAT REASON YOU MUST CREATE A BEYOND EXTRATERRESTRIAL LEVEL GOD-LEVEL DESIGNER JOB!!!!!!!!!!!!!!!
+
+++
+
+++AND REMEMBER TO MAKE TESTS OF LOADING/WRITING .fmpt FILES THAT ALWAYS RENDER IDENTICALLY WHILE SAVING/LOADING, ETC.
+
+++
+
+++OF COURSE WITH SEVERAL COMMENTARIES EXAMPLES
+
+++
+
+++remember: don't commit!!!!!!!!!!
+
+++```
+
+++
+
 ++Replaced commentary configuration with direct inline rich editing, a floating selection/caret toolbar and all-border resizing. Mixed styles persist in version 2 allowlisted runs and matching plain text. Repeated saves, loads and draft recovery compare several rendered notes. User Input behavior and legacy migration remain intact. [Exact changes, visible checks and rollback patch](docs/changes/2026-10-04-commentary-graphical-redesign.md). No commit or push.
 ````
 
@@ -11486,14 +15152,22 @@ Current file: 834 lines. Review delta: **+812 / −0**, **1 changed segments**.
 +--- a/Tlamatini/tlamatini/settings.py
 ++++ b/Tlamatini/tlamatini/settings.py
 +@@ -247,7 +247,7 @@
-+ 
-+ # Version stamp for cache-busting of static assets in templates
-+ # Override via env var STATIC_VERSION when deploying
-+-STATIC_VERSION = (os.environ.get('STATIC_VERSION') or str(int(time.time()))) + '-prompt-commentary-canvas-2'
-++STATIC_VERSION = (os.environ.get('STATIC_VERSION') or str(int(time.time()))) + '-prompt-run-output-resize-1'
-+ 
-+ # WhiteNoise configuration: dev vs release.
-+ # NOTE (speed batch, 2026-07-02): the old per-branch STATICFILES_STORAGE lines
++ 
+
++ # Version stamp for cache-busting of static assets in templates
+
++ # Override via env var STATIC_VERSION when deploying
+
++-STATIC_VERSION = (os.environ.get('STATIC_VERSION') or str(int(time.time()))) + '-prompt-commentary-canvas-2'
+
+++STATIC_VERSION = (os.environ.get('STATIC_VERSION') or str(int(time.time()))) + '-prompt-run-output-resize-1'
+
++ 
+
++ # WhiteNoise configuration: dev vs release.
+
++ # NOTE (speed batch, 2026-07-02): the old per-branch STATICFILES_STORAGE lines
+
 +--- /dev/null
 ++++ b/scripts/prompt_flow_output_resize_visible.py
 +@@ -0,0 +1,381 @@
@@ -11966,9 +15640,12 @@ Current file: 834 lines. Review delta: **+812 / −0**, **1 changed segments**.
 + 5. **One name survives from the first draft: the guide's FILENAME.** The feature was drafted on 2026-09-23 as the "Prompting Flow Designer" (`prompting_flow_designer.html`, `/ws/prompting-flow/`, `check_prompting_flow`, `.pmt`). Every doc now uses the real names, but the guide is still `docs/prompting-flow-designer.md` because `build.py`, `build_runtime_assets.py`, `copy_source_assets.py` and `test_prompt_flow_panel_carriage.py` pin that exact path, and it ships to users. Rename it only by changing all four in the same pass. The 2026-09-23 entry in `recent-fixes.md` keeps the old names on purpose (it is history) under a "Renamed 2026-09-25" banner. Full contract: `docs/claude/frontend.md` → *Prompt Flow Panel*, `docs/claude/architecture.md` → *Prompt Flow Panel runtime*, `docs/claude/multi-turn.md` → *Multi-Turn and ACPX inside the Prompt Flow Panel*.
 +-6. **Both panels share canvas mechanics.** `flow-canvas-interactions.js` and `flow_canvas.css` own triangle highlighting, connection capture/cancellation, curve geometry, wire hover/selection glow, Fit/zoom, context-menu placement and divider gestures. Keep free dragging, Ctrl/Meta-drag duplication, modifier/marquee selection, keyboard editing and one-step Undo/Redo aligned. Use gold SVG contour glow for selected Prompt Flow figures; playback keeps node status colors, while wire hover/selection feedback takes precedence over traversed-wire green. Load the shared stylesheet after panel styles and before `dialog_theme.css`. Keep seven executable operations, a separate static User Commentary annotation, and no Connection tool. Current cache suffix: `-prompt-commentary-canvas-2`. The foreground `scripts/prompt_flow_connections_visible.py` run passed all 30 comparison checkpoints on 2026-09-26; `scripts/acp_editor_visible.py` passed 17 regressions.
 ++6. **Both panels share canvas mechanics.** `flow-canvas-interactions.js` and `flow_canvas.css` own triangle highlighting, connection capture/cancellation, curve geometry, wire hover/selection glow, Fit/zoom, context-menu placement and divider gestures. Keep free dragging, Ctrl/Meta-drag duplication, modifier/marquee selection, keyboard editing and one-step Undo/Redo aligned. Use gold SVG contour glow for selected Prompt Flow figures; playback keeps node status colors, while wire hover/selection feedback takes precedence over traversed-wire green. Load the shared stylesheet after panel styles and before `dialog_theme.css`. Keep seven executable operations, a separate static User Commentary annotation, and no Connection tool. Current cache suffix: `-prompt-run-output-resize-1`. The foreground `scripts/prompt_flow_connections_visible.py` run passed all 30 comparison checkpoints on 2026-09-26; `scripts/acp_editor_visible.py` passed 17 regressions.
-+ 
-+ ---
-+ 
++ 
+
++ ---
+
++ 
+
 +--- a/GEMINI.md
 ++++ b/GEMINI.md
 +@@ -693,13 +693,13 @@
@@ -11984,14 +15661,18 @@ Current file: 834 lines. Review delta: **+812 / −0**, **1 changed segments**.
 + 
 +-**Commentary/Input contract (2026-10-04, source changes):** Seven executable operations remain separate from static **User Commentary**. **User Input** (`user_input`) keeps the question/reply/cancellation mechanism and notched figure. **User Commentary** (`user_commentary`) is edited entirely on the canvas: double-click/Enter writes in the bubble; a floating mini toolbar formats selected text with different fonts, sizes, text colors, bold, italic and underline within the same note. With a caret, formatting applies to newly typed text; outside editing it applies to the whole note. Bubble color and alignment affect the note. There is no commentary configuration dialog or numeric dimension form. Drag any border or corner to resize, including while editing; Fit text removes spare height. Done/Ctrl+Enter saves; Cancel/Escape restores the whole edit. Ctrl+Z/Y works inside the editor; completed edits, moves, resizes and duplicates use flow Undo/Redo. Bubbles contain their full wrapped text without internal scrollbars. Version 2 files persist allowlisted `runs` plus matching literal `text`; older plain notes normalize to one run, and version 1 executable commentary still migrates to User Input with IDs/edges/settings intact. Comments have no ports/Start/runtime/context/history/step effects. The draft key remains `.draft.v1.<user id>`. Cache suffix: `-prompt-commentary-canvas-2`. See `docs/prompting-flow-designer.md` and the 2026-10-04 verification record; no release executable was rebuilt.
 ++**Commentary/Input contract (2026-10-04, source changes):** Seven executable operations remain separate from static **User Commentary**. **User Input** (`user_input`) keeps the question/reply/cancellation mechanism and notched figure. **User Commentary** (`user_commentary`) is edited entirely on the canvas: double-click/Enter writes in the bubble; a floating mini toolbar formats selected text with different fonts, sizes, text colors, bold, italic and underline within the same note. With a caret, formatting applies to newly typed text; outside editing it applies to the whole note. Bubble color and alignment affect the note. There is no commentary configuration dialog or numeric dimension form. Drag any border or corner to resize, including while editing; Fit text removes spare height. Done/Ctrl+Enter saves; Cancel/Escape restores the whole edit. Ctrl+Z/Y works inside the editor; completed edits, moves, resizes and duplicates use flow Undo/Redo. Bubbles contain their full wrapped text without internal scrollbars. Version 2 files persist allowlisted `runs` plus matching literal `text`; older plain notes normalize to one run, and version 1 executable commentary still migrates to User Input with IDs/edges/settings intact. Comments have no ports/Start/runtime/context/history/step effects. The draft key remains `.draft.v1.<user id>`. Cache suffix: `-prompt-run-output-resize-1`. See `docs/prompting-flow-designer.md` and the 2026-10-04 verification record; no release executable was rebuilt.
-+ 
-+ ---
-+ 
++ 
+
++ ---
+
++ 
+
 +--- a/KIMI.md
 ++++ b/KIMI.md
 +@@ -575,9 +575,9 @@
 + 
-+ **Prompt Flow Panel (2026-09-25).** A sibling page at `/agent/prompt_flow_panel/` (template `prompt_flow_panel.html`, WebSocket `ws/prompt-flow-panel/`) for chains of **prompts** rather than agents: seven executable operations (Prompt, Programmed Prompt, Decision, Feed embeddings, Flush embeddings, Clean History, User Input), plus static User Commentary notes, saved as **`.fpmt`** JSON (`format: "tlamatini-prompting-flow"`, version 2; version 1 imports migrate the old reply nodes to User Input). ⚠️ `.pmt` stays with the plain-text system prompts (`prompt.pmt`, `monitoring-prompt.pmt`) and the panel refuses to open one. Each run gets its own chain, history, embeddings and cancellation key, and never loads the shared `application/` corpus. Backend: `prompt_flow_panel_consumer.py`, `prompt_flow_panel_runtime.py`, `services/prompt_flow_panel.py`; frozen-build gate `check_prompt_flow_panel`. Guide: `docs/prompting-flow-designer.md`.
++ **Prompt Flow Panel (2026-09-25).** A sibling page at `/agent/prompt_flow_panel/` (template `prompt_flow_panel.html`, WebSocket `ws/prompt-flow-panel/`) for chains of **prompts** rather than agents: seven executable operations (Prompt, Programmed Prompt, Decision, Feed embeddings, Flush embeddings, Clean History, User Input), plus static User Commentary notes, saved as **`.fpmt`** JSON (`format: "tlamatini-prompting-flow"`, version 2; version 1 imports migrate the old reply nodes to User Input). ⚠️ `.pmt` stays with the plain-text system prompts (`prompt.pmt`, `monitoring-prompt.pmt`) and the panel refuses to open one. Each run gets its own chain, history, embeddings and cancellation key, and never loads the shared `application/` corpus. Backend: `prompt_flow_panel_consumer.py`, `prompt_flow_panel_runtime.py`, `services/prompt_flow_panel.py`; frozen-build gate `check_prompt_flow_panel`. Guide: `docs/prompting-flow-designer.md`.
+
 + 
 +-**Commentary/Input contract (2026-10-04, source changes):** Seven executable operations remain separate from static **User Commentary**. **User Input** (`user_input`) keeps the question/reply/cancellation mechanism and notched figure. **User Commentary** (`user_commentary`) is edited entirely on the canvas: double-click/Enter writes in the bubble; a floating mini toolbar formats selected text with different fonts, sizes, text colors, bold, italic and underline within the same note. With a caret, formatting applies to newly typed text; outside editing it applies to the whole note. Bubble color and alignment affect the note. There is no commentary configuration dialog or numeric dimension form. Drag any border or corner to resize, including while editing; Fit text removes spare height. Done/Ctrl+Enter saves; Cancel/Escape restores the whole edit. Ctrl+Z/Y works inside the editor; completed edits, moves, resizes and duplicates use flow Undo/Redo. Bubbles contain their full wrapped text without internal scrollbars. Version 2 files persist allowlisted `runs` plus matching literal `text`; older plain notes normalize to one run, and version 1 executable commentary still migrates to User Input with IDs/edges/settings intact. Comments have no ports/Start/runtime/context/history/step effects. The draft key remains `.draft.v1.<user id>`. Cache suffix: `-prompt-commentary-canvas-2`. See `docs/prompting-flow-designer.md` and the 2026-10-04 verification record; no release executable was rebuilt.
 +-
@@ -11999,9 +15680,12 @@ Current file: 834 lines. Review delta: **+812 / −0**, **1 changed segments**.
 ++**Commentary/Input contract (2026-10-04, source changes):** Seven executable operations remain separate from static **User Commentary**. **User Input** (`user_input`) keeps the question/reply/cancellation mechanism and notched figure. **User Commentary** (`user_commentary`) is edited entirely on the canvas: double-click/Enter writes in the bubble; a floating mini toolbar formats selected text with different fonts, sizes, text colors, bold, italic and underline within the same note. With a caret, formatting applies to newly typed text; outside editing it applies to the whole note. Bubble color and alignment affect the note. There is no commentary configuration dialog or numeric dimension form. Drag any border or corner to resize, including while editing; Fit text removes spare height. Done/Ctrl+Enter saves; Cancel/Escape restores the whole edit. Ctrl+Z/Y works inside the editor; completed edits, moves, resizes and duplicates use flow Undo/Redo. Bubbles contain their full wrapped text without internal scrollbars. Version 2 files persist allowlisted `runs` plus matching literal `text`; older plain notes normalize to one run, and version 1 executable commentary still migrates to User Input with IDs/edges/settings intact. Comments have no ports/Start/runtime/context/history/step effects. The draft key remains `.draft.v1.<user id>`. Cache suffix: `-prompt-run-output-resize-1`. See `docs/prompting-flow-designer.md` and the 2026-10-04 verification record; no release executable was rebuilt.
 ++
 ++**Shared canvas mechanics (2026-09-26):** Both panels use `flow-canvas-interactions.js` and `flow_canvas.css` for triangles, connection dragging/cancellation, curve geometry, gold hover/selection glow, zoom/Fit, menus and divider gestures. Keep free dragging, Ctrl/Meta-drag copies, marquee selection, keyboard editing and Undo/Redo aligned. Prompt Flow retains node status colors; interactive wire highlights override traversed-wire green. The Operations bar has seven executable operations plus static User Commentary and no Connection tool. Cache suffix: `-prompt-run-output-resize-1`. See `docs/claude/frontend.md` and the 30-check foreground comparison harness.
-+ 
-+ ### 12.2 Flow Compiler pipeline (canvas / chat → backend → pool)
-+ Two browser surfaces produce flows; **both compile through the same backend Agent Contract registry** before touching disk:
++ 
+
++ ### 12.2 Flow Compiler pipeline (canvas / chat → backend → pool)
+
++ Two browser surfaces produce flows; **both compile through the same backend Agent Contract registry** before touching disk:
+
 +--- a/Tlamatini/agent/Tlamatini.md
 ++++ b/Tlamatini/agent/Tlamatini.md
 +@@ -92,7 +92,7 @@
@@ -12309,25 +15993,44 @@ index 5dcee0ba..220b2b71 100644
 --- a/docs/claude/architecture.md
 +++ b/docs/claude/architecture.md
 @@ -458,8 +458,19 @@ Contract (do NOT weaken): HKCU only, never admin, every writer fail-open, read-o
- - **System-Metrics**: `mcp_system_server.py` (WebSocket JSON)
- - **Files-Search**: `mcp_files_search_server.py` (gRPC)
- - Started from `apps.py` and `management/commands/startserver.py`
- 
-+Both services and their clients resolve `CONFIG_PATH` first, then the installed
-+configuration beside the frozen executable or the source configuration; UTF-8
-+BOM files are accepted. System-Metrics uses its configured WebSocket host/port
-+and client URI. Files-Search uses `mcp_files_search_server_host`,
-+`mcp_files_search_server_port` and `mcp_files_search_server_max_workers`; its
-+client resolves `mcp_files_search_client_uri` (including the legacy `ws://`
-+spelling) into a gRPC endpoint. Defaults remain 8765 and 50051. Changing a server
-+port requires matching the client URI. Invalid endpoints/bind failures surface
-+as errors, and Files-Search RPCs have bounded deadlines. `serve()` is synchronous;
-+startup must not pass its return value to `asyncio.run`.
-+
- ### Layer 3: Context Fetcher Chains (Sidecars)
- - `SystemRAGChain` in `chain_system_lcel.py`
- - `FileSearchRAGChain` in `chain_files_search_lcel.py`
- - These inject `system_context` / `files_context` into the payload
+ - **System-Metrics**: `mcp_system_server.py` (WebSocket JSON)
+
+ - **Files-Search**: `mcp_files_search_server.py` (gRPC)
+
+ - Started from `apps.py` and `management/commands/startserver.py`
+
+ 
+
++Both services and their clients resolve `CONFIG_PATH` first, then the installed
+
++configuration beside the frozen executable or the source configuration; UTF-8
+
++BOM files are accepted. System-Metrics uses its configured WebSocket host/port
+
++and client URI. Files-Search uses `mcp_files_search_server_host`,
+
++`mcp_files_search_server_port` and `mcp_files_search_server_max_workers`; its
+
++client resolves `mcp_files_search_client_uri` (including the legacy `ws://`
+
++spelling) into a gRPC endpoint. Defaults remain 8765 and 50051. Changing a server
+
++port requires matching the client URI. Invalid endpoints/bind failures surface
+
++as errors, and Files-Search RPCs have bounded deadlines. `serve()` is synchronous;
+
++startup must not pass its return value to `asyncio.run`.
+
++
+
+ ### Layer 3: Context Fetcher Chains (Sidecars)
+
+ - `SystemRAGChain` in `chain_system_lcel.py`
+
+ - `FileSearchRAGChain` in `chain_files_search_lcel.py`
+
+ - These inject `system_context` / `files_context` into the payload
+
 @@ -684,4 +695,13 @@ Font measurement includes face variants, tracking, line spacing, insets, and 115
  
  ## Image/video error reporting and recovery (2026-09-26)
@@ -13340,43 +17043,78 @@ index 812bfac1..5122cb8e 100644
 --- a/install.py
 +++ b/install.py
 @@ -182,9 +182,9 @@ class FancyInstaller:
-         ("Securing agent environments…",       0.05),
-         ("Writing configuration…",             0.05),
-         ("Copying uninstaller…",               0.05),
-         ("Creating shortcuts…",                0.075),
--        ("Registering .flw file association…", 0.075),
-+        ("Registering .flw and .fpmt file associations…", 0.075),
-         ("Refreshing Windows Desktop…",        0.05),
-     ]
- 
-     def __init__(self, root: tk.Tk):
+         ("Securing agent environments…",       0.05),
+
+         ("Writing configuration…",             0.05),
+
+         ("Copying uninstaller…",               0.05),
+
+         ("Creating shortcuts…",                0.075),
+
+-        ("Registering .flw file association…", 0.075),
+
++        ("Registering .flw and .fpmt file associations…", 0.075),
+
+         ("Refreshing Windows Desktop…",        0.05),
+
+     ]
+
+ 
+
+     def __init__(self, root: tk.Tk):
+
 @@ -697,13 +697,14 @@ class FancyInstaller:
-             cumulative += self.STEPS[step_idx][1]
-             self._set_progress(cumulative)
-             self._mark_step(step_idx)
- 
--            # ── Step 6: run register_flw.ps1 ─────────────────────────
-+            # ── Step 6: register both flow formats ─────────────────────────
-             step_idx = 6
-             self._activate_step(step_idx)
--            self._set_progress(cumulative, "Registering .flw file association…")
-+            self._set_progress(cumulative, "Registering .flw and .fpmt file associations…")
-             self._run_ps1("register_flw.ps1", target)
-+            self._run_ps1("register_fpmt.ps1", target)
-             cumulative += self.STEPS[step_idx][1]
-             self._set_progress(cumulative)
-             self._mark_step(step_idx)
- 
+             cumulative += self.STEPS[step_idx][1]
+
+             self._set_progress(cumulative)
+
+             self._mark_step(step_idx)
+
+ 
+
+-            # ── Step 6: run register_flw.ps1 ─────────────────────────
+
++            # ── Step 6: register both flow formats ─────────────────────────
+
+             step_idx = 6
+
+             self._activate_step(step_idx)
+
+-            self._set_progress(cumulative, "Registering .flw file association…")
+
++            self._set_progress(cumulative, "Registering .flw and .fpmt file associations…")
+
+             self._run_ps1("register_flw.ps1", target)
+
++            self._run_ps1("register_fpmt.ps1", target)
+
+             cumulative += self.STEPS[step_idx][1]
+
+             self._set_progress(cumulative)
+
+             self._mark_step(step_idx)
+
+ 
+
 @@ -1019,9 +1020,9 @@ class FancyInstaller:
-             "Installation Complete",
-             f"Tlamatini was installed successfully!\n\n"
-             f"Location: {target}\n\n"
-             "Shortcuts have been created on your Desktop\n"
--            "and .flw files are now associated with Tlamatini.",
-+            "and .flw and .fpmt files are now associated with Tlamatini.",
-         )
-         self.root.destroy()
- 
+             "Installation Complete",
+
+             f"Tlamatini was installed successfully!\n\n"
+
+             f"Location: {target}\n\n"
+
+             "Shortcuts have been created on your Desktop\n"
+
+-            "and .flw files are now associated with Tlamatini.",
+
++            "and .flw and .fpmt files are now associated with Tlamatini.",
+
+         )
+
+         self.root.destroy()
+
+ 
+
      def _show_error(self, detail: str):
 ````
 
@@ -18262,74 +22000,138 @@ index 131a6717..b1db3fce 100644
 --- a/uninstall.py
 +++ b/uninstall.py
 @@ -26,11 +26,21 @@ import shutil
- import stat
- import subprocess
- import sys
- import threading
-+import tempfile
- import tkinter as tk
- from ctypes import wintypes
- from tkinter import filedialog, messagebox, ttk
-+from uninstall_processes import owned_processes, main_application, stop_owned_workers
-+
-+# Keep a retryable uninstaller and its registration helpers until all other
-+# application files and the owned Installed Apps entry have been removed.
-+UNINSTALL_SUPPORT_FILES = frozenset({
-+    "uninstaller.exe", "createshortcut.json", "tlamatini.ps1",
-+    "removeshortcut.ps1", "unregister_flw.ps1", "unregister_fpmt.ps1",
-+    "flow_file_associations.ps1",
-+})
- 
- 
- # ─── Version resolution ───────────────────────────────────────────────────────
- # Read the version from the running .exe's Win32 ProductVersion (frozen mode)
+ import stat
+
+ import subprocess
+
+ import sys
+
+ import threading
+
++import tempfile
+
+ import tkinter as tk
+
+ from ctypes import wintypes
+
+ from tkinter import filedialog, messagebox, ttk
+
++from uninstall_processes import owned_processes, main_application, stop_owned_workers
+
++
+
++# Keep a retryable uninstaller and its registration helpers until all other
+
++# application files and the owned Installed Apps entry have been removed.
+
++UNINSTALL_SUPPORT_FILES = frozenset({
+
++    "uninstaller.exe", "createshortcut.json", "tlamatini.ps1",
+
++    "removeshortcut.ps1", "unregister_flw.ps1", "unregister_fpmt.ps1",
+
++    "flow_file_associations.ps1",
+
++})
+
+ 
+
+ 
+
+ # ─── Version resolution ───────────────────────────────────────────────────────
+
+ # Read the version from the running .exe's Win32 ProductVersion (frozen mode)
+
 @@ -374,9 +384,9 @@ class FancyUninstaller:
- 
-     # ── weighted uninstallation steps ────────────────────────────────
-     STEPS = [
-         ("Removing shortcuts…",                  0.10),
--        ("Unregistering .flw file association…", 0.15),
-+        ("Unregistering .flw and .fpmt file associations…", 0.15),
-         ("Removing application files…",          0.65),
-         ("Cleaning up…",                         0.05),
-         ("Refreshing Windows Desktop…",          0.05),
-     ]
+ 
+
+     # ── weighted uninstallation steps ────────────────────────────────
+
+     STEPS = [
+
+         ("Removing shortcuts…",                  0.10),
+
+-        ("Unregistering .flw file association…", 0.15),
+
++        ("Unregistering .flw and .fpmt file associations…", 0.15),
+
+         ("Removing application files…",          0.65),
+
+         ("Cleaning up…",                         0.05),
+
+         ("Refreshing Windows Desktop…",          0.05),
+
+     ]
+
 @@ -411,8 +421,11 @@ class FancyUninstaller:
-     @staticmethod
-     def _detect_install_path() -> str:
-         """Try to auto-detect the Tlamatini installation directory."""
- 
-+        if len(sys.argv) == 3 and sys.argv[1] == "--install-dir":
-+            return os.path.abspath(sys.argv[2])
-+
-         # 1. Check for CreateShortcut.json next to this executable
-         if getattr(sys, 'frozen', False):
-             base = os.path.dirname(sys.executable)
-         else:
+     @staticmethod
+
+     def _detect_install_path() -> str:
+
+         """Try to auto-detect the Tlamatini installation directory."""
+
+ 
+
++        if len(sys.argv) == 3 and sys.argv[1] == "--install-dir":
+
++            return os.path.abspath(sys.argv[2])
+
++
+
+         # 1. Check for CreateShortcut.json next to this executable
+
+         if getattr(sys, 'frozen', False):
+
+             base = os.path.dirname(sys.executable)
+
+         else:
+
 @@ -428,26 +441,30 @@ class FancyUninstaller:
-                     return install_dir
-             except Exception:
-                 pass
- 
--        # 2. Try reading from registry (.flw shell command contains the path)
+                     return install_dir
+
+             except Exception:
+
+                 pass
+
+ 
+
+-        # 2. Try reading from registry (.flw shell command contains the path)
+
 +        # Both current conhost commands and legacy PowerShell commands are valid.
-         try:
-             import winreg
--            key = winreg.OpenKey(
--                winreg.HKEY_CURRENT_USER,
--                r"Software\Classes\Tlamatini.FlowFile\shell\open\command",
--            )
--            cmd, _ = winreg.QueryValueEx(key, "")
--            winreg.CloseKey(key)
--            # cmd looks like:
--            #   cmd.exe /k powershell.exe ... -File "D:\Tlamatini\Tlamatini.ps1" ...
--            match = re.search(r'-File\s+"([^"]+)"', cmd)
--            if match:
--                ps1_path = match.group(1)
--                candidate = os.path.dirname(ps1_path)
--                if os.path.isdir(candidate):
--                    return candidate
--        except Exception:
+         try:
+
+             import winreg
+
+-            key = winreg.OpenKey(
+
+-                winreg.HKEY_CURRENT_USER,
+
+-                r"Software\Classes\Tlamatini.FlowFile\shell\open\command",
+
+-            )
+
+-            cmd, _ = winreg.QueryValueEx(key, "")
+
+-            winreg.CloseKey(key)
+
+-            # cmd looks like:
+
+-            #   cmd.exe /k powershell.exe ... -File "D:\Tlamatini\Tlamatini.ps1" ...
+
+-            match = re.search(r'-File\s+"([^"]+)"', cmd)
+
+-            if match:
+
+-                ps1_path = match.group(1)
+
+-                candidate = os.path.dirname(ps1_path)
+
+-                if os.path.isdir(candidate):
+
+-                    return candidate
+
+-        except Exception:
+
 +            for prog_id in ('Tlamatini.FlowFile', 'Tlamatini.PromptFlowFile'):
 +                try:
 +                    with winreg.OpenKey(winreg.HKEY_CURRENT_USER, rf'Software\Classes\{prog_id}') as key:
@@ -18349,331 +22151,645 @@ index 131a6717..b1db3fce 100644
 +                except OSError:
 +                    continue
 +        except ImportError:
-             pass
- 
-         return ""
- 
+             pass
+
+ 
+
+         return ""
+
+ 
+
 @@ -693,22 +710,38 @@ class FancyUninstaller:
-                 f"The directory does not exist:\n{raw}",
-             )
-             return None
- 
--        # Check if it looks like a Tlamatini installation
-+        raw = os.path.abspath(raw)
-+        # A typo must never turn uninstall into removal of a drive, a shared
-+        # system directory, the development checkout, or a redirected folder.
-+        protected = {os.path.normcase(os.path.abspath(path)) for path in (
-+            os.path.expanduser("~"), os.environ.get("WINDIR", ""),
-+            os.environ.get("ProgramFiles", ""), os.environ.get("ProgramFiles(x86)", ""),
-+        ) if path}
-+        redirected = os.path.normcase(os.path.realpath(raw)) != os.path.normcase(raw)
-+        source_checkout = (os.path.exists(os.path.join(raw, ".git"))
-+                           or os.path.isfile(os.path.join(raw, "Tlamatini", "manage.py")))
-+        if (os.path.dirname(raw) == raw or os.path.normcase(raw) in protected
-+                or redirected or source_checkout):
-+            messagebox.showerror(
-+                "Invalid installation directory",
-+                "Select the installed Tlamatini folder. A drive root, shared system "
-+                "folder, source checkout or redirected directory cannot be uninstalled.",
-+            )
-+            return None
-+
-+        # Check if it looks like a Tlamatini installation. Arbitrary directories
-+        # are never accepted, even if the user clicks through a warning.
-         markers = ["Tlamatini.exe", "Tlamatini.ps1", "CreateShortcut.json"]
--        found = any(os.path.exists(os.path.join(raw, m)) for m in markers)
-+        found = any(os.path.isfile(os.path.join(raw, m)) for m in markers)
-         if not found:
--            ans = messagebox.askyesno(
--                "Not a Tlamatini installation?",
-+            messagebox.showerror(
-+                "Not a Tlamatini installation",
-                 f"The selected directory does not appear to contain a "
--                f"Tlamatini installation:\n{raw}\n\n"
--                "None of the expected files (Tlamatini.exe, Tlamatini.ps1) "
--                "were found.\n\n"
--                "Do you want to continue anyway?",
-+                f"Tlamatini installation:\n{raw}\n\nSelect the installed application folder.",
-             )
--            if not ans:
--                return None
-+            return None
- 
-         return raw
- 
-     def _confirm_removal(self, raw: str) -> bool:
+                 f"The directory does not exist:\n{raw}",
+
+             )
+
+             return None
+
+ 
+
+-        # Check if it looks like a Tlamatini installation
+
++        raw = os.path.abspath(raw)
+
++        # A typo must never turn uninstall into removal of a drive, a shared
+
++        # system directory, the development checkout, or a redirected folder.
+
++        protected = {os.path.normcase(os.path.abspath(path)) for path in (
+
++            os.path.expanduser("~"), os.environ.get("WINDIR", ""),
+
++            os.environ.get("ProgramFiles", ""), os.environ.get("ProgramFiles(x86)", ""),
+
++        ) if path}
+
++        redirected = os.path.normcase(os.path.realpath(raw)) != os.path.normcase(raw)
+
++        source_checkout = (os.path.exists(os.path.join(raw, ".git"))
+
++                           or os.path.isfile(os.path.join(raw, "Tlamatini", "manage.py")))
+
++        if (os.path.dirname(raw) == raw or os.path.normcase(raw) in protected
+
++                or redirected or source_checkout):
+
++            messagebox.showerror(
+
++                "Invalid installation directory",
+
++                "Select the installed Tlamatini folder. A drive root, shared system "
+
++                "folder, source checkout or redirected directory cannot be uninstalled.",
+
++            )
+
++            return None
+
++
+
++        # Check if it looks like a Tlamatini installation. Arbitrary directories
+
++        # are never accepted, even if the user clicks through a warning.
+
+         markers = ["Tlamatini.exe", "Tlamatini.ps1", "CreateShortcut.json"]
+
+-        found = any(os.path.exists(os.path.join(raw, m)) for m in markers)
+
++        found = any(os.path.isfile(os.path.join(raw, m)) for m in markers)
+
+         if not found:
+
+-            ans = messagebox.askyesno(
+
+-                "Not a Tlamatini installation?",
+
++            messagebox.showerror(
+
++                "Not a Tlamatini installation",
+
+                 f"The selected directory does not appear to contain a "
+
+-                f"Tlamatini installation:\n{raw}\n\n"
+
+-                "None of the expected files (Tlamatini.exe, Tlamatini.ps1) "
+
+-                "were found.\n\n"
+
+-                "Do you want to continue anyway?",
+
++                f"Tlamatini installation:\n{raw}\n\nSelect the installed application folder.",
+
+             )
+
+-            if not ans:
+
+-                return None
+
++            return None
+
+ 
+
+         return raw
+
+ 
+
+     def _confirm_removal(self, raw: str) -> bool:
+
 @@ -723,8 +756,10 @@ class FancyUninstaller:
-             "The agents/ directory is preserved — and so are application/, "
-             "applications/, content_generated/, context_files/ and Temp/ "
-             "whenever they hold content.\n"
-             "All other files will be permanently deleted.\n\n"
-+            "Remaining workers launched from this installation, including "
-+            "agents and their child processes, will be stopped.\n\n"
-             "Do you want to continue?",
-         ))
- 
-     # ─── Uninstallation thread ───────────────────────────────────────
+             "The agents/ directory is preserved — and so are application/, "
+
+             "applications/, content_generated/, context_files/ and Temp/ "
+
+             "whenever they hold content.\n"
+
+             "All other files will be permanently deleted.\n\n"
+
++            "Remaining workers launched from this installation, including "
+
++            "agents and their child processes, will be stopped.\n\n"
+
+             "Do you want to continue?",
+
+         ))
+
+ 
+
+     # ─── Uninstallation thread ───────────────────────────────────────
+
 @@ -743,16 +778,24 @@ class FancyUninstaller:
-         uninstallation may proceed.  Returns False otherwise — the user chose
-         Exit (or closed the dialog, which counts as Exit) and the whole
-         uninstaller has already been shut down.
-         """
--        running = find_running_tlamatini(target)
-+        running = self._blocking_processes(target)
-         if not running:
-             return True
-         if self._show_running_gate(target, running):
-             return True
-         self._shutdown()
-         return False
- 
-+    @staticmethod
-+    def _blocking_processes(target):
-+        workers = {row["pid"] for row in owned_processes(target)
-+                   if not main_application(row, target)}
-+        # The main app must close normally. Proven leftover workers are stopped
-+        # only AFTER the user confirms removal, never merely by opening the GUI.
-+        return [row for row in find_running_tlamatini(target) if row["pid"] not in workers]
-+
-     def _show_running_gate(self, target: str, running: list[dict]) -> bool:
-         """The modal dialog.  True = clear to proceed, False = Exit.
- 
-         Retry re-runs the detection IN PLACE: still running keeps the same
+         uninstallation may proceed.  Returns False otherwise — the user chose
+
+         Exit (or closed the dialog, which counts as Exit) and the whole
+
+         uninstaller has already been shut down.
+
+         """
+
+-        running = find_running_tlamatini(target)
+
++        running = self._blocking_processes(target)
+
+         if not running:
+
+             return True
+
+         if self._show_running_gate(target, running):
+
+             return True
+
+         self._shutdown()
+
+         return False
+
+ 
+
++    @staticmethod
+
++    def _blocking_processes(target):
+
++        workers = {row["pid"] for row in owned_processes(target)
+
++                   if not main_application(row, target)}
+
++        # The main app must close normally. Proven leftover workers are stopped
+
++        # only AFTER the user confirms removal, never merely by opening the GUI.
+
++        return [row for row in find_running_tlamatini(target) if row["pid"] not in workers]
+
++
+
+     def _show_running_gate(self, target: str, running: list[dict]) -> bool:
+
+         """The modal dialog.  True = clear to proceed, False = Exit.
+
+ 
+
+         Retry re-runs the detection IN PLACE: still running keeps the same
+
 @@ -840,9 +883,9 @@ class FancyUninstaller:
-             detail_lbl.config(fg=ERROR if self._gate_attempts else WARNING)
- 
-         def _retry():
-             self._gate_attempts += 1
--            still = find_running_tlamatini(target)
-+            still = self._blocking_processes(target)
-             if not still:
-                 outcome["proceed"] = True
-                 dlg.destroy()
-                 return
+             detail_lbl.config(fg=ERROR if self._gate_attempts else WARNING)
+
+ 
+
+         def _retry():
+
+             self._gate_attempts += 1
+
+-            still = find_running_tlamatini(target)
+
++            still = self._blocking_processes(target)
+
+             if not still:
+
+                 outcome["proceed"] = True
+
+                 dlg.destroy()
+
+                 return
+
 @@ -948,8 +991,11 @@ class FancyUninstaller:
-     def _run_uninstall(self, target: str):
-         try:
-             cumulative = 0.0
- 
-+            self._set_progress(0.0, "Stopping remaining agent workers…")
-+            self.cleanup_report = stop_owned_workers(target)
-+
-             # ── Step 0: remove shortcuts ─────────────────────────────
-             step_idx = 0
-             self._activate_step(step_idx)
-             self._set_progress(0.0, "Removing shortcuts…")
+     def _run_uninstall(self, target: str):
+
+         try:
+
+             cumulative = 0.0
+
+ 
+
++            self._set_progress(0.0, "Stopping remaining agent workers…")
+
++            self.cleanup_report = stop_owned_workers(target)
+
++
+
+             # ── Step 0: remove shortcuts ─────────────────────────────
+
+             step_idx = 0
+
+             self._activate_step(step_idx)
+
+             self._set_progress(0.0, "Removing shortcuts…")
+
 @@ -960,34 +1006,36 @@ class FancyUninstaller:
- 
-             # ── Step 1: unregister .flw file association ─────────────
-             step_idx = 1
-             self._activate_step(step_idx)
--            self._set_progress(cumulative, "Unregistering .flw file association…")
-+            self._set_progress(cumulative, "Unregistering .flw and .fpmt file associations…")
-             self._run_ps1("unregister_flw.ps1", target)
-+            self._run_ps1("unregister_fpmt.ps1", target)
-             cumulative += self.STEPS[step_idx][1]
-             self._set_progress(cumulative)
-             self._mark_step(step_idx)
- 
-             # ── Step 2: remove application files (preserve agents/) ──
-             step_idx = 2
-             self._activate_step(step_idx)
-             weight = self.STEPS[step_idx][1]
--            self._remove_files(target, cumulative, weight)
-+            self._remove_files(target, cumulative, weight, keep_support=True)
-             cumulative += weight
-             self._set_progress(cumulative)
-             self._mark_step(step_idx)
- 
-             # ── Step 3: clean up ─────────────────────────────────────
-             step_idx = 3
-             self._activate_step(step_idx)
-             self._set_progress(cumulative, "Cleaning up…")
--            self._unregister_programs_entry()
-+            self._unregister_programs_entry(target)
-+            self._remove_uninstall_support(target)
-             self._cleanup_install_dir(target)
-             cumulative += self.STEPS[step_idx][1]
-             self._set_progress(cumulative)
-             self._mark_step(step_idx)
- 
--            # ── Step 4: restart explorer ─────────────────────────────
-+            # ── Step 4: notify the shell without closing Explorer ────
-             step_idx = 4
-             self._activate_step(step_idx)
-             self._set_progress(cumulative, "Refreshing Windows Desktop…")
-             self._restart_explorer()
+ 
+
+             # ── Step 1: unregister .flw file association ─────────────
+
+             step_idx = 1
+
+             self._activate_step(step_idx)
+
+-            self._set_progress(cumulative, "Unregistering .flw file association…")
+
++            self._set_progress(cumulative, "Unregistering .flw and .fpmt file associations…")
+
+             self._run_ps1("unregister_flw.ps1", target)
+
++            self._run_ps1("unregister_fpmt.ps1", target)
+
+             cumulative += self.STEPS[step_idx][1]
+
+             self._set_progress(cumulative)
+
+             self._mark_step(step_idx)
+
+ 
+
+             # ── Step 2: remove application files (preserve agents/) ──
+
+             step_idx = 2
+
+             self._activate_step(step_idx)
+
+             weight = self.STEPS[step_idx][1]
+
+-            self._remove_files(target, cumulative, weight)
+
++            self._remove_files(target, cumulative, weight, keep_support=True)
+
+             cumulative += weight
+
+             self._set_progress(cumulative)
+
+             self._mark_step(step_idx)
+
+ 
+
+             # ── Step 3: clean up ─────────────────────────────────────
+
+             step_idx = 3
+
+             self._activate_step(step_idx)
+
+             self._set_progress(cumulative, "Cleaning up…")
+
+-            self._unregister_programs_entry()
+
++            self._unregister_programs_entry(target)
+
++            self._remove_uninstall_support(target)
+
+             self._cleanup_install_dir(target)
+
+             cumulative += self.STEPS[step_idx][1]
+
+             self._set_progress(cumulative)
+
+             self._mark_step(step_idx)
+
+ 
+
+-            # ── Step 4: restart explorer ─────────────────────────────
+
++            # ── Step 4: notify the shell without closing Explorer ────
+
+             step_idx = 4
+
+             self._activate_step(step_idx)
+
+             self._set_progress(cumulative, "Refreshing Windows Desktop…")
+
+             self._restart_explorer()
+
 @@ -1029,11 +1077,11 @@ class FancyUninstaller:
-         try:
-             os.chmod(path, stat.S_IWUSR | stat.S_IREAD)
-             func(path)
-         except Exception:
--            pass
-+            raise
- 
--    def _remove_files(self, target: str, cumulative: float, weight: float):
-+    def _remove_files(self, target: str, cumulative: float, weight: float, *, keep_support=False):
-         """Remove everything in *target* except what has to survive.
- 
-         ALWAYS kept: ``agents/``.  Kept WHENEVER IT HOLDS CONTENT: every name in
-         ``PRESERVED_WHEN_NOT_EMPTY``.  Each directory kept for its content is
+         try:
+
+             os.chmod(path, stat.S_IWUSR | stat.S_IREAD)
+
+             func(path)
+
+         except Exception:
+
+-            pass
+
++            raise
+
+ 
+
+-    def _remove_files(self, target: str, cumulative: float, weight: float):
+
++    def _remove_files(self, target: str, cumulative: float, weight: float, *, keep_support=False):
+
+         """Remove everything in *target* except what has to survive.
+
+ 
+
+         ALWAYS kept: ``agents/``.  Kept WHENEVER IT HOLDS CONTENT: every name in
+
+         ``PRESERVED_WHEN_NOT_EMPTY``.  Each directory kept for its content is
+
 @@ -1045,12 +1093,18 @@ class FancyUninstaller:
- 
-         items = os.listdir(target)
-         total = len(items)
-         processed = 0
-+        failures = []
-+        self.preserved_dirs = []
- 
-         for item in items:
-             item_path = os.path.join(target, item)
- 
-+            if keep_support and item.lower() in UNINSTALL_SUPPORT_FILES:
-+                processed += 1
-+                continue
-+
-             # ── PRESERVE the agents directory (always) ───────────────
-             if item.lower() == "agents":
-                 # Leave a companion-app marker + re-stamp the manifest so
-                 # Tlamatini-FlowPills can find these PRESERVED agents (PROP-003).
+ 
+
+         items = os.listdir(target)
+
+         total = len(items)
+
+         processed = 0
+
++        failures = []
+
++        self.preserved_dirs = []
+
+ 
+
+         for item in items:
+
+             item_path = os.path.join(target, item)
+
+ 
+
++            if keep_support and item.lower() in UNINSTALL_SUPPORT_FILES:
+
++                processed += 1
+
++                continue
+
++
+
+             # ── PRESERVE the agents directory (always) ───────────────
+
+             if item.lower() == "agents":
+
+                 # Leave a companion-app marker + re-stamp the manifest so
+
+                 # Tlamatini-FlowPills can find these PRESERVED agents (PROP-003).
+
 @@ -1082,26 +1136,57 @@ class FancyUninstaller:
-                 )
-                 continue
- 
-             try:
--                if os.path.isdir(item_path):
-+                if os.path.islink(item_path):
-+                    os.unlink(item_path)
-+                elif getattr(os.path, "isjunction", lambda _: False)(item_path):
-+                    os.rmdir(item_path)
-+                elif os.path.isdir(item_path):
-                     shutil.rmtree(item_path, onerror=self._on_rmtree_error)
-                 else:
-                     try:
-                         os.chmod(item_path, stat.S_IWUSR | stat.S_IREAD)
-                     except Exception:
-                         pass
-                     os.remove(item_path)
--            except Exception:
--                pass  # best-effort removal
-+            except OSError as exc:
-+                failures.append(f"{item}: {exc}")
- 
-             processed += 1
-             frac = processed / total if total else 1.0
-             self._set_progress(
-                 cumulative + weight * frac,
-                 f"Removing files… ({processed}/{total})",
-             )
- 
-+        if failures:
-+            raise RuntimeError(
-+                "Some application files could not be removed. Close programs "
-+                "using this installation and retry.\n\n" + "\n".join(failures[:12])
-+            )
-+
-+    @staticmethod
-+    def _remove_uninstall_support(target: str):
-+        """Remove retry support only after application and registry removal.
-+
-+        Leave the installation marker until last. If a helper remains locked,
-+        the installed worker and marker continue to support an honest retry.
-+        """
-+        names = [name for name in os.listdir(target)
-+                 if name.lower() in UNINSTALL_SUPPORT_FILES]
-+        last = {"uninstaller.exe": 1, "tlamatini.ps1": 2, "createshortcut.json": 3}
-+        names.sort(key=lambda name: (last.get(name.lower(), 0), name))
-+        for name in names:
-+            path = os.path.join(target, name)
-+            if not os.path.isfile(path):
-+                continue
-+            try:
-+                os.chmod(path, stat.S_IWUSR | stat.S_IREAD)
-+                os.remove(path)
-+            except OSError as exc:
-+                raise RuntimeError(f"Could not remove {name}. Close programs using this installation and retry: {exc}") from exc
-+
-     def _write_preserved_agents_marker(self, agents_dir: str, original_install: str):
-         """Leave ``.tlamatini-preserved-agents.json`` in the preserved agents/
-         directory (Tlamatini-FlowPills PROP-003) and re-stamp the agents manifest's
-         kind to ``preserved``. Best-effort — never raises into the uninstall pipeline.
+                 )
+
+                 continue
+
+ 
+
+             try:
+
+-                if os.path.isdir(item_path):
+
++                if os.path.islink(item_path):
+
++                    os.unlink(item_path)
+
++                elif getattr(os.path, "isjunction", lambda _: False)(item_path):
+
++                    os.rmdir(item_path)
+
++                elif os.path.isdir(item_path):
+
+                     shutil.rmtree(item_path, onerror=self._on_rmtree_error)
+
+                 else:
+
+                     try:
+
+                         os.chmod(item_path, stat.S_IWUSR | stat.S_IREAD)
+
+                     except Exception:
+
+                         pass
+
+                     os.remove(item_path)
+
+-            except Exception:
+
+-                pass  # best-effort removal
+
++            except OSError as exc:
+
++                failures.append(f"{item}: {exc}")
+
+ 
+
+             processed += 1
+
+             frac = processed / total if total else 1.0
+
+             self._set_progress(
+
+                 cumulative + weight * frac,
+
+                 f"Removing files… ({processed}/{total})",
+
+             )
+
+ 
+
++        if failures:
+
++            raise RuntimeError(
+
++                "Some application files could not be removed. Close programs "
+
++                "using this installation and retry.\n\n" + "\n".join(failures[:12])
+
++            )
+
++
+
++    @staticmethod
+
++    def _remove_uninstall_support(target: str):
+
++        """Remove retry support only after application and registry removal.
+
++
+
++        Leave the installation marker until last. If a helper remains locked,
+
++        the installed worker and marker continue to support an honest retry.
+
++        """
+
++        names = [name for name in os.listdir(target)
+
++                 if name.lower() in UNINSTALL_SUPPORT_FILES]
+
++        last = {"uninstaller.exe": 1, "tlamatini.ps1": 2, "createshortcut.json": 3}
+
++        names.sort(key=lambda name: (last.get(name.lower(), 0), name))
+
++        for name in names:
+
++            path = os.path.join(target, name)
+
++            if not os.path.isfile(path):
+
++                continue
+
++            try:
+
++                os.chmod(path, stat.S_IWUSR | stat.S_IREAD)
+
++                os.remove(path)
+
++            except OSError as exc:
+
++                raise RuntimeError(f"Could not remove {name}. Close programs using this installation and retry: {exc}") from exc
+
++
+
+     def _write_preserved_agents_marker(self, agents_dir: str, original_install: str):
+
+         """Leave ``.tlamatini-preserved-agents.json`` in the preserved agents/
+
+         directory (Tlamatini-FlowPills PROP-003) and re-stamp the agents manifest's
+
+         kind to ``preserved``. Best-effort — never raises into the uninstall pipeline.
+
 @@ -1193,24 +1278,29 @@ class FancyUninstaller:
-             return count
-         return count
- 
-     @staticmethod
--    def _unregister_programs_entry():
-+    def _unregister_programs_entry(target: str):
-         """Remove the per-user "Installed apps" (Add/Remove Programs) entry that
--        install.py wrote under HKCU. Best-effort: never raises into the
--        uninstall pipeline, and a missing key counts as success."""
-+        install.py wrote under HKCU. A missing key counts as success; denied
-+        removal must be reported as incomplete, rather than silently succeeding."""
-         if sys.platform != "win32":
-             return
-         try:
-             import winreg
-             key_path = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\Tlamatini"
-             try:
-+                with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path) as key:
-+                    owner = winreg.QueryValueEx(key, "InstallLocation")[0]
-+                if os.path.normcase(os.path.abspath(owner)) != os.path.normcase(os.path.abspath(target)):
-+                    print("Keeping Installed-apps entry owned by another installation.")
-+                    return
-                 winreg.DeleteKey(winreg.HKEY_CURRENT_USER, key_path)
-                 print("Removed Installed-apps entry (HKCU).")
-             except FileNotFoundError:
-                 pass  # already absent
-         except Exception as e:
--            print(f"WARNING: Could not remove Installed-apps entry: {e}")
-+            raise RuntimeError(f"Could not remove the Installed-apps entry: {e}") from e
- 
-     @staticmethod
-     def _cleanup_install_dir(target: str):
-         """Remove the install directory itself if it is now empty."""
+             return count
+
+         return count
+
+ 
+
+     @staticmethod
+
+-    def _unregister_programs_entry():
+
++    def _unregister_programs_entry(target: str):
+
+         """Remove the per-user "Installed apps" (Add/Remove Programs) entry that
+
+-        install.py wrote under HKCU. Best-effort: never raises into the
+
+-        uninstall pipeline, and a missing key counts as success."""
+
++        install.py wrote under HKCU. A missing key counts as success; denied
+
++        removal must be reported as incomplete, rather than silently succeeding."""
+
+         if sys.platform != "win32":
+
+             return
+
+         try:
+
+             import winreg
+
+             key_path = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\Tlamatini"
+
+             try:
+
++                with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path) as key:
+
++                    owner = winreg.QueryValueEx(key, "InstallLocation")[0]
+
++                if os.path.normcase(os.path.abspath(owner)) != os.path.normcase(os.path.abspath(target)):
+
++                    print("Keeping Installed-apps entry owned by another installation.")
+
++                    return
+
+                 winreg.DeleteKey(winreg.HKEY_CURRENT_USER, key_path)
+
+                 print("Removed Installed-apps entry (HKCU).")
+
+             except FileNotFoundError:
+
+                 pass  # already absent
+
+         except Exception as e:
+
+-            print(f"WARNING: Could not remove Installed-apps entry: {e}")
+
++            raise RuntimeError(f"Could not remove the Installed-apps entry: {e}") from e
+
+ 
+
+     @staticmethod
+
+     def _cleanup_install_dir(target: str):
+
+         """Remove the install directory itself if it is now empty."""
+
 @@ -1224,45 +1314,20 @@ class FancyUninstaller:
-             except Exception:
-                 pass
-         # If only agents/ (or other items) remain, leave the directory
- 
--    # ─── Explorer restart robust helper ──────────────────────────────
-+    # ─── Refresh shell associations without closing user windows ─────
-     @staticmethod
--    def _restart_explorer():
--        import time
--        # Stop Explorer
--        subprocess.run(["taskkill", "/f", "/im", "explorer.exe"], capture_output=True)
--        time.sleep(0.5)
--
--        # Clear icon cache (best-effort)
--        try:
--            local_appdata = os.environ.get("LOCALAPPDATA", "")
--            if local_appdata:
--                icon_db = os.path.join(local_appdata, "IconCache.db")
--                if os.path.exists(icon_db):
--                    os.remove(icon_db)
--                explorer_cache = os.path.join(local_appdata, "Microsoft", "Windows", "Explorer")
--                if os.path.exists(explorer_cache):
--                    for f in os.listdir(explorer_cache):
--                        if f.startswith("iconcache"):
--                            try:
--                                os.remove(os.path.join(explorer_cache, f))
--                            except Exception:
--                                pass
--        except Exception:
--            pass
--
--        # Start Explorer and ensure it is running
--        retries = 5
--        while retries > 0:
--            subprocess.Popen(["explorer.exe"])
--            time.sleep(1.5)
--            # Verify if it started
--            res = subprocess.run(["tasklist", "/FI", "IMAGENAME eq explorer.exe"], capture_output=True, text=True)
--            if "explorer.exe" in res.stdout:
--                break
--            retries -= 1
--
+             except Exception:
+
+                 pass
+
+         # If only agents/ (or other items) remain, leave the directory
+
+ 
+
+-    # ─── Explorer restart robust helper ──────────────────────────────
+
++    # ─── Refresh shell associations without closing user windows ─────
+
+     @staticmethod
+
+-    def _restart_explorer():
+
+-        import time
+
+-        # Stop Explorer
+
+-        subprocess.run(["taskkill", "/f", "/im", "explorer.exe"], capture_output=True)
+
+-        time.sleep(0.5)
+
+-
+
+-        # Clear icon cache (best-effort)
+
+-        try:
+
+-            local_appdata = os.environ.get("LOCALAPPDATA", "")
+
+-            if local_appdata:
+
+-                icon_db = os.path.join(local_appdata, "IconCache.db")
+
+-                if os.path.exists(icon_db):
+
+-                    os.remove(icon_db)
+
+-                explorer_cache = os.path.join(local_appdata, "Microsoft", "Windows", "Explorer")
+
+-                if os.path.exists(explorer_cache):
+
+-                    for f in os.listdir(explorer_cache):
+
+-                        if f.startswith("iconcache"):
+
+-                            try:
+
+-                                os.remove(os.path.join(explorer_cache, f))
+
+-                            except Exception:
+
+-                                pass
+
+-        except Exception:
+
+-            pass
+
+-
+
+-        # Start Explorer and ensure it is running
+
+-        retries = 5
+
+-        while retries > 0:
+
+-            subprocess.Popen(["explorer.exe"])
+
+-            time.sleep(1.5)
+
+-            # Verify if it started
+
+-            res = subprocess.run(["tasklist", "/FI", "IMAGENAME eq explorer.exe"], capture_output=True, text=True)
+
+-            if "explorer.exe" in res.stdout:
+
+-                break
+
+-            retries -= 1
+
+-
+
 +    def _restart_explorer():
 +        """Notify the shell; never terminate Explorer or erase its global cache."""
 +        if sys.platform != "win32":
@@ -18684,26 +22800,44 @@ index 131a6717..b1db3fce 100644
 +            print(f"WARNING: Shell refresh failed: {exc}")
 +
 +
-     # ─── Completion dialogs ──────────────────────────────────────────
-     def _preserved_content_note(self) -> str:
-         """The legend naming the directories kept because they held content.
- 
+     # ─── Completion dialogs ──────────────────────────────────────────
+
+     def _preserved_content_note(self) -> str:
+
+         """The legend naming the directories kept because they held content.
+
+ 
+
 @@ -1298,9 +1363,9 @@ class FancyUninstaller:
-             f"Tlamatini has been successfully uninstalled.\n\n"
-             f"Location: {target}"
-             f"{agents_note}"
-             f"{self._preserved_content_note()}\n\n"
--            "The .flw file association has been removed\n"
-+            "The .flw and .fpmt file associations have been removed\n"
-             "and shortcuts have been deleted.",
-         )
-         self.root.destroy()
- 
+             f"Tlamatini has been successfully uninstalled.\n\n"
+
+             f"Location: {target}"
+
+             f"{agents_note}"
+
+             f"{self._preserved_content_note()}\n\n"
+
+-            "The .flw file association has been removed\n"
+
++            "The .flw and .fpmt file associations have been removed\n"
+
+             "and shortcuts have been deleted.",
+
+         )
+
+         self.root.destroy()
+
+ 
+
 @@ -1315,10 +1380,40 @@ class FancyUninstaller:
-             f"An error occurred during uninstallation:\n\n{detail}",
-         )
- 
- 
+             f"An error occurred during uninstallation:\n\n{detail}",
+
+         )
+
+ 
+
+ 
+
 +def relocate_installed_uninstaller() -> bool:
 +    """Run the frozen GUI from Temp so its installed EXE can be removed.
 +
@@ -18732,13 +22866,20 @@ index 131a6717..b1db3fce 100644
 +    return True
 +
 +
- # ─── Entry point ─────────────────────────────────────────────────────────────
- if __name__ == "__main__":
-+    if relocate_installed_uninstaller():
-+        sys.exit(0)
-     root = tk.Tk()
-     root.withdraw()
- 
+ # ─── Entry point ─────────────────────────────────────────────────────────────
+
+ if __name__ == "__main__":
+
++    if relocate_installed_uninstaller():
+
++        sys.exit(0)
+
+     root = tk.Tk()
+
+     root.withdraw()
+
+ 
+
      app = FancyUninstaller(root)
 ````
 
