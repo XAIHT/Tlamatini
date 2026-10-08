@@ -829,9 +829,22 @@ class DiagnosticsFormatTests(unittest.TestCase):
             self._diag(missing_packages=["x.sty"]), "texlive", True, 0)
         self.assertIn("miktex.org", out)
 
-    def test_boxes_are_explicitly_called_cosmetic(self):
+    def test_boxes_are_not_waved_away_as_cosmetic(self):
+        # 2026-10-07: an overfull box can overlap or clip content, so the report
+        # must say so instead of dismissing every box as cosmetic.
         out = _m()._format_diagnostics(self._diag(boxes=4), "miktex", True, 0)
-        self.assertIn("cosmetic", out)
+        self.assertNotIn("cosmetic", out)
+        self.assertIn("TYPOGRAPHY: 4 overfull/underfull box(es)", out)
+        self.assertIn("Underfull boxes concern spacing", out)
+        self.assertIn("overfull boxes can overlap or clip content", out)
+
+    def test_each_overfull_box_is_listed_with_its_detail(self):
+        detail = r"Overfull \hbox (36.5pt too wide) in paragraph at lines 10--12"
+        out = _m()._format_diagnostics(
+            self._diag(boxes=1, overfull_boxes=[
+                {"axis": "h", "points": 36.5, "detail": detail}]),
+            "miktex", True, 0)
+        self.assertIn(detail, out)
 
     def test_the_report_can_be_truncated(self):
         out = _m()._format_diagnostics(
