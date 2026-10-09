@@ -106,6 +106,17 @@ before cancellation takes effect; its configured engine has a request timeout.
 After context loading starts, **Close** dismisses the dialog while the normal
 chat status continues to show the operation.
 
+**A refusal says why (2026-10-08, `v1.76.0`).** A prepared package is bound to
+the account that uploaded it, and the chat's WebSocket keeps the user it opened
+with. If a second account signs in from the same browser, that sign-in replaces
+the session cookie of every open tab, so an upload from an older chat tab
+arrives as the new account and is refused. The refusal now names that cause and
+the fix - reload the page (F5) - instead of only *"This PDF context is
+unavailable"*; a forged or broken token still gets the plain refusal. The step
+that was running is marked **Failed** in the progress dialog, the context header
+returns to what it showed before, and the consumer logs
+`--- [PDF-CONTEXT] refused for user N: …` in `tlamatini.log`.
+
 ## Organization and storage
 
 Frontend code is under `Tlamatini/agent/static/agent/`:
@@ -227,6 +238,14 @@ Broader pre-existing checks are not all green: the mutable-state suite flags
 function-scoped), and the authorship sweep reports 195 existing source files
 without its required banner. New authored PDF files carry the banner; unmodified
 Mozilla assets are exempted to preserve upstream attribution and license.
+
+On 2026-10-08 the visible `pdf_context_visible.py`
+(`.claude/skills/tlamatini-daily-chat-test/harness/`) passed **20 of 20** checks
+against the dev server in headed Chrome: one account loads a PDF as context; a
+second account signed in from the same browser is refused with the reason, the
+header comes back, Clear canvas shows no pending context, the refusal is
+logged, and reloading as the message says loads the same PDF. `--frozen` runs
+only the one-account phase against an installed build.
 
 ## Image/video error reporting and recovery (2026-09-26)
 

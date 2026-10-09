@@ -13,7 +13,14 @@ that a provider will continue to serve a particular model.
    IDs for cloud speech and Claude. Engines and voices have dedicated selectors.
 3. Click **Save**. All 38 settings are submitted together, including hidden tabs;
    unrelated settings and credentials in the active `config.json` are preserved.
-4. Reconnect chat when prompted so its model clients are rebuilt. Agents pick up
+   Since 2026-10-08 (`v1.76.0`) Save then opens the Model Brain's **Auto-tuning**
+   dialog: every configured model is tuned for real (Ollama's `/api/show`, the
+   vendor's formal profile or researched `generation_config.json`, the sampling
+   that will really be sent, the thinking level), with the source of each value.
+   Choosing a model never requires choosing its sampling; see *The Model Brain*
+   in `docs/claude/architecture.md`.
+4. Reconnect chat when prompted (the notice follows the Auto-tuning dialog) so its
+   model clients are rebuilt. Agents pick up
    settings on their next configuration load. Restart a running monitor or speech
    agent when a new choice must take effect immediately.
 

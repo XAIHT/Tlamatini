@@ -68,7 +68,9 @@ Key settings:
 - `enable_unified_agent`: Enable tool-calling agent
 - `unified_agent_max_iterations`: Max tool-call turns (default 4096)
 - `unified_agent_llm_step_max_tactics` / `unified_agent_llm_step_timeout_seconds`: Self-healing model-step invoker budgets (default **4096** distinct recovery tactics / **80 s** per-attempt watchdog). Govern `agent/self_healing.py::SelfHealingInvoker`, which wraps every model `.invoke()` in the Multi-Turn executor so a transient model failure never hangs, never discards work already done, and never produces a silent/untruthful answer. See `docs/claude/multi-turn.md` → *Self-healing model steps*.
-- `ollama_repeat_penalty` / `ollama_repeat_last_n` / `ollama_num_ctx`: **The Ollama sampler triple** (defaults **1.2** / **256** / **1048576**). Applied by BOTH chains in `rag/factory.py` and forwarded to `ChatOllama` by `mcp_agent.py`'s parameter passthrough. See *Ollama sampler settings* below — these are measured values with a real failure behind them, not taste.
+- `ollama_repeat_penalty` / `ollama_repeat_last_n` / `ollama_num_ctx`: **The Ollama sampler triple** (defaults **1.2** / **256** / **1048576**) — since 2026-10-08 the LEGACY set, sent only with `model_brain: off` (see *The Model Brain*). Applied by BOTH chains in `rag/factory.py` and forwarded to `ChatOllama` by `mcp_agent.py`'s parameter passthrough. See *Ollama sampler settings* below — these are measured values with a real failure behind them, not taste.
+- `model_brain` / `model_brain_research` / `model_brain_keep_reasoning` / `model_brain_overrides`: **The Model Brain** (2026-10-08, `v1.76.0`). `model_brain` = `auto` (default) | `off` (the legacy fixed sampler, exactly); `model_brain_research` lets it learn an unknown model's profile once, in the background; `model_brain_keep_reasoning` hands a thinking model its own reasoning back inside the current tool loop; `model_brain_overrides` sets any value per model and always wins. See *The Model Brain* below.
+- `console_colors`: paints the console WINDOW by log level (ships `true`; `tlamatini.log` always stays plain text). See *Console colours and the console TYPE* below.
 - `context_sidecar_llm_timeout_seconds`: Time limit (default **60 s**) on each Ollama call the Files-Search and System-Metrics sidecars make before the main answer (routing, file-search planning). At the limit, or on the user's Cancel, the sidecar skips its context, logs `[CONTEXT-SIDECAR]`, and the answer goes ahead. See `agent/context_sidecar_timeout.py` and `recent-fixes.md` (2026-10-05).
 - `chat_agent_limit_runs`: Wrapped-run listing limit
 - `binary_context_detection`: **Master switch for the binary-content guard on the context loader** (default `true`). See *Binary-content guard* below.
@@ -80,6 +82,8 @@ Frozen builds resolve config from the install directory next to the executable. 
 ---
 
 ## Ollama sampler settings — measured, not taste (2026-09-13)
+
+> ⚠️ **Since 2026-10-08 (`v1.76.0`) this is the LEGACY sampler.** With `model_brain` at its default `auto`, both chains send what the Model Brain decided for that model (see *The Model Brain* below) and a value it does not set is not sent; these three keys apply only with `model_brain: off`, or when the brain cannot plan. The measurements below still explain why each model needs its own profile.
 
 Three keys govern how the chat model samples. All three are read in **both**
 chains of `rag/factory.py` and forwarded to `ChatOllama` by `mcp_agent.py`'s
@@ -151,6 +155,32 @@ answer.
 so a model that burns its whole turn reasoning surfaces to the user only as
 *"The tool-calling model returned an empty final response."* 1.1.0 is current.
 Upgrading is separate work and is NOT done.
+
+---
+
+## The Model Brain — every model tuned from formal sources (2026-10-08, `v1.76.0`)
+
+Angela: *"MAKE IT DYNAMIC BY MODEL IN TLAMATINI brain … do not hardwire code in Tlamatini for using GLM-5.3 OR GLM-5.2!!!"* and *"Taken from the formal documentation from the models from ollama dont just put idiot stupid timers in Tlamatini"*. Every chain used ONE fixed sampler for every model (temperature 0.0, top_k 20, top_p 0.8, repeat_penalty 1.2), and first-chunk / stall clocks abandoned calls that were only thinking.
+
+| Piece | Where | Role |
+|---|---|---|
+| The planner | `agent/model_brain.py::plan(model, base_url, config, headers)` | the sampling, `think` level and `num_ctx` for THAT model, with the source of every value; fail-open to the legacy set |
+| The knowledge base | `agent/model_profiles.json` | sourced profiles (GLM-5, DeepSeek-V4, MiniMax-M3, Gemma 4, Qwen 3.5, Qwen 2.5, gpt-oss, Kimi, Mistral Large 3, Nemotron 3); every entry cites its vendor model card, Hugging Face `generation_config.json` or API docs |
+| Learned profiles | `%LOCALAPPDATA%\Tlamatini\model_brain\model_profiles.learned.json` | an unknown model is researched ONCE, in the background (its ollama.com page and Hugging Face `generation_config.json`); outside the install, so it survives updates |
+| The chat class | `agent/model_brain_chat.py::BrainChatOllama` | `ChatOllama` that keeps the model's `thinking` on the `AIMessage` (`reasoning_content`), sends it back inside the same tool loop, and sends `think` only when the installed client accepts that value (`client_accepts_think`) |
+| The dialog | `agent/model_brain_views.py` + `model_brain_tuning.js` / `.css` | `GET /agent/model_brain/models/` lists the configured models; `POST /agent/model_brain/tune/` tunes one and returns every stage; opened after Config ▸ Models ▸ Save |
+| The chains | `rag/factory.py::_model_sampling_kwargs`, `mcp_agent.py` | the factory chains send the brain's sampling and `num_ctx`; the Multi-Turn executor builds `BrainChatOllama` while the brain is on |
+
+**Order of sources (the first that sets a value wins):** an explicit `model_brain_overrides` entry (full name, base name or `re:<regex>`) › the knowledge base › a learned profile › the Modelfile parameters Ollama publishes (`/api/show`) › the model's own defaults (the value is simply not sent). `num_ctx` is clamped to the model's REAL `context_length`. Each chain logs `--- [MODEL-BRAIN] model=… | sampling: … [formal profile '…'] | thinking: … | num_ctx=…` and then its sources.
+
+**Contracts (do NOT weaken):**
+1. **No model name is hardcoded in code.** A new model gets its values from the knowledge base, research, Ollama or its own defaults — never from an `if model == …` branch.
+2. **An explicit value always wins** (`model_brain_overrides`), and `model_brain: off` restores the legacy fixed set exactly (*Ollama sampler settings* above).
+3. **Fail-open.** A planning error, an unreachable Ollama or a broken profile keeps the legacy set and logs why; the brain never blocks a chain, and a broken dialog never blocks saving the models.
+4. **Reasoning is kept only inside the current tool loop** and dropped across user turns (`model_brain_keep_reasoning`), as Z.ai interleaved thinking, OpenAI harmony, DeepSeek, Moonshot and Gemma 4 require. The context gauge counts it (the estimate stayed within +1.3 % .. +5.9 % of Ollama's `prompt_eval_count` over 9 steps).
+5. **No stall clocks.** `llm_liveness.py` and the "write long files in pieces" prompt rule were erased: measured with Ollama's own numbers, reading the prompt is not the bottleneck on Ollama cloud (a 169K-token prompt reached its first byte in 5.5 s on glm-5.2 and 11.2 s cold on glm-5.3, ~1 s cached); the time is the GENERATED reasoning, and a clock cannot tell a dead call from a slow one. The self-healing watchdog (`unified_agent_llm_step_timeout_seconds`) and `llm_client_timeout_seconds` are separate, long bounds and stay.
+
+Carriage: `build.py` names `agent.model_brain`, `agent.model_brain_chat` and `agent.model_brain_views` in `_FROZEN_REQUIRED_AGENT_MODULES` and as hidden imports, and ships `model_profiles.json` with `--add-data` into `agent` (read beside the module when frozen). Proof: unit `agent/test_model_brain.py`; visible `model_brain_visible.py` (25/25 in dev, 2026-10-08). Story: `recent-fixes.md` (2026-10-08).
 
 ---
 
@@ -406,7 +436,7 @@ Commits: `a927f5c` (self-knowledge file + injection + `prompt.pmt` identity rule
 
 ### The Self-modify switch (2026-10-03)
 
-> On `main` right after the `v1.75.0` tag (commit `70aeeb87`) — not yet inside any tag; a source run reports `1.75.0`.
+> Landed on `main` right after the `v1.75.0` tag (commit `70aeeb87`) and ships in the `v1.76.0` tag (2026-10-08).
 
 The load decides what the build CAN send; the **Self-modify** toolbar box decides, per request, whether it IS sent.
 

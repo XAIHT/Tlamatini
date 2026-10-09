@@ -75,10 +75,11 @@ static assets from a visible development session.
 ### Compact mode and Self-modify switches (source development, 2026-10-02/03)
 
 The Compact mode switch shipped in `v1.75.0` (annotated tag at `f7eb53ff`,
-2026-10-03). The Self-modify switch is on `main` right after that tag (commit
-`70aeeb87`) and is not yet in a tag; a source run reports `1.75.0`. No GitHub
-release is published for `v1.75.0` yet, so the latest published release, and
-the one self-update delivers, is still `v1.74.0`.
+2026-10-03, published on GitHub the same day). The Self-modify switch landed on
+`main` right after that tag (commit `70aeeb87`) and ships in `v1.76.0`
+(annotated tag at `953ad2d8`, 2026-10-08). No GitHub release is published for
+`v1.76.0` yet, so the latest published release, and the one self-update
+delivers, is still `v1.75.0`.
 
 - **Compact mode switch (2026-10-02).** `agent/compact_mode.py` is imported at
   module level by `mcp_agent.py`, so the frozen archive carries it through the
@@ -112,6 +113,25 @@ the one self-update delivers, is still `v1.74.0`.
   `sys.frozen`; no frozen build was produced for this, because `build.py`
   erases `Tlamatini/db.sqlite3` and wipes `dist/` before it builds. A release
   still needs both inclusion sweeps and a visible rebuild check.
+
+### The Model Brain (2026-10-08, `v1.76.0`)
+
+- **Frozen carriage.** `build.py` names `agent.model_brain`,
+  `agent.model_brain_chat` and `agent.model_brain_views` in
+  `_FROZEN_REQUIRED_AGENT_MODULES` and passes each as `--hidden-import` (the
+  first two are imported fail-open, so a missing module could not report
+  itself). The sourced knowledge base ships with
+  `--add-data=Tlamatini/agent/model_profiles.json;agent` and is read beside the
+  module when frozen. `model_brain_tuning.js` / `.css` ride `collectstatic`
+  like every page asset.
+- **No migration, no required key.** `model_brain` falls back to `auto` in code;
+  `model_brain: off` restores the legacy fixed sampler.
+- **User state outside the install.** Learned profiles are written to
+  `%LOCALAPPDATA%\Tlamatini\model_brain\model_profiles.learned.json`, so a
+  self-update neither ships nor erases them.
+- **Self-modify snapshot.** The generic walk of `copy_source_assets.py` carries
+  the three modules, `model_profiles.json` and the dialog's assets; both
+  inclusion sweeps passed CLEAN on 2026-10-08.
 
 ## Self-update
 

@@ -79,6 +79,10 @@ model `CompactState`, migration 0211) rewrites the REAL Configure rows:
   (`compact_costs.js`, `GET /agent/compact_mode/costs/`).
 - Register every new built-in tool in **`tools.tool_gate_table()`**, the one
   gate list that binding, Compact mode and the cost labels read.
+- A model's VERDICT (`compact_mode.VERDICT_KINDS`: `capacity`,
+  `self_modify_fit`) updates every tab's box and stops there; it must never
+  re-send rows or re-measure, or two pages on two models ping-pong forever
+  (2026-10-08, `v1.76.0`).
 
 Contract: [CLAUDE.md](CLAUDE.md) → *Compact mode*,
 `docs/claude/architecture.md` → *Compact mode*,
@@ -89,9 +93,8 @@ Contract: [CLAUDE.md](CLAUDE.md) → *Compact mode*,
 The chat toolbar's **Self-modify** box (`#self-modify-toggle`, after Compact
 mode; `self_modify_switch.js`; `CompactState.self_modify`, migration 0212, ON by
 default) decides per request whether her self-knowledge (`Tlamatini.md`,
-115,711 chars ≈ 28.9K tokens per request) is sent. It is on `main` right after the
-`v1.75.0` tag (commit `70aeeb87`), not yet in a tag; a source run reports
-`1.75.0`.
+115,711 chars ≈ 28.9K tokens per request) is sent. It shipped in `v1.76.0`
+(commit `70aeeb87`, on `main` right after the `v1.75.0` tag).
 
 - **Who sees it:** `rag/config.self_modify_available()`. A source (dev) run of
   this checkout is ALWAYS self-able; a frozen build only when
@@ -112,6 +115,38 @@ default) decides per request whether her self-knowledge (`Tlamatini.md`,
 Contract: [CLAUDE.md](CLAUDE.md) → *Self-modify*,
 `docs/claude/architecture.md` → *The Self-modify switch*,
 `docs/claude/recent-fixes.md` (2026-10-03).
+
+## v1.76.0 — the Model Brain, a coloured console, honest PDF refusals (2026-10-08)
+
+`v1.76.0` (annotated tag, pushed) names the Model Brain. The tag points to
+`953ad2d8`; the Model Brain commit `72799950` landed right after it, so a build
+of `main` reports `1.76.0` and carries everything below. No GitHub release is
+published for it yet; self-update still delivers `v1.75.0`.
+
+- **Model Brain** (`agent/model_brain.py`, `model_profiles.json`): every model
+  is tuned from formal sources — an explicit `model_brain_overrides` entry, the
+  sourced knowledge base, a profile learned once from Hugging Face for an
+  unknown model, then Ollama's `/api/show`. `num_ctx` is clamped to the real
+  context length, and thinking models get their own reasoning back inside the
+  current tool loop. Config ▸ Models ▸ Save opens the Auto-tuning dialog;
+  `model_brain: off` restores the legacy fixed sampling. Never hard-wire a
+  model name, and never re-add the stall timers the Model Brain replaced.
+- **Console colours** (`manage.py::_ConsoleColorizer`, `console_colors`): the
+  WINDOW is painted by level while `tlamatini.log` stays plain text; startup
+  logs the console host (`--- [CONSOLE] host: …`). Windows Terminal is the
+  default console on Windows 11, and Claude Code sets `NO_COLOR` for the
+  programs it launches.
+- **PDF refusals say why:** when a second account signs in from the same
+  browser, the upload goes out as that account; the chat now names the cause
+  and says to reload (F5), the header comes back, the running step shows
+  **Failed**, and the server logs `[PDF-CONTEXT] refused for user N`.
+- **Compact verdicts never re-measure** (`compact_mode.VERDICT_KINDS`): two
+  chat pages on two models used to re-measure each other forever.
+- **File-Creator `append`** adds to the end of a file instead of overwriting it.
+
+Contract: [CLAUDE.md](CLAUDE.md) → *The Model Brain*, *The console is
+coloured by level*, *A refused PDF says why*; `docs/claude/recent-fixes.md`
+(2026-10-08).
 
 ## Prompt Flow comments are static; User Input runs (2026-10-03)
 

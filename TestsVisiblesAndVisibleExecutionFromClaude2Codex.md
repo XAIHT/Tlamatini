@@ -102,6 +102,23 @@ an explicit `conhost.exe powershell.exe -NoProfile -NoExit -File <script.ps1>`
 window and verify its actual visible/foreground state. Never substitute a hidden
 run. Keep the console open after completion.
 
+**Four facts measured on 2026-10-08 that a visible launcher must respect:**
+
+- **Windows Terminal is Windows 11's default console.** A `Start-Process
+  powershell` window opens inside it, and that window belongs to
+  `WindowsTerminal.exe`, never to the program inside; find a console by its
+  title, not by a process id.
+- **Claude Code sets `NO_COLOR=1`** in every program it launches. A visible check
+  of Tlamatini's console colours must run `Remove-Item Env:NO_COLOR` in its
+  launcher, or the colours are (correctly) switched off.
+- **PowerShell 5.1 reads a BOM-less `.ps1` as ANSI.** Keep launchers ASCII, and
+  add `chcp 65001` plus `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8`
+  so UTF-8 output does not turn into mojibake.
+- **Windows' foreground lock** can keep a test window behind the window Angela is
+  using; `bring_to_front` is a request, not proof. Note the real foreground title
+  beside each photo, and let the verdict rest on what the run measured, never on
+  the picture alone.
+
 ### Using Tlamatini's own agents (preferred — dogfood them)
 
 - **Executer / Pythonxer:** `execute_forked_window: true`
