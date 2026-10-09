@@ -116,12 +116,24 @@ Contract: [CLAUDE.md](CLAUDE.md) → *Self-modify*,
 `docs/claude/architecture.md` → *The Self-modify switch*,
 `docs/claude/recent-fixes.md` (2026-10-03).
 
+## After v1.76.0 — first-person chat lines, the uninstaller keeps Templates (2026-10-09)
+
+- **First person, by name.** Every fixed chat line Tlamatini sends (`agent/constants.py`) speaks in the
+  first person and names the user (`display_name()` + `say()`; with no name the placeholder and its comma
+  vanish). Several lines are recognised BY THEIR WORDS: change one and update `agent_page_ui.js`,
+  `agent_page_chat.js`, `avatar.js`, `agents/teletlamatini/teletlamatini.py` and the harness markers in
+  the same pass; the old phrases stay matched on purpose.
+- **Uninstaller.** `application`, `applications`, `content_generated`, `context_files`, `doc_generated`
+  and `Templates` are kept whenever they hold a file; `Temp/` is erased; `agents/` is always kept
+  (`uninstall.py::PRESERVED_WHEN_NOT_EMPTY`, commit `0520dc97`). An in-app update keeps the old
+  `Uninstaller.exe`; only a new Installer replaces it.
+
 ## v1.76.0 — the Model Brain, a coloured console, honest PDF refusals (2026-10-08)
 
 `v1.76.0` (annotated tag, pushed) names the Model Brain. The tag points to
 `953ad2d8`; the Model Brain commit `72799950` landed right after it, so a build
-of `main` reports `1.76.0` and carries everything below. No GitHub release is
-published for it yet; self-update still delivers `v1.75.0`.
+of `main` reports `1.76.0` and carries everything below. It was published on
+GitHub on 2026-10-09 (marked Latest), so self-update now delivers `v1.76.0`.
 
 - **Model Brain** (`agent/model_brain.py`, `model_profiles.json`): every model
   is tuned from formal sources — an explicit `model_brain_overrides` entry, the

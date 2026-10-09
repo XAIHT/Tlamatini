@@ -16,6 +16,42 @@
 
 ---
 
+## 2026-10-09 — Tlamatini speaks her fixed chat lines in the first person, to the user by name
+
+**What changed.** Every fixed message Tlamatini sends to the chat (and the avatar reads aloud) was
+third person and nameless (*"Your agent is ready. You can now start chatting with Tlamatini."*).
+Angela's direction: write them the way she talks — first person, warm, to the user by NAME. They all
+live in `agent/constants.py` now (`MSG_*` / `ERROR_*`, plus new constants for lines that used to be
+inline in `consumers.py`), with two helpers: `display_name(user)` (first word of the first name, else
+the username with a capital letter, else `''`; never raises) and `say(template, name)` (fills
+`{name}`; with no name the placeholder and its comma vanish). `consumers.py` sends every line through
+`self._say(...)`. The same voice reaches `compact_mode` (refusals and the CONTEXT-WINDOW cut warning),
+`orphan_reaper.format_survivors_message(user_name=...)`, `embedding_memory_guard.format_warning_message`,
+`services/filesystem.save_files_from_db(user_name=...)`, the Ask-Execs denial banner
+(`services/response_parser.py`) and `avatar.js` (completion, cancel, voice toggle and the
+voice-send acknowledgement).
+
+**Contracts (do NOT weaken).**
+1. **These lines are recognised BY THEIR WORDS.** Change a phrase in `constants.py` and update, in the
+   same pass: `agent_page_ui.js` (`isBusyMessageRequest`, `isBusyMessageContext`,
+   `isSessionRestoredInfoMessage`), `agent_page_chat.js` (the context-directory error branch),
+   `avatar.js` (`classify()`), `agents/teletlamatini/teletlamatini.py` (`_NOISE_SUBSTRINGS_LOWER`,
+   `_FAILURE_SUBSTRINGS_LOWER`) and the harness markers (`config.py`, `stop_sequence_visible.py`,
+   `compact_switch_visible.py`, `scripts/chat_microphone_visible.py`).
+2. **Keep the OLD third-person phrases in every matcher** — a saved chat history or an older server
+   must still read correctly.
+3. A user-supplied value is filled AFTER `say()` (`{omissions}`, `{touched}`), so the user's own text
+   is never expanded.
+4. `avatar.js` classifies *"I can't process your requests"* as an ERROR, never as the answer, and
+   matches its own voice-send acknowledgement by MEANING (`isBusyMessageRequest`): the server names the
+   user by first name while the page may know only the username.
+
+Coverage: `agent/test_compact_mode_switch.py::MessageAndPageTests` (the not-ready line with and
+without a name; the toggles summary). Older entries below quote the old wording (for example
+`Agents activation saved: ...`); that was the text at the time.
+
+---
+
 ## 2026-10-09 — The uninstaller no longer erases Templates/ (the user's own code)
 
 **What happened.** Angela uninstalled `C:\Tlamatini` and the code she kept in
@@ -48,7 +84,10 @@ Coverage: `agent/test_uninstaller_mechanics.py` (`PreserveSetTests`,
 `RemoveFilesTests`, `TemplatesRegressionTests` — a scaffolded project survives
 byte for byte; an empty `Templates/` still goes) and the visible harness
 `uninstaller_visible.py`. ⚠ Only a REBUILT `Uninstaller.exe` carries this fix;
-an `Uninstaller.exe` already sitting in an install still has the old list.
+an `Uninstaller.exe` already sitting in an install still has the old list, and an
+in-app update KEEPS that old copy (`Uninstaller.exe` is never in `pkg.zip` and is in
+the `$Preserve` set). A fresh install or a reinstall with the new Installer replaces
+it (`install.py::_copy_uninstaller`). See `docs/self-management-carriage.md`.
 
 ---
 

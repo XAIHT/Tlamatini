@@ -72,14 +72,33 @@ the previously built installer or change the older dated evidence above.
 Release verification must separately exercise the actual rebuilt worker and
 static assets from a visible development session.
 
+### The uninstaller's keep-list (2026-10-09) — what reaches whom
+
+`uninstall.py` now keeps `Templates/` and `doc_generated/` (commit `0520dc97`). The
+uninstaller is NOT part of the self-update payload: it is built after `pkg.zip`
+(`build.py` → `build_uninstaller.py` → `build_installer.py`), the in-app updater
+extracts only `pkg.zip`, and `Uninstaller.exe` is in the `$Preserve` set. So:
+
+- **A fresh install, or a reinstall with the new Installer,** copies the new
+  `Uninstaller.exe` (`install.py::_copy_uninstaller` overwrites it) — fixed.
+- **An in-app update (About ▸ Check for updates)** keeps the `Uninstaller.exe`
+  already on disk — NOT fixed until that install is reinstalled, or the new
+  `Uninstaller.exe` from the release zip is copied over it.
+
+⚠️ Delivering a new uninstaller through self-update needs a deliberate design: the
+update code that runs is the OLD install's `self_update.py`, which deletes the
+extracted bundle (where the new `Uninstaller.exe` sits) before the swap. Any fix
+must also keep the guarantee the `$Preserve` entry gives today — an update must
+never leave an install without an uninstaller — and needs a real release test.
+
 ### Compact mode and Self-modify switches (source development, 2026-10-02/03)
 
 The Compact mode switch shipped in `v1.75.0` (annotated tag at `f7eb53ff`,
 2026-10-03, published on GitHub the same day). The Self-modify switch landed on
 `main` right after that tag (commit `70aeeb87`) and ships in `v1.76.0`
-(annotated tag at `953ad2d8`, 2026-10-08). No GitHub release is published for
-`v1.76.0` yet, so the latest published release, and the one self-update
-delivers, is still `v1.75.0`.
+(annotated tag at `953ad2d8`, 2026-10-08). `v1.76.0` was published
+on GitHub on 2026-10-09 (marked Latest), so it is the latest published release
+and the one self-update delivers.
 
 - **Compact mode switch (2026-10-02).** `agent/compact_mode.py` is imported at
   module level by `mcp_agent.py`, so the frozen archive carries it through the

@@ -424,6 +424,28 @@ def main(argv: list[str] | None = None) -> int:
         if not unclaimed:
             ok("no unclaimed top-level tree -- every shipped directory has a carrier")
 
+    # ── Check 9: uninstaller delivery ─────────────────────────────────────────
+    # Uninstaller.exe is built AFTER pkg.zip and kept by $Preserve, and the
+    # update that runs is the OLD install's self_update.py, which extracts only
+    # pkg.zip. So a change to the uninstaller reaches fresh installs and
+    # reinstalls, never an in-app update (2026-10-09: the Templates keep-list).
+    print("\n[9] UNINSTALLER DELIVERY -- an in-app update keeps the old Uninstaller.exe")
+    keeps_old = any(str(n).lower() == "uninstaller.exe" for n in (ps1_preserve or ()))
+    changed = None if args.no_git else _changed_since_last_tag(
+        root, ["uninstall.py", "uninstall_processes.py", "build_uninstaller.py"])
+    if not keeps_old:
+        note("Uninstaller.exe is not in $Preserve -- confirm the staged build carries a new "
+             "Uninstaller.exe, or every update deletes the uninstaller")
+    elif changed is None:
+        note("could not compare the uninstaller sources with the last release tag (no git / no tag)")
+    elif changed:
+        note(f"uninstaller sources changed since the last release tag: {changed} -- an in-app "
+             "update KEEPS the Uninstaller.exe already installed ($Preserve; it is never in "
+             "pkg.zip), so these changes reach only fresh installs and reinstalls with the new "
+             "Installer. Say so in the release notes (docs/self-management-carriage.md).")
+    else:
+        ok("uninstaller sources unchanged since the last release tag")
+
     # ── Summary ──────────────────────────────────────────────────────────────
     print("\n" + "=" * 70)
     if _FINDINGS:
@@ -474,6 +496,26 @@ def _db_capture_and_migrate(root: Path, ps1_txt: str) -> bool:
         return False
     manage_ok = ("post_update_migrate" in mtxt) and ("migrate" in mtxt)
     return ps1_ok and manage_ok
+
+
+def _changed_since_last_tag(root: Path, paths: list[str]) -> list[str] | None:
+    """The *paths* that differ from the last release tag (None without git or a tag)."""
+    try:
+        tag = subprocess.run(
+            ["git", "describe", "--tags", "--abbrev=0", "--match", "v[0-9]*"],
+            cwd=root, capture_output=True, text=True, timeout=10,
+        )
+        if tag.returncode != 0 or not tag.stdout.strip():
+            return None
+        diff = subprocess.run(
+            ["git", "diff", "--name-only", tag.stdout.strip(), "--", *paths],
+            cwd=root, capture_output=True, text=True, timeout=10,
+        )
+        if diff.returncode != 0:
+            return None
+        return sorted(set(diff.stdout.split()))
+    except (OSError, subprocess.SubprocessError):
+        return None
 
 
 def _migrations_since_last_tag(root: Path, mig_dir: Path) -> list[str] | None:
