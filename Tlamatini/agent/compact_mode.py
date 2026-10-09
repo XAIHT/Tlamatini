@@ -292,10 +292,10 @@ def leave_compact(reason: str = "", *, force: bool = False) -> Dict[str, Any]:
         snap = state()
         return {
             "ok": False, "changed": False, "refused": "strict", "state": snap,
-            "message": (f"Compact mode stays ON: {snap.get('model') or 'this model'} reads only "
+            "message": (f"I'm sorry, Compact mode stays ON: {snap.get('model') or 'this model'} reads only "
                         f"{int(snap.get('window_tokens') or 0):,} tokens, and everything activated "
                         f"needs ~{int(snap.get('everything_tokens') or 0):,}. Choose a larger model "
-                        "in Config > Models to switch it off."),
+                        "for me in Config > Models and I can switch it off."),
         }
     try:
         from django.db import transaction
@@ -416,17 +416,17 @@ def set_self_modify(enabled: bool, reason: str = "") -> Dict[str, Any]:
     enabled = bool(enabled)
     if not self_modify_available():
         return {"ok": False, "changed": False, "refused": "unavailable", "state": state(),
-                "message": ("Self-modify is not available: this build was made without "
-                            "--self-modify, so it carries neither its source nor its self-knowledge.")}
+                "message": ("I'm sorry, Self-modify is not available: this build of me was made without "
+                            "--self-modify, so I carry neither my source code nor my self-knowledge.")}
     snap = state()
     if enabled and snap.get("self_modify_fits") is False:
         return {
             "ok": False, "changed": False, "refused": "too_small", "state": snap,
-            "message": (f"Self-modify stays OFF: {snap.get('model') or 'this model'} reads only "
+            "message": (f"I'm sorry, Self-modify stays OFF: {snap.get('model') or 'this model'} reads only "
                         f"{int(snap.get('window_tokens') or 0):,} tokens, and your request with "
-                        f"Tlamatini's self-knowledge (~{int(snap.get('self_modify_tokens') or 0):,} "
+                        f"my self-knowledge (~{int(snap.get('self_modify_tokens') or 0):,} "
                         f"tokens) needs ~{int(snap.get('self_modify_need_tokens') or 0):,}. Choose a "
-                        "larger model in Config > Models, or untick some agents."),
+                        "larger model for me in Config > Models, or untick some agents."),
         }
     try:
         _load()
@@ -608,13 +608,14 @@ def cut_warning_html(cut: Dict[str, Any]) -> str:
         model = html.escape(str(cut.get("model") or "the model"))
         window = int(cut.get("window") or 0)
         sent = int(cut.get("sent_tokens") or 0)
-        sent_text = f" of the ~{sent:,} tokens sent" if sent > window else ""
+        sent_text = f" of the ~{sent:,} tokens you sent me" if sent > window else ""
+        # Tlamatini says it herself, first person (Angela, 2026-10-09).
         return (
             '<div class="tlm-cut-warning" role="alert">&#9888;&#65039; <b>CONTEXT-WINDOW exceeded</b> - '
-            f"{model} could read only {window:,} tokens{sent_text}, so part of this request was cut "
-            "and this answer may be incomplete or wrong. Untick some agents or tools in "
-            "Config &gt; Configure Agents / Configure MCPs, shorten the request, or choose a larger "
-            "model in Config &gt; Models.</div>\n"
+            f"with {model} I could read only {window:,} tokens{sent_text}, so part of your request was "
+            "cut and my answer may be incomplete or wrong. Please untick some agents or tools in "
+            "Config &gt; Configure Agents / Configure MCPs, shorten your request, or choose a larger "
+            "model for me in Config &gt; Models.</div>\n"
         )
     except Exception:  # noqa: BLE001
         return ""

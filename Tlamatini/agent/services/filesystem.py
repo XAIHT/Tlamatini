@@ -94,7 +94,7 @@ def generate_tree_view_content(directory_name):
         return f"Error generating tree view: {exc}"
 
 
-async def save_files_from_db(message, channel_layer, room_group_name):
+async def save_files_from_db(message, channel_layer, room_group_name, user_name=''):
     application_path = get_runtime_agent_root()
     content_generated_path = os.path.join(application_path, 'content_generated')
     os.makedirs(content_generated_path, exist_ok=True)
@@ -128,7 +128,11 @@ async def save_files_from_db(message, channel_layer, room_group_name):
                     room_group_name,
                     {
                         'type': 'agent_message',
-                        'message': 'File: <code>' + html.escape(destination) + '</code> saved!',
+                        # Tlamatini says it herself, first person (Angela, 2026-10-09).
+                        'message': ("I've saved the file <code>" + html.escape(destination)
+                                    + '</code> for you'
+                                    + (', ' + html.escape(str(user_name).strip()) if str(user_name or '').strip() else '')
+                                    + '!'),
                         'username': 'Tlamatini'
                     }
                 )

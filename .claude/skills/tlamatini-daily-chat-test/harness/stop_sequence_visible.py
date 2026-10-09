@@ -81,7 +81,9 @@ Q_TORRENT = ("Tlamatini, using torrent-search-mcp, search for the official Ubunt
 Q_FOLLOW = "Tlamatini, which of the values in your earlier answer is the highest? Answer in one short sentence."
 
 FAIL_MARKERS = ("too many stop sequences", "Your agent cannot process your requests",
-                "Error detail:", "status code: 400")
+                "Error detail:", "status code: 400",
+                # Tlamatini's first-person forms (2026-10-09, agent/constants.py).
+                "I can't process your requests", "This is the error I ran into:")
 RUNAWAY = re.compile(r"(^|\n)\s*(Human|User):|<\|im_start\|>|<\|endoftext\|>")
 
 RESULTS: list = []

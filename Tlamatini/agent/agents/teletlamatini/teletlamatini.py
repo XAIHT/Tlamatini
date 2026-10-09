@@ -400,12 +400,33 @@ _NOISE_SUBSTRINGS_LOWER: Tuple[str, ...] = (
     "welcome back, session and context restored",
     "agent is still loading",
     "request is being processed",
+    # Tlamatini's fixed lines are FIRST PERSON since 2026-10-09 (Angela) -
+    # keep these in step with agent/constants.py. The old phrases above stay,
+    # so the bridge also works against an older Tlamatini.
+    "i'm getting myself ready",
+    "i'm loading the context you gave me",
+    "you can start chatting with me now",
+    "switched to my basic prompt only chain",
+    "might not be able to load them completely",
+    "i'm working on your request",
+    "you cancelled it, so i stopped generating",
+    "i've closed my connection to ollama",
+    "i'm rebuilding myself with a fresh connection",
+    "i'm back and ready",
+    "i've completed the reconnection you asked for",
+    "i've cleared the context as you asked",
+    "i've cleared our chat history",
+    "i restored our session",
+    "i'm still getting ready",
 )
 
 _FAILURE_SUBSTRINGS_LOWER: Tuple[str, ...] = (
     "agent cannot process your requests",
     "agent is not ready",
     "you're not authenticated",
+    # First-person forms (2026-10-09) - see agent/constants.py.
+    "i can't process your requests",
+    "i'm not ready yet",
 )
 
 

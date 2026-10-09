@@ -857,8 +857,12 @@ def reap_orphans(
     return result
 
 
-def format_survivors_message(survivors: Iterable[Tuple[str, int]]) -> Optional[str]:
+def format_survivors_message(survivors: Iterable[Tuple[str, int]],
+                             user_name: Optional[str] = None) -> Optional[str]:
     """Build the user-facing HTML snippet listing surviving orphans.
+
+    Tlamatini says it herself, in the first person and to the user by name
+    (Angela, 2026-10-09) - the chat avatar reads it aloud.
 
     Returns ``None`` if there are no survivors, so the caller can skip
     sending an additional chat message in the (common) happy path.
@@ -870,13 +874,14 @@ def format_survivors_message(survivors: Iterable[Tuple[str, int]]) -> Optional[s
         f"<li><code>{name}</code> &mdash; PID <strong>{pid}</strong></li>"
         for name, pid in rows
     )
+    who = f", {user_name.strip()}" if user_name and str(user_name).strip() else ""
     return (
         "<div class='orphan-warning'>"
-        "<strong>⚠ Heads-up:</strong> Tlamatini tried to clean up after this "
-        "request but the following process(es) refused to terminate. "
-        "They are most likely harmless leftovers from a tool you ran, but "
-        "if you do not recognize them please end them manually from Task "
-        "Manager so no Tlamatini-spawned child outlives the app:"
+        f"<strong>⚠ Heads-up{who}:</strong> I tried to clean up after your "
+        "request, but these process(es) refused to close. "
+        "They are most likely harmless leftovers from a tool I ran, but "
+        "if you don't recognize them, please end them from Task Manager "
+        "so nothing I started outlives me:"
         f"<ul>{list_items}</ul>"
         "</div>"
     )

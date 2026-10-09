@@ -388,7 +388,7 @@ def phase_a(pw, model):
         shot(page, "A6_agents_esphomer_ticked")
         n_before = len(page.evaluate(BOT_TEXTS_JS))
         press_dialog_button(page, "Continue")
-        msg = wait_bot_text(page, "Agents activation saved", n_before)
+        msg = wait_bot_text(page, "saved your Agents activation", n_before)
         say("   CHAT: %s" % msg.replace("\n", " | ")[:400])
         check("A6c saving needs no restart", "no restart needed" in msg, msg[:200])
         check("A6d its tool was chained with it", "chat-agent-esphomer" in msg.lower(), msg[:300])
@@ -406,7 +406,7 @@ def phase_a(pw, model):
         shot(page, "A7_mcps_chained_metrics_off")
         n_before = len(page.evaluate(BOT_TEXTS_JS))
         press_dialog_button(page, "Continue")
-        msg = wait_bot_text(page, "MCPs activation saved", n_before)
+        msg = wait_bot_text(page, "saved your MCPs activation", n_before)
         check("A7c MCPs saved at once", "no restart needed" in msg, msg[:200])
 
         # A8 - the next request carries ESPHomer ---------------------------------

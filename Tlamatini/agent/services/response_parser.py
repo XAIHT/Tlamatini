@@ -424,8 +424,8 @@ def _render_exec_denied_banner(exec_report_denied):
     parts.append('<div class="exec-denied-title">Execution interrupted</div>')
     parts.append(
         '<div class="exec-denied-sub">You denied the '
-        f'{kind} <strong>{agent}</strong> from executing. The Multi-Turn chain '
-        'was halted at this step — no further tools were run.</div>'
+        f'{kind} <strong>{agent}</strong>, so I stopped right there. I halted '
+        'my Multi-Turn chain at this step and didn\'t run any more tools.</div>'
     )
     if command:
         parts.append(

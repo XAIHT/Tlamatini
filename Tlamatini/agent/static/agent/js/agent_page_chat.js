@@ -236,6 +236,7 @@ function appendChatMessage(username, message, addedContent = null, timestampStr 
     } else if (
         message.toLowerCase().includes("out of the root directory")
         || message.toLowerCase().includes("outside the application root")
+        || message.toLowerCase().includes("outside my application root")
         || message.toLowerCase().includes("not a valid directory")
         || (message.toLowerCase().includes("directory") && message.toLowerCase().includes("does not exist"))
     ) {

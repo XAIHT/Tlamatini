@@ -73,7 +73,7 @@
     if(on)stopSpeaking();
     return s.mode;
   }
-  window.TLM_VOICE={speak:speak,notify:function(){speak('Your request is complete.');},femaleVoices:femaleVoices,pickVoice:pickVoice,loadSettings:loadSettings,saveSettings:saveSettings,prime:prime,stop:stopSpeaking,setSilent:setSilent,setListening:function(on){_listening=!!on;if(on)stopSpeaking();}};
+  window.TLM_VOICE={speak:speak,notify:function(){speak("I've finished your request.");},femaleVoices:femaleVoices,pickVoice:pickVoice,loadSettings:loadSettings,saveSettings:saveSettings,prime:prime,stop:stopSpeaking,setSilent:setSilent,setListening:function(on){_listening=!!on;if(on)stopSpeaking();}};
   try{ if(window.speechSynthesis) window.speechSynthesis.onvoiceschanged=function(){}; }catch(e){}
   // ESC anywhere = shut up immediately.  Ctrl+Shift+M = mute for good / unmute.
   document.addEventListener('keydown',function(e){
@@ -83,7 +83,7 @@
         e.preventDefault();
         var m=setSilent(loadSettings().mode!=='silent');
         var b=document.getElementById('tlm-avatar-bubble');
-        if(b){ b.textContent=(m==='silent')?'Voice OFF':'Voice ON'; b.classList.add('tlm-show');
+        if(b){ b.textContent=(m==='silent')?"Voice OFF - I'll stay quiet.":"Voice ON - I'll talk to you again!"; b.classList.add('tlm-show');
                clearTimeout(b._t); b._t=setTimeout(function(){b.classList.remove('tlm-show');},2600); }
       }
     }catch(err){}
@@ -122,8 +122,11 @@
       "Processing, "+uname+" - I've nearly got it."
     ]); }
     // Fixed completion notice - one exact line, never randomised.
-    var COMPLETE_PHRASE="Your request is complete.";
-    var CANCEL_PHRASE="You've canceled the task, I'm ready for new instructions.";
+    // First person, to the user by name (Angela, 2026-10-09); `who` is empty
+    // when the page carries no username, so no line ever says "there".
+    var who=(uname&&uname!=='there')?uname:'';
+    var COMPLETE_PHRASE="I've finished your request"+(who?", "+who:"")+".";
+    var CANCEL_PHRASE="Okay"+(who?", "+who:"")+" - I've stopped that task. I'm ready for your next instruction.";
     // The FIXED messages are spoken EXACTLY AS WRITTEN - never paraphrased.
     // This only strips what must not be read aloud: markup, the username header
     // and the timestamp, and the END-RESPONSE sentinel.
@@ -170,17 +173,26 @@
       var tl=t.toLowerCase();
       try{ if(window.isSelfHealingStatusMessage&&window.isSelfHealingStatusMessage(t))return 'retry'; }catch(e){}
       try{ if(window.isSessionRestoredInfoMessage&&window.isSessionRestoredInfoMessage(t))return 'restored'; }catch(e){}
-      if(tl.indexOf('your agent is ready')>=0||tl.indexOf('you can now start chatting')>=0)return 'ready';
+      // Her fixed lines are first person since 2026-10-09 ("I'm ready, Angela!
+      // You can start chatting with me now."); the old wording is still known.
+      if(tl.indexOf('start chatting with me')>=0||tl.indexOf("i'm back and ready")>=0
+         ||tl.indexOf('your agent is ready')>=0||tl.indexOf('you can now start chatting')>=0)return 'ready';
       if(tl.indexOf('you cancelled')>=0||tl.indexOf('you canceled')>=0)return 'cancel';
       if(tl.indexOf('execution interrupted')>=0)return 'interrupted';
       if(tl.indexOf('referenced rephrase')>=0||tl.indexOf('please rephrase')>=0)return 'rephrase';
-      if(tl.indexOf('not ready')>=0&&tl.indexOf('agent')>=0)return 'notready';
+      // "I can't process your requests right now" is an ERROR, never the answer:
+      // as an 'answer' she would have said "I've finished your request" over it.
+      if(tl.indexOf("can't process your requests")>=0||tl.indexOf('cannot process your requests')>=0)return 'error';
+      if(tl.indexOf("i'm not ready yet")>=0||(tl.indexOf('not ready')>=0&&tl.indexOf('agent')>=0))return 'notready';
       try{ if(window.isBusyMessageRequest&&window.isBusyMessageRequest(t))return 'busy'; }catch(e){}
       try{ if(window.isBusyMessageContext&&window.isBusyMessageContext(t))return 'busy'; }catch(e){}
-      if(tl.indexOf('your request is being processed')>=0||tl.indexOf('being processed by tlamatini')>=0
+      if(tl.indexOf("i'm working on your request")>=0||tl.indexOf("i'm getting myself ready")>=0
+         ||tl.indexOf("i'm still getting ready")>=0||tl.indexOf("i'm rebuilding myself")>=0
+         ||tl.indexOf('your request is being processed')>=0||tl.indexOf('being processed by tlamatini')>=0
          ||tl.indexOf('please wait a moment')>=0||tl.indexOf('loading the context')>=0)return 'busy';
       if(/^(please wait|loading|thinking|working on it|one moment|processing)/i.test(t))return 'busy';
       if(tl.indexOf('out of the root directory')>=0||tl.indexOf('outside the application root')>=0
+         ||tl.indexOf('outside my application root')>=0
          ||tl.indexOf('not a valid directory')>=0||(tl.indexOf('directory')>=0&&tl.indexOf('does not exist')>=0))return 'error';
       return 'answer';
     }
@@ -253,7 +265,8 @@
       if(!e.detail || !e.detail.voice)return;
       // Wait until the form's existing listeners have marked the same run.
       setTimeout(function(){
-        _voiceAckText='Your request is being processed by Tlamatini. Please wait a moment.';
+        // Mirrors the server's MSG_PROCESSING_REQUEST (agent/constants.py).
+        _voiceAckText="I'm working on your request"+(who?", "+who:"")+". Please wait a moment.";
         announce('t:'+_voiceAckText.slice(0,80),_voiceAckText,0);
       },0);
     });
@@ -380,7 +393,7 @@
         prime();
         var busy=false;
         try{ busy=window.speechSynthesis.speaking||window.speechSynthesis.pending; }catch(e){}
-        if(busy){ stopSpeaking(); showBubble('Voice stopped.'); return; }
+        if(busy){ stopSpeaking(); showBubble("Okay, I'll stop talking."); return; }
         announce(null,(isWorking()?busyPhrase():idlePhrase()),0);
       }
       dock.addEventListener('click',onClick);
@@ -388,7 +401,7 @@
         e.preventDefault();
         var m=setSilent(loadSettings().mode!=='silent');
         stopSpeaking();
-        showBubble(m==='silent'?'Voice OFF (double-click again for ON)':'Voice ON');
+        showBubble(m==='silent'?"Voice OFF - I'll stay quiet (double-click me to hear me again).":"Voice ON - I'll talk to you again!");
       });
       dock.addEventListener('keydown',function(e){ if(e.key==='Enter'||e.key===' '){e.preventDefault();onClick();} });
       dock.title='Click = stop talking / greet  ·  Double-click = mute  ·  Esc = stop  ·  Ctrl+Shift+M = mute';
@@ -411,7 +424,11 @@
       var text=plainText(message);
       if(!text)return;
       var kind=classify(message);
-      if(kind==='busy' && _voiceAckText && text===_voiceAckText){ _voiceAckText=''; return; }
+      // The server's own "I'm working on your request" after a voice send: she
+      // already said it. Matched by MEANING, not by exact text - the server may
+      // name the user by first name while the page only knows the username.
+      if(kind==='busy' && _voiceAckText && (text===_voiceAckText
+         || (window.isBusyMessageRequest && window.isBusyMessageRequest(text)))){ _voiceAckText=''; return; }
       // The REAL answer to a request WE sent: "speak" mode reads it aloud,
       // "notify" mode says the fixed completion line instead.
       if(kind==='answer'&&_pending&&!_spoken){ doComplete(); return; }

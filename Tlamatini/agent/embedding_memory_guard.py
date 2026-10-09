@@ -410,10 +410,10 @@ def format_warning_message(warning: dict) -> str:
     lines = [
         "&#9888;&#65039; <b>Embedding-memory warning</b>",
         (
-            f"Embedding model <code>{warning['model']}</code> needs "
+            f"My embedding model <code>{warning['model']}</code> needs "
             f"~{mb:,.0f} MiB of VRAM ({source}), which is "
             f"<b>{warning['percent']:.1f}%</b> of the smallest GPU's "
-            f"total ({total_mb:,.0f} MiB) &mdash; above the safety "
+            f"total ({total_mb:,.0f} MiB) &mdash; above my safety "
             f"threshold of {warning['threshold_percent']:.0f}%."
         ),
     ]
@@ -424,10 +424,10 @@ def format_warning_message(warning: dict) -> str:
             f"dim {embedding_dim}."
         )
     lines.append(
-        "Context loading will continue, but expect slow embedding "
-        "throughput or RAM&harr;VRAM swap. To eliminate the pressure, "
-        "switch <code>embeding-model</code> in <code>config.json</code> "
+        "I'll keep loading your context, but expect slow embedding "
+        "throughput or RAM&harr;VRAM swap. To take that pressure off me, "
+        "switch <code>embeding-model</code> in my <code>config.json</code> "
         "to a smaller model (e.g. <code>nomic-embed-text:v1.5</code>) "
-        "and restart."
+        "and restart me."
     )
     return "<br>".join(lines)

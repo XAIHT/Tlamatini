@@ -169,7 +169,8 @@ def main():
         prompt = page.evaluate("__voiceHarness.prompts()[0]")
         check("Transcript automatically uses normal Send and preserves draft", prompt["message"] == "Existing draft\nCreate a beautiful application.")
         check("Current chat options survive voice handoff", all(prompt[k] for k in ("multi_turn_enabled", "acpx_enabled", "exec_report_enabled")))
-        ack = "Your request is being processed by Tlamatini. Please wait a moment."
+        # First person, to the fixture's user by name (agent/constants.py, 2026-10-09).
+        ack = "I'm working on your request, Voice preview. Please wait a moment."
         page.wait_for_function("(text)=>__voiceHarness.spoken.filter(s=>s===text).length===1", arg=ack)
         check("Avatar acknowledges dispatch", page.evaluate("(text)=>__voiceHarness.spoken.filter(s=>s===text).length", ack) == 1)
         page.wait_for_timeout(1600)

@@ -385,15 +385,20 @@ class MessageAndPageTests(SimpleTestCase):
     def test_the_not_ready_message_is_one_constant_that_names_the_context_window(self):
         from agent import constants
         msg = constants.ERROR_AGENT_NOT_READY
-        self.assertTrue(msg.startswith("Your agent cannot process your requests. <br>"))
+        # First person, to the user by name (Angela, 2026-10-09).
+        self.assertTrue(msg.startswith("I'm sorry, {name}, I can't process your requests right now. <br>"))
+        self.assertTrue(constants.say(msg, "Angela").startswith(
+            "I'm sorry, Angela, I can't process your requests right now. <br>"))
+        self.assertTrue(constants.say(msg, "").startswith(
+            "I'm sorry, I can't process your requests right now. <br>"))
         self.assertIn("outside of the root directory", msg)
         self.assertIn("CONTEXT WINDOW", msg)
         self.assertIn("CONTEXT-WINDOW gauge", msg)
         consumers = (AGENT_DIR / "consumers.py").read_text(encoding="utf-8")
         self.assertNotIn('not_ready_response = "', consumers)
         bridge = (AGENT_DIR / "agents" / "teletlamatini" / "teletlamatini.py").read_text(encoding="utf-8")
-        self.assertIn("agent cannot process your requests", bridge)
-        self.assertIn("agent cannot process your requests", msg.lower())
+        self.assertIn("i can't process your requests", bridge)
+        self.assertIn("i can't process your requests", msg.lower())
 
     def test_saving_a_dialog_no_longer_asks_for_a_restart(self):
         consumers = (AGENT_DIR / "consumers.py").read_text(encoding="utf-8")
@@ -408,7 +413,7 @@ class MessageAndPageTests(SimpleTestCase):
         from agent.consumers import AgentConsumer
         msg = AgentConsumer._toggles_summary(
             "Agents", "agent-1=ACPXer=false,agent-23=ESPHomer=true,agent-24=Executer=false,")
-        self.assertEqual(msg, "Agents activation saved: 1 of 3 on (ESPHomer).")
+        self.assertEqual(msg, "I've saved your Agents activation: 1 of 3 on (ESPHomer).")
         many = ",".join(f"agent-{i}=A{i}=true" for i in range(1, 21))
         self.assertIn("20 of 20 on", AgentConsumer._toggles_summary("Agents", many))
         self.assertIn("and 5 more", AgentConsumer._toggles_summary("Agents", many))

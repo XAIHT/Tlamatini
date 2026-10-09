@@ -199,11 +199,16 @@ function setTitleBusy(isBusy, source = 'chat') {
     titleBusyPrefix = titleBusySources.size ? "⏳ " : "";
 }
 
+// Tlamatini speaks her fixed lines in the FIRST PERSON (Angela, 2026-10-09):
+// "I'm working on your request, Angela. Please wait a moment." The old
+// third-person wording is still matched, so a saved history or an older
+// server keeps working. Keep these in step with agent/constants.py.
 function isBusyMessageRequest(message) {
     if (!message) return false;
     const m = String(message);
     return (
-        m.includes("Your request is being processed by Tlamatini.")
+        m.includes("I'm working on your request")
+        || m.includes("Your request is being processed by Tlamatini.")
     );
 }
 
@@ -211,7 +216,8 @@ function isBusyMessageContext(message) {
     if (!message) return false;
     const m = String(message);
     return (
-        m.includes("Your agent is loading the context.")
+        m.includes("I'm loading the context you gave me")
+        || m.includes("Your agent is loading the context.")
     );
 }
 
@@ -225,7 +231,8 @@ function isSessionRestoredInfoMessage(message) {
     if (!message) return false;
     const m = String(message).toLowerCase();
     return (
-        m.includes("welcome back, session and context restored")
+        (m.includes("welcome back") && m.includes("i restored our session"))
+        || m.includes("welcome back, session and context restored")
         || m.includes("welcome back, session restored")
     );
 }
