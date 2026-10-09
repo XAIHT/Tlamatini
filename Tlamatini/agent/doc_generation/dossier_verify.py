@@ -180,10 +180,15 @@ def verify_pptx_native(path: Path) -> dict:
         return {"available": False, "problems": [], "note": f"PowerPoint unavailable: {exc}"}
     # Developer verification must be visible; this is not a product-service window.
     app.Visible = True
-    deck = next((item for item in app.Presentations
-                 if Path(item.FullName).resolve() == path.resolve()), None)
-    if deck is None:
-        deck = app.Presentations.Open(str(path), True, False, True)
+    # A copy left open by an earlier run is the OLD deck in memory: close it and
+    # open the file just written, or this check would measure the previous deck.
+    for item in list(app.Presentations):
+        if Path(item.FullName).resolve() == path.resolve():
+            if not (item.ReadOnly or item.Saved):
+                raise RuntimeError(f"{path.name} is open in PowerPoint with unsaved changes; "
+                                   "save or close it, then run the dossier again.")
+            item.Close()
+    deck = app.Presentations.Open(str(path), True, False, True)
     window = deck.Windows(1)
     window.Activate()
     # PowerPoint does not expose Excel\'s Application.Hwnd COM property.

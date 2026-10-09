@@ -1625,9 +1625,11 @@ def build_chapters(f: dict) -> list[Chapter]:
             ]),
     ])
 
-    release = Chapter("release", "VIII", "Source and Release Status",
-        f"Source tag {f['release_tag']}; latest published release "
-        f"{f['release']['latest_published'] or 'unverified'}. Local changes are stated separately.",
+    release = Chapter("release", "VIII", "Version and Release Status",
+        (f"Version {f['release_tag']}, the current release, published on GitHub."
+         if f['release']['latest_published'] == f['release_tag'] else
+         f"Version {f['release_tag']}; the latest release published on GitHub is "
+         f"{f['release']['latest_published'] or 'not verified'}."),
         accent="gold", sections=[
         Section("working_firstperson", "NEW IN v1.77.0", "She speaks to you, by name",
             "Tagged on October 9 and published as the current release, so self-update delivers it.",

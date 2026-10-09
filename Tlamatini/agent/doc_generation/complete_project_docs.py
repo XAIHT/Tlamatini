@@ -474,9 +474,9 @@ def release_statements(rel: dict, version: str) -> tuple[list[str], list[list[st
     if rel["distance"]:
         listed = ", ".join(f"`{sha}`" for sha, _ in rel["after"])
         statements.append(
-            f"The inspected source is {rel['distance']} commit(s) beyond that tag ({listed}). A build from "
-            f"this source reports version {version}, because the version string always carries the base tag "
-            f"and never a distance suffix.")
+            f"Since the tag, {rel['distance']} more commit(s) went into main ({listed}). A build of main "
+            f"still reports version {version}, because the version always carries the tag's number and "
+            f"nothing more.")
     if rel["pfp_commit"] and not rel["pfp_in_tag"]:
         statements.append(
             f"The Prompt Flow Panel itself first appears in commit `{rel['pfp_commit']}`, after the tag. The "
@@ -497,16 +497,16 @@ def release_statements(rel: dict, version: str) -> tuple[list[str], list[list[st
         statements.append("GitHub publication status could not be read, so only Git facts are stated here.")
     points = [("The tag", f"{rel['tag']} resolves to `{rel['tag_commit']}`, created {rel['tag_date']}.")]
     if rel["distance"]:
-        points.append(("Beyond it", f"{rel['distance']} newer commit(s); a build from them still reports "
+        points.append(("Since the tag", f"{rel['distance']} newer commit(s); a build of main still reports "
                                     f"{version}."))
     if rel["pfp_commit"] and not rel["pfp_in_tag"]:
         points.append(("Prompt Flow Panel", f"First appears in `{rel['pfp_commit']}`, after the tag."))
     points.append(("Published", f"The current release is {rel['latest_published']}." if rel.get("prepared")
                    else f"The newest release on GitHub is {rel['latest_published'] or 'unknown'}."))
     rows = [
-        ["Reported version", version],
+        ["Version", version],
         ["Nearest tag", f"{rel['tag']} → {rel['tag_commit']} ({rel['tag_date']})"],
-        ["Inspected HEAD", f"{rel['head_short']} ({rel['distance']} commit(s) after the tag)"],
+        ["Newest commit on main", f"{rel['head_short']} ({rel['distance']} commit(s) after the tag)"],
         ["Tag on remote", "Yes" if rel["on_origin"] else "No"],
         ["Latest published release", rel["latest_published"] or "Unknown"],
     ]
@@ -599,7 +599,7 @@ def collect_facts() -> dict:
     }
     facts["fact_rows"] = [
         ["Inspected commit", f"{head_short} · {facts['head_date']} · branch {facts['branch']}"],
-        ["Reported version", f"{facts['version']} ({facts['version_source']})"],
+        ["Version", facts['version']],
         ["Tracked files", f"{len(tracked):,}"],
         ["Unignored working-tree additions", f"{len(untracked):,}"],
         ["Text files counted", f"{len(files):,}"],

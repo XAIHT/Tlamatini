@@ -1419,7 +1419,7 @@ def about_flow(facts, st: Styles) -> list:
     flow.append(styled_table(["This edition", ""], [
         ["Generated", facts["generated_at"]],
         ["Inspected commit", f"{facts['head_short']} — {facts['head_subject']}"],
-        ["Reported version", f"{facts['version']} ({facts['version_source']})"],
+        ["Version", facts['version']],
         ["Latest published release", facts["release"]["latest_published"] or "unknown"],
         ["Companion deck", "Tlamatini_eXtended_Artificial_Intelligence_Humanly_Tempered.pptx"],
     ], [0.30, 0.70], st))
