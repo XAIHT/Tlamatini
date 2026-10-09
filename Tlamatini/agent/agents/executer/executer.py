@@ -315,57 +315,56 @@ def start_agent(agent_name: str) -> bool:
 
 
 # ============================================================
-#  BEST-EFFORT VISIBLE-WINDOW RESCUE
+#  VISIBLE-WINDOW CHECK (best effort; never touches the script)
 # ============================================================
 #
-# Angela's standing rule is that she must SEE what runs. Windows does not always
-# allow it: when this agent is launched by the session MCP host, the console it
-# creates belongs to a window station/desktop that is not the interactive one, and
-# NO combination of creation flags escapes that (measured: Start-Process
-# -WindowStyle Normal, and a direct Popen with CREATE_NEW_CONSOLE |
-# CREATE_NEW_PROCESS_GROUP | CREATE_BREAKAWAY_FROM_JOB — Windower confirmed the
-# window was absent both times).
+# Angela's standing rule is that she must SEE what runs - and that the log must
+# say truthfully whether she can.
 #
-# Her instruction: MAKE A BEST EFFORT ANYWAY. So we do, and this is the one avenue
-# flags cannot reach — a window that EXISTS but was never SHOWN. If the console
-# object is on a desktop we can touch, ShowWindow/SetForegroundWindow will reveal
-# it. If it is not, nothing here can, and we say so plainly instead of pretending.
+# MEASURED 2026-10-09 on Windows 11, with this agent launched by the session
+# MCP host: the agent runs on the interactive desktop (window station WinSta0,
+# desktop Default) and the forked console DOES reach the screen. Windows 11
+# hands every new console to Windows Terminal, its default console, so what
+# appears is a Windows Terminal window (class CASCADIA_HOSTING_WINDOW_CLASS,
+# owned by WindowsTerminal.exe) - or a new TAB in a Windows Terminal window
+# that was already open. Next to it, the console host keeps a zero-size helper
+# window (class PseudoConsoleWindow) that is never meant to be seen.
 #
-# This rescue changes the outcome.
-#   BEFORE it, the Windower agent scanned the desktop TWICE and found NO window.
-#   AFTER it, Windower FINDS the console, FOCUSES it and MAXIMIZES it
-#   (`Focused 'LATEXER-RESCUE-FINAL' (hwnd=0x00280292); brought_to_front=True`).
-# So the window goes from "does not exist anywhere we can reach" to "a real,
-# addressable, focusable window".
+# The earlier version of this check counted that helper as "the console". When
+# the helper stayed invisible it logged "could NOT be shown - it is on another
+# window station/desktop". That was FALSE: the real window was on screen the
+# whole time, and the message sent several investigations after a problem that
+# did not exist. So the helper is now counted on its own ("handed to Windows
+# Terminal"), and only a real console or terminal window counts as on screen.
 #
-# oracle that actually matters for her rule, and it settles it: the rescue puts
-# real pixels on the real desktop, not merely a handle in the Win32 API. (A cloud
-# vision pass over the screenshot had said otherwise — it was WRONG, the same
-# model having already misread that screen once. A human beat the model.)
-#
-# The log still says "rescue attempted … confirm with Windower" rather than
-# declaring success, because it is confirmed for THIS host and cannot be promised
-# for every future one. Under-claim, then verify. Windower is the oracle; this
-# code never awards itself the win.
+# A classic console (class ConsoleWindowClass) still appears when the default
+# console is the classic host. A classic window that EXISTS but was never SHOWN
+# can still be revealed with ShowWindow, which is what this check tries.
 #
 # TWO HARD RULES:
 #   1. NEVER let this affect whether the user's script RUNS. It runs first; this
-#      only tries to reveal the window afterwards, and every call is wrapped so a
-#      failure is logged and swallowed. A rescue that breaks execution is worse
-#      than an invisible window.
-#   2. NEVER relaunch the script to get a window — that would run the user's work
-#      TWICE (double writes, double tests). Reveal only.
+#      only looks for its window afterwards, and every call is wrapped so a
+#      failure is logged and swallowed.
+#   2. NEVER relaunch the script to get a window - that would run the user's
+#      work TWICE (double writes, double tests). Reveal only.
 #
-# Why NEW-window detection instead of matching the PID: a console window is owned
-# by conhost.exe, NOT by the cmd.exe we spawned, so GetWindowThreadProcessId
-# usually reports a PID we never saw. Snapshotting console windows before the
-# launch and diffing afterwards is the reliable identification.
+# Why NEW-window detection instead of matching the PID: the window is owned by
+# conhost.exe or WindowsTerminal.exe, NOT by the cmd.exe we spawned.
+# Snapshotting the windows before the launch and diffing afterwards is the
+# reliable identification.
 
-_CONSOLE_WINDOW_CLASSES = (
-    "ConsoleWindowClass",               # classic conhost
-    "CASCADIA_HOSTING_WINDOW_CLASS",    # Windows Terminal
-    "PseudoConsoleWindow",              # ConPTY
+_REAL_CONSOLE_WINDOW_CLASSES = (
+    "ConsoleWindowClass",               # classic conhost window
+    "CASCADIA_HOSTING_WINDOW_CLASS",    # Windows Terminal window
 )
+# Zero-size helper the console host keeps when Windows Terminal draws the
+# console. It means "handed to Windows Terminal"; it is never a window to see.
+_HANDOFF_HELPER_CLASS = "PseudoConsoleWindow"
+_CONSOLE_WINDOW_CLASSES = _REAL_CONSOLE_WINDOW_CLASSES + (_HANDOFF_HELPER_CLASS,)
+
+# After a handoff, how long to wait for Windows Terminal to draw a NEW window
+# before concluding that it opened a tab in a window that was already open.
+_HANDOFF_GRACE_SECONDS = 2.5
 
 SW_SHOWNORMAL = 1
 SW_SHOW = 5
@@ -405,12 +404,17 @@ def _console_window_snapshot():
 
 
 def _force_show_new_consoles(before, timeout_seconds=6.0):
-    """BEST EFFORT: reveal any console window that appeared since *before*.
+    """BEST EFFORT: find the console window(s) that appeared since *before*.
 
-    Returns {"appeared": n, "revealed": n, "already_visible": n}. NEVER raises.
+    Real console or terminal windows are brought to the front, and a hidden
+    classic console is revealed with ShowWindow. Returns
+    {"appeared", "revealed", "already_visible", "still_visible", "handed_off"}.
+    The first four count REAL windows only; "handed_off" counts the zero-size
+    PseudoConsoleWindow helpers, which mean Windows Terminal received the
+    console. NEVER raises.
     """
     result = {"appeared": 0, "revealed": 0, "already_visible": 0,
-              "still_visible": 0}
+              "still_visible": 0, "handed_off": 0}
     if os.name != 'nt':
         return result
     try:
@@ -420,45 +424,59 @@ def _force_show_new_consoles(before, timeout_seconds=6.0):
         user32 = ctypes.WinDLL("user32", use_last_error=True)
         deadline = time.time() + max(0.5, float(timeout_seconds))
         seen = set()
+        real = set()
+
+        def _class_of(hwnd):
+            buf = ctypes.create_unicode_buffer(256)
+            user32.GetClassNameW(wintypes.HWND(hwnd), buf, 256)
+            return buf.value
 
         while time.time() < deadline:
             nuevos = _console_window_snapshot() - before - seen
             for hwnd in nuevos:
                 seen.add(hwnd)
-                result["appeared"] += 1
                 try:
-                    if user32.IsWindowVisible(wintypes.HWND(hwnd)):
-                        result["already_visible"] += 1
-                        # Still pull it forward — a window buried behind a
-                        # maximized editor is, to a human, not visible.
-                        user32.ShowWindow(wintypes.HWND(hwnd), SW_RESTORE)
-                        user32.SetForegroundWindow(wintypes.HWND(hwnd))
+                    handle = wintypes.HWND(hwnd)
+                    if _class_of(hwnd) == _HANDOFF_HELPER_CLASS:
+                        # Not a window anyone can see. Asking it to show is
+                        # harmless (the console host passes the request on to
+                        # the terminal), so keep asking - but never count it
+                        # as a window on screen.
+                        result["handed_off"] += 1
+                        user32.ShowWindow(handle, SW_SHOWNORMAL)
+                        user32.ShowWindow(handle, SW_SHOW)
+                        if not real:
+                            deadline = min(deadline,
+                                           time.time() + _HANDOFF_GRACE_SECONDS)
                         continue
-                    # THE CASE THIS WHOLE HELPER EXISTS FOR: the console object is
-                    # real but was never shown. If it lives on a desktop we can
-                    # touch, these three calls put it on screen.
-                    user32.ShowWindow(wintypes.HWND(hwnd), SW_SHOWNORMAL)
-                    user32.ShowWindow(wintypes.HWND(hwnd), SW_SHOW)
-                    user32.BringWindowToTop(wintypes.HWND(hwnd))
-                    user32.SetForegroundWindow(wintypes.HWND(hwnd))
-                    if user32.IsWindowVisible(wintypes.HWND(hwnd)):
+                    real.add(hwnd)
+                    result["appeared"] += 1
+                    if user32.IsWindowVisible(handle):
+                        result["already_visible"] += 1
+                        # Still pull it forward - a window buried behind a
+                        # maximized editor is, to a human, not visible.
+                        user32.ShowWindow(handle, SW_RESTORE)
+                        user32.SetForegroundWindow(handle)
+                        continue
+                    # A real console that exists but was never shown: if it
+                    # lives on this desktop, these calls put it on screen.
+                    user32.ShowWindow(handle, SW_SHOWNORMAL)
+                    user32.ShowWindow(handle, SW_SHOW)
+                    user32.BringWindowToTop(handle)
+                    user32.SetForegroundWindow(handle)
+                    if user32.IsWindowVisible(handle):
                         result["revealed"] += 1
                 except Exception:
                     continue
-            if result["appeared"]:
+            if real:
                 break
             time.sleep(0.25)
 
-        # ⚠️ VERIFY AT THE END, and report ONLY what survives.
-        #
-        # The first version of this helper reported "window is visible" the moment
-        # it saw a new console handle — and was WRONG: short-lived consoles from
-        # our own launcher come and go, so it announced success while Windower
-        # showed no such window on the desktop. Overclaiming here would reproduce
-        # exactly the lie this rescue was written to remove. So: settle, then count
-        # only the handles that are STILL alive and STILL visible.
+        # VERIFY AT THE END, and report ONLY what survives: short-lived consoles
+        # from our own launcher come and go, so count only the real windows that
+        # are STILL alive and STILL visible after a moment.
         time.sleep(0.4)
-        for hwnd in seen:
+        for hwnd in real:
             try:
                 if (user32.IsWindow(wintypes.HWND(hwnd))
                         and user32.IsWindowVisible(wintypes.HWND(hwnd))):
@@ -468,6 +486,57 @@ def _force_show_new_consoles(before, timeout_seconds=6.0):
     except Exception:
         return result
     return result
+
+
+def _describe_window_check(rescue):
+    """Turn a _force_show_new_consoles() result into ("info"|"warning", text).
+
+    Pure and total: a missing key or a non-dict reads as zero. It never says a
+    window is on screen unless a REAL console or terminal window was seen
+    there, and it never blames another window station (measured false - see
+    the VISIBLE-WINDOW CHECK note above).
+    """
+    def count(key):
+        try:
+            return int(rescue.get(key, 0) or 0)
+        except Exception:
+            return 0
+
+    if count("revealed") and count("still_visible"):
+        return ("info",
+                "Window REVEALED: %d hidden console(s) shown with ShowWindow; "
+                "%d window(s) on screen now."
+                % (count("revealed"), count("still_visible")))
+    if count("still_visible"):
+        return ("info",
+                "The window is on screen: %d new console/terminal window(s), "
+                "brought to the front." % count("still_visible"))
+    if count("handed_off"):
+        return ("info",
+                "The console was handed to Windows Terminal (the default console "
+                "on Windows 11), but no NEW window appeared, so it most likely "
+                "opened as a new TAB in a Windows Terminal window that was "
+                "already open. Look there; the Windower agent can confirm.")
+    if count("appeared"):
+        return ("warning",
+                "A new console window appeared but stayed hidden; ShowWindow "
+                "could not reveal it. The script IS running.")
+    return ("warning",
+            "No new console window was detected on this desktop. The script IS "
+            "running (its output still reaches its own log). If this agent runs "
+            "without an interactive desktop (a service or a scheduled task), "
+            "launch it from a shell on the user's desktop instead.")
+
+
+def _report_forked_window(before, timeout_seconds=6.0):
+    """Look for the forked window and LOG what was found. Never raises."""
+    try:
+        level, message = _describe_window_check(
+            _force_show_new_consoles(before, timeout_seconds=timeout_seconds))
+        log = logging.warning if level == "warning" else logging.info
+        log("   🪟 " + message)
+    except Exception as error:
+        logging.warning("   🪟 Window check failed harmlessly: %s" % error)
 
 
 def execute_script(script_content: str, non_blocking: bool = False,
@@ -535,28 +604,15 @@ def execute_script(script_content: str, non_blocking: bool = False,
             logging.info("🔥 Non-blocking mode: Launching script as detached process...")
 
             if is_windows:
-                # ⚠️ VISIBILITY IS DECIDED BY THE HOST, NOT BY THESE FLAGS
-                # Do not "fix" this blindly.
-                #
-                # When this agent is launched by the SESSION MCP SERVER, the console
-                # requested here NEVER APPEARS on the interactive desktop, even though
-                # the script really runs and writes its log. Proved with Tlamatini's
-                # own tools: Windower scanned the visible windows twice and the console
-                # was absent both times — first with the `Start-Process -WindowStyle
-                # Normal` below, then again with a direct Popen using
-                # CREATE_NEW_CONSOLE | CREATE_NEW_PROCESS_GROUP | CREATE_BREAKAWAY_FROM_JOB.
-                # Creation flags CANNOT fix it: the constraint is the window station /
-                # desktop the MCP host itself lives in, which no child flag can leave.
-                #
-                # So: the flags below are correct and were LEFT ALONE. What changed is
-                # the LOG — it used to claim "window=visible" unconditionally, which was
-                # a lie whenever this ran under the MCP host, and a lie in a log is
-                # worse than a missing window because it hides the problem.
-                #
-                # TO ACTUALLY GET A WINDOW ANGELA CAN SEE: launch from a shell that is
-                # already on her desktop (`Start-Process powershell -NoExit …` with
-                # dangerouslyDisableSandbox), not through this agent. Memory:
-                # project_mcp_forked_window_invisible.
+                # VISIBILITY - measured 2026-10-09 with this agent launched by the
+                # session MCP host: this Start-Process DOES put a window on Angela's
+                # desktop. On Windows 11 it is a Windows Terminal window, or a new
+                # tab in one that is already open. An older note here said the
+                # window could never appear under the MCP host; it came from a
+                # check that counted Windows Terminal's invisible helper window as
+                # the console (see the VISIBLE-WINDOW CHECK note above). The flags
+                # below were always right. The log reports what the window check
+                # actually finds, never the bare request.
                 #
                 # Use PowerShell Start-Process which creates a TRULY independent process
                 # This is the most reliable method on Windows to break free from:
@@ -609,39 +665,10 @@ def execute_script(script_content: str, non_blocking: bool = False,
                 except subprocess.TimeoutExpired:
                     logging.warning("⚠️ PowerShell took too long, continuing anyway...")
 
-                # BEST-EFFORT RESCUE — the script is ALREADY running by now, so
-                # nothing here can stop it. We only try to put its window on screen.
+                # Look for the window and LOG what was found. The script is
+                # ALREADY running by now, so nothing here can stop it.
                 if execute_forked_window:
-                    try:
-                        rescue = _force_show_new_consoles(consoles_before,
-                                                          timeout_seconds=6.0)
-                        if rescue["revealed"] and rescue["still_visible"]:
-                            logging.info(
-                                "   🪟 Window RESCUED: %d hidden console(s) forced "
-                                "visible with ShowWindow; %d still on screen."
-                                % (rescue["revealed"], rescue["still_visible"]))
-                        elif rescue["still_visible"]:
-                            logging.info(
-                                "   🪟 %d new console window(s) are on this desktop "
-                                "and were brought to the front. (This counts CONSOLES, "
-                                "not titles — confirm it is YOUR window with the "
-                                "Windower agent.)" % rescue["still_visible"])
-                        elif rescue["appeared"]:
-                            logging.warning(
-                                "   🪟 A console appeared but could NOT be shown — it "
-                                "is on another window station/desktop. Nothing in "
-                                "this process can reach it.")
-                        else:
-                            logging.warning(
-                                "   🪟 NO console window was created on this desktop. "
-                                "The script IS running (its output still lands in the "
-                                "log) but Angela cannot see it: this agent was "
-                                "launched by a host whose desktop is not the "
-                                "interactive one. To get a window she can watch, "
-                                "launch from a shell already on her desktop.")
-                    except Exception as rescue_error:      # never break the launch
-                        logging.warning("   🪟 Window rescue failed harmlessly: %s"
-                                        % rescue_error)
+                    _report_forked_window(consoles_before, timeout_seconds=6.0)
 
             else:
                 # Unix: Use start_new_session to detach from parent
@@ -688,13 +715,11 @@ def execute_script(script_content: str, non_blocking: bool = False,
                         close_fds=True
                     )
 
-            # Say what was REQUESTED, never what was achieved. Under the session MCP
-            # host the window is requested and never shown (see the note above), and
-            # the old unconditional "window=visible" turned that into a silent lie —
-            # which is how it went unnoticed. Verify with the Windower agent.
+            # The line logged just above says what the window check FOUND; this
+            # one says what was REQUESTED. The old unconditional
+            # "window=visible" was a claim nobody had checked.
             if execute_forked_window:
-                window_note = ("window=visible REQUESTED + rescue attempted "
-                               "(NOT guaranteed - confirm with the Windower agent)")
+                window_note = "window=visible REQUESTED"
             else:
                 window_note = "window=hidden"
             logging.info("✅ Script launched as independent process "
@@ -849,12 +874,11 @@ def _execute_in_forked_window(script_path: str) -> bool:
                 # EVERY run and the real exit code was lost. Group the echo so
                 # the digit stays an ARGUMENT. Do NOT "simplify" it back.
                 wf.write(f'@(echo %EC%)> "{sentinel_path}"\n')
-                # BOUNDED hold, never an unbounded `cmd /k`. Under the session MCP
-                # host the console is created on a window station that is not
-                # visible, so an unbounded hold would leak an
-                # INVISIBLE cmd.exe on every single run — exactly the orphan-process
-                # class the three-tier reaper exists to prevent. Start-Sleep needs
-                # no stdin, so unlike `pause` it actually holds.
+                # BOUNDED hold, never an unbounded `cmd /k`. An unbounded hold
+                # leaks one cmd.exe per run whenever nobody closes the window -
+                # exactly the orphan-process class the three-tier reaper exists
+                # to prevent. Start-Sleep needs no stdin, so unlike `pause` it
+                # actually holds.
                 wf.write(f'@powershell -NoProfile -Command "$env:TLAMATINI_KEEP_CONSOLE_ALIVE=1; Start-Sleep -Seconds {_hold}"\n')
                 wf.write('@exit /b %EC%\n')
 
@@ -863,19 +887,20 @@ def _execute_in_forked_window(script_path: str) -> bool:
             consoles_before = _console_window_snapshot()
 
             # `/c`, NOT `/k`: the wrapper's bounded Start-Sleep is what keeps the
-            # window readable, and it TERMINATES. `/k` holds the console FOREVER,
-            # which under the MCP host (where the window is invisible) silently
-            # leaks one cmd.exe per run. The agent still does not block on this
-            # process — it waits on the sentinel file below instead.
+            # window readable, and it TERMINATES. `/k` holds the console FOREVER
+            # and leaks one cmd.exe per run whenever the window is never closed.
+            # The agent still does not block on this process - it waits on the
+            # sentinel file below instead.
             process = subprocess.Popen(
                 # TLAMATINI_KEEP_CONSOLE_ALIVE es una MARCA, no un argumento
                 # que el wrapper lea: el orphan reaper perdona a toda consola
                 # cuya LINEA DE COMANDOS la lleve (orphan_reaper.py,
                 # INTERACTIVE_CONSOLE_MARKERS; la comparacion es en minusculas).
                 # Sin ella el Start-Sleep acotado de abajo se ve identico a un
-                # shell colgado -- cero CPU, cero I/O -- y en la window station
-                # invisible el reaper tampoco ve la ventana, asi que mataria
-                # justo la ventana que este codigo existe para mantener abierta.
+                # shell colgado -- cero CPU, cero I/O -- y como la ventana la
+                # dibuja Windows Terminal, cmd.exe no es dueno de ninguna ventana
+                # visible: el reaper no la reconoce como ventana en primer plano
+                # y mataria justo la ventana que este codigo mantiene abierta.
                 ['cmd.exe', '/c', wrapper_path,
                  'TLAMATINI_KEEP_CONSOLE_ALIVE'],
                 cwd=os.getcwd(),
@@ -892,7 +917,7 @@ def _execute_in_forked_window(script_path: str) -> bool:
                 import threading as _threading
 
                 _threading.Thread(
-                    target=_force_show_new_consoles,
+                    target=_report_forked_window,
                     args=(consoles_before,),
                     kwargs={"timeout_seconds": 6.0},
                     daemon=True,

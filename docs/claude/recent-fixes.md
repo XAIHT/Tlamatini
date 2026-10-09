@@ -16,6 +16,42 @@
 
 ---
 
+## 2026-10-09 — Executer told the truth about its window only half the time
+
+**What was wrong.** `execute_forked_window` in Executer works: measured 2026-10-09 through the
+session MCP host, the agents run on the interactive desktop (`WinSta0\Default`) and the console
+reaches the screen. On Windows 11 it is a Windows Terminal window (class
+`CASCADIA_HOSTING_WINDOW_CLASS`, owned by `WindowsTerminal.exe`) or a new tab in one that is
+already open. The console host also keeps a zero-size helper window (class
+`PseudoConsoleWindow`) that is never meant to be seen. Executer's window check counted that
+helper as "the console", so whenever it stayed hidden the log said *"A console appeared but could
+NOT be shown — it is on another window station/desktop"* while the real window was on screen.
+The same false claim sat in five code comments. It sent several investigations, including one
+that day, after a problem that did not exist; the run that "died" had in fact had its window
+closed.
+
+**The fix (`agents/executer/executer.py`).** The helper class is counted on its own
+(`handed_off`); only `ConsoleWindowClass` and `CASCADIA_HOSTING_WINDOW_CLASS` count as windows
+on screen, and the final count iterates the real windows only. After a handoff the check waits up
+to 2.5 s (`_HANDOFF_GRACE_SECONDS`) for Windows Terminal to draw a new window, then says the
+console most likely opened as a tab in an open Windows Terminal window. The pure
+`_describe_window_check()` turns the result into the log line, and `_report_forked_window()` logs
+it for BOTH launch paths; the waiting (blocking) mode used to log nothing at all. The calls that
+show the window are unchanged, and the user's script still runs first.
+
+**Contracts (do NOT weaken).**
+1. **Never count `PseudoConsoleWindow` as a window on screen**, and never blame another window
+   station without measuring it.
+2. **The window check must never affect whether the script runs**, and must never relaunch it.
+3. If a forked run "dies", first ask whether the window was closed by hand; the user works on the
+   same desktop.
+
+Proof: a 30-second heartbeat probe launched through the MCP host stayed on screen and finished
+normally; the patched agent, run from a copy of the repo under the MCP host, logged *"The window
+is on screen"* in both modes, confirmed by Windower and a Shoter photo. Coverage:
+`agent/test_executer_window_report.py` (11 tests). The `mcp__tlamatini__executer` tool runs the
+separate tree `C:\Development\Tlamatini`, which keeps the old message until it is updated.
+
 ## 2026-10-09 — Full sweep: FlowCreator's catalog had missed File-Creator `append`, stale doc labels, v1.77.0 in the dossier
 
 **What was wrong.** A full source and documentation sweep (every gate run in a visible console)
