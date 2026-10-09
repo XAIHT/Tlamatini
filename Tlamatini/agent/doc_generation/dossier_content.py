@@ -229,7 +229,8 @@ def build_chapters(f: dict) -> list[Chapter]:
                 "**Local retrieval** builds embeddings with `nomic-embed-text` so project context is found "
                 "quickly. **Cloud reasoning** — configured `:cloud` models served through Ollama — performs "
                 "chat, tool calling, long context, vision and Multi-Turn planning. A smaller local model also works: "
-                "a request it cannot hold is sent in Compact mode.",
+                "a request it cannot hold is sent in Compact mode, and the Model Brain tunes every model from its "
+                "maker's published settings.",
                 "Because the complete experience was engineered around Ollama's cloud-model capacity, an active "
                 "**Ollama Pro plan or higher** is part of the intended system requirements. This is an "
                 "independent technical recommendation: Tlamatini and XAIHT are not sponsored by, affiliated "
@@ -408,6 +409,38 @@ def build_chapters(f: dict) -> list[Chapter]:
                      "Every part of the fitter fails open: when anything is uncertain, the complete request is "
                      "sent exactly as before."),
             deck="cards"),
+        Section("brain", "MODEL BRAIN", "Every model tuned from formal sources",
+            "Since v1.76.0 each model receives its own sampling, thinking level and context size, taken from "
+            "formal sources, instead of one fixed set of values for every model.",
+            body=[
+                "The values come, in this order, from your own `model_brain_overrides`; a built-in knowledge base "
+                "whose every profile cites its vendor model card or Hugging Face `generation_config.json` (GLM-5, "
+                "DeepSeek-V4, MiniMax-M3, Gemma 4, Qwen 3.5, Qwen 2.5, gpt-oss, Kimi, Mistral Large 3 and "
+                "Nemotron 3); a profile learned once, in the background, for a model she does not know yet and "
+                "kept outside the installation so it survives updates; the parameters Ollama publishes for the "
+                "model; and finally the model's own defaults. The requested context never exceeds what the model "
+                "can really read.",
+                "Inside one answer, between tool calls, a thinking model gets its own earlier reasoning back, as "
+                "its maker requires, instead of starting over at every step; it is dropped between your "
+                "questions, and the context gauge counts it. In Config ▸ Models, Save opens an Auto-tuning "
+                "dialog that tunes every configured model in front of you, with the source of each value.",
+                "The stall clocks that abandoned a slow model and started again from scratch were removed. "
+                "Measured with Ollama's own numbers, reading even a very long prompt is not the bottleneck on "
+                "Ollama cloud: the time is the reasoning the model generates, and a clock cannot tell a dead call "
+                "from a model that is still thinking. The self-healing watchdog and the client time limit remain.",
+            ],
+            points=[
+                ("Formal sources", "Your overrides, cited profiles, learned profiles, Ollama, model defaults."),
+                ("Real context", "The requested window never exceeds what the model can read."),
+                ("Reasoning kept", "Thinking models keep their train of thought between tool calls."),
+                ("Auto-tuning", "Config ▸ Models ▸ Save shows each model tuned, with its sources."),
+                ("No stall clocks", "A slow model is never thrown away and restarted."),
+                ("Your choice", "`model_brain: off` restores the legacy fixed sampler exactly."),
+            ],
+            callout=("No model name in the code",
+                     "A new model gets its values from the knowledge base, research, Ollama or its own defaults, "
+                     "never from a branch written for one model name, and a value you set always wins."),
+            deck="cards"),
         Section("verdict", "EXEC REPORT", "A verdict you can trust",
             "An exit code is one bit. An agent's own structured self-report is a typed record, and it "
             "outranks the exit code.",
@@ -514,7 +547,7 @@ def build_chapters(f: dict) -> list[Chapter]:
             "Small, deliberate mechanisms keep the core alive under the conditions that used to stop it.",
             points=[
                 ("Console shield", "The log file is written first; console output goes through a bounded "
-                 "queue, so clicking the console can no longer freeze the application."),
+                 "queue, so clicking the console cannot freeze her. Since v1.76.0 lines are coloured by level."),
                 ("Orphan reaper", "Three tiers sweep dead descendants and orphaned console hosts after tools, "
                  "after answers and at shutdown, without ever raising into the chat."),
                 ("Per-user log lines", "Lines carry a five-character tag such as [a3] so concurrent users "
@@ -817,7 +850,8 @@ def build_chapters(f: dict) -> list[Chapter]:
                 "The scripts and opening modules are included in frozen and self-modify packaging. Native "
                 "registry checks use an isolated test key, and visible Chrome tests exercise real file opening "
                 "and login. The October 4 release campaign also rebuilt local main and uninstaller executables. "
-                "The working tree remains uncommitted; compiled acceptance is recorded separately from source tests. "
+                "The work was committed to main that day and is carried by the v1.76.0 tag; compiled acceptance is "
+                "recorded separately from source tests. "
                 "See docs/windows-flow-files.md for commands, contracts and verification.",
             ],
             points=[
@@ -841,6 +875,8 @@ def build_chapters(f: dict) -> list[Chapter]:
                 "Helpers and the installation marker remain until file and owned-registry removal succeed, "
                 "so a partial failure can be retried. Locked files and denied registry deletion report failure. "
                 "Drive roots, shared folders, source checkouts and redirected targets are rejected.",
+                "Since v1.76.0, when Windows still holds Uninstaller.exe itself, the file is retried, moved aside "
+                "and removed by a hidden cleanup after the uninstaller exits, so the uninstall finishes cleanly.",
                 "Agents and nonempty user-content directories remain under the existing preservation contract. "
                 "A full directory/registry reset is a separate authorized action. Verification distinguishes "
                 "real compiled GUI outcomes from backend tests and records any blocked native launch explicitly.",
@@ -851,7 +887,8 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("Preserve user work", "Keep agents and nonempty content; notify the shell without restarting Explorer."),
             ]),
         Section("release_repair", "LOCAL RELEASE VALIDATION", "Repair the boundary, then repeat the real operation",
-            "Uncommitted October 4 repairs have separate source, frozen, package and visual evidence.",
+            "The October 4 repairs, now carried by v1.76.0, have separate source, frozen, package and visual "
+            "evidence.",
             body=[
                 "The visible campaign checks the actual installer, Windows associations, authenticated "
                 "file opening, administration, main chat and both flow panels. It also compares several "
@@ -872,7 +909,8 @@ def build_chapters(f: dict) -> list[Chapter]:
                 "cleanup tests do not certify its unobserved native confirmation and completion screens.",
                 "Detailed results and retained failed attempts are in "
                 "docs/changes/2026-10-04-release-validation.md. The review profile requested by Angela "
-                "lists each changed file and code segment. No commit or published release is implied.",
+                "lists each changed file and code segment. The work was committed on October 4 and is carried by "
+                "the v1.76.0 tag.",
             ], deck="cards", points=[
                 ("Real user paths", "Installer, login, Admin, chat, both panels and Windows file opening."),
                 ("File fidelity", "Mixed styles, geometry and rendered text checked across save/open cycles."),
@@ -933,6 +971,9 @@ def build_chapters(f: dict) -> list[Chapter]:
                 "also renders every page and analyzes every embedded image with Image-Interpreter. Progress is "
                 "honest, Cancel really cancels, and partial image failures are reported, not hidden. A PDF "
                 "password is used in memory only: never written to disk, to the context text or to the log.",
+                "A second account signed in from the same browser takes over every open tab, while an open chat "
+                "keeps its first account, so loading is refused. Since v1.76.0 the message names that cause and "
+                "the fix, reloading with F5, the header comes back and the progress dialog marks the failed step.",
             ], deck="list",
             deck_points=[
                 ("Private reading", "Byte ranges from your disk; nothing uploaded, no model called."),
@@ -948,7 +989,9 @@ def build_chapters(f: dict) -> list[Chapter]:
                 f"Categories: {groups_text}. Save submits all values, preserves unrelated configuration and "
                 "downloads nothing. Reconnect the chat to rebuild its clients; agents pick up a choice at their "
                 "next configuration load. The model list comes from the configured Ollama servers, asked by "
-                "the backend with their token, so a remote server's models are offered and accepted.",
+                "the backend with their token, so a remote server's models are offered and accepted. Since v1.76.0 "
+                "Save also opens the Model Brain's Auto-tuning dialog, which tunes each configured model in front "
+                "of you and names the source of every value.",
                 "Agent templates marked `\"@config\"` follow the global choice, while a literal value in a "
                 "workflow remains an explicit override. Wrapped chat launches seed the global choices before "
                 "any explicit tool argument, and the frozen build proves every model loader runs before it "
@@ -959,7 +1002,7 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("Settings", f"{model_fields} model, engine and voice choices."),
                 ("Agents", f"{model_agents} model-backed agents configured centrally."),
                 ("Inheritance", "\"@config\" follows the global choice; literals override."),
-                ("Save", "Preserves unrelated configuration; downloads nothing."),
+                ("Save", "Keeps unrelated settings, downloads nothing, then auto-tunes each model."),
                 ("Catalog", "Listed by the configured Ollama servers, asked with their token."),
             ]),
         Section("dialogs", "OPERATOR DIALOGS", "Everything else, without editing files",
@@ -1096,7 +1139,8 @@ def build_chapters(f: dict) -> list[Chapter]:
                  "content continues onto a new slide; native PowerPoint verification when installed."],
                 ["LaTeXer", "Typesets real LaTeX",
                  "Eight templates and 30 signature styles; whole-project builds with bibliography and index "
-                 "convergence; readable diagnostics; an eight-rung repair ladder; MiKTeX recommended."],
+                 "convergence; readable diagnostics; an eight-rung repair ladder; a mostly-cut build delivered as "
+                 "`<name>.DEGRADED.pdf`; MiKTeX recommended."],
             ]},
             callout=("Created is not verified",
                      "A saved file only proves it exists. Read PDFer's `layout_clean`, PPTXer's "
@@ -1112,6 +1156,10 @@ def build_chapters(f: dict) -> list[Chapter]:
                 "Bisect is strictly last because it is the only rung that removes content, and it is skipped when "
                 "the model rung merely could not be reached. A clean build tells the model plainly that the "
                 "document is finished, so a good PDF is never “improved” into a broken one.",
+                "Since v1.76.0 a PDF is reported only when the delivered file really exists. A build that had to "
+                "cut a quarter or more of its body is delivered as `<name>.DEGRADED.pdf`, never under the name you "
+                "asked for, and in a document over 8,000 characters the model rung first repairs only the lines "
+                "around the compiler's error with a capped request; a reply that never came forbids bisect.",
             ],
             visual="ladder",
             visual_data={"rungs": [
@@ -1465,17 +1513,20 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ["unified_agent_max_iterations", "4096", "Upper bound on Multi-Turn tool-loop turns."],
                 ["unified_agent_llm_step_timeout_seconds", "900", "Watchdog for one model attempt."],
                 ["llm_client_timeout_seconds", "600", "How long one model call may take."],
-                ["ollama_repeat_penalty", "1.2", "Repetition penalty; 1.9 emptied answers."],
-                ["ollama_repeat_last_n", "256", "How far back that penalty looks."],
-                ["ollama_num_ctx", "1048576", "Requested context window."],
+                ["model_brain", "auto", "Tunes each model from formal sources; off restores the legacy sampler."],
+                ["ollama_repeat_penalty", "1.2", "Legacy sampler, sent only when model_brain is off."],
+                ["ollama_num_ctx", "1048576", "Legacy requested window; the brain clamps it to the real one."],
+                ["context_sidecar_llm_timeout_seconds", "60", "Time limit on the context helpers' own model calls."],
                 ["context_compact_mode", "auto", "Compact mode locks on for models that cannot hold everything."],
                 ["binary_context_detection", "true", "Screens files by content before embedding."],
                 ["console_quick_edit", "false", "Keeps a click from pausing a frozen console."],
+                ["console_colors", "true", "Colours console lines by level; the log stays plain text."],
                 ["runtime_autoprovision", "true", "Lets MCP servers provision Node or uv privately."],
             ]},
             callout=("Measured, not chosen by taste",
-                     "The sampler values come from repeated trials on real workloads. That failure is "
-                     "heavy-tailed, so a single fast run is never a reason to change them."),
+                     "The legacy sampler comes from repeated trials on real workloads, and one fast run never "
+                     "justifies a change. "
+                     "The Model Brain now tunes each model from formal sources."),
             deck="table"),
         Section("pipeline", "BUILD AND RELEASE", "From source tree to installer",
             "Three build scripts produce a standalone Windows release, and the build proves what it ships "
@@ -1503,8 +1554,8 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("Receipt", "SHA-256 for every payload file and all required root helpers, checked before use."),
                 ("Ceiling", "Under 1,990,000,000 bytes, nothing dropped to fit."),
             ]),
-        Section("root_carriage", "LATEST BUILD REPAIR", "One inventory ships every required helper",
-            "The current working tree repairs the missing Whisperer settings helper without weakening package verification.",
+        Section("root_carriage", "BUILD REPAIR · SEPTEMBER 27", "One inventory ships every required helper",
+            "A September 27 repair, carried since v1.72.1, ships the Whisperer settings helper without weakening package verification.",
             body=[
                 "A build correctly refused a runtime receipt because chat_voice_settings.py was missing. "
                 "The verifier required the loose helper, but build.py used a separate copy dictionary that "
@@ -1578,8 +1629,81 @@ def build_chapters(f: dict) -> list[Chapter]:
         f"Source tag {f['release_tag']}; latest published release "
         f"{f['release']['latest_published'] or 'unverified'}. Local changes are stated separately.",
         accent="gold", sections=[
-        Section("working_canvas", "LOCAL SOURCE CHANGES · OCTOBER 4", "Graphical notes and resizable Run output",
-            "These working-tree changes are uncommitted. Local executables were rebuilt for the release-validation campaign.",
+        Section("working_brain", "NEW IN v1.76.0", "The Model Brain tunes every model",
+            "Tagged on October 8. The Model Brain commit itself lands on main one commit after the tag; a build "
+            "from main reports 1.76.0 and carries everything in this chapter.",
+            body=[
+                "Every model Tlamatini calls now receives its own sampling, thinking level and context size from "
+                "formal sources, as the How She Works chapter describes. Config ▸ Models ▸ Save opens an "
+                "Auto-tuning dialog that tunes each configured model in front of you, thinking models keep their "
+                "own reasoning between tool calls inside one answer, and the stall clocks that threw finished work "
+                "away are gone.",
+                "The console window paints each line by level: errors red, fatal errors white on red, warnings "
+                "yellow, debug grey and successes green, while `tlamatini.log` stays plain text. At startup she "
+                "logs which program draws the window, the classic console or Windows Terminal, the default on "
+                "Windows 11. `console_colors` and the standard `NO_COLOR` variable turn the colours off.",
+                "Two smaller repairs ship beside it. A PDF refused because a second account signed in from the "
+                "same browser now names that cause and the fix, reloading with F5, and the progress dialog marks "
+                "the failed step. Two chat pages on two different models no longer make each other measure again "
+                "forever: a model's verdict updates the boxes and stops. On two idle test pages the re-sends fell "
+                "from 1,081 in one minute to none.",
+                "On October 8 the visible Model Brain test passed 25 of 25 checks in a source run and the visible "
+                "PDF-account test passed 20 of 20. These are dated results, not a claim that this documentation "
+                "refresh reran them. Publication status is stated in the Release Identity section.",
+            ],
+            points=[
+                ("Model Brain", "Per-model settings from cited sources; Auto-tuning shows each one."),
+                ("Reasoning kept", "Thinking models keep their train of thought between tool calls."),
+                ("Coloured console", "Lines coloured by level; the log file stays plain text."),
+                ("Truthful refusal", "A PDF refused for a second account says why and how to fix it."),
+                ("Quiet tabs", "Two pages on two models no longer re-measure each other."),
+                ("Evidence", "25 of 25 and 20 of 20 visible checks on October 8."),
+            ], deck="cards"),
+        Section("working_truth", "NEW IN v1.76.0", "Documents and files that tell the truth",
+            "October 7 and 8: LaTeXer, Mover and the document agents report what really happened.",
+            body=[
+                "LaTeXer reports a PDF only when the delivered file really exists and is not empty, and a PDF whose "
+                "text sticks out more than five points past the margin is reported as created with findings, not "
+                "as clean. When it had to cut a quarter or more of a broken document's body to produce any PDF at "
+                "all, it saves the result as `<name>.DEGRADED.pdf` and leaves the requested name untouched. In a "
+                "document longer than 8,000 characters the model rung first repairs only the lines around the "
+                "compiler's error with a capped request; an unusable reply falls back to the whole-document "
+                "request, and a reply that never came forbids the bisect rung.",
+                "Mover no longer erases a destination folder to copy into it: folders are merged, each file is "
+                "staged and published whole, a move removes its source only afterwards, and a failure ends with a "
+                "failure receipt and a non-zero exit instead of a success. Document and capture agents keep a "
+                "finished file when Windows Controlled Folder Access blocks the folder, and the security whitelist "
+                "script now finds every Tlamatini installation and lets its Python save files.",
+                "The October 8 LaTeXer change added 37 tests, and all 549 LaTeXer tests passed with it. The October "
+                "7 Mover and LaTeXer delivery work passed 126 focused tests.",
+            ],
+            points=[
+                ("Real PDFs", "Success only when the delivered file exists and is not empty."),
+                ("Layout findings", "Text past the margin is reported, never called clean."),
+                ("DEGRADED name", "A mostly-cut build never wears the name you asked for."),
+                ("Region repair", "Large documents: the lines around the error are repaired first."),
+                ("Mover", "Destinations are merged, never erased; failures are reported."),
+                ("Protected folders", "Finished files survive Controlled Folder Access."),
+            ], deck="cards"),
+        Section("working_fixes", "IN v1.76.0 · OCTOBER 5 AND 8", "Smaller fixes that keep the chat moving",
+            "Committed after the v1.75.0 tag and carried by the v1.76.0 tag.",
+            body=[
+                "The Files-Search and System-Metrics helpers ask Ollama their own questions before the main answer. "
+                "Those calls now have a time limit, `context_sidecar_llm_timeout_seconds`, 60 seconds by default; "
+                "at the limit, or when you press Cancel, a helper skips its context and the answer goes ahead, so a "
+                "slow reply can no longer freeze the chat.",
+                "When Windows still holds `Uninstaller.exe` while the uninstaller finishes, the file is retried, "
+                "moved aside and deleted by a hidden cleanup after exit, so the uninstall completes. File-Creator "
+                "gained `append`: true adds the content to the end of a file, byte for byte, instead of "
+                "overwriting it.",
+            ],
+            points=[
+                ("Context helpers", "Their own model calls stop at a time limit or on Cancel."),
+                ("Uninstaller", "A held Uninstaller.exe is moved aside and removed after exit."),
+                ("File-Creator", "`append: true` adds to a file instead of overwriting it."),
+            ], deck="cards"),
+        Section("working_canvas", "IN v1.76.0 · OCTOBER 4", "Graphical notes and resizable Run output",
+            "Committed to main on October 4 and carried by the v1.76.0 tag; local executables were rebuilt to validate them.",
             body=[
                 "User Commentary is edited entirely on the canvas. Double-click or press Enter to write, "
                 "then format selected words with the floating mini toolbar. A single note can combine "
@@ -1601,10 +1725,10 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("Direct editing", "Floating tools and all-border resizing. No commentary dialog."),
                 ("Run output", "5% to 95% height. Independent scrolling with content sizes preserved."),
                 ("File fidelity", "Three mixed-style notes rendered identically across three save/open cycles."),
-                ("Source status", "Uncommitted changes; local main and uninstaller builds receive separate acceptance checks."),
+                ("Delivery", "Committed October 4 and carried by v1.76.0; builds were validated separately."),
             ]),
-        Section("working_main", "ON MAIN, AFTER v1.75.0", "Four stop sequences and a clearer Prompt Flow Panel",
-            "Committed on main after the v1.75.0 tag; a build from this source still reports 1.75.0.",
+        Section("working_main", "IN v1.76.0 · OCTOBER 3", "Four stop sequences and a clearer Prompt Flow Panel",
+            "Committed on main after the v1.75.0 tag and carried by the v1.76.0 tag.",
             body=[
                 "Ollama's cloud models refuse a request that carries more than four stop sequences, and the chat "
                 "model used to send nine, so the chat-history summary, the first call once a conversation grows "
@@ -1631,7 +1755,7 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("October 3 evidence", "430 unit tests; 9 of 9 visible Chrome checkpoints."),
             ], deck="cards"),
         Section("working_switches", "NEW IN v1.75.0", "Compact mode and Self-modify become switches",
-            "Tagged on October 3: Compact mode is a toolbar switch; the Self-modify switch followed the tag.",
+            "Tagged on October 3: Compact mode is a toolbar switch; the Self-modify switch followed and ships in v1.76.0.",
             body=[
                 "Compact mode as tagged in v1.74.0 was a verdict made behind the user's back. In v1.75.0 it is "
                 "a toolbar box. Ticking it unticks every row in Configure MCPs, Configure Agents and "
@@ -1639,7 +1763,8 @@ def build_chapters(f: dict) -> list[Chapter]:
                 "MCPs; unticking it ticks every row again. Each row shows the tokens it adds, a model that "
                 "cannot hold everything turns the box on and locks it, and an answer built from a cut request "
                 "carries a CONTEXT-WINDOW warning.",
-                "Right after the tag, commit 70aeeb87 added the Self-modify box. A source run always shows it; "
+                "Right after the tag, commit 70aeeb87 added the Self-modify box, which ships in v1.76.0. A source "
+                "run always shows it; "
                 "a frozen build shows it only when built with --self-modify. On, it sends her self-knowledge, "
                 "about 28,900 tokens per request; off, one line tells her not to change her own code. A model "
                 "that cannot hold it shows the box locked off.",
