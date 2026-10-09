@@ -16,6 +16,42 @@
 
 ---
 
+## 2026-10-09 — The uninstaller no longer erases Templates/ (the user's own code)
+
+**What happened.** Angela uninstalled `C:\Tlamatini` and the code she kept in
+`Templates/` was gone. `Templates/` is the default home of every project that
+STM32er, ESP32er, Arduiner, ESPHomer, Unrealer and LaTeXer scaffold — real
+deliverables, not build output.
+
+**Root cause.** `uninstall.py::PRESERVED_WHEN_NOT_EMPTY` listed only
+`application`, `applications`, `content_generated`, `context_files` and `Temp`.
+`Templates` and `doc_generated` were missing, so `_remove_files` sent them to
+`shutil.rmtree` like any installation file. The installer
+(`preserved_user_state.json`) and the self-update swap (`apply_update.ps1
+$Preserve`) had always kept both — only the uninstaller's list had drifted.
+
+**Fix (Angela's rule, verbatim).** *"'application', 'applications',
+'content_generated', 'context_files', 'doc_generated', and 'Templates' must be
+kept if they have something in them!!"* and *"and 'Temp' should be erased!"* —
+so the set is now exactly those six, and `Temp/` is always removed (even with
+files in it). The on-screen warning and the confirmation dialog name the same
+six. `agents/` is still always kept by its own branch.
+
+**Contracts (do NOT weaken).**
+1. Do not remove `Templates` or `doc_generated` from `PRESERVED_WHEN_NOT_EMPTY`.
+2. Do not add `Temp` back — Angela wants scratch gone on uninstall.
+3. Every name the uninstaller keeps must also be in `preserved_user_state.json`
+   (pinned by `test_the_updater_and_installer_keep_it_too`).
+4. `directory_has_content` stays fail-SAFE: unreadable ⇒ "has content" ⇒ kept.
+
+Coverage: `agent/test_uninstaller_mechanics.py` (`PreserveSetTests`,
+`RemoveFilesTests`, `TemplatesRegressionTests` — a scaffolded project survives
+byte for byte; an empty `Templates/` still goes) and the visible harness
+`uninstaller_visible.py`. ⚠ Only a REBUILT `Uninstaller.exe` carries this fix;
+an `Uninstaller.exe` already sitting in an install still has the old list.
+
+---
+
 ## 2026-10-08 — Two chat pages on two models no longer ping-pong forever; a refused PDF says why
 
 **The loop (Compact-mode code since v1.75.0, found in Angela's install).**

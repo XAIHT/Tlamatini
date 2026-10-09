@@ -8,9 +8,17 @@
    uninstaller).  There is deliberately no "continue anyway".
 
 2. THE PRESERVE RULES.  ``agents/`` is always kept.  ``application``,
-   ``applications``, ``content_generated``, ``context_files`` and ``Temp`` are
-   kept too, but only when they actually hold a file at some depth — and the
-   completion dialog then names exactly those, by directory name only.
+   ``applications``, ``content_generated``, ``context_files``,
+   ``doc_generated`` and ``Templates`` are kept too, but only when they
+   actually hold a file at some depth — and the completion dialog then names
+   exactly those, by directory name only.  ``Temp`` is scratch and is ERASED
+   (Angela, 2026-10-09).
+
+   ⚠ ``Templates`` and ``doc_generated`` were missing until 2026-10-09: Angela
+   uninstalled C:\\Tlamatini and the uninstaller ERASED the code she kept in
+   Templates/ (the default home of every project STM32er, ESP32er, Arduiner,
+   ESPHomer, Unrealer and LaTeXer scaffold).  ``TemplatesRegressionTests``
+   pins that it can never happen again.
 
 Both directions matter.  A gate that cannot be satisfied locks a user out of
 removing her own software; a preserve rule that fires on an empty folder leaves
@@ -20,6 +28,7 @@ Run:  python Tlamatini/manage.py test agent.test_uninstaller_mechanics
 """
 
 import ast
+import json
 import os
 import shutil
 import subprocess
@@ -141,19 +150,40 @@ class DirectoryContentDetectionTests(SimpleTestCase):
 
 # ─────────────────────────────────────────────────────────────────────────────
 class PreserveSetTests(SimpleTestCase):
-    """The five user-content directories, exactly as Angela named them."""
+    """The user-content directories, exactly as Angela named them."""
 
-    def test_the_five_names(self):
-        self.assertEqual(
-            uninstall.PRESERVED_WHEN_NOT_EMPTY,
-            ("application", "applications", "content_generated",
-             "context_files", "Temp"),
-        )
+    # Angela, 2026-10-09: "'application', 'applications', 'content_generated',
+    # 'context_files', 'doc_generated', and 'Templates' must be kept if they
+    # have something in them!!" ... "and 'Temp' should be erased!"
+    ANGELA_KEEPS = ("application", "applications", "content_generated",
+                    "context_files", "doc_generated", "Templates")
+
+    def test_the_names(self):
+        self.assertEqual(uninstall.PRESERVED_WHEN_NOT_EMPTY, self.ANGELA_KEEPS)
+
+    def test_templates_is_kept(self):
+        """The directory whose loss started this: the user's own CODE."""
+        self.assertIn("Templates", uninstall.PRESERVED_WHEN_NOT_EMPTY)
+
+    def test_temp_is_erased(self):
+        """Temp/ is throwaway scratch: it goes with the installation."""
+        self.assertNotIn("temp", uninstall._PRESERVED_WHEN_NOT_EMPTY_LOWER)
+
+    def test_the_updater_and_installer_keep_it_too(self):
+        """The lists drifted once: the updater and the installer kept
+        Templates/, the uninstaller erased it.  Everything the uninstaller
+        treats as the user's must also be in THE preserved-user-state list."""
+        doc = json.loads((REPO_ROOT / "preserved_user_state.json")
+                         .read_text(encoding="utf-8-sig"))
+        shared = {name.lower() for name in doc["preserve"]}
+        for name in uninstall.PRESERVED_WHEN_NOT_EMPTY:
+            self.assertIn(name.lower(), shared,
+                          f"{name}/ is kept on uninstall but not on update")
 
     def test_matching_is_case_insensitive(self):
         for name in uninstall.PRESERVED_WHEN_NOT_EMPTY:
             self.assertIn(name.lower(), uninstall._PRESERVED_WHEN_NOT_EMPTY_LOWER)
-        self.assertIn("temp", uninstall._PRESERVED_WHEN_NOT_EMPTY_LOWER)
+        self.assertIn("templates", uninstall._PRESERVED_WHEN_NOT_EMPTY_LOWER)
 
     def test_agents_is_not_in_this_set(self):
         """agents/ is preserved ALWAYS — empty or not — by its own branch."""
@@ -180,7 +210,9 @@ class RemoveFilesTests(SimpleTestCase):
         touch("agents/shoter/shoter.py")
         touch("application/MyProject/main.py")     # preserved: has content
         touch("content_generated/report.md")       # preserved: has content
-        touch("Temp/scratch.tmp")                  # preserved: has content
+        touch("doc_generated/guide.pdf")           # preserved: has content
+        touch("Templates/RobotFirmware/src/main.cpp")  # preserved: the user's CODE
+        touch("Temp/scratch.tmp")                  # removed: Temp is always erased
         mkdir("applications")                      # removed: empty
         mkdir("context_files/empty_sub")           # removed: no file anywhere
         touch("config.json")                       # removed: ordinary file
@@ -197,7 +229,13 @@ class RemoveFilesTests(SimpleTestCase):
     def test_directories_holding_content_survive_whole(self):
         self.assertTrue((self.install / "application" / "MyProject" / "main.py").exists())
         self.assertTrue((self.install / "content_generated" / "report.md").exists())
-        self.assertTrue((self.install / "Temp" / "scratch.tmp").exists())
+        self.assertTrue((self.install / "doc_generated" / "guide.pdf").exists())
+        self.assertTrue((self.install / "Templates" / "RobotFirmware" / "src"
+                         / "main.cpp").exists(),
+                        "the uninstaller erased the user's code in Templates/")
+
+    def test_temp_is_erased_even_with_content(self):
+        self.assertFalse((self.install / "Temp").exists())
 
     def test_empty_candidate_directories_are_removed(self):
         self.assertFalse((self.install / "applications").exists())
@@ -210,7 +248,7 @@ class RemoveFilesTests(SimpleTestCase):
     def test_only_the_directories_actually_kept_are_reported(self):
         self.assertEqual(
             sorted(self.app.preserved_dirs),
-            ["Temp", "application", "content_generated"],
+            ["Templates", "application", "content_generated", "doc_generated"],
         )
 
     def test_agents_is_not_reported_in_the_content_legend(self):
@@ -219,20 +257,66 @@ class RemoveFilesTests(SimpleTestCase):
 
 
 class RemoveFilesCaseTests(SimpleTestCase):
-    """A directory the user renamed to TEMP is still the same directory."""
+    """A directory the user renamed to TEMPLATES is still the same directory."""
 
     def test_uppercase_directory_name_is_preserved_too(self):
         root = Path(tempfile.mkdtemp(prefix="tlm_uninst_case_"))
         self.addCleanup(shutil.rmtree, root, True)
         install = root / "install"
-        (install / "TEMP").mkdir(parents=True)
-        (install / "TEMP" / "kept.txt").write_text("x", encoding="utf-8")
+        (install / "TEMPLATES").mkdir(parents=True)
+        (install / "TEMPLATES" / "kept.txt").write_text("x", encoding="utf-8")
 
         app = _stub_app()
         uninstall.FancyUninstaller._remove_files(app, str(install), 0.0, 1.0)
 
-        self.assertTrue((install / "TEMP" / "kept.txt").exists())
-        self.assertEqual(app.preserved_dirs, ["TEMP"])
+        self.assertTrue((install / "TEMPLATES" / "kept.txt").exists())
+        self.assertEqual(app.preserved_dirs, ["TEMPLATES"])
+
+
+class TemplatesRegressionTests(SimpleTestCase):
+    """2026-10-09: uninstalling C:\\Tlamatini erased the code Angela kept in
+    Templates/.  A real project tree, several levels deep, must come out whole
+    — and an EMPTY Templates/ (installer scaffolding) must still go."""
+
+    def _run(self, populate):
+        root = Path(tempfile.mkdtemp(prefix="tlm_uninst_tpl_"))
+        self.addCleanup(shutil.rmtree, root, True)
+        install = root / "install"
+        install.mkdir()
+        populate(install)
+        app = _stub_app()
+        uninstall.FancyUninstaller._remove_files(app, str(install), 0.0, 1.0)
+        return install, app
+
+    def test_a_scaffolded_project_survives_byte_for_byte(self):
+        files = {
+            "Templates/STM32er/RobotArm/src/main.c": "int main(void){return 0;}\n",
+            "Templates/STM32er/RobotArm/platformio.ini": "[env:bluepill]\n",
+            "Templates/LaTeXer/Thesis/thesis.tex": "\\documentclass{article}\n",
+            "Templates/ESP32TemplateProject/src/main.cpp": "void setup(){}\n",
+        }
+
+        def populate(install):
+            for rel, text in files.items():
+                p = install / rel
+                p.parent.mkdir(parents=True, exist_ok=True)
+                p.write_text(text, encoding="utf-8")
+            (install / "Tlamatini.exe").write_bytes(b"MZ")
+
+        install, app = self._run(populate)
+        for rel, text in files.items():
+            self.assertEqual((install / rel).read_text(encoding="utf-8"), text,
+                             f"{rel} was not preserved intact")
+        self.assertFalse((install / "Tlamatini.exe").exists())
+        self.assertEqual(app.preserved_dirs, ["Templates"])
+
+    def test_an_empty_templates_tree_is_removed(self):
+        def populate(install):
+            (install / "Templates" / "Empty" / "Deeper").mkdir(parents=True)
+
+        install, app = self._run(populate)
+        self.assertFalse((install / "Templates").exists())
+        self.assertEqual(app.preserved_dirs, [])
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -248,27 +332,28 @@ class PreservedContentLegendTests(SimpleTestCase):
         self.assertEqual(self._note([]), "")
 
     def test_one_directory_reads_as_one(self):
-        note = self._note(["Temp"])
-        self.assertIn("Temp", note)
+        note = self._note(["Templates"])
+        self.assertIn("Templates", note)
         self.assertIn("the directory below", note)
         self.assertIn("left untouched", note)
 
     def test_several_directories_are_all_named(self):
-        note = self._note(["application", "content_generated", "Temp"])
+        note = self._note(["application", "content_generated", "Templates"])
         self.assertIn("the directories below", note)
-        for name in ("application", "content_generated", "Temp"):
+        for name in ("application", "content_generated", "Templates"):
             self.assertIn(name, note)
 
     def test_the_list_is_NOT_the_static_set_of_candidates(self):
-        """Angela's requirement: name the ones detected, not all five."""
-        note = self._note(["Temp"])
+        """Angela's requirement: name the ones detected, not every candidate."""
+        note = self._note(["Templates"])
         self.assertNotIn("context_files", note)
         self.assertNotIn("applications", note)
         self.assertNotIn("content_generated", note)
+        self.assertNotIn("doc_generated", note)
 
     def test_a_repeated_name_is_listed_once(self):
-        note = self._note(["Temp", "Temp"])
-        self.assertEqual(note.count("Temp"), 1)
+        note = self._note(["Templates", "Templates"])
+        self.assertEqual(note.count("Templates"), 1)
 
     def test_file_names_are_never_disclosed(self):
         """Only directory names — what is inside them is the user's business."""
@@ -481,6 +566,15 @@ class GateWiringContractTests(SimpleTestCase):
         for name in uninstall.PRESERVED_WHEN_NOT_EMPTY:
             self.assertIn(name, warning,
                           f"the on-screen warning never mentions {name}")
+        self.assertNotIn("Temp/", warning, "Temp/ is erased, not preserved")
+
+    def test_the_confirmation_names_every_kept_directory(self):
+        """The 'are you sure?' box is the last thing read before deletion."""
+        source = _code_only("_confirm_removal")
+        for name in uninstall.PRESERVED_WHEN_NOT_EMPTY:
+            self.assertIn(f"{name}/", source,
+                          f"the confirmation never mentions {name}/")
+        self.assertNotIn("Temp/ ", source, "Temp/ is erased, not preserved")
 
 
 # ─────────────────────────────────────────────────────────────────────────────

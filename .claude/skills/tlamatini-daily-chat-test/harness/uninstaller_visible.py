@@ -71,7 +71,11 @@ LAYOUT = [
     # preserved BECAUSE they hold content
     ("application/MyProject/main.py",       "file", True),
     ("content_generated/report.md",         "file", True),
-    ("Temp/scratch.tmp",                    "file", True),
+    ("doc_generated/guide.pdf",             "file", True),
+    # the user's own CODE (2026-10-09: the uninstaller used to erase this)
+    ("Templates/RobotFirmware/src/main.cpp", "file", True),
+    # Temp/ is scratch: ERASED even when it holds files (Angela, 2026-10-09)
+    ("Temp/scratch.tmp",                    "file", False),
     # NOT preserved: no file at any depth
     ("applications",                        "dir",  False),
     ("context_files/empty_subfolder",       "dir",  False),
@@ -83,7 +87,12 @@ LAYOUT = [
     ("python/python.exe.txt",               "file", False),
 ]
 
-EXPECTED_PRESERVED_LEGEND = ["application", "content_generated", "Temp"]
+EXPECTED_PRESERVED_LEGEND = ["application", "content_generated",
+                             "doc_generated", "Templates"]
+# uninstall.PRESERVED_WHEN_NOT_EMPTY: application, applications,
+# content_generated, context_files, doc_generated, Templates.  Kept as a
+# literal because the --verify pass runs without importing uninstall.py.
+CANDIDATE_DIR_COUNT = 6
 EXPECTED_REMOVED_DIRS = ["applications", "context_files"]
 
 
@@ -294,9 +303,15 @@ def verify_tree(preserved_dirs) -> dict:
             "detail": f"reported={reported}",
         })
     checks.append({
-        "what": "legend is dynamic, not the static five-name list",
-        "ok": len(reported) < 5,
-        "detail": f"reported {len(reported)} of 5 candidate directories",
+        "what": "legend does NOT name Temp (it is erased, never preserved)",
+        "ok": all(name.lower() != "temp" for name in reported),
+        "detail": f"reported={reported}",
+    })
+    candidates = CANDIDATE_DIR_COUNT
+    checks.append({
+        "what": "legend is dynamic, not the static candidate list",
+        "ok": len(reported) < candidates,
+        "detail": f"reported {len(reported)} of {candidates} candidate directories",
     })
 
     return {

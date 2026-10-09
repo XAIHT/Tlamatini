@@ -333,16 +333,29 @@ def find_running_tlamatini(install_dir: str) -> list[dict]:
 
 # ─── Directories that survive the uninstallation ─────────────────────────────
 # ``agents/`` is ALWAYS preserved (a companion app such as Tlamatini-FlowPills
-# keeps reading it after the uninstall).  These five hold the user's OWN
-# material — the projects loaded as context, whatever Tlamatini generated, and
-# the scratch directory — so they are preserved TOO, but only when they actually
-# hold something.  An empty one is installer scaffolding: it goes.
+# keeps reading it after the uninstall).  These six hold the user's OWN
+# material — the projects loaded as context, whatever Tlamatini generated
+# (content_generated/, doc_generated/), and Templates/ (the default home of
+# every project the firmware/engine/document agents scaffold: STM32er, ESP32er,
+# Arduiner, ESPHomer, Unrealer, LaTeXer — i.e. the user's own CODE) — so they
+# are preserved TOO, but only when they actually hold something.  An empty one
+# is installer scaffolding: it goes.
+#
+# Temp/ is NOT here on purpose: it is throwaway scratch and is ERASED with the
+# rest of the installation (Angela, 2026-10-09: "and 'Temp' should be erased!").
+#
+# ⚠ Templates/ and doc_generated/ were MISSING here until 2026-10-09, while the
+# self-update swap (apply_update.ps1 $Preserve) had always kept both.  Angela
+# uninstalled C:\Tlamatini and lost the code she kept in Templates/.  Angela's
+# rule: application, applications, content_generated, context_files,
+# doc_generated and Templates are KEPT whenever they hold something.
 PRESERVED_WHEN_NOT_EMPTY = (
     "application",
     "applications",
     "content_generated",
     "context_files",
-    "Temp",
+    "doc_generated",
+    "Templates",
 )
 
 _PRESERVED_WHEN_NOT_EMPTY_LOWER = frozenset(
@@ -575,8 +588,8 @@ class FancyUninstaller:
         tk.Label(
             inner,
             text="⚠  agents/ is always preserved.  application/, applications/,\n"
-                 "     content_generated/, context_files/ and Temp/ are preserved\n"
-                 "     too when they hold content.  Everything else is removed.",
+                 "     content_generated/, context_files/, doc_generated/ and Templates/\n"
+                 "     are preserved too when they hold content.  Everything else is removed.",
             font=(FONT_FAMILY, 9), bg=BG_PANEL, fg=WARNING, anchor="w",
             justify="left",
         ).pack(fill="x", pady=(4, 10))
@@ -782,8 +795,8 @@ class FancyUninstaller:
             "Confirm Uninstallation",
             f"This will remove Tlamatini from:\n{raw}\n\n"
             "The agents/ directory is preserved — and so are application/, "
-            "applications/, content_generated/, context_files/ and Temp/ "
-            "whenever they hold content.\n"
+            "applications/, content_generated/, context_files/, doc_generated/ "
+            "and Templates/ whenever they hold content.\n"
             "All other files will be permanently deleted.\n\n"
             "Remaining workers launched from this installation, including "
             "agents and their child processes, will be stopped.\n\n"

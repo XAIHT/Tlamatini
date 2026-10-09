@@ -115,8 +115,10 @@ application folder; drive roots, shared system folders, source checkouts and
 redirected directories are rejected.
 
 `agents/` remains available to companion applications. Nonempty `application/`,
-`applications/`, `content_generated/`, `context_files/` and `Temp/` are preserved,
-and the result names the directories actually kept. Locked application files and
+`applications/`, `content_generated/`, `context_files/`, `doc_generated/` and
+`Templates/` are preserved, and the result names the directories actually kept.
+`Temp/` is scratch and is always removed (2026-10-09: `Templates/` used to be
+erased, losing the user's scaffolded code). Locked application files and
 denied Installed Apps registry removal report incomplete uninstallation. Removal
 retains the uninstaller and required helper/installation-marker files until the
 preceding steps succeed, so a failed removal can be retried. Desktop
