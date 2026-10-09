@@ -1629,9 +1629,39 @@ def build_chapters(f: dict) -> list[Chapter]:
         f"Source tag {f['release_tag']}; latest published release "
         f"{f['release']['latest_published'] or 'unverified'}. Local changes are stated separately.",
         accent="gold", sections=[
+        Section("working_firstperson", "NEW IN v1.77.0", "She speaks to you, by name",
+            "Tagged on October 9 and pushed. Self-update offers only published releases, so it delivers v1.77.0 "
+            "once that release is published.",
+            body=[
+                "Every fixed line Tlamatini sends to the chat, and that her avatar reads aloud, is now written in the "
+                "first person and addressed to the user by name: “I'm ready, Angela! You can start chatting with me "
+                "now.” replaces “Your agent is ready.” The lines live in one place, `agent/constants.py`; a helper "
+                "fills in the first name, or the user name when there is no first name, and leaves the name out "
+                "cleanly when there is neither.",
+                "Some of these lines are recognised by their words: the chat page uses them to know it is busy or "
+                "ready, the avatar to decide what to say, and the Telegram bridge to filter its replies. Every one "
+                "of those matchers changed in the same commit and still accepts the old wording, so a saved chat "
+                "history and an older server still read correctly.",
+                "The uninstaller no longer erases the user's own work. Uninstalling an installation had deleted the "
+                "projects kept in `Templates/`, where STM32er, ESP32er, Arduiner, ESPHomer, Unrealer and LaTeXer "
+                "create their projects by default. It now keeps `application`, `applications`, `content_generated`, "
+                "`context_files`, `doc_generated` and `Templates` whenever they hold a file, always erases `Temp/`, "
+                "and still keeps `agents/`. Only a rebuilt Uninstaller.exe carries this: a fresh install or a "
+                "reinstall copies it, while an in-app update keeps the old one.",
+                "Both changes are covered by unit tests (the message tests in `test_compact_mode_switch.py` and "
+                "`test_uninstaller_mechanics.py`), which passed again in this documentation refresh.",
+            ],
+            points=[
+                ("First person", "Fixed chat lines say “I” and use your name."),
+                ("One source", "Every fixed line lives in agent/constants.py."),
+                ("Old wording kept", "Matchers accept both, so old histories still read."),
+                ("Templates kept", "Uninstalling keeps the projects in Templates/."),
+                ("Temp erased", "Scratch goes; folders holding your files stay."),
+                ("Rebuilt uninstaller", "A reinstall carries the fix; an in-app update does not."),
+            ], deck="cards"),
         Section("working_brain", "NEW IN v1.76.0", "The Model Brain tunes every model",
-            "Tagged on October 8. The Model Brain commit itself lands on main one commit after the tag; a build "
-            "from main reports 1.76.0 and carries everything in this chapter.",
+            "Tagged on October 8; the Model Brain commit lands on main one commit after the tag. The published "
+            "v1.76.0 release was built from main and carries it.",
             body=[
                 "Every model Tlamatini calls now receives its own sampling, thinking level and context size from "
                 "formal sources, as the How She Works chapter describes. Config ▸ Models ▸ Save opens an "

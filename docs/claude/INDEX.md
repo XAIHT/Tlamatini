@@ -55,6 +55,6 @@ Parametrizer derives its parser registry from current contracts and validates co
 
 See [configuration, examples and limitations](../desktop-input-and-flow-contracts.md), the [complete generated coverage inventory](../agent-coverage.md), and the [GUI-Manager design](../GUI-Manager-design.md).
 
-- **[Windows flow files](../windows-flow-files.md)** — `.flw` / `.fpmt` registration, repair, ownership-aware removal, Default Apps, source/frozen startup, authenticated file handoff, chat routing and visible validation (2026-10-04 source changes).
+- **[Windows flow files](../windows-flow-files.md)** — `.flw` / `.fpmt` registration, repair, ownership-aware removal, Default Apps, source/frozen startup, authenticated file handoff, chat routing and visible validation (2026-10-04, shipped in `v1.76.0`).
 
 - **[October 4 release validation](../changes/2026-10-04-release-validation.md)** — installation repair, owned-worker cleanup, source/frozen panel and agent checks, real model execution, package evidence and explicitly blocked cases.

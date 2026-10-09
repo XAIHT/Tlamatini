@@ -291,7 +291,7 @@ shapes, but a novel config path needs the redaction rule extended).
 
 ⚠️ On 2026-09-25 `git diff` also showed `copy_source_assets.py` with a whole-file line-ending rewrite (543 changed lines, only 23 real). Review that before committing, so history records the real change rather than churn.
 
-### Prompt Flow commentary/input refactor carriage (2026-10-03, source only)
+### Prompt Flow commentary/input refactor carriage (2026-10-03, shipped in `v1.76.0`)
 
 New `.fpmt` documents are version 2: `user_input` is the existing runtime reply step with the supplied notched figure; `user_commentary` is a static speech-bubble annotation. Preserve version 1 migration, identifiers, connections, settings and cancellation behavior. Static notes have no ports/Start state and do not enter prompts, history or playback steps. The 2026-10-04 graphical redesign removes commentary configuration dialogs and numeric dimension forms: a floating mini toolbar formats selected text or subsequent typing with mixed fonts/sizes/colors/emphasis/underline, and all borders/corners resize directly. Preserve allowlisted rich `runs` plus matching plain `text`, legacy plain-note normalization, native rich copy/paste between comments, Undo/Redo and repeated file/draft rendering equivalence. Their full wrapped text and inline editors grow at the chosen width/font without internal scrollbars; saved height is a minimum. The compatible browser-draft key still ends in `.draft.v1.<user id>`.
 
@@ -338,6 +338,6 @@ in README, BookOfTlamatini, self-knowledge, prompts and agent/MCP creation guide
 UTF-8/BOM loader checks must include Windows default-codepage execution. The current
 gate checks 89 templates and 21 model loaders; derive future counts from source.
 
-### Prompt Flow Run output carriage (2026-10-04, source only)
+### Prompt Flow Run output carriage (2026-10-04, shipped in `v1.76.0`)
 
 Carry the updated panel template, `prompt-flow-panel.js`, `prompt_flow_panel.css` and shared `flow-canvas-interactions.js` together with the current guide and `scripts/prompt_flow_output_resize_visible.py`. Preserve the 5–95% viewport-only split, explicit native-details log height, independent scrolling and separate per-user layout preference. The horizontal Operations divider must keep its original axis behavior. Verify source/collected-static parity and inclusion from a verified visible foreground console; browser checks require explicit `headless=False`. The dated 14-check browser result and three carriage tests are source evidence, not proof of a newly built executable. Current cache suffix: `-flow-file-opening-2`; retain its environment/timestamp prefix. See `docs/changes/2026-10-04-run-output-resize.md`.

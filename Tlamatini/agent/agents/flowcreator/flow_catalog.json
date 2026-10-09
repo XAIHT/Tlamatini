@@ -1250,11 +1250,12 @@
       "aliases": [
         "file_creator"
       ],
-      "purpose": "Writes a file with arbitrary content to a specified path, then triggers downstream agents (regardless of the write outcome). The content is taken verbatim from the YAML config, so you can use it to write JSON, scripts, fixtures, prompt templates — anything. Often the last step of a Parametrizer chain that materializes an LLM-generated artefact onto disk. **Preferred over Keyboarder / Mouser for ALL source-file / script / config authorship; never open Notepad / VS Code / an IDE and type the file through Keyboarder — File-Creator writes the file atomically in one step.**",
+      "purpose": "Writes a file with arbitrary content to a specified path, then triggers downstream agents (regardless of the write outcome). The content is taken verbatim from the YAML config, so you can use it to write JSON, scripts, fixtures, prompt templates — anything. Often the last step of a Parametrizer chain that materializes an LLM-generated artefact onto disk. **Preferred over Keyboarder / Mouser for ALL source-file / script / config authorship; never open Notepad / VS Code / an IDE and type the file through Keyboarder — File-Creator writes the file atomically in one step.** Set `append: true` to ADD the content to the end of an existing file instead of overwriting it (the file is created if it is missing).",
       "config_schema": {
         "file_path": "str",
         "content": "str",
         "content_b64": "str",
+        "append": "bool",
         "source_agents": "list",
         "target_agents": "list"
       },

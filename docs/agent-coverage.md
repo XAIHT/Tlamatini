@@ -38,7 +38,7 @@ Config → Models exposes **38 model/engine/voice settings** for **21 model-back
 | ESP32er (`esp32er`) | 22 | 10 | 0: `target_agents` | ordinary |
 | ESPHomer (`esphomer`) | 21 | 10 | 0: `target_agents` | ordinary |
 | Executer (`executer`) | 5 | 0 | 0: `target_agents` | ordinary |
-| File-Creator (`file_creator`) | 5 | 0 | 0: `target_agents` | ordinary |
+| File-Creator (`file_creator`) | 6 | 0 | 0: `target_agents` | ordinary |
 | File-Extractor (`file_extractor`) | 8 | 2 | 0: `target_agents` | ordinary |
 | File-Interpreter (`file_interpreter`) | 7 | 3 | 0: `target_agents` | ordinary |
 | FlowBacker (`flowbacker`) | 3 | 0 | 0: `target_agents` | ordinary |

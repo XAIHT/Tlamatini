@@ -27,7 +27,7 @@ The Run output divider gives the log 5–95% of the available canvas/output heig
 
 ## 0. Read this first
 
-This document explains a feature that has just been added to Tlamatini and that you, the user, have **not yet committed**. The feature has two parts that work together:
+This document explains a feature that had just been added to Tlamatini and was **not yet committed** when it was written (it has long since been committed and shipped). The feature has two parts that work together:
 
 1. **ACPX** — a runtime that lets Tlamatini spawn external coding-agent CLIs (Claude Code, Cursor, Codex, Gemini, Qwen, Pi, Kiro, Kimi, iFlow, Factory Droid, Kilocode, OpenCode) as child processes, send them turns, and tear them down — exposed to the unified-agent loop as four LangChain tools (`acp_spawn`, `acp_send`, `acp_kill`, `acp_doctor`, `list_acp_agents`).
 2. **Skills** — a markdown-driven extension surface. You add a directory with a `SKILL.md` file under `agent/skills_pkg/<your-skill>/` and the LLM gains a new capability with declared inputs, outputs, permissions, and budget — invocable through the `invoke_skill` tool. 20 seed skills ship in this revision.
@@ -825,7 +825,7 @@ A: Two ways. (a) Set every `tool_acpx-*_status` to `'disabled'` through the exis
 
 This is a substantial change set: 11 new Python files, 1 modified migration path, 4 modified existing files, 20 SKILL.md packages, 1 admin command, and a new visual-canvas surface ground laid for Phase 5.
 
-It is also explicitly **uncommitted**. The user's standing rule — and the lesson learned the hard way from the 2026-04-29 Living-Canvas episode — is that nothing ships without an end-to-end manual smoke test in a running source-mode instance, demonstrated by the user.
+It was also explicitly **uncommitted** when this was written (it has since shipped). The user's standing rule — and the lesson learned the hard way from the 2026-04-29 Living-Canvas episode — is that nothing ships without an end-to-end manual smoke test in a running source-mode instance, demonstrated by the user.
 
 That smoke test for ACPX is §7.7. The smoke test for the skill harness is §7.5. They take three minutes total once a CLI is installed and they prove the boundary that the unit tests cannot prove.
 

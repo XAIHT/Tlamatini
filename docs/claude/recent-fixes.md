@@ -16,6 +16,39 @@
 
 ---
 
+## 2026-10-09 — Full sweep: FlowCreator's catalog had missed File-Creator `append`, stale doc labels, v1.77.0 in the dossier
+
+**What was wrong.** A full source and documentation sweep (every gate run in a visible console)
+found one real defect and a set of statements that had expired.
+
+1. **FlowCreator did not know about File-Creator's `append`.** The option was added on 2026-10-08,
+   but `Tlamatini/agent/agents/flowcreator/flow_catalog.json` and `docs/agent-coverage.md` are
+   GENERATED from each agent's `config.yaml` and contract, and nobody re-ran the generator. So
+   `agent.test_flow_knowledge` failed twice (the catalog no longer matched the source), and a flow
+   drawn by FlowCreator could never set `append`. Fixed by running
+   `python scripts/update_flow_catalog.py`; `--check` then reported all 89 agent types in sync.
+2. **Labels that had expired.** The October 4 work (graphical commentary, resizable Run output, the
+   Windows flow-file lifecycle) was still called "source changes" in CLAUDE.md, GEMINI.md, KIMI.md,
+   AGENTS.md, `Tlamatini.md`, four `docs/claude/*.md` files and the four inclusion-skill mirrors. It
+   shipped in `v1.76.0`; the labels now say so. CLAUDE.md said the Codex release-validation skill
+   was an uncommitted addition (it was committed in `a0b0a35b`) and that the Prompt Flow Panel files
+   were still untracked (committed in `ca66745`). ACPX.md now says its two "not committed" notes
+   describe the day they were written. KIMI.md's route and line counts were re-counted from source.
+3. **The dossier.** `dossier_content.py` gained a "NEW IN v1.77.0" page (first-person chat lines and
+   the uninstaller that keeps `Templates/`), and the Model Brain page now says the published v1.76.0
+   release was built from `main` and carries it. Regenerated: PDF 117 pages, PPTX 149 slides, tree
+   parity 1669/1669, 2,432 text boxes checked in real PowerPoint, verification PASSED.
+
+**Contracts (do NOT weaken).**
+1. **Any change to an agent's `config.yaml` keys or its contract must re-run
+   `python scripts/update_flow_catalog.py` in the same commit.** The catalog is what FlowCreator
+   reads; `test_flow_knowledge` is the guard that goes red when it drifts.
+2. **"Source only", "uncommitted" and "not yet published" expire.** Re-check them against `git log`
+   and `gh release list` at the start of every documentation sweep.
+3. **The native PowerPoint check needs the window to stay open and in front.** If PowerPoint is
+   closed during the check, the run stops with `Presentation.Slides : Object does not exist`; the
+   PDF and PPTX are already written, so simply run the dossier again.
+
 ## 2026-10-09 — Tlamatini speaks her fixed chat lines in the first person, to the user by name
 
 **What changed.** Every fixed message Tlamatini sends to the chat (and the avatar reads aloud) was
