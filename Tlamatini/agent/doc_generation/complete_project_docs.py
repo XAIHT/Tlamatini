@@ -124,7 +124,7 @@ def short_date(iso_value: str) -> str:
     return document_datetime(iso_value).strftime("%Y-%m-%d")
 
 
-def published_releases() -> dict:
+def _github_releases() -> dict:
     """The releases actually PUBLISHED on GitHub; fail-open to an empty mapping.
 
     A tag is not a release: a repository can carry a newer tag with nothing
@@ -148,6 +148,32 @@ def published_releases() -> dict:
         "latest_published_at": str((latest or {}).get("publishedAt", "")),
         "published_tags": [str(row.get("tagName", "")) for row in live],
     }
+
+
+def published_releases() -> dict:
+    """The release this dossier states as current.
+
+    Normally GitHub's own answer (_github_releases). TLAMATINI_RELEASE_TAG names
+    the release the dossier is prepared FOR: Angela publishes a release as the
+    very last step, after the documentation and this dossier are regenerated, so
+    GitHub cannot list it yet. When that tag exists in this repository, the
+    dossier states it as the current release, dated today, and the console says
+    so. A tag that does not exist is ignored with a warning.
+    """
+    found = _github_releases()
+    planned = os.environ.get("TLAMATINI_RELEASE_TAG", "").strip()
+    if not planned or planned == found.get("latest_tag"):
+        return found
+    if not git_ok("rev-parse", "-q", "--verify", f"refs/tags/{planned}"):
+        print(f"WARNING: TLAMATINI_RELEASE_TAG={planned} is not a tag in this repository; "
+              "using GitHub's answer instead.", flush=True)
+        return found
+    print(f"Release prepared for: {planned} (GitHub lists "
+          f"{found.get('latest_tag') or 'no release'} as Latest until it is published).", flush=True)
+    tags = [planned] + [tag for tag in found.get("published_tags", []) if tag != planned]
+    return {"latest_tag": planned,
+            "latest_published_at": datetime.now(DOCUMENT_TIMEZONE).isoformat(),
+            "published_tags": tags, "prepared": True}
 
 
 # ── Inventory and effective lines ───────────────────────────────────
@@ -435,7 +461,7 @@ def release_facts(published: dict, head_short: str) -> dict:
         "pfp_in_tag": pfp_in_tag, "pfp_commit": pfp_commit, "latest_published": latest,
         "latest_published_at": short_date(published["latest_published_at"])
         if published.get("latest_published_at") else "",
-        "head_short": head_short,
+        "head_short": head_short, "prepared": bool(published.get("prepared")),
     }
 
 
@@ -457,11 +483,16 @@ def release_statements(rel: dict, version: str) -> tuple[list[str], list[list[st
             f"tagged tree therefore does not contain it, while a build from the current source does.")
     if rel["latest_published"]:
         same = rel["latest_published"] == rel["tag"]
-        statements.append(
-            f"The newest release published on GitHub is **{rel['latest_published']}**"
-            + (f", published {rel['latest_published_at']}." if rel["latest_published_at"] else ".")
-            + ("" if same else f" Self-update offers only published releases, so installations are "
-                               f"offered {rel['tag']} once it is published."))
+        if rel.get("prepared"):
+            statements.append(
+                f"The current release is **{rel['latest_published']}**, published "
+                f"{rel['latest_published_at']} together with this dossier.")
+        else:
+            statements.append(
+                f"The newest release published on GitHub is **{rel['latest_published']}**"
+                + (f", published {rel['latest_published_at']}." if rel["latest_published_at"] else ".")
+                + ("" if same else f" Self-update offers only published releases, so installations are "
+                                   f"offered {rel['tag']} once it is published."))
     else:
         statements.append("GitHub publication status could not be read, so only Git facts are stated here.")
     points = [("The tag", f"{rel['tag']} resolves to `{rel['tag_commit']}`, created {rel['tag_date']}.")]
@@ -470,7 +501,8 @@ def release_statements(rel: dict, version: str) -> tuple[list[str], list[list[st
                                     f"{version}."))
     if rel["pfp_commit"] and not rel["pfp_in_tag"]:
         points.append(("Prompt Flow Panel", f"First appears in `{rel['pfp_commit']}`, after the tag."))
-    points.append(("Published", f"The newest release on GitHub is {rel['latest_published'] or 'unknown'}."))
+    points.append(("Published", f"The current release is {rel['latest_published']}." if rel.get("prepared")
+                   else f"The newest release on GitHub is {rel['latest_published'] or 'unknown'}."))
     rows = [
         ["Reported version", version],
         ["Nearest tag", f"{rel['tag']} → {rel['tag_commit']} ({rel['tag_date']})"],

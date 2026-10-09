@@ -1630,8 +1630,7 @@ def build_chapters(f: dict) -> list[Chapter]:
         f"{f['release']['latest_published'] or 'unverified'}. Local changes are stated separately.",
         accent="gold", sections=[
         Section("working_firstperson", "NEW IN v1.77.0", "She speaks to you, by name",
-            "Tagged on October 9 and pushed. Self-update offers only published releases, so it delivers v1.77.0 "
-            "once that release is published.",
+            "Tagged on October 9 and published as the current release, so self-update delivers it.",
             body=[
                 "Every fixed line Tlamatini sends to the chat, and that her avatar reads aloud, is now written in the "
                 "first person and addressed to the user by name: “I'm ready, Angela! You can start chatting with me "
