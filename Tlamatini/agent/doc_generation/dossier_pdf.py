@@ -1072,7 +1072,9 @@ class CoverPage(FullPage):
         pw, ph = p.wrap(380, 200)
         p.drawOn(canv, cx - 190, 196 - 12 - ph)
         metrics = [(str(f["agents"]), "agent types"), (str(f["tools"]), "Multi-Turn tools"),
-                   (str(f["skills"]), "skills"), (f"v{f['version']}", "source version")]
+                   (str(f["skills"]), "skills"), (f"v{f['version']}",
+                    "current release" if f"v{f['version']}" == (f.get("release") or {}).get("latest_published")
+                    else "version")]
         span = 400
         step = span / len(metrics)
         x0 = cx - span / 2
