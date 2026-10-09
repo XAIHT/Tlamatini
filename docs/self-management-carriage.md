@@ -97,9 +97,9 @@ The Compact mode switch shipped in `v1.75.0` (annotated tag at `f7eb53ff`,
 2026-10-03, published on GitHub the same day). The Self-modify switch landed on
 `main` right after that tag (commit `70aeeb87`) and ships in `v1.76.0`
 (annotated tag at `953ad2d8`, 2026-10-08). `v1.76.0` was published
-on GitHub on 2026-10-09 (marked Latest), so it is the latest published release
-and the one self-update delivers; `v1.77.0` (annotated tag at
-`052bfe0f`, 2026-10-09) has no published release yet.
+on GitHub on 2026-10-09; `v1.77.0` (annotated tag at `052bfe0f`, 2026-10-09)
+was published the same day (marked Latest), so it is the latest published
+release and the one self-update delivers.
 
 - **Compact mode switch (2026-10-02).** `agent/compact_mode.py` is imported at
   module level by `mcp_agent.py`, so the frozen archive carries it through the

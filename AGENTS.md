@@ -119,9 +119,8 @@ Contract: [CLAUDE.md](CLAUDE.md) → *Self-modify*,
 ## v1.77.0 — first-person chat lines, the uninstaller keeps Templates (2026-10-09)
 
 `v1.77.0` (annotated tag at `052bfe0f`, pushed 2026-10-09) carries the two
-changes below; a build of `main` reports `1.77.0`. No GitHub release is
-published for it yet (checked 2026-10-09), so self-update still delivers
-`v1.76.0`.
+changes below; a build of `main` reports `1.77.0`. It was published on
+GitHub on 2026-10-09 (marked Latest), so self-update delivers `v1.77.0`.
 
 - **First person, by name.** Every fixed chat line Tlamatini sends (`agent/constants.py`) speaks in the
   first person and names the user (`display_name()` + `say()`; with no name the placeholder and its comma
@@ -138,7 +137,8 @@ published for it yet (checked 2026-10-09), so self-update still delivers
 `v1.76.0` (annotated tag, pushed) names the Model Brain. The tag points to
 `953ad2d8`; the Model Brain commit `72799950` landed right after it, so a build
 of `main` reported `1.76.0` (until the `v1.77.0` tag) and carried everything below. It was published on
-GitHub on 2026-10-09 (marked Latest), so self-update now delivers `v1.76.0`.
+GitHub on 2026-10-09; self-update delivered `v1.76.0` until `v1.77.0` was
+published the same day.
 
 - **Model Brain** (`agent/model_brain.py`, `model_profiles.json`): every model
   is tuned from formal sources — an explicit `model_brain_overrides` entry, the
