@@ -430,6 +430,9 @@ _FROZEN_REQUIRED_AGENT_MODULES = (
     "agent.context_governor",      # context measurement + the chat gauge sink
     "agent.context_baseline",      # the gauge AT REST: next request + Ollama's real count
     "agent.context_sidecar_timeout",  # time limit on the Files-Search/System-Metrics Ollama calls
+    "agent.model_brain",           # per-model settings from formal sources (fail-open import)
+    "agent.model_brain_chat",      # keeps/returns a thinking model's reasoning (fail-open import)
+    "agent.model_brain_views",     # the Auto-tuning dialog's endpoints
     "agent.skills.validation",     # ONE skill validator; Diagnostics imports it fail-open
     "agent.skills.redaction",      # secret redaction at the skill boundary (harness)
     "agent.win_shim",              # Windows .cmd/.exe resolution (fail-open import)
@@ -1379,6 +1382,9 @@ def main():
         f'--add-data=Tlamatini/staticfiles{separator}staticfiles',
         f'--add-data=Tlamatini/agent/config.json{separator}agent',
         f'--add-data=Tlamatini/agent/prompt.pmt{separator}agent',
+        # The MODEL BRAIN's knowledge base: each vendor's published settings, with
+        # sources (agent/model_brain.py reads it beside the module when frozen).
+        f'--add-data=Tlamatini/agent/model_profiles.json{separator}agent',
         *self_knowledge_args,
         # ACPX skill catalog — every SKILL.md package + its scripts/ + _meta/.
         # The skill registry (agent/skills/registry.py) discovers SKILL.md
@@ -1414,6 +1420,12 @@ def main():
         # fail-open import in rag/factory.py; without their time-limit module
         # they would vanish silently instead of failing the build.
         '--hidden-import=agent.context_sidecar_timeout',
+        # The MODEL BRAIN reaches the chat through fail-open imports in
+        # mcp_agent.py and rag/factory.py: without these modules every model would
+        # silently fall back to the legacy fixed parameters.
+        '--hidden-import=agent.model_brain',
+        '--hidden-import=agent.model_brain_chat',
+        '--hidden-import=agent.model_brain_views',
         # Skills Diagnostics imports the shared validator inside a try/except
         # that swallows everything, so a missing module would silently report
         # "no invalid skills". Name it (and the harness's redaction module) here.

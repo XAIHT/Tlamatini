@@ -1,0 +1,102 @@
+{
+  "_comment": "Model Brain knowledge base (agent/model_brain.py). One entry per model FAMILY, taken ONLY from the vendor's own formal publications (generation_config.json, model card, API docs) - every entry names its sources. Matching is a case-insensitive regular expression on the model name with any ':tag' and 'namespace/' removed; the FIRST match wins, so keep more specific patterns first. 'sampling' holds Ollama option names (temperature, top_p, top_k, min_p, repeat_penalty, presence_penalty); an EMPTY sampling dict means the vendor says not to send sampling values at all, so the model's own defaults are used. 'sampling_no_thinking' (optional) is used when thinking is switched off. To support a new model add an entry here - no code change. Models with no entry are researched automatically (model_profiles.learned.json in %LOCALAPPDATA%\\Tlamatini\\model_brain) and otherwise use the model's own published defaults.",
+  "version": 1,
+  "retrieved": "2026-10-08",
+  "profiles": [
+    {
+      "id": "glm-5",
+      "vendor": "Z.ai",
+      "match": "^glm-?5",
+      "sampling": {"temperature": 1.0, "top_p": 0.95, "repeat_penalty": 1.0},
+      "sources": [
+        "https://huggingface.co/zai-org/GLM-5.3/raw/main/generation_config.json",
+        "https://huggingface.co/zai-org/GLM-5.2",
+        "https://docs.z.ai/guides/llm/glm-5.3",
+        "https://docs.z.ai/guides/capabilities/thinking-mode"
+      ],
+      "notes": "generation_config.json: temperature 1.0, top_p 0.95 (no repetition penalty). Z.ai: return the historical reasoning_content with tool results to keep the reasoning coherent (interleaved thinking)."
+    },
+    {
+      "id": "deepseek-v4",
+      "vendor": "DeepSeek",
+      "match": "^deepseek-?v4",
+      "sampling": {"temperature": 1.0, "top_p": 1.0, "repeat_penalty": 1.0},
+      "sources": [
+        "https://huggingface.co/deepseek-ai/DeepSeek-V4-Pro",
+        "https://api-docs.deepseek.com/guides/thinking_mode"
+      ],
+      "notes": "Model card: temperature = 1.0, top_p = 1.0 for local deployment. API docs: with tools, reasoning_content must be fully passed back in all subsequent requests."
+    },
+    {
+      "id": "minimax-m3",
+      "vendor": "MiniMax",
+      "match": "^minimax-?m3",
+      "sampling": {"temperature": 1.0, "top_p": 0.95, "repeat_penalty": 1.0},
+      "sources": ["https://huggingface.co/MiniMaxAI/MiniMax-M3"],
+      "notes": "Model card: temperature=1.0, top_p=0.95 for best performance."
+    },
+    {
+      "id": "gemma-4",
+      "vendor": "Google",
+      "match": "^gemma-?4",
+      "sampling": {"temperature": 1.0, "top_p": 0.95, "top_k": 64, "repeat_penalty": 1.0},
+      "sources": ["https://huggingface.co/google/gemma-4-31B-it"],
+      "notes": "Model card: one standardized configuration for all use cases (temperature 1.0, top_p 0.95, top_k 64). History keeps only final responses, except tool-call turns where thinking content should be preserved."
+    },
+    {
+      "id": "qwen-3.5",
+      "vendor": "Qwen",
+      "match": "^qwen-?3\\.5",
+      "sampling": {"temperature": 0.6, "top_p": 0.95, "top_k": 20, "min_p": 0.0, "presence_penalty": 0.0, "repeat_penalty": 1.0},
+      "sampling_no_thinking": {"temperature": 0.7, "top_p": 0.8, "top_k": 20, "min_p": 0.0, "presence_penalty": 1.5, "repeat_penalty": 1.0},
+      "sources": ["https://huggingface.co/Qwen/Qwen3.5-397B-A17B"],
+      "notes": "Model card: thinking mode temperature 0.6 / top_p 0.95 / top_k 20 / min_p 0 / presence 0 / repetition 1.0; non-thinking 0.7 / 0.8 / 20 / 0 / presence 1.5 / 1.0. Historical output keeps only the final answer (the chat template does this)."
+    },
+    {
+      "id": "qwen-2.5",
+      "vendor": "Qwen",
+      "match": "^qwen-?2\\.5",
+      "sampling": {"temperature": 0.7, "top_p": 0.8, "top_k": 20, "repeat_penalty": 1.05},
+      "sources": ["https://huggingface.co/Qwen/Qwen2.5-7B-Instruct/raw/main/generation_config.json"],
+      "notes": "generation_config.json: temperature 0.7, top_p 0.8, top_k 20, repetition_penalty 1.05."
+    },
+    {
+      "id": "gpt-oss",
+      "vendor": "OpenAI",
+      "match": "^gpt-?oss",
+      "sampling": {"temperature": 1.0, "top_p": 1.0, "repeat_penalty": 1.0},
+      "sources": [
+        "https://github.com/openai/gpt-oss",
+        "https://developers.openai.com/cookbook/articles/openai-harmony"
+      ],
+      "notes": "README: We recommend sampling with temperature=1.0 and top_p=1.0. Harmony guide: drop previous chain-of-thought after a final answer, EXCEPT tool calling - pass it back for subsequent sampling."
+    },
+    {
+      "id": "kimi",
+      "vendor": "Moonshot AI",
+      "match": "^kimi",
+      "sampling": {},
+      "sources": ["https://platform.kimi.ai/docs/guide/use-thinking-models"],
+      "notes": "Moonshot docs: temperature is not modifiable for the thinking models - use the default and do not pass it; K3 is tuned only through reasoning_effort. In tool-call loops keep every reasoning_content and send it back as-is."
+    },
+    {
+      "id": "mistral-large-3",
+      "vendor": "Mistral AI",
+      "match": "^mistral-?large-?3",
+      "sampling": {"temperature": 0.05, "repeat_penalty": 1.0},
+      "sources": ["https://huggingface.co/mistralai/Mistral-Large-3-675B-Instruct-2512"],
+      "notes": "Model card: use a temperature below 0.1 for daily-driver and production environments; keep the tool set small and well defined."
+    },
+    {
+      "id": "nemotron-3",
+      "vendor": "NVIDIA",
+      "match": "^nemotron-?3",
+      "sampling": {"temperature": 1.0, "top_p": 0.95, "repeat_penalty": 1.0},
+      "sources": [
+        "https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16",
+        "https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16/raw/main/generation_config.json"
+      ],
+      "notes": "Model card and generation_config.json: temperature 1.0, top_p 0.95 for reasoning on, reasoning off and tool calling."
+    }
+  ]
+}

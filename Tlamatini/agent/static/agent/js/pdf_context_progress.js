@@ -124,6 +124,16 @@
             window.SharedRuntimeDialogs.renderFatalError({ source_agent: 'PDF Image-Interpreter', message: detail });
         }
         if (pendingChoice) { pendingChoice.reject(new Error(detail)); pendingChoice = null; }
+        // The step that was running did not finish: say so, instead of leaving
+        // "Working…" and a moving bar on screen after the failure (2026-10-08).
+        stages.forEach(name => {
+            const row = dialog.querySelector(`[data-pdf-stage="${name}"]`);
+            if (!row || row.dataset.state !== 'active') return;
+            row.dataset.state = 'failed';
+            const bar = row.querySelector('progress');
+            bar.max = 1; bar.value = 0;
+            row.querySelector('output').textContent = 'Failed';
+        });
         proceed.hidden = true;
         processImages.disabled = true;
         stopTimer(); cancel = null; action.textContent = 'Close';

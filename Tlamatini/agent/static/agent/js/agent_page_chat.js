@@ -1253,6 +1253,10 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
     } else if (lower === 'file creator') {
         set('file_path', pairs.filepath || pairs.file_path);
         set('content', pairs.content);
+        // A long file written in pieces: every piece after the first has append=true.
+        if (pairs.append !== undefined && pairs.append !== '') {
+            config.append = (String(pairs.append).toLowerCase() === 'true');
+        }
 
     // ── File Extractor ───────────────────────────────────────────────
     // Template field: path_filenames
@@ -2570,6 +2574,9 @@ chatSocket.onmessage = function (e) {
     // Handle context-path-set: Server confirms full context path after set operation
     if (data.type === 'pdf-canvas-context-error') {
         unsetContextButton();
+        // The server refused the PDF before touching the context: put the header
+        // back instead of leaving "pending context" on screen (2026-10-08).
+        restorePendingContextSelection();
         enableControlsAfterOperation();
         window.TlamatiniPdfProgress?.fail(data.message);
         return;

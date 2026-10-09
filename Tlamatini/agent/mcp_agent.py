@@ -710,9 +710,48 @@ def _ensure_chat_tool_model(llm):
         if client_kwargs:
             chat_kwargs["client_kwargs"] = client_kwargs
 
+        # ── MODEL BRAIN (2026-10-08) ─────────────────────────────────────────
+        # The fixed values above (temperature 0.0, repeat_penalty 1.2, ...) were
+        # one setting for EVERY model. The brain replaces them with what THIS
+        # model's vendor publishes, keeps a thinking model's reasoning inside the
+        # tool loop (as Z.ai, OpenAI, DeepSeek, Moonshot and Google document) and
+        # sends only thinking levels the model itself publishes. model_brain=off
+        # keeps the legacy values exactly. Fail-open: any problem = legacy model.
+        chat_class = ChatOllama
+        try:
+            from . import model_brain as _model_brain
+            _brain = _model_brain.plan(model, base_url, config,
+                                       headers=(client_kwargs or {}).get("headers"))
+            if _brain.enabled:
+                from .model_brain_chat import BrainChatOllama, client_accepts_think
+                for _key in ("temperature", "top_k", "top_p", "repeat_penalty", "repeat_last_n"):
+                    chat_kwargs.pop(_key, None)
+                _fields = ("temperature", "top_k", "top_p", "repeat_penalty")
+                for _key, _value in _brain.sampling.items():
+                    if _key in _fields:
+                        chat_kwargs[_key] = _value
+                chat_kwargs["extra_options"] = {k: v for k, v in _brain.sampling.items()
+                                                if k not in _fields}
+                if _brain.num_ctx:
+                    chat_kwargs["num_ctx"] = _brain.num_ctx
+                chat_kwargs["keep_reasoning"] = bool(_brain.keep_reasoning)
+                if _brain.think is not None:
+                    if client_accepts_think(_brain.think):
+                        chat_kwargs["think"] = _brain.think
+                    else:
+                        print("--- [MODEL-BRAIN] the installed ollama client cannot send "
+                              f"think={_brain.think!r}; {model} keeps its own default ---")
+                chat_class = BrainChatOllama
+                temperature = chat_kwargs.get("temperature")
+        except Exception as _brain_exc:  # noqa: BLE001 - never block the chat on the brain
+            print(f"--- [MODEL-BRAIN] not applied ({_brain_exc}); legacy parameters kept ---")
+            chat_class = ChatOllama
+            for _key in ("extra_options", "keep_reasoning", "think"):
+                chat_kwargs.pop(_key, None)
+
         # Instantiate ChatOllama – fall back to a minimal config on TypeError
         try:
-            getted_llm = ChatOllama(**chat_kwargs)
+            getted_llm = chat_class(**chat_kwargs)
         except TypeError as e:  # pragma: no cover
             print(
                 f"--- Warning: Some parameters not supported by ChatOllama, retrying with basic config: {e} ---"

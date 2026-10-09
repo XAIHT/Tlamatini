@@ -255,6 +255,7 @@ export default [
                 setContextButton: "readonly",
                 unsetContextButton: "readonly",
                 showPendingContextSelection: "readonly",
+                restorePendingContextSelection: "readonly",
                 ClearContext: "readonly",
 
                 // Cross-file globals: agent_page_chat.js

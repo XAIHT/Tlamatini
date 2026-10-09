@@ -730,6 +730,14 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 'kind': kind,
                 'state': event.get('state') or {},
             }))
+            from . import compact_mode
+            if kind in compact_mode.VERDICT_KINDS:
+                # A model's VERDICT changed (what it can hold) - not a row, not a
+                # box the user moved. Nothing this tab sends changed, so it must
+                # NOT re-send its rows or re-measure: that made every tab note its
+                # OWN model again, and two tabs on two models flipped the shared
+                # note back and forth forever (2026-10-08: ~900 lines a round).
+                return
             if kind == 'self_modify':
                 # The Self-modify switch rewrites no Configure row.
                 self._schedule_context_gauge_refresh("Self-modify changed")
@@ -1519,6 +1527,10 @@ class AgentConsumer(AsyncWebsocketConsumer):
                         resolve_pdf_context, text_data_json.get('context_token'), user.pk,
                     )
                 except PdfContextError as error:
+                    # Say it in the log too: this refusal used to leave no trace
+                    # at all, so a cookie switched by a second sign-in looked
+                    # like a broken server (2026-10-08).
+                    print(f"--- [PDF-CONTEXT] refused for user {user.pk}: {error}")
                     await self.send(text_data=json.dumps({
                         'type': 'pdf-canvas-context-error', 'message': str(error),
                     }))

@@ -30,13 +30,40 @@ function unsetContextButton() {
     contextButton.textContent = "Use as context";
 }
 
+// What the context header showed before a selection replaced it with
+// "pending context". If the server REFUSES that selection, the header goes
+// back to exactly this state instead of staying on "pending" forever (Angela,
+// 2026-10-08). A refusal happens before the server touches the context, so the
+// previous state is the true one.
+let pendingContextPrevious = null;
+
 function showPendingContextSelection(label) {
+    pendingContextPrevious = {
+        text: contextDataSpan ? contextDataSpan.textContent : '',
+        infoClass: contextInfoDiv.getAttribute("class"),
+        dir: actualContextDir,
+        clearEnabled: clearContextEnabled,
+        clearStyle: clearContextButton.getAttribute("style"),
+    };
     clearContextEnabled = false;
     clearContextButton.setAttribute("style", "display: none !important;");
     actualContextDir = null;
     updateViewContextDirMenuState();
     setContextText("<<< pending context: " + label + " >>>");
     contextInfoDiv.setAttribute("class", "col-md-2 col-lg-3 col-xl-4 col-xxl-4 flex-nowrap p-0 m-0 context-info-visible");
+}
+
+function restorePendingContextSelection() {
+    const previous = pendingContextPrevious;
+    pendingContextPrevious = null;
+    if (!previous) return;
+    actualContextDir = previous.dir;
+    clearContextEnabled = previous.clearEnabled;
+    if (previous.clearStyle === null) clearContextButton.removeAttribute("style");
+    else clearContextButton.setAttribute("style", previous.clearStyle);
+    updateViewContextDirMenuState();
+    setContextText(previous.text);
+    if (previous.infoClass) contextInfoDiv.setAttribute("class", previous.infoClass);
 }
 
 function ClearContext(e) {

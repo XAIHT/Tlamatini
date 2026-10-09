@@ -478,6 +478,18 @@ def _message_wire(message: Any) -> Tuple[int, int]:
             except Exception:  # noqa: BLE001
                 chars += len(str(tool_calls))
 
+        # A thinking model's OWN reasoning, returned inside the tool loop by the
+        # Model Brain (model_brain_chat.py, 2026-10-08): Ollama sends it to the
+        # model as "thinking", so it is prompt text AND wire bytes. It is only
+        # kept on a message when it really is sent, so counting it is exact.
+        additional = getattr(message, "additional_kwargs", None)
+        reasoning = additional.get("reasoning_content") if isinstance(additional, dict) else None
+        if reasoning is None and isinstance(message, dict):
+            reasoning = message.get("thinking")
+        if isinstance(reasoning, str) and reasoning:
+            payload["thinking"] = reasoning
+            chars += len(reasoning)
+
         for key in ("tool_call_id", "name"):
             value = getattr(message, key, None)
             if value is None and isinstance(message, dict):

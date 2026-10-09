@@ -323,6 +323,42 @@ def remove_pid_file():
             return
 
 
+def _as_bool(value):
+    """YAML/LLM-friendly truth: True, 1, 'true', 'yes', 'on', 'y' (any case) are true.
+
+    A request string can carry prose after the word ("true - the second piece"). It is
+    judged by its FIRST word, so a trailing remark can never silently flip ``append``
+    off - which would OVERWRITE the pieces already written instead of extending them.
+    """
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value != 0
+    text = str(value or '').strip().lower()
+    first = text.split(None, 1)[0].strip('.,;:!?()[]{}\'"') if text else ''
+    return first in ('true', 'yes', 'on', '1', 'y')
+
+
+def _warn_if_pieces_run_together(file_path, text):
+    """Append mode never edits the model's bytes, but it DOES say so when two pieces
+    meet in the MIDDLE of a line - the usual way a piece-wise file ends up broken."""
+    try:
+        if not text or text[0] in '\r\n':
+            return
+        if not os.path.isfile(file_path) or os.path.getsize(file_path) == 0:
+            return
+        with open(file_path, 'rb') as existing:
+            existing.seek(-1, os.SEEK_END)
+            last = existing.read(1)
+        if last not in (b'\n', b'\r'):
+            logging.warning(
+                "⚠️ The file does not end with a newline and this piece does not start "
+                "with one: the two pieces are joined on the SAME line. Split pieces "
+                "BETWEEN lines.")
+    except Exception:  # noqa: BLE001 - advice only, never a reason to fail the write
+        pass
+
+
 def main():
     config = load_config()
 
@@ -336,11 +372,14 @@ def main():
         file_path = config.get('file_path', '')
         content = config.get('content', '')
         content_b64 = config.get('content_b64', '')
+        append = _as_bool(config.get('append', False))
         target_agents = config.get('target_agents', [])
 
         logging.info("📝 FILE-CREATOR AGENT STARTED")
         logging.info(f"📄 Target file: {file_path}")
         logging.info(f"🎯 Targets: {target_agents}")
+        if append:
+            logging.info("➕ Append mode: the content is ADDED to the end of the file")
 
         # Create the file with specified content
         file_created = False
@@ -367,20 +406,34 @@ def main():
                     cleaned = ''.join(content_b64.split())
                     pad = (-len(cleaned)) % 4
                     raw = base64.b64decode(cleaned + ('=' * pad))
-                    with open(file_path, 'wb') as f:
+                    with open(file_path, 'ab' if append else 'wb') as f:
                         f.write(raw)
-                    logging.info(
-                        f"✅ File created (binary/base64, {len(raw)} bytes): {file_path}"
-                    )
+                    if append:
+                        logging.info(
+                            f"✅ Appended (binary/base64, {len(raw)} bytes) to {file_path} "
+                            f"(file is now {os.path.getsize(file_path)} bytes)"
+                        )
+                    else:
+                        logging.info(
+                            f"✅ File created (binary/base64, {len(raw)} bytes): {file_path}"
+                        )
                 else:
                     # TEXT CHANNEL — write the content VERBATIM. newline='' stops
                     # Python's universal-newline translation (\n -> \r\n on
                     # Windows) so the file bytes match exactly what the model
                     # sent; the parser already hands us the content unescaped.
                     text = content if isinstance(content, str) else str(content)
-                    with open(file_path, 'w', encoding='utf-8', newline='') as f:
+                    if append:
+                        _warn_if_pieces_run_together(file_path, text)
+                    with open(file_path, 'a' if append else 'w', encoding='utf-8', newline='') as f:
                         f.write(text)
-                    logging.info(f"✅ File created successfully ({len(text)} chars): {file_path}")
+                    if append:
+                        logging.info(
+                            f"✅ Appended {len(text)} chars to {file_path} "
+                            f"(file is now {os.path.getsize(file_path)} bytes)"
+                        )
+                    else:
+                        logging.info(f"✅ File created successfully ({len(text)} chars): {file_path}")
 
                 file_created = True
         except Exception as e:
@@ -395,7 +448,7 @@ def main():
                 if start_agent(target):
                     total_triggered += 1
 
-        status = "created" if file_created else "FAILED"
+        status = ("appended" if append else "created") if file_created else "FAILED"
         logging.info(f"🏁 File-Creator agent finished. File: {status}. Triggered {total_triggered}/{len(target_agents)} agents.")
 
     finally:

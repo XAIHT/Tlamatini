@@ -1294,8 +1294,21 @@ async function _saveConfigModels() {
 
     const changed = _configValuesDiffer(_configModelsBaseline, _snapshotConfigValues(values));
     _configModelsBaseline = null;
-    if (changed) {
-        _showReconnectRequiredAfterDialogClose();
+    // The MODEL BRAIN tunes itself for the saved models in front of the user
+    // (model_brain_tuning.js); the Reconnect notice follows when it is closed.
+    const afterTuning = changed ? _showReconnectRequiredAfterDialogClose : null;
+    const tuning = window.TlmModelBrainTuning;
+    if (tuning && typeof tuning.open === 'function') {
+        setTimeout(() => {
+            try {
+                tuning.open({ onClose: afterTuning });
+            } catch (err) {
+                console.error('Auto-tuning dialog failed:', err);
+                if (afterTuning) afterTuning();
+            }
+        }, 150);
+    } else if (afterTuning) {
+        afterTuning();
     }
     return true;
 }

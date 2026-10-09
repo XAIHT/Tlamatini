@@ -51,6 +51,13 @@ from .global_state import global_state
 GROUP = "tlamatini_compact_mode"
 #: global_state key read by ``tools.get_mcp_tools`` on every call.
 GLOBAL_ACTIVE_KEY = "compact_mode_active"
+#: ``notify`` kinds that carry a model's VERDICT (what it can hold), never a
+#: changed row or a box the user moved.  Every tab updates its box from them,
+#: but NO tab re-sends its rows or re-measures: each re-measure notes that
+#: tab's OWN model again, so two tabs on two different models used to flip the
+#: shared note back and forth forever (Angela's install, 2026-10-08: ~900 log
+#: lines a round, 61,779 in one evening).  consumers.compact_mode_changed.
+VERDICT_KINDS = ("capacity", "self_modify_fit")
 
 #: Kept ON when Compact mode starts.  The user may switch them off.
 KEEP_MCPS = ("System-Metrics", "Files-Search")
@@ -460,7 +467,7 @@ def note_self_modify(*, fits: bool, tokens: int = 0, need_tokens: int = 0) -> bo
                   f"~{int(tokens or 0):,} (request with it ~{int(need_tokens or 0):,}) -> "
                   + ("it fits - Self-modify can be ticked or unticked freely" if fits
                      else "it does NOT fit - Self-modify is locked OFF"))
-            notify("self_modify")
+            notify("self_modify_fit")      # a VERDICT, not her choice (VERDICT_KINDS)
         return changed
     except Exception as exc:  # noqa: BLE001
         print(f"--- [SELF-MODIFY] verdict not noted ({exc})")

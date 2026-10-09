@@ -13,7 +13,7 @@ from django.urls import path
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_POST
 
-from . import views, flow_file_views
+from . import views, flow_file_views, model_brain_views
 from .pdf_context_views import prepare_pdf_context_view, pdf_context_status_view, cancel_pdf_context_view
 
 
@@ -60,6 +60,8 @@ urlpatterns = [
     path('load_config_section/<str:section>/', secure_get(views.load_config_section_view), name='load_config_section'),
     path('ollama_models/', secure_get(views.ollama_models_view), name='ollama_models'),
     path('save_config_models/', secure_post(views.save_config_models_view), name='save_config_models'),
+    path('model_brain/models/', secure_get(model_brain_views.model_brain_models_view), name='model_brain_models'),
+    path('model_brain/tune/', secure_post(model_brain_views.model_brain_tune_view), name='model_brain_tune'),
     path('save_config_urls/', secure_post(views.save_config_urls_view), name='save_config_urls'),
     path('access_keys_wizard/', secure_get(views.access_keys_wizard_view), name='access_keys_wizard'),
     path('save_access_keys_wizard/', secure_post(views.save_access_keys_wizard_view), name='save_access_keys_wizard'),

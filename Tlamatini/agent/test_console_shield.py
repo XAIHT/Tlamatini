@@ -425,7 +425,9 @@ class ConsoleShieldSourceContractTests(unittest.TestCase):
         """The reversal is the fix. Put the console back on top and the bug
         returns in full: a held selection freezes tlamatini.log too."""
         body = self._function_source('write')
-        file_at = body.index('self._log_file.write(payload)')
+        # The file gets the PLAIN copy of the payload (colour codes stripped,
+        # 2026-10-08); the order of the two sinks is what this test guards.
+        file_at = body.index('self._log_file.write(plain)')
         console_at = body.index('writer.submit(self._original, payload)')
         self.assertLess(
             file_at, console_at,

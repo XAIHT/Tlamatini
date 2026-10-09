@@ -1,0 +1,327 @@
+/*
+ * ═══════════════════════════════════════════════════════════════════
+ *   ✦  T L A M A T I N I  ✦   —   "one who knows"
+ *
+ *   Created by  Angela López Mendoza   ·   @angelahack1
+ *   Developer · Architect · Creator of Tlamatini
+ * ═══════════════════════════════════════════════════════════════════
+ *   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
+ *
+ * model_brain_tuning.css — the Auto-tuning dialog of the MODEL BRAIN
+ * (Config ▸ Models ▸ Save).  The frame wears the shared .tlmpop-* identity
+ * from dialog_theme.css (which loads LAST); only the body is styled here,
+ * and every colour comes from the --tlm-dlg-* tokens: teal = tuned,
+ * amber = kept the model's own defaults, muted = waiting.
+ */
+
+.tlmpop-card.tlmtune-card {
+    width: min(820px, 100%);
+    max-height: calc(100vh - 32px);
+    display: flex;
+    flex-direction: column;
+}
+
+.tlmtune-card .tlmpop-body {
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+/* ── Header mark: a small pulsing "brain" ─────────────────────────── */
+.tlmtune-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.tlmtune-mark {
+    position: relative;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #9ff0e2 0%, var(--tlm-dlg-accent, #55bbaa) 55%, #2c6f64 100%);
+    box-shadow: 0 0 10px rgba(85, 187, 170, 0.75);
+}
+
+.tlmtune-mark::after {
+    content: "";
+    position: absolute;
+    inset: -5px;
+    border-radius: 50%;
+    border: 2px solid rgba(85, 187, 170, 0.55);
+    animation: tlmtune-ping 1.6s ease-out infinite;
+}
+
+.tlmtune-done .tlmtune-mark::after {
+    animation: none;
+    opacity: 0;
+}
+
+@keyframes tlmtune-ping {
+    0% { transform: scale(0.7); opacity: 0.9; }
+    100% { transform: scale(1.7); opacity: 0; }
+}
+
+/* ── Lead + overall progress ───────────────────────────────────────── */
+.tlmtune-lead {
+    margin: 0;
+    color: var(--tlm-dlg-body, #c1c5d0);
+    font-size: 0.92rem;
+    line-height: 1.45;
+}
+
+.tlmtune-progress {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.tlmtune-bar {
+    position: relative;
+    height: 10px;
+    border-radius: 999px;
+    background: var(--tlm-dlg-input-bg, rgba(0, 0, 0, 0.22));
+    border: var(--tlm-dlg-hairline, 1px solid rgba(255, 255, 255, 0.08));
+    overflow: hidden;
+}
+
+.tlmtune-bar-fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 0%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #2c6f64 0%, var(--tlm-dlg-accent, #55bbaa) 55%, #9ff0e2 100%);
+    box-shadow: 0 0 12px rgba(85, 187, 170, 0.55);
+    transition: width 0.45s ease;
+}
+
+.tlmtune-bar-fill::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.35) 50%, transparent 100%);
+    animation: tlmtune-sheen 1.4s linear infinite;
+}
+
+.tlmtune-done .tlmtune-bar-fill::after {
+    animation: none;
+    opacity: 0;
+}
+
+@keyframes tlmtune-sheen {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.tlmtune-progress-text {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    color: var(--tlm-dlg-muted, #9ca2ba);
+    font-size: 0.8rem;
+}
+
+/* ── One card per model ────────────────────────────────────────────── */
+.tlmtune-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.tlmtune-model {
+    position: relative;
+    border: var(--tlm-dlg-border, 1px solid rgba(255, 255, 255, 0.12));
+    border-radius: var(--tlm-dlg-radius-sm, 6px);
+    background: var(--tlm-dlg-pane, rgba(27, 30, 44, 0.32));
+    padding: 10px 12px;
+    overflow: hidden;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.tlmtune-model.is-running {
+    border-color: rgba(85, 187, 170, 0.75);
+    box-shadow: 0 0 0 1px rgba(85, 187, 170, 0.35), 0 0 18px rgba(85, 187, 170, 0.18);
+}
+
+.tlmtune-model.is-running::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(110deg, transparent 0%, rgba(85, 187, 170, 0.10) 45%, transparent 70%);
+    animation: tlmtune-scan 1.8s linear infinite;
+    pointer-events: none;
+}
+
+@keyframes tlmtune-scan {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.tlmtune-model.is-done { border-color: rgba(85, 187, 170, 0.45); }
+.tlmtune-model.is-warn { border-color: rgba(245, 180, 60, 0.55); }
+.tlmtune-model.is-skip { opacity: 0.72; }
+
+.tlmtune-model-head {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.tlmtune-model-name {
+    color: var(--tlm-dlg-title, #ffffff);
+    font-weight: 800;
+    font-size: 0.98rem;
+    word-break: break-all;
+}
+
+.tlmtune-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 8px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1.6;
+    white-space: nowrap;
+}
+
+.tlmtune-chip-applied {
+    background: rgba(85, 187, 170, 0.18);
+    border: 1px solid rgba(85, 187, 170, 0.7);
+    color: #bff5ea;
+}
+
+.tlmtune-chip-profiled {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: var(--tlm-dlg-muted, #9ca2ba);
+}
+
+.tlmtune-used-by {
+    margin: 3px 0 8px;
+    color: var(--tlm-dlg-muted, #9ca2ba);
+    font-size: 0.78rem;
+}
+
+/* ── The four stages ──────────────────────────────────────────────── */
+.tlmtune-stages {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.tlmtune-stage {
+    display: flex;
+    align-items: flex-start;
+    gap: 7px;
+    min-width: 0;
+    color: var(--tlm-dlg-muted, #9ca2ba);
+    font-size: 0.78rem;
+    line-height: 1.35;
+}
+
+.tlmtune-dot {
+    flex: 0 0 auto;
+    width: 16px;
+    height: 16px;
+    margin-top: 1px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.22);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.62rem;
+    font-weight: 900;
+    color: #10201d;
+}
+
+.tlmtune-stage.is-running { color: var(--tlm-dlg-text, #f0f1f7); }
+.tlmtune-stage.is-running .tlmtune-dot {
+    border-color: var(--tlm-dlg-accent, #55bbaa);
+    border-top-color: transparent;
+    animation: tlmtune-spin 0.8s linear infinite;
+}
+
+.tlmtune-stage.is-done { color: var(--tlm-dlg-text, #f0f1f7); }
+.tlmtune-stage.is-done .tlmtune-dot {
+    border-color: var(--tlm-dlg-accent, #55bbaa);
+    background: var(--tlm-dlg-accent, #55bbaa);
+}
+
+.tlmtune-stage.is-warn { color: #ffe2a6; }
+.tlmtune-stage.is-warn .tlmtune-dot {
+    border-color: #f5b43c;
+    background: #f5b43c;
+}
+
+@keyframes tlmtune-spin {
+    to { transform: rotate(360deg); }
+}
+
+.tlmtune-stage-text { min-width: 0; }
+.tlmtune-stage-name { display: block; font-weight: 700; }
+.tlmtune-stage-detail { display: block; word-break: break-word; opacity: 0.9; }
+
+/* ── Result ───────────────────────────────────────────────────────── */
+.tlmtune-result {
+    margin-top: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.tlmtune-result[hidden] { display: none; }
+
+.tlmtune-param {
+    display: inline-flex;
+    gap: 6px;
+    align-items: baseline;
+    padding: 3px 9px;
+    border-radius: var(--tlm-dlg-radius-sm, 6px);
+    background: var(--tlm-dlg-input-bg, rgba(0, 0, 0, 0.22));
+    border: var(--tlm-dlg-hairline, 1px solid rgba(255, 255, 255, 0.08));
+    font-size: 0.78rem;
+    color: var(--tlm-dlg-text, #f0f1f7);
+}
+
+.tlmtune-param-key {
+    color: var(--tlm-dlg-kicker, #55bbaa);
+    font-weight: 700;
+}
+
+.tlmtune-sources {
+    margin-top: 6px;
+    font-size: 0.74rem;
+    color: var(--tlm-dlg-muted, #9ca2ba);
+    word-break: break-all;
+}
+
+.tlmtune-sources a {
+    color: #9ff0e2;
+    text-decoration: underline;
+}
+
+.tlmtune-sources a:hover { color: #ffffff; }
+
+.tlmtune-foot-note {
+    margin-right: auto;
+    color: var(--tlm-dlg-muted, #9ca2ba);
+    font-size: 0.8rem;
+}
+
+@media (max-width: 720px) {
+    .tlmtune-stages { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .tlmtune-mark::after,
+    .tlmtune-bar-fill::after,
+    .tlmtune-model.is-running::before,
+    .tlmtune-stage.is-running .tlmtune-dot { animation: none; }
+    .tlmtune-bar-fill { transition: none; }
+}

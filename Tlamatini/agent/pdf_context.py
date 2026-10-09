@@ -163,17 +163,40 @@ def prepare_pdf_context(upload, user_id, password="", *, process_images=False,
         raise
 
 
+ACCOUNT_MISMATCH_MESSAGE = (
+    "This PDF was uploaded under a different Tlamatini account than this chat: another "
+    "account signed in from this browser after this page was opened, so the upload went "
+    "out as that account. Reload this page (F5) so the chat and the upload belong to the "
+    "same account, then use the PDF as context again."
+)
+
+
+class PdfContextAccountMismatch(PdfContextError):
+    """The package is genuine but belongs to another signed-in account."""
+
+
 def resolve_pdf_context(token, user_id):
-    """Accept only a signed package belonging to this authenticated user."""
+    """Accept only a signed package belonging to this authenticated user.
+
+    A package signed for ANOTHER account is still refused (it is that account's
+    file), but with a message that names the cause (Angela, 2026-10-08): the
+    usual way to get here is a second sign-in in the same browser, which
+    replaces the session cookie of every open tab while each tab's chat
+    connection stays signed in as the first account.
+    """
     try:
         data = signing.loads(token, salt=_TOKEN_SALT)
         document_id = data["document"]
-        if data["user"] != int(user_id) or not re.fullmatch(r"[a-f0-9]{32}", document_id):
+        if not re.fullmatch(r"[a-f0-9]{32}", document_id):
             raise ValueError
+        if data["user"] != int(user_id):
+            raise PdfContextAccountMismatch(ACCOUNT_MISMATCH_MESSAGE)
         root = _user_root(user_id).resolve()
         directory = (root / document_id).resolve()
         if not directory.is_relative_to(root) or not (directory / "document.txt").is_file():
             raise ValueError
         return directory, "document.txt"
+    except PdfContextAccountMismatch:
+        raise
     except (signing.BadSignature, KeyError, TypeError, ValueError) as error:
         raise PdfContextError("This PDF context is unavailable. Use Reopen and try again.") from error

@@ -235,6 +235,17 @@ class _ConsoleWriter:
         self._closed = False
         self._thread = None
         self._note_sink = note_sink
+        # Optional ``_ConsoleColorizer`` (Angela, 2026-10-08). ``None`` = the
+        # console gets exactly the text the log file got, as before.
+        self._colorizer = None
+
+    def set_colorizer(self, colorizer):
+        """Paint console lines by level from now on (``None`` switches it off).
+
+        The painter runs on THIS class's drain thread only, so colouring costs
+        the caller of ``print()`` nothing and can never stall it.
+        """
+        self._colorizer = colorizer
 
     def start(self):
         if self._thread is not None:
@@ -304,6 +315,12 @@ class _ConsoleWriter:
                 return
 
     def _emit(self, stream, text):
+        painter = self._colorizer
+        if painter is not None:
+            try:
+                text = painter.paint(stream, text)
+            except Exception:
+                pass  # a broken painter costs the colour, never the text
         try:
             stream.write(text)
         except Exception:
@@ -332,6 +349,229 @@ class _ConsoleWriter:
                 )
         except Exception:
             pass
+
+
+class _ConsoleColorizer:
+    """COLOURS FOR THE CONSOLE WINDOW, by level (Angela, 2026-10-08).
+
+    Angela: *"make the log to be rendered with multicolor depending on debug,
+    info, warn, error, fatals"*. Only the WINDOW is painted. ``tlamatini.log``
+    never receives a colour code: the tee writes the file on the caller's
+    thread BEFORE anything is queued (``_TeeStream._plain`` even strips the
+    codes other libraries print, such as Django's coloured access log), and
+    this painter runs afterwards, on the console drain thread, on the console
+    copy alone.
+
+    The palette uses the standard 16-colour SGR codes, which conhost, Windows
+    Terminal and every ANSI terminal render the same way:
+
+        FATAL / CRITICAL            bright white on red
+        ERROR and tracebacks        bright red
+        WARNING                     bright yellow
+        success (the green tick,
+        a unittest ``OK``)          bright green
+        DEBUG                       grey
+        INFO                        the console's own colour, with the
+                                    subsystem tag (``--- [MODEL-BRAIN]``) in
+                                    cyan and the user tag (``[a3]``) in
+                                    magenta, so lines are quick to scan.
+
+    A line's level is decided from its TEXT, deterministically, most specific
+    signal first, and only from the START of the line (a word deep inside a
+    sentence never repaints it):
+
+      1. a Python traceback: ``Traceback (most recent call last):``, every
+         indented line under it, and the exception line that closes it;
+      2. an explicit level field in a known log layout (``- ERROR -``,
+         ``] WARNING``, ``[DEBUG]``, ``ERROR:``, ``--- ERROR``);
+      3. unittest results (``FAIL:``, ``ERROR:``, ``FAILED (``, ``OK``);
+      4. the status emoji Tlamatini already prints (the red cross, no-entry,
+         stop sign, warning sign, green tick);
+      5. a leading word (``Error``, ``Failed``, ``Warning``, ``Debug``);
+      6. an exception line (``ValueError: ...``) or a Python warning
+         (``file.py:12: DeprecationWarning: ...``);
+      7. an HTTP access line's status (5xx red, 4xx yellow).
+
+    A plain INFO line keeps the console's colour. A line that already carries
+    colour codes (Django colours its own access log) is left exactly as is.
+
+    CONTRACTS (do NOT weaken):
+      * It runs ONLY on the console drain thread (``_ConsoleWriter._emit``),
+        never on the caller's thread: painting is off the hot path, and a
+        slow or broken painter can never stall a ``print()``.
+      * Every painted piece is closed with a reset IN THE SAME WRITE, so a
+        colour can never bleed into another stream's text, or into the shell
+        prompt after Tlamatini exits.
+      * It never changes a character of the text; it only adds colour codes
+        around it. It never raises into ``_emit`` (which keeps the plain text
+        if it ever did).
+      * Only a stream that IS a console able to render colour is painted
+        (``_enable_console_colors`` decides); a pipe or a file never gets an
+        escape code.
+      * ``re`` is imported locally: the tests lift this class out of
+        manage.py on its own, the same way they lift the console shield.
+    """
+
+    RESET = '\x1b[0m'
+    STYLES = {
+        'fatal': '\x1b[97;41m',     # bright white on red
+        'error': '\x1b[91m',        # bright red
+        'warning': '\x1b[93m',      # bright yellow
+        'success': '\x1b[92m',      # bright green
+        'debug': '\x1b[90m',        # grey
+    }
+    TAG_STYLE = '\x1b[96m'          # subsystem tag on a plain line: bright cyan
+    USER_STYLE = '\x1b[95m'         # per-user tag "[a3]": bright magenta
+    _LEVEL_WORDS = {
+        'CRITICAL': 'fatal', 'FATAL': 'fatal', 'ERROR': 'error',
+        'WARNING': 'warning', 'WARN': 'warning', 'DEBUG': 'debug', 'INFO': None,
+    }
+    _WORD_LEVELS = {
+        'Fatal': 'fatal', 'Error': 'error', 'Failed': 'error', 'FAILED': 'error',
+        'Failure': 'error', 'Exception': 'error', 'Warning': 'warning',
+        'Debug': 'debug',
+    }
+    _EMOJI = (
+        ('❌', 'error'),        # red cross mark
+        ('⛔', 'error'),        # no entry
+        ('\U0001f6d1', 'error'),    # stop sign
+        ('\U0001f4a5', 'error'),    # collision
+        ('⚠', 'warning'),      # warning sign
+        ('✅', 'success'),      # green check mark
+        ('✔', 'success'),      # heavy check mark
+    )
+    _HEAD = 120                     # a level is read from the start of a line
+
+    def __init__(self, streams):
+        import re
+        self._states = {
+            id(stream): {'start': True, 'style': None, 'traceback': False}
+            for stream in streams
+        }
+        self._user_re = re.compile(r'\[[^\]\s]{1,40}\d\] ')
+        self._tag_re = re.compile(r'(-{2,} )?(\[[A-Za-z0-9][^\]\n]{0,47}\])')
+        self._level_re = re.compile(
+            r'(?:^-*\s*|\[|\s-\s|\]\s)'
+            r'(CRITICAL|FATAL|ERROR|WARNING|WARN|DEBUG|INFO)(?=\]|:|\s|$)'
+        )
+        self._test_re = re.compile(r'(?:FAIL|ERROR): |FAILED \(|OK(?: \(|$)')
+        self._word_re = re.compile(
+            r'(?:-{2,}\s*)?(?:\[[^\]\n]{1,48}\]\s*)?'
+            r'(Fatal|Error|Failed|FAILED|Failure|Exception|Warning|Debug)\b'
+        )
+        self._exception_re = re.compile(
+            r'[A-Za-z_][\w.]*(Error|Exception|Interrupt|Exit|Warning)(?:: |$)'
+        )
+        self._traceback_end_re = re.compile(r'[A-Za-z_][\w.]*(?:: |$)')
+        self._pywarning_re = re.compile(r':\d+: [A-Za-z]*Warning: ')
+        self._http_re = re.compile(
+            r'(?:"[A-Z]+ [^"]*"|\b(?:HTTP|WebSocket) [A-Z]+ \S+) ([1-5]\d\d)\b'
+        )
+
+    def paint(self, stream, text):
+        """Return ``text`` with colour codes added, for ``stream``'s window."""
+        state = self._states.get(id(stream))
+        if state is None or not text:
+            return text
+        out = []
+        pos = 0
+        size = len(text)
+        while True:
+            newline = text.find('\n', pos)
+            end = size if newline < 0 else newline
+            if end > pos:
+                piece = text[pos:end]
+                if state['start']:
+                    out.append(self._paint_line_start(piece, state))
+                elif state['style']:
+                    out.append(state['style'] + piece + self.RESET)
+                else:
+                    out.append(piece)
+            if newline < 0:
+                break
+            out.append('\n')
+            state['start'] = True
+            state['style'] = None
+            pos = newline + 1
+        return ''.join(out)
+
+    def _paint_line_start(self, piece, state):
+        out = []
+        body = piece
+        match = self._user_re.match(piece)
+        if match:
+            user = match.group(0)
+            out.append(self.USER_STYLE + user[:-1] + self.RESET + ' ')
+            body = piece[len(user):]
+            if not body:
+                return ''.join(out)  # the line itself arrives in the next write
+        state['start'] = False
+        if '\x1b' in body:
+            state['style'] = None    # already coloured by its author: leave it
+            out.append(body)
+            return ''.join(out)
+        level = self._classify(body, state)
+        style = self.STYLES.get(level) if level else None
+        state['style'] = style
+        if style:
+            out.append(style + body + self.RESET)
+            return ''.join(out)
+        match = self._tag_re.match(body)
+        if match:
+            out.append((match.group(1) or '') + self.TAG_STYLE + match.group(2)
+                       + self.RESET + body[match.end():])
+        else:
+            out.append(body)
+        return ''.join(out)
+
+    def _classify(self, body, state):
+        if state['traceback']:
+            if (not body.strip() or body[:1] in ' \t'
+                    or body.startswith(('During handling', 'The above exception'))):
+                return 'error'
+            state['traceback'] = False
+            if self._traceback_end_re.match(body):
+                return 'error'   # the exception line that closes the traceback
+        head = body[:self._HEAD]
+        if 'Traceback (most recent call last)' in head:
+            state['traceback'] = True
+            return 'error'
+        if body.startswith(('During handling of the above exception',
+                            'The above exception was the direct cause')):
+            return 'error'
+        match = self._level_re.search(head)
+        if match and self._LEVEL_WORDS[match.group(1)] is not None:
+            return self._LEVEL_WORDS[match.group(1)]
+        match = self._test_re.match(body)
+        if match:
+            return 'success' if match.group(0).startswith('OK') else 'error'
+        level = self._emoji_level(head)
+        if level:
+            return level
+        match = self._word_re.match(body)
+        if match:
+            return self._WORD_LEVELS[match.group(1)]
+        match = self._exception_re.match(body)
+        if match:
+            return 'warning' if match.group(1) == 'Warning' else 'error'
+        if self._pywarning_re.search(head):
+            return 'warning'
+        match = self._http_re.search(body)
+        if match:
+            code = match.group(1)
+            if code[0] == '5':
+                return 'error'
+            if code[0] == '4':
+                return 'warning'
+        return None
+
+    def _emoji_level(self, head):
+        best, best_at = None, len(head)
+        for mark, level in self._EMOJI:
+            at = head.find(mark)
+            if 0 <= at < best_at:
+                best, best_at = level, at
+        return best
 
 
 class _TeeStream:
@@ -388,6 +628,33 @@ class _TeeStream:
         self._last_flush = time.monotonic()
         self._at_line_start = True
 
+    # Terminal colour/cursor codes (CSI sequences), compiled on first use.
+    _ANSI_RE = None
+
+    @classmethod
+    def _plain(cls, text):
+        """``text`` without terminal colour codes. Never raises.
+
+        Costs one ``in`` test when the text has no ESC character, which is
+        almost every write. ``re`` is imported here, not at module level, so
+        the tests can lift this class out of manage.py on its own.
+
+        It is called OUTSIDE the file write's ``try``, so it must never raise:
+        a caller that hands the tee BYTES (or anything that is not text) gets
+        it back unchanged, and the file write below swallows it exactly as it
+        did before this method existed.
+        """
+        if not isinstance(text, str) or '\x1b' not in text:
+            return text
+        try:
+            pattern = cls._ANSI_RE
+            if pattern is None:
+                import re
+                pattern = cls._ANSI_RE = re.compile(r'\x1b\[[0-?]*[ -/]*[@-~]')
+            return pattern.sub('', text)
+        except Exception:
+            return text
+
     def _tag_lines(self, data, tag):
         """Prefix every LINE START in ``data`` with the caller's user tag.
 
@@ -437,14 +704,20 @@ class _TeeStream:
         # growing too — the durable record held hostage by the cosmetic one.
         # A file write can never block on a human, so the file goes first and
         # always wins. Do NOT put the console back above this block.
+        #
+        # The FILE gets plain text (Angela, 2026-10-08): colour codes belong to
+        # the console window only. ``_plain`` strips codes that a library put
+        # in the text itself (Django colours its access log), so tlamatini.log
+        # never shows "←[32m" in an editor; the console copy keeps them.
+        plain = self._plain(payload)
         try:
             with self._LOG_LOCK:
-                self._log_file.write(payload)
-                self._pending_bytes += len(payload)
+                self._log_file.write(plain)
+                self._pending_bytes += len(plain)
                 if (
                     self._pending_bytes >= self._FLUSH_THRESHOLD_BYTES
                     or (time.monotonic() - self._last_flush) >= self._FLUSH_INTERVAL_SECONDS
-                    or any(marker in payload for marker in self._URGENT_MARKERS)
+                    or any(marker in plain for marker in self._URGENT_MARKERS)
                 ):
                     self._log_file.flush()
                     self._pending_bytes = 0
@@ -1079,6 +1352,252 @@ def _apply_console_quick_edit_policy():
         print(f"--- [CONSOLE-SHIELD] QuickEdit policy skipped (non-fatal): {exc}")
 
 
+def _console_vt_on(std_id):
+    """Make one Windows console output handle RENDER colour codes. True = it does.
+
+    Colour codes are only drawn when the console has VIRTUAL TERMINAL
+    PROCESSING on (``ENABLE_VIRTUAL_TERMINAL_PROCESSING``, 0x0004); without it
+    they print as "←[91m" garbage. This ADDS that bit and
+    ``ENABLE_PROCESSED_OUTPUT`` (0x0001, which it needs), NEVER clears a bit,
+    and READS THE MODE BACK: only a console that really has the bit on now
+    counts. Unlike QuickEdit this is safe in both modes: it takes nothing away
+    from a developer's terminal (PowerShell and Windows Terminal already run
+    with it on), it only lets colour render. Never raises.
+    """
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        ENABLE_PROCESSED_OUTPUT = 0x0001
+        ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004
+
+        kernel32 = ctypes.windll.kernel32
+        kernel32.GetStdHandle.restype = wintypes.HANDLE
+        handle = kernel32.GetStdHandle(std_id)
+        if not handle or handle == wintypes.HANDLE(-1).value:
+            return False
+        mode = wintypes.DWORD()
+        if not kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
+            return False
+        if mode.value & ENABLE_VIRTUAL_TERMINAL_PROCESSING:
+            return True
+        kernel32.SetConsoleMode(
+            handle,
+            mode.value | ENABLE_PROCESSED_OUTPUT | ENABLE_VIRTUAL_TERMINAL_PROCESSING,
+        )
+        check = wintypes.DWORD()
+        return bool(kernel32.GetConsoleMode(handle, ctypes.byref(check))
+                    and check.value & ENABLE_VIRTUAL_TERMINAL_PROCESSING)
+    except Exception:
+        return False
+
+
+def _owner_process_name(hwnd):
+    """Executable name of the process that OWNS window ``hwnd`` ('' if none).
+
+    stdlib only (manage.py runs before Django): GetWindow(GW_OWNER), then
+    GetAncestor(GA_ROOTOWNER), then the owner's process image name.
+    """
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        # PRIVATE library objects: the argtypes set below must not leak into the
+        # shared ctypes.windll function cache other code in this process uses.
+        user32 = ctypes.WinDLL('user32')
+        kernel32 = ctypes.WinDLL('kernel32')
+        user32.GetWindow.restype = wintypes.HWND
+        user32.GetWindow.argtypes = [wintypes.HWND, wintypes.UINT]
+        user32.GetAncestor.restype = wintypes.HWND
+        user32.GetAncestor.argtypes = [wintypes.HWND, wintypes.UINT]
+        owner = user32.GetWindow(hwnd, 4)            # GW_OWNER
+        if not owner:
+            owner = user32.GetAncestor(hwnd, 3)      # GA_ROOTOWNER
+        if not owner or owner == hwnd:
+            return ''
+        pid = wintypes.DWORD()
+        user32.GetWindowThreadProcessId.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.DWORD)]
+        user32.GetWindowThreadProcessId(owner, ctypes.byref(pid))
+        if not pid.value or pid.value == os.getpid():
+            return ''
+        kernel32.OpenProcess.restype = wintypes.HANDLE
+        process = kernel32.OpenProcess(0x1000, False, pid.value)  # QUERY_LIMITED_INFORMATION
+        if not process:
+            return ''
+        try:
+            size = wintypes.DWORD(1024)
+            buffer = ctypes.create_unicode_buffer(1024)
+            if not kernel32.QueryFullProcessImageNameW(process, 0, buffer, ctypes.byref(size)):
+                return ''
+            return os.path.basename(buffer.value)
+        finally:
+            kernel32.CloseHandle(process)
+    except Exception:  # noqa: BLE001
+        return ''
+
+
+def _console_host():
+    """WHICH program is drawing this console window. Never raises.
+
+    Measured, not guessed, from the window class of the console handle:
+
+      * ``ConsoleWindowClass``  - the classic Windows console (conhost);
+      * ``PseudoConsoleWindow`` - a pseudo-console: a terminal app draws the
+        text. Windows Terminal (``WT_SESSION``) is the DEFAULT console on
+        Windows 11, so a double-clicked Tlamatini.exe lands there too; the VS
+        Code / Antigravity terminal sets ``TERM_PROGRAM=vscode``.
+
+    It matters because the hosts differ: Windows Terminal always renders colour
+    and UTF-8 but IGNORES the QuickEdit flag (the queue shield covers it), and
+    conhost needs virtual-terminal processing switched on to draw colour.
+    """
+    if os.name != 'nt':
+        return os.environ.get('TERM_PROGRAM') or 'terminal'
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        kernel32 = ctypes.windll.kernel32
+        kernel32.GetConsoleWindow.restype = wintypes.HWND
+        hwnd = kernel32.GetConsoleWindow()
+        if not hwnd:
+            return 'no console window'
+        buffer = ctypes.create_unicode_buffer(64)
+        ctypes.windll.user32.GetClassNameW(hwnd, buffer, 64)
+        window_class = buffer.value
+        if window_class == 'ConsoleWindowClass':
+            return 'conhost (classic Windows console)'
+        if window_class == 'PseudoConsoleWindow':
+            # The terminal app OWNS the hidden pseudo-console window. Its process
+            # name is the measurement; environment variables are only a fallback,
+            # because a child INHERITS them from whatever launched it (a program
+            # started from an IDE terminal still carries TERM_PROGRAM=vscode even
+            # when Windows hands its window to Windows Terminal).
+            terminal = _owner_process_name(hwnd)
+            names = {
+                'windowsterminal.exe': 'Windows Terminal',
+                'code.exe': 'VS Code terminal',
+                'code - insiders.exe': 'VS Code terminal',
+                'antigravity.exe': 'Antigravity terminal',
+                'cursor.exe': 'Cursor terminal',
+            }
+            if terminal:
+                return names.get(terminal.lower(), terminal)
+            if os.environ.get('WT_SESSION'):
+                return 'Windows Terminal'
+            if os.environ.get('TERM_PROGRAM', '').lower() == 'vscode':
+                return 'VS Code-family terminal'
+            return 'a pseudo-console terminal (Windows Terminal or similar)'
+        return window_class or 'unknown console'
+    except Exception:  # noqa: BLE001 - a label must never stop startup
+        return 'unknown console'
+
+
+def _console_utf8():
+    """Make the console's OUTPUT CODE PAGE UTF-8 (65001); return a status text.
+
+    Tlamatini's own lines are unaffected by the code page (Python writes the
+    console in UTF-16), but CHILD programs that share the window write BYTES,
+    and under the old DOS code page (437/850) their accents and symbols turn
+    into "Γëê"-style garbage. FROZEN builds only, for the same reason as
+    QuickEdit: from source the console is the developer's own terminal and the
+    code page would OUTLIVE the server. Read back after setting; never raises.
+    """
+    if os.name != 'nt':
+        return 'UTF-8'
+    try:
+        import ctypes
+
+        kernel32 = ctypes.windll.kernel32
+        current = int(kernel32.GetConsoleOutputCP())
+        if current == 65001:
+            return 'code page 65001 (UTF-8)'
+        if not getattr(sys, 'frozen', False):
+            return 'code page %d (your terminal\'s, left as is in source mode)' % current
+        kernel32.SetConsoleOutputCP(65001)
+        if int(kernel32.GetConsoleOutputCP()) == 65001:
+            return 'code page 65001 (UTF-8, switched from %d)' % current
+        return 'code page %d (the console refused UTF-8)' % current
+    except Exception:  # noqa: BLE001
+        return 'code page unknown'
+
+
+def _enable_console_colors():
+    """Paint the CONSOLE WINDOW by level (Angela, 2026-10-08). Never stops startup.
+
+    Errors red, fatals white on red, warnings yellow, debug grey, successes
+    green, plain INFO in the console's own colour. Full palette and rules:
+    ``_ConsoleColorizer``. ``tlamatini.log`` stays plain text either way.
+
+    Off when any of these hold, and it SAYS which:
+      * config.json ``console_colors`` is false (it SHIPS true; a missing or
+        malformed value counts as true);
+      * the ``NO_COLOR`` environment variable is set (https://no-color.org);
+      * the output is not a console (a pipe or a file never gets an escape
+        code), or the console cannot render colour (``_console_vt_on``).
+
+    Lines printed before ``main()`` runs (the first startup banner) stay
+    uncoloured; everything after this call is painted.
+    """
+    writer = _TeeStream._CONSOLE_WRITER
+    if writer is None:
+        return
+    try:
+        import json
+        # The console TYPE is measured and announced first (Angela: "make sure
+        # the type of console is assured"): every line below names it.
+        host = _console_host()
+        codepage = _console_utf8()
+        print(f"--- [CONSOLE] host: {host} | {codepage}")
+        if os.environ.get('NO_COLOR'):
+            print("--- [CONSOLE-COLORS] OFF: the NO_COLOR environment variable is set "
+                  f"(host: {host}).")
+            return
+        enabled = True
+        try:
+            with open(_resolve_config_path(), 'r', encoding='utf-8-sig') as fh:
+                raw = json.load(fh).get('console_colors', True)
+            if isinstance(raw, bool):
+                enabled = raw
+            elif isinstance(raw, str):
+                enabled = raw.strip().lower() not in ('false', '0', 'no', 'off')
+        except Exception:  # noqa: BLE001 - a missing/bad config keeps the default
+            pass
+        if not enabled:
+            print("--- [CONSOLE-COLORS] OFF (console_colors=false in config.json; "
+                  f"host: {host}).")
+            return
+        consoles = []
+        for name, std_id in (('stdout', -11), ('stderr', -12)):
+            original = getattr(getattr(sys, name, None), '_original', None)
+            if original is None:
+                continue
+            try:
+                if not original.isatty():
+                    continue
+            except Exception:  # noqa: BLE001
+                continue
+            consoles.append((original, std_id))
+        if not consoles:
+            # A pipe or a file: never put escape codes there.
+            print("--- [CONSOLE-COLORS] OFF: the output is a pipe or a file, not a "
+                  "console window.")
+            return
+        if os.name == 'nt':
+            consoles = [(stream, std_id) for stream, std_id in consoles
+                        if _console_vt_on(std_id)]
+            if not consoles:
+                print("--- [CONSOLE-COLORS] OFF: this console cannot render colours "
+                      f"(virtual-terminal processing was refused; host: {host}).")
+                return
+        writer.set_colorizer(_ConsoleColorizer([stream for stream, _ in consoles]))
+        print(f"--- [CONSOLE-COLORS] ON in {host}: errors red, fatals white on red, "
+              "warnings yellow, debug grey, successes green. tlamatini.log stays "
+              "plain text.")
+    except Exception as exc:  # noqa: BLE001 - colour must never stop startup
+        print(f"--- [CONSOLE-COLORS] skipped (non-fatal): {exc}")
+
+
 def _resolve_django_port(default_port: int = 8000) -> int:
     """Django/Daphne listen port, read from config.json's ``django_port``.
 
@@ -1165,6 +1684,11 @@ def main():
     # developer's own terminal is never reconfigured by a test run.
     if not (len(sys.argv) >= 2 and sys.argv[1] == 'test'):
         _apply_console_quick_edit_policy()
+
+    # Console colours by level (Angela, 2026-10-08). Every command, both modes:
+    # it only ADDS the bit that lets a console render colour, and a pipe or a
+    # file never receives a colour code. tlamatini.log stays plain text.
+    _enable_console_colors()
 
     if getattr(sys, 'frozen', False):
         try:

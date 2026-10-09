@@ -119,6 +119,40 @@ def _llm_client_timeout(config):
         return 120.0
 
 
+_LEGACY_SAMPLING_KEYS = ("temperature", "top_k", "top_p", "repeat_penalty", "repeat_last_n")
+
+
+def _model_sampling_kwargs(config, client_kwargs):
+    """Sampling + num_ctx for the chat model, decided by the MODEL BRAIN.
+
+    These chains used ONE fixed set for every model (temperature 0.0, top_k 20,
+    top_p 0.8, repeat_penalty 1.2). The brain (agent/model_brain.py) uses what
+    THIS model's vendor publishes instead; a value it does not set is simply not
+    sent, so the model's own default applies. model_brain=off - or any problem -
+    returns the legacy fixed set exactly (fail-open).
+    """
+    legacy = {
+        "temperature": 0.0,
+        "top_k": 20,
+        "top_p": 0.8,
+        "repeat_penalty": config.get('ollama_repeat_penalty', 1.2),
+        "repeat_last_n": config.get('ollama_repeat_last_n', 256),
+        "num_ctx": config.get('ollama_num_ctx', 1048576),
+    }
+    try:
+        from .. import model_brain as _model_brain
+        brain = _model_brain.plan(config.get('chained-model'), config.get('ollama_base_url'),
+                                  config, headers=(client_kwargs or {}).get('headers'))
+        if not brain.enabled:
+            return legacy
+        chosen = {key: brain.sampling.get(key) for key in _LEGACY_SAMPLING_KEYS}
+        chosen["num_ctx"] = brain.num_ctx or legacy["num_ctx"]
+        return chosen
+    except Exception as exc:  # noqa: BLE001 - the brain never blocks a chain
+        print(f"--- [MODEL-BRAIN] not applied to the chat chain ({exc}); legacy parameters kept ---")
+        return legacy
+
+
 def _get_cached_embeddings(config, client_kwargs):
     model = config.get('embeding-model')
     base_url = config.get('ollama_base_url')
@@ -430,17 +464,12 @@ def _build_prompt_only_chain_impl(config, prompt_template_string, documents=None
         base_url=config.get('ollama_base_url'),
         streaming=True,
         stop=stop_tokens,
-        temperature=0.0,
-        top_k=20,
-        top_p=0.8,
-        repeat_penalty=config.get('ollama_repeat_penalty', 1.2),
-        repeat_last_n=config.get('ollama_repeat_last_n', 256),
         thinking=True,
-        num_ctx=config.get('ollama_num_ctx', 1048576),
         handle_parsing_errors=True,
         keep_alive=_resolve_keep_alive(),
         client_kwargs=client_kwargs,
         callbacks=llm_timing_callbacks(),
+        **_model_sampling_kwargs(config, client_kwargs),
     )
 
     if llm is None:
@@ -534,17 +563,12 @@ def build_retrieval_chain(documents, config, prompt_template_string):
             base_url=config.get('ollama_base_url'),
             streaming=True,
             stop=stop_tokens,
-            temperature=0.0,
-            top_k=20,
-            top_p=0.8,
-            repeat_penalty=config.get('ollama_repeat_penalty', 1.2),
-            repeat_last_n=config.get('ollama_repeat_last_n', 256),
             thinking=True,
-            num_ctx=config.get('ollama_num_ctx', 1048576),
             handle_parsing_errors=True,
             keep_alive=_resolve_keep_alive(),
             client_kwargs=client_kwargs,
             callbacks=llm_timing_callbacks(),
+            **_model_sampling_kwargs(config, client_kwargs),
         )
 
         if llm is None:

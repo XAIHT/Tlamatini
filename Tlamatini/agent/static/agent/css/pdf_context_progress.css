@@ -14,6 +14,7 @@
 #pdf-context-progress progress { grid-column: 1 / -1; width: 100%; height: 12px; accent-color: #55bbaa; }
 #pdf-context-progress output { color: #ccc; }
 #pdf-context-progress [data-state="active"] { color: #8de1cc; }
+#pdf-context-progress [data-state="failed"] { color: #ffa998; }
 #pdf-context-progress-message { min-height: 3em; }
 #pdf-context-progress footer { display: flex; justify-content: flex-end; gap: 12px; }
 #pdf-context-progress footer button { color: white; background: darkgreen; border: 1px solid #777; border-radius: 4px; padding: 6px 20px; font: inherit; cursor: pointer; }

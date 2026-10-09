@@ -16,6 +16,116 @@
 
 ---
 
+## 2026-10-08 — Two chat pages on two models no longer ping-pong forever; a refused PDF says why
+
+**The loop (Compact-mode code since v1.75.0, found in Angela's install).**
+`compact_mode.note_capacity` keeps ONE process-wide note of "the current model" and announces
+any change to every tab (`notify("capacity")`). The group handler
+`consumers.compact_mode_changed` answered EVERY announcement by re-sending all Configure rows
+and re-measuring (`"Configure rows changed"`), and every re-measure runs `fit_request` →
+`note_capacity(<that tab's model>)`. Two pages on two models (angela on glm-5.3:cloud;
+dodoati reconnected after Config ▸ Models moved to glm-5.2:cloud) therefore flipped the note
+and re-announced it forever: ~900 log lines a round, 61,779 in one evening, and the console
+shield dropping 1,000-2,500 lines at a time. Only the probe cache ("byte-identical ... no new
+call") kept it from also spending cloud tokens. Reproduced on dev with
+`harness/compact_pingpong_visible.py` (gauge probes OFF, two browser contexts, nobody
+touching anything): **1,081 row re-sends, 1,255 notes, 209,006 log lines in 60 s**. After the
+fix: **0, 0, 0**.
+
+**Fix.** `compact_mode.VERDICT_KINDS = ("capacity", "self_modify_fit")`: a model's VERDICT
+still reaches every tab (`compact-mode-state`, so the 🔒 box updates) and then STOPS - no row
+re-send, no re-measure. `note_self_modify` now announces `"self_modify_fit"`; the user's own
+Self-modify box keeps `"self_modify"` and still re-measures. Real changes ("on", "off",
+"rows", "state", "self_modify") behave exactly as before. ⚠️ Never make a verdict kind
+re-measure again, and never `notify()` from a path that `fit_request` runs without adding the
+kind to `VERDICT_KINDS`. Coverage: `agent/test_compact_mode_pingpong.py` (a two-tab simulation
+that settles in under 10 deliveries; before the fix it was still bouncing at 200).
+
+**A refused PDF now says why (not a regression: a second account in the same browser).**
+Angela's install refused `tutorial_6.pdf` with "This PDF context is unavailable" and left the
+header stuck on "pending context". Her log showed the cause: the chat page's WebSocket was
+`angela` (user 2) but the upload went out as `dodoati` (user 4). A second sign-in in the same
+browser replaces the session cookie of every open tab, while an open WebSocket keeps its first
+user, so `resolve_pdf_context` rightly refused another account's package (`pdf_canvas/4/...`).
+Now `PdfContextAccountMismatch` names the cause and the fix ("... a different Tlamatini
+account ... Reload this page (F5) ..."); the consumer logs `[PDF-CONTEXT] refused for user N:
+...` (the refusal used to leave no trace); `restorePendingContextSelection()` puts the header
+back; and the progress dialog marks the step that was running **Failed** instead of leaving
+"Working..." and a moving bar. Coverage: `agent/test_pdf_context.py`; visible
+`harness/pdf_context_visible.py`, 20/20 on dev (one account loads; a second account in the
+same browser is refused with the reason; the header comes back; reloading as the message says
+loads the same PDF).
+
+**Also:** `_TeeStream._plain` hands back anything that is not text unchanged. It runs outside
+the file write's `try`, so a bytes write must never raise out of the tee
+(`test_a_non_text_write_never_raises_out_of_the_tee`).
+
+## 2026-10-08 — The MODEL BRAIN replaces the stall timers; the console is coloured by level and knows its host
+
+**Timers ERASED (Angela's order, do NOT bring them back).** The silence watchdog
+(`llm_liveness.py`, first-chunk/stall clocks) and the "write long files in pieces"
+prompt rule were removed: a timer cannot tell a dead call from a slow one, so it threw
+work away and retried from scratch. Measured with Ollama's own numbers the same day:
+prompt reading is NOT the bottleneck on Ollama cloud (169K-token prompt: first byte
+5.5 s glm-5.2 / 11.2 s glm-5.3 cold, ~1 s cached); the time is the GENERATED reasoning.
+Writing in pieces was slower (298 s vs 260 s). File-Creator keeps `append` as a plain
+capability. Memory: `feedback-no-discarding-timers`.
+
+**The Model Brain (`agent/model_brain.py`, `model_brain_chat.py`, `model_brain_views.py`,
+`model_profiles.json`).** Per-model settings from FORMAL sources only, never hardwired to
+one model: a sourced knowledge base (GLM-5, DeepSeek-V4, MiniMax-M3, Gemma 4, Qwen 3.5,
+Qwen 2.5, gpt-oss, Kimi, Mistral Large 3, Nemotron 3 — vendor model cards / HF
+`generation_config.json`), then a profile LEARNED from Hugging Face for an unknown model
+(`%LOCALAPPDATA%\Tlamatini\model_brain`), then the Modelfile parameters Ollama publishes.
+Overrides > KB > learned > Ollama > model defaults. `num_ctx` is clamped to the model's
+real `context_length`. `BrainChatOllama` (langchain-ollama 0.2.1 has no `think`/`thinking`)
+sends `think` only when the installed client accepts the value and RETURNS the model's
+reasoning inside the tool loop (Z.ai interleaved thinking, OpenAI harmony, DeepSeek,
+Moonshot, Gemma 4 all require it; it is dropped across user turns). Live proof: glm-5.3
+step 2 generated 170 tokens after 3,277 at step 1. `model_brain: off` restores the old
+fixed 0.0/1.2/20 sampling exactly. The context gauge now counts the returned reasoning:
+estimate within +1.3 % .. +5.9 % of Ollama's `prompt_eval_count` across 9 steps.
+Config ▸ Models ▸ Save opens the **Auto-tuning** dialog (`model_brain_tuning.js/.css`,
+`/agent/model_brain/models/` + `/agent/model_brain/tune/`) that shows each model being
+tuned with its sources. Carried by `build.py` (`--add-data` for the KB, hidden imports,
+`_FROZEN_REQUIRED_AGENT_MODULES`). Coverage: `agent/test_model_brain.py`; visible:
+`harness/model_brain_visible.py` (25/25 in dev on 2026-10-08).
+
+**Console colours by level (`manage.py::_ConsoleColorizer`, `console_colors`, ships true).**
+Errors/tracebacks red, CRITICAL/FATAL white on red, warnings yellow, debug grey, successes
+green; plain INFO keeps the console colour with `--- [TAG]` cyan and the user tag `[a3]`
+magenta. The level is read from the START of a line only. Contracts: painting runs ONLY on
+the console drain thread; every painted piece is reset in the same write; the text is never
+changed; a pipe/file never gets a code; `NO_COLOR` is honoured. **`tlamatini.log` is now
+truly plain**: `_TeeStream._plain` strips codes other libraries print (Django colours its
+access log — it used to land in the file as `←[32m`). The sink order is unchanged (file
+first, `self._log_file.write(plain)`).
+
+**The console TYPE is measured (Angela: "make sure the type of console is assured").**
+`_console_host()` reads the console handle's window class: `ConsoleWindowClass` = classic
+conhost; `PseudoConsoleWindow` = a terminal app, named by the PROCESS that owns the window
+(`_owner_process_name`: WindowsTerminal.exe, Code.exe, Antigravity.exe), with env vars only
+as a fallback — an IDE-launched program inherits `TERM_PROGRAM=vscode` even when Windows
+hands its window to Windows Terminal, so the env lied. ⚠️ **Windows Terminal is the DEFAULT
+console on Angela's Windows 11**: it ignores the QuickEdit flag (the queue shield covers
+it) and its window pid is WindowsTerminal.exe, never the server. Startup prints
+`--- [CONSOLE] host: Windows Terminal | code page ...` then `--- [CONSOLE-COLORS] ON in ...`.
+`_console_vt_on` only ADDS virtual-terminal processing and reads it back (both modes);
+`_console_utf8` sets code page 65001 in FROZEN builds only (the code page belongs to the
+console and would outlive a source run). Coverage: `agent/test_console_colors.py`.
+
+**Test-harness lessons (keep them):**
+- **Claude Code sets `NO_COLOR=1`** for every program it starts; Angela's user/machine
+  environment has none. A visible test of colours must remove it from the launcher.
+- **Never write `config.json` with a plain `open(..., "w")`**: a harness window that closed
+  at that instant left a 0-byte `config.json` (restored from the backup the same minute).
+  Write a sibling file and `os.replace` it; refuse to back up a config that does not parse.
+- **Clear the chat history per test**: without it glm-5.3 read the previous runs' answers
+  and took 9 steps instead of 3.
+- A PowerShell 5.1 script saved as UTF-8 WITHOUT a BOM is read as ANSI: keep launcher
+  scripts ASCII-only. Set `chcp 65001` + `[Console]::OutputEncoding = UTF8` in a launcher,
+  or UTF-8 output shows as `┬╖` / `Γëê` (that was the test window, never Tlamatini's).
+
 ## 2026-10-08 — LaTeXer: a mostly-deleted PDF no longer wears the requested name; the model rung repairs a REGION
 
 Angela's Podman cheat-sheet run took 46.6 min (49 model calls). Its FIRST LaTeXer

@@ -1311,6 +1311,7 @@ system_prompt: |
 - **Config parameters**:
   - `file_path`: "" (full path + filename + extension of the file to create)
   - `content`: "" (raw content to write into the file)
+  - `append`: false (false = create or overwrite the file; true = ADD the content to the END of an existing file, creating it if missing - e.g. a chain of File-Creator nodes that builds one file step by step)
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after file creation attempt)
 

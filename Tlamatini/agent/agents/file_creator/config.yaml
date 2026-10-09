@@ -12,6 +12,11 @@ content: ""
 # backslash escapes. Takes precedence over `content`.
 content_b64: ""
 
+# false (default) = create the file, or overwrite it if it exists.
+# true = ADD the content to the END of the file (creating it if it is missing),
+# byte-exact. Applies to `content` and to `content_b64` alike.
+append: false
+
 # Connection fields
 source_agents: []
 target_agents: []

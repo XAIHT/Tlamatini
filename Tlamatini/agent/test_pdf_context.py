@@ -65,6 +65,46 @@ class PdfContextTests(SimpleTestCase):
             with self.assertRaises(PdfContextError):
                 resolve_pdf_context(token, user)
 
+    def test_another_account_gets_a_message_that_names_the_cause(self):
+        """Angela, 2026-10-08: a second sign-in in the same browser replaced the
+        tab's cookie, the upload went out as user 4 while the chat was user 2,
+        and the only message was "unavailable". Still refused - it IS another
+        account's file - but now the message says why and what to do."""
+        result = prepare_pdf_context(self.pdf_upload(), 4)
+        with self.assertRaises(pdf_context.PdfContextAccountMismatch) as caught:
+            resolve_pdf_context(result['token'], 2)
+        self.assertIn('different Tlamatini account', str(caught.exception))
+        self.assertIn('Reload this page', str(caught.exception))
+        # A forged or broken token is still the plain "unavailable" refusal.
+        for token in (result['token'] + 'tampered', None, '../source.pdf'):
+            with self.assertRaises(PdfContextError) as plain:
+                resolve_pdf_context(token, 4)
+            self.assertNotIsInstance(plain.exception, pdf_context.PdfContextAccountMismatch)
+        # And the owner still gets the package.
+        directory, filename = resolve_pdf_context(result['token'], 4)
+        self.assertEqual(filename, 'document.txt')
+
+    def test_a_refused_pdf_puts_the_context_header_back(self):
+        """The header used to stay on "pending context: x.pdf" forever after a
+        refusal, even after Clear canvas."""
+        js = Path(pdf_context.__file__).parent / 'static' / 'agent' / 'js'
+        context_js = (js / 'agent_page_context.js').read_text(encoding='utf-8')
+        chat_js = (js / 'agent_page_chat.js').read_text(encoding='utf-8')
+        self.assertIn('function restorePendingContextSelection()', context_js)
+        self.assertIn('pendingContextPrevious = {', context_js)
+        branch = chat_js[chat_js.index("data.type === 'pdf-canvas-context-error'"):]
+        branch = branch[:branch.index('return;')]
+        self.assertIn('restorePendingContextSelection();', branch)
+        # ...and the step that was running says "Failed", not "Working..." with a
+        # bar still moving, which read as "still loading" (Angela, 2026-10-08).
+        progress_js = (js / 'pdf_context_progress.js').read_text(encoding='utf-8')
+        failing = progress_js[progress_js.index('function fail(detail)'):]
+        failing = failing[:failing.index('function connectionLost')]
+        self.assertIn("row.dataset.state = 'failed'", failing)
+        self.assertIn("'Failed'", failing)
+        css = (js.parent / 'css' / 'pdf_context_progress.css').read_text(encoding='utf-8')
+        self.assertIn('[data-state="failed"]', css)
+
     def test_corrupt_upload_removes_only_its_incomplete_package(self):
         with self.assertRaises(Exception):
             prepare_pdf_context(SimpleUploadedFile('broken.pdf', b'invalid'), 7)
