@@ -480,3 +480,23 @@ Replaced the fixed output height with a horizontal divider and two independent s
 **Verbatim request:** “Now update completely all the related documentation considering all of the implementations/changes/modifications, including .pptx and .pdf files, go!.” The standing instruction remains: do not commit.
 
 Synchronized the active Prompt Flow guides, maintenance contracts, memories and mirrored skills; extended the shared dossier content for graphical mixed-style commentary, version 2 file fidelity and the 5–95% Run output divider. Existing dated implementation evidence remains historical. Rebuilt the two project dossiers and retained source-derived inventory, line counts and the full tracked tree. [Scope, artifact verification and rollback](docs/changes/2026-10-04-prompt-flow-documentation.md). Before-copies and a scoped patch are under `Temp/documentation-refresh-2026-10-04/`; never reset whole files over the earlier implementation or unrelated configuration edits.
+
+## 2026-10-10 — About Usage and documentation synchronization
+
+User directives: “MUST BE "ABOUT USAGE"”, “ADD THE REFILL NUMBER OF WEEKS INFO, TOO”,
+and “THE INFORMATION MUST BE TRUE, NOT ASUMMED, NOT FAKEN”. The later request was
+“Now, update all the documentation *.md, *.pmt (if needed), *.pdf, *.pptx, etc.”
+
+The About menu gained a read-only Usage view. Its final source design uses less
+than 60% client area, normal fonts, maximum two decimals and provider-derived
+credits/refill/legacy limits. The provisional manual allowance estimate was
+removed. Rolling cloud totals and recorded local main-chat/model activity remain
+separate. The API’s unavailable website-wide model breakdown is explicitly stated.
+Backend modules, UsageDaily migration 0213, shared-style frontend assets and
+release/source carriers travel together. Existing DB backup/restore is untouched.
+
+The dated source results are 220 unit/regression tests and 24 headed-browser
+checks passed, plus static parity and clean inclusion sweeps. Documentation now
+links the user, maintainer and prompt contracts through `docs/usage-dashboard.md`;
+the PDF/PPTX share their generator content. No release tag, commit, executable
+build, install or live self-update is implied.

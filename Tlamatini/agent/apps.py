@@ -138,6 +138,10 @@ class AgentConfig(AppConfig):
         # (REQ-S2-PUB-001/002/003). Fail-open. See docs/companion-app-discovery.md.
         _schedule_companion_discovery()
 
+        from .context_governor import register_usage_sink
+        from .usage_tracking import enqueue_usage
+        register_usage_sink(enqueue_usage)
+
         # Contacts book: export TLAMATINI_CONTACTS so every spawned pool agent
         # (Telegrammer / Whatsapper) inherits the resolved contacts.json path —
         # the same mechanism as TLAMATINI_TEMP. Fail-open; cheap on every init.

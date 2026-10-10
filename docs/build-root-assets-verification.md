@@ -77,3 +77,14 @@ rebuild/update to receive the fix; source changes alone do not update an exe.
 For future development checks, use a verified visible forked foreground console,
 keep it open afterward, and monitor its live output. Use the update sweep's
 `--no-git` only when that limitation is required and report the omitted coverage.
+
+## Usage dashboard additions — 2026-10-10
+
+The runtime receipt now requires `agent/js/usage_dashboard.js`,
+`agent/css/usage_dashboard.css` and `templates/agent/usage_dialog.html`. The root source map also ships the
+user guide as `docs/usage-dashboard.md`. The frozen
+backend requires `usage_tracking`, `usage_provider` and `usage_views`; the source
+snapshot additionally requires migration 0213 and Usage tests/harnesses. Both
+inclusion sweeps and source/collected-static byte parity passed during the Usage
+campaign. This extends the source inventory; it does not recertify an older
+installer. See [Usage delivery and validation](usage-dashboard.md).

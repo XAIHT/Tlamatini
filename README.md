@@ -55,15 +55,16 @@
 6. [Compact mode — fit every request to your model](#compact-mode--fit-every-request-to-your-model)
 7. [Self-modify — her self-knowledge, on or off](#self-modify--her-self-knowledge-on-or-off)
 8. [Model Brain — every model tuned for you](#model-brain--every-model-tuned-for-you)
-9. [Newest changes](#newest-changes--v1770)
-10. [Current version](#current-version--v1770)
-11. [The full capability list](#-the-full-capability-list)
-12. [Enable Tlamatini as a Blue-hat agent](#enable-tlamatini-as-a-blue-hat-agent)
-13. [Installation](#installation)
-14. [Tech stack](#tech-stack)
-15. [Avatar animation, assets, and visible tests](#avatar-animation-assets-and-visible-tests)
-16. [Contributing](#contributing)
-17. [License](#license)
+9. [About → Usage](#about--usage--source-change-2026-10-10)
+10. [Newest changes](#newest-changes--v1770)
+11. [Current version](#current-version--v1770)
+12. [The full capability list](#-the-full-capability-list)
+13. [Enable Tlamatini as a Blue-hat agent](#enable-tlamatini-as-a-blue-hat-agent)
+14. [Installation](#installation)
+15. [Tech stack](#tech-stack)
+16. [Avatar animation, assets, and visible tests](#avatar-animation-assets-and-visible-tests)
+17. [Contributing](#contributing)
+18. [License](#license)
 
 ---
 
@@ -381,6 +382,20 @@ This ships in v1.76.0 (2026-10-08). It was checked by unit tests and a visible
 browser test (25 of 25 checks in a source run). How it works:
 [the Model Brain](docs/claude/architecture.md).
 
+## About → Usage — source change, 2026-10-10
+
+The new **ABOUT USAGE** dialog stays available during an answer. It reads actual
+Ollama credits, allowance, usage and refill weeks/date; presents rolling cloud
+token/request charts; and separates per-user recorded chat/model statistics.
+It uses the shared dialog theme, normal fonts, at most two decimal places and
+less than 60% of the browser client area. Missing fields are explained, never
+invented. Monthly, legacy-limit and purchased-only layouts follow the response.
+The cloud API does not expose the website’s full per-model breakdown.
+
+This is a verified source change awaiting rebuild and installed acceptance,
+not a claim about the published v1.77.0 binary. See the
+[Usage guide and evidence](docs/usage-dashboard.md).
+
 ## Newest changes — v1.77.0
 
 **v1.77.0, 2026-10-09 — she talks to you in the first person.** Every fixed message Tlamatini puts in the chat — and her avatar reads aloud — now sounds like her and uses your name: *"I'm ready, Angela! You can start chatting with me now."*, *"I'm working on your request, Angela. Please wait a moment."*, *"I've cleared our chat history, Angela, and I'm connected again."* She uses your first name, or your username when no first name is set.
@@ -538,7 +553,7 @@ The previous annotated release, `v1.48.17` (2026-08-16), remains fully carried. 
 
 Exec-Report status handling now uses a closed, source-guarded vocabulary with five disjoint classes: completed diagnostics, intact completed work, degraded work, work not done, and agent errors. Degraded deliverables such as inaudible token-only speech or a compromised PDF are red rather than falsely clean; named completions are auditable greens; an unknown token still fails open but is identified by rule `R8b`. The repository-wide guard scans every pool-agent `status:` literal so a newly invented token fails during tests instead of silently defaulting green. Kuberneter now reports numeric `returncode`, explicit `success`, and a real `ok`/`failed` status token, preventing a failed `kubectl` call from being painted green.
 
-Updater coverage protects the separately built `Uninstaller.exe` during self-update and keeps the preserve-list parser from being confused by comments. Public release builders forcibly clear inherited private External-MCP catalog and contact opt-ins; only the explicit keyed/private builder can bundle private state, and it first merges same-machine contact sources into gitignored `contacts.private.json` without putting PII into a public build or self-modify snapshot. Drift-proof tests derive supervisor counts and prompt rules from source. The current source inventory is reported in the [PDF dossier](tlamatini_app_summary.pdf) and [PowerPoint dossier](Tlamatini_eXtended_Artificial_Intelligence_Humanly_Tempered.pptx), with physical/effective lines by language, binary-asset counts and the complete tracked file tree. The live surface contains **89 workflow agents**, **67 wrapped chat agents**, **109 Multi-Turn tools** (**20 core + 67 wrapped + 12 ACPX/Skill + 10 External-MCP supervisors**), **55 application JavaScript modules**, **29 runtime skills**, and **212 migrations**. The `v1.48.14` private MCP runtimes, inactive Memory/Sequential-Thinking defaults, public/private catalog separation, and lossless diagram restoration remain carried.
+Updater coverage protects the separately built `Uninstaller.exe` during self-update and keeps the preserve-list parser from being confused by comments. Public release builders forcibly clear inherited private External-MCP catalog and contact opt-ins; only the explicit keyed/private builder can bundle private state, and it first merges same-machine contact sources into gitignored `contacts.private.json` without putting PII into a public build or self-modify snapshot. Drift-proof tests derive supervisor counts and prompt rules from source. The current source inventory is reported in the [PDF dossier](tlamatini_app_summary.pdf) and [PowerPoint dossier](Tlamatini_eXtended_Artificial_Intelligence_Humanly_Tempered.pptx), with physical/effective lines by language, binary-asset counts and the complete tracked file tree. The live surface contains **89 workflow agents**, **67 wrapped chat agents**, **109 Multi-Turn tools** (**20 core + 67 wrapped + 12 ACPX/Skill + 10 External-MCP supervisors**), **56 application JavaScript modules**, **29 runtime skills**, and **213 migrations**. The `v1.48.14` private MCP runtimes, inactive Memory/Sequential-Thinking defaults, public/private catalog separation, and lossless diagram restoration remain carried.
 
 Dialog behaviour is now uniform on both pages: **Escape dismisses every dialog and means exactly what the titlebar ✕ means**, while an outside click still never dismisses anything — so a guarded prompt cannot be lost to a stray click, and no dialog can trap you either. A single dispatcher finds the topmost dialog and activates *that dialog's own* dismiss control, so an Ask-Execs permission prompt still answers **Deny**, a confirmation still resolves to "no", scroll locks are still released, and a sealed update step still refuses to close. The last native browser pop-ups are gone: `alert()` / `confirm()` inside the contacts book and the External-MCP dialog were replaced by themed `tlmAlert` / `tlmConfirm` panels that match the app instead of showing OS chrome over it.
 

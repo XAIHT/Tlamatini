@@ -331,3 +331,19 @@ suite, visible browser harness and forward prompt-contract migration. Portable
 image/video runtime refresh copies the shared notification helper. These support
 accumulated themed errors without changing retries or configured recovery routes.
 See [the behavior and verification record](visual-analysis-errors.md).
+
+## About Usage carriage (source development, 2026-10-10)
+
+`build.py` requires the frozen `agent.usage_tracking`, `agent.usage_provider` and
+`agent.usage_views` modules. `build_runtime_assets.py` requires the Usage template
+and collected JS/CSS, plus the user guide `docs/usage-dashboard.md`. `copy_source_assets.py` requires those sources,
+`0213_usage_ledger.py`, `test_usage.py` and the three visible-browser harness
+modules. The migration adds only `UsageDaily`; there is no manual credit-setting
+model or endpoint. Keep these files, the chat template and the `-usage-2` static
+cache suffix together. Existing DB preservation/migration mechanics are unchanged.
+
+The 2026-10-10 self-modify sweep produced 1,698 files with zero copy errors and
+verified 798 carried/restored runtime inputs byte-for-byte; the self-update
+source sweep also passed. These are dated pre-documentation-refresh inclusion
+results, not runtime proof of a fresh executable or installed update.
+See [the Usage guide](usage-dashboard.md) and its rebuild acceptance boundary.

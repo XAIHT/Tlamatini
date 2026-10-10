@@ -12,6 +12,26 @@
 
 > **Developer/product boundary (Angela, 2026-09-27):** these visibility requirements govern development and verification. They must not create extra windows, steal focus or expose internal diagnostics in the shipped UX. Direct chat dictation keeps status in chat and uses only Tlamatini's main console/log.
 
+## About → Usage (source change, 2026-10-10)
+
+`usage_dashboard.js` opens `usage_dialog.html` from About → Usage with the heading
+**ABOUT USAGE**. `usage_dashboard.css` uses the shared dialog tokens: desktop
+80vw × 74dvh (59.2% client area, width capped at 1440 px), narrow 94vw × 63dvh,
+body .88rem and title 1rem. Preserve clear button borders, visible footer actions,
+keyboard chart tooltips, escaped tables, focus trapping and the normal Escape/✕
+path; an outside click never closes it. The About entry remains enabled while busy.
+
+Cloud credits, Chat activity and Models are separate scopes. Credit cards come
+from `/api/balance`, with refill weeks and UTC date, not from rolling spend.
+Legacy responses omit unsupported cost/token panels. Fractions have at most two
+decimals; missing fields have explanations rather than invented values or Unknown.
+A changed signed-in user hides the old data. Gauge events, focus/visibility,
+opening and the visible 30-second timer refresh the view; events coalesce over
+900 ms and the provider cache limits cloud requests to once per minute.
+
+See [the data contract and dated evidence](../usage-dashboard.md). This change
+is source-verified and awaits rebuild/installed acceptance.
+
 ## Config → Models: metadata-driven form
 
 The dialog renders 38 fields in Core (7), Vision (7), Speech (7), Workflows (6),
@@ -32,7 +52,9 @@ See [the full model contract](../model_configuration.md).
 
 **Save opens the Auto-tuning dialog (2026-10-08, `v1.76.0`).** After a successful save, `agent_page_init.js` calls `window.TlmModelBrainTuning.open({onClose})` (`model_brain_tuning.js` / `.css`); the reconnect notice for changed choices follows when it closes. For every configured model it shows four stages - Ask Ollama (`/api/show`), Vendor settings (the sourced profile, or the researched `generation_config.json`), Calibrate (the sampling that will really be sent) and Reasoning (thinking level, reasoning kept inside the tool loop) - each from the server's real answer (`GET /agent/model_brain/models/`, `POST /agent/model_brain/tune/`), revealed one by one (instantly under reduced motion). Escape and the ✕ close it through `overlay.tlmDismiss`; an outside click never does. Fail-open: a broken dialog never blocks saving the models.
 
-## Chat Interface (23 modules)
+## Chat Interface (24 modules)
+- `usage_dashboard.js` — About → Usage: credit/legacy layouts, chart rendering, model activity, account-safe refresh and accessible dialog controls.
+
 - `agent_page_init.js` - WebSocket setup, app initialization, **Context-menu "Set directory as context"** handler (see *Context directory picker* below)
 - `agent_page_chat.js` - Chat message handling. **Every card carries Copy + Drop (2026-09-30):** a saved message keeps its `AgentMessage` id in `data-message-id` (from `message_id` on live frames, `id` in `initial_messages`); **Drop** asks with a themed `tlmConfirm` (red Drop, Cancel focused), sends `drop-message`, and removes the card(s) on the `message-dropped` reply — the LLM's history is re-read from the DB every request, so no reconnect is needed. A card without an id is a live status line and is only cleared from the screen. Contract: `recent-fixes.md` (2026-09-30). Also handles the `exec-permission-request` frame (Ask Execs — see below) by opening the permission dialog. `appendChatMessage` keeps the Send button on **Cancel** during self-healing "🔁 Tactic…" status frames (via `isSelfHealingStatusMessage()` in `agent_page_ui.js`) instead of re-enabling the controls, so the button only returns to **Send** on the real final answer (see `docs/claude/multi-turn.md` → *Self-healing model steps* and `recent-fixes.md` 2026-07-07)
 - `agent_page_canvas.js` - Code canvas rendering
@@ -215,7 +237,7 @@ If you add a new canvas-level feature (layout grid, minimap, overlay HUD, etc.),
 - `prompt-flow-panel-model.js` - The `.fpmt` document contract, frozen as `window.PromptFlowPanelModel` (`FORMAT = 'tlamatini-prompting-flow'`, `EXTENSION = '.fpmt'`, `isFlowFilename`, `flowFilename`, the eight `operations` entries (seven executable operations and static User Commentary) with their SVG outlines and executable port positions, `blank`, `node`, `validate(flow, playable)`, `example`). Pure data: no DOM, no network. Its validator mirrors `agent/services/prompt_flow_panel.py::validate_flow` rule for rule, and the backend re-validates every document anyway
 - `prompt-flow-panel.js` - The editor/controller for `prompt_flow_panel.html`: seven-operation palette plus static User Commentary, drag/click-to-add, ACP-style press-drag-release connections (white side triangles, horizontal curves, Decision has right-side Y/N outputs; one destination per output), marquee and Ctrl-click selection, undo/redo, zoom 25 %–200 % (Ctrl+wheel) and Fit, the per-operation configure dialogs (shared `dialog_policy.js` / `dialog_theme.css`), file Open/Save/drop, the per-user browser draft (`localStorage` key `tlamatini.prompting-flow.draft.v1.<user id>`), and playback over the connection-scoped **`/ws/prompt-flow-panel/`** WebSocket (8 s `ping` heartbeat, explicit **Reconnect**; a connection never starts or resumes a run by itself). Full contract: *Prompt Flow Panel* below and [the user guide](../prompting-flow-designer.md)
 
-**Total: 55 JS modules** (23 chat + 15 ACP + 1 ACP entry-point + 13 shared/chat-runtime auxiliary + 1 welcome + 2 Prompt Flow Panel). Count them with a file listing (`agent/static/agent/js/*.js`), never by hand.
+**Total: 56 JS modules** (24 chat + 15 ACP + 1 ACP entry-point + 13 shared/chat-runtime auxiliary + 1 welcome + 2 Prompt Flow Panel). Count them with a file listing (`agent/static/agent/js/*.js`), never by hand.
 
 ### Uniform dialog and long-operation contract (v1.48.13)
 

@@ -63,3 +63,14 @@ The suite writes a dated `create_flow_visual_report_<ts>.md` + screenshots +
 downloaded `.flw` files under `<repo>/Temp` and exits non-zero on any hard
 failure. Only **safe** agents are exercised (Executer `echo`, File-Creator into
 `Temp`, Grepper/Globber reads).
+
+## About Usage — source verification, 2026-10-10
+
+The harness is at repository root: `scripts/usage_dashboard_visible.py`, with
+`usage_dashboard_browser_checks.py` and `usage_dashboard_fixture_checks.py`.
+Run through a verified foreground console under the mandatory visible policy;
+Chrome explicitly uses `headless=False`, and a desktop gate precedes browser work.
+It uses an isolated test database and records local evidence under `Temp/usage-visible/`.
+The live checks exercise real account requests and a real model answer; plan and
+failure fixtures are explicitly synthetic. A live run consumes model usage.
+See [the full coverage and reproduction contract](../../docs/usage-dashboard.md).

@@ -48,6 +48,20 @@ the chat and its diagnostics in Tlamatini's main console/log. Verify this produc
 behavior from a visible development console. Do not reintroduce a persistent
 Whisperer PowerShell/conhost window or require its visibility to enable recording.
 
+## About → Usage — source change, 2026-10-10
+
+The new **ABOUT USAGE** dialog stays available during an answer. It reads actual
+Ollama credits, allowance, usage and refill weeks/date; presents rolling cloud
+token/request charts; and separates per-user recorded chat/model statistics.
+It uses the shared dialog theme, normal fonts, at most two decimal places and
+less than 60% of the browser client area. Missing fields are explained, never
+invented. Monthly, legacy-limit and purchased-only layouts follow the response.
+The cloud API does not expose the website’s full per-model breakdown.
+
+This is a verified source change awaiting rebuild and installed acceptance,
+not a claim about the published v1.77.0 binary. See the
+[Usage guide and evidence](docs/usage-dashboard.md).
+
 ## Existing repository contracts
 
 Read [CLAUDE.md](CLAUDE.md) and relevant documents indexed by

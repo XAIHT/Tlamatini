@@ -278,3 +278,19 @@ class CompactState(models.Model):
 
     def __str__(self):
         return f"Compact mode {'ON' if self.active else 'OFF'}{' (strict)' if self.strict else ''}"
+
+
+class UsageDaily(models.Model):
+    """UTC daily measured chat totals. Never stores prompt or response content."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    day = models.DateField()
+    model = models.CharField(max_length=255)
+    calls = models.PositiveBigIntegerField(default=0)
+    input_tokens = models.PositiveBigIntegerField(default=0)
+    output_tokens = models.PositiveBigIntegerField(default=0)
+    missing_output_calls = models.PositiveBigIntegerField(default=0)
+    first_seen = models.DateTimeField()
+    last_seen = models.DateTimeField(null=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=("user", "day", "model"), name="usage_user_day_model")]

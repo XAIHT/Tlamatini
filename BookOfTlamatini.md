@@ -834,17 +834,23 @@ Three of the four default models in chapter §4 are **cloud-backed** — `glm-5.
 
 Ollama may make limited cloud use available to free accounts. That does not make Free the operational baseline for this application. **Tlamatini requires an active Ollama Pro plan, or a higher plan such as Max, for its complete intended functionality.** Multi-Turn orchestration, long agent runs, FlowCreator, parallel Image-Interpreter calls, repeated tool decisions, and large project contexts can use cloud quota and concurrency much faster than a single conversational request.
 
-### 5.1. The three tiers, in plain English
+### 5.1. Plans and real account allowances
 
-Pricing and limits can change. At the time of this revision, Ollama advertises Pro at **$20/month or $200/year**, with three concurrent cloud models and substantially more cloud usage than Free; Max provides a higher ceiling. Always verify the current terms on **<https://ollama.com>**. The table below explains the architectural fit rather than promising permanent commercial terms:
+Pricing and limits change. The following is a dated reference checked on **2026-10-10**,
+not a fixed entitlement used by Tlamatini. See [Ollama pricing](https://ollama.com/pricing).
 
-![Ollama plan structure — Free / Pro / Max (prices intentionally not shown — check ollama.com/pricing)](OllamaPricing.png)
-
-| Plan | Cloud-model entitlements | Honest fit for Tlamatini |
+| Plan | Current published allowance | Fit and reporting |
 |---|---|---|
-| **Free** | Limited cloud usage intended for lighter experimentation; exact entitlements are controlled by Ollama. Local open-weight models remain available according to your hardware. | Useful for installation checks and small experiments. **Not a completely functional Tlamatini baseline**: a normal Multi-Turn session can touch several cloud-backed subsystems and exhaust limited usage or concurrency. |
-| **Pro** | Ollama currently advertises 3 concurrent cloud models and about 50× the Free cloud usage. | **The mandatory minimum system tier for complete Tlamatini functionality.** Intended for interactive Multi-Turn, tool-calling, vision, FlowCreator, and ordinary agent orchestration with the documented cloud configuration. |
-| **Max** | Ollama currently advertises 10 concurrent cloud models and about 5× the Pro usage. | Satisfies the requirement and is recommended for sustained ACPX relays, supervised flows, unattended runs, or several wrapped agents fanning out cloud calls concurrently. |
+| **Free** | Starter usage; additional credits can be purchased. | Light experiments; below Tlamatini’s documented full-workload baseline. Show the account’s actual response. |
+| **Pro** | $60 monthly credits; 3 concurrent requests. | The project’s minimum intended tier for full cloud workloads. |
+| **Max** | $300 monthly credits; 10 concurrent requests. | Higher capacity for sustained work; use actual returned balances. |
+| **Team / Enterprise** | Team advertises $1,000 shared monthly credits; Enterprise is custom. | Shared balances and member usage have different scopes; do not assume organization-wide totals. |
+
+There is no current listed cloud plan named **Unlimited**. Unlimited execution on
+your own hardware does not imply unlimited cloud credits. Older Pro/Max accounts
+can still report session and weekly limits; their percentages must not be
+converted into dollars. [About Usage](docs/usage-dashboard.md) adapts to these
+response shapes and explains missing fields.
 
 ### 5.2. Why this requirement is not a sponsorship
 
@@ -1010,6 +1016,25 @@ A few details worth knowing:
 - Status lines such as "I'm working on your request…" were never saved; dropping one only tidies your screen.
 - You cannot drop while she is still answering — that answer already read its history.
 - If her **memory tool** (External ▸ MCPs ▸ memory) is switched on, she may have copied a fact into that long-term memory. That copy is separate from the chat and stays; ask her to forget it too. The dialog reminds you of this.
+
+### About → Usage: read credits while she works
+
+Open **About → Usage** at any time, including during a long answer. **Cloud credits**
+shows the configured Ollama account’s reported monthly and purchased balances,
+monthly usage and refill weeks/date. Its 7/30-day spend and token charts are a
+separate rolling history. **Chat activity** and **Models** show measured calls for
+your Tlamatini user since recording began, with peak UTC dates and model graphs.
+They do not reconstruct older history or count other applications and child agents.
+
+The **ABOUT USAGE** window occupies at most about 60% of the client area, follows
+the normal dialog typography and theme, and displays at most two decimal places.
+Refresh follows the context gauge; account requests are cached for one minute.
+If a field is unavailable, the dialog explains it and offers **Ollama Usage ↗**.
+Legacy session/weekly limits are percentages, not invented dollar allowances.
+
+This feature was verified from source on 2026-10-10 and awaits a rebuilt release.
+For plan behavior, data boundaries, refresh timing and dated tests, read the
+[complete Usage guide](docs/usage-dashboard.md).
 
 ## 9. Asking your first question (no toggles)
 

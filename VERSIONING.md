@@ -359,3 +359,12 @@ A: Two common causes:
 
 **Q: Can I commit `_version.py` to lock a release?**
 A: No need. Git tags already lock the release — the tag points at a specific commit and that commit is what gets built. Committing `_version.py` would just create a never-ending stream of "bump version" commits, which is exactly what this system was designed to eliminate.
+
+## About Usage: source and release boundary (2026-10-10)
+
+The Usage dialog and migration 0213 are currently local source changes. The
+nearest tag and published release remain v1.77.0; this documentation refresh
+does not create a tag or publish a release. A bare 1.77.0 version string does
+not prove Usage is installed. Rebuild the intended source and perform installed
+acceptance before describing the feature as shipped. The dated source evidence
+and delivery contract are in [the Usage guide](docs/usage-dashboard.md).

@@ -16,6 +16,28 @@
 
 ---
 
+## 2026-10-10 — About Usage reports real balances and its coverage
+
+Source implementation; rebuild and installed acceptance pending. **About → Usage**
+stays available during a request, uses the shared theme, ordinary fonts, the
+**ABOUT USAGE** title and a 59.2% desktop footprint. Every fractional display
+is capped at two decimals; the refill caption follows the returned UTC period.
+
+Do not regress the data distinction: `/api/balance` provides current credits,
+`/api/usage` provides rolling account history, and `UsageDaily` contains only
+measured main-chat calls for the Tlamatini user. No allowance inferred from a
+plan name, no rolling spend substituted for monthly spend, no local model graph
+called a website-wide breakdown. Legacy/missing responses adapt or explain gaps.
+The old estimated allowance editor was removed before release.
+
+The 2026-10-10 source campaign passed 18 Usage tests, 202 existing regressions
+and 24 visible browser checks, including live Pro website comparisons and Usage
+during a real answer. Other-plan scenarios were synthetic. Static byte parity,
+Ruff/JS checks and both source inclusion sweeps passed; no frozen release,
+installer or real update/rebuild was certified.
+
+[Full implementation and evidence](../usage-dashboard.md).
+
 ## 2026-10-09 — Executer told the truth about its window only half the time
 
 **What was wrong.** `execute_forked_window` in Executer works: measured 2026-10-09 through the

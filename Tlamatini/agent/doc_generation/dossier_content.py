@@ -714,9 +714,73 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ["Config", "Configure MCPs, Configure Agents, Models, URLs, Contacts, Access Keys Wizard, "
                  "Voice, then Mic (dictation behavior and capture preferences)."],
                 ["DB", "WAL-safe database backup and staged replacement."],
-                ["Reconnect · About", "Rebuild the chat connection; version, credits and Check for "
-                 "updates."],
+                ["Reconnect · About", "Rebuild the chat connection; version, author credits and Check for "
+                 "updates. Current source also adds Usage, available while a request runs."],
             ]}, deck="table"),
+        Section("usage", "ABOUT → USAGE · CURRENT SOURCE", "Read usage while she works",
+            "ABOUT USAGE follows the shared dialog theme and remains available during a long answer.",
+            body=[
+                "Open About → Usage, then choose Cloud credits, Chat activity or Models. The first tab reads "
+                "the configured Ollama account; the other views identify measured main-chat activity for the "
+                "signed-in Tlamatini user. Recording begins with this feature and does not reconstruct earlier "
+                "history or include child agents and other applications.",
+                "The desktop dialog is 80vw by 74dvh, capped at 1440 pixels wide: at most 59.2% of the client "
+                "area. Narrow screens use 94vw by 63dvh. Text follows normal dialog sizing, buttons have clear "
+                "borders and the body scrolls between fixed controls. Fractional displays have at most two "
+                "decimal places. Colored bars offer keyboard-focus and pointer tooltips plus exact tables.",
+            ],
+            points=[
+                ("Cloud credits", "Reported balance, monthly usage, allowance and refill weeks/date."),
+                ("Chat activity", "Your measured calls, input/output tokens and daily trends."),
+                ("Models", "Recorded model activity and peak UTC dates; server inventory alongside it."),
+                ("While busy", "Open and refresh without interrupting the model request."),
+                ("Normal size", "Under 60% client area; ordinary typography and clear buttons."),
+                ("Accessible", "Keyboard tabs, chart tooltips, focus trap and normal Escape/Close behavior."),
+            ], deck="cards"),
+        Section("usage_truth", "ACCOUNT DATA", "Different scopes, clearly identified",
+            "Monthly credits, rolling cloud usage and recorded local activity answer different questions.",
+            body=[
+                "The authoritative /api/balance response supplies included allowance and remaining balance, "
+                "purchased credits and the UTC refill period. Used credits equal allowance minus included "
+                "balance; total available adds purchased credits only when both values are reported. Plan "
+                "names never supply an assumed allowance. Refill weeks/date come from the returned period, "
+                "not an assumed 30-day cycle.",
+                "Cloud /api/usage supplies rolling 7/30-day history, including today's partial UTC day. "
+                "That spend is not monthly credits used. Cached input is already part of input. The local "
+                "ledger's 7/30 calendar dates include today and have a narrower measurement scope.",
+                "Ollama's documented API does not yet expose the website's full per-model history or individual "
+                "purchased-credit expiries. The dialog links to Ollama Usage for website-only details. Missing "
+                "fields are explained, never replaced with invented values. Balances follow the configured "
+                "server account, which can differ from the user's website login.",
+            ],
+            points=[
+                ("Monthly balance", "Actual included and purchased credits from /api/balance."),
+                ("Rolling history", "7/30-day cloud spend and tokens; separate from the billing period."),
+                ("Local model graphs", "Measured Tlamatini main-chat activity, not website-wide history."),
+                ("Refresh", "Gauge events and visible-dialog refresh; cloud cache lasts 60 seconds."),
+                ("Missing data", "Explain unavailable or stale values; no guessed balance or token count."),
+                ("References", "docs.ollama.com/api/balance and /api/cloud-usage; docs/usage-dashboard.md."),
+            ], deck="cards"),
+        Section("usage_plans", "ADAPTIVE LAYOUT", "Report what the account supplies",
+            "The response shape selects the layout; a plan label is not a credit entitlement.",
+            body=[
+                "Free, Pro and Max accounts with monthly balance fields use credit cards. Legacy session and "
+                "weekly responses use reported remaining percentages and reset times; unsupported cost and "
+                "token fields are omitted. Purchased-only responses display only the supplied balance. A zero "
+                "monthly allowance does not produce an invented percentage.",
+                "As checked on October 10, 2026, Ollama lists Free, Pro, Max, Team and Enterprise, with no "
+                "cloud plan named Unlimited. Unlimited local execution is a different claim. Team balances "
+                "are shared, while this adapter requests default member usage, not administrator team scope. "
+                "Commercial terms remain at ollama.com/pricing; they are not hardcoded into the dialog.",
+            ],
+            points=[
+                ("Monthly", "Returned allowance, balance, purchased credits and reset period."),
+                ("Legacy", "Remaining session/weekly percentages; no guessed dollar conversion."),
+                ("Purchased only", "Only the reported purchased balance; no invented included quota."),
+                ("Free or zero", "Report actual data and omit percentages when allowance is zero."),
+                ("Team", "Shared credit balance is distinct from member-scoped usage."),
+                ("Unlimited label", "Never interpreted as unlimited cloud credits."),
+            ], deck="cards"),
         Section("acp", "AGENTIC CONTROL PANEL", "Design agent workflows visually",
             f"Drag any of the {agents} agent types onto the canvas, connect output triangles to input "
             "triangles, configure each node, validate, and press Start.",
@@ -1631,6 +1695,33 @@ def build_chapters(f: dict) -> list[Chapter]:
          f"Version {f['release_tag']}; the latest release published on GitHub is "
          f"{f['release']['latest_published'] or 'not verified'}."),
         accent="gold", sections=[
+        Section("working_usage", "SOURCE CHANGE · OCTOBER 10", "Usage is verified; rebuild acceptance is next",
+            "The new Usage dialog is an uncommitted source change, not part of the published v1.77.0 binary.",
+            body=[
+                "The October 10 source campaign passed 18 Usage tests, 202 existing regressions and 24 visible "
+                "browser checks, plus source/collected-static byte parity. The live Pro account was compared "
+                "with Ollama Settings before and after a real model request. Usage opened and refreshed while "
+                "that request ran. Other-plan, failure and account-switch cases used explicitly synthetic "
+                "fixtures, not live Free, Max or Unlimited subscriptions.",
+                "UsageDaily, migration 0213, records counters by user/model/UTC day. A bounded worker queue "
+                "keeps inference independent of writes; it is best-effort telemetry, not a billing ledger. "
+                "usage_provider.py and usage_views.py provide bounded, authenticated read-only access, "
+                "credential-safe requests and account-aware stale caching. Build/runtime/source inventories "
+                "carry the modules, migration, template, JS/CSS and tests together.",
+                "Both self-modify and self-update source inclusion sweeps passed. No executable build, installer "
+                "or real update was run for this feature. An unavailable System-Metrics sidecar in the isolated "
+                "test does not certify the full product; the real model response and Usage checks completed. "
+                "The dated test record is in docs/usage-dashboard.md. This document refresh does not claim "
+                "to rerun those browser tests or publish a new version.",
+            ],
+            points=[
+                ("220 tests", "18 Usage plus 202 existing regressions passed on October 10."),
+                ("24 browser checks", "Visible live Pro comparisons plus clearly synthetic edge cases."),
+                ("During a request", "Usage opened/refreshed while a real model answer completed."),
+                ("Source carriage", "Both inclusion sweeps clean; collected static bytes match source."),
+                ("Release boundary", "Rebuild and installed acceptance remain pending."),
+                ("Privacy", "Account observations and authenticated screenshots stay out of this dossier."),
+            ], deck="cards"),
         Section("working_firstperson", "NEW IN v1.77.0", "She speaks to you, by name",
             "Tagged on October 9 and published as the current release, so self-update delivers it.",
             body=[
@@ -1650,7 +1741,7 @@ def build_chapters(f: dict) -> list[Chapter]:
                 "and still keeps `agents/`. Only a rebuilt Uninstaller.exe carries this: a fresh install or a "
                 "reinstall copies it, while an in-app update keeps the old one.",
                 "Both changes are covered by unit tests (the message tests in `test_compact_mode_switch.py` and "
-                "`test_uninstaller_mechanics.py`), which passed again in this documentation refresh.",
+                "`test_uninstaller_mechanics.py`), recorded as passing in the October 9 documentation refresh.",
             ],
             points=[
                 ("First person", "Fixed chat lines say “I” and use your name."),

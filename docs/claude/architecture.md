@@ -12,6 +12,28 @@
 
 > **Developer/product boundary (Angela, 2026-09-27):** these visibility requirements govern development and verification. They must not create extra windows, steal focus or expose internal diagnostics in the shipped UX. Direct chat dictation keeps status in chat and uses only Tlamatini's main console/log.
 
+## Usage accounting and cloud balances (source change, 2026-10-10)
+
+`apps.py` registers the `context_governor` usage sink. Completed measured main-chat
+calls enqueue metadata-only writes through `usage_tracking.py`; gauge probes do
+not count as activity. `UsageDaily` (migration 0213) aggregates by user/model/UTC
+day. The bounded queue does not block inference; missing measurements and write
+failures are reported. It is not a durable, exhaustive billing ledger.
+
+Authenticated read-only `GET /agent/usage/?range=7d|30d` combines this user’s
+ledger with `usage_provider.snapshot()`. The configured Ollama connection supplies
+`/api/me`, authoritative `/api/balance`, rolling `/api/usage`, model inventory,
+loaded models and version. Requests have timeouts/size limits, no credential
+redirects, a 60-second single-flight cache and account-aware stale-data handling.
+Cloud scope follows that configured account; default usage scope is self, while
+team balances may be shared. No browser login or local model totals may substitute
+for the server’s balance. Credentials never reach the dashboard.
+
+Monthly, legacy session/weekly and purchased-only responses determine layout.
+No manual allowance editor, guessed plan quota, fabricated historical tokens or
+account-wide per-model graph exists. See [Usage](../usage-dashboard.md) for exact
+coverage, privacy, frontend behavior, delivery and source-only test evidence.
+
 ## Direct voice input beside Send
 
 `chat_dictation.js` opens authenticated same-origin `/ws/chat-voice/`.

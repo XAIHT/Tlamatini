@@ -255,3 +255,14 @@ Image/video model failures accumulate in one shared, themed, non-modal fatal-err
 ## Windows flow-file lifecycle — 2026-10-04, shipped in `v1.76.0`
 
 Both `.flw` agent flows and `.fpmt` prompting flows now have Windows registration, repair, removal, status and Default Apps handling. Explorer/source command-line opening validates a bounded snapshot, reuses a matching running server before database startup, and returns through login to the correct editor without execution. Main-chat Open/drop/Reopen routes both formats into separate editor tabs while preserving the chat document. The historical `.flw` installer wrappers cover both types for old installer/uninstaller binaries; independent management uses `flow_file_associations.ps1 -Extensions`. Never erase UserChoice or another application’s Open With entries. Update Repair respects explicit unregistration and installation ownership. See [Windows flow files](../windows-flow-files.md). Cache suffix: `-flow-file-opening-2`. Committed to `main` on 2026-10-04. The October 4 local release-validation campaign also rebuilds isolated frozen artifacts; its dated evidence distinguishes build completion from runtime acceptance.
+
+## Usage data is scoped, not an estimate (2026-10-10)
+
+Never calculate monthly usage from a rolling 7/30-day total. Read the included
+allowance/balance and purchased balance from `/api/balance`; use its UTC period
+for refill. Plan names do not establish an allowance or unlimited cloud credits.
+Legacy history can omit cost/tokens; missing does not mean zero. Account-wide
+per-model history is currently website-only; local model graphs cover measured
+Tlamatini main-chat calls since recording began. Cloud and Tlamatini accounts
+are different identities. Keep account checks and stale timestamps.
+See [Usage](../usage-dashboard.md). Source verification is not installed acceptance.

@@ -1822,6 +1822,15 @@ def begin_turn(user_id: Any = None, label: str = "") -> None:
         pass
 
 
+_USAGE_SINK = None
+
+
+def register_usage_sink(sink):
+    """Inject durable accounting without importing Django into the governor."""
+    global _USAGE_SINK
+    _USAGE_SINK = sink
+
+
 def record_call_usage(
     prompt_tokens: Any,
     completion_tokens: Any = None,
@@ -1835,7 +1844,8 @@ def record_call_usage(
         prompt = _nonneg_int(prompt_tokens)
         if prompt is None:
             return False
-        completion = _nonneg_int(completion_tokens) or 0
+        measured_completion = _nonneg_int(completion_tokens)
+        completion = measured_completion or 0
         uid = user_id if user_id is not None else current_user()
         name = str(model or "?")
         line = (f"--- [CONTEXT-CALL] {name} prompt_eval_count={prompt} "
@@ -1863,6 +1873,12 @@ def record_call_usage(
             per["prompt_tokens"] += prompt
             per["completion_tokens"] += completion
             totals = (turn["calls"], turn["prompt_tokens"], turn["completion_tokens"])
+        if _USAGE_SINK is not None:
+            try:
+                _USAGE_SINK(user_id=uid, model=name, input_tokens=prompt,
+                            output_tokens=measured_completion, source=source)
+            except Exception as exc:
+                print(f"--- [USAGE] Recording failed: {type(exc).__name__}")
         print(f"{line} | answer so far: {totals[0]} call(s), "
               f"{totals[1]} prompt + {totals[2]} output tokens (REAL)")
         _republish_latest(uid)

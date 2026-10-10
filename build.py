@@ -416,6 +416,7 @@ _FROZEN_PROMPT_FLOW_PANEL_MODULES = (
 )
 
 _FROZEN_REQUIRED_AGENT_MODULES = (
+    "agent.usage_tracking", "agent.usage_provider", "agent.usage_views",
     "agent.chat_voice_consumer",
     "agent.chat_voice_runtime",
     "agent.chat_voice_settings",
@@ -1414,6 +1415,9 @@ def main():
         '--hidden-import=agent.external_mcp_defaults',
         '--hidden-import=agent.external_mcp_manager',
         '--hidden-import=agent.agent_verdict',
+        '--hidden-import=agent.usage_tracking',
+        '--hidden-import=agent.usage_provider',
+        '--hidden-import=agent.usage_views',
         '--hidden-import=agent.context_governor',
         '--hidden-import=agent.context_baseline',
         # The Files-Search / System-Metrics chains reach the app through a
