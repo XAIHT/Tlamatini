@@ -460,6 +460,28 @@ def resolve_image_paths(images_pathfilenames: str, recursive: bool = False) -> l
 
     resolved = images_pathfilenames.strip()
 
+    # Comma-separated list of paths -> resolve each entry and merge the
+    # results. Only split when the whole string is not itself one existing
+    # path, so a single file whose name contains a comma still resolves.
+    if "," in resolved and not os.path.isfile(resolved):
+        merged = []
+        for entry in resolved.split(","):
+            entry = entry.strip()
+            if not entry:
+                continue
+            found = resolve_image_paths(entry, recursive=recursive)
+            if found:
+                merged.extend(found)
+            else:
+                logging.warning("Could not resolve list entry: " + entry)
+        seen = set()
+        unique = []
+        for path in merged:
+            if path not in seen:
+                seen.add(path)
+                unique.append(path)
+        return unique
+
     # Check if it's a File-Interpreter agent pool name
     pool_path = get_pool_path()
     fi_config_path = os.path.join(pool_path, resolved, 'config.yaml')
