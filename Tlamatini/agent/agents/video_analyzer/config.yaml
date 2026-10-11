@@ -38,6 +38,10 @@
 #   - A wildcard:         "C:\clips\*.mp4"  (newest match wins)
 #   - A directory:        "C:\clips"        (newest video inside wins)
 #   - A Camcorder pool:   "camcorder_1"     (reads its last recorded output_path)
+#   - A WEB LINK:         "https://www.youtube.com/watch?v=..." (YouTube, Vimeo,
+#                         any site yt-dlp supports, or a direct .mp4/.mp3 link).
+#                         Downloaded into app Temp first -- see `download` below.
+#   - transcription only: a plain audio file (.mp3 .m4a .wav .opus .flac ...)
 # In a Robotic-Loop-Training flow a Parametrizer copies Camcorder's output_path
 # into this field, so each loop iteration analyzes the freshest recording.
 video_pathfilenames: ""
@@ -61,6 +65,24 @@ transcription:
   vad_filter: true
   word_timestamps: false
   chunk_seconds: 120      # bounded decoding, clamped to 30..300 seconds
+  cpu_threads: 0          # 0 = every physical core but one (the desktop keeps a core); N = exactly N
+
+# Web links in video_pathfilenames. Video-Analyzer downloads them with yt-dlp
+# (the copy inside Tlamatini's Python, else a PRIVATE copy it installs and
+# updates itself in %LOCALAPPDATA%\Tlamatini\runtimes -- never your own Python).
+# transcription downloads only the sound; summary/robotics download H.264 video.
+download:
+  enabled: true
+  download_dir: ""          # empty = app Temp/video-analysis/downloads (re-used on a repeat run)
+  max_height: 720           # video downloads: tallest picture to fetch (144..4320)
+  max_filesize_mb: 0        # 0 = no limit
+  timeout_seconds: 1800     # stop a download that takes longer (60..21600)
+  auto_install: true        # install yt-dlp privately when it is missing
+  auto_update: true         # a site changed? update yt-dlp once and retry (at most every 6 h)
+  js_runtime: ""            # empty = auto (deno, Tlamatini's Node, system Node, bun); "none" = off
+  ffmpeg_location: ""       # empty = auto; without ffmpeg, sound and picture are joined by PyAV
+  cookies_from_browser: ""  # e.g. "firefox" -- only for videos that need a signed-in user
+  cookies_file: ""          # or a Netscape cookies.txt exported from your browser
 
 # Summary-only options. These replace the robotics prompts below in summary mode.
 summary_prompt: "Summarize all available information: overview, timeline, scenes, spoken topics, readable on-screen text, key facts and numbers, demonstrated steps, decisions, action items, conclusions and uncertainties. Cite timestamps and distinguish speech from visual evidence."

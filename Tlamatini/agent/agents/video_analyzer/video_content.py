@@ -10,6 +10,7 @@ import logging
 import math
 import os
 from pathlib import Path
+import re
 import uuid
 
 
@@ -141,6 +142,92 @@ def audio_chunks(path, track, chunk_seconds, origin=0):
             yield offset, np.concatenate(pending)
 
 
+def _add_nvidia_wheel_dirs():
+    """Make NVIDIA's pip wheels (nvidia-cublas-cu12 ...) findable. They unpack
+    their DLLs under site-packages/nvidia/<library>/bin, which Windows never
+    searches on its own; CTranslate2 loads cuBLAS by NAME through PATH."""
+    import sys
+    seen = set()
+    for entry in list(sys.path):
+        for bin_dir in Path(entry or '.').glob('nvidia/*/bin'):
+            folder = str(bin_dir.resolve())
+            if folder in seen or not bin_dir.is_dir():
+                continue
+            seen.add(folder)
+            if folder.lower() not in os.environ.get('PATH', '').lower():
+                os.environ['PATH'] = folder + os.pathsep + os.environ.get('PATH', '')
+            try:
+                os.add_dll_directory(folder)
+            except (AttributeError, OSError):
+                pass
+
+
+def cuda_unavailable_reason():
+    """Why CUDA transcription cannot run here, or '' when it is worth trying.
+
+    ``ctranslate2.get_cuda_device_count()`` only proves an NVIDIA GPU exists.
+    cuBLAS is a separate NVIDIA download that CTranslate2 does NOT ship (its
+    wheel carries cuDNN only). Measured 2026-10-11 on the installed build:
+    without cublas64_12.dll every transcription loaded the model onto the GPU,
+    failed on the first chunk ("Library cublas64_12.dll is not found"), raised a
+    fatal-error dialog, and only then fell back to CPU. Asking first skips that
+    whole wasted round. Fail-open: any doubt answers '' and the existing
+    GPU -> CPU recovery in Transcriber.transcribe still applies.
+    """
+    try:
+        import ctranslate2
+        if ctranslate2.get_cuda_device_count() <= 0:
+            return 'no NVIDIA GPU detected'
+        major = int(str(getattr(ctranslate2, '__version__', '4')).split('.')[0] or 4)
+    except Exception as exc:
+        return f'CTranslate2 cannot query CUDA ({exc})'
+    if os.name != 'nt':
+        return ''
+    try:
+        import ctypes
+        _add_nvidia_wheel_dirs()
+        suffix = '12' if major >= 4 else '11'
+        missing = []
+        for name in (f'cublas64_{suffix}.dll', f'cublasLt64_{suffix}.dll'):
+            loaded = False
+            for mode in (0, None):  # 0 = classic search order incl. PATH, like CTranslate2's loader
+                try:
+                    ctypes.WinDLL(name, winmode=mode)
+                    loaded = True
+                    break
+                except OSError:
+                    continue
+            if not loaded:
+                missing.append(name)
+        if missing:
+            return 'the NVIDIA cuBLAS library is not installed (%s not found)' % ', '.join(missing)
+    except Exception:
+        return ''
+    return ''
+
+
+def cpu_threads(config):
+    """Threads for CPU transcription, sized from THIS machine's physical cores.
+
+    faster-whisper's default is a fixed 4 threads whatever the machine. An
+    explicit ``transcription.cpu_threads`` is obeyed exactly; otherwise use
+    every physical core but one -- the desktop keeps a core and stays
+    responsive -- capped at 16, where CTranslate2 stops scaling."""
+    explicit = integer(config.get('cpu_threads'), 0, 0, 256)
+    if explicit:
+        return explicit, 'transcription.cpu_threads'
+    physical = 0
+    try:
+        import psutil
+        physical = int(psutil.cpu_count(logical=False) or 0)
+    except Exception:
+        physical = 0
+    if physical <= 0:
+        physical = max(1, (os.cpu_count() or 2) // 2)
+    threads = max(1, min(16, physical - 1))
+    return threads, f'{physical} physical cores, one left for the desktop'
+
+
 class Transcriber:
     """Recover device failures using the same configured transcription model."""
     def __init__(self, config, on_error=None):
@@ -151,14 +238,17 @@ class Transcriber:
         if self.device not in ('auto', 'cuda', 'cpu'):
             raise ValueError('transcription.device must be auto, cuda or cpu')
         if self.device == 'auto':
-            import ctranslate2
-            self.device = 'cuda' if ctranslate2.get_cuda_device_count() > 0 else 'cpu'
+            reason = cuda_unavailable_reason()
+            self.device = 'cpu' if reason else 'cuda'
+            logging.info('AUDIO: device auto -> %s%s', self.device, f' ({reason})' if reason else '')
         self.model_name = str(config.get('model') or '').strip()
         if not self.model_name or self.model_name == '@config':
             raise ValueError('Configure a transcription model before analyzing video')
         self.compute = str(config.get('compute_type') or 'auto')
         if self.compute == 'auto':
             self.compute = 'float16' if self.device == 'cuda' else 'int8'
+        self.threads, why = cpu_threads(config)
+        logging.info('AUDIO: CPU threads %s (%s)', self.threads, why)
 
     def transcribe(self, samples):
         from faster_whisper import WhisperModel
@@ -167,9 +257,12 @@ class Transcriber:
             if self.model is None:
                 logging.info('AUDIO: loading faster-whisper %s on %s (%s); first use may download weights',
                              self.model_name, self.device, self.compute)
-                self.model = WhisperModel(self.model_name,
-                                          device=self.device, compute_type=self.compute)
-            task = str(self.config.get('task') or 'transcribe')
+                self.model = WhisperModel(self.model_name, device=self.device,
+                                          compute_type=self.compute, cpu_threads=self.threads)
+            # First word only, so prose glued to the value by a chat request
+            # ("transcribe'. I need the full ...") still selects the task.
+            match = re.match(r"\s*['\"]?([A-Za-z]+)", str(self.config.get('task') or 'transcribe'))
+            task = match.group(1).lower() if match else 'transcribe'
             if task not in ('transcribe', 'translate'):
                 raise ValueError('transcription.task must be transcribe or translate (to English)')
             segments, info = self.model.transcribe(
@@ -425,12 +518,23 @@ def output_directory(config):
     return directory
 
 
-def run_content_analysis(path, mode, config, pipeline, call_model, on_error=None):
+def _public_source(source):
+    """The parts of a downloaded web video's description worth keeping: where it
+    came from and what it is. Untrusted source data, like container metadata."""
+    if not isinstance(source, dict) or not source:
+        return {}
+    keys = ('webpage_url', 'source_url', 'title', 'uploader', 'upload_date', 'duration_seconds',
+            'extractor', 'video_id', 'kind', 'cached', 'downloader', 'downloader_version')
+    return {key: source.get(key) for key in keys if source.get(key) not in (None, '')}
+
+
+def run_content_analysis(path, mode, config, pipeline, call_model, on_error=None, source=None):
+    source = _public_source(source)
     result = {'video_path': str(Path(path).resolve()), 'analysis_type': mode,
               'status': 'error', 'analysis_token': 'TLM_ANALYSIS::ERROR',
               'audio_status': 'error', 'audio_tracks_analyzed': 0, 'duration_seconds': 0,
               'frames_analyzed': 0, 'language': '', 'transcript': '', 'summary': '',
-              'segments': [], 'warnings': [], 'visual_observations': []}
+              'segments': [], 'warnings': [], 'visual_observations': [], 'source': source}
     settings = config.get('transcription') or {}
     if isinstance(settings, dict):
         result['transcription_model'] = str(settings.get('model') or '')
@@ -439,6 +543,9 @@ def run_content_analysis(path, mode, config, pipeline, call_model, on_error=None
         result['vision_models'] = [pipeline['model_1'], pipeline['model_2']]
         result['merging_model'] = pipeline['merging_model']
     metadata = probe_media(path)
+    if source:
+        # A downloaded web video: its page title and channel are evidence too.
+        metadata['source'] = source
     result['duration_seconds'] = metadata['duration_seconds']
     transcribe_tracks(path, metadata, config, result, on_error=on_error)
     result['audio_track_count'] = len(metadata['audio_tracks'])
@@ -459,7 +566,12 @@ def run_content_analysis(path, mode, config, pipeline, call_model, on_error=None
     result['analysis_path'] = str(directory / 'analysis.json')
     Path(result['transcript_path']).write_text(result['transcript'], encoding='utf-8')
     Path(result['segments_path']).write_text(json.dumps(result['segments'], ensure_ascii=False, indent=2), encoding='utf-8')
-    report = (f"# Video {mode}\n\nSource: {path}\nStatus: {result['status']}\n"
+    origin = ''
+    if source:
+        origin = (f"Web page: {source.get('webpage_url') or source.get('source_url', '')}\n"
+                  f"Title: {source.get('title', '')}\n"
+                  + (f"Channel: {source['uploader']}\n" if source.get('uploader') else ''))
+    report = (f"# Video {mode}\n\n{origin}Source: {path}\nStatus: {result['status']}\n"
               f"Audio: {result['audio_status']}\nFrames analyzed: {result['frames_analyzed']}\n\n"
               + (result['summary'] or ('No speech was detected.' if result['audio_status'] == 'no_speech'
                                      else 'No audio tracks found.' if result['audio_status'] == 'no_audio'

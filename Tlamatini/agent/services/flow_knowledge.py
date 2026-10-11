@@ -118,7 +118,8 @@ def write_runtime_knowledge(destination, agent_type):
             shutil.copy2(source, target)
     # A main-script-only refresh must also carry its new local dependencies.
     helpers = {"mouser": ("mouser_coordinates.py",), "keyboarder": ("keyboarder_input.py",),
-               "flowcreator": ("result_to_flw.py",), "video_analyzer": ("video_content.py",)}
+               "flowcreator": ("result_to_flw.py",),
+               "video_analyzer": ("video_content.py", "video_fetch.py")}
     for filename in helpers.get(agent_type, ()):
         source = get_agents_root() / agent_type / filename
         target = destination / filename

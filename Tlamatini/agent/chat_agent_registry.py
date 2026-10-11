@@ -34,6 +34,17 @@ class ChatWrappedAgentSpec:
     #       multi-line quote rule would otherwise swallow into the body.
     # Add a field here whenever an agent takes literal source text.
     verbatim_fields: tuple[str, ...] = field(default_factory=tuple)
+    # PROSE FALLBACKS (2026-10-11). A model often writes the input in words
+    # ("Transcribe https://youtu.be/ID") instead of ``key='value'``; the agent
+    # then started with its template defaults and failed on an empty input.
+    # When ``prose_media_field`` is still empty after the assignments, it is
+    # filled from the first web link -- else the first absolute media-file path
+    # -- written anywhere in the request. ``prose_mode_field`` is set from the
+    # first ``(value, keywords)`` pair whose keyword appears in the prose BEFORE
+    # the first assignment, unless the model assigned that field explicitly.
+    prose_media_field: str = ""
+    prose_mode_field: str = ""
+    prose_mode_keywords: tuple[tuple[str, tuple[str, ...]], ...] = field(default_factory=tuple)
 
 
 WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
@@ -435,27 +446,47 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
             "Content modes bypass the robotics motion gate, accept static scenes, and emit TLM_ANALYSIS:: "
             "tokens, never a robotics PASS. No audio and no speech are explicit audio_status values; partial "
             "results are marked partial. Do not claim exhaustive perception or speaker identification. "
-            "Use video_pathfilenames for a file, wildcard, folder-newest, or Camcorder pool name. Results "
-            "promote transcript, summary, segments_json, report_path, transcript_path and analysis_path; "
-            "read artifacts for full results if a log excerpt is truncated. output_dir defaults to app Temp. "
+            "Use video_pathfilenames for a file, wildcard, folder-newest, or Camcorder pool name -- OR A WEB "
+            "LINK: a YouTube / Vimeo / any yt-dlp-supported page or a direct .mp4/.mp3 URL is DOWNLOADED BY "
+            "THE AGENT ITSELF into app Temp (transcription fetches only the sound), so NEVER install yt-dlp, "
+            "pip, or download with Executer/Pythonxer first, and never hand a downloaded file to Whisperer: "
+            "pass the link straight in video_pathfilenames='<link>' inside quotes. transcription also "
+            "accepts a plain audio file (.mp3/.m4a/.wav). A failed download names its cause in the result "
+            "([login_required] needs download.cookies_from_browser='firefox'; [video_unavailable] is "
+            "private/removed; [network] is a connection fault) -- report it, do not loop. Results "
+            "promote transcript, summary, segments_json, report_path, transcript_path, analysis_path, "
+            "source_url and source_title; read artifacts for full results if a log excerpt is truncated. "
+            "A long video keeps running after this call returns: wait with chat_agent_run_wait. "
+            "output_dir defaults to app Temp. "
             "robotics preserves the deterministic motion gate and twin vision/merge pipeline with "
             "expected_motion: PASS_OK requires BOTH explicit independent passes. Robotics verdicts remain "
             "PASS_OK / FAIL_NO_MOTION / FAIL_WRONG_MOTION / UNCLEAR / ANALYSIS_ERROR."
         ),
         example_request=(
+            "Transcribe the video with video_pathfilenames='https://www.youtube.com/watch?v=VIDEO_ID' and "
+            "analysis_type='transcription'. "
             "Summarize the video with video_pathfilenames='C:\\Clips\\lecture.mp4', "
             "analysis_type='summary', audio_tracks='all', summary_language='English'. "
             "For transcript only use analysis_type='transcription'. For a servo check use "
             "analysis_type='robotics', expected_motion='servo sweeps 0 to 90 degrees and returns'."
         ),
         aliases=("video_analyzer", "video analyzer", "analyze video", "video verdict", "robotic loop",
-                 "transcribe video", "summarize video", "video transcript"),
+                 "transcribe video", "summarize video", "video transcript", "youtube transcript",
+                 "transcribe youtube", "summarize youtube", "video link"),
         security_hints=(
             "analyze video", "video analyzer", "watch the video", "did the servo move",
             "verify motion", "robotic loop training", "check the recording", "judge the video",
-            "did it move", "video verdict",
+            "did it move", "video verdict", "youtube", "youtu.be", "vimeo", "transcribe this video",
+            "transcription of this video", "summarize this video",
         ),
         poll_window_seconds=8,
+        prose_media_field="video_pathfilenames",
+        prose_mode_field="analysis_type",
+        # Order matters: a summary also transcribes, so "summarize ... transcript" is a summary.
+        prose_mode_keywords=(
+            ("summary", ("summar", "resum")),
+            ("transcription", ("transcri", "subtitle", "speech-to-text", "speech to text")),
+        ),
     ),
     ChatWrappedAgentSpec(
         key="whisperer",
@@ -478,7 +509,11 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
             "record_seconds=N ONLY when the user actually said a length ('record 45 seconds'). Pass "
             "silence_timeout_seconds=N to widen or shorten the silence window (default 3.5), and "
             "device_index=N or "
-            "device_name='USB' to pick another mic. To transcribe an existing audio FILE instead, "
+            "device_name='USB' to pick another mic. For a VIDEO -- a local video file OR a web link "
+            "(YouTube, Vimeo, any https:// video page) -- do NOT use Whisperer and do NOT download it "
+            "first: call chat_agent_video_analyzer with video_pathfilenames='<file or link>' and "
+            "analysis_type='transcription'; it downloads links itself. "
+            "To transcribe an existing audio FILE instead, "
             "pass audio_file='C:\\\\path\\\\clip.mp3' (input_source auto-switches to 'file'). "
             "Transcription uses faster-whisper LOCALLY by default (engine='faster-whisper'): it "
             "auto-detects an NVIDIA GPU and ALWAYS falls back to CPU on a machine without one, so it "

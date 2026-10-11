@@ -366,8 +366,9 @@ class IntegrationTests(unittest.TestCase):
     def test_gpu_generator_failure_retries_cpu_once(self):
         attempted = []
         class Model:
-            def __init__(self, model, device, compute_type):
+            def __init__(self, model, device, compute_type, cpu_threads=0):
                 self.device = device
+                self.cpu_threads = cpu_threads
                 attempted.append((model, device, compute_type))
             def transcribe(self, audio, **kwargs):
                 def segments():

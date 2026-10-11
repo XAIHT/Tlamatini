@@ -113,10 +113,10 @@ class CatalogTests(unittest.TestCase):
     def test_existing_pool_refresh_installs_portable_helpers(self):
         with tempfile.TemporaryDirectory(dir=REPO / 'Temp') as temp:
             for name, helper in (('mouser', 'mouser_coordinates.py'), ('keyboarder', 'keyboarder_input.py'),
-                                 ('video_analyzer', 'video_content.py')):
+                                 ('video_analyzer', 'video_content.py'), ('video_analyzer', 'video_fetch.py')):
                 node = SPEC.FlowNode(id=name + '-1', text=CATALOG[name]['display_name'])
                 folder = Path(temp) / node.pool_name
-                folder.mkdir()
+                folder.mkdir(exist_ok=True)  # video_analyzer is checked for two helpers
                 (folder / 'config.yaml').write_text('custom: preserved\n', encoding='utf-8')
                 COMPILER._ensure_pool_agent(node, Path(temp))
                 self.assertTrue((folder / helper).is_file())

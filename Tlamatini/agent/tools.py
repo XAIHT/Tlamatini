@@ -425,11 +425,84 @@ def _resolve_template_agent(request_text, patterns=None, action_label='use'):
     )
 
 
+_ASSIGNMENT_START_RE = re.compile(r'[A-Za-z_][A-Za-z0-9_.-]*\s*=')
+# A web link the model QUOTES in prose. Its query string (``watch?v=ID``,
+# ``&list=PL...``, ``?si=...``) is part of the link, never a setting.
+_URL_SPAN_RE = re.compile(r'(?:https?|ftp|file)://[^\s\'"<>`]+|\bwww\.[^\s\'"<>`]+', re.IGNORECASE)
+
+
 def _find_first_assignment_index(request_text):
-    match = re.search(r'[A-Za-z_][A-Za-z0-9_.-]*\s*=', request_text)
-    if match:
-        return match.start()
+    """Index of the first ``key=`` that is a real setting, or -1.
+
+    An assignment never starts INSIDE a web link. Without this guard
+    "Transcribe https://www.youtube.com/watch?v=ID with analysis_type=
+    'transcription'" was read as the setting ``v`` and the whole call failed
+    with "Parameter 'v' was not found in the target agent config"
+    (Video-Analyzer on the installed build, 2026-10-11). A link written as a
+    VALUE (``url='https://...?v=ID'``) is unaffected: its key starts before
+    the link does."""
+    url_spans = [match.span() for match in _URL_SPAN_RE.finditer(request_text)]
+    for match in _ASSIGNMENT_START_RE.finditer(request_text):
+        start = match.start()
+        if any(begin <= start < end for begin, end in url_spans):
+            continue
+        return start
     return -1
+
+
+_PROSE_URL_RE = re.compile(r'(?:https?://|\bwww\.|\byoutu\.be/)[^\s\'"<>`]+', re.IGNORECASE)
+_PROSE_MEDIA_PATH_RE = re.compile(
+    r'(?:\b[A-Za-z]:[\\/]|\\\\)[^\'"<>|\r\n]*?'
+    r'\.(?:mp4|mov|mkv|avi|webm|m4v|wmv|flv|mpg|mpeg|mp3|m4a|wav|ogg|opus|flac|aac)\b',
+    re.IGNORECASE,
+)
+_PROSE_TRAILING_PUNCTUATION = '.,;:!?)]}>\'"'
+
+
+def _apply_prose_fallbacks(spec, runtime_config, request_text, assignment_notes):
+    """Fill the spec's PROSE FALLBACKS (see ``ChatWrappedAgentSpec``).
+
+    Models often write the input in words -- "Transcribe the spoken audio of
+    the YouTube video at https://youtu.be/ID" -- instead of ``key='value'``.
+    The agent then started on its template defaults (an empty video path and
+    the robotics mode) and failed, which is two of the three Video-Analyzer
+    failures on the installed build (2026-10-11). An explicit assignment always
+    wins; nothing here raises. Returns the notes it added for the model."""
+    added = []
+    try:
+        if not isinstance(runtime_config, dict):
+            return added
+        assigned = {str(note).strip().lower() for note in (assignment_notes or [])}
+        text = str(request_text or '')
+        media_field = getattr(spec, 'prose_media_field', '') or ''
+        if media_field and media_field.lower() not in assigned \
+                and not str(runtime_config.get(media_field) or '').strip():
+            value = ''
+            url_match = _PROSE_URL_RE.search(text)
+            if url_match:
+                value = url_match.group(0).rstrip(_PROSE_TRAILING_PUNCTUATION)
+            else:
+                path_match = _PROSE_MEDIA_PATH_RE.search(text)
+                if path_match:
+                    value = path_match.group(0).strip()
+            if value:
+                runtime_config[media_field] = value
+                added.append(f"{media_field}={value} (taken from the request text)")
+        mode_field = getattr(spec, 'prose_mode_field', '') or ''
+        keywords = getattr(spec, 'prose_mode_keywords', ()) or ()
+        if mode_field and keywords and mode_field.lower() not in assigned:
+            first = _find_first_assignment_index(text)
+            prose = (text if first < 0 else text[:first]).lower()
+            prose = _PROSE_URL_RE.sub(' ', prose)  # a link's own words are not the user's intent
+            for value, words in keywords:
+                if any(word in prose for word in words):
+                    if runtime_config.get(mode_field) != value:
+                        runtime_config[mode_field] = value
+                        added.append(f"{mode_field}={value} (inferred from the request text)")
+                    break
+    except Exception as exc:  # a fallback must never break a launch
+        logger.warning("[tools._apply_prose_fallbacks] skipped: %s", exc)
+    return added
 
 
 _CONJUNCTION_ASSIGNMENT_RE = re.compile(
@@ -900,15 +973,24 @@ def _coerce_assignment_value(raw_value):
     #   * a closing quote must actually EXIST after the opening one.
     #   * the char after it must be WHITESPACE (or nothing) — so a word-internal
     #     apostrophe (``'Angela's report``) is never mistaken for a closer.
+    #     A sentence end (. ! ?) directly after the quote counts too, when a space
+    #     or the end follows it: ``task='transcribe'. I need the full ...`` is how
+    #     Video-Analyzer received task="transcribe'. I need ..." on 2026-10-11.
+    #     Every candidate quote is tried in order, so a word-internal apostrophe
+    #     before the real closer (``'Angela's report'. Thanks``) is skipped.
     if (
         value_text[0] in ('"', "'")
         and value_text[-1] != value_text[0]
         and '\n' not in value_text
     ):
-        closing = value_text.find(value_text[0], 1)
-        if closing > 0 and (closing + 1 >= len(value_text)
-                            or value_text[closing + 1].isspace()):
-            return _unquote_preserving_backslashes(value_text[:closing + 1])
+        quote = value_text[0]
+        closing = value_text.find(quote, 1)
+        while closing > 0:
+            after = value_text[closing + 1:closing + 3]
+            if (not after or after[0].isspace()
+                    or (after[0] in '.!?' and (len(after) == 1 or after[1].isspace()))):
+                return _unquote_preserving_backslashes(value_text[:closing + 1])
+            closing = value_text.find(quote, closing + 1)
 
     # Salvage the common LLM failure mode: value begins with a stray quote
     # char (e.g. ``script='\nimport os\n...``) but the closing quote was
@@ -2947,6 +3029,10 @@ def _launch_wrapped_chat_agent(spec, request, *, auto_diagnose=True):
             "runtime_dir": runtime_dir,
         })
     logger.info("[tools._launch_wrapped_chat_agent] Config assignments applied OK, notes: %s", assignment_notes)
+    prose_notes = _apply_prose_fallbacks(spec, runtime_config, str(request), assignment_notes)
+    if prose_notes:
+        assignment_notes = list(assignment_notes or []) + prose_notes
+        logger.info("[tools._launch_wrapped_chat_agent] Prose fallbacks applied: %s", prose_notes)
 
     # File-Creator must write the model's content BYTE-FOR-BYTE (Angela
     # 2026-06-12). The generic value coercion that every wrapped agent shares

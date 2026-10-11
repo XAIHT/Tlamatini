@@ -181,6 +181,12 @@ wheel==0.47.0
 whitenoise==6.8.2
 xhtml2pdf==0.2.17
 PyAutoGUI==0.9.54
+# Video-Analyzer downloads web links (YouTube, Vimeo, any site yt-dlp knows) given
+# in video_pathfilenames (agents/video_analyzer/video_fetch.py runs it as
+# `python -m yt_dlp`). Pure Python. Sites change often, so the agent also keeps a
+# PRIVATE, self-updating copy in %LOCALAPPDATA%\Tlamatini\runtimes\yt-dlp-py312 and
+# prefers it once it exists; this pin is the copy that works out of the box.
+yt-dlp==2026.8.19
 
 # ── File-Extractor optional format backends ──────────────────────────────
 # agent/agents/file_extractor/file_extractor.py imports these inside

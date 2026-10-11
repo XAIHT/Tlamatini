@@ -16,6 +16,64 @@
 
 ---
 
+## 2026-10-11 — Video-Analyzer transcribes a web link by itself (YouTube and other sites)
+
+Angela's installed build (`C:\Tlamatini`) was asked to transcribe a YouTube video. Video-Analyzer
+failed three times, and the chat then spent seven tool calls installing yt-dlp by hand before
+Whisperer could run. Four defects, all fixed, plus the missing downloader and a slow transcriber:
+
+1. **A link's `?v=` was read as a setting.** The chat request parser saw `v=jNQXAC9IVRw` inside
+   `watch?v=…` as a config assignment ("Parameter 'v' was not found").
+   `tools._find_first_assignment_index` now skips anything inside a URL (`_URL_SPAN_RE`).
+2. **Prose requests fell into robotics mode.** When the model wrote the link and the wish in words,
+   nothing set `analysis_type`, so the run used `robotics` on an empty path. New
+   `ChatWrappedAgentSpec` fields `prose_media_field` / `prose_mode_field` / `prose_mode_keywords`
+   and `tools._apply_prose_fallbacks` fill the link and the mode from the request's own words
+   (transcri…/subtitle/speech to text → `transcription`; summar…/resum… → `summary`). An explicit
+   value always wins; every fill is logged.
+3. **Trailing commentary stayed glued to a value** (`analysis_type='transcription'. Tell me…`).
+   The salvage in `_coerce_assignment_value` now also accepts `.`, `!`, `?` + a space after the
+   closing quote. ⚠️ A comma is deliberately NOT accepted — it would split real values.
+4. **Video-Analyzer only read local files** ("No video resolved from 'https://youtu.be/…'"), and
+   yt-dlp was not installed in the carried Python. New flat sibling **`video_fetch.py`**
+   (stdlib-only; PyAV/psutil imported lazily) downloads ONE item per run: `python -m yt_dlp`
+   in a child, `--no-playlist --playlist-items 1`, and `--` before the URL. Transcription
+   downloads the sound only; summary and robotics download the picture (≤ `download.max_height`,
+   720). Files land in `<app>/Temp/video-analysis/downloads` and a second run reuses them.
+   YouTube no longer offers one file with sound and picture, so without ffmpeg (no Tlamatini
+   install has it) the two are downloaded separately and joined by PyAV without re-encoding
+   (`combine_streams`). YouTube's page challenges need a JavaScript runtime: deno, Tlamatini's
+   private node (`runtime_provisioner`) or the system node.
+5. **Invulnerable to a site change.** Downloader order: a private, self-updating copy in
+   `<runtimes>/yt-dlp-py<XY>` → the bundled `yt_dlp` (`requirements.txt` `yt-dlp==2026.8.19`,
+   carried Python via `build.py` `_AGENT_RUNTIME_IMPORTS`) → install the private copy (atomic
+   `pip install --target` into `.partial-<pid>`, under a lock file). A `download_failed` or
+   `unsupported_url` failure updates the private copy ONCE (at most every 6 h) and retries;
+   direct media links fall back to plain HTTP. Every failure is NAMED (`video_unavailable`,
+   `login_required`, `network`, `unsupported_url`, `timeout`, `download_failed`, `empty_file`,
+   `ytdlp_unavailable`, `disabled`), and the tool description and `prompt.pmt` tell the model
+   to hand links straight to Video-Analyzer and NEVER install yt-dlp itself.
+6. **Speed.** ctranslate2 4.x ships cuDNN but not cuBLAS, so `device: auto` chose CUDA and failed;
+   `video_content.cuda_unavailable_reason()` now probes `cublas64_12.dll` first (adding the nvidia
+   wheel folders) and logs `AUDIO: device auto -> …`. CPU threads default to physical cores − 1,
+   at most 16 (`transcription.cpu_threads: 0`; an explicit value is obeyed exactly) —
+   faster-whisper alone used 4.
+7. **Output and carriage.** `INI_SECTION_VIDEO_ANALYZER` APPENDS `source_url` and `source_title`
+   (`agent_contracts` updated; `flow_catalog.json` and `docs/agent-coverage.md` regenerated).
+   `services/flow_knowledge.py` lists `video_fetch.py` as a helper, so pools made before this
+   change get it too. Both inclusion sweeps exit CLEAN; `check_requirements_coverage.py` reports
+   nothing missing.
+
+Proof: unit `agent/test_video_analyzer_fetch.py` (+ `test_video_analyzer_content.py`,
+`test_flow_knowledge.py`), 141 OK; a clean-machine run with the carried Python, empty runtimes
+and `PYTHONNOUSERSITE=1` installed the private yt-dlp in 7 s and transcribed "Me at the zoo" in
+17 s (8 s when cached); a picture download passes with and without ffmpeg; the visible chat test
+`.claude/skills/tlamatini-daily-chat-test/harness/video_link_visible.py` — 12/12 (2026-10-11):
+the model called only `chat_agent_video_analyzer`, the answer quotes the video, the Exec Report
+row is SUCCESS. ⚠️ Do NOT drop the `--` before the URL, let a URL's `?v=` be read as a setting,
+widen the salvage to commas, or let the model install a downloader. ⚠️ The installed
+`C:\Tlamatini` gets this only through a new build or update.
+
 ## 2026-10-10 — v1.78.0 published; the message box shrinks when the avatar is undocked; Image-Interpreter takes a list
 
 1. **The release.** `v1.78.0` is an annotated tag at `0e6fc72d` (2026-10-10, pushed) —

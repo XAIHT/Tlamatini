@@ -380,6 +380,7 @@ _AGENT_RUNTIME_IMPORTS = (
     "ffpyplayer",                           # video+audio playback (VideoPlayer) — bundled ffmpeg+SDL
     "torch", "snac",                        # text-to-speech (Talker) — Orpheus token -> 24 kHz audio vocoder
     "faster_whisper", "ctranslate2", "av",  # Whisperer / Video-Analyzer audio tracks, GPU auto / CPU fallback
+    "yt_dlp",                               # Video-Analyzer web links (python -m yt_dlp); private self-updating copy as backup
 )
 
 # ── FROZEN-BUNDLE CARRIAGE PROOF (Angela review, 2026-08-16) ─────────────────

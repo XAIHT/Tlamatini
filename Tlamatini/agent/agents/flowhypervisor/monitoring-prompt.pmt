@@ -814,6 +814,20 @@ VIDEO_ANALYZER SPECIAL NOTES (robotics, transcription and summary):
   - Frame caps are documented sampling limits, not exhaustive perception. A
     selected-track failure or failed observer is reported, not silently ignored.
     "Video-Analyzer agent finished" ends the run. PID cleanup follows normally.
+  - WEB LINKS: when video_pathfilenames is a link (YouTube, Vimeo, any https://
+    page), the run first DOWNLOADS it. "VIDEO-FETCH:" lines show yt-dlp progress
+    ([download] NN%) and are normal; a long video can take minutes to download
+    before any AUDIO: line appears. The FIRST web link on a machine may install
+    yt-dlp privately ("installing yt-dlp into ...") - normal, typically under a
+    minute. "download failed (...); updating yt-dlp and trying once more" is the
+    documented self-repair, not an error. A failed download ends with status
+    error and a named cause in brackets ([login_required], [video_unavailable],
+    [network], [timeout], [unsupported_url], [ytdlp_unavailable]); report that
+    cause, do not call the agent hung. download.timeout_seconds (default 1800 s)
+    bounds the download alone.
+  - "AUDIO: device auto -> cpu (the NVIDIA cuBLAS library is not installed ...)"
+    is a correct, deliberate CPU choice, not a fault; "AUDIO: CPU threads N"
+    reports how many cores transcription uses.
 
 NETSPEED_CALCULATOR SPECIAL NOTES (multi-provider RFC 6349 throughput measurement):
   - NetSpeed-Calculator measures THIS machine's Internet connection against

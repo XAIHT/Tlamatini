@@ -12,7 +12,9 @@
 # the backward-compatible default and uses a TRIPLE-MODEL video verdict,
 #                        gated by a deterministic OpenCV motion check.
 # Non-deterministic agent (uses LLMs) — the "eye" of Robotic-Loop-Training.
-# Action: Resolve a video path (direct / wildcard / dir-newest / Camcorder pool)
+# Action: Resolve a video path (direct / wildcard / dir-newest / Camcorder pool,
+#         or a WEB LINK - YouTube or any site yt-dlp knows - downloaded into app
+#         Temp by the portable video_fetch.py sibling)
 #         -> extract N timestamped frames with OpenCV (in memory)
 #         -> DETERMINISTIC MOTION GATE (no LLM if nothing moved -> FAIL_NO_MOTION)
 #         -> interpreter 1 + interpreter 2 judge the frames IN PARALLEL, each on
@@ -87,6 +89,11 @@ def _configure_agent_runtime():
 # Supported video extensions
 VIDEO_EXTENSIONS = {
     '.mp4', '.mov', '.mkv', '.avi', '.webm', '.m4v', '.wmv', '.flv', '.mpg', '.mpeg',
+}
+# Transcription reads only the sound, so it also accepts plain audio files
+# (a downloaded best-audio stream is often .m4a / .opus / .webm).
+AUDIO_EXTENSIONS = {
+    '.m4a', '.mp3', '.wav', '.ogg', '.oga', '.opus', '.flac', '.aac', '.weba', '.wma', '.mka',
 }
 
 # ── Substring-safe verdict token contract ─────────────────────────────
@@ -374,8 +381,8 @@ def _coerce_float(value, default: float) -> float:
 # VIDEO RESOLUTION + FRAME EXTRACTION
 # ========================================
 
-def _newest_video_in(paths: List[str]) -> Optional[str]:
-    vids = [p for p in paths if os.path.isfile(p) and os.path.splitext(p)[1].lower() in VIDEO_EXTENSIONS]
+def _newest_video_in(paths: List[str], extensions=VIDEO_EXTENSIONS) -> Optional[str]:
+    vids = [p for p in paths if os.path.isfile(p) and os.path.splitext(p)[1].lower() in extensions]
     if not vids:
         return None
     return max(vids, key=lambda p: os.path.getmtime(p))
@@ -404,14 +411,17 @@ def _read_camcorder_output_path(pool_name: str) -> Optional[str]:
     return None
 
 
-def resolve_video_path(video_pathfilenames: str) -> Optional[str]:
+def resolve_video_path(video_pathfilenames: str, allow_audio: bool = False) -> Optional[str]:
     """Resolve the config value to ONE concrete video file path.
 
     Supports a direct file, a wildcard (newest match), a directory (newest video
     inside), or a Camcorder pool name (reads its last recorded output_path).
+    ``allow_audio`` (transcription only) also accepts sound files such as .mp3 or
+    .m4a: transcription reads the audio tracks and needs no picture.
     """
     if not video_pathfilenames:
         return None
+    extensions = (VIDEO_EXTENSIONS | AUDIO_EXTENSIONS) if allow_audio else VIDEO_EXTENSIONS
     resolved = str(video_pathfilenames).strip().strip('"').strip("'")
 
     # A Camcorder (or any) pool name whose log carries an output_path
@@ -426,7 +436,7 @@ def resolve_video_path(video_pathfilenames: str) -> Optional[str]:
 
     # Direct file
     if os.path.isfile(resolved):
-        if os.path.splitext(resolved)[1].lower() in VIDEO_EXTENSIONS:
+        if os.path.splitext(resolved)[1].lower() in extensions:
             return resolved
         logging.warning(f"⚠️ '{resolved}' is not a recognized video format.")
         return None
@@ -434,14 +444,14 @@ def resolve_video_path(video_pathfilenames: str) -> Optional[str]:
     # Directory → newest video inside
     if os.path.isdir(resolved):
         candidates = [os.path.join(resolved, n) for n in os.listdir(resolved)]
-        newest = _newest_video_in(candidates)
+        newest = _newest_video_in(candidates, extensions)
         if newest:
             logging.info(f"📁 Newest video in '{resolved}': {newest}")
         return newest
 
     # Wildcard → newest match
     if '*' in resolved or '?' in resolved:
-        newest = _newest_video_in(glob.glob(resolved))
+        newest = _newest_video_in(glob.glob(resolved), extensions)
         if newest:
             logging.info(f"🔎 Newest video matching '{resolved}': {newest}")
         return newest
@@ -878,11 +888,14 @@ def _header_value(value):
 
 def emit_verdict(video_path: str, verdict: str, confidence: float, status: str,
                  motion_score: float, frames_analyzed: int, pipeline: dict,
-                 report: str):
+                 report: str, source: Optional[dict] = None):
     """Emit the atomic INI_SECTION_VIDEO_ANALYZER block AND, on a SEPARATE final
     line, the substring-safe ``TLM_VERDICT::<token>`` a Forker matches. The
     report body is sanitized so a model can never plant a rogue verdict line.
+    ``source_url`` / ``source_title`` (appended 2026-10-11) name the web page a
+    downloaded video came from; both are empty for a local file.
     """
+    source = source or {}
     safe_report = _safe_section_text(report)
     logging.info(
         "INI_SECTION_VIDEO_ANALYZER<<<\n"
@@ -897,6 +910,8 @@ def emit_verdict(video_path: str, verdict: str, confidence: float, status: str,
         f"interpreter_model_2: {pipeline.get('model_2', '')}\n"
         f"merging_model: {pipeline.get('merging_model', '')}\n"
         f"status: {status}\n"
+        f"source_url: {_header_value(source.get('webpage_url') or source.get('source_url') or '')}\n"
+        f"source_title: {_header_value(source.get('title') or '')}\n"
         "\n"
         f"{safe_report}\n"
         ">>>END_SECTION_VIDEO_ANALYZER"
@@ -906,14 +921,48 @@ def emit_verdict(video_path: str, verdict: str, confidence: float, status: str,
     logging.info(f"{TLM_PREFIX}{verdict}")
 
 
-def run_content_analysis(video_path, analysis_type, config, pipeline):
-    # Flat sibling ships with the template and works in isolated/frozen pools.
-    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'video_content.py')
-    spec = importlib.util.spec_from_file_location('tlamatini_video_content', path)
+def _load_sibling(module_file, module_name):
+    """Flat siblings ship with the template and work in isolated/frozen pools,
+    where this directory is NOT an importable package."""
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), module_file)
+    spec = importlib.util.spec_from_file_location(module_name, path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
+    return module
+
+
+def run_content_analysis(video_path, analysis_type, config, pipeline, source=None):
+    module = _load_sibling('video_content.py', 'tlamatini_video_content')
     return module.run_content_analysis(video_path, analysis_type, config, pipeline, _call_ollama_chat,
-                                       on_error=lambda error: report_fatal_error(error, config))
+                                       on_error=lambda error: report_fatal_error(error, config),
+                                       source=source)
+
+
+def is_web_link(value) -> bool:
+    """True when video_pathfilenames is a web link rather than a local path."""
+    try:
+        return bool(_load_sibling('video_fetch.py', 'tlamatini_video_fetch').is_url(value))
+    except Exception:
+        return bool(re.match(r'^\s*["\']?(?:https?://|www\.|youtu\.be/)', str(value or ''), re.IGNORECASE))
+
+
+def fetch_web_video(url, analysis_type, config):
+    """Download a web video (YouTube, Vimeo, any site yt-dlp knows, or a direct
+    media link) into app Temp and describe the local copy. Raises
+    VideoAnalyzerFatal with the NAMED cause when it cannot."""
+    try:
+        fetcher = _load_sibling('video_fetch.py', 'tlamatini_video_fetch')
+    except Exception as error:
+        raise VideoAnalyzerFatal(
+            f"Web links need video_fetch.py beside video_analyzer.py; it could not be loaded: {error}")
+    try:
+        source = fetcher.fetch(url, analysis_type, config, log=logging.getLogger())
+    except fetcher.FetchError as error:
+        raise VideoAnalyzerFatal(f"[{error.code}] {error}")
+    logging.info("🌐 Web video ready: %s — '%s' (%s, %s bytes%s) -> %s",
+                 source['webpage_url'], source['title'] or 'untitled', source['kind'], source['bytes'],
+                 ', reused an earlier download' if source['cached'] else '', source['path'])
+    return source
 
 
 def emit_content_result(video_path, result, pipeline):
@@ -933,6 +982,10 @@ def emit_content_result(video_path, result, pipeline):
     fields['segments_json'] = json.dumps(result.get('segments', []), ensure_ascii=False)
     fields['warnings_json'] = json.dumps(result.get('warnings', []), ensure_ascii=False)
     fields['metadata_json'] = json.dumps(result.get('media_metadata', {}), ensure_ascii=False)
+    # Appended 2026-10-11 (never renamed): where a downloaded web video came from.
+    source = result.get('source') or {}
+    fields['source_url'] = source.get('webpage_url') or source.get('source_url') or ''
+    fields['source_title'] = source.get('title') or ''
     # analysis_token is code-owned, never obtained from media or a model response.
     header = '\n'.join(f'{key}: {value if key == "analysis_token" else _header_value(value)}'
                        for key, value in fields.items())
@@ -984,8 +1037,12 @@ def main():
     frames_analyzed = 0
     report = "Video-Analyzer did not complete."
     video_path = ""
-    analysis_type = str(config.get('analysis_type') or 'robotics').strip().lower()
+    # First word only: a chat request can leave prose glued to an enum value
+    # ("transcription'. Return the full transcript"); the mode is its first word.
+    _mode_match = re.match(r"\s*['\"]?([A-Za-z]+)", str(config.get('analysis_type') or 'robotics'))
+    analysis_type = _mode_match.group(1).lower() if _mode_match else 'robotics'
     content_result = None
+    source = None  # set when video_pathfilenames was a web link that was downloaded
     llm_config = config.get('llm', {}) or {}
     pipeline = {
         'host': str(llm_config.get('host') or 'http://localhost:11434'),
@@ -1026,13 +1083,21 @@ def main():
             )
         logging.info(f"🎯 Targets: {target_agents}")
 
-        video_path = resolve_video_path(video_pathfilenames) or ""
-        pipeline['filename'] = os.path.basename(video_path) if video_path else video_pathfilenames
+        if is_web_link(video_pathfilenames):
+            # A web link (YouTube, Vimeo, any site yt-dlp knows, or a direct
+            # media URL): download it into app Temp, then analyze the copy.
+            source = fetch_web_video(video_pathfilenames, analysis_type, config)
+            video_path = source['path']
+            pipeline['filename'] = source.get('title') or os.path.basename(video_path)
+        else:
+            video_path = resolve_video_path(
+                video_pathfilenames, allow_audio=(analysis_type == 'transcription')) or ""
+            pipeline['filename'] = os.path.basename(video_path) if video_path else video_pathfilenames
 
         if not video_path:
             raise VideoAnalyzerFatal(f"No video resolved from '{video_pathfilenames}'.")
         elif analysis_type != 'robotics':
-            content_result = run_content_analysis(video_path, analysis_type, config, pipeline)
+            content_result = run_content_analysis(video_path, analysis_type, config, pipeline, source=source)
         else:
             try:
                 import cv2  # noqa: F401
@@ -1072,17 +1137,21 @@ def main():
                         logging.info(f"⚖️ Verdict: {verdict} (confidence {confidence:.2f}, status {status})")
     except Exception as e:
         logging.error(f"❌ Video-Analyzer failed: {e}")
-        verdict, status, report = VERDICT_ANALYSIS_ERROR, "error", f"Unhandled error: {e}"
+        # A VideoAnalyzerFatal already names its cause in words a person can act
+        # on (e.g. "[login_required] The site wants a signed-in user ...").
+        verdict, status = VERDICT_ANALYSIS_ERROR, "error"
+        report = str(e) if isinstance(e, VideoAnalyzerFatal) else f"Unhandled error: {e}"
 
     # Preserve the error result so configured flow recovery can branch on it.
     try:
         if analysis_type == 'robotics':
             emit_verdict(video_path, verdict, confidence, status, motion_score,
-                         frames_analyzed, pipeline, report)
+                         frames_analyzed, pipeline, report, source=source)
         else:
             emit_content_result(video_path, content_result or {
                 'analysis_type': analysis_type, 'status': 'error',
                 'analysis_token': 'TLM_ANALYSIS::ERROR', 'report': report,
+                'source': source or {},
             }, pipeline)
     except Exception as e:
         logging.error(f"❌ Failed to emit verdict section: {e}")

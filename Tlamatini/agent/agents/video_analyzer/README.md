@@ -4,8 +4,53 @@ Created by Angela López Mendoza · @angelahack1 — Tlamatini.
 
 `analysis_type` selects one of three tasks. Existing configurations without the key
 continue to use `robotics`. All modes accept `video_pathfilenames`: a file, wildcard,
-directory (newest video), or Camcorder pool name. They emit one atomic
-`INI_SECTION_VIDEO_ANALYZER` block and start downstream agents even on failure.
+directory (newest video), Camcorder pool name, or a **web link** (see below);
+`transcription` also accepts a plain audio file (.mp3, .m4a, .wav, .opus, ...). They
+emit one atomic `INI_SECTION_VIDEO_ANALYZER` block and start downstream agents even on
+failure.
+
+## Web links (YouTube, Vimeo, any yt-dlp site, direct media URLs)
+
+```yaml
+video_pathfilenames: 'https://www.youtube.com/watch?v=VIDEO_ID'
+analysis_type: transcription
+```
+
+The link is downloaded by the portable sibling `video_fetch.py` into
+`<app Temp>/video-analysis/downloads` (or `download.download_dir`), then analyzed like
+a local file. `transcription` fetches only the sound — no conversion, so no ffmpeg is
+needed; `summary` and `robotics` fetch H.264 video up to `download.max_height` (720).
+YouTube no longer serves one file holding both sound and picture, so with ffmpeg
+installed yt-dlp merges them, and **without ffmpeg** (most machines) the two streams
+are fetched as two files and joined by PyAV, which Tlamatini already ships — packets
+are copied, nothing is re-encoded (`robotics` needs no sound and fetches the picture
+alone). Measured on 2026-10-11: both paths gave the same playable H.264+AAC file (284
+OpenCV frames, one sound track). A repeat run reuses the earlier download. The result adds `source_url` and
+`source_title`; the report and the summary evidence name the page, title and channel.
+
+Fallbacks, in order, so a link does not simply fail:
+
+1. **yt-dlp**: Tlamatini's private copy in `%LOCALAPPDATA%\Tlamatini\runtimes\yt-dlp-py312`
+   when it exists (it is the newest), else the copy shipped in Tlamatini's own Python
+   (requirements.txt), else it is installed privately on demand with
+   `pip install --target` — never into the user's own Python and never with admin.
+2. **Site changed**: a failure that is not a private/removed video and not a network
+   fault updates the private yt-dlp once (at most every 6 hours) and retries.
+3. **JavaScript runtime** (YouTube needs one): deno, Tlamatini's private Node, a system
+   Node, or bun, found automatically; `download.js_runtime` overrides it. With none the
+   download is still attempted (yt-dlp warns that some formats may be missing).
+4. **Direct media link** (…/clip.mp4) with no usable yt-dlp: downloaded with urllib.
+5. **Named failure**: otherwise `status: error` and the cause in brackets —
+   `[login_required]` (set `download.cookies_from_browser: firefox` or
+   `download.cookies_file`), `[video_unavailable]`, `[network]`, `[timeout]`,
+   `[unsupported_url]`, `[ytdlp_unavailable]`, `[empty_file]`. The file is checked on
+   disk before any success is reported.
+
+From chat, a link written in plain words ("Transcribe https://youtu.be/ID") is picked up
+even without `video_pathfilenames=`, and "transcribe" / "summarize" in the request
+select the mode when `analysis_type` was not given (`ChatWrappedAgentSpec` prose
+fallbacks in `chat_agent_registry.py`). A `?v=` inside a link is never read as a
+setting.
 
 | Mode | Processing | Routing |
 |---|---|---|
