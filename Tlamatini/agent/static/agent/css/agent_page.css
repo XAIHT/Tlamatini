@@ -11,7 +11,16 @@
  */
 
 .html-general {
-    max-height: -webkit-fill-available;
+    height: 100dvh;
+    overflow: hidden;
+}
+
+.html-general > body {
+    height: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
 body {
@@ -38,6 +47,7 @@ body.resizing-vertical iframe {
 }
 
 #navbar-container {
+    flex: 0 0 auto;
     height: 5vh;
     min-height: 40px;
     width: 100%;
@@ -65,10 +75,10 @@ body.resizing-vertical iframe {
     position: relative;
     --bs-gutter-x: 0;
     --bs-gutter-y: 0;
-    overflow: hidden;
+    overflow: auto;
     display: flex;
-    flex-grow: 1;
-    height: 95vh;
+    flex: 1 1 0;
+    min-height: 0;
     justify-items: end;
     margin: 0px;
     border: 0px;
@@ -77,6 +87,20 @@ body.resizing-vertical iframe {
     padding-bottom: 0px !important;
     padding-left: 0 !important;
     padding-right: 0 !important;
+}
+
+/* Keep both familiar panes usable on phones/high zoom. Only the workspace
+   pans horizontally; menus and dialogs remain anchored to the real viewport. */
+#chat-workspace {
+    position: relative;
+    display: flex;
+    flex-wrap: nowrap;
+    flex: 1 0 100%;
+    min-width: 640px;
+    height: 100%;
+    min-height: 0;
+    padding: 0;
+    overflow: hidden;
 }
 
 #chat-log {
@@ -101,7 +125,7 @@ body.resizing-vertical iframe {
     padding: 0px;
     border: 0px;
     margin: 0px;
-    min-height: 360px;
+    min-height: 0;
     min-width: 0;
     /* Hard containment: when the divider (or the top-toolbar one-row fit
        logic) squeezes this column narrow, its header buttons and editor
@@ -119,7 +143,7 @@ body.resizing-vertical iframe {
     border: 0px;
     height: 100%;
     align-content: flex-end;
-    min-height: 360px;
+    min-height: 0;
 }
 
 .message {
@@ -330,7 +354,8 @@ body.resizing-vertical iframe {
     outline-offset: -2px !important;
     display: flex;
     flex-direction: column;
-    min-height: 115px !important;
+    min-height: 0;
+    flex: 0 0 auto;
 }
 
 #tools-div {
@@ -371,7 +396,7 @@ body.resizing-vertical iframe {
     margin-left: 0.5rem;
     margin-right: 0.5rem;
     margin-bottom: 0.5rem;
-    flex-grow: 1;
+    flex: 1 0 0;
 }
 
 #chat-message-input {
@@ -414,7 +439,7 @@ body.resizing-vertical iframe {
     flex: 0 0 auto;
     padding: 0px;
     height: 100%;
-    min-height: 360px;
+    min-height: 0;
 }
 
 #text-editor {
@@ -476,9 +501,9 @@ body.resizing-vertical iframe {
     padding-left: 0px;
     padding-right: 0px;
     margin-left: 0px;
-    height: 25px !important;
+    min-height: 25px;
     flex-shrink: 0;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     min-width: 0;
     overflow: hidden;
     background-color: black;
@@ -502,7 +527,7 @@ body.resizing-vertical iframe {
     /* Break the Bootstrap .col-6 50% cap: the filename takes the leftover
        room and truncates with an ellipsis instead of forcing the buttons
        to overflow when the canvas column is narrow. */
-    flex: 1 1 auto;
+    flex: 1 1 100px;
     width: auto;
     max-width: none;
     min-width: 0;
@@ -515,15 +540,14 @@ body.resizing-vertical iframe {
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 10px;
-    height: 23px !important;
+    flex-wrap: wrap;
+    gap: 3px;
+    min-height: 23px;
     margin-top: 1px !important;
     margin-bottom: 2px !important;
     padding-top: 4px;
-    /* Only as wide as the buttons need (not the .col-6 50% cap). Combined
-       with #canvas-container overflow:hidden, a too-narrow canvas clips the
-       buttons at the column edge rather than spilling over the chat. */
-    flex: 0 0 auto;
+    /* Wrap within the canvas instead of losing buttons at its edge. */
+    flex: 1 1 360px;
     width: auto;
     max-width: 100%;
     min-width: 0;
@@ -645,6 +669,30 @@ body.resizing-vertical iframe {
     height: 2px;
     background: #8a8c98;
     opacity: 0.8;
+}
+
+#vertical-drag-divider::before {
+    content: "";
+    position: absolute;
+    left: calc(50% - 21px);
+    top: 2px;
+    width: 42px;
+    height: 4px;
+    border-radius: 2px;
+    background: #55BBAA;
+    z-index: 1;
+}
+
+#vertical-drag-divider:hover::after,
+#vertical-drag-divider:focus-visible::after,
+body.resizing-vertical #vertical-drag-divider::after {
+    background: #55BBAA;
+    opacity: 1;
+}
+
+#vertical-drag-divider:focus-visible {
+    outline: 2px solid #55BBAA;
+    outline-offset: -2px;
 }
 
 body.resizing-vertical {
@@ -800,6 +848,10 @@ body.resizing-vertical {
 
     #navbarMenu.collapse.show,
     #navbarMenu.collapsing {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
         display: block !important;
         flex-basis: 100%;
         width: 100%;

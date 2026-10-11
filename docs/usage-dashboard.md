@@ -32,10 +32,21 @@ provide pointer and keyboard-focus tooltips and exact table values.
 
 **Refresh** requests an update. Gauge updates, reopening, returning focus and the
 visible-dialog timer also refresh the view. Requests are coalesced, and Ollama
-account snapshots are cached for 60 seconds; clicking Refresh does not bypass
-that interval. New cloud usage may also be delayed upstream. Check the displayed
-timestamps and stale-data notice. Escape, the titlebar close button and **Close**
+healthy account snapshots are cached for 60 seconds. Temporary connection,
+timeout and invalid-response failures retry after 15 seconds instead of caching
+the failure for a full minute. Authentication/unsupported-endpoint failures use
+the normal interval; an upstream `Retry-After` delay is respected even when
+**Refresh** is clicked repeatedly. While checking, the button says **Checking…**;
+a failed response gives the reason and the next automatic retry time. Duplicate
+endpoint errors are shown once. New cloud usage may also be delayed upstream.
+Check the displayed timestamps and stale-data notice. Escape, the titlebar close button and **Close**
 use the same dismissal path; clicking outside does not dismiss the dialog.
+
+If Ollama was not running when Usage opened, **Refresh** and closing/reopening
+the dialog recheck a refused connection immediately. Only a snapshot where
+every request was refused before reaching Ollama gets that exception. Successful
+data, timeouts, authentication errors and server rate limits retain their normal
+cache or retry delay. Automatic retries also work without clicking anything.
 
 ## Credits come from the account
 
@@ -108,6 +119,7 @@ after the same Ollama account identity is verified again.
 - `usage_provider.py`: bounded parallel read-only requests to `/api/me`,
   `/api/balance`, both usage ranges, `/api/tags`, `/api/ps` and `/api/version`;
   validated responses, timeouts, response-size limits, single-flight caching,
+  bounded failure retries and credential-free `[USAGE]` failure diagnostics,
   credential-safe redirect refusal and account-aware stale data.
 - `context_governor.py` registers a usage sink through `apps.py`.
   `record_call_usage` emits real completed-call counts; at-rest gauge probes
@@ -124,7 +136,7 @@ after the same Ollama account identity is verified again.
   locks and preserve focus handling, session checks, escaping and shared theme.
 - `build.py`, `build_runtime_assets.py` and `copy_source_assets.py` explicitly
   carry the backend modules, migration, template, static assets and relevant
-  source tests/harnesses. The cache suffix is `-usage-2`. Existing migration and
+  source tests/harnesses. The cache suffix is `-usage-recovery-1`. Existing migration and
   database backup/restore mechanisms are unchanged.
 
 ## Verification and limits
@@ -136,6 +148,19 @@ website before and after a real model request, and opened/refreshed Usage while
 that request ran. Geometry measured 59.2%, body text 14.08 px and heading 16 px.
 Other plan layouts, failures, zero values, missing metrics and account changes
 used explicitly synthetic fixtures, not live Free/Max/Unlimited accounts.
+
+The follow-up startup-recovery verification on the same date passed **27 Usage
+tests** and **12 visible browser checks**. It reproduced the original minute-long
+negative cache, then verified offline startup → Ollama restored → Refresh
+(0.47 seconds), close/reopen (0.52 seconds), and automatic recovery (15.02 seconds).
+The headed browser used an isolated source database and an unclipped native
+window. Connection refusal, a genuine socket timeout, invalid JSON and HTTP 429
+were injected through controlled local endpoints; successful balances and graphs
+came from the configured real Ollama server. Repeated Refresh respected
+`Retry-After`, displayed balances matched the returned data, and closing Usage
+stopped its scheduled requests. The actual Ollama service was not stopped and
+no model inference was needed. Evidence is in `Temp/usage-dev-fix/` and
+`Temp/usage-dev-recovery/`; this is source verification, not installed acceptance.
 
 Both self-modify and self-update inclusion sweeps passed. Those checks prove
 source/asset carriage, not a rebuilt executable or installed update. No

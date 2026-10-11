@@ -45,6 +45,26 @@
         if (!jq || !jq.ui || !jq.ui.dialog || !jq.ui.dialog.prototype) return false;
         jq.ui.dialog.prototype.options.closeOnEscape = true;
 
+        // Fixed-size legacy dialogs must fit the actual viewport after zoom
+        // or a window resize. Their contents scroll inside the themed frame.
+        function fitDialog(target) {
+            const frame = jq(target).closest('.ui-dialog')[0];
+            if (!frame || !frame.getClientRects().length) return;
+            frame.classList.add('tlm-dialog-open');
+            const r = frame.getBoundingClientRect();
+            const width = document.documentElement.clientWidth;
+            const height = window.innerHeight;
+            frame.style.left = Math.max(8, Math.min(r.left, width - r.width - 8)) + 'px';
+            frame.style.top = Math.max(8, Math.min(r.top, height - r.height - 8)) + 'px';
+        }
+        jq(document).on('dialogclose', function (ev) {
+            jq(ev.target).closest('.ui-dialog').removeClass('tlm-dialog-open');
+        });
+        jq(document).on('dialogdragstop dialogresizestop', function (ev) { fitDialog(ev.target); });
+        window.addEventListener('resize', function () {
+            jq('.ui-dialog:visible .ui-dialog-content').each(function () { fitDialog(this); });
+        });
+
         // Every dialog must EXPOSE its X, and X must mean Cancel. Two sites in
         // the app hide the titlebar close button; this runs at document level,
         // i.e. AFTER each dialog's own `open:` callback, so it wins over them
@@ -61,6 +81,7 @@
                 try {
                     jq(target).closest('.ui-dialog')
                         .find('.ui-dialog-titlebar-close').show();
+                    fitDialog(target);
                 } catch (err) { /* never break opening a dialog */ }
             }, 0);
         });

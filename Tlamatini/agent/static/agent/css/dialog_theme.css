@@ -93,11 +93,42 @@
  * ---------------------------------------------------------- */
 
 .ui-dialog {
+    position: fixed !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: calc(100vw - 16px) !important;
+    max-height: calc(100dvh - 16px) !important;
     background-color: var(--tlm-dlg-surface);
     border: var(--tlm-dlg-border);
     border-radius: var(--tlm-dlg-radius);
     box-shadow: var(--tlm-dlg-shadow);
     font-family: var(--tlm-dlg-font);
+}
+
+.ui-dialog.tlm-dialog-open { display: flex !important; flex-direction: column; }
+.ui-dialog .ui-dialog-titlebar, .ui-dialog .ui-dialog-buttonpane { flex: 0 0 auto; }
+.ui-dialog .ui-dialog-content {
+    min-height: 0 !important;
+    max-height: none !important;
+    flex: 1 1 auto;
+    overflow: auto;
+    overflow-wrap: anywhere;
+}
+.ui-dialog .ui-dialog-buttonset { flex-wrap: wrap; }
+
+/* With only a few hundred CSS pixels at high zoom, fixed headers and footers
+   can squeeze a grid modal's body to zero. Let the whole card scroll then. */
+@media (max-height: 560px), (max-width: 480px) {
+    .emx-panel, .ctb-panel, .tlm-modal { display: block; overflow: auto; }
+    .emx-body, .ctb-body { display: block; overflow: visible; }
+    .emx-catalog-pane, .emx-active-pane, .ctb-list-pane, .ctb-edit-pane {
+        min-height: 180px;
+        max-height: none;
+        overflow: visible;
+        margin-bottom: 12px;
+    }
+    .emx-list, .ctb-list { min-height: 120px; max-height: 260px; flex: none; }
+    .tlm-modal-body { overflow: visible; }
 }
 
 /* jQuery UI paints its own overlay; align it with the native modals. */

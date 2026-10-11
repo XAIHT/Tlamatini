@@ -22,7 +22,7 @@ def usage_view(request):
         logger.exception("[USAGE] Cannot read usage ledger")
         response["activity_error"] = "Chat usage could not load. Check the application log and database migrations."
     try:
-        response["provider"] = usage_provider.snapshot()
+        response["provider"] = usage_provider.snapshot(refresh=request.GET.get("refresh") == "1")
     except Exception:
         logger.exception("[USAGE] Cannot read Ollama account usage")
         response["provider_error"] = "Ollama could not refresh. Check its connection and try Refresh."

@@ -44,11 +44,12 @@ function bindDividerPointerDrag(divider, resizingClass, onMove) {
     window.addEventListener('blur', stop);
     window.addEventListener('pagehide', stop);
     document.addEventListener('visibilitychange', () => { if (document.hidden) stop(); });
+    document.addEventListener('keydown', event => { if (event.key === 'Escape') stop(); });
 }
 
 // --- Horizontal drag divider (chat <-> canvas) ---
 (function () {
-    const container = document.getElementById('chat-container');
+    const container = document.getElementById('chat-workspace');
     const canvas = document.getElementById('canvas-container');
     const chat = document.getElementById('main-chat-container');
     const divider = document.getElementById('drag-divider');
@@ -143,6 +144,9 @@ function bindDividerPointerDrag(divider, resizingClass, onMove) {
     const ensureToolbarFitsOneRow = () => {
         // Font loading and the delayed initial fit must not undo a user's drag.
         if (userResized) return;
+        // Below the desktop working width, retain a usable 320px chat and
+        // canvas instead of squeezing either pane into an unusable sliver.
+        if (container.clientWidth <= 720) { apply(50); return; }
         const naturalPx = measureNaturalToolbarWidth();
         const containerPx = container.clientWidth;
         if (!containerPx) return;
@@ -205,7 +209,12 @@ function bindDividerPointerDrag(divider, resizingClass, onMove) {
         if (e.key === 'ArrowRight') { userResized = true; apply(seamPct + 1); e.preventDefault(); }
     });
 
-    window.addEventListener('resize', () => apply(seamPct));
+    window.addEventListener('resize', () => {
+        // Avatar sizing also emits resize. Preserve the automatic toolbar fit
+        // until a real horizontal drag, instead of snapping it back to 70%.
+        if (userResized) apply(seamPct);
+        else ensureToolbarFitsOneRow();
+    });
 })();
 
 // --- Vertical drag divider (chat-log <-> tools/form) ---
@@ -217,39 +226,56 @@ function bindDividerPointerDrag(divider, resizingClass, onMove) {
 
     if (!subchatContainer || !chatLogEl || !toolsContainer || !verticalDivider) return;
 
-    let dividerPct = 90; // last user-requested chat-log share, in percent
+    // Keep the requested share separately from the fitted geometry. Docking,
+    // wrapped tools and temporary status rows must not erase the user's choice.
+    let dividerPct = 90;
+    let actualPct = 90;
+    let pendingLayout = false;
 
     const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
     const rect = () => subchatContainer.getBoundingClientRect();
     const MIN_LOG_PX = 80;
-    const FALLBACK_FORM_FLOOR_PX = 115;
+    const COMPOSER_GUARD_PX = 6;
+    const form = document.getElementById('chat-form');
+    const actions = toolsContainer.querySelector('.chat-composer-actions');
+    const input = document.getElementById('chat-message-input');
+    const avatar = document.getElementById('tlm-avatar-dock');
+    const px = value => parseFloat(value) || 0;
+    const verticalEdges = style => px(style.paddingTop) + px(style.paddingBottom)
+        + px(style.borderTopWidth) + px(style.borderBottomWidth);
+    const outerHeight = element => {
+        if (!element || !element.getClientRects().length) return 0;
+        const style = getComputedStyle(element);
+        return element.getBoundingClientRect().height + px(style.marginTop) + px(style.marginBottom);
+    };
 
-    // The form-container needs enough vertical room for: the toolbar
-    // (which wraps to 2 or 3 rows on narrow chat panels), the pasted-image
-    // thumbnail chips row (chat_image_paste.js — zero height until a
-    // screenshot is pasted or dropped), plus the textarea area + the Send
-    // button (min-height 60) + form margins (~10px). This container is given
-    // an EXPLICIT pixel height below, so anything added inside it must be
-    // counted here or the textarea/Send get pushed off the bottom of the
-    // viewport.
+    // Measure natural controls, never the stretched textarea or avatar height:
+    // measuring those would feed the current panel size back into its minimum.
     const computeFormMinHeight = () => {
-        const toolsDivEl = document.getElementById('tools-div');
-        const toolsDivH = (toolsDivEl ? toolsDivEl.offsetHeight : 25) || 25;
-        const chipsEl = document.getElementById('chat-image-chips');
-        const chipsH = chipsEl ? chipsEl.offsetHeight : 0;
-        // The context gauge is a THIRD element inside this container. It is
-        // display:none (zero height) until the first measurement frame, so it
-        // costs nothing until it appears — but the instant it does it MUST be
-        // counted here, or the textarea and the Send button get pushed off
-        // the bottom of the viewport. (Its sibling edit is the ResizeObserver
-        // list below; leaving either out ships this feature broken.)
-        const gaugeEl = document.getElementById('context-gauge-row');
-        const gaugeH = gaugeEl ? gaugeEl.offsetHeight : 0;
-        // Dictation adds a live status row; count its height and top margin.
-        const voiceEl = document.getElementById('dictation-status');
-        const voiceH = voiceEl && !voiceEl.hidden ? voiceEl.offsetHeight + 7 : 0;
-        const formAreaPx = Math.max(170, Math.round(0.3 * ((subchatContainer && subchatContainer.clientHeight) || 700))); // textarea + Send min-heights + form margins
-        return Math.max(FALLBACK_FORM_FLOOR_PX, toolsDivH + chipsH + gaugeH + voiceH + formAreaPx);
+        const actionsHeight = outerHeight(actions) || 60;
+        toolsContainer.style.setProperty('--tlm-composer-actions-height', actionsHeight + 'px');
+        const inputStyle = input && getComputedStyle(input);
+        const inputEdges = inputStyle ? verticalEdges(inputStyle) : 0;
+        const inputMin = inputStyle ? Math.max(
+            px(inputStyle.minHeight) + (inputStyle.boxSizing === 'border-box' ? 0 : inputEdges),
+            (px(inputStyle.lineHeight) || px(inputStyle.fontSize) * 1.2) + inputEdges
+        ) : 0;
+        let formAreaPx = Math.max(actionsHeight, inputMin) + COMPOSER_GUARD_PX;
+        if (avatar && !avatar.classList.contains('tlm-floating') && avatar.getClientRects().length) {
+            const style = getComputedStyle(avatar);
+            // Her docked portrait is square at its natural width, at least 120px.
+            formAreaPx = Math.max(formAreaPx, Math.max(120, avatar.getBoundingClientRect().width)
+                + px(style.top) + px(style.bottom));
+        }
+        let formChrome = 0;
+        if (form) {
+            const style = getComputedStyle(form);
+            formChrome = px(style.marginTop) + px(style.marginBottom) + verticalEdges(style);
+            form.style.minHeight = Math.ceil(formAreaPx) + 'px';
+        }
+        const rowsHeight = ['tools-div', 'chat-image-chips', 'context-gauge-row', 'dictation-status']
+            .reduce((sum, id) => sum + outerHeight(document.getElementById(id)), 0);
+        return Math.ceil(rowsHeight + formAreaPx + formChrome + verticalEdges(getComputedStyle(toolsContainer)));
     };
 
     const pctFromYToDivider = (clientY) => {
@@ -261,18 +287,32 @@ function bindDividerPointerDrag(divider, resizingClass, onMove) {
     // pDivider = chat-log share (%). null → re-clamp using last value.
     const applyVertical = (pDivider) => {
         if (pDivider != null) {
-            dividerPct = clamp(pDivider, 5, 95);
+            dividerPct = clamp(pDivider, 0, 100);
         }
         const total = subchatContainer.clientHeight;
         if (total <= 0) return;
         const dividerH = verticalDivider.offsetHeight || 8;
         const formMinPx = computeFormMinHeight();
-        const maxLogPx = Math.max(MIN_LOG_PX, total - dividerH - formMinPx);
+        const minLogPx = Math.min(MIN_LOG_PX, Math.max(0, total - dividerH));
+        const maxLogPx = Math.max(minLogPx, total - dividerH - formMinPx);
         let logPx = (dividerPct / 100) * total;
-        logPx = clamp(logPx, MIN_LOG_PX, maxLogPx);
+        logPx = clamp(logPx, minLogPx, maxLogPx);
         const formPx = total - dividerH - logPx;
         chatLogEl.style.height = logPx + 'px';
         toolsContainer.style.height = formPx + 'px';
+        // Only an exceptionally short viewport needs scrolling; never clip its controls.
+        toolsContainer.style.overflowY = formPx < formMinPx ? 'auto' : '';
+        actualPct = logPx / total * 100;
+        verticalDivider.setAttribute('aria-valuemin', String(Math.floor(minLogPx / total * 100)));
+        verticalDivider.setAttribute('aria-valuemax', String(Math.ceil(maxLogPx / total * 100)));
+        verticalDivider.setAttribute('aria-valuenow', String(Math.round(actualPct)));
+        verticalDivider.setAttribute('aria-valuetext', 'Message composer ' + Math.round(formPx) + ' pixels high');
+    };
+
+    const scheduleLayout = () => {
+        if (pendingLayout) return;
+        pendingLayout = true;
+        requestAnimationFrame(() => { pendingLayout = false; applyVertical(null); });
     };
 
     (function initVertical() {
@@ -284,27 +324,32 @@ function bindDividerPointerDrag(divider, resizingClass, onMove) {
     // a second / third row) — and whenever the pasted-image chips row appears
     // or disappears, for exactly the same reason.
     if (typeof ResizeObserver !== 'undefined') {
-        const ro = new ResizeObserver(() => applyVertical(null));
-        ['tools-div', 'chat-image-chips', 'context-gauge-row', 'dictation-status'].forEach((id) => {
+        const ro = new ResizeObserver(scheduleLayout);
+        ['subchat-container', 'tools-div', 'chat-image-chips', 'context-gauge-row', 'dictation-status', 'chat-form'].forEach((id) => {
             const el = document.getElementById(id);
             if (el) ro.observe(el);
         });
+        if (actions) ro.observe(actions);
+        if (avatar) ro.observe(avatar);
+    }
+    if (avatar && typeof MutationObserver !== 'undefined') {
+        new MutationObserver(scheduleLayout).observe(avatar, { attributes: true, attributeFilter: ['class'] });
     }
 
     bindDividerPointerDrag(verticalDivider, 'resizing-vertical', event => applyVertical(pctFromYToDivider(event.clientY)));
 
     verticalDivider.addEventListener('keydown', (e) => {
-        if (e.key === 'ArrowUp') {
-            applyVertical(dividerPct - 1);
-            e.preventDefault();
-        }
-        if (e.key === 'ArrowDown') {
-            applyVertical(dividerPct + 1);
-            e.preventDefault();
-        }
+        const step = e.shiftKey ? 5 : 1;
+        if (e.key === 'ArrowUp') applyVertical(actualPct - step);
+        else if (e.key === 'ArrowDown') applyVertical(actualPct + step);
+        else if (e.key === 'Home') applyVertical(100);
+        else if (e.key === 'End') applyVertical(0);
+        else return;
+        e.preventDefault();
     });
-
-    window.addEventListener('resize', () => applyVertical(null));
+    verticalDivider.addEventListener('dblclick', () => applyVertical(100));
+    window.addEventListener('resize', scheduleLayout);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(scheduleLayout);
 })();
 
 // --- Title rotation ---

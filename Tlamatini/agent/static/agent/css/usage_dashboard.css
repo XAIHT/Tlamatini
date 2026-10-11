@@ -89,3 +89,13 @@
 .usage-plan-note { margin: 0 0 16px !important; font-size: .82rem; }
 .usage-credit-message { grid-column: 1 / -1; }
 .usage-header, .usage-toolbar, .usage-footer { flex-shrink: 0; }
+
+/* At high zoom, fixed chrome can consume the entire 60%-area dialog.
+   Scroll the complete card instead of leaving a zero-height content pane. */
+@media (max-height: 560px), (max-width: 480px) {
+    .usage-dialog { display: block; overflow: auto; }
+    .usage-body { overflow: visible; }
+    .usage-tabs, .usage-range, .usage-footer-actions { flex-wrap: wrap; }
+    .usage-footer { flex-wrap: wrap; }
+    .usage-header { align-items: flex-start; }
+}

@@ -58,6 +58,12 @@
 
   function maxSize() {
     var w = window.innerWidth || 900, h = window.innerHeight || 700;
+    const canvas = document.getElementById('canvas-container');
+    if (w <= 720 && canvas) {
+      // The narrow-screen workspace pans; keep her over its canvas so she
+      // cannot cover the message input or Send button at high browser zoom.
+      w = Math.min(w, canvas.clientWidth);
+    }
     return Math.max(MIN, Math.floor(Math.min(w - 40, h - 40) * 0.92));
   }
 
@@ -88,7 +94,10 @@
   }
 
   function _apply(px, persist) {
+    const focused = dock.contains(document.activeElement) ? document.activeElement : null;
     if (!px) {                                   // ── docked (the default)
+      const form = document.getElementById('chat-form');
+      if (form && dock.parentNode !== form) form.appendChild(dock);
       dock.classList.remove('tlm-floating');
       dock.style.width = '';
       dock.style.height = '';
@@ -97,11 +106,15 @@
       dock.style.right = '';
       dock.style.bottom = '';
     } else {                                     // ── floating
+      const workspace = document.getElementById('chat-workspace');
+      if (workspace && dock.parentNode !== workspace) workspace.appendChild(dock);
       px = clampSize(px);
       dock.classList.add('tlm-floating');
       dock.style.width = px + 'px';
       dock.style.height = px + 'px';
     }
+    // Reparenting must not lose keyboard resize focus or pan a narrow page.
+    if (focused && document.activeElement !== focused) focused.focus({ preventScroll: true });
     if (persist !== false) { save(px || 0); }
     // The dock's ResizeObserver re-runs layoutFace(), which re-scales the
     // portraits through TlamatiniPresence.resize(). Nudge it directly too, so

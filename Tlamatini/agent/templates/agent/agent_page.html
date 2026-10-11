@@ -193,10 +193,13 @@
   <div id="connection-status" class="connection-status connection-status-hidden" role="status" aria-live="polite"></div>
 
   <div class="row" id="chat-container">
+    <div id="chat-workspace">
     <div id="main-chat-container" class="col-4 px-0">
       <div id="subchat-container">
         <div id="chat-log"></div>
-        <div id="vertical-drag-divider" tabindex="0"></div>
+        <div id="vertical-drag-divider" tabindex="0" role="separator"
+          aria-orientation="horizontal" aria-label="Resize message composer" aria-controls="chat-log tools-chat-form-container"
+          title="Drag to resize composer · Up/Down to adjust · Shift for larger steps · Home or double-click to fit · End to expand"></div>
         <div id="tools-chat-form-container">
           <div id="tools-div">
             <div id="tools-left">
@@ -317,6 +320,7 @@
       </div>
       <div id="pdf-canvas-host" data-viewer-url="{% static 'agent/pdf/canvas.html' %}?v={{ STATIC_VERSION }}" hidden></div>
     </div>
+  </div>
   </div>
   <dialog id="pdf-context-progress" aria-labelledby="pdf-context-progress-title">
     <h2 id="pdf-context-progress-title">Preparing PDF context</h2>

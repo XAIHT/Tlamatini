@@ -4,6 +4,11 @@ from datetime import datetime, timedelta, timezone
 import importlib
 import json
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor
+from email.message import Message
+import ssl
+import threading
+import urllib.error
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
@@ -149,6 +154,122 @@ class ProviderTests(SimpleTestCase):
             self.assertIsNone(second['ranges']['7d']['data'])
             self.assertIsNone(second['balance']['data'])
 
+    def test_transport_errors_are_actionable_logged_and_do_not_expose_credentials(self):
+        cases = ((urllib.error.URLError(ConnectionRefusedError('private-token')), 'connection', 15),
+                 (urllib.error.URLError(TimeoutError('private-token')), 'timeout', 15),
+                 (TimeoutError('private-token'), 'timeout', 15),
+                 (ssl.SSLCertVerificationError('private-token'), 'tls', 60),
+                 (ValueError('private-token'), 'invalid_json', 15))
+        for error, kind, delay in cases:
+            with self.subTest(kind=kind), patch.object(provider.urllib.request, 'build_opener') as opener:
+                opener.return_value.open.side_effect = error
+                with self.assertLogs(provider.logger, level='WARNING') as logs:
+                    result = provider._fetch('https://test.invalid', 'private-token', '/api/balance')
+                self.assertEqual(result['error_kind'], kind)
+                self.assertEqual(result['retry_after'], delay)
+                self.assertNotIn('private-token', json.dumps(result) + str(logs.output))
+
+    def test_http_errors_keep_rate_limit_and_authentication_distinct(self):
+        headers = Message()
+        headers['Retry-After'] = '120'
+        for status, kind, delay in ((429, 'rate_limit', 120), (503, 'http_503', 120),
+                                    (401, 'authentication', 60), (404, 'unsupported', 60)):
+            with self.subTest(status=status), patch.object(provider.urllib.request, 'build_opener') as opener:
+                opener.return_value.open.side_effect = urllib.error.HTTPError('https://test.invalid', status, 'private-token', headers, None)
+                with self.assertLogs(provider.logger, level='WARNING'):
+                    result = provider._fetch('https://test.invalid', 'private-token', '/api/balance')
+                self.assertEqual((result['error_kind'], result['retry_after']), (kind, delay))
+
+    def test_retry_after_accepts_http_date_and_rejects_invalid_values(self):
+        future = datetime.now(timezone.utc) + timedelta(seconds=120)
+        self.assertGreaterEqual(provider._retry_after({'Retry-After': future.strftime('%a, %d %b %Y %H:%M:%S GMT')}), 118)
+        for value in ('', 'invalid', '-10', 'NaN'):
+            self.assertEqual(provider._retry_after({'Retry-After': value}), 60)
+
+    def test_refused_startup_recovers_without_waiting_for_healthy_cache_ttl(self):
+        clock = [1000.0]
+        def fetch(base, token, path, method):
+            if clock[0] == 1000:
+                return {'error': 'Connection refused', 'retry_after': 15}
+            if path == '/api/me':
+                return {'data': {'id': 'same-account'}}
+            return {'data': balance_fixture() if path == '/api/balance' else usage_fixture() if 'usage?' in path else {}}
+        with patch.object(provider, 'connection', return_value=('http://test', '', 'key')), \
+             patch.object(provider, '_fetch', side_effect=fetch) as fetcher, \
+             patch.object(provider.time, 'monotonic', side_effect=lambda: clock[0]):
+            failed = provider.snapshot()
+            self.assertEqual(failed['retry_after_seconds'], 15)
+            clock[0] += 10
+            self.assertEqual(provider.snapshot()['retry_after_seconds'], 5)
+            self.assertEqual(fetcher.call_count, 7)
+            clock[0] += 6
+            recovered = provider.snapshot()
+            self.assertIsNotNone(recovered['balance']['data'])
+            self.assertNotIn('retry_after_seconds', recovered)
+            self.assertEqual(fetcher.call_count, 14)
+            clock[0] += 20
+            provider.snapshot()
+            self.assertEqual(fetcher.call_count, 14, 'Healthy snapshots still cache for one minute')
+
+    def test_rate_limit_cannot_be_bypassed_by_refresh(self):
+        clock = [1000.0]
+        with patch.object(provider, 'connection', return_value=('http://test', '', 'key')), \
+             patch.object(provider, '_fetch', return_value={'error': 'Rate limited', 'retry_after': 120}) as fetcher, \
+             patch.object(provider.time, 'monotonic', side_effect=lambda: clock[0]):
+            self.assertEqual(provider.snapshot()['retry_after_seconds'], 120)
+            clock[0] += 61
+            self.assertEqual(provider.snapshot()['retry_after_seconds'], 59)
+            provider.snapshot(refresh=True)
+            self.assertEqual(fetcher.call_count, 7)
+
+    def test_refresh_or_reopen_retries_refused_connection_immediately(self):
+        ready = [False]
+        def fetch(base, token, path, method):
+            if not ready[0]:
+                return {'error': 'Connection refused', 'retry_after': 15, 'request_not_sent': True}
+            if path == '/api/me':
+                return {'data': {'id': 'same-account'}}
+            return {'data': balance_fixture() if path == '/api/balance' else usage_fixture() if 'usage?' in path else {}}
+        with patch.object(provider, 'connection', return_value=('http://test', '', 'key')), \
+             patch.object(provider, '_fetch', side_effect=fetch) as fetcher, \
+             patch.object(provider.time, 'monotonic', return_value=1000):
+            provider.snapshot()
+            ready[0] = True
+            self.assertIsNone(provider.snapshot()['balance']['data'])
+            self.assertIsNotNone(provider.snapshot(refresh=True)['balance']['data'])
+            self.assertEqual(fetcher.call_count, 14)
+            provider.snapshot(refresh=True)
+            self.assertEqual(fetcher.call_count, 14, 'Explicit refresh must preserve healthy cache limits')
+
+    def test_manual_refresh_does_not_bypass_a_timeout_or_partly_sent_requests(self):
+        with patch.object(provider, 'connection', return_value=('http://test', '', 'key')), \
+             patch.object(provider, '_fetch', return_value={'error': 'Timed out', 'retry_after': 15, 'request_not_sent': False}) as fetcher:
+            provider.snapshot()
+            provider.snapshot(refresh=True)
+            self.assertEqual(fetcher.call_count, 7)
+
+    def test_overlapping_refresh_reports_pending_and_starts_no_duplicate_requests(self):
+        entered, release = threading.Event(), threading.Event()
+        def fetch(base, token, path, method):
+            if path == '/api/me':
+                entered.set()
+                release.wait(5)
+                return {'data': {'id': 'same-account'}}
+            return {'data': {}}
+        provider._CACHE['key'] = {'at': 0, 'value': {'account': 'previous verified account'}}
+        with patch.object(provider, 'connection', return_value=('http://test', '', 'key')), \
+             patch.object(provider, '_fetch', side_effect=fetch) as fetcher, ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(provider.snapshot)
+            try:
+                self.assertTrue(entered.wait(3))
+                pending = provider.snapshot(refresh=True)
+                self.assertTrue(pending['pending'])
+                self.assertEqual(pending['account'], 'previous verified account')
+            finally:
+                release.set()
+            future.result(timeout=5)
+            self.assertEqual(fetcher.call_count, 7)
+
 
 @override_settings(ROOT_URLCONF=__name__, LOGIN_URL='/login/')
 class LedgerAndViewTests(TestCase):
@@ -201,6 +322,14 @@ class LedgerAndViewTests(TestCase):
             response = self.client.get('/usage/')
         self.assertIn('no-store', response['Cache-Control'])
         self.assertEqual(response.json()['user_id'], self.user.pk)
+
+    def test_explicit_refresh_is_forwarded_without_trusting_other_query_values(self):
+        with patch.object(provider, 'snapshot', return_value=snapshot_fixture()) as snapshot:
+            self.client.get('/usage/?refresh=1')
+            snapshot.assert_called_once_with(refresh=True)
+            snapshot.reset_mock()
+            self.client.get('/usage/?refresh=anything')
+            snapshot.assert_called_once_with(refresh=False)
 
 
 

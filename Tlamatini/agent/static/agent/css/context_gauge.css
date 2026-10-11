@@ -22,6 +22,9 @@
 #context-gauge-row {
     /* Hidden AND zero-height until the first frame. */
     display: none;
+    /* The composer measures this row's natural height. Never let flex shrink
+       its contents before that measurement, especially when the avatar docks. */
+    flex: 0 0 auto;
     box-sizing: border-box;
     align-items: center;
     gap: 10px;

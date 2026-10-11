@@ -11,9 +11,9 @@
    right-aligned footer actions). Do NOT reintroduce local colour literals
    here — that is how the skins drifted apart. */
 
-#tools-chat-form-container{position:relative;min-height:30% !important;}
+#tools-chat-form-container{position:relative;}
 #chat-form{position:relative;}
-#tlm-avatar-dock{position:absolute;top:2px;right:0;bottom:78px;width:25%;min-width:86px;
+#tlm-avatar-dock{position:absolute;top:2px;right:0;bottom:calc(var(--tlm-composer-actions-height, 60px) + 18px);width:25%;min-width:86px;
  border-radius:10px;cursor:pointer;overflow:hidden;z-index:5;background:#0b1020;
  border:2px solid #5A1FB8;box-shadow:0 0 12px rgba(90,31,184,.35);padding:5px;
  display:flex;align-items:center;justify-content:center;user-select:none;-webkit-user-select:none;}
@@ -164,7 +164,11 @@
    page, anchored bottom-right, so she can reach demonstration size without
    fighting the chat for room. Untouched, she stays exactly where she was. */
 #tlm-avatar-dock.tlm-floating{position:fixed;top:auto;left:auto;right:18px;bottom:18px;
- z-index:99990;box-shadow:0 18px 60px rgba(0,0,0,.65),0 0 14px rgba(90,31,184,.45);}
+ z-index:20;box-shadow:0 18px 60px rgba(0,0,0,.65),0 0 14px rgba(90,31,184,.45);}
 body.tlm-resizing{cursor:nwse-resize;user-select:none;-webkit-user-select:none;}
 body.tlm-resizing *{pointer-events:none;}
 body.tlm-resizing #tlm-avatar-resize{pointer-events:auto;}
+
+@media (max-width:720px){
+ #chat-workspace > #tlm-avatar-dock.tlm-floating{position:absolute;}
+}

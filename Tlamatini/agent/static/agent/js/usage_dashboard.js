@@ -14,8 +14,8 @@
     const money = value => n(value) ? '$' + value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—';
     const date = value => value ? String(value).slice(0, 10) : '—';
     const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
-    let range = '7d', data = null, controller = null, interval = null, scheduled = null;
-    let again = false, generation = 0, lastFocus = null, oldOverflow = '', inertSiblings = [];
+    let range = '7d', data = null, controller = null, interval = null, scheduled = null, retry = null;
+    let again = false, forceAgain = false, generation = 0, lastFocus = null, oldOverflow = '', inertSiblings = [];
     let sessionInvalid = false;
 
     function html(id, content) {
@@ -106,14 +106,21 @@
         const totals = cloud.data?.totals || {}, daily = cloud.data?.daily || [];
         const balance = provider.balance || {}, activity = data.activity || {}, chatTotals = activity.totals || {};
         const notes = [data.provider_error, balance.error, cloud.error, data.activity_error];
-        if (provider.account_error) notes.push('Account identity could not refresh. ' + provider.account_error);
+        if (provider.account_error && !notes.includes(provider.account_error)) notes.push('Account identity could not refresh. ' + provider.account_error);
         if (activity.recording_failures) notes.push('Some chat calls could not be saved during this app session; totals are incomplete.');
         if (activity.pending) { notes.push('New chat usage is being saved…'); schedule(); }
-        if (provider.pending) notes.push('Ollama is refreshing. Your chat ledger is current.');
+        if (provider.pending) { notes.push('Ollama is refreshing. Your chat ledger is current.'); schedule(); }
+        clearTimeout(retry); retry = null;
+        if (n(provider.retry_after_seconds) && provider.retry_after_seconds > 0) {
+            const seconds = Math.ceil(provider.retry_after_seconds);
+            const next = new Date(Date.now() + seconds * 1000).toLocaleTimeString();
+            notes.push(`Next automatic Ollama retry: ${next}. Chat activity remains available.`);
+            retry = setTimeout(refresh, Math.min(seconds, 60) * 1000 + 100);
+        }
         if (cloud.stale && cloud.data) notes.push('Showing the last available account snapshot; figures may have changed.');
         if (balance.stale && balance.data) notes.push('Credits show the last verified balance; use Refresh to check again.');
         if (chatTotals.missing_output_calls) notes.push(`${count(chatTotals.missing_output_calls)} measured calls did not report output tokens. Output totals are partial.`);
-        $('status').textContent = notes.filter(Boolean).join(' ') || 'Live account statistics and measured chat activity. Hover or focus a graph to inspect exact values.';
+        $('status').textContent = [...new Set(notes.filter(Boolean))].join(' ') || 'Live account statistics and measured chat activity. Hover or focus a graph to inspect exact values.';
         $('status').classList.toggle('usage-warning', notes.some(Boolean));
         $('account-note').textContent = `${provider.account || 'Ollama account'}${provider.plan ? ' · ' + provider.plan.toUpperCase() : ''} · Account activity includes usage outside Tlamatini. Dates are UTC.`;
         creditCards(balance.data, provider.pending);
@@ -154,16 +161,21 @@
         $('updated').textContent = 'Chat checked ' + new Date().toLocaleTimeString() + (balance.updated_at ? ' · Credits ' + new Date(balance.updated_at).toLocaleTimeString() : ' · Account refresh needed');
     }
 
-    async function refresh() {
+    async function refresh(force = false) {
         if (overlay.hidden || document.hidden || sessionInvalid) return;
-        if (controller) { again = true; return; }
+        if (controller) { again = true; forceAgain = forceAgain || force === true; return; }
         const current = generation, selected = range;
         const abort = new AbortController(); controller = abort;
         const timeout = setTimeout(() => abort.abort(), 15000);
         $('refresh').disabled = true;
+        $('refresh').textContent = 'Checking…';
+        dialog.setAttribute('aria-busy', 'true');
+        $('status').textContent = 'Checking Ollama account usage and recorded chat activity…';
+        if (!data) creditCards(null, true);
         try {
-            const response = await fetch(overlay.dataset.url + '?range=' + range, { credentials: 'same-origin', cache: 'no-store', signal: abort.signal });
-            if (!response.ok || response.redirected) throw Error('Usage could not refresh. Your session may have expired. Reload the chat to sign in again.');
+            const response = await fetch(overlay.dataset.url + '?range=' + range + (force === true ? '&refresh=1' : ''), { credentials: 'same-origin', cache: 'no-store', signal: abort.signal });
+            if (response.redirected || response.status === 401 || response.status === 403) throw Error('Usage could not refresh. Your session may have expired. Reload the chat to sign in again.');
+            if (!response.ok) throw Error(`Usage could not refresh (server HTTP ${response.status}). Retrying automatically in 15 seconds.`);
             const next = await response.json();
             if (String(next.user_id) !== overlay.dataset.userId) {
                 data = null; sessionInvalid = true;
@@ -175,23 +187,28 @@
             data = next; render();
         } catch (error) {
             if (current === generation && !overlay.hidden) {
-                $('status').textContent = error.name === 'AbortError' ? 'Refresh timed out. Existing figures may be stale; use Refresh to retry.' : error.message;
+                $('status').textContent = error.name === 'AbortError' ? 'Refresh timed out. Existing figures may be stale. Retrying automatically in 15 seconds.' : error instanceof TypeError ? 'The Tlamatini server could not be reached. Retrying automatically in 15 seconds.' : error.message;
                 $('status').classList.add('usage-warning');
+                if (!sessionInvalid) {
+                    clearTimeout(retry); retry = setTimeout(refresh, 15000);
+                }
             }
         } finally {
             clearTimeout(timeout);
             if (controller === abort) controller = null;
             $('refresh').disabled = sessionInvalid;
+            $('refresh').textContent = 'Refresh';
+            dialog.setAttribute('aria-busy', 'false');
             if (again && !overlay.hidden) { again = false; schedule(); }
         }
     }
     function schedule() {
         if (overlay.hidden || scheduled) return;
-        scheduled = setTimeout(() => { scheduled = null; refresh(); }, 900);
+        scheduled = setTimeout(() => { scheduled = null; const force = forceAgain; forceAgain = false; refresh(force); }, 900);
     }
     function close() {
-        generation++; overlay.hidden = true; controller?.abort(); again = false;
-        clearInterval(interval); clearTimeout(scheduled); scheduled = null;
+        generation++; overlay.hidden = true; controller?.abort(); again = false; forceAgain = false;
+        clearInterval(interval); clearTimeout(scheduled); clearTimeout(retry); scheduled = null; retry = null;
         $('tooltip').hidden = true; document.body.style.overflow = oldOverflow;
         inertSiblings.forEach(([el, inert]) => { el.inert = inert; }); inertSiblings = [];
         (lastFocus?.isConnected && lastFocus.getClientRects().length ? lastFocus : document.getElementById('about-menu-button')).focus();
@@ -203,12 +220,12 @@
         inertSiblings = [...document.body.children].filter(el => el !== overlay && !['SCRIPT', 'STYLE'].includes(el.tagName)).map(el => [el, el.inert]);
         inertSiblings.forEach(([el]) => { el.inert = true; });
         document.body.style.overflow = 'hidden'; overlay.hidden = false;
-        dialog.querySelector('[data-tab][aria-selected="true"]').focus(); refresh(); interval = setInterval(refresh, 30000);
+        dialog.querySelector('[data-tab][aria-selected="true"]').focus(); refresh(true); interval = setInterval(refresh, 30000);
     }
     overlay.tlmDismiss = close; dialog.tlmDismiss = close;
     opener.addEventListener('click', open);
     dialog.querySelectorAll('.usage-close').forEach(button => button.addEventListener('click', close));
-    $('refresh').addEventListener('click', refresh);
+    $('refresh').addEventListener('click', () => refresh(true));
     dialog.querySelectorAll('[data-range]').forEach(button => button.addEventListener('click', () => {
         range = button.dataset.range;
         dialog.querySelectorAll('[data-range]').forEach(el => el.setAttribute('aria-pressed', String(el === button)));
