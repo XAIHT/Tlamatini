@@ -591,6 +591,25 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ["Compact mode", "Binds only the rows you tick; locked on when the model cannot hold all."],
                 ["Self-modify", "Sends her self-knowledge; only in self-modify builds, locked off if too big."],
             ]}, deck="table"),
+        Section("composer", "THE MESSAGE BOX", "More room to write, or more room to read",
+            "Drag the divider above the message box. With her avatar undocked, the box can shrink to its buttons.",
+            body=[
+                "The divider between the conversation and the message box follows the pointer and the keyboard. "
+                "The arrow keys move it one step and Shift+arrows five; Home or a double-click shrinks the box to "
+                "its smallest, End makes it as tall as allowed, and Escape ends a drag. Screen readers hear the "
+                "box height. The toolbar, context gauge, attachment and dictation rows are measured, so none of "
+                "them is cut off.",
+                "Docked, her portrait keeps its room above the action buttons. Undocked, the box can shrink to "
+                "those buttons plus a six-pixel guard, and docking her again gives the portrait its room back. "
+                "In a short window the box scrolls inside itself, and on a narrow screen the workspace pans while "
+                "the page and its dialogs stay in place.",
+            ],
+            points=[
+                ("Drag or type", "Pointer, arrows, Shift+arrows, Home and End move the divider."),
+                ("Undocked", "The message box can shrink to its own action buttons."),
+                ("Docked", "Her portrait keeps its room above the buttons."),
+                ("Small windows", "The box scrolls itself; dialogs stay inside the window."),
+            ], deck="cards"),
         Section("drop", "CHAT HISTORY", "Drop a message from the conversation",
             "Every message card has Drop beside Copy, for your prompts and Tlamatini's answers.",
             body=[
@@ -715,9 +734,9 @@ def build_chapters(f: dict) -> list[Chapter]:
                  "Voice, then Mic (dictation behavior and capture preferences)."],
                 ["DB", "WAL-safe database backup and staged replacement."],
                 ["Reconnect · About", "Rebuild the chat connection; version, author credits and Check for "
-                 "updates. Current source also adds Usage, available while a request runs."],
+                 "updates. Since v1.78.0, About also opens Usage, even while she is busy."],
             ]}, deck="table"),
-        Section("usage", "ABOUT → USAGE · CURRENT SOURCE", "Read usage while she works",
+        Section("usage", "ABOUT → USAGE · NEW IN v1.78.0", "Read usage while she works",
             "ABOUT USAGE follows the shared dialog theme and remains available during a long answer.",
             body=[
                 "Open About → Usage, then choose Cloud credits, Chat activity or Models. The first tab reads "
@@ -757,7 +776,7 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("Monthly balance", "Actual included and purchased credits from /api/balance."),
                 ("Rolling history", "7/30-day cloud spend and tokens; separate from the billing period."),
                 ("Local model graphs", "Measured Tlamatini main-chat activity, not website-wide history."),
-                ("Refresh", "Gauge events and visible-dialog refresh; cloud cache lasts 60 seconds."),
+                ("Refresh", "Healthy data is cached 60 s; a brief outage is retried after 15 s."),
                 ("Missing data", "Explain unavailable or stale values; no guessed balance or token count."),
                 ("References", "docs.ollama.com/api/balance and /api/cloud-usage; docs/usage-dashboard.md."),
             ], deck="cards"),
@@ -1331,7 +1350,7 @@ def build_chapters(f: dict) -> list[Chapter]:
             "as fact.",
             points=[
                 ("Image-Interpreter", "Two vision models read each image in parallel on their own connections; "
-                 "a third merges both into one definitive report."),
+                 "a third merges both. A comma-separated list reads several images."),
                 ("Video-Analyzer · robotics", "A deterministic motion gate plus two vision models; PASS only "
                  "when both agree."),
                 ("Video-Analyzer · transcription", "Timestamped speech from chosen audio tracks, locally."),
@@ -1695,35 +1714,81 @@ def build_chapters(f: dict) -> list[Chapter]:
          f"Version {f['release_tag']}; the latest release published on GitHub is "
          f"{f['release']['latest_published'] or 'not verified'}."),
         accent="gold", sections=[
-        Section("working_usage", "SOURCE CHANGE · OCTOBER 10", "Usage is verified; rebuild acceptance is next",
-            "The new Usage dialog is an uncommitted source change, not part of the published v1.77.0 binary.",
+        Section("working_usage", "NEW IN v1.78.0", "Usage: credits and activity, while she works",
+            "Tagged on October 10; the Usage commit lands one commit after the tag. The published v1.78.0 zip carries it.",
             body=[
-                "The October 10 source campaign passed 18 Usage tests, 202 existing regressions and 24 visible "
+                "The first October 10 campaign passed 18 Usage tests, 202 existing regressions and 24 visible "
                 "browser checks, plus source/collected-static byte parity. The live Pro account was compared "
-                "with Ollama Settings before and after a real model request. Usage opened and refreshed while "
+                "with Ollama Settings before and after a real model request, and Usage opened and refreshed while "
                 "that request ran. Other-plan, failure and account-switch cases used explicitly synthetic "
                 "fixtures, not live Free, Max or Unlimited subscriptions.",
-                "UsageDaily, migration 0213, records counters by user/model/UTC day. A bounded worker queue "
-                "keeps inference independent of writes; it is best-effort telemetry, not a billing ledger. "
-                "usage_provider.py and usage_views.py provide bounded, authenticated read-only access, "
-                "credential-safe requests and account-aware stale caching. Build/runtime/source inventories "
-                "carry the modules, migration, template, JS/CSS and tests together.",
-                "Both self-modify and self-update source inclusion sweeps passed. No executable build, installer "
-                "or real update was run for this feature. An unavailable System-Metrics sidecar in the isolated "
-                "test does not certify the full product; the real model response and Usage checks completed. "
-                "The dated test record is in docs/usage-dashboard.md. This document refresh does not claim "
-                "to rerun those browser tests or publish a new version.",
+                "A follow-up the same day made Usage recover when Ollama starts late. Temporary connection, "
+                "timeout and invalid-response failures now retry after 15 seconds instead of a full minute, an "
+                "upstream Retry-After is respected even when Refresh is clicked repeatedly, and a refused "
+                "connection is checked again at once on Refresh or reopen. It passed 27 Usage tests and 12 "
+                "visible browser checks: Refresh recovered in 0.47 seconds, reopening in 0.52 seconds and the "
+                "automatic retry in 15.02 seconds.",
+                "UsageDaily, migration 0213, records counters by user/model/UTC day through a bounded worker "
+                "queue; it is best-effort telemetry, not a billing ledger. Both inclusion sweeps passed. Those "
+                "campaigns ran from source. This refresh checked that the published zip matches the local build "
+                "byte for byte (SHA-256); it did not install the release or rerun the browser tests.",
             ],
             points=[
                 ("220 tests", "18 Usage plus 202 existing regressions passed on October 10."),
                 ("24 browser checks", "Visible live Pro comparisons plus clearly synthetic edge cases."),
+                ("Recovery", "27 Usage tests and 12 visible checks; outages retried after 15 s."),
                 ("During a request", "Usage opened/refreshed while a real model answer completed."),
-                ("Source carriage", "Both inclusion sweeps clean; collected static bytes match source."),
-                ("Release boundary", "Rebuild and installed acceptance remain pending."),
+                ("In the release", "The published zip's files match the latest October 10 commit."),
                 ("Privacy", "Account observations and authenticated screenshots stay out of this dossier."),
             ], deck="cards"),
+        Section("working_composer", "NEW IN v1.78.0", "Undock her, and the message box shrinks to fit",
+            "Two commits after the v1.78.0 tag, and carried by the published zip: the input area resizes once she floats.",
+            body=[
+                "With the avatar undocked, the input form can now be dragged down to its own action buttons plus "
+                "a six-pixel guard; the old 30% floor is gone. The toolbar, context gauge, attachment and dictation "
+                "rows count with their measured heights. Docking her again restores room for the portrait. The "
+                "divider answers the pointer, the arrow keys, Shift+arrows, Home, End and double-click, and "
+                "reports its height to screen readers.",
+                "Short windows scroll the composer inside itself and keep the chat history. The page occupies the "
+                "real viewport: collapsed navigation opens over the workspace instead of pushing it down, and a "
+                "640-pixel minimum workspace keeps both panes on narrow screens. jQuery UI dialogs stay inside the "
+                "window after opening, dragging or resizing, short native dialogs scroll as complete cards, and the "
+                "avatar never covers a modal dialog.",
+                "In a verified foreground Chrome window, 18 composer checks and 38 viewport checks passed at 100%, "
+                "native 400% and 25% zoom and in a phone-sized window, with eight dialogs at each size. That is a "
+                "desktop browser at phone-sized dimensions, not a physical phone; 20% zoom was unavailable and is "
+                "not claimed. These layout checks do not certify model inference or audio capture.",
+            ],
+            points=[
+                ("Shrinks to fit", "Undocked, the input area can shrink to its buttons; no 30% floor."),
+                ("Dock again", "Docking restores room for her portrait above the buttons."),
+                ("Keyboard", "Arrows, Shift+arrows, Home, End and double-click on the divider."),
+                ("Short windows", "The composer scrolls inside itself; chat history stays visible."),
+                ("Narrow screens", "A 640-pixel workspace pans; the page and dialogs stay anchored."),
+                ("Evidence", "18 composer and 38 viewport checks passed, visibly, on October 10."),
+            ], deck="cards"),
+        Section("working_selfrepair", "NEW IN v1.78.0", "She repaired one of her own agents",
+            "Image-Interpreter now reads a comma-separated list of images, a change credited to Tlamatini herself.",
+            body=[
+                "Commit 0e6fc72d is titled \u201cTlamatini's self-repair Image-Interpreter, by Tlamatini's-AutoBot\u201d "
+                "and is the commit the v1.78.0 tag points to. When the images field holds several paths "
+                "separated by commas, each entry is resolved on its own, the results are merged, and repeated "
+                "paths are removed while the original order is kept.",
+                "The list is split only when the whole value is not itself an existing file, so a single image "
+                "whose name contains a comma still resolves. An entry that matches nothing is logged as a warning "
+                "and the other images are still analyzed. The 22-line change arrived without a new automated "
+                "test; it ships in the published v1.78.0 release.",
+            ],
+            points=[
+                ("Several images", "Comma-separated paths are resolved one by one and merged."),
+                ("No duplicates", "Repeated paths are removed; the original order is kept."),
+                ("Commas in names", "A single existing file is never split at its comma."),
+                ("Honest warning", "An entry that resolves to nothing is logged, not hidden."),
+                ("Self-repair", "The commit credits Tlamatini's-AutoBot, her own self-modify work."),
+                ("In v1.78.0", "The tag points to this commit; no dedicated test yet."),
+            ], deck="cards"),
         Section("working_firstperson", "NEW IN v1.77.0", "She speaks to you, by name",
-            "Tagged on October 9 and published as the current release, so self-update delivers it.",
+            "Tagged and published on October 9; v1.78.0 replaced it as the Latest release on October 10.",
             body=[
                 "Every fixed line Tlamatini sends to the chat, and that her avatar reads aloud, is now written in the "
                 "first person and addressed to the user by name: “I'm ready, Angela! You can start chatting with me "
