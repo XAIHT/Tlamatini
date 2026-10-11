@@ -83,5 +83,5 @@ legacy and purchased-only layouts without guessed quotas or unlimited-cloud clai
 State the website-only per-model API gap, UTC scopes, at-most-two-decimal displays,
 under-60% dialog size and normal fonts. Keep account observations/screenshots out
 of public artifacts. Date the 220 source tests and 24 visible browser checks to
-October 10; label other-plan fixtures synthetic and installed acceptance pending.
-Derive current counts, and keep the uncommitted Usage change separate from v1.77.0.
+October 10; label other-plan fixtures synthetic.
+Derive current counts. Usage, the message-box resize and the Image-Interpreter list ship in v1.78.0 (its tag sits one commit before the Usage commit; the published zip matches `113eddc4`).

@@ -12,7 +12,7 @@
 
 > **Developer/product boundary (Angela, 2026-09-27):** these visibility requirements govern development and verification. They must not create extra windows, steal focus or expose internal diagnostics in the shipped UX. Direct chat dictation keeps status in chat and uses only Tlamatini's main console/log.
 
-## Usage accounting and cloud balances (source change, 2026-10-10)
+## Usage accounting and cloud balances (2026-10-10, shipped in `v1.78.0`)
 
 `apps.py` registers the `context_governor` usage sink. Completed measured main-chat
 calls enqueue metadata-only writes through `usage_tracking.py`; gauge probes do

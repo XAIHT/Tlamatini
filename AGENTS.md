@@ -48,7 +48,7 @@ the chat and its diagnostics in Tlamatini's main console/log. Verify this produc
 behavior from a visible development console. Do not reintroduce a persistent
 Whisperer PowerShell/conhost window or require its visibility to enable recording.
 
-## About → Usage — source change, 2026-10-10
+## About → Usage — 2026-10-10, shipped in `v1.78.0`
 
 The new **ABOUT USAGE** dialog stays available during an answer. It reads actual
 Ollama credits, allowance, usage and refill weeks/date; presents rolling cloud
@@ -58,8 +58,8 @@ less than 60% of the browser client area. Missing fields are explained, never
 invented. Monthly, legacy-limit and purchased-only layouts follow the response.
 The cloud API does not expose the website’s full per-model breakdown.
 
-This is a verified source change awaiting rebuild and installed acceptance,
-not a claim about the published v1.77.0 binary. See the
+It ships in the published `v1.78.0` release, with its outage recovery: a brief
+Ollama failure is retried after 15 s and Refresh rechecks a refused connection. See the
 [Usage guide and evidence](docs/usage-dashboard.md).
 
 ## Existing repository contracts
@@ -130,11 +130,30 @@ Contract: [CLAUDE.md](CLAUDE.md) → *Self-modify*,
 `docs/claude/architecture.md` → *The Self-modify switch*,
 `docs/claude/recent-fixes.md` (2026-10-03).
 
+## v1.78.0 — About ▸ Usage, a message box that shrinks, Image-Interpreter lists (2026-10-10)
+
+`v1.78.0` (annotated tag at `0e6fc72d`, pushed 2026-10-10) names the Usage dialog. The
+Usage commit `7460a147` and `113eddc4` (message-box resize + Usage outage recovery) landed
+right after the tag, so a build of `main` reports `1.78.0` and carries everything below.
+It was published on GitHub on 2026-10-10 (marked Latest; its release title still reads
+"v1.77.0"), so self-update delivers `v1.78.0`; the published zip matches `113eddc4`.
+
+- **About ▸ Usage** (migration 0213 `UsageDaily`): see *About → Usage* above and
+  `docs/usage-dashboard.md`.
+- **Message box.** With the avatar undocked the input form shrinks to its own action
+  buttons (the 30% floor is gone); docking restores the portrait's room. Keyboard: arrows,
+  Shift+arrows, Home/double-click (smallest), End (tallest); Escape ends a drag.
+  `agent_page_layout.js`, `avatar_size.js`, `dialog_policy.js::fitDialog`; record
+  `docs/changes/2026-10-10-composer-resize.md`.
+- **Image-Interpreter** accepts a comma-separated list of images (each resolved, merged,
+  de-duplicated; a single file with a comma in its name is never split). Commit `0e6fc72d`,
+  credited to Tlamatini's-AutoBot; no dedicated test yet.
+
 ## v1.77.0 — first-person chat lines, the uninstaller keeps Templates (2026-10-09)
 
 `v1.77.0` (annotated tag at `052bfe0f`, pushed 2026-10-09) carries the two
-changes below; a build of `main` reports `1.77.0`. It was published on
-GitHub on 2026-10-09 (marked Latest), so self-update delivers `v1.77.0`.
+changes below; a build of `main` reported `1.77.0` until the `v1.78.0` tag. It was published on
+GitHub on 2026-10-09; self-update delivered `v1.77.0` until `v1.78.0` was published on 2026-10-10.
 
 - **First person, by name.** Every fixed chat line Tlamatini sends (`agent/constants.py`) speaks in the
   first person and names the user (`display_name()` + `say()`; with no name the placeholder and its comma

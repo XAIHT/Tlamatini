@@ -1,8 +1,9 @@
 <!-- Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1 -->
 # Composer resizing and viewport containment — 2026-10-10
 
-Status: source changes for Angela's rebuild and acceptance retest. No build,
-commit, push or installed-release acceptance was performed for this change.
+Status: shipped in the published `v1.78.0` release (commit `113eddc4`, 2026-10-10).
+At verification time no build, commit, push or installed-release acceptance had
+been performed; the record below is that dated verification.
 
 ## Behavior
 

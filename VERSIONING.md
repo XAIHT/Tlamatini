@@ -20,12 +20,12 @@ and the flow-knowledge regression suite before building. Regenerate the shipped 
 [the implementation guide](docs/desktop-input-and-flow-contracts.md) does not itself assign a version tag.
 
 1. **Standard**: [Semantic Versioning 2.0.0](https://semver.org/) — `MAJOR.MINOR.PATCH[-prerelease][+build]`.
-2. **Single source of truth**: a **git tag** of the form `v1.77.0`.
+2. **Single source of truth**: a **git tag** of the form `v1.78.0`.
 3. **No code edits**: you never hand-edit a version string in source files. You tag, then build.
 4. **Three injection points**, all computed automatically at build time:
    - `Tlamatini/agent/_version.py` (read at runtime by the About dialog, the startup banner, and `/agent/version/`)
    - PyInstaller `--version-file=…` → embedded into the Win32 `VERSIONINFO` resource of `Tlamatini.exe`, `Installer.exe`, and `Uninstaller.exe` (visible in Explorer → Properties → Details)
-   - The release folder name (`dist/Tlamatini_Release_v1.77.0/`)
+   - The release folder name (`dist/Tlamatini_Release_v1.78.0/`)
 5. **Fallback**: if you don't tag at HEAD, the version is the **bare base tag** that's reachable from HEAD (e.g. `1.1.1`). No `.devN`, no `+gSHA`, no `.dirty` suffix is ever emitted — the displayed version is always a clean SemVer. If no `v*` tag exists at all, the fallback is `0.0.0`.
 
 ---
@@ -39,9 +39,9 @@ MAJOR.MINOR.PATCH[-PRERELEASE][+BUILD]
 
 Examples:
   1.0.0
-  1.77.0
+  1.78.0
   2.0.0-rc.1
-  1.77.0+build.491
+  1.78.0+build.491
 ```
 
 **Bump rules** (when do you increment what?):
@@ -78,10 +78,10 @@ build.py / build_installer.py / build_uninstaller.py
    ▼  the build outputs ship with the version baked in
    ├─►  Tlamatini.exe / Installer.exe / Uninstaller.exe
    │       └── right-click → Properties → Details → ProductVersion
-   ├─►  dist/Tlamatini_Release_v1.77.0/      (release folder name)
+   ├─►  dist/Tlamatini_Release_v1.78.0/      (release folder name)
    └─►  Runtime surfaces:
-            ├── About dialog:   "Tlamatini v1.77.0"
-            ├── Console banner: "--- [VERSION] Tlamatini 1.77.0"
+            ├── About dialog:   "Tlamatini v1.78.0"
+            ├── Console banner: "--- [VERSION] Tlamatini 1.78.0"
             ├── tlamatini.log:  (same banner — tee'd)
             └── GET /agent/version/  →  { version, build, commit, date, source }
 ```
@@ -103,9 +103,9 @@ When you run `python build.py`, `build_installer.py`, or `build_uninstaller.py`,
 
 | # | Source | How to use it | Example value |
 |---|---|---|---|
-| 1 | **`--version X.Y.Z` CLI flag** | `python build.py --version 1.77.0` | `1.77.0` |
-| 2 | **`$env:TLAMATINI_VERSION`** | `$env:TLAMATINI_VERSION = "1.77.0"; python build.py` | `1.77.0` |
-| 3 | **`git describe --tags --abbrev=0 --match 'v[0-9]*'`** | `git tag -a v1.77.0 -m "..."; python build.py` | always the bare base tag → `1.77.0` (distance / dirty state never appear in the version string) |
+| 1 | **`--version X.Y.Z` CLI flag** | `python build.py --version 1.78.0` | `1.78.0` |
+| 2 | **`$env:TLAMATINI_VERSION`** | `$env:TLAMATINI_VERSION = "1.78.0"; python build.py` | `1.78.0` |
+| 3 | **`git describe --tags --abbrev=0 --match 'v[0-9]*'`** | `git tag -a v1.78.0 -m "..."; python build.py` | always the bare base tag → `1.78.0` (distance / dirty state never appear in the version string) |
 | 4 | **Sentinel** | _(no git, no tags, no flag)_ | `0.0.0+unknown` |
 
 > `build.py` exports `$env:TLAMATINI_VERSION` so that if you run all three scripts in the same shell, `build_installer.py` and `build_uninstaller.py` see the same version `build.py` decided on — even if you never tagged at all (i.e. the git-derived dev version stays consistent across the three artefacts).
@@ -153,10 +153,10 @@ git log --oneline (git describe --tags --abbrev=0)..HEAD
 
 ### Step 3 — Create the annotated tag
 
-The commands below show the current `v1.77.0` version as a concrete example. That tag already exists: **do not rerun these commands, move it, or recreate it**. Substitute the next deliberate version when preparing a future release. (`v1.77.0` is an annotated tag cut on 2026-10-09 at commit `052bfe0f` — *"Release v1.77.0 Making Tlamatini speak every fixed chat line in the first person and to the user by name, with the word matchers, the avatar and the Telegram bridge updated to recognise both the new and the old wording."* — and it is already pushed to `origin`. It was published on GitHub on 2026-10-09 (marked Latest), so it is the latest *published* release and the one **About ▸ Check for updates** delivers; `v1.76.0` (annotated tag at `953ad2d8`, 2026-10-08) was published on 2026-10-09 as "Tlamatini Release v1.76.0 Win11x64", and `v1.75.0` on 2026-10-03.)
+The commands below show the current `v1.78.0` version as a concrete example. That tag already exists: **do not rerun these commands, move it, or recreate it**. Substitute the next deliberate version when preparing a future release. (`v1.78.0` is an annotated tag cut on 2026-10-10 at commit `0e6fc72d` — *"Release v1.78.0 Implementing the About -> Usage dialog."* — and it is already pushed to `origin`. The Usage commit `7460a147` and `113eddc4` landed on `main` right after it, so a build of `main` reports `1.78.0` and carries them. It was published on GitHub on 2026-10-10 (marked Latest; its release title still reads "Tlamatini Release v1.77.0 Win11x64"), so it is the latest *published* release and the one **About ▸ Check for updates** delivers; `v1.77.0` (annotated tag at `052bfe0f`, 2026-10-09) and `v1.76.0` (annotated tag at `953ad2d8`, 2026-10-08) were both published on 2026-10-09, and `v1.75.0` on 2026-10-03.)
 
 ```powershell
-git tag -a v1.77.0 -m "Release 1.77.0: <one-line summary>"
+git tag -a v1.78.0 -m "Release 1.78.0: <one-line summary>"
 ```
 
 The `-a` flag makes it an **annotated** tag (carries a message + author + date). `--match 'v[0-9]*'` in the resolver is why the leading `v` is required.
@@ -164,7 +164,7 @@ The `-a` flag makes it an **annotated** tag (carries a message + author + date).
 ### Step 4 — Push the tag
 
 ```powershell
-git push origin v1.77.0
+git push origin v1.78.0
 # or push everything: git push --follow-tags
 ```
 
@@ -176,18 +176,18 @@ python build_uninstaller.py
 python build_installer.py
 ```
 
-All three scripts pick up `v1.77.0` automatically (precedence #3 — Git finds the newest reachable annotated tag). This remains true when `HEAD` is a later untagged commit, because Tlamatini deliberately emits the bare base tag without a distance or dirty suffix. The current checkout is exactly that case: `main` carries a documentation commit past `v1.77.0`, and it still reports the bare `1.77.0`.
+All three scripts pick up `v1.78.0` automatically (precedence #3 — Git finds the newest reachable annotated tag). This remains true when `HEAD` is a later untagged commit, because Tlamatini deliberately emits the bare base tag without a distance or dirty suffix. The current checkout is exactly that case: `main` carries later commits past `v1.78.0` (the Usage dialog, the message-box resize and documentation refreshes), and it still reports the bare `1.78.0`.
 
 You'll see this in each script's output:
 ```
-Tlamatini version : 1.77.0
+Tlamatini version : 1.78.0
 VERSIONINFO file  : C:\Development\Tlamatini\Tlamatini.version.txt
 …
   Build completed successfully in 240s
-  Version : 1.77.0
+  Version : 1.78.0
 ```
 
-The final artefact is **`dist/Tlamatini_Release_v1.77.0/`** — zip and distribute.
+The final artefact is **`dist/Tlamatini_Release_v1.78.0/`** — zip and distribute.
 
 ### Step 6 — Verify
 
@@ -195,12 +195,12 @@ The final artefact is **`dist/Tlamatini_Release_v1.77.0/`** — zip and distribu
 
 After install, the user (or you) should see:
 
-- **About dialog**: `Tlamatini v1.77.0`
-- **Right-click `Tlamatini.exe` → Properties → Details**: ProductVersion = `1.77.0`
-- **Console banner on startup**: `--- [VERSION] Tlamatini 1.77.0`
+- **About dialog**: `Tlamatini v1.78.0`
+- **Right-click `Tlamatini.exe` → Properties → Details**: ProductVersion = `1.78.0`
+- **Console banner on startup**: `--- [VERSION] Tlamatini 1.78.0`
 - **`curl http://localhost:8000/agent/version/`** (after login or with anonymous access since it's open):
   ```json
-  {"version":"1.77.0","build":"1.77.0","commit":"abc1234","date":"2026-08-23T12:00:00Z","source":"generated"}
+  {"version":"1.78.0","build":"1.78.0","commit":"abc1234","date":"2026-08-23T12:00:00Z","source":"generated"}
   ```
 
 If any of those four says something different, you missed Step 3 (the tag), or you've got a stale `_version.py` from a previous build — clean it up and re-run `build.py`.
@@ -311,18 +311,18 @@ PICK A NUMBER         MAJOR.MINOR.PATCH per SemVer 2.0.0
                       ─ MINOR: backward-compat feature
                       ─ PATCH: backward-compat fix
 
-TAG IT                git tag -a v1.77.0 -m "Release 1.77.0"
-                      git push origin v1.77.0
+TAG IT                git tag -a v1.78.0 -m "Release 1.78.0"
+                      git push origin v1.78.0
 
 BUILD IT              python build.py
                       python build_uninstaller.py
                       python build_installer.py
 
-WHERE IT LANDS        dist/Tlamatini_Release_v1.77.0/
-                      About dialog : "Tlamatini v1.77.0"
-                      Exe → Properties → Details : ProductVersion = 1.77.0
-                      curl /agent/version/ : {"version":"1.77.0", …}
-                      Console banner : --- [VERSION] Tlamatini 1.77.0
+WHERE IT LANDS        dist/Tlamatini_Release_v1.78.0/
+                      About dialog : "Tlamatini v1.78.0"
+                      Exe → Properties → Details : ProductVersion = 1.78.0
+                      curl /agent/version/ : {"version":"1.78.0", …}
+                      Console banner : --- [VERSION] Tlamatini 1.78.0
 
 NO TAG AT HEAD?       Build still works.  Version becomes the most recent
                       reachable v* tag, bare (no dev/sha/dirty suffix), or
@@ -360,11 +360,12 @@ A: Two common causes:
 **Q: Can I commit `_version.py` to lock a release?**
 A: No need. Git tags already lock the release — the tag points at a specific commit and that commit is what gets built. Committing `_version.py` would just create a never-ending stream of "bump version" commits, which is exactly what this system was designed to eliminate.
 
-## About Usage: source and release boundary (2026-10-10)
+## About Usage: tag and release boundary (2026-10-10)
 
-The Usage dialog and migration 0213 are currently local source changes. The
-nearest tag and published release remain v1.77.0; this documentation refresh
-does not create a tag or publish a release. A bare 1.77.0 version string does
-not prove Usage is installed. Rebuild the intended source and perform installed
-acceptance before describing the feature as shipped. The dated source evidence
-and delivery contract are in [the Usage guide](docs/usage-dashboard.md).
+The Usage dialog and migration 0213 landed on `main` in commit `7460a147`, one
+commit after the annotated `v1.78.0` tag (`0e6fc72d`). The tagged tree alone does
+not contain them, but a build of `main` reports the bare `1.78.0` and does — the
+same shape as `v1.76.0` and the Model Brain. The published v1.78.0 release
+(marked Latest on 2026-10-10) was built from `main` at `113eddc4`: its zip is
+byte-identical to the local build and its served files match that commit. The
+dated evidence and delivery contract are in [the Usage guide](docs/usage-dashboard.md).

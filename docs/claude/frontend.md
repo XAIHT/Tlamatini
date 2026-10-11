@@ -12,7 +12,7 @@
 
 > **Developer/product boundary (Angela, 2026-09-27):** these visibility requirements govern development and verification. They must not create extra windows, steal focus or expose internal diagnostics in the shipped UX. Direct chat dictation keeps status in chat and uses only Tlamatini's main console/log.
 
-## About → Usage (source change, 2026-10-10)
+## About → Usage (2026-10-10, shipped in `v1.78.0`)
 
 `usage_dashboard.js` opens `usage_dialog.html` from About → Usage with the heading
 **ABOUT USAGE**. `usage_dashboard.css` uses the shared dialog tokens: desktop
@@ -29,8 +29,24 @@ A changed signed-in user hides the old data. Gauge events, focus/visibility,
 opening and the visible 30-second timer refresh the view; events coalesce over
 900 ms and the provider cache limits cloud requests to once per minute.
 
-See [the data contract and dated evidence](../usage-dashboard.md). This change
-is source-verified and awaits rebuild/installed acceptance.
+See [the data contract and dated evidence](../usage-dashboard.md). It ships in
+the published `v1.78.0` release (cache suffix `-usage-recovery-1`).
+
+## The message box and the undocked avatar (2026-10-10, shipped in `v1.78.0`)
+
+`agent_page_layout.js` sizes `#tools-chat-form-container` from its measured parts
+(toolbar, context gauge, image chips, dictation status and the `.chat-composer-actions`
+row). With the avatar floating it may shrink to those action controls plus a 6 px guard;
+the old 30% floor is gone. Docking the avatar restores room for the portrait above the
+buttons. The vertical divider is keyboard-operable (arrows 1 %, Shift+arrows 5 %, Home
+and double-click = smallest box, End = tallest; Escape ends a pointer drag) and reports
+`aria-valuetext="Message composer N pixels high"`. A ResizeObserver re-clamps on every
+row change. Short windows scroll the composer internally; the page fills the real
+viewport, a collapsed navbar opens over the workspace, and a 640 px minimum workspace
+pans horizontally. `dialog_policy.js::fitDialog` re-bounds jQuery UI dialogs after
+opening, dragging and viewport changes; short native dialogs scroll as whole cards; the
+avatar never covers a modal. Evidence and the visible harness:
+`docs/changes/2026-10-10-composer-resize.md`.
 
 ## Config → Models: metadata-driven form
 

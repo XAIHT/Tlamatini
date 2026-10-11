@@ -252,6 +252,8 @@ Image/video model failures accumulate in one shared, themed, non-modal fatal-err
 
 35. **An in-app update keeps the OLD `Uninstaller.exe` (2026-10-09).** The uninstaller is built after `pkg.zip`, the updater extracts only `pkg.zip`, and `Uninstaller.exe` is in `$Preserve`, so a fix to `uninstall.py` (for example the 2026-10-09 Templates keep-list) reaches only fresh installs and reinstalls with the new Installer. The updater that runs is the OLD install's `self_update.py`, which deletes the extracted bundle before the swap — do not assume a change to `self_update.py` reaches the very next update. See `docs/self-management-carriage.md`.
 
+36. **The `v1.78.0` tag sits ONE commit before the Usage commit (2026-10-10), and its GitHub title says v1.77.0.** The tag points to `0e6fc72d` (Image-Interpreter's comma-separated list); `7460a147` (About ▸ Usage, migration 0213) and `113eddc4` (message-box resize + Usage outage recovery) follow it on `main` — the same shape as `v1.76.0` (item 32). Never move the pushed tag; the published release was built from `main` (its zip matches `113eddc4`). The release TITLE on GitHub still reads "Tlamatini Release v1.77.0 Win11x64": trust the tag and the asset name (`Tlamatini_Release_v1.78.0_Win11x64.zip`), never the title, before calling a version published.
+
 ## Windows flow-file lifecycle — 2026-10-04, shipped in `v1.76.0`
 
 Both `.flw` agent flows and `.fpmt` prompting flows now have Windows registration, repair, removal, status and Default Apps handling. Explorer/source command-line opening validates a bounded snapshot, reuses a matching running server before database startup, and returns through login to the correct editor without execution. Main-chat Open/drop/Reopen routes both formats into separate editor tabs while preserving the chat document. The historical `.flw` installer wrappers cover both types for old installer/uninstaller binaries; independent management uses `flow_file_associations.ps1 -Extensions`. Never erase UserChoice or another application’s Open With entries. Update Repair respects explicit unregistration and installation ownership. See [Windows flow files](../windows-flow-files.md). Cache suffix: `-flow-file-opening-2`. Committed to `main` on 2026-10-04. The October 4 local release-validation campaign also rebuilds isolated frozen artifacts; its dated evidence distinguishes build completion from runtime acceptance.
@@ -265,4 +267,4 @@ Legacy history can omit cost/tokens; missing does not mean zero. Account-wide
 per-model history is currently website-only; local model graphs cover measured
 Tlamatini main-chat calls since recording began. Cloud and Tlamatini accounts
 are different identities. Keep account checks and stale timestamps.
-See [Usage](../usage-dashboard.md). Source verification is not installed acceptance.
+See [Usage](../usage-dashboard.md). Shipped in `v1.78.0` (2026-10-10).

@@ -98,8 +98,11 @@ The Compact mode switch shipped in `v1.75.0` (annotated tag at `f7eb53ff`,
 `main` right after that tag (commit `70aeeb87`) and ships in `v1.76.0`
 (annotated tag at `953ad2d8`, 2026-10-08). `v1.76.0` was published
 on GitHub on 2026-10-09; `v1.77.0` (annotated tag at `052bfe0f`, 2026-10-09)
-was published the same day (marked Latest), so it is the latest published
-release and the one self-update delivers.
+was published the same day. `v1.78.0` (annotated tag at `0e6fc72d`, 2026-10-10;
+migration 0213 `UsageDaily` landed one commit later in `7460a147`) was published
+on 2026-10-10 (marked Latest), so it is the latest published release and the one
+self-update delivers; 0213 reaches existing installs through the post-update
+`migrate` like every migration.
 
 - **Compact mode switch (2026-10-02).** `agent/compact_mode.py` is imported at
   module level by `mcp_agent.py`, so the frozen archive carries it through the

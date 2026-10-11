@@ -16,9 +16,37 @@
 
 ---
 
+## 2026-10-10 — v1.78.0 published; the message box shrinks when the avatar is undocked; Image-Interpreter takes a list
+
+1. **The release.** `v1.78.0` is an annotated tag at `0e6fc72d` (2026-10-10, pushed) —
+   *"Release v1.78.0 Implementing the About -> Usage dialog."* As with `v1.76.0`, the
+   tag sits BEFORE the feature it names: the Usage commit `7460a147` is the next commit
+   and `113eddc4` (message-box resize + Usage outage recovery) the one after. The GitHub
+   release (published 2026-10-10 21:51 local, marked Latest) was built from `main`:
+   `dist/Tlamatini_Release_v1.78.0_Win11x64.zip` is byte-identical (SHA-256
+   `d4540a59…`) to the published asset, and its served static files, agent copy and
+   `TlamatiniSourceCode/` snapshot match `113eddc4`. ⚠️ The release TITLE on GitHub
+   still reads "Tlamatini Release v1.77.0 Win11x64" — trust the tag and the asset name.
+2. **Message-box resize (`113eddc4`).** With the avatar undocked, `agent_page_layout.js`
+   lets the input form shrink to its measured action controls plus a 6 px guard (the old
+   30% floor is gone); docking restores the portrait's room. Arrows ±1 %, Shift ±5 %,
+   Home/double-click = smallest box, End = tallest, Escape ends a drag; the divider's
+   `aria-valuetext` reports the box height. `dialog_policy.js::fitDialog` keeps jQuery UI
+   dialogs inside the window. Verified with 18 composer + 38 viewport checks in a visible
+   Chrome window (not a physical phone; 20% zoom was unavailable). Record:
+   `docs/changes/2026-10-10-composer-resize.md`. Current cache suffix: `-usage-recovery-1`.
+   ⚠️ Do NOT bring the 30% floor back.
+3. **Image-Interpreter lists (`0e6fc72d`).** `resolve_image_paths` splits a comma-separated
+   value only when the whole value is not one existing file, resolves each entry the same
+   way, merges and de-duplicates in order, and warns on an entry that resolves to nothing.
+   Credited to Tlamatini's-AutoBot (a self-modify repair). No dedicated test yet.
+4. **Docs.** The markdown documentation, `Tlamatini.md` (`TLAMATINI_VERSION: 1.78.0`) and
+   the PDF/PPTX dossier now call v1.78.0 the current release; the Usage entries no longer
+   say "source change awaiting rebuild".
+
 ## 2026-10-10 — About Usage reports real balances and its coverage
 
-Source implementation; rebuild and installed acceptance pending. **About → Usage**
+Shipped in the published `v1.78.0` release (2026-10-10). **About → Usage**
 stays available during a request, uses the shared theme, ordinary fonts, the
 **ABOUT USAGE** title and a 59.2% desktop footprint. Every fractional display
 is capped at two decimals; the refill caption follows the returned UTC period.
