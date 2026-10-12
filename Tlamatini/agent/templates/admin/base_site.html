@@ -1,0 +1,12 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+{# Tlamatini Author Banner — Angela López Mendoza #}
+{% block extrastyle %}
+{{ block.super }}
+<link rel="icon" href="{% static 'agent/img/Tlamatini.ico' %}">
+<link rel="stylesheet" href="{% static 'agent/vendor/frontend/nunito/400.css' %}?v={{ STATIC_VERSION }}">
+<link rel="stylesheet" href="{% static 'agent/vendor/frontend/nunito/700.css' %}?v={{ STATIC_VERSION }}">
+<link rel="stylesheet" href="{% static 'agent/css/admin_theme.css' %}?v={{ STATIC_VERSION }}">
+{% endblock %}
+{% block title %}{{ title }} | Tlamatini administration{% endblock %}
+{% block branding %}<div id="site-name"><a href="{% url 'admin:index' %}">Tlamatini administration</a></div>{% endblock %}

@@ -240,6 +240,13 @@ KEEP_PATH_GLOBS = (
 # one raises rather than producing a quietly-incomplete self-modify tree.
 # Add the canonical file of any new always-present capability here.
 REQUIRED_SNAPSHOT_FILES = (
+    'Tlamatini/agent/templates/admin/base_site.html',
+    'Tlamatini/agent/static/agent/css/admin_theme.css',
+    'Tlamatini/agent/static/agent/css/ui_tokens.css',
+    'Tlamatini/agent/static/agent/css/ui_shell.css',
+    'Tlamatini/agent/static/agent/css/ui_splitters.css',
+    'Tlamatini/agent/static/agent/css/entry_pages.css',
+    'Tlamatini/agent/static/agent/js/ui_splitters.js',
     # Release lifecycle repairs and their real source/frozen acceptance harness.
     "uninstall.py",
     "uninstall_processes.py",

@@ -17,34 +17,7 @@
 // Keep a drag in the parent document even when it crosses an embedded viewer.
 // Both dividers share mouse/pen/touch capture and the same interruption cleanup.
 function bindDividerPointerDrag(divider, resizingClass, onMove) {
-    let pointerId = null;
-    const stop = () => {
-        if (pointerId === null) return;
-        const releasedPointer = pointerId;
-        pointerId = null;
-        document.body.classList.remove(resizingClass);
-        if (divider.hasPointerCapture(releasedPointer)) divider.releasePointerCapture(releasedPointer);
-    };
-    divider.addEventListener('pointerdown', event => {
-        if (pointerId !== null || !event.isPrimary || event.button !== 0) return;
-        divider.setPointerCapture(event.pointerId);
-        pointerId = event.pointerId;
-        document.body.classList.add(resizingClass);
-        event.preventDefault();
-    });
-    divider.addEventListener('pointermove', event => {
-        if (event.pointerId !== pointerId) return;
-        // Recover if a mouse release outside the window was not delivered.
-        if (event.pointerType === 'mouse' && !(event.buttons & 1)) { stop(); return; }
-        onMove(event);
-    });
-    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(type => {
-        divider.addEventListener(type, event => { if (event.pointerId === pointerId) stop(); });
-    });
-    window.addEventListener('blur', stop);
-    window.addEventListener('pagehide', stop);
-    document.addEventListener('visibilitychange', () => { if (document.hidden) stop(); });
-    document.addEventListener('keydown', event => { if (event.key === 'Escape') stop(); });
+    window.TlmSplitters.bindPointer({ element: divider, resizingClass, onMove });
 }
 
 // --- Horizontal drag divider (chat <-> canvas) ---
@@ -84,6 +57,8 @@ function bindDividerPointerDrag(divider, resizingClass, onMove) {
         canvas.style.width = canvasWidth + '%';
         chat.style.width = chatWidth + '%';
         divider.style.left = seamPct + '%';
+        window.TlmSplitters.describe(divider, seamPct, minSeam, maxSeam,
+            `Chat ${Math.round(chatWidth)}%, canvas ${Math.round(canvasWidth)}%`);
     };
 
     // Empirical guard: on the primary dev display 688px is the
@@ -169,6 +144,8 @@ function bindDividerPointerDrag(divider, resizingClass, onMove) {
         canvas.style.width = canvasWidthPct + '%';
         chat.style.width = chatWidthPct + '%';
         divider.style.left = newSeam + '%';
+        window.TlmSplitters.describe(divider, newSeam, left ? 8 : 15, left ? 85 : 92,
+            `Chat ${Math.round(chatWidthPct)}%, canvas ${Math.round(canvasWidthPct)}%`);
     };
 
     (function init() {
@@ -210,6 +187,8 @@ function bindDividerPointerDrag(divider, resizingClass, onMove) {
         const step = e.shiftKey ? 5 : 1;
         if (e.key === 'ArrowLeft') { userResized = true; apply(seamPct - step); e.preventDefault(); }
         if (e.key === 'ArrowRight') { userResized = true; apply(seamPct + step); e.preventDefault(); }
+        if (e.key === 'Home') { userResized = true; apply(isCanvasOnLeft() ? 30 : 15); e.preventDefault(); }
+        if (e.key === 'End') { userResized = true; apply(isCanvasOnLeft() ? 85 : 70); e.preventDefault(); }
     });
 
     window.addEventListener('resize', () => {

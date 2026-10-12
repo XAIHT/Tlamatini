@@ -1,0 +1,41 @@
+/* Tlamatini Author Banner — Angela López Mendoza */
+/* Keep Django's native light/dark/auto switch and accessible admin mechanics. */
+:root {
+    --font-family-primary: 'Nunito', 'Segoe UI', system-ui, sans-serif;
+    --primary: #276e63; --secondary: #202733; --accent: #b5eee1;
+    --header-color: #edf2f7; --header-branding-color: #b5eee1;
+    --header-link-color: #edf2f7; --breadcrumbs-bg: #2c3745;
+    --breadcrumbs-fg: #ced7e2; --breadcrumbs-link-fg: #b5eee1;
+    --link-fg: #21695e; --link-hover-color: #123f38;
+    --button-bg: #276e63; --button-hover-bg: #1d564c;
+    --default-button-bg: #276e63; --default-button-hover-bg: #1d564c;
+    --border-radius: 6px;
+}
+html[data-theme='dark'] {
+    --body-bg: #191e27; --body-fg: #edf2f7; --body-quiet-color: #aab8c9;
+    --body-loud-color: #fff; --darkened-bg: #202733; --selected-bg: #2c3745;
+    --selected-row: #254b47; --hairline-color: #354152; --border-color: #445164;
+    --link-fg: #79d8c7; --link-hover-color: #b5eee1;
+}
+@media (prefers-color-scheme: dark) {
+    html[data-theme='auto'] {
+        --body-bg: #191e27; --body-fg: #edf2f7; --body-quiet-color: #aab8c9;
+        --body-loud-color: #fff; --darkened-bg: #202733; --selected-bg: #2c3745;
+        --selected-row: #254b47; --hairline-color: #354152; --border-color: #445164;
+        --link-fg: #79d8c7; --link-hover-color: #b5eee1;
+    }
+}
+#header { padding: 16px 24px; }
+#site-name { font-weight: 700; font-size: 1.3rem; }
+div.breadcrumbs { padding: 12px 24px; }
+.module, .submit-row { border: 1px solid var(--hairline-color); border-radius: 10px; overflow: hidden; }
+.module h2, .module caption, .inline-group h2 { font-weight: 700; }
+input, textarea, select, .button, input[type='submit'], input[type='button'], .submit-row input, a.button {
+    border-radius: 6px; font-family: inherit;
+}
+input[type='checkbox'], input[type='radio'] { accent-color: #55bbaa; }
+:where(a, button, input, select, textarea, summary):focus-visible { outline: 2px solid #55bbaa; outline-offset: 3px; }
+#changelist-filter { border-radius: 10px; overflow: hidden; }
+#nav-sidebar .module { border: 0; border-radius: 0; }
+.login #container { border-radius: 12px; }
+@media (max-width: 767px) { #header, div.breadcrumbs { padding: 12px 16px; } }

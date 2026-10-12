@@ -12,6 +12,27 @@
 
 > **Developer/product boundary (Angela, 2026-09-27):** these visibility requirements govern development and verification. They must not create extra windows, steal focus or expose internal diagnostics in the shipped UX. Direct chat dictation keeps status in chat and uses only Tlamatini's main console/log.
 
+## Shared site theme and resizing (2026-10-11, local source)
+
+All first-party pages use `ui_tokens.css`; workspaces add `ui_shell.css` and
+`ui_splitters.css` before the final `dialog_theme.css`. Dialog tokens alias the
+page palette. Login/welcome share `entry_pages.css`; the first-party admin base
+and `admin_theme.css` preserve Django's light/dark/auto switch. Required runtime
+and self-modify inventories carry the new assets. Cache suffix: `-ui-sweep-1`.
+
+`ui_splitters.js` owns the five pane bars' pointer capture and cancellation;
+adapters still own bounds, layout and storage. Preserve composer fitting and
+the Prompt output 5–95% ratio. The Prompt sidebar strip stays in the flex flow.
+The eight commentary grips keep zoom-aware geometry and text containment.
+Avatar resizing now has pointer capture/cancellation and accessible size state.
+
+The jQuery footer selector must cover plain button-pane buttons as well as
+`.ui-button`. Its overlay requires fixed viewport geometry and a stacking level
+above navigation; the expanded menu otherwise covers dialogs at 400% zoom.
+Resizable dialogs need the explicit eight edge/corner hit areas; their southeast
+grip is the single keyboard resize stop. Cancel remains a secondary action.
+See the [complete sweep and visible evidence](../changes/2026-10-11-ui-sweep.md).
+
 ## About → Usage (2026-10-10, shipped in `v1.78.0`)
 
 `usage_dashboard.js` opens `usage_dialog.html` from About → Usage with the heading

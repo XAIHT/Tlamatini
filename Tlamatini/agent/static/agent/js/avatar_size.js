@@ -48,7 +48,7 @@
   var STEP = 20;
 
   var dock = null, handle = null;
-  var dragging = false, startX = 0, startY = 0, startSize = 0;
+  var dragging = false, pointerId = null, startX = 0, startY = 0, startSize = 0;
   // ⚠️ RE-ENTRANCY GUARD. `apply()` ends by dispatching a synthetic `resize`
   // so layouts that listen for it re-run — and the window `resize` handler
   // below calls `apply()`. Without this flag those two call each other
@@ -116,6 +116,12 @@
     // Reparenting must not lose keyboard resize focus or pan a narrow page.
     if (focused && document.activeElement !== focused) focused.focus({ preventScroll: true });
     if (persist !== false) { save(px || 0); }
+    if (handle) {
+      handle.setAttribute('aria-valuemin', '0');
+      handle.setAttribute('aria-valuemax', String(maxSize()));
+      handle.setAttribute('aria-valuenow', String(px || 0));
+      handle.setAttribute('aria-valuetext', px ? px + ' pixels' : 'Docked');
+    }
     // The dock's ResizeObserver re-runs layoutFace(), which re-scales the
     // portraits through TlamatiniPresence.resize(). Nudge it directly too, so
     // a browser without ResizeObserver still repaints at the new size.
@@ -143,7 +149,7 @@
   }
 
   function onDown(ev) {
-    if (!dock) { return; }
+    if (!dock || dragging || !ev.isPrimary || ev.button !== 0) { return; }
     ev.preventDefault();
     ev.stopPropagation();                 // never let the dock's click fire
     dragging = true;
@@ -154,11 +160,15 @@
       ? Math.round(r.width)
       : Math.round(Math.min(r.width, r.height)) || MIN;
     if (!dock.classList.contains('tlm-floating')) { apply(startSize, false); }
+    pointerId = ev.pointerId;
+    handle.setPointerCapture(pointerId);
+    handle.focus({ preventScroll: true });
     document.body.classList.add('tlm-resizing');
   }
 
   function onMove(ev) {
-    if (!dragging) { return; }
+    if (!dragging || ev.pointerId !== pointerId) { return; }
+    if (ev.pointerType === 'mouse' && !(ev.buttons & 1)) { onUp(); return; }
     var p = ev.touches ? ev.touches[0] : ev;
     // Anchored bottom-right: moving the top-left handle up or left grows her.
     var grow = Math.max(startX - p.clientX, startY - p.clientY);
@@ -169,17 +179,26 @@
   function onUp() {
     if (!dragging) { return; }
     dragging = false;
+    const previous = pointerId;
+    pointerId = null;
+    if (handle.hasPointerCapture(previous)) handle.releasePointerCapture(previous);
     document.body.classList.remove('tlm-resizing');
     save(currentSize());
   }
 
   function onKey(ev) {
     var k = ev.key;
+    if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+    if (k === 'Home' || k === 'End') {
+      ev.preventDefault(); ev.stopPropagation();
+      apply(k === 'Home' ? 0 : maxSize(), true); return;
+    }
     if (k !== 'ArrowUp' && k !== 'ArrowDown' && k !== 'ArrowLeft' && k !== 'ArrowRight') { return; }
     ev.preventDefault();
     ev.stopPropagation();
     var cur = currentSize() || MIN;
     var d = (k === 'ArrowUp' || k === 'ArrowLeft') ? STEP : -STEP;
+    if (ev.shiftKey) d *= 5;
     var next = cur + d;
     apply(next < MIN ? 0 : next, true);
   }
@@ -199,12 +218,16 @@
       dock.appendChild(handle);
     }
 
-    handle.addEventListener('mousedown', onDown);
-    handle.addEventListener('touchstart', onDown, { passive: false });
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('touchmove', onMove, { passive: false });
-    window.addEventListener('mouseup', onUp);
-    window.addEventListener('touchend', onUp);
+    handle.style.touchAction = 'none';
+    handle.addEventListener('pointerdown', onDown);
+    handle.addEventListener('pointermove', onMove);
+    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(function (type) {
+      handle.addEventListener(type, function (ev) { if (ev.pointerId === pointerId) onUp(); });
+    });
+    window.addEventListener('blur', onUp);
+    window.addEventListener('pagehide', onUp);
+    document.addEventListener('visibilitychange', function () { if (document.hidden) onUp(); });
+    document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') onUp(); });
     handle.addEventListener('keydown', onKey);
     handle.addEventListener('dblclick', function (ev) {
       ev.preventDefault(); ev.stopPropagation();

@@ -65,6 +65,8 @@ function rotateTitle() {
         canvas.style.width = canvasWidth + '%';
         chat.style.width = chatWidth + '%';
         divider.style.left = seamPct + '%';
+        window.TlmSplitters.describe(divider, seamPct, minSeam, maxSeam,
+            `Agents list ${Math.round(chatWidth)}%, canvas ${Math.round(canvasWidth)}%`);
     };
 
     // Initial layout calculation
@@ -81,6 +83,7 @@ function rotateTitle() {
 
     window.FlowCanvasInteractions.bindDivider({
         element: divider, value: () => seamPct, atPointer: pctFromXToSeam, apply,
+        min: () => isCanvasOnLeft() ? 30 : 15, max: () => isCanvasOnLeft() ? 85 : 70,
         before: () => { ACP.cancelConnection?.(); ACP.cancelMove?.(); }
     });
 

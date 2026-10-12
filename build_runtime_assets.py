@@ -23,6 +23,9 @@ MAX_RELEASE_ZIP_BYTES = 1_990_000_000  # decimal GB, not GiB; user release ceili
 STATIC_SOURCE = "Tlamatini/agent/static"
 PDFJS = "agent/vendor/pdfjs/"
 REQUIRED_STATIC = (
+    'agent/css/admin_theme.css',
+    "agent/css/ui_tokens.css", "agent/css/ui_shell.css", "agent/css/ui_splitters.css",
+    "agent/css/entry_pages.css", "agent/js/ui_splitters.js",
     "agent/js/usage_dashboard.js", "agent/css/usage_dashboard.css",
     "agent/js/chat_dictation.js", "agent/js/mic_settings.js", "agent/css/chat_dictation.css",
     "agent/css/prompt_flow_panel.css",
@@ -61,6 +64,8 @@ SOURCE_TREES = (
     ("security", "security"),
 )
 ROOT_SOURCES = {
+    "Tlamatini/agent/templates/admin/base_site.html":
+        "_internal/agent/templates/admin/base_site.html",
     "Tlamatini/agent/templates/agent/usage_dialog.html":
         "_internal/agent/templates/agent/usage_dialog.html",
     "Tlamatini/agent/chat_voice_settings.py": "chat_voice_settings.py",

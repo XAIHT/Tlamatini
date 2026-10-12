@@ -140,13 +140,7 @@
 /* Only pane viewports resize. Canvas zoom and output typography stay independent. */
 #pmt-workspace { display: flex; flex-direction: column; flex: 1 1 0; min-height: 0; overflow: hidden; }
 .pmt-status-strip { flex: 0 0 auto; }
-#pmt-output-divider { position: relative; flex: 0 0 10px; cursor: row-resize; touch-action: none; background: #202129; outline: none; }
-#pmt-output-divider::before { content: ""; position: absolute; inset: 4px 0; background: #626573; }
-#pmt-output-divider::after { content: ""; position: absolute; width: 42px; height: 4px; left: calc(50% - 21px); top: 3px; border-radius: 4px; background: #aeb3c3; }
-#pmt-output-divider:hover::before, #pmt-output-divider:focus-visible::before,
-.pmt-panel.resizing-vertical #pmt-output-divider::before { background: #79dacd; }
-#pmt-output-divider:focus-visible { box-shadow: inset 0 0 0 2px #79dacd; }
-.pmt-panel.resizing-vertical, .pmt-panel.resizing-vertical * { cursor: row-resize !important; user-select: none !important; }
+/* The output seam shares ui_splitters.css with every workspace divider. */
 #pmt-output-divider[hidden] { display: none; }
 #pmt-run-panel { flex: 0 0 auto; min-height: 0; overflow: hidden; background: #25252e; }
 #pmt-run-panel summary { box-sizing: border-box; height: 28px; padding: 4px 10px; cursor: pointer; font-size: .8rem; font-weight: 600; line-height: 20px; }

@@ -54,11 +54,11 @@ THEME = "dialog_theme.css"
 
 # The identity, as it appears in Angela's screenshot.
 CANON_TOKENS = {
-    "--tlm-dlg-surface": "#4a4f5c",
-    "--tlm-dlg-chrome": "#444853",
-    "--tlm-dlg-radius": "8px",
-    "--tlm-dlg-radius-sm": "6px",
-    "--tlm-dlg-accent": "#55bbaa",
+    "--tlm-dlg-surface": "var(--tlm-surface)",
+    "--tlm-dlg-chrome": "var(--tlm-chrome)",
+    "--tlm-dlg-radius": "var(--tlm-radius)",
+    "--tlm-dlg-radius-sm": "var(--tlm-radius-sm)",
+    "--tlm-dlg-accent": "var(--tlm-accent)",
 }
 
 # Surfaces that MUST NOT come back. Each was one of the four skins.
@@ -116,14 +116,14 @@ class DialogThemeTokenTests(SimpleTestCase):
         """The jQuery-UI dialogs must be pulled onto the native-modal look."""
         for needed in (".ui-dialog", ".ui-dialog .ui-dialog-titlebar",
                        ".ui-dialog .ui-dialog-buttonpane",
-                       ".ui-dialog .ui-button"):
+                       ".ui-dialog :is(.ui-button, .ui-dialog-buttonpane button)"):
             self.assertIn(needed, self.css,
                           "%s must be restyled by the theme, otherwise the "
                           "jQuery-UI dialogs keep their own skin." % needed)
 
     def test_buttonpane_is_a_real_footer_bar(self):
         """Chrome background + top hairline is half the reference identity."""
-        pane = _rule_body(self.css, ".ui-dialog .ui-dialog-buttonpane")
+        pane = "\n".join(_all_rule_bodies(self.css, ".ui-dialog .ui-dialog-buttonpane"))
         self.assertIn("--tlm-dlg-chrome", pane,
                       "The button strip must be a real footer BAR, filled with "
                       "the chrome colour like `.emx-footer`.")
@@ -175,7 +175,7 @@ class DialogThemeTokenTests(SimpleTestCase):
 class DialogThemeWiringTests(SimpleTestCase):
     """Load order is load-bearing; both pages must carry the theme LAST."""
 
-    PAGES = ("agent_page.html", "agentic_control_panel.html")
+    PAGES = ("agent_page.html", "agentic_control_panel.html", "prompt_flow_panel.html")
 
     def test_both_pages_load_the_theme(self):
         for page in self.PAGES:
@@ -277,7 +277,7 @@ class DialogButtonInlineStyleTests(SimpleTestCase):
 
     def test_primary_button_matches_the_token(self):
         block = self.js.split("const DIALOG_BUTTON_CSS")[1].split("};")[0]
-        self.assertIn("#55BBAA", block.upper().replace("#55BBAA", "#55BBAA"))
+        self.assertIn("var(--tlm-dlg-accent)", block)
         self.assertIn("'6px'", block,
                       "The primary button radius must match "
                       "--tlm-dlg-radius-sm (6px).")
@@ -721,7 +721,7 @@ class AcpDialogButtonHelperTests(SimpleTestCase):
     def test_primary_matches_the_chat_page(self):
         acp = self._button_css(self.acp, "ACP_DIALOG_BUTTON_CSS")
         chat = self._button_css(self.chat, "DIALOG_BUTTON_CSS")
-        for prop in ("'background-color': '#55BBAA'", "'border-radius': '6px'"):
+        for prop in ("'background-color': 'var(--tlm-dlg-accent)'", "'color': 'var(--tlm-accent-ink)'", "'border-radius': '6px'"):
             self.assertIn(prop, acp)
             self.assertIn(prop, chat,
                           "The two pages' confirm buttons have drifted.")

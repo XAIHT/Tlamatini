@@ -48,51 +48,49 @@
 
 :root {
     /* Surfaces */
-    --tlm-dlg-surface: #4a4f5c;          /* the dialog card itself          */
-    --tlm-dlg-chrome: #444853;           /* header + footer bars            */
-    --tlm-dlg-pane: rgba(27, 30, 44, 0.32); /* inset content panes          */
+    --tlm-dlg-surface: var(--tlm-surface); /* the dialog card itself       */
+    --tlm-dlg-chrome: var(--tlm-chrome);   /* header + footer bars         */
+    --tlm-dlg-pane: var(--tlm-input);     /* inset content panes          */
     --tlm-dlg-overlay: rgba(11, 14, 22, 0.62);
 
     /* Frame */
-    --tlm-dlg-radius: 8px;
-    --tlm-dlg-radius-sm: 6px;
-    --tlm-dlg-border: 1px solid rgba(255, 255, 255, 0.12);
-    --tlm-dlg-hairline: 1px solid rgba(255, 255, 255, 0.08);
-    --tlm-dlg-shadow: 0 22px 70px rgba(0, 0, 0, 0.62);
+    --tlm-dlg-radius: var(--tlm-radius);
+    --tlm-dlg-radius-sm: var(--tlm-radius-sm);
+    --tlm-dlg-border: 1px solid var(--tlm-line);
+    --tlm-dlg-hairline: 1px solid var(--tlm-line-soft);
+    --tlm-dlg-shadow: var(--tlm-shadow);
 
     /* Accent (teal) */
-    --tlm-dlg-accent: #55bbaa;
-    --tlm-dlg-accent-hover: #469f91;
+    --tlm-dlg-accent: var(--tlm-accent);
+    --tlm-dlg-accent-hover: var(--tlm-accent-hover);
     --tlm-dlg-accent-ring: 0 0 0 2px rgba(85, 187, 170, 0.25);
 
     /* Type */
-    --tlm-dlg-font: 'Nunito', sans-serif;
+    --tlm-dlg-font: var(--tlm-font);
     --tlm-dlg-title: #ffffff;
-    --tlm-dlg-text: #f0f1f7;
-    --tlm-dlg-body: #c1c5d0;
-    --tlm-dlg-muted: #9ca2ba;
-    --tlm-dlg-kicker: #55bbaa;
+    --tlm-dlg-text: var(--tlm-text);
+    --tlm-dlg-body: var(--tlm-body);
+    --tlm-dlg-muted: var(--tlm-muted);
+    --tlm-dlg-kicker: var(--tlm-accent-hover);
 
     /* Inputs */
-    --tlm-dlg-input-bg: rgba(0, 0, 0, 0.22);
-    --tlm-dlg-input-border: 1px solid rgba(255, 255, 255, 0.18);
+    --tlm-dlg-input-bg: var(--tlm-input);
+    --tlm-dlg-input-border: 1px solid var(--tlm-line);
 
     /* Buttons */
-    --tlm-dlg-btn-secondary: rgba(255, 255, 255, 0.08);
-    --tlm-dlg-btn-secondary-hover: rgba(255, 255, 255, 0.14);
+    --tlm-dlg-btn-secondary: var(--tlm-raised);
+    --tlm-dlg-btn-secondary-hover: #3a4b5b;
 }
 
 /* ------------------------------------------------------------
  * 1 · The jQuery-UI dialog family wears the native-modal skin
  * ------------------------------------------------------------
- * Cosmetic only, on purpose: frame, chrome and buttons are
- * restyled but padding / text-align / sizing are left exactly
- * as they were, so not one of the ~30 existing dialogs shifts
- * its layout. The difference the user sees is that they now
- * match the External-MCPs dialog.
+ * Shared frame, controls, viewport containment and resize targets.
+ * Content layout and dismissal behavior remain with each dialog.
  * ---------------------------------------------------------- */
 
 .ui-dialog {
+    z-index: 20001;
     position: fixed !important;
     min-width: 0 !important;
     min-height: 0 !important;
@@ -116,6 +114,59 @@
 }
 .ui-dialog .ui-dialog-buttonset { flex-wrap: wrap; }
 
+/* jQuery UI is shipped without its stock theme. Supply actual edge hit areas,
+   including the otherwise invisible corner handles, inside the clipped frame. */
+.ui-dialog .ui-resizable-handle { position: absolute; display: block; touch-action: none; z-index: 3; }
+.ui-dialog .ui-resizable-n, .ui-dialog .ui-resizable-s { left: 14px; right: 14px; height: 7px; cursor: ns-resize; }
+.ui-dialog .ui-resizable-e, .ui-dialog .ui-resizable-w { top: 14px; bottom: 14px; width: 7px; cursor: ew-resize; }
+.ui-dialog .ui-resizable-n { top: 0; }
+.ui-dialog .ui-resizable-s { bottom: 0; }
+.ui-dialog .ui-resizable-e { right: 0; }
+.ui-dialog .ui-resizable-w { left: 0; }
+.ui-dialog :is(.ui-resizable-ne, .ui-resizable-nw, .ui-resizable-se, .ui-resizable-sw) { width: 14px; height: 14px; }
+.ui-dialog .ui-resizable-ne { top: 0; right: 0; cursor: nesw-resize; }
+.ui-dialog .ui-resizable-nw { top: 0; left: 0; cursor: nwse-resize; }
+.ui-dialog .ui-resizable-se { bottom: 0; right: 0; cursor: nwse-resize; }
+.ui-dialog .ui-resizable-sw { bottom: 0; left: 0; cursor: nesw-resize; }
+.ui-dialog .ui-resizable-se::after { content: ''; position: absolute; right: 3px; bottom: 3px; width: 7px; height: 7px; border-right: 2px solid var(--tlm-accent); border-bottom: 2px solid var(--tlm-accent); }
+.ui-dialog .ui-resizable-handle:focus-visible { outline: 2px solid var(--tlm-focus); outline-offset: -2px; }
+.ui-dialog.ui-resizable-disabled .ui-resizable-handle { display: none; }
+
+/* Fields created at runtime inherit the same readable input surface. */
+.ui-dialog :is(input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='hidden']):not([type='color']), select, textarea) {
+    max-width: 100%; min-height: 32px; box-sizing: border-box;
+    background-color: var(--tlm-input); color: var(--tlm-text);
+    border: 1px solid var(--tlm-line); border-radius: var(--tlm-radius-sm);
+}
+.ui-dialog :is(input, select, textarea):focus { border-color: var(--tlm-accent); }
+.ui-dialog :is(input, textarea)::placeholder { color: var(--tlm-muted); opacity: 1; }
+.emx-panel, .ctb-panel { background: var(--tlm-dlg-surface); border: var(--tlm-dlg-border); border-radius: var(--tlm-dlg-radius); box-shadow: var(--tlm-dlg-shadow); }
+.emx-header, .ctb-header, .emx-footer, .ctb-footer { background: var(--tlm-dlg-chrome); }
+.emx-catalog-pane, .emx-active-pane, .ctb-list-pane, .ctb-edit-pane { background: var(--tlm-bg); border-color: var(--tlm-line-soft); }
+.emx-row, .ctb-row { background: var(--tlm-surface); border-color: var(--tlm-line); box-shadow: none; }
+.emx-row:is(:hover, :focus-visible), .ctb-row:is(:hover, :focus-visible) { border-color: var(--tlm-accent); box-shadow: none; }
+.emx-acc, .ctb-row.selected::before { background: var(--tlm-accent); }
+.emx-button-primary, .ctb-button-primary, .tlm-modal .tlm-btn.primary { color: var(--tlm-accent-ink); }
+#tlm-voice-save, #tlm-mic-save { color: var(--tlm-accent-ink); }
+.prompt-card { background: var(--tlm-surface); border-color: var(--tlm-line); border-radius: var(--tlm-radius); box-shadow: none; }
+.prompt-card::before { background: var(--tlm-accent); }
+.prompt-card:hover { background: var(--tlm-raised); border-color: var(--tlm-accent); transform: none; box-shadow: none; }
+.prompt-card-title { color: var(--tlm-text); }
+.prompt-card-preview { color: var(--tlm-body); }
+.prompt-card-chip { color: var(--tlm-muted); }
+.prompt-card-chip-action { color: var(--tlm-accent-hover); }
+.emx-icon-button:focus-visible, .ctb-icon-button:focus-visible { outline: 2px solid var(--tlm-focus); outline-offset: 2px; }
+#external-mcps-search, #contacts-search { background: var(--tlm-input); border-color: var(--tlm-line); }
+:is(.emx-panel, .ctb-panel, .tlm-modal, .modal-content) :is(input, textarea)::placeholder { color: var(--tlm-muted); opacity: 1; }
+.ctb-field input, .ctb-field textarea { background: var(--tlm-input); border-color: var(--tlm-line); color: var(--tlm-text); }
+#skills-browse-layout { grid-template-columns: minmax(0, 32%) minmax(0, 1fr); }
+#skills-browse-toolbar { flex-wrap: wrap; }
+#skills-browse-search { min-width: 0; }
+@media (max-width: 600px) {
+    #skills-browse-layout { grid-template-columns: minmax(0, 1fr); overflow: auto; }
+    #skills-browse-list-pane { max-height: 180px; border-right: 0; border-bottom: var(--tlm-dlg-hairline); }
+}
+
 /* With only a few hundred CSS pixels at high zoom, fixed headers and footers
    can squeeze a grid modal's body to zero. Let the whole card scroll then. */
 @media (max-height: 560px), (max-width: 480px) {
@@ -133,6 +184,8 @@
 
 /* jQuery UI paints its own overlay; align it with the native modals. */
 .ui-widget-overlay {
+    position: fixed; inset: 0; width: 100%; height: 100%;
+    z-index: 20000;
     background: var(--tlm-dlg-overlay);
     opacity: 1;
 }
@@ -217,7 +270,7 @@
  * button is painted teal by `styleDialogButtons()` in
  * agent_page_dialogs.js, which mirrors `.emx-button-primary`.
  */
-.ui-dialog .ui-button {
+.ui-dialog :is(.ui-button, .ui-dialog-buttonpane button) {
     min-width: 98px;
     padding: 8px 14px;
     background-color: var(--tlm-dlg-btn-secondary);
@@ -232,17 +285,17 @@
     transition: background-color 0.18s ease-out;
 }
 
-.ui-dialog .ui-button:hover {
+.ui-dialog :is(.ui-button, .ui-dialog-buttonpane button):hover {
     background-color: var(--tlm-dlg-btn-secondary-hover);
 }
 
-.ui-dialog .ui-button:focus-visible {
+.ui-dialog :is(.ui-button, .ui-dialog-buttonpane button):focus-visible {
     outline: 2px solid rgba(85, 187, 170, 0.65);
     outline-offset: 2px;
 }
 
-.ui-dialog .ui-button:disabled {
-    cursor: wait;
+.ui-dialog :is(.ui-button, .ui-dialog-buttonpane button):disabled {
+    cursor: not-allowed;
     opacity: 0.7;
 }
 
@@ -510,8 +563,7 @@
 /* ------------------------------------------------------------
  * 6 · Scrollbars inside dialogs
  * ------------------------------------------------------------
- * Matches the violet→blue thumb the native modals already use, so a
- * scrolling jQuery-UI dialog does not suddenly show OS chrome.
+ * Use the same visible thumb as the workspaces and native modal panes.
  * ---------------------------------------------------------- */
 
 .ui-dialog .ui-dialog-content::-webkit-scrollbar {
@@ -525,7 +577,7 @@
 }
 
 .ui-dialog .ui-dialog-content::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, #6d28d9 0%, #2563eb 100%);
+    background: var(--tlm-scroll-thumb);
     border-radius: 4px;
 }
 
@@ -538,7 +590,7 @@
         gap: 8px;
     }
 
-    .ui-dialog .ui-button {
+    .ui-dialog :is(.ui-button, .ui-dialog-buttonpane button) {
         flex: 1 1 auto;
         min-width: 0;
     }
@@ -677,7 +729,7 @@
 
 .tlmpop-btn-primary {
     background: var(--tlm-dlg-accent);
-    color: #ffffff;
+    color: var(--tlm-accent-ink);
     font-weight: 700;
 }
 

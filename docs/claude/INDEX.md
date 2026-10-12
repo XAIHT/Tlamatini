@@ -18,6 +18,8 @@ This directory holds the specialized onboarding documents that back the root `CL
 
 One-line descriptions:
 
+- **[Whole-site appearance and resize sweep](../changes/2026-10-11-ui-sweep.md)** — complete HTML/resize inventory, shared theme ownership, visible 25–400% zoom and pane/dialog/commentary checks, source validation and local evidence.
+
 - **[../build-root-assets-verification.md](../build-root-assets-verification.md)** — shared required-file build carrier, missing voice-helper repair, update/rebuild inclusion checks and dated verification limits.
 
 - **[../dependency-coverage-audit.md](../dependency-coverage-audit.md)** - whole-repository Python dependency coverage, required manifests, private ESPHome runtime boundary and visible regression checks.

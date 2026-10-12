@@ -340,8 +340,8 @@ function acpConfirm(primary, secondary, title) {   // eslint-disable-line no-unu
 }
 
 const ACP_DIALOG_BUTTON_CSS = {
-    'background-color': '#55BBAA',
-    'color': 'white',
+    'background-color': 'var(--tlm-dlg-accent)',
+    'color': 'var(--tlm-accent-ink)',
     'border-radius': '6px',
     'font-size': '0.88rem'
 };

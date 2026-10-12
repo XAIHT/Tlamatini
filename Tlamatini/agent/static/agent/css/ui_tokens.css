@@ -1,0 +1,30 @@
+/* Tlamatini — "one who knows"
+ * Created by Angela López Mendoza · @angelahack1
+ * Tlamatini Author Banner — do not remove */
+/* Shared by the workspace, entry pages, dialogs, admin and isolated PDF frame. */
+:root {
+    color-scheme: dark;
+    --tlm-font: 'Nunito', 'Segoe UI', system-ui, sans-serif;
+    --tlm-mono: 'Cascadia Code', Consolas, monospace;
+    --tlm-bg: #191e27;
+    --tlm-canvas: #151a22;
+    --tlm-surface: #242c38;
+    --tlm-chrome: #202733;
+    --tlm-raised: #2c3745;
+    --tlm-input: #1a222e;
+    --tlm-text: #edf2f7;
+    --tlm-body: #ced7e2;
+    --tlm-muted: #aab8c9;
+    --tlm-line: #445164;
+    --tlm-line-soft: #354152;
+    --tlm-accent: #55bbaa;
+    --tlm-accent-hover: #79d8c7;
+    --tlm-accent-ink: #102f2b;
+    --tlm-focus: #8ee6d5;
+    --tlm-danger: #ff9da9;
+    --tlm-radius: 10px;
+    --tlm-radius-sm: 6px;
+    --tlm-shadow: 0 18px 54px #0006, 0 2px 8px #0003;
+    --tlm-scroll-thumb: #718399;
+    --tlm-scroll-track: #1b222d;
+}

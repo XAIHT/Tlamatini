@@ -32,8 +32,8 @@
  * (the old behaviour) made both buttons read as "confirm".
  */
 const DIALOG_BUTTON_CSS = {
-    'background-color': '#55BBAA',
-    'color': 'white',
+    'background-color': 'var(--tlm-dlg-accent)',
+    'color': 'var(--tlm-accent-ink)',
     'border-radius': '6px',
     'font-size': '0.88rem'
 };
@@ -58,10 +58,10 @@ function styleDialogButtons() {
  * column gets at least `minColWidth` px of usable space inside the dialog.
  */
 function computeCheckboxGridLayout(itemCount, options = {}) {
-    const minDialogWidth = options.minDialogWidth || 450;
+    const viewportCap = Math.max(160, Math.floor(window.innerWidth - 24));
+    const minDialogWidth = Math.min(options.minDialogWidth || 450, viewportCap);
     const minColWidth = options.minColWidth || 200;
     const dialogChrome = options.dialogChrome || 60; // padding + scrollbar room
-    const viewportCap = Math.max(minDialogWidth, Math.floor(window.innerWidth * 0.9));
 
     if (itemCount <= 10) {
         return { cols: 1, width: minDialogWidth };
@@ -138,7 +138,6 @@ function preRenderConfirmationDialog(message, primaryDialogText, secondaryDialog
         close: function () { document.body.style.overflow = ''; },
         create: function () {
             $(this).parent().find('.ui-dialog-buttonpane button:contains("Continue")').css(DIALOG_BUTTON_CSS);
-            $(this).parent().find('.ui-dialog-buttonpane button:contains("Cancel")').css(DIALOG_BUTTON_CSS);
         },
         buttons: makeDialogButtons(callbackOnContinue, callbackOnCancel)
     });
@@ -159,14 +158,14 @@ const EXEC_PERM_PROCEED_CSS = {
     'color': 'white',
     'border-radius': '8px',
     'font-size': '1em',
-    'height': '4vh'
+    'min-height': '34px'
 };
 const EXEC_PERM_DENY_CSS = {
     'background-color': '#c62828',
     'color': 'white',
     'border-radius': '8px',
     'font-size': '1em',
-    'height': '4vh'
+    'min-height': '34px'
 };
 
 // Guards against double-sending a decision for the same prompt (button click
@@ -327,7 +326,6 @@ function preRenderOmissionsDialog(message, primaryDialogText, secondaryDialogTex
         close: function () { document.body.style.overflow = ''; },
         create: function () {
             $(this).parent().find('.ui-dialog-buttonpane button:contains("Continue")').css(DIALOG_BUTTON_CSS);
-            $(this).parent().find('.ui-dialog-buttonpane button:contains("Cancel")').css(DIALOG_BUTTON_CSS);
         },
         buttons: makeDialogButtons(callbackOnContinue, callbackOnCancel)
     });
@@ -424,7 +422,6 @@ function preRenderMcpsDialog(message, primaryDialogText, secondaryDialogText, th
         close: function () { document.body.style.overflow = ''; },
         create: function () {
             $(this).parent().find('.ui-dialog-buttonpane button:contains("Continue")').css(DIALOG_BUTTON_CSS);
-            $('.ui-dialog-buttonpane button:contains("Cancel")').css(DIALOG_BUTTON_CSS);
         },
         buttons: makeDialogButtons(callbackOnContinue, callbackOnCancel)
     });
@@ -523,7 +520,6 @@ function preRenderAgentsDialog(message, primaryDialogText, secondaryDialogText, 
         close: function () { document.body.style.overflow = ''; },
         create: function () {
             $(this).parent().find('.ui-dialog-buttonpane button:contains("Continue")').css(DIALOG_BUTTON_CSS);
-            $('.ui-dialog-buttonpane button:contains("Cancel")').css(DIALOG_BUTTON_CSS);
         },
         buttons: makeDialogButtons(callbackOnContinue, callbackOnCancel)
     });
@@ -587,7 +583,6 @@ function makeSaveCancelButtons(asyncOnSave, onCancel) {
 
 function _styleSaveCancelButtons() {
     $('.ui-dialog-buttonpane button:contains("Save")').css(DIALOG_BUTTON_CSS);
-    $('.ui-dialog-buttonpane button:contains("Cancel")').css(DIALOG_BUTTON_CSS);
 }
 
 function preRenderConfigModelsDialog(message, primaryText, secondaryText) { // eslint-disable-line no-unused-vars
@@ -628,7 +623,6 @@ function preRenderConfigModelsDialog(message, primaryText, secondaryText) { // e
         },
         create: function () {
             $(this).parent().find('.ui-dialog-buttonpane button:contains("Save")').css(DIALOG_BUTTON_CSS);
-            $(this).parent().find('.ui-dialog-buttonpane button:contains("Cancel")').css(DIALOG_BUTTON_CSS);
         },
         buttons: makeSaveCancelButtons(typeof _saveConfigModels === 'function' ? _saveConfigModels : null, null)
     });
@@ -665,7 +659,6 @@ function preRenderConfigUrlsDialog(message, primaryText, secondaryText) { // esl
         close: function () { document.body.style.overflow = ''; },
         create: function () {
             $(this).parent().find('.ui-dialog-buttonpane button:contains("Save")').css(DIALOG_BUTTON_CSS);
-            $(this).parent().find('.ui-dialog-buttonpane button:contains("Cancel")').css(DIALOG_BUTTON_CSS);
         },
         buttons: makeSaveCancelButtons(typeof _saveConfigUrls === 'function' ? _saveConfigUrls : null, null)
     });
@@ -770,7 +763,6 @@ function makeBackupCancelButtons(asyncOnBackup, onCancel) {
 
 function _styleBackupCancelButtons() {
     $('.ui-dialog-buttonpane button:contains("Backup")').css(DIALOG_BUTTON_CSS);
-    $('.ui-dialog-buttonpane button:contains("Cancel")').css(DIALOG_BUTTON_CSS);
 }
 
 function preRenderBackupDbDialog(message, primaryText, secondaryText) { // eslint-disable-line no-unused-vars
@@ -797,7 +789,6 @@ function preRenderBackupDbDialog(message, primaryText, secondaryText) { // eslin
         close: function () { document.body.style.overflow = ''; },
         create: function () {
             $(this).parent().find('.ui-dialog-buttonpane button:contains("Backup")').css(DIALOG_BUTTON_CSS);
-            $(this).parent().find('.ui-dialog-buttonpane button:contains("Cancel")').css(DIALOG_BUTTON_CSS);
         },
         buttons: makeBackupCancelButtons(typeof _saveBackupDb === 'function' ? _saveBackupDb : null, null)
     });
@@ -860,7 +851,6 @@ function makeSetCancelButtons(asyncOnSet, onCancel) {
 
 function _styleSetCancelButtons() {
     $('.ui-dialog-buttonpane button:contains("Set")').css(DIALOG_BUTTON_CSS);
-    $('.ui-dialog-buttonpane button:contains("Cancel")').css(DIALOG_BUTTON_CSS);
 }
 
 function preRenderSetDbDialog(message, primaryText, secondaryText) { // eslint-disable-line no-unused-vars
@@ -887,7 +877,6 @@ function preRenderSetDbDialog(message, primaryText, secondaryText) { // eslint-d
         close: function () { document.body.style.overflow = ''; },
         create: function () {
             $(this).parent().find('.ui-dialog-buttonpane button:contains("Set")').css(DIALOG_BUTTON_CSS);
-            $(this).parent().find('.ui-dialog-buttonpane button:contains("Cancel")').css(DIALOG_BUTTON_CSS);
         },
         buttons: makeSetCancelButtons(typeof _saveSetDb === 'function' ? _saveSetDb : null, null)
     });

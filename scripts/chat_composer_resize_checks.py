@@ -250,7 +250,7 @@ def run_checks(page, context, user_id, out, capture, results):
         response = context.request.get(page.url.split('/agent/')[0] + '/static/agent/' + asset)
         assert response.ok
         assert response.body() == (root / 'Tlamatini/agent/static/agent' / asset).read_bytes(), asset
-    assert page.locator('script[src*="agent_page_layout.js"]').get_attribute('src').endswith('-composer-resize-1')
+    assert page.locator('script[src*="agent_page_layout.js"]').get_attribute('src').endswith('-ui-sweep-1')
     assert not errors, errors
     assert not page.evaluate('window.composerLayoutErrors || []')
     passed('Source asset parity, new cache suffix, and no browser JavaScript errors')

@@ -51,6 +51,33 @@
             const frame = jq(target).closest('.ui-dialog')[0];
             if (!frame || !frame.getClientRects().length) return;
             frame.classList.add('tlm-dialog-open');
+            // Keyboard access to the existing resizable widget. Pointer resizing
+            // remains jQuery UI's responsibility; use its bounds and callbacks.
+            frame.querySelectorAll('.ui-resizable-handle').forEach(function (handle) {
+                if (handle.dataset.tlmResizeReady) return;
+                handle.dataset.tlmResizeReady = '1';
+                // One keyboard stop; the other seven edges remain pointer targets.
+                handle.tabIndex = handle.classList.contains('ui-resizable-se') ? 0 : -1;
+                handle.setAttribute('role', 'button');
+                handle.setAttribute('aria-label', 'Resize dialog. Left/Right changes width; Up/Down changes height. Shift for larger steps.');
+                handle.addEventListener('keydown', function (event) {
+                    if (event.ctrlKey || event.altKey || event.metaKey || !event.key.startsWith('Arrow')) return;
+                    event.preventDefault(); event.stopPropagation();
+                    const box = frame.getBoundingClientRect();
+                    const step = event.shiftKey ? 40 : 8;
+                    const options = jq(target).dialog('option');
+                    const dx = event.key === 'ArrowLeft' ? -step : event.key === 'ArrowRight' ? step : 0;
+                    const dy = event.key === 'ArrowUp' ? -step : event.key === 'ArrowDown' ? step : 0;
+                    const maxWidth = Math.min(options.maxWidth || Infinity, window.innerWidth - 16);
+                    const maxHeight = Math.min(options.maxHeight || Infinity, window.innerHeight - 16);
+                    jq(target).dialog('option', {
+                        width: Math.min(maxWidth, Math.max(Math.min(options.minWidth || 150, maxWidth), box.width + dx)),
+                        height: Math.min(maxHeight, Math.max(Math.min(options.minHeight || 150, maxHeight), box.height + dy))
+                    });
+                    fitDialog(target);
+                    jq(target).trigger('dialogresizestop');
+                });
+            });
             const r = frame.getBoundingClientRect();
             const width = document.documentElement.clientWidth;
             const height = window.innerHeight;

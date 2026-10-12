@@ -1,0 +1,38 @@
+/* Tlamatini Author Banner — Angela López Mendoza */
+.entry-page {
+    min-height: 100dvh;
+    background: radial-gradient(ellipse at 15% 10%, #254b4738, transparent 55%), var(--tlm-bg);
+}
+.login-container, .welcome-container {
+    min-height: 100dvh; display: flex; align-items: center; justify-content: center;
+    padding: 32px 0;
+}
+.login-container > div { width: min(100%, 480px); }
+.welcome-container > div { width: min(100%, 600px); }
+.login-card, .welcome-card {
+    padding: clamp(16px, 4vw, 32px); border-radius: 16px;
+    background: var(--tlm-surface); color: var(--tlm-text);
+    border: 1px solid var(--tlm-line); box-shadow: var(--tlm-shadow);
+}
+.entry-mark { width: 48px; height: 48px; display: block; margin: 0 auto 20px; }
+.entry-page .card-title { font-size: clamp(1.5rem, 4vw, 1.9rem); font-weight: 700; color: var(--tlm-text); line-height: 1.25; overflow-wrap: anywhere; }
+.entry-page .card-text { color: var(--tlm-muted); margin-bottom: 24px; }
+.entry-page .form-label { font-size: .88rem; font-weight: 700; color: var(--tlm-body); }
+.entry-page .form-control {
+    min-height: 44px; padding: 10px 12px; background: var(--tlm-input); color: var(--tlm-text);
+    border: 1px solid var(--tlm-line); border-radius: var(--tlm-radius-sm);
+}
+.entry-page .form-control::placeholder { color: var(--tlm-muted); opacity: 1; }
+.entry-page .form-control:focus { background: var(--tlm-input); color: var(--tlm-text); border-color: var(--tlm-accent); box-shadow: 0 0 0 3px #55bbaa30; }
+.entry-page .btn { min-height: 44px; padding: 10px 20px; border-radius: var(--tlm-radius-sm); font-size: .95rem; font-weight: 700; }
+.entry-page .btn-primary { background: var(--tlm-accent); border-color: var(--tlm-accent); color: var(--tlm-accent-ink); }
+.entry-page .btn-primary:hover { background: var(--tlm-accent-hover); border-color: var(--tlm-accent-hover); }
+.entry-page .btn-secondary { background: var(--tlm-raised); color: var(--tlm-text); border-color: var(--tlm-line); }
+.entry-page .btn-secondary:hover { background: #3a4b5b; border-color: var(--tlm-accent); }
+.entry-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.entry-actions .btn { flex: 1 1 150px; }
+@media (max-height: 560px) {
+    .login-container, .welcome-container { align-items: start; padding: 16px 0; }
+    .login-card, .welcome-card { padding: 12px; }
+    .entry-mark { width: 32px; height: 32px; margin-bottom: 12px; }
+}

@@ -1123,12 +1123,21 @@
     });
     viewport.addEventListener('lostpointercapture', () => { if (gesture) endGesture(); });
     document.addEventListener('pointercancel', endGesture); window.addEventListener('blur', endGesture);
+    function sizeSidebar(value) {
+        const percent = Math.max(15, Math.min(70, value));
+        document.body.style.setProperty('--pmt-sidebar', percent + '%');
+        window.TlmSplitters.describe($id('drag-divider'), percent, 15, 70,
+            `Operations bar ${Math.round(percent)}%, canvas ${Math.round(100 - percent)}%`);
+        extent();
+    }
     UI.bindDivider({
         element: $id('drag-divider'), before: endGesture,
+        min: 15, max: 70,
         value: () => $id('main-agents-container').getBoundingClientRect().width / $id('agents-container').clientWidth * 100,
         atPointer: x => (x - $id('agents-container').getBoundingClientRect().left) / $id('agents-container').clientWidth * 100,
-        apply: value => { document.body.style.setProperty('--pmt-sidebar', Math.max(15, Math.min(70, value)) + '%'); extent(); }
+        apply: sizeSidebar
     });
+    sizeSidebar($id('main-agents-container').getBoundingClientRect().width / $id('agents-container').clientWidth * 100);
     // Layout is a per-user browser preference, never a flow edit or a zoom operation.
     const workspace = $id('pmt-workspace'), outputPanel = $id('pmt-run-panel'), outputDivider = $id('pmt-output-divider');
     const layoutKey = `tlamatini.prompting-flow.layout.v1.${document.body.dataset.userId}`;
@@ -1162,13 +1171,10 @@
     }
     UI.bindDivider({
         element: outputDivider, axis: 'y', keyDirection: -1, before: endGesture,
+        min: 5, max: 95,
         value: () => outputPercent,
         atPointer: y => (workspace.getBoundingClientRect().bottom - y - outputDivider.offsetHeight / 2) / Math.max(1, paneHeight()) * 100,
         apply: setOutputPercent
-    });
-    outputDivider.addEventListener('keydown', event => {
-        if (!['Home', 'End'].includes(event.key)) return;
-        event.preventDefault(); endGesture(); setOutputPercent(event.key === 'Home' ? 5 : 95);
     });
     outputPanel.addEventListener('toggle', sizeOutput);
     const paneObserver = new ResizeObserver(sizeOutput);

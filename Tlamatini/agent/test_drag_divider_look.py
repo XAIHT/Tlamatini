@@ -24,45 +24,32 @@ def _rule(css, selector):
 
 
 class DragDividerLookTests(SimpleTestCase):
-    STYLESHEETS = ('agent_page.css', 'agentic_control_panel.css')
+    def test_shared_pills_rotate_with_orientation(self):
+        css = (CSS / 'ui_splitters.css').read_text(encoding='utf-8')
+        side = _rule(css, ".tlm-splitter[aria-orientation='vertical']::before")
+        across = _rule(css, ".tlm-splitter[aria-orientation='horizontal']::before")
+        for declaration in ('width: 4px', 'height: 42px', 'top: calc(50% - 21px)'):
+            self.assertIn(declaration, side)
+        for declaration in ('width: 42px', 'height: 4px', 'left: calc(50% - 21px)'):
+            self.assertIn(declaration, across)
+        shared = _rule(css, '.tlm-splitter::before')
+        self.assertIn('background: var(--tlm-accent)', shared)
+        self.assertIn('border-radius: 2px', shared)
 
-    def test_pill_is_the_vertical_pill_turned_on_its_side(self):
-        for name in self.STYLESHEETS:
-            css = (CSS / name).read_text(encoding='utf-8')
-            pill = _rule(css, '#drag-divider::before')
-            self.assertTrue(pill, f'{name}: #drag-divider::before is missing')
-            for declaration in ('content: ""', 'top: calc(50% - 21px)', 'width: 4px',
-                                'height: 42px', 'border-radius: 2px', 'background: #55BBAA'):
-                self.assertIn(declaration, pill, f'{name}: pill lacks {declaration!r}')
+    def test_focus_hover_and_drag_share_the_accent(self):
+        css = (CSS / 'ui_splitters.css').read_text(encoding='utf-8')
+        active = _rule(css, '.tlm-splitter:is(:hover, :focus-visible, [data-resizing])::after')
+        self.assertIn('background: var(--tlm-accent)', active)
+        self.assertIn('outline-offset: -2px', _rule(css, '.tlm-splitter:focus-visible'))
+        self.assertIn('--splitter-line: #8a8c98', css)
 
-    def test_chat_pill_matches_its_vertical_twin(self):
-        css = (CSS / 'agent_page.css').read_text(encoding='utf-8')
-        vertical = _rule(css, '#vertical-drag-divider::before')
-        side = _rule(css, '#drag-divider::before')
-        self.assertIn('width: 42px', vertical)
-        self.assertIn('height: 4px', vertical)
-        self.assertIn('width: 4px', side)
-        self.assertIn('height: 42px', side)
-        for shared in ('border-radius: 2px', 'background: #55BBAA', 'z-index: 1'):
-            self.assertIn(shared, vertical)
-            self.assertIn(shared, side)
-
-    def test_line_turns_teal_on_hover_focus_and_drag(self):
-        for name in self.STYLESHEETS:
-            css = (CSS / name).read_text(encoding='utf-8')
-            self.assertRegex(
-                css, r'#drag-divider:hover::after,\s*#drag-divider:focus-visible::after,\s*'
-                     r'body\.resizing #drag-divider::after\s*\{[^}]*background: #55BBAA;[^}]*opacity: 1;',
-                f'{name}: the teal hover/focus/drag line is missing')
-            ring = _rule(css, '#drag-divider:focus-visible')
-            self.assertIn('outline: 2px solid #55BBAA', ring, name)
-            self.assertIn('outline-offset: -2px', ring, name)
-
-    def test_idle_line_is_unchanged(self):
-        for name in self.STYLESHEETS:
-            line = _rule((CSS / name).read_text(encoding='utf-8'), '#drag-divider::after')
-            self.assertIn('background: #8a8c98', line, name)
-            self.assertIn('opacity: 0.8', line, name)
+    def test_every_workspace_loads_shared_assets_before_the_dialog_theme(self):
+        for name in ('agent_page.html', 'agentic_control_panel.html', 'prompt_flow_panel.html'):
+            html = (TEMPLATES / name).read_text(encoding='utf-8')
+            sheets = re.findall(r"agent/css/([A-Za-z0-9_]+\.css)' %}\?v=", html)
+            self.assertLess(sheets.index('ui_splitters.css'), sheets.index('dialog_theme.css'), name)
+            self.assertLess(html.index('ui_splitters.js'), html.index('flow-canvas-interactions.js') if 'flow-canvas-interactions.js' in html else html.index('agent_page_layout.js'), name)
+            self.assertIn('class="tlm-splitter"', html)
 
     def test_every_drag_divider_is_an_accessible_separator_with_a_tooltip(self):
         for name in ('agent_page.html', 'agentic_control_panel.html', 'prompt_flow_panel.html'):

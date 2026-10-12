@@ -11,25 +11,29 @@
     <link rel="stylesheet" href="{% static 'agent/vendor/frontend/bootstrap/dist/css/bootstrap.min.css' %}?v={{ STATIC_VERSION }}_offline1">
     <script src="{% static 'agent/vendor/frontend/bootstrap/dist/js/bootstrap.bundle.min.js' %}?v={{ STATIC_VERSION }}_offline1"></script>
     <link rel="stylesheet" href="{% static 'agent/vendor/frontend/highlightjs/styles/atom-one-dark.min.css' %}?v={{ STATIC_VERSION }}_offline1">
+    <link rel="stylesheet" href="{% static 'agent/vendor/frontend/nunito/400.css' %}?v={{ STATIC_VERSION }}">
+    <link rel="stylesheet" href="{% static 'agent/vendor/frontend/nunito/700.css' %}?v={{ STATIC_VERSION }}">
+    <link rel="stylesheet" href="{% static 'agent/css/ui_tokens.css' %}?v={{ STATIC_VERSION }}">
+    <link rel="stylesheet" href="{% static 'agent/css/ui_shell.css' %}?v={{ STATIC_VERSION }}">
+    <link rel="stylesheet" href="{% static 'agent/css/entry_pages.css' %}?v={{ STATIC_VERSION }}">
     <link rel="stylesheet" href="{% static 'agent/css/welcome.css' %}?v={{ STATIC_VERSION }}">
-    <style>
-    </style>
 </head>
-<body>
-    <div class="container">
+<body class="entry-page">
+    <main class="container">
         <div class="row welcome-container">
             <div class="col-md-8 col-lg-6">
                 <div class="card welcome-card">
                     <div class="card-body">
-                        <h2 class="card-title mb-4 big-white-text">Welcome, {{ user.username }}!</h2>
+                        <img class="entry-mark" src="{% static 'agent/img/Tlamatini.ico' %}" alt="" width="48" height="48">
+                        <h1 class="card-title mb-4 big-white-text">Welcome, {{ user.username }}!</h1>
                         <p class="card-text white-text">You have successfully logged in.</p>
-                        <a href="{% url 'agent_page' %}" id="go-to-chat" class="btn btn-primary mx-2 big-white-text-button">Go to Chat</a>
-                        <a href="{% url 'logout' %}" class="btn btn-secondary mx-2 big-white-text-button">Logout</a>
+                        <div class="entry-actions"><a href="{% url 'agent_page' %}" id="go-to-chat" class="btn btn-primary big-white-text-button">Go to Chat</a>
+                        <a href="{% url 'logout' %}" class="btn btn-secondary big-white-text-button">Logout</a></div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
+    </main>
     <script src="{% static 'agent/js/welcome_enter_default.js' %}?v={{ STATIC_VERSION }}"></script>
 </body>
 </html>

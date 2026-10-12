@@ -16,6 +16,22 @@
 
 ---
 
+## 2026-10-11 — Whole-site theme and resize sweep (local, uncommitted)
+
+All seven existing first-party HTML files plus the generated admin family share
+the slate/teal appearance. `ui_tokens.css`, `ui_shell.css`, `ui_splitters.css` and
+`ui_splitters.js` own common page/resize behavior; keep the dialog theme last.
+The five pane bars share grip/focus/drag states and interrupted-drag cleanup.
+JQuery UI's missing resize hit areas and plain footer buttons now receive the
+same treatment; its fixed overlay must stay above the expanded navigation.
+The latter was verified at native 400% zoom, not inferred from dimensions.
+
+Seventeen composer checkpoints, 38 zoom/responsive checkpoints, all eight
+commentary edges with undo/cancel/file recovery, all eight dialog resize
+directions, PDF controls and admin pages were checked visibly. Source tests:
+175 passed, two platform skips; lint zero errors. No release was built or
+installed. See [full inventory, behavior and evidence](../changes/2026-10-11-ui-sweep.md).
+
 ## 2026-10-11 — Video-Analyzer transcribes a web link by itself (YouTube and other sites)
 
 Angela's installed build (`C:\Tlamatini`) was asked to transcribe a YouTube video. Video-Analyzer

@@ -1,0 +1,39 @@
+/* Tlamatini Author Banner — Angela López Mendoza */
+/* One seam/grip treatment for every adjacent workspace pane. */
+.tlm-splitter {
+    --splitter-size: 8px;
+    --splitter-line: #8a8c98;
+    touch-action: none;
+    user-select: none;
+    background: var(--tlm-chrome);
+    z-index: 10;
+    flex-shrink: 0;
+}
+.tlm-splitter[aria-orientation='vertical'] {
+    position: absolute; top: 0; bottom: 0;
+    width: var(--splitter-size); cursor: col-resize;
+    transform: translateX(-50%);
+}
+.tlm-splitter[aria-orientation='horizontal'] {
+    position: relative; width: 100%; height: var(--splitter-size);
+    flex: 0 0 var(--splitter-size); cursor: row-resize;
+}
+.tlm-splitter::before, .tlm-splitter::after { content: ''; position: absolute; pointer-events: none; }
+.tlm-splitter::before { background: var(--tlm-accent); border-radius: 2px; z-index: 1; }
+.tlm-splitter::after { background: var(--splitter-line); opacity: .8; }
+.tlm-splitter[aria-orientation='vertical']::before { width: 4px; height: 42px; left: calc(50% - 2px); top: calc(50% - 21px); }
+.tlm-splitter[aria-orientation='vertical']::after { width: 2px; top: 0; bottom: 0; left: calc(50% - 1px); }
+.tlm-splitter[aria-orientation='horizontal']::before { width: 42px; height: 4px; left: calc(50% - 21px); top: calc(50% - 2px); }
+.tlm-splitter[aria-orientation='horizontal']::after { height: 2px; left: 0; right: 0; top: calc(50% - 1px); }
+.tlm-splitter:is(:hover, :focus-visible, [data-resizing])::after { background: var(--tlm-accent); opacity: 1; }
+.tlm-splitter:focus-visible { outline: 2px solid var(--tlm-accent); outline-offset: -2px; }
+.pmt-panel #drag-divider.tlm-splitter { position: relative; flex: 0 0 var(--splitter-size); transform: none; }
+body:is(.resizing, .resizing-vertical) { user-select: none !important; }
+body.resizing, body.resizing * { cursor: col-resize !important; }
+body.resizing-vertical, body.resizing-vertical * { cursor: row-resize !important; }
+body:is(.resizing, .resizing-vertical) iframe { pointer-events: none !important; }
+@media (pointer: coarse) { .tlm-splitter { --splitter-size: 16px; } }
+@media (forced-colors: active) {
+    .tlm-splitter::before, .tlm-splitter::after { background: ButtonText; forced-color-adjust: none; }
+    .tlm-splitter:is(:hover, :focus-visible, [data-resizing])::after { background: Highlight; }
+}

@@ -154,7 +154,8 @@ ROOT_URLCONF = 'tlamatini.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        # First-party admin chrome extends Django's templates, in source/frozen.
+        'DIRS': [BASE_DIR / 'agent' / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -247,7 +248,7 @@ if getattr(sys, 'frozen', False):
 
 # Version stamp for cache-busting of static assets in templates
 # Override via env var STATIC_VERSION when deploying
-STATIC_VERSION = (os.environ.get('STATIC_VERSION') or str(int(time.time()))) + '-divider-pill-1'
+STATIC_VERSION = (os.environ.get('STATIC_VERSION') or str(int(time.time()))) + '-ui-sweep-1'
 
 # WhiteNoise configuration: dev vs release.
 # NOTE (speed batch, 2026-07-02): the old per-branch STATICFILES_STORAGE lines

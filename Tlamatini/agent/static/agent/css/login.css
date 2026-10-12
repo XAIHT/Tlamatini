@@ -10,16 +10,5 @@
  *   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
  */
 
-body { background-color: #343541; color: #ececf1; }
-.login-container { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
-.login-card { padding: 2rem; border-radius: 1rem; background-color: #444654; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-.form-control { background-color: #40414F; color: #ececf1; border: 1px solid #5a5c6d; }
-.form-control:focus { background-color: #40414F; color: #ececf1; border-color: #55BBAA; box-shadow: none; }
-.btn-primary { background-color: #55BBAA; border-color: #55BBAA; }
-.btn-primary:hover { background-color: #4aa291; border-color: #4aa291; }
-.big-white-text { font-weight: 800; color: white; }
-.white-text { color: white; }
-.big-white-text-button { font-weight: 600; color: white; font-size: 1.2rem; }
-
 .login-error-panel { margin-bottom: 1rem; padding: .85rem 1rem; border-radius: .75rem; background-color: rgba(220, 53, 69, 0.18); border: 1px solid rgba(220, 53, 69, 0.45); color: #ffd7dc; }
 .login-error-line + .login-error-line { margin-top: .35rem; }
