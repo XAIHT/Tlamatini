@@ -48,6 +48,19 @@ opening, dragging and viewport changes; short native dialogs scroll as whole car
 avatar never covers a modal. Evidence and the visible harness:
 `docs/changes/2026-10-10-composer-resize.md`.
 
+## The side divider looks like the composer divider (2026-10-11)
+
+`#drag-divider` (chat ↔ canvas on the Chat page; Agents list / Operations bar on the
+Agentic Control Panel and the Prompt Flow Panel) now has the same look and feel as
+`#vertical-drag-divider`, turned on its side: a teal `#55BBAA` grip pill (4×42 px,
+`::before`, centred), a grey line that turns teal on hover, keyboard focus and while
+`body.resizing` is set, a 2px teal focus ring, `role="separator"` with a label and a
+tooltip, and Shift+arrow = 5 % (the chat page used to move 1 % only). Rules live in
+`agent_page.css` and `agentic_control_panel.css` (the latter also serves the Prompt
+Flow Panel). Coverage: `agent/test_drag_divider_look.py`; visible proof
+`scripts/drag_divider_look_visible.py` (26/26 on 2026-10-11 — reads Shoter's photo to
+prove the pill is really painted). Cache suffix `-divider-pill-1`.
+
 ## Config → Models: metadata-driven form
 
 The dialog renders 38 fields in Core (7), Vision (7), Speech (7), Workflows (6),

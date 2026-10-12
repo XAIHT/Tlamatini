@@ -204,9 +204,12 @@ function bindDividerPointerDrag(divider, resizingClass, onMove) {
         apply(pctFromXToSeam(event.clientX));
     });
 
+    // Same feel as the vertical divider and the ACP/Prompt Flow dividers:
+    // arrows move 1%, Shift+arrows 5%.
     divider.addEventListener('keydown', (e) => {
-        if (e.key === 'ArrowLeft') { userResized = true; apply(seamPct - 1); e.preventDefault(); }
-        if (e.key === 'ArrowRight') { userResized = true; apply(seamPct + 1); e.preventDefault(); }
+        const step = e.shiftKey ? 5 : 1;
+        if (e.key === 'ArrowLeft') { userResized = true; apply(seamPct - step); e.preventDefault(); }
+        if (e.key === 'ArrowRight') { userResized = true; apply(seamPct + step); e.preventDefault(); }
     });
 
     window.addEventListener('resize', () => {

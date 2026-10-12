@@ -308,6 +308,34 @@ body.resizing {
     opacity: 0.8;
 }
 
+/* Same look and feel as the chat page's #vertical-drag-divider, turned on its
+   side: a teal grip pill in the middle, and a line that turns teal on hover,
+   on keyboard focus and while it is being dragged. Serves the Agentic Control
+   Panel and the Prompt Flow Panel (both load this stylesheet). */
+#drag-divider::before {
+    content: "";
+    position: absolute;
+    top: calc(50% - 21px);
+    left: 2px;
+    width: 4px;
+    height: 42px;
+    border-radius: 2px;
+    background: #55BBAA;
+    z-index: 1;
+}
+
+#drag-divider:hover::after,
+#drag-divider:focus-visible::after,
+body.resizing #drag-divider::after {
+    background: #55BBAA;
+    opacity: 1;
+}
+
+#drag-divider:focus-visible {
+    outline: 2px solid #55BBAA;
+    outline-offset: -2px;
+}
+
 #vertical-drag-divider {
     position: relative;
     left: 0;
