@@ -439,6 +439,8 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
             "local faster-whisper backend with GPU auto/CPU fallback, never captures a microphone or calls "
             "a vision model. audio_tracks='all' (default) or '0,1' selects audio track indexes. Configure "
             "transcription.model, transcription.language, transcription.task, transcription.word_timestamps. "
+            "There is NO transcription.engine setting (engine= belongs to Whisperer): transcription "
+            "always runs local faster-whisper, so never pass engine= to Video-Analyzer. "
             "For a comprehensive video summary explicitly choose summary: two independent vision observers "
             "inspect timestamped frame batches across the entire clip, transcribe selected audio tracks, "
             "and synthesize overview, timeline, readable text, facts, steps, decisions, action items and "

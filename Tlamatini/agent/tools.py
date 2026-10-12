@@ -3026,6 +3026,7 @@ def _launch_wrapped_chat_agent(spec, request, *, auto_diagnose=True):
             "status": "error",
             "retryable": False,
             "message": assignment_error,
+            "error_kind": "request",
             "runtime_dir": runtime_dir,
         })
     logger.info("[tools._launch_wrapped_chat_agent] Config assignments applied OK, notes: %s", assignment_notes)
@@ -3201,6 +3202,7 @@ def _launch_wrapped_chat_agent(spec, request, *, auto_diagnose=True):
                 f"{spec.display_name} is still missing mandatory non-flow parameters: "
                 + ", ".join(_format_config_path(item['path']) for item in missing_required)
             ),
+            "error_kind": "request",
             "runtime_dir": runtime_dir,
             "log_path": log_path,
         })
@@ -3349,6 +3351,18 @@ def _launch_wrapped_chat_agent(spec, request, *, auto_diagnose=True):
 _WRAPPED_CHAT_AGENT_TOOLS = {}
 
 
+def _is_visual_start_failure(payload):
+    """True when an image/video analysis could not start and the fatal dialog must say so.
+
+    A request the model worded wrongly (a setting the agent does not have, or a
+    missing one) is refused before the agent starts: no vision or speech model ran,
+    and the model corrects it on its next call. That is not a fatal error. On
+    2026-10-12 a ``transcription.engine`` borrowed from Whisperer raised the red
+    dialog and its sound, while the very next call transcribed the whole video.
+    """
+    return payload.get("status") == "error" and payload.get("error_kind") != "request"
+
+
 def _build_wrapped_chat_agent_tool(spec):
     cached = _WRAPPED_CHAT_AGENT_TOOLS.get(spec.tool_name)
     if cached is not None:
@@ -3358,7 +3372,7 @@ def _build_wrapped_chat_agent_tool(spec):
         result = _launch_wrapped_chat_agent(spec, request)
         if spec.template_dir in {'image_interpreter', 'video_analyzer'}:
             payload = json.loads(result)
-            if payload.get('status') == 'error':
+            if _is_visual_start_failure(payload):
                 from .visual_error_reporting import report_visual_error
                 report_visual_error(spec.display_name, payload.get('message', 'Analysis could not start'))
         return result

@@ -189,3 +189,58 @@ for _name, _body in {
 }.items():
     for _agent in ('image', 'video'):
         setattr(StreamIntegrityTests, f'test_{_agent}_{_name}_is_failure', stream_test(_agent, _body))
+
+
+class RequestRefusalIsNotFatalTests(SimpleTestCase):
+    """A wrongly worded request is not a fatal analysis error (2026-10-12).
+
+    The model asked Video-Analyzer for ``transcription.engine``, a Whisperer
+    setting. The launcher refused it before the agent started, yet the red fatal
+    dialog and its sound fired, while the very next call transcribed the video.
+    """
+
+    def _events_for(self, launch_payload):
+        from . import tools
+        from .chat_agent_registry import WRAPPED_CHAT_AGENT_BY_TOOL_NAME
+        spec = WRAPPED_CHAT_AGENT_BY_TOOL_NAME['chat_agent_video_analyzer']
+        events = []
+        token = bind_visual_error_sink(events.append)
+        try:
+            with patch.object(tools, '_launch_wrapped_chat_agent', return_value=json.dumps(launch_payload)):
+                tools._build_wrapped_chat_agent_tool(spec).func('Transcribe the video')
+        finally:
+            unbind_visual_error_sink(token)
+        return events
+
+    def test_misnamed_setting_does_not_raise_the_fatal_dialog(self):
+        events = self._events_for({
+            'status': 'error', 'error_kind': 'request', 'retryable': False,
+            'message': "Parameter 'transcription.engine' was not found in the target agent config.",
+        })
+        self.assertEqual(events, [])
+
+    def test_analysis_that_could_not_start_still_raises_it(self):
+        events = self._events_for({'status': 'error', 'retryable': True,
+                                   'message': 'Failed to start Video-Analyzer: boom'})
+        self.assertEqual([e['message'] for e in events], ['Failed to start Video-Analyzer: boom'])
+
+    def test_running_analysis_raises_nothing(self):
+        self.assertEqual(self._events_for({'status': 'running', 'run_id': 'abc'}), [])
+
+    def test_launcher_marks_setting_mistakes_as_request_errors(self):
+        source = (ROOT / 'tools.py').read_text(encoding='utf-8')
+        for anchor in ('"message": assignment_error,',
+                       "+ \", \".join(_format_config_path(item['path']) for item in missing_required)"):
+            with self.subTest(anchor=anchor):
+                self.assertEqual(source.count(anchor), 1)
+                tail = source.split(anchor, 1)[1][:120]
+                self.assertIn('"error_kind": "request"', tail)
+
+    def test_video_analyzer_tells_the_model_it_has_no_engine_setting(self):
+        import yaml
+        from .chat_agent_registry import WRAPPED_CHAT_AGENT_BY_TOOL_NAME
+        purpose = WRAPPED_CHAT_AGENT_BY_TOOL_NAME['chat_agent_video_analyzer'].purpose
+        self.assertIn('There is NO transcription.engine setting', purpose)
+        config = yaml.safe_load((ROOT / 'agents' / 'video_analyzer' / 'config.yaml').read_text(encoding='utf-8'))
+        # The sentence above must stay true: if an engine setting is ever added, change the text.
+        self.assertNotIn('engine', config['transcription'])
