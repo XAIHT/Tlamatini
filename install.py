@@ -14,6 +14,10 @@ import ctypes
 from ctypes import wintypes
 import subprocess
 import threading
+from setup_wizard import WizardView
+from setup_recovery import Recovery, setup_lock
+from setup_windows import run_powershell
+from uninstall_processes import owned_processes
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 import zipfile
@@ -192,26 +196,16 @@ class FancyInstaller:
         self.version = resolve_version()
         title = f"Tlamatini Installer v{self.version}" if self.version else "Tlamatini Installer"
         self.root.title(title)
-        self.root.configure(bg=BG_DARK)
-        self.root.resizable(False, False)
-
-        # Center window 680×520 on screen
-        w, h = 680, 540
-        sx = (self.root.winfo_screenwidth()  - w) // 2
-        sy = (self.root.winfo_screenheight() - h) // 2
-        self.root.geometry(f"{w}x{h}+{sx}+{sy}")
-
         self.zip_path = self._find_zip()
-        if not self.zip_path:
-            messagebox.showerror("Error", "pkg.zip not found alongside the installer.")
-            self.root.destroy()
-            return
 
         self.install_path = tk.StringVar()
         self._progress_value = 0.0
         self._installing = False
 
         self._build_ui()
+        if not self.zip_path:
+            self._show_error("pkg.zip was not found alongside the installer.\n\n"
+                             "Keep the complete release folder together, then retry.")
 
     # ─── Resource helper ──────────────────────────────────────────────
     @staticmethod
@@ -227,201 +221,23 @@ class FancyInstaller:
 
     # ─── UI Construction ──────────────────────────────────────────────
     def _build_ui(self):
-        # ── Header ───────────────────────────────────────────────────
-        hdr = tk.Frame(self.root, bg=BG_CARD, height=90)
-        hdr.pack(fill="x")
-        hdr.pack_propagate(False)
-
-        # Accent line at top
-        tk.Frame(hdr, bg=ACCENT, height=3).pack(fill="x")
-
-        # The header is laid out as: [gear + title-block | spring | version-badge]
-        # — fill="x" so the spring expands and pushes the badge to the right edge.
-        hdr_inner = tk.Frame(hdr, bg=BG_CARD)
-        hdr_inner.pack(fill="both", expand=True)
-
-        tk.Label(
-            hdr_inner, text="⚙", font=(FONT_FAMILY, 28),
-            bg=BG_CARD, fg=ACCENT,
-        ).pack(side="left", padx=(20, 10), pady=(8, 0))
-
-        title_block = tk.Frame(hdr_inner, bg=BG_CARD)
-        title_block.pack(side="left", pady=(14, 0))
-        tk.Label(
-            title_block, text="Tlamatini", font=(FONT_FAMILY, 20, "bold"),
-            bg=BG_CARD, fg=FG_PRIMARY,
-        ).pack(anchor="w")
-        tk.Label(
-            title_block, text="Installation Wizard", font=(FONT_FAMILY, 10),
-            bg=BG_CARD, fg=FG_SECONDARY,
-        ).pack(anchor="w")
-
-        # ── Version badge (pill-shaped, right-anchored) ──────────────
-        # Only rendered when a version actually resolved.  The badge is a
-        # framed pill whose border colour matches the top accent line so the
-        # whole header reads as a coherent unit.
-        self._build_version_badge(hdr_inner)
-
-    def _build_version_badge(self, parent: tk.Frame):
-        """Render the version pill in the header, or nothing if unresolved."""
-        if not self.version:
-            return
-
-        # Outer 1-px frame acts as the pill border (cyan).
-        badge_outer = tk.Frame(
-            parent, bg=ACCENT,
-            highlightthickness=0, bd=0,
+        self.ui = WizardView(
+            self.root, removal=False, version=self.version,
+            path=self.install_path, steps=self.STEPS,
+            start=self._start_install, browse=self._browse,
         )
-        badge_outer.pack(side="right", padx=(0, 22), pady=(20, 0))
-
-        # Inner frame holds the labels and provides the dark fill colour.
-        badge_inner = tk.Frame(badge_outer, bg=BG_INPUT)
-        badge_inner.pack(padx=1, pady=1)  # 1-px reveal = the border
-
-        # "VERSION" caption (small, dim, uppercase) above the number gives the
-        # pill a typographic hierarchy that reads cleanly at a glance.
-        tk.Label(
-            badge_inner, text="VERSION",
-            font=(FONT_FAMILY, 7, "bold"),
-            bg=BG_INPUT, fg=FG_SECONDARY,
-        ).pack(padx=14, pady=(5, 0))
-
-        tk.Label(
-            badge_inner, text=f"v{self.version}",
-            font=(FONT_FAMILY, 12, "bold"),
-            bg=BG_INPUT, fg=ACCENT,
-        ).pack(padx=14, pady=(0, 5))
-
-        # ── Body card ────────────────────────────────────────────────
-        body = tk.Frame(self.root, bg=BG_DARK)
-        body.pack(fill="both", expand=True, padx=30, pady=20)
-
-        card = tk.Frame(body, bg=BG_PANEL, highlightbackground=BORDER_COLOR,
-                        highlightthickness=1)
-        card.pack(fill="both", expand=True)
-
-        inner = tk.Frame(card, bg=BG_PANEL)
-        inner.pack(fill="both", expand=True, padx=24, pady=20)
-
-        # ── Path selection ───────────────────────────────────────────
-        tk.Label(
-            inner, text="SELECT INSTALLATION DIRECTORY",
-            font=(FONT_FAMILY, 9, "bold"), bg=BG_PANEL, fg=FG_SECONDARY,
-        ).pack(anchor="w")
-
-        tk.Label(
-            inner,
-            text='A "Tlamatini" folder will be created inside the selected directory.',
-            font=(FONT_FAMILY, 8), bg=BG_PANEL, fg=FG_DIM,
-        ).pack(anchor="w", pady=(0, 8))
-
-        path_row = tk.Frame(inner, bg=BG_PANEL)
-        path_row.pack(fill="x", pady=(0, 6))
-
-        self.path_entry = tk.Entry(
-            path_row, textvariable=self.install_path,
-            font=(FONT_FAMILY, 11), bg=BG_INPUT, fg=FG_PRIMARY,
-            insertbackground=ACCENT, relief="flat", bd=0,
-            highlightthickness=1, highlightbackground=BORDER_COLOR,
-            highlightcolor=ACCENT,
-        )
-        self.path_entry.pack(side="left", fill="x", expand=True, ipady=6, padx=(0, 8))
-
-        self.browse_btn = self._make_button(path_row, "Browse", self._browse,
-                                            width=10, small=True)
-        self.browse_btn.pack(side="right")
-
-        # ── Target path display ──────────────────────────────────────
-        self.target_label = tk.Label(
-            inner, text="", font=(FONT_FAMILY, 8), bg=BG_PANEL, fg=ACCENT,
-            anchor="w",
-        )
-        self.target_label.pack(fill="x", pady=(0, 10))
-        self.install_path.trace_add("write", self._on_path_change)
-
-        # ── Separator ────────────────────────────────────────────────
-        tk.Frame(inner, bg=BORDER_COLOR, height=1).pack(fill="x", pady=6)
-
-        # ── Progress section (hidden until install starts) ───────────
-        self.progress_frame = tk.Frame(inner, bg=BG_PANEL)
-
-        self.step_label = tk.Label(
-            self.progress_frame, text="Waiting…",
-            font=(FONT_FAMILY, 10), bg=BG_PANEL, fg=FG_PRIMARY, anchor="w",
-        )
-        self.step_label.pack(fill="x", pady=(6, 4))
-
-        style = ttk.Style()
-        style.theme_use("clam")
-        style.configure(
-            "Fancy.Horizontal.TProgressbar",
-            troughcolor=PROGRESS_BG, background=PROGRESS_FG,
-            darkcolor=ACCENT_GLOW, lightcolor=ACCENT,
-            bordercolor=BG_PANEL, thickness=18,
-        )
-
-        self.progress_bar = ttk.Progressbar(
-            self.progress_frame, style="Fancy.Horizontal.TProgressbar",
-            orient="horizontal", length=400, mode="determinate",
-            maximum=100,
-        )
-        self.progress_bar.pack(fill="x", pady=(0, 2))
-
-        self.pct_label = tk.Label(
-            self.progress_frame, text="0 %",
-            font=(FONT_FAMILY, 9, "bold"), bg=BG_PANEL, fg=ACCENT, anchor="e",
-        )
-        self.pct_label.pack(fill="x")
-
-        # ── Step checklist (populated during install) ────────────────
-        self.checklist_frame = tk.Frame(self.progress_frame, bg=BG_PANEL)
-        self.checklist_frame.pack(fill="x", pady=(6, 0))
-        self.check_labels: list[tk.Label] = []
-
-        for desc, _ in self.STEPS:
-            lbl = tk.Label(
-                self.checklist_frame,
-                text=f"   ○  {desc}",
-                font=(FONT_FAMILY, 9), bg=BG_PANEL, fg=FG_DIM, anchor="w",
-            )
-            lbl.pack(fill="x")
-            self.check_labels.append(lbl)
-
-        # ── Buttons ──────────────────────────────────────────────────
-        btn_row = tk.Frame(inner, bg=BG_PANEL)
-        btn_row.pack(side="bottom", fill="x", pady=(10, 0))
-
-        self.cancel_btn = self._make_button(btn_row, "Cancel", self.root.quit,
-                                            cancel=True)
-        self.cancel_btn.pack(side="right", padx=(8, 0))
-
-        self.install_btn = self._make_button(btn_row, "⬡  Install", self._start_install)
-        self.install_btn.pack(side="right")
-
-        # Pressing Enter/Return after typing the installation directory triggers
-        # the SAME directory verification + installation as clicking Install.
-        # Bound on the path entry (the common case — focus is in the field after
-        # typing) AND on the window (so Enter works even if focus is elsewhere).
-        self.path_entry.bind("<Return>", self._on_enter_key)
-        self.root.bind("<Return>", self._on_enter_key)
-
-    # ─── Button factory with hover effects ────────────────────────────
-    def _make_button(self, parent, text, command, width=14, small=False, cancel=False):
-        bg  = BTN_CANCEL_BG if cancel else BTN_BG
-        hv  = BTN_CANCEL_HV if cancel else BTN_HOVER
-        fg  = FG_SECONDARY  if cancel else FG_PRIMARY
-        fnt = (FONT_FAMILY, 9) if small else (FONT_FAMILY, 10, "bold")
-
-        btn = tk.Button(
-            parent, text=text, command=command,
-            font=fnt, bg=bg, fg=fg,
-            activebackground=hv, activeforeground=FG_PRIMARY,
-            relief="flat", bd=0, cursor="hand2",
-            padx=14, pady=6, width=width,
-        )
-        btn.bind("<Enter>", lambda e, b=btn, c=hv: b.config(bg=c))
-        btn.bind("<Leave>", lambda e, b=btn, c=bg: b.config(bg=c))
-        return btn
+        # Keep the worker and existing integrations on their public UI handles.
+        self.path_entry = self.ui.path_entry
+        self.browse_btn = self.ui.browse_btn
+        self.install_btn = self.ui.primary_btn
+        self.cancel_btn = self.ui.cancel_btn
+        self.button_row = self.ui.button_row
+        self.progress_frame = self.ui.progress_frame
+        self.step_label = self.ui.step_label
+        self.progress_bar = self.ui.progress_bar
+        self.pct_label = self.ui.pct_label
+        self.check_labels = self.ui.check_labels
+        self.target_label = self.ui.target_label
 
     # ─── Path helpers ─────────────────────────────────────────────────
     def _on_path_change(self, *_):
@@ -457,6 +273,15 @@ class FancyInstaller:
 
         target = os.path.join(raw, "Tlamatini")
 
+        target = os.path.abspath(target)
+        if (os.path.normcase(os.path.realpath(target)) != os.path.normcase(target)
+                or os.path.exists(os.path.join(target, ".git"))
+                or os.path.isfile(os.path.join(target, "Tlamatini", "manage.py"))
+                or os.path.isfile(target)):
+            messagebox.showerror("Invalid installation folder",
+                                 "Choose a separate application folder. Setup cannot overwrite a source checkout, a file or a redirected directory.")
+            return None
+
         # Warn if target is not empty
         if os.path.isdir(target) and os.listdir(target):
             ans = messagebox.askyesno(
@@ -473,17 +298,18 @@ class FancyInstaller:
         return target
 
     # ─── Enter/Return key ─────────────────────────────────────────────
-    def _on_enter_key(self, _event=None):
-        """Enter/Return = verify the directory + start the installation (same as
-        clicking Install). Returns 'break' so the keypress doesn't also bubble to
-        the window-level binding and fire twice; _start_install is re-entry-guarded
-        anyway, so a double-fire would be harmless."""
-        self._start_install()
-        return "break"
+    def _on_enter_key(self, event=None):
+        return self.ui._enter(event)
 
     # ─── Installation thread ──────────────────────────────────────────
     def _start_install(self):
-        if self._installing:
+        if self._installing or self.ui.state == "complete":
+            return
+
+        self.zip_path = self._find_zip()
+        if not self.zip_path:
+            self._show_error("pkg.zip was not found alongside the installer.\n\n"
+                             "Keep the complete release folder together, then retry.")
             return
 
         target = self._validate_path()
@@ -491,10 +317,7 @@ class FancyInstaller:
             return
 
         self._installing = True
-        self.install_btn.config(state="disabled")
-        self.browse_btn.config(state="disabled")
-        self.path_entry.config(state="disabled")
-        self.progress_frame.pack(fill="x", before=self.progress_frame.master.winfo_children()[-1])
+        self.ui.begin(target)
 
         t = threading.Thread(target=self._run_install, args=(target,), daemon=True)
         t.start()
@@ -505,25 +328,13 @@ class FancyInstaller:
         self.root.after(0, self._update_progress_ui, value, status)
 
     def _update_progress_ui(self, value: float, status: str | None):
-        pct = min(int(value * 100), 100)
-        self.progress_bar["value"] = pct
-        self.pct_label.config(text=f"{pct} %")
-        if status:
-            self.step_label.config(text=status)
+        self.ui.update_progress(value, status)
 
     def _mark_step(self, idx: int, success: bool = True):
-        color = SUCCESS if success else ERROR
-        icon  = "✓" if success else "✗"
-        desc  = self.STEPS[idx][0]
-        self.root.after(0, lambda: self.check_labels[idx].config(
-            text=f"   {icon}  {desc}", fg=color,
-        ))
+        self.root.after(0, self.ui.mark_step, idx, success)
 
     def _activate_step(self, idx: int):
-        desc = self.STEPS[idx][0]
-        self.root.after(0, lambda: self.check_labels[idx].config(
-            text=f"   ▸  {desc}", fg=ACCENT,
-        ))
+        self.root.after(0, self.ui.activate_step, idx)
 
     # ─── Main install pipeline (runs in background thread) ────────────
     # ── User state that must survive a reinstall ──────────────────────────
@@ -584,144 +395,183 @@ class FancyInstaller:
         return os.path.exists(os.path.join(target, top))
 
     def _run_install(self, target: str):
+        recovery = None
+        self.setup_warnings = []
         try:
-            self._set_progress(0.0, "Verifying release integrity before installation…")
-            verify_package(self.zip_path)
-            existing_db = os.path.join(target, "_internal", "db.sqlite3")
-            if os.path.isfile(existing_db):
-                # Keep the DB/WAL in place; next startup applies new migrations.
-                # Set before extraction so even an interrupted reinstall retries.
-                state_dir = os.path.join(target, "DB")
-                os.makedirs(state_dir, exist_ok=True)
-                with open(os.path.join(state_dir, "post_update_migrate.flag"), "w", encoding="utf-8") as flag:
-                    flag.write("in-place reinstall: retained existing database and WAL\n")
-            cumulative = 0.0  # tracks completed-step weight
-
-            # ── Step 0: create directory ─────────────────────────────
-            step_idx = 0
-            self._activate_step(step_idx)
-            self._set_progress(0.0, "Creating installation directory…")
-            os.makedirs(target, exist_ok=True)
-            cumulative += self.STEPS[step_idx][1]
-            self._set_progress(cumulative)
-            self._mark_step(step_idx)
-
-            # ── Step 1: extract pkg.zip ──────────────────────────────
-            #
-            # PRESERVING USER STATE (Angela, 2026-08-12). This used to extract
-            # EVERY member unconditionally, so installing over an existing
-            # Tlamatini overwrote `config.json` (every provider key and
-            # setting), `external_mcps.json` (the whole External-MCP catalog
-            # AND its active set), `contacts.json` and the DB. That is why
-            # "every time I reinstall, all the external MCPs go fucked" — the
-            # self-updater had a $Preserve list and the installer had none.
-            #
-            # Now the same list guards both. A preserved item is SKIPPED only
-            # when it already exists, so a FRESH install still gets its seed
-            # files; only an upgrade-in-place leaves the user's copy alone.
-            preserved = self._preserved_names()
-            # Capture existence ONCE. Otherwise extracting the first seed file
-            # makes its new directory look pre-existing and skips sibling seeds.
-            preserved = {name for name in preserved if os.path.exists(os.path.join(target, name))}
-            kept: list[str] = []
-            step_idx = 1
-            self._activate_step(step_idx)
-            weight = self.STEPS[step_idx][1]
-            with zipfile.ZipFile(self.zip_path, "r") as zf:
-                members = zf.namelist()
-                total = len(members)
-                for i, member in enumerate(members, 1):
-                    if self._is_preserved_member(member, target, preserved):
-                        top = member.replace("\\", "/").split("/")[0]
-                        if top not in kept:
-                            kept.append(top)
-                    else:
-                        zf.extract(member, target)
-                    frac = i / total
-                    self._set_progress(
-                        cumulative + weight * frac,
-                        f"Extracting files… ({i}/{total})",
-                    )
-            if kept:
-                print(f"[INSTALL] Preserved existing user state: {', '.join(sorted(kept))}")
-            cumulative += weight
-            self._set_progress(cumulative)
-            self._mark_step(step_idx)
-
-            # ── Step 2: Secure agent environments (PyInstaller fix) ──────
-            step_idx = 2
-            self._activate_step(step_idx)
-            self._set_progress(cumulative, "Securing agent environments…")
-            self._patch_agent_environments(os.path.join(target, "Tlamatini"))
-            cumulative += self.STEPS[step_idx][1]
-            self._set_progress(cumulative)
-            self._mark_step(step_idx)
-
-            # ── Step 3: write CreateShortcut.json ────────────────────
-            step_idx = 3
-            self._activate_step(step_idx)
-            self._set_progress(cumulative, "Writing configuration…")
-            config_data = {"InstallDir": target.replace("/", "\\")}
-            config_path = os.path.join(target, "CreateShortcut.json")
-            with open(config_path, "w", encoding="utf-8") as f:
-                json.dump(config_data, f, indent=4)
-            cumulative += self.STEPS[step_idx][1]
-            self._set_progress(cumulative)
-            self._mark_step(step_idx)
-
-            # ── Step 4: copy Uninstaller.exe + register in "Installed apps" ──
-            step_idx = 4
-            self._activate_step(step_idx)
-            self._set_progress(cumulative, "Copying uninstaller…")
-            self._copy_uninstaller(target)
-            # Now that Uninstaller.exe is in place, advertise Tlamatini in the
-            # Windows Settings ▸ Apps ▸ Installed apps (and legacy Programs and
-            # Features) list with a working Uninstall button. Per-user (HKCU),
-            # non-fatal: a registry hiccup must not fail the whole install.
-            self._set_progress(cumulative, "Registering with Windows…")
-            self._register_programs_entry(target)
-            # Companion-app discovery is registered INDEPENDENTLY of the ARP entry
-            # above (REQ-S2-INSTALL-001/002/003): a valid installed agents catalog
-            # must be discoverable by FlowPills even when Uninstaller.exe is missing
-            # or the ARP registration raised. Own fail-open boundary inside.
-            self._register_companion_discovery(target)
-            cumulative += self.STEPS[step_idx][1]
-            self._set_progress(cumulative)
-            self._mark_step(step_idx)
-
-            # ── Step 5: run CreateShortcut.ps1 ───────────────────────
-            step_idx = 5
-            self._activate_step(step_idx)
-            self._set_progress(cumulative, "Creating shortcuts…")
-            self._run_ps1("CreateShortcut.ps1", target)
-            cumulative += self.STEPS[step_idx][1]
-            self._set_progress(cumulative)
-            self._mark_step(step_idx)
-
-            # ── Step 6: register both flow formats ─────────────────────────
-            step_idx = 6
-            self._activate_step(step_idx)
-            self._set_progress(cumulative, "Registering .flw and .fpmt file associations…")
-            self._run_ps1("register_flw.ps1", target)
-            self._run_ps1("register_fpmt.ps1", target)
-            cumulative += self.STEPS[step_idx][1]
-            self._set_progress(cumulative)
-            self._mark_step(step_idx)
-
-            # ── Step 7: Restart Explorer ──────────────────────────────
-            step_idx = 7
-            self._activate_step(step_idx)
-            self._set_progress(cumulative, "Refreshing Windows Desktop…")
-            self._restart_explorer()
-            cumulative += self.STEPS[step_idx][1]
-            self._set_progress(1.0, "Installation complete!")
-            self._mark_step(step_idx)
-
-            # ── Done ─────────────────────────────────────────────────
+            with setup_lock():
+                self._set_progress(0, "Checking release integrity and recovery…")
+                try:
+                    document = verify_package(self.zip_path)
+                except Exception as exc:
+                    raise RuntimeError(
+                        "The release package could not be verified. No installation files were changed.\n\n"
+                        "Extract the complete release again, keeping pkg.zip beside Installer.exe, then retry. "
+                        "If Windows denied access, close applications holding the package and check its permissions.\n\n"
+                        f"Details: {exc}"
+                    ) from exc
+                if owned_processes(target):
+                    raise RuntimeError("Close Tlamatini and its remaining agents before installing into this folder, then retry.")
+                recovery = Recovery(target, lambda message: self._set_progress(0, message))
+                recovery.recover_previous()
+                self._existing_preserved = {name for name in self._preserved_names()
+                                            if os.path.exists(os.path.join(target, name))}
+                names = [name for name in document["files"] if not self._is_preserved_member(
+                    name, target, self._existing_preserved)]
+                names += ["runtime-assets.json", "CreateShortcut.json", "Uninstaller.exe", "Tlamatini.lnk", "CreateShortcut_Temp.vbs"]
+                # The existing environment patcher can edit older retained code too.
+                for parent, _dirs, files in os.walk(os.path.join(target, "Tlamatini")):
+                    names += [os.path.relpath(os.path.join(parent, name), target).replace("\\", "/")
+                              for name in files if name.endswith(".py")]
+                required = sum(record["bytes"] for record in document["files"].values())
+                recovery.prepare(names, required_space=required)
+                try:
+                    self._run_install_steps(target)
+                except Exception as exc:
+                    self._set_progress(0, "Restoring the previous installation…")
+                    try:
+                        recovery.rollback()
+                    except Exception as rollback_error:
+                        raise RuntimeError(f"{exc}\n\n{rollback_error}") from exc
+                    raise RuntimeError(f"{exc}\n\nThe previous files and Windows registrations were restored. You can retry.") from exc
+                self.setup_notice = "\n".join(filter(None, [recovery.commit(), *self.setup_warnings]))
             self.root.after(0, self._show_success, target)
-
         except Exception as exc:
             self.root.after(0, self._show_error, str(exc))
+
+    def _run_install_steps(self, target: str):
+        self._set_progress(0.0, "Verifying release integrity before installation…")
+        existing_db = os.path.join(target, "_internal", "db.sqlite3")
+        if os.path.isfile(existing_db):
+            # Keep the DB/WAL in place; next startup applies new migrations.
+            # Set before extraction so even an interrupted reinstall retries.
+            state_dir = os.path.join(target, "DB")
+            os.makedirs(state_dir, exist_ok=True)
+            with open(os.path.join(state_dir, "post_update_migrate.flag"), "w", encoding="utf-8") as flag:
+                flag.write("in-place reinstall: retained existing database and WAL\n")
+        cumulative = 0.0  # tracks completed-step weight
+
+        # ── Step 0: create directory ─────────────────────────────
+        step_idx = 0
+        self._activate_step(step_idx)
+        self._set_progress(0.0, "Creating installation directory…")
+        os.makedirs(target, exist_ok=True)
+        cumulative += self.STEPS[step_idx][1]
+        self._set_progress(cumulative)
+        self._mark_step(step_idx)
+
+        # ── Step 1: extract pkg.zip ──────────────────────────────
+        #
+        # PRESERVING USER STATE (Angela, 2026-08-12). This used to extract
+        # EVERY member unconditionally, so installing over an existing
+        # Tlamatini overwrote `config.json` (every provider key and
+        # setting), `external_mcps.json` (the whole External-MCP catalog
+        # AND its active set), `contacts.json` and the DB. That is why
+        # "every time I reinstall, all the external MCPs go fucked" — the
+        # self-updater had a $Preserve list and the installer had none.
+        #
+        # Now the same list guards both. A preserved item is SKIPPED only
+        # when it already exists, so a FRESH install still gets its seed
+        # files; only an upgrade-in-place leaves the user's copy alone.
+        preserved = self._existing_preserved
+        # Capture existence ONCE. Otherwise extracting the first seed file
+        # makes its new directory look pre-existing and skips sibling seeds.
+        preserved = {name for name in preserved if os.path.exists(os.path.join(target, name))}
+        kept: list[str] = []
+        step_idx = 1
+        self._activate_step(step_idx)
+        weight = self.STEPS[step_idx][1]
+        with zipfile.ZipFile(self.zip_path, "r") as zf:
+            members = zf.namelist()
+            total = len(members)
+            for i, member in enumerate(members, 1):
+                if self._is_preserved_member(member, target, preserved):
+                    top = member.replace("\\", "/").split("/")[0]
+                    if top not in kept:
+                        kept.append(top)
+                else:
+                    zf.extract(member, target)
+                frac = i / total
+                self._set_progress(
+                    cumulative + weight * frac,
+                    f"Extracting files… ({i}/{total})",
+                )
+        if kept:
+            print(f"[INSTALL] Preserved existing user state: {', '.join(sorted(kept))}")
+        cumulative += weight
+        self._set_progress(cumulative)
+        self._mark_step(step_idx)
+
+        # ── Step 2: Secure agent environments (PyInstaller fix) ──────
+        step_idx = 2
+        self._activate_step(step_idx)
+        self._set_progress(cumulative, "Securing agent environments…")
+        self._patch_agent_environments(os.path.join(target, "Tlamatini"))
+        cumulative += self.STEPS[step_idx][1]
+        self._set_progress(cumulative)
+        self._mark_step(step_idx)
+
+        # ── Step 3: write CreateShortcut.json ────────────────────
+        step_idx = 3
+        self._activate_step(step_idx)
+        self._set_progress(cumulative, "Writing configuration…")
+        config_data = {"InstallDir": target.replace("/", "\\")}
+        config_path = os.path.join(target, "CreateShortcut.json")
+        with open(config_path, "w", encoding="utf-8") as f:
+            json.dump(config_data, f, indent=4)
+        cumulative += self.STEPS[step_idx][1]
+        self._set_progress(cumulative)
+        self._mark_step(step_idx)
+
+        # ── Step 4: copy Uninstaller.exe + register in "Installed apps" ──
+        step_idx = 4
+        self._activate_step(step_idx)
+        self._set_progress(cumulative, "Copying uninstaller…")
+        self._copy_uninstaller(target)
+        # Now that Uninstaller.exe is in place, advertise Tlamatini in the
+        # Windows Settings ▸ Apps ▸ Installed apps (and legacy Programs and
+        # Features) list with a working Uninstall button. Per-user (HKCU),
+        # non-fatal: a registry hiccup must not fail the whole install.
+        self._set_progress(cumulative, "Registering with Windows…")
+        self._register_programs_entry(target)
+        # Companion-app discovery is registered INDEPENDENTLY of the ARP entry
+        # above (REQ-S2-INSTALL-001/002/003): a valid installed agents catalog
+        # must be discoverable by FlowPills even when Uninstaller.exe is missing
+        # or the ARP registration raised. Own fail-open boundary inside.
+        self._register_companion_discovery(target)
+        cumulative += self.STEPS[step_idx][1]
+        self._set_progress(cumulative)
+        self._mark_step(step_idx)
+
+        # ── Step 5: run CreateShortcut.ps1 ───────────────────────
+        step_idx = 5
+        self._activate_step(step_idx)
+        self._set_progress(cumulative, "Creating shortcuts…")
+        self._run_ps1("CreateShortcut.ps1", target)
+        cumulative += self.STEPS[step_idx][1]
+        self._set_progress(cumulative)
+        self._mark_step(step_idx)
+
+        # ── Step 6: register both flow formats ─────────────────────────
+        step_idx = 6
+        self._activate_step(step_idx)
+        self._set_progress(cumulative, "Registering .flw and .fpmt file associations…")
+        self._run_ps1("register_flw.ps1", target)
+        self._run_ps1("register_fpmt.ps1", target)
+        cumulative += self.STEPS[step_idx][1]
+        self._set_progress(cumulative)
+        self._mark_step(step_idx)
+
+        # ── Step 7: Restart Explorer ──────────────────────────────
+        step_idx = 7
+        self._activate_step(step_idx)
+        self._set_progress(cumulative, "Refreshing Windows Desktop…")
+        self._restart_explorer()
+        cumulative += self.STEPS[step_idx][1]
+        self._set_progress(1.0, "Installation complete!")
+        self._mark_step(step_idx)
+
+        # ── Done ─────────────────────────────────────────────────
+
 
     @staticmethod
     def _get_clean_env():
@@ -745,26 +595,10 @@ class FancyInstaller:
 
     # ─── PS1 helper ───────────────────────────────────────────────────
     def _run_ps1(self, filename: str, target_dir: str):
-        """Run a PS1 script that was just extracted into target_dir."""
         dst = os.path.join(target_dir, filename)
         if not os.path.isfile(dst):
-             raise FileNotFoundError(f"{filename} not found at {dst}")
-
-        clean_env = self._get_clean_env()
-        # close_fds=True  prevents the child from inheriting any open handles
-        #                 (e.g. vcruntime140.dll loaded by the PyInstaller bootloader).
-        # CREATE_NO_WINDOW avoids flashing a console window during install.
-        result = subprocess.run(
-            ["powershell", "-ExecutionPolicy", "Bypass", "-NoProfile", "-File", dst],
-            cwd=target_dir,
-            env=clean_env,
-            capture_output=True, text=True, timeout=120,
-            close_fds=True,
-            creationflags=subprocess.CREATE_NO_WINDOW,
-        )
-        if result.returncode != 0:
-            detail = result.stderr.strip() or result.stdout.strip()
-            raise RuntimeError(f"{filename} failed (exit {result.returncode}):\n{detail}")
+            raise FileNotFoundError(f"{filename} not found at {dst}")
+        return run_powershell(dst, env=self._get_clean_env())
 
     # ─── Uninstaller copy helper ─────────────────────────────────────
     @staticmethod
@@ -781,8 +615,10 @@ class FancyInstaller:
             dst = os.path.join(target_dir, "Uninstaller.exe")
             shutil.copy2(src, dst)
         else:
-            # Non-fatal: older release packages may not include it
-            print(f"WARNING: Uninstaller.exe not found at {src} — skipping copy.")
+            raise FileNotFoundError(
+                f"Uninstaller.exe is missing from the release folder: {src}. "
+                "Restore the complete release folder and retry."
+            )
 
     # ─── "Installed apps" (Add/Remove Programs) registration ─────────
     def _register_programs_entry(self, target_dir: str):
@@ -841,7 +677,11 @@ class FancyInstaller:
                 winreg.SetValueEx(key, "DisplayIcon", 0, winreg.REG_SZ, display_icon)
                 winreg.SetValueEx(key, "InstallLocation", 0, winreg.REG_SZ, install_dir)
                 winreg.SetValueEx(key, "UninstallString", 0, winreg.REG_SZ, quoted_uninstaller)
-                winreg.SetValueEx(key, "QuietUninstallString", 0, winreg.REG_SZ, quoted_uninstaller)
+                # There is no silent-uninstall mode; do not advertise one.
+                try:
+                    winreg.DeleteValue(key, "QuietUninstallString")
+                except FileNotFoundError:
+                    pass
                 winreg.SetValueEx(key, "URLInfoAbout", 0, winreg.REG_SZ,
                                   "https://github.com/XAIHT/Tlamatini")
                 winreg.SetValueEx(key, "NoModify", 0, winreg.REG_DWORD, 1)
@@ -851,6 +691,8 @@ class FancyInstaller:
             print(f"Registered Tlamatini in Installed apps (HKCU): {key_path}")
         except Exception as e:
             print(f"WARNING: Could not register Installed-apps entry: {e}")
+            self.setup_warnings = [*getattr(self, "setup_warnings", []),
+                                   f"Windows Installed apps registration needs attention: {e}"]
 
     def _register_companion_discovery(self, target_dir: str):
         """Write the HKCU companion-app discovery key (Software\\XAIHT\\Tlamatini) so
@@ -897,80 +739,17 @@ class FancyInstaller:
             print(f"Registered companion-app discovery (HKCU): {disc_key}")
         except Exception as de:
             print(f"WARNING: Could not register companion-app discovery: {de}")
+            self.setup_warnings = [*getattr(self, "setup_warnings", []),
+                                   f"Companion app discovery needs attention: {de}"]
 
     # ─── Desktop refresh helper ──────────────────────────────────────
     @staticmethod
     def _restart_explorer():
-        """Refresh the Windows desktop to pick up new shortcuts and file associations.
-
-        DESIGN — non-destructive refresh via Win32 API
-        ───────────────────────────────────────────────
-        Previous versions killed explorer.exe and tried to restart it via a
-        detached cmd.exe script.  This was fragile: the ``timeout`` command
-        does not work reliably in non-interactive / no-window processes, so
-        explorer would die and never come back — leaving the user with a
-        blank desktop.
-
-        The correct approach is to **never kill explorer**.  Instead we:
-          1. Clear stale icon-cache files (best-effort).
-          2. Call ``SHChangeNotify(SHCNE_ASSOCCHANGED)`` — this is the
-             official Windows API to tell the shell that file-type
-             associations or icon overlays have changed.
-          3. Broadcast ``WM_SETTINGCHANGE`` so every top-level window
-             (including Explorer) re-reads environment variables and
-             registry settings.
-
-        Together these two calls make Explorer refresh its icon overlay,
-        file-association, and shortcut caches — without any restart.
-        """
-
-        # ── 1. Best-effort icon-cache cleanup ────────────────────────
+        """Invalidate associations without deleting caches or waiting on every app."""
         try:
-            local_appdata = os.environ.get("LOCALAPPDATA", "")
-            if local_appdata:
-                icon_db = os.path.join(local_appdata, "IconCache.db")
-                if os.path.exists(icon_db):
-                    os.remove(icon_db)
-                explorer_cache = os.path.join(
-                    local_appdata, "Microsoft", "Windows", "Explorer"
-                )
-                if os.path.exists(explorer_cache):
-                    for f in os.listdir(explorer_cache):
-                        if f.startswith("iconcache"):
-                            try:
-                                os.remove(os.path.join(explorer_cache, f))
-                            except Exception:
-                                pass
-        except Exception:
-            pass
-
-        # ── 2. SHChangeNotify — tell the shell about association changes ─
-        try:
-            SHCNE_ASSOCCHANGED = 0x08000000
-            SHCNF_IDLIST       = 0x0000
-            ctypes.windll.shell32.SHChangeNotify(
-                SHCNE_ASSOCCHANGED, SHCNF_IDLIST, None, None,
-            )
-        except Exception:
-            pass
-
-        # ── 3. Broadcast WM_SETTINGCHANGE to all top-level windows ───
-        try:
-            HWND_BROADCAST   = 0xFFFF
-            WM_SETTINGCHANGE = 0x001A
-            SMTO_ABORTIFHUNG = 0x0002
-            result = ctypes.c_long(0)
-            ctypes.windll.user32.SendMessageTimeoutW(
-                HWND_BROADCAST,
-                WM_SETTINGCHANGE,
-                0,
-                "Environment",
-                SMTO_ABORTIFHUNG,
-                5000,           # 5-second timeout per window
-                ctypes.byref(result),
-            )
-        except Exception:
-            pass
+            ctypes.windll.shell32.SHChangeNotify(0x08000000, 0, None, None)
+        except OSError as exc:
+            print(f"WARNING: Desktop refresh failed: {exc}")
 
     # ─── Environment Patching helper ──────────────────────────────────
     def _patch_agent_environments(self, tlamatini_dir: str):
@@ -1015,30 +794,22 @@ class FancyInstaller:
 
     # ─── Completion dialogs ───────────────────────────────────────────
     def _show_success(self, target: str):
-        self.step_label.config(text="✓  Installation complete!", fg=SUCCESS)
-        messagebox.showinfo(
-            "Installation Complete",
-            f"Tlamatini was installed successfully!\n\n"
-            f"Location: {target}\n\n"
-            "Shortcuts have been created on your Desktop\n"
-            "and .flw and .fpmt files are now associated with Tlamatini.",
-        )
-        self.root.destroy()
+        self._installing = False
+        self.ui.finish(success=True, target=target, detail=(
+            "Tlamatini is installed.\n\nDesktop shortcuts are ready.\n"
+            ".flw and .fpmt flow files are now associated with Tlamatini."
+            + ("\n\n" + self.setup_notice if getattr(self, "setup_notice", "") else "")
+        ))
 
     def _show_error(self, detail: str):
         self._installing = False
-        self.install_btn.config(state="normal")
-        self.browse_btn.config(state="normal")
-        self.path_entry.config(state="normal")
-        self.step_label.config(text="✗  Installation failed", fg=ERROR)
-        messagebox.showerror(
-            "Installation Error",
-            f"An error occurred during installation:\n\n{detail}",
-        )
+        self.ui.finish(success=False, detail=detail)
 
 
 # ─── Entry point ──────────────────────────────────────────────────────────────
 if __name__ == "__main__":
+    from setup_logging import configure
+    configure("installation")
     # ── Layer 1: reset DLL search path BEFORE anything else ──────────
     # This prevents child processes from discovering vcruntime140*.dll
     # inside PyInstaller's _internal/ directory.
@@ -1047,8 +818,9 @@ if __name__ == "__main__":
     # Tell the PyInstaller bootloader splash that Python is now running.
     # This is a no-op when the script is run directly (not from a bundle).
     try:
-        import pyi_splash
-        pyi_splash.update_text("Loading installer…")
+        if os.environ.get("_PYI_SPLASH_IPC"):
+            import pyi_splash
+            pyi_splash.update_text("Loading installer…")
     except Exception:
         pass
 
@@ -1063,8 +835,9 @@ if __name__ == "__main__":
     # Dismiss the splash and reveal the installer window in one beat so there
     # is no visible gap between the two.
     try:
-        import pyi_splash
-        pyi_splash.close()
+        if os.environ.get("_PYI_SPLASH_IPC"):
+            import pyi_splash
+            pyi_splash.close()
     except Exception:
         pass
 

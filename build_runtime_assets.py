@@ -23,6 +23,11 @@ MAX_RELEASE_ZIP_BYTES = 1_990_000_000  # decimal GB, not GiB; user release ceili
 STATIC_SOURCE = "Tlamatini/agent/static"
 PDFJS = "agent/vendor/pdfjs/"
 REQUIRED_STATIC = (
+    "agent/js/agent_page_markdown.js", "agent/css/markdown_canvas.css",
+    "agent/vendor/frontend/marked/lib/marked.umd.js",
+    "agent/vendor/frontend/marked/LICENSE",
+    "agent/vendor/frontend/dompurify/dist/purify.min.js",
+    "agent/vendor/frontend/dompurify/LICENSE",
     'agent/css/admin_theme.css',
     "agent/css/ui_tokens.css", "agent/css/ui_shell.css", "agent/css/ui_splitters.css",
     "agent/css/entry_pages.css", "agent/js/ui_splitters.js",

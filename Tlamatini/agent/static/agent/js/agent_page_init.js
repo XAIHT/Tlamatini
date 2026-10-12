@@ -595,7 +595,7 @@ window.onload = () => {
 
             const callback2SetFileAsContext = () => {
                 const type = "set-canvas-as-context";
-                const codeRegex = /<<< ([\w.-]+) >>>/s;
+                const codeRegex = /<<< (.+?) >>>/s;
                 const result = filenameSpan.textContent.match(codeRegex);
                 const content = textEditorCode.textContent;
                 const tokensNumber = genericTokenCounting(content);

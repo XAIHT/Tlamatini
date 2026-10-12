@@ -127,6 +127,7 @@ KEEP_DIR_PATHS = {
     "Tlamatini/agent/static/agent/vendor/pdfjs/build",
     "Tlamatini/agent/static/agent/vendor/frontend/bootstrap/dist",
     "Tlamatini/agent/static/agent/vendor/frontend/jquery/dist",
+    "Tlamatini/agent/static/agent/vendor/frontend/dompurify/dist",
 }
 
 # File EXTENSIONS skipped everywhere (lowercase, with dot).
@@ -402,6 +403,12 @@ REQUIRED_SNAPSHOT_FILES = (
     "pyinstaller_hooks/hook-pymupdf.py",
     "scripts/vendor_pdfjs.py",
     "scripts/vendor_frontend.py",
+    "Tlamatini/agent/static/agent/js/agent_page_markdown.js",
+    "Tlamatini/agent/static/agent/css/markdown_canvas.css",
+    "Tlamatini/agent/static/agent/vendor/frontend/marked/lib/marked.umd.js",
+    "Tlamatini/agent/static/agent/vendor/frontend/marked/LICENSE",
+    "Tlamatini/agent/static/agent/vendor/frontend/dompurify/dist/purify.min.js",
+    "Tlamatini/agent/static/agent/vendor/frontend/dompurify/LICENSE",
     "Tlamatini/agent/static/agent/vendor/frontend/manifest.json",
     "Tlamatini/agent/static/agent/vendor/frontend/bootstrap/dist/css/bootstrap.min.css",
     "Tlamatini/agent/static/agent/vendor/frontend/bootstrap/dist/js/bootstrap.bundle.min.js",

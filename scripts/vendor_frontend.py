@@ -1,7 +1,7 @@
 # Tlamatini Author Banner — Angela López Mendoza
 """Reproduce local UI dependencies from version/integrity-pinned npm archives.
 
-Run explicitly with Python; normal builds and the app do not download these.
+Run from a verified visible foreground console; normal builds and the app do not download these.
 Upstream licenses and per-file SHA-256 receipts are retained with the assets.
 """
 
@@ -17,6 +17,12 @@ from urllib.request import urlopen
 
 DESTINATION = Path(__file__).resolve().parents[1] / "Tlamatini/agent/static/agent/vendor/frontend"
 PACKAGES = (
+    ("marked", "18.1.0", "https://registry.npmjs.org/marked/-/marked-18.1.0.tgz",
+     "PamYXWWWg2nboG3oX5Ffzpy3EFZROqZJK9hSlMmUnekp7TxPs5DcT95vwd46m73/exfKCRVMtgXoPMI4FEJL6w==",
+     ("lib/marked.umd.js", "LICENSE")),
+    ("dompurify", "3.4.16", "https://registry.npmjs.org/dompurify/-/dompurify-3.4.16.tgz",
+     "sqo+pNp3qRhCIpbgRi1y8Tgk27Bo2Ry7w0dC1NBeNTdZChWjz9Xb/KOoZbRP/R6pQZ80Qw8YhXw13hWWBbMRnQ==",
+     ("dist/purify.min.js", "dist/purify.min.js.map", "LICENSE")),
     ("bootstrap", "5.3.3", "https://registry.npmjs.org/bootstrap/-/bootstrap-5.3.3.tgz",
      "8HLCdWgyoMguSO9o+aH+iuZ+aht+mzW0u3HIMzVu7Srrpv7EBBxTnrFlSCskwdY1+EOFQSm7uMJhNQHkdPcmjg==",
      ("dist/css/bootstrap.min.css*", "dist/js/bootstrap.bundle.min.js*", "LICENSE")),

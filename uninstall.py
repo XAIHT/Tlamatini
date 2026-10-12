@@ -29,6 +29,9 @@ import sys
 import threading
 import tempfile
 import time
+from setup_wizard import WizardView, SetupDialog, button as wizard_button
+from setup_recovery import Recovery, setup_lock, removal_files, removal_directories
+from setup_windows import run_powershell
 import tkinter as tk
 from ctypes import wintypes
 from tkinter import filedialog, messagebox, ttk
@@ -431,15 +434,6 @@ class FancyUninstaller:
         self.version = resolve_version()
         title = f"Tlamatini Uninstaller v{self.version}" if self.version else "Tlamatini Uninstaller"
         self.root.title(title)
-        self.root.configure(bg=BG_DARK)
-        self.root.resizable(False, False)
-
-        # Center window 680×540 on screen
-        w, h = 680, 540
-        sx = (self.root.winfo_screenwidth()  - w) // 2
-        sy = (self.root.winfo_screenheight() - h) // 2
-        self.root.geometry(f"{w}x{h}+{sx}+{sy}")
-
         self.install_path = tk.StringVar(value=self._detect_install_path())
         self._progress_value = 0.0
         self._uninstalling = False
@@ -511,217 +505,29 @@ class FancyUninstaller:
 
     # ─── UI Construction ─────────────────────────────────────────────
     def _build_ui(self):
-        # ── Header ───────────────────────────────────────────────────
-        hdr = tk.Frame(self.root, bg=BG_CARD, height=90)
-        hdr.pack(fill="x")
-        hdr.pack_propagate(False)
-
-        # Red accent line at top (danger theme)
-        tk.Frame(hdr, bg=ERROR, height=3).pack(fill="x")
-
-        # Layout: [gear + title-block | spring | version-badge].  fill="both"
-        # + expand=True makes the spring push the badge to the right edge.
-        hdr_inner = tk.Frame(hdr, bg=BG_CARD)
-        hdr_inner.pack(fill="both", expand=True)
-
-        tk.Label(
-            hdr_inner, text="⚙", font=(FONT_FAMILY, 28),
-            bg=BG_CARD, fg=ERROR,
-        ).pack(side="left", padx=(20, 10), pady=(8, 0))
-
-        title_block = tk.Frame(hdr_inner, bg=BG_CARD)
-        title_block.pack(side="left", pady=(14, 0))
-        tk.Label(
-            title_block, text="Tlamatini", font=(FONT_FAMILY, 20, "bold"),
-            bg=BG_CARD, fg=FG_PRIMARY,
-        ).pack(anchor="w")
-        tk.Label(
-            title_block, text="Uninstallation Wizard", font=(FONT_FAMILY, 10),
-            bg=BG_CARD, fg=FG_SECONDARY,
-        ).pack(anchor="w")
-
-        # ── Version badge (pill, danger theme) ───────────────────────
-        # Border colour matches the top accent line (red) so the whole
-        # header still reads as a coherent danger-themed unit.
-        self._build_version_badge(hdr_inner)
-
-        # ── Body card ────────────────────────────────────────────────
-        body = tk.Frame(self.root, bg=BG_DARK)
-        body.pack(fill="both", expand=True, padx=30, pady=20)
-
-        card = tk.Frame(body, bg=BG_PANEL, highlightbackground=BORDER_COLOR,
-                        highlightthickness=1)
-        card.pack(fill="both", expand=True)
-
-        inner = tk.Frame(card, bg=BG_PANEL)
-        inner.pack(fill="both", expand=True, padx=24, pady=20)
-
-        # ── Path selection ───────────────────────────────────────────
-        tk.Label(
-            inner, text="INSTALLATION DIRECTORY",
-            font=(FONT_FAMILY, 9, "bold"), bg=BG_PANEL, fg=FG_SECONDARY,
-        ).pack(anchor="w")
-
-        tk.Label(
-            inner,
-            text="Select the Tlamatini installation directory to uninstall.",
-            font=(FONT_FAMILY, 8), bg=BG_PANEL, fg=FG_DIM,
-        ).pack(anchor="w", pady=(0, 8))
-
-        path_row = tk.Frame(inner, bg=BG_PANEL)
-        path_row.pack(fill="x", pady=(0, 6))
-
-        self.path_entry = tk.Entry(
-            path_row, textvariable=self.install_path,
-            font=(FONT_FAMILY, 11), bg=BG_INPUT, fg=FG_PRIMARY,
-            insertbackground=ACCENT, relief="flat", bd=0,
-            highlightthickness=1, highlightbackground=BORDER_COLOR,
-            highlightcolor=ACCENT,
+        self.ui = WizardView(
+            self.root, removal=True, version=self.version,
+            path=self.install_path, steps=self.STEPS,
+            start=self._start_uninstall, browse=self._browse,
+            preserved=PRESERVED_WHEN_NOT_EMPTY,
         )
-        self.path_entry.pack(side="left", fill="x", expand=True, ipady=6, padx=(0, 8))
+        # Keep the worker and existing integrations on their public UI handles.
+        self.path_entry = self.ui.path_entry
+        self.browse_btn = self.ui.browse_btn
+        self.uninstall_btn = self.ui.primary_btn
+        self.cancel_btn = self.ui.cancel_btn
+        self.button_row = self.ui.button_row
+        self.progress_frame = self.ui.progress_frame
+        self.step_label = self.ui.step_label
+        self.progress_bar = self.ui.progress_bar
+        self.pct_label = self.ui.pct_label
+        self.check_labels = self.ui.check_labels
+        self.target_label = self.ui.target_label
 
-        self.browse_btn = self._make_button(path_row, "Browse", self._browse,
-                                            width=10, small=True)
-        self.browse_btn.pack(side="right")
-
-        # ── Warning label ────────────────────────────────────────────
-        tk.Label(
-            inner,
-            text="⚠  agents/ is always preserved.  application/, applications/,\n"
-                 "     content_generated/, context_files/, doc_generated/ and Templates/\n"
-                 "     are preserved too when they hold content.  Everything else is removed.",
-            font=(FONT_FAMILY, 9), bg=BG_PANEL, fg=WARNING, anchor="w",
-            justify="left",
-        ).pack(fill="x", pady=(4, 10))
-
-        # ── Separator ────────────────────────────────────────────────
-        tk.Frame(inner, bg=BORDER_COLOR, height=1).pack(fill="x", pady=6)
-
-        # ── Progress section (hidden until uninstall starts) ─────────
-        self.progress_frame = tk.Frame(inner, bg=BG_PANEL)
-
-        self.step_label = tk.Label(
-            self.progress_frame, text="Waiting…",
-            font=(FONT_FAMILY, 10), bg=BG_PANEL, fg=FG_PRIMARY, anchor="w",
-        )
-        self.step_label.pack(fill="x", pady=(6, 4))
-
-        style = ttk.Style()
-        style.theme_use("clam")
-        style.configure(
-            "Danger.Horizontal.TProgressbar",
-            troughcolor=PROGRESS_BG, background=PROGRESS_FG,
-            darkcolor="#cc0000", lightcolor=ERROR,
-            bordercolor=BG_PANEL, thickness=18,
-        )
-
-        self.progress_bar = ttk.Progressbar(
-            self.progress_frame, style="Danger.Horizontal.TProgressbar",
-            orient="horizontal", length=400, mode="determinate",
-            maximum=100,
-        )
-        self.progress_bar.pack(fill="x", pady=(0, 2))
-
-        self.pct_label = tk.Label(
-            self.progress_frame, text="0 %",
-            font=(FONT_FAMILY, 9, "bold"), bg=BG_PANEL, fg=ERROR, anchor="e",
-        )
-        self.pct_label.pack(fill="x")
-
-        # ── Step checklist ───────────────────────────────────────────
-        self.checklist_frame = tk.Frame(self.progress_frame, bg=BG_PANEL)
-        self.checklist_frame.pack(fill="x", pady=(6, 0))
-        self.check_labels: list[tk.Label] = []
-
-        for desc, _ in self.STEPS:
-            lbl = tk.Label(
-                self.checklist_frame,
-                text=f"   ○  {desc}",
-                font=(FONT_FAMILY, 9), bg=BG_PANEL, fg=FG_DIM, anchor="w",
-            )
-            lbl.pack(fill="x")
-            self.check_labels.append(lbl)
-
-        # ── Buttons ──────────────────────────────────────────────────
-        btn_row = tk.Frame(inner, bg=BG_PANEL)
-        btn_row.pack(side="bottom", fill="x", pady=(10, 0))
-
-        self.cancel_btn = self._make_button(btn_row, "Cancel", self.root.quit,
-                                            cancel=True)
-        self.cancel_btn.pack(side="right", padx=(8, 0))
-
-        self.uninstall_btn = self._make_button(btn_row, "⬡  Uninstall",
-                                               self._start_uninstall,
-                                               danger=True)
-        self.uninstall_btn.pack(side="right")
-
-        # Pressing Enter/Return after typing the installation directory triggers
-        # the SAME directory verification + uninstallation as clicking Uninstall.
-        # Bound on the path entry (focus is in the field after typing) AND on the
-        # window (so Enter works even if focus is elsewhere).
-        self.path_entry.bind("<Return>", self._on_enter_key)
-        self.root.bind("<Return>", self._on_enter_key)
-
-    def _build_version_badge(self, parent: tk.Frame):
-        """Render the version pill in the header, or nothing if unresolved.
-
-        ⚠ THIS METHOD BUILDS THE BADGE AND NOTHING ELSE.  It used to carry the
-        whole body of the window — the path field, the warning, the progress
-        section and both buttons — BELOW its own ``if not self.version: return``,
-        so an uninstaller whose version could not be resolved would have painted
-        a header over an empty card: no path box, no Uninstall, no Cancel, no way
-        to do anything at all.  It never fired only because the version always
-        resolves (frozen reads the EXE's VERSIONINFO, source reads the git tag) —
-        a latent trap, not a safe design.  The window's contents belong to
-        ``_build_ui``; keep them there.
-        """
-        if not self.version:
-            return
-
-        # Outer 1-px frame = pill border (red, matches the danger accent).
-        badge_outer = tk.Frame(
-            parent, bg=ERROR,
-            highlightthickness=0, bd=0,
-        )
-        badge_outer.pack(side="right", padx=(0, 22), pady=(20, 0))
-
-        # Inner dark fill with 1-px reveal forms the border.
-        badge_inner = tk.Frame(badge_outer, bg=BG_INPUT)
-        badge_inner.pack(padx=1, pady=1)
-
-        tk.Label(
-            badge_inner, text="VERSION",
-            font=(FONT_FAMILY, 7, "bold"),
-            bg=BG_INPUT, fg=FG_SECONDARY,
-        ).pack(padx=14, pady=(5, 0))
-
-        tk.Label(
-            badge_inner, text=f"v{self.version}",
-            font=(FONT_FAMILY, 12, "bold"),
-            bg=BG_INPUT, fg=ERROR,
-        ).pack(padx=14, pady=(0, 5))
-
-    # ─── Button factory with hover effects ───────────────────────────
     def _make_button(self, parent, text, command, width=14, small=False,
                      cancel=False, danger=False):
-        if cancel:
-            bg, hv, fg = BTN_CANCEL_BG, BTN_CANCEL_HV, FG_SECONDARY
-        elif danger:
-            bg, hv, fg = DANGER_BG, DANGER_HV, FG_PRIMARY
-        else:
-            bg, hv, fg = BTN_BG, BTN_HOVER, FG_PRIMARY
-        fnt = (FONT_FAMILY, 9) if small else (FONT_FAMILY, 10, "bold")
-
-        btn = tk.Button(
-            parent, text=text, command=command,
-            font=fnt, bg=bg, fg=fg,
-            activebackground=hv, activeforeground=FG_PRIMARY,
-            relief="flat", bd=0, cursor="hand2",
-            padx=14, pady=6, width=width,
-        )
-        btn.bind("<Enter>", lambda e, b=btn, c=hv: b.config(bg=c))
-        btn.bind("<Leave>", lambda e, b=btn, c=bg: b.config(bg=c))
-        return btn
+        return wizard_button(parent, text, command, primary=not cancel,
+                             danger=danger, width=width)
 
     # ─── Path helper ─────────────────────────────────────────────────
     def _browse(self):
@@ -774,7 +580,7 @@ class FancyUninstaller:
         # Check if it looks like a Tlamatini installation. Arbitrary directories
         # are never accepted, even if the user clicks through a warning.
         markers = ["Tlamatini.exe", "Tlamatini.ps1", "CreateShortcut.json"]
-        found = any(os.path.isfile(os.path.join(raw, m)) for m in markers)
+        found = any(os.path.isfile(os.path.join(raw, m)) for m in markers) or Recovery.pending(raw)
         if not found:
             messagebox.showerror(
                 "Not a Tlamatini installation",
@@ -804,12 +610,8 @@ class FancyUninstaller:
         ))
 
     # ─── Uninstallation thread ───────────────────────────────────────
-    def _on_enter_key(self, _event=None):
-        """Enter/Return = verify the directory + start the uninstallation (same as
-        clicking Uninstall). Returns 'break' so the keypress doesn't bubble to the
-        window-level binding and fire twice; _start_uninstall is re-entry-guarded."""
-        self._start_uninstall()
-        return "break"
+    def _on_enter_key(self, event=None):
+        return self.ui._enter(event)
 
     # ─── Still-running gate (modal — Retry / Exit, nothing else) ─────
     def _ensure_tlamatini_not_running(self, target: str) -> bool:
@@ -848,64 +650,16 @@ class FancyUninstaller:
         self._gate_attempts = 0
         outcome = {"proceed": False}
 
-        dlg = tk.Toplevel(self.root)
-        dlg.title("Tlamatini is still running")
-        dlg.configure(bg=BG_DARK)
-        dlg.resizable(False, False)
-        dlg.transient(self.root)
-
-        w, h = 620, 420
-        sx = (dlg.winfo_screenwidth() - w) // 2
-        sy = (dlg.winfo_screenheight() - h) // 2
-        dlg.geometry(f"{w}x{h}+{sx}+{sy}")
-
-        hdr = tk.Frame(dlg, bg=BG_CARD)
-        hdr.pack(fill="x")
-        tk.Frame(hdr, bg=ERROR, height=3).pack(fill="x")
-        tk.Label(
-            hdr, text="⛔  Close Tlamatini before uninstalling",
-            font=(FONT_FAMILY, 13, "bold"), bg=BG_CARD, fg=ERROR, anchor="w",
-        ).pack(fill="x", padx=20, pady=12)
-
-        body = tk.Frame(dlg, bg=BG_PANEL, highlightbackground=BORDER_COLOR,
-                        highlightthickness=1)
-        body.pack(fill="both", expand=True, padx=16, pady=14)
-
-        headline = tk.StringVar()
-        detail = tk.StringVar()
-
-        self.gate_headline_var = headline
-        self.gate_detail_var = detail
-
-        tk.Label(
-            body, textvariable=headline, font=(FONT_FAMILY, 10, "bold"),
-            bg=BG_PANEL, fg=FG_PRIMARY, anchor="w", justify="left",
-            wraplength=w - 80,
-        ).pack(fill="x", padx=18, pady=(16, 6))
-
-        tk.Label(
-            body,
-            text=("Please close it first — preferably with Ctrl+C in the "
-                  "Tlamatini console window, which is what lets it shut its "
-                  "agents down cleanly.\n\nThen press Retry."),
-            font=(FONT_FAMILY, 9), bg=BG_PANEL, fg=FG_SECONDARY,
-            anchor="w", justify="left", wraplength=w - 80,
-        ).pack(fill="x", padx=18, pady=(0, 10))
-
-        tk.Label(
-            body, text="DETECTED", font=(FONT_FAMILY, 8, "bold"),
-            bg=BG_PANEL, fg=FG_DIM, anchor="w",
-        ).pack(fill="x", padx=18)
-
-        detail_lbl = tk.Label(
-            body, textvariable=detail, font=("Consolas", 9),
-            bg=BG_INPUT, fg=WARNING, anchor="nw", justify="left",
-            wraplength=w - 90,
+        dialog = SetupDialog(
+            self.root, "Tlamatini is still running", "Close Tlamatini to continue.",
+            "Close the main application normally so it can finish its work. "
+            "In the Tlamatini console, Ctrl+C requests a clean shutdown. Then select Retry.",
         )
-        detail_lbl.pack(fill="both", expand=True, padx=18, pady=(4, 12))
-
-        btn_row = tk.Frame(body, bg=BG_PANEL)
-        btn_row.pack(fill="x", padx=18, pady=(0, 14))
+        dlg = dialog.window
+        headline, detail = dialog.headline, dialog.detail
+        self.gate_headline_var, self.gate_detail_var = headline, detail
+        detail_lbl = dialog.details
+        btn_row = dialog.actions
 
         def _render(found: list[dict]):
             if self._gate_attempts:
@@ -972,7 +726,7 @@ class FancyUninstaller:
             pass
 
     def _start_uninstall(self):
-        if self._uninstalling:
+        if self._uninstalling or self.ui.state == "complete":
             return
 
         target = self._validate_path()
@@ -990,13 +744,7 @@ class FancyUninstaller:
 
         self.preserved_dirs = []
         self._uninstalling = True
-        self.uninstall_btn.config(state="disabled")
-        self.browse_btn.config(state="disabled")
-        self.path_entry.config(state="disabled")
-        self.progress_frame.pack(
-            fill="x",
-            before=self.progress_frame.master.winfo_children()[-1],
-        )
+        self.ui.begin(target)
 
         t = threading.Thread(target=self._run_uninstall, args=(target,),
                              daemon=True)
@@ -1004,113 +752,142 @@ class FancyUninstaller:
 
     # ── Progress helpers (always marshal to main thread) ─────────────
     def _set_progress(self, value: float, status: str | None = None):
+        if getattr(self, "_removal_phase", False):
+            value = .2 + .75 * value
         self._progress_value = value
         self.root.after(0, self._update_progress_ui, value, status)
 
     def _update_progress_ui(self, value: float, status: str | None):
-        pct = min(int(value * 100), 100)
-        self.progress_bar["value"] = pct
-        self.pct_label.config(text=f"{pct} %")
-        if status:
-            self.step_label.config(text=status)
+        self.ui.update_progress(value, status)
 
     def _mark_step(self, idx: int, success: bool = True):
-        color = SUCCESS if success else ERROR
-        icon  = "✓" if success else "✗"
-        desc  = self.STEPS[idx][0]
-        self.root.after(0, lambda: self.check_labels[idx].config(
-            text=f"   {icon}  {desc}", fg=color,
-        ))
+        self.root.after(0, self.ui.mark_step, idx, success)
 
     def _activate_step(self, idx: int):
-        desc = self.STEPS[idx][0]
-        self.root.after(0, lambda: self.check_labels[idx].config(
-            text=f"   ▸  {desc}", fg=ACCENT,
-        ))
+        self.root.after(0, self.ui.activate_step, idx)
 
     # ─── Main uninstall pipeline (runs in background thread) ─────────
     def _run_uninstall(self, target: str):
+        from setup_logging import registry_context
+        registry_context("uninstallation worker start")
+        recovery = None
+        self._removal_phase = False
         try:
-            cumulative = 0.0
-            self.removal_target = target
-
-            self._set_progress(0.0, "Stopping remaining agent workers…")
-            self.cleanup_report = stop_owned_workers(target)
-
-            # ── Step 0: remove shortcuts ─────────────────────────────
-            step_idx = 0
-            self._activate_step(step_idx)
-            self._set_progress(0.0, "Removing shortcuts…")
-            self._run_ps1("RemoveShortcut.ps1", target)
-            cumulative += self.STEPS[step_idx][1]
-            self._set_progress(cumulative)
-            self._mark_step(step_idx)
-
-            # ── Step 1: unregister .flw file association ─────────────
-            step_idx = 1
-            self._activate_step(step_idx)
-            self._set_progress(cumulative, "Unregistering .flw and .fpmt file associations…")
-            self._run_ps1("unregister_flw.ps1", target)
-            self._run_ps1("unregister_fpmt.ps1", target)
-            cumulative += self.STEPS[step_idx][1]
-            self._set_progress(cumulative)
-            self._mark_step(step_idx)
-
-            # ── Step 2: remove application files (preserve agents/) ──
-            step_idx = 2
-            self._activate_step(step_idx)
-            weight = self.STEPS[step_idx][1]
-            self._remove_files(target, cumulative, weight, keep_support=True)
-            cumulative += weight
-            self._set_progress(cumulative)
-            self._mark_step(step_idx)
-
-            # ── Step 3: clean up ─────────────────────────────────────
-            step_idx = 3
-            self._activate_step(step_idx)
-            self._set_progress(cumulative, "Cleaning up…")
-            self._unregister_programs_entry(target)
-            self._remove_uninstall_support(target)
-            self._cleanup_install_dir(target)
-            cumulative += self.STEPS[step_idx][1]
-            self._set_progress(cumulative)
-            self._mark_step(step_idx)
-
-            # ── Step 4: notify the shell without closing Explorer ────
-            step_idx = 4
-            self._activate_step(step_idx)
-            self._set_progress(cumulative, "Refreshing Windows Desktop…")
-            self._restart_explorer()
-            cumulative += self.STEPS[step_idx][1]
-            self._set_progress(1.0, "Uninstallation complete!")
-            self._mark_step(step_idx)
-
-            # ── Done ─────────────────────────────────────────────────
+            with setup_lock():
+                self._set_progress(0, "Stopping remaining agent workers…")
+                self.cleanup_report = stop_owned_workers(target)
+                self._set_progress(0, "Inspecting installed files and preserved content…")
+                recovery = Recovery(
+                    target, lambda message: self._set_progress(getattr(self, "_progress_value", 0), message),
+                    progress=lambda fraction: self._set_progress(.2 * fraction),
+                )
+                recovery.recover_previous()
+                kept = ["agents"] + [name for name in PRESERVED_WHEN_NOT_EMPTY
+                                     if directory_has_content(os.path.join(target, name))]
+                recovery.prepare(removal_files(target, kept),
+                                 restore_directories=removal_directories(target, kept))
+                self._recovery = recovery
+                self._removal_phase = True
+                try:
+                    self._run_uninstall_steps(target)
+                except Exception as exc:
+                    self._removal_phase = False
+                    self._set_progress(0, "Restoring the previous installation…")
+                    # Failed removal must never schedule deletion of restored files.
+                    self.deferred_in_place = []
+                    self.removal_target = ""
+                    try:
+                        recovery.rollback()
+                    except Exception as rollback_error:
+                        raise RuntimeError(f"{exc}\n\n{rollback_error}") from exc
+                    raise RuntimeError(f"{exc}\n\nThe installation files and Windows registrations were restored. You can retry.") from exc
+                self._removal_phase = False
+                self._set_progress(.95, "Finishing recovery cleanup…")
+                self.setup_notice = recovery.commit()
+                temp_dir = os.path.join(target, "Temp")
+                try:
+                    if os.path.isdir(temp_dir) and not os.listdir(temp_dir):
+                        os.rmdir(temp_dir)
+                except OSError as exc:
+                    self.setup_notice += f"\nTemporary-folder cleanup can be retried: {exc}"
+                try:
+                    self._cleanup_install_dir(target)
+                except OSError as exc:
+                    self.setup_notice += f"\nEmpty-folder cleanup can be retried: {exc}"
+            self._set_progress(1, "Uninstallation complete!")
             self.root.after(0, self._show_success, target)
-
         except Exception as exc:
             self.root.after(0, self._show_error, str(exc))
+        finally:
+            self._recovery = None
+            self._removal_phase = False
+
+    def _run_uninstall_steps(self, target: str):
+        cumulative = 0.0
+        self.removal_target = target
+
+        self._set_progress(0.0, "Stopping remaining agent workers…")
+
+        # ── Step 0: remove shortcuts ─────────────────────────────
+        step_idx = 0
+        self._activate_step(step_idx)
+        self._set_progress(0.0, "Removing shortcuts…")
+        self._run_ps1("RemoveShortcut.ps1", target)
+        cumulative += self.STEPS[step_idx][1]
+        self._set_progress(cumulative)
+        self._mark_step(step_idx)
+
+        # ── Step 1: unregister .flw file association ─────────────
+        step_idx = 1
+        self._activate_step(step_idx)
+        self._set_progress(cumulative, "Unregistering .flw and .fpmt file associations…")
+        self._run_ps1("unregister_flw.ps1", target)
+        self._run_ps1("unregister_fpmt.ps1", target)
+        cumulative += self.STEPS[step_idx][1]
+        self._set_progress(cumulative)
+        self._mark_step(step_idx)
+
+        # ── Step 2: remove application files (preserve agents/) ──
+        step_idx = 2
+        self._activate_step(step_idx)
+        weight = self.STEPS[step_idx][1]
+        self._remove_files(target, cumulative, weight, keep_support=True)
+        cumulative += weight
+        self._set_progress(cumulative)
+        self._mark_step(step_idx)
+
+        # ── Step 3: clean up ─────────────────────────────────────
+        step_idx = 3
+        self._activate_step(step_idx)
+        self._set_progress(cumulative, "Cleaning up…")
+        self._unregister_programs_entry(target)
+        self._remove_uninstall_support(target)
+        self._cleanup_install_dir(target)
+        cumulative += self.STEPS[step_idx][1]
+        self._set_progress(cumulative)
+        self._mark_step(step_idx)
+
+        # ── Step 4: notify the shell without closing Explorer ────
+        step_idx = 4
+        self._activate_step(step_idx)
+        self._set_progress(cumulative, "Refreshing Windows Desktop…")
+        self._restart_explorer()
+        cumulative += self.STEPS[step_idx][1]
+        self._set_progress(1.0, "Uninstallation complete!")
+        self._mark_step(step_idx)
+
+        # ── Done ─────────────────────────────────────────────────
+
 
     # ─── PS1 helper ──────────────────────────────────────────────────
     def _run_ps1(self, filename: str, target_dir: str):
-        """Run a PS1 script located in target_dir."""
         dst = os.path.join(target_dir, filename)
         if not os.path.isfile(dst):
-            # Non-fatal: script may not exist in older installations
-            print(f"WARNING: {filename} not found at {dst} — skipping.")
-            return
-
-        result = subprocess.run(
-            ["powershell", "-ExecutionPolicy", "Bypass", "-NoProfile",
-             "-File", dst],
-            cwd=target_dir,
-            capture_output=True, text=True, timeout=120,
-        )
-        if result.returncode != 0:
-            detail = result.stderr.strip() or result.stdout.strip()
-            raise RuntimeError(
-                f"{filename} failed (exit {result.returncode}):\n{detail}",
+            raise FileNotFoundError(
+                f"The removal helper {filename} is missing from {target_dir}. "
+                "Restore the complete installation with its Installer, then retry removal."
             )
+        return run_powershell(dst)
 
     # ─── File removal (preserve agents/) ─────────────────────────────
     @staticmethod
@@ -1179,7 +956,18 @@ class FancyUninstaller:
                 continue
 
             try:
-                if os.path.islink(item_path):
+                if item.lower() == "temp" and getattr(self, "_recovery", None):
+                    # The active recovery copy survives until the whole operation succeeds.
+                    for child in os.scandir(item_path):
+                        if child.name == ".setup-recovery":
+                            continue
+                        if child.is_dir(follow_symlinks=False) and not getattr(os.path, "isjunction", lambda _: False)(child.path):
+                            shutil.rmtree(child.path, onerror=self._on_rmtree_error)
+                        elif child.is_dir(follow_symlinks=False):
+                            os.rmdir(child.path)
+                        else:
+                            os.remove(child.path)
+                elif os.path.islink(item_path):
                     os.unlink(item_path)
                 elif getattr(os.path, "isjunction", lambda _: False)(item_path):
                     os.rmdir(item_path)
@@ -1379,19 +1167,34 @@ class FancyUninstaller:
         removal must be reported as incomplete, rather than silently succeeding."""
         if sys.platform != "win32":
             return
+        from setup_logging import registry_context
+        registry_context("before Installed-apps removal")
         try:
             import winreg
             key_path = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\Tlamatini"
             try:
-                with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path) as key:
-                    owner = winreg.QueryValueEx(key, "InstallLocation")[0]
-                if os.path.normcase(os.path.abspath(owner)) != os.path.normcase(os.path.abspath(target)):
-                    print("Keeping Installed-apps entry owned by another installation.")
-                    return
-                winreg.DeleteKey(winreg.HKEY_CURRENT_USER, key_path)
-                print("Removed Installed-apps entry (HKCU).")
+                key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path)
             except FileNotFoundError:
-                pass  # already absent
+                print("Installed-apps entry is already absent (HKCU).")
+                return
+            with key:
+                try:
+                    owner = winreg.QueryValueEx(key, "InstallLocation")[0]
+                except FileNotFoundError as exc:
+                    raise RuntimeError("The Installed-apps entry has no installation owner. Repair it with the Installer before retrying.") from exc
+            if not isinstance(owner, str) or not os.path.isabs(owner):
+                raise RuntimeError("The Installed-apps entry has an invalid installation owner. Repair it with the Installer before retrying.")
+            if os.path.normcase(os.path.abspath(owner)) != os.path.normcase(os.path.abspath(target)):
+                print("Keeping Installed-apps entry owned by another installation.")
+                return
+            winreg.DeleteKey(winreg.HKEY_CURRENT_USER, key_path)
+            try:
+                remaining = winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path)
+            except FileNotFoundError:
+                print("Removed and verified Installed-apps entry (HKCU).")
+            else:
+                remaining.Close()
+                raise RuntimeError("Windows still reports the Installed-apps entry after its removal. Retry after closing other setup windows.")
         except Exception as e:
             raise RuntimeError(f"Could not remove the Installed-apps entry: {e}") from e
 
@@ -1443,26 +1246,15 @@ class FancyUninstaller:
         return head + "\n" + "\n".join(f"    •  {name}" for name in names)
 
     def _show_success(self, target: str):
-        self.step_label.config(text="✓  Uninstallation complete!", fg=SUCCESS)
-
+        self._uninstalling = False
         agents_dir = os.path.join(target, "agents")
-        agents_note = ""
-        if os.path.isdir(agents_dir):
-            agents_note = (
-                f"\n\nThe agents/ directory was preserved at:\n{agents_dir}"
-            )
-
-        messagebox.showinfo(
-            "Uninstallation Complete",
-            f"Tlamatini has been successfully uninstalled.\n\n"
-            f"Location: {target}"
-            f"{agents_note}"
-            f"{self._preserved_content_note()}"
-            f"{self._deferred_note()}\n\n"
-            "The .flw and .fpmt file associations have been removed\n"
-            "and shortcuts have been deleted.",
-        )
-        self.root.destroy()
+        agents_note = (f"\n\nThe agents/ directory was preserved at:\n{agents_dir}"
+                       if os.path.isdir(agents_dir) else "")
+        self.ui.finish(success=True, target=target, detail=(
+            "Shortcuts and .flw / .fpmt file associations have been removed."
+            + agents_note + self._preserved_content_note() + self._deferred_note()
+            + ("\n\n" + self.setup_notice if getattr(self, "setup_notice", "") else "")
+        ))
 
     def _deferred_note(self) -> str:
         """Say plainly which files are deleted only after this window closes.
@@ -1486,14 +1278,8 @@ class FancyUninstaller:
 
     def _show_error(self, detail: str):
         self._uninstalling = False
-        self.uninstall_btn.config(state="normal")
-        self.browse_btn.config(state="normal")
-        self.path_entry.config(state="normal")
-        self.step_label.config(text="✗  Uninstallation failed", fg=ERROR)
-        messagebox.showerror(
-            "Uninstallation Error",
-            f"An error occurred during uninstallation:\n\n{detail}",
-        )
+        self.ui.finish(success=False, detail=detail)
+
 
 
 def relocate_installed_uninstaller() -> bool:
@@ -1659,6 +1445,8 @@ def cleanup_after_exit(app) -> bool:
 
 # ─── Entry point ─────────────────────────────────────────────────────────────
 if __name__ == "__main__":
+    from setup_logging import configure
+    configure("uninstallation")
     if relocate_installed_uninstaller():
         sys.exit(0)
     sweep_stale_staging(keep=relocated_staging_dir())

@@ -20,6 +20,8 @@ dist/
 !Tlamatini/agent/static/agent/vendor/frontend/bootstrap/dist/**
 !Tlamatini/agent/static/agent/vendor/frontend/jquery/dist/
 !Tlamatini/agent/static/agent/vendor/frontend/jquery/dist/**
+!Tlamatini/agent/static/agent/vendor/frontend/dompurify/dist/
+!Tlamatini/agent/static/agent/vendor/frontend/dompurify/dist/**
 downloads/
 eggs/
 .eggs/

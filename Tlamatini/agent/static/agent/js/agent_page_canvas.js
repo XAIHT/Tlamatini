@@ -105,14 +105,22 @@ function extractExtension(filename) {
 function replaceCodeElement(langClass, content) {
     canvasLoadGeneration++;
     window.TlamatiniPdfCanvas?.close();
+    window.TlamatiniMarkdownCanvas?.close();
     const newTextEditorCode = document.createElement('code');
     newTextEditorCode.classList.add(langClass);
     newTextEditorCode.textContent = content;
     textEditorCode.parentNode.replaceChild(newTextEditorCode, textEditorCode);
     textEditorCode = newTextEditorCode;
     textEditorCode.addEventListener('input', updateLineNumbers);
-    hljs.highlightElement(textEditorCode);
+    // Markdown source stays verbatim; its separate preview highlights code fences.
+    if (langClass !== 'language-markdown') hljs.highlightElement(textEditorCode);
     updateLineNumbers();
+}
+
+function displayCanvasText(filename, content, file = null) {
+    const markdown = /\.(md|markdown)$/i.test(filename);
+    replaceCodeElement(markdown ? 'language-markdown' : getLanguageClass(extractExtension(filename)), content);
+    if (markdown) window.TlamatiniMarkdownCanvas?.open(filename, content, file);
 }
 
 function loadCanvas(filename) { // eslint-disable-line no-unused-vars
@@ -138,11 +146,13 @@ function loadCanvas(filename) { // eslint-disable-line no-unused-vars
 
     const generation = ++canvasLoadGeneration;
     fetch(`/agent/load_canvas/${encodeURIComponent(filename)}/`)
-        .then(response => response.text())
+        .then(response => {
+            if (!response.ok) throw new Error(`Could not load ${filename} (${response.status}).`);
+            return response.text();
+        })
         .then(content => {
             if (generation !== canvasLoadGeneration) return;
-            const extension = extractExtension(filename);
-            replaceCodeElement(getLanguageClass(extension), content);
+            displayCanvasText(filename, content);
             filenameSpan.textContent = `<<< ${filename} >>>`;
             canvasLoaded = true;
             enableCanvasButtons();
@@ -382,6 +392,7 @@ async function openFlowEditor(file) {
 }
 
 async function loadSelectedCanvasFile(file, reOpened = false, callback = null) {
+    if (!openEnabled || !contextEnabled) return;
     if (/\.(flw|fpmt)$/i.test(file.name)) { await openFlowEditor(file); return; }
     // Reopen replaces context directly, avoiding an overlapping background
     // rebuild of empty context while the replacement document loads.
@@ -400,7 +411,7 @@ async function loadSelectedCanvasFile(file, reOpened = false, callback = null) {
         } else {
             const content = await file.text();
             if (generation !== canvasLoadGeneration) return;
-            replaceCodeElement(getLanguageClass(extractExtension(file.name)), content);
+            displayCanvasText(file.name, content, file);
             generation = canvasLoadGeneration;
             filenameSpan.textContent = `<<< ${file.name} >>>`;
             filenameSpan.title = file.name;
@@ -424,15 +435,18 @@ async function loadSelectedCanvasFile(file, reOpened = false, callback = null) {
 // Save As button handler
 saveAsButton.addEventListener('click', () => {
     const pdfFile = window.TlamatiniPdfCanvas?.file;
+    const markdown = window.TlamatiniMarkdownCanvas;
+    const markdownFile = markdown?.file;
     const text = textEditorCode.textContent;
-    if (!pdfFile && (!text || text.trim().length === 0)) {
+    if (!pdfFile && !markdown?.active && (!text || text.trim().length === 0)) {
         console.log("Save As ignored: canvas is empty.");
         return;
     }
-    let fileName = prompt("Save as...", pdfFile?.name || "");
+    let fileName = prompt("Save as...", pdfFile?.name || markdown?.name || "");
     if (fileName === null) return;
     if (pdfFile && !fileName.toLowerCase().endsWith('.pdf')) fileName += '.pdf';
-    const blob = pdfFile || new Blob([text], { type: 'text/plain' });
+    if (markdown?.active && !/\.(md|markdown)$/i.test(fileName)) fileName += '.md';
+    const blob = pdfFile || markdownFile || new Blob([text], { type: markdown?.active ? 'text/markdown;charset=utf-8' : 'text/plain' });
     const anchor = document.createElement('a');
     anchor.download = fileName;
     anchor.href = window.URL.createObjectURL(blob);
@@ -442,6 +456,18 @@ saveAsButton.addEventListener('click', () => {
     anchor.click();
     document.body.removeChild(anchor);
     setTimeout(() => window.URL.revokeObjectURL(anchor.href), 10000);
+});
+
+// The whole canvas is a document drop target, including Markdown/PDF previews.
+const canvasDropTarget = document.getElementById('canvas-container');
+canvasDropTarget.addEventListener('dragover', event => {
+    if (Array.from(event.dataTransfer?.types || []).includes('Files')) event.preventDefault();
+});
+canvasDropTarget.addEventListener('drop', event => {
+    if (!event.dataTransfer?.files.length) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (openEnabled && contextEnabled) void loadSelectedCanvasFile(event.dataTransfer.files[0]);
 });
 
 // Editor input / scroll sync

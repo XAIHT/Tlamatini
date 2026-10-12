@@ -6,6 +6,8 @@ param(
     [switch]$LocalOnly
 )
 
+$ErrorActionPreference = 'Stop'
+
 $scriptDir = $PSScriptRoot
 $configPath = Join-Path $scriptDir "CreateShortcut.json"
 
@@ -18,7 +20,6 @@ if (-not (Test-Path $configPath)) {
     Write-Host "Error: CreateShortcut.json not found at: $configPath" -ForegroundColor Red
     Write-Host "Please create it with content like:" -ForegroundColor Yellow
     Write-Host '  { "InstallDir": "D:\\Tlamatini" }' -ForegroundColor Yellow
-    Read-Host "Press Enter to exit"
     exit 1
 }
 
@@ -26,13 +27,11 @@ try {
     $config = Get-Content $configPath -Raw | ConvertFrom-Json
 } catch {
     Write-Host "Error: Failed to parse CreateShortcut.json: $_" -ForegroundColor Red
-    Read-Host "Press Enter to exit"
     exit 1
 }
 
 if (-not $config.InstallDir) {
     Write-Host 'Error: "InstallDir" key not found in CreateShortcut.json' -ForegroundColor Red
-    Read-Host "Press Enter to exit"
     exit 1
 }
 
@@ -40,7 +39,6 @@ $installDir = $config.InstallDir
 
 if (-not (Test-Path $installDir)) {
     Write-Host "Error: Installation directory not found: $installDir" -ForegroundColor Red
-    Read-Host "Press Enter to exit"
     exit 1
 }
 
@@ -64,7 +62,6 @@ Write-Host "Install directory: $installDir" -ForegroundColor White
 # We probe end-to-end at install time and pick the right one for THIS host.
 if (-not (Test-Path $exePath)) {
     Write-Host "Error: Tlamatini.exe not found at: $exePath" -ForegroundColor Red
-    Read-Host "Press Enter to exit"
     exit 1
 }
 Write-Host "[OK] Tlamatini.exe found: $exePath" -ForegroundColor Green
@@ -252,9 +249,13 @@ if (-not $vbsSuccess) {
         Write-Host ""
         Write-Host "Shortcuts created successfully!" -ForegroundColor Green
     } catch {
-        Write-Host "Error creating shortcuts via PowerShell: $_" -ForegroundColor Red
+        Write-Error "Error creating shortcuts via PowerShell: $_"
+        exit 1
     }
 }
+
+# A fallback that succeeded must not inherit cscript's earlier failing exit code.
+$global:LASTEXITCODE = 0
 
 Write-Host ""
 Write-Host "You can now:" -ForegroundColor Cyan

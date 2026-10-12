@@ -2,6 +2,18 @@
   "schema": 1,
   "packages": [
     {
+      "name": "marked",
+      "version": "18.1.0",
+      "url": "https://registry.npmjs.org/marked/-/marked-18.1.0.tgz",
+      "integrity": "sha512-PamYXWWWg2nboG3oX5Ffzpy3EFZROqZJK9hSlMmUnekp7TxPs5DcT95vwd46m73/exfKCRVMtgXoPMI4FEJL6w=="
+    },
+    {
+      "name": "dompurify",
+      "version": "3.4.16",
+      "url": "https://registry.npmjs.org/dompurify/-/dompurify-3.4.16.tgz",
+      "integrity": "sha512-sqo+pNp3qRhCIpbgRi1y8Tgk27Bo2Ry7w0dC1NBeNTdZChWjz9Xb/KOoZbRP/R6pQZ80Qw8YhXw13hWWBbMRnQ=="
+    },
+    {
       "name": "bootstrap",
       "version": "5.3.3",
       "url": "https://registry.npmjs.org/bootstrap/-/bootstrap-5.3.3.tgz",
@@ -52,6 +64,18 @@
     "bootstrap/LICENSE": {
       "bytes": 1093,
       "sha256": "8c14611ae41ac6fd543c13349f22188eb12c69b3e59105c5eca3925a8e4eca3e"
+    },
+    "dompurify/dist/purify.min.js": {
+      "bytes": 28885,
+      "sha256": "2c90a9b46d6463f26038a29b686e82bc91de01fdac9d5229e7cfe3b360134ea2"
+    },
+    "dompurify/dist/purify.min.js.map": {
+      "bytes": 38354,
+      "sha256": "52a28819cc9aacf5d0542c765e3f7c70796600959d33eab63a7bbb89361f3155"
+    },
+    "dompurify/LICENSE": {
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
     },
     "highlightjs/highlight.min.js": {
       "bytes": 121727,
@@ -140,6 +164,14 @@
     "jquery-ui/LICENSE.txt": {
       "bytes": 1818,
       "sha256": "f649025cf65c8dcd8588b0937883ba7a52bdb6d35129464a36a1602eb00250f1"
+    },
+    "marked/lib/marked.umd.js": {
+      "bytes": 47225,
+      "sha256": "f424dcb508fdf93e0137a970cfce8f3207ea2e3f37eca5f7556a52875683632a"
+    },
+    "marked/LICENSE": {
+      "bytes": 2942,
+      "sha256": "8e3a3f82f59a60958f56ca08f445647c32a4733dc7ca6c2c46f6eb898471ab9c"
     },
     "nunito/400.css": {
       "bytes": 2035,

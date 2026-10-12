@@ -554,6 +554,7 @@ class GateWiringContractTests(SimpleTestCase):
         allowed = {
             "ctypes", "json", "os", "re", "shutil", "stat", "subprocess", "sys",
             "threading", "time", "tkinter", "winreg", "datetime", "hashlib", "tempfile", "uninstall_processes",
+            "setup_wizard", "setup_recovery", "setup_windows", "setup_logging",
         }
         self.assertTrue(imported <= allowed, f"unexpected import: {imported - allowed}")
 
@@ -561,12 +562,13 @@ class GateWiringContractTests(SimpleTestCase):
         """The card must not still promise that everything else is removed."""
         self.assertNotIn("All other application files will be removed",
                          UNINSTALL_SOURCE)
-        warning = UNINSTALL_SOURCE[UNINSTALL_SOURCE.index("⚠  agents/"):]
-        warning = warning[:warning.index("justify=")]
-        for name in uninstall.PRESERVED_WHEN_NOT_EMPTY:
-            self.assertIn(name, warning,
-                          f"the on-screen warning never mentions {name}")
-        self.assertNotIn("Temp/", warning, "Temp/ is erased, not preserved")
+        build = _function_source("_build_ui")
+        self.assertIn("preserved=PRESERVED_WHEN_NOT_EMPTY", build)
+        from setup_wizard import WizardView
+        import inspect
+        source = inspect.getsource(WizardView)
+        self.assertIn('Always kept: agents/', source)
+        self.assertIn('Everything else, including Temp/, is removed.', source)
 
     def test_the_confirmation_names_every_kept_directory(self):
         """The 'are you sure?' box is the last thing read before deletion."""
@@ -620,12 +622,10 @@ class WindowIsCompleteWithoutAVersionTests(SimpleTestCase):
     """
 
     def test_the_badge_method_builds_only_the_badge(self):
-        badge = _function_source("_build_version_badge")
-        for control in ("path_entry", "uninstall_btn", "cancel_btn",
-                        "browse_btn", "progress_bar", "check_labels"):
-            self.assertNotIn(control, badge,
-                             "the window's controls must live in _build_ui, "
-                             "never behind the badge's version guard")
+        build = _function_source("_build_ui")
+        self.assertIn("WizardView(", build)
+        self.assertNotIn("if not self.version", build,
+                         "the optional version must never guard the window body")
 
     def test_build_ui_owns_every_control(self):
         build = _function_source("_build_ui")

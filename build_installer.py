@@ -399,6 +399,8 @@ def main():
         f"--version-file={version_file_path}",
         "--hidden-import=_tkinter",
         "--collect-all", "tkinter",
+        "--icon", str(root / "Tlamatini.ico"),
+        "--add-data", str(root / "Tlamatini.ico") + ";.",
         *dll_args,
         str(install_script),
     ]
