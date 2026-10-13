@@ -1,7 +1,7 @@
 <!-- Tlamatini Author Banner — Angela López Mendoza -->
 # Markdown in the chat canvas
 
-Local source change, 2026-10-11; not a published release.
+Written 2026-10-11 as a local source change; committed in `880a335e` (2026-10-12) and shipped in the published `v1.82.0` release.
 
 Open, Reopen, dropping a file onto the canvas, generated-file links, and
 Context → Set file as context recognize `.md` and `.markdown`, including

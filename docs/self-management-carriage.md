@@ -91,6 +91,25 @@ extracted bundle (where the new `Uninstaller.exe` sits) before the swap. Any fix
 must also keep the guarantee the `$Preserve` entry gives today — an update must
 never leave an install without an uninstaller — and needs a real release test.
 
+### Setup windows, the Markdown canvas and the shared theme (2026-10-11/12, `v1.80.0` / `v1.82.0`)
+
+- `install.py` / `uninstall.py` import `setup_wizard`, `setup_recovery`, `setup_windows` and
+  `setup_logging`, so PyInstaller carries them into `Installer.exe` / `Uninstaller.exe` through
+  the import graph; `build_installer.py` and `build_uninstaller.py` add the Tlamatini icon
+  (`--icon`, `--add-data Tlamatini.ico`). The self-modify snapshot carries the modules and the
+  `scripts/setup_*` harnesses through its generic walk.
+- The Markdown canvas's `agent_page_markdown.js`, `markdown_canvas.css`,
+  `marked/lib/marked.umd.js`, `dompurify/dist/purify.min.js` and both LICENSE files are in
+  `build_runtime_assets.py` `REQUIRED_STATIC` and `copy_source_assets.py`
+  `REQUIRED_SNAPSHOT_FILES`; `dompurify/dist` is a `KEEP_DIR_PATHS` entry and is un-ignored in
+  `.gitignore`. The shared theme (`ui_tokens.css`, `ui_shell.css`, `ui_splitters.css`,
+  `ui_splitters.js`, `entry_pages.css`, `admin_theme.css`, `templates/admin/base_site.html`)
+  is in both inventories.
+- The published v1.82.0 zip (checked 2026-10-12) carries all of them, plus
+  `agents/video_analyzer/video_fetch.py`. ⚠️ As above, an in-app update keeps the OLD
+  `Uninstaller.exe`: the new setup window reaches an existing installation only through a fresh
+  install or a reinstall with the new Installer.
+
 ### Compact mode and Self-modify switches (source development, 2026-10-02/03)
 
 The Compact mode switch shipped in `v1.75.0` (annotated tag at `f7eb53ff`,
@@ -100,9 +119,10 @@ The Compact mode switch shipped in `v1.75.0` (annotated tag at `f7eb53ff`,
 on GitHub on 2026-10-09; `v1.77.0` (annotated tag at `052bfe0f`, 2026-10-09)
 was published the same day. `v1.78.0` (annotated tag at `0e6fc72d`, 2026-10-10;
 migration 0213 `UsageDaily` landed one commit later in `7460a147`) was published
-on 2026-10-10 (marked Latest), so it is the latest published release and the one
-self-update delivers; 0213 reaches existing installs through the post-update
-`migrate` like every migration.
+on 2026-10-10 (marked Latest). `v1.82.0` (annotated tag at `880a335e`, 2026-10-12)
+was published on 2026-10-12 and is now the latest published release and the one
+self-update delivers; it adds no migration, and 0213 reaches existing installs
+through the post-update `migrate` like every migration.
 
 - **Compact mode switch (2026-10-02).** `agent/compact_mode.py` is imported at
   module level by `mcp_agent.py`, so the frozen archive carries it through the

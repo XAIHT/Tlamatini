@@ -969,6 +969,32 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("Honest retry", "Retain removal support until success; report locked files and registry errors."),
                 ("Preserve user work", "Keep agents and nonempty content; notify the shell without restarting Explorer."),
             ]),
+        Section("setupwizard", "SETUP WINDOWS · v1.82.0", "Install and remove with a way back",
+            "The Installer and Uninstaller share one window that prepares a recovery copy before changing anything.",
+            body=[
+                "Both executables use one setup window: Tlamatini's palette, keyboard controls, a destination "
+                "and review page, real progress and result details that stay on screen. The action row is its "
+                "own window row, so buttons are never clipped, and large fonts or long paths scroll the body. "
+                "Errors stay in the window with Retry and Change folder, and every run writes a private log "
+                "under %LOCALAPPDATA%\\Tlamatini\\SetupLogs.",
+                "Before installation or removal changes a file, a recovery copy is prepared and verified; its "
+                "journal lives in the installation's Temp folder, and the next run restores an interrupted "
+                "transaction first. A failed restoration is reported, never presented as a rollback. A locked "
+                "file gets a five-second retry and is then named with the program holding it, which is never "
+                "closed for you. Only Tlamatini's own registry values and Desktop shortcut are snapshotted.",
+                "These are custom EXE recovery mechanics, not MSI transactions. In the visible October 11-12 "
+                "campaign 52 interface checkpoints, 28 recovery checks, 21 lifecycle checks and 61 mechanics "
+                "tests passed; five real installations and four real removals passed their independent audits. "
+                "The fifth removal stopped safely before deleting anything, because a test browser held a file "
+                "in the installation's Temp folder.",
+            ], deck="cards", points=[
+                ("One window", "Shared Installer and Uninstaller screens that never clip their buttons."),
+                ("Recovery copy", "Prepared and verified before any file changes; restored after an interruption."),
+                ("Named locks", "A locked file and its holder are named; nothing is force-closed."),
+                ("Own scope", "Only Tlamatini's registry values and shortcut; never UserChoice."),
+                ("Bounded helpers", "PowerShell helpers end within 120 seconds inside a Windows job."),
+                ("Honest tally", "Five installations and four removals passed; one stopped safely."),
+            ]),
         Section("release_repair", "LOCAL RELEASE VALIDATION", "Repair the boundary, then repeat the real operation",
             "The October 4 repairs, now carried by v1.76.0, have separate source, frozen, package and visual "
             "evidence.",
@@ -1065,6 +1091,28 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("Honest progress", "Four progress rows, a real Cancel, failures reported."),
                 ("Passwords", "Used in memory only; never stored or logged."),
             ]),
+        Section("mdcanvas", "MARKDOWN CANVAS", "Markdown opens as a page, and stays your source",
+            "Open or drop a .md file and the canvas renders it; one click shows the original text.",
+            body=[
+                "Open, Reopen, a dropped file, a generated-file link and Context ▸ Set file as context all "
+                "recognise .md and .markdown. Preview renders CommonMark and GitHub-flavored Markdown: "
+                "headings, tables, task lists, fenced code through the existing highlighter and safe embedded "
+                "HTML such as expandable details. Source shows the full original text with line numbers.",
+                "Rendering is local: Marked 18.1.0 and DOMPurify 3.4.16 are vendored with pinned integrity, "
+                "so nothing is fetched from a CDN. The sanitizer allowlists HTML and attributes, scopes ids and "
+                "restricts resource protocols. Choose folder resolves relative images and links from files you "
+                "select; they stay on your device, and a relative URL never reaches an application endpoint.",
+                "Copy, Use as context and Save always take the Markdown source, never the flattened preview; "
+                "Save returns the original bytes, UTF-8 BOM and CRLF included. Shipped in v1.82.0 and checked "
+                "on October 11 with 30 of 30 visible browser checkpoints.",
+            ], deck="list",
+            deck_points=[
+                ("Preview and Source", "Rendered page, or the original text with line numbers."),
+                ("Offline", "Vendored Marked and DOMPurify; no CDN at runtime."),
+                ("Safe HTML", "Allowlisted markup; relative links never reach the app."),
+                ("Your source", "Copy, context and Save keep the exact Markdown bytes."),
+                ("Evidence", "30 of 30 visible checkpoints on October 11."),
+            ]),
         Section("models", "CONFIG ▸ MODELS", "Every model choice in one place",
             f"The Models dialog exposes {model_fields} model, engine and voice settings for the core services "
             f"and {model_agents} model-backed agents, in six searchable categories.",
@@ -1087,6 +1135,24 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("Inheritance", "\"@config\" follows the global choice; literals override."),
                 ("Save", "Keeps unrelated settings, downloads nothing, then auto-tunes each model."),
                 ("Catalog", "Listed by the configured Ollama servers, asked with their token."),
+            ]),
+        Section("onelook", "ONE LOOK · v1.80.0", "Every page shares one theme and one way to resize",
+            "Chat, both panels, login, welcome, Usage, the PDF viewer and the admin pages share one identity.",
+            body=[
+                "One set of design tokens defines the slate surfaces, teal accent, readable text, borders, "
+                "fonts and scrollbars for every first-party page, including a themed Django admin that keeps "
+                "its light, dark and automatic modes. Dialog colors follow the same tokens, and the dialog "
+                "theme always loads last.",
+                "All five pane dividers share one grip and one gesture model: pointer capture, arrows for one "
+                "percent, Shift for five, Home and End, and clean cancellation on Escape, blur or a lost "
+                "pointer. Resizable dialogs accept all eight edges and corners and the keyboard, and a modal "
+                "can no longer slide under the expanded menu at 400 percent zoom.",
+            ], deck="cards", points=[
+                ("Shared tokens", "One palette, font set and scrollbar style for every page."),
+                ("Five dividers", "One grip, one keyboard model, one clean cancel."),
+                ("Dialogs", "Eight resize directions, keyboard resizing, buttons that match."),
+                ("High zoom", "A modal stays above the menu at 400 percent."),
+                ("Evidence", "175 source tests and visible checks passed on October 11."),
             ]),
         Section("dialogs", "OPERATOR DIALOGS", "Everything else, without editing files",
             "Configuration, credentials, databases and updates are handled from the browser.",
@@ -1353,9 +1419,9 @@ def build_chapters(f: dict) -> list[Chapter]:
                  "a third merges both. A comma-separated list reads several images."),
                 ("Video-Analyzer · robotics", "A deterministic motion gate plus two vision models; PASS only "
                  "when both agree."),
-                ("Video-Analyzer · transcription", "Timestamped speech from chosen audio tracks, locally."),
+                ("Video-Analyzer · transcription", "Timestamped speech from chosen audio tracks or a web link, locally."),
                 ("Video-Analyzer · summary", "Speech plus sampled visual evidence: scenes, text, facts, "
-                 "decisions and limits."),
+                 "decisions and limits; a web link is downloaded first."),
                 ("Capture", "Shoter, Camcorder and Recorder save to your known folders with exact names."),
                 ("Paste to chat", "A screenshot pasted into the chat becomes a path she can analyze."),
             ], deck="cards"),
@@ -1531,7 +1597,7 @@ def build_chapters(f: dict) -> list[Chapter]:
             "Tlamatini itself is free. The only purchase is an Ollama plan, bought directly from Ollama.",
             visual="steps",
             visual_data={"steps": [
-                ("Install", "Run the release installer, which bundles Python 3.12.10, or clone the source."),
+                ("Install", "Run the recoverable release installer (Python 3.12.10 bundled), or clone the source."),
                 ("Ollama", "Install Ollama for Windows."),
                 ("Pro plan", "Activate Ollama Pro or higher, then run `ollama signin`."),
                 ("Models", "Pull nomic-embed-text and the cloud models Tlamatini uses."),
@@ -1714,7 +1780,86 @@ def build_chapters(f: dict) -> list[Chapter]:
          f"Version {f['release_tag']}; the latest release published on GitHub is "
          f"{f['release']['latest_published'] or 'not verified'}."),
         accent="gold", sections=[
-        Section("working_usage", "NEW IN v1.78.0", "Usage: credits and activity, while she works",
+        Section("working_setup", "NEW IN v1.82.0", "A way back for installing and removing",
+            "Tagged and published on October 12: new setup windows, and Markdown that opens as a page.",
+            body=[
+                "The Installer and Uninstaller share one window that prepares and verifies a recovery copy "
+                "before changing any file, restores an interrupted run, names a locked file and keeps every "
+                "error on screen with Retry, as the Setup Windows section describes. Markdown files now open "
+                "in the chat canvas as a rendered page with their source kept intact.",
+                "The release was published on GitHub on October 12 and marked Latest. Its zip is byte for byte "
+                "the local build, a self-modify build whose package carries the setup windows, the Markdown "
+                "canvas, the shared theme of v1.80.0 and the web links of v1.79.0. There is no v1.81.0 tag.",
+                "The setup campaign ran visibly on October 11 and 12: 52 interface checkpoints, 28 recovery "
+                "checks, 21 lifecycle checks and 61 mechanics tests passed, with five real installations and "
+                "four real removals passing their independent audits. The Markdown canvas passed 30 of 30 "
+                "visible checkpoints. This refresh read the published zip; it did not install it.",
+            ],
+            points=[
+                ("Setup windows", "One recoverable window for installing and removing."),
+                ("Markdown", "Rendered Preview, original Source, offline sanitizer."),
+                ("Published", "October 12, marked Latest; the zip matches the local build."),
+                ("No v1.81.0", "The number was skipped; v1.80.0 and v1.79.0 come before it."),
+                ("Campaign", "Five installations and four removals passed; one removal stopped safely."),
+                ("Not in it", "Commit 91ff8453 came after the zip was built."),
+            ], deck="cards"),
+        Section("working_onelook", "NEW IN v1.80.0", "One look, and one way to drag",
+            "Tagged on October 11 without a release of its own; it reaches users through v1.82.0.",
+            body=[
+                "Every first-party page now draws from one set of design tokens, and the five pane dividers "
+                "share one grip and one gesture model, as the One Look section describes. The side divider was "
+                "first made to match the composer divider, then the whole site followed the same evening.",
+                "The source campaign passed 175 tests with two platform skips, 17 composer checkpoints, 38 "
+                "zoom and responsive checkpoints at 25 to 400 percent, 13 commentary checkpoints and all eight "
+                "dialog resize directions, in a visible Chrome window. It certifies the source pages, not a "
+                "model answer or an installed build.",
+            ],
+            points=[
+                ("Tag", "v1.80.0 at 82099963, pushed; no published release."),
+                ("Tokens", "Slate surfaces, teal accent, one font set, one scrollbar."),
+                ("Dividers", "Five seams, one grip, arrows and Shift, Home and End."),
+                ("Dialogs", "Eight-direction and keyboard resizing; matching buttons."),
+                ("Evidence", "175 tests and visible zoom, composer and dialog checks."),
+                ("Delivered by", "The published v1.82.0 release."),
+            ], deck="cards"),
+        Section("working_links", "NEW IN v1.79.0", "Video-Analyzer takes a web link",
+            "Tagged on October 11 without a release of its own; it reaches users through v1.82.0.",
+            body=[
+                "Given a YouTube or other web link, Video-Analyzer downloads one item itself: only the sound "
+                "for a transcription, the picture for a summary or a robotics check. It keeps a private, "
+                "self-updating downloader, updates it once and retries when a download fails, joins picture "
+                "and sound without ffmpeg, and names every failure instead of returning silence.",
+                "The chat parser no longer mistakes a link's ?v= for a setting, a request written in plain "
+                "words fills in the link and the mode, and the result adds the source address and title. The "
+                "model is told to hand links to Video-Analyzer and never to install a downloader itself. "
+                "141 unit tests and a visible 12-of-12 chat run passed on October 11.",
+            ],
+            points=[
+                ("One item", "Sound for transcription, picture for summary or robotics."),
+                ("Self-updating", "A private downloader, refreshed once on failure."),
+                ("Named failures", "Unavailable, login required, network, timeout and more."),
+                ("Prose works", "Plain-language requests fill in the link and the mode."),
+                ("Evidence", "141 unit tests and a visible 12-of-12 chat run."),
+                ("Delivered by", "The published v1.82.0 release."),
+            ], deck="cards"),
+        Section("working_aftertag", "AFTER THE v1.82.0 TAG", "A wrongly worded request is not fatal",
+            "Commit 91ff8453 on October 12, credited to Tlamatini's-AutoBot; on main, not in the published zip.",
+            body=[
+                "When the launcher refuses an Image-Interpreter or Video-Analyzer call before the agent starts, "
+                "because a setting does not exist or a mandatory one is missing, the refusal is marked as a "
+                "request error. It no longer raises the red fatal-analysis dialog and its sound; the model "
+                "simply corrects the call. A real start failure still raises the dialog.",
+                "Video-Analyzer's description now says it has no transcription engine setting, which belongs "
+                "to Whisperer. Five new tests pin the behavior. Reading the published zip's frozen code shows "
+                "the change is absent there, so it reaches installations with the next release.",
+            ],
+            points=[
+                ("Request errors", "Refused before any model ran; the model retries."),
+                ("Real failures", "Still raise the accumulated fatal dialog."),
+                ("No engine setting", "engine= belongs to Whisperer, not Video-Analyzer."),
+                ("Tests", "Five tests in RequestRefusalIsNotFatalTests."),
+            ], deck="cards"),
+        Section("working_usage", "CARRIED FROM v1.78.0", "Usage: credits and activity, while she works",
             "Tagged on October 10; the Usage commit lands one commit after the tag. The published v1.78.0 zip carries it.",
             body=[
                 "The first October 10 campaign passed 18 Usage tests, 202 existing regressions and 24 visible "
@@ -1741,7 +1886,7 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("In the release", "The published zip's files match the latest October 10 commit."),
                 ("Privacy", "Account observations and authenticated screenshots stay out of this dossier."),
             ], deck="cards"),
-        Section("working_composer", "NEW IN v1.78.0", "Undock her, and the message box shrinks to fit",
+        Section("working_composer", "CARRIED FROM v1.78.0", "Undock her, and the message box shrinks to fit",
             "Two commits after the v1.78.0 tag, and carried by the published zip: the input area resizes once she floats.",
             body=[
                 "With the avatar undocked, the input form can now be dragged down to its own action buttons plus "
@@ -1767,7 +1912,7 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("Narrow screens", "A 640-pixel workspace pans; the page and dialogs stay anchored."),
                 ("Evidence", "18 composer and 38 viewport checks passed, visibly, on October 10."),
             ], deck="cards"),
-        Section("working_selfrepair", "NEW IN v1.78.0", "She repaired one of her own agents",
+        Section("working_selfrepair", "CARRIED FROM v1.78.0", "She repaired one of her own agents",
             "Image-Interpreter now reads a comma-separated list of images, a change credited to Tlamatini herself.",
             body=[
                 "Commit 0e6fc72d is titled \u201cTlamatini's self-repair Image-Interpreter, by Tlamatini's-AutoBot\u201d "
@@ -1787,7 +1932,7 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("Self-repair", "The commit credits Tlamatini's-AutoBot, her own self-modify work."),
                 ("In v1.78.0", "The tag points to this commit; no dedicated test yet."),
             ], deck="cards"),
-        Section("working_firstperson", "NEW IN v1.77.0", "She speaks to you, by name",
+        Section("working_firstperson", "CARRIED FROM v1.77.0", "She speaks to you, by name",
             "Tagged and published on October 9; v1.78.0 replaced it as the Latest release on October 10.",
             body=[
                 "Every fixed line Tlamatini sends to the chat, and that her avatar reads aloud, is now written in the "
@@ -1816,7 +1961,7 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("Temp erased", "Scratch goes; folders holding your files stay."),
                 ("Rebuilt uninstaller", "A reinstall carries the fix; an in-app update does not."),
             ], deck="cards"),
-        Section("working_brain", "NEW IN v1.76.0", "The Model Brain tunes every model",
+        Section("working_brain", "CARRIED FROM v1.76.0", "The Model Brain tunes every model",
             "Tagged on October 8; the Model Brain commit lands on main one commit after the tag. The published "
             "v1.76.0 release was built from main and carries it.",
             body=[
@@ -1846,7 +1991,7 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("Quiet tabs", "Two pages on two models no longer re-measure each other."),
                 ("Evidence", "25 of 25 and 20 of 20 visible checks on October 8."),
             ], deck="cards"),
-        Section("working_truth", "NEW IN v1.76.0", "Documents and files that tell the truth",
+        Section("working_truth", "CARRIED FROM v1.76.0", "Documents and files that tell the truth",
             "October 7 and 8: LaTeXer, Mover and the document agents report what really happened.",
             body=[
                 "LaTeXer reports a PDF only when the delivered file really exists and is not empty, and a PDF whose "
@@ -1941,7 +2086,7 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("Version 2 files", "Version 1 flows migrate on open; identifiers and links are kept."),
                 ("October 3 evidence", "430 unit tests; 9 of 9 visible Chrome checkpoints."),
             ], deck="cards"),
-        Section("working_switches", "NEW IN v1.75.0", "Compact mode and Self-modify become switches",
+        Section("working_switches", "CARRIED FROM v1.75.0", "Compact mode and Self-modify become switches",
             "Tagged on October 3: Compact mode is a toolbar switch; the Self-modify switch followed and ships in v1.76.0.",
             body=[
                 "Compact mode as tagged in v1.74.0 was a verdict made behind the user's back. In v1.75.0 it is "

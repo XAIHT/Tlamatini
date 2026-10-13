@@ -96,4 +96,4 @@ State the website-only per-model API gap, UTC scopes, at-most-two-decimal displa
 under-60% dialog size and normal fonts. Keep account observations/screenshots out
 of public artifacts. Date the 220 source tests and 24 visible browser checks to
 October 10; label other-plan fixtures synthetic.
-Derive current counts. Usage, the message-box resize and the Image-Interpreter list ship in v1.78.0 (its tag sits one commit before the Usage commit; the published zip matches `113eddc4`).
+Derive current counts. The setup windows and the Markdown canvas ship in v1.82.0 (tag at `880a335e`; `91ff8453` follows it and is not in the published zip), the GUI standardization in v1.80.0 and Video-Analyzer's web links in v1.79.0 (both tags without a published release); Usage, the message-box resize and the Image-Interpreter list ship in v1.78.0 (its tag sits one commit before the Usage commit; the published zip matches `113eddc4`).

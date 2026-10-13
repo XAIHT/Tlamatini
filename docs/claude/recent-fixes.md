@@ -16,7 +16,93 @@
 
 ---
 
-## 2026-10-11 — Whole-site theme and resize sweep (local, uncommitted)
+## 2026-10-12 — v1.82.0 published; a wrongly worded request is not fatal; docs and dossier swept
+
+1. **The release.** `v1.82.0` is an annotated tag at `880a335e` (2026-10-12 07:16, pushed) —
+   *"Release v1.82.0 Installation/Uninstallation mechanisms: way too improved!."* It follows
+   `v1.80.0` (`82099963`) and `v1.79.0` (`5f549868`), both tagged and pushed on 2026-10-11 with
+   no published release; **no `v1.81.0` tag exists**. The GitHub release "Tlamatini Release
+   v1.82.0 Win11x64" was published 2026-10-12 (22:59 UTC) and marked Latest. Its asset
+   `Tlamatini_Release_v1.82.0_Win11x64.zip` (1,925,216,664 bytes, SHA-256 `9772fe4b…`) is
+   byte-identical to `dist/`. It is a `--self-modify` build (1,745 `TlamatiniSourceCode/`
+   entries in `pkg.zip`), and its `pkg.zip` carries `agent_page_markdown.js`, `purify.min.js`,
+   `ui_splitters.js`, `ui_tokens.css`, `markdown_canvas.css` and
+   `agents/video_analyzer/video_fetch.py`.
+2. **`91ff8453` is NOT in that zip.** The zip was finished at 16:03 local, eight minutes before
+   the commit, and reading the frozen PYZ (`CArchiveReader` → `PYZ.pyz` → `agent.tools`,
+   `agent.chat_agent_registry`) finds neither `_is_visual_start_failure` nor the new
+   Video-Analyzer sentence. A build of `main` reports `1.82.0` and carries it; the next release
+   will.
+3. **What `91ff8453` does** (Tlamatini's-AutoBot). The launcher's two refusals that happen before
+   an agent starts — an unknown setting (`assignment_error`) and missing mandatory parameters —
+   now carry `"error_kind": "request"`, and `tools._is_visual_start_failure(payload)` (status
+   `error` AND `error_kind != "request"`) decides whether Image-Interpreter / Video-Analyzer raise
+   the red **Fatal analysis errors** dialog. On 2026-10-12 a `transcription.engine` borrowed from
+   Whisperer raised the dialog and its sound while the very next call transcribed the whole
+   video. Video-Analyzer's `purpose` now says there is NO `transcription.engine` setting.
+   `test_visual_fatal_errors.py::RequestRefusalIsNotFatalTests` (5 tests) pins all of it,
+   including that the sentence stays true against `config.yaml`. ⚠️ Do NOT drop `error_kind`
+   from those two refusals, and do NOT widen it to failures after the agent started.
+4. **Docs and dossier.** Every markdown file, `Tlamatini.md` (`TLAMATINI_VERSION: 1.82.0`) and
+   the PDF/PPTX dossier now call v1.82.0 the current release; the 2026-10-11/12 records no
+   longer say "local" or "uncommitted"; the JS count is 58 (25 chat + 15 ACP + 1 entry + 14
+   shared + 1 welcome + 2 Prompt Flow Panel) and the stylesheet count 26.
+
+## 2026-10-12 — The setup windows recover instead of half-finishing (`880a335e`, tagged `v1.82.0`)
+
+`install.py` / `uninstall.py` now drive one shared window, `setup_wizard.py`, with
+`setup_recovery.py` (recovery copy + durable journal in `Temp/.setup-recovery`),
+`setup_windows.py` (registry/shortcut snapshot of Tlamatini's own scope) and `setup_logging.py`
+(private transcripts under `%LOCALAPPDATA%\Tlamatini\SetupLogs`). Do NOT revert any of these:
+
+1. The recovery copy is prepared AND verified before the destination changes; an interrupted
+   active transaction is restored before a new one starts.
+2. A failed restoration keeps the journal and the copies and reports their location; it never
+   claims that rollback succeeded. A final cleanup failure is reported separately from success.
+3. A permission/sharing failure retries for at most five seconds, then names the file and, when
+   Windows can tell, the programs holding it. Restart Manager is queried for owners ONLY; it is
+   never asked to terminate anything.
+4. Windows state is restored only inside Tlamatini's own scope: never UserChoice, never another
+   program's Open With entries. Installed Apps removal is verified; an ownerless entry is
+   reported as needing repair.
+5. PowerShell helpers are non-interactive and contained in a Windows job BEFORE their script
+   starts, bounded to 120 s; a timeout closes the job and its descendants. A session mutex
+   refuses concurrent setup. A missing removal helper fails visibly.
+6. The action row is its own window row (it disappears during work) and the result details
+   reserve their scrollbar column; the desktop observer never synthesizes Alt to refocus a Tk
+   window (Windows enters its menu loop and pauses callbacks).
+
+Evidence (2026-10-11/12, visible): 52/52 source UI checkpoints (+12 overflow checks),
+28/28 recovery/helper checks, 21/21 uninstaller lifecycle checks, 61/61 mechanics tests; five
+real desktop installations and four real removals passed independent audits; removal 5 stopped
+safely before deleting anything because a headed-test Chrome renderer held a file in the
+installation's `Temp` (campaign state `needs-attention`). A registry read from a development
+console disagreed with the same script launched from Explorer, so only desktop-context checks
+certify Windows integration. Carriage: the modules reach `Installer.exe` / `Uninstaller.exe`
+through the import graph; both builds add the Tlamatini icon; an in-app update keeps the OLD
+`Uninstaller.exe`. Guide: `docs/setup-wizards.md`.
+
+## 2026-10-11 — Markdown files open as a page in the chat canvas (`880a335e`, shipped in `v1.82.0`)
+
+`agent_page_markdown.js` + `markdown_canvas.css` render `.md` / `.markdown` in a sanitized
+Preview with a Source view. Do NOT revert:
+
+1. Copy, **Use as context** and Save take the Markdown SOURCE; Save keeps the original bytes
+   (UTF-8 BOM and CRLF included); generated Markdown saves as UTF-8.
+2. The sanitizer allowlists HTML and attributes, scopes ids, removes document classes and active
+   markup, and restricts resource protocols; a relative URL never navigates to an application
+   endpoint; remote images load with no referrer; object URLs are released on load/clear.
+3. Marked 18.1.0 and DOMPurify 3.4.16 are vendored locally (`scripts/vendor_frontend.py` pins
+   archive integrity, licenses and per-file receipts). `dompurify/dist` is un-ignored in
+   `.gitignore` and a `KEEP_DIR_PATHS` entry in `copy_source_assets.py`; both libraries, their
+   LICENSE files, `agent_page_markdown.js` and `markdown_canvas.css` are in `REQUIRED_STATIC`
+   and `REQUIRED_SNAPSHOT_FILES`.
+
+Plain text, source code, PDF and flow routing keep their dedicated behavior. Cache suffix
+`-markdown-canvas-1`. Proof: 30/30 visible checkpoints (`run-7`), lint 0 errors, 438 source
+static assets byte-equal to the collected copies. Contract: `docs/markdown-canvas.md`.
+
+## 2026-10-11 — Whole-site theme and resize sweep (committed `15e7da98` + `82099963`, tagged `v1.80.0`, shipped in `v1.82.0`)
 
 All seven existing first-party HTML files plus the generated admin family share
 the slate/teal appearance. `ui_tokens.css`, `ui_shell.css`, `ui_splitters.css` and
@@ -30,7 +116,7 @@ Seventeen composer checkpoints, 38 zoom/responsive checkpoints, all eight
 commentary edges with undo/cancel/file recovery, all eight dialog resize
 directions, PDF controls and admin pages were checked visibly. Source tests:
 175 passed, two platform skips; lint zero errors. No release was built or
-installed. See [full inventory, behavior and evidence](../changes/2026-10-11-ui-sweep.md).
+installed at that point; it was committed that evening (`15e7da98`, `82099963`), tagged `v1.80.0`, and reaches users in the published `v1.82.0`. See [full inventory, behavior and evidence](../changes/2026-10-11-ui-sweep.md).
 
 ## 2026-10-11 — Video-Analyzer transcribes a web link by itself (YouTube and other sites)
 
@@ -88,7 +174,7 @@ and `PYTHONNOUSERSITE=1` installed the private yt-dlp in 7 s and transcribed "Me
 the model called only `chat_agent_video_analyzer`, the answer quotes the video, the Exec Report
 row is SUCCESS. ⚠️ Do NOT drop the `--` before the URL, let a URL's `?v=` be read as a setting,
 widen the salvage to commas, or let the model install a downloader. ⚠️ The installed
-`C:\Tlamatini` gets this only through a new build or update.
+`C:\Tlamatini` gets this only through a new build or update; it was tagged `v1.79.0` and reaches users in the published `v1.82.0`.
 
 ## 2026-10-10 — v1.78.0 published; the message box shrinks when the avatar is undocked; Image-Interpreter takes a list
 

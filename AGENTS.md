@@ -130,13 +130,40 @@ Contract: [CLAUDE.md](CLAUDE.md) → *Self-modify*,
 `docs/claude/architecture.md` → *The Self-modify switch*,
 `docs/claude/recent-fixes.md` (2026-10-03).
 
+## v1.82.0 — setup windows that recover, Markdown as a page (2026-10-12); v1.80.0 and v1.79.0 (2026-10-11)
+
+`v1.82.0` (annotated tag at `880a335e`, pushed 2026-10-12) names the new setup windows. It was
+published on GitHub on 2026-10-12 (marked Latest), so self-update delivers `v1.82.0`; its zip is
+byte-identical to the local build, which predates the one later commit `91ff8453`. There is no
+`v1.81.0` tag. `v1.80.0` (`82099963`) and `v1.79.0` (`5f549868`), both tagged and pushed on
+2026-10-11, have no published release of their own.
+
+- **Setup windows (v1.82.0).** `install.py` / `uninstall.py` drive one `setup_wizard.py` window.
+  `setup_recovery.py` prepares and verifies a recovery copy before any file changes (journal
+  `Temp/.setup-recovery`; an interrupted run is restored first; a failed restore is reported, never
+  hidden); a locked file gets a five-second retry and is then named with its holder (read-only
+  Restart Manager; it never closes that program). `setup_windows.py` snapshots only Tlamatini's own
+  registry values and Desktop shortcut. PowerShell helpers are non-interactive and bounded to 120 s
+  in a Windows job; a mutex refuses concurrent setup. Preservation is unchanged. Custom EXE recovery,
+  NOT an MSI transaction. Guide `docs/setup-wizards.md`; visible harnesses `scripts/setup_*`.
+- **Markdown canvas (v1.82.0).** `.md` / `.markdown` open in a sanitized Preview (vendored Marked
+  18.1.0 + DOMPurify 3.4.16) with a Source view; Copy / Use as context / Save take the source bytes.
+  `docs/markdown-canvas.md`. Cache suffix `-markdown-canvas-1`.
+- **One look (v1.80.0).** `ui_tokens.css` / `ui_shell.css` / `ui_splitters.css` / `ui_splitters.js`,
+  `entry_pages.css`, `admin_theme.css` + `templates/admin/base_site.html`; keep `dialog_theme.css`
+  last. `docs/changes/2026-10-11-ui-sweep.md`.
+- **Video-Analyzer web links (v1.79.0).** `video_fetch.py` downloads one item itself; never let the
+  model install a downloader. After the tag, `91ff8453` stops a wrongly worded request from raising
+  the fatal image/video dialog (`error_kind: "request"`) and says Video-Analyzer has no
+  `transcription.engine`.
+
 ## v1.78.0 — About ▸ Usage, a message box that shrinks, Image-Interpreter lists (2026-10-10)
 
 `v1.78.0` (annotated tag at `0e6fc72d`, pushed 2026-10-10) names the Usage dialog. The
 Usage commit `7460a147` and `113eddc4` (message-box resize + Usage outage recovery) landed
-right after the tag, so a build of `main` reports `1.78.0` and carries everything below.
+right after the tag, so a build of `main` reported `1.78.0` (until the `v1.79.0` tag) and carried everything below.
 It was published on GitHub on 2026-10-10 (marked Latest; its release title still reads
-"v1.77.0"), so self-update delivers `v1.78.0`; the published zip matches `113eddc4`.
+"v1.77.0"), so self-update delivered `v1.78.0` until `v1.82.0` was published on 2026-10-12; the published zip matches `113eddc4`.
 
 - **About ▸ Usage** (migration 0213 `UsageDaily`): see *About → Usage* above and
   `docs/usage-dashboard.md`.

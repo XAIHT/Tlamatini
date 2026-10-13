@@ -3,7 +3,7 @@
 
 **Status: shipped in the published `v1.78.0` release (2026-10-10).** That release was
 built from `main` at `113eddc4` and carries the dialog and its outage recovery; an
-installation still on v1.77.0 or older does not have it. The source verification
+installation still on v1.77.0 or older does not have it; the published `v1.82.0` (2026-10-12) carries it too. The source verification
 below is dated 2026-10-10; installed-release acceptance is not recorded here.
 
 ## Open and read the dialog

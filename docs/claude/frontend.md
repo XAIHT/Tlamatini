@@ -16,13 +16,13 @@ syntax, source-preserving actions, packaging and visible verification.
 
 > **Developer/product boundary (Angela, 2026-09-27):** these visibility requirements govern development and verification. They must not create extra windows, steal focus or expose internal diagnostics in the shipped UX. Direct chat dictation keeps status in chat and uses only Tlamatini's main console/log.
 
-## Shared site theme and resizing (2026-10-11, local source)
+## Shared site theme and resizing (2026-10-11, shipped in `v1.80.0`)
 
 All first-party pages use `ui_tokens.css`; workspaces add `ui_shell.css` and
 `ui_splitters.css` before the final `dialog_theme.css`. Dialog tokens alias the
 page palette. Login/welcome share `entry_pages.css`; the first-party admin base
 and `admin_theme.css` preserve Django's light/dark/auto switch. Required runtime
-and self-modify inventories carry the new assets. Cache suffix: `-ui-sweep-1`.
+and self-modify inventories carry the new assets. Cache suffix at that change: `-ui-sweep-1` (live suffix since 2026-10-11: `-markdown-canvas-1`).
 
 `ui_splitters.js` owns the five pane bars' pointer capture and cancellation;
 adapters still own bounds, layout and storage. Preserve composer fitting and
@@ -73,7 +73,7 @@ opening, dragging and viewport changes; short native dialogs scroll as whole car
 avatar never covers a modal. Evidence and the visible harness:
 `docs/changes/2026-10-10-composer-resize.md`.
 
-## The side divider looks like the composer divider (2026-10-11)
+## The side divider looks like the composer divider (2026-10-11, shipped in `v1.80.0`)
 
 `#drag-divider` (chat ↔ canvas on the Chat page; Agents list / Operations bar on the
 Agentic Control Panel and the Prompt Flow Panel) now has the same look and feel as
@@ -106,12 +106,13 @@ See [the full model contract](../model_configuration.md).
 
 **Save opens the Auto-tuning dialog (2026-10-08, `v1.76.0`).** After a successful save, `agent_page_init.js` calls `window.TlmModelBrainTuning.open({onClose})` (`model_brain_tuning.js` / `.css`); the reconnect notice for changed choices follows when it closes. For every configured model it shows four stages - Ask Ollama (`/api/show`), Vendor settings (the sourced profile, or the researched `generation_config.json`), Calibrate (the sampling that will really be sent) and Reasoning (thinking level, reasoning kept inside the tool loop) - each from the server's real answer (`GET /agent/model_brain/models/`, `POST /agent/model_brain/tune/`), revealed one by one (instantly under reduced motion). Escape and the ✕ close it through `overlay.tlmDismiss`; an outside click never does. Fail-open: a broken dialog never blocks saving the models.
 
-## Chat Interface (24 modules)
+## Chat Interface (25 modules)
 - `usage_dashboard.js` — About → Usage: credit/legacy layouts, chart rendering, model activity, account-safe refresh and accessible dialog controls.
 
 - `agent_page_init.js` - WebSocket setup, app initialization, **Context-menu "Set directory as context"** handler (see *Context directory picker* below)
 - `agent_page_chat.js` - Chat message handling. **Every card carries Copy + Drop (2026-09-30):** a saved message keeps its `AgentMessage` id in `data-message-id` (from `message_id` on live frames, `id` in `initial_messages`); **Drop** asks with a themed `tlmConfirm` (red Drop, Cancel focused), sends `drop-message`, and removes the card(s) on the `message-dropped` reply — the LLM's history is re-read from the DB every request, so no reconnect is needed. A card without an id is a live status line and is only cleared from the screen. Contract: `recent-fixes.md` (2026-09-30). Also handles the `exec-permission-request` frame (Ask Execs — see below) by opening the permission dialog. `appendChatMessage` keeps the Send button on **Cancel** during self-healing "🔁 Tactic…" status frames (via `isSelfHealingStatusMessage()` in `agent_page_ui.js`) instead of re-enabling the controls, so the button only returns to **Send** on the real final answer (see `docs/claude/multi-turn.md` → *Self-healing model steps* and `recent-fixes.md` 2026-07-07)
 - `agent_page_canvas.js` - Code canvas rendering
+- `agent_page_markdown.js` - **Markdown canvas** (2026-10-11, shipped in `v1.82.0`). `.md` / `.markdown` (any case) open in a sanitized **Preview** (locally vendored Marked 18.1.0 + DOMPurify 3.4.16, no CDN) with a **Source** view and line numbers; **Choose folder** resolves relative images/links from user-selected files; Copy, Use as context and Save always take the SOURCE (Save keeps the original bytes, BOM and CRLF). Styles in `markdown_canvas.css`. Contract: `docs/markdown-canvas.md`; visible proof `scripts/markdown_canvas_visible.py` (30/30)
 - `agent_page_context.js` - RAG context management
 - `agent_page_dialogs.js` - Modal dialogs (incl. `showExecPermissionDialog(detail)` — the Ask-Execs Proceed/Deny prompt)
 - `agent_page_layout.js` - UI layout
@@ -267,7 +268,7 @@ Consequences that MUST be respected by any new canvas code:
 
 If you add a new canvas-level feature (layout grid, minimap, overlay HUD, etc.), it almost always belongs as a child of `#canvas-content`, not `#submonitor-container`, so it shares the coordinate frame with the items it visualizes.
 
-## Shared / chat-runtime auxiliary (13 modules)
+## Shared / chat-runtime auxiliary (14 modules)
 - `canvas_item_dialog.js` - Agent config dialog on canvas
 - `contextual_menus.js` - Right-click menus
 - `tools_dialog.js` - Tool enable/disable dialog + the **Catalog of Prompts** (`#prompts-catalog`): primary load is ONE `GET /agent/list_prompts/` call (v1.38.1) rendering every seeded prompt card; the legacy `prompt-1..N` probe loop is kept as the offline fallback (it still breaks at the first `idPrompt` gap). **The section list is entirely data-driven** from that call's `categories` array, so a NEW catalog section needs only the `views.PROMPT_CATEGORY_ORDER` entry + its migration — **no JS, no CSS, no template edit and no `STATIC_VERSION` bump** (proved by `voice_commands`, 2026-09-12). Section headers render uppercase (`.prompt-category-label { text-transform: uppercase }`), which is why the label `'Voice Commands'` reads **VOICE COMMANDS** on screen. **⚠️ `classifyPromptModes` DERIVES each card's mode badges from the prompt TEXT** — it scrubs `do not use …` clauses first, then an `acp_*` / `invoke_skill` / `list_skills` token ⇒ ACPX (implies Multi-turn), `chat_agent_*` or "multi-turn" ⇒ Multi-turn, the **hyphenated** `step-by-step` token ⇒ Step-by-Step, and every non-one-shot card also gets Exec-report — and `applyPromptModesToToggles` then sets all four toolbar checkboxes to exactly that, so clicking a card CLEARS the modes it does not need as well as setting the ones it does
@@ -281,6 +282,7 @@ If you add a new canvas-level feature (layout grid, minimap, overlay HUD, etc.),
 - `contacts_dialog.js` - **Contacts book** dialog — manages `contacts.json` (user state, preserved across self-update) so the messaging agents (Telegrammer / Whatsapper / Zavuerer / Emailer) resolve a `contact_name` into the real address / phone / `@username`
 - `checkbox_bulk_toggle.js` - **SPACE-bar bulk check/uncheck** (2026-08-04). Drag an ORDINARY TEXT SELECTION across several checkbox labels and press SPACE once: every checkbox the selection overlaps flips — **ANY selected one checked → uncheck them ALL; all unchecked → check them ALL**. Generic by construction (targets are the checkboxes the *live selection* overlaps, never a dialog id), so **every** checkbox dialog gets it with ZERO per-dialog wiring — Configure Mcps/Tools, Configure Agents, Configure Skills, External MCPs, the ACP canvas agent-config dialogs, and any future one. Loaded on **BOTH** pages (`agent_page.html` + `agentic_control_panel.html`, `_bulktoggle` cache-buster). Self-contained IIFE declaring **no** cross-file globals (same shape as `chat_image_paste.js`). **Contracts that must NOT be reverted**: the keydown listener is **CAPTURE-phase on `document`** (bubble phase lets `external_mcps_dialog.js`'s own Space handler toggle the focused row first, so the bulk pass toggles it a second time and nets it back — a silent data-corrupting bug), and `stopPropagation()` fires ONLY for a Space actually consumed so Escape/Tab/Enter/Ctrl+Z are untouched; it bails on `input`/`textarea`/`select`/`contenteditable` checking **both** `event.target` and `document.activeElement` (after a mouse-drag the target is `<body>`), so SPACE still types a space in every search box; it toggles with `checkbox.click()` — a REAL click — so existing change/click handlers still run (state persistence, the External-MCPs 5-active cap); range overlap is **STRICT** (a zero-length boundary touch does not count); a row must own **exactly one** checkbox, else a whole list container is taken for one row and any selection toggles the entire dialog; self-re-rendering lists (External MCPs rebuilds every row per toggle) are handled by re-resolving each checkbox immediately before clicking it. The chat toolbar toggles (`#multi-turn-enabled` etc.) are **unreachable by design** — `.toolbar-toggle` has `user-select: none` in `agent_page.css`, so no text selection can be made over them. Guarded by `agent/test_checkbox_bulk_toggle.py` (15 tests: source contract + template wiring + collected-static sync); full contract in `docs/claude/recent-fixes.md` (2026-08-04)
 - `flow-canvas-interactions.js` - Canvas mechanics SHARED by the Agentic Control Panel and the Prompt Flow Panel (with `flow_canvas.css`): triangle highlighting, connection capture/cancellation, curve geometry, wire hover/selection glow, Fit/zoom, context-menu placement and divider gestures. See *Prompt Flow Panel* below
+- `ui_splitters.js` - **One gesture model for all five pane dividers** (2026-10-11, shipped in `v1.80.0`): pointer capture, Escape / blur / pointer-cancel / lost-capture cleanup and the shared active/focus state for the chat ↔ canvas seam, the composer seam, the ACP and Prompt Flow sidebars and the Prompt Run-output seam. Each layout adapter keeps its own bounds, clamping and storage, and `FlowCanvasInteractions.bindDivider` delegates to it. Loaded on all three workspaces with `ui_tokens.css` / `ui_shell.css` / `ui_splitters.css` (keep `dialog_theme.css` last). Record: `docs/changes/2026-10-11-ui-sweep.md`
 
 ## Welcome page (1 module)
 
@@ -291,7 +293,7 @@ If you add a new canvas-level feature (layout grid, minimap, overlay HUD, etc.),
 - `prompt-flow-panel-model.js` - The `.fpmt` document contract, frozen as `window.PromptFlowPanelModel` (`FORMAT = 'tlamatini-prompting-flow'`, `EXTENSION = '.fpmt'`, `isFlowFilename`, `flowFilename`, the eight `operations` entries (seven executable operations and static User Commentary) with their SVG outlines and executable port positions, `blank`, `node`, `validate(flow, playable)`, `example`). Pure data: no DOM, no network. Its validator mirrors `agent/services/prompt_flow_panel.py::validate_flow` rule for rule, and the backend re-validates every document anyway
 - `prompt-flow-panel.js` - The editor/controller for `prompt_flow_panel.html`: seven-operation palette plus static User Commentary, drag/click-to-add, ACP-style press-drag-release connections (white side triangles, horizontal curves, Decision has right-side Y/N outputs; one destination per output), marquee and Ctrl-click selection, undo/redo, zoom 25 %–200 % (Ctrl+wheel) and Fit, the per-operation configure dialogs (shared `dialog_policy.js` / `dialog_theme.css`), file Open/Save/drop, the per-user browser draft (`localStorage` key `tlamatini.prompting-flow.draft.v1.<user id>`), and playback over the connection-scoped **`/ws/prompt-flow-panel/`** WebSocket (8 s `ping` heartbeat, explicit **Reconnect**; a connection never starts or resumes a run by itself). Full contract: *Prompt Flow Panel* below and [the user guide](../prompting-flow-designer.md)
 
-**Total: 56 JS modules** (24 chat + 15 ACP + 1 ACP entry-point + 13 shared/chat-runtime auxiliary + 1 welcome + 2 Prompt Flow Panel). Count them with a file listing (`agent/static/agent/js/*.js`), never by hand.
+**Total: 58 JS modules** (25 chat + 15 ACP + 1 ACP entry-point + 14 shared/chat-runtime auxiliary + 1 welcome + 2 Prompt Flow Panel). Count them with a file listing (`agent/static/agent/js/*.js`), never by hand.
 
 ### Uniform dialog and long-operation contract (v1.48.13)
 

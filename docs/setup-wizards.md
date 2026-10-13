@@ -1,6 +1,10 @@
 <!-- Tlamatini Author Banner — Angela López Mendoza · @angelahack1 -->
 # Installation and removal windows
 
+**Status: shipped in the published `v1.82.0` release (tag at `880a335e`, 2026-10-12).**
+The Installer and Uninstaller in that release zip are built from this code; the validation
+campaign below is dated 2026-10-11/12.
+
 The standalone Installer and Uninstaller share `setup_wizard.py`: Tlamatini's
 dark palette, native keyboard controls, a destination/review page, real progress,
 and persistent completion or recovery details. The action row occupies its own
@@ -103,7 +107,8 @@ verification, not acceptance of every application panel or external service.
   artifact records preserve that distinction.
 - Recovery and helper checks: 28/28 passed; uninstaller lifecycle checks:
   21/21 passed; mechanics and process ownership: 61/61 passed through Django.
-- A new complete runtime package built successfully: version 1.80.0,
+- A new complete runtime package built successfully: version 1.80.0 (the
+  nearest tag then; the package later published as v1.82.0 was built separately),
   77,541 manifest files, approximately 1.921 GB compressed. Integrity verification
   passed. The original checkout's database and release directory were not used
   as build scratch space.
@@ -178,7 +183,14 @@ verification, not acceptance of every application panel or external service.
   normal login, and the product deployed Starter, Sleeper, Pythonxer and Executer.
   An abrupt main-process exit left five real worker/payload identities alive
   through four subsequent checks; Sleeper was suspended and an unrelated Python
-  control remained alive. The final removal audit remains pending.
+  control remained alive. Its removal is recorded in the next item.
+- Desktop removal 5 did not pass. The compiled Uninstaller stopped during
+  recovery preparation, before deleting anything: a Chrome renderer started by
+  the headed crash test had inherited the installation's `Temp` as its `TEMP`
+  and still held a file there (`case-5-chrome-lock-owner.json`). The application
+  executable, Uninstaller and runtime manifest stayed intact and no recovery
+  journal was left (`case-5-after-lock-release.json`); the campaign state reads
+  `needs-attention`. The tally is five real installations and four real removals.
 - Optimized preflight processed the real 77,541-file manifest in 41.88 seconds
   in a disposable destination; this measurement is not another installation.
 - The requested five installations and five uninstallations are **not yet

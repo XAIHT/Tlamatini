@@ -64,6 +64,20 @@ handle the explicit error. The wrapped chat tool remains retryable. Consumers mu
 check `status`/`agent_status` before using an interpretation; diagnostic error text
 is not an analysis report.
 
+## A wrongly worded request is not fatal (2026-10-12)
+
+The wrapped-agent launcher refuses two kinds of call before any model runs: a
+setting the agent does not have, and a missing mandatory setting. Both refusals
+carry `error_kind: "request"`, and `tools._is_visual_start_failure` keeps them
+out of the accumulated **Fatal analysis errors** dialog and its sound; the model
+corrects the call on its next try. Any other start failure of Image-Interpreter
+or Video-Analyzer still raises the dialog, and failures after the agent starts
+are unchanged. Video-Analyzer's tool description says it has no
+`transcription.engine` setting (`engine=` belongs to Whisperer). Coverage:
+`agent/test_visual_fatal_errors.py::RequestRefusalIsNotFatalTests` (5 tests).
+Commit `91ff8453`, after the `v1.82.0` tag; the published v1.82.0 zip does not
+carry it.
+
 ## Verification
 
 All commands and tests must run in a verified visible foreground console, left open

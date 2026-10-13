@@ -73,4 +73,4 @@ count as complete installations. No claim of invulnerability or full application
 release acceptance follows from these focused setup checks.
 
 All development execution is visible on the real desktop, with live transcripts
-and Shoter desktop evidence. No changes are committed or published.
+and Shoter desktop evidence. At the time of this research nothing was committed; the implementation was committed in `880a335e` (2026-10-12) and published in `v1.82.0`.
