@@ -57,6 +57,25 @@ opening and the visible 30-second timer refresh the view; events coalesce over
 See [the data contract and dated evidence](../usage-dashboard.md). It ships in
 the published `v1.78.0` release (cache suffix `-usage-recovery-1`).
 
+## The docked avatar follows both dividers (2026-10-13, source change)
+
+The vertical composer divider now shrinks the docked portrait as well as the message
+box. Its side is max(120 px, floor(min(25% of the form width, available portrait
+height))). Available height excludes the measured Send/Mic row and the existing
+portrait insets. The 120 px dock leaves a 106 px square portrait inside its border
+and padding; its resize handle remains 22 px. This reuses the existing legibility floor.
+
+The initial quarter-width portrait is preserved until the user moves the composer
+bar. Thereafter its minimum reserves only 120 px plus controls and spacing; never
+use the avatar's current width as the minimum, since that prevents vertical shrinking.
+The form's CSS variable fits the dock; floating size and persistence remain owned by
+`avatar_size.js`. Both dividers, keyboard controls, transient rows and viewport
+changes retain square geometry without feeding the current size back into the minimum.
+Current source cache suffix: `-avatar-divider-1`.
+
+Verification: [the change record](../changes/2026-10-13-docked-avatar-divider.md).
+
+
 ## The message box and the undocked avatar (2026-10-10, shipped in `v1.78.0`)
 
 `agent_page_layout.js` sizes `#tools-chat-form-container` from its measured parts

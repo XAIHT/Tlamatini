@@ -18,6 +18,10 @@
  border:2px solid #5A1FB8;box-shadow:0 0 12px rgba(90,31,184,.35);padding:5px;
  display:flex;align-items:center;justify-content:center;user-select:none;-webkit-user-select:none;}
 #tlm-avatar-dock:hover{border-color:#22D3EE;}
+/* The composer supplies a square that fits both pane dimensions. Floating
+   sizing keeps its own explicit geometry and persisted presentation presets. */
+#tlm-avatar-dock:not(.tlm-floating){width:var(--tlm-avatar-docked-size,25%);
+ height:var(--tlm-avatar-docked-size,auto);min-width:120px;min-height:120px;}
 #tlm-face-outer{position:absolute;overflow:hidden;border-radius:7px;pointer-events:none;}
 #tlm-face{position:absolute;inset:0;}
 #tlm-face img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;

@@ -16,6 +16,16 @@
 
 ---
 
+## 2026-10-13 — The composer divider shrinks the docked avatar (source change)
+
+`agent_page_layout.js` reserves the 120 px portrait floor, not the current dock width.
+The square dock fits the smaller of its quarter-width column and the height above
+Send/Mic. The initial size is unchanged until the composer bar is moved; floating
+presets, keyboard resizing, draft contents and transient-row accounting are preserved.
+Keep the minimum independent from the measured portrait or vertical shrinking locks
+again. CSS consumes `--tlm-avatar-docked-size` only while docked. Cache suffix:
+`-avatar-divider-1`. See [behavior and visible verification](../changes/2026-10-13-docked-avatar-divider.md).
+
 ## 2026-10-12 — v1.82.0 published; a wrongly worded request is not fatal; docs and dossier swept
 
 1. **The release.** `v1.82.0` is an annotated tag at `880a335e` (2026-10-12 07:16, pushed) —

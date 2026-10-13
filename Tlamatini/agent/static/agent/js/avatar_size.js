@@ -12,10 +12,9 @@
 // minimum, I don't know if you can make it sizeable or better, you decide."
 //
 // TWO STATES, AND THE DEFAULT IS UNCHANGED
-//   DOCKED   — exactly today's layout: absolutely positioned inside the chat
-//              form container, 25% width, anchored top-right. A user who never
-//              touches the handle sees no difference at all. That is the point:
-//              the feature is opt-in, so it cannot regress anybody's layout.
+//   DOCKED   — square, anchored top-right inside the chat form, up to 25% of
+//              its width. The composer divider can shrink her to 120 px;
+//              agent_page_layout.js fits both available dimensions.
 //   FLOATING — the moment she is resized she becomes `position: fixed`,
 //              anchored bottom-right of the viewport, at an explicit square
 //              size. She then grows UP and LEFT, over the page, so she can
@@ -86,7 +85,7 @@
     catch (e) { /* private mode — the size simply will not persist */ }
   }
 
-  // Applying a size is the ONLY place the dock's geometry is written.
+  // Own floating geometry here; docked geometry comes from the composer CSS variable.
   function apply(px, persist) {
     if (!dock || applying) { return; }
     applying = true;

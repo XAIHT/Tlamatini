@@ -213,15 +213,20 @@ function bindDividerPointerDrag(divider, resizingClass, onMove) {
     let dividerPct = 90;
     let actualPct = 90;
     let pendingLayout = false;
+    let userResized = false;
 
     const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
     const rect = () => subchatContainer.getBoundingClientRect();
     const MIN_LOG_PX = 80;
     const COMPOSER_GUARD_PX = 6;
+    const DOCKED_AVATAR_MIN_PX = 120;
     const form = document.getElementById('chat-form');
     const actions = toolsContainer.querySelector('.chat-composer-actions');
     const input = document.getElementById('chat-message-input');
     const avatar = document.getElementById('tlm-avatar-dock');
+    const isAvatarDocked = () => avatar && !avatar.classList.contains('tlm-floating')
+        && avatar.getClientRects().length;
+    const naturalAvatarSize = () => Math.max(DOCKED_AVATAR_MIN_PX, form.clientWidth * 0.25);
     const px = value => parseFloat(value) || 0;
     const verticalEdges = style => px(style.paddingTop) + px(style.paddingBottom)
         + px(style.borderTopWidth) + px(style.borderBottomWidth);
@@ -243,11 +248,14 @@ function bindDividerPointerDrag(divider, resizingClass, onMove) {
             (px(inputStyle.lineHeight) || px(inputStyle.fontSize) * 1.2) + inputEdges
         ) : 0;
         let formAreaPx = Math.max(actionsHeight, inputMin) + COMPOSER_GUARD_PX;
-        if (avatar && !avatar.classList.contains('tlm-floating') && avatar.getClientRects().length) {
+        let naturalFormAreaPx = formAreaPx;
+        if (form && isAvatarDocked()) {
             const style = getComputedStyle(avatar);
-            // Her docked portrait is square at its natural width, at least 120px.
-            formAreaPx = Math.max(formAreaPx, Math.max(120, avatar.getBoundingClientRect().width)
-                + px(style.top) + px(style.bottom));
+            const insets = px(style.top) + px(style.bottom);
+            // Only the legible minimum constrains a drag. Her current width
+            // must never feed back into the composer's minimum height.
+            naturalFormAreaPx = Math.max(formAreaPx, naturalAvatarSize() + insets);
+            formAreaPx = Math.max(formAreaPx, DOCKED_AVATAR_MIN_PX + insets);
         }
         let formChrome = 0;
         if (form) {
@@ -257,7 +265,21 @@ function bindDividerPointerDrag(divider, resizingClass, onMove) {
         }
         const rowsHeight = ['tools-div', 'chat-image-chips', 'context-gauge-row', 'dictation-status']
             .reduce((sum, id) => sum + outerHeight(document.getElementById(id)), 0);
-        return Math.ceil(rowsHeight + formAreaPx + formChrome + verticalEdges(getComputedStyle(toolsContainer)));
+        const chrome = rowsHeight + formChrome + verticalEdges(getComputedStyle(toolsContainer));
+        return { minimum: Math.ceil(chrome + formAreaPx), natural: Math.ceil(chrome + naturalFormAreaPx) };
+    };
+
+    const fitDockedAvatar = () => {
+        if (!form || !isAvatarDocked()) return;
+        const style = getComputedStyle(avatar);
+        const formStyle = getComputedStyle(form);
+        const availableHeight = form.getBoundingClientRect().height
+            - px(formStyle.borderTopWidth) - px(formStyle.borderBottomWidth)
+            - px(style.top) - px(style.bottom);
+        // Square, top-right, at most the original quarter-width column. Both
+        // pane dividers can now shrink her, without changing floating presets.
+        const size = Math.max(DOCKED_AVATAR_MIN_PX, Math.floor(Math.min(naturalAvatarSize(), availableHeight)));
+        form.style.setProperty('--tlm-avatar-docked-size', size + 'px');
     };
 
     const pctFromYToDivider = (clientY) => {
@@ -269,21 +291,26 @@ function bindDividerPointerDrag(divider, resizingClass, onMove) {
     // pDivider = chat-log share (%). null → re-clamp using last value.
     const applyVertical = (pDivider) => {
         if (pDivider != null) {
+            userResized = true;
             dividerPct = clamp(pDivider, 0, 100);
         }
         const total = subchatContainer.clientHeight;
         if (total <= 0) return;
         const dividerH = verticalDivider.offsetHeight || 8;
-        const formMinPx = computeFormMinHeight();
+        const formSizes = computeFormMinHeight();
+        const formMinPx = formSizes.minimum;
         const minLogPx = Math.min(MIN_LOG_PX, Math.max(0, total - dividerH));
         const maxLogPx = Math.max(minLogPx, total - dividerH - formMinPx);
         let logPx = (dividerPct / 100) * total;
+        // Keep the familiar initial portrait until the user moves this bar.
+        if (!userResized) logPx = Math.min(logPx, total - dividerH - formSizes.natural);
         logPx = clamp(logPx, minLogPx, maxLogPx);
         const formPx = total - dividerH - logPx;
         chatLogEl.style.height = logPx + 'px';
         toolsContainer.style.height = formPx + 'px';
         // Only an exceptionally short viewport needs scrolling; never clip its controls.
         toolsContainer.style.overflowY = formPx < formMinPx ? 'auto' : '';
+        fitDockedAvatar();
         actualPct = logPx / total * 100;
         verticalDivider.setAttribute('aria-valuemin', String(Math.floor(minLogPx / total * 100)));
         verticalDivider.setAttribute('aria-valuemax', String(Math.ceil(maxLogPx / total * 100)));
@@ -298,7 +325,7 @@ function bindDividerPointerDrag(divider, resizingClass, onMove) {
     };
 
     (function initVertical() {
-        applyVertical(90);
+        applyVertical(null);
     })();
 
     // Re-clamp whenever the toolbar's height changes (it grows when the user

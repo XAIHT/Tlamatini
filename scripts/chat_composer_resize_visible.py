@@ -81,6 +81,7 @@ def main():
         asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
     from playwright.sync_api import sync_playwright
     from chat_composer_resize_checks import run_checks
+    from docked_avatar_resize_checks import run_checks as run_docked_checks
     from chat_viewport_visible_checks import run_viewport_checks
     from chat_composer_visible_window import VisibleWindow
     with sync_playwright() as playwright:
@@ -118,6 +119,8 @@ def main():
             page.goto('http://127.0.0.1:8871/agent/agent/', wait_until='domcontentloaded')
         results = []
         try:
+            run_docked_checks(page, OUT, capture, results)
+            page.reload(wait_until='domcontentloaded')
             run_checks(page, context, user.pk, OUT, capture, results)
             results.extend(run_viewport_checks(page, context, OUT, capture))
         except Exception:
