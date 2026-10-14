@@ -568,7 +568,7 @@ def build_chapters(f: dict) -> list[Chapter]:
             "The chat page is where you talk to her. Up to eight toolbar switches decide how each request runs.",
             body=[
                 "Beside the conversation sits a canvas that shows code, text and PDFs. Paste a screenshot with "
-                "Ctrl+V or drop images on the chat: she saves them to her Temp folder and writes the full path "
+                "Ctrl+V or drop images on any page: she saves them to her Temp folder and writes the full path "
                 "into your message, ready for Image-Interpreter. A context ring between the toolbar and the "
                 "message box shows how much of the model's window the real request uses, measured by the "
                 "backend in bytes. Tokens use Ollama's own prompt_eval_count for the request; an "
@@ -603,11 +603,12 @@ def build_chapters(f: dict) -> list[Chapter]:
                 "those buttons plus a six-pixel guard, and docking her again gives the portrait its room back. "
                 "In a short window the box scrolls inside itself, and on a narrow screen the workspace pans while "
                 "the page and its dialogs stay in place.",
+                "Docked, her portrait now follows the divider too: dragging the bar down shrinks it to a 120-pixel square and dragging up gives it back. Shipped in v1.83.0.",
             ],
             points=[
                 ("Drag or type", "Pointer, arrows, Shift+arrows, Home and End move the divider."),
                 ("Undocked", "The message box can shrink to its own action buttons."),
-                ("Docked", "Her portrait keeps its room above the buttons."),
+                ("Docked", "Her portrait follows the divider down to a 120-pixel square."),
                 ("Small windows", "The box scrolls itself; dialogs stay inside the window."),
             ], deck="cards"),
         Section("drop", "CHAT HISTORY", "Drop a message from the conversation",
@@ -1113,6 +1114,30 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("Your source", "Copy, context and Save keep the exact Markdown bytes."),
                 ("Evidence", "30 of 30 visible checkpoints on October 11."),
             ]),
+        Section("filedrop", "FILE DROP · v1.83.0", "Drop a file anywhere, and she knows what it is",
+            "One listener on every page reads each dropped file and sends it to the mechanism that fits it.",
+            body=[
+                "Drag a file from Windows Explorer onto the chat, the Agentic Control Panel, the Prompt Flow Panel, "
+                "the welcome and login pages, the admin pages or the PDF viewer. A small overlay says what will "
+                "happen on that page. The listener claims only file drags, so text you drag, such as an agent "
+                "name or a palette item, is never touched, and a drop on a file input is left to the browser.",
+                "It decides by the bytes, not the name: the extension, the MIME type, magic numbers, a byte-order-mark "
+                "aware text-or-binary test and a real JSON parse that recognises an MCP configuration in every common "
+                "shape, UTF-16 files from PowerShell included. A bare map of names to servers counts only when every "
+                "value is a server, so ordinary JSON is never hijacked. An MCP import is never silent: a confirmation "
+                "lists the servers and warns that they can start programs on this computer.",
+                "Each page tells the listener what it can do, and the same registration writes the drag overlay. Up to "
+                "25 files at a time; a folder cannot be dropped because browsers do not reveal its path. Shipped in "
+                "v1.83.0 and checked on October 14 with 138 router checks, 22 new tests and 58 visible browser checks.",
+            ],
+            table={"columns": ["You drop", "What happens"], "widths": [0.30, 0.70], "rows": [
+                ["An MCP .json", "Confirm, then it joins the External MCP catalog; works on every page."],
+                ["A .flw flow", "Loads on the Agentic Control Panel canvas, or opens that panel in a new tab."],
+                ["A .fpmt flow", "Loads in the Prompt Flow Panel, asking first about unsaved work, or a new tab."],
+                ["An image", "Attached to your message: saved in Temp, its path written into the message."],
+                ["PDF, Markdown, code, plain JSON", "Opens in the chat canvas."],
+                ["A folder, zip or program", "Explained in plain words; nothing opens."],
+            ]}, deck="table"),
         Section("models", "CONFIG ▸ MODELS", "Every model choice in one place",
             f"The Models dialog exposes {model_fields} model, engine and voice settings for the core services "
             f"and {model_agents} model-backed agents, in six searchable categories.",
@@ -1780,31 +1805,85 @@ def build_chapters(f: dict) -> list[Chapter]:
          f"Version {f['release_tag']}; the latest release published on GitHub is "
          f"{f['release']['latest_published'] or 'not verified'}."),
         accent="gold", sections=[
-        Section("working_setup", "NEW IN v1.82.0", "A way back for installing and removing",
+        Section("working_dropfiles", "NEW IN v1.83.0", "One smart listener for every file you drop",
+            "Tagged and published on October 14: a dropped file never errors, never opens as text by mistake and never navigates away.",
+            body=[
+                "Dropping an MCP .json on the chat used to report an error, on the canvas it opened as plain text and "
+                "killed the import, and on every other page the browser left for the file. One listener now sits in "
+                "the head of the chat, both panels, the welcome and login pages, the admin pages and the PDF viewer "
+                "frame, as the File Drop section describes. It claims only file drags.",
+                "It decides by the bytes, not the name, and sends each kind to its own mechanism: an MCP .json to a "
+                "confirmation and the External MCP catalog, a .flw or .fpmt flow to its editor, an image to the "
+                "message, a PDF, Markdown or code file to the chat canvas, and anything else to a plain explanation.",
+                "It replaced four per-page handlers. Checked with 138 router checks against the real script, 22 new "
+                "Django tests and a visible Chrome run of 58 checks with 24 Shoter photographs, all on October 14.",
+            ],
+            points=[
+                ("One listener", "Capture phase, file drags only; text drags are untouched."),
+                ("By the bytes", "Extension, MIME, magic numbers, BOM-aware text test, real JSON parse."),
+                ("MCP import", "Never silent: a confirmation lists the servers first."),
+                ("Everywhere", "Chat, both panels, welcome, login, admin and the PDF frame."),
+                ("Evidence", "138 router checks, 22 tests, 58 visible checks, 24 photographs."),
+                ("Tag", "v1.83.0 at a2914019, pushed and published October 14."),
+            ], deck="cards"),
+        Section("working_dockedavatar", "NEW IN v1.83.0", "The portrait shrinks with the message box",
+            "Commit 63a62cc1 on October 13, credited to Tlamatini's-AutoBot; shipped in v1.83.0.",
+            body=[
+                "The divider above the message box used to reserve the portrait's current width as the box's "
+                "minimum height, so a wide portrait kept the box from shrinking. It now reserves only a 120-pixel "
+                "portrait plus its controls, and the docked portrait follows the divider: its side is the smaller of "
+                "a quarter of the form width and the height above the Send and Mic row, never below 120 pixels.",
+                "At the initial 1440-pixel window the portrait went from 282 to 120 pixels, returning about 162 "
+                "pixels to the chat history. Nineteen docked-avatar checkpoints and all eighteen existing composer "
+                "checkpoints passed in a visible Chrome window.",
+            ],
+            points=[
+                ("Down", "Dragging the divider down shrinks the portrait to a 120-pixel square."),
+                ("Up", "Dragging it up gives the portrait back, up to its original column."),
+                ("Keyboard", "Arrows, Shift+arrows, Home, End, double-click and Escape still work."),
+                ("Evidence", "19 docked-avatar and 18 composer checkpoints passed."),
+            ], deck="cards"),
+        Section("working_aftertag", "NEW IN v1.83.0", "A wrongly worded request is not fatal",
+            "Commit 91ff8453 on October 12, credited to Tlamatini's-AutoBot; shipped in v1.83.0.",
+            body=[
+                "When the launcher refuses an Image-Interpreter or Video-Analyzer call before the agent starts, "
+                "because a setting does not exist or a mandatory one is missing, the refusal is marked as a "
+                "request error. It no longer raises the red fatal-analysis dialog and its sound; the model "
+                "simply corrects the call. A real start failure still raises the dialog.",
+                "Video-Analyzer's description now says it has no transcription engine setting, which belongs "
+                "to Whisperer. Five new tests pin the behavior, and it reaches installations with v1.83.0.",
+            ],
+            points=[
+                ("Request errors", "Refused before any model ran; the model retries."),
+                ("Real failures", "Still raise the accumulated fatal dialog."),
+                ("No engine setting", "engine= belongs to Whisperer, not Video-Analyzer."),
+                ("Tests", "Five tests in RequestRefusalIsNotFatalTests."),
+            ], deck="cards"),
+        Section("working_setup", "CARRIED FROM v1.82.0", "A way back for installing and removing",
             "Tagged and published on October 12: new setup windows, and Markdown that opens as a page.",
             body=[
                 "The Installer and Uninstaller share one window that prepares and verifies a recovery copy "
                 "before changing any file, restores an interrupted run, names a locked file and keeps every "
                 "error on screen with Retry, as the Setup Windows section describes. Markdown files now open "
                 "in the chat canvas as a rendered page with their source kept intact.",
-                "The release was published on GitHub on October 12 and marked Latest. Its zip is byte for byte "
-                "the local build, a self-modify build whose package carries the setup windows, the Markdown "
-                "canvas, the shared theme of v1.80.0 and the web links of v1.79.0. There is no v1.81.0 tag.",
+                "The release was published on GitHub on October 12 and was the latest until v1.83.0 replaced it "
+                "on October 14. Its zip was a self-modify build whose package carried the setup windows, the "
+                "Markdown canvas, the shared theme of v1.80.0 and the web links of v1.79.0. There is no v1.81.0 tag.",
                 "The setup campaign ran visibly on October 11 and 12: 52 interface checkpoints, 28 recovery "
                 "checks, 21 lifecycle checks and 61 mechanics tests passed, with five real installations and "
                 "four real removals passing their independent audits. The Markdown canvas passed 30 of 30 "
-                "visible checkpoints. This refresh read the published zip; it did not install it.",
+                "visible checkpoints. The campaign did not install the published zip.",
             ],
             points=[
                 ("Setup windows", "One recoverable window for installing and removing."),
                 ("Markdown", "Rendered Preview, original Source, offline sanitizer."),
-                ("Published", "October 12, marked Latest; the zip matches the local build."),
+                ("Published", "October 12; the latest release until v1.83.0."),
                 ("No v1.81.0", "The number was skipped; v1.80.0 and v1.79.0 come before it."),
                 ("Campaign", "Five installations and four removals passed; one removal stopped safely."),
-                ("Not in it", "Commit 91ff8453 came after the zip was built."),
+                ("Followed by", "v1.83.0 on October 14 carries the three later changes."),
             ], deck="cards"),
         Section("working_onelook", "NEW IN v1.80.0", "One look, and one way to drag",
-            "Tagged on October 11 without a release of its own; it reaches users through v1.82.0.",
+            "Tagged on October 11 without a release of its own; it reaches users through v1.82.0 and v1.83.0.",
             body=[
                 "Every first-party page now draws from one set of design tokens, and the five pane dividers "
                 "share one grip and one gesture model, as the One Look section describes. The side divider was "
@@ -1820,10 +1899,10 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("Dividers", "Five seams, one grip, arrows and Shift, Home and End."),
                 ("Dialogs", "Eight-direction and keyboard resizing; matching buttons."),
                 ("Evidence", "175 tests and visible zoom, composer and dialog checks."),
-                ("Delivered by", "The published v1.82.0 release."),
+                ("Delivered by", "The published v1.82.0 and v1.83.0 releases."),
             ], deck="cards"),
         Section("working_links", "NEW IN v1.79.0", "Video-Analyzer takes a web link",
-            "Tagged on October 11 without a release of its own; it reaches users through v1.82.0.",
+            "Tagged on October 11 without a release of its own; it reaches users through v1.82.0 and v1.83.0.",
             body=[
                 "Given a YouTube or other web link, Video-Analyzer downloads one item itself: only the sound "
                 "for a transcription, the picture for a summary or a robotics check. It keeps a private, "
@@ -1840,24 +1919,7 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("Named failures", "Unavailable, login required, network, timeout and more."),
                 ("Prose works", "Plain-language requests fill in the link and the mode."),
                 ("Evidence", "141 unit tests and a visible 12-of-12 chat run."),
-                ("Delivered by", "The published v1.82.0 release."),
-            ], deck="cards"),
-        Section("working_aftertag", "AFTER THE v1.82.0 TAG", "A wrongly worded request is not fatal",
-            "Commit 91ff8453 on October 12, credited to Tlamatini's-AutoBot; on main, not in the published zip.",
-            body=[
-                "When the launcher refuses an Image-Interpreter or Video-Analyzer call before the agent starts, "
-                "because a setting does not exist or a mandatory one is missing, the refusal is marked as a "
-                "request error. It no longer raises the red fatal-analysis dialog and its sound; the model "
-                "simply corrects the call. A real start failure still raises the dialog.",
-                "Video-Analyzer's description now says it has no transcription engine setting, which belongs "
-                "to Whisperer. Five new tests pin the behavior. Reading the published zip's frozen code shows "
-                "the change is absent there, so it reaches installations with the next release.",
-            ],
-            points=[
-                ("Request errors", "Refused before any model ran; the model retries."),
-                ("Real failures", "Still raise the accumulated fatal dialog."),
-                ("No engine setting", "engine= belongs to Whisperer, not Video-Analyzer."),
-                ("Tests", "Five tests in RequestRefusalIsNotFatalTests."),
+                ("Delivered by", "The published v1.82.0 and v1.83.0 releases."),
             ], deck="cards"),
         Section("working_usage", "CARRIED FROM v1.78.0", "Usage: credits and activity, while she works",
             "Tagged on October 10; the Usage commit lands one commit after the tag. The published v1.78.0 zip carries it.",

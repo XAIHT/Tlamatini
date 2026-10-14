@@ -1,9 +1,9 @@
 <!-- Tlamatini Author Banner — Angela López Mendoza · @angelahack1 -->
 # Windows flow files
 
-Source implementation: 2026-10-04. The established agent-flow extension is **.flw**;
+Implemented 2026-10-04; shipped in `v1.76.0`. The established agent-flow extension is **.flw**;
 **.fpmt** is the prompting-flow extension. There is no .fmt format or conversion.
-A frozen release must include these source changes before its executable can open
+A frozen release must include these changes (every release since `v1.76.0` does) before its executable can open
 .fpmt through Explorer. Registration alone does not update an older executable.
 
 | File | Windows description / ProgID | Editor |

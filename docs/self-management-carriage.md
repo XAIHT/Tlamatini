@@ -110,6 +110,17 @@ never leave an install without an uninstaller — and needs a real release test.
   `Uninstaller.exe`: the new setup window reaches an existing installation only through a fresh
   install or a reinstall with the new Installer.
 
+### The file-drop router (2026-10-14, `v1.83.0`)
+
+- `file_drop_router.js` is a plain static file in `agent/static/agent/js/`: `collectstatic` serves it from
+  `staticfiles/`, and `agent/test_file_drop_router.py` fails if the collected copy differs from the source. It
+  is loaded by the `<head>` of `agent_page.html`, `agentic_control_panel.html`, `prompt_flow_panel.html`,
+  `welcome.html`, `login.html`, `admin/base_site.html` and `static/agent/pdf/canvas.html`. The snapshot's
+  generic walk carries the script, its tests (`test_file_drop_router.py`, `scripts/file_drop_router_cases.mjs`)
+  and the visible runner.
+- No migration, no new Python module and no new dependency: an in-app update delivers it like any other
+  static file, and the Uninstaller is not involved.
+
 ### Compact mode and Self-modify switches (source development, 2026-10-02/03)
 
 The Compact mode switch shipped in `v1.75.0` (annotated tag at `f7eb53ff`,
@@ -119,10 +130,11 @@ The Compact mode switch shipped in `v1.75.0` (annotated tag at `f7eb53ff`,
 on GitHub on 2026-10-09; `v1.77.0` (annotated tag at `052bfe0f`, 2026-10-09)
 was published the same day. `v1.78.0` (annotated tag at `0e6fc72d`, 2026-10-10;
 migration 0213 `UsageDaily` landed one commit later in `7460a147`) was published
-on 2026-10-10 (marked Latest). `v1.82.0` (annotated tag at `880a335e`, 2026-10-12)
-was published on 2026-10-12 and is now the latest published release and the one
-self-update delivers; it adds no migration, and 0213 reaches existing installs
-through the post-update `migrate` like every migration.
+on 2026-10-10. `v1.82.0` (annotated tag at `880a335e`, 2026-10-12) was published on
+2026-10-12, and `v1.83.0` (annotated tag at `a2914019`, 2026-10-14) on 2026-10-14; the
+latter is the latest published release and the one self-update delivers. Neither adds
+a migration, and 0213 reaches existing installs through the post-update `migrate` like
+every migration.
 
 - **Compact mode switch (2026-10-02).** `agent/compact_mode.py` is imported at
   module level by `mcp_agent.py`, so the frozen archive carries it through the

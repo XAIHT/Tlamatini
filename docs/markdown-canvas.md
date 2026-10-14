@@ -34,7 +34,7 @@ The sanitizer allowlists HTML and attributes, scopes IDs, removes document class
 and active markup, and restricts resource protocols. Parsing does not depend on a
 CDN. `scripts/vendor_frontend.py` pins archive integrity, licenses and per-file
 receipts; runtime and self-modify snapshot contracts include both libraries.
-The static cache suffix is `-markdown-canvas-1`.
+The static cache suffix was `-markdown-canvas-1` when it shipped (the live suffix is `-file-drop-router-1`).
 
 ## Visible verification
 

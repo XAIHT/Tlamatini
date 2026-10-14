@@ -16,6 +16,42 @@
 
 ---
 
+## 2026-10-14 — v1.83.0 released; every document, the PDF and the PPTX swept
+
+1. **The release.** `v1.83.0` is an annotated tag at `a2914019` (2026-10-14, pushed) —
+   *"Release v1.83.0 A smart file-drop router for every page: each dropped file is recognised by its
+   bytes and sent to its own mechanism, so an MCP .json imports everywhere and never errors, opens as
+   text or navigates away."* It follows `v1.82.0` (`880a335e`); **no `v1.81.0` tag exists**, and
+   `v1.80.0` / `v1.79.0` have no release of their own. The GitHub release is "Tlamatini Release
+   v1.83.0 Win11x64", marked Latest, so **About ▸ Check for updates** delivers it. The runtime
+   version resolves to the bare `1.83.0` from the tag.
+2. **What it carries beyond v1.82.0.** `91ff8453` (a wrongly worded image/video request is not a
+   fatal analysis error), `63a62cc1` (the composer divider shrinks the docked avatar) and
+   `a2914019` (the page-wide file-drop router, the entry below). No migration (still 0213), 59 JS
+   modules (25 chat + 15 ACP + 1 entry + 15 shared + 1 welcome + 2 Prompt Flow Panel), 26
+   stylesheets, cache suffix `-file-drop-router-1`.
+3. **Documents.** Every markdown file now calls v1.83.0 the current release and no longer carries
+   "source version", "after the tag", "NOT in the published zip" or "a build of `main` reports the
+   bare 1.82.0" caveats: `CLAUDE.md`, `README.md` (badge, a new *Drop a file on any page* section,
+   *Newest changes*), `AGENTS.md`, `GEMINI.md`, `KIMI.md`, `BookOfTlamatini.md`, `VERSIONING.md`,
+   `ACPX.md`, `TLAMATINI_MCP.md`, `Tlamatini.md` (`TLAMATINI_VERSION: 1.83.0`), `docs/claude/*`,
+   `docs/*.md`, both self-update inclusion skills and the two Codex dossier skills. Version
+   surfaces: `package.json`, the `/agent/version/` sample in `views.py`, and the generated
+   `_version.py` (gitignored; a source run reads it BEFORE git, so a stale copy kept reporting
+   `1.82.0`).
+4. **The PDF and the PPTX.** `refresh_project_docs.py` ran with `TLAMATINI_RELEASE_TAG=v1.83.0`
+   while HEAD still equalled the tag, so the dossier states v1.83.0 as the current release and
+   carries no "commits since the tag" narration. New sections: *File Drop*, three *NEW IN v1.83.0*
+   cards (file drop, docked avatar, the not-fatal request) and the docked portrait in *The message
+   box*; v1.82.0 became *CARRIED FROM*. Verification passed: tree parity with `git ls-files`, no
+   glyph off the page, no overlap, every native PowerPoint text box inside its shape.
+5. **Two traps hit and fixed.** (a) Most files here mix CRLF and LF lines: an edit helper that
+   normalised them rewrote ~300 untouched lines of `CLAUDE.md` before `git diff --stat` caught it.
+   Edit with a helper that keeps each line's own ending and check the diff size every time. (b)
+   `Start-Process powershell -ArgumentList '-Command', '$env:X="v"; ...'` strips the inner double
+   quotes, so the variable is never set and the generator silently fell back to GitHub's answer
+   (it printed "newest published is v1.82.0"). Launch from a `.ps1` file instead.
+
 ## 2026-10-14 — ONE smart file-drop router for every page (an MCP `.json` no longer errors, opens as text, or navigates away)
 
 Angela: dropping an MCP `.json` on the chat reported an error, on the canvas **opened it as text** (which killed the
@@ -69,15 +105,15 @@ two failures were test-harness bugs 2 and 3 above). Every test MCP server was re
 `.claude/skills/tlamatini-daily-chat-test/harness/file_drop_visible.py`. Cache suffix: `-file-drop-router-1`. Contract:
 `docs/claude/frontend.md` → `file_drop_router.js`.
 
-## 2026-10-13 — The composer divider shrinks the docked avatar (source change)
+## 2026-10-13 — The composer divider shrinks the docked avatar (`63a62cc1`, shipped in `v1.83.0`)
 
 `agent_page_layout.js` reserves the 120 px portrait floor, not the current dock width.
 The square dock fits the smaller of its quarter-width column and the height above
 Send/Mic. The initial size is unchanged until the composer bar is moved; floating
 presets, keyboard resizing, draft contents and transient-row accounting are preserved.
 Keep the minimum independent from the measured portrait or vertical shrinking locks
-again. CSS consumes `--tlm-avatar-docked-size` only while docked. Cache suffix:
-`-avatar-divider-1`. See [behavior and visible verification](../changes/2026-10-13-docked-avatar-divider.md).
+again. CSS consumes `--tlm-avatar-docked-size` only while docked. Cache suffix at that
+change: `-avatar-divider-1`. See [behavior and visible verification](../changes/2026-10-13-docked-avatar-divider.md).
 
 ## 2026-10-12 — v1.82.0 published; a wrongly worded request is not fatal; docs and dossier swept
 
@@ -94,8 +130,7 @@ again. CSS consumes `--tlm-avatar-docked-size` only while docked. Cache suffix:
 2. **`91ff8453` is NOT in that zip.** The zip was finished at 16:03 local, eight minutes before
    the commit, and reading the frozen PYZ (`CArchiveReader` → `PYZ.pyz` → `agent.tools`,
    `agent.chat_agent_registry`) finds neither `_is_visual_start_failure` nor the new
-   Video-Analyzer sentence. A build of `main` reports `1.82.0` and carries it; the next release
-   will.
+   Video-Analyzer sentence. It shipped in `v1.83.0` (2026-10-14).
 3. **What `91ff8453` does** (Tlamatini's-AutoBot). The launcher's two refusals that happen before
    an agent starts — an unknown setting (`assignment_error`) and missing mandatory parameters —
    now carry `"error_kind": "request"`, and `tools._is_visual_start_failure(payload)` (status
@@ -257,7 +292,7 @@ widen the salvage to commas, or let the model install a downloader. ⚠️ The i
    `aria-valuetext` reports the box height. `dialog_policy.js::fitDialog` keeps jQuery UI
    dialogs inside the window. Verified with 18 composer + 38 viewport checks in a visible
    Chrome window (not a physical phone; 20% zoom was unavailable). Record:
-   `docs/changes/2026-10-10-composer-resize.md`. Current cache suffix: `-usage-recovery-1`.
+   `docs/changes/2026-10-10-composer-resize.md`. Cache suffix at that change: `-usage-recovery-1`.
    ⚠️ Do NOT bring the 30% floor back.
 3. **Image-Interpreter lists (`0e6fc72d`).** `resolve_image_paths` splits a comma-separated
    value only when the whole value is not one existing file, resolves each entry the same
@@ -823,7 +858,7 @@ The stricter file-opening guard mistakenly rejected that legitimate nested load.
 Only the example's internal load now opts into `withinEditorOperation`; ordinary
 file openings still obey the busy/running/undo locks. The complete 17-case source
 editor sequence passed, including the example, connections, duplication, zoom,
-Undo/Redo and Save/Open. The current cache suffix is `-flow-file-opening-2`.
+Undo/Redo and Save/Open. The cache suffix at that change was `-flow-file-opening-2`.
 
 Saving an actual Parametrizer mapping exposed another reload issue: its special
 dialog stores `_parametrizer_mappings`, which is not a complete runtime config.

@@ -401,8 +401,8 @@ Evidence: `Temp/voice-development/86-voice-regressions-minimal-app-config.log`
 and `87-real-windowless-microphone-probe.log`; the successful restart/window
 check is recorded in `89-real-worker-window-and-restart-check.log` and
 `windowless-startup-results.json`. The source application must be
-restarted to replace an already loaded launcher; already built installations
-need the normal rebuild/update to receive this source change.
+restarted to replace an already loaded launcher; installations receive this with
+the normal update, and every release since `v1.72.0` carries it.
 
 ## Mic preferences and system-style correction — 2026-09-27
 

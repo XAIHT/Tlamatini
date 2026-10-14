@@ -2,7 +2,7 @@
      Tlamatini Author Banner — do not remove -->
 # Docked avatar resizing from the composer divider
 
-Date: 2026-10-13. Source change; no release build or installed binary update.
+Date: 2026-10-13. Commit `63a62cc1`; shipped in `v1.83.0` (2026-10-14).
 
 The vertical divider previously reserved the avatar's current width as the
 composer's minimum height. A wide portrait therefore prevented the message box
@@ -28,8 +28,8 @@ to keep its controls reachable.
 
 Implementation: `agent_page_layout.js` measures the independent minimum and sets
 the form's `--tlm-avatar-docked-size`; `avatar.css` applies it only to the docked
-portrait. `avatar_size.js` retains floating geometry and persistence. The source
-cache suffix is `-avatar-divider-1`.
+portrait. `avatar_size.js` retains floating geometry and persistence. The cache
+suffix at that change was `-avatar-divider-1` (the live suffix is `-file-drop-router-1`).
 
 ## Verification
 

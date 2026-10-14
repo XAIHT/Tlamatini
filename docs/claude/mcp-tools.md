@@ -113,7 +113,7 @@ These are **force-bound and capability-hinted** for MCP-setup intents (`global_e
 
 ### Frontend — "External ▸ MCPs" navbar dialog
 
-A navbar dialog (`static/agent/js/external_mcps_dialog.js` + `css/external_mcps_dialog.css`): a searchable catalog, tick ≤5 to activate, a summary table, and **drag-a-`.json`-onto-the-dialog to import** servers. Three endpoints (all `@login_required`):
+A navbar dialog (`static/agent/js/external_mcps_dialog.js` + `css/external_mcps_dialog.css`): a searchable catalog, tick ≤5 to activate, a summary table, and **drag-a-`.json`-anywhere to import** servers (since `v1.83.0` any page, through the file-drop router). Three endpoints (all `@login_required`):
 
 | Endpoint | Method | Role |
 |---|---|---|

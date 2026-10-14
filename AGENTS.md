@@ -130,13 +130,60 @@ Contract: [CLAUDE.md](CLAUDE.md) → *Self-modify*,
 `docs/claude/architecture.md` → *The Self-modify switch*,
 `docs/claude/recent-fixes.md` (2026-10-03).
 
+## v1.83.0 — a smart file-drop router, a docked avatar that follows both dividers (2026-10-14)
+
+`v1.83.0` (annotated tag at `a2914019`, pushed 2026-10-14) — *"Release v1.83.0 A smart file-drop router
+for every page: each dropped file is recognised by its bytes and sent to its own mechanism, so an MCP
+.json imports everywhere and never errors, opens as text or navigates away."* It was published on GitHub
+on 2026-10-14 ("Tlamatini Release v1.83.0 Win11x64", marked Latest), so self-update delivers `v1.83.0`;
+the runtime version resolves to the bare `1.83.0`. It carries everything in `v1.82.0` plus the three
+changes below. No migration was added after 0213; the frontend now has 59 JS modules and 26
+stylesheets, and the live `STATIC_VERSION` cache suffix is `-file-drop-router-1`.
+
+- **File-drop router (`a2914019`).** `static/agent/js/file_drop_router.js` is the ONE listener for files
+  dropped on any page, in the `<head>` of the chat, the Agentic Control Panel, the Prompt Flow Panel,
+  welcome, login (`data-auth="none"`), the Django admin and the PDF viewer iframe (which relays to its
+  parent). It claims only `Files` drags, in the capture phase, classifies each file by its bytes
+  (extension, MIME, magic numbers, a BOM-aware text/binary test, and a real JSON parse that recognises an
+  MCP config in any shape, UTF-16 from PowerShell included) and sends each kind to its own mechanism: MCP
+  `.json` → confirm, then the External MCP catalog; `.flw` → the ACP canvas or a new ACP tab; `.fpmt` →
+  the Prompt Flow Panel or a new tab; image → attached to the message (saved in `Temp`); PDF / Markdown /
+  code / plain JSON → the chat canvas; folder / archive / binary → a plain-words explanation. Pages
+  register with `TlamatiniFileDrop.register(kinds, fn, {label})`; the label also drives the drag-time
+  overlay. It replaced four per-page handlers (the chat zone listeners with `#chat-drop-overlay`, the
+  canvas blind-open drop target, the External MCPs dialog's private drop import — that dialog now
+  refreshes on the `tlm:external-mcps-imported` event — and the Prompt Flow Panel viewport drop).
+  Contracts: capture phase and `Files` only; an MCP import is never silent; the flow tab is reserved
+  synchronously in the drop task; a bare name→server map counts only if EVERY value is a server; login
+  never imports or navigates. Proof: `scripts/file_drop_router_cases.mjs` (138 checks),
+  `agent/test_file_drop_router.py` (22 tests), 319 Django tests in the touched suites, ESLint with 0
+  errors, and a headed-Chrome run of 58/58 checks with 24 Shoter photos
+  (`.claude/skills/tlamatini-daily-chat-test/harness/file_drop_visible.py`). Contract
+  `docs/claude/frontend.md`; story `docs/claude/recent-fixes.md` (2026-10-14).
+- **Docked avatar (`63a62cc1`, 2026-10-13).** The vertical composer divider now shrinks the DOCKED
+  portrait as well as the message box. The dock side is `max(120, floor(min(25 % of the form width,
+  available portrait height)))`; the initial quarter-width portrait is kept until the user first moves
+  the bar, and the composer minimum reserves only 120 px plus its controls — never the avatar's current
+  width, which is exactly what used to lock vertical shrinking. `agent_page_layout.js` sets
+  `--tlm-avatar-docked-size`, `avatar.css` applies it only while docked, `avatar_size.js` keeps floating
+  geometry and persistence. At 1440 CSS px the portrait went from 282 px to 120 px. Verified in headed
+  Chrome (19 docked-avatar and 18 composer checkpoints) plus 7 focused source tests; credited to
+  Tlamatini's-AutoBot. Record `docs/changes/2026-10-13-docked-avatar-divider.md`.
+- **A wrongly worded request is not fatal (`91ff8453`, 2026-10-12).** When the wrapped-agent launcher
+  refuses a call BEFORE the agent starts (a setting the agent does not have, or a mandatory one missing)
+  it returns `error_kind: "request"`, and `tools._is_visual_start_failure` keeps that refusal from
+  raising the red Fatal analysis errors dialog for Image-Interpreter / Video-Analyzer; a real start
+  failure still raises it. Video-Analyzer has NO `transcription.engine` setting (`engine=` belongs to
+  Whisperer). Pinned by `agent/test_visual_fatal_errors.py::RequestRefusalIsNotFatalTests` (5 tests);
+  credited to Tlamatini's-AutoBot.
+
 ## v1.82.0 — setup windows that recover, Markdown as a page (2026-10-12); v1.80.0 and v1.79.0 (2026-10-11)
 
 `v1.82.0` (annotated tag at `880a335e`, pushed 2026-10-12) names the new setup windows. It was
-published on GitHub on 2026-10-12 (marked Latest), so self-update delivers `v1.82.0`; its zip is
-byte-identical to the local build, which predates the one later commit `91ff8453`. There is no
-`v1.81.0` tag. `v1.80.0` (`82099963`) and `v1.79.0` (`5f549868`), both tagged and pushed on
-2026-10-11, have no published release of their own.
+published on GitHub on 2026-10-12 and was marked Latest until `v1.83.0` replaced it on
+2026-10-14; `v1.83.0` carries everything below. There is no `v1.81.0` tag. `v1.80.0` (`82099963`)
+and `v1.79.0` (`5f549868`), both tagged and pushed on 2026-10-11, have no published release of
+their own; they reach users through `v1.82.0` and `v1.83.0`.
 
 - **Setup windows (v1.82.0).** `install.py` / `uninstall.py` drive one `setup_wizard.py` window.
   `setup_recovery.py` prepares and verifies a recovery copy before any file changes (journal
@@ -148,14 +195,14 @@ byte-identical to the local build, which predates the one later commit `91ff8453
   NOT an MSI transaction. Guide `docs/setup-wizards.md`; visible harnesses `scripts/setup_*`.
 - **Markdown canvas (v1.82.0).** `.md` / `.markdown` open in a sanitized Preview (vendored Marked
   18.1.0 + DOMPurify 3.4.16) with a Source view; Copy / Use as context / Save take the source bytes.
-  `docs/markdown-canvas.md`. Cache suffix `-markdown-canvas-1`.
+  `docs/markdown-canvas.md`. Cache suffix at that change: `-markdown-canvas-1`.
 - **One look (v1.80.0).** `ui_tokens.css` / `ui_shell.css` / `ui_splitters.css` / `ui_splitters.js`,
   `entry_pages.css`, `admin_theme.css` + `templates/admin/base_site.html`; keep `dialog_theme.css`
   last. `docs/changes/2026-10-11-ui-sweep.md`.
 - **Video-Analyzer web links (v1.79.0).** `video_fetch.py` downloads one item itself; never let the
-  model install a downloader. After the tag, `91ff8453` stops a wrongly worded request from raising
-  the fatal image/video dialog (`error_kind: "request"`) and says Video-Analyzer has no
-  `transcription.engine`.
+  model install a downloader. `91ff8453` (shipped in `v1.83.0`, see above) stops a wrongly worded
+  request from raising the fatal image/video dialog (`error_kind: "request"`) and says
+  Video-Analyzer has no `transcription.engine`.
 
 ## v1.78.0 — About ▸ Usage, a message box that shrinks, Image-Interpreter lists (2026-10-10)
 
@@ -227,7 +274,7 @@ coloured by level*, *A refused PDF says why*; `docs/claude/recent-fixes.md`
 
 ## Prompt Flow comments are static; User Input runs (2026-10-03)
 
-**Commentary/Input contract (2026-10-04, shipped in `v1.76.0`):** Seven executable operations remain separate from static **User Commentary**. **User Input** (`user_input`) keeps the question/reply/cancellation mechanism and notched figure. **User Commentary** (`user_commentary`) is edited entirely on the canvas: double-click/Enter writes in the bubble; a floating mini toolbar formats selected text with different fonts, sizes, text colors, bold, italic and underline within the same note. With a caret, formatting applies to newly typed text; outside editing it applies to the whole note. Bubble color and alignment affect the note. There is no commentary configuration dialog or numeric dimension form. Drag any border or corner to resize, including while editing; Fit text removes spare height. Done/Ctrl+Enter saves; Cancel/Escape restores the whole edit. Ctrl+Z/Y works inside the editor; completed edits, moves, resizes and duplicates use flow Undo/Redo. Bubbles contain their full wrapped text without internal scrollbars. Version 2 files persist allowlisted `runs` plus matching literal `text`; older plain notes normalize to one run, and version 1 executable commentary still migrates to User Input with IDs/edges/settings intact. Comments have no ports/Start/runtime/context/history/step effects. The draft key remains `.draft.v1.<user id>`. Cache suffix: `-flow-file-opening-2`. See `docs/prompting-flow-designer.md` and the 2026-10-04 verification record; the October 4 local release-validation campaign tracks subsequent isolated frozen builds and runtime acceptance.
+**Commentary/Input contract (2026-10-04, shipped in `v1.76.0`):** Seven executable operations remain separate from static **User Commentary**. **User Input** (`user_input`) keeps the question/reply/cancellation mechanism and notched figure. **User Commentary** (`user_commentary`) is edited entirely on the canvas: double-click/Enter writes in the bubble; a floating mini toolbar formats selected text with different fonts, sizes, text colors, bold, italic and underline within the same note. With a caret, formatting applies to newly typed text; outside editing it applies to the whole note. Bubble color and alignment affect the note. There is no commentary configuration dialog or numeric dimension form. Drag any border or corner to resize, including while editing; Fit text removes spare height. Done/Ctrl+Enter saves; Cancel/Escape restores the whole edit. Ctrl+Z/Y works inside the editor; completed edits, moves, resizes and duplicates use flow Undo/Redo. Bubbles contain their full wrapped text without internal scrollbars. Version 2 files persist allowlisted `runs` plus matching literal `text`; older plain notes normalize to one run, and version 1 executable commentary still migrates to User Input with IDs/edges/settings intact. Comments have no ports/Start/runtime/context/history/step effects. The draft key remains `.draft.v1.<user id>`. Cache suffix at that change: `-flow-file-opening-2` (the live suffix is `-file-drop-router-1` since 2026-10-14). See `docs/prompting-flow-designer.md` and the 2026-10-04 verification record; the October 4 local release-validation campaign tracks subsequent isolated frozen builds and runtime acceptance.
 
 Preserve this distinction when editing the designer, importing legacy diagrams,
 writing documentation or verifying the shipped example. The user explicitly
@@ -241,7 +288,7 @@ font/width changes, inline typing, file/draft recovery and canvas Fit.
 
 ## Windows flow-file lifecycle — 2026-10-04, shipped in `v1.76.0`
 
-Both `.flw` agent flows and `.fpmt` prompting flows now have Windows registration, repair, removal, status and Default Apps handling. Explorer/source command-line opening validates a bounded snapshot, reuses a matching running server before database startup, and returns through login to the correct editor without execution. Main-chat Open/drop/Reopen routes both formats into separate editor tabs while preserving the chat document. The historical `.flw` installer wrappers cover both types for old installer/uninstaller binaries; independent management uses `flow_file_associations.ps1 -Extensions`. Never erase UserChoice or another application’s Open With entries. Update Repair respects explicit unregistration and installation ownership. See [Windows flow files](docs/windows-flow-files.md). Cache suffix: `-flow-file-opening-2`. Committed to `main` on 2026-10-04. The October 4 local release-validation campaign also rebuilds isolated frozen artifacts; its dated evidence distinguishes build completion from runtime acceptance.
+Both `.flw` agent flows and `.fpmt` prompting flows now have Windows registration, repair, removal, status and Default Apps handling. Explorer/source command-line opening validates a bounded snapshot, reuses a matching running server before database startup, and returns through login to the correct editor without execution. Main-chat Open/drop/Reopen routes both formats into separate editor tabs while preserving the chat document. The historical `.flw` installer wrappers cover both types for old installer/uninstaller binaries; independent management uses `flow_file_associations.ps1 -Extensions`. Never erase UserChoice or another application’s Open With entries. Update Repair respects explicit unregistration and installation ownership. See [Windows flow files](docs/windows-flow-files.md). Cache suffix at that change: `-flow-file-opening-2` (the live suffix is `-file-drop-router-1` since 2026-10-14). Committed to `main` on 2026-10-04. The October 4 local release-validation campaign also rebuilds isolated frozen artifacts; its dated evidence distinguishes build completion from runtime acceptance.
 
 ## Complete release verification (2026-10-04)
 

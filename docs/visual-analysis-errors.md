@@ -75,8 +75,7 @@ or Video-Analyzer still raises the dialog, and failures after the agent starts
 are unchanged. Video-Analyzer's tool description says it has no
 `transcription.engine` setting (`engine=` belongs to Whisperer). Coverage:
 `agent/test_visual_fatal_errors.py::RequestRefusalIsNotFatalTests` (5 tests).
-Commit `91ff8453`, after the `v1.82.0` tag; the published v1.82.0 zip does not
-carry it.
+Commit `91ff8453`, shipped in `v1.83.0`.
 
 ## Verification
 
