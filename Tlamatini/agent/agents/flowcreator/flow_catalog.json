@@ -989,7 +989,7 @@
           "host": "str",
           "port": "int",
           "username": "str",
-          "password": "str",
+          "password": "<REDACTED>",
           "use_tls": "bool",
           "use_ssl": "bool"
         },
@@ -2023,7 +2023,7 @@
         "target_agents": "list",
         "llm": {
           "host": "str",
-          "token": "str"
+          "token": "<REDACTED>"
         }
       },
       "output_fields": [
@@ -2078,12 +2078,12 @@
           "api_id": "str|int",
           "api_hash": "str",
           "session_name": "str",
-          "session_string": "str"
+          "session_string": "<REDACTED>"
         },
         "whatsapp": {
           "to": "str",
           "phone_number_id": "str|int",
-          "access_token": "str",
+          "access_token": "<REDACTED>",
           "graph_base": "str",
           "api_version": "str",
           "verify_token": "str",
@@ -2254,7 +2254,7 @@
         "service": "str",
         "username": "str",
         "username_file": "str",
-        "password": "str",
+        "password": "<REDACTED>",
         "password_file": "str",
         "hash_file": "str",
         "format": "str",
@@ -2712,7 +2712,7 @@
           "connection_string": "str",
           "database": "str",
           "login": "str",
-          "password": "str"
+          "password": "<REDACTED>"
         },
         "script": "str",
         "source_agents": "list",
@@ -3850,7 +3850,7 @@
           "host": "str",
           "port": "int",
           "username": "str",
-          "password": "str",
+          "password": "<REDACTED>",
           "use_ssl": "bool",
           "folder": "str"
         },
@@ -4147,7 +4147,7 @@
           "server": "str",
           "database": "str",
           "username": "str",
-          "password": "str"
+          "password": "<REDACTED>"
         },
         "script": "str",
         "source_agents": "list",
@@ -4549,7 +4549,7 @@
           "api_id": "str|int",
           "api_hash": "str",
           "session_name": "str",
-          "session_string": "str"
+          "session_string": "<REDACTED>"
         },
         "message": "str",
         "contact_name": "str",
@@ -4609,11 +4609,11 @@
           "api_hash": "str",
           "bot_token": "str"
         },
-        "password": "str",
+        "password": "<REDACTED>",
         "tlamatini": {
           "base_url": "str",
           "username": "str",
-          "password": "str",
+          "password": "<REDACTED>",
           "multi_turn_enabled": "bool",
           "exec_report_enabled": "bool",
           "acpx_enabled": "bool",
@@ -4819,7 +4819,7 @@
         "target_agents": "list",
         "llm": {
           "host": "str",
-          "token": "str"
+          "token": "<REDACTED>"
         }
       },
       "output_fields": [
@@ -4959,7 +4959,7 @@
         "provider": "str",
         "whatsapp": {
           "phone_number_id": "str|int",
-          "access_token": "str",
+          "access_token": "<REDACTED>",
           "graph_base": "str",
           "api_version": "str",
           "to": "str",

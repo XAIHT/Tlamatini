@@ -34,7 +34,7 @@ def payload(key, kind="prose"):
     samples = {
         "prose": "Wide windows need measured wrapping. Preserve every word, keep readable type, and continue on another slide when the available space is full. ",
         "wide": "WWWW MMMM WIDE WINDOWS MEASURE EVERY CHARACTER ",
-        "token": "W",
+        "token": "<REDACTED>",
         "spanish": "Información técnica: acción, medición y verificación. El contenido completo debe permanecer visible dentro de sus límites. ",
         "cjk": "測定結果を確認して文字が枠内に収まるように配置する。",
     }

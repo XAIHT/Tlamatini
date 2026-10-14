@@ -170,7 +170,7 @@ SECRET_CASES: list[tuple[str, dict[str, Any], list[str]]] = [
     # which is why this is opaque gibberish and not something self-describing.
     # (The secret scrubber had flattened this to "<REDACTED>" -- and "<" ">" ARE
     # markers, so the case asserted the exact opposite of its own intent.)
-    ("env_secret_real_value", {"env": {"TOKEN": "tlamatini"}}, []),
+    ("env_secret_real_value", {"env": {"TOKEN": "<REDACTED>"}}, []),
     ("arg_api_key", {"args": ["--api_key=TOKEN_HERE"]}, ["args[0]"]),
     ("arg_apikey", {"args": ["--apikey=api_key_here"]}, ["args[0]"]),
     ("arg_token", {"args": ["--token=xxx"]}, ["args[0]"]),
