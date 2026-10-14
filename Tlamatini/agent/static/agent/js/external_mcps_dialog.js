@@ -20,45 +20,22 @@
 //        active set to /agent/external_mcps/activate/. The modal is viewport
 //        bounded and centered; only the catalog panes scroll.
 //
-//   Drag-to-import (self-attaching IIFE below)
-//     -- Drop an MCP `.json` (mcpServers shape) anywhere on the page to merge
-//        it into the catalog via /agent/external_mcps/import/. Shows a
-//        full-screen drop hint and a confirm() before saving (the file
-//        carries an executable command — never imported silently).
+//   Drag-to-import (moved 2026-10-14 to static/agent/js/file_drop_router.js)
+//     -- Dropping an MCP `.json` ANYWHERE on ANY Tlamatini page is handled by
+//        the page-wide router: it recognises the file, asks for confirmation
+//        (the file carries an executable command, so it is never imported
+//        silently) and POSTs it to /agent/external_mcps/import/. This dialog
+//        only listens for 'tlm:external-mcps-imported', so a drop made while
+//        it is open refreshes the list.
 
 const EXTERNAL_MCPS_MAX_ACTIVE = 5;
 const EXTERNAL_MCPS_RENDER_LIMIT = 700;
 let _externalMcpsKeydownHandler = null;
+let _externalMcpsImportedHandler = null;
 
 function _emxCsrf() {
     const m = document.cookie.match(/(?:^|; )csrftoken=([^;]+)/);
     return m ? decodeURIComponent(m[1]) : '';
-}
-
-/**
- * POST a dropped `mcpServers` map to the import endpoint and report the
- * outcome through the THEMED popup. Split out of the drop handler when the
- * native confirm() became a Promise (Angela's review, 2026-08-16).
- */
-function _emxImportServers(map) {
-    fetch('/agent/external_mcps/import/', {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: {
-            'X-CSRFToken': _emxCsrf(),
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ mcpServers: map })
-    }).then(r => r.json()).then(d => {
-        if (d.ok) {
-            const added = (d.added || []).length;
-            const updated = (d.updated || []).length;
-            tlmAlert('Catalog updated — ' + added + ' added, ' + updated +
-                ' updated.\nOpen External ▸ MCPs to activate them.', 'Import complete');
-        } else {
-            tlmAlert('Import failed: ' + (d.error || 'unknown error'), 'Import failed');
-        }
-    }).catch(err => tlmAlert('Import failed: ' + err, 'Import failed'));
 }
 
 function _emxDestroyLegacyJqueryDialog(dlg) {
@@ -511,19 +488,34 @@ function OpenExternalMcpsDialog(event) { // eslint-disable-line no-unused-vars
     renderLegend();
     openDialog();
 
-    fetch('/agent/external_mcps/', { credentials: 'same-origin' })
-        .then(r => r.json())
-        .then(payload => {
-            maxActive = Number(payload.max_active) || EXTERNAL_MCPS_MAX_ACTIVE;
-            servers = (payload.servers || []).map(s => Object.assign({}, s));
-            runtimeInfo = payload.runtime || null;
-            renderLegend();
-            renderAll();
-        })
-        .catch(err => {
-            listEl.innerHTML = '';
-            listEl.appendChild(listMessage('Load failed: ' + err));
-        });
+    // Loaded on open AND again whenever file_drop_router.js imports servers while
+    // this dialog is showing (ticks the user has not saved yet are kept).
+    function loadCatalog() {
+        const keep = new Map(servers.map(s => [s.key, s.active]));
+        return fetch('/agent/external_mcps/', { credentials: 'same-origin' })
+            .then(r => r.json())
+            .then(payload => {
+                maxActive = Number(payload.max_active) || EXTERNAL_MCPS_MAX_ACTIVE;
+                servers = (payload.servers || []).map(s => {
+                    const row = Object.assign({}, s);
+                    if (keep.has(row.key)) row.active = keep.get(row.key);
+                    return row;
+                });
+                runtimeInfo = payload.runtime || null;
+                renderLegend();
+                renderAll();
+            })
+            .catch(err => {
+                listEl.innerHTML = '';
+                listEl.appendChild(listMessage('Load failed: ' + err));
+            });
+    }
+    loadCatalog();
+    if (_externalMcpsImportedHandler) {
+        document.removeEventListener('tlm:external-mcps-imported', _externalMcpsImportedHandler);
+    }
+    _externalMcpsImportedHandler = () => { if (!dlg.hidden) loadCatalog(); };
+    document.addEventListener('tlm:external-mcps-imported', _externalMcpsImportedHandler);
 
     function saveActive() {
         if (isSaving) return;
@@ -551,95 +543,3 @@ function OpenExternalMcpsDialog(event) { // eslint-disable-line no-unused-vars
     }
     saveBtn.onclick = saveActive;
 }
-
-// ----------------------------------------------------------------
-// Drag-to-import an MCP .json file anywhere onto the page
-// ----------------------------------------------------------------
-
-(function () {
-    function ready(fn) {
-        if (document.readyState !== 'loading') fn();
-        else document.addEventListener('DOMContentLoaded', fn);
-    }
-    function hasFiles(e) {
-        return e.dataTransfer &&
-            Array.from(e.dataTransfer.types || []).indexOf('Files') !== -1;
-    }
-    ready(function () {
-        let overlay = document.getElementById('emx-drop-overlay');
-        if (!overlay) {
-            overlay = document.createElement('div');
-            overlay.id = 'emx-drop-overlay';
-            overlay.className = 'emx-drop-overlay';
-            overlay.textContent = 'Drop an MCP .json to add it to the catalog';
-            document.body.appendChild(overlay);
-        }
-        let depth = 0;
-        document.addEventListener('dragenter', function (e) {
-            if (!hasFiles(e)) return;
-            depth += 1;
-            overlay.classList.add('show');
-        });
-        document.addEventListener('dragover', function (e) {
-            if (!hasFiles(e)) return;
-            e.preventDefault();
-        });
-        document.addEventListener('dragleave', function (e) {
-            if (!hasFiles(e)) return;
-            depth = Math.max(0, depth - 1);
-            if (depth === 0) overlay.classList.remove('show');
-        });
-        document.addEventListener('drop', function (e) {
-            if (!hasFiles(e)) return;
-            e.preventDefault();
-            depth = 0;
-            overlay.classList.remove('show');
-            const file = e.dataTransfer.files && e.dataTransfer.files[0];
-            if (!file || !/\.json$/i.test(file.name)) return;
-            const reader = new FileReader();
-            reader.onload = function () {
-                let parsed;
-                try {
-                    const text = String(reader.result || '').replace(/^\uFEFF/, '').trim();
-                    parsed = JSON.parse(text);
-                } catch (err) {
-                    tlmAlert('Not valid JSON: ' + err, 'Import failed');
-                    return;
-                }
-                let map = (parsed && parsed.mcpServers) ? parsed.mcpServers : null;
-                if (!map && parsed && parsed.servers && typeof parsed.servers === 'object') {
-                    map = parsed.servers;
-                }
-                if (!map && parsed && typeof parsed === 'object' &&
-                    (parsed.command || parsed.url || parsed.endpoint || parsed.sseUrl ||
-                        parsed.streamableHttpUrl || parsed.wsUrl || parsed.websocketUrl ||
-                        (parsed.host && parsed.port))) {
-                    const inferredName = (parsed.name || file.name.replace(/\.json$/i, '') || 'Imported_MCP')
-                        .toString()
-                        .trim()
-                        .replace(/[^\w.-]+/g, '_') || 'Imported_MCP';
-                    map = {};
-                    map[inferredName] = parsed;
-                }
-                if (!map && parsed && typeof parsed === 'object') {
-                    map = parsed;
-                }
-                const names = (map && typeof map === 'object') ? Object.keys(map) : [];
-                if (!names.length) {
-                    tlmAlert('No mcpServers found in ' + file.name, 'Nothing to import');
-                    return;
-                }
-                // Themed confirm + result notices (dialog_policy.js). The drop
-                // handler is document-level, so it fires even with the dialog
-                // CLOSED — which is why these stay real popups instead of the
-                // in-dialog `flash()` strip the user might not be looking at.
-                tlmConfirm('Add ' + names.length + ' MCP server(s) to the catalog?',
-                    names.join(', '), 'Import MCP servers').then((ok) => {
-                    if (!ok) return;
-                    _emxImportServers(map);
-                });
-            };
-            reader.readAsText(file);
-        });
-    });
-})();

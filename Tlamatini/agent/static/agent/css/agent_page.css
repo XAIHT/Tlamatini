@@ -2350,13 +2350,12 @@ body.resizing-vertical iframe {
 }
 
 /* ── Chat screenshot paste / drop (chat_image_paste.js) ─────────────────────
-   PrtScn → Alt+Tab → Ctrl+V (or drag an image onto the chat column): the file
+   PrtScn → Alt+Tab → Ctrl+V (or drop an image anywhere on the page): the file
    lands in <app>/Temp, its path is spliced into the message at the caret, and
    a thumbnail chip appears just above the input. */
 
 #main-chat-container {
     position: relative;
-    /* containing block for #chat-drop-overlay */
 }
 
 #chat-image-chips {
@@ -2485,46 +2484,4 @@ body.resizing-vertical iframe {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-}
-
-#chat-drop-overlay {
-    display: none;
-    position: absolute;
-    inset: 0;
-    z-index: 1200;
-    align-items: center;
-    justify-content: center;
-    padding: 16px;
-    background: rgba(12, 20, 38, 0.78);
-    backdrop-filter: blur(2px);
-    pointer-events: none;
-    /* never swallow the drop event itself */
-}
-
-#chat-drop-overlay.show {
-    display: flex;
-}
-
-#chat-drop-overlay-inner {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-    padding: 22px 26px;
-    text-align: center;
-    color: #ffffff;
-    background: rgba(0, 0, 0, 0.35);
-    border: 2px dashed #22d3ee;
-    border-radius: 14px;
-}
-
-.chat-drop-icon {
-    font-size: 2rem;
-    line-height: 1;
-}
-
-.chat-drop-text {
-    font-size: 0.85rem;
-    font-weight: 700;
-    max-width: 22rem;
 }

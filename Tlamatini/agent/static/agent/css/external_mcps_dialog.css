@@ -589,28 +589,6 @@ body.emx-dialog-open {
     border-radius: 4px;
 }
 
-/* Full-screen drop hint shown while dragging an MCP .json onto the page. */
-.emx-drop-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 99999;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-    background: rgba(13, 16, 28, 0.78);
-    color: #ffffff;
-    font-family: 'Nunito', sans-serif;
-    font-size: 1.4rem;
-    font-weight: 700;
-    pointer-events: none;
-    text-align: center;
-}
-
-.emx-drop-overlay.show {
-    display: flex;
-}
-
 @media (max-width: 760px) {
     #external-mcps-dialog-message.emx-modal {
         padding: 8px;

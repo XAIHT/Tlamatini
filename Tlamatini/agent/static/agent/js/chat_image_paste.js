@@ -16,7 +16,9 @@
  * then we splice the absolute path into the chat box AT THE CARET the user
  * left behind, and show a thumbnail chip above the input.
  *
- * Dropping image files onto the chat panel does exactly the same thing.
+ * Dropping image files ANYWHERE on the page does exactly the same thing: the
+ * page-wide file_drop_router.js claims the drop, recognises an image by its
+ * bytes (not its name) and hands it to uploadImage() below.
  *
  * Self-contained IIFE: it declares NO cross-file globals (see the const-poison
  * contract in docs/claude/frontend.md — this module owns all its state).
@@ -31,7 +33,6 @@
     // textarea loses focus on Alt+Tab, so selectionStart alone is not enough —
     // we remember it on every interaction.
     let lastCaret = null;
-    let dragDepth = 0;
 
     function chatInput() {
         return document.getElementById('chat-message-input');
@@ -39,10 +40,6 @@
 
     function chipsHost() {
         return document.getElementById('chat-image-chips');
-    }
-
-    function dropOverlay() {
-        return document.getElementById('chat-drop-overlay');
     }
 
     /* ── caret tracking ─────────────────────────────────────────────── */
@@ -340,15 +337,6 @@
         return images;
     }
 
-    function dragCarriesFiles(event) {
-        const transfer = event.dataTransfer;
-        if (!transfer || !transfer.types) return false;
-        for (let i = 0; i < transfer.types.length; i++) {
-            if (transfer.types[i] === 'Files') return true;
-        }
-        return false;
-    }
-
     /* ── wiring ─────────────────────────────────────────────────────── */
 
     function init() {
@@ -382,50 +370,16 @@
             });
         }
 
-        // Drag-and-drop is scoped to the chat column on purpose: the External-MCP
-        // dialog installs its own document-level .json drop handler, and the ACP
-        // canvas has one too. Staying inside #main-chat-container keeps them apart.
-        const zone = document.getElementById('main-chat-container');
-        if (!zone) return;
-
-        zone.addEventListener('dragenter', function (event) {
-            if (!dragCarriesFiles(event)) return;
-            event.preventDefault();
-            dragDepth += 1;
-            const overlay = dropOverlay();
-            if (overlay) overlay.classList.add('show');
-        });
-
-        zone.addEventListener('dragover', function (event) {
-            if (!dragCarriesFiles(event)) return;
-            event.preventDefault();
-            if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
-        });
-
-        zone.addEventListener('dragleave', function (event) {
-            if (!dragCarriesFiles(event)) return;
-            dragDepth = Math.max(0, dragDepth - 1);
-            if (dragDepth === 0) {
-                const overlay = dropOverlay();
-                if (overlay) overlay.classList.remove('show');
-            }
-        });
-
-        zone.addEventListener('drop', function (event) {
-            if (!dragCarriesFiles(event)) return;
-            event.preventDefault();
-            dragDepth = 0;
-            const overlay = dropOverlay();
-            if (overlay) overlay.classList.remove('show');
-
-            const files = Array.prototype.slice.call((event.dataTransfer && event.dataTransfer.files) || []);
-            const images = files.filter(function (file) { return /^image\//i.test(file.type || ''); });
-            if (!images.length) {
-                showChipError('Only image files can be dropped into the chat.');
-                return;
-            }
-            images.forEach(uploadImage);
-        });
+        // Dropped images are handled by the page-wide file_drop_router.js: it claims
+        // every file drag in the capture phase, tells an image from an MCP .json, a
+        // flow or a document by its bytes, and calls us for the images only. The old
+        // chat-column listeners are gone - they could not tell a .json from a
+        // screenshot, reported an error for it, and left a private overlay behind.
+        if (window.TlamatiniFileDrop) {
+            window.TlamatiniFileDrop.register('image', function (files) {
+                files.forEach(uploadImage);
+            }, { label: 'Image \u2192 attached to your message (saved in Temp, path inserted)' });
+        }
     }
 
     if (document.readyState === 'loading') {

@@ -16,6 +16,59 @@
 
 ---
 
+## 2026-10-14 — ONE smart file-drop router for every page (an MCP `.json` no longer errors, opens as text, or navigates away)
+
+Angela: dropping an MCP `.json` on the chat reported an error, on the canvas **opened it as text** (which killed the
+import), and on every other page the browser **navigated away** to the file. Four blind per-page handlers fought each
+other: `chat_image_paste.js` (image-only; errored on a `.json` and never stopped the event), `agent_page_canvas.js`
+(opened ANY file and swallowed the event, so the import never saw it), `external_mcps_dialog.js` (the only real
+importer, loaded ONLY on the chat page) and `prompt-flow-panel.js` (treated every drop as a `.fpmt`). The Agentic Control
+Panel, welcome, login and admin pages had no handler at all.
+
+**`static/agent/js/file_drop_router.js` is now the ONE listener**, in the `<head>` of the chat, the Agentic Control Panel,
+the Prompt Flow Panel, welcome, login (`data-auth="none"`), the Django admin and the PDF viewer iframe (a separate
+document, so it relays the drop to its parent). It claims every `Files` drag in the **capture phase on `window`**,
+classifies each file by its bytes (extension → MIME → magic numbers → BOM-aware text/binary → a real JSON parse that
+recognises an MCP config in every shape seen in the wild: Claude Desktop/Code incl. per-project `.claude.json`, VS Code
+`servers` / `mcp.servers`, Zed `context_servers`, opencode, a bare server, a bare map, an array; UTF-16 files written by
+Windows PowerShell included) and sends each kind to a DIFFERENT mechanism:
+
+| kind | mechanism |
+|---|---|
+| MCP `.json` | confirm (names + "can launch programs"), then the External MCP catalog; offers to open External ▸ MCPs |
+| `.flw` | loads into the ACP canvas, or opens the ACP in a new tab |
+| `.fpmt` | loads in the Prompt Flow Panel (asks first if there is unsaved work), or opens it in a new tab |
+| image | chat: saved to `<app>/Temp`, path spliced into the message |
+| PDF / Markdown / code / plain JSON | the chat canvas |
+| folder / archive / binary | a plain-words toast saying what the page accepts and where the file CAN go |
+
+Pages register what they can do with `TlamatiniFileDrop.register(kinds, fn, {label})`; the label also drives the
+drag-time overlay, which says what will happen on THIS page. Removed: the chat-column drag listeners, `canvasDropTarget`,
+the dialog's drop IIFE + `_emxImportServers`, `#chat-drop-overlay` (markup + CSS) and `.emx-drop-overlay`.
+
+**Contracts (do NOT revert):** capture phase and `Files` only (text drags and the Prompt Flow palette are never touched; a
+drop on a native `<input type="file">` is left to the browser); an MCP import is NEVER silent; the flow tab is reserved
+**synchronously** inside the drop task (popup blockers refuse `window.open` after an `await`); one drop at a time; the
+BOM test precedes the NUL test; a bare name→server map counts only when EVERY value is a server, so generic JSON is never
+hijacked; the login page never imports and never navigates.
+
+**Gotchas learned:** (1) the file-writing layer decodes `\uXXXX` escapes in tool-written source — build special
+characters with `chr()` / `String.fromCharCode`; a literal U+FEFF inside a regex trips ESLint `no-irregular-whitespace`.
+(2) The Prompt Flow Panel restores a local draft, so a `.fpmt` drop legitimately asks "Replace the current diagram?" —
+a test must clear `tlamatini.prompting-flow.*` from localStorage first or answer it. (3) In synchronous Playwright,
+`time.sleep` does not pump dialog events — use `page.wait_for_timeout`. (4) Vm-sandboxed arrays fail a strict
+deep-equal against host arrays; the Node cases compare their JSON form.
+
+**Proof:** `scripts/file_drop_router_cases.mjs` — 138 checks against the REAL router in a stub browser (classification,
+every MCP shape, ordering, grouping, cancel, sign-in, popup timing, relay, the busy lock); `agent/test_file_drop_router.py`
+(22 tests: behaviour, source contract, every page wired and loaded before its registrants, old handlers gone, collected
+static); the old `test_external_mcp_universal` pin moved from the dialog to the router. VISIBLE: headed Chrome on the
+source server :8001, real `File` objects dropped through real drag events on every area of every page, Shoter
+photographs in `Temp/file_drop/visible_run_<stamp>/` — **58/58 checks, 24 photos, exit 0** (2026-10-14 08:17; the first run's
+two failures were test-harness bugs 2 and 3 above). Every test MCP server was removed again. Runner:
+`.claude/skills/tlamatini-daily-chat-test/harness/file_drop_visible.py`. Cache suffix: `-file-drop-router-1`. Contract:
+`docs/claude/frontend.md` → `file_drop_router.js`.
+
 ## 2026-10-13 — The composer divider shrinks the docked avatar (source change)
 
 `agent_page_layout.js` reserves the 120 px portrait floor, not the current dock width.

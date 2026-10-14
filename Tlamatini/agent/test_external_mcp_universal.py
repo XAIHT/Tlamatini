@@ -203,7 +203,10 @@ STATIC_EXPECTATIONS: list[tuple[str, tuple[str, ...], tuple[str, ...]]] = [
     ("agent/templates/agent/agent_page.html", ("step-by-step-enabled", "Step-by-Step"), ()),
     ("agent/static/agent/js/agent_page_state.js", ("STEP_BY_STEP_STORAGE_KEY", "isStepByStepEnabled", "applyStoredStepByStepState"), ()),
     ("agent/static/agent/js/agent_page_init.js", ("step_by_step_enabled", "applyStoredStepByStepState", "stepByStepCheckbox"), ()),
-    ("agent/static/agent/js/external_mcps_dialog.js", ("replace(/^\\uFEFF/", "mcpServers", "streamableHttpUrl"), ()),
+    # The drop-to-import moved from this dialog to the page-wide router (2026-10-14): the dialog now only
+    # refreshes when told, and the router owns BOM tolerance and the config shapes.
+    ("agent/static/agent/js/external_mcps_dialog.js", ("tlm:external-mcps-imported", "/agent/external_mcps/"), ("addEventListener('drop'",)),
+    ("agent/static/agent/js/file_drop_router.js", ("mcpServers", "streamableHttpUrl", "bomOf", "/agent/external_mcps/import/"), ()),
     ("agent/static/agent/js/agent_page_chat.js", ("mcp doctor", "server_key", "source_url"), ()),
     ("agent/static/agent/js/acp-agent-connectors.js", ("updateMcpDoctorConnection", "update_mcp_doctor_connection"), ()),
     ("agent/static/agent/js/acp-canvas-core.js", ("mcp-doctor", "mcpdoctor-agent", "updateMcpDoctorConnection"), ()),

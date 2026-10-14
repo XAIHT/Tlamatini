@@ -118,6 +118,22 @@ async function _redactFlowSnapshotBeforeSave(flowData) {
 // OPEN BUTTON
 // ========================================
 
+/**
+ * Open a .flw File into the canvas. Shared by the Open button and by the page-wide
+ * file drop, so both validate and report errors identically.
+ */
+async function acpOpenFlowFile(file) {
+    try {
+        if (!/\.flw$/i.test(file.name)) throw new Error('Choose a .flw agent flow.');
+        if (file.size > 5 * 1024 * 1024) throw new Error('The flow file must be no larger than 5 MiB.');
+        const data = JSON.parse((await file.text()).replace(/^\uFEFF/, ''));
+        if (await loadDiagram(data, file.name)) updateFilenameDisplay(file.name);
+    } catch (err) {
+        console.error('Failed to load diagram', err);
+        await acpAlert('Could not open diagram: ' + err.message);
+    }
+}
+
 if (openBtn) {
     openBtn.addEventListener('click', (e) => {
         e.preventDefault();
@@ -128,18 +144,24 @@ if (openBtn) {
         input.onchange = async (event) => {
             const file = event.target.files[0];
             if (!file) return;
-            try {
-                if (!/\.flw$/i.test(file.name)) throw new Error('Choose a .flw agent flow.');
-                if (file.size > 5 * 1024 * 1024) throw new Error('The flow file must be no larger than 5 MiB.');
-                const data = JSON.parse((await file.text()).replace(/^\uFEFF/, ''));
-                if (await loadDiagram(data, file.name)) updateFilenameDisplay(file.name);
-            } catch (err) {
-                console.error('Failed to load diagram', err);
-                await acpAlert('Could not open diagram: ' + err.message);
-            }
+            await acpOpenFlowFile(file);
         };
         input.click();
     });
+}
+
+// A .flw dropped anywhere on this page loads into the canvas (file_drop_router.js
+// recognises it; a .fpmt or an MCP .json dropped here goes to its own mechanism).
+if (window.TlamatiniFileDrop) {
+    window.TlamatiniFileDrop.register('flow-agent', async files => {
+        if (window.ACP && typeof window.ACP.canEdit === 'function' && !window.ACP.canEdit()) {
+            return { ignored: files, note: 'Stop the running flow (or wait for the current edit to finish) before loading another one.' };
+        }
+        await acpOpenFlowFile(files[0]);
+        return files.length > 1
+            ? { ignored: files.slice(1), note: 'Loaded ' + files[0].name + '; the canvas holds one flow, so the others were not loaded.' }
+            : {};
+    }, { label: 'Agent flow (.flw) \u2192 loads into this canvas' });
 }
 
 // ========================================

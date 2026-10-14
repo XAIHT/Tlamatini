@@ -458,17 +458,23 @@ saveAsButton.addEventListener('click', () => {
     setTimeout(() => window.URL.revokeObjectURL(anchor.href), 10000);
 });
 
-// The whole canvas is a document drop target, including Markdown/PDF previews.
-const canvasDropTarget = document.getElementById('canvas-container');
-canvasDropTarget.addEventListener('dragover', event => {
-    if (Array.from(event.dataTransfer?.types || []).includes('Files')) event.preventDefault();
-});
-canvasDropTarget.addEventListener('drop', event => {
-    if (!event.dataTransfer?.files.length) return;
-    event.preventDefault();
-    event.stopPropagation();
-    if (openEnabled && contextEnabled) void loadSelectedCanvasFile(event.dataTransfer.files[0]);
-});
+// Files dropped ANYWHERE on this page are claimed by file_drop_router.js, which
+// recognises each one by its bytes and calls us only for what the canvas can show:
+// documents, PDFs, Markdown, code and plain JSON. MCP configs, flows and images
+// go to their own mechanisms (this used to open an MCP .json as text and swallow
+// the event, so the import never saw it).
+if (window.TlamatiniFileDrop) {
+    window.TlamatiniFileDrop.register(['pdf', 'markdown', 'text'], async files => {
+        if (!openEnabled || !contextEnabled) {
+            return { ignored: files, note: 'The canvas is busy right now \u2014 drop the file again when Tlamatini has finished.' };
+        }
+        await loadSelectedCanvasFile(files[0]);
+        const rest = files.slice(1);
+        return rest.length
+            ? { ignored: rest, note: 'Opened ' + files[0].name + '; the canvas holds one document, so ' + rest.map(file => file.name).join(', ') + ' was not opened.' }
+            : {};
+    }, { label: 'Document (PDF, Markdown, code, JSON) \u2192 opens in the canvas' });
+}
 
 // Editor input / scroll sync
 textEditorCode.addEventListener('input', updateLineNumbers);

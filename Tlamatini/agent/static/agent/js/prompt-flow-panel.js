@@ -1065,13 +1065,27 @@
     $id('pmt-start').addEventListener('change', event => mutate(() => { flow.start = event.target.value || null; }));
     $id('pmt-file-input').addEventListener('change', async event => { try { await openFile(event.target.files[0]); } catch (e) { await alertMessage(e.message); } finally { event.target.value = ''; } });
     viewport.addEventListener('dragover', event => { if (editable()) { event.preventDefault(); event.dataTransfer.dropEffect = 'copy'; } });
+    // Palette drags (an operation dropped on the canvas) stay here. FILES are claimed
+    // by file_drop_router.js before this handler can see them; they arrive below.
     viewport.addEventListener('drop', async event => {
+        if (event.dataTransfer.files.length) return;
         event.preventDefault(); if (!editable()) return;
         try {
-            if (event.dataTransfer.files.length) await openFile(event.dataTransfer.files[0]);
-            else { const point = position(event); addNode(event.dataTransfer.getData('application/x-tlamatini-operation'), { x: point.x - 100, y: point.y - 64 }); }
+            const point = position(event);
+            addNode(event.dataTransfer.getData('application/x-tlamatini-operation'), { x: point.x - 100, y: point.y - 64 });
         } catch (e) { await alertMessage(e.message); }
     });
+    if (window.TlamatiniFileDrop) {
+        window.TlamatiniFileDrop.register('flow-prompt', async files => {
+            if (!editable()) {
+                return { ignored: files, note: 'The diagram cannot be replaced while a run is active or a note is being edited.' };
+            }
+            try { await openFile(files[0]); } catch (e) { await alertMessage(e.message); }
+            return files.length > 1
+                ? { ignored: files.slice(1), note: 'Opened ' + files[0].name + '; the panel holds one diagram, so the others were not opened.' }
+                : {};
+        }, { label: 'Prompt flow (.fpmt) \u2192 opens as the current diagram' });
+    }
     viewport.addEventListener('pointerdown', event => {
         if (commentEditor || event.button !== 0 || event.target.closest('.pmt-node, .pmt-edge, button')) return;
         const p = position(event);
