@@ -543,10 +543,10 @@ window.onload = () => {
         reopenOpenCanvasButton.addEventListener('click', (e) => {
             e.preventDefault();
             if (openEnabled === false) {
-                console.log("Reopen canvas is not allowed at this moment...");
+                console.log("Refresh canvas is not allowed at this moment...");
                 return;
             }
-            reopenCanvas();
+            void refreshCanvas();
         });
     }
     if (setDirContextMenu) {

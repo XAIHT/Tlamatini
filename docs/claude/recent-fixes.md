@@ -16,6 +16,33 @@
 
 ---
 
+## 2026-10-15 — Refresh rereads the canvas's original file (source change)
+
+**Refresh** replaces the picker-based Reopen action. Open retains a browser-granted
+file handle; real drops retain their handle/entry during the synchronous drop
+event. Refresh reads that source again, compares complete text, and stages PDF
+replacement without discarding the old viewer on failure. Markdown preserves
+its view and resources; PDF preserves page/zoom/rotation/scroll mode. No file
+chooser opens from Refresh. Snapshot-only sources explain why it is unavailable.
+
+The single state renderer covers empty/unavailable/ready/busy/unchanged/updated/
+permission/error/operation-lock states, native disabled and aria-busy, live status
+and cancellation. An unchanged text file is still checkable and never rebuilds
+context. Changed active context is replaced only after its new content is ready;
+a failed/cancelled preparation keeps the old backend context. Generation and
+request ownership prevent stale reads after Clear, replacement or cancellation.
+PDFs keep their range-based loading contract and always reload on Refresh rather
+than infer equality from metadata. Cache suffix `-canvas-refresh-1`. Guide and
+headed test procedure: [canvas-refresh.md](../canvas-refresh.md).
+
+**Keep the staged PDF iframe attached.** Removing/reinserting it via
+`replaceChildren` reloads its browsing context and discards the document and
+restored view. Commit removes only the previous frame. A failed context send
+also finishes the PDF progress dialog instead of leaving it on Loading.
+Verified in visible Chrome (20/20 checkpoints, native file handles and real
+disk edits), 39 focused Django tests, 138 router cases, and full frontend lint
+(zero errors; all 59 modules parse). Source change only; no build/release.
+
 ## 2026-10-14 — v1.83.0 released; every document, the PDF and the PPTX swept
 
 1. **The release.** `v1.83.0` is an annotated tag at `a2914019` (2026-10-14, pushed) —

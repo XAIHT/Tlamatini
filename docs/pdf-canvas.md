@@ -1,9 +1,10 @@
 # PDF canvas and document context
 
-The Agent Page **Open** and **Reopen** native file pickers accept `.pdf` and
+The Agent Page **Open** native file picker accepts `.pdf` and
 `application/pdf`. A PDF opens inside the existing canvas with its original
-filename in the existing header. The original Copy, Reopen, Clear canvas and
-Use as context buttons keep their markup, colors and styles.
+filename in the existing header. Copy, Refresh, Clear canvas and Use as context
+keep the shared button styling. Since the 2026-10-15 source change,
+[Refresh](canvas-refresh.md) rereads the same file without another selection.
 
 The chat/canvas divider keeps pointer capture while resizing across the PDF
 frame. Release, cancelled touch input, lost capture and window focus loss end
@@ -24,8 +25,10 @@ passwords produce visible errors. PDF scripts are not executed.
 - **Save As** downloads the original PDF bytes with a PDF extension.
 - **Use as context** processes the complete original document as described below.
   Its existing toggle removes the selected context normally.
-- **Reopen** replaces the file and, if the canvas was already context, prepares
-  the replacement before rebuilding context. Cancelling preparation leaves the
+- **Refresh** stages a new viewer from the latest file before replacing the old
+  viewer, preserving page/zoom/rotation/scroll mode. Failed reads or invalid PDFs
+  keep the previous display. If the canvas was already context, it prepares the
+  replacement before rebuilding context. Cancelling preparation leaves the
   previous backend context available.
 - **Clear canvas**, text-file selection and generated text remove the PDF frame,
   terminate its worker and invalidate outstanding reads. Generation checks stop

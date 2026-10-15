@@ -241,6 +241,20 @@
     });
     window.TlamatiniMarkdownCanvas = {
         open, close,
+        // Refresh preserves the selected view, reading position and explicitly
+        // selected local resources while rerendering the complete new source.
+        snapshot: () => current ? { files: current.files, base: current.base,
+            preview: !host.hidden, top: host.scrollTop, left: host.scrollLeft } : null,
+        restore: state => {
+            if (!current || !state) return;
+            current.files = state.files;
+            current.base = state.base;
+            render();
+            selectView(state.preview);
+            host.scrollTop = state.top;
+            host.scrollLeft = state.left;
+        },
+        updateFile: file => { if (current) current.file = file; },
         get active() { return current !== null; },
         get file() { return current?.file || null; },
         get name() { return current?.name || ''; },

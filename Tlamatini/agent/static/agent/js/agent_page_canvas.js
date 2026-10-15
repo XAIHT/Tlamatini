@@ -45,6 +45,94 @@ const SOURCE_CODE_ACCEPT = [
 
 // Every replacement invalidates pending reads, PDF loads and text extractions.
 let canvasLoadGeneration = 0;
+// A File is a snapshot, not permission to reread its path. Keep the granted
+// handle/entry in this tab only; never infer a server path from a local filename.
+let canvasSource = null;
+let canvasRefreshWork = null;
+let canvasRefreshState = 'empty';
+let canvasRefreshMessage = 'Open a file to refresh its content.';
+const canvasRefreshStatus = document.getElementById('canvas-refresh-status');
+const canvasRefreshCancel = document.getElementById('canvas-refresh-cancel');
+
+function syncCanvasRefreshButton() {
+    const busy = !!canvasRefreshWork;
+    const locked = !openEnabled || !contextEnabled || inLongOperation;
+    const state = busy ? 'refreshing' : locked ? 'locked' : canvasRefreshState;
+    const message = locked && !busy ? 'Refresh is available when the current operation finishes.' : canvasRefreshMessage;
+    reopenOpenCanvasButton.disabled = busy || locked || !canvasSource?.read;
+    reopenOpenCanvasButton.textContent = busy ? 'Refreshing…'
+        : canvasRefreshState === 'permission' && canvasSource?.handle?.requestPermission ? 'Allow refresh' : 'Refresh';
+    reopenOpenCanvasButton.style.backgroundColor = reopenOpenCanvasButton.disabled ? '#808080' : 'darkgreen';
+    reopenOpenCanvasButton.title = message;
+    reopenOpenCanvasButton.dataset.state = state;
+    reopenOpenCanvasButton.setAttribute('aria-busy', String(busy));
+    if (canvasRefreshStatus) {
+        canvasRefreshStatus.textContent = message;
+        canvasRefreshStatus.parentElement.dataset.state = state;
+    }
+    if (canvasRefreshCancel) canvasRefreshCancel.hidden = !busy;
+    if (busy) contextButton.disabled = true;
+}
+
+function canvasRefreshFeedback(state, message) {
+    canvasRefreshState = state;
+    canvasRefreshMessage = message;
+    syncCanvasRefreshButton();
+}
+
+function cancelCanvasRefresh() {
+    if (!canvasRefreshWork) return;
+    const work = canvasRefreshWork;
+    work.abort();
+    if (work.contextPreparing) window.TlamatiniPdfProgress?.cancelPreparation();
+    canvasRefreshWork = null;
+    canvasRefreshFeedback(work.committed ? 'updated' : 'ready', work.committed
+        ? 'Canvas refreshed. Context update cancelled; Use as context to update chat context.'
+        : 'Refresh cancelled. The displayed content was kept.');
+}
+
+function forgetCanvasSource() {
+    cancelCanvasRefresh();
+    canvasSource = null;
+    canvasRefreshFeedback('empty', 'Open a file to refresh its content.');
+}
+
+function rememberCanvasSource(source) {
+    canvasSource = source;
+    canvasRefreshFeedback(source.read ? 'ready' : 'unavailable', source.read
+        ? 'Refresh reads the latest content of this file.'
+        : 'This browser supplied a copy without access to the original. Open the file in Chrome or Edge on localhost or HTTPS to enable Refresh.');
+}
+
+function localCanvasSource(file, access, text = null) {
+    const handle = access?.handle;
+    const entry = access?.entry;
+    return { name: file.name, file, text, handle,
+        read: handle?.getFile ? () => handle.getFile()
+            : entry?.file ? () => new Promise((resolve, reject) => entry.file(resolve, reject)) : null };
+}
+
+async function fetchCanvasSource(filename, signal) {
+    const response = await fetch(`/agent/load_canvas/${encodeURIComponent(filename)}/`, {
+        cache: 'no-store', credentials: 'same-origin', signal,
+    });
+    if (response.redirected || response.status === 401 || response.status === 403) {
+        throw new Error('Your session expired. Sign in again before refreshing.');
+    }
+    if (!response.ok) throw new Error(response.status === 404
+        ? 'The saved content is no longer available.' : `Could not read the saved content (${response.status}).`);
+    return response.text();
+}
+
+window.TlamatiniCanvasRefresh = { sync: syncCanvasRefreshButton, cancel: cancelCanvasRefresh,
+    contextSelected: () => { if (canvasSource) canvasSource.contextPending = false; },
+    get busy() { return !!canvasRefreshWork; } };
+canvasRefreshCancel?.addEventListener('click', () => {
+    cancelCanvasRefresh();
+    if (canvasLoaded && contextEnabled) enableCanvasButtons();
+});
+syncCanvasRefreshButton();
+
 function getCanvasGeneration() { return canvasLoadGeneration; } // eslint-disable-line no-unused-vars
 function getCanvasText() {
     return window.TlamatiniPdfCanvas?.active
@@ -144,17 +232,15 @@ function loadCanvas(filename) { // eslint-disable-line no-unused-vars
         console.log("...Rebuild rag action sent.");
     }
 
+    forgetCanvasSource();
     const generation = ++canvasLoadGeneration;
-    fetch(`/agent/load_canvas/${encodeURIComponent(filename)}/`)
-        .then(response => {
-            if (!response.ok) throw new Error(`Could not load ${filename} (${response.status}).`);
-            return response.text();
-        })
+    fetchCanvasSource(filename)
         .then(content => {
             if (generation !== canvasLoadGeneration) return;
             displayCanvasText(filename, content);
             filenameSpan.textContent = `<<< ${filename} >>>`;
             canvasLoaded = true;
+            rememberCanvasSource({ name: filename, text: content, read: signal => fetchCanvasSource(filename, signal) });
             enableCanvasButtons();
             canvasSettedAsContext = false;
             contextButtonClicked = false;
@@ -171,37 +257,16 @@ async function loadCanvasFromFileInContentGenerated(filename) { // eslint-disabl
 
     alert(`Please select the file: ${filename}\n\nIt should be located in the 'content_generated' directory.`);
 
-    try {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = SOURCE_CODE_ACCEPT;
-        input.style.display = 'none';
-
-        input.onchange = async (e) => {
-            const file = e.target.files[0];
-            if (!file) {
-                console.error("No file selected");
-                document.body.removeChild(input);
-                return false;
-            }
-
-            await loadSelectedCanvasFile(file);
-            input.remove();
-        };
-        input.addEventListener('cancel', () => input.remove(), { once: true });
-        document.body.appendChild(input);
-        input.click();
-    } catch (error) {
-        console.error('Error loading canvas from content_generated:', error);
-        alert('Error loading file: ' + filename);
-    }
+    return loadFileContent();
 }
 
 function loadCanvasWithThisContent(content) {
     console.log("loadCanvasWithThisContent()...");
+    forgetCanvasSource();
     replaceCodeElement('language-text', content);
     filenameSpan.textContent = `<<< Context, tree of content. >>>`;
     canvasLoaded = true;
+    canvasRefreshFeedback('unavailable', 'This canvas contains a context summary, not a refreshable file.');
     enableCanvasButtons();
     canvasSettedAsContext = false;
     contextButtonClicked = false;
@@ -219,45 +284,103 @@ function openCanvas() {
     console.log("Canvas opened.");
 }
 
-function reopenCanvas() {
-    console.log("Reopening canvas with file...");
-
-    const callback2Rag = async () => {
-        const codeRegex = /<<< (.+?) >>>/s;
-        const result = filenameSpan.textContent.match(codeRegex);
-        const generation = canvasLoadGeneration;
-        const payload = await getCanvasContextPayload();
-        const content = payload.content || '';
-        if (generation !== canvasLoadGeneration || !contextEnabled) return;
-        const tokensNumber = genericTokenCounting(content);
-        console.log("--- The number of tokens in file is: " + tokensNumber);
-        if (tokensNumber > maximalTheoricTokens) {
-            console.log("--- The number of tokens in file (if used as context) may not be completely processed by Tlamatini, it wont fit the context window.");
-            alert("The number of tokens in the loaded file (if used as context) may not be completely processed by Tlamatini, it wont fit the context window.");
+async function refreshCanvas() {
+    const source = canvasSource;
+    if (!source?.read || canvasRefreshWork || !openEnabled || !contextEnabled || inLongOperation) return;
+    const work = new AbortController();
+    canvasRefreshWork = work;
+    let generation = canvasLoadGeneration;
+    let committed = false;
+    const ownsCanvas = () => canvasSource === source && canvasRefreshWork === work &&
+        generation === canvasLoadGeneration && !work.signal.aborted && openEnabled && contextEnabled && !inLongOperation;
+    const permission = canvasRefreshState === 'permission';
+    canvasRefreshFeedback('refreshing', 'Reading the latest file content…');
+    try {
+        // Permission can only be requested from the explicit button gesture.
+        // Refresh never opens a file chooser, including after a refusal.
+        if (permission && source.handle?.requestPermission &&
+            await source.handle.requestPermission({ mode: 'read' }) !== 'granted') {
+            throw new DOMException('Read permission was not granted.', 'NotAllowedError');
         }
-        console.log("--- The content is: " + content);
-        if (result) {
-            const sent = sendChatSocketMessage(payload);
-            if (sent) {
-                canvasSettedAsContext = true;
-                contextButtonClicked = true;
-                contextButton.textContent = 'Used as context';
-                contextButton.style.backgroundColor = 'gray';
-                contextButton.disabled = true;
-                openEnabled = false;
-                contextEnabled = false;
-                showPendingContextSelection(payload.message);
-            } else if (payload.context_token) {
-                window.TlamatiniPdfProgress?.fail('The live connection is unavailable. Reconnect and try again.');
+        const latest = await source.read(work.signal);
+        if (!ownsCanvas()) return;
+        const isFile = typeof latest !== 'string';
+        const isPdf = isFile && (latest.type === 'application/pdf' || /\.pdf$/i.test(latest.name));
+        const content = isPdf ? null : isFile ? await latest.text() : latest;
+        if (!ownsCanvas()) return;
+        const unchanged = !isPdf && source.text === content;
+        const wasContext = canvasSettedAsContext || source.contextPending;
+        if (!unchanged) {
+            if (isPdf) {
+                // PDF remains range-backed. No whole-file scan/hash just to
+                // report "unchanged"; reload the viewer from the fresh File.
+                await window.TlamatiniPdfCanvas.refresh(latest, work.signal);
+                if (!ownsCanvas()) return;
+                canvasLoadGeneration++;
+            } else {
+                const scroll = { top: textEditorPre.scrollTop, left: textEditorPre.scrollLeft };
+                const markdown = window.TlamatiniMarkdownCanvas?.snapshot();
+                displayCanvasText(source.name, content, isFile ? latest : null);
+                if (markdown) window.TlamatiniMarkdownCanvas.restore(markdown);
+                textEditorPre.scrollTop = scroll.top;
+                textEditorPre.scrollLeft = scroll.left;
             }
+            generation = canvasLoadGeneration;
+            committed = true;
+            work.committed = true;
+            source.text = content;
+            source.contextPending = wasContext;
         }
-        console.log("...Rebuild rag action sent.");
-    };
-    loadFileContent(canvasSettedAsContext, callback2Rag);
-    console.log("Canvas reopened.");
+        if (isFile) {
+            source.file = latest;
+            window.TlamatiniMarkdownCanvas?.updateFile(latest);
+        }
+        if (source.contextPending) {
+            // The backend keeps its old context until the new package is ready.
+            // Never enqueue an empty-context rebuild before its replacement.
+            unsetContextButton();
+            work.contextPreparing = true;
+            const payload = await getCanvasContextPayload();
+            work.contextPreparing = false;
+            if (!ownsCanvas()) return;
+            if (!sendChatSocketMessage(payload)) {
+                if (payload.context_token) window.TlamatiniPdfProgress?.fail('The live connection is unavailable. Reconnect and try again.');
+                throw new Error('The live connection is unavailable.');
+            }
+            source.contextPending = false;
+            setContextButton();
+            contextButton.disabled = true;
+            openEnabled = contextEnabled = false;
+            showPendingContextSelection(payload.message);
+        }
+        canvasRefreshFeedback(unchanged ? 'unchanged' : 'updated',
+            `${unchanged ? 'Up to date — no content changes found.' : 'Refreshed from the latest file content.'} Checked ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`);
+    } catch (error) {
+        if (canvasSource !== source || canvasRefreshWork !== work || work.signal.aborted) return;
+        if (committed || source.contextPending) {
+            unsetContextButton();
+            canvasRefreshFeedback('error', 'Canvas refreshed; chat context still uses the previous version. Use as context to update it.');
+        } else if (error.name === 'NotAllowedError' || error.name === 'SecurityError') {
+            canvasRefreshFeedback('permission', source.handle?.requestPermission
+                ? 'Read access is needed. Allow refresh grants access to this same file.'
+                : 'Read access was denied. Restore access or use Open to select the file again.');
+        } else {
+            const reason = error.name === 'NotFoundError' ? 'The file was moved or deleted.'
+                : error.name === 'NotReadableError' ? 'The file is being written or is unreadable. Wait for the save to finish.'
+                : error.message;
+            canvasRefreshFeedback('error', `${reason} Displayed content was kept. Refresh to retry, or use Open to select a file.`);
+        }
+    } finally {
+        if (canvasRefreshWork === work) {
+            canvasRefreshWork = null;
+            if (canvasLoaded && contextEnabled && !inLongOperation) enableCanvasButtons();
+            syncCanvasRefreshButton();
+        }
+    }
 }
 
 function cleanCanvas(preserveContext = false) {
+    forgetCanvasSource();
     const codeRegex = /<<<\s*(.+?)\s*>>>/s;
     const result1 = filenameSpan.textContent.match(codeRegex);
     const spanContextString = contextDataSpan.innerText;
@@ -348,19 +471,42 @@ if (copyCanvasButton) {
 /**
  * Open a file picker and load content into the canvas editor.
  */
-const loadFileContent = (reOpened = false, callback = null) => {
+const loadFileContent = async (reOpened = false, callback = null) => {
+    if (!openEnabled || !contextEnabled) return;
+    const generation = canvasLoadGeneration;
+    if (typeof window.showOpenFilePicker === 'function' && window.isSecureContext) {
+        try {
+            const [handle] = await window.showOpenFilePicker({ multiple: false, types: [{
+                description: 'Documents and source files',
+                accept: { 'application/octet-stream': SOURCE_CODE_ACCEPT.split(',').filter(value => value.startsWith('.')) },
+            }] });
+            if (!handle || generation !== canvasLoadGeneration) return;
+            const file = await handle.getFile();
+            if (generation !== canvasLoadGeneration) return;
+            await loadSelectedCanvasFile(file, reOpened, callback, { handle });
+            return;
+        } catch (error) {
+            if (error.name === 'AbortError') return;
+            if (!['SecurityError', 'NotSupportedError'].includes(error.name)) {
+                await window.tlmAlert(`Unable to open the file: ${error.message}`, 'Open file');
+                return;
+            }
+            // Insecure/embedded/unsupported browsers can still open a snapshot.
+            // Its Refresh state explains the missing ability to reread it.
+        }
+    }
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = SOURCE_CODE_ACCEPT;
+    input.hidden = true;
     input.onchange = async e => {
         const file = e.target.files[0];
-        if (file == null) {
-            console.error("No file selected, so load file content is not allowed, function will return false...");
-            return false;
-        }
-
+        input.remove();
+        if (!file || generation !== canvasLoadGeneration) return;
         await loadSelectedCanvasFile(file, reOpened, callback);
     };
+    input.addEventListener('cancel', () => input.remove(), { once: true });
+    document.body.appendChild(input);
     input.click();
 };
 
@@ -391,10 +537,10 @@ async function openFlowEditor(file) {
     }
 }
 
-async function loadSelectedCanvasFile(file, reOpened = false, callback = null) {
+async function loadSelectedCanvasFile(file, reOpened = false, callback = null, access = null) {
     if (!openEnabled || !contextEnabled) return;
     if (/\.(flw|fpmt)$/i.test(file.name)) { await openFlowEditor(file); return; }
-    // Reopen replaces context directly, avoiding an overlapping background
+    // Setting file context replaces it directly, avoiding an overlapping background
     // rebuild of empty context while the replacement document loads.
     cleanCanvas(reOpened && callback !== null);
     let generation = canvasLoadGeneration;
@@ -403,11 +549,12 @@ async function loadSelectedCanvasFile(file, reOpened = false, callback = null) {
         if (isPdf) {
             filenameSpan.textContent = `<<< ${file.name} >>>`;
             filenameSpan.title = file.name;
-            // Keep Clear/Reopen available during loading and password entry.
+            // Keep Clear available during loading and password entry.
             canvasLoaded = true;
             enableCanvasButtons();
             const loaded = await window.TlamatiniPdfCanvas.open(file);
             if (!loaded || generation !== canvasLoadGeneration) return;
+            rememberCanvasSource(localCanvasSource(file, access));
         } else {
             const content = await file.text();
             if (generation !== canvasLoadGeneration) return;
@@ -416,6 +563,7 @@ async function loadSelectedCanvasFile(file, reOpened = false, callback = null) {
             filenameSpan.textContent = `<<< ${file.name} >>>`;
             filenameSpan.title = file.name;
             canvasLoaded = true;
+            rememberCanvasSource(localCanvasSource(file, access, content));
             enableCanvasButtons();
         }
         if (reOpened && callback) await callback();
@@ -464,11 +612,14 @@ saveAsButton.addEventListener('click', () => {
 // go to their own mechanisms (this used to open an MCP .json as text and swallow
 // the event, so the import never saw it).
 if (window.TlamatiniFileDrop) {
-    window.TlamatiniFileDrop.register(['pdf', 'markdown', 'text'], async files => {
+    window.TlamatiniFileDrop.register(['pdf', 'markdown', 'text'], async (files, items) => {
         if (!openEnabled || !contextEnabled) {
             return { ignored: files, note: 'The canvas is busy right now \u2014 drop the file again when Tlamatini has finished.' };
         }
-        await loadSelectedCanvasFile(files[0]);
+        const generation = canvasLoadGeneration;
+        const handle = await items?.[0]?.handlePromise;
+        if (generation !== canvasLoadGeneration) return { ignored: files, note: 'The canvas changed while this drop was being read. Drop the file again.' };
+        await loadSelectedCanvasFile(files[0], false, null, { handle, entry: items?.[0]?.entry });
         const rest = files.slice(1);
         return rest.length
             ? { ignored: rest, note: 'Opened ' + files[0].name + '; the canvas holds one document, so ' + rest.map(file => file.name).join(', ') + ' was not opened.' }

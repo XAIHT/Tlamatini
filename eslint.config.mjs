@@ -207,7 +207,7 @@ export default [
                 loadCanvasFromFileInContentGenerated: "readonly",
                 loadCanvasWithThisContent: "readonly",
                 openCanvas: "readonly",
-                reopenCanvas: "readonly",
+                refreshCanvas: "readonly",
                 cleanCanvas: "readonly",
                 copyCanvasToClipboard: "readonly",
                 loadFileContent: "readonly",

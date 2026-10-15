@@ -6,6 +6,7 @@
     const host = document.getElementById('pdf-canvas-host');
     const editor = document.getElementById('editor-container');
     let current = null;
+    let pending = null;
     let requestId = 0;
 
     function createRequestId() {
@@ -67,17 +68,24 @@
             contextButtonClicked = true;
             contextButton.textContent = 'Used as context';
         }
+        window.TlamatiniCanvasRefresh?.sync();
+    }
+
+    function dispose(state) {
+        if (!state) return;
+        state.resolve(false);
+        state.textRequest?.reject(new Error('PDF was closed.'));
+        if (state.contextBusy) window.TlamatiniPdfProgress?.cancelPreparation();
+        cancelPreparation(state);
+        // Removing the browsing context terminates its worker, rendering tasks,
+        // range reads and observers, even during password/loading/extraction.
+        state.frame.remove();
     }
 
     function close() {
+        pending?.cancel();
         if (!current) return;
-        current.resolve(false);
-        current.textRequest?.reject(new Error('PDF was closed.'));
-        if (current.contextBusy) window.TlamatiniPdfProgress?.cancelPreparation();
-        cancelPreparation(current);
-        // Removing the browsing context terminates its worker, rendering tasks,
-        // range reads and observers, even during password/loading/extraction.
-        current.frame.remove();
+        dispose(current);
         current = null;
         host.hidden = true;
         editor.hidden = false;
@@ -99,6 +107,50 @@
         host.replaceChildren(frame);
         syncButtons();
         return ready;
+    }
+
+    function refresh(file, signal) {
+        if (!current?.ready) return Promise.reject(new Error('The PDF is not ready to refresh.'));
+        pending?.cancel();
+        const frame = document.createElement('iframe');
+        frame.title = `Refreshing PDF: ${file.name}`;
+        frame.src = host.dataset.viewerUrl;
+        // Keep the old frame until the replacement is usable. The candidate has
+        // full layout dimensions; reveal it only if password entry is needed.
+        host.style.position = 'relative';
+        frame.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;visibility:hidden';
+        return new Promise((resolve, reject) => {
+            const state = { file, frame, resolve, ready: false, textRequest: null,
+                preparedByMode: new Map(), password: current.password, view: current.view };
+            const finish = error => {
+                signal.removeEventListener('abort', state.cancel);
+                if (pending !== state) return;
+                pending = null;
+                frame.remove();
+                reject(error);
+            };
+            state.cancel = () => finish(new DOMException('PDF refresh cancelled.', 'AbortError'));
+            state.fail = message => finish(new Error(message));
+            state.commit = () => {
+                if (pending !== state || signal.aborted) return;
+                signal.removeEventListener('abort', state.cancel);
+                dispose(current);
+                current = state;
+                pending = null;
+                frame.style.cssText = '';
+                frame.title = `PDF: ${file.name}`;
+                // It is already attached. Moving an iframe through
+                // replaceChildren would reload its browsing context and lose
+                // the freshly prepared document and restored view.
+                syncButtons();
+                resolve(true);
+            };
+            pending = state;
+            frame.addEventListener('error', () => state.fail('The replacement PDF viewer could not load.'));
+            signal.addEventListener('abort', state.cancel, { once: true });
+            host.appendChild(frame);
+            if (signal.aborted) state.cancel();
+        });
     }
 
     function getText() {
@@ -187,6 +239,21 @@
     }
 
     window.addEventListener('message', event => {
+        if (pending && event.source === pending.frame.contentWindow && event.origin === window.location.origin && event.data?.channel === CHANNEL) {
+            const message = event.data;
+            if (message.type === 'initialized') {
+                pending.frame.contentWindow.postMessage({ channel: CHANNEL, type: 'open', file: pending.file,
+                    password: pending.password, view: pending.view }, window.location.origin);
+            } else if (message.type === 'ready') {
+                pending.ready = true;
+                pending.password = message.password || '';
+                pending.commit();
+            } else if (message.type === 'password-required') {
+                pending.frame.style.visibility = 'visible';
+            } else if (message.type === 'error') pending.fail(message.message);
+            else if (message.type === 'view') pending.view = message.view;
+            return;
+        }
         if (!current || event.source !== current.frame.contentWindow || event.origin !== window.location.origin || event.data?.channel !== CHANNEL) return;
         const message = event.data;
         if (message.type === 'initialized') {
@@ -202,6 +269,8 @@
             current.resolve(false);
             current.textRequest?.reject(new Error(message.message));
             current.textRequest = null;
+        } else if (message.type === 'view') {
+            current.view = message.view;
         } else if (['text', 'text-error'].includes(message.type) && current.textRequest?.id === message.requestId) {
             if (message.type === 'text') current.textRequest.resolve(message.text);
             else current.textRequest.reject(new Error(message.message));
@@ -209,7 +278,7 @@
         }
     });
     window.TlamatiniPdfCanvas = {
-        open, close, getText, prepareContext, syncButtons,
+        open, close, refresh, getText, prepareContext, syncButtons,
         get active() { return current !== null; },
         get file() { return current?.file || null; },
         get contextFilename() { return current?.prepared?.context_filename || null; },

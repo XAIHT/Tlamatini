@@ -15,6 +15,7 @@
 // ============================================================
 
 function setContextButton() {
+    window.TlamatiniCanvasRefresh?.contextSelected();
     contextButton.style.backgroundColor = "gray";
     contextButton.disabled = false;
     canvasSettedAsContext = true;

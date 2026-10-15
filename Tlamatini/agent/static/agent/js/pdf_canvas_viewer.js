@@ -33,7 +33,7 @@
         failed = true;
         passwordCallback = null;
         passwordForm.hidden = true;
-        status.textContent = `Unable to open PDF: ${error.message || error}. Use Reopen to choose another file.`;
+        status.textContent = `Unable to open PDF: ${error.message || error}. Use Open to choose another file.`;
         send('error', { message: status.textContent });
         if (loadingTask) void loadingTask.destroy().catch(() => {});
     }
@@ -42,9 +42,16 @@
         pageInput.value = viewer.currentPageNumber;
         previous.disabled = viewer.currentPageNumber <= 1;
         next.disabled = viewer.currentPageNumber >= viewer.pagesCount;
+        sendView();
     }
 
-    async function open(file) {
+    function sendView() {
+        if (viewer?.pagesCount) send('view', { view: { page: viewer.currentPageNumber,
+            scale: viewer.currentScaleValue, rotation: viewer.pagesRotation, scrollMode: viewer.scrollMode } });
+    }
+
+    async function open(file, options = {}) {
+        documentPassword = options.password || '';
         try {
             const pdfjs = await import('../vendor/pdfjs/build/pdf.mjs');
             const { EventBus, PDFViewer, PDFLinkService, LinkTarget } =
@@ -82,7 +89,14 @@
             });
             linkService.setViewer(viewer);
             eventBus.on('pagesinit', () => {
-                viewer.currentScaleValue = 'page-width';
+                const view = options.view;
+                viewer.currentScaleValue = view?.scale || 'page-width';
+                if (view) {
+                    viewer.pagesRotation = view.rotation || 0;
+                    if (viewer.scrollMode !== 3) viewer.scrollMode = view.scrollMode ?? viewer.scrollMode;
+                    viewer.currentPageNumber = Math.min(Math.max(view.page || 1, 1), pdfDocument.numPages);
+                    zoom.value = String(viewer.currentScaleValue);
+                }
                 pageInput.max = pdfDocument.numPages;
                 pageCount.textContent = `of ${pdfDocument.numPages}`;
                 for (const control of [pageInput, zoom, rotate, scrollMode]) control.disabled = false;
@@ -112,12 +126,14 @@
                 iccUrl: new URL('iccs/', base).href,
                 isEvalSupported: false,
                 enableXfa: true,
+                password: documentPassword || undefined,
             });
             loadingTask.onPassword = (callback, reason) => {
                 passwordCallback = callback;
                 document.getElementById('pdf-password-label').textContent =
                     reason === pdfjs.PasswordResponses.INCORRECT_PASSWORD ? 'Incorrect password. Try again:' : 'Password for this PDF';
                 passwordForm.hidden = false;
+                send('password-required');
                 passwordInput.focus();
             };
             pdfDocument = await loadingTask.promise;
@@ -162,7 +178,7 @@
         if (event.source !== window.parent || event.origin !== window.location.origin || event.data?.channel !== CHANNEL) return;
         if (event.data.type === 'open' && !opened && event.data.file instanceof File) {
             opened = true;
-            void open(event.data.file);
+            void open(event.data.file, event.data);
         } else if (event.data.type === 'text') {
             void extractText(event.data.requestId);
         } else if (event.data.type === 'context-status') {
@@ -176,9 +192,9 @@
         if (Number.isInteger(number) && number >= 1 && number <= viewer.pagesCount) viewer.currentPageNumber = number;
         updateNavigation();
     });
-    zoom.addEventListener('change', () => { viewer.currentScaleValue = zoom.value; });
-    rotate.addEventListener('click', () => { viewer.pagesRotation = (viewer.pagesRotation + 90) % 360; });
-    scrollMode.addEventListener('change', () => { viewer.scrollMode = Number(scrollMode.value); });
+    zoom.addEventListener('change', () => { viewer.currentScaleValue = zoom.value; sendView(); });
+    rotate.addEventListener('click', () => { viewer.pagesRotation = (viewer.pagesRotation + 90) % 360; sendView(); });
+    scrollMode.addEventListener('change', () => { viewer.scrollMode = Number(scrollMode.value); sendView(); });
     passwordForm.addEventListener('submit', event => {
         event.preventDefault();
         const password = passwordInput.value;

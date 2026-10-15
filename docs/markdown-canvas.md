@@ -3,10 +3,13 @@
 
 Written 2026-10-11 as a local source change; committed in `880a335e` (2026-10-12) and shipped in the published `v1.82.0` release.
 
-Open, Reopen, dropping a file onto the canvas, generated-file links, and
+Open, Refresh, dropping a file onto the canvas, generated-file links, and
 Context → Set file as context recognize `.md` and `.markdown`, including
 uppercase extensions. Both extensions were already in the shared file filter.
 Markdown opens in Preview; Source shows the full original text with line numbers.
+Since the 2026-10-15 source change, [Refresh](canvas-refresh.md) rereads the same
+file without another selection, preserves the chosen view and reading position,
+and reports unchanged content without rerendering it.
 The preview uses the existing Tlamatini fonts, colors, surfaces and splitter.
 
 The renderer supports CommonMark and GitHub-flavored Markdown: headings,

@@ -126,6 +126,18 @@ See [the full model contract](../model_configuration.md).
 **Save opens the Auto-tuning dialog (2026-10-08, `v1.76.0`).** After a successful save, `agent_page_init.js` calls `window.TlmModelBrainTuning.open({onClose})` (`model_brain_tuning.js` / `.css`); the reconnect notice for changed choices follows when it closes. For every configured model it shows four stages - Ask Ollama (`/api/show`), Vendor settings (the sourced profile, or the researched `generation_config.json`), Calibrate (the sampling that will really be sent) and Reasoning (thinking level, reasoning kept inside the tool loop) - each from the server's real answer (`GET /agent/model_brain/models/`, `POST /agent/model_brain/tune/`), revealed one by one (instantly under reduced motion). Escape and the ✕ close it through `overlay.tlmDismiss`; an outside click never does. Fail-open: a broken dialog never blocks saving the models.
 
 ## Chat Interface (25 modules)
+
+**Canvas Refresh (2026-10-15 source change).** The existing
+`#reopen-canvas-button` DOM hook now says **Refresh** and calls `refreshCanvas()`;
+only Open launches a picker. `agent_page_canvas.js` owns the retained local
+handle/entry or authenticated saved-content reader, feedback and cancellation.
+All control reset paths defer to `TlamatiniCanvasRefresh.sync()`; never blindly
+enable Refresh because `canvasLoaded` is true. The drop router captures file
+access synchronously and forwards it even through byte classification and PDF
+iframe relay. Text compares complete content; PDFs stage a range-backed viewer
+and never claim byte equality from metadata. Clear/replacement/operation locks
+invalidate in-flight work. See [behavior and visible verification](../canvas-refresh.md).
+Static cache suffix: `-canvas-refresh-1`.
 - `usage_dashboard.js` — About → Usage: credit/legacy layouts, chart rendering, model activity, account-safe refresh and accessible dialog controls.
 
 - `agent_page_init.js` - WebSocket setup, app initialization, **Context-menu "Set directory as context"** handler (see *Context directory picker* below)

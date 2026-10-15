@@ -309,10 +309,14 @@
 
         <div class="col-6" id="filename-div-right">
           <button id="copy-canvas-button">Copy</button>
-          <button id="reopen-canvas-button">Reopen</button>
+          <button id="reopen-canvas-button" type="button" disabled aria-describedby="canvas-refresh-status" title="Open a file to refresh its content.">Refresh</button>
           <button id="clean-canvas-button">Clear canvas</button>
           <button id="context-button">Use as context</button>
         </div>
+      </div>
+      <div id="canvas-refresh-feedback">
+        <span id="canvas-refresh-status" role="status" aria-live="polite" aria-atomic="true">Open a file to refresh its content.</span>
+        <button id="canvas-refresh-cancel" type="button" hidden>Cancel refresh</button>
       </div>
       <div id="markdown-canvas-toolbar" role="group" aria-label="Markdown view" hidden>
         <span class="markdown-label">Markdown</span>

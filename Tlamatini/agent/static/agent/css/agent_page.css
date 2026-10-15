@@ -2485,3 +2485,26 @@ body.resizing-vertical iframe {
     overflow: hidden;
     text-overflow: ellipsis;
 }
+/* Refresh feedback stays in the canvas chrome, outside the scrollable document. */
+#canvas-refresh-feedback {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+    padding: 3px 10px;
+    font-size: 12px;
+    color: var(--tlm-muted, #c3c5ce);
+    background: var(--tlm-chrome, #202632);
+    border-bottom: 1px solid var(--tlm-line, #3a4250);
+}
+#canvas-refresh-status { min-width: 0; overflow-wrap: anywhere; }
+#canvas-refresh-feedback[data-state="error"],
+#canvas-refresh-feedback[data-state="permission"] { color: #ffd18a; }
+#canvas-refresh-feedback[data-state="updated"],
+#canvas-refresh-feedback[data-state="unchanged"] { color: #90d5bb; }
+#reopen-canvas-button { min-width: 7.4em; }
+#reopen-canvas-button:disabled { cursor: default; opacity: .65; }
+#reopen-canvas-button:focus-visible,
+#canvas-refresh-cancel:focus-visible { outline: 2px solid var(--tlm-accent, #55bbaa); outline-offset: 2px; }
+#canvas-refresh-cancel { flex: 0 0 auto; font: inherit; color: inherit; background: transparent; border: 1px solid currentColor; border-radius: 4px; }
+#canvas-refresh-cancel[hidden] { display: none; }

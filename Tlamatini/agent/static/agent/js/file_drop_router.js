@@ -700,8 +700,8 @@
         const pending = [];
         files.forEach(function (entry, index) {
             const kind = quickKind(entry.file);
-            if (kind === SNIFF) { pending.push({ file: entry.file, index: index }); return; }
-            const item = { file: entry.file, kind: kind, info: {}, index: index };
+            if (kind === SNIFF) { pending.push({ ...entry, index: index }); return; }
+            const item = { ...entry, kind: kind, info: {}, index: index };
             // Reserve the editor tab NOW, still inside the drop task: popup blockers
             // refuse a window.open that happens after an await.
             if ((kind === FLOW_AGENT || kind === FLOW_PROMPT) && !handlers.get(kind)) {
@@ -711,7 +711,7 @@
         });
         for (let i = 0; i < pending.length; i += 1) {
             const info = await classify(pending[i].file);
-            plan.push({ file: pending[i].file, kind: info.kind, info: info, index: pending[i].index });
+            plan.push({ ...pending[i], kind: info.kind, info: info });
         }
 
         const groups = [];
@@ -784,12 +784,22 @@
         items.forEach(function (item) {
             if (item.kind !== 'file') return;
             let isDirectory = false;
+            let entry = null;
+            let handlePromise = null;
             try {
-                const entry = item.webkitGetAsEntry ? item.webkitGetAsEntry() : null;
+                entry = item.webkitGetAsEntry ? item.webkitGetAsEntry() : null;
                 isDirectory = !!(entry && entry.isDirectory);
             } catch (e) { /* an entry we cannot inspect is treated as a plain file */ }
+            // Capture during the drop event, before the drag data store closes.
+            // Attach a rejection handler immediately; unsupported access must
+            // never prevent the ordinary drop/import/open path.
+            try {
+                if (!isDirectory && item.getAsFileSystemHandle) {
+                    handlePromise = item.getAsFileSystemHandle().catch(function () { return null; });
+                }
+            } catch (e) { /* entry.file can still provide read access */ }
             const file = item.getAsFile();
-            if (file || isDirectory) out.push({ file: file, isDirectory: isDirectory });
+            if (file || isDirectory) out.push({ file: file, isDirectory: isDirectory, entry: entry, handlePromise: handlePromise });
         });
         if (out.length) return out;
         return Array.prototype.slice.call(dt.files || []).map(function (file) {

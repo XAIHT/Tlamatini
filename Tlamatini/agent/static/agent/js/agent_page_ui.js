@@ -379,6 +379,8 @@ function disableControlsDuringOperation() {
     contextButton.style.backgroundColor = "#808080";
     contextButton.disabled = true;
     inLongOperation = true;
+    window.TlamatiniCanvasRefresh?.cancel();
+    window.TlamatiniCanvasRefresh?.sync();
 }
 
 // Shared by completion and explicit reconnect, history-clear and cancel resets.
@@ -481,6 +483,7 @@ function enableControlsAfterOperation() {
     lapseLoadingContext = false;
     updateOpenInMenuState();
     window.TlamatiniPdfCanvas?.syncButtons();
+    window.TlamatiniCanvasRefresh?.sync();
 }
 
 /**
@@ -496,6 +499,7 @@ function enableCanvasButtons() {
     contextButton.style.backgroundColor = "darkgreen";
     contextButton.disabled = false;
     window.TlamatiniPdfCanvas?.syncButtons();
+    window.TlamatiniCanvasRefresh?.sync();
 }
 
 /**
@@ -510,4 +514,5 @@ function disableCanvasButtons() {
     copyCanvasButton.disabled = true;
     contextButton.style.backgroundColor = "#808080";
     contextButton.disabled = true;
+    window.TlamatiniCanvasRefresh?.sync();
 }
