@@ -59,7 +59,16 @@
   <script src="{% static 'agent/vendor/frontend/highlightjs/languages/ini.min.js' %}?v={{ STATIC_VERSION }}_offline1"></script>
 </head>
 
-<body class="chat-page">
+<body class="chat-page" data-layout-user="{{ request.user.pk }}">
+  <style>
+    /* Views changes visibility only: keep the editor, PDF frame and listeners alive. */
+    .chat-page.tlm-canvas-hidden #canvas-container,
+    .chat-page.tlm-canvas-hidden #drag-divider { display: none !important; }
+    .chat-page.tlm-canvas-hidden #chat-workspace { min-width: 0; }
+    .chat-page.tlm-canvas-hidden #main-chat-container { width: 100% !important; }
+    #views-canvas-check { display: inline-block; width: 1.3em; color: var(--tlm-focus, #55bbaa); }
+    #views-canvas-toggle[aria-checked="false"] #views-canvas-check { visibility: hidden; }
+  </style>
   <nav id="navbar-container" class="navbar navbar-expand-lg navbar-dark bg-dark">
     <div id="navbar-content" class="container-fluid align-items-center">
       <a class="navbar-brand navbar-margin" href="#">Tlamatini</a>
@@ -92,6 +101,19 @@
         <ul class="navbar-nav align-items-lg-center" id="menu-editor">
           <li class="nav-item"><a class="nav-link" href="#" id="open-button">Open</a></li>
           <li class="nav-item"><a class="nav-link" href="#" id="save-as-button">Save</a></li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="views-menu-button" role="button"
+              data-bs-toggle="dropdown" aria-expanded="false">Views</a>
+            <ul class="dropdown-menu dropdown-entry" aria-labelledby="views-menu-button" role="menu">
+              <li><button class="dropdown-item menu-entry" type="button" id="views-canvas-toggle"
+                  role="menuitemcheckbox" aria-checked="true" aria-controls="canvas-container"
+                  title="Show or hide the canvas. Your document and chat context are kept.">
+                <span id="views-canvas-check" aria-hidden="true">&#10003;</span>Canvas</button></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><button class="dropdown-item menu-entry" type="button" id="views-reset-layout" role="menuitem"
+                  title="Restore both panes, their initial sizes and the docked avatar. Keep your chat and document.">Reset layout</button></li>
+            </ul>
+          </li>
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" href="#" id="context-menu-button" role="button"
               data-bs-toggle="dropdown" aria-expanded="false">Context</a>
@@ -767,12 +789,12 @@
   <script src="{% static 'agent/vendor/frontend/marked/lib/marked.umd.js' %}?v={{ STATIC_VERSION }}"></script>
   <script src="{% static 'agent/vendor/frontend/dompurify/dist/purify.min.js' %}?v={{ STATIC_VERSION }}"></script>
   <script src="{% static 'agent/js/agent_page_markdown.js' %}?v={{ STATIC_VERSION }}"></script>
-  <script src="{% static 'agent/js/agent_page_canvas.js' %}?v={{ STATIC_VERSION }}"></script>
+  <script src="{% static 'agent/js/agent_page_canvas.js' %}?v={{ STATIC_VERSION }}_views1"></script>
   <script src="{% static 'agent/js/agent_page_dialogs.js' %}?v={{ STATIC_VERSION }}_dialogfix"></script>
   <script src="{% static 'agent/js/agent_page_context.js' %}?v={{ STATIC_VERSION }}"></script>
   <script src="{% static 'agent/js/agent_page_chat.js' %}?v={{ STATIC_VERSION }}_b64fix"></script>
-  <script src="{% static 'agent/js/agent_page_layout.js' %}?v={{ STATIC_VERSION }}"></script>
-  <script src="{% static 'agent/js/agent_page_init.js' %}?v={{ STATIC_VERSION }}"></script>
+  <script src="{% static 'agent/js/agent_page_layout.js' %}?v={{ STATIC_VERSION }}_views1"></script>
+  <script src="{% static 'agent/js/agent_page_init.js' %}?v={{ STATIC_VERSION }}_views1"></script>
   <script src="{% static 'agent/js/tools_dialog.js' %}?v={{ STATIC_VERSION }}_promptfix"></script>
   <script src="{% static 'agent/js/skills_dialog.js' %}?v={{ STATIC_VERSION }}"></script>
   <script src="{% static 'agent/js/external_mcps_dialog.js' %}?v={{ STATIC_VERSION }}_popupfix"></script>
@@ -882,7 +904,7 @@
 </div>
 
 <script src="{% static 'agent/js/avatar_presence.js' %}?v={{ STATIC_VERSION }}_presence1"></script>
-<script src="{% static 'agent/js/avatar_size.js' %}?v={{ STATIC_VERSION }}_presence1"></script>
+<script src="{% static 'agent/js/avatar_size.js' %}?v={{ STATIC_VERSION }}_presence1_views1"></script>
 <script src="{% static 'agent/js/avatar.js' %}?v={{ STATIC_VERSION }}_avatar_atomic1"></script>
 <script src="{% static 'agent/js/mic_settings.js' %}?v={{ STATIC_VERSION }}"></script>
 <script src="{% static 'agent/js/chat_dictation.js' %}?v={{ STATIC_VERSION }}"></script>

@@ -18,6 +18,7 @@ Pins Angela's design, piece by piece:
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import sys
 import tempfile
@@ -418,6 +419,19 @@ class FrozenPageTests(TestCase):
         html = self._frozen_page(with_tree=True)
         self.assertIn('id="self-modify-toggle"', html)
         self.assertIn("agent/js/self_modify_switch.js", html)
+
+    def test_views_are_available_in_both_frozen_build_modes(self):
+        # Layout is a normal chat capability, independent of self-modification.
+        for with_tree in (False, True):
+            with self.subTest(self_modify=with_tree):
+                html = self._frozen_page(with_tree)
+                for identifier in ("views-menu-button", "views-canvas-toggle", "views-reset-layout"):
+                    self.assertIn(f'id="{identifier}"', html)
+                self.assertIn('role="menuitemcheckbox"', html)
+                self.assertIn('data-layout-user="', html)
+                for script in ("agent_page_layout.js", "avatar_size.js",
+                               "agent_page_canvas.js", "agent_page_init.js"):
+                    self.assertRegex(html, re.escape(script) + r'\?v=[^"\s]*_views1')
 
     def test_a_frozen_build_without_self_modify_sends_no_self_knowledge(self):
         exe_dir = _app_dir(with_tree=False)

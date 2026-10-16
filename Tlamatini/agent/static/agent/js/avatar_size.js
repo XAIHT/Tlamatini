@@ -54,6 +54,7 @@
   // forever: the first visible run threw "Maximum call stack size exceeded"
   // on every resize. Do not remove it.
   var applying = false;
+  let dockedOnly = false;
 
   function maxSize() {
     var w = window.innerWidth || 900, h = window.innerHeight || 700;
@@ -89,7 +90,7 @@
   function apply(px, persist) {
     if (!dock || applying) { return; }
     applying = true;
-    try { _apply(px, persist); } finally { applying = false; }
+    try { _apply(dockedOnly ? 0 : px, persist); } finally { applying = false; }
   }
 
   function _apply(px, persist) {
@@ -148,7 +149,7 @@
   }
 
   function onDown(ev) {
-    if (!dock || dragging || !ev.isPrimary || ev.button !== 0) { return; }
+    if (dockedOnly || !dock || dragging || !ev.isPrimary || ev.button !== 0) { return; }
     ev.preventDefault();
     ev.stopPropagation();                 // never let the dock's click fire
     dragging = true;
@@ -186,6 +187,7 @@
   }
 
   function onKey(ev) {
+    if (dockedOnly) return;
     var k = ev.key;
     if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
     if (k === 'Home' || k === 'End') {
@@ -230,6 +232,7 @@
     handle.addEventListener('keydown', onKey);
     handle.addEventListener('dblclick', function (ev) {
       ev.preventDefault(); ev.stopPropagation();
+      if (dockedOnly) return;
       apply(nextPreset(), true);
     });
     // A click on the handle must never reach the dock (which would greet or
@@ -240,7 +243,16 @@
       var cur = currentSize();
       if (cur) { apply(clampSize(cur), false); }
     });
+    syncDockedOnlyHandle();
     return true;
+  }
+
+  function syncDockedOnlyHandle() {
+    if (!handle) return;
+    handle.hidden = dockedOnly;
+    handle.style.display = dockedOnly ? 'none' : '';
+    handle.setAttribute('aria-disabled', String(dockedOnly));
+    handle.setAttribute('tabindex', dockedOnly ? '-1' : '0');
   }
 
   function init() {
@@ -253,6 +265,17 @@
   } else { init(); }
 
   window.TlamatiniAvatarSize = {
+    // Chat-only view must never float a portrait over the full-width input.
+    // Enforce this in the API as well as the mouse/keyboard handlers.
+    setDockedOnly: function (locked) {
+      dockedOnly = Boolean(locked);
+      if (dockedOnly) {
+        onUp();
+        if (handle && document.activeElement === handle) dock.focus({ preventScroll: true });
+        apply(0, true);
+      }
+      syncDockedOnlyHandle();
+    },
     set: function (px) { apply(px ? clampSize(px) : 0, true); },
     get: currentSize,
     min: function () { return MIN; },

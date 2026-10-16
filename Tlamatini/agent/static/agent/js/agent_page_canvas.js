@@ -212,6 +212,7 @@ function displayCanvasText(filename, content, file = null) {
 }
 
 function loadCanvas(filename) { // eslint-disable-line no-unused-vars
+    window.TlamatiniViews?.setCanvasVisible(true);
     if (contextEnabled === false) {
         console.error("Lading canvas is not allowed while Tlamatini is processing a request, function will return false...");
         return false;
@@ -540,6 +541,7 @@ async function openFlowEditor(file) {
 async function loadSelectedCanvasFile(file, reOpened = false, callback = null, access = null) {
     if (!openEnabled || !contextEnabled) return;
     if (/\.(flw|fpmt)$/i.test(file.name)) { await openFlowEditor(file); return; }
+    window.TlamatiniViews?.setCanvasVisible(true);
     // Setting file context replaces it directly, avoiding an overlapping background
     // rebuild of empty context while the replacement document loads.
     cleanCanvas(reOpened && callback !== null);

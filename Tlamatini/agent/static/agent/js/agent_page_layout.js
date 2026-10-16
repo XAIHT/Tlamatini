@@ -17,7 +17,7 @@
 // Keep a drag in the parent document even when it crosses an embedded viewer.
 // Both dividers share mouse/pen/touch capture and the same interruption cleanup.
 function bindDividerPointerDrag(divider, resizingClass, onMove) {
-    window.TlmSplitters.bindPointer({ element: divider, resizingClass, onMove });
+    return window.TlmSplitters.bindPointer({ element: divider, resizingClass, onMove });
 }
 
 // --- Horizontal drag divider (chat <-> canvas) ---
@@ -48,6 +48,7 @@ function bindDividerPointerDrag(divider, resizingClass, onMove) {
     };
 
     const apply = (pSeam) => {
+        if (document.body.classList.contains('tlm-canvas-hidden')) return;
         const left = isCanvasOnLeft();
         const minSeam = left ? 30 : 15;
         const maxSeam = left ? 85 : 70;
@@ -117,6 +118,7 @@ function bindDividerPointerDrag(divider, resizingClass, onMove) {
     // divider). Once the user drags the divider manually, apply()'s
     // standard clamp re-engages.
     const ensureToolbarFitsOneRow = () => {
+        if (document.body.classList.contains('tlm-canvas-hidden')) return;
         // Font loading and the delayed initial fit must not undo a user's drag.
         if (userResized) return;
         // Below the desktop working width, retain a usable 320px chat and
@@ -148,7 +150,11 @@ function bindDividerPointerDrag(divider, resizingClass, onMove) {
             `Chat ${Math.round(chatWidthPct)}%, canvas ${Math.round(canvasWidthPct)}%`);
     };
 
-    (function init() {
+    function resetHorizontalLayout() {
+        userResized = false;
+        canvas.style.width = '';
+        chat.style.width = '';
+        divider.style.left = '';
         const r = rect();
         const cr = canvas.getBoundingClientRect();
         const hr = chat.getBoundingClientRect();
@@ -157,6 +163,10 @@ function bindDividerPointerDrag(divider, resizingClass, onMove) {
         const pct = clamp(((seamX - r.left) / r.width) * 100, 0, 100);
         apply(pct || 66.6667);
         ensureToolbarFitsOneRow();
+    }
+
+    (function init() {
+        resetHorizontalLayout();
         // Re-check after the next paint, when layout / styles have
         // fully settled (catches cases where the synchronous init
         // ran before the body's final width was known).
@@ -176,10 +186,12 @@ function bindDividerPointerDrag(divider, resizingClass, onMove) {
         setTimeout(() => ensureToolbarFitsOneRow(), 500);
     })();
 
-    bindDividerPointerDrag(divider, 'resizing', event => {
+    const stopDrag = bindDividerPointerDrag(divider, 'resizing', event => {
         userResized = true;
         apply(pctFromXToSeam(event.clientX));
     });
+    window.addEventListener('tlm:chat-layout-changing', stopDrag);
+    window.addEventListener('tlm:reset-chat-layout', resetHorizontalLayout);
 
     // Same feel as the vertical divider and the ACP/Prompt Flow dividers:
     // arrows move 1%, Shift+arrows 5%.
@@ -345,7 +357,13 @@ function bindDividerPointerDrag(divider, resizingClass, onMove) {
         new MutationObserver(scheduleLayout).observe(avatar, { attributes: true, attributeFilter: ['class'] });
     }
 
-    bindDividerPointerDrag(verticalDivider, 'resizing-vertical', event => applyVertical(pctFromYToDivider(event.clientY)));
+    const stopDrag = bindDividerPointerDrag(verticalDivider, 'resizing-vertical', event => applyVertical(pctFromYToDivider(event.clientY)));
+    window.addEventListener('tlm:chat-layout-changing', stopDrag);
+    window.addEventListener('tlm:reset-chat-layout', () => {
+        dividerPct = 90;
+        userResized = false;
+        applyVertical(null);
+    });
 
     verticalDivider.addEventListener('keydown', (e) => {
         const step = e.shiftKey ? 5 : 1;
@@ -359,6 +377,73 @@ function bindDividerPointerDrag(divider, resizingClass, onMove) {
     verticalDivider.addEventListener('dblclick', () => applyVertical(100));
     window.addEventListener('resize', scheduleLayout);
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(scheduleLayout);
+})();
+
+// --- Views: presentation only; never unload the canvas or change chat context. ---
+(function () {
+    'use strict';
+    const toggle = document.getElementById('views-canvas-toggle');
+    const reset = document.getElementById('views-reset-layout');
+    const menu = document.getElementById('views-menu-button');
+    const canvas = document.getElementById('canvas-container');
+    const divider = document.getElementById('drag-divider');
+    if (!toggle || !reset || !menu || !canvas || !divider) return;
+
+    // Account-scoped, browser-local preference. Bad/missing storage defaults ON.
+    const key = 'tlamatini.chat.views.v1.' + document.body.dataset.layoutUser;
+    let visible = true;
+    try { visible = localStorage.getItem(key) !== 'hidden'; } catch (_) { /* private mode */ }
+
+    function syncMenu() {
+        toggle.setAttribute('aria-checked', String(visible));
+    }
+
+    function setCanvasVisible(show, persist = true) {
+        visible = Boolean(show);
+        window.dispatchEvent(new Event('tlm:chat-layout-changing'));
+        // Move keyboard focus out before its element disappears. Do not steal
+        // focus from the composer or from a generated-file link.
+        const focused = document.activeElement;
+        if (!visible && (canvas.contains(focused) || focused === divider)) {
+            menu.focus({ preventScroll: true });
+        }
+        document.body.classList.toggle('tlm-canvas-hidden', !visible);
+        window.TlamatiniAvatarSize?.setDockedOnly(!visible);
+        syncMenu();
+        if (persist) {
+            try { localStorage.setItem(key, visible ? 'visible' : 'hidden'); } catch (_) { /* current tab still works */ }
+        }
+        // Existing layout adapters and the embedded viewer retain their own state.
+        window.dispatchEvent(new Event('resize'));
+        return visible;
+    }
+
+    function resetLayout() {
+        setCanvasVisible(true);
+        window.TlamatiniAvatarSize?.set(0);
+        window.dispatchEvent(new Event('tlm:reset-chat-layout'));
+        window.dispatchEvent(new Event('resize'));
+    }
+
+    toggle.addEventListener('click', () => setCanvasVisible(!visible));
+    reset.addEventListener('click', resetLayout);
+    menu.addEventListener('show.bs.dropdown', syncMenu);
+    window.addEventListener('storage', event => {
+        if (event.key === key || event.key === null) {
+            setCanvasVisible(event.newValue !== 'hidden', false);
+        }
+    });
+    window.TlamatiniViews = Object.freeze({
+        setCanvasVisible,
+        isCanvasVisible: () => visible,
+        resetLayout,
+    });
+
+    // Avatar initialization is registered later in the template. Apply after
+    // all DOMContentLoaded listeners so a saved floating portrait is docked too.
+    const init = () => setTimeout(() => setCanvasVisible(visible, false), 0);
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
+    else init();
 })();
 
 // --- Title rotation ---

@@ -241,6 +241,14 @@ KEEP_PATH_GLOBS = (
 # one raises rather than producing a quietly-incomplete self-modify tree.
 # Add the canonical file of any new always-present capability here.
 REQUIRED_SNAPSHOT_FILES = (
+    # Main-chat Views: preserve the complete feature and its visible check.
+    "Tlamatini/agent/templates/agent/agent_page.html",
+    "Tlamatini/agent/static/agent/js/agent_page_layout.js",
+    "Tlamatini/agent/static/agent/js/avatar_size.js",
+    "Tlamatini/agent/static/agent/js/agent_page_canvas.js",
+    "Tlamatini/agent/static/agent/js/agent_page_init.js",
+    "scripts/chat_views_visible.py",
+    "scripts/chat_views_frozen_visible.py",
     'Tlamatini/agent/templates/admin/base_site.html',
     'Tlamatini/agent/static/agent/css/admin_theme.css',
     'Tlamatini/agent/static/agent/css/ui_tokens.css',

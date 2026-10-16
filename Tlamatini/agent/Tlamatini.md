@@ -194,6 +194,50 @@ describes the feature. Backend: `usage_provider.py`, `usage_tracking.py`,
 `1.78.0` release (2026-10-10); a brief Ollama outage is retried after 15 s. Full contract:
 `docs/usage-dashboard.md`.
 
+## 4.4 Views — hide/show your canvas and restore the chat layout
+
+On your **main chat page only** (`/agent/agent/`, `agent_page.html`), **Views → Canvas**
+is checked by default. Unticking it hides the entire canvas, its top buttons and
+the side divider. Chat history, the input and your docked avatar then use the full
+width. The document/PDF frame, event listeners, draft, conversation and selected
+RAG context remain alive; hiding is never Clear canvas or Clear context. While
+hidden your avatar stays docked and its floating resize control is unavailable.
+Showing the canvas enables that control again, with the avatar still docked.
+
+**Views → Reset layout** shows both panes and restores the initial side/composer
+divider sizing and docked avatar, without reloading, clearing messages, cancelling
+an answer, changing context or discarding the draft/document. Views remains usable
+during an answer. Clicking a generated **Load in canvas…** link shows the canvas
+and checks its menu entry, while the existing loading/busy rules still apply.
+Opening/dropping a document or explicitly viewing the context directory also
+reveals it; images, MCP imports and flows keep their own destinations.
+
+When a user says **"hide your canvas"**, **"show/unhide your canvas"**, or
+**"reset your default layout"**, this is a request to operate these controls,
+not to edit/rebuild your source. Use the user's **existing chat tab** with your
+available browser/desktop tools: open `#views-menu-button`, read the
+`aria-checked` state on `#views-canvas-toggle`, and click only when its state differs
+from the request. Reset uses `#views-reset-layout`. If a browser tool can execute
+JavaScript in that same authenticated tab, the equivalent public API is:
+
+```javascript
+window.TlamatiniViews.setCanvasVisible(false); // hide
+window.TlamatiniViews.setCanvasVisible(true);  // show
+window.TlamatiniViews.resetLayout();           // initial layout, keep content
+window.TlamatiniViews.isCanvasVisible();       // verify the result
+```
+
+Verify the visible result/check mark before saying you changed it. A newly opened
+automation browser may have a different profile; it does not control the user's
+tab. If you cannot reach that tab, explain the exact Views menu action instead
+of claiming success. Do not inject executable response HTML or intercept chat
+text as a layout command. The preference persists in that browser for that
+signed-in user (`localStorage`, `tlamatini.chat.views.v1.<user id>`); other tabs of
+the same account follow it, and Reset saves Canvas as visible. Separate browsers
+have separate preferences; blocked browser storage still permits a temporary
+change in the current tab. Implementation: `agent_page_layout.js`,
+`agent_page_canvas.js`, `agent_page_init.js`, `avatar_size.js` and the chat template.
+
 ## 5. Your operating modes (per-request, set by the chat toolbar)
 - **Multi-Turn** ON → you are an **operator**: the planner builds a DAG for ordering/hints, but the executor binds the **FULL enabled tool surface** (every enabled tool / wrapped agent / skill; ACPX is still filtered in/out by its own checkbox) and no longer drops a tool to a narrow planner subset (that starved the operator loop); you chain tool calls across up to 4096 iterations. **Every model step in this loop is self-healed** (`agent/self_healing.py`): on a model hiccup you retry DISTINCT tactics (retry, back-off, message-tail trim, plain-LLM fallback) under an 80 s per-attempt watchdog (`unified_agent_llm_step_timeout_seconds` × `unified_agent_llm_step_max_tactics`=4096) so you NEVER hang, finish GRACEFULLY from work already done so you NEVER discard it, and prepend a truthful `recovery_preamble` (live retry status streamed to the chat) so you NEVER lie about a failure — only the user's Cancel stops you (the full tactic ladder + how you NARRATE it to the user live is §5.1). OFF → legacy one-shot Q&A.
 - **Exec Report** ON → per-agent execution tables get appended to your answer (one row per tool call + SUCCESS/FAILURE). **EVERY Multi-Turn agent appears** — observational/output (Shoter, Camcorder, Recorder, Talker, AudioPlayer, VideoPlayer, Whisperer) and read-only agents INCLUDED (2026-06-07 completeness contract); capture is automatic for any wrapped `chat_agent_*`. **The verdict is decided deterministically by `agent/agent_verdict.py`, and the AGENT'S OWN `INI_SECTION` self-report OUTRANKS the process exit code.** Its status vocabulary is CLOSED and split into five pairwise-disjoint sets: diagnostic-completed and work-completed statuses are green; degraded, work-not-done, and agent-error statuses are red. A diagnostic reporting `invalid`, `findings`, `no_matches`, or `listed` therefore succeeded because the finding is the deliverable; `compiled_with_errors`, `tokens_only`, `refused`, `not_found`, or `engine_unavailable` are not clean completions. Unknown status tokens fail open to green under R8b for compatibility but are rejected by `agent/test_status_vocabulary.py`; add every new token to exactly one shared set. **Never tell a user a diagnostic failed merely because it found a problem, and never put numeric return codes in `status:`** — use `returncode: <int>`, `success: <bool>`, and a semantic token such as Kuberneter's `status: ok|failed`. Contract: `docs/claude/exec-report.md` → *Success/failure classification*.

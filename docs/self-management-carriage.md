@@ -1,5 +1,59 @@
 # Self-modify and self-update carriage review
 
+## Main-chat Views carriage (2026-10-16)
+
+`Views → Canvas` and `Views → Reset layout` are ordinary chat capabilities in
+both frozen build modes. They do not depend on the Self-modify toolbar switch.
+The existing template/static carriers include the implementation; the required
+inventories now additionally make omissions fail explicitly:
+
+- `build_runtime_assets.ROOT_SOURCES` requires `agent_page.html` at
+  `_internal/agent/templates/agent/agent_page.html`.
+- `REQUIRED_STATIC` requires `agent_page_layout.js`, `avatar_size.js`,
+  `agent_page_canvas.js` and `agent_page_init.js` in served collected static.
+  The template's `_views1` suffix refreshes these scripts in existing browsers.
+- `copy_source_assets.REQUIRED_SNAPSHOT_FILES` requires the same sources and
+  both `scripts/chat_views_visible.py` and `scripts/chat_views_frozen_visible.py`.
+  The existing `Tlamatini.md` requirement carries the new operating instructions;
+  self-modify builds still require both installed identity copies and the snapshot.
+
+The updater replaces these application files through the existing swap. No new
+dependency, hidden import, migration or preservation-list entry is needed. Canvas
+visibility lives in browser-local `tlamatini.chat.views.v1.<user id>` storage;
+it survives replacement of application files when the browser origin and account
+remain the same. A different browser profile or origin has separate preferences.
+Reset restores layout without clearing content, context or history.
+
+The October 16 source check passed 160 packaging, self-update and self-modify
+tests, including rendering Views under both frozen availability branches and
+rejecting an update receipt that omits any required Views asset. This is distinct
+from a compiled-runtime check. The original v1.84.0 package's 79,310 files passed
+membership/hash/CRC verification, but its six feature files and the live
+installation predate Views. They must not be described as carrying this change.
+
+The focused frozen test uses a disposable extraction of that real `Tlamatini.exe`
+with the six current frontend/identity sources overlaid and byte-verified. Its
+private test database and normal authenticated browser are separate from the live
+installation. This modified test directory intentionally differs from the old
+release receipt and is **not a distributable release**. The original package,
+installed application and protected database mechanics remain unchanged. A normal
+rebuild from the updated working tree and subsequent install/update are still
+needed for delivery; a clone/tag must first include these source changes and new
+test files. No rebuild, live swap or publication was performed by this check.
+
+Local evidence is under `Temp/views-frozen/` (source sweeps, package comparison,
+runtime identity, live console/application logs and the headed-browser gallery).
+The earlier source GUI gallery is `Temp/chat-views-visible/run-7/SUMMARY.html`.
+The actual frozen executable passed 13 visible checks in `browser-run-3`: served
+JavaScript bytes, full-width chat, retained draft/history, reload persistence,
+the stored-answer link, retained Source view/Refresh listener, avatar docking,
+keyboard toggle, Reset, the real Windows file picker, a narrow viewport and both
+visibility choices after full Chrome restarts. Authentication, HTTP and sockets
+were real; normal application startup also performed its context-window probe.
+No new chat answer was requested. Earlier attempts exposed test-selector and
+native-picker harness mistakes, corrected before that complete pass. This remains
+focused frozen frontend compatibility evidence, not clean-install/update acceptance.
+
 Initial review on 2026-09-16 read source files, dependency code and packaging
 rules. The follow-up ran the two requested file-only inclusion sweeps, generated
 sanitized diagnostic snapshots and parsed Python/PowerShell syntax. No automated

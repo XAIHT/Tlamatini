@@ -129,6 +129,18 @@ class ReleaseIntegrityTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "omits mandatory files.*chat_voice_settings"):
             assets.verify_staged_payload(self.stage)
 
+    def test_views_cannot_be_omitted_from_a_self_consistent_update_receipt(self):
+        document = json.loads((self.stage / assets.MANIFEST_NAME).read_text(encoding="utf-8"))
+        required = ["_internal/agent/templates/agent/agent_page.html"] + [
+            "_internal/staticfiles/agent/js/" + name for name in (
+                "agent_page_layout.js", "avatar_size.js", "agent_page_canvas.js", "agent_page_init.js")
+        ]
+        for name in required:
+            with self.subTest(asset=name):
+                incomplete = {**document, "files": {k: v for k, v in document["files"].items() if k != name}}
+                with self.assertRaisesRegex(RuntimeError, "omits mandatory files"):
+                    assets.validate_runtime_document(incomplete)
+
     def test_tampered_helper_rejected_in_archive_and_staging(self):
         (self.stage / "chat_voice_settings.py").write_bytes(b"corrupted helper")
         with self.assertRaisesRegex(RuntimeError, "SHA-256 receipt"):

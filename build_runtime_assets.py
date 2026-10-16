@@ -23,6 +23,9 @@ MAX_RELEASE_ZIP_BYTES = 1_990_000_000  # decimal GB, not GiB; user release ceili
 STATIC_SOURCE = "Tlamatini/agent/static"
 PDFJS = "agent/vendor/pdfjs/"
 REQUIRED_STATIC = (
+    # Views must retain the real canvas loaders, divider state and avatar lock.
+    "agent/js/agent_page_layout.js", "agent/js/avatar_size.js",
+    "agent/js/agent_page_canvas.js", "agent/js/agent_page_init.js",
     "agent/js/agent_page_markdown.js", "agent/css/markdown_canvas.css",
     "agent/vendor/frontend/marked/lib/marked.umd.js",
     "agent/vendor/frontend/marked/LICENSE",
@@ -69,6 +72,8 @@ SOURCE_TREES = (
     ("security", "security"),
 )
 ROOT_SOURCES = {
+    "Tlamatini/agent/templates/agent/agent_page.html":
+        "_internal/agent/templates/agent/agent_page.html",
     "Tlamatini/agent/templates/admin/base_site.html":
         "_internal/agent/templates/admin/base_site.html",
     "Tlamatini/agent/templates/agent/usage_dialog.html":

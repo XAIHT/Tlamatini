@@ -648,6 +648,7 @@ window.onload = () => {
                     if (!sent) {
                         return;
                     }
+                    window.TlamatiniViews?.setCanvasVisible(true);
                     console.log("--- actualContextDir is: " + actualContextDir + ", message 'view-context-dir-in-canvas' has been sent.");
                     return;
                 } catch (err) {
