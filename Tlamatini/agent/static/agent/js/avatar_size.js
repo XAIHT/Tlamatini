@@ -12,7 +12,7 @@
 // minimum, I don't know if you can make it sizeable or better, you decide."
 //
 // TWO STATES, AND THE DEFAULT IS UNCHANGED
-//   DOCKED   — square, anchored top-right inside the chat form, up to 25% of
+//   DOCKED   — square, centered above Mic/Send inside the chat form, up to 25% of
 //              its width. The composer divider can shrink her to 120 px;
 //              agent_page_layout.js fits both available dimensions.
 //   FLOATING — the moment she is resized she becomes `position: fixed`,

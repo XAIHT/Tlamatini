@@ -285,13 +285,22 @@ function bindDividerPointerDrag(divider, resizingClass, onMove) {
         if (!form || !isAvatarDocked()) return;
         const style = getComputedStyle(avatar);
         const formStyle = getComputedStyle(form);
-        const availableHeight = form.getBoundingClientRect().height
+        const formRect = form.getBoundingClientRect();
+        const availableHeight = formRect.height
             - px(formStyle.borderTopWidth) - px(formStyle.borderBottomWidth)
             - px(style.top) - px(style.bottom);
-        // Square, top-right, at most the original quarter-width column. Both
+        // Square, above the action row, at most the original quarter-width column. Both
         // pane dividers can now shrink her, without changing floating presets.
         const size = Math.max(DOCKED_AVATAR_MIN_PX, Math.floor(Math.min(naturalAvatarSize(), availableHeight)));
         form.style.setProperty('--tlm-avatar-docked-size', size + 'px');
+        if (actions && actions.getClientRects().length) {
+            // Center the whole frame over Mic through Send, including when the
+            // action row reaches its minimum width in a narrow chat pane.
+            const actionsRect = actions.getBoundingClientRect();
+            const actionsCenter = actionsRect.left + actionsRect.width / 2;
+            const right = formRect.right - px(formStyle.borderRightWidth) - actionsCenter - size / 2;
+            form.style.setProperty('--tlm-avatar-docked-right', right + 'px');
+        }
     };
 
     const pctFromYToDivider = (clientY) => {

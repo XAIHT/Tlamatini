@@ -16,6 +16,22 @@
 
 ---
 
+## 2026-10-16 — Center the docked portrait over Mic through Send (source change)
+
+Reducing the composer height shrank the avatar while `right: 0` kept its frame
+against the Send button's right edge. The existing layout pass now measures the
+Mic/Send row's center and positions the entire dock around it, using the dock-only
+CSS variable `--tlm-avatar-docked-right`. It follows both pane dividers and the
+action row's minimum width. The 120 px floor, square sizing, floating geometry
+and composer minimum remain independent. Cache suffix: `-avatar-center-1`.
+
+Verified on the real source page in foreground, explicitly headed Chrome: all
+19 existing docked-avatar checkpoints passed, including both dividers, the 120 px
+floor, floating/redocking, transient rows and native 125% zoom. Recorded horizontal
+center differences stayed below 0.02 CSS px. Frontend lint exited 0 (zero errors,
+650 existing warnings); all 59 JavaScript modules parsed. Evidence is under
+`Temp/avatar-center-20261016/`. Source verification only; no build or release.
+
 ## 2026-10-15 — Refresh rereads the canvas's original file (source change)
 
 **Refresh** replaces the picker-based Reopen action. Open retains a browser-granted

@@ -57,6 +57,15 @@ opening and the visible 30-second timer refresh the view; events coalesce over
 See [the data contract and dated evidence](../usage-dashboard.md). It ships in
 the published `v1.78.0` release (cache suffix `-usage-recovery-1`).
 
+## Docked avatar alignment (2026-10-16 source change)
+
+The portrait and its outer frame stay horizontally centered over the full Mic/Send
+row, including when the composer height shrinks the portrait to 120 px. The existing
+layout pass measures the action row and sets `--tlm-avatar-docked-right` on the form;
+`avatar.css` consumes it only while docked. This follows both dividers, the action
+row's minimum width, browser resizing and redocking without changing floating
+geometry or the independent composer minimum. Cache suffix: `-avatar-center-1`.
+
 ## The docked avatar follows both dividers (2026-10-13, commit `63a62cc1`, shipped in `v1.83.0`)
 
 The vertical composer divider now shrinks the docked portrait as well as the message
