@@ -39,6 +39,7 @@
   <a href="https://xaiht.org">🌐 Website</a> ·
   <a href="https://www.youtube.com/watch?v=4MyRXBahHuU&t=41s">▶️ One-minute teaser</a> ·
   <a href="https://github.com/XAIHT/Tlamatini/blob/main/BookOfTlamatini.md">📖 Full docs</a> ·
+  <a href="Tlamatini-Architecture.pdf">🗺️ Architecture atlas</a> ·
   <a href="https://discord.gg/WFQsrskgc">💬 Discord</a>
 </p>
 
@@ -66,9 +67,10 @@
 14. [Enable Tlamatini as a Blue-hat agent](#enable-tlamatini-as-a-blue-hat-agent)
 15. [Installation](#installation)
 16. [Tech stack](#tech-stack)
-17. [Avatar animation, assets, and visible tests](#avatar-animation-assets-and-visible-tests)
-18. [Contributing](#contributing)
-19. [License](#license)
+17. [Architecture atlas](#architecture-atlas)
+18. [Avatar animation, assets, and visible tests](#avatar-animation-assets-and-visible-tests)
+19. [Contributing](#contributing)
+20. [License](#license)
 
 ---
 
@@ -877,6 +879,21 @@ See **[the full docs](https://github.com/XAIHT/Tlamatini/blob/main/BookOfTlamati
 ## Tech stack
 
 Python 3.12 · Django 5.2.15 · Django Channels (Daphne ASGI) · LangChain / LangGraph · FAISS + rank-bm25 · Ollama / Anthropic Claude / Qwen vision · SQLite · Mozilla PDF.js 6.3.289 (vendored, Apache-2.0) · PyMuPDF · PyInstaller. **Platform: Windows 10/11.**
+
+---
+
+## Architecture atlas
+
+**[Tlamatini-Architecture.pdf](Tlamatini-Architecture.pdf)** is a 31-page A3 map of the whole project, typeset by Tlamatini's own LaTeXer agent. After the cover, ten overview sheets show the runtime topology, the request lifecycle, the intelligence core, the agent ecosystem, the integration surfaces, the frontend, the data model, the build pipeline, testing and documentation, and the Python dependency matrix. Ten atlas sheets then place **every file tracked in git** (1,739 on 2026-10-17) as a clickable tile, and a ten-page file index describes each one from the file itself.
+
+To rebuild it after a change, stage new files first (the atlas lists exactly what `git ls-files` returns), then run one command:
+
+```powershell
+git add <new or renamed files>
+python scripts/architecture_atlas/build_architecture_pdf.py
+```
+
+The script generates the LaTeX, typesets it with pdflatex (MiKTeX recommended) and checks that every tracked file is in the PDF. Details: [scripts/architecture_atlas/README.md](scripts/architecture_atlas/README.md).
 
 ---
 
