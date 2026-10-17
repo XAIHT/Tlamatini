@@ -221,16 +221,33 @@ def _expand_source_files(sources_list, recursive, excluded_extensions, excluded_
     return found
 
 
+def _names_a_file(destination, source):
+    """Is a non-directory destination a FILE name for this one source file?
+
+    Yes when it already exists as a file (overwrite), when its last component
+    has an extension (Renamed.pdf), or when the source has none either
+    (LICENSE -> COPYING). Otherwise it is a FOLDER to create: on 2026-10-17
+    copying gen_architecture.py to the new folder scripts/architecture_atlas
+    produced a FILE named architecture_atlas instead of the folder.
+    """
+    if os.path.isfile(destination):
+        return True
+    dest_ext = os.path.splitext(os.path.basename(destination))[1]
+    src_ext = os.path.splitext(os.path.basename(os.path.normpath(source)))[1]
+    return bool(dest_ext) or not src_ext
+
+
 def _resolve_rename_target(sources_list, destination, recursive, excluded_extensions, excluded_filenames):
     """Return the full destination FILE path when this call is a single-file
-    rename (destination is not an existing dir, has no trailing separator, and
-    exactly ONE source FILE resolves); otherwise None (folder mode)."""
+    rename (destination is not an existing dir, has no trailing separator,
+    exactly ONE source FILE resolves, and the destination names a file - see
+    _names_a_file); otherwise None (folder mode)."""
     if not destination or os.path.isdir(destination):
         return None
     if destination[-1] in ('/', os.sep):
         return None
     matches = _expand_source_files(sources_list, recursive, excluded_extensions, excluded_filenames)
-    if len(matches) == 1 and os.path.isfile(matches[0]):
+    if len(matches) == 1 and os.path.isfile(matches[0]) and _names_a_file(destination, matches[0]):
         return destination
     return None
 
@@ -322,9 +339,11 @@ def perform_file_operations(operation: str, sources_list: List[str], destination
     When recursive=True, injects **/ to scan subdirectories.
 
     RENAME MODE: when destination_folder is NOT an existing directory, has no
-    trailing path separator, and exactly ONE source FILE resolves, it is treated
-    as the FULL target file path (move/copy + rename in one step). Otherwise it
-    is treated as a folder (created if missing) and each item keeps its basename.
+    trailing path separator, exactly ONE source FILE resolves, and the
+    destination names a file (it exists as a file, has an extension, or the
+    source has no extension either), it is treated as the FULL target file
+    path (move/copy + rename in one step). Otherwise it is treated as a folder
+    (created if missing) and each item keeps its basename.
     """
     try:
         sources_list = normalize_sources(sources_list)

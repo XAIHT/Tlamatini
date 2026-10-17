@@ -957,7 +957,7 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         tool_name="chat_agent_move_file",
         tool_description="Chat-Agent-Move-File",
         display_name="Move File",
-        purpose="Move, copy, or rename files (glob patterns supported). Use when the user asks to move, copy, relocate, or rename a file or folder. Required: source_files, destination_folder; optional: operation ('move' | 'copy'), trigger_mode.",
+        purpose="Move, copy, or rename files (glob patterns supported). Use when the user asks to move, copy, relocate, or rename a file or folder. Required: source_files, destination_folder; optional: operation ('move' | 'copy'), trigger_mode. destination_folder is a folder (created when missing); to rename ONE file instead, give the full new file name including its extension (e.g. 'E:\\Archive\\new_name.txt').",
         example_request="Move file with source_files='E:\\Temp\\old.txt' and destination_folder='E:\\Archive' and operation='move' and trigger_mode='immediate'",
         aliases=("move_file", "mover", "move file", "rename file"),
         security_hints=("move file", "rename file", "relocate file"),

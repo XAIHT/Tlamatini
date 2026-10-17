@@ -159,6 +159,43 @@ class MoverFileSafetyTests(unittest.TestCase):
         self.assertEqual(target.read_bytes(), self.sentinel.read_bytes())
         self.assert_sentinel()
 
+    def test_new_extensionless_destination_is_a_folder_for_one_file(self):
+        # 2026-10-17: copying gen_architecture.py to the new folder
+        # scripts/architecture_atlas produced a FILE named architecture_atlas.
+        source = self.root / 'gen_architecture.py'
+        source.write_text('print(1)\n')
+        folder = self.root / 'scripts' / 'architecture_atlas'
+        result = self.perform(str(source), folder)
+        self.assertTrue(result['success'])
+        self.assertTrue(folder.is_dir())
+        self.assertEqual((folder / source.name).read_text(), 'print(1)\n')
+        self.assert_sentinel()
+
+    def test_extensionless_source_can_still_be_renamed(self):
+        source = self.root / 'LICENSE'
+        source.write_text('MIT')
+        target = self.root / 'COPYING'
+        self.assertTrue(self.perform(str(source), target)['success'])
+        self.assertTrue(target.is_file())
+        self.assertEqual(target.read_text(), 'MIT')
+
+    def test_existing_extensionless_file_is_overwritten_not_made_a_folder(self):
+        source = self.root / 'notes.txt'
+        source.write_text('new notes')
+        target = self.root / 'NOTES'
+        target.write_text('old notes')
+        self.assertTrue(self.perform(str(source), target)['success'])
+        self.assertTrue(target.is_file())
+        self.assertEqual(target.read_text(), 'new notes')
+
+    def test_trailing_separator_still_forces_a_folder(self):
+        source = self.root / 'report.pdf'
+        source.write_bytes(b'report')
+        folder = self.root / 'Renamed.pdf'
+        self.assertTrue(self.perform(str(source), str(folder) + os.sep)['success'])
+        self.assertTrue(folder.is_dir())
+        self.assertEqual((folder / source.name).read_bytes(), b'report')
+
     def test_duplicate_patterns_transfer_only_once(self):
         source = self.root / 'source.txt'
         source.write_text('text')
