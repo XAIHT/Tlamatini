@@ -1,5 +1,8 @@
 # `test/` — unit tests
 
+> Current release: **[v1.85.0](../../../../../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 PlatformIO's test runner (Unity) picks up tests from this directory. Run them with:
 
 ```bash

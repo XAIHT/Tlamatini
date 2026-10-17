@@ -15,6 +15,9 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 When a request hits a **hard platform or architectural constraint** (something that makes the obvious approach structurally impossible, not just hard), STATE the constraint and the real options up front as a decision for the user — do NOT chase it through trial-and-error patches.
 
 **Why:** On the Notifier toast (2026-05) I burned a lot of the user's tokens chasing `ToastNotifier.Show()` → "succeeds but no banner" → self-drawn window → DPI/detached-spawn fixes, each looking like the missing piece. The real blocker was knowable on day one: **an *unpackaged* Windows app cannot guarantee an OS toast** (needs MSIX/AppX/sparse-package identity + code signing). I even had a memory note saying exactly that and still kept trying variations. The user was (rightly) angry: "Why you did not say that since the beginning instead of wasting my tokens?"

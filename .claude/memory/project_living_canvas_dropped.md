@@ -12,6 +12,9 @@ originSessionId: c4ba907a-c91d-4c2c-8f86-5b38594aaca7
   Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
 ═══════════════════════════════════════════════════════════════════
 -->
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 The Living Canvas v0 commit set (`2fc441d`, `0705a9c`, `d496cda`) was force-reverted to `1ad4fb0` on 2026-04-29 and force-pushed to `origin/main`.
 
 **Symptom:** Running instance showed nothing different than two days prior — the "Living Theater" strip never animated despite the Multi-Turn execution running normally. tlamatini.log confirmed lifecycle frames never reached the browser.

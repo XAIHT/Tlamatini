@@ -15,6 +15,9 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 2026-06-04: Added **AudioPlayer** (73rd agent type) — the audio PLAYBACK counterpart of [[project_recorder_agent]] (mic-IN); completes the media-I/O family Shoter(screen)/Camcorder(camera)/Recorder(mic-in)/AudioPlayer(speakers-OUT). On BOTH canvas + Multi-Turn (`chat_agent_audioplayer`).
 
 **What it does:** plays an `audio_file` (WAV/FLAC/OGG/AIFF, MP3 with recent libsndfile) via `soundfile` (decode) + `sounddevice` `OutputStream` (stream). Plays to the system DEFAULT output by default, or `device_index`/`device_name`. `volume_percent` = SOFTWARE gain (NOT OS slider; clip count reported). **`time_played`**: 0 = whole file once; N>0 = exactly N s — TRUNCATE a longer file / LOOP a shorter one (full repeats + final partial), done with a **streaming wrap-around callback** so a huge duration over a tiny file never allocates a giant buffer. `sample_rate` 0 = file's native rate (correct pitch; override forces output rate + pitch-shift warning, no resample). Does NOT change the Windows OS default endpoint (stated as an up-front constraint — [[feedback_state_constraints_upfront]]).

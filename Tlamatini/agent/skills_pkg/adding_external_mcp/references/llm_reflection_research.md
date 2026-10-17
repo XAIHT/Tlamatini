@@ -1,5 +1,8 @@
 # LLM Reflection — Research Findings
 
+> Current release: **[v1.85.0](../../../../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 ## What is LLM Reflection?
 
 LLM Reflection is a technique where language models evaluate and improve their

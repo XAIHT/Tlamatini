@@ -15,6 +15,9 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 2026-05-15: Tlamatini gained a full versioning system. SemVer 2.0.0, git tags are the single source of truth, `0.0.0+unknown` is the last-resort sentinel.
 
 **Why:** The About page hardcoded `v1.0.0` forever, and `build.py` / `build_installer.py` / `build_uninstaller.py` had no way to specify the version, so Windows Properties → Details showed nothing useful and "what version is this?" had no answer.

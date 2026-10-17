@@ -1,6 +1,9 @@
 <!-- Tlamatini Author Banner — Angela López Mendoza -->
 # Prompt Flow Run output resizing — 2026-10-04
 
+> Current release: **[v1.85.0](2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 ## Request
 
 > Now, make the Run output area to be vertically resizable from 5% to 95% of total height, without resizing the internal content of it and the canvas content (the scrollbars must do their job), just like the vertical bar between the Operations bar and the canvas works, make visual tests for me to see how the resize mecchanisms work, go!

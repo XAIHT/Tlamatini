@@ -16,6 +16,9 @@ metadata:
 -->
 
 
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 ## Mandatory rule reaffirmed by Angela, 2026-09-23
 
 **HEADLESS IS FORBIDDEN. ALL EXECUTION MUST BE VISIBLE.** Every command, automated test, diagnostic, script, build, agent, prompt and browser must run in a visible forked foreground window on Angela's real desktop. Keep consoles open afterward. Use `execute_forked_window: true`, `foreground=True` where supported, and `headless: false`. Monitor live. No hidden/background run, including CI or quick checks. If actual visibility cannot be confirmed, do not run.

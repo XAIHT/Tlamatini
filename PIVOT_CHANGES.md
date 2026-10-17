@@ -8,6 +8,9 @@
 -->
 # Tlamatini — Change Pivot / Rollback Log
 
+> Current release: **[v1.85.0](docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 A dated, append-only log of surgical changes with the verbatim request and the
 exact before/after, so any single change can be rolled back precisely without
 relying on git diffs.
@@ -500,3 +503,9 @@ checks passed, plus static parity and clean inclusion sweeps. Documentation now
 links the user, maintainer and prompt contracts through `docs/usage-dashboard.md`;
 the PDF/PPTX share their generator content. No release tag, commit, executable
 build, install or live self-update is implied.
+
+## 2026-10-16 — v1.85.0 documentation and dossier refresh
+
+Request: sweep the repository, update every Markdown file and the PDF/PPTX, and treat v1.85.0 as released.
+
+Changed all tracked Markdown release references; reconciled Refresh, Views/Reset, centered avatar and required carriers; updated package/API examples and the shared dossier content. Historical evidence keeps its dates. The original bytes are backed up under the task-local `tlamatini-docs-185/before` directory; a final documentation patch records this refresh only. No Git history or protected database mechanism is changed. See the release record for the implementation matrix and verification.

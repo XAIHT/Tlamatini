@@ -1,5 +1,8 @@
 # PDFer: the signature collection
 
+> Current release: **[v1.85.0](../../../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 PDFer now offers **24 selectable visual identities alongside its 20 existing
 document themes**. A style specifies a complete palette, type pairing, spacing
 rhythm and original vector artwork. No font download, image service or extra

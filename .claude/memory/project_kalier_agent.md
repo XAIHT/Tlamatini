@@ -15,6 +15,9 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 2026-05-22: Added **Kalier** (#66) — Tlamatini's bridge to **Kali Linux** offensive-security tooling via the MCP-Kali-Server (https://www.kali.org/tools/mcp-kali-server/). Implemented on BOTH the canvas AND Multi-Turn (`chat_agent_kalier`). Now **67 agents / 42 wrapped chat-agents**.
 
 **What it is:** the MCP-Kali-Server ships two halves — `server.py` (Flask HTTP API on the Kali box: `/api/command`, `/api/tools/{nmap,gobuster,dirb,nikto,sqlmap,metasploit,hydra,john,wpscan,enum4linux}`, `/health`) and `client.py` (a thin FastMCP stdio bridge). Kalier talks DIRECTLY to the Flask API over HTTP using stdlib **`urllib`** (Apirer's pattern — NO `requests`/`mcp` deps in the pool subprocess; self-contained like ACPXer/Windower). `action` config field selects the capability; default `server_url=http://127.0.0.1:5000` (remote Kali → SSH tunnel). Emits `INI_SECTION_KALIER` (fields: action, endpoint, method, subject, return_code, success, timed_out, server_url; body=tool output). ALWAYS triggers `target_agents` (success or failure) so a downstream Forker can branch on `{success}`/`{return_code}`. Active/source-side agent (mirrors **Windower** at every JS/view registration point).

@@ -604,11 +604,14 @@ def build_chapters(f: dict) -> list[Chapter]:
                 "In a short window the box scrolls inside itself, and on a narrow screen the workspace pans while "
                 "the page and its dialogs stay in place.",
                 "Docked, her portrait now follows the divider too: dragging the bar down shrinks it to a 120-pixel square and dragging up gives it back. Shipped in v1.83.0.",
+                "In v1.85.0, the portrait and its frame stay centered over the complete Mic-to-Send row. "
+                "Views → Canvas can give the chat the full width; Views → Reset layout restores both panes "
+                "and docks the portrait while keeping the document, draft and context.",
             ],
             points=[
                 ("Drag or type", "Pointer, arrows, Shift+arrows, Home and End move the divider."),
                 ("Undocked", "The message box can shrink to its own action buttons."),
-                ("Docked", "Her portrait follows the divider down to a 120-pixel square."),
+                ("Docked", "A centered portrait above Mic through Send, down to a 120-pixel square."),
                 ("Small windows", "The box scrolls itself; dialogs stay inside the window."),
             ], deck="cards"),
         Section("drop", "CHAT HISTORY", "Drop a message from the conversation",
@@ -903,7 +906,7 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("Recovery", "Independent notes retain text, styles and geometry. Opening never plays the flow; draft key stays compatible."),
             ]),
         Section("flowopen", "OPENING FLOW FILES", "The right editor, from chat or Windows",
-            "October 4 source changes: .flw opens agents; .fpmt opens prompting flows. Opening never runs them.",
+            "The shipped file associations open .flw agent flows and .fpmt prompting flows. Opening never runs them.",
             body=[
                 "The main chat routes both formats into their own editor tabs and keeps its current document. "
                 "An external file launch validates a bounded snapshot and reuses a matching running server "
@@ -1095,7 +1098,7 @@ def build_chapters(f: dict) -> list[Chapter]:
         Section("mdcanvas", "MARKDOWN CANVAS", "Markdown opens as a page, and stays your source",
             "Open or drop a .md file and the canvas renders it; one click shows the original text.",
             body=[
-                "Open, Reopen, a dropped file, a generated-file link and Context ▸ Set file as context all "
+                "Open, Refresh, a dropped file, a generated-file link and Context ▸ Set file as context all "
                 "recognise .md and .markdown. Preview renders CommonMark and GitHub-flavored Markdown: "
                 "headings, tables, task lists, fenced code through the existing highlighter and safe embedded "
                 "HTML such as expandable details. Source shows the full original text with line numbers.",
@@ -1799,13 +1802,127 @@ def build_chapters(f: dict) -> list[Chapter]:
             ]),
     ])
 
-    release = Chapter("release", "VIII", "Version and Release Status",
+    release = Chapter("release", "VIII", "Current Release",
         (f"Version {f['release_tag']}, the current release, published on GitHub."
          if f['release']['latest_published'] == f['release_tag'] else
          f"Version {f['release_tag']}; the latest release published on GitHub is "
          f"{f['release']['latest_published'] or 'not verified'}."),
         accent="gold", sections=[
-        Section("working_dropfiles", "NEW IN v1.83.0", "One smart listener for every file you drop",
+        Section("release185", "CURRENT RELEASE · v1.85.0", "Refresh, Views and a centered avatar",
+            "Tlamatini v1.85.0 is the latest released version, with a more flexible chat workspace.",
+            body=[
+                "Refresh rereads the open document. Views makes room for full-width chat while keeping the "
+                "canvas alive. Reset restores the layout without clearing content. The portrait and its "
+                "frame remain centered over Mic through Send as the message box shrinks.",
+                "The release retains the page-wide file-drop router, setup recovery, Markdown rendering, "
+                "Usage dashboard, Model Brain, Compact mode, voice dictation and both flow editors.",
+            ],
+            points=[
+                ("Refresh", "The original document, read again without a chooser."),
+                ("Views", "Show or hide the canvas and keep its state."),
+                ("Reset layout", "Restore both panes and dock the avatar."),
+                ("Portrait", "Center the whole frame above the complete action row."),
+            ], deck="cards"),
+        Section("refresh185", "NEW IN v1.85.0", "Refresh the original document",
+            "Open selects a file. Refresh reads that same source again, without writing to it.",
+            body=[
+                "Native-picker access retains a browser-granted handle. Drops retain their handle or entry "
+                "during the original event, including the PDF-frame relay. A snapshot-only source explains "
+                "why Refresh is unavailable. A generated document rereads its authenticated saved-content endpoint.",
+                "Text and Markdown are compared in full, including empty files. Equal size or timestamp is "
+                "never proof of equal content. An unchanged document stays in place without rebuilding context. "
+                "Changed content replaces the complete document only when preparation succeeds.",
+                "Busy, unchanged, updated, permission and error states have visible feedback. Cancel, Clear, "
+                "opening another document and a new operation invalidate pending reads. Failure preserves the "
+                "previous document and explains the next action.",
+            ], points=[
+                ("Open", "Choose a document and retain read access."),
+                ("Refresh", "Reread the retained source without another picker."),
+                ("Failure", "Keep the previous content and allow retry."),
+                ("Context", "Prepare changed content before replacing active context."),
+            ], deck="cards"),
+        Section("refreshviews185", "NEW IN v1.85.0", "Keep the reading position",
+            "Refreshing Markdown or PDF preserves the view while the underlying document changes.",
+            body=[
+                "Markdown retains Preview or Source, reading position and explicitly selected resources. "
+                "Its source bytes remain the basis for Save. Folder-selected resource files remain snapshots "
+                "and can be selected again when those separate files change.",
+                "PDF Refresh stages a new range-backed PDF.js viewer before retiring the old one. It keeps "
+                "page, zoom, rotation and scroll mode, clamping the page to a shorter document. A corrupt PDF "
+                "or cancelled password entry leaves the prior viewer visible. The staged iframe stays attached "
+                "during the swap so the browser does not reload it.",
+                "PDFs always reload on Refresh. No whole-file hash, eager whole-document read or metadata-only "
+                "equality claim is introduced. Active-context replacement keeps the established text/image options.",
+            ], points=[
+                ("Markdown", "Preview/Source, position and selected resources stay."),
+                ("PDF", "Page, zoom, rotation and scroll mode stay."),
+                ("Recovery", "A failed replacement retains the previous viewer."),
+                ("Evidence", "20 visible Chrome checks on October 15."),
+            ], deck="cards"),
+        Section("views185", "NEW IN v1.85.0", "Choose a full-width chat",
+            "Views → Canvas shows or hides the canvas without unloading it.",
+            body=[
+                "Hiding the canvas gives the chat the full width. The document, PDF viewer, Markdown mode, "
+                "Refresh source, draft, history and loaded context remain intact. Open, a supported document "
+                "drop and a generated-file link reveal the canvas when their result needs it.",
+                "The choice is stored per account in that browser and synchronized across its tabs. It survives "
+                "reload and browser restart. A different browser profile or origin has separate preferences.",
+                "Changing visibility cancels divider gestures. Focus moves to the Views menu only when its "
+                "current region disappears, and the check mark exposes its state to assistive technology.",
+            ], points=[
+                ("Full width", "Hide the canvas to give the chat more room."),
+                ("Continuity", "Keep the open document and active context."),
+                ("Preference", "Saved per account and browser origin."),
+                ("Navigation", "Opening a document reveals its canvas."),
+            ], deck="cards"),
+        Section("avatar185", "NEW IN v1.85.0", "A centered portrait at every height",
+            "The portrait and its frame share the center of the entire Mic-to-Send action row.",
+            body=[
+                "Previously, reducing the composer height shrank the portrait but left it anchored to the "
+                "right edge. The layout now measures from Mic's left edge to Send's right edge and centers "
+                "the whole dock above that span. Both dividers, narrow layouts and zoom follow the same measurement.",
+                "The portrait remains square with a 120-pixel minimum. Its floating size remains independent. "
+                "Hiding the canvas docks the portrait and disables floating resize through pointer, keyboard "
+                "and API paths. Showing the canvas enables resizing again and leaves the portrait docked.",
+                "Views → Reset layout shows both panes, restores their initial sizes and docks the avatar. "
+                "It does not clear the document, draft, history or context.",
+            ], points=[
+                ("Alignment", "Mic's left edge through Send's right edge."),
+                ("Sizing", "A square portrait, never below 120 pixels."),
+                ("Reset", "Restore layout while keeping content."),
+                ("Evidence", "19 visible checks; center error below 0.02 CSS px, October 16."),
+            ], deck="cards"),
+        Section("carriage185", "v1.85.0 IMPLEMENTATION", "The complete feature travels together",
+            "Required runtime and self-modify inventories cover the Views template and scripts.",
+            body=[
+                "The runtime receipt requires agent_page.html plus agent_page_layout.js, avatar_size.js, "
+                "agent_page_canvas.js and agent_page_init.js. The snapshot also requires the two visible Views "
+                "harnesses and the identity instructions. Refresh retains the existing PDF and Markdown carriers.",
+                "There is no new migration or Python dependency. The cache suffix is -avatar-center-1 and the "
+                "Views template suffix is _views1. Visibility is browser-local and does not depend on Self-modify.",
+                "Dated evidence includes 160 packaging/self-update/self-modify tests and 13 visible frozen "
+                "frontend checks on October 16. The latter used an actual executable with byte-verified "
+                "current frontend assets in a disposable fixture. The carriage guide records the exact scope.",
+            ], points=[
+                ("Runtime", "Required template and four cooperating scripts."),
+                ("Snapshot", "Sources, identity and both Views harnesses."),
+                ("Database", f"No new migration; {f['migrations']} migrations remain."),
+                ("Version", "v1.85.0 across the application and documentation."),
+            ], deck="cards"),
+        Section("maintenance184", "CARRIED FROM v1.84.0", "Catalog and fixture maintenance",
+            "The October 14 maintenance commit updated catalog/configuration data and scrubbed test fixtures.",
+            body=[
+                "Commit 1a8c5093 changed FlowCreator catalog data, the local External MCP catalog and "
+                "test fixtures. It introduced no new product subsystem, agent type, migration or dependency. "
+                "Private catalog values are excluded from this dossier.",
+                "The current audit reads the actual implementation and keeps historical test results dated. "
+                "A fixture value is test data, not a deployed credential or evidence that a provider ran.",
+            ], points=[
+                ("Maintenance", "Catalog data and test fixtures changed in commit 1a8c5093."),
+                ("Product surface", "No new subsystem, agent type, migration or dependency."),
+                ("Privacy", "Public documents exclude private catalog values."),
+            ], deck="list"),
+        Section("working_dropfiles", "CARRIED FROM v1.83.0", "One smart listener for every file you drop",
             "Tagged and published on October 14: a dropped file never errors, never opens as text by mistake and never navigates away.",
             body=[
                 "Dropping an MCP .json on the chat used to report an error, on the canvas it opened as plain text and "
@@ -1826,7 +1943,7 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("Evidence", "138 router checks, 22 tests, 58 visible checks, 24 photographs."),
                 ("Tag", "v1.83.0 at a2914019, pushed and published October 14."),
             ], deck="cards"),
-        Section("working_dockedavatar", "NEW IN v1.83.0", "The portrait shrinks with the message box",
+        Section("working_dockedavatar", "CARRIED FROM v1.83.0", "The portrait shrinks with the message box",
             "Commit 63a62cc1 on October 13, credited to Tlamatini's-AutoBot; shipped in v1.83.0.",
             body=[
                 "The divider above the message box used to reserve the portrait's current width as the box's "
@@ -1843,7 +1960,7 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("Keyboard", "Arrows, Shift+arrows, Home, End, double-click and Escape still work."),
                 ("Evidence", "19 docked-avatar and 18 composer checkpoints passed."),
             ], deck="cards"),
-        Section("working_aftertag", "NEW IN v1.83.0", "A wrongly worded request is not fatal",
+        Section("working_aftertag", "CARRIED FROM v1.83.0", "A wrongly worded request is not fatal",
             "Commit 91ff8453 on October 12, credited to Tlamatini's-AutoBot; shipped in v1.83.0.",
             body=[
                 "When the launcher refuses an Image-Interpreter or Video-Analyzer call before the agent starts, "
@@ -1882,7 +1999,7 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("Campaign", "Five installations and four removals passed; one removal stopped safely."),
                 ("Followed by", "v1.83.0 on October 14 carries the three later changes."),
             ], deck="cards"),
-        Section("working_onelook", "NEW IN v1.80.0", "One look, and one way to drag",
+        Section("working_onelook", "CARRIED FROM v1.80.0", "One look, and one way to drag",
             "Tagged on October 11 without a release of its own; it reaches users through v1.82.0 and v1.83.0.",
             body=[
                 "Every first-party page now draws from one set of design tokens, and the five pane dividers "
@@ -1901,7 +2018,7 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("Evidence", "175 tests and visible zoom, composer and dialog checks."),
                 ("Delivered by", "The published v1.82.0 and v1.83.0 releases."),
             ], deck="cards"),
-        Section("working_links", "NEW IN v1.79.0", "Video-Analyzer takes a web link",
+        Section("working_links", "CARRIED FROM v1.79.0", "Video-Analyzer takes a web link",
             "Tagged on October 11 without a release of its own; it reaches users through v1.82.0 and v1.83.0.",
             body=[
                 "Given a YouTube or other web link, Video-Analyzer downloads one item itself: only the sound "
@@ -2308,9 +2425,9 @@ def build_chapters(f: dict) -> list[Chapter]:
         Section("lineage", "LINEAGE", "How the line arrived here",
             "Recent tags, oldest first, read from Git.",
             visual="timeline", deck="visual"),
-        Section("identity_release", "RELEASE IDENTITY", "Tag, commit and publication, stated plainly",
-            "A tag is not a release, and a commit after a tag is not a new tag. This dossier keeps the three "
-            "apart.",
+        Section("identity_release", "RELEASE IDENTITY", f"One released version: v{version}",
+            "The application, user guides, PDF and PowerPoint all identify the same current release. "
+            "The repository metadata records the implementation inspected for this dossier.",
             body=f["release_statements"],
             table={"columns": ["Fact", "Value"], "widths": [0.40, 0.60], "rows": f["release_rows"]},
             deck="split", deck_points=f["release_points"]),

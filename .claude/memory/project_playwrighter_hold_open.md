@@ -15,6 +15,9 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 2026-05-21: Playwrighter closed the browser the instant the last step returned
 (its `run_browser_flow` `finally` block tears the browser down with no delay),
 so a user's "PLEASE WAIT 10 SECONDS BEFORE CLOSE THE BROWSER" was ignored — the

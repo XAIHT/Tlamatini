@@ -8,8 +8,11 @@
 -->
 # Tlamatini Agents — MCP connector
 
-Exposes **every complete live Tlamatini agent directory (89 in the v1.83.0
-version)** as MCP tools so an MCP client (Claude Code, etc.) can drive
+> Current release: **[v1.85.0](docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
+Exposes **every complete live Tlamatini agent directory (89 in the v1.85.0
+release)** as MCP tools so an MCP client (Claude Code, etc.) can drive
 them directly — Executer, Pythonxer, Croner, ACPXer, STM32er, ESP32er,
 Arduiner, Shoter, Playwrighter, Kalier, MCP Doctor, NetSpeed-Calculator, and
 the rest of the live catalog. It also exposes 7 management/skill tools and 10
@@ -28,7 +31,7 @@ client's working directory doesn't matter.
 
 ## Activate it
 
-1. Reload Claude Code in this folder (`C:\Development\Tlamatini`). A project
+1. Reload Claude Code in this folder (`C:\Development\XAIHT\Tlamatini`). A project
    `.mcp.json` server must be **approved on first use** — run `/mcp`, pick
    `tlamatini`, approve it (or restart the session).
 2. Verify offline anytime: `python tlamatini_mcp_server.py --list`

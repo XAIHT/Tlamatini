@@ -15,6 +15,9 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 When I make changes for the user — **especially edits to `prompt.pmt`, the wrapped chat-agent wrapper (`tools.py` / `chat_agent_registry.py`), and agent `config.yaml` defaults** — I must keep a running record so a later "roll back just that last change" is exact and self-contained.
 
 What to record per change: the user's **verbatim request**, the **files touched**, and the **complete before/after** of each edited block (not just a summary — enough to reconstruct the prior state byte-for-byte). A dated pivot/changelog file in the repo (e.g. extend `docs/claude/recent-fixes.md`, or a dedicated changes log) is the right home.

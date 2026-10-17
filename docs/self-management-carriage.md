@@ -1,6 +1,9 @@
 # Self-modify and self-update carriage review
 
-## Main-chat Views carriage (2026-10-16)
+> Current release: **[v1.85.0](changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
+## Main-chat Views carriage (v1.85.0, 2026-10-16)
 
 `Views → Canvas` and `Views → Reset layout` are ordinary chat capabilities in
 both frozen build modes. They do not depend on the Self-modify toolbar switch.
@@ -36,10 +39,9 @@ with the six current frontend/identity sources overlaid and byte-verified. Its
 private test database and normal authenticated browser are separate from the live
 installation. This modified test directory intentionally differs from the old
 release receipt and is **not a distributable release**. The original package,
-installed application and protected database mechanics remain unchanged. A normal
-rebuild from the updated working tree and subsequent install/update are still
-needed for delivery; a clone/tag must first include these source changes and new
-test files. No rebuild, live swap or publication was performed by this check.
+installed application and protected database mechanics remain unchanged. The release carrying Views, Reset and the centered portrait is **v1.85.0**.
+This dated fixture check establishes frontend compatibility; its overlaid directory
+is retained only as test evidence.
 
 Local evidence is under `Temp/views-frozen/` (source sweeps, package comparison,
 runtime identity, live console/application logs and the headed-browser gallery).
@@ -186,7 +188,7 @@ was published the same day. `v1.78.0` (annotated tag at `0e6fc72d`, 2026-10-10;
 migration 0213 `UsageDaily` landed one commit later in `7460a147`) was published
 on 2026-10-10. `v1.82.0` (annotated tag at `880a335e`, 2026-10-12) was published on
 2026-10-12, and `v1.83.0` (annotated tag at `a2914019`, 2026-10-14) on 2026-10-14; the
-latter is the latest published release and the one self-update delivers. Neither adds
+latest released version is now **v1.85.0**. Neither adds
 a migration, and 0213 reaches existing installs through the post-update `migrate` like
 every migration.
 
@@ -205,8 +207,7 @@ every migration.
   `self_modify_switch.js` only where that is true, so a default build carries
   the script but never shows it. The choice persists in
   `CompactState.self_modify` (migration `0212_compact_state_self_modify.py`,
-  ON by default) and decides, per request, whether `Tlamatini.md` (115,711
-  characters, about 28.9K tokens) is sent; a model that cannot hold it shows
+  ON by default) and decides, per request, whether `Tlamatini.md` (a size that changes with its contents) is sent; a model that cannot hold it shows
   the box locked OFF.
 - **Carriage.** `copy_source_assets.REQUIRED_SNAPSHOT_FILES` names
   `0212_compact_state_self_modify.py` and `self_modify_switch.js`, and

@@ -13,6 +13,9 @@ description: The authoritative, exhaustive end-to-end runbook for creating a BRA
 
 # Tlamatini — Complete New-Agent Creation Runbook (700+ steps)
 
+> Current release: **[v1.85.0](../../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 > **HEADLESS IS FORBIDDEN. VISIBLE FOREGROUND EXECUTION ONLY.** Every command, automated test, diagnostic, script, build, agent and browser must run in a visible foreground window on Angela's real desktop. Use forked CMD/PowerShell windows, `execute_forked_window: true`, and `headless: false`. Monitor live; if visibility cannot be confirmed, do not run. Read the [mandatory execution policy](../../../TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).
 
 > **Developer/product boundary (Angela, 2026-09-27):** these visibility requirements govern development and verification. They must not create extra windows, steal focus or expose internal diagnostics in the shipped UX. Direct chat dictation keeps status in chat and uses only Tlamatini's main console/log.

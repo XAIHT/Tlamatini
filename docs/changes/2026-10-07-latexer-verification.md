@@ -1,6 +1,9 @@
 <!-- Created by Angela López Mendoza · @angelahack1 — Tlamatini. -->
 # LaTeXer delivery and real-chat verification — 2026-10-07
 
+> Current release: **[v1.85.0](2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 The installed Tlamatini chat produced a correct simple PDF through LaTeXer:
 `C:\Users\angel\OneDrive\Desktop\Hello-from-Tlamatini.pdf`.
 Its one rendered page contains the title **Hello from Tlamatini**, the sentence

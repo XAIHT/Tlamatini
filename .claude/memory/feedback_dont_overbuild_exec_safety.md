@@ -15,6 +15,9 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 2026-05-29: The user discarded the ENTIRE ~2-day external-exec hardening series in one `git discard` — "nothing you did worked." That series = [[project_pythonxer_forkbomb_fix]] + [[project_external_exec_safety_layer]] (7 follow-ups logged in PIVOT_CHANGES.md): blocking `compile()` syntax gate, blocking Ruff, Windows Job-Object containment, `_run_bounded`/`_kill_process_tree` anti-freeze, and the f/u#7 `_watch_script_completion`/`_kill_script_window_remnants` watcher daemon.
 
 **Why it was rejected:** it passed its own tests but did NOT fix the real live symptom — `start "" cmd /k python file.py` still hung Tlamatini and still returned a false "OK". The tests used stand-ins (`ping`) that never reproduced the actual detached-`cmd /k` console, so green tests gave false confidence. The work was also over-built (heuristic process-name + path-match killing daemons) relative to the problem.

@@ -1,5 +1,8 @@
 # Model configuration
 
+> Current release: **[v1.85.0](changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 Config → Models manages **38 model, engine and voice settings** for core services
 and **21 model-backed agents**. This reference describes the implemented registry
 as reviewed on **2026-09-20**. Defaults below are application defaults, not a promise
@@ -175,7 +178,7 @@ opened remotely. See [the direct microphone guide](chat-microphone-design.md).
 
 Any Ollama model can be chosen. Tlamatini's complete request (her full prompt plus every enabled tool) is ~100K+ tokens, so a model whose real window cannot hold everything activated switches the chat toolbar's **Compact mode** box ON by itself and locks it (greyed, 🔒; a click explains why, and a dialog says so once per model per browser session). Compact mode really unticks every MCP, tool, agent and skill row in Config ▸ Configure MCPs, Configure Agents and ACPX-Skills except System-Metrics, Files-Search and Current-Time, and pauses the External MCPs; you then tick back, one by one, only what you need, and each request carries exactly the ticked rows (ACPX tools included, when their rows and the toolbar's ACPX box are on). Each row in those dialogs shows the tokens it adds, a line under the list says whether the selection still fits the chosen model, and saved rows apply at once with no restart. Choosing a larger model here unlocks the box, but Compact mode stays ON with your picks until you untick it; unticking it ticks every row again. Models with a 256K-token window (for example `nemotron-3-ultra:cloud`, `gemma4:31b-cloud`) receive the complete request while the box is OFF. `context_compact_mode` (`auto` | `always` | `never`) overrides the automatic choice (`always` keeps the box locked ON, `never` never locks it); an explicit value is obeyed. An answer built from a request that Ollama still cut carries a **CONTEXT-WINDOW exceeded** warning. Details: [Compact mode](claude/architecture.md).
 
-Her self-knowledge (`Tlamatini.md`, about 28.9K tokens per request) is a separate toolbar switch, **Self-modify**, shown only where self-modify is possible (always in a source run; in a frozen build only with `build.py --self-modify`); it is locked OFF when the chosen model cannot hold it and unlocks by itself when you choose a larger one. Details: [the Self-modify switch](claude/architecture.md).
+Her self-knowledge (`Tlamatini.md`, whose size changes with its contents) is a separate toolbar switch, **Self-modify**, shown only where self-modify is possible (always in a source run; in a frozen build only with `build.py --self-modify`); it is locked OFF when the chosen model cannot hold it and unlocks by itself when you choose a larger one. Details: [the Self-modify switch](claude/architecture.md).
 
 ## Global choices, overrides and Parametrizer
 

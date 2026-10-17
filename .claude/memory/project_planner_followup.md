@@ -12,6 +12,9 @@ originSessionId: dcafd649-e5a5-45e2-bebd-f267bccc46c9
   Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
 ═══════════════════════════════════════════════════════════════════
 -->
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 On 2026-04-16, analyzed tlamatini.log from an MXNet installation session that required 5+ user attempts over ~50 minutes. Identified and fixed 5 root causes:
 
 1. **Planner statelessness**: Short follow-ups ("continue") scored near-zero for all tools because scoring was based only on current message. Fixed by adding chat-history-aware scoring boost in `global_execution_planner.py` and `factory.py`.

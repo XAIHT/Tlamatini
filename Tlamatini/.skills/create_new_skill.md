@@ -8,6 +8,9 @@
 -->
 # Creating a New Skill (SKILL.md package) in Tlamatini
 
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 Authoritative, step-by-step guide for authoring a new **Skill** — including
 **ACPX skills**. A Skill is a markdown package (`SKILL.md`) discovered at
 runtime by `agent/skills/registry.py` and invoked by the LLM through the two

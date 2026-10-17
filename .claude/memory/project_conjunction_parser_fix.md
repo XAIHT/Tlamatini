@@ -12,6 +12,9 @@ originSessionId: 3b708931-1bbc-41a0-b46c-857631a3a9a0
   Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
 ═══════════════════════════════════════════════════════════════════
 -->
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 On 2026-04-24, six consecutive `file_creator_00N` runs failed while the user was generating CUDA knapsack sources into `C:\Development\AngysBackInCUDA`. Each run's `file_path` looked like `C:\Development\AngysBackInCUDA\drone_knap.h' and content='/*...` — the LLM's whole `content=` payload was absorbed into `file_path`, Python raised `WinError 123`, and one run left a literal directory named `drone_knapsack.h' and content='` inside `include/`.
 
 Root cause: `_split_assignment_segments` in `agent/tools.py` only split on `,`/`;`, and `_closes_outer_quote` only closed single-line quotes on `,`/`;`/EOF. Every `example_request` in `chat_agent_registry.py` separates params with the natural-language conjunction `and` (occasionally `with`), and the LLM reliably copies that style. Multi-arg calls like `filepath='X' and content='Y'` therefore collapsed into one segment whose file_path value was `X' and content='Y`.

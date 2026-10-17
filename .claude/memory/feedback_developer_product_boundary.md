@@ -1,5 +1,8 @@
 # Developer workflow is not product UX
 
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 Angela clarified this on 2026-09-27: she is the developer using this machine;
 the worldwide audience for her products is distinct. Apply sound product and
 engineering judgment. Do not turn her development diagnostics or preferences

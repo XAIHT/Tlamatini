@@ -10,6 +10,9 @@ Tlamatini (2026/04/05 17:32:15.327)
 
 # Detailed Source Code Summary: Gatewayer Agent Project
 
+> Current release: **[v1.85.0](../../../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 ## Project Overview
 
 The Gatewayer Agent is an inbound gateway agent that receives external events via HTTP webhook or folder-drop, validates them, normalizes the data, persists to disk, and dispatches to downstream target agents.

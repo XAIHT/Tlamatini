@@ -15,6 +15,9 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 2026-05-21: Added **Windower** agent — the WINDOW MANAGER of the desktop-UI trio (Windower=the window itself, Mouser=clicks-inside, Keyboarder=types-into). Implements the user's "control Windows GUI / Windows-MCP" request as a native, self-contained agent rather than wiring the heavy CursorTouch Windows-MCP server (fastmcp/comtypes/dxcam/uiautomation) — it ports only the **window-management subset** inline with `pywin32` (`win32gui`/`win32con`/`win32process`) + `ctypes`, including the **AttachThreadInput cross-process focus-transfer dance** from Windows-MCP's `bring_window_to_top`.
 
 Ships on BOTH surfaces (same dual pattern as Playwrighter/Unrealer): canvas workflow agent + wrapped Multi-Turn tool `chat_agent_windower`. `action` ∈ list / focus / minimize / maximize / restore / move / resize / move_resize / close / topmost / untopmost / arrange (snap/tile). Matches `window_title` by substring/exact/regex + `match_index`. Emits `INI_SECTION_WINDOWER` (action, window_title, matched, match_count, state, left, top, width, height). State-changing → in Exec Report. ALWAYS triggers `target_agents`; `fail_if_absent=true` hard-exits. Win32 imports guarded → degrades to `state: win32_unavailable` off-Windows.

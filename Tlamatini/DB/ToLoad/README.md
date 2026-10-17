@@ -8,6 +8,9 @@
 -->
 # DB / ToLoad
 
+> Current release: **[v1.85.0](../../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 This directory is the **drop zone** for replacing Tlamatini's live SQLite
 database on the next start-up.
 

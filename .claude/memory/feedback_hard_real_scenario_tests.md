@@ -15,6 +15,9 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 When asked for automated tests, the user wants them HARD and REAL: cover **with-errors AND without-errors AND overflows** (fork-bomb / mass-spawn / huge-output), drive the REAL code (run the actual agent as a subprocess / call the real functions — do NOT mock the thing under test), and reproduce the ACTUAL incident byte-faithfully (e.g. the truncated `cat-art.py` ending in an unterminated f-string). Verbatim: "make the testing harder, cause your test usually dont catch real scenarios, work harder, till beyond excelence, beyond perfection, beyond god."
 
 **Why:** soft happy-path tests pass while real bugs ship. Proof it works: the hard suite in `test_external_exec_safety.py` immediately caught a REAL bug a soft test never would — a child printing 🐱 crashed with `UnicodeEncodeError` (cp1252 captured pipe on Windows) until `PYTHONIOENCODING=utf-8` + `env=get_agent_env()` were forced on the exec child of both Executer and Pythonxer.

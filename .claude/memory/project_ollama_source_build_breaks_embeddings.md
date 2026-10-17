@@ -15,6 +15,9 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 2026-06-03: User reported a recurring Ollama error (`requested context size too large num_ctx=8192 n_ctx_train=2048`, then **`error starting llama-server: llama-server binary not found (checked: C:\Development\ollama\...)`**) and asked to **shorten prompt.pmt / Tlamatini.md** to fix it. That fix is structurally impossible — surfaced up front per [[feedback_state_constraints_upfront]].
 
 **Real cause:** TWO Ollama servers run on this machine:

@@ -1,5 +1,8 @@
 # LaTeXer: the signature collection
 
+> Current release: **[v1.85.0](../../../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 30 explicit visual identities, independent of the eight document templates.
 Original TikZ illustrations, coordinated reading pages, portable Latin Modern
 fonts, mathematical typesetting, tables, code, links and flowing callouts.

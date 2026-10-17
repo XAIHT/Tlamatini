@@ -15,6 +15,9 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 2026-06-05: Built a new **Claude Code skill** `tlamatini-daily-chat-test` at
 `.claude/skills/tlamatini-daily-chat-test/` (SKILL.md + `harness/{config,questions,qualify,run_test}.py` + README + requirements + .gitignore). Purpose: a daily automated regression that drives **real Chrome via Playwright** (channel=chrome, headed), logs into the Tlamatini chat, asks up to **1000 curated questions** one-by-one, waits for + scrapes + qualifies each answer, and writes `reports/run_<ts>/{results.jsonl,summary.json,report.md}`.
 

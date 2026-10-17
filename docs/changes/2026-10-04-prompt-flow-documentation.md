@@ -1,6 +1,9 @@
 <!-- Tlamatini Author Banner — Angela López Mendoza · @angelahack1 -->
 # Prompt Flow documentation and dossier refresh — 2026-10-04
 
+> Current release: **[v1.85.0](2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 ## Request and scope
 
 > Now update completely all the related documentation considering all of the implementations/changes/modifications, including .pptx and .pdf files, go!.

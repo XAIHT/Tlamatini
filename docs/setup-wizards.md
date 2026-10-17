@@ -1,6 +1,9 @@
 <!-- Tlamatini Author Banner — Angela López Mendoza · @angelahack1 -->
 # Installation and removal windows
 
+> Current release: **[v1.85.0](changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 **Status: shipped in the published `v1.82.0` release (tag at `880a335e`, 2026-10-12).**
 The Installer and Uninstaller in that release zip are built from this code; the validation
 campaign below is dated 2026-10-11/12.

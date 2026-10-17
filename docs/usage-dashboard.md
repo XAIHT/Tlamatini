@@ -1,6 +1,9 @@
 <!-- Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1 -->
 # About Usage
 
+> Current release: **[v1.85.0](changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 **Status: shipped in the published `v1.78.0` release (2026-10-10).** That release was
 built from `main` at `113eddc4` and carries the dialog and its outage recovery; an
 installation still on v1.77.0 or older does not have it; the published `v1.82.0` (2026-10-12) carries it too. The source verification

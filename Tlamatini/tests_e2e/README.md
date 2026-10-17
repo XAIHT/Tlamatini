@@ -1,5 +1,8 @@
 # tests_e2e — visible (headed) Playwright end-to-end suites
 
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 These drive a **real, visible Chromium** against a **running** Tlamatini server
 (they are NOT Django unit tests — those live in `agent/tests.py`). They dogfood
 the live chat UI end-to-end.

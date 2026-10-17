@@ -269,6 +269,9 @@ Usage examples for the improved agents:
 
 ```yaml
 # Mouser: read physical cursor and monitor layout without moving anything.
+
+> Current release: **[v1.85.0](changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
 movement_type: inspect
 ```
 

@@ -4,6 +4,9 @@ Tlamatini Author Banner — do not remove
 -->
 # Whisperer: workflow speech recognition and direct chat dictation
 
+> Current release: **[v1.85.0](../../../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 Whisperer records the configured host microphone or transcribes audio files.
 The local engine is faster-whisper with the existing GPU/CPU fallback; explicitly
 configured cloud engines are also supported. Model choices inherit from

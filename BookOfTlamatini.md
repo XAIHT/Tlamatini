@@ -8,6 +8,9 @@
 -->
 # Tlamatini
 
+> Current release: **[v1.85.0](docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 ![Project Logo](Tlamatini.jpg)
 
 > **The Book of Tlamatini** — a step-by-step guide to running, using, and mastering a locally-deployed AI developer assistant with RAG, Multi-Turn tool orchestration, ACPX external-CLI delegation, an Unreal MCP client for driving Unreal Engine 5 from chat or canvas, a visual workflow designer, 89 drag-and-drop agent types, and a backend Flow Compiler that turns the live canvas — or a chat-generated tool-call log — into a registry-validated, secret-redacted, source-and-frozen-portable workflow.
@@ -254,7 +257,7 @@ The buttons above the canvas keep the meanings they always had:
 |---|---|
 | **Copy** | Lifts the selectable text out of *every* page. If the file is a scan with no text layer, it says so and explains that OCR is needed — it does not hand you an empty string and let you think the document was blank. |
 | **Save As** | Writes the **original PDF bytes** back out, untouched. |
-| **Reopen** | Swaps in a different file. If the current one was already loaded as context, the replacement is prepared *before* the context is rebuilt, and cancelling that preparation leaves your previous context intact. |
+| **Refresh** | Rereads the open document without a chooser. Unchanged text stays in place; changed content replaces it after preparation. Failure or cancellation keeps the previous document/context. |
 | **Clear canvas** | Puts the document away and shuts down its background worker. |
 
 ### Nothing leaves your machine just because you opened it
@@ -916,7 +919,7 @@ When the migrations finish and you have a superuser, run the server (chapter 7).
 
 ### Path B — Pre-built one-click installer (end users)
 
-Download the newest published release ZIP from **[Tlamatini Releases](https://github.com/XAIHT/Tlamatini/releases)** and unzip it (or use a `Tlamatini_Release_v1.83.0/` folder somebody handed you / you built — see Part VIII). This book currently documents **v1.83.0** (tagged and published on GitHub 2026-10-14) — a smart file-drop router on every page that recognises each dropped file by its bytes and sends it to its own mechanism (an MCP `.json` now imports everywhere and never errors, opens as text or navigates away), the docked avatar that follows both composer dividers, and a fix that keeps a wrongly worded image or video request from raising the fatal-analysis dialog — on top of **v1.82.0** (tagged and published on GitHub 2026-10-12) — the Installer and Uninstaller share one setup window that prepares a verified recovery copy before changing anything, restores an interrupted run and names a locked file, and Markdown files open in the chat canvas as a rendered page with their source kept intact — on top of **v1.80.0** (tagged 2026-10-11) — one slate/teal look on every page and one way to drag every divider — and **v1.79.0** (tagged 2026-10-11) — Video-Analyzer downloads and transcribes a YouTube or other web link by itself — on top of **v1.78.0** (tagged and published on GitHub 2026-10-10) — the **About ▸ Usage** dialog shows your Ollama credits and your own activity even while she answers, the message box shrinks to its buttons when her avatar is undocked, and Image-Interpreter accepts a comma-separated list of images — on top of **v1.77.0** (tagged and published on GitHub 2026-10-09) — Tlamatini speaks every fixed chat line in the first person and to you by name, and the uninstaller keeps your `Templates/` and the other folders that hold your files — on top of **v1.76.0** (tagged 2026-10-08, published on GitHub 2026-10-09) — the **Model Brain**: every model Tlamatini uses is tuned with its own settings from formal sources, and **Config ▸ Models ▸ Save** shows the tuning live; the console is painted by level; a refused PDF says why; LaTeXer, Mover and the document agents report only what really happened; and the **Self-modify** switch turns her self-knowledge on or off — on top of **v1.75.0** (tagged and published on GitHub 2026-10-03), where Compact mode becomes a real toolbar switch you drive: ticking it unticks every Configure row except System-Metrics, Files-Search and Current-Time, a model too small for everything you activated locks it ON, every row shows its token price, and an answer from a cut request carries a warning — on top of **v1.74.0**, where every request is fitted to the model it goes to: Compact mode for a small model, the complete context for a big one, and readable answer tables — on top of **v1.73.1** (Config ▸ Models asks the configured Ollama with its token) and **v1.73.0**, where every chat card gains a **Drop** button that erases one message from the chat AND from the history she reads — on top of **v1.72.4** (Crawler and Googler can no longer lose a web page's text in silence), **v1.72.3** (the avatar's lips move clearly while she speaks) and **v1.72.2** (Googler and Crawler never hang and never pass off a refusal as content), which carry **v1.72.1**, the REAL context gauge: the ring beside the message box shows Ollama's own token count for the exact request, in one-shot and Multi-Turn alike — on top of **v1.72.0**, the direct chat microphone (the button beside Send starts Whisperer directly, and **Config ▸ Mic** holds its settings), and **v1.70.0**: the Prompt Flow Panel, the reorganized chat menus, the Agentic Control Panel editor toolbar and one shared set of canvas mechanics for both panels. The `v1.76.0` tag points to `953ad2d8`; the Model Brain commit `72799950` landed on `main` one commit after it, so a build of `main` made before the `v1.77.0` tag reported the bare `1.76.0` and carried all of it; the `v1.77.0` tag sits on `052bfe0f`, and a build of `main` reported `1.77.0` until the `v1.78.0` tag (`0e6fc72d`) and `1.78.0` until the `v1.79.0` tag; the `v1.82.0` tag sits on `880a335e` (there is no `v1.81.0`), and the `v1.83.0` tag sits on `a2914019`, so the runtime version resolves to the bare `1.83.0`. The Self-modify switch landed on `main` right after the `v1.75.0` tag (commit `70aeeb87`, 2026-10-03); it, the v1.75.0 Compact switch (2026-10-02), every v1.76.0 change, the two v1.77.0 changes and everything from v1.78.0 to v1.83.0 are told in Appendix C. `v1.70.0` supersedes `v1.65.4` (annotated 2026-09-21, resolving to `b09c4ff`); a `v1.65.5` tag also exists in the repository with no published release attached. The carried `1.65.x` line is the context line — the context meter (`v1.65.0`), the Context Governor that measures the real request and never binds zero tools (`v1.65.2`), a LaTeXer repair for a leading brace being swallowed as an optional argument (`v1.65.3`) and the improved context gauge (`v1.65.4`) — carried on top of the Video-Analyzer audio-track transcription and audiovisual summaries of `v1.64.0`, the PDF canvas, visual agents, launcher repair, console shield and welcome-keyboard behavior. Runtime identity remains Git/build-derived. Then:
+Download **v1.85.0**, the latest released version, from [Tlamatini Releases](https://github.com/XAIHT/Tlamatini/releases). Unzip the `Tlamatini_Release_v1.85.0/` folder and run the Installer. This book documents v1.85.0, including Refresh, Views and the centered avatar. See the [release record](docs/changes/2026-10-16-v1.85.0.md). Then:
 
 1. Open the unzipped folder.
 2. Double-click **`Installer.exe`**.
@@ -1016,6 +1019,26 @@ A few details worth knowing:
 - Status lines such as "I'm working on your request…" were never saved; dropping one only tidies your screen.
 - You cannot drop while she is still answering — that answer already read its history.
 - If her **memory tool** (External ▸ MCPs ▸ memory) is switched on, she may have copied a fact into that long-term memory. That copy is separate from the chat and stays; ask her to forget it too. The dialog reminds you of this.
+
+## Canvas, Views and avatar in v1.85.0
+
+**Open** chooses a document. **Refresh** reads that same document again without a
+file picker. It reports unchanged content, reloads changed content and retains
+the previous document when a read fails. Markdown keeps Preview/Source and its
+resources; PDF keeps page, zoom, rotation and scroll mode. Snapshot-only sources
+explain why Refresh is unavailable. See [Canvas Refresh](docs/canvas-refresh.md).
+
+**Views → Canvas** hides or shows the canvas. Hiding makes chat full width while
+keeping the document, refresh handle, PDF viewer, draft, chat history and context.
+The setting is saved per account in this browser and synchronized between tabs.
+Open, file drops and generated-document links reveal the canvas when needed.
+While the canvas is hidden, the avatar is docked and its floating resize handle
+is disabled. Showing it again enables the handle and keeps the avatar docked.
+
+**Views → Reset layout** shows both panes, restores the initial divider positions
+and docks the avatar, without clearing content. Shrinking the message box keeps
+the portrait and its frame horizontally centered between Mic's left edge and
+Send's right edge. The portrait remains square with a 120 px minimum.
 
 ### Dropping a file anywhere (v1.83.0, 2026-10-14)
 
@@ -2818,14 +2841,14 @@ Pre-releases use the standard SemVer suffixes — `2.0.0-alpha.1`, `2.0.0-beta.1
 
 ```powershell
 git status                                          # clean tree, on main
-git tag -a v1.83.0 -m "Release 1.83.0: <one-liner>"   # annotated tag
-git push origin v1.83.0
+git tag -a v1.85.0 -m "Release 1.85.0: <one-liner>"   # annotated tag
+git push origin v1.85.0
 python build.py
 python build_uninstaller.py
 python build_installer.py
 ```
 
-All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.83.0/`, named for the version so the file you hand to a user is unambiguous before they even unzip it. The current version is `v1.83.0`, so the bare runtime version resolves to `1.83.0`. Tlamatini deliberately never puts a `.devN`, `+gSHA` or `.dirty` suffix into its version string — it always reports the base tag, which is the designed behaviour described in `VERSIONING.md`. That is exactly why the five commands above start with `git status` on a clean tree: a release cut from a dirty tree would ship a version number that says nothing about what is actually inside it.
+All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.85.0/`, named for the version so the file you hand to a user is unambiguous before they even unzip it. The current version is `v1.85.0`, so the bare runtime version resolves to `1.85.0`. Tlamatini deliberately never puts a `.devN`, `+gSHA` or `.dirty` suffix into its version string — it always reports the base tag, which is the designed behaviour described in `VERSIONING.md`. That is exactly why the five commands above start with `git status` on a clean tree: a release cut from a dirty tree would ship a version number that says nothing about what is actually inside it.
 
 ### Where the version shows up in a running install
 
@@ -2833,8 +2856,8 @@ The build computes the version once and bakes it into four surfaces:
 
 - **`Tlamatini/agent/_version.py`** — generated at build time, gitignored, read at runtime by `agent.version.get_version()`. This is what every in-process surface reads.
 - **Win32 `VERSIONINFO`** — `Tlamatini.exe`, `Installer.exe`, and `Uninstaller.exe` all carry the version in their resource fork. Right-click the file → Properties → Details → ProductVersion.
-- **Release folder name** — `dist/Tlamatini_Release_v1.83.0/`.
-- **Runtime surfaces** — the About dialog renders `Tlamatini v{{ version }}` (Django context processor); after the release tag/build, the startup banner prints `--- [VERSION] Tlamatini 1.83.0` to both the console and `tlamatini.log`; `GET /agent/version/` returns `{"version":"1.83.0","commit":"abc1234","date":"…","source":"generated"}` as an **open** endpoint suitable for a health-check.
+- **Release folder name** — `dist/Tlamatini_Release_v1.85.0/`.
+- **Runtime surfaces** — the About dialog renders `Tlamatini v{{ version }}` (Django context processor); after the release tag/build, the startup banner prints `--- [VERSION] Tlamatini 1.85.0` to both the console and `tlamatini.log`; `GET /agent/version/` returns `{"version":"1.85.0","commit":"abc1234","date":"…","source":"generated"}` as an **open** endpoint suitable for a health-check.
 
 If the four surfaces ever disagree, your build was run with a stale `$env:TLAMATINI_VERSION` or against an out-of-date `_version.py` — clear them and re-run `build.py`.
 
@@ -4052,7 +4075,7 @@ The other firmware agents make Tlamatini an *embedded engineer*. ESPHomer makes 
 
 **Historical source update — static User Commentary and separate User Input (2026-10-03):** The existing question/reply/cancel operation is now User Input with the supplied notched figure. User Commentary is an independent speech-bubble review note: inline writing, palette/font/size choices, resizing, Undo/Redo and complete content containment without internal scrollbars. Notes save with the diagram and never enter playback or model history. New `.fpmt` saves are version 2; version 1 executable commentary migrates to User Input without losing settings or connections. Verified by 61 backend/packaging tests and nine visible Chrome checkpoints. At that verification point the change was uncommitted source work; no executable/installer was rebuilt. The older release entries below retain their historical names/format versions. [Implementation and verification](docs/changes/2026-10-03-prompt-commentary-input.md).
 
-**Latest version — `v1.83.0` (tagged 2026-10-14):** annotated tag `v1.83.0` at `a2914019`, pushed — *"Release v1.83.0 A smart file-drop router for every page: each dropped file is recognised by its bytes and sent to its own mechanism, so an MCP .json imports everywhere and never errors, opens as text or navigates away."* It carries the change described in the next entry on top of everything in `v1.82.0`, `v1.80.0` and `v1.79.0`; there is no `v1.81.0` tag. It was **published on GitHub on 2026-10-14** ("Tlamatini Release v1.83.0 Win11x64", marked Latest), so **About ▸ Check for updates** delivers v1.83.0. The runtime version resolves to the bare `1.83.0` from the annotated tag.
+**v1.85.0 is the latest released version (2026-10-16).** It brings **Refresh** for the open canvas document, **Views → Canvas** for full-width chat, **Views → Reset layout**, required packaging coverage for those controls, and a docked avatar centered over the complete Mic-to-Send row. The runtime version is **1.85.0**. The release includes the file-drop router and all earlier capabilities. See the [v1.85.0 release record](docs/changes/2026-10-16-v1.85.0.md).
 
 **In `v1.83.0` (tagged 2026-10-14):** a page-wide **file-drop router** (`file_drop_router.js`): one capture-phase listener in the `<head>` of every page — the chat, the Agentic Control Panel, the Prompt Flow Panel, the welcome and login pages, the Django admin and the PDF viewer frame — that claims only file drags, recognises each file by its bytes (extension, MIME type, magic numbers, a byte-order-mark-aware text test and a real JSON parse that finds an MCP config in every shape, UTF-16 from PowerShell included) and sends each kind to its own mechanism: an MCP `.json` to a confirmation and then the External ▸ MCPs catalog, a `.flw` to the Agentic Control Panel or a new tab, a `.fpmt` to the Prompt Flow Panel or a new tab, a picture to the chat message, a PDF, Markdown file, source code or plain JSON to the chat canvas, and a folder, archive or other binary to a note in plain words. Pages register what they can do with `TlamatiniFileDrop.register(kinds, fn, {label})`, and the label also drives the overlay shown while dragging. It replaced four per-page handlers — the chat column's image listeners and overlay, the canvas's blind open-as-text drop, the External ▸ MCPs dialog's private import and the Prompt Flow Panel's viewport drop — which is why an MCP `.json` used to report an error on the chat, open as text on the canvas and navigate the browser away on the other pages. Checked by 138 router cases, 22 Python tests (319 Django tests in the touched suites), ESLint with no errors, and a headed Chrome run of 58 of 58 checks with 24 Shoter photos. With it come two changes credited to Tlamatini's-AutoBot: the **docked avatar follows both composer dividers** (`63a62cc1`, 2026-10-13) — the vertical divider now shrinks the docked portrait as well as the message box, from 282 px to 120 px at 1440 CSS px, verified by 19 docked-avatar and 18 existing composer checkpoints ([record](docs/changes/2026-10-13-docked-avatar-divider.md)); and a request Image-Interpreter or Video-Analyzer refuses for a wrong or missing setting (`91ff8453`, 2026-10-12) no longer raises the red fatal-analysis dialog — the launcher returns `error_kind: "request"` and the model just corrects the call — while Video-Analyzer's description says it has no `transcription.engine` setting. The frontend now counts 59 JS modules and 26 stylesheets, the cache suffix is `-file-drop-router-1`, and there is no new migration (the count stays 213).
 

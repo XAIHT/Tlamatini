@@ -8,6 +8,35 @@
 -->
 # Tlamatini — Architecture & Core Systems
 
+> Current release: **[v1.85.0](../changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
+## v1.85.0 — Refresh, Views and centered avatar
+
+The latest released version is **v1.85.0**. `agent_page_canvas.js` owns Refresh
+source access, complete-text comparison, cancellation and status. Retain browser
+file handles during the drop event; snapshot-only access cannot refresh a path.
+PDF replacement stages a ready viewer and keeps its iframe attached at commit.
+
+`agent_page_layout.js` exposes `TlamatiniViews.setCanvasVisible`,
+`isCanvasVisible` and `resetLayout`. Hiding toggles `tlm-canvas-hidden`, preserves
+the canvas DOM and context, cancels divider gestures and moves focus only when
+its current region disappears. The account/browser preference is
+`tlamatini.chat.views.v1.<user id>`. `avatar_size.js::setDockedOnly` enforces the
+hidden-canvas docking rule in pointer, keyboard and public API paths. Reset shows
+both panes, resets their sizes and docks the portrait without clearing content.
+
+The docked frame uses `--tlm-avatar-docked-right` measured from the full Mic/Send
+row. Its square size and 120 px minimum stay independent of floating geometry.
+The live static suffix is `-avatar-center-1`; Views scripts retain `_views1`.
+`build_runtime_assets.py` and `copy_source_assets.py` require the Views template,
+scripts and snapshot harnesses. No migration or dependency was added.
+
+See [the release implementation and evidence matrix](../changes/2026-10-16-v1.85.0.md),
+[Refresh](../canvas-refresh.md) and [carriage](../self-management-carriage.md).
+
+
+
 > **HEADLESS IS FORBIDDEN. ALL EXECUTION MUST BE VISIBLE.** Every automated test, command, diagnostic, script, build, agent, prompt and browser must run in a visible, forked foreground window on Angela's real desktop. Use visible CMD/PowerShell consoles and headed browsers (`headless=False`); keep output on screen and monitor live. No hidden/background execution, including CI or quick checks. If visibility cannot be confirmed, do not run. Mandatory policy: [visible execution](../../TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).
 
 > **Developer/product boundary (Angela, 2026-09-27):** these visibility requirements govern development and verification. They must not create extra windows, steal focus or expose internal diagnostics in the shipped UX. Direct chat dictation keeps status in chat and uses only Tlamatini's main console/log.
@@ -763,4 +792,4 @@ Image/video model failures accumulate in one shared, themed, non-modal fatal-err
 
 ## Windows flow-file lifecycle — 2026-10-04, shipped in `v1.76.0`
 
-Both `.flw` agent flows and `.fpmt` prompting flows now have Windows registration, repair, removal, status and Default Apps handling. Explorer/source command-line opening validates a bounded snapshot, reuses a matching running server before database startup, and returns through login to the correct editor without execution. Main-chat Open/drop/Reopen routes both formats into separate editor tabs while preserving the chat document. The historical `.flw` installer wrappers cover both types for old installer/uninstaller binaries; independent management uses `flow_file_associations.ps1 -Extensions`. Never erase UserChoice or another application’s Open With entries. Update Repair respects explicit unregistration and installation ownership. See [Windows flow files](../windows-flow-files.md). Cache suffix at that change: `-flow-file-opening-2` (live suffix `-file-drop-router-1`). Committed to `main` on 2026-10-04. The October 4 local release-validation campaign also rebuilds isolated frozen artifacts; its dated evidence distinguishes build completion from runtime acceptance.
+Both `.flw` agent flows and `.fpmt` prompting flows now have Windows registration, repair, removal, status and Default Apps handling. Explorer/source command-line opening validates a bounded snapshot, reuses a matching running server before database startup, and returns through login to the correct editor without execution. Main-chat Open/drop routes both formats into separate editor tabs while preserving the chat document. The historical `.flw` installer wrappers cover both types for old installer/uninstaller binaries; independent management uses `flow_file_associations.ps1 -Extensions`. Never erase UserChoice or another application’s Open With entries. Update Repair respects explicit unregistration and installation ownership. See [Windows flow files](../windows-flow-files.md). Cache suffix at that change: `-flow-file-opening-2` (live suffix `-avatar-center-1`). Committed to `main` on 2026-10-04. The October 4 local release-validation campaign also rebuilds isolated frozen artifacts; its dated evidence distinguishes build completion from runtime acceptance.

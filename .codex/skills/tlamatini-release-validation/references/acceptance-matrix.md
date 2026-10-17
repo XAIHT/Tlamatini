@@ -1,6 +1,9 @@
 <!-- Tlamatini Author Banner — Angela López Mendoza · @angelahack1 -->
 # Acceptance matrix
 
+> Current release: **[v1.85.0](../../../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 Apply this to the current build, using actual UI labels and endpoints found in
 source. Test all visible controls in each named area. The rows below establish
 minimum coverage, not permission to omit new controls. Keep each observation and
@@ -34,7 +37,7 @@ its result separately; do not replace evidence with a checked list.
 | A05 | Admin links, add/change/history/delete permissions and validation on safe test records; classify actions requiring external effects before running them. |
 | A06 | Configure tools/MCPs/agents/skills: inspect rows, change a test selection, save/reopen and restore it; Compact and Self-modify contracts remain consistent. |
 | A07 | Config Models, Mic and other visible dialogs: inspect every tab/control; Save/Cancel/Escape semantics; preserve real credentials and settings. |
-| A08 | Main-chat File/Open/drop/Reopen routes .flw/.fpmt correctly and keeps the chat document; regular document operations still work. |
+| A08 | Main-chat File/Open/drop routes .flw/.fpmt correctly and keeps the chat document; regular document operations still work. |
 | A09 | Navbar Panels navigation, dialog dismissal, context/status/error displays and no uncaught browser or application errors. |
 | A10 | Actual System-Metrics and Files-Search requests on configured nondefault ports; source CONFIG_PATH and frozen installation config, Unicode/BOM configuration and service shutdown. A listening default port does not prove the saved setting is honored. |
 | A11 | Real chat answer and follow-up using only the model authorized by the user; distinguish request rejection, model failure and test-selector failure. |
@@ -80,3 +83,12 @@ unexecuted cases explicitly. Run repository checks appropriate to the changed
 code and validate this skill's frontmatter and links. A new skill remains
 untracked until the user authorizes staging; never stage merely to satisfy the
 repository's tracked-skill inventory check.
+
+## v1.85.0 acceptance additions
+
+| Case | Required observation |
+| --- | --- |
+| A09 | Refresh rereads a real native-picker file, preserves Markdown/PDF view, retains old content on error and never opens a chooser. |
+| A10 | Views toggles full-width chat while retaining draft/history/context/document, persists by account, and reveals the canvas for new documents. |
+| A11 | Hidden canvas enforces docking; Reset restores panes and sizes without clearing content. |
+| A12 | Avatar and frame remain centered over Mic through Send at 120 px, both divider positions and browser zoom. |

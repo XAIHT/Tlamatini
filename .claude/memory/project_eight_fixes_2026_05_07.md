@@ -12,6 +12,9 @@ originSessionId: 161aebfa-f2df-4d28-bcdf-e79b7579c58e
   Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
 ═══════════════════════════════════════════════════════════════════
 -->
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 The 2026-05-07 desktop-UI Multi-Turn run (`open notepad, type "Hi!, I'm Tlamatini", wait 30s, close`) got force-stopped at iteration 15 before reaching Keyboarder. Root cause was a stack of bugs; all 8 are now fixed in one batch on `main`.
 
 **Why:** the user said "make a better Tlamatini, 'cause at this moment is so dumb". The failure trace was: `chat_agent_executer` ✅ → `chat_agent_shoter` ✅ → `chat_agent_image_interpreter` ❌×3 (`filetype_exclusions` false-positive) → status polling ⏳×4 → repetition breaker fired on 3 identical `chat_agent_run_status` calls → force stop. Keyboarder/Mouser were planner-selected but never reached.

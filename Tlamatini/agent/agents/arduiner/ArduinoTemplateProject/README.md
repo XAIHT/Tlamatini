@@ -8,6 +8,9 @@
 -->
 # ArduinoTemplateProject
 
+> Current release: **[v1.85.0](../../../../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 The bundled scaffold the **Arduiner** agent (Tlamatini) copies when you run
 `action='create_project'`. It is the Arduino-family analog of STM32er's *STM32
 Template Project* and ESP32er's `pio project init` scaffold — the uniform

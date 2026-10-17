@@ -7,6 +7,9 @@ metadata:
   originSessionId: 69614274-24d6-4daa-92af-01a874c256f6
   modified: 2026-07-26T22:07:01.779Z
 ---
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 
 **`AgentConfig.ready()` runs `Agent.objects.all().delete()` on EVERY startup** and
 rebuilds the table from the `agents/` folder listing (`agent/apps.py`, ~line 236).

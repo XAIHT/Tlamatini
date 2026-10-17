@@ -1,5 +1,8 @@
 # 2026-10-07: installed PDF delivery and Desktop deletion incident
 
+> Current release: **[v1.85.0](2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 ## Evidence
 
 The installed application's log records LaTeXer delivering

@@ -15,6 +15,9 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 2026-05-29: Implemented **"Ask Execs"** — a new toolbar checkbox between **ACPX** and **Add internet context** that, when on, makes the Multi-Turn executor BLOCK on a browser modal (Proceed/Deny) before EVERY state-changing Tool/MCP/Agent runs. **Deny halts the whole chain** and the answer gets a big red "Execution interrupted" banner (always) + the Exec-report tables (only when Exec report also on). Multi-Turn-only modifier: checkbox is disabled+greyed unless Multi-Turn is checked; backend re-gates on `multi_turn_enabled`. Unchecked = byte-for-byte legacy Multi-Turn behaviour.
 
 **Backend↔browser bridge** = new `agent/exec_permission.py` (`ExecPermissionBroker` + user-id-keyed registry). The executor runs in a worker thread (can't await), so `request_permission(detail)` emits an `exec_permission_request` frame via `asyncio.run_coroutine_threadsafe` onto the consumer loop and BLOCKS on a `threading.Event`; the browser's `exec-permission-response` → `consumers.receive` → `resolve_permission(user_id, request_id, decision)` sets the event. Fail-safe: emit-failure / `close()` / Cancel → `deny`; only "no broker registered" fails OPEN (tests/detached browser — consumer always registers in `queue_llm_retrieval`, unregisters in `finally`).

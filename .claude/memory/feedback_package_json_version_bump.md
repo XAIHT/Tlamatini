@@ -15,6 +15,9 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 When doing a release version-bump pass across the docs, ALSO bump the `"version"` field in repo-root `package.json` to the pushed version.
 
 **Why:** On 2026-05-20 (v1.4.1 doc bump) I flagged that package.json was at the npm-default `1.0.0` and was NOT part of Tlamatini's version system — `VERSIONING.md` says the version lives only in git tags and is "never hand-edited in source files," and package.json isn't in its file-by-file list. I recommended leaving it; the user explicitly chose **Bump to 1.4.1**. So the standing preference is: package.json's version should mirror the release for surface-level consistency, even though it's a hand-edited string outside the git-tag resolver.

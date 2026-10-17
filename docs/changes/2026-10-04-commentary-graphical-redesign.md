@@ -1,6 +1,9 @@
 <!-- Tlamatini Author Banner — Angela López Mendoza · @angelahack1 -->
 # 2026-10-04 — Graphical rich-text User Commentary
 
+> Current release: **[v1.85.0](2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 ## User requirements, verbatim excerpts
 
 ```text

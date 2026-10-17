@@ -15,6 +15,9 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 2026-05-31: Successor to the removed Notifier toast ([[project_native_toast]]). User wanted a "blinking taskbar icon when an app needs attention" on (a) Ask-Execs approval prompts in agent_page.html and (b) Notifier notifications (chat + ACP).
 
 **Hard constraint stated up front (honored)**: page JS is sandboxed — CANNOT flash its own *browser* taskbar button (same wall as the toast), and backend can't reliably pick the right browser window. So we flash the **Tlamatini.exe window the Django process itself owns**. User explicitly chose ".exe window only + UPPERCASE log banner naming the page" (browser title/favicon-blink alternative NOT built).

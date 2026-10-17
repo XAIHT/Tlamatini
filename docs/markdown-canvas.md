@@ -1,13 +1,18 @@
 <!-- Tlamatini Author Banner — Angela López Mendoza -->
 # Markdown in the chat canvas
 
+> Current release: **[v1.85.0](changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
+**Views → Canvas** keeps this document and its viewer alive while hiding the pane. Opening a document shows the pane again. **Views → Reset layout** restores both panes and their sizes without clearing the document or context. See [v1.85.0](changes/2026-10-16-v1.85.0.md).
+
 Written 2026-10-11 as a local source change; committed in `880a335e` (2026-10-12) and shipped in the published `v1.82.0` release.
 
 Open, Refresh, dropping a file onto the canvas, generated-file links, and
 Context → Set file as context recognize `.md` and `.markdown`, including
 uppercase extensions. Both extensions were already in the shared file filter.
 Markdown opens in Preview; Source shows the full original text with line numbers.
-Since the 2026-10-15 source change, [Refresh](canvas-refresh.md) rereads the same
+Since v1.85.0, [Refresh](canvas-refresh.md) rereads the same
 file without another selection, preserves the chosen view and reading position,
 and reports unchanged content without rerendering it.
 The preview uses the existing Tlamatini fonts, colors, surfaces and splitter.
@@ -37,7 +42,7 @@ The sanitizer allowlists HTML and attributes, scopes IDs, removes document class
 and active markup, and restricts resource protocols. Parsing does not depend on a
 CDN. `scripts/vendor_frontend.py` pins archive integrity, licenses and per-file
 receipts; runtime and self-modify snapshot contracts include both libraries.
-The static cache suffix was `-markdown-canvas-1` when it shipped (the live suffix is `-file-drop-router-1`).
+The static cache suffix was `-markdown-canvas-1` when it shipped (the live suffix is `-avatar-center-1`).
 
 ## Visible verification
 

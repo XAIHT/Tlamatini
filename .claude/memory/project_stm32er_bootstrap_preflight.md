@@ -15,6 +15,9 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 2026-05-26: Made STM32er ([[project_stm32er_agent]]) zero-config + fail-safe for critical-mission robot programming. All self-contained in `agent/agents/stm32er/stm32er.py` (stdlib only), covers BOTH Multi-Turn (chat_agent_stm32er) and canvas (same script). 122 tests green, ruff clean, verified live against the real MCP + real ST-LINK probe.
 
 **Auto-bootstrap** (`_bootstrap_mcp` + helpers): when `auto_bootstrap: true` and no valid on-disk `server_script`, STM32er git-clones (shallow; zip-download fallback when git absent) the STM32 MCP repo into a per-user cache (`%LOCALAPPDATA%/Tlamatini/STM32TemplateProjectMCP`), pip-installs deps (mcp, pyserial) if not importable, validates, then resolves the server path automatically. New meta-action `bootstrap`. config.json `stm32_mcp_server_script` default now "" (empty = bootstrap); added `stm32_mcp_repo_url`/`stm32_mcp_install_dir` globals + seed mappings in tools._seed_global_agent_defaults.

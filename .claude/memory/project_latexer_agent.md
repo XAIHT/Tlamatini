@@ -7,6 +7,9 @@ metadata:
   originSessionId: b00b2424-75f3-4d5e-a470-90bfb886bb53
   modified: 2026-08-05T06:35:49.469Z
 ---
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 
 **LaTeXer** (agent #87, 2026-08-05) — Tlamatini's LaTeX typesetting agent, the sibling of
 [[project-pdfer-agent]]: **PDFer COMPOSES** a PDF from Markdown/HTML/images, **LaTeXer

@@ -8,6 +8,9 @@
 -->
 # GatewayRelayer Agent - Detailed Source Code Summary
 
+> Current release: **[v1.85.0](../../../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 ## Project Overview
 
 The GatewayRelayer is a long-running deterministic ingress relay agent that bridges third-party webhook providers (primarily GitHub) into the Tlamatini ecosystem. It receives webhook events, validates provider signatures, transforms payloads into a canonical format, HMAC-signs them, and forwards them to a Gatewayer HTTP endpoint.

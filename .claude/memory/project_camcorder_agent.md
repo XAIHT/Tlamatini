@@ -15,6 +15,9 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 2026-06-03: added **Camcorder** (#71) — a webcam capture agent (OpenCV `cv2`) on BOTH canvas + Multi-Turn (`chat_agent_camcorder`). Sibling of [[project_playwrighter_agent]]-style capture but for the physical CAMERA (Shoter = screen, Camcorder = camera); observational like Shoter so NOT in the Exec Report.
 
 **Behavior:** `capture_mode` = `photo` (DEFAULT, one shot) or `video` (segment of `video_duration_seconds`, no audio). `camera_index` picks the camera (0=default). **Resolution analysis (user asked):** optional `resolution_width`/`resolution_height` default `0x0` = camera native (robust — webcams only support discrete modes; forcing one snaps to nearest); when set, requested + read-back logged. Saves to the **Pictures known-folder** (`SHGetKnownFolderPath` FOLDERID_Pictures via ctypes, fallback `~/Pictures`) under `TlamatiniCamcorder` with a collision-proof `camcorder_<media>_<YYYYmmdd>_<HHMMSS>_<ms>_cam<idx>.<ext>` name. Emits atomic `INI_SECTION_CAMCORDER` (output_path/output_dir/filename/media_type/camera_index/duration_seconds/resolution/fps/response_body) for Parametrizer; always triggers target_agents. Photo=.jpg, video=.mp4 (`mp4v`).

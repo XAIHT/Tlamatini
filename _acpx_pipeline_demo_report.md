@@ -8,6 +8,9 @@
 -->
 # ACPX Pipeline Demo Report
 
+> Current release: **[v1.85.0](docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 ## Session Metadata
 - **Session ID**: c697c78913ea4ab4b308211d9649d8bd
 - **Agent**: gemini (Google Gemini CLI v0.37.2)

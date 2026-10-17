@@ -8,6 +8,9 @@
 -->
 # Tlamatini ↔ Kali Linux — Zero-Client Setup (Kalier)
 
+> Current release: **[v1.85.0](docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 **Who this is for:** Anyone (human or AI) who wants Tlamatini to drive Kali Linux
 penetration-testing tools straight from the chat box. You type
 *"Tlamatini, scan 10.0.0.5 and give me a report"* in Multi-Turn mode and Tlamatini

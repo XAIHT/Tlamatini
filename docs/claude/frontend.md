@@ -8,6 +8,35 @@
 -->
 # Tlamatini — Frontend Architecture
 
+> Current release: **[v1.85.0](../changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
+## v1.85.0 — Refresh, Views and centered avatar
+
+The latest released version is **v1.85.0**. `agent_page_canvas.js` owns Refresh
+source access, complete-text comparison, cancellation and status. Retain browser
+file handles during the drop event; snapshot-only access cannot refresh a path.
+PDF replacement stages a ready viewer and keeps its iframe attached at commit.
+
+`agent_page_layout.js` exposes `TlamatiniViews.setCanvasVisible`,
+`isCanvasVisible` and `resetLayout`. Hiding toggles `tlm-canvas-hidden`, preserves
+the canvas DOM and context, cancels divider gestures and moves focus only when
+its current region disappears. The account/browser preference is
+`tlamatini.chat.views.v1.<user id>`. `avatar_size.js::setDockedOnly` enforces the
+hidden-canvas docking rule in pointer, keyboard and public API paths. Reset shows
+both panes, resets their sizes and docks the portrait without clearing content.
+
+The docked frame uses `--tlm-avatar-docked-right` measured from the full Mic/Send
+row. Its square size and 120 px minimum stay independent of floating geometry.
+The live static suffix is `-avatar-center-1`; Views scripts retain `_views1`.
+`build_runtime_assets.py` and `copy_source_assets.py` require the Views template,
+scripts and snapshot harnesses. No migration or dependency was added.
+
+See [the release implementation and evidence matrix](../changes/2026-10-16-v1.85.0.md),
+[Refresh](../canvas-refresh.md) and [carriage](../self-management-carriage.md).
+
+
+
 Markdown files now have a themed, sanitized Preview/Source canvas with local
 resource support. See [Markdown canvas](../markdown-canvas.md) for supported
 syntax, source-preserving actions, packaging and visible verification.
@@ -22,7 +51,7 @@ All first-party pages use `ui_tokens.css`; workspaces add `ui_shell.css` and
 `ui_splitters.css` before the final `dialog_theme.css`. Dialog tokens alias the
 page palette. Login/welcome share `entry_pages.css`; the first-party admin base
 and `admin_theme.css` preserve Django's light/dark/auto switch. Required runtime
-and self-modify inventories carry the new assets. Cache suffix at that change: `-ui-sweep-1` (live suffix since 2026-10-14: `-file-drop-router-1`).
+and self-modify inventories carry the new assets. Cache suffix at that change: `-ui-sweep-1` (live suffix since 2026-10-16: `-avatar-center-1`).
 
 `ui_splitters.js` owns the five pane bars' pointer capture and cancellation;
 adapters still own bounds, layout and storage. Preserve composer fitting and
@@ -57,7 +86,7 @@ opening and the visible 30-second timer refresh the view; events coalesce over
 See [the data contract and dated evidence](../usage-dashboard.md). It ships in
 the published `v1.78.0` release (cache suffix `-usage-recovery-1`).
 
-## Docked avatar alignment (2026-10-16 source change)
+## Docked avatar alignment (v1.85.0, 2026-10-16)
 
 The portrait and its outer frame stay horizontally centered over the full Mic/Send
 row, including when the composer height shrinks the portrait to 120 px. The existing
@@ -80,7 +109,7 @@ use the avatar's current width as the minimum, since that prevents vertical shri
 The form's CSS variable fits the dock; floating size and persistence remain owned by
 `avatar_size.js`. Both dividers, keyboard controls, transient rows and viewport
 changes retain square geometry without feeding the current size back into the minimum.
-Cache suffix at that change: `-avatar-divider-1` (live suffix `-file-drop-router-1`).
+Cache suffix at that change: `-avatar-divider-1` (live suffix `-avatar-center-1`).
 
 Verification: [the change record](../changes/2026-10-13-docked-avatar-divider.md).
 
@@ -136,7 +165,7 @@ See [the full model contract](../model_configuration.md).
 
 ## Chat Interface (25 modules)
 
-**Canvas Refresh (2026-10-15 source change).** The existing
+**Canvas Refresh (v1.85.0, 2026-10-15).** The existing
 `#reopen-canvas-button` DOM hook now says **Refresh** and calls `refreshCanvas()`;
 only Open launches a picker. `agent_page_canvas.js` owns the retained local
 handle/entry or authenticated saved-content reader, feedback and cancellation.
@@ -368,9 +397,9 @@ Both surfaces share `agent/services/flow_spec.py` (the in-memory `FlowSpec` repr
 
 Contracts (do NOT weaken):
 
-- **Connection parity (2026-09-26):** use the ACP stylesheet's `input-triangle`, `output-triangle`, `output-label`, `connection-group`, `connection-path` and `connection-hit-area` classes directly. Do not reintroduce circular ports, arrowhead markers or a Connection palette tool. Curves follow ACP's horizontal half-distance Bezier construction, anchored at triangle centers. Pointer capture belongs to the viewport; resolve the input under the pointer with `elementFromPoint`, since captured events target the viewport. Commit only on release over an input. Empty/body drops, Escape, pointer cancellation, lost capture and blur remove the preview and port highlights without changing the document. Decision Y/N previews start from the selected branch. Gold port highlighting is retained; shared hover/selection colors override playback wire colors while interacting. `STATIC_VERSION` suffix at that change: `-flow-file-opening-2` (live suffix `-file-drop-router-1`). Visible regression runner: `scripts/prompt_flow_connections_visible.py`.
+- **Connection parity (2026-09-26):** use the ACP stylesheet's `input-triangle`, `output-triangle`, `output-label`, `connection-group`, `connection-path` and `connection-hit-area` classes directly. Do not reintroduce circular ports, arrowhead markers or a Connection palette tool. Curves follow ACP's horizontal half-distance Bezier construction, anchored at triangle centers. Pointer capture belongs to the viewport; resolve the input under the pointer with `elementFromPoint`, since captured events target the viewport. Commit only on release over an input. Empty/body drops, Escape, pointer cancellation, lost capture and blur remove the preview and port highlights without changing the document. Decision Y/N previews start from the selected branch. Gold port highlighting is retained; shared hover/selection colors override playback wire colors while interacting. `STATIC_VERSION` suffix at that change: `-flow-file-opening-2` (live suffix `-avatar-center-1`). Visible regression runner: `scripts/prompt_flow_connections_visible.py`.
 
-- **Selection styling:** Static commentary uses a mint outline and eight edge/corner grips (specificity must override shared canvas gold). Executable nodes in `prompt_flow_panel.css` match ACP's `#ffcc00` outline and yellow halo. Use an SVG `drop-shadow` so diamonds, triangles, trapezoids glow around their contours, never a rectangular box shadow on `.pmt-node`. Selected nodes sit above other nodes but below the marquee. Playback status strokes take precedence while the selection halo stays visible; deselection removes only that halo. Selected wires inherit ACP's gold stroke/shadow; traversed wires are green only when neither hovered nor selected. The real headed checks are `scripts/prompt_flow_selection_visible.py`, using ordinary file-open, selection, zoom and User Input playback on port 8001 (called User Commentary in that historical run); its 2026-09-25 20:26 run passed all 14 checks with exit code 0. ⚠️ Keep node `.selected` rules ABOVE `.running` / `.completed` / `.failed`, load `flow_canvas.css` after both panel styles and before `dialog_theme.css`. Keep `.pmt-edge.traversed` restricted to `:not(.selected):not(:hover)` so interaction feedback remains identical. `STATIC_VERSION` suffix at that change: `-flow-file-opening-2` (live suffix `-file-drop-router-1`).
+- **Selection styling:** Static commentary uses a mint outline and eight edge/corner grips (specificity must override shared canvas gold). Executable nodes in `prompt_flow_panel.css` match ACP's `#ffcc00` outline and yellow halo. Use an SVG `drop-shadow` so diamonds, triangles, trapezoids glow around their contours, never a rectangular box shadow on `.pmt-node`. Selected nodes sit above other nodes but below the marquee. Playback status strokes take precedence while the selection halo stays visible; deselection removes only that halo. Selected wires inherit ACP's gold stroke/shadow; traversed wires are green only when neither hovered nor selected. The real headed checks are `scripts/prompt_flow_selection_visible.py`, using ordinary file-open, selection, zoom and User Input playback on port 8001 (called User Commentary in that historical run); its 2026-09-25 20:26 run passed all 14 checks with exit code 0. ⚠️ Keep node `.selected` rules ABOVE `.running` / `.completed` / `.failed`, load `flow_canvas.css` after both panel styles and before `dialog_theme.css`. Keep `.pmt-edge.traversed` restricted to `:not(.selected):not(:hover)` so interaction feedback remains identical. `STATIC_VERSION` suffix at that change: `-flow-file-opening-2` (live suffix `-avatar-center-1`).
 
 1. **`.fpmt`, never `.pmt`.** The file picker is `accept=".fpmt"`, the open guard refuses any other name (including `prompt.pmt` itself) with *"Choose a .fpmt Prompt Flow Panel file."*, and `flowFilename()` turns a legacy `name.pmt` save name or browser draft into `name.fpmt`. The JSON `format` string deliberately did NOT change, so renaming an old flow file is enough to open it. The plain-text system prompts (`agent/prompt.pmt`, `monitoring-prompt.pmt`) keep `.pmt`.
 2. **Opening never runs anything.** Load, drop, draft recovery and even a WebSocket (re)connection are passive; only **Play** starts a run.
@@ -408,4 +437,4 @@ Image/video model failures accumulate in one shared, themed, non-modal fatal-err
 
 ## Windows flow-file lifecycle — 2026-10-04, shipped in `v1.76.0`
 
-Both `.flw` agent flows and `.fpmt` prompting flows now have Windows registration, repair, removal, status and Default Apps handling. Explorer/source command-line opening validates a bounded snapshot, reuses a matching running server before database startup, and returns through login to the correct editor without execution. Main-chat Open/drop/Reopen routes both formats into separate editor tabs while preserving the chat document. The historical `.flw` installer wrappers cover both types for old installer/uninstaller binaries; independent management uses `flow_file_associations.ps1 -Extensions`. Never erase UserChoice or another application’s Open With entries. Update Repair respects explicit unregistration and installation ownership. See [Windows flow files](../windows-flow-files.md). Cache suffix at that change: `-flow-file-opening-2` (live suffix `-file-drop-router-1`). Committed to `main` on 2026-10-04. The October 4 local release-validation campaign also rebuilds isolated frozen artifacts; its dated evidence distinguishes build completion from runtime acceptance.
+Both `.flw` agent flows and `.fpmt` prompting flows now have Windows registration, repair, removal, status and Default Apps handling. Explorer/source command-line opening validates a bounded snapshot, reuses a matching running server before database startup, and returns through login to the correct editor without execution. Main-chat Open/drop routes both formats into separate editor tabs while preserving the chat document. The historical `.flw` installer wrappers cover both types for old installer/uninstaller binaries; independent management uses `flow_file_associations.ps1 -Extensions`. Never erase UserChoice or another application’s Open With entries. Update Repair respects explicit unregistration and installation ownership. See [Windows flow files](../windows-flow-files.md). Cache suffix at that change: `-flow-file-opening-2` (live suffix `-avatar-center-1`). Committed to `main` on 2026-10-04. The October 4 local release-validation campaign also rebuilds isolated frozen artifacts; its dated evidence distinguishes build completion from runtime acceptance.

@@ -1,6 +1,9 @@
 <!-- Tlamatini Author Banner — Angela López Mendoza · @angelahack1 -->
 # Windows setup: research and implementation decisions
 
+> Current release: **[v1.85.0](changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 Research date: 2026-10-11. This is a custom EXE installer, not an MSI package;
 MSI guidance informs the design but does not confer MSI transactional guarantees.
 

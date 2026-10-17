@@ -13,6 +13,9 @@ description: Sweep the whole codebase and keep the SELF-MODIFY source snapshot c
 
 # Tlamatini — Self-Modify Inclusion Sweep
 
+> Current release: **[v1.85.0](../../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 > **HEADLESS IS FORBIDDEN. VISIBLE FOREGROUND EXECUTION ONLY.** Every command, automated test, diagnostic, script, build, agent and browser must run in a visible foreground window on Angela's real desktop. Use forked CMD/PowerShell windows, `execute_forked_window: true`, and `headless: false`. Monitor live; if visibility cannot be confirmed, do not run. Read the [mandatory execution policy](../../../TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).
 
 > **Audience:** Claude Code working ON the Tlamatini codebase for **Angela**.
@@ -341,3 +344,7 @@ gate checks 89 templates and 21 model loaders; derive future counts from source.
 ### Prompt Flow Run output carriage (2026-10-04, shipped in `v1.76.0`)
 
 Carry the updated panel template, `prompt-flow-panel.js`, `prompt_flow_panel.css` and shared `flow-canvas-interactions.js` together with the current guide and `scripts/prompt_flow_output_resize_visible.py`. Preserve the 5–95% viewport-only split, explicit native-details log height, independent scrolling and separate per-user layout preference. The horizontal Operations divider must keep its original axis behavior. Verify source/collected-static parity and inclusion from a verified visible foreground console; browser checks require explicit `headless=False`. The dated 14-check browser result and three carriage tests are source evidence, not proof of a newly built executable. Current cache suffix: `-flow-file-opening-2`; retain its environment/timestamp prefix. See `docs/changes/2026-10-04-run-output-resize.md`.
+
+## v1.85.0 Views and Refresh carriage
+
+Require `agent_page.html`, `agent_page_layout.js`, `avatar_size.js`, `agent_page_canvas.js` and `agent_page_init.js` through the shared runtime inventory. The self-modify snapshot also requires both Views harnesses. Keep Refresh support, the avatar stylesheet and the existing PDF/Markdown assets together. Verify these from a confirmed visible foreground console.

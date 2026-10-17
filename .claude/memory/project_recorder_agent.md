@@ -15,6 +15,9 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 2026-06-03: Added **Recorder** (agent #72) — microphone / audio-input capture via `sounddevice` → WAV (written with stdlib `wave`). Audio sibling of [[project_camcorder_agent]] (camera) and Shoter (screen); **observational → NOT in Exec Report**. Both canvas + Multi-Turn (`chat_agent_recorder`).
 
 **Config**: `device_index` (-1=system default mic; else PortAudio index), `device_name` (substring match alt), `record_seconds` (default 5), `sample_rate` (0=device NATIVE default — the analysis answer: expose the param but default to querying the device, robust; else 44100/48000/16000), `channels` (1=mono default, clamped to device max), `output_dir` (""=Music/TlamatiniRecords). Always logs the numbered input-device list at startup. Saves `recorder_<YYYYmmdd>_<HHMMSS>_<ms>_dev<tag>.wav` to the **Music** known-folder (FOLDERID_Music) /TlamatiniRecords. Emits `INI_SECTION_RECORDER` (output_path, output_dir, filename, device_index, device_name, sample_rate, channels, duration_seconds, format; body=response_body) + always triggers target_agents.

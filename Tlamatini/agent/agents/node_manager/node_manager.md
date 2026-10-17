@@ -7,6 +7,9 @@
 ═══════════════════════════════════════════════════════════════════
 -->
 
+> Current release: **[v1.85.0](../../../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 ## Overview
 
 This project is a NodeManager Agent — a long-running infrastructure registry and node supervision agent that maintains a live registry of local/remote nodes, probes health, detects capability changes, persists state, exports manifests, and triggers downstream agents on configured node events.

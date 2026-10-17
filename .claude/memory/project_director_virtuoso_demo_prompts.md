@@ -15,6 +15,9 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 2026-05-21: Added two **advanced, more-visual** demo prompts to the Catalog of Prompts, beyond the basic/medium 0095 set. Migration `Tlamatini/agent/migrations/0096_add_director_virtuoso_demo_prompts.py`, APPENDED at the tail (slots 55-56, NO renumber — catalog stays contiguous 1-56):
 
 - **55 DESKTOP DIRECTOR** — conducts the whole desktop-UI trio in one flow: `chat_agent_executer`(launch Notepad) → `chat_agent_windower`(move_resize stage center) → `chat_agent_mouser`(movement_type='click_at_window' to place the caret) → `chat_agent_keyboarder`(types a multi-line Nahuatl-themed message, stride_delay=70 so keystrokes are visible) → six Windower moves dance the text-filled window (arrange left/right/top-right, maximize, restore, topmost) → list → exec-report "Desktop Director Trace" table → close (+alt+n discard). Windower-advanced blue gradient banner (#0B1E3A→#1E6FB8→#22D3EE→#A7F3D0).

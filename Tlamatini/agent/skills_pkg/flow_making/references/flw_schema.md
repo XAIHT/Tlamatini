@@ -8,6 +8,9 @@
 -->
 # `.flw` schema (schemaVersion 2) — the shape the canvas loader consumes
 
+> Current release: **[v1.85.0](../../../../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 Source of truth: `agent/static/agent/js/acp-file-io.js::loadDiagram(data)` and
 `agent/services/flow_spec.py::flow_spec_to_legacy_json`. The `flow-making` skill's
 `scripts/result_to_flw.py` emits exactly this shape.

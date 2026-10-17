@@ -1,5 +1,8 @@
 # `lib/` — private project libraries
 
+> Current release: **[v1.85.0](../../../../../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 Each subdirectory here is compiled as its own static library and linked in
 automatically. A library is just a folder with a `src/` inside it:
 

@@ -8,6 +8,9 @@
 -->
 # MessagingConnectorAssistant — Design
 
+> Current release: **[v1.85.0](docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 **Goal (Angela's):** the user tells Tlamatini their phone number and *nothing else*; Tlamatini does every step to send/receive on **Telegram** and **WhatsApp**, even if it takes days. End state: Tlamatini says *"Everything's ready — what number do you want to message?"*
 
 This document is honest about the **one wall that exists for everyone on Earth**, then designs the system that gets as close to "just the number" as physics and the platforms allow — **software now**, and a **hardware gadget you can sell** that removes even the last tap.

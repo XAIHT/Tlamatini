@@ -15,6 +15,9 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 2026-06-05: Fixed a real architectural hole — the frozen installer assumed the end user already had Python 3.12.10 + all `requirements.txt` deps + `PYTHON_HOME`. The `Tlamatini.exe` is self-contained, but **every pool agent (~74) is launched as a SEPARATE subprocess** via `get_python_command()` / `_resolve_python_executable()`, which needed an EXTERNAL python. The installer never provided one → on a clean machine NO agent could run.
 
 **User's hard requirements (emphatic):** pool agents must ALWAYS, no matter what, use the Python CARRIED inside Tlamatini's installation; the carried version is EXCLUSIVELY 3.12.10. Chosen approach (AskUserQuestion): "ship a Python+deps inside the install dir."

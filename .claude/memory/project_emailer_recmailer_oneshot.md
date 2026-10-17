@@ -15,6 +15,9 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 2026-06-05: Fixed Emailer + RecMailer so `chat_agent_send_email` / `chat_agent_recmailer` work standalone in Multi-Turn (they previously assumed canvas flow wiring).
 
 **Emailer** (`agents/emailer/emailer.py`): when `source_agents` is empty (standalone/chat launch) it now does a **one-shot direct send** (mirrors Telegramer the action agent) instead of exiting `❌ No source agents configured`. Also: resolves blank `from_address` → username, defaults a blank recipient to the sender (send-to-self test), and appends `@gmail.com` at runtime when the SMTP username omits the domain (Gmail AUTH needs the full address — the user's config had a bare username with no domain). Monitoring mode (source_agents present) unchanged.

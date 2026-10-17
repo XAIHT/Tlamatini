@@ -1,6 +1,9 @@
 <!-- Created by Angela López Mendoza · @angelahack1 — Tlamatini. -->
 # Windows access scripts and non-admin execution checks — 2026-10-07
 
+> Current release: **[v1.85.0](2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 The `security/` changes prepare Windows exceptions for the operator to apply.
 No elevated policy changes, UAC approvals, live defender sweeps, purchases,
 builds or commits were performed during this work.

@@ -10518,8 +10518,8 @@ def version_view(request):
     Response shape::
 
         {
-          "version": "1.83.0",                       # public SemVer (clean, no suffix)
-          "build":   "1.83.0",                       # build descriptor (same as version)
+          "version": "1.85.0",                       # public SemVer (clean, no suffix)
+          "build":   "1.85.0",                       # build descriptor (same as version)
           "commit":  "abc1234",
           "date":    "2026-05-15T18:42:11Z",
           "source":  "generated" | "git" | "unknown"

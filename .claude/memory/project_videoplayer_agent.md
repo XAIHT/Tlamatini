@@ -15,6 +15,9 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 2026-06-04: Added **VideoPlayer** (74th agent type) — on-screen VIDEO playback WITH audio; the screen sibling of [[project_audioplayer_agent]] (AudioPlayer=speakers, VideoPlayer=screen window). On BOTH canvas + Multi-Turn (`chat_agent_videoplayer`).
 
 **Backend decision (user asked: bundle cleanly with PyInstaller, NO external deps, all in requirements.txt):** chose **ffpyplayer** (pip wheel BUNDLES ffmpeg+SDL — no external ffmpeg, no runtime download; decode + synced audio + `set_volume`) for A/V + **OpenCV/cv2** (already bundled for Camcorder) for the WINDOW. ffpyplayer is PRIMARY; if it's unavailable the agent degrades to SILENT cv2 video (volume no-op, logged) — so the core honors the "bundles with no problems" bar even worst-case. Rejected: ffplay-bootstrap (external binary), python-vlc (needs system VLC). build.py: added `--collect-all ffpyplayer` + `_agent_libs` verify. Dep **ffpyplayer==4.5.3** in requirements.txt.

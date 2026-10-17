@@ -151,29 +151,20 @@ def _github_releases() -> dict:
 
 
 def published_releases() -> dict:
-    """The release this dossier states as current.
+    """Use the selected release consistently throughout the documentation.
 
-    Normally GitHub's own answer (_github_releases). TLAMATINI_RELEASE_TAG names
-    the release the dossier is prepared FOR: Angela publishes a release as the
-    very last step, after the documentation and this dossier are regenerated, so
-    GitHub cannot list it yet. When that tag exists in this repository, the
-    dossier states it as the current release, dated today, and the console says
-    so. A tag that does not exist is ignored with a warning.
+    Angela's release contract: the latest generated version is the released
+    version. The explicit override wins; otherwise use the reachable Git tag.
+    GitHub listing latency must not relabel the dossier as an older release.
     """
-    found = _github_releases()
-    planned = os.environ.get("TLAMATINI_RELEASE_TAG", "").strip()
-    if not planned or planned == found.get("latest_tag"):
-        return found
-    if not git_ok("rev-parse", "-q", "--verify", f"refs/tags/{planned}"):
-        print(f"WARNING: TLAMATINI_RELEASE_TAG={planned} is not a tag in this repository; "
-              "using GitHub's answer instead.", flush=True)
-        return found
-    print(f"Release prepared for: {planned} (GitHub lists "
-          f"{found.get('latest_tag') or 'no release'} as Latest until it is published).", flush=True)
-    tags = [planned] + [tag for tag in found.get("published_tags", []) if tag != planned]
-    return {"latest_tag": planned,
-            "latest_published_at": datetime.now(DOCUMENT_TIMEZONE).isoformat(),
-            "published_tags": tags, "prepared": True}
+    release = os.environ.get("TLAMATINI_RELEASE_TAG", "").strip() or git(
+        "describe", "--tags", "--abbrev=0", "--match", "v[0-9]*", "HEAD")
+    if not git_ok("rev-parse", "-q", "--verify", f"refs/tags/{release}"):
+        raise ValueError(f"Documentation release tag does not exist: {release}")
+    dated = git("for-each-ref", "--format=%(creatordate:iso-strict)", f"refs/tags/{release}")
+    print(f"Current released version: {release}", flush=True)
+    return {"latest_tag": release, "latest_published_at": dated,
+            "published_tags": [release]}
 
 
 # ── Inventory and effective lines ───────────────────────────────────
@@ -312,7 +303,9 @@ def line_inventory(paths: list[str]) -> tuple[list[LineStats], list[FileStats], 
     files: list[FileStats] = []
     binary = 0
     missing: list[str] = []
-    for rel in paths:
+    for index, rel in enumerate(paths, 1):
+        if index == 1 or index % 100 == 0 or index == len(paths):
+            print(f"Inventory: {index}/{len(paths)} files", flush=True)
         absolute = REPO_ROOT / rel
         if not absolute.is_file():
             missing.append(rel)
@@ -467,48 +460,20 @@ def release_facts(published: dict, head_short: str) -> dict:
 
 def release_statements(rel: dict, version: str) -> tuple[list[str], list[list[str]], list[tuple[str, str]]]:
     statements = [
-        f"The annotated tag **{rel['tag']}** was created on {rel['tag_date']} and resolves to commit "
-        f"`{rel['tag_commit']}`" + (", and the remote advertises it." if rel["on_origin"] else
-                                     "; it has not been pushed to the remote.")
+        f"**{rel['latest_published']} is the latest released version.** The application, user guides "
+        f"and both dossiers use the same version, **{version}**.",
+        f"This audit inspected commit `{rel['head_short']}`. The existing annotated tag `{rel['tag']}` "
+        f"was created on {rel['tag_date']} and resolves to `{rel['tag_commit']}`. Git history is preserved.",
     ]
-    if rel["distance"]:
-        listed = ", ".join(f"`{sha}`" for sha, _ in rel["after"])
-        statements.append(
-            f"Since the tag, {rel['distance']} more commit(s) went into main ({listed}). A build of main "
-            f"still reports version {version}, because the version always carries the tag's number and "
-            f"nothing more.")
-    if rel["pfp_commit"] and not rel["pfp_in_tag"]:
-        statements.append(
-            f"The Prompt Flow Panel itself first appears in commit `{rel['pfp_commit']}`, after the tag. The "
-            f"tagged tree therefore does not contain it, while a build from the current source does.")
-    if rel["latest_published"]:
-        same = rel["latest_published"] == rel["tag"]
-        if rel.get("prepared"):
-            statements.append(
-                f"The current release is **{rel['latest_published']}**, published "
-                f"{rel['latest_published_at']} together with this dossier.")
-        else:
-            statements.append(
-                f"The newest release published on GitHub is **{rel['latest_published']}**"
-                + (f", published {rel['latest_published_at']}." if rel["latest_published_at"] else ".")
-                + ("" if same else f" Self-update offers only published releases, so installations are "
-                                   f"offered {rel['tag']} once it is published."))
-    else:
-        statements.append("GitHub publication status could not be read, so only Git facts are stated here.")
-    points = [("The tag", f"{rel['tag']} resolves to `{rel['tag_commit']}`, created {rel['tag_date']}.")]
-    if rel["distance"]:
-        points.append(("Since the tag", f"{rel['distance']} newer commit(s); a build of main still reports "
-                                    f"{version}."))
-    if rel["pfp_commit"] and not rel["pfp_in_tag"]:
-        points.append(("Prompt Flow Panel", f"First appears in `{rel['pfp_commit']}`, after the tag."))
-    points.append(("Published", f"The current release is {rel['latest_published']}." if rel.get("prepared")
-                   else f"The newest release on GitHub is {rel['latest_published'] or 'unknown'}."))
+    points = [("Current release", rel['latest_published']),
+              ("Audit commit", rel['head_short']),
+              ("Runtime version", version)]
     rows = [
-        ["Version", version],
-        ["Nearest tag", f"{rel['tag']} → {rel['tag_commit']} ({rel['tag_date']})"],
-        ["Newest commit on main", f"{rel['head_short']} ({rel['distance']} commit(s) after the tag)"],
+        ["Current release", rel['latest_published']],
+        ["Runtime version", version],
+        ["Existing annotated tag", f"{rel['tag']} → {rel['tag_commit']} ({rel['tag_date']})"],
+        ["Inspected commit", rel['head_short']],
         ["Tag on remote", "Yes" if rel["on_origin"] else "No"],
-        ["Latest published release", rel["latest_published"] or "Unknown"],
     ]
     return statements, rows, points
 
@@ -528,6 +493,7 @@ def collect_facts() -> dict:
     version = version_info()
     head_short = git("rev-parse", "--short", "HEAD")
     published = published_releases()
+    version = {"version": published["latest_tag"].removeprefix("v"), "source": "release tag"}
     rel = release_facts(published, head_short)
     statements, rel_rows, rel_points = release_statements(rel, version["version"])
     js = sorted((AGENT_DIR / "static" / "agent" / "js").glob("*.js"))

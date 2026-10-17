@@ -8,6 +8,9 @@
 -->
 # Gatewayer Agent — Deep-Dive Explanation & Usage Samples
 
+> Current release: **[v1.85.0](../../../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 ## 1. What Is It?
 
 **Gatewayer** is an *inbound gateway agent* — the front door of the [Tlamatini](file:///c:/Tlamatini) multi-agent system. Its single job is:

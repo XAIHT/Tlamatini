@@ -15,6 +15,9 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 2026-05-12: Added `Tlamatini/agent/embedding_memory_guard.py` — emits a chat-bubble warning when the configured Ollama embedding model is predicted to occupy more than 80% of total GPU VRAM. Wired into `agent/consumers.py::setup_contextual_rag_chain` after the `MSG_AGENT_LOADING_CONTEXT` broadcast and before the `asyncio.to_thread(setup_llm_with_context, ...)` call.
 
 **Why**: angelahack1's RTX 4070 Laptop (8 GiB VRAM) shows ~77.9% saturation with `qwen3-embedding:8b` resident alone, jumping to ~91% once a chat model is also loaded — leading to the multi-hour stalls documented in `agent/config.json`'s `_embedding_model_comment`. The guard catches this *before* `FAISS.from_documents` triggers the embed burst.

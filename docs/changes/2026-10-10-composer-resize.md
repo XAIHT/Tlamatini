@@ -1,6 +1,9 @@
 <!-- Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1 -->
 # Composer resizing and viewport containment — 2026-10-10
 
+> Current release: **[v1.85.0](2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 Status: shipped in the published `v1.78.0` release (commit `113eddc4`, 2026-10-10).
 At verification time no build, commit, push or installed-release acceptance had
 been performed; the record below is that dated verification.

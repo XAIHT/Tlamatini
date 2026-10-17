@@ -15,6 +15,9 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 2026-05-26 (not committed):
 
 **Build-script contract tests** — `Tlamatini/agent/test_build_scripts.py` (28 tests, ruff clean, all green via `manage.py test agent.test_build_scripts`). STATIC completeness tests for build.py / build_installer.py / build_uninstaller.py — NOT a real PyInstaller build (multi-GB, no CI). Repo root resolved as `Path(__file__).resolve().parents[2]`. Asserts: all 3 scripts parse; build.py references + on-disk-exists every runtime asset (templates/static/staticfiles/config.json/prompt.pmt/Tlamatini.md/skills_pkg/agents_descriptions.md/README.md/jd-cli); the agents/ pool tree is copied into the install (every workflow agent ships) with STM32er present + each runnable agent has its config.yaml; requirements.txt covers EVERY third-party import across agents/ (AST sweep + import→PyPI alias map + stdlib filter); mcp/pyserial/PDF-backends pinned; build.py `_agent_libs` verify list (AST-extracted) includes mcp/serial/PyPDF2/pypdf/fitz/odf and every entry is pinned; version wiring (extract_cli_version/resolve_build_version/--version-file) in all 3; installer pkg.zip+install.py prereqs + Tlamatini_Release_v naming + _verified_move (SHA-256) + tkinter collect; uninstaller uninstall.py prereq + --onefile + tkinter collect + copies Uninstaller.exe to root.

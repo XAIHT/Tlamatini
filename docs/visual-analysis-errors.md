@@ -1,5 +1,8 @@
 # Image and video failures, dialogs and recovery
 
+> Current release: **[v1.85.0](changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 Created by Angela López Mendoza · @angelahack1 — Tlamatini.
 
 Image/video analysis uses the configured model identities. A failed observer,

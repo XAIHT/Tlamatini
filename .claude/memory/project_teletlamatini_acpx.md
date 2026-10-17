@@ -12,6 +12,9 @@ originSessionId: 156f0765-c90e-440e-a266-922659ec55f5
   Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
 ═══════════════════════════════════════════════════════════════════
 -->
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 **2026-06-04 update — WhatsTlamatini parity DONE + both bots adapted to "Ask Execs".** WhatsTlamatini now has the same `acpx_enabled` end-to-end wiring as TeleTlamatini (it previously carried none), and BOTH bots were hardened against everything since Ask Execs (2026-05-29):
 - `ask_execs_enabled` is **hard-pinned `False`** in both `_send_and_collect.send_payload` (sent explicitly, not omitted) — bots are **fully authorized / ungated by user decision** (a Telegram/WhatsApp user can't answer a browser Proceed/Deny modal). Do NOT wire up chat-side approval; it was explicitly declined.
 - `'exec-permission-request'` / `'exec-permission-response'` added to `_SPECIAL_TYPES_TO_SKIP` in both (the consumer group-broadcasts the request frame to `chat_user_<id>`, so a browser human on the SAME account leaks it onto the bot's socket).

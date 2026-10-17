@@ -1,4 +1,7 @@
 <!-- THE USER IS ANGELA, A WOMAN — always address her by name. -->
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 <!-- Unless noted, work is UNCOMMITTED in source; frozen needs build.py. Detail in topic files. -->
 - [Prompt Flow: static Commentary and runtime User Input](project_prompt_flow_commentary_input.md) — version 2 saves, version 1 migration, inline rich notes with a floating selection toolbar, mixed fonts/styles, all-border resizing and full-text containment; **no configuration dialog**; **no internal scrollbars**. Runtime reply/cancel stays unchanged. Run output has a 5–95% divider, independent scrolling and separate per-user layout storage.
 - [Developer workflow is not product UX](feedback_developer_product_boundary.md) — Angela is the developer; visible verification must not become extra product windows or focus stealing. Direct dictation uses the main console/log and in-chat recording status.

@@ -15,6 +15,9 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 2026-05-20: The Reviewer agent and `code-review` skill were falsely reporting "API keys and passwords are committed."
 
 **Root cause:** committed HEAD of `agent/config.json` and `agent/agents/*/config.yaml` carries scrubbed `<NAME goes here>` placeholders, but the developer's WORKING TREE holds real keys (the local "keyed" mode from `regen_secrets.py` + gitignored `data.keys`). The Reviewer runs `git diff` (empty `diff_ref` => `git diff HEAD` + `--staged`, i.e. UNCOMMITTED changes) and `build_review_prompt` never told the LLM the commit-state, so the model defaulted to alarming "committed to source" language for keys that are not in any commit.

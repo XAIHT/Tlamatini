@@ -15,6 +15,9 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 User declined to implement a Uniter agent (Unity-MCP counterpart of Unrealer) on 2026-05-17 after I delivered the full analysis/proposal.
 
 **Why:** Unity MCP is much weaker than Unreal MCP for a Tlamatini-style integration:

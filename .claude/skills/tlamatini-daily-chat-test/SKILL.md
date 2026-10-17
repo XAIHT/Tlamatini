@@ -13,6 +13,9 @@ description: Run the daily automated Tlamatini chat regression — drive a visib
 
 # Tlamatini Daily Chat Test
 
+> Current release: **[v1.85.0](../../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 > **HEADLESS IS FORBIDDEN. VISIBLE FOREGROUND EXECUTION ONLY.** Every command, automated test, diagnostic, script, build, agent and browser must run in a visible foreground window on Angela's real desktop. Use forked CMD/PowerShell windows, `execute_forked_window: true`, and `headless: false`. Monitor live; if visibility cannot be confirmed, do not run. Read the [mandatory execution policy](../../../TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).
 
 > **Developer/product boundary (Angela, 2026-09-27):** these visibility requirements govern development and verification. They must not create extra windows, steal focus or expose internal diagnostics in the shipped UX. Direct chat dictation keeps status in chat and uses only Tlamatini's main console/log.
@@ -262,3 +265,7 @@ When the current release is touched, verify NetSpeed-Calculator with `action='la
 ### Prompt Flow Run output regression (2026-10-04)
 
 From a verified visible foreground PowerShell `-NoExit` console, run `python -u scripts/prompt_flow_output_resize_visible.py --resume`. Chrome must use explicit `headless=False` and pass the foreground HWND gate. Its 14 checkpoints cover 5%/50%/95% dragging and limits, unchanged fonts/geometry/zoom, independent canvas/log scrolling, keyboard controls, Escape, collapse/reopen, the Operations divider, window resizing and layout recovery. The fixture includes three mixed-style notes and uses ordinary `.fpmt` opening and User Input playback. Observe the final browser, then use its documented `Temp/run-output-resize-visible/close.confirmed` handoff and verify owned processes/ports stop. Do not substitute these checks for the separate 23-check rich-commentary/file-fidelity suite or claim a release rebuild. See `docs/changes/2026-10-04-run-output-resize.md`.
+
+## v1.85.0 chat acceptance
+
+In explicitly headed Chrome, verify Refresh rereads a real opened file without a picker, Views retains canvas/context while toggling full-width chat, Reset preserves content, and the docked avatar stays centered over Mic through Send at minimum composer height. Use `scripts/canvas_refresh_visible.py`, `scripts/chat_views_visible.py` and the existing docked-avatar checks from a verified foreground console.

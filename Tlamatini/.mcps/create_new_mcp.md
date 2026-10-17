@@ -12,6 +12,9 @@ description: How to add a new MCP-backed context provider or unified-agent tool 
 
 # Create a New MCP or Tool in Tlamatini
 
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 Follow this guide when adding:
 
 - a real MCP-style runtime service

@@ -3,6 +3,9 @@ Tlamatini Author Banner — do not remove -->
 
 # Direct voice prompts
 
+> Current release: **[v1.85.0](changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 ## Use the microphone button
 
 1. Open the chat and wait for voice preparation to finish. The microphone is off

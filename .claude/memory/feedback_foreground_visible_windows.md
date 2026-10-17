@@ -6,6 +6,9 @@ type: feedback
 
 # All execution must be visible — Angela, reaffirmed 2026-09-23
 
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 **HEADLESS IS FORBIDDEN.** Every command, automated test, diagnostic, script,
 build, agent, prompt, CMD/PowerShell session and browser must run in a visible,
 forked foreground window on Angela's real desktop. Keep consoles open afterward.

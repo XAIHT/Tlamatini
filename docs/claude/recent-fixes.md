@@ -8,6 +8,9 @@
 -->
 # Tlamatini — Recent Fixes / Gotchas (archived fix log)
 
+> Current release: **[v1.85.0](../changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 > **This file is NOT auto-imported into the AI-assistant context** (unlike the rest of `docs/claude/*.md`). It is the chronological log of surgical fixes and "keep this in mind / do NOT revert" contracts that used to live at the bottom of `gotchas.md`. It was split out so the always-loaded onboarding stays lean — see the "Archive the fix-log" decision recorded in `docs/claude/INDEX.md`.
 >
 > **When to read it**: before modifying or reverting code in any subsystem named below (ACPX, the Flow Compiler, the planner, the Exec Report pipeline, the ACP canvas, wrapped chat-agent parsing, the desktop-UI agents, `prompt.pmt`, `regen_secrets.py`, the logging filters, etc.). Many entries are explicit "DO NOT revert this — here is the failure it prevents" contracts; treat them as binding even though they are not in your auto-context.
@@ -16,7 +19,13 @@
 
 ---
 
-## 2026-10-16 — Center the docked portrait over Mic through Send (source change)
+## 2026-10-16 — v1.85.0 released; complete documentation refresh
+
+**v1.85.0 is the latest released version (2026-10-16).** It brings **Refresh** for the open canvas document, **Views → Canvas** for full-width chat, **Views → Reset layout**, required packaging coverage for those controls, and a docked avatar centered over the complete Mic-to-Send row. The runtime version is **1.85.0**. The release includes the file-drop router and all earlier capabilities. See the [v1.85.0 release record](../changes/2026-10-16-v1.85.0.md).
+
+All 227 tracked Markdown files receive the current-release reference. User and maintainer guides explain Refresh, Views/Reset, docking and packaging together. Both complete dossiers use the same release content and source-derived inventory. Earlier verification remains dated; the release record tracks the audit evidence.
+
+## 2026-10-16 — Center the docked portrait over Mic through Send (v1.85.0)
 
 Reducing the composer height shrank the avatar while `right: 0` kept its frame
 against the Send button's right edge. The existing layout pass now measures the
@@ -30,9 +39,9 @@ Verified on the real source page in foreground, explicitly headed Chrome: all
 floor, floating/redocking, transient rows and native 125% zoom. Recorded horizontal
 center differences stayed below 0.02 CSS px. Frontend lint exited 0 (zero errors,
 650 existing warnings); all 59 JavaScript modules parsed. Evidence is under
-`Temp/avatar-center-20261016/`. Source verification only; no build or release.
+`Temp/avatar-center-20261016/`. This verifies the avatar alignment shipped in v1.85.0.
 
-## 2026-10-15 — Refresh rereads the canvas's original file (source change)
+## 2026-10-15 — Refresh rereads the canvas's original file (v1.85.0)
 
 **Refresh** replaces the picker-based Reopen action. Open retains a browser-granted
 file handle; real drops retain their handle/entry during the synchronous drop
@@ -57,7 +66,7 @@ restored view. Commit removes only the previous frame. A failed context send
 also finishes the PDF progress dialog instead of leaving it on Loading.
 Verified in visible Chrome (20/20 checkpoints, native file handles and real
 disk edits), 39 focused Django tests, 138 router cases, and full frontend lint
-(zero errors; all 59 modules parse). Source change only; no build/release.
+(zero errors; all 59 modules parse). Refresh is included in the released v1.85.0.
 
 ## 2026-10-14 — v1.83.0 released; every document, the PDF and the PPTX swept
 

@@ -1,5 +1,8 @@
 # Video-Analyzer: robotics, transcription and summaries
 
+> Current release: **[v1.85.0](../../../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 Created by Angela López Mendoza · @angelahack1 — Tlamatini.
 
 `analysis_type` selects one of three tasks. Existing configurations without the key

@@ -8,6 +8,9 @@
 -->
 # Tlamatini — Agent Descriptions
 
+> Current release: **[v1.85.0](docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 This file is the **authoritative source of human-readable descriptions** for every workflow agent shown in the Agentic Control Panel sidebar of Tlamatini.
 
 The Django view `agent.views.agentic_control_panel` parses the table rows under `## Workflow Agents` below and injects the `Description` column into the page as `agent_purpose_map` JSON. The frontend (`acp-canvas-core.js`) reads that JSON and uses the text as the **hover tooltip** over each sidebar agent and as the **Description** dialog body when the user right-clicks an agent on the canvas.

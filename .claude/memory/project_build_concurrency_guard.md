@@ -15,6 +15,9 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 2026-05-30: A PyInstaller build died with `FileNotFoundError: [Errno 2] No such file or directory: 'C:\Development\Tlamatini\build\manage\warn-manage.txt'` (during `_write_warnings` in assemble). **Root cause = TWO `python build.py` runs in the same dir at once** — I had a background build.py running AND the user started a manual one. build.py cleans `build/` + `dist/` at step 0 ("Cleaning previous build artifacts") AND at end-of-run; whichever finishes first rmtrees the OTHER build's `build/manage` workpath mid-flight → the loser crashes writing warn-manage.txt. It is NOT an asset/build-script bug.
 
 **LESSON (do this every time): NEVER launch a background `build.py` (or build_installer/build_uninstaller) while the user might run one themselves.** A build is ~16-18 min; if you must build, say so and let it be the only build running. Two builds in one repo dir always collide.

@@ -15,6 +15,9 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 2026-05-26: Added **STM32er** (agent #68) on BOTH canvas + Multi-Turn (`chat_agent_stm32er`). It bridges the **STM32 Template Project MCP** (`C:\Development\STM32TemplateProjectMCP`, repo github.com/XAIHT/STM32TemplateProjectMCP) — a FastMCP **stdio** server (`mcp/stm32_mcp_server.py`) exposing **23 tools** that scaffold→author→build→flash→observe STM32F4 firmware via the STM32CubeIDE-bundled toolchain (no IDE GUI).
 
 **Design**: STM32er is a self-contained inline **MCP stdio JSON-RPC client** (`agent/agents/stm32er/stm32er.py`) — spawns the server, does `initialize` handshake + `notifications/initialized`, calls ONE `tools/call` per run, parses CallToolResult (text JSON first, structuredContent fallback), shuts down. Stdlib only (subprocess+json+threading+queue); does NOT import `agent.*` NOR the `mcp` package (only the SERVER needs `mcp`). Mirrors the Kalier/ACPXer self-contained pattern. `action` ∈ the 23 tools (get_config, discover_toolchain_tool, create_project, write_source, read_source, list_sources, clean, build, list_artifacts, flash, build_and_flash, erase, reset, serial_* x5, read_memory, write_memory, live_memory_* x3) **PLUS 2 composites** `serial_session` (connect→send|read→disconnect) and `live_monitor` (start→stream monitor_seconds→read→stop) — needed because serial/live-memory sessions live in-process in the server and die when the per-run server exits. `_tool_ok()` treats no-`ok`-key results (get_config/discover) as success. Emits `INI_SECTION_STM32ER<<<` (KV: action, tool, ok, returncode, success, project_dir, session_id, stage; body=stdout/stderr or JSON). ALWAYS triggers target_agents.

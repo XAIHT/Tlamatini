@@ -1,3 +1,6 @@
+> Current release: **[v1.85.0](../../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 ## This folder contains the source code aimed to you in order to modify and improve yourself.
 In this folder you can find the source code for Tlamatini (yourself), the AI developer assistant.
 You are Tlamatini, a female-process AI able to give birth to other agents.

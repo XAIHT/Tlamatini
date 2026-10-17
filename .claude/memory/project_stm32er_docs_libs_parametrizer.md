@@ -15,6 +15,9 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 2026-05-26 (v1.9.0 release prep, not committed): broad alignment pass after the STM32er zero-config bootstrap + preflight work ([[project_stm32er_bootstrap_preflight]]).
 
 **Docs/skills aligned with STM32er bootstrap/preflight/validate/zero-config:** prompt.pmt (STM32er rule), agentic_skill.md (#67 entry + table row — fixed stale server_script default, added bootstrap/validate actions + new config keys), agents_descriptions.md (row), flowhypervisor/monitoring-prompt.pmt (bootstrap/preflight notes + STM32er→STM32er log-line casing), Tlamatini.md (67→68 agents + firmware capability), README.md + KIMI.md + BookOfTlamatini.md + CLAUDE.md body + docs/claude/{agents,architecture,mcp-tools,recent-fixes}.md (via 3 parallel subagents). Catalog count 67→68 everywhere. Demo prompts migration 0103 rewritten: 63 STM32 GENESIS / 64 STM32 BLINKY / 65 STM32 HIL OBSERVATORY (3rd uses real hardware).

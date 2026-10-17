@@ -15,6 +15,9 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 2026-06-02: Added **Arduiner** (agent #70), Tlamatini's bridge to the **Arduino CLI** (`arduino-cli`), on BOTH canvas + Multi-Turn (`chat_agent_arduiner`). Built per the user's explicit request, modeled on STM32er + ESP32er.
 
 **Architecture**: DIRECT-CLI sibling of [[project_esp32er_agent]] — `arduino-cli` is a complete CLI like PlatformIO's `pio`, so NO MCP server (unlike STM32er). Self-contained stdlib-only `agent/agents/arduiner/arduiner.py` (`subprocess`+`urllib`+`zipfile`/`tarfile`+`json`+`threading`), never imports `agent.*`.

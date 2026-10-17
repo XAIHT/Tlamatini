@@ -4,6 +4,9 @@
 
 # Prompt Flow Panel
 
+> Current release: **[v1.85.0](changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 Open **Panels → Prompt Flow Panel** from chat, or **File → Prompt Flow Panel** from the Agentic Control Panel. The authenticated page is `/agent/prompt_flow_panel/`.
 
 The Operations bar follows the Agentic Control Panel layout. Drag a figure onto the canvas, or click its palette entry. The seven executable operations use a 200 × 128 coordinate box. User Commentary is a separate, resizable speech-bubble annotation.

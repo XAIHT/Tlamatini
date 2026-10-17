@@ -15,6 +15,9 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 2026-05-30: Added per-prompt MODE INDICATOR BADGES + auto-checkbox-setting to the "Pre-established prompts" catalog (the `#prompts-catalog` "Catalog of prompts" modal). User wants each catalog card to show little square badges telling which toolbar checkboxes the prompt needs (**One-Shot** / **Multi-turn** / **ACPX**, a prompt can carry MORE THAN ONE), and selecting a card must SET those checkboxes (e.g. first/one-shot prompt → uncheck BOTH Multi-Turn & ACPX; "Skill Catalog Carnival" → check BOTH). Reference image: `c:\Development\Tlamatini\image.png` (BROWSER WIZARD shown with a teal "Multi-turn" pill).
 
 **Where it lives (frontend ONLY — no model/migration/backend/endpoint change):**

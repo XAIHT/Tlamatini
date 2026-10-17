@@ -15,6 +15,9 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 2026-05-20: Fixed a serious bug where the main Tlamatini console window closed unexpectedly and the process stayed hung on a user's machine.
 
 **Root cause:** `agent/orphan_reaper.py::_is_our_console_host()` returned True (→ reap) for any `conhost.exe` whose parent PID was in `our_pid_tree`, and `our_pid_tree` included `our_pid` itself. The build is PyInstaller **onedir** (no `--onefile` in `build.py`), so the installed `Tlamatini.exe` is a single process that owns its console window; that window's `conhost.exe` is a direct child of `os.getpid()` → `conhost.ppid == our_pid` → reaped. Tier 2 (`consumers.py::_tier2_orphan_sweep`, after **every** answer) and Tier 1 (`mcp_agent.py::_reap_after_tool`) both run `include_console_host_sweep=True`, so the window got closed on normal requests. Devs don't see it because source mode / Windows Terminal hosts the conhost under the terminal, not our PID.

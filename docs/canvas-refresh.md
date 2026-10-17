@@ -1,7 +1,32 @@
 <!-- Tlamatini Author Banner — Angela López Mendoza -->
 # Refresh the open canvas file
 
-Source change, 2026-10-15. **Refresh** replaces **Reopen**. **Open** selects a
+> Current release: **[v1.85.0](changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
+## Canvas, Views and avatar in v1.85.0
+
+**Open** chooses a document. **Refresh** reads that same document again without a
+file picker. It reports unchanged content, reloads changed content and retains
+the previous document when a read fails. Markdown keeps Preview/Source and its
+resources; PDF keeps page, zoom, rotation and scroll mode. Snapshot-only sources
+explain why Refresh is unavailable. See [Canvas Refresh](canvas-refresh.md).
+
+**Views → Canvas** hides or shows the canvas. Hiding makes chat full width while
+keeping the document, refresh handle, PDF viewer, draft, chat history and context.
+The setting is saved per account in this browser and synchronized between tabs.
+Open, file drops and generated-document links reveal the canvas when needed.
+While the canvas is hidden, the avatar is docked and its floating resize handle
+is disabled. Showing it again enables the handle and keeps the avatar docked.
+
+**Views → Reset layout** shows both panes, restores the initial divider positions
+and docks the avatar, without clearing content. Shrinking the message box keeps
+the portrait and its frame horizontally centered between Mic's left edge and
+Send's right edge. The portrait remains square with a 120 px minimum.
+
+
+
+Released in **v1.85.0**; implemented 2026-10-15. **Refresh** replaces **Reopen**. **Open** selects a
 document; Refresh reads that same document again without a file-selection dialog.
 Nothing is written to the original file.
 
@@ -80,5 +105,4 @@ modules parsed. The 138 router cases and 39 focused Django tests
 (`agent.test_file_drop_router`, `agent.test_pdf_context`) passed. The harness
 compiled and `git diff --check` passed. Source/collected static bytes were checked
 by the regression suite. The initial visibility refusals stopped workloads;
-acceptance resumed only after verified foreground access. No build or release
-was performed.
+acceptance resumed only after verified foreground access. These checks exercised the Refresh behavior now included in v1.85.0.

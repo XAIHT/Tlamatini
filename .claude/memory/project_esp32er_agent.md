@@ -15,6 +15,9 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 2026-05-31: Added **ESP32er** (#69) — ESP32/Espressif firmware agent on BOTH canvas + Multi-Turn (`chat_agent_esp32er`), modeled on [[project_stm32er_agent]].
 
 **Key architectural difference from STM32er (user chose this):** PlatformIO ships a complete `pio` CLI, so ESP32er has **NO MCP server** — it invokes `pio` subcommands DIRECTLY (Kalier/Executer pattern), stdlib-only `subprocess`+`urllib` in `agent/agents/esp32er/esp32er.py`. (STM32er needed an MCP server only because STM32CubeIDE has no unified CLI.) Decided via AskUserQuestion: "Direct pio CLI" + "compile+upload+monitor core" cut; **headless debug (`pio debug -x gdb_script`) deferred as fast-follow** (needs JTAG/USB-JTAG).

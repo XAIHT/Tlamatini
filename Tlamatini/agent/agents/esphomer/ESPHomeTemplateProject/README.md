@@ -9,6 +9,9 @@
 
 # ESPHomeTemplateProject
 
+> Current release: **[v1.85.0](../../../../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 A known-good **ESPHome smart-home baseline** — two working devices, shared
 configuration, and credentials kept out of git.
 

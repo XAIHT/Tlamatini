@@ -8,6 +8,9 @@
 -->
 # Discoverer — New Agent Design (ProjectDiscovery suite bridge)
 
+> Current release: **[v1.85.0](docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 > **Status:** DESIGN / proposal (no code written yet). Authored 2026-06-20.
 > **Doc filename:** `Discoverier-new-agent.md` (per request). **Agent display name:** `Discoverer`
 > *(pending final confirmation — see "Open decisions" at the end).*

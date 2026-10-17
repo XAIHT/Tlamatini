@@ -1,6 +1,9 @@
 <!-- Tlamatini Author Banner — Angela López Mendoza · @angelahack1 -->
 # Windows flow files
 
+> Current release: **[v1.85.0](changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 Implemented 2026-10-04; shipped in `v1.76.0`. The established agent-flow extension is **.flw**;
 **.fpmt** is the prompting-flow extension. There is no .fmt format or conversion.
 A frozen release must include these changes (every release since `v1.76.0` does) before its executable can open
@@ -16,7 +19,7 @@ A frozen release must include these changes (every release since `v1.76.0` does)
 - Explorer double-click or **Open with → Tlamatini** passes one quoted file path
   to the application. Paths with spaces and Unicode and uppercase extensions work.
 - Opening from the main chat's **Open** control opens the correct editor in a new
-  tab, preserving the document already in the chat canvas. Drag/drop and Reopen
+  tab, preserving the document already in the chat canvas. Drag/drop and Open
   use the same routing. Allow pop-ups for Tlamatini if the browser blocks the tab.
 - Each editor also has its own File → Open and Save controls. Opening never presses
   Play, starts agents, sends prompts, or resumes a run. Static commentary stays static.

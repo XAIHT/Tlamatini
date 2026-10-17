@@ -13,6 +13,9 @@ description: Use when asked to create or update a complete technical PPTX deck, 
 
 # Overlap-Safe PPTX Dossier
 
+> Current release: **[v1.85.0](../../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 > **HEADLESS IS FORBIDDEN. VISIBLE FOREGROUND EXECUTION ONLY.** Every command, automated test, diagnostic, script, build, agent and browser must run in a visible foreground window on Angela's real desktop. Use forked CMD/PowerShell windows, `execute_forked_window: true`, and `headless: false`. Monitor live; if visibility cannot be confirmed, do not run. Read the [mandatory execution policy](../../../TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).
 
 Use this skill when a deck must be complete, polished, and layout-safe.
@@ -84,7 +87,7 @@ For the v1.50.0 release and later, include separate, readable slides for NetSpee
 
 ## Prompt Flow graphical editing and layout gate (2026-10-04)
 
-Keep seven executable operations separate from static User Commentary. Explain the floating mixed-style text toolbar, direct border/corner resizing, full-text containment without internal scrollbars, and absence of a commentary configuration dialog. Document version 2 rich runs plus literal text, plain-note normalization and version 1 User Input migration. Give Run output its own readable section: 5–95% of usable pane height, independent scrolling at unchanged content scale, keyboard controls and separate per-user layout storage. Date the 23-check commentary/file-fidelity evidence and 14-check divider evidence; do not present historical browser tests as rerun during a document refresh. Distinguish the local uncommitted worktree from the last published release and do not build an executable merely to regenerate these documents.
+Keep seven executable operations separate from static User Commentary. Explain the floating mixed-style text toolbar, direct border/corner resizing, full-text containment without internal scrollbars, and absence of a commentary configuration dialog. Document version 2 rich runs plus literal text, plain-note normalization and version 1 User Input migration. Give Run output its own readable section: 5–95% of usable pane height, independent scrolling at unchanged content scale, keyboard controls and separate per-user layout storage. Date the 23-check commentary/file-fidelity evidence and 14-check divider evidence; do not present historical browser tests as rerun during a document refresh. Use v1.85.0 as the current released version. Keep test evidence attributed to its actual run and do not build an executable merely to regenerate these documents.
 
 ## Usage documentation gate (2026-10-10)
 
@@ -97,3 +100,29 @@ under-60% dialog size and normal fonts. Keep account observations/screenshots ou
 of public artifacts. Date the 220 source tests and 24 visible browser checks to
 October 10; label other-plan fixtures synthetic.
 Derive current counts. The page-wide file-drop router, the docked avatar that follows both composer dividers and the not-fatal wrongly worded request (`91ff8453`) ship in v1.83.0 (tag at `a2914019`); the setup windows and the Markdown canvas shipped in v1.82.0 (tag at `880a335e`), the GUI standardization in v1.80.0 and Video-Analyzer's web links in v1.79.0 (both tags without a published release); Usage, the message-box resize and the Image-Interpreter list ship in v1.78.0 (its tag sits one commit before the Usage commit; the published zip matches `113eddc4`).
+
+## v1.85.0 release gate
+
+## v1.85.0 — Refresh, Views and centered avatar
+
+The latest released version is **v1.85.0**. `agent_page_canvas.js` owns Refresh
+source access, complete-text comparison, cancellation and status. Retain browser
+file handles during the drop event; snapshot-only access cannot refresh a path.
+PDF replacement stages a ready viewer and keeps its iframe attached at commit.
+
+`agent_page_layout.js` exposes `TlamatiniViews.setCanvasVisible`,
+`isCanvasVisible` and `resetLayout`. Hiding toggles `tlm-canvas-hidden`, preserves
+the canvas DOM and context, cancels divider gestures and moves focus only when
+its current region disappears. The account/browser preference is
+`tlamatini.chat.views.v1.<user id>`. `avatar_size.js::setDockedOnly` enforces the
+hidden-canvas docking rule in pointer, keyboard and public API paths. Reset shows
+both panes, resets their sizes and docks the portrait without clearing content.
+
+The docked frame uses `--tlm-avatar-docked-right` measured from the full Mic/Send
+row. Its square size and 120 px minimum stay independent of floating geometry.
+The live static suffix is `-avatar-center-1`; Views scripts retain `_views1`.
+`build_runtime_assets.py` and `copy_source_assets.py` require the Views template,
+scripts and snapshot harnesses. No migration or dependency was added.
+
+See [the release implementation and evidence matrix](../../../docs/changes/2026-10-16-v1.85.0.md),
+[Refresh](../../../docs/canvas-refresh.md) and [carriage](../../../docs/self-management-carriage.md).

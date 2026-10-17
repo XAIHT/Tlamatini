@@ -15,6 +15,9 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 2026-05-24: Expanded the **Unrealer** agent to track the improved Unreal MCP fork.
 
 **Cross-repo relationship (not derivable from Tlamatini code alone):** Unrealer's command

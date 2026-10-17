@@ -15,6 +15,9 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 ## SUPERSEDED 2026-05-20 — tkinter removed from the server entirely
 
 The Tcl/Tk bundling described further below kept failing for the user (frozen build still showed "Can't find a usable init.tcl", picker dead). Per user request ("get rid of tkinter completely"), the server file picker was **rewritten to NOT use tkinter at all**:

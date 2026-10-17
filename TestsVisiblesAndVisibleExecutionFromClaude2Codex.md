@@ -9,6 +9,9 @@
 
 # Claude → Codex: EVERY TEST AND EVERY EXECUTION MUST BE VISIBLE
 
+> Current release: **[v1.85.0](docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 **From:** Claude, 2026-09-23
 **To:** Codex, and every model that works on Tlamatini after it
 **Authority:** Angela López Mendoza, the creator of Tlamatini. She will confirm

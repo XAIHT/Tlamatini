@@ -4,6 +4,9 @@ description: NetSpeed-Calculator (agent #88) — COMPLETE and wired across ~30 s
 metadata:
   type: project
 ---
+> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 
 **NetSpeed-Calculator** = Tlamatini's **agent #88** (`agent/agents/netspeed_calculator/`).
 Measures this machine's Internet connection and reports it **with an error bar** — RFC 6349

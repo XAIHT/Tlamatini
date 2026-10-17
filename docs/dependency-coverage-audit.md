@@ -4,6 +4,9 @@ Tlamatini Author Banner - do not remove
 -->
 # Python dependency coverage audit - 2026-09-27
 
+> Current release: **[v1.85.0](changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+
+
 The refreshed source audit covers **744 Python files and all 89 runnable agents**.
 The added `chat_voice_settings.py` shares stdlib-only Mic preference validation
 between Django and the carried Whisperer worker; the new dialog adds no package.
