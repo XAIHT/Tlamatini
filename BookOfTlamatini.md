@@ -8,7 +8,7 @@
 -->
 # Tlamatini
 
-> Current release: **[v1.85.0](docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.87.0](docs/changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
 
 
 ![Project Logo](Tlamatini.jpg)
@@ -821,7 +821,7 @@ ollama pull gemma4:cloud
 | Model tag | Used by |
 |---|---|
 | `Nomic-Embed-Text:latest` | RAG embedding model (default — light VRAM footprint, ~600 MB resident) |
-| `glm-5.3:cloud` | Default chat model, Multi-Turn unified-agent model, MCP file-search, internet classifier and web summarizer — and the default `model` of most workflow-agent templates (FlowCreator, FlowHypervisor, Crawler, File-Interpreter, Monitor-Log, Monitor-Netstat, Notifier, PDFer, Prompter, PSer, Recmailer, Reviewer, Summarizer, TeleTlamatini, Instant Messaging Doctor, and LaTeXer's repair rung 7) |
+| `glm-5.3:cloud` | Default chat model, Multi-Turn unified-agent model, MCP file-search, internet classifier and web summarizer — and the default `model` of most workflow-agent templates (FlowCreator, FlowHypervisor, Crawler, File-Interpreter, Monitor-Log, Monitor-Netstat, Notifier, PDFer, Prompter, PSer, RecMailer, Reviewer, Summarizer, TeleTlamatini, Instant Messaging Doctor, and LaTeXer's repair rung 7) |
 | `jcyhsiao/qwen3.5cloud:latest` | Image-Interpreter interpreter 1 (forensic OCR / measurement) and Video-Analyzer interpreter 2 |
 | `gemma4:cloud` | Image-Interpreter interpreter 2 and Video-Analyzer interpreter 1; selectable in Config → Models |
 
@@ -919,7 +919,7 @@ When the migrations finish and you have a superuser, run the server (chapter 7).
 
 ### Path B — Pre-built one-click installer (end users)
 
-Download **v1.85.0**, the latest released version, from [Tlamatini Releases](https://github.com/XAIHT/Tlamatini/releases). Unzip the `Tlamatini_Release_v1.85.0/` folder and run the Installer. This book documents v1.85.0, including Refresh, Views and the centered avatar. See the [release record](docs/changes/2026-10-16-v1.85.0.md). Then:
+Download **v1.87.0**, the latest released version, from [Tlamatini Releases](https://github.com/XAIHT/Tlamatini/releases). Unzip the `Tlamatini_Release_v1.87.0/` folder and run the Installer. This book documents v1.87.0, including the 85-agent catalog, the faster recoverable Uninstaller, Refresh, Views and the centered avatar. See the [release record](docs/changes/2026-10-18-v1.87.0.md). Then:
 
 1. Open the unzipped folder.
 2. Double-click **`Installer.exe`**.
@@ -1860,11 +1860,11 @@ A compact reference for all 85 workflow-agent types. The **Parametrizer** chapte
 | **Playwrighter** | Scripted interactive browser automation via Playwright (Chromium/Firefox/WebKit). Drives a REAL browser through an ordered list of declarative steps — `goto` / `click` / `fill` / `press` / `wait_for` / `extract_text` / `extract_attr` / `screenshot` / `assert_visible` / `assert_text` / `download` — for authenticated, JS-rendered, multi-step flows (logins, forms, wizards, SPA scraping, end-to-end UI checks) that Crawler (static fetch) and Googler (search) cannot do. Deterministic (no LLM). Set `headless: false` to watch it drive and `hold_open_seconds: N` (alias `hold_open_ms`) to keep the browser visible N seconds after the last step before it closes. Emits an `INI_SECTION_PLAYWRIGHTER<<<` block (`start_url`, `final_url`, `status`, `steps_run`, `assert_result`, `response_body`) and always triggers `target_agents`. Canvas counterpart of the `chat_agent_playwrighter` Multi-Turn tool. |
 | **Apirer** | HTTP REST request with structured logging. |
 | **Gitter** | Git operations on a local repo. |
-| **Ssher / Scper** | SSH command execution / SCP file transfer. |
+| **SSHer / SCPer** | SSH command execution / SCP file transfer. |
 | **Dockerer / Kuberneter** | Docker / Kubernetes commands. |
-| **Pser** | LLM-powered semantic process finder. |
+| **PSer** | LLM-powered semantic process finder. |
 | **Jenkinser** | Jenkins pipeline trigger with CSRF crumb support. |
-| **Sqler / Mongoxer** | SQL Server / MongoDB scripting (external windows). |
+| **SQLer / Mongoxer** | SQL Server / MongoDB scripting (external windows). |
 | **Mover / Deleter** | File move/copy / deletion (glob, recursive, `filetype_exclusions`). |
 | **Shoter** | Screenshot capture (read-only). |
 | **Camcorder** | Physical-camera (webcam) capture via OpenCV (`cv2`) — Shoter's hardware-camera sibling (Shoter = screen, Camcorder = camera). `capture_mode` ∈ `photo` (default, one `.jpg`) / `video` (a `.mp4` segment of `video_duration_seconds`, no audio); `camera_index` selects the device; `resolution_width`/`resolution_height` default `0×0` = camera-native (set `W×H` to request a mode — requested + read-back logged); `warmup_seconds` lets the sensor settle. Saves to `Pictures/TlamatiniCamcorder` with a collision-proof timestamped filename (override via `output_dir`). Observational (read-only, but STILL in the Exec Report); emits `INI_SECTION_CAMCORDER<<<` and always triggers `target_agents`. Needs `opencv-python`. Canvas counterpart of `chat_agent_camcorder`. |
@@ -2771,14 +2771,14 @@ Pre-releases use the standard SemVer suffixes — `2.0.0-alpha.1`, `2.0.0-beta.1
 
 ```powershell
 git status                                          # clean tree, on main
-git tag -a v1.85.0 -m "Release 1.85.0: <one-liner>"   # annotated tag
+git tag -a v1.87.0 -m "Release 1.87.0: <one-liner>"   # annotated tag
 git push origin v1.85.0
 python build.py
 python build_uninstaller.py
 python build_installer.py
 ```
 
-All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.85.0/`, named for the version so the file you hand to a user is unambiguous before they even unzip it. The current version is `v1.85.0`, so the bare runtime version resolves to `1.85.0`. Tlamatini deliberately never puts a `.devN`, `+gSHA` or `.dirty` suffix into its version string — it always reports the base tag, which is the designed behaviour described in `VERSIONING.md`. That is exactly why the five commands above start with `git status` on a clean tree: a release cut from a dirty tree would ship a version number that says nothing about what is actually inside it.
+All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.87.0/`, named for the version so the file you hand to a user is unambiguous before they even unzip it. The current version is `v1.87.0`, so the bare runtime version resolves to `1.87.0`. Tlamatini deliberately never puts a `.devN`, `+gSHA` or `.dirty` suffix into its version string — it always reports the base tag, which is the designed behaviour described in `VERSIONING.md`. That is exactly why the five commands above start with `git status` on a clean tree: a release cut from a dirty tree would ship a version number that says nothing about what is actually inside it.
 
 ### Where the version shows up in a running install
 
@@ -2974,7 +2974,7 @@ The backend currently exposes 104 routes. Highlights:
 
 ### Connection updates (canvas auto-configuration)
 
-`/update_<agent>_connection/<agent_name>/` for every agent type that has connections — Starter, Ender, Stopper, Raiser, Emailer, Monitor-Log, Notifier, Executer, Pythonxer, Sqler, Whatsapper, Recmailer, OR, AND, Croner, Mover, Mouser, Keyboarder, Windower, Sleeper, Cleaner, Deleter, Asker, Forker, Dockerer, Pser, Kuberneter, Apirer, Jenkinser, Crawler, Summarizer, FlowHypervisor, Counter, File-Interpreter, Image-Interpreter, File-Creator, File-Extractor, J-Decompiler, Kyber-KeyGen/Cipher/DeCipher, Parametrizer, FlowBacker, Barrier, Googler, TeleTlamatini, ACPXer.
+`/update_<agent>_connection/<agent_name>/` — 82 live connection endpoints (2026-10-18), one per agent type that saves its canvas wiring the moment a wire is drawn: Raiser, Emailer, Monitor-Log, Ender, Starter, Whatsapper, Croner, Mover, Sleeper, Cleaner, Deleter, Notifier, Executer, Pythonxer, Stopper, RecMailer, Asker, Forker, Counter, Shoter, Camcorder, Globber, Grepper, Editor, Recorder, Whisperer, AudioPlayer, VideoPlayer, Talker, SSHer, SCPer, TeleTlamatini, ACPXer, Telegrammer, SQLer, Prompter, Gitter, Dockerer, MCP Doctor, Instant Messaging Doctor, PSer, Kuberneter, Apirer, Unrealer, Blenderer, Playwrighter, Reviewer, Analyzer, Jenkinser, Crawler, Summarizer, FlowHypervisor, Mouser, Windower, Kalier, Discoverer, Nmapper, PDFer, LaTeXer, PPTXer, STM32er, ESP32er, ESPHomer, Arduiner, File-Interpreter, Image-Interpreter, Video-Analyzer, NetSpeed-Calculator, File-Creator, File-Extractor, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Parametrizer, FlowBacker, Barrier, J-Decompiler, De-Compresser, Keyboarder, Googler, OR and AND. FlowCreator has no connections; Mongoxer and Monitor Netstat have no live endpoint, and their wiring is written by the Flow Compiler when the flow is validated or started.
 
 Plus the Parametrizer-specific pair:
 
@@ -3605,7 +3605,7 @@ Unlike Unreal — where Tlamatini ships its own extended MCP fork — Blender's 
 - **Home / docs:** https://www.blender.org/lab/mcp-server/
 - **Source:** the `blender_mcp` repository on Blender's own Gitea (`projects.blender.org/lab/blender_mcp`). It has three parts: the **add-on** (the TCP socket server that runs *inside* Blender), the **`blmcp` MCP server** (a stdio↔socket bridge for generic MCP clients), and a bundled **`chat_client.py`** (a bare terminal chat).
 
-Here is the key architectural decision Tlamatini makes, and the reason Blenderer is a better experience than the stock setup: **Tlamatini talks to the add-on socket *directly* and ignores the `blmcp` bridge and the bundled chat client entirely.** Blenderer *is* the client. So you install exactly two things — **Blender** and **the add-on** — and skip `uv`, skip running a separate MCP-server process, skip the terminal chat. Everything you already love about Tlamatini (the canvas, Multi-Turn, the Exec Report, Parametrizer pipelines, the other 86 agents) then composes on top of Blender with zero extra plumbing.
+Here is the key architectural decision Tlamatini makes, and the reason Blenderer is a better experience than the stock setup: **Tlamatini talks to the add-on socket *directly* and ignores the `blmcp` bridge and the bundled chat client entirely.** Blenderer *is* the client. So you install exactly two things — **Blender** and **the add-on** — and skip `uv`, skip running a separate MCP-server process, skip the terminal chat. Everything you already love about Tlamatini (the canvas, Multi-Turn, the Exec Report, Parametrizer pipelines, every other agent) then composes on top of Blender with zero extra plumbing.
 
 ## 59.3. Installing and enabling the add-on
 
@@ -3966,12 +3966,12 @@ The other firmware agents make Tlamatini an *embedded engineer*. ESPHomer makes 
 | **Prompt Flow Panel** | The canvas for chains of prompts (2026-09-25): Prompt, Programmed Prompt, Decision, Feed/Flush embeddings, Clean History and User Input, plus static customizable User Commentary notes that never run, played against your own models with an isolated conversation per run. Opened from **Panels ▸ Prompt Flow Panel**. |
 | **`.fpmt`** | A Prompt Flow Panel diagram file (JSON, `format: "tlamatini-prompting-flow"`, version 2; version 1 reply steps migrate to User Input). Not to be confused with **`.pmt`**, Tlamatini's plain-text system prompt. |
 | **Panels menu** | The chat navbar menu (since 2026-09-25) that opens the Agentic Control Panel, the Prompt Flow Panel and, for staff, the Admin Panel. |
-| **Pser** | LLM-powered fuzzy process finder. |
+| **PSer** | LLM-powered fuzzy process finder. |
 | **Pythonxer** | Inline-Python agent behind a strict `compile()` + blocking-Ruff gate; ALWAYS triggers downstream regardless of outcome (exit code drives only the LED + Multi-Turn retry loop). |
 | **PyAutoGUI** | Python library for mouse/keyboard control, used by Mouser and Keyboarder. |
 | **RAG** | Retrieval-Augmented Generation. |
 | **Reanimation Offset** | Saved log-file position to handle restarts and rotation. |
-| **Recmailer** | LangGraph IMAP receiver with LLM keyword analysis. |
+| **RecMailer** | LangGraph IMAP receiver with LLM keyword analysis. |
 | **RRF** | Reciprocal Rank Fusion — method for combining ranked lists. |
 | **Ruff** | Fast Python linter used by Pythonxer. |
 | **Skill** | Markdown-driven extension package — a directory under `agent/skills_pkg/<name>/` with a `SKILL.md` (YAML frontmatter + body). 27 seed skills ship. |
@@ -4001,7 +4001,7 @@ The other firmware agents make Tlamatini an *embedded engineer*. ESPHomer makes 
 
 **Historical source update — static User Commentary and separate User Input (2026-10-03):** The existing question/reply/cancel operation is now User Input with the supplied notched figure. User Commentary is an independent speech-bubble review note: inline writing, palette/font/size choices, resizing, Undo/Redo and complete content containment without internal scrollbars. Notes save with the diagram and never enter playback or model history. New `.fpmt` saves are version 2; version 1 executable commentary migrates to User Input without losing settings or connections. Verified by 61 backend/packaging tests and nine visible Chrome checkpoints. At that verification point the change was uncommitted source work; no executable/installer was rebuilt. The older release entries below retain their historical names/format versions. [Implementation and verification](docs/changes/2026-10-03-prompt-commentary-input.md).
 
-**v1.85.0 is the latest released version (2026-10-16).** It brings **Refresh** for the open canvas document, **Views → Canvas** for full-width chat, **Views → Reset layout**, required packaging coverage for those controls, and a docked avatar centered over the complete Mic-to-Send row. The runtime version is **1.85.0**. The release includes the file-drop router and all earlier capabilities. See the [v1.85.0 release record](docs/changes/2026-10-16-v1.85.0.md).
+**v1.87.0 is the latest released version (tagged 2026-10-18).** The catalog is now **85 workflow agents** (Gatewayer, Gateway-Relayer, Node-Manager and Zavuerer were removed), the Uninstaller moves the installation into a recovery folder instead of copying it and offers **Retry cleanup** for a locked leftover, the frozen release no longer carries the media and browser libraries twice, **About ▸ Usage** waits for real data, and every Python file has a quality gate (`npm run lint:python`). It also carries **v1.86.0** (tagged 2026-10-17): **Mover** creates a destination that does not exist yet as a folder, and the **Architecture atlas** (`Tlamatini-Architecture.pdf`) is rebuilt from the repository by LaTeXer. The runtime version is **1.87.0**. See the [v1.87.0 release record](docs/changes/2026-10-18-v1.87.0.md). Before it, **v1.85.0** (2026-10-16) brought **Refresh** for the open canvas document, **Views → Canvas** for full-width chat, **Views → Reset layout** and a docked avatar centered over the complete Mic-to-Send row ([v1.85.0 record](docs/changes/2026-10-16-v1.85.0.md)).
 
 **In `v1.83.0` (tagged 2026-10-14):** a page-wide **file-drop router** (`file_drop_router.js`): one capture-phase listener in the `<head>` of every page — the chat, the Agentic Control Panel, the Prompt Flow Panel, the welcome and login pages, the Django admin and the PDF viewer frame — that claims only file drags, recognises each file by its bytes (extension, MIME type, magic numbers, a byte-order-mark-aware text test and a real JSON parse that finds an MCP config in every shape, UTF-16 from PowerShell included) and sends each kind to its own mechanism: an MCP `.json` to a confirmation and then the External ▸ MCPs catalog, a `.flw` to the Agentic Control Panel or a new tab, a `.fpmt` to the Prompt Flow Panel or a new tab, a picture to the chat message, a PDF, Markdown file, source code or plain JSON to the chat canvas, and a folder, archive or other binary to a note in plain words. Pages register what they can do with `TlamatiniFileDrop.register(kinds, fn, {label})`, and the label also drives the overlay shown while dragging. It replaced four per-page handlers — the chat column's image listeners and overlay, the canvas's blind open-as-text drop, the External ▸ MCPs dialog's private import and the Prompt Flow Panel's viewport drop — which is why an MCP `.json` used to report an error on the chat, open as text on the canvas and navigate the browser away on the other pages. Checked by 138 router cases, 22 Python tests (319 Django tests in the touched suites), ESLint with no errors, and a headed Chrome run of 58 of 58 checks with 24 Shoter photos. With it come two changes credited to Tlamatini's-AutoBot: the **docked avatar follows both composer dividers** (`63a62cc1`, 2026-10-13) — the vertical divider now shrinks the docked portrait as well as the message box, from 282 px to 120 px at 1440 CSS px, verified by 19 docked-avatar and 18 existing composer checkpoints ([record](docs/changes/2026-10-13-docked-avatar-divider.md)); and a request Image-Interpreter or Video-Analyzer refuses for a wrong or missing setting (`91ff8453`, 2026-10-12) no longer raises the red fatal-analysis dialog — the launcher returns `error_kind: "request"` and the model just corrects the call — while Video-Analyzer's description says it has no `transcription.engine` setting. The frontend now counts 59 JS modules and 26 stylesheets, the cache suffix is `-file-drop-router-1`, and there is no new migration (the count stays 213).
 

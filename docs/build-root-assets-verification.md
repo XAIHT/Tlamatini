@@ -1,7 +1,7 @@
 <!-- Tlamatini Author Banner — Angela López Mendoza · @angelahack1 -->
 # Required runtime files: packaging repair and verification
 
-> Current release: **[v1.85.0](changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.87.0](changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
 
 
 Verified on 2026-09-27 in visible foreground PowerShell consoles, retained with

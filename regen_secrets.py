@@ -312,7 +312,7 @@ def _patch_yaml_text(text: str, rules: List[Tuple[List[str], str]],
 
     When `force_quote_passwords=True`, any rule whose YAML path ends in
     `password` is rendered as a YAML double-quoted scalar regardless of value
-    shape. This is enabled for the Emailer and Recmailer rule sets so the
+    shape. This is enabled for the Emailer and RecMailer rule sets so the
     on-disk password line always reads `password: "<...>"` — both for the
     push-able placeholder and for the keyed real value. All other credential strings are quoted too; only
     the explicitly numeric Telegram api_id field retains an integer value.
@@ -351,7 +351,7 @@ def _patch_yaml_text(text: str, rules: List[Tuple[List[str], str]],
 
         path, data_key = rule
         new_val = resolve_value(mode, keys, data_key)
-        # When `force_quote_passwords` is on (Emailer / Recmailer rule sets),
+        # When `force_quote_passwords` is on (Emailer / RecMailer rule sets),
         # any path ending in `password` is rendered as a YAML double-quoted
         # scalar regardless of value shape. Push-able placeholder and keyed
         # real value both land as `password: "<...>"`.

@@ -360,7 +360,7 @@ if __name__ == "__main__":
         app.invoke(initial_state, config={"recursion_limit": 100000}) 
         
     except KeyboardInterrupt:
-        logging.info("\n⛔ Recmailer agent stopped by user.")
+        logging.info("\n⛔ RecMailer agent stopped by user.")
     except Exception as e:
         logging.error(f"\n❌ PROGRAM STOPPED: {e}")
     finally:

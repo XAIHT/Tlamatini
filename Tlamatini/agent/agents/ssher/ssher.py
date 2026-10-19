@@ -7,7 +7,7 @@
 #   Every line of this file was written by Angela López Mendoza.
 # ═══════════════════════════════════════════════════════════════════
 #   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
-# Ssher Agent - Deterministic agent to execute a command via SSH
+# SSHer Agent - Deterministic agent to execute a command via SSH
 # Connects to a remote host and runs the configured script.
 # On SUCCESS: triggers downstream agents
 # On FAILURE: logs failure detail in one line, does NOT trigger downstream
@@ -431,10 +431,10 @@ def main():
         else:
             logging.info("⛔ SSH failed - NOT triggering downstream agents.")
 
-        logging.info(f"🏁 Ssher agent finished. Result: {'SUCCESS' if execution_success else 'FAILED'}")
+        logging.info(f"🏁 SSHer agent finished. Result: {'SUCCESS' if execution_success else 'FAILED'}")
 
     except Exception as e:
-        logging.error(f"❌ Ssher agent error: {e}")
+        logging.error(f"❌ SSHer agent error: {e}")
         logging.error("SSH EXECUTION FAILED")
     finally:
         # Keep LED green for 400ms for visual feedback

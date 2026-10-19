@@ -8,7 +8,7 @@ makes her state a falsehood about herself, confidently, with nothing for the use
 check it against, inside every ``--self-modify`` build.
 
 EVERY expectation here is DERIVED FROM SOURCE -- nothing is hand-typed -- so agent
-#89 (or a new wrapped launcher / skill) makes this fail and names the file to fix.
+#86 (or a new wrapped launcher / skill) makes this fail and names the file to fix.
 It also checks the Multi-Turn tool breakdown ADDS UP, which is how an inconsistent
 edit is caught.
 

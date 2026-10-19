@@ -51,8 +51,8 @@ from playwrighter_run import PlaywrighterError, failed_steps, run_steps  # noqa:
 BASE = os.environ.get("TLM_BASE", "http://127.0.0.1:8010")
 ACP = BASE + "/agent/agentic_control_panel/"
 HARNESS = os.path.dirname(os.path.abspath(__file__))
-OUT = os.path.join(r"C:\Development\Tlamatini\Temp", "acp_dialog_full_sweep")
-STATE = os.path.join(r"C:\Development\Tlamatini\Temp", "acp_session_state.json")
+OUT = os.path.join(r"C:\Development\XAIHT\Tlamatini\Temp", "acp_dialog_full_sweep")
+STATE = os.path.join(r"C:\Development\XAIHT\Tlamatini\Temp", "acp_session_state.json")
 
 CANON = {
     "panel":  "rgb(74, 79, 92)",     # --tlm-dlg-surface  #4a4f5c

@@ -3,7 +3,7 @@ Tlamatini Author Banner — do not remove -->
 
 # Direct voice prompts
 
-> Current release: **[v1.85.0](changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.87.0](changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
 
 
 ## Use the microphone button
@@ -422,7 +422,7 @@ All 62 updated headed-browser checks passed, covering mode persistence, draft ed
 Send, immutable per-recording preferences, all advanced settings, missing device
 choices, invalid fields, shared control styles and narrow-screen keyboard access.
 These browser checks use controlled transport, not live speech or Ollama.
-The whole-source dependency audit passes for 744 Python files and 89 agents:
+The whole-source dependency audit passes for 744 Python files and 89 agents (the catalog then; 85 since the 2026-10-18 pruning):
 69 referenced distributions, 87 main declarations, no missing imports.
 
 Evidence: `Temp/voice-development/141-mic-preferences-regression-tests.log`,

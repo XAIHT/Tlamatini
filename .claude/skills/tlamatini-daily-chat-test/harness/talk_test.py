@@ -144,7 +144,7 @@ def _resolve_app_temp() -> str:
             break
         repo = parent
     # fallback to the known dev path
-    return r"C:\Development\Tlamatini\Tlamatini\Temp"
+    return r"C:\Development\XAIHT\Tlamatini\Tlamatini\Temp"
 
 
 def _wav_set(temp_dir: str) -> set:

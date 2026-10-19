@@ -1,4 +1,4 @@
-# Ssher Agent Configuration
+# SSHer Agent Configuration
 # SSH into a remote host and execute a script/command.
 #
 # IMPORTANT: You must preconfigure SSH keys to allow passwordless

@@ -86,7 +86,7 @@ def _load_api_key() -> Optional[str]:
 
     # Tlamatini/agent/config.json (relative to repo; resolve a few candidates)
     here = os.path.dirname(os.path.abspath(__file__))
-    repo_guess = os.environ.get("TLAMATINI_REPO", r"C:\Development\Tlamatini")
+    repo_guess = os.environ.get("TLAMATINI_REPO", r"C:\Development\XAIHT\Tlamatini")
     candidates = [
         os.path.join(repo_guess, "Tlamatini", "agent", "config.json"),
         os.path.join(here, "..", "..", "..", "..", "Tlamatini", "agent", "config.json"),

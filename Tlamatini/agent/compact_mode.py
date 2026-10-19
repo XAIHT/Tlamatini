@@ -479,8 +479,8 @@ def note_self_modify(*, fits: bool, tokens: int = 0, need_tokens: int = 0) -> bo
 def _wrapped_maps():
     """display.lower() -> tool_description.lower(), and the reverse."""
     try:
-        from .chat_agent_registry import WRAPPED_CHAT_AGENT_SPECS
-        by_agent = {str(s.display_name).lower(): str(s.tool_description).lower()
+        from .chat_agent_registry import WRAPPED_CHAT_AGENT_SPECS, agent_row_name
+        by_agent = {str(agent_row_name(s)).lower(): str(s.tool_description).lower()
                     for s in WRAPPED_CHAT_AGENT_SPECS}
     except Exception:  # noqa: BLE001
         by_agent = {}

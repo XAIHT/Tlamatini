@@ -40,7 +40,7 @@ _REPO = os.path.abspath(os.path.join(_HERE, "..", "..", "..", ".."))
 # then the sibling checkout `shoter_shot.py` points at.
 _CANDIDATES = [
     os.path.join(_REPO, "Tlamatini", "agent", "agents", "windower"),
-    r"C:\Development\Tlamatini\Tlamatini\agent\agents\windower",
+    r"C:\Development\XAIHT\Tlamatini\Tlamatini\agent\agents\windower",
 ]
 
 _RUNTIME: str = ""

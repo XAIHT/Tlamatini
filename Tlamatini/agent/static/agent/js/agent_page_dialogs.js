@@ -412,7 +412,8 @@ function preRenderMcpsDialog(message, primaryDialogText, secondaryDialogText, th
                 wrapper.appendChild(label);
                 listElement.appendChild(wrapper);
                 
-                if (tool.enabled === true) {
+                // Same as the agents list: start from the row already sent.
+                if (tool.enabled === true || String(tool.content).toLowerCase() === 'true') {
                     checkbox.checked = true;
                 }
                 toolMcpsList.appendChild(listElement);
@@ -510,7 +511,11 @@ function preRenderAgentsDialog(message, primaryDialogText, secondaryDialogText, 
                 wrapper.appendChild(label);
                 listElement.appendChild(wrapper);
                 
-                if (agent.enabled === true) {
+                // Start from the row the server already sent (`content` is
+                // 'true'/'false'); loadAgents() below only re-confirms it.
+                // Starting every box unticked let a quick Continue save most
+                // agents as OFF while the per-row reload was still running.
+                if (agent.enabled === true || String(agent.content).toLowerCase() === 'true') {
                     checkbox.checked = true;
                 }
                 agentsList.appendChild(listElement);

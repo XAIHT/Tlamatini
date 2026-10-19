@@ -15,7 +15,7 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
-> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.87.0](../../docs/changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
 
 
 2026-05-20: Added two "fancy" seeded demo prompts that showcase the Reviewer (code-review skill) and Analyzer (security-audit skill) agents, placed BEFORE the Multi-Turn sample prompts. Migration `Tlamatini/agent/migrations/0090_add_reviewer_analyzer_demo_prompts.py`. Slot 26 = CODE REVIEW SPOTLIGHT (`invoke_skill('code-review', {repo_path, diff_ref:'HEAD~1', focus})`), slot 27 = SECURITY AUDIT FLOODLIGHT (`invoke_skill('security-audit', {path, min_severity})`). Both use the agent's native canvas gradient for the banner (Reviewer teal→violet `#0E7490→#7C3AED`; Analyzer red→yellow `#7F1D1D→#FACC15`) and render banner + verdict-chip/severity-scoreboard + `exec-report-table` + closing banner. Both note the user must tick Multi-Turn AND ACPX (invoke_skill is behind the ACPX/Skill surface).

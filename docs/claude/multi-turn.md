@@ -8,7 +8,7 @@
 -->
 # Tlamatini — Multi-Turn Mode, Create Flow, Parametrizer Sections
 
-> Current release: **[v1.85.0](../changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.87.0](../changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
 
 
 > **HEADLESS IS FORBIDDEN. ALL EXECUTION MUST BE VISIBLE.** Every automated test, command, diagnostic, script, build, agent, prompt and browser must run in a visible, forked foreground window on Angela's real desktop. Use visible CMD/PowerShell consoles and headed browsers (`headless=False`); keep output on screen and monitor live. No hidden/background execution, including CI or quick checks. If visibility cannot be confirmed, do not run. Mandatory policy: [visible execution](../../TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).
@@ -82,7 +82,7 @@ While the Model Brain is on (`model_brain: auto`, the default), `mcp_agent.py` b
 
 When Multi-Turn is on, `CapabilityAwareToolAgentExecutor.invoke` (`mcp_agent.py`) binds **every enabled tool / agent / skill** — the complete request-scoped surface — **not** a narrow planner subset. ACPX is still filtered by its own checkbox (`agent.acpx.filter_acpx_tools`), so the only thing the bind drops is the ACPX/Skill surface when ACPX is unchecked.
 
-This is the **fix for the starved-operator bug**: with 88 agents present, the old ≤20-tool planner subset routinely left the LLM reporting *"I don't have a file-writing or shell tool bound this turn,"* because the keyword-scored selection had crowded out the basics. The planner **still runs** — its capability hints and ordering are still computed and its summary is still forwarded into the prompt — but it **no longer removes a tool from the bind**.
+This is the **fix for the starved-operator bug**: with 88 agents present at the time, the old ≤20-tool planner subset routinely left the LLM reporting *"I don't have a file-writing or shell tool bound this turn,"* because the keyword-scored selection had crowded out the basics. The planner **still runs** — its capability hints and ordering are still computed and its summary is still forwarded into the prompt — but it **no longer removes a tool from the bind**.
 
 ### Cost trims that keep this affordable
 

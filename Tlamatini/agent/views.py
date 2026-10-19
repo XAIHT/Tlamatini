@@ -4982,7 +4982,7 @@ def update_executer_connection_view(request, agent_name):
 @require_POST
 def update_ssher_connection_view(request, agent_name):
     """
-    Update a Ssher agent's config.yaml when connections are made/removed.
+    Update a SSHer agent's config.yaml when connections are made/removed.
     Handles 'source' (input) and 'target' (output) connections.
     """
     try:
@@ -5022,7 +5022,7 @@ def update_ssher_connection_view(request, agent_name):
         config_path = os.path.join(pool_dir, 'config.yaml')
 
         if not os.path.exists(config_path):
-            return HttpResponse(json.dumps({'error': 'Ssher agent config not found'}), content_type='application/json', status=404)
+            return HttpResponse(json.dumps({'error': 'SSHer agent config not found'}), content_type='application/json', status=404)
 
         # 4. Load Config
         with open(config_path, 'r', encoding='utf-8') as f:
@@ -5065,7 +5065,7 @@ def update_ssher_connection_view(request, agent_name):
 
         return HttpResponse(json.dumps({'success': True, 'message': msg}), content_type='application/json')
     except Exception as e:
-        print(f"Error updating Ssher connection: {e}")
+        print(f"Error updating SSHer connection: {e}")
         return HttpResponse(json.dumps({'error': str(e)}), content_type='application/json', status=500)
 
 
@@ -5073,7 +5073,7 @@ def update_ssher_connection_view(request, agent_name):
 @require_POST
 def update_scper_connection_view(request, agent_name):
     """
-    Update a Scper agent's config.yaml when connections are made/removed.
+    Update a SCPer agent's config.yaml when connections are made/removed.
     Handles 'source' (input) and 'target' (output) connections.
     """
     try:
@@ -5113,7 +5113,7 @@ def update_scper_connection_view(request, agent_name):
         config_path = os.path.join(pool_dir, 'config.yaml')
 
         if not os.path.exists(config_path):
-            return HttpResponse(json.dumps({'error': 'Scper agent config not found'}), content_type='application/json', status=404)
+            return HttpResponse(json.dumps({'error': 'SCPer agent config not found'}), content_type='application/json', status=404)
 
         # 4. Load Config
         with open(config_path, 'r', encoding='utf-8') as f:
@@ -5156,7 +5156,7 @@ def update_scper_connection_view(request, agent_name):
 
         return HttpResponse(json.dumps({'success': True, 'message': msg}), content_type='application/json')
     except Exception as e:
-        print(f"Error updating Scper connection: {e}")
+        print(f"Error updating SCPer connection: {e}")
         return HttpResponse(json.dumps({'error': str(e)}), content_type='application/json', status=500)
 
 
@@ -5966,7 +5966,7 @@ def asker_choice_view(request, agent_name):
 @require_POST
 def update_recmailer_connection_view(request, agent_name):
     """
-    Update a Recmailer agent's config.yaml when connections are made/removed.
+    Update a RecMailer agent's config.yaml when connections are made/removed.
     Handles 'source' (input) connections.
     """
     try:
@@ -6006,7 +6006,7 @@ def update_recmailer_connection_view(request, agent_name):
         config_path = os.path.join(pool_dir, 'config.yaml')
         
         if not os.path.exists(config_path):
-            return HttpResponse(json.dumps({'error': 'Recmailer agent config not found'}), content_type='application/json', status=404)
+            return HttpResponse(json.dumps({'error': 'RecMailer agent config not found'}), content_type='application/json', status=404)
 
         # 4. Load Config
         with open(config_path, 'r', encoding='utf-8') as f:
@@ -6052,7 +6052,7 @@ def update_recmailer_connection_view(request, agent_name):
 
         return HttpResponse(json.dumps({'success': True, 'message': msg}), content_type='application/json')
     except Exception as e:
-        print(f"Error updating Recmailer connection: {e}")
+        print(f"Error updating RecMailer connection: {e}")
         return HttpResponse(json.dumps({'error': str(e)}), content_type='application/json', status=500)
 
 
@@ -6825,7 +6825,7 @@ def update_videoplayer_connection_view(request, agent_name):
 @require_POST
 def update_sqler_connection_view(request, agent_name):
     """
-    Update a Sqler agent's config.yaml when connections are made/removed.
+    Update a SQLer agent's config.yaml when connections are made/removed.
 
     Expected POST body (JSON):
     {
@@ -6868,7 +6868,7 @@ def update_sqler_connection_view(request, agent_name):
         if not os.path.exists(config_path):
             return HttpResponse(json.dumps({
                 "success": False,
-                "message": f"Sqler config not found: {config_path}"
+                "message": f"SQLer config not found: {config_path}"
             }), content_type='application/json', status=404)
 
         with open(config_path, 'r', encoding='utf-8') as f:
@@ -6906,7 +6906,7 @@ def update_sqler_connection_view(request, agent_name):
         return HttpResponse(json.dumps({"success": True, "message": message}), content_type='application/json')
 
     except Exception as e:
-        print(f"Error updating Sqler connection: {e}")
+        print(f"Error updating SQLer connection: {e}")
         return HttpResponse(json.dumps({"error": str(e)}), content_type='application/json', status=500)
 
 
@@ -7139,7 +7139,7 @@ def update_dockerer_connection_view(request, agent_name):
 @require_POST
 def update_pser_connection_view(request, agent_name):
     """
-    Update a Pser agent's config.yaml when connections are made/removed.
+    Update a PSer agent's config.yaml when connections are made/removed.
     Handles 'source' (input) and 'target' (output) connections.
     """
     try:
@@ -7171,7 +7171,7 @@ def update_pser_connection_view(request, agent_name):
         config_path = os.path.join(pool_base_path, pool_folder_name, 'config.yaml')
 
         if not os.path.exists(config_path):
-            return HttpResponse(json.dumps({'error': f'Pser config not found: {config_path}'}), content_type='application/json', status=404)
+            return HttpResponse(json.dumps({'error': f'PSer config not found: {config_path}'}), content_type='application/json', status=404)
 
         with open(config_path, 'r', encoding='utf-8') as f:
             config = yaml.safe_load(f) or {}
@@ -7206,7 +7206,7 @@ def update_pser_connection_view(request, agent_name):
 
         return HttpResponse(json.dumps({'success': True, 'message': msg}), content_type='application/json')
     except Exception as e:
-        print(f"Error updating Pser connection: {e}")
+        print(f"Error updating PSer connection: {e}")
         return HttpResponse(json.dumps({'error': str(e)}), content_type='application/json', status=500)
 
 
@@ -10428,8 +10428,8 @@ def version_view(request):
     Response shape::
 
         {
-          "version": "1.85.0",                       # public SemVer (clean, no suffix)
-          "build":   "1.85.0",                       # build descriptor (same as version)
+          "version": "1.87.0",                       # public SemVer (clean, no suffix)
+          "build":   "1.87.0",                       # build descriptor (same as version)
           "commit":  "abc1234",
           "date":    "2026-05-15T18:42:11Z",
           "source":  "generated" | "git" | "unknown"

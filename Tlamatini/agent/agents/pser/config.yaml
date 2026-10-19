@@ -1,5 +1,5 @@
 # Models: "@config" follows Config -> Models. Set a concrete value for a per-agent override.
-# Pser Agent Configuration
+# PSer Agent Configuration
 # This agent searches for a running process by a "likely" name,
 # using an LLM to intelligently match the best candidate process.
 #

@@ -109,6 +109,9 @@ NOT_READY_MARKERS = (
     "Agent is not ready. Please try again later.",
     "Agent is not ready",
     "is still being processed",
+    # Tlamatini speaks these in the first person since 2026-10-09
+    # (agent/constants.py); the old wording above stays for older builds.
+    "I'm not ready yet",
 )
 
 # --- System / busy banners that are NOT the real answer -------------------
@@ -119,6 +122,10 @@ BUSY_MARKERS = (
     "referenced rephrase:",
     "Welcome back, session and context restored",
     "Welcome back, session restored",
+    # First-person forms (2026-10-09).
+    "I'm working on your request",
+    "I'm loading the context you gave me",
+    "I restored our session",
 ) + NOT_READY_MARKERS
 
 # --- Reports --------------------------------------------------------------

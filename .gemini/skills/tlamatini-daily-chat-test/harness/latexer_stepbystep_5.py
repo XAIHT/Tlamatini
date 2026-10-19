@@ -70,7 +70,7 @@ RESULTS = os.path.join(RUN_DIR, "results.jsonl")
 SUMMARY = os.path.join(RUN_DIR, "SUMMARY.html")
 
 # Every artefact the wizards produce lands under <app>/Temp (Temp policy).
-WORK_ROOT = os.path.join(r"C:\Development\Tlamatini", "Temp", "LaTeXerTest", RUN_TAG)
+WORK_ROOT = os.path.join(r"C:\Development\XAIHT\Tlamatini", "Temp", "LaTeXerTest", RUN_TAG)
 os.makedirs(WORK_ROOT, exist_ok=True)
 
 
@@ -379,7 +379,7 @@ def grab(page, path):
 # verdict into its OWN log file (INI_SECTION_LATEXER) as a separate process.
 # That file is written before, and independently of, anything the Exec Report
 # renders - so comparing the two is a genuine cross-check, not a tautology.
-POOL_DIR = os.path.join(r"C:\Development\Tlamatini", "Tlamatini", "agent",
+POOL_DIR = os.path.join(r"C:\Development\XAIHT\Tlamatini", "Tlamatini", "agent",
                         "agents", "pools", "_chat_runs_")
 
 # LaTeXer's documented status vocabulary (docs/claude/agents.md, LaTeXer entry).

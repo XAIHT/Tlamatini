@@ -1,6 +1,6 @@
 # Desktop input and flow contracts
 
-> Current release: **[v1.85.0](changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.87.0](changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
 
 
 Implementation update, 2026-09-15. GUI-Manager is still **design only**; it is not an installed agent or tool. See [its design](GUI-Manager-design.md). The [generated inventory](agent-coverage.md) lists every installed agent.
@@ -99,7 +99,7 @@ Each cycle reloads configurations and includes lifecycle facts, source dependenc
 
 ## Verification scope
 
-Offline regression tests cover all installed agent identities/reference sections/config schemas, `.flw` conversion, compiler branch/mapping integration, parser coverage, CRLF/empty fields, typed mappings, partial-mapping rejection, replay protection, monitoring semantics and failure exits. Existing desktop regressions exercise native input through mocks; the prior read-only Mouser inspection verified this machine's geometry without sending input. These tests do not claim live verification of all 89 agents, a multi-monitor hardware setup, Notepad editing, or PowerPoint automation.
+Offline regression tests cover all installed agent identities/reference sections/config schemas, `.flw` conversion, compiler branch/mapping integration, parser coverage, CRLF/empty fields, typed mappings, partial-mapping rejection, replay protection, monitoring semantics and failure exits. Existing desktop regressions exercise native input through mocks; the prior read-only Mouser inspection verified this machine's geometry without sending input. These tests do not claim live verification of all 89 agents of that day (85 since the 2026-10-18 pruning), a multi-monitor hardware setup, Notepad editing, or PowerPoint automation.
 
 Validation on 2026-09-15: 31 flow-knowledge tests, 38 desktop-input tests, 17 existing flow-contract/Parametrizer/Shoter tests and 17 migrated catalog-membership tests passed (103 focused tests). The broader 73-test run including build checks passed 72; its existing dependency audit still flags local PDF/LaTeX/PPTX helper imports and unlisted `fontTools`. These changes do not claim that release packaging is clean. Ruff, JavaScript syntax/mode checks and the generated-catalog freshness check passed. The flow tests include a repaired model response producing real `.flw`/canvas files with model calls mocked; no live LLM or desktop interaction is claimed by that test.
 

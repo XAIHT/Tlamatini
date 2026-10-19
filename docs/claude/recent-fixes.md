@@ -8,7 +8,7 @@
 -->
 # Tlamatini — Recent Fixes / Gotchas (archived fix log)
 
-> Current release: **[v1.85.0](../changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.87.0](../changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
 
 
 > **This file is NOT auto-imported into the AI-assistant context** (unlike the rest of `docs/claude/*.md`). It is the chronological log of surgical fixes and "keep this in mind / do NOT revert" contracts that used to live at the bottom of `gotchas.md`. It was split out so the always-loaded onboarding stays lean — see the "Archive the fix-log" decision recorded in `docs/claude/INDEX.md`.
@@ -19,9 +19,52 @@
 
 ---
 
+## 2026-10-18 — Grepper and Globber understand brace sets, lists and folder globs (and stop re-walking the tree)
+
+**Angela: "FIX GLOBBER AND GREPPER — it is your main responsibility."** Found during the post-v1.87.0 sweep, through Tlamatini's own tools: both agents handed the pattern straight to `fnmatch` / `glob`, which only know `*`, `?` and `[..]`. Every one of these searched **0 files** and answered a confident `no_matches`:
+
+| asked | before | after |
+|---|---|---|
+| Grepper `glob='*.{js,py,html}'` | 0 files (`{` read literally) | the `.js`, `.py` and `.html` files |
+| Grepper `glob='*.py,*.js'` / `'*.py;*.js'` / `'*.py\|*.js'` | 0 files | both kinds |
+| Grepper `glob='**/*.py'` or `'src/*.py'` | 0 files (compared with the bare file NAME, which never has a slash) | matched against the path below `path` |
+| Globber `pattern='**/*.{py,js}'` | 0 files | both kinds, each file once |
+
+**One shared block, two agents.** `# >>> SHARED GLOB HELPERS` … `# <<< SHARED GLOB HELPERS <<<` is byte-identical in `agents/grepper/grepper.py` and `agents/globber/globber.py` (pool agents cannot import `agent.*`, and the tests copy only the `.py`). `agent/test_glob_patterns.py` fails if the two copies drift.
+
+**Contracts (do NOT weaken):**
+
+1. **Additive.** The pattern as written is always tried FIRST, so nothing that matched before stops matching (a literal `a,b.txt` is still found). The one exception is a `|` list: `|` cannot be part of a Windows file name, so only its pieces are tried.
+2. `,` / `;` split a list only when at least one piece is a wildcard (`test*.py,tests.py` splits; `a,b.txt` stays one name). `{x}`, an unbalanced brace and braces inside `[..]` stay literal, as in a shell; expansion is capped at 256 patterns.
+3. **A pattern without a folder** keeps Grepper's old meaning (fnmatch on the file NAME, case-insensitive on Windows); **with a folder** it is matched against the relative and the absolute path, with a whole `**` segment spanning folders — glob.glob's own rules.
+4. **No extra walks.** Globber with several patterns does ONE `os.walk` (`_glob_walk`) instead of one glob per pattern: a six-pattern search over this repository went from **3 minutes to 9.8 s**. Both agents skip folders that cannot match when every pattern starts with a fixed folder (`_glob_dir_prefixes`): a Grepper folder glob went from **34 s to 0.13 s** with the same 57 matches in 170 files. A single plain Globber pattern still uses `glob.glob` exactly as before.
+5. Both agents log what they understood (`🧩 glob understood as N pattern(s)` / `🧩 pattern understood as N glob(s)`) — silent rewriting reads as a bug.
+
+**Proof:** `agent/test_glob_patterns.py` — shared-block identity, brace/list/path units, pruning, a parity test that the single walk returns exactly what glob.glob returns pattern by pattern (hidden folders, noise folders and case included), REAL agent runs, the chat's own request parser, and the real wrapped launcher (`chat_agent_grepper` / `chat_agent_globber`, verdict `R4`). 535 tests across the glob suites and every suite that pins the registry, catalog, Compact mode, Exec Report and Ask-Execs: OK. Live through the `mcp__tlamatini__grepper` / `globber` tools on this repository.
+
+## 2026-10-18 — The post-v1.87.0 consistency sweep (agents, wrapped tools, skills, documents)
+
+**Angela: "sweep the complete source code … FIX EVERYTHING WRONG … AND MAKE VISUAL TESTS."** Every count was re-derived from source (85 agents, 66 wrapped, 108 built-in tools, 50 Parametrizer sources, 102 root stdio MCP tools, 42 `SKILL.md`, 214 migrations, 59 JS, 26 CSS). Real defects found and fixed, besides the Grepper/Globber entry above:
+
+1. **Six wrapped tools ignored their agent's Configure-Agents checkbox.** The gate `agent_<name>_status` and Compact mode's row linking keyed on the TOOL label, and six labels name the action, not the agent: Send Email (Emailer), Move File (Mover), Summarize Text (Summarizer) and the three Kyber tools (Kyber-KeyGen / Kyber-Cipher / Kyber-DeCipher). Unticking Emailer never hid `chat_agent_send_email`, and in Compact mode (a missing row reads OFF) those tools could never be enabled. `chat_agent_registry.agent_row_name(spec)` resolves the row from the template folder through `display_name_from_agent_type`; `tools.tool_gate_table()` and `compact_mode._wrapped_maps` use it. Guard: `test_agent_display_names.py::test_every_wrapped_tool_is_gated_by_a_real_agent_row`.
+2. **A loaded `.flw` lost FlowCreator's label** (`acp-file-io.js` now sets `agentText = 'FlowCreator'`).
+3. **113 mis-cased display names** in documents and `agents_descriptions.md` (which feeds the sidebar tooltips and `flow_catalog.json`); the catalog and `docs/agent-coverage.md` were regenerated (`scripts/update_flow_catalog.py --check`: 85 verified).
+4. FlowCreator's `agentic_skill.md` headings renumbered 1..85 after the pruning; `test_kalier_agent.py` no longer pins a heading number.
+5. `test_preserved_user_state.py` now checks EVERY extraction block of the installer, not the first one it happened to find.
+6. **The daily-chat-test harness ran the OLD copy.** 33 harness files (both mirrors), including `shoter_shot.py` — the launcher of every test photo — still pointed at `C:\Development\Tlamatini` (an old `designer`-branch copy Angela does not use) instead of this repository. The question banks also lacked 13 agents (Grepper, Globber, Editor, PDFer, Talker, Whisperer, Video-Analyzer, …): the wrapped bank now has 67 questions for all 66 wrapped agents and the knowledge bank names all 85 (with `Monitor Netstat`, not `Monitor-Netstat`). The Gemini mirror had also lost PPTXer and the 2026-10-09 first-person chat markers in `config.py`; both mirrors are identical again (line endings aside).
+7. Dated records that said "89 agents" now say it was the count of that day; docs that called the v1.87.0 removal / Usage work "unreleased" now say v1.87.0.
+8. **`npm run lint:python` could never run in Windows Terminal** (Windows 11's default console). `scripts/check_python_quality.py` demanded that `GetConsoleWindow()` be the foreground window, but there it returns a hidden-owner `PseudoConsoleWindow`; the foreground window is the terminal that OWNS it (measured: `CASCADIA_HOSTING_WINDOW_CLASS` as `GA_ROOTOWNER`). The gate now accepts the console or its root owner, still visible, not minimized and in the foreground — and it passed (exit 0) from a visible terminal.
+9. **Configure Agents / Configure MCPs opened with most boxes UNTICKED.** Both dialogs tested `agent.enabled` / `tool.enabled`, a field the cached rows never carry (they hold `content`, `'true'`/`'false'`), so every box started empty and was then ticked one HTTP request at a time (`loadAgents()`, 85 requests in a row). A Continue pressed during that reload saved most agents as OFF. Found by the visible `scripts/agent_catalog_visible.py`: its photo showed 17 of 85 ticked while the database held all 85 (this morning's run, before any change here, showed the same at 12 of 85). The dialogs now start from `content`, and Continue updates the cached rows so a reopened dialog starts from the user's last save; the per-row reload still re-confirms every box. Guard: `agent/test_configure_dialog_initial_ticks.py` (also checks the collected `staticfiles/` copy). Visible proof (Shoter, headed Chrome, isolated DB on port 8001): all 85 ticked at open, 14/14 catalog checks passed, exit 0.
+
+**Visible checks of this sweep (2026-10-18, Shoter full-desktop photos):** the real chat answered Globber and Grepper brace-set questions (3/3); `agent_catalog_visible.py` 14/14 twice (before and after fix 9); `dossier_visual_walkthrough_visible.py` walked all 142 PDF pages and 176 slides, 6 photos, 0 refused, exit 0.
+
+## 2026-10-18 — v1.87.0: leaner catalog, safer removal, smaller release (and v1.86.0)
+
+Gatewayer, Gateway-Relayer, Node-Manager and Zavuerer were removed (migration **0214**, no renumbering); the Uninstaller moves the installation into a recovery folder on the same drive (schema 2 journal, **Retry cleanup**, `.tlamatini-removal.json`); the frozen release stops carrying the media/browser libraries twice; **About ▸ Usage** waits for real data (bodyless `POST /api/me`); `npm run lint:python` checks every tracked Python file. v1.86.0 (2026-10-17): Mover creates a missing destination as a folder (`_names_a_file()`), and the Architecture atlas is rebuilt by LaTeXer. ⚠️ The `v1.87.0` tag points to `2203b436`; `9a55f836` and `826c7c1a` landed right after it (the v1.76.0 / v1.78.0 shape). Full matrix and evidence: [the v1.87.0 record](../changes/2026-10-18-v1.87.0.md).
+
 ## 2026-10-16 — v1.85.0 released; complete documentation refresh
 
-**v1.85.0 is the latest released version (2026-10-16).** It brings **Refresh** for the open canvas document, **Views → Canvas** for full-width chat, **Views → Reset layout**, required packaging coverage for those controls, and a docked avatar centered over the complete Mic-to-Send row. The runtime version is **1.85.0**. The release includes the file-drop router and all earlier capabilities. See the [v1.85.0 release record](../changes/2026-10-16-v1.85.0.md).
+**v1.85.0 was the latest released version on 2026-10-16** (superseded by v1.87.0 on 2026-10-18). It brought **Refresh** for the open canvas document, **Views → Canvas** for full-width chat, **Views → Reset layout**, required packaging coverage for those controls, and a docked avatar centered over the complete Mic-to-Send row. Its runtime version was **1.85.0**. The release included the file-drop router and all earlier capabilities. See the [v1.85.0 release record](../changes/2026-10-16-v1.85.0.md).
 
 All 227 tracked Markdown files receive the current-release reference. User and maintainer guides explain Refresh, Views/Reset, docking and packaging together. Both complete dossiers use the same release content and source-derived inventory. Earlier verification remains dated; the release record tracks the audit evidence.
 
@@ -32,7 +75,7 @@ against the Send button's right edge. The existing layout pass now measures the
 Mic/Send row's center and positions the entire dock around it, using the dock-only
 CSS variable `--tlm-avatar-docked-right`. It follows both pane dividers and the
 action row's minimum width. The 120 px floor, square sizing, floating geometry
-and composer minimum remain independent. Cache suffix: `-avatar-center-1`.
+and composer minimum remain independent. Cache suffix at that change: `-avatar-center-1`.
 
 Verified on the real source page in foreground, explicitly headed Chrome: all
 19 existing docked-avatar checkpoints passed, including both dividers, the 120 px

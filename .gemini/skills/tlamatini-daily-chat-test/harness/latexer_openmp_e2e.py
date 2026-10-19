@@ -62,7 +62,7 @@ RUN_DIR = os.path.join(HERE, "reports", "openmp_e2e_%s" % RUN_TAG)
 SHOTS = os.path.join(RUN_DIR, "shots")
 os.makedirs(SHOTS, exist_ok=True)
 
-APP_ROOT = r"C:\Development\Tlamatini"
+APP_ROOT = r"C:\Development\XAIHT\Tlamatini"
 WORK_ROOT = os.path.join(APP_ROOT, "Temp", "LaTeXerOpenMP_E2E", RUN_TAG)
 OUT_DIR = os.path.join(WORK_ROOT, "OpenMPImplementation")
 os.makedirs(OUT_DIR, exist_ok=True)

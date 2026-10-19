@@ -154,7 +154,7 @@ def main():
     if _is_reanimated:
         logging.info(f"🔄 {CURRENT_DIR_NAME} REANIMATED (resuming from pause)")
         logging.info("=" * 60)
-    logging.info(f"🚀 Sqler Agent started with PID: {pid}")
+    logging.info(f"🚀 SQLer Agent started with PID: {pid}")
 
     try:
         config = yaml.safe_load(open("config.yaml"))
@@ -211,7 +211,7 @@ def main():
     finally:
         if os.path.exists('agent.pid'):
             os.remove('agent.pid')
-        logging.info("🛑 Sqler Agent stopped.")
+        logging.info("🛑 SQLer Agent stopped.")
 
 if __name__ == "__main__":
     main()

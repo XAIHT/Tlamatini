@@ -114,11 +114,19 @@ class SharedPreserveListTests(SimpleTestCase):
                       "is protected by the entry `DB`.")
 
     def test_extraction_actually_honours_the_skip(self):
+        # install.py opens pkg.zip more than once (2026-10-18: the recovery
+        # transaction first lists its directories), so check EVERY block that
+        # opens the package and EXTRACTS from it - not merely the first one.
         src = _read(os.path.join(_REPO_ROOT, "install.py"))
-        block = src.split("with zipfile.ZipFile(self.zip_path", 1)[1][:1200]
-        self.assertIn("_is_preserved_member", block,
-                      "the extraction loop extracts every member again - "
-                      "this is the exact line that wiped the MCP catalog.")
+        blocks = [part[:1200] for part in
+                  src.split("with zipfile.ZipFile(self.zip_path")[1:]]
+        extracting = [b for b in blocks if ".extract(" in b or ".extractall(" in b]
+        self.assertTrue(extracting, "install.py no longer extracts pkg.zip "
+                                    "inside a `with zipfile.ZipFile(self.zip_path` block.")
+        for block in extracting:
+            self.assertIn("_is_preserved_member", block,
+                          "the extraction loop extracts every member again - "
+                          "this is the exact line that wiped the MCP catalog.")
 
 
 class ReleaseNeverShipsTheDevCatalogTests(SimpleTestCase):

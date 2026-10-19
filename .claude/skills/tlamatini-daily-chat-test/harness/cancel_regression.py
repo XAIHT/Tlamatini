@@ -281,8 +281,8 @@ def watch_after_cancel(page, seconds: int, label: str) -> dict:
 LONG_CHAIN = (
     "Run EXACTLY these three tools, one after another, in this order, and nothing else. "
     "1) chat_agent_executer with script='ping -n 30 127.0.0.1'  "
-    "2) chat_agent_globber with pattern='**/*.md' and path='C:\\Development\\Tlamatini\\docs'  "
-    "3) chat_agent_grepper with pattern='cancel' and path='C:\\Development\\Tlamatini\\docs' and glob='*.md'  "
+    "2) chat_agent_globber with pattern='**/*.md' and path='C:\\Development\\XAIHT\\Tlamatini\\docs'  "
+    "3) chat_agent_grepper with pattern='cancel' and path='C:\\Development\\XAIHT\\Tlamatini\\docs' and glob='*.md'  "
     "Then give a one-line summary. END-RESPONSE"
 )
 
@@ -356,7 +356,7 @@ def test_1_cancel_during_long_tool_chain(page) -> None:
 
 def test_2_next_request_works(page) -> None:
     log("TEST 2 — the NEXT request after a cancel must work normally.")
-    send(page, "Use chat_agent_globber with pattern='*.md' and path='C:\\Development\\Tlamatini\\docs' "
+    send(page, "Use chat_agent_globber with pattern='*.md' and path='C:\\Development\\XAIHT\\Tlamatini\\docs' "
                "and tell me how many files matched. END-RESPONSE")
     started = wait_busy(page)
     record("T2 the new run re-arms the busy UI", started,

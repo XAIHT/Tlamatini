@@ -1,6 +1,6 @@
 # `include/` — project header files
 
-> Current release: **[v1.85.0](../../../../../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.87.0](../../../../../../docs/changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
 
 
 Put your own `.h` / `.hpp` files here. PlatformIO adds this directory to the

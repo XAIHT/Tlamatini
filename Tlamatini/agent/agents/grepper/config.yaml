@@ -2,7 +2,10 @@
 # Read-only regex content search across a file or directory tree (Claude-Grep equivalent).
 pattern: ""
 path: ""
-# Optional filename filter applied to each file's basename (fnmatch, e.g. "*.py").
+# Optional file filter. A plain pattern is matched against each file NAME
+# ("*.py"); one with a folder ("src/*.py", "**/*.py") against the path below
+# `path`. Brace sets ("*.{js,py,html}") and lists ("*.py,*.js" | "*.py;*.js" |
+# "*.py|*.js") are understood too.
 glob: ""
 case_insensitive: false
 # content = file:line:match lines | files = matching paths only | count = per-file match counts

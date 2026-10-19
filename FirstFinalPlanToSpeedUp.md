@@ -1,6 +1,6 @@
 # First Final Plan To Speed Up Tlamatini
 
-> Current release: **[v1.85.0](docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.87.0](docs/changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
 
 
 **Objective**: implement one low-risk speedup batch that improves runtime speed without reducing Tlamatini's virtues: useful logs, readable failures, full agent/tool behavior, source-mode development comfort, and frozen-release usability.

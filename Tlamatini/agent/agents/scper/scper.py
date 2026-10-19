@@ -7,7 +7,7 @@
 #   Every line of this file was written by Angela López Mendoza.
 # ═══════════════════════════════════════════════════════════════════
 #   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
-# Scper Agent - Deterministic agent to send/receive files via SCP
+# SCPer Agent - Deterministic agent to send/receive files via SCP
 # Connects to a remote host and transfers a file.
 # On SUCCESS: triggers downstream agents
 # On FAILURE: logs failure detail in one line, does NOT trigger downstream
@@ -485,10 +485,10 @@ def main():
         else:
             logging.info("⛔ SCP failed - NOT triggering downstream agents.")
 
-        logging.info(f"🏁 Scper agent finished. Result: {'SUCCESS' if execution_success else 'FAILED'}")
+        logging.info(f"🏁 SCPer agent finished. Result: {'SUCCESS' if execution_success else 'FAILED'}")
 
     except Exception as e:
-        logging.error(f"❌ Scper agent error: {e}")
+        logging.error(f"❌ SCPer agent error: {e}")
         logging.error("SCP TRANSFER FAILED")
     finally:
         # Keep LED green for 400ms for visual feedback

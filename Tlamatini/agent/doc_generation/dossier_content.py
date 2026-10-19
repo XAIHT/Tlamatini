@@ -1803,8 +1803,99 @@ def build_chapters(f: dict) -> list[Chapter]:
          f"Version {f['release_tag']}; the latest release published on GitHub is "
          f"{f['release']['latest_published'] or 'not verified'}."),
         accent="gold", sections=[
-        Section("release185", "CURRENT RELEASE · v1.85.0", "Refresh, Views and a centered avatar",
-            "Tlamatini v1.85.0 is the latest released version, with a more flexible chat workspace.",
+        Section("release187", "CURRENT RELEASE · v1.87.0", "A leaner catalog, a safer removal, a smaller release",
+            "Tlamatini v1.87.0 is the latest released version, tagged on October 18.",
+            body=[
+                "The catalog now holds 85 workflow agents: Gatewayer, Gateway-Relayer, Node-Manager and "
+                "Zavuerer were removed. Migration 0214 deletes their rows and catalog prompts without "
+                "renumbering anything that remains.",
+                "The Uninstaller moves the installation aside on the same drive instead of copying it, and "
+                "offers Retry cleanup when a locked file stays behind. The frozen release no longer carries "
+                "the media and browser libraries twice. About → Usage waits for real data, and every tracked "
+                "Python file has a quality gate.",
+                "The v1.87.0 tag was created one minute before the work it names. Both follow-up commits "
+                "landed on main right after it, so a build of main reports 1.87.0 and carries all of it.",
+            ],
+            points=[
+                ("85 agents", "Four retired agents removed in a forward migration."),
+                ("Removal", "Move aside, verify, Retry cleanup for locked leftovers."),
+                ("Release size", "Media and browser libraries ship once, in the carried Python."),
+                ("Quality", "npm run lint:python checks every tracked Python file."),
+            ], deck="cards"),
+        Section("removal187", "NEW IN v1.87.0", "Uninstalling is fast and recoverable",
+            "The Uninstaller moves entries into a recovery folder instead of copying and hashing them.",
+            body=[
+                "Each move is recorded in a schema 2 journal before and after it happens. A destination "
+                "collision is refused, and the journal stays until cleanup succeeds. If a reversible step "
+                "fails, the entries and the Windows state are put back.",
+                "If the application is removed but a locked file remains, the window says Application removed; "
+                "cleanup incomplete, lists what remains and offers Retry cleanup. Reopening the Uninstaller can "
+                "finish the job later. agents/ and the six content folders that hold files are kept.",
+                "A filesystem benchmark removed 64,264 package files (3.88 GB) in 22.3 seconds with all 254 "
+                "preserved hashes unchanged. It measures the filesystem phase; a compiled-client run remains "
+                "the acceptance test.",
+            ], points=[
+                ("Journal", "Every move recorded before and after."),
+                ("Retry", "Locked leftovers can be finished later."),
+                ("Kept", "agents/ and the content folders that hold files."),
+                ("Benchmark", "64,264 files in 22.3 s, October 18."),
+            ], deck="cards"),
+        Section("payload187", "NEW IN v1.87.0", "One owner for every library",
+            "The frozen web process stops carrying libraries that only the pool agents use.",
+            body=[
+                "cv2, ffpyplayer, av, playwright, faster_whisper, ctranslate2 and onnxruntime run under the "
+                "carried Python, so build.py keeps them out of the frozen interpreter. Chromium and FFmpeg "
+                "revisions come from the carried Playwright manifest.",
+                "Only bytecode caches whose source sits beside them are removed, Git's copied uninstaller files "
+                "are dropped and the package is written with DEFLATE level 9. A release-payload test pins who "
+                "owns each library.",
+                "About → Usage shows Checking usage… until real report data arrives, explains a failed connection "
+                "under Connection details and retries by itself. Its account request is a bodyless "
+                "POST /api/me: a {} body made the local server reset the connection.",
+            ], points=[
+                ("Ownership", "Pool-only libraries live in the carried Python."),
+                ("Package", "Bytecode, uninstaller copies and compression tuned."),
+                ("Usage", "Checking usage… until real data arrives."),
+                ("Account", "A bodyless POST /api/me."),
+            ], deck="cards"),
+        Section("sweep187", "AFTER THE v1.87.0 TAG", "The consistency sweep",
+            "A source-wide sweep re-derived every count and fixed what it found.",
+            body=[
+                "Grepper's glob and Globber's pattern now understand brace sets such as *.{js,py}, lists such "
+                "as *.py,*.js and folder globs such as src/**/*.py. Before, each searched zero files and "
+                "answered no_matches. Globber walks the tree once for several patterns: three minutes became "
+                "ten seconds.",
+                "Six wrapped tools whose label names an action (Send Email, Move File, Summarize Text and the "
+                "three Kyber tools) now obey their agent's Configure Agents checkbox. A loaded flow keeps "
+                "FlowCreator's label, and the Python quality gate runs in Windows Terminal.",
+                "The daily chat test reads this repository again instead of an old copy, and its question "
+                "banks cover all 85 agents and all 66 wrapped tools. Configure Agents and Configure MCPs now open "
+                "with the boxes the server saved, so a quick Continue can no longer switch most agents off.",
+            ], points=[
+                ("Patterns", "Brace sets, lists and folder globs in Grepper and Globber."),
+                ("Gates", "Six wrapped tools follow their agent's checkbox; Configure opens with the saved ticks."),
+                ("Harness", "The daily chat test reads this repository."),
+                ("Quality gate", "Runs in Windows Terminal, the Windows 11 default."),
+            ], deck="cards"),
+        Section("release186", "CARRIED FROM v1.86.0", "Mover folders and the Architecture atlas",
+            "Tagged on October 17: a missing destination becomes a folder, and the atlas rebuilds itself.",
+            body=[
+                "Mover creates a destination that does not exist yet, such as scripts/architecture_atlas, as a "
+                "folder, and the file keeps its own name. A rename still happens when the destination names a "
+                "file: it exists as a file, has an extension, or the source has none either. A trailing slash "
+                "always means a folder.",
+                "python scripts/architecture_atlas/build_architecture_pdf.py regenerates "
+                "Tlamatini-Architecture.pdf with Tlamatini's own LaTeXer and verifies that every tracked file "
+                "appears in it. Exit codes 0, 1, 2 and 3 mean ok, typeset failed, a file left unplaced and a "
+                "file missing.",
+            ], points=[
+                ("Mover", "A new destination name becomes a folder."),
+                ("Rename", "Only when the destination names a file."),
+                ("Atlas", "Rebuilt by LaTeXer from the repository."),
+                ("Proof", "Every tracked file appears in the atlas."),
+            ], deck="cards"),
+        Section("release185", "CARRIED FROM v1.85.0", "Refresh, Views and a centered avatar",
+            "Tagged and published on October 16, with a more flexible chat workspace.",
             body=[
                 "Refresh rereads the open document. Views makes room for full-width chat while keeping the "
                 "canvas alive. Reset restores the layout without clearing content. The portrait and its "
@@ -1818,7 +1909,7 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("Reset layout", "Restore both panes and dock the avatar."),
                 ("Portrait", "Center the whole frame above the complete action row."),
             ], deck="cards"),
-        Section("refresh185", "NEW IN v1.85.0", "Refresh the original document",
+        Section("refresh185", "CARRIED FROM v1.85.0", "Refresh the original document",
             "Open selects a file. Refresh reads that same source again, without writing to it.",
             body=[
                 "Native-picker access retains a browser-granted handle. Drops retain their handle or entry "
@@ -1836,7 +1927,7 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("Failure", "Keep the previous content and allow retry."),
                 ("Context", "Prepare changed content before replacing active context."),
             ], deck="cards"),
-        Section("refreshviews185", "NEW IN v1.85.0", "Keep the reading position",
+        Section("refreshviews185", "CARRIED FROM v1.85.0", "Keep the reading position",
             "Refreshing Markdown or PDF preserves the view while the underlying document changes.",
             body=[
                 "Markdown retains Preview or Source, reading position and explicitly selected resources. "
@@ -1854,7 +1945,7 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("Recovery", "A failed replacement retains the previous viewer."),
                 ("Evidence", "20 visible Chrome checks on October 15."),
             ], deck="cards"),
-        Section("views185", "NEW IN v1.85.0", "Choose a full-width chat",
+        Section("views185", "CARRIED FROM v1.85.0", "Choose a full-width chat",
             "Views → Canvas shows or hides the canvas without unloading it.",
             body=[
                 "Hiding the canvas gives the chat the full width. The document, PDF viewer, Markdown mode, "
@@ -1870,7 +1961,7 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("Preference", "Saved per account and browser origin."),
                 ("Navigation", "Opening a document reveals its canvas."),
             ], deck="cards"),
-        Section("avatar185", "NEW IN v1.85.0", "A centered portrait at every height",
+        Section("avatar185", "CARRIED FROM v1.85.0", "A centered portrait at every height",
             "The portrait and its frame share the center of the entire Mic-to-Send action row.",
             body=[
                 "Previously, reducing the composer height shrank the portrait but left it anchored to the "
@@ -1887,13 +1978,13 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("Reset", "Restore layout while keeping content."),
                 ("Evidence", "19 visible checks; center error below 0.02 CSS px, October 16."),
             ], deck="cards"),
-        Section("carriage185", "v1.85.0 IMPLEMENTATION", "The complete feature travels together",
+        Section("carriage185", "CARRIED FROM v1.85.0", "The complete feature travels together",
             "Required runtime and self-modify inventories cover the Views template and scripts.",
             body=[
                 "The runtime receipt requires agent_page.html plus agent_page_layout.js, avatar_size.js, "
                 "agent_page_canvas.js and agent_page_init.js. The snapshot also requires the two visible Views "
                 "harnesses and the identity instructions. Refresh retains the existing PDF and Markdown carriers.",
-                "There is no new migration or Python dependency. The cache suffix is -avatar-center-1 and the "
+                "There is no new migration or Python dependency. Its cache suffix was -avatar-center-1 and the "
                 "Views template suffix is _views1. Visibility is browser-local and does not depend on Self-modify.",
                 "Dated evidence includes 160 packaging/self-update/self-modify tests and 13 visible frozen "
                 "frontend checks on October 16. The latter used an actual executable with byte-verified "
@@ -1902,7 +1993,7 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("Runtime", "Required template and four cooperating scripts."),
                 ("Snapshot", "Sources, identity and both Views harnesses."),
                 ("Database", f"No new migration; {f['migrations']} migrations remain."),
-                ("Version", "v1.85.0 across the application and documentation."),
+                ("Version", "v1.85.0 across the application at the time."),
             ], deck="cards"),
         Section("maintenance184", "CARRIED FROM v1.84.0", "Catalog and fixture maintenance",
             "The October 14 maintenance commit updated catalog/configuration data and scrubbed test fixtures.",

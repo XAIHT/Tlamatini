@@ -471,7 +471,7 @@ def _cmdline_str(proc) -> str:
 
 # ── Generalized "eagle eye": spare every FORKED FOREGROUND window ───────────
 # A forked foreground window opened by ANY agent (the Telegrammer one-time login,
-# an execute_forked_window console, a Sqler / Mongoxer window, ...) owns a VISIBLE
+# an execute_forked_window console, a SQLer / Mongoxer window, ...) owns a VISIBLE
 # console window. Whether it is WAITING ON THE USER'S KEYBOARD or actively showing
 # output, the user can see and deal with it — so neither the orphan reaper nor the
 # command watchdog may ever kill it, however long it sits. (A process that is
@@ -562,7 +562,7 @@ def _is_protected_foreground_fast(proc, pid, ppid, *, visible_pids,
                                   protected_pids, children_by_ppid) -> bool:
     """Map-based, candidate-only twin of ``is_protected_foreground_console``. Spare a
     FORKED FOREGROUND window (the Telegram login, an execute_forked_window console, a
-    Sqler/Mongoxer window) or the process inside it when:
+    SQLer/Mongoxer window) or the process inside it when:
 
       * it (or its conhost child) owns a visible window, OR
       * its parent shell owns one and the parent is not our own/ancestor PID, OR
@@ -748,7 +748,7 @@ def reap_orphans(
 
     # PIDs owning a visible window THIS sweep (computed once — EnumWindows is not
     # free). Used to spare every FORKED FOREGROUND window opened by any agent (the
-    # Telegram login, an execute_forked_window console, a Sqler/Mongoxer window)
+    # Telegram login, an execute_forked_window console, a SQLer/Mongoxer window)
     # and the process running inside it — they wait on the user or show output.
     foreground_visible_pids = _visible_window_owner_pids()
 
@@ -827,7 +827,7 @@ def reap_orphans(
                     continue
 
                 # A FORKED FOREGROUND window (any agent's visible console — the
-                # Telegram login, an execute_forked_window, a Sqler/Mongoxer window),
+                # Telegram login, an execute_forked_window, a SQLer/Mongoxer window),
                 # or the process running inside one, is waiting on the user or showing
                 # output — never reap it, however long it sits. Checked ONLY on
                 # candidates now (map-based; was every process — the O(N^2) cost).

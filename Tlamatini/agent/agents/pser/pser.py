@@ -7,7 +7,7 @@
 #   Every line of this file was written by Angela López Mendoza.
 # ═══════════════════════════════════════════════════════════════════
 #   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
-# Pser Agent - Process finder agent with LLM-powered fuzzy matching
+# PSer Agent - Process finder agent with LLM-powered fuzzy matching
 # Action: Triggered by upstream -> List processes (no admin) -> Ask LLM for best match -> Log result -> Trigger downstream
 
 import os
@@ -556,10 +556,10 @@ If no matching process is found:
                 if start_agent(target):
                     total_triggered += 1
 
-        logging.info(f"🏁 Pser agent finished. Triggered {total_triggered}/{len(target_agents)} agents.")
+        logging.info(f"🏁 PSer agent finished. Triggered {total_triggered}/{len(target_agents)} agents.")
 
     except Exception as e:
-        logging.error(f"❌ Pser agent error: {e}")
+        logging.error(f"❌ PSer agent error: {e}")
     finally:
         # Keep LED green briefly for visual feedback
         time.sleep(0.4)

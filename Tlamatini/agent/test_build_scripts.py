@@ -370,7 +370,7 @@ class AgentBundlingCompletenessTests(SimpleTestCase):
                          "build.py must copy the agents/ pool tree into the install")
 
     def test_have_a_full_agent_catalog(self):
-        # Sanity floor: the catalog is 68 agents; never let it silently shrink.
+        # Sanity floor (85 agents ship today); never let the catalog silently collapse.
         self.assertGreaterEqual(len(self.agent_dirs), 60,
                                 f"only {len(self.agent_dirs)} agent dirs found")
 
@@ -584,7 +584,7 @@ class CarriedPythonContractTests(SimpleTestCase):
 
     def test_agents_resolver_prefers_carried_python(self):
         # Every agent that resolves an interpreter must look in <install_dir>/python.
-        # get_user_python_home (62 agents) returns that dir first in frozen mode.
+        # get_user_python_home (shared pool-agent boilerplate) returns that dir first in frozen mode.
         checked = 0
         missing = []
         for py in AGENTS_DIR.rglob("*.py"):

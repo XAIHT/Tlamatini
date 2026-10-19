@@ -1,7 +1,7 @@
 <!-- Tlamatini Author Banner — Angela López Mendoza · @angelahack1 -->
 # Windows flow files
 
-> Current release: **[v1.85.0](changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.87.0](changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
 
 
 Implemented 2026-10-04; shipped in `v1.76.0`. The established agent-flow extension is **.flw**;
@@ -186,7 +186,7 @@ directory in `allowed_paths` and create `MCP Unicode ñ.txt` inside it; the prob
 checks the exact match, case-insensitive key, traversal refusal and system time.
 It uses no model. Restore the temporary policy after the test.
 Opening 89 configuration
-dialogs does not establish that all 89 agents executed successfully. External
+dialogs (the catalog then; 85 since 2026-10-18) does not establish that those agents executed successfully. External
 hardware/service cases and blocked native UI actions must remain explicitly
 unverified until exercised.
 

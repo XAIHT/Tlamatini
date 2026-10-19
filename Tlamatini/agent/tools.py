@@ -27,6 +27,7 @@ import zipfile
 from django.utils import timezone
 
 from .chat_agent_registry import (
+    agent_row_name,
     WRAPPED_CHAT_AGENT_SPECS,
 )
 from .config_loader import get_config_value
@@ -1971,8 +1972,8 @@ def _agent_status_key(agent_description):
     """global_state key for an Agent row's enable flag (Configure Agents).
 
     Mirrors ``factory.setup_llm``'s ``'agent_'+descr.lower()+'_status'`` exactly,
-    where ``descr`` is the Agent row ``agentDescription`` (== the wrapped spec's
-    ``display_name`` by the naming convention). e.g. Talker -> agent_talker_status.
+    where ``descr`` is the Agent row ``agentDescription`` (for a wrapped tool:
+    ``chat_agent_registry.agent_row_name(spec)``). e.g. Talker -> agent_talker_status.
     """
     return f"agent_{str(agent_description).lower()}_status"
 
@@ -2459,7 +2460,7 @@ def _seed_global_agent_defaults(template_dir, runtime_config):
 #
 # An agent can declare body, params, or both. Agents whose work is purely
 # observational (Crawler, Summarizer, Prompter, File-Interpreter,
-# File-Extractor, Image-Interpreter, Shoter, Monitor-*, Recmailer, Sleeper,
+# File-Extractor, Image-Interpreter, Shoter, Monitor-*, RecMailer, Sleeper,
 # Googler) are deliberately ABSENT from the registry -- there is no
 # "about-to-mutate" surface worth pre-announcing for a read-only agent.
 _PRE_LAUNCH_PREVIEW_MAX_CHARS = 8000  # cap so a giant inlined payload can't flood the log
@@ -5098,7 +5099,7 @@ def tool_gate_table():
         # FAIL OPEN - a missing row defaults to 'enabled' - so a spec whose
         # display_name maps to no Agent row, or that has no Tool row, is only
         # hidden by an EXPLICIT disable, never by accident.
-        table.append((str(spec.tool_description).lower(), spec.display_name,
+        table.append((str(spec.tool_description).lower(), agent_row_name(spec),
                       lambda s=spec: _build_wrapped_chat_agent_tool(s)))
 
     # ── ACPX runtime tools ──────────────────────────────────────────────────

@@ -596,7 +596,7 @@ class RegistryIntegrationTests(SimpleTestCase):
 
     def test_agentic_skill_has_kalier_entry(self):
         skill = self._read('agents', 'flowcreator', 'agentic_skill.md')
-        self.assertIn('### 66. Kalier', skill)
+        self.assertRegex(skill, r'(?m)^### \d+\. Kalier\s*$')
 
 
 # ---------------------------------------------------------------------------

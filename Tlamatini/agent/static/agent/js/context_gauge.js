@@ -7,7 +7,7 @@
  * the request about to go to the model really is.
  *
  * WHY THE SERVER SENDS THE NUMBER: this page never sees the system prompt,
- * the chat history as it is actually sent, or the ~109 bound tool schemas.
+ * the chat history as it is actually sent, or the ~108 bound tool schemas.
  * Anything measured here would be a guess. So the backend measures and
  * pushes a `context-gauge` frame; `agent_page_chat.js` re-dispatches it as
  * the DOM event this file listens for.

@@ -15,7 +15,7 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
-> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.87.0](../../docs/changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
 
 
 2026-05-29: Implemented **"Ask Execs"** — a new toolbar checkbox between **ACPX** and **Add internet context** that, when on, makes the Multi-Turn executor BLOCK on a browser modal (Proceed/Deny) before EVERY state-changing Tool/MCP/Agent runs. **Deny halts the whole chain** and the answer gets a big red "Execution interrupted" banner (always) + the Exec-report tables (only when Exec report also on). Multi-Turn-only modifier: checkbox is disabled+greyed unless Multi-Turn is checked; backend re-gates on `multi_turn_enabled`. Unchecked = byte-for-byte legacy Multi-Turn behaviour.

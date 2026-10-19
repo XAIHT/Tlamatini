@@ -1,6 +1,6 @@
 # Model configuration
 
-> Current release: **[v1.85.0](changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.87.0](changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
 
 
 Config → Models manages **38 model, engine and voice settings** for core services
@@ -330,7 +330,7 @@ Wrapped-chat and standalone MCP File-Creator paths also completed. Focused
 regressions passed **394 tests, with 5 skipped**. A visible installed-dialog check
 saved Talker voice `jess`, confirmed the actual loader read it, restored `tara`,
 and reconnected chat. These are dated checks, not a claim that every model service
-or all 89 agents' external actions were exercised. See
+or all agents' external actions (89 then; 85 since the 2026-10-18 pruning) were exercised. See
 [verification evidence](model-configuration-verification.md).
 
 ## Image/video error reporting and recovery (2026-09-26)

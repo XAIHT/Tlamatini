@@ -8,7 +8,7 @@
 -->
 # Tlamatini Flow Creation Skill
 
-> Current release: **[v1.85.0](../../../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.87.0](../../../../docs/changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
 
 
 You are an expert flow designer for the Tlamatini platform. Your task is to design an agent flow (a directed graph of connected agents) that accomplishes a user-specified objective.
@@ -60,9 +60,9 @@ When agents are deployed on the canvas, each instance gets a **cardinal number**
 
 ### Agent Categories
 
-**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Counter, Ssher, Scper, Telegrammer, Whatsapper, Instant Messaging Doctor, Sqler, Mongoxer, Prompter, Gitter, Dockerer, MCP Doctor, Pser, Kuberneter, Jenkinser, Apirer, Crawler, Googler, Summarizer, Mouser, File-Interpreter, Image-Interpreter, File-Creator, File-Extractor, J-Decompiler, De-Compresser, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, FlowBacker, Barrier, Keyboarder, TeleTlamatini, ACPXer, Unrealer, NetSpeed-Calculator, PPTXer.
+**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Counter, SSHer, SCPer, Telegrammer, Whatsapper, Instant Messaging Doctor, SQLer, Mongoxer, Prompter, Gitter, Dockerer, MCP Doctor, PSer, Kuberneter, Jenkinser, Apirer, Crawler, Googler, Summarizer, Mouser, File-Interpreter, Image-Interpreter, File-Creator, File-Extractor, J-Decompiler, De-Compresser, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, FlowBacker, Barrier, Keyboarder, TeleTlamatini, ACPXer, Unrealer, NetSpeed-Calculator, PPTXer.
 
-**Terminal/Monitoring agents** (do NOT start downstream, even if they have a `target_agents` config field): Cleaner, Emailer, Monitor-Log, Monitor Netstat, Recmailer, Stopper, Notifier, FlowHypervisor. For these agents, `target_agents` (or `output_agents` for Stopper) is used only for canvas wiring metadata and should be left as `[]`.
+**Terminal/Monitoring agents** (do NOT start downstream, even if they have a `target_agents` config field): Cleaner, Emailer, Monitor-Log, Monitor Netstat, RecMailer, Stopper, Notifier, FlowHypervisor. For these agents, `target_agents` (or `output_agents` for Stopper) is used only for canvas wiring metadata and should be left as `[]`.
 
 ### Key Concepts
 
@@ -801,11 +801,11 @@ system_prompt: |
   - `target_agents_g`: [] (Path G agents — started when counter >= threshold)
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
 
-### 22. Ssher
+### 22. SSHer
 - **Purpose**: SSH into a remote host and execute a command. Requires pre-configured SSH keys. Starts downstream on success.
 - **Used for**: Executing shell commands on remote Linux/Unix hosts via SSH as part of a workflow. It connects using pre-configured SSH key authentication, runs the specified command, captures the output, and triggers downstream agents on success.
 - **Aimed at**: Enabling remote server management within automated pipelines — such as restarting services, running maintenance scripts, checking system status, or executing deployment commands on production or staging servers without manual SSH sessions.
-- **Application example**: In a multi-server deployment flow, an Ssher connects to a remote Kubernetes node and runs `kubectl rollout restart deployment/webapp`, then triggers a Monitor Netstat to verify the service is back up on port 443.
+- **Application example**: In a multi-server deployment flow, an SSHer connects to a remote Kubernetes node and runs `kubectl rollout restart deployment/webapp`, then triggers a Monitor Netstat to verify the service is back up on port 443.
 - **Pool name pattern**: `ssher_<n>`
 - **Starts other agents**: YES (on success)
 - **Config parameters**:
@@ -815,7 +815,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start on success)
 
-### 23. Scper
+### 23. SCPer
 - **Purpose**: SCP file transfer to/from a remote host. Requires pre-configured SSH keys. Starts downstream on success.
 - **Used for**: Securely transferring files between the local system and a remote host via SCP protocol. It supports both send and receive directions and uses pre-configured SSH key authentication for passwordless operation.
 - **Aimed at**: Automating file transfers within deployment, backup, or monitoring pipelines — such as pulling configuration files or state files from remote servers for local analysis, or pushing build artifacts to remote deployment targets.
@@ -885,7 +885,7 @@ system_prompt: |
   - `rx_from`: "" (OPTIONAL — restrict receive to a specific sender)
   - `rx_match`: "" (OPTIONAL — only accept incoming messages matching this pattern)
 
-### 25a. Instant Messaging Doctor
+### 26. Instant Messaging Doctor
 - **Purpose**: Diagnoses official Telegram and Meta WhatsApp Cloud readiness, contacts, policy, and failures, then triggers downstream agents; it never silently replaces an explicitly selected WhatsApp Web session.
 - **Used for**: Critical messaging preflight, exception branches after failed Telegrammer/Whatsapper sends, contact-book validation, readable Telegram `@username` reachability, Meta token/phone/template/webhook validation, and failure-log diagnosis.
 - **Aimed at**: Making notification flows self-diagnosing so a downstream Parametrizer/Forker can branch on a clear repair summary instead of parsing raw API errors.
@@ -908,11 +908,11 @@ system_prompt: |
   - `retry_send`: false (keep false for diagnosis-only flows; true only when an official API retry is allowed)
   - `ollama.model`: "glm-5.3:cloud" (LLM summary model)
 
-### 27. Recmailer
+### 27. RecMailer
 - **Purpose**: Monitors an email inbox (IMAP) for keywords using LLM analysis. Long-running. Does NOT start downstream agents.
 - **Used for**: Continuously monitoring an email inbox via IMAP for new messages that match configured keywords or phrases. It uses an LLM (via LangGraph StateGraph) to classify email content and logs matches with a configurable outcome word.
 - **Aimed at**: Enabling email-driven automation where incoming emails trigger workflow actions. Paired with a Raiser, it can initiate automated responses to specific email patterns — such as processing support tickets, reacting to automated reports, or handling approval emails.
-- **Application example**: A Recmailer monitors a shared ops@company.com inbox for emails containing "urgent" or "server down". When the LLM detects a match, it logs "PROCESSED", and a paired Raiser triggers an Executer to run diagnostics and a Telegrammer to notify the on-call engineer.
+- **Application example**: A RecMailer monitors a shared ops@company.com inbox for emails containing "urgent" or "server down". When the LLM detects a match, it logs "PROCESSED", and a paired Raiser triggers an Executer to run diagnostics and a Telegrammer to notify the on-call engineer.
 - **Pool name pattern**: `recmailer_<n>`
 - **Starts other agents**: NO
 - **Config parameters**:
@@ -930,11 +930,11 @@ system_prompt: |
   - `keywords_or_phrases`: ["urgent", "alert"] (keywords to detect in emails — formulate based on the flow's objective)
   - `outcome_word`: "PROCESSED" (word written to this agent's log when keywords are found)
 
-### 28. Sqler
+### 28. SQLer
 - **Purpose**: Executes SQL scripts against a SQL Server database, then starts downstream agents.
 - **Used for**: Running SQL operations (SELECT, INSERT, UPDATE, DELETE, DDL) against Microsoft SQL Server databases using pyodbc. It injects pre-connected `cursor` and `conn` objects into the execution scope so the script can execute queries directly.
 - **Aimed at**: Automating database operations within deployment or data processing pipelines — such as running migration scripts, seeding test data, executing health-check queries, or extracting data for downstream processing by other agents.
-- **Application example**: After a Gitter pulls the latest migration scripts, a Sqler executes them against the staging database, then triggers a Pythonxer that validates the migration by checking row counts and schema changes.
+- **Application example**: After a Gitter pulls the latest migration scripts, a SQLer executes them against the staging database, then triggers a Pythonxer that validates the migration by checking row counts and schema changes.
 - **Pool name pattern**: `sqler_<n>`
 - **Starts other agents**: YES
 - **Config parameters**:
@@ -1015,7 +1015,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after execution)
 
-### 32a. MCP Doctor
+### 33. MCP Doctor
 - **Purpose**: Diagnoses External MCP catalog entries and produces setup/readiness guidance before a flow or Multi-Turn chat tries to activate or call an unknown server.
 - **Used for**: Inspecting imported MCP JSON, marketplace entries, mcp.so pages, Docker/NPX/UVX command specs, URL transports, placeholder secrets, missing runtimes, and catalog readiness without launching unknown servers.
 - **Aimed at**: Building MCP onboarding flows where the first step is a safe diagnostic report, followed by human-approved setup, activation, and smoke testing.
@@ -1031,11 +1031,11 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after execution)
 
-### 33. Pser
+### 34. PSer
 - **Purpose**: Searches for a running process by a likely name using LLM-powered fuzzy matching, then logs the best match and starts downstream agents.
 - **Used for**: Finding running processes by their common or colloquial names using LLM-powered semantic matching. It queries the system's process list and uses the LLM to identify the most likely match (e.g., "Paint" resolves to "mspaint.exe", "Chrome" to "chrome.exe").
 - **Aimed at**: Enabling intelligent process discovery in automation flows where exact executable names are unknown or vary across environments — such as verifying that an application is running before proceeding, or finding a process to interact with via Mouser.
-- **Application example**: Before a Mouser agent simulates mouse clicks on a paint application, a Pser confirms that "Paint" is running. If found, it triggers the Mouser; if not found, a Forker routes to an Executer that launches Paint first.
+- **Application example**: Before a Mouser agent simulates mouse clicks on a paint application, a PSer confirms that "Paint" is running. If found, it triggers the Mouser; if not found, a Forker routes to an Executer that launches Paint first.
 - **Pool name pattern**: `pser_<n>`
 - **Starts other agents**: YES
 - **Config parameters**:
@@ -1045,7 +1045,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after process lookup)
 
-### 34. Kuberneter
+### 35. Kuberneter
 - **Purpose**: Executes `kubectl` commands and logs the execution status, then starts downstream agents regardless of success or failure.
 - **Used for**: Running Kubernetes operations (apply, get, describe, delete, logs, exec, port-forward, and custom kubectl commands) and logging the results. It produces structured output suitable for downstream consumption by Parametrizer or pattern detection by Raiser/Forker agents.
 - **Aimed at**: Automating Kubernetes cluster management within CI/CD and infrastructure pipelines — such as applying deployment manifests, scaling workloads, checking pod status, reading container logs, or executing commands inside running containers.
@@ -1060,7 +1060,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after execution)
 
-### 35. Apirer
+### 36. Apirer
 - **Purpose**: Makes HTTP/REST API requests (GET/POST/PUT/DELETE) to any URL, logs response status, body, and latency, then starts downstream agents regardless of success or failure.
 - **Used for**: Making HTTP requests to any REST API endpoint and logging the complete response (status code, body, headers, latency in milliseconds). It masks Authorization headers in logs for security and produces structured output (`<{url}> RESPONSE { ... }`) consumable by Parametrizer.
 - **Aimed at**: Integrating external APIs into automated workflows — such as triggering webhooks, querying health endpoints, posting data to external services, checking API availability, or chaining API calls where the response feeds into subsequent agents via Parametrizer.
@@ -1077,7 +1077,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after execution)
 
-### 36. Jenkinser
+### 37. Jenkinser
 - **Purpose**: Triggers Jenkins CI/CD pipeline builds and logs the trigger result, then starts downstream agents regardless of whether the trigger succeeded or failed.
 - **Used for**: Triggering Jenkins pipeline builds via the Jenkins API with CSRF crumb support. It supports both simple and parameterized builds, logs the trigger result, and always starts downstream agents regardless of the build trigger outcome.
 - **Aimed at**: Integrating Jenkins-based CI/CD pipelines into Tlamatini workflows — enabling automated build triggering after code changes, scheduled builds via Croner, or conditional builds triggered by Forker/Raiser based on detected events.
@@ -1094,7 +1094,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after execution)
 
-### 37. Crawler
+### 38. Crawler
 - **Purpose**: Reads web pages via HTTP GET, captures full raw content (HTML, JavaScript, CSS, headers, meta tags, data attributes, API endpoints) or the visible text, and processes each page's content with an LLM using a configurable system prompt. By DEFAULT it reads exactly the given page (`crawl_type: page`); three range modes also walk its links, each analyzing the seed page itself first: small-range (same-domain links, not recursive), medium-range (all links cross-domain, not recursive), and large-range (all links cross-domain, recursive up to a configurable depth). It never hangs (every page and the whole run are time-bounded) and never passes a refusal off as content: a bot wall, CAPTCHA, 401/403/429 or timeout is reported as `status: blocked` / `timeout` and never reaches the LLM. It does not run JavaScript — for a page built by JavaScript use Playwrighter.
 - **Used for**: Fetching and analyzing web content using LLM-powered processing. It captures the full raw page source (HTML, JS, CSS, headers, forms, endpoints) or plain text, and sends it to an LLM along with a configurable system prompt for deep technical analysis. Supports multi-page crawling across same-domain or cross-domain links.
 - **Aimed at**: Enabling web intelligence and analysis workflows — such as competitive monitoring, security auditing of web applications, content change detection, API endpoint discovery, or extracting structured data from websites for downstream processing via Parametrizer.
@@ -1128,7 +1128,7 @@ system_prompt: |
   - `target_agents`: [] (downstream agents to start after execution)
 - **Output (`INI_SECTION_CRAWLER`, one per analyzed page)**: `label`, `model`, `url`, `crawl_type`, `content_mode`, `status` (`ok` for an analyzed page), `http_status` (that page's HTTP code), and the LLM's analysis as the body (`response_body`). When NOTHING was analyzed, exactly ONE section is emitted whose `status` names the most telling failure (`blocked` > `timeout` > `unreachable` > `not_found` > `error` > `skipped`) and whose body begins "NOTHING WAS ANALYZED" — route it with a Forker on `{status}`; never pass that body onward as page content.
 
-### 38. Summarizer
+### 39. Summarizer
 - **Purpose**: Two operating modes selected by config. **Polling mode** (default canvas behavior): continuously polls log files from `source_agents` and sends each log to an LLM with `system_prompt` to detect events; when the LLM response contains `[EVENT_TRIGGERED]`, starts all configured downstream target agents. **One-shot mode** (used by the chat tool `chat_agent_summarize_text`): when `input_text` is non-empty AND `source_agents` is empty, the agent bypasses the polling loop entirely, sends `input_text` directly to the LLM with the resolved prompt, emits exactly one `INI_SECTION_SUMMARIZER<<<` block (so Parametrizer / Exec Report consume it identically to a polling-mode result), and triggers `target_agents` whenever the summary is non-empty.
 - **Used for**: Performing LLM-powered semantic analysis of agent log files to detect complex events that cannot be captured by simple string pattern matching, OR summarizing a verbatim block of text in a single shot from a chat-driven request.
 - **Aimed at**: Enabling intelligent, context-aware event detection in workflows; one-shot mode also doubles as the canonical "summarize this text" tool for the LLM operator.
@@ -1146,7 +1146,7 @@ system_prompt: |
   - `poll_interval`: 5 (seconds between log file polling cycles — ignored in one-shot mode)
   - `target_agents`: [] (downstream agents to start when an event is triggered or the one-shot summary is non-empty)
 
-### 39. FlowHypervisor
+### 40. FlowHypervisor
 - **Current contract**: use installed output-slot/lifecycle metadata for execution edges, including Counter branches and Parametrizer singular targets. Ender kill lists and passive/data dependencies are separate. Reload current configs, retain latest desktop receipts across log polls, and interpret `input_sent` as delivery only. Random movement and long typing follow configured duration/pacing, not a universal five-second deadline.
 - **Purpose**: System-managed LLM-powered flow monitoring agent. Watches all running agents' processes and log files, uses an LLM to detect anomalies, and notifies the user with an "ATTENTION NEEDED" dialog. Automatically started and stopped by the system. Users can provide custom `user_instructions` to fine-tune supervision (e.g. dismiss known false positives, adjust sensitivity, add domain rules).
 - **Used for**: Providing autonomous, LLM-powered supervision of an entire running flow. It reads all agents' processes and logs, builds an NxN connection matrix, and uses an LLM to detect anomalies such as stuck agents, unexpected crashes, infinite loops, or error cascades. It features dual-layer auto-stop (system polling + self-stop after idle cycles).
@@ -1161,7 +1161,7 @@ system_prompt: |
   - `monitoring_poll_time`: 10
   - `user_instructions`: "" (custom directives appended to the monitoring prompt)
 
-### 40. Mouser
+### 41. Mouser
 - **Purpose**: Send grounded mouse input using physical desktop geometry. `inspect` observes cursor/monitors without input.
 - **Pool name pattern**: `mouser_<n>`; always notifies `target_agents`, including after a failed attempt.
 - **Modes**: `inspect`, `random`, `localized`, `click`, `drag`, `scroll`, `click_at_window`, `locate_image`.
@@ -1173,7 +1173,7 @@ system_prompt: |
 - **Output**: actual `end_posx/end_posy`, `requested_posx/requested_posy`, `clicked`, `located_via`, `action_status`/`status`, coordinate space, desktop bounds, monitor JSON and HWND. `input_sent` is input delivery only; `observed` is inspection; `error` can mean partial changes. Failed actions exit nonzero. Observe before retrying.
 - **Planning rule**: verify a target from current evidence before clicking and verify the requested application effect afterward. Do not invent a GUI-Manager node: it is design only. Serialize desktop actions in one session.
 
-### 41. File-Interpreter
+### 42. File-Interpreter
 - **Purpose**: Reads and interprets document files (DOCX, PPTX, XLSX, PDF, TXT, TeX, CSV, HTML, RTF, JSON, YAML, XML, ODT, EPUB, and more), extracting text and optionally images, then logs structured output. In summarized mode, uses an LLM to produce a summary.
 - **Used for**: Extracting text content from a wide range of document formats and logging it in structured `INI/END_FILE` blocks. It supports three reading modes: `fast` (text only), `complete` (text + image extraction), and `summarized` (text + LLM-generated summary). Supports wildcards for batch processing of multiple files.
 - **Aimed at**: Automating document processing pipelines — such as ingesting reports for analysis, extracting data from spreadsheets, parsing configuration files, processing invoices, or feeding document content into downstream LLM agents (Prompter, Summarizer) for intelligent analysis via Parametrizer.
@@ -1190,7 +1190,7 @@ system_prompt: |
   - `llm.host`: "http://localhost:11434" (LLM host, used only in summarized mode)
   - `llm.model`: "@config" (inherits this agent's dedicated Config → Models selection) (LLM model, used only in summarized mode)
 
-### 42. Image-Interpreter
+### 43. Image-Interpreter
 - **Purpose**: Non-deterministic agent that analyzes and interprets images through a TRIPLE-MODEL pipeline: `interpreter_model_1` (default mistral-large-3:675b-cloud — forensic OCR/measurement) and `interpreter_model_2` (default gemma4:cloud — holistic context/people) analyze each image IN PARALLEL, each on its OWN dedicated Ollama connection; a BARRIER waits until BOTH interpretations have arrived; then `merging_model` (default glm-5.3:cloud) fuses them into ONE definitive report. Accepts wildcards, directory paths, or the pool name of a File-Interpreter agent as input. Converts each image to base64 and logs the merged report in structured INI_SECTION_IMAGE_INTERPRETER blocks (`file_path`, `interpreter_model_1/2`, `merging_model`, `status`, body = report). Can be strongly coupled with File-Interpreter.
 - **Used for**: Deep image analysis — complete mockup/GUI element inventories (position % / size % / colors / fonts / verbatim text), full OCR, exhaustive people description with identity hypotheses, chart/diagram reading. It supports 12+ image formats and injects the image FILE NAME into ALL FOUR prompts as an identity clue (a file named after a person hints WHO appears in it). It can read images extracted by a File-Interpreter from documents (via pool name reference).
 - **Aimed at**: Enabling visual intelligence in workflows — such as analyzing screenshots for UI verification, rebuilding mockups from a single image, interpreting charts and diagrams from reports, classifying product images, identifying people in photos, or verifying visual conditions on screen captures taken by Shoter.
@@ -1215,7 +1215,7 @@ system_prompt: |
   - `llm.token`: "" (optional bearer token for Ollama cloud)
   - `llm.token`: "" (optional bearer token for authentication)
 
-### 46. File-Creator
+### 44. File-Creator
 - **Purpose**: Short-running infrastructure agent that creates a file with specified content (path + filename + extension, raw content), then triggers downstream target_agents regardless of whether the file creation succeeded or failed, then stops itself. Does NOT use any LLM.
 - **Used for**: Creating files with specified content at a given path as part of a workflow. It writes the raw content to disk and triggers downstream agents regardless of the result, making it useful for generating configuration files, scripts, reports, or any text-based artifact programmatically.
 - **Aimed at**: Enabling file generation within automation pipelines — such as creating deployment configurations, writing state files for inter-agent communication, generating scripts to be executed by Executer/Pythonxer, or producing reports from data gathered by upstream agents.
@@ -1229,10 +1229,10 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after file creation attempt)
 
-### 47. File-Extractor
+### 45. File-Extractor
 - **Purpose**: Short-running infrastructure agent that reads/loads one or more files (supports wildcards) and extracts their text content using the same file type support as File-Interpreter. For unknown file types, extracts printable strings (like the Linux `strings` command). Logs each file's content in the `INI_FILE/END_FILE` format, then triggers downstream target_agents regardless of extraction result, then stops itself. Does NOT use any LLM.
 - **Used for**: Extracting raw text content from files without LLM processing. It supports the same wide range of document formats as File-Interpreter but operates deterministically (no LLM). For unknown file types, it falls back to extracting printable strings. It produces structured `INI_FILE/END_FILE` output blocks consumable by Parametrizer.
-- **Aimed at**: Feeding file content into downstream agents for further processing — such as extracting configuration files for analysis by Pythonxer, loading data files for database insertion by Sqler/Mongoxer, or providing raw document content to Prompter/Summarizer for LLM-powered analysis via Parametrizer.
+- **Aimed at**: Feeding file content into downstream agents for further processing — such as extracting configuration files for analysis by Pythonxer, loading data files for database insertion by SQLer/Mongoxer, or providing raw document content to Prompter/Summarizer for LLM-powered analysis via Parametrizer.
 - **Application example**: A File-Extractor reads all `*.csv` files from a data directory. A Parametrizer iterates over each extracted file's content and injects it into a Mongoxer script that imports the CSV data into a MongoDB collection, processing all files sequentially.
 - **Pool name pattern**: `file_extractor_<n>`
 - **Starts other agents**: YES (always, regardless of extraction result)
@@ -1243,7 +1243,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after extraction attempt)
 
-### 48. Kyber-KeyGen
+### 46. Kyber-KeyGen
 - **Purpose**: Short-running infrastructure deterministic agent that generates a CRYSTALS-Kyber public/private key pair and logs them in base64 format. Supports Kyber-512, Kyber-768, and Kyber-1024 variants. Does NOT use any LLM.
 - **Used for**: Generating post-quantum cryptographic key pairs using the CRYSTALS-Kyber algorithm (a NIST-standardized post-quantum key encapsulation mechanism). It outputs public and private keys in base64 format, producing structured output consumable by Parametrizer for injection into Kyber-Cipher and Kyber-DeCipher agents.
 - **Aimed at**: Enabling post-quantum-resistant encryption workflows within Tlamatini. It is the first step in a Kyber encryption pipeline: generate keys, then use Kyber-Cipher to encrypt and Kyber-DeCipher to decrypt — all orchestrated visually on the canvas.
@@ -1255,7 +1255,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after key generation)
 
-### 49. Kyber-Cipher
+### 47. Kyber-Cipher
 - **Purpose**: Short-running infrastructure deterministic agent that encrypts a buffer using a CRYSTALS-Kyber public key. Performs Kyber encapsulation to derive a shared secret, then uses AES-256-CTR to encrypt the buffer. Logs the encapsulation, initialization vector, and cipher text in base64 format. Does NOT use any LLM.
 - **Used for**: Encrypting plaintext data using post-quantum CRYSTALS-Kyber public key cryptography combined with AES-256-CTR symmetric encryption. It produces three structured output values (encapsulation, IV, cipher text) in base64 format, all consumable by Parametrizer for downstream agents.
 - **Aimed at**: Securing sensitive data within automated workflows using quantum-resistant encryption — such as encrypting API keys, configuration secrets, or data files before transmission or storage. It is part of the Kyber encryption pipeline: KeyGen → Cipher → DeCipher.
@@ -1269,7 +1269,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after encryption)
 
-### 50. Kyber-DeCipher
+### 48. Kyber-DeCipher
 - **Purpose**: Short-running infrastructure deterministic agent that decrypts cipher text using a CRYSTALS-Kyber private key. Performs Kyber decapsulation to recover the shared secret, then uses AES-256-CTR to decrypt the cipher text. Logs the deciphered buffer in its original format. Does NOT use any LLM.
 - **Used for**: Decrypting data that was previously encrypted with Kyber-Cipher, using the corresponding private key. It takes the encapsulation, IV, and cipher text (all in base64), performs Kyber decapsulation to recover the shared secret, and uses AES-256-CTR to restore the original plaintext.
 - **Aimed at**: Completing the post-quantum decryption side of the Kyber pipeline. It enables secure data workflows where encrypted artifacts from one flow can be decrypted in another — supporting key rotation, secure file exchange between environments, or decrypting received encrypted payloads.
@@ -1285,7 +1285,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after decryption)
 
-### 51. Parametrizer
+### 49. Parametrizer
 - **Current contract**: parser membership comes from the installed catalog (50 structured-output producers including Keyboarder). LF/CRLF and empty values are preserved. Numeric/Boolean mappings use the existing target type; all mappings must succeed before write/start. Generated plans must include `_parametrizer_mappings` with valid `source_field` and `target_param` names. Interrupted Mouser/Keyboarder input is not automatically replayed; inspect application state before resolving that saved segment.
 - **Purpose**: Short-running active utility interconnection agent that reads structured output segments from one source agent's log file and injects them into one target agent's `config.yaml` using `interconnection-scheme.csv`. It is a strict sequential queue processor: for each complete source segment it backs up the target config, applies the mappings, starts the target, waits for the target to finish, archives the target log into `<target_agent>_segment_<n>.log`, restores the original config, commits the source cursor, and only then moves to the next segment. Does NOT use any LLM.
 - **Used for**: Safely passing data from one structured-output agent to another agent's configuration at runtime without race conditions. Parametrizer is the standard way to turn source log segments into repeated target executions while preserving both the target's original `config.yaml` and each target run's resulting log output.
@@ -1310,7 +1310,7 @@ system_prompt: |
   - If paused after the target finished but before the source cursor was committed, Parametrizer archives that finished target log, restores the backup, and advances the cursor on resume so the completed segment is not replayed
   - Parametrizer stops itself only when the source agent is no longer running and the source log has no more complete unread segments
 
-### 52. FlowBacker
+### 50. FlowBacker
 - **Purpose**: Short-running passive utility batch backing agent that copies the entire deployed session directory for the current flow into a configured target directory, preserving the full session-id folder structure. It overwrites any previous backup for that same session and then starts connected Cleaner agents.
 - **Used for**: Creating full flow backups before cleanup. It is intended for shutdown or checkpoint workflows where the whole session folder, including every deployed agent directory, log, config, and state file, must be copied elsewhere before Cleaner runs.
 - **Aimed at**: Preserving the exact runtime artifact tree of a flow for auditing, rollback, forensics, or external archival without changing the original session layout.
@@ -1328,7 +1328,7 @@ system_prompt: |
   - If the destination session folder already exists, it is removed and recreated so the backup is a full overwrite
   - Refuses to back up into a directory inside the live session tree to avoid recursive self-copying
 
-### 53. Barrier
+### 51. Barrier
 - **Purpose**: Short-running passive utility flow-control agent that acts as a synchronization barrier. It waits for ALL configured source agents to start before triggering downstream target agents. Each source agent starts a separate barrier process ("input sub-process") that creates a flag file; the first arrival also becomes the "output sub-process" that polls until all flags are present, then fires.
 - **Used for**: Synchronizing parallel branches in a flow. When multiple agents must all reach a certain point before the next stage can begin, Barrier ensures no downstream agent is started prematurely.
 - **Aimed at**: Implementing join/rendezvous patterns in complex workflows where several independent agents must complete their startup before a common successor can proceed.
@@ -1345,7 +1345,7 @@ system_prompt: |
   - Supports cyclic use: after firing, the barrier cleans up and is ready for the next cycle
   - On manual/direct start (no caller), cleans stale flags from previous runs
 
-### 54. J-Decompiler
+### 52. J-Decompiler
 - **Purpose**: Short-running deterministic action agent that decompiles Java `.class`, `.jar`, `.war`, and `.ear` artifacts using the bundled `jd-cli` tool, then starts downstream agents.
 - **Used for**: Turning compiled Java artifacts back into readable source trees inside a workflow. It can scan a directory or wildcard pattern, generate `.java` files beside `.class` files, and unpack archives into sibling directories containing the decompiled sources.
 - **Aimed at**: Automating reverse-engineering and inspection tasks so later agents can review, package, move, summarize, or analyze the generated Java source code without manual decompilation steps.
@@ -1364,11 +1364,11 @@ system_prompt: |
   - Uses the bundled `jd-cli/` asset instead of calling the unified tool layer directly
 
 
-### 55. De-Compresser
+### 53. De-Compresser
 - **Purpose**: Short-running deterministic action agent that COMPRESSES or DECOMPRESSES an archive. The direction is inferred from the extensions: if `input` ends in `.gz`, `.7z`, `.zip`, `.tar.gz`, or `.gz.tar` the agent decompresses into the `output` directory; if `output` ends in those extensions the agent compresses `input` (a file or a directory) into `output`. Then starts every agent listed in `target_agents`.
 - **Used for**: Packing and unpacking workflow artefacts inside a flow without dropping out to Executer + tar/zip CLIs. The supported archive families are GNU Zip (`.gz` — single file), universal ZIP (`.zip`), 7-Zip with LZMA/LZMA2 (`.7z`), and gzipped tar (`.tar.gz` / `.gz.tar`).
 - **Aimed at**: Automating the "extract, then continue" or "produce a release archive, then ship it" steps that almost every release-pipeline flow needs.
-- **Application example**: A Croner fires at 02:00, De-Compresser decompresses `incoming.zip` into `D:\staging\extracted` (read DE_COMPRESSER_PWD from env if `passwordless=false`), then starts `file_interpreter_1` to inspect the contents. A symmetric flow uses De-Compresser to *create* `D:\releases\bundle.tar.gz` from `D:\build\artifacts` before Scper uploads it.
+- **Application example**: A Croner fires at 02:00, De-Compresser decompresses `incoming.zip` into `D:\staging\extracted` (read DE_COMPRESSER_PWD from env if `passwordless=false`), then starts `file_interpreter_1` to inspect the contents. A symmetric flow uses De-Compresser to *create* `D:\releases\bundle.tar.gz` from `D:\build\artifacts` before SCPer uploads it.
 - **Pool name pattern**: `de_compresser_<n>`
 - **Starts other agents**: YES (target_agents fires at end-stage regardless of success/failure — Raisers can branch on the SUCCESS=true|false field of the emitted `INI_SECTION_DE_COMPRESSER` block)
 - **Config parameters**:
@@ -1383,7 +1383,7 @@ system_prompt: |
   - For password-wrapped `.gz` / `.tar.gz` / `.zip`, the agent routes through `7z` when available (since those formats have no native stdlib encryption layer) and logs a warning when forced to fall back to an unencrypted artefact
   - Emits a Parametrizer-compatible `INI_SECTION_DE_COMPRESSER` block with `operation`, `extension`, `input`, `output`, `passwordless`, and `success` fields so downstream Parametrizer nodes can feed the outcome into the next agent's `config.yaml`
 
-### 56. Keyboarder
+### 54. Keyboarder
 - **Purpose**: Send Unicode text and key/chord sequences to a bound Windows window, checking foreground ownership during delivery.
 - **Pool name pattern**: `keyboarder_<n>`; always notifies `target_agents`, including on failure.
 - **Config**: `input_mode` = `sequence` (default) or `text`; `input_sequence` uses comma-separated keys/chords and quoted literal text; `text` is literal Unicode in text mode. `typing_interval_ms` paces text; `stride_delay` paces commands. `window_title`, `window_handle`, `window_match_index` (-1 requires uniqueness), `source_agents`, `target_agents`.
@@ -1392,7 +1392,7 @@ system_prompt: |
 - **Output**: `INI_SECTION_KEYBOARDER` includes `status`, `action_status`, `characters_sent`, `commands_sent`, `commands_total`, `window_handle`, `window_pid`, `backend`, `verification: input_delivery_only`, and body `response_body`. `input_sent` is delivery; `error` can follow partial input. Failure exits nonzero. Never automatically replay a failed/paused segment without observing its effect.
 - **Example**: establish the desired window and edit field, use `input_mode: text` with the user's literal text, then inspect the resulting content. Handle save/close dialogs based on observed state and the user's intent; do not assume a particular localized accelerator or discard unsaved work by default.
 
-### 57. Googler
+### 55. Googler
 - **Purpose**: Performs resilient indexed-web search, then either extracts readable text/raw HTML from the top N pages or returns the SERP URL/title list without fetching result bodies. Its structured dork builder compiles high-level fields into mechanically valid Google syntax. The whole run obeys ONE wall-clock deadline (`deadline_seconds`), so it can never hang a flow. Tier 0 asks six server-rendered routes over plain HTTP in parallel; Tier 1 opens real installed Chrome with a persistent profile across eight browser routes; Tier 2 answers from open knowledge sources (Wikipedia, arXiv, OpenAlex, Hacker News, GitHub, Internet Archive, Project Gutenberg). Off-topic ("poisoned") answers and CAPTCHA/anomaly/rate-limit walls are detected, refusing engines are rested on a cooldown ladder, and `search_status` reports the truth.
 - **Used for**: Automated internet research, public indexed-file discovery, lawful/open-book and paper discovery, targeted site/date/title searches, and URL handoff to downstream download/extraction agents.
 - **Aimed at**: Enabling search-driven workflows without relying on fragile operator spacing/capitalization: no space after operator colons, uppercase `OR`, parenthesized alternatives, double-quoted exact phrases, and no-space `-term` exclusions are enforced.
@@ -1434,7 +1434,7 @@ system_prompt: |
 - **Direct-tool distinction**: the direct Multi-Turn `googler` tool accepts manual operators in its `query`; the structured fields above belong to this visual/pool-agent surface.
 - **Fallback semantics**: Tier 0 asks DuckDuckGo HTML/Lite, Bing, Mojeek, Brave and Yahoo in parallel without launching a browser; the first RELEVANT answer wins (an off-topic answer is rejected as poisoned). Tier 1 runs only if Tier 0 found nothing relevant or an explicit `engines` list pins browser routes; Tier 2 (open knowledge sources) runs only when the web tiers found nothing and `open_sources` is on. `site:` and `filetype:` carry broadly, while `before:`/`after:`/`AROUND()`/numeric ranges are Google-specific. A non-Google fallback may return broader candidates; do not claim the answer came from Google when the log names another route.
 
-### 58. TeleTlamatini
+### 56. TeleTlamatini
 - **Purpose**: Long-running pure-bot agent that exposes the full Tlamatini chat (same Multi-Turn + Exec Report behavior as `agent_page.html`) over Telegram. It stays alive holding ONE persistent Tlamatini WebSocket (one HTTP login at startup, reused for every Telegram message — no per-message re-login overhead), password-gates each chat on first contact, and forwards every subsequent message straight into the local Tlamatini chat with `multi_turn_enabled=true` and `exec_report_enabled=true`. The user sees an editable "🔄 Working on it…" message that gets replaced in place by the assembled answer. After every completed request cycle, starts the configured `target_agents`. **Bot mode only** — the Telegrammer agent covers direct Telegram send/receive; do not give TeleTlamatini a `listen_chat` field.
 - **Used for**: Letting an authorized Telegram user drive Tlamatini end-to-end without opening the browser UI; fast OpenClaw-style fire-and-go remote operation of Multi-Turn flows; mobile triage with full Exec Report visibility.
 - **Aimed at**: Treating Tlamatini as a remote, password-protected chat operator reachable from anywhere — fast enough for "what's my CPU usage?" turnaround.
@@ -1454,7 +1454,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — informative / canvas connection tracking)
   - `target_agents`: [] (downstream agents started after every completed user request cycle)
 
-### 59. ACPXer
+### 57. ACPXer
 - **Purpose**: Drives ONE ACPX session lifecycle from the visual canvas. ACPX (Agent Communication Protocol eXtension) is Tlamatini's runtime for spawning **external coding-agent CLIs** — Claude Code, Codex, Gemini CLI, Cursor agent, Qwen Code, Kiro, Kimi, iFlow, Kilocode, OpenCode, Pi, Factory Droid, GitHub Copilot CLI, or any custom CLI — as out-of-process child processes, talking to them over stdin/stdout, and harvesting their output. ACPXer brings that mechanic into the visual workflow designer: one ACPXer node = one external-CLI session (spawn → dispatch task → drain transcript with transport-aware idle/timeout/grace rule → harvest last-assistant text → graceful kill). It writes a NDJSON transcript to `<agent_dir>/transcript.ndjson` (same format as `agent_transcript_path` in the LLM `acp_*` tools, so transcripts are interchangeable). It emits an atomic `INI_SECTION_ACPXER<<<` block whose `response_body` is the last-assistant text — meaning a Parametrizer can pipe the answer of one ACPXer into the `task` field of another for **multi-CLI relay flows built visually**.
 - **Used for**: Building visual workflows that bridge Tlamatini to external coding-agent CLIs without writing prompts in the chat UI; multi-CLI relay (claude → gemini → cursor) drawn as a chain on the canvas; long-running scheduled flows that drive an external CLI on a Croner trigger; pipelines that hand a transcript to a Summarizer / File-Creator / Notifier triplet.
 - **Aimed at**: Letting non-LLM-driven flows include external coding agents as first-class participants. The LLM-driven path uses `acp_spawn` / `acp_send_and_wait` / `acp_relay` / `acp_kill` tools in Multi-Turn mode; ACPXer is the canvas-driven counterpart of that surface.
@@ -1483,7 +1483,7 @@ system_prompt: |
   - **Scheduled audit**: `Croner(02:00) -> ACPXer(claude, audit prompt) -> Summarizer -> Telegrammer -> Ender`
   - **Branching on CLI failure**: `Starter -> ACPXer -> Forker (settle=='timeout' vs 'done') -> [retry path] / [success path] -> Ender`
 
-### 60. Unrealer
+### 58. Unrealer
 - **Purpose**: Drives an Unreal Engine 5 editor instance via the Unreal MCP plugin's TCP socket protocol (default 127.0.0.1:55557 — the plugin must already be running inside UE5). Sends one JSON command per execution (`{"type": <command>, "params": {...}}`) and captures the full Unreal response into an `INI_SECTION_UNREALER` block so Parametrizer can route specific fields into downstream agents. Triggers `target_agents` on success OR error so the flow can branch on the section's `status` / `error` fields. The recommended plugin is Tlamatini's own extended Unreal MCP fork (the Unreal Engine MCP modified specifically for this system) at `https://github.com/XAIHT/XaihtUnrealEngineMCP.git`, a drop-in built on upstream `chongdashu/unreal-mcp` that ships the full 53-command surface.
 - **Used for**: Unattended manipulation of an Unreal Engine 5 project. Forwards any command the connected plugin build exposes; the extended Unreal MCP surface is 53 commands across nine categories: actor manipulation (`get_actors_in_level`, `find_actors_by_name`, `spawn_actor`, `create_actor`, `delete_actor`, `set_actor_transform`, `get_actor_properties`, `set_actor_property`, `spawn_blueprint_actor`, `focus_viewport`, `take_screenshot`), Blueprint creation and editing (`create_blueprint`, `add_component_to_blueprint`, `set_static_mesh_properties`, `set_component_property`, `set_physics_properties`, `compile_blueprint`, `set_blueprint_property`, `set_pawn_properties`), Blueprint node-graph wiring (`add_blueprint_event_node`, `add_blueprint_input_action_node`, `add_blueprint_function_node`, `connect_blueprint_nodes`, `add_blueprint_variable`, `find_blueprint_nodes`, `add_blueprint_get_self_component_reference`, `add_blueprint_self_reference`), input mappings (`create_input_mapping`), UMG widget building (`create_umg_widget_blueprint`, `add_text_block_to_widget`, `add_button_to_widget`, `bind_widget_event`, `add_widget_to_viewport`, `set_text_block_binding`), **system** (`execute_python` — run any Python in the editor, the universal escape hatch for anything without a dedicated command — `execute_console_command` via `params.console_command`, `get_class_info`, `list_assets`), **level/world** (`open_level`, `save_current_level`, `save_all`, `new_level`, `get_current_level`), **asset** (`import_asset`, `duplicate_asset`, `rename_asset`, `delete_asset`, `save_asset`, `create_folder`), and **material** (`create_material`, `create_material_instance`, `set_material_parameter`, `assign_material`). Headless build/cook/test is NOT available through this editor socket (it needs UnrealEditor-Cmd); chain Unrealer nodes via Parametrizer for the `run_macro` equivalent.
 - **Aimed at**: Building visual game-dev workflows in Tlamatini that talk to a running UE5 editor — automated level setup, Blueprint scaffolding, batch actor spawning, widget UI assembly, material authoring, asset import pipelines, in-editor Python automation, CI-style Blueprint compilation, or "watch a log → take action in the editor → screenshot the result" loops via Raiser. The visual-canvas counterpart of the wrapped `chat_agent_unrealer` Multi-Turn tool.
@@ -1500,7 +1500,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after execution)
 
-### 62. Reviewer
+### 59. Reviewer
 - **Purpose**: LLM-powered code reviewer. On trigger it resolves a git diff for the configured `repo_path` (a ref like `HEAD~1` / `origin/main`, or — with an empty `diff_ref` — uncommitted working-tree + staged changes), sends the diff to an Ollama model with a rigorous senior-engineer review prompt, parses a **verdict** (`APPROVE` / `REQUEST_CHANGES` / `COMMENT`), and emits an `INI_SECTION_REVIEWER` block. Always triggers `target_agents` so the flow can branch on `verdict`.
 - **Used for**: Automated commit / PR review inside a flow; gating a merge or deploy on the review verdict; nightly "review yesterday's commits and email the summary" pipelines.
 - **Aimed at**: Treating code review as an unattended, routable flow step. Pair with a Forker that branches on `{verdict}` to auto-merge on APPROVE and notify/stop on REQUEST_CHANGES. The visual-canvas counterpart of the `code-review` skill.
@@ -1516,7 +1516,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after the review)
 
-### 63. Analyzer
+### 60. Analyzer
 - **Purpose**: Deterministic static-analysis / security scanner (no LLM — reproducible output). Runs whichever of `bandit`, `semgrep`, `ruff`, `eslint`, `gitleaks`, `pip-audit` are installed on PATH over `target_path`, aggregates findings, and emits an `INI_SECTION_ANALYZER` block whose `status` is `clean` / `findings` / `error` and whose `total_findings` count is a routable header field. Always triggers `target_agents` so the flow can branch on `status` / `total_findings`.
 - **Used for**: SAST + secret + dependency auditing as a flow step; blocking a deploy when findings exist; scheduled security sweeps with an emailed report.
 - **Aimed at**: Unattended, routable security gating. Pair with a Forker/Counter that branches on `{status}` or `{total_findings}` to stop the flow when issues are found. The visual-canvas counterpart of the `security-audit` skill.
@@ -1531,7 +1531,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after the scan)
 
-### 64. Playwrighter
+### 61. Playwrighter
 - **Purpose**: Scripted, interactive browser automation via Playwright (Chromium/Firefox/WebKit). Drives a REAL browser through an ordered list of declarative steps (goto / click / fill / press / wait_for / extract_text / extract_attr / screenshot / assert_visible / assert_text / download) and emits an `INI_SECTION_PLAYWRIGHTER` block with `status`, `final_url`, `steps_run`, `assert_result`, plus a `response_body` carrying the extracted values + step trace. Always triggers `target_agents` (success OR failure) so the flow can branch on `status` / `assert_result`.
 - **Used for**: INTERACTIVE / AUTHENTICATED / JS-rendered web work that Crawler (static one-shot HTTP fetch) and Googler (web search) cannot do — logging into a site, submitting a multi-step form, clicking through a wizard, scraping a single-page-app dashboard behind a login, running an end-to-end UI check, or capturing a screenshot of a specific post-interaction state.
 - **Aimed at**: Treating browser interaction as an unattended, routable flow step. Pair with a Forker that branches on `{assert_result}` (pass/fail) or `{status}` (ok / assert_failed / error); pipe `response_body` through Parametrizer into a File-Creator or Apirer. Set `headless: false` to watch it drive; set `storage_state_out` on one node and `storage_state_in` on a later node to carry a logged-in session across runs. The visual-canvas counterpart of the `chat_agent_playwrighter` Multi-Turn tool.
@@ -1555,7 +1555,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after the run)
 
-### 65. Windower
+### 62. Windower
 - **Purpose**: The WINDOW MANAGER of the desktop-UI trio (Windower=the window itself, Mouser=clicks inside it, Keyboarder=typing into it). Locates an application window by title and runs ONE window lifecycle operation on it — focus/raise, minimize, maximize, restore, move, resize, move+resize, close, pin always-on-top / clear it, or tile/snap to a screen region — OR enumerates every open window with its geometry and state. Emits an `INI_SECTION_WINDOWER` block (`action`, `window_title`, `matched`, `match_count`, `state`, `left`, `top`, `width`, `height`, plus a `response_body` describing the result / window list). Implemented self-contained with the Win32 API (pywin32). Always triggers `target_agents` (success or soft no-op).
 - **Used for**: Managing the window as a whole — NOT clicking controls inside it (that is Mouser) and NOT typing (that is Keyboarder). Use it to bring a freshly launched app to the foreground before typing, to tile two windows side-by-side, to maximize a dashboard before screenshotting, to close a window by title at the end of a flow, or to enumerate which windows are open so a downstream agent can branch on them.
 - **Aimed at**: Treating window management as an unattended, routable flow step. Pair it after Executer (launch the app) and a `window_present`-style gate, then before Keyboarder/Mouser (focus the right window first), and at the end of a desktop-UI flow (close the window). A downstream Forker can branch on `{matched}` / `{state}`; a Parametrizer can copy `{width}`/`{height}` into another node. The visual-canvas counterpart of the `chat_agent_windower` Multi-Turn tool.
@@ -1577,7 +1577,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after the window operation)
 
-### 66. Kalier
+### 63. Kalier
 - **Purpose**: Tlamatini's bridge to **Kali Linux** offensive-security tooling via the MCP-Kali-Server (https://www.kali.org/tools/mcp-kali-server/). On trigger it POSTs to the MCP-Kali-Server Flask API (`server.py`, default `http://127.0.0.1:5000`) and runs ONE capability selected by its `action` field, capturing the tool's stdout/stderr into an `INI_SECTION_KALIER` block (`action`, `endpoint`, `subject`, `return_code`, `success`, `timed_out`, `server_url`, plus a `response_body` carrying the raw tool output). Always triggers `target_agents` (success OR failure) so the flow can branch on `{success}` / `{return_code}`.
 - **Used for**: AI-assisted PENETRATION TESTING, RECON and CTF solving as an unattended flow step — port/service scanning (`nmap`), web content / directory busting (`gobuster`, `dirb`), web-server scanning (`nikto`), SQL-injection testing (`sqlmap`), WordPress scanning (`wpscan`), SMB/Samba enumeration (`enum4linux`), credential brute-forcing (`hydra`), hash cracking (`john`), exploitation (`metasploit`), arbitrary shell commands on the Kali box (`command`), or an API-server health probe (`health`).
 - **Aimed at**: Building visual, repeatable offensive-security pipelines. Chain a recon `nmap` Kalier → Parametrizer (copy `{subject}`/open ports into the next node) → an enumeration Kalier → a Forker that branches on `{success}` → an exploitation Kalier → File-Creator (write the loot) → Ender. Point `server_url` at the running API server (tunnel a remote Kali box with `ssh -L 5000:localhost:5000 user@KALI_IP`). **Authorized targets only.** The visual-canvas counterpart of the `chat_agent_kalier` Multi-Turn tool.
@@ -1607,7 +1607,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after the run)
 
-### 67. STM32er
+### 64. STM32er
 - **Purpose**: Tlamatini's bridge to the **STM32 Template Project MCP server** (https://github.com/XAIHT/STM32TemplateProjectMCP). On trigger it spawns that FastMCP **stdio** server (`mcp/stm32_mcp_server.py`), performs the MCP initialize handshake, calls ONE capability selected by its `action` field via JSON-RPC `tools/call`, captures the result into an `INI_SECTION_STM32ER` block (`action`, `tool`, `ok`, `returncode`, `success`, `project_dir`, `session_id`, `stage`, plus a `response_body` carrying the tool stdout/stderr or JSON), then shuts the server down. Always triggers `target_agents` (success OR failure) so the flow can branch on `{success}` / `{returncode}`.
 - **Used for**: Scaffolding, authoring, building, flashing and OBSERVING STM32 firmware across the **WHOLE ST 32-bit line (Blue Pill → F7 / G / L / H7 / U5 / WB)** as unattended flow steps — **no IDE GUI**. STM32er has **two backends** (`stm32_backend`, default `auto`): the **PlatformIO backend** — set a `board` (e.g. `bluepill_f103c8`, `nucleo_h743zi`); actions `list_boards` / `create_project` / `write_source` / `build` / `flash`(=upload) / `build_and_flash` / `monitor` / the one-call `scaffold_build_flash` / `pkg_*` / `check` / `test`; zero-config auto-installs PlatformIO Core (SHARED with ESP32er); `framework` defaults to `arduino`. And the **template-MCP backend** (STM32F407VG + serial/SWD HIL), whose `action` field selects ONE of the 23 MCP tools: environment (`get_config`, `discover_toolchain_tool`); project lifecycle (`create_project`, `write_source`, `read_source`, `list_sources`, `clean`); build & flash (`build`, `list_artifacts`, `flash`, `build_and_flash`, `erase`, `reset`); serial VCP HIL (`serial_list_ports`, `serial_connect`, `serial_send`, `serial_read`, `serial_disconnect`); live SWD memory HIL (`read_memory`, `write_memory`, `live_memory_start`, `live_memory_read`, `live_memory_stop`). PLUS two composite actions that chain the stateful tools within one server run: `serial_session` (connect → send|read → disconnect) and `live_monitor` (start → stream `monitor_seconds` → read → stop). PLUS two meta-actions handled by STM32er itself: `bootstrap` (download + install + validate the MCP) and `validate` (full environment preflight report — no build/flash).
 - **Aimed at**: Building visual, repeatable firmware pipelines — e.g. an autonomous agent that regenerates and re-flashes a robot's firmware. Chain `create_project` → Parametrizer (carry `{project_dir}` forward) → `write_source` → `build` → `flash` → a `live_monitor` / `serial_session` that proves it runs on real silicon, with a Forker branching on `{success}`. **Zero-config**: leave `server_script` blank and STM32er DOWNLOADS + installs the MCP itself on first use (shallow `git clone`, or a GitHub-zip fallback when git is absent; pip-installs `mcp`/`pyserial`; validates) into a per-user cache — `action='bootstrap'` does this explicitly, so the user installs only STM32CubeIDE. Before every compile/flash STM32er runs a **safety preflight** (validates the arm-none-eabi-gcc toolchain / STM32CubeIDE / build tool / programmer / ST-LINK driver + connected probe / target device family) and REFUSES rather than mis-build or mis-flash: compile-only actions need NO board, but flash/erase/reset/serial/SWD/live_* require a connected ST-LINK, and on the template-MCP backend a cross-family `device` is refused **and ROUTED to the PlatformIO backend** (which spans the mainstream line and refuses only the newest silicon — STM32C0/H5/U0/WBA/N6 — awaiting the ST-native CubeCLT backend, Phase 2/3); `action='validate'` reports the whole environment without building. Set `mcp_python` only if the server's Python lacks `mcp`/`pyserial`. For the PlatformIO backend the canonical Blue-Pill blink is a SINGLE node: STM32er (`stm32_backend: platformio`, `board: bluepill_f103c8`, `action: scaffold_build_flash`, `content: <Arduino blink>`). The visual-canvas counterpart of the `chat_agent_stm32er` Multi-Turn tool.
@@ -1634,7 +1634,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after the run)
 
-### 68. ESP32er
+### 65. ESP32er
 - **Purpose**: Tlamatini's bridge to **PlatformIO Core** (https://platformio.org). On trigger it resolves the `pio` CLI (auto-installing PlatformIO Core when absent), runs ONE capability selected by its `action` field as a direct `pio` subprocess, captures the result into an `INI_SECTION_ESP32ER` block (`action`, `tool`, `ok`, `returncode`, `success`, `project_dir`, `port`, `environment`, `stage`, plus a `response_body` carrying the `pio` stdout/stderr). Always triggers `target_agents` (success OR failure) so the flow can branch on `{success}` / `{returncode}`.
 - **Used for**: Scaffolding, authoring, building, uploading (flashing) and OBSERVING ESP32 / ESP8266 / Espressif firmware as unattended flow steps — **no IDE**. Unlike STM32er (which drives an MCP server), PlatformIO ships a complete CLI, so ESP32er calls `pio` directly. The `action` field selects ONE capability: environment/meta (`bootstrap`, `validate`, `system_info`, `boards`); project lifecycle (`create_project`, `write_source`, `read_source`, `list_sources`, `clean`); build & flash (`build`, `upload`, `build_and_upload`, `list_artifacts`); serial HIL (`device_list`, `monitor` — a bounded `pio device monitor` drained for `monitor_seconds`, and the composite `monitor_session` = upload → monitor in one run); packages & QA (`pkg_install`, `pkg_list`, `pkg_update`, `check`, `test`).
 - **Aimed at**: Building visual, repeatable ESP32 firmware pipelines. Chain `create_project` (`board: esp32dev`) → Parametrizer (carry `{project_dir}` forward) → `write_source` (drop generated `src/main.cpp`) → `build` → `upload` → a `monitor` / `monitor_session` that proves it runs on real silicon, with a Forker branching on `{success}`. **Zero-config**: leave `pio_executable` blank and ESP32er DOWNLOADS + installs PlatformIO Core itself on first use (the official `get-platformio.py` installer, with a `pip install platformio` fallback) into a per-user cache — `action='bootstrap'` does this explicitly, so the user installs only the board USB driver. Before every build/upload ESP32er runs a **safety preflight** (validates `pio` resolvable + a `platformio.ini`, and for upload/monitor that a serial port is connected) and REFUSES rather than run a build/upload that cannot succeed; `action='validate'` reports the whole environment without building. NOTE: the FIRST build downloads the espressif32 platform + toolchain (hundreds of MB) so it is slow. The visual-canvas counterpart of the `chat_agent_esp32er` Multi-Turn tool.
@@ -1655,7 +1655,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after the run)
 
-### 69. Arduiner
+### 66. Arduiner
 - **Purpose**: Tlamatini's bridge to the **Arduino CLI** (https://arduino.github.io/arduino-cli/). On trigger it resolves the `arduino-cli` binary (auto-downloading it when absent), runs ONE capability selected by its `action` field as a direct `arduino-cli` subprocess, captures the result into an `INI_SECTION_ARDUINER` block (`action`, `tool`, `ok`, `returncode`, `success`, `fqbn`, `port`, `sketch_path`, `stage`, plus a `response_body` carrying the `arduino-cli` stdout/stderr). Always triggers `target_agents` (success OR failure) so the flow can branch on `{success}` / `{returncode}`.
 - **Used for**: Scaffolding, authoring, building, uploading (flashing) and OBSERVING classic-Arduino / AVR / SAMD / Arduino-core firmware as unattended flow steps — **no IDE**. Like ESP32er (and unlike STM32er's MCP server), arduino-cli ships a complete CLI, so Arduiner calls it directly. **The microcontroller is selected by `fqbn`** (e.g. `arduino:avr:uno`, `arduino:avr:mega2560`, `arduino:samd:mkr1000`, `esp32:esp32:esp32`). The `action` field selects ONE capability: environment/meta (`bootstrap`, `validate`, `system_info`, `boards`, `device_list`); cores & libraries (`core_update_index`, `core_search`, `core_list`, `core_install`, `core_uninstall`, `lib_update_index`, `lib_search`, `lib_list`, `lib_install`); project lifecycle (`create_project`, `write_source`, `read_source`, `list_sources`); build & flash (`build`, `upload`, `build_and_upload`, `clean`, `list_artifacts`); serial HIL (`monitor` — a bounded `arduino-cli monitor --config baudrate=<baud>` drained for `monitor_seconds`, and the composite `monitor_session` = upload → monitor in one run).
 - **Aimed at**: Building visual, repeatable Arduino firmware pipelines. Chain `create_project` (`fqbn: arduino:avr:uno`) → Parametrizer (carry `{sketch_path}` forward) → `write_source` (drop generated `.ino`) → `build` → `upload` → a `monitor` / `monitor_session` that proves it runs on real silicon, with a Forker branching on `{success}`. **Zero-config**: leave `arduino_cli_executable` blank and Arduiner DOWNLOADS + installs the arduino-cli binary itself on first use (the platform release archive from downloads.arduino.cc) into a per-user cache, runs `core update-index`, and AUTO-INSTALLS the board's core for the FQBN before a build (`auto_core_install`) — `action='bootstrap'` does the install explicitly, so the user installs only the board USB driver. For THIRD-PARTY silicon (ESP32/STM32/RP2040) set `additional_urls` to the vendor's `package_*_index.json`. Before every build/upload Arduiner runs a **safety preflight** (validates `arduino-cli` resolvable + a sketch `.ino` + an FQBN, and for upload/monitor that a serial port is connected) and REFUSES rather than run a build/upload that cannot succeed; `action='validate'` reports the whole environment without building. `create_project` scaffolds from the bundled **ArduinoTemplateProject** (the Arduino analog of STM32er's STM32 Template Project / ESP32er's `pio` scaffold). The visual-canvas counterpart of the `chat_agent_arduiner` Multi-Turn tool.
@@ -1677,7 +1677,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after the run)
 
-### 70. Camcorder
+### 67. Camcorder
 - **Purpose**: Captures from a SYSTEM CAMERA (webcam) using OpenCV. On trigger it opens the configured camera and either takes ONE photo (the default) or records a video segment of `video_duration_seconds`, saves the file with a timestamped collision-proof name, emits an `INI_SECTION_CAMCORDER` block (`output_path`, `output_dir`, `filename`, `media_type`, `camera_index`, `duration_seconds`, `resolution`, `fps`, plus a `response_body`), and always triggers `target_agents`. It is read-only/observational (like Shoter) — it appears in the Exec Report.
 - **Used for**: Grabbing a webcam still or recording a short clip as an unattended flow step — visual proof-of-presence, time-lapse stills, "what does the camera see", or a recorded segment for a downstream Image-Interpreter / File-Creator. Distinct from **Shoter**, which captures the SCREEN; Camcorder captures the physical CAMERA. Files default to the user's Pictures folder under `TlamatiniCamcorder`.
 - **Aimed at**: Visual capture pipelines from real cameras. Pair `capture_mode: photo` → Parametrizer (carry `{output_path}`) → Image-Interpreter to analyze the shot, or schedule with a Croner for periodic snapshots. The default mode is a single photo; switch `capture_mode` to `video` with a `video_duration_seconds` to record. **Resolution is optional**: leave `resolution_width`/`resolution_height` at 0 to use the camera's native resolution (recommended — a webcam only supports a discrete set of modes), or request a specific one (the applied value is read back into the log + INI block). Pick a non-default camera on multi-camera machines with `camera_index`.
@@ -1694,7 +1694,7 @@ system_prompt: |
   - `output_dir`: "" ("" = <User Pictures>/TlamatiniCamcorder)
   - `target_agents`: [] (downstream agents to start after the capture)
 
-### 71. Recorder
+### 68. Recorder
 - **Purpose**: Records AUDIO from a system input device (MICROPHONE) using `sounddevice` and saves a WAV (written with the stdlib `wave` module). On trigger it resolves the input device, records `record_seconds` of audio, saves the file with a timestamped collision-proof name, emits an `INI_SECTION_RECORDER` block (`output_path`, `output_dir`, `filename`, `device_index`, `device_name`, `sample_rate`, `channels`, `duration_seconds`, `format`, plus a `response_body`), and always triggers `target_agents`. The audio sibling of Camcorder (camera) and Shoter (screen); read-only/observational, so it appears in the Exec Report.
 - **Used for**: Capturing sound as an unattended flow step — a voice memo, an ambient-noise sample, a microphone test, or an audio clip for a downstream File-Creator / transcription step. Distinct from Camcorder (camera) and Shoter (screen); Recorder captures the MICROPHONE. Files default to the user's Music folder under `TlamatiniRecords`.
 - **Aimed at**: Audio-capture pipelines from a real microphone. By default it records from the SYSTEM DEFAULT input device — pick another mic on a multi-microphone machine with `device_index` (the agent logs the numbered device list at startup) or by name with `device_name`. **Sampling rate is optional**: leave `sample_rate` at 0 to use the device's native default rate (recommended — the device always supports it), or force one (`44100`/`48000`/`16000`). `channels` defaults to mono (1) and is clamped to the device's max. Pair with a Croner for periodic recordings, or Parametrizer to carry `{output_path}` to a downstream node.
@@ -1711,7 +1711,7 @@ system_prompt: |
   - `output_dir`: "" ("" = <User Music>/TlamatiniRecords)
   - `target_agents`: [] (downstream agents to start after the recording)
 
-### 72. AudioPlayer
+### 69. AudioPlayer
 - **Purpose**: PLAYS an audio file through a system audio OUTPUT device (speakers / audio out) using `soundfile` + `sounddevice`. On trigger it reads `audio_file`, resolves the output device, applies a software volume, plays for `time_played` seconds (whole file once when 0, truncating a longer file, looping a shorter one with a streaming callback), emits an `INI_SECTION_AUDIOPLAYER` block (`input_path`, `input_dir`, `filename`, `device_index`, `device_name`, `file_sample_rate`, `play_sample_rate`, `channels`, `volume_percent`, `clipped_samples`, `file_duration_seconds`, `time_played_requested`, `played_seconds`, `play_mode`, `loops`, `partial_segment`, `format`, `status`, plus a `response_body`), and ALWAYS triggers `target_agents` (success or failure). The playback counterpart of Recorder (microphone-IN) — AudioPlayer is speakers-OUT; observational/output, so it appears in the Exec Report.
 - **Used for**: Playing a sound as an unattended flow step — an audible alert/chime on an event, a voice prompt, playing back a clip a Recorder just captured, or a fixed-length audio cue. Distinct from Recorder (records the mic) and Notifier (in-browser popup); AudioPlayer drives the SPEAKERS.
 - **Aimed at**: Audio-playback steps. By default it plays to the SYSTEM DEFAULT output device — pick another with `device_index` (the agent logs the numbered output-device list at startup) or by name with `device_name`. `volume_percent` is a software gain (100 = unity; NOT the OS volume slider). `time_played` shapes the length: 0 = whole file once, N>0 = exactly N seconds (truncate a longer file / loop a shorter one). **Sampling rate is optional**: leave `sample_rate` at 0 to play at the file's own native rate (recommended, correct pitch), or force one (alters pitch — the audio is not resampled). Pair with Parametrizer to carry a `{output_path}` from a Recorder/Camcorder into AudioPlayer's `audio_file`, or with a Forker to branch on `{status}`.
@@ -1727,7 +1727,7 @@ system_prompt: |
   - `sample_rate`: 0 (0 = file's native rate, recommended; a non-zero value forces the output rate and alters pitch — not resampled)
   - `target_agents`: [] (downstream agents to start after playback)
 
-### 73. VideoPlayer
+### 70. VideoPlayer
 - **Purpose**: PLAYS a video file (WITH audio) on a chosen DISPLAY (screen) using `ffpyplayer` (decode + synchronized audio + volume; its pip wheel bundles ffmpeg+SDL so nothing external is needed) and OpenCV for the window. On trigger it reads `video_file`, resolves the target monitor, opens a sized/fullscreen window on it, sets the volume, plays for `time_played` seconds (whole video once when 0, truncating a longer file, looping a shorter one), emits an `INI_SECTION_VIDEOPLAYER` block (`input_path`, `input_dir`, `filename`, `display_index`, `display_geometry`, `video_width`, `video_height`, `window_width`, `window_height`, `fullscreen`, `volume_percent`, `backend`, `has_audio`, `file_duration_seconds`, `time_played_requested`, `played_seconds`, `play_mode`, `loops`, `partial_segment`, `format`, `status`, plus a `response_body`), and ALWAYS triggers `target_agents`. The on-screen sibling of AudioPlayer (speakers); observational/output, so it appears in the Exec Report. If ffpyplayer is unavailable it plays SILENTLY via OpenCV (volume no-op).
 - **Used for**: Showing a video as an unattended flow step — a demo/intro clip on a kiosk screen, an alert video on an event, playing back a captured clip, or a fixed-length looping signage segment. Distinct from AudioPlayer (sound only) and Shoter (still screenshot); VideoPlayer drives a SCREEN window with motion + sound.
 - **Aimed at**: Video-playback steps. By default it plays on the PRIMARY display — pick another with `display_index` (the agent logs the numbered display list at startup). `volume_percent` is the audio level (100 = full). `time_played` shapes the length: 0 = whole video once, N>0 = exactly N seconds (truncate a longer file / loop a shorter one). `window_width`/`window_height` size the window (0 = native); `fullscreen: true` fills the display; `keep_aspect: true` letterboxes. Pair with Parametrizer to carry a `{output_path}` from a Camcorder/another source into VideoPlayer's `video_file`, or a Forker to branch on `{status}`.
@@ -1745,7 +1745,7 @@ system_prompt: |
   - `keep_aspect`: true (true = letterbox/pillarbox so the picture is never distorted; false = stretch to fill)
   - `target_agents`: [] (downstream agents to start after playback)
 
-### 74. Talker
+### 71. Talker
 - **Purpose**: TEXT-TO-SPEECH (TTS): SPEAKS `input_text` aloud through a system audio OUTPUT device (speakers) by driving an OLLAMA connection that runs a neural TTS model (initial global default `legraphista/Orpheus:3b-ft-q8`; `model: "@config"` follows Config → Models → Speech). On trigger it builds an Orpheus prompt (`<voice>: <text>`, with an optional emotive tag and language hint), streams the model's audio TOKENS over the Ollama HTTP API, decodes them to a 24 kHz waveform with the SNAC neural codec, saves a WAV, plays it, emits an `INI_SECTION_TALKER` block (`output_path`, `output_dir`, `filename`, `model`, `language`, `voice`, `gender`, `emotion`, `sample_rate`, `audio_seconds`, `char_count`, `played`, `status`, plus a `response_body`), and ALWAYS triggers `target_agents`. The voice-synthesis sibling of the media family — AudioPlayer plays an existing FILE, Talker GENERATES speech from text; observational/output, so it appears in the Exec Report. NOTE: hearing audio needs `snac` + `torch` installed; without them Talker saves the audio tokens and reports `status: tokens_only`.
 - **Used for**: Speaking a generated/known string as an unattended flow step — an audible spoken alert, a voice prompt or announcement, reading back an LLM-generated message (from Prompter/Summarizer via Parametrizer), or pronouncing a word/phrase. Distinct from AudioPlayer (plays an existing file) and Notifier (in-browser popup); Talker SYNTHESISES speech.
 - **Aimed at**: TTS steps. **FEMALE VOICE ONLY (Tlamatini is female — a male voice is FORBIDDEN BY DESIGN).** `voice` selects one of the permitted FEMALE Orpheus voices: tara [default], leah, jess, mia, zoe (the only accepted `gender` is `female`). NEVER set `voice` to a male voice (leo/dan/zac) or `gender: male` — the agent refuses such a request by closing its execution entirely ("male voice is forbidden by design — NOW CLOSING.. BYE"), so the flow step produces no audio. `language` passes a hint to the model (base model is English-only; a multilingual fine-tune speaks others). `emotion` weaves a paralinguistic tag (laugh/chuckle/sigh/cough/sniffle/groan/yawn/gasp) into the speech. `model`/`ollama_url`/`ollama_token` configure the Ollama connection; generation knobs are `temperature`/`top_p`/`top_k`/`min_p`/`repetition_penalty`/`max_tokens`/`seed`. Playback uses `device_index`/`device_name`/`volume_percent`/`sample_rate`; the WAV is always saved to `output_dir`. Pair with Parametrizer to carry a `{response_body}` from a Prompter/Summarizer into Talker's `input_text`, or a Forker to branch on `{status}`.
@@ -1772,7 +1772,7 @@ system_prompt: |
   - `output_dir`: "" ("" = the user's Music folder under TlamatiniTalker)
   - `target_agents`: [] (downstream agents to start after speaking)
 
-### 75. Whisperer
+### 72. Whisperer
 - **Purpose**: SPEECH-TO-TEXT (STT / voice recognition): turns SPOKEN AUDIO into a STRING of text. 100% self-sufficient for the microphone — it OPENS, CONFIGURES (channels, sample rate, gain) and RECORDS the mic ITSELF (does NOT depend on Recorder), or transcribes a given audio FILE. **⚠️ SINCE 2026-09-11 THE DEFAULT IS A SOUND GATE, NOT A FIXED BLOCK**: with `record_seconds: 0` (the default) it keeps recording while the speaker is still talking and STOPS ON ITS OWN after `silence_timeout_seconds` (default 3.5) of continuous silence, up to the `max_record_seconds` ceiling (default 300). Give `record_seconds` a number and it records exactly that long with the gate OFF — the same idiom as `sample_rate: 0` meaning the native rate. Runs faster-whisper LOCALLY by default (auto-detects an NVIDIA GPU and ALWAYS falls back to CPU), or a cloud Whisper API (Groq/OpenAI); optionally tidies the transcript with an Ollama LLM (Ollama CANNOT transcribe — post-processing only). Emits an `INI_SECTION_WHISPERER` block (`transcript_path`, `audio_path`, `input_source`, `engine`, `model`, `device`, `language`, `duration_seconds` — the length ACTUALLY captured, not the length requested —, `segments`, `word_count`, `status`, plus the appended gate fields `capture_mode` / `stop_reason` / `silence_timeout_seconds` / `speech_seconds`, plus the transcript text as `response_body`) and ALWAYS triggers `target_agents`. The speech-to-text sibling of Talker (text-to-speech); read-only/observational, but its wrapped Multi-Turn tool IS captured in the Exec Report like every other `chat_agent_*` (2026-06-07 completeness contract).
 - **Used for**: Transcribing speech as an unattended flow step — dictation, voice commands, turning a recorded clip or an audio file into text for a downstream Prompter/Summarizer/File-Creator. The inverse of Talker (which speaks text); Whisperer listens and writes it down.
 - **Aimed at**: STT steps. `input_source` mic (DEFAULT — records the mic itself) or file (set `audio_file`). **Leave `record_seconds` at 0 for dictation** (the flow waits for the speaker to finish); set it only when the flow genuinely needs a fixed-length clip. `silence_timeout_seconds` widens/shortens the silence window, `silence_gate` (auto/on/off) forces the mode, `max_record_seconds` caps a gate that never fires, and `silence_threshold_db` (0 = measure the room automatically) retunes a noisy room. `engine` faster-whisper (default; `model` tiny/base/small/medium/large-v3/large-v3-turbo, `device` auto/cuda/cpu with guaranteed CPU fallback) or cloud-groq/cloud-openai (needs an API key). `language` "" auto-detects; `task: translate` outputs English. Pair with Parametrizer to carry the `{response_body}` transcript into a downstream agent, or a Forker to branch on `{status}` (transcribed/empty/engine_unavailable/error) or on `{stop_reason}` (silence/duration/max_duration/fixed_fallback).
@@ -1805,7 +1805,7 @@ system_prompt: |
   - `save_transcript`: true, `output_dir`: "" ("" = the user's Documents folder under TlamatiniTranscripts)
   - `target_agents`: [] (downstream agents to start after transcription)
 
-### 76. FlowCreator
+### 73. FlowCreator
 - **Purpose**: Generate a canvas-loadable `.flw` from a natural-language objective using current installed-agent contracts.
 - **Pool name**: `flowcreator` (singleton, no inputs or outputs); also available through `chat_agent_flowcreator`.
 - **Config**: `prompt`, `flow_filename`, `output_dir`, `llm.host`, `llm.model`, `llm.num_ctx` (65536 requested context), `llm.max_prompt_chars` (180000 character guard), `llm.repair_attempts` (2, range 0–3).
@@ -1814,7 +1814,7 @@ system_prompt: |
 - **Outputs**: `flow_creation_script.txt`, `flow_result.json`, `.flw`, and `INI_SECTION_FLOWCREATOR` with `model`, `status`, `flw_path`, `flow_filename`, `agent_count`, `connection_count`, `response_body`. Only publish success after the file was written; errors exit nonzero.
 - Coverage guarantees catalog/reference/config-field availability, not successful execution of every external integration. Context limits depend on the configured provider; the character guard is not an exact tokenizer.
 
-### 77. Blenderer
+### 74. Blenderer
 - **Purpose**: Drives a Blender instance via the OFFICIAL Blender MCP add-on's TCP socket (default localhost:9876 — the add-on must already be running inside Blender with "Online access" enabled and the server started). Unlike Unreal's verb dispatch, the Blender MCP wire format is a CODE-EXECUTION protocol — each run sends `{"type":"execute","code":<python>,"strict_json":<bool>}` and Blender runs that Python (which assigns a `result` dict). To avoid forcing hand-written Python for every task, Blenderer exposes a RICH ACTION CATALOG via its `command` field and captures the full Blender response into an `INI_SECTION_BLENDERER` block. Triggers `target_agents` on success OR error so the flow can branch on the section's `status` / `error`.
 - **Used for**: Unattended inspection and manipulation of a Blender scene. The `command` is one of: PASSTHROUGH — `execute_code` (run arbitrary `bpy` Python via `params.code`, the universal escape hatch); READ-ONLY — `ping`, `scene_info`, `get_objects`, `get_object_detail` (`params.object_name`), `blendfile_summary`; MUTATING/OUTPUT — `create_object` (`params.type` cube/sphere/cylinder/cone/plane/monkey/torus, `params.name`, `params.location`), `delete_object` (`params.object_name`), `set_material` (`params.object_name`, `params.color` [r,g,b(,a)], `params.material`), `screenshot` (`params.output_path`), `render` (`params.output_path`). File outputs default under Tlamatini's Temp directory when `params.output_path` is omitted.
 - **Aimed at**: Building visual 3D / game-asset workflows in Tlamatini that talk to a running Blender — procedural scene assembly, batch object creation + material assignment, render pipelines, "summarize this .blend", or "watch a log → build/colour something in Blender → render the result" loops via Raiser. Because Tlamatini speaks the add-on socket DIRECTLY (no `blmcp` bridge, no external LLM client), this is a far more integrated alternative to the bare chat client blender.org recommends. The visual-canvas counterpart of the wrapped `chat_agent_blenderer` Multi-Turn tool.
@@ -1833,7 +1833,7 @@ system_prompt: |
   - `target_agents`: [] (downstream agents to start after execution)
 
 
-### 78. Editor
+### 75. Editor
 - **Purpose**: Makes a SURGICAL in-place edit to a single existing text file by replacing an EXACT string (`old_string`) with another (`new_string`) - the find-and-replace equivalent that changes a file WITHOUT rewriting it. By default `old_string` must be UNIQUE in the file (refuses on >1 match unless `replace_all: true`). Byte-exact (preserves line endings). Emits an `INI_SECTION_EDITOR` block (status edited/not_found/not_unique/noop/error + replacements) and ALWAYS triggers `target_agents` so a downstream Forker can branch on the outcome.
 - **Used for**: Patching code/config/text located earlier in a flow - flip a flag, bump a value, rename a symbol in one place - without regenerating an entire file.
 - **Aimed at**: Surgical, reviewable mutations of an existing file inside an unattended flow. Prefer Editor over File-Creator when the file already exists and only part of it should change. For binary-exact code edits pass `old_string_b64` / `new_string_b64` (base64).
@@ -1851,8 +1851,8 @@ system_prompt: |
   - `target_agents`: [] (downstream agents to start after execution)
 
 
-### 79. Grepper
-- **Purpose**: Read-only regex CONTENT search across a single file or a whole directory tree (the Claude-Grep equivalent). Returns matching lines as `file:line:match`. Pass `pattern` (a Python regex), `path` (file or dir), optionally `glob` (a basename filter like `*.py`), `case_insensitive`, `output_mode` (`content`/`files`/`count`/`lines`), and `max_results`. Prunes noise dirs (.git, node_modules, venv, __pycache__, dist, build) and skips binary/unreadable files. **`output_mode: 'lines'` is a second, distinct job: a VERBATIM READ of ONE file with NO pattern** - set `start_line`/`end_line` (1-based, inclusive; 0 = first/last) and `line_numbers` (false = also emit `content_b64`, a base64 copy of the exact bytes for a downstream Editor; true = each line prefixed `N: `). Use it to carry an exact region of a file into a downstream Editor. Emits an `INI_SECTION_GREPPER` block (pattern, path, glob, matches, files_searched, truncated, start_line, end_line, lines_returned, total_lines, content_b64, status matches/no_matches/listed/refused/not_found/error) and ALWAYS triggers `target_agents`.
+### 76. Grepper
+- **Purpose**: Read-only regex CONTENT search across a single file or a whole directory tree (the Claude-Grep equivalent). Returns matching lines as `file:line:match`. Pass `pattern` (a Python regex), `path` (file or dir), optionally `glob` (a file filter: `*.py` matches file names, `src/**/*.py` matches paths below `path`, and brace sets or lists like `*.{js,py}` or `*.py,*.js` work too), `case_insensitive`, `output_mode` (`content`/`files`/`count`/`lines`), and `max_results`. Prunes noise dirs (.git, node_modules, venv, __pycache__, dist, build) and skips binary/unreadable files. **`output_mode: 'lines'` is a second, distinct job: a VERBATIM READ of ONE file with NO pattern** - set `start_line`/`end_line` (1-based, inclusive; 0 = first/last) and `line_numbers` (false = also emit `content_b64`, a base64 copy of the exact bytes for a downstream Editor; true = each line prefixed `N: `). Use it to carry an exact region of a file into a downstream Editor. Emits an `INI_SECTION_GREPPER` block (pattern, path, glob, matches, files_searched, truncated, start_line, end_line, lines_returned, total_lines, content_b64, status matches/no_matches/listed/refused/not_found/error) and ALWAYS triggers `target_agents`.
 - **Used for**: Locating where a symbol / string / pattern appears in a codebase or text tree before reading or editing it - the discovery step ahead of an Editor or File-Interpreter.
 - **Aimed at**: Fast, dependency-free content discovery inside an unattended flow. Read-only, so safe to chain anywhere; prefer it over an Executer findstr/grep node.
 - **Application example**: A Starter triggers a Grepper (`pattern='TODO'`, `path='C:/proj'`, `glob='*.py'`); a Parametrizer copies a matched file path into an Editor or File-Interpreter for follow-up.
@@ -1861,7 +1861,7 @@ system_prompt: |
 - **Config parameters**:
   - `pattern`: "" (Python regular expression to search for)
   - `path`: "" (file or directory to search)
-  - `glob`: "" (optional basename filter, e.g. *.py)
+  - `glob`: "" (optional file filter, e.g. *.py, src/**/*.py, *.{js,py} or *.py,*.js)
   - `case_insensitive`: false
   - `output_mode`: "content" (content = file:line:match | files = paths only | count = per-file counts | lines = VERBATIM read of one file, no pattern)
   - `max_results`: 200 (cap on total matches, or on lines returned in `lines` mode)
@@ -1872,8 +1872,8 @@ system_prompt: |
   - `target_agents`: [] (downstream agents to start after execution)
 
 
-### 80. Globber
-- **Purpose**: Read-only FILE discovery by glob/filename pattern under a directory (the Claude-Glob equivalent). Returns matching file paths, newest-first by default. Pass `pattern` (a glob like `*.py` or `**/*.md` - `**` searches recursively) and `path` (the base dir); optionally `sort_by` (`mtime`/`name`/`none`) and `max_results`. Returns files only (not directories). Emits an `INI_SECTION_GLOBBER` block (pattern, path, matches, truncated, status matches/no_matches/not_found/error) and ALWAYS triggers `target_agents`.
+### 77. Globber
+- **Purpose**: Read-only FILE discovery by glob/filename pattern under a directory (the Claude-Glob equivalent). Returns matching file paths, newest-first by default. Pass `pattern` (a glob like `*.py` or `**/*.md` - `**` searches recursively; brace sets like `**/*.{js,py}` and lists like `*.py,*.js` work too) and `path` (the base dir); optionally `sort_by` (`mtime`/`name`/`none`) and `max_results`. Returns files only (not directories). Emits an `INI_SECTION_GLOBBER` block (pattern, path, matches, truncated, status matches/no_matches/not_found/error) and ALWAYS triggers `target_agents`.
 - **Used for**: Discovering which files exist or were recently changed before reading, grepping, or editing them - the enumeration step at the head of a file-processing flow.
 - **Aimed at**: Fast, dependency-free file enumeration inside an unattended flow. Read-only; prefer it over an Executer dir/ls node.
 - **Application example**: A Starter triggers a Globber (`pattern='**/*.log'`, `path='C:/logs'`, `sort_by='mtime'`); a Parametrizer copies the newest matched path into a File-Interpreter or Grepper for follow-up.
@@ -1887,7 +1887,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents - for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after execution)
 
-### 81. ESPHomer
+### 78. ESPHomer
 - **Purpose**: Tlamatini's bridge to **ESPHome** (https://esphome.io) — the system that turns ESP32 / ESP8266 / RP2040 / BK72xx boards into smart-home devices from a SIMPLE YAML config (NO C++). On trigger it resolves the `esphome` CLI (auto-installing ESPHome via `pip` when absent), runs ONE capability selected by its `action` field as a direct `esphome` subprocess (or a stdlib op), captures the result into an `INI_SECTION_ESPHOMER` block (`action`, `tool`, `ok`, `returncode`, `success`, `config_path`, `name`, `port`, `stage`, plus a `response_body` carrying the `esphome` stdout/stderr). Always triggers `target_agents` (success OR failure) so the flow can branch on `{success}` / `{returncode}`.
 - **Used for**: Authoring, validating, compiling, uploading (flashing) and OBSERVING ESPHome smart-home device firmware as unattended flow steps — **no IDE, no C++**. Like ESP32er (PlatformIO) and Arduiner (arduino-cli), and unlike STM32er's MCP server, ESPHome ships a complete CLI, so ESPHomer calls `esphome` directly. The `action` field selects ONE capability: environment/meta (`bootstrap`, `validate`, `version`); device YAML lifecycle (`new_config` — GENERATE a minimal valid device YAML, the headless replacement for the interactive `esphome wizard`; `write_config`, `read_config`, `config`, `clean`); build & flash (`compile`, `upload`, `run`, `list_artifacts`); serial/OTA HIL (`logs` — a bounded `esphome logs` drained for `monitor_seconds`); plus the one-call composite `scaffold_compile_upload` (author → config → compile → upload → logs in a SINGLE run).
 - **Aimed at**: Building visual, repeatable smart-home device pipelines. Chain `new_config` (a phone-controlled light) → Parametrizer (carry `{config_path}` forward) → `config` → `compile` → `upload` → `logs` that proves it runs, with a Forker branching on `{success}`. **Zero-config**: leave `esphome_executable` blank and ESPHomer `pip install esphome` itself on first use — `action='bootstrap'` does this explicitly, so the user installs only the board USB driver. Before every compile/upload ESPHomer runs a **safety preflight** (validates `esphome` resolvable + a device YAML, and for upload/logs/run that a serial port is connected OR an OTA host is given in `port`) and REFUSES rather than run a build/upload that cannot succeed; `action='validate'` reports the whole environment without building. NOTE: the FIRST compile downloads the platform + toolchain (via PlatformIO under the hood) so it is slow. The visual-canvas counterpart of the `chat_agent_esphomer` Multi-Turn tool.
@@ -1907,7 +1907,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after the run)
 
-### 82. Discoverer
+### 79. Discoverer
 - **Purpose**: Tlamatini's bridge to the **ProjectDiscovery** security-tool suite (https://github.com/projectdiscovery) for recon, attack-surface mapping and vulnerability discovery. On trigger it runs ONE tool selected by its `tool` field as a direct subprocess, captures the result into an `INI_SECTION_DISCOVERER` block (`tool`, `target`, `returncode`, `success`, `findings_count`, `json_path`, `pdcp_used`, `stage`, plus a `response_body` carrying the tool's stdout + saved JSON). Always triggers `target_agents` (success OR failure) so the flow can branch on `{success}` / `{findings_count}`.
 - **Used for**: Subdomain enumeration, HTTP probing, port scanning, web crawling, template vulnerability scanning and CVE lookup as unattended flow steps. The `tool` field selects ONE: `subfinder` (passive subdomain enum, target=domain), `httpx` (HTTP probe/fingerprint, target=url/host), `naabu` (port scan, target=host/ip/cidr; CONNECT scan on Windows — no Npcap), `katana` (crawler, target=url), `nuclei` (template vuln scan, target=url/host), `cvemap` (CVE search — runs ProjectDiscovery's `vulnx` since cvemap's own API was retired Aug 2025; uses cvemap_id/cvemap_product/cvemap_severity/cvemap_limit); plus the meta actions `bootstrap` / `validate` / `update_templates` / `list_tools`. Like ESP32er/Arduiner it invokes each tool's own CLI directly (no MCP server).
 - **Aimed at**: Building visual, repeatable recon/assessment pipelines, e.g. `subfinder` → Parametrizer (carry `{response_body}` / `{json_path}`) → `httpx` (probe the live hosts) → `nuclei` (scan them) → Forker on `{findings_count}`. **Zero-config**: leave `go_dir`/`tools_bin` blank and on the FIRST call Discoverer downloads a PRIVATE Go compiler into `<install_dir>/Go` and `go install`s the requested tool into `<install_dir>/Go/bin-tools` (no system Go, no PATH change; `tool: bootstrap` does this explicitly — the first run is slow, then cached). A fail-safe **preflight** requires a target for the scanning tools and REFUSES rather than mis-scan. **AUTHORIZED TARGETS ONLY** — subfinder/cvemap are passive, but httpx/naabu/katana/nuclei actively touch the target. The visual-canvas counterpart of the `chat_agent_discoverer` Multi-Turn tool.
@@ -1929,7 +1929,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after the run)
 
-### 84. Video-Analyzer
+### 80. Video-Analyzer
 - **Purpose**: Analyze recorded videos in three modes: `robotics` (default, conservative motion verdict), `transcription` (speech from audio tracks), or `summary` (visual evidence plus speech and detailed synthesis). Always set `analysis_type` explicitly for content tasks.
 - **Robotics**: Camcorder/STM32er physical feedback loops retain the OpenCV motion gate, two independent vision interpreters and merger. `PASS_OK` requires both explicit passes; missing/disagreeing verdicts cannot pass. Branch on `TLM_VERDICT::PASS_OK` or `TLM_VERDICT::FAIL`; handle UNCLEAR/ANALYSIS_ERROR too.
 - **Transcription**: Decode `audio_tracks: all` or comma-separated audio ordinals (`0,1`) from the VIDEO, using local faster-whisper with GPU auto/CPU fallback and timestamped segments. Never capture the microphone or call a vision model. `transcription.model`, `.language`, `.task`, `.device`, `.compute_type`, `.beam_size`, `.vad_filter`, `.word_timestamps`, `.chunk_seconds` configure recognition.
@@ -1943,7 +1943,7 @@ system_prompt: |
 - **Starts other agents**: YES, always after structured output, including errors. Large results remain in `report_path`/`analysis_path`; wrapped results flag shortened fields in `promoted_fields_truncated`.
 - **Full guide**: `agents/video_analyzer/README.md`.
 
-### 85. Nmapper
+### 81. Nmapper
 - **Purpose**: Run LOCAL nmap security scans for recon / CTF against AUTHORIZED targets. Nmapper is USE-ONLY — it runs a real `nmap` the user installed themselves and NEVER bundles or redistributes nmap (nmap's NPSL forbids embedding it in a product without a paid OEM licence).
 - **Used for**: An instant, zero-install local port/service scan on a Windows box — the CTF opener. It resolves an installed nmap (PATH → Program Files → a `%LOCALAPPDATA%\Tlamatini\nmap` copy); if none is found it REFUSES with install guidance, and `action: install` downloads + launches the OFFICIAL FREE nmap installer (admin/UAC; also brings Npcap). The DEFAULT is an unprivileged TCP connect scan (`-sT`, no Npcap, no admin); SYN `-sS` / `-O` / UDP `-sU` auto-downgrade to a connect scan on Windows without Npcap.
 - **Aimed at**: Fast authorized recon pipelines. Distinct from **Kalier** (a remote Kali box via MCP-Kali-Server) and **Discoverer** (the ProjectDiscovery suite): Nmapper is the LOCAL, zero-install nmap.
@@ -1961,7 +1961,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after the scan)
 
-### 86. PDFer
+### 82. PDFer
 
 - **Purpose**: Author a PDF from an answer, Markdown, HTML, plain text, images or existing PDFs. PDFer composes documents; File-Extractor/File-Interpreter read them.
 - **Used for**: The document deliverable at the end of a reporting flow. Uses the already bundled Markdown, xhtml2pdf, PyMuPDF, ReportLab, Pillow and pypdf libraries and installed fonts.
@@ -1991,7 +1991,7 @@ system_prompt: |
   - `preflight: true`; `command_timeout: 300`; `source_agents: []`; `target_agents: []`.
 - **Reference**: [Full style catalog, examples, result contract and dated verification](../pdfer/STYLES.md). The developer gallery/atlas are regenerable ignored outputs, not runtime assets.
 
-### 87. LaTeXer
+### 83. LaTeXer
 - **Purpose**: TYPESET LaTeX into a PDF. LaTeXer is the TYPESETTING sibling of PDFer — PDFer COMPOSES a PDF from Markdown/HTML/images, LaTeXer TYPESETS one from `.tex` source, with real mathematics, bibliographies, cross-references and an index.
 - **Used for**: Any deliverable where typographic quality or mathematics matters — a paper, a thesis chapter, a beamer deck, a formula-heavy report — and for authoring/inspecting/repairing `.tex` sources. It natively embeds the whole `mcp-latex-server` capability surface (create / template / edit / read / list / validate / structure / compile) with NO MCP server and no extra dependency.
 - **Aimed at**: The LAST hop of a scientific or academic flow. Choose PDFer when the source is Markdown/HTML/images; choose LaTeXer when the source is LaTeX or the output needs real equations, citations or an index. NEVER hand-roll a `pdflatex` invocation through Executer/Pythonxer — LaTeXer already handles the multi-pass convergence, the bibliography and the log parsing.
@@ -2031,7 +2031,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after the typesetting run)
 
-### 88. NetSpeed-Calculator
+### 84. NetSpeed-Calculator
 - **Purpose**: MEASURE THIS MACHINE'S REAL INTERNET CONNECTION and report the answer WITH its error bar — download, upload, latency, jitter, packet loss and BUFFERBLOAT — using RFC 6349 methodology against SEVERAL keyless public providers at once (Cloudflare, Ookla, Fast.com/Netflix, LibreSpeed, Hetzner, CacheFly; no API key, no login, no account).
 - **Used for**: Answering "how fast is my internet", "why are my video calls choppy" (bufferbloat is the usual culprit and it is graded A+ to F), and any scheduled link-quality audit. It runs N parallel TCP streams per provider, DISCARDS the slow-start ramp, samples d(bytes)/dt rather than total/elapsed, rejects outliers with Tukey fences, and FUSES the providers with a DerSimonian-Laird random-effects meta-analysis that publishes a 95% confidence interval and an I² heterogeneity figure.
 - **Aimed at**: Defensible measurement rather than a flattering number. One CDN can be fast for reasons that have nothing to do with the link; several INDEPENDENT providers agreeing is evidence, and several disagreeing (high I²) is a peering story the report tells you about instead of hiding. NEVER hand-roll a speed test through Executer/Pythonxer — the ramp discard, the derivative sampling and the fusion are the whole point.
@@ -2054,7 +2054,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — e.g. a Croner deciding WHEN to measure)
   - `target_agents`: [] (downstream agents to start after the measurement — e.g. a Forker)
 
-### 89. PPTXer
+### 85. PPTXer
 - **Purpose**: AUTHOR a PowerPoint presentation. PPTXer is the DECK COMPOSER — the third member of the document family (PDFer COMPOSES a PDF, LaTeXer TYPESETS one, PPTXer BUILDS the slides).
 - **Used for**: Turning text a previous agent produced — a Summarizer digest, a File-Interpreter reading, a Crawler result, Tlamatini's own answer — into ONE finished `.pptx` carrying embedded images (including images fetched from the INTERNET), video, audio, native editable diagrams, real tables and generated artwork. It needs NO installation: python-pptx + Pillow already ship with Tlamatini.
 - **Aimed at**: The LAST hop of a presentation flow, and built above all for MARKETING and GAMING work — launch decks, tournament recaps, trailer beat-sheets, pitch decks, campaign reports, status reviews. Choose PPTXer when the deliverable is something a person will PRESENT; choose PDFer when it is something they will READ; choose LaTeXer when it needs real mathematics. NEVER hand-roll a `.pptx` through Executer/Pythonxer.
@@ -2204,8 +2204,8 @@ You MUST respond with ONLY a JSON array. Each element represents one agent to cr
 ]
 ```
 
-**Flow lifecycle**: Starter → Scper copies the remote file → Pythonxer checks the file content and **always** starts both Sleeper (loop-back) and Raiser (alert watcher):
-- **Default path (loop)**: Pythonxer → Sleeper (25s delay) → Scper → Pythonxer → ... (repeats indefinitely)
+**Flow lifecycle**: Starter → SCPer copies the remote file → Pythonxer checks the file content and **always** starts both Sleeper (loop-back) and Raiser (alert watcher):
+- **Default path (loop)**: Pythonxer → Sleeper (25s delay) → SCPer → Pythonxer → ... (repeats indefinitely)
 - **Exception path (alert)**: Raiser watches Pythonxer's log for "STATE_CHANGED". When detected → Notifier shows GUI alert with sound → Ender stops all agents.
 
 Notice that Pythonxer starts Sleeper via `target_agents` on every run (both STATE_ZERO and STATE_CHANGED). The Raiser only fires when it sees STATE_CHANGED — it ignores STATE_ZERO output. This means the loop continues naturally for the default case and the alert path triggers independently for the exception case.
@@ -2214,7 +2214,7 @@ Notice that Pythonxer starts Sleeper via `target_agents` on every run (both STAT
 - Only 1 Raiser (for the exception), not 2 Raisers (for both outcomes)
 - Default path uses direct `target_agents` chaining, NOT a Raiser
 - Notifier is triggered by Raiser, NOT launched by Starter
-- Starter only starts Scper (the first step), NOT all agents
+- Starter only starts SCPer (the first step), NOT all agents
 
 **Example 2** — Normas DRM Super Deployer: A flow that sequentially cleans up old log files and deployed applications, restarts the domain, copies a new WAR file, and monitors the deployment log to notify the user upon success.
 ```json
@@ -2522,7 +2522,7 @@ For every agent name referenced in any `target_agents`, `target_agents_a`, `targ
 
 1. **Exclusively use Raiser agent to trigger under certain configured condition monitored by it.** You should prefer to use Starter agent to unconditionally start other agents, and Raiser agent to trigger under certain configured condition monitored by it. 
 
-2. **If you need to make loops make sure the the last agent within the loop must be with capability of starting agents.** For example, if you need to make a loop that checks a file every 10 seconds, the last agent in the loop must be an agent that can start other agents, such as Telegrammer, Pythonxer, Scper, etc. and connect its output to the first agent in the loop.
+2. **If you need to make loops make sure the the last agent within the loop must be with capability of starting agents.** For example, if you need to make a loop that checks a file every 10 seconds, the last agent in the loop must be an agent that can start other agents, such as Telegrammer, Pythonxer, SCPer, etc. and connect its output to the first agent in the loop.
 
 3. **Always prefer to use the capability of the agents to start other agents instead of using Raiser agent** For example, if the flow can be solved with a linear chain of agents, use agents with the capability of starting other agents to connect them in a chain, and only use agent without the capability of starting other agents in parallel to other agents preexisting in the chain, and if there is no need to do something additional to its output, don't connect it to any other agent, for example: 
     Starter (1) -->Monitor-Log (1)->Notifier (1)->...Ender (1).
@@ -2540,8 +2540,8 @@ For every agent name referenced in any `target_agents`, `target_agents_a`, `targ
 ## Anti-Patterns (DO NOT DO)
 
 1. **❌ Fan-out from Starter to many agents.** Don't make Starter launch 4+ agents. Start only the first agent in the chain.
-   - Wrong: `Starter → [Scper, Raiser, Raiser, Notifier]`
-   - Right: `Starter → Scper` (sequential chain handles the rest)
+   - Wrong: `Starter → [SCPer, Raiser, Raiser, Notifier]`
+   - Right: `Starter → SCPer` (sequential chain handles the rest)
 
 2. **❌ Using two Raisers for a binary check.** Don't create one Raiser for "condition met" and another for "condition not met". Use `target_agents` for the default path and one Raiser for the exception.
    - Wrong: Raiser_1 watches for STATE_ZERO, Raiser_2 watches for STATE_CHANGED

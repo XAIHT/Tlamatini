@@ -445,7 +445,7 @@ def _resolve_exec_report_spec(tool_name: str) -> Tuple[str, str] | None:
 # The set is exactly the agents that *execute a command / script / .bat /
 # instruction, locally or remotely* (Tier 1 + Tier 2). Any tool not in this
 # set — including read-only tools, file/notify/messaging agents, the Kyber
-# crypto agents, desktop-input agents (Mouser / Keyboarder / Windower), Scper
+# crypto agents, desktop-input agents (Mouser / Keyboarder / Windower), SCPer
 # (file transfer), Apirer, Playwrighter, and ``invoke_skill`` — is NOT gated.
 #
 # Each tool maps back to a Tier-1/Tier-2 execution agent. Both the direct
@@ -1569,7 +1569,7 @@ class MultiTurnToolAgentExecutor:
         """``(wire_bytes, prompt_chars)`` of the bound tool surface.
 
         These are sent with EVERY request and are the largest part of the
-        static prefix — with 109 tools bound they dwarf the conversation — yet
+        static prefix — with 108 tools bound they dwarf the conversation — yet
         they live nowhere in ``messages``, so a measurement that ignored them
         would under-report the wire size badly. Computed once per request and
         cached: the tool list cannot change inside one run.
@@ -2764,7 +2764,7 @@ Answer:
 # ---------------------------------------------------------------------------
 # Tool-surface token budgeting (Angela, 2026-06-19)
 # ---------------------------------------------------------------------------
-# Binding the FULL enabled surface (88 agents + active External-MCP tools) can
+# Binding the FULL enabled surface (85 agents + active External-MCP tools) can
 # overflow the model context window. Observed live: "prompt too long 273284 >
 # 262144", which crashed Multi-Turn into a basic-LLM fallback ("tool backend
 # unavailable"). Instead of blindly binding everything OR starving the operator
@@ -3100,7 +3100,7 @@ class CapabilityAwareToolAgentExecutor:
         The unified agent is normally cached for speed, but External MCP tools
         are live capabilities: they can appear after Roblox Studio, Docker, npx,
         or another backend finishes connecting. Reconcile just that slice of the
-        tool surface per request so the 88-agent planner sees reality.
+        tool surface per request so the 85-agent planner sees reality.
         """
         try:
             from .external_mcp_manager import get_external_mcp_tools
@@ -3694,7 +3694,7 @@ class CapabilityAwareToolAgentExecutor:
         # === MANDATE (Angela, 2026-06-16, refined 2026-06-19) ===
         # Multi-Turn must let Tlamatini SEE the tools she needs — binding a tiny
         # planner subset once starved the operator ("no file/shell tool bound").
-        # But blindly binding the FULL surface (88 agents + active External-MCP
+        # But blindly binding the FULL surface (85 agents + active External-MCP
         # tools) overflowed the model window live ("prompt too long 273284 >
         # 262144") and crashed the turn into a basic-LLM fallback. So we
         # RANK-AND-BUDGET (_budget_select_tools, inside fit_request): when the

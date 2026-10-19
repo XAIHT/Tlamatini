@@ -8,7 +8,7 @@
 -->
 # Tlamatini Agents — MCP connector
 
-> Current release: **[v1.85.0](docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.87.0](docs/changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
 
 
 Exposes **every complete live Tlamatini agent directory (85 in the current

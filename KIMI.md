@@ -12,12 +12,31 @@
 
 # ⛔ PRIVATE DATA GUARD — ABSOLUTE, NON-NEGOTIABLE, READ FIRST ⛔
 
-> Current release: **[v1.85.0](docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.87.0](docs/changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
 
 
-## v1.85.0 — Refresh, Views and centered avatar
+## v1.87.0 — Leaner catalog, safer removal, smaller release
 
-The latest released version is **v1.85.0**. `agent_page_canvas.js` owns Refresh
+The latest released version is **v1.87.0** (tagged 2026-10-18; it also carries
+v1.86.0, tagged 2026-10-17). The catalog is **85 workflow agents, 66 wrapped
+chat agents and 108 built-in tools**: Gatewayer, Gateway-Relayer, Node-Manager
+and Zavuerer were removed, and migration **0214** deletes their rows and the
+Zavuerer prompts without renumbering. Removal moves application entries into a
+same-drive recovery folder (schema 2 journal, **Retry cleanup**,
+`.tlamatini-removal.json`) instead of copying the payload. `build.py` keeps the
+carried-Python-only media and browser packages out of the frozen interpreter
+(`test_release_payload_ownership.py`). About ▸ Usage waits for real data and
+sends a bodyless `POST /api/me`. `npm run lint:python` runs
+`scripts/check_python_quality.py`. From v1.86.0: Mover creates a missing
+destination name as a folder (`_names_a_file()`), and `scripts/architecture_atlas/`
+rebuilds `Tlamatini-Architecture.pdf` with LaTeXer. The live static suffix is
+`-agent-catalog-1-quality-cleanup-1-usage-status-2`.
+
+See [the v1.87.0 release record](docs/changes/2026-10-18-v1.87.0.md).
+
+## v1.85.0 — Refresh, Views and centered avatar (carried)
+
+**v1.85.0** (2026-10-16) added Refresh, Views and the centered avatar. `agent_page_canvas.js` owns Refresh
 source access, complete-text comparison, cancellation and status. Retain browser
 file handles during the drop event; snapshot-only access cannot refresh a path.
 PDF replacement stages a ready viewer and keeps its iframe attached at commit.
@@ -32,7 +51,8 @@ both panes, resets their sizes and docks the portrait without clearing content.
 
 The docked frame uses `--tlm-avatar-docked-right` measured from the full Mic/Send
 row. Its square size and 120 px minimum stay independent of floating geometry.
-The live static suffix is `-avatar-center-1`; Views scripts retain `_views1`.
+v1.85.0's static suffix was `-avatar-center-1` (the live suffix is now
+`-agent-catalog-1-quality-cleanup-1-usage-status-2`); Views scripts retain `_views1`.
 `build_runtime_assets.py` and `copy_source_assets.py` require the Views template,
 scripts and snapshot harnesses. No migration or dependency was added.
 
@@ -106,7 +126,7 @@ Every current count in this file was **re-verified against source on 2026-10-16 
 **Tlamatini** (Nahuatl for *"one who knows"*) is a **local-first AI developer assistant** created by **Angela López Mendoza** (@angelahack1, XAIHT). It is a Django 5.2 + Channels monolith with a LangChain/LangGraph agent core, a RAG system, a visual agentic workflow designer, an external coding-agent runtime (ACPX), a markdown skill system, and a pool of standalone agent scripts it spawns as subprocesses. Windows-only distribution (PyInstaller-frozen, carried Python 3.12.10).
 
 - **Repository**: `https://github.com/XAIHT/Tlamatini.git` · **License**: MIT · **Platform**: Windows 10/11
-- **v1.85.0 is the latest released version (2026-10-16).** It brings **Refresh** for the open canvas document, **Views → Canvas** for full-width chat, **Views → Reset layout**, required packaging coverage for those controls, and a docked avatar centered over the complete Mic-to-Send row. The runtime version is **1.85.0**. The release includes the file-drop router and all earlier capabilities. See the [v1.85.0 release record](docs/changes/2026-10-16-v1.85.0.md).
+- **v1.87.0 is the latest released version (tagged 2026-10-18).** The catalog is now **85 workflow agents** (Gatewayer, Gateway-Relayer, Node-Manager and Zavuerer were removed), the Uninstaller moves the installation into a recovery folder instead of copying it and offers **Retry cleanup** for a locked leftover, the frozen release no longer carries the media and browser libraries twice, **About ▸ Usage** waits for real data, and every Python file has a quality gate (`npm run lint:python`). It also carries **v1.86.0** (tagged 2026-10-17): **Mover** creates a destination that does not exist yet as a folder, and the **Architecture atlas** (`Tlamatini-Architecture.pdf`) is rebuilt from the repository by LaTeXer. The runtime version is **1.87.0**. See the [v1.87.0 release record](docs/changes/2026-10-18-v1.87.0.md). Before it, **v1.85.0** (2026-10-16) brought **Refresh** for the open canvas document, **Views → Canvas** for full-width chat, **Views → Reset layout** and a docked avatar centered over the complete Mic-to-Send row ([v1.85.0 record](docs/changes/2026-10-16-v1.85.0.md)).
 - **Python**: 3.12.10 (carried interpreter under `<repo>/python` is build-provisioned — never use it to run builds)
 
 **Verified counts (2026-10-14: the disk rows re-counted that day; the tool-surface rows come from the isolated live Django tool build of 2026-10-03, unchanged since; skill list confirmed live via `tlamatini_list_skills`):**
@@ -212,7 +232,7 @@ When a task needs Angela to act on her machine (edit configs, click UI, check a 
 - **L2 Runtime services**: started from `agent/apps.py::AgentConfig.ready()` (reloader-gated); feed live metrics + file indexes.
 - **L3 Sidecar chains**: prefetch `{system_context}` / `{files_context}` injected into every prompt.
 - **L4 Main chains**: `factory.py` monkey-patches `invoke()` to merge sidecar context before the LLM call.
-- **L5 Tools**: 20 direct/core tools + 66 wrapped `chat_agent_*` launchers + 10 External-MCP supervisors; the 12 ACPX/Skill tools form L6 but join the same 109-tool built-in Multi-Turn surface when enabled. Direct chat dictation prepares user input before this tool surface; it does not add another tool.
+- **L5 Tools**: 20 direct/core tools + 66 wrapped `chat_agent_*` launchers + 10 External-MCP supervisors; the 12 ACPX/Skill tools form L6 but join the same 108-tool built-in Multi-Turn surface when enabled. Direct chat dictation prepares user input before this tool surface; it does not add another tool.
 - **L6 ACPX & Skills**: spawns external CLI engines and runs `SKILL.md` playbooks.
 - **L7 Flow Compiler**: normalizes canvas/chat flows into run-ready pools under `agents/pools/<session_id>/`.
 
@@ -697,11 +717,11 @@ The ACP (Agentic Control Panel) page (`templates/agent/agentic_control_panel.htm
 
 **Prompt Flow Panel (2026-09-25).** A sibling page at `/agent/prompt_flow_panel/` (template `prompt_flow_panel.html`, WebSocket `ws/prompt-flow-panel/`) for chains of **prompts** rather than agents: seven executable operations (Prompt, Programmed Prompt, Decision, Feed embeddings, Flush embeddings, Clean History, User Input), plus static User Commentary notes, saved as **`.fpmt`** JSON (`format: "tlamatini-prompting-flow"`, version 2; version 1 imports migrate the old reply nodes to User Input). ⚠️ `.pmt` stays with the plain-text system prompts (`prompt.pmt`, `monitoring-prompt.pmt`) and the panel refuses to open one. Each run gets its own chain, history, embeddings and cancellation key, and never loads the shared `application/` corpus. Backend: `prompt_flow_panel_consumer.py`, `prompt_flow_panel_runtime.py`, `services/prompt_flow_panel.py`; frozen-build gate `check_prompt_flow_panel`. Guide: `docs/prompting-flow-designer.md`.
 
-**Commentary/Input contract (2026-10-04, shipped in `v1.76.0`):** Seven executable operations remain separate from static **User Commentary**. **User Input** (`user_input`) keeps the question/reply/cancellation mechanism and notched figure. **User Commentary** (`user_commentary`) is edited entirely on the canvas: double-click/Enter writes in the bubble; a floating mini toolbar formats selected text with different fonts, sizes, text colors, bold, italic and underline within the same note. With a caret, formatting applies to newly typed text; outside editing it applies to the whole note. Bubble color and alignment affect the note. There is no commentary configuration dialog or numeric dimension form. Drag any border or corner to resize, including while editing; Fit text removes spare height. Done/Ctrl+Enter saves; Cancel/Escape restores the whole edit. Ctrl+Z/Y works inside the editor; completed edits, moves, resizes and duplicates use flow Undo/Redo. Bubbles contain their full wrapped text without internal scrollbars. Version 2 files persist allowlisted `runs` plus matching literal `text`; older plain notes normalize to one run, and version 1 executable commentary still migrates to User Input with IDs/edges/settings intact. Comments have no ports/Start/runtime/context/history/step effects. The draft key remains `.draft.v1.<user id>`. Cache suffix at that change: `-flow-file-opening-2` (the live suffix is `-avatar-center-1` since 2026-10-14). See `docs/prompting-flow-designer.md` and the 2026-10-04 verification record; the October 4 local release-validation campaign tracks subsequent isolated frozen builds and runtime acceptance.
+**Commentary/Input contract (2026-10-04, shipped in `v1.76.0`):** Seven executable operations remain separate from static **User Commentary**. **User Input** (`user_input`) keeps the question/reply/cancellation mechanism and notched figure. **User Commentary** (`user_commentary`) is edited entirely on the canvas: double-click/Enter writes in the bubble; a floating mini toolbar formats selected text with different fonts, sizes, text colors, bold, italic and underline within the same note. With a caret, formatting applies to newly typed text; outside editing it applies to the whole note. Bubble color and alignment affect the note. There is no commentary configuration dialog or numeric dimension form. Drag any border or corner to resize, including while editing; Fit text removes spare height. Done/Ctrl+Enter saves; Cancel/Escape restores the whole edit. Ctrl+Z/Y works inside the editor; completed edits, moves, resizes and duplicates use flow Undo/Redo. Bubbles contain their full wrapped text without internal scrollbars. Version 2 files persist allowlisted `runs` plus matching literal `text`; older plain notes normalize to one run, and version 1 executable commentary still migrates to User Input with IDs/edges/settings intact. Comments have no ports/Start/runtime/context/history/step effects. The draft key remains `.draft.v1.<user id>`. Cache suffix at that change: `-flow-file-opening-2` (the live suffix is `-agent-catalog-1-quality-cleanup-1-usage-status-2` since 2026-10-18). See `docs/prompting-flow-designer.md` and the 2026-10-04 verification record; the October 4 local release-validation campaign tracks subsequent isolated frozen builds and runtime acceptance.
 
 **Run output layout (2026-10-04, shipped in `v1.76.0`):** Drag the horizontal divider to give Run output 5–95% of the combined canvas/output pane height, excluding fixed headers, status and divider (initial share: 20%). Each pane scrolls independently; resizing preserves zoom, node geometry and text size. Up/Down changes one percentage point, Shift+Up/Down five, Home/End selects 5%/95%. Escape, blur or pointer cancellation ends a drag. Collapse/reopen and window resizing retain the ratio. The per-user `tlamatini.prompting-flow.layout.v1.<user id>` preference is separate from flow files, drafts, dirty state and Undo/Redo. Keep the native details log viewport explicitly sized so its scrollbar remains usable. See `docs/changes/2026-10-04-run-output-resize.md`.
 
-**Shared canvas mechanics (2026-09-26):** Both panels use `flow-canvas-interactions.js` and `flow_canvas.css` for triangles, connection dragging/cancellation, curve geometry, gold hover/selection glow, zoom/Fit, menus and divider gestures. Keep free dragging, Ctrl/Meta-drag copies, marquee selection, keyboard editing and Undo/Redo aligned. Prompt Flow retains node status colors; interactive wire highlights override traversed-wire green. The Operations bar has seven executable operations plus static User Commentary and no Connection tool. Cache suffix at that change: `-flow-file-opening-2` (the live suffix is `-avatar-center-1` since 2026-10-14). See `docs/claude/frontend.md` and the 30-check foreground comparison harness.
+**Shared canvas mechanics (2026-09-26):** Both panels use `flow-canvas-interactions.js` and `flow_canvas.css` for triangles, connection dragging/cancellation, curve geometry, gold hover/selection glow, zoom/Fit, menus and divider gestures. Keep free dragging, Ctrl/Meta-drag copies, marquee selection, keyboard editing and Undo/Redo aligned. Prompt Flow retains node status colors; interactive wire highlights override traversed-wire green. The Operations bar has seven executable operations plus static User Commentary and no Connection tool. Cache suffix at that change: `-flow-file-opening-2` (the live suffix is `-agent-catalog-1-quality-cleanup-1-usage-status-2` since 2026-10-18). See `docs/claude/frontend.md` and the 30-check foreground comparison harness.
 
 ### 12.2 Flow Compiler pipeline (canvas / chat → backend → pool)
 Two browser surfaces produce flows; **both compile through the same backend Agent Contract registry** before touching disk:
@@ -746,7 +766,7 @@ A per-agent operations table appended to chat answers when the **Exec Report** c
 
 ## 13. The 85 Workflow Agent Types
 
-Ground truth: `Tlamatini/agent/agents/` (85 dirs, each `<name>.py` + `config.yaml`), catalog `agents_descriptions.md` (drives sidebar tooltips/Description dialogs), manifest `_tlamatini_agents_manifest.json`. Display casing below is the DB `agentDescription` casing (§14.1). Most agents are both canvas-placeable and Multi-Turn-wrapped (`chat_agent_*`); a few wrapped-tool display names deliberately differ from canvas names (`Send Email`→emailer, `Move File`→mover, `Summarize Text`→summarizer, `Kyber Deciph` (truncated)→kyber_decipher, `SQLer` tool vs `Sqler` canvas).
+Ground truth: `Tlamatini/agent/agents/` (85 dirs, each `<name>.py` + `config.yaml`), catalog `agents_descriptions.md` (drives sidebar tooltips/Description dialogs), manifest `_tlamatini_agents_manifest.json`. Display casing below is the DB `agentDescription` casing (§14.1). Most agents are both canvas-placeable and Multi-Turn-wrapped (`chat_agent_*`); a few wrapped-tool display names deliberately differ from canvas names (`Send Email`→emailer, `Move File`→mover, `Summarize Text`→summarizer, `Kyber Deciph` (truncated)→kyber_decipher).
 
 ### Control Agents (6)
 | Agent | Purpose |
@@ -778,7 +798,7 @@ Ground truth: `Tlamatini/agent/agents/` (85 dirs, each `<name>.py` + `config.yam
 |---|---|
 | **Executer** | Arbitrary shell command runner (`non_blocking`, `execute_forked_window` for a visible console) |
 | **Pythonxer** | Inline Python behind a `compile()` + **Ruff** correctness gate; always triggers downstream |
-| **Sqler** | Python block against MS SQL Server via pyodbc |
+| **SQLer** | Python block against MS SQL Server via pyodbc |
 | **Mongoxer** | Python block against MongoDB via pymongo |
 | **Crawler** | HTTP fetch + optional link-walk + Ollama page analysis |
 | **Googler** | Two-tier indexed search with text/raw extraction or URL-only output: four plain-HTTP server-rendered routes first, then visible Chrome/bundled Chromium across seven browser routes; structured dork presets, aliases, normalized operators, and grouped site/filetype filters; manual operators in the direct tool's `query` |
@@ -796,12 +816,12 @@ Ground truth: `Tlamatini/agent/agents/` (85 dirs, each `<name>.py` + `config.yam
 | **Gitter** | git operations (clone/pull/push/commit/`custom`) |
 | **Reviewer** | LLM code reviewer over a git diff; verdict-first INI block |
 | **Analyzer** | Deterministic multi-scanner static/security analysis (no LLM) |
-| **Ssher** | Remote shell over SSH |
-| **Scper** | File transfer over SCP |
+| **SSHer** | Remote shell over SSH |
+| **SCPer** | File transfer over SCP |
 | **Dockerer** | Docker / docker-compose front-end |
 | **Kuberneter** | kubectl front-end |
 | **Jenkinser** | Jenkins job trigger (CSRF crumb handling) |
-| **Pser** | LLM-powered semantic process finder |
+| **PSer** | LLM-powered semantic process finder |
 | **Prompter** | One-shot Ollama prompt → structured block |
 | **Summarizer** | Polling LLM event-detector + one-shot summarizer modes |
 | **File-Interpreter** | Multi-format document reader (DOCX/PPTX/XLSX/PDF/…; fast/complete/summarized) |
@@ -905,7 +925,7 @@ Guide: `Tlamatini/.skills/create_new_skill.md`; canonical worked example of an i
 
 ## 15. Frontend Architecture
 
-**No SPA framework** — server-rendered Django templates (five main pages: `agent_page.html`, `agentic_control_panel.html`, `prompt_flow_panel.html`, `login.html`, `welcome.html`, plus the `usage_dialog.html` partial and the themed `templates/admin/base_site.html`) + vanilla JS with LOCALLY VENDORED libraries, no CDN at runtime (`static/agent/vendor/frontend/manifest.json`, pinned by `scripts/vendor_frontend.py`: jQuery 3.7.1 + jQuery-UI 1.13.3 draggable canvas, Bootstrap 5.3.3, highlight.js 11.9.0, Marked 18.1.0 + DOMPurify 3.4.16 for the Markdown canvas, the Nunito font; PDF.js under `vendor/pdfjs`). Cross-file communication is via **script-scope globals** (whitelisted in `eslint.config.mjs`). Cache-busting: `?v={{ STATIC_VERSION }}` on every static URL (bump via the `tlamatini-static-version-bumper` skill after frontend changes; the live suffix is `-avatar-center-1`). 26 CSS files under `static/agent/css/` (re-counted 2026-10-14).
+**No SPA framework** — server-rendered Django templates (five main pages: `agent_page.html`, `agentic_control_panel.html`, `prompt_flow_panel.html`, `login.html`, `welcome.html`, plus the `usage_dialog.html` partial and the themed `templates/admin/base_site.html`) + vanilla JS with LOCALLY VENDORED libraries, no CDN at runtime (`static/agent/vendor/frontend/manifest.json`, pinned by `scripts/vendor_frontend.py`: jQuery 3.7.1 + jQuery-UI 1.13.3 draggable canvas, Bootstrap 5.3.3, highlight.js 11.9.0, Marked 18.1.0 + DOMPurify 3.4.16 for the Markdown canvas, the Nunito font; PDF.js under `vendor/pdfjs`). Cross-file communication is via **script-scope globals** (whitelisted in `eslint.config.mjs`). Cache-busting: `?v={{ STATIC_VERSION }}` on every static URL (bump via the `tlamatini-static-version-bumper` skill after frontend changes; the live suffix is `-agent-catalog-1-quality-cleanup-1-usage-status-2`). 26 CSS files under `static/agent/css/` (re-counted 2026-10-18).
 
 **Chat navbar (reorganized 2026-09-25):** Open · Save · Context ▾ · **Panels ▾** (Agentic Control Panel, Prompt Flow Panel, staff-only Admin Panel) · ACPX-Skills ▾ · External ▾ · **Config ▾** (Configure MCPs, Configure Agents, Models, URLs, Contacts, Access Keys Wizard, Voice, Mic) · DB ▾ · Reconnect · About ▾. The standalone MCPs, Agents and Admin menus are gone; ⚠️ harnesses must wait on `#config-menu-button` / `#panels-menu-button`, never `#mcps-menu-button` / `#agents-menu-button` / `#admin-menu-button`. Panels stays usable during a long operation; every end-of-operation path re-arms the menu locks through `agent_page_ui.js::restoreMenuControlsAfterOperation()`. Contract: `docs/claude/frontend.md` → *Chat navbar*.
 
@@ -1201,7 +1221,7 @@ From the very start of a session, perform the work with **Tlamatini's OWN** agen
 
 *Partial refresh 2026-10-12: v1.82.0 — the setup windows (`setup_wizard.py` / `setup_recovery.py` / `setup_windows.py` / `setup_logging.py`), the Markdown canvas (`agent_page_markdown.js`, vendored Marked + DOMPurify), v1.80.0's GUI standardization (`ui_tokens.css` / `ui_shell.css` / `ui_splitters.css` / `ui_splitters.js`, `admin_theme.css`, `entry_pages.css`) and v1.79.0's Video-Analyzer web links; counts re-counted from disk the same day (89 agents, 29 skills, 213 migrations, 58 JS modules, 26 CSS files).*
 
-*Partial refresh 2026-10-14: v1.83.0 — the page-wide file-drop router (`file_drop_router.js`), the docked avatar that follows both composer dividers (`63a62cc1`) and `91ff8453` (a wrongly worded image/video request is not a fatal analysis error); counts re-counted from disk the same day (89 agents, 29 skills, 213 migrations, 59 JS modules, 26 CSS files); the live cache suffix is `-avatar-center-1`.*
+*Partial refresh 2026-10-14: v1.83.0 — the page-wide file-drop router (`file_drop_router.js`), the docked avatar that follows both composer dividers (`63a62cc1`) and `91ff8453` (a wrongly worded image/video request is not a fatal analysis error); counts re-counted from disk the same day (89 agents, 29 skills, 213 migrations, 59 JS modules, 26 CSS files); the cache suffix then was `-avatar-center-1`.*
 
 *Tlamatini — "one who knows". Created by Angela López Mendoza · @angelahack1 · XAIHT.*
 
@@ -1263,4 +1283,4 @@ Image/video model failures accumulate in one shared, themed, non-modal fatal-err
 
 ## Windows flow-file lifecycle — 2026-10-04, shipped in `v1.76.0`
 
-Both `.flw` agent flows and `.fpmt` prompting flows now have Windows registration, repair, removal, status and Default Apps handling. Explorer/source command-line opening validates a bounded snapshot, reuses a matching running server before database startup, and returns through login to the correct editor without execution. Main-chat Open/drop routes both formats into separate editor tabs while preserving the chat document. The historical `.flw` installer wrappers cover both types for old installer/uninstaller binaries; independent management uses `flow_file_associations.ps1 -Extensions`. Never erase UserChoice or another application’s Open With entries. Update Repair respects explicit unregistration and installation ownership. See [Windows flow files](docs/windows-flow-files.md). Cache suffix at that change: `-flow-file-opening-2` (the live suffix is `-avatar-center-1` since 2026-10-14). Committed to `main` on 2026-10-04. The October 4 local release-validation campaign also rebuilds isolated frozen artifacts; its dated evidence distinguishes build completion from runtime acceptance.
+Both `.flw` agent flows and `.fpmt` prompting flows now have Windows registration, repair, removal, status and Default Apps handling. Explorer/source command-line opening validates a bounded snapshot, reuses a matching running server before database startup, and returns through login to the correct editor without execution. Main-chat Open/drop routes both formats into separate editor tabs while preserving the chat document. The historical `.flw` installer wrappers cover both types for old installer/uninstaller binaries; independent management uses `flow_file_associations.ps1 -Extensions`. Never erase UserChoice or another application’s Open With entries. Update Repair respects explicit unregistration and installation ownership. See [Windows flow files](docs/windows-flow-files.md). Cache suffix at that change: `-flow-file-opening-2` (the live suffix is `-agent-catalog-1-quality-cleanup-1-usage-status-2` since 2026-10-18). Committed to `main` on 2026-10-04. The October 4 local release-validation campaign also rebuilds isolated frozen artifacts; its dated evidence distinguishes build completion from runtime acceptance.

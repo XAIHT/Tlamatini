@@ -1,12 +1,12 @@
 <!-- Tlamatini Author Banner — Angela López Mendoza · @angelahack1 -->
 # Installation and removal windows
 
-> Current release: **[v1.85.0](changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.87.0](changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
 
 
 **Status: shipped in the published `v1.82.0` release (tag at `880a335e`, 2026-10-12).**
 The validation campaign below describes that released implementation and is dated
-2026-10-11/12. The following removal redesign is newer and not yet released.
+2026-10-11/12. The following removal redesign is newer: it is part of v1.87.0 (it landed on `main` right after the tag, 2026-10-18).
 
 ## Removal redesign in the working tree — 2026-10-18
 

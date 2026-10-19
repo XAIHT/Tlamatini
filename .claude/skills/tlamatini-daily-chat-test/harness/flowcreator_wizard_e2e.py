@@ -43,7 +43,7 @@ os.makedirs(SHOTS, exist_ok=True)
 SUMMARY = os.path.join(RUN_DIR, "SUMMARY.html")
 
 PROMPT_ID = int(os.environ.get("FCW_PROMPT_ID", "108"))
-SRC_DB = r"C:\Development\Tlamatini\Tlamatini\db.sqlite3"
+SRC_DB = r"C:\Development\XAIHT\Tlamatini\Tlamatini\db.sqlite3"
 PER_TURN_TIMEOUT_S = int(os.environ.get("FCW_TIMEOUT", "300"))
 MAX_TURNS = int(os.environ.get("FCW_MAX_TURNS", "12"))
 CONTROL_PANEL = C.BASE_URL + "/agent/agentic_control_panel/"

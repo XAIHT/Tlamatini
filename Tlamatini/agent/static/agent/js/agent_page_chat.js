@@ -989,14 +989,14 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
             config.execute_forked_window = String(pairs.execute_forked_window) === 'true';
         }
 
-    // ── SSHer (DB: "Ssher") ──────────────────────────────────────────
+    // ── SSHer ──────────────────────────────────────────
     // Template fields: user, ip, script
     } else if (lower === 'ssher') {
         set('user', pairs.username || pairs.user);
         set('ip', pairs.host || pairs.ip);
         set('script', pairs.command || pairs.script);
 
-    // ── SCPer (DB: "Scper") ──────────────────────────────────────────
+    // ── SCPer ──────────────────────────────────────────
     // Template fields: user, ip, file, direction
     } else if (lower === 'scper') {
         set('user', pairs.username || pairs.user);
@@ -1004,7 +1004,7 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
         set('file', pairs.local_path || pairs.file || pairs.remote_path);
         set('direction', pairs.direction);
 
-    // ── SQLer (DB: "Sqler") ──────────────────────────────────────────
+    // ── SQLer ──────────────────────────────────────────
     // Template fields: sql_connection (nested), script
     } else if (lower === 'sqler') {
         set('script', pairs.query || pairs.script);
@@ -1304,7 +1304,7 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
     } else if (lower === 'summarizer') {
         set('system_prompt', pairs.system_prompt);
 
-    // ── PSer (DB: "Pser") ────────────────────────────────────────────
+    // ── PSer ────────────────────────────────────────────
     // Template field: likely_process_name
     } else if (lower === 'pser') {
         set('likely_process_name', pairs.command || pairs.likely_process_name || requestStr);
@@ -2063,7 +2063,7 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
         const whatsapp = collectDotted('whatsapp');
         if (Object.keys(whatsapp).length > 0) config.whatsapp = whatsapp;
 
-    // ── Recmailer ────────────────────────────────────────────────────
+    // ── RecMailer ────────────────────────────────────────────────────
     // Template field: imap (nested)
     } else if (lower === 'recmailer') {
         const imap = collectDotted('imap');

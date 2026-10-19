@@ -1,4 +1,4 @@
-# Scper Agent Configuration
+# SCPer Agent Configuration
 # SCP file transfer to/from a remote host.
 #
 # IMPORTANT: You must preconfigure SSH keys to allow passwordless

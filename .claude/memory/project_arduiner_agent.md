@@ -15,7 +15,7 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
-> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.87.0](../../docs/changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
 
 
 2026-06-02: Added **Arduiner** (agent #70), Tlamatini's bridge to the **Arduino CLI** (`arduino-cli`), on BOTH canvas + Multi-Turn (`chat_agent_arduiner`). Built per the user's explicit request, modeled on STM32er + ESP32er.

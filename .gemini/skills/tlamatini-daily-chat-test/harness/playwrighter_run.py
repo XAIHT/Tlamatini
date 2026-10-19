@@ -28,7 +28,7 @@ import tempfile
 
 # The agent template. Resolved from the repo, with an env override so a
 # frozen install can point at its own agents/ directory.
-_DEFAULT_AGENTS = r"C:\Development\Tlamatini\Tlamatini\agent\agents"
+_DEFAULT_AGENTS = r"C:\Development\XAIHT\Tlamatini\Tlamatini\agent\agents"
 AGENTS_ROOT = os.environ.get("TLAMATINI_AGENTS_ROOT", _DEFAULT_AGENTS)
 TEMPLATE = os.path.join(AGENTS_ROOT, "playwrighter")
 

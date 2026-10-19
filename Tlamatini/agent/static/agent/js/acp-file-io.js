@@ -320,7 +320,7 @@ async function loadDiagram(data, filename = 'diagram.flw', { withinEditorOperati
 
             // Clean up old saved data
             if (lowerName === 'flowcreator') {
-                agentText = 'Flowcreator';
+                agentText = 'FlowCreator';
                 newItem.textContent = agentText;
                 newItem.id = 'flowcreator';
             } else if (lowerName === 'flowhypervisor') {

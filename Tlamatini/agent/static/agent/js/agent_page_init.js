@@ -282,6 +282,7 @@ function OpenMcpsDialog(e) { // eslint-disable-line no-unused-vars
                     continue;
                 }
                 const checked = $("#" + tool.name).is(":checked");
+                tool.content = checked ? 'true' : 'false';  // the next open starts from this
                 completeTools = completeTools + tool.name + "=" + tool.description + "=" + checked + ",";
             }
             console.log("--->>> complete tools: ", completeTools);
@@ -320,6 +321,7 @@ function OpenAgentsDialog(e) { // eslint-disable-line no-unused-vars
                     continue;
                 }
                 const checked = $("#" + agent.name).is(":checked");
+                agent.content = checked ? 'true' : 'false';  // the next open starts from this
                 completeAgents = completeAgents + agent.name + "=" + agent.description + "=" + checked + ",";
             }
             console.log("--->>> complete agents: ", completeAgents);

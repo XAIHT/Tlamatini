@@ -603,12 +603,12 @@ async function updateScperConnection(agentId, connectedAgentId, action, connecti
         });
         if (response.ok) {
             const result = await response.json();
-            console.log(`--- Scper ${agentId} config updated:`, result.message);
+            console.log(`--- SCPer ${agentId} config updated:`, result.message);
         } else {
-            console.error(`--- Failed to update Scper ${agentId}:`, response.statusText);
+            console.error(`--- Failed to update SCPer ${agentId}:`, response.statusText);
         }
     } catch (error) {
-        console.error(`--- Error updating Scper ${agentId}:`, error);
+        console.error(`--- Error updating SCPer ${agentId}:`, error);
     }
 }
 
@@ -622,12 +622,12 @@ async function updateSsherConnection(agentId, connectedAgentId, action, connecti
         });
         if (response.ok) {
             const result = await response.json();
-            console.log(`--- Ssher ${agentId} config updated:`, result.message);
+            console.log(`--- SSHer ${agentId} config updated:`, result.message);
         } else {
-            console.error(`--- Failed to update Ssher ${agentId}:`, response.statusText);
+            console.error(`--- Failed to update SSHer ${agentId}:`, response.statusText);
         }
     } catch (error) {
-        console.error(`--- Error updating Ssher ${agentId}:`, error);
+        console.error(`--- Error updating SSHer ${agentId}:`, error);
     }
 }
 
@@ -831,12 +831,12 @@ async function updateRecmailerConnection(agentId, connectedAgentId, action, conn
         });
         if (response.ok) {
             const result = await response.json();
-            console.log(`--- Recmailer ${agentId} config updated:`, result.message);
+            console.log(`--- RecMailer ${agentId} config updated:`, result.message);
         } else {
-            console.error(`--- Failed to update Recmailer ${agentId}:`, response.statusText);
+            console.error(`--- Failed to update RecMailer ${agentId}:`, response.statusText);
         }
     } catch (error) {
-        console.error(`--- Error updating Recmailer ${agentId}:`, error);
+        console.error(`--- Error updating RecMailer ${agentId}:`, error);
     }
 }
 
@@ -850,12 +850,12 @@ async function updateSqlerConnection(agentId, connectedAgentId, action, connecti
         });
         if (response.ok) {
             const result = await response.json();
-            console.log(`--- Sqler ${agentId} config updated:`, result.message);
+            console.log(`--- SQLer ${agentId} config updated:`, result.message);
         } else {
-            console.error(`--- Failed to update Sqler ${agentId}:`, response.statusText);
+            console.error(`--- Failed to update SQLer ${agentId}:`, response.statusText);
         }
     } catch (error) {
-        console.error(`--- Error updating Sqler ${agentId}:`, error);
+        console.error(`--- Error updating SQLer ${agentId}:`, error);
     }
 }
 
@@ -969,12 +969,12 @@ async function updatePserConnection(agentId, connectedAgentId, action, connectio
         });
         if (response.ok) {
             const result = await response.json();
-            console.log(`--- Pser ${agentId} config updated:`, result.message);
+            console.log(`--- PSer ${agentId} config updated:`, result.message);
         } else {
-            console.error(`--- Failed to update Pser ${agentId}:`, response.statusText);
+            console.error(`--- Failed to update PSer ${agentId}:`, response.statusText);
         }
     } catch (error) {
-        console.error(`--- Error updating Pser ${agentId}:`, error);
+        console.error(`--- Error updating PSer ${agentId}:`, error);
     }
 }
 

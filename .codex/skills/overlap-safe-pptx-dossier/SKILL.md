@@ -13,7 +13,7 @@ description: Use when asked to create or update a complete technical PPTX deck, 
 
 # Overlap-Safe PPTX Dossier
 
-> Current release: **[v1.85.0](../../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.87.0](../../../docs/changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
 
 
 > **HEADLESS IS FORBIDDEN. VISIBLE FOREGROUND EXECUTION ONLY.** Every command, automated test, diagnostic, script, build, agent and browser must run in a visible foreground window on Angela's real desktop. Use forked CMD/PowerShell windows, `execute_forked_window: true`, and `headless: false`. Monitor live; if visibility cannot be confirmed, do not run. Read the [mandatory execution policy](../../../TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).
@@ -107,9 +107,28 @@ Derive current counts. The page-wide file-drop router, the docked avatar that fo
 
 ## v1.85.0 release gate
 
-## v1.85.0 — Refresh, Views and centered avatar
+## v1.87.0 — Leaner catalog, safer removal, smaller release
 
-The latest released version is **v1.85.0**. `agent_page_canvas.js` owns Refresh
+The latest released version is **v1.87.0** (tagged 2026-10-18; it also carries
+v1.86.0, tagged 2026-10-17). The catalog is **85 workflow agents, 66 wrapped
+chat agents and 108 built-in tools**: Gatewayer, Gateway-Relayer, Node-Manager
+and Zavuerer were removed, and migration **0214** deletes their rows and the
+Zavuerer prompts without renumbering. Removal moves application entries into a
+same-drive recovery folder (schema 2 journal, **Retry cleanup**,
+`.tlamatini-removal.json`) instead of copying the payload. `build.py` keeps the
+carried-Python-only media and browser packages out of the frozen interpreter
+(`test_release_payload_ownership.py`). About ▸ Usage waits for real data and
+sends a bodyless `POST /api/me`. `npm run lint:python` runs
+`scripts/check_python_quality.py`. From v1.86.0: Mover creates a missing
+destination name as a folder (`_names_a_file()`), and `scripts/architecture_atlas/`
+rebuilds `Tlamatini-Architecture.pdf` with LaTeXer. The live static suffix is
+`-agent-catalog-1-quality-cleanup-1-usage-status-2`.
+
+See [the v1.87.0 release record](../../../docs/changes/2026-10-18-v1.87.0.md).
+
+## v1.85.0 — Refresh, Views and centered avatar (carried)
+
+**v1.85.0** (2026-10-16) added Refresh, Views and the centered avatar. `agent_page_canvas.js` owns Refresh
 source access, complete-text comparison, cancellation and status. Retain browser
 file handles during the drop event; snapshot-only access cannot refresh a path.
 PDF replacement stages a ready viewer and keeps its iframe attached at commit.
@@ -124,7 +143,8 @@ both panes, resets their sizes and docks the portrait without clearing content.
 
 The docked frame uses `--tlm-avatar-docked-right` measured from the full Mic/Send
 row. Its square size and 120 px minimum stay independent of floating geometry.
-The live static suffix is `-avatar-center-1`; Views scripts retain `_views1`.
+v1.85.0's static suffix was `-avatar-center-1` (the live suffix is now
+`-agent-catalog-1-quality-cleanup-1-usage-status-2`); Views scripts retain `_views1`.
 `build_runtime_assets.py` and `copy_source_assets.py` require the Views template,
 scripts and snapshot harnesses. No migration or dependency was added.
 

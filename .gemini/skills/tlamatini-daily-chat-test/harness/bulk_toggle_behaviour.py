@@ -41,7 +41,7 @@ sys.path.insert(0, os.getcwd())
 from playwright.sync_api import sync_playwright          # noqa: E402
 from shoter_shot import take_shot                        # noqa: E402
 
-MODULE = (r"C:\Development\Tlamatini\Tlamatini\agent\static\agent\js"
+MODULE = (r"C:\Development\XAIHT\Tlamatini\Tlamatini\agent\static\agent\js"
           r"\checkbox_bulk_toggle.js")
 
 OUT = os.path.abspath(os.path.join(

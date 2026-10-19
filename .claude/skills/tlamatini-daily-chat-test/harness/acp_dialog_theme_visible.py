@@ -30,8 +30,8 @@ from playwrighter_run import PlaywrighterError, failed_steps, run_steps  # noqa:
 
 BASE = os.environ.get("TLM_BASE", "http://127.0.0.1:8010")
 ACP = BASE + "/agent/agentic_control_panel/"
-OUT = os.path.join(r"C:\Development\Tlamatini\Temp", "acp_dialog_theme_check")
-STATE = os.path.join(r"C:\Development\Tlamatini\Temp", "acp_session_state.json")
+OUT = os.path.join(r"C:\Development\XAIHT\Tlamatini\Temp", "acp_dialog_theme_check")
+STATE = os.path.join(r"C:\Development\XAIHT\Tlamatini\Temp", "acp_session_state.json")
 
 CANON = {
     "panel":  "rgb(74, 79, 92)",

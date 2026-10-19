@@ -1,7 +1,7 @@
 <!-- Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1 -->
 # About Usage
 
-> Current release: **[v1.85.0](changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.87.0](changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
 
 
 **Status: shipped in the published `v1.78.0` release (2026-10-10).** That release was
@@ -20,7 +20,7 @@ It remains available while Tlamatini answers a request. The three tabs are:
 | Chat activity | Completed, measured main-chat model calls recorded for the signed-in Tlamatini user since recording began. |
 | Models | Per-model recorded chat calls, input/output tokens, peak UTC dates, and the configured server's model inventory and loaded-model information. |
 
-**Unreleased readiness guard (2026-10-18):** the menu initially says **Checking
+**Readiness guard (2026-10-18, v1.87.0):** the menu initially says **Checking
 usage…** and stays disabled until the core returns usable report data and the
 browser successfully renders it. Real credits (including zero balances), cloud
 usage totals, or measured chat activity qualify. An empty local ledger alone
@@ -162,7 +162,7 @@ after the same Ollama account identity is verified again.
 
 ## Verification and limits
 
-### Account connection reset — 2026-10-18, unreleased
+### Account connection reset — 2026-10-18, v1.87.0
 
 The configured local Ollama server returned HTTP 200 for `/api/version` and
 `/api/balance`, but reset `/api/me` when Tlamatini sent a `{}` request body.

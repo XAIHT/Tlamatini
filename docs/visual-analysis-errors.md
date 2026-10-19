@@ -1,6 +1,6 @@
 # Image and video failures, dialogs and recovery
 
-> Current release: **[v1.85.0](changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.87.0](changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
 
 
 Created by Angela López Mendoza · @angelahack1 — Tlamatini.
@@ -105,7 +105,7 @@ they verify error/recovery behavior rather than live model availability or accur
 This is **444 passing automated tests plus 60 browser checks**. Shoter captured
 both dialog styles and the images were inspected. Static collection refreshed 540
 assets; the changed served dialog assets match source. Catalog generation/check
-covered all 89 agent types.
+covered all 89 agent types of that day (85 since the 2026-10-18 pruning).
 
 The repository-wide inventory covered 240 test/harness-related files and 63
 visual-related documentation files; all 219 Python files in that test inventory

@@ -27,7 +27,7 @@ invented status fails LOUDLY, here, before it can ever mis-colour a row.
 
 DESIGN NOTES
 ------------
-* STATIC, not dynamic.  Importing 80-odd pool agents would execute their module
+* STATIC, not dynamic.  Importing 85 pool agents would execute their module
   preambles (PID files, console-handler tweaks, third-party imports).  ``ast``
   reads them as text and cannot have side effects.
 * CONSERVATIVE extraction.  Only unambiguous literals count, and a token must

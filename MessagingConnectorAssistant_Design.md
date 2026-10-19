@@ -8,7 +8,7 @@
 -->
 # MessagingConnectorAssistant — Design
 
-> Current release: **[v1.85.0](docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.87.0](docs/changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
 
 
 **Goal (Angela's):** the user tells Tlamatini their phone number and *nothing else*; Tlamatini does every step to send/receive on **Telegram** and **WhatsApp**, even if it takes days. End state: Tlamatini says *"Everything's ready — what number do you want to message?"*

@@ -1,6 +1,6 @@
 # PPTXer presentation styles
 
-> Current release: **[v1.85.0](../../../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.87.0](../../../../docs/changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
 
 
 PPTXer provides 36 named treatments: the original 24 content treatments and 12 additional visual styles.

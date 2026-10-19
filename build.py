@@ -372,7 +372,7 @@ _AGENT_RUNTIME_IMPORTS = (
     "markdown", "xhtml2pdf", "reportlab", "PIL",  # PDFer document composer (md->html->pdf + images)
     "ebooklib", "openpyxl", "xlrd", "striprtf", "docx", "pptx",  # file-format backends
     "bs4", "requests", "py7zr", "yaml",     # crawler / http / archive / config
-    "psutil",                               # process/PID liveness in the SHARED pool-agent boilerplate (77 agents) + OOB kill-tree
+    "psutil",                               # process/PID liveness in the SHARED pool-agent boilerplate (every pool agent) + OOB kill-tree
     "pyautogui", "playwright", "telethon",  # desktop / browser / telegram agents
     "pymongo", "pyodbc", "win32gui", "win32con",  # db / windows agents (pywin32)
     "sounddevice",                          # microphone capture (Recorder) — native PortAudio

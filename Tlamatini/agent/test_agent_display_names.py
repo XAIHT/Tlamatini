@@ -10,7 +10,7 @@ computes IS the display name the sidebar renders verbatim — a migration's
 ``agentDescription`` is overwritten on the very next launch. The old logic was
 ``str.title()`` + five ad-hoc overrides, and it shipped two live defects:
 
-1. 22 of 86 agents were mis-cased — "Pdfer" (not PDFer), "Sqler", "Ssher",
+1. 22 of the then-86 agents were mis-cased — "Pdfer" (not PDFer), "Sqler", "Ssher",
    "Esp32Er", "Videoplayer", "Flowcreator", ... violating the naming convention.
 2. Six agents got SPACED names although ``acp-canvas-core.js`` lowercases the
    display name WITHOUT collapsing spaces and only ever tests the HYPHENATED
@@ -262,3 +262,26 @@ class AgentDisplayNameContractTests(SimpleTestCase):
         self.assertEqual(
             [], stale,
             "these _agentPurpose keys name agents that no longer exist: %s" % stale)
+
+    def test_every_wrapped_tool_is_gated_by_a_real_agent_row(self):
+        """The Configure-Agents gate keys on the agent a tool LAUNCHES (2026-10-18).
+
+        'Send Email', 'Move File', 'Summarize Text' and the three Kyber labels
+        keyed ``agent_<name>_status`` on names no Agent row has, so unticking
+        Emailer / Mover / Summarizer / Kyber-* never hid those tools, and in
+        Compact mode (a missing row reads OFF) they could never be bound.
+        """
+        from agent.chat_agent_registry import WRAPPED_CHAT_AGENT_SPECS, agent_row_name
+        from agent.tools import tool_gate_table
+        live = {name.lower() for name in self._live_display_names()}
+        gates = {key: agent for key, agent, _build in tool_gate_table()}
+        for spec in WRAPPED_CHAT_AGENT_SPECS:
+            with self.subTest(tool=spec.tool_name):
+                self.assertIn(agent_row_name(spec).lower(), live,
+                              "%s is gated by %r, which is not an agent"
+                              % (spec.tool_name, agent_row_name(spec)))
+                self.assertEqual(gates[str(spec.tool_description).lower()],
+                                 agent_row_name(spec))
+        by_tool = {s.tool_name: s for s in WRAPPED_CHAT_AGENT_SPECS}
+        self.assertEqual(agent_row_name(by_tool['chat_agent_send_email']), 'Emailer')
+        self.assertEqual(agent_row_name(by_tool['chat_agent_move_file']), 'Mover')

@@ -407,7 +407,7 @@ class CommandWatchdog:
                 continue
             if _is_protected_foreground_console(proc, visible_pids, self._protected):
                 # A FORKED FOREGROUND window (any agent's visible console — the
-                # Telegram login, an execute_forked_window, a Sqler/Mongoxer
+                # Telegram login, an execute_forked_window, a SQLer/Mongoxer
                 # window). It is waiting on the user's keyboard or showing output —
                 # never reap it as a hung shell, however long it sits. When the
                 # user closes it, the agent continues with the freshly-entered data.

@@ -34,7 +34,7 @@ import shutil
 import subprocess
 import sys
 
-TEMPLATE = r"C:\Development\Tlamatini\Tlamatini\agent\agents\shoter"
+TEMPLATE = r"C:\Development\XAIHT\Tlamatini\Tlamatini\agent\agents\shoter"
 
 _RUNTIME: str = ""
 

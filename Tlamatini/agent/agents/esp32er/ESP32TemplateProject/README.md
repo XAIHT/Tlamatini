@@ -9,7 +9,7 @@
 
 # ESP32TemplateProject
 
-> Current release: **[v1.85.0](../../../../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.87.0](../../../../../docs/changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
 
 
 A known-good **ESP32 firmware baseline**: it blinks the onboard LED and prints

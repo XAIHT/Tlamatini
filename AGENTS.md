@@ -6,12 +6,31 @@ Tlamatini Author Banner — do not remove
 
 # Tlamatini instructions for Codex and every coding agent
 
-> Current release: **[v1.85.0](docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.87.0](docs/changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
 
 
-## v1.85.0 — Refresh, Views and centered avatar
+## v1.87.0 — Leaner catalog, safer removal, smaller release
 
-The latest released version is **v1.85.0**. `agent_page_canvas.js` owns Refresh
+The latest released version is **v1.87.0** (tagged 2026-10-18; it also carries
+v1.86.0, tagged 2026-10-17). The catalog is **85 workflow agents, 66 wrapped
+chat agents and 108 built-in tools**: Gatewayer, Gateway-Relayer, Node-Manager
+and Zavuerer were removed, and migration **0214** deletes their rows and the
+Zavuerer prompts without renumbering. Removal moves application entries into a
+same-drive recovery folder (schema 2 journal, **Retry cleanup**,
+`.tlamatini-removal.json`) instead of copying the payload. `build.py` keeps the
+carried-Python-only media and browser packages out of the frozen interpreter
+(`test_release_payload_ownership.py`). About ▸ Usage waits for real data and
+sends a bodyless `POST /api/me`. `npm run lint:python` runs
+`scripts/check_python_quality.py`. From v1.86.0: Mover creates a missing
+destination name as a folder (`_names_a_file()`), and `scripts/architecture_atlas/`
+rebuilds `Tlamatini-Architecture.pdf` with LaTeXer. The live static suffix is
+`-agent-catalog-1-quality-cleanup-1-usage-status-2`.
+
+See [the v1.87.0 release record](docs/changes/2026-10-18-v1.87.0.md).
+
+## v1.85.0 — Refresh, Views and centered avatar (carried)
+
+**v1.85.0** (2026-10-16) added Refresh, Views and the centered avatar. `agent_page_canvas.js` owns Refresh
 source access, complete-text comparison, cancellation and status. Retain browser
 file handles during the drop event; snapshot-only access cannot refresh a path.
 PDF replacement stages a ready viewer and keeps its iframe attached at commit.
@@ -26,7 +45,8 @@ both panes, resets their sizes and docks the portrait without clearing content.
 
 The docked frame uses `--tlm-avatar-docked-right` measured from the full Mic/Send
 row. Its square size and 120 px minimum stay independent of floating geometry.
-The live static suffix is `-avatar-center-1`; Views scripts retain `_views1`.
+v1.85.0's static suffix was `-avatar-center-1` (the live suffix is now
+`-agent-catalog-1-quality-cleanup-1-usage-status-2`); Views scripts retain `_views1`.
 `build_runtime_assets.py` and `copy_source_assets.py` require the Views template,
 scripts and snapshot harnesses. No migration or dependency was added.
 
@@ -165,9 +185,9 @@ Contract: [CLAUDE.md](CLAUDE.md) → *Self-modify*,
 for every page: each dropped file is recognised by its bytes and sent to its own mechanism, so an MCP
 .json imports everywhere and never errors, opens as text or navigates away."* It was published on GitHub
 on 2026-10-14 ("Tlamatini Release v1.83.0 Win11x64", marked Latest), so self-update delivered `v1.83.0` then;
-that historical runtime version was `1.83.0`. The current release is `v1.85.0`. It carries everything in `v1.82.0` plus the three
-changes below. No migration was added after 0213; the frontend now has 59 JS modules and 26
-stylesheets, and the live `STATIC_VERSION` cache suffix is `-file-drop-router-1`.
+that historical runtime version was `1.83.0`. The current release is `v1.87.0`. `v1.83.0` carried everything in `v1.82.0` plus the three
+changes below. `v1.83.0` added no migration after 0213 (0214 arrived in v1.87.0); the frontend has 59 JS modules and 26
+stylesheets, and the live `STATIC_VERSION` cache suffix is now `-agent-catalog-1-quality-cleanup-1-usage-status-2`.
 
 - **File-drop router (`a2914019`).** `static/agent/js/file_drop_router.js` is the ONE listener for files
   dropped on any page, in the `<head>` of the chat, the Agentic Control Panel, the Prompt Flow Panel,
@@ -303,7 +323,7 @@ coloured by level*, *A refused PDF says why*; `docs/claude/recent-fixes.md`
 
 ## Prompt Flow comments are static; User Input runs (2026-10-03)
 
-**Commentary/Input contract (2026-10-04, shipped in `v1.76.0`):** Seven executable operations remain separate from static **User Commentary**. **User Input** (`user_input`) keeps the question/reply/cancellation mechanism and notched figure. **User Commentary** (`user_commentary`) is edited entirely on the canvas: double-click/Enter writes in the bubble; a floating mini toolbar formats selected text with different fonts, sizes, text colors, bold, italic and underline within the same note. With a caret, formatting applies to newly typed text; outside editing it applies to the whole note. Bubble color and alignment affect the note. There is no commentary configuration dialog or numeric dimension form. Drag any border or corner to resize, including while editing; Fit text removes spare height. Done/Ctrl+Enter saves; Cancel/Escape restores the whole edit. Ctrl+Z/Y works inside the editor; completed edits, moves, resizes and duplicates use flow Undo/Redo. Bubbles contain their full wrapped text without internal scrollbars. Version 2 files persist allowlisted `runs` plus matching literal `text`; older plain notes normalize to one run, and version 1 executable commentary still migrates to User Input with IDs/edges/settings intact. Comments have no ports/Start/runtime/context/history/step effects. The draft key remains `.draft.v1.<user id>`. Cache suffix at that change: `-flow-file-opening-2` (the live suffix is `-avatar-center-1` since 2026-10-14). See `docs/prompting-flow-designer.md` and the 2026-10-04 verification record; the October 4 local release-validation campaign tracks subsequent isolated frozen builds and runtime acceptance.
+**Commentary/Input contract (2026-10-04, shipped in `v1.76.0`):** Seven executable operations remain separate from static **User Commentary**. **User Input** (`user_input`) keeps the question/reply/cancellation mechanism and notched figure. **User Commentary** (`user_commentary`) is edited entirely on the canvas: double-click/Enter writes in the bubble; a floating mini toolbar formats selected text with different fonts, sizes, text colors, bold, italic and underline within the same note. With a caret, formatting applies to newly typed text; outside editing it applies to the whole note. Bubble color and alignment affect the note. There is no commentary configuration dialog or numeric dimension form. Drag any border or corner to resize, including while editing; Fit text removes spare height. Done/Ctrl+Enter saves; Cancel/Escape restores the whole edit. Ctrl+Z/Y works inside the editor; completed edits, moves, resizes and duplicates use flow Undo/Redo. Bubbles contain their full wrapped text without internal scrollbars. Version 2 files persist allowlisted `runs` plus matching literal `text`; older plain notes normalize to one run, and version 1 executable commentary still migrates to User Input with IDs/edges/settings intact. Comments have no ports/Start/runtime/context/history/step effects. The draft key remains `.draft.v1.<user id>`. Cache suffix at that change: `-flow-file-opening-2` (the live suffix is `-agent-catalog-1-quality-cleanup-1-usage-status-2` since 2026-10-18). See `docs/prompting-flow-designer.md` and the 2026-10-04 verification record; the October 4 local release-validation campaign tracks subsequent isolated frozen builds and runtime acceptance.
 
 Preserve this distinction when editing the designer, importing legacy diagrams,
 writing documentation or verifying the shipped example. The user explicitly
@@ -317,7 +337,7 @@ font/width changes, inline typing, file/draft recovery and canvas Fit.
 
 ## Windows flow-file lifecycle — 2026-10-04, shipped in `v1.76.0`
 
-Both `.flw` agent flows and `.fpmt` prompting flows now have Windows registration, repair, removal, status and Default Apps handling. Explorer/source command-line opening validates a bounded snapshot, reuses a matching running server before database startup, and returns through login to the correct editor without execution. Main-chat Open/drop routes both formats into separate editor tabs while preserving the chat document. The historical `.flw` installer wrappers cover both types for old installer/uninstaller binaries; independent management uses `flow_file_associations.ps1 -Extensions`. Never erase UserChoice or another application’s Open With entries. Update Repair respects explicit unregistration and installation ownership. See [Windows flow files](docs/windows-flow-files.md). Cache suffix at that change: `-flow-file-opening-2` (the live suffix is `-avatar-center-1` since 2026-10-14). Committed to `main` on 2026-10-04. The October 4 local release-validation campaign also rebuilds isolated frozen artifacts; its dated evidence distinguishes build completion from runtime acceptance.
+Both `.flw` agent flows and `.fpmt` prompting flows now have Windows registration, repair, removal, status and Default Apps handling. Explorer/source command-line opening validates a bounded snapshot, reuses a matching running server before database startup, and returns through login to the correct editor without execution. Main-chat Open/drop routes both formats into separate editor tabs while preserving the chat document. The historical `.flw` installer wrappers cover both types for old installer/uninstaller binaries; independent management uses `flow_file_associations.ps1 -Extensions`. Never erase UserChoice or another application’s Open With entries. Update Repair respects explicit unregistration and installation ownership. See [Windows flow files](docs/windows-flow-files.md). Cache suffix at that change: `-flow-file-opening-2` (the live suffix is `-agent-catalog-1-quality-cleanup-1-usage-status-2` since 2026-10-18). Committed to `main` on 2026-10-04. The October 4 local release-validation campaign also rebuilds isolated frozen artifacts; its dated evidence distinguishes build completion from runtime acceptance.
 
 ## Complete release verification (2026-10-04)
 

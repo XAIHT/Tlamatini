@@ -1,6 +1,6 @@
 # Runtime and model configuration verification — 2026-09-20
 
-> Current release: **[v1.85.0](changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.87.0](changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
 
 
 Installed application: `C:\Tlamatini\Tlamatini.exe`, version **1.63.0**.

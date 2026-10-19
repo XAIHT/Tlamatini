@@ -285,17 +285,325 @@ _PRUNE_DIRS = {'.git', 'node_modules', 'venv', '.venv', '__pycache__',
                'staticfiles', 'dist', 'build', '.mypy_cache', '.ruff_cache'}
 
 
-def _iter_files(path, glob_pat):
+# >>> SHARED GLOB HELPERS (keep byte-identical in grepper.py and globber.py) >>>
+# fnmatch/glob only know * ? and [..], so before 2026-10-18 a brace set like
+# "*.{js,py}" matched NOTHING (the "{" was read literally), and so did a list
+# such as "*.py,*.js". Every expansion below is ADDITIVE: the pattern exactly as
+# written is always tried first, so nothing that matched before stops matching
+# (a '|' list excepted: '|' cannot be part of a Windows file name).
+# agent/test_glob_patterns.py checks that both agents carry the same block.
+_GLOB_MAX_PATTERNS = 256
+_GLOB_WILDCARDS = '*?[{'
+
+
+def _glob_class_end(text, i):
+    """Index of the ']' closing the [character class] opening at text[i], or -1."""
+    j = i + 1
+    if j < len(text) and text[j] in '!^':
+        j += 1
+    if j < len(text) and text[j] == ']':
+        j += 1
+    while j < len(text) and text[j] != ']':
+        j += 1
+    return j if j < len(text) else -1
+
+
+def _glob_first_brace_set(text):
+    """(start, end, options) of the first expandable {a,b} set, else None.
+
+    A set with no top-level comma ("{x}"), an unbalanced brace and anything
+    inside a [character class] stay literal, exactly as in a POSIX shell.
+    """
+    i = 0
+    n = len(text)
+    while i < n:
+        char = text[i]
+        if char == '[':
+            end = _glob_class_end(text, i)
+            i = end + 1 if end >= 0 else i + 1
+            continue
+        if char != '{':
+            i += 1
+            continue
+        depth = 0
+        cuts = []
+        j = i
+        close = -1
+        while j < n:
+            c = text[j]
+            if c == '[':
+                end = _glob_class_end(text, j)
+                if end >= 0:
+                    j = end + 1
+                    continue
+            elif c == '{':
+                depth += 1
+            elif c == '}':
+                depth -= 1
+                if depth == 0:
+                    close = j
+                    break
+            elif c == ',' and depth == 1:
+                cuts.append(j)
+            j += 1
+        if close >= 0 and cuts:
+            bounds = [i] + cuts + [close]
+            options = [text[bounds[k] + 1:bounds[k + 1]] for k in range(len(bounds) - 1)]
+            return i, close, options
+        i += 1
+    return None
+
+
+def _glob_brace_expand(pattern, limit=_GLOB_MAX_PATTERNS):
+    """'src/{a,b}/*.{js,py}' -> the four plain patterns (nested sets too)."""
+    out = []
+    pending = [pattern]
+    while pending and len(out) < limit:
+        current = pending.pop(0)
+        found = _glob_first_brace_set(current)
+        if found is None:
+            if current not in out:
+                out.append(current)
+            continue
+        start, end, options = found
+        for option in options:
+            pending.append(current[:start] + option + current[end + 1:])
+        del pending[limit * 4:]
+    return out
+
+
+def _glob_split_top_level(text, separators):
+    """Split on separators that sit outside {braces} and [classes]."""
+    parts = []
+    current = []
+    depth = 0
+    i = 0
+    while i < len(text):
+        char = text[i]
+        if char == '[':
+            end = _glob_class_end(text, i)
+            if end >= 0:
+                current.append(text[i:end + 1])
+                i = end + 1
+                continue
+        if char == '{':
+            depth += 1
+        elif char == '}' and depth:
+            depth -= 1
+        elif char in separators and depth == 0:
+            parts.append(''.join(current))
+            current = []
+            i += 1
+            continue
+        current.append(char)
+        i += 1
+    parts.append(''.join(current))
+    return parts
+
+
+def _glob_pattern_list(pattern):
+    """'*.py,*.js' / '*.py;*.js' / '*.py|*.js' -> ['*.py', '*.js'].
+
+    '|' can never be part of a Windows file name, so it always separates.
+    ',' and ';' CAN be, so they separate only when at least one piece is a
+    wildcard pattern ('test*.py,tests.py'); 'a,b.txt' stays one literal name.
+    """
+    pieces = []
+    for chunk in _glob_split_top_level(pattern, '|'):
+        chunk = chunk.strip()
+        if not chunk:
+            continue
+        subs = [s.strip() for s in _glob_split_top_level(chunk, ',;')]
+        if (len(subs) > 1 and all(subs)
+                and any(w in s for s in subs for w in _GLOB_WILDCARDS)):
+            pieces.extend(subs)
+        else:
+            pieces.append(chunk)
+    return pieces
+
+
+def _glob_variants(pattern, limit=_GLOB_MAX_PATTERNS):
+    """Every plain glob a pattern stands for, the pattern as written FIRST.
+
+    A '|' list is the one exception: '|' can never be part of a Windows
+    file name, so the list as written could never match - only its pieces.
+    """
+    pattern = str(pattern or '').strip()
+    if not pattern:
+        return []
+    out = [] if len(_glob_split_top_level(pattern, '|')) > 1 else [pattern]
+    for piece in _glob_pattern_list(pattern):
+        for plain in _glob_brace_expand(piece, limit):
+            if plain and plain not in out:
+                out.append(plain)
+            if len(out) >= limit:
+                return out
+    return out
+
+
+def _glob_spec(variant):
+    """A variant with '/' separators and no leading './'."""
+    spec = variant.replace('\\', '/')
+    while spec.startswith('./'):
+        spec = spec[2:]
+    return spec
+
+
+def _path_glob_regex(pattern):
+    """Regex for a '/'-separated glob, matched against a relative path.
+
+    Same rules as glob.glob(recursive=True, include_hidden=True): '*' and '?'
+    stay inside one folder name, a whole '**' segment spans zero or more
+    folders, and braces are literal (variants are already expanded).
+    """
+    import re
+    parts = []
+    i = 0
+    n = len(pattern)
+    while i < n:
+        char = pattern[i]
+        if char == '*':
+            j = i
+            while j < n and pattern[j] == '*':
+                j += 1
+            whole = (j - i >= 2 and (i == 0 or pattern[i - 1] == '/')
+                     and (j == n or pattern[j] == '/'))
+            if whole and j < n:
+                parts.append('(?:.*/)?')
+                j += 1
+            elif whole:
+                parts.append('.*')
+            else:
+                parts.append('[^/]*')
+            i = j
+        elif char == '?':
+            parts.append('[^/]')
+            i += 1
+        elif char == '[':
+            end = _glob_class_end(pattern, i)
+            if end < 0:
+                parts.append('\\[')
+                i += 1
+                continue
+            body = pattern[i + 1:end]
+            if body[:1] == '!':
+                body = '^' + body[1:]
+            elif body[:1] == '^':
+                body = '\\' + body
+            parts.append('[' + body.replace('\\', '\\\\') + ']')
+            i = end + 1
+        else:
+            parts.append(re.escape(char))
+            i += 1
+    return '(?s:' + ''.join(parts) + r')\Z'
+
+
+def _glob_dir_prefixes(glob_pat, names_anywhere=True):
+    """Fixed leading folders of the patterns, so a walk can skip the rest.
+
+    'Tlamatini/agent/test_*.py' -> ['Tlamatini/agent']. None means "walk
+    everything, exactly as before": a leading wildcard ('**/x.py'), an
+    absolute path, or - when ``names_anywhere`` (Grepper: a bare name matches
+    in every folder) - a plain file-name pattern. For Globber a bare name
+    only means the top folder, so it adds no prefix at all ([] = no subfolder
+    is needed). Measured 2026-10-18 on this repository: a folder glob that
+    walked every release copy under Temp in 34 s came back in 0.13 s.
+    """
+    prefixes = []
+    for variant in _glob_variants(glob_pat):
+        spec = _glob_spec(variant)
+        if spec.startswith('/') or (len(spec) > 1 and spec[1] == ':'):
+            return None
+        if '/' not in spec:
+            if names_anywhere:
+                return None
+            continue
+        fixed = []
+        for segment in spec.split('/')[:-1]:
+            if not segment or segment in ('.', '..') or any(ch in segment for ch in '*?['):
+                break
+            fixed.append(segment)
+        if not fixed:
+            return None
+        prefixes.append('/'.join(fixed))
+    if os.name == 'nt':
+        prefixes = [p.lower() for p in prefixes]
+    return prefixes
+
+
+def _dir_may_match(rel_dir, prefixes):
+    """True when a folder (relative, '/'-separated) can still hold a match."""
+    if os.name == 'nt':
+        rel_dir = rel_dir.lower()
+    for prefix in prefixes:
+        if rel_dir == prefix or prefix.startswith(rel_dir + '/') or rel_dir.startswith(prefix + '/'):
+            return True
+    return False
+# <<< SHARED GLOB HELPERS <<<
+
+
+def _glob_matcher(glob_pat):
+    """Predicate(full_path, search_root) for Grepper's ``glob`` filter, or None.
+
+    A pattern without a folder separator is matched against the FILE NAME
+    with fnmatch, exactly as before. A pattern WITH one ('src/*.py',
+    '**/*.py') is matched against the path relative to the search root and
+    against the absolute path - it used to be compared with the bare file
+    name, which never contains a slash, so it silently searched 0 files.
+    """
     import fnmatch
+    import re
+    variants = _glob_variants(glob_pat)
+    if not variants:
+        return None
+    flags = re.IGNORECASE if os.name == 'nt' else 0
+    names = []
+    paths = []
+    for variant in variants:
+        if '/' in variant or '\\' in variant:
+            try:
+                paths.append(re.compile(_path_glob_regex(_glob_spec(variant)), flags))
+            except re.error:
+                continue
+        else:
+            names.append(variant)
+
+    def _match(full_path, root):
+        name = os.path.basename(full_path)
+        for pat in names:
+            if fnmatch.fnmatch(name, pat):
+                return True
+        if paths:
+            absolute = os.path.abspath(full_path).replace('\\', '/')
+            try:
+                relative = os.path.relpath(full_path, root).replace('\\', '/')
+            except ValueError:
+                relative = absolute
+            for rx in paths:
+                if rx.match(relative) or rx.match(absolute):
+                    return True
+        return False
+
+    return _match
+
+
+def _iter_files(path, glob_pat):
+    matcher = _glob_matcher(glob_pat)
     if os.path.isfile(path):
-        if not glob_pat or fnmatch.fnmatch(os.path.basename(path), glob_pat):
+        if matcher is None or matcher(path, os.path.dirname(os.path.abspath(path))):
             yield path
         return
+    prefixes = _glob_dir_prefixes(glob_pat) if matcher is not None else None
     for root, dirs, files in os.walk(path):
         dirs[:] = [d for d in dirs if d not in _PRUNE_DIRS]
+        if prefixes is not None:
+            rel_root = os.path.relpath(root, path).replace('\\', '/')
+            rel_root = '' if rel_root == '.' else rel_root + '/'
+            dirs[:] = [d for d in dirs if _dir_may_match(rel_root + d, prefixes)]
         for name in files:
-            if not glob_pat or fnmatch.fnmatch(name, glob_pat):
-                yield os.path.join(root, name)
+            full = os.path.join(root, name)
+            if matcher is None or matcher(full, path):
+                yield full
 
 
 # --- Text decoding -----------------------------------------------------------
@@ -476,6 +784,9 @@ def main():
 
         logging.info("\U0001f50d GREPPER AGENT STARTED")
         logging.info(f"\U0001f9ea pattern={pattern!r} path={path!r} glob={glob_pat!r} mode={output_mode}")
+        _glob_list = _glob_variants(glob_pat)
+        if len(_glob_list) > 1:
+            logging.info(f"\U0001f9e9 glob understood as {len(_glob_list)} pattern(s): {_glob_list}")
         logging.info(f"\U0001f3af Targets: {target_agents}")
 
         status = "error"

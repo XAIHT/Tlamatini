@@ -12,7 +12,7 @@ description: How to add a new MCP-backed context provider or unified-agent tool 
 
 # Create a New MCP or Tool in Tlamatini
 
-> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.87.0](../../docs/changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
 
 
 Follow this guide when adding:
@@ -419,7 +419,7 @@ Follow these steps when the feature is an imperative action best served by **lau
 
 ### Step 1: Decide whether the underlying template agent already exists
 
-Browse `agent/agents/`. If a template agent exists that does what the user wants (SSHer, Dockerer, Apirer, Gitter, Sqler, ...), you are **configuring** that agent, not writing a new runner.
+Browse `agent/agents/`. If a template agent exists that does what the user wants (SSHer, Dockerer, Apirer, Gitter, SQLer, ...), you are **configuring** that agent, not writing a new runner.
 
 If the underlying capability is new, go through the full `create_new_agent.md` skill first to create the template agent (including `config.yaml`, migration, canvas CSS, etc.). Then come back here.
 

@@ -44,7 +44,7 @@ Each question is a dict:
 from typing import List, Dict, Any
 
 # Repo path used by the handful of benign read-only ops questions.
-REPO = r"C:\Development\Tlamatini"
+REPO = r"C:\Development\XAIHT\Tlamatini"
 
 # --- The agent catalog (DISPLAY NAME casing is authoritative) -------------
 # (display_name, [keywords the answer should plausibly mention])
@@ -77,7 +77,7 @@ AGENTS = [
     ("Kuberneter", ["kubectl", "kubernetes"]),
     ("PSer", ["powershell", "command"]),
     ("Jenkinser", ["jenkins", "job"]),
-    ("Sqler", ["sql", "query", "database"]),
+    ("SQLer", ["sql", "query", "database"]),
     ("Mongoxer", ["mongo", "database"]),
     ("Mover", ["move", "copy", "glob"]),
     ("Deleter", ["delete", "glob", "file"]),
@@ -115,12 +115,25 @@ AGENTS = [
     ("FlowBacker", ["backup", "session", "log"]),
     ("FlowCreator", ["flow", "design", "llm"]),
     ("Monitor-Log", ["monitor", "log", "llm"]),
-    ("Monitor-Netstat", ["monitor", "port", "network"]),
+    ("Monitor Netstat", ["monitor", "port", "network"]),
     ("Emailer", ["smtp", "email"]),
     ("RecMailer", ["imap", "email", "receive"]),
     ("Notifier", ["notification", "popup"]),
     ("Whatsapper", ["whatsapp", "message"]),
     ("FlowHypervisor", ["health", "monitor", "watchdog"]),
+    ("Editor", ["replace", "edit", "file"]),
+    ("Grepper", ["regex", "search", "content"]),
+    ("Globber", ["glob", "files", "pattern"]),
+    ("PDFer", ["pdf", "markdown", "style"]),
+    ("Talker", ["speech", "voice", "ollama"]),
+    ("Whisperer", ["speech", "transcri", "microphone"]),
+    ("Video-Analyzer", ["video", "transcri", "motion"]),
+    ("Blenderer", ["blender", "3d", "socket"]),
+    ("Discoverer", ["projectdiscovery", "subfinder", "nuclei"]),
+    ("ESPHomer", ["esphome", "yaml", "device"]),
+    ("Nmapper", ["nmap", "scan", "port"]),
+    ("MCP Doctor", ["mcp", "catalog", "triage"]),
+    ("Instant Messaging Doctor", ["telegram", "whatsapp", "diagnos"]),
 ]
 
 # --- Curated system / architecture knowledge questions --------------------
@@ -309,7 +322,7 @@ def build_questions() -> List[Dict[str, Any]]:
     """Assemble exactly 1000 deterministic, safe-to-execute questions."""
     items: List[tuple] = []  # (category, text, expect, min_len)
 
-    # 1) Agent knowledge -- 74 agents x 6 templates = 444
+    # 1) Agent knowledge -- every agent x 6 templates (85 x 6 = 510 on 2026-10-18)
     for name, kw in AGENTS:
         for tmpl in _AGENT_TEMPLATES:
             items.append(("agent-knowledge", tmpl.format(name=name), kw, 30))

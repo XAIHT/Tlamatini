@@ -1,7 +1,7 @@
 <!-- Tlamatini Author Banner — Angela López Mendoza -->
 # Markdown in the chat canvas
 
-> Current release: **[v1.85.0](changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.87.0](changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
 
 
 **Views → Canvas** keeps this document and its viewer alive while hiding the pane. Opening a document shows the pane again. **Views → Reset layout** restores both panes and their sizes without clearing the document or context. See [v1.85.0](changes/2026-10-16-v1.85.0.md).
@@ -42,7 +42,7 @@ The sanitizer allowlists HTML and attributes, scopes IDs, removes document class
 and active markup, and restricts resource protocols. Parsing does not depend on a
 CDN. `scripts/vendor_frontend.py` pins archive integrity, licenses and per-file
 receipts; runtime and self-modify snapshot contracts include both libraries.
-The static cache suffix was `-markdown-canvas-1` when it shipped (the live suffix is `-avatar-center-1`).
+The static cache suffix was `-markdown-canvas-1` when it shipped (the live suffix is `-agent-catalog-1-quality-cleanup-1-usage-status-2`).
 
 ## Visible verification
 

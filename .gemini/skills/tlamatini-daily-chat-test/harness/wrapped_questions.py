@@ -11,10 +11,10 @@
 One functional question per WRAPPED chat-agent in Tlamatini.
 
 Source of truth: agent/chat_agent_registry.py :: WRAPPED_CHAT_AGENT_SPECS
-(49 wrapped agents as of 2026-06-05). Each question is an OPERATOR prompt
+(66 wrapped agents as of 2026-10-18). Each question is an OPERATOR prompt
 (Multi-Turn ON) that exercises that agent's actual functionality. The
 send_email agent additionally carries a second question that exercises the
-file-attachment path (email.attachments), so the bank is 50 questions.
+file-attachment path (email.attachments), so the bank is 67 questions.
 
 Safety choices (this runs for real):
   * file ops act on THROWAWAY files the question first creates, under the app
@@ -37,8 +37,8 @@ Same dict shape as questions.py so run_test.py can consume either bank.
 
 from typing import List, Dict, Any
 
-REPO = r"C:\Development\Tlamatini"
-TEMP = r"C:\Development\Tlamatini\Temp"
+REPO = r"C:\Development\XAIHT\Tlamatini"
+TEMP = r"C:\Development\XAIHT\Tlamatini\Temp"
 
 # (wrapped key, display, question text, expect-keywords)
 # Ordered: compute/IO -> crypto -> observational/desktop -> monitors ->
@@ -61,7 +61,7 @@ WRAPPED = [
      "Run a prompt: explain the CAP theorem in distributed systems with a one-line example for each of the three trade-offs.",
      ["cap", "consistency"]),
     ("summarize_text", "Summarize Text",
-     "Summarize the following text in about 30 words: 'Tlamatini is a locally-deployed AI developer assistant built with Django, featuring a RAG system, a multi-turn orchestration layer, a visual agentic workflow designer with 74 agent types, an ACPX runtime for external coding CLIs, and a skills system.'",
+     "Summarize the following text in about 30 words: 'Tlamatini is a locally-deployed AI developer assistant built with Django, featuring a RAG system, a multi-turn orchestration layer, a visual agentic workflow designer with 85 agent types, an ACPX runtime for external coding CLIs, and a skills system.'",
      ["tlamatini"]),
     ("crawler", "Crawler",
      "Crawl the page https://example.com and give me a short summary of its headings and any links.",
@@ -87,6 +87,30 @@ WRAPPED = [
     ("j_decompiler", "J-Decompiler",
      f"Decompile the Java archive at {TEMP}\\sample.jar. If the file does not exist, report that clearly.",
      ["jar"]),
+    ("globber", "Globber",
+     f"Using Globber, list the Markdown and Python files directly inside {REPO}\\docs\\claude with the pattern '*.{{md,py}}', sorted by name, and tell me how many files it found.",
+     ["md"]),
+    ("grepper", "Grepper",
+     f"Using Grepper, search {REPO}\\docs\\claude for the word 'Grepper' in the files matching the glob '*.{{md,txt}}' and tell me how many matches it found and in how many files.",
+     ["grepper"]),
+    ("editor", "Editor",
+     f"First create a throwaway file at {TEMP}\\editor_me.txt with the content 'hello world', then use Editor to replace 'world' with 'Tlamatini' in that file and confirm it now says 'hello Tlamatini'.",
+     ["tlamatini"]),
+    # `mode: styles` lists PDFer's visual styles and writes NO PDF.
+    ("pdfer", "PDFer",
+     "Using PDFer, run mode='styles' to list its visual styles (it writes no PDF) and tell me how many styles there are and name three of them.",
+     ["style"]),
+    ("flowcreator", "FlowCreator",
+     f"Using FlowCreator, design a minimal flow for the objective 'wait 5 seconds and then end', save it as {TEMP}\\dct_flowcreator.flw, and tell me how many agents and connections it has.",
+     ["flw"]),
+    # Static triage: MCP Doctor reads the catalog and connects to nothing.
+    ("mcp_doctor", "MCP Doctor",
+     "Using MCP Doctor, statically triage the 'memory' server in the External MCP catalog (no connection) and report its transport, runtime and next step.",
+     ["memory"]),
+    # diagnose mode with retry_send=false sends NO message to anybody.
+    ("instant_messaging_doctor", "Instant Messaging Doctor",
+     "Using Instant Messaging Doctor with mode='diagnose', platform='both' and retry_send=false (send nothing), report whether Telegrammer and Whatsapper are ready and what is missing.",
+     ["telegram", "whatsapp"]),
 
     # --- cryptography (self-contained round-trips) ------------------------
     ("kyber_keygen", "Kyber Keygen",
@@ -115,6 +139,12 @@ WRAPPED = [
     ("whisperer", "Whisperer",
      "Using Whisperer, record from the default microphone and transcribe the speech to text with the local faster-whisper engine. Report the engine, device, status, and the transcript text.",
      ["transcri"]),
+    ("talker", "Talker",
+     "Using Talker, say the sentence 'Tlamatini wrapped agent test' with the female voice tara, then tell me the status and where the WAV file was saved.",
+     ["status"]),
+    ("video_analyzer", "Video-Analyzer",
+     f"Using Video-Analyzer with analysis_type='summary', analyze the video file {TEMP}\\sample.mp4. If the file does not exist, report that clearly.",
+     ["video"]),
     ("audioplayer", "AudioPlayer",
      r"Play the Windows system sound file C:\Windows\Media\chimes.wav through the default speakers. If that file is missing, report it.",
      ["play"]),
@@ -182,7 +212,7 @@ WRAPPED = [
     ("send_email", "Send Email (with attachment)",
      f"First create a small text file at {TEMP}\\email_attach.txt with the content 'Tlamatini attachment test', then send an email to test@example.com with subject 'Tlamatini attachment test' and body 'See the attached file.' AND attach that file (set email.attachments to that path) via SMTP host smtp.example.com port 587. This is a connectivity test -- if it can't connect/authenticate, report the error, but confirm the file was attached to the message.",
      ["attach", "email", "smtp"]),
-    ("recmailer", "Recmailer",
+    ("recmailer", "RecMailer",
      "Check for received emails containing 'invoice' via IMAP at imap.example.com. If no credentials are configured, report the result.",
      ["imap", "email"]),
     ("telegrammer", "Telegrammer",
@@ -198,6 +228,17 @@ WRAPPED = [
      "Send the Unreal Engine command to take a viewport screenshot (or get the current level) via the Unreal MCP at 127.0.0.1:55557. If Unreal isn't connected, report the connection result.",
      ["unreal"]),
 
+    # Read-only meta actions: nothing is scanned, nothing is changed.
+    ("nmapper", "Nmapper",
+     "Using Nmapper, run the 'validate' action to report whether nmap and Npcap are installed on this machine. Do not scan anything.",
+     ["nmap"]),
+    ("discoverer", "Discoverer",
+     "Using Discoverer, run tool='list_tools' to list the ProjectDiscovery tools it supports and whether each one is installed. Do not scan anything.",
+     ["subfinder"]),
+    ("blenderer", "Blenderer",
+     "Using Blenderer, send the 'ping' command to the Blender MCP add-on at localhost:9876. If Blender is not running, report the connection result.",
+     ["blender"]),
+
     # --- typesetting ------------------------------------------------------
     # `validate` writes NO file and needs no MiKTeX to answer: on a machine WITH a TeX
     # distribution it reports the engines found, and on one without it reports
@@ -208,6 +249,20 @@ WRAPPED = [
      "engines are installed on this machine, and tell me whether LaTeXer is ready to "
      "typeset. If none is installed, say so plainly and name what I need to install.",
      ["latex"]),
+
+    # --- presentations ----------------------------------------------------
+    # `validate` writes NO deck and needs no PowerPoint to answer: it probes
+    # every backend and renderer and reports what it actually found. On a
+    # machine WITH PowerPoint it names powerpoint_com and says the render can
+    # be ground truth; on one without, it says so and names the fallback. Either
+    # way the agent answers truthfully and writes nothing, so this question is
+    # safe to run 1000x/day and never depends on the host's setup.
+    ("pptxer", "PPTXer",
+     "Using PPTXer, run the 'validate' action to report which presentation "
+     "backends and slide renderers are available on this machine, and tell me "
+     "whether PPTXer can check its own slides against PowerPoint's own rendering. "
+     "If it cannot, say so plainly and name what is missing.",
+     ["pptx"]),
 
     # --- network measurement ----------------------------------------------
     # DELIBERATELY action='latency': it exercises the whole launch -> preflight ->
@@ -230,6 +285,9 @@ WRAPPED = [
     ("arduiner", "Arduiner",
      "Using Arduiner, run 'system_info' to report the arduino-cli environment status.",
      ["arduino"]),
+    ("esphomer", "ESPHomer",
+     "Using ESPHomer, run the 'validate' action to report whether the ESPHome CLI is available on this machine, and report the result.",
+     ["esphome"]),
 ]
 
 

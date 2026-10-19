@@ -54,13 +54,13 @@ from playwrighter_run import PlaywrighterError, failed_steps, run_steps  # noqa:
 BASE = os.environ.get("TLM_BASE", "http://127.0.0.1:8010")
 CHAT = BASE + "/agent/agent/"
 ACP = BASE + "/agent/agentic_control_panel/"
-OUT = os.path.join(r"C:\Development\Tlamatini\Temp", "dialog_policy_escape")
+OUT = os.path.join(r"C:\Development\XAIHT\Tlamatini\Temp", "dialog_policy_escape")
 CHAT_STATE = os.environ.get(
     "TLM_CHAT_STATE",
-    os.path.join(r"C:\Development\Tlamatini\Temp", "chat_session_state.json"))
+    os.path.join(r"C:\Development\XAIHT\Tlamatini\Temp", "chat_session_state.json"))
 ACP_STATE = os.environ.get(
     "TLM_ACP_STATE",
-    os.path.join(r"C:\Development\Tlamatini\Temp", "acp_session_state.json"))
+    os.path.join(r"C:\Development\XAIHT\Tlamatini\Temp", "acp_session_state.json"))
 USER = os.environ.get("TLAMATINI_USER", "")
 PASS = os.environ.get("TLAMATINI_PASS", "")
 

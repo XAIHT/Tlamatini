@@ -28,7 +28,7 @@ def _canonical_agent_display_name(folder_name, fallback):
     ``Agent`` table on every single startup and rebuilds it from the folder listing,
     so whatever this function returns IS the display name — a migration's carefully
     cased ``agentDescription`` is overwritten on the very next launch. The old logic
-    was ``str.title()`` plus five ad-hoc overrides, which mangled 22 of 86 agents
+    was ``str.title()`` plus five ad-hoc overrides, which mangled 22 of the then-86 agents
     ("Pdfer", "Sqler", "Esp32Er", "Videoplayer", ...) and, worse, produced SPACED
     names for six agents whose canvas connection handlers only ever test the
     HYPHENATED literal ('kyber-keygen', 'j-decompiler', 'video-analyzer',

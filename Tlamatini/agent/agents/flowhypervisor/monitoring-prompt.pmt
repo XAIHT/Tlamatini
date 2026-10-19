@@ -71,8 +71,8 @@ SECTION 3 — AGENT TYPES AND EXPECTED BEHAVIOR
 ══════════════════════════════════════════
 
 SHORT-LIVED agents (should start, do work, and exit quickly):
-  Starter, Ender, Cleaner, Executer, Pythonxer, Shoter, Sleeper, Ssher, Scper,
-  Gitter, Dockerer, Kuberneter, Apirer, Jenkinser, Prompter, Pser, Crawler,
+  Starter, Ender, Cleaner, Executer, Pythonxer, Shoter, Sleeper, SSHer, SCPer,
+  Gitter, Dockerer, Kuberneter, Apirer, Jenkinser, Prompter, PSer, Crawler,
   Googler, Asker, Counter, Summarizer, Mouser, Keyboarder, Windower, Telegrammer, Whatsapper, Instant Messaging Doctor, FlowCreator,
   File-Interpreter, Image-Interpreter, File-Creator, File-Extractor, J-Decompiler,
   De-Compresser, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Parametrizer, FlowBacker, Barrier,
@@ -850,12 +850,12 @@ ASK-EXECS — NOT A FLOW CONCEPT (never appears in agent-pool logs):
   see an "Ask Execs" agent, an `exec_permission` log, or a denial banner in flow
   logs — there is nothing here to flag. (A canvas/.flw flow always runs unattended.)
 
-EXTERNAL-WINDOW agents (Sqler, Mongoxer):
-  These run in a separate console window. Their logs may NOT be visible. Missing Sqler/Mongoxer logs is NORMAL — NEVER flag it.
+EXTERNAL-WINDOW agents (SQLer, Mongoxer):
+  These run in a separate console window. Their logs may NOT be visible. Missing SQLer/Mongoxer logs is NORMAL — NEVER flag it.
 
 TYPICAL TIMING:
   - Starter: < 10 seconds
-  - Executer/Ssher/Scper: seconds to minutes (flag if > 10 min with no output)
+  - Executer/SSHer/SCPer: seconds to minutes (flag if > 10 min with no output)
   - Crawler: seconds for one page (`crawl_type: page`, the default) up to about `deadline_seconds` (default 900) for a range crawl, each page plus one bounded LLM call. Every page has a hard `page_timeout_seconds` (default 45) and the run stops by itself at `max_pages` (default 25) or the deadline and says so ("Crawl deadline ... reached", "page budget reached"). Lines such as "BLOCKED:" or "TIMEOUT:" and a final section with `status: blocked` / `timeout` / `unreachable` / `skipped` whose body says "NOTHING WAS ANALYZED" are the agent reporting a refusal or a dead server truthfully, NOT a crash. Flag only if the process is still alive well past `deadline_seconds` (normally > 16 min)
   - Googler: seconds to about `deadline_seconds` (default 120) plus a few seconds of cleanup. ONE wall-clock deadline bounds the whole run: six plain-HTTP server-rendered routes in parallel, then real Chrome across up to eight browser routes, then open knowledge sources, then text/raw extraction or `links_only` URL delivery. A run that ends `search_status: blocked`, `timeout` or `unreachable` is a NAMED outcome, not a crash: the engines refused or the network was down, and the log lists which. Lines such as "cooling down", "poisoned" or "refused" are the health ledger working, NOT errors. A fallback engine may broaden Google-only operators; a URL-only file hunt is not an extraction failure. Flag only if the process is still alive well past `deadline_seconds` (normally > 5 min)
   - Playwrighter: drives a real multi-step browser (goto / click / fill / wait_for / extract / screenshot / download); seconds for a simple page up to a few minutes for a multi-step or authenticated flow, PLUS any `hold_open_seconds` it deliberately lingers before closing (a visible browser left open on purpose is NORMAL). Don't flag a Playwrighter that is still emitting step logs, or that is inside its hold-open window, before ~5 min.
@@ -1017,7 +1017,7 @@ Video-Analyzer content modes: static frames, no_audio/no_speech (status no_match
 
 DO NOT report these as problems:
   - FlowHypervisor or FlowCreator activity (they are system agents, not participants)
-  - Sqler/Mongoxer missing from logs (they run in separate windows)
+  - SQLer/Mongoxer missing from logs (they run in separate windows)
   - Long-running agents (Raiser, Monitor_Log, etc.) running for a long time with no completion → they are designed to run indefinitely
   - "WAITING FOR AGENTS TO STOP" in a looping flow → normal concurrency guard
   - "No files found for pattern" → Deleter/Mover found nothing to process
@@ -1043,7 +1043,7 @@ DO NOT report these as problems:
   - Image-Interpreter pipeline connection/barrier/merge progress lines are normal. Read the atomic result status: merged means complete; error or legacy partial/concatenation means failed analysis. Deliver the accumulated fatal notification and preserve configured downstream recovery and Tlamatini retries; never reinterpret a failed attempt as success or shut down Tlamatini.
   - A Whisperer sitting SILENT while its sound gate waits for a human to speak — since 2026-09-11 a default (`record_seconds: 0`) recording has NO fixed length: it ends after `silence_timeout_seconds` of silence, bounded by `max_record_seconds` (default 300 s). Minutes of silence from a gated Whisperer is the feature working, not a stuck agent. Its `stop_reason` values (`silence` / `max_duration` / `fixed_fallback`) and a `status: empty` (nobody spoke) are all routable content (see WHISPERER SPECIAL NOTES).
   - Long FIRST firmware build/flash on STM32er / ESP32er / ESPHomer / Arduiner while Downloading/Installing/Unpacking progress keeps appearing — the first run pulls a large toolchain (hundreds of MB); this is NORMAL (see their SPECIAL NOTES). Only the total-silence > 10 min rule or an explicit install/error line is a problem.
-  - "No process matching..." → Pser found no matching process
+  - "No process matching..." → PSer found no matching process
   - Agents with no log file that haven't been reached in the chain yet
   - Empty/no log data in the first monitoring cycle (agents still starting up)
   - Single warning messages that don't repeat

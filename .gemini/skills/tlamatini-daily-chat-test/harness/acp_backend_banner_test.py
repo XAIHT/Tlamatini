@@ -64,7 +64,7 @@ from shoter_shot import take_shot
 
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = r"C:\Development\Tlamatini"
+ROOT = r"C:\Development\XAIHT\Tlamatini"
 DJANGO_DIR = os.path.join(ROOT, "Tlamatini")
 
 # ── What THIS tree must say, and what it must never say ─────────────────────

@@ -15,7 +15,7 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
-> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.87.0](../../docs/changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
 
 
 2026-06-03: Added **Recorder** (agent #72) — microphone / audio-input capture via `sounddevice` → WAV (written with stdlib `wave`). Audio sibling of [[project_camcorder_agent]] (camera) and Shoter (screen); **observational → NOT in Exec Report**. Both canvas + Multi-Turn (`chat_agent_recorder`).

@@ -15,7 +15,7 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
-> Current release: **[v1.85.0](../../docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.87.0](../../docs/changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
 
 
 2026-06-04: Added **AudioPlayer** (73rd agent type) — the audio PLAYBACK counterpart of [[project_recorder_agent]] (mic-IN); completes the media-I/O family Shoter(screen)/Camcorder(camera)/Recorder(mic-in)/AudioPlayer(speakers-OUT). On BOTH canvas + Multi-Turn (`chat_agent_audioplayer`).

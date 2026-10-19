@@ -28,11 +28,17 @@ def require_visible_console():
     user32, kernel32 = ctypes.windll.user32, ctypes.windll.kernel32
     user32.GetForegroundWindow.restype = ctypes.c_void_p
     kernel32.GetConsoleWindow.restype = ctypes.c_void_p
+    user32.GetAncestor.restype = ctypes.c_void_p
+    user32.GetAncestor.argtypes = [ctypes.c_void_p, ctypes.c_uint]
     user32.IsWindowVisible.argtypes = user32.IsIconic.argtypes = [ctypes.c_void_p]
     window = kernel32.GetConsoleWindow()
-    if not (window and user32.IsWindowVisible(window)
-            and not user32.IsIconic(window)
-            and user32.GetForegroundWindow() == window):
+    # In Windows Terminal (Windows 11's default console) GetConsoleWindow()
+    # returns a 'PseudoConsoleWindow' that is never the foreground window: the
+    # terminal that OWNS it is (measured 2026-10-18: CASCADIA_HOSTING_WINDOW_CLASS
+    # as GA_ROOTOWNER and GetForegroundWindow). Accept the console or its owner.
+    shown = [hwnd for hwnd in (window, user32.GetAncestor(window, 3) if window else None)
+             if hwnd and user32.IsWindowVisible(hwnd) and not user32.IsIconic(hwnd)]
+    if not (window and shown and user32.GetForegroundWindow() in shown):
         raise SystemExit("A verified visible foreground console is required.")
 
 

@@ -978,7 +978,7 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         template_dir="recmailer",
         tool_name="chat_agent_recmailer",
         tool_description="Chat-Agent-Recmailer",
-        display_name="Recmailer",
+        display_name="RecMailer",
         purpose="Check/read received emails over IMAP, matching keywords or phrases — does NOT start downstream agents. By default it watches the mailbox indefinitely; for a SINGLE check pass max_checks (e.g. max_checks=1) so it does one pass and exits cleanly with a result. IMAP host/credentials come from the agent's config by default. Use when the user asks to read a mailbox or watch for an incoming email. Optional: max_checks, keywords_or_phrases; override imap.* to use a different account.",
         example_request="Check received emails with max_checks=1 and keywords_or_phrases='invoice, receipt'",
         aliases=("recmailer", "receive email", "check mailbox"),
@@ -1670,8 +1670,10 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
             "Search file CONTENTS with a regular expression across a single file or a whole "
             "directory tree (the Claude-Grep equivalent) and get back the matching lines as "
             "file:line:match. Pass pattern (a Python regex), path (the file or directory to "
-            "search), and optionally glob (a filename filter like '*.py' applied to each file's "
-            "basename), case_insensitive (true/false), output_mode ('content' = file:line:match "
+            "search), and optionally glob (a file filter: '*.py' matches file names, 'src/**/*.py' "
+            "matches paths below path, and brace sets or lists such as '*.{js,py,html}' or "
+            "'*.py,*.js' work too), case_insensitive (true/false), output_mode ('content' = "
+            "file:line:match "
             "lines [default], 'files' = matching paths only, 'count' = per-file match counts, "
             "'lines' = READ ONE FILE VERBATIM), and max_results (cap, default 200). Read-only: it "
             "never changes any file. Noise dirs (.git, node_modules, venv, __pycache__, dist, "
@@ -1711,7 +1713,8 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         purpose=(
             "Find FILES by a glob/filename pattern under a directory (the Claude-Glob equivalent) "
             "and get back the matching paths, newest-first by default. Pass pattern (a glob like "
-            "'*.py' or '**/*.md' - use ** for a recursive search) and path (the base directory). "
+            "'*.py' or '**/*.md' - use ** for a recursive search; brace sets and lists such as "
+            "'**/*.{js,py}' or '*.py,*.js' work too) and path (the base directory). "
             "Optionally sort_by ('mtime' = newest modified first [default], 'name' = alphabetical, "
             "'none'), and max_results (cap, default 500). Read-only: it never changes anything and "
             "returns files only (not directories). Emits INI_SECTION_GLOBBER (pattern, path, "
@@ -2215,6 +2218,24 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
 WRAPPED_CHAT_AGENT_MAP = {spec.key: spec for spec in WRAPPED_CHAT_AGENT_SPECS}
 WRAPPED_CHAT_AGENT_BY_TOOL_NAME = {spec.tool_name: spec for spec in WRAPPED_CHAT_AGENT_SPECS}
 WRAPPED_CHAT_AGENT_BY_DESCRIPTION = {spec.tool_description: spec for spec in WRAPPED_CHAT_AGENT_SPECS}
+
+
+def agent_row_name(spec: ChatWrappedAgentSpec) -> str:
+    """The Configure-Agents row (the canvas display name) that gates ``spec``.
+
+    ``display_name`` is the tool's own label, and a few labels name the ACTION
+    rather than the agent: 'Send Email' runs Emailer, 'Move File' runs Mover,
+    'Summarize Text' runs Summarizer, 'Kyber Keygen' runs Kyber-KeyGen.  The
+    per-agent gate (``agent_<name>_status``) and Compact mode's row linking
+    must key on the agent the tool actually LAUNCHES - keyed on the label,
+    unticking that agent never hid the tool, and in Compact mode (where a
+    missing row reads OFF) the tool could never be enabled (2026-10-18).
+    """
+    try:
+        from .services.agent_paths import display_name_from_agent_type
+        return display_name_from_agent_type(spec.template_dir) or spec.display_name
+    except Exception:  # noqa: BLE001 - fail open to the spec's own label
+        return spec.display_name
 
 
 def get_wrapped_agent_security_hints() -> tuple[str, ...]:
