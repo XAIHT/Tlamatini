@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Pin the ENGLISH version-metadata + update-detection expectations.
 
 Both failure modes below are invisible from the UI, so a small guard is cheap

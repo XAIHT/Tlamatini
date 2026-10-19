@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Real media decode/sampling plus isolated ASR/LLM integration regressions.
 
 Created by Angela López Mendoza · @angelahack1 — Tlamatini.

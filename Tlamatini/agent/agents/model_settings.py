@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Shared model registry for the Models dialog and standalone workflow agents.
 
 Created by Angela López Mendoza · @angelahack1 — Tlamatini.

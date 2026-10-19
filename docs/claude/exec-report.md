@@ -240,7 +240,7 @@ Then run `python manage.py test agent.tests.ExecReportCaptureTests` — the set 
 
 Mouser now resolves explicit physical, window and screenshot coordinates; Keyboarder binds Unicode/key delivery to a verified window; Shoter publishes capture geometry. `input_sent` is delivery evidence, not application success, and a failed or interrupted input segment must be observed before replay.
 
-Parametrizer derives its parser registry from current contracts and validates complete typed mappings. FlowCreator selects from all 89 installed agents and validates the generated graph before publishing; FlowHypervisor separates execution, kill and observation relationships and uses current desktop receipts/timing. GUI-Manager remains design only.
+Parametrizer derives its parser registry from current contracts and validates complete typed mappings. FlowCreator selects from all 85 installed agents and validates the generated graph before publishing; FlowHypervisor separates execution, kill and observation relationships and uses current desktop receipts/timing. GUI-Manager remains design only.
 
 See [configuration, examples and limitations](../desktop-input-and-flow-contracts.md), the [complete generated coverage inventory](../agent-coverage.md), and the [GUI-Manager design](../GUI-Manager-design.md).
 

@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """uninstaller_visible.py — VISIBLE end-to-end test of the Tlamatini Uninstaller.
 
 Golden rule of this repository: NO HEADLESS TESTS.  This harness puts the REAL

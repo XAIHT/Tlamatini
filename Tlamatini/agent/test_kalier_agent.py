@@ -1068,11 +1068,11 @@ class DemoPromptTests(TestCase):
         for p in kali:
             self.assertEqual(p.promptName, f'prompt-{p.idPrompt}')
 
-    def test_prompt_catalog_is_contiguous(self):
+    def test_prompt_catalog_preserves_identity_after_retirements(self):
         from agent.models import Prompt
         ids = sorted(Prompt.objects.values_list('idPrompt', flat=True))
         gaps = [n for n in range(ids[0], ids[-1] + 1) if n not in ids]
-        self.assertEqual(gaps, [], 'the prompts catalog must stay gap-free for the dropdown')
+        self.assertEqual(gaps, [90, 91, 92, 93], 'only retired catalog slots may be absent')
         self.assertGreaterEqual(ids[-1], 59)
 
 

@@ -85,7 +85,7 @@ async function executeStartSequence() {
             acpAlert('Could not compile the current flow before starting: ' + compileError.message);
             isBusyProcessing = false;
             updateControlButtonStates();
-            try { $("#starter-execution-dialog").dialog("close"); } catch (_err) {}
+            try { $("#starter-execution-dialog").dialog("close"); } catch (_err) { /* The starter dialog may already be closed when validation fails. */ }
             return;
         }
     }

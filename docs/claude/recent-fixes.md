@@ -3247,7 +3247,7 @@ an empty contacts book, the code-seeded MCP catalog, build.py's live-MCP-secret 
 **Two real bugs found and fixed on the way:**
 
 - **`REGEN_TOUCHED` backed up 5 of the 7** agent `config.yaml` files `regen_secrets.py` rewrites —
-  **`zavuerer` and `discoverer` were missing**. On a machine without `data.keys` the `finally`
+  **`discoverer` was missing**. On a machine without `data.keys` the `finally`
   re-key is skipped, so those two were scrubbed to placeholders **with no backup to restore from**:
   silent loss of the operator's own keys. Now **derived** from `regen_secrets` itself (9 paths), so
   the next managed config is covered the day it is added.
@@ -3974,12 +3974,6 @@ healthy operation incorrectly or ship an incomplete update:
      because "the directory exists" and `os.access` both LIE and only a real
      create proves anything. It now asserts the blocker NAMES `output_dir` (the
      contract: the user must know which knob to turn), not the prose.
-   * **Testing the wrong ARTIFACT.** `test_zavuerer_agent` asks "is a REAL
-     credential COMMITTED?" but read the WORKING TREE — where
-     `regen_secrets.py --mode keyed` puts Angela's real key ON PURPOSE. It cried
-     wolf on the one machine where the key belongs. Now reads
-     `git show HEAD:<path>` (fail-open to the working tree with no git), so it
-     guards the push, which is the only place a leak can happen.
    * **A fixed sleep is a race, not a wait.** `test_watchdog_foreground_exemption`
      slept 1.5 s then asserted the watchdog spares a VISIBLE console. Under the
      full suite (with Ollama and a headed Chrome running) the window sometimes
@@ -4542,22 +4536,20 @@ A real Gmail-shaped app password was also removed from the repo in the process.
 
 ### B. Order-dependent logging tests (a whole class)
 
-`test_parametrizer_mcp_doctor` (3 tests) and `test_zavuerer_agent::test_emit_section_atomic` attach a handler to the ROOT logger to capture an agent's `logging.info(...)` — but never set the level. The root logger defaults to WARNING, so the record is dropped **before** reaching the handler. They passed only when an earlier test in the same process had lowered the level, and failed the moment the module ran alone. **If a test captures `logging.info`, it must set `root.setLevel(logging.INFO)` and restore it.**
+`test_parametrizer_mcp_doctor` (3 tests) attaches a handler to the ROOT logger to capture an agent's `logging.info(...)` — but never set the level. The root logger defaults to WARNING, so the record is dropped **before** reaching the handler. They passed only when an earlier test in the same process had lowered the level, and failed the moment the module ran alone. **If a test captures `logging.info`, it must set `root.setLevel(logging.INFO)` and restore it.**
 
 ### C. Tests pinning prose or an old shape instead of the contract
 
 - `test_step_by_step_prompt_includes_mcp_doctor` pinned the sentence `"wait for the user's READY"`; the prompt was reworded to the same promise. Now asserts the contract.
 - `test_wizard_is_catalog_slot_one` still expected `----<set name here>----` / `<USERNAME>`; the catalog moved to the `[[ user types ]]` / `{{ runtime }}` grammar.
 - `test_material_value_list_survives` asserted `out['material']`, but the code deliberately remaps `material` → `material_path` (the plugin's wire key).
-- `test_action_routes` demanded `/health` from Zavu — **an endpoint that never existed** (it 404s); the agent probes `/senders` on purpose.
 - `test_agent_libs_*`: `build.py` now writes `_agent_libs = list(_AGENT_RUNTIME_IMPORTS)`, and the literal-only AST reader returned `[]` — so the "list is substantial / includes mcp, serial, fitz" guards were asserting about an EMPTY list. The reader now follows one alias hop.
 - `test_explicit_migration_display_names_all_resolve` demanded descriptions for **retired** agents (Telegramer / Telegramrx / WhatsTlamatini). Migrations are immutable history, so their names live on in old `*_add_*.py` files; the check is now scoped to agents that still exist on disk.
 - `test_every_registry_example_resolves_against_its_template`: whatsapper's `example_request` said `use to='+52…'` in prose, and the arg-parser read the words before `=` as a parameter named `use to`. **Prose inside an `example_request` must never contain `word=value`** unless `word` is a real config key.
 
-### D. Two REAL findings the tests were right about
+### D. A documentation finding the tests were right about
 
-1. **A live `zv_live_…` Zavu API key was committed** in `agent/agents/zavuerer/config.yaml`. Fixed by `python regen_secrets.py --mode push-able` (all 8 secret files → placeholders; `data.keys` holds the real values). The test now accepts `''` **or** a `<NAME goes here>` placeholder and **fails loudly on a real key prefix** (`zv_live_`, `sk-`, `ghp_`) — because demanding exactly `''` failed in push-able mode, the one state where the file is provably clean.
-2. **`docs/external_mcp_bulletproof_architecture.md` did not exist** although CLAUDE.md and 5 other files reference it. Written from the verified code.
+- **`docs/external_mcp_bulletproof_architecture.md` did not exist** although CLAUDE.md and 5 other files reference it. Written from the verified code.
 
 ### Left failing on purpose
 
@@ -4660,11 +4652,11 @@ The DB row and `chat_agent_registry.display_name` drive **two different things**
 
 Tier B was added to the Ask-Execs allowlist on **2026-07-14** on the "you cannot unsend it" argument. On **2026-07-26 she reversed it**. Sending a message is now **the LLM's own judgement call** — no Proceed/Deny prompt stands between Tlamatini and a real human. Removed from `mcp_agent.py::_ASK_EXECS_REQUIRED_TOOLS`:
 
-`chat_agent_send_email` · `chat_agent_whatsapper` · `chat_agent_telegrammer` · `chat_agent_zavuerer` (and `chat_agent_instant_messaging_doctor` was never added, including when `retry_send=true` makes it re-send).
+`chat_agent_send_email` · `chat_agent_whatsapper` · `chat_agent_telegrammer` (and `chat_agent_instant_messaging_doctor` was never added, including when `retry_send=true` makes it re-send).
 
 **The gate is now RUNNERS + tier A + tier D only.** Tiers B and C are both deliberately ungated — B because messaging is the AI's call, C because desktop/hardware operations are visible while they happen.
 
-**What still protects a send** (state it honestly — it is not nothing, and it is not a prompt): the LLM's own judgement, the **Exec Report row** every send still produces, and the user's **Cancel**. ⚠️ **Zavuerer costs money per message** (pay-as-you-go) — that cost is accepted, not overlooked.
+**What still protects a send** (state it honestly — it is not nothing, and it is not a prompt): the LLM's own judgement, the **Exec Report row** every send still produces, and the user's **Cancel**.
 
 **DO NOT re-gate messaging "for safety."** `agent/test_ask_execs_allowlist.py::test_messaging_agents_are_NOT_gated` is an **inverse guard**: `MESSAGING_UNGATED` is an ANTI-list and the test asserts those names are ABSENT from the allowlist, so a well-meaning re-add fails loudly instead of silently restoring a prompt she removed on purpose.
 
@@ -4695,7 +4687,6 @@ Tier B was added to the Ask-Execs allowlist on **2026-07-14** on the "you cannot
 | `editor` | `editor.py:378` opens `file_path` with mode `'w'` — rewrites the target | **preview** |
 | `nmapper` | `-oX`/`-oN` scan artifacts + fires packets at `target` | **preview** |
 | `discoverer` | writes `json_path` results + runs an active recon tool at `target` | **preview** |
-| `zavuerer` | POSTs `/v1/messages` — a real message, cannot be unsent, costs money | **preview** |
 | `instant_messaging_doctor` | non-mutating by default, but `retry_send=true` really POSTs WhatsApp `/messages` + Telegram `sendMessage` | **preview** |
 | `globber`, `grepper` | enumerate paths / read contents; only log + PID written | observational |
 | `mcp_doctor` | STATIC catalog triage — its only `Popen` is the boilerplate `start_agent`; it never connects (unlike the live `external_mcp_doctor` tool) | observational |
@@ -5000,7 +4991,7 @@ Machine note (not a bug in Tlamatini): on Angela's Windows 11, **PrtScn opens th
 
 ### 2026-06-29 — Catalog of Prompts off-by-one: the dropdown silently hid `prompt-100` — do NOT revert
 
-`static/agent/js/tools_dialog.js::loadPrompts()` enumerated the catalog with `for (let i = 1; i < MAX_PROMPTS; i++)` (`MAX_PROMPTS = 100`), so it loaded **prompt-1..prompt-99** and the **100th slot never rendered**. Latent for as long as there were ≤99 prompts; adding the Zavuerer "get-your-Zavu-key" wizard at `prompt-100` (migration `0163_add_zavuerer_get_key_wizard_prompt.py`) exposed it. Fix: the loop bound is now **`i <= MAX_PROMPTS`** (inclusive), matching the documented `MAX_PROMPTS` cap (100 at the time of this fix), so all contiguous slots show (the existing break-at-first-gap still stops early when a slot is genuinely missing). **Keep it `<=`** — reverting to `<` re-hides whatever sits in the last slot. Ran `collectstatic` so the running server serves the fixed loop. **Headroom — `MAX_PROMPTS` bumped 100 → 256 on 2026-06-29** (the catalog had hit 100/100 when the Zavuerer wizard took slot 100; 256 gives 156 free slots). The FOUR references that MUST stay byte-coherent on any future cap change: `tools_dialog.js` (the `const MAX_PROMPTS`), `CLAUDE.md`, `Tlamatini/.agents/workflows/create_new_agent.md`, and the `tlamatini-agent-creation` skill. The backend `load_prompt_view` has **NO** cap (it serves any `prompt-<N>` by `promptName`), so the frontend `MAX_PROMPTS` loop bound is the ONLY catalog ceiling.
+`static/agent/js/tools_dialog.js::loadPrompts()` enumerated the catalog with `for (let i = 1; i < MAX_PROMPTS; i++)` (`MAX_PROMPTS = 100`), so it loaded **prompt-1..prompt-99** and the **100th slot never rendered**. Latent for as long as there were ≤99 prompts; reaching the 100th catalog entry exposed it. Fix: the loop bound is now **`i <= MAX_PROMPTS`** (inclusive), matching the documented `MAX_PROMPTS` cap (100 at the time of this fix), so all contiguous slots show (the existing break-at-first-gap still stops early when a slot is genuinely missing). **Keep it `<=`** — reverting to `<` re-hides whatever sits in the last slot. Ran `collectstatic` so the running server serves the fixed loop. **Headroom — `MAX_PROMPTS` bumped 100 → 256 on 2026-06-29** (the catalog had hit 100/100 when the catalog reached slot 100; 256 gives 156 free slots). The FOUR references that MUST stay byte-coherent on any future cap change: `tools_dialog.js` (the `const MAX_PROMPTS`), `CLAUDE.md`, `Tlamatini/.agents/workflows/create_new_agent.md`, and the `tlamatini-agent-creation` skill. The backend `load_prompt_view` has **NO** cap (it serves any `prompt-<N>` by `promptName`), so the frontend `MAX_PROMPTS` loop bound is the ONLY catalog ceiling.
 
 ### 2026-06-28 — 3X-speed plan L1 + L2 landed (Ollama serving-layer detector, warm embeddings handle, explicit keep_alive on basic/retrieval chains; reaper O(N) carried) — do NOT revert
 

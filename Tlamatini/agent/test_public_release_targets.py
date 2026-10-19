@@ -48,8 +48,8 @@ WHAT THIS PINS, and why each one is load-bearing
 
 6. REGEN IS AUTOMATIC AND FULLY BACKED UP. `regen_secrets.py --mode push-able`
    runs inside the builder (nobody has to call it first), and every file it
-   rewrites is backed up BEFORE it runs. The hand-typed list carried 5 of the 7
-   agent config.yaml files; `zavuerer` and `discoverer` were scrubbed with no
+   rewrites is backed up BEFORE it runs. The hand-typed list carried 5 of the 6
+   agent config.yaml files; `discoverer` was scrubbed with no
    backup, which loses the operator's keys on a machine without `data.keys`.
 
 Run:  python Tlamatini/manage.py test agent.test_public_release_targets
@@ -77,7 +77,7 @@ _TARGETS_BASENAMES = (".private_targets.json", "private_targets.json")
 
 #: Every agent config.yaml that regen_secrets.py rewrites.
 _REGEN_AGENTS = ("telegrammer", "whatsapper", "teletlamatini", "emailer",
-                 "recmailer", "zavuerer", "discoverer")
+                 "recmailer", "discoverer")
 
 
 def _load_builder():
@@ -435,9 +435,9 @@ class RegenIsAutomaticAndFullyBackedUpTests(SimpleTestCase):
                       "the tree must be re-keyed from data.keys afterwards.")
 
     def test_every_regen_touched_file_is_backed_up_first(self):
-        """The hand-typed list carried 5 of 7 agent configs.
+        """The hand-typed list carried 5 of 6 agent configs.
 
-        `zavuerer` and `discoverer` were rewritten with NO backup, so on a
+        `discoverer` was rewritten with NO backup, so on a
         machine without data.keys (where the `finally` re-key is skipped) the
         operator lost those keys silently.
         """

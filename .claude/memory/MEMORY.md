@@ -110,7 +110,6 @@
 - [Contacts book](project_contacts_book.md) — contacts.json + contact_name resolution. Needs restart+creds.
 - [Instant Messaging Doctor](project_instant_messaging_doctor.md) — diagnose/repair messaging readiness. Needs migrate.
 - [Emailer/RecMailer one-shot](project_emailer_recmailer_oneshot.md) — one-shot modes + Gmail username fix.
-- [Zavuerer #83](project_zavuer_agent.md) — unified-messaging bridge; UA header beats Cloudflare 403.
 - [Secret-leak recovery](project_secret_leak_recovery.md) — regen_secrets.py before commit; respect never-rewrite-history.
 - [Go OUT of git (SOLVED)](project_go_toolchain_git_exclusion.md) — Discoverer's Go → %LOCALAPPDATA%/Tlamatini/Go + .gitignore + git_deny_go.py.
 - [Discoverer](project_discoverer_pdcp_wizard.md) — pdcp_api_key wired everywhere (6-file wizard-secret pattern); cvemap API discontinued → [cvemap runs vulnx](project_discoverer_cvemap_vulnx_migration.md), live-proven.

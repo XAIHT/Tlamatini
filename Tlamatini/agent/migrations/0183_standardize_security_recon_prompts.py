@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 from django.db import migrations
 
 # Standardize the "Security & recon" catalog prompts (ids 71-81, 97) onto the

@@ -60,7 +60,7 @@ When agents are deployed on the canvas, each instance gets a **cardinal number**
 
 ### Agent Categories
 
-**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Counter, Ssher, Scper, Telegrammer, Whatsapper, Instant Messaging Doctor, Sqler, Mongoxer, Prompter, Gitter, Dockerer, MCP Doctor, Pser, Kuberneter, Jenkinser, Apirer, Crawler, Googler, Summarizer, Mouser, File-Interpreter, Image-Interpreter, Gatewayer, GatewayRelayer, NodeManager, File-Creator, File-Extractor, J-Decompiler, De-Compresser, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, FlowBacker, Barrier, Keyboarder, TeleTlamatini, ACPXer, Unrealer, NetSpeed-Calculator, PPTXer.
+**Active agents** (start downstream via `target_agents`): Starter, Raiser, Executer, Pythonxer, Sleeper, Mover, Deleter, Shoter, Croner, OR, AND, Asker, Forker, Counter, Ssher, Scper, Telegrammer, Whatsapper, Instant Messaging Doctor, Sqler, Mongoxer, Prompter, Gitter, Dockerer, MCP Doctor, Pser, Kuberneter, Jenkinser, Apirer, Crawler, Googler, Summarizer, Mouser, File-Interpreter, Image-Interpreter, File-Creator, File-Extractor, J-Decompiler, De-Compresser, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, FlowBacker, Barrier, Keyboarder, TeleTlamatini, ACPXer, Unrealer, NetSpeed-Calculator, PPTXer.
 
 **Terminal/Monitoring agents** (do NOT start downstream, even if they have a `target_agents` config field): Cleaner, Emailer, Monitor-Log, Monitor Netstat, Recmailer, Stopper, Notifier, FlowHypervisor. For these agents, `target_agents` (or `output_agents` for Stopper) is used only for canvas wiring metadata and should be left as `[]`.
 
@@ -226,7 +226,7 @@ If you need **parallel fan-out**, **many targets from one source**, or **many so
 
 Tlamatini now compiles Chat-created flows and ACP canvas snapshots through a backend agent contract registry before validation or start. When generating a flow:
 
-- Use canonical template names and pool names only: `starter_1`, `executer_1`, `gateway_relayer_1`, etc.
+- Use canonical template names and pool names only: `starter_1`, `executer_1`, `monitor_netstat_1`, etc.
 - Do not embed absolute source-mode paths such as `C:/Development/...` or installed paths beside `Tlamatini.exe` in `.flw` output.
 - Preserve Parametrizer mappings as flow artifacts and as `_parametrizer_mappings` in the Parametrizer node config so the compiler can regenerate `interconnection-scheme.csv`.
 - Treat TeleTlamatini as a long-running remote chat ingress super-agent. It can trigger `target_agents` after each completed remote request, but it is not a normal Chat-wrapped tool and should not be used as a Parametrizer source unless a future version emits structured `INI_SECTION_*` segments.
@@ -281,10 +281,8 @@ Pressing **Start** while the flow is PAUSED acts as **Resume** (identical to pre
 ### Rules for Flow Designers
 
 - **All agents have reanimation detection built in.** You do not need to add any special configuration for pause/resume support.
-- **Long-running agents with file offset tracking** (Monitor-Log, Raiser, Forker, Gateway Relayer, etc.) use `reanim.pos` to resume reading from the exact byte position where they were paused.
+- **Long-running agents with file offset tracking** (Monitor-Log, Raiser, Forker, etc.) use `reanim.pos` to resume reading from the exact byte position where they were paused.
 - **Counter agent** uses `reanim.counter` to preserve its count across pauses so loop iterations are not lost.
-- **Gatewayer** preserves pending ingress state through `reanim_queue.json` and `reanim_dedup.json`.
-- **NodeManager** preserves registry state through `reanim_registry.json`.
 - **Ender clears all `reanim*` files on stop**, ensuring a clean slate for the next fresh start.
 - **Pause preserves ALL `reanim*` files and logs.** This is the key difference between pause and stop — pause is non-destructive to state.
 - **Stop while paused is not a resume.** Once the user stops a paused flow, the saved paused session is discarded and the next Start must be designed as a fresh run.
@@ -345,7 +343,6 @@ Use this table to quickly decide which agent to use. The **Starts Others** colum
 | **kyber_cipher** | Encrypts data with Kyber (PQC) | YES | Action |
 | **kyber_decipher** | Decrypts data with Kyber (PQC) | YES | Action |
 | **parametrizer** | Maps structured output from one agent into another's config | YES | Utility |
-| **node_manager** | Discovers and monitors network nodes | YES | Utility |
 | **flowbacker** | Backs up the current session's logs and configs | YES | Utility |
 | **monitor_log** | Monitors a log file continuously (long-running) | NO | Terminal |
 | **monitor_netstat** | Monitors network connections continuously (long-running) | NO | Terminal |
@@ -357,8 +354,6 @@ Use this table to quickly decide which agent to use. The **Starts Others** colum
 | **instant_messaging_doctor** | Diagnoses Telegrammer/Whatsapper tokens, contacts, templates, webhooks, and failure logs; emits Parametrizer-ready repair actions | YES | Action |
 | **cleaner** | Deletes logs and PIDs for listed agents | NO | Terminal |
 | **flowhypervisor** | LLM-powered flow health monitor (system agent) | NO | Monitoring |
-| **gatewayer** | HTTP webhook ingress + folder-drop watcher | YES | Utility |
-| **gateway_relayer** | Relays GitHub/GitLab webhooks with signature verification | YES | Utility |
 | **teletlamatini** | Long-running Telegram bot that bridges authorized users into the full Multi-Turn + Exec Report Tlamatini chat | YES | Action |
 | **acpxer** | Drives ONE external coding-agent CLI session (Claude / Codex / Gemini / Cursor / Qwen / etc.) from the canvas; emits `INI_SECTION_ACPXER` for multi-CLI relay | YES | Action |
 | **unrealer** | Drives an Unreal Engine 5 editor via the Unreal MCP plugin's TCP socket (53-command surface: actors+screenshot, Blueprints, node graph, UMG widgets, input mappings, in-editor Python/console, level I/O, asset import, materials) | YES | Action |
@@ -1220,90 +1215,6 @@ system_prompt: |
   - `llm.token`: "" (optional bearer token for Ollama cloud)
   - `llm.token`: "" (optional bearer token for authentication)
 
-### 43. Gatewayer
-- **Purpose**: Inbound gateway agent that receives external events via HTTP webhook (or optional folder-drop watcher), validates and authenticates requests, normalizes them into canonical event envelopes, persists artifacts to disk, queues accepted events, and dispatches them to downstream target_agents. Long-running active agent — stays alive waiting for inbound events. Does NOT execute privileged actions directly; its role is ingress, validation, persistence, and orchestration only.
-- **Used for**: Receiving external events (webhooks, API callbacks, file drops) and converting them into workflow triggers. It handles authentication (bearer token, HMAC), request validation, deduplication, event persistence to disk, and crash-recoverable queuing before dispatching events to downstream agents.
-- **Aimed at**: Turning Tlamatini flows into externally-triggered automation systems that react to the outside world — such as CI/CD webhooks, SaaS notifications, IoT telemetry, file-based integrations, or any HTTP client that can send a POST request. It is the ingress controller for event-driven architectures.
-- **Application example**: A Gatewayer listens on port 8787 with bearer token authentication. When a CI/CD system sends a webhook POST with deployment results, the Gatewayer validates the token, persists the event payload to disk, and dispatches it to a Pythonxer that parses the results, followed by a Forker that routes to a success or failure notification chain.
-- **Pool name pattern**: `gatewayer_<n>`
-- **Starts other agents**: YES
-- **Config parameters**:
-  - `listen_mode`: "http_webhook" (primary ingress channel: "http_webhook" or "folder_watch")
-  - `http.enabled`: true (enable HTTP webhook listener)
-  - `http.host`: "127.0.0.1" (bind address)
-  - `http.port`: 8787 (listen port)
-  - `http.path`: "/gatewayer" (webhook endpoint path)
-  - `auth.mode`: "bearer" (authentication mode: "none", "bearer", or "hmac")
-  - `auth.bearer_token`: "" (expected bearer token)
-  - `folder_watch.enabled`: false (enable folder-drop watcher)
-  - `folder_watch.watch_path`: "" (directory to watch)
-  - `queue.max_pending_events`: 100 (max events in queue)
-  - `queue.dedup_enabled`: true (deduplicate events)
-  - `storage.output_dir`: "gateway_events" (directory for event artifacts)
-  - `source_agents`: [] (upstream agents — for canvas connection tracking)
-  - `target_agents`: [] (downstream agents to start per dispatched event)
-
-### 44. GatewayRelayer
-- **Purpose**: Long-running deterministic ingress relay that receives third-party webhook events (e.g. GitHub) in their native format, validates the upstream provider signature (X-Hub-Signature-256), transforms the payload into Gatewayer-compatible canonical input (event_type + session_id + original fields), HMAC-signs the forwarded body using Gatewayer's timestamp+body scheme, and relays it to a configured Gatewayer HTTP endpoint. Bridges external providers into Gatewayer without modifying Gatewayer itself. Does NOT use any LLM.
-- **Used for**: Translating third-party webhook formats (currently GitHub) into Gatewayer's canonical event format. It validates upstream provider signatures, transforms the payload, HMAC-signs it for Gatewayer authentication, and forwards it — acting as a protocol bridge between external webhook providers and Tlamatini flows.
-- **Aimed at**: Enabling native integration with external webhook providers (like GitHub, GitLab, or other services) without modifying the Gatewayer agent itself. It handles provider-specific signature validation and event filtering, making it the entry point for provider-native webhook-driven automation.
-- **Application example**: A GatewayRelayer listens for GitHub push events on port 9090. When a developer pushes to the `main` branch, GitHub sends a webhook that the relayer validates, transforms, and forwards to a Gatewayer. The Gatewayer dispatches it to a Gitter that pulls the code, a Dockerer that rebuilds containers, and a Telegrammer that notifies the team.
-- **Pool name pattern**: `gateway_relayer_<n>`
-- **Starts other agents**: YES
-- **Config parameters**:
-  - `listen_host`: "127.0.0.1" (bind address)
-  - `listen_port`: 9090 (listen port)
-  - `listen_path`: "/relay" (webhook endpoint path)
-  - `provider_mode`: "github" (upstream provider: "github")
-  - `provider_secret`: "" (GitHub webhook secret for signature verification)
-  - `allowed_events`: ["push", "pull_request", "workflow_run", "release"] (accepted GitHub event types)
-  - `allowed_refs`: [] (accepted git refs — empty = all refs)
-  - `respond_ping_ok`: true (answer ping events without forwarding)
-  - `forward_url`: "http://127.0.0.1:8787/gatewayer" (Gatewayer endpoint)
-  - `forward_hmac_secret`: "" (Gatewayer HMAC secret for signing)
-  - `forward_signature_header`: "X-Tlamatini-Signature"
-  - `forward_timestamp_header`: "X-Tlamatini-Timestamp"
-  - `request_timeout_sec`: 15 (forward request timeout)
-  - `target_agents`: [] (downstream agents to start after successful forward)
-
-### 45. NodeManager
-- **Purpose**: Long-running infrastructure agent that maintains a live registry of local and remote Windows/Linux nodes, probes health (ping, TCP, SSH, WinRM, HTTP), classifies node state (ONLINE/OFFLINE/DEGRADED/UNKNOWN), detects capability changes, persists normalized node state to disk, exports filtered selected-node manifests, and triggers downstream target_agents when configured node events occur. Does NOT use any LLM.
-- **Used for**: Maintaining a live inventory of infrastructure nodes and continuously monitoring their health through multiple probe types (ICMP ping, TCP connect, SSH, WinRM, HTTP). It classifies each node's state, detects capability changes (OS, Python, Git, Docker availability), persists state to disk, and exports filtered manifests for downstream agents.
-- **Aimed at**: Providing infrastructure awareness to automation flows — enabling flows to react to node-level events such as a server going offline, a new node coming online, or capabilities changing. It serves as the infrastructure discovery and health-check foundation for multi-node orchestration.
-- **Application example**: A NodeManager monitors 10 production servers. When a node goes OFFLINE, it triggers an Ssher that attempts to restart the failed service via SSH, an Emailer that alerts the ops team, and a Telegrammer that notifies the on-call engineer — all automatically, without human intervention.
-- **Pool name pattern**: `node_manager_<n>`
-- **Starts other agents**: YES (on configured trigger events)
-- **Config parameters**:
-  - `source_agents`: [] (upstream agents — for canvas connection tracking)
-  - `target_agents`: [] (downstream agents to start on node events)
-  - `inventory.nodes_file`: "" (path to external inventory file)
-  - `inventory.merge_with_inline_nodes`: true (merge file nodes with inline)
-  - `inventory.inline_nodes`: [] (static node definitions)
-  - `inventory.default_transport`: "ssh" (default transport: ssh/winrm)
-  - `discovery.enabled`: false (hostname/CIDR discovery — disabled by default)
-  - `heartbeat.poll_interval`: 30 (seconds between health checks)
-  - `heartbeat.timeout_sec`: 5 (probe timeout)
-  - `heartbeat.offline_after_failures`: 3 (consecutive failures before OFFLINE)
-  - `probes.ping_enabled`: true (ICMP ping)
-  - `probes.tcp_connect_enabled`: true (TCP connectivity)
-  - `probes.ssh_probe_enabled`: true (SSH port reachability)
-  - `probes.winrm_probe_enabled`: true (WinRM port reachability)
-  - `probes.http_probe_enabled`: false (HTTP GET probe)
-  - `probes.command_probe_enabled`: false (read-only command probes — disabled by default)
-  - `capabilities.detect_os`: true (OS detection)
-  - `capabilities.detect_python`: true (Python version)
-  - `capabilities.detect_git`: true (git availability)
-  - `capabilities.detect_docker`: true (Docker availability)
-  - `capabilities.cache_ttl_sec`: 300 (capability cache duration)
-  - `selection.export_selected_nodes`: true (write filtered manifest)
-  - `selection.require_online`: true (only select ONLINE nodes)
-  - `selection.include_tags`: [] (filter by tags)
-  - `selection.os_types`: [] (filter by OS family)
-  - `storage.registry_dir`: "node_registry" (output directory)
-  - `triggers.enabled`: true (enable event triggers)
-  - `triggers.trigger_events`: ["NODE_ONLINE", "NODE_OFFLINE", "NODE_DEGRADED", "NODE_CAPABILITIES_CHANGED"]
-  - `security.allow_command_probes`: false (gate remote command execution)
-
 ### 46. File-Creator
 - **Purpose**: Short-running infrastructure agent that creates a file with specified content (path + filename + extension, raw content), then triggers downstream target_agents regardless of whether the file creation succeeded or failed, then stops itself. Does NOT use any LLM.
 - **Used for**: Creating files with specified content at a given path as part of a workflow. It writes the raw content to disk and triggers downstream agents regardless of the result, making it useful for generating configuration files, scripts, reports, or any text-based artifact programmatically.
@@ -1375,7 +1286,7 @@ system_prompt: |
   - `target_agents`: [] (downstream agents to start after decryption)
 
 ### 51. Parametrizer
-- **Current contract**: parser membership comes from the installed catalog (53 structured-output producers including Keyboarder). LF/CRLF and empty values are preserved. Numeric/Boolean mappings use the existing target type; all mappings must succeed before write/start. Generated plans must include `_parametrizer_mappings` with valid `source_field` and `target_param` names. Interrupted Mouser/Keyboarder input is not automatically replayed; inspect application state before resolving that saved segment.
+- **Current contract**: parser membership comes from the installed catalog (50 structured-output producers including Keyboarder). LF/CRLF and empty values are preserved. Numeric/Boolean mappings use the existing target type; all mappings must succeed before write/start. Generated plans must include `_parametrizer_mappings` with valid `source_field` and `target_param` names. Interrupted Mouser/Keyboarder input is not automatically replayed; inspect application state before resolving that saved segment.
 - **Purpose**: Short-running active utility interconnection agent that reads structured output segments from one source agent's log file and injects them into one target agent's `config.yaml` using `interconnection-scheme.csv`. It is a strict sequential queue processor: for each complete source segment it backs up the target config, applies the mappings, starts the target, waits for the target to finish, archives the target log into `<target_agent>_segment_<n>.log`, restores the original config, commits the source cursor, and only then moves to the next segment. Does NOT use any LLM.
 - **Used for**: Safely passing data from one structured-output agent to another agent's configuration at runtime without race conditions. Parametrizer is the standard way to turn source log segments into repeated target executions while preserving both the target's original `config.yaml` and each target run's resulting log output.
 - **Aimed at**: Building deterministic data-driven pipelines where one upstream agent emits multiple items and each item must drive one isolated target-agent run. Typical uses include processing each extracted file separately, encrypting multiple records one-by-one, or feeding each API response into a downstream agent without manual edits.
@@ -1388,7 +1299,7 @@ system_prompt: |
   - `source_agents`: [] (upstream agents — for canvas connection tracking, max 1)
   - `target_agents`: [] (downstream agents — for canvas connection tracking, max 1)
 - **Special behavior**:
-  - Only accepts input from agents that produce structured output (any agent that emits an `INI_SECTION_<TYPE>` block). The current full set (53) is: ACPXer, Analyzer, APIrer, Arduiner, AudioPlayer, Blenderer, Camcorder, Crawler, De-Compresser, Discoverer, Editor, ESP32er, ESPHomer, File-Extractor, File-Interpreter, FlowCreator, Gateway-Relayer, Gatewayer, Gitter, Globber, Googler, Grepper, Image-Interpreter, Instant Messaging Doctor, Kalier, Keyboarder, Kuberneter, Kyber-Cipher, Kyber-DeCipher, Kyber-KeyGen, LaTeXer, MCP Doctor, Mouser, NetSpeed-Calculator, Nmapper, PDFer, Playwrighter, PPTXer, Prompter, Recorder, Reviewer, Shoter, STM32er, Summarizer, Talker, Telegrammer, Unrealer, Video-Analyzer, VideoPlayer, Whatsapper, Whisperer, Windower, Zavuerer
+  - Only accepts input from agents that produce structured output (any agent that emits an `INI_SECTION_<TYPE>` block). The current full set (50) is: ACPXer, Analyzer, APIrer, Arduiner, AudioPlayer, Blenderer, Camcorder, Crawler, De-Compresser, Discoverer, Editor, ESP32er, ESPHomer, File-Extractor, File-Interpreter, FlowCreator, Gitter, Globber, Googler, Grepper, Image-Interpreter, Instant Messaging Doctor, Kalier, Keyboarder, Kuberneter, Kyber-Cipher, Kyber-DeCipher, Kyber-KeyGen, LaTeXer, MCP Doctor, Mouser, NetSpeed-Calculator, Nmapper, PDFer, Playwrighter, PPTXer, Prompter, Recorder, Reviewer, Shoter, STM32er, Summarizer, Talker, Telegrammer, Unrealer, Video-Analyzer, VideoPlayer, Whatsapper, Whisperer, Windower
   - Exactly one source and one target agent must be connected
   - The source log is treated as a queue of structured segments; Parametrizer reads only the next complete unread segment
   - The interconnection-scheme.csv file is created via a visual mapping dialog in the UI and can map whole fields or optional `{marker}` placeholders inside target strings
@@ -1457,7 +1368,7 @@ system_prompt: |
 - **Purpose**: Short-running deterministic action agent that COMPRESSES or DECOMPRESSES an archive. The direction is inferred from the extensions: if `input` ends in `.gz`, `.7z`, `.zip`, `.tar.gz`, or `.gz.tar` the agent decompresses into the `output` directory; if `output` ends in those extensions the agent compresses `input` (a file or a directory) into `output`. Then starts every agent listed in `target_agents`.
 - **Used for**: Packing and unpacking workflow artefacts inside a flow without dropping out to Executer + tar/zip CLIs. The supported archive families are GNU Zip (`.gz` — single file), universal ZIP (`.zip`), 7-Zip with LZMA/LZMA2 (`.7z`), and gzipped tar (`.tar.gz` / `.gz.tar`).
 - **Aimed at**: Automating the "extract, then continue" or "produce a release archive, then ship it" steps that almost every release-pipeline flow needs.
-- **Application example**: A Croner fires at 02:00, Gatewayer waits for an upload, De-Compresser decompresses `incoming.zip` into `D:\staging\extracted` (read DE_COMPRESSER_PWD from env if `passwordless=false`), then starts `file_interpreter_1` to inspect the contents. A symmetric flow uses De-Compresser to *create* `D:\releases\bundle.tar.gz` from `D:\build\artifacts` before Scper uploads it.
+- **Application example**: A Croner fires at 02:00, De-Compresser decompresses `incoming.zip` into `D:\staging\extracted` (read DE_COMPRESSER_PWD from env if `passwordless=false`), then starts `file_interpreter_1` to inspect the contents. A symmetric flow uses De-Compresser to *create* `D:\releases\bundle.tar.gz` from `D:\build\artifacts` before Scper uploads it.
 - **Pool name pattern**: `de_compresser_<n>`
 - **Starts other agents**: YES (target_agents fires at end-stage regardless of success/failure — Raisers can branch on the SUCCESS=true|false field of the emitted `INI_SECTION_DE_COMPRESSER` block)
 - **Config parameters**:
@@ -1898,7 +1809,7 @@ system_prompt: |
 - **Purpose**: Generate a canvas-loadable `.flw` from a natural-language objective using current installed-agent contracts.
 - **Pool name**: `flowcreator` (singleton, no inputs or outputs); also available through `chat_agent_flowcreator`.
 - **Config**: `prompt`, `flow_filename`, `output_dir`, `llm.host`, `llm.model`, `llm.num_ctx` (65536 requested context), `llm.max_prompt_chars` (180000 character guard), `llm.repair_attempts` (2, range 0–3).
-- Select capabilities from the full installed catalog, then design with global rules plus selected detailed references and schemas. The shipped catalog covers all 89 current agents. Deployment refreshes it from canonical contracts and config schemas without copying local configuration values or credentials. GUI-Manager is not installed.
+- Select capabilities from the full installed catalog, then design with global rules plus selected detailed references and schemas. The shipped catalog covers all 85 current agents. Deployment refreshes it from canonical contracts and config schemas without copying local configuration values or credentials. GUI-Manager is not installed.
 - Validate all generated types/fields/references, Counter/Asker/Forker slots, AND/OR inputs, singleton/system wiring and Parametrizer mappings. Invalid plans receive bounded repair; final failures are reported rather than silently dropping edges. Explicitly wire Ender inputs; never auto-connect every leaf to every Ender.
 - **Outputs**: `flow_creation_script.txt`, `flow_result.json`, `.flw`, and `INI_SECTION_FLOWCREATOR` with `model`, `status`, `flw_path`, `flow_filename`, `agent_count`, `connection_count`, `response_body`. Only publish success after the file was written; errors exit nonzero.
 - Coverage guarantees catalog/reference/config-field availability, not successful execution of every external integration. Context limits depend on the configured provider; the character guard is not an exact tokenizer.
@@ -2017,25 +1928,6 @@ system_prompt: |
   - `go_bootstrap`: true / `install_method`: "go" / `go_dir`: "" / `tools_bin`: "" / `go_version`: "1.24.5" / `auto_update`: false / `preflight`: true (private Go toolchain bootstrap + fail-safe gate)
   - `source_agents`: [] (upstream agents — for canvas connection tracking)
   - `target_agents`: [] (downstream agents to start after the run)
-
-### 83. Zavuerer
-- **Purpose**: Tlamatini's bridge to **Zavu** (https://www.zavu.dev) — ONE unified messaging API for SMS, WhatsApp, Telegram, Email and Voice. On trigger it POSTs to Zavu's REST endpoint (`/v1/messages`) with a single API key and sends a message (or probes the API). Captures the result into an `INI_SECTION_ZAVUERER` block (`action`, `channel`, `to`, `status`, `message_id`, `success`, `base_url`, plus a `response_body`). Always triggers `target_agents` (success OR failure) so the flow can branch on `{success}` / `{status}`.
-- **Used for**: Sending a message to a person from a flow without wiring Twilio + Meta + SMTP separately. The `action` field selects ONE: `send` (deliver a message; `channel: auto` lets Zavu's ML pick the best channel with automatic fallback) or `health` (probe the Zavu API + key). The simplest "notify a human" / "page my phone" step.
-- **Aimed at**: A terminal notification step at the END of a pipeline (like Emailer / Notifier), e.g. `... → Forker → Zavuerer (channel: auto, text: "Build failed ❌")`. Do NOT start Zavuerer from the Starter — it is a notification/output agent, place it at the end. The `zavu_api_key` is set once (sign up at https://www.zavu.dev — free to register, pay-as-you-go to send); if empty a `send` returns `status: refused` (routable, not a crash).
-- **Application example**: Starter → Executer (run the build) → Forker (branch on the build result) → Zavuerer (`action: send`, `to: +14155551234`, `channel: auto`, `text: "Tlamatini build finished ✅"`) → Ender.
-- **Pool name pattern**: `zavuerer_<n>`
-- **Parametrizer source**: emits `INI_SECTION_ZAVUERER` with fields `action`, `channel`, `to`, `status`, `message_id`, `success`, `base_url`, and body=`response_body`.
-- **Starts other agents**: YES (always, success or failure)
-- **Config parameters**:
-  - `action`: "send" (send|health)
-  - `zavu_api_key`: "" (your Zavu API key — from https://www.zavu.dev (free sign-up, pay-as-you-go to send); empty = a `send` refuses)
-  - `zavu_base_url`: "https://api.zavu.dev/v1"
-  - `to`: "" (+E.164 phone for SMS/WhatsApp/Voice/Telegram, or an email for Email)
-  - `channel`: "auto" (auto|sms|whatsapp|telegram|voice|email)
-  - `text`: "" (the message body) / `subject`: "" (Email only) / `from_sender`: "" (optional)
-  - `fallback`: true (auto-fallback to another channel if the chosen one fails) / `timeout`: 60
-  - `source_agents`: [] (upstream agents — for canvas connection tracking)
-  - `target_agents`: [] (downstream agents to start after the send)
 
 ### 84. Video-Analyzer
 - **Purpose**: Analyze recorded videos in three modes: `robotics` (default, conservative motion verdict), `transcription` (speech from audio tracks), or `summary` (visual evidence plus speech and detailed synthesis). Always set `analysis_type` explicitly for content tasks.

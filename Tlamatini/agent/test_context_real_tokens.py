@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Tests for the REAL context gauge (Angela, 2026-09-28).
 
 *"make that gauge counter to be real, NOT FAKE ... this is going to be metered

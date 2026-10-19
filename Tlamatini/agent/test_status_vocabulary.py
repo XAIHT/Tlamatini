@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """THE GUARD that ties the status vocabulary to the agents that emit it.
 
 WHY THIS FILE EXISTS

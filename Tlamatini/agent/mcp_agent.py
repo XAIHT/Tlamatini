@@ -358,11 +358,6 @@ _EXEC_REPORT_TOOLS: Dict[str, Tuple[str, str]] = {
     # wrapped-agent fallback would already capture it; this entry exists only so the
     # table gets the native "Aurora Stage" caption gradient defined in agent_page.css.
     "chat_agent_pptxer":         ("pptxer",         "PPTXer"),
-    # Zavuerer is state-changing: it SENDS messages (SMS / WhatsApp / Telegram /
-    # Email / Voice) through the Zavu unified-messaging REST API. The read-only
-    # ``health`` probe shares the same ``zavuerer`` agent_key so a mixed flow renders
-    # as one "List of Zavuerer Operations" table.
-    "chat_agent_zavuerer":         ("zavuerer",         "Zavuerer"),
     # STM32er is state-changing: it drives the STM32 Template Project MCP server
     # to scaffold / write / build / flash / erase / reset firmware and to
     # write_memory on a running MCU. Read-only actions (get_config / read_source /
@@ -503,7 +498,7 @@ _ASK_EXECS_REQUIRED_TOOLS: frozenset = frozenset({
     # twice over, so it is gated once here.
     "chat_agent_pptxer",        # PPTXer        (writes a .pptx to ANY path; fetches media)
     # ----- Tier B: MESSAGING — DELIBERATELY *NOT* GATED (Angela, 2026-07-26) --
-    # Emailer / Whatsapper / Telegrammer / Zavuerer used to be gated here on the
+    # Emailer / Whatsapper / Telegrammer used to be gated here on the
     # "you cannot unsend it" argument. Angela REVERSED that:
     #     "Messages must be able to be sent without asking,
     #      it depends only on AI decision."
@@ -512,9 +507,7 @@ _ASK_EXECS_REQUIRED_TOOLS: frozenset = frozenset({
     # judgement, the Exec Report (every send is still captured as a row), and the
     # user's Cancel. Instant Messaging Doctor stays ungated for the same reason,
     # including when `retry_send=true` makes it re-send.
-    # ⚠️ Zavuerer additionally COSTS MONEY per message (pay-as-you-go) — that is
-    #    accepted, not overlooked. Do NOT re-add these four "for safety": it is a
-    #    deliberate, owner-level decision, pinned by test_ask_execs_allowlist.py.
+    # This policy is pinned by test_ask_execs_allowlist.py.
     # ----- Tier D: TOUCHES REMOTE SYSTEMS / THE NETWORK ---------------------
     "chat_agent_scper",         # SCPer         (uploads/downloads to remote hosts)
     "chat_agent_apirer",        # Apirer        (any REST call — incl. POST / DELETE)
@@ -590,8 +583,6 @@ def _infer_execution_shell(tool_name: str, tool_input: Any) -> str:
         return f"kubectl CLI via {os_shell}"
     if name == "chat_agent_kalier":
         return "Kali Linux (MCP-Kali-Server)"
-    if name == "chat_agent_zavuerer":
-        return "Zavu unified-messaging API (HTTPS)"
     if name == "chat_agent_stm32er":
         return "STM32 Template Project MCP"
     if name == "chat_agent_esp32er":

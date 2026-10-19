@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """The SELF-MODIFY switch (Angela, 2026-10-03).
 
 Pins Angela's design, piece by piece:

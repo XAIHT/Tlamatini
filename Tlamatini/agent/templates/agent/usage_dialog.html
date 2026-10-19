@@ -18,7 +18,17 @@
       </div>
     </div>
     <div class="usage-body" tabindex="0" role="region" aria-label="Usage details">
-      <p id="usage-status" class="usage-status" role="status" aria-live="polite">Loading usage…</p>
+      <section id="usage-health" class="usage-health" data-state="checking" aria-label="Account connection">
+        <div class="usage-health-row">
+          <span id="usage-connection-state" class="usage-connection-state">Checking</span>
+          <p id="usage-status" role="status" aria-live="polite">Connecting to your account…</p>
+          <button type="button" id="usage-retry-account" class="usage-button" hidden>Retry account</button>
+        </div>
+        <details id="usage-connection-details" hidden>
+          <summary>Connection details</summary>
+          <p id="usage-connection-reason"></p>
+        </details>
+      </section>
       <section id="usage-account" role="tabpanel" aria-labelledby="usage-tab-account">
         <div class="usage-section-heading"><div><h3>Ollama cloud account</h3><p id="usage-account-note">Account totals include usage outside Tlamatini.</p></div><a class="usage-button" href="https://ollama.com/settings" target="_blank" rel="noopener noreferrer">Ollama Usage ↗</a></div>
         <div id="usage-credit-cards" class="usage-credit-grid"></div>
@@ -49,6 +59,6 @@
       </section>
       <div id="usage-tooltip" class="usage-tooltip" role="tooltip" hidden></div>
     </div>
-    <footer class="usage-footer"><div><span class="usage-live-dot" aria-hidden="true"></span><span id="usage-updated">Waiting for data</span><small>Chat refreshes with the context gauge. Account data is cached for one minute; temporary failures retry sooner.</small></div><div class="usage-footer-actions"><button type="button" class="usage-button" id="usage-refresh">Refresh</button><button type="button" class="usage-button usage-primary usage-close">Close</button></div></footer>
+    <footer class="usage-footer"><div><span id="usage-updated">Waiting for data</span><small>Account figures refresh automatically. Your recorded chat activity stays available independently.</small></div><div class="usage-footer-actions"><button type="button" class="usage-button" id="usage-refresh">Refresh</button><button type="button" class="usage-button usage-primary usage-close">Close</button></div></footer>
   </section>
 </div>

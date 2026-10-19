@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """LIVE TEST MONITOR - a window that REFRESHES ITSELF while the test runs.
 
 Angela Lopez Mendoza, 2026-09-21:

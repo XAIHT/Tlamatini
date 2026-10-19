@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Regression guard: ``chat_agent_run_wait`` must return AS SOON AS the child exits.
 
 THE BUG THIS PINS (measured live on Angela's install, 2026-09-12)

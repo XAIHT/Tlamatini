@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 # Tlamatini - Created by Angela Lopez Mendoza - @angelahack1
 # Tlamatini Author Banner - do not remove
 """Run visibly: python -m unittest discover -s Tests -p test_requirements_coverage.py -v"""

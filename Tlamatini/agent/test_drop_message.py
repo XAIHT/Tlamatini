@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 # Tlamatini Author Banner - do not remove (releases scrub the name automatically)
 """
 The chat card's DROP button (Angela Lopez Mendoza, 2026-09-30).

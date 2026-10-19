@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Create an offline, searchable gallery of actual PowerPoint test renders."""
 import html
 import json

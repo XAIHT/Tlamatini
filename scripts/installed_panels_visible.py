@@ -95,6 +95,39 @@ def geometry(page):
         const c=getComputedStyle(s);return [s.textContent,c.fontFamily,c.fontSize,c.fontWeight,c.fontStyle,c.color,c.textDecorationLine];})}))""")
 
 
+def choose_chat_file(page, file, out):
+    """Operate the real native picker through the visible desktop controller.
+
+    The controller records the selected path after observing the dialog close;
+    this harness then verifies the actual application outcome. No picker API or
+    application state is replaced. Older browsers use the normal upload event.
+    """
+    if not page.evaluate("typeof window.showOpenFilePicker === 'function'"):
+        with page.expect_file_chooser() as choice:
+            page.locator('#open-button').click()
+        choice.value.set_files(file)
+        return
+    request_id = str(time.time_ns())
+    receipt = out / ('native-picker-' + request_id + '.json')
+    page.bring_to_front()
+    require_browser_foreground(page)
+    page.locator('#open-button').click()
+    (out / 'native-picker-request.json').write_text(json.dumps({
+        'request_id': request_id, 'path': str(file.resolve()), 'receipt': str(receipt),
+        'status': 'WAITING_FOR_VISIBLE_NATIVE_SELECTION'}, indent=2), encoding='utf-8')
+    print('NATIVE FILE PICKER READY: ' + str(file.resolve()), flush=True)
+    deadline = time.monotonic() + 300
+    while time.monotonic() < deadline:
+        if receipt.is_file():
+            result = json.loads(receipt.read_text(encoding='utf-8'))
+            assert result == {'request_id': request_id, 'selected': str(file.resolve())}, result
+            page.bring_to_front()
+            require_browser_foreground(page)
+            return
+        page.wait_for_timeout(500)
+    raise TimeoutError('The visible native file selection was not completed')
+
+
 def main():
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
@@ -103,7 +136,7 @@ def main():
     parser.add_argument("--evidence-dir", type=Path, required=True)
     parser.add_argument("--source", action="store_true", help="Run the isolated source installation")
     parser.add_argument("--extended", action="store_true", help="Also exercise configuration, catalog and real chat")
-    parser.add_argument("--agent-catalog", action="store_true", help="Inspect and Save/Open all 89 agent types")
+    parser.add_argument("--agent-catalog", action="store_true", help="Inspect and Save/Open all installed agent types")
     parser.add_argument("--agent-filter", help="Focus the catalog regression on one exact agent name")
     parser.add_argument("--commentary", action="store_true", help="Exercise all rich-commentary editing and round trips")
     parser.add_argument("--acp-editor", action="store_true", help="Exercise ACP editing, connections, zoom and undo")
@@ -121,6 +154,10 @@ def main():
     mode = "source" if args.source else "frozen"
     executable = install / ("Tlamatini/manage.py" if args.source else "Tlamatini.exe")
     assert executable.is_file(), "Application entry point missing"
+    agents_root = install / ('Tlamatini/agent/agents' if args.source else 'agents')
+    agent_catalog = json.loads((agents_root / 'flowcreator/flow_catalog.json').read_text(encoding='utf-8'))
+    agent_names = [entry['display_name'] for entry in agent_catalog['agents'].values()]
+    assert agent_names and len(agent_names) == len(set(agent_names)), 'Invalid installed agent catalog'
     command = [sys.executable, "-u", str(executable)] if args.source else [str(executable)]
     config_path = install / ("Tlamatini/agent/config.json" if args.source else "config.json")
     settings = json.loads(config_path.read_text(encoding="utf-8-sig"))
@@ -171,6 +208,9 @@ def main():
             str(profile),
             channel="chrome",
             headless=False,
+            # Chrome otherwise drops real executable/ShellExecute URL handoffs
+            # when its existing process has --enable-automation.
+            ignore_default_args=["--enable-automation"],
             no_viewport=True,
             accept_downloads=True,
             slow_mo=100,
@@ -358,16 +398,12 @@ def main():
             "The installed chat preserves this document when opening either flow editor.",
             encoding="utf-8",
         )
-        with chat.expect_file_chooser() as choice:
-            chat.locator("#open-button").click()
-        choice.value.set_files(doc)
+        choose_chat_file(chat, doc, out)
         expect(chat.locator("#filename")).to_contain_text(doc.name)
         for file in (fpmt, flw):
             chat.bring_to_front()
-            with chat.expect_file_chooser() as choice:
-                chat.locator("#open-button").click()
-            with context.expect_page() as opened:
-                choice.value.set_files(file)
+            with context.expect_page(timeout=300000) as opened:
+                choose_chat_file(chat, file, out)
             target = opened.value
             target.wait_for_load_state()
             confirm = target.locator(".tlmpop-overlay button").filter(
@@ -418,7 +454,8 @@ def main():
             probe = Path(__file__).with_name('release_mcp_checks.py').resolve()
             receipt = out / 'live-mcp-clients.json'
             probe_env = {**env, 'TLAMATINI_RELEASE_MCP_FIXTURE': str(args.mcp_fixture.resolve()),
-                         'TLAMATINI_RELEASE_MCP_OUTPUT': str(receipt)}
+                         'TLAMATINI_RELEASE_MCP_OUTPUT': str(receipt),
+                         'TLAMATINI_RELEASE_CHAINED_MODEL': settings['chained-model']}
             source = f"exec(compile(open({str(probe)!r}, encoding='utf-8').read(), {str(probe)!r}, 'exec'))"
             subprocess.run(command + ['shell', '-c', source], cwd=install, env=probe_env,
                            timeout=90, check=True)
@@ -431,13 +468,13 @@ def main():
             run_shell_file_checks(context, fpmt, flw, install, env['BROWSER'], checkpoint)
         if args.authentication:
             from release_auth_checks import run_auth_checks
-            run_auth_checks(admin, base, checkpoint)
+            run_auth_checks(admin, base, checkpoint, browser_type=pw.chromium)
         if args.extended:
             from release_extended_checks import run_extended_checks
-            run_extended_checks(chat, acp, page, out, checkpoint)
+            run_extended_checks(chat, acp, page, out, checkpoint, expected_agent_count=len(agent_names))
         if args.agent_catalog:
             from release_agent_catalog_checks import run_agent_catalog_checks
-            run_agent_catalog_checks(acp, out, checkpoint, only=args.agent_filter)
+            run_agent_catalog_checks(acp, out, checkpoint, only=args.agent_filter, expected_names=agent_names)
         if args.commentary:
             from release_commentary_checks import run_commentary_checks
             page.bring_to_front()

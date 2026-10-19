@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Ctrl+C MUST ALWAYS QUIT — source contract for the shutdown path.
 
 THE INCIDENT (Angela, 2026-08-29). The installed C:\\Tlamatini hung forever on

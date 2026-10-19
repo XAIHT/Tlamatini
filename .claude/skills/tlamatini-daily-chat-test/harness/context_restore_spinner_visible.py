@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """
 context_restore_spinner_visible.py - VISIBLE regression runner (2026-09-22)
 

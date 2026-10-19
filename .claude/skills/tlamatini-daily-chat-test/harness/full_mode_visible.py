@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """FULL MODE on a big cloud model - VISIBLE E2E (Angela Lopez Mendoza, 2026-10-01).
 
 The mirror of ``compact_mode_visible.py``.  With a model whose window holds

@@ -138,6 +138,8 @@ class WizardView:
         self.operation = "Uninstallation" if removal else "Installation"
         self.action = "Uninstall" if removal else "Install"
         self.state = "ready"
+        self._working_label = self.operation
+        self._indeterminate = False
         self.active_step = None
         self._timer = None
         self._started = 0
@@ -256,6 +258,7 @@ class WizardView:
                         darkcolor=self.accent, lightcolor=self.accent, bordercolor=BG, thickness=7)
         self.progress_bar = ttk.Progressbar(self.progress_frame, style=style_name, maximum=100)
         self.progress_bar.pack(fill="x", pady=(0, 20))
+        self.recovery_detail = self.label(self.progress_frame, "", 10, MUTED)
         self.check_labels = []
         for i, (desc, _) in enumerate(steps):
             label = self.label(self.progress_frame, f"{i+1:02}   {desc.rstrip('…')}", 10, MUTED)
@@ -395,11 +398,16 @@ class WizardView:
         self.browse_btn.configure(state="normal")
         self._page(self.setup_frame)
 
-    def begin(self, target):
+    def begin(self, target, *, reset_clock=True):
         print(f"BEGIN {self.operation}: {target}", flush=True)
         self.state, self.active_step = "working", None
+        self._working_label = self.operation
+        self.phases[1].configure(text=f"02    {self.operation}")
+        self.phases[2].configure(text="03    Complete")
+        self.recovery_detail.pack_forget()
         self.root.title(f"Tlamatini — {self.operation} in progress")
-        self._started = time.monotonic()
+        if reset_clock:
+            self._started = time.monotonic()
         self._phase(1)
         self.eyebrow.configure(text="REMOVING TLAMATINI" if self.removal else "SETTING THINGS IN MOTION", fg=self.accent)
         self.heading.configure(text="A considered departure." if self.removal else "Your workspace is taking shape.", fg=TEXT)
@@ -409,21 +417,45 @@ class WizardView:
         self.browse_btn.configure(state="disabled")
         for i, (desc, _) in enumerate(self.steps):
             self.check_labels[i].configure(text=f"{i+1:02}   {desc.rstrip('…')}", fg=MUTED)
+            self.check_labels[i].pack(fill="x", pady=6)
         self.update_progress(0, "Preparing…")
         self._page(self.progress_frame)
         self._tick()
 
+    def begin_recovery(self, reason):
+        """Explain the failure immediately while measured restoration runs."""
+        self._working_label = "Restoring installation"
+        self.phases[1].configure(text="02    Recovery")
+        self.eyebrow.configure(text="RECOVERING YOUR INSTALLATION", fg=AMBER)
+        self.heading.configure(text="Restoring your installation.", fg=TEXT)
+        self.subtitle.configure(text="The operation could not finish. Your previous installation is being restored.")
+        for label in self.check_labels:
+            label.pack_forget()
+        self.recovery_detail.configure(text="Reason:\n" + reason)
+        self.recovery_detail.pack(fill="x", pady=(0, 12))
+        self.update_progress(0, "Starting recovery…")
+        self._tick()
+
     def update_progress(self, value, status=None):
-        pct = max(0, min(int(value*100), 100))
+        indeterminate = value is None
+        if indeterminate != self._indeterminate:
+            self.progress_bar.stop()
+            self.progress_bar.configure(mode="indeterminate" if indeterminate else "determinate")
+            if indeterminate:
+                self.progress_bar.start(50)
+            self._indeterminate = indeterminate
+        pct = None if indeterminate else max(0, min(int(value*100), 100))
+        progress_text = "Working…" if indeterminate else f"{pct}%"
         if self.state == "working":
-            self.root.title(f"Tlamatini — {self.operation} in progress · {pct}%")
-        self.progress_bar["value"] = pct
-        self.pct_label.configure(text=f"{pct}%")
+            self.root.title(f"Tlamatini — {self._working_label} · {progress_text}")
+        if not indeterminate:
+            self.progress_bar["value"] = pct
+        self.pct_label.configure(text=progress_text)
         if status:
             self.step_label.configure(text=status)
             now = time.monotonic()
             if now - getattr(self, "_last_progress_log", 0) >= 10:
-                print(f"PROGRESS {pct}%: {status}", flush=True)
+                print(f"PROGRESS {progress_text}: {status}", flush=True)
                 self._last_progress_log = now
 
     def mark_step(self, idx, success=True):
@@ -438,7 +470,7 @@ class WizardView:
         self._stop_timer()
         if self.state == "working":
             seconds = int(time.monotonic()-self._started)
-            self.footer_label.configure(text=f"{self.operation} in progress  ·  {seconds//60:02}:{seconds%60:02} elapsed\nPlease keep this window open.", fg=MUTED)
+            self.footer_label.configure(text=f"{self._working_label}  ·  {seconds//60:02}:{seconds%60:02} elapsed\nPlease keep this window open.", fg=MUTED)
             self._timer = self.root.after(1000, self._tick)
 
     def _stop_timer(self):
@@ -446,14 +478,18 @@ class WizardView:
             self.root.after_cancel(self._timer)
             self._timer = None
 
-    def finish(self, *, success, detail, target=""):
+    def finish(self, *, success, detail, target="", cleanup_retry=None):
         from setup_logging import result_detail
-        print(f"{'COMPLETE' if success else 'FAILED'} {self.operation}: {detail}", flush=True)
+        pending = success and cleanup_retry is not None
+        result = "CLEANUP INCOMPLETE" if pending else "COMPLETE" if success else "FAILED"
+        print(f"{result} {self.operation}: {detail}", flush=True)
         detail = result_detail(detail)
-        self.state = "complete" if success else "error"
+        self.state = "cleanup_pending" if pending else "complete" if success else "error"
+        self.progress_bar.stop()
         self.root.title(f"Tlamatini — {self.operation} {'complete' if success else 'needs attention'}")
         self._stop_timer()
         self._phase(2 if success else 1)
+        self.phases[2].configure(text="03    Cleanup pending" if pending else "03    Complete")
         self.eyebrow.configure(text="ALL SET" if success else "LET’S GET THIS RESOLVED", fg=GREEN if success else RED)
         self.heading.configure(text=("Your next chapter awaits." if self.removal else "Welcome to Tlamatini.") if success else f"{self.operation} needs attention.", fg=TEXT)
         self.subtitle.configure(text=("Tlamatini has been removed. Review the retained files below." if self.removal else "Setup is complete. Open Tlamatini from your Desktop shortcut.") if success else "The operation stopped before completion. Review the details, then try again.")
@@ -469,6 +505,16 @@ class WizardView:
         self.cancel_btn.configure(text="Change folder" if not success else "Close", command=self.show_setup if not success else self.close)
         self.cancel_btn.pack_forget() if success else self.cancel_btn.pack(side="left", padx=(0, 10), before=self.primary_btn)
         self.footer_label.configure(text="Finished." if success else "You can retry, change the folder, or close this window.", fg=GREEN if success else MUTED)
+        if pending:
+            self.root.title("Tlamatini — Application removed; cleanup incomplete")
+            self.eyebrow.configure(text="CLEANUP NEEDS ATTENTION", fg=AMBER)
+            self.heading.configure(text="Application removed. Files remain.")
+            self.subtitle.configure(text="Close programs using the files listed below, then retry cleanup. Your preserved content stays untouched.")
+            self.result_label.configure(fg=AMBER)
+            self.primary_btn.configure(text="Retry cleanup", command=cleanup_retry)
+            self.cancel_btn.configure(text="Close", command=self.close)
+            self.cancel_btn.pack(side="left", padx=(0, 10), before=self.primary_btn)
+            self.footer_label.configure(text="Cleanup is incomplete. Remaining paths are listed above.", fg=AMBER)
         self.primary_btn.focus_set()
 
     def close(self):

@@ -5,8 +5,52 @@
 
 
 **Status: shipped in the published `v1.82.0` release (tag at `880a335e`, 2026-10-12).**
-The Installer and Uninstaller in that release zip are built from this code; the validation
-campaign below is dated 2026-10-11/12.
+The validation campaign below describes that released implementation and is dated
+2026-10-11/12. The following removal redesign is newer and not yet released.
+
+## Removal redesign in the working tree — 2026-10-18
+
+Removal now journals same-drive moves of application entries instead of copying
+and hashing the entire installed payload. Preserved directories remain in place.
+Only setup-owned shortcut/catalog metadata receives a small recovery copy.
+Application entries and Windows state are restored if a reversible removal step
+fails. After commit, cleanup deletes the quarantined payload and then `Temp`.
+A cache lock cannot trigger restoration of the application.
+
+The completion window distinguishes complete removal from **Application removed;
+cleanup incomplete**, lists remaining paths, and offers **Retry cleanup**. That
+action handles only this removal's residue; it refuses a new application or a
+changed journal. It does not repeat Windows unregistration or alter preserved
+content. A small `.tlamatini-removal.json` receipt bound to the installation
+directory's filesystem identity survives an incomplete cleanup. Reopening the
+uninstaller can finish that cleanup even after the application and recovery
+quarantine are gone. Completed rollback is distinguished from completed removal;
+a restored installation is never treated as cleanup residue. The receipt is
+removed after temporary cleanup succeeds.
+Recovery has its own heading, original failure reason and advancing
+progress. File cleanup displays activity and actual deletion counts instead of
+an invented percentage. Elapsed time includes recovery within the same attempt.
+
+The acceptance target is three minutes, with five minutes the requested maximum.
+The source uses bounded helper waits and a cleanup deadline; a deadline failure
+is incomplete work, not successful removal. Full compiled-client timing remains
+required. See the [research and failure analysis](setup-lifecycle-research.md).
+
+Focused source regressions are in `Tests/test_setup_release_paths.py`, including
+native file/directory locks, interrupted moves, collision handling, legacy
+journals, unchanged preserved-file hashes and cleanup retries. They do not
+replace compiled lifecycle acceptance. The older campaign below is retained as
+historical evidence and does not certify this redesign.
+
+The latest source gates passed 33 focused recovery tests and 110 existing
+lifecycle tests, including a new wizard resuming locked-Temp cleanup after the
+quarantine journal has already been removed. The separate full-payload filesystem
+benchmark removed 64,264 package files (3,880,548,374 bytes before preservation)
+in 22.297 seconds, with all 254 preserved-content hashes unchanged. This measures
+the filesystem phase, not a completed compiled uninstall. Evidence is local under
+`Temp/uninstall-redesign-20261018/`.
+
+## Released setup behavior and original campaign
 
 The standalone Installer and Uninstaller share `setup_wizard.py`: Tlamatini's
 dark palette, native keyboard controls, a destination/review page, real progress,

@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Generate Tlamatini-Architecture.tex: a multi-sheet architecture atlas of Tlamatini.
 
-Every tracked file of the repository appears (1) as a clickable tile on an atlas
+Every listed application file of the repository appears (1) as a clickable tile on an atlas
 sheet, grouped by architectural cluster, and (2) as an entry of the file index
 with a description extracted from the file itself. Overview sheets draw the
 runtime topology, the request lifecycle, the intelligence core, the agent
@@ -15,7 +16,7 @@ Usage (from anywhere; the repository is located from this file's own path):
     python scripts/architecture_atlas/gen_architecture.py
 
 To regenerate the finished PDF in one step (generate, typeset with Tlamatini's
-LaTeXer agent, then verify that every tracked file is present) run instead:
+LaTeXer agent, then verify that every listed application file is present) run instead:
     python scripts/architecture_atlas/build_architecture_pdf.py
 
 Set TLAMATINI_REPO to point the generator at another checkout. Standard library
@@ -63,7 +64,8 @@ def n2(x):
 
 
 # ----------------------------------------------------------------------------- inventory
-FILES = sorted([f for f in git("ls-files", "-z").split("\0") if f], key=lambda p: p.lower())
+ALL_FILES = sorted([f for f in git("ls-files", "-z").split("\0") if f], key=lambda p: p.lower())
+FILES = [f for f in ALL_FILES if not f.startswith(A + "migrations/")]
 PATHSET = set(FILES)
 HEAD = git("rev-parse", "--short", "HEAD").strip()
 try:
@@ -635,7 +637,7 @@ SPECIAL_DESC = {
     "Tlamatini/tlamatini/wsgi.py": "Standard Django WSGI entry point (the app itself runs on ASGI/Daphne).",
     A + "test_fixtures/talker_orpheus_tokens.txt": "Recorded Orpheus audio-token stream (one line of custom tokens) replayed by the Talker tests without a model.",
     "requirements.txt": None, "requirements-esphome.txt": None, "pnpm-lock.yaml": "pnpm lockfile pinning the JavaScript lint tooling.",
-    "Tlamatini-Architecture.pdf": "This architecture atlas: every tracked file on A3 sheets; rebuilt by scripts/architecture_atlas/build_architecture_pdf.py and typeset by LaTeXer.",
+    "Tlamatini-Architecture.pdf": "This architecture atlas: every listed application file on A3 sheets; rebuilt by scripts/architecture_atlas/build_architecture_pdf.py and typeset by LaTeXer.",
 }
 
 
@@ -823,7 +825,8 @@ def mig_kind(name):
 MIG_KINDS = collections.OrderedDict([("agents", ("Agent rows", "2E8B3A")), ("prompts", ("Catalog prompts", "D4A017")),
                                      ("tools", ("Tool rows", "1F6FB2")), ("skills", ("Skills", "D9731A")),
                                      ("mcps", ("MCP rows", "6B3FA0")), ("schema", ("Schema & data", "7F8C8D"))])
-MIGRATIONS = [f for f in FI.values() if f.path.startswith(A + "migrations/") and f.name[:4].isdigit()]
+MIGRATIONS = [FileInfo(p) for p in ALL_FILES
+              if p.startswith(A + "migrations/") and p.rsplit("/", 1)[-1][:4].isdigit()]
 
 # ----------------------------------------------------------------------------- layers & clusters
 LAYERS = collections.OrderedDict([
@@ -1128,6 +1131,9 @@ for ch in CHAPTERS:
         ags = [c for k, c in CLUSTERS.items() if k.startswith("ag_") and k != "ag__shared"]
         ags.sort(key=lambda c: (CATEGORY_ORDER.index(AGENT_CATEGORY.get(c.key[3:], "Other")), c.title.lower()))
         CH_CLUSTERS[ch] = ([CLUSTERS["ag__shared"]] if "ag__shared" in CLUSTERS else []) + ags
+# A summarized directory has no file tiles and needs no empty atlas chapter.
+CH_CLUSTERS = collections.OrderedDict((ch, clusters) for ch, clusters in CH_CLUSTERS.items() if clusters)
+CHAPTERS = collections.OrderedDict((ch, info) for ch, info in CHAPTERS.items() if ch in CH_CLUSTERS)
 placed = set()
 for ch, cl in CH_CLUSTERS.items():
     for c in cl:
@@ -1535,7 +1541,7 @@ def sheet_topology():
 # ----------------------------------------------------------------------------- sheet 3: request lifecycle
 def sheet_lifecycle():
     sh = new_sheet("Request lifecycle \u2014 from the composer to the rendered answer",
-                   "Twelve steps of one chat message in Multi-Turn mode, by the layer that performs them. Every file named is clickable.", "intelligence")
+                   "Twelve steps of one chat message in Multi-Turn mode, by the layer that performs them. Every application file named is clickable.", "intelligence")
     o = sh.body
     lanes = [("Browser", "Lpresentation"), ("Channels consumer", "Ltransport"), ("RAG interface and chains", "Lintelligence"),
              ("Multi-Turn executor", "Lintelligence"), ("Tools and agents", "Lagents"), ("Response and persistence", "Lpersistence")]
@@ -1761,7 +1767,7 @@ def sheet_integration():
         "Messaging bridges": (
             [("TeleTlamatini", ["[[agents/teletlamatini/teletlamatini.py|teletlamatini.py]]: long-running Telegram bot that brings authorized users into the full Multi-Turn chat"]),
              ("Telegrammer and Whatsapper", ["[[agents/telegrammer/telegrammer.py|telegrammer.py]]: send as the bot or as your own account; [[agents/whatsapper/whatsapper.py|whatsapper.py]]: Meta Cloud API by default, WhatsApp Web on request"])],
-            [("Zavuerer, Emailer, RecMailer, Notifier", ["[[agents/zavuerer/zavuerer.py|zavuerer.py]]: one API key for SMS, WhatsApp, Telegram, email and voice; SMTP send and IMAP watch; in-browser notifications"]),
+            [("Emailer, RecMailer, Notifier", ["SMTP send through Emailer, IMAP watch through RecMailer, and in-browser notifications through Notifier"]),
              ("Instant Messaging Doctor", ["[[instant_messaging_doctor.py]] diagnoses tokens, contacts, templates and the 24-hour window, and is launched after a messaging failure"])]),
         "Devices, engines and security bridges": (
             [("Firmware", ["STM32er (PlatformIO + template MCP, ST-LINK preflight), ESP32er ([[ESP32TemplateProject/platformio.ini|platformio.ini]] template), Arduiner (arduino-cli, [[ArduinoTemplateProject/sketch.yaml|sketch.yaml]]), ESPHomer (YAML devices)"]),
@@ -2334,9 +2340,9 @@ def fill_cover():
     text_node(o, 14, 238, r"Complete Architecture Atlas", size=26, color="black!80")
     text_node(o, 14, 226.5, r"\itshape eXtended Artificial Intelligence, Humanly Tempered \textperiodcentered{} ``one who knows''", size=12, color="black!65")
     text_node(o, 14, 218, r"Created by \textbf{Angela L\'opez Mendoza} \textperiodcentered{} XAIHT", size=11.5, color="black!75")
-    text_node(o, 14, 211, esc("Release %s \u00b7 commit %s (%s) \u00b7 atlas generated %s from every file tracked in git" % (TAG, HEAD, COMMIT_DATE, TODAY)), size=8, color="black!60")
+    text_node(o, 14, 211, esc("Release %s \u00b7 commit %s (%s) \u00b7 atlas generated %s from application files tracked in git; database history is summarized" % (TAG, HEAD, COMMIT_DATE, TODAY)), size=8, color="black!60")
     kpis = [
-        ("{:,}".format(len(FILES)), "tracked files, every one drawn"),
+        ("{:,}".format(len(FILES)), "listed application files"),
         ("{:,}".format(TOTAL_LOC), "lines of text"),
         (str(sum(1 for f in FI.values() if f.ext == ".py")), "Python files"),
         (str(len(AGENT_DIRS)), "workflow agent types"),
@@ -2391,7 +2397,7 @@ def fill_cover():
         text_node(o, x + 3.6, yy - 0.2, esc(lab), size=6.4)
     howto = [
         "**Part A (sheets 2\u2013%d)** draws the architecture: runtime topology, request lifecycle, intelligence core, agents, integrations, frontend, data, build/release, verification and a module dependency matrix. File names in blue are links to the index." % OVERVIEW_COUNT,
-        "**Part B (sheets %d\u2013%d)** is the file atlas: every tracked file is a tile inside the cluster where it lives architecturally. Marker = file type, right number = lines (or size for binaries)." % (OVERVIEW_COUNT + 1, NSHEETS),
+        "**Part B (sheets %d\u2013%d)** is the file atlas: every listed application file is a tile inside the cluster where it lives architecturally. Marker = file type, right number = lines (or size for binaries)." % (OVERVIEW_COUNT + 1, NSHEETS),
         "**Part C** is the file index: every file with its ID, path, size and a description extracted from the file itself (docstring, header comment, heading or parsed structure).",
         "Click a tile to open its index entry; click an ID in the index to jump back to the tile. PDF bookmarks list every sheet and cluster.",
     ]
@@ -2475,7 +2481,7 @@ PREAMBLE = r"""\documentclass{article}
 \usepackage{multicol}
 \usepackage{fancyhdr}
 \usepackage[hidelinks,bookmarksnumbered,bookmarksopen,bookmarksopenlevel=0]{hyperref}
-\hypersetup{pdftitle={Tlamatini - Complete Architecture Atlas},pdfauthor={Angela L\'opez Mendoza},pdfsubject={Architecture diagrams of every tracked file of Tlamatini},pdfkeywords={Tlamatini, architecture, Django, Channels, agents, MCP, ACPX, RAG}}
+\hypersetup{pdftitle={Tlamatini - Complete Architecture Atlas},pdfauthor={Angela L\'opez Mendoza},pdfsubject={Architecture diagrams of every listed application file of Tlamatini},pdfkeywords={Tlamatini, architecture, Django, Channels, agents, MCP, ACPX, RAG}}
 \setlength{\parindent}{0pt}
 \setlength{\topskip}{0pt}
 \setlength{\parskip}{0pt}

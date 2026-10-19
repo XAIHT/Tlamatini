@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Rename the Qwen3.5 vision-model tag inside the seeded Catalog-of-Prompts rows.
 
 The Image-Interpreter (interpreter 1) and Video-Analyzer (interpreter 2) default

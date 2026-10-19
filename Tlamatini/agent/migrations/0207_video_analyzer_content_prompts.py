@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Append Video-Analyzer audio-track and summary examples to Media & Voice.
 
 Created by Angela López Mendoza · @angelahack1 — Tlamatini.

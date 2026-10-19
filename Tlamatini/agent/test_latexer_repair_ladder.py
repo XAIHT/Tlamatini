@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Regression guards for the LaTeXer REPAIR LADDER (Layer 05).
 
 Every test here pins a bug that was REAL: each one failed against an earlier

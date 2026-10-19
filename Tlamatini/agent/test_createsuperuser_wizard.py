@@ -11,7 +11,7 @@
 
 The wizard is INSERTED at catalog slot #1 (prompt-1) by 0145, which shifts every
 pre-existing prompt up by one. These tests pin the contract the frontend relies
-on: the wizard is genuinely first, the catalog stays gap-free, and the prompt
+on: the wizard is genuinely first, surviving prompt IDs stay stable, and the prompt
 carries the exact keywords the catalog classifier (static/agent/js/tools_dialog.js
 ::classifyPromptModes) keys on to badge it Multi-turn + Step-by-Step + Exec-report
 (and NOT ACPX) and to run createsuperuser in both frozen and source modes.
@@ -39,11 +39,14 @@ class CreateSuperuserWizardPromptTests(TestCase):
         self.assertIn('treat that reply as {{ the username }} and continue to Step 1',
                       p.promptContent)
 
-    def test_catalog_is_contiguous_and_wizard_first(self):
+    def test_catalog_preserves_ids_and_wizard_first(self):
         ids = sorted(Prompt.objects.values_list('idPrompt', flat=True))
         self.assertEqual(ids[0], 1, 'the wizard must be the very first catalog prompt')
         gaps = [n for n in range(ids[0], ids[-1] + 1) if n not in ids]
-        self.assertEqual(gaps, [], 'the catalog must stay gap-free for the dropdown')
+        self.assertEqual(
+            gaps, [90, 91, 92, 93],
+            'Only the retired catalog slots may be absent; surviving IDs stay stable',
+        )
 
     def test_classifier_keywords_present(self):
         # Mirrors tools_dialog.js::classifyPromptModes — these substrings are what

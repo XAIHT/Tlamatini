@@ -580,14 +580,7 @@ _DEV_ONLY_TOPLEVEL = {
 # rather than a dev-tooling fact. Reported as a NOTE -- visible on every run,
 # never silently buried -- so the decision stays reviewable. Moving a name here
 # is not the same as declaring it dev-only: it says "we chose not to ship this".
-_UNSHIPPED_BY_DECISION = {
-    "demo_flows": (
-        "3 sample .flw canvas workflows (~9 KB). NOT shipped today, so a fresh "
-        "install has no example flow to open even though Tlamatini registers the "
-        ".flw file association. They drive Zavuerer, which needs a paid API key -- "
-        "ship them (optional_dir_copies) only if a key-requiring demo is acceptable."
-    ),
-}
+_UNSHIPPED_BY_DECISION = {}
 
 
 def _tracked_top_level_dirs(root: Path) -> list[str] | None:

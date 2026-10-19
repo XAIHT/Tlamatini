@@ -11,12 +11,12 @@
 > Current release: **[v1.85.0](docs/changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
 
 
-Exposes **every complete live Tlamatini agent directory (89 in the v1.85.0
+Exposes **every complete live Tlamatini agent directory (85 in the current
 release)** as MCP tools so an MCP client (Claude Code, etc.) can drive
 them directly — Executer, Pythonxer, Croner, ACPXer, STM32er, ESP32er,
 Arduiner, Shoter, Playwrighter, Kalier, MCP Doctor, NetSpeed-Calculator, and
 the rest of the live catalog. It also exposes 7 management/skill tools and 10
-ACPX tools: **106 root stdio MCP tools total**. The server discovers agents
+ACPX tools: **102 root stdio MCP tools total**. The server discovers agents
 dynamically; these counts are a verified snapshot, not a hardcoded limit.
 
 ## Files
@@ -73,8 +73,8 @@ three universal options:
 
 - `wait` (bool) — wait for completion and return the full log. Default `true`,
   except known **long-running** agents (croner, flowhypervisor, teletlamatini,
-  gatewayer, gateway_relayer, recmailer,
-  monitor_log, monitor_netstat, node_manager) default `false`.
+  recmailer,
+  monitor_log, monitor_netstat) default `false`.
 - `timeout_seconds` (int, default 180) — if the agent hasn't finished by then,
   it's left running in the background and a `run_id` is returned.
 - `config` (object) — free-form overrides for nested/uncommon keys, or to set
@@ -159,7 +159,7 @@ Typical long-running pattern: call the agent (gets `run_id`) →
 
 Mouser now resolves explicit physical, window and screenshot coordinates; Keyboarder binds Unicode/key delivery to a verified window; Shoter publishes capture geometry. `input_sent` is delivery evidence, not application success, and a failed or interrupted input segment must be observed before replay.
 
-Parametrizer derives its parser registry from current contracts and validates complete typed mappings. FlowCreator selects from all 89 installed agents and validates the generated graph before publishing; FlowHypervisor separates execution, kill and observation relationships and uses current desktop receipts/timing. GUI-Manager remains design only.
+Parametrizer derives its parser registry from current contracts and validates complete typed mappings. FlowCreator selects from all 85 installed agents and validates the generated graph before publishing; FlowHypervisor separates execution, kill and observation relationships and uses current desktop receipts/timing. GUI-Manager remains design only.
 
 See [configuration, examples and limitations](docs/desktop-input-and-flow-contracts.md), the [complete generated coverage inventory](docs/agent-coverage.md), and the [GUI-Manager design](docs/GUI-Manager-design.md).
 

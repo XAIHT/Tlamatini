@@ -78,8 +78,8 @@
 (function () {
   'use strict';
 
-  var KEYS = ['eo_mc', 'eo_mo', 'ec_mc', 'ec_mo'];
-  var IMG_IDS = {
+  const KEYS = ['eo_mc', 'eo_mo', 'ec_mc', 'ec_mo'];
+  const IMG_IDS = {
     eo_mc: 'tlm-s-eo-mc', eo_mo: 'tlm-s-eo-mo',
     ec_mc: 'tlm-s-ec-mc', ec_mo: 'tlm-s-ec-mo'
   };
@@ -88,8 +88,8 @@
   // it sits pixel-for-pixel where the original <img> sat. There used to be a
   // 4.5% overscan here to hide a breath/sway transform; both are gone (see
   // `compose`), so overscan would only crop her face for no reason.
-  var BLEED = 1.0;
-  var MIN_W = 0.004;           // a layer this faint is invisible — skip the blit
+  const BLEED = 1.0;
+  const MIN_W = 0.004;           // a layer this faint is invisible — skip the blit
 
   // Motion constants. Everything is a real human figure, not a guess.
   //
@@ -101,10 +101,10 @@
   // inside the little frame!" She is right — at 120 px in a bordered dock, a
   // drifting portrait reads as a loose photograph, not as a person. Only her
   // EYES and her MOUTH move now. Do not reintroduce a whole-image transform.
-  var BLINK_MIN = 2.4, BLINK_MAX = 5.2;   // s between blinks -> 12-20/min
-  var BLINK_CLOSE = 55, BLINK_HOLD = 25, BLINK_OPEN = 130;  // ms, asymmetric
-  var DOUBLE_BLINK = 0.12;
-  var MOUTH_ATTACK = 45, MOUTH_RELEASE = 75;  // ms time constants
+  const BLINK_MIN = 2.4, BLINK_MAX = 5.2;   // s between blinks -> 12-20/min
+  const BLINK_CLOSE = 55, BLINK_HOLD = 25, BLINK_OPEN = 130;  // ms, asymmetric
+  const DOUBLE_BLINK = 0.12;
+  const MOUTH_ATTACK = 45, MOUTH_RELEASE = 75;  // ms time constants
 
   // ── LIP VISIBILITY (Angela, 2026-09-29) ──
   // "make her see her move more her lips, but not so exagerated of course".
@@ -125,21 +125,21 @@
   // opening barely moved (0.39 -> 0.45) — she moves more, she does not gape.
   // ⚠️ NOT EXAGGERATED BY CONSTRUCTION: the ceiling is her own open-mouth
   // portrait. Nothing here can open her mouth wider than the artwork does.
-  var COART_SIDE = 0.18, COART_CENTRE = 0.64;
-  var LIP_FLOOR = 0.14, LIP_CEIL = 0.70;
+  const COART_SIDE = 0.18, COART_CENTRE = 0.64;
+  const LIP_FLOOR = 0.14, LIP_CEIL = 0.70;
 
   // Frame budget governor. Start conservative; promote ONCE if the machine is
   // clearly fast; demote whenever it is not. Never oscillate.
-  var TIERS = [12, 20, 30, 60];
-  var START_TIER = 2;          // 30 fps
-  var PROMOTE_AFTER = 90;      // frames
-  var PROMOTE_UNDER_MS = 1.5;
-  var DEMOTE_OVER_RATIO = 0.55;   // of the frame budget
-  var DEMOTE_SUSTAIN_MS = 2000;
+  const TIERS = [12, 20, 30, 60];
+  const START_TIER = 2;          // 30 fps
+  const PROMOTE_AFTER = 90;      // frames
+  const PROMOTE_UNDER_MS = 1.5;
+  const DEMOTE_OVER_RATIO = 0.55;   // of the frame budget
+  const DEMOTE_SUSTAIN_MS = 2000;
 
   // Per-character mouth openness. Spanish has five pure vowels and is
   // syllable-timed, which is why it lip-syncs more cleanly than English.
-  var OPEN = {
+  const OPEN = {
     'a': 1.00, 'á': 1.00, 'à': 1.00, 'ä': 1.00, 'â': 1.00,
     'e': 0.72, 'é': 0.74, 'è': 0.72, 'ë': 0.72, 'ê': 0.72,
     'o': 0.85, 'ó': 0.87, 'ò': 0.85, 'ö': 0.85, 'ô': 0.85,
@@ -152,11 +152,11 @@
     ',': 0.08, ';': 0.08, ':': 0.08,
     '.': 0.00, '!': 0.00, '?': 0.00, '¡': 0.00, '¿': 0.00
   };
-  var OPEN_DEFAULT = 0.30;     // ordinary consonant
-  var CHARS_PER_SEC = 14.5;    // fallback rate when no boundary event arrives
+  const OPEN_DEFAULT = 0.30;     // ordinary consonant
+  const CHARS_PER_SEC = 14.5;    // fallback rate when no boundary event arrives
 
   function openness(ch) {
-    var v = OPEN[ch];
+    let v = OPEN[ch];
     if (v === undefined) { v = OPEN[ch.toLowerCase()]; }
     return v === undefined ? OPEN_DEFAULT : v;
   }
@@ -167,31 +167,32 @@
   }
 
   // ── state ───────────────────────────────────────────────────────────────
-  var dock = null, faceOuter = null, canvas = null, ctx = null;
-  var layers = {};             // key -> pre-scaled offscreen canvas
-  var srcImgs = {};
-  var ready = false, running = false, rafId = 0;
+  let dock = null, faceOuter = null, canvas = null, ctx = null;
+  let layers = {};             // key -> pre-scaled offscreen canvas
+  const srcImgs = {};
+  let ready = false, running = false, rafId = 0;
 
-  var eye = 1, mouth = 0;
-  var dispW = 0, dispH = 0, dpr = 1;
+  let eye = 1, mouth = 0;
+  let dispW = 0, dispH = 0, dpr = 1;
 
-  var tier = START_TIER, frameCount = 0, promoted = false;
-  var costs = [], overSince = 0, lastFrameCost = 0, fpsEma = 0;
-  var lastDraw = 0, lastTick = 0;
+  let tier = START_TIER, frameCount = 0, promoted = false;
+  const costs = [];
+  let overSince = 0, lastFrameCost = 0, fpsEma = 0;
+  let lastDraw = 0, lastTick = 0;
 
-  var blinkAt = 0, blinkPhase = null, blinkCount = 0;
+  let blinkAt = 0, blinkPhase = null, blinkCount = 0;
 
-  var speaking = false, track = null, trackLen = 0;
-  var anchorChar = 0, anchorT = 0, rate = CHARS_PER_SEC / 1000, rateKnown = false;
-  var boundaryCount = 0, driver = 'idle', speechStart = 0;
+  let speaking = false, track = null, trackLen = 0;
+  let anchorChar = 0, anchorT = 0, rate = CHARS_PER_SEC / 1000, rateKnown = false;
+  let boundaryCount = 0, driver = 'idle', speechStart = 0;
 
-  var onTierChange = null;
+  let onTierChange = null;
 
   // ── asset preparation ───────────────────────────────────────────────────
   function collectImages() {
-    var ok = true;
+    let ok = true;
     KEYS.forEach(function (k) {
-      var el = document.getElementById(IMG_IDS[k]);
+      const el = document.getElementById(IMG_IDS[k]);
       if (!el || !el.complete || !el.naturalWidth) { ok = false; }
       srcImgs[k] = el;
     });
@@ -203,22 +204,22 @@
   // change, never inside the animation loop.
   function prescale(w, h) {
     if (w <= 0 || h <= 0) { return false; }
-    var bw = Math.max(2, Math.round(w * BLEED));
-    var bh = Math.max(2, Math.round(h * BLEED));
-    var made = {};
-    for (var i = 0; i < KEYS.length; i++) {
-      var k = KEYS[i], img = srcImgs[k];
+    const bw = Math.max(2, Math.round(w * BLEED));
+    const bh = Math.max(2, Math.round(h * BLEED));
+    const made = {};
+    for (let i = 0; i < KEYS.length; i++) {
+      const k = KEYS[i], img = srcImgs[k];
       if (!img || !img.naturalWidth) { return false; }
-      var c = document.createElement('canvas');
+      const c = document.createElement('canvas');
       c.width = Math.round(bw * dpr);
       c.height = Math.round(bh * dpr);
-      var g = c.getContext('2d');
+      const g = c.getContext('2d');
       if (!g) { return false; }
       g.imageSmoothingEnabled = true;
       try { g.imageSmoothingQuality = 'high'; } catch (e) { /* older engines */ }
       // object-fit: cover — the portraits are square-ish, but never assume.
-      var sr = img.naturalWidth / img.naturalHeight, dr = bw / bh;
-      var sx = 0, sy = 0, sw = img.naturalWidth, sh = img.naturalHeight;
+      const sr = img.naturalWidth / img.naturalHeight, dr = bw / bh;
+      let sx = 0, sy = 0, sw = img.naturalWidth, sh = img.naturalHeight;
       if (sr > dr) { sw = img.naturalHeight * dr; sx = (img.naturalWidth - sw) / 2; }
       else { sh = img.naturalWidth / dr; sy = (img.naturalHeight - sh) / 2; }
       g.drawImage(img, sx, sy, sw, sh, 0, 0, c.width, c.height);
@@ -230,8 +231,8 @@
 
   function sizeCanvas() {
     if (!canvas || !faceOuter) { return false; }
-    var w = Math.round(faceOuter.clientWidth || 0);
-    var h = Math.round(faceOuter.clientHeight || 0);
+    const w = Math.round(faceOuter.clientWidth || 0);
+    const h = Math.round(faceOuter.clientHeight || 0);
     if (w <= 0 || h <= 0) { return false; }
     if (w === dispW && h === dispH && layers.eo_mc) { return true; }
     dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -246,8 +247,8 @@
   // ── the composite ───────────────────────────────────────────────────────
   function compose() {
     if (!ctx || !layers.eo_mc) { return; }
-    var e = clamp(eye, 0, 1), m = clamp(mouth, 0, 1);
-    var w = {
+    const e = clamp(eye, 0, 1), m = clamp(mouth, 0, 1);
+    const w = {
       eo_mc: e * (1 - m), eo_mo: e * m,
       ec_mc: (1 - e) * (1 - m), ec_mo: (1 - e) * m
     };
@@ -263,10 +264,10 @@
     ctx.clearRect(0, 0, dispW, dispH);
     ctx.translate(dispW / 2, dispH / 2);
 
-    var bw = dispW * BLEED, bh = dispH * BLEED;
-    var acc = 0;
-    for (var i = 0; i < KEYS.length; i++) {
-      var k = KEYS[i], wt = w[k];
+    const bw = dispW * BLEED, bh = dispH * BLEED;
+    let acc = 0;
+    for (let i = 0; i < KEYS.length; i++) {
+      const k = KEYS[i], wt = w[k];
       if (wt < MIN_W) { continue; }
       acc += wt;
       ctx.globalAlpha = wt / acc;   // sequential convex blend
@@ -286,11 +287,11 @@
       if (t >= blinkAt) { blinkPhase = t; blinkCount++; }
       else { eye = 1; return; }
     }
-    var d = t - blinkPhase;
+    const d = t - blinkPhase;
     if (d < BLINK_CLOSE) { eye = 1 - (d / BLINK_CLOSE); }
     else if (d < BLINK_CLOSE + BLINK_HOLD) { eye = 0; }
     else if (d < BLINK_CLOSE + BLINK_HOLD + BLINK_OPEN) {
-      var p = (d - BLINK_CLOSE - BLINK_HOLD) / BLINK_OPEN;
+      const p = (d - BLINK_CLOSE - BLINK_HOLD) / BLINK_OPEN;
       eye = p * p * (3 - 2 * p);          // smoothstep: the lid eases open
     } else {
       eye = 1; blinkPhase = null;
@@ -300,20 +301,20 @@
 
   // ── lip sync ────────────────────────────────────────────────────────────
   function buildTrack(text) {
-    var s = String(text || '');
-    var a = new Float32Array(s.length || 1);
-    for (var i = 0; i < s.length; i++) { a[i] = openness(s.charAt(i)); }
+    const s = String(text || '');
+    const a = new Float32Array(s.length || 1);
+    for (let i = 0; i < s.length; i++) { a[i] = openness(s.charAt(i)); }
     return a;
   }
 
   function sampleTrack(pos) {
     if (!track || !trackLen) { return 0; }
-    var i = clamp(Math.floor(pos), 0, trackLen - 1);
+    const i = clamp(Math.floor(pos), 0, trackLen - 1);
     // ±1 char window — this IS co-articulation: a shape is bent by its
     // neighbours, which is what stops the jaw flapping between syllables.
-    var a = track[clamp(i - 1, 0, trackLen - 1)];
-    var b = track[i];
-    var c = track[clamp(i + 1, 0, trackLen - 1)];
+    const a = track[clamp(i - 1, 0, trackLen - 1)];
+    const b = track[i];
+    const c = track[clamp(i + 1, 0, trackLen - 1)];
     return (a * COART_SIDE + b * COART_CENTRE + c * COART_SIDE);
   }
 
@@ -321,14 +322,14 @@
   // to a shape instead of hovering as a half-blend. Monotonic, so the mouth
   // still follows the text exactly as before, just with more contrast.
   function lipShape(v) {
-    var x = clamp((v - LIP_FLOOR) / (LIP_CEIL - LIP_FLOOR), 0, 1);
+    const x = clamp((v - LIP_FLOOR) / (LIP_CEIL - LIP_FLOOR), 0, 1);
     return x * x * (3 - 2 * x);
   }
 
   function stepMouth(t, dt) {
-    var target = 0;
+    let target = 0;
     if (speaking && track) {
-      var pos = anchorChar + (t - anchorT) * rate;
+      let pos = anchorChar + (t - anchorT) * rate;
       if (pos >= trackLen) { pos = trackLen - 1; }
       target = lipShape(sampleTrack(pos));
       // A sustained vowel is never perfectly still.
@@ -337,7 +338,7 @@
         driver = 'estimated';
       }
     }
-    var tau = target > mouth ? MOUTH_ATTACK : MOUTH_RELEASE;
+    const tau = target > mouth ? MOUTH_ATTACK : MOUTH_RELEASE;
     mouth += (target - mouth) * (1 - Math.exp(-dt / tau));
     if (mouth < 0.002) { mouth = 0; }
   }
@@ -353,8 +354,8 @@
 
     if (!promoted && frameCount === PROMOTE_AFTER) {
       promoted = true;
-      var sorted = costs.slice().sort(function (a, b) { return a - b; });
-      var med = sorted[Math.floor(sorted.length / 2)] || 0;
+      const sorted = costs.slice().sort(function (a, b) { return a - b; });
+      const med = sorted[Math.floor(sorted.length / 2)] || 0;
       if (med < PROMOTE_UNDER_MS && tier < TIERS.length - 1) {
         tier++;
         if (onTierChange) { onTierChange(TIERS[tier], 'promote', med); }
@@ -362,8 +363,8 @@
       return;
     }
     if (costs.length < 20) { return; }
-    var s2 = costs.slice().sort(function (a, b) { return a - b; });
-    var median = s2[Math.floor(s2.length / 2)] || 0;
+    const s2 = costs.slice().sort(function (a, b) { return a - b; });
+    const median = s2[Math.floor(s2.length / 2)] || 0;
     if (median > budgetMs() * DEMOTE_OVER_RATIO) {
       if (!overSince) { overSince = t; }
       else if (t - overSince > DEMOTE_SUSTAIN_MS && tier > 0) {
@@ -380,20 +381,20 @@
     schedule();
     if (document.hidden) { return; }
 
-    var t = now();
-    var interval = budgetMs();
+    const t = now();
+    const interval = budgetMs();
     if (lastDraw && (t - lastDraw) < interval - 1.2) { return; }
-    var dt = lastTick ? Math.min(120, t - lastTick) : 16;
+    const dt = lastTick ? Math.min(120, t - lastTick) : 16;
     lastTick = t; lastDraw = t;
 
-    var t0 = now();
+    const t0 = now();
     if (!sizeCanvas()) { return; }
 
     stepBlink(t);
     stepMouth(t, dt);
     compose();
 
-    var cost = now() - t0;
+    const cost = now() - t0;
     fpsEma = fpsEma ? (fpsEma * 0.9 + (1000 / Math.max(1, dt)) * 0.1) : 1000 / Math.max(1, dt);
     governor(t, cost);
   }
@@ -410,7 +411,7 @@
   function bindUtterance(utt) {
     if (!utt || utt.__tlmBound) { return; }
     utt.__tlmBound = true;
-    var text = String(utt.text || '');
+    const text = String(utt.text || '');
 
     utt.addEventListener('start', function () {
       track = buildTrack(text);
@@ -424,12 +425,12 @@
 
     utt.addEventListener('boundary', function (ev) {
       if (!speaking) { return; }
-      var t = now();
-      var ci = typeof ev.charIndex === 'number' ? ev.charIndex : anchorChar;
-      var dc = ci - anchorChar, dtm = t - anchorT;
+      const t = now();
+      const ci = typeof ev.charIndex === 'number' ? ev.charIndex : anchorChar;
+      const dc = ci - anchorChar, dtm = t - anchorT;
       // Re-anchor on ground truth, and learn the real local speaking rate.
       if (dc > 0 && dtm > 40) {
-        var r = dc / dtm;
+        const r = dc / dtm;
         if (r > 0.002 && r < 0.12) {         // 2-120 chars/s — reject nonsense
           rate = rateKnown ? (rate * 0.6 + r * 0.4) : r;
           rateKnown = true;
@@ -450,9 +451,9 @@
 
   function attachToSpeechSynthesis() {
     try {
-      var ss = window.speechSynthesis;
+      const ss = window.speechSynthesis;
       if (!ss || ss.__tlmPatched) { return; }
-      var orig = ss.speak.bind(ss);
+      const orig = ss.speak.bind(ss);
       ss.speak = function (u) {
         try { bindUtterance(u); } catch (e) { /* fail-open */ }
         return orig(u);
@@ -465,7 +466,7 @@
   // stops reporting `speaking` and the mouth must close. Cheap poll, 4 Hz.
   function speechWatch() {
     try {
-      var ss = window.speechSynthesis;
+      const ss = window.speechSynthesis;
       // ⚠️ A SIMULATED utterance has no engine behind it, so `ss.speaking` is
       // false for the whole run. Without this guard the watchdog cancelled the
       // simulation within 250 ms and the mouth barely opened — which is exactly
@@ -483,7 +484,7 @@
   }
 
   // ── public API ──────────────────────────────────────────────────────────
-  var API = {
+  const API = {
     start: function (opts) {
       opts = opts || {};
       try {
@@ -505,7 +506,7 @@
         if (!sizeCanvas()) { return false; }
 
         // Canvas is live: retire the <img> stack it replaces.
-        var face = document.getElementById('tlm-face');
+        const face = document.getElementById('tlm-face');
         if (face) { face.classList.add('tlm-canvas-live'); }
 
         ready = true;
@@ -557,7 +558,7 @@
       rate = trackLen / Math.max(1, ms || (trackLen / CHARS_PER_SEC * 1000));
       rateKnown = true; boundaryCount = 0; driver = 'simulated';
       speaking = true; ensureRunning();
-      var self = this;
+      const self = this;
       setTimeout(function () { self.endSimulation(); }, ms || 2000);
     },
     endSimulation: function () {

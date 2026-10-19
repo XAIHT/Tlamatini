@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Regression tests for the LaTeXer BYTE-EXACT (verbatim + base64) channel.
 
 WHY THIS FILE EXISTS (Angela, 2026-08-11)

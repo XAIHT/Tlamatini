@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """
 Tlamatini — VISIBLE (headed Chrome) end-to-end test of the NEW catalog prompt
 "FLOWCREATOR END-TO-END WIZARD" (prompt #108, Agents & Flows).

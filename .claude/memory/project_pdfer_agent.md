@@ -66,7 +66,7 @@ Pre-existing suite failures proven unrelated by a `git stash` baseline — see
 **Pre-launch preview backlog CLEARED (same session, Angela asked).** The 9 older uncategorized
 wrapped agents were audited IN THE DEV TREE line-by-line (she pushed back on inferring from
 config keys — she was right): PREVIEW = editor (writes file_path 'w'), nmapper + discoverer
-(scan artifacts + packets at target), zavuerer (POST /v1/messages, costs money),
+(scan artifacts + packets at target),
 instant_messaging_doctor (retry_send=true really POSTs WhatsApp/Telegram);
 OBSERVATIONAL = globber, grepper, mcp_doctor (STATIC triage — never connects), video_analyzer.
 Preview keys verified to render with NO `<MISSING>` against each real config.yaml.

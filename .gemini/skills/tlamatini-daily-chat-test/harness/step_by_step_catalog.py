@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """
 Tlamatini — VISIBLE (headed Chrome) end-to-end test of the Catalog-of-Prompts
 STEP-BY-STEP wizards (the section openers added by migrations 0181 + 0182).

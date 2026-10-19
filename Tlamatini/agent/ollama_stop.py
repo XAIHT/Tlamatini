@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Stop sequences every Ollama model will accept.
 
 Angela, 2026-10-03: a plain Multi-Turn prompt failed before any work was done

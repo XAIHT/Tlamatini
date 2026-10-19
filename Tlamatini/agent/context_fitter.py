@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Tlamatini - the CONTEXT FITTER: every request fits the model it is sent to.
 
 Angela, 2026-10-01: *"make it completely dynamic!!, so if the model is too

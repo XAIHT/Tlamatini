@@ -7,6 +7,56 @@
 Research date: 2026-10-11. This is a custom EXE installer, not an MSI package;
 MSI guidance informs the design but does not confer MSI transactional guarantees.
 
+## Removal redesign — 2026-10-18, unreleased
+
+The reported removal of `C:\Tlamatini` copied 80,186 files (4,899.2 MB) for
+recovery, then failed on `Temp\UpdateMedia` with Windows access denied and
+restored the payload. This makes ordinary removal perform unnecessary full
+copies and hashes. The log confirms restoration completed; it does not identify
+the cause of the directory access denial. A working-directory lock is one
+possible explanation, not an established diagnosis.
+
+Additional primary sources were consulted before this redesign:
+
+- [Microsoft: Moving directories](https://learn.microsoft.com/en-us/windows/win32/fileio/moving-directories)
+  and [MoveFileExW](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-movefileexw)
+  support moves of directories on the same drive. The new removal transaction
+  moves explicit root entries into its recovery folder without copying their
+  contents, refuses an occupied destination, and has no cross-drive copy fallback.
+- [Microsoft: Rollback installation](https://learn.microsoft.com/en-us/windows/win32/msi/rollback-installation)
+  describes reverse operations and the cost of retaining rollback files. Here,
+  file identities and a durable journal make a completed move reversible;
+  only the small setup-owned metadata files need verified backup copies.
+- [NSIS: Rename and RMDir](https://nsis.sourceforge.io/Docs/Chapter4.html)
+  documents same-drive directory moves, removal failures when a directory is
+  in use as a working directory, and the danger of recursively deleting an
+  installation root that contains user files. Removal therefore targets explicit
+  entries and never recursively erases the installation root.
+- [Inno Setup: UninstallDelete](https://jrsoftware.org/ishelp/topic_uninstalldeletesection.htm)
+  warns against broad deletion of user files. The six named content directories
+  retain the existing content-preservation contract, and `agents/` is always kept.
+- [Inno Setup: Installation order](https://jrsoftware.org/ishelp/topic_installorder.htm)
+  separates reversible operations and completion. Tlamatini likewise commits
+  application/Windows removal before deleting disposable caches; a locked cache
+  cannot initiate a full application restore.
+
+The acceptance target is a measured complete removal within 180 seconds, with
+300 seconds as the maximum requested by Angela. Helpers receive bounded waits;
+cleanup checks an overall deadline and retains a resumable journal on failure.
+A timeout or locked residue is **cleanup incomplete**, never a timing pass.
+Windows I/O can itself block; a software deadline is not proof of the requested
+elapsed time. Compiled full-package timing and independent preservation checks
+are required before release acceptance. Source regressions and UI previews are
+separate evidence. No background bulk deletion is used to manufacture a fast
+completion result.
+
+Schema 1 installation recovery stays readable. Schema 2 removal recovery tracks
+each move before and after it occurs, detects destination collisions, and leaves
+its journal until cleanup succeeds. Restoration progress names recovery and
+advances even when existing files already match their saved hashes. A successful
+restore is durably marked before deleting recovery material, so an interruption
+during housekeeping cannot require backup files already removed.
+
 ## Primary sources consulted before changing the lifecycle
 
 - [Microsoft: Windows Installer best practices](https://learn.microsoft.com/en-us/windows/win32/msi/windows-installer-best-practices)

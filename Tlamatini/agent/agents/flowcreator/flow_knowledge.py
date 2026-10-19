@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Standalone contract-aware flow planning helpers; no Django or application imports."""
 from __future__ import annotations
 

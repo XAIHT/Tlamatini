@@ -9,6 +9,9 @@
  * ═══════════════════════════════════════════════════════════════════
  *   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
  */
+// Shared classic-script bindings, consumed by sibling page scripts.
+/* exported applyContextUiState, detectInstalledApps, isBusyMessageRequest, isBusyMessageContext, isSessionRestoredInfoMessage, isSelfHealingStatusMessage, debounce, genericTokenCounting, updateLineNumbers, disableControlsDuringOperation, enableControlsAfterOperation, enableCanvasButtons, disableCanvasButtons */
+
 
 // ============================================================
 // agent_page_ui.js  –  UI state helpers (enable/disable, busy, spinner)

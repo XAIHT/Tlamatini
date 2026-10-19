@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Guard the Deleter against ever deleting the directory it was told to work IN.
 
 On 2026-08-26 a single ordinary Deleter call erased an entire ``agent/`` tree

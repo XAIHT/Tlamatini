@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """The Config -> Models dialog must ask the CONFIGURED Ollama, not the local one.
 
 Angela pointed Tlamatini at a rented GPU server (Config -> URLs, with its

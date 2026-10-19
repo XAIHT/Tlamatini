@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Unit tests for the universal tool-failure classifier + self-correction.
 
 Reproduces the exact 2026-07-17 Roblox-MCP loop ("false | Unable to cast double

@@ -125,10 +125,6 @@ function setGlobalRunningState(newState) {
 function updateAllLedIndicators(runningAgents) {
     const canvasItems = document.querySelectorAll('#submonitor-container .canvas-item');
 
-    // For PAUSED state, get the list of paused agents for this session
-    const pausedAgents = pausedProcessesOnPause[SESSION_ID] || [];
-    const pausedAgentIds = new Set(pausedAgents.map(p => p.canvas_id));
-
     canvasItems.forEach(item => {
         const led = item.querySelector('.canvas-item-led');
         if (!led) return;
@@ -303,6 +299,8 @@ async function sendAskerChoice(agentId, choice) {
  * @param {string} str - Raw string
  * @returns {string} HTML-safe string
  */
+// Preserve the classic-script HTML escaping API for existing page integrations.
+/* exported escapeHtml */
 function escapeHtml(str) {
     if (window.SharedRuntimeDialogs) {
         return window.SharedRuntimeDialogs.escapeHtml(str);

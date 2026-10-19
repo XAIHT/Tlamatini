@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Tlamatini dependency audit — run it on ANY interpreter, it changes nothing.
 
     python audit_dependencies.py requirements.txt              # this interpreter

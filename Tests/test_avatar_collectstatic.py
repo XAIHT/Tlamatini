@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Verify real Django collectstatic preserves avatar assets byte-for-byte.
 
 This isolated collector uses the project's default StaticFilesStorage without

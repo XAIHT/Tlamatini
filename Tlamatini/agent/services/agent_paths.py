@@ -119,7 +119,6 @@ def display_name_from_agent_type(agent_type: str) -> str:
         "teletlamatini": "TeleTlamatini",
         "telegrammer": "Telegrammer",
         "whatsapper": "Whatsapper",
-        "zavuerer": "Zavuerer",
         "j_decompiler": "J-Decompiler",
         "kyber_keygen": "Kyber-KeyGen",
         "kyber_cipher": "Kyber-Cipher",

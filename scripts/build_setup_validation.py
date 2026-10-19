@@ -10,10 +10,10 @@ import shutil
 import subprocess
 import sys
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from build_runtime_assets import verify_package, file_record
 from versioning import render_versioninfo_for, resolve_build_version
+ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "Temp/setup-release-validation"
 
 

@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Replace the retired Qwen3.5 vision tag inside the Catalog-of-Prompts rows.
 
 Created by Angela López Mendoza · @angelahack1 — Tlamatini.

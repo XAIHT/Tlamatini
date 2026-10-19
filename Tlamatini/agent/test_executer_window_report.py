@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Executer must report its forked window TRUTHFULLY (2026-10-09).
 
 On Windows 11 a new console is handed to Windows Terminal. What reaches the

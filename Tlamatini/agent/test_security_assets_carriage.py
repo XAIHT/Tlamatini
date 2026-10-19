@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Guard the Blue-hat security toolkit's CARRIAGE + EVIDENCE-carryover contracts.
 
 `security/automated_tests_of_security_assets.py` exists, but nothing runs it and

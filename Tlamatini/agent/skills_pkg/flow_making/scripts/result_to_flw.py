@@ -60,7 +60,6 @@ _DISPLAY_OVERRIDES = {
     "teletlamatini": "TeleTlamatini",
     "telegrammer": "Telegrammer",
     "whatsapper": "Whatsapper",
-    "zavuerer": "Zavuerer",
     "flowcreator": "FlowCreator",
     "flowhypervisor": "FlowHypervisor",
     "flowbacker": "FlowBacker",

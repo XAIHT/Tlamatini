@@ -818,9 +818,9 @@ def cover_slide(deck: Deck):
 def agenda_slide(deck: Deck, chapters):
     sc = deck.new("content", notes="What this dossier covers, chapter by chapter.")
     deck.header(sc, "CONTENTS", "What this dossier covers",
-                "Nine chapters from identity to inventory, and a complete file tree at the end.")
+                "Nine chapters from identity to inventory, and the application file tree at the end.")
     items = [(ch.numeral, ch.title, ch.tagline, ch.accent) for ch in chapters]
-    items.append(("A", "The complete tracked file tree", "Every file Git tracks, drawn as a tree.", "gold"))
+    items.append(("A", "The application file tree", "Application files; database history is summarized.", "gold"))
     cols = 2
     per_col = math.ceil(len(items) / cols)
     gap = 0.4
@@ -1094,11 +1094,11 @@ def tree_slides(deck: Deck, tree_text: str):
     total = math.ceil(len(lines) / per_slide)
     for page in range(total):
         chunk = lines[page * per_slide:(page + 1) * per_slide]
-        sc = deck.new("appendix", notes="Appendix A: the complete tracked file tree, continued.")
-        text(sc, MX, 0.42, 9.5, 0.36, one(f"APPENDIX A  ·  COMPLETE TRACKED FILE TREE  ·  {page + 1} / {total}",
+        sc = deck.new("appendix", notes="Appendix A: the application file tree, continued.")
+        text(sc, MX, 0.42, 9.5, 0.36, one(f"APPENDIX A  ·  APPLICATION FILE TREE  ·  {page + 1} / {total}",
                                           "sans-semibold", 11, "copper", spacing=2.0), label="tree kicker")
-        text(sc, MX, 0.80, CONTENT_W, 0.42, one(f"{deck.facts['tracked_count']:,} tracked files at commit "
-                                                f"{deck.facts['head_short']}; directories in jade, files in ivory.",
+        text(sc, MX, 0.80, CONTENT_W, 0.42, one(f"{deck.facts['tree_count']:,} listed files at commit "
+                                                f"{deck.facts['head_short']}; {deck.facts['tree_history_count']} database-history files summarized.",
                                                 "sans", 13, "light_muted"), label="tree lede")
         for col in range(TREE_COLS):
             part = chunk[col * per_col:(col + 1) * per_col]
@@ -1174,8 +1174,8 @@ def build_pptx(facts: dict, chapters, output) -> int:
                 section_slides(deck, chapter, section)
     from dossier_content import Chapter
 
-    appendix = Chapter("tree", "A", "The complete tracked file tree",
-                       f"Every one of the {facts['tracked_count']:,} files Git tracks, drawn as a tree.", [],
+    appendix = Chapter("tree", "A", "The application file tree",
+                       f"{facts['tree_count']:,} application files, with {facts['tree_history_count']} database-history files summarized.", [],
                        accent="gold")
     sc = divider_slide(deck, appendix)
     deck.chrome(sc, "Appendix A")

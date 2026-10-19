@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Style selection, user overrides, and long-content layout regressions."""
 import copy
 from pathlib import Path

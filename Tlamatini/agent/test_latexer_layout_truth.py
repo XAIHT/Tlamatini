@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Large overfull TeX boxes must never receive the finished-document verdict."""
 import os
 import tempfile

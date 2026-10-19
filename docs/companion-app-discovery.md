@@ -69,6 +69,12 @@ registry key** (its `AgentsRoot` still points at the preserved agents), so a com
 keeps finding them after uninstall (FlowPills AC-002). Only an explicit FULL removal would
 call `unregister_discovery_entry()`.
 
+Reinstalling into that directory removes the uninstall-only marker after package
+extraction. The recovery journal includes the old marker, so a later installation
+failure restores it together with the preserved manifest. User-created agent
+files remain in place. If Windows prevents marker removal, setup completes with
+a visible warning, preserving discovery's fail-open contract.
+
 ## Recommended companion-app lookup sequence (PROP-004)
 
 1. Read `HKCU\Software\XAIHT\Tlamatini\AgentsRoot`.

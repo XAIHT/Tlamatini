@@ -50,7 +50,6 @@ for %%A in (%*) do (
 )
 
 REM --- the tracked files that legitimately carry real secrets locally ---------
-set "SECRETS=Tlamatini/agent/config.json Tlamatini/agent/agents/telegrammer/config.yaml Tlamatini/agent/agents/whatsapper/config.yaml Tlamatini/agent/agents/teletlamatini/config.yaml Tlamatini/agent/agents/emailer/config.yaml Tlamatini/agent/agents/recmailer/config.yaml Tlamatini/agent/agents/zavuerer/config.yaml Tlamatini/agent/agents/discoverer/config.yaml"
 
 echo(
 echo ============================================================

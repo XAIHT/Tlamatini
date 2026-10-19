@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Visible, dev-only Backup DB / Set DB round-trip regression test.
 
 This test launches a headed Chromium window, drives the real Tlamatini DB menu,

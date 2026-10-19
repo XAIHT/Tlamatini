@@ -10,7 +10,8 @@
 """Re-open the finished dossier files and prove they are whole.
 
 PDF: every glyph lies inside the page, no two text lines collide, and the
-file tree printed in Appendix A rebuilds to exactly the paths Git tracks.
+file tree printed in Appendix A matches the declared application inventory.
+Database-history files are summarized separately.
 
 PPTX: the deck opens, its tree appendix rebuilds to the same paths, and — when
 Microsoft PowerPoint is installed — PowerPoint itself reports the bounds of
@@ -124,7 +125,7 @@ def verify_pdf(facts: dict, path: Path) -> dict:
                     tree_lines.append("".join(slots.get(k, " ") for k in range(width)))
         page.get_pixmap(dpi=70).save(str(out / f"p{number:03d}.png"))
     found = parse_tree(["Tlamatini/"] + _rebuild(tree_lines[1:])) if tree_lines else []
-    parity = _parity(facts["tracked"], found)
+    parity = _parity(facts["tree_paths"], found)
     if not parity["exact"]:
         problems.append(f"PDF tree parity failed: {parity['found']} of {parity['expected']} paths")
     return {"pages": doc.page_count, "problems": problems, "tree_parity": parity}
@@ -136,7 +137,7 @@ def verify_pptx_structure(facts: dict, path: Path) -> dict:
     lines: list[str] = []
     for slide in prs.slides:
         notes = slide.notes_slide.notes_text_frame.text if slide.has_notes_slide else ""
-        if not notes.startswith("Appendix A: the complete tracked file tree"):
+        if not notes.startswith("Appendix A: the application file tree"):
             continue
         columns = []
         for shape in slide.shapes:
@@ -150,7 +151,7 @@ def verify_pptx_structure(facts: dict, path: Path) -> dict:
         for _, text_lines in sorted(columns):
             lines.extend(text_lines)
     found = parse_tree(["Tlamatini/"] + _rebuild(lines[1:])) if lines else []
-    parity = _parity(facts["tracked"], found)
+    parity = _parity(facts["tree_paths"], found)
     problems = [] if parity["exact"] else [f"PPTX tree parity failed: {parity['found']} of "
                                            f"{parity['expected']} paths"]
     return {"slides": len(prs.slides), "problems": problems, "tree_parity": parity}

@@ -1,6 +1,7 @@
 # Tlamatini Author Banner — Angela López Mendoza · @angelahack1
 """Normal UI authentication and disposable nonstaff user lifecycle checks."""
 import re
+import secrets
 import time
 
 from playwright.sync_api import expect
@@ -8,10 +9,11 @@ import prompt_flow_connections_visible as browser_visibility
 from prompt_flow_connections_visible import require_browser_foreground
 
 
-def run_auth_checks(admin, base, checkpoint):
+def run_auth_checks(admin, base, checkpoint, *, browser_type=None):
     username = 'release_access_' + str(time.time_ns())
-    password = 'Release-Only-Access!42'
+    password = secrets.token_urlsafe(32)
     member_context = None
+    member_browser = None
     user_url = None
     staff_window = browser_visibility.TEST_BROWSER_WINDOW
     admin.bring_to_front()
@@ -38,9 +40,18 @@ def run_auth_checks(admin, base, checkpoint):
         expect(admin.locator('#change-history')).to_contain_text(re.compile('first name', re.I))
         checkpoint('auth-01-user-create-edit-search-and-history', admin)
 
-        # A second normal browser context keeps staff and nonstaff cookies apart.
-        # This is the existing headed Chrome, not a headless browser launch.
-        member_context = admin.context.browser.new_context(no_viewport=True)
+        # Persistent contexts may not expose a Browser. In that case use a
+        # separate visible Chrome process for genuinely independent login state.
+        browser = admin.context.browser
+        if browser is None:
+            if browser_type is None:
+                raise RuntimeError('Persistent Chrome authentication needs its browser type')
+            member_browser = browser_type.launch(
+                channel='chrome', headless=False, slow_mo=100,
+                args=['--start-maximized'],
+            )
+            browser = member_browser
+        member_context = browser.new_context(no_viewport=True)
         member = member_context.new_page()
         target = base + '/agent/prompt_flow_panel/'
         member.goto(target)
@@ -77,6 +88,8 @@ def run_auth_checks(admin, base, checkpoint):
     finally:
         if member_context:
             member_context.close()
+        if member_browser:
+            member_browser.close()
         browser_visibility.TEST_BROWSER_WINDOW = staff_window
         if user_url:
             admin.bring_to_front()

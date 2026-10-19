@@ -1982,15 +1982,6 @@ body.resizing-vertical iframe {
     color: #ffffff;
 }
 
-/* Zavuerer — teal -> rose, mirrors the .canvas-item.zavuerer-agent four-channel
-   "signal spectrum" sweep in agentic_control_panel.css. State-changing because
-   it SENDS messages (SMS / WhatsApp / Telegram / Email / Voice) through the Zavu
-   unified-messaging REST API. */
-.exec-report-caption-zavuerer {
-    background: linear-gradient(135deg, #14B8A6 0%, #F43F5E 100%);
-    color: #ffffff;
-}
-
 /* STM32er — near-black -> vivid STM32 blue, mirrors .canvas-item.stm32er-agent
    in agentic_control_panel.css. State-changing because it scaffolds / writes /
    builds / flashes / erases / resets firmware and write_memory's a running MCU
@@ -2103,7 +2094,6 @@ body.resizing-vertical iframe {
 .exec-report-mouser thead th,
 .exec-report-windower thead th,
 .exec-report-kalier thead th,
-.exec-report-zavuerer thead th,
 .exec-report-stm32er thead th,
 .exec-report-esp32er thead th,
 .exec-report-esphomer thead th,
@@ -2204,7 +2194,6 @@ body.resizing-vertical iframe {
 .exec-report-kalier .exec-report-cmd         { border-left: 3px solid #00C838; }
 .exec-report-pdfer .exec-report-cmd          { border-left: 3px solid #C1272D; }
 .exec-report-latexer .exec-report-cmd        { border-left: 3px solid #C9973F; }
-.exec-report-zavuerer .exec-report-cmd         { border-left: 3px solid #14B8A6; }
 .exec-report-stm32er .exec-report-cmd        { border-left: 3px solid #1E63FF; }
 .exec-report-esp32er .exec-report-cmd        { border-left: 3px solid #E7352C; }
 .exec-report-esphomer .exec-report-cmd       { border-left: 3px solid #0E8A4F; }

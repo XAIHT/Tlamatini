@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Video audio transcription and evidence-based summaries for standalone pools.
 
 Created by Angela López Mendoza · @angelahack1 — Tlamatini.

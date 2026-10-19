@@ -9,6 +9,10 @@
  * ═══════════════════════════════════════════════════════════════════
  *   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
  */
+// Shared classic-script bindings, consumed by sibling page scripts.
+// These three dialog entry points are called by agent_page.html onclick handlers.
+/* exported OpenAboutDialog, OpenCheckUpdatesDialog, StartTlamatiniUpdate, preRenderConfirmationDialog, renderConfirmationDialog, preRenderOmissionsDialog, renderOmissionsDialog, preRenderMcpsDialog, renderMcpsDialog, preRenderAgentsDialog, renderAgentsDialog */
+
 
 // ============================================================
 // agent_page_dialogs.js  –  jQuery UI dialogs & loader helpers

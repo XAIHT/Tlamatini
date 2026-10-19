@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 # Tlamatini Author Banner - do not remove
 """VISIBLE proof: Config > Models asks the CONFIGURED (remote) Ollama.
 

@@ -126,8 +126,6 @@ _PARAMETRIZER_OUTPUT_FIELDS: dict[str, tuple[str, ...]] = {
     "kyber_keygen": ("public_key", "private_key"),
     "kyber_cipher": ("encapsulation", "initialization_vector", "cipher_text"),
     "kyber_decipher": ("deciphered_buffer",),
-    "gatewayer": ("event_id", "event_type", "session_id", "correlation_id", "content_type", "method", "path", "body"),
-    "gateway_relayer": ("event_type", "delivery_id", "action", "ref", "repository", "sender", "body"),
     "de_compresser": ("operation", "extension", "input", "output", "passwordless", "success", "response_body"),
     "googler": ("url", "title", "status", "content_length", "engine", "tier",
                 "search_status", "response_body"),
@@ -169,7 +167,6 @@ _PARAMETRIZER_OUTPUT_FIELDS: dict[str, tuple[str, ...]] = {
     "nmapper": ("action", "target", "scan_technique", "ports", "return_code", "success", "hosts_up", "open_ports", "npcap_present", "xml_path", "output_path", "stage", "response_body"),
     "telegrammer": ("mode", "direction", "chat_id", "status", "message_id", "response_body"),
     "whatsapper": ("mode", "direction", "recipient", "status", "message_id", "response_body"),
-    "zavuerer": ("action", "channel", "to", "status", "message_id", "success", "base_url", "response_body"),
     # PDFer, 2026-09-06: the design fields are APPENDED, never renamed, so a
     # flow built against the pre-overhaul shape keeps resolving every field it
     # already mapped. A downstream Forker can now branch on {nuance},
@@ -236,15 +233,9 @@ _BUILTIN_CONTRACTS: dict[str, AgentContract] = {
         ),
         secret_paths=("telegram.bot_token", "telegram.api_hash", "telegram.session_string", "whatsapp.access_token"),
     ),
-    "gatewayer": _contract("gatewayer", long_running=True, secret_paths=("auth.bearer_token", "auth.hmac_secret")),
-    "gateway_relayer": _contract("gateway_relayer", long_running=True, aliases=("gateway-relayer", "gateway relayer"), secret_paths=("provider_secret", "forward_hmac_secret")),
-    "node_manager": _contract("node_manager", long_running=True, aliases=("node-manager", "node manager")),
     # Kalier bridges to the MCP-Kali-Server HTTP API. Its hydra single-password
     # field is credential-shaped, so redact it from .flw exports.
     "kalier": _contract("kalier", secret_paths=("password",)),
-    # Zavuerer bridges to the Zavu unified-messaging REST API; its zavu_api_key is a
-    # credential, so redact it from .flw exports.
-    "zavuerer": _contract("zavuerer", secret_paths=("zavu_api_key",)),
     # Discoverer bridges to the ProjectDiscovery suite; its pdcp_api_key is a
     # credential, so redact it from .flw exports.
     "discoverer": _contract("discoverer", secret_paths=("pdcp_api_key",)),

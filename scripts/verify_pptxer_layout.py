@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Reproducible PPTXer stress decks and a browsable PowerPoint render gallery.
 
 Run with the project's Python. Artifacts stay under artifacts/pptxer-visibility.

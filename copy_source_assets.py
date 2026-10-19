@@ -35,7 +35,7 @@ INCLUDED — everything the build pipeline and the app's source surface touch:
     (+ CreateShortcut.json).
   * The full Django tree: every .py, .html, .css, .js, .yaml/.yml, .json,
     .pmt (prompt.pmt + monitoring-prompt.pmt), .proto, SKILL.md packages,
-    all 76 agent templates, migrations, tests, AuxTests/.
+    all installed agent templates, migrations, tests, AuxTests/.
   * Firmware template sources (.ino/.h/.cpp — ArduinoTemplateProject etc.).
   * Docs that drive behavior or onboarding: CLAUDE.md, docs/claude/*,
     agents_descriptions.md (parsed at runtime for tooltips!), README.md,
@@ -241,6 +241,17 @@ KEEP_PATH_GLOBS = (
 # one raises rather than producing a quietly-incomplete self-modify tree.
 # Add the canonical file of any new always-present capability here.
 REQUIRED_SNAPSHOT_FILES = (
+    # Preserve the source-quality commands for builds initiated from the snapshot.
+    "scripts/check_python_quality.py",
+    "scripts/check_js_parse.mjs",
+    "scripts/file_drop_router_cases.mjs",
+    "scripts/menu_reference_graph.mjs",
+    "Tests/test_avatar_animation.cjs",
+    "Tests/test_avatar_visible.cjs",
+    "Tests/test_release_regeneration.py",
+    "Tests/test_setup_release_paths.py",
+    "package.json",
+    "eslint.config.mjs",
     # Main-chat Views: preserve the complete feature and its visible check.
     "Tlamatini/agent/templates/agent/agent_page.html",
     "Tlamatini/agent/static/agent/js/agent_page_layout.js",

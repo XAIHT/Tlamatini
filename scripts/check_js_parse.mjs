@@ -1,43 +1,68 @@
+/* Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1 */
 /*
- * Parse-gate every browser JS module with `node --check`.
- *
- * A JS file that does not parse at all (e.g. statements pasted into the middle
- * of an object literal during an agent addition -- create_new_agent.md Step 5b
- * touches SIX locations in acp-canvas-core.js, one of them the classMap object
- * literal) produces a completely dead page with no error visible anywhere until
- * you open the browser console. This costs one line to prevent.
- *
- * Exits non-zero on the first parse failure so a caller (npm run lint) fails.
+ * Parse every owned JavaScript file and every shipped browser vendor file.
+ * Run from a verified visible foreground console; no application code is executed.
+ * Git supplies source scope; delivered self-modify snapshots use the same tree
+ * walk with generated/runtime/user-data directories excluded.
  */
-import { readdirSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { join, dirname, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
 
-const here = dirname(fileURLToPath(import.meta.url));
-const jsDir = join(here, "..", "Tlamatini", "agent", "static", "agent", "js");
-
-let files;
-try {
-    files = readdirSync(jsDir).filter((f) => f.endsWith(".js"));
-} catch (e) {
-    console.error(`check_js_parse: cannot read ${jsDir}: ${e.message}`);
-    process.exit(1);
-}
-
-let failed = 0;
-for (const f of files) {
-    try {
-        execFileSync(process.execPath, ["--check", join(jsDir, f)], { stdio: "pipe" });
-    } catch (e) {
-        failed += 1;
-        const msg = (e.stderr && e.stderr.toString()) || e.message;
-        console.error(`PARSE FAIL: ${f}\n${msg}`);
+const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+const skipped = new Set([
+    ".git", "Temp", "dist", "build", "python", "node_modules", "__pycache__",
+    "output", "context_files", "content_generated", "doc_generated", "pools",
+]);
+const keptDirectories = new Set([
+    "Tlamatini/agent/static/agent/vendor/pdfjs/build",
+    "Tlamatini/agent/static/agent/vendor/frontend/bootstrap/dist",
+    "Tlamatini/agent/static/agent/vendor/frontend/jquery/dist",
+    "Tlamatini/agent/static/agent/vendor/frontend/dompurify/dist",
+]);
+const extension = /\.(?:js|mjs|cjs)$/i;
+const files = new Set();
+function walk(directory) {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+        if (entry.isSymbolicLink()) continue;
+        const path = join(directory, entry.name);
+        const name = relative(root, path).replaceAll("\\", "/");
+        if (skipped.has(entry.name) && !keptDirectories.has(name)) continue;
+        if (entry.isDirectory()) walk(path);
+        else if (extension.test(entry.name)) files.add(path);
     }
 }
-
-if (failed > 0) {
-    console.error(`check_js_parse: ${failed} file(s) failed to parse.`);
+if (existsSync(join(root, ".git"))) {
+    const listed = execFileSync("git", ["ls-files", "-z", "--cached", "--others", "--exclude-standard"], {
+        cwd: root, encoding: "utf8", maxBuffer: 32 * 1024 * 1024,
+    });
+    for (const name of listed.split("\0")) {
+        const path = join(root, name);
+        if (extension.test(name) && existsSync(path) && statSync(path).isFile()) files.add(path);
+    }
+} else {
+    walk(root);
+}
+// Some reproducibly vendored browser files are ignored by Git but ship in pkg.zip.
+walk(join(root, "Tlamatini", "agent", "static", "agent"));
+if (!files.size) throw new Error("No JavaScript files found; refusing an empty parse gate.");
+let failed = 0;
+for (const path of [...files].sort()) {
+    const name = relative(root, path).replaceAll("\\", "/");
+    // PDF.js also delivers ES modules under .js filenames, including import.meta.
+    const moduleSource = path.endsWith(".mjs") || name.includes("/vendor/pdfjs/");
+    try {
+        execFileSync(process.execPath, ["--check", "--input-type=" + (moduleSource ? "module" : "commonjs")], {
+            input: readFileSync(path), stdio: ["pipe", "pipe", "pipe"],
+        });
+    } catch (error) {
+        failed += 1;
+        console.error("PARSE FAIL: " + name + "\n" + (error.stderr?.toString() || error.message));
+    }
+}
+if (failed) {
+    console.error("check_js_parse: " + failed + " file(s) failed to parse.");
     process.exit(1);
 }
-console.log(`check_js_parse: OK -- ${files.length} JS files parse cleanly.`);
+console.log("check_js_parse: OK -- " + files.size + " source, harness and vendor files parse cleanly.");

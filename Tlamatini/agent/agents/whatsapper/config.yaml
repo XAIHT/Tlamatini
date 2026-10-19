@@ -23,14 +23,14 @@ provider: "auto"
 # Normally seeded from config.json globals (whatsapp_phone_number_id /
 # whatsapp_access_token) or env (WHATSAPP_PHONE_NUMBER_ID / WHATSAPP_ACCESS_TOKEN).
 whatsapp:
-  phone_number_id: <WHATSAPP_PHONE_NUMBER_ID goes here>
-  access_token: <WHATSAPP_ACCESS_TOKEN goes here>              # secret
+  phone_number_id: "<WHATSAPP_PHONE_NUMBER_ID goes here>"
+  access_token: "<WHATSAPP_ACCESS_TOKEN goes here>"              # secret
   graph_base: "https://graph.facebook.com"
   api_version: "v20.0"
   to: ""                        # default recipient number (country code + number)
   # RECEIVE webhook (Meta POSTs inbound here — expose it publicly + set it in
   # Meta → WhatsApp → Configuration with this same verify_token):
-  verify_token: <WHATSAPP_VERIFY_TOKEN goes here>
+  verify_token: "<WHATSAPP_VERIFY_TOKEN goes here>"
   webhook_host: "0.0.0.0"
   webhook_port: 8086
   webhook_path: "/wa-webhook"

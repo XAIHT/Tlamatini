@@ -18,6 +18,12 @@ finally:
     sys.path.remove(str(ROOT))
 
 
+class ActualCheckoutPreflightTests(unittest.TestCase):
+    def test_current_checkout_passes_the_real_build_input_gate(self):
+        # Exercise the actual checkout/index, not a normalized file census.
+        assets.validate_source_assets(ROOT)
+
+
 class RootCarrierTests(unittest.TestCase):
     def test_new_inventory_entry_is_copied_without_another_build_list(self):
         with tempfile.TemporaryDirectory() as tmp:

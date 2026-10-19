@@ -75,9 +75,6 @@ AGENT_FAMILIES: list[tuple[str, str, str, list[tuple[str, str]]]] = [
         ("flowcreator", "Designs a complete, validated .flw workflow from a plain objective."),
         ("flowhypervisor", "A model watchdog that reads a running flow: OK or ATTENTION NEEDED."),
         ("flowbacker", "Backs up a session's logs and configurations before clean-up."),
-        ("gatewayer", "Webhook and folder-drop ingress that turns outside events into triggers."),
-        ("gateway_relayer", "Relays GitHub and GitLab webhooks into Gatewayer."),
-        ("node_manager", "Infrastructure registry: discovers nodes, probes heartbeats and capabilities."),
         ("prompter", "Sends one prompt to a model and logs a structured answer."),
         ("summarizer", "Summarizes text once, or watches logs and fires on a detected event."),
         ("acpxer", "Runs one external coding-agent CLI turn on the canvas and captures its answer."),
@@ -160,7 +157,6 @@ AGENT_FAMILIES: list[tuple[str, str, str, list[tuple[str, str]]]] = [
         ("recmailer", "Watches an IMAP mailbox for new messages."),
         ("telegrammer", "Telegram as the bot or as your own account."),
         ("whatsapper", "WhatsApp through Meta's Cloud API, or explicitly from your own number."),
-        ("zavuerer", "SMS, WhatsApp, Telegram, email and voice through one Zavu key."),
         ("teletlamatini", "Brings the full Tlamatini chat, Multi-Turn included, into Telegram."),
         ("instant_messaging_doctor", "Diagnoses and safely repairs Telegram and WhatsApp readiness."),
         ("monitor_log", "Model-powered log monitor."),
@@ -486,7 +482,7 @@ def build_chapters(f: dict) -> list[Chapter]:
                  "unzip, PDFer, LaTeXer"],
                 ["D · remote systems", "Yes", "SCPer, Apirer, Nmapper, Discoverer, Crawler, "
                  "NetSpeed-Calculator"],
-                ["B · messaging", "No", "Emailer, Whatsapper, Telegrammer, Zavuerer, Instant Messaging "
+                ["B · messaging", "No", "Emailer, Whatsapper, Telegrammer, Instant Messaging "
                  "Doctor: sending is the model's own judgement"],
                 ["C · desktop and hardware", "No", "Keyboarder, Mouser, Windower, Playwrighter, firmware "
                  "agents, Blenderer, Unrealer: visible while they act"],
@@ -1530,7 +1526,6 @@ def build_chapters(f: dict) -> list[Chapter]:
             points=[
                 ("Telegrammer", "Sends as the bot or as your own account; “send it as me” picks yours."),
                 ("Whatsapper", "Meta's official Cloud API by default; your own number only when you say so."),
-                ("Zavuerer", "One Zavu key for SMS, WhatsApp, Telegram, email and voice, with smart routing."),
                 ("TeleTlamatini", "The full chat in Telegram, on a dedicated account."),
                 ("Instant Messaging Doctor", "Checks tokens, contacts, templates and policy windows."),
                 ("Contacts", "A contact name resolves to the real address when a message is sent."),
@@ -1640,11 +1635,11 @@ def build_chapters(f: dict) -> list[Chapter]:
                   "# open http://127.0.0.1:8000/   (default login: user / changeme)"),
             deck="visual"),
         Section("dependencies", "DEPENDENCY COVERAGE", "Every referenced Python library is accounted for",
-            "The October 1 static coverage check includes all 89 agents, build helpers, optional imports and tests.",
+            "The October 18 dependency audit covers all 85 agents, build helpers, optional imports and tests.",
             body=[
-                "The refreshed static guard scanned 762 Python files and 69 directly referenced distributions. The "
-                "main requirements file contains 87 declarations; missing Autobahn, lxml, six, pip and "
-                "PlatformIO declarations were added. Existing framework and compatibility pins remain.",
+                "The refreshed static guard scanned 855 Python files and 72 directly referenced distributions. The "
+                "complete requirements file pins all 263 distributions, including CPU PyTorch. A clean Python "
+                "installation, dependency consistency check and runtime imports passed.",
                 "ESPHome has a separate requirements-esphome.txt manifest because its py7zr and PlatformIO "
                 "pins conflict with the main environment. Keep it in its private runtime. Blender bpy, "
                 "Unreal unreal, device toolchains, npm packages and model weights follow their own runtime "
@@ -1652,9 +1647,9 @@ def build_chapters(f: dict) -> list[Chapter]:
             ],
             points=[
                 ("Coverage guard", "scripts/check_requirements_coverage.py checks source and build inventories."),
-                ("Verification", "October 1: no missing declarations, syntax errors or unreviewed dynamic imports."),
+                ("Verification", "October 18: no missing declarations, syntax errors or unreviewed dynamic imports."),
                 ("Earlier evidence", "September 27: main/ESPHome dry runs and temporary-environment dependency smoke checks passed."),
-                ("Limits", "Static coverage and selective smoke tests do not certify a clean installation or frozen build."),
+                ("Limits", "A clean Python dependency installation does not certify the compiled installer or every external integration."),
             ], deck="cards"),
         Section("modes", "RUNTIME", "Two modes and their service ports",
             "Tlamatini runs either from source or as a frozen executable built by PyInstaller. Only path "

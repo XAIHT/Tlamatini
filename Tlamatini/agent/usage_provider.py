@@ -133,10 +133,13 @@ def _retry_after(headers):
 
 def _fetch(base, token, path, method="GET"):
     headers = {"Accept": "application/json"}
+    if method == "POST":
+        headers["Content-Type"] = "application/json"
     if token:
         headers["Authorization"] = "Bearer " + token
-    request = urllib.request.Request(base + path, headers=headers, method=method,
-                                     data=b"{}" if method == "POST" else None)
+    # /api/me is a bodyless POST in Ollama's own Whoami client. Sending an
+    # unused {} body resets the connection on supported Windows servers.
+    request = urllib.request.Request(base + path, headers=headers, method=method)
     try:
         with urllib.request.build_opener(NoRedirect).open(request, timeout=10 if path == '/api/me' else 6) as response:
             raw = response.read(2_000_001)
@@ -158,6 +161,8 @@ def _fetch(base, token, path, method="GET"):
             return _failure(path, "tls", "Ollama's secure connection could not be verified. Check its certificate and connection settings.")
         if isinstance(reason, (TimeoutError, socket.timeout)):
             return _failure(path, "timeout", "Ollama did not respond before the usage request timed out.", ERROR_TTL)
+        if isinstance(reason, (ConnectionResetError, ConnectionAbortedError)):
+            return _failure(path, "connection_reset", "Ollama closed this usage connection before the response completed. The request will be retried automatically.", ERROR_TTL)
         if isinstance(exc, ValueError):
             return _failure(path, "invalid_json", "Ollama returned an invalid usage response.", ERROR_TTL)
         refused = isinstance(reason, ConnectionRefusedError) or getattr(reason, 'errno', None) in (errno.ECONNREFUSED, 10061)
@@ -189,13 +194,19 @@ def connection():
 
 def snapshot(*, refresh=False):
     base, token, key = connection()
+    now = time.monotonic()
     with _LOCK:
         entry = _CACHE.get(key)
         # Explicit Refresh/reopen may retry an entirely refused connection:
         # no HTTP request reached Ollama, so there is no cloud quota to bypass.
-        # Healthy data, timeouts and HTTP errors still obey their cache/delay.
+        # Healthy billing and HTTP errors still obey their cache/delay. A
+        # transient identity failure can be retried independently on demand.
         retry_refused = refresh and entry and entry.get("refused")
-        if entry and (entry.get("loading") or (not retry_refused and time.monotonic() - entry.get("at", 0) < entry.get("ttl", TTL))):
+        requests = (entry or {}).get("requests", {})
+        account_request = requests.get("account", {})
+        retry_account = (refresh and account_request.get("result", {}).get("error_kind")
+                         in {"connection", "connection_reset", "timeout", "invalid_json"})
+        if entry and (entry.get("loading") or (not retry_refused and not retry_account and now - entry.get("at", 0) < entry.get("ttl", TTL))):
             return _cached_value(entry)
         previous = entry.get("value") if entry else None
         # Bound cached endpoints if config is edited repeatedly.
@@ -205,15 +216,50 @@ def snapshot(*, refresh=False):
     paths = {"7d": "/api/usage?range=7d", "30d": "/api/usage?range=30d",
              "account": "/api/me", "balance": "/api/balance", "models": "/api/tags", "running": "/api/ps", "version": "/api/version"}
     try:
+        # Retry only endpoints whose own delay expired. An account-name outage
+        # must not repeat successful billing requests or inherit their delays.
+        due = {name: path for name, path in paths.items() if (
+            name not in requests or now - requests[name]["at"] >= requests[name]["ttl"]
+            or retry_refused or (name == "account" and retry_account))}
         with ThreadPoolExecutor(max_workers=7, thread_name_prefix="UsageRead") as pool:
             jobs = {name: pool.submit(_fetch, base, token, path, "POST" if name == "account" else "GET")
-                    for name, path in paths.items()}
-            results = {name: future.result() for name, future in jobs.items()}
+                    for name, path in due.items()}
+            requests = dict(requests)
+            for name, future in jobs.items():
+                result = future.result()
+                requests[name] = {"result": result, "at": time.monotonic(),
+                                  "checked_at": datetime.now(timezone.utc).isoformat(),
+                                  "ttl": result.get("retry_after", TTL) if result.get("error") else TTL}
+        results = {name: request["result"] for name, request in requests.items()}
         account = results["account"].get("data") or {}
         if not isinstance(account, dict):
             account = {}
         identity = str(account.get("id") or account.get("email") or account.get("name") or "")
         account_key = hashlib.sha256((key + identity).encode()).hexdigest()
+        for name in ("7d", "30d", "balance"):
+            if name in due:
+                requests[name]["account_key"] = account_key
+        if "account" in due:
+            # Cached billing responses must never be relabelled as belonging
+            # to a newly verified account. Recheck them once after identity
+            # recovery/change, while keeping an explicit server Retry-After.
+            billing = {name: paths[name] for name in ("7d", "30d", "balance")
+                       if name not in due and identity and not results[name].get("error")
+                       and requests[name].get("account_key") != account_key}
+            with ThreadPoolExecutor(max_workers=3, thread_name_prefix="UsageIdentity") as pool:
+                jobs = {name: pool.submit(_fetch, base, token, path, "GET") for name, path in billing.items()}
+                for name, future in jobs.items():
+                    result = future.result()
+                    results[name] = result
+                    requests[name] = {"result": result, "at": time.monotonic(),
+                                      "checked_at": datetime.now(timezone.utc).isoformat(),
+                                      "account_key": account_key,
+                                      "ttl": result.get("retry_after", TTL) if result.get("error") else TTL}
+            if not identity:
+                for name in ("7d", "30d", "balance"):
+                    if (name not in due and not results[name].get("error")
+                            and requests[name].get("account_key") != account_key):
+                        results[name] = {"error": "Account identity could not be verified for the saved figures."}
         if not identity or (previous or {}).get("account_key") != account_key:
             previous = None
         ranges = {}
@@ -222,12 +268,12 @@ def snapshot(*, refresh=False):
             old = (previous or {}).get("ranges", {}).get(name)
             ranges[name] = {"data": parsed or (old or {}).get("data"), "stale": parsed is None,
                             "error": None if parsed else results[name].get("error", "Usage data is not available from this Ollama server."),
-                            "updated_at": datetime.now(timezone.utc).isoformat() if parsed else (old or {}).get("updated_at")}
+                            "updated_at": requests[name]["checked_at"] if parsed else (old or {}).get("updated_at")}
         parsed_balance = normalize_balance(results["balance"].get("data"))
         old_balance = (previous or {}).get("balance") or {}
         balance = {"data": parsed_balance or old_balance.get("data"), "stale": parsed_balance is None,
                    "error": None if parsed_balance else results["balance"].get("error", "Ollama did not return a supported balance. Open Ollama Usage to check your account."),
-                   "updated_at": datetime.now(timezone.utc).isoformat() if parsed_balance else old_balance.get("updated_at")}
+                   "updated_at": requests["balance"]["checked_at"] if parsed_balance else old_balance.get("updated_at")}
         models_data = results["models"].get("data") or {}
         running_data = results["running"].get("data") or {}
         running = (running_data.get("models") or []) if isinstance(running_data, dict) else []
@@ -258,6 +304,7 @@ def snapshot(*, refresh=False):
                  "plan": str(account.get("plan") or "")[:100],
                  "account_available": bool(identity), "models": models,
                  "account_error": None if identity else results['account'].get('error', 'Account identity was not returned.'),
+                 "account_error_kind": results['account'].get('error_kind') if not identity else None,
                  "models_error": results["models"].get("error"),
                  "running_error": results["running"].get("error"),
                  "running": [{"name": str(m.get("name", ""))[:255], "size": number(m.get("size")),
@@ -271,9 +318,11 @@ def snapshot(*, refresh=False):
         # making Refresh repeat a one-minute-old failure. At 15 seconds the two
         # usage ranges remain below their shared 10 requests/minute limit.
         # Retry-After always wins; healthy snapshots retain the normal minute.
-        ttl = max((result.get("retry_after", TTL) for result in failures), default=TTL)
+        finished = time.monotonic()
+        ttl = max(0, min(request["at"] + request["ttl"] for request in requests.values()) - finished)
         refused = len(failures) == len(results) and all(result.get("request_not_sent") for result in failures)
-        entry = {"at": time.monotonic(), "ttl": ttl, "failed": failed, "refused": refused, "value": value}
+        entry = {"at": finished, "ttl": ttl, "failed": failed, "refused": refused,
+                 "value": value, "requests": requests}
         with _LOCK:
             _CACHE[key] = entry
         return _cached_value(entry)

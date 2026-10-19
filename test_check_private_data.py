@@ -533,7 +533,8 @@ class TestStegScan(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             p = os.path.join(d, "s.png")
             img.save(p, format="PNG")
-            data = open(p, "rb").read()
+            with open(p, "rb") as source:
+                data = source.read()
             ts = tlist(("SECRET42", "generic"))
             c = compiled_for(ts)
             layers = {h["layer"] for h in cpd.steg_scan(p, data, ts, c)}

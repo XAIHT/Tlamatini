@@ -9,6 +9,9 @@
  * ═══════════════════════════════════════════════════════════════════
  *   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
  */
+// Shared classic-script bindings, consumed by sibling page scripts.
+/* exported container, canvas, chat, divider, openBtn, fileCloseBtn, btnStart, btnStop, btnPause, btnClear, btnValidate, globalRunningState, flowValidationStatus, pausedProcessesOnPause, titleBusyPrefix, isFlowCreatorWaiting, isBusyProcessing, updateFilenameDisplay, getDefaultDiagramSaveFilename, markDirty, markClean */
+
 
 // Agentic Control Panel - Global State & DOM References
 // LOAD ORDER: #1 - Must be loaded before all other acp-*.js files.

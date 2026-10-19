@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Keep ``agent/Tlamatini.md`` (the injected ``{self_knowledge}`` system-prompt
 payload) from drifting behind source.
 

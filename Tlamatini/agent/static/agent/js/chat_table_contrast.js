@@ -1,3 +1,4 @@
+/* Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1 */
 /*
  * chat_table_contrast.js - every table in an answer stays READABLE
  * (Angela Lopez Mendoza, 2026-10-01).

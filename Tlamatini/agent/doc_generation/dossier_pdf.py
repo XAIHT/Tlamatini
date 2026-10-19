@@ -1403,17 +1403,17 @@ def about_flow(facts, st: Styles) -> list:
             Kicker("BEFORE YOU BEGIN"), Spacer(1, 3), para("About this dossier", st.h1, "serif"),
             TitleRule("copper"), Spacer(1, 4),
             para("This is the complete dossier of Tlamatini: what she is, how she works, how to use her, every "
-                 "agent she can run, the promises she keeps, and a full inventory of her source tree.",
+                 "agent she can run, the promises she keeps, and an inventory of her application source tree.",
                  st.lede, "sans-semilight")]
     for text in [
         "It is written for three readers at once. A **newcomer** can read the first three chapters and know "
         "what Tlamatini is and how to start. An **operator** will find the surfaces, the bestiary and the "
         "configuration chapters. A **maintainer** will find the architecture, the contracts behind the "
-        "honesty rules and the complete repository inventory.",
+        "honesty rules and the application inventory and database-history count.",
         "Nothing here is typed from memory. Counts, versions, commits, the language inventory and the file "
         "tree were derived from Git and the source files when this edition was generated, and the generator "
         "then reopened this document to prove that no text overflows or is clipped and that the file tree "
-        "matches the repository exactly. Configuration values, credentials and private addresses are never "
+        "matches its declared application scope. Database history is summarized; configuration values, credentials and private addresses are never "
         "reproduced.",
     ]:
         flow.append(para(text, st.body, "sans"))
@@ -1457,15 +1457,15 @@ def build_pdf(facts: dict, chapters, output) -> int:
 
     from dossier_content import Chapter
 
-    appendix = Chapter("tree", "A", "The Complete Tracked File Tree",
-                       f"Every one of the {facts['tracked_count']:,} files Git tracks, drawn as a tree. "
+    appendix = Chapter("tree", "A", "The Application File Tree",
+                       f"{facts['tree_count']:,} application files, with {facts['tree_history_count']} database-history files summarized. "
                        "Directories are shown in jade.", [], accent="gold")
     story += [NextPageTemplate("dark"), PageBreak(),
-              ChapterOpener(appendix, st, "appendix_tree", "Appendix A  ·  The complete tracked file tree"),
+              ChapterOpener(appendix, st, "appendix_tree", "Appendix A  ·  The application file tree"),
               NextPageTemplate("body"), PageBreak(), ChapterMarker("Appendix A · File tree")]
-    intro = [Kicker("APPENDIX A"), Spacer(1, 3), para("The complete tracked file tree", st.h1, "serif"),
+    intro = [Kicker("APPENDIX A"), Spacer(1, 3), para("The application file tree", st.h1, "serif"),
              TitleRule("gold"), Spacer(1, 4),
-             para(f"{facts['tracked_count']:,} tracked files at commit `{facts['head_short']}`. Within each "
+             para(f"{facts['tree_count']:,} listed application files at commit `{facts['head_short']}`. Within each "
                   "directory, files come first and sub-directories follow; a line too long for its column "
                   "continues on the next line after a » mark.", st.lede, "sans-semilight"), Spacer(1, 8)]
     intro_height = sum(item.wrap(FRAME_W, 1000)[1] + item.getSpaceAfter() for item in intro) + 14

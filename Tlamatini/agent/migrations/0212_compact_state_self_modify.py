@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """The Self-modify switch (Angela, 2026-10-03).
 
 One more column on the Compact-mode row (pk=1, owned by

@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 # Tlamatini Author Banner - do not remove
 r"""
 ESCAPE CLOSES EVERY DIALOG - VISIBLE REGRESSION, DRIVEN BY PLAYWRIGHTER

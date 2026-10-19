@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Model selection across UI, standalone agents and isolated runtimes.
 
 Created by Angela López Mendoza · @angelahack1 — Tlamatini.

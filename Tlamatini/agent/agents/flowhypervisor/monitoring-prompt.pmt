@@ -85,8 +85,7 @@ SHORT-LIVED agents (should start, do work, and exit quickly):
 
 LONG-RUNNING agents (designed to run for the entire flow duration — this is NORMAL):
   Monitor_Log, Monitor_Netstat, Notifier, Raiser, Forker, Croner, OR, AND,
-  Emailer, RecMailer, TeleTlamatini, Stopper, Gatewayer, GatewayRelayer,
-  NodeManager, Deleter (event mode), Mover (event mode)
+  Emailer, RecMailer, TeleTlamatini, Stopper, Deleter (event mode), Mover (event mode)
 
 TeleTlamatini SPECIAL NOTES:
   - TeleTlamatini is a long-running active agent that bridges Telegram users
@@ -102,8 +101,7 @@ TeleTlamatini SPECIAL NOTES:
     and "Connected. Listening for Telegram messages." are NORMAL operational
     output. NEVER flag them as errors.
   - After every successfully completed user request cycle TeleTlamatini
-    starts its configured `target_agents` (similar to Gatewayer's
-    dispatcher). A burst of "Started agent ..." lines after a long quiet
+    starts its configured `target_agents`. A burst of "Started agent ..." lines after a long quiet
     period is NORMAL.
 
 ACPXER SPECIAL NOTES:
@@ -258,68 +256,6 @@ KALIER SPECIAL NOTES:
   - Legitimate Kalier error to flag: "Cannot reach MCP-Kali-Server at ..." — the
     Flask API server is not running on the Kali box, the SSH tunnel is down, or
     `server_url` is wrong. Treat a connection error like a broken chain hop.
-
-ZAVUERER SPECIAL NOTES:
-  - Zavuerer is SHORT-LIVED and ACTIVE: it POSTs ONE request to the Zavu
-    unified-messaging REST API (send a message, or a `health` probe), captures
-    the result into an `INI_SECTION_ZAVUERER<<<` block, and ALWAYS triggers
-    `target_agents` regardless of success or failure. A quick run that then ends
-    is NORMAL, not "stuck".
-  - Duration is sub-second to a few seconds (one HTTP round-trip). Flag only on
-    total silence > ~2 minutes (a hung network call past its `timeout`).
-  - `success: false`, `status: failed`, or `status: refused` INSIDE the section is
-    NOT a flow error — a refused send (the `zavu_api_key` is empty / not yet
-    configured) or a provider rejection is routable content for a downstream
-    Forker / Raiser. NEVER flag a Zavuerer `INI_SECTION_ZAVUERER<<<` block as an error
-    even when its body looks like a send error (that body is data for the next
-    agent to act on).
-  - Legitimate Zavuerer error to flag: "Cannot reach the Zavu API at ..." — the
-    network is down, `zavu_base_url` is wrong, or zavu.dev is unreachable. Treat a
-    connection error like a broken chain hop.
-
-TELEGRAMMER / WHATSAPPER SPECIAL NOTES:
-  - Both are SHORT-LIVED send/receive agents that finish and then start their
-    `target_agents`. A quick run that then ends is NORMAL, not "stuck".
-  - Telegrammer uses official Telegram surfaces only. Bot mode uses the OFFICIAL
-    Telegram Bot API (`bot_token` from @BotFather); optional user-session mode uses
-    official Telegram API credentials (`api_id` / `api_hash` / session) for private
-    `@username` sends that bots cannot cold-DM.
-    In `mode: send` it posts one message and finishes; in `mode: receive` it waits up
-    to `rx_max_seconds` for an inbound message (optionally matching `rx_match` from
-    `rx_from_chat_id`) and then finishes. A receive run that simply times out with
-    NO message is a VALID result (the downstream Forker branches on it) — do NOT flag
-    a "no message received within rx_max_seconds" line as an error.
-  - Whatsapper has two explicit outbound identities. `provider: cloud` (the default)
-    uses the OFFICIAL Meta WhatsApp Cloud API (`access_token` + `phone_number_id`);
-    `provider: web` is an UNOFFICIAL Playwright-driven WhatsApp Web session that sends
-    from the operator's own number after a one-time headed QR login. A web run waiting
-    for that first QR scan is user input, not a stuck process; flag only after its
-    configured `login_wait_seconds` expires or the agent reports `login_required` /
-    `invalid_number` / a browser error. `mode: receive` remains Cloud-API-only and runs
-    the official webhook listener up to `rx_max_seconds`. A receive timeout is a VALID
-    result. Sporadic Graph-API 4xx lines are usually token/policy evidence; flag only
-    if they recur across at least three cycles.
-  - Both START their `target_agents` after sending/receiving, then die — they are NOT
-    terminal never-start agents. A burst of "Started agent ..." lines after a send or
-    receive completes is NORMAL.
-  - Contacts book: a line like "Resolved contact '<name>' -> Telegram/WhatsApp ..."
-    is normal. A "Contact '<name>' not found (or has no ...) in contacts.json" line
-    is the agent working as DESIGNED (fail-safe: it refuses to send to the wrong
-    person rather than guess) — it is routable content, NOT a flow error; do NOT
-    flag it.
-  - Their `INI_SECTION_TELEGRAMMER<<<` / `INI_SECTION_WHATSAPPER<<<` blocks are NORMAL
-    routable output (Telegrammer carries `mode`, `direction`, `chat_id`, `status`,
-    `message_id` + body; Whatsapper carries `mode`, `direction`, `recipient`,
-    `status`, `message_id` + body) — NEVER flag their content as an error.
-  - Instant Messaging Doctor is the normal diagnostic companion for Telegrammer /
-    Whatsapper failures. It is SHORT-LIVED and ACTIVE: it validates tokens,
-    contacts, Telegram `@username` reachability, Meta phone-number/template/webhook
-    readiness, selected failure-log excerpts, emits
-    `INI_SECTION_INSTANT_MESSAGING_DOCTOR<<<`, and then starts `target_agents`.
-    A section `status: blocked` / `repair_status: operator_required` is NOT a flow
-    crash — it is routable diagnostic content for Parametrizer / Forker. Flag only
-    if the process itself crashes before emitting the section, cannot read config,
-    or runs > 5 min with no "Instant Messaging Doctor agent finished" marker.
 
 DISCOVERER SPECIAL NOTES:
   - Discoverer is SHORT-LIVED and ACTIVE: it runs ONE ProjectDiscovery tool
@@ -996,7 +932,7 @@ STRUCTURED OUTPUT SECTION markers (NORMAL — agents emitting data for Parametri
   ">>>END_SECTION_<AGENT_TYPE>" — end of a unified structured output section
   These appear in source agent logs (Apirer, Crawler, Googler, Summarizer, Prompter,
   FlowCreator, File-Interpreter, Image-Interpreter, File-Extractor, Gitter, Kuberneter,
-  Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Gatewayer, Gateway-Relayer, ACPXer,
+  Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, ACPXer,
   Shoter, Camcorder, Recorder, Talker, Mouser, Keyboarder, Windower, Playwrighter, De-Compresser, Unrealer, Blenderer,
   Reviewer, Analyzer, Kalier, STM32er, ESP32er, ESPHomer, Arduiner, Editor, Grepper, Globber).
   They are NOT errors — they are structured data blocks consumed by Parametrizer.
@@ -1082,7 +1018,7 @@ Video-Analyzer content modes: static frames, no_audio/no_speech (status no_match
 DO NOT report these as problems:
   - FlowHypervisor or FlowCreator activity (they are system agents, not participants)
   - Sqler/Mongoxer missing from logs (they run in separate windows)
-  - Long-running agents (Raiser, Monitor_Log, Gatewayer, etc.) running for a long time with no completion → they are designed to run indefinitely
+  - Long-running agents (Raiser, Monitor_Log, etc.) running for a long time with no completion → they are designed to run indefinitely
   - "WAITING FOR AGENTS TO STOP" in a looping flow → normal concurrency guard
   - "No files found for pattern" → Deleter/Mover found nothing to process
   - Deleter REFUSED lines (a protected directory, a directory without `allow_directory_delete: true`, the working directory or an ancestor, a git root or a drive root) plus a `total_refused` count → the fail-toward-safety guard working as DESIGNED, never a flow error

@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """The COMPACT MODE switch (Angela, 2026-10-02).
 
 Pins Angela's design, piece by piece:
@@ -445,7 +446,7 @@ class MessageAndPageTests(SimpleTestCase):
     def test_the_gauge_says_context_window_and_shows_the_true_share(self):
         js = (AGENT_DIR / "static" / "agent" / "js" / "context_gauge.js").read_text(encoding="utf-8")
         self.assertIn("'CONTEXT-WINDOW'", js)
-        self.assertIn("var pctTrue = Math.max(0, ratio * 100);", js)
+        self.assertIn("const pctTrue = Math.max(0, ratio * 100);", js)
         self.assertIn("'CUT · read '", js)
         self.assertIn("Math.round(pctTrue) + '%'", js)
 

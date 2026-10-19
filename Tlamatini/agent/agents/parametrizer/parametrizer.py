@@ -129,7 +129,8 @@ except ModuleNotFoundError:
     sys.path.insert(0, str(helper_dir))
     from flow_knowledge import load_catalog
 
-SECTION_AGENT_TYPES = [name for name, spec in load_catalog().items() if spec["output_fields"]]
+AGENT_CATALOG = load_catalog()
+SECTION_AGENT_TYPES = [name for name, spec in AGENT_CATALOG.items() if spec["output_fields"]]
 
 
 def _parse_section_content(raw_content):
@@ -1150,6 +1151,13 @@ def main():
                 f"VALIDATION FAILED: Source agent '{source_agent}' is not a recognized structured output agent. "
                 f"Allowed: {list(OUTPUT_PARSERS.keys())}"
             )
+            sys.exit(1)
+
+        # A saved pool may outlive an installed type. Refuse stale targets before
+        # reading mappings, changing configuration or restoring saved progress.
+        target_type = re.sub(r"_\d+$", "", str(target_agent).strip().lower().replace("-", "_"))
+        if target_type not in AGENT_CATALOG:
+            logging.error("VALIDATION FAILED: Target agent %r is not installed in the current catalog.", target_agent)
             sys.exit(1)
 
         # ===== LOAD INTERCONNECTION SCHEME =====

@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 # ═══════════════════════════════════════════════════════════════════
 #   ✦  T L A M A T I N I  ✦   —   "one who knows"
 #   Created by  Angela López Mendoza · @angelahack1
@@ -12,8 +13,8 @@ invariants hold on the REAL seeded prompt set (no live DB is touched).
 
 TWO SEPARATE CONTRACTS — do not conflate them:
 
-  * `idPrompt`  = IDENTITY. Contiguous 1..N, matches `promptName`, and is
-    NEVER renumbered. New prompts are APPENDED at max(idPrompt)+1.
+  * `idPrompt`  = IDENTITY. Matches `promptName` and is NEVER renumbered.
+    New prompts are APPENDED at max(idPrompt)+1; retired entries leave gaps.
   * `sort_rank` = DISPLAY ORDER inside a section (migration 0181). This is what
     makes append-only safe: before 0181 the display order WAS idPrompt, so every
     appended prompt landed last in its section forever (migration 0180 shipped
@@ -71,7 +72,7 @@ def _rank(category):
     return _RANK.get((category or '').strip(), _OTHER)
 
 
-class PromptCatalogContiguityTests(TestCase):
+class PromptCatalogIdentityTests(TestCase):
     """`idPrompt` identity contract — unchanged by 0181."""
 
     def _rows(self):
@@ -81,12 +82,12 @@ class PromptCatalogContiguityTests(TestCase):
             .order_by('idPrompt')
         )
 
-    def test_ids_are_contiguous_1_to_n_no_gaps(self):
+    def test_ids_preserve_the_seeded_identity_with_only_retired_slots_absent(self):
         ids = [r['idPrompt'] for r in self._rows()]
         self.assertTrue(ids, 'the catalog must not be empty')
         self.assertEqual(
-            ids, list(range(1, len(ids) + 1)),
-            'idPrompt must be a contiguous 1..N with NO gaps',
+            ids, [i for i in range(1, max(ids) + 1) if i not in {90, 91, 92, 93}],
+            'Only the catalog slots removed by migration 0214 may be absent',
         )
 
     def test_promptname_matches_id(self):

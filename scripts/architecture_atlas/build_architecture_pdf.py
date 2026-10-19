@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Rebuild Tlamatini-Architecture.pdf in one step.
 
 1. gen_architecture.py writes Temp/architecture/Tlamatini-Architecture.tex from
-   every file tracked in git. The atlas lists exactly what `git ls-files`
+   application files tracked in git; database history is summarized. The atlas lists exactly what `git ls-files`
    returns, so `git add` new files BEFORE rebuilding.
 2. A private copy of Tlamatini's own LaTeXer pool agent typesets that .tex with
    pdflatex into <repo>/Tlamatini-Architecture.pdf (same launch recipe as
@@ -70,11 +71,12 @@ def say(msg):
 
 def git_files():
     out = subprocess.run(["git", "-C", ROOT, "ls-files", "-z"], capture_output=True, check=True).stdout
-    return [f for f in out.decode("utf-8", "replace").split("\0") if f]
+    return [f for f in out.decode("utf-8", "replace").split("\0")
+            if f and not f.startswith("Tlamatini/agent/migrations/")]
 
 
 def step_generate():
-    say("=== 1/3  Generating the LaTeX source from every tracked file ===")
+    say("=== 1/3  Generating the LaTeX source from every listed application file ===")
     env = os.environ.copy()
     env["TLAMATINI_REPO"] = ROOT
     env["PYTHONUTF8"] = "1"
@@ -163,7 +165,7 @@ def squash(text):
 
 
 def step_verify(pdf_path):
-    say("=== 3/3  Checking that every tracked file is in the PDF ===")
+    say("=== 3/3  Checking that every listed application file is in the PDF ===")
     try:
         import fitz  # PyMuPDF
     except ImportError:
@@ -192,7 +194,7 @@ def step_verify(pdf_path):
     for p in (no_index + no_tile)[:40]:
         say("   missing: " + p)
     if no_index or no_tile or listed != len(files):
-        say("FAILED: the PDF does not cover every tracked file. Did you `git add` new files first?")
+        say("FAILED: the PDF does not cover every listed application file. Did you `git add` new files first?")
         sys.exit(3)
     say("OK: all %d tracked files are present." % len(files))
 

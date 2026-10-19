@@ -20,6 +20,17 @@ It remains available while Tlamatini answers a request. The three tabs are:
 | Chat activity | Completed, measured main-chat model calls recorded for the signed-in Tlamatini user since recording began. |
 | Models | Per-model recorded chat calls, input/output tokens, peak UTC dates, and the configured server's model inventory and loaded-model information. |
 
+**Unreleased readiness guard (2026-10-18):** the menu initially says **Checking
+usage…** and stays disabled until the core returns usable report data and the
+browser successfully renders it. Real credits (including zero balances), cloud
+usage totals, or measured chat activity qualify. An empty local ledger alone
+does not disguise a failed cloud connection. An unavailable account name does
+not block valid credits or charts. When only recorded chat is available, Usage
+opens on **Chat activity**. The menu checks again automatically while closed,
+and after returning to the tab, opening About, or reconnecting the browser.
+A recovered response re-enables it without reloading the chat. A changed or
+expired login requires a reload and hides the previous user's report.
+
 Choose **7 days** or **30 days** for activity. Changing this range does not change
 the monthly balance. The cloud API's daily range includes seven or thirty
 complete UTC days plus today so far; the local ledger shows seven or thirty
@@ -41,16 +52,22 @@ timeout and invalid-response failures retry after 15 seconds instead of caching
 the failure for a full minute. Authentication/unsupported-endpoint failures use
 the normal interval; an upstream `Retry-After` delay is respected even when
 **Refresh** is clicked repeatedly. While checking, the button says **Checking…**;
-a failed response gives the reason and the next automatic retry time. Duplicate
-endpoint errors are shown once. New cloud usage may also be delayed upstream.
+a compact connection status describes availability. **Connection details**
+holds the deduplicated reasons and automatic check time. A missing account name
+alone uses a neutral **Credits available** state and **Retry account** action.
+New cloud usage may also be delayed upstream.
 Check the displayed timestamps and stale-data notice. Escape, the titlebar close button and **Close**
 use the same dismissal path; clicking outside does not dismiss the dialog.
 
 If Ollama was not running when Usage opened, **Refresh** and closing/reopening
 the dialog recheck a refused connection immediately. Only a snapshot where
-every request was refused before reaching Ollama gets that exception. Successful
-data, timeouts, authentication errors and server rate limits retain their normal
-cache or retry delay. Automatic retries also work without clicking anything.
+every request was refused before reaching Ollama gets that exception. Each
+endpoint now has its own cache and retry deadline. A manual retry of a transient
+account-name failure requests only identity; healthy billing responses and
+explicit server rate limits retain their cache or retry delay. When identity is
+newly established or changes, cached successful billing is checked once before
+being associated with that identity. Automatic retries also work without
+clicking anything. Closing the dialog leaves the readiness check active.
 
 ## Credits come from the account
 
@@ -140,10 +157,30 @@ after the same Ollama account identity is verified again.
   locks and preserve focus handling, session checks, escaping and shared theme.
 - `build.py`, `build_runtime_assets.py` and `copy_source_assets.py` explicitly
   carry the backend modules, migration, template, static assets and relevant
-  source tests/harnesses. The cache suffix is `-usage-recovery-1`. Existing migration and
+  source tests/harnesses. The current suffix includes `-usage-status-2`. Existing migration and
   database backup/restore mechanisms are unchanged.
 
 ## Verification and limits
+
+### Account connection reset — 2026-10-18, unreleased
+
+The configured local Ollama server returned HTTP 200 for `/api/version` and
+`/api/balance`, but reset `/api/me` when Tlamatini sent a `{}` request body.
+Both a bodyless POST and an empty-body POST returned HTTP 200 with an account
+identity; adding a JSON content type to `{}` did not fix the reset.
+`usage_provider.py` now sends a bodyless POST with the JSON content type,
+matching [Ollama's Whoami client](https://github.com/ollama/ollama/blob/main/api/client.go)
+and [desktop client](https://github.com/ollama/ollama/blob/main/app/ui/app/src/api.ts).
+A connection reset is reported as an interrupted request, not as evidence that
+the configured server is stopped. The existing automatic retry and rate-limit
+protections remain in force.
+
+Ruff and all 28 Usage tests passed, including an actual local HTTP server that
+disconnects the first account request, keeps balance requests working, and
+accepts the bodyless retry. The corrected adapter also returned a valid account
+identity from the configured live server. Evidence is under
+`Temp/release-size-analysis-20261018/` and `Temp/usage-reconnect-20261018/`.
+These source checks do not update an already installed executable.
 
 The 2026-10-10 source verification passed **18 Usage tests**, **202 existing
 regressions** and **24 visible browser checks**, plus collected-static byte

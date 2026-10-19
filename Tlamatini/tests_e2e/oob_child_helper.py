@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Child process used by the OOB_shift_reaper unit test. Emits controlled output
 patterns so the runner's 3 rules can be proven deterministically.
 

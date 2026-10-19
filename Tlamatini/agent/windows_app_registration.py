@@ -242,15 +242,32 @@ def register_discovery_entry(
 
 
 def unregister_discovery_entry() -> bool:
-    """Delete ``HKCU\\Software\\XAIHT\\Tlamatini`` (and the ``XAIHT`` parent if it is
-    left empty). Idempotent, fail-open. HKCU, no admin."""
+    """Remove our six discovery values, preserving other settings and subkeys.
+
+    Delete the discovery key and XAIHT parent only when empty. Idempotent,
+    fail-open, HKCU only; file-association state may share the discovery branch.
+    """
     if not is_supported():
         return False
     try:
         import winreg
 
         try:
-            winreg.DeleteKey(winreg.HKEY_CURRENT_USER, XAIHT_DISCOVERY_KEY)
+            with winreg.OpenKey(
+                winreg.HKEY_CURRENT_USER, XAIHT_DISCOVERY_KEY, 0,
+                winreg.KEY_READ | winreg.KEY_SET_VALUE,
+            ) as key:
+                for name in (
+                    "InstallLocation", "AgentsRoot", "SourceAgentsRoot",
+                    "AgentManifestPath", "Version", "AgentCatalogVersion",
+                ):
+                    try:
+                        winreg.DeleteValue(key, name)
+                    except FileNotFoundError:
+                        pass
+                subkeys, values, _ = winreg.QueryInfoKey(key)
+            if subkeys == 0 and values == 0:
+                winreg.DeleteKey(winreg.HKEY_CURRENT_USER, XAIHT_DISCOVERY_KEY)
         except FileNotFoundError:
             pass  # already gone — success
         # Prune the XAIHT parent only if it has no remaining subkeys or values, so

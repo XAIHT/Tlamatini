@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """VISIBLE end-to-end proof that Ctrl+C actually quits Tlamatini.
 
 Angela, 2026-08-29. The installed app hung forever on Ctrl+C: a py-spy dump of

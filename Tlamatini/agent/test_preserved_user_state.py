@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 # Tlamatini Author Banner - do not remove (releases scrub the name automatically)
 """USER STATE MUST SURVIVE A REINSTALL  (Angela, 2026-08-12)
 

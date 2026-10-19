@@ -1,3 +1,4 @@
+/* Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1 */
 /* Browser regression: run with node tests/test_avatar_animation.cjs.
  * Requires Playwright (or PLAYWRIGHT_MODULE pointing at its installed package).
  * No login, application requests, voice output, or user data are needed.
@@ -106,11 +107,11 @@ async function createPage(browser, options = {}) {
 
 async function summary(page) {
   return page.evaluate(() => ({
-    paints: testSamples.length,
-    minCoverage: Math.min(...testSamples.map(s => s.coverage)),
-    partialOpacityPaints: testSamples.filter(s => s.states.some(i => i.opacity > 0 && i.opacity < 1)).length,
-    activeStates: [...new Set(testSamples.flatMap(s => s.states.filter(i => i.active).map(i => i.id)))],
-    distinctBoxes: new Set(testSamples.map(s => JSON.stringify(s.box))).size
+    paints: window.testSamples.length,
+    minCoverage: Math.min(...window.testSamples.map(s => s.coverage)),
+    partialOpacityPaints: window.testSamples.filter(s => s.states.some(i => i.opacity > 0 && i.opacity < 1)).length,
+    activeStates: [...new Set(window.testSamples.flatMap(s => s.states.filter(i => i.active).map(i => i.id)))],
+    distinctBoxes: new Set(window.testSamples.map(s => JSON.stringify(s.box))).size
   }));
 }
 
@@ -151,7 +152,7 @@ async function main() {
       // Snapshot all real expression states, with browser-drawn JPEGs.
       for (const id of ['eo-mc', 'ec-mc', 'eo-mo', 'ec-mo']) {
         await page.evaluate(id => {
-          testSpeech.speaking = false;
+          window.testSpeech.speaking = false;
           document.querySelectorAll('#tlm-face img').forEach(i => i.classList.toggle('tlm-on', i.id === 'tlm-s-' + id));
         }, id);
         await page.locator('#tlm-face').screenshot({ path: path.join(reportDir, id + '.png') });
@@ -166,7 +167,7 @@ async function main() {
     if (!before) {
       for (const name of ['slow', 'missing', 'holdDecode', 'reduced']) {
         const test = await createPage(browser, { [name]: true });
-        await test.page.evaluate(() => { testSpeech.speaking = true; });
+        await test.page.evaluate(() => { window.testSpeech.speaking = true; });
         await test.page.waitForTimeout(name === 'reduced' ? 5100 : 900);
         results[name] = await summary(test.page);
         assert.equal(results[name].minCoverage, 1, `${name}: blank/partly transparent frame`);
@@ -175,7 +176,7 @@ async function main() {
           assert.deepEqual(results[name].activeStates, ['tlm-s-eo-mc'], `${name}: selected an unavailable/disabled frame`);
         }
         if (name === 'holdDecode') {
-          await test.page.evaluate(() => testReleaseDecode());
+          await test.page.evaluate(() => window.testReleaseDecode());
           await test.page.waitForTimeout(350);
           assert((await summary(test.page)).activeStates.includes('tlm-s-eo-mo'));
         }

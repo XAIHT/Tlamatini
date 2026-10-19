@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """VISIBLE login probe - prints exactly where the chat page is lost.
 
 Headed Chrome. Reports URL, title and selector presence after every step, so we

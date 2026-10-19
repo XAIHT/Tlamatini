@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """OOB_shift_reaper + NAMU — deterministic unit proof of the FINAL design.
 
 Loads the REAL `_run_cmd_oob` from BOTH nmapper.py and discoverer.py (proving both

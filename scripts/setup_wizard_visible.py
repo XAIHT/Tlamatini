@@ -17,14 +17,14 @@ import time
 import tkinter as tk
 import traceback
 
-ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "Temp/setup-wizard-visible"
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import install
 import uninstall
 import drag_divider_look_visible as photographs
 from markdown_canvas_visible import visible_console
 
+ROOT = Path(__file__).resolve().parents[1]
+OUT = ROOT / "Temp/setup-wizard-visible"
 photographs.OUT = OUT
 RESULTS = []
 

@@ -22,6 +22,8 @@ from agent.chain_system_lcel import SystemRAGChain
 def main():
     output = Path(os.environ['TLAMATINI_RELEASE_MCP_OUTPUT'])
     fixture = Path(os.environ['TLAMATINI_RELEASE_MCP_FIXTURE']).resolve()
+    expected_model = os.environ['TLAMATINI_RELEASE_CHAINED_MODEL']
+    assert expected_model.strip(), 'The configured chained model is empty'
     filename = 'MCP Unicode ñ.txt'
     assert (fixture / filename).is_file(), 'The bounded MCP fixture is missing'
     assert path_guard.is_path_allowed(str(fixture / filename)), 'Path security did not load the configured fixture'
@@ -33,7 +35,7 @@ def main():
     assert {Path(value).resolve() for value in found} == {fixture / filename}
     assert files.call_grpc_server('../*', key, False, verbose=False) == []
     file_chain = FileSearchRAGChain()
-    assert file_chain.llm.model == 'nemotron-3-ultra:cloud'
+    assert file_chain.llm.model == expected_model
     assert file_chain.grpc_target == files._grpc_endpoint()
     assert file_chain._call_grpc_list_dirs_sync(False) == directories
     chain_found = file_chain._call_grpc_server_sync(filename, key.upper(), False, False)
@@ -57,7 +59,7 @@ def main():
 
     async def system_chain_probe():
         chain = SystemRAGChain()
-        assert chain.llm.model == 'nemotron-3-ultra:cloud'
+        assert chain.llm.model == expected_model
         assert chain.mcp_client.uri == MCPSystemClient().uri
         # The explicit CPU keyword uses deterministic routing: no model call.
         response = await chain.intelligent_context_fetch({'question': 'What is the CPU usage?'})

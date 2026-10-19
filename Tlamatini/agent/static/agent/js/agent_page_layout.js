@@ -9,6 +9,9 @@
  * ═══════════════════════════════════════════════════════════════════
  *   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
  */
+// Shared classic-script bindings, consumed by sibling page scripts.
+/* exported rotateTitle */
+
 
 // ============================================================
 // agent_page_layout.js  –  Drag dividers, resize & title rotation

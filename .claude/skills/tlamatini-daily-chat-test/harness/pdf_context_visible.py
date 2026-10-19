@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 # Tlamatini Author Banner - do not remove
 r"""
 PDF AS CONTEXT - VISIBLE TEST (Angela Lopez Mendoza, 2026-10-08)

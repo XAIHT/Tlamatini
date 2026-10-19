@@ -18,7 +18,8 @@ def check_splitters(page, window, base, capture):
             vertical = bar.get_attribute('aria-orientation') == 'vertical'
             key = 'ArrowRight' if vertical else 'ArrowDown'
             reverse = 'ArrowLeft' if vertical else 'ArrowUp'
-            number = lambda: float(bar.get_attribute('aria-valuenow'))
+            def number():
+                return float(bar.get_attribute('aria-valuenow'))
             home = 'End' if selector == '#vertical-drag-divider' else 'Home'
             end = 'Home' if home == 'End' else 'End'
             bar.press(home)

@@ -9,7 +9,6 @@ activates or closes Uninstaller.exe. Uninstaller input remains manual.
 import argparse
 import json
 import os
-from pathlib import Path
 import socket
 import subprocess
 import sys

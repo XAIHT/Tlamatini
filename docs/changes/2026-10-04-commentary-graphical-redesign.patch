@@ -1747,7 +1747,7 @@
 +- **Prompt Flow Panel** — design a chain of prompts, decisions, embeddings and user questions on a canvas, save it as a `.fpmt` file, and play it against your own models; each run keeps its own conversation and embeddings. **User Input** collects runtime replies; static **User Commentary** bubbles support a floating rich-text toolbar, mixed styles within a note, all-border resizing and complete text containment without scrollbars. Open it from **Panels ▸ Prompt Flow Panel**.
  - **Multi-Turn orchestration** — a tool-calling loop with **109 built-in tools** and a global execution planner; **Step-by-Step** mode paces hands-on setup one action at a time; **self-healing model steps** mean a network/model hiccup never freezes her — she retries under a watchdog, finishes gracefully from work already done, and always tells you what happened.
  - **FlowCreator / FlowHypervisor** — let an LLM design a flow; a watchdog monitors flow health. FlowCreator is now also **callable from chat** (`chat_agent_flowcreator`): describe a flow in plain words and it writes a real, canvas-loadable `.flw` file to disk.
- - **Parametrizer / Gatewayer / Gateway-Relayer / Node Manager** — chain agent outputs into the next agent's config; trigger flows from webhooks, folder-drops, or GitHub/GitLab.
+ - **Parametrizer** — chain agent outputs into the next agent's configuration.
 --- a/ACPX.md
 +++ b/ACPX.md
 @@ -21,7 +21,7 @@

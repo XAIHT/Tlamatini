@@ -30,11 +30,11 @@ import threading
 import tempfile
 import time
 from setup_wizard import WizardView, SetupDialog, button as wizard_button
-from setup_recovery import Recovery, setup_lock, removal_files, removal_directories
+from setup_recovery import Recovery, setup_lock, checked_path, remove_tree, atomic_json
 from setup_windows import run_powershell
 import tkinter as tk
 from ctypes import wintypes
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, messagebox
 from uninstall_processes import owned_processes, main_application, stop_owned_workers
 
 # Keep a retryable uninstaller and its registration helpers until all other
@@ -61,10 +61,29 @@ UNINSTALL_SUPPORT_FILES = frozenset({
 # the two random prefixes below, so a quick reinstall into the same folder can
 # never lose its fresh Uninstaller.exe to a cleanup from the previous run.
 SUPPORT_DELETE_RETRY_SECONDS = 8.0
+UNINSTALL_TARGET_SECONDS = 180
+UNINSTALL_LIMIT_SECONDS = 300
+CLEANUP_RECEIPT = ".tlamatini-removal.json"
 STAGING_PREFIX = "Tlamatini-Uninstaller-"
 PENDING_PREFIX = ".tlamatini-uninstall-pending-"
 CLEANUP_ATTEMPTS = 90          # one attempt every ~2 s: about three minutes
 STALE_STAGING_SECONDS = 600    # older Temp copies are leftovers of past runs
+
+
+def removal_cleanup_pending(target):
+    """Recognize only completed removal, never an interrupted rollback."""
+    if Recovery.removal_cleanup_pending(target):
+        return True
+    try:
+        path = checked_path(target, CLEANUP_RECEIPT)
+        with path.open(encoding="utf-8") as stream:
+            receipt = json.load(stream)
+        info = os.stat(target, follow_symlinks=False)
+        return (receipt.get("schema") == 1 and receipt.get("state") == "removed"
+                and receipt.get("identity") == [info.st_dev, info.st_ino]
+                and os.path.normcase(receipt.get("target", "")) == os.path.normcase(os.path.abspath(target)))
+    except (OSError, ValueError, RuntimeError):
+        return False
 
 
 # ─── Version resolution ───────────────────────────────────────────────────────
@@ -580,7 +599,8 @@ class FancyUninstaller:
         # Check if it looks like a Tlamatini installation. Arbitrary directories
         # are never accepted, even if the user clicks through a warning.
         markers = ["Tlamatini.exe", "Tlamatini.ps1", "CreateShortcut.json"]
-        found = any(os.path.isfile(os.path.join(raw, m)) for m in markers) or Recovery.pending(raw)
+        found = (any(os.path.isfile(os.path.join(raw, m)) for m in markers)
+                 or Recovery.pending(raw) or removal_cleanup_pending(raw))
         if not found:
             messagebox.showerror(
                 "Not a Tlamatini installation",
@@ -597,6 +617,11 @@ class FancyUninstaller:
         Asked AFTER the still-running gate, so the user is never made to confirm
         an uninstallation the uninstaller is about to refuse anyway.
         """
+        if removal_cleanup_pending(raw) and not os.path.isfile(os.path.join(raw, "Tlamatini.exe")):
+            return bool(messagebox.askyesno(
+                "Finish Uninstallation", f"Tlamatini was already removed from:\n{raw}\n\n"
+                "Finish removing the remaining temporary application files?\n"
+                "Your preserved content and agents will remain untouched."))
         return bool(messagebox.askyesno(
             "Confirm Uninstallation",
             f"This will remove Tlamatini from:\n{raw}\n\n"
@@ -752,7 +777,7 @@ class FancyUninstaller:
 
     # ── Progress helpers (always marshal to main thread) ─────────────
     def _set_progress(self, value: float, status: str | None = None):
-        if getattr(self, "_removal_phase", False):
+        if value is not None and getattr(self, "_removal_phase", False):
             value = .2 + .75 * value
         self._progress_value = value
         self.root.after(0, self._update_progress_ui, value, status)
@@ -772,7 +797,19 @@ class FancyUninstaller:
         registry_context("uninstallation worker start")
         recovery = None
         self._removal_phase = False
+        self._uninstall_started = time.monotonic()
+        self._cleanup_deadline = self._uninstall_started + UNINSTALL_LIMIT_SECONDS
+        self.cleanup_warnings = []
         try:
+            if removal_cleanup_pending(target) and not os.path.isfile(os.path.join(target, "Tlamatini.exe")):
+                self._cleanup_recovery = Recovery(target)
+                if self._cleanup_recovery.journal.exists():
+                    self._cleanup_recovery.load()
+                self.preserved_dirs = [name for name in PRESERVED_WHEN_NOT_EMPTY
+                                       if directory_has_content(os.path.join(target, name))]
+                self.removal_target = target
+                self._run_cleanup_retry(target)
+                return
             with setup_lock():
                 self._set_progress(0, "Stopping remaining agent workers…")
                 self.cleanup_report = stop_owned_workers(target)
@@ -780,18 +817,27 @@ class FancyUninstaller:
                 recovery = Recovery(
                     target, lambda message: self._set_progress(getattr(self, "_progress_value", 0), message),
                     progress=lambda fraction: self._set_progress(.2 * fraction),
+                    rollback_progress=lambda fraction: self._set_progress(fraction),
                 )
-                recovery.recover_previous()
+                recovery.cleanup_deadline = self._cleanup_deadline
+                if Recovery.pending(target):
+                    self.root.after(0, self.ui.begin_recovery, "An interrupted setup operation must be restored before removal can continue.")
+                    recovery.recover_previous()
+                    self.root.after(0, lambda: self.ui.begin(target, reset_clock=False))
+                else:
+                    recovery.recover_previous()
                 kept = ["agents"] + [name for name in PRESERVED_WHEN_NOT_EMPTY
                                      if directory_has_content(os.path.join(target, name))]
-                recovery.prepare(removal_files(target, kept),
-                                 restore_directories=removal_directories(target, kept))
+                recovery.prepare_removal(kept)
                 self._recovery = recovery
                 self._removal_phase = True
                 try:
                     self._run_uninstall_steps(target)
                 except Exception as exc:
+                    import traceback
+                    traceback.print_exc()
                     self._removal_phase = False
+                    self.root.after(0, self.ui.begin_recovery, str(exc))
                     self._set_progress(0, "Restoring the previous installation…")
                     # Failed removal must never schedule deletion of restored files.
                     self.deferred_in_place = []
@@ -802,19 +848,22 @@ class FancyUninstaller:
                         raise RuntimeError(f"{exc}\n\n{rollback_error}") from exc
                     raise RuntimeError(f"{exc}\n\nThe installation files and Windows registrations were restored. You can retry.") from exc
                 self._removal_phase = False
-                self._set_progress(.95, "Finishing recovery cleanup…")
-                self.setup_notice = recovery.commit()
-                temp_dir = os.path.join(target, "Temp")
-                try:
-                    if os.path.isdir(temp_dir) and not os.listdir(temp_dir):
-                        os.rmdir(temp_dir)
-                except OSError as exc:
-                    self.setup_notice += f"\nTemporary-folder cleanup can be retried: {exc}"
+                self._set_progress(None, "Deleting application files…")
+                recovery.cleanup_deadline = self._cleanup_deadline
+                self._cleanup_recovery = recovery
+                recovery.commit(defer_cleanup=True)
+                self._finish_committed_cleanup(target, recovery)
+                self.setup_notice = "\n".join(self.cleanup_warnings)
                 try:
                     self._cleanup_install_dir(target)
                 except OSError as exc:
                     self.setup_notice += f"\nEmpty-folder cleanup can be retried: {exc}"
-            self._set_progress(1, "Uninstallation complete!")
+            self._set_progress(None if self.setup_notice else 1,
+                               "Application removed; cleanup needs attention." if self.setup_notice
+                               else "Uninstallation complete!")
+            elapsed = time.monotonic() - self._uninstall_started
+            print(f"UNINSTALL ELAPSED: {elapsed:.2f}s; target {UNINSTALL_TARGET_SECONDS}s; "
+                  f"limit {UNINSTALL_LIMIT_SECONDS}s; cleanup warnings: {len(self.cleanup_warnings)}", flush=True)
             self.root.after(0, self._show_success, target)
         except Exception as exc:
             self.root.after(0, self._show_error, str(exc))
@@ -873,7 +922,7 @@ class FancyUninstaller:
         self._set_progress(cumulative, "Refreshing Windows Desktop…")
         self._restart_explorer()
         cumulative += self.STEPS[step_idx][1]
-        self._set_progress(1.0, "Uninstallation complete!")
+        self._set_progress(1.0, "Windows integration removed. Finishing file cleanup…")
         self._mark_step(step_idx)
 
         # ── Done ─────────────────────────────────────────────────
@@ -887,7 +936,10 @@ class FancyUninstaller:
                 f"The removal helper {filename} is missing from {target_dir}. "
                 "Restore the complete installation with its Installer, then retry removal."
             )
-        return run_powershell(dst)
+        remaining = getattr(self, "_cleanup_deadline", time.monotonic() + UNINSTALL_LIMIT_SECONDS) - time.monotonic()
+        if remaining <= 30:
+            raise TimeoutError("The removal time limit was reached before file deletion. Restoring the installation.")
+        return run_powershell(dst, timeout=min(30, remaining - 30))
 
     # ─── File removal (preserve agents/) ─────────────────────────────
     @staticmethod
@@ -957,16 +1009,11 @@ class FancyUninstaller:
 
             try:
                 if item.lower() == "temp" and getattr(self, "_recovery", None):
-                    # The active recovery copy survives until the whole operation succeeds.
-                    for child in os.scandir(item_path):
-                        if child.name == ".setup-recovery":
-                            continue
-                        if child.is_dir(follow_symlinks=False) and not getattr(os.path, "isjunction", lambda _: False)(child.path):
-                            shutil.rmtree(child.path, onerror=self._on_rmtree_error)
-                        elif child.is_dir(follow_symlinks=False):
-                            os.rmdir(child.path)
-                        else:
-                            os.remove(child.path)
+                    # Cache cleanup follows commit. A locked temporary directory
+                    # must never trigger restoration of the application payload.
+                    pass
+                elif getattr(self, "_recovery", None) and self._recovery.data.get("mode") == "removal":
+                    self._recovery.stage_removal(item)
                 elif os.path.islink(item_path):
                     os.unlink(item_path)
                 elif getattr(os.path, "isjunction", lambda _: False)(item_path):
@@ -995,6 +1042,36 @@ class FancyUninstaller:
                 "using this installation and retry.\n\n" + "\n".join(failures[:12])
             )
 
+    def _cleanup_temporary_files(self, target):
+        """Report cache residue separately; never roll back a removed application."""
+        folder = checked_path(target, "Temp")
+        if not folder.exists():
+            return
+        try:
+            with os.scandir(folder) as entries:
+                paths = [entry.name for entry in entries if entry.name != ".setup-recovery"]
+        except OSError as exc:
+            self.cleanup_warnings.append(f"Temporary files remain at {folder}: {exc}")
+            return
+        for name in paths:
+            try:
+                path = checked_path(folder, name)
+                remove_tree(path, lambda message: self._set_progress(None, message),
+                            deadline=self._cleanup_deadline)
+            except (OSError, RuntimeError, ValueError) as exc:
+                warning = f"Temporary cleanup could not finish for {folder / name}: {exc}"
+                print(f"[UNINSTALL] {warning}", flush=True)
+                self.cleanup_warnings.append(warning)
+        try:
+            folder.rmdir()
+        except FileNotFoundError:
+            pass
+        except OSError as exc:
+            if not self.cleanup_warnings and not (folder / ".setup-recovery").exists():
+                warning = f"Temporary cleanup could not finish for {folder}: {exc}"
+                print(f"[UNINSTALL] {warning}", flush=True)
+                self.cleanup_warnings.append(warning)
+
     def _remove_uninstall_support(self, target: str):
         """Remove retry support only after application and registry removal.
 
@@ -1020,6 +1097,9 @@ class FancyUninstaller:
                 continue
             if own and os.path.normcase(os.path.abspath(path)) == own:
                 self.deferred_in_place.append(path)
+                continue
+            if getattr(self, "_recovery", None) and self._recovery.data.get("mode") == "removal":
+                self._recovery.stage_removal(name)
                 continue
             if self._delete_or_move_aside(target, path) == "deferred":
                 self.deferred_files.append(name)
@@ -1208,7 +1288,7 @@ class FancyUninstaller:
         if not remaining:
             try:
                 os.rmdir(target)
-            except Exception:
+            except FileNotFoundError:
                 pass
         # If only agents/ (or other items) remain, leave the directory
 
@@ -1250,11 +1330,73 @@ class FancyUninstaller:
         agents_dir = os.path.join(target, "agents")
         agents_note = (f"\n\nThe agents/ directory was preserved at:\n{agents_dir}"
                        if os.path.isdir(agents_dir) else "")
-        self.ui.finish(success=True, target=target, detail=(
+        self.ui.finish(success=True, target=target,
+                       cleanup_retry=(lambda: self._retry_cleanup(target))
+                       if getattr(self, "setup_notice", "") else None, detail=(
             "Shortcuts and .flw / .fpmt file associations have been removed."
             + agents_note + self._preserved_content_note() + self._deferred_note()
             + ("\n\n" + self.setup_notice if getattr(self, "setup_notice", "") else "")
         ))
+
+    def _retry_cleanup(self, target):
+        """Retry this operation's residue only, never the uninstall transaction."""
+        if self._uninstalling:
+            return
+        self._uninstalling = True
+        self.ui.begin(target)
+        self.ui.heading.configure(text="Finishing file cleanup.")
+        for label in self.ui.check_labels:
+            label.pack_forget()
+        threading.Thread(target=self._run_cleanup_retry, args=(target,), daemon=True).start()
+
+    def _run_cleanup_retry(self, target):
+        self.cleanup_warnings = []
+        self.setup_notice = ""
+        self._cleanup_deadline = time.monotonic() + UNINSTALL_LIMIT_SECONDS
+        try:
+            with setup_lock():
+                # A new install must never inherit deletion from an older run.
+                if os.path.exists(os.path.join(target, "Tlamatini.exe")):
+                    raise RuntimeError("An application is present again. Cleanup stopped to protect the new installation.")
+                recovery = self._cleanup_recovery
+                if recovery.journal.exists():
+                    current = Recovery(target, lambda message: self._set_progress(None, message))
+                    current.load()
+                    if (current.data != recovery.data or current.data.get("state") != "committed"
+                            or current.data.get("outcome") != "removed"):
+                        raise RuntimeError("Setup recovery changed since this removal. Cleanup stopped; files were kept.")
+                    recovery = current
+                elif recovery.folder.exists():
+                    raise RuntimeError(f"Recovery journal is unavailable. Files were kept at {recovery.folder}.")
+                elif recovery.data is None and not removal_cleanup_pending(target):
+                    raise RuntimeError("The completed-removal receipt is unavailable. Files were kept.")
+                self._finish_committed_cleanup(target, recovery)
+                self._cleanup_install_dir(target)
+        except Exception as exc:
+            self.cleanup_warnings.append(str(exc))
+        self.setup_notice = "\n".join(self.cleanup_warnings)
+        self.root.after(0, self._show_success, target)
+
+    def _finish_committed_cleanup(self, target, recovery):
+        """Retain a small identity-bound receipt until ALL temporary data is gone.
+
+        This survives closing the wizard after a Temp lock even when the large
+        quarantine and its journal have already been removed. It never re-runs
+        Windows integration removal or touches preserved content directories.
+        """
+        info = os.stat(target, follow_symlinks=False)
+        receipt = checked_path(target, CLEANUP_RECEIPT)
+        atomic_json(receipt, {"schema": 1, "state": "removed", "target": os.path.abspath(target),
+                              "identity": [info.st_dev, info.st_ino]})
+        if recovery.folder.exists():
+            recovery.cleanup_deadline = self._cleanup_deadline
+            try:
+                recovery.discard()
+            except OSError as exc:
+                self.cleanup_warnings.append(f"Application cleanup remains at {recovery.folder}: {exc}")
+        self._cleanup_temporary_files(target)
+        if not self.cleanup_warnings:
+            receipt.unlink()
 
     def _deferred_note(self) -> str:
         """Say plainly which files are deleted only after this window closes.

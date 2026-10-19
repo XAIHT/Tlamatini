@@ -9,6 +9,9 @@
  * ═══════════════════════════════════════════════════════════════════
  *   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
  */
+// Shared classic-script bindings, consumed by sibling page scripts.
+/* exported agentStatusPollerInterval, AGENT_STATUS_POLL_INTERVAL, undoManager */
+
 
 // Agentic Control Panel - Undo/Redo Manager
 // LOAD ORDER: #3 - Depends on: nothing (standalone class)

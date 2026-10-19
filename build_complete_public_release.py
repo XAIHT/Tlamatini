@@ -168,9 +168,9 @@ def _is_kept_name(value: str) -> bool:
 #: one of them up byte-for-byte BEFORE running it.
 #:
 #: WARNING: DERIVED, never hand-typed. The hand-written list carried only 5 of the
-#: 7 agent config.yaml files regen actually edits -- `zavuerer` and `discoverer`
+#: 6 agent config.yaml files regen actually edits -- `discoverer`
 #: were missing. On a machine WITHOUT data.keys the `finally` re-key is skipped, so
-#: those two were scrubbed to placeholders with NO backup to restore from: silent
+#: those two was scrubbed to placeholders with NO backup to restore from: silent
 #: loss of the operator's own keys. Reading the paths out of regen_secrets itself
 #: means the NEXT managed config file is covered the day it is added there.
 #: Pinned by Tlamatini/agent/test_public_release_targets.py.
@@ -180,7 +180,7 @@ _REGEN_TOUCHED_FALLBACK = [
     REPO_ROOT / "Tlamatini" / "agent" / "external_mcps.json",
 ] + [REPO_ROOT / "Tlamatini" / "agent" / "agents" / _a / "config.yaml"
      for _a in ("telegrammer", "whatsapper", "teletlamatini", "emailer",
-                "recmailer", "zavuerer", "discoverer")]
+                "recmailer", "discoverer")]
 
 
 def _regen_touched_files() -> list[Path]:

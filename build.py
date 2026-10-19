@@ -383,6 +383,68 @@ _AGENT_RUNTIME_IMPORTS = (
     "yt_dlp",                               # Video-Analyzer web links (python -m yt_dlp); private self-updating copy as backup
 )
 
+# These packages execute only in pool/chat-voice subprocesses under the carried
+# Python. They must remain there; collecting them again in Django's interpreter
+# adds another browser driver and hundreds of MiB of unused media binaries.
+_FROZEN_POOL_ONLY_MODULES = (
+    "cv2", "ffpyplayer", "av", "playwright", "faster_whisper",
+    "ctranslate2", "onnxruntime",
+)
+
+
+def verify_frozen_pool_libraries_absent(dist_root):
+    """Prove that the frozen interpreter respects the pool runtime boundary."""
+    names = _read_pyz_module_names(dist_root)
+    if names is None:
+        raise RuntimeError("Cannot inspect frozen pool-library exclusions")
+    unexpected = sorted(name for name in names
+                        if name.split(".", 1)[0] in _FROZEN_POOL_ONLY_MODULES)
+    internal = Path(dist_root) / "_internal"
+    for path in internal.iterdir():
+        stem = path.name.split(".", 1)[0].split("-", 1)[0]
+        if stem in _FROZEN_POOL_ONLY_MODULES:
+            unexpected.append(path.name)
+    if unexpected:
+        raise RuntimeError("Pool-only libraries leaked into the frozen interpreter: "
+                           + ", ".join(unexpected[:20]))
+    print("  Frozen pool-library boundary passed; carried agent dependencies are retained.")
+
+
+def prune_regenerable_bytecode(dist_root):
+    """Remove build-created caches only when their Python source is present.
+
+    Never remove source-less bytecode, the frozen PYZ or standard-library ZIPs.
+    Run after all executable checks and before creating the final receipt.
+    """
+    root = Path(dist_root).resolve()
+    removed = size = 0
+    for tree in (root / "python", root / "_internal"):
+        if not tree.is_dir() or tree.is_symlink() or tree.is_junction():
+            continue
+        for directory, dirs, files in os.walk(tree, topdown=False, followlinks=False):
+            parent = Path(directory)
+            if not parent.resolve().is_relative_to(root):
+                continue
+            for name in files:
+                path = parent / name
+                if path.suffix not in {".pyc", ".pyo"} or path.is_symlink():
+                    continue
+                if parent.name == "__pycache__":
+                    try:
+                        source = Path(importlib.util.source_from_cache(str(path)))
+                    except ValueError:
+                        continue
+                else:
+                    source = path.with_suffix(".py")
+                if source.is_file():
+                    size += path.stat().st_size
+                    path.unlink()
+                    removed += 1
+            if parent.name == "__pycache__" and not any(parent.iterdir()):
+                parent.rmdir()
+    print(f"  Removed {removed} regenerable bytecode files ({size:,} bytes); source retained.")
+    return {"files": removed, "bytes": size}
+
 # ── FROZEN-BUNDLE CARRIAGE PROOF (Angela review, 2026-08-16) ─────────────────
 # _AGENT_RUNTIME_IMPORTS above covers the CARRIED Python (the pool agents).  It
 # says NOTHING about what landed inside the PyInstaller bundle, and these
@@ -771,7 +833,7 @@ def bundle_carried_python(dist_manage, frozen_python, build_python):
     print(f"  -> Verifying agent libs import in the CARRIED tree (isolated): {carried_exe} ...")
     try:
         chk = subprocess.run(
-            [str(carried_exe), "-I", "-c", verify_src],
+            [str(carried_exe), "-I", "-B", "-c", verify_src],
             capture_output=True, text=True, timeout=300,
         )
     except Exception as e:
@@ -899,7 +961,7 @@ def ensure_local_build_python():
     return str(local_exe)
 
 
-def _active_playwright_revisions():
+def _active_playwright_revisions(manifest_path=None):
     """Directory-name tokens for the Chromium builds the INSTALLED Playwright
     actually pins — read from ``playwright/driver/package/browsers.json``.
 
@@ -913,8 +975,11 @@ def _active_playwright_revisions():
     keep: set[str] = set()
     try:
         import json as _json
-        import playwright as _pw
-        bj = Path(_pw.__file__).parent / "driver" / "package" / "browsers.json"
+        if manifest_path is None:
+            import playwright as _pw
+            bj = Path(_pw.__file__).parent / "driver" / "package" / "browsers.json"
+        else:
+            bj = Path(manifest_path)
         data = _json.loads(bj.read_text(encoding="utf-8"))
         for b in data.get("browsers", []):
             if not b.get("installByDefault"):
@@ -943,9 +1008,8 @@ def bundle_playwright_browsers(dist_manage):
     them up. Without this, Playwrighter and the Googler tool fail on a clean
     machine ("browser not found"). At runtime manage.py points
     ``PLAYWRIGHT_BROWSERS_PATH`` at ``<install_dir>/ms-playwright`` — inherited
-    by every spawned pool agent via ``os.environ.copy()`` — so BOTH the
-    in-process Googler (embedded exe Python) AND the Playwrighter pool agent
-    (carried Python) find these browsers.
+    by every spawned pool agent via ``os.environ.copy()``. Googler,
+    Playwrighter and Whatsapper use the carried Python's browser driver.
 
     Mandatory: missing browser binaries abort the release instead of disabling
     Playwrighter/Googler on the user's clean computer.
@@ -981,7 +1045,10 @@ def bundle_playwright_browsers(dist_manage):
     # Keep ONLY the chromium / headless-shell revisions the installed Playwright
     # pins (see _active_playwright_revisions); every stale revision left in the
     # cache by an earlier upgrade is skipped. Even --all requires active builds.
-    active_revs = _active_playwright_revisions()
+    active_revs = _active_playwright_revisions(
+        Path(dist_manage) / "python" / "Lib" / "site-packages" /
+        "playwright" / "driver" / "package" / "browsers.json"
+    )
     for revision in active_revs:
         if not (Path(src) / revision).is_dir():
             raise RuntimeError(f"Missing required Playwright browser revision: {revision}")
@@ -997,7 +1064,8 @@ def bundle_playwright_browsers(dist_manage):
                 if ln.startswith(_UNUSED_ENGINE_PREFIXES):
                     skipped.add(n)
                 elif active_revs and (ln.startswith("chromium-")
-                                      or ln.startswith("chromium_headless_shell-")):
+                                      or ln.startswith("chromium_headless_shell-")
+                                      or ln.startswith("ffmpeg-")):
                     if n not in active_revs:
                         skipped.add(n)
         return list(skipped)
@@ -1087,7 +1155,16 @@ def bundle_git(dist_manage):
     if dst.exists():
         shutil.rmtree(dst)
     print(f"\n--- Bundling Git: {src} -> {dst} ---")
-    shutil.copytree(src, dst, ignore=shutil.ignore_patterns("__pycache__"))
+    def ignore_git_installer_state(directory, names):
+        skipped = {name for name in names if name == "__pycache__"}
+        if Path(directory).resolve() == src.resolve():
+            # These describe the build machine's Git installation. The carried
+            # runtime is owned by Tlamatini's installer, not Git's old uninstaller.
+            skipped.update(name for name in names
+                           if re.fullmatch(r"unins\d+\.(exe|dat|msg)", name, re.IGNORECASE))
+        return skipped
+
+    shutil.copytree(src, dst, ignore=ignore_git_installer_state)
     size_mb = sum(p.stat().st_size for p in dst.rglob("*") if p.is_file()) / (1024 * 1024)
     print(f"  Git bundled ({size_mb:.0f} MB). Runtime: <install_dir>/git/cmd on PATH.")
 
@@ -1291,11 +1368,15 @@ def main():
                   "Python. Aborting build.")
             sys.exit(1)
 
-        # 1c) Install Playwright browsers
-        print(f"  -> Installing Playwright browsers for {target_python} ...")
-        pw_result = subprocess.run([target_python, "-m", "playwright", "install"])
-        if pw_result.returncode != 0:
-            raise RuntimeError(f"Playwright browser installation failed for {target_python}")
+    # Browser agents run under carried Python, so install exactly that driver's
+    # revisions. The build interpreter's Playwright version is not authoritative.
+    print(f"  -> Installing Playwright browsers for carried Python: {frozen_python} ...")
+    browser_command = [frozen_python, "-I", "-m", "playwright", "install"]
+    if os.environ.get("TLAMATINI_BUNDLE_ALL_BROWSERS", "").strip() not in ("1", "true", "True"):
+        browser_command.append("chromium")
+    pw_result = subprocess.run(browser_command)
+    if pw_result.returncode != 0:
+        raise RuntimeError(f"Playwright browser installation failed for {frozen_python}")
 
     # Ensure PyInstaller is available
     try:
@@ -1512,22 +1593,13 @@ def main():
         '--exclude-module=torchao',
         '--exclude-module=snac',
         '--exclude-module=whisper',
+        *(f'--exclude-module={module}' for module in _FROZEN_POOL_ONLY_MODULES),
         '--collect-all', 'django_bootstrap5',
         '--collect-all', 'autobahn',
         '--collect-all', 'filesearch_pb2',
         '--collect-all', 'filesearch_pb2_grpc',
-        # VideoPlayer audio+video: ffpyplayer ships compiled extensions + bundled
-        # ffmpeg/SDL DLLs inside its package dir; --collect-all pulls those
-        # binaries (PyInstaller's module-graph alone misses the .dll payload),
-        # so the frozen build plays video WITH audio and no external ffmpeg.
-        '--collect-all', 'ffpyplayer',
-        # Camcorder / VideoPlayer: OpenCV (cv2) ships compiled extensions + native
-        # DLLs that PyInstaller's module graph misses (nothing in the frozen
-        # process imports cv2 directly — the agents run under the carried Python),
-        # so --collect-all embeds cv2 in the frozen _internal too, for parity with
-        # the carried Python. numpy is handled by pyinstaller_hooks/hook-numpy.py.
-        '--collect-all', 'cv2',
-        '--collect-all', 'av',  # Video-Analyzer per-track audio decode (bundled FFmpeg libraries)
+        # Media/browser agents retain their complete native wheels in carried
+        # Python. They never execute inside this frozen Django interpreter.
         # External MCPs network transports: external_mcp_manager.py (which runs in
         # THIS frozen Django process, not the carried Python) reaches remote MCP
         # servers over Streamable HTTP / SSE (httpx) and WebSocket (websockets).
@@ -1588,6 +1660,7 @@ def main():
 
     # ── 5b) PROVE the frozen/carried interpreter boundary ─────────────
     verify_frozen_torch_absent(dist_manage)
+    verify_frozen_pool_libraries_absent(dist_manage)
     verify_frozen_agent_modules(dist_manage)
 
     # ── 6) Copy application files & create directories ───────────────
@@ -2062,14 +2135,17 @@ def main():
             try:
                 pkg_zip_path = Path("pkg.zip")
                 pending_zip = pkg_zip_path.with_suffix(".zip.part")
+                prune_regenerable_bytecode(dist_manage)
                 write_runtime_manifest(
                     dist_manage, expected_runtime_assets,
                     version=tlamatini_version, self_modify=self_modify,
                 )
 
                 print(f"\n--- Creating {pkg_zip_path} from {dist_manage} ---")
-                with zipfile.ZipFile(pending_zip, 'w', zipfile.ZIP_DEFLATED) as zf:
+                with zipfile.ZipFile(pending_zip, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as zf:
                     file_count = 0
+                    packaged_bytes = 0
+                    last_progress = time.monotonic()
                     for root, dirs, files in os.walk(dist_manage):
                         # Add empty directories as explicit entries so they survive extraction
                         if not files and not dirs:
@@ -2080,6 +2156,11 @@ def main():
                             arcname = full_path.relative_to(dist_manage)
                             zf.write(full_path, arcname)
                             file_count += 1
+                            packaged_bytes += full_path.stat().st_size
+                            if time.monotonic() - last_progress >= 10:
+                                print(f"  Packaged {file_count:,} files, "
+                                      f"{packaged_bytes / (1024 ** 2):.1f} MiB of input", flush=True)
+                                last_progress = time.monotonic()
                     print(f"Added {file_count} files to {pkg_zip_path}")
                 enforce_pkg_zip_size(pending_zip)
                 verify_package(pending_zip, expected_version=tlamatini_version)

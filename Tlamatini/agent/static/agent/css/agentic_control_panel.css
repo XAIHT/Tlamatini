@@ -1330,7 +1330,7 @@ body.resizing {
    and the black-terminal / neon-green aesthetic is the canonical visual cliché
    for a Kali Linux offensive-security agent. The deep-black base also
    separates it from the mid-green agents (Starter emerald, Whatsapper forest,
-   Mongoxer olive, NodeManager lime) — none of which use black or a neon
+   Mongoxer olive) — none of which use black or a neon
    top-stop — and from the red+green agents (Mouser / J-Decompiler /
    FlowCreator) the previous Kalier palette resembled. */
 .canvas-item.kalier-agent {
@@ -1342,23 +1342,6 @@ body.resizing {
 .canvas-item.kalier-agent:hover {
     background: linear-gradient(135deg, #0A0A0A 0%, #006626 33%, #00B032 66%, #6BFF52 100%);
     box-shadow: 0 6px 15px rgba(57, 255, 20, 0.5);
-}
-
-/* Zavuerer Agent — Zavu unified-messaging bridge (ONE API for SMS / WhatsApp /
-   Telegram / Email / Voice). A four-channel "signal spectrum" ramp: teal →
-   royal-blue → violet → rose — four distinct hues for the four+ channels Zavu
-   unifies, sweeping cool-to-warm so it reads as a multi-channel broadcast. No
-   other agent uses this teal→blue→violet→rose sweep (Kalier is mono-green,
-   ACPXer is navy→magenta→cyan, the firmware agents are blue/red/charcoal). */
-.canvas-item.zavuerer-agent {
-    background-color: #14B8A6;
-    background: linear-gradient(135deg, #14B8A6 0%, #3B82F6 33%, #8B5CF6 66%, #F43F5E 100%);
-    color: white;
-    font-size: smaller;
-}
-.canvas-item.zavuerer-agent:hover {
-    background: linear-gradient(135deg, #2DD4BF 0%, #60A5FA 33%, #A78BFA 66%, #FB7185 100%);
-    box-shadow: 0 6px 15px rgba(139, 92, 246, 0.5);
 }
 
 /* STM32er Agent — STM32 Template Project MCP bridge (firmware scaffold/build/
@@ -2602,44 +2585,6 @@ body.resizing {
     box-shadow: 0 6px 15px rgba(33, 212, 180, 0.5);
 }
 
-/* Gatewayer Agent */
-.canvas-item.gatewayer-agent {
-    background-color: #FF006E;
-    background: linear-gradient(135deg, #FF006E 0%, #8338EC 33%, #3A86FF 66%, #00F5D4 100%);
-    color: white;
-    font-size: smaller;
-}
-
-.canvas-item.gatewayer-agent:hover {
-    background: linear-gradient(135deg, #FF3D8E 0%, #9B59F5 33%, #5DA3FF 66%, #33FFE0 100%);
-    box-shadow: 0 6px 15px rgba(131, 56, 236, 0.5);
-}
-
-/* GatewayRelayer Agent */
-.canvas-item.gateway-relayer-agent {
-    background-color: #264653;
-    background: linear-gradient(135deg, #264653 0%, #2A9D8F 33%, #E9C46A 66%, #E76F51 100%);
-    color: white;
-    font-size: smaller;
-}
-
-.canvas-item.gateway-relayer-agent:hover {
-    background: linear-gradient(135deg, #2F5D70 0%, #36B4A5 33%, #F2D382 66%, #F0916C 100%);
-    box-shadow: 0 6px 15px rgba(42, 157, 143, 0.5);
-}
-
-/* NodeManager Agent */
-.canvas-item.nodemanager-agent {
-    background-color: #0D4F4F;
-    background: linear-gradient(135deg, #0D4F4F 0%, #00ACC1 33%, #76FF03 66%, #FFB300 100%);
-    color: white;
-    font-size: smaller;
-}
-.canvas-item.nodemanager-agent:hover {
-    background: linear-gradient(135deg, #15696A 0%, #26C6DA 33%, #9EFF5A 66%, #FFC93C 100%);
-    box-shadow: 0 6px 15px rgba(0, 172, 193, 0.5);
-}
-
 /* File-Creator Agent Styles - File creation utility (Teal-to-Coral gradient) */
 .canvas-item.filecreator-agent {
     background-color: #00897B;
@@ -2866,9 +2811,7 @@ body.resizing {
        spring-mint (#7CF6B5)    -> contents released / next stage triggered
    Each stop is in a distinct hue family from every other canvas-item
    gradient in this file: not the navy/violet/magenta/cyan of acpxer,
-   not the dark-teal/cyan/lime/amber of node_manager, not the
-   pink/purple/blue/cyan of gatewayer, not the dark-teal/teal/gold/orange
-   of gateway-relayer, not the orange/coral/violet/black of acpx,
+   not the orange/coral/violet/black of acpx,
    not the red/orange/yellow/green of keyboarder, not the
    crimson/amber/forest/blue of mouser, and not the cyan/sky/amber/crimson of
    teletlamatini.

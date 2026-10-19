@@ -26,10 +26,10 @@ class FlowContractTests(SimpleTestCase):
         self.assertTrue(str(root).replace("\\", "/").endswith("Tlamatini/agent/agents"))
         self.assertTrue((root / "starter" / "config.yaml").exists())
 
-    def test_alias_normalization_keeps_gateway_names_compatible(self):
-        self.assertEqual(normalize_agent_type("Gateway Relayer"), "gateway_relayer")
-        self.assertEqual(get_agent_contract("gateway-relayer").agent_type, "gateway_relayer")
-        self.assertEqual(get_agent_contract("node manager").agent_type, "node_manager")
+    def test_alias_normalization_keeps_multiword_names_compatible(self):
+        self.assertEqual(normalize_agent_type("Instant Messaging Doctor"), "instant_messaging_doctor")
+        self.assertEqual(get_agent_contract("instant-messaging-doctor").agent_type, "instant_messaging_doctor")
+        self.assertEqual(get_agent_contract("monitor netstat").agent_type, "monitor_netstat")
 
     def test_dry_run_compiles_canvas_connections_and_ender_kill_list(self):
         spec = FlowSpec(

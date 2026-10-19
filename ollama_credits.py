@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 
 #!/usr/bin/env python3
 # ollama_credits.py - Zero-dependency Ollama Cloud credits/usage checker.

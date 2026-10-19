@@ -84,7 +84,7 @@ Every current count in this file was **re-verified against source on 2026-10-16 
 10. ACPX System (external coding-agent CLIs)
 11. Skills System (SKILL.md packages)
 12. Visual Workflow Designer (ACP) & Flow Compiler
-13. The 89 Workflow Agent Types (catalog)
+13. The 85 Workflow Agent Types (catalog)
 14. Creating a New Agent / Tool / Skill
 15. Frontend Architecture
 16. Build, Release & Versioning
@@ -113,17 +113,17 @@ Every current count in this file was **re-verified against source on 2026-10-16 
 
 | Surface | Count | Ground truth |
 |---|---|---|
-| Workflow agent types | **89** † | `Tlamatini/agent/agents/<name>/` dirs (excl. `pools/`) and `_tlamatini_agents_manifest.json` |
+| Workflow agent types | **85** † | `Tlamatini/agent/agents/<name>/` dirs (excl. `pools/`) and `_tlamatini_agents_manifest.json` |
 | Wrapped chat-agent tools (`chat_agent_*`) | **67** † | `chat_agent_registry.py` `WRAPPED_CHAT_AGENT_SPECS` (counted) |
 | Direct LangChain `@tool`s | **20** | 18 in `tools.py` + 2 in `imaging/image_interpreter.py` |
 | ACPX tools (`acp_*`, `list_acp_agents`, `invoke_skill`, `list_skills`) | **12** | `agent/acpx/tools.py` |
 | External-MCP supervisor tools | **10** (+ dynamic `ext__*`) | `_SUPERVISOR_TOOL_NAMES` in `agent/external_mcp_manager.py` |
 | **Built-in Multi-Turn tool surface** | **109** (+ dynamic) | 20 + 67 + 12 + 10 from isolated `get_mcp_tools()` |
-| Root stdio MCP server tools | **106** | 89 agent launchers + 7 management + 10 ACPX (`tlamatini_mcp_server.py`) |
+| Root stdio MCP server tools | **102** | 85 agent launchers + 7 management + 10 ACPX (`tlamatini_mcp_server.py`) |
 | SKILL.md packages | **29** | `agent/skills_pkg/` (confirmed live via `tlamatini_list_skills`) |
 | ACPX external CLI agent_ids | **14** | `agent/acpx/agent_registry.py` `DEFAULT_ACP_AGENTS` |
 | DB models | **18** | `agent/models.py` |
-| Migrations | **213** ‡ | `agent/migrations/*.py`, excluding `__init__.py` (latest `0213_usage_ledger`) |
+| Migrations | **214** ‡ | `agent/migrations/*.py`, excluding `__init__.py` (latest `0214_prune_agent_catalog`) |
 | Frontend JS modules | **59** ‡ | `agent/static/agent/js/*.js` (25 chat + 15 ACP + 1 ACP entry + 15 shared + 1 welcome + 2 Prompt Flow Panel) |
 | Page templates / CSS files | **6 / 26** ‡ | `agent/templates/agent/*.html` (five pages plus the `usage_dialog.html` partial), `agent/static/agent/css/*.css` |
 | HTTP routes / view functions | 183 / 214 | `agent/urls.py`, `agent/views.py` (12,906 lines) |
@@ -212,7 +212,7 @@ When a task needs Angela to act on her machine (edit configs, click UI, check a 
 - **L2 Runtime services**: started from `agent/apps.py::AgentConfig.ready()` (reloader-gated); feed live metrics + file indexes.
 - **L3 Sidecar chains**: prefetch `{system_context}` / `{files_context}` injected into every prompt.
 - **L4 Main chains**: `factory.py` monkey-patches `invoke()` to merge sidecar context before the LLM call.
-- **L5 Tools**: 20 direct/core tools + 67 wrapped `chat_agent_*` launchers + 10 External-MCP supervisors; the 12 ACPX/Skill tools form L6 but join the same 109-tool built-in Multi-Turn surface when enabled. Direct chat dictation prepares user input before this tool surface; it does not add another tool.
+- **L5 Tools**: 20 direct/core tools + 66 wrapped `chat_agent_*` launchers + 10 External-MCP supervisors; the 12 ACPX/Skill tools form L6 but join the same 109-tool built-in Multi-Turn surface when enabled. Direct chat dictation prepares user input before this tool surface; it does not add another tool.
 - **L6 ACPX & Skills**: spawns external CLI engines and runs `SKILL.md` playbooks.
 - **L7 Flow Compiler**: normalizes canvas/chat flows into run-ready pools under `agents/pools/<session_id>/`.
 
@@ -291,7 +291,7 @@ Tlamatini/                          # Git root (C:\Development\Tlamatini)
 ├── requirements.txt                # Python deps (ruff is a REQUIRED runtime gate — never unpin)
 ├── eslint.config.mjs               # ESLint 10 config (501-line cross-file globals whitelist)
 ├── package.json                    # release metadata 1.72.4; npm run lint / lint:fix
-├── tlamatini_mcp_server.py         # Root stdio MCP server: 89 agent tools + 7 mgmt + 10 ACPX
+├── tlamatini_mcp_server.py         # Root stdio MCP server: 85 agent tools + 7 mgmt + 10 ACPX
 ├── tlamatini_acpx.py               # Self-contained stdlib ACPX runtime port for the MCP server
 ├── Tlamatini.ps1                   # Legacy launcher for the frozen exe
 ├── demo_flows/                     # 3 shipping .flw demos (schemaVersion 2)
@@ -364,7 +364,7 @@ Tlamatini/                          # Git root (C:\Development\Tlamatini)
         │                           #   flow_compiler (compile + pool writer)
         ├── opus_client/            # Claude API client library
         ├── imaging/                # Dual-backend image analysis (opus_analyze_image, qwen_analyze_image)
-        ├── agents/                 # 89 AGENT TEMPLATE DIRS (<name>/<name>.py + config.yaml)
+        ├── agents/                 # 85 AGENT TEMPLATE DIRS (<name>/<name>.py + config.yaml)
         │   ├── _tlamatini_agents_manifest.json   # sha256 manifest (regenerated at build/launch)
         │   ├── pools/              # Runtime session pools (canvas flows)
         │   ├── flowcreator/agentic_skill.md      # FlowCreator AI reference
@@ -372,7 +372,7 @@ Tlamatini/                          # Git root (C:\Development\Tlamatini)
         │   └── <86 more>/          # See §13 catalog
         ├── templates/agent/        # 6 templates: agent_page, agentic_control_panel, prompt_flow_panel, login, welcome, usage_dialog (partial)
         ├── static/agent/           # js/ (59 modules), css/ (26 files), img/, sounds/, vendor/ (frontend + pdfjs)
-        └── migrations/             # 213 migrations (0213 adds UsageDaily; 0211-0212 add the Compact mode and Self-modify state)
+        └── migrations/             # 214 migrations (0213 adds UsageDaily; 0211-0212 add the Compact mode and Self-modify state)
 ```
 
 ---
@@ -404,7 +404,7 @@ Key config keys:
 
 ## 6. Database & Models
 
-SQLite single DB `Tlamatini/db.sqlite3` (`settings.py`: `BASE_DIR/'db.sqlite3'`) running in **WAL mode** (`settings.py` → `PRAGMA journal_mode=WAL`) — under WAL, every change committed since the last checkpoint lives in `db.sqlite3-wal`, so a plain filesystem copy of `db.sqlite3` is a stale, silently-wrong database. FAISS indexes live on disk, not in DB. **213 migrations** in the current worktree (0213 adds UsageDaily); heavy seed-migration usage (prompts, tools, agents as data rows).
+SQLite single DB `Tlamatini/db.sqlite3` (`settings.py`: `BASE_DIR/'db.sqlite3'`) running in **WAL mode** (`settings.py` → `PRAGMA journal_mode=WAL`) — under WAL, every change committed since the last checkpoint lives in `db.sqlite3-wal`, so a plain filesystem copy of `db.sqlite3` is a stale, silently-wrong database. FAISS indexes live on disk, not in DB. **214 migrations** in the current worktree (0213 adds UsageDaily); heavy seed-migration usage (prompts, tools, agents as data rows).
 
 **17 models** (`agent/models.py`): `AgentMessage` (chat messages — also the ONLY store of the history the model reads; the **Drop** button deletes one row, see §7.7) · `LLMProgram` / `LLMSnippet` (saved code) · `Prompt` (Catalog of Prompts; append-only PK rule + `category` / `hidden` / `sort_rank`) · `Omission` (file omission patterns) · `ContextCache` (SHA1 query→context cache) · `Mcp` (MCP toggle rows) · `Tool` (tool toggle rows) · `Agent` (agent type registry — **repopulated from the `agents/` dirs on every boot**, `apps.py`) · `AgentProcess` (tracked PIDs — wiped every boot) · `ChatAgentRun` (wrapped run records — wiped every boot) · `Asset` · `SessionState` (24 h expiry) · `AcpAgent` (mirrored from `DEFAULT_ACP_AGENTS` on boot) · `Skill` (mirrored from `skills_pkg/` on boot; enumeration + enable/disable only — budgets/permissions/body live in SKILL.md on disk) · `AcpSession` · `SkillInvocation`.
 
@@ -622,7 +622,7 @@ The single most confusion-preventing fact in this repo. **"MCP" is overloaded ac
 
 1. **MCP context providers (the `Mcp` DB model)** — the two built-in sidecar services whose checkboxes live in the MCPs dialog: **System-Metrics** (WebSocket JSON server `:8765`, `mcp_system_server.py` — CPU/mem/disk injected as `{system_context}`) and **Files-Search** (gRPC server `:50051`, `mcp_files_search_server.py` + `filesearch.proto` — file discovery inside `allowed_paths`, injected as `{files_context}`). `factory.py` recognizes them **by Mcp description string** (`System-Metrics` / `Files-Search`) — a hardcoded assumption (§20). The frontend MCP dialog is hardcoded for exactly two checkboxes.
 2. **LangChain tools** — `get_mcp_tools()` in `tools.py` returns LangChain `@tool` objects, **NOT** MCP services. The name is historical.
-3. **The root stdio MCP server (`tlamatini_mcp_server.py`, 770 lines)** — a **separate, Django-free** MCP server for *external MCP clients* (Claude Code, Kimi, etc.), wired via repo-root `.mcp.json`. It dynamically discovers every `agents/<name>/` dir holding `<name>.py` + `config.yaml` and exposes each as a tool — **89 agent launchers** — replicating the pool "launcher dance" itself (copy template to `Temp/mcp_agent_runs/<name>__<runid>/`, deep-merge args into config.yaml, run `python <name>.py`, read back the log). Long-runners (croner, flowhypervisor, teletlamatini, gatewayer, monitors…) default to background + polling. Management tools (7): `tlamatini_list_agents`, `tlamatini_list_runs`, `tlamatini_run_status`, `tlamatini_run_log`, `tlamatini_run_stop`, `tlamatini_list_skills`, `tlamatini_read_skill`. ACPX tools (10): `acp_doctor`, `list_acp_agents`, `acp_spawn`, `acp_send`, `acp_send_and_wait`, `acp_relay`, `acp_transcript`, `acp_session_status`, `acp_list_sessions`, `acp_kill` — backed by the self-contained stdlib `tlamatini_acpx.py` (`AcpxManager`), degrading to `ACPX_UNAVAILABLE` on import failure. **Total: 106 tools.** So: Django :8000 serves humans; the root server serves MCP clients over stdio; :8765/:50051 are internal sidecars started by `apps.py`.
+3. **The root stdio MCP server (`tlamatini_mcp_server.py`, 770 lines)** — a **separate, Django-free** MCP server for *external MCP clients* (Claude Code, Kimi, etc.), wired via repo-root `.mcp.json`. It dynamically discovers every `agents/<name>/` dir holding `<name>.py` + `config.yaml` and exposes each as a tool — **85 agent launchers** — replicating the pool "launcher dance" itself (copy template to `Temp/mcp_agent_runs/<name>__<runid>/`, deep-merge args into config.yaml, run `python <name>.py`, read back the log). Long-runners (croner, flowhypervisor, teletlamatini, monitors…) default to background + polling. Management tools (7): `tlamatini_list_agents`, `tlamatini_list_runs`, `tlamatini_run_status`, `tlamatini_run_log`, `tlamatini_run_stop`, `tlamatini_list_skills`, `tlamatini_read_skill`. ACPX tools (10): `acp_doctor`, `list_acp_agents`, `acp_spawn`, `acp_send`, `acp_send_and_wait`, `acp_relay`, `acp_transcript`, `acp_session_status`, `acp_list_sessions`, `acp_kill` — backed by the self-contained stdlib `tlamatini_acpx.py` (`AcpxManager`), degrading to `ACPX_UNAVAILABLE` on import failure. **Total: 102 tools.** So: Django :8000 serves humans; the root server serves MCP clients over stdio; :8765/:50051 are internal sidecars started by `apps.py`.
 4. **External MCPs (universal client, 2026-06; private runtime/defaults, 2026-08-15)** — a config-driven universal MCP **client** over `stdio`, `streamable-http`, legacy `sse`, and `websocket`, with at most 5 active servers. Each remote tool binds as `ext__<server>__<tool>`. Ten built-in supervisors add `external_mcp_runtime_status` and `external_mcp_runtime_install` to the original status/reconnect/doctor/list/call/import/activate/wait set. `runtime_provisioner.py` resolves explicit config → Tlamatini private runtime → system PATH → known per-user locations and can install Node/npm/npx/pnpm or uv/uvx atomically under `%LOCALAPPDATA%\Tlamatini\runtimes`, without admin or a system-PATH change. `external_mcp_defaults.py` seeds official `memory` and `sequential-thinking` entries on catalog reads, both inactive; edits win, deletes are tombstoned, and Memory persists under `%LOCALAPPDATA%\Tlamatini\memory\memory.json`. The **External ▸ MCPs** dialog reports runtime readiness and offers **Install now**. Public builds contain only those secret-free defaults; private/keyed builds may carry the maintainer catalog. The **MCP Doctor** canvas agent statically triages a catalogued MCP before live activation.
 
 Distinct from all four: the per-agent inline MCP clients (STM32er's template MCP, Kalier's MCP-Kali-Server) and ACPX (§10).
@@ -709,7 +709,7 @@ Two browser surfaces produce flows; **both compile through the same backend Agen
 1. **ACP canvas → `/agent/compile_flow/`** — Save / Validate / Start all build a snapshot via `buildACPFlowSnapshot()` (`acp-flow-snapshot.js`: nodes with `id`, `text`, position, `agentPurpose`, `configData`; connections with indexes AND ids; `artifacts.parametrizerMappings` keyed by node id). Start passes `mode: 'write'` (canvas state lands in the session pool before agents launch); Validate passes `mode: 'dry_run'` (compiled-config preview without touching disk).
 2. **Chat Create-Flow → `/agent/flow_from_tool_calls/`** — POSTs the successful-only tool-call draft; backend runs `normalize_flow_payload()` → `flow_spec_to_legacy_json(redact=True)` and returns a secret-redacted `.flw` (graceful fallback to the legacy draft if the backend is unreachable, so an offline frozen install still downloads a usable file).
 
-Shared backend: `agent/services/flow_spec.py` (`FlowNode`/`FlowConnection`/`FlowSpec` dataclasses + normalizers), `agent/services/agent_contracts.py` (**AgentContract registry**: per-agent connection-field shape, `parametrizer_fields`, `secret_paths`, `never_starts_targets`, `exclude_from_validation`; lru_cached, alias-normalized, disk-discovered + builtin overrides), `agent/services/flow_compiler.py` (wires connections per contract, redacts secrets, writes `config.yaml` + `interconnection-scheme.csv` into `agents/pools/<session_id>/`), `agent/services/agent_paths.py` (frozen/source pool resolution + canvas-id → pool-name normalization: `Node Manager` → `node_manager`, `(2)` cardinal stripping, etc.).
+Shared backend: `agent/services/flow_spec.py` (`FlowNode`/`FlowConnection`/`FlowSpec` dataclasses + normalizers), `agent/services/agent_contracts.py` (**AgentContract registry**: per-agent connection-field shape, `parametrizer_fields`, `secret_paths`, `never_starts_targets`, `exclude_from_validation`; lru_cached, alias-normalized, disk-discovered + builtin overrides), `agent/services/flow_compiler.py` (wires connections per contract, redacts secrets, writes `config.yaml` + `interconnection-scheme.csv` into `agents/pools/<session_id>/`), `agent/services/agent_paths.py` (frozen/source pool resolution + canvas-id → pool-name normalization: `Monitor Netstat` → `monitor_netstat`, `(2)` cardinal stripping, etc.).
 
 The `_parametrizer_mappings` array on a Parametrizer node's config and the snapshot's `artifacts.parametrizerMappings` object are **two valid persistence shapes for the same data** — `getSavedParametrizerMappings()` (`acp-file-io.js`) accepts either on load.
 
@@ -744,9 +744,9 @@ A per-agent operations table appended to chat answers when the **Exec Report** c
 
 ---
 
-## 13. The 89 Workflow Agent Types
+## 13. The 85 Workflow Agent Types
 
-Ground truth: `Tlamatini/agent/agents/` (89 dirs, each `<name>.py` + `config.yaml`), catalog `agents_descriptions.md` (drives sidebar tooltips/Description dialogs), manifest `_tlamatini_agents_manifest.json`. Display casing below is the DB `agentDescription` casing (§14.1). Most agents are both canvas-placeable and Multi-Turn-wrapped (`chat_agent_*`); a few wrapped-tool display names deliberately differ from canvas names (`Send Email`→emailer, `Move File`→mover, `Summarize Text`→summarizer, `Kyber Deciph` (truncated)→kyber_decipher, `SQLer` tool vs `Sqler` canvas).
+Ground truth: `Tlamatini/agent/agents/` (85 dirs, each `<name>.py` + `config.yaml`), catalog `agents_descriptions.md` (drives sidebar tooltips/Description dialogs), manifest `_tlamatini_agents_manifest.json`. Display casing below is the DB `agentDescription` casing (§14.1). Most agents are both canvas-placeable and Multi-Turn-wrapped (`chat_agent_*`); a few wrapped-tool display names deliberately differ from canvas names (`Send Email`→emailer, `Move File`→mover, `Summarize Text`→summarizer, `Kyber Deciph` (truncated)→kyber_decipher, `SQLer` tool vs `Sqler` canvas).
 
 ### Control Agents (6)
 | Agent | Purpose |
@@ -842,7 +842,6 @@ Ground truth: `Tlamatini/agent/agents/` (89 dirs, each `<name>.py` + `config.yam
 | **RecMailer** | IMAP receive + LLM keyword analysis |
 | **Whatsapper** | WhatsApp via official Cloud API (`cloud`) or unofficial Web automation (`web`) |
 | **Telegrammer** | Telegram via official Bot API or user session; contact-name resolution |
-| **Zavuerer** | Zavu unified SMS/WhatsApp/Telegram/Email/Voice REST API (smart routing + fallback) |
 | **Monitor-Log** | Log-file watcher + LLM event detection (canonical Raiser upstream) |
 | **Monitor Netstat** | Network-connection watcher + LLM matching |
 | **FlowHypervisor** | System watchdog over all agent logs; surfaces ATTENTION alerts |
@@ -853,9 +852,6 @@ Ground truth: `Tlamatini/agent/agents/` (89 dirs, each `<name>.py` + `config.yam
 | **Parametrizer** | Interconnection engine piping structured outputs into downstream configs (§12.5) |
 | **FlowBacker** | Session-pool backup before cleanup |
 | **FlowCreator** | AI flow designer (objective → `.flw` JSON); wrapped as `chat_agent_flowcreator` since migration 0186 |
-| **Gatewayer** | Inbound HTTP-webhook / folder-drop gateway with auth/dedup/recovery |
-| **Gateway Relayer** | Deterministic third-party webhook (GitHub/GitLab/Stripe…) → Gatewayer HMAC relay |
-| **NodeManager** | Fleet registry: node inventory, health probes, state classification (display name is exactly `NodeManager`) |
 
 ### Cryptography Agents (3)
 | Agent | Purpose |
@@ -889,7 +885,7 @@ Single source of truth: the **`agentDescription`** DB field (seeded by the agent
 | JS connector symbol `update<Name>Connection` (code identifier) | PascalCase-ish | `updateStm32erConnection` |
 | `INI_SECTION_<TYPE>` / `END_SECTION_<TYPE>` + FlowHypervisor `<TYPE> SPECIAL NOTES:` headers | **ALL-CAPS** (separate convention — do NOT "fix") | `INI_SECTION_STM32ER` |
 
-**STM32er** is mission-critical and the user is emphatic: exactly **`STM32er`** — NEVER `STM32Er` / `STM32ER` / `Stm32Er` / `Stm32er`. (Beware: the `tlamatini-agent-naming` skill's own example table says `Node Manager`, but the real seeded display is `NodeManager` — DB wins.)
+**STM32er** is mission-critical and the user is emphatic: exactly **`STM32er`** — NEVER `STM32Er` / `STM32ER` / `Stm32Er` / `Stm32er`.
 
 ### 14.2 New workflow agent — the 8 required places
 Authoritative runbooks: `.claude/skills/tlamatini-agent-creation/SKILL.md` (700+ steps, 26 phases), in-app skills `create-new-agent` / `tlamatini-new-acp-agent`, and `Tlamatini/.agents/workflows/create_new_agent.md`. In short, a new agent touches: (1) backend pool script `agent/agents/<name>/<name>.py` + `config.yaml`; (2) connection-update Django view + URL; (3) migration seeding the `Agent` row (+ demo prompts, §14.3); (4) CSS gradient `.canvas-item.<name>-agent` (4-color gradient rule — follow the existing palette families); (5) the four JS surfaces (classMap, connectors, config dialog, connection handlers in `acp-agent-connectors.js`); (6) Multi-Turn wrapper spec in `chat_agent_registry.py` if chat-runnable; (7) docs (`agents_descriptions.md` row, `agentic_skill.md` for FlowCreator, FlowHypervisor `monitoring-prompt.pmt` notes); (8) tests + `npm run lint` + `python -m ruff check`. Connection-field semantics and `secret_paths` are declared in the AgentContract registry (`agent/services/agent_contracts.py`).
@@ -965,7 +961,7 @@ Single source of truth = **annotated git tags `vX.Y.Z`**. No version string is h
 - **`test_private_data_guard.py`** — GIT-HISTORY INTEGRITY GUARD (root commit SHA immutable, commit count only grows, required tags exist, forward-only scrub holds) + GLOBAL BANNER GUARD.
 - **`test_author_banner.py`** — every `.py`/`.js`/`.css`/`.mjs` must carry the author banner (§19.1).
 - **GitHub workflow** `.github/workflows/name-guard.yml` — the only CI: auto-scrubs a disallowed name across all branches (push/PR/15-min cron), opens an issue when it fires. There is no build/test CI — nightly quality runs are a separate local automation.
-- **Secrets hygiene in the working tree**: `config.json` ships with `<KEY goes here>` placeholders; real keys live in `data.keys` (gitignored KEY=VALUE vault), `open_router.key`, env vars; `regen_secrets.py --mode keyed|push-able` toggles them across `config.json` + 7 agent `config.yaml`s (telegrammer, whatsapper, teletlamatini, emailer, recmailer, zavuerer, discoverer) — YAML edited line-by-line to preserve comments, atomic writes. Gitignored: `*.key`, `data.keys`, `.private_targets.json`, `private_data_audit_report.json`, `contacts*.json`, `external_mcps.json`, `_version.py`, `db.sqlite3`, `/python/`, `/Temp/`, `/Templates/`, `Go/`, pools, runtime state.
+- **Secrets hygiene in the working tree**: `config.json` ships with `<KEY goes here>` placeholders; real keys live in `data.keys` (gitignored KEY=VALUE vault), `open_router.key`, env vars; `regen_secrets.py --mode keyed|push-able` toggles them across `config.json` + 6 agent `config.yaml`s (telegrammer, whatsapper, teletlamatini, emailer, recmailer, discoverer) — YAML edited line-by-line to preserve comments, atomic writes. Gitignored: `*.key`, `data.keys`, `.private_targets.json`, `private_data_audit_report.json`, `contacts*.json`, `external_mcps.json`, `_version.py`, `db.sqlite3`, `/python/`, `/Temp/`, `/Templates/`, `Go/`, pools, runtime state.
 - ⚠️ **OPEN ISSUE to tell Angela about (found 2026-07-22): `Tlamatini/agent/external_mcps.json` in the working tree currently contains live-looking tokens (a GitHub PAT and a Snyk UAT key).** The file is gitignored as user state, but the local copy should be rotated/emptied; do not propagate its contents anywhere (builds already sanitize it).
 
 ---
@@ -1024,14 +1020,14 @@ Hardcoded assumptions (know before changing these subsystems):
 8. The web port is configurable (`django_port`, §5); still genuinely hardcoded: direct `daphne`/`uvicorn` launches, `:8765`/`:50051` helpers, TeleTlamatini's `tlamatini.base_url`.
 9. Carried-Python media libs: Recorder/Camcorder/AudioPlayer/VideoPlayer/Whisperer run under the CARRIED Python (`<install>/python`), NOT the frozen exe — numpy + cv2 must exist in BOTH Pythons; `build.py` aborts otherwise. A dep pinned in `requirements.txt` but missing from the carried Python crashes the pool agent at runtime.
 10. Frontend `let`-not-`const` for cross-file mutable globals (§15, const-poison).
-Current worktree inventory, verified 2026-10-14: **89 agents, 67 wrapped chat agents,
-109 built-in Multi-Turn tools, 29 runtime skills, 213 migrations, 59 JS modules
+Current worktree inventory, verified 2026-10-18: **85 agents, 66 wrapped chat agents,
+108 built-in Multi-Turn tools, 29 runtime skills, 214 migrations, 59 JS modules
 and 26 CSS files**. The JS/CSS added since v1.78.0 implement the Markdown canvas, the shared theme and the file-drop router. Historical
 counts below remain dated to their original inspections.
 
 
 
-11. Count discipline: the v1.85.0 inventory (re-verified 2026-10-16) is 89 workflow agents, 67 wrapped chat agents, 109 built-in Multi-Turn tools (20 core + 67 wrapped + 12 ACPX/Skill + 10 External-MCP supervisors), 106 root stdio MCP tools (89 agent launchers + 7 management/skill + 10 ACPX), 29 runtime skills, 213 migrations, and 59 JavaScript modules. Dynamic `ext__*` remote tools are reported separately. Historical release notes may retain their dated counts; active guidance must be re-verified from source and updated together.
+11. Count discipline: the current source inventory (verified 2026-10-18) is 85 workflow agents, 66 wrapped chat agents, 108 built-in Multi-Turn tools (20 core + 66 wrapped + 12 ACPX/Skill + 10 External-MCP supervisors), 102 root stdio MCP tools (85 agent launchers + 7 management/skill + 10 ACPX), 29 runtime skills, 214 migrations, and 59 JavaScript modules. Dynamic `ext__*` remote tools are reported separately. Historical release notes may retain their dated counts; active guidance must be re-verified from source and updated together.
 12. **The self-knowledge is a SWITCH (2026-10-03), and dev mode always has it.** `rag/config.self_modify_available()` is True for every source run of this checkout and for a frozen `--self-modify` build only; the chat toolbar's **Self-modify** box is rendered only then. ON (the default) sends Tlamatini.md (~115K chars) with every request that can hold it; OFF and "locked OFF" (a model that cannot hold it) send one honest line instead. A test that compares prompt TEXT must say which it wants (`_build_system_prompt(…, self_knowledge=True/False)`), and a test that runs `fit_request` should `compact_mode.reset_cache()` — the verdict is process-wide. ⚠️ Compact mode's STRICT check is measured WITHOUT the self-knowledge; keep it that way (§7.9).
 13. **`build.py` ERASES `Tlamatini/db.sqlite3` and wipes `dist/` before it builds** (and removes `dist/` again after it writes `pkg.zip`). The dev database holds the chat history and the test account, and `dist/` holds release zips — never run a build just to "check the frozen mode"; frozen behaviour is unit-tested by rendering the real view under a patched `sys.frozen` (`test_self_modify_switch.FrozenPageTests`). Ask Angela before any real build.
 
@@ -1193,7 +1189,7 @@ From the very start of a session, perform the work with **Tlamatini's OWN** agen
 
 ---
 
-*KIMI.md — counts re-verified 2026-10-16 against source ground truth for v1.85.0 (89 agent templates / 67 wrapped `chat_agent_*` specs / 109 built-in Multi-Turn tools / 106 root `mcp__tlamatini__*` tools / 29 skills / 213 migrations / 59 JS modules / 26 CSS files). The 2026-08-23 sweep (v1.50.0) brought in: NetSpeed-Calculator, Googler's structured dork builder, plain-HTTP-first/two-tier resilience path, live harness, and tests, the WAL-safe `sqlite_copy.py` engine replacing `db_guard.py`, the Ollama-Pro-or-higher operating requirement, migration 0194's Deep-Internet-Research starter, the `adding-external-mcp` skill, and private contact synchronization. Sibling files: CLAUDE.md (Claude Code), GEMINI.md (Gemini CLI). Counts were verified from disk, manifest, and isolated live tool construction; when they drift again, re-verify from source — never copy from docs.*
+*KIMI.md — counts verified 2026-10-18 against the current source tree (85 agent templates / 66 wrapped `chat_agent_*` specs / 108 built-in Multi-Turn tools / 102 root `mcp__tlamatini__*` tools / 29 skills / 214 migrations / 59 JS modules / 26 CSS files). The 2026-08-23 sweep (v1.50.0) brought in: NetSpeed-Calculator, Googler's structured dork builder, plain-HTTP-first/two-tier resilience path, live harness, and tests, the WAL-safe `sqlite_copy.py` engine replacing `db_guard.py`, the Ollama-Pro-or-higher operating requirement, migration 0194's Deep-Internet-Research starter, the `adding-external-mcp` skill, and private contact synchronization. Sibling files: CLAUDE.md (Claude Code), GEMINI.md (Gemini CLI). Counts were verified from disk, manifest, and isolated live tool construction; when they drift again, re-verify from source — never copy from docs.*
 
 *Partial refresh 2026-09-25: the reorganized chat navbar (Panels / Config), the ACP editor toolbar + zoom + edit lock, and the Prompt Flow Panel (`.fpmt`). The counts marked † in §1 were re-counted from disk that day; everything else still carries the 2026-08-23 verification.*
 
@@ -1213,7 +1209,7 @@ From the very start of a session, perform the work with **Tlamatini's OWN** agen
 
 Mouser now resolves explicit physical, window and screenshot coordinates; Keyboarder binds Unicode/key delivery to a verified window; Shoter publishes capture geometry. `input_sent` is delivery evidence, not application success, and a failed or interrupted input segment must be observed before replay.
 
-Parametrizer derives its parser registry from current contracts and validates complete typed mappings. FlowCreator selects from all 89 installed agents and validates the generated graph before publishing; FlowHypervisor separates execution, kill and observation relationships and uses current desktop receipts/timing. GUI-Manager remains design only.
+Parametrizer derives its parser registry from current contracts and validates complete typed mappings. FlowCreator selects from all 85 installed agents and validates the generated graph before publishing; FlowHypervisor separates execution, kill and observation relationships and uses current desktop receipts/timing. GUI-Manager remains design only.
 
 See [configuration, examples and limitations](docs/desktop-input-and-flow-contracts.md), the [complete generated coverage inventory](docs/agent-coverage.md), and the [GUI-Manager design](docs/GUI-Manager-design.md).
 

@@ -163,9 +163,9 @@ logging.info(
 ```
 
 **Register in 3 places:**
-1. `parametrizer.py` → add base name to `SECTION_AGENT_TYPES` (the unified parser handles the rest).
+1. `parametrizer.py` derives `SECTION_AGENT_TYPES` from the installed flow catalog; do not add a separate hardcoded producer list.
 2. `agent_contracts.py` → add the field tuple to `_PARAMETRIZER_OUTPUT_FIELDS` (KV header fields + `response_body` if present). **⚠️ 2026-08-23: do NOT hand-edit `views.PARAMETRIZER_SOURCE_OUTPUT_FIELDS` — it is DERIVED from that registry (`= get_parametrizer_source_fields()`).**
-3. `README.md` → add a row to the **Supported Source Agents** table.
+3. Run `python scripts/update_flow_catalog.py`, then its `--check` mode in the visible foreground console; update the **Supported Source Agents** table in `README.md` and verify parser, mapping and deployed-catalog coverage.
 
 ---
 
@@ -276,13 +276,13 @@ Run `python Tlamatini/manage.py migrate`.
 >
 > **TWO FRONTEND SURFACES ALSO CARRY THE NAME VERBATIM:** `agentic_control_panel.css` → `.agent-tool-item[data-content="<Display>"]` (CSS attribute values are **case-sensitive**) and `agent_page_chat.js::_agentPurpose` → `{'<Display>': 'purpose'}` (a stale key gives the generated `.flw` node an empty `agentPurpose`). Both are pinned by the same test file. **After editing either, run `python manage.py collectstatic --noinput`** — the collected `staticfiles/` copies are what actually get served.
 
-`agentDescription` (e.g. `"Shoter"`, `"Monitor-Log"`, `"Node Manager"`, `"Gateway Relayer"`) gets transformed three different ways in three contexts. Mixing them breaks colors, connections, or sidebar icons.
+`agentDescription` (e.g. `"Shoter"`, `"Monitor-Log"`, `"Monitor Netstat"`, `"NetSpeed-Calculator"`) gets transformed three different ways in three contexts. Mixing them breaks colors, connections, or sidebar icons.
 
-| Context | Transform | `"Node Manager"` | `"Shoter"` |
+| Context | Transform | `"Monitor Netstat"` | `"Shoter"` |
 |---|---|---|---|
-| CSS classMap key | `name.toLowerCase().replace(/\s+/g, '-')` | `'node-manager'` | `'shoter'` |
-| Sidebar visual resolver | same as classMap via `getAgentTypeClass()` / `applyAgentToolIconStyle()` | `'node-manager'` | `'shoter'` |
-| Connection handlers | `name.toLowerCase()` (keeps spaces) | `'node manager'` | `'shoter'` |
+| CSS classMap key | `name.toLowerCase().replace(/\s+/g, '-')` | `'monitor-netstat'` | `'shoter'` |
+| Sidebar visual resolver | same as classMap via `getAgentTypeClass()` / `applyAgentToolIconStyle()` | `'monitor-netstat'` | `'shoter'` |
+| Connection handlers | `name.toLowerCase()` (keeps spaces) | `'monitor netstat'` | `'shoter'` |
 
 Single-word agents: all 3 forms identical. Multi-word agents: classMap/sidebar use **hyphens**, connection code uses **spaces**.
 
@@ -296,7 +296,7 @@ applyAgentToolIconStyle(iconDiv, description);   // ✅ inherits from canvas CSS
 
 NOT:
 ```javascript
-else if (lowerDesc === 'node manager') iconDiv.style.background = 'linear-gradient(...)';   // ❌ drift
+else if (lowerDesc === 'monitor netstat') iconDiv.style.background = 'linear-gradient(...)';   // ❌ drift
 ```
 
 ---
@@ -360,36 +360,36 @@ async function update<AgentName>Connection(agentId, targetAgentId, action, type 
 1. **`applyAgentTypeClass()` classMap** (~line 364 as of 2026-09-25 — search by name, line numbers drift) — KEY is the **hyphenated** form:
    ```javascript
    'shoter': 'shoter-agent',
-   'node-manager': 'nodemanager-agent',
+   'monitor-netstat': 'monitor-netstat-agent',
    ```
 2. **`AGENTS_NEVER_START_OTHERS`** (~line 396) — hyphenated form if the agent does NOT start downstream.
 3. **`populateAgentsList()`** (~line 1241; it also wires the sidebar's agent search box — nothing to add for it) — keep the shared helper; do NOT add a per-agent gradient branch:
    ```javascript
    applyAgentToolIconStyle(iconDiv, description);
    ```
-4. **`removeConnection()`** (~line 897) — SPACED form:
+4. **`removeConnection()`** (~line 897) — exact lowercased display name:
    ```javascript
-   if (targetAgentName.toLowerCase() === 'node manager') updateNodeManagerConnection(targetId, sourceId, 'remove', 'source');
-   if (sourceAgentName.toLowerCase() === 'node manager') updateNodeManagerConnection(sourceId, targetId, 'remove', 'target');
+   if (targetAgentName.toLowerCase() === 'netspeed-calculator') updateNetSpeedCalculatorConnection(targetId, sourceId, 'remove', 'source');
+   if (sourceAgentName.toLowerCase() === 'netspeed-calculator') updateNetSpeedCalculatorConnection(sourceId, targetId, 'remove', 'target');
    ```
-5. **`removeConnectionsFor()`** (~line 1058) — SPACED form, with deletion guards (`!targetBeingDeleted` / `!sourceBeingDeleted`).
-6. **mouseup handler** (~line 1451 — the `window` mouseup in `initCanvasEvents()` that completes a connection, NOT the drag-end mouseup in `makeDraggable()`) — SPACED form, `'add'` instead of `'remove'`.
+5. **`removeConnectionsFor()`** (~line 1058) — the same lowercased display name, with deletion guards (`!targetBeingDeleted` / `!sourceBeingDeleted`).
+6. **mouseup handler** (~line 1451 — the `window` mouseup in `initCanvasEvents()` that completes a connection, NOT the drag-end mouseup in `makeDraggable()`) — the same lowercased display name, `'add'` instead of `'remove'`.
 
 > ⚠️ **Zoom and the edit lock (2026-09-25).** The canvas now zooms (CSS `zoom` on `#canvas-content`, `ACP.zoom` 0.25–2) and edits are locked while a flow runs (`ACP.canEdit()`). A normal agent needs NO code for either — the six locations above are unaffected. But if your agent ever adds its own pointer handling on the canvas, divide every `clientX/clientY - canvasContent.getBoundingClientRect()` delta by `ACP.zoom`, and return early when `ACP.canEdit()` is false. The editor toolbar's **Configure**, **Duplicate** (settings and inner connections included) and **Undo** work on your agent generically.
 
 ### 5c. `acp-canvas-undo.js` — undo/redo
 
-Search for an existing pattern (e.g. `updateGatewayRelayerConnection`); mirror it in both undo and redo. SPACED form. Redo section uses `'remove'`, undo section uses `'add'`.
+Search for an existing pattern (e.g. `updateNetSpeedCalculatorConnection`); mirror it in both undo and redo. Match the lowercased display name exactly. Redo section uses `'remove'`, undo section uses `'add'`.
 
 ### 5d. `acp-file-io.js` — `.flw` load
 
-In `restoreAgentConnection`'s two switch statements (source side + target side), add cases with the SPACED form, `'add'` action:
+In `restoreAgentConnection`'s two switch statements (source side + target side), add cases with the exact lowercased display name and `'add'` action:
 
 ```javascript
 // SOURCE-SIDE switch:
-case 'node manager': await updateNodeManagerConnection(sourceId, targetId, 'add', 'target'); break;
+case 'netspeed-calculator': await updateNetSpeedCalculatorConnection(sourceId, targetId, 'add', 'target'); break;
 // TARGET-SIDE switch:
-case 'node manager': await updateNodeManagerConnection(targetId, sourceId, 'add', 'source'); break;
+case 'netspeed-calculator': await updateNetSpeedCalculatorConnection(targetId, sourceId, 'add', 'source'); break;
 ```
 
 ### 5e. `/* global */` declarations
@@ -508,7 +508,7 @@ Verification: `python manage.py test agent.tests.ExecReportCaptureTests` is gene
 
 **⚠️ The row's SUCCESS/FAILED colour comes from your agent's semantic `status:`, not from its exit code.** `agent/agent_verdict.py` gives the `INI_SECTION` self-report precedence, so emit one token from its five-set closed vocabulary, make a completed read-only diagnostic exit 0 even when it finds problems, and keep degraded outputs distinct from intact completion. If a row is wrong, fix the emitted token or its membership in the ONE shared vocabulary — never add a special case to `mcp_agent.py`, re-inline a set, or write `status: <numeric return code>`. Contract: `docs/claude/exec-report.md`.
 
-> **⚠️ Ask Execs is NOT automatic — it is an ALLOWLIST (corrected 2026-07-14).** Your new wrapped tool will **NOT** be gated by the "Ask Execs" toggle unless you **add its tool name to `_ASK_EXECS_REQUIRED_TOOLS` in `mcp_agent.py`**. (This guide used to claim gating was automatic. It was wrong, and the gap was real: Deleter could wipe a glob of files and Whatsapper could message a real human with no prompt.) **ADD YOUR TOOL if it: DESTROYS/OVERWRITES data (tier A), REACHES A REMOTE SYSTEM / the network (tier D), or RUNS A COMMAND/SCRIPT.** **Do NOT add a MESSAGING agent (tier B — Emailer/Whatsapper/Telegrammer/Zavuerer/Instant-Messaging-Doctor):** that tier was gated on 2026-07-14 and **REVERSED on 2026-07-26** — *"Messages must be able to be sent without asking, it depends only on AI desisicion."* Sending is the LLM's own judgement call. *(Worked example — PDFer, 2026-07-26: it only WRITES a new file, yet it joined tier A because `output_dir` + `filename` are free-form, so it can clobber an existing file exactly like File-Creator. Contrast the media agents (Shoter/Camcorder/Recorder), which stay UNGATED because they only ever write collision-proof names into ONE fixed known-folder. The question is not "does it write?" but "can it overwrite something the user cares about?")* *(Second worked example — LaTeXer, 2026-08-05: it lands in tier A on BOTH counts at once, because it writes and EDITS `.tex` sources plus a PDF at free-form paths AND it RUNS A REAL COMPILER over source that can itself execute shell commands — which is exactly why `shell_escape` defaults to OFF. When an agent qualifies under more than one heading, it still just goes in `_ASK_EXECS_REQUIRED_TOOLS` once.)* **Do NOT add it** if it is a desktop-UI or hardware agent (tier C — Keyboarder/Mouser/Windower/Playwrighter/STM32er/ESP32er/Arduiner/ESPHomer/Blenderer/Unrealer: Angela keeps these ungated for SPEED, because the operation is *visible while it happens*), or if it is read-only / observational / a management-polling helper. Pinned in both directions by `agent/test_ask_execs_allowlist.py` — that test will FAIL if you get it wrong. The permission dialog's "shell" line comes from `_infer_execution_shell(tool_name, args)` — add a branch there if your tool runs through an unusual shell/interpreter (else it falls back to the platform shell). See `docs/claude/multi-turn.md` → *Ask Execs*.
+> **⚠️ Ask Execs is NOT automatic — it is an ALLOWLIST (corrected 2026-07-14).** Your new wrapped tool will **NOT** be gated by the "Ask Execs" toggle unless you **add its tool name to `_ASK_EXECS_REQUIRED_TOOLS` in `mcp_agent.py`**. (This guide used to claim gating was automatic. It was wrong, and the gap was real: Deleter could wipe a glob of files and Whatsapper could message a real human with no prompt.) **ADD YOUR TOOL if it: DESTROYS/OVERWRITES data (tier A), REACHES A REMOTE SYSTEM / the network (tier D), or RUNS A COMMAND/SCRIPT.** **Do NOT add a MESSAGING agent (tier B — Emailer/Whatsapper/Telegrammer/Instant-Messaging-Doctor):** that tier was gated on 2026-07-14 and **REVERSED on 2026-07-26** — *"Messages must be able to be sent without asking, it depends only on AI desisicion."* Sending is the LLM's own judgement call. *(Worked example — PDFer, 2026-07-26: it only WRITES a new file, yet it joined tier A because `output_dir` + `filename` are free-form, so it can clobber an existing file exactly like File-Creator. Contrast the media agents (Shoter/Camcorder/Recorder), which stay UNGATED because they only ever write collision-proof names into ONE fixed known-folder. The question is not "does it write?" but "can it overwrite something the user cares about?")* *(Second worked example — LaTeXer, 2026-08-05: it lands in tier A on BOTH counts at once, because it writes and EDITS `.tex` sources plus a PDF at free-form paths AND it RUNS A REAL COMPILER over source that can itself execute shell commands — which is exactly why `shell_escape` defaults to OFF. When an agent qualifies under more than one heading, it still just goes in `_ASK_EXECS_REQUIRED_TOOLS` once.)* **Do NOT add it** if it is a desktop-UI or hardware agent (tier C — Keyboarder/Mouser/Windower/Playwrighter/STM32er/ESP32er/Arduiner/ESPHomer/Blenderer/Unrealer: Angela keeps these ungated for SPEED, because the operation is *visible while it happens*), or if it is read-only / observational / a management-polling helper. Pinned in both directions by `agent/test_ask_execs_allowlist.py` — that test will FAIL if you get it wrong. The permission dialog's "shell" line comes from `_infer_execution_shell(tool_name, args)` — add a branch there if your tool runs through an unusual shell/interpreter (else it falls back to the platform shell). See `docs/claude/multi-turn.md` → *Ask Execs*.
 
 ---
 
@@ -614,12 +614,14 @@ manual case.
 a pool agent runs under the **carried Python**, NOT the frozen exe, so its libs must be present
 there): it must be
 1. pinned in `requirements.txt`,
-2. asserted in `build.py` — add the import name to `_CARRIED_PYTHON_REQUIRED_IMPORTS` (carried-
-   Python probe) AND the frozen-asset `_agent_libs` verify list, so the build ABORTS LOUDLY if
-   the lib is missing instead of shipping a pool agent that crashes at runtime, and
-3. if PyInstaller's import graph can't see it (it's only imported by the out-of-process pool
-   agent), add a `--collect-all <pkg>` / `--hidden-import` to the PyInstaller command in
-   `build.py` so it is embedded in the frozen `_internal` too.
+2. asserted in `build.py` — add the import name to `_AGENT_RUNTIME_IMPORTS`, the shared
+   carried-tree verification list (and `_CARRIED_PYTHON_REQUIRED_IMPORTS` if needed by the
+   initial interpreter probe), so the build refuses an incomplete agent runtime, and
+3. assigned to the interpreter that actually executes it. Pool-only libraries, including
+   their native DLLs, belong in carried `python/`; do not duplicate them in `_internal`.
+   Add PyInstaller `--collect-all` / `--hidden-import` only for a proven frozen web-process
+   dependency. Keep `_FROZEN_POOL_ONLY_MODULES` and its archive checks consistent with
+   real call paths. See `docs/self-management-carriage.md` for the ownership contract.
 
 **(MANDATORY) Verify carriage with the two inclusion sweeps — both must exit CLEAN:**
 ```bash
@@ -641,9 +643,9 @@ the updater preserve lists stay coherent, and new migrations reach users. Full r
     [ ] If polls source logs: reanim offset save/load
     [ ] If feeds Parametrizer: INI_SECTION_<TYPE><<<...>>>END_SECTION_<TYPE>
         with a SINGLE atomic logging.info() call per section, registered in
-        SECTION_AGENT_TYPES (parametrizer.py) + _PARAMETRIZER_OUTPUT_FIELDS
-        (agent_contracts.py; views.PARAMETRIZER_SOURCE_OUTPUT_FIELDS is DERIVED,
-        never hand-edit it) + README table
+        _PARAMETRIZER_OUTPUT_FIELDS (agent_contracts.py), then regenerate the
+        flow catalog. SECTION_AGENT_TYPES and views.PARAMETRIZER_SOURCE_OUTPUT_FIELDS
+        are DERIVED; verify them without hand-editing them. Update the README table.
     [ ] TRUTHFUL semantic `status:` from exactly one of agent_verdict.py's five sets;
         it OUTRANKS the exit code and decides the Exec-Report colour. Diagnostic or
         intact completion => green; degraded/not-done/error => red. Never place a
@@ -666,9 +668,9 @@ the updater preserve lists stay coherent, and new migrations reach users. Full r
     [ ] 5a connector in acp-agent-connectors.js
     [ ] 5b acp-canvas-core.js × 6: classMap HYPHENATED, AGENTS_NEVER_START_OTHERS
         HYPHENATED, populateAgentsList = shared helper (no per-agent gradient),
-        removeConnection/removeConnectionsFor/mouseup all SPACED
-    [ ] 5c acp-canvas-undo.js undo+redo SPACED
-    [ ] 5d acp-file-io.js BOTH switches SPACED
+        removeConnection/removeConnectionsFor/mouseup all match the lowercased display name
+    [ ] 5c acp-canvas-undo.js undo+redo match the lowercased display name
+    [ ] 5d acp-file-io.js BOTH switches match the lowercased display name
     [ ] 5e /* global */ updated in all 3 files
 [ ] 6. agentic_skill.md entry
 [ ] 6b. flowhypervisor/monitoring-prompt.pmt: TYPICAL TIMING line + <CAPS> SPECIAL
@@ -695,8 +697,8 @@ the updater preserve lists stay coherent, and new migrations reach users. Full r
 [ ] 9. Self-update/self-modify carriage: agent source + migration rows auto-ship AND reach
        EXISTING users via the post-update migrate (DB/ToLoad + manage.py). A NEW third-party
        dependency is the only manual case: add it to requirements.txt + build.py
-       (_CARRIED_PYTHON_REQUIRED_IMPORTS, _agent_libs verify list, and a --collect-all/hidden-import
-       if PyInstaller can't see it). VERIFY both inclusion sweeps exit CLEAN:
+       (_AGENT_RUNTIME_IMPORTS plus interpreter ownership; frozen collection only when
+       the web process actually uses it). VERIFY both inclusion sweeps exit CLEAN:
        sweep_self_modify.py + sweep_self_update.py
 ```
 

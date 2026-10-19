@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """
 GUARDA: en las pruebas, las fotos las toma SHOTER — nunca PIL.ImageGrab.
 =======================================================================

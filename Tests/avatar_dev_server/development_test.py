@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Real development Django server with an isolated database and no agent jobs.
 
 Run with the repository's Python: development_test.py prepare | serve

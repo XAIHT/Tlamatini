@@ -17,6 +17,7 @@ import time
 
 RECOVERY_REL = "Temp/.setup-recovery"
 FILE_ACCESS_RETRY_SECONDS = 5
+JOURNAL_REPLACE_RETRY_SECONDS = 2
 
 
 def retry_file_access(action, path, status):
@@ -76,7 +77,17 @@ def atomic_json(path, document):
         json.dump(document, stream, ensure_ascii=True, indent=2)
         stream.flush()
         os.fsync(stream.fileno())
-    os.replace(pending, path)
+    deadline = time.monotonic() + JOURNAL_REPLACE_RETRY_SECONDS
+    while True:
+        try:
+            os.replace(pending, path)
+            return
+        except PermissionError:
+            # Windows can briefly hold a just-written journal. Keep the old
+            # durable document and the new one intact; never delete to replace.
+            if time.monotonic() >= deadline:
+                raise
+            time.sleep(min(.05, max(0, deadline-time.monotonic())))
 
 
 @contextmanager
@@ -106,12 +117,15 @@ def setup_lock():
 
 
 class Recovery:
-    def __init__(self, target, status=lambda _message: None, progress=lambda _fraction: None):
+    def __init__(self, target, status=lambda _message: None, progress=lambda _fraction: None,
+                 rollback_progress=lambda _fraction: None):
         self.target = Path(os.path.abspath(target))
         self.folder = checked_path(self.target, RECOVERY_REL)
         self.journal = self.folder / "journal.json"
         self.status = status
         self.progress = progress
+        self.rollback_progress = rollback_progress
+        self.cleanup_deadline = None
         self.data = None
 
     @classmethod
@@ -123,10 +137,21 @@ class Recovery:
         except (OSError, ValueError, KeyError, RuntimeError):
             return False
 
+    @classmethod
+    def removal_cleanup_pending(cls, target):
+        try:
+            recovery = cls(target)
+            recovery.load()
+            return (recovery.data.get("mode") == "removal"
+                    and recovery.data["state"] == "committed"
+                    and recovery.data.get("outcome") == "removed")
+        except (OSError, ValueError, KeyError, RuntimeError):
+            return False
+
     def load(self):
         with open(self.journal, encoding="utf-8") as stream:
             data = json.load(stream)
-        if (data.get("schema") != 1
+        if (data.get("schema") not in (1, 2)
                 or os.path.normcase(data.get("target", "")) != os.path.normcase(str(self.target))
                 or data.get("state") not in ("preparing", "active", "restoring", "committed")):
             raise RuntimeError(f"Unrecognized recovery journal. Keep it for inspection: {self.folder}")
@@ -139,6 +164,19 @@ class Recovery:
             checked_path(self.target, name)
         for name in data.get("restore_directories", []):
             checked_path(self.target, name)
+        if data.get("schema") == 2:
+            if data.get("mode") != "removal" or not isinstance(data.get("moves"), dict):
+                raise RuntimeError("Unrecognized removal recovery journal")
+            for name, record in data["moves"].items():
+                if len(PurePosixPath(name).parts) != 1 or name.casefold() in {"temp", "agents"}:
+                    raise RuntimeError(f"Unsafe removal recovery entry: {name}")
+                checked_path(self.target, name)
+                checked_path(self.folder / "quarantine", name)
+                if record.get("state") not in {"waiting", "moving", "staged", "restored"}:
+                    raise RuntimeError("Unrecognized removal move state")
+                identity = record.get("identity")
+                if not isinstance(identity, list) or len(identity) != 2 or not all(isinstance(x, int) for x in identity):
+                    raise RuntimeError("Invalid removal file identity")
         self.data = data
 
     def recover_previous(self):
@@ -156,13 +194,23 @@ class Recovery:
         self.data = None
         return True
 
-    def prepare(self, names, *, required_space=0, windows=True, restore_directories=()):
+    def prepare(self, names, *, required_space=0, windows=True, restore_directories=(), created_directories=()):
         """Finish and verify ALL backup copies before allowing any mutation."""
         if self.folder.exists():
             raise RuntimeError("Recover the previous operation before starting another")
         names = sorted(set(names), key=str.casefold)
         records, directories, inspected_directories = {}, set(), set()
         total = 0
+        # ZIPs carry intentionally empty folders too. They have no file receipt
+        # entry, but must still be removed if this installation rolls back.
+        for name in created_directories:
+            path = checked_path(self.target, name)
+            if path.exists() and not path.is_dir():
+                raise RuntimeError(f"A directory destination is occupied by a file: {path}")
+            relative = PurePosixPath(name)
+            for item in (relative, *relative.parents):
+                if item.as_posix() != "." and not checked_path(self.target, item.as_posix()).exists():
+                    directories.add(item.as_posix())
         for index, name in enumerate(names, 1):
             path = checked_path(self.target, name)
             if name.casefold().startswith(RECOVERY_REL.casefold()):
@@ -234,6 +282,84 @@ class Recovery:
             self.discard()
             raise
 
+    def prepare_removal(self, kept_names, *, windows=True):
+        """Journal same-volume renames; never copy/hash the installed payload.
+
+        Only metadata edited by setup is copied. Temp is disposable cleanup,
+        handled AFTER commit, so a cache-directory lock cannot undo removal.
+        Schema 2 makes older setup clients refuse this journal, not discard it.
+        """
+        kept = {name.casefold() for name in kept_names} | {"temp", "agents"}
+        moves = {}
+        for item in self.target.iterdir():
+            if item.name.casefold() in kept:
+                continue
+            path = checked_path(self.target, item.name)
+            info = path.stat(follow_symlinks=False)
+            moves[item.name] = {"state": "waiting", "identity": [info.st_dev, info.st_ino]}
+        metadata = ["Tlamatini.lnk"]
+        if (self.target / "agents").is_dir():
+            metadata += ["agents/.tlamatini-preserved-agents.json",
+                         "agents/_tlamatini_agents_manifest.json"]
+        self.prepare(metadata, windows=windows)
+        self.data.update(schema=2, mode="removal", moves=moves)
+        atomic_json(self.journal, self.data)
+        self.status(f"Recovery ready: {len(moves):,} application entries; no payload copy needed")
+
+    @staticmethod
+    def _identity(path):
+        info = path.stat(follow_symlinks=False)
+        return [info.st_dev, info.st_ino]
+
+    def stage_removal(self, name):
+        """Atomically set aside one validated root entry, retaining its identity."""
+        if self.data.get("mode") != "removal" or name not in self.data["moves"]:
+            raise RuntimeError(f"Removal entry was not prepared: {name}")
+        source = checked_path(self.target, name)
+        destination = checked_path(self.folder / "quarantine", name)
+        record = self.data["moves"][name]
+        if self._identity(source) != record["identity"]:
+            raise RuntimeError(f"Installation entry changed during removal: {source}")
+        if destination.exists():
+            raise RuntimeError(f"Recovery destination is already occupied: {destination}")
+        destination.parent.mkdir(exist_ok=True)
+        if source.stat().st_dev != destination.parent.stat().st_dev:
+            raise RuntimeError("Removal recovery must remain on the installation drive")
+        record["state"] = "moving"
+        atomic_json(self.journal, self.data)
+        # No copy fallback, no replacement of an existing destination.
+        source.rename(destination)
+        record["state"] = "staged"
+        atomic_json(self.journal, self.data)
+
+    def _restore_moves(self):
+        moves = list(self.data.get("moves", {}).items())
+        failures = []
+        for index, (name, record) in enumerate(reversed(moves), 1):
+            if record["state"] in {"moving", "staged"}:
+                try:
+                    source = checked_path(self.folder / "quarantine", name)
+                    destination = checked_path(self.target, name)
+                    if source.exists():
+                        if destination.exists():
+                            raise RuntimeError("Restoration destination is occupied; existing content was kept")
+                        if self._identity(source) != record["identity"]:
+                            raise RuntimeError("Recovery entry identity changed")
+                        source.rename(destination)
+                    elif not destination.exists() or self._identity(destination) != record["identity"]:
+                        raise RuntimeError("Neither the original entry nor its recovery copy was found")
+                    record["state"] = "restored"
+                    atomic_json(self.journal, self.data)
+                except OSError as exc:
+                    failures.append(f"{name}: {exc}")
+                except RuntimeError as exc:
+                    failures.append(f"{name}: {exc}")
+            self.status(f"Restoring application entries… {index:,} / {len(moves):,}")
+            self.rollback_progress(.8 * index / max(len(moves), 1))
+        if failures:
+            raise RuntimeError("Recovery needs attention. Retained data: " + str(self.folder)
+                               + "\n\n" + "\n".join(failures[:10]))
+
     def rollback(self):
         if self.data is None:
             self.load()
@@ -241,6 +367,8 @@ class Recovery:
             return
         self.data["state"] = "restoring"
         atomic_json(self.journal, self.data)
+        self.rollback_progress(0)
+        self._restore_moves()
         failures = []
         for name in self.data.get("restore_directories", []):
             try:
@@ -254,22 +382,25 @@ class Recovery:
                     backup = checked_path(self.folder / "files", name)
                     if not backup.is_file() or digest(backup) != record["sha256"]:
                         raise RuntimeError("Recovery copy is missing or damaged")
-                    if path.is_file() and digest(path) == record["sha256"]:
-                        continue
-                    path.parent.mkdir(parents=True, exist_ok=True)
-                    if path.exists():
-                        path.chmod(stat.S_IWRITE | stat.S_IREAD)
-                    shutil.copy2(backup, path)
-                    if digest(path) != record["sha256"]:
-                        raise RuntimeError("Restored file did not pass verification")
+                    if not path.is_file() or digest(path) != record["sha256"]:
+                        path.parent.mkdir(parents=True, exist_ok=True)
+                        if path.exists():
+                            path.chmod(stat.S_IWRITE | stat.S_IREAD)
+                        shutil.copy2(backup, path)
+                        if digest(path) != record["sha256"]:
+                            raise RuntimeError("Restored file did not pass verification")
                 elif path.is_file():
                     path.chmod(stat.S_IWRITE | stat.S_IREAD)
                     path.unlink()
             except Exception as exc:
                 failures.append(f"{name}: {exc}")
-            if i == 1 or i % 100 == 0:
+            if i == 1 or i % 100 == 0 or i == len(self.data["files"]):
                 self.status(f"Restoring previous files… {i:,} / {len(self.data['files']):,}")
+                base = .8 if self.data.get("moves") else 0
+                self.rollback_progress(base + (.9-base) * i / max(len(self.data["files"]), 1))
         if self.data.get("windows"):
+            self.status("Restoring Windows registrations…")
+            self.rollback_progress(.9)
             try:
                 from setup_windows import WindowsSnapshot
                 WindowsSnapshot(self.folder).restore()
@@ -283,25 +414,41 @@ class Recovery:
         if failures:
             raise RuntimeError("Recovery needs attention. Its copies are retained at "
                                + str(self.folder) + "\n\n" + "\n".join(failures[:10]))
-        self.discard()
-
-    def commit(self):
+        self.status("Finishing recovery cleanup…")
+        self.rollback_progress(.95)
+        # Restoration is complete. An interruption during housekeeping must
+        # retry housekeeping, not require backup files already deleted here.
         self.data["state"] = "committed"
+        self.data["outcome"] = "restored"
         atomic_json(self.journal, self.data)
+        self.discard()
+        self.rollback_progress(1)
+
+    def commit(self, *, defer_cleanup=False):
+        self.data["state"] = "committed"
+        self.data["outcome"] = "removed" if self.data.get("mode") == "removal" else "installed"
+        atomic_json(self.journal, self.data)
+        if defer_cleanup:
+            return ""
         try:
             self.discard()
             return ""
-        except OSError:
+        except OSError as exc:
             # Never roll a completed installation back just because housekeeping failed.
-            return f"Setup completed. Its temporary recovery copy could not be cleared: {self.folder}. It will be retried on the next setup run."
+            return (f"Temporary recovery copy could not be cleared: {self.folder}. "
+                    f"{exc}. Cleanup will be retried on the next setup run.")
 
     def discard(self):
         folder = checked_path(self.target, RECOVERY_REL)
         if folder.exists():
-            def writable(func, path, _error):
-                os.chmod(path, stat.S_IWRITE | stat.S_IREAD)
-                func(path)
-            shutil.rmtree(folder, onerror=writable)
+            # Keep the durable journal until every payload has been cleared.
+            # A locked file must not leave an unrecognizable partial journal.
+            for child in folder.iterdir():
+                if child.name == "journal.json":
+                    continue
+                remove_tree(child, self.status, deadline=self.cleanup_deadline)
+            self.journal.unlink(missing_ok=True)
+            folder.rmdir()
         if self.data and not self.data.get("temp_existed", True):
             try:
                 (self.target / "Temp").rmdir()
@@ -312,6 +459,48 @@ class Recovery:
                 self.target.rmdir()
             except OSError:
                 pass
+
+
+def remove_tree(path, status=lambda _message: None, *, deadline=None):
+    """Delete an explicit tree once, without following links or junctions.
+
+    Count actual removals while traversing, without a preliminary content scan,
+    copy or hash pass. Callers retain their journal on failure/interruption.
+    """
+    path = Path(os.path.abspath(path))
+    stack = [(path, False)]
+    removed = 0
+    last = time.monotonic()
+    while stack:
+        if deadline is not None and time.monotonic() >= deadline:
+            raise TimeoutError(f"Cleanup time limit reached; remaining files are at {path}")
+        current, visited = stack.pop()
+        try:
+            info = current.lstat()
+        except FileNotFoundError:
+            continue
+        redirected = stat.S_ISLNK(info.st_mode) or bool(
+            getattr(info, "st_file_attributes", 0) & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0))
+        directory = stat.S_ISDIR(info.st_mode)
+        if directory and not redirected and not visited:
+            stack.append((current, True))
+            with os.scandir(current) as entries:
+                stack.extend((Path(item.path), False) for item in entries)
+            continue
+        action = current.rmdir if directory else current.unlink
+        try:
+            action()
+        except PermissionError:
+            if redirected:
+                raise
+            current.chmod(stat.S_IWRITE | stat.S_IREAD)
+            action()
+        removed += 1
+        now = time.monotonic()
+        if removed == 1 or removed % 250 == 0 or now-last >= 1:
+            status(f"Deleting files and folders… {removed:,} removed ({path.name})")
+            last = now
+    status(f"Deleted {removed:,} files and folders ({path.name})")
 
 
 def removal_files(target, kept_names):

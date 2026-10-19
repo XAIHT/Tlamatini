@@ -39,7 +39,7 @@
 #      (incl. per-agent Exec Report tables) edited into the status message.
 #
 # After every successfully completed request, configured `target_agents` are
-# launched (long-running active-agent semantics, like Gatewayer's dispatcher).
+# launched (long-running active-agent semantics).
 
 import os
 import sys
@@ -1094,7 +1094,7 @@ async def _telegram_main_loop(config: Dict[str, Any]):
             except Exception as send_err:
                 logging.error(f"{log_tag} failed to deliver error: {send_err}")
 
-        # Trigger downstream target_agents per cycle (Gatewayer-style semantics).
+        # Trigger downstream target_agents per cycle.
         if target_agents:
             wait_for_agents_to_stop(target_agents)
             for tgt in target_agents:

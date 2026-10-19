@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 # Tlamatini Author Banner - do not remove
 """VISIBLE proof: the COMPACT MODE checkbox (Angela, 2026-10-02).
 

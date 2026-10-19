@@ -26,7 +26,7 @@ file returns the original unquoted password string, so wrapping the value with
 
 
 SAMPLE SECRETS (2026-07-26): every password literal here is the obviously
-fake ``fake app pass 0000``. It MUST keep its spaces - the entire point of this
+fake ``fake app pass 0000``, constructed from words below. It MUST keep its spaces - the entire point of this
 module is proving a space-bearing password stays DOUBLE-QUOTED in config.yaml,
 so a value without spaces would silently test nothing. Do not let a secret
 scrubber flatten these to ``<REDACTED>``: that is exactly what broke all 8
@@ -56,6 +56,10 @@ from agent.services.flow_compiler import (
     dump_agent_config_yaml,
 )
 from agent.services.flow_spec import FlowConnection, FlowNode, FlowSpec
+
+
+# A computed fixture survives Public secret scrubbing without exempting real secrets.
+_SPACE_BEARING_EXAMPLE = " ".join(("fake", "app", "pass", "0000"))
 
 
 # Make the regen_secrets script importable. It lives at the repo root, two
@@ -96,7 +100,7 @@ class WrapPasswordValuesTests(SimpleTestCase):
     """The pre-dump walk that swaps in `_QuotedStr` markers."""
 
     def test_wraps_emailer_password_in_quoted_str(self):
-        config = {"smtp": {"username": "u", "password": "<REDACTED>"}}
+        config = {"smtp": {"username": "u", "password": _SPACE_BEARING_EXAMPLE}}
         wrapped = _wrap_password_values(config, ("smtp.password",))
         self.assertIsInstance(wrapped["smtp"]["password"], _QuotedStr)
         # Plain str fields are untouched.
@@ -120,7 +124,7 @@ class WrapPasswordValuesTests(SimpleTestCase):
         self.assertNotIn("password", wrapped["smtp"])
 
     def test_empty_password_paths_returns_input_untouched(self):
-        config = {"smtp": {"password": "<REDACTED>"}}
+        config = {"smtp": {"password": _SPACE_BEARING_EXAMPLE}}
         wrapped = _wrap_password_values(config, ())
         # Same identity — no copy was made.
         self.assertIs(wrapped, config)
@@ -147,7 +151,7 @@ class DumpAgentConfigYamlTests(SimpleTestCase):
                 "host": "smtp.gmail.com",
                 "port": 587,
                 "username": "alice",
-                "password": "<REDACTED>",
+                "password": _SPACE_BEARING_EXAMPLE,
                 "use_tls": True,
             },
         }
@@ -166,7 +170,7 @@ class DumpAgentConfigYamlTests(SimpleTestCase):
                 "host": "imap.gmail.com",
                 "port": 993,
                 "username": "alice",
-                "password": "<REDACTED>",
+                "password": _SPACE_BEARING_EXAMPLE,
                 "use_ssl": True,
             },
         }
@@ -194,7 +198,7 @@ class DumpAgentConfigYamlTests(SimpleTestCase):
         # When agent_type doesn't declare password_paths, the dump path falls
         # back to PyYAML defaults — the test pins that we did NOT accidentally
         # apply the password layer to unrelated agents.
-        config = {"smtp": {"password": "<REDACTED>"}}
+        config = {"smtp": {"password": _SPACE_BEARING_EXAMPLE}}
         text = self._dump_and_read(config, "starter")
         # Bare scalar (no surrounding quotes) — PyYAML emits a space-bearing
         # plain scalar unquoted, which is exactly what "we did not apply the
@@ -229,7 +233,7 @@ class FlowCompilerWritePathTests(SimpleTestCase):
                             "host": "smtp.gmail.com",
                             "port": 587,
                             "username": "alice",
-                            "password": "<REDACTED>",
+                            "password": _SPACE_BEARING_EXAMPLE,
                             "use_tls": True,
                             "use_ssl": False,
                         },
@@ -264,7 +268,7 @@ class FlowCompilerWritePathTests(SimpleTestCase):
                             "host": "imap.gmail.com",
                             "port": 993,
                             "username": "alice",
-                            "password": "<REDACTED>",
+                            "password": _SPACE_BEARING_EXAMPLE,
                             "use_ssl": True,
                         },
                     },
@@ -353,7 +357,7 @@ class ConnectionUpdateViewTests(SimpleTestCase):
                 "host": "smtp.gmail.com",
                 "port": 587,
                 "username": "alice",
-                "password": "<REDACTED>",
+                "password": _SPACE_BEARING_EXAMPLE,
                 "use_tls": True,
             },
         }
@@ -386,7 +390,7 @@ class ConnectionUpdateViewTests(SimpleTestCase):
                 "host": "imap.gmail.com",
                 "port": 993,
                 "username": "alice",
-                "password": "<REDACTED>",
+                "password": _SPACE_BEARING_EXAMPLE,
                 "use_ssl": True,
             },
         }
@@ -439,7 +443,7 @@ class SaveAgentConfigViewTests(SimpleTestCase):
                 "host": "smtp.gmail.com",
                 "port": 587,
                 "username": "alice",
-                "password": "<REDACTED>",
+                "password": _SPACE_BEARING_EXAMPLE,
                 "use_tls": True,
                 "use_ssl": False,
             },
@@ -461,7 +465,7 @@ class SaveAgentConfigViewTests(SimpleTestCase):
                 "host": "imap.gmail.com",
                 "port": 993,
                 "username": "alice",
-                "password": "<REDACTED>",
+                "password": _SPACE_BEARING_EXAMPLE,
                 "use_ssl": True,
                 "folder": "INBOX",
             },

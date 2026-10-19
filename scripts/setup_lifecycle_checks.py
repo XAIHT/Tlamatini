@@ -6,7 +6,6 @@ These are focused recovery checks, not complete compiled installation runs.
 """
 import ctypes
 import json
-import os
 from pathlib import Path
 import shutil
 import sys
@@ -16,11 +15,11 @@ import time
 import unittest
 from unittest.mock import patch
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from setup_recovery import Recovery, checked_path, removal_files, removal_directories, setup_lock
 from setup_windows import WindowsSnapshot, run_powershell
 
+ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "Temp/setup-lifecycle-checks"
 OUT.mkdir(parents=True, exist_ok=True)
 
@@ -248,8 +247,10 @@ class RecoveryChecks(unittest.TestCase):
                 winreg.SetValueEx(key, "InstallLocation", 0, winreg.REG_SZ, owner)
         native_open, native_delete = winreg.OpenKey, winreg.DeleteKey
         def cleanup():
-            try: native_delete(winreg.HKEY_CURRENT_USER, key_path)
-            except FileNotFoundError: pass
+            try:
+                native_delete(winreg.HKEY_CURRENT_USER, key_path)
+            except FileNotFoundError:
+                pass
         self.addCleanup(cleanup)
         stack = ExitStack()
         self.addCleanup(stack.close)

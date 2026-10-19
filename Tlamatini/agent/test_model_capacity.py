@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """COMPACT MODE - every request fits the model it is sent to (Angela, 2026-10-01).
 
 Pins the whole chain that keeps a small local model from being fed a request

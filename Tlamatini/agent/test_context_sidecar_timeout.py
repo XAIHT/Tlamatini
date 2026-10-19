@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """The context sidecars' own Ollama calls are bounded (Angela, 2026-10-05).
 
 Her installed build sat for about five minutes on "Fetching file search

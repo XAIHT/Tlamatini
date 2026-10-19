@@ -82,7 +82,7 @@ Tlamatini/.mcps/create_new_mcp.md
 ## Tool-only workflow (most common)
 
 1. Implement an `@tool` function in `agent/tools.py` (sync, returns strings).
-2. Resolve any bundled paths for **both** source and frozen modes (`os.path.dirname(sys.executable)` vs `os.path.dirname(os.path.abspath(__file__))`).
+2. Resolve any bundled paths for **both** source and frozen modes (`os.path.dirname(sys.executable)` vs `os.path.dirname(os.path.abspath(__file__))`). Assign dependencies to their executing interpreter: web-process clients need frozen collection; pool agents and their Python MCP servers need carried `python/`. Never duplicate pool-only native libraries into `_internal` merely for parity. Preserve all transports and both runtime verification gates; see `docs/self-management-carriage.md`.
 3. Register the tool in `get_mcp_tools()` under a `global_state` gate.
 4. Seed a `Tool` row via a new migration so the UI toggle row exists.
 5. Frontend usually needs **NO** changes — the tool checkbox UI is dynamic.

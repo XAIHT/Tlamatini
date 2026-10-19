@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Guard: the build pipeline must NEVER print pip's self-upgrade nag.
 
 Angela, 2026-08-09: every run of ``build_complete_public_release.py`` /

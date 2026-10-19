@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Gitter `custom_command` tokenization — Windows paths must survive.
 
 THE BUG (measured 2026-09-11, while committing the glm-5.3 switch):

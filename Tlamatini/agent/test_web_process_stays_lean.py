@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """The frozen Django process must NOT drag in the transformers/torch ML stack.
 
 Angela reported a "bug" starting in FROZEN mode (2026-08-29, v1.50.3): the

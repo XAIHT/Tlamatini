@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """VISIBLE end-to-end replay of Angela's OpenMP LaTeX request.
 
 WHAT THIS IS

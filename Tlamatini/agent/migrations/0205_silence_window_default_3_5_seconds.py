@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Print 3.5 s, not 10 s, as the Whisperer silence-window default (2026-09-18).
 
 Angela: "set the default silence everywhere it corresponds to 3.5 seconds".

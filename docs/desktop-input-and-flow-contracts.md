@@ -58,7 +58,7 @@ Shoter publishes `output_path`, `image_width`, `image_height`, `capture_left/top
 
 ## Parametrizer
 
-The current catalog has **53 declared structured-output producers**, including Keyboarder. Every producer's declared fields populate the parser registry. The generic parser accepts LF/CRLF, blank values, colon-bearing URLs and a body separated by a blank line. An empty value remains a field rather than disappearing.
+The current catalog has **50 declared structured-output producers**, including Keyboarder. Every producer's declared fields populate the parser registry. The generic parser accepts LF/CRLF, blank values, colon-bearing URLs and a body separated by a blank line. An empty value remains a field rather than disappearing.
 
 Mappings remain a single-source, single-target queue with backup, execution, restoration and committed source offsets. Scalar mappings preserve the target's existing Boolean, integer or floating-point type when conversion is valid; strings remain strings, and scalar-to-list wrapping remains supported. Nullable targets have no inferred scalar type. A missing field, failed marker replacement or invalid conversion rejects the segment before writing the target config or starting it. All configured mappings must succeed.
 
@@ -72,7 +72,7 @@ Map all relevant Shoter geometry fields, and separately obtain a grounded image-
 
 ## FlowCreator and coverage maintenance
 
-The previous guide contained entries for all 89 agents, but several entries were stale and the generated graph was insufficiently checked. In particular, Counter's `target_agents_l/g` were omitted, dangling references disappeared silently, and every leaf was attached to every Ender. Ender connections are now explicit. `target_agents` on Ender remains its kill list; its execution output is `output_agents`.
+The previous guide contained entries for the installed catalog, but several entries were stale and the generated graph was insufficiently checked. In particular, Counter's `target_agents_l/g` were omitted, dangling references disappeared silently, and every leaf was attached to every Ender. Ender connections are now explicit. `target_agents` on Ender remains its kill list; its execution output is `output_agents`.
 
 The first model request presents the complete capability roster. The second includes global flow rules, the selected agents' detailed guide sections and their current contract/schema records. Starter, Ender and Parametrizer are always available in the design stage. A guide-coverage check requires a reference section for every installed type. Unknown or unselected types fail validation, including the unimplemented GUI-Manager.
 

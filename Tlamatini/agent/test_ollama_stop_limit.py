@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """No Ollama request may carry more than four stop sequences, and a failed
 chat-history summary must never fail the answer (Angela, 2026-10-03).
 

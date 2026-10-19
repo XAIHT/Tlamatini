@@ -13,7 +13,7 @@
 // Agentic Control Panel - File I/O: Save, Open, Close, Load Diagram
 // LOAD ORDER: #9 - Depends on: acp-globals.js, acp-session.js, acp-canvas-core.js,
 //                              acp-canvas-undo.js, acp-agent-connectors.js
-/* global updatePptxerConnection, updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateDeCompresserConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateTelegrammerConnection, updateWhatsapperConnection, updateAcpxerConnection, updatePlaywrighterConnection, updateWindowerConnection, updateKalierConnection, updateZavuererConnection, updateStm32erConnection, updateEsp32erConnection, updateEsphomerConnection, updateArduinerConnection, updateMcpDoctorConnection, updateInstantMessagingDoctorConnection, updateCamcorderConnection, updateEditorConnection, updateGrepperConnection, updateGlobberConnection, updateRecorderConnection, updateWhispererConnection, updateAudioPlayerConnection, updateVideoPlayerConnection, updateTalkerConnection, getAgentPurposeForName, setCanvasItemMetadata, getDefaultDiagramSaveFilename, getHeaders */
+/* global updatePptxerConnection, updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateDeCompresserConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateTelegrammerConnection, updateWhatsapperConnection, updateAcpxerConnection, updatePlaywrighterConnection, updateWindowerConnection, updateKalierConnection, updateStm32erConnection, updateEsp32erConnection, updateEsphomerConnection, updateArduinerConnection, updateMcpDoctorConnection, updateInstantMessagingDoctorConnection, updateCamcorderConnection, updateEditorConnection, updateGrepperConnection, updateGlobberConnection, updateRecorderConnection, updateWhispererConnection, updateAudioPlayerConnection, updateVideoPlayerConnection, updateTalkerConnection, getAgentPurposeForName, setCanvasItemMetadata, getDefaultDiagramSaveFilename, getHeaders */
 
 // ========================================
 // SAVE BUTTON
@@ -591,7 +591,6 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
                 case 'pdfer': await updatePdferConnection(sourceId, targetId, 'add'); break;
                 case 'latexer': await updateLatexerConnection(sourceId, targetId, 'add'); break;
                 case 'kalier': await updateKalierConnection(sourceId, targetId, 'add'); break;
-                case 'zavuerer': await updateZavuererConnection(sourceId, targetId, 'add'); break;
                 case 'stm32er': await updateStm32erConnection(sourceId, targetId, 'add'); break;
                 case 'esp32er': await updateEsp32erConnection(sourceId, targetId, 'add'); break;
                 case 'esphomer': await updateEsphomerConnection(sourceId, targetId, 'add'); break;
@@ -600,11 +599,6 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
                 case 'image-interpreter': await updateImageInterpreterConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'video-analyzer': await updateVideoAnalyzerConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'netspeed-calculator': await updateNetSpeedCalculatorConnection(sourceId, targetId, 'add', 'target'); break;
-                case 'gatewayer': await updateGatewayerConnection(sourceId, targetId, 'add', 'target'); break;
-                case 'gateway relayer':
-                case 'gateway-relayer': await updateGatewayRelayerConnection(sourceId, targetId, 'add', 'target'); break;
-                case 'node manager':
-                case 'node-manager': await updateNodeManagerConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'file-creator': await updateFileCreatorConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'file-extractor': await updateFileExtractorConnection(sourceId, targetId, 'add', 'target'); break;
                 case 'kyber-keygen': await updateKyberKeygenConnection(sourceId, targetId, 'add', 'target'); break;
@@ -680,11 +674,6 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
                 case 'image-interpreter': await updateImageInterpreterConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'video-analyzer': await updateVideoAnalyzerConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'netspeed-calculator': await updateNetSpeedCalculatorConnection(targetId, sourceId, 'add', 'source'); break;
-                case 'gatewayer': await updateGatewayerConnection(targetId, sourceId, 'add', 'source'); break;
-                case 'gateway relayer':
-                case 'gateway-relayer': await updateGatewayRelayerConnection(targetId, sourceId, 'add', 'source'); break;
-                case 'node manager':
-                case 'node-manager': await updateNodeManagerConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'file-creator': await updateFileCreatorConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'file-extractor': await updateFileExtractorConnection(targetId, sourceId, 'add', 'source'); break;
                 case 'kyber-keygen': await updateKyberKeygenConnection(targetId, sourceId, 'add', 'source'); break;

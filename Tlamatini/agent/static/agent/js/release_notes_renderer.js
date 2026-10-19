@@ -1,3 +1,4 @@
+/* Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1 */
 /*
  * release_notes_renderer.js — renders GitHub RELEASE NOTES (Markdown + the raw
  * HTML GitHub itself injects) into real HTML for the "About ▸ Check for
@@ -37,7 +38,7 @@
     'use strict';
 
     // Tags we re-materialise. Value = whitelist of attributes kept.
-    var ALLOWED = {
+    const ALLOWED = {
         a: ['href', 'title'],
         img: ['src', 'alt', 'title', 'width', 'height'],
         video: ['src', 'poster', 'width', 'height', 'controls', 'loop', 'muted', 'autoplay'],
@@ -50,16 +51,16 @@
         table: [], thead: [], tbody: [], tfoot: [], tr: [], th: ['colspan', 'rowspan'],
         td: ['colspan', 'rowspan'], caption: []
     };
-    var BOOLEAN_ATTRS = ['controls', 'loop', 'muted', 'autoplay', 'open'];
-    var VOID_TAGS = ['br', 'hr', 'img', 'source'];
+    const BOOLEAN_ATTRS = ['controls', 'loop', 'muted', 'autoplay', 'open'];
+    const VOID_TAGS = ['br', 'hr', 'img', 'source'];
 
-    var VIDEO_EXT = /\.(mp4|webm|mov|m4v|ogv|ogg)(\?|#|$)/i;
-    var IMAGE_EXT = /\.(png|jpe?g|gif|webp|svg|bmp|avif|ico)(\?|#|$)/i;
+    const VIDEO_EXT = /\.(mp4|webm|mov|m4v|ogv|ogg)(\?|#|$)/i;
+    const IMAGE_EXT = /\.(png|jpe?g|gif|webp|svg|bmp|avif|ico)(\?|#|$)/i;
     // GitHub-hosted media with no extension — could be a picture OR a clip.
-    var GH_ASSET = /(user-attachments\/assets\/|githubusercontent\.com\/)/i;
+    const GH_ASSET = /(user-attachments\/assets\/|githubusercontent\.com\/)/i;
 
-    var MARK = '\u0000';           // placeholder sentinel — never present in real notes
-    var TOKEN_RE = new RegExp(MARK + '(\\d+)' + MARK, 'g');
+    const MARK = '\u0000';           // placeholder sentinel — never present in real notes
+    const TOKEN_RE = new RegExp(MARK + '(\\d+)' + MARK, 'g');
 
     function escapeHtml(text) {
         return String(text)
@@ -75,9 +76,9 @@
     }
 
     function safeUrl(url) {
-        var raw = String(url || '').trim().replace(/\s+/g, '');
+        const raw = String(url || '').trim().replace(/\s+/g, '');
         if (!raw) return '';
-        var probe = raw.replace(/&amp;/gi, '&').toLowerCase();
+        const probe = raw.replace(/&amp;/gi, '&').toLowerCase();
         if (/^javascript:/.test(probe) || /^vbscript:/.test(probe) || /^file:/.test(probe)) return '';
         if (/^data:/.test(probe) && !/^data:image\//.test(probe)) return '';
         return raw;
@@ -94,15 +95,15 @@
     /* Build the <img>/<video> for one media URL, honouring the GitHub
      * extensionless case (rule 4 above). */
     function mediaHtml(url, alt, extra) {
-        var href = safeUrl(url);
+        const href = safeUrl(url);
         if (!href) return '';
-        var altText = attrValue(alt || '');
-        var size = extra || '';
+        const altText = attrValue(alt || '');
+        const size = extra || '';
         if (isVideoUrl(href)) {
             return '<video class="rn-media" controls preload="metadata" src="'
                 + attrValue(href) + '"' + size + '></video>';
         }
-        var fallback = (!isKnownImage(href) && GH_ASSET.test(href.replace(/&amp;/gi, '&')))
+        const fallback = (!isKnownImage(href) && GH_ASSET.test(href.replace(/&amp;/gi, '&')))
             ? ' data-rn-fallback="video"' : '';
         return '<img class="rn-media" src="' + attrValue(href) + '" alt="' + altText + '"'
             + size + fallback + ' loading="lazy">';
@@ -111,18 +112,18 @@
     /* Rebuild ONE raw HTML tag from the whitelist. Anything unknown is dropped
      * (returns '') — never echoed back, never trusted. */
     function sanitizeTag(closing, name, attrText) {
-        var tag = String(name).toLowerCase();
+        let tag = String(name).toLowerCase();
         if (!Object.prototype.hasOwnProperty.call(ALLOWED, tag)) return '';
         if (closing) return '</' + tag + '>';
 
-        var allowed = ALLOWED[tag];
-        var attrs = {};
-        var re = /([a-zA-Z_:][-a-zA-Z0-9_:.]*)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+)))?/g;
-        var match;
+        const allowed = ALLOWED[tag];
+        const attrs = {};
+        const re = /([a-zA-Z_:][-a-zA-Z0-9_:.]*)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+)))?/g;
+        let match;
         while ((match = re.exec(attrText)) !== null) {
-            var key = match[1].toLowerCase();
+            const key = match[1].toLowerCase();
             if (allowed.indexOf(key) === -1) continue;      // <- drops every on* handler
-            var value = match[2] !== undefined ? match[2]
+            const value = match[2] !== undefined ? match[2]
                 : match[3] !== undefined ? match[3]
                     : match[4] !== undefined ? match[4] : '';
             attrs[key] = value;
@@ -131,17 +132,17 @@
         // An <img>/<video> whose src is extensionless GitHub media gets the
         // same image<->video fallback the markdown path gets.
         if (tag === 'img' || tag === 'video' || tag === 'source') {
-            var src = safeUrl(attrs.src);
+            const src = safeUrl(attrs.src);
             if (!src) return '';
             attrs.src = src;
             if (tag === 'img' && isVideoUrl(src)) tag = 'video';
         }
         if (tag === 'a') {
-            var href = safeUrl(attrs.href);
+            const href = safeUrl(attrs.href);
             if (!href) { attrs.href = ''; } else { attrs.href = href; }
         }
 
-        var out = '<' + tag;
+        let out = '<' + tag;
         Object.keys(attrs).forEach(function (key) {
             if (BOOLEAN_ATTRS.indexOf(key) !== -1) { out += ' ' + key; return; }
             if (!attrs[key]) return;
@@ -158,19 +159,19 @@
     }
 
     function inline(text) {
-        var out = text;
+        let out = text;
         // ![alt](url) BEFORE [text](url) — an image is a link with a bang.
         out = out.replace(/!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g, function (all, alt, url) {
             return mediaHtml(url, alt, '') || '';
         });
         out = out.replace(/\[([^\]]+)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g, function (all, label, url) {
-            var href = safeUrl(url);
+            const href = safeUrl(url);
             if (!href) return label;
             return '<a href="' + attrValue(href) + '">' + label + '</a>';
         });
         // Bare URL on its own → clickable (GitHub autolinks these too).
         out = out.replace(/(^|[\s(])((?:https?:\/\/)[^\s<>()"]+)/g, function (all, lead, url) {
-            var href = safeUrl(url);
+            const href = safeUrl(url);
             if (!href) return all;
             return lead + '<a href="' + attrValue(href) + '">' + href + '</a>';
         });
@@ -182,9 +183,9 @@
     }
 
     function renderBlocks(lines) {
-        var html = [];
-        var paragraph = [];
-        var listType = null;
+        const html = [];
+        let paragraph = [];
+        let listType = null;
 
         function flushParagraph() {
             if (!paragraph.length) return;
@@ -196,13 +197,13 @@
         }
 
         lines.forEach(function (rawLine) {
-            var line = rawLine.replace(/\s+$/, '');
+            const line = rawLine.replace(/\s+$/, '');
             if (!line.trim()) { flushParagraph(); closeList(); return; }
 
-            var heading = /^(#{1,6})\s+(.*)$/.exec(line);
+            const heading = /^(#{1,6})\s+(.*)$/.exec(line);
             if (heading) {
                 flushParagraph(); closeList();
-                var level = heading[1].length;
+                const level = heading[1].length;
                 html.push('<h' + level + '>' + inline(heading[2]) + '</h' + level + '>');
                 return;
             }
@@ -210,17 +211,17 @@
                 flushParagraph(); closeList(); html.push('<hr>'); return;
             }
             // '>' arrives escaped, because escapeHtml already ran.
-            var quote = /^\s*&gt;\s?(.*)$/.exec(line);
+            const quote = /^\s*&gt;\s?(.*)$/.exec(line);
             if (quote) {
                 flushParagraph(); closeList();
                 html.push('<blockquote>' + inline(quote[1]) + '</blockquote>');
                 return;
             }
-            var bullet = /^\s*[-*+]\s+(.*)$/.exec(line);
-            var numbered = /^\s*\d+[.)]\s+(.*)$/.exec(line);
+            const bullet = /^\s*[-*+]\s+(.*)$/.exec(line);
+            const numbered = /^\s*\d+[.)]\s+(.*)$/.exec(line);
             if (bullet || numbered) {
                 flushParagraph();
-                var want = bullet ? 'ul' : 'ol';
+                const want = bullet ? 'ul' : 'ol';
                 if (listType !== want) { closeList(); html.push('<' + want + '>'); listType = want; }
                 html.push('<li>' + inline((bullet || numbered)[1]) + '</li>');
                 return;
@@ -235,12 +236,12 @@
     }
 
     function render(markdown) {
-        var source = String(markdown == null ? '' : markdown);
+        const source = String(markdown == null ? '' : markdown);
         try {
-            var store = [];
+            const store = [];
             function keep(html) { store.push(html); return MARK + (store.length - 1) + MARK; }
 
-            var text = source.replace(/\r\n?/g, '\n');
+            let text = source.replace(/\r\n?/g, '\n');
             // Executable content is REMOVED, body and all, before anything else.
             text = text.replace(/<script[\s\S]*?<\/script\s*>/gi, '')
                 .replace(/<style[\s\S]*?<\/style\s*>/gi, '')
@@ -260,16 +261,16 @@
             // each rebuilt tag so the markdown pass cannot touch its attributes.
             text = text.replace(/&lt;(\/?)([a-zA-Z][a-zA-Z0-9-]*)([\s\S]*?)&gt;/g,
                 function (all, closing, name, attrText) {
-                    var tag = sanitizeTag(closing, name, attrText.replace(/&quot;/g, '"'));
+                    const tag = sanitizeTag(closing, name, attrText.replace(/&quot;/g, '"'));
                     return tag ? keep(tag) : '';
                 });
 
-            var html = renderBlocks(text.split('\n'));
+            let html = renderBlocks(text.split('\n'));
 
             // Restore placeholders (repeat: a kept tag may sit inside another).
-            for (var pass = 0; pass < 4 && html.indexOf(MARK) !== -1; pass++) {
+            for (let pass = 0; pass < 4 && html.indexOf(MARK) !== -1; pass++) {
                 html = html.replace(TOKEN_RE, function (all, index) {
-                    var value = store[Number(index)];
+                    const value = store[Number(index)];
                     return value === undefined ? '' : value;
                 });
             }
@@ -293,7 +294,7 @@
             img.addEventListener('error', function () {
                 if (img.dataset.rnSwapped === '1') return;
                 img.dataset.rnSwapped = '1';
-                var video = document.createElement('video');
+                const video = document.createElement('video');
                 video.className = 'rn-media';
                 video.controls = true;
                 video.preload = 'metadata';

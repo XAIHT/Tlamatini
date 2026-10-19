@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 # Tlamatini Author Banner - do not remove
 """VISIBLE proof: COMPACT MODE - one-shot questions work on the SMALL model the
 installed Tlamatini is configured with (Angela, 2026-10-01).

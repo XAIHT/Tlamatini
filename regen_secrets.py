@@ -26,7 +26,6 @@ Targeted files (resolved relative to this script):
         ollama_token       (top)
         whatsapp_access_token, whatsapp_phone_number_id  (top — Whatsapper / Meta Cloud API)
         telegram_bot_token (top — Telegrammer / official Telegram Bot API)
-        zavu_api_key       (top — Zavuerer / Zavu unified-messaging API; secret)
         pdcp_api_key       (top — Discoverer / ProjectDiscovery Cloud Platform key; OPTIONAL, secret)
 
     Tlamatini/agent/agents/telegrammer/config.yaml
@@ -49,8 +48,6 @@ Targeted files (resolved relative to this script):
         imap.username, imap.password (Gmail app password from
         https://myaccount.google.com/apppasswords)
 
-    Tlamatini/agent/agents/zavuerer/config.yaml
-        zavu_api_key (Zavu unified-messaging REST API key from https://www.zavu.dev)
 
     Tlamatini/agent/agents/discoverer/config.yaml
         pdcp_api_key (ProjectDiscovery Cloud Platform key from
@@ -87,7 +84,6 @@ WHATSAPPER_YAML = REPO_ROOT / "Tlamatini" / "agent" / "agents" / "whatsapper" / 
 TELETLAMATINI_YAML = REPO_ROOT / "Tlamatini" / "agent" / "agents" / "teletlamatini" / "config.yaml"
 EMAILER_YAML = REPO_ROOT / "Tlamatini" / "agent" / "agents" / "emailer" / "config.yaml"
 RECMAILER_YAML = REPO_ROOT / "Tlamatini" / "agent" / "agents" / "recmailer" / "config.yaml"
-ZAVUERER_YAML = REPO_ROOT / "Tlamatini" / "agent" / "agents" / "zavuerer" / "config.yaml"
 DISCOVERER_YAML = REPO_ROOT / "Tlamatini" / "agent" / "agents" / "discoverer" / "config.yaml"
 EXTERNAL_MCPS_JSON = REPO_ROOT / "Tlamatini" / "agent" / "external_mcps.json"
 
@@ -132,7 +128,7 @@ def parse_keys_file(path: Path) -> Dict[str, str]:
             f"Create it (see data.keys.example) before running --mode keyed."
         )
     out: Dict[str, str] = {}
-    for raw_lineno, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+    for raw_lineno, raw in enumerate(path.read_text(encoding="utf-8-sig").splitlines(), 1):
         line = raw.strip()
         if not line or line.startswith("#"):
             continue
@@ -194,7 +190,6 @@ def patch_config_json(mode: str, keys: Dict[str, str], dry_run: bool) -> List[st
     set_top("whatsapp_access_token",     "WHATSAPP_ACCESS_TOKEN")
     set_top("whatsapp_phone_number_id",  "WHATSAPP_PHONE_NUMBER_ID")
     set_top("telegram_bot_token",        "TELEGRAM_BOT_TOKEN")
-    set_top("zavu_api_key",              "ZAVU_API_KEY")
     set_top("pdcp_api_key",              "PDCP_API_KEY")
 
     set_acpx_env("claude", "ANTHROPIC_API_KEY", "ANTHROPIC_API_KEY")
@@ -252,9 +247,6 @@ RECMAILER_RULES: List[Tuple[List[str], str]] = [
     (["imap", "password"], "RECMAILER_PASSWORD"),
 ]
 
-ZAVUERER_RULES: List[Tuple[List[str], str]] = [
-    (["zavu_api_key"], "ZAVU_API_KEY"),
-]
 
 DISCOVERER_RULES: List[Tuple[List[str], str]] = [
     (["pdcp_api_key"], "PDCP_API_KEY"),
@@ -265,45 +257,47 @@ _KEY_RE = re.compile(r"^(?P<indent>\s*)(?P<key>[A-Za-z_][A-Za-z0-9_]*)\s*:(?P<re
 
 
 def _force_quote(value: str) -> str:
-    """Always emit `value` as a YAML double-quoted scalar, with the standard
-    PyYAML escaping for embedded backslashes and quotes."""
-    escaped = value.replace("\\", "\\\\").replace('"', '\\"')
-    return f'"{escaped}"'
+    """Emit one lossless YAML double-quoted string, including control characters."""
+    # JSON string escaping is also valid in YAML. Keep non-BMP Unicode intact;
+    # YAML additionally treats these Unicode separators as line breaks.
+    return (json.dumps(value, ensure_ascii=False)
+            .replace("\u0085", "\\u0085")
+            .replace("\u2028", "\\u2028")
+            .replace("\u2029", "\\u2029"))
 
 
 def _quote_value(value: str, *, force_quote: bool = False) -> str:
-    """Render a YAML scalar that won't be re-parsed as int/bool/null/list/etc.
+    """Keep credentials as strings; YAML implicit types must not change them.
 
-    `force_quote=True` is used for credential fields (passwords, app passwords)
-    so the result is ALWAYS double-quoted on disk, regardless of whether the
-    raw value would otherwise have been emitted bare. The Emailer/Recmailer
-    runtime contracts require the password to be embraced by `"` at every
-    write site so it survives round-trips and stays visually delimited from
-    trailing comments.
+    The keyword remains accepted for existing callers. All credential strings
+    now receive the same lossless quoting, including numeric-looking values.
+    The explicitly numeric Telegram api_id field is handled by its path below.
     """
-    if force_quote:
-        return _force_quote(value)
-    if value == "":
-        return '""'
-    # Numeric-looking → wrap in quotes only when the original spot expected a string.
-    # We always quote to keep things deterministic; YAML accepts quoted ints in
-    # any string-valued field, and Telethon coerces api_id back to int itself.
-    # But api_id MUST be int — handle that by leaving bare digits unquoted.
-    if re.fullmatch(r"-?\d+", value):
-        return value
-    if re.fullmatch(r"-?\d+\.\d+", value):
-        return value
-    # Anything containing special YAML chars or starting with reserved chars
-    # gets double-quoted with backslash-escaping for `"` and `\`.
-    needs_quote = (
-        value[0] in "!&*[]{}|>%@`#," or
-        value.lower() in ("true", "false", "yes", "no", "on", "off", "null", "~") or
-        any(ch in value for ch in [':', '#', '\n', '\t']) or
-        value != value.strip()
-    )
-    if needs_quote:
-        return _force_quote(value)
-    return value
+    return _force_quote(value)
+
+
+def _yaml_inline_comment(rest: str) -> str:
+    """Return a real comment, never a hash inside a quoted credential."""
+    start = len(rest) - len(rest.lstrip())
+    quote = rest[start] if start < len(rest) and rest[start] in "\"'" else ""
+    index = start + 1 if quote else start
+    while index < len(rest):
+        char = rest[index]
+        if quote == '"' and char == "\\":
+            index += 2
+            continue
+        if quote and char == quote:
+            if quote == "'" and index + 1 < len(rest) and rest[index + 1] == "'":
+                index += 2
+                continue
+            quote = ""
+        elif not quote and char == "#" and (index == 0 or rest[index - 1].isspace()):
+            begin = index
+            while begin > 0 and rest[begin - 1].isspace():
+                begin -= 1
+            return rest[begin:]
+        index += 1
+    return ""
 
 
 def _patch_yaml_text(text: str, rules: List[Tuple[List[str], str]],
@@ -320,8 +314,8 @@ def _patch_yaml_text(text: str, rules: List[Tuple[List[str], str]],
     `password` is rendered as a YAML double-quoted scalar regardless of value
     shape. This is enabled for the Emailer and Recmailer rule sets so the
     on-disk password line always reads `password: "<...>"` — both for the
-    push-able placeholder and for the keyed real value. Other rule sets keep
-    the original value-shape-driven quoting heuristic.
+    push-able placeholder and for the keyed real value. All other credential strings are quoted too; only
+    the explicitly numeric Telegram api_id field retains an integer value.
     """
     lines = text.splitlines(keepends=False)
     # Pre-compute target last-key + parent-key chain by indent depth.
@@ -366,10 +360,10 @@ def _patch_yaml_text(text: str, rules: List[Tuple[List[str], str]],
             and bool(path)
             and path[-1].lower() == "password"
         )
-        formatted = _quote_value(new_val, force_quote=force_quote)
+        formatted = (new_val if path[-1] == "api_id" and re.fullmatch(r"[0-9]+", new_val)
+                     else _quote_value(new_val, force_quote=force_quote))
         # Preserve any inline comment after the value.
-        comment_match = re.search(r"\s+#.*$", rest)
-        comment = comment_match.group(0) if comment_match else ""
+        comment = _yaml_inline_comment(rest)
         new_line = f"{m.group('indent')}{key}: {formatted}{comment}"
         if new_line != line:
             changes.append(f"  {file_label}:{full_path} <- {data_key}")
@@ -555,7 +549,6 @@ def main() -> int:
                    force_quote_passwords=True),
         patch_yaml(RECMAILER_YAML,     RECMAILER_RULES,     args.mode, keys, args.dry_run,
                    force_quote_passwords=True),
-        patch_yaml(ZAVUERER_YAML,      ZAVUERER_RULES,      args.mode, keys, args.dry_run),
         patch_yaml(DISCOVERER_YAML,    DISCOVERER_RULES,    args.mode, keys, args.dry_run),
         patch_external_mcps_json(args.mode, keys, args.dry_run, Path(args.keys_file)),
     ]

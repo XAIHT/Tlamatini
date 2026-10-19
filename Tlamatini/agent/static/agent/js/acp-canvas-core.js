@@ -9,11 +9,14 @@
  * ═══════════════════════════════════════════════════════════════════
  *   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
  */
+// Shared classic-script bindings, consumed by sibling page scripts.
+/* exported removeConnection, populateAgentsList, initCanvasEvents */
+
 
 // Agentic Control Panel - Canvas Core: Items, Connections, Selection, Drag & Drop
 // LOAD ORDER: #7 - Depends on: acp-globals.js, acp-session.js, acp-undo-manager.js,
 //                              acp-agent-connectors.js
-/* global updatePptxerConnection, updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateGatewayerConnection, updateGatewayRelayerConnection, updateNodeManagerConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, openParametrizerDialog, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateDeCompresserConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateTelegrammerConnection, updateWhatsapperConnection, updateAcpxerConnection, updatePlaywrighterConnection, updateWindowerConnection, updateKalierConnection, updateZavuererConnection, updateStm32erConnection, updateEsp32erConnection, updateEsphomerConnection, updateArduinerConnection, updateMcpDoctorConnection, updateInstantMessagingDoctorConnection, updateCamcorderConnection, updateVideoAnalyzerConnection, updateEditorConnection, updateGrepperConnection, updateGlobberConnection, updateRecorderConnection, updateWhispererConnection, updateAudioPlayerConnection, updateVideoPlayerConnection, updateTalkerConnection, updateNetSpeedCalculatorConnection */
+/* global updatePptxerConnection, updateMouserConnection, updateFileInterpreterConnection, updateImageInterpreterConnection, updateFileCreatorConnection, updateFileExtractorConnection, updateKyberKeygenConnection, updateKyberCipherConnection, updateKyberDecipherConnection, updateParametrizerConnection, openParametrizerDialog, updateFlowBackerConnection, updateBarrierConnection, updateJDecompilerConnection, updateDeCompresserConnection, updateGooglerConnection, updateTeletlamatiniConnection, updateTelegrammerConnection, updateWhatsapperConnection, updateAcpxerConnection, updatePlaywrighterConnection, updateWindowerConnection, updateKalierConnection, updateStm32erConnection, updateEsp32erConnection, updateEsphomerConnection, updateArduinerConnection, updateMcpDoctorConnection, updateInstantMessagingDoctorConnection, updateCamcorderConnection, updateVideoAnalyzerConnection, updateEditorConnection, updateGrepperConnection, updateGlobberConnection, updateRecorderConnection, updateWhispererConnection, updateAudioPlayerConnection, updateVideoPlayerConnection, updateTalkerConnection, updateNetSpeedCalculatorConnection */
 
 // ========================================
 // ITEM COUNTER / REGISTRATION
@@ -256,7 +259,6 @@ const AGENT_TYPE_CLASS_MAP = {
     'mouser': 'mouser-agent',
     'windower': 'windower-agent',
     'kalier': 'kalier-agent',
-    'zavuerer': 'zavuerer-agent',
     'stm32er': 'stm32er-agent',
     'esp32er': 'esp32er-agent',
     'esphomer': 'esphomer-agent',
@@ -265,9 +267,6 @@ const AGENT_TYPE_CLASS_MAP = {
     'image-interpreter': 'image-interpreter-agent',
     'video-analyzer': 'video-analyzer-agent',
     'netspeed-calculator': 'netspeed-calculator-agent',
-    'gatewayer': 'gatewayer-agent',
-    'gateway-relayer': 'gateway-relayer-agent',
-    'node-manager': 'nodemanager-agent',
     'file-creator': 'filecreator-agent',
     'file-extractor': 'fileextractor-agent',
     'kyber-keygen': 'kyberkeygen-agent',
@@ -947,7 +946,6 @@ function removeConnection(conn) {
         if (sourceAgentName.toLowerCase() === 'pdfer') updatePdferConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'latexer') updateLatexerConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'kalier') updateKalierConnection(sourceId, targetId, 'remove');
-        if (sourceAgentName.toLowerCase() === 'zavuerer') updateZavuererConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'stm32er') updateStm32erConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'esp32er') updateEsp32erConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'esphomer') updateEsphomerConnection(sourceId, targetId, 'remove');
@@ -960,12 +958,6 @@ function removeConnection(conn) {
         if (sourceAgentName.toLowerCase() === 'video-analyzer') updateVideoAnalyzerConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'netspeed-calculator') updateNetSpeedCalculatorConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'netspeed-calculator') updateNetSpeedCalculatorConnection(sourceId, targetId, 'remove', 'target');
-        if (targetAgentName.toLowerCase() === 'gatewayer') updateGatewayerConnection(targetId, sourceId, 'remove', 'source');
-        if (sourceAgentName.toLowerCase() === 'gatewayer') updateGatewayerConnection(sourceId, targetId, 'remove', 'target');
-        if (targetAgentName.toLowerCase() === 'gateway relayer') updateGatewayRelayerConnection(targetId, sourceId, 'remove', 'source');
-        if (sourceAgentName.toLowerCase() === 'gateway relayer') updateGatewayRelayerConnection(sourceId, targetId, 'remove', 'target');
-        if (targetAgentName.toLowerCase() === 'node manager') updateNodeManagerConnection(targetId, sourceId, 'remove', 'source');
-        if (sourceAgentName.toLowerCase() === 'node manager') updateNodeManagerConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'file-creator') updateFileCreatorConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'file-creator') updateFileCreatorConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'file-extractor') updateFileExtractorConnection(targetId, sourceId, 'remove', 'source');
@@ -1096,7 +1088,6 @@ function removeConnectionsFor(node, deletingNodes = null) { // eslint-disable-li
         if (sourceAgentName.toLowerCase() === 'pdfer' && !sourceBeingDeleted) updatePdferConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'latexer' && !sourceBeingDeleted) updateLatexerConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'kalier' && !sourceBeingDeleted) updateKalierConnection(sourceId, targetId, 'remove');
-        if (sourceAgentName.toLowerCase() === 'zavuerer' && !sourceBeingDeleted) updateZavuererConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'stm32er' && !sourceBeingDeleted) updateStm32erConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'esp32er' && !sourceBeingDeleted) updateEsp32erConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'esphomer' && !sourceBeingDeleted) updateEsphomerConnection(sourceId, targetId, 'remove');
@@ -1109,12 +1100,6 @@ function removeConnectionsFor(node, deletingNodes = null) { // eslint-disable-li
         if (sourceAgentName.toLowerCase() === 'video-analyzer' && !sourceBeingDeleted) updateVideoAnalyzerConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'netspeed-calculator' && !targetBeingDeleted) updateNetSpeedCalculatorConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'netspeed-calculator' && !sourceBeingDeleted) updateNetSpeedCalculatorConnection(sourceId, targetId, 'remove', 'target');
-        if (targetAgentName.toLowerCase() === 'gatewayer' && !targetBeingDeleted) updateGatewayerConnection(targetId, sourceId, 'remove', 'source');
-        if (sourceAgentName.toLowerCase() === 'gatewayer' && !sourceBeingDeleted) updateGatewayerConnection(sourceId, targetId, 'remove', 'target');
-        if (targetAgentName.toLowerCase() === 'gateway relayer' && !targetBeingDeleted) updateGatewayRelayerConnection(targetId, sourceId, 'remove', 'source');
-        if (sourceAgentName.toLowerCase() === 'gateway relayer' && !sourceBeingDeleted) updateGatewayRelayerConnection(sourceId, targetId, 'remove', 'target');
-        if (targetAgentName.toLowerCase() === 'node manager' && !targetBeingDeleted) updateNodeManagerConnection(targetId, sourceId, 'remove', 'source');
-        if (sourceAgentName.toLowerCase() === 'node manager' && !sourceBeingDeleted) updateNodeManagerConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'file-creator' && !targetBeingDeleted) updateFileCreatorConnection(targetId, sourceId, 'remove', 'source');
         if (sourceAgentName.toLowerCase() === 'file-creator' && !sourceBeingDeleted) updateFileCreatorConnection(sourceId, targetId, 'remove', 'target');
         if (targetAgentName.toLowerCase() === 'file-extractor' && !targetBeingDeleted) updateFileExtractorConnection(targetId, sourceId, 'remove', 'source');
@@ -1666,7 +1651,6 @@ function initCanvasEvents() {
                     if (sourceAgentName.toLowerCase() === 'pdfer') updatePdferConnection(sourceId, targetId, 'add');
                     if (sourceAgentName.toLowerCase() === 'latexer') updateLatexerConnection(sourceId, targetId, 'add');
                     if (sourceAgentName.toLowerCase() === 'kalier') updateKalierConnection(sourceId, targetId, 'add');
-                    if (sourceAgentName.toLowerCase() === 'zavuerer') updateZavuererConnection(sourceId, targetId, 'add');
                     if (sourceAgentName.toLowerCase() === 'stm32er') updateStm32erConnection(sourceId, targetId, 'add');
                     if (sourceAgentName.toLowerCase() === 'esp32er') updateEsp32erConnection(sourceId, targetId, 'add');
                     if (sourceAgentName.toLowerCase() === 'esphomer') updateEsphomerConnection(sourceId, targetId, 'add');
@@ -1679,12 +1663,6 @@ function initCanvasEvents() {
                     if (sourceAgentName.toLowerCase() === 'video-analyzer') updateVideoAnalyzerConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'netspeed-calculator') updateNetSpeedCalculatorConnection(targetId, sourceId, 'add', 'source');
                     if (sourceAgentName.toLowerCase() === 'netspeed-calculator') updateNetSpeedCalculatorConnection(sourceId, targetId, 'add', 'target');
-                    if (targetAgentName.toLowerCase() === 'gatewayer') updateGatewayerConnection(targetId, sourceId, 'add', 'source');
-                    if (sourceAgentName.toLowerCase() === 'gatewayer') updateGatewayerConnection(sourceId, targetId, 'add', 'target');
-                    if (targetAgentName.toLowerCase() === 'gateway relayer') updateGatewayRelayerConnection(targetId, sourceId, 'add', 'source');
-                    if (sourceAgentName.toLowerCase() === 'gateway relayer') updateGatewayRelayerConnection(sourceId, targetId, 'add', 'target');
-                    if (targetAgentName.toLowerCase() === 'node manager') updateNodeManagerConnection(targetId, sourceId, 'add', 'source');
-                    if (sourceAgentName.toLowerCase() === 'node manager') updateNodeManagerConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'file-creator') updateFileCreatorConnection(targetId, sourceId, 'add', 'source');
                     if (sourceAgentName.toLowerCase() === 'file-creator') updateFileCreatorConnection(sourceId, targetId, 'add', 'target');
                     if (targetAgentName.toLowerCase() === 'file-extractor') updateFileExtractorConnection(targetId, sourceId, 'add', 'source');

@@ -91,7 +91,7 @@ cvemap_severity: ""    # --severity e.g. "critical" or "critical,high" (comma-se
 cvemap_limit: 50       # --limit N results for `vulnx search` (0 = vulnx server default)
 
 # ── ProjectDiscovery Cloud Platform key (OPTIONAL for ALL tools) ─────────────
-pdcp_api_key: <PDCP_API_KEY goes here>       # empty = read the PDCP_API_KEY env / credentials file.
+pdcp_api_key: "<PDCP_API_KEY goes here>"       # empty = read the PDCP_API_KEY env / credentials file.
                        #   Boosts cvemap/vulnx rate limit; enables nuclei -ai + cloud.
 cloud_upload: false    # nuclei/httpx/naabu dashboard upload (-pd; needs pdcp_api_key)
 

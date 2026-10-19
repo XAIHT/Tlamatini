@@ -232,19 +232,17 @@ class PromptCatalogEndpointTests(TestCase):
         )
 
     def test_seeded_catalog_is_deduped_and_fully_tagged(self):
-        """Against the REAL seeded catalog AFTER migration 0179 (Angela's explicit
-        re-group / re-sort / NO-GAPS renumber, 2026-07-15): the duplicate ACPX demos
-        are gone, no rows are hidden, every prompt is tagged with a category, and
-        idPrompt is now a CONTIGUOUS 1..N (the 40-52 gap left by 0176 is filled). The
-        old "ids are never renumbered / the gap is intentional" contract was
-        deliberately superseded by 0179 — see test_prompt_catalog_contiguous.py."""
+        """The real seeded catalog stays deduplicated, tagged and identifiable.
+
+        Migration 0179 originally made IDs contiguous; 0181 separated display
+        order from identity. Retired slots are now left unused by 0214.
+        """
         all_ids = sorted(Prompt.objects.values_list("idPrompt", flat=True))
         if not all_ids:
             self.skipTest("no seeded prompts in this test DB")
-        # 0179: contiguous 1..N, NO gaps.
         self.assertEqual(
-            all_ids, list(range(1, len(all_ids) + 1)),
-            "idPrompt must be contiguous 1..N after the 0179 renumber (no gaps)",
+            all_ids, [i for i in range(1, max(all_ids) + 1) if i not in {90, 91, 92, 93}],
+            "Only retired catalog slots may be absent; surviving IDs stay stable",
         )
         # No hidden rows remain (the dups were physically deleted, not hidden).
         self.assertEqual(Prompt.objects.filter(hidden=True).count(), 0,

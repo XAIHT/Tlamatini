@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """
 Tlamatini - VISIBLE (headed Chrome) end-to-end test of FIVE escalating
 LaTeXer STEP-BY-STEP wizards, with a TRUTH ORACLE over the Exec Report.

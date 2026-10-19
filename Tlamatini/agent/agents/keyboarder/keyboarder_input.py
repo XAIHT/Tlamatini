@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Checked Windows keyboard input without changing the clipboard."""
 
 import ctypes

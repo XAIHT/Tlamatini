@@ -6,7 +6,7 @@ import time
 from playwright.sync_api import expect
 
 
-def run_extended_checks(chat, acp, prompting, out, checkpoint):
+def run_extended_checks(chat, acp, prompting, out, checkpoint, *, expected_agent_count):
     failures = []
     inventory = chat.locator('button[id], a[id], input[type=checkbox][id]').evaluate_all(
         "els=>els.map(e=>({id:e.id,label:(e.innerText||e.getAttribute('aria-label')||e.title||'').trim()}))"
@@ -56,10 +56,12 @@ def run_extended_checks(chat, acp, prompting, out, checkpoint):
         menu('config-menu-button', 'config-models')
         box = dialog('config-models-dialog-message')
         expect(box).to_be_visible()
-        expect(box.locator('[data-model-kind]')).to_have_count(38)
-        expect(box.get_by_role('tab')).to_have_count(6)
+        fields = box.locator('[data-model-kind]')
+        original = fields.evaluate_all('els=>Object.fromEntries(els.map(e=>[e.dataset.configKey,e.value]))')
         values = box.locator('[data-model-kind=ollama]').evaluate_all('els=>els.map(e=>e.value)')
-        assert values and set(values) == {'nemotron-3-ultra:cloud'}, 'An Ollama model escaped the campaign restriction'
+        assert values and all(value.strip() for value in values), 'An Ollama model setting is empty'
+        settings_count, categories = fields.count(), box.get_by_role('tab').count()
+        assert settings_count and categories
         for tab in box.get_by_role('tab').all():
             tab.click()
             expect(tab).to_have_attribute('aria-selected', 'true')
@@ -77,20 +79,23 @@ def run_extended_checks(chat, acp, prompting, out, checkpoint):
         assert field.input_value() == ''
         box.get_by_role('button', name='Cancel', exact=True).click()
         menu('config-menu-button', 'config-models')
-        expect(dialog('config-models-dialog-message').locator('[data-config-key=unified_agent_model]')).to_have_value('nemotron-3-ultra:cloud')
+        restored = dialog('config-models-dialog-message').locator('[data-model-kind]').evaluate_all(
+            'els=>Object.fromEntries(els.map(e=>[e.dataset.configKey,e.value]))')
+        assert restored == original, 'Cancel changed configured models'
         dialog('config-models-dialog-message').get_by_role('button', name='Save', exact=True).click()
         expect(dialog('config-models-dialog-message')).to_be_hidden()
         dismiss()
-        return {'settings': 38, 'categories': 6, 'ollama_model': 'nemotron-3-ultra:cloud', 'empty_rejected': True}
+        return {'settings': settings_count, 'categories': categories,
+                'configured_models_preserved': True, 'empty_rejected': True}
 
     case('12-models-tabs-search-validation-save-reopen', models)
 
     def agents():
         menu('config-menu-button', 'enable-agents')
         box = dialog('agents-dialog-message')
-        expect(box.locator('#agents-list input[type=checkbox]')).to_have_count(89)
+        expect(box.locator('#agents-list input[type=checkbox]')).to_have_count(expected_agent_count)
         box.get_by_role('button', name='Cancel', exact=True).click()
-        return {'agents': 89}
+        return {'agents': expected_agent_count}
     case('13-configure-all-agent-controls', agents)
 
     def mcps():
@@ -280,7 +285,7 @@ def run_extended_checks(chat, acp, prompting, out, checkpoint):
             chat.wait_for_timeout(5000)
         raise AssertionError('Expected real answer did not arrive within 180 seconds')
 
-    case('22-real-chat-nemotron-response', lambda: ask(
+    case('22-real-chat-configured-model-response', lambda: ask(
         'This is a chat release check. Do not use tools. Reply with the exact token TLAMATINI-CHAT-42 and the result of 16 + 26.',
         'TLAMATINI-CHAT-42'))
     case('23-real-chat-conversation-followup', lambda: ask(

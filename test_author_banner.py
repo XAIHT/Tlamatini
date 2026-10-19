@@ -27,7 +27,7 @@ SKIP_DIRS = {".git", "node_modules", "__pycache__", "venv", ".venv", "dist",
              "build", ".mypy_cache", ".ruff_cache", ".pytest_cache",
              "staticfiles", "python", "ms-playwright", "jre", "git",
              "jd-cli", "TlamatiniSourceCode", "pools", "mcp_agent_runs",
-             "Temp", "Templates", "site-packages",
+             "Temp", "Templates", "site-packages", "context_files",
              # Self-provisioned Go toolchain (ProjectDiscovery) + Go build cache:
              # bundled third-party binaries, gitignored, never Tlamatini source.
              "Go", "go-build"}
@@ -41,9 +41,12 @@ SKIP_FILES = {"_version.py"}
 def _iter_source_files():
     for dirpath, dirnames, filenames in os.walk(ROOT):
         dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS]
-        # Preserve Mozilla's upstream license/authorship in reproducibly vendored
-        # PDF.js assets; those files are not authored by the Tlamatini creator.
-        if Path(dirpath) == ROOT / "Tlamatini/agent/static/agent/vendor/pdfjs":
+        # Preserve upstream license/authorship in reproducibly vendored assets.
+        # These files and user context documents are not Tlamatini source.
+        if Path(dirpath) in {
+            ROOT / "Tlamatini/agent/static/agent/vendor/pdfjs",
+            ROOT / "Tlamatini/agent/static/agent/vendor/frontend",
+        }:
             dirnames[:] = []
             continue
         for name in filenames:

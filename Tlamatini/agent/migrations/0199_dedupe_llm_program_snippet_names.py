@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Repair the duplicate LLMProgram / LLMSnippet names an older build created.
 
 Angela, 2026-09-06. Program and snippet names are built as

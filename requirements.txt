@@ -1,47 +1,42 @@
-# Complete source/build dependency declarations; see scripts/check_requirements_coverage.py.
-# ESP32er / STM32er also support invoking the installed PlatformIO Python module.
-platformio==6.2.0
-# ESPHome is provisioned by ESPHomer into its PRIVATE runtime, not this Python.
-# Its complete entry is esphome==2026.9.0 in requirements-esphome.txt.
-# Do not include that file with -r here: ESPHome requires py7zr==1.1.3,
-# while Tlamatini's archive stack below requires py7zr==0.22.0.
-# Blender bpy / Unreal unreal are supplied by those applications; tkinter is stdlib.
-# Autobahn is explicitly collected by build.py. 26.7.1 fixes GHSA-hxp9-w8x3-p566.
-autobahn==26.7.1
-# Direct dossier XML use; also shared by python-docx/python-pptx.
-lxml==6.1.3
-# Conditional hidden import in the NumPy PyInstaller hook.
-six==1.17.0
-# audit_dependencies.py's packaging fallback and the build/runtime package installer.
-# Install this file with python -m pip, including when updating pip itself.
-pip==26.2.1
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
+# Complete application, agent, build and self-modify environment.
+# Target: CPython 3.12 x64 on Windows; versions from the carried installation.
+# Install in a fresh isolated environment, from a VISIBLE foreground console:
+#   python -m pip install -r requirements.txt
+#   python -m pip check
+#   python scripts/check_requirements_coverage.py
+#
+# Direct dependencies are grouped by purpose; the final section pins their
+# transitive closure so a clean rebuild cannot silently select newer libraries.
+# The CPU Torch build matches the shipped runtime and avoids bundled CUDA kits.
+--extra-index-url https://download.pytorch.org/whl/cpu
+#
+# Runtime boundaries:
+# - ESPHome uses requirements-esphome.txt in its own managed environment.
+#   Do not merge it here: its py7zr requirement differs from this archive stack.
+# - bpy and unreal are supplied by Blender and Unreal Editor.
+# - tkinter/Tcl-Tk comes from the full CPython installation for setup windows.
+# - Browser binaries, Git, Java and platform SDKs are managed by build/runtime
+#   provisioners; pip packages alone do not replace those assets.
+# - Keep these packages in carried python/. Frozen collection follows actual
+#   web-process ownership; pool-only native packages need no duplicate copy.
 
-anthropic==0.74.1
-beautifulsoup4==4.15.0
+# Web application and ASGI services
+django==5.2.15
+django-bootstrap5==24.3
 asgiref==3.8.1
-certifi==2026.7.22
 channels==4.1.0
 daphne==4.1.2
-Django==5.2.15
-django-bootstrap5==24.3
-defusedxml==0.7.1
-duckduckgo-search==8.1.1
-chardet==5.2.0
-faiss-cpu==1.9.0.post1
+whitenoise==6.8.2
 fastapi==0.140.0
 flask==3.1.2
-# PPTXer's font engine (agents/pptxer/pptxer_fonts.py::_font_coverage) reads a
-# TTF's character map to detect a glyph the chosen face does NOT have, so the
-# measurer can fall back to Office's real substitute instead of measuring the
-# wrong font. It arrived transitively via matplotlib and was never PINNED, so a
-# dependency bump could drop it silently: the import is fail-open, meaning the
-# coverage check would simply stop running and a deck could ship tofu boxes
-# that nothing reported. Pin it explicitly.
-fonttools==4.63.0
-grpcio==1.76.0
-grpcio-tools==1.76.0
-httpx==0.28.1
-javalang==0.13.0
+uvicorn==0.51.0
+autobahn==26.7.1
+websockets==15.0.1
+
+# Models, orchestration and retrieval
+anthropic==0.74.1
+ollama==0.5.3
 langchain==0.3.30
 langchain-community==0.3.31
 langchain-core==0.3.86
@@ -49,176 +44,261 @@ langchain-ollama==0.2.1
 langchain-text-splitters==0.3.11
 langgraph==0.2.74
 langsmith==0.4.60
-markdown==3.7
-mcp==1.28.1
+faiss-cpu==1.9.0.post1
+rank-bm25==0.2.2
 nltk==3.9.4
-# numpy — the FLOOR is as load-bearing as the ceiling (2026-07-26 dependency audit).
-#   >=2.0  : opencv-python 4.13.0.92 declares `numpy>=2 ; python_version >= "3.9"`.
-#            Without a floor a resolver is free to install numpy 1.x and silently
-#            break Camcorder / VideoPlayer / Video-Analyzer / Recorder / Whisperer.
-#   <2.3.0 : Tlamatini's own ceiling. (numba wants <2.5 and scipy <2.7, so this is
-#            the binding one.)
-# ⛔ DO NOT downgrade numpy below 2.0 to silence pip's `pyhackrf 0.2.0 requires
-#    numpy<2.0.0` warning. That pin is STALE METADATA, proven by audit: the module
-#    it ships (`hackrf/__init__.py`) touches only np.array / complex128 / float64 /
-#    int8 — every one unchanged in numpy 2.x — and it uses ZERO of the APIs numpy
-#    2.0 removed. On Windows it cannot load at all regardless of numpy, because it
-#    hardcodes the Linux `CDLL('libhackrf.so.0')`. pyhackrf is not a Tlamatini
-#    dependency and nothing requires it; the warning is cosmetic, the downgrade
-#    would be real damage.
-numpy>=2.0,<2.3.0
-ollama==0.5.3
-openpyxl==3.1.5
-openai-whisper==20250625
-torch
-pillow==12.3.0
-# packaging - PINNED 2026-07-26. langchain-core 0.3.86 declares
-# `packaging<26.0.0,>=23.2.0`; leaving it unpinned let pip install 26.2 and
-# break that requirement. The audit (audit_dependencies.py) checked all 16
-# active consumers - Incremental, huggingface_hub, ipykernel, jupyter_server,
-# jupyterlab(_server), langsmith, marshmallow, matplotlib, pyinstaller(-hooks-
-# contrib), spacy, thinc, weasel, wheel - and NONE needs >=26.
-packaging<26.0.0
-# Camcorder agent (agent/agents/camcorder/camcorder.py) uses OpenCV's
-# cv2.VideoCapture / cv2.VideoWriter to take a webcam photo or record a video
-# segment. Imported inside the agent so a missing install degrades to a clear
-# error rather than a crash, but it MUST be bundled for the frozen build to
-# capture from the camera. Brings its own numpy (compatible with the <2.3.0 pin).
-opencv-python==4.13.0.92
-# Recorder agent (agent/agents/recorder/recorder.py) uses sounddevice to capture
-# audio from a system input device (microphone) into an int16 numpy buffer that
-# the stdlib `wave` module writes out as a WAV. Imported inside the agent so a
-# missing install degrades to a clear error rather than a crash, but it MUST be
-# bundled for the frozen build to record from the mic. The wheel ships the
-# PortAudio binary, so no system PortAudio install is required. Uses the numpy
-# already pinned above (<2.3.0).
-sounddevice==0.5.1
-# AudioPlayer agent (agent/agents/audioplayer/audioplayer.py) decodes the audio
-# file to play with soundfile (libsndfile) and streams it to a system OUTPUT
-# device via sounddevice. soundfile reads WAV / FLAC / OGG / AIFF (always) and
-# MP3 (with the recent libsndfile its wheel bundles). Imported inside the agent
-# so a missing install degrades to a clear error rather than a crash, but it
-# MUST be bundled for the frozen build to play audio. The wheel ships the
-# libsndfile binary, so no system libsndfile install is required.
-soundfile==0.12.1
-# VideoPlayer agent (agent/agents/videoplayer/videoplayer.py) renders video with
-# AUDIO. ffpyplayer's wheel BUNDLES ffmpeg + SDL inside the package (no external
-# ffmpeg binary, no runtime download), so it ships entirely via pip and is
-# collected into the frozen build by build.py's `--collect-all ffpyplayer`. It
-# decodes any ffmpeg-supported container (.mp4/.mov/.mkv/.avi/.webm/...), plays
-# the audio track itself, and exposes per-frame video + set_volume() so the
-# already-bundled OpenCV (opencv-python, above) draws the window. If ffpyplayer
-# is ever unavailable the agent degrades to silent OpenCV-only video playback.
-ffpyplayer==4.5.3
-# Talker agent (agent/agents/talker/talker.py) is TEXT-TO-SPEECH: it drives an
-# Ollama Orpheus model that emits <custom_token_N> audio tokens, then decodes
-# them to a 24 kHz waveform with the SNAC neural codec before saving/playing the
-# WAV. SNAC is the vocoder; it runs on torch (above) and pulls its weights
-# (hubertsiuzdak/snac_24khz) from the HF Hub on first use. Imported inside the
-# agent so a missing install degrades to status `tokens_only` (tokens saved, no
-# audio) rather than a crash, but it MUST be bundled for the frozen build to
-# render audible speech.
-snac==1.2.1
-# Whisperer agent (agent/agents/whisperer/whisperer.py) is SPEECH-TO-TEXT: it
-# records the microphone itself (sounddevice + numpy, above) or reads an audio
-# file, then transcribes with faster-whisper (CTranslate2 backend). It
-# auto-detects an NVIDIA GPU (via ctranslate2.get_cuda_device_count) and ALWAYS
-# falls back to CPU (int8) on machines without one. Model weights download from
-# the HF Hub on first use. Imported inside the agent so a missing install
-# degrades to status `engine_unavailable` (or a cloud STT engine when a key is
-# set) rather than a crash, but it MUST be bundled for the local engine to work.
-faster-whisper==1.1.1
-# Video-Analyzer decodes individual video audio tracks through Whisperer's PyAV backend.
-av==17.1.0
-# CTranslate2 is faster-whisper's inference backend AND is imported directly by
-# whisperer.py (`detect_cuda` -> `ctranslate2.get_cuda_device_count`). It is a
-# transitive dependency of faster-whisper, but pin it EXPLICITLY so the build's
-# `_agent_libs` verification and the agent-import-coverage test see it — the CPU
-# wheel runs GPU-free (the no-GPU CPU fallback path) and ships with no CUDA libs.
-ctranslate2==4.8.0
-playwright==1.52.0
-protobuf>=6.31.1,<7.0.0
-psutil==7.2.2
+unstructured==0.22.31
+
+# MCP, HTTP, schemas and messaging
+mcp==1.28.1
+grpcio==1.76.0
+grpcio-tools==1.76.0
+protobuf==6.33.6
+httpx==0.28.1
+requests==2.34.2
+certifi==2026.7.22
+beautifulsoup4==4.15.0
+duckduckgo-search==8.1.1
+chardet==5.2.0
 pydantic==2.13.4
-pyinstaller==6.18.0
-pymongo==4.16.0
-# PDF extraction/generation and PDF-canvas "Use as context" backend (all selectable
-# text; embedded images and page previews when enabled). The canvas renders locally
-# with vendored PDF.js (static/agent/vendor/pdfjs); it needs no additional Python
-# package or runtime download. See scripts/vendor_pdfjs.py for its pinned source.
-pymupdf==1.26.5
-pyodbc==5.3.0
-pyserial==3.5  # STM32er: STM32 MCP server serial_* tools (ST-LINK VCP / UART)
-python-docx==1.2.0
+pyyaml==6.0.3
 python-dotenv==1.2.2
+telethon==1.42.0
+typing-extensions==4.16.0
+
+# Documents, archives, spreadsheets and source inspection
+pymupdf==1.26.5
+pypdf==6.10.0
+pypdf2==3.0.1
+python-docx==1.2.0
 python-pptx==1.0.2
+openpyxl==3.1.5
+xlrd==2.0.2
+odfpy==1.4.1
+ebooklib==0.20
+striprtf==0.0.32
+reportlab==4.4.10
+xhtml2pdf==0.2.17
+markdown==3.7
+lxml==6.1.3
+defusedxml==0.7.1
+fonttools==4.63.0
+py7zr==0.22.0
+javalang==0.13.0
+
+# Vision, audio, transcription and browser agents
+pillow==12.3.0
+# OpenCV needs NumPy >=2; the selected 2.2 series retains our existing ceiling.
+numpy==2.2.6
+opencv-python==4.13.0.92
+av==17.1.0
+ffpyplayer==4.5.3
+sounddevice==0.5.1
+soundfile==0.12.1
+openai-whisper==20250625
+faster-whisper==1.1.1
+ctranslate2==4.8.0
+snac==1.2.1
+torch==2.13.0+cpu
+yt-dlp==2026.8.19
+playwright==1.52.0
+
+# Desktop, hardware and database agents
+pyautogui==0.9.54
+pywin32==312 ; sys_platform == "win32"
+psutil==7.2.2
+pyserial==3.5
+platformio==6.2.0
+pymongo==4.16.0
+pyodbc==5.3.0
+
+# Build, self-modify, Pythonxer and validation
+pip==26.2.1
+setuptools==82.0.1
+wheel==0.47.0
+# LangChain Core requires packaging <26.
+packaging==25.0
+pyinstaller==6.18.0
+pyinstaller-hooks-contrib==2026.7
+# Runtime dependency: Pythonxer executes Ruff before user scripts.
+ruff==0.14.5
+six==1.17.0
 pytest==8.3.3
 pytest-asyncio==0.24.0
 pytest-django==4.9.0
-py7zr==0.22.0
-pywin32==312
-pyyaml==6.0.3
-rank-bm25==0.2.2
-requests==2.34.2
-# ruff: REQUIRED (not just a dev tool). Pythonxer's STRICT correctness gate shells
-# out to `python -m ruff check <script>` before it runs ANY script; build.py verifies
-# `-m ruff` actually works in BOTH the build Python and the PYTHON_HOME (frozen) Python
-# and aborts the build if it does not. Do NOT remove or unpin — the gate would silently
-# fail open (degrade to the compile() syntax floor only).
-ruff==0.14.5
-# setuptools stays at 82.0.1. pip may report `torch 2.12.1+cpu requires
-# setuptools<82` - that is a GHOST: site-packages carries a stale
-# torch-2.12.1+cpu.dist-info while the REAL installed torch is 2.10.0+cpu
-# (torch/version.py), and 2.10.0 declares plain `setuptools` with no upper
-# bound. Verified: torch imports fine and never touches pkg_resources.
-setuptools==82.0.1
-telethon==1.42.0
-typing-extensions==4.16.0
-unstructured==0.22.31
-uvicorn==0.51.0
-websockets==15.0.1
-wheel==0.47.0
-whitenoise==6.8.2
-xhtml2pdf==0.2.17
-PyAutoGUI==0.9.54
-# Video-Analyzer downloads web links (YouTube, Vimeo, any site yt-dlp knows) given
-# in video_pathfilenames (agents/video_analyzer/video_fetch.py runs it as
-# `python -m yt_dlp`). Pure Python. Sites change often, so the agent also keeps a
-# PRIVATE, self-updating copy in %LOCALAPPDATA%\Tlamatini\runtimes\yt-dlp-py312 and
-# prefers it once it exists; this pin is the copy that works out of the box.
-yt-dlp==2026.8.19
 
-# ── File-Extractor optional format backends ──────────────────────────────
-# agent/agents/file_extractor/file_extractor.py imports these inside
-# try/except ImportError. Without them the matching formats silently fail
-# in BOTH source AND frozen modes (PyInstaller only bundles what's installed
-# in the build env). pymupdf (above) is the PRIMARY PDF backend; pypdf is
-# the 2nd fallback and PyPDF2 the 3rd/legacy fallback (file_extractor.py /
-# file_interpreter.py try them in that order). xlrd is the legacy-.xls fallback
-# after openpyxl (xlsx).
-pypdf==6.10.0
-PyPDF2==3.0.1
-striprtf==0.0.32
-odfpy==1.4.1
-ebooklib==0.20
-xlrd==2.0.2
-
-# ── Doc-generation pipeline ──────────────────────────────────────────────
-# agent/doc_generation/complete_project_docs.py imports reportlab at module
-# top level (run via refresh_project_docs.py during documentation passes).
-reportlab==4.4.10
-
-# ── tkinter / Tcl-Tk : NOT used by the Tlamatini SERVER ──────────────────
-# The server's Set-DB / Backup-DB "Browse" buttons use the Win32 common
-# dialogs directly via ctypes (agent/native_dialogs.py -> comdlg32/shell32,
-# which ship with every Windows install). The server therefore has NO
-# tkinter / Tcl-Tk dependency — build.py excludes it (--exclude-module),
-# so there is nothing to bundle and the old "Can't find a usable init.tcl"
-# failure can no longer occur.
-#
-# tkinter IS still used by the standalone Installer/Uninstaller GUIs
-# (install.py / uninstall.py), which are SEPARATE executables built by
-# build_installer.py / build_uninstaller.py — those scripts locate and
-# bundle their own Tcl/Tk (they set TCL_LIBRARY/TK_LIBRARY at build time).
-# tkinter is CPython stdlib (the "tcl/tk and IDLE" optional component) and
-# is not pip-installable, so it is intentionally absent from this file.
+# Transitive dependency closure (active Windows / CPython 3.12 dependencies)
+aiofiles==25.1.0
+aiohappyeyeballs==2.7.1
+aiohttp==3.14.3
+aiosignal==1.4.0
+ajsonrpc==1.2.0
+altgraph==0.17.5
+annotated-doc==0.0.5
+annotated-types==0.8.0
+anyio==4.14.2
+arabic-reshaper==3.0.1
+asn1crypto==1.5.1
+attrs==26.1.0
+automat==25.4.16
+backports-zstd==1.7.0
+blinker==1.9.0
+blis==1.3.3
+bottle==0.13.4
+brotli==1.2.0
+catalogue==2.0.10
+cbor2==6.1.4
+cffi==2.1.1
+charset-normalizer==3.5.1
+click==8.5.0
+cloudpathlib==0.25.0
+cloudpickle==3.1.2
+colorama==0.4.6
+confection==1.3.3
+constantly==23.10.4
+cryptography==50.0.1
+cssselect2==0.10.1
+cymem==2.0.13
+dataclasses-json==0.6.7
+distro==1.9.0
+dnspython==2.8.0
+docstring-parser==0.18.0
+einops==0.8.2
+emoji==2.15.0
+et-xmlfile==2.0.0
+filelock==3.32.5
+filetype==1.2.0
+flatbuffers==25.12.19
+frozenlist==1.8.0
+fsspec==2026.7.0
+greenlet==3.5.5
+h11==0.16.0
+hf-xet==1.6.0
+html5lib==1.1
+httpcore==1.0.9
+httpx-sse==0.4.3
+huggingface-hub==1.29.0
+hyperlink==21.0.0
+idna==3.19
+incremental==24.11.0
+inflate64==1.0.4
+iniconfig==2.3.0
+installer==0.7.0
+itsdangerous==2.2.0
+jinja2==3.1.6
+jiter==0.16.0
+joblib==1.6.0
+jsonpatch==1.33
+jsonpointer==3.1.1
+jsonschema==4.26.0
+jsonschema-specifications==2025.9.1
+langdetect==1.0.9
+langgraph-checkpoint==2.1.2
+langgraph-sdk==0.1.74
+llvmlite==0.49.0
+markdown-it-py==4.2.0
+markupsafe==3.0.3
+marshmallow==3.26.2
+mdurl==0.1.2
+more-itertools==11.1.0
+mouseinfo==0.1.3
+mpmath==1.3.0
+msgpack==1.2.2
+multidict==6.7.1
+multivolumefile==0.2.3
+murmurhash==1.0.15
+mypy-extensions==1.1.0
+networkx==3.6.1
+numba==0.67.0
+olefile==0.47
+onnxruntime==1.29.0
+orjson==3.12.0
+ormsgpack==1.12.2
+oscrypto==1.3.0
+pefile==2024.8.26 ; sys_platform == "win32"
+pluggy==1.6.0
+preshed==3.0.13
+primp==2.0.0
+propcache==0.5.2
+pyaes==1.6.1
+pyasn1==0.6.4
+pybcj==1.0.8
+pycparser==3.0
+pycryptodomex==3.23.0
+pydantic-core==2.46.4
+pydantic-settings==2.15.0
+pyee==13.0.1
+pyelftools==0.33
+pygetwindow==0.0.9
+pygments==2.21.0
+pyhanko==0.37.0
+pyhanko-certvalidator==0.32.0
+pyjwt==2.13.0
+pymsgbox==2.0.1
+pyopenssl==26.4.0
+pypdfium2==5.13.0
+pyperclip==1.11.0
+pyppmd==1.1.1
+pyrect==0.2.0
+pyscreeze==1.0.1
+python-bidi==0.6.11
+python-iso639==2026.7.23
+python-magic==0.4.27
+python-multipart==0.0.32
+python-oxmsg==0.0.2
+pytweening==1.2.0
+pywin32-ctypes==0.2.3 ; sys_platform == "win32"
+pyzstd==0.19.1
+rapidfuzz==3.14.6
+referencing==0.37.0
+regex==2026.9.3
+requests-toolbelt==1.0.0
+rich==15.0.0
+rpds-py==2026.6.3
+rsa==4.9.1
+semantic-version==2.10.0
+service-identity==26.1.0
+shellingham==1.5.4
+smart-open==8.0.1
+sniffio==1.3.1
+soupsieve==2.9.2
+spacy==3.8.16
+spacy-legacy==3.0.12
+spacy-loggers==1.0.5
+sqlalchemy==2.0.52
+sqlparse==0.6.0
+srsly==2.5.3
+sse-starlette==3.4.8
+starlette==1.6.0
+svglib==2.2.0
+sympy==1.14.0
+tabulate==0.10.0
+tenacity==9.1.4
+texttable==1.7.0
+thinc==8.3.13
+tiktoken==0.14.0
+tinycss2==1.5.1
+tokenizers==0.23.1
+tqdm==4.70.0
+twisted==26.4.0
+txaio==26.6.1
+typer==0.27.2
+typing-inspect==0.9.0
+typing-inspection==0.4.4
+tzdata==2026.3
+tzlocal==5.4.4
+ujson==5.13.0
+unstructured-client==0.46.2
+uritools==6.1.3
+urllib3==2.7.0
+uuid-utils==0.17.0
+wasabi==1.1.3
+weasel==1.0.0
+webencodings==0.6.1
+werkzeug==3.1.8
+wrapt==2.4.0
+wsproto==1.3.2
+xlsxwriter==3.2.9
+yarl==1.24.5
+zope-interface==8.6
+zstandard==0.25.0

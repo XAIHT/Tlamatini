@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """2026-10-08 -- two fixes born from Angela's Podman cheat-sheet run (46.6 minutes).
 
 1. Rung 7 (model) used to ask for the WHOLE document back: a 22,589-character

@@ -12,22 +12,20 @@ import json
 import os
 import re
 from pathlib import Path
-import shutil
 import stat
 import subprocess
 import sys
 import time
-import winreg
 import zipfile
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from build_runtime_assets import file_record
 from setup_recovery import checked_path
 from setup_windows import WindowsSnapshot
 from markdown_canvas_visible import visible_console
 import drag_divider_look_visible as photographs
 
+ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "Temp/setup-release-validation"
 EVIDENCE = OUT / "evidence"
 RELEASE = OUT / "bin/Installer"
@@ -62,8 +60,10 @@ def write_report():
                       and json.loads(disk.read_text(encoding="utf-8")).get("passed")
                       and json.loads(window.read_text(encoding="utf-8")).get("passed"))
             if passed:
-                if phase == "installed": installed += 1
-                else: removed += 1
+                if phase == "installed":
+                    installed += 1
+                else:
+                    removed += 1
             statuses.append(f'<p class="{"pass" if passed else "pending"}">{caption}: '
                             + ('PASS · real GUI + filesystem verified' if passed else 'Awaiting complete verification') + '</p>')
         images = ''.join(f'<a href="{html.escape(p.name)}"><img loading="lazy" src="{html.escape(p.name)}" '
@@ -435,16 +435,23 @@ def main():
     parser.add_argument("--case", type=int, choices=range(1, 6), default=1)
     args = parser.parse_args()
     EVIDENCE.mkdir(parents=True, exist_ok=True)
-    if args.action == "baseline": clean_baseline()
-    elif args.action == "prepare": prepare(args.case)
+    if args.action == "baseline":
+        clean_baseline()
+    elif args.action == "prepare":
+        prepare(args.case)
     elif args.action == "restore":
         WindowsSnapshot(EVIDENCE / "original-windows-state").restore()
         print("ORIGINAL PRODUCT REGISTRATIONS AND DESKTOP SHORTCUT RESTORED", flush=True)
-    elif args.action == "verify-install": verify_install(args.case)
-    elif args.action == "verify-integration": verify_integration(args.case)
-    elif args.action == "verify-uninstall": verify_uninstall(args.case)
-    elif args.action == "locked-uninstall": locked_uninstall()
-    elif args.action == "photo": photo(f"case-{args.case}-manual")
+    elif args.action == "verify-install":
+        verify_install(args.case)
+    elif args.action == "verify-integration":
+        verify_integration(args.case)
+    elif args.action == "verify-uninstall":
+        verify_uninstall(args.case)
+    elif args.action == "locked-uninstall":
+        locked_uninstall()
+    elif args.action == "photo":
+        photo(f"case-{args.case}-manual")
     else:
         operation = args.action.removeprefix("watch-")
         watch(args.case, operation, launch=not args.action.startswith("watch-"))

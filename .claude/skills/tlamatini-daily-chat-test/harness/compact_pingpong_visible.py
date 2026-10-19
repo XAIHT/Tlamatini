@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 # Tlamatini Author Banner - do not remove
 r"""
 TWO CHAT PAGES, TWO MODELS - THE COMPACT-MODE VERDICT MUST NOT PING-PONG

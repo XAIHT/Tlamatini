@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Guards for the Tlamatini Uninstaller's two safety mechanics (2026-09-13).
 
 1. THE STILL-RUNNING GATE.  Uninstalling while Tlamatini is up leaves half an
@@ -556,6 +557,8 @@ class GateWiringContractTests(SimpleTestCase):
             "threading", "time", "tkinter", "winreg", "datetime", "hashlib", "tempfile", "uninstall_processes",
             "setup_wizard", "setup_recovery", "setup_windows", "setup_logging",
         }
+        # Original failure diagnostics must reach the durable log before rollback.
+        allowed.add("traceback")
         self.assertTrue(imported <= allowed, f"unexpected import: {imported - allowed}")
 
     def test_the_warning_on_screen_matches_what_the_code_does(self):

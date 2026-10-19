@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Let the seeded video demo follow Config > Models instead of retired tags.
 
 Created by Angela López Mendoza · @angelahack1 — Tlamatini.

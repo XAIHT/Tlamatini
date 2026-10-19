@@ -473,7 +473,7 @@ function _renderParametrizerMappingDialog(agentId, data) {
     }
 
     // Source item click
-    for (const el of sourceItems) {
+    sourceItems.forEach((el) => {
         el.addEventListener('click', () => {
             if (selectedSource === el) {
                 selectedSource = null;
@@ -484,10 +484,10 @@ function _renderParametrizerMappingDialog(agentId, data) {
         });
         el.addEventListener('mouseenter', () => { el.style.background = '#3a3a3e'; });
         el.addEventListener('mouseleave', () => { updateHighlights(); });
-    }
+    });
 
     // Target item click
-    for (const item of targetItems) {
+    targetItems.forEach((item) => {
         item.element.addEventListener('click', () => {
             if (!selectedSource) return;
             const sf = selectedSource.dataset.field;
@@ -506,7 +506,7 @@ function _renderParametrizerMappingDialog(agentId, data) {
             }
         });
         item.element.addEventListener('mouseleave', () => { updateHighlights(); });
-    }
+    });
 
     // Clear all
     clearBtn.addEventListener('click', () => {

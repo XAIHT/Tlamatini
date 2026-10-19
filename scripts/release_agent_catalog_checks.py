@@ -12,12 +12,13 @@ import panel_search_title_visible as visible
 from prompt_flow_connections_visible import require_browser_foreground
 
 
-def run_agent_catalog_checks(page, out, checkpoint, only=None):
+def run_agent_catalog_checks(page, out, checkpoint, only=None, *, expected_names):
     page.bring_to_front()
     require_browser_foreground(page)
     expect(page.locator('#agents-list')).to_have_attribute('aria-busy', 'false', timeout=60000)
     names = page.locator('#agents-list .agent-tool-item').evaluate_all('els=>els.map(e=>e.dataset.content)')
-    assert len(names) == 89 and len(set(names)) == 89, 'Incomplete or duplicate agent catalog'
+    assert len(names) == len(set(names)), 'Duplicate agent catalog entries'
+    assert set(names) == set(expected_names), 'Installed catalog and editor palette differ'
     if only:
         assert only in names, 'Unknown catalog agent: ' + only
         names = [only]
@@ -141,5 +142,5 @@ def run_agent_catalog_checks(page, out, checkpoint, only=None):
     failures = [row for row in results if row['status'] != 'PASS']
     if failures:
         raise AssertionError(f'{len(failures)} agent editor checks failed: ' + ', '.join(row['agent'] for row in failures))
-    case = '24-selected-agent-file-roundtrip' if only else '24-all-89-agents-inspected-and-file-roundtripped'
+    case = '24-selected-agent-file-roundtrip' if only else f'24-all-{len(results)}-agents-inspected-and-file-roundtripped'
     checkpoint(case, page, {'agents': len(results), 'selection': only or 'all'})

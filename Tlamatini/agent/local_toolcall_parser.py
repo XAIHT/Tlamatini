@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Recover a tool call that a LOCAL model emitted as PLAIN TEXT.
 
 WHY THIS EXISTS

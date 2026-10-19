@@ -1,7 +1,7 @@
 # Architecture atlas — how to rebuild `Tlamatini-Architecture.pdf`
 
 `Tlamatini-Architecture.pdf` (repository root) is a multi-sheet A3 architecture
-atlas of Tlamatini. **Every file tracked in git** appears twice: as a clickable
+atlas of Tlamatini. **Every application file tracked in git** appears twice: as a clickable
 tile on an atlas sheet, grouped by architectural cluster, and as an entry in the
 file index with a description read from the file itself. The overview sheets
 (runtime topology, request lifecycle, intelligence core, agent ecosystem,
@@ -16,7 +16,9 @@ git add <your new or renamed files>
 python scripts/architecture_atlas/build_architecture_pdf.py
 ```
 
-The atlas lists exactly what `git ls-files` returns, so stage new files first.
+The atlas lists the application files returned by `git ls-files`, so stage new files first.
+Database migration history is summarized by count and era; migration filenames
+and their historical catalog text are omitted from the public atlas.
 The script then runs three steps:
 
 1. `gen_architecture.py` writes `Temp/architecture/Tlamatini-Architecture.tex`

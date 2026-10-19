@@ -9,6 +9,9 @@
  * ═══════════════════════════════════════════════════════════════════
  *   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
  */
+// Shared classic-script bindings, consumed by sibling page scripts.
+/* exported findDownstreamEnders, updateRaiserConnection, updateEmailerConnection, updateMonitorLogConnection, updateStarterConnection, updateEnderConnection, updateCleanerConnection, updateOrAgentConnection, updateAndAgentConnection, updateCronerConnection, updateMoverConnection, updateSleeperConnection, updateShoterConnection, updateEditorConnection, updateGrepperConnection, updateGlobberConnection, updateCamcorderConnection, updateRecorderConnection, updateWhispererConnection, updateAudioPlayerConnection, updateTalkerConnection, updateVideoPlayerConnection, updateDeleterConnection, updateExecuterConnection, updateScperConnection, updateSsherConnection, updateNotifierConnection, updateStopperConnection, updateWhatsapperConnection, updatePythonxerConnection, updateAskerConnection, updateForkerConnection, updateCounterConnection, updateTeletlamatiniConnection, updateAcpxerConnection, updateTelegrammerConnection, updateRecmailerConnection, updateSqlerConnection, updatePrompterConnection, updateGitterConnection, updateKuberneterConnection, updateApirerConnection, updateUnrealerConnection, updateBlendererConnection, updatePlaywrighterConnection, updateReviewerConnection, updateAnalyzerConnection, updateJenkinserConnection, updateCrawlerConnection, updateSummarizerConnection, updateMouserConnection, updateWindowerConnection, updateDiscovererConnection, updateNmapperConnection, updatePptxerConnection, updatePdferConnection, updateLatexerConnection, updateKalierConnection, updateStm32erConnection, updateEsp32erConnection, updateEsphomerConnection, updateArduinerConnection, updateFileInterpreterConnection, updateKeyboarderConnection, updateGooglerConnection */
+
 
 // Agentic Control Panel - Agent Connection Updaters
 // LOAD ORDER: #4 - Depends on: acp-session.js (getHeaders), acp-globals.js (ACP.connections)
@@ -1317,24 +1320,6 @@ async function updateKalierConnection(agentId, targetAgentId, action) {
     }
 }
 
-async function updateZavuererConnection(agentId, targetAgentId, action) {
-    try {
-        const response = await fetch(`/agent/update_zavuerer_connection/${agentId}/`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...getHeaders() },
-            credentials: 'same-origin',
-            body: JSON.stringify({ target_agent: targetAgentId, action: action })
-        });
-        if (response.ok) {
-            const result = await response.json();
-            console.log(`--- Zavuerer ${agentId} config updated:`, result.message);
-        } else {
-            console.error(`--- Failed to update Zavuerer ${agentId}:`, response.statusText);
-        }
-    } catch (error) {
-        console.error(`--- Error updating Zavuerer ${agentId}:`, error);
-    }
-}
 
 async function updateStm32erConnection(agentId, targetAgentId, action) {
     try {
@@ -1488,43 +1473,7 @@ async function updateVideoAnalyzerConnection(agentId, targetAgentId, action, typ
     }
 }
 
-async function updateGatewayerConnection(agentId, targetAgentId, action, type = 'target') { // eslint-disable-line no-unused-vars
-    try {
-        const response = await fetch(`/agent/update_gatewayer_connection/${agentId}/`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...getHeaders() },
-            credentials: 'same-origin',
-            body: JSON.stringify({ target_agent: targetAgentId, action: action, type: type })
-        });
-        if (response.ok) {
-            const result = await response.json();
-            console.log(`--- Gatewayer ${agentId} config updated:`, result.message);
-        } else {
-            console.error(`--- Failed to update Gatewayer ${agentId}:`, response.statusText);
-        }
-    } catch (error) {
-        console.error(`--- Error updating Gatewayer ${agentId}:`, error);
-    }
-}
 
-async function updateGatewayRelayerConnection(agentId, targetAgentId, action, type = 'target') { // eslint-disable-line no-unused-vars
-    try {
-        const response = await fetch(`/agent/update_gateway_relayer_connection/${agentId}/`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...getHeaders() },
-            credentials: 'same-origin',
-            body: JSON.stringify({ target_agent: targetAgentId, action: action, type: type })
-        });
-        if (response.ok) {
-            const result = await response.json();
-            console.log(`--- GatewayRelayer ${agentId} config updated:`, result.message);
-        } else {
-            console.error(`--- Failed to update GatewayRelayer ${agentId}:`, response.statusText);
-        }
-    } catch (error) {
-        console.error(`--- Error updating GatewayRelayer ${agentId}:`, error);
-    }
-}
 
 async function updateFileCreatorConnection(agentId, targetAgentId, action, type = 'target') { // eslint-disable-line no-unused-vars
     try {
@@ -1564,24 +1513,6 @@ async function updateFileExtractorConnection(agentId, targetAgentId, action, typ
     }
 }
 
-async function updateNodeManagerConnection(agentId, targetAgentId, action, type = 'target') { // eslint-disable-line no-unused-vars
-    try {
-        const response = await fetch(`/agent/update_node_manager_connection/${agentId}/`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...getHeaders() },
-            credentials: 'same-origin',
-            body: JSON.stringify({ target_agent: targetAgentId, action: action, type: type })
-        });
-        if (response.ok) {
-            const result = await response.json();
-            console.log(`--- NodeManager ${agentId} config updated:`, result.message);
-        } else {
-            console.error(`--- Failed to update NodeManager ${agentId}:`, response.statusText);
-        }
-    } catch (error) {
-        console.error(`--- Error updating NodeManager ${agentId}:`, error);
-    }
-}
 
 async function updateKyberKeygenConnection(agentId, targetAgentId, action, type = 'target') { // eslint-disable-line no-unused-vars
     try {

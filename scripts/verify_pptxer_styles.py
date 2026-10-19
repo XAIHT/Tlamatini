@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Render the twelve new PPTXer styles with complete 256-character fields."""
 import argparse
 import html

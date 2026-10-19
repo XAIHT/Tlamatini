@@ -7,7 +7,9 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 from email.message import Message
 import ssl
+import socket
 import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import urllib.error
 from unittest.mock import patch
 
@@ -127,13 +129,15 @@ class ProviderTests(SimpleTestCase):
                 provider.connection()
 
     def test_cache_and_stale_snapshot_preserve_timestamp(self):
+        clock = [1000.0]
         def fetch(base, token, path, method):
             return {'data': {'id': 'test'}} if path == '/api/me' else {'data': usage_fixture()} if 'usage?' in path else {'data': balance_fixture()} if path == '/api/balance' else {'data': {}}
-        with patch.object(provider, 'connection', return_value=('http://test', 'secret', 'key')), patch.object(provider, '_fetch', side_effect=fetch) as fetcher:
+        with patch.object(provider, 'connection', return_value=('http://test', 'secret', 'key')), patch.object(provider, '_fetch', side_effect=fetch) as fetcher, \
+                patch.object(provider.time, 'monotonic', side_effect=lambda: clock[0]):
             first = provider.snapshot()
             provider.snapshot()
             self.assertEqual(fetcher.call_count, 7)
-            provider._CACHE['key']['at'] = 0
+            clock[0] += 61
             fetcher.side_effect = lambda b, t, p, m: {'data': {'id': 'test'}} if p == '/api/me' else {'error': 'unavailable'}
             stale = provider.snapshot()
             self.assertTrue(stale['ranges']['7d']['stale'])
@@ -143,11 +147,13 @@ class ProviderTests(SimpleTestCase):
             self.assertNotIn('secret', json.dumps(stale))
 
     def test_changed_account_does_not_inherit_stale_data(self):
+        clock = [1000.0]
         def fetch(base, token, path, method):
             return {'data': {'id': 'first'}} if path == '/api/me' else {'data': usage_fixture()} if 'usage?' in path else {'data': {}}
-        with patch.object(provider, 'connection', return_value=('http://test', '', 'key')), patch.object(provider, '_fetch', side_effect=fetch) as fetcher:
+        with patch.object(provider, 'connection', return_value=('http://test', '', 'key')), patch.object(provider, '_fetch', side_effect=fetch) as fetcher, \
+                patch.object(provider.time, 'monotonic', side_effect=lambda: clock[0]):
             first = provider.snapshot()
-            provider._CACHE['key']['at'] = 0
+            clock[0] += 61
             fetcher.side_effect = lambda b, t, p, m: {'data': {'id': 'second'}} if p == '/api/me' else {'error': 'unavailable'}
             second = provider.snapshot()
             self.assertNotEqual(first['account_key'], second['account_key'])
@@ -158,6 +164,8 @@ class ProviderTests(SimpleTestCase):
         cases = ((urllib.error.URLError(ConnectionRefusedError('private-token')), 'connection', 15),
                  (urllib.error.URLError(TimeoutError('private-token')), 'timeout', 15),
                  (TimeoutError('private-token'), 'timeout', 15),
+                 (ConnectionResetError('private-token'), 'connection_reset', 15),
+                 (urllib.error.URLError(ConnectionAbortedError('private-token')), 'connection_reset', 15),
                  (ssl.SSLCertVerificationError('private-token'), 'tls', 60),
                  (ValueError('private-token'), 'invalid_json', 15))
         for error, kind, delay in cases:
@@ -168,6 +176,63 @@ class ProviderTests(SimpleTestCase):
                 self.assertEqual(result['error_kind'], kind)
                 self.assertEqual(result['retry_after'], delay)
                 self.assertNotIn('private-token', json.dumps(result) + str(logs.output))
+
+    def test_account_request_is_bodyless_and_recovers_after_disconnection(self):
+        """Exercise real HTTP serialization and retry caching, not mocked requests."""
+        requests = []
+        ready = threading.Event()
+
+        class OllamaFixture(BaseHTTPRequestHandler):
+            def log_message(self, *args):
+                pass
+
+            def do_POST(self):
+                length = int(self.headers.get('Content-Length', '0'))
+                body = self.rfile.read(length) if length else b''
+                requests.append((self.path, body, self.headers.get('Content-Type')))
+                if not ready.is_set() or body:
+                    self.connection.shutdown(socket.SHUT_RDWR)
+                    self.connection.close()
+                    return
+                self.respond({'id': 'reconnected-account'})
+
+            def do_GET(self):
+                data = balance_fixture() if self.path == '/api/balance' else usage_fixture() if 'usage?' in self.path else {}
+                self.respond(data)
+
+            def respond(self, data):
+                raw = json.dumps(data).encode()
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Content-Length', str(len(raw)))
+                self.end_headers()
+                self.wfile.write(raw)
+
+        server = ThreadingHTTPServer(('127.0.0.1', 0), OllamaFixture)
+        worker = threading.Thread(target=server.serve_forever, daemon=True)
+        worker.start()
+        clock = [1000.0]
+        try:
+            base = f'http://127.0.0.1:{server.server_port}'
+            with patch.object(provider, 'connection', return_value=(base, '', 'recovery-test')), \
+                 patch.object(provider.time, 'monotonic', side_effect=lambda: clock[0]):
+                first = provider.snapshot()
+                self.assertFalse(first['account_available'])
+                self.assertIn('closed this usage connection', first['account_error'])
+                self.assertIsNotNone(first['balance']['data'])
+                self.assertEqual(first['retry_after_seconds'], 15)
+                ready.set()
+                clock[0] += 16
+                recovered = provider.snapshot()
+                self.assertTrue(recovered['account_available'])
+                self.assertIsNone(recovered['account_error'])
+                self.assertNotIn('retry_after_seconds', recovered)
+                provider.snapshot(refresh=True)
+                self.assertEqual(requests, [('/api/me', b'', 'application/json')] * 2)
+        finally:
+            server.shutdown()
+            server.server_close()
+            worker.join(timeout=5)
 
     def test_http_errors_keep_rate_limit_and_authentication_distinct(self):
         headers = Message()
@@ -241,12 +306,67 @@ class ProviderTests(SimpleTestCase):
             provider.snapshot(refresh=True)
             self.assertEqual(fetcher.call_count, 14, 'Explicit refresh must preserve healthy cache limits')
 
-    def test_manual_refresh_does_not_bypass_a_timeout_or_partly_sent_requests(self):
+    def test_manual_refresh_retries_timed_out_identity_without_repeating_billing(self):
         with patch.object(provider, 'connection', return_value=('http://test', '', 'key')), \
-             patch.object(provider, '_fetch', return_value={'error': 'Timed out', 'retry_after': 15, 'request_not_sent': False}) as fetcher:
+             patch.object(provider, '_fetch', return_value={'error': 'Timed out', 'error_kind': 'timeout', 'retry_after': 15, 'request_not_sent': False}) as fetcher:
             provider.snapshot()
             provider.snapshot(refresh=True)
-            self.assertEqual(fetcher.call_count, 7)
+            self.assertEqual(fetcher.call_count, 8)
+            self.assertEqual(fetcher.call_args.args[2], '/api/me')
+
+    def test_account_retry_does_not_repeat_successful_billing_requests(self):
+        paths = []
+        clock = [1000.0]
+        ready = [False]
+
+        def fetch(base, token, path, method):
+            paths.append(path)
+            if path == '/api/me':
+                return {'data': {'id': 'recovered'}} if ready[0] else {
+                    'error': 'Account connection reset', 'error_kind': 'connection_reset', 'retry_after': 15}
+            return {'data': balance_fixture() if path == '/api/balance' else usage_fixture() if 'usage?' in path else {}}
+
+        with patch.object(provider, 'connection', return_value=('http://test', '', 'key')), \
+                patch.object(provider, '_fetch', side_effect=fetch), \
+                patch.object(provider.time, 'monotonic', side_effect=lambda: clock[0]):
+            first = provider.snapshot()
+            manual = provider.snapshot(refresh=True)
+            self.assertEqual(len(paths), 8)
+            self.assertEqual(paths.count('/api/balance'), 1)
+            self.assertEqual(first['balance']['updated_at'], manual['balance']['updated_at'])
+            self.assertIsNotNone(manual['balance']['data'])
+            clock[0] += 16
+            provider.snapshot()
+            self.assertEqual(len(paths), 9, 'Automatic retry must also request only the failed account endpoint')
+            ready[0] = True
+            recovered = provider.snapshot(refresh=True)
+            self.assertTrue(recovered['account_available'])
+            self.assertEqual(paths.count('/api/balance'), 2, 'Verify billing again once account identity is established')
+            self.assertEqual(paths.count('/api/tags'), 1)
+
+    def test_partial_account_retry_respects_other_endpoint_rate_limits(self):
+        paths = []
+        clock = [1000.0]
+
+        def fetch(base, token, path, method):
+            paths.append(path)
+            if path == '/api/me':
+                return {'error': 'Account connection reset', 'error_kind': 'connection_reset', 'retry_after': 15}
+            if 'usage?' in path:
+                return {'error': 'Rate limited', 'error_kind': 'rate_limit', 'retry_after': 120}
+            return {'data': balance_fixture() if path == '/api/balance' else {}}
+
+        with patch.object(provider, 'connection', return_value=('http://test', '', 'key')), \
+                patch.object(provider, '_fetch', side_effect=fetch), \
+                patch.object(provider.time, 'monotonic', side_effect=lambda: clock[0]):
+            self.assertEqual(provider.snapshot()['retry_after_seconds'], 15)
+            clock[0] += 16
+            provider.snapshot()
+            provider.snapshot(refresh=True)
+            self.assertEqual(paths.count('/api/me'), 3)
+            self.assertEqual(paths.count('/api/usage?range=7d'), 1)
+            self.assertEqual(paths.count('/api/usage?range=30d'), 1)
+            self.assertEqual(paths.count('/api/balance'), 1)
 
     def test_overlapping_refresh_reports_pending_and_starts_no_duplicate_requests(self):
         entered, release = threading.Event(), threading.Event()
@@ -330,6 +450,42 @@ class LedgerAndViewTests(TestCase):
             snapshot.reset_mock()
             self.client.get('/usage/?refresh=anything')
             snapshot.assert_called_once_with(refresh=False)
+
+    def test_menu_disables_when_cloud_is_down_and_local_ledger_is_empty(self):
+        with patch.object(provider, 'snapshot', side_effect=OSError('down')):
+            state = self.client.get('/usage/').json()['readiness']
+        self.assertFalse(state['ready'])
+        self.assertEqual(state['retry_after_seconds'], 15)
+
+    def test_menu_enables_automatically_after_provider_recovers(self):
+        snapshot = {'balance': {'data': {'kind': 'purchased', 'purchased': 0}},
+                    'account_error': 'Account name unavailable', 'retry_after_seconds': 15}
+        with patch.object(provider, 'snapshot', side_effect=[OSError('down'), snapshot]):
+            self.assertFalse(self.client.get('/usage/').json()['readiness']['ready'])
+            state = self.client.get('/usage/').json()['readiness']
+        self.assertTrue(state['ready'])
+        self.assertEqual(state['default_tab'], 'account')
+
+    def test_menu_can_open_recorded_chat_when_cloud_is_unavailable(self):
+        tracking.record_usage(user_id=self.user.pk, model='alpha', input_tokens=123, output_tokens=4)
+        with patch.object(provider, 'snapshot', side_effect=OSError('down')):
+            state = self.client.get('/usage/').json()['readiness']
+        self.assertTrue(state['ready'])
+        self.assertEqual(state['default_tab'], 'activity')
+
+    def test_pending_empty_data_is_not_ready_and_zero_cloud_totals_are_valid(self):
+        base = {'range': '7d', 'provider': {'pending': True}, 'activity': {'totals': {'calls': 0}}}
+        self.assertEqual(views.readiness(base)['state'], 'checking')
+        self.assertFalse(views.readiness(base)['ready'])
+        base['provider'] = {'ranges': {'7d': {'data': {'totals': {'request_count': 0}}}}}
+        self.assertTrue(views.readiness(base)['ready'])
+        base['provider']['ranges']['7d']['data']['totals'] = {'request_count': None}
+        self.assertFalse(views.readiness(base)['ready'])
+
+    def test_readiness_does_not_expose_another_users_local_activity(self):
+        tracking.record_usage(user_id=self.other.pk, model='private', input_tokens=123, output_tokens=4)
+        with patch.object(provider, 'snapshot', return_value={}):
+            self.assertFalse(self.client.get('/usage/').json()['readiness']['ready'])
 
 
 

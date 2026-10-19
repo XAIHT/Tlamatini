@@ -285,8 +285,11 @@ class UninstallerLifecycleTests(unittest.TestCase):
     @unittest.skipUnless(sys.platform == "win32", "Windows registry")
     def test_own_installed_apps_owner_is_removed(self):
         import winreg
-        with patch.object(winreg, "OpenKey"), \
+        with patch("setup_logging.registry_context"), \
+             patch.object(winreg, "OpenKey") as open_key, \
              patch.object(winreg, "QueryValueEx", return_value=(str(self.temp), winreg.REG_SZ)), \
              patch.object(winreg, "DeleteKey") as remove:
+            # The verification read must observe the deletion, not a perpetual key.
+            open_key.side_effect = [open_key.return_value, FileNotFoundError()]
             uninstall.FancyUninstaller._unregister_programs_entry(str(self.temp))
         remove.assert_called_once()

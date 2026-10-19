@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Tlamatini - the CONTEXT GOVERNOR.  **STEP 1: MEASUREMENT ONLY.**
 
 Three streams feed one model request: the static prefix (system prompt + the

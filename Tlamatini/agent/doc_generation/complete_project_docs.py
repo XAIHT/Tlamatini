@@ -482,6 +482,9 @@ def collect_facts() -> dict:
     tracked = tracked_paths()
     untracked = untracked_paths()
     inventory = sorted(set(tracked) | set(untracked))
+    # Database history remains executable for upgrades, but public documentation
+    # summarizes it rather than republishing obsolete product catalog entries.
+    tree_paths = [path for path in tracked if not path.startswith("Tlamatini/agent/migrations/")]
     languages, files, binary, missing = line_inventory(inventory)
     agents = workflow_agents()
     names = display_names(agents)
@@ -527,10 +530,13 @@ def collect_facts() -> dict:
         "timeline": tag_timeline(),
         "tracked": tracked,
         "tracked_count": len(tracked),
+        "tree_paths": tree_paths,
+        "tree_count": len(tree_paths),
+        "tree_history_count": len(tracked) - len(tree_paths),
         "untracked": untracked,
         "inventory": inventory,
         "missing_paths": missing,
-        "tree_text": build_tree(tracked),
+        "tree_text": build_tree(tree_paths),
         "languages": languages,
         "files": files,
         "binary_count": binary,

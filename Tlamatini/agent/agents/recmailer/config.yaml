@@ -11,7 +11,7 @@ max_checks: 0
 imap:
   host: "imap.gmail.com"
   port: 993
-  username: <RECMAILER_USERNAME goes here>
+  username: "<RECMAILER_USERNAME goes here>"
   password: "<RECMAILER_PASSWORD goes here>"
   use_ssl: true
   folder: "INBOX"

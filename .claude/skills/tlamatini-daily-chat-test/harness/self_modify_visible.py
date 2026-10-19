@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """The SELF-MODIFY box - VISIBLE end-to-end test (Angela Lopez Mendoza, 2026-10-03).
 
 Headed real Chrome on Angela's desktop, the real chat GUI, the dev source

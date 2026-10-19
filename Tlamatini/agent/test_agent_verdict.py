@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Tests for the deterministic verdict engine (``agent/agent_verdict.py``).
 
 THE LIVE FAILURE THIS FILE EXISTS FOR (Angela, 2026-08-06, frozen install at

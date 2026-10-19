@@ -178,20 +178,55 @@ def _read_all_values(key_path):
 
 @unittest.skipUnless(_IS_WINDOWS, "Windows-only registry round-trip")
 class DiscoveryRegistryLiveTests(unittest.TestCase):
-    """Live HKCU round-trip that RESTORES any pre-existing real discovery key, so a
-    developer's actual `HKCU\\Software\\XAIHT\\Tlamatini` is never clobbered."""
+    """Live registry round trips in a unique test-owned HKCU branch."""
 
     def setUp(self):
-        self._backup = _read_all_values(war.XAIHT_DISCOVERY_KEY)
+        import uuid
+
+        parent = r"Software\XAIHT\TlamatiniDiscoveryTests-" + uuid.uuid4().hex
+        for name, value in (
+            ("XAIHT_PARENT_KEY", parent),
+            ("XAIHT_DISCOVERY_KEY", parent + r"\Discovery"),
+        ):
+            patcher = patch.object(war, name, value)
+            patcher.start()
+            self.addCleanup(patcher.stop)
 
     def tearDown(self):
+        self.assertTrue(war.unregister_discovery_entry())
+
+    def test_unregister_preserves_unrelated_values_and_children(self):
         import winreg
 
-        war.unregister_discovery_entry()
-        if self._backup is not None:
-            with winreg.CreateKey(winreg.HKEY_CURRENT_USER, war.XAIHT_DISCOVERY_KEY) as k:
-                for name, (data, typ) in self._backup.items():
-                    winreg.SetValueEx(k, name, 0, typ, data)
+        self.assertTrue(war.register_discovery_entry(agents_root=r"C:\Test\agents"))
+        child = war.XAIHT_DISCOVERY_KEY + r"\OtherFeature"
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, child):
+            pass
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, war.XAIHT_DISCOVERY_KEY) as key:
+            winreg.SetValueEx(key, "UnrelatedSetting", 0, winreg.REG_SZ, "keep")
+        try:
+            self.assertTrue(war.unregister_discovery_entry())
+            self.assertTrue(war.unregister_discovery_entry())
+            self.assertEqual(
+                _read_all_values(war.XAIHT_DISCOVERY_KEY),
+                {"UnrelatedSetting": ("keep", winreg.REG_SZ)},
+            )
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, child):
+                pass
+        finally:
+            winreg.DeleteKey(winreg.HKEY_CURRENT_USER, child)
+            with winreg.OpenKey(
+                winreg.HKEY_CURRENT_USER, war.XAIHT_DISCOVERY_KEY, 0, winreg.KEY_SET_VALUE,
+            ) as key:
+                winreg.DeleteValue(key, "UnrelatedSetting")
+
+    def test_denied_value_removal_is_reported(self):
+        import winreg
+
+        self.assertTrue(war.register_discovery_entry(agents_root=r"C:\Test\agents"))
+        with patch.object(winreg, "DeleteValue", side_effect=PermissionError("denied")):
+            self.assertFalse(war.unregister_discovery_entry())
+        self.assertIn("AgentsRoot", _read_all_values(war.XAIHT_DISCOVERY_KEY))
 
     def test_register_read_unregister(self):
         import winreg

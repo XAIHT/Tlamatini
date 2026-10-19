@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Offline flow/catalog regressions. No LLM requests or desktop input are sent."""
 import importlib
 import importlib.util
@@ -210,6 +211,26 @@ class ParametrizerTests(unittest.TestCase):
             parsed = self.module.OUTPUT_PARSERS[name](block)[0]
             self.assertTrue(set(fields).issubset(parsed), name)
             self.assertEqual(parsed['response_body'], 'body')
+
+    def test_uninstalled_source_or_target_is_refused_before_pool_changes(self):
+        m = self.module
+        for retired in ("gatewayer", "gateway_relayer", "node_manager", "zavuerer"):
+            for source, target in ((retired + "_1", "pdfer_1"), ("shoter_1", retired + "_1")):
+                with self.subTest(source=source, target=target):
+                    with (patch.object(m, "load_config", return_value={"source_agent": source, "target_agent": target}),
+                          patch.object(m, "load_interconnection_scheme") as scheme,
+                          patch.object(m, "load_progress_state") as progress,
+                          patch.object(m, "write_target_config") as write,
+                          patch.object(m, "start_agent") as start,
+                          patch.object(m, "write_pid_file"), patch.object(m, "remove_pid_file"),
+                          patch.object(m.time, "sleep")):
+                        with self.assertRaises(SystemExit) as result:
+                            m.main()
+                        self.assertEqual(result.exception.code, 1)
+                        scheme.assert_not_called()
+                        progress.assert_not_called()
+                        write.assert_not_called()
+                        start.assert_not_called()
 
     def test_empty_and_url_fields_preserved(self):
         parsed = self.module._parse_section_content('status: error\r\noutput_path: \r\nurl: https://example.test:443/a\r\n\r\nbody')

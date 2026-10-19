@@ -1,8 +1,8 @@
 # Tlamatini Author Banner — Angela López Mendoza
 """Real source app + isolated database, in a verified visible foreground console.
 
-Chrome is explicitly headed. Shoter captures the entire desktop; inspect its
-browser-waiting.png before creating browser-visible-confirmed. The browser and
+Chrome is explicitly headed. A read-only foreground check gates browser work;
+Shoter captures the entire desktop for inspection. The browser and
 console remain open for review. No production database or configuration is edited.
 """
 import asyncio
@@ -19,6 +19,33 @@ import traceback
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / 'Temp/usage-visible'
+
+
+def await_browser_foreground(page, seconds=120):
+    """Observe ownership/visibility only; never activate windows through Win32."""
+    import ctypes
+    import psutil
+    user32 = ctypes.windll.user32
+    user32.GetForegroundWindow.restype = ctypes.c_void_p
+    user32.IsWindowVisible.argtypes = user32.IsIconic.argtypes = [ctypes.c_void_p]
+    user32.GetWindowThreadProcessId.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_ulong)]
+    deadline = time.monotonic() + seconds
+    reported = 0
+    while time.monotonic() < deadline:
+        if page.is_closed():
+            raise RuntimeError('Validation browser closed before the checkpoint.')
+        owned = {p.pid for p in psutil.Process().children(recursive=True) if p.name().lower() == 'chrome.exe'}
+        window = user32.GetForegroundWindow()
+        pid = ctypes.c_ulong()
+        user32.GetWindowThreadProcessId(window, ctypes.byref(pid))
+        if pid.value in owned and user32.IsWindowVisible(window) and not user32.IsIconic(window):
+            print('Verified foreground validation Chrome:', pid.value, flush=True)
+            return
+        if time.monotonic() - reported >= 10:
+            print('WAITING: validation Chrome must be visible and foreground; no browser actions running.', flush=True)
+            reported = time.monotonic()
+        page.wait_for_timeout(250)
+    raise RuntimeError('STOPPED: validation Chrome was not verified in the foreground.')
 
 
 def shoter(name):
@@ -85,12 +112,8 @@ def main():
             'width': round(display['width'] * .67), 'height': display['height'] - 30}})
         page.goto('http://127.0.0.1:8869/', wait_until='domcontentloaded', timeout=60000)
         page.bring_to_front()
-        gate = OUT / 'browser-visible-confirmed'
-        gate.unlink(missing_ok=True)
+        await_browser_foreground(page)
         shoter('browser-waiting.png')
-        print('BROWSER WAITING: inspect browser-waiting.png, then create browser-visible-confirmed.', flush=True)
-        while not gate.exists():
-            page.wait_for_timeout(500)
         if page.locator('#id_username').count():
             page.locator('#id_username').fill(username)
             page.locator('#id_password').fill(password)
@@ -102,9 +125,13 @@ def main():
         if not page.locator('#usage-button').count():
             page.goto('http://127.0.0.1:8869/agent/agent/', wait_until='domcontentloaded')
         results = []
+        def capture(name):
+            await_browser_foreground(page)
+            shoter(name)
         try:
-            run_checks(page, context, user.pk, OUT, shoter, results)
-            run_fixtures(page, context, user.pk, OUT, shoter, results)
+            await_browser_foreground(page)
+            run_checks(page, context, user.pk, OUT, capture, results)
+            run_fixtures(page, context, user.pk, OUT, capture, results)
         except Exception:
             traceback.print_exc()
             shoter('failure.png')
@@ -117,8 +144,13 @@ def main():
         close = OUT / 'close.confirmed'
         close.unlink(missing_ok=True)
         command = OUT / 'next-check.py'
-        while not close.exists():
-            page.wait_for_timeout(500)
+        while not close.exists() and not page.is_closed() and browser.is_connected():
+            try:
+                page.wait_for_timeout(500)
+            except Exception:
+                if page.is_closed() or not browser.is_connected():
+                    break
+                raise
             if command.exists():
                 code = command.read_text(encoding='utf-8')
                 command.unlink()
@@ -128,8 +160,9 @@ def main():
                 except Exception:
                     traceback.print_exc()
                     shoter('extra-check-failure.png')
-        context.close()
-        browser.close()
+        if browser.is_connected():
+            context.close()
+            browser.close()
     server.should_exit = True
     thread.join(timeout=10)
     return 0 if summary['passed'] else 1

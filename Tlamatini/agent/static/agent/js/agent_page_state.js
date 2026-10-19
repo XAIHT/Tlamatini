@@ -9,6 +9,9 @@
  * ═══════════════════════════════════════════════════════════════════
  *   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
  */
+// Shared classic-script bindings, consumed by sibling page scripts.
+/* exported confirmationByUser, buildingInitial, userUsername, sendPostBeacon, chatLog, restoreConnectedSocketUi, sendChatSocketMessage, contextButtonClicked, canvasSettedAsContext, userCancelledRun, canvasLoaded, openEnabled, reConnectEnabled, contextEnabled, cleanCanvasEnabled, actualContextDir, lapseLoadingContext, clearContextEnabled, cleanHistoryEnabled, fileTypeOmissions, textEditorCode, chatHistory, historyIndex, tempInput, titleBusyPrefix, mcp1_enabled, mcp2_enabled, tools, agents, skills, maximalTheoricTokens, MAX_MCPS, textEditorPre, lineNumbers, openButton, saveAsButton, cleanCanvasButton, logoutButton, reopenOpenCanvasButton, copyCanvasButton, confirmationDialogMessage, confirmationPrimaryDialogLegend, confirmationSecondaryDialogLegend, cleanHistoryButton, contextMenuButton, panelsMenuButton, setDirContextMenu, setFileContextMenu, viewContextDirInCanvasMenu, contextInfoDiv, contextDataSpan, contextMobile, clearContextButton, omissionsDialogMessage, omissionsPrimaryDialogLegend, omissionsSecondaryDialogLegend, omissionContentInput, mcpsDialogMessage, mcpsPrimaryDialogLegend, mcpsSecondaryDialogLegend, mcpsThirdtiaryDialogLegend, agentsDialogMessage, agentsPrimaryDialogLegend, agentsSecondaryDialogLegend, label_mcp1, label_mcp2, toolMcpsList, agentsList, openInDropdownItem, openInMenuList, installedApps */
+
 
 // ============================================================
 // agent_page_state.js  –  Shared state & DOM element references
@@ -171,7 +174,7 @@ function sendChatSocketMessage(payload, disconnectedMessage = 'Live connection l
 // --- Mutable UI flags ---
 let contextButtonClicked = false;
 let canvasSettedAsContext = false;
-let confirmationByUser = false; // eslint-disable-line no-unused-vars
+let confirmationByUser = false;
 let inLongOperation = false;
 // Set the moment the user CONFIRMS Cancel on a running request; cleared on the next
 // submit (and on Reconnect / Clean-History, which are full UI resets). While it is
@@ -200,7 +203,7 @@ let textEditorCode = document.querySelector('#text-editor code');
 let chatHistory = [];
 let historyIndex = 0;
 let tempInput = '';
-let buildingInitial = false; // eslint-disable-line no-unused-vars
+let buildingInitial = false;
 let titleBusyPrefix = "";
 let mcp1_enabled = false;
 let mcp2_enabled = false;
@@ -277,7 +280,6 @@ const configUrlsForm = document.getElementById('config-urls-form'); // eslint-di
 const configReconnectRequiredDialogMessage = document.getElementById('config-reconnect-required-dialog-message'); // eslint-disable-line no-unused-vars
 const configReconnectRequiredPrimaryDialogLegend = document.getElementById('config-reconnect-required-primary-dialog-legend'); // eslint-disable-line no-unused-vars
 const configReconnectRequiredSecondaryDialogLegend = document.getElementById('config-reconnect-required-secondary-dialog-legend'); // eslint-disable-line no-unused-vars
-const configMenuButton = document.getElementById('config-menu-button');
 const backupDbDialogMessage = document.getElementById('backup-db-dialog-message'); // eslint-disable-line no-unused-vars
 const backupDbPrimaryDialogLegend = document.getElementById('backup-db-primary-dialog-legend'); // eslint-disable-line no-unused-vars
 const backupDbSecondaryDialogLegend = document.getElementById('backup-db-secondary-dialog-legend'); // eslint-disable-line no-unused-vars
@@ -482,7 +484,6 @@ function applyStoredStepByStepState() { // eslint-disable-line no-unused-vars
 
 // --- Open in... dropdown references ---
 const openInDropdownItem = document.getElementById('open-in-dropdown-item');
-const openInMenuButton = document.getElementById('open-in-menu-button');
 const openInMenuList = document.getElementById('open-in-menu-list');
 let installedApps = [];
 

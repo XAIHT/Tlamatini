@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Video-Analyzer web links: video_fetch.py, the chat request parser and carriage.
 
 Created by Angela López Mendoza · @angelahack1 — Tlamatini.

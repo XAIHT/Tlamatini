@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 # Tlamatini Author Banner - do not remove (releases scrub the name automatically)
 """DIALOG DISMISSAL POLICY - COVERAGE AUDIT  (Angela, 2026-08-13)
 
@@ -435,7 +436,7 @@ class SealedDialogIsInvulnerableToEscapeTests(SimpleTestCase):
         Escape handler, which calls CloseUpdateDialog again -> a SECOND "please
         wait" notice for one press of one key.
         """
-        block = self.policy.split("var dismissed = dismissDialog(target);", 1)[1]
+        block = self.policy.split("const dismissed = dismissDialog(target);", 1)[1]
         block = block.split("});", 1)[0]
         self.assertIn("ev.preventDefault();", block)
         self.assertIn("ev.stopImmediatePropagation();", block)
@@ -510,7 +511,7 @@ class SealedDialogIsInvulnerableToEscapeTests(SimpleTestCase):
         be able to press F5 whenever nothing is downloading."""
         block = self.policy.split("function isSealedCloseKey", 1)[1]
         block = block.split("addEventListener('keydown'", 1)[1].split("}, true)", 1)[0]
-        self.assertIn("var key = anySealed();", block)
+        self.assertIn("const key = anySealed();", block)
         self.assertIn("if (!key) return;", block,
                       "the guard must bail immediately when nothing is sealed.")
         self.assertLess(

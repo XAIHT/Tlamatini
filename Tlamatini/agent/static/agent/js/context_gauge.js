@@ -1,3 +1,4 @@
+/* Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1 */
 /* =====================================================================
  * context_gauge.js — the context ring in the chat window
  * (Angela López Mendoza, 2026-09-20 — Context Governor, step 1)
@@ -33,17 +34,17 @@
 (function () {
     'use strict';
 
-    var ROW_ID = 'context-gauge-row';
-    var EVENT_NAME = 'tlm:context-gauge';
-    var RING_RADIUS = 14;
-    var RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
-    var DEFAULT_HISTORY = 12;
-    var SVG_NS = 'http://www.w3.org/2000/svg';
+    const ROW_ID = 'context-gauge-row';
+    const EVENT_NAME = 'tlm:context-gauge';
+    const RING_RADIUS = 14;
+    const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+    const DEFAULT_HISTORY = 12;
+    const SVG_NS = 'http://www.w3.org/2000/svg';
 
-    var built = false;
-    var history = [];
-    var lastSeq = 0;
-    var nodes = {};
+    let built = false;
+    const history = [];
+    let lastSeq = 0;
+    const nodes = {};
 
     function groupDigits(value) {
         try {
@@ -54,7 +55,7 @@
     }
 
     function svg(tag, attrs) {
-        var el = document.createElementNS(SVG_NS, tag);
+        const el = document.createElementNS(SVG_NS, tag);
         Object.keys(attrs || {}).forEach(function (key) {
             el.setAttribute(key, attrs[key]);
         });
@@ -62,7 +63,7 @@
     }
 
     function div(className) {
-        var el = document.createElement('div');
+        const el = document.createElement('div');
         if (className) el.className = className;
         return el;
     }
@@ -70,7 +71,7 @@
     // Built once, at page load (Angela, 2026-09-21: the row must be on screen
     // from the moment the chat opens, not only after the first measurement).
     function build(row) {
-        var ring = svg('svg', {
+        const ring = svg('svg', {
             'class': 'ctxg-ring',
             viewBox: '0 0 36 36',
             role: 'img',
@@ -90,7 +91,7 @@
         nodes.ringPct.textContent = '0%';
         ring.appendChild(nodes.ringPct);
 
-        var legend = div('ctxg-legend');
+        const legend = div('ctxg-legend');
         nodes.bytes = div('ctxg-bytes');
         nodes.tokens = div('ctxg-tokens');
         legend.appendChild(nodes.bytes);
@@ -99,7 +100,7 @@
         nodes.zoneWord = div('ctxg-zone-word');
         nodes.zoneWord.textContent = 'GREEN';
 
-        var spark = svg('svg', {
+        const spark = svg('svg', {
             'class': 'ctxg-spark',
             viewBox: '0 0 100 26',
             preserveAspectRatio: 'none',
@@ -111,8 +112,8 @@
         spark.appendChild(nodes.sparkLine);
         spark.appendChild(nodes.sparkMark);
 
-        var streams = div('ctxg-streams');
-        var bar = div('ctxg-bar');
+        const streams = div('ctxg-streams');
+        const bar = div('ctxg-bar');
         nodes.segPrefix = div('ctxg-seg ctxg-seg-prefix');
         nodes.segContext = div('ctxg-seg ctxg-seg-context');
         nodes.segHistory = div('ctxg-seg ctxg-seg-history');
@@ -131,7 +132,7 @@
         // before it says how big it is, and the second line names WHICH call
         // produced the reading (one-shot / multi-turn / acpx).
         nodes.title = div('ctxg-title');
-        var titleMain = div('ctxg-title-main');
+        const titleMain = div('ctxg-title-main');
         // CONTEXT-WINDOW (Angela, 2026-10-02): the ring is the share of the
         // model's context window one request fills - and it says so.
         titleMain.textContent = 'CONTEXT-WINDOW';
@@ -166,15 +167,15 @@
         // Scaled to this run's own peak, so the SHAPE of the growth is what
         // you read. Against a fixed ceiling most real runs would be a flat
         // line on the floor and show nothing.
-        var peak = 1;
-        var i;
+        let peak = 1;
+        let i;
         for (i = 0; i < history.length; i++) {
             if (history[i] > peak) peak = history[i];
         }
-        var step = 100 / (history.length - 1);
-        var points = [];
-        var x = 0;
-        var y = 0;
+        const step = 100 / (history.length - 1);
+        const points = [];
+        let x = 0;
+        let y = 0;
         for (i = 0; i < history.length; i++) {
             x = i * step;
             y = 24 - (history[i] / peak) * 22;
@@ -186,29 +187,29 @@
     }
 
     function render(detail) {
-        var row = document.getElementById(ROW_ID);
+        const row = document.getElementById(ROW_ID);
         if (!row || !detail || detail.ok === false) return;
 
         if (!built) build(row);
 
-        var total = Number(detail.bytes_total) || 0;
-        var prefix = Number(detail.bytes_prefix) || 0;
-        var hist = Number(detail.bytes_history) || 0;
-        var loop = Number(detail.bytes_loop) || 0;
-        var ratio = Number(detail.ratio) || 0;
+        const total = Number(detail.bytes_total) || 0;
+        const prefix = Number(detail.bytes_prefix) || 0;
+        const hist = Number(detail.bytes_history) || 0;
+        const loop = Number(detail.bytes_loop) || 0;
+        const ratio = Number(detail.ratio) || 0;
         // The TRUE share of the window - it may pass 100% (Angela, 2026-10-02:
         // "the gauge must be the most real value"); only the ring stops at full.
-        var pctTrue = Math.max(0, ratio * 100);
-        var pct = Math.min(100, pctTrue);
-        var cut = detail.truncated === true;
-        var zone = String(detail.zone || 'green');
-        var tokens = Number(detail.tokens_estimated) || 0;
-        var ceiling = Number(detail.ceiling_tokens) || 0;
+        const pctTrue = Math.max(0, ratio * 100);
+        const pct = Math.min(100, pctTrue);
+        const cut = detail.truncated === true;
+        const zone = String(detail.zone || 'green');
+        const tokens = Number(detail.tokens_estimated) || 0;
+        const ceiling = Number(detail.ceiling_tokens) || 0;
         // Ollama's own count for THIS request, once it has answered it.
-        var isReal = detail.ratio_is_real === true
+        const isReal = detail.ratio_is_real === true
             && detail.tokens_real !== null && detail.tokens_real !== undefined;
-        var realTokens = isReal ? (Number(detail.tokens_real) || 0) : 0;
-        var ctxBytes = Math.max(0, Number(detail.bytes_context) || 0);
+        const realTokens = isReal ? (Number(detail.tokens_real) || 0) : 0;
+        const ctxBytes = Math.max(0, Number(detail.bytes_context) || 0);
 
         row.setAttribute('data-zone', zone);
         row.classList.add('ctxg-visible');
@@ -228,20 +229,20 @@
         nodes.bytes.title = groupDigits(total) + ' bytes exactly — measured, '
             + 'the literal size of the request on the wire';
 
-        var turn = detail.turn || null;
-        var turnText = '';
+        const turn = detail.turn || null;
+        let turnText = '';
         if (turn && Number(turn.calls) > 0) {
             turnText = ' This answer so far: ' + groupDigits(turn.calls)
                 + ' main-model call(s), ' + groupDigits(turn.prompt_tokens)
                 + ' prompt + ' + groupDigits(turn.completion_tokens)
                 + ' output tokens (REAL, from Ollama).';
         }
-        var ceilingText = groupDigits(ceiling) + '-token context ('
+        const ceilingText = groupDigits(ceiling) + '-token context ('
             + (detail.ceiling_source || '?') + ')';
         if (cut) {
             // Ollama CUT this request: what it read IS the window.
-            var windowReal = Number(detail.window_real) || realTokens;
-            var sentTokens = Number(detail.tokens_sent_estimate) || tokens;
+            const windowReal = Number(detail.window_real) || realTokens;
+            const sentTokens = Number(detail.tokens_sent_estimate) || tokens;
             nodes.tokens.textContent = 'CUT · read ' + groupDigits(windowReal) + ' of ≈'
                 + groupDigits(sentTokens) + ' tokens · ' + pctTrue.toFixed(0) + '%';
             nodes.tokens.classList.add('ctxg-real');
@@ -252,7 +253,7 @@
             nodes.tokens.textContent = groupDigits(realTokens) + ' tokens REAL · '
                 + pctTrue.toFixed(1) + '%';
             nodes.tokens.classList.add('ctxg-real');
-            var err = detail.estimate_error_pct;
+            const err = detail.estimate_error_pct;
             nodes.tokens.title = 'REAL: Ollama\'s own prompt_eval_count for this exact '
                 + 'request (' + (detail.real_model || detail.model || 'model') + '), of a '
                 + ceilingText + '. The chars/4 estimate was ' + groupDigits(tokens)
@@ -262,7 +263,7 @@
             nodes.tokens.textContent = '≈' + groupDigits(tokens) + ' tokens est. · '
                 + pctTrue.toFixed(1) + '% est.';
             nodes.tokens.classList.remove('ctxg-real');
-            var last = detail.last_real || null;
+            const last = detail.last_real || null;
             nodes.tokens.title = 'ESTIMATE (~4 characters per token) of a ' + ceilingText
                 + ', shown until Ollama answers this request with its own count.'
                 + (last ? (' Last REAL count: ' + groupDigits(last.tokens) + ' tokens ('
@@ -274,8 +275,8 @@
 
         // Name WHICH call this reading came from, so a moving ring is
         // explainable rather than mysterious.
-        var source = String(detail.source || 'model');
-        var when = String(detail.label || '');
+        const source = String(detail.source || 'model');
+        const when = String(detail.label || '');
         nodes.titleSub.textContent = when ? (source + ' · ' + when) : source;
         nodes.titleSub.title = (detail.kind === 'rest'
             ? 'What your NEXT message will send, rebuilt with the main chain\'s own '
@@ -286,9 +287,9 @@
 
         // The context block sits inside the history bucket on the wire, so it
         // is carved OUT of it here - never counted twice.
-        var denominator = total > 0 ? total : 1;
-        var ctxShown = Math.min(ctxBytes, hist);
-        var histOnly = Math.max(0, hist - ctxShown);
+        const denominator = total > 0 ? total : 1;
+        const ctxShown = Math.min(ctxBytes, hist);
+        const histOnly = Math.max(0, hist - ctxShown);
         nodes.segPrefix.style.width = ((prefix / denominator) * 100).toFixed(2) + '%';
         nodes.segContext.style.width = ((ctxShown / denominator) * 100).toFixed(2) + '%';
         nodes.segHistory.style.width = ((histOnly / denominator) * 100).toFixed(2) + '%';
@@ -304,8 +305,8 @@
         // ONE point per request: the same request is published more than once
         // (estimate first, then Ollama's REAL count, then the answer's totals),
         // and a repeat must update its point, not add a fake step.
-        var seq = Number(detail.seq) || 0;
-        var point = isReal ? realTokens : tokens;
+        const seq = Number(detail.seq) || 0;
+        const point = isReal ? realTokens : tokens;
         if (seq && seq === lastSeq && history.length) {
             history[history.length - 1] = point;
         } else {
@@ -324,7 +325,7 @@
     // zero — the next request is never 0 bytes, and a fabricated reading is
     // worse than a missing one. The first real frame replaces every field.
     function bootIdle() {
-        var row = document.getElementById(ROW_ID);
+        const row = document.getElementById(ROW_ID);
         if (!row) return;
         if (!built) build(row);
 
@@ -383,16 +384,16 @@
     // switches that change which tools are bound (Multi-Turn / ACPX /
     // Step-by-Step). Debounced; silent when the socket is not open, because a
     // gauge must never paint the "connection lost" banner.
-    var SOCKET_OPEN_EVENT = 'tlm:chat-socket-open';
-    var TOGGLES = [
+    const SOCKET_OPEN_EVENT = 'tlm:chat-socket-open';
+    const TOGGLES = [
         ['multi-turn-enabled', 'Multi-Turn'],
         ['acpx-enabled', 'ACPX'],
         ['step-by-step-enabled', 'Step-by-Step']
     ];
-    var refreshTimer = null;
+    let refreshTimer = null;
 
     function toggleChecked(id) {
-        var el = document.getElementById(id);
+        const el = document.getElementById(id);
         return !!(el && el.checked);
     }
 
@@ -421,7 +422,7 @@
 
     function wireToggles() {
         TOGGLES.forEach(function (pair) {
-            var el = document.getElementById(pair[0]);
+            const el = document.getElementById(pair[0]);
             if (!el) return;
             el.addEventListener('change', function () {
                 requestRefresh(pair[1] + (el.checked ? ' on' : ' off'));

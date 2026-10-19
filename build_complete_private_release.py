@@ -217,9 +217,7 @@ def sync_contacts_private() -> None:
             break  # use the first matching candidate only
 
     # If nothing changed, do not rewrite the file.
-    current_names = {_normalize_name(c["name"]) for c in private_contacts}
-    merged_names = set(merged.keys())
-    if merged_names == current_names and new_count == 0:
+    if list(merged.values()) == private_contacts:
         print(f"  contacts.private.json already up-to-date ({len(merged)} contact(s)).")
         return
 

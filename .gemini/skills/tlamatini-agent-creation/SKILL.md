@@ -65,12 +65,12 @@ The settings dialog adds no agent or tool. See
 | `<css>` | the canvas/exec-report CSS class root (== `<dash>` minus dashes for single-word, kept dashed for multi-word; equals `<lower>` for single-word) | `pingerer` |
 | `N` | the agent's idAgent / migration sequence number | (next free) |
 
-> **Worked multi-word example** (`Node Manager`): `<Display>=Node Manager`,
-> `<lower>=node_manager` (dir/pool/file), `<dash>=node-manager` (CSS classMap key),
-> `<space>=node manager` (connection checks), `<Pascal>=NodeManager`,
-> `<CAPS>=NODE_MANAGER`, `<css>=node-manager` / `nodemanager-agent` (verify against an
-> existing multi-word agent — historically some classMap values dropped the dash, e.g.
-> `'node-manager': 'nodemanager-agent'`; COPY an existing sibling exactly).
+> **Worked multi-word example** (`Monitor Netstat`): `<Display>=Monitor Netstat`,
+> `<lower>=monitor_netstat` (dir/pool/file), `<dash>=monitor-netstat` (CSS classMap key),
+> `<space>=monitor netstat` (connection checks), `<Pascal>=MonitorNetstat`,
+> `<CAPS>=MONITOR_NETSTAT`, `<css>=monitor-netstat` / `monitor-netstat-agent` (verify against an
+> existing multi-word agent, e.g.
+> `'monitor-netstat': 'monitor-netstat-agent'`; COPY an existing sibling exactly).
 
 ---
 
@@ -187,7 +187,7 @@ The settings dialog adds no agent or tool. See
 76. Load the offset at startup and call `save_reanim_offset` after each read.
 77. Confirm the agent is idempotent under resume: resuming produces the same behavior as if never interrupted.
 78. Confirm the agent does NOT delete its own `reanim*` files (only Ender clears them on Stop).
-79. Confirm a Counter-style agent uses `reanim.counter`; a Gatewayer-style uses `reanim_queue.json`/`reanim_dedup.json`; a registry agent uses `reanim_registry.json` (only if applicable).
+79. Confirm a Counter-style agent uses `reanim.counter` (only if applicable).
 80. Verify the three lifecycle modes mentally: Fresh start (no env var → truncate → STARTED), Reanimation (`AGENT_REANIMATED=1` → no truncate → REANIMATED → load reanim files), Stop (Ender clears reanim files).
 81. Confirm pressing Start while PAUSED acts as Resume (no special code needed — the ACP handles it).
 82. Confirm the agent does not assume it is always a fresh start anywhere in its logic.
@@ -294,7 +294,7 @@ The settings dialog adds no agent or tool. See
 # PHASE 8 — Parametrizer registration (make the agent a usable source)
 
 155. Open `Tlamatini/agent/agents/parametrizer/parametrizer.py`.
-156. **⚠️ DO NOT EDIT `SECTION_AGENT_TYPES` — it is DERIVED.** The expression is literally `[name for name, spec in load_catalog().items() if spec["output_fields"]]`, so membership follows the generated flow catalog and a hand-added literal is either a no-op or fresh drift. Read it to CONFIRM your agent appeared; never append to it.
+156. **⚠️ DO NOT EDIT `SECTION_AGENT_TYPES` — it is DERIVED.** The expression is literally `[name for name, spec in AGENT_CATALOG.items() if spec["output_fields"]]`, so membership follows the generated flow catalog and a hand-added literal is either a no-op or fresh drift. Read it to CONFIRM your agent appeared; never append to it.
 157. **⚠️ CORRECTED 2026-08-23 — do NOT hand-edit `views.py` for this.** `views.PARAMETRIZER_SOURCE_OUTPUT_FIELDS` is **DERIVED** (`= get_parametrizer_source_fields()`), not a hand-maintained dict, so editing it is either a no-op or a fresh source of drift. Register the fields in ONE place — `agent_contracts.py`, the next step.
 158. Open `Tlamatini/agent/services/agent_contracts.py` and add `'<lower>': (...)` to `_PARAMETRIZER_OUTPUT_FIELDS` with the same field tuple (this is the registry the Flow-Compiler reads).
 159. **There is exactly ONE list to edit: `agent_contracts.py::_PARAMETRIZER_OUTPUT_FIELDS`.** Everything else derives from it — `views.PARAMETRIZER_SOURCE_OUTPUT_FIELDS` via `get_parametrizer_source_fields()`, and `parametrizer.py::SECTION_AGENT_TYPES` via the generated catalog. After the contract edit run `python scripts/update_flow_catalog.py` (and `--check` in CI) to regenerate `agent/agents/flowcreator/flow_catalog.json`, then refresh the portable runtime copies so an isolated pool sees the same fields. VERIFY by importing `parametrizer.SECTION_AGENT_TYPES` and asserting `'<lower>'` is in it — if it is not, the catalog was not regenerated.
@@ -352,7 +352,7 @@ The settings dialog adds no agent or tool. See
      `python scripts/update_flow_catalog.py` to regenerate
      `agent/agents/flowcreator/flow_catalog.json`.
 168l. Then run `python scripts/update_flow_catalog.py --check` and keep it green — a stale
-     catalog silently drops your agent from FlowCreator's 89-type selection AND from
+     catalog silently drops your agent from FlowCreator's 85-type selection AND from
      `parametrizer.SECTION_AGENT_TYPES`, which is derived from it (Phase 8).
 168m. Deployment refreshes the runtime snapshots; confirm an isolated pool copy sees the
      same fields as the source tree.
@@ -503,7 +503,7 @@ The settings dialog adds no agent or tool. See
 267. Understand the **payload whitelist gotcha**: `acpx_enabled`, `exec_report_enabled`, `ask_execs_enabled`, `conversation_user_id`, `multi_turn_enabled` must stay in `UnifiedAgentChain.invoke`'s payload-rebuild whitelist — you are NOT adding a new payload flag, so just don't disturb it.
 268. **⚠️ Ask Execs is NOT automatic — it is an EXPLICIT ALLOWLIST.** `_requires_exec_permission` tests membership in `mcp_agent.py::_ASK_EXECS_REQUIRED_TOOLS`; a tool absent from that set is NEVER prompted, however destructive it is (that gap let Deleter wipe a glob and Whatsapper message a human). Classify your new tool against the CURRENT policy, which records deliberate owner decisions — do not widen it because this step reads surprising:
      • **ADD** it if it runs a command/script, DESTROYS or OVERWRITES data (tier A), or REACHES A REMOTE SYSTEM / the network (tier D).
-     • **DO NOT ADD** a messaging agent (tier B — Emailer/Whatsapper/Telegrammer/Zavuerer/Instant-Messaging-Doctor): gated 2026-07-14, **REVERSED 2026-07-26** — *“Messages must be able to be sent without asking, it depends only on AI desisicion.”*
+     • **DO NOT ADD** a messaging agent (tier B — Emailer/Whatsapper/Telegrammer/Instant-Messaging-Doctor): gated 2026-07-14, **REVERSED 2026-07-26** — *“Messages must be able to be sent without asking, it depends only on AI desisicion.”*
      • **DO NOT ADD** a desktop-UI or hardware agent (tier C — Keyboarder/Mouser/Windower/Playwrighter/STM32er/ESP32er/Arduiner/ESPHomer/Blenderer/Unrealer): Angela keeps these ungated for SPEED because the operation is visible while it happens.
      • **DO NOT ADD** read-only / observational / management-polling tools.
      `agent/test_ask_execs_allowlist.py` pins this in BOTH directions and fails if you get it wrong.
@@ -659,8 +659,8 @@ The settings dialog adds no agent or tool. See
 # PHASE 21 — Dependencies & packaging (`requirements.txt` + `build.py`)
 
 377. If the agent needs a new third-party lib, add a PINNED version to `Tlamatini/requirements.txt` (e.g. `opencv-python==4.13.0.92`).
-378. Add the lib to `build.py`'s `_agent_libs` verify list so the build fails loudly if it's missing.
-379. If the lib bundles binaries (ffmpeg/SDL via ffpyplayer), add the needed `--collect-all <lib>` to `build.py`.
+378. Add the lib to `build.py`'s shared `_AGENT_RUNTIME_IMPORTS` list so carried-tree verification fails loudly if it is missing.
+379. Package native libraries in the interpreter that executes them. Pool-only media/browser libraries belong in carried `python/`, including their DLLs. Use PyInstaller `--collect-all` / `--hidden-import` only for a proven frozen web-process dependency; never duplicate a pool library merely for parity. Preserve `_FROZEN_POOL_ONLY_MODULES` and its archive gate; see `docs/self-management-carriage.md`.
 380. Confirm `build.py` ships the new `agent/agents/<lower>/` directory (the agent-pool tree is bundled — verify the glob/add-data covers it).
 381. Confirm `build.py` installs `requirements.txt` into BOTH the build python AND the carried `PYTHON_HOME` (pool agents run under the carried python — the lib must be there).
 382. If the agent ships a template project tree (firmware/engine), confirm `build.py` bundles that scaffold directory.
@@ -710,7 +710,7 @@ The settings dialog adds no agent or tool. See
 
 # PHASE 23 — Playwright tests in Claude's harness (the daily-chat-test)
 
-418. Open `.gemini/skills/tlamatini-daily-chat-test/harness/` and read `config.py`, `run_test.py`, `questions.py`, `wrapped_questions.py`, `qualify.py`.
+418. Open `.claude/skills/tlamatini-daily-chat-test/harness/` and read `config.py`, `run_test.py`, `questions.py`, `wrapped_questions.py`, `qualify.py`.
 419. Understand the harness contract: it drives REAL Chrome via Playwright, logs into `agent_page.html`, asks curated questions one-by-one, waits for completion, scrapes + qualifies the answer.
 420. Understand the answer-complete signal: input stops being `readOnly` AND `#wait-spinner` is removed from `#chat-log`.
 421. Add KNOWLEDGE questions about the new agent to `harness/questions.py` (safe, introspective: "What does the <Display> agent do?", "Which agents capture <X>?") — these run with Multi-Turn ON, ACPX/Ask-Execs/Exec-Report OFF.
@@ -816,7 +816,7 @@ The settings dialog adds no agent or tool. See
 503c. ☐ `python scripts/update_flow_catalog.py` run AND `--check` green (regenerates `flow_catalog.json`; `SECTION_AGENT_TYPES` derives from it).
 503d. ☐ `check_agent_runtimes` passed in SOURCE mode and against a FRESH FROZEN build (incl. one with no `TlamatiniSourceCode/`) — reported as separate evidence.
 503e. ☐ `sweep_self_modify.py` + `sweep_self_update.py` both CLEAN.
-504. ☐ `requirements.txt` pin + `build.py` `_agent_libs`/`--collect-all`/bundle — if new dep.
+504. ☐ `requirements.txt` pin + `build.py` `_AGENT_RUNTIME_IMPORTS`/runtime ownership; frozen collection only for web-process use — if new dep.
 505. ☐ `test_<lower>_agent.py` (helpers, fake backend, INI round-trip, main end-stage, reanimation, registry integration, JS contract) — green + ruff clean.
 506. ☐ Playwright harness: `questions.py` knowledge Qs + `wrapped_questions.py` execution Q + `--select` token — focused run PASS.
 507. ☐ `ruff check` clean + `npm run lint` errors clean + `makemigrations --check` clean + `migrate` applied.
@@ -839,7 +839,7 @@ The settings dialog adds no agent or tool. See
 519. **Importing `agent.*` from a pool subprocess** — `ModuleNotFoundError` at runtime; port inline.
 520. **Temp/Templates outside Tlamatini** — scratch → `<app>/Temp`, scaffold → `<app>/Templates`; never `C:\Temp`/`%TEMP%`/bare `tempfile`.
 521. **Payload whitelist** — don't disturb `UnifiedAgentChain.invoke`'s rebuild whitelist (`acpx_enabled`/`exec_report_enabled`/`ask_execs_enabled`/`conversation_user_id`/`multi_turn_enabled`).
-522. **Parametrizer field-list drift** — it is **TWO** places, not three: `parametrizer.SECTION_AGENT_TYPES` (membership) and `agent_contracts._PARAMETRIZER_OUTPUT_FIELDS` (the field tuple). ⚠️ **`views.PARAMETRIZER_SOURCE_OUTPUT_FIELDS` is DERIVED** — literally `= get_parametrizer_source_fields()` — so hand-editing it is a no-op at best and fresh drift at worst. (This entry said "three lists" until 2026-09-06; it was wrong, and following it would have sent you to edit a computed value.) Pin the coupling with a test that reads BOTH sides — lift the agent's `outcome` dict by AST and compare it to the registry tuple — never with a typed count. See `agent/test_pdfer_nuance_layout.py::ContractCoherenceTests`.
+522. **Parametrizer field-list drift** — edit only `agent_contracts._PARAMETRIZER_OUTPUT_FIELDS`, then regenerate and verify the flow catalog. `parametrizer.SECTION_AGENT_TYPES` derives membership from that catalog; never hand-edit it. ⚠️ **`views.PARAMETRIZER_SOURCE_OUTPUT_FIELDS` is DERIVED** — literally `= get_parametrizer_source_fields()` — so hand-editing it is a no-op at best and fresh drift at worst. (This entry said "three lists" until 2026-09-06; it was wrong, and following it would have sent you to edit a computed value.) Pin the coupling with a test that reads BOTH sides — lift the agent's `outcome` dict by AST and compare it to the registry tuple — never with a typed count. See `agent/test_pdfer_nuance_layout.py::ContractCoherenceTests`.
 523. **Catalog contiguity** — a gap in `idPrompt` breaks the prompts dropdown at the first missing slot.
 524. **FlowHypervisor false positives** — a long-running/observational/structured-output agent without its SPECIAL NOTES gets wrongly flagged as stuck or errored.
 525. **Watchdog** — keep child processes making progress and fed EOF on stdin; never block with zero CPU+IO.

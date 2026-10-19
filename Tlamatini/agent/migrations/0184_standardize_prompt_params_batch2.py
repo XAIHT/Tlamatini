@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 from django.db import migrations
 
 # Batch 2 of the catalog parameter-standard sweep: files_search / media_voice /

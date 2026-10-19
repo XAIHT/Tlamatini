@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Update obsolete seeded visual-result wording without replacing user prompts.
 
 Created by Angela López Mendoza · @angelahack1 — Tlamatini.

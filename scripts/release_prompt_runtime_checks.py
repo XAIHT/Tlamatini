@@ -78,7 +78,7 @@ def run_prompt_runtime_checks(page, out, checkpoint):
         (out / (name + '-events.json')).write_text(json.dumps(events, indent=2), encoding='utf-8')
 
     # The two actual inference requests use the application's configured model.
-    # The campaign pins every Ollama field to nemotron-3-ultra:cloud beforehand.
+    # Keep the installed model settings; do not select a fallback for this test.
     open_flow('live-prompt-schedule', [
         node('prompt', 'prompt', 'Reply with exactly RELEASE_OK and no other text.'),
         node('branch', 'decision', comparison='contains', value='RELEASE_OK'),
@@ -133,7 +133,7 @@ def run_prompt_runtime_checks(page, out, checkpoint):
         expect(page.locator('#pmt-run-log')).to_contain_text('Embedding setup failed')
         assert not any(event.get('event') == 'node' and event.get('node_id') == 'after-feed' for event in events)
         result = dict(embedding_execution='BLOCKED', failure_handling='PASS',
-                      reason='The exclusively authorized model did not initialize embeddings; no fallback model was used.')
+                      reason='The configured embedding model did not initialize; no fallback model was used.')
         checkpoint('prompt-runtime-05-embedding-failure-stops-before-next-operation', page)
     else:
         result = dict(embedding_execution='PASS', failure_handling='NOT_APPLICABLE')

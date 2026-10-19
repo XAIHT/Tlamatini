@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Physical desktop coordinates for Mouser (also copied to isolated runs)."""
 
 import ctypes

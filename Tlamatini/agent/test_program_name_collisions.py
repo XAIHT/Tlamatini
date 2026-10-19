@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Two code blocks in ONE answer must never break each other's file.
 
 REGRESSION (Angela, 2026-09-06, live on the installed build in C:\\Tlamatini):

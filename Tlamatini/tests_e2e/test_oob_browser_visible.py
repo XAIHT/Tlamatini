@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """VISIBLE HEADED-BROWSER proof of the OOB_shift_reaper wiring, end-to-end.
 
 Angela's rule: automated tests run in a VISIBLE, HEADED Chrome on her real desktop —

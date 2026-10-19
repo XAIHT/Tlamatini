@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Regenerate/check the standalone agent catalog and its documentation inventory.
 
 Run in a verified visible foreground PowerShell -NoExit console with the

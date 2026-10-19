@@ -325,7 +325,7 @@ def _read_json_file(path: str) -> Dict[str, Any]:
             # contacts.json ships as a BARE JSON ARRAY of contact objects.
             # Discarding it here made EVERY contact_name resolve to
             # "not found" (contact_status: missing) even though Whatsapper
-            # and Zavuerer resolve the very same file correctly. Keep the
+            # resolves the very same file correctly. Keep the
             # array under the canonical "contacts" key.
             return {"contacts": data}
         return {}

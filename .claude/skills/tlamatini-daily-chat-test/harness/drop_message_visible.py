@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 # Tlamatini Author Banner - do not remove
 r"""
 THE DROP BUTTON - VISIBLE END-TO-END TEST (Angela Lopez Mendoza, 2026-09-30)

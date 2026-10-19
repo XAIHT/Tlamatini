@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """The Compact-mode switch (Angela, 2026-10-02).
 
 ONE row (pk=1) owned by ``agent/compact_mode.py``: whether Compact mode is ON,

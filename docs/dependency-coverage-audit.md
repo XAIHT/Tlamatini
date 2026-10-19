@@ -1,126 +1,99 @@
-<!--
-Tlamatini - Created by Angela Lopez Mendoza - @angelahack1
-Tlamatini Author Banner - do not remove
--->
-# Python dependency coverage audit - 2026-09-27
+<!-- Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1 -->
+# Python dependency coverage and reproducible installation — 2026-10-18
 
-> Current release: **[v1.85.0](changes/2026-10-16-v1.85.0.md)**. Dated records below retain their original evidence dates.
+The main [requirements.txt](../requirements.txt) describes the complete Windows
+CPython 3.12 environment used by Tlamatini, its retained agents, build tools,
+self-modification and verification commands. It pins **263 distributions**:
+direct dependencies are grouped by purpose, followed by their transitive closure.
+This is the application's dependency graph, not a freeze of the developer's
+unrelated user-site packages.
 
+The source audit covers **855 Python files and 85 runnable agents** and finds
+**72 directly referenced pip distributions**. Framework registrations, build
+hooks, command-line tools and compatibility dependencies account for additional
+direct requirements. Optional feature imports remain included so their features
+work in a fresh installation.
 
-The refreshed source audit covers **744 Python files and all 89 runnable agents**.
-The added `chat_voice_settings.py` shares stdlib-only Mic preference validation
-between Django and the carried Whisperer worker; the new dialog adds no package.
-There are **87 declarations in the main requirements file**, covering all
-**69 pip distributions referenced by the scanned source and build inventories**.
-The additional declarations are retained: packages can also be needed through
-framework integrations, runtime tooling, or transitive compatibility constraints.
+## Installation and compatibility
 
-## Missing declarations added
+Run every command below in a verified visible, forked foreground console, kept
+open afterward, following the [visible execution policy](../TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).
 
-| Distribution | Version | Source that needs it |
-| --- | --- | --- |
-| `autobahn` | `26.7.1` | Explicit collection and package lookup in `build.py`; Daphne WebSockets |
-| `lxml` | `6.1.3` | Direct XML import in `Tlamatini/agent/doc_generation/dossier_pptx.py` |
-| `six` | `1.17.0` | Conditional hidden import in `pyinstaller_hooks/hook-numpy.py` |
-| `pip` | `26.2.1` | `audit_dependencies.py` packaging fallback and Python package installer invocations |
-| `platformio` | `6.2.0` | Python module commands used by ESP32er and STM32er |
+Use the full x64 CPython 3.12 distribution, including Tcl/Tk for setup windows.
+Install into a fresh environment with no inherited site-packages:
 
-Use `python -m pip` when installing the main requirements, including when pip
-itself needs updating. Existing requirement versions and ranges are preserved.
-
-## ESPHome and other runtime boundaries
-
-`requirements-esphome.txt` declares `esphome==2026.9.0` separately, and the
-main requirements file explicitly points to it. ESPHomer already provisions
-ESPHome in its private per-user library directory, adding that directory to
-its subprocess environment. This audit records a resolved version of that
-separate SDK; it does not change the agent's existing provisioning behavior.
-
-Do **not** include that manifest with `-r` in the main environment. ESPHome
-2026.9.0 requires `py7zr==1.1.3` and `platformio==6.1.19`, conflicting
-with Tlamatini's `py7zr==0.22.0` and `platformio==6.2.0`. Its dependency
-graph was resolved independently for Python 3.12 on Windows.
-
-Blender's `bpy` and Unreal's `unreal` are provided by their application
-Python runtimes. `tkinter` is CPython's optional Tcl/Tk component. These are
-not missing pip declarations. JavaScript/npm dependencies, vendored browser
-libraries, external executables, device toolchains, user-configured external
-MCP servers and downloaded model weights have their own installation contracts;
-a Python requirements file cannot install those resources.
-
-## Repeatable coverage guard
-
-`scripts/check_requirements_coverage.py` inspects tracked and non-ignored new
-`.py`/`.pyw` files, including hidden skill harnesses. It parses source without
-importing or starting the application. It checks:
-
-- Ordinary and optional imports throughout the repository, not just agent folders.
-- Literal dynamic imports and module names in statically resolvable loops.
-- Generated multiline Python import statements outside test fixtures.
-- Explicit PyInstaller inventories, package collection and Python `-m` commands.
-- Module/distribution aliases, local modules, host-provided modules and the
-  separate ESPHome manifest.
-
-Every detected third-party import must have a declaration. Syntax errors and
-unreviewed computed import expressions fail the check. Computed local imports
-and generic package-location helpers have explicit, documented review entries.
-Fixture-only command strings are excluded; actual test imports are included.
-This is a static source check, not a promise to infer arbitrary generated code
-or libraries in future user-provided scripts.
-
-The existing `RequirementsCoverageTests` now invokes this whole-repository
-guard. Ten focused tests cover aliases, optional imports, generated code,
-dynamic imports, namespace handling, SDK manifests and malformed source.
-
-**All execution must run in a verified visible, forked foreground console,
-kept open afterward.** Follow
-[the mandatory visible execution policy](../TestsVisiblesAndVisibleExecutionFromClaude2Codex.md)
-before running these commands; do not run them headlessly:
-
-```powershell
+~~~powershell
+python -m pip install -r requirements.txt
+python -m pip check
 python scripts/check_requirements_coverage.py --report Temp/dependency-audit/coverage.json
+python scripts/check_python_quality.py
+~~~
+
+The CPU Torch pin matches the carried runtime; its wheel comes from the official
+PyTorch CPU index declared in the manifest. NumPy 2.2.6 satisfies OpenCV's NumPy 2
+floor while retaining the existing upper boundary. Packaging 25.0 satisfies
+LangChain Core's below-26 requirement. PyInstaller and its contributed hooks are
+both pinned. Ruff is also a runtime dependency because Pythonxer invokes it before
+executing Python scripts. Install using the interpreter's -m pip, not another
+environment's executable.
+
+A package belongs to the interpreter that executes it. Keep the complete
+environment in carried python/; collect into frozen Django only what that
+process uses. Pool-only media/browser packages do not need a duplicate frozen
+copy. See [self-management carriage](self-management-carriage.md).
+
+## Separate runtimes
+
+- ESPHomer provisions requirements-esphome.txt in its private runtime.
+  Do not merge it into this environment: its py7zr and PlatformIO pins conflict
+  with the main archive/firmware stack.
+- Blender supplies bpy; Unreal Editor supplies unreal. Tcl/Tk is a CPython
+  installation component, not a pip package.
+- Browser binaries, Git, Java, device toolchains, external MCP servers and model
+  weights follow their own build/provisioning contracts. Python requirements
+  do not replace those assets.
+
+## Coverage guard
+
+scripts/check_requirements_coverage.py reads tracked and non-ignored new Python
+sources, including hidden skill harnesses. It checks ordinary and optional
+imports, literal dynamic imports, resolvable import loops, generated Python,
+PyInstaller inventories and Python module commands. It handles distribution
+aliases, local modules, application-provided SDKs and the separate ESPHome
+manifest. Missing declarations, syntax errors and unreviewed computed imports
+fail the gate. Test fixture command strings are excluded; real test imports count.
+
+Ten regression tests exercise those boundaries:
+
+~~~powershell
 python -m unittest discover -s Tests -p test_requirements_coverage.py -v
-```
+~~~
 
-## Validation and limits
+The guard cannot infer arbitrary libraries in future user-supplied scripts.
+Those remain the responsibility of their own environments.
 
-- Static coverage: 743 files, 89 agents, zero missing declarations, zero parse
-  errors and zero unreviewed computed imports.
-- Ten new coverage regression tests and four existing/extended build dependency
-  tests passed. The latter used minimal Django settings with an empty database
-  configuration; no application database was used.
-- The complete main requirements file passed pip's dry-run resolver against
-  the current Python 3.12 installation.
-- The separate ESPHome manifest passed a dry run with `--ignore-installed`,
-  resolving its independent dependency graph.
-- New Autobahn, lxml and PlatformIO versions were installed only into a temporary
-  virtual environment. Imports of Autobahn/Twisted, Daphne and PlatformIO passed,
-  as did lxml XML parsing and real PPTX/DOCX save/reload checks.
-- The temporary environment shares existing site-packages for unchanged
-  dependencies. This is not a full clean installation or a frozen installer
-  build. The user's main Python installation was not modified.
-- New/changed Python audit code passed syntax and correctness lint checks.
+## Executed evidence
 
-Local evidence is under `Temp/dependency-audit/`: `coverage.json`,
-`resolve-main.json`, `resolve-esphome.json`, `runtime-smoke.json`,
-and package metadata snapshots. Visible console transcripts remain under
-`Temp/voice-development/`. These generated artifacts are not source dependencies.
+The October 18 comparison inspected the source-carried interpreter, the prior
+release preview, the installed Tlamatini interpreter, the system interpreter and
+its separate user-site environment. The three application environments each
+contained 263 distributions; the installed and source-carried versions matched.
+The system user site contained 479 distribution records and was not used to
+populate the application manifest.
 
-## Package selection evidence
+A new full CPython runtime was prepared without site-packages, Scripts or
+inherited user packages. Installing the rewritten requirements completed
+successfully. Its 263 installed versions exactly matched the source-carried
+environment, with no extra, missing or changed distribution. pip check passed
+for the clean runtime, the installed application and the prior release preview.
 
-The Snyk dependency-health tool was unavailable, so the skill's manual fallback
-used official PyPI release metadata, Windows/Python compatibility information
-and listed vulnerability records. The selected added versions had no
-PyPI-listed advisories at audit time; this is not a complete security audit.
+The clean runtime imported Django/ASGI, MCP, PlatformIO, NumPy/FAISS, OpenCV,
+PyAV, ffpyplayer, audio libraries, Torch/SNAC, both local transcription stacks,
+ONNX Runtime, Playwright, Tcl/Tk and document libraries successfully. This verifies
+installation/import readiness; it does not claim live hardware, credentials or
+every external provider was exercised.
 
-Autobahn 26.7.1 replaces the installed 25.12.2 version in the declaration because
-the older version is affected by
-[GHSA-hxp9-w8x3-p566](https://osv.dev/vulnerability/GHSA-hxp9-w8x3-p566).
-
-Primary release metadata:
-[Autobahn](https://pypi.org/project/autobahn/26.7.1/),
-[lxml](https://pypi.org/project/lxml/6.1.3/),
-[six](https://pypi.org/project/six/1.17.0/),
-[pip](https://pypi.org/project/pip/26.2.1/),
-[PlatformIO](https://pypi.org/project/platformio/6.2.0/),
-[ESPHome](https://pypi.org/project/esphome/2026.9.0/).
+Local evidence is under Temp/release-size-analysis-20261018/: the environment
+inventories, clean-pip-install-report.json, clean-environment-results.json,
+clean-pip-check.log, clean-runtime-imports.log and dependency-coverage-repair.json.
+Release and browser results are recorded separately against the exact rebuilt artifact.

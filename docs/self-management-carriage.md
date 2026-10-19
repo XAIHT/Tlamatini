@@ -437,3 +437,32 @@ verified 798 carried/restored runtime inputs byte-for-byte; the self-update
 source sweep also passed. These are dated pre-documentation-refresh inclusion
 results, not runtime proof of a fresh executable or installed update.
 See [the Usage guide](usage-dashboard.md) and its rebuild acceptance boundary.
+
+## Release payload ownership (2026-10-18)
+
+Browser and media agents execute under the carried `python/` interpreter.
+`build.py` excludes `cv2`, `ffpyplayer`, `av`, `playwright`, `faster_whisper`,
+`ctranslate2` and `onnxruntime` from the frozen Django interpreter, and verifies
+that they did not enter its PYZ or package directories. Their carried wheels,
+native libraries and agent implementations remain present. PDF context still
+requires frozen PyMuPDF; RAG still requires its frozen numeric/search libraries.
+Never delete a native library merely because another runtime carries a copy.
+
+Bundled Chromium and FFmpeg revisions come from the **carried** Playwright
+manifest. Browser installation uses that interpreter; stale FFmpeg revisions are
+filtered along with stale Chromium revisions. Both Chromium and its headless
+shell remain available to product configurations. Development verification must
+still use visible foreground consoles and explicitly headed browsers.
+
+After all frozen setup checks, only bytecode caches with matching `.py` source
+are removed before the runtime receipt is written. Source-less bytecode, PYZ and
+standard-library ZIPs remain intact. Carried import verification uses `-B`.
+Git's copied root `unins<digits>.exe/.dat/.msg` files are excluded; Git commands,
+Bash, hooks, helpers and documentation remain available. The inner package uses
+standard DEFLATE level 9, preserving existing installer/updater compatibility.
+
+The Public wrapper's privacy handling is independent of self-modification.
+Use its explicit `--self-modify` flag when retaining that capability. Real build
+and before/after measurements must use the same mode and source baseline, in a
+verified visible development console; static analysis alone is not release
+acceptance.

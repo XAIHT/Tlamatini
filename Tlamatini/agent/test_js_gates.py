@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Process gates for the browser JavaScript -- two silent, total failure modes.
 
 The Spanish tree hit both:

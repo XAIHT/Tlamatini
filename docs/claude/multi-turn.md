@@ -128,13 +128,13 @@ The tool executor is synchronous and runs in a worker thread (`sync_to_async(ask
 
 `_requires_exec_permission` consults an **ALLOWLIST**, `mcp_agent.py::_ASK_EXECS_REQUIRED_TOOLS` — it does **NOT** prompt for every state-changing tool. (This doc used to claim it did; the claim was **wrong**, and the gap was real: **Deleter could wipe a glob of files, and Whatsapper could message a real human, with no prompt at all.** Angela found it live on 2026-07-14.)
 
-**Angela's policy — tiers A + D are gated; tiers B and C deliberately are NOT.** *(Tier B was gated on 2026-07-14 and **REVERSED on 2026-07-26**: "Messages must be able to be sent without asking, it depends only on AI desisicion." Sending is the LLM's own judgement call — no prompt stands between Tlamatini and a message. What still protects a send: the LLM's judgement, the Exec Report row it always produces, and the user's Cancel. Zavuerer also costs money per send; that is accepted, not overlooked. Do NOT re-gate messaging "for safety" — `agent/test_ask_execs_allowlist.py::test_messaging_agents_are_NOT_gated` fails if you do.)*
+**Angela's policy — tiers A + D are gated; tiers B and C deliberately are NOT.** *(Tier B was gated on 2026-07-14 and **REVERSED on 2026-07-26**: "Messages must be able to be sent without asking, it depends only on AI desisicion." Sending is the LLM's own judgement call — no prompt stands between Tlamatini and a message. What still protects a send: the LLM's judgement, the Exec Report row it always produces, and the user's Cancel. Do NOT re-gate messaging "for safety" — `agent/test_ask_execs_allowlist.py::test_messaging_agents_are_NOT_gated` fails if you do.)*
 
 | | Gated? | Tools |
 |---|---|---|
 | command / script runners | **ASK** | Executer, Pythonxer, SSHer, Kalier, Dockerer, Kuberneter, SQLer, Mongoxer, Gitter, Jenkinser, PSer, J-Decompiler (+ the direct `execute_command` / `execute_file` / `decompile_java`) |
 | **A** — destroys/overwrites data | **ASK** | Deleter, Mover, File-Creator, Editor, De-Compresser, `unzip_file`, PDFer, LaTeXer |
-| **B** — messaging / reaches real people | **no-ask (ON PURPOSE, 2026-07-26)** | Emailer, Whatsapper, Telegrammer, Zavuerer, Instant Messaging Doctor |
+| **B** — messaging / reaches real people | **no-ask (ON PURPOSE, 2026-07-26)** | Emailer, Whatsapper, Telegrammer, Instant Messaging Doctor |
 | **D** — remote systems / network | **ASK** | SCPer, Apirer, Nmapper, Discoverer, Crawler, NetSpeed-Calculator (reaches remote hosts AND deliberately saturates the link with ~100-200 MB of metered traffic per full run) |
 | **C** — desktop UI + hardware | **no-ask (ON PURPOSE)** | Keyboarder, Mouser, Windower, Playwrighter, STM32er, ESP32er, Arduiner, ESPHomer, Blenderer, Unrealer |
 | read-only / observational / management-polling / crypto / `invoke_skill` / ACPX | no-ask | Globber, Grepper, the interpreters, the media agents, `chat_agent_run_*`, … |
@@ -244,13 +244,13 @@ one below.
 
 The generic parser (`_parse_section_content` + `_section_regex`) in `parametrizer.py` handles all agents with ~90 lines. No per-agent parser code needed.
 
-Registered source agents (generated catalog, 53): acpxer, analyzer, apirer, arduiner, audioplayer, blenderer, camcorder, crawler, de_compresser, discoverer, editor, esp32er, esphomer, file_extractor, file_interpreter, flowcreator, gateway_relayer, gatewayer, gitter, globber, googler, grepper, image_interpreter, instant_messaging_doctor, kalier, keyboarder, kuberneter, kyber_cipher, kyber_decipher, kyber_keygen, latexer, mcp_doctor, mouser, netspeed_calculator, nmapper, pdfer, playwrighter, pptxer, prompter, recorder, reviewer, shoter, stm32er, summarizer, talker, telegrammer, unrealer, video_analyzer, videoplayer, whatsapper, whisperer, windower, zavuerer.
+Registered source agents (generated catalog, 50): acpxer, analyzer, apirer, arduiner, audioplayer, blenderer, camcorder, crawler, de_compresser, discoverer, editor, esp32er, esphomer, file_extractor, file_interpreter, flowcreator, gitter, globber, googler, grepper, image_interpreter, instant_messaging_doctor, kalier, keyboarder, kuberneter, kyber_cipher, kyber_decipher, kyber_keygen, latexer, mcp_doctor, mouser, netspeed_calculator, nmapper, pdfer, playwrighter, pptxer, prompter, recorder, reviewer, shoter, stm32er, summarizer, talker, telegrammer, unrealer, video_analyzer, videoplayer, whatsapper, whisperer, windower.
 
 ## Desktop control and flow contracts — 2026-09-15
 
 Mouser now resolves explicit physical, window and screenshot coordinates; Keyboarder binds Unicode/key delivery to a verified window; Shoter publishes capture geometry. `input_sent` is delivery evidence, not application success, and a failed or interrupted input segment must be observed before replay.
 
-Parametrizer derives its parser registry from current contracts and validates complete typed mappings. FlowCreator selects from all 89 installed agents and validates the generated graph before publishing; FlowHypervisor separates execution, kill and observation relationships and uses current desktop receipts/timing. GUI-Manager remains design only.
+Parametrizer derives its parser registry from current contracts and validates complete typed mappings. FlowCreator selects from all 85 installed agents and validates the generated graph before publishing; FlowHypervisor separates execution, kill and observation relationships and uses current desktop receipts/timing. GUI-Manager remains design only.
 
 See [configuration, examples and limitations](../desktop-input-and-flow-contracts.md), the [complete generated coverage inventory](../agent-coverage.md), and the [GUI-Manager design](../GUI-Manager-design.md).
 

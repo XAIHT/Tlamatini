@@ -9,6 +9,9 @@
  * ═══════════════════════════════════════════════════════════════════
  *   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
  */
+// Shared classic-script bindings, consumed by sibling page scripts.
+/* exported loadCanvasWithThisContent, openCanvas, refreshCanvas */
+
 
 // ============================================================
 // agent_page_canvas.js  –  Canvas / code-editor operations

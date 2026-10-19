@@ -673,7 +673,7 @@
       "aliases": [
         "croner"
       ],
-      "purpose": "A clock-driven trigger. Wakes up at the configured `HH:MM` every day and starts its `target_agents`. Good for nightly backups, scheduled reports, or any \"run this every day at 3 AM\" flow. Pair it with Gatewayer if you also want event-driven triggers in the same flow.",
+      "purpose": "A clock-driven trigger. Wakes up at the configured `HH:MM` every day and starts its `target_agents`. Good for nightly backups, scheduled reports, or any \"run this every day at 3 AM\" flow. ",
       "config_schema": {
         "trigger_time": "str",
         "target_agents": "list",
@@ -989,7 +989,7 @@
           "host": "str",
           "port": "int",
           "username": "str",
-          "password": "<REDACTED>",
+          "password": "str",
           "use_tls": "bool",
           "use_ssl": "bool"
         },
@@ -1424,7 +1424,7 @@
       "aliases": [
         "flowcreator"
       ],
-      "purpose": "Designs a workflow from your objective. It first selects from all 89 installed agent types, then uses their detailed instructions and current configuration/connection contracts to produce a .flw file. It checks references, branches, fields and Parametrizer mappings before publishing, with bounded repair for invalid plans. The generated flow remains reviewable before you run it; catalog coverage does not guarantee every external application or service is ready.",
+      "purpose": "Designs a workflow from your objective. It first selects from all 85 installed agent types, then uses their detailed instructions and current configuration/connection contracts to produce a .flw file. It checks references, branches, fields and Parametrizer mappings before publishing, with bounded repair for invalid plans. The generated flow remains reviewable before you run it; catalog coverage does not guarantee every external application or service is ready.",
       "config_schema": {
         "flow_filename": "str",
         "prompt": "str",
@@ -1558,204 +1558,6 @@
       "no_output": false,
       "singleton": false,
       "long_running": false,
-      "never_starts_targets": false,
-      "special": ""
-    },
-    "gateway_relayer": {
-      "display_name": "Gateway Relayer",
-      "aliases": [
-        "gateway_relayer"
-      ],
-      "purpose": "A deterministic, no-LLM relay that bridges third-party webhook formats (e.g. GitHub's `X-Hub-Signature-256`) into Gatewayer's expected `timestamp + body` HMAC scheme. Validates the upstream provider's signature, transforms the payload, signs it for Gatewayer, and forwards it. Use it whenever you want a flow to receive native GitHub / GitLab / Stripe / Shopify webhooks without patching Gatewayer itself.",
-      "config_schema": {
-        "target_agents": "list",
-        "listen_host": "str",
-        "listen_port": "int",
-        "listen_path": "str",
-        "provider_mode": "str",
-        "provider_secret": "str",
-        "allowed_events": "list",
-        "allowed_refs": "list",
-        "respond_ping_ok": "bool",
-        "forward_url": "str",
-        "forward_hmac_secret": "str",
-        "forward_signature_header": "str",
-        "forward_timestamp_header": "str",
-        "forward_content_type": "str",
-        "correlation_id_header": "str",
-        "request_timeout_sec": "int",
-        "use_tls": "bool",
-        "tls_cert": "str",
-        "tls_key": "str",
-        "logging_behavior": {
-          "accepted_word": "str",
-          "rejected_word": "str",
-          "forwarded_word": "str",
-          "error_word": "str"
-        },
-        "graceful_shutdown_sec": "int",
-        "source_agents": "list"
-      },
-      "output_fields": [
-        "event_type",
-        "delivery_id",
-        "action",
-        "ref",
-        "repository",
-        "sender",
-        "body"
-      ],
-      "output_slots": {
-        "0": "target_agents"
-      },
-      "input_slots": {
-        "0": "source_agents"
-      },
-      "connection_fields": [
-        "source_agents",
-        "target_agents",
-        "output_agents",
-        "source_agent",
-        "target_agent",
-        "source_agent_1",
-        "source_agent_2",
-        "target_agents_a",
-        "target_agents_b",
-        "target_agents_l",
-        "target_agents_g"
-      ],
-      "no_input": false,
-      "no_output": false,
-      "singleton": false,
-      "long_running": true,
-      "never_starts_targets": false,
-      "special": ""
-    },
-    "gatewayer": {
-      "display_name": "Gatewayer",
-      "aliases": [
-        "gatewayer"
-      ],
-      "purpose": "The inbound gateway. A long-running agent that listens for external events on either an HTTP webhook (default `127.0.0.1:8787`) or a folder-drop watcher, normalizes each event into a canonical envelope, persists it to disk, and dispatches downstream agents serially. Supports bearer-token, HMAC, and IP-allowlist authentication, plus dedup, persistence, and crash recovery. The agent that lets the outside world *call into* a flow — webhooks, IoT pushes, SaaS callbacks, scheduled batch drops, all welcome.",
-      "config_schema": {
-        "source_agents": "list",
-        "target_agents": "list",
-        "listen_mode": "str",
-        "http": {
-          "enabled": "bool",
-          "host": "str",
-          "port": "int",
-          "path": "str",
-          "methods": "list",
-          "use_tls": "bool",
-          "cert_file": "str",
-          "key_file": "str",
-          "request_timeout_sec": "int"
-        },
-        "folder_watch": {
-          "enabled": "bool",
-          "watch_path": "str",
-          "file_pattern": "str",
-          "poll_interval": "int",
-          "archive_processed": "bool",
-          "processed_dir": "str"
-        },
-        "auth": {
-          "mode": "str",
-          "header_name": "str",
-          "bearer_token": "str",
-          "allowed_ips": "list",
-          "hmac_secret": "str",
-          "signature_header": "str",
-          "timestamp_header": "str",
-          "max_clock_skew_sec": "int"
-        },
-        "payload": {
-          "accepted_content_types": "list",
-          "max_body_bytes": "int",
-          "parse_json": "bool",
-          "save_raw_body": "bool",
-          "save_headers": "bool",
-          "save_query_params": "bool",
-          "required_fields": "list",
-          "event_type_field": "str",
-          "session_id_field": "str",
-          "correlation_id_header": "str",
-          "attachments_enabled": "bool",
-          "max_attachment_bytes": "int"
-        },
-        "queue": {
-          "enabled": "bool",
-          "max_pending_events": "int",
-          "dispatch_mode": "str",
-          "overflow_policy": "str",
-          "dedup_enabled": "bool",
-          "dedup_key_fields": "list",
-          "dedup_window_sec": "int"
-        },
-        "storage": {
-          "output_dir": "str",
-          "latest_event_file": "str",
-          "write_event_json": "bool",
-          "write_request_body": "bool",
-          "write_headers_json": "bool",
-          "write_response_json": "bool",
-          "keep_days": "int"
-        },
-        "response": {
-          "mode": "str",
-          "accepted_status": "int",
-          "rejected_status": "int",
-          "error_status": "int",
-          "content_type": "str",
-          "body_template": "str"
-        },
-        "logging_behavior": {
-          "accepted_word": "str",
-          "rejected_word": "str",
-          "queued_word": "str",
-          "dispatched_word": "str",
-          "error_word": "str"
-        },
-        "runtime": {
-          "worker_threads": "int",
-          "idle_sleep_ms": "int",
-          "graceful_shutdown_sec": "int"
-        }
-      },
-      "output_fields": [
-        "event_id",
-        "event_type",
-        "session_id",
-        "correlation_id",
-        "content_type",
-        "method",
-        "path",
-        "body"
-      ],
-      "output_slots": {
-        "0": "target_agents"
-      },
-      "input_slots": {
-        "0": "source_agents"
-      },
-      "connection_fields": [
-        "source_agents",
-        "target_agents",
-        "output_agents",
-        "source_agent",
-        "target_agent",
-        "source_agent_1",
-        "source_agent_2",
-        "target_agents_a",
-        "target_agents_b",
-        "target_agents_l",
-        "target_agents_g"
-      ],
-      "no_input": false,
-      "no_output": false,
-      "singleton": false,
-      "long_running": true,
       "never_starts_targets": false,
       "special": ""
     },
@@ -2023,7 +1825,7 @@
         "target_agents": "list",
         "llm": {
           "host": "str",
-          "token": "<REDACTED>"
+          "token": "str"
         }
       },
       "output_fields": [
@@ -2078,12 +1880,12 @@
           "api_id": "str|int",
           "api_hash": "str",
           "session_name": "str",
-          "session_string": "<REDACTED>"
+          "session_string": "str"
         },
         "whatsapp": {
           "to": "str",
           "phone_number_id": "str|int",
-          "access_token": "<REDACTED>",
+          "access_token": "str",
           "graph_base": "str",
           "api_version": "str",
           "verify_token": "str",
@@ -2254,7 +2056,7 @@
         "service": "str",
         "username": "str",
         "username_file": "str",
-        "password": "<REDACTED>",
+        "password": "str",
         "password_file": "str",
         "hash_file": "str",
         "format": "str",
@@ -2712,7 +2514,7 @@
           "connection_string": "str",
           "database": "str",
           "login": "str",
-          "password": "<REDACTED>"
+          "password": "str"
         },
         "script": "str",
         "source_agents": "list",
@@ -3129,116 +2931,6 @@
       "never_starts_targets": false,
       "special": ""
     },
-    "node_manager": {
-      "display_name": "Node Manager",
-      "aliases": [
-        "node_manager"
-      ],
-      "purpose": "A long-running infrastructure registry. Maintains a live inventory of local and remote nodes, probes each one's health (ping, TCP, SSH, WinRM, HTTP), classifies state (`ONLINE` / `OFFLINE` / `DEGRADED` / `UNKNOWN`), detects capability changes, persists state across restarts, exports filtered manifests on demand, and triggers `target_agents` on configured node events. The control-tower agent for fleets of machines.",
-      "config_schema": {
-        "source_agents": "list",
-        "target_agents": "list",
-        "inventory": {
-          "nodes_file": "str",
-          "merge_with_inline_nodes": "bool",
-          "inline_nodes": "list",
-          "default_transport": "str"
-        },
-        "discovery": {
-          "enabled": "bool",
-          "resolve_dns": "bool",
-          "hostnames": "list",
-          "cidrs": "list",
-          "allowed_ports": "list",
-          "tcp_timeout_sec": "int"
-        },
-        "heartbeat": {
-          "poll_interval": "int",
-          "timeout_sec": "int",
-          "offline_after_failures": "int",
-          "debounce_sec": "int",
-          "max_parallel_probes": "int"
-        },
-        "probes": {
-          "ping_enabled": "bool",
-          "tcp_connect_enabled": "bool",
-          "ssh_probe_enabled": "bool",
-          "winrm_probe_enabled": "bool",
-          "http_probe_enabled": "bool",
-          "http_paths": "list",
-          "collect_banners": "bool",
-          "command_probe_enabled": "bool",
-          "linux_command": "str",
-          "windows_command": "str"
-        },
-        "capabilities": {
-          "detect_os": "bool",
-          "detect_python": "bool",
-          "detect_git": "bool",
-          "detect_docker": "bool",
-          "detect_kubectl": "bool",
-          "detect_gpu": "bool",
-          "cache_ttl_sec": "int"
-        },
-        "selection": {
-          "export_selected_nodes": "bool",
-          "require_online": "bool",
-          "include_tags": "list",
-          "exclude_tags": "list",
-          "include_roles": "list",
-          "os_types": "list",
-          "transports": "list"
-        },
-        "storage": {
-          "registry_dir": "str",
-          "snapshot_file": "str",
-          "selected_nodes_file": "str",
-          "events_file": "str",
-          "write_per_node_files": "bool",
-          "keep_days": "int"
-        },
-        "triggers": {
-          "enabled": "bool",
-          "trigger_events": "list"
-        },
-        "security": {
-          "allow_command_probes": "bool",
-          "refuse_plaintext_passwords": "bool",
-          "mask_secrets_in_logs": "bool",
-          "auth_refs_file": "str"
-        },
-        "runtime": {
-          "idle_sleep_ms": "int",
-          "graceful_shutdown_sec": "int"
-        }
-      },
-      "output_fields": [],
-      "output_slots": {
-        "0": "target_agents"
-      },
-      "input_slots": {
-        "0": "source_agents"
-      },
-      "connection_fields": [
-        "source_agents",
-        "target_agents",
-        "output_agents",
-        "source_agent",
-        "target_agent",
-        "source_agent_1",
-        "source_agent_2",
-        "target_agents_a",
-        "target_agents_b",
-        "target_agents_l",
-        "target_agents_g"
-      ],
-      "no_input": false,
-      "no_output": false,
-      "singleton": false,
-      "long_running": true,
-      "never_starts_targets": false,
-      "special": ""
-    },
     "notifier": {
       "display_name": "Notifier",
       "aliases": [
@@ -3338,7 +3030,7 @@
       "aliases": [
         "parametrizer"
       ],
-      "purpose": "Carries structured results from one agent into another agent’s configuration, one segment at a time. Its parser registry follows all declared output producers (53 currently, including Keyboarder). It preserves empty fields, checks numeric and Boolean conversions, and requires every configured mapping to succeed before writing or starting the target. It backs up and restores the target config and blocks automatic replay of interrupted mouse/keyboard input until application state is checked.",
+      "purpose": "Carries structured results from one agent into another agent’s configuration, one segment at a time. Its parser registry follows all declared output producers (50 currently, including Keyboarder). It preserves empty fields, checks numeric and Boolean conversions, and requires every configured mapping to succeed before writing or starting the target. It backs up and restores the target config and blocks automatic replay of interrupted mouse/keyboard input until application state is checked.",
       "config_schema": {
         "source_agent": "str",
         "target_agent": "str",
@@ -3850,7 +3542,7 @@
           "host": "str",
           "port": "int",
           "username": "str",
-          "password": "<REDACTED>",
+          "password": "str",
           "use_ssl": "bool",
           "folder": "str"
         },
@@ -4147,7 +3839,7 @@
           "server": "str",
           "database": "str",
           "username": "str",
-          "password": "<REDACTED>"
+          "password": "str"
         },
         "script": "str",
         "source_agents": "list",
@@ -4549,7 +4241,7 @@
           "api_id": "str|int",
           "api_hash": "str",
           "session_name": "str",
-          "session_string": "<REDACTED>"
+          "session_string": "str"
         },
         "message": "str",
         "contact_name": "str",
@@ -4609,11 +4301,11 @@
           "api_hash": "str",
           "bot_token": "str"
         },
-        "password": "<REDACTED>",
+        "password": "str",
         "tlamatini": {
           "base_url": "str",
           "username": "str",
-          "password": "<REDACTED>",
+          "password": "str",
           "multi_turn_enabled": "bool",
           "exec_report_enabled": "bool",
           "acpx_enabled": "bool",
@@ -4819,7 +4511,7 @@
         "target_agents": "list",
         "llm": {
           "host": "str",
-          "token": "<REDACTED>"
+          "token": "str"
         }
       },
       "output_fields": [
@@ -4959,7 +4651,7 @@
         "provider": "str",
         "whatsapp": {
           "phone_number_id": "str|int",
-          "access_token": "<REDACTED>",
+          "access_token": "str",
           "graph_base": "str",
           "api_version": "str",
           "to": "str",
@@ -5139,63 +4831,6 @@
         "top",
         "width",
         "height",
-        "response_body"
-      ],
-      "output_slots": {
-        "0": "target_agents"
-      },
-      "input_slots": {
-        "0": "source_agents"
-      },
-      "connection_fields": [
-        "source_agents",
-        "target_agents",
-        "output_agents",
-        "source_agent",
-        "target_agent",
-        "source_agent_1",
-        "source_agent_2",
-        "target_agents_a",
-        "target_agents_b",
-        "target_agents_l",
-        "target_agents_g"
-      ],
-      "no_input": false,
-      "no_output": false,
-      "singleton": false,
-      "long_running": false,
-      "never_starts_targets": false,
-      "special": ""
-    },
-    "zavuerer": {
-      "display_name": "Zavuerer",
-      "aliases": [
-        "zavuerer"
-      ],
-      "purpose": "Tlamatini's bridge to **Zavu** (https://www.zavu.dev) — ONE unified API for SMS, WhatsApp, Telegram, Email and Voice. Instead of separately wiring Twilio (SMS) + Meta's WhatsApp Cloud API + SMTP, Zavuerer sends through Zavu's single REST endpoint with one API key, optional ML smart-routing (`channel: auto`) and automatic channel fallback (e.g. WhatsApp fails → SMS). On trigger it runs ONE capability selected by its `action` field: `send` (POST a message — `to` a +E.164 phone for SMS/WhatsApp/Voice/Telegram or an email address for Email, `text`, `channel` ∈ `auto`/`sms`/`whatsapp`/`telegram`/`voice`/`email`, optional `subject`/`from_sender`/`fallback`) or `health` (probe the API and whether the key is configured). It captures the result into an `INI_SECTION_ZAVUERER` block (`action`, `channel`, `to`, `status`, `message_id`, `success`, `base_url`; body = `response_body`) so a downstream Forker can branch on `{success}` / `{status}` and Parametrizer can pipe the message id onward; it ALWAYS triggers `target_agents` (success or failure). The `zavu_api_key` is set once (get the key at https://www.zavu.dev — free to sign up, but Zavu charges pay-as-you-go per message sent) — if it is empty a `send` REFUSES with a one-line \"set your Zavu key\" message (status `refused`) instead of failing silently. Implemented self-contained with the Python stdlib (`urllib`), so it needs no SDK in the agent pool. **Authorized, opted-in recipients only — respect each channel's anti-spam / consent rules (A2P, the WhatsApp 24-hour window, GDPR).** The visual-canvas counterpart of the `chat_agent_zavuerer` Multi-Turn tool.",
-      "config_schema": {
-        "action": "str",
-        "zavu_api_key": "str",
-        "zavu_base_url": "str",
-        "to": "str",
-        "contact_name": "str",
-        "channel": "str",
-        "text": "str",
-        "subject": "str",
-        "from_sender": "str",
-        "fallback": "bool",
-        "timeout": "int",
-        "source_agents": "list",
-        "target_agents": "list"
-      },
-      "output_fields": [
-        "action",
-        "channel",
-        "to",
-        "status",
-        "message_id",
-        "success",
-        "base_url",
         "response_body"
       ],
       "output_slots": {

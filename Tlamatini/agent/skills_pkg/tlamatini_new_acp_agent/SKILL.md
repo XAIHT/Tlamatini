@@ -42,7 +42,7 @@ metadata:
       - { name: agent_name, type: string, required: true,
           description: "snake_case folder/pool name (e.g. stm32er). NOT the display name." }
       - { name: display_name, type: string, required: false,
-          description: "The EXACT display name with its intended casing, hyphens and spaces (STM32er, PDFer, Kyber-KeyGen, Node Manager). Register it in agent_paths.display_name_from_agent_type FIRST; never derive it by title-casing." }
+          description: "The EXACT display name with its intended casing, hyphens and spaces (STM32er, PDFer, Kyber-KeyGen, Monitor Netstat). Register it in agent_paths.display_name_from_agent_type FIRST; never derive it by title-casing." }
       - { name: category,   type: enum,
           values: ["control","routing","gates","action","crypto","utility","terminal"],
           required: true }

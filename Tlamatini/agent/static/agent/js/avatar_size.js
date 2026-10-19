@@ -41,23 +41,24 @@
 (function () {
   'use strict';
 
-  var STORE = 'tlm_avatar_size';
-  var MIN = 120;                         // Angela's floor. Never go under it.
-  var PRESETS = [160, 240, 360, 520, 0]; // 0 == back to the docked layout
-  var STEP = 20;
+  const STORE = 'tlm_avatar_size';
+  const MIN = 120;                         // Angela's floor. Never go under it.
+  const PRESETS = [160, 240, 360, 520, 0]; // 0 == back to the docked layout
+  const STEP = 20;
 
-  var dock = null, handle = null;
-  var dragging = false, pointerId = null, startX = 0, startY = 0, startSize = 0;
+  let dock = null, handle = null;
+  let dragging = false, pointerId = null, startX = 0, startY = 0, startSize = 0;
   // ⚠️ RE-ENTRANCY GUARD. `apply()` ends by dispatching a synthetic `resize`
   // so layouts that listen for it re-run — and the window `resize` handler
   // below calls `apply()`. Without this flag those two call each other
   // forever: the first visible run threw "Maximum call stack size exceeded"
   // on every resize. Do not remove it.
-  var applying = false;
+  let applying = false;
   let dockedOnly = false;
 
   function maxSize() {
-    var w = window.innerWidth || 900, h = window.innerHeight || 700;
+    let w = window.innerWidth || 900;
+    const h = window.innerHeight || 700;
     const canvas = document.getElementById('canvas-container');
     if (w <= 720 && canvas) {
       // The narrow-screen workspace pans; keep her over its canvas so she
@@ -68,7 +69,7 @@
   }
 
   function clampSize(px) {
-    var m = maxSize();
+    const m = maxSize();
     if (px < MIN) { return MIN; }
     if (px > m) { return m; }
     return Math.round(px);
@@ -76,7 +77,7 @@
 
   function load() {
     try {
-      var v = parseInt(window.localStorage.getItem(STORE) || '0', 10);
+      const v = parseInt(window.localStorage.getItem(STORE) || '0', 10);
       return isNaN(v) ? 0 : v;
     } catch (e) { return 0; }
   }
@@ -139,8 +140,8 @@
   }
 
   function nextPreset() {
-    var cur = currentSize();
-    for (var i = 0; i < PRESETS.length; i++) {
+    const cur = currentSize();
+    for (let i = 0; i < PRESETS.length; i++) {
       if (PRESETS[i] && cur && Math.abs(PRESETS[i] - cur) < 24) {
         return PRESETS[(i + 1) % PRESETS.length];
       }
@@ -153,9 +154,9 @@
     ev.preventDefault();
     ev.stopPropagation();                 // never let the dock's click fire
     dragging = true;
-    var p = ev.touches ? ev.touches[0] : ev;
+    const p = ev.touches ? ev.touches[0] : ev;
     startX = p.clientX; startY = p.clientY;
-    var r = dock.getBoundingClientRect();
+    const r = dock.getBoundingClientRect();
     startSize = dock.classList.contains('tlm-floating')
       ? Math.round(r.width)
       : Math.round(Math.min(r.width, r.height)) || MIN;
@@ -169,9 +170,9 @@
   function onMove(ev) {
     if (!dragging || ev.pointerId !== pointerId) { return; }
     if (ev.pointerType === 'mouse' && !(ev.buttons & 1)) { onUp(); return; }
-    var p = ev.touches ? ev.touches[0] : ev;
+    const p = ev.touches ? ev.touches[0] : ev;
     // Anchored bottom-right: moving the top-left handle up or left grows her.
-    var grow = Math.max(startX - p.clientX, startY - p.clientY);
+    const grow = Math.max(startX - p.clientX, startY - p.clientY);
     apply(clampSize(startSize + grow), false);
     if (ev.cancelable) { ev.preventDefault(); }
   }
@@ -188,7 +189,7 @@
 
   function onKey(ev) {
     if (dockedOnly) return;
-    var k = ev.key;
+    const k = ev.key;
     if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
     if (k === 'Home' || k === 'End') {
       ev.preventDefault(); ev.stopPropagation();
@@ -197,10 +198,10 @@
     if (k !== 'ArrowUp' && k !== 'ArrowDown' && k !== 'ArrowLeft' && k !== 'ArrowRight') { return; }
     ev.preventDefault();
     ev.stopPropagation();
-    var cur = currentSize() || MIN;
-    var d = (k === 'ArrowUp' || k === 'ArrowLeft') ? STEP : -STEP;
+    const cur = currentSize() || MIN;
+    let d = (k === 'ArrowUp' || k === 'ArrowLeft') ? STEP : -STEP;
     if (ev.shiftKey) d *= 5;
-    var next = cur + d;
+    const next = cur + d;
     apply(next < MIN ? 0 : next, true);
   }
 
@@ -240,7 +241,7 @@
     handle.addEventListener('click', function (ev) { ev.stopPropagation(); });
 
     window.addEventListener('resize', function () {
-      var cur = currentSize();
+      const cur = currentSize();
       if (cur) { apply(clampSize(cur), false); }
     });
     syncDockedOnlyHandle();

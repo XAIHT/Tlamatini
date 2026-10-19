@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Regression for the 2026-10-07 scalar-path Desktop deletion incident.
 
 Run from a confirmed visible persistent console. All mutations use disposable

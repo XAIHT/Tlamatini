@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """VISIBLE HEADED-BROWSER walk of the COMPLETE Catalog of Prompts (Angela, 2026-07-26).
 
 WHY: Angela's frozen build showed "108 prompts" and no Documents & PDF section,

@@ -240,8 +240,9 @@ class WorkerLifecycleTests(unittest.TestCase):
         runtime = VoiceRuntime()
         process = Mock(stdout=io.StringIO("worker ready\n"))
         connection = Mock()
+        test_token = bytes(range(16)).hex()
         connection.makefile.return_value = io.BytesIO(
-            (json.dumps({"token": "<REDACTED>"}) + "\n" +
+            (json.dumps({"token": test_token}) + "\n" +
              json.dumps({"event": ready}) + "\n").encode())
         listener = MagicMock()
         listener.__enter__.return_value = listener
@@ -250,7 +251,7 @@ class WorkerLifecycleTests(unittest.TestCase):
         script = Path(__file__).parent / "agents/whisperer/chat_worker.py"
         with patch.object(voice, "worker_launch", return_value=(sys.executable, script)), \
                 patch.object(voice, "get_app_temp_root", return_value=str(script.parent)), \
-                patch.object(voice.secrets, "token_hex", return_value="test-token"), \
+                patch.object(voice.secrets, "token_hex", return_value=test_token), \
                 patch.object(voice.socket, "socket", return_value=listener), \
                 patch.object(voice.subprocess, "Popen", return_value=process) as launch, \
                 patch.object(voice.threading, "Thread"):

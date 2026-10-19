@@ -1651,9 +1651,6 @@ _PROMOTE_SECTION_FIELDS_BY_TEMPLATE_DIR: dict = {
         "platform", "status", "telegram_status", "whatsapp_status",
         "contact_status", "repair_status", "retry_status", "actions_required",
     ),
-    "zavuerer": (
-        "action", "channel", "to", "status", "message_id", "success", "base_url",
-    ),
 }
 
 
@@ -2256,26 +2253,6 @@ def _seed_global_agent_defaults(template_dir, runtime_config):
                     "[tools._seed_global_agent_defaults] PDFer %s seeded from config %s: %s",
                     field, cfg_key, value,
                 )
-
-    if template_dir == "zavuerer":
-        # Zavuerer is the "embedded client" for the Zavu unified-messaging API:
-        # the secret zavu_api_key lives once in config.json (Config -> Access Keys
-        # Wizard, "Unified Messaging (Zavu)") so chat prompts never repeat it. Seed
-        # it as the default so a plain "text my phone that the build is done"
-        # authenticates without the LLM (or the user) ever pasting the key.
-        try:
-            configured = get_config_value("zavu_api_key", "")
-        except Exception as exc:  # pragma: no cover - config read is best-effort
-            logger.warning("[tools._seed_global_agent_defaults] could not read zavu_api_key: %s", exc)
-            configured = ""
-        if isinstance(configured, str) and configured.strip():
-            runtime_config["zavu_api_key"] = configured.strip()
-            # NEVER log the key itself - only that one was seeded (length only).
-            logger.info(
-                "[tools._seed_global_agent_defaults] Zavuerer zavu_api_key seeded from config (length=%d)",
-                len(configured.strip()),
-            )
-
     if template_dir == "discoverer":
         # Discoverer is the "embedded client" for the ProjectDiscovery suite: the
         # OPTIONAL pdcp_api_key lives once in config.json (Config -> Access Keys
@@ -2724,12 +2701,6 @@ _PRE_LAUNCH_PREVIEW_BY_TEMPLATE = {
                                   'extra_args', 'output_dir')},
 
     # --- messaging a REAL human -----------------------------------------
-    # Zavuerer POSTs to the Zavu REST API (/v1/messages) — a real SMS / WhatsApp /
-    # Telegram / Email / Voice message that CANNOT be unsent and COSTS MONEY.
-    'zavuerer':       {'title': 'ZAVUERER MESSAGE TO SEND (real recipient, costs money)',
-                       'body': ('text', 'message body'),
-                       'params': ('action', 'to', 'contact_name', 'channel',
-                                  'subject', 'from_sender', 'fallback')},
     # Instant Messaging Doctor is NON-MUTATING by default, but with
     # retry_send=true it really POSTs to the WhatsApp Cloud API /messages and
     # Telegram sendMessage — i.e. it reaches a real person. Surface retry_send so
@@ -3952,7 +3923,6 @@ def agent_parametrizer(request: str) -> str:
     Examples of what to pass:
     - Parametrize the template Telegrammer agent to set telegram.bot_token='123456:ABC-DEF1234ghIkl', telegram.chat_id='123456789', message='Telegrammer parametrized and launched'
     - Parametrize the template Emailer agent to set host='smtp.gmail.com', port=587, username='user@gmail.com', password='secret', from_address='user@gmail.com', to_addresses=['ops@example.com','soc@example.com'], subject='Alert generated', body='Emailer parametrized'
-    - Parametrize the template Gatewayer agent to set http.host='0.0.0.0', http.port=8787, auth.mode='bearer', auth.bearer_token='super-secret-token', payload.required_fields=['event_type','session_id']
     - Parametrize the template J-Decompiler agent to set directory='C:\\Temp\\*.class,*.jar,*.war,*.ear', recursive=true
 
     Input:

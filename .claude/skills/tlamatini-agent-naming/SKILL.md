@@ -1,6 +1,6 @@
 ---
 name: tlamatini-agent-naming
-description: The authoritative Tlamatini agent NAMING CONVENTION — invoke before adding, renaming, casing, displaying, or auditing any workflow agent (STM32er, Node Manager, ACPXer, Kalier, ...). Use whenever you touch agentDescription, a pool/agent directory, a CSS .canvas-item class, a JS connection handler, agents_descriptions.md, or any place an agent name is shown. Prevents mis-casing display names (e.g. STM32er must never become STM32Er/STM32ER/Stm32Er).
+description: The authoritative Tlamatini agent NAMING CONVENTION — invoke before adding, renaming, casing, displaying, or auditing any workflow agent (STM32er, Monitor Netstat, ACPXer, Kalier, ...). Use whenever you touch agentDescription, a pool/agent directory, a CSS .canvas-item class, a JS connection handler, agents_descriptions.md, or any place an agent name is shown. Prevents mis-casing display names (e.g. STM32er must never become STM32Er/STM32ER/Stm32Er).
 ---
 <!--
 ═══════════════════════════════════════════════════════════════════
@@ -28,7 +28,7 @@ description: The authoritative Tlamatini agent NAMING CONVENTION — invoke befo
 > is the real single source of truth.** Add every new/renamed agent there or `str.title()`
 > names it and it ships mangled — this is precisely how PDFer shipped as **"Pdfer"**
 > (plus Sqler / Ssher / Pser / Scper / Acpxer / Esp32Er / Esphomer / Videoplayer /
-> Audioplayer / Flowcreator / Teletlamatini …, 33 of 89 agents). The NEWEST case is **PPTXer** (agent #89, 2026-09-15): `str.title()` renders `"Pptxer"`, so `agents/pptxer` carries an explicit **`PPTXer`** override — the deck-composing third member of the document family, sharing PDFer's three-capital shape. The worked example below is
+> Audioplayer / Flowcreator / Teletlamatini …, 33 of installed agents). The NEWEST case is **PPTXer** (agent #89, 2026-09-15): `str.title()` renders `"Pptxer"`, so `agents/pptxer` carries an explicit **`PPTXer`** override — the deck-composing third member of the document family, sharing PDFer's three-capital shape. The worked example below is
 > **LaTeXer** (agent #87): `str.title()` renders `"Latexer"`, so `agents/latexer` carries an
 > explicit override. Its display name is LaTeX's own capitalisation plus the Tlamatini
 > `-er` suffix — `L` `a` `T` `e` `X` `e` `r` → **`LaTeXer`**, never `Latexer` / `LaTexer` /
@@ -39,7 +39,7 @@ description: The authoritative Tlamatini agent NAMING CONVENTION — invoke befo
 > tests ONLY the hyphenated literal: `Kyber-KeyGen`, `Kyber-Cipher`, `Kyber-DeCipher`,
 > `J-Decompiler`, `Video-Analyzer`, `De-Compresser`, `File-Creator`, `File-Extractor`,
 > `File-Interpreter`, `Image-Interpreter`, `Monitor-Log`. A spaced name matches nothing and
-> the canvas connection is **silently never saved**. (`Node Manager` / `Monitor Netstat` /
+> the canvas connection is **silently never saved**. (`Monitor Netstat` /
 > `MCP Doctor` stay SPACED — the JS accepts both forms for those.)
 >
 > **CHANGE BOTH SIDES IN ONE PASS.** `chat_agent_registry.display_name` keys the per-agent
@@ -66,13 +66,13 @@ it is what a fresh DB shows before the first boot). The canvas
 
 ## The per-context transform table — memorize and apply
 
-| Context | Casing | `STM32er` | `Node Manager` |
+| Context | Casing | `STM32er` | `Monitor Netstat` |
 |---|---|---|---|
-| **Display** — DB `agentDescription`, sidebar/canvas label, `agentic_control_panel.html`, tooltips, `agents_descriptions.md` row header `\| **Name** \|`, `chat_agent_registry.display_name`, docs prose, the agent's own `"<Name> AGENT STARTED"` log | **exact, as designed** | `STM32er` | `Node Manager` |
-| Pool dir / agent dir / `<name>.py` / pool name `<name>_N` | lowercase | `agents/stm32er/stm32er.py`, `stm32er_1` | `agents/node_manager/`, `node_manager_1` |
-| CSS class `.canvas-item.<x>-agent` + JS classMap key + connection checks `name.toLowerCase()` | lowercase / dash | `stm32er-agent`, `'stm32er'` | `node-manager-agent`, `'node manager'` |
-| JS connector symbol `update<Name>Connection` | PascalCase-ish identifier (NOT a label) | `updateStm32erConnection` | `updateNodeManagerConnection` |
-| `INI_SECTION_<TYPE>` / `END_SECTION_<TYPE>` protocol tokens + FlowHypervisor `<TYPE> SPECIAL NOTES:` headers | **ALL-CAPS** (separate convention) | `INI_SECTION_STM32ER`, `STM32ER SPECIAL NOTES` | `INI_SECTION_NODE_MANAGER` |
+| **Display** — DB `agentDescription`, sidebar/canvas label, `agentic_control_panel.html`, tooltips, `agents_descriptions.md` row header `\| **Name** \|`, `chat_agent_registry.display_name`, docs prose, the agent's own `"<Name> AGENT STARTED"` log | **exact, as designed** | `STM32er` | `Monitor Netstat` |
+| Pool dir / agent dir / `<name>.py` / pool name `<name>_N` | lowercase | `agents/stm32er/stm32er.py`, `stm32er_1` | `agents/monitor_netstat/`, `monitor_netstat_1` |
+| CSS class `.canvas-item.<x>-agent` + JS classMap key + connection checks `name.toLowerCase()` | lowercase / dash | `stm32er-agent`, `'stm32er'` | `monitor-netstat-agent`, `'monitor netstat'` |
+| JS connector symbol `update<Name>Connection` | PascalCase-ish identifier (NOT a label) | `updateStm32erConnection` | No dedicated connector |
+| `INI_SECTION_<TYPE>` / `END_SECTION_<TYPE>` protocol tokens + FlowHypervisor `<TYPE> SPECIAL NOTES:` headers | **ALL-CAPS** (separate convention) | `INI_SECTION_STM32ER`, `STM32ER SPECIAL NOTES` | No structured INI output |
 
 ## Hard rules
 

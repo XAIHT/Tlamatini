@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 # ===================================================================
 #   T L A M A T I N I  -  "one who knows"
 #   Created by  Angela Lopez Mendoza  -  @angelahack1

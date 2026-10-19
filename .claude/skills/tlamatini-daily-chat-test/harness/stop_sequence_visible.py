@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """TOO MANY STOP SEQUENCES - VISIBLE end-to-end test (Angela Lopez Mendoza, 2026-10-03).
 
 The bug: a Multi-Turn prompt sent right after a long answer died before any

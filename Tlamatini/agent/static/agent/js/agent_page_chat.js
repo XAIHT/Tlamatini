@@ -9,6 +9,10 @@
  * ═══════════════════════════════════════════════════════════════════
  *   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
  */
+// Shared classic-script bindings, consumed by sibling page scripts.
+// Keep the legacy safe formatter available as a browser entry point.
+/* exported renderInitialMessages, appendFormattedBotContent */
+
 
 // ============================================================
 // agent_page_chat.js  –  Chat messaging, WebSocket & form submit
@@ -1862,22 +1866,6 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
                 if (!Number.isNaN(n)) config[k] = n;
             }
         });
-    } else if (lower === 'zavuerer') {
-        set('action', pairs.action);
-        set('zavu_api_key', pairs.zavu_api_key);
-        set('zavu_base_url', pairs.zavu_base_url);
-        set('to', pairs.to);
-        set('channel', pairs.channel);
-        set('text', pairs.text);
-        set('subject', pairs.subject);
-        set('from_sender', pairs.from_sender);
-        if (pairs.fallback !== undefined && pairs.fallback !== '') {
-            config.fallback = (String(pairs.fallback).toLowerCase() === 'true' || pairs.fallback === true);
-        }
-        if (pairs.timeout !== undefined && pairs.timeout !== '') {
-            const t = parseInt(pairs.timeout, 10);
-            if (!Number.isNaN(t)) config.timeout = t;
-        }
     } else if (lower === 'kalier') {
         set('action', pairs.action);
         set('server_url', pairs.server_url);

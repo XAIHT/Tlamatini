@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Export the installed agent contracts for standalone planning/monitoring agents.
 
 Only field names and types are exported. Local template values (credentials,

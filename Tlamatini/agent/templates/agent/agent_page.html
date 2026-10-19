@@ -202,7 +202,8 @@
             <ul class="dropdown-menu dropdown-entry" aria-labelledby="about-menu-button">
               <li><a class="dropdown-item menu-entry" href="#" id="about-button"
                   onclick="OpenAboutDialog(event);">About</a></li>
-              <li><a class="dropdown-item menu-entry" href="#" id="usage-button">Usage</a></li>
+              <li><button type="button" class="dropdown-item menu-entry" id="usage-button" disabled aria-disabled="true" aria-describedby="usage-menu-status">Usage</button>
+                <small id="usage-menu-status" class="usage-menu-status" role="status">Checking usage…</small></li>
             <li><a class="dropdown-item menu-entry" href="#" id="check-updates-button"
                   onclick="OpenCheckUpdatesDialog(event);">Check for updates</a></li>
             </ul>

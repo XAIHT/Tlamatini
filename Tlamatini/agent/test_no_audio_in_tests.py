@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """A test run must NEVER make a sound on the developer's desktop.
 
 ``manage.py`` sets ``TLAMATINI_NO_AUDIO=1`` when ``sys.argv[1] == 'test'`` (before

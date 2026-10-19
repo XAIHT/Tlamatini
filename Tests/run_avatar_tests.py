@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 r"""One-command, VISIBLE avatar regression for the real development Django app.
 
 From the repository root: .\python\python.exe Tests\run_avatar_tests.py

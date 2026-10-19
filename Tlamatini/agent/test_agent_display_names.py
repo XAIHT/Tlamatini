@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Pins the AGENT DISPLAY-NAME contract (Angela, 2026-07-26).
 
 WHY THIS FILE EXISTS
@@ -99,7 +100,6 @@ class AgentDisplayNameContractTests(SimpleTestCase):
         'kyber_keygen': 'Kyber-KeyGen',
         'kyber_cipher': 'Kyber-Cipher',
         'kyber_decipher': 'Kyber-DeCipher',
-        'node_manager': 'Node Manager',
         # Fixed 2026-07-26 in BOTH agent_paths AND chat_agent_registry:
         'file_creator': 'File-Creator',
         'file_extractor': 'File-Extractor',

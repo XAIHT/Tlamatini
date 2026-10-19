@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Desktop-input regressions. All native input/window operations are mocked."""
 
 import ctypes

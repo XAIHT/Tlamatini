@@ -19,6 +19,15 @@ export default [
         ignores: ["**/*.bak"],
     },
 
+    {
+        files: ["scripts/**/*.mjs", "eslint.config.mjs"],
+        languageOptions: { ecmaVersion: "latest", sourceType: "module", globals: globals.node },
+    },
+    {
+        files: ["Tests/**/*.cjs"],
+        languageOptions: { ecmaVersion: "latest", sourceType: "commonjs", globals: { ...globals.node, ...globals.browser } },
+    },
+
     // Base: ESLint recommended rules
     js.configs.recommended,
 
@@ -441,7 +450,6 @@ export default [
                 updateWindowerConnection: "readonly",
                 updateCounterConnection: "readonly",
                 updateKalierConnection: "readonly",
-                updateZavuererConnection: "readonly",
                 updateDiscovererConnection: "readonly",
                 updateNmapperConnection: "readonly",
                 updatePptxerConnection: "readonly",

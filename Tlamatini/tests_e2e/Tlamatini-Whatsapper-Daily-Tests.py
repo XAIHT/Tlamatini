@@ -1,20 +1,18 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Tlamatini-Whatsapper-Daily-Tests.py -- the definitive WhatsApp send tester.
 
 WHAT THIS IS
 ============
 A single, self-diagnosing runner that exercises EVERY way Tlamatini can send a
-WhatsApp message -- through **Whatsapper** (Meta WhatsApp Cloud API) and through
-**Zavuerer** (Zavu unified messaging) -- driven through the REAL chat GUI.
+WhatsApp message through **Whatsapper** (Meta WhatsApp Cloud API), plus
+Instant Messaging Doctor diagnostics -- driven through the REAL chat GUI.
 
 WHY IT EXISTS (2026-07-24, Angela)
 ==================================
-A whole night was lost because the tooling LIED: Zavuerer reported
-`success: true` for messages Meta had rejected, its `health` probe called a route
-that does not exist, and nothing ever checked whether a message actually ARRIVED.
-So this tester's first principle is:
+This tester's first principle is:
 
-    THE CHAT ANSWER IS NEVER TRUSTED. A test PASSES only when the provider's own
-    API confirms a terminal `delivered` status for a message created by THIS run.
+    THE CHAT ANSWER IS NEVER TRUSTED. A send remains WEAK without independent
+    delivery proof. A diagnostic PASS confirms reported fields, not delivery.
 
 Its second principle is that a failure must TELL YOU WHAT TO DO. Every blocker
 (dead token, sandbox number, closed 24-hour window, missing contact, missing
@@ -35,7 +33,7 @@ USAGE
     python Tlamatini-Whatsapper-Daily-Tests.py --preflight-only # diagnose, send nothing
     python Tlamatini-Whatsapper-Daily-Tests.py --repeat 5       # 5 rounds of every case
     python Tlamatini-Whatsapper-Daily-Tests.py --restart        # restart the app first
-    python Tlamatini-Whatsapper-Daily-Tests.py --only zavu      # zavu | whatsapper | doctor
+    python Tlamatini-Whatsapper-Daily-Tests.py --only whatsapper # whatsapper | doctor
 
 Artifacts land in <repo>/Temp/whatsapper_daily/<timestamp>/:
     SUMMARY.html   -- evidence page (screenshot + answer + provider proof per test)
@@ -69,7 +67,6 @@ INSTALL_CONTACTS = os.path.join(INSTALL_DIR, "contacts.json")
 OUT_ROOT = os.path.join(REPO, "Temp", "whatsapper_daily")
 
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Tlamatini-WhatsapperDailyTests/1.0"
-ZAVU_BASE = "https://api.zavu.dev/v1"
 GRAPH = "https://graph.facebook.com/v25.0"
 
 # The person every test messages. Overridable with --contact / --number.
@@ -89,8 +86,7 @@ def rule(title):
 
 
 def _req(url, method="GET", token=None, body=None, timeout=25):
-    """Bare-stdlib HTTP. ALWAYS sends a User-Agent: Zavu sits behind Cloudflare
-    and answers a UA-less request with 403 'browser_signature_banned'."""
+    """Bare-stdlib HTTP with an explicit User-Agent."""
     data = None
     headers = {"Accept": "application/json", "User-Agent": UA}
     if body is not None:
@@ -143,8 +139,6 @@ class Preflight:
         self.actions = []
         self.facts = {}
         self.whatsapper_ready = False
-        self.zavu_ready = False
-        self.window_open = False
         self.target_number = ""
         self.config = {}
         self.contacts = {}
@@ -170,13 +164,6 @@ class Preflight:
                   self.config.get("whatsapp_phone_number_id") or "(empty)")
         tok = (self.config.get("whatsapp_access_token") or "").strip()
         self.fact("whatsapp token", "%d chars" % len(tok) if tok else "(EMPTY)")
-        zav = (self.config.get("zavu_api_key") or "").strip()
-        looks_placeholder = zav.startswith("<") or not zav
-        self.fact("zavu_api_key",
-                  "(EMPTY/placeholder)" if looks_placeholder else "%s...%s" % (zav[:8], zav[-4:]))
-        if looks_placeholder:
-            self.act("Set 'zavu_api_key' in %s (Config > Access Keys Wizard > "
-                     "Unified Messaging (Zavu))." % INSTALL_CONFIG)
 
     def check_contacts(self):
         rule("PHASE 0.2  Contacts book")
@@ -261,125 +248,30 @@ class Preflight:
         if str(info.get("verified_name", "")).strip().lower() == "test number":
             self.act("Your Whatsapper sender is Meta's SANDBOX 'Test Number'. It can "
                      "ONLY message up to 5 recipients you pre-register in "
-                     "WhatsApp Manager > API Setup. Add %s there, or use Zavuerer "
-                     "instead." % (self.target_number or "your number"))
+                     "WhatsApp Manager > API Setup. Add %s there." % (self.target_number or "your number"))
         self.whatsapper_ready = True
 
-    def check_zavu(self):
-        rule("PHASE 0.4  Zavuerer (Zavu unified messaging)")
-        key = (self.config.get("zavu_api_key") or "").strip()
-        if not key or key.startswith("<"):
-            return
-        code, raw = _req(ZAVU_BASE + "/senders", token=key)
-        if code != 200:
-            self.fact("zavu /senders", "HTTP %s -- %s" % (code, raw[:160]))
-            self.act("Zavu rejected the API key. Get a fresh one at "
-                     "https://www.zavu.dev (free plan includes WhatsApp) and put it "
-                     "in 'zavu_api_key'.")
-            return
-        items = _json(raw).get("items", []) or []
-        if not items:
-            self.fact("zavu senders", "NONE")
-            self.act("Your Zavu project has no sender. Create one at zavu.dev.")
-            return
-        sender = items[0]
-        wa = sender.get("whatsapp", {}) or {}
-        pay = wa.get("paymentStatus", {}) or {}
-        self.fact("zavu sender", "%s %s" % (sender.get("name"), sender.get("phoneNumber")))
-        self.fact("zavu whatsapp", "setup=%s method=%s templates=%s"
-                  % (pay.get("setupStatus"), pay.get("methodStatus"),
-                     pay.get("canSendTemplates")))
-        self.zavu_ready = True
-        self.check_window(key)
 
-    def check_window(self, key):
-        """Meta's 24-hour customer-service window, measured from Zavu's own log.
-
-        Free-form text only delivers if the recipient wrote to the business
-        number in the last 24 h. Zavu rides on Meta, so the rule still applies --
-        this is what made three sends 'fail' for no visible reason.
-        """
-        target = digits(self.target_number)
-        if not target:
-            return
-        code, raw = _req(ZAVU_BASE + "/messages?limit=50", token=key)
-        if code != 200:
-            return
-        newest = None
-        for item in _json(raw).get("items", []) or []:
-            if digits(item.get("from")) == target:              # inbound FROM her
-                stamp = item.get("createdAt") or ""
-                if newest is None or stamp > newest:
-                    newest = stamp
-        if not newest:
-            self.fact("24h window", "CLOSED (no inbound message ever seen)")
-            self.act("Open the 24-hour window: from the phone %s send ANY WhatsApp "
-                     "(even 'hola') to the Zavu sender number. Free-form text will "
-                     "keep failing until you do." % (self.target_number or ""))
-            return
-        try:
-            when = _dt.datetime.fromisoformat(newest.replace("Z", "+00:00"))
-            age_h = (_dt.datetime.now(_dt.timezone.utc) - when).total_seconds() / 3600.0
-        except Exception:                                       # noqa: BLE001
-            age_h = 999.0
-        if age_h <= 24.0:
-            self.window_open = True
-            self.fact("24h window", "OPEN (last inbound %.1f h ago, %.1f h left)"
-                      % (age_h, 24.0 - age_h))
-        else:
-            self.fact("24h window", "CLOSED (last inbound %.1f h ago)" % age_h)
-            self.act("Open the 24-hour window: from %s send ANY WhatsApp to the Zavu "
-                     "sender number, then re-run." % (self.target_number or ""))
 
     def run(self):
         self.check_config()
         self.check_contacts()
         self.check_whatsapper()
-        self.check_zavu()
         rule("PHASE 0.5  Verdict")
         log("    Whatsapper ready : %s" % ("YES" if self.whatsapper_ready else "NO"))
-        log("    Zavuerer ready   : %s" % ("YES" if self.zavu_ready else "NO"))
-        log("    24h window open  : %s" % ("YES" if self.window_open else "NO"))
         if self.actions:
             log("")
             log("    WHAT YOU MUST DO:")
             for i, action in enumerate(self.actions, 1):
                 log("      %d) %s" % (i, action))
         else:
-            log("    Nothing blocking. Both channels look sendable.")
+            log("    Nothing blocking. The configuration checks passed; delivery still needs verification.")
         return self
 
 
 # --------------------------------------------------------------------------- ground truth
-def zavu_latest_outbound(key, target, since_iso):
-    """Newest OUTBOUND Zavu message to `target` created at/after `since_iso`."""
-    code, raw = _req(ZAVU_BASE + "/messages?limit=25", token=key)
-    if code != 200:
-        return None
-    best = None
-    for item in _json(raw).get("items", []) or []:
-        if digits(item.get("to")) != digits(target):
-            continue
-        if (item.get("createdAt") or "") < since_iso:
-            continue
-        if best is None or (item.get("createdAt") or "") > (best.get("createdAt") or ""):
-            best = item
-    return best
 
 
-def zavu_wait_terminal(key, target, since_iso, timeout_s=60):
-    """Poll until the message reaches a TERMINAL state. `queued` is not proof."""
-    terminal = ("delivered", "read", "failed", "undelivered", "rejected")
-    deadline = time.time() + timeout_s
-    last = None
-    while time.time() < deadline:
-        msg = zavu_latest_outbound(key, target, since_iso)
-        if msg:
-            last = msg
-            if str(msg.get("status", "")).lower() in terminal:
-                return msg
-        time.sleep(3)
-    return last
 
 
 # --------------------------------------------------------------------------- test cases
@@ -389,24 +281,6 @@ def build_cases(args, pre):
     stamp = _dt.datetime.now().strftime("%H:%M:%S")
     cases = []
 
-    cases.append({
-        "id": "zavu-contact",
-        "channel": "zavu",
-        "verify": "zavu",
-        "text": ("Send a WhatsApp to %s using Zavuerer with this exact text: "
-                 "'Prueba Zavuerer por contacto %s'. Use ONLY chat_agent_zavuerer. "
-                 "Report the message id and status. End with END-RESPONSE."
-                 % (contact, stamp)),
-    })
-    cases.append({
-        "id": "zavu-number",
-        "channel": "zavu",
-        "verify": "zavu",
-        "text": ("Send a WhatsApp with Zavuerer to the number %s with this exact "
-                 "text: 'Prueba Zavuerer por numero %s'. Use ONLY "
-                 "chat_agent_zavuerer. Report the message id and status. "
-                 "End with END-RESPONSE." % (number, stamp)),
-    })
     cases.append({
         "id": "whatsapper-contact",
         "channel": "whatsapper",
@@ -450,19 +324,6 @@ def judge(case, answer, proof, pre):
         if marker in low:
             return "FAIL", "transient-status-scraped"
 
-    if case["verify"] == "zavu":
-        if not pre.zavu_ready:
-            return "BLOCKED", "zavu-not-configured"
-        if proof is None:
-            return "FAIL", "no-message-created-at-provider"
-        status = str(proof.get("status", "")).lower()
-        if status in ("delivered", "read"):
-            return "PASS", "provider-confirms-%s" % status
-        if status in ("failed", "undelivered", "rejected"):
-            if not pre.window_open:
-                return "BLOCKED", "provider-%s-24h-window-closed" % status
-            return "FAIL", "provider-%s" % status
-        return "WEAK", "provider-still-%s" % (status or "unknown")
 
     if case["channel"] == "whatsapper":
         if not pre.whatsapper_ready:
@@ -485,7 +346,7 @@ def write_summary(run_dir, rows, pre, started):
     for row in rows:
         counts[row["verdict"]] = counts.get(row["verdict"], 0) + 1
     out = ["<!doctype html><html><head><meta charset='utf-8'>",
-           "<title>Whatsapper / Zavuerer -- Daily Evidence</title><style>",
+           "<title>Whatsapper / Instant Messaging Doctor -- Daily Evidence</title><style>",
            "body{font:14px/1.5 Segoe UI,Arial,sans-serif;margin:0;background:#0f1420;color:#e8ecf3}",
            ".top{position:sticky;top:0;background:#131a2b;padding:16px 22px;border-bottom:2px solid #2a3550}",
            ".b{padding:2px 10px;border-radius:12px;color:#fff;font-weight:600;margin-right:8px}",
@@ -495,9 +356,9 @@ def write_summary(run_dir, rows, pre, started):
            "pre{white-space:pre-wrap;background:#0c1120;padding:10px;border-radius:6px;max-height:280px;overflow:auto;color:#cdd6e6}",
            ".act{background:#2a1e12;border:1px solid #6b4a1f;border-radius:8px;padding:10px 14px;margin:10px 22px}",
            "</style></head><body>",
-           "<div class='top'><h1>Tlamatini -- Whatsapper / Zavuerer daily evidence</h1>",
+           "<div class='top'><h1>Tlamatini -- Whatsapper / Instant Messaging Doctor daily evidence</h1>",
            "<div>started %s &middot; every photo is the FULL screen incl. the clock &middot; "
-           "a PASS means the PROVIDER confirmed delivery</div><div style='margin-top:8px'>"
+           "send results remain WEAK without delivery proof; diagnostic PASS means fields were reported</div><div style='margin-top:8px'>"
            % html.escape(started)]
     for key in ("PASS", "WEAK", "BLOCKED", "FAIL"):
         out.append("<span class='b' style='background:%s'>%s %d</span>"
@@ -564,7 +425,7 @@ def main():
     parser.add_argument("--contact", default=DEFAULT_CONTACT)
     parser.add_argument("--number", default="")
     parser.add_argument("--repeat", type=int, default=1)
-    parser.add_argument("--only", choices=["zavu", "whatsapper", "doctor"], default=None)
+    parser.add_argument("--only", choices=["whatsapper", "doctor"], default=None)
     parser.add_argument("--restart", action="store_true")
     parser.add_argument("--preflight-only", action="store_true")
     parser.add_argument("--timeout", type=int, default=300, help="seconds per answer")
@@ -573,11 +434,13 @@ def main():
     parser.add_argument("--not-ready-retries", type=int, default=3)
     parser.add_argument("--not-ready-backoff", type=float, default=20.0)
     parser.add_argument("--headless", action="store_true",
-                        help="IGNORED -- headless tests are forbidden on this machine")
+                        help="Rejected: all tests must run visibly")
     args = parser.parse_args()
+    if args.headless:
+        parser.error("Headless execution is forbidden; run with visible Chrome.")
 
     started = _dt.datetime.now().isoformat(timespec="seconds")
-    rule("Tlamatini -- Whatsapper / Zavuerer DAILY TESTS")
+    rule("Tlamatini -- Whatsapper / Instant Messaging Doctor DAILY TESTS")
     log("    started %s" % started)
     log("    VISIBLE run: headed Chrome, real chat GUI, full-screen photos.")
 
@@ -618,7 +481,6 @@ def main():
     os.makedirs(shots_dir, exist_ok=True)
     log("    artifacts -> %s" % run_dir)
 
-    key = (pre.config.get("zavu_api_key") or "").strip()
     cases = build_cases(args, pre)
     rows = []
 
@@ -640,7 +502,6 @@ def main():
                         """() => {const e=document.querySelector('#multi-turn-enabled');
                            if(e&&!e.checked){e.checked=true;
                            e.dispatchEvent(new Event('change',{bubbles:true}));}}""")
-                    since = _dt.datetime.now(_dt.timezone.utc).isoformat().replace("+00:00", "Z")
                     started_at = time.time()
                     try:
                         rec = harness.ask_one(
@@ -653,10 +514,6 @@ def main():
                         harness.recover()
 
                     proof = None
-                    if case["verify"] == "zavu" and key:
-                        log("    verifying against Zavu (a chat 'ok' proves nothing)...")
-                        proof = zavu_wait_terminal(key, pre.target_number, since)
-                        log("    provider says: %s" % (proof.get("status") if proof else "no message found"))
 
                     verdict, reason = judge(case, answer, proof, pre)
                     shot = os.path.join(shots_dir, "%s.png" % test_id.replace("#", "_"))

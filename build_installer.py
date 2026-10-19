@@ -383,6 +383,11 @@ def main():
         '      </requestedPrivileges>\n'
         '    </security>\n'
         '  </trustInfo>\n'
+        '  <application xmlns="urn:schemas-microsoft-com:asm.v3">\n'
+        '    <windowsSettings>\n'
+        '      <longPathAware xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">true</longPathAware>\n'
+        '    </windowsSettings>\n'
+        '  </application>\n'
         '</assembly>\n',
         encoding="utf-8",
     )

@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """WINDOW TEST SCREEN - a graphical instrument panel Claude drives in real time.
 
     Angela Lopez Mendoza, 2026-09-21:

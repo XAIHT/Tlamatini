@@ -6,7 +6,6 @@ Chrome is explicitly headed. Only recorded test identities may be terminated.
 The real Uninstaller is operated manually when desktop automation blocks it.
 """
 import argparse
-import ctypes
 import json
 import os
 from pathlib import Path
@@ -18,12 +17,12 @@ import time
 
 import psutil
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from markdown_canvas_visible import visible_console
 from setup_release_cycles import EVIDENCE, target, photo, windows, foreground, passive_window
 from uninstall_processes import owned_processes
 
+ROOT = Path(__file__).resolve().parents[1]
 DST = target(5)
 OUT = EVIDENCE / "crash-agents"
 BASE = "http://127.0.0.1:8896/agent"

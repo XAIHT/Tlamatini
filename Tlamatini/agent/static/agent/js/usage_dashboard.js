@@ -14,9 +14,24 @@
     const money = value => n(value) ? '$' + value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—';
     const date = value => value ? String(value).slice(0, 10) : '—';
     const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
-    let range = '7d', data = null, controller = null, interval = null, scheduled = null, retry = null;
+    let range = '7d', data = null, controller = null, scheduled = null, retry = null;
     let again = false, forceAgain = false, generation = 0, lastFocus = null, oldOverflow = '', inertSiblings = [];
     let sessionInvalid = false;
+    let ready = false, lastCheck = 0;
+
+    function menuState(available, message) {
+        ready = available;
+        opener.disabled = !available;
+        opener.setAttribute('aria-disabled', String(!available));
+        opener.title = message;
+        const hint = $('menu-status');
+        hint.textContent = message;
+        hint.hidden = available;
+    }
+    function queueCheck(seconds) {
+        clearTimeout(retry);
+        retry = setTimeout(() => refresh(), Math.max(1, Math.min(seconds, 60)) * 1000 + 100);
+    }
 
     function html(id, content) {
         const element = $(id);
@@ -96,33 +111,60 @@
             card('Added credits', money(balance.purchased), ['Unexpired purchased credits'], palette[2]);
             $('plan-note').textContent = 'Ollama returned purchased credits without a monthly allowance or reset schedule.';
         } else {
-            cards.push('<div class="usage-panel usage-credit-message"><p>' + (pending ? 'Refreshing your account credits…' : 'Account credits could not load. Check the Ollama connection, then choose Refresh or open Ollama Usage.') + '</p></div>');
+            if (pending) {
+                ['Refreshing your account credits…', 'Monthly credits used', 'Monthly allowance'].forEach(label => {
+                    cards.push(`<div class="usage-panel usage-credit-card"><span class="usage-credit-label">${label}</span><span class="usage-loading-line" aria-hidden="true"></span></div>`);
+                });
+            } else {
+                cards.push('<div class="usage-panel usage-credit-message"><h3>Credits are unavailable</h3><p>We’ll check again automatically. You can also use Refresh or open Ollama Usage.</p></div>');
+            }
             $('plan-note').textContent = '';
         }
         html('credit-cards', cards.join(''));
+    }
+    function health(state, label, message, detail = '', retryAccount = false) {
+        $('health').dataset.state = state;
+        $('connection-state').textContent = label;
+        $('status').textContent = message;
+        if (detail !== null) {
+            $('connection-details').hidden = !detail;
+            $('connection-reason').textContent = detail;
+        }
+        $('retry-account').hidden = !retryAccount;
     }
     function render() {
         const provider = data.provider || {}, cloud = provider.ranges?.[range] || {};
         const totals = cloud.data?.totals || {}, daily = cloud.data?.daily || [];
         const balance = provider.balance || {}, activity = data.activity || {}, chatTotals = activity.totals || {};
         const notes = [data.provider_error, balance.error, cloud.error, data.activity_error];
-        if (provider.account_error && !notes.includes(provider.account_error)) notes.push('Account identity could not refresh. ' + provider.account_error);
         if (activity.recording_failures) notes.push('Some chat calls could not be saved during this app session; totals are incomplete.');
-        if (activity.pending) { notes.push('New chat usage is being saved…'); schedule(); }
-        if (provider.pending) { notes.push('Ollama is refreshing. Your chat ledger is current.'); schedule(); }
+        if (activity.pending || provider.pending) schedule();
         clearTimeout(retry); retry = null;
+        let retryNote = '';
         if (n(provider.retry_after_seconds) && provider.retry_after_seconds > 0) {
             const seconds = Math.ceil(provider.retry_after_seconds);
             const next = new Date(Date.now() + seconds * 1000).toLocaleTimeString();
-            notes.push(`Next automatic Ollama retry: ${next}. Chat activity remains available.`);
-            retry = setTimeout(refresh, Math.min(seconds, 60) * 1000 + 100);
+            retryNote = `Automatic check at ${next}.`;
         }
         if (cloud.stale && cloud.data) notes.push('Showing the last available account snapshot; figures may have changed.');
         if (balance.stale && balance.data) notes.push('Credits show the last verified balance; use Refresh to check again.');
         if (chatTotals.missing_output_calls) notes.push(`${count(chatTotals.missing_output_calls)} measured calls did not report output tokens. Output totals are partial.`);
-        $('status').textContent = [...new Set(notes.filter(Boolean))].join(' ') || 'Live account statistics and measured chat activity. Hover or focus a graph to inspect exact values.';
-        $('status').classList.toggle('usage-warning', notes.some(Boolean));
-        $('account-note').textContent = `${provider.account || 'Ollama account'}${provider.plan ? ' · ' + provider.plan.toUpperCase() : ''} · Account activity includes usage outside Tlamatini. Dates are UTC.`;
+        const details = [...new Set([...notes, provider.account_error, retryNote].filter(Boolean))].join('\n');
+        const accountRetry = ['connection', 'connection_reset', 'timeout', 'invalid_json'].includes(provider.account_error_kind);
+        if (provider.pending) {
+            health('checking', 'Checking', 'Refreshing your account. Available figures stay visible.', details);
+        } else if (notes.some(Boolean)) {
+            health('attention', balance.data || cloud.data ? 'Partial data' : 'Unavailable',
+                'Some figures could not refresh. Available data is shown below; details explain what needs attention.', details, accountRetry);
+        } else if (provider.account_error) {
+            health('partial', 'Credits available',
+                provider.account_error_kind === 'authentication'
+                    ? 'Your figures loaded. Sign in to Ollama to verify the account name.'
+                    : 'Your figures loaded. The account name is unavailable.', details, accountRetry);
+        } else {
+            health('connected', 'Connected', 'Latest account figures are shown below. Your chat activity is recorded separately.');
+        }
+        $('account-note').textContent = `${provider.account_available ? provider.account : 'Ollama account'}${provider.plan ? ' · ' + provider.plan.toUpperCase() : ''} · Account activity includes usage outside Tlamatini. Dates are UTC.`;
         creditCards(balance.data, provider.pending);
         const accountMetrics = [
             ['Period spend', totals.usage_usd, 'Rolling ' + range + ' · separate from monthly credits', money],
@@ -162,19 +204,25 @@
     }
 
     async function refresh(force = false) {
-        if (overlay.hidden || document.hidden || sessionInvalid) return;
+        if (document.hidden || sessionInvalid) return;
         if (controller) { again = true; forceAgain = forceAgain || force === true; return; }
         const current = generation, selected = range;
         const abort = new AbortController(); controller = abort;
         const timeout = setTimeout(() => abort.abort(), 15000);
         $('refresh').disabled = true;
+        $('retry-account').disabled = true;
         $('refresh').textContent = 'Checking…';
         dialog.setAttribute('aria-busy', 'true');
-        $('status').textContent = 'Checking Ollama account usage and recorded chat activity…';
+        health('checking', 'Checking', 'Refreshing your account…', null);
+        if (!ready) menuState(false, 'Checking usage…');
         if (!data) creditCards(null, true);
+        let delay = 15;
         try {
             const response = await fetch(overlay.dataset.url + '?range=' + range + (force === true ? '&refresh=1' : ''), { credentials: 'same-origin', cache: 'no-store', signal: abort.signal });
-            if (response.redirected || response.status === 401 || response.status === 403) throw Error('Usage could not refresh. Your session may have expired. Reload the chat to sign in again.');
+            if (response.redirected || response.status === 401 || response.status === 403) {
+                sessionInvalid = true;
+                throw Error('Your session expired. Reload the chat to sign in again.');
+            }
             if (!response.ok) throw Error(`Usage could not refresh (server HTTP ${response.status}). Retrying automatically in 15 seconds.`);
             const next = await response.json();
             if (String(next.user_id) !== overlay.dataset.userId) {
@@ -183,49 +231,75 @@
                 dialog.querySelectorAll('button:not(.usage-close)').forEach(button => { button.disabled = true; });
                 throw Error('The signed-in user changed in this browser. Reload the chat before viewing usage.');
             }
-            if (current !== generation || overlay.hidden || selected !== range) return;
-            data = next; render();
+            if (current !== generation || selected !== range) return;
+            // Both the core's data check and the real renderer must succeed
+            // before a click can open this dialog. Preflight never opens it.
+            data = next;
+            try { render(); }
+            catch (error) {
+                menuState(false, 'Usage could not be displayed. Retrying automatically.');
+                throw error;
+            }
+            menuState(next.readiness?.ready === true, next.readiness?.message || 'Checking usage…');
+            lastCheck = Date.now();
+            delay = providerDelay(next);
         } catch (error) {
-            if (current === generation && !overlay.hidden) {
-                $('status').textContent = error.name === 'AbortError' ? 'Refresh timed out. Existing figures may be stale. Retrying automatically in 15 seconds.' : error instanceof TypeError ? 'The Tlamatini server could not be reached. Retrying automatically in 15 seconds.' : error.message;
-                $('status').classList.add('usage-warning');
-                if (!sessionInvalid) {
-                    clearTimeout(retry); retry = setTimeout(refresh, 15000);
-                }
+            if (current === generation) {
+                const reason = error.name === 'AbortError' ? 'Refresh timed out. Existing figures may be stale. Retrying automatically in 15 seconds.' : error instanceof TypeError ? 'The Tlamatini server could not be reached. Retrying automatically in 15 seconds.' : error.message;
+                if (sessionInvalid) {
+                    data = null;
+                    dialog.querySelectorAll('[role="tabpanel"]').forEach(p => { p.hidden = true; });
+                    menuState(false, 'Reload the chat to verify your session.');
+                } else if (!ready) menuState(false, 'Usage is temporarily unavailable. Checking again automatically.');
+                health('attention', sessionInvalid ? 'Session changed' : 'Connection interrupted',
+                    'Usage could not refresh. ' + (sessionInvalid ? 'Reload the chat to continue.' : 'Retrying automatically; any existing figures may be stale.'), reason);
             }
         } finally {
             clearTimeout(timeout);
             if (controller === abort) controller = null;
             $('refresh').disabled = sessionInvalid;
+            $('retry-account').disabled = sessionInvalid;
             $('refresh').textContent = 'Refresh';
             dialog.setAttribute('aria-busy', 'false');
-            if (again && !overlay.hidden) { again = false; schedule(); }
+            if (!sessionInvalid) queueCheck(delay);
+            if (again) { again = false; schedule(); }
         }
     }
+    function providerDelay(value) {
+        if (value.provider?.pending || value.activity?.pending) return 1;
+        const seconds = value.readiness?.retry_after_seconds;
+        return n(seconds) && seconds > 0 ? Math.min(seconds, overlay.hidden ? 60 : 30) : overlay.hidden ? 60 : 30;
+    }
     function schedule() {
-        if (overlay.hidden || scheduled) return;
+        if (scheduled || sessionInvalid) return;
         scheduled = setTimeout(() => { scheduled = null; const force = forceAgain; forceAgain = false; refresh(force); }, 900);
     }
     function close() {
         generation++; overlay.hidden = true; controller?.abort(); again = false; forceAgain = false;
-        clearInterval(interval); clearTimeout(scheduled); clearTimeout(retry); scheduled = null; retry = null;
+        clearTimeout(scheduled); clearTimeout(retry); scheduled = null; retry = null;
         $('tooltip').hidden = true; document.body.style.overflow = oldOverflow;
         inertSiblings.forEach(([el, inert]) => { el.inert = inert; }); inertSiblings = [];
-        (lastFocus?.isConnected && lastFocus.getClientRects().length ? lastFocus : document.getElementById('about-menu-button')).focus();
+        (lastFocus?.isConnected && !lastFocus.disabled && lastFocus.getClientRects().length ? lastFocus : document.getElementById('about-menu-button')).focus();
+        if (!sessionInvalid) queueCheck(ready ? 60 : 15);
     }
     function open(event) {
         event?.preventDefault(); if (!overlay.hidden) return;
+        if (!ready || sessionInvalid || opener.disabled) { schedule(); return; }
         generation++; lastFocus = document.activeElement; oldOverflow = document.body.style.overflow;
         // The overlay is a direct body child; preserve the existing inert states.
         inertSiblings = [...document.body.children].filter(el => el !== overlay && !['SCRIPT', 'STYLE'].includes(el.tagName)).map(el => [el, el.inert]);
         inertSiblings.forEach(([el]) => { el.inert = true; });
         document.body.style.overflow = 'hidden'; overlay.hidden = false;
-        dialog.querySelector('[data-tab][aria-selected="true"]').focus(); refresh(true); interval = setInterval(refresh, 30000);
+        if (data?.readiness?.default_tab === 'activity') selectTab($('tab-activity'));
+        dialog.querySelector('[data-tab][aria-selected="true"]').focus();
+        if (Date.now() - lastCheck > 5000) refresh(true);
+        else queueCheck(providerDelay(data));
     }
     overlay.tlmDismiss = close; dialog.tlmDismiss = close;
     opener.addEventListener('click', open);
     dialog.querySelectorAll('.usage-close').forEach(button => button.addEventListener('click', close));
     $('refresh').addEventListener('click', () => refresh(true));
+    $('retry-account').addEventListener('click', () => refresh(true));
     dialog.querySelectorAll('[data-range]').forEach(button => button.addEventListener('click', () => {
         range = button.dataset.range;
         dialog.querySelectorAll('[data-range]').forEach(el => el.setAttribute('aria-pressed', String(el === button)));
@@ -251,9 +325,12 @@
         if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog)) { event.preventDefault(); last.focus(); }
         else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
     });
-    document.addEventListener('tlm:context-gauge', schedule);
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) schedule(); });
-    window.addEventListener('focus', schedule);
+    document.addEventListener('tlm:context-gauge', () => { if (!overlay.hidden || !ready) schedule(); });
+    function recheck() { if (Date.now() - lastCheck > 3000) schedule(); }
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) recheck(); });
+    window.addEventListener('focus', recheck);
+    window.addEventListener('online', () => refresh(true));
+    document.getElementById('about-menu-button')?.addEventListener('click', recheck);
     function tooltip(event) {
         const target = event.target.closest('[data-tip]'); if (!target) return;
         const tip = $('tooltip'), rect = target.getBoundingClientRect(); tip.textContent = target.dataset.tip; tip.hidden = false;
@@ -270,4 +347,6 @@
         $('tooltip').hidden = true;
         if (document.activeElement.closest('[data-tip]')) requestAnimationFrame(() => tooltip({ target: document.activeElement }));
     }, { passive: true });
+    menuState(false, 'Checking usage…');
+    refresh();
 })();

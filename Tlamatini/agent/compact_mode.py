@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """
 compact_mode.py - the COMPACT MODE switch (Angela, 2026-10-02).
 

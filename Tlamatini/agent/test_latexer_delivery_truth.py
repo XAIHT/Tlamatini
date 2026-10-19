@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """LaTeXer must verify the delivered file before reporting a finished PDF.
 
 Created by Angela López Mendoza · @angelahack1 — Tlamatini.

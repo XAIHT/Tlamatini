@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Deterministic verdict engine for wrapped-agent results.
 
 WHY THIS MODULE EXISTS
@@ -189,11 +190,10 @@ WORK_NOT_DONE_STATUSES = frozenset({
     "refused", "not_found", "not_unique", "engine_unavailable",
     "unavailable", "skipped", "timeout", "timed_out", "cancelled", "canceled",
     "noop", "blocked", "denied",
-    # -- added 2026-08-16, all four PROVEN to be emitted by a shipping agent:
-    "unreachable",            # Zavuerer: the messaging endpoint could not be reached
-    "forward_failed",         # Gateway-Relayer: the relay leg did not deliver
-    "rejected",               # Gatewayer / Gateway-Relayer: the payload was refused
-    "ignored",                # Gateway-Relayer: the event matched no forwarding rule
+    "unreachable",            # The requested endpoint could not be reached
+    "forward_failed",         # A forwarded operation did not deliver
+    "rejected",               # The requested operation was refused
+    "ignored",                # No operation was performed
 })
 
 #: The agent itself is declaring a malfunction.

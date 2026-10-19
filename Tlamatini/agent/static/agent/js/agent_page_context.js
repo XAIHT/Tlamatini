@@ -9,6 +9,9 @@
  * ═══════════════════════════════════════════════════════════════════
  *   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
  */
+// Shared classic-script bindings, consumed by sibling page scripts.
+/* exported restorePendingContextSelection, ClearContext */
+
 
 // ============================================================
 // agent_page_context.js  –  Context management

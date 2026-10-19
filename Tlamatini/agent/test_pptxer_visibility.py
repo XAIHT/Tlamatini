@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Regression tests for real PPTX content preservation and bounded text.
 
 For native PowerPoint evidence, run scripts/verify_pptxer_layout.py --render.

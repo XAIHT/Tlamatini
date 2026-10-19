@@ -5997,8 +5997,8 @@ class AgentDescriptionsCoverageTests(TestCase):
         # all hit the same dict slot.
         for variant in ('Kyber-KeyGen', 'kyber keygen', 'KyberKeyGen', 'KYBER_KEYGEN'):
             self.assertEqual(views._normalize_agent_purpose_key(variant), 'kyberkeygen')
-        for variant in ('Gateway Relayer', 'gateway-relayer', 'GATEWAY_RELAYER'):
-            self.assertEqual(views._normalize_agent_purpose_key(variant), 'gatewayrelayer')
+        for variant in ('Instant Messaging Doctor', 'instant-messaging-doctor', 'INSTANT_MESSAGING_DOCTOR'):
+            self.assertEqual(views._normalize_agent_purpose_key(variant), 'instantmessagingdoctor')
 
     def test_explicit_migration_display_names_all_resolve(self):
         # Each *_add_*.py migration writes a specific agentDescription string.
@@ -7331,7 +7331,6 @@ class AskExecsHelperTests(TestCase):
         self.assertFalse(exe._requires_exec_permission('chat_agent_send_email'))
         self.assertFalse(exe._requires_exec_permission('chat_agent_whatsapper'))
         self.assertFalse(exe._requires_exec_permission('chat_agent_telegrammer'))
-        self.assertFalse(exe._requires_exec_permission('chat_agent_zavuerer'))
         self.assertFalse(
             exe._requires_exec_permission('chat_agent_instant_messaging_doctor'))
         self.assertFalse(exe._requires_exec_permission('chat_agent_keyboarder'))

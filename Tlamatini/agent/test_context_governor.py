@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Tests for the Context Governor — STEP 1, measurement only.
 
 Two halves, deliberately:
@@ -516,15 +517,16 @@ class SourceContractTests(SimpleTestCase):
         widget right and the layout wrong. Miss either edit and the Send
         button leaves the screen."""
         src = _LAYOUT_JS.read_text(encoding="utf-8")
-        self.assertIn("getElementById('context-gauge-row')", src,
-                      "computeFormMinHeight must measure the gauge row")
-        # Checked by INTENT, not by exact text: the microphone row (2026-09-27)
-        # joined the same sum and the same observer list, and a literal match
-        # went red for a change that kept the gauge row counted.
-        self.assertRegex(src, r"toolsDivH \+ chipsH \+ gaugeH \+[^;]*formAreaPx",
-                         "the gauge row must be ADDED to the form min height")
-        self.assertRegex(src, r"\['tools-div', 'chat-image-chips', 'context-gauge-row'",
-                         "the ResizeObserver must watch the gauge row too")
+        # The composer measures each visible row through outerHeight and adds
+        # their sum to its fixed controls. The gauge also needs resize observation.
+        measurement = src.split("const computeFormMinHeight =", 1)[1].split(
+            "const fitDockedAvatar =", 1)[0]
+        self.assertIn("'context-gauge-row'", measurement)
+        self.assertIn("sum + outerHeight(document.getElementById(id))", measurement)
+        self.assertIn("const chrome = rowsHeight + formChrome", measurement)
+        self.assertIn("minimum: Math.ceil(chrome + formAreaPx)", measurement)
+        observer = src.split("const ro = new ResizeObserver(scheduleLayout)", 1)[1]
+        self.assertIn("'context-gauge-row'", observer.split("if (actions)", 1)[0])
 
     def test_template_carries_the_row_and_both_assets(self):
         src = _TEMPLATE.read_text(encoding="utf-8")

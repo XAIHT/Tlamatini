@@ -1,3 +1,4 @@
+/* Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1 */
 /* Tlamatini Author Banner - do not remove (releases scrub the name automatically)
  *
  * DIALOG DISMISSAL POLICY  (Angela, 2026-08-13; ESCAPE STANDARDISED 2026-08-16)
@@ -41,7 +42,7 @@
     // explicit `closeOnEscape: false` in its own options and win. Section 4's
     // dispatcher is what actually guarantees the rule holds everywhere.
     function applyJqueryUiPolicy() {
-        var jq = window.jQuery;
+        const jq = window.jQuery;
         if (!jq || !jq.ui || !jq.ui.dialog || !jq.ui.dialog.prototype) return false;
         jq.ui.dialog.prototype.options.closeOnEscape = true;
 
@@ -103,7 +104,7 @@
         // does exactly that) would win a synchronous handler. A macrotask tick
         // puts us last, after every open-time callback has had its say.
         jq(document).on('dialogopen', function (ev) {
-            var target = ev.target;
+            const target = ev.target;
             window.setTimeout(function () {
                 try {
                     jq(target).closest('.ui-dialog')
@@ -132,7 +133,7 @@
     //                       its hands off).
     //   backdrop:'static'-> an OUTSIDE CLICK still does not dismiss. Unchanged.
     function applyBootstrapPolicy() {
-        var bs = window.bootstrap;
+        const bs = window.bootstrap;
         if (!bs || !bs.Modal || !bs.Modal.Default) return false;
         bs.Modal.Default.backdrop = 'static';
         bs.Modal.Default.keyboard = true;
@@ -175,7 +176,7 @@
     // '#prompts-catalog', which is the BUTTON that opens the catalog and is
     // therefore always visible, so Escape was in fact being swallowed across
     // the whole chat page rather than only over an open dialog.
-    var LAYER_SELECTOR = [
+    const LAYER_SELECTOR = [
         '.tlmpop-overlay',                        // themed tlmAlert / tlmConfirm
         '.ui-dialog',                             // jQuery UI
         '.modal.show', '.modal.in', '#modal',     // Bootstrap-shaped + Catalog
@@ -189,11 +190,11 @@
     // over an undimmed page - and `.ui-widget-overlay` also wears the
     // `.starter-execution-overlay` / `.ender-execution-overlay` classes, so it
     // is matched by the `-overlay` shape above and must be excluded by name.
-    var NOT_A_DIALOG = '.ui-widget-overlay, .modal-backdrop';
+    const NOT_A_DIALOG = '.ui-widget-overlay, .modal-backdrop';
 
     // Dismiss controls, in priority order, X FIRST. Escape must never be able
     // to land on a button that DOES something (Continue, Update now, Delete).
-    var DISMISS_SELECTORS = [
+    const DISMISS_SELECTORS = [
         '[data-dialog-dismiss]',
         '.ui-dialog-titlebar-close',
         '[data-bs-dismiss="modal"]', '.btn-close',
@@ -203,8 +204,8 @@
     ];
 
     // Labels that mean "go away and do nothing". NEVER an affirmative word.
-    var DISMISS_WORDS = ['cancel', 'close', 'dismiss', 'cancelar', 'cerrar', 'no'];
-    var X_GLYPHS = ['×', '✕', '✖', '✗', 'x'];
+    const DISMISS_WORDS = ['cancel', 'close', 'dismiss', 'cancelar', 'cerrar', 'no'];
+    const X_GLYPHS = ['×', '✕', '✖', '✗', 'x'];
 
     function isShowing(el) {
         if (!el || el.nodeType !== 1 || el.hidden) return false;
@@ -225,10 +226,10 @@
 
     /** Highest z-index on the element or any ancestor. */
     function stackRank(el) {
-        var rank = 0;
-        var node = el;
+        let rank = 0;
+        let node = el;
         while (node && node.nodeType === 1) {
-            var z = parseInt(window.getComputedStyle(node).zIndex, 10);
+            const z = parseInt(window.getComputedStyle(node).zIndex, 10);
             if (!isNaN(z) && z > rank) rank = z;
             node = node.parentNode;
         }
@@ -241,25 +242,25 @@
      */
     function panelFor(el) {
         if (el.id && /-overlay$/.test(el.id)) {
-            var panel = document.getElementById(el.id.replace(/-overlay$/, '-dialog'));
+            const panel = document.getElementById(el.id.replace(/-overlay$/, '-dialog'));
             if (isShowing(panel)) return panel;
         }
         return el;
     }
 
     function topmostOpenDialog() {
-        var nodes = document.querySelectorAll(LAYER_SELECTOR);
-        var best = null;
-        var bestRank = -1;
+        const nodes = document.querySelectorAll(LAYER_SELECTOR);
+        let best = null;
+        let bestRank = -1;
         // querySelectorAll yields DOCUMENT ORDER, so `>=` makes the later - and
         // for nested candidates the INNER - element win a tie. That is what we
         // want twice over: a panel inside its own overlay owns the X, and the
         // most recently opened sibling dialog is the one on top.
-        for (var i = 0; i < nodes.length; i++) {
-            var el = nodes[i];
+        for (let i = 0; i < nodes.length; i++) {
+            const el = nodes[i];
             if (matches(el, NOT_A_DIALOG)) continue;
             if (!isShowing(el)) continue;
-            var rank = stackRank(el);
+            const rank = stackRank(el);
             if (rank >= bestRank) {
                 best = el;
                 bestRank = rank;
@@ -269,19 +270,19 @@
     }
 
     function findDismissControl(root) {
-        var i;
+        let i;
         for (i = 0; i < DISMISS_SELECTORS.length; i++) {
-            var direct = root.querySelector(DISMISS_SELECTORS[i]);
+            const direct = root.querySelector(DISMISS_SELECTORS[i]);
             if (direct) return direct;
         }
-        var buttons = root.querySelectorAll(
+        const buttons = root.querySelectorAll(
             'button, a[role="button"], .tlm-native-button, .ui-button');
-        var visible = [];
+        const visible = [];
         for (i = 0; i < buttons.length; i++) {
             if (isShowing(buttons[i])) visible.push(buttons[i]);
         }
         for (i = 0; i < visible.length; i++) {
-            var label = (visible[i].textContent || '').trim().toLowerCase();
+            const label = (visible[i].textContent || '').trim().toLowerCase();
             if (!label) continue;
             if (X_GLYPHS.indexOf(label) !== -1) return visible[i];
             if (DISMISS_WORDS.indexOf(label) !== -1) return visible[i];
@@ -313,17 +314,17 @@
         // That hide is why the test has to be HERE and not inside
         // CloseUpdateDialog: a dialog whose X went missing would otherwise be
         // hidden by the fallback with the seal never consulted at all.
-        var sealKey = el.tlmSealKey
+        const sealKey = el.tlmSealKey
             || (el.dataset ? el.dataset.tlmSealKey : '')
             || '';
         if (sealKey && isSealed(sealKey)) return false;
 
-        var jq = window.jQuery;
+        const jq = window.jQuery;
 
         // jQuery UI: the widget's own close() IS the titlebar-X path, and it
         // works even when a module has hidden that X to force a choice.
         if (jq && jq.fn && jq.fn.dialog && el.classList.contains('ui-dialog')) {
-            var content = el.querySelector('.ui-dialog-content');
+            const content = el.querySelector('.ui-dialog-content');
             if (content) {
                 try {
                     jq(content).dialog('close');
@@ -333,9 +334,9 @@
         }
 
         // Bootstrap: the instance owns the hide AND the backdrop teardown.
-        var bs = window.bootstrap;
+        const bs = window.bootstrap;
         if (bs && bs.Modal && bs.Modal.getInstance && el.classList.contains('modal')) {
-            var inst = bs.Modal.getInstance(el);
+            const inst = bs.Modal.getInstance(el);
             if (inst) {
                 inst.hide();
                 return true;
@@ -357,7 +358,7 @@
             return true;
         }
 
-        var control = findDismissControl(el);
+        const control = findDismissControl(el);
         if (control) {
             control.click();      // a REAL click, so the dialog's handler runs
             return true;
@@ -406,12 +407,12 @@
         // Already handled by jQuery UI / Bootstrap / a native <dialog>, all of
         // which preventDefault() the keydown when they close on Escape.
         if (ev.defaultPrevented) return;
-        var target = topmostOpenDialog();
+        const target = topmostOpenDialog();
         // No dialog open -> Escape belongs to the page. The ACP canvas hides
         // its agent tooltip with it and the avatar stops speaking; neither may
         // be stolen just because this module exists.
         if (!target) return;
-        var dismissed = dismissDialog(target);
+        const dismissed = dismissDialog(target);
         // THE KEY IS CONSUMED EITHER WAY. A refusal means the dialog is SEALED,
         // and letting the event travel on would hand it to that module's own
         // document-level Escape handler, which would call its close function
@@ -436,11 +437,11 @@
     // prompt and the user may still confirm it - no API overrides that. What
     // makes this safe anyway is that the update swap runs in an EXTERNAL
     // PowerShell process, so a closed tab does not abort an update in flight.
-    var sealed = Object.create(null);
+    const sealed = Object.create(null);
 
     //: key -> the dialog element it protects, so a blocked keystroke can shake
     //: the RIGHT dialog even when it is not the topmost one.
-    var sealedElements = Object.create(null);
+    const sealedElements = Object.create(null);
 
     /** Mark `element` as belonging to seal `key`. Safe to call repeatedly. */
     function bindSeal(element, key) {
@@ -478,7 +479,7 @@
     }
 
     function anySealed() {
-        for (var k in sealed) { if (isSealed(k)) return k; }
+        for (const k in sealed) { if (isSealed(k)) return k; }
         return null;
     }
 
@@ -520,8 +521,8 @@
     // only costs the user the progress bar. So this guard is about preventing
     // an ACCIDENT, not about imprisoning anyone.
     function isSealedCloseKey(ev) {
-        var key = ev.key || '';
-        var ctrl = ev.ctrlKey || ev.metaKey;
+        const key = ev.key || '';
+        const ctrl = ev.ctrlKey || ev.metaKey;
         if (key === 'F5' || key === 'BrowserRefresh') return true;          // reload
         if (ctrl && (key === 'r' || key === 'R')) return true;              // reload
         if (ctrl && (key === 'w' || key === 'W')) return true;              // close tab
@@ -533,7 +534,7 @@
     }
 
     document.addEventListener('keydown', function (ev) {
-        var key = anySealed();
+        const key = anySealed();
         if (!key) return;                      // nothing sealed -> not our business
         if (!isSealedCloseKey(ev)) return;     // an ordinary key -> leave it alone
         ev.preventDefault();
@@ -560,7 +561,7 @@
     // Escape === X === Cancel === false — a destructive action is never taken
     // because a dialog was dismissed. Fails OPEN to the native popup: an ugly
     // warning beats a lost one, exactly as acp-globals.js decided.
-    var POPUP_HOST_ID = 'tlm-popup-host';
+    const POPUP_HOST_ID = 'tlm-popup-host';
 
     function _popupTeardown(host, onDone, value) {
         try {
@@ -570,7 +571,7 @@
     }
 
     function _popupEl(tag, cls, text) {
-        var el = document.createElement(tag);
+        const el = document.createElement(tag);
         if (cls) el.className = cls;
         if (text != null) el.textContent = String(text);
         return el;
@@ -583,36 +584,36 @@
      */
     function _showPopup(opts, onDone) {
         if (!document.body) return false;
-        var existing = document.getElementById(POPUP_HOST_ID);
+        const existing = document.getElementById(POPUP_HOST_ID);
         if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
 
-        var host = _popupEl('div', 'tlmpop-overlay');
+        const host = _popupEl('div', 'tlmpop-overlay');
         host.id = POPUP_HOST_ID;
         host.style.display = 'flex';
 
-        var card = _popupEl('div', 'tlmpop-card');
+        const card = _popupEl('div', 'tlmpop-card');
         card.setAttribute('role', 'dialog');
         card.setAttribute('aria-modal', 'true');
 
-        var head = _popupEl('div', 'tlmpop-head');
+        const head = _popupEl('div', 'tlmpop-head');
         head.appendChild(_popupEl('span', 'tlmpop-title', opts.title || 'Tlamatini'));
-        var x = _popupEl('button', 'tlmpop-x', '×');
+        const x = _popupEl('button', 'tlmpop-x', '×');
         x.type = 'button';
         x.setAttribute('aria-label', 'Close');
         head.appendChild(x);
         card.appendChild(head);
 
-        var body = _popupEl('div', 'tlmpop-body');
+        const body = _popupEl('div', 'tlmpop-body');
         if (opts.primary) body.appendChild(_popupEl('p', 'tlmpop-msg', opts.primary));
         if (opts.secondary) body.appendChild(_popupEl('p', 'tlmpop-sub', opts.secondary));
         card.appendChild(body);
 
-        var foot = _popupEl('div', 'tlmpop-foot');
-        var buttons = opts.buttons || [];
-        var focusTarget = null;
-        var focusForced = false;
+        const foot = _popupEl('div', 'tlmpop-foot');
+        const buttons = opts.buttons || [];
+        let focusTarget = null;
+        let focusForced = false;
         buttons.forEach(function (spec) {
-            var btn = _popupEl('button',
+            const btn = _popupEl('button',
                 'tlmpop-btn' + (spec.primary ? ' tlmpop-btn-primary' : '')
                 + (spec.danger ? ' tlmpop-btn-danger' : ''), spec.label);
             btn.type = 'button';
@@ -646,10 +647,10 @@
                 return;
             }
             if (ev.key !== 'Tab') return;
-            var focusable = card.querySelectorAll('button');
+            const focusable = card.querySelectorAll('button');
             if (!focusable.length) return;
-            var first = focusable[0];
-            var last = focusable[focusable.length - 1];
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
             if (ev.shiftKey && document.activeElement === first) {
                 ev.preventDefault(); last.focus();
             } else if (!ev.shiftKey && document.activeElement === last) {
@@ -673,8 +674,8 @@
      */
     function tlmAlert(message, title) {
         return new Promise(function (resolve) {
-            var text = String(message == null ? '' : message);
-            var shown = false;
+            const text = String(message == null ? '' : message);
+            let shown = false;
             try {
                 shown = _showPopup({
                     title: title,
@@ -707,15 +708,15 @@
      *   focusCancel   - focus Cancel instead, so Enter cannot confirm
      */
     function tlmConfirm(primary, secondary, title, options) {
-        var o = options || {};
+        const o = options || {};
         return new Promise(function (resolve) {
-            var decided = false;
-            var finish = function (value) {
+            let decided = false;
+            const finish = function (value) {
                 if (decided) return;
                 decided = true;
                 resolve(value === true);
             };
-            var shown = false;
+            let shown = false;
             try {
                 shown = _showPopup({
                     title: title || 'Please confirm',
@@ -733,7 +734,7 @@
                 console.warn('tlmConfirm: themed popup failed, using the native one', err);
             }
             if (!shown) {
-                var joined = [primary, secondary].filter(Boolean).join('\n\n');
+                const joined = [primary, secondary].filter(Boolean).join('\n\n');
                 finish(window.confirm(joined));
             }
         });
@@ -744,7 +745,7 @@
 
 
     window.addEventListener('beforeunload', function (ev) {
-        var key = anySealed();
+        const key = anySealed();
         if (!key) return undefined;
         ev.preventDefault();
         ev.returnValue = sealed[key];   // required for the browser prompt
@@ -754,8 +755,8 @@
     // ---- wiring ---------------------------------------------------------
     // Libraries may not be parsed yet when this file runs; retry once the DOM
     // is ready. Both calls are idempotent.
-    var jqDone = applyJqueryUiPolicy();
-    var bsDone = applyBootstrapPolicy();
+    let jqDone = applyJqueryUiPolicy();
+    let bsDone = applyBootstrapPolicy();
     if (!jqDone || !bsDone) {
         document.addEventListener('DOMContentLoaded', function () {
             if (!jqDone) jqDone = applyJqueryUiPolicy();

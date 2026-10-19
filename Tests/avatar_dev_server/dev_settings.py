@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Isolated settings for the requested visible Django avatar tests only.
 
 Restored 2026-09-29 from git (1d222286~1:output/avatar_flash_fix/dev_settings.py).

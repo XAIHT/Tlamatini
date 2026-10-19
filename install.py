@@ -19,10 +19,12 @@ from setup_recovery import Recovery, setup_lock
 from setup_windows import run_powershell
 from uninstall_processes import owned_processes
 import tkinter as tk
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, messagebox
 import zipfile
 
 from build_runtime_assets import verify_package
+
+PRESERVED_AGENTS_MARKER = "agents/.tlamatini-preserved-agents.json"
 
 
 # ─── Version resolution ───────────────────────────────────────────────────────
@@ -418,15 +420,25 @@ class FancyInstaller:
                 names = [name for name in document["files"] if not self._is_preserved_member(
                     name, target, self._existing_preserved)]
                 names += ["runtime-assets.json", "CreateShortcut.json", "Uninstaller.exe", "Tlamatini.lnk", "CreateShortcut_Temp.vbs"]
+                # Reinstall clears the uninstall-only marker. Include it in
+                # recovery so a later failure restores the preserved catalog.
+                names.append(PRESERVED_AGENTS_MARKER)
                 # The existing environment patcher can edit older retained code too.
                 for parent, _dirs, files in os.walk(os.path.join(target, "Tlamatini")):
                     names += [os.path.relpath(os.path.join(parent, name), target).replace("\\", "/")
                               for name in files if name.endswith(".py")]
                 required = sum(record["bytes"] for record in document["files"].values())
-                recovery.prepare(names, required_space=required)
+                with zipfile.ZipFile(self.zip_path, 'r') as package:
+                    directories = [entry.filename.rstrip('/') for entry in package.infolist()
+                                   if entry.is_dir()]
+                recovery.prepare(names, required_space=required, created_directories=directories)
                 try:
                     self._run_install_steps(target)
                 except Exception as exc:
+                    # Preserve the original cause before a potentially lengthy
+                    # rollback; the visible wizard continues to report recovery.
+                    import traceback
+                    traceback.print_exc()
                     self._set_progress(0, "Restoring the previous installation…")
                     try:
                         recovery.rollback()
@@ -497,6 +509,7 @@ class FancyInstaller:
                 )
         if kept:
             print(f"[INSTALL] Preserved existing user state: {', '.join(sorted(kept))}")
+        self._clear_preserved_agents_marker(target)
         cumulative += weight
         self._set_progress(cumulative)
         self._mark_step(step_idx)
@@ -571,6 +584,19 @@ class FancyInstaller:
         self._mark_step(step_idx)
 
         # ── Done ─────────────────────────────────────────────────
+
+    def _clear_preserved_agents_marker(self, target: str):
+        """Stop advertising a restored installation as an uninstalled catalog."""
+        marker = os.path.join(target, PRESERVED_AGENTS_MARKER)
+        try:
+            os.unlink(marker)
+        except FileNotFoundError:
+            pass
+        except OSError as exc:
+            # Discovery metadata is fail-open, just like registry publication.
+            warning = f"The old preserved-agents marker could not be removed: {marker}. {exc}"
+            self.setup_warnings.append(warning)
+            print(f"[INSTALL] {warning}")
 
 
     @staticmethod

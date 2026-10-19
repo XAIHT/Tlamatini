@@ -1,4 +1,7 @@
 /* Tlamatini Author Banner — Angela López Mendoza */
+.usage-menu-status { display: block; max-width: 19rem; padding: .15rem 1rem .55rem; color: var(--bs-secondary-color, #abb9c9); font-size: .76rem; white-space: normal; }
+.usage-menu-status[hidden] { display: none; }
+#usage-button:disabled { cursor: wait; opacity: .65; }
 .usage-overlay[hidden], .usage-overlay [hidden] { display: none !important; }
 .usage-overlay { position: fixed; inset: 0; z-index: 12000; display: flex; align-items: center; justify-content: center; background: var(--tlm-dlg-overlay); font-family: var(--tlm-dlg-font); color: var(--tlm-dlg-text); }
 .usage-dialog { box-sizing: border-box; width: 80vw; height: 74vh; height: 74dvh; max-width: 1440px; display: flex; flex-direction: column; overflow: hidden; border: var(--tlm-dlg-border); border-radius: var(--tlm-dlg-radius); background: var(--tlm-dlg-surface); box-shadow: var(--tlm-dlg-shadow); color: var(--tlm-dlg-text); font-size: .88rem; text-align: left; }
@@ -19,8 +22,19 @@
 .usage-tabs, .usage-range { display: flex; gap: 7px; }
 .usage-dialog .usage-button[aria-selected="true"], .usage-dialog .usage-button[aria-pressed="true"] { border-color: var(--tlm-dlg-accent); background: rgba(85,187,170,.17); color: #b7f1e7; }
 .usage-body { overflow: auto; flex: 1; min-height: 0; padding: 17px 25px 24px; scrollbar-gutter: stable; }
-.usage-status { padding: 9px 12px; border-left: 3px solid var(--tlm-dlg-accent); background: var(--tlm-dlg-pane); border-radius: 4px; margin-bottom: 17px !important; font-size: 12px; }
-.usage-status.usage-warning { border-left-color: #ffc86a; color: #ffe0a7; }
+.usage-health { padding: 12px 14px; border: var(--tlm-dlg-hairline); border-radius: var(--tlm-dlg-radius-sm); margin-bottom: 18px; background: var(--tlm-dlg-pane); }
+.usage-health-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.usage-health-row p { flex: 1 1 220px; font-size: 12px; }
+.usage-connection-state { display: inline-flex; align-items: center; gap: 7px; color: #b7f1e7; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.usage-connection-state::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.usage-health[data-state="checking"] .usage-connection-state,
+.usage-health[data-state="partial"] .usage-connection-state { color: #a7d6f3; }
+.usage-health[data-state="attention"] .usage-connection-state { color: #ffe0a7; }
+.usage-health details { margin-top: 9px; font-size: 12px; color: var(--tlm-dlg-muted); }
+.usage-health summary { cursor: pointer; width: fit-content; }
+.usage-health details p { margin-top: 7px; white-space: pre-line; overflow-wrap: anywhere; }
+.usage-health .usage-button { padding: 6px 11px; font-size: 12px; min-height: 32px; }
+.usage-loading-line { display: block; width: 72%; height: 18px; background: rgba(255,255,255,.07); border-radius: 4px; margin-top: 12px; }
 .usage-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
 .usage-section-heading p { font-size: 12px; margin-top: 4px; max-width: 1000px; overflow-wrap: anywhere; }
 .usage-badge { border: 1px solid rgba(85,187,170,.45); border-radius: 20px; padding: 6px 12px; color: #b7f1e7; font-size: 10px; font-weight: 700; white-space: nowrap; }
@@ -80,7 +94,6 @@
 .usage-footer > div:first-child { color: var(--tlm-dlg-body); font-size: 12px; }
 .usage-footer small { display: block; color: var(--tlm-dlg-muted); font-size: 10px; margin-top: 3px; }
 .usage-footer-actions { display: flex; gap: 9px; }
-.usage-live-dot { display: inline-block; width: 6px; height: 6px; background: #74d0ba; border-radius: 50%; margin-right: 7px; }
 @media (min-width:1600px) { .usage-chart svg { height: 230px; } .usage-body { padding: 22px 30px; } }
 @media (max-width:850px) { .usage-dialog { width: 94vw; height: 63vh; height: 63dvh; } .usage-header, .usage-toolbar, .usage-footer { padding: 12px 15px; } .usage-body { padding: 14px 15px; } .usage-credit-grid { grid-template-columns: 1fr; } .usage-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); } .usage-chart-grid { grid-template-columns: 1fr; } .usage-tabs { gap: 4px; } .usage-dialog .usage-button { padding: 8px 11px; } .usage-section-heading { align-items: flex-start; } }
 @media (max-width:450px) { .usage-header p { font-size: 12px; } .usage-tabs .usage-button { padding: 8px; font-size: 12px; } .usage-footer small { display: none; } .usage-badge { display: none; } }

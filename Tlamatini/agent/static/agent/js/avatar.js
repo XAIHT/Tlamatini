@@ -1,54 +1,55 @@
+/* Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1 */
 // Tlamatini chat-avatar engine - extracted from agent_page.html (2026-07-17).
 (function(){
   "use strict";
   function ready(fn){ if(document.readyState!=='loading'){setTimeout(fn,0);} else {document.addEventListener('DOMContentLoaded',fn);} }
-  var FEMALE_RE=/(female|zira|jenny|aria|michelle|clara|nanami|sara|hazel|heera|catherine|hedda|elsa|paulina|helena|laura|isabel|sabina|woman|girl|monica|google us english|google uk english female|samantha|victoria|karen|tessa|fiona|moira|serena|allison|ava|susan|zoe|nora|mia|jess|tara|leah)/i;
-  var MALE_RE=/(\bmale\b|david|mark|guy|ryan|george|james|richard|paul|thomas|daniel|alex|fred|diego|jorge|pablo|\bman\b|\bboy\b)/i;
+  const FEMALE_RE=/(female|zira|jenny|aria|michelle|clara|nanami|sara|hazel|heera|catherine|hedda|elsa|paulina|helena|laura|isabel|sabina|woman|girl|monica|google us english|google uk english female|samantha|victoria|karen|tessa|fiona|moira|serena|allison|ava|susan|zoe|nora|mia|jess|tara|leah)/i;
+  const MALE_RE=/(\bmale\b|david|mark|guy|ryan|george|james|richard|paul|thomas|daniel|alex|fred|diego|jorge|pablo|\bman\b|\bboy\b)/i;
   function allVoices(){ try{return window.speechSynthesis.getVoices()||[];}catch(e){return [];} }
   function femaleVoices(){
-    var vs=allVoices();
-    var en=vs.filter(function(v){return /^en(-|_|$)/i.test(v.lang||'');});
-    var pool=en.length?en:vs;
-    var fem=pool.filter(function(v){var n=(v.name||'');return FEMALE_RE.test(n) && !MALE_RE.test(n);});
+    const vs=allVoices();
+    const en=vs.filter(function(v){return /^en(-|_|$)/i.test(v.lang||'');});
+    const pool=en.length?en:vs;
+    let fem=pool.filter(function(v){const n=(v.name||'');return FEMALE_RE.test(n) && !MALE_RE.test(n);});
     if(!fem.length) fem=pool.filter(function(v){return !MALE_RE.test(v.name||'');});
     if(!fem.length) fem=pool.slice();
     return fem;
   }
-  var DEF={mode:'notify',voiceURI:'',volume:100,rate:1,pitch:1.05};
-  function loadSettings(){ try{var s=JSON.parse(localStorage.getItem('tlm_voice_settings')||'{}');return Object.assign({},DEF,s);}catch(e){return Object.assign({},DEF);} }
-  function saveSettings(s){ try{localStorage.setItem('tlm_voice_settings',JSON.stringify(s));}catch(e){} }
-  var settings=loadSettings();
+  const DEF={mode:'notify',voiceURI:'',volume:100,rate:1,pitch:1.05};
+  function loadSettings(){ try{const s=JSON.parse(localStorage.getItem('tlm_voice_settings')||'{}');return Object.assign({},DEF,s);}catch(e){return Object.assign({},DEF);} }
+  function saveSettings(s){ try{localStorage.setItem('tlm_voice_settings',JSON.stringify(s));}catch(e){ /* Storage may be unavailable; retain the in-memory voice settings. */ } }
+  let settings=loadSettings();
   function pickVoice(){
-    var fem=femaleVoices(); if(!fem.length)return null;
-    if(settings.voiceURI){ var m=fem.filter(function(v){return v.voiceURI===settings.voiceURI;}); if(m.length)return m[0]; }
-    var pref=fem.filter(function(v){return /zira|jenny|aria|samantha|google us english|hazel/i.test(v.name||'');});
+    const fem=femaleVoices(); if(!fem.length)return null;
+    if(settings.voiceURI){ const m=fem.filter(function(v){return v.voiceURI===settings.voiceURI;}); if(m.length)return m[0]; }
+    const pref=fem.filter(function(v){return /zira|jenny|aria|samantha|google us english|hazel/i.test(v.name||'');});
     return (pref[0]||fem[0]);
   }
-  var _primed=false;
-  function prime(){ if(_primed)return; _primed=true; try{ var u=new SpeechSynthesisUtterance(' '); u.volume=0; window.speechSynthesis.speak(u);}catch(e){} }
-  var _keep=null;
-  function keepAlive(on){ if(on){ if(_keep)return; _keep=setInterval(function(){ try{ if(window.speechSynthesis.speaking) window.speechSynthesis.resume(); else {clearInterval(_keep);_keep=null;} }catch(e){} },4000);} else { if(_keep){clearInterval(_keep);_keep=null;} } }
+  let _primed=false;
+  function prime(){ if(_primed)return; _primed=true; try{ const u=new SpeechSynthesisUtterance(' '); u.volume=0; window.speechSynthesis.speak(u);}catch(e){ /* Speech priming is optional when the browser denies synthesis. */ } }
+  let _keep=null;
+  function keepAlive(on){ if(on){ if(_keep)return; _keep=setInterval(function(){ try{ if(window.speechSynthesis.speaking) window.speechSynthesis.resume(); else {clearInterval(_keep);_keep=null;} }catch(e){ /* Speech synthesis can disappear while the page is closing. */ } },4000);} else { if(_keep){clearInterval(_keep);_keep=null;} } }
   function chunk(text){
     text=(text||'').replace(/\s+/g,' ').trim(); if(!text)return [];
-    var parts=text.match(/[^.!?;:]+[.!?;:]?/g)||[text];
-    var out=[],buf='';
+    const parts=text.match(/[^.!?;:]+[.!?;:]?/g)||[text];
+    const out=[]; let buf='';
     parts.forEach(function(p){ p=p.trim(); if(!p)return;
-      if((buf+' '+p).length>170){ if(buf)out.push(buf); if(p.length>170){ for(var i=0;i<p.length;i+=170)out.push(p.slice(i,i+170)); buf=''; } else buf=p; }
+      if((buf+' '+p).length>170){ if(buf)out.push(buf); if(p.length>170){ for(let i=0;i<p.length;i+=170)out.push(p.slice(i,i+170)); buf=''; } else buf=p; }
       else buf=(buf?buf+' ':'')+p;
     });
     if(buf)out.push(buf); return out;
   }
-  var _listening=false;
+  let _listening=false;
   function speak(text,opts){
     if(_listening || !('speechSynthesis' in window))return;
-    var s=loadSettings(); settings=s;
+    const s=loadSettings(); settings=s;
     // opts.queue = true  ->  do NOT cut off what is already being said, so that
     // consecutive messages are ALL spoken, one after another, none swallowed.
-    if(!(opts&&opts.queue)){ try{window.speechSynthesis.cancel();}catch(e){} }
-    var pieces=chunk(text); if(!pieces.length)return;
-    var v=pickVoice(); keepAlive(true);
+    if(!(opts&&opts.queue)){ try{window.speechSynthesis.cancel();}catch(e){ /* Cancellation is best effort; text chat remains usable. */ } }
+    const pieces=chunk(text); if(!pieces.length)return;
+    const v=pickVoice(); keepAlive(true);
     pieces.forEach(function(p,i){
-      var u=new SpeechSynthesisUtterance(p);
+      const u=new SpeechSynthesisUtterance(p);
       if(v)u.voice=v;
       u.volume=Math.max(0,Math.min(1,(s.volume||100)/100));
       u.rate=s.rate||1; u.pitch=(s.pitch==null?1.05:s.pitch); u.lang=(v&&v.lang)||'en-US';
@@ -57,48 +58,48 @@
         try{ if(!window.speechSynthesis.speaking && !window.speechSynthesis.pending) keepAlive(false); }
         catch(e){ keepAlive(false); }
       };
-      try{window.speechSynthesis.speak(u);}catch(e){}
+      try{window.speechSynthesis.speak(u);}catch(e){ /* Speech output is optional; the visible chat already contains the text. */ }
     });
   }
   // ---- STOP TALKING, RIGHT NOW -------------------------------------------
   // Kills whatever is being said AND everything still queued behind it.
   function stopSpeaking(){
-    try{ window.speechSynthesis.cancel(); }catch(e){}
-    try{ window.speechSynthesis.cancel(); }catch(e){}   // Chrome sometimes needs a 2nd
-    try{ keepAlive(false); }catch(e){}
+    try{ window.speechSynthesis.cancel(); }catch(e){ /* An unavailable speech engine has nothing left to cancel. */ }
+    try{ window.speechSynthesis.cancel(); }catch(e){ /* The second cancellation is best effort for Chrome. */ }   // Chrome sometimes needs a 2nd
+    try{ keepAlive(false); }catch(e){ /* Stopping speech must remain safe during browser teardown. */ }
   }
   // Turn the voice OFF for good (persists) - or back ON.
   function setSilent(on){
-    var s=loadSettings(); s.mode=on?'silent':'notify'; saveSettings(s);
+    const s=loadSettings(); s.mode=on?'silent':'notify'; saveSettings(s);
     if(on)stopSpeaking();
     return s.mode;
   }
   window.TLM_VOICE={speak:speak,notify:function(){speak("I've finished your request.");},femaleVoices:femaleVoices,pickVoice:pickVoice,loadSettings:loadSettings,saveSettings:saveSettings,prime:prime,stop:stopSpeaking,setSilent:setSilent,setListening:function(on){_listening=!!on;if(on)stopSpeaking();}};
-  try{ if(window.speechSynthesis) window.speechSynthesis.onvoiceschanged=function(){}; }catch(e){}
+  try{ if(window.speechSynthesis) window.speechSynthesis.onvoiceschanged=function(){}; }catch(e){ /* Some browsers do not expose a writable voice-change hook. */ }
   // ESC anywhere = shut up immediately.  Ctrl+Shift+M = mute for good / unmute.
   document.addEventListener('keydown',function(e){
     try{
       if(e.key==='Escape'){ stopSpeaking(); return; }
       if(e.ctrlKey&&e.shiftKey&&(e.key==='M'||e.key==='m')){
         e.preventDefault();
-        var m=setSilent(loadSettings().mode!=='silent');
-        var b=document.getElementById('tlm-avatar-bubble');
+        const m=setSilent(loadSettings().mode!=='silent');
+        const b=document.getElementById('tlm-avatar-bubble');
         if(b){ b.textContent=(m==='silent')?"Voice OFF - I'll stay quiet.":"Voice ON - I'll talk to you again!"; b.classList.add('tlm-show');
                clearTimeout(b._t); b._t=setTimeout(function(){b.classList.remove('tlm-show');},2600); }
       }
-    }catch(err){}
+    }catch(err){ /* Optional voice shortcuts must not interrupt normal keyboard handling. */ }
   },true);
   document.addEventListener('click',prime,{once:true});
   document.addEventListener('keydown',prime,{once:true});
 
   ready(function(){
-    var dock=document.getElementById('tlm-avatar-dock');
-    var bubble=document.getElementById('tlm-avatar-bubble');
-    var submit=document.getElementById('chat-message-submit');
-    var input=document.getElementById('chat-message-input');
-    var chatLog=document.getElementById('chat-log');
-    var uname='there';
-    try{ var el=document.getElementById('user_username'); if(el){var raw=JSON.parse(el.textContent||'""'); if(raw){uname=String(raw).charAt(0).toUpperCase()+String(raw).slice(1);}} }catch(e){}
+    const dock=document.getElementById('tlm-avatar-dock');
+    const bubble=document.getElementById('tlm-avatar-bubble');
+    const submit=document.getElementById('chat-message-submit');
+    const input=document.getElementById('chat-message-input');
+    const chatLog=document.getElementById('chat-log');
+    let uname='there';
+    try{ const el=document.getElementById('user_username'); if(el){const raw=JSON.parse(el.textContent||'""'); if(raw){uname=String(raw).charAt(0).toUpperCase()+String(raw).slice(1);}} }catch(e){ /* Keep the generic greeting when account data cannot be parsed. */ }
 
     function pick(a){ return a[Math.floor(Math.random()*a.length)]; }
     function idlePhrase(){ return pick([
@@ -124,21 +125,21 @@
     // Fixed completion notice - one exact line, never randomised.
     // First person, to the user by name (Angela, 2026-10-09); `who` is empty
     // when the page carries no username, so no line ever says "there".
-    var who=(uname&&uname!=='there')?uname:'';
-    var COMPLETE_PHRASE="I've finished your request"+(who?", "+who:"")+".";
-    var CANCEL_PHRASE="Okay"+(who?", "+who:"")+" - I've stopped that task. I'm ready for your next instruction.";
+    const who=(uname&&uname!=='there')?uname:'';
+    const COMPLETE_PHRASE="I've finished your request"+(who?", "+who:"")+".";
+    const CANCEL_PHRASE="Okay"+(who?", "+who:"")+" - I've stopped that task. I'm ready for your next instruction.";
     // The FIXED messages are spoken EXACTLY AS WRITTEN - never paraphrased.
     // This only strips what must not be read aloud: markup, the username header
     // and the timestamp, and the END-RESPONSE sentinel.
     function plainText(m){
-      var s=String(m==null?'':m);
+      let s=String(m==null?'':m);
       if(s.indexOf('<')>=0){
         try{
-          var d=document.createElement('div'); d.innerHTML=s;
+          const d=document.createElement('div'); d.innerHTML=s;
           d.querySelectorAll('script,style,button,.copy-button,.username,.message-timestamp,'
-            +'.automated-message-execreport,.exec-report-table,.create-flow').forEach(function(n){try{n.remove();}catch(e){}});
+            +'.automated-message-execreport,.exec-report-table,.create-flow').forEach(function(n){try{n.remove();}catch(e){ /* The detached speech-text clone may already have removed this node. */ }});
           s=d.textContent||'';
-        }catch(e){}
+        }catch(e){ /* Keep the original text if optional HTML-to-speech cleanup fails. */ }
       }
       s=s.replace(/END-RESPONSE/g,'');
       s=s.replace(/^\s*Tlamatini\s*\([^)]*\)\s*/i,'');                 // "Tlamatini (2026/07/18 01:04:16.194)"
@@ -154,10 +155,10 @@
     // and always SPEAKS it aloud - the only exception is Silent mode.
     // `key` + `gapMs` stop the same state from repeating itself back-to-back
     // (e.g. our own "on it" and the server's "being processed" placeholder).
-    var _said={};
+    let _said={};
     function announce(key,text,gapMs){
       if(!text)return false;
-      var now=Date.now();
+      const now=Date.now();
       if(key){ if(now-(_said[key]||0)<(gapMs==null?8000:gapMs))return false; _said[key]=now; }
       showBubble(text);
       if(!voiceOn())return true;
@@ -169,10 +170,10 @@
     // What KIND of message is this? Every non-'answer' kind is a fixed/system
     // message that Tlamatini must speak with her own matching phrase.
     function classify(txt){
-      var t=(txt||'').trim(); if(!t)return 'skip';
-      var tl=t.toLowerCase();
-      try{ if(window.isSelfHealingStatusMessage&&window.isSelfHealingStatusMessage(t))return 'retry'; }catch(e){}
-      try{ if(window.isSessionRestoredInfoMessage&&window.isSessionRestoredInfoMessage(t))return 'restored'; }catch(e){}
+      const t=(txt||'').trim(); if(!t)return 'skip';
+      const tl=t.toLowerCase();
+      try{ if(window.isSelfHealingStatusMessage&&window.isSelfHealingStatusMessage(t))return 'retry'; }catch(e){ /* Use the literal status checks below when the shared matcher is unavailable. */ }
+      try{ if(window.isSessionRestoredInfoMessage&&window.isSessionRestoredInfoMessage(t))return 'restored'; }catch(e){ /* Use the literal status checks below when the shared matcher is unavailable. */ }
       // Her fixed lines are first person since 2026-10-09 ("I'm ready, Angela!
       // You can start chatting with me now."); the old wording is still known.
       if(tl.indexOf('start chatting with me')>=0||tl.indexOf("i'm back and ready")>=0
@@ -184,8 +185,8 @@
       // as an 'answer' she would have said "I've finished your request" over it.
       if(tl.indexOf("can't process your requests")>=0||tl.indexOf('cannot process your requests')>=0)return 'error';
       if(tl.indexOf("i'm not ready yet")>=0||(tl.indexOf('not ready')>=0&&tl.indexOf('agent')>=0))return 'notready';
-      try{ if(window.isBusyMessageRequest&&window.isBusyMessageRequest(t))return 'busy'; }catch(e){}
-      try{ if(window.isBusyMessageContext&&window.isBusyMessageContext(t))return 'busy'; }catch(e){}
+      try{ if(window.isBusyMessageRequest&&window.isBusyMessageRequest(t))return 'busy'; }catch(e){ /* Use the literal status checks below when the shared matcher is unavailable. */ }
+      try{ if(window.isBusyMessageContext&&window.isBusyMessageContext(t))return 'busy'; }catch(e){ /* Use the literal status checks below when the shared matcher is unavailable. */ }
       if(tl.indexOf("i'm working on your request")>=0||tl.indexOf("i'm getting myself ready")>=0
          ||tl.indexOf("i'm still getting ready")>=0||tl.indexOf("i'm rebuilding myself")>=0
          ||tl.indexOf('your request is being processed')>=0||tl.indexOf('being processed by tlamatini')>=0
@@ -200,20 +201,20 @@
     function isWorking(){
       try{
         if(input&&input.disabled)return true;
-        if(submit){var t=(submit.textContent||'').trim().toLowerCase(); if(t.indexOf('cancel')>=0||t.indexOf('stop')>=0)return true;}
+        if(submit){const t=(submit.textContent||'').trim().toLowerCase(); if(t.indexOf('cancel')>=0||t.indexOf('stop')>=0)return true;}
         if(window.inLongOperation===true)return true;
-      }catch(e){}
+      }catch(e){ /* Detached chat controls fall back to the idle state. */ }
       return false;
     }
-    function isCancelButton(){ try{ var t=(submit&&submit.textContent||'').trim().toLowerCase(); return t.indexOf('cancel')>=0||t.indexOf('stop')>=0; }catch(e){return false;} }
+    function isCancelButton(){ try{ const t=(submit&&submit.textContent||'').trim().toLowerCase(); return t.indexOf('cancel')>=0||t.indexOf('stop')>=0; }catch(e){return false;} }
     function showBubble(t){ if(!bubble)return; bubble.textContent=t;
-      try{ if(dock){ var r=dock.getBoundingClientRect(); bubble.style.position='fixed'; bubble.style.left='auto'; bubble.style.top='auto';
-        bubble.style.right=Math.max(8,(window.innerWidth-r.right))+'px'; bubble.style.bottom=(window.innerHeight-r.top+10)+'px'; } }catch(e){}
+      try{ if(dock){ const r=dock.getBoundingClientRect(); bubble.style.position='fixed'; bubble.style.left='auto'; bubble.style.top='auto';
+        bubble.style.right=Math.max(8,(window.innerWidth-r.right))+'px'; bubble.style.bottom=(window.innerHeight-r.top+10)+'px'; } }catch(e){ /* Keep the CSS bubble position if dock geometry is unavailable. */ }
       bubble.classList.add('tlm-show'); clearTimeout(bubble._t); bubble._t=setTimeout(function(){bubble.classList.remove('tlm-show');},4600); }
 
     // ---- run lifecycle: pending -> saw-work -> completed / cancelled ----
-    var _pending=false, _seenWork=false, _spoken=false;
-    var _voiceAckText='';
+    let _pending=false, _seenWork=false, _spoken=false;
+    let _voiceAckText='';
     function markSend(){
       if(window.TLM_DICTATION && window.TLM_DICTATION.isActive())return;
       _voiceAckText='';
@@ -223,28 +224,28 @@
       // ("Your request is being processed by Tlamatini. Please wait a moment.")
       // arrives a moment later and is spoken VERBATIM by onTlamatiniMessage.
     }
-    function lastBotAnswer(){ try{ var arr=chatLog?chatLog.querySelectorAll('.bot-message'):[]; return arr.length?arr[arr.length-1]:null; }catch(e){return null;} }
+    function lastBotAnswer(){ try{ const arr=chatLog?chatLog.querySelectorAll('.bot-message'):[]; return arr.length?arr[arr.length-1]:null; }catch(e){return null;} }
     function extractAnswer(node){
       try{
-        var body=node.querySelector('.automated-message-body')||node.querySelector('.automated-message');
+        const body=node.querySelector('.automated-message-body')||node.querySelector('.automated-message');
         if(!body)return '';
-        var clone=body.cloneNode(true);
-        clone.querySelectorAll('.automated-message-execreport,.exec-report-table,.exec-denied-banner,button,.create-flow,.username,.message-timestamp,.copy-button').forEach(function(n){try{n.remove();}catch(e){}});
+        const clone=body.cloneNode(true);
+        clone.querySelectorAll('.automated-message-execreport,.exec-report-table,.exec-denied-banner,button,.create-flow,.username,.message-timestamp,.copy-button').forEach(function(n){try{n.remove();}catch(e){ /* The detached speech-text clone may already have removed this node. */ }});
         return (clone.textContent||'').replace(/END-RESPONSE/g,'').trim();
       }catch(e){return '';}
     }
     // A "status" message is anything that is NOT the real final answer.
-    function isStatusMsg(txt){ var k=classify(txt); return k!=='answer'; }
+    function isStatusMsg(txt){ const k=classify(txt); return k!=='answer'; }
 
     function doComplete(){
       if(_spoken)return; _spoken=true; _pending=false;
-      var s=loadSettings();
+      const s=loadSettings();
       showBubble(COMPLETE_PHRASE);              // balloon always
       if(s.mode==='silent')return;              // Silent: the ONLY mute case
       setTimeout(function(){
-        var text=COMPLETE_PHRASE;               // exact fixed line
+        let text=COMPLETE_PHRASE;               // exact fixed line
         if(s.mode==='speak'){
-          var last=lastBotAnswer(); var a=last?extractAnswer(last):'';
+          const last=lastBotAnswer(); const a=last?extractAnswer(last):'';
           if(a && !isStatusMsg(a)) text=a;      // read the ANSWER itself, verbatim
         }
         prime(); speak(text);
@@ -252,14 +253,14 @@
     }
     function doCancelSpeak(){
       _pending=false; _spoken=true;
-      try{window.speechSynthesis.cancel();}catch(e){}
+      try{window.speechSynthesis.cancel();}catch(e){ /* Cancellation remains usable without a speech engine. */ }
       _said['cancel']=0;                        // a cancel always gets announced
       announce('cancel',CANCEL_PHRASE,0);
     }
 
     if(submit)submit.addEventListener('click',function(){ if(isCancelButton()){ doCancelSpeak(); } else { markSend(); } });
     if(input)input.addEventListener('keydown',function(e){ if(e.key==='Enter'&&!e.shiftKey && !isCancelButton()){ markSend(); } });
-    var _cf=document.getElementById('chat-form'); if(_cf)_cf.addEventListener('submit',function(){ if(!isCancelButton()){ markSend(); } });
+    const _cf=document.getElementById('chat-form'); if(_cf)_cf.addEventListener('submit',function(){ if(!isCancelButton()){ markSend(); } });
 
     document.addEventListener('tlm-chat-submitted',function(e){
       if(!e.detail || !e.detail.voice)return;
@@ -274,38 +275,38 @@
     // (completion is handled below by hooking the app's own appendChatMessage)
 
     if(dock){
-      var faceOuter=document.getElementById('tlm-face-outer');
+      const faceOuter=document.getElementById('tlm-face-outer');
       // ⚠️ `prefers-reduced-motion` IS DELIBERATELY NOT CONSULTED ANY MORE.
       // Angela, 2026-09-11, verbatim: "Make the avatar to be animated even if
       // the accessibility setting for animation were disabled, 'cause this is
       // not an accessibility feature this is a normal broad behavior!"
       // She blinks, breathes and speaks on every machine. A talking head that
       // does not move is not a talking head. Do not restore the gate.
-      var IMGS={ eo_mc:document.getElementById('tlm-s-eo-mc'), ec_mc:document.getElementById('tlm-s-ec-mc'),
+      const IMGS={ eo_mc:document.getElementById('tlm-s-eo-mc'), ec_mc:document.getElementById('tlm-s-ec-mc'),
                  eo_mo:document.getElementById('tlm-s-eo-mo'), ec_mo:document.getElementById('tlm-s-ec-mo') };
-      var stt={eyesOpen:true, mouthOpen:false};
-      var decodedFrames=Object.create(null), activeFrame=null;
+      const stt={eyesOpen:true, mouthOpen:false};
+      const decodedFrames=Object.create(null); let activeFrame=null;
       function render(){
-        var key=(stt.eyesOpen?'eo':'ec')+'_'+(stt.mouthOpen?'mo':'mc');
+        const key=(stt.eyesOpen?'eo':'ec')+'_'+(stt.mouthOpen?'mo':'mc');
         // Leave the last good portrait on screen until the requested frame is
         // decoded. Neither an empty HTTP response nor a pending JPEG decode
         // may hide the current frame. All class changes paint in one JS task.
         if(!decodedFrames[key] || activeFrame===key)return;
-        for(var k in IMGS){ if(IMGS[k]) IMGS[k].classList.toggle('tlm-on', k===key); }
+        for(const k in IMGS){ if(IMGS[k]) IMGS[k].classList.toggle('tlm-on', k===key); }
         activeFrame=key;
       }
       Object.keys(IMGS).forEach(function(key){
-        var img=IMGS[key]; if(!img)return;
-        var loading=false, failed=false;
+        const img=IMGS[key]; if(!img)return;
+        let loading=false, failed=false;
         function unavailable(){
           if(failed)return; failed=true;
           // Preserve the last ready frame; do not replace it with a broken image.
-          try{console.warn('Tlamatini avatar frame unavailable:',key);}catch(e){}
+          try{console.warn('Tlamatini avatar frame unavailable:',key);}catch(e){ /* A missing console must not replace the last valid avatar frame. */ }
         }
         function loaded(){
           if(loading || failed || !img.complete || !img.naturalWidth)return;
           loading=true;
-          var decoded;
+          let decoded;
           try{decoded=typeof img.decode==='function'?img.decode():Promise.resolve();}
           catch(e){unavailable();return;}
           Promise.resolve(decoded).then(function(){
@@ -319,19 +320,19 @@
       });
       function layoutFace(){
         if(!faceOuter)return;
-        var pad=5, pw=dock.clientWidth-2*pad, ph=dock.clientHeight-2*pad;
+        const pad=5, pw=dock.clientWidth-2*pad, ph=dock.clientHeight-2*pad;
         if(pw<=0||ph<=0)return;
-        var ar=1, iw,ih;
+        const ar=1; let iw,ih;
         if(pw/ph>ar){ih=ph;iw=ph*ar;}else{iw=pw;ih=pw/ar;}
         faceOuter.style.left=(pad+(pw-iw)/2)+'px';faceOuter.style.top=(pad+(ph-ih)/2)+'px';
         faceOuter.style.width=iw+'px';faceOuter.style.height=ih+'px';
         // The presence engine pre-scales her portraits to the display size, so
         // every geometry change has to tell it to re-scale. Skipping this is
         // how a resized avatar ends up soft or letterboxed.
-        try{ if(window.TlamatiniPresence&&window.TlamatiniPresence.isReady())window.TlamatiniPresence.resize(); }catch(e){}
+        try{ if(window.TlamatiniPresence&&window.TlamatiniPresence.isReady())window.TlamatiniPresence.resize(); }catch(e){ /* The legacy face remains usable if presence resizing is unavailable. */ }
       }
       layoutFace();
-      if(window.ResizeObserver){try{new ResizeObserver(layoutFace).observe(dock);}catch(e){}}
+      if(window.ResizeObserver){try{new ResizeObserver(layoutFace).observe(dock);}catch(e){ /* The window resize listener below remains the fallback. */ }}
       window.addEventListener('resize',layoutFace);
       function blink(done){ stt.eyesOpen=false; render(); setTimeout(function(){ stt.eyesOpen=true; render(); if(done)done(); }, 190); }
       function scheduleBlink(){
@@ -362,10 +363,10 @@
       function _startPresence(){
         try{
           if(!window.TlamatiniPresence)return false;
-          var ok=window.TlamatiniPresence.start({
+          const ok=window.TlamatiniPresence.start({
             onTierChange:function(fps,why,ms){
               try{console.info('Tlamatini presence: '+why+' to '+fps+' fps (median frame '+
-                Number(ms).toFixed(2)+' ms)');}catch(e){}
+                Number(ms).toFixed(2)+' ms)');}catch(e){ /* Frame-rate logging must not interrupt avatar rendering. */ }
             }
           });
           if(ok){ layoutFace(); }
@@ -378,12 +379,12 @@
         if(_presenceLive())return;
         if(_startPresence())return;
         if(tries>0){ setTimeout(function(){ waitForPortraits(tries-1); },200); }
-        else { try{console.warn('Tlamatini presence engine unavailable - legacy face in use.');}catch(e){} }
+        else { try{console.warn('Tlamatini presence engine unavailable - legacy face in use.');}catch(e){ /* The legacy face remains active even if logging is unavailable. */ } }
       })(40);
       scheduleBlink();
       setInterval(function(){
-        var sp=false;
-        try{ sp=!_presenceLive()&&!document.hidden&&window.speechSynthesis&&window.speechSynthesis.speaking&&!window.speechSynthesis.paused; }catch(e){}
+        let sp=false;
+        try{ sp=!_presenceLive()&&!document.hidden&&window.speechSynthesis&&window.speechSynthesis.speaking&&!window.speechSynthesis.paused; }catch(e){ /* Keep the mouth closed when speech state cannot be read. */ }
         if(sp){ stt.mouthOpen=!stt.mouthOpen; render(); }
         else if(stt.mouthOpen){ stt.mouthOpen=false; render(); }
       }, 150);
@@ -391,15 +392,15 @@
       // Click when she is quiet = she greets you. DOUBLE-CLICK = mute for good.
       function onClick(){
         prime();
-        var busy=false;
-        try{ busy=window.speechSynthesis.speaking||window.speechSynthesis.pending; }catch(e){}
+        let busy=false;
+        try{ busy=window.speechSynthesis.speaking||window.speechSynthesis.pending; }catch(e){ /* Treat an unavailable speech engine as idle. */ }
         if(busy){ stopSpeaking(); showBubble("Okay, I'll stop talking."); return; }
         announce(null,(isWorking()?busyPhrase():idlePhrase()),0);
       }
       dock.addEventListener('click',onClick);
       dock.addEventListener('dblclick',function(e){
         e.preventDefault();
-        var m=setSilent(loadSettings().mode!=='silent');
+        const m=setSilent(loadSettings().mode!=='silent');
         stopSpeaking();
         showBubble(m==='silent'?"Voice OFF - I'll stay quiet (double-click me to hear me again).":"Voice ON - I'll talk to you again!");
       });
@@ -417,13 +418,13 @@
     // matching pre-established phrase. Silent mode is the only thing that mutes her.
     // Swallow only the burst of OLD messages replayed at page load; after this
     // the avatar speaks everything Tlamatini says.
-    var _armed=false; setTimeout(function(){ _armed=true; },1500);
+    let _armed=false; setTimeout(function(){ _armed=true; },1500);
 
     function onTlamatiniMessage(message){
       if(!_armed)return;                       // history replay, not live speech
-      var text=plainText(message);
+      const text=plainText(message);
       if(!text)return;
-      var kind=classify(message);
+      const kind=classify(message);
       // The server's own "I'm working on your request" after a voice send: she
       // already said it. Matched by MEANING, not by exact text - the server may
       // name the user by first name while the page only knows the username.
@@ -440,77 +441,77 @@
       // dedupe on the TEXT itself, so two DIFFERENT messages BOTH get spoken
       announce('t:'+text.slice(0,80),text,2500);
     }
-    var _hooked=false;
+    let _hooked=false;
     try{
       if(typeof window.appendChatMessage==='function'){
-        var _origAppend=window.appendChatMessage;
+        const _origAppend=window.appendChatMessage;
         window.appendChatMessage=function(username,message){
-          var r=_origAppend.apply(this,arguments);
-          try{ if(username==='Tlamatini'){ var msg=message; setTimeout(function(){ onTlamatiniMessage(msg); },120); } }catch(e){}
+          const r=_origAppend.apply(this,arguments);
+          try{ if(username==='Tlamatini'){ const msg=message; setTimeout(function(){ onTlamatiniMessage(msg); },120); } }catch(e){ /* Optional avatar notification must not affect chat message rendering. */ }
           return r;
         };
         _hooked=true;
       }
-    }catch(e){}
+    }catch(e){ /* Use the DOM observer below if the renderer hook is unavailable. */ }
     // fallback DOM observer (only if the renderer could not be hooked)
     if(!_hooked && chatLog && ('MutationObserver' in window)){
-      try{chatLog.querySelectorAll('.bot-message').forEach(function(b){b.setAttribute('data-tlm-spoken','1');});}catch(e){}
-      var _deb=null;
-      var obs=new MutationObserver(function(muts){
+      try{chatLog.querySelectorAll('.bot-message').forEach(function(b){b.setAttribute('data-tlm-spoken','1');});}catch(e){ /* The observer can still handle newly inserted messages. */ }
+      let _deb=null;
+      const obs=new MutationObserver(function(muts){
         if(!_pending||_spoken)return;
-        var target=null;
+        let target=null;
         muts.forEach(function(mu){ Array.prototype.forEach.call(mu.addedNodes||[],function(n){
           if(n.nodeType!==1)return;
-          var bm=(n.classList&&n.classList.contains('bot-message'))?n:(n.querySelector?n.querySelector('.bot-message'):null);
+          const bm=(n.classList&&n.classList.contains('bot-message'))?n:(n.querySelector?n.querySelector('.bot-message'):null);
           if(bm&&!bm.getAttribute('data-tlm-spoken')) target=bm;
         }); });
         if(!target)return;
         clearTimeout(_deb);
         _deb=setTimeout(function(){
           if(_spoken||!_pending)return;
-          var ans=extractAnswer(target); if(!ans||isStatusMsg(ans))return;
+          const ans=extractAnswer(target); if(!ans||isStatusMsg(ans))return;
           target.setAttribute('data-tlm-spoken','1'); doComplete();
         },350);
       });
-      try{obs.observe(chatLog,{childList:true,subtree:true});}catch(e){}
+      try{obs.observe(chatLog,{childList:true,subtree:true});}catch(e){ /* Text chat remains usable if optional speech observation is unavailable. */ }
     }
 
-    var overlay=document.getElementById('tlm-voice-overlay');
+    const overlay=document.getElementById('tlm-voice-overlay');
     function fillVoices(){
-      var sel=document.getElementById('tlm-voice-select'); if(!sel)return;
-      var fem=femaleVoices(); sel.innerHTML='';
-      fem.forEach(function(v){var o=document.createElement('option');o.value=v.voiceURI;o.textContent=v.name+' ('+v.lang+')';sel.appendChild(o);});
-      var s=loadSettings(); if(s.voiceURI)sel.value=s.voiceURI; else { var pv=pickVoice(); if(pv)sel.value=pv.voiceURI; }
+      const sel=document.getElementById('tlm-voice-select'); if(!sel)return;
+      const fem=femaleVoices(); sel.innerHTML='';
+      fem.forEach(function(v){const o=document.createElement('option');o.value=v.voiceURI;o.textContent=v.name+' ('+v.lang+')';sel.appendChild(o);});
+      const s=loadSettings(); if(s.voiceURI)sel.value=s.voiceURI; else { const pv=pickVoice(); if(pv)sel.value=pv.voiceURI; }
     }
     function syncDialog(){
-      var s=loadSettings();
-      var vol=document.getElementById('tlm-voice-volume'),rate=document.getElementById('tlm-voice-rate'),pitch=document.getElementById('tlm-voice-pitch');
+      const s=loadSettings();
+      const vol=document.getElementById('tlm-voice-volume'),rate=document.getElementById('tlm-voice-rate'),pitch=document.getElementById('tlm-voice-pitch');
       if(vol){vol.value=s.volume;document.getElementById('tlm-voice-vol-val').textContent=s.volume+'%';}
       if(rate){rate.value=s.rate;document.getElementById('tlm-voice-rate-val').textContent=(s.rate).toFixed(2)+'x';}
       if(pitch){pitch.value=s.pitch;document.getElementById('tlm-voice-pitch-val').textContent=(s.pitch).toFixed(2);}
-      var r=document.querySelector('input[name="tlm-voice-mode"][value="'+s.mode+'"]'); if(r)r.checked=true;
+      const r=document.querySelector('input[name="tlm-voice-mode"][value="'+s.mode+'"]'); if(r)r.checked=true;
       fillVoices();
     }
     function readDialog(){
-      var s=loadSettings();
-      var vol=document.getElementById('tlm-voice-volume'),rate=document.getElementById('tlm-voice-rate'),pitch=document.getElementById('tlm-voice-pitch'),sel=document.getElementById('tlm-voice-select');
+      const s=loadSettings();
+      const vol=document.getElementById('tlm-voice-volume'),rate=document.getElementById('tlm-voice-rate'),pitch=document.getElementById('tlm-voice-pitch'),sel=document.getElementById('tlm-voice-select');
       if(vol)s.volume=parseInt(vol.value,10);
       if(rate)s.rate=parseFloat(rate.value);
       if(pitch)s.pitch=parseFloat(pitch.value);
       if(sel&&sel.value)s.voiceURI=sel.value;
-      var r=document.querySelector('input[name="tlm-voice-mode"]:checked'); if(r)s.mode=r.value;
+      const r=document.querySelector('input[name="tlm-voice-mode"]:checked'); if(r)s.mode=r.value;
       return s;
     }
     window.OpenVoiceDialog=function(ev){ if(ev&&ev.preventDefault)ev.preventDefault(); prime(); if(!overlay)return; syncDialog(); overlay.style.display='flex'; };
     function closeDialog(){ if(overlay)overlay.style.display='none'; }
     if(overlay){
-      var x=document.getElementById('tlm-voice-close'); if(x)x.addEventListener('click',closeDialog);
+      const x=document.getElementById('tlm-voice-close'); if(x)x.addEventListener('click',closeDialog);
       // Outside-click dismissal removed (Angela, 2026-08-13): a dialog closes
       // ONLY by its X, Cancel or Continue. See static/agent/js/dialog_policy.js.
-      var save=document.getElementById('tlm-voice-save'); if(save)save.addEventListener('click',function(){ saveSettings(readDialog()); closeDialog(); });
-      var test=document.getElementById('tlm-voice-test'); if(test)test.addEventListener('click',function(){ saveSettings(readDialog()); prime(); speak("Hello "+uname+"! This is my voice."); });
+      const save=document.getElementById('tlm-voice-save'); if(save)save.addEventListener('click',function(){ saveSettings(readDialog()); closeDialog(); });
+      const test=document.getElementById('tlm-voice-test'); if(test)test.addEventListener('click',function(){ saveSettings(readDialog()); prime(); speak("Hello "+uname+"! This is my voice."); });
       ['tlm-voice-volume','tlm-voice-rate','tlm-voice-pitch'].forEach(function(id){
-        var elx=document.getElementById(id); if(!elx)return;
+        const elx=document.getElementById(id); if(!elx)return;
         elx.addEventListener('input',function(){
           if(id==='tlm-voice-volume')document.getElementById('tlm-voice-vol-val').textContent=elx.value+'%';
           if(id==='tlm-voice-rate')document.getElementById('tlm-voice-rate-val').textContent=parseFloat(elx.value).toFixed(2)+'x';

@@ -567,7 +567,7 @@ startup must not pass its return value to `asyncio.run`.
 - Defined in `tools.py` as synchronous `@tool` functions
 - Returned by `get_mcp_tools()` (misnamed - returns LangChain tools, NOT MCP services)
 - Only active when unified-agent chain is selected
-- Includes 20 direct/core tools, 67 wrapped chat-agent launchers (see `chat_agent_registry.WRAPPED_CHAT_AGENT_SPECS`), 12 ACPX/Skill tools, and 10 External-MCP supervisors for **109 built-ins** before dynamic `ext__*` remotes. The wrapped set includes `chat_agent_flowcreator`, PDFer, LaTeXer, and the media playback pair.
+- Includes 20 direct/core tools, 66 wrapped chat-agent launchers (see `chat_agent_registry.WRAPPED_CHAT_AGENT_SPECS`), 12 ACPX/Skill tools, and 10 External-MCP supervisors for **108 built-ins** before dynamic `ext__*` remotes. The wrapped set includes `chat_agent_flowcreator`, PDFer, LaTeXer, and the media playback pair.
 - Googler tool must run Playwright inside a `ThreadPoolExecutor` — `sync_playwright()` is incompatible with Django Channels' running event loop
 
 ---
@@ -703,7 +703,7 @@ The `agent/services/` package owns cross-cutting backend logic that does not fit
 - `filesystem.py` — filesystem helpers shared across views and tools
 
 **Agent contracts & flow compilation** (commit `0bea21d`, May 2026)
-- `agent_paths.py` — Frozen/source-aware resolution of `agents/` root and the per-session pool, plus canvas-id ↔ pool-name normalization (handles `Node Manager` → `node_manager`, `Gateway-Relayer` → `gateway_relayer`, `(2)` cardinal stripping)
+- `agent_paths.py` — Frozen/source-aware resolution of `agents/` root and the per-session pool, plus canvas-id ↔ pool-name normalization (handles `Monitor Netstat` → `monitor_netstat`, `(2)` cardinal stripping)
 - `agent_contracts.py` — `AgentContract` registry: per-agent connection-field shape (`input_field_by_slot` / `output_field_by_slot`), `parametrizer_fields`, `secret_paths`, plus `singleton` / `long_running` / `never_starts_targets` / `exclude_from_validation` flags. Discovers contracts from disk and merges builtin overrides; lru-cached and alias-normalized
 - `flow_spec.py` — `FlowNode` / `FlowConnection` / `FlowSpec` dataclasses + `normalize_flow_payload()` / `flow_spec_to_legacy_json()`. The `schemaVersion: 2` in-memory representation that both surfaces (canvas snapshot from `acp-flow-snapshot.js` AND chat tool-call log from `agent_page_chat.js`) compile through
 - `flow_compiler.py` — `compile_flow_spec()` / `compile_flow_payload()` (called from `views.compile_flow_view` and `views.flow_from_tool_calls_view`) and `list_pool_agents_for_validation()` (the new ground-truth replacement for the legacy `os.listdir` loop in Validate). Wires every connection per its contract, clears stale connection fields before re-writing, redacts `secret_paths` from `.flw` exports, and writes both `config.yaml` and `interconnection-scheme.csv` to the session pool when called with `write=True`. Coverage: `agent/test_flow_contracts.py`
@@ -736,7 +736,7 @@ Every chat card has a **Drop** button beside Copy (`agent_page_chat.js`). After 
 
 Mouser now resolves explicit physical, window and screenshot coordinates; Keyboarder binds Unicode/key delivery to a verified window; Shoter publishes capture geometry. `input_sent` is delivery evidence, not application success, and a failed or interrupted input segment must be observed before replay.
 
-Parametrizer derives its parser registry from current contracts and validates complete typed mappings. FlowCreator selects from all 89 installed agents and validates the generated graph before publishing; FlowHypervisor separates execution, kill and observation relationships and uses current desktop receipts/timing. GUI-Manager remains design only.
+Parametrizer derives its parser registry from current contracts and validates complete typed mappings. FlowCreator selects from all 85 installed agents and validates the generated graph before publishing; FlowHypervisor separates execution, kill and observation relationships and uses current desktop receipts/timing. GUI-Manager remains design only.
 
 See [configuration, examples and limitations](../desktop-input-and-flow-contracts.md), the [complete generated coverage inventory](../agent-coverage.md), and the [GUI-Manager design](../GUI-Manager-design.md).
 

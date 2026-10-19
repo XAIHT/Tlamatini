@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Tlamatini - the context gauge AT REST.
 
 Angela, 2026-09-28: *"If the history is cleaned ... the gauge must be set to an

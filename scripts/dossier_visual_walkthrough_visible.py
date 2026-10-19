@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 # Tlamatini Author Banner - do not remove
 """VISIBLE walkthrough of the regenerated project dossier (PDF + PPTX).
 

@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 # Tlamatini Author Banner - do not remove
 r"""
 THE REAL CONTEXT GAUGE - VISIBLE LABORATORY (Angela, 2026-09-28)

@@ -1,3 +1,4 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Regression guards for the Exec Report SUCCESS/FAILURE verdict.
 
 Every case here is a REAL payload observed in Angela's live install, and every

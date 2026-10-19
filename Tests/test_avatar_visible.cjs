@@ -1,3 +1,4 @@
+/* Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1 */
 /* Visible real-Django avatar regression. Never launches headless.
  * Start Tests/avatar_dev_server/development_test.py serve after prepare.
  * PLAYWRIGHT_MODULE may name a bundled Playwright package.
@@ -53,9 +54,9 @@ async function main() {
       panel.innerHTML = '<strong>VISIBLE AVATAR REGRESSION · DJANGO</strong><p>Real page · native speech · 300 transitions</p><p id="avatar-test-status">Ready. Original JPGs preserved.</p><button id="avatar-test-start" style="padding:10px 14px">Start visible voice test</button>';
       document.body.appendChild(panel);
       window.avatarTest = { transitions: [], paints: 0, minCoverage: 1, failures: [], states: [], phase: 'native speech', lastKey: '', resizeAt: performance.now(), rectangles: {} };
-      window.addEventListener('resize', () => { avatarTest.resizeAt = performance.now(); });
+      window.addEventListener('resize', () => { window.avatarTest.resizeAt = performance.now(); });
       function inspect() {
-        const test = avatarTest;
+        const test = window.avatarTest;
         if (test.finished) return;
         const images = [...document.querySelectorAll('#tlm-face img')];
         const active = images.filter(i => i.classList.contains('tlm-on'));
@@ -87,15 +88,15 @@ async function main() {
       }
       requestAnimationFrame(inspect);
       document.getElementById('avatar-test-start').onclick = () => {
-        const settings = TLM_VOICE.loadSettings();
+        const settings = window.TLM_VOICE.loadSettings();
         const voices = speechSynthesis.getVoices();
         const voice = voices.find(v => v.localService && /zira|hazel|female/i.test(v.name)) || voices.find(v => v.localService && /^en/i.test(v.lang));
         settings.mode = 'notify'; settings.volume = 20; settings.rate = 1.1;
         if (voice) settings.voiceURI = voice.voiceURI;
-        TLM_VOICE.saveSettings(settings);
-        avatarTest.voice = voice ? { name: voice.name, localService: voice.localService } : null;
-        TLM_VOICE.prime();
-        TLM_VOICE.speak(('This is the Tlamatini avatar test. Her eyes blink while she speaks, and her portrait stays steady. The original images are unchanged. ').repeat(60));
+        window.TLM_VOICE.saveSettings(settings);
+        window.avatarTest.voice = voice ? { name: voice.name, localService: voice.localService } : null;
+        window.TLM_VOICE.prime();
+        window.TLM_VOICE.speak(('This is the Tlamatini avatar test. Her eyes blink while she speaks, and her portrait stays steady. The original images are unchanged. ').repeat(60));
       };
     });
     await page.screenshot({ path: path.join(out, '01-real-django-page.png') });
@@ -103,8 +104,8 @@ async function main() {
     await page.waitForFunction(() => speechSynthesis.speaking, { timeout: 15000 });
     console.log('Visible browser open. Authenticated real Django page. Native voice started.');
     for (let checkpoint = 50; checkpoint <= 300; checkpoint += 50) {
-      await page.waitForFunction(n => avatarTest.transitions.length >= n, checkpoint, { timeout: 45000 });
-      const stats = await page.evaluate(() => ({ transitions: avatarTest.transitions.length, paints: avatarTest.paints, minCoverage: avatarTest.minCoverage, failures: avatarTest.failures.length }));
+      await page.waitForFunction(n => window.avatarTest.transitions.length >= n, checkpoint, { timeout: 45000 });
+      const stats = await page.evaluate(() => ({ transitions: window.avatarTest.transitions.length, paints: window.avatarTest.paints, minCoverage: window.avatarTest.minCoverage, failures: window.avatarTest.failures.length }));
       assert.equal(stats.failures, 0, JSON.stringify(stats));
       assert.equal(stats.minCoverage, 1);
       await page.screenshot({ path: path.join(out, `checkpoint-${checkpoint}.png`) });
@@ -112,7 +113,7 @@ async function main() {
       if (checkpoint === 100) await page.setViewportSize({ width: 1100, height: 780 });
       if (checkpoint === 200) await page.setViewportSize({ width: 1600, height: 1000 });
     }
-    await page.evaluate(() => { avatarTest.phase = 'pause/resume'; speechSynthesis.pause(); });
+    await page.evaluate(() => { window.avatarTest.phase = 'pause/resume'; speechSynthesis.pause(); });
     await page.waitForTimeout(400);
     assert.equal(await page.evaluate(() => [...document.querySelectorAll('#tlm-face img.tlm-on')].every(i => i.id.endsWith('-mc'))), true);
     await page.evaluate(() => speechSynthesis.resume());
@@ -121,7 +122,7 @@ async function main() {
     await page.waitForTimeout(400);
     assert.equal(await page.evaluate(() => speechSynthesis.speaking || speechSynthesis.pending), false);
     assert.equal(await page.evaluate(() => [...document.querySelectorAll('#tlm-face img.tlm-on')].every(i => i.id.endsWith('-mc'))), true);
-    await page.evaluate(() => { avatarTest.phase = 'click greet/stop'; });
+    await page.evaluate(() => { window.avatarTest.phase = 'click greet/stop'; });
     await page.locator('#tlm-avatar-dock').click();
     await page.waitForFunction(() => speechSynthesis.speaking);
     await page.waitForTimeout(800);
@@ -129,13 +130,13 @@ async function main() {
     await page.waitForTimeout(400);
     assert.equal(await page.evaluate(() => speechSynthesis.speaking || speechSynthesis.pending), false);
     await page.locator('#tlm-avatar-dock').dblclick();
-    assert.equal(await page.evaluate(() => TLM_VOICE.loadSettings().mode), 'silent');
+    assert.equal(await page.evaluate(() => window.TLM_VOICE.loadSettings().mode), 'silent');
     assert.equal(await page.evaluate(() => window.getSelection().containsNode(document.getElementById('tlm-face'), true)), false, 'Double-click selected/highlighted the portrait');
     await page.keyboard.press('Control+Shift+M');
-    assert.equal(await page.evaluate(() => TLM_VOICE.loadSettings().mode), 'notify');
+    assert.equal(await page.evaluate(() => window.TLM_VOICE.loadSettings().mode), 'notify');
     await Promise.all(pendingAssets);
     assert.equal(assetChecks.length, 6);
-    const result = await page.evaluate(() => { avatarTest.finished = true; return avatarTest; });
+    const result = await page.evaluate(() => { window.avatarTest.finished = true; return window.avatarTest; });
     assert.equal(result.failures.length, 0);
     assert.equal(result.states.length, 4);
     result.headless = false;
@@ -146,8 +147,8 @@ async function main() {
     // Whole-application errors are reported separately from avatar assertions.
     fs.writeFileSync(path.join(out, 'results.json'), JSON.stringify(result, null, 2));
     await page.evaluate(() => {
-      TLM_VOICE.stop();
-      document.getElementById('avatar-test-status').textContent = 'PASS — ' + avatarTest.transitions.length + ' transitions; ' + avatarTest.paints + ' browser paints; zero flashes.';
+      window.TLM_VOICE.stop();
+      document.getElementById('avatar-test-status').textContent = 'PASS — ' + window.avatarTest.transitions.length + ' transitions; ' + window.avatarTest.paints + ' browser paints; zero flashes.';
       document.getElementById('avatar-test-start').textContent = 'Replay voice test';
     });
     await page.screenshot({ path: path.join(out, 'final-passed.png') });

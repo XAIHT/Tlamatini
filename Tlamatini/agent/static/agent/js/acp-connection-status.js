@@ -47,19 +47,19 @@
     "use strict";
 
     // ---- the only part that differs from the Spanish edition ---------------
-    var TXT = {
+    const TXT = {
         down: 'Backend connection lost. The Tlamatini server is not responding — ' +
               'restart it and refresh this page before continuing.',
         back: 'The backend is back. You can keep working.'
     };
 
-    var HEARTBEAT_MS = 8000;   // how often we check while nothing is happening
-    var OK_VISIBLE_MS = 4000;  // how long the green message stays before hiding
+    const HEARTBEAT_MS = 8000;   // how often we check while nothing is happening
+    const OK_VISIBLE_MS = 4000;  // how long the green message stays before hiding
 
-    var bar = null;
-    var isDown = false;
-    var okTimer = null;
-    var started = false;
+    let bar = null;
+    let isDown = false;
+    let okTimer = null;
+    let started = false;
 
     function paint(message, tone) {
         if (!bar) { return; }
@@ -95,10 +95,10 @@
     // ---- 1) fetch wrapper: immediate warning -------------------------------
     function wrapFetch() {
         if (typeof window.fetch !== 'function') { return; }
-        var original = window.fetch;
+        const original = window.fetch;
         window.fetch = function () {
-            var args = arguments;
-            var p;
+            const args = arguments;
+            let p;
             try {
                 p = original.apply(this, args);
             } catch (e) {
