@@ -21,7 +21,7 @@ Wraps the existing **FlowCreator** engine end-to-end and emits a canonical
   3. Write that copy's ``config.yaml`` (JSON is valid YAML, so no PyYAML needed
      and no hand-escaping of the objective).
   4. Run ``python flowcreator.py`` there — it queries the configured Ollama model
-     with the full 85-agent ``agentic_skill.md`` catalog and writes
+     with the full 86-agent ``agentic_skill.md`` catalog and writes
      ``flow_result.json``.
   5. Convert that result to a ``.flw`` via ``result_to_flw.convert`` and write it
      to ``--out``.

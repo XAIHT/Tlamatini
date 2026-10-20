@@ -8,15 +8,15 @@
 -->
 # Tlamatini Agents — MCP connector
 
-> Current release: **[v1.87.0](docs/changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.88.0](docs/changes/2026-10-20-v1.88.0.md)**. Dated records below retain their original evidence dates.
 
 
-Exposes **every complete live Tlamatini agent directory (85 in the released v1.87.0,
-86 on `main` with Terminater)** as MCP tools so an MCP client (Claude Code, etc.) can drive
+Exposes **every complete live Tlamatini agent directory (86 in v1.88.0, with Terminater;
+85 in v1.87.0)** as MCP tools so an MCP client (Claude Code, etc.) can drive
 them directly — Executer, Pythonxer, Croner, ACPXer, STM32er, ESP32er,
 Arduiner, Shoter, Playwrighter, Kalier, MCP Doctor, NetSpeed-Calculator, and
 the rest of the live catalog. It also exposes 7 management/skill tools and 10
-ACPX tools: **102 root stdio MCP tools total in v1.87.0 (103 on `main`)**. The server discovers agents
+ACPX tools: **103 root stdio MCP tools total in v1.88.0 (102 in v1.87.0)**. The server discovers agents
 dynamically; these counts are a verified snapshot, not a hardcoded limit.
 
 ## Files
@@ -120,7 +120,7 @@ This returns a JSON catalogue inside the agent's `response_body`, `status: liste
 
 PDF compilation needs an installed engine (MiKTeX recommended). Other controls are `subtitle`, `style_decoration` and six-digit `predominant_color`. Send complex LaTeX as `content_b64` / `input_text_b64`; a valid base64 field takes precedence over its plain counterpart. Styles apply to generated source and bare fragments, not existing complete sources/projects. Canonical design fields are `style`, `style_family`, `style_mode`, `style_count`; operation success still comes from `status`/`success`. See the [style guide](Tlamatini/agent/agents/latexer/STYLES.md).
 
-### Terminater: a visible terminal (on `main`, not yet released)
+### Terminater: a visible terminal (new in v1.88.0)
 
 The connector exposes the `terminater` agent (typically `mcp__tlamatini__terminater`); the running chat calls the same agent as `chat_agent_terminater`. It types a command into a real CMD / PowerShell terminal that the user watches in Tlamatini's **Terminals** area (see [docs/terminater.md](docs/terminater.md)).
 

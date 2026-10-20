@@ -8,9 +8,9 @@
 -->
 # Tlamatini — Exec Report (Per-Agent Execution Tables on the Final Answer)
 
-> Current release: **[v1.87.0](../changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.88.0](../changes/2026-10-20-v1.88.0.md)**. Dated records below retain their original evidence dates.
 
-> **On `main`, unreleased (after v1.87.0):** [Terminater](../terminater.md) (workflow agent #86 and the Terminals area) and a private release that carries the builder's own data. Counts there: 86 workflow agents, 67 wrapped chat agents, 109 built-in tools, 217 migrations. See the change records [Terminater](../changes/2026-10-19-terminater.md) and [private-release data](../changes/2026-10-19-private-release-data.md).
+> **New in v1.88.0 (tagged 2026-10-20):** [Terminater](../terminater.md) (workflow agent #86 and the Terminals area) and a private release that carries the builder's own data. Counts: 86 workflow agents, 67 wrapped chat agents, 109 built-in tools, 217 migrations. See the [v1.88.0 release record](../changes/2026-10-20-v1.88.0.md) and the change records [Terminater](../changes/2026-10-19-terminater.md) and [private-release data](../changes/2026-10-19-private-release-data.md).
 
 
 > **HEADLESS IS FORBIDDEN. ALL EXECUTION MUST BE VISIBLE.** Every automated test, command, diagnostic, script, build, agent, prompt and browser must run in a visible, forked foreground window on Angela's real desktop. Use visible CMD/PowerShell consoles and headed browsers (`headless=False`); keep output on screen and monitor live. No hidden/background execution, including CI or quick checks. If visibility cannot be confirmed, do not run. Mandatory policy: [visible execution](../../TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).

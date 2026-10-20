@@ -7,7 +7,7 @@ metadata:
   originSessionId: b00b2424-75f3-4d5e-a470-90bfb886bb53
   modified: 2026-08-05T06:35:49.469Z
 ---
-> Current release: **[v1.87.0](../../docs/changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.88.0](../../docs/changes/2026-10-20-v1.88.0.md)**. Dated records below retain their original evidence dates.
 
 
 

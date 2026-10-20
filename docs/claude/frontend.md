@@ -8,15 +8,15 @@
 -->
 # Tlamatini — Frontend Architecture
 
-> Current release: **[v1.87.0](../changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.88.0](../changes/2026-10-20-v1.88.0.md)**. Dated records below retain their original evidence dates.
 
-> **On `main`, unreleased (after v1.87.0):** [Terminater](../terminater.md) (workflow agent #86 and the Terminals area) and a private release that carries the builder's own data. Counts there: 86 workflow agents, 67 wrapped chat agents, 109 built-in tools, 217 migrations. See the change records [Terminater](../changes/2026-10-19-terminater.md) and [private-release data](../changes/2026-10-19-private-release-data.md).
+> **New in v1.88.0 (tagged 2026-10-20):** [Terminater](../terminater.md) (workflow agent #86 and the Terminals area) and a private release that carries the builder's own data. Counts: 86 workflow agents, 67 wrapped chat agents, 109 built-in tools, 217 migrations. See the [v1.88.0 release record](../changes/2026-10-20-v1.88.0.md) and the change records [Terminater](../changes/2026-10-19-terminater.md) and [private-release data](../changes/2026-10-19-private-release-data.md).
 
 
-## v1.87.0 — Leaner catalog, safer removal, smaller release
+## v1.87.0 — Leaner catalog, safer removal, smaller release (carried)
 
-The latest released version is **v1.87.0** (tagged 2026-10-18; it also carries
-v1.86.0, tagged 2026-10-17). The catalog is **85 workflow agents, 66 wrapped
+**v1.87.0** (tagged 2026-10-18; it also carries
+v1.86.0, tagged 2026-10-17) came before v1.88.0. Its catalog was **85 workflow agents, 66 wrapped
 chat agents and 108 built-in tools**: Gatewayer, Gateway-Relayer, Node-Manager
 and Zavuerer were removed, and migration **0214** deletes their rows and the
 Zavuerer prompts without renumbering. Removal moves application entries into a
@@ -376,7 +376,7 @@ If you add a new canvas-level feature (layout grid, minimap, overlay HUD, etc.),
 - `flow-canvas-interactions.js` - Canvas mechanics SHARED by the Agentic Control Panel and the Prompt Flow Panel (with `flow_canvas.css`): triangle highlighting, connection capture/cancellation, curve geometry, wire hover/selection glow, Fit/zoom, context-menu placement and divider gestures. See *Prompt Flow Panel* below
 - `ui_splitters.js` - **One gesture model for all five pane dividers** (2026-10-11, shipped in `v1.80.0`): pointer capture, Escape / blur / pointer-cancel / lost-capture cleanup and the shared active/focus state for the chat ↔ canvas seam, the composer seam, the ACP and Prompt Flow sidebars and the Prompt Run-output seam. Each layout adapter keeps its own bounds, clamping and storage, and `FlowCanvasInteractions.bindDivider` delegates to it. Loaded on all three workspaces with `ui_tokens.css` / `ui_shell.css` / `ui_splitters.css` (keep `dialog_theme.css` last). Record: `docs/changes/2026-10-11-ui-sweep.md`
 
-## Terminals area — `terminater_dock.js` (1 module, 2026-10-19, on `main`, unreleased)
+## Terminals area — `terminater_dock.js` (1 module, 2026-10-19, shipped in `v1.88.0`)
 
 One self-contained module mounted by three pages through `data-tlm-terminals-host="chat|acp|pfp"`; any
 element with `data-tlm-terminals-toggle` becomes the **Terminals** check item (chat: **Views ▸ Terminals**;
@@ -434,7 +434,7 @@ Both surfaces share `agent/services/flow_spec.py` (the in-memory `FlowSpec` repr
 
 ## Prompt Flow Panel — 2026-09-25 (first drafted 2026-09-23 as the "Prompting Flow Designer")
 
-`agent/templates/agent/prompt_flow_panel.html` is a separate, login-protected diagram editor at **`/agent/prompt_flow_panel/`** (view `views.prompt_flow_panel`, URL name `prompt_flow_panel`), opened from **Panels ▸ Prompt Flow Panel** in the chat navbar and **File ▸ Prompt Flow Panel** in the Agentic Control Panel (both in a new tab). It reuses the ACP page skeleton and CSS (`agentic_control_panel.css` then `prompt_flow_panel.css`, with `dialog_theme.css` LAST) plus the shared `dialog_policy.js`, and its body class `pmt-panel` scopes every rule. The Operations bar holds nine assets — Prompt, Programmed Prompt, Decision, Feed embeddings, Flush embeddings, Clean History, User Input, Terminater (on `main`, unreleased), static User Commentary — and diagrams are saved as versioned JSON **`.fpmt`** files (`format: "tlamatini-prompting-flow"`, `version: 2` (version 1 imports migrate executable commentary to User Input)).
+`agent/templates/agent/prompt_flow_panel.html` is a separate, login-protected diagram editor at **`/agent/prompt_flow_panel/`** (view `views.prompt_flow_panel`, URL name `prompt_flow_panel`), opened from **Panels ▸ Prompt Flow Panel** in the chat navbar and **File ▸ Prompt Flow Panel** in the Agentic Control Panel (both in a new tab). It reuses the ACP page skeleton and CSS (`agentic_control_panel.css` then `prompt_flow_panel.css`, with `dialog_theme.css` LAST) plus the shared `dialog_policy.js`, and its body class `pmt-panel` scopes every rule. The Operations bar holds nine assets — Prompt, Programmed Prompt, Decision, Feed embeddings, Flush embeddings, Clean History, User Input, Terminater (shipped in `v1.88.0`), static User Commentary — and diagrams are saved as versioned JSON **`.fpmt`** files (`format: "tlamatini-prompting-flow"`, `version: 2` (version 1 imports migrate executable commentary to User Input)).
 
 **Commentary layout (2026-10-04):** Add independent **User Commentary** bubbles within the 500-asset limit. Double-click a bubble or press Enter to write directly inside it. Select a word or passage, then use the **floating mini toolbar** to choose its font, text size, text color, bold, italic or underline. One note can mix styles: an Arial italic sentence, a large Verdana heading and a Georgia paragraph. With no text selected, a formatting choice sets the style for the next text you type. When the note is selected outside editing, formatting applies to the entire note. The color swatches change the bubble; the underlined **A** opens text colors. Alignment applies to the whole note. Drag **any border or corner** to reshape the bubble; the handles also respond to arrow keys (Shift moves farther). Resizing works while writing. **Fit text** removes spare height. There are no numeric dimension fields or commentary configuration dialogs. **Edit comment** in the main toolbar or context menu starts the same inline editor. **Done** or Ctrl+Enter saves the complete edit; **Cancel** or Escape restores its original text, styles, size and position. Ctrl+Z/Y undoes/redoes changes while writing. Completed edits, moving, resizing, copying and deletion also support flow Undo/Redo. Bubbles grow to contain every wrapped line at the chosen width and mixed fonts, without internal scrollbars. The chosen height is a minimum. Text stays literal, including `<script>` and `{{last_output}}`. Notes have no ports or Start status and never enter model context, history or playback steps. Notes save/open and recover with the diagram. The palettes offer eight bubble colors and eight text colors; fonts are Nunito, Arial, Verdana, Georgia, Times New Roman and Courier New. Text sizes range from 10 to 48, with named choices from Fine through Display. Each note holds up to 100,000 characters and 10,000 formatted runs. Internal geometry limits are width 200–2,400 and minimum height 128–2,400; automatic containment can grow taller. A notes-only diagram can be saved; Play requires an executable operation.
 

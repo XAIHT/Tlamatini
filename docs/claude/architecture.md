@@ -8,15 +8,15 @@
 -->
 # Tlamatini — Architecture & Core Systems
 
-> Current release: **[v1.87.0](../changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.88.0](../changes/2026-10-20-v1.88.0.md)**. Dated records below retain their original evidence dates.
 
-> **On `main`, unreleased (after v1.87.0):** [Terminater](../terminater.md) (workflow agent #86 and the Terminals area) and a private release that carries the builder's own data. Counts there: 86 workflow agents, 67 wrapped chat agents, 109 built-in tools, 217 migrations. See the change records [Terminater](../changes/2026-10-19-terminater.md) and [private-release data](../changes/2026-10-19-private-release-data.md).
+> **New in v1.88.0 (tagged 2026-10-20):** [Terminater](../terminater.md) (workflow agent #86 and the Terminals area) and a private release that carries the builder's own data. Counts: 86 workflow agents, 67 wrapped chat agents, 109 built-in tools, 217 migrations. See the [v1.88.0 release record](../changes/2026-10-20-v1.88.0.md) and the change records [Terminater](../changes/2026-10-19-terminater.md) and [private-release data](../changes/2026-10-19-private-release-data.md).
 
 
-## v1.87.0 — Leaner catalog, safer removal, smaller release
+## v1.87.0 — Leaner catalog, safer removal, smaller release (carried)
 
-The latest released version is **v1.87.0** (tagged 2026-10-18; it also carries
-v1.86.0, tagged 2026-10-17). The catalog is **85 workflow agents, 66 wrapped
+**v1.87.0** (tagged 2026-10-18; it also carries
+v1.86.0, tagged 2026-10-17) came before v1.88.0. Its catalog was **85 workflow agents, 66 wrapped
 chat agents and 108 built-in tools**: Gatewayer, Gateway-Relayer, Node-Manager
 and Zavuerer were removed, and migration **0214** deletes their rows and the
 Zavuerer prompts without renumbering. Removal moves application entries into a
@@ -63,7 +63,7 @@ See [the release implementation and evidence matrix](../changes/2026-10-16-v1.85
 
 > **Developer/product boundary (Angela, 2026-09-27):** these visibility requirements govern development and verification. They must not create extra windows, steal focus or expose internal diagnostics in the shipped UX. Direct chat dictation keeps status in chat and uses only Tlamatini's main console/log.
 
-## Terminater — the hub, the WebSocket and the loopback API (2026-10-19, on `main`, unreleased)
+## Terminater — the hub, the WebSocket and the loopback API (2026-10-19, shipped in `v1.88.0`)
 
 Terminater (workflow agent #86, `chat_agent_terminater`) drives real `cmd.exe` / PowerShell terminals the
 user watches. The full contract is [docs/terminater.md](../terminater.md); the architecture in one table:

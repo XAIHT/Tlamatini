@@ -8,9 +8,9 @@
 -->
 # Tlamatini — Recent Fixes / Gotchas (archived fix log)
 
-> Current release: **[v1.87.0](../changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.88.0](../changes/2026-10-20-v1.88.0.md)**. Dated records below retain their original evidence dates.
 
-> **On `main`, unreleased (after v1.87.0):** [Terminater](../terminater.md) (workflow agent #86 and the Terminals area) and a private release that carries the builder's own data. Counts there: 86 workflow agents, 67 wrapped chat agents, 109 built-in tools, 217 migrations. See the change records [Terminater](../changes/2026-10-19-terminater.md) and [private-release data](../changes/2026-10-19-private-release-data.md).
+> **New in v1.88.0 (tagged 2026-10-20):** [Terminater](../terminater.md) (workflow agent #86 and the Terminals area) and a private release that carries the builder's own data. Counts: 86 workflow agents, 67 wrapped chat agents, 109 built-in tools, 217 migrations. See the [v1.88.0 release record](../changes/2026-10-20-v1.88.0.md) and the change records [Terminater](../changes/2026-10-19-terminater.md) and [private-release data](../changes/2026-10-19-private-release-data.md).
 
 
 > **This file is NOT auto-imported into the AI-assistant context** (unlike the rest of `docs/claude/*.md`). It is the chronological log of surgical fixes and "keep this in mind / do NOT revert" contracts that used to live at the bottom of `gotchas.md`. It was split out so the always-loaded onboarding stays lean — see the "Archive the fix-log" decision recorded in `docs/claude/INDEX.md`.
@@ -21,7 +21,29 @@
 
 ---
 
-## 2026-10-19 — Terminater: visible terminals, and the contracts that keep them honest (on `main`, unreleased)
+## 2026-10-20 — v1.88.0: the version bump, and the places it has to reach
+
+Records: [the v1.88.0 release record](../changes/2026-10-20-v1.88.0.md). The runtime needs no edit (the base tag
+`v1.88.0` is what `agent/version.py::get_version()` reports); the hand-edited surfaces are what drift.
+**Do NOT forget on the next bump:**
+
+1. **The tag can sit one commit before the work it names** (`v1.88.0` is `83e0cbe6`, the work is `6e129563`; same shape as
+   `v1.76.0`, `v1.78.0`, `v1.87.0`). Say so in the docs instead of "tagged at the work". A pushed tag is never moved, and
+   `git ls-remote --tags origin` tells whether the tag is pushed at all (v1.88.0 was not, when this entry was written).
+2. **The `Current release` banner is on every Markdown file** (221 files) and is replaced by a byte-safe regex, never by an
+   editor that rewrites line endings. Check `git diff --numstat`: every banner file must show `1+ 1-`.
+3. **Surfaces past passes missed:** `package.json` `"version"`, the `views.py` docstring of `/agent/version/`, the README
+   badge (`VERSION-v…`) plus its two anchors (`#newest-changes--v1880`, `#current-version--v1880`, and the Terminals
+   anchor when its heading changes), `BookOfTlamatini.md` (install paragraph, `git tag`/`git push` example, changelog),
+   `VERSIONING.md` Step 3/4, the self-knowledge `TLAMATINI_VERSION:` line (and its fallback and "current released
+   version" sentences), `TLAMATINI_MCP.md` counts, `dossier_content.py` (the current-release section) and
+   `scripts/architecture_atlas/gen_architecture.py` (the record link it quotes).
+4. **"On `main`, unreleased" wording is state, and it expires.** Every phrase that said so for Terminater now says
+   "shipped in `v1.88.0`"; the older v1.87.0 blocks are marked "(carried)".
+5. **Regenerate after the edits:** the atlas, then the dossier PDF and deck with `TLAMATINI_RELEASE_TAG=v1.88.0`, then put the
+   new line counts into `Tlamatini.md`, and confirm "Dossier verification PASSED".
+
+## 2026-10-19 — Terminater: visible terminals, and the contracts that keep them honest (shipped in `v1.88.0`)
 
 Records: [docs/terminater.md](../terminater.md) and [the change record](../changes/2026-10-19-terminater.md).
 **Do NOT revert / keep these surfaces aligned:**
@@ -51,7 +73,7 @@ Evidence is dated 2026-10-19 in the change record: 774 unit tests OK (627 Termin
 probe of 30 checks with 0 failures, Prompt Flow Panel suite 514/514, Agentic Control Panel hand-over flow 33/33. The
 chat-page and canvas suites were **not** re-run as one clean pass after their last fixes.
 
-## 2026-10-19 — The private release carries the builder's data (on `main`, unreleased)
+## 2026-10-19 — The private release carries the builder's data (shipped in `v1.88.0`)
 
 Record: [private-release data](../changes/2026-10-19-private-release-data.md). `build_complete_private_release.py`
 now rebuilds `external_mcps.private.json` (dev catalog + the servers of the running install, the dev spec winning,

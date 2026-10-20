@@ -1588,7 +1588,7 @@ class MultiTurnToolAgentExecutor:
         """``(wire_bytes, prompt_chars)`` of the bound tool surface.
 
         These are sent with EVERY request and are the largest part of the
-        static prefix — with 108 tools bound they dwarf the conversation — yet
+        static prefix — with 109 tools bound they dwarf the conversation — yet
         they live nowhere in ``messages``, so a measurement that ignored them
         would under-report the wire size badly. Computed once per request and
         cached: the tool list cannot change inside one run.
@@ -3119,7 +3119,7 @@ class CapabilityAwareToolAgentExecutor:
         The unified agent is normally cached for speed, but External MCP tools
         are live capabilities: they can appear after Roblox Studio, Docker, npx,
         or another backend finishes connecting. Reconcile just that slice of the
-        tool surface per request so the 85-agent planner sees reality.
+        tool surface per request so the 86-agent planner sees reality.
         """
         try:
             from .external_mcp_manager import get_external_mcp_tools

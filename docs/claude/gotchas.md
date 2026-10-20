@@ -8,15 +8,15 @@
 -->
 # Tlamatini — Gotchas, Build/Lint, Roadmap, Work Style
 
-> Current release: **[v1.87.0](../changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.88.0](../changes/2026-10-20-v1.88.0.md)**. Dated records below retain their original evidence dates.
 
-> **On `main`, unreleased (after v1.87.0):** [Terminater](../terminater.md) (workflow agent #86 and the Terminals area) and a private release that carries the builder's own data. Counts there: 86 workflow agents, 67 wrapped chat agents, 109 built-in tools, 217 migrations. See the change records [Terminater](../changes/2026-10-19-terminater.md) and [private-release data](../changes/2026-10-19-private-release-data.md).
+> **New in v1.88.0 (tagged 2026-10-20):** [Terminater](../terminater.md) (workflow agent #86 and the Terminals area) and a private release that carries the builder's own data. Counts: 86 workflow agents, 67 wrapped chat agents, 109 built-in tools, 217 migrations. See the [v1.88.0 release record](../changes/2026-10-20-v1.88.0.md) and the change records [Terminater](../changes/2026-10-19-terminater.md) and [private-release data](../changes/2026-10-19-private-release-data.md).
 
 
-## v1.87.0 — Leaner catalog, safer removal, smaller release
+## v1.87.0 — Leaner catalog, safer removal, smaller release (carried)
 
-The latest released version is **v1.87.0** (tagged 2026-10-18; it also carries
-v1.86.0, tagged 2026-10-17). The catalog is **85 workflow agents, 66 wrapped
+**v1.87.0** (tagged 2026-10-18; it also carries
+v1.86.0, tagged 2026-10-17) came before v1.88.0. Its catalog was **85 workflow agents, 66 wrapped
 chat agents and 108 built-in tools**: Gatewayer, Gateway-Relayer, Node-Manager
 and Zavuerer were removed, and migration **0214** deletes their rows and the
 Zavuerer prompts without renumbering. Removal moves application entries into a

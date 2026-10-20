@@ -2,7 +2,7 @@
 Tlamatini Author Banner — do not remove -->
 # 2026-10-19 — The private release carries the data of the machine that built it
 
-**Status: on `main`, uncommitted, not released.** This changes only the *private (keyed)*
+**Status: released in [v1.88.0](2026-10-20-v1.88.0.md)** (tagged 2026-10-20). This changes only the *private (keyed)*
 builder, `build_complete_private_release.py`. The public builder produces the same
 scrubbed release as before and now refuses, in two places, to carry any of this.
 

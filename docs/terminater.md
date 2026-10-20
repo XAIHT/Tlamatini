@@ -1,10 +1,9 @@
 <!-- Tlamatini Author Banner — Angela López Mendoza -->
 # Terminater — visible, user-supervised terminals
 
-> **Status: on `main`, not yet released.** The latest released version is
-> **[v1.87.0](changes/2026-10-18-v1.87.0.md)**; Terminater is work done after it
-> (see [the change record](changes/2026-10-19-terminater.md)). Dated evidence
-> below keeps its original date.
+> **Status: released in [v1.88.0](changes/2026-10-20-v1.88.0.md)** (tagged 2026-10-20),
+> the latest released version. See [the change record](changes/2026-10-19-terminater.md).
+> Dated evidence below keeps its original date.
 
 Terminater is the 86th workflow agent and the first one whose result you can
 *watch*. **Executer** runs a command and hands back text. **Terminater** raises a

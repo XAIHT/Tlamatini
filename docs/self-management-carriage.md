@@ -1,6 +1,6 @@
 # Self-modify and self-update carriage review
 
-> Current release: **[v1.87.0](changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.88.0](changes/2026-10-20-v1.88.0.md)**. Dated records below retain their original evidence dates.
 
 
 ## Main-chat Views carriage (v1.85.0, 2026-10-16)
@@ -188,7 +188,7 @@ was published the same day. `v1.78.0` (annotated tag at `0e6fc72d`, 2026-10-10;
 migration 0213 `UsageDaily` landed one commit later in `7460a147`) was published
 on 2026-10-10. `v1.82.0` (annotated tag at `880a335e`, 2026-10-12) was published on
 2026-10-12, and `v1.83.0` (annotated tag at `a2914019`, 2026-10-14) on 2026-10-14; the
-latest released version is now **v1.87.0** (2026-10-18), which adds migration 0214. The others do not add
+latest released version is now **v1.88.0** (2026-10-20), which adds migrations 0215-0217 (v1.87.0 added 0214). The others do not add
 a migration, and 0213 reaches existing installs through the post-update `migrate` like
 every migration.
 
@@ -467,7 +467,7 @@ and before/after measurements must use the same mode and source baseline, in a
 verified visible development console; static analysis alone is not release
 acceptance.
 
-## Terminater and private-release carriage (2026-10-19, on `main`, unreleased)
+## Terminater and private-release carriage (2026-10-19, shipped in `v1.88.0`)
 
 **Terminater needs no new dependency and no new carried package.** The engine is standard-library only, the
 hub, consumer and loopback views run in the frozen web process, and the pool agent runs under the carried

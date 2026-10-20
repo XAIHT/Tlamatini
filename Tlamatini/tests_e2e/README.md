@@ -1,6 +1,6 @@
 # tests_e2e — visible (headed) Playwright end-to-end suites
 
-> Current release: **[v1.87.0](../../docs/changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.88.0](../../docs/changes/2026-10-20-v1.88.0.md)**. Dated records below retain their original evidence dates.
 
 
 These drive a **real, visible Chromium** against a **running** Tlamatini server

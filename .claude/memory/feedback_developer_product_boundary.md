@@ -1,6 +1,6 @@
 # Developer workflow is not product UX
 
-> Current release: **[v1.87.0](../../docs/changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.88.0](../../docs/changes/2026-10-20-v1.88.0.md)**. Dated records below retain their original evidence dates.
 
 
 Angela clarified this on 2026-09-27: she is the developer using this machine;

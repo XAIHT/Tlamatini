@@ -12,7 +12,7 @@ originSessionId: f7480c2f-defb-4ab7-86cc-1d5a60ff9c71
   Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
 ═══════════════════════════════════════════════════════════════════
 -->
-> Current release: **[v1.87.0](../../docs/changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.88.0](../../docs/changes/2026-10-20-v1.88.0.md)**. Dated records below retain their original evidence dates.
 
 
 2026-05-07: Added `chat_agent_mouser` so Multi-Turn can move the pointer and click — needed to focus a target window (e.g. Notepad) before chat_agent_keyboarder types into it.

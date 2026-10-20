@@ -370,7 +370,7 @@ class AgentBundlingCompletenessTests(SimpleTestCase):
                          "build.py must copy the agents/ pool tree into the install")
 
     def test_have_a_full_agent_catalog(self):
-        # Sanity floor (85 agents ship today); never let the catalog silently collapse.
+        # Sanity floor (86 agents ship today); never let the catalog silently collapse.
         self.assertGreaterEqual(len(self.agent_dirs), 60,
                                 f"only {len(self.agent_dirs)} agent dirs found")
 

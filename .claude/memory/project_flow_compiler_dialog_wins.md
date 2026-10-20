@@ -12,7 +12,7 @@ originSessionId: 5b46eeaf-e53d-4b54-86fc-dc587a138e19
   Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
 ═══════════════════════════════════════════════════════════════════
 -->
-> Current release: **[v1.87.0](../../docs/changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.88.0](../../docs/changes/2026-10-20-v1.88.0.md)**. Dated records below retain their original evidence dates.
 
 
 `Tlamatini/agent/services/flow_compiler.py::_compiled_configs` no longer clears connection fields before re-deriving them from canvas wires. As of 2026-05-09, dialog edits to `source_agents` / `target_agents` / `output_agents` / singleton fields (`source_agent`, `target_agent`, `source_agent_1/2`) always win.

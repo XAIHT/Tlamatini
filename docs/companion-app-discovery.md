@@ -7,7 +7,7 @@
 -->
 # Tlamatini — Companion-App Discovery Contract
 
-> Current release: **[v1.87.0](changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.88.0](changes/2026-10-20-v1.88.0.md)**. Dated records below retain their original evidence dates.
 
 
 A stable lookup surface that lets XAIHT **companion apps** (e.g. **Tlamatini-FlowPills**)

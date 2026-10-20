@@ -2,8 +2,8 @@
 Tlamatini Author Banner — do not remove -->
 # 2026-10-19 — Terminater: visible, user-supervised terminals
 
-**Status: on `main`, uncommitted, not released.** The latest released version is
-[v1.87.0](2026-10-18-v1.87.0.md). This record covers the work done after it:
+**Status: released in [v1.88.0](2026-10-20-v1.88.0.md)** (tagged 2026-10-20), the latest
+released version. This record covers the work done after [v1.87.0](2026-10-18-v1.87.0.md):
 the 86th workflow agent, the **Terminals** area on three pages, the 8th Prompt Flow
 Panel operation and the build gate that proves it works in a frozen app. The
 design and every operating rule are in [docs/terminater.md](../terminater.md).
@@ -34,7 +34,7 @@ detected and can be aborted; the terminals outlive any page and die with Tlamati
 | Documentation | `docs/terminater.md` (new), `agents_descriptions.md`, FlowCreator's `agentic_skill.md`, FlowHypervisor's `monitoring-prompt.pmt`, `docs/agent-coverage.md` (generated), the assistant guides | |
 | Tests | six `test_terminater_*.py` modules (627 tests), `terminater_testkit.py`, six `scripts/terminater_visible_*.py` (about 2,400 lines) | |
 
-Counts on `main` after this work: **86 workflow agents, 67 wrapped chat agents, 109
+Counts in v1.88.0: **86 workflow agents, 67 wrapped chat agents, 109
 built-in tools, 51 structured-output producers, 217 migrations, 60 JS modules, 27
 stylesheets.** The live static suffix is
 `-agent-catalog-1-quality-cleanup-1-usage-status-2-terminater-1`.
@@ -86,8 +86,8 @@ attempt was polluted by another window). No installer build was made. PowerPoint
 native check of the dossier deck **did not run**: starting `PowerPoint.Application`
 through COM failed twice with *Server execution failed* in that session, so only the
 structural check of the deck (python-pptx geometry) backs it. To make the generators see
-the new files, the 34 untracked ones were recorded with `git add -N` (intent to add);
-nothing was staged with content and nothing was committed.
+the new files, the 34 untracked ones were recorded with `git add -N` (intent to add)
+while the pass ran; the whole work was committed afterwards as `6e129563`.
 
 ## For the next person
 

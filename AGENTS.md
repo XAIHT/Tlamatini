@@ -6,18 +6,18 @@ Tlamatini Author Banner — do not remove
 
 # Tlamatini instructions for Codex and every coding agent
 
-> Current release: **[v1.87.0](docs/changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.88.0](docs/changes/2026-10-20-v1.88.0.md)**. Dated records below retain their original evidence dates.
 
 
-## On `main` after v1.87.0 — Terminater and the private release's data (unreleased)
+## v1.88.0 — Terminater and the private release's data
 
-> **Not released.** The latest *released* version is still **v1.87.0**; the sections
-> below and every dated record keep that release's numbers. This work sits on `main`
-> after it (`git describe` reports `v1.87.0-3-g…` plus uncommitted changes). Records:
+> **Released as v1.88.0** (tagged 2026-10-20). The v1.88.0 tag points to `83e0cbe6`;
+> this work landed on `main` in `6e129563` right after it, so a build of `main`
+> reports `1.88.0` and carries it. Records: [v1.88.0](docs/changes/2026-10-20-v1.88.0.md),
 > [Terminater](docs/changes/2026-10-19-terminater.md) and
 > [the private release's data](docs/changes/2026-10-19-private-release-data.md).
 
-**Counts on `main` now:** **86 workflow agents, 67 wrapped chat agents, 109 built-in
+**Counts in v1.88.0:** **86 workflow agents, 67 wrapped chat agents, 109 built-in
 tools** (20 + 67 + 12 + 10), 51 structured-output producers, **217 migrations**
 (0215-0217), 60 JS modules, 27 stylesheets. The live static suffix is
 `-agent-catalog-1-quality-cleanup-1-usage-status-2-terminater-1`.
@@ -70,10 +70,10 @@ excluded from the self-modify snapshot. Not solved: an in-app update does not pr
 `data.keys`, and two entries (`OPENROUTER_API_KEY`, `DASHSCOPE_API_KEY`) have no
 consumer other than the vault itself.
 
-## v1.87.0 — Leaner catalog, safer removal, smaller release
+## v1.87.0 — Leaner catalog, safer removal, smaller release (carried)
 
-The latest released version is **v1.87.0** (tagged 2026-10-18; it also carries
-v1.86.0, tagged 2026-10-17). The catalog is **85 workflow agents, 66 wrapped
+**v1.87.0** (tagged 2026-10-18; it also carries
+v1.86.0, tagged 2026-10-17) came before v1.88.0. Its catalog was **85 workflow agents, 66 wrapped
 chat agents and 108 built-in tools**: Gatewayer, Gateway-Relayer, Node-Manager
 and Zavuerer were removed, and migration **0214** deletes their rows and the
 Zavuerer prompts without renumbering. Removal moves application entries into a
@@ -246,7 +246,7 @@ Contract: [CLAUDE.md](CLAUDE.md) → *Self-modify*,
 for every page: each dropped file is recognised by its bytes and sent to its own mechanism, so an MCP
 .json imports everywhere and never errors, opens as text or navigates away."* It was published on GitHub
 on 2026-10-14 ("Tlamatini Release v1.83.0 Win11x64", marked Latest), so self-update delivered `v1.83.0` then;
-that historical runtime version was `1.83.0`. The current release is `v1.87.0`. `v1.83.0` carried everything in `v1.82.0` plus the three
+that historical runtime version was `1.83.0`. The current release is `v1.88.0`. `v1.83.0` carried everything in `v1.82.0` plus the three
 changes below. `v1.83.0` added no migration after 0213 (0214 arrived in v1.87.0); the frontend has 60 JS modules and 26
 stylesheets, and the live `STATIC_VERSION` cache suffix is now `-agent-catalog-1-quality-cleanup-1-usage-status-2`.
 

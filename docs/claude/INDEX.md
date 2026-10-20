@@ -8,14 +8,16 @@
 -->
 # docs/claude/ — Tlamatini AI-Assistant Docs Index
 
-> Current release: **[v1.87.0](../changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.88.0](../changes/2026-10-20-v1.88.0.md)**. Dated records below retain their original evidence dates.
 
-> **On `main`, unreleased (after v1.87.0):** [Terminater](../terminater.md) (workflow agent #86 and the Terminals area) and a private release that carries the builder's own data. Counts there: 86 workflow agents, 67 wrapped chat agents, 109 built-in tools, 217 migrations. See the change records [Terminater](../changes/2026-10-19-terminater.md) and [private-release data](../changes/2026-10-19-private-release-data.md).
+> **New in v1.88.0 (tagged 2026-10-20):** [Terminater](../terminater.md) (workflow agent #86 and the Terminals area) and a private release that carries the builder's own data. Counts: 86 workflow agents, 67 wrapped chat agents, 109 built-in tools, 217 migrations. See the [v1.88.0 release record](../changes/2026-10-20-v1.88.0.md) and the change records [Terminater](../changes/2026-10-19-terminater.md) and [private-release data](../changes/2026-10-19-private-release-data.md).
 
 
+- **[v1.88.0 release record](../changes/2026-10-20-v1.88.0.md)** — Terminater, the Terminals area, the data-bearing private release, release facts (tag `83e0cbe6`, work in `6e129563`), counts and evidence.
+- **[v1.87.0 release record](../changes/2026-10-18-v1.87.0.md)** — the 85-agent catalog, the recoverable Uninstaller, the smaller payload.
 - **[v1.85.0 release record](../changes/2026-10-16-v1.85.0.md)** — Refresh, Views/Reset, centered avatar, implementation matrix, current counts and dated evidence.
 - **[Canvas Refresh](../canvas-refresh.md)** — original-source rereading, state feedback, Markdown/PDF preservation, cancellation and visible verification.
-- **[Terminater](../terminater.md)** — visible, user-supervised terminals (workflow agent #86, `chat_agent_terminater`, the Terminals area on three pages, the 8th Prompt Flow Panel operation): typing rules, actions, hub/WebSocket/loopback API, verdict words, carriage, the `check_terminater` build gate. *On `main`, unreleased.*
+- **[Terminater](../terminater.md)** — visible, user-supervised terminals (workflow agent #86, `chat_agent_terminater`, the Terminals area on three pages, the 8th Prompt Flow Panel operation): typing rules, actions, hub/WebSocket/loopback API, verdict words, carriage, the `check_terminater` build gate. *New in v1.88.0.*
 - **[2026-10-19 Terminater record](../changes/2026-10-19-terminater.md)** and **[private-release data record](../changes/2026-10-19-private-release-data.md)** — what changed, defects found while validating, dated evidence and its limits; the private (keyed) release now carries every External MCP server of the install and the whole `data.keys`.
 
 

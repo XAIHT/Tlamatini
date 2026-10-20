@@ -1804,8 +1804,8 @@ def build_chapters(f: dict) -> list[Chapter]:
          f"Version {f['release_tag']}; the latest release published on GitHub is "
          f"{f['release']['latest_published'] or 'not verified'}."),
         accent="gold", sections=[
-        Section("onmain", "ON MAIN · NOT YET RELEASED", "Terminals you can watch, and a private release that carries your data",
-            f"The latest released version is still {f['release_tag']}. This finished work sits on main after it.",
+        Section("release188", "CURRENT RELEASE · v1.88.0", "Terminals you can watch, and a private release that carries your data",
+            "Tlamatini v1.88.0 is the latest released version, tagged on October 20.",
             body=[
                 f"Terminater is workflow agent number {f['agents']}. It raises real CMD and PowerShell terminals in a new "
                 "Terminals area (Views → Terminals, or Ctrl+`) on the chat, Agentic Control Panel and Prompt Flow Panel "
@@ -1818,8 +1818,10 @@ def build_chapters(f: dict) -> list[Chapter]:
                 f"the eighth Prompt Flow Panel operation, and has three safe cards in the Catalog of Prompts.",
                 "The build now proves it inside the frozen app: check_terminater drives a real PowerShell, a real cmd.exe, "
                 "the shipped pool agent under the carried Python and a WebSocket round trip, and packaging stops if it "
-                "fails. On October 19, 774 unit tests passed. The saved chat-page and canvas visible suites were not "
-                "re-run as one clean pass after their last fixes.",
+                "fails. On October 19, 774 unit tests passed, and 1,668 passed after the documentation pass. The saved "
+                "chat-page and canvas visible suites were not re-run as one clean pass after their last fixes.",
+                "The v1.88.0 tag was created on October 20 and points to the commit before this work; the work landed on "
+                "main in the next commit, so a build of main reports 1.88.0 and carries all of it.",
                 "The private (keyed) release now carries the data of the machine that builds it: every External MCP server "
                 "of the installed copy and its active choice, merged into a gitignored private catalog, and the whole "
                 "data.keys vault. The public builder refuses both. An in-app update does not keep data.keys.",
@@ -1830,8 +1832,8 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("Gate", "check_terminater runs inside the frozen app; packaging stops on failure."),
                 ("Private release", "External MCP servers and data.keys travel in the keyed build only."),
             ], deck="cards"),
-        Section("release187", "CURRENT RELEASE · v1.87.0", "A leaner catalog, a safer removal, a smaller release",
-            "Tlamatini v1.87.0 is the latest released version, tagged on October 18.",
+        Section("release187", "CARRIED FROM v1.87.0", "A leaner catalog, a safer removal, a smaller release",
+            "Tagged on October 18: the catalog shrank to 85 agents, and removal became fast and recoverable.",
             body=[
                 "The catalog now holds 85 workflow agents: Gatewayer, Gateway-Relayer, Node-Manager and "
                 "Zavuerer were removed. Migration 0214 deletes their rows and catalog prompts without "

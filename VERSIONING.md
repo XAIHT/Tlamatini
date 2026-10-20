@@ -8,7 +8,7 @@
 -->
 # Tlamatini — Versioning
 
-> Current release: **[v1.87.0](docs/changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.88.0](docs/changes/2026-10-20-v1.88.0.md)**. Dated records below retain their original evidence dates.
 
 
 This document is the **authoritative reference** for how Tlamatini is versioned. Read it once end-to-end before cutting your first release; after that, the [Cheat Sheet](#9-cheat-sheet) at the bottom is the only thing you need on screen.
@@ -156,10 +156,10 @@ git log --oneline (git describe --tags --abbrev=0)..HEAD
 
 ### Step 3 — Create the annotated tag
 
-The examples use the current released version **v1.87.0**. Its annotated tag already exists; do not recreate or move it. Use the next deliberate version for a future release. The v1.87.0 tag was created on 2026-10-18 and points to `2203b436`, the same commit as v1.86.0 (2026-10-17); the work it names landed right after it in `9a55f836` and `826c7c1a`. The v1.85.0 tag (2026-10-16) points to `5d1f0c76`; its Views and avatar changes followed it through `32a4a6d3`.
+The examples use the current released version **v1.88.0**. Its annotated tag already exists; do not recreate or move it. Use the next deliberate version for a future release. The v1.88.0 tag was created on 2026-10-20 and points to `83e0cbe6`, the consistency sweep over v1.87.0; the Terminater work it names landed right after it in `6e129563`. The v1.87.0 tag was created on 2026-10-18 and points to `2203b436`, the same commit as v1.86.0 (2026-10-17); the work it names landed right after it in `9a55f836` and `826c7c1a`. The v1.85.0 tag (2026-10-16) points to `5d1f0c76`; its Views and avatar changes followed it through `32a4a6d3`.
 
 ```powershell
-git tag -a v1.87.0 -m "Release 1.87.0: <one-line summary>"
+git tag -a v1.88.0 -m "Release 1.88.0: <one-line summary>"
 ```
 
 The `-a` flag makes it an **annotated** tag (carries a message + author + date). `--match 'v[0-9]*'` in the resolver is why the leading `v` is required.
@@ -167,7 +167,7 @@ The `-a` flag makes it an **annotated** tag (carries a message + author + date).
 ### Step 4 — Push the tag
 
 ```powershell
-git push origin v1.85.0
+git push origin v1.88.0
 # or push everything: git push --follow-tags
 ```
 
@@ -315,7 +315,7 @@ PICK A NUMBER         MAJOR.MINOR.PATCH per SemVer 2.0.0
                       ─ PATCH: backward-compat fix
 
 TAG IT                git tag -a v1.85.0 -m "Release 1.85.0"
-                      git push origin v1.85.0
+                      git push origin v1.88.0
 
 BUILD IT              python build.py
                       python build_uninstaller.py
@@ -373,10 +373,10 @@ same shape as `v1.76.0` and the Model Brain. The published v1.78.0 release
 byte-identical to the local build and its served files match that commit. The
 dated evidence and delivery contract are in [the Usage guide](docs/usage-dashboard.md).
 
-## v1.87.0 — Leaner catalog, safer removal, smaller release
+## v1.87.0 — Leaner catalog, safer removal, smaller release (carried)
 
-The latest released version is **v1.87.0** (tagged 2026-10-18; it also carries
-v1.86.0, tagged 2026-10-17). The catalog is **85 workflow agents, 66 wrapped
+**v1.87.0** (tagged 2026-10-18; it also carries
+v1.86.0, tagged 2026-10-17) came before v1.88.0. Its catalog was **85 workflow agents, 66 wrapped
 chat agents and 108 built-in tools**: Gatewayer, Gateway-Relayer, Node-Manager
 and Zavuerer were removed, and migration **0214** deletes their rows and the
 Zavuerer prompts without renumbering. Removal moves application entries into a

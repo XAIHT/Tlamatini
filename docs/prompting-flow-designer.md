@@ -4,7 +4,7 @@
 
 # Prompt Flow Panel
 
-> Current release: **[v1.87.0](changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.88.0](changes/2026-10-20-v1.88.0.md)**. Dated records below retain their original evidence dates.
 
 
 Open **Panels → Prompt Flow Panel** from chat, or **File → Prompt Flow Panel** from the Agentic Control Panel. The authenticated page is `/agent/prompt_flow_panel/`.

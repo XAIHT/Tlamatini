@@ -1,7 +1,7 @@
 <!-- Tlamatini Author Banner — Angela López Mendoza · @angelahack1 -->
 # Acceptance matrix
 
-> Current release: **[v1.87.0](../../../../docs/changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.88.0](../../../../docs/changes/2026-10-20-v1.88.0.md)**. Dated records below retain their original evidence dates.
 
 
 Apply this to the current build, using actual UI labels and endpoints found in
@@ -93,7 +93,7 @@ repository's tracked-skill inventory check.
 | A11 | Hidden canvas enforces docking; Reset restores panes and sizes without clearing content. |
 | A12 | Avatar and frame remain centered over Mic through Send at 120 px, both divider positions and browser zoom. |
 
-## Terminater (added after v1.87.0; observe it on the actual compiled artifacts)
+## Terminater (added in v1.88.0; observe it on the actual compiled artifacts)
 
 | ID | Required observation |
 | --- | --- |
