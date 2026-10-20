@@ -478,6 +478,15 @@ _FROZEN_PROMPT_FLOW_PANEL_MODULES = (
     "agent.management.commands.check_prompt_flow_panel",
 )
 
+# Terminater's hub, WebSocket consumer and loopback API run in the frozen web process. Its engine,
+# ConPTY and text modules are LOOSE files in the agents tree (loaded by path), not imports.
+_FROZEN_TERMINATER_MODULES = (
+    "agent.terminal_hub",
+    "agent.terminal_consumer",
+    "agent.terminal_views",
+    "agent.management.commands.check_terminater",
+)
+
 _FROZEN_REQUIRED_AGENT_MODULES = (
     "agent.usage_tracking", "agent.usage_provider", "agent.usage_views",
     "agent.chat_voice_consumer",
@@ -506,6 +515,7 @@ _FROZEN_REQUIRED_AGENT_MODULES = (
     "agent._version",              # SemVer resolver
     *_FROZEN_PDF_MODULES,          # PDF extraction + optional Image-Interpreter
     *_FROZEN_PROMPT_FLOW_PANEL_MODULES,
+    *_FROZEN_TERMINATER_MODULES,
 )
 
 
@@ -1481,6 +1491,7 @@ def main():
         # bundling the separate carried Python does not make them importable here.
         *(f'--hidden-import={module}' for module in _FROZEN_PDF_MODULES),
         *(f'--hidden-import={module}' for module in _FROZEN_PROMPT_FLOW_PANEL_MODULES),
+        *(f'--hidden-import={module}' for module in _FROZEN_TERMINATER_MODULES),
         # ── The agent.* modules NOTHING ELSE NAMES (Angela review, 2026-08-16) ──
         # Every one of these is reached only through a FAIL-OPEN import:
         #   external_mcp_manager.py  `try: from . import runtime_provisioner
@@ -1868,6 +1879,35 @@ def main():
               + (", ".join(sorted(external_mcps_doc.get("mcpServers", {}))) or "(none)")
               + f"  active: {external_mcps_doc.get('active') or '[]'}")
 
+        # ── Ship data.keys (the secrets vault) — PRIVATE / KEYED builds ONLY ────
+        # build_complete_private_release.py sets TLAMATINI_BUNDLE_DATA_KEYS so the
+        # keyed release carries EVERY entry of the maintainer's vault as
+        # <install>/data.keys -- the place the Access Keys Wizard reads it. Entries
+        # that regen_secrets.py also projects into config files arrive there too;
+        # the rest (keys no config file consumes) would otherwise be lost.
+        # The public builder CLEARS the variable, and a bare build never sets it.
+        # Only the entry COUNT is printed, never a name or a value.
+        _bundle_keys = (os.environ.get("TLAMATINI_BUNDLE_DATA_KEYS") or "").strip()
+        if _bundle_keys:
+            if _mcps_flavor == "PUBLIC":
+                raise SystemExit(
+                    "ABORT: TLAMATINI_BUNDLE_DATA_KEYS is set but the External-MCP catalog is the "
+                    "PUBLIC one. The secrets vault ships ONLY in a complete private (keyed) build "
+                    "-- run build_complete_private_release.py, or unset the variable."
+                )
+            if os.path.isfile(_bundle_keys):
+                _keys_dst = dist_manage / "data.keys"
+                shutil.copy2(_bundle_keys, _keys_dst)
+                _keys_entries = [
+                    _ln for _ln in _keys_dst.read_text(encoding="utf-8-sig", errors="replace").splitlines()
+                    if "=" in _ln and not _ln.lstrip().startswith("#")
+                ]
+                print(f"Bundling PRIVATE secrets vault -> {_keys_dst} "
+                      f"({len(_keys_entries)} entr(ies); values never printed) -- KEYED build.")
+            else:
+                print(f"WARNING: TLAMATINI_BUNDLE_DATA_KEYS points at a missing file ({_bundle_keys}); "
+                      f"data.keys NOT bundled.")
+
         # Copy from the verifier inventory so newly required helpers always ship.
         copy_root_sources(repo_root, dist_manage)
 
@@ -2087,6 +2127,13 @@ def main():
             res = run_cmd(["check_prompt_flow_panel"], timeout=60)
             if res.returncode != 0:
                 raise RuntimeError("Frozen prompt-flow-panel check failed; refusing to package the panel")
+
+            # Real PowerShell / cmd.exe terminals, the shipped pool agent under the carried Python and the
+            # browser WebSocket, all in the frozen layout: the engine is a LOOSE file loaded by path, so
+            # archive membership alone cannot prove it works.
+            res = run_cmd(["check_terminater"], timeout=300)
+            if res.returncode != 0:
+                raise RuntimeError("Frozen terminater check failed; refusing to package the terminals")
 
             # 8d) Rename executable manage -> Tlamatini
             try:

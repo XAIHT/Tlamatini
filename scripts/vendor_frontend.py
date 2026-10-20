@@ -41,6 +41,17 @@ PACKAGES = (
     ("nunito", "5.2.6", "https://registry.npmjs.org/@fontsource/nunito/-/nunito-5.2.6.tgz",
      "FjSPmzBFZ3za4w2USmCWrxDaZ1fTWowSpV9DXfs7Ll/150BI48epE6E69MtOx8GqOPimHNkVUkES22lqDw+bug==",
      ("400.css", "700.css", "files/*-400-normal.woff*", "files/*-700-normal.woff*", "LICENSE")),
+    # Terminater's terminal renderer: the same engine VS Code's integrated terminal uses.
+    # Source maps are deliberately NOT vendored (1+ MB each, and the release must stay small).
+    ("xterm", "5.5.0", "https://registry.npmjs.org/@xterm/xterm/-/xterm-5.5.0.tgz",
+     "hqJHYaQb5OptNunnyAnkHyM8aCjZ1MEIDTQu1iIbbTD/xops91NB5yq1ZK/dC2JDbVWtF23zUtl9JE2NqwT87A==",
+     ("lib/xterm.js", "css/xterm.css", "LICENSE")),
+    ("xterm-addon-fit", "0.10.0", "https://registry.npmjs.org/@xterm/addon-fit/-/addon-fit-0.10.0.tgz",
+     "UFYkDm4HUahf2lnEyHvio51TNGiLK66mqP2JoATy7hRZeXaGMRDr00JiSF7m63vR5WKATF605yEggJKsw0JpMQ==",
+     ("lib/addon-fit.js", "LICENSE")),
+    ("xterm-addon-web-links", "0.11.0", "https://registry.npmjs.org/@xterm/addon-web-links/-/addon-web-links-0.11.0.tgz",
+     "nIHQ38pQI+a5kXnRaTgwqSHnX7KE6+4SVoceompgHL26unAxdfP6IPqUTSYPQgSwM56hsElfoNrrW5V7BUED/Q==",
+     ("lib/addon-web-links.js", "LICENSE")),
 )
 
 

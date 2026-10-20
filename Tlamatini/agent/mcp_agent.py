@@ -358,6 +358,10 @@ _EXEC_REPORT_TOOLS: Dict[str, Tuple[str, str]] = {
     # wrapped-agent fallback would already capture it; this entry exists only so the
     # table gets the native "Aurora Stage" caption gradient defined in agent_page.css.
     "chat_agent_pptxer":         ("pptxer",         "PPTXer"),
+    # Terminater types real commands into VISIBLE terminals the user supervises. The
+    # generic wrapped-agent fallback already captures it; this entry only gives the
+    # table its native "Phosphor Console" caption gradient defined in agent_page.css.
+    "chat_agent_terminater":     ("terminater",     "Terminater"),
     # STM32er is state-changing: it drives the STM32 Template Project MCP server
     # to scaffold / write / build / flash / erase / reset firmware and to
     # write_memory on a running MCU. Read-only actions (get_config / read_source /
@@ -497,6 +501,11 @@ _ASK_EXECS_REQUIRED_TOOLS: frozenset = frozenset({
     # to fetch images, video and audio the deck references — tier D. It qualifies
     # twice over, so it is gated once here.
     "chat_agent_pptxer",        # PPTXer        (writes a .pptx to ANY path; fetches media)
+    # Terminater is a COMMAND RUNNER: it types arbitrary shell commands into a real
+    # cmd.exe / PowerShell. That it is VISIBLE does not make a command harmless (a visible
+    # `Remove-Item -Recurse` still deletes), so it sits with Executer/Pythonxer/SSHer here
+    # rather than in the desktop-UI tier C. Only users who ticked Ask Execs see the prompt.
+    "chat_agent_terminater",    # Terminater    (types commands into a visible shell)
     # ----- Tier B: MESSAGING — DELIBERATELY *NOT* GATED (Angela, 2026-07-26) --
     # Emailer / Whatsapper / Telegrammer used to be gated here on the
     # "you cannot unsend it" argument. Angela REVERSED that:
@@ -577,6 +586,16 @@ def _infer_execution_shell(tool_name: str, tool_input: Any) -> str:
     if name == "chat_agent_ssher":
         host = tool_input.get("host") if isinstance(tool_input, dict) else None
         return f"Remote SSH shell{(' @ ' + str(host)) if host else ''}"
+    if name == "chat_agent_terminater":
+        request = ""
+        if isinstance(tool_input, dict):
+            request = str(tool_input.get("request") or tool_input.get("__arg1") or "")
+        elif isinstance(tool_input, str):
+            request = tool_input
+        found = re.search(r"kind\s*=\s*['\"]?(cmd|powershell|pwsh)", request, re.IGNORECASE)
+        kind = (found.group(1).lower() if found else "powershell")
+        label = {"cmd": "cmd.exe", "powershell": "Windows PowerShell", "pwsh": "PowerShell 7"}[kind]
+        return f"{label} in a visible Terminater terminal (typed key by key)"
     if name == "chat_agent_dockerer":
         return f"Docker CLI via {os_shell}"
     if name == "chat_agent_kuberneter":
@@ -2764,7 +2783,7 @@ Answer:
 # ---------------------------------------------------------------------------
 # Tool-surface token budgeting (Angela, 2026-06-19)
 # ---------------------------------------------------------------------------
-# Binding the FULL enabled surface (85 agents + active External-MCP tools) can
+# Binding the FULL enabled surface (86 agents + active External-MCP tools) can
 # overflow the model context window. Observed live: "prompt too long 273284 >
 # 262144", which crashed Multi-Turn into a basic-LLM fallback ("tool backend
 # unavailable"). Instead of blindly binding everything OR starving the operator
@@ -3694,7 +3713,7 @@ class CapabilityAwareToolAgentExecutor:
         # === MANDATE (Angela, 2026-06-16, refined 2026-06-19) ===
         # Multi-Turn must let Tlamatini SEE the tools she needs — binding a tiny
         # planner subset once starved the operator ("no file/shell tool bound").
-        # But blindly binding the FULL surface (85 agents + active External-MCP
+        # But blindly binding the FULL surface (86 agents + active External-MCP
         # tools) overflowed the model window live ("prompt too long 273284 >
         # 262144") and crashed the turn into a basic-LLM fallback. So we
         # RANK-AND-BUDGET (_budget_select_tools, inside fit_request): when the

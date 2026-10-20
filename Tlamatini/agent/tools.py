@@ -1590,6 +1590,17 @@ _PROMOTE_SECTION_FIELDS_BY_TEMPLATE_DIR: dict = {
         "overlaps", "text_overflows", "nuance", "font_display", "bytes",
         "status",
     ),
+    # Terminater: the LLM must be able to quote the exact command that ran, its exit
+    # code and the output, and to tell a hung command from a finished one.  `status`
+    # separates completed / command_failed / hung / operator_required / aborted;
+    # `typed` + `user_part` show what Tlamatini typed vs what the USER typed in a
+    # hand-over; `wait_reason` says why the wait ended.
+    "terminater": (
+        "terminal_id", "kind", "title", "terminal_state", "command", "exit_code",
+        "duration_seconds", "output_chars", "truncated", "hung", "aborted_by", "typed",
+        "user_part", "user_line", "user_keys", "cursor", "watch_reason", "wait_reason",
+        "layout", "area", "terminals", "hub", "message", "status",
+    ),
     "camcorder": ("output_path", "output_dir", "filename", "media_type", "resolution"),
     "video_analyzer": (
         "verdict", "verdict_token", "confidence", "motion_score", "status", "video_path",
@@ -2179,6 +2190,17 @@ def _seed_global_agent_defaults(template_dir, runtime_config):
     if not isinstance(runtime_config, dict):
         return runtime_config
 
+    if template_dir == "terminater":
+        # The terminal hub's loopback token must exist BEFORE the agent starts: the
+        # agent inherits it through the environment (and finds the rendezvous file
+        # as a second way). Best-effort -- without it the agent simply runs
+        # standalone, it never fails to launch.
+        try:
+            from . import terminal_hub as _terminal_hub
+            _terminal_hub.ensure_ready()
+        except Exception as exc:  # pragma: no cover - best-effort
+            logger.warning("[tools._seed_global_agent_defaults] terminal hub not ready: %s", exc)
+
     if template_dir == "kalier":
         try:
             configured = get_config_value("kali_server_url", "")
@@ -2486,6 +2508,15 @@ _PRE_LAUNCH_PREVIEW_BY_TEMPLATE = {
                        'params': ('action', 'nuance', 'predominant_color',
                                   'slide_size', 'images', 'video',
                                   'output_dir', 'filename')},
+
+    # --- visible, user-supervised terminals -------------------------------
+    # Terminater types a command into a terminal the USER is watching.  The preview shows
+    # exactly what will be typed (and which terminal kind) before the spawn, which is the
+    # difference between "a terminal did something" and an informed Proceed.
+    'terminater':     {'title': 'TERMINATER COMMAND TO TYPE',
+                       'body': ('text', 'command'),
+                       'params': ('action', 'terminal', 'kind', 'title', 'cwd',
+                                  'submit', 'typing_wpm')},
 
     # --- direct execution -----------------------------------------------
     'executer':       {'title': 'EXECUTER COMMAND TO RUN',

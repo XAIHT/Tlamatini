@@ -15,6 +15,67 @@
 > Current release: **[v1.87.0](docs/changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
 
 
+## On `main` after v1.87.0 — Terminater and the private release's data (unreleased)
+
+> **Not released.** The latest *released* version is still **v1.87.0**; the sections
+> below and every dated record keep that release's numbers. This work sits on `main`
+> after it (`git describe` reports `v1.87.0-3-g…` plus uncommitted changes). Records:
+> [Terminater](docs/changes/2026-10-19-terminater.md) and
+> [the private release's data](docs/changes/2026-10-19-private-release-data.md).
+
+**Counts on `main` now:** **86 workflow agents, 67 wrapped chat agents, 109 built-in
+tools** (20 + 67 + 12 + 10), 51 structured-output producers, **217 migrations**
+(0215-0217), 60 JS modules, 27 stylesheets. The live static suffix is
+`-agent-catalog-1-quality-cleanup-1-usage-status-2-terminater-1`.
+
+**Terminater** (agent #86; full contract in [docs/terminater.md](docs/terminater.md))
+raises REAL `cmd.exe` / PowerShell terminals in the **Terminals** area (**Views ▸
+Terminals**, Ctrl+`) where the USER watches. Executer returns text from an invisible
+shell; Terminater types the command into a terminal the user sees, waits, and reads it
+back. Contracts that must not be weakened:
+
+- **Tlamatini types, never pastes.** One key at a time at `typing_wpm` (default 50,
+  20-160, never faster than 30 ms per key); there is no instant mode. Output is kept in
+  full with an honest `truncated` flag; a command silent for `hang_seconds` (45) is
+  `hung` and can be aborted; the user always wins (Esc takes over; `<<USER:hint>>` hands
+  the keyboard over; `watch_user` and a deterministic advisor help while they type).
+- **One hub, three doors.** A single `TerminalHub` lives in the Django process
+  (`terminal_hub.py`; its engine `agents/terminater/terminater_engine.py` is loaded BY
+  PATH from the agents tree so the web process, the pool agent and the tests share one
+  definition; the three engine files are stdlib-only). Doors: `ws/terminals/`
+  (session-authenticated), `POST /agent/terminater/api/` (loopback only +
+  `X-Terminater-Token`, token scrubbed from the shells' environment, rendezvous file
+  `<app>/Temp/.terminater_hub.json`) and the in-process Prompt Flow Panel runner.
+  Closing a page never kills a shell. The reapers ask `terminal_hub.live_pids()` and the
+  hub's shells die with Tlamatini.
+- **Surfaces.** `chat_agent_terminater` (on the Ask Execs allowlist: visible is not
+  harmless), an ordinary active canvas agent, and the 8th executable Prompt Flow Panel
+  operation (the kickoff example deliberately has none; the build gate validates one
+  separately). Result words: `completed`/`opened`/`typed`/`killed`/`focused`/`warned`
+  green; `command_failed`, `hung`, `operator_required`, `aborted` red.
+- **Carriage.** Migrations 0215 (Agent row), 0216 (`Chat-Agent-Terminater` Tool row) and
+  0217 (catalog prompts 127-129, *Run & Execute*); the display name is pinned in
+  `display_name_from_agent_type`; the **`agents_descriptions.md` row feeds the canvas
+  tooltip**, so a missing row is a visible defect. `build.py` names the hub, consumer,
+  views and `check_terminater` as frozen modules and runs `check_terminater` (real
+  PowerShell, real `cmd.exe`, the pool agent under the carried Python, a WebSocket round
+  trip) inside the frozen app, refusing to package on failure. xterm.js is vendored
+  locally (5.5.0, no CDN).
+
+**The private (keyed) release now carries the data of THIS machine**
+(`build_complete_private_release.py`; details in
+[the record](docs/changes/2026-10-19-private-release-data.md)): contacts (as before);
+**every External MCP server of the running install** merged into the gitignored
+`external_mcps.private.json` (the tracked dev catalog still wins for servers both have;
+only empty or placeholder values are filled; the install's active selection, at most
+5, is kept; the previous snapshot stands in when no install is found); and the whole
+**`data.keys`** vault shipped as `<install>/data.keys` through
+`TLAMATINI_BUNDLE_DATA_KEYS`. The public builder clears that variable, `build.py` aborts
+if the vault is requested with the PUBLIC catalog, and the new file is gitignored and
+excluded from the self-modify snapshot. Not solved: an in-app update does not preserve
+`data.keys`, and two entries (`OPENROUTER_API_KEY`, `DASHSCOPE_API_KEY`) have no
+consumer other than the vault itself.
+
 ## v1.87.0 — Leaner catalog, safer removal, smaller release
 
 The latest released version is **v1.87.0** (tagged 2026-10-18; it also carries
@@ -104,7 +165,7 @@ Every current count in this file was **re-verified against source on 2026-10-16 
 10. ACPX System (external coding-agent CLIs)
 11. Skills System (SKILL.md packages)
 12. Visual Workflow Designer (ACP) & Flow Compiler
-13. The 85 Workflow Agent Types (catalog)
+13. The 86 Workflow Agent Types (catalog)
 14. Creating a New Agent / Tool / Skill
 15. Frontend Architecture
 16. Build, Release & Versioning
@@ -133,22 +194,22 @@ Every current count in this file was **re-verified against source on 2026-10-16 
 
 | Surface | Count | Ground truth |
 |---|---|---|
-| Workflow agent types | **85** † | `Tlamatini/agent/agents/<name>/` dirs (excl. `pools/`) and `_tlamatini_agents_manifest.json` |
+| Workflow agent types | **86** † | `Tlamatini/agent/agents/<name>/` dirs (excl. `pools/`) and `_tlamatini_agents_manifest.json` |
 | Wrapped chat-agent tools (`chat_agent_*`) | **67** † | `chat_agent_registry.py` `WRAPPED_CHAT_AGENT_SPECS` (counted) |
 | Direct LangChain `@tool`s | **20** | 18 in `tools.py` + 2 in `imaging/image_interpreter.py` |
 | ACPX tools (`acp_*`, `list_acp_agents`, `invoke_skill`, `list_skills`) | **12** | `agent/acpx/tools.py` |
 | External-MCP supervisor tools | **10** (+ dynamic `ext__*`) | `_SUPERVISOR_TOOL_NAMES` in `agent/external_mcp_manager.py` |
 | **Built-in Multi-Turn tool surface** | **109** (+ dynamic) | 20 + 67 + 12 + 10 from isolated `get_mcp_tools()` |
-| Root stdio MCP server tools | **102** | 85 agent launchers + 7 management + 10 ACPX (`tlamatini_mcp_server.py`) |
+| Root stdio MCP server tools | **103** | 86 agent launchers + 7 management + 10 ACPX (`tlamatini_mcp_server.py`) |
 | SKILL.md packages | **29** | `agent/skills_pkg/` (confirmed live via `tlamatini_list_skills`) |
 | ACPX external CLI agent_ids | **14** | `agent/acpx/agent_registry.py` `DEFAULT_ACP_AGENTS` |
 | DB models | **18** | `agent/models.py` |
-| Migrations | **214** ‡ | `agent/migrations/*.py`, excluding `__init__.py` (latest `0214_prune_agent_catalog`) |
-| Frontend JS modules | **59** ‡ | `agent/static/agent/js/*.js` (25 chat + 15 ACP + 1 ACP entry + 15 shared + 1 welcome + 2 Prompt Flow Panel) |
-| Page templates / CSS files | **6 / 26** ‡ | `agent/templates/agent/*.html` (five pages plus the `usage_dialog.html` partial), `agent/static/agent/css/*.css` |
+| Migrations | **217** ‡ | `agent/migrations/*.py`, excluding `__init__.py` (latest `0217_add_terminater_demo_prompts`; 0215-0217 are Terminater) |
+| Frontend JS modules | **60** ‡ | `agent/static/agent/js/*.js` (25 chat + 15 ACP + 1 ACP entry + 15 shared + 1 welcome + 2 Prompt Flow Panel + 1 Terminals dock) |
+| Page templates / CSS files | **6 / 27** ‡ | `agent/templates/agent/*.html` (five pages plus the `usage_dialog.html` partial), `agent/static/agent/css/*.css` |
 | HTTP routes / view functions | 183 / 214 | `agent/urls.py`, `agent/views.py` (12,906 lines) |
 
-† ‡ The agent, migration, JS, CSS and template rows were re-counted from disk on **2026-10-14** for v1.83.0 (only the JS count moved since v1.82.0: 58 → 59, with `file_drop_router.js`); the route and view-function row dates from 2026-10-09 (`views.py` still has 214 functions and 12,906 lines). ‡ Rows last changed on **2026-10-14** (latest addition: `file_drop_router.js`; before it the Markdown canvas, the shared theme's stylesheets, migration 0213 for About ▸ Usage and the Compact mode / Self-modify / Model Brain files).
+† ‡ **Re-counted again on 2026-10-19** for the unreleased Terminater work on `main` (agents 85 → 86, migrations 214 → 217, JS modules 59 → 60 with `terminater_dock.js`, stylesheets 26 → 27 with `terminater_dock.css`, wrapped chat agents 66 → 67, built-in tools 108 → 109; the released v1.87.0 keeps its own numbers). The agent, migration, JS, CSS and template rows were previously re-counted from disk on **2026-10-14** for v1.83.0 (only the JS count moved since v1.82.0: 58 → 59, with `file_drop_router.js`); the route and view-function row dates from 2026-10-09 (`views.py` still has 214 functions and 12,906 lines). ‡ Rows last changed on **2026-10-14** (latest addition: `file_drop_router.js`; before it the Markdown canvas, the shared theme's stylesheets, migration 0213 for About ▸ Usage and the Compact mode / Self-modify / Model Brain files).
 
 Feature headlines: advanced RAG (FAISS + BM25, RRF fusion, context budgeting, memory-insufficient fallback) · Multi-Turn operator loop binding the **full enabled tool surface** · Visual Workflow Designer (ACP canvas) compiling `.flw` → `config.yaml` pools via a backend Flow Compiler + Agent Contract registry · ACPX runtime spawning 14 external coding-agent CLIs · universal External-MCP client (4 transports, ≤5 active) with a private Node/uv provisioner and inactive Memory/Sequential-Thinking defaults · 29-package Skill system · self-knowledge + self-modification (ships her own rebuildable source) · multi-model LLM via Ollama (local + cloud) / Anthropic / Qwen vision · full PyInstaller build → installer pipeline with secret-separated public/private release twins.
 
@@ -232,7 +293,7 @@ When a task needs Angela to act on her machine (edit configs, click UI, check a 
 - **L2 Runtime services**: started from `agent/apps.py::AgentConfig.ready()` (reloader-gated); feed live metrics + file indexes.
 - **L3 Sidecar chains**: prefetch `{system_context}` / `{files_context}` injected into every prompt.
 - **L4 Main chains**: `factory.py` monkey-patches `invoke()` to merge sidecar context before the LLM call.
-- **L5 Tools**: 20 direct/core tools + 66 wrapped `chat_agent_*` launchers + 10 External-MCP supervisors; the 12 ACPX/Skill tools form L6 but join the same 108-tool built-in Multi-Turn surface when enabled. Direct chat dictation prepares user input before this tool surface; it does not add another tool.
+- **L5 Tools**: 20 direct/core tools + 67 wrapped `chat_agent_*` launchers + 10 External-MCP supervisors; the 12 ACPX/Skill tools form L6 but join the same 108-tool built-in Multi-Turn surface when enabled. Direct chat dictation prepares user input before this tool surface; it does not add another tool.
 - **L6 ACPX & Skills**: spawns external CLI engines and runs `SKILL.md` playbooks.
 - **L7 Flow Compiler**: normalizes canvas/chat flows into run-ready pools under `agents/pools/<session_id>/`.
 
@@ -311,7 +372,7 @@ Tlamatini/                          # Git root (C:\Development\Tlamatini)
 ├── requirements.txt                # Python deps (ruff is a REQUIRED runtime gate — never unpin)
 ├── eslint.config.mjs               # ESLint 10 config (501-line cross-file globals whitelist)
 ├── package.json                    # release metadata 1.72.4; npm run lint / lint:fix
-├── tlamatini_mcp_server.py         # Root stdio MCP server: 85 agent tools + 7 mgmt + 10 ACPX
+├── tlamatini_mcp_server.py         # Root stdio MCP server: 86 agent tools + 7 mgmt + 10 ACPX
 ├── tlamatini_acpx.py               # Self-contained stdlib ACPX runtime port for the MCP server
 ├── Tlamatini.ps1                   # Legacy launcher for the frozen exe
 ├── demo_flows/                     # 3 shipping .flw demos (schemaVersion 2)
@@ -424,7 +485,7 @@ Key config keys:
 
 ## 6. Database & Models
 
-SQLite single DB `Tlamatini/db.sqlite3` (`settings.py`: `BASE_DIR/'db.sqlite3'`) running in **WAL mode** (`settings.py` → `PRAGMA journal_mode=WAL`) — under WAL, every change committed since the last checkpoint lives in `db.sqlite3-wal`, so a plain filesystem copy of `db.sqlite3` is a stale, silently-wrong database. FAISS indexes live on disk, not in DB. **214 migrations** in the current worktree (0213 adds UsageDaily); heavy seed-migration usage (prompts, tools, agents as data rows).
+SQLite single DB `Tlamatini/db.sqlite3` (`settings.py`: `BASE_DIR/'db.sqlite3'`) running in **WAL mode** (`settings.py` → `PRAGMA journal_mode=WAL`) — under WAL, every change committed since the last checkpoint lives in `db.sqlite3-wal`, so a plain filesystem copy of `db.sqlite3` is a stale, silently-wrong database. FAISS indexes live on disk, not in DB. **217 migrations** in the current worktree (0213 adds UsageDaily); heavy seed-migration usage (prompts, tools, agents as data rows).
 
 **17 models** (`agent/models.py`): `AgentMessage` (chat messages — also the ONLY store of the history the model reads; the **Drop** button deletes one row, see §7.7) · `LLMProgram` / `LLMSnippet` (saved code) · `Prompt` (Catalog of Prompts; append-only PK rule + `category` / `hidden` / `sort_rank`) · `Omission` (file omission patterns) · `ContextCache` (SHA1 query→context cache) · `Mcp` (MCP toggle rows) · `Tool` (tool toggle rows) · `Agent` (agent type registry — **repopulated from the `agents/` dirs on every boot**, `apps.py`) · `AgentProcess` (tracked PIDs — wiped every boot) · `ChatAgentRun` (wrapped run records — wiped every boot) · `Asset` · `SessionState` (24 h expiry) · `AcpAgent` (mirrored from `DEFAULT_ACP_AGENTS` on boot) · `Skill` (mirrored from `skills_pkg/` on boot; enumeration + enable/disable only — budgets/permissions/body live in SKILL.md on disk) · `AcpSession` · `SkillInvocation`.
 
@@ -642,7 +703,7 @@ The single most confusion-preventing fact in this repo. **"MCP" is overloaded ac
 
 1. **MCP context providers (the `Mcp` DB model)** — the two built-in sidecar services whose checkboxes live in the MCPs dialog: **System-Metrics** (WebSocket JSON server `:8765`, `mcp_system_server.py` — CPU/mem/disk injected as `{system_context}`) and **Files-Search** (gRPC server `:50051`, `mcp_files_search_server.py` + `filesearch.proto` — file discovery inside `allowed_paths`, injected as `{files_context}`). `factory.py` recognizes them **by Mcp description string** (`System-Metrics` / `Files-Search`) — a hardcoded assumption (§20). The frontend MCP dialog is hardcoded for exactly two checkboxes.
 2. **LangChain tools** — `get_mcp_tools()` in `tools.py` returns LangChain `@tool` objects, **NOT** MCP services. The name is historical.
-3. **The root stdio MCP server (`tlamatini_mcp_server.py`, 770 lines)** — a **separate, Django-free** MCP server for *external MCP clients* (Claude Code, Kimi, etc.), wired via repo-root `.mcp.json`. It dynamically discovers every `agents/<name>/` dir holding `<name>.py` + `config.yaml` and exposes each as a tool — **85 agent launchers** — replicating the pool "launcher dance" itself (copy template to `Temp/mcp_agent_runs/<name>__<runid>/`, deep-merge args into config.yaml, run `python <name>.py`, read back the log). Long-runners (croner, flowhypervisor, teletlamatini, monitors…) default to background + polling. Management tools (7): `tlamatini_list_agents`, `tlamatini_list_runs`, `tlamatini_run_status`, `tlamatini_run_log`, `tlamatini_run_stop`, `tlamatini_list_skills`, `tlamatini_read_skill`. ACPX tools (10): `acp_doctor`, `list_acp_agents`, `acp_spawn`, `acp_send`, `acp_send_and_wait`, `acp_relay`, `acp_transcript`, `acp_session_status`, `acp_list_sessions`, `acp_kill` — backed by the self-contained stdlib `tlamatini_acpx.py` (`AcpxManager`), degrading to `ACPX_UNAVAILABLE` on import failure. **Total: 102 tools.** So: Django :8000 serves humans; the root server serves MCP clients over stdio; :8765/:50051 are internal sidecars started by `apps.py`.
+3. **The root stdio MCP server (`tlamatini_mcp_server.py`, 770 lines)** — a **separate, Django-free** MCP server for *external MCP clients* (Claude Code, Kimi, etc.), wired via repo-root `.mcp.json`. It dynamically discovers every `agents/<name>/` dir holding `<name>.py` + `config.yaml` and exposes each as a tool — **86 agent launchers** — replicating the pool "launcher dance" itself (copy template to `Temp/mcp_agent_runs/<name>__<runid>/`, deep-merge args into config.yaml, run `python <name>.py`, read back the log). Long-runners (croner, flowhypervisor, teletlamatini, monitors…) default to background + polling. Management tools (7): `tlamatini_list_agents`, `tlamatini_list_runs`, `tlamatini_run_status`, `tlamatini_run_log`, `tlamatini_run_stop`, `tlamatini_list_skills`, `tlamatini_read_skill`. ACPX tools (10): `acp_doctor`, `list_acp_agents`, `acp_spawn`, `acp_send`, `acp_send_and_wait`, `acp_relay`, `acp_transcript`, `acp_session_status`, `acp_list_sessions`, `acp_kill` — backed by the self-contained stdlib `tlamatini_acpx.py` (`AcpxManager`), degrading to `ACPX_UNAVAILABLE` on import failure. **Total: 102 tools.** So: Django :8000 serves humans; the root server serves MCP clients over stdio; :8765/:50051 are internal sidecars started by `apps.py`.
 4. **External MCPs (universal client, 2026-06; private runtime/defaults, 2026-08-15)** — a config-driven universal MCP **client** over `stdio`, `streamable-http`, legacy `sse`, and `websocket`, with at most 5 active servers. Each remote tool binds as `ext__<server>__<tool>`. Ten built-in supervisors add `external_mcp_runtime_status` and `external_mcp_runtime_install` to the original status/reconnect/doctor/list/call/import/activate/wait set. `runtime_provisioner.py` resolves explicit config → Tlamatini private runtime → system PATH → known per-user locations and can install Node/npm/npx/pnpm or uv/uvx atomically under `%LOCALAPPDATA%\Tlamatini\runtimes`, without admin or a system-PATH change. `external_mcp_defaults.py` seeds official `memory` and `sequential-thinking` entries on catalog reads, both inactive; edits win, deletes are tombstoned, and Memory persists under `%LOCALAPPDATA%\Tlamatini\memory\memory.json`. The **External ▸ MCPs** dialog reports runtime readiness and offers **Install now**. Public builds contain only those secret-free defaults; private/keyed builds may carry the maintainer catalog. The **MCP Doctor** canvas agent statically triages a catalogued MCP before live activation.
 
 Distinct from all four: the per-agent inline MCP clients (STM32er's template MCP, Kalier's MCP-Kali-Server) and ACPX (§10).
@@ -715,13 +776,13 @@ Markdown-defined `SKILL.md` packages run by `SkillHarness`. Disk is the source o
 ### 12.1 Surfaces
 The ACP (Agentic Control Panel) page (`templates/agent/agentic_control_panel.html` + 18 `acp-*`/canvas JS modules in strict load order) is a drag-and-drop canvas of agent nodes wired by connections, saved/loaded as **`.flw`** files (JSON, `schemaVersion: 2`). A `.flw` double-click opens Tlamatini via the file association (`register_flw.ps1`). Open it from the chat's **Panels ▸ Agentic Control Panel** (the old *Agents* menu is gone since 2026-09-25). Since 2026-09-25 it also has an **editor toolbar** (`acp-editor-tools.js`: Undo/Redo, Configure, Duplicate with settings + internal connections, Delete, Starters, Flow settings, zoom −/+/Fit), an **agent search box**, an empty-canvas "Try an example" card, a **Help** entry, and a `• ` unsaved marker in the tab title; its File menu links to the **Prompt Flow Panel**.
 
-**Prompt Flow Panel (2026-09-25).** A sibling page at `/agent/prompt_flow_panel/` (template `prompt_flow_panel.html`, WebSocket `ws/prompt-flow-panel/`) for chains of **prompts** rather than agents: seven executable operations (Prompt, Programmed Prompt, Decision, Feed embeddings, Flush embeddings, Clean History, User Input), plus static User Commentary notes, saved as **`.fpmt`** JSON (`format: "tlamatini-prompting-flow"`, version 2; version 1 imports migrate the old reply nodes to User Input). ⚠️ `.pmt` stays with the plain-text system prompts (`prompt.pmt`, `monitoring-prompt.pmt`) and the panel refuses to open one. Each run gets its own chain, history, embeddings and cancellation key, and never loads the shared `application/` corpus. Backend: `prompt_flow_panel_consumer.py`, `prompt_flow_panel_runtime.py`, `services/prompt_flow_panel.py`; frozen-build gate `check_prompt_flow_panel`. Guide: `docs/prompting-flow-designer.md`.
+**Prompt Flow Panel (2026-09-25).** A sibling page at `/agent/prompt_flow_panel/` (template `prompt_flow_panel.html`, WebSocket `ws/prompt-flow-panel/`) for chains of **prompts** rather than agents: eight executable operations (Prompt, Programmed Prompt, Decision, Feed embeddings, Flush embeddings, Clean History, User Input, and Terminater on `main` after v1.87.0), plus static User Commentary notes, saved as **`.fpmt`** JSON (`format: "tlamatini-prompting-flow"`, version 2; version 1 imports migrate the old reply nodes to User Input). ⚠️ `.pmt` stays with the plain-text system prompts (`prompt.pmt`, `monitoring-prompt.pmt`) and the panel refuses to open one. Each run gets its own chain, history, embeddings and cancellation key, and never loads the shared `application/` corpus. Backend: `prompt_flow_panel_consumer.py`, `prompt_flow_panel_runtime.py`, `services/prompt_flow_panel.py`; frozen-build gate `check_prompt_flow_panel`. Guide: `docs/prompting-flow-designer.md`.
 
-**Commentary/Input contract (2026-10-04, shipped in `v1.76.0`):** Seven executable operations remain separate from static **User Commentary**. **User Input** (`user_input`) keeps the question/reply/cancellation mechanism and notched figure. **User Commentary** (`user_commentary`) is edited entirely on the canvas: double-click/Enter writes in the bubble; a floating mini toolbar formats selected text with different fonts, sizes, text colors, bold, italic and underline within the same note. With a caret, formatting applies to newly typed text; outside editing it applies to the whole note. Bubble color and alignment affect the note. There is no commentary configuration dialog or numeric dimension form. Drag any border or corner to resize, including while editing; Fit text removes spare height. Done/Ctrl+Enter saves; Cancel/Escape restores the whole edit. Ctrl+Z/Y works inside the editor; completed edits, moves, resizes and duplicates use flow Undo/Redo. Bubbles contain their full wrapped text without internal scrollbars. Version 2 files persist allowlisted `runs` plus matching literal `text`; older plain notes normalize to one run, and version 1 executable commentary still migrates to User Input with IDs/edges/settings intact. Comments have no ports/Start/runtime/context/history/step effects. The draft key remains `.draft.v1.<user id>`. Cache suffix at that change: `-flow-file-opening-2` (the live suffix is `-agent-catalog-1-quality-cleanup-1-usage-status-2` since 2026-10-18). See `docs/prompting-flow-designer.md` and the 2026-10-04 verification record; the October 4 local release-validation campaign tracks subsequent isolated frozen builds and runtime acceptance.
+**Commentary/Input contract (2026-10-04, shipped in `v1.76.0`):** Executable operations (seven at that date, eight with Terminater on main) remain separate from static **User Commentary**. **User Input** (`user_input`) keeps the question/reply/cancellation mechanism and notched figure. **User Commentary** (`user_commentary`) is edited entirely on the canvas: double-click/Enter writes in the bubble; a floating mini toolbar formats selected text with different fonts, sizes, text colors, bold, italic and underline within the same note. With a caret, formatting applies to newly typed text; outside editing it applies to the whole note. Bubble color and alignment affect the note. There is no commentary configuration dialog or numeric dimension form. Drag any border or corner to resize, including while editing; Fit text removes spare height. Done/Ctrl+Enter saves; Cancel/Escape restores the whole edit. Ctrl+Z/Y works inside the editor; completed edits, moves, resizes and duplicates use flow Undo/Redo. Bubbles contain their full wrapped text without internal scrollbars. Version 2 files persist allowlisted `runs` plus matching literal `text`; older plain notes normalize to one run, and version 1 executable commentary still migrates to User Input with IDs/edges/settings intact. Comments have no ports/Start/runtime/context/history/step effects. The draft key remains `.draft.v1.<user id>`. Cache suffix at that change: `-flow-file-opening-2` (the live suffix is `-agent-catalog-1-quality-cleanup-1-usage-status-2-terminater-1` since 2026-10-18). See `docs/prompting-flow-designer.md` and the 2026-10-04 verification record; the October 4 local release-validation campaign tracks subsequent isolated frozen builds and runtime acceptance.
 
 **Run output layout (2026-10-04, shipped in `v1.76.0`):** Drag the horizontal divider to give Run output 5–95% of the combined canvas/output pane height, excluding fixed headers, status and divider (initial share: 20%). Each pane scrolls independently; resizing preserves zoom, node geometry and text size. Up/Down changes one percentage point, Shift+Up/Down five, Home/End selects 5%/95%. Escape, blur or pointer cancellation ends a drag. Collapse/reopen and window resizing retain the ratio. The per-user `tlamatini.prompting-flow.layout.v1.<user id>` preference is separate from flow files, drafts, dirty state and Undo/Redo. Keep the native details log viewport explicitly sized so its scrollbar remains usable. See `docs/changes/2026-10-04-run-output-resize.md`.
 
-**Shared canvas mechanics (2026-09-26):** Both panels use `flow-canvas-interactions.js` and `flow_canvas.css` for triangles, connection dragging/cancellation, curve geometry, gold hover/selection glow, zoom/Fit, menus and divider gestures. Keep free dragging, Ctrl/Meta-drag copies, marquee selection, keyboard editing and Undo/Redo aligned. Prompt Flow retains node status colors; interactive wire highlights override traversed-wire green. The Operations bar has seven executable operations plus static User Commentary and no Connection tool. Cache suffix at that change: `-flow-file-opening-2` (the live suffix is `-agent-catalog-1-quality-cleanup-1-usage-status-2` since 2026-10-18). See `docs/claude/frontend.md` and the 30-check foreground comparison harness.
+**Shared canvas mechanics (2026-09-26):** Both panels use `flow-canvas-interactions.js` and `flow_canvas.css` for triangles, connection dragging/cancellation, curve geometry, gold hover/selection glow, zoom/Fit, menus and divider gestures. Keep free dragging, Ctrl/Meta-drag copies, marquee selection, keyboard editing and Undo/Redo aligned. Prompt Flow retains node status colors; interactive wire highlights override traversed-wire green. The Operations bar has eight executable operations (seven prompting ones plus Terminater) plus static User Commentary and no Connection tool. Cache suffix at that change: `-flow-file-opening-2` (the live suffix is `-agent-catalog-1-quality-cleanup-1-usage-status-2-terminater-1` since 2026-10-18). See `docs/claude/frontend.md` and the 30-check foreground comparison harness.
 
 ### 12.2 Flow Compiler pipeline (canvas / chat → backend → pool)
 Two browser surfaces produce flows; **both compile through the same backend Agent Contract registry** before touching disk:
@@ -764,7 +825,7 @@ A per-agent operations table appended to chat answers when the **Exec Report** c
 
 ---
 
-## 13. The 85 Workflow Agent Types
+## 13. The 86 Workflow Agent Types
 
 Ground truth: `Tlamatini/agent/agents/` (85 dirs, each `<name>.py` + `config.yaml`), catalog `agents_descriptions.md` (drives sidebar tooltips/Description dialogs), manifest `_tlamatini_agents_manifest.json`. Display casing below is the DB `agentDescription` casing (§14.1). Most agents are both canvas-placeable and Multi-Turn-wrapped (`chat_agent_*`); a few wrapped-tool display names deliberately differ from canvas names (`Send Email`→emailer, `Move File`→mover, `Summarize Text`→summarizer, `Kyber Deciph` (truncated)→kyber_decipher).
 
@@ -929,13 +990,14 @@ Guide: `Tlamatini/.skills/create_new_skill.md`; canonical worked example of an i
 
 **Chat navbar (reorganized 2026-09-25):** Open · Save · Context ▾ · **Panels ▾** (Agentic Control Panel, Prompt Flow Panel, staff-only Admin Panel) · ACPX-Skills ▾ · External ▾ · **Config ▾** (Configure MCPs, Configure Agents, Models, URLs, Contacts, Access Keys Wizard, Voice, Mic) · DB ▾ · Reconnect · About ▾. The standalone MCPs, Agents and Admin menus are gone; ⚠️ harnesses must wait on `#config-menu-button` / `#panels-menu-button`, never `#mcps-menu-button` / `#agents-menu-button` / `#admin-menu-button`. Panels stays usable during a long operation; every end-of-operation path re-arms the menu locks through `agent_page_ui.js::restoreMenuControlsAfterOperation()`. Contract: `docs/claude/frontend.md` → *Chat navbar*.
 
-**59 JS modules** (`static/agent/js/`, current worktree 2026-10-14):
+**60 JS modules** (`static/agent/js/`, current worktree 2026-10-19):
 
 - **Chat page (25)** — `usage_dashboard.js` (About → Usage), `agent_page_markdown.js` (the Markdown canvas: Preview/Source through vendored Marked + DOMPurify, v1.82.0), the ten below plus `agent_page_pdf.js`, `pdf_canvas_viewer.js`, `pdf_context_progress.js` (the PDF canvas), `context_gauge.js` (the context ring), `avatar_presence.js`, `avatar_size.js`, `chat_dictation.js` + `mic_settings.js` (the direct microphone beside Send and Config ▸ Mic), `chat_table_contrast.js` (every answer table stays readable), `model_capacity.js` (the **Compact mode** box, its 🔒 lock and dialog, §7.8), `compact_costs.js` (the price of every Configure row and the live budget line), `self_modify_switch.js` (the **Self-modify** box, rendered only where self-modify is possible, §7.9) and `model_brain_tuning.js` (the Model Brain's **Auto-tuning** dialog after Config ▸ Models ▸ Save, §7.10): `avatar.js` (the clickable talking portrait in the input footer + browser `speechSynthesis` narration — **FEMALE VOICE ONLY**, same rule as the Talker agent; ~170-char chunking, queued utterances and a keep-alive interval work around the Web Speech API's truncation/stall bugs; settings persist in `localStorage.tlm_voice_settings`. Distinct from **Talker**, which synthesizes a WAV server-side via Ollama), `agent_page_init.js` (WebSocket setup, context-dir menu), `agent_page_chat.js` (messages; the Copy + **Drop** buttons on every card and the `message-dropped` frame, see §7.7; `exec-permission-request` frames; Cancel-during-self-healing), `agent_page_canvas.js`, `agent_page_context.js`, `agent_page_dialogs.js` (incl. `showExecPermissionDialog`), `agent_page_layout.js` (composer sizing; sets `--tlm-avatar-docked-size` so the docked portrait follows both dividers, v1.83.0), `agent_page_state.js` (toggle helpers), `agent_page_ui.js`, `chat_image_paste.js` (Ctrl+V / drop screenshot → saved to `<app>/Temp/image_<ts>.jpg`, absolute path spliced into the chat box at the caret; the `paste` listener lives on `document`, chips row must stay counted in `computeFormMinHeight()`; dropped images now arrive through `file_drop_router.js`).
 - **Prompt Flow Panel page (2)**: `prompt-flow-panel-model.js` (the `.fpmt` contract as `window.PromptFlowPanelModel`, mirroring `services/prompt_flow_panel.py::validate_flow`) and `prompt-flow-panel.js` (editor, playback over `ws/prompt-flow-panel/`, per-user browser draft).
 - **ACP designer (16)**: `acp-editor-tools.js` (2026-09-25, loaded last among the `acp-*` modules — the editor toolbar, `ACP.canEdit()` / `ACP.performEdit()` / `ACP.refreshEditor()`, zoom, Duplicate, Starters, Flow settings, Help), `agentic_control_panel.js` (entry), `acp-connection-status.js` ("backend is down" banner for the designer, 2026-08-01 — the chat page had one via its WebSocket `onclose`, the canvas had NOTHING, so a dead server left Validate / Start / Save failing silently on a page that looked healthy; it is HTTP-polled, not socket-driven, so it could not be copied verbatim from `agent_page_state.js`), then strict load order: `acp-globals.js` (#1 — shared state + `updateCanvasContentSize()`), `acp-session.js`, `acp-undo-manager.js`, `acp-agent-connectors.js` (1,698 lines; 50+ connection handlers), `acp-running-state.js`, `acp-control-buttons.js`, `acp-validate.js`, `acp-canvas-core.js`, `acp-flow-snapshot.js` (`buildACPFlowSnapshot()` → `schemaVersion: 2`), `acp-canvas-undo.js` (1024 actions), `acp-file-io.js`, `acp-layout.js`, `acp-parametrizer-dialog.js`, with `canvas_item_dialog.js` and `contextual_menus.js` counted below as shared helpers.
 - **Shared/chat-runtime (15)**: `tools_dialog.js` (tool toggles + Catalog of Prompts — primary load = ONE `GET /agent/list_prompts/`; the `prompt-1..N` probe loop is a gap-tolerant offline fallback), `skills_dialog.js` (ACPX-Skills dropdown), `external_mcps_dialog.js` (External ▸ MCPs; refreshes on the `tlm:external-mcps-imported` event), `access_keys_wizard.js` (Config ▸ Access Keys Wizard — one guided place for every provider secret), `contacts_dialog.js` (contacts book for messaging agents), `chat_page_runtime_poller.js`, `shared-runtime-dialogs.js`, `dialog_policy.js` (central dismissal behavior **+ the themed `tlmAlert` / `tlmConfirm` popups**), `release_notes_renderer.js` (safe update-note rendering), `canvas_item_dialog.js`, `contextual_menus.js`, `checkbox_bulk_toggle.js`, `flow-canvas-interactions.js`, `ui_splitters.js` (one gesture model for all five pane dividers, v1.80.0) and `file_drop_router.js` (v1.83.0 — the ONE capture-phase listener for every file dropped on any page, loaded in the `<head>` of every page; it classifies each file by its bytes and routes it to its own mechanism, see *A dropped file is RECOGNISED* above; pages register with `TlamatiniFileDrop.register(kinds, fn, {label})`).
 - **Welcome page (1)**: `welcome_enter_default.js` (2026-09-10 — **Enter is the default action on `welcome.html`**: the post-login page offers only **Go to Chat** and **Logout**, and everyone is going to the chat, so Enter takes you straight in with nothing clicked, tabbed or focused first. TWO LAYERS — the `#go-to-chat` link is focused on ready so the **browser itself** activates it (focus ring visible, `welcome.css` sets no `outline: none`), plus a document-level `keydown` fallback for when focus was never granted. ⚠️ **The fallback DEFERS to `document.activeElement`** and stands down whenever anything activatable holds focus — firing Enter blindly would send a user who Tabbed to **Logout** to the **chat** instead. It also ignores modifier chords, `event.isComposing` (mid-IME) and `defaultPrevented`. Fail-open, self-contained IIFE, **no cross-file globals**).
+- **Terminals dock (1, on `main` after v1.87.0)**: `terminater_dock.js` — the Terminals area mounted by the chat, Agentic Control Panel and Prompt Flow Panel pages through `data-tlm-terminals-host="chat|acp|pfp"` (Views ▸ Terminals / View ▸ Terminals, Ctrl+`), with `terminater_dock.css` and locally vendored xterm.js 5.5.0 + `xterm-addon-fit` + `xterm-addon-web-links`; keystrokes are never swallowed by the page, a hand-over emits `tlm:terminals-handover` so the Agentic Control Panel closes its Start dialog, and every failure is fail-open. Contract: `docs/terminater.md`.
 
 **Dialog dismissal (2026-08-16, v1.48.17) — Escape closes EVERY dialog.** The rule reversed: a dialog closes by its titlebar ✕, Cancel/dismiss, Continue/OK, **or Escape**, and **Escape === ✕ === Cancel**; an **outside click still never dismisses**. `dialog_policy.js` §4 is a **bubble-phase** `document` keydown dispatcher that finds the topmost open dialog (shape-based selector + z-index rank, backdrops excluded) and **activates that dialog's own dismiss control** — never a blind hide — so Ask-Execs still answers DENY, `acpConfirm`/`tlmConfirm` still resolve `false`, `body.style.overflow` is restored, and the sealed updater still refuses. Bubble phase is load-bearing (the Catalog's search box eats the first Escape); `stopImmediatePropagation()` stops one keystroke closing two layers; a dialog with no ✕/Cancel must expose `el.tlmDismiss`; Escape may never press an affirmative button; **`closeOnEscape: false` is a forbidden pattern tree-wide**. The ONE exception is `el.tlmSealKey` — while sealed (the updater during a download) `dismissDialog()` refuses FIRST, Escape is swallowed with a shake, F5/Ctrl+R/Ctrl+F4 are guarded (capture phase, deliberately opposite the dispatcher), and a failed start always unseals. **No native `alert()`/`confirm()`/`prompt()` in a themed dialog** — use `tlmAlert`/`tlmConfirm` (Promise-based, `.tlmpop-*` tokens, overlay z-index 100001, fail-open; NOT jQuery-UI, because they are raised by native modals at z-index 20000 while `.ui-front` is ~100). Coverage: `agent/test_dialog_dismissal_policy.py` (35 tests) + the visible runner `.claude/skills/tlamatini-daily-chat-test/harness/dialog_policy_visible.py`.
 
@@ -1044,6 +1106,8 @@ Current worktree inventory, verified 2026-10-18: **85 agents, 66 wrapped chat ag
 108 built-in Multi-Turn tools, 29 runtime skills, 214 migrations, 59 JS modules
 and 26 CSS files**. The JS/CSS added since v1.78.0 implement the Markdown canvas, the shared theme and the file-drop router. Historical
 counts below remain dated to their original inspections.
+On `main` after v1.87.0 (unreleased Terminater work, re-counted 2026-10-19): **86 agents, 67 wrapped chat agents, 109 built-in Multi-Turn tools
+(20 + 67 + 12 + 10), 103 root stdio MCP tools, 29 runtime skills, 217 migrations, 60 JS modules and 27 CSS files.**
 
 
 
@@ -1229,7 +1293,7 @@ From the very start of a session, perform the work with **Tlamatini's OWN** agen
 
 Mouser now resolves explicit physical, window and screenshot coordinates; Keyboarder binds Unicode/key delivery to a verified window; Shoter publishes capture geometry. `input_sent` is delivery evidence, not application success, and a failed or interrupted input segment must be observed before replay.
 
-Parametrizer derives its parser registry from current contracts and validates complete typed mappings. FlowCreator selects from all 85 installed agents and validates the generated graph before publishing; FlowHypervisor separates execution, kill and observation relationships and uses current desktop receipts/timing. GUI-Manager remains design only.
+Parametrizer derives its parser registry from current contracts and validates complete typed mappings. FlowCreator selects from all 86 installed agents and validates the generated graph before publishing; FlowHypervisor separates execution, kill and observation relationships and uses current desktop receipts/timing. GUI-Manager remains design only.
 
 See [configuration, examples and limitations](docs/desktop-input-and-flow-contracts.md), the [complete generated coverage inventory](docs/agent-coverage.md), and the [GUI-Manager design](docs/GUI-Manager-design.md).
 
@@ -1283,4 +1347,4 @@ Image/video model failures accumulate in one shared, themed, non-modal fatal-err
 
 ## Windows flow-file lifecycle — 2026-10-04, shipped in `v1.76.0`
 
-Both `.flw` agent flows and `.fpmt` prompting flows now have Windows registration, repair, removal, status and Default Apps handling. Explorer/source command-line opening validates a bounded snapshot, reuses a matching running server before database startup, and returns through login to the correct editor without execution. Main-chat Open/drop routes both formats into separate editor tabs while preserving the chat document. The historical `.flw` installer wrappers cover both types for old installer/uninstaller binaries; independent management uses `flow_file_associations.ps1 -Extensions`. Never erase UserChoice or another application’s Open With entries. Update Repair respects explicit unregistration and installation ownership. See [Windows flow files](docs/windows-flow-files.md). Cache suffix at that change: `-flow-file-opening-2` (the live suffix is `-agent-catalog-1-quality-cleanup-1-usage-status-2` since 2026-10-18). Committed to `main` on 2026-10-04. The October 4 local release-validation campaign also rebuilds isolated frozen artifacts; its dated evidence distinguishes build completion from runtime acceptance.
+Both `.flw` agent flows and `.fpmt` prompting flows now have Windows registration, repair, removal, status and Default Apps handling. Explorer/source command-line opening validates a bounded snapshot, reuses a matching running server before database startup, and returns through login to the correct editor without execution. Main-chat Open/drop routes both formats into separate editor tabs while preserving the chat document. The historical `.flw` installer wrappers cover both types for old installer/uninstaller binaries; independent management uses `flow_file_associations.ps1 -Extensions`. Never erase UserChoice or another application’s Open With entries. Update Repair respects explicit unregistration and installation ownership. See [Windows flow files](docs/windows-flow-files.md). Cache suffix at that change: `-flow-file-opening-2` (the live suffix is `-agent-catalog-1-quality-cleanup-1-usage-status-2-terminater-1` since 2026-10-18). Committed to `main` on 2026-10-04. The October 4 local release-validation campaign also rebuilds isolated frozen artifacts; its dated evidence distinguishes build completion from runtime acceptance.

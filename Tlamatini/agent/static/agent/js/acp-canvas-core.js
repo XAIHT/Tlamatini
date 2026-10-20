@@ -240,6 +240,7 @@ const AGENT_TYPE_CLASS_MAP = {
     'nmapper': 'nmapper-agent',
     'pptxer': 'pptxer-agent',
     'pdfer': 'pdfer-agent',
+    'terminater': 'terminater-agent',
     'latexer': 'latexer-agent',
     'dockerer': 'dockerer-agent',
     'mcp-doctor': 'mcpdoctor-agent',
@@ -944,6 +945,7 @@ function removeConnection(conn) {
         if (sourceAgentName.toLowerCase() === 'nmapper') updateNmapperConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'pptxer') updatePptxerConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'pdfer') updatePdferConnection(sourceId, targetId, 'remove');
+        if (sourceAgentName.toLowerCase() === 'terminater') updateTerminaterConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'latexer') updateLatexerConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'kalier') updateKalierConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'stm32er') updateStm32erConnection(sourceId, targetId, 'remove');
@@ -1086,6 +1088,7 @@ function removeConnectionsFor(node, deletingNodes = null) { // eslint-disable-li
         if (sourceAgentName.toLowerCase() === 'nmapper' && !sourceBeingDeleted) updateNmapperConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'pptxer' && !sourceBeingDeleted) updatePptxerConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'pdfer' && !sourceBeingDeleted) updatePdferConnection(sourceId, targetId, 'remove');
+        if (sourceAgentName.toLowerCase() === 'terminater' && !sourceBeingDeleted) updateTerminaterConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'latexer' && !sourceBeingDeleted) updateLatexerConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'kalier' && !sourceBeingDeleted) updateKalierConnection(sourceId, targetId, 'remove');
         if (sourceAgentName.toLowerCase() === 'stm32er' && !sourceBeingDeleted) updateStm32erConnection(sourceId, targetId, 'remove');
@@ -1649,6 +1652,7 @@ function initCanvasEvents() {
                     if (sourceAgentName.toLowerCase() === 'nmapper') updateNmapperConnection(sourceId, targetId, 'add');
                     if (sourceAgentName.toLowerCase() === 'pptxer') updatePptxerConnection(sourceId, targetId, 'add');
                     if (sourceAgentName.toLowerCase() === 'pdfer') updatePdferConnection(sourceId, targetId, 'add');
+                    if (sourceAgentName.toLowerCase() === 'terminater') updateTerminaterConnection(sourceId, targetId, 'add');
                     if (sourceAgentName.toLowerCase() === 'latexer') updateLatexerConnection(sourceId, targetId, 'add');
                     if (sourceAgentName.toLowerCase() === 'kalier') updateKalierConnection(sourceId, targetId, 'add');
                     if (sourceAgentName.toLowerCase() === 'stm32er') updateStm32erConnection(sourceId, targetId, 'add');

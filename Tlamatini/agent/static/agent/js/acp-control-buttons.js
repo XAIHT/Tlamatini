@@ -191,6 +191,36 @@ if (btnStart) {
 // ========================================
 
 /**
+ * A terminal that waits for the user's keys (Terminater hand-over) must not sit behind this modal
+ * dialog: its overlay and focus trap swallow every key, and the hand-over's wait clock keeps running.
+ * The dialog is informational only, and a waiting terminal proves the Starter agents did start, so the
+ * hand-over dismisses it through its own close (which restores the page, the scroll lock included).
+ * Polling goes on in the background and finishes its bookkeeping on the closed dialog.
+ */
+function dismissStarterDialogForHandover() {
+    try {
+        const dialog = $("#starter-execution-dialog");
+        if (dialog.length && dialog.hasClass('ui-dialog-content') && dialog.dialog('isOpen')) {
+            dialog.dialog('close');
+        }
+    } catch (error) {
+        console.warn('--- Could not step aside for a terminal hand-over:', error);
+    }
+}
+
+function terminalAwaitsTheUser() {
+    try {
+        const api = window.TlamatiniTerminals;
+        const state = api && typeof api.state === 'function' ? api.state() : null;
+        return Boolean(state && (state.terminals || []).some(item => item && item.state === 'awaiting_user'));
+    } catch (_) {
+        return false;
+    }
+}
+
+window.addEventListener('tlm:terminals-handover', dismissStarterDialogForHandover);
+
+/**
  * Show the Starter Execution Dialog with spinner and poll for log file creation.
  * @param {Array<{id: string, displayName: string}>} starterInfo
  * @param {number} justBeforeStartingTimestamp - Timestamp in ms before agents were started
@@ -233,6 +263,8 @@ function showStarterExecutionDialog(starterInfo, justBeforeStartingTimestamp) {
     });
 
     pollForLogFiles(starterInfo, justBeforeStartingTimestamp, dialog);
+    // a terminal may already be waiting for the user when this dialog opens (a very fast hand-over)
+    if (terminalAwaitsTheUser()) dismissStarterDialogForHandover();
 }
 
 /**

@@ -139,6 +139,10 @@ def display_name_from_agent_type(agent_type: str) -> str:
         # file format in capitals plus the Tlamatini "-er" agent suffix: "PPTXer"
         # (P-P-T-X-e-r), never "Pptxer" / "PptxEr" / "PPTXER".
         "pptxer": "PPTXer",
+        # Pinned explicitly (str.title() would give the same word today, but the name is a
+        # product identity: "Terminater" = Terminal + Tlamatini's "-er" agent suffix, never
+        # "TerminaTer" / "TERMINATER" / "Terminator").
+        "terminater": "Terminater",
         # --- case-only fixes: .title() lower-cases the second capital ---
         "audioplayer": "AudioPlayer",
         "videoplayer": "VideoPlayer",

@@ -27,6 +27,12 @@ from agent.path_guard import get_app_temp_root
 from agent.routing import websocket_urlpatterns
 from agent.services.prompt_flow_panel import FORMAT, OPERATIONS, VERSION, validate_flow
 
+# Terminater drives the user's terminals, not the model. The shipped kickoff example is about PROMPTING,
+# so it is held to the prompting operations; Terminater is validated by the frozen build separately below,
+# so a build can never ship a validator that cannot read a Terminater node.
+TERMINAL_OPERATIONS = {'terminater'}
+PROMPTING_OPERATIONS = OPERATIONS - TERMINAL_OPERATIONS
+
 
 class PageAssets(HTMLParser):
     def __init__(self):
@@ -126,11 +132,19 @@ class Command(BaseCommand):
             raise CommandError('Panel page did not reference any assets')
         sample = app_root / 'docs/examples/prompting-kickoff.fpmt'
         flow = validate_flow(json.loads(sample.read_text(encoding='utf-8-sig')), playable=True)
-        if {node['type'] for node in flow['nodes']} != OPERATIONS:
+        if {node['type'] for node in flow['nodes']} != PROMPTING_OPERATIONS:
             raise CommandError('Kickoff example does not contain all prompting operations')
+        terminal_flow = {'format': FORMAT, 'version': VERSION, 'name': 'Terminater release check',
+                         'start': 'terminal', 'edges': [], 'nodes': [
+                             {'id': 'terminal', 'type': 'terminater',
+                              'config': {'action': 'run', 'text': 'Write-Output release-check'}}]}
+        terminal_nodes = validate_flow(terminal_flow, playable=True)['nodes']
+        if [node['type'] for node in terminal_nodes] != ['terminater']:
+            raise CommandError('Terminater node was not accepted by the Prompt Flow Panel validator')
         asyncio.run(check_websocket())
         self.stdout.write(self.style.SUCCESS(json.dumps({
-            'frozen': frozen, 'assets_resolved': len(page.urls), 'operations_in_example': len(OPERATIONS),
+            'frozen': frozen, 'assets_resolved': len(page.urls), 'operations_in_example': len(PROMPTING_OPERATIONS),
+            'terminater_validated': True,
             'template_rendered': True, 'context_roundtrip': True, 'offline_websocket_playback': True,
             'live_model_checked': False,
         })))

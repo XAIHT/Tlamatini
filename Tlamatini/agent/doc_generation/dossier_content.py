@@ -83,6 +83,7 @@ AGENT_FAMILIES: list[tuple[str, str, str, list[tuple[str, str]]]] = [
     ("Code, files and shell", "cyan", "Find, read, change and run.", [
         ("executer", "Runs a shell command, optionally in its own visible console."),
         ("pythonxer", "Runs inline Python behind a compile() and Ruff correctness gate."),
+        ("terminater", "Types commands into a real CMD or PowerShell terminal the user watches, and can hand the keyboard over."),
         ("editor", "Byte-exact find-and-replace in one file; refuses an ambiguous match."),
         ("grepper", "Encoding-aware regex search, plus verbatim reads of a line range."),
         ("globber", "Finds files by glob pattern, newest first."),
@@ -1803,6 +1804,32 @@ def build_chapters(f: dict) -> list[Chapter]:
          f"Version {f['release_tag']}; the latest release published on GitHub is "
          f"{f['release']['latest_published'] or 'not verified'}."),
         accent="gold", sections=[
+        Section("onmain", "ON MAIN · NOT YET RELEASED", "Terminals you can watch, and a private release that carries your data",
+            f"The latest released version is still {f['release_tag']}. This finished work sits on main after it.",
+            body=[
+                f"Terminater is workflow agent number {f['agents']}. It raises real CMD and PowerShell terminals in a new "
+                "Terminals area (Views → Terminals, or Ctrl+`) on the chat, Agentic Control Panel and Prompt Flow Panel "
+                "pages. Tlamatini types every key like a person, about 50 words per minute and never pasted, waits for the "
+                "command, reads its whole output and reports the exit code. Esc takes the keyboard; a command can hand it "
+                "to you on purpose with <<USER:hint>>.",
+                f"A command that stops answering is flagged hung and can be aborted without losing the terminal; one that "
+                f"exits with an error is a red Exec Report row even though the terminal worked. One hub in the Django "
+                f"process owns the shells, so closing a page never closes one. It is wrapped chat agent number {f['wrapped']}, "
+                f"the eighth Prompt Flow Panel operation, and has three safe cards in the Catalog of Prompts.",
+                "The build now proves it inside the frozen app: check_terminater drives a real PowerShell, a real cmd.exe, "
+                "the shipped pool agent under the carried Python and a WebSocket round trip, and packaging stops if it "
+                "fails. On October 19, 774 unit tests passed. The saved chat-page and canvas visible suites were not "
+                "re-run as one clean pass after their last fixes.",
+                "The private (keyed) release now carries the data of the machine that builds it: every External MCP server "
+                "of the installed copy and its active choice, merged into a gitignored private catalog, and the whole "
+                "data.keys vault. The public builder refuses both. An in-app update does not keep data.keys.",
+            ],
+            points=[
+                ("Terminals", "Real CMD and PowerShell you can watch, typed like a person, with a hand-over."),
+                ("Counts", f"{f['agents']} agents · {f['wrapped']} wrapped · {f['tools']} tools · {f['migrations']} migrations."),
+                ("Gate", "check_terminater runs inside the frozen app; packaging stops on failure."),
+                ("Private release", "External MCP servers and data.keys travel in the keyed build only."),
+            ], deck="cards"),
         Section("release187", "CURRENT RELEASE · v1.87.0", "A leaner catalog, a safer removal, a smaller release",
             "Tlamatini v1.87.0 is the latest released version, tagged on October 18.",
             body=[

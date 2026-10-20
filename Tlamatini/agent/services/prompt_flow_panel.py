@@ -20,12 +20,36 @@ VERSION = 2
 MAX_FILE_BYTES = 5 * 1024 * 1024
 OPERATIONS = {
     "prompt", "programmed_prompt", "decision", "feed_embeddings",
-    "flush_embeddings", "clean_history", "user_input", "user_commentary",
+    "flush_embeddings", "clean_history", "user_input", "user_commentary", "terminater",
 }
 COMMENT_COLORS = {"#fbcfe8", "#fef3c7", "#dcfce7", "#dbeafe", "#ede9fe", "#ffedd5", "#ffffff", "#e5e7eb"}
 COMMENT_TEXT_COLORS = {"#202938", "#000000", "#1d4ed8", "#166534", "#7e22ce", "#b91c1c", "#92400e", "#ffffff"}
 COMMENT_FONTS = {"Nunito", "Arial", "Verdana", "Georgia", "Times New Roman", "Courier New"}
 COMPARISONS = {"contains", "not_contains", "equals", "is_empty", "user"}
+# Terminater (the parallelogram): one action in the user's visible CMD / PowerShell terminals.
+# Keep these tables identical to prompt-flow-panel-model.js.
+TERMINATER_ACTIONS = (
+    "run", "open", "type", "send_key", "wait", "read", "commands", "abort", "kill", "force_kill",
+    "kill_all", "list", "status", "focus", "rename", "layout", "clear", "watch_user", "warn_user", "handover",
+)
+TERMINATER_KINDS = ("cmd", "powershell", "pwsh")
+TERMINATER_TEXT_ACTIONS = ("run", "type", "handover")
+TERMINATER_DEFAULTS = {
+    "action": "run", "kind": "powershell", "terminal": "", "title": "", "cwd": "", "keys": "", "message": "",
+    "severity": "warning", "suggestion": "", "hint": "", "which": "last", "until": "", "pattern": "",
+    "layout": "", "area": "", "submit": True, "secret": False, "wait": True, "close_after": False,
+    "load_profile": True, "advisor": True, "typing_wpm": 50, "wait_seconds": 120, "hang_seconds": 45,
+    "user_wait_seconds": 300, "idle_seconds": 2,
+}
+TERMINATER_TEXT_LIMITS = {
+    "terminal": 80, "title": 80, "cwd": 1000, "keys": 500, "message": 2000, "suggestion": 1000,
+    "hint": 200, "which": 40, "until": 20, "pattern": 500,
+}
+TERMINATER_NUMBERS = {
+    "typing_wpm": (20, 160, True), "wait_seconds": (1, 3600, False), "hang_seconds": (3, 3600, False),
+    "user_wait_seconds": (5, 3600, False), "idle_seconds": (0.2, 600, False),
+}
+TERMINATER_BOOLEANS = ("submit", "secret", "wait", "close_after", "load_profile", "advisor")
 
 
 class FlowError(ValueError):
@@ -60,6 +84,41 @@ def scheduled_time(value):
         return result
     except (TypeError, ValueError) as exc:
         raise FlowError("Scheduled time must be an ISO date with a timezone.") from exc
+
+
+def _terminater_config(config, label, text, playable):
+    """Allowlist one Terminater step; the command text itself is validated by the caller."""
+    out = {}
+    action = config.get("action", TERMINATER_DEFAULTS["action"])
+    if action not in TERMINATER_ACTIONS:
+        raise FlowError("Unknown Terminater action.")
+    out["action"] = action
+    shell = config.get("kind", TERMINATER_DEFAULTS["kind"])
+    if shell not in TERMINATER_KINDS:
+        raise FlowError("Choose CMD, PowerShell or PowerShell 7.")
+    out["kind"] = shell
+    for key, limit in TERMINATER_TEXT_LIMITS.items():
+        out[key] = _text(config.get(key, TERMINATER_DEFAULTS[key]), f"Terminater {key}", limit)
+    severity = config.get("severity", TERMINATER_DEFAULTS["severity"])
+    if severity not in {"info", "hint", "warning", "danger"}:
+        raise FlowError("Unknown Terminater severity.")
+    out["severity"] = severity
+    layout, area = config.get("layout", ""), config.get("area", "")
+    if layout not in {"", "tabs", "tile", "tile-h", "tile-v", "grid"} or area not in {"", "dock", "full"}:
+        raise FlowError("Unknown Terminater layout or area.")
+    out["layout"], out["area"] = layout, area
+    for key in TERMINATER_BOOLEANS:
+        value = config.get(key, TERMINATER_DEFAULTS[key])
+        if not isinstance(value, bool):
+            raise FlowError(f"Terminater {key} must be true or false.")
+        out[key] = value
+    for key, (low, high, integer) in TERMINATER_NUMBERS.items():
+        out[key] = _number(config.get(key, TERMINATER_DEFAULTS[key]), f"Terminater {key}", low, high, integer)
+    if playable and action in TERMINATER_TEXT_ACTIONS and not text.strip():
+        raise FlowError(f"{label} needs a command to type.")
+    if playable and action == "send_key" and not out["keys"].strip():
+        raise FlowError(f"{label} needs the keys to press.")
+    return out
 
 
 def validate_flow(payload, *, playable=False):
@@ -160,6 +219,8 @@ def validate_flow(payload, *, playable=False):
                 raise FlowError("Set a decision comparison value, or choose 'Output is empty'.")
         if kind == "feed_embeddings" and playable and not clean["text"].strip():
             raise FlowError("Feed embeddings needs text or {{last_output}}.")
+        if kind == "terminater":
+            clean.update(_terminater_config(config, node.get("label", kind), clean["text"], playable))
         item = {
             "id": node_id, "type": kind,
             "label": _text(node.get("label", kind.replace("_", " ").title()), "Operation label", 120),
@@ -312,6 +373,8 @@ class FlowRunner:
             elif kind == "clean_history":
                 await self.runtime.clean_history()
                 self.last_output = ""
+            elif kind == "terminater":
+                output = await self.runtime.terminal(expand_text(config["text"], self.last_output), config)
             elif kind == "user_input":
                 output = await self.ask_user(node, "commentary")
                 await self.runtime.comment(output)

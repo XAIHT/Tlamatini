@@ -41,6 +41,7 @@ import os
 import re
 import subprocess
 import sys
+import unicodedata
 import unittest
 from pathlib import Path
 
@@ -71,7 +72,17 @@ PLACEHOLDER_CHECKS = (
 
 # A structural (NOT personal) shape: Meta/WhatsApp access tokens. Must be absent
 # from tracked files. This is a regex for a token format, not anyone's data.
-META_TOKEN_RE = re.compile(r"EAA[A-Za-z0-9]{30,}")
+# A token stands ALONE: "EAA..." inside a longer base64 run (an embedded PNG, font or wasm blob) is
+# image data that merely contains those letters, so the run must not continue on either side.
+META_TOKEN_RE = re.compile(r"(?<![A-Za-z0-9+/=_-])EAA[A-Za-z0-9]{30,}(?![A-Za-z0-9+/=_-])")
+# Third-party code vendored under these paths is minified and ships base64 data blobs line by line;
+# it is not ours to scrub and holds no token of ours.
+TOKEN_SCAN_EXCLUDED_PREFIXES = ("Tlamatini/agent/static/agent/vendor/",)
+
+# The deep scan looks for PRIVATE TARGETS (a person's name, e-mail, phone, handle) in TRACKED files.
+# The maintainer is credited BY NAME in this repository on purpose (see PLACEHOLDER_CHECKS above), so
+# her own name is never a leak, whatever the local targets file lists.
+PUBLIC_MAINTAINER_NAMES = frozenset({"angela lopez mendoza"})
 
 USER_CLAUDE = Path.home() / ".claude"
 BANNER_SCRIPT = USER_CLAUDE / "hooks" / "private_data_guard_banner.py"
@@ -90,6 +101,19 @@ def _git(*args: str) -> str:
 
 def _tracked_files() -> list[str]:
     return [p for p in _git("ls-files").splitlines() if p]
+
+
+def _fold(text: str) -> str:
+    """Lower-case, accent-free, single-spaced: 'Ángela  López' == 'angela lopez'."""
+    decomposed = unicodedata.normalize("NFKD", str(text))
+    plain = "".join(ch for ch in decomposed if not unicodedata.combining(ch))
+    return " ".join(plain.lower().split())
+
+
+def _mask(value: str) -> str:
+    """Never print a private value, not even in a failing test's message."""
+    value = str(value)
+    return f"{value[:2]}***{value[-2:]}" if len(value) > 6 else "***"
 
 
 class GitHistoryIntegrityGuardTests(unittest.TestCase):
@@ -132,6 +156,8 @@ class GitHistoryIntegrityGuardTests(unittest.TestCase):
     def test_no_meta_token_shape_in_tracked_files(self):
         offenders = []
         for rel in _tracked_files():
+            if rel.startswith(TOKEN_SCAN_EXCLUDED_PREFIXES):
+                continue
             p = REPO / rel
             try:
                 if p.stat().st_size > 5_000_000:
@@ -160,15 +186,41 @@ class GitHistoryIntegrityGuardTests(unittest.TestCase):
             self.skipTest(
                 "no local targets (.private_targets.json / env) -> deep scan skipped by design"
             )
-        cmd = [sys.executable, str(auditor), "--local", "--no-llm", "--repo", str(REPO)]
+        # The report goes under the gitignored Temp/ (never the repo root) and is removed afterwards.
+        report_dir = REPO / "Temp"
+        report_dir.mkdir(exist_ok=True)
+        report_path = report_dir / "private_data_audit_guard.json"
+        report_path.unlink(missing_ok=True)
+        cmd = [sys.executable, str(auditor), "--local", "--no-llm", "--repo", str(REPO),
+               "--output", str(report_path)]
         if targets_file.exists():
             cmd += ["--targets-file", str(targets_file)]
         res = subprocess.run(cmd, capture_output=True, text=True, timeout=600, cwd=str(REPO))
-        # exit 0 = clean, 1 = leaks found, 2 = no targets.
+        # The auditor exits 0 = nothing found, 1 = findings, 2 = no targets. Its findings also count
+        # structural noise (high-entropy strings, "kyber" keywords) that says nothing about PRIVATE
+        # TARGETS, so the verdict is read from the report: a TARGET found in a TRACKED file.
+        try:
+            self.assertIn(res.returncode, (0, 1), f"check_private_data.py did not run (rc={res.returncode}).\n{res.stderr[-800:]}")
+            self.assertTrue(report_path.is_file(), "check_private_data.py wrote no report")
+            report = json.loads(report_path.read_text(encoding="utf-8"))
+        finally:
+            report_path.unlink(missing_ok=True)
+        tracked = set(_tracked_files())
+        offenders = set()
+        for scan in report.get("scans", []):
+            for finding in (scan.get("result") or {}).get("findings", []):
+                rel = str((finding.get("forensics") or {}).get("relpath") or "").replace("\\", "/")
+                if rel not in tracked:   # gitignored / untracked local files never reach the repository
+                    continue
+                for match in finding.get("matches", []):
+                    target = match.get("target")
+                    if not target or _fold(target) in PUBLIC_MAINTAINER_NAMES:
+                        continue
+                    offenders.add((rel, str(match.get("category") or "target"), _mask(target)))
         self.assertEqual(
-            res.returncode, 0,
-            f"check_private_data.py reported private-data leaks (rc={res.returncode}).\n"
-            f"{res.stdout[-1500:]}",
+            [], sorted(offenders),
+            "a private target (masked here) is present in tracked files: (path, category, target). "
+            "Remove it going forward (edit the file, then a NEW forward commit); never rewrite history.",
         )
 
 
@@ -210,8 +262,24 @@ class GlobalBannerGuardTests(unittest.TestCase):
             "TAGS, PUSHES",
         ):
             self.assertIn(needle, out, f"banner output missing required CAPS line: {needle!r}")
+        # The hook prints ONE JSON line ("systemMessage" reaches Angela's screen, "additionalContext"
+        # reaches Claude): judge the banner TEXT inside it, never the JSON line with its lowercase keys.
+        try:
+            payload = json.loads(out)
+        except ValueError:
+            payload = None
+        if isinstance(payload, dict):
+            on_screen = str(payload.get("systemMessage") or "")
+            to_claude = str((payload.get("hookSpecificOutput") or {}).get("additionalContext") or "")
+            for channel, text in (("systemMessage", on_screen), ("additionalContext", to_claude)):
+                for needle in ("PRIVATE DATA GUARD: ON", "NEVER REWRITE GIT HISTORY", "TAGS, PUSHES"):
+                    self.assertIn(needle, text, f"the {channel} channel lost the required line: {needle!r}")
+            banner = on_screen
+        else:
+            banner = out   # an older plain-text banner
         # The headline must actually be uppercase.
-        headline = next((ln for ln in out.splitlines() if "PRIVATE DATA GUARD" in ln), "")
+        headline = next((ln for ln in banner.splitlines() if "PRIVATE DATA GUARD" in ln), "")
+        self.assertTrue(headline, "no headline line carries PRIVATE DATA GUARD")
         self.assertEqual(headline, headline.upper(), "headline banner line must be ALL CAPS")
 
 

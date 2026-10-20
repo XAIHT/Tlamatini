@@ -10,6 +10,8 @@
 
 > Current release: **[v1.87.0](../changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
 
+> **On `main`, unreleased (after v1.87.0):** [Terminater](../terminater.md) (workflow agent #86 and the Terminals area) and a private release that carries the builder's own data. Counts there: 86 workflow agents, 67 wrapped chat agents, 109 built-in tools, 217 migrations. See the change records [Terminater](../changes/2026-10-19-terminater.md) and [private-release data](../changes/2026-10-19-private-release-data.md).
+
 
 > **HEADLESS IS FORBIDDEN. ALL EXECUTION MUST BE VISIBLE.** Every automated test, command, diagnostic, script, build, agent, prompt and browser must run in a visible, forked foreground window on Angela's real desktop. Use visible CMD/PowerShell consoles and headed browsers (`headless=False`); keep output on screen and monitor live. No hidden/background execution, including CI or quick checks. If visibility cannot be confirmed, do not run. Mandatory policy: [visible execution](../../TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).
 
@@ -90,6 +92,10 @@ _EXEC_REPORT_TOOLS: Dict[str, Tuple[str, str]] = {
     # read-only ``health`` probe shares the ``kalier`` agent_key so a mixed
     # flow renders as one "List of Kalier Operations" table.
     "chat_agent_kalier":       ("kalier",         "Kalier"),
+    # Terminater types real commands into VISIBLE terminals the user supervises. The generic
+    # wrapped-agent fallback already captures it; this entry only gives the table its native
+    # "Phosphor Console" caption gradient defined in agent_page.css.
+    "chat_agent_terminater":   ("terminater",     "Terminater"),
     # The document family. Both are state-changing and both carry an explicit
     # entry ONLY so they get a native caption gradient (PDFer "Crimson
     # Parchment", LaTeXer "Scholar's Vellum") — the generic fallback would
@@ -173,6 +179,12 @@ A lexer/parser turns the self-report into a typed AST (`SectionNode` → `KVNode
 | R2 | the agent declares `error` / `failed` (`AGENT_ERROR_STATUSES`) | **FAILED** |
 | R3 | `refused` / `not_found` / `not_unique` / `engine_unavailable` … (`WORK_NOT_DONE_STATUSES`) — the work did NOT happen | **FAILED** |
 | R3b | the output is degraded/compromised — `tokens_only`, `compiled_with_errors`, `operator_required` … (`WORK_DEGRADED_STATUSES`) | **FAILED** |
+
+> **Terminater (2026-10-19, on `main`).** Its words are placed in the same sets: `completed`, `opened`, `typed`,
+> `killed`, `focused`, `warned` are intact completions (`WORK_COMPLETED_STATUSES`); `command_failed` (the command
+> exited non-zero) and `hung` (it stopped answering) are degraded (`WORK_DEGRADED_STATUSES`, R3b): the terminal
+> worked and the requested work did not, so the row is red; `operator_required` is degraded and `aborted` is
+> not-done (`WORK_NOT_DONE_STATUSES`, R3). Numeric results travel in `exit_code`, never in `status:`.
 | R4 | a read-only diagnostic ran to completion — `invalid`, `findings`, `no_matches`, `listed` … (`DIAGNOSTIC_COMPLETED_STATUSES`) | **SUCCESS** |
 | R5 | an explicit `success:` / `ok:` boolean | that boolean |
 | R6 | a non-zero `errors:` count (`"0"` is **not** a failure) | **FAILED** |
@@ -240,7 +252,7 @@ Then run `python manage.py test agent.tests.ExecReportCaptureTests` — the set 
 
 Mouser now resolves explicit physical, window and screenshot coordinates; Keyboarder binds Unicode/key delivery to a verified window; Shoter publishes capture geometry. `input_sent` is delivery evidence, not application success, and a failed or interrupted input segment must be observed before replay.
 
-Parametrizer derives its parser registry from current contracts and validates complete typed mappings. FlowCreator selects from all 85 installed agents and validates the generated graph before publishing; FlowHypervisor separates execution, kill and observation relationships and uses current desktop receipts/timing. GUI-Manager remains design only.
+Parametrizer derives its parser registry from current contracts and validates complete typed mappings. FlowCreator selects from all 86 installed agents and validates the generated graph before publishing; FlowHypervisor separates execution, kill and observation relationships and uses current desktop receipts/timing. GUI-Manager remains design only.
 
 See [configuration, examples and limitations](../desktop-input-and-flow-contracts.md), the [complete generated coverage inventory](../agent-coverage.md), and the [GUI-Manager design](../GUI-Manager-design.md).
 

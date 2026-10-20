@@ -10,6 +10,8 @@
 
 > Current release: **[v1.87.0](../changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
 
+> **On `main`, unreleased (after v1.87.0):** [Terminater](../terminater.md) (workflow agent #86 and the Terminals area) and a private release that carries the builder's own data. Counts there: 86 workflow agents, 67 wrapped chat agents, 109 built-in tools, 217 migrations. See the change records [Terminater](../changes/2026-10-19-terminater.md) and [private-release data](../changes/2026-10-19-private-release-data.md).
+
 
 ## v1.87.0 — Leaner catalog, safer removal, smaller release
 
@@ -60,6 +62,35 @@ See [the release implementation and evidence matrix](../changes/2026-10-16-v1.85
 > **HEADLESS IS FORBIDDEN. ALL EXECUTION MUST BE VISIBLE.** Every automated test, command, diagnostic, script, build, agent, prompt and browser must run in a visible, forked foreground window on Angela's real desktop. Use visible CMD/PowerShell consoles and headed browsers (`headless=False`); keep output on screen and monitor live. No hidden/background execution, including CI or quick checks. If visibility cannot be confirmed, do not run. Mandatory policy: [visible execution](../../TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).
 
 > **Developer/product boundary (Angela, 2026-09-27):** these visibility requirements govern development and verification. They must not create extra windows, steal focus or expose internal diagnostics in the shipped UX. Direct chat dictation keeps status in chat and uses only Tlamatini's main console/log.
+
+## Terminater — the hub, the WebSocket and the loopback API (2026-10-19, on `main`, unreleased)
+
+Terminater (workflow agent #86, `chat_agent_terminater`) drives real `cmd.exe` / PowerShell terminals the
+user watches. The full contract is [docs/terminater.md](../terminater.md); the architecture in one table:
+
+| Piece | Where | Role |
+| --- | --- | --- |
+| Engine | `agents/terminater/terminater_engine.py` (+ `terminater_conpty.py`, `terminater_text.py`) | `TerminalHub`, sessions, human typing, hang detection, hand-over, advisor. Stdlib-only; **loaded BY PATH** from the agents tree (`get_agents_root()`) so the web process, the pool copy and the tests share one definition |
+| ConPTY | `terminater_conpty.py` | `CreatePseudoConsole` through `ctypes`, a job object that kills the whole process tree, never raises on import |
+| The hub | `terminal_hub.py` | one `TerminalHub` per Django process; token and rendezvous (`<app>/Temp/.terminater_hub.json`); `live_pids()` for the reapers; `run_action()` for the in-process Prompt Flow Panel runner; `terminater_enabled`, `terminater_max_terminals`, `terminater_hang_seconds` |
+| Browser door | `terminal_consumer.TerminalConsumer` at `ws/terminals/` | session-authenticated, same-origin, ordered keystrokes, coalesced output (~60 fps), replay on reconnect |
+| Agent door | `terminal_views.terminater_api_view` at `POST /agent/terminater/api/` | loopback only + `X-Terminater-Token` (constant-time compare, never logged); `GET /agent/terminater/state/` is the authenticated read-only view |
+| UI | `static/agent/js/terminater_dock.js` + vendored xterm.js | mounted by chat, Agentic Control Panel and Prompt Flow Panel |
+
+**Contracts (do NOT weaken):** nothing here raises into a caller that merely asks a question
+(`live_pids()` / `hub_status()` are fail-open); `live_pids()` never creates the hub, because a
+reaper must not spawn machinery; `command_watchdog` and `orphan_reaper` protect the hub's shells
+(a parked prompt looks like a hung shell) while the shutdown sweep and the hub's `atexit` hook still
+remove every shell tree; the token is scrubbed from the shells' environment together with
+`DJANGO_SECRET_KEY`; the engine files stay flat, standard-library-only siblings. `apps.ready()` and
+`tools._seed_global_agent_defaults` call `terminal_hub.ensure_ready()` **before** any pool agent can be
+spawned (they inherit the token); no hub, thread or shell is created at that point.
+
+**Frozen builds.** `agent.terminal_hub`, `agent.terminal_consumer`, `agent.terminal_views` and
+`agent.management.commands.check_terminater` are hidden imports and `_FROZEN_TERMINATER_MODULES`;
+the agents tree ships loose beside the executable; the pool agent runs under the carried Python.
+`build.py` runs `check_terminater` inside the freshly frozen app after the Prompt Flow Panel gate and
+refuses to package on failure.
 
 ## Usage accounting and cloud balances (2026-10-10, shipped in `v1.78.0`)
 
@@ -587,7 +618,7 @@ startup must not pass its return value to `asyncio.run`.
 - Defined in `tools.py` as synchronous `@tool` functions
 - Returned by `get_mcp_tools()` (misnamed - returns LangChain tools, NOT MCP services)
 - Only active when unified-agent chain is selected
-- Includes 20 direct/core tools, 66 wrapped chat-agent launchers (see `chat_agent_registry.WRAPPED_CHAT_AGENT_SPECS`), 12 ACPX/Skill tools, and 10 External-MCP supervisors for **108 built-ins** before dynamic `ext__*` remotes. The wrapped set includes `chat_agent_flowcreator`, PDFer, LaTeXer, and the media playback pair.
+- Includes 20 direct/core tools, 67 wrapped chat-agent launchers (see `chat_agent_registry.WRAPPED_CHAT_AGENT_SPECS`), 12 ACPX/Skill tools, and 10 External-MCP supervisors for **109 built-ins** before dynamic `ext__*` remotes. The wrapped set includes `chat_agent_flowcreator`, PDFer, LaTeXer, and the media playback pair.
 - Googler tool must run Playwright inside a `ThreadPoolExecutor` — `sync_playwright()` is incompatible with Django Channels' running event loop
 
 ---
@@ -756,7 +787,7 @@ Every chat card has a **Drop** button beside Copy (`agent_page_chat.js`). After 
 
 Mouser now resolves explicit physical, window and screenshot coordinates; Keyboarder binds Unicode/key delivery to a verified window; Shoter publishes capture geometry. `input_sent` is delivery evidence, not application success, and a failed or interrupted input segment must be observed before replay.
 
-Parametrizer derives its parser registry from current contracts and validates complete typed mappings. FlowCreator selects from all 85 installed agents and validates the generated graph before publishing; FlowHypervisor separates execution, kill and observation relationships and uses current desktop receipts/timing. GUI-Manager remains design only.
+Parametrizer derives its parser registry from current contracts and validates complete typed mappings. FlowCreator selects from all 86 installed agents and validates the generated graph before publishing; FlowHypervisor separates execution, kill and observation relationships and uses current desktop receipts/timing. GUI-Manager remains design only.
 
 See [configuration, examples and limitations](../desktop-input-and-flow-contracts.md), the [complete generated coverage inventory](../agent-coverage.md), and the [GUI-Manager design](../GUI-Manager-design.md).
 
@@ -812,4 +843,4 @@ Image/video model failures accumulate in one shared, themed, non-modal fatal-err
 
 ## Windows flow-file lifecycle — 2026-10-04, shipped in `v1.76.0`
 
-Both `.flw` agent flows and `.fpmt` prompting flows now have Windows registration, repair, removal, status and Default Apps handling. Explorer/source command-line opening validates a bounded snapshot, reuses a matching running server before database startup, and returns through login to the correct editor without execution. Main-chat Open/drop routes both formats into separate editor tabs while preserving the chat document. The historical `.flw` installer wrappers cover both types for old installer/uninstaller binaries; independent management uses `flow_file_associations.ps1 -Extensions`. Never erase UserChoice or another application’s Open With entries. Update Repair respects explicit unregistration and installation ownership. See [Windows flow files](../windows-flow-files.md). Cache suffix at that change: `-flow-file-opening-2` (live suffix `-agent-catalog-1-quality-cleanup-1-usage-status-2`). Committed to `main` on 2026-10-04. The October 4 local release-validation campaign also rebuilds isolated frozen artifacts; its dated evidence distinguishes build completion from runtime acceptance.
+Both `.flw` agent flows and `.fpmt` prompting flows now have Windows registration, repair, removal, status and Default Apps handling. Explorer/source command-line opening validates a bounded snapshot, reuses a matching running server before database startup, and returns through login to the correct editor without execution. Main-chat Open/drop routes both formats into separate editor tabs while preserving the chat document. The historical `.flw` installer wrappers cover both types for old installer/uninstaller binaries; independent management uses `flow_file_associations.ps1 -Extensions`. Never erase UserChoice or another application’s Open With entries. Update Repair respects explicit unregistration and installation ownership. See [Windows flow files](../windows-flow-files.md). Cache suffix at that change: `-flow-file-opening-2` (live suffix `-agent-catalog-1-quality-cleanup-1-usage-status-2-terminater-1`). Committed to `main` on 2026-10-04. The October 4 local release-validation campaign also rebuilds isolated frozen artifacts; its dated evidence distinguishes build completion from runtime acceptance.

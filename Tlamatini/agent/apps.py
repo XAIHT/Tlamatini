@@ -192,6 +192,16 @@ class AgentConfig(AppConfig):
             if _runserver_reloader and _os.environ.get('RUN_MAIN') != 'true':
                 return
 
+            # Terminater: export the loopback token + publish the rendezvous file
+            # BEFORE any pool agent can be spawned (they inherit this environment).
+            # No hub, thread or shell is created here -- the hub is built lazily on
+            # the first browser connection or agent call.
+            try:
+                from . import terminal_hub as _terminal_hub
+                _terminal_hub.ensure_ready()
+            except Exception:
+                logging.exception("Failed to publish the Terminater rendezvous")
+
             # GPU max-performance + Ollama keep_alive=-1 pin. Runs on a
             # daemon thread so a slow nvidia-smi or cold-loading model
             # never delays Daphne. See agent/gpu_perf.py for the full

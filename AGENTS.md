@@ -9,6 +9,67 @@ Tlamatini Author Banner — do not remove
 > Current release: **[v1.87.0](docs/changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
 
 
+## On `main` after v1.87.0 — Terminater and the private release's data (unreleased)
+
+> **Not released.** The latest *released* version is still **v1.87.0**; the sections
+> below and every dated record keep that release's numbers. This work sits on `main`
+> after it (`git describe` reports `v1.87.0-3-g…` plus uncommitted changes). Records:
+> [Terminater](docs/changes/2026-10-19-terminater.md) and
+> [the private release's data](docs/changes/2026-10-19-private-release-data.md).
+
+**Counts on `main` now:** **86 workflow agents, 67 wrapped chat agents, 109 built-in
+tools** (20 + 67 + 12 + 10), 51 structured-output producers, **217 migrations**
+(0215-0217), 60 JS modules, 27 stylesheets. The live static suffix is
+`-agent-catalog-1-quality-cleanup-1-usage-status-2-terminater-1`.
+
+**Terminater** (agent #86; full contract in [docs/terminater.md](docs/terminater.md))
+raises REAL `cmd.exe` / PowerShell terminals in the **Terminals** area (**Views ▸
+Terminals**, Ctrl+`) where the USER watches. Executer returns text from an invisible
+shell; Terminater types the command into a terminal the user sees, waits, and reads it
+back. Contracts that must not be weakened:
+
+- **Tlamatini types, never pastes.** One key at a time at `typing_wpm` (default 50,
+  20-160, never faster than 30 ms per key); there is no instant mode. Output is kept in
+  full with an honest `truncated` flag; a command silent for `hang_seconds` (45) is
+  `hung` and can be aborted; the user always wins (Esc takes over; `<<USER:hint>>` hands
+  the keyboard over; `watch_user` and a deterministic advisor help while they type).
+- **One hub, three doors.** A single `TerminalHub` lives in the Django process
+  (`terminal_hub.py`; its engine `agents/terminater/terminater_engine.py` is loaded BY
+  PATH from the agents tree so the web process, the pool agent and the tests share one
+  definition; the three engine files are stdlib-only). Doors: `ws/terminals/`
+  (session-authenticated), `POST /agent/terminater/api/` (loopback only +
+  `X-Terminater-Token`, token scrubbed from the shells' environment, rendezvous file
+  `<app>/Temp/.terminater_hub.json`) and the in-process Prompt Flow Panel runner.
+  Closing a page never kills a shell. The reapers ask `terminal_hub.live_pids()` and the
+  hub's shells die with Tlamatini.
+- **Surfaces.** `chat_agent_terminater` (on the Ask Execs allowlist: visible is not
+  harmless), an ordinary active canvas agent, and the 8th executable Prompt Flow Panel
+  operation (the kickoff example deliberately has none; the build gate validates one
+  separately). Result words: `completed`/`opened`/`typed`/`killed`/`focused`/`warned`
+  green; `command_failed`, `hung`, `operator_required`, `aborted` red.
+- **Carriage.** Migrations 0215 (Agent row), 0216 (`Chat-Agent-Terminater` Tool row) and
+  0217 (catalog prompts 127-129, *Run & Execute*); the display name is pinned in
+  `display_name_from_agent_type`; the **`agents_descriptions.md` row feeds the canvas
+  tooltip**, so a missing row is a visible defect. `build.py` names the hub, consumer,
+  views and `check_terminater` as frozen modules and runs `check_terminater` (real
+  PowerShell, real `cmd.exe`, the pool agent under the carried Python, a WebSocket round
+  trip) inside the frozen app, refusing to package on failure. xterm.js is vendored
+  locally (5.5.0, no CDN).
+
+**The private (keyed) release now carries the data of THIS machine**
+(`build_complete_private_release.py`; details in
+[the record](docs/changes/2026-10-19-private-release-data.md)): contacts (as before);
+**every External MCP server of the running install** merged into the gitignored
+`external_mcps.private.json` (the tracked dev catalog still wins for servers both have;
+only empty or placeholder values are filled; the install's active selection, at most
+5, is kept; the previous snapshot stands in when no install is found); and the whole
+**`data.keys`** vault shipped as `<install>/data.keys` through
+`TLAMATINI_BUNDLE_DATA_KEYS`. The public builder clears that variable, `build.py` aborts
+if the vault is requested with the PUBLIC catalog, and the new file is gitignored and
+excluded from the self-modify snapshot. Not solved: an in-app update does not preserve
+`data.keys`, and two entries (`OPENROUTER_API_KEY`, `DASHSCOPE_API_KEY`) have no
+consumer other than the vault itself.
+
 ## v1.87.0 — Leaner catalog, safer removal, smaller release
 
 The latest released version is **v1.87.0** (tagged 2026-10-18; it also carries
@@ -186,7 +247,7 @@ for every page: each dropped file is recognised by its bytes and sent to its own
 .json imports everywhere and never errors, opens as text or navigates away."* It was published on GitHub
 on 2026-10-14 ("Tlamatini Release v1.83.0 Win11x64", marked Latest), so self-update delivered `v1.83.0` then;
 that historical runtime version was `1.83.0`. The current release is `v1.87.0`. `v1.83.0` carried everything in `v1.82.0` plus the three
-changes below. `v1.83.0` added no migration after 0213 (0214 arrived in v1.87.0); the frontend has 59 JS modules and 26
+changes below. `v1.83.0` added no migration after 0213 (0214 arrived in v1.87.0); the frontend has 60 JS modules and 26
 stylesheets, and the live `STATIC_VERSION` cache suffix is now `-agent-catalog-1-quality-cleanup-1-usage-status-2`.
 
 - **File-drop router (`a2914019`).** `static/agent/js/file_drop_router.js` is the ONE listener for files
@@ -323,7 +384,7 @@ coloured by level*, *A refused PDF says why*; `docs/claude/recent-fixes.md`
 
 ## Prompt Flow comments are static; User Input runs (2026-10-03)
 
-**Commentary/Input contract (2026-10-04, shipped in `v1.76.0`):** Seven executable operations remain separate from static **User Commentary**. **User Input** (`user_input`) keeps the question/reply/cancellation mechanism and notched figure. **User Commentary** (`user_commentary`) is edited entirely on the canvas: double-click/Enter writes in the bubble; a floating mini toolbar formats selected text with different fonts, sizes, text colors, bold, italic and underline within the same note. With a caret, formatting applies to newly typed text; outside editing it applies to the whole note. Bubble color and alignment affect the note. There is no commentary configuration dialog or numeric dimension form. Drag any border or corner to resize, including while editing; Fit text removes spare height. Done/Ctrl+Enter saves; Cancel/Escape restores the whole edit. Ctrl+Z/Y works inside the editor; completed edits, moves, resizes and duplicates use flow Undo/Redo. Bubbles contain their full wrapped text without internal scrollbars. Version 2 files persist allowlisted `runs` plus matching literal `text`; older plain notes normalize to one run, and version 1 executable commentary still migrates to User Input with IDs/edges/settings intact. Comments have no ports/Start/runtime/context/history/step effects. The draft key remains `.draft.v1.<user id>`. Cache suffix at that change: `-flow-file-opening-2` (the live suffix is `-agent-catalog-1-quality-cleanup-1-usage-status-2` since 2026-10-18). See `docs/prompting-flow-designer.md` and the 2026-10-04 verification record; the October 4 local release-validation campaign tracks subsequent isolated frozen builds and runtime acceptance.
+**Commentary/Input contract (2026-10-04, shipped in `v1.76.0`):** Executable operations (seven at that date, eight with Terminater on main) remain separate from static **User Commentary**. **User Input** (`user_input`) keeps the question/reply/cancellation mechanism and notched figure. **User Commentary** (`user_commentary`) is edited entirely on the canvas: double-click/Enter writes in the bubble; a floating mini toolbar formats selected text with different fonts, sizes, text colors, bold, italic and underline within the same note. With a caret, formatting applies to newly typed text; outside editing it applies to the whole note. Bubble color and alignment affect the note. There is no commentary configuration dialog or numeric dimension form. Drag any border or corner to resize, including while editing; Fit text removes spare height. Done/Ctrl+Enter saves; Cancel/Escape restores the whole edit. Ctrl+Z/Y works inside the editor; completed edits, moves, resizes and duplicates use flow Undo/Redo. Bubbles contain their full wrapped text without internal scrollbars. Version 2 files persist allowlisted `runs` plus matching literal `text`; older plain notes normalize to one run, and version 1 executable commentary still migrates to User Input with IDs/edges/settings intact. Comments have no ports/Start/runtime/context/history/step effects. The draft key remains `.draft.v1.<user id>`. Cache suffix at that change: `-flow-file-opening-2` (the live suffix is `-agent-catalog-1-quality-cleanup-1-usage-status-2-terminater-1` since 2026-10-18). See `docs/prompting-flow-designer.md` and the 2026-10-04 verification record; the October 4 local release-validation campaign tracks subsequent isolated frozen builds and runtime acceptance.
 
 Preserve this distinction when editing the designer, importing legacy diagrams,
 writing documentation or verifying the shipped example. The user explicitly
@@ -337,7 +398,7 @@ font/width changes, inline typing, file/draft recovery and canvas Fit.
 
 ## Windows flow-file lifecycle — 2026-10-04, shipped in `v1.76.0`
 
-Both `.flw` agent flows and `.fpmt` prompting flows now have Windows registration, repair, removal, status and Default Apps handling. Explorer/source command-line opening validates a bounded snapshot, reuses a matching running server before database startup, and returns through login to the correct editor without execution. Main-chat Open/drop routes both formats into separate editor tabs while preserving the chat document. The historical `.flw` installer wrappers cover both types for old installer/uninstaller binaries; independent management uses `flow_file_associations.ps1 -Extensions`. Never erase UserChoice or another application’s Open With entries. Update Repair respects explicit unregistration and installation ownership. See [Windows flow files](docs/windows-flow-files.md). Cache suffix at that change: `-flow-file-opening-2` (the live suffix is `-agent-catalog-1-quality-cleanup-1-usage-status-2` since 2026-10-18). Committed to `main` on 2026-10-04. The October 4 local release-validation campaign also rebuilds isolated frozen artifacts; its dated evidence distinguishes build completion from runtime acceptance.
+Both `.flw` agent flows and `.fpmt` prompting flows now have Windows registration, repair, removal, status and Default Apps handling. Explorer/source command-line opening validates a bounded snapshot, reuses a matching running server before database startup, and returns through login to the correct editor without execution. Main-chat Open/drop routes both formats into separate editor tabs while preserving the chat document. The historical `.flw` installer wrappers cover both types for old installer/uninstaller binaries; independent management uses `flow_file_associations.ps1 -Extensions`. Never erase UserChoice or another application’s Open With entries. Update Repair respects explicit unregistration and installation ownership. See [Windows flow files](docs/windows-flow-files.md). Cache suffix at that change: `-flow-file-opening-2` (the live suffix is `-agent-catalog-1-quality-cleanup-1-usage-status-2-terminater-1` since 2026-10-18). Committed to `main` on 2026-10-04. The October 4 local release-validation campaign also rebuilds isolated frozen artifacts; its dated evidence distinguishes build completion from runtime acceptance.
 
 ## Complete release verification (2026-10-04)
 

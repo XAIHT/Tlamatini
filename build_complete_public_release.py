@@ -316,6 +316,9 @@ def _utf8_env() -> dict:
     # generates that two-server catalog from external_mcp_defaults whenever this
     # is unset, and hard-ABORTS the build if a live secret ever reaches it.
     env.pop("TLAMATINI_BUNDLE_EXTERNAL_MCPS", None)
+    # PUBLIC build NEVER carries the secrets vault (data.keys), even if the ambient
+    # shell exported TLAMATINI_BUNDLE_DATA_KEYS. build.py ships it only when this is set.
+    env.pop("TLAMATINI_BUNDLE_DATA_KEYS", None)
     return env
 
 
@@ -543,7 +546,8 @@ def privacy_preflight() -> list[str]:
 
     probe("data.keys (the live secrets vault)", _vault)
 
-    for cfg in (agent_dir / "config.json", agent_dir / "external_mcps.json"):
+    for cfg in (agent_dir / "config.json", agent_dir / "external_mcps.json",
+                REPO_ROOT / "external_mcps.private.json"):
         def _json_probe(p=cfg) -> str:
             return ", ".join(_json_secret_hits(p)) if p.is_file() else ""
         probe(f"{cfg.name} holds live secret(s)", _json_probe)

@@ -181,6 +181,12 @@ _PARAMETRIZER_OUTPUT_FIELDS: dict[str, tuple[str, ...]] = {
     # {predominant_color} into a second PPTXer keeps a multi-part deck visually
     # consistent instead of each part choosing its own palette.
     "pptxer": ("action", "status", "success", "output_path", "output_dir", "filename", "slide_count", "shape_count", "images_embedded", "videos_embedded", "tables", "charts", "diagrams", "generated_art", "nuance", "nuance_confidence", "palette", "predominant_color", "font_display", "font_body", "font_families", "shapes_measured", "render_tier", "slides_rendered", "ground_truth", "layout_clean", "overlaps", "text_overflows", "bytes", "elapsed_seconds", "stage", "response_body"),
+    # Terminater -- visible, user-supervised terminals. `exit_code` + `status` are the
+    # load-bearing pair for a Forker (a non-zero exit is `command_failed`, a command that
+    # stopped answering is `hung`); `user_part` / `user_line` carry what the USER typed
+    # in a hand-over, and `typed` is exactly what Tlamatini typed.  Keep this tuple in
+    # step with terminater.py::SECTION_FIELDS.
+    "terminater": ("action", "status", "success", "terminal_id", "kind", "title", "terminal_state", "command", "exit_code", "duration_seconds", "output_chars", "truncated", "hung", "aborted_by", "typed", "user_part", "user_line", "user_keys", "cursor", "watch_reason", "wait_reason", "layout", "area", "terminals", "hub", "message", "response_body"),
 }
 
 

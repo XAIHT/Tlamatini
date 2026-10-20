@@ -110,7 +110,7 @@ the restore steps name real omitted binaries with correct install-relative sourc
 ### Step 0 — run the deterministic checker (does the heavy lifting)
 
 ```bash
-python .claude/skills/tlamatini-self-modify-inclusion/scripts/sweep_self_modify.py
+python .gemini/skills/tlamatini-self-modify-inclusion/scripts/sweep_self_modify.py
 # add --keep to retain the unique Temp/_self_modify_sweep_<id> printed by the checker
 ```
 

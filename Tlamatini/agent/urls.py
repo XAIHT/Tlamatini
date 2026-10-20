@@ -13,7 +13,7 @@ from django.urls import path
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_POST
 
-from . import views, flow_file_views, model_brain_views, usage_views
+from . import views, flow_file_views, model_brain_views, usage_views, terminal_views
 from .pdf_context_views import prepare_pdf_context_view, pdf_context_status_view, cancel_pdf_context_view
 
 
@@ -169,6 +169,11 @@ urlpatterns = [
     path('update_pdfer_connection/<str:agent_name>/', secure_post(views.update_pdfer_connection_view), name='update_pdfer_connection'),
     path('update_latexer_connection/<str:agent_name>/', secure_post(views.update_latexer_connection_view), name='update_latexer_connection'),
     path('update_pptxer_connection/<str:agent_name>/', secure_post(views.update_pptxer_connection_view), name='update_pptxer_connection'),
+    path('update_terminater_connection/<str:agent_name>/', secure_post(views.update_terminater_connection_view), name='update_terminater_connection'),
+    # Terminater: the loopback API is token-authenticated (no session, no CSRF cookie) and
+    # deliberately NOT wrapped in secure_post; the state view is a normal login-protected GET.
+    path('terminater/api/', terminal_views.terminater_api_view, name='terminater_api'),
+    path('terminater/state/', terminal_views.terminater_state_view, name='terminater_state'),
     path('update_stm32er_connection/<str:agent_name>/', secure_post(views.update_stm32er_connection_view), name='update_stm32er_connection'),
     path('update_esp32er_connection/<str:agent_name>/', secure_post(views.update_esp32er_connection_view), name='update_esp32er_connection'),
     path('update_esphomer_connection/<str:agent_name>/', secure_post(views.update_esphomer_connection_view), name='update_esphomer_connection'),

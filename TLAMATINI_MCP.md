@@ -11,12 +11,12 @@
 > Current release: **[v1.87.0](docs/changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
 
 
-Exposes **every complete live Tlamatini agent directory (85 in the current
-release)** as MCP tools so an MCP client (Claude Code, etc.) can drive
+Exposes **every complete live Tlamatini agent directory (85 in the released v1.87.0,
+86 on `main` with Terminater)** as MCP tools so an MCP client (Claude Code, etc.) can drive
 them directly — Executer, Pythonxer, Croner, ACPXer, STM32er, ESP32er,
 Arduiner, Shoter, Playwrighter, Kalier, MCP Doctor, NetSpeed-Calculator, and
 the rest of the live catalog. It also exposes 7 management/skill tools and 10
-ACPX tools: **102 root stdio MCP tools total**. The server discovers agents
+ACPX tools: **102 root stdio MCP tools total in v1.87.0 (103 on `main`)**. The server discovers agents
 dynamically; these counts are a verified snapshot, not a hardcoded limit.
 
 ## Files
@@ -120,6 +120,20 @@ This returns a JSON catalogue inside the agent's `response_body`, `status: liste
 
 PDF compilation needs an installed engine (MiKTeX recommended). Other controls are `subtitle`, `style_decoration` and six-digit `predominant_color`. Send complex LaTeX as `content_b64` / `input_text_b64`; a valid base64 field takes precedence over its plain counterpart. Styles apply to generated source and bare fragments, not existing complete sources/projects. Canonical design fields are `style`, `style_family`, `style_mode`, `style_count`; operation success still comes from `status`/`success`. See the [style guide](Tlamatini/agent/agents/latexer/STYLES.md).
 
+### Terminater: a visible terminal (on `main`, not yet released)
+
+The connector exposes the `terminater` agent (typically `mcp__tlamatini__terminater`); the running chat calls the same agent as `chat_agent_terminater`. It types a command into a real CMD / PowerShell terminal that the user watches in Tlamatini's **Terminals** area (see [docs/terminater.md](docs/terminater.md)).
+
+```json
+{"action": "run", "kind": "powershell", "text": "Get-Date", "typing_wpm": 50}
+```
+
+The result is the agent log with an `INI_SECTION_TERMINATER` block (`status`, `exit_code`, `typed`, `user_part`, `response_body` = the command's output). Things an MCP client must know:
+
+* **It needs a running Tlamatini to be visible.** The agent finds the hub through `TLAMATINI_TERMINATER_URL` / `TLAMATINI_TERMINATER_TOKEN` or `<app>/Temp/.terminater_hub.json`. With `mode: auto` and no reachable hub it runs **standalone** (its own terminal, which dies with the run and which nobody watches); set `mode: hub` to be refused instead.
+* **A call is slow by design.** Every key is typed at `typing_wpm` (default 50): about 15 s for 60 characters, plus the command itself, so allow for it in the client's timeout.
+* A command that exits non-zero is `command_failed` and one that goes quiet for `hang_seconds` is `hung`; both are failures for a Forker even though the terminal worked. A `<<USER:hint>>` hand-over waits for a person (up to `user_wait_seconds`, default 300).
+
 ### Management and skill tools
 
 - `tlamatini_list_agents()` — every agent + its parameters.
@@ -159,7 +173,7 @@ Typical long-running pattern: call the agent (gets `run_id`) →
 
 Mouser now resolves explicit physical, window and screenshot coordinates; Keyboarder binds Unicode/key delivery to a verified window; Shoter publishes capture geometry. `input_sent` is delivery evidence, not application success, and a failed or interrupted input segment must be observed before replay.
 
-Parametrizer derives its parser registry from current contracts and validates complete typed mappings. FlowCreator selects from all 85 installed agents and validates the generated graph before publishing; FlowHypervisor separates execution, kill and observation relationships and uses current desktop receipts/timing. GUI-Manager remains design only.
+Parametrizer derives its parser registry from current contracts and validates complete typed mappings. FlowCreator selects from all 86 installed agents and validates the generated graph before publishing; FlowHypervisor separates execution, kill and observation relationships and uses current desktop receipts/timing. GUI-Manager remains design only.
 
 See [configuration, examples and limitations](docs/desktop-input-and-flow-contracts.md), the [complete generated coverage inventory](docs/agent-coverage.md), and the [GUI-Manager design](docs/GUI-Manager-design.md).
 

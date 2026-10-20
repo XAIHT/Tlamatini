@@ -10,6 +10,14 @@
     const commentColors = [['#fbcfe8', 'Pink'], ['#fef3c7', 'Yellow'], ['#dcfce7', 'Green'], ['#dbeafe', 'Blue'], ['#ede9fe', 'Purple'], ['#ffedd5', 'Orange'], ['#ffffff', 'White'], ['#e5e7eb', 'Grey']];
     const commentTextColors = [['#202938', 'Ink'], ['#000000', 'Black'], ['#1d4ed8', 'Blue'], ['#166534', 'Green'], ['#7e22ce', 'Purple'], ['#b91c1c', 'Red'], ['#92400e', 'Brown'], ['#ffffff', 'White']];
     const commentFonts = ['Nunito', 'Arial', 'Verdana', 'Georgia', 'Times New Roman', 'Courier New'];
+    // Terminater: a visible CMD / PowerShell terminal step (the parallelogram). Keep these lists
+    // identical to agent/services/prompt_flow_panel.py.
+    const terminaterActions = ['run', 'open', 'type', 'send_key', 'wait', 'read', 'commands', 'abort', 'kill', 'force_kill', 'kill_all', 'list', 'status', 'focus', 'rename', 'layout', 'clear', 'watch_user', 'warn_user', 'handover'];
+    const terminaterKinds = ['cmd', 'powershell', 'pwsh'];
+    const terminaterTextActions = ['run', 'type', 'handover'];
+    const terminaterDefaults = { action: 'run', kind: 'powershell', terminal: '', title: '', cwd: '', keys: '', message: '', severity: 'warning', suggestion: '', hint: '', which: 'last', until: '', pattern: '', layout: '', area: '', submit: true, secret: false, wait: true, close_after: false, load_profile: true, advisor: true, typing_wpm: 50, wait_seconds: 120, hang_seconds: 45, user_wait_seconds: 300, idle_seconds: 2 };
+    const terminaterTextLimits = { terminal: 80, title: 80, cwd: 1000, keys: 500, message: 2000, suggestion: 1000, hint: 200, which: 40, until: 20, pattern: 500 };
+    const terminaterNumbers = { typing_wpm: [20, 160, true], wait_seconds: [1, 3600, false], hang_seconds: [3, 3600, false], user_wait_seconds: [5, 3600, false], idle_seconds: [0.2, 600, false] };
     const isFlowFilename = name => /\.fpmt$/i.test(name);
     // Migrate old flow draft/save names without changing system prompt files.
     const flowFilename = name => isFlowFilename(name) ? name : name.replace(/\.pmt$/i, '') + EXTENSION;
@@ -22,6 +30,7 @@
         flush_embeddings: { label: 'Flush embeddings', color: '#f0a88b', fill: '#684237', path: 'M4 8H196L100 124Z', input: [4 + 96 * 56 / 116, 64], output: [196 - 96 * 56 / 116, 64], help: 'Remove this run’s embeddings while retaining its conversation.' },
         clean_history: { label: 'Clean History', color: '#90cddc', fill: '#315665', path: 'M4 14H196L160 114H40Z', input: [22, 64], output: [178, 64], help: 'Clear this run’s conversation and last output; keep its embeddings.' },
         user_input: { label: 'User Input', color: '#eaaed6', fill: '#653d59', path: 'M52 4L100 38L148 4V88L100 124L52 88Z', input: [52, 64], output: [148, 64], help: 'Pause for a user reply and add it to the conversation.' },
+        terminater: { label: 'Terminater', color: '#7ee8a6', fill: '#1e4d38', path: 'M52 20H196L148 108H4Z', input: [28, 64], output: [172, 64], help: 'Run a command in a visible CMD or PowerShell terminal, typed at human speed. Use <<USER:hint>> to hand the keyboard to the user for part of the command.' },
         user_commentary: { label: 'User Commentary', color: '#eaaed6', fill: '#653d59', path: 'M28 10H172Q196 10 196 34V82Q196 106 172 106H70L48 124L33 106H28Q4 106 4 82V34Q4 10 28 10Z', static: true, help: 'A static review note. Double-click to write. Use the floating toolbar to format; drag any edge or corner to resize. It never runs.' },
     };
     const copy = value => JSON.parse(JSON.stringify(value));
@@ -43,6 +52,7 @@
         if (type === 'prompt' || type === 'programmed_prompt') Object.assign(config, { multi_turn: false, acpx: false });
         if (type === 'programmed_prompt') Object.assign(config, { delay_seconds: 5, scheduled_at: '' });
         if (type === 'decision') Object.assign(config, { comparison: 'contains', value: '', case_sensitive: false });
+        if (type === 'terminater') Object.assign(config, terminaterDefaults);
         if (type === 'user_commentary') Object.assign(config, { width: 360, height: 160, color: '#fef3c7', text_color: '#202938', font_family: 'Nunito', font_size: 16, bold: false, italic: false, underline: false, align: 'left', runs: [] });
         return { id: id(), type, label: operations[type].label, x, y, config };
     }
@@ -129,6 +139,23 @@
                 if (typeof n.config.case_sensitive !== 'boolean') fail('Case sensitivity must be true or false.');
                 if (playable && ['contains', 'not_contains', 'equals'].includes(n.config.comparison) && !n.config.value) fail(`${n.label} needs a comparison value.`);
             }
+            if (n.type === 'terminater') {
+                const c = n.config;
+                for (const [key, fallback] of Object.entries(terminaterDefaults)) if (c[key] === undefined) c[key] = fallback;
+                if (!terminaterActions.includes(c.action)) fail('Unknown Terminater action.');
+                if (!terminaterKinds.includes(c.kind)) fail('Choose CMD, PowerShell or PowerShell 7.');
+                for (const [key, max] of Object.entries(terminaterTextLimits)) text(c[key], max, `Terminater ${key}`);
+                if (!['info', 'hint', 'warning', 'danger'].includes(c.severity)) fail('Unknown Terminater severity.');
+                if (!['', 'tabs', 'tile', 'tile-h', 'tile-v', 'grid'].includes(c.layout) || !['', 'dock', 'full'].includes(c.area)) fail('Unknown Terminater layout or area.');
+                for (const key of ['submit', 'secret', 'wait', 'close_after', 'load_profile', 'advisor']) if (typeof c[key] !== 'boolean') fail(`Terminater ${key} must be true or false.`);
+                for (const [key, [min, max, integer]] of Object.entries(terminaterNumbers)) {
+                    number(c[key], min, max, `Terminater ${key}`);
+                    if (integer && !Number.isInteger(c[key])) fail(`Terminater ${key} must be a whole number.`);
+                }
+                if (playable && terminaterTextActions.includes(c.action) && !n.config.text.trim()) fail(`${n.label} needs a command to type.`);
+                if (playable && c.action === 'send_key' && !c.keys.trim()) fail(`${n.label} needs the keys to press.`);
+                n.config = Object.fromEntries(['text', ...Object.keys(terminaterDefaults)].map(key => [key, c[key]]));
+            }
             known.set(n.id, n);
         }
         for (const e of flow.edges) {
@@ -169,5 +196,5 @@
         flow.edges = [{ id: id(), source: a.id, target: b.id, branch: 'next' }, { id: id(), source: b.id, target: c.id, branch: 'yes' }, { id: id(), source: b.id, target: d.id, branch: 'no' }];
         return flow;
     }
-    window.PromptFlowPanelModel = Object.freeze({ FORMAT, VERSION, EXTENSION, commentColors, commentTextColors, commentFonts, commentStyleKeys, commentStyle, commentRuns, mergeCommentRuns, sliceCommentRuns, replaceCommentRange, isComment, size, isFlowFilename, flowFilename, operations, copy, uniqueLabel, id, blank, node, validate, example });
+    window.PromptFlowPanelModel = Object.freeze({ FORMAT, VERSION, EXTENSION, terminaterActions, terminaterKinds, terminaterDefaults, commentColors, commentTextColors, commentFonts, commentStyleKeys, commentStyle, commentRuns, mergeCommentRuns, sliceCommentRuns, replaceCommentRange, isComment, size, isFlowFilename, flowFilename, operations, copy, uniqueLabel, id, blank, node, validate, example });
 })();

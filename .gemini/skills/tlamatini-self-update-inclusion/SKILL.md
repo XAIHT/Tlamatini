@@ -139,7 +139,7 @@ the first-launch migration path.
 ### Step 0 — run the deterministic checker (does 90% of the work)
 
 ```bash
-python .claude/skills/tlamatini-self-update-inclusion/scripts/sweep_self_update.py
+python .gemini/skills/tlamatini-self-update-inclusion/scripts/sweep_self_update.py
 ```
 
 It parses the three files and reports `[PASS]` / `[FINDING]` for invariants 2, 3, the

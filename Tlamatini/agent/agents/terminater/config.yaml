@@ -1,0 +1,75 @@
+# Terminater Agent Configuration
+#
+# Terminater drives REAL cmd.exe / PowerShell terminals that the USER can watch,
+# type into and take over.  One run does ONE `action`; terminals persist in the
+# Tlamatini hub between runs, so a flow (or the chat) can open a terminal in one
+# step, type into it in the next, and close it in a third.
+#
+#   run         open-or-reuse a terminal, TYPE a command like a person, wait, read   (default)
+#   open        raise a new terminal                 type      type into an existing one
+#   send_key    press named keys (ctrl+c, enter...)  wait      wait for the running command
+#   read        read output (last command | N | screen | all)   commands  list the history
+#   abort       interrupt the running command (Ctrl+C, Ctrl+C, kill its children)
+#   kill        close a terminal gracefully          force_kill  kill it and its whole tree
+#   kill_all    force-kill every terminal            list / status   what is open
+#   focus / rename / layout (tabs | tile | tile-h | tile-v | grid, area dock | full)
+#   watch_user  see, in real time, what the USER is typing (and get advice about it)
+#   warn_user   show the user a warning in the terminal area
+#   handover    type part of a command and give the keyboard to the user
+action: "run"
+
+# Which terminal: its id ("t1"), its title, or empty = the active one.
+terminal: ""
+# cmd | powershell | pwsh   (only used when a terminal is opened)
+kind: "powershell"
+title: ""
+cwd: ""
+
+# What to type.  `<<USER:hint>>` hands the keyboard to the user at that point:
+#   text: "ping <<USER:host to ping>> -n 2"
+# Tlamatini types "ping ", the user types the host (and presses Enter), she types " -n 2".
+text: ""
+text_b64: ""            # byte-exact alternative to `text`
+submit: true            # press Enter at the end (false = leave the line ready for the user)
+secret: false           # the typed/handed-over part is a secret: never logged or returned
+
+# Typing speed in words per minute (20..160).  There is NO instant/paste mode, by design.
+typing_wpm: 50
+
+# Waiting
+wait: true
+wait_seconds: 120       # give up waiting for the command after this long
+hang_seconds: 45        # no output for this long => the command is flagged as hung
+user_wait_seconds: 300  # how long to wait for the user's part of a hand-over
+until: ""               # wait: prompt (default) | pattern | idle ; watch_user: idle | submit | key
+pattern: ""
+idle_seconds: 2
+
+# Reading
+which: "last"           # read: last | <command number> | screen | all
+read_chars: 20000
+offset: 0
+
+# Keys / watching / warning / layout
+keys: ""
+cursor: 0
+message: ""
+severity: "warning"     # info | hint | warning | danger
+suggestion: ""
+hint: ""
+layout: ""
+area: ""
+show: ""
+close_after: false      # run: close the terminal when the command completed
+load_profile: true      # PowerShell: load the user's profile
+advisor: true           # warn the user about dangerous / mistyped commands
+
+# Where the hub is.  Empty = discover it (environment, then <app>/Temp/.terminater_hub.json).
+hub_url: ""
+# auto: hub when reachable, else run standalone (terminals live and die inside this agent)
+# hub: refuse when no hub  |  standalone: never use the hub
+mode: "auto"
+user: ""
+
+source_agents: []
+target_agents: []

@@ -2212,6 +2212,96 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         ),
         poll_window_seconds=120,
     ),
+    ChatWrappedAgentSpec(
+        key="terminater",
+        template_dir="terminater",
+        tool_name="chat_agent_terminater",
+        tool_description="Chat-Agent-Terminater",
+        display_name="Terminater",
+        purpose=(
+            "VISIBLE, USER-SUPERVISED TERMINALS. Terminater raises REAL cmd.exe / PowerShell "
+            "terminals inside Tlamatini's Terminals area (Views > Terminals) where the USER "
+            "WATCHES you work, can interrupt you, answer a question, or finish a command you "
+            "started. It is NOT a silent command runner - that is Executer.\n\n"
+            "WHEN TO USE IT (instead of Executer): the user wants to SEE, learn from or "
+            "supervise the commands - 'show me', 'walk me through', 'in the terminal', "
+            "Step-by-Step mode, a demo or tutorial, an installer or tool that asks questions "
+            "(ssh, python REPL, winget, npm init), several long-lived terminals at once "
+            "(CMD next to PowerShell, tiled), or a command where the USER must supply a "
+            "parameter or a secret. Use Executer when you only need a command's text output "
+            "and nobody needs to watch.\n\n"
+            "YOU TYPE LIKE A PERSON: every key is typed one at a time at a senior typist's "
+            "speed (typing_wpm, default 50) - never pasted, never instant, by design, so a "
+            "30-character command takes about 8 seconds. Do NOT shorten commands to save time "
+            "and do NOT split them to be quicker; a long command is slow on purpose.\n\n"
+            "ACTIONS (one per call): run (DEFAULT - open-or-reuse a terminal, type, wait, read) | "
+            "open | type | send_key (keys='ctrl+c', 'enter', 'up up enter') | wait | read "
+            "(which='last'|N|'screen'|'all') | commands | abort (Ctrl+C, again, then kill the "
+            "command's processes - the terminal survives) | kill (close gracefully) | force_kill "
+            "(kill the shell and its whole process tree) | kill_all | list | focus | rename | "
+            "layout (layout='tabs'|'tile'|'tile-h'|'tile-v'|'grid', area='dock'|'full' = the "
+            "whole canvas area) | watch_user | warn_user | handover.\n\n"
+            "PARAMETERS: terminal (id like 't1', or its title; empty = the active one) | "
+            "kind='cmd'|'powershell'|'pwsh' (choose PowerShell for scripting and exit codes, CMD "
+            "for batch files / legacy tools) | title | cwd | text (the command; text_b64 for "
+            "byte-exact) | submit=true (false = leave the line typed for the user to review) | "
+            "wait=true | wait_seconds=120 | hang_seconds=45 | typing_wpm | secret=true. "
+            "Pass text EXACTLY as it must be typed - Windows paths with backslashes are kept "
+            "verbatim.\n\n"
+            "LET THE USER TYPE PART OF A COMMAND: put <<USER:what to type>> in text, e.g. "
+            "text='ping <<USER:the host to ping>> -n 2'. You type 'ping ', the terminal shows "
+            "the user a prompt, the user types the host and presses Enter, you type ' -n 2' and "
+            "run it. With nothing after the placeholder the user's Enter runs the line. Add "
+            "secret=true for passwords/keys: that part is never logged or returned to you. "
+            "user_wait_seconds (default 300) bounds the wait; on timeout status is "
+            "operator_required.\n\n"
+            "READ THE RESULT: the result carries status, exit_code (PowerShell reports it; "
+            "CMD cannot, it is null there), the COMPLETE output (read_chars, offset page it; "
+            "truncated says so honestly) and wait_reason. status 'completed' = ran fine; "
+            "'command_failed' = it ran and exited non-zero (say so, show the output); 'hung' = "
+            "no output for hang_seconds -> tell the user, then abort (or keep waiting with "
+            "action='wait'); 'operator_required' = the program asked something (awaiting_input "
+            "holds the question) -> answer with action='type' text='y' ONLY if the user already "
+            "told you the answer, otherwise let the user answer in the terminal; 'timeout' = "
+            "still running, use wait/read; 'aborted' = the user pressed Esc/Ctrl+C and TOOK "
+            "OVER - stop typing, do not retype the command, ask what they want.\n\n"
+            "WATCH AND HELP THE USER IN REAL TIME: action='watch_user' (until='idle'|'submit'|"
+            "'key', idle_seconds, wait_seconds, cursor from the previous reply) returns exactly "
+            "what the user is typing (line, keys, any submitted commands) and deterministic "
+            "advice. If you see a dangerous or mistyped command, call action='warn_user' "
+            "(message, severity='info'|'hint'|'warning'|'danger', suggestion) - it appears in "
+            "their terminal; NEVER type over the user's line or run a command they are still "
+            "typing. Loop watch_user (passing the returned cursor) only while the user is "
+            "actively being guided.\n\n"
+            "GOOD PRACTICE: reuse one terminal per job (pass terminal='t1'), leave terminals "
+            "OPEN so the user can read them, kill/force_kill only on request or when a terminal "
+            "is stuck, never type 'exit' to close one (use kill). Do not run destructive or "
+            "irreversible commands (format, rd /s on a drive, Remove-Item -Recurse on a root) "
+            "without the user's explicit confirmation first - the advisor will also warn them. "
+            "Never type a secret yourself. Opening a terminal makes the Terminals area appear; "
+            "use layout to tile terminals side by side or area='full' to cover the canvas.\n\n"
+            "Terminals live in the Tlamatini process: they persist between your calls but not "
+            "across a Tlamatini restart."
+        ),
+        example_request=(
+            "Run Terminater with action='run', kind='powershell', terminal='build', "
+            "text='Get-ChildItem C:\\Windows -Filter *.ini | Select-Object Name', wait_seconds=60"
+        ),
+        aliases=(
+            "terminater", "terminal", "terminals", "visible terminal", "console window",
+            "powershell terminal", "cmd terminal", "command prompt", "supervised terminal",
+            "watch me type", "terminal area",
+        ),
+        security_hints=(
+            "terminater", "terminal", "terminals", "powershell", "cmd", "command prompt",
+            "console", "shell", "in the terminal", "show me the command", "type the command",
+            "walk me through", "guide me", "step by step", "visible", "watch", "supervise",
+            "ssh", "repl", "tile", "tiled", "open a terminal", "new terminal", "kill the terminal",
+            "close the terminal", "ctrl+c", "hung command", "terminal area", "views terminals",
+        ),
+        poll_window_seconds=25,
+        verbatim_fields=("text", "message", "hint", "suggestion"),
+    ),
 )
 
 

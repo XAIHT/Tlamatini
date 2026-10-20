@@ -30,8 +30,8 @@
   <a href="https://github.com/XAIHT/Tlamatini/releases"><img src="https://img.shields.io/badge/VERSION-v1.87.0-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="Version v1.87.0"/></a>
   <a href="https://www.python.org/downloads/release/python-31210/"><img src="https://img.shields.io/badge/PYTHON-3.12.10-3776AB?style=for-the-badge&labelColor=2D2D2D&logo=python&logoColor=white" alt="Python"/></a>
   <a href="#installation"><img src="https://img.shields.io/badge/PLATFORM-WIN%2010%20%7C%2011-0078D6?style=for-the-badge&labelColor=2D2D2D&logo=windows&logoColor=white" alt="Platform"/></a>
-  <a href="#-the-full-capability-list"><img src="https://img.shields.io/badge/AGENT%20TYPES-85-8A2BE2?style=for-the-badge&labelColor=2D2D2D" alt="85 agent types"/></a>
-  <a href="#-the-full-capability-list"><img src="https://img.shields.io/badge/MULTI--TURN%20TOOLS-109-16A34A?style=for-the-badge&labelColor=2D2D2D" alt="108 built-in Multi-Turn tools"/></a>
+  <a href="#-the-full-capability-list"><img src="https://img.shields.io/badge/AGENT%20TYPES-86-8A2BE2?style=for-the-badge&labelColor=2D2D2D" alt="86 agent types"/></a>
+  <a href="#-the-full-capability-list"><img src="https://img.shields.io/badge/MULTI--TURN%20TOOLS-109-16A34A?style=for-the-badge&labelColor=2D2D2D" alt="109 built-in Multi-Turn tools"/></a>
   <a href="https://github.com/XAIHT/Tlamatini/blob/main/LICENSE"><img src="https://img.shields.io/badge/LICENSE-MIT-1E90FF?style=for-the-badge&labelColor=2D2D2D" alt="License"/></a>
 </p>
 
@@ -61,22 +61,23 @@
 8. [Self-modify — her self-knowledge, on or off](#self-modify--her-self-knowledge-on-or-off)
 9. [Model Brain — every model tuned for you](#model-brain--every-model-tuned-for-you)
 10. [About → Usage](#about--usage--2026-10-10-shipped-in-v1780)
-11. [Newest changes](#newest-changes--v1870)
-12. [Current version](#current-version--v1870)
-13. [The full capability list](#-the-full-capability-list)
-14. [Enable Tlamatini as a Blue-hat agent](#enable-tlamatini-as-a-blue-hat-agent)
-15. [Installation](#installation)
-16. [Tech stack](#tech-stack)
-17. [Architecture atlas](#architecture-atlas)
-18. [Avatar animation, assets, and visible tests](#avatar-animation-assets-and-visible-tests)
-19. [Contributing](#contributing)
-20. [License](#license)
+11. [Terminals you can watch — Terminater](#terminals-you-can-watch--terminater-on-main-not-yet-released)
+12. [Newest changes](#newest-changes--v1870)
+13. [Current version](#current-version--v1870)
+14. [The full capability list](#-the-full-capability-list)
+15. [Enable Tlamatini as a Blue-hat agent](#enable-tlamatini-as-a-blue-hat-agent)
+16. [Installation](#installation)
+17. [Tech stack](#tech-stack)
+18. [Architecture atlas](#architecture-atlas)
+19. [Avatar animation, assets, and visible tests](#avatar-animation-assets-and-visible-tests)
+20. [Contributing](#contributing)
+21. [License](#license)
 
 ---
 
 ## What is Tlamatini
 
-Tlamatini is a **local-first AI development and automation environment** for Windows. It combines a conversational assistant, whole-project code operations, **in-canvas PDF reading with whole-document context**, a visual workflow designer, **85 specialized agent types**, **108 built-in Multi-Turn tools**, hardware and firmware control, Unreal Engine and Blender automation, security tooling, and a universal External-MCP client in one application.
+Tlamatini is a **local-first AI development and automation environment** for Windows. It combines a conversational assistant, whole-project code operations, **in-canvas PDF reading with whole-document context**, a visual workflow designer, **86 specialized agent types**, **109 built-in Multi-Turn tools**, hardware and firmware control, Unreal Engine and Blender automation, security tooling, and a universal External-MCP client in one application.
 
 “Local-first” describes **where control lives**: the application, workflow canvas, database, configuration, credentials, agent code, project access, and small embedding model run under your control on your machine. It does **not** mean that Tlamatini was designed as a local-model-only assistant. Its complete reasoning and orchestration experience was designed and coded primarily around the larger **cloud models exposed through Ollama**.
 
@@ -98,7 +99,7 @@ Ollama currently advertises Pro at **$20/month or $200/year**, with greater clou
 
 ## 🚀 Get Started — 5 steps to a cloud-powered Tlamatini
 
-**Tlamatini itself is free**, but a complete installation assumes **Ollama Pro or higher** as an operating requirement. Subscribe directly with Ollama, sign in through the Ollama CLI, and Tlamatini can coordinate **85 agent types and 108 built-in Multi-Turn tools** from your machine using the cloud-model capacity around which it was designed. XAIHT receives no payment or benefit from that subscription.
+**Tlamatini itself is free**, but a complete installation assumes **Ollama Pro or higher** as an operating requirement. Subscribe directly with Ollama, sign in through the Ollama CLI, and Tlamatini can coordinate **86 agent types and 109 built-in Multi-Turn tools** from your machine using the cloud-model capacity around which it was designed. XAIHT receives no payment or benefit from that subscription.
 
 ### 1 · Install Tlamatini
 
@@ -431,6 +432,20 @@ It ships in the published `v1.78.0` release, with its outage recovery: a brief
 Ollama failure is retried after 15 s and Refresh rechecks a refused connection. See the
 [Usage guide and evidence](docs/usage-dashboard.md).
 
+## Terminals you can watch — Terminater (on `main`, not yet released)
+
+> The latest *released* version is still **v1.87.0**. Terminater is finished work on `main`; it will reach you with the next release.
+
+**Executer** runs a command and hands back text. **Terminater** opens a real **CMD** or **PowerShell** terminal *where you can see it*, types the command into it key by key like a person (about 50 words per minute — never pasted), waits for the command to finish, and reads the answer back.
+
+* **Show it:** **Views ▸ Terminals** (chat), the **View** menu (Agentic Control Panel, Prompt Flow Panel), or **Ctrl+`**. Several terminals at once — tabs, side by side, stacked or a grid. Closing a page never closes a terminal; they end when Tlamatini does.
+* **Stay in charge:** press **Esc** and Tlamatini stops typing and the keyboard is yours. A command can also hand you the keyboard on purpose: `ping <<USER:host to ping>> -n 2` — Tlamatini types `ping `, you type the host and press Enter, Tlamatini finishes the line. A secret you type that way is never logged.
+* **Hung commands** (no output for 45 s) are detected and can be aborted without losing the terminal. A built-in advisor warns about dangerous or mistyped commands while you type, before anything runs.
+* **Where to use it:** ask in Multi-Turn chat (it is the 67th wrapped agent, on the **Ask Execs** list because a visible command can still delete), draw it as workflow agent #86 on the canvas, or use the new **Terminater** shape in the Prompt Flow Panel. Three safe cards in **Catalog of Prompts ▸ Run & Execute** show it: *First look*, *Hand-over*, *Guided tour*.
+* **Needs** Windows 10 version 1809 or newer. If you do not want it, set `terminater_enabled` to `false` in `config.json`.
+
+Everything about it — the rules, every action, the result words, how it is built and tested — is in [docs/terminater.md](docs/terminater.md).
+
 ## Newest changes — v1.87.0
 
 **v1.87.0 is the latest released version (tagged 2026-10-18).** The catalog is now **85 workflow agents** (Gatewayer, Gateway-Relayer, Node-Manager and Zavuerer were removed), the Uninstaller moves the installation into a recovery folder instead of copying it and offers **Retry cleanup** for a locked leftover, the frozen release no longer carries the media and browser libraries twice, **About ▸ Usage** waits for real data, and every Python file has a quality gate (`npm run lint:python`). It also carries **v1.86.0** (tagged 2026-10-17): **Mover** creates a destination that does not exist yet as a folder, and the **Architecture atlas** (`Tlamatini-Architecture.pdf`) is rebuilt from the repository by LaTeXer. The runtime version is **1.87.0**. See the [v1.87.0 release record](docs/changes/2026-10-18-v1.87.0.md). Before it, **v1.85.0** (2026-10-16) brought **Refresh** for the open canvas document, **Views → Canvas** for full-width chat, **Views → Reset layout** and a docked avatar centered over the complete Mic-to-Send row ([v1.85.0 record](docs/changes/2026-10-16-v1.85.0.md)).
@@ -530,7 +545,7 @@ The October 18 dependency audit covers all 85 agents and 855 Python files. The c
 - **Prompt Flow Panel — draw a conversation, then press Play.** Open **Panels ▸ Prompt Flow Panel**. Drag operations onto a canvas and connect them: **Prompt** (ask Tlamatini something, optionally with Multi-Turn and ACPX), **Programmed Prompt** (the same, after a delay or at a set time), **Decision** (take the Yes or No branch depending on the last answer, or ask you), **Feed embeddings** / **Flush embeddings** (give that run extra reference text, or take it away), **Clean History**, and **User Input** (stop and ask you something, using the notched figure). Add independent **User Commentary** speech bubbles for static review notes: double-click to write, format selected passages with a floating toolbar (mixed fonts, sizes, colors, bold, italic and underline), and resize from any edge or corner; the bubbles grow to contain their text without internal scrollbars. Comments save with the flow and never execute. In executable operation text, write `{{last_output}}` to pass the previous answer forward; it stays literal inside a static comment. **Validate**, then **Play** — the running step lights up, and **Pause** / **Stop** work mid-flow. Each run has its own conversation and embeddings, so it never disturbs your chat. Save your diagram as a **`.fpmt`** file; opening one never runs it. Try **File ▸ Open example**, or open [docs/examples/prompting-kickoff.fpmt](docs/examples/prompting-kickoff.fpmt). Full guide: [docs/prompting-flow-designer.md](docs/prompting-flow-designer.md). Since v1.76.0 it also adds [Windows opening and association management](docs/windows-flow-files.md) for both `.flw` and `.fpmt`, including main-chat opening and returning through login to the right editor.
 - **Make room for the canvas or the results.** Drag the divider above **Run output** between 5% and 95% of the available canvas/output height. Both panes scroll independently without changing text size, figures or canvas zoom. Keyboard resizing, collapse/reopen and your saved layout work together.
 - **The menu bar was reorganized.** A new **Panels** menu opens the **Agentic Control Panel**, the **Prompt Flow Panel** and, for staff, the **Admin Panel**. **Configure MCPs** and **Configure Agents** moved into **Config**, next to Models, URLs and the Access Keys Wizard. The separate MCPs, Agents and Admin menus are gone. Panels stays usable while Tlamatini is busy answering you.
-- **The Agentic Control Panel became a real editor.** A toolbar gives you **Undo/Redo**, **Configure**, **Duplicate** (copies agents *with* their settings and the connections between them), **Delete**, a **Starters** locator, **Flow settings** (dot grid, zoom) and **zoom −/+/Fit**. A search box filters the 85 agents by name, an empty canvas offers **Try an example**, **Help** explains every gesture, and a `•` in the tab title tells you there are unsaved changes. Editing locks while a flow is running — stop it to edit.
+- **The Agentic Control Panel became a real editor.** A toolbar gives you **Undo/Redo**, **Configure**, **Duplicate** (copies agents *with* their settings and the connections between them), **Delete**, a **Starters** locator, **Flow settings** (dot grid, zoom) and **zoom −/+/Fit**. A search box filters the 86 agents by name, an empty canvas offers **Try an example**, **Help** explains every gesture, and a `•` in the tab title tells you there are unsaved changes. Editing locks while a flow is running — stop it to edit.
 
 **Video-Analyzer now transcribes video audio tracks and builds detailed summaries.** Choose `analysis_type: transcription` for timestamped speech from selected audio tracks, or `analysis_type: summary` to combine that speech with sampled visual evidence: scenes, actions, on-screen text, slides, facts, decisions and action items. Reports retain timestamps, coverage limits and partial failures. The existing `robotics` mode remains the default, and Parametrizer, workflow controls and MCP tools expose the new modes. See the [Video-Analyzer contract](Tlamatini/agent/agents/video_analyzer/README.md).
 
@@ -557,7 +572,7 @@ The viewer is Mozilla's **PDF.js 6.3.289**, vendored into the repository under i
 
 **Carried from the v1.60.0 tag — the whole chain of visual agents got better at once.** Tlamatini's document family now has three members instead of two: **PPTXer** joins PDFer and LaTeXer and builds real, editable PowerPoint decks from an answer, a Markdown outline or JSON — with 36 named looks, 17 font pairings, and, most importantly, text that is *measured* before it is placed, so a long paragraph continues onto a new slide instead of being quietly cut off. **PDFer** gained **24** explicit visual identities in five families — playful, cyberpunk, cosmic, electronics, and Tlamatini's own — on top of the 20 designs it already chooses from the content itself. **LaTeXer** gained **30** signature styles in six families; ask for the list with `list_styles` and it answers without needing LaTeX installed at all.
 
-The agents that touch your desktop were tightened in the same pass. **Mouser** now works in coordinates you state explicitly — the physical screen, a window, or a screenshot — instead of leaving anyone to guess which space a number belongs to; **Keyboarder** binds every keystroke to a window it has verified is really in front; and **Shoter** publishes the exact rectangle it captured, so a click worked out from a screenshot lands where the picture said it would. One honesty rule runs through all three: **`input_sent` means the click or keystroke was delivered, not that the application accepted it** — so a failed or interrupted step must be looked at before it is replayed. **FlowCreator** now chooses from all 85 installed agents and validates the flow it drew before publishing it.
+The agents that touch your desktop were tightened in the same pass. **Mouser** now works in coordinates you state explicitly — the physical screen, a window, or a screenshot — instead of leaving anyone to guess which space a number belongs to; **Keyboarder** binds every keystroke to a window it has verified is really in front; and **Shoter** publishes the exact rectangle it captured, so a click worked out from a screenshot lands where the picture said it would. One honesty rule runs through all three: **`input_sent` means the click or keystroke was delivered, not that the application accepted it** — so a failed or interrupted step must be looked at before it is replayed. **FlowCreator** now chooses from all 86 installed agents and validates the flow it drew before publishing it.
 
 **Carried from the v1.51.9 tag in the same line — the sampler repair and VOICE COMMANDS.**
 
@@ -652,7 +667,7 @@ The previous annotated release, `v1.48.17` (2026-08-16), remains fully carried. 
 
 Exec-Report status handling now uses a closed, source-guarded vocabulary with five disjoint classes: completed diagnostics, intact completed work, degraded work, work not done, and agent errors. Degraded deliverables such as inaudible token-only speech or a compromised PDF are red rather than falsely clean; named completions are auditable greens; an unknown token still fails open but is identified by rule `R8b`. The repository-wide guard scans every pool-agent `status:` literal so a newly invented token fails during tests instead of silently defaulting green. Kuberneter now reports numeric `returncode`, explicit `success`, and a real `ok`/`failed` status token, preventing a failed `kubectl` call from being painted green.
 
-Updater coverage protects the separately built `Uninstaller.exe` during self-update and keeps the preserve-list parser from being confused by comments. Public release builders forcibly clear inherited private External-MCP catalog and contact opt-ins; only the explicit keyed/private builder can bundle private state, and it first merges same-machine contact sources into gitignored `contacts.private.json` without putting PII into a public build or self-modify snapshot. Drift-proof tests derive supervisor counts and prompt rules from source. The current source inventory is reported in the [PDF dossier](tlamatini_app_summary.pdf) and [PowerPoint dossier](Tlamatini_eXtended_Artificial_Intelligence_Humanly_Tempered.pptx), with physical/effective lines by language, binary-asset counts and the complete tracked file tree. The live surface contains **85 workflow agents**, **66 wrapped chat agents**, **108 Multi-Turn tools** (**20 core + 66 wrapped + 12 ACPX/Skill + 10 External-MCP supervisors**), **59 application JavaScript modules**, **29 runtime skills**, and **214 migrations**. The `v1.48.14` private MCP runtimes, inactive Memory/Sequential-Thinking defaults, public/private catalog separation, and lossless diagram restoration remain carried.
+Updater coverage protects the separately built `Uninstaller.exe` during self-update and keeps the preserve-list parser from being confused by comments. Public release builders forcibly clear inherited private External-MCP catalog and contact opt-ins; only the explicit keyed/private builder can bundle private state, and it first merges same-machine contact sources into gitignored `contacts.private.json` without putting PII into a public build or self-modify snapshot. Drift-proof tests derive supervisor counts and prompt rules from source. The current source inventory is reported in the [PDF dossier](tlamatini_app_summary.pdf) and [PowerPoint dossier](Tlamatini_eXtended_Artificial_Intelligence_Humanly_Tempered.pptx), with physical/effective lines by language, binary-asset counts and the complete tracked file tree. The live surface contains **86 workflow agents**, **67 wrapped chat agents**, **109 Multi-Turn tools** (**20 core + 67 wrapped + 12 ACPX/Skill + 10 External-MCP supervisors**), **60 application JavaScript modules**, **29 runtime skills**, and **217 migrations**. The `v1.48.14` private MCP runtimes, inactive Memory/Sequential-Thinking defaults, public/private catalog separation, and lossless diagram restoration remain carried.
 
 Dialog behaviour is now uniform on both pages: **Escape dismisses every dialog and means exactly what the titlebar ✕ means**, while an outside click still never dismisses anything — so a guarded prompt cannot be lost to a stray click, and no dialog can trap you either. A single dispatcher finds the topmost dialog and activates *that dialog's own* dismiss control, so an Ask-Execs permission prompt still answers **Deny**, a confirmation still resolves to "no", scroll locks are still released, and a sealed update step still refuses to close. The last native browser pop-ups are gone: `alert()` / `confirm()` inside the contacts book and the External-MCP dialog were replaced by themed `tlmAlert` / `tlmConfirm` panels that match the app instead of showing OS chrome over it.
 
@@ -673,7 +688,7 @@ Claude Code, Codex, Cursor, Gemini — they edit text files. Tlamatini does that
 | 🛡️ | **Security assessments** | Authorized Kali Linux / pentest runbooks + code security-audit skills, driven from chat. |
 | 🦠 | **Blue-hat Windows toolkit** | A path-independent, administrator-operated enablement and ten-family monitor/response toolkit with detect-only baselining, armed/watch modes, self-path protection, persistent IP blocking, visible regression proof, and explicit Windows-exception tradeoffs. |
 | 📟 | **STM32 · ESP32 · Arduino firmware** | Scaffold → build → **flash a real connected board** → read serial, with a safety preflight that refuses mis-targeted firmware. |
-| 🧩 | **A VISUAL WORKFLOW DESIGNER** | **85 drag-and-drop agent types** on a canvas you wire into runnable, savable `.flw` flows. *No other coding agent — Claude Code, Codex, none of them — gives you this.* This is the crown jewel. |
+| 🧩 | **A VISUAL WORKFLOW DESIGNER** | **86 drag-and-drop agent types** on a canvas you wire into runnable, savable `.flw` flows. *No other coding agent — Claude Code, Codex, none of them — gives you this.* This is the crown jewel. |
 
 > **The headline no competitor can copy:** Tlamatini is the only local-first AI dev assistant where you *design the agent workflow visually*, then have it flash firmware, drive Unreal/Blender, run security tools, and command any external MCP — all from one machine.
 
@@ -698,9 +713,9 @@ When you enable, configure, modify, chain, or execute an agent, **that agent and
 Everything Tlamatini can do, grouped:
 
 **🧩 Orchestration & design**
-- **Visual Workflow Designer (ACP)** — 85 drag-and-drop agent types wired into runnable flows; save/load `.flw` files; Flow Compiler validates the canvas into `config.yaml`. An editor toolbar adds undo/redo, configure, duplicate-with-settings, delete, zoom/fit and an agent search box. Open it from **Panels ▸ Agentic Control Panel**.
+- **Visual Workflow Designer (ACP)** — 86 drag-and-drop agent types wired into runnable flows; save/load `.flw` files; Flow Compiler validates the canvas into `config.yaml`. An editor toolbar adds undo/redo, configure, duplicate-with-settings, delete, zoom/fit and an agent search box. Open it from **Panels ▸ Agentic Control Panel**.
 - **Prompt Flow Panel** — design a chain of prompts, decisions, embeddings and user questions on a canvas, save it as a `.fpmt` file, and play it against your own models; each run keeps its own conversation and embeddings. **User Input** collects runtime replies; static **User Commentary** bubbles support a floating rich-text toolbar, mixed styles within a note, all-border resizing and complete text containment without scrollbars. A horizontal divider gives Run output 5–95% of the canvas/output space while both panes scroll independently. Open it from **Panels ▸ Prompt Flow Panel**.
-- **Multi-Turn orchestration** — a tool-calling loop with **108 built-in tools** and a global execution planner; **Step-by-Step** mode paces hands-on setup one action at a time; **self-healing model steps** mean a network/model hiccup never freezes her — she retries under a watchdog, finishes gracefully from work already done, and always tells you what happened.
+- **Multi-Turn orchestration** — a tool-calling loop with **109 built-in tools** and a global execution planner; **Step-by-Step** mode paces hands-on setup one action at a time; **self-healing model steps** mean a network/model hiccup never freezes her — she retries under a watchdog, finishes gracefully from work already done, and always tells you what happened.
 - **FlowCreator / FlowHypervisor** — let an LLM design a flow; a watchdog monitors flow health. FlowCreator is now also **callable from chat** (`chat_agent_flowcreator`): describe a flow in plain words and it writes a real, canvas-loadable `.flw` file to disk.
 - **Parametrizer** — chain agent outputs into the next agent's configuration.
 - **ACPX** — spawn external coding-agent CLIs (Claude Code, Codex, Cursor, Gemini, Qwen, and more) as tools and relay between them.
@@ -737,6 +752,7 @@ Everything Tlamatini can do, grouped:
 - **Editor / Grepper / Globber** — surgical find-and-replace, regex content search, and filename glob (Claude-Edit/Grep/Glob equivalents). Grepper searches UTF-8, BOM-marked UTF-16/32, cp1252, and Latin-1 text without confusing valid Windows text with NUL-bearing binary data. It also **reads**: `output_mode: lines` returns a chosen range of one file verbatim — no search pattern needed — and with `line_numbers: false` it also hands back a base64 copy of the exact bytes, which is what the Editor needs to match a line character-for-character (the plain text is for reading; the log itself rewrites line endings on Windows, so the encoded copy is the trustworthy one). That completes the loop: find the file, find the line, read exactly what is there, change it — without ever leaving Tlamatini for a shell.
 - **File-Creator / Mover / Deleter / File-Interpreter / File-Extractor** — create or append, move, delete, read-and-interpret, extract from PDF/DOCX.
 - **Executer / Pythonxer** — run shell commands and gated Python.
+- **Terminater** — the *visible* Executer: real CMD / PowerShell terminals you watch, interrupt (Esc), answer or finish typing; Tlamatini types every key like a person. *On `main`, not yet released.*
 - **Gitter** — full git control. **Googler** — block- and hang-proof search + extraction under one deadline: six plain-HTTP server-rendered routes first, then real Chrome with a persistent profile across eight browser routes, then open knowledge sources, with poisoned-answer and refusal detection, engine cooldowns and a truthful `search_status`, plus a structured Google-dork builder, lawful-source presets, grouped site/filetype filters, and `links_only` output for downstream file retrieval.
 - **Hybrid RAG** — FAISS + BM25 retrieval, metadata extraction, context budgeting, grounded in your codebase.
 - **PDF in the canvas** — open a `.pdf` beside the chat in a vendored **Mozilla PDF.js 6.3.289** viewer (no npm, no CDN, Apache-2.0): every page, text selection, zoom, fit, rotation, in-viewer passwords, **Copy** the text of every page and **Save As** the original bytes. Reading it uploads nothing and calls no model, and there is no file-size or page-count cutoff. **Use as context** then feeds the *whole* document to the chat: the optional **Process images** box (unticked by default, and nothing runs until you press Continue) adds page rendering, embedded-image extraction and **Image-Interpreter** vision for scans, charts and diagrams. Honest progress, a Cancel that really cancels, partial image failures reported rather than hidden, and passwords never written to disk, context or log. [Full contract](docs/pdf-canvas.md).
@@ -895,7 +911,7 @@ Python 3.12 · Django 5.2.15 · Django Channels (Daphne ASGI) · LangChain / Lan
 
 ## Architecture atlas
 
-**[Tlamatini-Architecture.pdf](Tlamatini-Architecture.pdf)** is a 31-page A3 map of the whole project, typeset by Tlamatini's own LaTeXer agent. After the cover, ten overview sheets show the runtime topology, the request lifecycle, the intelligence core, the agent ecosystem, the integration surfaces, the frontend, the data model, the build pipeline, testing and documentation, and the Python dependency matrix. Ten atlas sheets then place **every file tracked in git** (1,739 on 2026-10-17) as a clickable tile, and a ten-page file index describes each one from the file itself.
+**[Tlamatini-Architecture.pdf](Tlamatini-Architecture.pdf)** is a 30-page A3 map of the whole project, typeset by Tlamatini's own LaTeXer agent. After the cover, ten overview sheets show the runtime topology, the request lifecycle, the intelligence core, the agent ecosystem, the integration surfaces, the frontend, the data model, the build pipeline, testing and documentation, and the Python dependency matrix. Ten atlas sheets then place **every file tracked in git** (1,739 on 2026-10-17) as a clickable tile, and a ten-page file index describes each one from the file itself.
 
 To rebuild it after a change, stage new files first (the atlas lists exactly what `git ls-files` returns), then run one command:
 
@@ -956,7 +972,7 @@ Tested it on your board, in your engine, or on the canvas? **[Open an issue](htt
 
 Mouser now resolves explicit physical, window and screenshot coordinates; Keyboarder binds Unicode/key delivery to a verified window; Shoter publishes capture geometry. `input_sent` is delivery evidence, not application success, and a failed or interrupted input segment must be observed before replay.
 
-Parametrizer derives its parser registry from current contracts and validates complete typed mappings. FlowCreator selects from all 85 installed agents and validates the generated graph before publishing; FlowHypervisor separates execution, kill and observation relationships and uses current desktop receipts/timing. GUI-Manager remains design only.
+Parametrizer derives its parser registry from current contracts and validates complete typed mappings. FlowCreator selects from all 86 installed agents and validates the generated graph before publishing; FlowHypervisor separates execution, kill and observation relationships and uses current desktop receipts/timing. GUI-Manager remains design only.
 
 See [configuration, examples and limitations](docs/desktop-input-and-flow-contracts.md), the [complete generated coverage inventory](docs/agent-coverage.md), and the [GUI-Manager design](docs/GUI-Manager-design.md).
 

@@ -51,7 +51,7 @@ function bindDividerPointerDrag(divider, resizingClass, onMove) {
     };
 
     const apply = (pSeam) => {
-        if (document.body.classList.contains('tlm-canvas-hidden')) return;
+        if (document.body.classList.contains('tlm-canvas-hidden') && !document.body.classList.contains('tlm-terminals-on')) return;
         const left = isCanvasOnLeft();
         const minSeam = left ? 30 : 15;
         const maxSeam = left ? 85 : 70;
@@ -121,7 +121,7 @@ function bindDividerPointerDrag(divider, resizingClass, onMove) {
     // divider). Once the user drags the divider manually, apply()'s
     // standard clamp re-engages.
     const ensureToolbarFitsOneRow = () => {
-        if (document.body.classList.contains('tlm-canvas-hidden')) return;
+        if (document.body.classList.contains('tlm-canvas-hidden') && !document.body.classList.contains('tlm-terminals-on')) return;
         // Font loading and the delayed initial fit must not undo a user's drag.
         if (userResized) return;
         // Below the desktop working width, retain a usable 320px chat and
@@ -447,7 +447,7 @@ function bindDividerPointerDrag(divider, resizingClass, onMove) {
     });
     window.TlamatiniViews = Object.freeze({
         setCanvasVisible,
-        isCanvasVisible: () => visible,
+        isCanvasVisible: () => visible, setTerminalsVisible: show => window.TlamatiniTerminals?.setVisible(show), isTerminalsVisible: () => Boolean(window.TlamatiniTerminals?.isVisible()),
         resetLayout,
     });
 

@@ -40,6 +40,7 @@
         const info = M.operations[type], graphic = svg('svg', { viewBox: '0 0 200 128', 'aria-hidden': 'true' });
         graphic.style.setProperty('--pmt-color', info.color); graphic.style.setProperty('--pmt-fill', info.fill);
         graphic.append(svg('path', { d: info.path, class: 'pmt-shape' }));
+        if (type === 'terminater') graphic.append(svg('path', { d: 'M66 36L80 47L66 58M88 60H108', fill: 'none', stroke: '#8ff5bd', 'stroke-width': 3.5, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', class: 'pmt-term-glyph' }));
         if (type === 'programmed_prompt') {
             graphic.append(svg('circle', { cx: 174, cy: 40, r: 20, class: 'pmt-clock' }), svg('path', { d: 'M174 25V40L185 46', fill: 'none', stroke: '#f3df9f', 'stroke-width': 2 }));
             for (let angle = 0; angle < 360; angle += 30) {
@@ -817,7 +818,7 @@
             form.append(element('p', '', M.operations[kind].help));
             field('label', 'Label', 'text', draft.label).maxLength = 120;
             if (!['flush_embeddings', 'clean_history'].includes(kind)) {
-                const title = kind === 'decision' ? 'Question (when asking the user)' : kind === 'user_input' ? 'Message to the user' : kind === 'feed_embeddings' ? 'Text to embed' : 'Prompt';
+                const title = kind === 'decision' ? 'Question (when asking the user)' : kind === 'user_input' ? 'Message to the user' : kind === 'feed_embeddings' ? 'Text to embed' : kind === 'terminater' ? 'Command to type (use <<USER:hint>> to hand the keyboard to the user)' : 'Prompt';
                 field('text', title, 'textarea', config.text).maxLength = 100000;
                 form.append(element('small', '', 'Use {{last_output}} to insert the previous prompt answer or user reply.'));
             }
@@ -833,6 +834,19 @@
                 field('scheduled_at', 'Scheduled time (optional, your local timezone)', 'datetime-local', local).step = '1';
                 form.append(element('small', '', 'Wait until this time, then apply the delay. Past times run immediately. Keep the page and Tlamatini open.'));
             }
+            if (kind === 'terminater') {
+                field('action', 'What to do', 'select', config.action, [['run', 'Run a command (type it, wait, read the result)'], ['open', 'Open a new terminal'], ['type', 'Type into a terminal'], ['handover', 'Type part of a command, then hand over to the user'], ['send_key', 'Press keys (Ctrl+C, Enter, ...)'], ['wait', 'Wait for the running command'], ['read', 'Read terminal output'], ['abort', 'Interrupt the running command'], ['kill', 'Close a terminal'], ['force_kill', 'Force-kill a terminal'], ['kill_all', 'Force-kill every terminal'], ['list', 'List the terminals'], ['focus', 'Focus a terminal'], ['layout', 'Change the layout (tabs, tile, ...)'], ['clear', 'Clear a screen'], ['watch_user', 'Watch what the user types'], ['warn_user', 'Warn the user']]);
+                field('kind', 'Terminal type', 'select', config.kind, [['cmd', 'CMD'], ['powershell', 'PowerShell'], ['pwsh', 'PowerShell 7']]);
+                field('terminal', 'Terminal (id or title; empty = the active one)', 'text', config.terminal).maxLength = 80;
+                field('cwd', 'Start folder (optional)', 'text', config.cwd).maxLength = 1000;
+                field('submit', 'Press Enter after typing', 'checkbox', config.submit);
+                field('secret', 'Secret text (never logged or returned)', 'checkbox', config.secret);
+                field('wait', 'Wait for the command to finish', 'checkbox', config.wait);
+                field('close_after', 'Close the terminal when it finishes', 'checkbox', config.close_after);
+                for (const [name, label, min, max] of [['typing_wpm', 'Typing speed (words per minute, 20-160)', 20, 160], ['wait_seconds', 'Give up waiting after (seconds)', 1, 3600], ['hang_seconds', 'No output for this long = hung (seconds)', 3, 3600], ['user_wait_seconds', "Wait for the user's part (seconds)", 5, 3600]]) {
+                    const input = field(name, label, 'number', config[name]); input.min = min; input.max = max; input.step = 'any';
+                }
+            }
             if (kind === 'decision') {
                 field('comparison', 'Decision rule', 'select', config.comparison, [['contains', 'Last output contains'], ['not_contains', 'Last output does not contain'], ['equals', 'Last output equals'], ['is_empty', 'Last output is empty'], ['user', 'Ask the user: Yes or No']]);
                 field('value', 'Comparison value', 'text', config.value).maxLength = 10000;
@@ -842,8 +856,9 @@
             if (!editable()) throw new Error('Stop playback before editing.');
             draft.label = fields.label.value.trim() || M.operations[kind].label;
             if (fields.text) config.text = fields.text.value;
-            for (const name of ['multi_turn', 'acpx', 'case_sensitive']) if (fields[name]) config[name] = fields[name].checked;
-            for (const name of ['comparison', 'value']) if (fields[name]) config[name] = fields[name].value;
+            for (const name of ['multi_turn', 'acpx', 'case_sensitive', 'submit', 'secret', 'wait', 'close_after']) if (fields[name]) config[name] = fields[name].checked;
+            for (const name of ['comparison', 'value', 'action', 'kind', 'terminal', 'cwd']) if (fields[name]) config[name] = fields[name].value;
+            for (const name of ['typing_wpm', 'wait_seconds', 'hang_seconds', 'user_wait_seconds']) if (fields[name]) config[name] = Number(fields[name].value);
             if (fields.delay_seconds) config.delay_seconds = Number(fields.delay_seconds.value);
             if (fields.scheduled_at) config.scheduled_at = fields.scheduled_at.value ? new Date(fields.scheduled_at.value).toISOString() : '';
             const candidate = M.copy(flow); candidate.nodes[candidate.nodes.findIndex(n => n.id === node.id)] = draft;

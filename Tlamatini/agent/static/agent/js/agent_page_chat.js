@@ -1779,6 +1779,22 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
                 if (!Number.isNaN(n)) config[k] = n;
             }
         });
+    } else if (lower === 'terminater') {
+        ['action', 'terminal', 'kind', 'title', 'cwd', 'text', 'text_b64', 'until', 'pattern', 'which', 'keys',
+         'message', 'severity', 'suggestion', 'hint', 'layout', 'area', 'show', 'hub_url', 'mode', 'user'].forEach(function (k) {
+            set(k, pairs[k]);
+        });
+        ['submit', 'secret', 'wait', 'close_after', 'load_profile', 'advisor'].forEach(function (k) {
+            if (pairs[k] !== undefined && pairs[k] !== '') {
+                config[k] = (String(pairs[k]).toLowerCase() === 'true');
+            }
+        });
+        ['typing_wpm', 'wait_seconds', 'hang_seconds', 'user_wait_seconds', 'idle_seconds', 'read_chars', 'offset', 'cursor'].forEach(function (k) {
+            if (pairs[k] !== undefined && pairs[k] !== '') {
+                const n = Number(pairs[k]);
+                if (!Number.isNaN(n)) config[k] = n;
+            }
+        });
     } else if (lower === 'latexer') {
         set('action', pairs.action);
         set('style', pairs.style);
@@ -2346,6 +2362,7 @@ function _agentPurpose(canonicalName) {
         'SQLer': 'SQL queries',
         'Mongoxer': 'MongoDB operations',
         'LaTeXer': 'LaTeX typesetting: .tex sources compiled to PDF',
+        'Terminater': 'Visible CMD/PowerShell terminals typed like a person, with hand-over to the user',
         'Prompter': 'LLM prompt execution',
         'Summarizer': 'LLM text summarization',
         'File-Creator': 'Creates files with specified content',

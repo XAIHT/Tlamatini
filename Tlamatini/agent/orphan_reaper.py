@@ -226,6 +226,14 @@ def _tracked_running_pids() -> Set[int]:
                 pids.add(int(proc.agentProcessPid))
     except Exception:  # noqa: BLE001 — fail-open
         pass
+    # Terminater terminals are long-lived BY DESIGN (the user reads them for hours).
+    # Their shells and descendants are never orphans while the hub owns them; the
+    # shutdown sweep (protect_running_tracked=False) still removes them at exit.
+    try:
+        from . import terminal_hub as _th
+        pids |= set(_th.live_pids())
+    except Exception:  # noqa: BLE001 — fail-open
+        pass
     return pids
 
 

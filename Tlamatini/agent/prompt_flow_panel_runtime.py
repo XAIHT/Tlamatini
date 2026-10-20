@@ -5,6 +5,7 @@
 import asyncio
 import shutil
 import tempfile
+import threading
 from pathlib import Path
 from uuid import uuid4
 
@@ -131,12 +132,52 @@ class PromptFlowPanelRuntime:
     async def clean_history(self):
         self.history.clear()
 
+    async def terminal(self, text, config):
+        """Run one Terminater action in THIS user's visible terminals (the in-process hub).
+
+        The terminals are the user's own: they SEE the command being typed in the Terminals
+        area, and can take the keyboard over (Esc) or answer a hand-over.  A command that
+        failed, hung or timed out is still a delivered RESULT (its output feeds
+        ``{{last_output}}`` and a Decision can branch on it); only a hub refusal stops the flow.
+        """
+        from . import terminal_hub
+        if self.cancelled:
+            raise FlowStopped()
+        action = config.get("action", "run")
+        params = {key: value for key, value in config.items() if key != "action"}
+        params.update(text=text, user=str(self.user.pk))
+        self._terminal_busy = True
+        try:
+            result = await asyncio.to_thread(terminal_hub.run_action, action, params, True)
+        finally:
+            self._terminal_busy = False
+        if self.cancelled:
+            raise FlowStopped()
+        status = str(result.get("status") or "")
+        if result.get("ok") is False or status in {"refused", "error", "unavailable"}:
+            raise FlowError(str(result.get("message") or f"Terminater could not {action}: {status or 'no answer'}."))
+        await self.emit("progress", message=f"Terminater {action}: {status or 'done'}")
+        output = result.get("output")
+        if not isinstance(output, str) or not output:
+            output = str(result.get("message") or "")
+        return output[:100_000]
+
     async def comment(self, text):
         from langchain_core.messages import HumanMessage
         self.history.append(HumanMessage(content=text))
 
+    def _abort_terminal(self):
+        try:
+            from . import terminal_hub
+            terminal_hub.run_action("abort", {"user": str(self.user.pk)}, True)
+        except Exception:  # noqa: BLE001 - best effort: Stop must never raise
+            pass
+
     def cancel(self):
         self.cancelled = True
+        if getattr(self, "_terminal_busy", False):
+            # Typing / waiting runs on a worker thread: interrupt it off the event loop.
+            threading.Thread(target=self._abort_terminal, daemon=True).start()
         if self.active_epoch is not None:
             from .cancellation import request_cancel_generation, clear_cancel_generation
             request_cancel_generation(self.key)

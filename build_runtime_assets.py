@@ -41,6 +41,13 @@ REQUIRED_STATIC = (
     "agent/js/flow-canvas-interactions.js",
     "agent/js/prompt-flow-panel-model.js", "agent/js/prompt-flow-panel.js",
     "agent/js/acp-editor-tools.js",
+    # Terminater dock (Views > Terminals) and its locally vendored terminal renderer.
+    "agent/js/terminater_dock.js", "agent/css/terminater_dock.css",
+    "agent/vendor/frontend/xterm/lib/xterm.js", "agent/vendor/frontend/xterm/css/xterm.css",
+    "agent/vendor/frontend/xterm/LICENSE",
+    "agent/vendor/frontend/xterm-addon-fit/lib/addon-fit.js", "agent/vendor/frontend/xterm-addon-fit/LICENSE",
+    "agent/vendor/frontend/xterm-addon-web-links/lib/addon-web-links.js",
+    "agent/vendor/frontend/xterm-addon-web-links/LICENSE",
     "agent/js/context_gauge.js", "agent/css/context_gauge.css",
     "agent/js/model_capacity.js", "agent/css/model_capacity.css",
     "agent/js/compact_costs.js",
@@ -85,6 +92,8 @@ ROOT_SOURCES = {
     "docs/windows-flow-files.md": "docs/windows-flow-files.md",
     "docs/usage-dashboard.md": "docs/usage-dashboard.md",
     "docs/prompting-flow-designer.md": "docs/prompting-flow-designer.md",
+    # Terminater: the shipped self-knowledge and FlowCreator reference point at this contract.
+    "docs/terminater.md": "docs/terminater.md",
     "docs/examples/prompting-kickoff.fpmt": "docs/examples/prompting-kickoff.fpmt",
     "Tlamatini/agent/agents/model_settings.py": "agents/model_settings.py",
     "Tlamatini/agent/agents/visual_errors.py": "agents/visual_errors.py",

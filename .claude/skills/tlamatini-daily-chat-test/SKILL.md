@@ -258,6 +258,13 @@ follows stays intact as the record of what the v1.50.0 pass covered.
 
 When the current release is touched, verify NetSpeed-Calculator with `action='latency'` or `validate` by default, never a repeated `full` run; assert the full/download/upload bandwidth warning and tier-D Ask-Execs classification. Run WAL-mode Backup DB/Set DB/hot-swap tests through `sqlite_copy.py` and prove `quick_check` plus sidecar hygiene. Run `agent.test_googler_dorks` and pin preset-under-explicit-field precedence, aliases, no-space operator syntax, uppercase parenthesized `OR`, site-group same-domain handling, `links_only` file-hunt guidance, and the direct-tool versus visual/pool structured-field boundary. Also pin the two-tier order (four plain-HTTP server-rendered routes before any browser), explicit engine pins skipping Tier 0, `headless: false` for Tier 1, the seven-route browser order, tolerant string booleans, bounded retries, first-answer stopping, pinned-engine behavior, redirect unwrapping, and explicit Google-only advanced-operator semantics. The optional visible proof is `harness/googler_dork_hunt.py`: it uses the shipped builder, opens headed Chrome, targets public-domain/open-access sources, and stores JSON evidence under Tlamatini `Temp`; search-engine refusal is a failed proof run, not proof that the compiled query is wrong. Validate migration 0194's Deep Internet Research card and 0195-0197's NetSpeed rows, the `adding-external-mcp` classify/import/doctor/activate/wait/list/call lifecycle, the 88/66/108/29/197 source counts, and the private contact-sync/public-empty boundary. (That pass verified `v1.50.0` as the annotated release. The RULE generalises and still applies: verify whatever `git describe` reports today, and report a later `HEAD` separately rather than calling the release untagged.)
 
+When Terminater is touched (on `main` since 2026-10-19), the wrapped bank carries one safe question for it
+(`wrapped_questions.py`: open a PowerShell terminal, type `Write-Output tlamatini-terminater-ok`, report status and exit code,
+close it). The command is typed at about 50 words per minute, so allow for its time and never shorten the command; the question
+asserts `completed` and exit code 0 (a non-zero exit is `command_failed` and must read as a failure, not a pass). The hub does not
+need a chat page open to run it, but the Terminals area is where a human watches it. Use `scripts/terminater_visible_all.py` for
+the three-page visible suite.
+
 > ⚠️ If the answer-complete logic ever needs adjusting, verify it against a LIVE
 > server with `--count 2` before trusting a full run — a daily test that silently
 > mis-detects completion is worse than no test.

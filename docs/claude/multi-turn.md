@@ -10,6 +10,8 @@
 
 > Current release: **[v1.87.0](../changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
 
+> **On `main`, unreleased (after v1.87.0):** [Terminater](../terminater.md) (workflow agent #86 and the Terminals area) and a private release that carries the builder's own data. Counts there: 86 workflow agents, 67 wrapped chat agents, 109 built-in tools, 217 migrations. See the change records [Terminater](../changes/2026-10-19-terminater.md) and [private-release data](../changes/2026-10-19-private-release-data.md).
+
 
 > **HEADLESS IS FORBIDDEN. ALL EXECUTION MUST BE VISIBLE.** Every automated test, command, diagnostic, script, build, agent, prompt and browser must run in a visible, forked foreground window on Angela's real desktop. Use visible CMD/PowerShell consoles and headed browsers (`headless=False`); keep output on screen and monitor live. No hidden/background execution, including CI or quick checks. If visibility cannot be confirmed, do not run. Mandatory policy: [visible execution](../../TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).
 
@@ -132,7 +134,7 @@ The tool executor is synchronous and runs in a worker thread (`sync_to_async(ask
 
 | | Gated? | Tools |
 |---|---|---|
-| command / script runners | **ASK** | Executer, Pythonxer, SSHer, Kalier, Dockerer, Kuberneter, SQLer, Mongoxer, Gitter, Jenkinser, PSer, J-Decompiler (+ the direct `execute_command` / `execute_file` / `decompile_java`) |
+| command / script runners | **ASK** | Executer, Pythonxer, **Terminater**, SSHer, Kalier, Dockerer, Kuberneter, SQLer, Mongoxer, Gitter, Jenkinser, PSer, J-Decompiler (+ the direct `execute_command` / `execute_file` / `decompile_java`) |
 | **A** — destroys/overwrites data | **ASK** | Deleter, Mover, File-Creator, Editor, De-Compresser, `unzip_file`, PDFer, LaTeXer |
 | **B** — messaging / reaches real people | **no-ask (ON PURPOSE, 2026-07-26)** | Emailer, Whatsapper, Telegrammer, Instant Messaging Doctor |
 | **D** — remote systems / network | **ASK** | SCPer, Apirer, Nmapper, Discoverer, Crawler, NetSpeed-Calculator (reaches remote hosts AND deliberately saturates the link with ~100-200 MB of metered traffic per full run) |
@@ -250,7 +252,7 @@ Registered source agents (generated catalog, 50): acpxer, analyzer, apirer, ardu
 
 Mouser now resolves explicit physical, window and screenshot coordinates; Keyboarder binds Unicode/key delivery to a verified window; Shoter publishes capture geometry. `input_sent` is delivery evidence, not application success, and a failed or interrupted input segment must be observed before replay.
 
-Parametrizer derives its parser registry from current contracts and validates complete typed mappings. FlowCreator selects from all 85 installed agents and validates the generated graph before publishing; FlowHypervisor separates execution, kill and observation relationships and uses current desktop receipts/timing. GUI-Manager remains design only.
+Parametrizer derives its parser registry from current contracts and validates complete typed mappings. FlowCreator selects from all 86 installed agents and validates the generated graph before publishing; FlowHypervisor separates execution, kill and observation relationships and uses current desktop receipts/timing. GUI-Manager remains design only.
 
 See [configuration, examples and limitations](../desktop-input-and-flow-contracts.md), the [complete generated coverage inventory](../agent-coverage.md), and the [GUI-Manager design](../GUI-Manager-design.md).
 
@@ -283,6 +285,24 @@ Complete long text may produce continuation slides. Inspect `status`, `output_pa
 Video-Analyzer supports `analysis_type: robotics` (default), `transcription`, and `summary`. Robotics preserves the deterministic motion gate and dual-vision/merge verdict, with `PASS_OK` only on two explicit independent passes. Transcription reads selected video audio tracks (`audio_tracks: all` or `0,1`) using Whisperer's local faster-whisper backend, GPU auto/CPU fallback and timestamped segments; it never opens a microphone. Summary combines speech with two independent visual observers over frame batches spanning the whole clip, then synthesizes an overview, chronology, readable screen text, facts, steps, decisions, action items and limitations. Content modes accept static scenes, bypass the motion gate, and emit `TLM_ANALYSIS::` tokens rather than robotics verdicts. Missing audio/speech and partial failures are explicit. Each content run saves transcript, segments, report and full analysis artifacts. Parametrizer and wrapped chat results expose `analysis_type`, `analysis_token`, `transcript`, `summary`, `audio_status`, timestamped `segments_json` and artifact paths; the body remains `response_body`. Input remains a file, wildcard, newest video in a folder or Camcorder pool name, or a web link (YouTube and other sites): Video-Analyzer downloads it itself (one item; sound only for transcription), joins picture and sound with PyAV when ffmpeg is absent, keeps a self-updating private yt-dlp, names every download failure, and adds `source_url`/`source_title` to its result. Always starts downstream agents; sampled perception is not exhaustive.
 
 See [configuration, routing, Parametrizer mappings and limitations](../../Tlamatini/agent/agents/video_analyzer/README.md).
+
+## Terminater in Multi-Turn (2026-10-19, on `main`, unreleased)
+
+`chat_agent_terminater` is the visible, user-supervised sibling of Executer ([contract](../terminater.md)).
+Guidance the tool description gives the model, and the loop must respect:
+
+* **Prefer it when the user should SEE the work** (a walk-through, Step-by-Step mode, an installer that asks
+  questions, CMD beside PowerShell, a value only the user can supply); use Executer when only the text matters.
+* **Typing is slow on purpose** (about 50 words per minute): do not shorten or split a command to save time.
+* **Hand-over syntax** is `<<USER:hint>>` inside `text`; pass it literally. `secret=true` keeps that part out of
+  every log and result. An unfinished hand-over ends as `operator_required`.
+* It is on the **Ask Execs** allowlist as a command runner. The permission dialog previews the exact text and
+  the shell ("TERMINATER COMMAND TO TYPE"); a Deny halts the chain like any other runner.
+* The result words feed the verdict engine: `command_failed` and `hung` are red even though the terminal worked,
+  so a Forker can branch on `{status}`; the Exec Report row uses the generic capture with the native
+  **Phosphor Console** caption.
+* The Catalog of Prompts has three SAFE cards (127 FIRST LOOK, 128 HAND-OVER, 129 GUIDED TOUR, the last a
+  Step-by-Step card) in *Run & Execute*.
 
 ## Multi-Turn and ACPX inside the Prompt Flow Panel (2026-09-25)
 

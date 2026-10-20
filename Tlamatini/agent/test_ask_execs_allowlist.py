@@ -114,6 +114,10 @@ RUNNERS = [
     "chat_agent_jenkinser", "chat_agent_gitter",
     "chat_agent_sqler", "chat_agent_mongoxer",
     "decompile_java", "chat_agent_j_decompiler",
+    # Terminater types and RUNS arbitrary commands in a real shell (open / type / run /
+    # handover / send_key), exactly the capability Executer has -- so it is a runner and
+    # stays gated, even though the user can watch the typing. (2026-10-19)
+    "chat_agent_terminater",
 ]
 
 # ── Tier C — MUST STAY UNGATED (Angela's explicit call: speed + visibility) ──

@@ -18,6 +18,8 @@
     <link rel="stylesheet" href="{% static 'agent/css/flow_canvas.css' %}?v={{ STATIC_VERSION }}">
     <link rel="stylesheet" href="{% static 'agent/css/ui_shell.css' %}?v={{ STATIC_VERSION }}">
     <link rel="stylesheet" href="{% static 'agent/css/ui_splitters.css' %}?v={{ STATIC_VERSION }}">
+    <link rel="stylesheet" href="{% static 'agent/vendor/frontend/xterm/css/xterm.css' %}?v={{ STATIC_VERSION }}">
+    <link rel="stylesheet" href="{% static 'agent/css/terminater_dock.css' %}?v={{ STATIC_VERSION }}_term1">
     <link rel="stylesheet" href="{% static 'agent/css/dialog_theme.css' %}?v={{ STATIC_VERSION }}">
     <script src="{% static 'agent/vendor/frontend/jquery/dist/jquery.min.js' %}?v={{ STATIC_VERSION }}"></script>
     <script src="{% static 'agent/vendor/frontend/jquery-ui/jquery-ui.min.js' %}?v={{ STATIC_VERSION }}"></script>
@@ -27,7 +29,7 @@
     <script src="{% static 'agent/js/file_drop_router.js' %}?v={{ STATIC_VERSION }}"></script>
     <script src="{% static 'agent/vendor/frontend/bootstrap/dist/js/bootstrap.bundle.min.js' %}?v={{ STATIC_VERSION }}"></script>
 </head>
-<body class="pmt-panel" data-user-id="{{ request.user.pk }}">
+<body class="pmt-panel" data-user-id="{{ request.user.pk }}" data-tlm-user="{{ request.user.pk }}">
     <nav id="navbar-container" class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div id="navbar-content" class="container-fluid align-items-center">
             <a class="navbar-brand navbar-margin" href="{% url 'agent_page' %}">Tlamatini (Prompt Flow Panel)</a>
@@ -43,6 +45,12 @@
                             <li><hr class="dropdown-divider"></li>
                             <li><button class="dropdown-item" data-action="example">Open example</button></li>
                             <li><button class="dropdown-item" data-action="new">Close flow</button></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="view-dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">View</a>
+                        <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="view-dropdown" role="menu">
+                            <li><button class="dropdown-item" type="button" id="views-terminals-toggle" data-tlm-terminals-toggle role="menuitemcheckbox" aria-checked="false" aria-controls="tlm-terminals" title="Show or hide the Terminals area (Ctrl+`). Your terminals keep running."><span id="views-terminals-check" aria-hidden="true">&#10003;</span>Terminals</button></li>
                         </ul>
                     </li>
                     <li class="nav-item"><button class="nav-link" data-action="reconnect" disabled>Reconnect</button></li>
@@ -100,6 +108,7 @@
             <div id="pmt-output-divider" class="tlm-splitter" role="separator" aria-label="Resize Run output" aria-controls="pmt-run-panel submonitor-container" aria-orientation="horizontal" aria-valuemin="5" aria-valuemax="95" aria-valuenow="20" tabindex="0" title="Drag to resize Run output · ↑ / ↓ to adjust · Home 5% · End 95%"></div>
             <details id="pmt-run-panel" open><summary>Run output <span id="pmt-run-state">Idle</span></summary><div id="pmt-run-log" role="log" aria-live="polite"><p class="pmt-log-hint">Execution results appear here. Keep this page open while a flow is playing.</p></div></details>
             </div>
+            <div id="tlm-terminals-host" data-tlm-terminals-host="pfp"></div>
         </section>
     </main>
     <div id="agent-context-menu"></div>
@@ -109,5 +118,9 @@
     <script src="{% static 'agent/js/flow-canvas-interactions.js' %}?v={{ STATIC_VERSION }}"></script>
     <script src="{% static 'agent/js/prompt-flow-panel-model.js' %}?v={{ STATIC_VERSION }}"></script>
     <script src="{% static 'agent/js/prompt-flow-panel.js' %}?v={{ STATIC_VERSION }}"></script>
+    <script src="{% static 'agent/vendor/frontend/xterm/lib/xterm.js' %}?v={{ STATIC_VERSION }}"></script>
+    <script src="{% static 'agent/vendor/frontend/xterm-addon-fit/lib/addon-fit.js' %}?v={{ STATIC_VERSION }}"></script>
+    <script src="{% static 'agent/vendor/frontend/xterm-addon-web-links/lib/addon-web-links.js' %}?v={{ STATIC_VERSION }}"></script>
+    <script src="{% static 'agent/js/terminater_dock.js' %}?v={{ STATIC_VERSION }}_term1"></script>
 </body>
 </html>

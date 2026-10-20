@@ -382,6 +382,21 @@ PDFER SPECIAL NOTES:
     time; use progress and actual stage failures, not an assumption of a seconds-long
     whole run or a global command_timeout deadline that the renderer does not enforce.
 
+TERMINATER SPECIAL NOTES:
+  - Terminater runs ONE action in a real ConPTY terminal (CMD or PowerShell) that the user can see in
+    the Terminals area. It types like a person (never pastes), so slow typing is NORMAL, not a hang.
+  - It ALWAYS starts target_agents after success, failure or timeout, and ALWAYS emits one
+    INI_SECTION_TERMINATER block. Routable statuses: completed, command_failed (the COMMAND exited
+    non-zero - the finding is the deliverable), hung, timeout, operator_required (a program asked a
+    question, or the user has not finished their part), aborted (the user took over the keyboard or
+    the command was interrupted), opened, typed, killed, focused, warned, observed, listed, read.
+    None of these is a flow crash. Only `status: error` / `refused` means Terminater itself failed.
+  - A hand-over (`<<USER:hint>>` in the text) intentionally waits for the human: a Terminater that is
+    silent while awaiting the user is healthy until `user_wait_seconds` (default 300 s).
+  - `hung` means the COMMAND produced no output for `hang_seconds` (default 45 s); it is a finding the
+    flow should route on (abort / force_kill), not a watchdog alarm about Terminater.
+  - Terminals are owned by the Tlamatini hub, not by the agent: the agent exiting does NOT close them.
+
 LATEXER SPECIAL NOTES:
   - LaTeXer runs one action and ALWAYS starts target_agents after success, failure or
     refusal. INI_SECTION_LATEXER is normal routable output. A structured failure is
@@ -891,6 +906,7 @@ TYPICAL TIMING:
   - ESP32er: tracks the `pio` subcommand — sub-second for system_info / boards / list_sources; tens of seconds to a couple of minutes for a steady-state `build` / `upload`. The FIRST build for a board DOWNLOADS the espressif32 platform + toolchain (hundreds of MB) and can take MANY minutes — do NOT flag a long first build while `pio` keeps printing Downloading/Installing progress; flag only on total silence > 10 min, an explicit error, or "PlatformIO Core could not be auto-installed". See ESP32ER SPECIAL NOTES.
   - ESPHomer: tracks the `esphome` subcommand — sub-second for version / config / new_config / read_config; tens of seconds to a couple of minutes for a steady-state `compile` / `upload`. The FIRST compile for a device DOWNLOADS the platform + toolchain (ESPHome vendors PlatformIO underneath — hundreds of MB) and can take MANY minutes — do NOT flag a long first compile while it keeps printing Downloading/Installing progress; flag only on total silence > 10 min, an explicit error, or an ESPHome bootstrap that "overall : FAILED". See ESPHOMER SPECIAL NOTES.
   - Arduiner: tracks the `arduino-cli` subcommand — sub-second for boards / device_list / list_sources; seconds to a couple of minutes for a steady-state `build` / `upload`. The FIRST core_install + build for a board DOWNLOADS the board toolchain (can be hundreds of MB) and can take MANY minutes — do NOT flag a long first run while it keeps printing Downloading progress; flag only on total silence > 10 min, an explicit error, or "arduino-cli could not be auto-installed". See ARDUINER SPECIAL NOTES.
+  - Terminater: drives a VISIBLE CMD/PowerShell terminal that a person can watch. Typing a command takes real time on purpose (about 50 words per minute: a 60-character command is ~15 s), then it waits for the command itself, and a hand-over (`<<USER:hint>>`) waits for a HUMAN for up to `user_wait_seconds` (default 300 s). Minutes of quiet are NORMAL. Flag only if it is silent well beyond `wait_seconds` + `user_wait_seconds` with no "Terminater agent finished" completion. See TERMINATER SPECIAL NOTES.
   - Ender: should complete kill sequence in < 30 seconds
 
 ══════════════════════════════════════════

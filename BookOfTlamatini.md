@@ -13,7 +13,7 @@
 
 ![Project Logo](Tlamatini.jpg)
 
-> **The Book of Tlamatini** — a step-by-step guide to running, using, and mastering a locally-deployed AI developer assistant with RAG, Multi-Turn tool orchestration, ACPX external-CLI delegation, an Unreal MCP client for driving Unreal Engine 5 from chat or canvas, a visual workflow designer, 85 drag-and-drop agent types, and a backend Flow Compiler that turns the live canvas — or a chat-generated tool-call log — into a registry-validated, secret-redacted, source-and-frozen-portable workflow.
+> **The Book of Tlamatini** — a step-by-step guide to running, using, and mastering a locally-deployed AI developer assistant with RAG, Multi-Turn tool orchestration, ACPX external-CLI delegation, an Unreal MCP client for driving Unreal Engine 5 from chat or canvas, a visual workflow designer, 86 drag-and-drop agent types, and a backend Flow Compiler that turns the live canvas — or a chat-generated tool-call log — into a registry-validated, secret-redacted, source-and-frozen-portable workflow.
 >
 > Visit our site at **https://xaiht.org**, or get a one-minute taste of Tlamatini on YouTube: **https://youtu.be/a51miZ1JIe0**.
 >
@@ -136,7 +136,7 @@ Tlamatini does a lot. This book is organized so you can stop reading at the dept
 - **Part I — Getting Tlamatini Running**: prerequisites, Ollama, the **Pro-or-higher requirement for complete functionality**, cloud models, installation, and first login. *Read this once.*
 - **Part II — Using the Chat**: the five toolbar checkboxes (Multi-Turn, Exec Report, ACPX, Ask Execs, internet) walked through one by one. *This is the dummy-friendly heart of the book.*
 - **Part III — The Visual Workflow Designer**: drag-and-drop flows, FlowCreator, FlowHypervisor, Parametrizer.
-- **Part IV — The Tlamatini Bestiary**: compact reference covering all 85 workflow agents, with one authoritative row per live agent directory.
+- **Part IV — The Tlamatini Bestiary**: compact reference covering all 86 workflow agents, with one authoritative row per live agent directory.
 - **Part V — The Tool Surface**: every LLM-facing tool the chat can call, organized by family.
 - **Part VI — Inside Tlamatini**: architecture, RAG, the embedding-memory pre-flight guard, Multi-Turn pipeline, ACPX runtime mechanics. *For the curious.*
 - **Part VII — Configuration Reference**: every `config.json` knob.
@@ -149,6 +149,7 @@ Tlamatini does a lot. This book is organized so you can stop reading at the dept
 - **[Enable Tlamatini as a Blue-hat agent](#enable-tlamatini-as-a-blue-hat-agent)** — the complete Windows defensive-toolkit runbook: asset validation, persistent host changes, detect-only baselining, armed/watch modes, evidence review, false positives, response rollback, and operator responsibility.
 - **[Voice commands: your words become the prompt](#voice-commands-your-words-become-the-prompt)** — the catalog's new first section: speak your instruction instead of typing it, why it needed the silence gate to exist, and the two promises (she reads it back; if she did not hear you she says so).
 - **[Whisperer listens: the silence gate](#whisperer-listens-the-silence-gate)** — why a fixed recording length was the wrong question, how the gate hears you, the countdown in the console bar, and the one thing that would have made the whole feature invisible.
+- **[Terminals you can watch: Terminater](#terminals-you-can-watch-terminater)** — the visible Executer: real CMD and PowerShell terminals in the Terminals area, typed key by key like a person, with a hand-over, an Esc that gives you the keyboard back, hung-command detection and a safe three-card tour in the catalog. *On `main`, not yet released.*
 - **[Avatar animation repair and reproducible visible tests](#avatar-animation-repair-and-reproducible-visible-tests)** — frame assets, the transparency-flash diagnosis, the source fix, real Django/Windows-voice validation, and the Python test launcher.
 - **Appendix A** — Keyboarder key reference.
 - **Appendix B** — Glossary.
@@ -458,6 +459,48 @@ Two smaller honesty repairs travelled with it. The reported recording length use
 | `silence_gate` | `auto` | `auto` follows `record_seconds`; `on` forces the gate (the duration becomes a ceiling); `off` forces a fixed recording. |
 | `max_record_seconds` | `300` | Ceiling for a gate that never fires — a radio left playing is never silent. |
 | `silence_threshold_db` | `0` | 0 measures the room automatically. A negative value forces a fixed threshold for an unusual room. |
+
+---
+
+## Terminals you can watch: Terminater
+
+> **On `main`, not yet released.** The latest released version is v1.87.0. Everything here is finished and tested, and will reach you with the next release.
+
+### The problem it solves
+
+Executer is wonderful when you only want the *answer*: it runs a command in a shell nobody can see and hands back text. But sometimes you want to *watch* — to learn what a command does, to follow a walk-through, to answer the question an installer asks, or to be sure nothing surprising is typed. For those moments Tlamatini now has **Terminater**, the visible sibling of Executer.
+
+### See it in thirty seconds
+
+1. Open the chat and choose **Views ▸ Terminals** (or press **Ctrl+`**). A Terminals area appears under the canvas. Nothing is running yet.
+2. Open **Catalog of Prompts**, go to **Run & Execute** and click **TERMINATER FIRST LOOK**. Tick **Multi-Turn** and **Exec report** as the card says.
+3. Send it. A real PowerShell appears in the Terminals area, and you can watch Tlamatini *type* a command — a little faster and slower here and there, like a person at about 50 words per minute. When the command finishes she reads the whole output and reports the exit code.
+
+Typing is slow **on purpose**: a 60-character command takes about fifteen seconds. There is no paste and no instant mode, so you always see what is being typed before it runs.
+
+### Take the keyboard — and give it
+
+* **Esc** stops Tlamatini's typing at once and the keyboard is yours. You never have to fight for it.
+* **Hand-over.** Try the **TERMINATER HAND-OVER** card. Tlamatini types `ping `, then waits for *you* to type the host and press Enter, then types ` -n 2` and runs the line. Whatever you type is reported separately from what she typed, so the report always says who did what. If you do not finish in five minutes the result is `operator_required` — she never invents a host.
+* **Secrets.** When the part you type is a password or a token, the request says `secret: true` and that part is never logged or returned.
+
+### Several terminals at once
+
+The **TERMINATER GUIDED TOUR** card opens a CMD and a PowerShell side by side (`tile-h`), types a version command in each, and then — one step at a time — watches what *you* start to type in one of them and warns you if it looks dangerous or mistyped. The layouts are `tabs`, `tile`, `tile-h`, `tile-v` and `grid`, and the area can be the docked strip or the whole canvas.
+
+### When a command misbehaves
+
+A command that prints nothing for 45 seconds is flagged **hung**; Tlamatini can abort it (Ctrl+C, Ctrl+C again, then ending its processes) without losing the terminal. A command that exits with an error is a red row in the Exec report even though the terminal itself worked, so a flow can branch on it.
+
+### Where else it lives
+
+* On the **Agentic Control Panel** it is workflow agent #86 — draw it, wire it, and a Forker can branch on `{status}` and `{exit_code}`. If a terminal needs your input while a flow runs, the Start dialog gets out of the way so the terminal holds the keyboard.
+* In the **Prompt Flow Panel** it is the new parallelogram: the node's text is typed into your terminal and the output becomes `{{last_output}}`.
+* It is on the **Ask Execs** list: a visible command can still delete things, so with Ask Execs ticked you see exactly what will be typed before it is.
+
+### Good to know
+
+It needs Windows 10 version 1809 or newer. Closing a page never closes a terminal, but they all end when Tlamatini does. To switch the whole feature off, set `terminater_enabled` to `false` in `config.json`. The complete rules, every action and how it is tested are in `docs/terminater.md`.
 
 ---
 
@@ -1875,6 +1918,7 @@ A compact reference for all 85 workflow-agent types. The **Parametrizer** chapte
 | **Whisperer** | **Direct chat microphone:** Mic beside Send starts host capture without an LLM decision and stops on the configured silence gate. Config → Mic (last entry) selects automatic submission with the current draft/modes or an editable transcript for manual Send, and configures device, gain, gate and recognition preferences per browser. Each recording snapshots its settings. It has no extra console, workflow artifact output or wrapped-tool Exec Report row. **Standalone/workflow surface:** SPEECH-TO-TEXT (STT / voice recognition), the sibling of Talker — turns spoken audio into a text string. 100% self-sufficient for the microphone: it opens, configures (channels / sample-rate / gain) and records the mic ITSELF (no Recorder dependency; `record_seconds: 0` uses the sound gate by default), or transcribes a given audio FILE (`input_source` ∈ mic / file / auto, `audio_file`). Transcription engine: **faster-whisper LOCALLY by default** — it auto-detects an NVIDIA GPU via CTranslate2 and ALWAYS falls back to CPU (int8) on a machine without one (and auto-retries on CPU if the GPU path fails); `model` ∈ tiny / base / small / medium / large-v3 / large-v3-turbo (default `base`). Cloud engines `cloud-groq` / `cloud-openai` are also supported. **NOTE — Ollama CANNOT do speech-to-text** (no audio input): recognition is always done by the ASR engine; an optional Ollama pass only tidies the FINISHED transcript's punctuation. Observational (but STILL in the Exec Report); emits `INI_SECTION_WHISPERER<<<` (body = the transcript text) and always triggers `target_agents`. Needs `faster-whisper` for local transcription (absent + no cloud key → `status: engine_unavailable`, not a crash). Canvas counterpart of the `chat_agent_whisperer` Multi-Turn tool. |
 | **Mouser** | Pointer movement, click, drag, scroll, click-at-window, locate-image. |
 | **Keyboarder** | Keyboard typing / hotkey chords (PyAutoGUI). |
+| **Terminater** | Visible, user-supervised terminals (CMD / PowerShell / PowerShell 7) in the Terminals area. Types every key like a person (`typing_wpm` 50 by default, 20-160; no paste, no instant mode), waits for the command, reads the output back in full, detects a hung command (`hang_seconds` 45), hands the keyboard to the user at `<<USER:hint>>`, and lets the user take over with Esc. One `action` per run (`run`, `open`, `type`, `send_key`, `wait`, `read`, `abort`, `kill`, `force_kill`, `layout`, `watch_user`, `warn_user`, `handover`, …); terminals persist in the Tlamatini hub between runs. Emits `INI_SECTION_TERMINATER` (`status`, `exit_code`, `typed`, `user_part`, …) and always starts its `target_agents`. Windows 10 1809+ (ConPTY). Agent #86; see [docs/terminater.md](docs/terminater.md). |
 | **Windower** | Deterministic Win32 window manager (pywin32 + ctypes). Locates an application window by title (`match_mode` ∈ substring/exact/regex, plus `match_index` to disambiguate same-titled windows) and runs ONE window-lifecycle operation: `focus`, `minimize`, `maximize`, `restore`, `move`, `resize`, `move_resize`, `close`, `topmost` / `untopmost` (always-on-top), or `arrange` (snap/tile to left/right/top/bottom halves, four quadrants, center, or full) — or `list` every open window with its position, size, and state. The window member of the desktop-UI trio (Windower = the window, Mouser = clicks, Keyboarder = typing). Ports the window-management subset of Microsoft's Windows-MCP (incl. the AttachThreadInput cross-process focus-transfer dance). Emits an `INI_SECTION_WINDOWER<<<` block (`action`, `window_title`, `matched`, `match_count`, `state`, `left`, `top`, `width`, `height`, `response_body`) and always triggers `target_agents`. Canvas counterpart of the `chat_agent_windower` Multi-Turn tool. |
 | **Kalier** | Kali Linux offensive-security bridge to the **MCP-Kali-Server** (`server.py` Flask API; default `http://127.0.0.1:5000`; stdlib `urllib`, self-contained — no `requests`/`mcp` deps in the pool). `action` ∈ `command` / `nmap` / `gobuster` / `dirb` / `nikto` / `sqlmap` / `metasploit` / `hydra` / `john` / `wpscan` / `enum4linux` / `health`. Emits an `INI_SECTION_KALIER<<<` block (`action`, `endpoint`, `method`, `subject`, `return_code`, `success`, `timed_out`, `server_url`, `response_body`) and always triggers `target_agents` so a Forker can branch on `{success}`/`{return_code}`. Canvas counterpart of the `chat_agent_kalier` Multi-Turn tool. **Authorized targets only.** |
 | **Nmapper** | LOCAL, **use-only** nmap bridge for pentesters and CTF recon — the instant, zero-install sibling of Kalier (a REMOTE Kali box) and Discoverer (the ProjectDiscovery suite). It RUNS an nmap the user installed and **never bundles or redistributes nmap** (the NPSL forbids embedding it), resolving PATH → `C:\Program Files (x86)\Nmap` / `C:\Program Files\Nmap` → a `%LOCALAPPDATA%\Tlamatini\nmap` copy; with none found it REFUSES gracefully with install guidance, and `action: install` downloads + launches the OFFICIAL FREE nmap installer (which also brings Npcap). The DEFAULT is an **unprivileged TCP connect scan** (`-sT`) needing no Npcap and no admin, so a fresh install scans immediately; on Windows without Npcap a SYN scan auto-downgrades to `-sT`, `-O` is dropped (both warned) and a raw `udp` scan is refused — never a crash. `action` ∈ quick (`-sT -sV -sC -Pn -T4 --top-ports 1000`, the CTF opener) / full / top_ports / version / scripts (NSE) / host_discovery / udp / custom (shell metacharacters rejected) / validate / install. Runs `-oX` (parsed for `hosts_up` / `open_ports`) + `-oN` (the human report). Emits `INI_SECTION_NMAPPER<<<` (`action`, `target`, `scan_technique`, `ports`, `return_code`, `success`, `hosts_up`, `open_ports`, `npcap_present`, `xml_path`, `output_path`, `stage`) and always triggers `target_agents`. Canvas counterpart of the `chat_agent_nmapper` Multi-Turn tool. **Authorized targets only** — treat scan output as untrusted data. |
@@ -2006,13 +2050,13 @@ Every tool the chat LLM can call in Multi-Turn mode. Tools can be individually e
 | `agent_stopper` | Stop a template workflow agent. |
 | `agent_stat_getter` | Check template-agent runtime status. |
 
-## 28. Wrapped chat-agent tools (66)
+## 28. Wrapped chat-agent tools (67)
 
 Each wrapped tool launches an isolated, sequenced runtime copy of a workflow agent template under `agent/agents/pools/_chat_runs_/{agent}_{seq:03d}_{short_id}/`. Failed runs are preserved.
 
 | Family | Tool names |
 |---|---|
-| **Execution & files** | `chat_agent_executer`, `chat_agent_pythonxer`, `chat_agent_pser`, `chat_agent_move_file`, `chat_agent_deleter`, `chat_agent_sleeper` |
+| **Execution & files** | `chat_agent_executer`, `chat_agent_pythonxer`, `chat_agent_terminater`, `chat_agent_pser`, `chat_agent_move_file`, `chat_agent_deleter`, `chat_agent_sleeper` |
 | **DevOps & infra** | `chat_agent_gitter`, `chat_agent_dockerer`, `chat_agent_kuberneter`, `chat_agent_jenkinser`, `chat_agent_ssher`, `chat_agent_scper` |
 | **Data & interpretation** | `chat_agent_sqler`, `chat_agent_mongoxer`, `chat_agent_file_creator`, `chat_agent_file_extractor`, `chat_agent_file_interpreter`, `chat_agent_image_interpreter`, `chat_agent_summarize_text` |
 | **Notifications & comms** | `chat_agent_send_email`, `chat_agent_notifier`, `chat_agent_telegrammer`, `chat_agent_whatsapper`, `chat_agent_recmailer` |
@@ -2974,7 +3018,7 @@ The backend currently exposes 104 routes. Highlights:
 
 ### Connection updates (canvas auto-configuration)
 
-`/update_<agent>_connection/<agent_name>/` — 82 live connection endpoints (2026-10-18), one per agent type that saves its canvas wiring the moment a wire is drawn: Raiser, Emailer, Monitor-Log, Ender, Starter, Whatsapper, Croner, Mover, Sleeper, Cleaner, Deleter, Notifier, Executer, Pythonxer, Stopper, RecMailer, Asker, Forker, Counter, Shoter, Camcorder, Globber, Grepper, Editor, Recorder, Whisperer, AudioPlayer, VideoPlayer, Talker, SSHer, SCPer, TeleTlamatini, ACPXer, Telegrammer, SQLer, Prompter, Gitter, Dockerer, MCP Doctor, Instant Messaging Doctor, PSer, Kuberneter, Apirer, Unrealer, Blenderer, Playwrighter, Reviewer, Analyzer, Jenkinser, Crawler, Summarizer, FlowHypervisor, Mouser, Windower, Kalier, Discoverer, Nmapper, PDFer, LaTeXer, PPTXer, STM32er, ESP32er, ESPHomer, Arduiner, File-Interpreter, Image-Interpreter, Video-Analyzer, NetSpeed-Calculator, File-Creator, File-Extractor, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Parametrizer, FlowBacker, Barrier, J-Decompiler, De-Compresser, Keyboarder, Googler, OR and AND. FlowCreator has no connections; Mongoxer and Monitor Netstat have no live endpoint, and their wiring is written by the Flow Compiler when the flow is validated or started.
+`/update_<agent>_connection/<agent_name>/` — 83 live connection endpoints (2026-10-19), one per agent type that saves its canvas wiring the moment a wire is drawn: Raiser, Emailer, Monitor-Log, Ender, Starter, Whatsapper, Croner, Mover, Sleeper, Cleaner, Deleter, Notifier, Executer, Pythonxer, Stopper, RecMailer, Asker, Forker, Counter, Shoter, Camcorder, Globber, Grepper, Editor, Recorder, Whisperer, AudioPlayer, VideoPlayer, Talker, SSHer, SCPer, TeleTlamatini, ACPXer, Telegrammer, SQLer, Prompter, Gitter, Dockerer, MCP Doctor, Instant Messaging Doctor, PSer, Kuberneter, Apirer, Unrealer, Blenderer, Playwrighter, Reviewer, Analyzer, Jenkinser, Crawler, Summarizer, FlowHypervisor, Mouser, Windower, Kalier, Discoverer, Nmapper, PDFer, LaTeXer, PPTXer, STM32er, ESP32er, ESPHomer, Arduiner, File-Interpreter, Image-Interpreter, Video-Analyzer, NetSpeed-Calculator, File-Creator, File-Extractor, Kyber-KeyGen, Kyber-Cipher, Kyber-DeCipher, Parametrizer, FlowBacker, Barrier, J-Decompiler, De-Compresser, Keyboarder, Googler, OR and AND. FlowCreator has no connections; Mongoxer and Monitor Netstat have no live endpoint, and their wiring is written by the Flow Compiler when the flow is validated or started.
 
 Plus the Parametrizer-specific pair:
 
@@ -3989,6 +4033,7 @@ The other firmware agents make Tlamatini an *embedded engineer*. ESPHomer makes 
 | **Summarizer** | LLM polls source logs for events. |
 | **Tlamatini** | Nahuatl for "one who knows" — and the name of this assistant. The LLM responds to it as a self-reference. |
 | **WebSocket** | Full-duplex protocol over TCP. |
+| **Terminater** | Visible, user-supervised CMD / PowerShell terminals the user watches; Tlamatini types every key like a person, waits, and reads the output back; the keyboard can be handed over (`<<USER:hint>>`) or taken back (Esc). |
 | **Windower** | Deterministic Win32 window manager — locates an application window by title and runs one window-lifecycle operation (focus / minimize / maximize / restore / move / resize / close / topmost / arrange / list). The third member of the desktop-UI trio (Windower = the window, Mouser = clicks, Keyboarder = typing). |
 
 ---
@@ -3996,6 +4041,9 @@ The other firmware agents make Tlamatini an *embedded engineer*. ESPHomer makes 
 # Appendix C — Changelog
 
 ### Recent Updates
+
+- **Added Terminater — Visible, User-Supervised Terminals — 2026-10-19 (on `main`, not yet released)** — The agent catalog grows to **86** with **Terminater**, the visible sibling of Executer: real CMD / PowerShell terminals in a new Terminals area (Views ▸ Terminals, Ctrl+`) on the chat, Agentic Control Panel and Prompt Flow Panel pages, typed key by key like a person, with a hand-over (`<<USER:hint>>`), Esc to take the keyboard, hung-command detection, a deterministic advisor and one shared hub in the Django process (WebSocket for the browser, a token-protected loopback API for pool agents). It is the 67th wrapped agent, the 8th Prompt Flow Panel operation and has three safe catalog cards (127-129). `build.py` now runs a `check_terminater` gate inside the frozen app. Migrations 0215-0217; 774 unit tests passed on 2026-10-19. See [docs/terminater.md](docs/terminater.md) and [the change record](docs/changes/2026-10-19-terminater.md).
+- **The private release carries your data — 2026-10-19 (on `main`, not yet released)** — `build_complete_private_release.py` now merges every External MCP server (and the active selection) of the installed Tlamatini into the gitignored `external_mcps.private.json`, and ships the whole `data.keys` vault as `<install>/data.keys`; the public builder refuses both. See [the record](docs/changes/2026-10-19-private-release-data.md).
 
 **In v1.76.0 — graphical commentary and Run output (2026-10-04):** Notes now use inline rich text, a floating selection toolbar and all-edge/corner resizing with full containment and no configuration dialog. Run output has a 5–95% divider with independent scrolling and a separate saved layout. Committed to `main` on 2026-10-04. Subsequent isolated frozen builds and runtime acceptance are tracked in [release validation](docs/changes/2026-10-04-release-validation.md). See the [commentary verification](docs/changes/2026-10-04-commentary-graphical-redesign.md), [Run output verification](docs/changes/2026-10-04-run-output-resize.md) and [documentation refresh](docs/changes/2026-10-04-prompt-flow-documentation.md).
 

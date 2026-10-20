@@ -11,10 +11,10 @@
 One functional question per WRAPPED chat-agent in Tlamatini.
 
 Source of truth: agent/chat_agent_registry.py :: WRAPPED_CHAT_AGENT_SPECS
-(66 wrapped agents as of 2026-10-18). Each question is an OPERATOR prompt
+(67 wrapped agents as of 2026-10-19). Each question is an OPERATOR prompt
 (Multi-Turn ON) that exercises that agent's actual functionality. The
 send_email agent additionally carries a second question that exercises the
-file-attachment path (email.attachments), so the bank is 67 questions.
+file-attachment path (email.attachments), so the bank is 68 questions.
 
 Safety choices (this runs for real):
   * file ops act on THROWAWAY files the question first creates, under the app
@@ -154,6 +154,9 @@ WRAPPED = [
     ("windower", "Windower",
      "List all currently open application windows on this system.",
      ["window"]),
+    ("terminater", "Terminater",
+     "Using Terminater, open a PowerShell terminal titled 'Wrapped test', type and run the command: Write-Output tlamatini-terminater-ok -- then report the status, the exit code and the output, and close that terminal afterwards.",
+     ["tlamatini-terminater-ok"]),
     ("mouser", "Mouser",
      "Move the mouse pointer to screen coordinates (300, 300) without clicking, then confirm.",
      ["mouse"]),

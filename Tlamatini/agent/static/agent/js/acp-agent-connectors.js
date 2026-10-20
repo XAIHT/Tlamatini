@@ -10,7 +10,7 @@
  *   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
  */
 // Shared classic-script bindings, consumed by sibling page scripts.
-/* exported findDownstreamEnders, updateRaiserConnection, updateEmailerConnection, updateMonitorLogConnection, updateStarterConnection, updateEnderConnection, updateCleanerConnection, updateOrAgentConnection, updateAndAgentConnection, updateCronerConnection, updateMoverConnection, updateSleeperConnection, updateShoterConnection, updateEditorConnection, updateGrepperConnection, updateGlobberConnection, updateCamcorderConnection, updateRecorderConnection, updateWhispererConnection, updateAudioPlayerConnection, updateTalkerConnection, updateVideoPlayerConnection, updateDeleterConnection, updateExecuterConnection, updateScperConnection, updateSsherConnection, updateNotifierConnection, updateStopperConnection, updateWhatsapperConnection, updatePythonxerConnection, updateAskerConnection, updateForkerConnection, updateCounterConnection, updateTeletlamatiniConnection, updateAcpxerConnection, updateTelegrammerConnection, updateRecmailerConnection, updateSqlerConnection, updatePrompterConnection, updateGitterConnection, updateKuberneterConnection, updateApirerConnection, updateUnrealerConnection, updateBlendererConnection, updatePlaywrighterConnection, updateReviewerConnection, updateAnalyzerConnection, updateJenkinserConnection, updateCrawlerConnection, updateSummarizerConnection, updateMouserConnection, updateWindowerConnection, updateDiscovererConnection, updateNmapperConnection, updatePptxerConnection, updatePdferConnection, updateLatexerConnection, updateKalierConnection, updateStm32erConnection, updateEsp32erConnection, updateEsphomerConnection, updateArduinerConnection, updateFileInterpreterConnection, updateKeyboarderConnection, updateGooglerConnection */
+/* exported findDownstreamEnders, updateRaiserConnection, updateEmailerConnection, updateMonitorLogConnection, updateStarterConnection, updateEnderConnection, updateCleanerConnection, updateOrAgentConnection, updateAndAgentConnection, updateCronerConnection, updateMoverConnection, updateSleeperConnection, updateShoterConnection, updateEditorConnection, updateGrepperConnection, updateGlobberConnection, updateCamcorderConnection, updateRecorderConnection, updateWhispererConnection, updateAudioPlayerConnection, updateTalkerConnection, updateVideoPlayerConnection, updateDeleterConnection, updateExecuterConnection, updateScperConnection, updateSsherConnection, updateNotifierConnection, updateStopperConnection, updateWhatsapperConnection, updatePythonxerConnection, updateAskerConnection, updateForkerConnection, updateCounterConnection, updateTeletlamatiniConnection, updateAcpxerConnection, updateTelegrammerConnection, updateRecmailerConnection, updateSqlerConnection, updatePrompterConnection, updateGitterConnection, updateKuberneterConnection, updateApirerConnection, updateUnrealerConnection, updateBlendererConnection, updatePlaywrighterConnection, updateReviewerConnection, updateAnalyzerConnection, updateJenkinserConnection, updateCrawlerConnection, updateSummarizerConnection, updateMouserConnection, updateWindowerConnection, updateDiscovererConnection, updateNmapperConnection, updatePptxerConnection, updatePdferConnection, updateTerminaterConnection, updateLatexerConnection, updateKalierConnection, updateStm32erConnection, updateEsp32erConnection, updateEsphomerConnection, updateArduinerConnection, updateFileInterpreterConnection, updateKeyboarderConnection, updateGooglerConnection */
 
 
 // Agentic Control Panel - Agent Connection Updaters
@@ -1279,6 +1279,26 @@ async function updatePdferConnection(agentId, targetAgentId, action) {
         }
     } catch (error) {
         console.error(`--- Error updating PDFer ${agentId}:`, error);
+    }
+}
+
+// Terminater — an active agent: a wire FROM it records the downstream agent in target_agents.
+async function updateTerminaterConnection(agentId, targetAgentId, action) {
+    try {
+        const response = await fetch(`/agent/update_terminater_connection/${agentId}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ target_agent: targetAgentId, action: action })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            console.log(`--- Terminater ${agentId} config updated:`, result.message);
+        } else {
+            console.error(`--- Failed to update Terminater ${agentId}:`, response.statusText);
+        }
+    } catch (error) {
+        console.error(`--- Error updating Terminater ${agentId}:`, error);
     }
 }
 

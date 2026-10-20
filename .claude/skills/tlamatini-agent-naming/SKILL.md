@@ -89,3 +89,12 @@ it is what a fresh DB shows before the first boot). The canvas
 # identifiers and the ALL-CAPS INI_SECTION protocol tokens):
 grep -rnE "Stm32Er|STM32Er" --include=*.py --include=*.md --include=*.pmt --include=*.html .
 ```
+
+## Worked example — Terminater (2026-10-19)
+
+`Terminater` is *Terminal* plus Tlamatini's `-er` agent suffix. The display name is exactly `Terminater` — never `Terminator`,
+`TerminaTer` or `TERMINATER` — pinned in `display_name_from_agent_type` (`"terminater": "Terminater"`), which is also what the
+boot repopulate uses. Everything else is lowercase: the directory `agents/terminater/`, the pool name `terminater_N`, the CSS
+class `.canvas-item.terminater-agent`, the connection check `'terminater'`, the tool `chat_agent_terminater`, the Exec Report
+key `terminater`. The ALL-CAPS tokens `INI_SECTION_TERMINATER` and `TERMINATER SPECIAL NOTES:` stay as they are. Quick check:
+`grep -rnE "Terminator|TerminaTer" --include=*.py --include=*.md --include=*.js --include=*.html .`.

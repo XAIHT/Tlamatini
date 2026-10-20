@@ -47,7 +47,7 @@ its result separately; do not replace evidence with a checked list.
 | ID | Required observation |
 | --- | --- |
 | P01 | Palette, toolbar, menus, status, run output, pan/zoom/Fit and independent Operations splitter render and respond. |
-| P02 | Create/configure/duplicate/delete each of the seven executable operation types; ports, edges, Start and invalid-graph messages. |
+| P02 | Create/configure/duplicate/delete each executable operation type (the seven prompting operations; Terminater has its own section T); ports, edges, Start and invalid-graph messages. |
 | P03 | Three independent static commentaries; double-click/Enter editing with the floating toolbar and no configuration dialog. |
 | P04 | Multiple fonts, sizes, text colors and bold/italic/underline within one note; selection and caret formatting; note color/alignment. |
 | P05 | Drag every border/corner at multiple zoom levels, including while editing; wrapped text stays contained without internal scrollbars; Fit text. |
@@ -92,3 +92,20 @@ repository's tracked-skill inventory check.
 | A10 | Views toggles full-width chat while retaining draft/history/context/document, persists by account, and reveals the canvas for new documents. |
 | A11 | Hidden canvas enforces docking; Reset restores panes and sizes without clearing content. |
 | A12 | Avatar and frame remain centered over Mic through Send at 120 px, both divider positions and browser zoom. |
+
+## Terminater (added after v1.87.0; observe it on the actual compiled artifacts)
+
+| ID | Required observation |
+| --- | --- |
+| T01 | The Terminals check item (Views on the chat page, View on the two panels) and Ctrl+` show and hide the area; hiding keeps every shell alive and a reload restores the tabs. |
+| T02 | A real PowerShell and a real CMD, typed key by key: partial command lines are observed on screen before the command runs; no paste, no instant mode. |
+| T03 | Hand-over: `<<USER:hint>>` waits, the user's part is reported apart from Tlamatini's, a secret part never appears in a log or result, and a timeout ends as `operator_required`. |
+| T04 | Esc stops Tlamatini's typing and the keyboard is the user's; a keystroke the user presses is never lost. |
+| T05 | A silent command is flagged `hung`; `abort` ends it and the terminal survives; `kill` and `force_kill` end the terminal and its process tree. |
+| T06 | Layouts `tabs`, `tile`, `tile-h`, `tile-v`, `grid` and areas `dock`, `full`; the type bar opens CMD and PowerShell. |
+| T07 | `chat_agent_terminater` under Ask Execs: the preview names the shell and the exact text; Deny halts the chain; the Exec Report row is red for `command_failed` and `hung`. |
+| T08 | Agentic Control Panel: a Terminater node in a running flow; a hand-over closes the Start dialog by itself and the terminal holds the keyboard without a click. |
+| T09 | Prompt Flow Panel: a Terminater step's output feeds `{{last_output}}`; a failed command is a result a Decision can branch on; Stop aborts typing. |
+| T10 | Frozen build: `check_terminater` passes inside the frozen app, the engine loads by path from the shipped agents tree, and the pool agent runs under the carried Python. |
+| T11 | No shell, console host or ConPTY survives Tlamatini's exit; the reapers never kill a parked prompt while the app runs. |
+| T12 | `terminater_enabled: false` switches the feature off everywhere (WebSocket 4404, API refusal, state view). |

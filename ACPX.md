@@ -682,7 +682,7 @@ In `config.json`:
 
 ### 10.5 "I want to add a skill that needs a tool that doesn't exist yet"
 
-The Tlamatini contract is: skills can only `requires_tools` a tool registered in the live `get_mcp_tools()` surface. The current built-in set is 20 core tools + 66 wrapped chat-agents + 12 ACPX/Skill tools + 10 External-MCP supervisors; dynamic `ext__*` tools exist only while their server is active and healthy, so a portable skill should depend on the stable supervisor/dispatcher rather than a transient wrapper. If a skill needs a new native tool, add the `@tool` first through `Tlamatini/.mcps/create_new_mcp.md`, then write the skill.
+The Tlamatini contract is: skills can only `requires_tools` a tool registered in the live `get_mcp_tools()` surface. The current built-in set is 20 core tools + 67 wrapped chat-agents + 12 ACPX/Skill tools + 10 External-MCP supervisors; dynamic `ext__*` tools exist only while their server is active and healthy, so a portable skill should depend on the stable supervisor/dispatcher rather than a transient wrapper. If a skill needs a new native tool, add the `@tool` first through `Tlamatini/.mcps/create_new_mcp.md`, then write the skill.
 
 ---
 

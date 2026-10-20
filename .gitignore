@@ -380,6 +380,9 @@ private_data_audit_report.json
 # TRACKED, placeholder-only template and stays tracked.
 private_targets.json
 contacts.private.json
+# The private release's External-MCP catalog (dev catalog + the servers of the
+# running install, WITH live tokens). Built by build_complete_private_release.py.
+external_mcps.private.json
 public_release_verify_report.json
 
 # Transient build / run / scratch artifacts — stop them cluttering git status

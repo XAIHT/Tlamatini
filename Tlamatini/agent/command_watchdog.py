@@ -191,11 +191,21 @@ def _external_mcp_protected_pids() -> Set[int]:
     MCP server is long-lived and idle between JSON-RPC messages, so it looks
     exactly like a hung shell; killing it tore down the Roblox StudioMCP proxy
     (and its :4932 listener). Fail-safe: empty set on any error."""
+    pids: Set[int] = set()
     try:
         from . import external_mcp_manager as _emm
-        return set(_emm.external_mcp_root_pids())
+        pids |= set(_emm.external_mcp_root_pids())
     except Exception:
-        return set()
+        pass
+    # Terminater's shells are interactive terminals the USER is watching: a
+    # shell parked at its prompt looks exactly like a "hung shell" to this
+    # watchdog and must never be reaped.  (terminal_hub never creates the hub here.)
+    try:
+        from . import terminal_hub as _th
+        pids |= set(_th.live_pids())
+    except Exception:
+        pass
+    return pids
 
 
 def _visible_window_pids() -> Set[int]:

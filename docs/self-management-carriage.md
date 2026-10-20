@@ -466,3 +466,29 @@ Use its explicit `--self-modify` flag when retaining that capability. Real build
 and before/after measurements must use the same mode and source baseline, in a
 verified visible development console; static analysis alone is not release
 acceptance.
+
+## Terminater and private-release carriage (2026-10-19, on `main`, unreleased)
+
+**Terminater needs no new dependency and no new carried package.** The engine is standard-library only, the
+hub, consumer and loopback views run in the frozen web process, and the pool agent runs under the carried
+Python, so there is nothing to add to the carried interpreter. What must travel, and who proves it:
+
+| Piece | Carrier | Proof |
+| --- | --- | --- |
+| `agent.terminal_hub`, `agent.terminal_consumer`, `agent.terminal_views`, `agent.management.commands.check_terminater` | hidden imports and `_FROZEN_TERMINATER_MODULES` in `build.py` | `verify_frozen_agent_modules()` opens the frozen archive and aborts when one is missing |
+| `agents/terminater/*` (loose, beside the executable) | the existing `agents/` tree copy | `check_terminater` loads the engine by path from that tree |
+| `terminater_dock.js`, `terminater_dock.css`, vendored xterm.js 5.5.0 and its two add-ons | `REQUIRED_STATIC` in `build_runtime_assets.py`; `scripts/vendor_frontend.py` pins the integrity | `check_terminater` resolves 6 assets and three pages |
+| every new file in the self-modify snapshot | `REQUIRED_SNAPSHOT_FILES` in `copy_source_assets.py` | the self-modify inclusion sweep |
+| migrations 0215-0217 | the normal post-update `migrate` | `agent.test_prompt_catalog_contiguous`, the display-name guard |
+
+The build refuses to package unless `check_terminater` passes inside the frozen app (real PowerShell, real
+`cmd.exe`, the pool agent under the carried Python, a WebSocket round trip). Both inclusion sweeps reported CLEAN on
+2026-10-19; they check the carriage guards, not a real rebuild or update.
+
+**The private (keyed) release adds one shipped file and one private input.** `<install>/data.keys` is copied by
+`build.py` only when `TLAMATINI_BUNDLE_DATA_KEYS` is set (private builder only; the public builder clears it and
+`build.py` aborts if it is set together with the PUBLIC MCP catalog). `external_mcps.private.json` is a gitignored
+*input* to that build, excluded from the self-modify snapshot. **Not carried by an update:** `apply_update.ps1`
+preserves `config.json`, `external_mcps.json` and `contacts.json`, but not `data.keys`; values with a consumer survive
+inside `config.json`, the vault file itself does not. See
+[the record](changes/2026-10-19-private-release-data.md).

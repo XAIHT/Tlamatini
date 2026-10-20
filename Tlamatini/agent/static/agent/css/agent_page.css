@@ -1967,6 +1967,15 @@ body.resizing-vertical iframe {
     border-left: 3px solid #6D28D9;
 }
 
+/* Terminater — console-black -> phosphor-green, the dark end of the "Phosphor Console" sweep
+   used by .canvas-item.terminater-agent in agentic_control_panel.css. */
+.exec-report-caption-terminater {
+    background: linear-gradient(135deg, #07130E 0%, #0B7A4B 100%);
+    color: #ffffff;
+}
+
+.exec-report-terminater .exec-report-cmd { border-left: 3px solid #0B7A4B; }
+
 .exec-report-caption-pdfer {
     background: linear-gradient(135deg, #2B0A0A 0%, #C1272D 100%);
     color: #ffffff;
@@ -2101,6 +2110,7 @@ body.resizing-vertical iframe {
 .exec-report-videoanalyzer thead th,
 .exec-report-netspeedcalculator thead th,
 .exec-report-pdfer thead th,
+.exec-report-terminater thead th,
 .exec-report-latexer thead th,
 .exec-report-acpx thead th,
 .exec-report-skill thead th {

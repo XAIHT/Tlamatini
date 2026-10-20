@@ -352,7 +352,7 @@ The settings dialog adds no agent or tool. See
      `python scripts/update_flow_catalog.py` to regenerate
      `agent/agents/flowcreator/flow_catalog.json`.
 168l. Then run `python scripts/update_flow_catalog.py --check` and keep it green — a stale
-     catalog silently drops your agent from FlowCreator's 85-type selection AND from
+     catalog silently drops your agent from FlowCreator's 86-type selection AND from
      `parametrizer.SECTION_AGENT_TYPES`, which is derived from it (Phase 8).
 168m. Deployment refreshes the runtime snapshots; confirm an isolated pool copy sees the
      same fields as the source tree.
@@ -710,7 +710,7 @@ The settings dialog adds no agent or tool. See
 
 # PHASE 23 — Playwright tests in Claude's harness (the daily-chat-test)
 
-418. Open `.claude/skills/tlamatini-daily-chat-test/harness/` and read `config.py`, `run_test.py`, `questions.py`, `wrapped_questions.py`, `qualify.py`.
+418. Open `.gemini/skills/tlamatini-daily-chat-test/harness/` and read `config.py`, `run_test.py`, `questions.py`, `wrapped_questions.py`, `qualify.py`.
 419. Understand the harness contract: it drives REAL Chrome via Playwright, logs into `agent_page.html`, asks curated questions one-by-one, waits for completion, scrapes + qualifies the answer.
 420. Understand the answer-complete signal: input stops being `readOnly` AND `#wait-spinner` is removed from `#chat-log`.
 421. Add KNOWLEDGE questions about the new agent to `harness/questions.py` (safe, introspective: "What does the <Display> agent do?", "Which agents capture <X>?") — these run with Multi-Turn ON, ACPX/Ask-Execs/Exec-Report OFF.
@@ -926,3 +926,33 @@ LaTeXer's `latexer_styles.py`, `latexer_artwork.py` and `latexer_design.py` are 
 ## Image/video error reporting and recovery (2026-09-26)
 
 Image/video model failures accumulate in one shared, themed, non-modal fatal-error dialog with an audible notification. Tlamatini keeps running: preserve its retry/tactic ladder, cancellation controls and configured flow recovery routes. Keep the configured model identities; never report a surviving observer or raw concatenation as successful analysis. Dismiss hides the dialog while retaining its history; new failures reopen it. See [the shared behavior and verification contract](../../../docs/visual-analysis-errors.md).
+
+## A new agent with its own UI and a shared hub: Terminater's lessons (2026-10-19)
+
+Terminater (agent #86) is the first workflow agent that owns a piece of the web UI and a long-lived service. Everything in
+the numbered phases still applies; these are the additional traps it exposed. Contract: `docs/terminater.md`.
+
+* **When the state must outlive the agent run, put it in a hub, not in the pool copy.** One `TerminalHub` lives in the Django
+  process; the pool agent is a thin client of a token-protected loopback API (`POST /agent/terminater/api/`, loopback only,
+  `X-Terminater-Token`), the browser talks to the same hub over `ws/terminals/`, and the in-process Prompt Flow Panel runner
+  calls it directly. Give the agent a `mode` (`auto` / `hub` / `standalone`) so it also works with no hub.
+* **Engine files are flat, stdlib-only siblings loaded BY PATH** (`get_agents_root()`), never a package: the web process, the
+  pool copy under the carried Python and the tests then share one definition, and a frozen build ships them loose beside the
+  executable. Add `agent.<hub>`, `agent.<consumer>`, `agent.<views>` and any `check_*` command to `build.py`
+  `_FROZEN_*_MODULES` **and** to `--hidden-import`, because a fail-open import cannot report its own absence.
+* **Export the token before any pool agent can start** (`apps.ready()` and `tools._seed_global_agent_defaults` call
+  `ensure_ready()`); create no hub, thread or shell there. A reaper that needs the hub's pids must use a fail-open
+  `live_pids()` that never creates it.
+* **Prove the frozen layout with a gate, not with a source run.** Add a management command (`check_terminater`) that drives the
+  real thing (real shells, the shipped pool agent under the carried Python, a WebSocket round trip with `host` and `origin`
+  headers), make `build.py` run it inside the freshly frozen app, and refuse to package when it fails.
+* **A canvas tooltip comes from `agents_descriptions.md`.** No row means a tile with no purpose text. Add the row, the
+  FlowCreator `agentic_skill.md` entry (the statuses and the selection-table row) and the FlowHypervisor notes in the same pass.
+* **Result words are the contract with the Exec Report.** Put each status in exactly one verdict set (`agent_verdict.py`);
+  a command that ran and failed is red (`command_failed`) even though the tool worked. Numbers go in `exit_code`, not `status`.
+* **A Prompt Flow Panel operation lives in four places:** the Python validator, the JavaScript model, the runtime adapter and
+  the build gate. Do not add it to the shipped kickoff example unless every machine can run it.
+* **A modal that traps keys breaks a hand-over.** If the agent can need the user's keyboard while a dialog is open, emit an
+  event and let the page close the dialog itself.
+* **Mixed line endings:** many tracked files hold both CRLF and LF-only lines. Edit by bytes (or restore the committed endings
+  from `git show HEAD:<file>`) and read `git diff --numstat`; see gotcha 41 in `docs/claude/gotchas.md`.

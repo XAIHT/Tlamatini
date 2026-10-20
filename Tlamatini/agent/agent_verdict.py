@@ -150,6 +150,10 @@ WORK_COMPLETED_STATUSES = frozenset({
     "spoken", "played", "recorded", "captured", "transcribed",
     # liveness / lifecycle probes
     "pong", "healthy", "connected", "started", "stopped",
+    # Terminater: the terminal action itself happened -- a terminal was raised, keys
+    # were typed, a terminal was killed / focused, the user was warned.  (Whether the
+    # COMMAND then succeeded is a separate, red-capable token: command_failed.)
+    "opened", "typed", "killed", "focused", "warned",
 })
 
 #: The agent produced SOMETHING, but the DELIVERABLE is COMPROMISED or ABSENT.
@@ -180,6 +184,9 @@ WORK_DEGRADED_STATUSES = frozenset({
     "operator_required",      # parked pending a human -- the work has not happened
     "assert_failed",          # Playwrighter: the flow's own assertion did not hold
     "partial", "partial_success", "incomplete",
+    # Terminater: the command RAN but exited non-zero (the terminal worked, the
+    # requested work did not), or it stopped producing output and never came back.
+    "command_failed", "hung",
     # Legacy visual results are incomplete, never successful model recovery.
     "partial_interpreter_1_only", "partial_interpreter_2_only", "merge_fallback_concat",
 })
@@ -194,6 +201,7 @@ WORK_NOT_DONE_STATUSES = frozenset({
     "forward_failed",         # A forwarded operation did not deliver
     "rejected",               # The requested operation was refused
     "ignored",                # No operation was performed
+    "aborted",                # Terminater: typing/command stopped by Ctrl+C or the user taking over
 })
 
 #: The agent itself is declaring a malfunction.

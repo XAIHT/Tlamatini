@@ -10,6 +10,8 @@
 
 > Current release: **[v1.87.0](../changes/2026-10-18-v1.87.0.md)**. Dated records below retain their original evidence dates.
 
+> **On `main`, unreleased (after v1.87.0):** [Terminater](../terminater.md) (workflow agent #86 and the Terminals area) and a private release that carries the builder's own data. Counts there: 86 workflow agents, 67 wrapped chat agents, 109 built-in tools, 217 migrations. See the change records [Terminater](../changes/2026-10-19-terminater.md) and [private-release data](../changes/2026-10-19-private-release-data.md).
+
 
 > **This file is NOT auto-imported into the AI-assistant context** (unlike the rest of `docs/claude/*.md`). It is the chronological log of surgical fixes and "keep this in mind / do NOT revert" contracts that used to live at the bottom of `gotchas.md`. It was split out so the always-loaded onboarding stays lean — see the "Archive the fix-log" decision recorded in `docs/claude/INDEX.md`.
 >
@@ -18,6 +20,52 @@
 > **When to add to it**: when you land a non-obvious fix whose intent a future assistant could accidentally undo. Prepend new entries at the top of the list, dated, in the same style as the existing bullets.
 
 ---
+
+## 2026-10-19 — Terminater: visible terminals, and the contracts that keep them honest (on `main`, unreleased)
+
+Records: [docs/terminater.md](../terminater.md) and [the change record](../changes/2026-10-19-terminater.md).
+**Do NOT revert / keep these surfaces aligned:**
+
+1. **No paste path, ever.** `TerminalSession.type_text` feeds one key at a time through `terminater_text.plan_typing`
+   (default 50 wpm, 20-160, floor 30 ms between keys). `TEST_TIME_SCALE` is a module global for the suites only; the
+   API, `config.yaml` and the model cannot reach it.
+2. **The dock reports the line it read from xterm's screen, and re-reads it after the echo.** Before the fix
+   `watch_user` and the advisor could see a line from before the shell echoed the keys (`terminater_dock.js`,
+   `scheduleLine`, `case 'out'`). Hiding the dock is now reported to the hub (`layout` with `show`).
+3. **A hand-over inside a running flow must reach the keyboard.** The Agentic Control Panel's Start dialog is a modal
+   that traps keys; the dock emits `tlm:terminals-handover` and `acp-control-buttons.js` closes the dialog
+   (`dismissStarterDialogForHandover`), also when `terminalAwaitsTheUser()` is already true.
+4. **`agents_descriptions.md` feeds the canvas tooltip.** Terminater had no row, so its tile had no purpose text; the
+   row now exists and `_load_agent_purpose_map()` returns 86 entries. A new agent needs its row in the same pass.
+5. **Hub discipline.** `live_pids()` is fail-open and never creates the hub; the reapers consult it; the token is
+   exported by `ensure_ready()` before any pool agent starts and scrubbed from the shells' environment; the loopback
+   API accepts only loopback plus `X-Terminater-Token`.
+6. **The build gate is permanent.** `check_terminater` runs inside the frozen app after the Prompt Flow Panel gate and
+   refuses to package on failure. In a hand-built WebSocket scope the `host` and `origin` headers are required
+   (`same_origin` closes 4403 without them). `check_prompt_flow_panel` holds the kickoff example to the seven prompting
+   operations and validates a Terminater step separately.
+7. **Verdict words:** `command_failed` and `hung` (degraded), `operator_required` (degraded), `aborted` (not done) are red;
+   `opened`, `typed`, `killed`, `focused`, `warned` are green completions.
+
+Evidence is dated 2026-10-19 in the change record: 774 unit tests OK (627 Terminater + 147 registration guards), a frozen
+probe of 30 checks with 0 failures, Prompt Flow Panel suite 514/514, Agentic Control Panel hand-over flow 33/33. The
+chat-page and canvas suites were **not** re-run as one clean pass after their last fixes.
+
+## 2026-10-19 — The private release carries the builder's data (on `main`, unreleased)
+
+Record: [private-release data](../changes/2026-10-19-private-release-data.md). `build_complete_private_release.py`
+now rebuilds `external_mcps.private.json` (dev catalog + the servers of the running install, the dev spec winning,
+only empty or placeholder env/headers filled, active selection capped at 5) and ships `data.keys` as
+`<install>/data.keys`. **Do NOT:** move `TLAMATINI_BUNDLE_DATA_KEYS` into the public builder (it pops it), remove the
+`build.py` abort that refuses the vault with the PUBLIC catalog, or print a secret value (names and counts only). The
+private catalog is gitignored and excluded from the self-modify snapshot.
+
+## 2026-10-19 — Mixed line endings and the editor that flattened them (process)
+
+Seven files (`build.py`, `copy_source_assets.py`, `build_complete_private_release.py`, `build_complete_public_release.py`,
+`.gitignore`, `agents_descriptions.md`, `test_private_data_guard.py`) had their LF-only lines rewritten as CRLF by an editor,
+inflating their diffs (for example `build.py` 394/347 lines for a 47-line change). Their committed endings were restored by
+aligning with `git show HEAD:<file>`. See gotcha 41 in `gotchas.md`.
 
 ## 2026-10-18 — Grepper and Globber understand brace sets, lists and folder globs (and stop re-walking the tree)
 

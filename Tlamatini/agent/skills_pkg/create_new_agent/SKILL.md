@@ -140,3 +140,17 @@ explicit overrides, optional blanks and visible dialog save/reopen. Run
 `check_agent_runtimes` in source and fresh frozen modes, including without a
 self-modification snapshot; the frozen build must pass it before packaging.
 Run both self-update and self-modify inclusion sweeps as complementary checks.
+
+## Hub-backed agents — Terminater's lessons (2026-10-19)
+
+Workflow agent #86 owns a piece of the UI and a long-lived service (`docs/terminater.md`). Extra rules when an agent is like that:
+
+- State that must outlive the run lives in a **hub** in the Django process; the pool agent is a client of a loopback-only,
+  token-protected API (`X-Terminater-Token`) and has a `mode` (`auto` / `hub` / `standalone`).
+- Engine files are **flat, stdlib-only siblings loaded by path** (`get_agents_root()`), never a package, so the web process,
+  the carried-Python pool copy and the tests share one definition.
+- Name the hub/consumer/views and a `check_<agent>` command in `build.py` (`_FROZEN_*_MODULES` and `--hidden-import`) and run
+  that command inside the frozen app; refuse to package when it fails.
+- Add the **`agents_descriptions.md` row** (it is the canvas tooltip), the FlowCreator `agentic_skill.md` entry and the
+  FlowHypervisor notes in the same pass; seed three migrations (Agent row, `Chat-Agent-<Name>` Tool row, catalog prompts).
+- Status words are the Exec-Report contract: a command that ran and failed is red (`command_failed`); numbers go in `exit_code`.
