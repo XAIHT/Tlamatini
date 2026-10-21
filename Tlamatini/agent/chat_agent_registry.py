@@ -2273,6 +2273,8 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
             "their terminal; NEVER type over the user's line or run a command they are still "
             "typing. Loop watch_user (passing the returned cursor) only while the user is "
             "actively being guided.\n\n"
+            "Terminal IDs are scoped to your authenticated user. Duplicate or ambiguous titles "
+            "are refused; use the exact terminal_id returned by list/open. "
             "GOOD PRACTICE: reuse one terminal per job (pass terminal='t1'), leave terminals "
             "OPEN so the user can read them, kill/force_kill only on request or when a terminal "
             "is stuck, never type 'exit' to close one (use kill). Do not run destructive or "

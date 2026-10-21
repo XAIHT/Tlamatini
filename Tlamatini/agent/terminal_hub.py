@@ -312,7 +312,11 @@ def run_action(action: str, params: Optional[Dict[str, Any]] = None, wait: bool 
         return {"ok": True, "job_state": job.get("state", "unknown"), "status": "started"}
     if wait or name not in hub.SLOW:
         return hub.call(name, params)
-    return {"ok": True, "job": hub.submit(name, params), "job_state": "running", "status": "started"}
+    try:
+        job_id = hub.submit(name, params)
+    except engine.TerminaterError as exc:
+        return {"ok": False, "status": "refused", "code": exc.code, "message": str(exc)}
+    return {"ok": True, "job": job_id, "job_state": "running", "status": "started"}
 
 
 def hub_status(user: Optional[str] = None) -> Dict[str, Any]:

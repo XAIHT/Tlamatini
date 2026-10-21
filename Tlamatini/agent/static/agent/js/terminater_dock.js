@@ -499,7 +499,7 @@
         if (ui.area && AREAS.includes(ui.area) && ui.area !== S.area) { S.area = ui.area; changed = true; }
         const wantFocus = activeId || ui.focus;
         if (wantFocus && getTerm(wantFocus) && S.active !== wantFocus) { S.active = wantFocus; changed = true; }
-        if (ui.visible === true && !S.visible) setVisible(true, false);
+        if (typeof ui.visible === 'boolean' && ui.visible !== S.visible) setVisible(ui.visible, false);
         if (changed) { storeSet(); renderTabs(); layoutPanes(); updateBar(); syncBodyClasses(); applyHeight(); }
     }
 

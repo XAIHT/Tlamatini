@@ -3038,6 +3038,14 @@ def _launch_wrapped_chat_agent(spec, request, *, auto_diagnose=True):
         assignment_notes = list(assignment_notes or []) + prose_notes
         logger.info("[tools._launch_wrapped_chat_agent] Prose fallbacks applied: %s", prose_notes)
 
+    if spec.template_dir == "terminater":
+        # A chat action belongs to its authenticated caller even when another
+        # browser was used more recently or a model supplied a different user.
+        from .context_governor import current_user
+        terminal_owner = current_user()
+        if terminal_owner is not None:
+            runtime_config["user"] = str(terminal_owner)
+
     # File-Creator must write the model's content BYTE-FOR-BYTE (Angela
     # 2026-06-12). The generic value coercion that every wrapped agent shares
     # (_unquote_preserving_backslashes) collapses ``\\`` -> ``\`` and doubled

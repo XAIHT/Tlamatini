@@ -205,16 +205,22 @@ without a click.
 
 ## Verification
 
+The [2026-10-20 source audit](changes/2026-10-20-terminater-audit.md) records
+demonstrated fixes, real Administrator-token checks, and open monitoring/privacy
+gaps. The requirements above remain requirements; that audit does not certify
+that every interaction satisfies them.
+
 Run everything from a visible foreground console.
 
 ```bash
 python Tlamatini/manage.py check_terminater
-python Tlamatini/manage.py test agent.test_terminater_text agent.test_terminater_engine agent.test_terminater_hub_api agent.test_terminater_pfp agent.test_terminater_agent agent.test_terminater_integration
+python Tlamatini/manage.py test agent.test_terminater_text agent.test_terminater_engine agent.test_terminater_hub_api agent.test_terminater_pfp agent.test_terminater_agent agent.test_terminater_integration agent.test_terminater_regressions
 python scripts/terminater_visible_all.py
 ```
 
-The six test modules run against **real** `cmd.exe` and `powershell.exe` processes (with
-typing time scaled down by the test hook). The visible scripts drive headed Chrome and
+The original six test modules include **real** `cmd.exe` and `powershell.exe` processes
+(with typing time scaled down by the test hook). The regression module adds controlled
+transport and ordering tests. The visible scripts drive headed Chrome and
 photograph each step with Shoter: `terminater_visible_chat.py`, `_acp.py` (including the
 hand-over inside a running flow), `_pfp.py`, `_battery.py` and `_all.py`.
 

@@ -21,6 +21,23 @@
 
 ---
 
+## 2026-10-20 — Terminater source audit: ownership, cancellation and capture
+
+Local audit work after v1.88.0; [evidence and open limits](../changes/2026-10-20-terminater-audit.md).
+Pin a wrapped chat terminal action to the authenticated user after model assignments;
+resolve an automatic hub user once per action/job. Terminal IDs are user-scoped, and
+ambiguous titles must be refused. Reserve capacity during shell creation; never evict
+a pending job to admit another. Named-key AI writes share the typing lock.
+
+Prompt Flow Stop remembers its own terminal ID instead of using the current active
+tab, and cancellation during creation must prevent subsequent typing. Create user
+command records before Enter reaches ConPTY. Shell exit must use command-bounded
+output, preserve truncation and report nonzero failure; an exited shell must not be
+changed back to `prompt` after typing aborts. The browser applies both true and false
+hub visibility values (static suffix `-terminater-2`). The audit explicitly leaves
+bounded capture, disconnected input and privacy/handover gaps open; do not describe
+these checks as proof of universal, lossless control.
+
 ## 2026-10-20 — v1.88.0: the version bump, and the places it has to reach
 
 Records: [the v1.88.0 release record](../changes/2026-10-20-v1.88.0.md). The runtime needs no edit (the base tag

@@ -701,11 +701,12 @@ class RuntimeAdapterTests(unittest.IsolatedAsyncioTestCase):
             return {"ok": True, "status": "aborted"}
 
         rt._terminal_busy = True
+        rt._terminal_id = "t2"
         with patch.object(terminal_hub, "run_action", side_effect=fake):
             rt.cancel()
             self.assertTrue(await asyncio.to_thread(done.wait, 5))
         self.assertTrue(rt.cancelled)
-        self.assertEqual(calls[0], ("abort", {"user": "5"}))
+        self.assertEqual(calls[0], ("abort", {"user": "5", "terminal": "t2"}))
 
     async def test_cancel_when_idle_does_not_touch_the_hub(self):
         rt = self.make()
@@ -717,8 +718,20 @@ class RuntimeAdapterTests(unittest.IsolatedAsyncioTestCase):
     async def test_abort_failures_are_swallowed(self):
         rt = self.make()
         rt._terminal_busy = True
+        rt._terminal_id = "t2"
         with patch.object(terminal_hub, "run_action", side_effect=RuntimeError("hub gone")):
             rt._abort_terminal()
+
+    async def test_stop_during_shell_creation_never_aborts_an_unrelated_terminal(self):
+        rt = self.make()
+        rt._terminal_busy = True
+        rt._terminal_id = None
+        with patch.object(terminal_hub, "run_action") as action:
+            rt.cancel()
+            await asyncio.sleep(.1)
+        action.assert_not_called()
+        with self.assertRaises(eng.TerminaterError):
+            rt._select_terminal("t1")
 
 
 @unittest.skipUnless(kit.conpty_ok(), "ConPTY is not available on this machine")
@@ -777,10 +790,14 @@ class RealTerminalStepTests(unittest.IsolatedAsyncioTestCase):
             if any(s.state == eng.ST_RUNNING for s in sessions.values()):
                 break
             await asyncio.sleep(0.2)
+        running = next(iter(self.hub.space("77").sessions.values()))
+        other = await asyncio.to_thread(self.hub.open, "77", kind="cmd", title="unrelated")
+        self.assertNotEqual(other["terminal"]["id"], running.id)
         rt.cancel()
         from .services.prompt_flow_panel import FlowStopped
 
         with self.assertRaises(FlowStopped):
             await asyncio.wait_for(task, 60)
-        session = next(iter(self.hub.space("77").sessions.values()))
+        session = running
         self.assertTrue(await asyncio.to_thread(kit.wait_until, lambda: session.state == eng.ST_PROMPT, 20))
+        self.assertEqual(self.hub._get(self.hub.space("77"), other["terminal"]["id"]).state, eng.ST_PROMPT)

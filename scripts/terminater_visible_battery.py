@@ -541,6 +541,17 @@ class Battery:
         if self.kind == 'chat':
             self.chk('the automatic height is the message box height again', near(st.get('dockHeight'), st.get('composerHeight'), 12))
 
+    def api_visibility_checks(self):
+        before = {t['id']: t.get('pid') for t in self.api('list')['terminals']}
+        self.api('layout', show=False)
+        hidden = self.H.wait_for(lambda: self.st().get('visible') is False, timeout=10)
+        self.chk('API hide hides the terminal area', bool(hidden) and self.page.locator('#tlm-terminals').is_hidden())
+        after = {t['id']: t.get('pid') for t in self.api('list')['terminals']}
+        self.chk('API hide preserves terminal identities and shell processes', before == after, str((before, after)))
+        self.api('layout', show=True)
+        shown = self.H.wait_for(lambda: self.st().get('visible') is True, timeout=10)
+        self.chk('API show restores the terminal area', bool(shown) and self.page.locator('#tlm-terminals').is_visible())
+
     def hub_control_checks(self):
         H = self.H
         # make sure we start from known terminals
@@ -559,6 +570,7 @@ class Battery:
         self.chk('a second open adds a second tab', self.tab_count() == 2)
         listing = self.api('list')
         self.chk('list from the hub matches the dock', [t['id'] for t in listing['terminals']] == [t['id'] for t in self.terminals()], str(listing)[:300])
+        self.api_visibility_checks()
         self.api('focus', terminal=cmd_id)
         self.chk('focus from the hub activates that tab', bool(H.wait_for(lambda: self.active_id() == cmd_id, timeout=10)), 'active=%s' % self.active_id())
         self.api('rename', terminal=cmd_id, title='Renamed by Tlamatini')

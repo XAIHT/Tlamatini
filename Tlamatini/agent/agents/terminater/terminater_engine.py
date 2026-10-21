@@ -413,8 +413,22 @@ class TerminalSession:
             return
         self.current = None
         end = (end_row if end_row is not None else prompt_abs_row) - 1
-        lines, truncated = self.screen.logical_lines(rec.start_row, max(rec.start_row, end), rec.start_col)
-        if lines:
+        out, truncated = self._command_output(rec, max(rec.start_row, end))
+        rec.output = out
+        rec.truncated = truncated or rec.truncated
+        rec.ended = time.time()
+        if rec.state == "running":
+            rec.state = "hung" if rec.hung else "completed"
+        self.suspected_hung = False
+        self.awaiting_input_hint = ""
+        self.emit({"t": "command", "command": rec.public(with_output=False)})
+
+    def _command_output(self, rec: CommandRecord, end: int) -> Tuple[str, bool]:
+        """Read this command's retained output, including when no prompt follows it."""
+        lost_start = rec.start_row < self.screen.dropped
+        lines, truncated = self.screen.logical_lines(
+            rec.start_row, end, 0 if lost_start else rec.start_col)
+        if lines and not lost_start:
             echoed = lines[0]
             if not rec.text:
                 rec.text = echoed.strip()
@@ -424,14 +438,7 @@ class TerminalSession:
         out = "\n".join(lines)
         if len(out) > MAX_OUTPUT_CHARS:
             out, truncated = out[:MAX_OUTPUT_CHARS], True
-        rec.output = out
-        rec.truncated = truncated or rec.truncated
-        rec.ended = time.time()
-        if rec.state == "running":
-            rec.state = "hung" if rec.hung else "completed"
-        self.suspected_hung = False
-        self.awaiting_input_hint = ""
-        self.emit({"t": "command", "command": rec.public(with_output=False)})
+        return out, truncated
 
     def _on_exit(self) -> None:
         code = self.pty.exit_code() if self.pty else None
@@ -443,7 +450,9 @@ class TerminalSession:
                 rec.ended = time.time()
                 rec.state = "killed" if rec.aborted_by else "completed"
                 rec.exit_code, rec.exit_known = code, code is not None
-                rec.output = self.screen.text(last_lines=200)[-MAX_OUTPUT_CHARS:]
+                rec.output, truncated = self._command_output(rec, self.screen.abs_row())
+                rec.truncated = rec.truncated or truncated
+                self.emit({"t": "command", "command": rec.public(with_output=False)})
             self.cv.notify_all()
         self._set_state(ST_CLOSED if self._closed else ST_EXITED, exit_code=code)
         self.emit({"t": "exit", "exit_code": code})
@@ -599,6 +608,9 @@ class TerminalSession:
         submitted_line = None
         if "submit" in events:
             submitted_line = self._line_before_submit(data)
+        if state == ST_PROMPT and (submitted_line is not None or "\r" in data):
+            # A reader thread may receive the next prompt before write() returns.
+            self._begin_command("user", submitted_line or "")
         if state == ST_AWAITING_USER and not self.handover_remaining and "\r" in data and self.current is None:
             # Nothing is left for Tlamatini to type, so the user's Enter RUNS the line.  Open the
             # command's record BEFORE the Enter reaches the shell, or a fast command could
@@ -611,9 +623,7 @@ class TerminalSession:
             if state in (ST_PROMPT, ST_AWAITING_USER):
                 if not self.secret_input:
                     self.user_submitted.append((next(self._key_seq), time.time(), line))
-                if state == ST_PROMPT:
-                    self._begin_command("user", line)
-                elif state == ST_AWAITING_USER:
+                if state == ST_AWAITING_USER:
                     self.handover_resume.set()
         with self.cv:
             self.cv.notify_all()
@@ -666,6 +676,7 @@ class TerminalSession:
         submit: bool = True,
         rng: Optional[random.Random] = None,
         secret: bool = False,
+        cancel_event: Optional[threading.Event] = None,
     ) -> Dict[str, Any]:
         """Type ``text`` like a person, one key at a time.  Returns what was typed.
 
@@ -682,6 +693,8 @@ class TerminalSession:
         user_part = ""
         result: Dict[str, Any] = {"typed": "", "aborted": False}
         try:
+            if cancel_event is not None and cancel_event.is_set():
+                raise TerminaterError("The terminal operation was cancelled.", "cancelled")
             self._abort_typing.clear()
             self._typing_by = "tlamatini"
             self.secret_input = bool(secret)
@@ -693,7 +706,7 @@ class TerminalSession:
                     plan = _tx.plan_typing(payload, wpm=wpm, rng=rng, submit=False,
                                            lead_in=(index == 0))
                     for key in plan:
-                        if self._abort_typing.wait(key.delay):
+                        if self._abort_typing.wait(key.delay) or (cancel_event is not None and cancel_event.is_set()):
                             result["aborted"] = True
                             break
                         if not self._write(key.key):
@@ -725,20 +738,22 @@ class TerminalSession:
             if not result["aborted"] and not result.get("user_submitted") and submit:
                 final = _tx.plan_typing("", submit=True, rng=rng, lead_in=False)
                 for key in final:
-                    if self._abort_typing.wait(key.delay):
+                    if self._abort_typing.wait(key.delay) or (cancel_event is not None and cancel_event.is_set()):
                         result["aborted"] = True
                         break
                     typed_line = "".join(typed)
                     if was_prompt and self.state in (ST_TYPING, ST_PROMPT):
                         self._pre_submit(typed_line, secret)
-                    self._write(key.key)
+                    if not self._write(key.key):
+                        result["aborted"] = True
+                        break
         finally:
             self._typing_by = ""
             self.secret_input = False
             self._type_lock.release()
         result["typed"] = "" if secret else "".join(typed)
         result["user_part"] = "<hidden>" if secret and user_part else user_part
-        if result["aborted"] or self.state == ST_TYPING:
+        if self.state not in (ST_EXITED, ST_CLOSED) and (result["aborted"] or self.state == ST_TYPING):
             # Typing is over.  An aborted line, a line left for the user (submit=False) and an
             # answer typed into a program that was already running all end here: the state must
             # go back to what the terminal is REALLY doing, or the user's keys keep being refused
@@ -792,14 +807,20 @@ class TerminalSession:
             raise TerminaterError(f"Unknown key name(s): {', '.join(bad)}", "bad_key")
         if not keys:
             raise TerminaterError("No keys given.", "bad_key")
-        sent = []
-        for data in keys:
-            if "\r" == data and self.state == ST_PROMPT and self.current is None:
-                self._pre_submit(self.user_line() or "", False)
-            time.sleep(random.uniform(0.06, 0.14))
-            self._write(data)
-            sent.append(data)
-        return {"sent": len(sent)}
+        if not self._type_lock.acquire(blocking=False):
+            raise TerminaterError("Tlamatini is already typing in that terminal.", "busy")
+        try:
+            sent = []
+            for data in keys:
+                time.sleep(random.uniform(0.06, 0.14))
+                if "\r" == data and self.state == ST_PROMPT and self.current is None:
+                    self._pre_submit(self.user_line() or "", False)
+                if not self._write(data):
+                    raise TerminaterError("That terminal has already exited.", "terminal_dead")
+                sent.append(data)
+            return {"sent": len(sent)}
+        finally:
+            self._type_lock.release()
 
     # ------------------------------------------------------------------ waiting
     def wait(
@@ -860,7 +881,8 @@ class TerminalSession:
             text = self.screen.text()
             part = text[offset:offset + limit] if limit else text[offset:]
             return {"scope": "all", "output": part, "output_chars": len(text),
-                    "truncated": bool(limit and len(text) - offset > limit), "more": bool(limit and len(text) - offset > limit)}
+                    "truncated": bool(self.screen.dropped or (limit and len(text) - offset > limit)),
+                    "more": bool(limit and len(text) - offset > limit)}
         rec = None
         with self.cv:
             if which == "last":
@@ -869,12 +891,12 @@ class TerminalSession:
                 rec = next((c for c in self.commands if c.id == int(which)), None)
             if rec is not None and rec is self.current:
                 # still running: show what has been produced so far
-                lines, _ = self.screen.logical_lines(
-                    rec.start_row, self.screen.abs_row(), rec.start_col)
-                live = "\n".join(lines[1:]).rstrip()
+                live, truncated = self._command_output(rec, self.screen.abs_row())
+                more = bool(limit and len(live) - offset > limit)
                 data = rec.public(with_output=False)
-                data.update({"output": live[offset:offset + limit] if limit else live,
-                             "output_chars": len(live), "live": True})
+                data.update({"output": live[offset:offset + limit] if limit else live[offset:],
+                             "output_chars": len(live), "live": True, "more": more,
+                             "truncated": rec.truncated or truncated or more})
                 return {"scope": "command", **data}
         if rec is None:
             return {"scope": "command", "output": "", "output_chars": 0, "command": "", "state": "none"}
@@ -991,6 +1013,7 @@ class UserSpace:
         self.ui: Dict[str, Any] = {"layout": "tabs", "area": "dock", "visible": False, "focus": ""}
         self.listeners: List[Callable[[Dict[str, Any]], None]] = []
         self.counter = itertools.count(1)
+        self.opening = 0
         self.lock = threading.RLock()
         self.last_used = time.time()
 
@@ -1070,12 +1093,15 @@ class TerminalHub:
             if ref in sp.sessions:
                 return sp.sessions[ref]
             low = ref.lower()
-            for s in sp.sessions.values():
-                if s.title.lower() == low:
-                    return s
-            for s in sp.sessions.values():
-                if low and low in s.title.lower():
-                    return s
+            matches = [s for s in sp.sessions.values() if s.title.lower() == low]
+            if not matches and low:
+                matches = [s for s in sp.sessions.values() if low in s.title.lower()]
+            if len(matches) == 1:
+                return matches[0]
+            if len(matches) > 1:
+                raise TerminaterError(
+                    f"Terminal name {ref!r} matches several terminals. Use an exact terminal ID: "
+                    + ", ".join(s.id for s in matches), "ambiguous_terminal")
         if required:
             raise TerminaterError(
                 f"No terminal named {ref!r}. Open one first, or use action='list'.", "no_terminal")
@@ -1093,19 +1119,26 @@ class TerminalHub:
                 "conpty_unavailable")
         with sp.lock:
             alive = [s for s in sp.sessions.values() if s.state not in (ST_EXITED, ST_CLOSED)]
-            if len(alive) >= self.max_terminals:
+            if len(alive) + sp.opening >= self.max_terminals:
                 raise TerminaterError(
                     f"The limit of {self.max_terminals} open terminals is reached. Close one first.",
                     "too_many")
             n = next(sp.counter)
             sid = f"t{n}"
+            sp.opening += 1
         start_dir = cwd if cwd and os.path.isdir(cwd) else os.path.expanduser("~")
         label = _tx.sanitize_title(title, default=f"{'CMD' if kind == 'cmd' else 'PowerShell'} {n}")
-        session = TerminalSession(
-            sid, kind, label, start_dir, self._emitter(sp), cols=cols, rows=rows,
-            load_profile=load_profile, hang_seconds=hang_seconds or self.hang_seconds,
-            advisor=advisor)
+        try:
+            session = TerminalSession(
+                sid, kind, label, start_dir, self._emitter(sp), cols=cols, rows=rows,
+                load_profile=load_profile, hang_seconds=hang_seconds or self.hang_seconds,
+                advisor=advisor)
+        except BaseException:
+            with sp.lock:
+                sp.opening -= 1
+            raise
         with sp.lock:
+            sp.opening -= 1
             sp.sessions[sid] = session
             sp.order.append(sid)
             sp.active = sid
@@ -1198,6 +1231,9 @@ class TerminalHub:
             return {"ok": False, "status": "refused", "code": "unknown_action",
                     "message": f"Unknown action {action!r}. Valid: {', '.join(ACTIONS)}."}
         try:
+            # Resolve once: opening a shell can take seconds, during which another
+            # browser can become the most recently active user.
+            params["user"] = self.resolve_user(params.get("user"))
             result = handler(params)
             result.setdefault("ok", True)
             result.setdefault("action", action)
@@ -1212,7 +1248,13 @@ class TerminalHub:
     # -- helpers
     def _sess(self, p: Dict[str, Any]) -> Tuple[UserSpace, TerminalSession]:
         sp = self.space(p.get("user"))
-        return sp, self._get(sp, p.get("terminal"))
+        session = self._get(sp, p.get("terminal"))
+        # In-process flow cancellation must remember this exact session, not a
+        # tab that the user may focus later. JSON callers cannot supply callbacks.
+        selected = p.get("_on_terminal")
+        if callable(selected):
+            selected(session.id)
+        return sp, session
 
     @staticmethod
     def _num(p: Dict[str, Any], key: str, default: float, lo: float, hi: float) -> float:
@@ -1325,7 +1367,9 @@ class TerminalHub:
                 "use action='abort', or open another terminal.", "busy")
         # Typing into a program that asked a question is allowed (answering it).
         starts_command = session.state == ST_PROMPT
-        typed = session.type_text(text, wpm=wpm, submit=submit, secret=secret)
+        cancellation = p.get("_cancel_event")
+        options = {"cancel_event": cancellation} if isinstance(cancellation, threading.Event) else {}
+        typed = session.type_text(text, wpm=wpm, submit=submit, secret=secret, **options)
         extra: Dict[str, Any] = {"typed": typed.get("typed", ""), "user_part": typed.get("user_part", ""),
                                  "aborted_typing": typed.get("aborted", False)}
         if typed.get("handover"):
@@ -1373,7 +1417,11 @@ class TerminalHub:
             extra.update({"status": "operator_required", "success": False,
                           "message": "Waiting for the user to complete their part of the command."})
         elif reason == "exited":
-            extra.update({"status": "completed", "success": True,
+            code = rec.exit_code if rec is not None and rec.exit_known else session.exit_code
+            aborted = bool(rec is not None and rec.aborted_by)
+            failed = code not in (None, 0)
+            extra.update({"status": "aborted" if aborted else "command_failed" if failed else "completed",
+                          "success": not (failed or aborted),
                           "message": "The terminal's shell exited."})
         else:
             extra.update({"status": "timeout", "success": False,
@@ -1383,7 +1431,8 @@ class TerminalHub:
                 live = session.read("last", limit=read_chars)
                 return {**self._result_for(session, None, extra, read_chars),
                         "output": live.get("output", ""), "output_chars": live.get("output_chars", 0),
-                        "command": live.get("command", ""), "state": "running"}
+                        "command": live.get("command", ""), "state": "running",
+                        "truncated": live.get("truncated", False), "more": live.get("more", False)}
         return self._result_for(session, rec, extra, read_chars)
 
     def _a_run(self, p: Dict[str, Any]) -> Dict[str, Any]:
@@ -1567,12 +1616,16 @@ class TerminalHub:
     SLOW = ("type", "run", "wait", "watch_user", "handover", "abort", "kill", "close", "force_kill")
 
     def submit(self, action: str, params: Dict[str, Any]) -> str:
+        params = {**params, "user": self.resolve_user(params.get("user"))}
         job_id = uuid.uuid4().hex[:12]
         with self._jobs_lock:
+            if len(self.jobs) >= 200:
+                completed = next((key for key, job in self.jobs.items() if job["state"] == "done"), None)
+                if completed is None:
+                    raise TerminaterError("The limit of 200 pending terminal jobs is reached.", "too_many_jobs")
+                self.jobs.pop(completed)
             self.jobs[job_id] = {"state": "running", "started": time.time(), "result": None,
                                  "action": action}
-            while len(self.jobs) > 200:
-                self.jobs.pop(next(iter(self.jobs)))
 
         def run() -> None:
             res = self.call(action, params)

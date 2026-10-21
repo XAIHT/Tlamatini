@@ -146,6 +146,9 @@ class PromptFlowPanelRuntime:
         action = config.get("action", "run")
         params = {key: value for key, value in config.items() if key != "action"}
         params.update(text=text, user=str(self.user.pk))
+        self._terminal_id = None
+        self._terminal_cancel = threading.Event()
+        params.update(_on_terminal=self._select_terminal, _cancel_event=self._terminal_cancel)
         self._terminal_busy = True
         try:
             result = await asyncio.to_thread(terminal_hub.run_action, action, params, True)
@@ -167,15 +170,27 @@ class PromptFlowPanelRuntime:
         self.history.append(HumanMessage(content=text))
 
     def _abort_terminal(self):
+        terminal_id = getattr(self, "_terminal_id", None)
+        if not terminal_id:
+            return
         try:
             from . import terminal_hub
-            terminal_hub.run_action("abort", {"user": str(self.user.pk)}, True)
+            terminal_hub.run_action("abort", {"user": str(self.user.pk), "terminal": terminal_id}, True)
         except Exception:  # noqa: BLE001 - best effort: Stop must never raise
             pass
+
+    def _select_terminal(self, terminal_id):
+        self._terminal_id = terminal_id
+        if self.cancelled:
+            from .terminal_hub import load_engine
+            raise load_engine().TerminaterError("The flow was stopped before typing started.", "cancelled")
 
     def cancel(self):
         self.cancelled = True
         if getattr(self, "_terminal_busy", False):
+            cancel_event = getattr(self, "_terminal_cancel", None)
+            if cancel_event is not None:
+                cancel_event.set()
             # Typing / waiting runs on a worker thread: interrupt it off the event loop.
             threading.Thread(target=self._abort_terminal, daemon=True).start()
         if self.active_epoch is not None:
