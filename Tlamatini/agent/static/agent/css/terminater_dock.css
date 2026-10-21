@@ -214,11 +214,13 @@ body.resizing-vertical .tlm-term-body { pointer-events: none; }
 .tlm-term-empty[hidden] { display: none; }
 
 /* ── overlays on a pane: typing / hand-over / hung / warning ──────────────── */
+/* The notes are a strip in the pane's own column, ABOVE the terminal (never floating over it): they take their own
+   room, so a note can no longer hide the first lines of a command that is being typed. */
 .tlm-term-overlay {
-    position: absolute; left: 8px; right: 8px; top: 8px; z-index: 6;
-    display: flex; flex-direction: column; gap: 6px; pointer-events: none;
+    position: static; flex: 0 0 auto; max-height: 45%; overflow-y: auto;
+    display: flex; flex-direction: column; gap: 6px; padding: 6px 8px 2px;
 }
-.tlm-term-body:not([data-layout="tabs"]) .tlm-term-overlay { top: 30px; }
+.tlm-term-overlay:empty { display: none; }
 .tlm-term-note {
     pointer-events: auto; display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px;
     padding: 6px 10px; border-radius: 8px; font-weight: 600; font-size: 12.5px; line-height: 1.35;
@@ -226,8 +228,6 @@ body.resizing-vertical .tlm-term-body { pointer-events: none; }
 }
 .tlm-term-note .tlm-term-note-text { flex: 1 1 220px; min-width: 0; overflow-wrap: anywhere; }
 .tlm-term-note code { font-family: var(--tlm-mono, Consolas, monospace); background: #00000040; padding: 0 4px; border-radius: 3px; }
-.tlm-term-note[data-kind="typing"] { background: #0f2d36; border-color: #3aa7c9; color: #c9f1ff; }
-.tlm-term-note[data-kind="typing"]::before { content: '⌨'; font-size: 15px; }
 .tlm-term-note[data-kind="handover"] { background: #3a1239; border-color: #ff6fd8; color: #ffe2f8; }
 .tlm-term-note[data-kind="handover"]::before { content: '☝'; font-size: 16px; }
 .tlm-term-note[data-kind="hung"] { background: #3a1018; border-color: #ff5a6a; color: #ffd9de; }

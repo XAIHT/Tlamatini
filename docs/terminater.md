@@ -151,8 +151,11 @@ through `data-tlm-terminals-host="chat|acp|pfp"`:
   check item.
 
 The dock has a tab strip, a type bar (CMD / PowerShell), tiling (`tabs`, `tile`,
-`tile-h`, `tile-v`, `grid`), a `dock`/`full` area, and overlays for hand-over, hung
-commands and warnings. Terminal states are `starting`, `prompt`, `typing`,
+`tile-h`, `tile-v`, `grid`), a `dock`/`full` area, and a notes strip for hand-over, hung
+commands and warnings. The strip sits ABOVE the terminal in the pane's own column and
+never floats over its text; "Tlamatini is typing — press Esc to take over" and other
+passing messages are shown in the status line, so no note can hide the first lines of a
+command that is being typed. Terminal states are `starting`, `prompt`, `typing`,
 `awaiting_user`, `running`, `exited`, `closed`. Keystrokes the user types are sent in
 order and never swallowed by the page; the server drops them only while Tlamatini is
 typing, and says how to take over (Esc). Hiding the dock keeps every shell alive; every

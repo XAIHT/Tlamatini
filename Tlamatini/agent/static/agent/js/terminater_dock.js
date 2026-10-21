@@ -257,7 +257,9 @@
         const head = h('div', { class: 'tlm-term-pane-head', title: 'Click to focus this terminal' },
             h('span', { class: 'tlm-term-tab-kind' }, kindShort(T.kind)), h('span', { class: 'tlm-term-pane-title' }, T.title), stateLabel);
         const overlay = h('div', { class: 'tlm-term-overlay', 'aria-live': 'polite' });
-        const pane = h('div', { class: 'tlm-term-pane', 'data-id': T.id, 'data-kind': T.kind, 'data-state': T.state }, head, xtermHost, overlay);
+        // The notes strip sits ABOVE the terminal in the pane's own column: it takes its own room, so a note can
+        // never cover the lines of a command that is being typed (it used to float over the first rows).
+        const pane = h('div', { class: 'tlm-term-pane', 'data-id': T.id, 'data-kind': T.kind, 'data-state': T.state }, head, overlay, xtermHost);
         pane.addEventListener('mousedown', () => { if (S.active !== T.id) activate(T.id, true); });
         T.pane = pane; T.host = xtermHost; T.overlay = overlay; T.stateLabel = stateLabel; T.head = head;
         S.els.body.append(pane);
@@ -369,6 +371,20 @@
         const old = T.notes.get(kind);
         if (old) { clearTimeout(old._ttl); old.remove(); T.notes.delete(kind); }
     }
+    /* A short, passing message ("You took over", "Tlamatini is typing - press Esc") is shown in the status line: it takes
+       no room from the terminal and never covers a character of it. */
+    function showNotice(T, text, ttl) {
+        clearTimeout(T.noticeTimer);
+        T.notice = text || '';
+        T.noticeTimer = ttl ? setTimeout(() => clearNotice(T), ttl) : null;
+        updateStatus();
+    }
+    function clearNotice(T) {
+        if (!T.notice && !T.noticeTimer) return;
+        clearTimeout(T.noticeTimer);
+        T.notice = ''; T.noticeTimer = null;
+        updateStatus();
+    }
     const escapeHtml = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
     function applyState(T, state, extra) {
@@ -378,9 +394,10 @@
         if (T.tab) T.tab.dataset.state = state;
         if (T.stateLabel) T.stateLabel.textContent = STATE_TEXT[state] || state;
         if (state !== 'running') { T.hung = false; if (T.tab) delete T.tab.dataset.flag; clearNote(T, 'hung'); clearNote(T, 'input'); }
-        if (state === 'typing') {
-            setNote(T, 'typing', { text: 'Tlamatini is typing — press Esc to take over.', closable: false });
-        } else { clearNote(T, 'typing'); }
+        // "Tlamatini is typing — press Esc to take over" is told by the status line and the pane's state label, never
+        // by a box over the terminal: a banner here hid the very first characters of the command being typed, and a
+        // note that comes and goes would also re-fit (resize) the shell while Tlamatini types.
+        clearNote(T, 'typing');
         if (state === 'awaiting_user') {
             const hint = (extra && extra.hint) || T.info.handover_hint || 'your part';
             const secret = Boolean(extra && extra.secret);
@@ -457,7 +474,10 @@
                 });
                 emit('warn', { id: T.id, warning: m });
                 break;
-            case 'notice': setNote(T, 'notice', { text: m.message || '', ttl: 3500 }); break;
+            case 'notice':
+                // "Tlamatini is typing - press Esc to take over" is already what the status line says while she types.
+                if (!(T.state === 'typing' && /^Tlamatini is typing/i.test(m.message || ''))) showNotice(T, m.message || '', 3500);
+                break;
             case 'title_set': T.title = m.title; T.info.title = m.title; updateTab(T); updateBar(); break;
             case 'title': T.osTitle = m.title; if (T.tab) T.tab.title = `${T.title} — ${m.title}`; break;
             case 'cwd': T.cwd = m.cwd; T.info.cwd = m.cwd; updateBar(); break;
@@ -696,7 +716,10 @@
         let text;
         if (S.fatal || S.error) text = S.error;
         else if (S.conn !== 'up') text = S.conn === 'connecting' ? 'connecting…' : 'reconnecting…';
-        else if (T) text = `${kindText(T.kind)} · ${STATE_TEXT[T.state] || T.state}${T.cwd ? ' · ' + T.cwd : ''}`;
+        else if (T) {
+            const hint = T.notice || (T.state === 'typing' ? 'press Esc to take over' : '');
+            text = `${kindText(T.kind)} · ${STATE_TEXT[T.state] || T.state}${hint ? ' — ' + hint : ''}${T.cwd ? ' · ' + T.cwd : ''}`;
+        }
         else text = 'connected';
         el.textContent = text;
         el.title = text;
