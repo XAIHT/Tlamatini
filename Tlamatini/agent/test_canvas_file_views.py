@@ -298,7 +298,7 @@ class CanvasNativeSaveTests(SimpleTestCase):
         self.assertEqual(accepted.status_code, 200)
 
     def test_read_denies_unknown_token_and_missing_file(self):
-        response = files.read(self.request({"token": "not-issued"}))
+        response = files.read(self.request({"token": "<REDACTED>"}))
         self.assertEqual(response.status_code, 403)
         result = self.first_save()
         self.path.unlink()

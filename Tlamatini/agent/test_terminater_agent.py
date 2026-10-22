@@ -156,7 +156,7 @@ out["truthy"] = [[repr(v), T._truthy(v)] for v in (None, "", "  ", "0", "false",
 out["truthy_default_false"] = [T._truthy(None, False), T._truthy("", False), T._truthy("yes", False)]
 out["params_empty"] = T.build_params({})
 out["params_mixed"] = T.build_params({
-    "terminal": "t1", "kind": "cmd", "text": "dir", "submit": "false", "wait": "no", "secret": "yes",
+    "terminal": "t1", "kind": "cmd", "text": "dir", "submit": "false", "wait": "no", "secret": "<REDACTED>",
     "typing_wpm": 80, "wait_seconds": 5, "unknown": "x", "action": "run", "mode": "standalone",
     "hub_url": "http://x", "source_agents": ["a"], "target_agents": ["b"], "title": "", "cwd": None,
     "layout": "grid", "advisor": False, "close_after": "true", "load_profile": "0"})
