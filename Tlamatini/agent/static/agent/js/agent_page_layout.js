@@ -114,12 +114,9 @@ function bindDividerPointerDrag(divider, resizingClass, onMove) {
     // toolbar's natural one-row width. This is what keeps the
     // checkboxes on a single row at page load.
     //
-    // We deliberately bypass apply()'s ergonomic clamp ([15..70] for
-    // the chat panel) here: when the browser window is narrow enough
-    // that 70% can't fit the toolbar, we allow up to 92% (leaving an
-    // 8% sliver for the canvas so the user can still grab the
-    // divider). Once the user drags the divider manually, apply()'s
-    // standard clamp re-engages.
+    // Keep at least 320px for the canvas. The chat toolbar can wrap;
+    // making it one row must never hide the editor below its controls.
+    // Once the user drags the divider, apply() owns the chosen split.
     const ensureToolbarFitsOneRow = () => {
         if (document.body.classList.contains('tlm-canvas-hidden') && !document.body.classList.contains('tlm-terminals-on')) return;
         // Font loading and the delayed initial fit must not undo a user's drag.
@@ -139,8 +136,9 @@ function bindDividerPointerDrag(divider, resizingClass, onMove) {
         ) / 100;
         const left = isCanvasOnLeft();
         const currentChatPct = left ? (100 - seamPct) : seamPct;
-        if (currentChatPct >= requiredChatPct) return;
-        const allowedChatPct = Math.min(requiredChatPct, 92);
+        const maxChatPct = 100 - (320 / containerPx) * 100;
+        const allowedChatPct = Math.min(Math.max(currentChatPct, requiredChatPct), maxChatPct);
+        if (Math.abs(currentChatPct - allowedChatPct) < 0.01) return;
         const newSeam = left ? (100 - allowedChatPct) : allowedChatPct;
         // Bypass apply()'s clamp on purpose; assign the seam directly.
         seamPct = newSeam;
@@ -149,7 +147,7 @@ function bindDividerPointerDrag(divider, resizingClass, onMove) {
         canvas.style.width = canvasWidthPct + '%';
         chat.style.width = chatWidthPct + '%';
         divider.style.left = newSeam + '%';
-        window.TlmSplitters.describe(divider, newSeam, left ? 8 : 15, left ? 85 : 92,
+        window.TlmSplitters.describe(divider, newSeam, left ? 100 - maxChatPct : 15, left ? 85 : maxChatPct,
             `Chat ${Math.round(chatWidthPct)}%, canvas ${Math.round(canvasWidthPct)}%`);
     };
 

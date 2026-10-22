@@ -76,7 +76,6 @@ LANGUAGE_BY_EXTENSION = {
     ".yml": "YAML",
 }
 
-CORE_PYTHON_TOOLS = 20
 DOCUMENT_TIMEZONE = ZoneInfo("America/Mexico_City")
 MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September",
           "October", "November", "December"]
@@ -478,6 +477,16 @@ def release_statements(rel: dict, version: str) -> tuple[list[str], list[list[st
     return statements, rows, points
 
 
+def core_tool_names() -> list[str]:
+    """Count the literal base gate table without importing tools or private config."""
+    tree = ast.parse((AGENT_DIR / "tools.py").read_text(encoding="utf-8"))
+    gate = next(node for node in tree.body if isinstance(node, ast.FunctionDef)
+                and node.name == "tool_gate_table")
+    table = next(node.value for node in gate.body if isinstance(node, ast.Assign)
+                 and any(isinstance(target, ast.Name) and target.id == "table" for target in node.targets))
+    return [ast.literal_eval(row.elts[0]) for row in table.elts]
+
+
 def collect_facts() -> dict:
     tracked = tracked_paths()
     untracked = untracked_paths()
@@ -489,6 +498,7 @@ def collect_facts() -> dict:
     agents = workflow_agents()
     names = display_names(agents)
     wrapped = wrapped_tool_names()
+    core = core_tool_names()
     acpx_tools = acpx_tool_names()
     supervisors = supervisor_tool_names()
     skill_list = skills()
@@ -504,7 +514,7 @@ def collect_facts() -> dict:
     total_physical = sum(row.total_lines for row in languages)
     vendored = [row for row in files if row.path.startswith(VENDOR_PREFIX)]
     vendored_effective = sum(row.effective_lines for row in vendored)
-    tools = CORE_PYTHON_TOOLS + len(wrapped) + len(acpx_tools) + len(supervisors)
+    tools = len(core) + len(wrapped) + len(acpx_tools) + len(supervisors)
     now = datetime.now(DOCUMENT_TIMEZONE)
     commits = []
     for line in git("log", "-12", "--format=%h\x1f%cI\x1f%s").splitlines():
@@ -547,7 +557,8 @@ def collect_facts() -> dict:
         "agents": len(agents),
         "display_names": names,
         "wrapped": len(wrapped),
-        "core": CORE_PYTHON_TOOLS,
+        "core": len(core),
+        "core_names": core,
         "acpx_tools": len(acpx_tools),
         "acpx_tool_names": acpx_tools,
         "supervisors": len(supervisors),
@@ -580,7 +591,7 @@ def collect_facts() -> dict:
         ["Effective lines", f"{total_effective:,}"],
         ["Workflow agent types", f"{len(agents)}"],
         ["Wrapped chat-agent tools", f"{len(wrapped)}"],
-        ["Built-in Multi-Turn tools", f"{tools} = {CORE_PYTHON_TOOLS} core + {len(wrapped)} wrapped + "
+        ["Built-in Multi-Turn tools", f"{tools} = {len(core)} core + {len(wrapped)} wrapped + "
                                       f"{len(acpx_tools)} ACPX/Skill + {len(supervisors)} supervisors"],
         ["Skills", f"{len(skill_list)}"],
         ["ACPX peers", f"{len(facts['acpx_peers'])}"],

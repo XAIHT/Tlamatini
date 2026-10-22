@@ -218,7 +218,7 @@ class AskExecsAllowlistTests(SimpleTestCase):
 
     # ── the whole set, so a silent addition/removal is caught ───────────────
     def test_the_allowlist_is_exactly_the_agreed_set(self):
-        expected = set(RUNNERS) | set(TIER_A) | set(TIER_D)
+        expected = set(RUNNERS) | set(TIER_A) | set(TIER_D) | {"interactor"}
         actual = set(_ASK_EXECS_REQUIRED_TOOLS)
         self.assertEqual(
             actual, expected,

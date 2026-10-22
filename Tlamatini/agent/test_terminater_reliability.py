@@ -603,7 +603,7 @@ class ClassifyMessageTests(SimpleTestCase):
         self.assertEqual(self.kind("I will execute them, not you"), "user_runs")
 
     def test_other_ways_people_say_it(self):
-        for text in ("I'll run it myself", "let me run the commands", "I want to type them", "I will press Enter",
+        for text in ("I'll run it myself", "let me run the commands", "I want to type the commands", "I will press Enter",
                      "don't run anything", "do not execute those", "just show me the commands",
                      "you only show me the commands", "I run each command"):
             self.assertEqual(self.kind(text), "user_runs", text)

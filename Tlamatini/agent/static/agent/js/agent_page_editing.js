@@ -276,9 +276,13 @@
         save(event.shiftKey);
     });
     window.TlamatiniCanvasEditing = { open, close, sync, decodeFile, confirmDiscard, save,
+        openNative: (...args) => window.TlamatiniCanvasRefresh.openNative(...args),
         acceptFile: (file, format) => {
             if (current && !dirty()) { current.file = file; current.format = format; notice = ''; sync(); }
         },
+        nativeRead,
+        get nativeTarget() { return !!canvasSource?.native; },
+        get notice() { return notice; },
         get dirty() { return dirty(); }, get busy() { return saving; },
         get text() { return current ? editor.getText() : textEditorCode.textContent; } };
     sync();

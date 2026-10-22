@@ -431,6 +431,7 @@ document.getElementById('chat-form').onsubmit = function (e) {
         // allowed to re-disable the controls. Set BEFORE the UI reset below so no late
         // frame can race it. Cleared on the next submit.
         userCancelledRun = true;
+        window.TlamatiniInteractor?.cancel();
         // Close any OPEN Ask-Execs Proceed/Deny prompt. The backend auto-denies it
         // (the run is latched dead), so leaving it up would force the user to answer a
         // question that has already been answered — and the dialog is modal with no
@@ -491,6 +492,7 @@ document.getElementById('chat-form').onsubmit = function (e) {
         if (rawMessage.trim() === '') return;
         const messageSent = sendChatSocketMessage(JSON.stringify({
             'message': rawMessage,
+            'interactor_client_id': window.TlamatiniInteractor?.beforeChat() || '',
             'multi_turn_enabled': isMultiTurnEnabled(),
             'exec_report_enabled': isExecReportEnabled(),
             'acpx_enabled': isAcpxEnabled(),

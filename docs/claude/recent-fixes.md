@@ -21,6 +21,66 @@
 
 ---
 
+## 2026-10-22 — User-creation wizard diverted by two intent guards (DEV)
+
+The installed `C:\Tlamatini\tlamatini.log` showed the catalog's first setup
+wizard choosing Executer correctly, then being refused by `terminal_guard`:
+"I will type it" referred to the user's password, but enabled command-tutorial
+mode. The model switched to Terminater with `submit=false`. A second unrelated
+guard inferred completion-notification consent from completion wording and an
+optional email field elsewhere in the request, forcing Notifier and abandoning
+the wizard.
+
+`terminal_guard.py` now requires command objects for typing/entering ownership;
+password/form/editor input and ambiguous typing pronouns are neutral. Explicit
+assistant execution of a named program lifts a prior user-runs lesson.
+`mcp_agent.py` requires a positive outbound notification instruction in the same
+sentence as its completion condition, excluding quoted examples and negations.
+Ordinary chat replies and email fields are not notification consent. `prompt.pmt`
+states both boundaries. Do not restore whole-message keyword coincidence or
+classify all user typing as command ownership.
+
+Visible DEV verification: 179 tests passed (wizard intent/catalog regressions,
+the complete Terminater reliability suite and notification-debt suite).
+`test_wizard_intent_guards.py` uses the actual migrated catalog row and real
+executor loop, including prior tutorial history, SOURCE/FROZEN command choices
+and waiting for user input. Model responses and tool effects are controlled:
+no real account was created and no real message was sent. Evidence is under
+`Temp/user-creation-investigation/` (before: reproduced failures; after: exit 0).
+Replaying the exact request extracted from the installed log also confirms
+Executer is allowed and no notification debt is created, even after a prior
+user-runs lesson. Ruff and `git diff --check` passed.
+This is not a real-model or rebuilt-frozen acceptance result. The installed
+executable was inspected but not replaced; Angela requested existing-package
+inspection only, so no build was run.
+
+## 2026-10-21 — Automatic chat sizing leaves room for the editor (DEV)
+
+The source/frozen Interactor visual recheck exposed a second defect: keeping the
+chat toolbar on one row could give chat 92% of the window, pushing the editor
+below a clipped column of controls. `agent_page_layout.js` now reserves 320 CSS
+pixels for the canvas during automatic sizing and lets the chat toolbar wrap.
+`canvas_editor.css` lets the editable container fill the remaining height;
+without terminals open it previously grew only to its text's height.
+The existing user-controlled divider behavior is preserved. The cache suffix
+adds `-canvas-fit-1`. The visible runtime harness checks actual canvas/editor
+geometry and control containment; `is_visible()` alone did not detect this.
+The existing frozen package also exhibits this defect and was not rebuilt.
+
+## 2026-10-21 — Interactor recovers from temporary browser invisibility (DEV)
+
+The installed log showed `Service-Port.yaml` typing refused before its first
+character: `showSource()` threw whenever `document.hidden` was true. That signal
+also covers minimized or occluded windows; after model latency, a temporary
+absence became a permanent tool refusal. The DEV bridge now waits on visibility
+with the same cancellable command and resumes automatically. It rechecks the
+document/revision after waiting; the CodeMirror loop pauses between characters
+and keeps one Undo group. Visual commands have a bounded 120-second grace period;
+reads retain their normal deadline. Cancellation, user takeover, document changes,
+disconnect and explicit Source hiding still stop editing. Never replay a prefix.
+The source static suffix is `-interactor-2`; rebuild the vendored editor when its
+extension changes. See [Interactor](../interactor.md) for verification evidence.
+
 ## 2026-10-21 — Editable chat canvas and native Save destinations (source implementation)
 
 `agent_page_editing.js` and the locally bundled CodeMirror 6 editor make the

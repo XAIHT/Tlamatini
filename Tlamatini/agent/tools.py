@@ -5149,7 +5149,9 @@ def tool_gate_table():
     ``get_mcp_tools`` and the Compact-mode cost labels read the SAME table, so
     what a Configure dialog says a row costs is what that row really binds.
     """
+    from .interactor.tool import build_tool as build_interactor_tool
     table = [
+        ('interactor', None, build_interactor_tool),
         ('current-time', None, lambda: get_current_time),
         # Direct @tool agents are gated by BOTH their Tool flag AND their Agent row
         # (Configure Agents) - disabling the canvas agent (Pythonxer / Executer /

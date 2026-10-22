@@ -1,8 +1,8 @@
 {
   "source": "scripts/canvas_editor_entry.mjs",
   "build": "node scripts/build_canvas_editor.mjs (visible foreground console)",
-  "bytes": 980895,
-  "sha256": "124b5cc254a48162d8696dc0e5a534b4b979014e5b978bde726615c42eba0908",
+  "bytes": 989603,
+  "sha256": "7c38cba64a9bf843d7c109e25a25c589627a2c92ab22576a1bd0a7baeae5e425",
   "lock_file": "pnpm-lock.yaml",
   "lock_sha256": "a86254d3db8f3971df5c2fcb37932dfa1c51e2a2d36cad3e09da76d4dc76ef44",
   "packages": {

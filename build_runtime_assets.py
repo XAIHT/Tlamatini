@@ -28,6 +28,7 @@ REQUIRED_STATIC = (
     "agent/js/agent_page_canvas.js", "agent/js/agent_page_init.js",
     "agent/js/agent_page_markdown.js", "agent/css/markdown_canvas.css",
     "agent/js/agent_page_editing.js", "agent/css/canvas_editor.css",
+    "agent/interactor/bridge.js", "agent/interactor/interactor.css",
     "agent/vendor/canvas-editor/editor.js", "agent/vendor/canvas-editor/LICENSES.txt",
     "agent/vendor/canvas-editor/manifest.json",
     "agent/vendor/frontend/marked/lib/marked.umd.js",
@@ -82,6 +83,8 @@ SOURCE_TREES = (
     ("security", "security"),
 )
 ROOT_SOURCES = {
+    "Tlamatini/agent/templates/agent/interactor.html": "_internal/agent/templates/agent/interactor.html",
+    "docs/interactor.md": "docs/interactor.md",
     "Tlamatini/agent/templates/agent/agent_page.html":
         "_internal/agent/templates/agent/agent_page.html",
     "Tlamatini/agent/templates/admin/base_site.html":

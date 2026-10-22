@@ -60,6 +60,7 @@
 
 #filename-div #canvas-wrap-button[aria-pressed="true"] { background: #266457; }
 #editor-container.canvas-editable {
+    flex: 1 1 0;
     overflow: hidden;
 }
 

@@ -1,0 +1,37 @@
+/* Tlamatini Author Banner — Angela López Mendoza */
+#interactor-bar {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px;
+    padding: 6px 9px; background: #1b2732; border-bottom: 1px solid #354959;
+    color: #d8e6f2; font-size: .8rem; flex: 0 0 auto;
+}
+#interactor-bar label, .interactor-card-heading label { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+#interactor-status { flex: 1 1 170px; color: #acbdce; overflow-wrap: anywhere; }
+#interactor-status[data-state="typing"] { color: #92e6d4; }
+#interactor-status[data-state="waiting"] { color: #f1d294; }
+#interactor-bar button, #interactor-card button {
+    font: inherit; font-size: .8rem; color: #e7f1fa; background: #303f50;
+    border: 1px solid #597082; border-radius: 5px; padding: 4px 9px; cursor: pointer;
+}
+#interactor-bar button:disabled, #interactor-card button:disabled { opacity: .45; cursor: default; }
+#interactor-bar :focus-visible, #interactor-card :focus-visible { outline: 2px solid #92e6d4; outline-offset: 2px; }
+#interactor-card {
+    flex: 0 0 auto; padding: 11px 13px; border-bottom: 1px solid #5e6a55;
+    background: linear-gradient(110deg, #263832, #23303a); color: #e1eee9;
+    font-size: .86rem; max-height: min(38vh, 270px); overflow: hidden;
+    display: flex; flex-direction: column;
+}
+#interactor-card[hidden] { display: none; }
+.interactor-card-heading { flex: 0 0 auto; display: flex; justify-content: space-between; align-items: start; gap: 8px; flex-wrap: wrap; }
+#interactor-label { color: #b3ead6; overflow-wrap: anywhere; }
+#interactor-hint { margin: 7px 0; white-space: pre-wrap; overflow-wrap: anywhere;
+    flex: 1 1 auto; min-height: 0; max-height: 6.6em; overflow-y: auto; }
+#interactor-choices { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0;
+    flex: 0 1 auto; min-height: 0; max-height: 85px; overflow-y: auto; }
+#interactor-card .interactor-choice { text-align: left; max-width: 100%; display: flex; flex-direction: column; gap: 3px; }
+.interactor-choice code { color: #a9e2f1; white-space: pre-wrap; overflow-wrap: anywhere; }
+.interactor-choice span { font-size: .76rem; color: #b6c7d4; overflow-wrap: anywhere; }
+.interactor-card-actions { flex: 0 0 auto; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+#interactor-completion { flex: 1 1 200px; font-size: .76rem; color: #b7c9cf; }
+#interactor-card #interactor-continue { background: #236d5f; border-color: #72bda9; }
+.tlm-interactor-ghost { color: #98a8ba; opacity: .8; font-style: italic; pointer-events: none; }
+.tlm-interactor-field { background: #59ba9e20; border-bottom: 1px solid #7bcdb3; }

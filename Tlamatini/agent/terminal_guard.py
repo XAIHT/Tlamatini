@@ -81,26 +81,37 @@ class TutorialMode:
 
 _FLAGS = re.IGNORECASE
 
+#: Typing data (a password, form field or editor text) is not command ownership.
+#: Ambiguous "I will type it" must not disable every command runner in a wizard.
+_COMMAND_OBJECT = r"(?:(?:the|these|those|each|every|all(?:\s+the)?)\s+)?commands?\b"
+
 #: The user says THEY execute / type / run the commands (or that Tlamatini must not).
 _TRIGGERS: Tuple["re.Pattern[str]", ...] = tuple(re.compile(p, _FLAGS) for p in (
     r"\bi\s*(?:'?ll|will|am\s+going\s+to|'?m\s+going\s+to|want\s+to|shall|can|prefer\s+to|would\s+like\s+to)"
-    r"\s+(?:execute|run|type|enter|launch|do)\s+(?:them|those|these|it|that|each|every|all|the\s+(?:commands?|lines?|steps?))\b",
+    r"\s+(?:execute|run|launch)\s+(?:them|those|these|it|that|each|every|all|the\s+(?:commands?|lines?|steps?))\b",
+    r"\bi\s*(?:'?ll|will|am\s+going\s+to|'?m\s+going\s+to|want\s+to|shall|can|prefer\s+to|would\s+like\s+to)"
+    r"\s+(?:type|enter)\s+" + _COMMAND_OBJECT,
     r"\bi\s+(?:execute|run)\s+(?:them|the\s+commands?|each\s+command)\b",
     r"\b(?:you\s+(?:only\s+|just\s+)?|(?:just|only)\s+)(?:show|tell|give|dictate|teach)\s+me\s+"
     r"(?:the\s+)?(?:commands?|lines?|steps?)\b",
     r"\b(?:do\s*not|don'?t|dont|never)\s+(?:execute|run|press\s+enter|hit\s+enter)\b",
-    r"\blet\s+me\s+(?:execute|run|type)\b",
-    r"\b(?:execute|run|type)\b[^.\n]{0,40}\b(?:myself|by\s+myself)\b",
+    r"\blet\s+me\s+(?:execute|run)\b",
+    r"\blet\s+me\s+(?:type|enter)\s+" + _COMMAND_OBJECT,
+    r"\b(?:execute|run)\b[^.\n]{0,40}\b(?:myself|by\s+myself)\b",
     r"\bi\s*(?:will|'?ll)\s+press\s+enter\b",
     # Spanish
-    r"\byo\s+(?:los|las|lo|la)\s+(?:ejecuto|corro|escribo|tecleo|lanzo)\b",
-    r"\bno\s+(?:los|las|lo|la)\s+(?:ejecutes|corras|escribas)\b",
+    r"\byo\s+(?:los|las|lo|la)\s+(?:ejecuto|corro|lanzo)\b",
+    r"\byo\s+(?:escribo|tecleo)\s+(?:(?:los|estos|cada)\s+)?comandos?\b",
+    r"\bno\s+(?:los|las|lo|la)\s+(?:ejecutes|corras)\b",
     r"\bmu[eé]strame\s+(?:los\s+)?comandos\b",
     r"\byo\s+(?:voy\s+a\s+)?(?:ejecuto|ejecutar|corro|correr)\b",
 ))
 
 #: The user gives the keyboard back to Tlamatini.
 _LIFTS: Tuple["re.Pattern[str]", ...] = tuple(re.compile(p, _FLAGS) for p in (
+    # A named program is just as explicit as "you run it"; it lifts a prior lesson.
+    r"\byou\s+(?:will|should|must|can|may)\s+(?:run|execute|launch)\s+"
+    r"(?!(?:into|out|through)\b)\S+",
     r"\byou\s+(?:can\s+|may\s+|should\s+|will\s+|please\s+|now\s+)*(?:go\s+ahead\s+and\s+)?"
     r"(?:execute|run|type)\s+(?:them|it|that|the\s+commands?|these|everything)\b",
     r"\b(?:execute|run)\s+(?:them|it|that|the\s+commands?)\s+(?:yourself|for\s+me|now)\b",

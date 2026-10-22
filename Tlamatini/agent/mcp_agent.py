@@ -175,37 +175,42 @@ _COMPLETION_PHRASE_RE = re.compile(
     r"when you finish|after finishing|once finished|after it'?s? done)\b",
     re.IGNORECASE,
 )
-# Notification channel cue: an explicit channel word, OR a "send/notify/tell ME"
-# style verb directed at the user.
-_NOTIFY_CHANNEL_RE = re.compile(
-    r"\b(telegram|whats\s?app|e-?mail|mail|notif\w*|sms|slack|discord)\b",
+# A channel mentioned elsewhere (e.g. an optional email field) is not consent.
+# Require an outbound action in the same sentence as the completion condition.
+_NOTIFY_ACTION_RE = re.compile(
+    r"\b(?:e-?mail|text|message|ping|notify|alert)\s+(?:me|us|him|her|them)\b|"
+    r"\b(?:send|shoot|drop)\s+[^.?!;\n]{0,60}?\b"
+    r"(?:telegram|whats\s?app|e-?mail|mail|notification|sms|slack|discord)\b",
     re.IGNORECASE,
 )
-_NOTIFY_VERB_RE = re.compile(
-    r"\b(send|shoot|text|message|ping|notify|alert|tell|let|drop|email|e-?mail)\b"
-    r"[^.?!]{0,30}?\b(me|us|angela|him|her|them)\b",
+_NOTIFY_NEGATION_RE = re.compile(
+    r"\b(?:do\s+not|don'?t|never|no\s+need\s+to|without|avoid|stop)\s+(?:\w+\s+){0,3}$",
     re.IGNORECASE,
 )
+_NOTIFY_QUOTED_RE = re.compile(r"```.*?```|(?<!\w)([\"']).*?\1(?!\w)|\u201c.*?\u201d", re.DOTALL)
 
 
 def _detect_completion_notification_request(text: str) -> bool:
     """Heuristic: did the user ask to be NOTIFIED ON COMPLETION of this task?
 
-    Returns True only when the request contains BOTH a completion cue ("when you
-    finish", "once done", "upon completion", "at the end") AND an outbound
-    notification cue (a channel word like telegram/email/whatsapp/notification,
-    or a "send/notify/tell ME" verb directed at the user). Deliberately
-    conservative: a false positive only costs ONE harmless nudge, while a false
-    negative simply preserves the legacy behavior.
+    Require a positive send/notify instruction tied to completion in one sentence.
+    Quoted examples, negations, form fields and ordinary chat replies are not
+    notification requests. Be conservative: a false positive can cause a real
+    unsolicited message, whereas a false negative leaves normal tool selection alone.
     """
     if not text:
         return False
-    low = str(text)
-    has_completion = bool(_COMPLETION_CUE_RE.search(low) or _COMPLETION_PHRASE_RE.search(low))
-    if not has_completion:
-        return False
-    has_channel = bool(_NOTIFY_CHANNEL_RE.search(low) or _NOTIFY_VERB_RE.search(low))
-    return has_channel
+    sample = _NOTIFY_QUOTED_RE.sub(" ", str(text).replace("\u2019", "'"))
+    for sentence in re.split(r"[.?!;]+|\n\s*\n", sample):
+        if not (_COMPLETION_CUE_RE.search(sentence) or _COMPLETION_PHRASE_RE.search(sentence)):
+            continue
+        for action in _NOTIFY_ACTION_RE.finditer(sentence):
+            prefix = sentence[:action.start()]
+            # "Don't forget to email me" is an affirmative reminder, not a refusal.
+            prefix = re.sub(r"\b(?:do not|don't)\s+forget\s+to\s*$", "", prefix, flags=re.IGNORECASE)
+            if not _NOTIFY_NEGATION_RE.search(prefix):
+                return True
+    return False
 
 
 # Curated Exec-report map: ``tool_name`` -> ``(agent_key, agent_display)``.
@@ -457,6 +462,7 @@ def _resolve_exec_report_spec(tool_name: str) -> Tuple[str, str] | None:
 # @tool name and the wrapped ``chat_agent_*`` launcher are listed where both
 # exist, so the prompt fires regardless of which surface the LLM uses.
 _ASK_EXECS_REQUIRED_TOOLS: frozenset = frozenset({
+    "interactor",              # native file creation/save; visible buffer actions exempt
     # ----- Tier 1: general-purpose arbitrary command / script execution -----
     "execute_command",          # Executer  (local shell / .bat / .sh)
     "chat_agent_executer",      # Executer
@@ -810,7 +816,7 @@ def _ensure_chat_tool_model(llm):
     return llm
 
 
-def _cap_tool_message_content(text, cap=None):
+def _cap_tool_message_content(text, cap=None, *, tool_name=""):
     """Bound a SINGLE tool result before it is fed BACK to the model.
 
     A huge observation (a directory dump, a whole-file read, a long build log) fed
@@ -834,6 +840,19 @@ def _cap_tool_message_content(text, cap=None):
             cap = 24000
     if len(text) <= cap:
         return text
+    if tool_name == "interactor":
+        from .interactor.context import current
+        request = current.get()
+        if request:
+            request.handed_off = True
+        return json.dumps({
+            "ok": False, "status": "context_limit", "retryable": False,
+            "message": "The live editor receipt exceeds this request's tool-result budget. "
+                       "No partial document was delivered. An earlier action may have completed; "
+                       "do not replay it. End this turn and ask the user to use a smaller document "
+                       "or a model/configuration with enough context.",
+            "characters": len(text), "budget": cap,
+        })
     head = cap * 2 // 3
     tail = cap - head
     dropped = len(text) - head - tail
@@ -1086,7 +1105,7 @@ class MultiTurnToolAgentExecutor:
     # Ask-Execs permission gate
     # ------------------------------------------------------------------
 
-    def _requires_exec_permission(self, tool_name: str) -> bool:
+    def _requires_exec_permission(self, tool_name: str, tool_args=None) -> bool:
         """True when a tool call should be confirmed by the user before it
         runs under Ask Execs.
 
@@ -1113,6 +1132,8 @@ class MultiTurnToolAgentExecutor:
         Pinned by ``agent.test_ask_execs_allowlist.AskExecsAllowlistTests``."""
         if not tool_name:
             return False
+        if tool_name == "interactor" and isinstance(tool_args, dict):
+            return tool_args.get("action") not in {"read", "open", "type", "guide", "select", "stop"}
         return tool_name in _ASK_EXECS_REQUIRED_TOOLS
 
     def _build_exec_permission_detail(self, tool_call: Dict[str, Any]) -> Dict[str, Any]:
@@ -1217,6 +1238,11 @@ class MultiTurnToolAgentExecutor:
 
     def _invoke_tool(self, tool_call: Dict[str, Any]) -> str:
         tool_name = tool_call.get("name", "")
+        from .interactor.context import current as interactor_request
+        editor_request = interactor_request.get()
+        if editor_request and editor_request.handed_off and tool_name != "interactor":
+            return json.dumps({"ok": False, "status": "operator_required", "retryable": False,
+                               "message": "The editor has been handed to the learner. End this turn with guidance; do not continue through another tool."})
         tool = self.tool_map.get(tool_name)
         if tool is None:
             logger.warning("[MultiTurnExecutor._invoke_tool] Tool '%s' NOT FOUND in tool_map. Available: %s",
@@ -2494,7 +2520,7 @@ class MultiTurnToolAgentExecutor:
                 # BEFORE the tool runs. A denial halts the entire chain: we
                 # record what was denied (for the red banner) and finalize
                 # immediately, so no further tools in this or later turns run.
-                if self._ask_execs_enabled and self._requires_exec_permission(tool_name):
+                if self._ask_execs_enabled and self._requires_exec_permission(tool_name, tool_call.get("args")):
                     decision = self._request_exec_permission(tool_call)
                     if decision != "proceed":
                         # A CANCEL also unblocks this prompt as "deny" (that is the
@@ -2582,7 +2608,7 @@ class MultiTurnToolAgentExecutor:
                         # A compact request carries a window-sized cap (the
                         # fitter sets it); a full one keeps the configured cap.
                         content=_cap_tool_message_content(
-                            tool_result, getattr(self, "fit_tool_output_cap", None)),
+                            tool_result, getattr(self, "fit_tool_output_cap", None), tool_name=tool_name),
                     )
                 )
 

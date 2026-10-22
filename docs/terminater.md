@@ -240,6 +240,13 @@ the Exec Report and placed ahead of the dedup memory and the quota, so lifting t
 call through. Terminater is forced to `submit=false`, one line per call and no Enter key; the reply says
 so (`live_tutorial_mode`, `request_notes`).
 
+Typing a password, form field or editor text does not reserve command execution.
+Ambiguous typing pronouns alone ("I will type it") are neutral; typing requests
+must name commands to enter this mode. An explicit assistant launch instruction
+("you will run Django's createsuperuser") lifts a previous terminal lesson.
+The user-creation catalog regression exercises this boundary through the real
+tool loop for both source and frozen command choices, with tool effects stubbed.
+
 **5. The claim audit.** Every tool call of the request goes into a ledger of what it *reported*. Before
 the final answer is accepted, sentences such as *"I typed it"*, *"it is sitting on your prompt"* or
 *"I ran it"* are checked against that ledger. An unsupported claim gets one internal correction round;

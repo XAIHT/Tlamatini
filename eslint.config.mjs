@@ -28,12 +28,14 @@ export default [
         languageOptions: { ecmaVersion: "latest", sourceType: "commonjs", globals: { ...globals.node, ...globals.browser } },
     },
 
+    { files: ["Tlamatini/agent/interactor/*.mjs", "scripts/canvas_editor_entry.mjs"], languageOptions: { globals: globals.browser } },
+
     // Base: ESLint recommended rules
     js.configs.recommended,
 
     {
         // Only lint our JS source files
-        files: ["Tlamatini/agent/static/agent/js/**/*.js"],
+        files: ["Tlamatini/agent/static/agent/js/**/*.js", "Tlamatini/agent/static/agent/interactor/*.js"],
 
         languageOptions: {
             ecmaVersion: 2021,

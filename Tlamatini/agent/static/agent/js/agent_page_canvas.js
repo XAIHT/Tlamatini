@@ -134,6 +134,7 @@ function invalidateCanvasReads() {
 }
 
 window.TlamatiniCanvasRefresh = { sync: syncCanvasRefreshButton, cancel: cancelCanvasRefresh,
+    openNative: openNativeCanvasFile,
     edited: invalidateCanvasReads, invalidateReads: invalidateCanvasReads,
     contextSelected: () => { if (canvasSource) canvasSource.contextPending = false; },
     get busy() { return !!canvasRefreshWork; } };
@@ -221,6 +222,33 @@ function displayCanvasText(filename, content, file = null, format = null) {
     replaceCodeElement(markdown ? 'language-markdown' : getLanguageClass(extractExtension(filename)), content);
     if (markdown) window.TlamatiniMarkdownCanvas?.open(filename, content, file);
     window.TlamatiniCanvasEditing?.open(filename, content, file, format);
+}
+
+// Interactor is allowed to open its requested file while the model is working.
+// Its request-scoped bridge has already checked the tab and obtained a native
+// file capability. Stage decoding before replacing the current clean document.
+async function openNativeCanvasFile(file, native, path, expected, cancelled) {
+    const editing = window.TlamatiniCanvasEditing;
+    const matches = () => {
+        const state = window.TlamatiniTextEditor.inspect();
+        return state.document_id === expected.document_id && state.revision === expected.revision;
+    };
+    if (!matches() || editing.dirty || editing.busy || cancelled()) throw new Error('The canvas changed before the file could open. Its content was kept.');
+    if (/\.(pdf|flw|fpmt)$/i.test(file.name)) throw new Error('Interactor opens text source files. Use the dedicated viewer for this file type.');
+    const decoded = await editing.decodeFile(file);
+    if (!matches() || editing.dirty || editing.busy || cancelled()) throw new Error('The canvas changed while the file was being read. Its content was kept.');
+    if (decoded.text.length > 262144) throw new Error('This file is too large for live tutoring; its content was not truncated.');
+    await cleanCanvas(true, true);
+    displayCanvasText(file.name, decoded.text, file, decoded.format);
+    const source = { name: file.name, file, text: decoded.text, native };
+    source.read = signal => editing.nativeRead(source, signal);
+    rememberCanvasSource(source);
+    filenameSpan.textContent = `<<< ${file.name} >>>`;
+    filenameSpan.title = path;
+    canvasLoaded = true;
+    enableCanvasButtons();
+    window.TlamatiniMarkdownCanvas?.selectView(false);
+    window.TlamatiniTextEditor.focus();
 }
 
 async function loadCanvas(filename) { // eslint-disable-line no-unused-vars

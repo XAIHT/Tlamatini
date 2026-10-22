@@ -5,8 +5,8 @@
   "private": true,
   "scripts": {
     "build:canvas-editor": "node scripts/build_canvas_editor.mjs",
-    "lint": "eslint Tlamatini/agent/static/agent/js/ scripts/ Tests/*.cjs eslint.config.mjs --max-warnings 0 && node scripts/check_js_parse.mjs",
-    "lint:fix": "eslint --fix Tlamatini/agent/static/agent/js/ scripts/ Tests/*.cjs eslint.config.mjs",
+    "lint": "eslint Tlamatini/agent/static/agent/js/ Tlamatini/agent/static/agent/interactor/ Tlamatini/agent/interactor/ scripts/ Tests/*.cjs eslint.config.mjs --max-warnings 0 && node scripts/check_js_parse.mjs",
+    "lint:fix": "eslint --fix Tlamatini/agent/static/agent/js/ Tlamatini/agent/static/agent/interactor/ Tlamatini/agent/interactor/ scripts/ Tests/*.cjs eslint.config.mjs",
     "lint:python": "python scripts/check_python_quality.py",
     "check-js-parse": "node scripts/check_js_parse.mjs",
     "test": "npm run lint && node scripts/file_drop_router_cases.mjs"

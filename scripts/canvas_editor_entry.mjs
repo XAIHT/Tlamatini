@@ -1,6 +1,5 @@
 /* Tlamatini Author Banner — Angela López Mendoza */
 /* The canvas's locally bundled text editor. No network or filesystem access. */
-/* global window */
 import { basicSetup } from 'codemirror';
 import { Compartment, EditorState, Prec } from '@codemirror/state';
 import { EditorView, keymap } from '@codemirror/view';
@@ -24,6 +23,8 @@ import { powerShell } from '@codemirror/legacy-modes/mode/powershell';
 import { shell } from '@codemirror/legacy-modes/mode/shell';
 import { toml } from '@codemirror/legacy-modes/mode/toml';
 import { go } from '@codemirror/legacy-modes/mode/go';
+import { dockerFile } from '@codemirror/legacy-modes/mode/dockerfile';
+import { createInteractorEditor, editOrigin } from '../Tlamatini/agent/interactor/editor.mjs';
 
 const language = new Compartment();
 const editing = new Compartment();
@@ -35,6 +36,24 @@ let wrap = false;
 let currentName = '';
 let currentText = '';
 let currentLanguage = 'Plain text';
+function newDocumentId() {
+    return Array.from(window.crypto.getRandomValues(new Uint8Array(16)), byte => byte.toString(16).padStart(2, '0')).join('');
+}
+let documentId = newDocumentId();
+let revision = 0;
+const interactor = createInteractorEditor(() => view);
+
+function announce(detail) {
+    window.dispatchEvent(new CustomEvent('tlm:editor-state', { detail }));
+}
+
+function inspect() {
+    const selection = view?.state.selection.main;
+    return { document_id: documentId, revision, active: !!view && !readOnly,
+        filename: currentName, language: currentLanguage, text: currentText,
+        selection: { from: selection?.from || 0, to: selection?.to || 0 },
+        guide: interactor.guide() };
+}
 
 const theme = EditorView.theme({
     '&': { height: '100%', color: '#dce4f3', backgroundColor: '#171c24', fontSize: '13px' },
@@ -91,6 +110,7 @@ function fileLanguage(filename) {
     if (['sh', 'bash', 'zsh'].includes(ext) || ['.bashrc', '.zshrc', '.profile'].includes(name)) return [StreamLanguage.define(shell), 'Shell'];
     if (ext === 'toml') return [StreamLanguage.define(toml), 'TOML'];
     if (ext === 'go') return [StreamLanguage.define(go), 'Go'];
+    if (name === 'dockerfile' || name.startsWith('dockerfile.') || ext === 'dockerfile') return [StreamLanguage.define(dockerFile), 'Dockerfile'];
     return [[], 'Plain text'];
 }
 
@@ -111,6 +131,7 @@ function createState(content, filename) {
     return EditorState.create({
         doc: content,
         extensions: [
+            interactor.extensions,
             basicSetup, theme, syntaxHighlighting(highlighting),
             language.of(support),
             editing.of([EditorState.readOnly.of(readOnly), EditorView.editable.of(!readOnly)]),
@@ -124,8 +145,10 @@ function createState(content, filename) {
                 { key: 'Mod-Shift-s', run: saveCommand(true), preventDefault: true },
             ])),
             EditorView.updateListener.of(update => {
-                if (update.docChanged) currentText = update.state.doc.toString();
+                if (update.docChanged) { currentText = update.state.doc.toString(); revision++; }
                 if (update.docChanged || update.selectionSet) onChange?.(currentText, historyState());
+                announce({ docChanged: update.docChanged, selectionSet: update.selectionSet,
+                    origin: update.transactions.find(transaction => transaction.annotation(editOrigin))?.annotation(editOrigin) || 'user' });
             }),
         ],
     });
@@ -138,6 +161,9 @@ function destroy() {
     currentName = '';
     currentText = '';
     currentLanguage = 'Plain text';
+    documentId = newDocumentId();
+    revision = 0;
+    announce({ origin: 'load', docChanged: true });
 }
 
 function mount(parent, content, filename, changed) {
@@ -147,15 +173,19 @@ function mount(parent, content, filename, changed) {
     view = new EditorView({ parent, state: createState(content, filename) });
     currentText = view.state.doc.toString();
     parent.classList.add('tlm-source-editor');
+    announce({ origin: 'load', docChanged: true });
     return window.TlamatiniTextEditor;
 }
 
 function setDocument(content, filename) {
     if (!view) return;
     currentName = filename;
+    documentId = newDocumentId();
+    revision = 0;
     view.setState(createState(content, filename));
     currentText = view.state.doc.toString();
     view.scrollDOM.scrollTop = view.scrollDOM.scrollLeft = 0;
+    announce({ origin: 'load', docChanged: true });
 }
 
 function command(action) {
@@ -178,6 +208,7 @@ function find() {
 
 window.TlamatiniTextEditor = {
     mount, setDocument, destroy, historyState,
+    inspect, interactor,
     getText: () => view?.state.doc.toString() || '',
     undo: () => command(undo), redo: () => command(redo),
     indent: () => command(indentMore), outdent: () => command(indentLess),

@@ -504,6 +504,8 @@ _FROZEN_TERMINATER_MODULES = (
 )
 
 _FROZEN_REQUIRED_AGENT_MODULES = (
+    "agent.interactor", "agent.interactor.context", "agent.interactor.protocol",
+    "agent.interactor.hub", "agent.interactor.consumer", "agent.interactor.files", "agent.interactor.tool",
     "agent.canvas_file_views", "agent.native_dialogs",  # native canvas Save/Save As
     "agent.usage_tracking", "agent.usage_provider", "agent.usage_views",
     "agent.chat_voice_consumer",

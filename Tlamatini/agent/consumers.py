@@ -901,7 +901,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 self.channel_name
             )
 
-    async def queue_llm_retrieval(self, message, conversation_user, multi_turn_enabled=False, exec_report_enabled=False, acpx_enabled=False, ask_execs_enabled=False, step_by_step_enabled=False):
+    async def queue_llm_retrieval(self, message, conversation_user, multi_turn_enabled=False, exec_report_enabled=False, acpx_enabled=False, ask_execs_enabled=False, step_by_step_enabled=False, interactor_client_id=""):
         broker = None
         broker_key = conversation_user.id
         status_registered = False
@@ -919,6 +919,8 @@ class AgentConsumer(AsyncWebsocketConsumer):
         from .cancellation import begin_llm_run, current_run_epoch, is_generation_cancelled, is_run_cancelled
         run_epoch = begin_llm_run(broker_key)
         self._active_run = (broker_key, run_epoch)
+        from .interactor import context as interactor_context
+        _interactor_token = interactor_context.bind(self.scope, interactor_client_id, run_epoch)
         try:
             # Check if rag_chain is ready
             if self.rag_chain is None:
@@ -1166,6 +1168,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
             )
             print("--- Bot error message broadcast to room.")
         finally:
+            interactor_context.current.reset(_interactor_token)
             # Always tear down the Ask-Execs broker so a still-pending prompt
             # can never leave the executor thread blocked after the request
             # ends (close() resolves any outstanding prompt to "deny").
@@ -2133,6 +2136,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 acpx_enabled=acpx_enabled,
                 ask_execs_enabled=ask_execs_enabled,
                 step_by_step_enabled=step_by_step_enabled,
+                interactor_client_id=text_data_json.get('interactor_client_id', ''),
             ))
         except Exception as e:
             print(f"!!! ERROR in receive method: {e}")
