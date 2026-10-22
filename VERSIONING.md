@@ -170,7 +170,7 @@ git log --oneline (git describe --tags --abbrev=0)..HEAD
 
 ### Step 3 — Create the annotated tag
 
-The current release is **v1.90.0**, tagged 2026-10-22 at `ebc5c3b4`. The inspected `main`/`origin/main` follow-up is `d274f89c`. The tag already exists: never recreate or move it. Commands below use `vMAJOR.MINOR.PATCH` as a placeholder for a future unused version. A tag identifies source; package publication and installed acceptance require separate evidence.
+The current release is **v1.90.0**, tagged 2026-10-22 at `ebc5c3b4`. Its GitHub release ("Tlamatini v1.90.0 Win11x64") was published on 2026-10-22 and is marked Latest. `main`/`origin/main` continues after the tag (`d274f89c`, `8c577d3a`, `939acf6b` with migration 0219, `5403fa49`) and still reports `1.90.0`. The tag already exists: never recreate or move it. Commands below use `vMAJOR.MINOR.PATCH` as a placeholder for a future unused version. A tag identifies source; package publication and installed acceptance require separate evidence.
 
 ```powershell
 git tag -a vMAJOR.MINOR.PATCH -m "Release MAJOR.MINOR.PATCH: <summary>"

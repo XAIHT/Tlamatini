@@ -4,7 +4,7 @@
 
 ## v1.90.0 — editable canvas and Interactor
 
-The current source has **86 workflow agents, 67 wrapped chat agents, 110 built-in tools (21 direct/module + 67 wrapped + 12 ACPX/Skills + 10 supervisors), and 218 migrations**. Interactor adds a module/tool; do not register it as an Agent. The annotated tag resolves to `ebc5c3b4`; the documentation baseline is the follow-up `d274f89c` on main. Dated source and frozen runs remain separate.
+The current source has **86 workflow agents, 67 wrapped chat agents, 110 built-in tools (21 direct/module + 67 wrapped + 12 ACPX/Skills + 10 supervisors), and 219 migrations**. Interactor adds a module/tool; do not register it as an Agent. The annotated tag resolves to `ebc5c3b4`; its GitHub release was published on 2026-10-22 and is marked Latest. `main` continues after the tag (`d274f89c`, `8c577d3a`, `939acf6b`, `5403fa49`) and still reports 1.90.0; migration 0219 (`939acf6b`) makes the catalog's account wizard request local Notifier pop-ups at its checkpoints (`docs/user-creation-wizard.md`). Dated source and frozen runs remain separate.
 
 - **Editor:** `agent_page_editing.js` owns the CodeMirror document, dirty baseline, encoding and save snapshot. `agent_page_canvas.js` owns load/refresh generation and cancellation. Markdown Preview and Source share the buffer; HTML/SVG remain inert source; PDF saving copies the original PDF. Never read a hidden compatibility element instead of the editor.
 - **Native files:** `canvas_file_views.py` and `native_dialogs.py` provide local Save As/read/save. Authentication, CSRF, loopback-only host access, account/session-bound capabilities and full revision checks prevent a browser name from becoming an arbitrary host path. Existing Windows replacement preserves metadata; DB backup/restore mechanics are unchanged.
@@ -202,7 +202,7 @@ was published the same day. `v1.78.0` (annotated tag at `0e6fc72d`, 2026-10-10;
 migration 0213 `UsageDaily` landed one commit later in `7460a147`) was published
 on 2026-10-10. `v1.82.0` (annotated tag at `880a335e`, 2026-10-12) was published on
 2026-10-12, and `v1.83.0` (annotated tag at `a2914019`, 2026-10-14) on 2026-10-14; the
-release line now includes **v1.90.0** (2026-10-22), carrying Interactor migration 0218,
+release line now includes **v1.90.0** (2026-10-22, published the same day), carrying Interactor migration 0218 (0219, the account wizard's Notifier checkpoints, follows on `main`),
 after v1.88.0 added 0215-0217 and v1.87.0 added 0214. The others do not add
 a migration, and 0213 reaches existing installs through the post-update `migrate` like
 every migration.
