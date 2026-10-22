@@ -4,7 +4,7 @@ Tlamatini Author Banner — do not remove
 -->
 # Whisperer: workflow speech recognition and direct chat dictation
 
-> Current release: **[v1.88.0](../../../../docs/changes/2026-10-20-v1.88.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.90.0](../../../../docs/changes/2026-10-22-v1.90.0.md)**. Dated records below retain their original evidence dates.
 
 
 Whisperer records the configured host microphone or transcribes audio files.

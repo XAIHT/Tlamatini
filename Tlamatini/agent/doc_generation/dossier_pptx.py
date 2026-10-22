@@ -380,6 +380,9 @@ def card_height(title, body, w, title_font, title_size, body_size) -> float:
 
 def family_grid(sc, members, tone, title_size=18, body_size=14.5):
     """Agent cards sized to their content and centred in the content area."""
+    # Keep long hyphenated names on semantic word boundaries.
+    members = [(name.replace("NetSpeed-Calculator", "NetSpeed-\nCalculator"), value)
+               for name, value in members]
     cols, rows = grid_dims(len(members))
     gap = 0.24
     area_h = CONTENT_BOTTOM - CONTENT_TOP
@@ -629,6 +632,7 @@ def _op_shape(sc, kind, x, y, w, h, tone):
     shapes = {"prompt": MSO_AUTO_SHAPE_TYPE.ROUNDED_RECTANGLE, "programmed": MSO_AUTO_SHAPE_TYPE.ROUNDED_RECTANGLE,
               "decision": MSO_AUTO_SHAPE_TYPE.DIAMOND, "feed": MSO_AUTO_SHAPE_TYPE.ISOSCELES_TRIANGLE,
               "flush": MSO_AUTO_SHAPE_TYPE.FLOWCHART_MERGE, "clean": MSO_AUTO_SHAPE_TYPE.TRAPEZOID,
+              "terminal": MSO_AUTO_SHAPE_TYPE.PARALLELOGRAM,
               "commentary": MSO_AUTO_SHAPE_TYPE.ROUNDED_RECTANGULAR_CALLOUT}
     shape_box(sc, x, y, w, h, fill=tone, line=tone, radius=0.08, alpha=0.25, kind="deco", label="op glyph",
               shape=shapes[kind])
@@ -639,8 +643,8 @@ def _op_shape(sc, kind, x, y, w, h, tone):
 
 def visual_operations(sc, ops, x=MX, y=CONTENT_TOP, w=CONTENT_W, h=CONTENT_BOTTOM - CONTENT_TOP):
     tones = {"prompt": "jade", "programmed": "jade", "decision": "gold", "feed": "cyan", "flush": "cyan",
-             "clean": "copper", "input": "magenta", "commentary": "rose"}
-    cols = 4
+             "clean": "copper", "input": "magenta", "terminal": "cyan", "commentary": "rose"}
+    cols = 3 if len(ops) > 8 else 4
     rows = math.ceil(len(ops) / cols)
     gap = 0.24
     cw = (w - gap * (cols - 1)) / cols
@@ -652,7 +656,7 @@ def visual_operations(sc, ops, x=MX, y=CONTENT_TOP, w=CONTENT_W, h=CONTENT_BOTTO
         _op_shape(sc, kind, cx + 0.2, cy + 0.2, 0.95, 0.6, tones[kind])
         text(sc, cx + 1.3, cy + 0.16, cw - 1.42, 0.68, one(name, "sans-semibold", 16, "ivory"), anchor="middle",
              label="op name", parent=parent, min_scale=0.7)
-        text(sc, cx + 0.2, cy + 0.95, cw - 0.4, ch - 1.07, one(desc, "sans", 13, "light_muted"), label="op text",
+        text(sc, cx + 0.2, cy + 0.95, cw - 0.4, ch - 1.07, one(desc, "sans", 12, "light_muted"), label="op text",
              parent=parent)
     if len(ops) % cols:
         col = len(ops) % cols
@@ -754,6 +758,11 @@ def visual_bars(sc, rows, x=MX, y=CONTENT_TOP, w=CONTENT_W, h=CONTENT_BOTTOM - C
     frame = sc.slide.shapes.add_chart(XL_CHART_TYPE.BAR_CLUSTERED, Inches(x), Inches(y), Inches(w), Inches(h), data)
     sc.track(x, y, w, h, "chart", "chart")
     chart = frame.chart
+    # OOXML axis IDs are unsigned; normalize signed IDs from library templates.
+    axis_ids = {value: str(i + 1) for i, value in enumerate(dict.fromkeys(
+        node.get("val") for node in chart._chartSpace.xpath(".//c:axId")))}
+    for axis_ref in chart._chartSpace.xpath(".//c:axId | .//c:crossAx"):
+        axis_ref.set("val", axis_ids[axis_ref.get("val")])
     chart.has_legend = False
     chart.has_title = False
     chart.font.name = "Segoe UI"

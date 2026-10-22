@@ -15,7 +15,7 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
-> Current release: **[v1.88.0](../../docs/changes/2026-10-20-v1.88.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.90.0](../../docs/changes/2026-10-22-v1.90.0.md)**. Dated records below retain their original evidence dates.
 
 
 2026-05-20: Added **Playwrighter** as workflow agent #65 — scripted, INTERACTIVE browser automation via Playwright (Chromium/Firefox/WebKit). It fills the gap neither Googler (web search) nor Crawler (static urllib fetch) covers: a REAL browser driven through a declarative step list (goto/click/fill/press/select/check/wait_for/wait/extract_text/extract_attr/screenshot/assert_visible/assert_text/download) for authenticated / JS-rendered / multi-step flows. Deterministic (no LLM). Emits `INI_SECTION_PLAYWRIGHTER` (fields start_url, final_url, status, steps_run, assert_result, response_body); ALWAYS triggers target_agents (success or failure) so a Forker can branch on {status}/{assert_result}. `headless` toggle + `storage_state_in`/`storage_state_out` for session reuse.

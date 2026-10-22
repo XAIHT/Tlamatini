@@ -2,7 +2,7 @@
 # Terminater — visible, user-supervised terminals
 
 > **Status: released in [v1.88.0](changes/2026-10-20-v1.88.0.md)** (tagged 2026-10-20),
-> the latest released version. See [the change record](changes/2026-10-19-terminater.md).
+> carried in [v1.90.0](changes/2026-10-22-v1.90.0.md). See [the change record](changes/2026-10-19-terminater.md).
 > Dated evidence below keeps its original date.
 
 Terminater is the 86th workflow agent and the first one whose result you can

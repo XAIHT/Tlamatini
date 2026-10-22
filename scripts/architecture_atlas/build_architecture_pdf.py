@@ -109,7 +109,11 @@ def parse_section(log_text):
 
 def step_typeset(pdf_path):
     say("=== 2/3  Typesetting with Tlamatini's LaTeXer agent (pdflatex) ===")
-    shutil.rmtree(RUN_DIR, ignore_errors=True)
+    target = os.path.realpath(RUN_DIR)
+    parent = os.path.realpath(OUT_DIR)
+    if os.path.commonpath([target, parent]) != parent or target == parent:
+        raise RuntimeError("Refusing cleanup outside the architecture scratch directory")
+    shutil.rmtree(target, ignore_errors=True)
     shutil.copytree(LATEXER_TEMPLATE, RUN_DIR, ignore=_ignore, dirs_exist_ok=True)
 
     # Pool copies live outside the agents tree: carry the portable model
@@ -157,6 +161,22 @@ def step_typeset(pdf_path):
         say("FAILED: no clean PDF at %s. LaTeXer log: %s" % (pdf_path, log_path))
         sys.exit(1)
     say("OK: %s (%d bytes)" % (pdf_path, os.path.getsize(pdf_path)))
+
+
+def trim_empty_index_tail(pdf_path):
+    """Remove only an empty trailing index page emitted by multicols*."""
+    import fitz
+
+    with fitz.open(pdf_path) as doc:
+        last = doc[-1]
+        body = last.get_textbox(fitz.Rect(0, 55, last.rect.width, last.rect.height - 40)).strip()
+        if "Part C" not in last.get_text() or body or last.get_images():
+            return
+        doc.delete_page(len(doc) - 1)
+        staged = pdf_path + ".trimmed.pdf"
+        doc.save(staged)
+    os.replace(staged, pdf_path)
+    say("Removed one empty trailing index page; file coverage is verified next.")
 
 
 def squash(text):
@@ -208,6 +228,7 @@ def main():
     say("Repository: %s" % ROOT)
     step_generate()
     step_typeset(pdf_path)
+    trim_empty_index_tail(pdf_path)
     if not args.skip_verify:
         step_verify(pdf_path)
     say("DONE: %s" % pdf_path)

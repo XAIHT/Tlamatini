@@ -8,9 +8,23 @@
 -->
 # Tlamatini — Architecture & Core Systems
 
-> Current release: **[v1.88.0](../changes/2026-10-20-v1.88.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.90.0](../changes/2026-10-22-v1.90.0.md)**. Dated records below retain their original evidence dates.
 
-> **New in v1.88.0 (tagged 2026-10-20):** [Terminater](../terminater.md) (workflow agent #86 and the Terminals area) and a private release that carries the builder's own data. Counts: 86 workflow agents, 67 wrapped chat agents, 109 built-in tools, 217 migrations. See the [v1.88.0 release record](../changes/2026-10-20-v1.88.0.md) and the change records [Terminater](../changes/2026-10-19-terminater.md) and [private-release data](../changes/2026-10-19-private-release-data.md).
+## v1.90.0 — editable canvas and Interactor
+
+The current source has **86 workflow agents, 67 wrapped chat agents, 110 built-in tools (21 direct/module + 67 wrapped + 12 ACPX/Skills + 10 supervisors), and 218 migrations**. Interactor adds a module/tool; do not register it as an Agent. The annotated tag resolves to `ebc5c3b4`; the documentation baseline is the follow-up `d274f89c` on main. Dated source and frozen runs remain separate.
+
+- **Editor:** `agent_page_editing.js` owns the CodeMirror document, dirty baseline, encoding and save snapshot. `agent_page_canvas.js` owns load/refresh generation and cancellation. Markdown Preview and Source share the buffer; HTML/SVG remain inert source; PDF saving copies the original PDF. Never read a hidden compatibility element instead of the editor.
+- **Native files:** `canvas_file_views.py` and `native_dialogs.py` provide local Save As/read/save. Authentication, CSRF, loopback-only host access, account/session-bound capabilities and full revision checks prevent a browser name from becoming an arbitrary host path. Existing Windows replacement preserves metadata; DB backup/restore mechanics are unchanged.
+- **Interactor:** `agent/interactor/` connects the synchronous tool loop to the browser through session-authenticated `ws/interactor/`. Server-issued tab identity travels through ContextVar; bounded commands and receipts verify document/revision and full buffer. Browser messages acknowledge/access/stop; they cannot request arbitrary host-path commands.
+- **Tutor:** read fresh unsaved text, type a small segment, guide the next field and end mutations for the turn. Continue begins a fresh chat/read. Prepared choices match locally, with no per-key model call. User input and Stop win; hidden tabs pause with bounded recovery rather than repeating edits.
+- **Carriage:** migration 0218 seeds the Tool/catalog rows; `tool_gate_table()` supplies binding, Compact selection and cost labels. The offline editor bundle, Interactor browser files, frozen imports and source/static inventories must travel together.
+- **Intent:** password input is not ownership of every command; a wizard email field or DONE reply is not notification consent. Preserve genuine user-runs tutorials. The catalog wizard uses createsuperuser and therefore creates an administrative account.
+
+Contracts and evidence: [v1.90.0](../changes/2026-10-22-v1.90.0.md), [Canvas editing](../canvas-editing.md), [Interactor](../interactor.md), [Account wizard](../user-creation-wizard.md). Source/frozen rendering tests do not certify a rebuilt installed executable.
+
+
+> **Carried from v1.88.0 (tagged 2026-10-20):** [Terminater](../terminater.md) (workflow agent #86 and the Terminals area) and a private release that carries the builder's own data. Counts: 86 workflow agents, 67 wrapped chat agents, 109 built-in tools, 217 migrations. See the [v1.88.0 release record](../changes/2026-10-20-v1.88.0.md) and the change records [Terminater](../changes/2026-10-19-terminater.md) and [private-release data](../changes/2026-10-19-private-release-data.md).
 
 
 ## v1.87.0 — Leaner catalog, safer removal, smaller release (carried)
@@ -27,7 +41,7 @@ carried-Python-only media and browser packages out of the frozen interpreter
 sends a bodyless `POST /api/me`. `npm run lint:python` runs
 `scripts/check_python_quality.py`. From v1.86.0: Mover creates a missing
 destination name as a folder (`_names_a_file()`), and `scripts/architecture_atlas/`
-rebuilds `Tlamatini-Architecture.pdf` with LaTeXer. The live static suffix is
+rebuilds `Tlamatini-Architecture.pdf` with LaTeXer. The static suffix for that release was
 `-agent-catalog-1-quality-cleanup-1-usage-status-2`.
 
 See [the v1.87.0 release record](../changes/2026-10-18-v1.87.0.md).
@@ -49,8 +63,7 @@ both panes, resets their sizes and docks the portrait without clearing content.
 
 The docked frame uses `--tlm-avatar-docked-right` measured from the full Mic/Send
 row. Its square size and 120 px minimum stay independent of floating geometry.
-v1.85.0's static suffix was `-avatar-center-1` (the live suffix is now
-`-agent-catalog-1-quality-cleanup-1-usage-status-2`); Views scripts retain `_views1`.
+v1.85.0's static suffix was `-avatar-center-1`; Views scripts retain `_views1`.
 `build_runtime_assets.py` and `copy_source_assets.py` require the Views template,
 scripts and snapshot harnesses. No migration or dependency was added.
 
@@ -618,7 +631,7 @@ startup must not pass its return value to `asyncio.run`.
 - Defined in `tools.py` as synchronous `@tool` functions
 - Returned by `get_mcp_tools()` (misnamed - returns LangChain tools, NOT MCP services)
 - Only active when unified-agent chain is selected
-- Includes 20 direct/core tools, 67 wrapped chat-agent launchers (see `chat_agent_registry.WRAPPED_CHAT_AGENT_SPECS`), 12 ACPX/Skill tools, and 10 External-MCP supervisors for **109 built-ins** before dynamic `ext__*` remotes. The wrapped set includes `chat_agent_flowcreator`, PDFer, LaTeXer, and the media playback pair.
+- Includes 21 direct/module tools, 67 wrapped chat-agent launchers (see `chat_agent_registry.WRAPPED_CHAT_AGENT_SPECS`), 12 ACPX/Skill tools, and 10 External-MCP supervisors for **110 built-ins** before dynamic `ext__*` remotes. The wrapped set includes `chat_agent_flowcreator`, PDFer, LaTeXer, and the media playback pair.
 - Googler tool must run Playwright inside a `ThreadPoolExecutor` — `sync_playwright()` is incompatible with Django Channels' running event loop
 
 ---
@@ -736,7 +749,7 @@ When asked to debug an issue, `Tlamatini/tlamatini.log` is the first artifact to
 
 ## Doc Generation (agent/doc_generation)
 
-- `complete_project_docs.py` — the project-dossier generator (2026-09-26). One run rebuilds BOTH `tlamatini_app_summary.pdf` and `Tlamatini_eXtended_Artificial_Intelligence_Humanly_Tempered.pptx` from facts it derives from the source and Git (agent, tool, skill and migration counts, release tags, the tracked file tree). It then verifies both files: no glyph off the page, no overlapping lines, every PowerPoint text box inside its shape, and the file tree in each file matching `git ls-files`. It exits non-zero rather than publish a file that failed. A dossier made BEFORE its release is published (Angela publishes a release as the very last step) is generated with `TLAMATINI_RELEASE_TAG=vX.Y.Z`: that existing tag is then stated as the current release, and the console prints `Release prepared for: vX.Y.Z`. Without it, GitHub's own `gh release list` answer is used. Helpers: `dossier_content.py` (the chapters), `dossier_theme.py` (palette, fonts, glyph coverage), `dossier_pdf.py`, `dossier_pptx.py` and `dossier_verify.py`. It needs Git, the Windows fonts it names, and PowerPoint for the native check.
+- `complete_project_docs.py` — the project-dossier generator (2026-09-26). One run rebuilds BOTH `tlamatini_app_summary.pdf` and `Tlamatini_eXtended_Artificial_Intelligence_Humanly_Tempered.pptx` from facts it derives from the source and Git (agent, tool, skill and migration counts, release tags, the tracked file tree). It then verifies both files: no glyph off the page, no overlapping lines, every PowerPoint text box inside its shape, and the file tree in each file matching `git ls-files`. It exits non-zero rather than publish a file that failed. The version is derived from an existing source tag: `TLAMATINI_RELEASE_TAG=vX.Y.Z` selects it explicitly; otherwise `git describe --tags --abbrev=0 --match v[0-9]* HEAD` selects the latest reachable tag. The console prints `Current released version: vX.Y.Z`. This identifies the documented source release, not a verified published GitHub package. Helpers: `dossier_content.py` (the chapters), `dossier_editor_content.py` (canvas editing, Interactor and the account wizard), `dossier_theme.py` (palette, fonts, glyph coverage), `dossier_pdf.py`, `dossier_pptx.py` and `dossier_verify.py`. It needs Git and the Windows fonts it names. The normal native presentation check requires PowerPoint; if Office cannot start, record that limitation separately from structural checks and any alternate rendered-slide review.
 - `refresh_project_docs.py` — thin entry point that calls `complete_project_docs.main()`.
 - `mardown_to_pdf.py` *(sic, typo preserved)* — the older Markdown → PDF helper; PDFer's pipeline was ported from it. The dossier no longer uses it.
 
@@ -843,4 +856,4 @@ Image/video model failures accumulate in one shared, themed, non-modal fatal-err
 
 ## Windows flow-file lifecycle — 2026-10-04, shipped in `v1.76.0`
 
-Both `.flw` agent flows and `.fpmt` prompting flows now have Windows registration, repair, removal, status and Default Apps handling. Explorer/source command-line opening validates a bounded snapshot, reuses a matching running server before database startup, and returns through login to the correct editor without execution. Main-chat Open/drop routes both formats into separate editor tabs while preserving the chat document. The historical `.flw` installer wrappers cover both types for old installer/uninstaller binaries; independent management uses `flow_file_associations.ps1 -Extensions`. Never erase UserChoice or another application’s Open With entries. Update Repair respects explicit unregistration and installation ownership. See [Windows flow files](../windows-flow-files.md). Cache suffix at that change: `-flow-file-opening-2` (live suffix `-agent-catalog-1-quality-cleanup-1-usage-status-2-terminater-1`). Committed to `main` on 2026-10-04. The October 4 local release-validation campaign also rebuilds isolated frozen artifacts; its dated evidence distinguishes build completion from runtime acceptance.
+Both `.flw` agent flows and `.fpmt` prompting flows now have Windows registration, repair, removal, status and Default Apps handling. Explorer/source command-line opening validates a bounded snapshot, reuses a matching running server before database startup, and returns through login to the correct editor without execution. Main-chat Open/drop routes both formats into separate editor tabs while preserving the chat document. The historical `.flw` installer wrappers cover both types for old installer/uninstaller binaries; independent management uses `flow_file_associations.ps1 -Extensions`. Never erase UserChoice or another application’s Open With entries. Update Repair respects explicit unregistration and installation ownership. See [Windows flow files](../windows-flow-files.md). Cache suffix at that change: `-flow-file-opening-2`. Committed to `main` on 2026-10-04. The October 4 local release-validation campaign also rebuilds isolated frozen artifacts; its dated evidence distinguishes build completion from runtime acceptance.

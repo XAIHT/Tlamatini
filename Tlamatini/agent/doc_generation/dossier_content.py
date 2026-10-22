@@ -477,14 +477,15 @@ def build_chapters(f: dict) -> list[Chapter]:
                 "Unchecking Ask Execs during a run relaxes that run; checking it again re-arms the prompts.",
             ],
             table={"columns": ["Tier", "Prompted", "Agents"], "widths": [0.26, 0.16, 0.58], "rows": [
-                ["Command and script runners", "Yes", "Executer, Pythonxer, SSHer, Kalier, Dockerer, "
+                ["Command and script runners", "Yes", "Terminater, Executer, Pythonxer, SSHer, Kalier, Dockerer, "
                  "Kuberneter, SQLer, Mongoxer, Gitter, Jenkinser, PSer, J-Decompiler"],
+                ["Editor persistence", "Yes", "Interactor new/save; reads and guided typing do not persist a file."],
                 ["A · destroys or overwrites", "Yes", "Deleter, Mover, File-Creator, Editor, De-Compresser, "
                  "unzip, PDFer, LaTeXer"],
                 ["D · remote systems", "Yes", "SCPer, Apirer, Nmapper, Discoverer, Crawler, "
                  "NetSpeed-Calculator"],
                 ["B · messaging", "No", "Emailer, Whatsapper, Telegrammer, Instant Messaging "
-                 "Doctor: sending is the model's own judgement"],
+                 "Doctor: user authorization is still required"],
                 ["C · desktop and hardware", "No", "Keyboarder, Mouser, Windower, Playwrighter, firmware "
                  "agents, Blenderer, Unrealer: visible while they act"],
             ]}, deck="table"),
@@ -586,7 +587,7 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ["Step-by-Step", "One concrete action at a time, waiting for your reply before the next."],
                 ["Internet", "Allows a web search to add context to the answer."],
                 ["Compact mode", "Binds only the rows you tick; locked on when the model cannot hold all."],
-                ["Self-modify", "Sends her self-knowledge; only in self-modify builds, locked off if too big."],
+                ["Self-modify", "Source runs and self-modify builds; sends self-knowledge, locked off if too big."],
             ]}, deck="table"),
         Section("composer", "THE MESSAGE BOX", "More room to write, or more room to read",
             "Drag the divider above the message box. With her avatar undocked, the box can shrink to its buttons.",
@@ -722,10 +723,11 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("Limits", "Cold model loading, provider latency and hardware vary; no zero-latency promise."),
                 ("Detailed guide", "docs/chat-microphone-design.md records configuration, protocol and evidence."),
             ], deck="cards"),
-        Section("navbar", "NAVIGATION", "The menu bar, reorganized in v1.70.0",
-            "A new Panels menu opens the two canvases, and every configuration dialog lives under Config.",
+        Section("navbar", "NAVIGATION", "The menu bar in v1.90.0",
+            "Views controls the workspace, Panels opens the flow editors, and Config holds settings.",
             table={"columns": ["Menu", "What you find there"], "widths": [0.20, 0.80], "rows": [
-                ["Open · Save", "Load a file into the canvas or save its contents."],
+                ["Open · Save", "Open a canvas file; menu Save chooses a destination with native Save As."],
+                ["Views", "Show Canvas or Terminals; Reset layout restores the workspace."],
                 ["Context", "Load a directory or file as context, and set file-type omissions."],
                 ["Panels", "Agentic Control Panel, Prompt Flow Panel and, for staff, the Admin Panel. "
                  "It stays usable while she is busy."],
@@ -822,7 +824,7 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("Help", "Explains every gesture; • marks unsaved changes."),
             ], deck="split"),
         Section("pfp", "PROMPT FLOW PANEL", "Draw a conversation, then press Play",
-            "The Prompt Flow Panel turns a chain of prompts into a diagram of seven operations plus static "
+            "The Prompt Flow Panel turns a chain of prompts into a diagram of eight executable operations plus static "
             "review notes, saved as a portable `.fpmt` file and played against your configured models.",
             visual="operations",
             visual_data={"ops": [
@@ -833,6 +835,7 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("flush", "Flush embeddings", "Clears the run's retrieval context."),
                 ("clean", "Clean History", "Clears the run's conversation and last output."),
                 ("input", "User Input", "Stops to ask you something; your reply joins the run."),
+                ("terminal", "Terminater", "Types commands in a real visible terminal and reads their results."),
                 ("commentary", "User Commentary", "A static speech-bubble note for reviewers; it never runs."),
             ]}, deck="visual"),
         Section("pfprun", "PROMPT FLOW PANEL", "Playback that stays in its own lane",
@@ -1093,25 +1096,25 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("Passwords", "Used in memory only; never stored or logged."),
             ]),
         Section("mdcanvas", "MARKDOWN CANVAS", "Markdown opens as a page, and stays your source",
-            "Open or drop a .md file and the canvas renders it; one click shows the original text.",
+            "Open or drop a .md file and the canvas renders it; Source opens the editable document.",
             body=[
                 "Open, Refresh, a dropped file, a generated-file link and Context ▸ Set file as context all "
                 "recognise .md and .markdown. Preview renders CommonMark and GitHub-flavored Markdown: "
                 "headings, tables, task lists, fenced code through the existing highlighter and safe embedded "
-                "HTML such as expandable details. Source shows the full original text with line numbers.",
+                "HTML such as expandable details. Source edits the current text with line numbers.",
                 "Rendering is local: Marked 18.1.0 and DOMPurify 3.4.16 are vendored with pinned integrity, "
                 "so nothing is fetched from a CDN. The sanitizer allowlists HTML and attributes, scopes ids and "
                 "restricts resource protocols. Choose folder resolves relative images and links from files you "
                 "select; they stay on your device, and a relative URL never reaches an application endpoint.",
                 "Copy, Use as context and Save always take the Markdown source, never the flattened preview; "
-                "Save returns the original bytes, UTF-8 BOM and CRLF included. Shipped in v1.82.0 and checked "
+                "Unedited saves retain original bytes; edits retain encoding/BOM and line endings. Preview shipped in v1.82.0 and was checked "
                 "on October 11 with 30 of 30 visible browser checkpoints.",
             ], deck="list",
             deck_points=[
-                ("Preview and Source", "Rendered page, or the original text with line numbers."),
+                ("Preview and Source", "Rendered page, or editable source with line numbers."),
                 ("Offline", "Vendored Marked and DOMPurify; no CDN at runtime."),
                 ("Safe HTML", "Allowlisted markup; relative links never reach the app."),
-                ("Your source", "Copy, context and Save keep the exact Markdown bytes."),
+                ("Your source", "Copy, context and Save use the current source buffer."),
                 ("Evidence", "30 of 30 visible checkpoints on October 11."),
             ]),
         Section("filedrop", "FILE DROP · v1.83.0", "Drop a file anywhere, and she knows what it is",
@@ -1799,13 +1802,10 @@ def build_chapters(f: dict) -> list[Chapter]:
     ])
 
     release = Chapter("release", "VIII", "Current Release",
-        (f"Version {f['release_tag']}, the current release, published on GitHub."
-         if f['release']['latest_published'] == f['release_tag'] else
-         f"Version {f['release_tag']}; the latest release published on GitHub is "
-         f"{f['release']['latest_published'] or 'not verified'}."),
+        f"Source release {f['release_tag']}; package delivery and runtime acceptance need separate evidence.",
         accent="gold", sections=[
-        Section("release188", "CURRENT RELEASE · v1.88.0", "Terminals you can watch, and a private release that carries your data",
-            "Tlamatini v1.88.0 is the latest released version, tagged on October 20.",
+        Section("release188", "CARRIED FROM v1.88.0", "Terminals you can watch, and a private release that carries your data",
+            "Tlamatini v1.88.0 introduced Terminater; its tag was created on October 20.",
             body=[
                 f"Terminater is workflow agent number {f['agents']}. It raises real CMD and PowerShell terminals in a new "
                 "Terminals area (Views → Terminals, or Ctrl+`) on the chat, Agentic Control Panel and Prompt Flow Panel "
@@ -1821,21 +1821,21 @@ def build_chapters(f: dict) -> list[Chapter]:
                 "fails. On October 19, 774 unit tests passed, and 1,668 passed after the documentation pass. The saved "
                 "chat-page and canvas visible suites were not re-run as one clean pass after their last fixes.",
                 "The v1.88.0 tag was created on October 20 and points to the commit before this work; the work landed on "
-                "main in the next commit, so a build of main reports 1.88.0 and carries all of it.",
+                "main in the next commit, so a build of main then reported 1.88.0 and carried all of it.",
                 "The private (keyed) release now carries the data of the machine that builds it: every External MCP server "
                 "of the installed copy and its active choice, merged into a gitignored private catalog, and the whole "
                 "data.keys vault. The public builder refuses both. An in-app update does not keep data.keys.",
             ],
             points=[
                 ("Terminals", "Real CMD and PowerShell you can watch, typed like a person, with a hand-over."),
-                ("Counts", f"{f['agents']} agents · {f['wrapped']} wrapped · {f['tools']} tools · {f['migrations']} migrations."),
+                ("Current counts", f"{f['agents']} agents · {f['wrapped']} wrapped · {f['tools']} tools · {f['migrations']} migrations."),
                 ("Gate", "check_terminater runs inside the frozen app; packaging stops on failure."),
                 ("Private release", "External MCP servers and data.keys travel in the keyed build only."),
             ], deck="cards"),
         Section("release187", "CARRIED FROM v1.87.0", "A leaner catalog, a safer removal, a smaller release",
             "Tagged on October 18: the catalog shrank to 85 agents, and removal became fast and recoverable.",
             body=[
-                "The catalog now holds 85 workflow agents: Gatewayer, Gateway-Relayer, Node-Manager and "
+                "That release held 85 workflow agents: Gatewayer, Gateway-Relayer, Node-Manager and "
                 "Zavuerer were removed. Migration 0214 deletes their rows and catalog prompts without "
                 "renumbering anything that remains.",
                 "The Uninstaller moves the installation aside on the same drive instead of copying it, and "
@@ -1843,7 +1843,7 @@ def build_chapters(f: dict) -> list[Chapter]:
                 "the media and browser libraries twice. About → Usage waits for real data, and every tracked "
                 "Python file has a quality gate.",
                 "The v1.87.0 tag was created one minute before the work it names. Both follow-up commits "
-                "landed on main right after it, so a build of main reports 1.87.0 and carries all of it.",
+                "landed on main right after it, so a build of main then reported 1.87.0 and carried all of it.",
             ],
             points=[
                 ("85 agents", "Four retired agents removed in a forward migration."),
@@ -2021,7 +2021,7 @@ def build_chapters(f: dict) -> list[Chapter]:
             ], points=[
                 ("Runtime", "Required template and four cooperating scripts."),
                 ("Snapshot", "Sources, identity and both Views harnesses."),
-                ("Database", f"No new migration; {f['migrations']} migrations remain."),
+                ("Database", "v1.85.0 introduced no migration." ),
                 ("Version", "v1.85.0 across the application at the time."),
             ], deck="cards"),
         Section("maintenance184", "CARRIED FROM v1.84.0", "Catalog and fixture maintenance",
@@ -2596,4 +2596,10 @@ def build_chapters(f: dict) -> list[Chapter]:
             ], deck="cards"),
     ])
 
+    from dossier_editor_content import bridge_section, editor_sections, release_sections, wizard_section
+
+    architecture.sections.insert(0, bridge_section(Section))
+    surfaces.sections[0:0] = editor_sections(Section)
+    trust.sections.insert(0, wizard_section(Section))
+    release.sections[0:0] = release_sections(Section, f)
     return [identity, architecture, surfaces, bestiary, capabilities, trust, running, release, facts]

@@ -15,7 +15,7 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
-> Current release: **[v1.88.0](../../docs/changes/2026-10-20-v1.88.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.90.0](../../docs/changes/2026-10-22-v1.90.0.md)**. Dated records below retain their original evidence dates.
 
 
 2026-06-04: Added **VideoPlayer** (74th agent type) — on-screen VIDEO playback WITH audio; the screen sibling of [[project_audioplayer_agent]] (AudioPlayer=speakers, VideoPlayer=screen window). On BOTH canvas + Multi-Turn (`chat_agent_videoplayer`).

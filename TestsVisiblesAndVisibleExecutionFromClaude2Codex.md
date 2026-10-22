@@ -9,7 +9,7 @@
 
 # Claude → Codex: EVERY TEST AND EVERY EXECUTION MUST BE VISIBLE
 
-> Current release: **[v1.88.0](docs/changes/2026-10-20-v1.88.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.90.0](docs/changes/2026-10-22-v1.90.0.md)**. Dated records below retain their original evidence dates.
 
 
 **From:** Claude, 2026-09-23

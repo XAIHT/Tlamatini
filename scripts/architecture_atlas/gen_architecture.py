@@ -899,7 +899,7 @@ def assign(p):
         return "mgmt"
     if p.startswith(A + "rag/chains/"):
         return "chains"
-    for pre, key in (("rag/", "rag"), ("services/", "services"), ("imaging/", "imaging"), ("opus_client/", "opus"),
+    for pre, key in (("interactor/", "interactor"), ("rag/", "rag"), ("services/", "services"), ("imaging/", "imaging"), ("opus_client/", "opus"),
                      ("monitors/", "monitors"), ("doc_generation/", "docgen"), ("acpx/", "acpx"), ("skills/", "skills"),
                      ("skills_pkg/", "skillspkg"), ("images/", "images"), ("TlamatiniSourceCode/", "selfsrc"),
                      ("test_fixtures/", "fixtures")):
@@ -909,6 +909,8 @@ def assign(p):
         return "mig_" + mig_era(b)
     if p.startswith(A + "static/agent/vendor/"):
         return "vendor_" + vendor_lib(p)
+    if p.startswith(A + "static/agent/interactor/"):
+        return "interactor_front"
     if p.startswith(A + "static/agent/js/"):
         return "js_" + page_group(p)
     if p.startswith(A + "static/agent/css/"):
@@ -1006,6 +1008,9 @@ CHAPTERS = collections.OrderedDict([
 ])
 
 META = {
+    "vendor_canvas-editor": ("vendor", "vendor/canvas-editor - offline CodeMirror", "editable text and tutoring extension; manifest and licenses carried locally", "vendor"),
+    "interactor": ("core", "agent/interactor/ - live editor module", "authenticated tab bridge, fresh buffer reads, typed teaching segments and learner handoffs", "intelligence"),
+    "interactor_front": ("front", "static/agent/interactor/ - tutor controls", "browser bridge, local field completion and learner-first interruption", "presentation"),
     "proc": ("core", "Tlamatini/ \u00b7 process entry", "manage.py: log tee, console shield, colours, django_port, Temp pin, post-update DB swap", "transport"),
     "django": ("core", "Tlamatini/tlamatini/ \u00b7 Django project", "settings (SQLite WAL, WhiteNoise, temp pin), ASGI app, root URLs, per-user log-tag middleware", "transport"),
     "transport": ("core", "agent/ \u00b7 transport and web endpoints", "Channels consumers, HTTP views, app boot (AgentConfig.ready), admin, fixed chat lines", "transport"),
@@ -1115,9 +1120,9 @@ for _k, _c in CLUSTERS.items():
 
 # order clusters per chapter
 ORDER = {
-    "core": ["proc", "django", "transport", "templates", "mgmt", "intel", "rag", "chains", "services", "imaging", "opus", "monitors", "docgen", "agent_other"],
+    "core": ["proc", "django", "transport", "templates", "mgmt", "intel", "interactor", "rag", "chains", "services", "imaging", "opus", "monitors", "docgen", "agent_other"],
     "integ": ["integ", "acpx", "skills", "skillspkg", "platform", "persist", "jdcli", "images", "selfsrc", "fixtures"],
-    "front": ["js_chat", "js_acp", "js_pfp", "js_shared", "js_other", "css_chat", "css_acp", "css_pfp", "css_shared", "css_other", "static_media"],
+    "front": ["interactor_front", "js_chat", "js_acp", "js_pfp", "js_shared", "js_other", "css_chat", "css_acp", "css_pfp", "css_shared", "css_other", "static_media"],
     "verify": ["unit", "tests_root", "auxtests", "e2e", "roottests", "scripts", "harness_claude", "harness_gemini"],
     "build": ["build", "install", "mcpserver", "security", "ci", "demo", "rootmedia"],
     "know": ["rootdocs", "docs", "docs_claude", "docs_changes", "guides", "atlas", "claude_cfg", "memory", "gemini_skills", "codex_skills"],
@@ -2128,6 +2133,50 @@ def sheet_dsm():
     return sh
 
 
+
+def sheet_live_editor():
+    sh = new_sheet("Live canvas editor and Interactor - v1.90.0",
+                   "Editable source, native persistence and tutoring share one document authority. Interactor is a module/tool, not a workflow agent.",
+                   "presentation")
+    o = sh.body
+    left = [
+        ("ed1", "Lpresentation", "Editable document", [
+            "[[agent_page_editing.js]] owns the CodeMirror buffer, dirty baseline, encoding and save snapshots.",
+            "[[agent_page_canvas.js]] owns Open/Refresh and cancellation; Markdown Preview/Source share the current buffer.",
+            "Text/code/JSON are editable. HTML/SVG stay inert source. PDFs remain read-only and export original bytes.",
+            "Save, Save as, Undo/Redo, Find/replace, Wrap; Ctrl/Cmd+S and Ctrl/Cmd+Shift+S."]),
+        ("ed2", "Lpresentation", "Learner control and latency", [
+            "Live editor opt-in; first read exact unsaved text and selection, then type a short segment.",
+            "guide hands the next field to the learner and ends mutations for that turn. Continue starts fresh chat/read.",
+            "Prepared choices match locally: Tab accepts, Ctrl+Right takes one word, Escape dismisses. No per-key model call.",
+            "User input/selection, Stop, cancellation or disconnect interrupts and preserves the typed prefix."]),
+        ("ed3", "Lpresentation", "Visibility and layout", [
+            "A hidden/occluded tab pauses the same command for up to 120 extra seconds; resume at the next character.",
+            "No automatic replay after a partial edit. Preview or hiding the canvas returns control.",
+            "Automatic layout reserves canvas width; editor fills available height. Manual divider choices remain valid."]),
+    ]
+    right = [
+        ("ed4", "Ltransport", "Authenticated live bridge", [
+            "[[interactor/consumer.py]] serves ws/interactor/ with exact Origin/Host and session authentication.",
+            "[[interactor/hub.py]] binds server-issued tab IDs to account/session; ContextVar carries identity into tool workers.",
+            "Bounded command queues, IDs, deadlines and document/revision checks reject stale work. Full-buffer receipts verify edits.",
+            "Live tutoring: 262,144 UTF-16 units; a smaller tool-result budget can refuse content, never silently truncate it."]),
+        ("ed5", "Lpersistence", "Native file persistence", [
+            "[[canvas_file_views.py]] and [[native_dialogs.py]] provide local Save As outside Downloads.",
+            "Authenticated CSRF-protected loopback requests use account/session-bound capabilities; browser filenames are not host-path authority.",
+            "Compare full disk revision, stage and flush on the same volume, recheck, then replace. Preserve BOM/encoding, line endings and Windows metadata.",
+            "64 MiB text/native-save limit. Save cancellation/failure keeps dirty edits. DB backup/restore is unchanged."]),
+        ("ed6", "Lintelligence", "Tool and release carriage", [
+            "Migration 0218 registers the Tool and catalog example, not an Agent. tool_gate_table drives binding, Compact and costs.",
+            "Ask Execs gates new/save. New unnamed-path work uses a unique Temp/interactor directory; manual files need user-granted write access.",
+            "Password input is not command ownership; an email field or DONE reply does not authorize outbound notification.",
+            "Tag ebc5c3b4; inspected follow-up d274f89c. Source checks do not certify a newly built installed package."]),
+    ]
+    stack(o, 12, TOP, 193, left, size=12.0)
+    stack(o, 215, TOP, 193, right, size=12.0)
+    return sh
+
+
 # ----------------------------------------------------------------------------- atlas flow
 HDR, PAD, PADX, PITCH, TILE_H, CGAP, COLGAP = 7.6, 1.3, 1.5, 3.55, 3.1, 2.4, 1.2
 CH_LAYER = {"core": "transport", "integ": "integration", "migr": "persistence", "front": "presentation", "vendor": "vendor",
@@ -2312,6 +2361,7 @@ def autofit(fn, target, lo=0.85, hi=1.45):
 
 autofit(sheet_topology, BOTTOM + 1.5)
 sheet_lifecycle()
+sheet_live_editor()
 autofit(sheet_intelligence, BOTTOM + 1.5)
 sheet_agents()
 autofit(sheet_integration, BOTTOM + 4.5)

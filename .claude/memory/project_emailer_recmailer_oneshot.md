@@ -15,7 +15,7 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
-> Current release: **[v1.88.0](../../docs/changes/2026-10-20-v1.88.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.90.0](../../docs/changes/2026-10-22-v1.90.0.md)**. Dated records below retain their original evidence dates.
 
 
 2026-06-05: Fixed Emailer + RecMailer so `chat_agent_send_email` / `chat_agent_recmailer` work standalone in Multi-Turn (they previously assumed canvas flow wiring).

@@ -1,0 +1,62 @@
+TLAMATINI - CANVAS EDITOR AND INTERACTOR QUICK REFERENCE
+Created by Angela López Mendoza - @angelahack1
+Source release: v1.90.0. Documentation baseline: 2026-10-22, d274f89c.
+
+EDIT A FILE
+Open or drop text/code/JSON/Markdown into the chat canvas. Markdown has Preview
+and editable Source views. HTML and SVG stay source text. PDF is a viewer and
+exports original bytes; images and workflow files keep their dedicated routes.
+
+Filename bar: Save | Save as... | Undo | Redo | Find/replace | Wrap | Copy |
+Refresh | Clear canvas | Use as context.
+Ctrl/Cmd+S saves. Ctrl/Cmd+Shift+S chooses a destination. Ctrl+[ and Ctrl+]
+change indentation. Tab normally navigates; during an offered tutor completion,
+Tab accepts that suggestion. A dirty marker means changes are not yet saved.
+
+SAVE TO A PROJECT FOLDER
+Local Save As and navbar Save open the native Windows picker. Choose any
+writable folder; Downloads is not required. Toolbar Save uses the authorized
+destination or asks for one. Permission, cancellation and disk errors preserve
+your buffer. A conflicting external edit is refused; Save As preserves your
+version separately. Refresh asks before discarding unsaved changes.
+Remote browsers need their own supported browser file-access picker.
+
+LEARN WITH TLAMATINI
+Enable Multi-Turn, Interactor in Configure MCPs/Tools, and Live editor.
+Example: Help me create a Dockerfile for a Java servlet app using your text
+editor. Teach one step at a time and let me choose the values.
+Without a path, a new empty file goes into Temp/interactor/<account>/<random>/.
+Tlamatini reads the exact unsaved buffer, types a short known segment, then
+guides the next learner-controlled field and waits. Typing does not save or run.
+
+COMPLETIONS AND CONTROL
+Suggestions use choices prepared for the current field, matched locally.
+Tab accepts; Ctrl+Right accepts one word; Esc dismisses. Suggestions are optional.
+Continue asks for a fresh read in a new chat turn. Another hint and Explain
+selection also use normal chat and preserve your existing message draft.
+User typing, selection, Esc, Stop tutor or chat cancellation interrupts AI typing.
+A temporary hidden tab pauses/resumes once, with up to two extra minutes of
+grace. Timeout never automatically replays a partial edit. Explicit Preview or
+canvas hiding returns control to the learner.
+
+LIMITS AND FIDELITY
+Text editing/native saves: 64 MiB. Live tutoring: 262,144 UTF-16 units; the
+model's tool-result/context budget can impose a smaller limit. No silent truncation.
+Strict UTF-8 and BOM-marked UTF-16 support; encoding/BOM and line endings retained.
+Save before closing: an unsaved canvas buffer is in memory, not a recovery file.
+Use as context refreshes ordinary loaded context. Interactor read is live and
+does not depend on that saved/context snapshot.
+
+ACCOUNT-CREATION WIZARD
+The catalog uses Executer to open interactive createsuperuser. Enter passwords
+only in its console. DONE/ERROR/NOWINDOW are chat handoffs, not permission to
+send notifications. Password input is not ownership of all command execution.
+This wizard creates an administrative superuser, not a limited ordinary account.
+
+EVIDENCE
+2026-10-21: final source editor/runtime 19/19 visible checks; 136 passed and
+two skipped among 138 Django tests. The earlier v1.89.0 frozen package failed
+hidden-tab and narrow-layout checks. Those results do not certify a new build.
+2026-10-22: wizard guard suite 179 passed; exact installed request replay passed.
+See docs/canvas-editing.md, docs/interactor.md, docs/user-creation-wizard.md,
+and docs/changes/2026-10-22-v1.90.0.md for contracts and verification limits.

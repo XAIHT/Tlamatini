@@ -67,12 +67,13 @@ class ReRunTests(unittest.TestCase):
                 patch.object(build_env.subprocess, "run") as run:
             run.return_value.returncode = 7
             with self.assertRaises(SystemExit) as stopped:
-                build_env.run_in_sealed_env(str(ROOT / "build.py"), ["--self-modify"])
+                build_env.run_in_sealed_env(
+                    str(ROOT / "build.py"), ["--self-modify", "--version", "1.90.0"])
         self.assertEqual(stopped.exception.code, 7)
         command = run.call_args.args[0]
         self.assertEqual(command[:2], [str(python), "-s"])
         self.assertEqual(Path(command[2]), ROOT / "build.py")
-        self.assertEqual(command[3:], ["--self-modify"])
+        self.assertEqual(command[3:], ["--self-modify", "--version", "1.90.0"])
         self.assertEqual(run.call_args.kwargs["env"][build_env.INSIDE_VAR], "1")
 
     def test_with_no_sealed_python_at_all_the_build_still_runs(self):

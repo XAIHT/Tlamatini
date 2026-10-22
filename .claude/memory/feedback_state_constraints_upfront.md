@@ -15,7 +15,7 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
-> Current release: **[v1.88.0](../../docs/changes/2026-10-20-v1.88.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.90.0](../../docs/changes/2026-10-22-v1.90.0.md)**. Dated records below retain their original evidence dates.
 
 
 When a request hits a **hard platform or architectural constraint** (something that makes the obvious approach structurally impossible, not just hard), STATE the constraint and the real options up front as a decision for the user — do NOT chase it through trial-and-error patches.

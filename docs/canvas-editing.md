@@ -1,7 +1,7 @@
 <!-- Tlamatini Author Banner — Angela López Mendoza -->
 # Editing and saving canvas files
 
-Implemented in source on 2026-10-21; this is not a claim about a published build.
+Introduced in v1.89.0 (2026-10-21), carried by v1.90.0. The tests below retain their actual dates; source verification does not certify a newly rebuilt installed executable.
 
 Open a text or source file in the chat canvas and edit it directly. The filename
 bar provides **Save**, **Save as…**, **Undo**, **Redo**, **Find** (including replace),

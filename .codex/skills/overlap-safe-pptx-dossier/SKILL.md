@@ -13,7 +13,7 @@ description: Use when asked to create or update a complete technical PPTX deck, 
 
 # Overlap-Safe PPTX Dossier
 
-> Current release: **[v1.88.0](../../../docs/changes/2026-10-20-v1.88.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.90.0](../../../docs/changes/2026-10-22-v1.90.0.md)**. Dated records below retain their original evidence dates.
 
 
 > **HEADLESS IS FORBIDDEN. VISIBLE FOREGROUND EXECUTION ONLY.** Every command, automated test, diagnostic, script, build, agent and browser must run in a visible foreground window on Angela's real desktop. Use forked CMD/PowerShell windows, `execute_forked_window: true`, and `headless: false`. Monitor live; if visibility cannot be confirmed, do not run. Read the [mandatory execution policy](../../../TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).
@@ -91,7 +91,7 @@ source inventory and upgrade chain.
 
 ## Prompt Flow graphical editing and layout gate (2026-10-04)
 
-Keep seven executable operations separate from static User Commentary. Explain the floating mixed-style text toolbar, direct border/corner resizing, full-text containment without internal scrollbars, and absence of a commentary configuration dialog. Document version 2 rich runs plus literal text, plain-note normalization and version 1 User Input migration. Give Run output its own readable section: 5–95% of usable pane height, independent scrolling at unchanged content scale, keyboard controls and separate per-user layout storage. Date the 23-check commentary/file-fidelity evidence and 14-check divider evidence; do not present historical browser tests as rerun during a document refresh. Use v1.85.0 as the current released version. Keep test evidence attributed to its actual run and do not build an executable merely to regenerate these documents.
+Keep eight executable operations (including Terminater) separate from static User Commentary. Explain the floating mixed-style text toolbar, direct border/corner resizing, full-text containment without internal scrollbars, and absence of a commentary configuration dialog. Document version 2 rich runs plus literal text, plain-note normalization and version 1 User Input migration. Give Run output its own readable section: 5–95% of usable pane height, independent scrolling at unchanged content scale, keyboard controls and separate per-user layout storage. Date the 23-check commentary/file-fidelity evidence and 14-check divider evidence; do not present historical browser tests as rerun during a document refresh. Use v1.90.0 as the current released version; document tag ebc5c3b4 and source baseline d274f89c separately from installed-package acceptance. Include canvas editing, native saving, Interactor and the account-wizard intent guards. Keep test evidence attributed to its actual run and do not build an executable merely to regenerate these documents.
 
 ## Usage documentation gate (2026-10-10)
 
@@ -104,8 +104,6 @@ under-60% dialog size and normal fonts. Keep account observations/screenshots ou
 of public artifacts. Date the 220 source tests and 24 visible browser checks to
 October 10; label other-plan fixtures synthetic.
 Derive current counts. The page-wide file-drop router, the docked avatar that follows both composer dividers and the not-fatal wrongly worded request (`91ff8453`) ship in v1.83.0 (tag at `a2914019`); the setup windows and the Markdown canvas shipped in v1.82.0 (tag at `880a335e`), the GUI standardization in v1.80.0 and Video-Analyzer's web links in v1.79.0 (both tags without a published release); Usage, the message-box resize and the Image-Interpreter list ship in v1.78.0 (its tag sits one commit before the Usage commit; the published zip matches `113eddc4`).
-
-## v1.85.0 release gate
 
 ## v1.87.0 — Leaner catalog, safer removal, smaller release (carried)
 
@@ -121,7 +119,7 @@ carried-Python-only media and browser packages out of the frozen interpreter
 sends a bodyless `POST /api/me`. `npm run lint:python` runs
 `scripts/check_python_quality.py`. From v1.86.0: Mover creates a missing
 destination name as a folder (`_names_a_file()`), and `scripts/architecture_atlas/`
-rebuilds `Tlamatini-Architecture.pdf` with LaTeXer. The live static suffix is
+rebuilds `Tlamatini-Architecture.pdf` with LaTeXer. The static suffix for that release was
 `-agent-catalog-1-quality-cleanup-1-usage-status-2`.
 
 See [the v1.87.0 release record](../../../docs/changes/2026-10-18-v1.87.0.md).
@@ -143,8 +141,7 @@ both panes, resets their sizes and docks the portrait without clearing content.
 
 The docked frame uses `--tlm-avatar-docked-right` measured from the full Mic/Send
 row. Its square size and 120 px minimum stay independent of floating geometry.
-v1.85.0's static suffix was `-avatar-center-1` (the live suffix is now
-`-agent-catalog-1-quality-cleanup-1-usage-status-2`); Views scripts retain `_views1`.
+v1.85.0's static suffix was `-avatar-center-1`; Views scripts retain `_views1`.
 `build_runtime_assets.py` and `copy_source_assets.py` require the Views template,
 scripts and snapshot harnesses. No migration or dependency was added.
 

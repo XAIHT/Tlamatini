@@ -95,6 +95,13 @@ class ReleaseIntegrityTests(unittest.TestCase):
                     bundle.write(path, path.relative_to(self.stage).as_posix())
         return archive
 
+    def test_mismatched_release_version_is_refused_without_changing_the_package(self):
+        archive = self.package()
+        original = archive.read_bytes()
+        with self.assertRaisesRegex(RuntimeError, "version '1.0.0'.*release '1.90.0'"):
+            assets.verify_package(archive, expected_version="1.90.0")
+        self.assertEqual(archive.read_bytes(), original)
+
     def test_required_voice_helpers_survive_zip_and_extracted_update(self):
         archive = self.package()
         assets.verify_package(archive, expected_version="1.0.0")

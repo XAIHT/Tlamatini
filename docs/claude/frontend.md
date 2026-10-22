@@ -8,9 +8,23 @@
 -->
 # Tlamatini — Frontend Architecture
 
-> Current release: **[v1.88.0](../changes/2026-10-20-v1.88.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.90.0](../changes/2026-10-22-v1.90.0.md)**. Dated records below retain their original evidence dates.
 
-> **New in v1.88.0 (tagged 2026-10-20):** [Terminater](../terminater.md) (workflow agent #86 and the Terminals area) and a private release that carries the builder's own data. Counts: 86 workflow agents, 67 wrapped chat agents, 109 built-in tools, 217 migrations. See the [v1.88.0 release record](../changes/2026-10-20-v1.88.0.md) and the change records [Terminater](../changes/2026-10-19-terminater.md) and [private-release data](../changes/2026-10-19-private-release-data.md).
+## v1.90.0 — editable canvas and Interactor
+
+The current source has **86 workflow agents, 67 wrapped chat agents, 110 built-in tools (21 direct/module + 67 wrapped + 12 ACPX/Skills + 10 supervisors), and 218 migrations**. Interactor adds a module/tool; do not register it as an Agent. The annotated tag resolves to `ebc5c3b4`; the documentation baseline is the follow-up `d274f89c` on main. Dated source and frozen runs remain separate.
+
+- **Editor:** `agent_page_editing.js` owns the CodeMirror document, dirty baseline, encoding and save snapshot. `agent_page_canvas.js` owns load/refresh generation and cancellation. Markdown Preview and Source share the buffer; HTML/SVG remain inert source; PDF saving copies the original PDF. Never read a hidden compatibility element instead of the editor.
+- **Native files:** `canvas_file_views.py` and `native_dialogs.py` provide local Save As/read/save. Authentication, CSRF, loopback-only host access, account/session-bound capabilities and full revision checks prevent a browser name from becoming an arbitrary host path. Existing Windows replacement preserves metadata; DB backup/restore mechanics are unchanged.
+- **Interactor:** `agent/interactor/` connects the synchronous tool loop to the browser through session-authenticated `ws/interactor/`. Server-issued tab identity travels through ContextVar; bounded commands and receipts verify document/revision and full buffer. Browser messages acknowledge/access/stop; they cannot request arbitrary host-path commands.
+- **Tutor:** read fresh unsaved text, type a small segment, guide the next field and end mutations for the turn. Continue begins a fresh chat/read. Prepared choices match locally, with no per-key model call. User input and Stop win; hidden tabs pause with bounded recovery rather than repeating edits.
+- **Carriage:** migration 0218 seeds the Tool/catalog rows; `tool_gate_table()` supplies binding, Compact selection and cost labels. The offline editor bundle, Interactor browser files, frozen imports and source/static inventories must travel together.
+- **Intent:** password input is not ownership of every command; a wizard email field or DONE reply is not notification consent. Preserve genuine user-runs tutorials. The catalog wizard uses createsuperuser and therefore creates an administrative account.
+
+Contracts and evidence: [v1.90.0](../changes/2026-10-22-v1.90.0.md), [Canvas editing](../canvas-editing.md), [Interactor](../interactor.md), [Account wizard](../user-creation-wizard.md). Source/frozen rendering tests do not certify a rebuilt installed executable.
+
+
+> **Carried from v1.88.0 (tagged 2026-10-20):** [Terminater](../terminater.md) (workflow agent #86 and the Terminals area) and a private release that carries the builder's own data. Counts: 86 workflow agents, 67 wrapped chat agents, 109 built-in tools, 217 migrations. See the [v1.88.0 release record](../changes/2026-10-20-v1.88.0.md) and the change records [Terminater](../changes/2026-10-19-terminater.md) and [private-release data](../changes/2026-10-19-private-release-data.md).
 
 
 ## v1.87.0 — Leaner catalog, safer removal, smaller release (carried)
@@ -27,7 +41,7 @@ carried-Python-only media and browser packages out of the frozen interpreter
 sends a bodyless `POST /api/me`. `npm run lint:python` runs
 `scripts/check_python_quality.py`. From v1.86.0: Mover creates a missing
 destination name as a folder (`_names_a_file()`), and `scripts/architecture_atlas/`
-rebuilds `Tlamatini-Architecture.pdf` with LaTeXer. The live static suffix is
+rebuilds `Tlamatini-Architecture.pdf` with LaTeXer. The static suffix for that release was
 `-agent-catalog-1-quality-cleanup-1-usage-status-2`.
 
 See [the v1.87.0 release record](../changes/2026-10-18-v1.87.0.md).
@@ -49,8 +63,7 @@ both panes, resets their sizes and docks the portrait without clearing content.
 
 The docked frame uses `--tlm-avatar-docked-right` measured from the full Mic/Send
 row. Its square size and 120 px minimum stay independent of floating geometry.
-v1.85.0's static suffix was `-avatar-center-1` (the live suffix is now
-`-agent-catalog-1-quality-cleanup-1-usage-status-2`); Views scripts retain `_views1`.
+v1.85.0's static suffix was `-avatar-center-1`; Views scripts retain `_views1`.
 `build_runtime_assets.py` and `copy_source_assets.py` require the Views template,
 scripts and snapshot harnesses. No migration or dependency was added.
 
@@ -80,7 +93,7 @@ All first-party pages use `ui_tokens.css`; workspaces add `ui_shell.css` and
 `ui_splitters.css` before the final `dialog_theme.css`. Dialog tokens alias the
 page palette. Login/welcome share `entry_pages.css`; the first-party admin base
 and `admin_theme.css` preserve Django's light/dark/auto switch. Required runtime
-and self-modify inventories carry the new assets. Cache suffix at that change: `-ui-sweep-1` (live suffix since 2026-10-18: `-agent-catalog-1-quality-cleanup-1-usage-status-2`).
+and self-modify inventories carry the new assets. Cache suffix at that change: `-ui-sweep-1`.
 
 `ui_splitters.js` owns the five pane bars' pointer capture and cancellation;
 adapters still own bounds, layout and storage. Preserve composer fitting and
@@ -138,7 +151,7 @@ use the avatar's current width as the minimum, since that prevents vertical shri
 The form's CSS variable fits the dock; floating size and persistence remain owned by
 `avatar_size.js`. Both dividers, keyboard controls, transient rows and viewport
 changes retain square geometry without feeding the current size back into the minimum.
-Cache suffix at that change: `-avatar-divider-1` (live suffix `-agent-catalog-1-quality-cleanup-1-usage-status-2-terminater-1`).
+Cache suffix at that change: `-avatar-divider-1`.
 
 Verification: [the change record](../changes/2026-10-13-docked-avatar-divider.md).
 
@@ -192,7 +205,7 @@ See [the full model contract](../model_configuration.md).
 
 **Save opens the Auto-tuning dialog (2026-10-08, `v1.76.0`).** After a successful save, `agent_page_init.js` calls `window.TlmModelBrainTuning.open({onClose})` (`model_brain_tuning.js` / `.css`); the reconnect notice for changed choices follows when it closes. For every configured model it shows four stages - Ask Ollama (`/api/show`), Vendor settings (the sourced profile, or the researched `generation_config.json`), Calibrate (the sampling that will really be sent) and Reasoning (thinking level, reasoning kept inside the tool loop) - each from the server's real answer (`GET /agent/model_brain/models/`, `POST /agent/model_brain/tune/`), revealed one by one (instantly under reduced motion). Escape and the ✕ close it through `overlay.tlmDismiss`; an outside click never does. Fail-open: a broken dialog never blocks saving the models.
 
-## Chat Interface (25 modules)
+## Chat Interface (26 modules)
 
 **Canvas Refresh (v1.85.0, 2026-10-15).** The existing
 `#reopen-canvas-button` DOM hook now says **Refresh** and calls `refreshCanvas()`;
@@ -209,7 +222,8 @@ Static cache suffix: `-canvas-refresh-1`.
 
 - `agent_page_init.js` - WebSocket setup, app initialization, **Context-menu "Set directory as context"** handler (see *Context directory picker* below)
 - `agent_page_chat.js` - Chat message handling. **Every card carries Copy + Drop (2026-09-30):** a saved message keeps its `AgentMessage` id in `data-message-id` (from `message_id` on live frames, `id` in `initial_messages`); **Drop** asks with a themed `tlmConfirm` (red Drop, Cancel focused), sends `drop-message`, and removes the card(s) on the `message-dropped` reply — the LLM's history is re-read from the DB every request, so no reconnect is needed. A card without an id is a live status line and is only cleared from the screen. Contract: `recent-fixes.md` (2026-09-30). Also handles the `exec-permission-request` frame (Ask Execs — see below) by opening the permission dialog. `appendChatMessage` keeps the Send button on **Cancel** during self-healing "🔁 Tactic…" status frames (via `isSelfHealingStatusMessage()` in `agent_page_ui.js`) instead of re-enabling the controls, so the button only returns to **Send** on the real final answer (see `docs/claude/multi-turn.md` → *Self-healing model steps* and `recent-fixes.md` 2026-07-07)
-- `agent_page_canvas.js` - Code canvas rendering
+- `agent_page_canvas.js` - Canvas file loading, refresh and replacement ownership
+- `agent_page_editing.js` - Authoritative CodeMirror buffer, dirty state, encoding and save controls
 - `agent_page_markdown.js` - **Markdown canvas** (2026-10-11, shipped in `v1.82.0`). `.md` / `.markdown` (any case) open in a sanitized **Preview** (locally vendored Marked 18.1.0 + DOMPurify 3.4.16, no CDN) with a **Source** view and line numbers; **Choose folder** resolves relative images/links from user-selected files; Copy, Use as context and Save always take the SOURCE (Save keeps the original bytes, BOM and CRLF). Styles in `markdown_canvas.css`. Contract: `docs/markdown-canvas.md`; visible proof `scripts/markdown_canvas_visible.py` (30/30)
 - `agent_page_context.js` - RAG context management
 - `agent_page_dialogs.js` - Modal dialogs (incl. `showExecPermissionDialog(detail)` — the Ask-Execs Proceed/Deny prompt)
@@ -415,7 +429,7 @@ Full behaviour in [docs/terminater.md](../terminater.md); what a maintainer must
 - `prompt-flow-panel-model.js` - The `.fpmt` document contract, frozen as `window.PromptFlowPanelModel` (`FORMAT = 'tlamatini-prompting-flow'`, `EXTENSION = '.fpmt'`, `isFlowFilename`, `flowFilename`, the eight `operations` entries (seven executable operations and static User Commentary) with their SVG outlines and executable port positions, `blank`, `node`, `validate(flow, playable)`, `example`). Pure data: no DOM, no network. Its validator mirrors `agent/services/prompt_flow_panel.py::validate_flow` rule for rule, and the backend re-validates every document anyway
 - `prompt-flow-panel.js` - The editor/controller for `prompt_flow_panel.html`: eight-operation palette (the seven prompting operations plus Terminater) plus static User Commentary, drag/click-to-add, ACP-style press-drag-release connections (white side triangles, horizontal curves, Decision has right-side Y/N outputs; one destination per output), marquee and Ctrl-click selection, undo/redo, zoom 25 %–200 % (Ctrl+wheel) and Fit, the per-operation configure dialogs (shared `dialog_policy.js` / `dialog_theme.css`), file Open/Save/drop, the per-user browser draft (`localStorage` key `tlamatini.prompting-flow.draft.v1.<user id>`), and playback over the connection-scoped **`/ws/prompt-flow-panel/`** WebSocket (8 s `ping` heartbeat, explicit **Reconnect**; a connection never starts or resumes a run by itself). Full contract: *Prompt Flow Panel* below and [the user guide](../prompting-flow-designer.md)
 
-**Total: 60 JS modules** (25 chat + 15 ACP + 1 ACP entry-point + 15 shared/chat-runtime auxiliary + 1 welcome + 2 Prompt Flow Panel + 1 Terminals dock). Count them with a file listing (`agent/static/agent/js/*.js`), never by hand.
+**Total: 61 JS modules** (26 chat + 15 ACP + 1 ACP entry-point + 15 shared/chat-runtime auxiliary + 1 welcome + 2 Prompt Flow Panel + 1 Terminals dock). Count them with a file listing (`agent/static/agent/js/*.js`), never by hand.
 
 ### Uniform dialog and long-operation contract (v1.48.13)
 
@@ -449,9 +463,9 @@ Both surfaces share `agent/services/flow_spec.py` (the in-memory `FlowSpec` repr
 
 Contracts (do NOT weaken):
 
-- **Connection parity (2026-09-26):** use the ACP stylesheet's `input-triangle`, `output-triangle`, `output-label`, `connection-group`, `connection-path` and `connection-hit-area` classes directly. Do not reintroduce circular ports, arrowhead markers or a Connection palette tool. Curves follow ACP's horizontal half-distance Bezier construction, anchored at triangle centers. Pointer capture belongs to the viewport; resolve the input under the pointer with `elementFromPoint`, since captured events target the viewport. Commit only on release over an input. Empty/body drops, Escape, pointer cancellation, lost capture and blur remove the preview and port highlights without changing the document. Decision Y/N previews start from the selected branch. Gold port highlighting is retained; shared hover/selection colors override playback wire colors while interacting. `STATIC_VERSION` suffix at that change: `-flow-file-opening-2` (live suffix `-agent-catalog-1-quality-cleanup-1-usage-status-2-terminater-1`). Visible regression runner: `scripts/prompt_flow_connections_visible.py`.
+- **Connection parity (2026-09-26):** use the ACP stylesheet's `input-triangle`, `output-triangle`, `output-label`, `connection-group`, `connection-path` and `connection-hit-area` classes directly. Do not reintroduce circular ports, arrowhead markers or a Connection palette tool. Curves follow ACP's horizontal half-distance Bezier construction, anchored at triangle centers. Pointer capture belongs to the viewport; resolve the input under the pointer with `elementFromPoint`, since captured events target the viewport. Commit only on release over an input. Empty/body drops, Escape, pointer cancellation, lost capture and blur remove the preview and port highlights without changing the document. Decision Y/N previews start from the selected branch. Gold port highlighting is retained; shared hover/selection colors override playback wire colors while interacting. `STATIC_VERSION` suffix at that change: `-flow-file-opening-2`. Visible regression runner: `scripts/prompt_flow_connections_visible.py`.
 
-- **Selection styling:** Static commentary uses a mint outline and eight edge/corner grips (specificity must override shared canvas gold). Executable nodes in `prompt_flow_panel.css` match ACP's `#ffcc00` outline and yellow halo. Use an SVG `drop-shadow` so diamonds, triangles, trapezoids glow around their contours, never a rectangular box shadow on `.pmt-node`. Selected nodes sit above other nodes but below the marquee. Playback status strokes take precedence while the selection halo stays visible; deselection removes only that halo. Selected wires inherit ACP's gold stroke/shadow; traversed wires are green only when neither hovered nor selected. The real headed checks are `scripts/prompt_flow_selection_visible.py`, using ordinary file-open, selection, zoom and User Input playback on port 8001 (called User Commentary in that historical run); its 2026-09-25 20:26 run passed all 14 checks with exit code 0. ⚠️ Keep node `.selected` rules ABOVE `.running` / `.completed` / `.failed`, load `flow_canvas.css` after both panel styles and before `dialog_theme.css`. Keep `.pmt-edge.traversed` restricted to `:not(.selected):not(:hover)` so interaction feedback remains identical. `STATIC_VERSION` suffix at that change: `-flow-file-opening-2` (live suffix `-agent-catalog-1-quality-cleanup-1-usage-status-2-terminater-1`).
+- **Selection styling:** Static commentary uses a mint outline and eight edge/corner grips (specificity must override shared canvas gold). Executable nodes in `prompt_flow_panel.css` match ACP's `#ffcc00` outline and yellow halo. Use an SVG `drop-shadow` so diamonds, triangles, trapezoids glow around their contours, never a rectangular box shadow on `.pmt-node`. Selected nodes sit above other nodes but below the marquee. Playback status strokes take precedence while the selection halo stays visible; deselection removes only that halo. Selected wires inherit ACP's gold stroke/shadow; traversed wires are green only when neither hovered nor selected. The real headed checks are `scripts/prompt_flow_selection_visible.py`, using ordinary file-open, selection, zoom and User Input playback on port 8001 (called User Commentary in that historical run); its 2026-09-25 20:26 run passed all 14 checks with exit code 0. ⚠️ Keep node `.selected` rules ABOVE `.running` / `.completed` / `.failed`, load `flow_canvas.css` after both panel styles and before `dialog_theme.css`. Keep `.pmt-edge.traversed` restricted to `:not(.selected):not(:hover)` so interaction feedback remains identical. `STATIC_VERSION` suffix at that change: `-flow-file-opening-2`.
 
 1. **`.fpmt`, never `.pmt`.** The file picker is `accept=".fpmt"`, the open guard refuses any other name (including `prompt.pmt` itself) with *"Choose a .fpmt Prompt Flow Panel file."*, and `flowFilename()` turns a legacy `name.pmt` save name or browser draft into `name.fpmt`. The JSON `format` string deliberately did NOT change, so renaming an old flow file is enough to open it. The plain-text system prompts (`agent/prompt.pmt`, `monitoring-prompt.pmt`) keep `.pmt`.
 2. **Opening never runs anything.** Load, drop, draft recovery and even a WebSocket (re)connection are passive; only **Play** starts a run.
@@ -489,4 +503,4 @@ Image/video model failures accumulate in one shared, themed, non-modal fatal-err
 
 ## Windows flow-file lifecycle — 2026-10-04, shipped in `v1.76.0`
 
-Both `.flw` agent flows and `.fpmt` prompting flows now have Windows registration, repair, removal, status and Default Apps handling. Explorer/source command-line opening validates a bounded snapshot, reuses a matching running server before database startup, and returns through login to the correct editor without execution. Main-chat Open/drop routes both formats into separate editor tabs while preserving the chat document. The historical `.flw` installer wrappers cover both types for old installer/uninstaller binaries; independent management uses `flow_file_associations.ps1 -Extensions`. Never erase UserChoice or another application’s Open With entries. Update Repair respects explicit unregistration and installation ownership. See [Windows flow files](../windows-flow-files.md). Cache suffix at that change: `-flow-file-opening-2` (live suffix `-agent-catalog-1-quality-cleanup-1-usage-status-2-terminater-1`). Committed to `main` on 2026-10-04. The October 4 local release-validation campaign also rebuilds isolated frozen artifacts; its dated evidence distinguishes build completion from runtime acceptance.
+Both `.flw` agent flows and `.fpmt` prompting flows now have Windows registration, repair, removal, status and Default Apps handling. Explorer/source command-line opening validates a bounded snapshot, reuses a matching running server before database startup, and returns through login to the correct editor without execution. Main-chat Open/drop routes both formats into separate editor tabs while preserving the chat document. The historical `.flw` installer wrappers cover both types for old installer/uninstaller binaries; independent management uses `flow_file_associations.ps1 -Extensions`. Never erase UserChoice or another application’s Open With entries. Update Repair respects explicit unregistration and installation ownership. See [Windows flow files](../windows-flow-files.md). Cache suffix at that change: `-flow-file-opening-2`. Committed to `main` on 2026-10-04. The October 4 local release-validation campaign also rebuilds isolated frozen artifacts; its dated evidence distinguishes build completion from runtime acceptance.

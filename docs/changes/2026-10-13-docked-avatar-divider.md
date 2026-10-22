@@ -2,7 +2,7 @@
      Tlamatini Author Banner — do not remove -->
 # Docked avatar resizing from the composer divider
 
-> Current release: **[v1.88.0](2026-10-20-v1.88.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.90.0](2026-10-22-v1.90.0.md)**. Dated records below retain their original evidence dates.
 
 
 Date: 2026-10-13. Commit `63a62cc1`; shipped in `v1.83.0` (2026-10-14).
@@ -32,7 +32,7 @@ to keep its controls reachable.
 Implementation: `agent_page_layout.js` measures the independent minimum and sets
 the form's `--tlm-avatar-docked-size`; `avatar.css` applies it only to the docked
 portrait. `avatar_size.js` retains floating geometry and persistence. The cache
-suffix at that change was `-avatar-divider-1` (the live suffix is `-file-drop-router-1`).
+suffix at that change was `-avatar-divider-1`.
 
 ## Verification
 

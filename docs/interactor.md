@@ -219,6 +219,4 @@ The final review also added interruption whenever the source view becomes hidden
 Migration 0218 must be applied before Interactor appears in Configure tools and
 the catalog. Restart the source server and reload the chat after applying the
 normal migration chain from a verified visible PowerShell `-NoExit` console.
-This checkout also has older pending migrations 0214–0217; the verification above
-used isolated databases and did not apply that chain to the existing source DB.
-No installed application was replaced.
+During the October 21 verification, the source database also had pending migrations 0214–0217. Those checks used isolated databases; they did not apply that chain to the existing source DB or replace an installed application. For v1.90.0 activation, migration 0218 must be applied through the normal startup/migration path.

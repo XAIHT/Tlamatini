@@ -778,6 +778,13 @@ def _glyph(canv, kind, x, y, w, h, tone):
             canv.circle(x + w - 7, y + h - 7, 5.2, stroke=1, fill=1)
             canv.line(x + w - 7, y + h - 7, x + w - 7, y + h - 4)
             canv.line(x + w - 7, y + h - 7, x + w - 5, y + h - 8)
+    elif kind == "terminal":
+        path.moveTo(x + w * 0.2, y + h)
+        path.lineTo(x + w, y + h)
+        path.lineTo(x + w * 0.8, y)
+        path.lineTo(x, y)
+        path.close()
+        canv.drawPath(path, stroke=1, fill=1)
     elif kind == "decision":
         path.moveTo(x + w / 2, y + h)
         path.lineTo(x + w, y + h / 2)
@@ -825,7 +832,7 @@ def _glyph(canv, kind, x, y, w, h, tone):
 
 class Operations(Flowable):
     TONES = {"prompt": "jade", "programmed": "jade", "decision": "gold", "feed": "cyan", "flush": "cyan",
-             "clean": "copper", "input": "magenta", "commentary": "rose"}
+             "clean": "copper", "input": "magenta", "terminal": "cyan", "commentary": "rose"}
 
     def __init__(self, ops, st: Styles):
         super().__init__()
@@ -1132,16 +1139,28 @@ class ChapterOpener(FullPage):
             two_cols = len(titles) > 8
             col_w = 230 if two_cols else 440
             per_col = math.ceil(len(titles) / 2) if two_cols else len(titles)
-            item_st = style("op_item", "sans", 9.4, 12.6, "light")
-            for col in range(2 if two_cols else 1):
+            # Measure both columns against the ornament/footer reservation.
+            for scale in (1.0, 0.95, 0.9, 0.85, 0.8, 0.75):
+                item_st = style("op_item", "sans", 9.4 * scale, 12.6 * scale, "light")
+                gap = 7 * scale
+                columns = []
+                for col in range(2 if two_cols else 1):
+                    cells = []
+                    for title in titles[col * per_col:(col + 1) * per_col]:
+                        ip = para(title, item_st, "sans")
+                        cells.append((ip, ip.wrap(col_w - 16, 100)[1]))
+                    columns.append(cells)
+                if max(sum(ih + gap for _, ih in cells) for cells in columns) <= y - 90:
+                    break
+            else:
+                raise ValueError(f"Chapter contents exceed the reserved area: {ch.title}")
+            for col, cells in enumerate(columns):
                 x = 64 + col * (col_w + 16)
                 cy = y
-                for title in titles[col * per_col:(col + 1) * per_col]:
-                    ip = para(title, item_st, "sans")
-                    iw, ih = ip.wrap(col_w - 16, 100)
-                    diamond(canv, x + 3, cy - 5.6, 2.6, fill=ch.accent)
+                for ip, ih in cells:
+                    diamond(canv, x + 3, cy - 5.6 * scale, 2.6, fill=ch.accent)
                     ip.drawOn(canv, x + 12, cy - ih)
-                    cy -= ih + 7
+                    cy -= ih + gap
         stepfret(canv, 60, 64, W * 0.55, 2.4, "copper", 0.6, 0.55)
         draw_text(canv, W - 60, 36, f"Tlamatini · Complete Project Dossier · page {canv.getPageNumber()}",
                   "sans", 7.2, "light_muted", anchor="right")
@@ -1422,7 +1441,7 @@ def about_flow(facts, st: Styles) -> list:
         ["Generated", facts["generated_at"]],
         ["Inspected commit", f"{facts['head_short']} — {facts['head_subject']}"],
         ["Version", facts['version']],
-        ["Latest published release", facts["release"]["latest_published"] or "unknown"],
+        ["Current source release", facts["release"]["latest_published"] or "unknown"],
         ["Companion deck", "Tlamatini_eXtended_Artificial_Intelligence_Humanly_Tempered.pptx"],
     ], [0.30, 0.70], st))
     flow.append(Spacer(1, 12))

@@ -15,7 +15,7 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
-> Current release: **[v1.88.0](../../docs/changes/2026-10-20-v1.88.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.90.0](../../docs/changes/2026-10-22-v1.90.0.md)**. Dated records below retain their original evidence dates.
 
 
 2026-05-21: Added **Windower** agent — the WINDOW MANAGER of the desktop-UI trio (Windower=the window itself, Mouser=clicks-inside, Keyboarder=types-into). Implements the user's "control Windows GUI / Windows-MCP" request as a native, self-contained agent rather than wiring the heavy CursorTouch Windows-MCP server (fastmcp/comtypes/dxcam/uiautomation) — it ports only the **window-management subset** inline with `pywin32` (`win32gui`/`win32con`/`win32process`) + `ctypes`, including the **AttachThreadInput cross-process focus-transfer dance** from Windows-MCP's `bring_window_to_top`.

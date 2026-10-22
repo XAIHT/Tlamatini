@@ -8,7 +8,7 @@
 -->
 # Tlamatini — Change Pivot / Rollback Log
 
-> Current release: **[v1.88.0](docs/changes/2026-10-20-v1.88.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.90.0](docs/changes/2026-10-22-v1.90.0.md)**. Dated records below retain their original evidence dates.
 
 
 A dated, append-only log of surgical changes with the verbatim request and the
@@ -21,6 +21,25 @@ removed with it. It now begins clean with only the change that survived a real,
 evidence-backed diagnosis.)
 
 ---
+
+## 2026-10-22 — Pin the version across release build stages
+
+Request: "once finished: fix!:" followed by the public release's restoration output
+and `build_installer.py failed.` The package was 1.89.0; the tag changed while it
+built, so later setup stages selected 1.90.0. Both wrappers now resolve once and
+forward a real `--version` flag to every build stage. The mismatch refusal names
+both versions. Public restoration remains intact. Regression baseline reproduced
+14 failing subcases; the corrected code passed 90 focused tests and Ruff.
+
+Full diagnosis, file behavior and verification limits:
+[release version pinning](docs/changes/2026-10-22-release-version-pinning.md).
+Rollback is limited to the version forwarding in the two wrappers, the mismatch
+message in `build_runtime_assets.py`, their regression tests and versioning guidance;
+it must not relabel or alter the existing package. No real build was run.
+
+## 2026-10-22 — v1.90.0 documentation refresh
+
+The maintained PDF/PPTX sources and active guides now cover editable canvas files, native saving, Interactor and account-wizard intent guards. Full scope and final visual evidence: [documentation refresh](docs/changes/2026-10-22-documentation-refresh.md). Historical source/frozen evidence remains dated.
 
 ## 2026-05-29 — Pythonxer ALWAYS triggers its downstream/output agents (no dead-end), ALWAYS reports errors
 

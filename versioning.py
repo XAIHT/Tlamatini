@@ -19,13 +19,13 @@ the CLI flag / env var / git fallbacks.
 Precedence for the build version (highest to lowest):
 
   1. Explicit ``--version`` CLI flag.
-  2. ``$env:TLAMATINI_VERSION`` environment variable
-     (build_installer.py / build_uninstaller.py honour what build.py
-     exported so all three artefacts share one version).
-  3. ``git describe --tags --long --dirty --match 'v[0-9]*'``.
+  2. ``$env:TLAMATINI_VERSION`` supplied by the calling shell.
+  3. ``git describe --tags --abbrev=0 --match 'v[0-9]*'``.
   4. ``0.0.0+unknown`` sentinel.
 
-See ``VERSIONING.md`` at the repo root for the full contract.
+Complete release wrappers resolve once and pass ``--version`` to all three
+build stages. A child process cannot export environment changes to its parent
+or siblings. See ``VERSIONING.md`` at the repo root for the full contract.
 """
 from __future__ import annotations
 
@@ -102,7 +102,7 @@ def resolve_build_version(cli_arg: Optional[str] = None) -> str:
     # 1. Explicit CLI flag wins.
     if cli_arg:
         return _sanitize_version(cli_arg)
-    # 2. Honour TLAMATINI_VERSION exported by a previous build step.
+    # 2. Honour TLAMATINI_VERSION supplied by the calling environment.
     env_v = os.environ.get(ENV_VAR_NAME, "").strip()
     if env_v:
         return _sanitize_version(env_v)
@@ -122,8 +122,9 @@ def emit_build_artifacts(
 ) -> Path:
     """Write ``_version.py`` and the Win32 VERSIONINFO file to disk.
 
-    Also exports ``TLAMATINI_VERSION`` to the environment so downstream
-    build scripts in the same shell pick up the same value.
+    Also sets ``TLAMATINI_VERSION`` for this process and its descendants.
+    The calling shell and sibling build stages do not inherit that change;
+    complete release wrappers pass the pinned version explicitly.
 
     Returns the absolute path to the PyInstaller ``--version-file`` so the
     caller can append ``--version-file=<path>`` to its argv.
@@ -153,7 +154,7 @@ def emit_build_artifacts(
         encoding="utf-8",
     )
 
-    # 4. Export for any downstream build script in this shell.
+    # 4. Set for this process and any children it launches, not the parent shell.
     os.environ[ENV_VAR_NAME] = version
 
     return PYINSTALLER_VERSION_FILE

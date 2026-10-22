@@ -8,7 +8,7 @@
 -->
 # Tlamatini
 
-> Current release: **[v1.88.0](docs/changes/2026-10-20-v1.88.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.90.0](docs/changes/2026-10-22-v1.90.0.md)**. Dated records below retain their original evidence dates.
 
 
 ![Project Logo](Tlamatini.jpg)
@@ -145,7 +145,7 @@ Tlamatini does a lot. This book is organized so you can stop reading at the dept
 - **Part X — Survival Guide**: troubleshooting, `tlamatini.log`, common issues.
 - **Bonus chapter §57** — Driving Unreal Engine 5 from Tlamatini (the Unrealer agent + Unreal MCP plugin). Read this if you build games or simulations in UE5 and want a chat / canvas surface for the editor.
 - **Bonus chapter §59** — Sculpting in Blender from Tlamatini (the Blenderer agent + the official Blender MCP add-on). Read this if you make 3D art / assets in Blender and want a chat / canvas surface for the editor — and to see why Blender's *code-execution* protocol differs from Unreal's verbs.
-- **[The Prompt Flow Panel: draw a chain of prompts, then press Play](#the-prompt-flow-panel-draw-a-chain-of-prompts-then-press-play)** — the 2026-09-25 sibling of the Agentic Control Panel: seven executable operations plus static review bubbles, `.fpmt` files (and why `.pmt` stays with the system prompt), running, pausing and stopping, and what a run may and may not touch.
+- **[The Prompt Flow Panel: draw a chain of prompts, then press Play](#the-prompt-flow-panel-draw-a-chain-of-prompts-then-press-play)** — the 2026-09-25 sibling of the Agentic Control Panel: eight executable operations, including Terminater, plus static review bubbles, `.fpmt` files (and why `.pmt` stays with the system prompt), running, pausing and stopping, and what a run may and may not touch.
 - **[Enable Tlamatini as a Blue-hat agent](#enable-tlamatini-as-a-blue-hat-agent)** — the complete Windows defensive-toolkit runbook: asset validation, persistent host changes, detect-only baselining, armed/watch modes, evidence review, false positives, response rollback, and operator responsibility.
 - **[Voice commands: your words become the prompt](#voice-commands-your-words-become-the-prompt)** — the catalog's new first section: speak your instruction instead of typing it, why it needed the silence gate to exist, and the two promises (she reads it back; if she did not hear you she says so).
 - **[Whisperer listens: the silence gate](#whisperer-listens-the-silence-gate)** — why a fixed recording length was the wrong question, how the gate hears you, the countdown in the console bar, and the one thing that would have made the whole feature invisible.
@@ -168,7 +168,7 @@ The Agentic Control Panel wires **agents** together: a Starter, an Executer, a S
 
 Open it from the chat with **Panels ▸ Prompt Flow Panel**, or from the Agentic Control Panel with **File ▸ Prompt Flow Panel**. It opens in its own tab.
 
-### Seven operations and static review bubbles
+### Eight operations and static review bubbles
 
 | Operation | Shape | What happens when the flow reaches it |
 |---|---|---|
@@ -179,6 +179,7 @@ Open it from the chat with **Panels ▸ Prompt Flow Panel**, or from the Agentic
 | **Flush embeddings** | triangle pointing down | Takes that reference text away again, keeping the conversation. |
 | **Clean History** | trapezoid | Forgets this run's conversation so far, keeping the reference text. |
 | **User Input** | notched top and downward point | Stops and asks you something; your reply joins the conversation. |
+| **Terminater** | parallelogram | Runs one action in your visible CMD or PowerShell terminal; its output becomes `{{last_output}}`. Stop aborts typing and the running command. |
 | **User Commentary** | speech bubble | A static review note on the canvas; it never runs or changes the conversation. |
 
 In executable operation text, `{{last_output}}` inserts the previous answer (or your last reply). Inside a static User Commentary, that token stays literal. A Decision only ever compares text — nothing in a flow file is ever run as code.
@@ -217,7 +218,7 @@ Every run is its own little world. It gets its **own conversation** and its **ow
 
 Why the odd extension? Because **`.pmt` already means something**: it is the extension of Tlamatini's own plain-text system prompt, `prompt.pmt`. Flow diagrams are **`.fpmt`** — *flow prompt* — so the two can never be confused, and the panel refuses to open a `.pmt`. If you made a diagram in the earliest version and saved it as `.pmt`, just rename it to `.fpmt`; nothing inside it needs to change.
 
-Want to see one first? **File ▸ Open example** loads a small branching flow, and the full tour — seven executable operations and a static commentary — ships as `docs/examples/prompting-kickoff.fpmt`.
+Want to see one first? **File ▸ Open example** loads a small branching flow, and the prompting tour — seven prompting operations and a static commentary — ships as `docs/examples/prompting-kickoff.fpmt`. Terminater is the eighth executable operation; configure it separately for a real terminal on your machine.
 
 New saves use document **version 2**. Version 1 files and browser drafts automatically turn their old executable `user_commentary` nodes into **User Input**, keeping IDs, connections and settings. Version 2 `user_commentary` means a static note. Its allowlisted styled `runs` concatenate to the saved literal `text`; older plain version 2 notes normalize to one run. Opening an old file never silently changes a reply step into an annotation. The extension remains `.fpmt`. The commentary/input split and graphical rich-text redesign date from 2026-10-03/04 and shipped in v1.76.0.
 
@@ -462,9 +463,44 @@ Two smaller honesty repairs travelled with it. The reported recording length use
 
 ---
 
+## Edit and save a canvas file
+
+Open or drop text, source code, JSON or Markdown into the chat canvas. The filename bar now has **Save**, **Save as**, **Undo**, **Redo**, **Find/replace** and **Wrap**. The dirty marker means the current buffer differs from its saved baseline. Ctrl/Cmd+S saves; Ctrl/Cmd+Shift+S chooses a destination. Copy and Use as context take the edited source. Tab normally moves focus; Ctrl+[ and Ctrl+] indent.
+
+| File kind | Editing and saving |
+|---|---|
+| Text, code, JSON and configuration | Edit directly with syntax support; Save writes the current buffer. |
+| Markdown | Edit Source or inspect sanitized Preview; both share one buffer and undo history. |
+| HTML and SVG | Edit source as text; the canvas does not execute the document. |
+| PDF | Read-only PDF.js viewer; Save exports the original PDF as a copy. |
+| Flow files and images | Their existing designer or attachment route remains in charge. |
+
+On a local connection, **Save as** and the navbar **Save** open a native Windows destination dialog, so you can choose a project folder or another writable location outside Downloads. Toolbar Save reuses an authorized destination; a file without one asks first. Cancelling or failing a save leaves edits in place. A supported browser-granted file handle can also provide write access. Remote browsers need a picker supported by that browser.
+
+Saving compares the disk revision and refuses external modifications instead of overwriting them. Save As can preserve a separate copy. A save captures one buffer revision: if you keep typing, later edits remain dirty. Unedited files retain exact bytes; edited files retain encoding/BOM and existing line terminators. New lines use the original first terminator. UTF-8 and BOM-marked UTF-16 are supported strictly; malformed text and binary files are refused. The text/native-save limit is 64 MiB.
+
+Open, Clear and Refresh ask before discarding edits. Unsaved buffers are held in memory: save before closing the page. Refresh reloads an accessible source; it does not merge changes. Use as context is a snapshot, so use it again after editing when you need to update ordinary chat context.
+
+## Learn in the editor with Interactor
+
+**Interactor is a module and a built-in tool, not a workflow agent.** Enable **Multi-Turn**, **Interactor** in Configure MCPs/Tools and **Live editor** above the canvas. Try: “Help me create a Dockerfile for a Java servlet application using your text editor. Teach one step at a time.”
+
+1. Tlamatini reads the exact unsaved editor buffer and selection. If no path was provided, she creates the requested filename under Temp/interactor in an account-specific unique directory; an existing file is not overwritten.
+2. She types a short known segment, for example `FROM `, then hands the next field to you and explains which base image suits your Java runtime. The handoff stops further editor mutations in that chat turn.
+3. As you type, optional ghost text matches your prefix against choices prepared for this field. **Tab** accepts the suggestion, **Ctrl+Right** accepts a word and **Escape** dismisses it. You can type a different value.
+4. **Continue** sends a new chat turn and reads the live buffer again before reviewing your work. **Another hint** and **Explain selection** also use normal chat while preserving an existing composer draft.
+5. Save when you want the buffer persisted. Typing is not saving and does not execute code.
+
+The model prepares field choices once; matching is local, with no model request per keystroke. New questions still have normal chat/model latency. User input, selection, Escape, Stop, cancellation or disconnection interrupts AI typing and keeps the typed prefix editable. A temporarily hidden or occluded tab pauses for up to two extra minutes, then resumes at the next character when visible; a timeout never replays text. Switching to Markdown Preview or hiding the canvas returns control.
+
+Live tutoring accepts at most 262,144 UTF-16 units; a smaller configured tool-result/context budget can refuse a read. Oversized or stale content is refused explicitly, never silently truncated. For permissions and dated source/frozen evidence, see [Canvas editing](docs/canvas-editing.md) and [Interactor](docs/interactor.md).
+
+The [account-creation wizard](docs/user-creation-wizard.md) is separate from editor tutoring: it opens the interactive createsuperuser console and keeps passwords out of chat. It creates an administrative superuser. Saying that you will type a password does not reserve all commands for you, and an optional email field does not authorize an outbound notification.
+
+
 ## Terminals you can watch: Terminater
 
-> **New in v1.88.0** (tagged 2026-10-20), the latest released version. Everything here is finished and tested, and it is part of the release.
+> **Carried from v1.88.0** (tagged 2026-10-20). The dated evidence below describes that release; current source and frozen-package results are distinguished above.
 
 ### The problem it solves
 
@@ -962,7 +998,7 @@ When the migrations finish and you have a superuser, run the server (chapter 7).
 
 ### Path B — Pre-built one-click installer (end users)
 
-Download **v1.88.0**, the latest released version, from [Tlamatini Releases](https://github.com/XAIHT/Tlamatini/releases). Unzip the `Tlamatini_Release_v1.88.0/` folder and run the Installer. This book documents v1.88.0, including the 86-agent catalog with Terminater and the Terminals area, a private release that carries your own data, the faster recoverable Uninstaller, Refresh, Views and the centered avatar. See the [release record](docs/changes/2026-10-20-v1.88.0.md). Then:
+This book documents **v1.90.0**, including editable canvas files, native Save As and Interactor. Obtain the intended package from [Tlamatini Releases](https://github.com/XAIHT/Tlamatini/releases) and verify its version before installing. The source tag is not itself proof of a published or accepted package.
 
 1. Open the unzipped folder.
 2. Double-click **`Installer.exe`**.
@@ -1217,7 +1253,7 @@ This is the big one. Until you tick **Multi-Turn**, Tlamatini only *describes* t
 Multi-Turn flips Tlamatini from "answerer" to **operator**:
 
 - The chat skips its prompt-shape validator (you no longer have to phrase requests as questions).
-- A request-scoped **planner** picks the relevant tools from **108 built-ins**: 20 direct/core tools, 66 wrapped chat-agents, 12 ACPX/Skill tools, and 10 External-MCP supervisors. Healthy active servers can add lazily discovered `ext__<server>__<tool>` remotes on top without inflating every prompt permanently.
+- A request-scoped **planner** picks the relevant tools from **110 built-ins**: 21 direct/module tools, 67 wrapped chat-agents, 12 ACPX/Skill tools, and 10 External-MCP supervisors. Healthy active servers can add lazily discovered `ext__<server>__<tool>` remotes on top without inflating every prompt permanently.
 - The unified-agent loop runs **up to 4096 iterations** (`unified_agent_max_iterations`): the LLM calls a tool, sees the result, decides what to call next, and chains its way to the goal.
 - Wrapped sub-agents launch **silently** in the background (no console window pop-ups).
 
@@ -2049,6 +2085,7 @@ Every tool the chat LLM can call in Multi-Turn mode. Tools can be individually e
 | `agent_starter` | Start a template workflow agent from chat. |
 | `agent_stopper` | Stop a template workflow agent. |
 | `agent_stat_getter` | Check template-agent runtime status. |
+| `interactor` | Read and edit the live unsaved canvas; teach one segment, guide a learner field, save with authorization. |
 
 ## 28. Wrapped chat-agent tools (67)
 
@@ -2822,7 +2859,7 @@ python build_uninstaller.py
 python build_installer.py
 ```
 
-All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.88.0/`, named for the version so the file you hand to a user is unambiguous before they even unzip it. The current version is `v1.88.0`, so the bare runtime version resolves to `1.88.0`. Tlamatini deliberately never puts a `.devN`, `+gSHA` or `.dirty` suffix into its version string — it always reports the base tag, which is the designed behaviour described in `VERSIONING.md`. That is exactly why the five commands above start with `git status` on a clean tree: a release cut from a dirty tree would ship a version number that says nothing about what is actually inside it.
+All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.90.0/`, named for the version so the file you hand to a user is unambiguous before they even unzip it. The current version is `v1.90.0`, so the bare runtime version resolves to `1.90.0`. Tlamatini deliberately never puts a `.devN`, `+gSHA` or `.dirty` suffix into its version string — it always reports the base tag, which is the designed behaviour described in `VERSIONING.md`. That is exactly why the five commands above start with `git status` on a clean tree: a release cut from a dirty tree would ship a version number that says nothing about what is actually inside it.
 
 ### Where the version shows up in a running install
 
@@ -4007,7 +4044,7 @@ The other firmware agents make Tlamatini an *embedded engineer*. ESPHomer makes 
 | **Playwrighter** | Tlamatini agent that drives a REAL browser (Playwright — Chromium/Firefox/WebKit) through a scripted, interactive step list (goto/click/fill/wait_for/extract/assert/screenshot/download). Set `headless: false` to watch it and `hold_open_seconds: N` (alias `hold_open_ms`) to keep the browser visible N seconds after the last step before it closes. Available both as the wrapped Multi-Turn tool `chat_agent_playwrighter` and as a visual canvas node. The 65th entry in the agent catalog. |
 | **PDFer** | Document composer with 24 explicit visual styles in five families alongside 20 semantic content themes. `mode: styles` discovers the catalog; atelier composes measured, audited layouts with original vector art. [Style guide](Tlamatini/agent/agents/pdfer/STYLES.md). |
 | **Pool** | Directory where deployed agent instances are stored. |
-| **Prompt Flow Panel** | The canvas for chains of prompts (2026-09-25): Prompt, Programmed Prompt, Decision, Feed/Flush embeddings, Clean History and User Input, plus static customizable User Commentary notes that never run, played against your own models with an isolated conversation per run. Opened from **Panels ▸ Prompt Flow Panel**. |
+| **Prompt Flow Panel** | The canvas for chains of prompts (2026-09-25): Prompt, Programmed Prompt, Decision, Feed/Flush embeddings, Clean History, User Input and Terminater, plus static customizable User Commentary notes that never run, played against your own models with an isolated conversation per run. Opened from **Panels ▸ Prompt Flow Panel**. |
 | **`.fpmt`** | A Prompt Flow Panel diagram file (JSON, `format: "tlamatini-prompting-flow"`, version 2; version 1 reply steps migrate to User Input). Not to be confused with **`.pmt`**, Tlamatini's plain-text system prompt. |
 | **Panels menu** | The chat navbar menu (since 2026-09-25) that opens the Agentic Control Panel, the Prompt Flow Panel and, for staff, the Admin Panel. |
 | **PSer** | LLM-powered fuzzy process finder. |
@@ -4049,7 +4086,7 @@ The other firmware agents make Tlamatini an *embedded engineer*. ESPHomer makes 
 
 **Historical source update — static User Commentary and separate User Input (2026-10-03):** The existing question/reply/cancel operation is now User Input with the supplied notched figure. User Commentary is an independent speech-bubble review note: inline writing, palette/font/size choices, resizing, Undo/Redo and complete content containment without internal scrollbars. Notes save with the diagram and never enter playback or model history. New `.fpmt` saves are version 2; version 1 executable commentary migrates to User Input without losing settings or connections. Verified by 61 backend/packaging tests and nine visible Chrome checkpoints. At that verification point the change was uncommitted source work; no executable/installer was rebuilt. The older release entries below retain their historical names/format versions. [Implementation and verification](docs/changes/2026-10-03-prompt-commentary-input.md).
 
-**v1.88.0 is the latest released version (tagged 2026-10-20).** The catalog is now **86 workflow agents**: **Terminater** opens real CMD and PowerShell terminals in a new **Terminals** area (**Views ▸ Terminals**, or **Ctrl+`**) where you watch Tlamatini type every key like a person, take the keyboard whenever you want (Esc, or a hand-over on purpose) and see a hung command detected and aborted. It is the 67th wrapped chat agent (109 built-in tools) and the eighth Prompt Flow Panel operation, and the build proves it inside the frozen app before it packages. The **private (keyed) release** now carries the data of the machine that builds it - every External MCP server of the installed copy and its active choice, and the whole `data.keys` vault - while the public build refuses both. See the [v1.88.0 release record](docs/changes/2026-10-20-v1.88.0.md). The v1.88.0 tag points to `83e0cbe6`; the Terminater work landed on `main` in `6e129563` right after it, so a build of `main` reports `1.88.0` and carries it. It also carries **v1.87.0** (tagged 2026-10-18), which brought a leaner catalog of **85 workflow agents** (Gatewayer, Gateway-Relayer, Node-Manager and Zavuerer were removed), the Uninstaller moves the installation into a recovery folder instead of copying it and offers **Retry cleanup** for a locked leftover, the frozen release no longer carries the media and browser libraries twice, **About ▸ Usage** waits for real data, and every Python file has a quality gate (`npm run lint:python`). **v1.86.0** (tagged 2026-10-17) added this: **Mover** creates a destination that does not exist yet as a folder, and the **Architecture atlas** (`Tlamatini-Architecture.pdf`) is rebuilt from the repository by LaTeXer. The runtime version is **1.87.0**. See the [v1.87.0 release record](docs/changes/2026-10-18-v1.87.0.md). Before it, **v1.85.0** (2026-10-16) brought **Refresh** for the open canvas document, **Views → Canvas** for full-width chat, **Views → Reset layout** and a docked avatar centered over the complete Mic-to-Send row ([v1.85.0 record](docs/changes/2026-10-16-v1.85.0.md)).
+**v1.90.0 (tagged 2026-10-22)** brings Interactor: a live tutor inside the editable chat canvas. It reads the exact unsaved buffer, types a small teaching segment, hands the next field to the learner and offers optional local completions. It carries v1.89.0’s CodeMirror editor and native Save As, plus tab-visibility recovery, narrow-canvas layout and account-wizard intent fixes. The source has **86 workflow agents, 67 wrapped chat agents, 110 built-in tools (21 + 67 + 12 + 10), and 218 migrations**. Interactor is a module/tool, not an additional workflow agent. The tag resolves to `ebc5c3b4`; the inspected follow-up on `main`/`origin/main` is `d274f89c`. Source tests and an existing frozen-package check are dated separately; this documentation does not certify a newly built executable. See the [v1.90.0 release record](docs/changes/2026-10-22-v1.90.0.md).
 
 **In `v1.83.0` (tagged 2026-10-14):** a page-wide **file-drop router** (`file_drop_router.js`): one capture-phase listener in the `<head>` of every page — the chat, the Agentic Control Panel, the Prompt Flow Panel, the welcome and login pages, the Django admin and the PDF viewer frame — that claims only file drags, recognises each file by its bytes (extension, MIME type, magic numbers, a byte-order-mark-aware text test and a real JSON parse that finds an MCP config in every shape, UTF-16 from PowerShell included) and sends each kind to its own mechanism: an MCP `.json` to a confirmation and then the External ▸ MCPs catalog, a `.flw` to the Agentic Control Panel or a new tab, a `.fpmt` to the Prompt Flow Panel or a new tab, a picture to the chat message, a PDF, Markdown file, source code or plain JSON to the chat canvas, and a folder, archive or other binary to a note in plain words. Pages register what they can do with `TlamatiniFileDrop.register(kinds, fn, {label})`, and the label also drives the overlay shown while dragging. It replaced four per-page handlers — the chat column's image listeners and overlay, the canvas's blind open-as-text drop, the External ▸ MCPs dialog's private import and the Prompt Flow Panel's viewport drop — which is why an MCP `.json` used to report an error on the chat, open as text on the canvas and navigate the browser away on the other pages. Checked by 138 router cases, 22 Python tests (319 Django tests in the touched suites), ESLint with no errors, and a headed Chrome run of 58 of 58 checks with 24 Shoter photos. With it come two changes credited to Tlamatini's-AutoBot: the **docked avatar follows both composer dividers** (`63a62cc1`, 2026-10-13) — the vertical divider now shrinks the docked portrait as well as the message box, from 282 px to 120 px at 1440 CSS px, verified by 19 docked-avatar and 18 existing composer checkpoints ([record](docs/changes/2026-10-13-docked-avatar-divider.md)); and a request Image-Interpreter or Video-Analyzer refuses for a wrong or missing setting (`91ff8453`, 2026-10-12) no longer raises the red fatal-analysis dialog — the launcher returns `error_kind: "request"` and the model just corrects the call — while Video-Analyzer's description says it has no `transcription.engine` setting. The frontend now counts 59 JS modules and 26 stylesheets, the cache suffix is `-file-drop-router-1`, and there is no new migration (the count stays 213).
 

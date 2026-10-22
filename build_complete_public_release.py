@@ -102,6 +102,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from build_runtime_assets import create_release_archive, verify_package
+from versioning import resolve_build_version
 
 REPO_ROOT = Path(__file__).resolve().parent
 DIST = REPO_ROOT / "dist"
@@ -782,6 +783,9 @@ def main(argv=None) -> int:
 
     py = args.python
     assert_system_python(py)
+    # Pin once: a new Git tag during this run must not split the three artifacts.
+    release_version = resolve_build_version(args.version)
+    version_args = ["--version", release_version]
 
     # If no targets given, auto-load the local gitignored targets file so the bare
     # command just works. Values are read from that file -- never hardcoded.
@@ -835,6 +839,7 @@ def main(argv=None) -> int:
     banner("PUBLIC RELEASE BUILD  (SCRUBBED + LEAK-VERIFIED -- safe to distribute)")
     print(f"repo         : {REPO_ROOT}")
     print(f"python       : {py}")
+    print(f"version      : {release_version} (pinned for all build stages)")
     if clean_tree:
         print("targets      : NONE -- CLEAN-TREE MODE (no PII scrub, no PII verify)")
         print("               STILL ACTIVE: regen_secrets --mode push-able; the "
@@ -882,8 +887,7 @@ def main(argv=None) -> int:
         # the build log and a stray "--self-modify" in the ambient argv cannot
         # flip it. DEFAULT (no flag on this script) = not-self-able-modify.
         build_cmd.append("--self-modify" if args.self_modify else "--no-self-modify")
-        if args.version:
-            build_cmd.append(args.version)
+        build_cmd.extend(version_args)
         if run(build_cmd) != 0:
             sys.exit("build.py failed.")
         assert_self_modify_payload(args.self_modify)
@@ -908,9 +912,9 @@ def main(argv=None) -> int:
             print("  VERIFIED CLEAN: 0 files with your personal data.")
 
         banner("STEP 5/6  build_uninstaller.py + build_installer.py")
-        if run([py, str(BUILD_UNINST)] + ([args.version] if args.version else [])) != 0:
+        if run([py, str(BUILD_UNINST)] + version_args) != 0:
             sys.exit("build_uninstaller.py failed.")
-        if run([py, str(BUILD_INST)] + ([args.version] if args.version else [])) != 0:
+        if run([py, str(BUILD_INST)] + version_args) != 0:
             sys.exit("build_installer.py failed.")
 
         rel = newest_release_dir()

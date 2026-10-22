@@ -8,7 +8,7 @@
 -->
 # `.flw` schema (schemaVersion 2) — the shape the canvas loader consumes
 
-> Current release: **[v1.88.0](../../../../../docs/changes/2026-10-20-v1.88.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.90.0](../../../../../docs/changes/2026-10-22-v1.90.0.md)**. Dated records below retain their original evidence dates.
 
 
 Source of truth: `agent/static/agent/js/acp-file-io.js::loadDiagram(data)` and

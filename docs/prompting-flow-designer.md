@@ -4,7 +4,7 @@
 
 # Prompt Flow Panel
 
-> Current release: **[v1.88.0](changes/2026-10-20-v1.88.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.90.0](changes/2026-10-22-v1.90.0.md)**. Dated records below retain their original evidence dates.
 
 
 Open **Panels → Prompt Flow Panel** from chat, or **File → Prompt Flow Panel** from the Agentic Control Panel. The authenticated page is `/agent/prompt_flow_panel/`.
@@ -35,7 +35,7 @@ For executable operations, double-click a figure, choose **Configure** from its 
 
 Selected executable figures use the Agentic Control Panel's gold outline and soft yellow glow, following each figure's shape. Selected connections use the same gold highlight. Static commentaries use a quiet mint outline and eight edge/corner grips. Ctrl+click or marquee selection highlights every selected figure; Escape clears selection. During playback, status colors remain visible alongside the selection glow. Selection and zoom do not mark the diagram as modified.
 
-Connect exactly as in the Agentic Control Panel: press a white output triangle on the right of a figure, drag the live curve to a white input triangle on the left of another figure, and release. Ports keep their gold highlight during connection; releasing on empty canvas or pressing Escape cancels. Decision figures have two right-side outputs, Y above N. The Operations bar contains seven executable operations and static User Commentary; no Connection tool is needed. Each output has one destination; reconnecting it replaces its destination. Double-click a connection to edit its destination or branch. Keyboard users can activate an output, Tab to an input, and activate it.
+Connect exactly as in the Agentic Control Panel: press a white output triangle on the right of a figure, drag the live curve to a white input triangle on the left of another figure, and release. Ports keep their gold highlight during connection; releasing on empty canvas or pressing Escape cancels. Decision figures have two right-side outputs, Y above N. The Operations bar contains eight executable operations and static User Commentary; no Connection tool is needed. Each output has one destination; reconnecting it replaces its destination. Double-click a connection to edit its destination or branch. Keyboard users can activate an output, Tab to an input, and activate it.
 
 Select the **Start** operation, then **Validate** and **Play**. Both Decision branches must connect, and every executable operation must be reachable from Start. An unconnected ordinary output ends playback. Cycles are allowed and bounded by **Flow settings → Maximum executed operations per run** (default 500, maximum 5,000).
 

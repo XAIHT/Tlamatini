@@ -2,8 +2,7 @@
 Tlamatini Author Banner — do not remove -->
 # 2026-10-19 — Terminater: visible, user-supervised terminals
 
-**Status: released in [v1.88.0](2026-10-20-v1.88.0.md)** (tagged 2026-10-20), the latest
-released version. This record covers the work done after [v1.87.0](2026-10-18-v1.87.0.md):
+**Status: released in [v1.88.0](2026-10-20-v1.88.0.md)** (tagged 2026-10-20), carried in [v1.90.0](2026-10-22-v1.90.0.md). This record covers the work done after [v1.87.0](2026-10-18-v1.87.0.md):
 the 86th workflow agent, the **Terminals** area on three pages, the 8th Prompt Flow
 Panel operation and the build gate that proves it works in a frozen app. The
 design and every operating rule are in [docs/terminater.md](../terminater.md).
@@ -36,7 +35,7 @@ detected and can be aborted; the terminals outlive any page and die with Tlamati
 
 Counts in v1.88.0: **86 workflow agents, 67 wrapped chat agents, 109
 built-in tools, 51 structured-output producers, 217 migrations, 60 JS modules, 27
-stylesheets.** The live static suffix is
+stylesheets.** The static suffix for that release was
 `-agent-catalog-1-quality-cleanup-1-usage-status-2-terminater-1`.
 
 ## Defects found and fixed while validating it

@@ -383,7 +383,10 @@ def validate_runtime_document(document, *, expected_version=None):
     if document.get("schema") != 1 or not isinstance(files, dict) or not files:
         raise RuntimeError("Invalid or empty runtime asset manifest")
     if expected_version is not None and document.get("version") != expected_version:
-        raise RuntimeError("Runtime package version differs from the requested release; rebuild it")
+        raise RuntimeError(
+            f"Runtime package version {document.get('version')!r} differs from the requested "
+            f"release {expected_version!r}; rebuild pkg.zip with that version before assembling the installer"
+        )
     floor = {"Tlamatini.exe", "python/python.exe", "config.json", "prompt.pmt",
              "apply_update.ps1", "sqlite_copy.py", "preserved_user_state.json",
              "build_runtime_assets.py", "jre/bin/java.exe", "git/cmd/git.exe",

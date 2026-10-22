@@ -1,6 +1,6 @@
 # Tlamatini Windows access and Blue-hat toolkit
 
-> Current release: **[v1.88.0](../docs/changes/2026-10-20-v1.88.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.90.0](../docs/changes/2026-10-22-v1.90.0.md)**. Dated records below retain their original evidence dates.
 
 
 Created by **Angela López Mendoza** (`@angelahack1`). Tlamatini — the one who knows.

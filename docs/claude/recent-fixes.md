@@ -8,9 +8,9 @@
 -->
 # Tlamatini — Recent Fixes / Gotchas (archived fix log)
 
-> Current release: **[v1.88.0](../changes/2026-10-20-v1.88.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.90.0](../changes/2026-10-22-v1.90.0.md)**. Dated records below retain their original evidence dates.
 
-> **New in v1.88.0 (tagged 2026-10-20):** [Terminater](../terminater.md) (workflow agent #86 and the Terminals area) and a private release that carries the builder's own data. Counts: 86 workflow agents, 67 wrapped chat agents, 109 built-in tools, 217 migrations. See the [v1.88.0 release record](../changes/2026-10-20-v1.88.0.md) and the change records [Terminater](../changes/2026-10-19-terminater.md) and [private-release data](../changes/2026-10-19-private-release-data.md).
+> **Carried from v1.88.0 (tagged 2026-10-20):** [Terminater](../terminater.md) (workflow agent #86 and the Terminals area) and a private release that carries the builder's own data. Counts: 86 workflow agents, 67 wrapped chat agents, 109 built-in tools, 217 migrations. See the [v1.88.0 release record](../changes/2026-10-20-v1.88.0.md) and the change records [Terminater](../changes/2026-10-19-terminater.md) and [private-release data](../changes/2026-10-19-private-release-data.md).
 
 
 > **This file is NOT auto-imported into the AI-assistant context** (unlike the rest of `docs/claude/*.md`). It is the chronological log of surgical fixes and "keep this in mind / do NOT revert" contracts that used to live at the bottom of `gotchas.md`. It was split out so the always-loaded onboarding stays lean — see the "Archive the fix-log" decision recorded in `docs/claude/INDEX.md`.

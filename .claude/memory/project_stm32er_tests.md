@@ -15,7 +15,7 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
-> Current release: **[v1.88.0](../../docs/changes/2026-10-20-v1.88.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.90.0](../../docs/changes/2026-10-22-v1.90.0.md)**. Dated records below retain their original evidence dates.
 
 
 2026-05-26: Added `Tlamatini/agent/test_stm32er_agent.py` (85 tests, ruff clean, all green) for the STM32er agent ([[project_stm32er_agent]]). Modeled on `test_kalier_agent.py` conventions (importlib loader with cwd + log-handler save/restore).

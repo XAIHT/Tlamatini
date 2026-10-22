@@ -49,6 +49,7 @@ import unicodedata
 from pathlib import Path
 
 from build_runtime_assets import create_release_archive, verify_package
+from versioning import resolve_build_version
 
 REPO_ROOT = Path(__file__).resolve().parent
 DIST = REPO_ROOT / "dist"
@@ -485,11 +486,15 @@ def main(argv=None) -> int:
 
     py = args.python
     assert_system_python(py)
+    # Pin once: a new Git tag during this run must not split the three artifacts.
+    release_version = resolve_build_version(args.version)
+    version_args = ["--version", release_version]
     self_modify = args.self_modify and not args.no_self_modify
 
     banner("PRIVATE RELEASE BUILD  (KEYED -- contains your real data; DO NOT publish)")
     print(f"repo        : {REPO_ROOT}")
     print(f"python      : {py}")
+    print(f"version     : {release_version} (pinned for all build stages)")
     print(f"keys file   : {args.keys_file}")
     print(f"self-modify : {'YES — source tree + Tlamatini.md bundled' if self_modify else 'no (DEFAULT) — no source tree, no self-knowledge, smaller prompt'}")
     print(f"contacts    : {'COMPLETE (contacts.private.json)' if CONTACTS_PRIVATE.is_file() else 'EMPTY (contacts.private.json not found)'}")
@@ -514,18 +519,17 @@ def main(argv=None) -> int:
     # Pass the decision EXPLICITLY either way, so the intent is recorded in the
     # build log and a stray "--self-modify" in the ambient argv cannot flip it.
     build_cmd.append("--self-modify" if self_modify else "--no-self-modify")
-    if args.version:
-        build_cmd.append(args.version)
+    build_cmd.extend(version_args)
     if run(build_cmd) != 0:
         sys.exit("build.py failed.")
     assert_self_modify_payload(self_modify)
 
     banner("STEP 3/5  build_uninstaller.py")
-    if run([py, str(BUILD_UNINST)] + ([args.version] if args.version else [])) != 0:
+    if run([py, str(BUILD_UNINST)] + version_args) != 0:
         sys.exit("build_uninstaller.py failed.")
 
     banner("STEP 4/5  build_installer.py")
-    if run([py, str(BUILD_INST)] + ([args.version] if args.version else [])) != 0:
+    if run([py, str(BUILD_INST)] + version_args) != 0:
         sys.exit("build_installer.py failed.")
 
     rel = newest_release_dir()
