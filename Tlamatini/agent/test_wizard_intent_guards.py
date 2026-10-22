@@ -1,8 +1,10 @@
 # Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """User input in a setup wizard must not become command takeover or notification consent."""
 
+import importlib
 import json
 
+from django.apps import apps
 from django.test import SimpleTestCase, TestCase
 from langchain_core.tools import tool
 
@@ -10,6 +12,11 @@ from agent import terminal_guard as guard
 from agent.mcp_agent import MultiTurnToolAgentExecutor, _detect_completion_notification_request
 from agent.models import Prompt
 from agent.test_terminater_reliability import _ScriptedLLM, THE_RUST_USER_SENTENCE
+
+
+wizard_migration = importlib.import_module(
+    "agent.migrations.0219_user_wizard_graphical_notifications"
+)
 
 
 class WizardIntentTests(SimpleTestCase):
@@ -86,8 +93,37 @@ class UserCreationCatalogGuardTests(TestCase):
     def tearDown(self):
         guard.reset()
 
-    def test_real_catalog_does_not_request_a_notification(self):
+    def test_real_catalog_requests_local_checkpoints_without_premature_completion_debt(self):
         self.assertFalse(_detect_completion_notification_request(self.prompt))
+        self.assertIn("I explicitly request local graphical Notifier alerts", self.prompt)
+        for label in ("Username needed", "Console input needed", "Error creating user",
+                      "Warning: console not visible", "User ready"):
+            self.assertIn("target.search_strings='" + label + "'", self.prompt)
+        self.assertIn("not email, Telegram, WhatsApp or other external messages", self.prompt)
+        self.assertIn("a launched window or a typed command is not success", self.prompt)
+
+    def test_historical_catalog_still_does_not_authorize_notifications(self):
+        self.assertFalse(_detect_completion_notification_request(wizard_migration.OLD_WIZARD_PROMPT))
+
+    def test_migration_updates_only_the_known_default_and_is_reversible(self):
+        row = Prompt.objects.get(idPrompt=1)
+        metadata = (row.promptName, row.category, row.sort_rank, row.hidden)
+        row.promptContent = wizard_migration.OLD_WIZARD_PROMPT
+        row.save(update_fields=["promptContent"])
+        wizard_migration.apply_update(apps, None)
+        row.refresh_from_db()
+        self.assertEqual(row.promptContent, wizard_migration.WIZARD_PROMPT)
+        self.assertEqual((row.promptName, row.category, row.sort_rank, row.hidden), metadata)
+        wizard_migration.reverse_update(apps, None)
+        row.refresh_from_db()
+        self.assertEqual(row.promptContent, wizard_migration.OLD_WIZARD_PROMPT)
+        customized = wizard_migration.OLD_WIZARD_PROMPT + "\nMy custom instruction."
+        row.promptContent = customized
+        row.save(update_fields=["promptContent"])
+        wizard_migration.apply_update(apps, None)
+        wizard_migration.reverse_update(apps, None)
+        row.refresh_from_db()
+        self.assertEqual(row.promptContent, customized)
 
     def test_real_catalog_lifts_a_previous_command_tutorial(self):
         mode = guard.observe("wizard", self.prompt, [{"type": "human", "content": THE_RUST_USER_SENTENCE}])
@@ -98,6 +134,7 @@ class UserCreationCatalogGuardTests(TestCase):
         for runtime in ("SOURCE", "FROZEN"):
             with self.subTest(runtime=runtime):
                 calls = []
+                notifications = []
 
                 @tool
                 def chat_agent_executer(request: str) -> str:
@@ -107,6 +144,12 @@ class UserCreationCatalogGuardTests(TestCase):
                         "TLAMATINI_MODE=" + runtime if len(calls) == 1 else "Interactive console launched"
                     )})
 
+                @tool
+                def chat_agent_notifier(request: str) -> str:
+                    """Record a local graphical alert without displaying one."""
+                    notifications.append(request)
+                    return json.dumps({"status": "completed", "output": "Notification file created"})
+
                 history = [{"type": "human", "content": THE_RUST_USER_SENTENCE}]
                 launch = ('"%TLAMATINI_TEMP%\\..\\Tlamatini.exe" createsuperuser' if runtime == "FROZEN"
                           else 'python manage.py createsuperuser')
@@ -115,15 +158,62 @@ class UserCreationCatalogGuardTests(TestCase):
                     ("Continue", f"script='{launch}' and execute_forked_window=true and non_blocking=true",
                      "Enter your password only in the console, then reply DONE. I will wait."),
                 ):
-                    llm = _ScriptedLLM([
-                        {"calls": [("chat_agent_executer", {"request": request})]}, {"content": answer},
-                    ])
-                    executor = MultiTurnToolAgentExecutor(llm=llm, system_prompt="test", tools=[chat_agent_executer])
+                    script = [{"calls": [("chat_agent_executer", {"request": request})]}]
+                    if message == "Continue":
+                        script.append({"calls": [("chat_agent_notifier", {"request":
+                            "target.mode='oneshot' and target.search_strings='Console input needed' "
+                            "and target.outcome_detail='Use the console, then confirm its success in chat.' "
+                            "and target.sound_enabled=true"})]})
+                    script.append({"content": answer})
+                    llm = _ScriptedLLM(script)
+                    executor = MultiTurnToolAgentExecutor(
+                        llm=llm, system_prompt="test", tools=[chat_agent_executer, chat_agent_notifier]
+                    )
                     result = executor.invoke({"input": message, "chat_history": history,
                                               "ask_execs_user_id": "wizard-" + runtime, "exec_report_enabled": True})
-                    self.assertEqual(len(llm.seen), 2, "A guard diverted the model from the requested wizard")
+                    self.assertEqual(len(llm.seen), len(script),
+                                     "A guard diverted the model from the requested wizard")
                     self.assertEqual(result["output"], answer)
                     self.assertTrue(result["exec_report_entries"][0]["success"])
                     history.extend([{"type": "human", "content": message}, {"type": "ai", "content": answer}])
                 self.assertEqual(len(calls), 2)
                 self.assertIn("createsuperuser", calls[1])
+                self.assertEqual(len(notifications), 1)
+                self.assertNotIn("User ready", notifications[0])
+
+    def test_local_checkpoint_calls_survive_error_nowindow_and_success_continuations(self):
+        for reply, label in (
+            ("ERROR: The username is already taken.", "Error creating user"),
+            ("NOWINDOW", "Warning: console not visible"),
+            ("DONE: I saw Superuser created successfully in the console.", "User ready"),
+        ):
+            with self.subTest(reply=reply):
+                alerts = []
+
+                @tool
+                def chat_agent_notifier(request: str) -> str:
+                    """Record the local alert without sending any message."""
+                    alerts.append(request)
+                    return json.dumps({"status": "completed", "output": "Notification file created"})
+
+                answer = "Follow the next step in chat."
+                request = ("target.mode='oneshot' and target.search_strings='" + label +
+                           "' and target.outcome_detail='Follow the next step in chat.' "
+                           "and target.sound_enabled=true")
+                llm = _ScriptedLLM([
+                    {"calls": [("chat_agent_notifier", {"request": request})]},
+                    {"content": answer},
+                ])
+                executor = MultiTurnToolAgentExecutor(
+                    llm=llm, system_prompt="test", tools=[chat_agent_notifier]
+                )
+                result = executor.invoke({
+                    "input": reply,
+                    "chat_history": [{"type": "human", "content": self.prompt},
+                                     {"type": "ai", "content": "Complete the console prompts, then reply."}],
+                    "ask_execs_user_id": "wizard-checkpoint-" + label,
+                    "exec_report_enabled": True,
+                })
+                self.assertEqual(alerts, [request])
+                self.assertEqual(len(llm.seen), 2)
+                self.assertEqual(result["output"], answer)
