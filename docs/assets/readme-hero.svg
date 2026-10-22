@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="420" viewBox="0 0 1280 420" fill="none" role="img" aria-labelledby="hero-title hero-description">
+  <title id="hero-title">Tlamatini — Speak. Build. Connect.</title>
+  <desc id="hero-description">An original vector illustration of Tlamatini connecting code, 3D worlds, hardware and visual workflows. Created by Angela López Mendoza.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1280" y2="420" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0B1521"/>
+      <stop offset="0.52" stop-color="#080F19"/>
+      <stop offset="1" stop-color="#102023"/>
+    </linearGradient>
+    <linearGradient id="title-color" x1="384" y1="164" x2="902" y2="212" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F8FCFF"/>
+      <stop offset="0.54" stop-color="#E8FCF8"/>
+      <stop offset="1" stop-color="#96E8DC"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="230" y2="100" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#162530"/>
+      <stop offset="1" stop-color="#101B25"/>
+    </linearGradient>
+    <pattern id="grid" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" stroke="#6C9DAB" stroke-opacity="0.045"/>
+    </pattern>
+  </defs>
+
+  <!-- A quiet technical canvas: all artwork is local, editable SVG. -->
+  <rect x="1" y="1" width="1278" height="418" rx="24" fill="url(#background)" stroke="#29404A"/>
+  <rect x="20" y="20" width="1240" height="380" rx="16" fill="url(#grid)"/>
+
+  <!-- Broken orbital arcs keep the centre open for the name. -->
+  <g stroke="#5ECDBD" stroke-opacity="0.13" stroke-width="1.2">
+    <path d="M341 156C397 73 517 47 640 47C763 47 883 73 939 156"/>
+    <path d="M341 272C397 350 517 376 640 376C763 376 883 350 939 272"/>
+    <path d="M413 129C469 90 548 76 640 76C732 76 811 90 867 129"/>
+    <path d="M413 299C469 338 548 352 640 352C732 352 811 338 867 299"/>
+  </g>
+  <g stroke="#CDA56A" stroke-opacity="0.38" stroke-width="1.4" stroke-linecap="round">
+    <path d="M517 61C539 55 563 51 588 49"/>
+    <path d="M745 370C770 366 794 360 815 353"/>
+  </g>
+  <circle cx="588" cy="49" r="3" fill="#DDBB81"/>
+  <circle cx="815" cy="353" r="3" fill="#DDBB81"/>
+
+  <!-- Four routes, one workbench. -->
+  <g stroke="#68CFBE" stroke-opacity="0.4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M270 140H313L347 174H366"/>
+    <path d="M270 290H313L347 256H366"/>
+    <path d="M1010 140H967L933 174H914"/>
+    <path d="M1010 290H967L933 256H914"/>
+  </g>
+  <g fill="#0D1922" stroke="#72D9C8" stroke-width="1.6">
+    <circle cx="366" cy="174" r="3.5"/>
+    <circle cx="366" cy="256" r="3.5"/>
+    <circle cx="914" cy="174" r="3.5"/>
+    <circle cx="914" cy="256" r="3.5"/>
+  </g>
+
+  <!-- Centrepiece. -->
+  <g font-family="Segoe UI, Helvetica, Arial, sans-serif" text-anchor="middle">
+    <path d="M622 105L640 95L658 105V124L640 134L622 124Z" stroke="#E1BE82" stroke-width="1.5"/>
+    <path d="M631 113L640 118L649 113M640 118V127" stroke="#E1BE82" stroke-width="1.5" stroke-linecap="round"/>
+    <text x="640" y="205" fill="url(#title-color)" font-size="73" font-weight="700" letter-spacing="3">TLAMATINI</text>
+    <text x="640" y="236" fill="#9FB5BF" font-size="18" letter-spacing="4">one who knows</text>
+    <text x="640" y="289" fill="#EFF8F7" font-size="29" font-weight="400" letter-spacing="0.7">Speak. Build. Connect.</text>
+    <path d="M612 313H668" stroke="#DDBB81" stroke-width="2" stroke-linecap="round"/>
+  </g>
+
+  <!-- Code. -->
+  <g transform="translate(40 90)">
+    <rect width="230" height="100" rx="16" fill="url(#card)" stroke="#2A4650"/>
+    <path d="M16 1H57" stroke="#67D8C4" stroke-width="2" stroke-linecap="round"/>
+    <g stroke="#7CE1CF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M31 31L26 36V65H69V30H35"/>
+      <path d="M39 40L32 47L39 54M55 40L62 47L55 54M49 38L44 57"/>
+    </g>
+    <text x="91" y="57" fill="#DCEEEB" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="20" font-weight="600" letter-spacing="2">CODE</text>
+  </g>
+
+  <!-- 3D worlds. -->
+  <g transform="translate(1010 90)">
+    <rect width="230" height="100" rx="16" fill="url(#card)" stroke="#2A4650"/>
+    <path d="M16 1H57" stroke="#DDBB81" stroke-width="2" stroke-linecap="round"/>
+    <g stroke="#E1BE82" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M47 26L67 38V61L47 73L27 61V38Z"/>
+      <path d="M27 38L47 50L67 38M47 50V73M37 32L57 44"/>
+    </g>
+    <text x="87" y="57" fill="#DCEEEB" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="18" font-weight="600" letter-spacing="1">3D WORLDS</text>
+  </g>
+
+  <!-- Hardware. -->
+  <g transform="translate(40 240)">
+    <rect width="230" height="100" rx="16" fill="url(#card)" stroke="#2A4650"/>
+    <path d="M16 1H57" stroke="#DDBB81" stroke-width="2" stroke-linecap="round"/>
+    <g stroke="#E1BE82" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M31 34H63V66H31ZM40 43H54V57"/>
+      <path d="M39 27V34M47 27V34M55 27V34M39 66V73M47 66V73M55 66V73M24 42H31M24 50H31M24 58H31M63 42H70M63 50H70M63 58H70"/>
+      <circle cx="40" cy="57" r="1" fill="#E1BE82" stroke="none"/>
+    </g>
+    <text x="87" y="57" fill="#DCEEEB" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="18" font-weight="600" letter-spacing="1">HARDWARE</text>
+  </g>
+
+  <!-- Workflows. -->
+  <g transform="translate(1010 240)">
+    <rect width="230" height="100" rx="16" fill="url(#card)" stroke="#2A4650"/>
+    <path d="M16 1H57" stroke="#67D8C4" stroke-width="2" stroke-linecap="round"/>
+    <g stroke="#7CE1CF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="26" y="41" width="14" height="16" rx="3"/>
+      <rect x="55" y="25" width="15" height="16" rx="3"/>
+      <rect x="55" y="59" width="15" height="16" rx="3"/>
+      <path d="M40 49H47V33H55M47 49V67H55"/>
+    </g>
+    <text x="85" y="57" fill="#DCEEEB" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="18" font-weight="600" letter-spacing="0.6">WORKFLOWS</text>
+  </g>
+
+  <text x="640" y="400" fill="#79929E" font-family="Segoe UI, Helvetica, Arial, sans-serif" text-anchor="middle" font-size="13" letter-spacing="0.4">Created by Angela López Mendoza</text>
+</svg>
